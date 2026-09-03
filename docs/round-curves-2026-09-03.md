@@ -108,12 +108,56 @@ recorded here and not shipped in the same PR as an OFF flag. The flip of
 `curve_turn_deg` moves the same goldens, so the two belong in one re-pin
 round.
 
+## Review (emb-bot-reviewer), applied before the PR left draft
+
+- **The flip's blocker, Kent's call.** With the flag at 15°, two of Fremont's
+  25 shapes change tier: the 2.6 mm letters of the small line
+  (`S54b55cf1`, 2.5 × 2.6 mm) go satin → fill, and their neighbour loses a
+  stroke. Mechanism: Douglas-Peucker at 0.2 mm was INFLATING those letters
+  by 14% (Hausdorff to the raw contour 5.75 px; the refined polygon is at
+  1.14 px), and the honest polygon's ribbon width drops 0.468 → 0.381 mm —
+  under `SATIN_MIN_CROSS_MM` (0.5) once the rails sit symmetric — so
+  `satin_stroke` drops every cross, `satin_shape` reports empty and stage 7
+  falls through to fill. The hairline population defect 24 already names;
+  the refinement removes the inflation that was masking it. A design-level
+  stitch delta cannot see a per-shape tier flip; the flip's evidence must
+  include a per-shape `kind` diff on every fixture. Whether to scope the
+  refinement out of near-floor lettering (skip shapes whose ribbon width
+  is within ~20% of the minimum cross) or to route those letters to a run
+  tier is Kent's decision, not a default to pick here.
+- **Vertex mapping fixed.** The DP-vertex → raw-index map was a nearest-point
+  search taking the FIRST occurrence; a `CHAIN_APPROX_NONE` contour visits a
+  one-pixel-wide neck or serif twice with identical coordinates, so return-
+  leg vertices were sent to their outbound twins and re-sorted (a two-blob
+  fixture with a 1 px neck re-routed its ring; the sagitta bound re-split
+  every orphaned arc so the geometry survived by luck). Now a lockstep walk
+  of both rings, monotone and unwrapped, refusing the refinement when a
+  vertex is not on the raw ring; it also removes the O(V × n) term.
+- **The angle term is inert at the O's radius** — every chord under ~30 px
+  is bounded by the one-pixel floor, so 5, 10 and 15° read the same polygon
+  at r = 75 px; the `chord × turn/8` term first governs around r ≈ 300 px
+  (15° → 32 vertices at 12.7°, 30° → 20 at 22.8°). A test at that radius
+  now pins it. The config comment's resolution claims were overstated and
+  are corrected: a 2.4 mm disc at 6 px/mm does not change at all, at
+  8–12 px/mm reads a 12-gon with 35° corners either way, and only at
+  31 px/mm reads 36 vertices at 15° — Fremont is the best case, a
+  600–1200 px logo at 80 mm sits at 7.5–15 px/mm.
+- **Recorded in the flag's favour:** DP's 0.2 mm 8-gon under-covers a
+  2.4 mm disc's area by 10% (16.28 vs 18.10 mm²); refined it is within
+  1.5%. On Fremont both O counters gain ~8% area and the rings lose it.
+- Non-positive values mean off; `_CURVE_WINDOW_STEPS` is a step count, not
+  pixels; the dead variable is gone. Cost measured: Fremont 0.05 s over 55
+  calls, sunset 0.18 s over 28, against a 56 s pipeline.
+
 ## Tests
 
 `tests/test_run_tier.py`: None is byte-identical to Douglas-Peucker; a
 2.4 mm-radius disc at 31 px/mm goes from ≤ 16 vertices to ≥ 3× as many with
 no vertex turning more than 30° and every vertex within 1.5 px of the true
-circle; a rotated rectangle keeps its four vertices.
+circle; a rotated rectangle keeps its four vertices; at r = 300 px 15°
+reads more vertices and smaller turns than 30°; a two-disc shape with a
+one-pixel neck keeps its simplified vertices in ring order and its area
+within 5%.
 
 ## Not this
 

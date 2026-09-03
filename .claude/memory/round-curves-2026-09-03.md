@@ -19,6 +19,14 @@ Full record: `docs/round-curves-2026-09-03.md`.
   2.4 mm arc reads as a 24–33-gon with 17° turns; at 8–10 px/mm it can only
   reach 16–24 vertices with ±half-pixel jitter (ENTHUSIAST's roughness rose
   10.6 → 11.4 at 11 px/mm). Becker at 4 px/mm is byte-identical.
+- **The flip drops hairline lettering.** Douglas-Peucker at 0.2 mm INFLATES
+  a 2.6 mm letter by 14%; the honest polygon's ribbon width (0.47 → 0.38 mm)
+  sits under the 0.5 mm minimum cross and the letter falls satin → fill
+  (review finding). A design-level stitch delta cannot see a tier flip —
+  the flip's evidence needs a per-shape `kind` diff. Scoping the refinement
+  out of near-floor lettering vs routing it to a run tier is Kent's call.
+- **Vertex mapping must walk both rings in lockstep**: a nearest-point map
+  sends a hairline's return-leg vertices to their outbound twins.
 - **The 13% stitch swing was float dust, not the flag.** `split_long_moves`
   halves any fill step that measures 3.0000000000000004 — 576 of Fremont's
   2450 fill steps, 1198 on sunset (10% of the design). Instrument

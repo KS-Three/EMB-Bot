@@ -149,7 +149,7 @@ icon. Cloth pointers added to defects 3, 6 and 16 below.
 
 22. **Small curves sew as polygons — FIX BUILT, DEFAULT OFF, Kent's flip** (`curve_turn_deg`; None =
     today): a turn-per-vertex bound re-reads each Douglas-Peucker edge against its raw arc, split at the
-    midpoint, floored at one pixel. Fremont's counter **9 → 33 vertices, 47° → 17°**, inner rail σ 0.038 → 0.026 mm; off md5-identical; the flip re-pins curved goldens. *(measured 2026-09-03 — `docs/round-curves-2026-09-03.md`)*
+    midpoint, floored at one pixel. Fremont's counter **9 → 33 vertices, 47° → 17°**, inner rail σ 0.038 → 0.026 mm; off md5-identical. **The flip re-pins curved goldens AND drops Fremont's 2.6 mm hairline letters satin → fill** (DP's 14% inflation had kept them at the 0.5 mm floor) — Kent's call. *(measured 2026-09-03 — `docs/round-curves-2026-09-03.md`)*
 
 23. **Rail dents — one rail of a rotated satin column sits 15% short of the art**: `place` shrinks a rail to 0.85× on a float-dust `covers` miss; a stock 3 mm bar at 25° has one whole rail at **1.22–1.27 mm** vs 1.44–1.46. In every satin golden. *(measured 2026-09-03 — area 1)*
 

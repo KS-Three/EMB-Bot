@@ -103,8 +103,9 @@ def _polygon_parts(geom) -> list[Polygon]:
 # the true edge; a deviation under one pixel is the raster, not the curve.
 _CURVE_FLOOR_PX = 1.0
 # The sub-pixel estimate of a curve point: the mean of the raw contour points
-# within this many pixels (along the contour) of the arc's midpoint.
-_CURVE_WINDOW_PX = 2
+# within this many contour STEPS (one or root-two pixels each) of the arc's
+# midpoint.
+_CURVE_WINDOW_STEPS = 2
 
 
 def _refine_curves(raw: np.ndarray, simplified: np.ndarray, eps_px: float,
@@ -120,16 +121,31 @@ def _refine_curves(raw: np.ndarray, simplified: np.ndarray, eps_px: float,
     stays as it is. See `config.curve_turn_deg`.
     """
     n = len(raw)
-    if n < 4 or len(simplified) < 3:
+    if n < 4 or len(simplified) < 3 or turn_deg <= 0.0:
         return simplified
     frac = math.radians(turn_deg) / 8.0
-    # Map each simplified vertex back to its raw index (DP keeps input points).
+    # Map each simplified vertex back to its raw index by walking both rings
+    # in lockstep -- Douglas-Peucker keeps input points, in order, so the
+    # next vertex is the first exact match AHEAD of the last one. A nearest-
+    # point search would send the return leg of a one-pixel-wide feature
+    # (a hairline serif, a neck) to its outbound twin, since a
+    # CHAIN_APPROX_NONE contour visits such pixels twice with identical
+    # coordinates (review, 2026-09-03). Indices unwrap past n on the way
+    # round; a vertex that is not on the raw ring at all refuses the
+    # refinement rather than guessing.
     idx: list[int] = []
+    k = -1
     for q in simplified:
-        d = np.hypot(raw[:, 0] - q[0], raw[:, 1] - q[1])
-        idx.append(int(np.argmin(d)))
-    idx = sorted(set(idx))
-    if len(idx) < 3:
+        hits = np.flatnonzero((raw[:, 0] == q[0]) & (raw[:, 1] == q[1]))
+        if len(hits) == 0:
+            return simplified
+        if k < 0:
+            k = int(hits[0])
+        else:
+            ahead = hits[hits > (k % n)]
+            k = int(ahead[0]) + n * (k // n) if len(ahead) else int(hits[0]) + n * (k // n + 1)
+        idx.append(k)
+    if len(idx) < 3 or idx[-1] >= idx[0] + n:
         return simplified
     out: list[int] = []
     est: dict[int, np.ndarray] = {}
@@ -148,10 +164,9 @@ def _refine_curves(raw: np.ndarray, simplified: np.ndarray, eps_px: float,
         return float(dev.max()), length
 
     stack: list[tuple[int, int]] = []
-    for a, b in zip(idx, idx[1:] + [idx[0]]):
-        stack.append((a, b if b > a else b + n))
+    for a, b in zip(idx, idx[1:] + [idx[0] + n]):
+        stack.append((a, b))
     # Iterative, in chord order: each accepted chord contributes its start.
-    result: list[tuple[int, int]] = []
     for a, b in stack:
         work = [(a, b)]
         pieces: list[int] = []
@@ -162,7 +177,7 @@ def _refine_curves(raw: np.ndarray, simplified: np.ndarray, eps_px: float,
                 pieces.append(i)
                 continue
             m = (i + jj) // 2
-            lo, hi = max(i, m - _CURVE_WINDOW_PX), min(jj, m + _CURVE_WINDOW_PX)
+            lo, hi = max(i, m - _CURVE_WINDOW_STEPS), min(jj, m + _CURVE_WINDOW_STEPS)
             est[m % n] = raw[[k % n for k in range(lo, hi + 1)]].mean(axis=0)
             work.append((m, jj))       # popped second: keeps chain order
             work.append((i, m))
@@ -203,6 +218,8 @@ def vectorize(
     x0, y0, x1, y1 = p.art_bbox
     cx, cy = (x0 + x1) / 2.0, (y0 + y1) / 2.0
     eps_px = max(0.5, cfg.simplify_tol_mm * p.px_per_mm)
+    # `curve_turn_deg`: None, 0 and negatives all mean "today's polygon".
+    curve_turn = cfg.curve_turn_deg if (cfg.curve_turn_deg or 0.0) > 0.0 else None
     min_area_mm2 = (cfg.min_detail_mm ** 2) * 0.25  # a sliver after simplification
     min_detail_px2 = (cfg.min_detail_mm * p.px_per_mm) ** 2
 
@@ -227,7 +244,7 @@ def vectorize(
         padded[1:-1, 1:-1] = rm.crop
         contours, hierarchy = cv2.findContours(
             padded, cv2.RETR_CCOMP,
-            cv2.CHAIN_APPROX_NONE if cfg.curve_turn_deg else cv2.CHAIN_APPROX_SIMPLE,
+            cv2.CHAIN_APPROX_NONE if curve_turn else cv2.CHAIN_APPROX_SIMPLE,
             offset=(x0 - 1, y0 - 1),
         )
         if not contours or hierarchy is None:
@@ -253,9 +270,9 @@ def vectorize(
         if len(shell_px) < 3:
             note_drop(rm)
             continue
-        if cfg.curve_turn_deg and not sub_detail:
+        if curve_turn and not sub_detail:
             shell_px = _refine_curves(contours[outer].reshape(-1, 2).astype(np.float64),
-                                      shell_px.astype(np.float64), eps, cfg.curve_turn_deg)
+                                      shell_px.astype(np.float64), eps, curve_turn)
         shell = _to_mm(shell_px, cx, cy, p.px_per_mm)
 
         holes = []
@@ -265,9 +282,9 @@ def vectorize(
             h_px = cv2.approxPolyDP(contours[i], eps, True).reshape(-1, 2)
             if len(h_px) < 3:
                 continue
-            if cfg.curve_turn_deg and not sub_detail:
+            if curve_turn and not sub_detail:
                 h_px = _refine_curves(contours[i].reshape(-1, 2).astype(np.float64),
-                                      h_px.astype(np.float64), eps, cfg.curve_turn_deg)
+                                      h_px.astype(np.float64), eps, curve_turn)
             ring = _to_mm(h_px, cx, cy, p.px_per_mm)
             if Polygon(ring).area >= min_area_mm2:
                 holes.append(ring)

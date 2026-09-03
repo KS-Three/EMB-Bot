@@ -420,24 +420,30 @@ class PipelineConfig:
     # round" (defect 22, 2026-09-03). `simplify_tol_mm` is a maximum
     # DEVIATION, and 0.2 mm on a 2.4 mm-radius counter is a 9-gon whose
     # 47 deg corners the eye reads even where no vertex is more than a
-    # quarter-thread off the arc. This is the second knob: the largest TURN a
-    # curve's polygon may take at one vertex, in degrees. None keeps stage 4
+    # quarter-thread off the arc -- and whose chords under-cover the disc by
+    # 10% of its area. This is the second knob: the largest TURN a curve's
+    # polygon may take at one vertex, in degrees. None (or 0) keeps stage 4
     # byte-identical to today. A number re-reads every Douglas-Peucker edge
-    # against the raw contour it replaced and splits it at the arc's midpoint
-    # (a sub-pixel estimate, the mean of the raw points within two pixels)
-    # until the chord's sagitta is under min(simplify_tol_mm, chord *
-    # turn/8) -- the small-angle sagitta of an arc turning `turn` degrees --
-    # floored at one raster pixel, which is the staircase's own amplitude
-    # and the honest limit of what a raster can say about a curve. Straight
-    # edges never split (their sagitta is the staircase, under the floor),
-    # so a rectangle stays a rectangle; only arcs gain vertices. 15 deg is
-    # the trade's "smooth" -- a 24-gon on a circle -- and at Fremont's
-    # 31 px/mm the O's counter goes 9 -> ~24 vertices; at 8-10 px/mm a
-    # 2.4 mm arc can only reach ~16-24 because the pixel floor governs.
-    # NOT a physical constant (no fabric quantity; the floor is a raster
-    # quantity like SATIN_HOUSE_CHORD_PX). Every fixture with a curve moves
-    # when this is on, so the goldens re-pin on the flip; built OFF for
-    # Kent's flip.
+    # against the raw contour it replaced and splits it at the arc's
+    # midpoint (a sub-pixel estimate, the mean of the raw points within two
+    # contour steps) until the chord's sagitta is under min(simplify_tol_mm,
+    # chord * turn/8) -- the small-angle sagitta of an arc turning `turn`
+    # degrees -- floored at one raster pixel, the staircase's own amplitude.
+    # Straight edges never split (their sagitta is the staircase, under the
+    # floor); only arcs gain vertices -- an antialiased end cap counts as
+    # one, so a long thin rule can pick up a few. The pixel floor governs
+    # at ordinary resolution: measured on a 2.4 mm disc, 6 px/mm changes
+    # nothing (the tolerance is already a pixel), 8-12 px/mm reads a 12-gon
+    # with 35 deg corners either way, and 31 px/mm (Fremont) reads 36
+    # vertices at 15 deg -- so the O it was built for is the best case,
+    # and a 600-1200 px logo at 80 mm sits at 7.5-15 px/mm. NOT a physical
+    # constant (no fabric quantity; the floor is a raster quantity like
+    # SATIN_HOUSE_CHORD_PX). Every fixture with a curve moves when this is
+    # on, so the goldens re-pin on the flip; built OFF for Kent's flip --
+    # and the flip has a known cost, hairline lettering (a 2.6 mm letter
+    # whose true width sits at SATIN_MIN_CROSS_MM) that Douglas-Peucker's
+    # inflation kept as satin drops to fill once its polygon is honest
+    # (`docs/round-curves-2026-09-03.md`, review finding 1).
     curve_turn_deg: float | None = None
 
     # Stage 5 — sew order, underlap, pull compensation

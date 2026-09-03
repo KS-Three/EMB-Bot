@@ -375,7 +375,9 @@ def test_curve_turn_deg_turns_a_9_gon_counter_into_a_curve():
 def test_curve_turn_deg_leaves_straight_edges_alone():
     """Only arcs gain vertices. A rotated rectangle's edges are staircases
     under the one-pixel floor, so it stays a quadrilateral with the flag on
-    -- the polygon is not smoothed, it is re-read where it curved."""
+    -- the polygon is not smoothed, it is re-read where it curved. (At
+    12 px/mm the bound in force on these edges is `simplify_tol_mm`'s 2.4 px,
+    which the staircase is also under.)"""
     import cv2
 
     size = 400
@@ -389,3 +391,62 @@ def test_curve_turn_deg_leaves_straight_edges_alone():
     curved, _ = vectorize([RegionMask.from_full(img > 0, layer=0)], [0], p,
                           PipelineConfig(target_width_mm=999, min_detail_mm=0.01, curve_turn_deg=15.0))
     assert len(plain[0].polygon.exterior.coords) == len(curved[0].polygon.exterior.coords)
+
+
+def test_curve_turn_deg_value_governs_once_the_arc_is_above_the_pixel_floor():
+    """At a 2.4 mm radius every chord under ~30 px is bounded by the one-pixel
+    floor, so 5, 10 and 15 deg read the same polygon there. The angle term
+    takes over on larger arcs: a 300 px-radius disc reads more vertices at
+    15 deg than at 30, and the vertex turns follow the setting."""
+    size = 700
+    radius_px = 300.0
+    mask = _disc_mask(radius_px, size)
+    p = Prep(rgb=np.zeros((size, size, 3), np.uint8), bg_mask=np.zeros((size, size), bool),
+             px_per_mm=31.25, art_bbox=(0, 0, size, size))
+
+    def poly_at(turn):
+        regions, _ = vectorize([RegionMask.from_full(mask, layer=0)], [0], p,
+                               PipelineConfig(target_width_mm=999, min_detail_mm=0.01,
+                                              curve_turn_deg=turn))
+        return regions[0].polygon
+
+    fine, coarse = poly_at(15.0), poly_at(30.0)
+    n_fine = len(fine.exterior.coords) - 1
+    n_coarse = len(coarse.exterior.coords) - 1
+    assert n_fine > n_coarse, (n_fine, n_coarse)
+    assert _vertex_turns_deg(fine).max() <= 20.0
+    assert _vertex_turns_deg(coarse).max() <= 40.0
+    assert _vertex_turns_deg(coarse).max() > _vertex_turns_deg(fine).max()
+
+
+def test_curve_refinement_maps_vertices_in_ring_order_across_a_hairline_neck():
+    """A contour traced with CHAIN_APPROX_NONE visits a one-pixel-wide neck
+    twice with identical coordinates. The vertex-to-raw mapping walks both
+    rings in lockstep so the return leg is not sent to its outbound twin
+    (review, 2026-09-03): the refined ring keeps the simplified ring's
+    vertices in order, and the polygon stays valid."""
+    size = 300
+    img = np.zeros((size, size), np.uint8)
+    yy, xx = np.mgrid[0:size, 0:size]
+    img[np.hypot(xx - 90, yy - 150) <= 60] = 1
+    img[np.hypot(xx - 210, yy - 150) <= 60] = 1
+    img[150, 90:210] = 1                                 # a one-pixel neck
+    p = Prep(rgb=np.zeros((size, size, 3), np.uint8), bg_mask=np.zeros((size, size), bool),
+             px_per_mm=20.0, art_bbox=(0, 0, size, size))
+    plain, _ = vectorize([RegionMask.from_full(img > 0, layer=0)], [0], p,
+                         PipelineConfig(target_width_mm=999, min_detail_mm=0.01))
+    curved, _ = vectorize([RegionMask.from_full(img > 0, layer=0)], [0], p,
+                          PipelineConfig(target_width_mm=999, min_detail_mm=0.01, curve_turn_deg=15.0))
+    assert len(curved) == len(plain)
+    for a, b in zip(plain, curved):
+        assert b.polygon.is_valid
+        # the refined ring is truer, and truer means bigger on a disc (DP
+        # chords cut inside the arc): a few percent, never a re-route
+        assert abs(b.polygon.area - a.polygon.area) < 0.05 * a.polygon.area
+        # every simplified vertex survives, in ring order
+        ring_a = [tuple(np.round(c, 6)) for c in a.polygon.exterior.coords[:-1]]
+        ring_b = [tuple(np.round(c, 6)) for c in b.polygon.exterior.coords[:-1]]
+        pos = [ring_b.index(v) for v in ring_a if v in ring_b]
+        assert len(pos) >= len(ring_a) - 2, (len(pos), len(ring_a))
+        rolled = pos[pos.index(min(pos)):] + pos[:pos.index(min(pos))]
+        assert rolled == sorted(rolled), rolled
