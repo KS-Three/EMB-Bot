@@ -3600,3 +3600,43 @@ whitebg 2162 → 1982 st, alpha 2072 → 1968, Fremont 6365 → 5789, sunset
 moves; whitebg and alpha goldens re-pinned with the pre-change tree. The
 curve flip is held; near-floor lettering (ribbon width within 20% of the
 minimum cross) is not refined, Kent's ruling. *(measured 2026-09-03 — `docs/round-curves-2026-09-03.md`)*
+
+## Rail dents — defect 23 FIXED, and what it actually was (2026-09-03)
+
+The recorded defect ("`place` dents one whole rail of a rotated bar by 15%,
+in every golden") was a synthetic-bar reading: with an exact spine the
+smoothed width equals the ray hit to the ulp and `covers` is a coin flip
+(29–54% of stations dented at 10/25/45°; a micron of tolerance → 0%). On
+the real fixtures that case is 1–11% of the containment misses and the
+micron alone moved 4 stitches on Fremont, 4 on drone, 2 on ribbon. The
+mechanism that matters: 250–1000 rail placements per design overshoot the
+edge, 70–90% of them by under 50 µm (a pixel or less), and three quarters
+then took the ladder's 0.85× step — a 0.15–0.25 mm dent for a micron of
+overshoot. Fixed by placing the overshooting rail on the nearest boundary
+crossing along its own normal (`_COVERS_TOL_MM` = 1e-6 on containment; the
+ladder stays for rays with no crossing; taper zones and terminal stations
+keep the old ladder — rails placed exactly on a converging tip bunch and
+feed the short-stitch guard, measured on the ribbon head). Rail jitter p50:
+Fremont 0.0120 → 0.0045, ENTHUSIAST 0.0421 → 0.0241, drone 0.0404 → 0.0258,
+Becker 0.0612 → 0.0378, ribbon 0.0161 → 0.0071 mm; same-rail holes Fremont
+11 → 5, Becker 72 → 63; median cross wider everywhere; median rail-to-edge
+0.02–0.08 mm further out; max outside the art unchanged (pull comp); trims
+unchanged. Still open: 8–24% of rail points on lettering sit > 0.1 mm
+inside the art from the symmetric-offset model itself (smoothed width below
+the local edge on the wider side), the guard on bends, junction caps — a
+different construction. Goldens: alpha, ribbon ×3 re-pinned with the
+pre-change tree (main at 70df648); whitebg byte-identical.
+*(measured 2026-09-03 — `docs/rail-dents-2026-09-03.md`)*
+
+## #328 review follow-up — the near-floor curve guard is per ring (2026-09-03)
+
+The shell-only guard skipped Fremont's near-floor letters correctly and
+they fell to fill anyway: the letters are holes of the background region,
+those holes were refined, and stage 5 reshapes a letter against its
+background's hole (24 → 0 satin crosses on `S54b55cf1` under
+`curve_turn_deg=15`). `stage4_vectorize` now gates every ring on its own
+ribbon width and repairs an invalid ring before measuring it. Fremont ON
+vs OFF: `S54b55cf1` 28 → 28 satin penetrations, `S9bac9a3c` 16 → 16, 19
+satin / 5 fill shapes either way, trims 52 → 45. Open: a ring letter at
+the floor is measured by its shell alone (no fixture has one).
+*(measured 2026-09-03 — `docs/round-curves-2026-09-03.md`, review follow-up)*

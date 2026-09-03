@@ -31,7 +31,18 @@ DST export are unchanged (verified separately in
 `tests/test_stages.py`/`tests/test_pushcomp.py`) — only the NEW region's
 own bookkeeping entries moved.
 
-**Fourth exception, TAKEN (2026-09-03, defect 25):** the `logo_whitebg.png`
+**Exception TAKEN 2026-09-03, defect 23 (rail dents):** the `logo_alpha.png` and
+`ribbon_curve.png` entries were re-captured after `stage6_satin._rail_points`
+stopped shrinking an overshooting rail to 0.85x and put it on the artwork
+edge along its own normal (with a micron of containment tolerance). alpha's
+one satin column keeps its 1968 stitches with rails ~0.08 mm further out;
+ribbon 1001 -> 999. Region ids, areas and warnings unmoved; `logo_whitebg.png`
+(byte-identical) is the control; the pre-change tree (main at 70df648)
+reproduced both old entries on this machine before the capture
+(`tools/recapture_flat_lane_key.py --pre-change-tree`). `enthusiast_logo`
+stays the platform red.
+
+**Exception TAKEN 2026-09-03, defect 25 (fill dust):** the `logo_whitebg.png`
 and `logo_alpha.png` entries were re-captured after `stitches.split_long_moves`
 gained a micron of tolerance — it had been halving every fill step that
 measured 3.0000000000000004 mm against the 3.0 mm cap (180 of whitebg's 1520

@@ -114,6 +114,13 @@ def rail_overhang(art: Polygon, pts) -> float:
 
 # --- the flag is off, and off means nothing moved --------------------------
 
+# 2026-09-03 (defect 23): both `ribbon_curve.png` entries re-pinned, 1001 -> 999
+# and 1005 -> 1001 penetrations, after `_rail_points` stopped stepping an
+# overshooting rail in by 15% and put it on the artwork edge along its own
+# normal (a micron of containment tolerance with it). The pre-change tree
+# (main at 70df648) reproduced both old tuples AND the whitebg tuple on this
+# machine first; whitebg is byte-identical (its one column never overshoots).
+#
 # 2026-09-03 (defect 25): `logo_whitebg.png` / `left_chest` re-pinned
 # 2162 -> 1982 penetrations after `stitches.split_long_moves` stopped halving
 # fill steps that measure 3.0000000000000004 mm against the 3.0 mm cap — 180
@@ -229,8 +236,8 @@ def rail_overhang(art: Polygon, pts) -> float:
 GOLDEN_FLAG_OFF = {
     ("logo_whitebg.png", "left_chest"): ("2fddf0de165cb560bc25", 1982, 6521),
     ("logo_whitebg.png", "towel"): ("98c918e7c1576e46f623", 3258, 10349),
-    ("ribbon_curve.png", "left_chest"): ("1c3f5ad1d0de847c149a", 1001, 3527),
-    ("ribbon_curve.png", "hat_front"): ("d982b1c0fe21b0ed1b5f", 1005, 3539),
+    ("ribbon_curve.png", "left_chest"): ("59dfa86e875344fcb491", 999, 3521),
+    ("ribbon_curve.png", "hat_front"): ("7ffa3be910eae7c0cbe2", 1001, 3527),
 }
 
 

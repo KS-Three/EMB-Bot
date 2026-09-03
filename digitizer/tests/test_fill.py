@@ -921,13 +921,17 @@ def test_split_long_moves_does_not_halve_a_step_that_is_over_by_float_dust():
     from digitizer_core.stitches import SPLIT_TOLERANCE_MM, split_long_moves
 
     cap = machine.FILL_STITCH_MM
-    # A rotated grid step: 3.0 mm at 35 deg, which rounds a few ulp over.
-    ang = math.radians(35.0)
-    dust = [(0.0, 0.0), (cap * math.cos(ang), cap * math.sin(ang))]
-    assert math.dist(*dust) >= cap - 1e-12
+    # One ulp over the cap, deterministically: a rotated 3.0 mm step lands
+    # over or under by libm's mood (35 deg measures exactly 3.0 on the
+    # review machine, so a cos/sin construction can pass on the old engine).
+    dust = [(0.0, 0.0), (math.nextafter(cap, math.inf), 0.0)]
+    assert math.dist(*dust) > cap
     assert split_long_moves(dust, cap) == dust, "a dust-over step was halved"
     exact = [(0.0, 0.0), (cap, 0.0)]
     assert split_long_moves(exact, cap) == exact
+    # The same at two caps: the old engine cut this into three 2.0 mm steps.
+    dust2 = [(0.0, 0.0), (math.nextafter(2 * cap, math.inf), 0.0)]
+    assert len(split_long_moves(dust2, cap)) == 3, "a dust-over double step gained a piece"
     over = [(0.0, 0.0), (cap + 10 * SPLIT_TOLERANCE_MM, 0.0)]
     assert len(split_long_moves(over, cap)) == 3, "a genuinely long step must still split"
     long = [(0.0, 0.0), (2.5 * cap, 0.0)]

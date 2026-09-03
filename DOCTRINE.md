@@ -670,3 +670,25 @@ its hedge as it is copied forward** — is why this file is split.
   tree says how much of that fixture's count was dust (whitebg 180, Fremont
   576, sunset 1198), subtract it first. *(2026-09-03 — defect 25;
   `docs/round-curves-2026-09-03.md`)*
+
+- **A synthetic fixture can be exactly right about itself and wrong about
+  the goldens.** Defect 23 went into MASTER_SCOPE as "one whole rail 15%
+  short, in every satin golden" from a 3 mm bar with an exact spine. On real
+  art the ulp coin flip it described was 1–11% of the rail retreats, and the
+  micron that fixes the bar completely moved four stitches on Fremont. The
+  real-art mechanism sat next to it — a 15% ladder step on sub-pixel
+  overshoots — and only a census of the containment misses on the real
+  fixtures found it; the option Kent chose was priced on the bar. **Rule:
+  a defect does not get "in every golden" until it has been measured on a
+  golden, and a fix is priced on the fixture census, not the probe.**
+  *(2026-09-03 — `docs/rail-dents-2026-09-03.md`)*
+
+- **A per-shape gate in stage 4 is not per shape — a small letter is also
+  its background's HOLE, and stage 5 reshapes it against that hole.** The
+  near-floor curve guard skipped Fremont's 0.4 mm letters correctly (their
+  polygons byte-identical flag on/off) and they fell to fill anyway,
+  because the background's letter-shaped holes were refined and
+  `resolve_overlaps` re-cut the letters against them. Anything in stage 4
+  that treats one shape differently has to make the same decision for every
+  ring that shape appears as, holes included. *(2026-09-03 — review of
+  PR #328; `docs/round-curves-2026-09-03.md`)*

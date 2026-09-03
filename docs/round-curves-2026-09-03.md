@@ -201,3 +201,33 @@ The shipped fixtures have no lowercase and no large smooth curve beyond
 8–10 px/mm is where the pixel-floor jitter would first show, and none is in
 `testdata/`. The rescued small lettering keeps its 0.5 px tolerance and its
 staircase.
+
+## Review follow-up (2026-09-03, after #328 merged) — the guard has to be per ring
+
+The emb-bot-reviewer measured the shipped guard on Fremont under
+`curve_turn_deg=15`: the two near-floor letters (`S54b55cf1` 0.47 mm,
+`S9bac9a3c` 0.39 mm) were correctly skipped — their own polygons byte-identical
+OFF vs ON — and they **still fell to fill** (24 → 0 satin crosses on the
+first). The letters are also HOLES of the background region they sit in
+(`S78e6cd01`, 22 holes); the shell-only guard refined those holes, and
+stage 5's overlap resolution reshapes a letter against its background's
+hole. Forcing the guard off everywhere restored satin, so the coupling is
+the holes, not the letters' contours.
+
+Fix (this branch): every ring is judged on its own —
+`_wide_enough_to_refine` gates each hole as well as the shell, and an
+invalid (bowtie) ring is repaired with `make_valid` before it is measured
+rather than failing open. Re-measured on Fremont, ON vs OFF: `S54b55cf1`
+28 → 28 satin penetrations, `S9bac9a3c` 16 → 16, shapes by tier identical
+(19 satin, 5 fill), 5790 st, trims 52 → 45. Pinned by
+`tests/test_run_tier.py::test_near_floor_holes_keep_their_polygon_while_the_shell_is_refined`
+(a disc background with a 0.45 mm bar hole and a 1.3 mm disc hole: shell and
+disc hole refined, bar hole byte-identical).
+
+Still open from the review: a ring letter at the floor (an "O" whose shell
+and counter are both wide while the ribbon between them is not) is measured
+by its shell alone and would be refined; no fixture has one (Fremont's ring
+shapes are 0.69–0.74 mm with their holes). A with-holes width would close it.
+Also from the review: the dust test's 35° case measured exactly 3.0 on the
+review machine and never entered the fixed branch — replaced with a
+`math.nextafter` step (old engine 3 points, new 2) plus the two-cap case.

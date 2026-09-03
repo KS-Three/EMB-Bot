@@ -86,6 +86,13 @@ _MIN_STROKE_HALFWIDTHS = 1.2
 # two rails run parallel instead of tracking every wobble in the boundary.
 _WIDTH_MEDIAN_WINDOW = 5
 _WIDTH_SMOOTH_PASSES = 4
+
+# How far outside the artwork a rail point may sit and still count as
+# covered by it: an ulp, in practice, since a rail cast to the measured
+# half-width lands exactly on the boundary. A micron, not a stitch quantity;
+# the same magnitude as `stitches.SPLIT_TOLERANCE_MM` for the same reason.
+# See `_rail_points` (defect 23).
+_COVERS_TOL_MM = 1e-6
 # Distance, in stroke half-widths, over which a cross's direction is measured.
 _TANGENT_WIDTHS = 1.0
 # How opposed two arms must be to count as one stroke through a node. -0.5 welds
@@ -1630,6 +1637,17 @@ def _rail_points(poly: Polygon, spine: list[tuple[float, float]], closed: bool,
     """
     n = len(spine)
     boundary = poly.boundary
+    # Containment is tested against the artwork grown by a micron, not the
+    # artwork: a rail cast to the measured half-width lands ON the boundary,
+    # and `covers` on a point an ulp outside it is a coin flip -- on a stock
+    # 3 mm bar with an exact spine it came up tails on 29-54% of the
+    # stations, which `place` then shrank to 0.85x (defect 23, 2026-09-03;
+    # 0% with the micron). On raster art the smoothed width equals the hit
+    # to the ulp almost nowhere, so this is the small half of the defect --
+    # the large half is `place`'s ladder, below. Same trap and the same cure
+    # as `stitches.SPLIT_TOLERANCE_MM`; a micron is under any raster or
+    # machine quantum, so a rail that fits by less than it still fits.
+    inside = poly.buffer(_COVERS_TOL_MM)
     angles, leans = _cross_angles(spine, closed, fallback_half_mm, angle_deg)
 
     reach = max(fallback_half_mm * 4.0, 2.0)
@@ -1672,7 +1690,7 @@ def _rail_points(poly: Polygon, spine: list[tuple[float, float]], closed: bool,
             # degenerate cross that the minimum-cross rule drops.
             for f in (1.0, 0.6, 0.35, 0.15):
                 q = (px + dx * fallback_half_mm * f, py + dy * fallback_half_mm * f)
-                if poly.covers(SPoint(q)):
+                if inside.covers(SPoint(q)):
                     return q
             return (px, py)
 
@@ -1780,17 +1798,56 @@ def _rail_points(poly: Polygon, spine: list[tuple[float, float]], closed: bool,
     # module is never allowed to ship. Each side yields on its own — pulling
     # both in because one overshot drags the good rail off the artwork edge,
     # which is what left the fixture bar's cap bare by 0.06 mm.
-    def place(px: float, py: float, sx: float, sy: float, w: float):
-        for f in (1.0, 0.85, 0.7, 0.5, 0.3):
+    def place(px: float, py: float, sx: float, sy: float, w: float,
+              body: bool = True):
+        q = (px + sx * w, py + sy * w)
+        if not body:
+            # Taper zones and the terminal stations keep the discrete ladder
+            # against the bare artwork: the tip's width cap, the taper
+            # refinement floor and the short-stitch guard are calibrated to
+            # it, and rails placed exactly on a converging edge spread by
+            # 1/cos(taper) and hand the guard a bunched station (measured on
+            # ribbon_curve's head: one inserted cross pulled 0.6 mm, a 1.0 mm
+            # same-rail interval). The tip is its own question.
+            for f in (1.0, 0.85, 0.7, 0.5, 0.3):
+                q = (px + sx * w * f, py + sy * w * f)
+                if poly.covers(SPoint(q)):
+                    return q
+            return (px, py)
+        if inside.covers(SPoint(q)):
+            return q
+        # The smoothed width overshoots the edge here. Put the rail ON the
+        # edge along its own normal -- the nearest boundary crossing between
+        # the station and the overshooting point, skipping the station's own
+        # boundary contact at a cap exactly as `hit` does -- instead of
+        # stepping the whole rail in by 15%. Measured on the pre-change tree
+        # (defect 23, `tools/rail_edge.py --ladders`): 250-1000 overshoots
+        # per design, half of Fremont's under 10 um and 70-90% under a pixel
+        # on every fixture, and three quarters of them retreated 0.15 w --
+        # the rail sat 0.15-0.25 mm short of the art at that station. The
+        # ladder below is what is left for a ray that finds no crossing.
+        inter = LineString([(px, py), q]).intersection(boundary)
+        best = None
+        for g in ([] if inter.is_empty else getattr(inter, "geoms", [inter])):
+            for c in ([(g.x, g.y)] if g.geom_type == "Point"
+                      else [(c[0], c[1]) for c in g.coords]):
+                d2 = (c[0] - px) ** 2 + (c[1] - py) ** 2
+                if d2 > 0.0025 and (best is None or d2 < best[0]):
+                    best = (d2, c)
+        if best is not None and inside.covers(SPoint(best[1])):
+            return best[1]
+        for f in (0.85, 0.7, 0.5, 0.3):
             q = (px + sx * w * f, py + sy * w * f)
-            if poly.covers(SPoint(q)):
+            if inside.covers(SPoint(q)):
                 return q
         return (px, py)
 
     for i, (px, py) in enumerate(spine):
         nx, ny = norms[i]
-        rail_a.append(place(px, py, nx, ny, width[i]))
-        rail_b.append(place(px, py, -nx, -ny, width[i]))
+        body = closed or (0 < i < n - 1 and not (zs and i <= zs)
+                          and not (ze and i >= n - 1 - ze))
+        rail_a.append(place(px, py, nx, ny, width[i], body))
+        rail_b.append(place(px, py, -nx, -ny, width[i], body))
 
     # --- outer-rail density -----------------------------------------------
     #
@@ -1852,8 +1909,8 @@ def _rail_points(poly: Polygon, spine: list[tuple[float, float]], closed: bool,
             ang = angles[i - 1] * (1 - t) + angles[i] * t   # unwrapped: lerp-safe
             w = width[i - 1] * (1 - t) + width[i] * t
             nx, ny = math.cos(ang), math.sin(ang)
-            ref_a.append(place(px, py, nx, ny, w))
-            ref_b.append(place(px, py, -nx, -ny, w))
+            ref_a.append(place(px, py, nx, ny, w, not in_taper))
+            ref_b.append(place(px, py, -nx, -ny, w, not in_taper))
         ref_a.append(rail_a[i])
         ref_b.append(rail_b[i])
     return ref_a, ref_b

@@ -118,7 +118,12 @@ def _wide_enough_to_refine(shell_px: np.ndarray, px_per_mm: float) -> bool:
     on a ribbon, an over-estimate on a blob): True when the shape's strokes
     are comfortably above the satin minimum cross."""
     poly = Polygon(shell_px)
-    if not poly.is_valid or poly.length <= 0.0:
+    if not poly.is_valid:
+        # A Douglas-Peucker bowtie is a thin-stroke event; measure the
+        # repaired shape rather than failing open on exactly the strokes
+        # this guard exists for.
+        poly = make_valid(poly)
+    if poly.is_empty or poly.length <= 0.0:
         return True
     width_mm = 2.0 * poly.area / poly.length / px_per_mm
     return width_mm >= _REFINE_MIN_RIBBON_MM
@@ -290,9 +295,15 @@ def vectorize(
         # 2026-09-03): Douglas-Peucker at 0.2 mm inflates a 2.6 mm letter by
         # ~14%, and that inflation is what has kept its 0.38-0.47 mm strokes
         # above `SATIN_MIN_CROSS_MM` -- refined honestly, the letter drops
-        # every satin cross and falls to fill. A shape whose ribbon width
+        # every satin cross and falls to fill. A ring whose ribbon width
         # (2 x area / perimeter, exact on a ribbon) is within 20% of the
-        # minimum cross is not refined, at either ring.
+        # minimum cross is not refined -- and EVERY ring is judged on its
+        # own, because the letter is also a HOLE of the background it sits
+        # in: gating the shell alone (the first cut) refined the background's
+        # letter-shaped holes, and stage 5 then reshaped the letter against
+        # its refined hole and dropped it to fill anyway (review of PR #328,
+        # measured on Fremont: 24 -> 0 satin crosses on `S54b55cf1` with the
+        # shell-only guard, 24 with per-ring gating).
         refine = curve_turn and not sub_detail and _wide_enough_to_refine(shell_px, p.px_per_mm)
         if refine:
             shell_px = _refine_curves(contours[outer].reshape(-1, 2).astype(np.float64),
@@ -306,7 +317,7 @@ def vectorize(
             h_px = cv2.approxPolyDP(contours[i], eps, True).reshape(-1, 2)
             if len(h_px) < 3:
                 continue
-            if refine:
+            if refine and _wide_enough_to_refine(h_px, p.px_per_mm):
                 h_px = _refine_curves(contours[i].reshape(-1, 2).astype(np.float64),
                                       h_px.astype(np.float64), eps, curve_turn)
             ring = _to_mm(h_px, cx, cy, p.px_per_mm)
