@@ -3567,10 +3567,13 @@ piece (Becker 28 → 50 trims, benchmark 4.09 → 5.03/1k).
 | fixture | corners joined | stitches | trims | bare fabric | crosses > 45° off perpendicular |
 |---|---|---|---|---|---|
 | Fremont | 10 | 6343 → 6365 | 52 → 52 | 3.4 → 3.2% | 3 → 3% |
-| drone | 21 | 8856 → 8803 | 93 → 93 | 2.8 → 2.0% | 26 → 16% |
-| Becker | 21 | 4524 → 4495 | 28 → 28 | 6.0 → 5.5% | 40 → 27% |
+| drone | 18 | 8856 → 8729 | 93 → 93 | 2.8 → 2.2% | 26 → 17% |
+| Becker | 21 | 4524 → 4479 | 28 → 28 | 6.0 → 5.5% | 40 → 27% |
 | ENTHUSIAST @ 93 | 8 | 3005 → 2959 | 25 → 25 | 1.8 → 1.8% | 31 → 21% |
 
-Benchmark 4.09 → 3.81/1k. Goldens untouched. Junction fans at 3-way nodes are
+Benchmark 4.09 → 3.81/1k. Goldens untouched. Closed rings keep the fold rule
+(review: the join had opened a hexagon at two, three, two or one of six corners
+by rotation). Capitals measured; a lowercase bowl joins its stem corner too,
+unmeasured. Junction fans at 3-way nodes are
 not corners and are left to `_junction_entry_mm`; THERMAL's E arms remain
 pull-comp-sealed slots (gate 1). *(measured 2026-09-03 — `docs/stitch-angle-convention-2026-09-03.md` §9)*

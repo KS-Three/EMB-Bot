@@ -3537,8 +3537,11 @@ under its corridor. A first draft split corners into separate strokes and
 bought a trim per piece (Becker 28 → 50, benchmark 4.09 → 5.03/1k) — the
 sequencer enters columns at their free caps — withdrawn the same hour.
 Shipped: trims flat on all four lettering fixtures, ENTHUSIAST benchmark
-4.09 → 3.81/1k, bare fabric drone 2.8 → 2.0% and Becker 6.0 → 5.5%,
-crosses past 45° off their perpendicular drone 26 → 16%, Becker 40 → 27%;
+4.09 → 3.81/1k, bare fabric drone 2.8 → 2.2% and Becker 6.0 → 5.5%,
+crosses past 45° off their perpendicular drone 26 → 17%, Becker 40 → 27%;
 whitebg, alpha, ribbon_curve md5-identical. Welded corner twigs dropped
 (THERMAL H), hairlines under 0.6 mm never join. +8–11% digitize time on
-lettering logos. `docs/stitch-angle-convention-2026-09-03.md` §9.
+lettering logos. Review: closed rings had been opened at corners HEAD never
+cut (rotation-dependent on a hexagon) and the twig side depended on chain
+direction — both fixed before merge. Capitals measured; lowercase bowls join
+too and are unmeasured. `docs/stitch-angle-convention-2026-09-03.md` §9.

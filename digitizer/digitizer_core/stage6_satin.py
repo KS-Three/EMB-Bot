@@ -62,7 +62,7 @@ from __future__ import annotations
 
 import heapq
 import math
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field as _dc_field
 
 import cv2
 import numpy as np
@@ -159,7 +159,7 @@ class Stroke:
     # The stroke stays one stroke for sequencing, underlay and the travel
     # web; only `satin_stroke` reads this, sewing the members as separate
     # columns joined end to end. See `_split_sharp_corners`.
-    corners: list = field(default_factory=list)
+    corners: list = _dc_field(default_factory=list)
 
 
 @dataclass
@@ -1037,6 +1037,10 @@ def _boundary_corner_near(poly: Polygon, at: tuple[float, float],
 
     Rings are read with the material on the LEFT (exterior counter-clockwise,
     holes clockwise), so a right turn is a reflex corner of the material.
+    
+    Every vertex of a HOLE is reflex from the material's side, so a tiny
+    counter within reach counts as a corner too -- the spine-turn test the
+    caller applies first is what keeps a round counter's stroke uncut.
     """
     half_win = 0.5 * _CORNER_BOUNDARY_WINDOW_MM
     r2 = reach_mm * reach_mm
@@ -1167,34 +1171,51 @@ def _split_sharp_corners(strokes: list[Stroke], half_mm: float,
         # runs; the lettering the join exists for is 0.7 mm and up.
         joinable = 2.0 * half_mm >= 1.2 * machine.SATIN_MIN_CROSS_MM
         cuts: list[int] = []
-        twigs: set[int] = set()          # cut indices whose short side is a twig
+        twigs: dict[int, str] = {}       # cut index -> the side ("start"/"end") that is a twig
         for turn, i in sorted(turns, reverse=True):
             if turn < _JOIN_TURN_DEG:
                 break
-            twig = False
-            if turn < _SPLIT_TURN_DEG:
-                if not joinable:
-                    continue
-                if poly is None or not _boundary_corner_near(poly, pts[i], reach):
-                    continue            # a bend, not a corner: sew through it
-                if not st.closed:
-                    for free, tip, short in ((st.free_start, pts[0], cum[i] < member),
-                                             (st.free_end, pts[-1], cum[-1] - cum[i] < member)):
-                        if not free or not short:
-                            continue                # a member, whatever its tip
-                        if field is not None and \
-                                field.half_at(tip) < _FORK_TIP_FRAC * half_mm:
-                            twig = True             # short AND a point: a twig
-                        else:
-                            twig = None             # short with a cap: a tip
-                    if twig is None:
-                        continue
             gap = (min(abs(i - j), n - abs(i - j)) for j in cuts) if st.closed \
                 else (abs(i - j) for j in cuts)
-            if all(g > 2 * k for g in gap):
-                cuts.append(i)
-                if twig:
-                    twigs.add(i)
+            if not all(g > 2 * k for g in gap):
+                continue                # on the shoulder of a cut already made
+            twig = ""
+            if turn < _SPLIT_TURN_DEG:
+                # The join rule. Not on a closed ring: a ring has no ends to
+                # own a corner, and cutting it open at whichever of its
+                # corners happened to read over 45 deg on the raster
+                # (measured on a hexagon border: two, three, two, one of six,
+                # by rotation) buys cap pairs and hops for nothing -- rings
+                # keep the fold rule, byte-identical to before the join.
+                if not joinable or st.closed:
+                    continue
+                # Both sides must be MEMBERS -- at least one column width
+                # long. A short side is a twig (free and pointed: cut off and
+                # dropped), a tapered tip (free and capped: no cut), or a stub
+                # against a junction (not free: no cut -- trimmed at both
+                # ends it would sew doubled and untrimmed).
+                pointed: list[tuple[float, str]] = []
+                blocked = False
+                for side, free, tip, length in (("start", st.free_start, pts[0], cum[i]),
+                                                ("end", st.free_end, pts[-1], cum[-1] - cum[i])):
+                    if length >= member:
+                        continue
+                    if free and field is not None and \
+                            field.half_at(tip) < _FORK_TIP_FRAC * half_mm:
+                        pointed.append((length, side))
+                    else:
+                        blocked = True
+                if blocked:
+                    continue
+                if pointed:
+                    twig = min(pointed)[1]      # the shorter pointed side
+                # The boundary walk is the expensive test: last, and only for
+                # a candidate that has passed everything else.
+                if poly is None or not _boundary_corner_near(poly, pts[i], reach):
+                    continue            # a bend, not a corner: sew through it
+            cuts.append(i)
+            if twig:
+                twigs[i] = twig
         if not cuts:
             out.append(st)
             continue
@@ -1207,12 +1228,8 @@ def _split_sharp_corners(strokes: list[Stroke], half_mm: float,
             return len(piece) >= 3 and length(piece) >= 0.6 * half_mm
 
         if st.closed:
-            # A closed spine is opened at every cut, fold or join alike, into
-            # free-ended pieces that meet in mitred caps: a ring's corners
-            # (a square counter) were sewn that way before the join existed
-            # and the sequencing cost of the extra strokes is the same as it
-            # always was. The join proper is for open chains, where a cut
-            # would otherwise multiply strokes and hops.
+            # Only fold cuts reach a ring (see above): opened into free-ended
+            # pieces that meet in mitred caps, exactly as before the join.
             ring = cuts + [cuts[0] + n]
             for s0, s1 in zip(ring, ring[1:]):
                 piece = [pts[j % n] for j in range(s0, s1 + 1)]
@@ -1232,9 +1249,8 @@ def _split_sharp_corners(strokes: list[Stroke], half_mm: float,
         inner: list[int] = []
         for i in cuts:
             if i in twigs:
-                # the twig is the short side; the survivor is capped at i
-                if st.free_end and cum[-1] - cum[i] < member and (
-                        not st.free_start or cum[i] >= member or cum[-1] - cum[i] <= cum[i]):
+                # the twig side is cut off; the survivor is capped at i
+                if twigs[i] == "end":
                     hi = min(hi, i)
                     free_end, capped_end, tuck_end = True, True, None
                 else:
@@ -2330,8 +2346,14 @@ def _satin_joined(poly: Polygon, stroke: Stroke, half_mm: float,
         member = Stroke(spine=piece, free_start=free_s, free_end=free_e, closed=False,
                         capped_start=capped_s, capped_end=capped_e,
                         tuck_under_start=tuck_s, tuck_under_end=tuck_e)
-        out.extend(satin_stroke(poly, member, half_mm, field, split_above_mm,
-                                end_cutback_mm, spacing_mm, angle_deg))
+        pts_m = satin_stroke(poly, member, half_mm, field, split_above_mm,
+                             end_cutback_mm, spacing_mm, angle_deg)
+        if out and pts_m:
+            # The seam hop across the corner is a stitch like any other and
+            # splits like its neighbours when it is over the length cap.
+            above = machine.SPLIT_SATIN_ABOVE_MM if split_above_mm is None else split_above_mm
+            out.extend(_split_points(out[-1], pts_m[0], 0, above))
+        out.extend(pts_m)
     return out
 
 

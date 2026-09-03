@@ -376,8 +376,8 @@ thread buffer of the satin runs):
 | fixture | corners joined | stitches | trims | bare fabric | crosses > 45° off own perpendicular |
 |---|---|---|---|---|---|
 | Fremont, flag on | 10 in 6 letters | 6343 → 6365 | 52 → 52 | 3.4 → 3.2% | 3 → 3% |
-| drone (THERMAL, PRECISION) | 21 in 16 | 8856 → 8803 | 93 → 93 | 2.8 → **2.0%** | 26 → **16%** |
-| Becker | 21 in 4 | 4524 → 4495 | 28 → 28 | 6.0 → **5.5%** | 40 → **27%** |
+| drone (THERMAL, PRECISION) | 18 in 13 | 8856 → 8729 | 93 → 93 | 2.8 → **2.2%** | 26 → **17%** |
+| Becker | 21 in 4 | 4524 → 4479 | 28 → 28 | 6.0 → **5.5%** | 40 → **27%** |
 | ENTHUSIAST @ 93 | 8 in 5 | 3005 → 2959 | 25 → 25 | 1.8 → 1.8% | 31 → 21% |
 
 Digitize time +8–11% on lettering logos (`_boundary_corner_near` walks the
@@ -389,7 +389,21 @@ does not touch — that is the `_junction_entry_mm` machinery's, and the
 E's arms on THERMAL are pull-comp-sealed slots (letterform memory #1),
 gate 1.
 
-Tests: `test_an_L_corner_is_one_stroke_with_one_goldman_corner`,
+**Review (emb-bot-reviewer), applied the same hour.** (1) Closed rings were
+being opened at 45–90° corners HEAD never cut, and which of a hexagon's six
+identical corners fired depended on rotation (two, three, two, one of six):
+rings now keep the fold rule, byte-identical to before. (2) The twig side was
+chosen by length arithmetic that depended on chain direction and could drop
+a tapered tip while keeping the twig; the pointed side is now recorded at
+detection. (3) A short side against a junction (not free) no longer joins —
+trimmed at both ends it would sew doubled. (4) The seam hop across a corner
+splits like its neighbours when over `SPLIT_SATIN_ABOVE_MM`. (5) The boundary
+walk runs after the gap check. **Unmeasured surface, named:** every fixture
+in the table is capitals; a synthetic lowercase "b" joins its bowl-to-stem
+corner at every size (the artwork has the reflex vertex), and no lowercase
+fixture has been rendered — the numbers above are for capitals.
+
+Tests (four): `test_an_L_corner_is_one_stroke_with_one_goldman_corner`,
 `test_a_bend_of_the_same_angle_is_not_a_corner`,
 `test_the_joined_corner_has_no_fan_and_no_bare_corner_square` (the L's
 corner square < 10% bare, no square cross within a column width of the

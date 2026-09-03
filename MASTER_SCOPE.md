@@ -337,7 +337,7 @@ its own merits.
     BUILT:** fading lean, cap, spacing / cos(lean); bisector deleted; stems =
     the family square to the line of text. Leaned-column thread pitch 0.152 →
     0.20 mm; ENTHUSIAST benchmark with the flag on 4.62 → 4.09/1k (ceiling 4.1).
-    **Flag FLIPPED ON by Kent; the Goldman join (pass 2) BUILT: trims flat, benchmark 3.81/1k, bare fabric drone 2.8 → 2.0%.** *(2026-09-03 — area 1)*
+    **Flag FLIPPED ON by Kent; the Goldman join (pass 2) BUILT: trims flat, benchmark 3.81/1k, bare fabric drone 2.8 → 2.2%.** *(2026-09-03 — area 1)*
 
 ## Cross-cutting issues
 
@@ -567,7 +567,7 @@ diagonal leans ≤ 30°, stations spread by cos(lean): thread pitch Fremont
 **0.152 → 0.198 mm**, ENTHUSIAST 0.152 → 0.200, chaining benchmark **4.62 →
 4.09/1k** (ceiling 4.1). **DEFAULT ON, Kent's flip.** Pass 2, the Goldman corner join
 (≥ 45° turn + reflex boundary corner, joined inside ONE stroke): trims flat, benchmark
-3.81, bare fabric drone 2.8 → 2.0%, Becker 6.0 → 5.5%. *(measured 2026-09-03 — area 1)*
+3.81, bare fabric drone 2.8 → 2.2%, Becker 6.0 → 5.5%; capitals measured, lowercase not. *(measured 2026-09-03 — area 1)*
 
 **Mechanism 2 — pull comp's min-feature guard scoped to `poly.interiors` —
 PROTOTYPED AND COSTED, not shipped.** An exterior-pocket branch holds 15 real

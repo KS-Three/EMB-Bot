@@ -69,8 +69,11 @@ Kent adopted the rule and the 30° cap, chose pass 1 first. Built:
   tucked under its corridor. **Splitting into strokes was tried first and
   bought a trim per piece** (Becker 28 → 50) because the sequencer enters
   columns at free caps. Result: trims flat everywhere, benchmark 4.09 →
-  3.81/1k, bare fabric drone 2.8 → 2.0%, Becker 6.0 → 5.5%, crosses past
-  45° off perpendicular drone 26 → 16%, Becker 40 → 27%. Welded corner
+  3.81/1k, bare fabric drone 2.8 → 2.2%, Becker 6.0 → 5.5%, crosses past
+  45° off perpendicular drone 26 → 17%, Becker 40 → 27%. Review caught two
+  bugs (rings opened at corners HEAD never cut, rotation-dependent; twig
+  side chosen by chain direction) — rings keep the fold rule, twig side is
+  recorded at detection. Capitals only measured; a lowercase bowl joins too. Welded corner
   twigs (THERMAL H) are dropped and the stem capped square; hairlines
   (< 0.6 mm) never join (a join rescued a 0.5 mm squiggle into 79%-bare
   satin). Still not this pass: wide-column bars; junction fans at 3-way
