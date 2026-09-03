@@ -1,6 +1,6 @@
 <script>
   import { onMount, onDestroy, createEventDispatcher } from "svelte";
-  import { generateAll, charList } from "../lib/generate.js";
+  import { generateAll, charList, letteringNote } from "../lib/generate.js";
   import { ensureFonts } from "../lib/fontLoader.js";
   import { renderRealistic, isDark } from "../lib/preview.js";
   import { designToStrands } from "../lib/strands.js";
@@ -64,6 +64,10 @@
   // the field just stays empty. generate.js reports them; this turns them into
   // something a person can act on.
   let unsupportedNote = "";
+  // The selected TEXT element's width-guard note (cap under the floor,
+  // hairline strokes sewn as run, columns under 1 mm) — per element like the
+  // 5 mm warn, because the fix is that element's size or font.
+  let letterNote = "";
 
   // Result of the last renderRealistic() call — { toCanvas, scale, designBBoxMm } —
   // kept around so pointer handlers and the selection overlay can hit-test /
@@ -874,11 +878,15 @@
     const pe = perElement.find((p) => p.id === project.selectedId);
     if (!pe) {
       warn = false;
+      letterNote = "";
       dispatch("dims", null);
       return;
     }
     const widthMM = pe.bboxMm.x1 - pe.bboxMm.x0;
     const heightMM = pe.bboxMm.y1 - pe.bboxMm.y0;
+    // Text elements carry the engine's own width-guard report; image and
+    // shape elements have no `lettering` and get an empty note.
+    letterNote = letteringNote(pe.design && pe.design.lettering);
     // "Smaller than 5 mm" is advice about a design that IS there and is too
     // small to sew cleanly. On an element with no stitches at all it is not
     // advice, it is noise — and it sat directly in front of the message that
@@ -963,6 +971,7 @@
     hint = "";
     hoopNote = "";
     unsupportedNote = "";
+    letterNote = "";
     renderResult = null;
     perElementRects = [];
     peById = {};
@@ -2094,6 +2103,6 @@
     <!-- &nbsp; before each separator, not a plain space: Svelte strips leading
          whitespace inside an element, so " · " rendered as "…hoop· This font".
          Pre-existing on the two older warnings; visible on all three now. -->
-    {:else if stats}<span class="stats">{stats}</span>{#if warn}<span class="warn">&nbsp;· Smaller than 5 mm — thread can't stitch this cleanly</span>{/if}{#if hoopNote}<span class="warn">&nbsp;· {hoopNote}</span>{/if}{#if unsupportedNote}<span class="warn">&nbsp;· {unsupportedNote}</span>{/if}{/if}
+    {:else if stats}<span class="stats">{stats}</span>{#if warn}<span class="warn">&nbsp;· Smaller than 5 mm — thread can't stitch this cleanly</span>{/if}{#if hoopNote}<span class="warn">&nbsp;· {hoopNote}</span>{/if}{#if unsupportedNote}<span class="warn">&nbsp;· {unsupportedNote}</span>{/if}{#if letterNote}<span class="warn">&nbsp;· {letterNote}</span>{/if}{/if}
   </div>
 </div>

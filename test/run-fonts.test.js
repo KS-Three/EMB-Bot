@@ -104,13 +104,20 @@ function binOrSkip(p, key) {
   return false;
 }
 
+// `crossFloor: false` (2026-09-03): these pins guard that RUN SUPPORT added
+// nothing to a satin font's stream. The width guards built that day (the
+// 0.5 mm cross floor and the hairline fallback, satinfont.js) move three of
+// the five on purpose — montecarlo, cats and apesplit taper their columns
+// under the floor at this size — so the invariant is asserted on the legacy
+// stream, which the option keeps reachable. The floor's own effect is pinned
+// where it belongs, in test/satinfont.test.js.
 for (const [key, expected] of Object.entries(SATIN_BASELINE)) {
   test(`satin font ${key} stitches exactly as before run support`, () => {
     const p = path.join(BIN, key + ".embf");
     if (!binOrSkip(p, key)) return;
     const font = fb.decodeFontBin(fs.readFileSync(p));
     const text = font.glyphs["a"] ? "Emb" : "EMB";
-    const d = DG.buildLetteringDesign(font, text, base);
+    const d = DG.buildLetteringDesign(font, text, { ...base, crossFloor: false });
     assert.strictEqual(d.stitches.length, expected, `${key} stitch count moved`);
   });
 }

@@ -1,5 +1,5 @@
-"""Text-cluster detection — "does this group of rescued shapes look like a
-word" — per `docs/superpowers/specs/2026-08-05-text-cluster-detection-design.md`
+"""Text-cluster detection — "does this group of shapes look like a word" —
+per `docs/superpowers/specs/2026-08-05-text-cluster-detection-design.md`
 section 3.2.
 
 Mirrors `stage4_vectorize.tag_enclosed_background`'s shape exactly: a
@@ -10,6 +10,16 @@ dropped (`rescued_small_shape` in `Region.meta`, Step 1 of this feature) but
 treats every glyph as an independent noisy blob. This pass is the next, still
 purely geometric, question: do several of those blobs, together, look like a
 line of lettering rather than an arbitrary handful of small shapes?
+
+**Two doors since 2026-09-03.** The feature shipped seeing ONLY rescued
+small shapes, and that boundary is what every measurement below was taken
+on. Ordinary lettering — glyphs big enough to be segmented on their own,
+which is most real lettering — now enters through a second door
+(`_letter_candidates`) and is clustered in a second round, so the rescued
+population's clusters are computed first and exactly as before. Those
+clusters are the only ones `regularize_text_clusters` redraws; a cluster
+with any ordinary glyph is tagged and grouped (the Studio badge,
+Convert-to-text) but never redrawn. See `detect_text_clusters`.
 
 No OCR, no character recognition — only position, size, and stroke width,
 all read off `region.polygon` via `shapefield.build_shape_field`. This is a
@@ -254,9 +264,11 @@ and the algorithm's own internal stability check (`_max_variation`) has
 nothing to pass or fail — MSER isn't weakly effective here, it structurally
 cannot fire.
 
-This is not specific to one fixture: this module's OWN scope is flat-lane
-art (`MASTER_SCOPE.md`'s own text-cluster entry: "this feature only acts on
-`rescued_small_shape`-flagged Regions, a flat-lane-only concept") — hard
+This is not specific to one fixture: this module's OWN scope WAS flat-lane
+art when this was measured (`MASTER_SCOPE.md`'s text-cluster entry at the
+time: "this feature only acts on `rescued_small_shape`-flagged Regions, a
+flat-lane-only concept"; detection widened 2026-09-03, regularization —
+the pass this section is about — did not) — hard
 vector-style edges, few solid colors, by construction of the "flat"
 classification this pipeline already gates on (`stage0_classify.py`). MSER
 earns its keep on photographs (camera noise, lighting gradients, JPEG
@@ -324,8 +336,11 @@ from __future__ import annotations
 
 import hashlib
 import math
+import os
 from bisect import bisect_left
+from contextlib import contextmanager
 from dataclasses import dataclass
+from functools import lru_cache
 
 import cv2
 import numpy as np
@@ -333,7 +348,7 @@ import pytesseract
 from PIL import Image
 from shapely.geometry import LineString, MultiLineString, Polygon
 
-from . import machine
+from . import machine, threads
 from .regions import Region
 from .shapecontext import shape_context_distance
 from .shapefield import ShapeField, build_shape_field
@@ -432,6 +447,70 @@ STROKE_CV_MAX = 0.32
 ASPECT_RATIO_MIN = 0.05
 ASPECT_RATIO_MAX = 1.4
 
+# --- The LETTER door (2026-09-03; first built as 10ae9cc on 2026-08-26 and
+# reverted the same day, see `_letter_candidates`) --------------------------
+#
+# Height bounds for a NON-rescued region. A COST ceiling and a sewability
+# floor, NOT a definition of a letter: under 1.5 mm a glyph cannot carry a
+# satin column, and over 60 mm we decline to skeletonize a background-sized
+# region on the chance it is one. Rescued shapes never see these -- their
+# door (`_candidates`) is untouched, so the population every measurement in
+# this module was taken on is unchanged.
+LETTER_MIN_HEIGHT_MM = 1.5
+LETTER_MAX_HEIGHT_MM = 60.0
+# `STROKE_CV_MAX` (0.32) was calibrated on rescued fragments and is too tight
+# for whole letters: a real glyph's skeleton runs through junctions and
+# stroke ends where the distance transform spikes and dips, so its width
+# varies more than a fragment's does. Measured on `becker_marine_logo.png`,
+# whose six text-band glyphs (all 13.0 mm tall) read 0.41 / 0.42 / 0.43 /
+# 0.45 / 0.48 / 0.41 -- every one rejected by 0.32, which is why that logo
+# produced ZERO candidates. 0.55 clears the observed block-letter band with
+# margin and still refuses the same logo's graphic mark at 0.68.
+#
+# CALIBRATED ON FEW FIXTURES -- treat as provisional. It is a SCREENING
+# bound, not the filter: `_cluster` still demands `MIN_CLUSTER_MEMBERS`
+# similarly-sized, similarly-weighted glyphs, near each other and in one ink,
+# before anything is tagged.
+LETTER_STROKE_CV_MAX = 0.55
+# Two ordinary glyphs are one LINE of lettering only if their heights agree
+# to this ratio -- `SATIN_ANGLE_HEIGHT_RATIO`, the bound the house-angle pass
+# already uses to keep two lines of a logotype apart, because a text cluster
+# becomes ONE text element and one element is one line at one size. The
+# rescued door keeps `SIMILARITY_RATIO` (0.5): its clusters are computed
+# exactly as before, by construction (see `detect_text_clusters`).
+# `becker_marine_logo.png`: MARINE (16.2 mm) and the arched BECKER (25-33 mm)
+# are one cluster at 0.5 and two at 0.8. `drone_render.png`: three lines at
+# 2.9 / 5.7 / 7.6-8.5 mm chained into ONE 23-member cluster at 0.5.
+# *(measured 2026-09-03)*
+LETTER_HEIGHT_RATIO = 0.8
+
+# Two glyphs of one word are sewn in one ink. Quantization does NOT keep it
+# that way -- a shaded or anti-aliased wordmark comes out of stage 2 on
+# several near-identical cones -- so "one ink" is a CIEDE2000 tolerance
+# between the two members' chart threads, not thread identity. Thread
+# identity was tried first and is DISPROVEN: it excludes the star below and
+# also destroys `drone_render` detection, whose 23 genuine letters span six
+# quantized threads (measured 2026-08-26, recorded in
+# docs/scope/1-auto-digitizing-quality.md).
+#
+# Measured 2026-09-03 with `threads.CHART.delta_e` (Isacord), the same
+# implementation `preflight` grades colour with:
+#
+#     KEEP  drone PRECISION, greys 0111/0142/0145/3971   links needed <= 16.4
+#           (pairwise max 25.3, but union-find only needs the chain)
+#     KEEP  drone THERMAL, oranges 1102/1305                          8.7
+#     KEEP  summit small greys 0108/0142                              7.4
+#     SPLIT enthusiast "ENTHUSIAST" 0134 vs the shield star 1720      34.2
+#     SPLIT drone PRECISION (greys) vs THERMAL (oranges)            >= 27.7
+#     SPLIT summit's three big graphic shapes 0904/2732/3130   18.6 / 46 / 55
+#     SPLIT drone fragment pair 0142 vs 3654                          39.6
+#
+# 20 sits in the (16.4, 27.7) gap. For scale (Mokrzycki & Tatol 2011, via
+# `preflight.DELTA_E_VISIBLE`): 5 is already "different colours" -- this is
+# not a perceptual bound but a measure of how far quantization scatters ONE
+# object's threads, and it is calibrated on the fixtures above only.
+TEXT_CLUSTER_DELTA_E_MAX = 20.0
+
 # `regularize_text_clusters`'s before/after Shape Context distance
 # (`shapecontext.shape_context_distance`) gate: a cluster member whose
 # post-regularization polygon scores ABOVE this against its own
@@ -478,8 +557,22 @@ def _skeleton_stroke_stats(region: Region) -> _StrokeStats | None:
     """Mean and coefficient-of-variation of stroke half-width (mm) at the
     shape's own skeleton, from ONE `build_shape_field` call, or None if the
     polygon is too degenerate to field (`build_shape_field`'s own guard) or
-    somehow skeletonless (a mask with no medial axis at all)."""
-    field = build_shape_field(region.polygon)
+    somehow skeletonless (a mask with no medial axis at all).
+
+    Memoized on the polygon (`_stats_of_polygon`): three passes now ask the
+    same question of the same geometry -- the rescued door, the letter door
+    and `_lettering_groups` for the house angle -- and rasterize-plus-
+    skeletonize is the whole cost of asking. A shapely geometry is immutable
+    and hashes on its bytes, so the cache can only ever answer for the exact
+    polygon it was asked about; regularization REPLACES a polygon, and the
+    new one is a new key.
+    """
+    return _stats_of_polygon(region.polygon)
+
+
+@lru_cache(maxsize=2048)
+def _stats_of_polygon(polygon: Polygon) -> _StrokeStats | None:
+    field = build_shape_field(polygon)
     if field is None or not field.skel.any():
         return None
     widths = field.dist[field.skel] / field.scale
@@ -537,6 +630,12 @@ def _drop_nested(cands: list[_Candidate]) -> list[_Candidate]:
 
 
 def _candidates(regions: list[Region]) -> list[_Candidate]:
+    """The RESCUED door: every `rescued_small_shape` region that passes the
+    filters this module was calibrated with. Unchanged since the feature
+    shipped, on purpose -- `detect_text_clusters` clusters these on their own
+    first, with the original bounds, so every cluster that regularizes today
+    is computed by exactly this code. Ordinary lettering enters through
+    `_letter_candidates` instead."""
     raw: list[_Candidate] = []
     for r in regions:
         if not r.meta.get("rescued_small_shape"):
@@ -559,13 +658,83 @@ def _candidates(regions: list[Region]) -> list[_Candidate]:
     return _drop_nested(raw)
 
 
+def _letter_candidates(regions: list[Region]) -> list[_Candidate]:
+    """The LETTER door: every NON-rescued region that could be one glyph of
+    a word.
+
+    **Scope widened 2026-09-03 -- Kent's call, and it is a SCOPE change, not a
+    bug fix.** `_candidates` requires `rescued_small_shape`, which this
+    module's docstring and `docs/scope/1-auto-digitizing-quality.md` both
+    recorded as a deliberate flat-lane-only boundary. The consequence was
+    measured on 2026-08-26: on `becker_marine_logo.png` (a real client logo)
+    17 regions produced **0** candidates, and on `drone_render.png` 74 regions
+    produced 10 candidates and 0 clusters. Ordinary lettering -- anything
+    large enough to survive segmentation on its own, which is most real
+    lettering -- could never be seen, so the Studio's "looks like text" badge
+    and Convert-to-text were dead on real wordmarks.
+
+    First built as `10ae9cc` and reverted the same day for three reasons,
+    each answered here rather than by the code alone: an e2e contract that
+    assumed one cluster per design (fixed per-cluster), the shield star
+    joining "ENTHUSIAST" (the one-ink link, `TEXT_CLUSTER_DELTA_E_MAX`), and
+    a suspected cost regression (measured directly this time -- see the PR).
+
+    Note the ordering. The cheap geometric tests run BEFORE
+    `_skeleton_stroke_stats`, which rasterizes and skeletonizes; opened up, a
+    photo's every region would otherwise pay skeleton cost to be rejected on
+    an aspect ratio. `_drop_nested` is NOT applied here: the caller applies
+    it to the pool this joins, so a rescued fragment riding inside an
+    ordinary glyph's footprint is dropped against that glyph.
+
+    Admission is deliberately loose because it is not the real filter --
+    `_cluster` is. A candidate has to find `MIN_CLUSTER_MEMBERS - 1` others of
+    similar size and stroke weight, in one ink, near each other, before
+    anything is tagged. One stray blob that passes here still tags nothing.
+    """
+    raw: list[_Candidate] = []
+    for r in regions:
+        if r.meta.get("rescued_small_shape"):
+            continue
+        x0, y0, x1, y1 = r.polygon.bounds
+        width_mm, height_mm = x1 - x0, y1 - y0
+        if height_mm <= 0 or width_mm <= 0:
+            continue
+        aspect = width_mm / height_mm
+        if not (ASPECT_RATIO_MIN <= aspect <= ASPECT_RATIO_MAX):
+            continue
+        if not (LETTER_MIN_HEIGHT_MM <= height_mm <= LETTER_MAX_HEIGHT_MM):
+            continue
+        stats = _skeleton_stroke_stats(r)
+        if stats is None or stats.cv > LETTER_STROKE_CV_MAX:
+            continue
+        raw.append(_Candidate(region=r, height_mm=height_mm, width_mm=width_mm,
+                              stroke_mean_mm=stats.mean_mm, stroke_cv=stats.cv,
+                              cx=(x0 + x1) / 2.0, cy=(y0 + y1) / 2.0))
+    return raw
+
+
+def _same_ink(a: Region, b: Region, chart) -> bool:
+    """Could `a` and `b` be two letters of ONE word, by colour? Identity
+    first (the common case, and the one every synthetic fixture exercises),
+    then `TEXT_CLUSTER_DELTA_E_MAX` on the chart's own CIEDE2000. A thread
+    index the chart cannot place is NO colour evidence, and no evidence means
+    geometry alone decides -- exactly what every cluster did before this
+    link existed, never a silent refusal."""
+    if a.thread_index == b.thread_index:
+        return True
+    try:
+        return float(chart.delta_e(a.thread_index, b.thread_index)) <= TEXT_CLUSTER_DELTA_E_MAX
+    except (IndexError, TypeError, ValueError):
+        return True
+
+
 def _similar(a: float, b: float, ratio: float) -> bool:
     lo, hi = (a, b) if a <= b else (b, a)
     return hi > 0 and lo / hi >= ratio
 
 
 def _linked(a: _Candidate, b: _Candidate,
-            height_ratio: float = SIMILARITY_RATIO) -> bool:
+            height_ratio: float = SIMILARITY_RATIO, chart=None) -> bool:
     """Symmetric by construction (every term is order-independent), which is
     what makes the union-find result in `_cluster` invariant to input order —
     the determinism this module is required to guarantee.
@@ -573,8 +742,14 @@ def _linked(a: _Candidate, b: _Candidate,
     `height_ratio` defaults to `SIMILARITY_RATIO`, so every existing caller is
     byte-identical; `_lettering_groups` passes a tighter one to keep two lines
     of a logotype apart. See `SATIN_ANGLE_HEIGHT_RATIO`.
+
+    `chart`, when given, adds the one-ink link (`_same_ink`); the default
+    None keeps every existing caller -- the rescued door and the house-angle
+    grouping -- exactly as it was.
     """
     if not _similar(a.height_mm, b.height_mm, height_ratio):
+        return False
+    if chart is not None and not _same_ink(a.region, b.region, chart):
         return False
     if not _similar(a.stroke_mean_mm, b.stroke_mean_mm, SIMILARITY_RATIO):
         return False
@@ -583,7 +758,8 @@ def _linked(a: _Candidate, b: _Candidate,
 
 
 def _cluster(cands: list[_Candidate],
-             height_ratio: float = SIMILARITY_RATIO) -> list[list[_Candidate]]:
+             height_ratio: float = SIMILARITY_RATIO,
+             chart=None) -> list[list[_Candidate]]:
     """Connected components of the `_linked` graph, via union-find. Grouping
     by graph connectivity (rather than e.g. greedy nearest-first merging)
     means the partition depends only on the SET of pairwise links, never on
@@ -604,7 +780,7 @@ def _cluster(cands: list[_Candidate],
 
     for i in range(len(cands)):
         for j in range(i + 1, len(cands)):
-            if _linked(cands[i], cands[j], height_ratio):
+            if _linked(cands[i], cands[j], height_ratio, chart):
                 union(cands[i].region.shape_id, cands[j].region.shape_id)
 
     groups: dict[str, list[_Candidate]] = {}
@@ -623,10 +799,37 @@ def _text_cluster_id(shape_ids: list[str]) -> str:
     return "TC" + hashlib.blake2s(key, digest_size=4).hexdigest()
 
 
-def detect_text_clusters(regions: list[Region], p: Prep) -> None:
+def detect_text_clusters(regions: list[Region], p: Prep, *,
+                         chart=None) -> None:
     """Post-vectorization pass: tag every member of a qualifying group of
-    rescued small shapes as a text candidate (`text_candidate`,
-    `text_cluster_id`, `text_cluster_stroke_mm` in `Region.meta`).
+    glyph-shaped regions as a text candidate (`text_candidate`,
+    `text_cluster_id`, `text_cluster_stroke_mm`, `text_cluster_all_rescued`
+    in `Region.meta`).
+
+    Two doors, clustered in two rounds, and the order is the whole safety
+    argument:
+
+    1. The RESCUED door (`_candidates`, `SIMILARITY_RATIO`, no colour link)
+       runs first, on its own, exactly as it has since the feature shipped.
+       Every cluster it produces is therefore the cluster it would have
+       produced yesterday -- same members, same median stroke -- so
+       `regularize_text_clusters`, which REDRAWS those members, sees nothing
+       new. This is byte-identity for the measured population by
+       construction, not by a flag that happened to hold on the fixtures we
+       have.
+    2. The LETTER door (`_letter_candidates`, 2026-09-03) then clusters
+       ordinary lettering, plus any rescued candidate round 1 left untagged,
+       with `LETTER_HEIGHT_RATIO` (one line at one size) and the one-ink link
+       (`_same_ink`, needs `chart`). These clusters are tagged and grouped --
+       the Studio badge and Convert-to-text -- but a cluster with any
+       non-rescued member is never redrawn (`text_cluster_all_rescued`,
+       read by `regularize_text_clusters`).
+
+    `chart` is the thread chart the regions' `thread_index` values name --
+    `threads.chart_for(cfg)` from the pipeline; the default chart when not
+    given, the same precedent `threads.nearest_thread_index` sets. Used only
+    for the one-ink link, and a region the chart cannot place is treated as
+    no colour evidence (see `_same_ink`).
 
     `p` is accepted, not read, so the signature matches
     `tag_enclosed_background`'s — a future revision that needs `Prep` (art
@@ -640,16 +843,40 @@ def detect_text_clusters(regions: list[Region], p: Prep) -> None:
     explicit False, matching `rescued_small_shape`/`enclosed_background`'s own
     convention.
     """
-    for group in _cluster(_candidates(regions)):
-        if len(group) < MIN_CLUSTER_MEMBERS:
-            continue
+    if chart is None:
+        chart = threads.CHART
+
+    def tag(group: list[_Candidate]) -> None:
         shape_ids = sorted(c.region.shape_id for c in group)
         cluster_id = _text_cluster_id(shape_ids)
         stroke_mm = float(np.median([c.stroke_mean_mm for c in group]))
+        # Which door every member came through. Regularization REDRAWS a
+        # member's polygon and its evidence is entirely from the rescued
+        # population, so a cluster containing any ordinary glyph is tagged
+        # and grouped but never redrawn. Round 1 makes this True by
+        # construction; it is computed rather than assumed so the meta says
+        # why a cluster was or was not redrawn.
+        all_rescued = all(c.region.meta.get("rescued_small_shape") for c in group)
         for c in group:
             c.region.meta["text_candidate"] = True
             c.region.meta["text_cluster_id"] = cluster_id
             c.region.meta["text_cluster_stroke_mm"] = stroke_mm
+            c.region.meta["text_cluster_all_rescued"] = all_rescued
+
+    rescued = _candidates(regions)
+    taken: set[str] = set()
+    for group in _cluster(rescued):
+        if len(group) < MIN_CLUSTER_MEMBERS:
+            continue
+        tag(group)
+        taken.update(c.region.shape_id for c in group)
+
+    pool = [c for c in rescued if c.region.shape_id not in taken]
+    pool += _letter_candidates(regions)
+    for group in _cluster(_drop_nested(pool), LETTER_HEIGHT_RATIO, chart):
+        if len(group) < MIN_CLUSTER_MEMBERS:
+            continue
+        tag(group)
 
 
 # --- Regularization (Step 5): redraw each member at a shared stroke width ---
@@ -879,6 +1106,22 @@ def regularize_text_clusters(regions: list[Region], p: Prep) -> None:
     """
     for r in regions:
         if not r.meta.get("text_cluster_id"):
+            continue
+
+        # The letter door (`detect_text_clusters`, round 2) stops here on
+        # purpose. Every measurement justifying this pass -- the
+        # stroke-variance reduction, the SHAPE_CONTEXT_MAX_DIST calibration,
+        # the OCR-confidence gate -- was taken on rescued small shapes, where
+        # a glyph's apparent stroke weight is unreliable and worth
+        # normalizing. None of it was taken on ordinary lettering, whose
+        # stroke width is usually already right. Redrawing those polygons on
+        # the strength of evidence from a different population would be
+        # exactly the overreach this module's "fails open" discipline exists
+        # to prevent. A hand-built region without the key (tests, older
+        # callers) reads as rescued -- today's behaviour.
+        if not r.meta.get("text_cluster_all_rescued", True):
+            r.meta["text_cluster_regularize_skipped"] = True
+            r.meta["text_cluster_regularize_skip_reason"] = "cluster_not_all_rescued"
             continue
 
         if r.polygon.interiors:
@@ -1496,6 +1739,36 @@ def _ocr_raster(poly: Polygon) -> Image.Image | None:
     return Image.fromarray(255 - canvas)  # mask: 255=ink -> invert to black-on-white
 
 
+@contextmanager
+def _one_tesseract_thread():
+    """Run the tesseract CHILD PROCESS on one thread.
+
+    Tesseract opens an OpenMP team per process, and OpenMP workers spin-wait.
+    On an idle box that costs nothing measurable (129 vs 132 ms per glyph);
+    under contention it is the whole story. Measured 2026-09-03 on the
+    service test that digitizes enthusiast_logo @ 90 mm (24 glyphs after the
+    letter door, 14 before): idle 11.9 s post vs 11.1 s pre, but under three
+    CPU hogs **32.7 s vs 19.3 s** — ten extra tesseract spawns cost 13 s,
+    ten times their idle price, because four spinning threads per process
+    fight the hogs for four cores. That is also the likeliest reason CI's
+    digitizer job (`-n auto`, four concurrent runs) timed this test out on
+    10ae9cc. pytesseract passes `os.environ` itself to the child (its
+    `subprocess_args`), so the limit is set on the live mapping for the
+    duration of one call and restored after; OCR is serial, so nothing else
+    reads it meanwhile. Only the child is affected: this process's own numpy
+    and OpenCV threading is untouched.
+    """
+    prev = os.environ.get("OMP_THREAD_LIMIT")
+    os.environ["OMP_THREAD_LIMIT"] = "1"
+    try:
+        yield
+    finally:
+        if prev is None:
+            os.environ.pop("OMP_THREAD_LIMIT", None)
+        else:
+            os.environ["OMP_THREAD_LIMIT"] = prev
+
+
 def _ocr_glyph_guess(poly: Polygon) -> tuple[str | None, float | None]:
     """-> `(character, confidence)` for `poly`'s own rasterized crop.
 
@@ -1521,8 +1794,9 @@ def _ocr_glyph_guess(poly: Polygon) -> tuple[str | None, float | None]:
     if img is None:
         return None, None
     try:
-        data = pytesseract.image_to_data(
-            img, config=f"--psm {_OCR_PSM}", output_type=pytesseract.Output.DICT)
+        with _one_tesseract_thread():
+            data = pytesseract.image_to_data(
+                img, config=f"--psm {_OCR_PSM}", output_type=pytesseract.Output.DICT)
     except Exception:
         return None, None
     confs = [float(c) for c in data["conf"] if float(c) >= 0]
@@ -1552,6 +1826,13 @@ def ocr_suggest_text(regions: list[Region], p: Prep) -> None:
     `p` is accepted, not read — same reason every other pass in this module
     does: signature parity with a future revision that needs `Prep`.
     """
+    # One Tesseract PROCESS per glyph, ~130 ms each, almost all of it spawn
+    # and model load. Serial ON PURPOSE: a four-thread pool over these calls
+    # was measured 2026-09-03 and took the 24-glyph enthusiast pass from
+    # 3.3 s to 21.8 s -- each tesseract process opens its own OpenMP team,
+    # and four of them on four cores thrash (serially, OMP_THREAD_LIMIT=1
+    # measured no different, 129 vs 132 ms, so the threads only hurt when
+    # the processes overlap). Do not parallelize this without measuring.
     for r in regions:
         if not r.meta.get("text_cluster_id"):
             continue

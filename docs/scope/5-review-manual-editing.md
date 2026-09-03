@@ -611,6 +611,21 @@ own geometry/style, it REPLACES a whole detected cluster of shapes with a
 different kind of project element entirely (area 1 above has the detection/
 regularization side).
 
+**Now reaches ordinary lettering (2026-09-03).** Until this the badge and the
+action only ever appeared on `rescued_small_shape` glyphs — sub-2 mm
+sublines — so on a real wordmark (Becker, drone_render, Hotel Fremont) they
+never appeared at all. Detection has a second door for ordinary glyphs, one
+cluster per line of lettering in one ink; the Studio side is unchanged
+except the e2e contract, `app/e2e/text-cluster-convert.spec.js`, which
+converted one cluster and then asserted PAGE-WIDE that zero badges remained
+— true only while a design had exactly one cluster, and the reason the first
+widening (`10ae9cc`) was reverted. It now reads the converted bar's own
+"N shapes" count and asserts per cluster: the other cluster's badges stay,
+`unstitched` grows by exactly N, Undo restores exactly N. The detection side,
+the star false positive and the OCR cost are in area 1's
+"Text clustering — RESUMED" entry.
+*(fixed 2026-09-03 — `docs/design-review-fine-lettering-2026-09-03.md`)*
+
 - **`DigitizePanel.svelte`:** a "looks like text" badge per candidate row
   (honest tooltip: "no character recognition — it can be wrong"), and a
   per-CLUSTER action bar (one per unique `text_cluster_id` visible, reusing

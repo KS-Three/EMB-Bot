@@ -19,6 +19,8 @@
   const centerFromGeom = satinplay.centerFromGeom;
   const centerUnderlayFromGeom = satinplay.centerUnderlayFromGeom;
   const edgeUnderlayFromGeom = satinplay.edgeUnderlayFromGeom;
+  const beanFromGeom = satinplay.beanFromGeom;
+  const splitByCrossFloor = satinplay.splitByCrossFloor;
   const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 
   // Law 50's underlay ladder, keyed to CAP height (see capHeightMm below for
@@ -45,6 +47,57 @@
   // Law 51: ship a min-stitch floor, keep it at or under 0.5 mm, and never
   // apply a 1 mm floor globally — that is what shreds small lettering.
   const UNDERLAY_MIN_STITCH_MM = 0.5;
+
+  // Width guards (Laws 45, 47, 48, 51 — 2026-09-03). Every number here MIRRORS
+  // a constant the Python engine already sews by; move both or neither, the
+  // same rule `fabrics.js` and `fabrics.py` live under. None is a new physical
+  // constant, which is what keeps this inside ROADMAP gate 1.
+  //
+  //   SATIN_MIN_CROSS_MM  machine.SATIN_MIN_CROSS_MM — a cross under this is
+  //                       two rails pinched together; dropped, not sewn. A
+  //                       STRETCH of a span under it (three bean stations or
+  //                       more — satinplay.splitByCrossFloor) is a hairline
+  //                       and sews as a bean run down its centerline instead
+  //                       of vanishing: the same station-level rule the
+  //                       Python engine's `satin_stroke` applies, built the
+  //                       same day.
+  //   BEAN_STITCH_MM /    machine.BEAN_STITCH_MM / BEAN_PASSES — the corpus-
+  //   BEAN_PASSES         measured light tier (14 professional bean outlines:
+  //                       2.75 passes median at 0.73 mm). Not a font-authored
+  //                       run length, so `routeRuns`' gate-1 rule (no authored
+  //                       length, no stitch) is untouched: this is the ENGINE's
+  //                       fallback tier, the same one stage 6 uses.
+  //   COLUMN_FLOOR_MM     machine.MIN_STITCH_MM, preflight's MIN_COLUMN_MM —
+  //                       a column narrower than the needle minimum sews as a
+  //                       scar. Reported, never clamped.
+  //   CAP_FLOOR_MM        preflight's MIN_LETTER_EXTENT_MM (Law 48: under
+  //                       4 mm cap the consumables change). Reported, never
+  //                       clamped — the per-font size band is still a guess
+  //                       until a sew-out card (Law 45, note 3), so this warns.
+  const SATIN_MIN_CROSS_MM = 0.5;
+  const BEAN_STITCH_MM = 0.73;
+  const BEAN_PASSES = 3;
+  const COLUMN_FLOOR_MM = 1.0;
+  const CAP_FLOOR_MM = 4.0;
+
+  // Width profile of a corresponded column, accumulated into `report` as
+  // centerline LENGTH (px) — total, under the thin floor, under the hairline
+  // floor. Length-weighted rather than per-column, because a script glyph is
+  // one long column that runs hairline-thick-hairline, and any per-column
+  // statistic (median included) reads it as all one thing; what a person
+  // wants to know is how much of the lettering sews under each floor.
+  // `report.floorsPx` = [hairline, thin] in px of THIS layout's frame.
+  function accumulateWidths(geom, report) {
+    const n = Math.min(geom.A.length, geom.B.length, geom.C.length);
+    for (let i = 0; i + 1 < n; i++) {
+      const seg = Math.hypot(geom.C[i + 1].x - geom.C[i].x, geom.C[i + 1].y - geom.C[i].y);
+      const w = Math.hypot(geom.A[i].x - geom.B[i].x, geom.A[i].y - geom.B[i].y);
+      report.strokePx += seg;
+      if (w < report.floorsPx[0]) report.hairlinePx += seg;
+      if (w < report.floorsPx[1]) report.thinPx += seg;
+    }
+    report.columns += 1;
+  }
 
   // Which rung of the ladder a given final-sewn cap height lands on.
   function underlayModeForCapMm(capMm) {
@@ -300,7 +353,22 @@
 
   function routeGlyph(cols, opts) {
     const pxPerMm = opts.pxPerMm, spacingMm = opts.spacingMm, pullCompMm = opts.pullCompMm || 0, slantDeg = opts.slantDeg || 0;
-    const satinOpts = { spacingMm, pxPerMm, pullCompMm, slantDeg };
+    // Cross floor + hairline fallback (see the width-guard constants above).
+    // `minCrossMm` arrives in the caller's mm, pre-divided by the fit scale
+    // like spacingMm; absent means the legacy 0.3 px guard in emitZigzag and
+    // NO fallback, so a caller that never asks is byte-identical.
+    const minCrossMm = opts.minCrossMm > 0 ? opts.minCrossMm : 0;
+    const satinOpts = { spacingMm, pxPerMm, pullCompMm, slantDeg, minCrossMm };
+    const beanOpts = minCrossMm > 0 ? {
+      pxPerMm,
+      stepMm: opts.beanStepMm == null ? BEAN_STITCH_MM : opts.beanStepMm,
+      passes: opts.beanPasses == null ? BEAN_PASSES : opts.beanPasses,
+      minStitchMm: opts.minStitchMm == null ? UNDERLAY_MIN_STITCH_MM : opts.minStitchMm,
+    } : null;
+    // Optional side channel for layoutText's `lettering` report: stroke
+    // length under each floor (accumulateWidths) and how many hairline
+    // stretches sewed as a bean run.
+    const report = opts.report || null;
     const underlayMode = opts.underlay === "center" || opts.underlay === "edge" ? opts.underlay : null;
     const underlayOpts = underlayMode ? {
       pxPerMm,
@@ -315,6 +383,7 @@
       if (!geom || geom.total <= 1e-6 || geom.C.length < 2) continue;
       const w = Math.max(dist(c.railA[0], c.railB[0]), dist(c.railA[c.railA.length - 1], c.railB[c.railB.length - 1]));
       G.push({ geom, w });
+      if (report) accumulateWidths(geom, report);
     }
     if (!G.length) return [];
     const ws = G.map((g) => g.w).sort((a, b) => a - b);
@@ -407,21 +476,66 @@
       let first = true;
       for (const sp of spans) {
         const geom = G[sp.gi].geom; const lo = Math.min(sp.f0, sp.f1), hi = Math.max(sp.f0, sp.f1);
-        let pts = sp.sat ? satinFromGeom(geom, lo, hi, satinOpts) : centerFromGeom(geom, lo, hi, 2, pxPerMm);
-        if (!pts || pts.length < 2) continue;
-        if (sp.f1 < sp.f0) pts = pts.slice().reverse();
-        // Underlay first, then the satin that covers it. The generators take
-        // the span in TRAVERSAL order (f0,f1 — not lo,hi), so the walk ends
-        // where this satin run begins. A span too short to carry one stitch at
-        // the minimum length returns [] and simply gets no underlay.
-        if (sp.sat && underlayOpts) {
-          const upts = underlayMode === "edge"
-            ? edgeUnderlayFromGeom(geom, sp.f0, sp.f1, underlayOpts)
-            : centerUnderlayFromGeom(geom, sp.f0, sp.f1, underlayOpts);
-          if (upts && upts.length >= 2) { runs.push({ pts: upts, kind: "underlay", jump: first }); first = false; }
+        // Each span becomes one or more PARTS in lo -> hi order. A travel
+        // span is one underpath. A satin span is split by its width profile
+        // (splitByCrossFloor — one satin part when no floor is set, so the
+        // legacy stream is untouched): the stretches at or over the floor
+        // sew as satin, and the HAIRLINE stretches sew as a bean run down
+        // their own centerline instead of vanishing — a script's connectors,
+        // a serif's fine arm. The stitch type changes WITHIN the glyph, the
+        // way a digitizer changes it by hand, and the same rule the Python
+        // engine's `satin_shape` applies per stroke (built the same day).
+        // Each part carries its fraction span in TRAVERSAL order (fa -> fb).
+        const parts = [];
+        if (sp.sat) {
+          const segs = beanOpts
+            ? splitByCrossFloor(geom, lo, hi, Object.assign({ beanStepMm: beanOpts.stepMm }, satinOpts))
+            : [{ f0: lo, f1: hi, thin: false }];
+          for (const sg of segs) {
+            if (sg.thin) {
+              const b = beanFromGeom(geom, sg.f0, sg.f1, beanOpts);
+              if (b && b.length >= 2) { parts.push({ pts: b, kind: "run", fa: sg.f0, fb: sg.f1 }); if (report) report.hairlineSpans += 1; continue; }
+            }
+            const s = satinFromGeom(geom, sg.f0, sg.f1, satinOpts);
+            if (s && s.length >= 2) { parts.push({ pts: s, kind: "satin", fa: sg.f0, fb: sg.f1 }); continue; }
+            // A stretch that sews NOTHING still has to be walked: the circuit
+            // is continuous by construction, so skipping it would leave the
+            // needle at its far end and the next run would start with a
+            // chord across whatever lies between. A stitch or two of
+            // underpath along its centerline keeps the needle where the walk
+            // expects it. Only with the floor on — the legacy path skipped
+            // such a span, and stays byte-identical.
+            if (!beanOpts) continue;
+            const u = centerFromGeom(geom, sg.f0, sg.f1, 2, pxPerMm);
+            if (u && u.length >= 2) parts.push({ pts: u, kind: "underpath", fa: sg.f0, fb: sg.f1 });
+          }
+        } else {
+          const u = centerFromGeom(geom, lo, hi, 2, pxPerMm);
+          if (u && u.length >= 2) parts.push({ pts: u, kind: "underpath", fa: lo, fb: hi });
         }
-        runs.push({ pts, kind: sp.sat ? "satin" : "underpath", jump: first });
-        first = false;
+        if (!parts.length) continue;
+        // Everything above was built lo -> hi; a span walked backward is the
+        // same parts in reverse, each reversed. (A reversed bean is a bean.)
+        if (sp.f1 < sp.f0) {
+          parts.reverse();
+          for (const p of parts) { p.pts = p.pts.slice().reverse(); const t = p.fa; p.fa = p.fb; p.fb = t; }
+        }
+        for (const p of parts) {
+          // Underlay first, then the satin that covers it. The generators
+          // take the part in TRAVERSAL order (fa, fb — not lo, hi), so the
+          // walk ends where this satin run begins. A part too short to carry
+          // one stitch at the minimum length returns [] and simply gets no
+          // underlay. A hairline run gets none either — Law 50's ladder puts
+          // nothing under a stroke this size, and the run IS the light tier.
+          if (p.kind === "satin" && underlayOpts) {
+            const upts = underlayMode === "edge"
+              ? edgeUnderlayFromGeom(geom, p.fa, p.fb, underlayOpts)
+              : centerUnderlayFromGeom(geom, p.fa, p.fb, underlayOpts);
+            if (upts && upts.length >= 2) { runs.push({ pts: upts, kind: "underlay", jump: first }); first = false; }
+          }
+          runs.push({ pts: p.pts, kind: p.kind, jump: first });
+          first = false;
+        }
       }
     }
     return runs;
@@ -505,6 +619,26 @@
       underlayInsetMm: UNDERLAY_INSET_MM / fitScale,
       minStitchMm: UNDERLAY_MIN_STITCH_MM / fitScale,
     } : { underlay: null };
+    // ---- Width guards (2026-09-03): the cross floor and the hairline
+    // fallback, on by default, pre-divided by the fit scale so the floor is
+    // 0.5 mm ON THE FABRIC whatever the fit did. `o.crossFloor === false`
+    // is the legacy path (0.3 px guard, no fallback), kept so the
+    // pre-change stitch stream stays reachable and testable. The `report`
+    // object is what routeGlyph fills for the `lettering` summary below.
+    const crossFloor = o.crossFloor !== false;
+    const report = {
+      columns: 0, strokePx: 0, thinPx: 0, hairlinePx: 0, hairlineSpans: 0,
+      // The floors in THIS layout's px: final mm -> caller mm (/ fitScale)
+      // -> px (* pxPerMm), the same conversion spacingMm rides.
+      floorsPx: [(SATIN_MIN_CROSS_MM / fitScale) * pxPerMm, (COLUMN_FLOOR_MM / fitScale) * pxPerMm],
+    };
+    const guardOpts = crossFloor ? {
+      minCrossMm: SATIN_MIN_CROSS_MM / fitScale,
+      beanStepMm: BEAN_STITCH_MM / fitScale,
+      beanPasses: BEAN_PASSES,
+      minStitchMm: UNDERLAY_MIN_STITCH_MM / fitScale,
+      report,
+    } : { report };
     // Two-line circular badge layout (Lettering parity round). Falsy (absent/
     // false/null) = today's behavior byte-identical (snapshot-pinned). Truthy:
     //   - The FIRST line arcs along the TOP of a circle (arch up, exactly the
@@ -735,7 +869,7 @@
         // and their stitch stream is unchanged. Satin first, then runs: the
         // runs are the glyph's own strokes, not travel between columns.
         const stitchableRuns = (g.runs || []).filter((r) => r && r.pts && r.lenMm > 0);
-        const gCols = routeGlyph(cols, Object.assign({ pxPerMm, spacingMm, pullCompMm, slantDeg }, underlayOpts));
+        const gCols = routeGlyph(cols, Object.assign({ pxPerMm, spacingMm, pullCompMm, slantDeg }, underlayOpts, guardOpts));
         let gRuns = stitchableRuns.length
           ? gCols.concat(routeRuns(
               stitchableRuns.map((r) => ({
@@ -851,9 +985,30 @@
         }
       }
     });
+    // The `lettering` report: what the width guards measured, in FINAL SEWN
+    // mm (px -> nominal mm -> fit). Stroke length is the centerline length
+    // of every satin column; `thinMm` / `hairlineMm` are how much of it runs
+    // under the 1.0 / 0.5 mm floors (length-weighted — see accumulateWidths
+    // for why not per column). Nothing here changes a stitch — it is what
+    // the Studio has never been able to say about a text element: how tall
+    // its letters actually are and how much of them sits under the needle
+    // floors.
+    const pxToMm = (px) => (px / pxPerMm) * fitScale;
+    const lettering = {
+      capMm: capFinalMm,
+      capFloorMm: CAP_FLOOR_MM,
+      columns: report.columns,
+      strokeMm: pxToMm(report.strokePx),
+      thinMm: pxToMm(report.thinPx),
+      hairlineMm: pxToMm(report.hairlinePx),
+      hairlineSpans: report.hairlineSpans,
+      columnFloorMm: COLUMN_FLOOR_MM,
+      crossFloorMm: SATIN_MIN_CROSS_MM,
+    };
     return {
       runs,
       bbox: { x0, y0, x1, y1 },
+      lettering,
       cap: { mm: cap.mm, finalMm: capFinalMm, ref: cap.ref, proxy: cap.proxy, underlay: underlayMode },
       // Distinct characters this font had no glyph for, in the order they
       // appear in the SOURCE text. Empty for every font/text pair that works,
@@ -862,5 +1017,8 @@
     };
   }
 
-  return { layoutText, capHeightMm, underlayModeForCapMm };
+  return {
+    layoutText, capHeightMm, underlayModeForCapMm,
+    LETTERING_GUARDS: { SATIN_MIN_CROSS_MM, BEAN_STITCH_MM, BEAN_PASSES, COLUMN_FLOOR_MM, CAP_FLOOR_MM },
+  };
 });

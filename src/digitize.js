@@ -589,13 +589,18 @@
     // case a user needs explained, and returning a bare `empty` here is what
     // made "pick a Hebrew font, type Emb" fail silently. Built as a function so
     // each early return reports whatever the layout managed to learn.
-    const emptyWith = (chars) => ({ stitches: [{ x: 0, y: 0, type: "end" }], colors: [], widthMM: 0, heightMM: 0, stitchCount: 0, colorCount: 0, unsupported: chars || [], _debug: { nSatin: 0, nFill: 0, nTrims: 0 } });
+    // `lettering` rides the empty result too: a design that came back with
+    // NOTHING because every column fell under the cross floor (a dot-matrix
+    // face at a 1 mm cap) is exactly the case the report has to explain.
+    const emptyWith = (chars, lettering) => ({ stitches: [{ x: 0, y: 0, type: "end" }], colors: [], widthMM: 0, heightMM: 0, stitchCount: 0, colorCount: 0, unsupported: chars || [], lettering: lettering || null, _debug: { nSatin: 0, nFill: 0, nTrims: 0 } });
     if (!fontData || !text) return emptyWith([]);
 
     const ls = o.letterSpacingMm || 0;
     // Pass 1: measure the glyph extent (bbox is spacing-independent) so we can
-    // fit-to-garment. Coarse spacing keeps it cheap.
-    const probe = satinfontmod.layoutText(fontData, text, { emMm, pxPerMm, spacingMm: 2, pullCompMm: 0, letterSpacingMm: ls, underlay: false, arcDeg: o.arcDeg || 0, slantDeg: o.slantDeg || 0, align: o.align, circleLayout: o.circleLayout });
+    // fit-to-garment. Coarse spacing keeps it cheap. `crossFloor: false`: the
+    // probe only measures ink extent, and the floor must never decide whether
+    // there is anything to measure.
+    const probe = satinfontmod.layoutText(fontData, text, { emMm, pxPerMm, spacingMm: 2, pullCompMm: 0, letterSpacingMm: ls, underlay: false, crossFloor: false, arcDeg: o.arcDeg || 0, slantDeg: o.slantDeg || 0, align: o.align, circleLayout: o.circleLayout });
     if (!probe.runs.length) return emptyWith(probe.unsupported);
     const bb = probe.bbox;
     const bboxWmm = (bb.x1 - bb.x0) / pxPerMm, bboxHmm = (bb.y1 - bb.y0) / pxPerMm;
@@ -656,8 +661,11 @@
     // also puts the underlay's own mm constants (3 mm stitch, 0.4 mm inset)
     // through the same pre-division this line already does for spacing and
     // pull comp, so they land at their published values on the fabric.
-    const lay = satinfontmod.layoutText(fontData, text, { emMm, pxPerMm, spacingMm: densityMm / sc, pullCompMm: pullCompMm / sc, letterSpacingMm: ls, underlay: o.underlay !== false, fitScale: sc, arcDeg: o.arcDeg || 0, slantDeg: o.slantDeg || 0, align: o.align, circleLayout: o.circleLayout });
-    if (!lay.runs.length) return emptyWith(lay.unsupported);
+    // `crossFloor` passes straight through (default on — see satinfont's
+    // width guards); `false` is the pre-2026-09-03 stitch stream, kept
+    // reachable for the byte-identity pins in test/run-fonts.test.js.
+    const lay = satinfontmod.layoutText(fontData, text, { emMm, pxPerMm, spacingMm: densityMm / sc, pullCompMm: pullCompMm / sc, letterSpacingMm: ls, underlay: o.underlay !== false, crossFloor: o.crossFloor !== false, fitScale: sc, arcDeg: o.arcDeg || 0, slantDeg: o.slantDeg || 0, align: o.align, circleLayout: o.circleLayout });
+    if (!lay.runs.length) return emptyWith(lay.unsupported, lay.lettering);
     const cx = (bb.x0 + bb.x1) / 2, cy = (bb.y0 + bb.y1) / 2;
     // Explicit placement offset (Slice 3): applied AFTER the center transform, in
     // DST space — +x right, +y up (DST convention, already matches T()'s y-flip).
@@ -860,7 +868,10 @@
     // before this, typing Latin into a Hebrew font returned a valid-looking
     // 0-stitch, 0x0mm design with nothing anywhere saying why. Always an array;
     // empty whenever every character rendered.
-    return { stitches, colors, widthMM: outWmm, heightMM: outHmm, stitchCount, colorCount: colors.length, unsupported: lay.unsupported || [], _debug: { nSatin, nFill: 0, nTrims } };
+    // `lettering`: the width-guard report (final sewn cap height, columns
+    // under the needle floors, hairline spans sewn as run) — see
+    // satinfont.layoutText. Null only on the empty paths above.
+    return { stitches, colors, widthMM: outWmm, heightMM: outHmm, stitchCount, colorCount: colors.length, unsupported: lay.unsupported || [], lettering: lay.lettering || null, _debug: { nSatin, nFill: 0, nTrims } };
   }
 
   return { buildQualityDesign, buildLetteringDesign, groupRingsIntoShapes, offsetRing, signedArea, underlayRuns };

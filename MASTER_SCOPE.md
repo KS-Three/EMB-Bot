@@ -151,7 +151,7 @@ icon. Cloth pointers added to defects 3, 6 and 16 below.
 
 23. **Rail dents — FIXED (Kent, 2026-09-03), diagnosis corrected.** `place` stepped an overshooting rail in by 15% however small the overshoot (250–1000 placements per design, 70–90% under one pixel) and now puts it on the artwork edge along its own normal, with a micron of containment tolerance; taper zones and caps keep the ladder. Rail jitter p50 **halves on every fixture** (Fremont 0.012 → 0.0045 mm), same-rail holes 11 → 5, median rail 0.02–0.08 mm further out, nothing further outside the art. The "one whole rail 15% short in every golden" was the synthetic bar, not the goldens (the micron alone moved 4 stitches on Fremont); the 8–24% of rail points > 0.1 mm inside on real art are the symmetric-offset rail model — open, Kent's call. Goldens re-pinned: alpha, ribbon ×3. *(measured 2026-09-03 — `docs/rail-dents-2026-09-03.md`)*
 
-24. **Hairline columns (< 0.6 mm) lose crosses to the 0.5 mm minimum under any house angle** — Fremont's 2.6 mm "THE" loses every bar (the default already does); a lean floor fanned and was withdrawn; wants a small-lettering tier. *(measured 2026-09-03 — area 1)*
+24. **Hairline columns (< 0.6 mm) — the MECHANISM is fixed, the tier is not.** A hairline STRETCH of a stroke (crosses under the 0.5 mm floor, ≥ three bean stations of spine) now sews as a 3-pass bean along its spine in both engines, only where the uncompensated art is wider than `simplify_tol_mm` (pull comp grew a 0.04 mm needle into a tick); Fremont's 2.6 mm "THE" reads. Whether a 0.5 mm bean reads better on cloth than a dropped bar is card block 5's question — `pending sew-out`. *(fixed 2026-09-03 — `docs/design-review-fine-lettering-2026-09-03.md`)*
 
 25. **Fill stitches HALVED by float dust at the stitch-length threshold — FIXED (Kent, 2026-09-03).**
     `split_long_moves` split a 3.0000000000000004 mm grid step into two 1.5s; a micron of tolerance
@@ -548,14 +548,9 @@ within ±20° of the modal direction go **29% → 51%** against a 22% chance
 baseline, with **total thread −2.4%**, trims and jumps unchanged.
 
 Three thresholds had to be corrected to get there, each applied to a population
-it was not calibrated on — the reusable lesson, and **gate 4 in miniature**: the
-confidence gate was replaced with Rayleigh's test, chance-corrected, where
-lettering and directionless square rings separate 10x against 1.2x raw
-(**the ring half of that figure is a degenerate fixture** — 2026-09-02, area 1;
-the Rayleigh conclusion rests on the 8-bar fan, which stands). The
-three (`detect_text_clusters`' candidate gating, the coherence floor, and the
-7-of-11 lettering regions that sew as FILL) are in
-[area 1](docs/scope/1-auto-digitizing-quality.md).
+it was not calibrated on — **gate 4 in miniature** (the confidence gate became
+Rayleigh's test, chance-corrected; the ring half of its 10x-vs-1.2x figure is a
+degenerate fixture, 2026-09-02). All three: [area 1](docs/scope/1-auto-digitizing-quality.md), moved verbatim.
 *(fixed 2026-08-27 — PRs #282/#283, mutation-checked; renders in the #283 body)*
 **And it was NOT FIRING on slab-serif lettering — a FOURTH miscalibrated threshold; fix BUILT
 (PR #321), the angle rule's pass 1 and the Goldman join on top (2026-09-03).** Fremont's capitals
@@ -589,6 +584,8 @@ classifier. *(measured 2026-08-26 — `.claude/memory/letterform-fidelity-2026-0
 
 **Confidence limit on the fix:** two real lettering groups from ONE logo; real-artwork validation needs Kent's box.
 
+**Text clusters see ordinary lettering (third attempt, 2026-09-03).** Two doors clustered in two ROUNDS — rescued first with unchanged code, so every cluster that regularizes is computed as before — then ordinary glyphs at the house-angle height ratio with a one-ink CIEDE2000 link (ΔE ≤ 20; the shield star is 34.2 from ENTHUSIAST, within-word quantization needs ≤ 16.4). Becker 0 → 11 tagged, drone 0 → 21, enthusiast keeps its subline cluster id. Cost measured quiet: enthusiast +0.9 s; the 60 s service test at 12.4 s idle and 12.1 s under three CPU hogs once the tesseract child is pinned to one OpenMP thread (32.7 s before — the likeliest root cause of `10ae9cc`'s CI timeout). No satin underlay under a 5 mm shape (`SATIN_UNDERLAY_MIN_EXTENT_MM`, the JS rung; Kent's call). *(measured 2026-09-03 — same doc)*
+
 **Next:** NEEDS KENT. Fragmentation work measures **0% on real client logos**
 (they are satin-dominated, 1–3 fill shapes, no cutting fills). The one large
 real-artwork lever is **`chain_links`: −33% trims AND fewer stitches**, gate-1
@@ -604,6 +601,7 @@ second `--personal` build (125 fonts) carries what cannot be sold; for licences
 "Font license compliance" above is the single source. Same tech score as before
 on a different basis (see the area doc); known debt is the 26 glyphs that sew
 nothing, in "Waiting on Kent". *(confirmed 2026-08-22 — manifest, engine suite)*
+**Size guards (2026-09-03):** the 0.5 mm cross floor on the fabric (was 0.3 design pixels), hairline stretches as bean runs, and a per-element note of cap height and the share under 1.0 / 0.5 mm — warn only, no clamp; at 50 mm four hairline-authored fonts move > 5%. *(measured 2026-09-03 — commit `0a67171`, area doc)*
 **Next:** **upstream is exhausted; no external supply** — measured, not
 assumed (area doc, "Supply"). Terminus closed. Growth means commissioning.
 
@@ -711,6 +709,8 @@ traced from it must share one fit:** `manualTrace.js`'s `traceFitRect()` is
 called by both, and a second implementation would drift into outlines sitting
 slightly off the artwork — a bug that reads as an inaccurate *tracer*.
 *(confirmed 2026-08-25 — `traceFitRect` test + browser)*
+
+**Convert-to-text reaches ordinary lettering (2026-09-03)** — the badge and the per-cluster bar now appear on real wordmarks, one cluster per line in one ink; the e2e contract asserts per cluster instead of page-wide, the reason the first widening was reverted. *(fixed 2026-09-03 — area 1, area doc)*
 
 **Right-click places a curved node, left-click a straight one**, coloured green
 and indigo respectively. Ember's gesture and colour vocabulary, matched

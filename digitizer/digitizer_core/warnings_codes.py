@@ -167,6 +167,14 @@ SHAPE_TOO_THIN_TO_FILL = "SHAPE_TOO_THIN_TO_FILL"  # narrower than a fill can ho
 SHAPE_NOT_STITCHED = "SHAPE_NOT_STITCHED"
 LONG_JUMPS_TRIMMED = "LONG_JUMPS_TRIMMED"          # travel could not stay inside the shape. extra: {"count": int}
 SMALL_SHAPES_AS_RUN = "SMALL_SHAPES_AS_RUN"        # too small for fill or satin; sewn as run outlines instead. extra: {"count": int}
+# Stage 6 (satin tier, 2026-09-03). A stretch of a stroke inside a satin shape
+# whose crosses fell under SATIN_MIN_CROSS_MM sewed as a bean run along its
+# spine instead of vanishing — the E's arms, the T's bar, a script's connector.
+# Info, not a problem: the stitch type changing within a letter is what a
+# digitizer does by hand; reported because the letter now carries two
+# techniques and a person looking at the review screen should know why.
+# extra: {"count": int, "shapes": int}
+HAIRLINE_STROKES_AS_RUN = "HAIRLINE_STROKES_AS_RUN"
 
 # Stage 2 (photo segmentation)
 # A region owns exactly one thread, so a region whose own pixels span more
