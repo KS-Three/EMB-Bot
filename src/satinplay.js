@@ -161,8 +161,85 @@
     return { x: arr[i].x + (arr[i + 1].x - arr[i].x) * f, y: arr[i].y + (arr[i + 1].y - arr[i].y) * f };
   }
 
+  // ---- Counter guard (fine-lettering review item 4, 2026-09-03) ----------
+  // "Enlarge, never close, the counters." The Bold weight preset widens every
+  // column by pushing its rails apart (the same mechanism as pull comp), and
+  // a counter — the eye of an e, the bowl of a d, the slot between two stems
+  // — is nothing but the gap between two rails that face each other. Widen
+  // both blindly and the gap closes: at 0.3 mm of weight a 0.7 mm eye is
+  // 0.4 mm, under the width at which two rails pile thread on a point. The
+  // Python engine's pull comp already holds a HOLE open when shrinking it
+  // would take it under the detail floor (stage5_overlap, `hole_floor`);
+  // this is the font path's version, per rail station, because a font glyph
+  // is columns, not a polygon with holes.
+  //
+  // `railCloud` samples every rail of a glyph's columns into points with
+  // OUTWARD normals, at emitZigzag's own station spacing, so a station can
+  // ask what faces it. `counterGap` answers: the distance straight ahead to
+  // the nearest rail whose normal points back at us, or Infinity for an
+  // outside edge (nothing faces the outside of an H's stem; its own far rail
+  // is BEHIND it and its neighbours along the rail point the same way).
+  function railCloud(geoms, spacingPx) {
+    const cloud = [];
+    const step = spacingPx > 0 ? spacingPx : 4;
+    for (const geom of geoms) {
+      if (!geom || !(geom.total > EPS) || geom.A.length < 2) continue;
+      const steps = Math.max(2, Math.ceil(geom.total / step));
+      for (let t = 0; t <= steps; t++) {
+        const s = (t / steps) * geom.total;
+        const a = interpAt(geom.A, geom.cum, s), b = interpAt(geom.B, geom.cum, s);
+        let vx = a.x - b.x, vy = a.y - b.y; const L = Math.hypot(vx, vy);
+        if (!(L > EPS)) continue;
+        vx /= L; vy /= L;
+        cloud.push({ x: a.x, y: a.y, nx: vx, ny: vy });
+        cloud.push({ x: b.x, y: b.y, nx: -vx, ny: -vy });
+      }
+    }
+    return cloud;
+  }
+  function counterGap(x, y, nx, ny, cloud, windowPx) {
+    let best = Infinity;
+    for (const q of cloud) {
+      const dx = q.x - x, dy = q.y - y;
+      const ahead = dx * nx + dy * ny;
+      if (ahead <= EPS || ahead >= best) continue;
+      if (q.nx * nx + q.ny * ny > -0.3) continue;   // not facing us
+      if (Math.abs(dx * ny - dy * nx) > windowPx) continue;   // not straight ahead
+      best = ahead;
+    }
+    return best;
+  }
+  // How far each rail of one station moves outward: the fabric's pull comp
+  // in full on both (that is physics, gate 1's, untouched), plus the weight
+  // — in full on an outside edge, and across a counter no more than the gap
+  // can spare after the pull with the floor kept: both sides move, so each
+  // takes half of what the gap can absorb. A gap already under the floor at
+  // normal weight gets no weight at all — bold widens the stroke's outside
+  // instead of closing the counter further. `guard` null = legacy: one
+  // shared offset, the pre-guard stream byte for byte.
+  function stationPush(ax, ay, bx, by, pullPx, weightPx, guard, count) {
+    const half = (pullPx + weightPx) / 2;
+    if (!guard || !(weightPx > 0)) return { a: half, b: half, apply: half > 0 };
+    let vx = ax - bx, vy = ay - by; const L = Math.hypot(vx, vy) || 1; vx /= L; vy /= L;
+    const room = (gap) => {
+      if (!isFinite(gap)) return weightPx;
+      const allowed = Math.max(0, Math.min(weightPx, gap - pullPx - guard.floorPx));
+      if (count && guard.stats && allowed < weightPx) guard.stats.counterHeld += 1;
+      return allowed;
+    };
+    const wa = room(counterGap(ax, ay, vx, vy, guard.cloud, guard.windowPx));
+    const wb = room(counterGap(bx, by, -vx, -vy, guard.cloud, guard.windowPx));
+    return { a: pullPx / 2 + wa / 2, b: pullPx / 2 + wb / 2, apply: true };
+  }
+
   // Turn corresponded pairs into zig-zag satin at the given density.
-  // opts = { spacingMm, pxPerMm, pullCompMm=0, slantDeg=0 }.
+  // opts = { spacingMm, pxPerMm, pullCompMm=0, weightMm=0, slantDeg=0,
+  //          minCrossMm=0, counterGuard=null }.
+  // `weightMm` is the bold/thin preset's share of the widening, kept apart
+  // from `pullCompMm` so the counter guard can hold it back per rail while
+  // the fabric's pull comp stays whole; absent, the two were one number and
+  // still add up to the same offset. `counterGuard` = { cloud, floorPx,
+  // windowPx, stats } from railCloud — see stationPush.
   //
   // slantDeg (Font editing abilities Round 1, italic-style lean): 0 keeps
   // the cross-stitch perpendicular to the column (today's behavior,
@@ -176,7 +253,9 @@
   // toward perpendicular — an intentional, graceful taper, not a bug).
   function emitZigzag(A, B, opts) {
     const denom = (opts.spacingMm || 0.4) * (opts.pxPerMm || 1);
-    const offset = ((opts.pullCompMm || 0) * (opts.pxPerMm || 1)) / 2;
+    const pullPx = (opts.pullCompMm || 0) * (opts.pxPerMm || 1);
+    const weightPx = (opts.weightMm || 0) * (opts.pxPerMm || 1);
+    const guard = weightPx > 0 && opts.counterGuard && opts.counterGuard.cloud ? opts.counterGuard : null;
     // Cross floor (Law 47 / 51, 2026-09-03). A cross shorter than
     // `opts.minCrossMm` is not a satin stitch: the two rails have pinched
     // together (a tapered tip, a hairline stroke) and sewing it piles thread
@@ -213,9 +292,10 @@
         const pB1 = interpAt(B, cum, clampS(target - shift));
         ax = pA1.x; ay = pA1.y; bx = pB1.x; by = pB1.y;
       }
-      if (offset > 0) {
+      const push = stationPush(ax, ay, bx, by, pullPx, weightPx, guard, true);
+      if (push.apply) {
         let vx = ax - bx, vy = ay - by; const L = Math.hypot(vx, vy) || 1; vx /= L; vy /= L;
-        ax += vx * offset; ay += vy * offset; bx -= vx * offset; by -= vy * offset;
+        ax += vx * push.a; ay += vy * push.a; bx -= vx * push.b; by -= vy * push.b;
       }
       const pA = { x: ax, y: ay }, pB = { x: bx, y: by };
       if (Math.hypot(pA.x - pB.x, pA.y - pB.y) < minCrossPx) continue;
@@ -255,7 +335,11 @@
     const minCrossPx = (o.minCrossMm || 0) * pxPerMm;
     if (!(minCrossPx > 0)) return one;
     const spacingPx = (o.spacingMm || 0.4) * pxPerMm;
-    const compPx = (o.pullCompMm || 0) * pxPerMm;   // emitZigzag pushes each rail out by half of this
+    // The same widening emitZigzag will apply at this station — pull comp
+    // plus weight, the weight held back by the counter guard where it holds
+    // it back there — so a stretch classed satin here keeps its crosses.
+    const pullPx = (o.pullCompMm || 0) * pxPerMm, weightPx = (o.weightMm || 0) * pxPerMm;
+    const guard = weightPx > 0 && o.counterGuard && o.counterGuard.cloud ? o.counterGuard : null;
     const s0 = lo * geom.total, len = (hi - lo) * geom.total;
     if (!(len > EPS)) return one;
     const steps = Math.max(2, Math.ceil(len / (spacingPx > 0 ? spacingPx : 4)));
@@ -263,6 +347,8 @@
     for (let t = 0; t <= steps; t++) {
       const s = s0 + (t / steps) * len;
       const a = interpAt(geom.A, geom.cum, s), b = interpAt(geom.B, geom.cum, s);
+      const push = stationPush(a.x, a.y, b.x, b.y, pullPx, weightPx, guard, false);
+      const compPx = push.apply ? push.a + push.b : 0;
       const thin = Math.hypot(a.x - b.x, a.y - b.y) + compPx < minCrossPx;
       const last = runs[runs.length - 1];
       if (last && last.thin === thin) last.end = t; else runs.push({ thin, start: t, end: t });
@@ -610,5 +696,6 @@
   return {
     satinFromRails, centerRun, correspond, columnGeom, satinFromGeom, centerFromGeom,
     centerUnderlayFromGeom, edgeUnderlayFromGeom, beanFromGeom, splitByCrossFloor,
+    railCloud, counterGap, stationPush,
   };
 });

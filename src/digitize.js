@@ -584,7 +584,14 @@
     // shrink WEIGHT_OFFSET_MM.bold rather than adding new mechanism.
     const WEIGHT_OFFSET_MM = { thin: -0.15, normal: 0, bold: 0.3 };
     const weightPreset = (o.weightPreset && WEIGHT_OFFSET_MM[o.weightPreset] != null) ? o.weightPreset : "normal";
-    const pullCompMm = ((fabric && fabric.pullCompMm != null) ? fabric.pullCompMm : (o.pullCompMm == null ? 0.2 : o.pullCompMm)) + WEIGHT_OFFSET_MM[weightPreset];
+    // Fabric pull comp and the weight preset's widening travel SEPARATELY
+    // from here on (2026-09-03, fine-lettering review item 4): emitZigzag
+    // still adds them, so normal and thin are byte-identical to when they
+    // were one number, but bold's share can now be held back per rail where
+    // it would close a counter — satinplay's counter guard, floor
+    // SATIN_MIN_CROSS_MM. `o.counterGuard === false` is measurement only.
+    const pullCompMm = (fabric && fabric.pullCompMm != null) ? fabric.pullCompMm : (o.pullCompMm == null ? 0.2 : o.pullCompMm);
+    const weightMm = WEIGHT_OFFSET_MM[weightPreset];
     // `unsupported` matters MOST on this path: an empty design is exactly the
     // case a user needs explained, and returning a bare `empty` here is what
     // made "pick a Hebrew font, type Emb" fail silently. Built as a function so
@@ -664,7 +671,7 @@
     // `crossFloor` passes straight through (default on — see satinfont's
     // width guards); `false` is the pre-2026-09-03 stitch stream, kept
     // reachable for the byte-identity pins in test/run-fonts.test.js.
-    const lay = satinfontmod.layoutText(fontData, text, { emMm, pxPerMm, spacingMm: densityMm / sc, pullCompMm: pullCompMm / sc, letterSpacingMm: ls, underlay: o.underlay !== false, crossFloor: o.crossFloor !== false, fitScale: sc, arcDeg: o.arcDeg || 0, slantDeg: o.slantDeg || 0, align: o.align, circleLayout: o.circleLayout });
+    const lay = satinfontmod.layoutText(fontData, text, { emMm, pxPerMm, spacingMm: densityMm / sc, pullCompMm: pullCompMm / sc, weightMm: weightMm / sc, counterGuard: o.counterGuard !== false, letterSpacingMm: ls, underlay: o.underlay !== false, crossFloor: o.crossFloor !== false, fitScale: sc, arcDeg: o.arcDeg || 0, slantDeg: o.slantDeg || 0, align: o.align, circleLayout: o.circleLayout });
     if (!lay.runs.length) return emptyWith(lay.unsupported, lay.lettering);
     const cx = (bb.x0 + bb.x1) / 2, cy = (bb.y0 + bb.y1) / 2;
     // Explicit placement offset (Slice 3): applied AFTER the center transform, in

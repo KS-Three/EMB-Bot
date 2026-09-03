@@ -41,6 +41,17 @@ against the engines. Full record: `docs/design-review-fine-lettering-2026-09-03.
   regularizes is computed by unchanged code; the letter door clusters the
   rest at the house-angle height ratio (0.8) and is never redrawn.
 
+- **Bold's counter guard (follow-up PR).** The weight rides apart from
+  pull comp and is held per rail station where the rail FACES another rail
+  of the glyph (`railCloud`/`counterGap`/`stationPush`): whole on an outside
+  edge, across a counter only what the gap can spare with the cross floor
+  kept, nothing where it is already under. Two-stem probe: 0.72 mm eye
+  0.50 guarded vs 0.42; 0.36 mm untouched vs 0.06. Junctions that nearly
+  touch hold too (initials_XL at 35 mm caps: 725 stations) — right for the
+  thread, wrong word for a note, so there is no Studio line. On hairline
+  scripts the guard changes what bold IS: mai_en_fleur's connectors stay
+  bean runs (1,393 stitches) instead of becoming dense satin (3,043).
+
 ## Traps hit
 
 - The JS "warn only" approval: a per-cross drop alone leaves the survivors
