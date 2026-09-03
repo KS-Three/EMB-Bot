@@ -57,6 +57,53 @@ guessed at** — the threshold is 0.9 fit. Eleven upstream picture-fonts fit
 `nautical` 83.6%) sit close to the line and are still refused.
 *(measured 2026-08-22 — `tools/build-font.mjs` import run)*
 
+## The size guards the font path did not have (2026-09-03)
+
+From the fine-lettering design review
+(`docs/design-review-fine-lettering-2026-09-03.md`, items 2 and 4). Until
+this the font path's only width guard was **0.3 design pixels** in
+`satinplay.emitZigzag` — 0.04 mm at the lettering default — so every pinched
+cross the Python engine refuses at `SATIN_MIN_CROSS_MM` sewed anyway, and the
+Studio could not say how tall a text element's letters were or how much of
+them sat under the needle floors.
+
+- **The 0.5 mm cross floor, on the fabric.** `layoutText` passes
+  `SATIN_MIN_CROSS_MM / fitScale`, so the floor is 0.5 mm whatever the fit
+  did. `crossFloor: false` is the legacy stream, kept byte-identical for
+  `test/run-fonts.test.js`'s run-support pins.
+- **A hairline STRETCH sews as a bean run, not nothing.** A satin span is
+  split by its width profile (`satinplay.splitByCrossFloor`, the same
+  stations, comp and floor `emitZigzag` applies): stretches over the floor
+  sew as satin; stretches under it of three bean stations or more sew as a
+  3 × 0.73 mm bean down the centreline (`beanFromGeom`). A per-cross drop
+  alone left survivors joined by chords across the glyph on an outline face
+  (cooper_marif: a diagonal through the F); a stretch that sews nothing is
+  walked as underpath so the Euler circuit stays continuous. This goes one
+  step past the review's approved wording ("warn only") — the warn-only
+  version left the chords, which is worse than what it replaced.
+- **`lettering` on every design**, empty ones included: final cap height,
+  stroke length and how much of it runs under 1.0 / 0.5 mm
+  (length-weighted — a script glyph is one long column that runs
+  thin-thick-thin), hairline stretches sewn as run, and the floors applied.
+  `generate.letteringNote` formats one line; the field shows it beside the
+  hoop and unsupported notes. Warn only, no clamp — sizing is the user's.
+- **Every number mirrors a Python constant** (`SATIN_MIN_CROSS_MM`,
+  `BEAN_STITCH_MM`/`BEAN_PASSES`, `MIN_STITCH_MM`, `MIN_LETTER_EXTENT_MM`);
+  none is new, so ROADMAP gate 1 is untouched. Constants live in
+  `satinfont.LETTERING_GUARDS`.
+
+Measured, 83 fonts × "Fritsch" × three widths against the pre-change tree:
+at 50 mm (13 mm median cap) 46 fonts move at all and 4 by more than 5%, all
+hairline-authored (cooper_marif −39%, mai_en_fleur −33%, cats −7%,
+montecarlo −6%); at 100 mm (26 mm cap) 35 move, one over 5% (mai_en_fleur
+−15%, a font whose columns are authored under 1 mm). The two "AB" snapshots
+in `test/satinfont.test.js` did not move. Rendered before/after:
+cooper_marif's outline sews as one clean line, montecarlo keeps its shape with
+thin connectors as runs, mai_en_fleur at an 11 mm cap fragments — 78% of it
+is under 0.5 mm there, which is what the note now says.
+*(measured 2026-09-03 — commit `0a67171`; `test/satinplay.test.js`,
+`test/satinfont.test.js`, `app/src/lib/generate.spec.js`)*
+
 ## Licence position
 
 **ShareAlike is permanently closed, and NC/ND/GPL are excluded.**
