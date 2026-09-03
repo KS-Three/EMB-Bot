@@ -691,6 +691,24 @@ class PipelineConfig:
     #             quantity. Same contract as "wave"/"chevron" above,
     #             including the `tier: "brick"` override.
     fill_technique: str = "tatami"
+    # Fill-phase travel prefers routes over ground not yet sewn: straight only
+    # when straight crosses unsewn ground, else the inset ring whichever way
+    # round stays clear, else the exposed route it always took. Kent's
+    # 2026-09-02 note on the Hotel Fremont field ("the in-fill stitching
+    # doesn't look clean") is 22 of 27 fill-phase travel runs — 286 of 450 mm
+    # — laid on top of columns already sewn; the professional file's tatami
+    # is smooth through the same renderer because a pro hides travel under
+    # fill still to come. False is byte-identical to before the flag existed.
+    # Sequencing, no fabric constant — ROADMAP gate 1 does not reach it.
+    #
+    # Default ON -- Kent's flip, 2026-09-03, with the 2:25 exposed-vs-cut
+    # weight ratified the same day. Measured ON: Hotel Fremont's fill-phase
+    # exposed travel 286 -> 90 mm at 5 more trims, gaulke_roofing 204 -> 8,
+    # photo_sunset_backlit trims 53 -> 42; cost +7-11% digitize time on
+    # logos, +49-67% on sunset's 263-run fill. The `logo_whitebg` goldens
+    # moved by their travel (2166 -> 2162 penetrations) and were re-pinned
+    # per the recapture doctrine.
+    fill_travel_under_cover: bool = True
 
     # Task A2 (2026-08-14, tools/pro_parity): the corpus's professional
     # SOLID fill elements sew at roughly double a single ordinary pass's

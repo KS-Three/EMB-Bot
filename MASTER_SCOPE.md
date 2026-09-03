@@ -140,11 +140,17 @@ icon. Cloth pointers added to defects 3, 6 and 16 below.
     (`effective_split_tonal` ORs flag with class). *(2026-09-02 — bisect on
     `coverage_max`; [notes](docs/scorecard-baseline-attribution-2026-09-02.md))*
 
-21. **Fill travel is laid OVER columns already sewn** — Kent's *"in-fill
-    doesn't look clean"*; the stitches, not the render (the pro's tatami is
-    smooth in the same `stitchviz`). Hotel Fremont's field: **39 travel runs,
-    570 mm**, each after the columns it crosses. Gate-clean sequencing.
-    *(measured 2026-09-02 — `docs/hotel-fremont-fine-details-2026-09-02.md`)*
+21. **Fill travel is laid OVER columns already sewn — FIXED, DEFAULT ON
+    (Kent's flip 2026-09-03)** (`cfg.fill_travel_under_cover`, PR #323). His *"in-fill
+    doesn't look clean"* was the stitches, not the render. The column order
+    prefers a next column reachable over unsewn ground (`_reorder_for_cover`,
+    scored cuts × 25 + travel + exposed × 2, never accepted worse) and an
+    exposed bridge routes through unsewn ground. ON, fill-phase exposed
+    travel: Fremont **286 → 90 mm** (trims 47 → 52), gaulke 204 → 8 (24 → 26),
+    drone 546 → 89 (86 → 91), sunset 711 → 344 (**53 → 42**), meadow 691 → 324
+    (33 → 35); OFF md5-identical to main. Cost +7–11% time on logos, +49–67%
+    on the 263-run photo fill. The 2 : 25 exposed-vs-cut weight is Kent's.
+    *(measured 2026-09-03 — `docs/fill-travel-under-cover-2026-09-03.md`)*
 
 22. **Small curves sew as polygons** — `simplify_tol_mm` 0.2 makes a 2.4 mm
     counter a **9-gon, ±0.25 mm** (Kent: *"this O is not round"*); Kent's call. *(measured 2026-09-02 — same doc)*

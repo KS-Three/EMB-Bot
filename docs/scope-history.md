@@ -3457,3 +3457,43 @@ adopted (DOCTRINE standing ruling), the diagonal lean cap is 30°
 (`SATIN_HOUSE_MIN_SPAN_DEG` 45 → 60 when built), density compensation is
 built first. The 45 vs 135 question is closed as moot. Next engineering item
 by Kent's pick: fill travel under cover (defect 21).
+
+## 2026-09-03 — fill travel under cover (defect 21), default ON
+
+Kent's pick after the Hotel Fremont notes. Routing alone did nothing (Fremont
+286 → 286 mm exposed: the inset ring runs through sewn columns and the
+exposure is decided by the ORDER); the cover-aware column order plus routing
+through the unsewn remainder is the lever. Fill-phase exposed travel: Fremont
+286 → 92 mm (22 → 6 runs), gaulke_roofing 209 → 8, becker 27 → 14,
+photo_sunset_backlit 711 → 291 (trims 53 → 30, stitches −5%), photo_dof_meadow
+691 → 301 (trims 33 → 27), drone 546 → 61 (trims 86 → 90, stitches −6%).
+Flag off is md5-identical to main on becker, drone, enthusiast, Fremont. Time:
++7–11% on logos, +49% on sunset (263 fill runs) after two optimisations
+(`_ring_route` arc-table cache, unsewn-ring reuse). Goldens: `logo_whitebg`
+re-pinned (flat lane + pushcomp left_chest, 2166 → 2162 travel penetrations)
+with the pre-change worktree reproducing the old pins first; towel unchanged
+and still the known red. `docs/fill-travel-under-cover-2026-09-03.md`.
+
+## 2026-09-03 (addendum) — fill travel under cover: review fix, default OFF
+
+The entry above is left as written; two corrections from the adversarial
+review the same hour. (1) The endpoint allowance in the unsewn-route
+containment test was unclipped, so a covered route could leave the shape by
+up to one travel stitch near either end (1.48 mm across a 1.5 mm slot,
+measured) and the scorer rewarded it as a bridge; fixed with the disc clipped
+to the shape and a hard shape-containment test on every covered route, pinned
+by `test_covered_routing_never_leaves_the_shape`. The exposure wins survive,
+a few cuts return: Fremont 286 → 90 mm exposed at trims 47 → 52, gaulke
+204 → 8 at 24 → 26, drone 546 → 89 at 86 → 91, sunset 711 → 344 at 53 → 42,
+meadow 691 → 324 at 33 → 35. (2) The flag ships **default OFF**: Kent picked
+the work item, not the default, and a new engine option defaults to today's
+output until he flips it — so the `logo_whitebg` re-pins were reverted; the
+ON pins are recorded in the field doc for the flip.
+
+## 2026-09-03 (addendum) — Kent flips fill travel under cover ON, ratifies the 2 : 25 weight
+
+In session, on the numbers above: `fill_travel_under_cover` defaults True;
+the exposed-stitch weight stays 2.0 (five cuts for 196 mm less visible
+travel on Fremont accepted). `logo_whitebg` goldens re-pinned (flat lane via
+the recapture tool with the pre-change worktree, machine OK, control OK;
+pushcomp `left_chest` 2166 → 2162); `towel` unchanged, still the known red.
