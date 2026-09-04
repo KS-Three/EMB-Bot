@@ -4016,3 +4016,83 @@ render is the interim judge of quality.** Both are in DOCTRINE.
   column walk (trims), crossing rows get the hard seam, the width bound.
   `test_fill.py` and `test_preflight.py` unchanged and green — the two
   new `stitch_shape` parameters are byte-identical unset.
+
+## 2026-09-04 — blend regions sew stage 5's compensated outline: pull compensation and the seam tongue, as every other tier
+
+Kent's pick after PR #343 ("blend regions get pull comp + seam tongue").
+`stage7_sequence` handed `blend_fill` the REGION alone, and the tier sewed
+`region.polygon` — the raw artwork — on every path: the design bands, the
+per-region bands and the tatami fallback that every non-ramp region of a
+gradient-classified design takes. The satin, tatami and contour calls around
+it were handed `p.polygon`, stage 5's compensated outline, since stage 5
+existed. So on every gradient-class design, every region sewed with no pull
+compensation and no tongue under the colour that sews after it: the bare
+seams of Kent's finding 2, on exactly the lane the sew-out was.
+
+- **Measured on the stitches, not the plan.** `tools/seam_underlap.py`
+  reads stage 5's polygons and reported the repro's seven seams at 0.54 mm
+  mean depth the whole time — the plan carried the tongue; the tier never
+  sewed it. `tools/sewn_compensation.py` (new) reads the stitches: the
+  fraction of each region's compensation strip (sewn polygon minus artwork)
+  its own thread covers within one fill row. Repro at 80 mm / left chest,
+  the three blend regions' 533 mm² of strip: **29% → 100%** (the 29% is the
+  instrument's one-row tolerance leaking in from the artwork's edge rows;
+  the artwork outline was all that sewed). `region_blobs`, 282 mm²:
+  **36% → 100%**.
+- **The fix.** `blend_fill(..., polygon=)` is what to SEW; stage 7 passes
+  `p.polygon`. The COLOUR stays the artwork's on every path — the ride
+  check, the per-region fit, the shade colours — because a compensated
+  outline reaches into the neighbours' pixels at every tongue and a white
+  icon's tongue would pull white into the sweep. `_emit_bands(sew_poly=)`
+  clips the bands from the sewn outline; the end-band reach now covers the
+  radial path too (`_vertex_range_radial` of the sewn polygon), since a
+  per-region radial model's range is the artwork's and the compensated rim
+  past it was in no band — bare fabric the width of the pull all round.
+- **Costs, recorded.** Repro 20,820 → 22,087 stitches (+6%: the strips),
+  thread 60.3 → 65.1 m, trims 22 → 26 by the render's count. Three of the
+  four are in the ramp's bands and come from the sewn outline's own
+  geometry: stage 5 holds the white dot's hole open in the circle piece and
+  carves a same-thread keep-apart corridor in the frame piece (the 11.6 mm²
+  sliver `S3b6f13ba`), and band 1 of the frame piece now clips to a
+  1.0 mm² strip between that corridor and the ring, `too_thin`, sewn as its
+  own part with a trim in and out. Not patched: a band-part floor is a
+  tier-specific rule the other tiers do not have, and the trim is the same
+  price a tatami region pays for the same corridor. The fourth trim is the
+  white frame's satin re-chaining from a different entry point.
+- **Every gradient-class design moves, not only the sweeps.** The drone
+  photo's regions are all blend-routed (its tatami fallback), so all of
+  them gain pull comp and the tongue at once — stitches +5.5%, and with the
+  tonal split's stacked layers the compensation compounds: `coverage_p95`
+  3.1 → 4.5 fill layers, `coverage_max` 5.2 → 7.5 at left chest. That is
+  the compensation every flat design already pays, at the drone's region
+  count; the photo density defect it adds to is tracked, not new.
+- **Seen, not fixed:** the same instrument reads the white icon's satin
+  strips at 47–57% covered (its artwork at 95%), so the satin tier does
+  not reach its compensated outline either — a separate question for the
+  satin tier, not measured further here.
+- Tests: `blend_fill` sews the handed outline and reads colour from the
+  artwork (both paths, a 6 mm tongue into the white margin), a radial ramp
+  sews out to the compensated rim, and end to end on the repro at defaults
+  every blend call receives `p.polygon` and the strips are ≥ 95% covered
+  as sewn. Renders: `docs/renders/blend-pullcomp-2026-09-04/`.
+- **Scorecard, diff-then-capture against the #343 baseline.** Movers on
+  nine of the eleven gradient-classified fixtures, at both configs, and on
+  nothing else: every flat and photo-class fixture unchanged;
+  `gradient_ramp_linear` (one region, no neighbour) and `logo_golden_tee`
+  under the 5% tolerance. That is the population the blend tier routes,
+  exactly. In the metric's own units one fill reads 2.66
+  (`gradient_ramp_linear`'s p50), so the rises are the seam strips sewing
+  two fills where they sewed one: repro `coverage_max` 3.95 → 4.93, p95
+  2.91 → 3.53, `same_hole_fraction` 0.026 → 0.012, `uncovered_worst_mm2`
+  1.5 → 1.0, and at hat front **B 88 → A 100** (LETTERING_TOO_SMALL
+  resolved); region_blobs max 4.52 → 6.62, trims 1.8 → 1.3 per 1,000;
+  summit max 4.13 → 6.26 (7.22 at hat front), stitches +5%, trims 2.5 →
+  2.0; drone p95 3.11 → 4.49, max 5.22 → 7.51, stitches +5.5%; bridge bar,
+  gaulke and the screenshot p95 +0.3 to +0.8, stitches +6 to +16%; radial
+  max 3.99 → 4.83. `same_hole_fraction` fell on every mover but gaulke.
+  Hotel Fremont is the one that LOST stitches, 13,164 → 11,977: its
+  ground's 41 lettering holes shrink by the pull (four below the floor
+  close), so the rows break at fewer strokes — 8,698 → 7,412 penetrations
+  at a 1.77 → 2.30 mm mean step on 11.5 → 13.7 m of thread, travel 278 →
+  179, trims 7.8 → 7.2 per 1,000; the fill angle is unchanged at 22°.
+  Baseline recaptured on this tree.
