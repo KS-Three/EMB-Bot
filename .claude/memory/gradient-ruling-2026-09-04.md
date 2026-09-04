@@ -49,8 +49,13 @@ Kent's third ruling of 2026-09-03 (the sew-out's "blocky bands"), landed
   5,250 → 17,072 stitches (bands at the row), angle kept. drone/summit/owl
   byte-identical.
 - **Seen, not fixed:** stage 7 hands `blend_fill` the ARTWORK polygon, not
-  stage 5's compensated one — blend regions get no pull comp and no seam
-  tongue (every gradient seam is a butt joint; bears on Kent's finding 2).
+  stage 5's compensated one — blend regions got no pull comp and no seam
+  tongue (every gradient seam was a butt joint; Kent's finding 2). **Fixed
+  2026-09-04 on his pick:** `blend_fill(polygon=)`, stage 7 passes
+  `p.polygon`, colour still from the artwork; the seam instrument reads the
+  PLAN and never saw it — `tools/sewn_compensation.py` reads the stitches
+  (repro strips 29% → 100%). Costs the repro 4 trims (22 → 26), three of
+  them stage 5's own holes/corridor in the sewn outline.
   `result.palette` lists one thread per region; shade threads live on the
   blocks (DST and download read blocks). A radial design ramp is still the
   documented gap.

@@ -1168,3 +1168,123 @@ def test_feather_is_bounded_by_the_band_width(monkeypatch):
     n = report["blend_shades"]
     assert report["blend_feather_mm"] == pytest.approx(0.4 * 10.0 / n, abs=0.02)
     assert report["blend_feather_mm"] < machine.BLEND_FEATHER_MM
+
+
+# --- What gets sewn is the polygon stage 5 hands in (2026-09-04) -------------
+
+def _sewn_bounds(runs):
+    xs = [x for r in runs for x, _ in r.points]
+    ys = [y for r in runs for _, y in r.points]
+    return min(xs), min(ys), max(xs), max(ys)
+
+
+def test_blend_sews_the_polygon_it_is_handed_and_reads_colour_from_the_artwork():
+    """Stage 5's compensated outline — pull compensation plus the seam tongue
+    under whichever colour sews after — is what a blend region sews, on the
+    design path and the per-region path alike; the COLOUR (the ride, the
+    fit, the shades) is read from the artwork, or a tongue into a white
+    neighbour would pull white into the sweep. Pinned on the linear fixture
+    with its outline grown by a 0.3 mm pull all round plus a 6 mm tongue
+    into the white margin past the light end: the rows reach the grown
+    outline, the artwork call never entered the tongue, and the shades and
+    threads are the artwork's either way."""
+    row = machine.FILL_ROW_MM
+    for sp in (_design_source(), _linear_source()):
+        region = _linear_region()
+        cfg = PipelineConfig()
+        art_runs, art_report = blend_fill(region, sp, cfg)
+        assert art_report["blend_shades"] >= 3
+        minx, miny, maxx, maxy = region.polygon.bounds
+        tongue = Polygon([(minx - 6.0, miny), (minx, miny), (minx, maxy), (minx - 6.0, maxy)])
+        grown = region.polygon.buffer(0.3, join_style=2).union(tongue)
+
+        runs, report = blend_fill(region, sp, cfg, polygon=grown)
+
+        gx0, gy0, gx1, gy1 = grown.bounds
+        sx0, sy0, sx1, sy1 = _sewn_bounds(runs)
+        assert sx0 <= gx0 + row and sy0 <= gy0 + row, (sx0, sy0, gx0, gy0)
+        assert sx1 >= gx1 - row and sy1 >= gy1 - row, (sx1, sy1, gx1, gy1)
+        ax0 = _sewn_bounds(art_runs)[0]
+        assert ax0 >= gx0 + 6.0 - row
+        assert report["blend_shades"] == art_report["blend_shades"]
+        assert report["blend_design_ramp"] == art_report["blend_design_ramp"]
+        assert ({r.shade_thread_index for r in runs}
+                == {r.shade_thread_index for r in art_runs})
+
+
+def test_a_radial_ramp_sews_out_to_the_compensated_rim():
+    """A per-region radial model's range is the ARTWORK's vertex range, and
+    the compensated outline reaches `pull` past it. Until 2026-09-04 that
+    rim was in no band — bare fabric the width of the compensation around
+    every radial blend, the moment the sewn outline stopped being the
+    artwork. The last band absorbs it now, as the linear one has since the
+    2026-09-04 review."""
+    region = _radial_region()
+    sp = _radial_source()
+    cfg = PipelineConfig()
+    r_art = math.sqrt(region.polygon.area / math.pi)
+    grown = region.polygon.buffer(0.4, quad_segs=64)
+
+    runs, report = blend_fill(region, sp, cfg, polygon=grown)
+
+    assert report["blend_shades"] >= 2
+    r_sewn = max(math.hypot(x, y) for r in runs for x, y in r.points)
+    assert r_sewn >= r_art + 0.4 - machine.FILL_ROW_MM, (r_sewn, r_art)
+    art_runs, _ = blend_fill(region, sp, cfg)
+    r_art_sewn = max(math.hypot(x, y) for r in art_runs for x, y in r.points)
+    assert r_art_sewn <= r_art + 0.05
+
+
+def test_stage7_hands_the_blend_tier_the_compensated_polygon_and_the_tongue_is_sewn(monkeypatch):
+    """End to end on the repro at Studio defaults: every blend call receives
+    stage 5's `p.polygon` — not the artwork — and the compensation strips of
+    the blend regions (pull comp all round plus the tongue under the white
+    icon) are covered by their own thread as sewn. Measured before this fix
+    with the same instrument: 29%, all of it the one-row tolerance leaking
+    in from the artwork's edge rows — the seam instrument
+    (`tools/seam_underlap.py`) read the PLAN and reported the tongue present
+    at 0.54 mm the whole time."""
+    import digitizer_core.stage7_sequence as s7
+    from digitizer_core.pipeline import fabric_for, plan_stitches, run_stages
+    from digitizer_core.stage5_overlap import resolve_overlaps
+    from shapely.geometry import LineString
+    from shapely.ops import unary_union
+
+    real = s7.blend_fill
+    seen: list = []
+
+    def spy(region, sp, cfg, start_near=None, *, polygon=None):
+        seen.append((region, polygon))
+        return real(region, sp, cfg, start_near, polygon=polygon)
+
+    monkeypatch.setattr(s7, "blend_fill", spy)
+
+    cfg = PipelineConfig(target_width_mm=80.0, garment_id="left_chest")
+    result = run_stages(str(PHOTO_DIR / "repro_gradient_white_icon.png"), cfg)
+    planned, _ = resolve_overlaps(result.regions, fabric_for(cfg), cfg, result.design_class)
+    plan = plan_stitches(result, cfg)
+
+    assert seen, "the repro routes through the blend tier at defaults"
+    by_id = {p.shape_id: p for p in planned}
+    for region, polygon in seen:
+        assert polygon is not None
+        assert polygon.equals(by_id[region.shape_id].polygon)
+    assert sum(pg.area for _, pg in seen) > 1.02 * sum(r.area_mm2 for r, _ in seen)
+
+    runs_by_shape: dict[str, list] = {}
+    for block in plan.blocks:
+        for run in block.runs:
+            runs_by_shape.setdefault(run.shape_id.split("-blend")[0], []).append(run)
+    row = machine.FILL_ROW_MM
+    strip_total = covered = 0.0
+    for region, polygon in seen:
+        strip = polygon.difference(region.polygon)
+        runs = runs_by_shape.get(region.shape_id, [])
+        if strip.is_empty or not runs:
+            continue
+        thread = unary_union([LineString(r.points).buffer(row)
+                              for r in runs if len(r.points) > 1])
+        strip_total += strip.area
+        covered += thread.intersection(strip).area
+    assert strip_total > 100.0
+    assert covered / strip_total >= 0.95, covered / strip_total

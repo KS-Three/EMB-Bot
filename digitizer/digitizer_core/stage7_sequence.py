@@ -1877,8 +1877,15 @@ def sequence(
                 # gradient-or-not is a per-design one), so unlike contour
                 # there is no further fallback needed here — if blend_fill
                 # came back empty, plain tatami would have too.
+                # The region carries the ARTWORK the colour is read from;
+                # what gets sewn is `p.polygon`, stage 5's compensated
+                # outline with the seam tongue, exactly as the satin, tatami
+                # and contour calls around this one are handed. Until
+                # 2026-09-04 only the region went in, and every blend region
+                # sewed its raw artwork — no pull compensation, no tongue —
+                # with the seam instrument (which reads the plan) green.
                 runs, report = blend_fill(p.region, source_pixels, cfg,
-                                          start_near=entry)
+                                          start_near=entry, polygon=p.polygon)
             elif contour:
                 runs, report = contour_fill(
                     p.polygon,

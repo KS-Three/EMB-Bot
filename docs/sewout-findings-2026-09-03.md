@@ -89,6 +89,15 @@ to **0.237 mm mean on Hotel Fremont**, because a hole stage 5 holds open at
 its original size gets no tongue — the seams Kent saw are the seams around
 small details, not a missing rule.
 
+**Corrected 2026-09-04.** That instrument reads the PLAN. On the icon's own
+lane — gradient class, every region through the blend tier — the tier sewed
+the raw artwork, not stage 5's outline: no pull compensation and no tongue
+at any of the seven seams the instrument reported at 0.54 mm. The seams
+Kent saw were a missing rule after all, on that lane. Fixed the same day
+(`blend_fill(polygon=)`, scope-history 2026-09-04) and measured on the
+stitches with `tools/sewn_compensation.py`: the repro's strips 29% → 100%
+covered.
+
 ## 3. "The palette is wrong — gray, red, copper, mint for a magenta-to-orange gradient; likely defect 16"
 
 **What the record said.** *"Sewn colours were random operator threading

@@ -607,12 +607,27 @@ def _band_clip(poly: Polygon, model: RampModel, t_lo: float, t_hi: float) -> lis
 # --- Emission ------------------------------------------------------------------
 
 def blend_fill(region: Region, source_pixels: SourcePixels, cfg,
-               start_near: tuple[float, float] | None = None
+               start_near: tuple[float, float] | None = None,
+               *, polygon: Polygon | None = None
                ) -> tuple[list[StitchRun], dict]:
     """Ramp region -> (stitches, report). Same `(runs, report)` contract as
     `stage6_fill.stitch_shape` and its other siblings, so stage 7 sequencing
     treats a blend group exactly like any other fill tier — including
     border eligibility, which depends on reading a real report back.
+
+    `polygon` is what to SEW: stage 5's compensated outline — pull
+    compensation plus the seam tongue under whichever colour sews after —
+    the same `p.polygon` every other tier is handed. None sews the artwork.
+    The COLOUR is always read from the artwork (`region.polygon`): whether
+    the region rides the design ramp, its own ramp fit, its shade colours —
+    a compensated outline reaches into the neighbours' pixels at every
+    tongue, and a white icon's tongue would pull white into the sweep's
+    profile. Until 2026-09-04 stage 7 handed this tier the region alone, so
+    every blend region sewed its raw artwork: no pull compensation and no
+    tongue, on the very seams the 2026-09-01 sew-out showed as bare fabric
+    — while `tools/seam_underlap.py`, which reads stage 5's PLAN, reported
+    the tongue present at 0.54 mm mean depth on the repro. Measured on the
+    stitches: the repro's blend regions covered 0% of their tongue strips.
 
     `start_near` is where the needle already is — the same contract every
     other tier takes from stage 7's picking loop. Until 2026-08-31 this tier
@@ -628,6 +643,7 @@ def blend_fill(region: Region, source_pixels: SourcePixels, cfg,
     `_shade_blocks` re-sorts accepted shades dark→light downstream).
     """
     poly = region.polygon
+    sew_poly = polygon if polygon is not None else region.polygon
     chart = chart_for(cfg)
 
     # Kent's gradient ruling (2026-09-03): when the DESIGN's ramp fits
@@ -645,7 +661,8 @@ def blend_fill(region: Region, source_pixels: SourcePixels, cfg,
                           design.lo, design.hi, design.r2)
         return _emit_bands(region, source_pixels, cfg, start_near, model, n,
                            shade_thread_idx, design.row_angle_deg(), chart,
-                           best_r2=design.r2, design_bands=True)
+                           best_r2=design.r2, design_bands=True,
+                           sew_poly=sew_poly)
 
     model, reject, best_r2 = detect_ramp_detail(
         poly, source_pixels,
@@ -667,7 +684,7 @@ def blend_fill(region: Region, source_pixels: SourcePixels, cfg,
         # design has no shared angle (not gradient-classified, or the
         # whole-design fit itself declined) preserves the untouched default.
         runs, report = stitch_shape(
-            poly, region.shape_id, angle_deg=source_pixels.design_row_angle_deg,
+            sew_poly, region.shape_id, angle_deg=source_pixels.design_row_angle_deg,
             row_mm=machine.FILL_ROW_MM, stitch_mm=machine.FILL_STITCH_MM,
             underlay_style="none", trim_at_mm=machine.TRIM_AT_MM,
             start_near=start_near, under_cover=cfg.fill_travel_under_cover,
@@ -731,7 +748,7 @@ def blend_fill(region: Region, source_pixels: SourcePixels, cfg,
         angle = principal_angle_deg(poly)
     return _emit_bands(region, source_pixels, cfg, start_near, model, n,
                        shade_thread_idx, angle, chart, best_r2=best_r2,
-                       design_bands=False)
+                       design_bands=False, sew_poly=sew_poly)
 
 
 def region_rides_design_ramp(poly: Polygon, source_pixels: SourcePixels) -> bool:
@@ -769,12 +786,14 @@ def design_shade_scheme(design: DesignRamp, chart) -> tuple[int, list[int]]:
 def _emit_bands(region: Region, source_pixels: SourcePixels, cfg,
                 start_near: tuple[float, float] | None, model: RampModel, n: int,
                 shade_thread_idx: list[int], angle: float, chart, *,
-                best_r2: float, design_bands: bool) -> tuple[list[StitchRun], dict]:
+                best_r2: float, design_bands: bool,
+                sew_poly: Polygon | None = None) -> tuple[list[StitchRun], dict]:
     """Sew `region` as `n` shade bands of `model`, band `i` in thread
     `shade_thread_idx[i]`, rows at `angle`. The emission half of `blend_fill`,
     shared by the design-ramp path and the per-region path; `design_bands`
-    only goes into the report."""
-    poly = region.polygon
+    only goes into the report. `sew_poly` is the outline to sew (stage 5's
+    compensated one, see `blend_fill`); None sews the artwork."""
+    poly = sew_poly if sew_poly is not None else region.polygon
     shade_rgbs = [tuple(int(v) for v in chart[t].rgb) for t in shade_thread_idx]
     # Every band is a fill and sews at the fill row. Until 2026-09-03 this
     # was `FILL_ROW_MM * n` — one layer per band at n times the row, so a
@@ -928,14 +947,17 @@ def _emit_bands(region: Region, source_pixels: SourcePixels, cfg,
         # by pull compensation, by simplification, or because the fitted
         # range fell short of a far corner — and a clamp at 0 / 1 left such
         # a corner in no band at all (3% of the repro's frame piece, sewn by
-        # nothing). The per-region path's range is the polygon's own vertex
-        # range, so this is a no-op there.
+        # nothing). The per-region path's range was the polygon's own vertex
+        # range and this was a no-op there; since the sewn outline is stage
+        # 5's compensated one (2026-09-04) it reaches `pull` past the artwork
+        # the model was fitted on, on the radial path too — an outer ring
+        # left in no band is a bare rim the width of the compensation.
         if model.kind == "linear":
             p_lo, p_hi = _vertex_range_linear(poly, model.direction)
-            reach_lo = min(0.0, (p_lo - model.lo) / span_mm - 1e-3)
-            reach_hi = max(1.0, (p_hi - model.lo) / span_mm + 1e-3)
         else:
-            reach_lo, reach_hi = 0.0, 1.0
+            p_lo, p_hi = _vertex_range_radial(poly, model.center)
+        reach_lo = min(0.0, (p_lo - model.lo) / span_mm - 1e-3)
+        reach_hi = max(1.0, (p_hi - model.lo) / span_mm + 1e-3)
         t_lo = reach_lo if i == 0 else max(0.0, t_lo)
         t_hi = reach_hi if i == n - 1 else min(1.0, t_hi)
         this_layer: list[StitchRun] = []
