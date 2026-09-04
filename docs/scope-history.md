@@ -3944,3 +3944,28 @@ it uncovered two defects in the blend tier that no test could see.
 - Byte-identical: the flat lane; every gradient design with no decomposed
   region (drone, summit, Fremont, Bridge Bar); the owl (27,748 stitches, 14
   blocks in both trees).
+- **`PipelineConfig.design_ramp` (default True)** keeps the pre-ruling
+  gradient lane reachable, the posture `rehome_resnapped` set: the
+  drifted Azalea Pink sliver `test_thread_revalidate` traces on the repro
+  is the merge cutting the sweep, and exists only on that lane. Three other
+  repro pins moved WITH the ruling rather than around it: borders-last and
+  the rehome test read the shade bands (a band's runs carry `<region>-
+  blend<i>`; sewn spools are the regions' cones plus exactly the shades),
+  and the census's "no defensible merge" pin moved to `logo_whitebg` (five
+  cones, closest 23 ΔE) because the repro's five shades are now 5–6 ΔE
+  apart by design — adjacent shades of one ramp, not merge candidates
+  (MASTER_SCOPE item 12 annotated).
+- **Scorecard, diff-then-capture against the #340 baseline.** Eight rows
+  move — the four blend fixtures at both configs — and nothing else: no
+  streamline or photo fixture gained a density finding from the withdrawn
+  exemption. Every mover is this change: `gradient_ramp_linear` D 58 → C 70 (`coverage_p50` 0.69 →
+  2.66 — a quarter of a fill to one fill; THREAD_MATCH_POOR resolved),
+  `gradient_ramp_radial` 11,825 → 14,204 stitches (its per-region bands at
+  the row), `region_blobs` 10 → 22 (TRIM_HEAVY resolved), the repro B 88 →
+  **A 100** on left chest and 76 → 88 on hat front (`thread_worst_delta_e`
+  6.8 → 4.3, satin shapes 7 → 4 — the outer strip is bands now). One
+  instrument caveat: `thread_worst_delta_e` on the linear ramp reads 16.6 →
+  28.1 because preflight's thread match compares each region's ONE
+  `thread_index` with the art it covers, and a one-region five-band sweep
+  has no single thread — the metric is blind to blend bands, before and
+  after.

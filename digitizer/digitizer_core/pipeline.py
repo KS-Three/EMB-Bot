@@ -521,8 +521,10 @@ def build_generation(
     # and None whenever the fit's gate refuses (`design_ramp.py` names the
     # three numbers and the fixtures each one turns away), so every other
     # class — and a gradient design with no fitting ramp — is byte-identical
-    # to before by construction.
-    design_ramp = fit_design_ramp(p) if classification.class_ == "gradient" else None
+    # to before by construction. `cfg.design_ramp=False` is the pre-2026-09-04
+    # lane, kept reachable (see the flag's own comment).
+    design_ramp = (fit_design_ramp(p)
+                   if classification.class_ == "gradient" and cfg.design_ramp else None)
 
     # "photo_subject"/"photo_scene"/"gradient" all branch here — only "flat"
     # still takes the plain quantize() call this pipeline has always made.

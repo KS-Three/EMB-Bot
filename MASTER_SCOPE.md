@@ -327,7 +327,7 @@ its own merits.
    reports colour since 2026-09-02, and committed art carries defensible
    pairs — ΔE **1.41** (`screenshot_phone_ui_golke`, 62st → 79st), **1.78**
    (`logo_bridge_bar`, 197st → 444st), **2.65** (`drone_render`, 338st →
-   1560st); the repro has none (closest cones 33.4 ΔE). Real artwork runs
+   1560st); the repro had none (closest cones 33.4 ΔE) until 2026-09-04, when its sweep became five shade bands 5–6 ΔE apart by design — adjacent shades of one ramp, not candidates. Real artwork runs
    15–18 cones, so the population is not rare.
    **TABLED — Kent, 2026-09-02:** *"I'm honestly not concerned about the
    hopping idea, we can table this one for a further discussion."* Do not

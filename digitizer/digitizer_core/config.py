@@ -958,6 +958,15 @@ class PipelineConfig:
     # the lever the sequencing A/B used — same posture as the two passes
     # above, which remain downstream as the net for other split sources.
     rehome_resnapped: bool = True
+    # The design ramp (2026-09-04, Kent's gradient ruling: one region when
+    # the design ramp fits — `design_ramp.py`). ON: a gradient-class design
+    # whose whole-design ramp passes the fit's gate is segmented with the
+    # sweep subtracted and sewn as one set of shade bands. False keeps the
+    # pre-2026-09-04 gradient lane reachable and tested — the same posture
+    # as `rehome_resnapped` above: the repro's drifted-sliver fixture that
+    # `test_thread_revalidate` traces exists only on that lane, because the
+    # sliver is the merge cutting the sweep. Never read on any other class.
+    design_ramp: bool = True
     # Borders-last craft sequencing (2026-08-31, from the FIRST PHYSICAL
     # SEW-OUT — Kent's Instagram-icon test): the sewn DST put the design's
     # entire border satin down at 0%, then sewed seven background cones

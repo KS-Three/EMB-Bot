@@ -83,16 +83,19 @@ def test_cones_are_listed_smallest_first():
     assert [c["number"] for c in cones] == ["Y", "Z", "X"]
 
 
-def test_the_repro_icon_offers_no_defensible_merge_and_the_tool_says_so():
+def test_a_far_apart_palette_offers_no_defensible_merge_and_the_tool_says_so():
     """The pin that keeps the instrument honest about its own limits.
 
     MASTER_SCOPE parked item 12 as "unmeasurable on the repro (no defensible
-    merge pair)". Measured rather than assumed, that is CORRECT for this
-    fixture: its closest two cones are ~33 delta-E apart — a different colour
-    by any reading, not a shade step. A tool that offered a candidate here
-    would be manufacturing one.
+    merge pair)", and until 2026-09-04 the repro was this test's fixture: its
+    closest two cones were ~33 delta-E apart. Kent's gradient ruling changed
+    that fixture's nature — its sweep now sews as five shade bands 5–6 delta-E
+    apart BY DESIGN, adjacent shades of one ramp, not cones the tool should
+    be asked to merge — so the pin moved to `logo_whitebg` (five cones, the
+    closest pair 23 delta-E: a different colour by any reading, not a shade
+    step). A tool that offered a candidate here would be manufacturing one.
     """
-    c = census(TESTDATA / "photo" / "repro_gradient_white_icon.png", 80.0, False)
+    c = census(TESTDATA / "logo_whitebg.png", 80.0, False)
     cones = c["per_cone"]
     assert len(cones) > 1, "the premise: more than one cone to choose between"
     assert all(x["nearest"] for x in cones)
