@@ -57,7 +57,16 @@ Kent's third ruling of 2026-09-03 (the sew-out's "blocky bands"), landed
   (repro strips 29% → 100%). Costs the repro 4 trims (22 → 26), three of
   them stage 5's own holes/corridor in the sewn outline.
   `result.palette` lists one thread per LAYER; shade threads live on the
-  blocks (DST and download read blocks — always right). Since 2026-09-04
+  blocks (DST and download read blocks — always right).
+- **Radial design ramp built 2026-09-04:** `design_ramp.py` fits a radial
+  model too (GN centre, consensus line in radius, profile along radius),
+  gated r² ≥ 0.6 + ≤ 2 of 17 blank radius knots + centre no farther
+  than one sweep from the foreground (`lo ≤ hi − lo`; a bbox test was
+  knife-edge for a half-disc or corner glow); wins only when it beats
+  the plane. `gradient_ramp_radial`
+  2 → 1 region, 5 shades. `row_angle_deg` is 0.0 for radial (non-riding
+  regions sew level). Pass side calibrated on one synthetic fixture — a
+  real radial logo is the missing evidence; do not loosen the gate for it. Since 2026-09-04
   the service sends `stats.blocks` (plan.palette + shape_ids) and the
   Studio's Sequencer/quality report/`reviewFromJob` read it. A radial design ramp is still the
   documented gap.

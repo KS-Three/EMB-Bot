@@ -769,7 +769,9 @@ is now fixed (see below), four remain open:
   to end: every fragment's fill rows now land within 0.55° of each other,
   vs. up to 64° apart before. Fragment COUNT (still 23 on this specific
   repro fixture, `repro_gradient_white_icon.png`) and radial-ramp angle
-  sharing were explicit, documented non-goals of THIS fix specifically. Full
+  sharing were explicit, documented non-goals of THIS fix specifically
+  (both closed later: the gradient ruling of 2026-09-04 and the radial
+  design ramp the same day — scope-history). Full
   writeup: the plan doc's "Defect 1 update" section.
 
   **A separate, more severe region-COUNT fragmentation defect on busy

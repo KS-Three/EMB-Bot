@@ -72,7 +72,18 @@ Moved verbatim 2026-08-28 — no section was rewritten in the move.
   trend across flat colours is not a sweep; flattening by it merges what the
   segmenter keeps apart) — **do not gate on the profile** (the owl passes a
   profile gate), and do not move its numbers without re-measuring the
-  fixture table in `design_ramp.py`'s docstring. **Blend bands sew at
+  fixture table in `design_ramp.py`'s docstring. **The radial fit (2026-09-04)
+  needs three rules the plane does not:** r² ≥ 0.6 (a free centre fits
+  more), at most 2 of 17 radius knots under 50% consensus (summit's vignette
+  reads r² 0.93 — its emblem IS the centre, 10 knots blank), and the centre
+  no farther from the foreground than the sweep is long (`lo ≤ hi − lo`: a
+  huge circle is a line — the linear fixture's radial centre lands 1,250 mm
+  out at r² 1.00, `lo` fifteen sweeps; a box test was tried first and is
+  knife-edge for a half-disc or a corner glow, whose centre sits ON the
+  edge). Radial wins only
+  when it passes AND beats the plane's r², so a linear design is byte for
+  byte what it was. The pass side is calibrated on ONE synthetic fixture —
+  a real radial logo is the missing evidence, not a reason to loosen it. **Blend bands sew at
   `FILL_ROW_MM`, never `FILL_ROW_MM × n`:** the n× layout was one sparse
   layer per band, a third to a fifth of a fill, and PR #339's preflight
   exemption for it rested on the false premise that the layers interleaved.

@@ -23,11 +23,12 @@ things happen here, in order:
    existing CIEDE2000 lookup — no new color model here beyond the
    barycentric split itself).
 3. **Emission.** N tatami bands, ONE shared fill angle per
-   region — `SourcePixels.design_row_angle_deg` when the whole design fit a
-   single linear ramp (`detect_design_ramp_angle`, so every fragment of a
-   fragmented gradient sews the same direction instead of each picking its
-   own — this wins over a region's OWN ramp model regardless of that
-   model's kind, widened 2026-08-04, see `blend_fill`'s own comment), else
+   region — `SourcePixels.design_row_angle_deg` when the whole design fit
+   one ramp (`detect_design_ramp_angle`: perpendicular to a linear sweep,
+   level for a radial one, so every fragment of a fragmented gradient sews
+   the same direction instead of each picking its own — this wins over a
+   region's OWN ramp model regardless of that model's kind, widened
+   2026-08-04, see `blend_fill`'s own comment), else
    `stage6_fill.principal_angle_deg` of this region alone. Each band is the
    part of the region whose ramp position falls in its own slice of [0, 1],
    sewn at the fill row `FILL_ROW_MM` (until 2026-09-03 at `FILL_ROW_MM *
@@ -130,8 +131,9 @@ class SourcePixels:
     # on the repro fixture), each fragment picking its own, independently
     # computed angle — a patchwork of differently-angled wedges instead of
     # one flowing sweep. None for every class this stage never runs on, and
-    # for a `gradient` design whose own whole-design fit declined (no single
-    # linear direction found) — same per-region angle as always in that case.
+    # for a `gradient` design whose own whole-design fit declined (no ramp
+    # found, linear or radial) — same per-region angle as always in that
+    # case. A radial design ramp carries 0.0 here: level rows (2026-09-04).
     design_row_angle_deg: float | None = None
     # True only when stage 0 classified the DESIGN "gradient" — set by
     # `pipeline.run_stages`, read by stage 7 to decide whether auto-tier
@@ -460,9 +462,12 @@ def detect_design_ramp_angle(design_prep: Prep, max_samples: int = RAMP_MAX_SAMP
     and every channel fit under the floor — the 2026-08-03 fix had quietly
     stopped applying to its own repro whenever the guards were on, which is
     every real job. The guards-off test kept passing because there the icon
-    is flooded away and excluded. Only a LINEAR ramp yields an angle: a
-    radial design's bands are rings, and no line keeps a row inside one
-    (`gradient_ramp_radial` fits linear at 0.00, radial 0.91, and declines).
+    is flooded away and excluded. A RADIAL design ramp (2026-09-04) answers
+    0.0: its bands are rings, which no line keeps a row inside, so its rows
+    are level — the same answer `stage6_fill.principal_angle_deg` gives a
+    disc, and the one that does not look like a mistake (`gradient_ramp_
+    radial` fits linear at 0.00 and radial at 0.999; until the radial fit
+    existed the design declined and every region took its own angle).
 
     When the robust fit's gate refuses, the plain fit this function always
     was (`legacy_design_ramp_angle`) still answers, so a design the gate
@@ -657,7 +662,12 @@ def blend_fill(region: Region, source_pixels: SourcePixels, cfg,
     design = source_pixels.design_ramp
     if design is not None and region_rides_design_ramp(poly, source_pixels):
         n, shade_thread_idx = design_shade_scheme(design, chart)
-        model = RampModel("linear", design.direction, None,
+        # The design's own model, linear or radial (2026-09-04): a radial
+        # design's bands are its rings, clipped from the sewn outline by
+        # `_band_clip`'s radial branch; its rows are level and cross the
+        # rings, so `_emit_bands` gives its seams the hard underlap, not the
+        # feather (a stitch-level dither at ring seams is a later item).
+        model = RampModel(design.kind, design.direction, design.center,
                           design.lo, design.hi, design.r2)
         return _emit_bands(region, source_pixels, cfg, start_near, model, n,
                            shade_thread_idx, design.row_angle_deg(), chart,
@@ -722,10 +732,12 @@ def blend_fill(region: Region, source_pixels: SourcePixels, cfg,
     # `model.kind == "linear"` too — a region whose OWN fit came back radial
     # kept its own `principal_angle_deg` regardless, on the reasoning that no
     # single line direction fits a set of concentric bands. That reasoning
-    # is right for a genuinely radial DESIGN (`design_row_angle_deg` stays
-    # None there — `detect_design_ramp_angle` only ever produces an angle
-    # from a LINEAR whole-design fit, so this branch never even applies to
-    # one), but SLIC+RAG's fewer, larger, more organically-shaped fragments
+    # is right for a genuinely radial DESIGN (until 2026-09-04
+    # `design_row_angle_deg` stayed None there, `detect_design_ramp_angle`
+    # producing an angle only from a LINEAR whole-design fit; a radial
+    # design ramp now carries 0.0, level rows, and a region of it that does
+    # not ride sews level too), but SLIC+RAG's fewer, larger, more
+    # organically-shaped fragments
     # exposed a case that gate did not distinguish: a genuinely LINEAR whole
     # design (`design_row_angle_deg` IS set) where a single small, irregular
     # leftover fragment's OWN `detect_ramp` spuriously reads "radial" —

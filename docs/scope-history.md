@@ -4417,3 +4417,90 @@ envelope-to-outline distance p50 0.006 mm on the compensated exterior,
   satin-step and trim moves on dof_meadow, gaulke, golden_tee (9.4 → 8.6),
   enthusiast and summit. No fill-only fixture moved. Baseline recaptured on
   this tree.
+
+
+## 2026-09-04 — the radial design ramp: a vignette is one sweep too
+
+Next item after the seams. The design-level fit of 2026-09-04 took only a
+plane, so a radial sweep — `gradient_ramp_radial.png`, a smooth disc — went
+through the per-region path: at 80 mm its 4,069 mm² outer ring was refused
+by `detect_ramp_detail` as `speckled` (r² 0.81) and sewed FLAT in one
+thread, and only the 924 mm² inner disc got three radial bands. 81% of the
+sweep lost its gradient.
+
+- **The fit** (`design_ramp.py`): per Lab channel, a Gauss-Newton centre
+  from the centroid (`val ≈ p·r + q`, step capped at 20 mm, the line
+  re-solved exactly after each capped step) and the same
+  trimmed-then-consensus discipline as the plane — fit all, keep the 75%
+  nearest, refit centre AND line on the trimmed set (refitting the line on
+  all samples read sigma 7–13 instead of 0.4), consensus at K·σ₀, refit.
+  The fixture reads L r² 0.999 / inliers 0.99 / σ 0.37 / span 62.6, centre
+  (78.2, 50.8) mm = the disc's, 0 blank knots.
+- **Three rules the plane does not need**, each with the fixture it exists
+  for: r² ≥ 0.6 (a free centre explains more — the owl's b* reads 0.45,
+  the blobs' a* 0.54 on σ 10.7); at most 2 of 17 radius knots under 50%
+  consensus (`summit_badge`'s vignette reads r² 0.93 with its emblem AT the
+  centre: 10 knots blank); the centre no farther from the foreground than
+  the sweep is long, `lo ≤ hi − lo` (a huge circle is a line: the linear
+  fixture's radial centre lands 1,250 mm out at r² 1.00 with `lo` fifteen
+  sweeps, the repro's 360 mm out at four). The first draft tested the
+  centre against the foreground's bounding box; the reviewer showed that
+  knife-edge for the common logo classes whose centre sits ON the edge — a
+  half-disc sunrise refused at (39.998, 40.0004), a quarter-disc corner
+  glow refused at (−0.012, 0.005) and handed to the LINEAR path, which
+  passes it at r² 0.94 with a diagonal — so the rule is the scale test,
+  pinned by both shapes. Gate order r² → inliers → σ → span → centre → knots, so every refusal names its reason
+  (`radial_candidates`). Radial wins only when it passes AND its r²
+  strictly beats the winning plane's; the linear fixture and the repro
+  compared field by field against the previous module are byte-identical,
+  `flatten_lab` and `shifted` included; drone 0.18, golden_tee 0.36, bridge
+  bar 0.38, phone UI 0.26, gaulke 0.04, fremont 0.01 all refused on r².
+- **`DesignRamp` carries `kind` and `center`;** `raw` is the distance from
+  the centre, `shifted` moves the centre (a distance is frame-invariant, so
+  `lo`/`hi` and the radial line stay), `_raw_grid` feeds `flatten_lab` for
+  both kinds, and `row_angle_deg()` is **0.0** for radial: no row runs along
+  a ring, and level is the answer that does not look like a mistake — the
+  same one `principal_angle_deg` gives a disc. So a non-riding region on a
+  radial design (an icon on a vignette) sews its tatami fallback level
+  instead of at its own principal angle.
+- **Stage 6** builds `RampModel(design.kind, design.direction,
+  design.center, …)` on the design path; `_band_clip`'s rings and the
+  end-band reach (pull-comp lane) already handle radial. Rows cross rings,
+  so `rows_along_seam` is False and the seams stay hard with the 0.25 mm
+  underlap; a stitch-level dither at ring seams is a separate later item.
+  Stage 2's `flatten_lab` and stage 7's `rides` needed nothing.
+- **Fixture at 80 mm / left chest, audited on the stitches:** 2 regions →
+  **1** (5,009 mm², rides), 4 → **5** blocks dark → light (Mahogany L* 29
+  → Chocolate → Khaki → Taupe → Baquette 83), 14,539 → 17,085 stitches
+  (ring row-ends: fill length 34.8 → 35.3 m, 2.59 → 2.09 mm per stitch),
+  4 → 5 trims. Seams at **32.04 / 24.04 / 16.05 / 8.06 mm** from the
+  centre with the earlier darker band reaching 0.25 mm under the lighter;
+  the two halves of the disc share all five threads and agree at every
+  seam to < 0.01 mm. Rows at **0°** in every block on one lattice (535
+  rows over 80 mm, pitch 0.150, continuous across the seams) where before
+  the outer ring sewed at 11° and the core rings at 175°. Bare area at 1.5
+  rows 0.0% — and 0.0% before too: the gain is the gradient and the one
+  angle, not coverage. The unit test's seam radii (5.37 / 10.71 / 16.04 /
+  21.38) are its own 26.7 mm frame, not this fixture. One render caveat:
+  `stitchviz` paints a 0.4 mm filament on a 0.15 mm pitch, so where a
+  ring's sub-column flips direction at its hole tangent the last-drawn row
+  wins and a lighter horizontal strip appears — it vanishes with
+  `lit=False` and the geometry has no double coverage.
+- **Calibration caveat, recorded:** the gate's pass side is pinned on ONE
+  synthetic fixture and its refuse side on real art. ROADMAP gate 2's
+  spirit applies — a real radial logo (a glow, a vignette behind an emblem)
+  is the missing evidence; the synthetic pin is accepted explicitly, not by
+  omission.
+- Tests: `test_design_ramp.py` 19 → 26 (the radial fixture fits radial —
+  centre within 1 mm, 5 shades; a sweep under a frame icon rides while the
+  icon does not; a concentric ring icon costs exactly one blank knot; summit
+  refused on knots and the owl on r² by name; a linear sweep's radial centre
+  lands off the design; a sweep that goes flat at the rim is refused on
+  knots; `shifted` carries the centre; `flatten_lab` removes the rings);
+  `test_stage6_blend.py` 35 → 38 (the halves share rings; end to end at 80
+  mm; a region that does not ride a radial design sews level);
+  `test_stage2_photo_segment.py` +1 (radial fixture → 1 region); the
+  centre rule's half-disc, corner glow and `center_far` pins make
+  `test_design_ramp.py` 30.
+REVIEW_PARAGRAPH
+SCORECARD_PARAGRAPH
