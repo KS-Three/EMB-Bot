@@ -1612,46 +1612,81 @@ def dissolve_phantom_blends(
     # far side of the black it was ringing -- 3,989 px moved and the
     # component count did not shift by one, because as many shapes split as
     # merged. Sending it to one of its two endpoints cannot do that.
-    target: dict[int, int] = {}
+    # Ringing arrives as a STACK, not a band: on Bridge Bar the black spokes
+    # go black -> Whale -> Cobblestone -> Skylight -> page, four concentric
+    # bands. So the two sides of the step are the labels around the WHOLE
+    # stack, not each band's immediate neighbours -- an inner band's
+    # neighbours are other bands, and asking what IT lies between gets the
+    # band beside it as an answer. Two bands then name each other and
+    # nothing moves: a symmetric pair deadlocks outright (a 30%/50% ramp
+    # between black and white leaves both standing), and a longer stack
+    # folds inward one ring at a time instead of outward to real colour.
+    # Grouping first is also what makes this agree with the instrument that
+    # bills it, `tools/halo_spools.py`, which groups for the same reason.
+    band = np.zeros(n_ids, bool)
     for j in range(n_ids):
-        n = int(counts[j])
-        if not n:
+        if counts[j] and float(edge_counts[j]) / int(counts[j]) >= _PHOTO_PHANTOM_EDGE_FRAC:
+            band[j] = True
+
+    parent = list(range(n_ids))
+
+    def find(x: int) -> int:
+        while parent[x] != x:
+            parent[x] = parent[parent[x]]
+            x = parent[x]
+        return x
+
+    for j in range(n_ids):
+        if not band[j]:
             continue
-        if float(edge_counts[j]) / n < _PHOTO_PHANTOM_EDGE_FRAC:
-            continue
+        for o in adj[j]:
+            if o != _PAGE and band[o] and find(o) != find(j):
+                parent[find(j)] = find(o)
+
+    groups: dict[int, list[int]] = {}
+    for j in range(n_ids):
+        if band[j]:
+            groups.setdefault(find(j), []).append(j)
+
+    target: dict[int, int] = {}
+    for members in groups.values():
+        member_set = set(members)
+        outside = {o for j in members for o in adj[j] if o not in member_set}
         ends: list[tuple[int, np.ndarray]] = [
-            (o, means[o]) for o in sorted(adj[j]) if o != _PAGE and counts[o]
+            (o, means[o]) for o in sorted(o for o in outside if o != _PAGE and counts[o])
         ]
-        if _PAGE in adj[j] and bg_endpoint is not None:
+        if _PAGE in outside and bg_endpoint is not None:
             ends.append((_PAGE, bg_endpoint))
-        side = _blend_side(means[j], ends, cfg.merge_delta_e)
-        if side is not None:
-            target[j] = side
+        member_labs = [means[j] for j in members]
+        weights = np.array([float(counts[j]) for j in members])
+        pair = _blend_ramp(member_labs, weights, ends, cfg.merge_delta_e)
+        if pair is None:
+            continue
+        (ia, la), (ib, lb) = pair
+        seg = lb - la
+        denom = float(seg @ seg)
+        for j, cj in zip(members, member_labs):
+            t = float((cj - la) @ seg / denom)
+            # Each member still has to be ON that line itself -- the flat
+            # lane's own collinearity test, per colour. The group decides
+            # which two colours the structure runs between; this decides
+            # whether THIS band is part of the ramp, or a real colour that
+            # happens to be thin and to sit in the middle of one.
+            if float(np.linalg.norm(cj - (la + t * seg))) >= cfg.merge_delta_e:
+                continue
+            target[j] = ia if t < 0.5 else ib
 
     if not target:
         return labels, None, []
 
-    # Follow each chain to whatever it finally rests on: a stack of rings
-    # (black -> Whale -> Cobblestone -> Skylight -> page) hands every ring
-    # to the one inside it, so an unresolved pointer would leave a phantom
-    # wearing another phantom's id. Cycles cannot happen through a strictly
-    # nearer endpoint, but a raster is not a proof -- the guard is cheap.
-    def settle(j: int) -> int:
-        seen = {j}
-        while j in target:
-            j = target[j]
-            if j in seen:
-                return _PAGE if j == _PAGE else j
-            seen.add(j)
-        return j
-
     # One remap table, one pass. `remap[c]` is the compacted label pixel `c`
-    # ends up wearing; `to_page` marks the ones that leave the design.
+    # ends up wearing; `to_page` marks the ones that leave the design. Every
+    # destination is outside its own band group by construction, so there is
+    # no chain to follow and no cycle to guard against.
     remap = np.arange(n_ids)
     to_page = np.zeros(n_ids, bool)
     dissolved_px = dropped_px = 0
-    for j in sorted(target):
-        dest = settle(j)
+    for j, dest in sorted(target.items()):
         if dest == _PAGE:
             # Page-side of the step: these pixels are more background than
             # artwork, and the true edge is the midpoint they sit outside.
@@ -1704,6 +1739,61 @@ _PAGE = -1
 # cheap first gate that keeps the O(n²) endpoint search off the 20-odd labels
 # that are plainly interior fields.
 _PHOTO_PHANTOM_EDGE_FRAC = 0.5
+
+
+def _blend_ramp(member_labs: list[np.ndarray], weights: np.ndarray,
+                ends: list[tuple[int, np.ndarray]], tol_de: float):
+    """Is this whole thin structure a RAMP between two of `ends`?
+    -> the (id, lab) pair it ramps between, or None.
+
+    The flat lane's collinearity test (`stage2_quantize.
+    _quantize_population`) — its `cfg.merge_delta_e` tolerance and its
+    0.15-0.85 window, so the two lanes answer the same question the same
+    way — asked of a GROUP rather than of one colour.
+
+    Why the group and not each band: ringing arrives stacked, and a stack
+    TILES the segment between the two things it lies between. Bridge Bar's
+    spokes go black -> Whale -> Cobblestone -> Skylight -> page, and
+    Skylight alone sits at t 0.89 of black->page — outside the window, so
+    band-by-band the outermost ring survives as a cone and the whole point
+    is lost (measured: 52 regions and 82 trims against 20 and 55, with the
+    palette's worst excess going UP). What actually has to be true is that
+    the structure as a whole is a ramp between its two sides: every member
+    on the line, and the structure's own centre of mass properly inside it.
+    Each member then joins the end its own t is nearer.
+
+    A lone band is a group of one, where this reduces to the flat lane's
+    test exactly.
+    """
+    best = None
+    w = np.maximum(weights, 1e-9)
+    labs = np.stack(member_labs)
+    centre = np.average(labs, axis=0, weights=w)
+    for a in range(len(ends)):
+        for b in range(a + 1, len(ends)):
+            (_ia, ca), (_ib, cb) = ends[a], ends[b]
+            ab = cb - ca
+            L = float(np.dot(ab, ab))
+            if L <= 0:
+                continue
+            t_mid = float(np.dot(centre - ca, ab)) / L
+            if not (0.15 < t_mid < 0.85):
+                continue
+            # Weighted MEAN offset, not the worst: one outlier shard should
+            # not veto a whole stack, and members are tested one by one by
+            # the caller anyway -- this only decides WHICH pair the structure
+            # ramps between. It was tried as a cure for 0111 Whale surviving
+            # on Bridge Bar and is NOT one: that fixture is byte-identical
+            # either way, so the surviving cone has a different cause (see
+            # the residual in scope-history 2026-09-04). Kept because the
+            # robustness argument stands on its own, not because it was
+            # measured to help here.
+            t = (labs - ca) @ ab / L
+            off = np.linalg.norm(labs - (ca + t[:, None] * ab), axis=1)
+            score = float(np.average(off, weights=w))
+            if score < tol_de and (best is None or score < best[0]):
+                best = (score, (ends[a], ends[b]))
+    return None if best is None else best[1]
 
 
 def _blend_side(cj: np.ndarray, ends: list[tuple[int, np.ndarray]],

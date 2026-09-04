@@ -4205,7 +4205,7 @@ Two deliberate differences from the flat lane, both recorded in the function:
   discriminator and the code says so: two real-artwork labels on that fixture
   also clear 0.5 (0.562 and 0.619), and what keeps them is the colour test.
 
-**Two wrong turns, both caught by measurement rather than by review:**
+**Three wrong turns, all caught by measurement rather than by review:**
 
 1. **The first version tested the RAMP-FLATTENED Lab.** `lab_img` at that
    point has had the design sweep subtracted (Kent's 2026-09-03 gradient
@@ -4220,6 +4220,17 @@ Two deliberate differences from the flat lane, both recorded in the function:
    count did not shift by one**, because as many shapes split as merged. That
    is the signature to remember — a pass that visibly fires and changes
    nothing downstream is folding things somewhere they are not adjacent to.
+3. **Then grouping the bands broke the outermost ring.** Sending each band to
+   its own immediate neighbour deadlocks on a symmetric pair — a 30%/50% ramp
+   between black and white has each band naming the other and neither moves —
+   which a unit test caught. But testing each band against the GROUP's
+   endpoints put Skylight at t 0.89 of black→page, outside the 0.15–0.85
+   window, so the outermost ring survived as a cone and the fixture went the
+   wrong way: **52 regions and 82 trims against 32 and 64, and the palette's
+   worst excess rose to 23.0 — worse than doing nothing.** The resolution is
+   that the window is a question about the STRUCTURE (its centre of mass) and
+   collinearity stays a question about each BAND: a stack tiles the segment,
+   so its members are individually meant to sit near the ends of it.
 
 **Bridge Bar @ 80 mm, `max_colors=6`, satin, left chest** (the review's own
 configuration; its 10,885/106 predate the 09-03/04 fill-row, curve and rail
@@ -4228,21 +4239,33 @@ work, so the OFF column is today's engine, not that document's):
 | | OFF | ON |
 |---|---:|---:|
 | merged labels | 57 | 20 |
-| regions | 74 | **20** |
-| blocks | 13 | **10** |
-| colour changes | 12 | 9 |
-| stitches | 14,607 | **10,991** (−24.8%) |
-| trims | 114 | **55** (−51.8%) |
-| thread | 30.67 m | 26.02 m |
-| region area | 2,229.8 mm² | 2,126.4 mm² (−4.6%) |
-| palette worst excess | 20.76 dE00 | **6.08** |
+| regions | 74 | **32** |
+| blocks | 13 | **11** |
+| colour changes | 12 | 10 |
+| stitches | 14,607 | **11,524** (−21.1%) |
+| trims | 114 | **64** (−43.9%) |
+| thread | 30.67 m | 26.63 m |
+| region area | 2,229.8 mm² | 2,135.2 mm² (−4.2%) |
+| palette worst excess | 20.76 dE00 | **3.68** |
 
-37 colours dissolved, 249.3 mm², of which 204.8 mm² returned to the
-background. **Six grey cones gone** — 0108 Cobblestone, 0111 Whale, 0145
-Skylight, 0182 Saturn Grey, 0465 Umber, 3971 Silver — and the four the logo
-actually has all survive: 0501 Sun, 0020 Black, 1720 Not Quite Red, 4531
-Caribbean. The palette's worst excess falling by a factor of three is an
-independent read on the same thing: medoids were being spent on ringing.
+37 colours dissolved, 249.3 mm², of which 185.2 mm² returned to the
+background.
+
+**Read the cone count last.** It falls only 13 → 11, and on its own that
+undersells what happened: five of the six greys go (0108 Cobblestone, 0145
+Skylight, 0182 Saturn Grey, 0465 Umber, 3971 Silver), the four the logo
+actually has all survive (0501 Sun, 0020 Black, 1720 Not Quite Red, 4531
+Caribbean), and **three new cones arrive on artwork the palette could not
+afford before** (1220, 6156, 3830 — ~1 mm-wide regions in the teal lettering
+and the letter counters). What changed is what the cones SEW, and the number
+that measures it is the palette's worst excess: **20.76 → 3.68 dE00**, i.e.
+the selected threads now cover the design to within 3.7 instead of 20.8.
+
+**Residual, named rather than rounded off: 0111 Whale survives** — 12 shards,
+14.2 mm², 0.237 mm median width, 0.7% of the design. Its group does not
+qualify as a ramp and the cause is not yet established; a weighted-mean
+tolerance was tried as a cure and the fixture is byte-identical either way, so
+that hypothesis is disproved, not confirmed. This is a five-of-six result.
 
 **The instrument, and the safety case.** `tools/halo_spools.py` bills a plan
 in the units the machine charges — a region is halo-shaped when it is under
@@ -4250,7 +4273,9 @@ in the units the machine charges — a region is halo-shaped when it is under
 it belongs to (grouped first: ringing arrives as a STACK of concentric bands,
 and shard-by-shard every inner shard's only neighbours are other shards), and
 its thread is a Lab interpolation of those two. It reads Bridge Bar at 44 halo
-regions with the flag off and **0** with it on. Across eleven committed
+regions with the flag off and **2** with it on (the surviving Whale shards
+no longer present two qualifying sides, so the instrument under-reports that
+residual — it is counted above from the plan instead). Across eleven committed
 fixtures it finds halo cones on exactly three — bridge (4), golden_tee (1),
 gaulke (1) — and none on becker, fremont, enthusiast, drone, whitebg, golke,
 summit or tires. Becker is the useful negative: a 1.5 px/mm PNG with plenty of

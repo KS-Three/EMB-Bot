@@ -527,7 +527,12 @@ its hedge as it is copied forward** — is why this file is split.
   assumes the majority filter has thinned halos to one pixel; its
   "between any two clusters" assumes at most `max_colors` of them), and both
   had to be restated for a lane that arrives with 57 labels and no majority
-  filter. Port the QUESTION verbatim; re-measure the thresholds.
+  filter — and its 0.15-0.85 window assumes ONE cluster sitting between two
+  colours, where ringing here arrives as a STACK that tiles the whole segment,
+  so the window had to move from the band to the structure (band-by-band it
+  put the outermost ring at t 0.89, outside the window, and the fixture came
+  out worse than doing nothing). Port the QUESTION verbatim; re-measure every
+  threshold, and check what each one was assuming about its own lane.
   *(2026-09-04 — scope-history 09-04)*
 
 - **A pass that visibly fires and changes nothing downstream is folding things
