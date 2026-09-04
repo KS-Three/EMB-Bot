@@ -613,7 +613,8 @@ def _band_clip(poly: Polygon, model: RampModel, t_lo: float, t_hi: float) -> lis
 
 def blend_fill(region: Region, source_pixels: SourcePixels, cfg,
                start_near: tuple[float, float] | None = None,
-               *, polygon: Polygon | None = None
+               *, polygon: Polygon | None = None,
+               row_mm: float | None = None, stitch_mm: float | None = None
                ) -> tuple[list[StitchRun], dict]:
     """Ramp region -> (stitches, report). Same `(runs, report)` contract as
     `stage6_fill.stitch_shape` and its other siblings, so stage 7 sequencing
@@ -634,6 +635,19 @@ def blend_fill(region: Region, source_pixels: SourcePixels, cfg,
     the tongue present at 0.54 mm mean depth on the repro. Measured on the
     stitches: the repro's blend regions covered 0% of their tongue strips.
 
+    `row_mm` and `stitch_mm` are the density stage 7 already resolved for
+    this design — `(cfg.fill_row_mm or machine.FILL_ROW_MM)` scaled by the
+    fabric's `density_adjust`, and `cfg.fill_stitch_mm or FILL_STITCH_MM`
+    — the same two numbers stage 7's plain-tatami call beside this one is
+    given (satin gets the fabric's scaling on its own spacing; contour keeps
+    `CONTOUR_RING_MM` deliberately, see its call site). Until 2026-09-04 this tier read the machine constants
+    directly, so neither a per-job row override nor a fabric preset reached
+    a gradient: on a pile garment (`density_adjust` 0.90, which asks for
+    TIGHTER rows because stitches sink into the nap) every flat fill sewed
+    at 0.135 mm and every blend band at 0.150, an 11% lighter gradient on
+    the one fabric class that needs the opposite. None keeps the machine
+    defaults, so every existing caller and test is byte-identical.
+
     `start_near` is where the needle already is — the same contract every
     other tier takes from stage 7's picking loop. Until 2026-08-31 this tier
     silently dropped it: both `stitch_shape` call sites below passed
@@ -649,6 +663,8 @@ def blend_fill(region: Region, source_pixels: SourcePixels, cfg,
     """
     poly = region.polygon
     sew_poly = polygon if polygon is not None else region.polygon
+    row = machine.FILL_ROW_MM if row_mm is None else float(row_mm)
+    stitch = machine.FILL_STITCH_MM if stitch_mm is None else float(stitch_mm)
     chart = chart_for(cfg)
 
     # Kent's gradient ruling (2026-09-03): when the DESIGN's ramp fits
@@ -672,7 +688,7 @@ def blend_fill(region: Region, source_pixels: SourcePixels, cfg,
         return _emit_bands(region, source_pixels, cfg, start_near, model, n,
                            shade_thread_idx, design.row_angle_deg(), chart,
                            best_r2=design.r2, design_bands=True,
-                           sew_poly=sew_poly)
+                           sew_poly=sew_poly, row_mm=row, stitch_mm=stitch)
 
     model, reject, best_r2 = detect_ramp_detail(
         poly, source_pixels,
@@ -695,7 +711,7 @@ def blend_fill(region: Region, source_pixels: SourcePixels, cfg,
         # whole-design fit itself declined) preserves the untouched default.
         runs, report = stitch_shape(
             sew_poly, region.shape_id, angle_deg=source_pixels.design_row_angle_deg,
-            row_mm=machine.FILL_ROW_MM, stitch_mm=machine.FILL_STITCH_MM,
+            row_mm=row, stitch_mm=stitch,
             underlay_style="none", trim_at_mm=machine.TRIM_AT_MM,
             start_near=start_near, under_cover=cfg.fill_travel_under_cover,
         )
@@ -760,7 +776,8 @@ def blend_fill(region: Region, source_pixels: SourcePixels, cfg,
         angle = principal_angle_deg(poly)
     return _emit_bands(region, source_pixels, cfg, start_near, model, n,
                        shade_thread_idx, angle, chart, best_r2=best_r2,
-                       design_bands=False, sew_poly=sew_poly)
+                       design_bands=False, sew_poly=sew_poly,
+                       row_mm=row, stitch_mm=stitch)
 
 
 def region_rides_design_ramp(poly: Polygon, source_pixels: SourcePixels) -> bool:
@@ -799,7 +816,9 @@ def _emit_bands(region: Region, source_pixels: SourcePixels, cfg,
                 start_near: tuple[float, float] | None, model: RampModel, n: int,
                 shade_thread_idx: list[int], angle: float, chart, *,
                 best_r2: float, design_bands: bool,
-                sew_poly: Polygon | None = None) -> tuple[list[StitchRun], dict]:
+                sew_poly: Polygon | None = None,
+                row_mm: float | None = None,
+                stitch_mm: float | None = None) -> tuple[list[StitchRun], dict]:
     """Sew `region` as `n` shade bands of `model`, band `i` in thread
     `shade_thread_idx[i]`, rows at `angle`. The emission half of `blend_fill`,
     shared by the design-ramp path and the per-region path; `design_bands`
@@ -813,7 +832,8 @@ def _emit_bands(region: Region, source_pixels: SourcePixels, cfg,
     # every pair of rows (Kent's first sew-out finding, on the gradient
     # lane). The plan-contract test counted each row as n rows wide and read
     # the coverage as 1.0; it now measures the real thing.
-    row_mm = machine.FILL_ROW_MM
+    row_mm = machine.FILL_ROW_MM if row_mm is None else float(row_mm)
+    stitch_mm = machine.FILL_STITCH_MM if stitch_mm is None else float(stitch_mm)
 
     all_runs: list[StitchRun] = []
     layer_runs: list[list[StitchRun]] = []
@@ -902,7 +922,7 @@ def _emit_bands(region: Region, source_pixels: SourcePixels, cfg,
             part, part_row_mm, offset_rows, keep_row = pending.pop(k)
             runs, band_report = stitch_shape(
                 part, f"{region.shape_id}-blend{band_i}", angle_deg=angle,
-                row_mm=part_row_mm, stitch_mm=machine.FILL_STITCH_MM,
+                row_mm=part_row_mm, stitch_mm=stitch_mm,
                 underlay_style="none", trim_at_mm=machine.TRIM_AT_MM,
                 start_near=cur, under_cover=cfg.fill_travel_under_cover,
                 row_phase_mm=lattice_phase(part, part_row_mm, offset_rows),

@@ -4504,3 +4504,48 @@ sweep lost its gradient.
   `test_design_ramp.py` 30.
 REVIEW_PARAGRAPH
 SCORECARD_PARAGRAPH
+
+
+## 2026-09-04 — the blend tier sews at the design's density, not the machine's
+
+Found while scoping the light / standard / dense choice the sew-out findings
+ask for (finding 1's remaining engine work). Stage 7 resolves one density for
+a design — `(cfg.fill_row_mm or machine.FILL_ROW_MM) * fabric.density_adjust`
+(`stage7_sequence.py`), the number its plain-tatami call is given — satin
+gets the same fabric scaling on its own spacing, contour keeps its ring
+spacing deliberately — and `blend_fill` read `machine.FILL_ROW_MM` and
+`machine.FILL_STITCH_MM` directly instead, on both its paths (the shade bands
+and the tatami fallback every non-ramp region of a gradient-class design
+takes).
+
+- **What it cost.** Neither a per-job row override nor a fabric preset
+  reached a gradient. The pile presets are the sharp case: `terry_towel`
+  0.85 and `fleece_sweatshirt` 0.90 run BELOW 1.0 on purpose (the multiplier
+  scales row SPACING, and pile needs tighter rows — stitches sink into the
+  nap), so on a towel every flat fill sewed at 0.128 mm and every blend band
+  at 0.150 — the gradient 18% lighter than the rest of the same design, on
+  the one fabric class that needs the opposite. Measured on the repro at
+  towel: every band's median row 0.1500 → **0.1280**, the fallback's
+  0.150 → 0.130, 23,375 → 26,561 stitches.
+- **The fix.** `blend_fill(..., row_mm=, stitch_mm=)`, passed by stage 7 from
+  the same two locals the other tiers get, forwarded to `_emit_bands`; None
+  keeps the machine constants, so every existing caller and test is
+  byte-identical. `_emit_bands`' feather bound and row lattice already derive
+  from its local `row_mm`, so they follow.
+- **Not on the scorecard, and this is why:** the corpus runs at
+  `left_chest` (pique_knit) and `hat_front` (structured_cap), both
+  `density_adjust` 1.0, so a diff-then-capture reads no movers. That is a
+  property of the fixture matrix, not evidence the change is inert — the
+  towel numbers above are the evidence.
+- **Left for Kent, deliberately:** the named light / standard / dense choice
+  itself. The plumbing needs no ruling and is now complete on the engine
+  side (the service already accepts `fill_row_mm`; the Studio does not send
+  it), but WHICH densities the three arms carry is a physical question —
+  ROADMAP gate 1. The measured professional range is narrow (0.141 mm on the
+  Fremont ground, 0.166–0.169 on Becker letter bodies, against the ruled
+  0.15), so a three-way built from it would span 11% either side; the
+  pre-ruling 0.40 is the only wider arm in the repo and is the value the
+  sew-out rejected. Card block 2 stops at 0.20 and can move the endpoints.
+- Tests: a fabric's density reaches both blend paths and unset is
+  byte-identical (`test_stage6_blend.py`, 39); the pull-comp spy test now
+  also asserts the row stage 7 resolved arrives at the tier.

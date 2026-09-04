@@ -1254,9 +1254,9 @@ def test_stage7_hands_the_blend_tier_the_compensated_polygon_and_the_tongue_is_s
     real = s7.blend_fill
     seen: list = []
 
-    def spy(region, sp, cfg, start_near=None, *, polygon=None):
-        seen.append((region, polygon))
-        return real(region, sp, cfg, start_near, polygon=polygon)
+    def spy(region, sp, cfg, start_near=None, **kw):
+        seen.append((region, kw.get("polygon"), kw.get("row_mm")))
+        return real(region, sp, cfg, start_near, **kw)
 
     monkeypatch.setattr(s7, "blend_fill", spy)
 
@@ -1267,10 +1267,16 @@ def test_stage7_hands_the_blend_tier_the_compensated_polygon_and_the_tongue_is_s
 
     assert seen, "the repro routes through the blend tier at defaults"
     by_id = {p.shape_id: p for p in planned}
-    for region, polygon in seen:
+    for region, polygon, row_mm in seen:
         assert polygon is not None
         assert polygon.equals(by_id[region.shape_id].polygon)
-    assert sum(pg.area for _, pg in seen) > 1.02 * sum(r.area_mm2 for r, _ in seen)
+        # The density stage 7 resolved reaches this tier too (2026-09-04):
+        # the machine row scaled by the garment's fabric, not the bare
+        # constant the tier used to read.
+        assert row_mm == pytest.approx(
+            machine.FILL_ROW_MM * fabric_for(cfg).density_adjust)
+    assert (sum(pg.area for _, pg, _ in seen)
+            > 1.02 * sum(r.area_mm2 for r, _, _ in seen))
 
     runs_by_shape: dict[str, list] = {}
     for block in plan.blocks:
@@ -1278,7 +1284,7 @@ def test_stage7_hands_the_blend_tier_the_compensated_polygon_and_the_tongue_is_s
             runs_by_shape.setdefault(run.shape_id.split("-blend")[0], []).append(run)
     row = machine.FILL_ROW_MM
     strip_total = covered = 0.0
-    for region, polygon in seen:
+    for region, polygon, _row in seen:
         strip = polygon.difference(region.polygon)
         runs = runs_by_shape.get(region.shape_id, [])
         if strip.is_empty or not runs:
@@ -1428,3 +1434,39 @@ def test_a_region_that_does_not_ride_a_radial_design_sews_level():
     own_runs, own_report = blend_fill(region, bare, PipelineConfig())
     assert own_runs and own_report["blend_shades"] == 0
     assert _angle_diff_deg(_dominant_angle_deg(own_runs), 45.0) <= 5.0
+
+
+# --- The density stage 7 resolved reaches this tier (2026-09-04) -------------
+
+def test_a_fabrics_density_reaches_the_blend_bands_and_the_flat_fallback():
+    """`(cfg.fill_row_mm or FILL_ROW_MM) * fabric.density_adjust` is what a
+    design sews at, and until 2026-09-04 the blend tier read the machine
+    constants instead — so a fabric preset moved every fill on a design
+    EXCEPT its gradient regions. A towel asks for 0.85 (pile needs TIGHTER
+    rows, stitches sink into the nap); its bands sewed 18% lighter than its
+    flat fills. Pinned on the rows themselves, both paths."""
+    row = machine.FILL_ROW_MM * 0.85
+    region, sp, cfg = _linear_region(), _design_source(), PipelineConfig()
+
+    runs, report = blend_fill(region, sp, cfg, row_mm=row)
+    assert report["blend_shades"] >= 3, "the design path, not the fallback"
+    spacings = _row_spacings_mm(runs, report["angle_deg"] if "angle_deg" in report
+                                else sp.design_row_angle_deg)
+    assert min(spacings) == pytest.approx(row, abs=0.005), sorted(spacings)[:3]
+
+    # And the flat fallback: a region that does not ride sews at the same row.
+    flat = Region(shape_id="Sflat", polygon=Point(0.0, 0.0).buffer(6.0, quad_segs=32),
+                  thread_index=0, thread_number=CHART[0].number, area_mm2=113.0)
+    flat_sp = SourcePixels(rgb=np.full((_H, _W, 3), 200, np.uint8),
+                           px_per_mm=_PX_PER_MM, origin_px=_ORIGIN_PX,
+                           design_row_angle_deg=0.0, gradient_class=True)
+    flat_runs, flat_report = blend_fill(flat, flat_sp, cfg, row_mm=row)
+    assert flat_report["blend_shades"] == 0, "a flat region takes the fallback"
+    flat_spacings = _row_spacings_mm(flat_runs, 0.0)
+    assert min(flat_spacings) == pytest.approx(row, abs=0.005)
+
+    # Unset is the machine default, byte for byte.
+    base, _ = blend_fill(region, sp, cfg)
+    same, _ = blend_fill(region, sp, cfg, row_mm=machine.FILL_ROW_MM,
+                         stitch_mm=machine.FILL_STITCH_MM)
+    assert [r.points for r in base] == [r.points for r in same]
