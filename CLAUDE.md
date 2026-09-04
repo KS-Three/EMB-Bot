@@ -76,6 +76,14 @@ Two reasons this is not cosmetic:
 **Merging is still Kent's.** Ready-for-review and auto-merge are yours to set;
 clicking merge is not.
 
+**Arm auto-merge by DEFAULT — Kent's ruling 2026-09-04.** Do not withhold the
+arm to force a human look at a trade-off; flag the trade-off in the PR body
+instead. Withholding costs hours of throughput per held PR while everything
+behind it queues on the one branch, and the arming window closes the moment
+the last check goes green (the third refusal above), so a withheld PR becomes
+a manual click either way. Measured that day: PR #289's sibling #346 sat green
+and unarmable for over an hour with four finished changes stacked behind it.
+
 ## This repo is PUBLIC
 
 `gh repo view KS-Three/EMB-Bot` → `visibility: PUBLIC`, confirmed 2026-08-16;

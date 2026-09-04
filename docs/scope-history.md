@@ -4618,3 +4618,47 @@ audit had just measured as correct.
   for: a square annulus with a disc nested in its hole, the disc listed first
   and half of it left bare — under the shared mask the finding names only the
   ring.
+
+## 2026-09-04 — satin as SEWN: the instrument, and the gap it makes a number
+
+A holistic audit against the professional's own production files for logos we
+also digitize found the biggest remaining quality gap, and it is not a
+gradient one: the share of emitted stitches sitting inside a real zigzag
+column. Kent's call, asked with the plan in hand: **build the instrument
+first**, before any routing change.
+
+- **`tools/satin_columns.py`** (new, with `tests/test_satin_columns.py`, 9
+  tests) reads needle-down passes from either our own `StitchPlan` or a
+  decoded machine file, so ours and a professional's digitizing of the SAME
+  logo are measured by one instrument — the `sewn_compensation.py` precedent,
+  and DOCTRINE's rule that a seam is proved on the stitches, never the plan.
+- **A cross is sign ALTERNATION about the chord, not a turn angle.** The
+  first cut gated on a 120 deg reversal and was wrong in a way worth
+  recording: a zigzag's turn angle depends on its aspect, so at the 0.4 mm
+  satin pitch a 2.5 mm column turns 162 deg but a 0.7 mm column 121 and a
+  0.5 mm column 103 — any fixed angle threshold goes blind to narrow columns,
+  which is exactly the hairline satin the instrument exists to find. It read
+  the Becker corpus logo at 0.3% instead of its true 2.2%. Alternation is
+  scale-free. A tatami is excluded without an angle gate at all: its row
+  turns have one leg of a row spacing, far under `MIN_LEG_MM`. A zero-width
+  "cross" — thread doubling back along its own line — is excluded by
+  `MIN_WIDTH_MM`; before that floor the Becker logo read 2.7% at a MEDIAN
+  column width of 0.00 mm.
+- **What it measures.** Pro Becker large **44.3%** of 11,274 penetrations at a
+  2.52 mm median column, 5% under 0.7 mm; pro Becker chest small 48.6% /
+  2.09 mm. **Ours on the same logo at 100 mm: 2.2% of 11,374 at a 0.29 mm
+  median, 84% of its columns under 0.7 mm** — one satin run of 148 points
+  against 10,528 fill points in the whole logo. `logo_script_tires` reads
+  64.6% at 3.42 mm, the control that says the instrument is not simply
+  reporting low numbers.
+- **Both professional files are already committed** under
+  `testdata/reference/`, so the calibration runs in CI; the Gaulke and Fremont
+  professional files are not, so those arms stay local.
+- **The plan for what comes next is a decision document, not a queued task:**
+  `docs/superpowers/plans/2026-09-04-per-stroke-satin-routing.md`. Its own
+  measurement corrected the audit's framing — per-stroke routing would take
+  Becker's satin from 274 -> 1,708 mm2 (the `dt_irregular` rejections are a
+  pooling artifact; the `dt_p90_cap` ones are real and must stay refused), but
+  **it will not move Gaulke**, whose 43 of 56 regions already earn satin and
+  whose real defect is segmentation shattering a two-ink logo into hairlines.
+  Two different defects behind one headline.
