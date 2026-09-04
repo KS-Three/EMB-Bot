@@ -82,7 +82,14 @@ Moved verbatim 2026-08-28 — no section was rewritten in the move.
   row, so the sweep reads as one gradient; the 0.25 mm underlap is the seam
   rule only where rows cross the bands or `blend_feather_mm` is 0. Every
   band of a region sews on ONE row lattice (`stage6_blend._emit_bands`),
-  so a seam never shows a half-row step. **No physical tests until Kent
+  so a seam never shows a half-row step. **Blend regions sew `p.polygon`**
+  (2026-09-04): stage 7 had handed the tier the region alone and it sewed
+  the raw artwork — no pull comp, no tongue — on every gradient-class
+  design for a month while `tools/seam_underlap.py` read the tongue as
+  present, because that instrument measures stage 5's PLAN. **Prove a seam
+  on the stitches** (`tools/sewn_compensation.py`), never on the plan; the
+  colour is still read from the artwork, or a white neighbour's tongue
+  pulls white into the sweep. **No physical tests until Kent
   says** (2026-09-04): the stitchviz render is the interim judge of
   quality; put before/after renders in every PR that changes stitches.
   *(Kent's calls 2026-09-03/04 — `docs/sewout-findings-2026-09-03.md`
