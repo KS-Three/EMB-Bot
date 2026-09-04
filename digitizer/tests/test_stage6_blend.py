@@ -434,15 +434,16 @@ def test_detect_design_ramp_angle_finds_the_hue_carried_diagonal():
     assert _angle_diff_deg(angle, 135.0) <= 5.0, angle
 
 
-def test_detect_design_ramp_angle_declines_on_a_radial_design():
-    """A radial ramp has no single line direction — the whole-design fit
-    must recognize that (radial explains the color far better than any
-    linear direction does) and decline, leaving every fragment's angle to
-    fall back to its own per-region default, exactly as before this fix."""
+def test_detect_design_ramp_angle_is_level_on_a_radial_design():
+    """A radial ramp has no single line direction — its bands are rings,
+    which no row runs along. Until 2026-09-04 the whole-design fit declined
+    it and every fragment fell back to its own angle; the radial design
+    ramp answers LEVEL rows (0.0), the angle a disc's principal axis gives
+    and the one that does not look like a mistake."""
     from digitizer_core.stage1_prep import prep
 
     p = prep(str(PHOTO_DIR / "gradient_ramp_radial.png"), PipelineConfig(target_width_mm=90.0))
-    assert detect_design_ramp_angle(p) is None
+    assert detect_design_ramp_angle(p) == 0.0
 
 
 def test_detect_design_ramp_angle_declines_on_pure_noise(tmp_path):
@@ -1288,3 +1289,142 @@ def test_stage7_hands_the_blend_tier_the_compensated_polygon_and_the_tongue_is_s
         covered += thread.intersection(strip).area
     assert strip_total > 100.0
     assert covered / strip_total >= 0.95, covered / strip_total
+
+
+# --- The radial design ramp (2026-09-04) --------------------------------------
+
+def _radial_design_source() -> SourcePixels:
+    """The radial fixture's own design ramp in the tests' SourcePixels frame:
+    the disc is the stitched foreground, so the centre lands on the origin."""
+    from digitizer_core.design_ramp import fit_design_ramp_pixels
+
+    rgb = _load_rgb("gradient_ramp_radial.png")
+    yy, xx = np.mgrid[0:_H, 0:_W]
+    fg = np.hypot(xx - _ORIGIN_PX[0], yy - _ORIGIN_PX[1]) <= _RADIUS_PX
+    ramp = fit_design_ramp_pixels(rgb, fg, _PX_PER_MM)
+    assert ramp is not None and ramp.kind == "radial"
+    ramp = ramp.shifted(_ORIGIN_PX[0] / _PX_PER_MM, _ORIGIN_PX[1] / _PX_PER_MM)
+    return SourcePixels(rgb=rgb, px_per_mm=_PX_PER_MM, origin_px=_ORIGIN_PX,
+                        design_row_angle_deg=ramp.row_angle_deg(),
+                        design_ramp=ramp, gradient_class=True)
+
+
+def test_pieces_of_one_radial_design_ramp_share_rings_and_threads():
+    """`test_pieces_of_one_design_ramp_share_bands_and_threads`, radial: the
+    disc cut in two sews the same shade count, the same threads, and each
+    thread's rows over the same RADII in both halves — the rings continue
+    across the cut. Rows are level and cross the rings, so the seams are
+    the hard underlap, no feather zone."""
+    source = _radial_design_source()
+    ramp = source.design_ramp
+    assert ramp.kind == "radial" and math.hypot(*ramp.center) < 0.5, ramp.center
+    assert source.design_row_angle_deg == 0.0
+    cfg = PipelineConfig()
+    top, bottom = _halves(_radial_region().polygon)
+    reports = {}
+    extents = {}
+    for name, poly in (("top", top), ("bottom", bottom)):
+        region = Region(shape_id=f"S{name}", polygon=poly, thread_index=0,
+                        thread_number=CHART[0].number, area_mm2=poly.area)
+        runs, report = blend_fill(region, source, cfg)
+        assert report["blend_design_ramp"] is True
+        assert report["blend_shades"] == 5
+        assert report["blend_feather_mm"] == 0.0
+        reports[name] = report
+        by_thread: dict[int, list[float]] = {}
+        for r in runs:
+            if r.kind != stitches.FILL:
+                continue
+            radii = [float(ramp.raw(x, y)) for x, y in r.points]
+            by_thread.setdefault(r.shade_thread_index, []).extend(radii)
+        extents[name] = {k: (min(v), max(v)) for k, v in by_thread.items()}
+    assert reports["top"]["blend_shades"] == reports["bottom"]["blend_shades"]
+    assert set(extents["top"]) == set(extents["bottom"])
+    assert len(extents["top"]) == 5
+    # The innermost band's inner "extent" is the disc's centre, which the
+    # cut runs through: each half's nearest penetration to it is wherever a
+    # stitch falls on the nearest level row, so it is bounded, not shared.
+    inner = min(extents["top"], key=lambda k: extents["top"][k][0])
+    reach = machine.FILL_ROW_MM + 0.5 * machine.FILL_STITCH_MM
+    assert extents["top"][inner][0] <= reach and extents["bottom"][inner][0] <= reach
+    for thread, (lo, hi) in extents["top"].items():
+        blo, bhi = extents["bottom"][thread]
+        if thread != inner:
+            assert lo == pytest.approx(blo, abs=machine.FILL_ROW_MM + 0.05), thread
+        assert hi == pytest.approx(bhi, abs=machine.FILL_ROW_MM + 0.05), thread
+
+
+def test_a_radial_ramp_design_is_one_region_sewn_as_the_designs_rings_end_to_end():
+    """`gradient_ramp_radial.png` at 80 mm / left chest. Until 2026-09-04
+    the design ramp declined it, stage 2 cut the disc into a 4,069 mm² ring
+    and a 924 mm² core, the ring was refused by the per-region fit
+    (`speckled`) and sewed flat in one thread, and the core got three rings
+    of its own — 81% of the sweep lost its gradient. With the radial ramp:
+    one region, riding, sewn as the design's five rings with level rows,
+    and no part of the artwork further than a row and a half from a fill
+    stitch (`tools/sewn_compensation.py`'s reading, on the artwork)."""
+    from shapely.geometry import LineString
+    from shapely.ops import unary_union
+    from digitizer_core.pipeline import plan_stitches, run_stages
+
+    cfg = PipelineConfig(target_width_mm=80.0, garment_id="left_chest")
+    result = run_stages(str(PHOTO_DIR / "gradient_ramp_radial.png"), cfg)
+    sp = result.source_pixels
+    assert sp is not None and sp.design_ramp is not None
+    assert sp.design_ramp.kind == "radial"
+    assert sp.design_row_angle_deg == 0.0
+    stitched = [r for r in result.regions if r.meta.get("stitched", True)]
+    assert len(result.regions) == 1 and len(stitched) == 1
+    region = stitched[0]
+
+    runs, report = blend_fill(region, sp, cfg)
+    assert report["blend_design_ramp"] is True
+    assert report["blend_shades"] == 5
+    assert report["blend_feather_mm"] == 0.0, "rows cross the rings: the hard seam"
+
+    plan = plan_stitches(result, cfg)
+    assert len(plan.blocks) == 5
+    assert all(r.shade_thread_index is not None for _b, r in plan.iter_runs()
+               if r.kind == stitches.FILL)
+    fills = [LineString(r.points) for _b, r in plan.iter_runs()
+             if r.kind == stitches.FILL and len(r.points) >= 2]
+    sewn = unary_union([f.buffer(1.5 * machine.FILL_ROW_MM) for f in fills])
+    art = unary_union([r.polygon for r in stitched])
+    bare = art.difference(sewn)
+    assert bare.area <= 0.01 * art.area, f"{bare.area:.1f} mm² of {art.area:.1f} never sewn"
+
+
+def test_a_region_that_does_not_ride_a_radial_design_sews_level():
+    """A radial design's shared row angle is 0.0, and a region that does
+    NOT ride the ramp — a flat badge on the sweep — takes the tatami
+    fallback at that angle, level, where the same region under a source
+    with no design angle sews along its own axis. Pinned (2026-09-04) so
+    the level rows are a decision, not an accident of the fallback."""
+    from shapely.affinity import rotate
+    from digitizer_core.stage6_blend import region_rides_design_ramp
+
+    source = _radial_design_source()
+    bar = rotate(Polygon([(-15.0, -2.0), (15.0, -2.0), (15.0, 2.0), (-15.0, 2.0)]),
+                 45.0, origin=(0, 0))
+    # A solid green bar painted on the raster (grown a little past the
+    # region so every sampled pixel is solid): no shade of the amber sweep
+    # predicts it, so it does not ride.
+    rgb = source.rgb.copy()
+    pts = np.array([source.to_px(x, y) for x, y in bar.buffer(0.4).exterior.coords], np.int32)
+    cv2.fillPoly(rgb, [pts], (40, 160, 60))
+    painted = SourcePixels(rgb=rgb, px_per_mm=source.px_per_mm, origin_px=source.origin_px,
+                           design_row_angle_deg=source.design_row_angle_deg,
+                           design_ramp=source.design_ramp, gradient_class=True)
+    region = Region(shape_id="Sbar", polygon=bar, thread_index=0,
+                    thread_number=CHART[0].number, area_mm2=bar.area)
+    assert not region_rides_design_ramp(bar, painted)
+
+    runs, report = blend_fill(region, painted, PipelineConfig())
+    assert runs and report["blend_shades"] == 0
+    assert report.get("blend_design_ramp", False) is False
+    assert _angle_diff_deg(_dominant_angle_deg(runs), 0.0) <= 1.0
+
+    bare = SourcePixels(rgb=rgb, px_per_mm=source.px_per_mm, origin_px=source.origin_px)
+    own_runs, own_report = blend_fill(region, bare, PipelineConfig())
+    assert own_runs and own_report["blend_shades"] == 0
+    assert _angle_diff_deg(_dominant_angle_deg(own_runs), 45.0) <= 5.0

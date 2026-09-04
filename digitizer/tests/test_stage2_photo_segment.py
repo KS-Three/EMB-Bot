@@ -862,6 +862,20 @@ def test_a_fitting_design_ramp_makes_the_linear_ramp_one_region():
     assert len(result.regions) == 1
 
 
+def test_a_fitting_radial_design_ramp_makes_the_radial_ramp_one_region():
+    """`gradient_ramp_radial.png` is one sweep too — rings, not a plane.
+    Until 2026-09-04 the design ramp declined it (linear fits at r² 0.00)
+    and the merge cut the disc into an outer ring and a core, 4,069 and
+    924 mm² at 80 mm; with the radial ramp subtracted before the merge the
+    disc is one region."""
+    cfg = PipelineConfig(target_width_mm=80.0, garment_id="left_chest")
+    result = run_stages(str(PHOTO_DIR / "gradient_ramp_radial.png"), cfg)
+    assert result.design_class == "gradient"
+    ramp = result.source_pixels.design_ramp if result.source_pixels is not None else None
+    assert ramp is not None and ramp.kind == "radial"
+    assert len(result.regions) == 1
+
+
 def test_the_repro_sweep_is_one_region_per_piece_at_studio_defaults():
     """`repro_gradient_white_icon.png` at Studio defaults (full bleed, the
     white icon is foreground): the sweep is cut into pieces only by the
