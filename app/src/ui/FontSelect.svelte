@@ -48,7 +48,7 @@
       const c = document.createElement("canvas");
       c.width = THUMB_W; c.height = THUMB_H;
       const design = EMB.buildLetteringDesign(font, "Sample", {
-        garment: EMB.getGarment("left_chest"), pxPerMm: 8, densityMm: 0.5, underlay: false,
+        garment: EMB.getGarment("left_chest"), pxPerMm: 8, satinSpacingMm: 0.5, underlay: false,
       });
       renderRealistic(c, design, { colorOverride: [45, 45, 50], fabric: "#ffffff", pad: 8 });
       url = c.toDataURL();

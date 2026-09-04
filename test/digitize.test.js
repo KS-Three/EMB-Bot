@@ -1025,3 +1025,110 @@ test("buildLetteringDesign: short stitches move penetrations on the inside of be
   }
   assert.ok(moved > 0 && moved <= on.lettering.shortStitches + 2);
 });
+
+// ---- Fill row vs satin spacing: two physical choices (2026-09-04) ----------
+//
+// Until 2026-09-04 one `densityMm` option drove BOTH the tatami row pitch and
+// the satin cross pitch, defaulting to 0.45 here and 0.4 for lettering. Kent's
+// 2026-09-03 ruling (DOCTRINE "Fill row spacing is settled") moved the Python
+// engine's machine.FILL_ROW_MM to 0.15, and fabrics.py's rule is that this
+// engine makes the same physical choices. Satin is a same-rail pitch (Law 19)
+// and stays at machine.SATIN_SPACING_MM = 0.4 — so the option had to split
+// before the fill default could move without dragging satin to 0.15 with it.
+// Fixtures: a 700 px square at pxPerMm 8 (87.5 mm, a plain fill) and a 400x8
+// px bar (1 mm wide, a satin column), each alone so the tier is unambiguous.
+
+const splitSquare = { outer: sq(0, 0, 700), holes: [] };
+const splitBar = { outer: [{ x: 0, y: 0 }, { x: 400, y: 0 }, { x: 400, y: 8 }, { x: 0, y: 8 }], holes: [] };
+const splitBase = { garment: { widthIn: 4, heightIn: 4 }, pxPerMm: 8, underlay: false, satinMaxWidthMm: 3 };
+const splitRun = (shapes, extra) => DG.buildQualityDesign([{ rgb: [0, 0, 0], shapes }], Object.assign({}, splitBase, extra));
+
+// Read a constant straight out of the Python engine's machine.py, so the two
+// engines cannot drift apart silently (fabrics.py's rule, enforced).
+function machinePy(name) {
+  const src = fs.readFileSync(__dirname + "/../digitizer/digitizer_core/machine.py", "utf8");
+  const m = src.match(new RegExp("^" + name + "\\s*=\\s*([0-9.]+)", "m"));
+  assert.ok(m, name + " not found in digitizer/digitizer_core/machine.py");
+  return +m[1];
+}
+
+test("engine parity: FILL_ROW_MM and SATIN_SPACING_MM equal the Python engine's machine.py", () => {
+  assert.strictEqual(DG.FILL_ROW_MM, 0.15, "the professional's pitch — Kent's ruling 2026-09-03");
+  assert.strictEqual(DG.SATIN_SPACING_MM, 0.4, "the same-rail satin pitch, which did not move");
+  assert.strictEqual(DG.FILL_ROW_MM, machinePy("FILL_ROW_MM"), "both engines make the same physical choice (fabrics.py)");
+  assert.strictEqual(DG.SATIN_SPACING_MM, machinePy("SATIN_SPACING_MM"));
+});
+
+test("buildQualityDesign: the fill default is FILL_ROW_MM (0.15), three times the rows of the old 0.45", () => {
+  const dflt = splitRun([splitSquare], {});
+  const named = splitRun([splitSquare], { fillRowMm: 0.15 });
+  const old = splitRun([splitSquare], { densityMm: 0.45 });
+  assert.strictEqual(dflt._debug.nFill, 1);
+  assert.strictEqual(dflt._debug.nSatin, 0);
+  assert.deepStrictEqual(dflt.stitches, named.stitches, "no option at all == fillRowMm 0.15");
+  // 0.45 / 0.15 = 3x the rows, same stitches per row: measured 6101 -> 18305.
+  const ratio = dflt.stitchCount / old.stitchCount;
+  assert.ok(ratio > 2.8 && ratio < 3.2, "fill stitches ~3x the old default: " + old.stitchCount + " -> " + dflt.stitchCount);
+});
+
+test("buildQualityDesign: satin did NOT follow the fill row — the default is byte-identical to the old 0.4", () => {
+  const dflt = splitRun([splitBar], {});
+  // What the Studio passed for every image/manual/shape element until 2026-09-04.
+  const studioBefore = splitRun([splitBar], { densityMm: 0.4 });
+  const named = splitRun([splitBar], { satinSpacingMm: 0.4 });
+  assert.strictEqual(dflt._debug.nSatin, 1);
+  assert.strictEqual(dflt._debug.nFill, 0);
+  assert.deepStrictEqual(dflt.stitches, studioBefore.stitches, "satin at the default == satin at the old explicit 0.4");
+  assert.deepStrictEqual(dflt.stitches, named.stitches, "== satinSpacingMm 0.4");
+  // The case the split exists to prevent: the fill pitch applied to satin
+  // would pile ~2.7x the crosses onto every column.
+  const atFillPitch = splitRun([splitBar], { satinSpacingMm: 0.15 });
+  assert.ok(atFillPitch.stitchCount > 2.4 * dflt.stitchCount,
+    "0.15 on satin would be " + atFillPitch.stitchCount + " crosses against " + dflt.stitchCount);
+  // And the fill row does not reach a satin column at all.
+  const fillOnly = splitRun([splitBar], { fillRowMm: 0.15 });
+  assert.deepStrictEqual(fillOnly.stitches, dflt.stitches, "fillRowMm is not a satin input");
+});
+
+test("buildQualityDesign: legacy densityMm still drives BOTH spacings, and the split names win over it", () => {
+  // Every snapshot pinned in this file passes an explicit densityMm (0.4 or
+  // 0.5) and relies on this: the pre-split option is fill AND satin at that
+  // number, exactly as before.
+  const region = [splitSquare, splitBar];
+  const legacy = splitRun(region, { densityMm: 0.5 });
+  const spelled = splitRun(region, { fillRowMm: 0.5, satinSpacingMm: 0.5 });
+  assert.strictEqual(legacy._debug.nFill, 1);
+  assert.strictEqual(legacy._debug.nSatin, 1);
+  assert.deepStrictEqual(legacy.stitches, spelled.stitches, "densityMm 0.5 == fillRowMm 0.5 + satinSpacingMm 0.5");
+  const mixed = splitRun(region, { densityMm: 0.5, fillRowMm: 0.15 });
+  const ref = splitRun(region, { fillRowMm: 0.15, satinSpacingMm: 0.5 });
+  assert.deepStrictEqual(mixed.stitches, ref.stitches, "fillRowMm overrides densityMm for the fill, satin keeps densityMm");
+  assert.notDeepStrictEqual(mixed.stitches, legacy.stitches);
+});
+
+test("buildQualityDesign: fabric densityAdjust scales the satin pitch as well as the fill row (parity with stage7_sequence.py)", () => {
+  // The Python engine multiplies BOTH row_mm and satin_spacing_mm by the
+  // preset's density_adjust because this engine already did (its own comment
+  // cites digitize.js); the split must not have quietly dropped satin's share.
+  const fabricAt = (adj) => fab({ densityAdjust: adj, pullCompMm: 0, fillUnderlay: "none", satinUnderlay: "none" });
+  const satin10 = splitRun([splitBar], { fabric: fabricAt(1.0) }).stitchCount;
+  const satin085 = splitRun([splitBar], { fabric: fabricAt(0.85) }).stitchCount;
+  const fill10 = splitRun([splitSquare], { fabric: fabricAt(1.0) }).stitchCount;
+  const fill085 = splitRun([splitSquare], { fabric: fabricAt(0.85) }).stitchCount;
+  assert.ok(satin085 > satin10, "pile (0.85) tightens satin crosses: " + satin10 + " -> " + satin085);
+  assert.ok(fill085 > fill10, "and fill rows: " + fill10 + " -> " + fill085);
+});
+
+test("buildLetteringDesign: satinSpacingMm names the satin pitch; default, named and legacy densityMm are one design", () => {
+  const font = JSON.parse(fs.readFileSync(__dirname + "/../test/fixtures/fonts/geneva_simple.json", "utf8"));
+  const base = { garment: { widthIn: 5, heightIn: 2.25 }, pxPerMm: 8, targetWidthMm: 40, underlay: false };
+  const dflt = DG.buildLetteringDesign(font, "AB", base);
+  const named = DG.buildLetteringDesign(font, "AB", { ...base, satinSpacingMm: 0.4 });
+  const legacy = DG.buildLetteringDesign(font, "AB", { ...base, densityMm: 0.4 });
+  assert.deepStrictEqual(dflt, named);
+  assert.deepStrictEqual(dflt, legacy);
+  assert.strictEqual(dflt.stitchCount, 701, "the number satinfont.test.js pins — lettering never moved");
+  // Lettering has no fill, so the fill ruling is invisible from here.
+  const withFillRow = DG.buildLetteringDesign(font, "AB", { ...base, fillRowMm: 0.15 });
+  assert.deepStrictEqual(withFillRow, dflt, "fillRowMm is not a lettering option and changes nothing");
+});

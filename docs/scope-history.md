@@ -3777,3 +3777,63 @@ cloth.
   reach and that the later band never grows back. Blend fixtures move in
   the scorecard baseline (diff-then-capture below).
 
+## 2026-09-04 — the browser engine follows the fill ruling: `densityMm` split into `fillRowMm` / `satinSpacingMm`, fill 0.15, satin stays 0.4
+
+PR #339's promised follow-up. `fabrics.py`'s rule is that both engines make
+the same physical choices, and after #339 they did not: the Python engine
+laid fill rows at 0.15 mm while `src/digitize.js` still defaulted
+`densityMm` to 0.45 (image) and the Studio passed 0.4 for every image,
+manual and shape element. The catch #339 named: that one option fed the
+tatami row pitch AND the satin cross pitch, so moving it alone would have
+taken satin to 0.15 — ~2.7× the crosses on every column, against a
+same-rail pitch that Law 19, the corpus and the sew-out ("the one thing
+that looks right") all put at 0.40.
+
+- **The option is split.** `buildQualityDesign` takes `fillRowMm` and
+  `satinSpacingMm`; `buildLetteringDesign` takes `satinSpacingMm` (lettering
+  has no fill). `densityMm` is still honoured exactly as before — fill AND
+  satin at that number, the split names winning where both are given — so
+  every snapshot pinned on an explicit `densityMm` (the 4923 / 4772 no-fabric
+  freeze, lettering's 701 / 855 / 189) is byte-identical. Only the no-option
+  default moved. Fabric `densityAdjust` scales both, as
+  `stage7_sequence.py` scales both (its comment cites this engine for that).
+- **The constants are named and exported:** `EMB.FILL_ROW_MM = 0.15`,
+  `EMB.SATIN_SPACING_MM = 0.4`. A test reads `machine.py` and fails the
+  engine suite if either engine drifts from the other.
+- **The Studio passes no spacing** for image / manual / shape / text
+  elements and takes the engine defaults, so a ruling moves one number in
+  one place; the three lettering previews (`TemplateRow`, `FontBrowser`,
+  `FontSelect`) spell their satin pitch `satinSpacingMm`, values unchanged.
+  Lettering output is byte-identical (the default was already 0.4).
+- **Tools:** `run-digitize.mjs` (hard-coded 0.45), `run-flatten.mjs` (0.45)
+  and `run-hat-text.mjs` (0.4) now take the engine defaults; `run-digitize`
+  grew `FILLROW` / `SATINSP` env knobs beside the legacy `DENSITY` (both).
+  `quality-digitize.mjs` runs its own pipeline off the engine and is untouched;
+  `stitchModel.js` (the legacy fill-only builder) still requires an explicit
+  `densityMm` and has no default to move.
+- **Export paths do not read spacing** — `dst.js` / `pes.js` / `exp.js`
+  encode the stitch list; nothing else doubles or halves. Underlay keeps its
+  own 2.0 / 2.5 mm constants, as in Python.
+
+**Measured, `tools/run-digitize.mjs`, `GID=left_chest` (pique_knit), 5 × 2.25 in
+garment — the Studio's defaults for an image element:**
+
+| fixture | before (Studio: densityMm 0.4, both) | before (tool: 0.45, both) | after (fill 0.15 / satin 0.4) | unsplit counterfactual (both 0.15) |
+|---|---:|---:|---:|---:|
+| `logo_whitebg` 91 mm, 6 fill + 1 satin | 5,316 | 4,848 | **12,144** | 12,332 |
+| `becker_marine_logo` 92 mm, 7 fill + 3 satin | 3,735 | 3,436 | **7,935** | 8,197 |
+| `ribbon_curve` 91 mm, 1 fill + 1 satin (this lane traces its ground as a fill) | 5,042 | 4,576 | **11,001** | 12,029 |
+
+Control: the after tree run with `FILLROW=0.4` reproduces the before DST
+byte-for-byte on all three, so satin, underlay, runs and sequencing are
+untouched and the whole delta is fill rows. Whole designs rise 2.1–2.3×
+here — fill-heavy fixtures; #339's Python figures were 1.4–2.7× by fill
+share. The unsplit column is what #339's catch would have cost: another
+190–1,030 stitches per design piled onto satin columns.
+
+Tests: engine `node --test` 475 tests, 469 pass, 6 skipped (the pystitch
+cross-validation skips, as documented), 0 fail — six new. Studio `vitest`
+906 passed, 13 skipped; `templates.spec.js` timed out its font-preload
+`beforeAll` once while the engine suite ran alongside (COOKBOOK's loaded-box
+forgery) and passed 13/13 solo. Not run here: `studio-e2e` (no e2e spec
+pins a stitch count; CI runs it).

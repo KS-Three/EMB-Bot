@@ -60,7 +60,8 @@ console.error("colors:", regionsQ.length, "shapes:", regionsQ.reduce((a, r) => a
 
 const design = DG.buildQualityDesign(regionsQ, {
   garment: { widthIn: +(process.env.GW || 5), heightIn: +(process.env.GH || 2.25) },
-  pxPerMm: 8, densityMm: 0.4, satinMaxWidthMm: 3.0, underlay: true, outline: false, darkOnTop: false,
+  // spacing: engine defaults (fill 0.15 / satin 0.4) — hard-coded densityMm 0.4 for both until 2026-09-04
+  pxPerMm: 8, satinMaxWidthMm: 3.0, underlay: true, outline: false, darkOnTop: false,
 });
 console.error(`design ${design.stitchCount} stitches, satin ${design._debug.nSatin} fill ${design._debug.nFill}, ${design.widthMM.toFixed(1)}x${design.heightMM.toFixed(1)}mm`);
 fs.writeFileSync("scratch_hattext.dst", Buffer.from(D.encodeDST(design)));

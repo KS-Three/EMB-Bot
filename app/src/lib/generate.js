@@ -85,8 +85,15 @@ export function generateElement(element, garment, runtime) {
     // imageRegions.js) so this is simply ignored today.
     const { regions, pxPerMm } = flatToRegions(flat, { threadRgb: element.threadRgb });
     const fabric = EMB.getFabric(EMB.fabricForGarment(garment.id));
+    // No fill or satin spacing is passed on purpose (2026-09-04): the engine's
+    // own defaults — EMB.FILL_ROW_MM 0.15 and EMB.SATIN_SPACING_MM 0.4, the
+    // same numbers as the Python digitizer's machine.py — ARE the Studio's
+    // numbers, so a ruling moves them in one place. `densityMm: 0.4` sat here
+    // until then and pinned BOTH to 0.4: satin where it belongs, the fill
+    // 2.67x looser than Kent's 2026-09-03 ruling (DOCTRINE "Fill row spacing
+    // is settled"). Satin output is byte-identical across that change.
     return EMB.buildQualityDesign(regions, {
-      garment, fabric, pxPerMm, densityMm: 0.4, satinMaxWidthMm: 3.0,
+      garment, fabric, pxPerMm, satinMaxWidthMm: 3.0,
       underlay: element.underlay,
       targetWidthMm: element.sizeMm || undefined,
       offsetXMm: element.offsetXMm || 0,
@@ -106,7 +113,8 @@ export function generateElement(element, garment, runtime) {
     if (!regions.length) return null;
     const fabric = EMB.getFabric(EMB.fabricForGarment(garment.id));
     return EMB.buildQualityDesign(regions, {
-      garment, fabric, pxPerMm, densityMm: 0.4,
+      // Spacing: engine defaults — same reasoning as the image branch above.
+      garment, fabric, pxPerMm,
       // DRAW ORDER IS SEW ORDER here, so the brightness sort must not run.
       //
       // digitize.js sequences light-to-dark by default (`darkOnTop`), which is
@@ -154,7 +162,8 @@ export function generateElement(element, garment, runtime) {
     if (!regions.length) return null;
     const fabric = EMB.getFabric(EMB.fabricForGarment(garment.id));
     return EMB.buildQualityDesign(regions, {
-      garment, fabric, pxPerMm, densityMm: 0.4,
+      // Spacing: engine defaults — same reasoning as the image branch above.
+      garment, fabric, pxPerMm,
       // Same rule as the manual branch above. A no-op today -- this branch
       // always emits exactly one region, and a sort of one element cannot
       // reorder anything -- but it is the same code path the moment presets
@@ -173,8 +182,11 @@ export function generateElement(element, garment, runtime) {
   if (!text) return null;
   const fontData = (EMB.SATIN_FONTS || {})[element.fontKey];
   if (!fontData) throw new Error("Unknown font: " + element.fontKey);
+  // Satin spacing: the engine default (EMB.SATIN_SPACING_MM, 0.4) — the same
+  // 0.4 the explicit `densityMm` here used to pass, so lettering output is
+  // byte-identical across the 2026-09-04 fill-row change.
   return EMB.buildLetteringDesign(fontData, text, {
-    garment, pxPerMm: 8, densityMm: 0.4, underlay: element.underlay,
+    garment, pxPerMm: 8, underlay: element.underlay,
     rgb: element.colorRgb,
     colorRanges: element.colorRanges || [],
     weightPreset: element.weightPreset || "normal",

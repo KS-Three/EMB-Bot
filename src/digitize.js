@@ -14,6 +14,27 @@
   const satinmod = _node ? dep("./satin.js") : root.EMB;
   const satinfontmod = _node ? dep("./satinfont.js") : root.EMB;
 
+  // Physical constants this engine shares with the Python digitizer
+  // (`digitizer/digitizer_core/machine.py`). fabrics.py's rule: until a
+  // sew-out says otherwise the two engines make the SAME physical choices, or
+  // a design digitized here and one built there would need different tuning
+  // on the same garment. When a sew-out moves one of these, move it in both
+  // places — test/digitize.test.js reads machine.py and fails if they drift.
+  //
+  // Tatami row spacing — `machine.FILL_ROW_MM`. Kent's ruling 2026-09-03
+  // (DOCTRINE "Fill row spacing is settled"): his first sew-out at 0.40 showed
+  // cloth between every fill row, and the professional's commissioned files
+  // read as ROWS lay their fills at 0.141-0.169 mm. This engine defaulted to
+  // 0.45 until 2026-09-04. Fabric presets still scale it (densityAdjust).
+  const FILL_ROW_MM = 0.15;
+  // Satin cross spacing along the stroke — `machine.SATIN_SPACING_MM`. A
+  // SEPARATE physical choice from the fill row: it is a same-rail pitch (Law
+  // 19 — Hatch, Melco's 4 pt, Madeira 40wt all put it at 0.40, and the sew-out
+  // called satin "the one thing that looks right"), so it did NOT follow the
+  // fill row to 0.15. One `densityMm` used to feed both; see
+  // buildQualityDesign for the split.
+  const SATIN_SPACING_MM = 0.4;
+
   function polyArea(p) { let a = 0; for (let i = 0, j = p.length - 1; i < p.length; j = i++) a += (p[j].x * p[i].y - p[i].x * p[j].y); return Math.abs(a) / 2; }
   // SIGNED shoelace area (sign encodes winding). Do NOT confuse with polyArea (abs).
   function signedArea(p) { let a = 0; for (let i = 0, j = p.length - 1; i < p.length; j = i++) a += (p[j].x * p[i].y - p[i].x * p[j].y); return a / 2; }
@@ -171,7 +192,10 @@
   }
 
   // colorRegions: [{rgb:[r,g,b], polygons:[[{x,y}...]...]}] in PIXEL coords.
-  // opts: { garment, pxPerMm, densityMm, maxStitchMm, satinMaxWidthMm, underlay, pullCompMm, perRegionAngle, darkOnTop, angleOverrides }
+  // opts: { garment, pxPerMm, fillRowMm, satinSpacingMm, maxStitchMm, satinMaxWidthMm, underlay, pullCompMm, perRegionAngle, darkOnTop, angleOverrides }
+  //   `densityMm` (legacy, pre-2026-09-04) is one number for BOTH fillRowMm
+  //   and satinSpacingMm and is still honoured exactly as it was — see the
+  //   two spacings just below for the split and the defaults.
   //
   // Stitch angle (Phase 3): by DEFAULT each fill SHAPE gets its OWN PCA angle
   // from its own rings (outer+holes) — long thin fills align to their length,
@@ -197,7 +221,18 @@
     // the underlay code path stays byte-identical to before (see below).
     const fabric = o.fabric || null;
     const densityAdjust = (fabric && fabric.densityAdjust) ? fabric.densityAdjust : 1;
-    const densityMm = (o.densityMm || 0.45) * densityAdjust;
+    // Two spacings, two physical choices (2026-09-04). `fillRowMm` is the
+    // tatami row pitch (FILL_ROW_MM above), `satinSpacingMm` the satin cross
+    // pitch (SATIN_SPACING_MM). `densityMm` is the pre-split option that drove
+    // BOTH: a caller still passing it gets exactly what it always got — fill
+    // AND satin at that number — so every snapshot pinned on an explicit
+    // densityMm stays byte-identical, and the split names win where both are
+    // given. Only a caller that passes neither picks up the engine defaults,
+    // which is what moved: the fill default 0.45 -> 0.15; satin 0.4 as before.
+    // Both scale by the fabric's densityAdjust, as the Python engine scales
+    // both (stage7_sequence.py's row_mm and satin_spacing_mm).
+    const fillRowMm = (o.fillRowMm || o.densityMm || FILL_ROW_MM) * densityAdjust;
+    const satinSpacingMm = (o.satinSpacingMm || o.densityMm || SATIN_SPACING_MM) * densityAdjust;
     const maxStitchMm = o.maxStitchMm || 4;
     const satinMaxWidthMm = o.satinMaxWidthMm || 3.0;
     const pullCompMm = (fabric && fabric.pullCompMm != null) ? fabric.pullCompMm
@@ -260,7 +295,7 @@
     // (Kent's report). A floor two orders of magnitude smaller still prevents
     // the degenerate case at any realistic resize while never engaging early.
     const PX_LOOP_EPS = 0.02;
-    const rowPx = Math.max(PX_LOOP_EPS, densityMm * pxPerFinalMm);
+    const rowPx = Math.max(PX_LOOP_EPS, fillRowMm * pxPerFinalMm);
     const maxPx = Math.max(PX_LOOP_EPS, maxStitchMm * pxPerFinalMm);
     const underlayStitchPx = Math.max(PX_LOOP_EPS, 2.0 * pxPerFinalMm);
     const underlayRowPx = Math.max(PX_LOOP_EPS, 2.5 * pxPerFinalMm);
@@ -501,7 +536,7 @@
             // Medial-axis satin (rail-based) — clean on curves/terminals; falls
             // back to the outline-split satin internally for tiny/degenerate rings.
             const sat = satinmod.medialSatin || satinmod.satinColumn;
-            pts = sat(poly, { spacingMm: densityMm, pxPerMm: pxPerFinalMm, pullCompMm, slantDeg });
+            pts = sat(poly, { spacingMm: satinSpacingMm, pxPerMm: pxPerFinalMm, pullCompMm, slantDeg });
             nSatin++;
           }
           else {
@@ -561,7 +596,8 @@
   // each glyph's authored satin columns are played and laid out, then fit to the
   // garment, centered, and Y-flipped into DST units — same coordinate convention
   // and return shape as buildQualityDesign, so DST/preview/PDF just work.
-  // opts = { garment, pxPerMm=8, emMm=18, rgb=[20,20,20], densityMm, pullCompMm,
+  // opts = { garment, pxPerMm=8, emMm=18, rgb=[20,20,20], satinSpacingMm
+  //          (legacy spelling: densityMm), pullCompMm,
   //          letterSpacingMm, fabric, trimAtMm, mirrorX=false, mirrorY=false,
   //          circleLayout (see satinfont.js layoutText) }.
   function buildLetteringDesign(fontData, text, opts) {
@@ -571,7 +607,11 @@
     const fabric = o.fabric || null;
     const emMm = o.emMm || 18;
     const rgb = o.rgb || [20, 20, 20];
-    const densityMm = (o.densityMm || 0.4) * ((fabric && fabric.densityAdjust) ? fabric.densityAdjust : 1);
+    // Lettering is satin only, so its one spacing is the satin cross pitch
+    // (SATIN_SPACING_MM, 0.4 — unchanged by the 2026-09-03 fill ruling).
+    // `satinSpacingMm` is the name since 2026-09-04; `densityMm` is the legacy
+    // spelling and is honoured unchanged. There is no fill row to set here.
+    const satinSpacingMm = (o.satinSpacingMm || o.densityMm || SATIN_SPACING_MM) * ((fabric && fabric.densityAdjust) ? fabric.densityAdjust : 1);
     // Bold/thin (Font editing abilities Round 1): reuses the EXISTING,
     // already-tested pullCompMm column-widening mechanism (satinplay.js's
     // emitZigzag pushes the two rails apart by pullCompMm/2 each) instead of
@@ -671,7 +711,7 @@
     // `crossFloor` passes straight through (default on — see satinfont's
     // width guards); `false` is the pre-2026-09-03 stitch stream, kept
     // reachable for the byte-identity pins in test/run-fonts.test.js.
-    const lay = satinfontmod.layoutText(fontData, text, { emMm, pxPerMm, spacingMm: densityMm / sc, pullCompMm: pullCompMm / sc, weightMm: weightMm / sc, counterGuard: o.counterGuard !== false, shortStitch: o.shortStitch !== false, letterSpacingMm: ls, underlay: o.underlay !== false, crossFloor: o.crossFloor !== false, fitScale: sc, arcDeg: o.arcDeg || 0, slantDeg: o.slantDeg || 0, align: o.align, circleLayout: o.circleLayout });
+    const lay = satinfontmod.layoutText(fontData, text, { emMm, pxPerMm, spacingMm: satinSpacingMm / sc, pullCompMm: pullCompMm / sc, weightMm: weightMm / sc, counterGuard: o.counterGuard !== false, shortStitch: o.shortStitch !== false, letterSpacingMm: ls, underlay: o.underlay !== false, crossFloor: o.crossFloor !== false, fitScale: sc, arcDeg: o.arcDeg || 0, slantDeg: o.slantDeg || 0, align: o.align, circleLayout: o.circleLayout });
     if (!lay.runs.length) return emptyWith(lay.unsupported, lay.lettering);
     const cx = (bb.x0 + bb.x1) / 2, cy = (bb.y0 + bb.y1) / 2;
     // Explicit placement offset (Slice 3): applied AFTER the center transform, in
@@ -881,5 +921,5 @@
     return { stitches, colors, widthMM: outWmm, heightMM: outHmm, stitchCount, colorCount: colors.length, unsupported: lay.unsupported || [], lettering: lay.lettering || null, _debug: { nSatin, nFill: 0, nTrims } };
   }
 
-  return { buildQualityDesign, buildLetteringDesign, groupRingsIntoShapes, offsetRing, signedArea, underlayRuns };
+  return { buildQualityDesign, buildLetteringDesign, groupRingsIntoShapes, offsetRing, signedArea, underlayRuns, FILL_ROW_MM, SATIN_SPACING_MM };
 });
