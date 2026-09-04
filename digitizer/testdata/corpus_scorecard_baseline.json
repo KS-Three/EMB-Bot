@@ -160,7 +160,7 @@
   },
   "score": 88
  },
- "captured_at_commit": "cb7408aa4069af1181c01ef975e89a2a2bba75b2",
+ "captured_at_commit": "6180cca51d3e714e2fabf2db657917d1e153aef4",
  "captured_date": "2026-09-04",
  "logo_alpha.png @ 80mm/hat_front": {
   "findings": [],
@@ -446,7 +446,7 @@
    "trims_per_1000": 6.0,
    "uncovered_checked": true,
    "uncovered_total_mm2": 0.0,
-   "uncovered_wanted_mm2": 2168.0,
+   "uncovered_wanted_mm2": 2171.5,
    "uncovered_worst_mm2": 2.2
   },
   "score": 0
@@ -505,7 +505,7 @@
    "trims_per_1000": 5.3,
    "uncovered_checked": true,
    "uncovered_total_mm2": 0.0,
-   "uncovered_wanted_mm2": 2142.0,
+   "uncovered_wanted_mm2": 2145.2,
    "uncovered_worst_mm2": 1.0
   },
   "score": 0
@@ -672,7 +672,9 @@
  },
  "photo/gradient_ramp_linear.png @ 80mm/hat_front": {
   "findings": [
-   "THREAD_MATCH_POOR:block"
+   "THREAD_MATCH_POOR:warn",
+   "THREAD_MATCH_POOR:warn",
+   "THREAD_MATCH_POOR:warn"
   ],
   "grade": "C",
   "metrics": {
@@ -701,18 +703,20 @@
    "stitch_count": 9857,
    "subject_bg_delta_l": 71.87,
    "thread_match_checked": true,
-   "thread_worst_delta_e": 28.1,
+   "thread_worst_delta_e": 7.7,
    "trims_per_1000": 0.4,
    "uncovered_checked": true,
    "uncovered_total_mm2": 0.0,
-   "uncovered_wanted_mm2": 0.0,
+   "uncovered_wanted_mm2": 3736.5,
    "uncovered_worst_mm2": 0.0
   },
-  "score": 70
+  "score": 64
  },
  "photo/gradient_ramp_linear.png @ 80mm/left_chest": {
   "findings": [
-   "THREAD_MATCH_POOR:block"
+   "THREAD_MATCH_POOR:warn",
+   "THREAD_MATCH_POOR:warn",
+   "THREAD_MATCH_POOR:warn"
   ],
   "grade": "C",
   "metrics": {
@@ -741,18 +745,20 @@
    "stitch_count": 9701,
    "subject_bg_delta_l": 71.87,
    "thread_match_checked": true,
-   "thread_worst_delta_e": 28.1,
+   "thread_worst_delta_e": 7.7,
    "trims_per_1000": 0.4,
    "uncovered_checked": true,
    "uncovered_total_mm2": 0.0,
-   "uncovered_wanted_mm2": 0.0,
+   "uncovered_wanted_mm2": 3736.5,
    "uncovered_worst_mm2": 0.0
   },
-  "score": 70
+  "score": 64
  },
  "photo/gradient_ramp_radial.png @ 80mm/hat_front": {
   "findings": [
-   "THREAD_MATCH_POOR:block"
+   "THREAD_MATCH_POOR:warn",
+   "THREAD_MATCH_POOR:warn",
+   "THREAD_MATCH_POOR:warn"
   ],
   "grade": "C",
   "metrics": {
@@ -781,18 +787,20 @@
    "stitch_count": 17149,
    "subject_bg_delta_l": 72.99,
    "thread_match_checked": true,
-   "thread_worst_delta_e": 12.3,
+   "thread_worst_delta_e": 6.3,
    "trims_per_1000": 0.2,
    "uncovered_checked": true,
    "uncovered_total_mm2": 0.0,
-   "uncovered_wanted_mm2": 0.0,
+   "uncovered_wanted_mm2": 4872.5,
    "uncovered_worst_mm2": 0.0
   },
-  "score": 70
+  "score": 64
  },
  "photo/gradient_ramp_radial.png @ 80mm/left_chest": {
   "findings": [
-   "THREAD_MATCH_POOR:block"
+   "THREAD_MATCH_POOR:warn",
+   "THREAD_MATCH_POOR:warn",
+   "THREAD_MATCH_POOR:warn"
   ],
   "grade": "C",
   "metrics": {
@@ -821,14 +829,14 @@
    "stitch_count": 17085,
    "subject_bg_delta_l": 72.99,
    "thread_match_checked": true,
-   "thread_worst_delta_e": 12.3,
+   "thread_worst_delta_e": 6.3,
    "trims_per_1000": 0.2,
    "uncovered_checked": true,
    "uncovered_total_mm2": 0.0,
-   "uncovered_wanted_mm2": 0.0,
+   "uncovered_wanted_mm2": 4875.0,
    "uncovered_worst_mm2": 0.0
   },
-  "score": 70
+  "score": 64
  },
  "photo/logo_bridge_bar.jpg @ 80mm/hat_front": {
   "findings": [
@@ -871,7 +879,7 @@
    "trims_per_1000": 8.0,
    "uncovered_checked": true,
    "uncovered_total_mm2": 0.0,
-   "uncovered_wanted_mm2": 551.0,
+   "uncovered_wanted_mm2": 1381.2,
    "uncovered_worst_mm2": 0.2
   },
   "score": 0
@@ -918,7 +926,7 @@
    "trims_per_1000": 8.6,
    "uncovered_checked": true,
    "uncovered_total_mm2": 0.0,
-   "uncovered_wanted_mm2": 551.0,
+   "uncovered_wanted_mm2": 1381.2,
    "uncovered_worst_mm2": 0.8
   },
   "score": 0
@@ -1062,7 +1070,7 @@
    "trims_per_1000": 9.9,
    "uncovered_checked": true,
    "uncovered_total_mm2": 0.0,
-   "uncovered_wanted_mm2": 337.0,
+   "uncovered_wanted_mm2": 343.2,
    "uncovered_worst_mm2": 0.0
   },
   "score": 0
@@ -1116,7 +1124,7 @@
    "trims_per_1000": 8.6,
    "uncovered_checked": true,
    "uncovered_total_mm2": 0.0,
-   "uncovered_wanted_mm2": 337.5,
+   "uncovered_wanted_mm2": 344.0,
    "uncovered_worst_mm2": 0.0
   },
   "score": 0
@@ -1158,7 +1166,7 @@
    "trims_per_1000": 7.6,
    "uncovered_checked": true,
    "uncovered_total_mm2": 0.0,
-   "uncovered_wanted_mm2": 1156.5,
+   "uncovered_wanted_mm2": 1179.2,
    "uncovered_worst_mm2": 0.0
   },
   "score": 64
@@ -1200,7 +1208,7 @@
    "trims_per_1000": 7.2,
    "uncovered_checked": true,
    "uncovered_total_mm2": 0.0,
-   "uncovered_wanted_mm2": 1147.0,
+   "uncovered_wanted_mm2": 1170.0,
    "uncovered_worst_mm2": 0.0
   },
   "score": 64
@@ -1242,7 +1250,7 @@
    "trims_per_1000": 2.0,
    "uncovered_checked": true,
    "uncovered_total_mm2": 0.0,
-   "uncovered_wanted_mm2": 6682.2,
+   "uncovered_wanted_mm2": 6682.5,
    "uncovered_worst_mm2": 0.0
   },
   "score": 76
@@ -1408,11 +1416,11 @@
    "stitch_count": 3827,
    "subject_bg_delta_l": null,
    "thread_match_checked": true,
-   "thread_worst_delta_e": 7.8,
+   "thread_worst_delta_e": 8.1,
    "trims_per_1000": 3.9,
    "uncovered_checked": true,
    "uncovered_total_mm2": 460.5,
-   "uncovered_wanted_mm2": 4614.8,
+   "uncovered_wanted_mm2": 4637.5,
    "uncovered_worst_mm2": 26.5
   },
   "score": 76
@@ -1449,11 +1457,11 @@
    "stitch_count": 3821,
    "subject_bg_delta_l": null,
    "thread_match_checked": true,
-   "thread_worst_delta_e": 7.8,
+   "thread_worst_delta_e": 8.0,
    "trims_per_1000": 3.9,
    "uncovered_checked": true,
    "uncovered_total_mm2": 407.5,
-   "uncovered_wanted_mm2": 4575.2,
+   "uncovered_wanted_mm2": 4596.5,
    "uncovered_worst_mm2": 28.8
   },
   "score": 76
@@ -1494,7 +1502,7 @@
    "trims_per_1000": 0.4,
    "uncovered_checked": true,
    "uncovered_total_mm2": 0.0,
-   "uncovered_wanted_mm2": 7944.2,
+   "uncovered_wanted_mm2": 8018.8,
    "uncovered_worst_mm2": 0.0
   },
   "score": 76
@@ -1535,7 +1543,7 @@
    "trims_per_1000": 0.4,
    "uncovered_checked": true,
    "uncovered_total_mm2": 0.0,
-   "uncovered_wanted_mm2": 7944.8,
+   "uncovered_wanted_mm2": 8018.2,
    "uncovered_worst_mm2": 0.0
   },
   "score": 76
@@ -1790,6 +1798,11 @@
   "findings": [
    "COLOR_STOPS_HEAVY:warn",
    "THREAD_MATCH_POOR:block",
+   "THREAD_MATCH_POOR:block",
+   "THREAD_MATCH_POOR:warn",
+   "THREAD_MATCH_POOR:warn",
+   "THREAD_MATCH_POOR:warn",
+   "THREAD_MATCH_POOR:warn",
    "THREAD_MATCH_POOR:warn",
    "THREAD_MATCH_POOR:warn",
    "THREAD_MATCH_POOR:warn"
@@ -1821,19 +1834,24 @@
    "stitch_count": 17773,
    "subject_bg_delta_l": 37.85,
    "thread_match_checked": true,
-   "thread_worst_delta_e": 10.7,
+   "thread_worst_delta_e": 11.5,
    "trims_per_1000": 1.2,
    "uncovered_checked": true,
    "uncovered_total_mm2": 0.0,
-   "uncovered_wanted_mm2": 0.0,
+   "uncovered_wanted_mm2": 3185.8,
    "uncovered_worst_mm2": 0.0
   },
-  "score": 22
+  "score": 0
  },
  "photo/region_blobs.png @ 80mm/left_chest": {
   "findings": [
    "COLOR_STOPS_HEAVY:warn",
    "THREAD_MATCH_POOR:block",
+   "THREAD_MATCH_POOR:block",
+   "THREAD_MATCH_POOR:warn",
+   "THREAD_MATCH_POOR:warn",
+   "THREAD_MATCH_POOR:warn",
+   "THREAD_MATCH_POOR:warn",
    "THREAD_MATCH_POOR:warn",
    "THREAD_MATCH_POOR:warn",
    "THREAD_MATCH_POOR:warn"
@@ -1865,20 +1883,22 @@
    "stitch_count": 17788,
    "subject_bg_delta_l": 37.85,
    "thread_match_checked": true,
-   "thread_worst_delta_e": 10.7,
+   "thread_worst_delta_e": 11.5,
    "trims_per_1000": 1.3,
    "uncovered_checked": true,
    "uncovered_total_mm2": 0.0,
-   "uncovered_wanted_mm2": 0.0,
+   "uncovered_wanted_mm2": 3187.0,
    "uncovered_worst_mm2": 0.0
   },
-  "score": 22
+  "score": 0
  },
  "photo/repro_gradient_white_icon.png @ 80mm/hat_front": {
   "findings": [
-   "LETTERING_TOO_SMALL:warn"
+   "LETTERING_TOO_SMALL:warn",
+   "THREAD_MATCH_POOR:block",
+   "THREAD_MATCH_POOR:warn"
   ],
-  "grade": "B",
+  "grade": "D",
   "metrics": {
    "class_override_detected_class": null,
    "color_changes": 4,
@@ -1905,18 +1925,21 @@
    "stitch_count": 22652,
    "subject_bg_delta_l": null,
    "thread_match_checked": true,
-   "thread_worst_delta_e": 4.3,
+   "thread_worst_delta_e": 13.0,
    "trims_per_1000": 1.1,
    "uncovered_checked": true,
    "uncovered_total_mm2": 0.0,
-   "uncovered_wanted_mm2": 1096.0,
+   "uncovered_wanted_mm2": 5719.2,
    "uncovered_worst_mm2": 0.0
   },
-  "score": 88
+  "score": 46
  },
  "photo/repro_gradient_white_icon.png @ 80mm/left_chest": {
-  "findings": [],
-  "grade": "A",
+  "findings": [
+   "THREAD_MATCH_POOR:block",
+   "THREAD_MATCH_POOR:warn"
+  ],
+  "grade": "D",
   "metrics": {
    "class_override_detected_class": null,
    "color_changes": 4,
@@ -1943,14 +1966,14 @@
    "stitch_count": 22095,
    "subject_bg_delta_l": null,
    "thread_match_checked": true,
-   "thread_worst_delta_e": 4.3,
+   "thread_worst_delta_e": 13.0,
    "trims_per_1000": 1.0,
    "uncovered_checked": true,
    "uncovered_total_mm2": 0.0,
-   "uncovered_wanted_mm2": 1091.0,
+   "uncovered_wanted_mm2": 5729.5,
    "uncovered_worst_mm2": 0.2
   },
-  "score": 100
+  "score": 58
  },
  "photo/screenshot_phone_ui_golke.jpg @ 80mm/hat_front": {
   "findings": [

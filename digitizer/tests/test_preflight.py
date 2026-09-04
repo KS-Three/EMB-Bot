@@ -52,7 +52,10 @@ from digitizer_core.preflight import (
     _CONTOUR_RING_UNREACHABLE,
     _PHOTO_TONAL_TECHNIQUES,
     _TONAL_FILL_BAND_MM,
+    _best_loaded_spool_error,
     _coverage_map,
+    _owning_region_id,
+    _region_color_errors,
     run_preflight,
 )
 from tests.conftest import PLAN_CFG_KW, TESTDATA, cfg
@@ -263,6 +266,253 @@ def test_a_bimodal_thread_is_judged_by_its_worst_region_not_the_pool():
     # The worst-region number rides out as the metric to watch.
     assert report["metrics"]["thread_worst_delta_e"] == hit[0]["extra"]["delta_e"]
     json.dumps(report)
+
+
+# --- Thread colour fidelity on a BLEND design (2026-09-04) -------------------
+#
+# A gradient region does not sew in one spool. The blend tier emits shade
+# bands whose runs carry `StitchRun.shade_thread_index`, and stage 7's
+# `_shade_blocks` sews one StitchBlock per shade — so scoring a region
+# against its single `region.thread_index` compared a five-cone sweep to
+# whichever one cone the region happened to carry. Measured on the committed
+# fixtures at 80 mm/left_chest before this changed: `gradient_ramp_linear`
+# read a 28.1 dE00 BLOCK against one thread where its five bands each read
+# 3.9-7.7 against their own; `gradient_ramp_radial` read 12.3 (block) where
+# its bands read 4.0-6.3. So `thread_worst_delta_e` — the number this check
+# exists to publish across a re-digitize — could move the WRONG WAY on a
+# real improvement, precisely the failure the 2026-08-11 per-region rewrite
+# existed to end, one level down.
+
+
+def _single_thread_delta_e(p, c, region) -> float:
+    """The pre-2026-09-04 reading: this region's whole eroded mask against
+    its one `region.thread_index`.
+
+    Recomputed rather than pinned as a literal so the tests below measure
+    the CHANGE and not a snapshot of one render. It comes out of the live
+    function on purpose — handed an EMPTY plan, the region has no shade run,
+    so `_region_color_errors` takes the untouched single-row path and
+    returns exactly the row it returned before shade rows existed.
+    """
+    from types import SimpleNamespace
+
+    rows = _region_color_errors(p, SimpleNamespace(regions=[region]),
+                                StitchPlan(blocks=[], palette=[]), c)
+    assert len(rows) == 1, "the single-row path must survive an empty plan"
+    return rows[0]["delta_e"]
+
+
+def _shade_cones(plan, region_shape_id: str) -> set[int]:
+    """The chart indices this region's own runs actually sew."""
+    return {r.shade_thread_index for _b, r in plan.iter_runs()
+            if _owning_region_id(r.shape_id, {region_shape_id})
+            == region_shape_id and r.shade_thread_index is not None}
+
+
+def test_each_shade_band_is_scored_against_the_cone_that_band_sews():
+    """The fix, on the fixture whose single-thread reading was worst.
+
+    `gradient_ramp_linear` plans ONE region and FIVE blocks: the region
+    carries thread 3644 and the machine loads four more. Scored as one
+    region that read 28.1 dE00 and blocked. Scored per band — each against
+    the cone it sews, on the pixels its own stitches land on — the worst
+    band reads well under half that, and the check de-escalates to a warning
+    an operator can act on.
+
+    Pinned as a MECHANISM, not a magic number: rows outnumber regions, every
+    row names a cone the plan really sews, and the worst row is strictly
+    better than the single-thread reading the same pixels used to produce.
+    """
+    from digitizer_core.stage1_prep import prep
+
+    art = PHOTO / "gradient_ramp_linear.png"
+    c = cfg(**PLAN_CFG_KW)
+    result, plan_ = digitize(art, c)
+    p = prep(art, c)
+
+    assert len(result.regions) == 1, "fixture drift: expected one ramp region"
+    region = result.regions[0]
+    cones = _shade_cones(plan_, region.shape_id)
+    assert len(cones) > 1, "fixture drift: the ramp must sew several cones"
+
+    rows = _region_color_errors(p, result, plan_, c)
+    assert len(rows) == len(cones) > len(result.regions)
+    # Every row is a cone the machine actually loads for this region — not
+    # the region's one nominal thread, and nothing invented.
+    assert {r["thread_index"] for r in rows} == cones
+    # Each row names its own band, so the finding's "the shape it sews (...)"
+    # points somewhere, and somewhere DIFFERENT per band.
+    assert len({r["shape_id"] for r in rows}) == len(rows)
+    assert all(r["shape_id"].startswith(region.shape_id) for r in rows)
+
+    single = _single_thread_delta_e(p, c, region)
+    assert single > DELTA_E_CLEARLY_DIFFERENT
+    worst = max(r["delta_e"] for r in rows)
+    assert worst < single / 2.0, (
+        f"per-band worst {worst:.2f} must be far under the single-thread "
+        f"{single:.2f} this fixture's whole ramp used to score")
+
+    report = run_preflight(result, plan_, c, image=art)
+    hits = [f for f in report["findings"] if f["code"] == THREAD_MATCH_POOR]
+    assert hits, "the ramp is still visibly off in places — stay honest"
+    assert all(f["severity"] == "warn" for f in hits), \
+        "no band is clearly a different colour once each is judged on its own"
+    assert report["metrics"]["thread_worst_delta_e"] == pytest.approx(
+        round(worst, 1))
+
+
+def test_a_band_wearing_the_wrong_cone_is_no_longer_hidden_by_its_region():
+    """The other direction, and why this is more than a nicer number.
+
+    On `repro_gradient_white_icon` one band of `S5afb1e0a` sews 1306 Devil
+    Red across artwork that 2521 Fuchsia — a cone THIS DESIGN ALREADY LOADS
+    — matches at 3.8 dE00. That band is 8% of its region's pixels, so the
+    whole-region median against Fuchsia read 2.4 and the design graded a
+    clean A. Per band it reads 13.0 and blocks, with a free swap available.
+
+    A check that cannot see a spool sitting 9 dE00 from the artwork it sews,
+    when a better spool is already on the machine, is the failure this whole
+    instrument was rewritten to stop.
+    """
+    from digitizer_core.stage1_prep import prep
+    from digitizer_core.threads import chart_for
+
+    art = PHOTO / "repro_gradient_white_icon.png"
+    c = cfg(**PLAN_CFG_KW)
+    result, plan_ = digitize(art, c)
+    p = prep(art, c)
+    chart = chart_for(c)
+
+    rows = _region_color_errors(p, result, plan_, c)
+    assert len(rows) > len(result.regions)
+
+    worst = max(rows, key=lambda r: r["delta_e"])
+    assert worst["delta_e"] > DELTA_E_CLEARLY_DIFFERENT
+
+    # Its own region, scored the old way, is clean — that is the hiding.
+    region = next(r for r in result.regions
+                  if worst["shape_id"].startswith(r.shape_id)
+                  and _shade_cones(plan_, r.shape_id))
+    assert _single_thread_delta_e(p, c, region) < DELTA_E_VISIBLE
+
+    # And the remedy is free: a cone this design already sews is far closer.
+    loaded = sorted({r["thread_index"] for r in rows})
+    best_err, best_spool = _best_loaded_spool_error(worst["_lab_px"], loaded,
+                                                    chart)
+    assert best_spool != worst["thread_index"]
+    assert worst["delta_e"] - best_err > DELTA_E_VISIBLE
+
+    hits = [f for f in run_preflight(result, plan_, c, image=art)["findings"]
+            if f["code"] == THREAD_MATCH_POOR]
+    assert any(f["severity"] == "block" for f in hits)
+    assert any(f["extra"]["worst_shape_id"] == worst["shape_id"]
+               for f in hits)
+
+
+def test_a_flat_design_scores_exactly_one_row_per_region_as_before():
+    """The byte-identity half of the promise. Nothing without shade runs may
+    move: every flat region, every satin, every non-gradient design keeps the
+    same single row, with the same `shape_id` and the same `thread_index` it
+    had before shade rows existed."""
+    from digitizer_core.stage1_prep import prep
+
+    c = cfg(**PLAN_CFG_KW)
+    result, plan_ = digitize(ART, c)
+    p = prep(ART, c)
+
+    assert not any(r.shade_thread_index is not None
+                   for _b, r in plan_.iter_runs()), "fixture drift: not flat"
+
+    rows = _region_color_errors(p, result, plan_, c)
+    assert len(rows) == len(result.regions)
+    by_id = {r["shape_id"]: r for r in rows}
+    assert by_id.keys() == {r.shape_id for r in result.regions}
+    for region in result.regions:
+        assert by_id[region.shape_id]["thread_index"] == region.thread_index
+        # And the row is the one the empty-plan path produces, unchanged.
+        assert by_id[region.shape_id]["delta_e"] == pytest.approx(
+            _single_thread_delta_e(p, c, region))
+
+
+def test_a_two_shade_region_is_judged_shade_by_shade_not_as_one_spool():
+    """The contract at unit scale, with no pipeline in the way.
+
+    ONE region over two painted zones, each exactly the colour of the cone
+    that zone's own band sews. The region carries the smaller zone's thread,
+    so judged as one spool it is a red-vs-blue catastrophe and the check
+    blocks; judged band by band, each band sits on its own cone and the
+    report is clean. Every ingredient is synthetic, so this pins the RULE
+    rather than any fixture's current rendering.
+
+    Geometry is derived from `p.art_bbox` rather than from the pixels
+    painted above it: stage 1 rescales the raster (400x500 in, 427x533 out
+    at this target width), so original image coordinates do not address the
+    prepped raster preflight rasterizes back over.
+    """
+    from types import SimpleNamespace
+
+    from shapely.geometry import Polygon
+
+    from digitizer_core.regions import Region
+    from digitizer_core.stage1_prep import prep
+    from digitizer_core.threads import chart_for, rgb_to_lab
+
+    c = cfg()
+    chart = chart_for(c)
+    left_i = chart.nearest_index(rgb_to_lab(np.array([[230, 60, 60]]))[0])
+    right_i = chart.nearest_index(rgb_to_lab(np.array([[60, 60, 230]]))[0])
+    left_rgb, right_rgb = chart[left_i].rgb, chart[right_i].rgb
+
+    # 40% the region's own cone, 60% the other, so the whole-region median
+    # lands unambiguously in the second population rather than straddling a
+    # 50/50 split.
+    img = np.full((400, 500, 3), 255, np.uint8)
+    img[100:300, 100:220] = left_rgb[::-1]      # BGR, the ndarray convention
+    img[100:300, 220:400] = right_rgb[::-1]
+    p = prep(img, c)
+
+    x0, y0, x1, y1 = p.art_bbox
+    px_cx, px_cy = (x0 + x1) / 2.0, (y0 + y1) / 2.0
+    seam = x0 + 0.4 * (x1 - x0)
+
+    def mm(px, py):
+        return ((px - px_cx) / p.px_per_mm, (py - px_cy) / p.px_per_mm)
+
+    pad = 3
+    poly = Polygon([mm(x0 + pad, y0 + pad), mm(x1 - pad, y0 + pad),
+                    mm(x1 - pad, y1 - pad), mm(x0 + pad, y1 - pad)])
+    region = Region(shape_id="Sramp", polygon=poly, thread_index=left_i,
+                    thread_number=chart[left_i].number,
+                    area_mm2=float(poly.area))
+    result = SimpleNamespace(regions=[region])
+
+    def band(x_from, x_to, shade, i):
+        """Fill rows across one zone, stamped with the cone that zone sews
+        and named the way `blend_fill` names a band's runs."""
+        return [StitchRun(points=[mm(x_from, y), mm(x_to, y)],
+                          shape_id=f"Sramp-blend{i}", shade_thread_index=shade)
+                for y in range(int(y0) + pad + 1, int(y1) - pad, 2)]
+
+    runs = (band(x0 + pad + 1, seam - 4, left_i, 0)
+            + band(seam + 4, x1 - pad - 1, right_i, 1))
+    plan_ = StitchPlan(blocks=[StitchBlock(thread_index=left_i,
+                                           thread_number=chart[left_i].number,
+                                           rgb=left_rgb, runs=runs)],
+                       palette=[])
+
+    # Scored as one region against its one thread, the blue zone condemns it.
+    assert _single_thread_delta_e(p, c, region) > DELTA_E_CLEARLY_DIFFERENT
+
+    rows = _region_color_errors(p, result, plan_, c)
+    assert len(rows) == 2
+    assert {r["thread_index"] for r in rows} == {left_i, right_i}
+    for row in rows:
+        assert row["delta_e"] < DELTA_E_VISIBLE, (
+            f"{row['shape_id']} sews the cone its own pixels are painted; "
+            f"it must read clean, not {row['delta_e']:.1f}")
+
+    assert THREAD_MATCH_POOR not in _codes(
+        run_preflight(result, plan_, c, image=img))
 
 
 # --- Lettering size ----------------------------------------------------------
@@ -1693,6 +1943,177 @@ def test_without_the_artwork_the_uncovered_check_is_skipped_and_says_so(whitebg,
     assert m["uncovered_worst_mm2"] is None
     assert m["uncovered_wanted_mm2"] is None
 
+
+# --- The uncovered check on a BLEND design (2026-09-04) ----------------------
+
+def test_the_uncovered_check_actually_examines_a_blend_regions_ramp():
+    """It never did before, and said "clean" about it.
+
+    `_uncovered_findings` decided which regions to examine by testing
+    `region.shape_id in {run.shape_id for ...}`. A blend region's bands are
+    named `<shape_id>-blend<i>`, so the bare region id is in that set for NO
+    gradient region and every one of them was skipped. It failed silently,
+    which is the bad way: with nothing claimed there is nothing wanted, so
+    `gradient_ramp_radial` — whose single region IS the whole subject —
+    reported `uncovered_wanted_mm2` 0.0 and a clean report about artwork the
+    check had not looked at.
+
+    The guard is the wanted area, not the finding: this fixture sews fine,
+    so the honest report is "examined several thousand mm2, found nothing".
+    """
+    art = PHOTO / "gradient_ramp_radial.png"
+    c = cfg(**PLAN_CFG_KW)
+    result, plan_ = digitize(art, c)
+
+    assert all(r.shape_id not in {run.shape_id for _b, run in plan_.iter_runs()}
+               for r in result.regions), \
+        "fixture drift: this fixture must sew its regions as named bands"
+
+    report = run_preflight(result, plan_, c, image=art)
+    m = report["metrics"]
+    assert m["uncovered_checked"] is True
+    # The ramp really was measured. Its own claimed area is thousands of
+    # mm2 at 80 mm; anything near zero means the skip is back.
+    assert m["uncovered_wanted_mm2"] > 1000.0
+    assert m["uncovered_worst_mm2"] == 0.0
+    assert _uncovered(report) is None
+
+
+def test_a_bare_patch_inside_a_blend_region_is_found_and_named():
+    """The positive case for the same fix, carved rather than hoped for.
+
+    One band's runs are dropped from the finished plan — the shape of a real
+    tier failure (a band that plans but sews nothing) — and the check must
+    report the hole and attribute it to the REGION, not to the band id the
+    runs carried. Before the fix this reported nothing at all, because the
+    region was never examined in the first place.
+    """
+    art = PHOTO / "gradient_ramp_radial.png"
+    c = cfg(**PLAN_CFG_KW)
+    result, plan_ = digitize(art, c)
+    region = result.regions[0]
+
+    # Drop the largest band wholesale, leaving its stripe of artwork bare.
+    by_band: dict[str, float] = {}
+    for _b, run in plan_.iter_runs():
+        by_band[run.shape_id] = by_band.get(run.shape_id, 0.0) + run.length_mm
+    victim = max(by_band, key=by_band.get)
+    for block in plan_.blocks:
+        block.runs = [r for r in block.runs if r.shape_id != victim]
+    plan_.blocks = [b for b in plan_.blocks if b.runs]
+
+    report = run_preflight(result, plan_, c, image=art)
+    found = _uncovered(report)
+    assert found is not None, f"dropping {victim} must leave bare artwork"
+    assert found["severity"] == "warn"
+    # Attribution is to the region a person can go look at, not the band.
+    ids = {s["shape_id"] for s in found["extra"]["shapes"]}
+    assert region.shape_id in ids, f"expected the ramp region, got {ids}"
+    assert report["metrics"]["uncovered_worst_mm2"] > 0.0
+
+
+def test_one_regions_hole_no_longer_erases_the_region_nested_inside_it():
+    """The second defect in `_uncovered_findings`, and not an id bug at all.
+
+    Every region was filled into ONE shared mask — exterior in 1, interiors
+    back out in 0 — so a ring's hole punched out the artwork a DIFFERENT
+    region legitimately fills, and which regions survived depended on the
+    order they were listed in. The ramp work is what made someone look, and
+    there it is large: on `repro_gradient_white_icon` the shared mask claimed
+    136,341 px where the union claims 802,474. It is NOT gradient-only,
+    though — `photo/logo_bridge_bar.jpg` carries no derived run id at all and
+    still gained 551.0 -> 1,381.2 mm2 of examined area — which is why this
+    test is built from two plain regions and no ramp.
+
+    Carved rather than hoped for: a square annulus with a disc nested in its
+    hole, the disc listed FIRST so the ring's hole is painted after it, and
+    half the disc left bare. Under the shared mask the disc claims nothing,
+    so the bare half is not artwork anybody wanted covered and the check says
+    the design is clean. The delta assertion is the direct measurement — the
+    disc's own claim, read as the difference the region makes to the wanted
+    area — so it does not depend on how the erosion is accounted.
+    """
+    from types import SimpleNamespace
+
+    from shapely.geometry import Polygon
+
+    from digitizer_core.regions import Region
+    from digitizer_core.stage1_prep import prep
+    from digitizer_core.threads import chart_for
+
+    c = cfg()
+    chart = chart_for(c)
+    ink = (60, 60, 200)
+
+    img = np.full((400, 400, 3), 255, np.uint8)
+    img[80:320, 80:320] = ink[::-1]              # BGR, the ndarray convention
+    p = prep(img, c)
+
+    x0, y0, x1, y1 = p.art_bbox
+    px_cx, px_cy = (x0 + x1) / 2.0, (y0 + y1) / 2.0
+    w, h = x1 - x0, y1 - y0
+
+    def mm(px, py):
+        return ((px - px_cx) / p.px_per_mm, (py - px_cy) / p.px_per_mm)
+
+    def box(fx0, fy0, fx1, fy1) -> list[tuple[float, float]]:
+        return [mm(x0 + fx0 * w, y0 + fy0 * h), mm(x0 + fx1 * w, y0 + fy0 * h),
+                mm(x0 + fx1 * w, y0 + fy1 * h), mm(x0 + fx0 * w, y0 + fy1 * h)]
+
+    hole = box(0.30, 0.30, 0.70, 0.70)
+    ring_poly = Polygon(box(0.03, 0.03, 0.97, 0.97), [hole])
+    disc_poly = Polygon(box(0.36, 0.36, 0.64, 0.64))
+    assert ring_poly.disjoint(disc_poly), \
+        "the disc must sit inside the ring's HOLE, touching no material"
+
+    def region(shape_id, poly):
+        return Region(shape_id=shape_id, polygon=poly, thread_index=0,
+                      thread_number=chart[0].number, area_mm2=float(poly.area))
+
+    ring, disc = region("Sring", ring_poly), region("Sdisc", disc_poly)
+
+    # Rows dense enough to cover what they cross: the ring everywhere, and
+    # only the LEFT half of the disc.
+    hx0, hx1 = x0 + 0.30 * w, x0 + 0.70 * w
+    dy0, dy1 = y0 + 0.36 * h, y0 + 0.64 * h
+    dx0, dmid = x0 + 0.36 * w, x0 + 0.50 * w
+    runs = []
+    for py in range(int(y0 + 0.04 * h), int(y0 + 0.96 * h)):
+        if dy0 < py < dy1:                       # a row through the hole
+            runs.append(StitchRun(points=[mm(x0 + 0.04 * w, py), mm(hx0, py)],
+                                  kind=st.FILL, shape_id="Sring"))
+            runs.append(StitchRun(points=[mm(hx1, py), mm(x0 + 0.96 * w, py)],
+                                  kind=st.FILL, shape_id="Sring"))
+            runs.append(StitchRun(points=[mm(dx0, py), mm(dmid, py)],
+                                  kind=st.FILL, shape_id="Sdisc"))
+        else:
+            runs.append(StitchRun(points=[mm(x0 + 0.04 * w, py),
+                                          mm(x0 + 0.96 * w, py)],
+                                  kind=st.FILL, shape_id="Sring"))
+    plan_ = StitchPlan(blocks=[StitchBlock(thread_index=0,
+                                           thread_number=chart[0].number,
+                                           rgb=chart[0].rgb, runs=runs)],
+                       palette=[])
+
+    both = run_preflight(SimpleNamespace(regions=[disc, ring]), plan_, c,
+                         image=img)
+    found = _uncovered(both)
+    assert found is not None, "half the disc is bare; something must fire"
+    # The discriminator: under the shared mask this reads {'Sring'} — the
+    # ring's own unsewn margin — and the disc's bare half is not artwork
+    # anybody wanted covered, because the disc claimed nothing.
+    ids = {s["shape_id"] for s in found["extra"]["shapes"]}
+    assert "Sdisc" in ids, f"expected the nested region, got {ids}"
+
+    # The disc's own claim, measured as the difference it makes. Zero under
+    # the shared mask, because the ring's hole erased it.
+    ring_only = run_preflight(SimpleNamespace(regions=[ring]), plan_, c,
+                              image=img)
+    gained = (both["metrics"]["uncovered_wanted_mm2"]
+              - ring_only["metrics"]["uncovered_wanted_mm2"])
+    assert gained > 0.5 * disc_poly.area, (
+        f"the nested region claims {gained:.0f} mm2 of its own "
+        f"{disc_poly.area:.0f}; its hole-mate erased it")
 
 # --- Thread fidelity on the photo route (2026-08-24) -------------------------
 #

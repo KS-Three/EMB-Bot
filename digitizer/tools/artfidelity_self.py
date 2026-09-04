@@ -485,7 +485,8 @@ def region_excess_over_best(lab_px: np.ndarray, assigned: int,
     return float(max(0.0, np.median(per_pixel_excess)))
 
 
-def colour_score(image, result, cfg: PipelineConfig) -> tuple[float, float | None]:
+def colour_score(image, result, plan,
+                 cfg: PipelineConfig) -> tuple[float, float | None]:
     """-> (0..1 score, median per-region excess delta-E).
 
     For each region: how much worse is the spool we assigned it than the best
@@ -501,16 +502,20 @@ def colour_score(image, result, cfg: PipelineConfig) -> tuple[float, float | Non
     smooth ramp into a handful of cones puts regions on threads that
     demonstrably better threads were available for.
 
-    Median over REGIONS, never over pooled pixels — see
-    `region_excess_over_best` for the two ways the floor was got wrong first,
-    and why pooling is this repo's settled anti-pattern rather than a taste
-    call.
+    Median over the rows `_region_color_errors` scores, never over pooled
+    pixels — see `region_excess_over_best` for the two ways the floor was got
+    wrong first, and why pooling is this repo's settled anti-pattern rather
+    than a taste call. Since 2026-09-04 a row is one region on flat work and
+    one SHADE BAND on a blend, so `plan` is needed to find the bands: a
+    gradient region used to contribute a single row scored against one of the
+    five cones it sews, which charged its other four bands for a compression
+    error they did not make.
 
     Returns `(1.0, None)` when no region is scoreable — a design too small or
     too thin to sample cannot be charged for colour it was never measured on.
     """
     p = prep(image, cfg)
-    rows = _region_color_errors(p, result, cfg)
+    rows = _region_color_errors(p, result, plan, cfg)
     if not rows:
         return 1.0, None
 
@@ -546,7 +551,7 @@ def score_image(image_path: str | Path,
 
     coverage, O_f, A_f, dx_mm, dy_mm = register(ours, art)
     structure = ms_ssim(O_f, A_f)
-    colour, median_excess = colour_score(image_path, result, cfg)
+    colour, median_excess = colour_score(image_path, result, plan, cfg)
 
     composite = 100.0 * (WEIGHTS[0] * coverage
                          + WEIGHTS[1] * colour

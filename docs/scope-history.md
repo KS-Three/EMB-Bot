@@ -4549,3 +4549,72 @@ takes).
 - Tests: a fabric's density reaches both blend paths and unset is
   byte-identical (`test_stage6_blend.py`, 39); the pull-comp spy test now
   also asserts the row stage 7 resolved arrives at the tier.
+
+## 2026-09-04 — the `-blend` suffix made four instruments blind, and two of them graded our own work
+
+A shade band's runs do not carry their region's `shape_id`: `stage6_blend`
+stamps `<shape_id>-blend<i>`, the streamline tier `-shade<i>`. Four consumers
+matched a region id against a run id and were therefore blind on every
+gradient design. Found by reading the radial ramp's own scorecard diff, where
+`uncovered_wanted_mm2` read **3862 → 0.0** across a change an independent
+audit had just measured as correct.
+
+- **`preflight._uncovered_findings` examined nothing on a one-region sweep.**
+  It built its sewn-shape set from run ids, so a blend region never matched
+  and was skipped. The area the bare-fabric check actually looked at:
+  `gradient_ramp_radial` **0.0 → 4,875 mm²** on a region that IS the whole
+  80 mm subject, the icon repro **1,091 → 5,729.5** — a fifth of what it
+  should have been looking at, reported clean — `gradient_ramp_linear`
+  0.0 → 3,737, `region_blobs` 0.0 → 3,187. A flat design is untouched:
+  `logo_whitebg` 1,142.8 both sides.
+- **`preflight._region_color_errors` scored five cones as one.** A gradient
+  region sews one `StitchBlock` per accepted shade; the check compared the
+  whole sweep to whichever single `thread_index` the region carried. It emits
+  ONE ROW PER SHADE now, each scored on the pixels that shade's own stitches
+  land on (its runs drawn at one fill row's width inside the region mask),
+  same estimator and floors otherwise, and `thread_worst_delta_e` becomes the
+  worst per-BAND error. **The numbers get worse because they get true:** the
+  radial fixture's worst ΔE 12.3 → 6.3 (one `block` becomes three honest
+  `warn`s), but the icon repro goes **A 100 → D 58** because one of its bands
+  wears a cone 13.0 ΔE from the artwork it covers — a real coarseness in the
+  five-shade quantisation that the region-level average hid. `region_blobs`
+  F 22 → F 0. A flat design is byte-identical, row for row.
+- **The service filed a gradient's sew order under names no review shape
+  has.** `_sew_facts` keyed on the raw run id, so the repro's three band
+  regions came back with `sew_index`, `sew_block` and `tier` all None — the
+  review screen showed no sew position and no tier for the whole ramp — and
+  `_block_shape_ids` knew only the `-blend` suffix, so a streamline design's
+  `-shade<i>` ids would have leaked to the client. Both take the region set
+  now.
+- **And one region's HOLE erased the region nested inside it** — not an id
+  bug at all, and NOT gradient-only — the ramp work is only what made
+  someone look. `_uncovered_findings` filled every region into ONE shared
+  mask,
+  exteriors in 1 and interiors back out in 0, so a ring's hole punched out
+  artwork a different region legitimately fills and the damage depended on
+  region order. Each region now rasterizes into its own scratch mask and is
+  OR-ed in — the union each region's claim always meant. On
+  `repro_gradient_white_icon` the shared mask claimed **136,341 px** where
+  the union claims **802,474**: 83% of the design's own artwork silently
+  unexamined, which on this check reads as a clean report. **The recapture
+  then caught it on flat work**, which the first version of this entry said
+  it could not: `photo/logo_bridge_bar.jpg` — 77 regions, ZERO derived run
+  ids, so the suffix rule cannot touch it — carries 2,053.5 mm² where one
+  region's hole covers another region, and its examined area rises
+  **551.0 → 1,381.2 mm²**. Flat designs have been losing claim to this for
+  as long as the check has existed.
+- **One rule, `preflight._owning_region_id`**, with the trap recorded: a
+  prefix test is NOT a substitute, because region ids are not prefix-free
+  (the repro plans both `S5afb1e0a` and `S5afb1e0a-2`, so `S5afb1e0a-2-blend0`
+  prefix-matches the wrong one). `tools/artfidelity_self.py` takes the plan
+  now for the same reason.
+- The band mask stays at `machine.FILL_ROW_MM` rather than the row stage 7
+  resolves for the fabric, and the comment now says why: it is a SELECTION
+  width, the two agree on every corpus fabric (`density_adjust` 1.0), and the
+  integer-pixel rounding swamps the ~0.011 mm they differ by on a pile preset.
+  Sharpening it is an instrument change wanting its own measurement.
+- Tests: 7 new in `test_preflight.py` (87 collected in the file), 1 in
+  `test_service.py` (125 + 1 skipped). The union test is carved, not hoped
+  for: a square annulus with a disc nested in its hole, the disc listed first
+  and half of it left bare — under the shared mask the finding names only the
+  ring.

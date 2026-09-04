@@ -33,7 +33,7 @@ from digitizer_core import machine
 from digitizer_core.adapter import design_size_mm, design_to_pattern, plan_to_design
 from digitizer_core.manual import build_manual_result
 from digitizer_core.pipeline import build_generation, finish_generation, plan_stitches
-from digitizer_core.preflight import run_preflight
+from digitizer_core.preflight import _owning_region_id, run_preflight
 from digitizer_core.stage0_classify import CLASSES
 from digitizer_core.threads import DEFAULT_BRAND, brand_index, load_chart
 
@@ -528,8 +528,19 @@ _KIND_TIER_RANK = {"satin": 3, "fill": 2, "run": 1, "bean": 1}
 _RANK_TIER = {3: "satin", 2: "fill", 1: "run"}
 
 
-def _sew_facts(plan) -> dict[str, dict]:
+def _sew_facts(plan, region_ids: set[str] | None = None) -> dict[str, dict]:
     """shape_id -> {sew_index, sew_block, tier}, read off the EMITTED plan.
+
+    Keyed on the REGION a run belongs to, not on the run's own id. A shade
+    band's runs carry a derived id (`<shape_id>-blend<i>`, or `-shade<i>` on
+    the streamline tier), so keying on the raw id filed a gradient's bands
+    under names no review shape has and left every one of those regions with
+    `sew_index`/`sew_block`/`tier` = None — measured on the icon repro,
+    2026-09-04: 3 of its 8 regions, exactly the three that sew as bands, so
+    the review screen showed no sew position and no tier for the whole ramp.
+    `preflight._owning_region_id` carries the rule and why both an equality
+    test and a naive prefix test get it wrong; `region_ids` is optional only
+    so a caller with no result in hand keeps the old keying.
 
     The layers panel needs to order shapes by when they sew and to name the
     tier each one sewed as. Both are read from the finished plan rather than
@@ -540,7 +551,8 @@ def _sew_facts(plan) -> dict[str, dict]:
     facts: dict[str, dict] = {}
     for bi, block in enumerate(plan.blocks):
         for run in block.runs:
-            sid = run.shape_id
+            sid = (_owning_region_id(run.shape_id, region_ids)
+                   if region_ids else run.shape_id)
             if not sid:
                 continue
             f = facts.setdefault(sid, {"sew_index": len(facts), "sew_block": bi,
@@ -554,7 +566,8 @@ def _sew_facts(plan) -> dict[str, dict]:
 def _review_payload(result, plan=None) -> dict:
     """The half a review screen edits: what shapes are here, in what thread —
     and, when the plan is in hand, when each sews and as what tier."""
-    facts = _sew_facts(plan) if plan is not None else {}
+    facts = (_sew_facts(plan, {r.shape_id for r in result.regions})
+             if plan is not None else {})
     none = {"sew_index": None, "sew_block": None, "tier": None}
     return {
         "palette": result.palette,
@@ -631,7 +644,7 @@ def _review_payload(result, plan=None) -> dict:
     }
 
 
-def _stats_payload(plan, design: dict) -> dict:
+def _stats_payload(plan, design: dict, region_ids: set[str] | None = None) -> dict:
     """What the operator is about to sew.
 
     Counts come from the DESIGN, not the plan, wherever the two can differ. The
@@ -664,19 +677,23 @@ def _stats_payload(plan, design: dict) -> dict:
         # gradient's spools — the download's thread list (`design.colors`) was
         # right the whole time.
         "blocks": [
-            {**cone, "shape_ids": _block_shape_ids(block)}
+            {**cone, "shape_ids": _block_shape_ids(block, region_ids)}
             for cone, block in zip(plan.palette, plan.blocks)
         ],
     }
 
 
-def _block_shape_ids(block) -> list[str]:
+def _block_shape_ids(block, region_ids: set[str] | None = None) -> list[str]:
     """The review shapes a block sews, first-appearance order. A blend band's
     run is tagged `<shape_id>-blend<i>`; the shape is what the review screen
     knows, so the suffix comes off."""
     seen: list[str] = []
     for run in block.runs:
-        sid = run.shape_id.split("-blend")[0] if run.shape_id else ""
+        # `-blend<i>` was the only suffix this knew; the streamline tier
+        # stamps `-shade<i>` and would have leaked a derived id to the client.
+        # `preflight._owning_region_id` is the one rule (2026-09-04).
+        sid = (_owning_region_id(run.shape_id, region_ids) if region_ids
+               else (run.shape_id.split("-blend")[0] if run.shape_id else ""))
         if sid and sid not in seen:
             seen.append(sid)
     return seen
@@ -744,7 +761,8 @@ async def start_digitize(
         return {
             "design": design,
             "review": _review_payload(result, plan),
-            "stats": _stats_payload(plan, design),
+            "stats": _stats_payload(plan, design,
+                                    {r.shape_id for r in result.regions}),
             "warnings": plan.warnings,
             # Step 9: what will go wrong on the machine, said before sewing.
             # None (not a passing report) when the caller turned it off, so
@@ -839,7 +857,8 @@ async def start_digitize_manual(
         return {
             "design": design,
             "review": _review_payload(result, plan),
-            "stats": _stats_payload(plan, design),
+            "stats": _stats_payload(plan, design,
+                                    {r.shape_id for r in result.regions}),
             "warnings": plan.warnings,
             # No artwork ever backed this generation, so the thread-match and
             # photo-guardrail checks are skipped exactly as they are for a
