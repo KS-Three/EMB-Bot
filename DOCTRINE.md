@@ -512,6 +512,41 @@ its hedge as it is copied forward** — is why this file is split.
 
 ## Gotchas — cost someone a session once
 
+- **There are TWO segmenting lanes, and a rule one of them has is not a rule
+  the other has. Grep the other lane before you build a mechanism.** The flat
+  lane (`stage2_quantize._quantize_population`) has run "majority filter, then
+  phantom-blend dissolve" since before the photo lane existed; the SLIC+RAG
+  lane (`stage2_photo_segment.segment`) never got it, which is the whole of
+  Bridge Bar's six grey JPEG-halo cones (defect 27). The record was not silent
+  either — `Prep.bg_edge_rgb`'s docstring says outright that stage 2 needs it
+  "as a virtual endpoint when testing whether a cluster is an anti-alias
+  blend", so a `grep bg_edge_rgb` found the existing rule in one command.
+  Building the same test from scratch would have shipped a second, differently
+  tuned copy of a rule this repo already has. **The port is also not a copy:**
+  the flat lane's numbers assume its own preceding steps (its 0.9 edge fraction
+  assumes the majority filter has thinned halos to one pixel; its
+  "between any two clusters" assumes at most `max_colors` of them), and both
+  had to be restated for a lane that arrives with 57 labels and no majority
+  filter — and its 0.15-0.85 window assumes ONE cluster sitting between two
+  colours, where ringing here arrives as a STACK that tiles the whole segment,
+  so the window had to move from the band to the structure (band-by-band it
+  put the outermost ring at t 0.89, outside the window, and the fixture came
+  out worse than doing nothing). Port the QUESTION verbatim; re-measure every
+  threshold, and check what each one was assuming about its own lane.
+  *(2026-09-04 — scope-history 09-04)*
+
+- **A pass that visibly fires and changes nothing downstream is folding things
+  somewhere they are not adjacent to.** The first cut of the halo dissolve
+  reassigned phantom labels to the nearest surviving colour anywhere in the
+  design, as the flat lane does. On Bridge Bar the outermost grey ring (L 87)
+  found YELLOW (L 86) nearest and landed in the disc's label, on the far side
+  of the black it was ringing: **3,989 px moved, 57 labels became 20, and the
+  connected-component count did not shift by one** — as many shapes split as
+  merged. Region counts, block counts and stitch totals were byte-identical,
+  so every summary read "no change" while the array underneath was being
+  scrambled. If a merge pass moves pixels and the component count is flat,
+  check adjacency before checking the wiring. *(2026-09-04 — same entry)*
+
 - **`machine.SATIN_MAX_WIDTH_MM` is load-bearing in FOUR places, not one.
   Changing it to move the satin/fill decision silently moves three other
   things.** Enumerated 2026-09-02 after a 5.0 → 7.0 edit took the suite from 3
