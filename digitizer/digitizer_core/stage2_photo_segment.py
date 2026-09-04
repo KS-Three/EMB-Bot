@@ -108,8 +108,9 @@ from .stage1_prep import Prep
 from .stage2_quantize import Quant, _quantize_population
 from .stage3_segment import RegionMask, resolve_small_regions
 from .threads import chart_for, rgb_to_lab
-from .warnings_codes import (PHOTO_PALETTE_SELECTED, PHOTO_SEGMENT_REGION_COUNT,
-                             PHOTO_SHADE_DEMAND, TONAL_REGIONS_SPLIT, warn)
+from .warnings_codes import (PHOTO_BLEND_DISSOLVED, PHOTO_PALETTE_SELECTED,
+                             PHOTO_SEGMENT_REGION_COUNT, PHOTO_SHADE_DEMAND,
+                             TONAL_REGIONS_SPLIT, warn)
 
 # --- Step 1: SEEDS oversegmentation -------------------------------------------
 #
@@ -1496,6 +1497,243 @@ def _shade_demand_points(
     return labs, point_weights, regions_with_demand
 
 
+def dissolve_phantom_blends(
+    labels: np.ndarray,
+    valid: np.ndarray,
+    lab_img: np.ndarray,
+    cfg: PipelineConfig,
+    bg_edge_rgb: np.ndarray | None,
+    px_per_mm: float,
+) -> tuple[np.ndarray, np.ndarray | None, list[dict]]:
+    """Fold every merged label that is a COLOUR BLEND of its own two sides
+    into whichever side it is nearer. -> (labels, drop_mask, warnings).
+
+    `drop_mask` marks the pixels whose nearer side was the PAGE — halo that
+    belongs to the background, not to any shape. None when there are none.
+
+    The flat lane's rule, ported to this one. `stage2_quantize.
+    _quantize_population` has dissolved phantom blend clusters since the
+    lane existed, and its comment says why in the terms this function
+    reuses: *"the outermost halo of every shape is a blend of that shape and
+    whatever lies outside it, and background is excluded from clustering, so
+    without this endpoint those halos survive as phantom thread layers
+    (measured on the golden fixture: two extra pale threads, plus ~30 sliver
+    regions that then had to be absorbed downstream)"*. That is verbatim the
+    Bridge Bar defect, one lane over: `docs/kent-review-2026-09-03.md` bills
+    it at four grey cones and half the design's trims, sewing the JPEG's
+    ringing around the black spokes.
+
+    The colour test is the flat lane's, unchanged: `cfg.merge_delta_e` for
+    how close to the line between two colours still reads as a blend of
+    them, and the same 0.15-0.85 window on where it lands, so the two lanes
+    answer that question the same way and can be compared directly. Only the
+    edge-fraction gate differs, and it has to -- see
+    `_PHOTO_PHANTOM_EDGE_FRAC`.
+
+    ONE deliberate difference, and it makes this stricter rather than looser.
+    The flat lane tests a candidate against every OTHER cluster, which is
+    safe when there are at most `max_colors` of them; this lane arrives with
+    tens (57 on Bridge Bar), and "between some pair of 56 colours" is a test
+    almost any colour passes. Endpoints here are the candidate's own
+    ADJACENT labels only -- which is also the truer question, since ringing
+    is a blend of the two things it physically lies between, not of two
+    colours elsewhere in the design.
+
+    The flat lane is untouched by this, on purpose: its goldens stay
+    byte-identical by construction rather than by re-measurement.
+    """
+    from .stage2_quantize import _edge_mask
+
+    ids = np.unique(labels[valid])
+    n_ids = len(ids)
+    if n_ids < 3:
+        # Two labels cannot have anything between them, and one cannot
+        # either. Nothing to test, and no array to rewrite.
+        return labels, None, []
+
+    # Everything below works in a COMPACTED label space over the foreground
+    # pixels only -- `code` runs 0..n_ids-1, `ids[code]` maps back. The
+    # obvious `{j: valid & (labels == j)}` costs one frame-sized bool per
+    # label, which on a 27 px/mm badge with 50-odd labels is several hundred
+    # megabytes for arrays that are read once: the memory ceiling scope
+    # defect 11 was about, reached by a new route. Bincounts over one flat
+    # index cost the foreground, once.
+    edge = _edge_mask(labels, valid)
+    code_v = np.searchsorted(ids, labels[valid])
+    counts = np.bincount(code_v, minlength=n_ids)
+    edge_counts = np.bincount(code_v[edge[valid]], minlength=n_ids)
+    lab_v = lab_img[valid].reshape(-1, 3)
+    means_arr = np.stack(
+        [np.bincount(code_v, weights=lab_v[:, c], minlength=n_ids) for c in range(3)],
+        axis=1,
+    ) / np.maximum(counts, 1)[:, None]
+    means = {j: means_arr[j] for j in range(n_ids)}
+
+    # Adjacency in the same 4-connected sense `_edge_mask` uses, so a label
+    # pair is adjacent here exactly when it contributes edge pixels there.
+    code_frame = np.full(labels.shape, -1, np.int64)
+    code_frame[valid] = code_v
+    adj: dict[int, set[int]] = {j: set() for j in range(n_ids)}
+    for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+        sh = np.roll(code_frame, (dy, dx), (0, 1))
+        touch = (code_frame >= 0) & (sh >= 0) & (sh != code_frame)
+        if touch.any():
+            for a, b in np.unique(np.stack([code_frame[touch], sh[touch]], 1), axis=0):
+                adj[int(a)].add(int(b))
+    # The page is an endpoint no label can be, because stage 1 took it out of
+    # `valid` before this lane ever saw it -- the same reason the flat lane
+    # needs `bg_edge_rgb`. A label touching background borders it.
+    #
+    # `bg_from_alpha` declines: under an alpha cutout the background is the
+    # GARMENT, and the RGB sitting under transparency is whatever the
+    # exporter happened to leave there (`Prep.bg_edge_rgb`'s own caveat, which
+    # says any check comparing artwork against "the background colour" must
+    # decline when it is set). Without a page endpoint the pass still runs --
+    # it just cannot fold the outer band of a cutout's halo, which is the
+    # right answer when nobody knows what colour that band is blending into.
+    bg_endpoint = (
+        rgb_to_lab(np.asarray(bg_edge_rgb, np.float64).reshape(1, 3))[0]
+        if bg_edge_rgb is not None else None
+    )
+    if bg_endpoint is not None:
+        outside = ~valid
+        for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            touch = valid & np.roll(outside, (dy, dx), (0, 1))
+            for a in np.unique(code_frame[touch]):
+                if int(a) >= 0:
+                    adj[int(a)].add(_PAGE)
+
+    # Each phantom names the side of its OWN step that it is nearer, which
+    # is always one of its own neighbours. The flat lane instead sends a
+    # phantom to the nearest surviving colour anywhere in the design; that
+    # is safe with at most `max_colors` clusters and wrong here. Measured on
+    # Bridge Bar: the outermost grey ring around the black spokes (L 87)
+    # finds YELLOW (L 86) nearest and lands in the disc's own label, on the
+    # far side of the black it was ringing -- 3,989 px moved and the
+    # component count did not shift by one, because as many shapes split as
+    # merged. Sending it to one of its two endpoints cannot do that.
+    target: dict[int, int] = {}
+    for j in range(n_ids):
+        n = int(counts[j])
+        if not n:
+            continue
+        if float(edge_counts[j]) / n < _PHOTO_PHANTOM_EDGE_FRAC:
+            continue
+        ends: list[tuple[int, np.ndarray]] = [
+            (o, means[o]) for o in sorted(adj[j]) if o != _PAGE and counts[o]
+        ]
+        if _PAGE in adj[j] and bg_endpoint is not None:
+            ends.append((_PAGE, bg_endpoint))
+        side = _blend_side(means[j], ends, cfg.merge_delta_e)
+        if side is not None:
+            target[j] = side
+
+    if not target:
+        return labels, None, []
+
+    # Follow each chain to whatever it finally rests on: a stack of rings
+    # (black -> Whale -> Cobblestone -> Skylight -> page) hands every ring
+    # to the one inside it, so an unresolved pointer would leave a phantom
+    # wearing another phantom's id. Cycles cannot happen through a strictly
+    # nearer endpoint, but a raster is not a proof -- the guard is cheap.
+    def settle(j: int) -> int:
+        seen = {j}
+        while j in target:
+            j = target[j]
+            if j in seen:
+                return _PAGE if j == _PAGE else j
+            seen.add(j)
+        return j
+
+    # One remap table, one pass. `remap[c]` is the compacted label pixel `c`
+    # ends up wearing; `to_page` marks the ones that leave the design.
+    remap = np.arange(n_ids)
+    to_page = np.zeros(n_ids, bool)
+    dissolved_px = dropped_px = 0
+    for j in sorted(target):
+        dest = settle(j)
+        if dest == _PAGE:
+            # Page-side of the step: these pixels are more background than
+            # artwork, and the true edge is the midpoint they sit outside.
+            # Keeping them would grow every shape by the full halo stack.
+            to_page[j] = True
+            dropped_px += int(counts[j])
+        else:
+            remap[j] = dest
+        dissolved_px += int(counts[j])
+
+    out = labels.copy()
+    out[valid] = ids[remap[code_v]]
+    drop = None
+    if dropped_px:
+        drop = np.zeros(labels.shape, bool)
+        drop[valid] = to_page[code_v]
+
+    px2mm2 = 1.0 / max(px_per_mm ** 2, 1e-9)
+    return out, drop, [warn(
+        PHOTO_BLEND_DISSOLVED,
+        f"{len(target)} color(s) were edge-only blends of the shapes either "
+        f"side of them — compression or anti-alias halos, not artwork — and "
+        f"were folded into the nearer side instead of sewing as their own "
+        f"thread.",
+        count=len(target),
+        area_mm2=round(dissolved_px * px2mm2, 1),
+        returned_to_background_mm2=round(dropped_px * px2mm2, 1),
+    )]
+
+
+# The virtual endpoint standing for the removed background. Negative so it
+# can never collide with a real label id.
+_PAGE = -1
+
+# What "exists only at edges" means on THIS lane. `cfg.aa_phantom_edge_frac`
+# is 0.9, and it can be that strict on the flat lane because the majority
+# filter runs immediately before it and has already thinned every halo to
+# about one pixel; a one-pixel band is all edge by construction. This lane
+# runs no majority filter, so a halo arrives 2-4 px wide and its interior
+# pixels are not edge pixels: on `logo_bridge_bar.jpg` at 4 px/mm the grey
+# ringing labels read 0.545-1.000 and NONE of the large ones reach 0.9, which
+# is why the first cut of this dissolve fired on 14 sub-floor labels and left
+# every cone standing. 0.5 states the rule in the terms this lane can
+# actually measure -- more than half of this colour's pixels lie on a
+# boundary.
+#
+# It is NOT the discriminator, and should not be read as one: on that fixture
+# two real-artwork labels also clear it (0.562 and 0.619, both ~2 mm² slivers
+# by the red and teal lettering). What keeps them is `_is_blend`. This is the
+# cheap first gate that keeps the O(n²) endpoint search off the 20-odd labels
+# that are plainly interior fields.
+_PHOTO_PHANTOM_EDGE_FRAC = 0.5
+
+
+def _blend_side(cj: np.ndarray, ends: list[tuple[int, np.ndarray]],
+                tol_de: float) -> int | None:
+    """Which of `ends` is `cj` a blend TOWARD? -> that endpoint's id, or None.
+
+    The flat lane's collinearity test (`stage2_quantize.
+    _quantize_population`) — window and tolerance included, so the two lanes
+    cannot drift apart on the question they both ask — with the answer
+    carried back instead of a bare yes. Of every pair `cj` sits between, the
+    tightest fit wins, and within that pair the nearer end: a ring at t 0.2
+    belongs to the shape, at t 0.8 to whatever is beyond it.
+    """
+    best: tuple[float, int] | None = None
+    for a in range(len(ends)):
+        for b in range(a + 1, len(ends)):
+            (ia, ca), (ib, cb) = ends[a], ends[b]
+            ab = cb - ca
+            L = float(np.dot(ab, ab))
+            if L <= 0:
+                continue
+            t = float(np.dot(cj - ca, ab)) / L
+            if not (0.15 < t < 0.85):
+                continue
+            off = float(np.linalg.norm(cj - (ca + t * ab)))
+            if off < tol_de and (best is None or off < best[0]):
+                best = (off, ia if t < 0.5 else ib)
+    return None if best is None else best[1]
+
+
 def kept_masks_to_quant(
     p: Prep,
     cfg: PipelineConfig,
@@ -1839,6 +2077,12 @@ def segment(p: Prep, cfg: PipelineConfig, face_regions=None, bg_mask=None,
     base_valid = valid & ~enclosed if has_enclosed else valid
 
     lab_img = rgb_to_lab(flat_rgb).reshape(h, w, 3)
+    # The artwork's REAL colours, kept whatever the merge below does to
+    # `lab_img`. The phantom-blend test asks whether a colour is an
+    # interpolation of the two either side of it, which is only a
+    # question about the raster as it was delivered — the same reason
+    # the palette reads `p.rgb` rather than the merge's colour space.
+    true_lab = lab_img
     if design_ramp is not None:
         # Kent's gradient ruling (2026-09-03): a design whose ramp fits
         # (`design_ramp.fit_design_ramp` — gradient class, gate passed; the
@@ -1925,6 +2169,27 @@ def segment(p: Prep, cfg: PipelineConfig, face_regions=None, bg_mask=None,
         )
         merged_count = int(len(set(np.unique(merged[base_valid]).tolist())))
 
+    # --- 3.5 Phantom-blend dissolve -----------------------------------------
+    # The flat lane has run this since before the photo lane existed
+    # (`stage2_quantize._quantize_population`, "anti-alias: majority filter,
+    # then phantom-blend dissolve"). This lane never got it, and Bridge Bar
+    # is the bill: four grey cones -- Skylight, Saturn Grey, Silver, Umber --
+    # sewing the JPEG's ringing around the black spokes. Off by default; see
+    # `PipelineConfig.dissolve_phantom_blends`.
+    if cfg.dissolve_phantom_blends and merged_count:
+        merged, blend_drop, blend_warnings = dissolve_phantom_blends(
+            merged, base_valid, true_lab, cfg,
+            None if p.bg_from_alpha else p.bg_edge_rgb, p.px_per_mm)
+        if blend_drop is not None:
+            # Page-side halo leaves the foreground before regions are cut
+            # from it, so nothing downstream ever sees those pixels as
+            # artwork. `base_valid` is the only foreground the extraction
+            # below reads.
+            base_valid = base_valid & ~blend_drop
+        merged_count = int(len(set(np.unique(merged[base_valid]).tolist())))
+    else:
+        blend_warnings = []
+
     # --- 4. Min-area floor ---------------------------------------------------
     # `merge_hierarchical` only ever merges graph-adjacent nodes, but a
     # single merged label can still cover more than one connected component
@@ -1965,7 +2230,7 @@ def segment(p: Prep, cfg: PipelineConfig, face_regions=None, bg_mask=None,
         p,
         cfg,
         kept,
-        floor_warnings,
+        blend_warnings + floor_warnings,
         face_regions=face_regions,
         bg_mask=bg_mask,
         raw_count=slic_count,

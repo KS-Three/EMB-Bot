@@ -96,6 +96,15 @@ class PipelineConfig:
     merge_delta_e: float = 6.0
     aa_iterations: int = 2             # AA-halo majority-filter passes
     aa_phantom_edge_frac: float = 0.9  # cluster >90% edge pixels = phantom blend color
+    # Run that same phantom-blend dissolve on the PHOTO/GRADIENT lane's
+    # merged labels (`stage2_photo_segment.dissolve_phantom_blends`). The
+    # flat lane above has always done it; this lane never has, and a JPEG
+    # logo pays for the gap in cones — `logo_bridge_bar.jpg` sews the
+    # ringing around its black spokes as four grey threads
+    # (`docs/kent-review-2026-09-03.md`). OFF by default: it moves the
+    # region set on every gradient-class design, so it waits on Kent's
+    # look at a render, not on a green suite.
+    dissolve_phantom_blends: bool = False
 
     # Stage 1
     bg_tolerance_lab: float = 6.0      # Delta-E-ish flood tolerance

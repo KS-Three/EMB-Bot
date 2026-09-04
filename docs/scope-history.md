@@ -4145,3 +4145,118 @@ they say 0.15 mm, coverage 2.67 against the fill row and 1.0 against the
 satin spacing, ruled 2026-09-03, and the spec pins both ratios. No engine or
 digitizer change; `stitchviz.THREAD_MM` (0.4) and the JS↔Python parity test
 are untouched.
+
+
+## 2026-09-04 — the photo lane gets the flat lane's phantom-blend dissolve: Bridge Bar's grey cones were the JPEG, not the logo
+
+Kent picked this off the four candidates the docs left open after the
+2026-09-03 review pass. The finding it starts from is that review's Bridge
+Bar section: *"13 thread colours on a four-colour logo ... blocks 6–12
+together: 3,131 stitches (29%), 53 trims (50%), 7 of the 13 colour changes on
+artefacts and text remnants. **Not in any doc.**"*
+
+**It was in a doc — one lane over, as a solved problem.** The flat lane has
+run "anti-alias: majority filter, then phantom-blend dissolve" since before
+the photo lane existed (`stage2_quantize._quantize_population`), and its own
+comment records the bill without it: *"the outermost halo of every shape is a
+blend of that shape and whatever lies outside it, and background is excluded
+from clustering, so without this endpoint those halos survive as phantom
+thread layers (measured on the golden fixture: two extra pale threads, plus
+~30 sliver regions that then had to be absorbed downstream)"*. `Prep.
+bg_edge_rgb`'s docstring says the same thing again. The SLIC+RAG lane never
+got that pass, so **the defect is a missing port, not a missing idea** — which
+is why the fix needs no new colour rule and why the two lanes can now be
+compared directly.
+
+**The mechanism, end to end.** JPEG ringing at a hard edge lays a band of
+intermediate pixels; SLIC keeps it (it is genuinely a different colour), the
+RAG will not merge it (the boundary-contrast rule protects exactly this kind
+of real drawn edge), `resolve_small_regions` will not absorb it (a ring around
+a spoke is one connected component and clears the 2.25 mm² floor easily), the
+palette buys it a medoid, and stage 4's `make_valid` explode finally shatters
+it into hairline shards that each sew as a bean run with a trim. Four steps
+each behaving correctly, and a grey cone at the end of them.
+
+**The port** (`stage2_photo_segment.dissolve_phantom_blends`, called at 3.5,
+after the hierarchical merge and before the min-area floor). Every merged
+label whose pixels are more than half boundary is tested against its OWN
+adjacent labels, plus the page: if its mean Lab sits inside the 0.15–0.85
+window of the segment between two of them and within `cfg.merge_delta_e` of
+that line, it is a blend and folds into whichever end it is nearer. Chains
+settle (a stack of rings hands each to the one inside it). A band nearer the
+PAGE leaves the foreground instead of joining a shape, so the reconstructed
+edge lands at the step's midpoint rather than growing every shape by the whole
+halo stack.
+
+Two deliberate differences from the flat lane, both recorded in the function:
+
+- **Endpoints are the candidate's own neighbours**, not every other colour.
+  The flat lane can afford "between some pair of the others" at ≤ `max_colors`
+  clusters; this lane arrives with 57 on Bridge Bar, where that test passes
+  for almost anything. It is also the truer question — ringing is a blend of
+  the two things it physically lies between.
+- **The edge-fraction gate is 0.5, not `cfg.aa_phantom_edge_frac`'s 0.9**
+  (`_PHOTO_PHANTOM_EDGE_FRAC`). 0.9 works on the flat lane because its
+  majority filter has already thinned every halo to about one pixel; this lane
+  runs no majority filter, so a halo arrives 2–4 px wide and its interior
+  pixels are not edge pixels. Measured: the grey labels read 0.545–1.000 and
+  none of the large ones reach 0.9 — the first cut of this dissolve fired on
+  14 sub-floor labels and left every cone standing. It is NOT the
+  discriminator and the code says so: two real-artwork labels on that fixture
+  also clear 0.5 (0.562 and 0.619), and what keeps them is the colour test.
+
+**Two wrong turns, both caught by measurement rather than by review:**
+
+1. **The first version tested the RAMP-FLATTENED Lab.** `lab_img` at that
+   point has had the design sweep subtracted (Kent's 2026-09-03 gradient
+   ruling) — the merge's colour space, not the artwork's. Whether a colour is
+   an interpolation of its neighbours is a question about the raster as
+   delivered, so the pass now reads `true_lab`, captured before the flatten,
+   for the same reason the palette reads `p.rgb`.
+2. **The first version folded each phantom into the nearest surviving colour
+   ANYWHERE, as the flat lane does.** On Bridge Bar the outermost grey ring
+   (L 87) finds YELLOW (L 86) nearest and lands in the disc's label, on the
+   far side of the black it was ringing: **3,989 px moved and the component
+   count did not shift by one**, because as many shapes split as merged. That
+   is the signature to remember — a pass that visibly fires and changes
+   nothing downstream is folding things somewhere they are not adjacent to.
+
+**Bridge Bar @ 80 mm, `max_colors=6`, satin, left chest** (the review's own
+configuration; its 10,885/106 predate the 09-03/04 fill-row, curve and rail
+work, so the OFF column is today's engine, not that document's):
+
+| | OFF | ON |
+|---|---:|---:|
+| merged labels | 57 | 20 |
+| regions | 74 | **20** |
+| blocks | 13 | **10** |
+| colour changes | 12 | 9 |
+| stitches | 14,607 | **10,991** (−24.8%) |
+| trims | 114 | **55** (−51.8%) |
+| thread | 30.67 m | 26.02 m |
+| region area | 2,229.8 mm² | 2,126.4 mm² (−4.6%) |
+| palette worst excess | 20.76 dE00 | **6.08** |
+
+37 colours dissolved, 249.3 mm², of which 204.8 mm² returned to the
+background. **Six grey cones gone** — 0108 Cobblestone, 0111 Whale, 0145
+Skylight, 0182 Saturn Grey, 0465 Umber, 3971 Silver — and the four the logo
+actually has all survive: 0501 Sun, 0020 Black, 1720 Not Quite Red, 4531
+Caribbean. The palette's worst excess falling by a factor of three is an
+independent read on the same thing: medoids were being spent on ringing.
+
+**The instrument, and the safety case.** `tools/halo_spools.py` bills a plan
+in the units the machine charges — a region is halo-shaped when it is under
+0.5 mm mean width, sits between two things much larger than the thin structure
+it belongs to (grouped first: ringing arrives as a STACK of concentric bands,
+and shard-by-shard every inner shard's only neighbours are other shards), and
+its thread is a Lab interpolation of those two. It reads Bridge Bar at 44 halo
+regions with the flag off and **0** with it on. Across eleven committed
+fixtures it finds halo cones on exactly three — bridge (4), golden_tee (1),
+gaulke (1) — and none on becker, fremont, enthusiast, drone, whitebg, golke,
+summit or tires. Becker is the useful negative: a 1.5 px/mm PNG with plenty of
+thin features and no compression, and the test finds nothing in it.
+
+**DEFAULT OFF.** It moves the region set on every gradient-class design, and
+per Kent's 2026-09-04 ruling the render is the interim judge of quality, so
+this waits on his eyes rather than on a green suite:
+`docs/renders/halo-dissolve-2026-09-04/bridge_bar_off_vs_on.jpg`.

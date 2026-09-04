@@ -350,8 +350,12 @@ hand-rolling it in JS.
   (how many satin/fill verdicts flip when only the polygon's boundary detail
   changes, and what each candidate cure does to the shipped verdicts;
   `--variant` for the cures), `digitizer/tools/recapture_flat_lane_key.py`
-  (the only sanctioned way to move a golden: pre-change tree + control fixture).
-  Run each from `digitizer/` with `.venv/bin/python`.
+  (the only sanctioned way to move a golden: pre-change tree + control fixture),
+  `digitizer/tools/halo_spools.py` (cones a design spends on JPEG/anti-alias
+  ringing rather than on artwork — thin bands, grouped into the stacks stage 4
+  shatters them from, whose thread is a Lab interpolation of the two things
+  they lie between; `--detail` per region). Run each from `digitizer/` with
+  `.venv/bin/python`.
 - **Acceptance A/B contact sheet** (`digitizer/tools/acceptance_ab.py`, pure
   logic in `digitizer_core/tools_acceptance.py`): the phase-4 eyeball loop.
   Runs every image in the gitignored `digitizer/testdata/photo/acceptance/`

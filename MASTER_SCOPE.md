@@ -159,6 +159,8 @@ icon. Cloth pointers added to defects 3, 6 and 16 below.
 
 26. **Satin/fill classifier flips borderline shapes under boundary detail — MEASURED NEGATIVE on eight cures, intrinsic to the thresholds (2026-09-03).** 5 of 219 DT-judged verdicts flip when only the polygon's detail changes (4 on a threshold edge: cv 0.5, aspect 3, `explained` 0.80); spur pruning ×3, the sewing spur rule, a hybrid, raster smoothing ×2 and a regularity band leave 3–12 flips and change 2–48 shipped verdicts, so nothing ships; the mitigation is `_CURVE_MIN_PX_PER_MM`. Open only as a different construction (a margin with memory, or a polygon-native width profile) — Kent's call. `tools/ribbon_stability.py`. *(measured 2026-09-03 — `docs/classifier-stability-2026-09-03.md`)*
 
+27. **Compression halos become their own cones — and the flat lane has dissolved them all along.** `stage2_quantize._quantize_population` runs "majority filter, then phantom-blend dissolve" and its comment records the bill without it ("two extra pale threads, plus ~30 sliver regions"); `Prep.bg_edge_rgb`'s docstring says it again. **The SLIC+RAG lane never got that pass** — so the defect is a missing PORT, not a missing idea. `logo_bridge_bar.jpg` (400 px JPEG, four ink colours) pays it in six grey cones — Cobblestone, Whale, Skylight, Saturn Grey, Silver, Umber — sewing the ringing around its black spokes. **FIXED, DEFAULT OFF** (`cfg.dissolve_phantom_blends`, `stage2_photo_segment.dissolve_phantom_blends`): a merged label that is more than half boundary AND a Lab interpolation of its own two adjacent sides folds into the side it is nearer, the page included, so the rebuilt edge lands at the step's midpoint instead of growing every shape by the halo stack. Bridge Bar 74 → **20** regions, 13 → 10 blocks, 14,607 → 10,991 st, **114 → 55 trims**, palette worst excess 20.76 → **6.08** dE00, silhouette −4.6%; all four real cones survive. `tools/halo_spools.py` bills it — 44 halo regions before, 0 after — and across eleven fixtures finds halo cones on bridge (4), golden_tee (1) and gaulke (1) and NONE on the other eight, Becker (1.5 px/mm PNG, many thin features, no compression) included: the test is specific to compression, not to thin features. **A render is the judge, not the suite** — Kent's 2026-09-04 ruling. *(measured 2026-09-04 — scope-history 09-04; `tests/test_phantom_blend_photo.py`; `docs/renders/halo-dissolve-2026-09-04/`)*
+
 ### Closed — kept numbered, because ten other docs cite them by number
 
 Full text moved to [`docs/scope-history.md`](docs/scope-history.md) 2026-08-27;
@@ -258,10 +260,8 @@ about the facts.
 its own merits.
    Re-orienting the table changes every DST EMB-Bot has written. See "DST codec
    axis bug".
-3. **Turn `split_tonal_regions` on?** Merged but default-OFF. Costs +74%
-   stitches and pushes the palette to its `max_colors + PALETTE_OVERFLOW_K`
-   ceiling. Parked until the sew-out (2026-08-12) — that parking is now
-   indefinite, same as above. See the blend-tier entry and "Latent — gated OFF".
+3. **RESOLVED 2026-08-19, ratified 2026-09-02 — `split_tonal_regions` is ON for photo
+   classes** (`effective_split_tonal`); this said "default-OFF, parked until the sew-out" until today. Cost: defect 20.
 4. **Billing / backend.** Tabled since the pivot; Stripe + an entitlement
    check is the leaning, nothing committed. Needs its own session. See
    `PRODUCT.md`, "Open — not yet decided".
