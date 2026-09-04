@@ -119,9 +119,45 @@ def rasterize_polygon(poly: Polygon) -> tuple[np.ndarray, float, float, float]:
         return np.column_stack([(a[:, 0] - x0) * scale + 2, (a[:, 1] - y0) * scale + 2]).astype(np.int32)
 
     cv2.fillPoly(img, [to_px(poly.exterior.coords)], 255)
+    shrink = bool(poly.is_valid) and poly.area > 0.0
     for ring in poly.interiors:
-        cv2.fillPoly(img, [to_px(ring.coords)], 0)
+        # A hole is painted half a pixel smaller than it is, so its edge lands
+        # where the exterior's does — `hole_px` below, shared with this
+        # function's twin `stage6_satin._rasterize` (2026-09-04).
+        for pts in hole_px(ring, scale, to_px, shrink):
+            cv2.fillPoly(img, [pts], 0)
     return img, scale, x0 - 2 / scale, y0 - 2 / scale
+
+
+# `fillPoly` paints its boundary pixels, so the exterior's edge is material
+# and a hole painted the same way ate its own edge: half a pixel of material
+# gone all round every counter, the medial axis pushed outward by it, and —
+# the rails being set to the NEARER boundary hit — the hole-side rail stopped
+# two half-pixels short of the outline (0.18 mm at 6 px/mm, measured on the
+# icon repro's frame and ring, 2026-09-04; the exterior rail sat within
+# 0.006 mm). A hole is painted half a pixel SMALLER than it is, so its edge
+# lands where the exterior's does. Not by redrawing its boundary as material
+# after the fill: that ring closes a counter a few pixels across to a speck
+# the medial axis trips over (the drone's satin "A" at hat front lost its
+# upper legs — 97% → 54% of its artwork sewn) and roughens larger holes into
+# spurs. A hole too small to survive the shrink is painted as it was.
+# Shared by `rasterize_polygon` below and its twin `stage6_satin._rasterize`
+# (byte-equal by test_shapefield).
+def hole_px(ring, scale: float, to_px, shrink: bool = True) -> list[np.ndarray]:
+    # `shrink=False` paints the hole as it always was — for a polygon with no
+    # material of its own (invalid, or zero area: a hole coincident with its
+    # shell), where shrinking the hole would leave the exterior's own
+    # half-pixel rim standing as a one-pixel loop of "material" that fields
+    # and clusters as a real shape. The old painting cleared that rim too.
+    if not shrink:
+        return [to_px(ring.coords)]
+    hole = Polygon(ring)
+    shrunk = hole.buffer(-0.5 / scale)
+    if shrunk.is_empty:
+        return [to_px(ring.coords)]
+    parts = [shrunk] if shrunk.geom_type == "Polygon" else list(getattr(shrunk, "geoms", []))
+    out = [to_px(part.exterior.coords) for part in parts if part.geom_type == "Polygon" and not part.is_empty]
+    return out or [to_px(ring.coords)]
 
 
 def build_shape_field(poly: Polygon) -> ShapeField | None:

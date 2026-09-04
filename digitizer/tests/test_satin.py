@@ -1599,3 +1599,31 @@ def test_the_far_rail_reaches_the_far_edge_when_the_spine_is_off_centre(ang):
     off_a, off_b = stage6_satin._rail_points(bar, spine, False, 1.2)
     far = max(bnd.distance(Point(p)) for p in off_a[10:-10] + off_b[10:-10])
     assert abs(far - 0.6) < 0.05, f"with the flag off the far rail should still stop 0.6 mm short, got {far:.3f}"
+
+
+# --- The hole-side rail reaches the counter's edge (2026-09-04) --------------
+
+def test_the_hole_side_rail_reaches_the_counter_edge():
+    """`_rasterize` painted a hole with `fillPoly(…, 0)`, whose boundary pixels
+    are part of the fill, so every counter lost half a pixel of material all
+    round while the exterior (painted the same way, in 255) gained one. The
+    medial axis moved outward by that, and with the rails set to the NEARER
+    boundary hit the hole-side rail stopped two half-pixels short of the
+    outline: 0.186 mm on this annulus, 0.18 on the icon repro's frame and
+    ring (measured 2026-09-04), while the exterior rail sat within 0.006 mm.
+    A hole is painted half a pixel smaller now (`shapefield.hole_px`), so
+    its edge lands where the exterior's does. Pinned as where the
+    penetrations land, not as a mask property."""
+    outer = Point(0.0, 0.0).buffer(10.0, quad_segs=64)
+    ring = outer.difference(Point(0.0, 0.0).buffer(7.5, quad_segs=64))
+    runs, report = satin_shape(ring, "S1", underlay_style="none", trim_at_mm=3.0)
+    assert not report["empty"]
+    r = np.array([math.hypot(x, y) for run in runs if run.kind == "satin"
+                  for x, y in run.points])
+    inner, outer_pts = r[r < 8.75], r[r > 8.75]
+    assert inner.size > 100 and outer_pts.size > 100
+    # The inner rail lands on the hole's edge (was 7.69, 0.19 short) and
+    # never inside it; the outer rail was right before and still is.
+    assert float(np.median(inner)) <= 7.5 + 0.06, float(np.median(inner))
+    assert float(inner.min()) >= 7.5 - 0.03, float(inner.min())
+    assert float(np.median(outer_pts)) >= 10.0 - 0.06, float(np.median(outer_pts))
