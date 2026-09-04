@@ -1646,6 +1646,23 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
   color: var(--muted);
   font-variant-numeric: tabular-nums;
 }
+/* The cones the machine loads, one line per sewn block (stats.blocks). */
+.qr-spools {
+  list-style: none;
+  margin: var(--space-2) 0 0;
+  padding: 0;
+  font-size: var(--fs-sm);
+  font-variant-numeric: tabular-nums;
+}
+.qr-spools li { display: flex; align-items: center; gap: var(--space-2); }
+.qr-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  flex: none;
+}
+.qr-spool-m { margin-left: auto; color: var(--muted); }
 
 /* Image panel — upload */
 .uploadbox {

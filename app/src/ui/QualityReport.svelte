@@ -78,17 +78,26 @@
     return out;
   }
 
-  // NO per-colour breakdown here, and it is not an oversight — resist adding
-  // one by zipping `stats.thread_m_by_color` against the colours this app has.
-  // That array is indexed PER SEWN BLOCK against `plan.palette`, which the
-  // service does not send: `StitchPlan`'s own contract spells out that the
-  // per-block list is deliberately not `PipelineResult.palette` (the per-layer
-  // list the review screen edits), because a layer can produce no block or
-  // several, "so the two lists have different lengths and different" identity.
-  // Rendering the bare numbers was tried and cut: thirteen unlabelled metre
-  // figures tell an operator nothing, and labelling them from the wrong list
-  // would quietly hand them a wrong shopping list. A real per-cone breakdown
-  // wants the service to send the per-block cone list alongside the metres.
+  // The per-cone breakdown, labelled from the ONE list that may label it:
+  // `stats.blocks`, the machine's cone list one per sewn block (service
+  // contract 2026-09-04), which is what `thread_m_by_color` is indexed by.
+  // Never the colours this app otherwise has — `review.palette` is per LAYER,
+  // and a layer can produce no block or several, so zipping the metres
+  // against it hands the operator a wrong shopping list (a gradient's five
+  // shades under two layer entries). Rendered only when the two arrays are
+  // the same length, which a job from before the field cannot satisfy; the
+  // bare unlabelled numbers were tried before this and cut.
+  function cones(stats) {
+    const blocks = stats && stats.blocks;
+    const metres = stats && stats.thread_m_by_color;
+    if (!Array.isArray(blocks) || !Array.isArray(metres) || blocks.length !== metres.length) return [];
+    return blocks.map((b, i) => ({
+      number: b.number,
+      name: b.name,
+      rgb: Array.isArray(b.rgb) ? b.rgb : [0, 0, 0],
+      metres: metres[i],
+    }));
+  }
 </script>
 
 {#if entries.length}
@@ -97,6 +106,7 @@
     {#each entries as e (e.id)}
       {@const rows = ordered(e.preflight && e.preflight.findings)}
       {@const bill = facts(e.preflight, e.stats)}
+      {@const spools = cones(e.stats)}
       <div class="qr">
         <div class="qr-head">
           {#if entries.length > 1}<span class="qr-name">{e.label}</span>{/if}
@@ -133,6 +143,19 @@
 
         {#if bill.length}
           <p class="qr-bill">{bill.join(" · ")}</p>
+        {/if}
+        {#if spools.length}
+          <!-- One line per cone the machine loads, in sew order. Unkeyed: a
+               cone can head two blocks. -->
+          <ul class="qr-spools" aria-label="Threads to load">
+            {#each spools as c}
+              <li>
+                <span class="qr-swatch" style="background: rgb({c.rgb[0]},{c.rgb[1]},{c.rgb[2]})"></span>
+                <span class="qr-spool-name">{c.number} {c.name}</span>
+                <span class="qr-spool-m">{typeof c.metres === "number" ? c.metres.toFixed(1) + " m" : ""}</span>
+              </li>
+            {/each}
+          </ul>
         {/if}
       </div>
     {/each}

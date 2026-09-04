@@ -471,6 +471,19 @@ export function groupIntoBlocks(rows, ov) {
   });
 }
 
+// The machine blocks a Sequencer row sews as: every cone in `blocks`
+// (`stats.blocks`, one per sewn block, in sew order) whose `shape_ids` include
+// one of the row's shapes. A plain colour layer answers with its one block; a
+// blend-tier layer answers with one block per accepted shade (a gradient's
+// ramp sews as 4-5 threads under ONE review layer), which is the list the
+// operator has to load and the row's single swatch cannot show. Empty when
+// the job predates `stats.blocks` or the layer sewed nothing.
+export function machineBlocksForRows(blocks, rows) {
+  if (!Array.isArray(blocks) || !blocks.length) return [];
+  const ids = new Set((rows || []).map((r) => r.id));
+  return blocks.filter((b) => (b.shape_ids || []).some((sid) => ids.has(sid)));
+}
+
 // Outline decimation for the row thumbnails: keep at most `max` points,
 // evenly strided, endpoints preserved. The review outlines are already
 // simplified polygons, but a complex logo shape can still carry hundreds of
@@ -902,11 +915,17 @@ export function textClusterSeed(memberRows, allRows) {
 //   the server enforces, so a shape under it is untouched), distinct from
 //   `outline` which is decimated hard for the 24px thumbnail and would
 //   silently reshape the polygon if the editor started from it instead.
-export function reviewFromJob(review) {
+//   blocks — `stats.blocks`, the machine's cone list ONE PER SEWN BLOCK
+//   (contract 2026-09-04), the only list `sew_block` may index. `palette` is
+//   per LAYER, and a layer can sew as no block or several, so indexing it by
+//   `sew_block` labelled a shape with whatever cone sat at that position —
+//   the same mistake `StitchPlan.palette` documents for golf_hat's black block.
+export function reviewFromJob(review, blocks = null) {
   if (!review || !Array.isArray(review.shapes)) return null;
   const palette = review.palette || [];
   const brandId = (palette.length && palette[0].brand_id) || null;
   const byNumber = new Map(palette.map((p) => [p.number, p.rgb]));
+  const cones = Array.isArray(blocks) ? blocks : [];
   return {
     brandId,
     shapes: review.shapes.map((s) => ({
@@ -915,7 +934,7 @@ export function reviewFromJob(review) {
       threadNumber: s.thread_number,
       rgb:
         byNumber.get(s.thread_number) ||
-        (s.sew_block != null && palette[s.sew_block] && palette[s.sew_block].rgb) ||
+        (s.sew_block != null && cones[s.sew_block] && cones[s.sew_block].rgb) ||
         null,
       areaMm2: s.area_mm2,
       layer: s.layer,

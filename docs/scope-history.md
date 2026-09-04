@@ -4096,3 +4096,34 @@ seams of Kent's finding 2, on exactly the lane the sew-out was.
   at a 1.77 → 2.30 mm mean step on 11.5 → 13.7 m of thread, travel 278 →
   179, trims 7.8 → 7.2 per 1,000; the fill angle is unchanged at 22°.
   Baseline recaptured on this tree.
+
+
+## 2026-09-04 — the machine's cone list on the wire: `stats.blocks`, one per sewn block
+
+The next issue after the pull-comp fix: `result.palette` lists one thread per
+LAYER, while a blend design's shade threads live on the blocks
+(`StitchRun.shade_thread_index` → one `StitchBlock` per accepted shade). Mapped
+before touching anything: every download, export and worksheet path already
+reads `design.colors`, which `adapter.plan_to_design` builds one per block —
+the repro's five spools were always on the thread list. What lost them was
+the Studio's own reading of the review: the Sequencer's "Color sequence (2
+blocks)" header and rows (`groupIntoBlocks` groups review SHAPES by layer),
+the quality report's metres (per block, deliberately unlabelled because the
+service sent no per-block list), and `reviewFromJob`'s rgb fallback, which
+indexed the per-layer palette by `sew_block` — the golf_hat mistake
+`StitchPlan.palette` documents, on the app side.
+
+- **Service:** `stats.blocks` = `plan.palette` (the per-block cone list the
+  plan has always carried) with each block's `shape_ids` (the review shapes it
+  sews, `-blend<i>` stripped). `blocks[i]` names `thread_m_by_color[i]` and
+  `design.colors[i]`. `review.palette` stays the per-layer list the editor
+  edits. Pinned on `logo_whitebg` (aligned, every block sews review shapes)
+  and on the repro (more blocks than layers; one layer sews ≥ 3 threads).
+- **Studio:** the Sequencer header reads "Color sequence (2 blocks, 5
+  threads on the machine)" when the two counts differ, and a row that sews
+  as several threads lists them with swatches (`machineBlocksForRows`); the
+  quality report lists the cones to load with their metres, only when the
+  block list and the metres align; `reviewFromJob(review, blocks)` falls
+  back to the block list, and to null without one — never the palette.
+- Tests: 2 service (125 in `test_service.py`), 4 Studio (183 across the
+  three spec files). No stitch changes, no scorecard.

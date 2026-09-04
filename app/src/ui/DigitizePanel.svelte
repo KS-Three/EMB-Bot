@@ -18,6 +18,7 @@
     layerSiblings,
     effRgb,
     groupIntoBlocks,
+    machineBlocksForRows,
     boundaryIssues,
     mergeGroupIssues,
     splitLineIssues,
@@ -288,7 +289,11 @@
           (job.design && job.design.colors) || [],
         ),
         warnings: job.warnings || [],
-        review: reconcileReview(el.review, reviewFromJob(job.review), el.deletedShapeIds),
+        review: reconcileReview(
+          el.review,
+          reviewFromJob(job.review, job.stats && job.stats.blocks),
+          el.deletedShapeIds,
+        ),
         preflight: job.preflight || null,
         // The service has always returned these (thread metres total and
         // per colour, trims, jumps, colour changes) and the Studio has always
@@ -693,6 +698,16 @@
   // unstitched shapes don't have a real place in the sew sequence, so they
   // never appear here even though they're still in the plain Layers list.
   $: sequencerBlocks = groupIntoBlocks(sewableShapes, overrides);
+
+  // The machine's own cone list — `stats.blocks`, one per sewn block in sew
+  // order (service contract 2026-09-04). The rows above are what the user
+  // REORDERS (one per colour layer); this is what the operator LOADS, and the
+  // two differ on a gradient: a blend-tier layer sews as one block per
+  // accepted shade, four or five threads under one swatch. The header says
+  // so, and a row that sews as several threads lists them. Empty on a job
+  // from before the field existed, which leaves the header as it was.
+  $: machineBlocks =
+    element.stats && Array.isArray(element.stats.blocks) ? element.stats.blocks : [];
 
   // Server-computed, read-only (preflight.py's own report) — surfaced here
   // rather than left buried in `element.preflight`, since block-boundary
@@ -1706,7 +1721,7 @@
                   class={"dgp-seq-caret" + (sequencerOpen ? "" : " dgp-seq-caret-closed")}
                 />
                 <span class="dgp-seq-title">
-                  Color sequence ({sequencerBlocks.length} block{sequencerBlocks.length === 1 ? "" : "s"})
+                  Color sequence ({sequencerBlocks.length} block{sequencerBlocks.length === 1 ? "" : "s"}{machineBlocks.length > sequencerBlocks.length ? `, ${machineBlocks.length} threads on the machine` : ""})
                 </span>
                 {#if trimsPer1000 != null}
                   <span class="dgp-seq-trims" class:heavy={trimHeavy}>
@@ -1717,6 +1732,7 @@
               {#if sequencerOpen}
                 <ol class="dgp-seq-list">
                   {#each sequencerBlocks as block, i (block.layer)}
+                    {@const shades = machineBlocksForRows(machineBlocks, block.rows)}
                     <li class="dgp-seq-block">
                       <span
                         class="dgp-seq-swatch"
@@ -1729,6 +1745,22 @@
                           #{block.sewIndexMin}{block.sewIndexMax > block.sewIndexMin ? `–${block.sewIndexMax}` : ""}
                         {/if}
                       </span>
+                      {#if shades.length > 1}
+                        <!-- Unkeyed: the same cone can head two blocks of one
+                             layer (two regions re-snapped onto it), and a
+                             duplicate key crashes the block. -->
+                        <span class="dgp-seq-shades" title="This color sews as {shades.length} threads">
+                          sews as
+                          {#each shades as cone}
+                            <span class="dgp-seq-shade">
+                              <span
+                                class="dgp-seq-swatch dgp-seq-swatch-sm"
+                                style="background: rgb({cone.rgb[0]},{cone.rgb[1]},{cone.rgb[2]})"
+                              ></span>{cone.number}
+                            </span>
+                          {/each}
+                        </span>
+                      {/if}
                       <span class="dgp-seq-btns">
                         <button
                           type="button"
@@ -2605,6 +2637,17 @@
   .dgp-seq-thread { flex: none; min-width: 40px; color: var(--muted, #667); }
   .dgp-seq-count { flex: 1; }
   .dgp-seq-span { flex: none; color: var(--muted, #667); }
+  .dgp-seq-shades {
+    flex: 1 1 100%;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px 8px;
+    padding-left: 22px;
+    font-size: 0.85em;
+    color: var(--muted, #667);
+  }
+  .dgp-seq-shade { display: inline-flex; align-items: center; gap: 3px; }
+  .dgp-seq-swatch-sm { width: 9px; height: 9px; }
   .dgp-seq-btns { display: flex; gap: 2px; flex: none; }
   /* Bounded, with its own scroll. One shape per row and no ceiling meant a
      31-shape logo pushed everything after the list -- thread-per-color,

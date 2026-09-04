@@ -56,8 +56,10 @@ Kent's third ruling of 2026-09-03 (the sew-out's "blocky bands"), landed
   PLAN and never saw it — `tools/sewn_compensation.py` reads the stitches
   (repro strips 29% → 100%). Costs the repro 4 trims (22 → 26), three of
   them stage 5's own holes/corridor in the sewn outline.
-  `result.palette` lists one thread per region; shade threads live on the
-  blocks (DST and download read blocks). A radial design ramp is still the
+  `result.palette` lists one thread per LAYER; shade threads live on the
+  blocks (DST and download read blocks — always right). Since 2026-09-04
+  the service sends `stats.blocks` (plan.palette + shape_ids) and the
+  Studio's Sequencer/quality report/`reviewFromJob` read it. A radial design ramp is still the
   documented gap.
 - **Feathered seams built 2026-09-04 (his call):** a 1.5 mm zone per seam
   sewn by both shades on one row lattice, alternating row by row, via a
