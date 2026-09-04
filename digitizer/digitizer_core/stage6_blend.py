@@ -32,8 +32,13 @@ things happen here, in order:
    part of the region whose ramp position falls in its own slice of [0, 1],
    sewn at the fill row `FILL_ROW_MM` (until 2026-09-03 at `FILL_ROW_MM *
    N`: one sparse layer per band, a third to a fifth of a fill, cloth
-   between every pair of rows on the sew-out). At each seam the band that
-   sews first (the darker, by chart L*) extends under the later one by
+   between every pair of rows on the sew-out). Every band of a region sews
+   on ONE row lattice (`_emit_bands`), and where the rows run along the
+   seams each seam is FEATHERED (2026-09-04, Kent's call): a
+   `machine.BLEND_FEATHER_MM` zone sewn by both shades, alternating thread
+   row by row, via a row filter on each band's own fill. Where rows cross
+   the bands, or `cfg.blend_feather_mm` is 0, the seam is hard and the band
+   that sews first (the darker, by chart L*) extends under the later one by
    `cfg.overlap_mm`, the same underlap stage 5 gives a seam between two
    colours (2026-09-03).
 
@@ -58,6 +63,7 @@ from pathlib import Path
 
 import cv2
 import numpy as np
+from shapely import affinity
 from shapely.geometry import Point, Polygon
 from skimage.color import deltaE_ciede2000
 
@@ -803,14 +809,119 @@ def _emit_bands(region: Region, source_pixels: SourcePixels, cfg,
     # millimetres behind it; the sew-out's seam trenches were the reason to
     # give the seam the same physical underlap every other seam gets.
     span_mm = max(1e-9, float(model.hi - model.lo))
-    t_ov = max(0.0, float(cfg.overlap_mm or 0.0)) / span_mm
+    # Feathered seams (2026-09-04, Kent's call on the gradient ruling's
+    # render): at every internal seam a zone `feather` wide, centred on the
+    # seam, is sewn by both bands at twice the row, the upper band's grid
+    # phased by one row, so the rows alternate thread at the fill row and
+    # the bands read as one sweep instead of steps. Each band's solid part
+    # stops half a zone short of the seam. Bounded so a narrow ramp keeps a
+    # solid core in every shade; 0 is the hard seam below, with the underlap.
+    feather = (machine.BLEND_FEATHER_MM if cfg.blend_feather_mm is None
+               else max(0.0, float(cfg.blend_feather_mm)))
+    feather = min(feather, 0.4 * span_mm / n)
+    # Only where the rows run along the seams — the design path's angle is
+    # the ramp's own perpendicular, and a per-region linear model whose fill
+    # angle happens to match. Rows that CROSS the bands (a per-region model
+    # at the shape's principal angle, or a radial model) get the hard seam:
+    # alternating rows cannot blend a seam they cut across, and sewing the
+    # zone as pieces of its own cost a trim per piece (measured, 2026-09-04).
+    rows_along_seam = False
+    if model.kind == "linear":
+        ux, uy = model.direction
+        perp = math.degrees(math.atan2(ux, -uy))
+        d_ang = abs((angle - perp) % 180.0)
+        rows_along_seam = min(d_ang, 180.0 - d_ang) < 0.5
+    if not rows_along_seam:
+        feather = 0.0
+    t_f = feather / span_mm
+    report["blend_feather_mm"] = feather
+    # The hard seam's underlap: only where there is no feather zone to do
+    # the blending — a feathered seam already has both threads across it.
+    t_ov = 0.0 if t_f > 0 else max(0.0, float(cfg.overlap_mm or 0.0)) / span_mm
     l_star = [float(chart.lab[idx][0]) for idx in shade_thread_idx]
+
+    # One row lattice for the whole region (2026-09-04): `stitch_shape` hangs
+    # a part's rows off that part's OWN rotated bounding box, so two bands,
+    # or a band and its feather zone, land on grids up to a row apart and
+    # the seam shows a step. Every part here is phased onto the lattice the
+    # region would have if sewn whole — `rot_miny + row * (k + 1/2)` — the
+    # solid parts on every member, a zone's lower band on the even members
+    # and its upper band on the odd ones, so the union is the fill row
+    # everywhere and a hard seam's rows continue across it at the pitch.
+    rot_miny = affinity.rotate(poly, -angle, origin=(0, 0), use_radians=False).bounds[1]
+
+    def lattice_phase(part: Polygon, part_row_mm: float, offset_rows: float) -> float:
+        part_miny = affinity.rotate(part, -angle, origin=(0, 0), use_radians=False).bounds[1]
+        target = rot_miny + row_mm * (0.5 + offset_rows)
+        return (target - part_miny - 0.5 * part_row_mm) % part_row_mm
+
+    def sew_pieces(pieces, band_i: int, this_layer: list[StitchRun]) -> None:
+        """Sew a band's pieces — `(part, row_mm, lattice offset, keep_row)` —
+        nearest piece first from wherever the needle is. A band clip across
+        a ring or a hole comes back in two or three parts; nearest-first
+        keeps a band's left-side pieces together, then its right-side ones."""
+        nonlocal cur
+        pending = [pc for pc in pieces if not pc[0].is_empty and pc[0].area > 0]
+        while pending:
+            if cur is None:
+                k = 0
+            else:
+                here = Point(cur)
+                k = min(range(len(pending)), key=lambda j: pending[j][0].distance(here))
+            part, part_row_mm, offset_rows, keep_row = pending.pop(k)
+            runs, band_report = stitch_shape(
+                part, f"{region.shape_id}-blend{band_i}", angle_deg=angle,
+                row_mm=part_row_mm, stitch_mm=machine.FILL_STITCH_MM,
+                underlay_style="none", trim_at_mm=machine.TRIM_AT_MM,
+                start_near=cur, under_cover=cfg.fill_travel_under_cover,
+                row_phase_mm=lattice_phase(part, part_row_mm, offset_rows),
+                keep_row=keep_row,
+            )
+            if runs:
+                cur = runs[-1].points[-1]
+            # Stamp this band's own snapped thread on every run it produced —
+            # stage 7's block assembly reads this to sew each accepted shade
+            # in its own StitchBlock instead of collapsing all of them into
+            # `region.thread_index`. Stamped here (not left for stage 7 to
+            # infer) because this loop is the only place that still knows
+            # which band index a run came from once `all_runs` flattens
+            # every band together below.
+            for run in runs:
+                run.shade_thread_index = shade_thread_idx[band_i]
+            if runs and this_layer:
+                # `_band_clip` can hand back more than one disconnected part
+                # for a single band (a ring-shaped region straddling the
+                # ramp's hole, for instance), and a feathered band adds its
+                # zone passes as parts of their own. Each part is its own
+                # `stitch_shape` call, so its first run always starts with
+                # `jump=False` — correct in isolation, wrong once stitched
+                # back to back with the part before it, which leaves a bare
+                # straight stitch across whatever real gap separates the two
+                # parts. Mark it explicitly rather than let that default
+                # stand. Unlike `stitch_shape`'s own `emit()`, this never
+                # tries a `travel_path` bridge first: a bridge would route
+                # along an inset ring using the CURRENT part's thread, but
+                # the gap here is between two pieces of the same shade, so
+                # there is nothing wrong-colored about a plain jump — and no
+                # ring to bridge along in the first place.
+                d = math.dist(this_layer[-1].points[-1], runs[0].points[0])
+                runs[0].jump = True
+                runs[0].trim = d > machine.TRIM_AT_MM
+                report["jumps"] += 1
+            this_layer.extend(runs)
+            report["too_thin"] = report["too_thin"] or band_report["too_thin"]
+            report["jumps"] += band_report["jumps"]
+
     for i in range(n):
         t_lo, t_hi = i / n, (i + 1) / n
         if i > 0 and l_star[i] <= l_star[i - 1]:
             t_lo -= t_ov                     # this band is darker than the one below: it sews first, reach down
         if i < n - 1 and l_star[i] < l_star[i + 1]:
             t_hi += t_ov                     # darker than the one above: it sews first, reach up
+        if i > 0:
+            t_lo += t_f / 2.0                # the solid part stops half a zone short of the seam below...
+        if i < n - 1:
+            t_hi -= t_f / 2.0                # ...and of the seam above
         # The first and last bands absorb whatever of the polygon lies
         # beyond the model's [lo, hi] (review, 2026-09-04): on the design
         # path that range is the design's, and a region can reach past it —
@@ -827,52 +938,41 @@ def _emit_bands(region: Region, source_pixels: SourcePixels, cfg,
             reach_lo, reach_hi = 0.0, 1.0
         t_lo = reach_lo if i == 0 else max(0.0, t_lo)
         t_hi = reach_hi if i == n - 1 else min(1.0, t_hi)
-        parts = _band_clip(poly, model, t_lo, t_hi)
         this_layer: list[StitchRun] = []
-        for part in parts:
-            if part.is_empty or part.area <= 0:
-                continue
-            runs, band_report = stitch_shape(
-                part, f"{region.shape_id}-blend{i}", angle_deg=angle,
-                row_mm=row_mm, stitch_mm=machine.FILL_STITCH_MM,
-                underlay_style="none", trim_at_mm=machine.TRIM_AT_MM,
-                start_near=cur, under_cover=cfg.fill_travel_under_cover,
-            )
-            if runs:
-                cur = runs[-1].points[-1]
-            # Stamp this band's own snapped thread on every run it produced —
-            # stage 7's block assembly reads this to sew each accepted shade
-            # in its own StitchBlock instead of collapsing all of them into
-            # `region.thread_index`. Stamped here (not left for stage 7 to
-            # infer) because this loop is the only place that still knows
-            # which band index `i` a run came from once `all_runs` flattens
-            # every band together below.
-            for run in runs:
-                run.shade_thread_index = shade_thread_idx[i]
-            if runs and this_layer:
-                # `_band_clip` can hand back more than one disconnected part
-                # for a single band (a ring-shaped region straddling the
-                # ramp's hole, for instance). Each part is its own
-                # `stitch_shape` call, so its first run always starts with
-                # `jump=False` — correct in isolation, wrong once stitched
-                # back to back with the part before it, which leaves a bare
-                # straight stitch across whatever real gap separates the two
-                # parts. Mark it explicitly rather than let that default
-                # stand. Unlike `stitch_shape`'s own `emit()`, this never
-                # tries a `travel_path` bridge first: a bridge would route
-                # along an inset ring using the CURRENT part's thread, but
-                # the gap here is between two pieces of the same shade, so
-                # there is nothing wrong-colored about a plain jump — and no
-                # ring to bridge along in the first place (the two parts
-                # aren't nested, `_band_clip` split them because they are not
-                # even touching).
-                d = math.dist(this_layer[-1].points[-1], runs[0].points[0])
-                runs[0].jump = True
-                runs[0].trim = d > machine.TRIM_AT_MM
-                report["jumps"] += 1
-            this_layer.extend(runs)
-            report["too_thin"] = report["too_thin"] or band_report["too_thin"]
-            report["jumps"] += band_report["jumps"]
+        if t_f > 0:
+            # Rows run along the seam, so a row has one ramp position and a
+            # band's whole reach — its solid core plus half of each zone it
+            # borders — is ONE fill with a row filter: every lattice row in
+            # the core, and inside a zone only the even members for the
+            # lower band or the odd members for the upper one. The other
+            # band keeps the complementary rows, so across the zone the union
+            # is the fill row, alternating thread row by row, and the band
+            # stays one column walk (three separate clips per band cost the
+            # repro 52 trims against 23 — every hop between a core and its
+            # zone was a few millimetres over the trim rule).
+            # `t_lo`/`t_hi` were pulled in by half a zone above; the reach
+            # goes a whole zone back out, to the far edge of each zone.
+            lo_reach = t_lo - (t_f if i > 0 else 0.0)
+            hi_reach = t_hi + (t_f if i < n - 1 else 0.0)
+            core_lo = i / n + t_f / 2.0
+            core_hi = (i + 1) / n - t_f / 2.0
+
+            def keep_row(y_rot: float, core_lo=core_lo, core_hi=core_hi, i=i) -> bool:
+                pt = affinity.rotate(Point(0.0, y_rot), angle, origin=(0, 0), use_radians=False)
+                t = model.t(pt.x, pt.y)
+                k = int(round((y_rot - rot_miny) / row_mm - 0.5))
+                if i > 0 and t < core_lo:
+                    return k % 2 == 1        # the zone below: this band is the upper one
+                if i < n - 1 and t > core_hi:
+                    return k % 2 == 0        # the zone above: this band is the lower one
+                return True
+
+            pieces = [(part, row_mm, 0.0, keep_row)
+                      for part in _band_clip(poly, model, lo_reach, hi_reach)]
+        else:
+            # The hard seam: the band's own clip, with the underlap above.
+            pieces = [(part, row_mm, 0.0, None) for part in _band_clip(poly, model, t_lo, t_hi)]
+        sew_pieces(pieces, i, this_layer)
         if this_layer and all_runs:
             # Same fix as the parts-within-a-band stitch above, one level up:
             # the seam between one shade band's runs and the next band's runs

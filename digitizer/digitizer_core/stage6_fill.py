@@ -111,13 +111,21 @@ def principal_angle_deg(poly: Polygon) -> float:
     return math.degrees(0.5 * math.atan2(2 * sxy, sxx - syy))
 
 
-def _row_spans(poly: Polygon, row_mm: float) -> list[tuple[int, float, list[tuple[float, float]]]]:
+def _row_spans(poly: Polygon, row_mm: float, row_phase_mm: float = 0.0,
+               keep_row=None) -> list[tuple[int, float, list[tuple[float, float]]]]:
     """Horizontal scanlines through an already-rotated polygon.
 
     -> [(row_index, y, [(x0, x1), ...]), ...], rows top to bottom, spans left to
     right. The first row sits half a spacing inside the top edge so a scanline
     never runs exactly along a horizontal boundary, where the intersection
     degenerates to a point or a whole edge depending on float noise.
+    `row_phase_mm` shifts the whole grid down by that much (2026-09-04, the
+    blend tier's feathered seams: two passes over one strip at twice the row,
+    the second phased by one row, interleave to the row exactly because both
+    grids hang off the same `miny`). 0 is every other caller, byte-identical.
+    `keep_row(y)` (same date, same caller) drops a scanline the predicate
+    refuses without consuming its index — how a feathered band leaves the
+    other shade's rows out of a seam zone. None keeps every row.
 
     The row index is the SPATIAL one, counted from the top of the shape, and a
     scanline that finds nothing is left out of the list without consuming an
@@ -141,10 +149,27 @@ def _row_spans(poly: Polygon, row_mm: float) -> list[tuple[int, float, list[tupl
     minx, miny, maxx, maxy = poly.bounds
     out: list[tuple[int, float, list[tuple[float, float]]]] = []
     n_rows = max(1, int(math.floor((maxy - miny) / row_mm)))
-    for i in range(n_rows + 1):
-        y = miny + row_mm * (i + 0.5)
+    # From -1: a phased grid can have a lattice member between the top edge
+    # and the unphased first row (phase past half a row), and skipping it
+    # would leave a two-row gap at the edge of a feather zone. At phase 0
+    # the i = -1 row lies above the shape and is skipped, so every other
+    # caller is byte-identical; the guard keeps a row off the edge itself.
+    # The row index a scanline reports: spatial, so an EMPTY scanline (a hole)
+    # consumes one and `_columns` breaks the column across it — but a row the
+    # filter drops does not consume one, so a feathered band's zone rows,
+    # every other lattice row, still chain into one column with a two-row
+    # turn between them instead of a jump per row. Equal to `i` whenever
+    # nothing is filtered, so every other caller is byte-identical.
+    idx = 0
+    for i in range(-1, n_rows + 2):
+        y = miny + row_phase_mm + row_mm * (i + 0.5)
+        if y < miny + 1e-3:
+            continue
         if y > maxy:
             break
+        if keep_row is not None and not keep_row(y):
+            continue
+        ri, idx = idx, idx + 1
         line = LineString([(minx - 1.0, y), (maxx + 1.0, y)])
         inter = poly.intersection(line)
         if inter.is_empty:
@@ -158,7 +183,7 @@ def _row_spans(poly: Polygon, row_mm: float) -> list[tuple[int, float, list[tupl
             spans.append((min(xs), max(xs)))
         if spans:
             spans.sort()
-            out.append((i, y, spans))
+            out.append((ri, y, spans))
     return out
 
 
@@ -985,8 +1010,8 @@ _ROW_POINT_FNS = {
 
 def _fill_paths(poly: Polygon, angle_deg: float, row_mm: float, stitch_mm: float,
                 staggers: int, start_near: tuple[float, float] | None = None,
-                technique: str = "tatami",
-                ) -> list[list[tuple[float, float]]]:
+                technique: str = "tatami", row_phase_mm: float = 0.0,
+                keep_row=None) -> list[list[tuple[float, float]]]:
     """Fill one polygon; -> continuous stitch paths in original (unrotated) mm space.
 
     Columns are visited nearest-first from the end of the previous one, and each
@@ -1011,7 +1036,7 @@ def _fill_paths(poly: Polygon, angle_deg: float, row_mm: float, stitch_mm: float
     """
     row_point_fn = _ROW_POINT_FNS.get(technique, _row_points)
     rotated = affinity.rotate(poly, -angle_deg, origin=(0, 0), use_radians=False)
-    rows = _row_spans(rotated, row_mm)
+    rows = _row_spans(rotated, row_mm, row_phase_mm, keep_row)
     if not rows:
         return []
     cols = _columns(rows)
@@ -1210,8 +1235,14 @@ def stitch_shape(poly: Polygon, shape_id: str, *, angle_deg: float | None,
                  technique: str = "tatami",
                  density_boost: bool = False,
                  under_cover: bool = False,
+                 row_phase_mm: float = 0.0,
+                 keep_row=None,
                  ) -> tuple[list[StitchRun], dict]:
     """One shape -> its runs, in sew order (underlay first), plus a small report.
+
+    `row_phase_mm` and `keep_row` (2026-09-04) shift and filter the plain
+    tatami row grid — see `_row_spans`; the blend tier's feathered seams are
+    their only caller, and the crosshatch / density-boost passes take neither.
 
     `under_cover` (`PipelineConfig.fill_travel_under_cover`, which stage 7 and
     the blend tier pass through): fill-phase travel prefers routes over
@@ -1323,7 +1354,8 @@ def stitch_shape(poly: Polygon, shape_id: str, *, angle_deg: float | None,
                                          machine.FILL_STAGGERS, entry)
     else:
         fill_paths = _fill_paths(poly, angle, row_mm, stitch_mm,
-                                 machine.FILL_STAGGERS, entry, technique=technique)
+                                 machine.FILL_STAGGERS, entry, technique=technique,
+                                 row_phase_mm=row_phase_mm, keep_row=keep_row)
     fill_paths = _reorder_for_fewer_cuts(fill_paths, poly, ring, slack, entry,
                                          trim_at_mm)
     if under_cover:

@@ -3969,3 +3969,50 @@ it uncovered two defects in the blend tier that no test could see.
   `thread_index` with the art it covers, and a one-region five-band sweep
   has no single thread — the metric is blind to blend bands, before and
   after.
+
+## 2026-09-04 — feathered band seams: two shades alternate row by row across each seam, on one row lattice
+
+Kent's call on PR #342's render ("feather the band seams"), with a second
+ruling in the same answer: **no physical tests for now — the digitized
+render is the interim judge of quality.** Both are in DOCTRINE.
+
+- **The seam is a zone, not a line.** At every seam between two shade
+  bands of a blend, a zone `machine.BLEND_FEATHER_MM` = 1.5 mm wide is
+  sewn by BOTH shades: each band's fill reaches half a zone past the seam,
+  and inside the zone a row filter (`stage6_fill.stitch_shape(keep_row=)`,
+  new) keeps only the even lattice rows for the lower band and the odd
+  ones for the upper, so the zone is ten rows at the fill row alternating
+  thread — the classic row blend. Bounded to 40% of a band so a narrow
+  ramp keeps a solid core. `PipelineConfig.blend_feather_mm` (None = the
+  constant; 0 = the hard seam with the 2026-09-03 underlap) keeps the hard
+  lane reachable.
+- **Only where rows run along the seam** — the design-ramp path, whose
+  fill angle is the ramp's own perpendicular. Rows that CROSS the bands (a
+  per-region model at the shape's principal angle, a radial model) keep
+  the hard seam: alternating rows cannot blend a seam they cut across, and
+  the first build, which sewed each zone as a piece of its own at twice
+  the row, cost the repro 52 trims against 23 — every hop between a core
+  and its zone a few millimetres over the trim rule. As a filtered fill a
+  band stays one column walk: `_row_spans` gives a filtered-out row no
+  index, so the zone rows chain with two-row turns. Repro trims 23 → 22.
+- **One row lattice per region.** `stitch_shape` hung a part's rows off
+  that part's own bounding box, so two bands — or a band and its zone —
+  landed on grids up to a row apart and the seam showed a step (the unit
+  fixture read gaps of 0.075 and 0.071). `_emit_bands` now phases every
+  part onto the lattice the region would have if sewn whole
+  (`stitch_shape(row_phase_mm=)`, new, byte-identical at 0), which moves
+  hard seams too: the rows continue across a seam at the pitch.
+  `region_blobs` (hard seams, rows crossing) 17,065 → 17,275 stitches from
+  the lattice alone.
+- **Numbers at 80 mm / left chest:** repro 21,005 → 20,820 stitches
+  (the underlap's double-sewn strips are gone where the zones are), 23 → 22
+  trims, five blocks; `gradient_ramp_linear` 9,607 → 9,499. Renders:
+  `docs/renders/feathered-seams-2026-09-04/` (hard vs feathered, and a 3×
+  zoom of the repro's seams).
+- Tests: the plan-contract test reads a band's rows as the row or two
+  rows and the UNION as the row; the seam-underlap tests pin the hard lane
+  (`blend_feather_mm=0`); new: alternation row by row across every zone
+  on one lattice, feather 0 is the hard seam, a feathered band is one
+  column walk (trims), crossing rows get the hard seam, the width bound.
+  `test_fill.py` and `test_preflight.py` unchanged and green — the two
+  new `stitch_shape` parameters are byte-identical unset.

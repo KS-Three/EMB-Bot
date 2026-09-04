@@ -76,8 +76,17 @@ Moved verbatim 2026-08-28 — no section was rewritten in the move.
   `FILL_ROW_MM`, never `FILL_ROW_MM × n`:** the n× layout was one sparse
   layer per band, a third to a fifth of a fill, and PR #339's preflight
   exemption for it rested on the false premise that the layers interleaved.
-  *(Kent's call 2026-09-03 — `docs/sewout-findings-2026-09-03.md` item 4;
-  scope-history 2026-09-04)*
+  **Band seams are feathered** (Kent's call 2026-09-04, on the ruling's
+  render): where rows run along the seam, a `machine.BLEND_FEATHER_MM`
+  zone is sewn by both shades on one row lattice, alternating thread row by
+  row, so the sweep reads as one gradient; the 0.25 mm underlap is the seam
+  rule only where rows cross the bands or `blend_feather_mm` is 0. Every
+  band of a region sews on ONE row lattice (`stage6_blend._emit_bands`),
+  so a seam never shows a half-row step. **No physical tests until Kent
+  says** (2026-09-04): the stitchviz render is the interim judge of
+  quality; put before/after renders in every PR that changes stitches.
+  *(Kent's calls 2026-09-03/04 — `docs/sewout-findings-2026-09-03.md`
+  item 4; scope-history 2026-09-04)*
 
 - **Bold never closes a counter, hairline faces included — the guard stays
   as built.** The font path's Bold widening is held per rail wherever a rail

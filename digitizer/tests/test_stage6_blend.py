@@ -210,18 +210,33 @@ def test_blend_geometry_matches_the_plan_contract(region_factory, source_factory
     expected_row_mm = machine.FILL_ROW_MM
     total_coverage = 0.0
     layer_angles = []
+    union_ys: set[float] = set()
     for sid, layer_runs in layers.items():
         gaps = _row_spacings_mm(layer_runs, angle)
         assert gaps, f"{sid}: no distinct rows found"
+        # A band's own rows are the fill row apart in its solid part and two
+        # rows apart inside a feathered seam zone, where the neighbouring
+        # band's rows fill the gaps (2026-09-04; `_emit_bands`). The union
+        # below is the physical row grid and must be the fill row throughout.
         for g in gaps:
-            assert g == pytest.approx(expected_row_mm, abs=0.02), (
-                f"{sid}: row spacing {g} != {expected_row_mm} +/- 0.02mm"
+            assert (g == pytest.approx(expected_row_mm, abs=0.02)
+                    or g == pytest.approx(2 * expected_row_mm, abs=0.02)), (
+                f"{sid}: row spacing {g} is neither the row nor two rows"
             )
+        union_ys.update(_row_ys(layer_runs, angle))
         total_coverage += _row_length_coverage(layer_runs, angle, expected_row_mm,
                                                region.polygon.area)
         layer_angles.append(_dominant_angle_deg(layer_runs))
 
-    assert 1.0 <= total_coverage <= 1.2, f"sum coverage {total_coverage} outside [1.0, 1.2]"
+    union = sorted(union_ys)
+    for a, b in zip(union, union[1:]):
+        assert b - a == pytest.approx(expected_row_mm, abs=0.02), (
+            f"the union of the bands' rows is not at the fill row: {a} -> {b}")
+    # Each row counted at the fill row it physically occupies (a zone row
+    # sits two rows from its own band's next row, but one row from the other
+    # band's), so the sum is the physical coverage: one fill, plus the hard
+    # seam's underlap where there is no feather zone.
+    assert 0.97 <= total_coverage <= 1.2, f"sum coverage {total_coverage} outside [0.97, 1.2]"
 
     for a in layer_angles:
         assert _angle_diff_deg(a, angle) <= 2.0, (
@@ -562,7 +577,10 @@ def test_blend_marks_jump_between_multiple_parts_of_one_band(monkeypatch):
 
     region = _linear_region()
     source = _linear_source()
-    cfg = PipelineConfig()
+    # Hard seams: a feathered band adds its zone passes as further parts of
+    # the same layer (their own explicit jumps — `test_feather_zone_passes_
+    # are_stitched_with_explicit_jumps`), which would be a second seam here.
+    cfg = PipelineConfig(blend_feather_mm=0.0)
 
     real_band_clip = blend_mod._band_clip
     part_a = Polygon([(-40, -40), (-30, -40), (-30, -30), (-40, -30)])
@@ -794,9 +812,12 @@ def test_the_earlier_darker_band_reaches_under_the_lighter_one_by_overlap_mm():
     band that sews first (darker by chart L*) extends `overlap_mm` toward
     the lighter band, and the lighter band stays on its own boundary.
     Measured as extents along the ramp axis, overlap 0.25 against 0.0."""
+    # The hard-seam lane (`blend_feather_mm=0`): the underlap is the seam
+    # rule only where there is no feather zone to do the blending
+    # (2026-09-04); a feathered seam has both threads across it instead.
     region, source = _linear_region(), _linear_source()
-    on, _ = blend_fill(region, source, PipelineConfig(overlap_mm=0.25))
-    off, _ = blend_fill(region, source, PipelineConfig(overlap_mm=0.0))
+    on, _ = blend_fill(region, source, PipelineConfig(overlap_mm=0.25, blend_feather_mm=0.0))
+    off, _ = blend_fill(region, source, PipelineConfig(overlap_mm=0.0, blend_feather_mm=0.0))
     ext_on, lstar = _layer_extents_along_ramp(on)
     ext_off, _ = _layer_extents_along_ramp(off)
     assert set(ext_on) == set(ext_off)
@@ -819,7 +840,7 @@ def test_the_earlier_darker_band_reaches_under_the_lighter_one_by_overlap_mm():
 
 def test_overlap_zero_puts_bands_edge_to_edge():
     region, source = _linear_region(), _linear_source()
-    runs, _ = blend_fill(region, source, PipelineConfig(overlap_mm=0.0))
+    runs, _ = blend_fill(region, source, PipelineConfig(overlap_mm=0.0, blend_feather_mm=0.0))
     ext, _ = _layer_extents_along_ramp(runs)
     order = sorted(ext, key=lambda s: ext[s][0])
     for a, b in zip(order, order[1:]):
@@ -1024,3 +1045,126 @@ def test_a_region_that_rides_the_design_ramp_is_never_sewn_as_satin():
                   and r.area_mm2 >= 100.0 and r not in riders]
     assert any(stitches.SATIN in kinds.get(r.shape_id, set()) for r in non_riders), \
         "the white ring should still be satin"
+
+
+# --- Feathered seams (2026-09-04, Kent's call on the gradient ruling's render)
+
+def _rows_by_thread(runs, angle_deg: float):
+    """-> sorted [(rotated y, shade thread)] for every FILL row: the same
+    grid `_row_ys` reads, kept per thread. Rows with fewer than three points
+    are turn midpoints, not rows."""
+    from collections import Counter
+    counts: Counter[tuple[float, int]] = Counter()
+    for r in runs:
+        if r.kind != stitches.FILL:
+            continue
+        for p in _rotate(r.points, angle_deg):
+            counts[(round(p[1], 3), r.shade_thread_index)] += 1
+    return sorted(k for k, c in counts.items() if c >= 3)
+
+
+def _seam_rotated_y(ramp, k: int, n: int, angle_deg: float) -> float:
+    """Rotated-frame y of the k-th of n seams of the design ramp: rows run
+    along the seam on the design path, so a seam is one rotated y."""
+    s = ramp.lo + k / n * ramp.span_mm
+    ux, uy = ramp.direction
+    return _rotate([(ux * s, uy * s)], angle_deg)[0][1]
+
+
+def test_feathered_seams_alternate_threads_row_by_row_at_the_fill_row():
+    """Across each seam a zone `BLEND_FEATHER_MM` wide is sewn by both
+    shades at twice the row on one lattice, so the union is the fill row
+    and the thread changes every row — ten rows, five of each, on the
+    linear fixture. Outside the zones a band is one thread at the fill
+    row, and the whole region's rows are one lattice: no step where a zone
+    meets a solid part or where two bands meet. Measured on the design-ramp
+    path, where rows run along the seam."""
+    source = _design_source()
+    ramp = source.design_ramp
+    angle = source.design_row_angle_deg
+    runs, report = blend_fill(_linear_region(), source, PipelineConfig())
+    feather = report["blend_feather_mm"]
+    assert feather == pytest.approx(machine.BLEND_FEATHER_MM)
+    rows = _rows_by_thread(runs, angle)
+    n = report["blend_shades"]
+    for k in range(1, n):
+        sy = _seam_rotated_y(ramp, k, n, angle)
+        zone = [(y, t) for y, t in rows if abs(y - sy) <= feather / 2 + 0.01]
+        assert 8 <= len(zone) <= 12, (k, len(zone))
+        for (y0, t0), (y1, t1) in zip(zone, zone[1:]):
+            assert t1 != t0, (k, y0, y1)
+            assert y1 - y0 == pytest.approx(machine.FILL_ROW_MM, abs=0.02), (k, y0, y1)
+        assert len({t for _y, t in zone}) == 2
+    ys = sorted({y for y, _t in rows})
+    for a, b in zip(ys, ys[1:]):
+        assert b - a == pytest.approx(machine.FILL_ROW_MM, abs=0.02), (a, b)
+
+
+def test_feather_zero_is_the_hard_seam():
+    """`blend_feather_mm=0`: no zone, one thread change per seam (the
+    underlap's overlapping rows sew both threads at one row, which reads as
+    two changes at most), and the rows are still one lattice across it."""
+    source = _design_source()
+    angle = source.design_row_angle_deg
+    runs, report = blend_fill(_linear_region(), source, PipelineConfig(blend_feather_mm=0.0))
+    assert report["blend_feather_mm"] == 0.0
+    rows = _rows_by_thread(runs, angle)
+    by_y: dict[float, set] = {}
+    for y, t in rows:
+        by_y.setdefault(y, set()).add(t)
+    ys = sorted(by_y)
+    changes = sum(1 for a, b in zip(ys, ys[1:]) if by_y[a] != by_y[b])
+    assert changes <= 2 * (report["blend_shades"] - 1), changes
+    for a, b in zip(ys, ys[1:]):
+        assert b - a == pytest.approx(machine.FILL_ROW_MM, abs=0.02), (a, b)
+
+
+def test_a_feathered_band_is_one_column_walk():
+    """A band's zones are rows of its own fill, kept or dropped by the row
+    filter — not pieces of their own — so feathering costs no hops: a band
+    has the same runs and trims feathered as with the hard seam (sewing the
+    zones as separate pieces had cost the repro 52 trims against 23)."""
+    source = _design_source()
+    region = _linear_region()
+    on, rep_on = blend_fill(region, source, PipelineConfig())
+    off, rep_off = blend_fill(region, source, PipelineConfig(blend_feather_mm=0.0))
+    assert rep_on["blend_feather_mm"] > 0 and rep_off["blend_feather_mm"] == 0.0
+    fills_on = {sid: [r for r in lr if r.kind == stitches.FILL] for sid, lr in _layers_of(on).items()}
+    fills_off = {sid: [r for r in lr if r.kind == stitches.FILL] for sid, lr in _layers_of(off).items()}
+    assert set(fills_on) == set(fills_off)
+    for sid in fills_on:
+        assert len(fills_on[sid]) <= len(fills_off[sid]) + 1, sid
+    assert sum(r.trim for r in on) <= sum(r.trim for r in off) + 1
+
+
+def test_rows_that_cross_the_bands_get_the_hard_seam():
+    """Alternating rows cannot blend a seam they cut across: a per-region
+    model whose fill angle is the shape's own (here the fixture's long axis,
+    along the ramp) feathers nothing and keeps the underlap."""
+    region, source = _linear_region(), _linear_source()
+    runs, report = blend_fill(region, source, PipelineConfig())
+    assert report["blend_shades"] >= 3
+    assert report["blend_feather_mm"] == 0.0
+
+
+def test_feather_is_bounded_by_the_band_width(monkeypatch):
+    """A narrow ramp keeps a solid core in every shade: the zone is at most
+    40% of a band. A design ramp 10 mm long in five bands is 2 mm a band, so
+    the zone is 0.8 mm, not 1.5. (The ride is forced: a ramp cut to 10 mm no
+    longer predicts the fixture's colours, and this pins the width rule, not
+    the ride rule.)"""
+    from dataclasses import replace
+    import digitizer_core.stage6_blend as blend_mod
+
+    source = _design_source()
+    ramp = source.design_ramp
+    short = replace(ramp, lo=ramp.lo + 30.0, hi=ramp.lo + 40.0)
+    source = SourcePixels(rgb=source.rgb, px_per_mm=source.px_per_mm, origin_px=source.origin_px,
+                          design_row_angle_deg=source.design_row_angle_deg,
+                          design_ramp=short, gradient_class=True)
+    monkeypatch.setattr(blend_mod, "region_rides_design_ramp", lambda poly, sp: True)
+    _runs, report = blend_fill(_linear_region(), source, PipelineConfig())
+    assert report["blend_design_ramp"] is True
+    n = report["blend_shades"]
+    assert report["blend_feather_mm"] == pytest.approx(0.4 * 10.0 / n, abs=0.02)
+    assert report["blend_feather_mm"] < machine.BLEND_FEATHER_MM
