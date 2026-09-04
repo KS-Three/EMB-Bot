@@ -63,6 +63,9 @@ COLOR_CAP_APPLIED = "COLOR_CAP_APPLIED"            # more threads than max_color
 # stage2_photo_segment.segment's inline comment at the warn() call site).
 # extra: {"count": int, "thread_colors": int, "slic_segments": int, "merged_regions": int}
 PHOTO_SEGMENT_REGION_COUNT = "PHOTO_SEGMENT_REGION_COUNT"
+# extra: {count, area_mm2} — colours dissolved as compression/anti-alias
+# halos by the photo lane (the flat lane has always done this silently)
+PHOTO_BLEND_DISSOLVED = "PHOTO_BLEND_DISSOLVED"
 # Photo plan step 7 (palette k-medoids). Info: how many chart spools the
 # weighted selection settled on, and the worst region's ΔE00 excess over its
 # own nearest-thread floor. extra: {"colors": int, "regions": int, "max_excess_de00": float}
