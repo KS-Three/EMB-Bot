@@ -43,11 +43,15 @@ per-object check ever written and still puckers the garment. Its instrument
 is `_coverage_map`, which rasterizes the whole plan's stitch geometry into
 coverage units where 1.0 is one full covering layer of 40wt thread.
 
-The thread-colour instrument is per-REGION, and became so on 2026-08-11.
-`_thread_match_findings` scores every region's own artwork pixels against the
-one spool assigned to it — the median of the PER-PIXEL CIEDE2000, never a
-summary colour — and THREAD_MATCH_POOR is driven by each thread's worst
-region. It used to pool a per-thread median across every region sharing a
+The thread-colour instrument is per-SPOOL, and became per-region on
+2026-08-11 and per-shade-band on 2026-09-04. `_thread_match_findings` scores
+every spool on the artwork pixels that spool's own stitches land on — the
+median of the PER-PIXEL CIEDE2000, never a summary colour — and
+THREAD_MATCH_POOR is driven by each thread's worst such patch. A flat region
+is one spool over the whole region, unchanged; a gradient region is one row
+per shade band, because that is how many cones it actually sews.
+
+It used to pool a per-thread median across every region sharing a
 spool, and that pooling failed twice in one day (docs/photo-quality-root-
 cause-2026-08-11.md): the independent per-channel median of a bimodal pool
 is a colour almost no pixel carries, and a verified per-region improvement
@@ -103,6 +107,7 @@ there at merge.
 from __future__ import annotations
 
 import math
+import re
 
 import cv2
 import numpy as np
@@ -511,19 +516,108 @@ def finding(code: str, severity: str, message: str, **extra) -> dict:
 
 # --- Thread color fidelity --------------------------------------------------
 
-def _region_color_errors(p, result: PipelineResult,
+_SHADE_SHAPE_ID_RE = re.compile(r"^(.+)-(?:blend|shade)\d+$")
+
+
+def _owning_region_id(shape_id: str, region_ids: set[str]) -> str | None:
+    """The region whose artwork a run's `shape_id` belongs to, or None.
+
+    THE ONE RULE both blend-aware checks here share, because getting it
+    slightly wrong is how each of them went blind on gradient work:
+
+      * A shade band's runs do NOT carry their region's `shape_id`. Stage 6
+        derives a per-band id — `stage6_blend` stamps
+        `f"{shape_id}-blend{i}"`, `stage6_streamline` `f"{shape_id}-shade{i}"`
+        — so on every blend fixture in testdata the region owns NO exactly
+        named run at all, and equality alone answers "this region is not
+        sewn" about a region the machine sews five cones into.
+      * A plain prefix test is not the answer either. Region ids are not
+        prefix-free (`repro_gradient_white_icon` plans both `S5afb1e0a` and
+        `S5afb1e0a-2`), so `S5afb1e0a-2-blend0` prefix-matches both and the
+        shorter, WRONG region wins on a naive scan.
+
+    So: strip the one derived suffix and require the remainder to be a real
+    region id. A run whose id is already a region id belongs to that region
+    outright; anything else (a bare travel run, a tie) is owned by nobody
+    and returns None.
+    """
+    if shape_id in region_ids:
+        return shape_id
+    m = _SHADE_SHAPE_ID_RE.match(shape_id)
+    if m is not None and m.group(1) in region_ids:
+        return m.group(1)
+    return None
+
+
+def _shade_runs_by_region(plan: StitchPlan,
+                          region_ids: set[str]) -> dict[str, dict[int, list]]:
+    """-> {region shape_id: {thread index: [runs that thread sews]}}, for the
+    regions that sew in more than their own one spool.
+
+    Runs are attributed to regions by `_owning_region_id`, which carries the
+    derived-id rule and why equality and prefix tests both get it wrong.
+
+    The bucket key is stage 7's own partition key — `shade_thread_index`,
+    falling back to the region's thread when it is None (`_shade_blocks`) —
+    so the buckets here are exactly the StitchBlocks the machine will sew.
+    The None check is explicit rather than `shade_thread_index or ...`,
+    because chart index 0 is a real spool and `or` would discard it.
+
+    Regions with no shade run at all are left OUT of the result entirely, so
+    `_region_color_errors` can take its untouched single-row path for them.
+    """
+    by_region: dict[str, dict[int, list]] = {}
+    shaded: set[str] = set()
+    for _b, run in plan.iter_runs():
+        rid = _owning_region_id(run.shape_id, region_ids)
+        if rid is None:
+            continue                          # a run no region claims
+        by_region.setdefault(rid, {}).setdefault(
+            run.shade_thread_index, []).append(run)
+        if run.shade_thread_index is not None:
+            shaded.add(rid)
+    return {rid: buckets for rid, buckets in by_region.items()
+            if rid in shaded}
+
+
+def _region_color_errors(p, result: PipelineResult, plan: StitchPlan,
                          cfg: PipelineConfig) -> list[dict]:
-    """-> per-region colour error rows, one per scoreable region:
+    """-> per-SPOOL colour error rows, one per scoreable (region, thread) pair:
     {shape_id, thread_index, delta_e, artwork_rgb}.
 
-    Each region is scored against ITS OWN pixels and ITS OWN spool — never
-    pooled across the regions sharing a thread. Pooling was this
-    instrument's original sin, documented twice in docs/photo-quality-root-
-    cause-2026-08-11.md: the per-channel median of a bimodal pool is a
+    A region that sews in one spool is one row, scored on ITS OWN pixels and
+    ITS OWN spool — never pooled across the regions sharing a thread. Pooling
+    was this instrument's original sin, documented twice in docs/photo-quality-
+    root-cause-2026-08-11.md: the per-channel median of a bimodal pool is a
     colour almost no pixel carries, and a fix that improves one region moves
     the pool it leaves, so the pooled number can worsen across a genuine
-    improvement (drone_render: pooled 9.2 -> 33.6 while the per-region
-    worst halved, 20.99 -> 10.64).
+    improvement (drone_render: pooled 9.2 -> 33.6 while the per-region worst
+    halved, 20.99 -> 10.64).
+
+    A GRADIENT region is not one spool, and scoring it as one repeated that
+    mistake one level down. The blend tier (`stage6_blend.blend_fill`) emits
+    shade bands whose runs carry their own `StitchRun.shade_thread_index`, and
+    stage 7's `_shade_blocks` sews one StitchBlock per shade — five cones
+    across one region, each covering its own slice of the artwork. Scored
+    against the region's single `thread_index`, the check compared a whole
+    tonal sweep to whichever one spool the region happened to carry: a number
+    that could and did move the WRONG WAY across a real improvement (the
+    thing the per-region rewrite existed to stop). Since 2026-09-04 a region
+    whose plan runs carry a shade thread emits ONE ROW PER SHADE THREAD, each
+    scored on the pixels that shade's own stitches actually land on —
+    `cv2.polylines` over its run point lists at `machine.FILL_ROW_MM`
+    thickness (one row's own width: geometry-true, and the bands tile), AND
+    still inside the region mask with the background excluded. Everything
+    else is held identical: same estimator, same `_MIN_COLOR_PIXELS` floor (a
+    shade covering too few pixels is skipped exactly as a tiny region is),
+    same `_COLOR_SAMPLE_PX` subsample. `thread_worst_delta_e` is therefore
+    the worst per-BAND error now, not the worst per-region one — the honest
+    version of the same question, and the only one a blend design can answer.
+
+    A region with NO shade runs — every flat region, every satin, every
+    non-gradient design — takes the identical pre-2026-09-04 path below and
+    produces a byte-identical row: same `shape_id`, same `thread_index`, same
+    `delta_e`.
 
     The pipeline does not carry the pre-snap cluster colors into its result,
     so the artwork is re-read through stage 1 (same config, deterministic,
@@ -531,23 +625,42 @@ def _region_color_errors(p, result: PipelineResult,
     run_preflight for every check that needs the artwork) and each region
     polygon is rasterized back over it. Region coordinates are mm with
     origin at the artwork bbox CENTER, y-down — the exact inverse of the
-    transform stage 4 applied — so px = mm * px_per_mm + center. The mask is
-    eroded one pixel and background pixels are excluded, both to keep
-    anti-alias halo pixels from dragging a flat color toward the background.
+    transform stage 4 applied — so px = mm * px_per_mm + center. Run points
+    keep that same convention (stitches.py), which is why one `to_px` serves
+    both the polygon and the stitch geometry. The mask is eroded one pixel
+    and background pixels are excluded, both to keep anti-alias halo pixels
+    from dragging a flat color toward the background.
 
-    `delta_e` is the MEDIAN OF THE PER-PIXEL CIEDE2000 to the region's
-    assigned spool — the estimator stage 4's `revalidate_threads` settled on,
-    for the reason its docstring measures: a drifted or gradient region is
-    bimodal, and any statistic that collapses it to one colour FIRST (mean
-    Lab, median RGB) reports the defect as absent (the traced sliver: mean
-    says 5.54, the pixels say 23.87). `artwork_rgb` is still the region's
-    per-channel median RGB, but it is a display swatch for the finding —
-    never what the score is computed from.
+    `delta_e` is the MEDIAN OF THE PER-PIXEL CIEDE2000 to the row's assigned
+    spool — the estimator stage 4's `revalidate_threads` settled on, for the
+    reason its docstring measures: a drifted or gradient region is bimodal,
+    and any statistic that collapses it to one colour FIRST (mean Lab, median
+    RGB) reports the defect as absent (the traced sliver: mean says 5.54, the
+    pixels say 23.87). `artwork_rgb` is still a per-channel median RGB of the
+    row's own pixels, but it is a display swatch for the finding — never what
+    the score is computed from.
     """
     x0, y0, x1, y1 = p.art_bbox
     cx, cy = (x0 + x1) / 2.0, (y0 + y1) / 2.0
     h, w = p.rgb.shape[:2]
     chart = chart_for(cfg)
+    shaded = _shade_runs_by_region(plan, {r.shape_id for r in result.regions})
+    # One fill row's own width. The bands tile at this pitch, so a band's
+    # rows drawn this thick cover the strip of artwork the band is
+    # responsible for and no more.
+    #
+    # The MACHINE row deliberately, not the row stage 7 resolved for the
+    # fabric — which is the same number on every fabric the corpus runs
+    # (`pique_knit` and `structured_cap` are both `density_adjust` 1.0) and
+    # differs only on a pile preset (`terry_towel` 0.85 sews 0.128 mm). This
+    # is a SELECTION width, not a geometry claim: what it buys by matching
+    # the sewn pitch there is ~0.011 mm at a band's outermost row, and the
+    # integer-pixel rounding below already swamps that (at 10 px/mm, 0.150
+    # rounds to 2 px and 0.128 to 1, halving the sample and risking the
+    # `_MIN_COLOR_PIXELS` floor). Sharpening it is a change to an
+    # instrument's behaviour, so it wants its own measurement rather than a
+    # ride on this PR; recorded so the next reader knows it is a choice.
+    stroke_px = max(1, int(round(machine.FILL_ROW_MM * p.px_per_mm)))
 
     rows: list[dict] = []
     for r in result.regions:
@@ -566,21 +679,46 @@ def _region_color_errors(p, result: PipelineResult,
         sel = (eroded > 0) & (~p.bg_mask)
         if not sel.any():
             sel = (mask > 0) & (~p.bg_mask)   # hairline shape: erosion ate it
-        px = p.rgb[sel].reshape(-1, 3)
-        if len(px) < _MIN_COLOR_PIXELS:
+
+        def score(pixel_sel, shape_id: str, thread_index: int) -> None:
+            """One row, or none if the selection is too small to judge."""
+            px = p.rgb[pixel_sel].reshape(-1, 3)
+            if len(px) < _MIN_COLOR_PIXELS:
+                return
+            if len(px) > _COLOR_SAMPLE_PX:
+                idx = np.linspace(0, len(px) - 1,
+                                  _COLOR_SAMPLE_PX).astype(np.int64)
+                px = px[idx]
+            lab_px = rgb_to_lab(px.astype(np.float64))
+            lab_thr = chart.lab[thread_index].reshape(1, 3)
+            rows.append({
+                "shape_id": shape_id,
+                "thread_index": thread_index,
+                "delta_e": float(np.median(deltaE_ciede2000(lab_px, lab_thr))),
+                "artwork_rgb": [int(v) for v in np.median(px, axis=0)],
+                "_lab_px": lab_px,
+            })
+
+        buckets = shaded.get(r.shape_id)
+        if not buckets:
+            score(sel, r.shape_id, r.thread_index)          # unchanged path
             continue
-        if len(px) > _COLOR_SAMPLE_PX:
-            idx = np.linspace(0, len(px) - 1, _COLOR_SAMPLE_PX).astype(np.int64)
-            px = px[idx]
-        lab_px = rgb_to_lab(px.astype(np.float64))
-        lab_thr = chart.lab[r.thread_index].reshape(1, 3)
-        rows.append({
-            "shape_id": r.shape_id,
-            "thread_index": r.thread_index,
-            "delta_e": float(np.median(deltaE_ciede2000(lab_px, lab_thr))),
-            "artwork_rgb": [int(v) for v in np.median(px, axis=0)],
-            "_lab_px": lab_px,
-        })
+
+        # One row per spool this region really sews. `shape_id` names the
+        # band, not the region, because the finding interpolates it into
+        # "the shape it sews (...)" and on a five-cone region the region id
+        # alone would point five findings at the same place.
+        for shade, runs in sorted(
+                buckets.items(),
+                key=lambda kv: (r.thread_index if kv[0] is None else kv[0])):
+            thread_index = r.thread_index if shade is None else shade
+            cover = np.zeros((h, w), np.uint8)
+            for run in runs:
+                cv2.polylines(cover, [to_px(run.points)], False, 1,
+                              thickness=stroke_px)
+            score(sel & (cover > 0),
+                  f"{r.shape_id} shade {chart[thread_index].number}",
+                  thread_index)
     return rows
 
 
@@ -616,9 +754,10 @@ def _best_loaded_spool_error(lab_px: np.ndarray, loaded: list[int],
 
 def _thread_match_findings(p, result: PipelineResult, plan: StitchPlan,
                            cfg: PipelineConfig) -> tuple[list[dict], float | None]:
-    """One finding per thread with a region visibly off that spool's colour,
-    judged by the thread's WORST region — per-region, never pooled (the
-    derivation and both measured failure cases are on `_region_color_errors`).
+    """One finding per thread with artwork visibly off that spool's colour,
+    judged by the thread's WORST patch — per region on flat work, per shade
+    band on a blend, never pooled (the derivation and all three measured
+    failure cases are on `_region_color_errors`).
 
     Distance is CIEDE2000 on CIELAB from skimage's rgb2lab on [0, 1] floats
     — the pinned house convention (threads.py), never cv2's 8-bit Lab.
@@ -627,13 +766,16 @@ def _thread_match_findings(p, result: PipelineResult, plan: StitchPlan,
     that is a scoring decision: the operator's remedy (pick a closer spool,
     or split the artwork's colours) is per spool, and a busy photo plan with
     one badly-served thread across five regions is one problem, not five.
-    The finding carries every offending region in `extra.regions` (worst
+    The finding carries every offending row in `extra.regions` (worst
     first) so the review screen can point at all of them, and the second
-    return value — the worst per-region error across the whole design,
+    return value — the worst error across every row the design scores,
     offender or not — rides out as `thread_worst_delta_e`, the number to
-    watch across a re-digitize.
+    watch across a re-digitize. On a blend design a row is one SHADE BAND,
+    not a whole region (`_region_color_errors`), so that number is the worst
+    per-band error: the honest version, and the only one that can fall when
+    a gradient's shades improve.
     """
-    rows = _region_color_errors(p, result, cfg)
+    rows = _region_color_errors(p, result, plan, cfg)
     chart = chart_for(cfg)
     findings: list[dict] = []
     worst: float | None = None
@@ -662,9 +804,13 @@ def _thread_match_findings(p, result: PipelineResult, plan: StitchPlan,
     # and its worst at 22.60. Those numbers were wrong and are recorded here
     # so they are not re-derived: they compared median RGBs, which is the
     # collapse-first mistake `_region_color_errors` measures directly above.
-    # The bind also turns out not to move this check at all — bound and
-    # unbound score identically, because the escape it closes lives in the
-    # shade BLOCKS while this reads `result.regions`.
+    # The bind also turned out not to move this check at all — bound and
+    # unbound scored identically, because the escape it closes lives in the
+    # shade BLOCKS while this read `result.regions` and nothing else. That
+    # blindness is fixed as of 2026-09-04 (see `_region_color_errors`): the
+    # rows now follow the shade blocks, so `loaded` below is the set of
+    # spools this design's BLOCKS sew, which is the machine's real cone
+    # list and a strictly better candidate set than the region list was.
     #
     # `len(loaded) > 1` guards the degenerate design: with a single cone there
     # is no alternative to be closer, every excess is 0 by construction, and
@@ -1595,7 +1741,11 @@ def _uncovered_findings(p, result: PipelineResult, plan: StitchPlan
 
     Regions with no runs at all are skipped — `SHAPES_LEFT_UNSEWN` already
     owns "planned but not sewn", and reporting the same area twice would
-    double-count a deliberate hold-out.
+    double-count a deliberate hold-out. "No runs" means no run any region
+    claims (`_owning_region_id`), which is NOT the same as no run carrying
+    the region's own id: a gradient region's bands are named after it, not
+    for it, and reading that set literally silently exempted every ramp
+    this project has ever planned.
 
     Needs the artwork, so it is skipped (metrics None) exactly like the
     thread-match check when `run_preflight` is called without an image.
@@ -1619,14 +1769,44 @@ def _uncovered_findings(p, result: PipelineResult, plan: StitchPlan
             [a[:, 0] * p.px_per_mm + cx, a[:, 1] * p.px_per_mm + cy]
         ).astype(np.int32)
 
-    sewn = {r.shape_id for _b, r in plan.iter_runs()}
+    # Which regions the plan actually sews. Read through `_owning_region_id`
+    # rather than as a raw set of run ids: a blend region's bands are named
+    # `<shape_id>-blend<i>`, so the bare region id is never among them and
+    # the `not in sewn` skip below dropped EVERY gradient region — this
+    # check has never once looked at a ramp. It did not fail loudly, which
+    # is worse: with nothing claimed there is nothing wanted, so a design
+    # whose whole subject sews as bands reported a clean 0.0 mm2 uncovered.
+    # Measured on `gradient_ramp_radial` at 80 mm/left_chest, 2026-09-04:
+    # `uncovered_wanted_mm2` 0.0 before this line changed, 4875.0 after,
+    # on a region whose own area is the whole 80 mm subject.
+    # Flat work is unaffected — there every run's id IS its region's, so the
+    # resolved set is the old set with the unowned travel ids (which no
+    # region could ever match) dropped.
+    region_ids = {r.shape_id for r in result.regions}
+    sewn = {rid for _b, r in plan.iter_runs()
+            if (rid := _owning_region_id(r.shape_id, region_ids)) is not None}
+    # Each region's own claim is (exterior MINUS its own interiors), and the
+    # design's claim is the union of those — so every region is rasterized
+    # into a scratch mask and OR-ed in. Filling straight into one shared
+    # mask, as this did until 2026-09-04, lets one region's HOLE punch out
+    # area a different region legitimately fills (a ring's hole erasing the
+    # disc nested inside it), and the damage depends on region order. It
+    # went unnoticed while the only regions reaching here were flat shapes
+    # whose holes overlapped nothing: measured on `repro_gradient_white_icon`
+    # the moment the ramp regions became visible to this check, the shared
+    # mask claimed 136,341 px where the union claims 802,474 — 83% of the
+    # design's own artwork silently unexamined, which on this check reads as
+    # a clean report.
     claimed = np.zeros((h, w), np.uint8)
+    one = np.zeros((h, w), np.uint8)
     for r in result.regions:
         if r.shape_id not in sewn:
             continue
-        cv2.fillPoly(claimed, [to_px(r.polygon.exterior.coords)], 1)
+        one[:] = 0
+        cv2.fillPoly(one, [to_px(r.polygon.exterior.coords)], 1)
         for ring in r.polygon.interiors:
-            cv2.fillPoly(claimed, [to_px(ring.coords)], 0)
+            cv2.fillPoly(one, [to_px(ring.coords)], 0)
+        claimed |= one
 
     wanted_px = ((claimed > 0) & (~p.bg_mask)).astype(np.uint8)
     k = max(1, int(round(_UNCOVERED_ERODE_MM * p.px_per_mm)))

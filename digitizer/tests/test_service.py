@@ -1282,3 +1282,22 @@ def test_a_gradients_shade_blocks_outnumber_its_layers_on_the_wire(client):
         for sid in cone["shape_ids"]:
             per_layer.setdefault(layer_of[sid], set()).add(cone["number"])
     assert max(len(v) for v in per_layer.values()) >= 3, per_layer
+
+
+def test_a_gradients_regions_carry_their_sew_facts(client):
+    """A shade band's runs are named `<shape_id>-blend<i>`, and `_sew_facts`
+    keyed on the raw run id — so every blend region fell through to
+    `sew_index`/`sew_block`/`tier` = None and the review screen showed no sew
+    position and no tier for a gradient's whole ramp. Measured on the repro
+    before the fix: 3 of its 8 regions, exactly the three that sew as bands."""
+    state = _digitize(client, {"target_width_mm": 80.0}, art=REPRO)
+    shapes = state["review"]["shapes"]
+    sewn = [s for s in shapes if s["stitched"]]
+    assert len(sewn) >= 6
+    blind = [s["shape_id"] for s in sewn if s["sew_index"] is None]
+    assert not blind, f"regions with no sew facts: {blind}"
+    assert all(s["tier"] for s in sewn), [s for s in sewn if not s["tier"]]
+    # And the block list still names regions, never a derived band id.
+    ids = {s["shape_id"] for s in shapes}
+    for cone in state["stats"]["blocks"]:
+        assert set(cone["shape_ids"]) <= ids, cone

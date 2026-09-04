@@ -100,7 +100,18 @@ Moved verbatim 2026-08-28 — no section was rewritten in the move.
   present, because that instrument measures stage 5's PLAN. **Prove a seam
   on the stitches** (`tools/sewn_compensation.py`), never on the plan; the
   colour is still read from the artwork, or a white neighbour's tongue
-  pulls white into the sweep. **A raster paints a hole half a pixel small**
+  pulls white into the sweep. **A shade band's runs are NOT named after their
+  region** — `stage6_blend` stamps `<shape_id>-blend<i>` and the streamline
+  tier `-shade<i>` — and every consumer that matched a region id against a
+  run id went blind on gradients because of it (2026-09-04, four sites in one
+  day: preflight's bare-fabric check examined NOTHING on a one-region sweep,
+  its thread match scored five cones against one, and the service filed a
+  gradient's sew order and its block shape ids under names no review shape
+  has). `preflight._owning_region_id` is the one rule — strip the derived
+  suffix, then require the remainder to be a real region id. **A prefix test
+  is not a substitute:** region ids are not prefix-free (the repro plans both
+  `S5afb1e0a` and `S5afb1e0a-2`), so a naive scan attributes
+  `S5afb1e0a-2-blend0` to the shorter, wrong region. **A raster paints a hole half a pixel small**
   (2026-09-04): `cv2.fillPoly` paints its boundary pixels, so a hole painted
   in 0 ate half a pixel of its own edge and the satin's hole-side rail
   stopped 0.18 mm short of the outline; `shapefield.hole_px` shrinks the
