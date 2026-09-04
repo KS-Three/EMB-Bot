@@ -71,6 +71,10 @@
     }
     flush();
 
+    // The thread's laid width in the SVG's millimetre viewBox — the same
+    // display constant the Studio preview and the PDF sheet draw with
+    // (0.4 mm nominal 40wt); it was 0.35 here until 2026-09-04.
+    const THREAD_WIDTH_MM = 0.4;
     const parts = [];
     const vbW = widthMM > 0 ? widthMM : 1;
     const vbH = heightMM > 0 ? heightMM : 1;
@@ -85,7 +89,7 @@
       const pts = p.points.map((pt) => fmt(pt[0]) + "," + fmt(pt[1])).join(" ");
       parts.push(
         '<polyline fill="none" stroke="' + rgb(color) +
-          '" stroke-width="0.35" stroke-linejoin="round" stroke-linecap="round" ' +
+          '" stroke-width="' + THREAD_WIDTH_MM + '" stroke-linejoin="round" stroke-linecap="round" ' +
           'points="' + pts + '"/>'
       );
     }

@@ -4127,3 +4127,21 @@ indexed the per-layer palette by `sew_block` — the golf_hat mistake
   back to the block list, and to null without one — never the palette.
 - Tests: 2 service (125 in `test_service.py`), 4 Studio (183 across the
   three spec files). No stitch changes, no scorecard.
+
+
+## 2026-09-04 — the sheet and the SVG draw the physical thread width; the preview's density comments catch up with the ruling
+
+Left open by PR #341. Mapped first: the Studio canvas was already honest —
+`THREAD_WIDTH_MM` 0.4 scaled by px/mm with a 1.2 px floor — so a 0.15 mm
+fill reads as the solid it is, and the anti-flattery test still holds. Two
+renderers were not: `src/render.js`, which the PDF spec sheet draws through,
+stroked every stitch one pixel wide whatever the scale (a 0.15 mm fill
+printed as sparse hatching), and `src/svgexport.js` stroked 0.35 mm in its
+millimetre viewBox. Both draw 0.4 mm now (the sheet at
+`THREAD_WIDTH_MM × 10 × mapper.scale` px, floor 1 px, sheen at 40% of it).
+The comments in `preview.js` and the spec's coverage arithmetic still said
+"0.40 mm rows, coverage exactly 1.0, row spacing undecided and sew-out-gated";
+they say 0.15 mm, coverage 2.67 against the fill row and 1.0 against the
+satin spacing, ruled 2026-09-03, and the spec pins both ratios. No engine or
+digitizer change; `stitchviz.THREAD_MM` (0.4) and the JS↔Python parity test
+are untouched.

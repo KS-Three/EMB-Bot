@@ -657,14 +657,14 @@ trims. *(2026-09-02 — PRs #317/#318)*
 unconditionally. Now `null` = unset, key omitted when unset, panel says
 "automatic" — `fill_angle_deg`'s sentinel shape. *(2026-09-02 — PR #318)*
 
-**Preview thread width is PHYSICAL, and must not be widened.**
-`preview.js`'s `THREAD_WIDTH_MM` (0.4, nominal 40wt) is coverage 1.0 against the
-engine's 0.40 mm fill rows, so a fill that is too open LOOKS too open. Widening
-it to make fills look solid would be the display layer prejudging row spacing —
-a two-population question standing *pending sew-out* — which is ROADMAP gate 1.
-Caveat: `lw` has a 1.2 px floor, so the property holds zoomed in, not on a
-thumbnail. Pinned by a test on the literal 0.4.
-*(confirmed 2026-08-25 — `preview.js`, `preview.spec.js`)*
+**Preview thread width is PHYSICAL — neither widened nor narrowed.**
+`preview.js`'s `THREAD_WIDTH_MM` (0.4, nominal 40wt) is coverage 2.67 against the
+ruled 0.15 mm fill row (rows overlap, as the professional's do) and 1.0 against
+the 0.4 mm satin spacing; a fill at the ruled row looks solid because it IS. The
+PDF sheet (`src/render.js`) and the SVG export draw the same width since
+2026-09-04 — the sheet had drawn 1 px hairlines at any scale. Caveat: `lw` has a
+1.2 px floor (1 px on the sheet), so the property holds zoomed in, not on a
+thumbnail. Pinned on the literal 0.4 and both ratios. *(2026-09-04 — `preview.spec.js`)*
 
 **Thread lighting is unverified against real thread** — eye-tuned, no sew-out to
 compare against. Treat the look as a preference, not a calibration.
