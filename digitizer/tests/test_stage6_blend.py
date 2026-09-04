@@ -761,3 +761,61 @@ def test_blend_bands_chain_and_honor_start_near():
             worst = max(math.dist(prev_end, p) for p in pts)
             assert math.dist(prev_end, first) < worst
         prev_end = band_runs[-1].points[-1]
+
+
+# --- Seams between shade bands (2026-09-03, Kent's seam ruling) ------------
+
+def _layer_extents_along_ramp(runs):
+    """-> {layer_id: (lo, hi)} projections onto the ramp axis, the axis being
+    the line from the darkest layer's centroid to the lightest's (by the L*
+    of the layer's own snapped thread), so the test needs no ramp model."""
+    from digitizer_core.threads import CHART
+    layers = _layers_of(runs)
+    lstar = {}
+    pts = {}
+    for sid, lr in layers.items():
+        idx = next(r.shade_thread_index for r in lr if r.shade_thread_index is not None)
+        lstar[sid] = float(CHART.lab[idx][0])
+        pts[sid] = np.array([p for r in lr for p in r.points], float)
+    dark = min(lstar, key=lstar.get)
+    light = max(lstar, key=lstar.get)
+    axis = pts[light].mean(axis=0) - pts[dark].mean(axis=0)
+    axis /= np.linalg.norm(axis)
+    return {sid: (float((pts[sid] @ axis).min()), float((pts[sid] @ axis).max())) for sid in layers}, lstar
+
+
+def test_the_earlier_darker_band_reaches_under_the_lighter_one_by_overlap_mm():
+    """Stage 5's seam rule applied inside a blend: at every band seam the
+    band that sews first (darker by chart L*) extends `overlap_mm` toward
+    the lighter band, and the lighter band stays on its own boundary.
+    Measured as extents along the ramp axis, overlap 0.25 against 0.0."""
+    region, source = _linear_region(), _linear_source()
+    on, _ = blend_fill(region, source, PipelineConfig(overlap_mm=0.25))
+    off, _ = blend_fill(region, source, PipelineConfig(overlap_mm=0.0))
+    ext_on, lstar = _layer_extents_along_ramp(on)
+    ext_off, _ = _layer_extents_along_ramp(off)
+    assert set(ext_on) == set(ext_off)
+    order = sorted(ext_on, key=lambda s: ext_off[s][0])          # dark end first along the axis
+    darkest, lightest = order[0], order[-1]
+    assert lstar[darkest] < lstar[lightest]
+    # Every band but the lightest sews before its lighter neighbour: its
+    # light-side edge moves toward the light end by the overlap...
+    for sid in order[:-1]:
+        moved = ext_on[sid][1] - ext_off[sid][1]
+        assert moved == pytest.approx(0.25, abs=0.12), (sid, moved)
+    # ...and no band grows back toward the dark end (its first row may
+    # re-phase forward by a fraction of a layer row, never extend backward).
+    for sid in order[1:]:
+        assert ext_on[sid][0] >= ext_off[sid][0] - 0.1, sid
+    # The lightest band is last to sew and reaches nowhere (its far row may
+    # re-phase by a fraction of a layer row; a reach would be the full 0.25).
+    assert ext_on[lightest][1] == pytest.approx(ext_off[lightest][1], abs=0.1)
+
+
+def test_overlap_zero_puts_bands_edge_to_edge():
+    region, source = _linear_region(), _linear_source()
+    runs, _ = blend_fill(region, source, PipelineConfig(overlap_mm=0.0))
+    ext, _ = _layer_extents_along_ramp(runs)
+    order = sorted(ext, key=lambda s: ext[s][0])
+    for a, b in zip(order, order[1:]):
+        assert ext[a][1] <= ext[b][0] + machine.FILL_ROW_MM * len(order) + 0.05, (a, b)

@@ -82,6 +82,13 @@ block. **Tool-wide work:** a seam instrument (boundary length between
 different-thread regions against underlap depth), a card block with abutting
 fills at 0 / 0.25 / 0.5 / 1.0 mm underlap, and underlap between blend bands.
 
+**Built the same day (Kent's ruling):** `tools/seam_underlap.py`, card block 6,
+and blend-band underlap — scope-history 2026-09-03, "seams". What the
+instrument found: the rule holds on the synthetic logos (0.525 mm) and falls
+to **0.237 mm mean on Hotel Fremont**, because a hole stage 5 holds open at
+its original size gets no tongue — the seams Kent saw are the seams around
+small details, not a missing rule.
+
 ## 3. "The palette is wrong — gray, red, copper, mint for a magenta-to-orange gradient; likely defect 16"
 
 **What the record said.** *"Sewn colours were random operator threading

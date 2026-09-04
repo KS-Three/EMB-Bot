@@ -31,9 +31,9 @@ things happen here, in order:
    `stage6_fill.principal_angle_deg` of this region alone. Each layer is
    restricted to a band of the ramp centered on its own shade
    and sewn at `stage6_fill.stitch_shape`'s ordinary row spacing of
-   `FILL_ROW_MM * N`. Adjacent bands overlap by a small margin so the
-   shades blend at the seam instead of leaving a hard edge, which is also
-   what pushes total coverage over 1.0 (see `_BAND_OVERLAP_T`).
+   `FILL_ROW_MM * N`. At each seam the band that sews first (the darker,
+   by chart L*) extends under the later one by `cfg.overlap_mm`, the same
+   underlap stage 5 gives a seam between two colours (2026-09-03).
 
 Coordinates are the same convention as everywhere past stage 4: millimetres,
 origin at the artwork bbox center, y-axis down.
@@ -85,12 +85,10 @@ SHADE_STEP_DELTAE = 9.0
 
 # --- Emission ------------------------------------------------------------------
 
-# How far an internal band boundary reaches into its neighbour, as a fraction
-# of the [0, 1] ramp position. Two effects fall out of one number: adjacent
-# shades overlap enough to blend at the seam instead of leaving a hard edge,
-# and total emitted coverage rises above 1.0 by `2 * this * (N - 1)` — 0.08 at
-# N=3, 0.16 at N=5, comfortably inside the [1.0, 1.2] band the plan specifies.
-_BAND_OVERLAP_T = 0.02
+# The symmetric 2%-of-ramp band overlap (`_BAND_OVERLAP_T`) is gone as of
+# 2026-09-03: bands underlap by `cfg.overlap_mm`, earlier under later, in the
+# band loop of `blend_fill` — the same physical seam rule stage 5 applies
+# between colours.
 
 
 @dataclass
@@ -690,9 +688,28 @@ def blend_fill(region: Region, source_pixels: SourcePixels, cfg,
     # cursor first, then wherever the last emitted part actually ended —
     # each part enters near it instead of at its own top-left default.
     cur = start_near
+    # Seams between shade bands follow stage 5's rule for seams between
+    # colours (2026-09-03, Kent's seam ruling): the band that sews FIRST
+    # extends under the one that sews after it by `cfg.overlap_mm`, and the
+    # later band never grows back. Stage 7 sews a region's shade blocks
+    # dark -> light by chart L*, so the earlier band is the darker of each
+    # adjacent pair, and `t` runs 0 light -> 1 dark, so that is normally band
+    # i + 1 reaching DOWN the ramp into band i. Read the snapped threads'
+    # L* rather than assume it: two neighbouring bands can snap to threads
+    # whose L* order inverts the ramp's. Until this the bands overlapped
+    # symmetrically by 2% of the ramp (`_BAND_OVERLAP_T`), a fraction with no
+    # millimetres behind it; the sew-out's seam trenches were the reason to
+    # give the seam the same physical underlap every other seam gets.
+    span_mm = max(1e-9, float(model.hi - model.lo))
+    t_ov = max(0.0, float(cfg.overlap_mm or 0.0)) / span_mm
+    l_star = [float(chart.lab[idx][0]) for idx in shade_thread_idx]
     for i in range(n):
-        t_lo = max(0.0, i / n - (0.0 if i == 0 else _BAND_OVERLAP_T))
-        t_hi = min(1.0, (i + 1) / n + (0.0 if i == n - 1 else _BAND_OVERLAP_T))
+        t_lo, t_hi = i / n, (i + 1) / n
+        if i > 0 and l_star[i] <= l_star[i - 1]:
+            t_lo -= t_ov                     # this band is darker than the one below: it sews first, reach down
+        if i < n - 1 and l_star[i] < l_star[i + 1]:
+            t_hi += t_ov                     # darker than the one above: it sews first, reach up
+        t_lo, t_hi = max(0.0, t_lo), min(1.0, t_hi)
         parts = _band_clip(poly, model, t_lo, t_hi)
         this_layer: list[StitchRun] = []
         for part in parts:

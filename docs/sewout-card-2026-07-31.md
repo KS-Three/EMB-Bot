@@ -1,11 +1,13 @@
 # Sew-Out Gate Card — 2026-07-31
 
-**One hooping. Five questions. Print this page and take it to the machine.**
+**One hooping. Six questions. Print this page and take it to the machine.**
 
 File: `EMBBOT_SEWOUT_CARD.dst` (built by `digitizer/tools/sewout_card.py` +
 `tools/sewout_bridge.mjs`, written by the browser encoder — the codec with sew
-evidence on this machine). Design **66.0 mm wide x 87.8 mm tall**, **3,326
-stitches**, **5 color blocks / 4 color changes**, ~19 trims.
+evidence on this machine). Design **66.0 mm wide x 96.0 mm tall**, **5,048
+stitches**, **7 color blocks / 6 color changes**, ~32 trims (rebuilt
+2026-09-03 with block 6 and `FILL_ROW_MM` 0.15; the 2026-07-31 build was
+66.0 x 87.8 mm, 3,326 stitches, 5 blocks).
 
 Fabric: the constants under test are tuned for the default preset
 (pique knit). Sew on a polo blank or similar mid-weight knit, cutaway backing.
@@ -20,7 +22,7 @@ Load the file, cap driver OFF, rotation untouched, and read the panel
 |---|---|
 | ~**66 x 88 mm**, preview upright like the diagram below | Machine reads EMB-Bot's convention — *surprising, report back* |
 | ~**88 x 66 mm**, preview sideways | Transposition confirmed on hardware (expected). Hoop sideways or rotate 90 on the panel and note which way |
-| Color count **4** | Machine honors EMB-Bot's color-change byte (0x43) |
+| Color count **6** | Machine honors EMB-Bot's color-change byte (0x43) |
 | Color count **0** | Standard reading confirmed — the card will sew straight through with **no color stops**. Fine: run it all in one dark thread, blocks identified by position |
 
 (Cross-check already done in software: pyembroidery, a standards reader,
@@ -152,6 +154,32 @@ shredded? Is INC a crisp monoline or lint?**
 > instead.**
 
 ---
+
+## 6 — SEAM / UNDERLAP (orange then blue, sews last)
+
+Four pairs of abutting 7.5 x 6 mm tatami fills along the bottom edge, rows
+horizontal so they run ACROSS each seam — the case where pull draws the row
+ends back and opens a line of fabric. The orange half of every pair sews
+first and reaches under its blue partner by the pair's rung; the blue half
+sews after, to its exact edge, exactly as stage 5 sequences two colours.
+
+- **Pair 1 (left): 0 mm** — a butt joint, the failure the other reader
+  named on the 2026-09-01 sew-out.
+- **Pair 2: 0.25 mm** — `PipelineConfig.overlap_mm`, what ships (stage 5
+  adds the fabric's pull on top: 0.55 mm on pique).
+- **Pair 3: 0.5 mm.**
+- **Pair 4 (right): 1.0 mm.**
+
+**Hold each seam up to the light, then stretch the fabric gently along the
+row direction. Which is the first pair that shows no fabric at the seam?
+Then look at the orange side of pair 4 for a ridge or a colour step where
+the tongue sits under the blue.**
+
+> **Decision: the first pair with no line is the underlap; `overlap_mm`
+> moves to it. If pair 2 already closes -> 0.25 stands. If pair 4 shows a
+> ridge, the answer is between pairs 3 and 4 and a second card narrows it.
+> `tools/seam_underlap.py` reads what any design actually carries against
+> the number chosen.**
 
 ## File verification (done in software, for the record)
 

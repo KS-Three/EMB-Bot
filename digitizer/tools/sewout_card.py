@@ -359,6 +359,55 @@ def block5_text() -> tuple[list[StitchRun], dict]:
     return runs, {"words": info}
 
 
+SEAM_RUNGS = (0.0, 0.25, 0.5, 1.0)   # how far A reaches under B, mm
+_SEAM_Y = 91.0                        # below block 5's 88.2 baseline; card stays under 100 mm tall
+_SEAM_W, _SEAM_H = 7.5, 6.0           # each half of a pair; four pairs + 2 mm gaps = 66 mm, the card's width
+
+
+def _seam_pairs():
+    """-> [(x_left, rung)] for the four abutting pairs, left to right."""
+    return [(k * (2 * _SEAM_W + 2.0), d) for k, d in enumerate(SEAM_RUNGS)]
+
+
+def block6_seam_a() -> tuple[list[StitchRun], dict]:
+    """Four 7.5 x 6 mm fills, the LEFT half of four abutting pairs, sewn first.
+    Each reaches under its right-hand partner by its rung: 0 / 0.25 / 0.5 /
+    1.0 mm (stage 5's `overlap_mm` is 0.25 — pair 2 is what ships). Rows run
+    horizontal, ACROSS the seam, so pull draws the row ends back from it:
+    the case the underlap exists for."""
+    runs: list[StitchRun] = []
+    cursor = None
+    info = {}
+    for x, d in _seam_pairs():
+        r, rep = stitch_shape(box(x, _SEAM_Y, x + _SEAM_W + d, _SEAM_Y + _SEAM_H), f"seam-A-{d:g}",
+                              angle_deg=0.0, row_mm=machine.FILL_ROW_MM,
+                              stitch_mm=machine.FILL_STITCH_MM, underlay_style=FILL_UNDERLAY,
+                              trim_at_mm=TRIM_AT, start_near=cursor)
+        link(cursor, r)
+        runs.extend(r)
+        cursor = r[-1].points[-1]
+        info[f"A-{d:g}"] = {"underlap_mm": d, "points": sum(len(x_.points) for x_ in r), "report": rep}
+    return runs, info
+
+
+def block6_seam_b() -> tuple[list[StitchRun], dict]:
+    """The RIGHT halves, sewn after A in a second colour, each to its exact
+    artwork boundary — the later colour never grows back over the earlier."""
+    runs: list[StitchRun] = []
+    cursor = None
+    info = {}
+    for x, d in _seam_pairs():
+        r, rep = stitch_shape(box(x + _SEAM_W, _SEAM_Y, x + 2 * _SEAM_W, _SEAM_Y + _SEAM_H), f"seam-B-{d:g}",
+                              angle_deg=0.0, row_mm=machine.FILL_ROW_MM,
+                              stitch_mm=machine.FILL_STITCH_MM, underlay_style=FILL_UNDERLAY,
+                              trim_at_mm=TRIM_AT, start_near=cursor)
+        link(cursor, r)
+        runs.extend(r)
+        cursor = r[-1].points[-1]
+        info[f"B-{d:g}"] = {"partner_underlap_mm": d, "points": sum(len(x_.points) for x_ in r), "report": rep}
+    return runs, info
+
+
 # --- assembly ----------------------------------------------------------------
 
 BLOCKS = [
@@ -367,6 +416,8 @@ BLOCKS = [
     ("3 WSATIN", block3_wide_satin, (34, 150, 84),  False),
     ("4 TRAVEL", block4_travel,    (30, 30, 30),    False),
     ("5 TEXT",   block5_text,      (128, 52, 180),  True),   # pipeline tied them
+    ("6 SEAMA",  block6_seam_a,    (222, 130, 40),  False),  # the earlier colour, reaching under
+    ("6 SEAMB",  block6_seam_b,    (40, 120, 222),  False),  # the later colour, to its edge
 ]
 
 
