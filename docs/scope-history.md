@@ -4654,6 +4654,19 @@ first**, before any routing change.
 - **Both professional files are already committed** under
   `testdata/reference/`, so the calibration runs in CI; the Gaulke and Fremont
   professional files are not, so those arms stay local.
+- **A three-week-old premise corrected by the same measurement.** Defect 5
+  read "our satin-vs-fill MIX nearly matches the pro's, so retuning
+  `satin_max` cannot fix it — it only moves a mix that is already right."
+  The first half was an AREA statistic: `tools/pro_parity/scorecard.py`'s
+  `cell_stats` assigns ONE type per 2 mm cell, so a 0.29 mm hairline claims
+  a cell exactly as a 2.52 mm column does. By thread the mix was never
+  right. The conclusion survives (retuning `satin_max` is a measured
+  negative on its own) but not its reason. `cell_stats` and
+  `tools/study_pro.py`'s `classify` — which gates satin at a median segment
+  ≥ 0.7 mm and so structurally cannot see our narrowest columns — are
+  annotated in place rather than changed, since changing either would move
+  every pro-corpus number they have already produced. DOCTRINE's
+  Corrections carries the entry.
 - **The plan for what comes next is a decision document, not a queued task:**
   `docs/superpowers/plans/2026-09-04-per-stroke-satin-routing.md`. Its own
   measurement corrected the audit's framing — per-stroke routing would take

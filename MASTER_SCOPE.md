@@ -68,8 +68,8 @@ icon. Cloth pointers added to defects 3, 6 and 16 below.
    *(measured 2026-08-18/21 — `docs/fragmentation-attribution-2026-08-18.md`)*
 
 5. **Satin-vs-fill routing sits at chance, and misroutes in BOTH directions.**
-   The *mix* nearly matches the pro's, so retuning `satin_max` cannot fix it —
-   it only moves a mix that is already right. **Partly closed, and the
+   The *mix* looked close by AREA; by THREAD it is not (2.2% against 44.3% —
+   corrected 2026-09-04, DOCTRINE). **Partly closed, and the
    remainder is NOT the classifier: it is SEGMENTATION.** An oracle knowing
    the pro's per-shape answer scores 76.6% against our 55.4% — our regions
    straddle the pro's satin/fill boundaries. `docs/segmentation-alignment-
