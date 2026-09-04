@@ -4281,6 +4281,32 @@ gaulke (1) — and none on becker, fremont, enthusiast, drone, whitebg, golke,
 summit or tires. Becker is the useful negative: a 1.5 px/mm PNG with plenty of
 thin features and no compression, and the test finds nothing in it.
 
+**What the flag does to the rest of the corpus** (A/B at 80 mm,
+`max_colors=6`, satin; `-` = every number identical):
+
+| fixture | class | effect |
+|---|---|---|
+| `logo_bridge_bar.jpg` | gradient | regions 74→32, blocks 13→11, st 14,607→11,524, **trims 114→64** |
+| `logo_gaulke_roofing.png` | gradient | regions 56→54, **blocks 4→3**, st 10,217→8,744, **trims 30→18** |
+| `logo_golden_tee.jpg` | gradient | inert — regions, blocks and trims unmoved, st +16 (0.2%) |
+| `screenshot_phone_ui_golke.jpg` | gradient | mildly WORSE — regions 152→154, st +49, **trims 67→69** |
+| `logo_script_tires.png` | photo_scene | mildly worse — st 2,336→2,292, **trims 8→9**, area −21 mm² |
+| becker, fremont, enthusiast, whitebg, drone, summit, owl_kent, repro icon, sunset, meadow | flat / gradient / photo | **byte-identical** |
+
+Ten of fifteen unmoved, every flat-lane fixture and all four photographs among
+them; two clear wins, one inert, and **two mild negatives worth naming rather
+than burying** — a phone screenshot (thin UI furniture everywhere) and the
+known-misrouted tires logo each pick up a trim. Neither is a fixture the
+instrument flagged halo cones on, which is consistent: the dissolve also fires
+on sub-cone blends (22 colours / 6.0 mm² on golke, 58 / 21.5 mm² on tires)
+where there is no cone to save and only rounding to lose.
+
+**Suite:** 1,761 passed, 3 failed — the three platform-numerics goldens
+CLAUDE.md names (`test_pushcomp`, `test_flat_lane_byte_identical`,
+`test_stage2_photo_segment`), unrelated to this change and red on this machine
+either way; the flag is OFF and all three of their fixtures are byte-identical
+even with it ON.
+
 **DEFAULT OFF.** It moves the region set on every gradient-class design, and
 per Kent's 2026-09-04 ruling the render is the interim judge of quality, so
 this waits on his eyes rather than on a green suite:
