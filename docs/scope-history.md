@@ -4219,4 +4219,24 @@ envelope-to-outline distance p50 0.006 mm on the compensated exterior,
   four-fold grain on 24 annuli at 0.041 now (0.051 before: the wall is no
   longer shifted outward), under the Rayleigh bar the test uses to show why
   the effect-size floor exists — 40 annuli clear it, so the test counts 40.
-SCORECARD_PARAGRAPH
+- **Scorecard, diff-then-capture against the #344 baseline.** Against the
+  pull-comp baseline (#344), the diff lists movers on eleven fixtures —
+  every one a design with satin counters — and two score moves that cancel:
+  becker_marine_logo at hat front **C 76 → B 88** (ARTWORK_UNCOVERED
+  resolved, `uncovered_total` 15.0 → **0.0** mm²) and the icon repro at hat
+  front **A 100 → B 88** (LETTERING_TOO_SMALL:warn appears — a satin sliver
+  inside the 4 mm lettering box whose column now reads narrower; the pull-
+  comp PR had resolved that same finding there). Where the corrected hole
+  edge does what it is for, the worst bare spots close: repro
+  `uncovered_worst_mm2` 1.0 → **0.2** (left chest) and 0.8 → **0.0** (hat
+  front), `logo_script_tires` 1.8 → **0.0**, bridge bar 0.5 → 0.2, and the
+  drone's `coverage_max` at hat front 9.5 → 7.51 (the "P" sews once). What
+  it costs: becker's 639 mm² satin GROUND at left chest — five letter
+  counters in a wide shape the tier is fragile on either way — reads 90 →
+  88% of its artwork sewn (`uncovered_total` 11.0 → 23.8 mm², its underlay
+  400 → 788 points, 5,177 → 5,531 stitches); `scene_stub` `uncovered_total`
+  6.0 → 6.5 at hat front; STITCHES_TOO_SHORT:warn appears on the drone at
+  hat front (`satin_short_fraction` 0.237 → 0.251, the tiny "R"). Small
+  satin-step and trim moves on dof_meadow, gaulke, golden_tee (9.4 → 8.6),
+  enthusiast and summit. No fill-only fixture moved. Baseline recaptured on
+  this tree.
