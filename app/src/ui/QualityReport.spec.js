@@ -220,3 +220,27 @@ test("the section is labelled for assistive tech", () => {
   expect(section.getAttribute("aria-labelledby")).toBe("quality-h");
   expect(within(section).getByText(heading.textContent)).toBeInTheDocument();
 });
+
+test("lists the cones the machine loads, labelled from the per-block list, with their metres", () => {
+  const stats = {
+    thread_m_total: 20.1,
+    thread_m_by_color: [9.5, 10.6],
+    blocks: [
+      { number: "2521", name: "Fuchsia", rgb: [226, 60, 115], shape_ids: ["a"] },
+      { number: "0015", name: "White", rgb: [255, 255, 255], shape_ids: ["b"] },
+    ],
+  };
+  const { getByRole } = render(QualityReport, { props: { entries: [entry({ stats })] } });
+  const list = getByRole("list", { name: "Threads to load" });
+  expect(list).toHaveTextContent("2521 Fuchsia");
+  expect(list).toHaveTextContent("9.5 m");
+  expect(list).toHaveTextContent("0015 White");
+});
+
+test("shows no per-cone list when the block list is missing or does not match the metres", () => {
+  const { queryByRole } = render(QualityReport, { props: { entries: [
+    entry({ stats: { thread_m_total: 20.1, thread_m_by_color: [9.5, 10.6] } }),
+    entry({ id: "e2", stats: { thread_m_by_color: [1.0], blocks: [{ number: "1" }, { number: "2" }] } }),
+  ] } });
+  expect(queryByRole("list", { name: "Threads to load" })).toBeNull();
+});

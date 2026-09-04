@@ -4096,3 +4096,52 @@ seams of Kent's finding 2, on exactly the lane the sew-out was.
   at a 1.77 → 2.30 mm mean step on 11.5 → 13.7 m of thread, travel 278 →
   179, trims 7.8 → 7.2 per 1,000; the fill angle is unchanged at 22°.
   Baseline recaptured on this tree.
+
+
+## 2026-09-04 — the machine's cone list on the wire: `stats.blocks`, one per sewn block
+
+The next issue after the pull-comp fix: `result.palette` lists one thread per
+LAYER, while a blend design's shade threads live on the blocks
+(`StitchRun.shade_thread_index` → one `StitchBlock` per accepted shade). Mapped
+before touching anything: every download, export and worksheet path already
+reads `design.colors`, which `adapter.plan_to_design` builds one per block —
+the repro's five spools were always on the thread list. What lost them was
+the Studio's own reading of the review: the Sequencer's "Color sequence (2
+blocks)" header and rows (`groupIntoBlocks` groups review SHAPES by layer),
+the quality report's metres (per block, deliberately unlabelled because the
+service sent no per-block list), and `reviewFromJob`'s rgb fallback, which
+indexed the per-layer palette by `sew_block` — the golf_hat mistake
+`StitchPlan.palette` documents, on the app side.
+
+- **Service:** `stats.blocks` = `plan.palette` (the per-block cone list the
+  plan has always carried) with each block's `shape_ids` (the review shapes it
+  sews, `-blend<i>` stripped). `blocks[i]` names `thread_m_by_color[i]` and
+  `design.colors[i]`. `review.palette` stays the per-layer list the editor
+  edits. Pinned on `logo_whitebg` (aligned, every block sews review shapes)
+  and on the repro (more blocks than layers; one layer sews ≥ 3 threads).
+- **Studio:** the Sequencer header reads "Color sequence (2 blocks, 5
+  threads on the machine)" when the two counts differ, and a row that sews
+  as several threads lists them with swatches (`machineBlocksForRows`); the
+  quality report lists the cones to load with their metres, only when the
+  block list and the metres align; `reviewFromJob(review, blocks)` falls
+  back to the block list, and to null without one — never the palette.
+- Tests: 2 service (125 in `test_service.py`), 4 Studio (183 across the
+  three spec files). No stitch changes, no scorecard.
+
+
+## 2026-09-04 — the sheet and the SVG draw the physical thread width; the preview's density comments catch up with the ruling
+
+Left open by PR #341. Mapped first: the Studio canvas was already honest —
+`THREAD_WIDTH_MM` 0.4 scaled by px/mm with a 1.2 px floor — so a 0.15 mm
+fill reads as the solid it is, and the anti-flattery test still holds. Two
+renderers were not: `src/render.js`, which the PDF spec sheet draws through,
+stroked every stitch one pixel wide whatever the scale (a 0.15 mm fill
+printed as sparse hatching), and `src/svgexport.js` stroked 0.35 mm in its
+millimetre viewBox. Both draw 0.4 mm now (the sheet at
+`THREAD_WIDTH_MM × 10 × mapper.scale` px, floor 1 px, sheen at 40% of it).
+The comments in `preview.js` and the spec's coverage arithmetic still said
+"0.40 mm rows, coverage exactly 1.0, row spacing undecided and sew-out-gated";
+they say 0.15 mm, coverage 2.67 against the fill row and 1.0 against the
+satin spacing, ruled 2026-09-03, and the spec pins both ratios. No engine or
+digitizer change; `stitchviz.THREAD_MM` (0.4) and the JS↔Python parity test
+are untouched.

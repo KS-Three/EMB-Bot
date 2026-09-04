@@ -71,26 +71,22 @@ export function weavePattern(ctx, w, h, rgb, pxPerMm) {
 // constant — it scales pixels, never stitch geometry, and no planner value is
 // derived from it.
 //
-// It is deliberately NOT inflated to make fills look solid. Against the
-// engine's current 0.40 mm fill rows, 0.40 mm thread is coverage 1.0 — rows
-// that just touch, with no overlap to hide behind — so a fill that is too open
-// looks too open here.
+// It is deliberately NOT inflated to make fills look solid, and not narrowed
+// to make dense ones readable. Against the engine's fill row — 0.15 mm since
+// Kent's density ruling of 2026-09-03 (`machine.FILL_ROW_MM`, PR #339; the
+// browser engine's `fillRowMm`, PR #341) — 0.4 mm thread is coverage 2.67:
+// rows overlap by more than half, which is what the professional's files
+// measure (rows 0.14–0.17 mm apart under the same 40wt thread). Against the
+// 0.4 mm satin spacing it is coverage 1.0, columns that just touch. A fill
+// that is too open still looks too open here; a fill at the ruled row looks
+// solid because it IS solid.
 //
-// WHY that matters is narrower than an earlier version of this comment
-// claimed, and the correction is worth keeping. It said the preview must not
-// "flatter the open fill-density defect" of FILL_ROW_MM running ~2x light.
-// That is not the repo's position: per `machine.py` and area 1's "Fill row
-// spacing (law 19)", the ~0.20 mm figure is a satin-rail ARTIFACT for one file
-// population (refuted) and a genuine denser pitch on 43 commissioned cap logos
-// (still alive) — an unresolved TWO-POPULATION question, with 0.40 standing
-// pending a sew-out, not a known defect. Stating it as settled was the exact
-// hardening-of-a-hedge that MASTER_SCOPE's Corrections section exists to catch.
-//
-// The rule survives the correction, and is better for it: row spacing is
-// genuinely undecided and sew-out-gated (ROADMAP gate 1), so the display layer
-// must not PREJUDGE it. Widening thread here would make every fill look solid
-// whatever spacing wins, which is a display-layer answer to a question only
-// cloth can settle.
+// The row was undecided and sew-out-gated until that ruling, and an earlier
+// version of this comment argued the preview must not prejudge it. It is
+// decided now, on the professional's measured files, and the rule for this
+// constant is unchanged: it is the physical laid width, so what you see at
+// zoom is the coverage the cloth gets — never a knob to make a density look
+// better or worse than it is.
 //
 // One caveat this comment owes the reader: `lw` has a 1.2 px visibility floor
 // (see renderRealistic). Below ~3 px/mm the floor, not this constant, sets the

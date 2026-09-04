@@ -1829,3 +1829,47 @@ test("remapBlockColors: two blocks collapsing onto one colour keep the EARLIER c
   // Same answer whichever order the keys arrive in.
   expect(remapBlockColors(oldPalette, { 1: B, 0: A }, newPalette)).toEqual({ 0: A });
 });
+
+test("reviewFromJob's rgb fallback indexes the machine block list by sew_block, never the per-layer palette", async () => {
+  stubStorage({});
+  const { reviewFromJob } = await import("./digitizer.js");
+  // A blend shade's thread is not in the per-LAYER palette (the layer's own
+  // thread is), so the fallback is all it has. The palette entry at position
+  // `sew_block` is white here — the wrong cone, and the one the old fallback
+  // returned.
+  const wire = {
+    palette: [
+      { brand_id: "isacord", number: "0020", name: "Black", rgb: [0, 0, 0] },
+      { brand_id: "isacord", number: "0015", name: "White", rgb: [255, 255, 255] },
+    ],
+    shapes: [
+      { shape_id: "Sshade", thread_index: 0, thread_number: "9999", area_mm2: 10, source: "quant",
+        layer: 0, sew_order: null, sew_index: 0, sew_block: 1, tier: "fill",
+        outline_mm: [[0, 0], [1, 0], [1, 1]], holes_mm: [] },
+    ],
+  };
+  const blocks = [
+    { number: "0020", name: "Black", rgb: [0, 0, 0], shape_ids: ["Sother"] },
+    { number: "9999", name: "Shade", rgb: [9, 9, 9], shape_ids: ["Sshade"] },
+  ];
+  expect(reviewFromJob(wire, blocks).shapes[0].rgb).toEqual([9, 9, 9]);
+  // Without the block list there is nothing `sew_block` may index: null, not
+  // whichever palette entry sits at that position.
+  expect(reviewFromJob(wire).shapes[0].rgb).toBeNull();
+});
+
+test("machineBlocksForRows lists every machine block that sews one of the row's shapes, in sew order", async () => {
+  stubStorage({});
+  const { machineBlocksForRows } = await import("./digitizer.js");
+  const blocks = [
+    { number: "1906", rgb: [204, 51, 102], shape_ids: ["ramp"] },
+    { number: "2521", rgb: [226, 60, 115], shape_ids: ["ramp", "sliver"] },
+    { number: "0015", rgb: [255, 255, 255], shape_ids: ["icon"] },
+    { number: "1200", rgb: [249, 139, 67], shape_ids: ["ramp"] },
+  ];
+  expect(machineBlocksForRows(blocks, [{ id: "ramp" }, { id: "sliver" }]).map((b) => b.number))
+    .toEqual(["1906", "2521", "1200"]);
+  expect(machineBlocksForRows(blocks, [{ id: "icon" }]).map((b) => b.number)).toEqual(["0015"]);
+  expect(machineBlocksForRows(null, [{ id: "icon" }])).toEqual([]);
+  expect(machineBlocksForRows(blocks, [])).toEqual([]);
+});

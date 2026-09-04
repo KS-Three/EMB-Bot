@@ -1245,3 +1245,40 @@ def test_max_pixels_guard_is_actually_wired(client):
     assert ok
     r = client.post("/digitize", files={"image": ("tiny.png", buf.tobytes(), "image/png")})
     assert r.status_code in (202, 400)   # decodes fine; may or may not digitize
+
+
+# --- stats.blocks: the machine's cones, one per block ------------------------
+
+def test_stats_blocks_are_the_machines_cones_aligned_with_the_design_colours(client):
+    """`stats.blocks[i]` names `design.colors[i]` and `stats.thread_m_by_color[i]`,
+    and lists the review shapes that block sews — the per-BLOCK list
+    `StitchPlan.palette` has always been, now on the wire beside the per-LAYER
+    `review.palette` the editor uses."""
+    state = _digitize(client, {"target_width_mm": 80.0})
+    stats, design, review = state["stats"], state["design"], state["review"]
+    blocks = stats["blocks"]
+    assert len(blocks) == design["colorCount"] == len(stats["thread_m_by_color"]) >= 3
+    for cone, colour in zip(blocks, design["colors"]):
+        assert cone["rgb"] == [colour["r"], colour["g"], colour["b"]]
+        assert colour["name"].startswith(cone["number"])
+        assert cone["brand_id"] == review["palette"][0]["brand_id"]
+    shape_ids = {s["shape_id"] for s in review["shapes"]}
+    for cone in blocks:
+        assert cone["shape_ids"], "every block sews at least one review shape"
+        assert set(cone["shape_ids"]) <= shape_ids
+
+
+def test_a_gradients_shade_blocks_outnumber_its_layers_on_the_wire(client):
+    """The repro sews its ramp pieces as several shade blocks (one thread each,
+    `shade_thread_index`), so the machine's cone list is longer than the
+    layer list — and a layer's shapes appear in every block that sews them."""
+    state = _digitize(client, {"target_width_mm": 80.0}, art=REPRO)
+    stats, review = state["stats"], state["review"]
+    blocks = stats["blocks"]
+    assert len(blocks) > len(review["palette"])
+    layer_of = {s["shape_id"]: s["layer"] for s in review["shapes"]}
+    per_layer: dict[int, set[str]] = {}
+    for cone in blocks:
+        for sid in cone["shape_ids"]:
+            per_layer.setdefault(layer_of[sid], set()).add(cone["number"])
+    assert max(len(v) for v in per_layer.values()) >= 3, per_layer

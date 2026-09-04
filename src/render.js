@@ -110,7 +110,17 @@
       ctx.restore();
     }
 
-    // Walk stitches, drawing thin line segments per run, per current color.
+    // The thread's laid width — the same display constant the Studio preview
+    // (`app/src/lib/preview.js` THREAD_WIDTH_MM) and the Python render
+    // (`stitchviz.THREAD_MM`) draw with, scaled to this canvas so the sheet
+    // shows the coverage the cloth gets. Until 2026-09-04 every stitch here
+    // was one pixel wide whatever the scale, so the PDF sheet drew a 0.15 mm
+    // fill as sparse hatching at print size. `mapper.scale` is px per DST
+    // unit (0.1 mm); a 1 px floor keeps a tiny thumbnail legible.
+    const THREAD_WIDTH_MM = 0.4;
+    const lw = Math.max(1, THREAD_WIDTH_MM * UNITS_PER_MM * mapper.scale);
+
+    // Walk stitches, drawing line segments per run, per current color.
     let colorIndex = 0;
     let havePoint = false;
     let prevPx = 0, prevPy = 0;
@@ -126,7 +136,7 @@
           const strokeColor = rgb(currentColor());
           // Base thread line.
           ctx.strokeStyle = strokeColor;
-          ctx.lineWidth = 1;
+          ctx.lineWidth = lw;
           ctx.lineCap = "round";
           ctx.beginPath();
           ctx.moveTo(prevPx, prevPy);
@@ -135,7 +145,7 @@
           // Subtle highlight for a thread-like sheen.
           ctx.save();
           ctx.strokeStyle = "rgba(255,255,255,0.25)";
-          ctx.lineWidth = 0.4;
+          ctx.lineWidth = lw * 0.4;
           ctx.beginPath();
           ctx.moveTo(prevPx, prevPy);
           ctx.lineTo(px, py);

@@ -652,7 +652,34 @@ def _stats_payload(plan, design: dict) -> dict:
         "size_mm": [design["widthMM"], design["heightMM"]],
         "thread_m_total": round(s.thread_m_total, 2),
         "thread_m_by_color": [round(v / 1000.0, 2) for v in s.thread_mm_by_color],
+        # The cones the machine sews, ONE PER BLOCK in sew order — `plan.palette`
+        # (see `StitchPlan.palette`: deliberately not `review.palette`, the
+        # per-LAYER list the review screen edits). `blocks[i]` names
+        # `thread_m_by_color[i]` and `design.colors[i]`, and carries the review
+        # shapes that block sews, so a screen can show a layer that sews as
+        # several shades (a blend region's `shade_thread_index` blocks) under
+        # the layer the user reorders. Until 2026-09-04 the service sent only
+        # the per-layer list, so the Sequencer's "Color sequence (2 blocks)"
+        # and the quality report's unlabelled metres both under-counted a
+        # gradient's spools — the download's thread list (`design.colors`) was
+        # right the whole time.
+        "blocks": [
+            {**cone, "shape_ids": _block_shape_ids(block)}
+            for cone, block in zip(plan.palette, plan.blocks)
+        ],
     }
+
+
+def _block_shape_ids(block) -> list[str]:
+    """The review shapes a block sews, first-appearance order. A blend band's
+    run is tagged `<shape_id>-blend<i>`; the shape is what the review screen
+    knows, so the suffix comes off."""
+    seen: list[str] = []
+    for run in block.runs:
+        sid = run.shape_id.split("-blend")[0] if run.shape_id else ""
+        if sid and sid not in seen:
+            seen.append(sid)
+    return seen
 
 
 @app.get("/health")

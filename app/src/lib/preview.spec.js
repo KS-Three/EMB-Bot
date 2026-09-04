@@ -492,30 +492,28 @@ test("THREAD_WIDTH_MM is 0.4 and MUST NOT be widened — the anti-flattery guard
   // repo has already reasoned about at length, so it pins a literal rather
   // than anything derived.
   //
-  // 0.4 mm is nominal 40wt laid thread. Against the engine's current 0.40 mm
-  // fill rows that is coverage EXACTLY 1.0 -- rows that just touch, with no
-  // overlap to hide behind. Widening it would make every fill look solid in
-  // the preview regardless of its real density, which would hide a genuine
-  // density problem behind the display layer.
+  // 0.4 mm is nominal 40wt laid thread. Against the fill row Kent ruled on
+  // 2026-09-03 -- 0.15 mm, the professional's measured pitch (machine.py
+  // FILL_ROW_MM, PR #339; the browser engine's fillRowMm, PR #341) -- that is
+  // coverage 2.67: rows overlap by more than half, as the pro's do. Against
+  // the 0.4 mm satin spacing it is exactly 1.0, columns that just touch.
+  // Widening it would make an open fill look solid; narrowing it would make
+  // the ruled fill look like hatching. Either hides a real density behind
+  // the display layer.
   //
-  // The open density item this protects is the denser-than-nominal pitch
-  // measured on the 43 commissioned cap logos -- tracked in area 1, still
-  // unresolved and sew-out-gated. It is NOT the "~2x light" figure an earlier
-  // version of this comment cited: that number was retracted 2026-08-25 as a
-  // satin-rail measurement artifact (see the Correction block in
-  // MASTER_SCOPE.md). And the gate that forbids changing a physical constant
-  // without a sew-out is ROADMAP gate 1, not gate 3 -- gate 3 is about
-  // flipping a default-OFF tier on. Getting that number wrong here points
-  // the next reader at the wrong refusal.
-  //
-  // If a sew-out later establishes a different real laid width, change this
-  // number AND the MASTER_SCOPE claim that cites it AND say so out loud --
-  // do not quietly widen it because a fill looked gappy.
+  // The density question this test used to guard as "undecided and
+  // sew-out-gated" is decided (DOCTRINE, 2026-09-03). The gate that forbids
+  // changing a PHYSICAL constant without a sew-out is ROADMAP gate 1, and
+  // this constant is one: if a sew-out later establishes a different real
+  // laid width, change this number AND the MASTER_SCOPE claim that cites it
+  // AND say so out loud -- never quietly because a fill looked gappy or
+  // solid.
   expect(THREAD_WIDTH_MM).toBe(0.4);
 
-  const FILL_ROW_MM = 0.4; // digitizer/digitizer_core/machine.py's current value
-  const coverage = THREAD_WIDTH_MM / FILL_ROW_MM;
-  expect(coverage).toBe(1); // exactly touching: not flattering, not gapped
+  const FILL_ROW_MM = 0.15; // digitizer/digitizer_core/machine.py, ruled 2026-09-03
+  const SATIN_SPACING_MM = 0.4; // machine.SATIN_SPACING_MM, unchanged by the ruling
+  expect(THREAD_WIDTH_MM / FILL_ROW_MM).toBeCloseTo(2.667, 2); // rows overlap, as the pro's do
+  expect(THREAD_WIDTH_MM / SATIN_SPACING_MM).toBe(1); // columns just touch
 });
 
 test("renderRealistic: threadWidthMm is overridable, and a wider thread strokes wider", () => {

@@ -569,6 +569,29 @@ describe("Sequencer view", () => {
     expect(middleBlockRow).toHaveTextContent("2 shapes");
   });
 
+  test("a layer that sews as several machine threads says so in the header and lists them under its row", async () => {
+    // `stats.blocks` is the machine's cone list, one per sewn block: the
+    // green layer (b, c) is a blend region sewing as three shades, so the
+    // machine loads five threads for three colour layers.
+    const stats = {
+      blocks: [
+        { number: "1000", name: "Red", rgb: [200, 0, 0], shape_ids: ["a"] },
+        { number: "2100", name: "Dark green", rgb: [0, 120, 0], shape_ids: ["b", "c"] },
+        { number: "2000", name: "Green", rgb: [0, 200, 0], shape_ids: ["b", "c"] },
+        { number: "2200", name: "Light green", rgb: [0, 240, 0], shape_ids: ["b"] },
+        { number: "3000", name: "Blue", rgb: [0, 0, 200], shape_ids: ["d"] },
+      ],
+    };
+    const { getByRole, getByText, getAllByText } = renderPanel(threeBlockRows(), { stats });
+    await fireEvent.click(getByRole("button", { name: /Color sequence \(3 blocks, 5 threads on the machine\)/ }));
+    const middle = getAllByText("2000")[0].closest("li");
+    expect(middle).toHaveTextContent("sews as");
+    expect(middle).toHaveTextContent("2100");
+    expect(middle).toHaveTextContent("2200");
+    // A colour that sews as its one thread keeps a plain row.
+    expect(getByText("1000").closest("li")).not.toHaveTextContent("sews as");
+  });
+
   test("a shape hidden or unstitched doesn't get its own block", async () => {
     const rows = [
       shapeRow("a", { layer: 0 }),
