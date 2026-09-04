@@ -160,7 +160,7 @@
   },
   "score": 88
  },
- "captured_at_commit": "d15431cef9034cf809049aba7f3605c0882ec3aa",
+ "captured_at_commit": "cb7408aa4069af1181c01ef975e89a2a2bba75b2",
  "captured_date": "2026-09-04",
  "logo_alpha.png @ 80mm/hat_front": {
   "findings": [],
@@ -752,20 +752,19 @@
  },
  "photo/gradient_ramp_radial.png @ 80mm/hat_front": {
   "findings": [
-   "THREAD_MATCH_POOR:warn",
-   "THREAD_MATCH_POOR:warn"
+   "THREAD_MATCH_POOR:block"
   ],
-  "grade": "B",
+  "grade": "C",
   "metrics": {
    "class_override_detected_class": null,
-   "color_changes": 3,
+   "color_changes": 4,
    "contour_starved_shapes": 0,
    "coverage_area_mm2": 5223.0,
-   "coverage_max": 4.88,
+   "coverage_max": 4.2,
    "coverage_over_block_mm2": 0.0,
    "coverage_over_warn_mm2": 0.0,
-   "coverage_p50": 2.65,
-   "coverage_p95": 3.19,
+   "coverage_p50": 2.68,
+   "coverage_p95": 3.64,
    "faces_detected": 0,
    "fill_advance_mm": 0.15,
    "fill_axis_concentration": 0.996,
@@ -779,34 +778,33 @@
    "satin_shapes": 0,
    "satin_short_fraction": 0.0,
    "satin_steps": 0,
-   "stitch_count": 14607,
+   "stitch_count": 17149,
    "subject_bg_delta_l": 72.99,
    "thread_match_checked": true,
-   "thread_worst_delta_e": 8.1,
+   "thread_worst_delta_e": 12.3,
    "trims_per_1000": 0.2,
    "uncovered_checked": true,
    "uncovered_total_mm2": 0.0,
-   "uncovered_wanted_mm2": 3859.0,
+   "uncovered_wanted_mm2": 0.0,
    "uncovered_worst_mm2": 0.0
   },
-  "score": 76
+  "score": 70
  },
  "photo/gradient_ramp_radial.png @ 80mm/left_chest": {
   "findings": [
-   "THREAD_MATCH_POOR:warn",
-   "THREAD_MATCH_POOR:warn"
+   "THREAD_MATCH_POOR:block"
   ],
-  "grade": "B",
+  "grade": "C",
   "metrics": {
    "class_override_detected_class": null,
-   "color_changes": 3,
+   "color_changes": 4,
    "contour_starved_shapes": 0,
-   "coverage_area_mm2": 5204.0,
-   "coverage_max": 4.83,
+   "coverage_area_mm2": 5201.0,
+   "coverage_max": 4.29,
    "coverage_over_block_mm2": 0.0,
    "coverage_over_warn_mm2": 0.0,
-   "coverage_p50": 2.67,
-   "coverage_p95": 3.16,
+   "coverage_p50": 2.68,
+   "coverage_p95": 3.66,
    "faces_detected": 0,
    "fill_advance_mm": 0.15,
    "fill_axis_concentration": 0.996,
@@ -820,17 +818,17 @@
    "satin_shapes": 0,
    "satin_short_fraction": 0.0,
    "satin_steps": 0,
-   "stitch_count": 14539,
+   "stitch_count": 17085,
    "subject_bg_delta_l": 72.99,
    "thread_match_checked": true,
-   "thread_worst_delta_e": 8.1,
+   "thread_worst_delta_e": 12.3,
    "trims_per_1000": 0.2,
    "uncovered_checked": true,
    "uncovered_total_mm2": 0.0,
-   "uncovered_wanted_mm2": 3862.0,
+   "uncovered_wanted_mm2": 0.0,
    "uncovered_worst_mm2": 0.0
   },
-  "score": 76
+  "score": 70
  },
  "photo/logo_bridge_bar.jpg @ 80mm/hat_front": {
   "findings": [
