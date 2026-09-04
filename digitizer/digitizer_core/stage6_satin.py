@@ -548,11 +548,12 @@ def _rasterize(poly: Polygon) -> tuple[np.ndarray, float, float, float]:
         return np.column_stack([(a[:, 0] - x0) * scale + 2, (a[:, 1] - y0) * scale + 2]).astype(np.int32)
 
     cv2.fillPoly(img, [to_px(poly.exterior.coords)], 255)
+    shrink = bool(poly.is_valid) and poly.area > 0.0
     for ring in poly.interiors:
         # A hole is painted half a pixel smaller than it is, so its edge
         # lands where the exterior's does — `shapefield.hole_px`, shared with
         # this function's twin `shapefield.rasterize_polygon` (2026-09-04).
-        for pts in hole_px(ring, scale, to_px):
+        for pts in hole_px(ring, scale, to_px, shrink):
             cv2.fillPoly(img, [pts], 0)
     return img, scale, x0 - 2 / scale, y0 - 2 / scale
 

@@ -971,9 +971,14 @@ def test_the_four_fold_grain_stays_well_under_the_floor():
     is what rejects it, so the margin between the grain and the floor is the
     thing to pin: if a raster-resolution change ever pushes the grain up
     toward the floor, this is the test that says so. Measured 0.051 at 4 px
-    against a 0.25 floor; asserted at a third of the floor."""
+    against a 0.25 floor; asserted at a third of the floor. Since the
+    2026-09-04 hole shrink (`shapefield.hole_px`: a hole is painted half a
+    pixel smaller, so an annulus's wall is no longer shifted outward by the
+    raster) the grain reads 0.041 and 24 annuli no longer clear the
+    Rayleigh bar — 40 do, which keeps the second assertion honest about
+    why the floor exists."""
     annuli = []
-    for i in range(24):
+    for i in range(40):
         c = Point(i * 16.0, 0.0)
         poly = c.buffer(6.0).difference(c.buffer(5.4))
         annuli.append(Region(shape_id=f"A{i}", polygon=poly, thread_index=0,

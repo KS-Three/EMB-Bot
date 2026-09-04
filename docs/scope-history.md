@@ -4209,4 +4209,14 @@ envelope-to-outline distance p50 0.006 mm on the compensated exterior,
   straights — which `rails_follow_edge=True` recovers (frame 65 → 72%, ring
   56 → 64%, thread +3–5%): Kent's sew-out-gated call, untouched.
   22,087 → 22,095 stitches, 26 → **22** trims, thread 65.12 → 65.53 m — the frame's and the ring's satin columns close at different points now (their skeletons' cuts moved with the raster) and chain with four fewer cuts. Renders: `docs/renders/satin-hole-raster-2026-09-04/`.
+- **Two things the full suite caught.** A polygon with no material of its
+  own (invalid, or zero area — a hole coincident with its shell, the
+  fixture `test_stroke_coverage` and `test_textcluster` use for "fails
+  open") had its hole shrunk too, which left the exterior's own half-pixel
+  rim standing as a one-pixel loop that fielded and clustered as a shape;
+  such a polygon paints its holes as before (`hole_px(shrink=False)`). And
+  `test_the_four_fold_grain_stays_well_under_the_floor` reads the raster's
+  four-fold grain on 24 annuli at 0.041 now (0.051 before: the wall is no
+  longer shifted outward), under the Rayleigh bar the test uses to show why
+  the effect-size floor exists — 40 annuli clear it, so the test counts 40.
 SCORECARD_PARAGRAPH
