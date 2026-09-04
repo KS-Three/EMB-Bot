@@ -1806,7 +1806,7 @@ def kept_masks_to_quant(
 
 
 def segment(p: Prep, cfg: PipelineConfig, face_regions=None, bg_mask=None,
-            split_tonal=False, shade_demand=False) -> Quant:
+            split_tonal=False, shade_demand=False, design_ramp=None) -> Quant:
     h, w = p.rgb.shape[:2]
     valid = ~p.bg_mask
     flat_rgb = p.rgb.reshape(-1, 3)
@@ -1839,6 +1839,21 @@ def segment(p: Prep, cfg: PipelineConfig, face_regions=None, bg_mask=None,
     base_valid = valid & ~enclosed if has_enclosed else valid
 
     lab_img = rgb_to_lab(flat_rgb).reshape(h, w, 3)
+    if design_ramp is not None:
+        # Kent's gradient ruling (2026-09-03): a design whose ramp fits
+        # (`design_ramp.fit_design_ramp` — gradient class, gate passed; the
+        # pipeline passes None for everything else) merges on Lab with the
+        # sweep SUBTRACTED. Every superpixel of a smooth ramp then reads as
+        # the same colour and the merge below joins them into one region,
+        # where before it cut the sweep wherever the running mean colours
+        # drifted `MERGE_DELTAE00_THRESH` apart — the sew-out's "blocky
+        # bands" were those cuts, each piece then sewn flat in one thread.
+        # An icon drawn ON the ramp loses nothing: its departure from the
+        # sweep is what is left, and the boundary-contrast rule reads the
+        # same edge it always did. SEEDS still oversegments the original
+        # raster (it only supplies the oversegmentation), and the palette
+        # below still reads `p.rgb` — only the merge's colour space moves.
+        lab_img = design_ramp.flatten_lab(lab_img, p.px_per_mm)
 
     # --- 1. SEEDS, foreground only (enclosed pixels excluded) ---------------
     slic_labels = _seeds_superpixels(p.rgb, base_valid)

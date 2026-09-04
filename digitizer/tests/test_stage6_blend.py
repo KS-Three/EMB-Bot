@@ -202,7 +202,12 @@ def test_blend_geometry_matches_the_plan_contract(region_factory, source_factory
 
     angle = principal_angle_deg(region.polygon)
 
-    expected_row_mm = machine.FILL_ROW_MM * n
+    # Every band is a fill and sews at the fill row (2026-09-03). Until then
+    # this read `FILL_ROW_MM * n` — one sparse layer per band — and the
+    # coverage sum below, which weights each row by the layer's OWN spacing,
+    # summed the bands' areas to 1.0 while the cloth got a third to a fifth
+    # of a fill. At the fill row the same sum is the physical coverage.
+    expected_row_mm = machine.FILL_ROW_MM
     total_coverage = 0.0
     layer_angles = []
     for sid, layer_runs in layers.items():
@@ -818,4 +823,204 @@ def test_overlap_zero_puts_bands_edge_to_edge():
     ext, _ = _layer_extents_along_ramp(runs)
     order = sorted(ext, key=lambda s: ext[s][0])
     for a, b in zip(order, order[1:]):
-        assert ext[a][1] <= ext[b][0] + machine.FILL_ROW_MM * len(order) + 0.05, (a, b)
+        assert ext[a][1] <= ext[b][0] + machine.FILL_ROW_MM + 0.05, (a, b)
+
+
+# --- The design ramp (2026-09-03, Kent's gradient ruling) ---------------------
+
+def _thread_mm(runs) -> float:
+    return sum(math.dist(a, b) for r in runs for a, b in zip(r.points, r.points[1:]))
+
+
+def test_band_clip_is_anchored_on_the_ramp_not_the_region_centre():
+    """A linear ramp's band strip used to be anchored on the polygon's bbox
+    centre, so a region whose centre projects off the origin along the ramp
+    had its bands shifted by that projection: the fixture region moved 30 mm
+    along its ramp clipped its first band to nothing and sewed a third less
+    thread. Moving the region and the raster together must change nothing
+    but position."""
+    from shapely.affinity import translate
+
+    region, source = _linear_region(), _linear_source()
+    cfg = PipelineConfig()
+    base_runs, base_report = blend_fill(region, source, cfg)
+    base_mm = _thread_mm(base_runs)
+    for dx, dy in [(30.0, 0.0), (0.0, 25.0), (30.0, 25.0)]:
+        poly = translate(region.polygon, dx, dy)
+        moved = Region(shape_id="Sramp", polygon=poly, thread_index=0,
+                       thread_number=CHART[0].number, area_mm2=poly.area)
+        ox, oy = source.origin_px
+        moved_source = SourcePixels(
+            rgb=source.rgb, px_per_mm=source.px_per_mm,
+            origin_px=(ox - dx * source.px_per_mm, oy - dy * source.px_per_mm))
+        runs, report = blend_fill(moved, moved_source, cfg)
+        assert report["blend_shades"] == base_report["blend_shades"]
+        assert len(_layers_of(runs)) == len(_layers_of(base_runs)), (dx, dy)
+        assert _thread_mm(runs) == pytest.approx(base_mm, rel=0.02), (dx, dy)
+
+
+def _fixture_design_ramp():
+    """The linear fixture's own design ramp, in the tests' SourcePixels frame."""
+    from digitizer_core.design_ramp import fit_design_ramp_pixels
+
+    rgb = _load_rgb("gradient_ramp_linear.png")
+    fg = np.zeros(rgb.shape[:2], bool)
+    fg[_MARGIN:_H - _MARGIN, _MARGIN:_W - _MARGIN] = True
+    ramp = fit_design_ramp_pixels(rgb, fg, _PX_PER_MM)
+    assert ramp is not None
+    return ramp.shifted(_ORIGIN_PX[0] / _PX_PER_MM, _ORIGIN_PX[1] / _PX_PER_MM)
+
+
+def _design_source() -> SourcePixels:
+    ramp = _fixture_design_ramp()
+    return SourcePixels(rgb=_load_rgb("gradient_ramp_linear.png"),
+                        px_per_mm=_PX_PER_MM, origin_px=_ORIGIN_PX,
+                        design_row_angle_deg=ramp.row_angle_deg(),
+                        design_ramp=ramp, gradient_class=True)
+
+
+def _halves(poly: Polygon) -> tuple[Polygon, Polygon]:
+    minx, miny, maxx, maxy = poly.bounds
+    midy = (miny + maxy) / 2.0
+    top = poly.intersection(Polygon([(minx, miny), (maxx, miny), (maxx, midy), (minx, midy)]))
+    bottom = poly.intersection(Polygon([(minx, midy), (maxx, midy), (maxx, maxy), (minx, maxy)]))
+    return top, bottom
+
+
+def test_pieces_of_one_design_ramp_share_bands_and_threads():
+    """Two pieces of one sweep (the fixture cut across the ramp) sewn with
+    the design's bands: the same shade count, the same threads, and each
+    thread's rows spanning the same interval along the ramp in both pieces —
+    what makes a ramp an icon cuts into pieces read as one sweep."""
+    source = _design_source()
+    ramp = source.design_ramp
+    cfg = PipelineConfig()
+    top, bottom = _halves(_linear_region().polygon)
+    reports = {}
+    extents = {}
+    for name, poly in (("top", top), ("bottom", bottom)):
+        region = Region(shape_id=f"S{name}", polygon=poly, thread_index=0,
+                        thread_number=CHART[0].number, area_mm2=poly.area)
+        runs, report = blend_fill(region, source, cfg)
+        assert report["blend_design_ramp"] is True
+        assert report["blend_shades"] >= 3
+        reports[name] = report
+        by_thread: dict[int, list[float]] = {}
+        for r in runs:
+            if r.kind != stitches.FILL:
+                continue
+            proj = [ramp.raw(x, y) for x, y in r.points]
+            by_thread.setdefault(r.shade_thread_index, []).extend(proj)
+        extents[name] = {k: (min(v), max(v)) for k, v in by_thread.items()}
+    assert reports["top"]["blend_shades"] == reports["bottom"]["blend_shades"]
+    assert set(extents["top"]) == set(extents["bottom"])
+    for thread, (lo, hi) in extents["top"].items():
+        blo, bhi = extents["bottom"][thread]
+        assert lo == pytest.approx(blo, abs=machine.FILL_ROW_MM + 0.05), thread
+        assert hi == pytest.approx(bhi, abs=machine.FILL_ROW_MM + 0.05), thread
+
+
+def test_a_region_off_the_design_ramp_takes_the_per_region_path():
+    """The icon: a flat white region on a design whose ramp fits does not
+    ride it — its pixels sit far off the ramp's planes — and sews exactly
+    as it did before the design ramp existed (here: not a ramp, tatami)."""
+    source = _design_source()
+    white = SourcePixels(rgb=np.full_like(source.rgb, 255), px_per_mm=_PX_PER_MM,
+                         origin_px=_ORIGIN_PX, design_row_angle_deg=source.design_row_angle_deg,
+                         design_ramp=source.design_ramp, gradient_class=True)
+    region = _linear_region()
+    runs, report = blend_fill(region, white, PipelineConfig())
+    assert runs
+    assert report["blend_shades"] == 0
+    assert report.get("blend_design_ramp", False) is False
+
+
+def test_blend_bands_sew_at_the_fill_row():
+    """Since 2026-09-03 every band is a fill at the fill row; until then the
+    bands sewed at `FILL_ROW_MM * n`, a third to a fifth of a fill."""
+    region, source = _linear_region(), _linear_source()
+    runs, _ = blend_fill(region, source, PipelineConfig())
+    angle = principal_angle_deg(region.polygon)
+    for sid, layer_runs in _layers_of(runs).items():
+        for g in _row_spacings_mm(layer_runs, angle):
+            assert g == pytest.approx(machine.FILL_ROW_MM, abs=0.02), sid
+
+
+def test_a_linear_ramp_design_is_sewn_everywhere_end_to_end():
+    """The in-situ form of the band-clip defect: `gradient_ramp_linear.png`
+    at 80 mm segments into regions centred off the origin, and on the
+    2026-08-02 engine their bands were clipped against the region centre —
+    46% of the ramp was more than 1 mm from any thread and the middle of
+    the design was blank (audit, 2026-09-04). Every unit fixture is centred,
+    so only a whole-design run can see it: no part of the stitched artwork
+    may sit further than a fill row and a half from a fill stitch."""
+    from shapely.geometry import LineString
+    from shapely.ops import unary_union
+    from digitizer_core.pipeline import plan_stitches, run_stages
+
+    cfg = PipelineConfig(target_width_mm=80.0, garment_id="left_chest")
+    result = run_stages(str(PHOTO_DIR / "gradient_ramp_linear.png"), cfg)
+    plan = plan_stitches(result, cfg)
+    fills = [LineString(r.points) for _b, r in plan.iter_runs()
+             if r.kind == stitches.FILL and len(r.points) >= 2]
+    assert fills
+    sewn = unary_union([f.buffer(1.5 * machine.FILL_ROW_MM) for f in fills])
+    art = unary_union([r.polygon for r in result.regions if r.meta.get("stitched", True)])
+    bare = art.difference(sewn)
+    assert bare.area <= 0.01 * art.area, f"{bare.area:.1f} mm² of {art.area:.1f} never sewn"
+
+
+def test_the_end_bands_absorb_a_region_that_reaches_past_the_design_range():
+    """On the design path `model.lo/hi` are the design's, and a region can
+    reach past them. The first and last bands take the overshoot; nothing
+    of the polygon is left in no band (review, 2026-09-04: a clamp at 0 / 1
+    left 3% of the repro's frame piece unsewn)."""
+    from dataclasses import replace
+    from shapely.ops import unary_union
+
+    source = _design_source()
+    ramp = source.design_ramp
+    shrunk = replace(ramp, lo=ramp.lo + 3.0, hi=ramp.hi - 3.0)
+    source = SourcePixels(rgb=source.rgb, px_per_mm=source.px_per_mm, origin_px=source.origin_px,
+                          design_row_angle_deg=source.design_row_angle_deg,
+                          design_ramp=shrunk, gradient_class=True)
+    region = _linear_region()
+    runs, report = blend_fill(region, source, PipelineConfig())
+    assert report["blend_design_ramp"] is True
+    from shapely.geometry import LineString
+    fills = [LineString(r.points) for r in runs if r.kind == stitches.FILL and len(r.points) >= 2]
+    sewn = unary_union([f.buffer(1.5 * machine.FILL_ROW_MM) for f in fills])
+    bare = region.polygon.difference(sewn)
+    assert bare.area <= 0.01 * region.polygon.area, bare.area
+
+
+def test_a_region_that_rides_the_design_ramp_is_never_sewn_as_satin():
+    """The repro's outer strip — a 3.5 mm ring of the sweep beyond the white
+    frame — classifies as a satin ribbon. Sewn as satin it is one thread all
+    the way round, fuchsia where the source turns orange (render,
+    2026-09-04). A riding region falls through the satin rung to the sweep's
+    bands; the white ring, which does not ride, keeps its satin."""
+    from digitizer_core.pipeline import plan_stitches, run_stages
+    from digitizer_core.stage6_blend import region_rides_design_ramp
+
+    cfg = PipelineConfig(target_width_mm=80.0, garment_id="left_chest")
+    result = run_stages(str(PHOTO_DIR / "repro_gradient_white_icon.png"), cfg)
+    assert result.source_pixels is not None and result.source_pixels.design_ramp is not None
+    plan = plan_stitches(result, cfg)
+    kinds: dict[str, set] = {}
+    shaded: dict[str, bool] = {}
+    for _b, r in plan.iter_runs():
+        base = r.shape_id.split("-blend")[0]
+        kinds.setdefault(base, set()).add(r.kind)
+        shaded[base] = shaded.get(base, False) or r.shade_thread_index is not None
+    riders = [r for r in result.regions
+              if r.meta.get("stitched", True) and r.area_mm2 >= 100.0
+              and region_rides_design_ramp(r.polygon, result.source_pixels)]
+    assert len(riders) >= 3, [r.shape_id for r in riders]
+    for r in riders:
+        assert stitches.SATIN not in kinds.get(r.shape_id, set()), r.shape_id
+        assert shaded.get(r.shape_id), f"{r.shape_id} rides but sewed no shade band"
+    non_riders = [r for r in result.regions if r.meta.get("stitched", True)
+                  and r.area_mm2 >= 100.0 and r not in riders]
+    assert any(stitches.SATIN in kinds.get(r.shape_id, set()) for r in non_riders), \
+        "the white ring should still be satin"

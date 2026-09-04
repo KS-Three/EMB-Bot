@@ -526,24 +526,46 @@ def _interleaved_shade_layers(n: int = 4, side_mm: float = 14.0, stamped: bool =
     return _plan(*runs)
 
 
-def test_blend_shade_layers_are_not_judged_on_their_own_row_advance():
-    """Four interleaved shade layers each sew rows at four times the row; the
-    union is the row. The per-run reader must not call that 4x sparse —
-    exactly what it did on the pure linear ramp fixture on 2026-09-03."""
-    report = run_preflight(None, _interleaved_shade_layers(4), cfg())
+def _shade_bands(n: int = 4, side_mm: float = 14.0):
+    """`n` blend-style bands of one square, each a horizontal slice sewn at
+    the fill row — what `stage6_blend._emit_bands` puts down since 2026-09-03."""
+    runs = []
+    band_h = side_mm / n
+    for i in range(n):
+        pts = []
+        y = -side_mm / 2 + i * band_h
+        row = 0
+        while y <= -side_mm / 2 + (i + 1) * band_h:
+            xs = [-side_mm / 2 + 2.0 * k for k in range(int(side_mm / 2.0) + 1)]
+            if row % 2:
+                xs.reverse()
+            pts.extend((x, y) for x in xs)
+            y += machine.FILL_ROW_MM
+            row += 1
+        runs.append(StitchRun(points=pts, kind=st.FILL, shape_id=f"S1-blend{i}",
+                              shade_thread_index=i))
+    return _plan(*runs)
+
+
+def test_blend_shade_bands_at_the_fill_row_read_clean():
+    report = run_preflight(None, _shade_bands(4), cfg())
 
     assert DENSITY_EXTREME not in _codes(report)
-    assert report["metrics"]["fill_advance_mm"] is None
+    assert report["metrics"]["fill_advance_mm"] == pytest.approx(machine.FILL_ROW_MM, abs=0.01)
 
 
-def test_the_same_rows_without_the_blend_stamp_are_still_sparse():
-    """The exemption keys on the stamp, not on the geometry: the identical
-    rows sewn as plain tatami are genuinely 4x sparse and must still warn."""
-    report = run_preflight(None, _interleaved_shade_layers(4, stamped=False), cfg())
-
-    hit = [f for f in report["findings"] if f["code"] == DENSITY_EXTREME]
-    assert len(hit) == 1
-    assert hit[0]["extra"]["ratio"] == pytest.approx(4.0, abs=0.1)
+def test_blend_shade_layers_are_judged_like_any_fill():
+    """PR #339 (2026-09-03) exempted runs stamped `shade_thread_index` from
+    this reader on the premise that n interleaved layers at n times the row
+    union to the row. The premise was false — the bands were disjoint, each
+    a sparse layer on its own — and the exemption hid exactly the cloth
+    between rows the sew-out showed. Gone the same day the bands moved to
+    the fill row: the old layout, stamped or not, is 4x sparse and says so."""
+    for stamped in (True, False):
+        report = run_preflight(None, _interleaved_shade_layers(4, stamped=stamped), cfg())
+        hit = [f for f in report["findings"] if f["code"] == DENSITY_EXTREME]
+        assert len(hit) == 1, stamped
+        assert hit[0]["extra"]["ratio"] == pytest.approx(4.0, abs=0.1)
 
 
 def test_the_band_table_stays_in_lockstep_with_the_technique_gate():

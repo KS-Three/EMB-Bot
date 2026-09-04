@@ -62,8 +62,11 @@ FILL_STITCH_MM = 3.0
 #
 # Physical consequences, all deliberate: fill stitch counts rise ~2.7x, the
 # coverage grader's thresholds below are re-based in fill LAYERS so a plain
-# fill still grades clean, the blend tier's bands (FILL_ROW_MM * n) keep
-# their union at this pitch, and fabric presets still scale it
+# fill still grades clean, the blend tier's shade bands sew at this row too
+# (since 2026-09-04 — they had sewn at FILL_ROW_MM * n, one sparse layer per
+# band, and an earlier version of this comment claimed their "union" sat at
+# the row; the bands are adjacent strips, not interleaved layers, and the
+# union pitch was n times the row), and fabric presets still scale it
 # (`density_adjust`: pile at 0.85-0.90 sews tighter still). Underlay has its
 # own constants (UNDERLAY_ZIGZAG_MM, UNDERLAY_LATTICE_MM) and does not move.
 # The two-pass density boost below is now superseded (it would land at

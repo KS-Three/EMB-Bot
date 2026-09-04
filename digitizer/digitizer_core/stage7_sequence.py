@@ -61,7 +61,7 @@ from .fabrics import Fabric
 from .machine import FILL_ROW_MM, FILL_STITCH_MM, SATIN_MAX_WIDTH_MM, TINY_STITCH_MM
 from .stage5_overlap import PlannedRegion
 from .stage6_applique import applique_pass, nn_group_key
-from .stage6_blend import SourcePixels, blend_fill
+from .stage6_blend import SourcePixels, blend_fill, region_rides_design_ramp
 from .stage6_border import border_runs, run_outline, silhouette_cap
 from .stage6_contour import contour_fill
 from .stage6_detail import detail_runs
@@ -1569,13 +1569,24 @@ def sequence(
             ribbon = (classify_ribbon(p.region.polygon, satin_max,
                                       design_class=design_class)
                       if tier == "auto" and cfg.satin else None)
+            # Kent's gradient ruling (2026-09-04): a shape that RIDES the
+            # design's ramp is part of the sweep and sews the sweep's bands,
+            # so the classifier's satin verdict does not apply to it — a
+            # thin ring of the sweep sewn as satin is one thread all the way
+            # round (the repro's outer strip, fuchsia where the source turns
+            # orange, once stage 2 stopped cutting it). A forced "satin" still
+            # wins: the user has answered. Only ever true on a gradient-class
+            # design whose ramp passed its gate; None otherwise, and the
+            # sample it costs is the one `blend_fill` takes anyway.
+            rides_ramp = (tier == "auto" and source_pixels is not None
+                          and region_rides_design_ramp(p.region.polygon, source_pixels))
             if ribbon is not None and ribbon.reason == "photo_width_floor":
                 runs, report = run_outline(p.region.polygon, p.shape_id,
                                            entry=entry, trim_at_mm=trim_at)
                 if not report["empty"]:
                     report["as_run"] = 1
                     return runs, report, False
-            if tier == "satin" or (ribbon is not None and ribbon.satin):
+            if tier == "satin" or (ribbon is not None and ribbon.satin and not rides_ramp):
                 # The house cross angle (2026-08-26). Per-shape intent beats
                 # the global, the same precedence border/underlay_style/
                 # fill_angle already use; None on both keeps today's output
