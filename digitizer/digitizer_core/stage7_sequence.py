@@ -1884,8 +1884,15 @@ def sequence(
                 # 2026-09-04 only the region went in, and every blend region
                 # sewed its raw artwork — no pull compensation, no tongue —
                 # with the seam instrument (which reads the plan) green.
+                # The density this design resolved to — `cfg.fill_row_mm` or
+                # the machine row, scaled by the fabric — reaches the blend
+                # tier as it reaches tatami and satin (2026-09-04). It had
+                # read the machine constants directly, so a fabric preset or
+                # a per-job override moved every fill on a design EXCEPT its
+                # gradient regions.
                 runs, report = blend_fill(p.region, source_pixels, cfg,
-                                          start_near=entry, polygon=p.polygon)
+                                          start_near=entry, polygon=p.polygon,
+                                          row_mm=row_mm, stitch_mm=stitch_mm)
             elif contour:
                 runs, report = contour_fill(
                     p.polygon,
