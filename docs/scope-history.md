@@ -4145,3 +4145,68 @@ they say 0.15 mm, coverage 2.67 against the fill row and 1.0 against the
 satin spacing, ruled 2026-09-03, and the spec pins both ratios. No engine or
 digitizer change; `stitchviz.THREAD_MM` (0.4) and the JS↔Python parity test
 are untouched.
+
+
+## 2026-09-04 — the satin raster ate every counter's edge: hole-side rails 0.18 mm short of the compensated outline
+
+Found by the sewn-compensation instrument on the pull-comp PR: the repro's
+white frame and ring — satin — read 57% and 47% of their compensation strips
+covered while the blend regions read 100% and the satin's own artwork 95%.
+An agent localised the bare area (measure/bias/residual scripts, since
+deleted with the scratch): **12.7 of the frame's 18.2 bare mm² lie along
+the rails outside the zigzag's envelope, and only on the HOLE side** —
+envelope-to-outline distance p50 0.006 mm on the compensated exterior,
+0.179 mm on the hole (ring 0.011 / 0.193); column ends 0.4 mm² (no cutback:
+`directional_comp` is off).
+
+- **Mechanism.** `stage6_satin._rasterize` paints the exterior with
+  `cv2.fillPoly(…, 255)` and each hole with `cv2.fillPoly(…, 0)`. `fillPoly`
+  paints its boundary pixels, so the exterior gains half a pixel of
+  material all round and a hole LOSES half a pixel: a ring's wall shifts
+  outward by ~0.08 mm at 6 px/mm, the medial axis follows, and `_rail_points`
+  sets both rails to the NEARER boundary hit — the exterior — so the
+  hole-side rail stops two half-pixels short. A synthetic annulus read the
+  spine +0.096 mm outward in every quadrant, outer rail 0.005 short, inner
+  0.186; `rint`, `shift=8` and `LINE_AA` do not fix it (+0.095 / +0.095 /
+  +0.114), a pixel-centre-exact raster does (−0.003).
+- **Fix: a hole is painted half a pixel smaller than it is**
+  (`shapefield.hole_px`, shared by `_rasterize` and its twin
+  `rasterize_polygon`, whose byte-equality `test_shapefield` pins), so its
+  edge lands where the exterior's does. Every hole-free mask is
+  byte-identical; a hole too small to survive the shrink is painted as it
+  was. The new `test_the_hole_side_rail_reaches_the_counter_edge` pins the
+  inner rail's penetrations at the hole's edge (median ≤ 7.56 on a 7.5 mm
+  hole, was 7.65) and never inside it.
+- **The obvious form was built first and measured wrong.** Redrawing the
+  hole's boundary as material after the fill (`cv2.polylines`) puts the
+  annulus right too — and closes a counter a few pixels across to a speck
+  the medial axis trips over: the drone's satin "A" at hat front (its sewn
+  counter 0.28 mm², three pixels) lost its upper legs, 97 → **54%** of its
+  artwork sewn, and a 6 mm² shape with a 1.4 mm² hole 98 → 81%; on
+  `photo_scene_stub` a 33 mm² shape's satin steps fell 194 → 108 and the
+  design's uncovered area doubled at hat front. The drawn ring also
+  roughens larger holes into spurs. The shrink form keeps every small
+  hole exactly as it was: the "A" reads 98% again, `scene_stub`'s two
+  small counters gain (91 → 97% and 84 → 91% of artwork; strips 14 → 66%
+  and 18 → 53%), and the drone's 43 mm² "P" sews as ONE pass around its
+  counter (136 satin steps) where it had sewn three overlapping ones (432;
+  its 9.5-layer `coverage_max` at hat front was this) — its strip reads
+  91 → 76% because the overshooting passes are gone, its artwork 99%.
+  What the shrink form still costs: a 6.2 mm² "R" (a 3 mm letter, below
+  sewable size) reads 98 → 84% of its artwork, its skeleton around a
+  1.4 mm² counter branching differently. The full pixel-centre raster
+  fixes more (the 11.6 mm² sliver 43 → 82%) but re-touches bars and tips
+  (two pushcomp cap gaps shift 0.2 mm, `ribbon_curve`'s start cap fans) —
+  not taken.
+- **Measured on the stitches.** Repro at 80 mm / left chest: frame strip
+  57 → **66%** covered, ring 47 → **59%**, the sliver 43% unchanged; the
+  blend regions stay 100%. The instrument's ceiling for a PERFECT satin strip is
+  ~80% (a synthetic column with rails on the outline reads 80–81% on a
+  0.3 mm strip: legs 0.4 apart at the rail under a 0.15 buffer leave
+  slivers), and 94–95% on artwork is what a rail on the outline reads. The
+  residual is the smoothed width profile at corners and bumps — 54% of
+  exterior samples with a > 20° turn sit > 0.15 mm short against 6% on
+  straights — which `rails_follow_edge=True` recovers (frame 65 → 72%, ring
+  56 → 64%, thread +3–5%): Kent's sew-out-gated call, untouched.
+  22,087 → 22,095 stitches, 26 → **22** trims, thread 65.12 → 65.53 m — the frame's and the ring's satin columns close at different points now (their skeletons' cuts moved with the raster) and chain with four fewer cuts. Renders: `docs/renders/satin-hole-raster-2026-09-04/`.
+SCORECARD_PARAGRAPH

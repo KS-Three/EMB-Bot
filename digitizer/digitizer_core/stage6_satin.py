@@ -71,7 +71,7 @@ from shapely.geometry import Point as SPoint
 from skimage.morphology import medial_axis
 
 from . import machine, stitches
-from .shapefield import build_shape_field
+from .shapefield import build_shape_field, hole_px
 from .stitches import StitchRun
 
 # Raster resolution for the medial axis. Enough that a 0.8 mm stroke is ~5 px
@@ -549,7 +549,11 @@ def _rasterize(poly: Polygon) -> tuple[np.ndarray, float, float, float]:
 
     cv2.fillPoly(img, [to_px(poly.exterior.coords)], 255)
     for ring in poly.interiors:
-        cv2.fillPoly(img, [to_px(ring.coords)], 0)
+        # A hole is painted half a pixel smaller than it is, so its edge
+        # lands where the exterior's does — `shapefield.hole_px`, shared with
+        # this function's twin `shapefield.rasterize_polygon` (2026-09-04).
+        for pts in hole_px(ring, scale, to_px):
+            cv2.fillPoly(img, [pts], 0)
     return img, scale, x0 - 2 / scale, y0 - 2 / scale
 
 

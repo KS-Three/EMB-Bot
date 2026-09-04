@@ -89,7 +89,14 @@ Moved verbatim 2026-08-28 — no section was rewritten in the move.
   present, because that instrument measures stage 5's PLAN. **Prove a seam
   on the stitches** (`tools/sewn_compensation.py`), never on the plan; the
   colour is still read from the artwork, or a white neighbour's tongue
-  pulls white into the sweep. **No physical tests until Kent
+  pulls white into the sweep. **A raster paints a hole half a pixel small**
+  (2026-09-04): `cv2.fillPoly` paints its boundary pixels, so a hole painted
+  in 0 ate half a pixel of its own edge and the satin's hole-side rail
+  stopped 0.18 mm short of the outline; `shapefield.hole_px` shrinks the
+  hole first, in both byte-equal raster twins (`test_shapefield`) — change
+  one, change both. **Do not redraw the boundary as material instead:**
+  measured to close a three-pixel counter to a speck (the drone's satin "A"
+  lost its upper legs) and spur larger holes. **No physical tests until Kent
   says** (2026-09-04): the stitchviz render is the interim judge of
   quality; put before/after renders in every PR that changes stitches.
   *(Kent's calls 2026-09-03/04 — `docs/sewout-findings-2026-09-03.md`
