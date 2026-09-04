@@ -85,7 +85,7 @@ icon. Cloth pointers added to defects 3, 6 and 16 below.
    essentially never cut. **On cloth 2026-09-01:** the first sew-out's tail
    is exactly this — late satin fragments riding over pre-sewn work, jump-
    chains stepping 8–11.5 mm. *(measured 2026-08-21/22 — area 1; cloth
-   2026-09-01 — scope-history)*
+   2026-09-01 — scope-history)* **Seams, 2026-09-03:** `tools/seam_underlap.py` reads the sewn underlap per colour pair — synthetic logos carry the full pull + 0.25, Hotel Fremont 0.24 mm mean over 1,549 mm of seams (673 mm under 0.25) because a hole held open at the detail floor gets no tongue; card block 6 (0 / 0.25 / 0.5 / 1.0) sets the number on cloth. *(measured 2026-09-03 — scope-history)*
 
 15. **An UNDECLARED photograph gets neither depth sequencing nor the palette
     bind, and its region re-snap escapes the selected palette.** `is_photographic`

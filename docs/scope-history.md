@@ -3739,3 +3739,41 @@ all deliberate:
   path is the Python service and is what this ruling changes.
 - Goldens and the scorecard baseline: see the PR for what was re-captured
   and why each mover is this change.
+
+## 2026-09-03 — seams: the instrument, the card's block 6, and underlap between blend bands
+
+Kent's seam ruling (the second of the day, on the other reader's "no
+overlap at the seams"): build the instrument and the card block, and give
+blend bands the underlap. All three landed; the number itself waits for
+cloth.
+
+- **`tools/seam_underlap.py`** (4 tests) reads the planned geometry pair
+  by pair: a seam is where the later colour's SEWN boundary lies on the
+  earlier colour's sewn polygon, its depth the sewn overlap over that
+  length. Stage 5's rule is `pull + overlap_mm` earlier-under-later, and
+  the instrument reads exactly that where it applies: `logo_whitebg` and
+  `logo_alpha` 0.525 mm (pique, 0.3 + 0.25), the icon repro 0.534. But at
+  the Studio's 80 mm / left chest the real logos carry far less: **Hotel
+  Fremont 1,549 mm of colour seams at 0.237 mm mean, 673 mm of it under
+  the configured 0.25**; Bridge Bar 1,232 mm at 0.431 (88 mm under 0.25);
+  drone 883 mm at 0.398; ENTHUSIAST 15 mm at 0.224. The shortfall is
+  structural, not a bug in the rule: stage 5 holds a hole open at its
+  original size wherever growing the shell would take it under
+  `min_detail_mm²`, and the seam around a held hole gets no tongue at all
+  — small counters, rope pieces, thin details. Confirmed pair by pair at
+  Fremont's own 92.5 mm patch config (1,813 mm of seams at 0.320 mean,
+  448 mm under 0.25): every zero-depth seam has the white ground as the
+  earlier colour and a 2–7 mm² rope piece or letter as the later one.
+  Same-thread neighbours are reported apart (Becker: 610 mm over 10 pairs,
+  no seam logic by design); summit_badge 907 mm at 0.461.
+- **Card block 6** — four pairs of abutting 7.5 x 6 mm tatami fills at
+  underlap 0 / 0.25 / 0.5 / 1.0 mm, orange first and reaching under, blue
+  after to its edge, rows across the seam. The card is now 66 x 96 mm,
+  5,048 stitches, 7 blocks (`docs/sewout-card-2026-07-31.md`, section 6).
+  The first pair with no line is the number.
+- **Blend shade bands underlap by `overlap_mm`**, earlier (darker by chart
+  L*) under later, replacing a symmetric 2%-of-ramp overlap
+  (`_BAND_OVERLAP_T`) that had no millimetres behind it. Two tests pin the
+  reach and that the later band never grows back. Blend fixtures move in
+  the scorecard baseline (diff-then-capture below).
+
