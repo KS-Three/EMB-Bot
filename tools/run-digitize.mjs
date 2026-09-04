@@ -17,7 +17,13 @@ const opt = {
   workPx: +(process.env.WORKPX || 360),
   nColors: +(process.env.NCOLORS || 7),
   alphaMin: 128, despeckleFrac: 0.0010, maxPolysPerColor: 30, simplifyTol: 1.6,
-  densityMm: +(process.env.DENSITY || 0.45), satinMaxWidthMm: +(process.env.SATINMAX || 3.0),
+  // Spacing: the engine's defaults (DG.FILL_ROW_MM 0.15 fill rows, DG.SATIN_SPACING_MM
+  // 0.4 satin) unless overridden — FILLROW / SATINSP set one each; DENSITY is the
+  // pre-2026-09-04 knob that sets BOTH (this runner hard-coded 0.45 until then).
+  ...(process.env.DENSITY ? { densityMm: +process.env.DENSITY } : {}),
+  ...(process.env.FILLROW ? { fillRowMm: +process.env.FILLROW } : {}),
+  ...(process.env.SATINSP ? { satinSpacingMm: +process.env.SATINSP } : {}),
+  satinMaxWidthMm: +(process.env.SATINMAX || 3.0),
   underlay: process.env.UNDERLAY !== "0",
   garment: { widthIn: +(process.env.GW || 5), heightIn: +(process.env.GH || 2.25) },
   pxPerMm: 8,

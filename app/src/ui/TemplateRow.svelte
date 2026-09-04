@@ -27,8 +27,8 @@
   // offscreen canvas via the SAME engine path used everywhere else (
   // buildLetteringDesign -> renderRealistic), design-fit (no `hoop` opt), so
   // the card shows what the template will actually stitch -- not a mockup.
-  // densityMm: 1.2 (plan amendment B12 -- buildLetteringDesign's option is
-  // `densityMm`, there is no `spacingMm` at this layer) keeps generation fast
+  // satinSpacingMm: 1.2 (plan amendment B12 -- buildLetteringDesign's option
+  // is `satinSpacingMm`, spelled `densityMm` until 2026-09-04) keeps generation fast
   // since these run off the idle queue, not on a user gesture.
   // Awaits the template's font (lib/fontLoader.js -- lazy-loaded, Slice 10A)
   // before building the preview design; buildLetteringDesign no longer reads
@@ -46,7 +46,7 @@
       const design = EMB.buildLetteringDesign(font, el.text, {
         garment: EMB.getGarment(t.patch.garmentId),
         pxPerMm: 8,
-        densityMm: 1.2,
+        satinSpacingMm: 1.2,
         underlay: false,
       });
       renderRealistic(c, design, { pad: 8, fabric: "#ffffff" });

@@ -59,7 +59,8 @@ const fabric = FABRIC ? FB.getFabric(FABRIC) : null;
 const garment = { widthIn: +(process.env.GW || 5), heightIn: +(process.env.GH || 2.25) };
 if (GID) garment.id = GID;
 console.error(`garment ${GID || "(none)"} fabric ${fabric ? fabric.id : "(none)"}`);
-const design = DG.buildQualityDesign(regions, { garment, pxPerMm: 8, densityMm: 0.45, satinMaxWidthMm: 3.0, underlay: true, fabric });
+// Spacing: engine defaults (fill DG.FILL_ROW_MM 0.15, satin DG.SATIN_SPACING_MM 0.4) — this hard-coded densityMm 0.45 until 2026-09-04.
+const design = DG.buildQualityDesign(regions, { garment, pxPerMm: 8, satinMaxWidthMm: 3.0, underlay: true, fabric });
 console.error(`design ${design.stitchCount} stitches, ${design.colorCount} colors, satin ${design._debug.nSatin} fill ${design._debug.nFill} centerOut ${design._debug.nCenterOut} trims ${design._debug.nTrims}`);
 fs.writeFileSync("scratch_flatart.dst", Buffer.from(D.encodeDST(design)));
 fs.writeFileSync("scratch_flatart_colors.json", JSON.stringify(design.colors.map((c) => [c.r, c.g, c.b])));

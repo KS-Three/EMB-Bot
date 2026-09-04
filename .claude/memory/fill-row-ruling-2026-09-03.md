@@ -17,7 +17,13 @@
   whether rings should sit at 0.15 is that tier's instrument rebuild.
 - Fill stitch counts rise 2.67×; whole designs 43–147%. Preflight grades
   held (A on the flat fixtures).
-- NOT yet moved: the JS engine's `densityMm` defaults (0.45 / 0.4 in
-  `src/digitize.js`) — `fabrics.py` says both engines must agree; next PR.
+- The JS engine FOLLOWED on 2026-09-04: `src/digitize.js` now carries
+  `FILL_ROW_MM = 0.15` and `SATIN_SPACING_MM = 0.4` (exported on `EMB`), and
+  the one `densityMm` option that fed BOTH pitches is split into `fillRowMm`
+  / `satinSpacingMm`. `densityMm` is still honoured as "both at this number"
+  so every pinned snapshot is byte-identical; only the no-option default
+  moved (fill 0.45 → 0.15, satin 0.4 unchanged). The Studio's image /
+  manual / shape elements pass no spacing and take the engine defaults. A
+  test reads machine.py and fails if the two engines drift.
 - The card's block 2 now VERIFIES 0.15 rather than deciding it; its A arm
   (0.40) is the old engine, B (0.20) is coarser than the ruling.
