@@ -40,6 +40,12 @@ CFG = dict(
     garment_id="left_chest",
     bg_border_agreement_min=0.0,
     bg_border_rival_min=0.0,
+    # The Azalea Pink sliver these tests trace is the RAG merge cutting the
+    # repro's sweep and leaving a drifted fragment behind. Since 2026-09-04
+    # (Kent's gradient ruling, `design_ramp.py`) the sweep is flattened
+    # before the merge and the sliver no longer exists on the default lane;
+    # the pre-ruling lane is kept reachable for exactly this kind of pin.
+    design_ramp=False,
 )
 
 

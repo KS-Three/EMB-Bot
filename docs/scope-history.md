@@ -3837,3 +3837,135 @@ cross-validation skips, as documented), 0 fail — six new. Studio `vitest`
 `beforeAll` once while the engine suite ran alongside (COOKBOOK's loaded-box
 forgery) and passed 13/13 solo. Not run here: `studio-e2e` (no e2e spec
 pins a stitch count; CI runs it).
+
+## 2026-09-04 — the gradient ruling: one region when the design ramp fits
+
+Kent's third ruling of 2026-09-03 (the sew-out's "blocky bands", finding 4
+in `docs/sewout-findings-2026-09-03.md`): on a gradient design whose ramp
+fits, the ramp is one region and the shade bands do the decomposition.
+Landed as `digitizer_core/design_ramp.py` plus three readers, reviewed by
+an adversarial pass and an independent geometry audit the same night, and
+it uncovered two defects in the blend tier that no test could see.
+
+- **The fit.** `fit_design_ramp` fits a plane per Lab channel over the
+  stitched foreground, trimmed then consensus (keep the 75% nearest the
+  plain plane, refit, admit everything within 3 robust sigmas, refit). The
+  gate is the plane's: consensus r² ≥ 0.4, ≥ 60% of the foreground riding,
+  robust sigma ≤ 4 Lab units, a sweep of at least one shade step (9) in
+  the winning channel, linear beating radial; the winner is the best r²
+  among channels passing all of it. Measured on every gradient-classified
+  fixture (best channel, r² / inlier fraction / sigma): repro **L 0.80 /
+  0.78 / 2.3** passes, `gradient_ramp_linear` **1.00 / 1.00 / 0.5** passes;
+  `region_blobs` 0.49 / 0.88 / **9.2** and `owl_kent` 0.60 / 0.71 / **5.4**
+  are refused on scatter — the sigma gate is what keeps a coarse trend
+  across flat colours from being called a sweep; drone 0.18, golden_tee
+  0.27, summit 0.05, bridge_bar / fremont / gaulke / phone_ui under 0.1
+  refused on r²; the radial ramp fits linear at 0.00.
+- **The colour is a profile along the sweep, not the plane.** A real sweep
+  is rarely planar in every channel — the repro is a hue rotation, an arc
+  in a*b*: against the winning L* plane its a* and b* scatter 7.9 and 9.4,
+  against the per-channel profile (the consensus median in 17 bins of the
+  ramp position) 0.3 and 0.4. The plane decides whether it is a sweep; the
+  profile is what stage 2 subtracts and what a region is measured against.
+  Gating on the profile instead would pass the owl (L* profile scatter 3.6
+  — a smooth illustration follows any 1-D curve), so the gate stays on the
+  plane. The ramp's range is the whole foreground's projection, not the
+  2,500-pixel sample's, which stops 6 mm short of a diagonal's far corner.
+- **The plain fit had stopped applying at Studio defaults.** The 2026-08-03
+  design angle (`detect_design_ramp_angle`) read the whole foreground; at
+  defaults the repro is full-bleed, stage 1 refuses to flood it
+  (BACKGROUND_ABSENT since the 2026-08-11 guards), the white icon is 22% of
+  the population, and every channel read under the floor (L 0.03, b 0.30):
+  the repro got no shared angle on any real job. Its test passes with the
+  guards off, where the icon is flooded away. The angle is the robust fit's
+  now, pinned at defaults (rows at 134°); the plain fit stays as the
+  fallback when the gate refuses, so a refused design keeps the angle it
+  had — `region_blobs` at -89.7° (without the fallback its four blobs sewed
+  at four angles and jumps went 4 → 11; both reviews caught it).
+- **Stage 2 flattens.** `photo_segment.segment(..., design_ramp=)` runs the
+  RAG merge on Lab minus the profile; SEEDS and the palette still read the
+  original. `gradient_ramp_linear` 2 → **1 region**; the repro 10 → **8**,
+  the sweep cut only by the icon's own white (the frame's outside, the
+  interior, the disc in the ring).
+- **Stage 6 rides, and stage 7 lets it.** `blend_fill` asks
+  `DesignRamp.rides` — ≥ 80% of the region's samples within tolerance in
+  all three channels AND its mean colour within one shade step (9 dE00) of
+  the profile's prediction (the repro's ramp pieces read 0.3 / 3.9 / 4.4,
+  the white pieces 41–43; the second guard is what refuses a badge of
+  another hue at the sweep's lightness) — and sews a riding region with the
+  DESIGN's bands: `design_shade_scheme` takes the shade count and threads
+  from the design's consensus samples, band edges are the design's
+  millimetres, the first and last bands absorb a region that reaches past
+  the range (a clamp had left 3% of the frame piece in no band), so pieces
+  line up: two halves of the fixture sew the same threads over the same
+  intervals. **A riding region never takes the satin rung**: the repro's
+  outer strip (a 3.5 mm ring of the sweep beyond the frame) classifies as a
+  satin ribbon, and sewn as satin it is one thread all the way round —
+  fuchsia where the source turns orange, the render showed — so stage 7's
+  ladder skips satin for a rider; a forced "satin" still wins. Repro at
+  80 mm: three ramp pieces (3,263, 1,055 and 621 mm²) decompose into five
+  shades along the diagonal where all sewed flat or as one-thread satin;
+  the 16 mm² sliver stays flat; 16,925 → 21,008 stitches, 3 → 5 colour
+  blocks.
+- **Defect found: `_band_clip` anchored a linear ramp's band strip on the
+  polygon's bbox centre.** Right only when that centre projects to 0 on
+  the ramp — every test fixture is centred on the origin. The fixture
+  region shifted 30 mm along its ramp clipped its first band to nothing and
+  sewed a third less thread, a 30 × 53 mm end strip with no thread at all.
+  **In situ, on the committed engine, `gradient_ramp_linear` at 80 mm
+  never sewed 46% of its ramp** (two regions centred at x -15 and +24; the
+  audit's `stage6_stitches.png` shows the blank middle), and the suite was
+  green through it. Anchored on the ramp axis now; pinned by translating
+  region and raster together and by an end-to-end coverage test on that
+  fixture (no part of the artwork more than a row and a half from a fill
+  stitch).
+- **Defect found: blend bands sewed at `FILL_ROW_MM × n` since the tier's
+  first commit (3ddb87d).** One layer per band at n times the row — a
+  quarter of a fill on a four-shade ramp, cloth between every pair of rows
+  (the audit read the union pitch at 0.75 on a five-shade fixture and
+  coverage 0.54; `machine.py`'s own comment had claimed the union sat at
+  the row). The plan-contract test weighted each row by the layer's own
+  spacing and summed the bands' areas to 1.0. Bands sew at the fill row
+  now; the same test measures physical coverage. **PR #339's preflight
+  exemption for shade layers is withdrawn** — its premise ("the union of
+  the layers is the row") was this defect misread; `_fill_row_advance_mm`
+  judges blend bands like any fill again and the old layout reads 4×
+  sparse, stamped or not. `gradient_ramp_linear` 1,433 → 9,607 stitches,
+  `region_blobs` 5,250 → 17,072 (its segmentation and angle untouched —
+  the gate refuses it).
+- **Seen, not fixed, both pre-existing:** stage 7 hands `blend_fill` the
+  ARTWORK polygon, not stage 5's compensated one (`stage7_sequence.py`,
+  the blend branch), so a blend region gets no pull compensation and no
+  underlap tongue against its neighbours — every seam around a gradient is
+  the butt joint Kent's second finding named; and the review screen's
+  `result.palette` lists a region's one thread while the shade threads
+  exist only at block level (the DST and the download's thread list read
+  blocks, so the machine is told correctly). Both recorded in MASTER_SCOPE.
+- Byte-identical: the flat lane; every gradient design with no decomposed
+  region (drone, summit, Fremont, Bridge Bar); the owl (27,748 stitches, 14
+  blocks in both trees).
+- **`PipelineConfig.design_ramp` (default True)** keeps the pre-ruling
+  gradient lane reachable, the posture `rehome_resnapped` set: the
+  drifted Azalea Pink sliver `test_thread_revalidate` traces on the repro
+  is the merge cutting the sweep, and exists only on that lane. Three other
+  repro pins moved WITH the ruling rather than around it: borders-last and
+  the rehome test read the shade bands (a band's runs carry `<region>-
+  blend<i>`; sewn spools are the regions' cones plus exactly the shades),
+  and the census's "no defensible merge" pin moved to `logo_whitebg` (five
+  cones, closest 23 ΔE) because the repro's five shades are now 5–6 ΔE
+  apart by design — adjacent shades of one ramp, not merge candidates
+  (MASTER_SCOPE item 12 annotated).
+- **Scorecard, diff-then-capture against the #340 baseline.** Eight rows
+  move — the four blend fixtures at both configs — and nothing else: no
+  streamline or photo fixture gained a density finding from the withdrawn
+  exemption. Every mover is this change: `gradient_ramp_linear` D 58 → C 70 (`coverage_p50` 0.69 →
+  2.66 — a quarter of a fill to one fill; THREAD_MATCH_POOR resolved),
+  `gradient_ramp_radial` 11,825 → 14,204 stitches (its per-region bands at
+  the row), `region_blobs` 10 → 22 (TRIM_HEAVY resolved), the repro B 88 →
+  **A 100** on left chest and 76 → 88 on hat front (`thread_worst_delta_e`
+  6.8 → 4.3, satin shapes 7 → 4 — the outer strip is bands now). One
+  instrument caveat: `thread_worst_delta_e` on the linear ramp reads 16.6 →
+  28.1 because preflight's thread match compares each region's ONE
+  `thread_index` with the art it covers, and a one-region five-band sweep
+  has no single thread — the metric is blind to blend bands, before and
+  after.

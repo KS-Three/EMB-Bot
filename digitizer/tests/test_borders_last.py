@@ -307,10 +307,14 @@ def test_repro_fixture_border_satin_sews_after_its_cone_s_fills():
     by_block: dict[int, list[str]] = {}
     for sid, (bi, _rank) in ranks.items():
         by_block.setdefault(bi, []).append(sid)
+    # Since 2026-09-04 the repro's ramp pieces sew as shade bands, whose runs
+    # carry the band's id (`<region>-blend<i>`); the satin verdict is the
+    # region's.
+    region_of = lambda s: s.split("-blend")[0]  # noqa: E731
     checked = 0
     for bi, sids in by_block.items():
-        fills = [ranks[s] for s in sids if not satin_by_id[s]]
-        satins = [ranks[s] for s in sids if satin_by_id[s]]
+        fills = [ranks[s] for s in sids if not satin_by_id[region_of(s)]]
+        satins = [ranks[s] for s in sids if satin_by_id[region_of(s)]]
         if fills and satins:
             checked += 1
             assert max(fills) < min(satins), (
@@ -318,5 +322,5 @@ def test_repro_fixture_border_satin_sews_after_its_cone_s_fills():
                 f"cone ({sids})")
     assert checked, "no mixed block found — the fixture stopped exercising this"
     first = plan.blocks[0].runs[0].shape_id
-    assert not satin_by_id[first], \
+    assert not satin_by_id[region_of(first)], \
         "the first thread the machine puts down is still border satin"

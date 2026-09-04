@@ -53,6 +53,32 @@ Moved verbatim 2026-08-28 — no section was rewritten in the move.
   2026-09-03 — `docs/sewout-findings-2026-09-03.md`; scope-history
   2026-09-03)*
 
+- **A gradient design whose ramp fits is ONE sweep — segmented as one region
+  per piece, sewn as one set of shade bands.** Kent's call 2026-09-03 on the
+  sew-out's blocky bands ("one region when the design ramp fits").
+  `design_ramp.fit_design_ramp` decides: a trimmed-then-consensus PLANE per
+  Lab channel over the stitched foreground, passing only at r² ≥ 0.4 on the
+  consensus, ≥ 60% of the foreground riding it, a robust scatter ≤ 4 Lab
+  units (under half a shade step) and a sweep of at least one shade step.
+  The sweep's COLOUR is a profile along its axis, not the plane (a hue
+  rotation is an arc in a*b*); the plane gates, the profile flattens. Stage
+  2 then merges on Lab with the sweep subtracted, and stage 6 sews every
+  region that rides the ramp with the DESIGN's bands — one shade count, one
+  thread set, band edges at the same millimetres in every piece — and a
+  riding region never takes the satin rung. A design the gate refuses is
+  untouched, its shared fill angle included (the plain fit stays as the
+  angle's fallback). **Do not widen the gate to catch busy logos** — drone,
+  summit, `region_blobs`, the owl are what it exists to refuse (a coarse
+  trend across flat colours is not a sweep; flattening by it merges what the
+  segmenter keeps apart) — **do not gate on the profile** (the owl passes a
+  profile gate), and do not move its numbers without re-measuring the
+  fixture table in `design_ramp.py`'s docstring. **Blend bands sew at
+  `FILL_ROW_MM`, never `FILL_ROW_MM × n`:** the n× layout was one sparse
+  layer per band, a third to a fifth of a fill, and PR #339's preflight
+  exemption for it rested on the false premise that the layers interleaved.
+  *(Kent's call 2026-09-03 — `docs/sewout-findings-2026-09-03.md` item 4;
+  scope-history 2026-09-04)*
+
 - **Bold never closes a counter, hairline faces included — the guard stays
   as built.** The font path's Bold widening is held per rail wherever a rail
   faces another across a gap the 0.5 mm cross floor cannot spare (PR #332),

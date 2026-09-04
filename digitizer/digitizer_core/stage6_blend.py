@@ -22,18 +22,30 @@ things happen here, in order:
    ramp and snapping each average to the nearest thread (`threads.py`'s
    existing CIEDE2000 lookup — no new color model here beyond the
    barycentric split itself).
-3. **Emission.** N interleaved tatami layers, ONE shared fill angle per
+3. **Emission.** N tatami bands, ONE shared fill angle per
    region — `SourcePixels.design_row_angle_deg` when the whole design fit a
    single linear ramp (`detect_design_ramp_angle`, so every fragment of a
    fragmented gradient sews the same direction instead of each picking its
    own — this wins over a region's OWN ramp model regardless of that
    model's kind, widened 2026-08-04, see `blend_fill`'s own comment), else
-   `stage6_fill.principal_angle_deg` of this region alone. Each layer is
-   restricted to a band of the ramp centered on its own shade
-   and sewn at `stage6_fill.stitch_shape`'s ordinary row spacing of
-   `FILL_ROW_MM * N`. At each seam the band that sews first (the darker,
-   by chart L*) extends under the later one by `cfg.overlap_mm`, the same
-   underlap stage 5 gives a seam between two colours (2026-09-03).
+   `stage6_fill.principal_angle_deg` of this region alone. Each band is the
+   part of the region whose ramp position falls in its own slice of [0, 1],
+   sewn at the fill row `FILL_ROW_MM` (until 2026-09-03 at `FILL_ROW_MM *
+   N`: one sparse layer per band, a third to a fifth of a fill, cloth
+   between every pair of rows on the sew-out). At each seam the band that
+   sews first (the darker, by chart L*) extends under the later one by
+   `cfg.overlap_mm`, the same underlap stage 5 gives a seam between two
+   colours (2026-09-03).
+
+**The design ramp (2026-09-03, Kent's gradient ruling).** When the whole
+design's ramp fits (`design_ramp.fit_design_ramp`, carried here as
+`SourcePixels.design_ramp`), steps 1 and 2 are answered once for the DESIGN
+and every region that rides the ramp (`DesignRamp.rides`) sews the design's
+bands — same shade count, same threads, band edges at the same millimetres
+along the sweep — so a ramp the artwork cuts into pieces still reads as one
+sweep. Stage 2 flattened the same ramp out of its merge, which is what makes
+those pieces few. Regions that do not ride, and every design whose ramp
+does not fit, take the per-region path above unchanged.
 
 Coordinates are the same convention as everywhere past stage 4: millimetres,
 origin at the artwork bbox center, y-axis down.
@@ -50,6 +62,8 @@ from shapely.geometry import Point, Polygon
 from skimage.color import deltaE_ciede2000
 
 from . import debugviz, machine
+from .design_ramp import DESIGN_RAMP_R2_MIN as _DESIGN_RAMP_R2_MIN
+from .design_ramp import DesignRamp, fit_design_ramp
 from .regions import Region
 from .stage1_prep import Prep
 from .stage6_fill import principal_angle_deg, stitch_shape
@@ -101,7 +115,7 @@ class SourcePixels:
     rgb: np.ndarray
     px_per_mm: float
     origin_px: tuple[float, float]
-    # Set by `pipeline.run_stages` once per design, from
+    # Set by `pipeline.finish_generation` once per design, from
     # `detect_design_ramp_angle` against the WHOLE foreground — not one
     # region. `blend_fill` uses this as the shared fill-row angle instead of
     # each region's own `stage6_fill.principal_angle_deg` when set: the fix
@@ -152,6 +166,17 @@ class SourcePixels:
     # its input array BY IDENTITY, so no existing lane can have moved a
     # stitch.
     subject_mask: np.ndarray | None = None
+    # The design ramp (`design_ramp.fit_design_ramp`), expressed in THIS
+    # frame — set by `pipeline.finish_generation` for a gradient-class design
+    # whose ramp passed the fit's gate, None otherwise. `blend_fill` sews
+    # every region that RIDES it with the design's own bands (2026-09-03,
+    # Kent's gradient ruling: one ramp, one shade scheme, one set of
+    # threads, however many pieces the artwork cuts the sweep into).
+    # `design_row_angle_deg` above is this ramp's row angle whenever both
+    # are set; it stays its own field because the tatami fallback reads
+    # only the angle, and a hand-built SourcePixels can carry one without
+    # the other.
+    design_ramp: DesignRamp | None = None
 
     def to_px(self, x_mm: float, y_mm: float) -> tuple[float, float]:
         return (x_mm * self.px_per_mm + self.origin_px[0],
@@ -406,22 +431,10 @@ def detect_ramp(poly: Polygon, sp: SourcePixels) -> RampModel | None:
     return detect_ramp_detail(poly, sp)[0]
 
 
-# Design-wide acceptance floor, deliberately lower than (and separate from)
-# RAMP_R2_MIN. `detect_design_ramp_angle` below picks the BEST of 6 fits
-# (L/a/b, each linear and radial) instead of one channel, and that matters:
-# measured on the confirmed repro fixture (a real diagonal purple -> pink ->
-# orange gradient, `testdata/photo/repro_gradient_white_icon.png`), L barely
-# correlates with position at all (r2 0.003) because the ramp is a hue
-# rotation, not a lightness slope — the per-region `detect_ramp` this design
-# angle exists to fix would have missed it too, on the same evidence, were
-# it not for whichever fragment happened to sample a patch small enough for
-# hue to look locally linear. The b* (blue-yellow) channel alone carries it,
-# at r2 0.45 — real signal, comfortably clear of the ~0.05 noise floor the
-# same fixture's L and a channels read at, just short of RAMP_R2_MIN's 0.5
-# (tuned for a single-channel, per-region fit, a different question). 0.4
-# leaves margin on both sides: above the noise floor, below every measured
-# true positive (0.45 here, 0.994-0.999 on the committed synthetic ramps).
-DESIGN_RAMP_R2_MIN = 0.4
+# The design-wide acceptance floor lives with the fit it gates now
+# (`design_ramp.DESIGN_RAMP_R2_MIN`, 2026-09-03); re-exported here for the
+# callers that always read it from this module.
+DESIGN_RAMP_R2_MIN = _DESIGN_RAMP_R2_MIN
 
 
 def detect_design_ramp_angle(design_prep: Prep, max_samples: int = RAMP_MAX_SAMPLES,
@@ -430,37 +443,43 @@ def detect_design_ramp_angle(design_prep: Prep, max_samples: int = RAMP_MAX_SAMP
     design should sew at, or None (each region falls back to its own
     `stage6_fill.principal_angle_deg`, the pre-fix behaviour).
 
-    Deliberately NOT `detect_ramp` reused at design scope: that function
-    fits a single channel (lightness) against position, which is exactly
-    the axis a hue-driven ramp (this defect's own confirmed repro) does not
-    vary along. This fits L, a AND b independently (`_fit_linear`/
-    `_fit_radial`, same machinery, one call per channel) and takes whichever
-    of the 6 (channel, kind) results explains the most variance — the
-    channel that actually carries the gradient wins regardless of which one
-    it is. Only a LINEAR winner produces an angle: a radial ramp's bands are
-    concentric rings, and no single line direction keeps a row inside one
-    band, so per-region behaviour is left alone for those (a known,
-    documented gap — see
-    `docs/superpowers/plans/2026-08-03-gradient-tier-fragmentation-and-enclosed-white-defects.md`).
+    Since 2026-09-03 a wrapper over `design_ramp.fit_design_ramp`: the angle
+    is the fitted ramp's `row_angle_deg` — rows run along the sweep's
+    iso-colour lines, perpendicular to its direction — and the fit's gate is
+    the angle's gate. That fit is robust to the artwork sitting on the ramp
+    (trimmed, then consensus), which this function's own plain least
+    squares was not: at Studio defaults the confirmed repro
+    (`repro_gradient_white_icon.png`) is full-bleed, stage 1 floods no
+    background, the white icon (22% of the pixels) sits in the population,
+    and every channel fit under the floor — the 2026-08-03 fix had quietly
+    stopped applying to its own repro whenever the guards were on, which is
+    every real job. The guards-off test kept passing because there the icon
+    is flooded away and excluded. Only a LINEAR ramp yields an angle: a
+    radial design's bands are rings, and no line keeps a row inside one
+    (`gradient_ramp_radial` fits linear at 0.00, radial 0.91, and declines).
 
-    Sampled straight from `design_prep.rgb` / `~design_prep.bg_mask` (the
-    whole design's foreground), not any one region's polygon — this runs
-    once per design, before stage 2 fragments it into however many k-means
-    regions.
-
-    `enclosed_mask` pixels (BACKGROUND_ENCLOSED — bg-colored areas not
-    reachable from the canvas border, unstitched by default since
-    2026-08-04) are EXCLUDED from the fit. Before that change they sat
-    inside `bg_mask` and were never sampled; when they moved to foreground,
-    letting them into this fit silently broke the angle-fragmentation fix
-    on the fix's own repro fixture — the white icon linework is a large,
-    positionally-clustered population whose color has nothing to do with
-    the gradient, and it dragged every channel's best r2 below
-    DESIGN_RAMP_R2_MIN (the detector returned None, every fragment fell
-    back to its own per-region angle, the patchwork came back). Excluding
-    them restores this detector's intended population: the design's own
-    ramp-carrying, stitched-by-default foreground.
+    When the robust fit's gate refuses, the plain fit this function always
+    was (`legacy_design_ramp_angle`) still answers, so a design the gate
+    turns away keeps exactly the shared angle it had: `region_blobs` (five
+    hued blobs, a-plane r² 0.45 on the whole foreground) sewed every blob at
+    -89.7° before the gate existed and still does. The gate is a gate on
+    FLATTENING and on sewing the design's bands, where a false positive
+    costs colour; a shared row angle costs nothing when it is wrong.
     """
+    ramp = fit_design_ramp(design_prep, max_samples=max_samples, seed=seed)
+    if ramp is not None:
+        return ramp.row_angle_deg()
+    return legacy_design_ramp_angle(design_prep, max_samples=max_samples, seed=seed)
+
+
+def legacy_design_ramp_angle(design_prep: Prep, max_samples: int = RAMP_MAX_SAMPLES,
+                             seed: int = RAMP_SAMPLE_SEED) -> float | None:
+    """The 2026-08-03 whole-design angle fit, verbatim: L, a and b each fitted
+    linear and radial against position over the stitched foreground
+    (`~bg_mask` less `enclosed_mask`), the best of the six taken, an angle
+    only from a linear winner at r² >= DESIGN_RAMP_R2_MIN. The fallback
+    behind `detect_design_ramp_angle` since 2026-09-04; kept as it was so
+    every design the robust gate refuses keeps its angle byte for byte."""
     fg = ~design_prep.bg_mask
     enclosed = getattr(design_prep, "enclosed_mask", None)
     if enclosed is not None:
@@ -494,11 +513,9 @@ def detect_design_ramp_angle(design_prep: Prep, max_samples: int = RAMP_MAX_SAMP
     if best_r2 < DESIGN_RAMP_R2_MIN or best_kind != "linear":
         return None
 
-    # Rows should stay inside one color band as long as possible, so they run
-    # PERPENDICULAR to the ramp's own axis (parallel to its iso-color lines)
-    # — rotate the fitted unit direction 90 degrees. `angle_deg` names a
-    # LINE, not a ray (`_fill_paths` only ever rotates a polygon by it), so
-    # the perpendicular's sign is irrelevant — +90 or -90 picks the same line.
+    # Rows run PERPENDICULAR to the ramp's axis (along its iso-colour lines):
+    # rotate the fitted unit direction 90 degrees. A LINE, not a ray, so the
+    # perpendicular's sign is irrelevant.
     ux, uy = best_direction
     return math.degrees(math.atan2(ux, -uy))
 
@@ -545,14 +562,28 @@ def _band_clip(poly: Polygon, model: RampModel, t_lo: float, t_hi: float) -> lis
         ux, uy = model.direction
         vx, vy = -uy, ux  # perpendicular
         minx, miny, maxx, maxy = poly.bounds
-        span = math.hypot(maxx - minx, maxy - miny) + 1.0
-        cx = (minx + maxx) / 2.0
-        cy = (miny + maxy) / 2.0
-        # A generously long strip perpendicular to the ramp direction,
-        # bounded along it by [s_lo, s_hi]; long enough to clear the whole
-        # polygon's own projected extent in the perpendicular direction.
-        c0x, c0y = cx + ux * s_lo, cy + uy * s_lo
-        c1x, c1y = cx + ux * s_hi, cy + uy * s_hi
+        # Long enough to clear the polygon's whole extent perpendicular to
+        # the ramp from where the strip is anchored (on the ramp axis through
+        # the origin, so the polygon's own distance from the origin counts).
+        span = (math.hypot(maxx - minx, maxy - miny)
+                + math.hypot(max(abs(minx), abs(maxx)), max(abs(miny), abs(maxy))) + 1.0)
+        # The strip's edges are the iso-lines raw(x, y) = s_lo and = s_hi,
+        # each anchored on the point of the ramp axis with exactly that
+        # projection — so the clip lands where `model.t` says the band is.
+        # Until 2026-09-03 the anchors were offset by the polygon's own bbox
+        # centre (`cx + ux * s_lo`), which is only right when that centre
+        # projects to 0 on the ramp: true of every blend test fixture (all
+        # centred on the origin), false of a region anywhere else. Measured:
+        # the linear fixture region shifted 30 mm along its ramp clipped its
+        # first band to nothing, its second to a third, and sewed a third
+        # less thread than the centred copy, a 30 x 53 mm end strip with no
+        # thread at all. In situ, `gradient_ramp_linear.png` at 80 mm — two
+        # regions centred at x -15 and +24 — left 46% of the ramp more than
+        # 1 mm from any thread (audit, 2026-09-04). Every piece of a design
+        # ramp is off-centre, so this had to go before the design's bands
+        # could be trusted.
+        c0x, c0y = ux * s_lo, uy * s_lo
+        c1x, c1y = ux * s_hi, uy * s_hi
         strip = Polygon([
             (c0x + vx * span, c0y + vy * span),
             (c0x - vx * span, c0y - vy * span),
@@ -591,6 +622,25 @@ def blend_fill(region: Region, source_pixels: SourcePixels, cfg,
     `_shade_blocks` re-sorts accepted shades dark→light downstream).
     """
     poly = region.polygon
+    chart = chart_for(cfg)
+
+    # Kent's gradient ruling (2026-09-03): when the DESIGN's ramp fits
+    # (`SourcePixels.design_ramp`, gate in `design_ramp.py`) and this region
+    # sits on it — its own pixels within the ramp's tolerance in every Lab
+    # channel — it sews the design's bands: the shade scheme, the threads
+    # and the band edges (in millimetres along the sweep) are the design's,
+    # so the pieces an icon cuts a ramp into read as one sweep on cloth. A
+    # region that does not ride (the icon itself, a flat badge on the
+    # ground) takes the per-region path below, exactly as before.
+    design = source_pixels.design_ramp
+    if design is not None and region_rides_design_ramp(poly, source_pixels):
+        n, shade_thread_idx = design_shade_scheme(design, chart)
+        model = RampModel("linear", design.direction, None,
+                          design.lo, design.hi, design.r2)
+        return _emit_bands(region, source_pixels, cfg, start_near, model, n,
+                           shade_thread_idx, design.row_angle_deg(), chart,
+                           best_r2=design.r2, design_bands=True)
+
     model, reject, best_r2 = detect_ramp_detail(
         poly, source_pixels,
         speckle_r2_override=cfg.blend_speckle_r2_override)
@@ -636,9 +686,7 @@ def blend_fill(region: Region, source_pixels: SourcePixels, cfg,
     n = _choose_shade_count(extremes_delta_e)
     shade_labs = _shade_lab_colors(ts, lab, n)
 
-    chart = chart_for(cfg)
     shade_thread_idx = [chart.nearest_index(c) for c in shade_labs]
-    shade_rgbs = [tuple(int(v) for v in chart[t].rgb) for t in shade_thread_idx]
 
     # The whole-design angle (set once per design, see
     # `SourcePixels.design_row_angle_deg`) wins whenever it exists: every
@@ -675,7 +723,60 @@ def blend_fill(region: Region, source_pixels: SourcePixels, cfg,
     angle = source_pixels.design_row_angle_deg
     if angle is None:
         angle = principal_angle_deg(poly)
-    row_mm = machine.FILL_ROW_MM * n
+    return _emit_bands(region, source_pixels, cfg, start_near, model, n,
+                       shade_thread_idx, angle, chart, best_r2=best_r2,
+                       design_bands=False)
+
+
+def region_rides_design_ramp(poly: Polygon, source_pixels: SourcePixels) -> bool:
+    """Does this region sit on the design's ramp (`DesignRamp.rides`, on the
+    same pixel sample the per-region fit reads)? False when the design has
+    no ramp or the region is too small to sample. Asked twice per region:
+    here, to sew the design's bands, and by stage 7's tier ladder, to keep
+    a riding region off the satin rung — a thin ring of the sweep sewn as
+    satin is one thread all the way round, the repro's outer strip fuchsia
+    where the source turns orange (render, 2026-09-04)."""
+    design = source_pixels.design_ramp
+    if design is None:
+        return False
+    mm_x, mm_y, rgb, _mask, _crop = _sample_pixels(poly, source_pixels)
+    return len(mm_x) >= 12 and design.rides(mm_x, mm_y, rgb_to_lab(rgb))
+
+
+def design_shade_scheme(design: DesignRamp, chart) -> tuple[int, list[int]]:
+    """The design ramp's shade bands: how many, and the thread each snaps
+    to — computed from the ramp's own consensus samples, so every region
+    that rides the ramp gets the same answer. The extremes are the mean Lab
+    of the samples in the ramp's first and last 5% (the per-region path
+    reads its two single extreme pixels, which is noisier than a design
+    deserves); the count is `_choose_shade_count` of their CIEDE2000
+    distance, the colours `_shade_lab_colors` at the canonical positions."""
+    t, lab = design.sample_t, design.sample_lab
+    lo_sel, hi_sel = t <= 0.05, t >= 0.95
+    lo = lab[lo_sel].mean(axis=0) if lo_sel.any() else lab[np.argmin(t)]
+    hi = lab[hi_sel].mean(axis=0) if hi_sel.any() else lab[np.argmax(t)]
+    delta = float(deltaE_ciede2000(lo[None, :], hi[None, :])[0])
+    n = _choose_shade_count(delta)
+    return n, [chart.nearest_index(c) for c in _shade_lab_colors(t, lab, n)]
+
+
+def _emit_bands(region: Region, source_pixels: SourcePixels, cfg,
+                start_near: tuple[float, float] | None, model: RampModel, n: int,
+                shade_thread_idx: list[int], angle: float, chart, *,
+                best_r2: float, design_bands: bool) -> tuple[list[StitchRun], dict]:
+    """Sew `region` as `n` shade bands of `model`, band `i` in thread
+    `shade_thread_idx[i]`, rows at `angle`. The emission half of `blend_fill`,
+    shared by the design-ramp path and the per-region path; `design_bands`
+    only goes into the report."""
+    poly = region.polygon
+    shade_rgbs = [tuple(int(v) for v in chart[t].rgb) for t in shade_thread_idx]
+    # Every band is a fill and sews at the fill row. Until 2026-09-03 this
+    # was `FILL_ROW_MM * n` — one layer per band at n times the row, so a
+    # four-shade ramp put down a quarter of a fill and showed cloth between
+    # every pair of rows (Kent's first sew-out finding, on the gradient
+    # lane). The plan-contract test counted each row as n rows wide and read
+    # the coverage as 1.0; it now measures the real thing.
+    row_mm = machine.FILL_ROW_MM
 
     all_runs: list[StitchRun] = []
     layer_runs: list[list[StitchRun]] = []
@@ -683,7 +784,8 @@ def blend_fill(region: Region, source_pixels: SourcePixels, cfg,
     # for too_thin (any band pinching to nothing is worth flagging), sum for
     # jumps, AND for empty (empty only if every band produced nothing).
     report = {"too_thin": False, "jumps": 0, "empty": False,
-              "blend_shades": n, "blend_reject": RAMP_OK, "blend_best_r2": best_r2}
+              "blend_shades": n, "blend_reject": RAMP_OK, "blend_best_r2": best_r2,
+              "blend_design_ramp": design_bands}
     # The needle's running position across the band loop: the caller's
     # cursor first, then wherever the last emitted part actually ended —
     # each part enters near it instead of at its own top-left default.
@@ -709,7 +811,22 @@ def blend_fill(region: Region, source_pixels: SourcePixels, cfg,
             t_lo -= t_ov                     # this band is darker than the one below: it sews first, reach down
         if i < n - 1 and l_star[i] < l_star[i + 1]:
             t_hi += t_ov                     # darker than the one above: it sews first, reach up
-        t_lo, t_hi = max(0.0, t_lo), min(1.0, t_hi)
+        # The first and last bands absorb whatever of the polygon lies
+        # beyond the model's [lo, hi] (review, 2026-09-04): on the design
+        # path that range is the design's, and a region can reach past it —
+        # by pull compensation, by simplification, or because the fitted
+        # range fell short of a far corner — and a clamp at 0 / 1 left such
+        # a corner in no band at all (3% of the repro's frame piece, sewn by
+        # nothing). The per-region path's range is the polygon's own vertex
+        # range, so this is a no-op there.
+        if model.kind == "linear":
+            p_lo, p_hi = _vertex_range_linear(poly, model.direction)
+            reach_lo = min(0.0, (p_lo - model.lo) / span_mm - 1e-3)
+            reach_hi = max(1.0, (p_hi - model.lo) / span_mm + 1e-3)
+        else:
+            reach_lo, reach_hi = 0.0, 1.0
+        t_lo = reach_lo if i == 0 else max(0.0, t_lo)
+        t_hi = reach_hi if i == n - 1 else min(1.0, t_hi)
         parts = _band_clip(poly, model, t_lo, t_hi)
         this_layer: list[StitchRun] = []
         for part in parts:

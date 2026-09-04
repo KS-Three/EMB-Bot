@@ -122,6 +122,23 @@ do not split a connected colour area into superpixels — one region, the
 ramp bands do the decomposition. A routing change on the gradient lane,
 so Kent's call.
 
+**Built 2026-09-04 (Kent's ruling: "one region when the design ramp
+fits").** `design_ramp.py` fits the sweep robustly (the plain fit above had
+stopped applying at Studio defaults — the white icon sat in its population
+and every channel read under the floor), stage 2 merges with the sweep
+subtracted, and stage 6 sews every piece that rides it with ONE shade scheme
+(and a riding piece never takes the satin rung — the outer strip had been
+one-thread satin, fuchsia where the source turns orange). Repro at 80 mm:
+10 → 8 regions, and the three ramp pieces (3,263, 1,055 and 621 mm²)
+decompose into five shades along the diagonal where before they sewed flat
+or as satin; 16,925 → 21,005 stitches, 3 → 5 colour blocks (Tulip, Fuchsia,
+Devil Red, Sunset Orange, White). Two findings on the way that bear on item 1: the blend
+bands had sewn at `FILL_ROW_MM × n` since the tier's first commit (one
+sparse layer per band — the "mesh" on a gradient region was this, not only
+the 0.40 row), and a linear ramp's band clip was anchored on the region's
+own centre, leaving part of any off-centre region bare. Both fixed;
+scope-history 2026-09-04.
+
 ## 5. "Untrimmed tails across the face; at minimum a trim/tie problem; check the machine's auto-trim"
 
 **What the record said.** Tail jump-chains stepping 8–11.5 mm (a

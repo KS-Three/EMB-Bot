@@ -120,10 +120,16 @@ def test_repro_sews_one_block_per_spool_end_to_end():
     )
     # The operator's cone list and the sewn blocks agree — no cone listed
     # that nothing sews (the stale pre-rehome palette named 6 for 3 sewn).
+    # Since 2026-09-04 the repro's ramp pieces sew as shade bands, each in
+    # the thread its shade snapped to (`shade_thread_index` on the run), so
+    # the sewn spools are the regions' cones plus exactly those shades.
     sewn = {b.thread_index for b in plan.blocks}
     region_threads = {r.thread_index for r in result.regions
                       if r.meta.get("stitched", True)}
-    assert region_threads == sewn
+    shade_threads = {r.shade_thread_index for _b, r in plan.iter_runs()
+                     if r.shade_thread_index is not None}
+    assert region_threads <= sewn
+    assert sewn - region_threads <= shade_threads, sewn - region_threads
 
 
 def test_flag_off_reproduces_the_split():

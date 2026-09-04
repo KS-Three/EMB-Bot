@@ -61,8 +61,9 @@ from .stage4_vectorize import (rehome_resnapped_regions, revalidate_threads,
 from .textcluster import (detect_text_clusters, ocr_suggest_text,
                           regularize_text_clusters,
                           set_lettering_house_angle)
+from .design_ramp import DesignRamp, fit_design_ramp
 from .stage5_overlap import resolve_overlaps
-from .stage6_blend import SourcePixels, detect_design_ramp_angle
+from .stage6_blend import SourcePixels, legacy_design_ramp_angle
 from .config import is_photographic
 from .stage7_sequence import (PHOTO_CLASSES, borders_last_layers,
                               depth_sort_layers, sequence)
@@ -243,6 +244,12 @@ class Generation:
     # so raster-reading tiers stop sewing the background (see that field's
     # own docstring for the measurement that made it necessary).
     subject_mask: np.ndarray | None = None
+    # Gradient class only, and only when the fit's gate passed: the design
+    # ramp stage 2 flattened by, carried (like the angle above, which is its
+    # row angle) so `finish_generation` can hand it to the blend tier in
+    # stage 6's frame. None for every other class and for a hand-built
+    # Generation.
+    design_ramp: DesignRamp | None = None
 
     def fork(self) -> "Generation":
         """A copy safe to finish from, sharing what is immutable.
@@ -269,6 +276,7 @@ class Generation:
             faces_present=self.faces_present,
             seg_name=self.seg_name,
             design_row_angle_deg=self.design_row_angle_deg,
+            design_ramp=self.design_ramp,
             quant_palette_spools=(
                 list(self.quant_palette_spools)
                 if self.quant_palette_spools is not None else None
@@ -505,6 +513,19 @@ def build_generation(
     # the classical arm in every doc and acceptance A/B tag this repo uses.
     region_former = "photo_sam2" if q is not None else None
 
+    # The design ramp (2026-09-03, Kent's gradient ruling): fitted once, here,
+    # because stage 2 is its first reader — `photo_segment` flattens the Lab
+    # image by it so a smooth sweep merges into one region — and stage 6 its
+    # second (`SourcePixels.design_ramp`, set in `finish_generation`; the
+    # shared fill-row angle below is this ramp's too). Gradient class only,
+    # and None whenever the fit's gate refuses (`design_ramp.py` names the
+    # three numbers and the fixtures each one turns away), so every other
+    # class — and a gradient design with no fitting ramp — is byte-identical
+    # to before by construction. `cfg.design_ramp=False` is the pre-2026-09-04
+    # lane, kept reachable (see the flag's own comment).
+    design_ramp = (fit_design_ramp(p)
+                   if classification.class_ == "gradient" and cfg.design_ramp else None)
+
     # "photo_subject"/"photo_scene"/"gradient" all branch here — only "flat"
     # still takes the plain quantize() call this pipeline has always made.
     # "gradient" joined 2026-08-04 (`docs/superpowers/plans/
@@ -530,6 +551,7 @@ def build_generation(
                 p, cfg, face_regions=face_regions, bg_mask=subject_bg_mask,
                 split_tonal=effective_split_tonal(cfg, classification.class_),
                 shade_demand=shade_demand,
+                design_ramp=design_ramp,
             )
             if classification.class_ in (*PHOTO_CLASSES, "gradient")
             else quantize(p, cfg)
@@ -616,13 +638,19 @@ def build_generation(
     set_lettering_house_angle(regions, p, fourfold=cfg.satin_house_fourfold)
 
     # Gradient class: the one shared fill-row angle for the whole design
-    # (2026-08-03 angle-fragmentation fix) — a pure function of `p`, hoisted
-    # into the generation so a cache hit reuses the fit. `finish_generation`
-    # assigns it onto `source_pixels`; see the comment there for who reads
-    # it and who deliberately does not.
-    design_row_angle_deg = (
-        detect_design_ramp_angle(p) if classification.class_ == "gradient" else None
-    )
+    # (2026-08-03 angle-fragmentation fix) — the design ramp's row angle when
+    # the ramp fitted above, else the plain fit that answered this before
+    # the ramp existed (`legacy_design_ramp_angle`, so a design the ramp's
+    # gate refuses keeps the angle it always had — `region_blobs` at -89.7°).
+    # Carried on the generation so a cache hit reuses the fit;
+    # `finish_generation` assigns it onto `source_pixels`; see the comment
+    # there for who reads it and who deliberately does not.
+    if design_ramp is not None:
+        design_row_angle_deg = design_ramp.row_angle_deg()
+    elif classification.class_ == "gradient":
+        design_row_angle_deg = legacy_design_ramp_angle(p)
+    else:
+        design_row_angle_deg = None
 
     return Generation(
         classification_class=classification.class_,
@@ -643,6 +671,7 @@ def build_generation(
         # answers "which segmenter ran" instead of always "classical".
         seg_name=region_former or seg.name,
         design_row_angle_deg=design_row_angle_deg,
+        design_ramp=design_ramp,
         quant_palette_spools=(
             list(q.palette_spools) if q.palette_spools is not None else None
         ),
@@ -894,6 +923,13 @@ def finish_generation(gen: Generation, cfg: PipelineConfig | None = None) -> Pip
         # field, and the streamline tier reads the direction FIELD instead,
         # never this either.
         source_pixels.design_row_angle_deg = gen.design_row_angle_deg
+        if gen.design_ramp is not None:
+            # The same ramp in stage 6's frame — mm from the artwork bbox
+            # centre, the mapping `SourcePixels.to_mm` uses — so `blend_fill`
+            # can ask each region whether it rides the ramp and clip the
+            # design's bands in the region's own coordinates.
+            source_pixels.design_ramp = gen.design_ramp.shifted(
+                art_cx / p.px_per_mm, art_cy / p.px_per_mm)
 
     bg_outline_mm = None
     if p.bg_outline_px is not None and len(p.bg_outline_px) >= 3:

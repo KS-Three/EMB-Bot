@@ -846,3 +846,39 @@ def test_the_tonal_split_geometry_is_pinned():
     # parts partition the region exactly, so a change here can never be
     # explained away as artwork gained or lost.
     assert sum(int(rm.crop.sum()) for rm in out) == int(blob.sum()) == 31397
+
+
+# --- 10. The design ramp flattens the merge (2026-09-03, Kent's gradient ruling)
+
+def test_a_fitting_design_ramp_makes_the_linear_ramp_one_region():
+    """`gradient_ramp_linear.png` is one sweep and nothing else. The merge
+    used to cut it in two wherever the running mean colours drifted
+    `MERGE_DELTAE00_THRESH` apart (section 6's own upper bound of 4 allowed
+    that); with the sweep subtracted before the merge it is one region."""
+    cfg = PipelineConfig(target_width_mm=80.0, garment_id="left_chest")
+    result = run_stages(str(PHOTO_DIR / "gradient_ramp_linear.png"), cfg)
+    assert result.design_class == "gradient"
+    assert result.source_pixels is not None and result.source_pixels.design_ramp is not None
+    assert len(result.regions) == 1
+
+
+def test_the_repro_sweep_is_one_region_per_piece_at_studio_defaults():
+    """`repro_gradient_white_icon.png` at Studio defaults (full bleed, the
+    white icon is foreground): the sweep is cut into pieces only by the
+    icon's own white — the frame's outside, the interior, the disc inside
+    the ring — never by the merge. Measured 2026-09-03: 10 regions before,
+    8 after, and the two large ramp pieces both decompose into the design's
+    shade bands (`test_stage6_blend` covers the bands; this pins stage 2)."""
+    cfg = PipelineConfig(target_width_mm=80.0, garment_id="left_chest")
+    result = run_stages(str(PHOTO_DIR / "repro_gradient_white_icon.png"), cfg)
+    assert result.design_class == "gradient"
+    assert result.source_pixels is not None and result.source_pixels.design_ramp is not None
+    assert len(result.regions) <= 8, len(result.regions)
+    ramp = result.source_pixels.design_ramp
+    # The two largest regions are ramp pieces and ride the design ramp.
+    from digitizer_core.stage6_blend import _sample_pixels
+    from digitizer_core.threads import rgb_to_lab
+    largest = sorted(result.regions, key=lambda r: -r.area_mm2)[:2]
+    for r in largest:
+        mm_x, mm_y, rgb, _m, _c = _sample_pixels(r.polygon, result.source_pixels)
+        assert ramp.rides(mm_x, mm_y, rgb_to_lab(rgb)), r.shape_id

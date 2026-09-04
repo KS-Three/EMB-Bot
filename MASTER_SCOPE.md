@@ -327,7 +327,7 @@ its own merits.
    reports colour since 2026-09-02, and committed art carries defensible
    pairs — ΔE **1.41** (`screenshot_phone_ui_golke`, 62st → 79st), **1.78**
    (`logo_bridge_bar`, 197st → 444st), **2.65** (`drone_render`, 338st →
-   1560st); the repro has none (closest cones 33.4 ΔE). Real artwork runs
+   1560st); the repro had none (closest cones 33.4 ΔE) until 2026-09-04, when its sweep became five shade bands 5–6 ΔE apart by design — adjacent shades of one ramp, not candidates. Real artwork runs
    15–18 cones, so the population is not rare.
    **TABLED — Kent, 2026-09-02:** *"I'm honestly not concerned about the
    hopping idea, we can table this one for a further discussion."* Do not
@@ -501,7 +501,7 @@ GeometryCollection crash, the per-ring abruptness gate and `cfg.is_photographic`
 all landed and all validated against four real portraits. **What none of it has
 is CI cover** — the tonal evidence is gitignored and machine-bound, so every
 threshold shipped is defended only by an owl. *(measured 2026-08-25 — PRs
-#241/#243/#245; scope-history 08-25 evening)*
+#241/#243/#245; scope-history 08-25 evening)* **Gradient lane, 2026-09-04 (Kent's ruling): a design whose ramp fits is ONE sweep.** `design_ramp.py` (trimmed + consensus plane gate: r² ≥ 0.4, ≥ 60% riding, sigma ≤ 4; colour as a profile along the sweep) flattens stage 2's merge and gives stage 6 one shade scheme per design, and a riding region never takes the satin rung: the icon repro at 80 mm goes 10 → 8 regions and its three ramp pieces decompose into five shades along the diagonal where they sewed flat or as one-thread satin; drone/summit/blobs/owl are refused and untouched (angle included). Two tier defects fixed on the way: blend bands had sewn at n× the row since the tier's first commit (a quarter of a fill; #339's preflight exemption for it withdrawn), and `_band_clip` shifted a linear ramp's bands by the region's own centre — the committed engine never sewed **46%** of `gradient_ramp_linear` at 80 mm, suite green. **Open, seen 2026-09-04:** stage 7 hands `blend_fill` the ARTWORK polygon, not stage 5's compensated one, so blend regions get no pull comp and no seam tongue; `result.palette` lists one thread per region while shade threads live on the blocks. *(measured 2026-09-04 — scope-history; DOCTRINE)*
 **Kent's own verdict, 2026-08-27: these are 60% of the way to Ember parity.**
 First per-design feedback in his words on all fourteen designs. `artfidelity_self`
 averages **83.7** and `preflight` **80.0** on the same set, agreeing with each

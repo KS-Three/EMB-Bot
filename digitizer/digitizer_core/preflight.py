@@ -1163,17 +1163,6 @@ def _fill_row_advance_mm(plan: StitchPlan) -> tuple[float | None, float | None]:
     for _b, run in plan.iter_runs():
         if run.kind != stitches.FILL:
             continue
-        # A blend-tier shade layer (stage6_blend stamps `shade_thread_index`
-        # on every run it emits) sews its rows at FILL_ROW_MM * n by
-        # construction and interleaves with its n-1 siblings, so the UNION is
-        # the target and the per-run advance is n times it. Judging those
-        # runs here read a pure four-shade ramp as "4.0x sparse" the day the
-        # row moved to 0.15 (2026-09-03; at 0.40 the 1.6 mm advances had
-        # fallen outside what this reader takes for rows). The layer's own
-        # advance is the tier doing what it said; blend_fill's plain-tatami
-        # fallback runs carry no stamp and are still measured.
-        if run.shade_thread_index is not None:
-            continue
         pts = run.points
         if len(pts) < 3:
             continue
