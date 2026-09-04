@@ -54,3 +54,10 @@ Kent's third ruling of 2026-09-03 (the sew-out's "blocky bands"), landed
   `result.palette` lists one thread per region; shade threads live on the
   blocks (DST and download read blocks). A radial design ramp is still the
   documented gap.
+- **Feathered seams built 2026-09-04 (his call):** a 1.5 mm zone per seam
+  sewn by both shades on one row lattice, alternating row by row, via a
+  row filter on one fill per band (`stitch_shape(keep_row=, row_phase_mm=)`,
+  both byte-identical unset). Only where rows run along the seam (the
+  design path); crossing rows keep the hard seam. Separate zone pieces
+  cost 52 trims vs 23 — do not go back to that. `blend_feather_mm=0` is
+  the hard lane. Every band of a region is on ONE row lattice now.

@@ -967,6 +967,12 @@ class PipelineConfig:
     # `test_thread_revalidate` traces exists only on that lane, because the
     # sliver is the merge cutting the sweep. Never read on any other class.
     design_ramp: bool = True
+    # Width of the feathered seam between two shade bands of a blend
+    # (2026-09-04, Kent's call: "feather the band seams"). None takes
+    # `machine.BLEND_FEATHER_MM`; 0 is the hard seam with the 0.25 mm
+    # underlap (the 2026-09-03 rule between bands), kept reachable for its
+    # tests and for a design whose shades must not mix.
+    blend_feather_mm: float | None = None
     # Borders-last craft sequencing (2026-08-31, from the FIRST PHYSICAL
     # SEW-OUT — Kent's Instagram-icon test): the sewn DST put the design's
     # entire border satin down at 0%, then sewed seven background cones

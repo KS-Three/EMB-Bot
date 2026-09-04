@@ -79,6 +79,17 @@ FILL_ROW_MM = 0.15
 # the grader's re-basing below is stated in terms of it.
 FILL_ROW_MM_BEFORE_2026_09_03 = 0.40
 
+# The blend tier's feathered seam (2026-09-04, Kent's call on the gradient
+# ruling's render: "feather the band seams"). At every seam between two shade
+# bands a zone this wide, centred on the seam, is sewn by BOTH shades at twice
+# the row with the second phased by one row, so the rows alternate thread at
+# the fill row — the sweep reads as one gradient instead of hard steps. Rows
+# run along the seam (the ramp's iso-lines), so the blend is row by row: ten
+# rows at 0.15, five of each thread. Bounded to 40% of a band's width so a
+# narrow ramp keeps a solid core in every shade. 0 (`cfg.blend_feather_mm`)
+# is the hard seam with stage 5's underlap, the 2026-09-03 behaviour.
+BLEND_FEATHER_MM = 1.5
+
 # Penetrations realign every Nth row. Without a stagger, every row starts its
 # stitches at the same offset and the needle holes line up into visible
 # channels running through the fill — the single most recognisable mark of a

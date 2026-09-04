@@ -137,7 +137,12 @@ bands had sewn at `FILL_ROW_MM × n` since the tier's first commit (one
 sparse layer per band — the "mesh" on a gradient region was this, not only
 the 0.40 row), and a linear ramp's band clip was anchored on the region's
 own centre, leaving part of any off-centre region bare. Both fixed;
-scope-history 2026-09-04.
+scope-history 2026-09-04. **Then, on Kent's call from that PR's render, the
+band seams were feathered:** a 1.5 mm zone at every seam sewn by both shades
+on one row lattice, alternating row by row, so the five shades read as one
+sweep instead of steps (`docs/renders/feathered-seams-2026-09-04/`). Kent's
+other call in the same answer: **no physical tests for now — the digitized
+render is the interim judge of quality.**
 
 ## 5. "Untrimmed tails across the face; at minimum a trim/tie problem; check the machine's auto-trim"
 
