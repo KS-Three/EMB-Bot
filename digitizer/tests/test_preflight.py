@@ -2018,11 +2018,12 @@ def test_one_regions_hole_no_longer_erases_the_region_nested_inside_it():
     Every region was filled into ONE shared mask — exterior in 1, interiors
     back out in 0 — so a ring's hole punched out the artwork a DIFFERENT
     region legitimately fills, and which regions survived depended on the
-    order they were listed in. It went unnoticed for as long as the only
-    regions reaching this check were flat shapes whose holes overlapped
-    nothing; the moment a ramp's regions became visible here it was
-    measurable, and large: on `repro_gradient_white_icon` the shared mask
-    claimed 136,341 px where the union claims 802,474.
+    order they were listed in. The ramp work is what made someone look, and
+    there it is large: on `repro_gradient_white_icon` the shared mask claimed
+    136,341 px where the union claims 802,474. It is NOT gradient-only,
+    though — `photo/logo_bridge_bar.jpg` carries no derived run id at all and
+    still gained 551.0 -> 1,381.2 mm2 of examined area — which is why this
+    test is built from two plain regions and no ramp.
 
     Carved rather than hoped for: a square annulus with a disc nested in its
     hole, the disc listed FIRST so the ring's hole is painted after it, and

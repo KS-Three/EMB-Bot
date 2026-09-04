@@ -1790,13 +1790,19 @@ def _uncovered_findings(p, result: PipelineResult, plan: StitchPlan
     # into a scratch mask and OR-ed in. Filling straight into one shared
     # mask, as this did until 2026-09-04, lets one region's HOLE punch out
     # area a different region legitimately fills (a ring's hole erasing the
-    # disc nested inside it), and the damage depends on region order. It
-    # went unnoticed while the only regions reaching here were flat shapes
-    # whose holes overlapped nothing: measured on `repro_gradient_white_icon`
-    # the moment the ramp regions became visible to this check, the shared
-    # mask claimed 136,341 px where the union claims 802,474 — 83% of the
-    # design's own artwork silently unexamined, which on this check reads as
-    # a clean report.
+    # disc nested inside it), and the damage depends on region order.
+    # Measured on `repro_gradient_white_icon` the moment the ramp regions
+    # became visible to this check: the shared mask claimed 136,341 px where
+    # the union claims 802,474 — 83% of the design's own artwork silently
+    # unexamined, which on this check reads as a clean report.
+    #
+    # It is NOT a gradient-only bug, and the first version of this comment
+    # said it was. The corpus recapture caught `photo/logo_bridge_bar.jpg`
+    # moving too — 77 regions, ZERO derived run ids, so the suffix rule
+    # above cannot touch it — with 2,053.5 mm² where one region's hole
+    # covers another region and `uncovered_wanted_mm2` 551.0 → 1,381.2. Flat
+    # work has been losing claim to this for as long as the check has
+    # existed; nothing had looked.
     claimed = np.zeros((h, w), np.uint8)
     one = np.zeros((h, w), np.uint8)
     for r in result.regions:

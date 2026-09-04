@@ -4587,15 +4587,22 @@ audit had just measured as correct.
   `-shade<i>` ids would have leaked to the client. Both take the region set
   now.
 - **And one region's HOLE erased the region nested inside it** — not an id
-  bug at all, just invisible until the ramp regions became visible to this
-  check. `_uncovered_findings` filled every region into ONE shared mask,
+  bug at all, and NOT gradient-only — the ramp work is only what made
+  someone look. `_uncovered_findings` filled every region into ONE shared
+  mask,
   exteriors in 1 and interiors back out in 0, so a ring's hole punched out
   artwork a different region legitimately fills and the damage depended on
   region order. Each region now rasterizes into its own scratch mask and is
   OR-ed in — the union each region's claim always meant. On
   `repro_gradient_white_icon` the shared mask claimed **136,341 px** where
   the union claims **802,474**: 83% of the design's own artwork silently
-  unexamined, which on this check reads as a clean report.
+  unexamined, which on this check reads as a clean report. **The recapture
+  then caught it on flat work**, which the first version of this entry said
+  it could not: `photo/logo_bridge_bar.jpg` — 77 regions, ZERO derived run
+  ids, so the suffix rule cannot touch it — carries 2,053.5 mm² where one
+  region's hole covers another region, and its examined area rises
+  **551.0 → 1,381.2 mm²**. Flat designs have been losing claim to this for
+  as long as the check has existed.
 - **One rule, `preflight._owning_region_id`**, with the trap recorded: a
   prefix test is NOT a substitute, because region ids are not prefix-free
   (the repro plans both `S5afb1e0a` and `S5afb1e0a-2`, so `S5afb1e0a-2-blend0`
