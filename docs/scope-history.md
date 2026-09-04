@@ -4307,7 +4307,14 @@ CLAUDE.md names (`test_pushcomp`, `test_flat_lane_byte_identical`,
 either way; the flag is OFF and all three of their fixtures are byte-identical
 even with it ON.
 
-**DEFAULT OFF.** It moves the region set on every gradient-class design, and
-per Kent's 2026-09-04 ruling the render is the interim judge of quality, so
-this waits on his eyes rather than on a green suite:
-`docs/renders/halo-dissolve-2026-09-04/bridge_bar_off_vs_on.jpg`.
+**DEFAULT OFF, and that is now a RULING rather than a holding position.**
+It moves the region set on every gradient-class design, so per Kent's
+2026-09-04 "the render is the interim judge" it went to him as a picture
+(`docs/renders/halo-dissolve-2026-09-04/`) rather than as a green suite. He
+looked and chose **leave it OFF and bank it** the same day: the code, the
+instrument and the safety case land on `main`, and the flip — a one-line
+default plus a 26-fixture scorecard recapture, which is the actual work — is
+decided later alongside other gradient-lane changes. The reasons he was given
+for not flipping on the day were the two mild negatives (golke, tires) and the
+five-of-six residual. **Do not read this entry as waiting on Kent's eyes; it
+is not.**
