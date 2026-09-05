@@ -74,8 +74,7 @@ icon. Cloth pointers added to defects 3, 6 and 16 below.
    the pro's per-shape answer scores 76.6% against our 55.4% — our regions
    straddle the pro's satin/fill boundaries. `docs/segmentation-alignment-
    2026-08-17.md` recommends NOT building the region-level fix (the straddle
-   is 95.8% grid noise). *(measured 2026-08-14/17 —
-   `docs/satin-gate-attribution-2026-08-16.md` §9)*
+   is 95.8% grid noise). **The per-stroke rung is BUILT AND INERT since 2026-09-05** (`stage6_satin.classify_strokes`, `tools/stroke_verdicts.py`; nothing calls it, pinned by test): it reproduces the plan's Becker @ 100 mm 274.0 → 1,708.3 mm² exactly, but adds 5.7 mm² at the corpus's own 80 mm (Becker is ALREADY 88.2% satin there) and +143.8 mm² over 14 fixtures. Becker's 17 regions sit ON the `cv = 0.50` gate — 11 within ±0.10 at 80 mm, 16 at 100 — so its satin share is a segmentation coin flip, not an artwork property (scaling a fixed polygon 1.25× moves cv < 0.02). Its real value is decisiveness (median |cv − 0.50| 0.154 per region vs 0.221 per stroke; knife-edge share 40.9% → 24.7%), and it MUST be promotion-only or it demotes 15 regions incl. one of 638.8 mm² (DOCTRINE). *(measured 2026-08-14/17, 2026-09-05 — `docs/satin-gate-attribution-2026-08-16.md` §9; plan §PR 2)*
 
 6. **Satin fragments into many small islands on real logo art — and the trim
    bulk is INSIDE one shape, not between them.** 69% of trims are

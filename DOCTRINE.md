@@ -279,6 +279,27 @@ Moved verbatim 2026-08-28 — no section was rewritten in the move.
 
 ## Measured negatives — built or proposed, then rejected. Do not rebuild.
 
+- **A per-stroke satin rung must be PROMOTION-ONLY — `region.satin OR
+  per-stroke pass`, never a replacement.** Measured 2026-09-05 over 14
+  fixtures at 80 mm: written as a replacement it demotes **15 regions that
+  sew satin today**, most of them `promoted_ribbon` shapes the shipped
+  `explained` path deliberately rescued — Becker's `Sead76620` at **638.8 mm²**
+  (frac 0.71), `S579cb1c2` at 226.4 (frac 0.19), four `logo_bridge_bar`
+  regions at frac **0.00**. Corpus-wide the flips are +143.8 mm² (2%, 21
+  regions), so a replacement costs more area than it wins.
+  *(`stage6_satin.classify_strokes`, `tools/stroke_verdicts.py`; plan
+  2026-09-04-per-stroke-satin-routing §PR 2)*
+
+- **Never quote a Becker satin share without its width — the design sits ON
+  the `cv = 0.50` gate.** `becker_marine_logo.png` reads **88.2% satin at
+  80 mm and 7.6% at 100 mm**, same 17 regions, same design class. The
+  classifier is not at fault: scaling a fixed polygon by 1.25 moves its cv by
+  under 0.02 and changes only `dt_p90_cap`, correctly. It is that **11 of 17
+  regions sit within ±0.10 of the gate at 80 mm and 16 of 17 at 100 mm**, and
+  the two widths segment to region sets sharing no shape ids — so which side
+  they land on is that run's segmentation, not the artwork. Defect 26's
+  threshold fragility at whole-design scale. *(measured 2026-09-05)*
+
 - **The stitch simulator already exists — do not build a second one.**
   `app/src/lib/simulate.js` plus EmbroideryField's `simbar`. This was nearly
   rebuilt from scratch on the assumption it was a gap. *(confirmed 2026-08-25 —
