@@ -35,9 +35,13 @@ becker, fremont, enthusiast, drone, whitebg, golke, summit or tires, which is
 the evidence that the test is specific to compression artefacts rather than to
 thin features generally.
 
-DEFAULT OFF. It moves the region set on every gradient-class design, so it
-waits on Kent's look at a render (`docs/renders/halo-dissolve-2026-09-04/`),
-not on a green suite.
+DEFAULT OFF, and that is a RULING rather than a holding position. It moves
+the region set on every gradient-class design, so it went to Kent as a picture
+(`docs/renders/halo-dissolve-2026-09-04/`) rather than as a green suite; he
+looked and chose to bank it, citing the two mild corpus negatives and the
+five-of-six residual. The flip is a one-line default plus a 26-fixture
+scorecard recapture, decided later alongside other gradient-lane work. **This
+is not waiting on his eyes.**
 """
 from __future__ import annotations
 
