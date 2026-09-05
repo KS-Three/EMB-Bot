@@ -459,6 +459,25 @@ Moved verbatim 2026-08-28 — no section was rewritten in the move.
 
 ## Corrections — suspicions this document itself raised, then disproved
 
+- **"Our satin-vs-fill MIX nearly matches the professional's" was an AREA
+  statistic, and by thread it is false.** Defect 5 carried that premise from
+  `tools/pro_parity/scorecard.py`'s `cell_stats`, which assigns ONE stitch
+  type per 2 mm cell (`CELL = 2.0`) — so our 0.29 mm hairline column claims a
+  cell exactly as the professional's 2.52 mm column does. Measured as thread
+  on 2026-09-04 with `tools/satin_columns.py`, on the professional's own file
+  for a logo we also digitize: **2.2% of our penetrations sit in a column
+  against their 44.3%**, our median column 0.29 mm against their 2.52, and
+  84% of ours under the 0.7 mm the needle can hold. The paragraph's
+  CONCLUSION survives — retuning `satin_max` is still a measured negative,
+  separately, below — but not for the reason it gave: the mix was never
+  already right.
+  **Two instruments carry the same blind spot and are annotated in place:**
+  `cell_stats` (area, not thread) and `tools/study_pro.py`'s `classify`,
+  which gates satin at a median segment ≥ 0.7 mm and therefore *structurally
+  cannot* see our narrowest columns — any ours-vs-pro comparison built on
+  either undercounts our hairline satin as "other". Use `satin_columns.py`
+  for a thread statistic. *(measured 2026-09-04 — scope-history)*
+
 Kept rather than deleted: the shared failure mode — **a hedged observation loses
 its hedge as it is copied forward** — is why this file is split.
 

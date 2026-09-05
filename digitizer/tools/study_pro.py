@@ -80,6 +80,15 @@ def classify(pts: list[tuple[float, float]]) -> str:
     rev_frac = rev / max(len(seg) - 1, 1)
     if n <= 8 and med <= 0.8:
         return "lock"
+    # NOTE (2026-09-04): `med >= 0.7` means this CANNOT classify a column
+    # whose stitches are shorter than 0.7 mm — which is most of ours (our
+    # median column runs 0.29 mm on becker_marine_logo, so its legs are about
+    # 0.49 mm). This function reads a PROFESSIONAL file, where that floor is
+    # harmless, and it undercounts our own hairline satin as "other" if it is
+    # ever pointed at us. For an ours-vs-pro thread statistic use
+    # `tools/satin_columns.py`, which detects a cross by sign alternation and
+    # is scale-free. Left as it is deliberately: changing it would move every
+    # pro-corpus number this tool has already produced.
     if rev_frac >= 0.7 and med >= 0.7:
         return "satin"
     if rev_frac <= 0.25 and med >= 0.8:

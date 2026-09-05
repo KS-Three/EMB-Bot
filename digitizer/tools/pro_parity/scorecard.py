@@ -385,7 +385,16 @@ def shifted(segs, dx, dy):
 # ------------------------------------------------------------- cell analysis
 def cell_stats(segs, bb):
     """Per CELL-mm cell: dominant direction (length-weighted mean of doubled
-    angles) and a stitch-type guess from median seg length + reversal rate."""
+    angles) and a stitch-type guess from median seg length + reversal rate.
+
+    **This is an AREA statistic, not a thread one** (noted 2026-09-04). One
+    type per 2 mm cell means a 0.29 mm hairline column claims a cell exactly
+    as a professional's 2.52 mm column does, so a stitch-type MIX read from
+    here can look close while the thread says otherwise — measured on the
+    same logo, 2.2% of our penetrations sit in a column against the pro's
+    44.3%. Defect 5 carried that mistaken premise for three weeks; see
+    DOCTRINE's Corrections. For a thread statistic use
+    `tools/satin_columns.py`."""
     x0, y0, x1, y1 = bb
     W = int((x1 - x0) / CELL) + 2
     H = int((y1 - y0) / CELL) + 2
