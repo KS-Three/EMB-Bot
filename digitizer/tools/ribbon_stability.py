@@ -29,6 +29,14 @@ verdicts while the flips stayed at 3-12 against 5 today):
     smooth:R morphological open+close of the classifier's raster by R px
              before thinning (measurement only, the art is untouched)
     band     within cv 0.45-0.55 the promotion rule decides both ways
+    strokes  the per-stroke rung (2026-09-05): keep the shipped verdict, and
+             ADDITIONALLY take a refused region whose stroke-partitioned area
+             passes both per-stroke gates by at least
+             `stage6_satin._STROKE_AREA_FRAC_MIN`. Promotion-only by
+             construction -- DOCTRINE measured that a replacement demotes 15
+             regions incl. one of 638.8 mm2 -- so its `changes a shipped
+             verdict` count can only ever be fill->satin. This is the variant
+             the plan's §7 asks for BEFORE its threshold is adopted.
 
     .venv/bin/python tools/ribbon_stability.py [case ...] [--variant NAME ...]
 
@@ -129,6 +137,27 @@ def classify_variant(poly, variant: str, design_class: str) -> RibbonVerdict:
         return RibbonVerdict(False, "width_cap", m)
     if perim / 2.0 - w < 3.0 * w:
         return RibbonVerdict(False, "aspect", m)
+    if variant == "strokes":
+        # Promotion-only: the shipped call still decides, and the rung may
+        # only ADD. Placed after the width and aspect gates on purpose --
+        # those are properties of the region the machine sews, not of a
+        # stroke, and `classify_strokes` deliberately does not re-apply them.
+        shipped = classify_ribbon(poly, max_w, design_class=design_class,
+                                  full_metrics=True)
+        if shipped.satin:
+            return shipped
+        sv = s6.classify_strokes(poly, max_w, design_class=design_class)
+        # Carry the REGION's own dt metrics through, not just the fraction:
+        # the report prints dt_cv/explained/elongation per verdict, and a
+        # variant that leaves them unset prints `cv 0.51->0.00`, which reads
+        # as the rung having driven cv to zero rather than as a missing key.
+        m.update({k: shipped.metrics.get(k, 0.0)
+                  for k in ("dt_cv", "explained", "elongation")},
+                 p90=shipped.metrics.get("dt_p90_mm", 0.0),
+                 stroke_frac=sv.passing_frac, strokes=len(sv.strokes))
+        if sv.passing_frac >= s6._STROKE_AREA_FRAC_MIN:
+            return RibbonVerdict(True, "stroke_ribbon", m)
+        return shipped
     stats = variant_stats(poly, variant)
     if stats is None:
         return RibbonVerdict(True, "dt_degenerate", m)
