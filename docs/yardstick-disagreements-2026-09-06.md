@@ -141,6 +141,14 @@ is — which is row 1's advice, now with the number that says why.
 
 `digitizer/tools/floor_depth.py`. *(measured 2026-09-06)*
 
+**The practical half is fixed (2026-09-06).** `report["metrics"]` now carries
+**`raw_score`**, the unclamped value, so `corpus_scorecard.diff` reports an
+improvement to a floored design instead of losing it — `screenshot` reads
+`score=0, raw_score=-272`. No grade, score or finding moves; un-clamping the
+GRADE would re-base the scorecard and is still a product call. Inert until the
+scorecard baseline is recaptured (`_metric_deltas` intersects key sets), which
+is also why it cannot disturb an existing diff.
+
 ---
 
 ## What this list is not

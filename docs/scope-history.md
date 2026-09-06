@@ -6496,3 +6496,40 @@ grade in the scorecard and is a product call. What lands is the number, and
 disagreement 6 in `docs/yardstick-disagreements-2026-09-06.md`, so that the
 next "this fix moved no grade" is read against the design's depth rather than
 taken as evidence the fix did nothing.
+
+## 2026-09-06 — the floored designs can move again, without re-basing a grade
+
+Measured hours earlier: `run_preflight` prints `max(0, 100 − 30·blocks −
+12·warns)`, and **12 of the corpus's 52 design/garment combos sit on exactly
+0** with true scores from **−272 to −38**. `screenshot_phone_ui_golke` must
+clear about **eleven blocking findings** before `score` moves at all, so a fix
+clearing ten of them reads as doing nothing.
+
+Un-clamping is a product call — it re-bases every grade in the scorecard. But
+the **magnitude** does not have to stay hidden to keep the grade still.
+`report["metrics"]` gains **`raw_score`**, the unclamped value:
+
+    screenshot_phone_ui_golke   score=0    raw_score=-272   grade=F
+    logo_alpha                  score=100  raw_score= 100   grade=A
+
+`corpus_scorecard.diff` compares `report["metrics"]` and reports any move past
+`_METRIC_NOISE_FRAC` (5%), so an improvement to a floored design now shows up
+in a scorecard diff instead of vanishing. `−272 → −242` is an 11% move; the
+denominator is `abs(a)`, so negative baselines behave.
+
+**No grade, score or finding moves.** `score` stays clamped and the bands are
+untouched — `test_the_clamped_score_and_grade_are_untouched` fails if that
+ever stops being true.
+
+**INERT UNTIL THE BASELINE IS RECAPTURED, and that is deliberate.**
+`_metric_deltas` iterates `set(old) & set(new)`, so a key the stored baseline
+lacks is skipped. The new metric therefore cannot disturb a single existing
+diff line — and it starts reporting the day someone recaptures, which is
+already a deliberate act in this repo, not a side effect of this change.
+
+This closes the practical half of yardstick-disagreement 6. The half that
+remains is the grade itself, which is still Kent's.
+
+`tests/test_raw_score_metric.py` (7 tests) re-derives `raw_score` from the
+findings rather than trusting the field, so the check and its test do not
+share an implementation.

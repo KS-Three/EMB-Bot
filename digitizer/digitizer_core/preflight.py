@@ -2644,6 +2644,25 @@ def run_preflight(result: PipelineResult, plan: StitchPlan,
     score = 100
     for f in findings:
         score -= _DEDUCT.get(f["severity"], 0)
+    # The UNCLAMPED score, before `max(0, ...)` throws the magnitude away.
+    #
+    # The clamp is right for an operator — a negative grade means nothing —
+    # but it makes the metric SATURATE, and 12 of the corpus's 52
+    # design/garment combos sit on that floor with true scores from -272 to
+    # -38 (`tools/floor_depth.py`, 2026-09-06): a 234-point spread behind one
+    # printed value. `screenshot_phone_ui_golke` would have to clear ~11
+    # blocking findings before `score` moved at all, so a fix clearing ten of
+    # them reads as doing nothing.
+    #
+    # Riding out as a METRIC changes no grade and re-bases nothing — that
+    # would be a product call — but `corpus_scorecard.diff` compares
+    # `report["metrics"]` and reports any move past 5%, so a real improvement
+    # to a floored design becomes visible instead of silent.
+    #
+    # INERT UNTIL THE BASELINE IS RECAPTURED: `_metric_deltas` iterates
+    # `set(old) & set(new)`, so a key the stored baseline lacks is skipped.
+    # That is also why adding it cannot disturb any existing diff.
+    metrics["raw_score"] = score
     score = max(0, score)
     grade = ("A" if score >= 90 else "B" if score >= 75 else
              "C" if score >= 60 else "D" if score >= 40 else "F")
