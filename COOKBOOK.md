@@ -369,8 +369,22 @@ hand-rolling it in JS.
   wraps the real function and lets the real pass run, so it measures the
   shipped design), `digitizer/tools/thread_color_render.py` (a design drawn in
   the cones it will actually sew, each changed shape tiled OFF beside ON at
-  90 px/mm — a 0.9 mm2 shard is four pixels at whole-design scale). Run each
-  from `digitizer/` with `.venv/bin/python`.
+  90 px/mm — a 0.9 mm2 shard is four pixels at whole-design scale),
+  `digitizer/tools/resnap_escape.py` (cones `revalidate_threads` ADDS, and how
+  many of them the selected palette never chose — the count behind
+  `cfg.bind_resnap_all_classes`), `digitizer/tools/tonal_split_ab.py` (what
+  photo tonal splitting BUYS, run against its own absence via an explicit
+  `split_tonal_regions=False` — cost and quality printed together, because the
+  question is the trade). Run each from `digitizer/` with `.venv/bin/python`.
+
+  **`digitizer/tools/doc_claims.py` is the odd one out** — it reads no artwork
+  and runs in seconds. It checks the two kinds of doc claim a script can
+  settle, documented `cfg.<flag>` defaults and `NAME = <number>` constants,
+  against the code. It prints what it CHECKED as well as what it found (a
+  clean run that examined nothing otherwise reads like a clean run that
+  examined everything), and exits 1 only when a CURRENT-STATE doc disagrees,
+  so the legitimate dated snapshots in `docs/scope/` stay advisory instead of
+  making it permanently red. `tests/test_doc_claims.py` covers it.
 
   **Two traps these instruments have already sprung, both costly:**
   `StitchRun.jump` means the needle was lifted to REACH the run — the run is

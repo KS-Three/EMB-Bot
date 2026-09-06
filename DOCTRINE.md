@@ -1400,3 +1400,36 @@ its hedge as it is copied forward** — is why this file is split.
   the scorecard for at least four fixtures — so this is recorded as a
   measurement, not a proposal. *(measured 2026-09-06)*
 
+
+- **Publish the number the instrument PRINTS. A figure from a side probe is
+  itself an unchecked claim — and the entry announcing a claim-checker made
+  exactly that mistake.** `doc_claims.py`'s own 2026-09-06 entry reported the
+  sweep as *"11 flag defaults and 16 constants in `MASTER_SCOPE.md` and
+  `DOCTRINE.md` all agree"*. Re-run at that same commit, the tool prints **no
+  flag count at all** and `18` constant checks **across every doc, not the two
+  strict ones**; the reproducible strict-doc figures are **6 and 9**. The
+  CLEAN verdict was right and still is — only the two numbers beside it were
+  produced by a throwaway probe nobody could re-run. **Rule: if the tool does
+  not print the number you want to publish, add the print, then quote it.**
+  The tool now prints both counts, so the next entry can be copied rather than
+  re-derived.
+
+  Two smaller things fell out of the same look, both worth keeping:
+
+  - **A count of CHECKS is not a count of THINGS.** The 18 covers **11
+    distinct names**: `FILL_ROW_MM` and `SATIN_MAX_WIDTH_MM` are each defined
+    in two modules, so one documented claim is two checks, and a name quoted
+    in three docs is three more. The output now says both, because the larger
+    number silently overstates coverage.
+  - **A clean run that examined nothing reads exactly like a clean run that
+    examined everything** — the same trap as CLAUDE.md's quiet-venv
+    failure, where a 3.11 venv leaves no pystitch in it and `node --test`
+    SKIPS the six format cross-validation tests and still reports green.
+    Four separate `continue`s in `check_defaults` dropped a flag claim
+    silently (name is not a field; no plain default; a non-bool default like
+    `edge_cap`'s `'none'`; a line stating both ON and OFF), so a skipped flag
+    and a passing flag were indistinguishable. All four now report. Measured
+    the same day: **all 33 `cfg.<flag>` mentions across the eight docs resolve
+    to real fields, and no line states both** — so this is insurance, not a
+    haul, and `tests/test_doc_claims.py` is what keeps it honest.
+  *(measured 2026-09-06 — scope-history 09-06)*
