@@ -5346,6 +5346,27 @@ skeletons; the needle lives on rails.
 That is five measured negatives on this one finding. Recorded so the sixth
 person to look starts past them.
 
+### And the fill tier got here first — this is a confirmation, not a discovery
+
+`docs/scope/1-auto-digitizing-quality.md` reached the same three dead ends for
+`stage6_fill` on 2026-08-21, on a different shape:
+
+> *"Do not re-propose 'add nearest-neighbour fill ordering.' It is already
+> there."* … *"Travel coverage sized, and it is NOT the lever either — the
+> ceiling is 4 of 56 cuts, 7%."* … replaying all 56 cut pairs against every
+> ring fragment with the candidate cap and detour budget removed: **"no route
+> stays inside the shape, at any length" — 52 of 56** … *"the shape genuinely
+> disconnects its own fill rows — there is no path to find."*
+
+Ordering ruled out, threshold ruled out (gate 1), travel ruled out by sizing.
+Two tiers, two shapes, three weeks apart, same answer. **Say so rather than
+claiming novelty**: what the satin side adds is the Eulerian bound and its
+refutation, the rail-versus-spine reason chaining fails, and — the one genuinely
+new part — **WHEN** it dies. "There is no path to find" reads as a fixed
+property of the shape; the progress log shows it is not. The web is walkable at
+5/15/20/40% and closed from 45% on. It *becomes* true as the shape fills in,
+which is why no static property of the geometry predicts it.
+
 ## 2026-09-06 — what the junction patch costs across the whole corpus
 
 `cfg.satin_patch_junctions` ON vs OFF, all 26 scorecard fixtures at 80 mm:
