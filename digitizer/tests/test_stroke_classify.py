@@ -206,6 +206,40 @@ def test_the_regularity_reading_does_not_move_when_the_artwork_is_scaled():
                 "p90 must scale to within one raster pixel of the artwork"
 
 
+def test_splitting_a_region_is_not_a_way_around_law_31s_width_floor():
+    """The defect `tools/ribbon_stability.py --variant strokes` caught on
+    2026-09-05, before this ever shipped.
+
+    `_floor_or` refuses satin on a photo-class design when the artwork column
+    is under `PHOTO_MIN_SATIN_WIDTH_MM`, because a column that thin sews as
+    thread-on-thread rather than as a stroke. `classify_strokes` took
+    `design_class` and forwarded it only to the REGION call, so a stroke that
+    passed both DT gates read `satin` however thin it was — five `meadow` and
+    `sunset` regions of 0.42-0.55 mm went `photo_width_floor -> stroke_ribbon`
+    on the strength of it.
+
+    A 0.6 mm ribbon: comfortably regular, comfortably inside the width cap,
+    and comfortably under the 1.0 mm floor. It earns satin on a flat design
+    and must be refused on a photo one, by the SAME reason string the region
+    path uses.
+    """
+    hairline = Polygon([(0, 0), (30, 0), (30, 0.6), (0, 0.6)])
+
+    flat = classify_strokes(hairline, machine.SATIN_MAX_WIDTH_MM,
+                            design_class="flat")
+    assert flat.strokes, "fixture must decompose into a stroke"
+    assert all(s.reason == "satin" for s in flat.strokes), \
+        f"a 0.6 mm ribbon earns satin on flat work: {[s.reason for s in flat.strokes]}"
+    assert flat.passing_frac == pytest.approx(1.0)
+
+    photo = classify_strokes(hairline, machine.SATIN_MAX_WIDTH_MM,
+                             design_class="photo_scene")
+    assert all(s.reason == "photo_width_floor" for s in photo.strokes), \
+        f"the floor must reach the strokes: {[s.reason for s in photo.strokes]}"
+    assert photo.passing_frac == 0.0, \
+        "a region of floor-refused strokes must not reach any area fraction"
+
+
 def test_nothing_in_the_pipeline_consults_the_per_stroke_path():
     """This PR is deliberately inert: the flag, the wiring and the flip are
     later slices. If a future change starts calling `classify_strokes` from

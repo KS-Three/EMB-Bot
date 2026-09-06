@@ -45,8 +45,11 @@ def report(art: Path, width_mm: float, garment: str, show_all: bool) -> dict:
     result = run_stages(str(art), cfg)
     satin_max = cfg.satin_max_width_mm or SATIN_MAX_WIDTH_MM
 
+    # The design's own class, not the default: on a photo class Law 31's
+    # width floor refuses a stroke under PHOTO_MIN_SATIN_WIDTH_MM, and a
+    # report that omitted it would show hairline strokes earning satin.
     print(f"{art.name} @ {width_mm:g}mm/{garment}   satin_max {satin_max:g} mm"
-          f"   {len(result.regions)} regions")
+          f"   class {result.design_class}   {len(result.regions)} regions")
     print(f"{'region':12} {'shipped':16} {'area':>8}  strokes "
           f"(reason, area mm2, cv, p90 mm, explained)")
 
@@ -56,7 +59,8 @@ def report(art: Path, width_mm: float, garment: str, show_all: bool) -> dict:
     flip_area = 0.0
     demote = []
     for r in result.regions:
-        v = classify_strokes(r.polygon, satin_max)
+        v = classify_strokes(r.polygon, satin_max,
+                             design_class=result.design_class)
         if v.region.satin:
             earned_before += float(r.polygon.area)
         if not show_all and v.region.satin:

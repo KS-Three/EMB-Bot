@@ -730,6 +730,18 @@ def classify_strokes(poly: Polygon, max_width_mm: float, *,
             rows.append(StrokeVerdict(i, False, "dt_irregular", area, st))
         elif st.p90_mm > max_width_mm:
             rows.append(StrokeVerdict(i, False, "dt_p90_cap", area, st))
+        elif (design_class in _PHOTO_CLASSES
+                and st.p90_mm < PHOTO_MIN_SATIN_WIDTH_MM):
+            # Law 31's width floor, per stroke — `_floor_or`'s rule, applied
+            # to a stroke that has otherwise EARNED satin. Splitting a region
+            # must not become a way around it: caught by
+            # `tools/ribbon_stability.py --variant strokes` on 2026-09-05,
+            # where five `meadow`/`sunset` regions whose own width is
+            # 0.42-0.55 mm went `photo_width_floor -> stroke_ribbon` because
+            # this branch was missing. A column that thin sews as
+            # thread-on-thread rather than as a stroke, which is the whole
+            # reason the floor exists.
+            rows.append(StrokeVerdict(i, False, "photo_width_floor", area, st))
         else:
             rows.append(StrokeVerdict(i, True, "satin", area, st))
 

@@ -4734,3 +4734,41 @@ nearest-spine partition of the parent mask normalized to the polygon's area).
   a region row. Separately, `_rasterize` RAISES resolution for thin shapes, so
   the degenerate branch is unreachable from real geometry: a 300 × 0.005 mm
   sliver still skeletonizes.
+
+## 2026-09-06 — the stability variant, and the defect it caught before it shipped
+
+`tools/ribbon_stability.py --variant strokes` (the measurement the per-stroke
+plan's §7 demands BEFORE its area threshold is adopted, not after) plus the
+fix it turned up in `stage6_satin.classify_strokes` itself.
+
+**The defect.** `classify_strokes` took `design_class` and forwarded it ONLY
+to the region call, so the per-stroke rows never reached `_floor_or`. A stroke
+that passed both DT gates read `satin` however thin it was — and on a photo
+class that is exactly what Law 31's width floor exists to stop, because a
+column under `PHOTO_MIN_SATIN_WIDTH_MM` sews as thread-on-thread rather than
+as a stroke. Five `meadow`/`sunset` regions whose own width is **0.42–0.55 mm**
+went `photo_width_floor -> stroke_ribbon` on the strength of the missing
+branch. `tools/stroke_verdicts.py` had the same hole from the other end — it
+called `classify_strokes` with no design class at all, so every report read as
+flat work — and passes `result.design_class` now.
+
+It landed a commit too late: **#354 auto-merged at its first commit while the
+fix was still in CI**, so `main` briefly carried `classify_strokes` without the
+floor. Nothing consumed it (the function is inert and a test pins that), but
+the merged PR body describes a fix its own diff does not contain.
+
+**The stability result, which is what PR 3 needs.** Over the ten-case set the
+promotion-only rung takes total flips from **5 to 6** — one added flip against
+the shipped classifier's own five — while changing **17 shipped verdicts**, and
+**all seven archetype invariants hold** (`BAR`/`O_RING`/`C_STROKE`/`T_SHAPE`
+stay satin, all three serrated discs stay refused). Worth naming: every verdict
+it changes sits at **cv 0.51–0.64**, within a whisker of the 0.50 gate, so at
+80 mm the rung re-decides marginal regions rather than correcting large pooling
+errors — the large ones (cv 0.69) are Becker at 100 mm.
+
+**Every number from 2026-09-05 was re-measured under each fixture's REAL design
+class and all of them stand.** The sweep had run everything as `flat` and one
+of its fixtures, `logo_script_tires.png`, is in fact `photo_scene`; re-run
+correctly it reads identically (1 flip, 763.1 -> 774.1 mm²) because its columns
+median 3.42 mm and never approach the 1.0 mm floor. Corpus totals unchanged at
++143.8 mm², 21 flips, 15 demotions.
