@@ -5672,3 +5672,64 @@ product call, and moving it re-bases the scorecard for at least four fixtures.
 *(One probe artefact worth naming: two `region_blobs` rows report their worst
 shape as `Sb971b1c2 shade 3770`, a derived id my lookup could not resolve — the
 suffix trap again, this time in my own instrument rather than in the pipeline.)*
+
+## 2026-09-06 — the thread check's denominator, and two wrong turns getting there
+
+`_region_color_errors` scored every `result.regions` entry, including the ones
+marked `enclosed_background`. Those are unstitched by default and their colour
+IS the background's, so judging their thread against the artwork under them is
+exactly the category error `stage4_vectorize.revalidate_threads` already
+refuses to make: *"re-matching it to the bg-coloured pixels it covers is both
+a no-op and a category error."* It skips them now.
+
+**What it is worth, measured across the whole 26-fixture × 2-garment matrix:
+ONE finding.** `logo_gaulke_roofing` drops `4174` — 24.5 ΔE00 on a 6.16 mm²
+enclosed-background region — going **F 0 → F 4, blocks 3 → 2**. Every other
+row is identical and **no grade letter moves anywhere**. A hardening, not a
+rescue, recorded that way so nobody re-derives a benefit it does not have.
+
+### Wrong turn 1: `StitchRun.jump` is not travel
+
+The route here started from an instrument that skipped `run.jump` runs when
+counting what a region sews. It reported:
+
+> 11 of 25 blocking findings ride on shapes that emit ZERO stitches — all
+> three of `gaulke_roofing`'s, 2 of 3 on `bridge_bar`, 6 of 10 on
+> `screenshot_phone_ui`, including its headline 33.0 ΔE00 shard.
+
+**Every one of those numbers is wrong. The real count is 0.** `StitchRun`'s
+own field comment: *"True when the machine must lift the needle to reach
+`points[0]`"* — under a class docstring that reads *"One needle-down path."*
+A jump says how the needle ARRIVED. Filtering on it discards genuinely sewn
+work, and discards precisely the shapes a thread finding is likeliest to name,
+because a small isolated shape is one the router must jump to. Re-measured
+without it: `S43831dcd` sews 24 stitches, `Se6eddd27` 60, `Sf90801f2` 162,
+`S05f7940d` 66, `Sb62447f7` 7,586.
+
+It was caught by the fix built on it appearing to do nothing — 26 fixtures
+scored, not one row moved, on a change that "should" have cleared eleven
+blocks. **A no-op where a large effect was predicted is evidence about the
+instrument, not a disappointment.**
+
+### Wrong turn 2: a plan-derived denominator breaks ten deliberate tests
+
+The next build skipped regions the plan emits no run for — the denominator
+`_uncovered_findings` uses, quoting `SHAPES_LEFT_UNSEWN`. On
+`logo_gaulke_roofing` that is the identical set (all **46 of its 56** runless
+regions are enclosed background; also 67 of `screenshot_phone_ui_golke`'s 153,
+11 of `drone_render`'s 74, 0 of `logo_bridge_bar`'s 77) — but it makes the row
+set depend on the plan the caller passes, and **ten `test_preflight.py` tests
+pass a synthetic or empty one on purpose**, including *"the single-row path
+must survive an empty plan"*. Ten failures to remove one finding is the wrong
+trade. The region's own `enclosed_background` flag says the same thing without
+touching the plan, and breaks exactly one test — the one whose contract this
+change deliberately corrects, updated in place with the reason.
+
+`tests/test_thread_match_enclosed_background.py` pins all of it: no row and no
+finding for an enclosed-background region, every surviving block on a shape
+that really sews, and `test_jump_runs_are_sewing_not_travel` fails if the jump
+filter comes back.
+
+**Rule: `run.jump` is how the needle got there. Never filter on it to decide
+whether a shape is sewn — sum `len(run.points)` over every run whose
+`_owning_region_id` resolves.**

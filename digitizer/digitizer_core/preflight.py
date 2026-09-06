@@ -664,6 +664,35 @@ def _region_color_errors(p, result: PipelineResult, plan: StitchPlan,
 
     rows: list[dict] = []
     for r in result.regions:
+        # An enclosed-background region is unstitched by default and its
+        # colour is the BACKGROUND's, so scoring its thread against the
+        # artwork under it is the same category error
+        # `stage4_vectorize.revalidate_threads` already refuses to make:
+        # *"re-matching it to the bg-coloured pixels it covers is both a
+        # no-op and a category error."* This check scored them anyway.
+        #
+        # Measured 2026-09-06 over the full 26-fixture x 2-garment matrix:
+        # it removes exactly ONE finding — `logo_gaulke_roofing` drops `4174`
+        # (24.5 dE00 on a 6.16 mm2 region), F 0 -> F 4, blocks 3 -> 2. No
+        # grade letter moves anywhere. A hardening, not a rescue; recorded so
+        # nobody re-derives a benefit it does not have.
+        #
+        # WHY THIS AND NOT "regions the plan sews", which was tried first:
+        # on `gaulke_roofing` the two sets are identical (all 46 runless
+        # regions are enclosed background), but a plan-derived denominator
+        # empties this function whenever the caller passes a plan that is not
+        # this design's — which `tests/test_preflight.py` does deliberately
+        # in ten places, including *"the single-row path must survive an
+        # empty plan"*. The region's own flag says the same thing without
+        # making the row set depend on the plan.
+        #
+        # AND DO NOT reach for `run.jump` to build such a set. `jump` means
+        # the machine lifted the needle to REACH points[0]; the run is still
+        # needle-down. An instrument that filtered it reported 11 of 25
+        # blocking findings as riding on unsewn shapes — the real number is
+        # 0, every one of them sews (some only 23-30 stitches).
+        if r.meta.get("enclosed_background"):
+            continue
         mask = np.zeros((h, w), np.uint8)
 
         def to_px(coords) -> np.ndarray:
@@ -774,6 +803,13 @@ def _thread_match_findings(p, result: PipelineResult, plan: StitchPlan,
     not a whole region (`_region_color_errors`), so that number is the worst
     per-band error: the honest version, and the only one that can fall when
     a gradient's shades improve.
+
+    **Enclosed-background regions are not scored** (2026-09-06, see
+    `_region_color_errors`): they are unstitched by default and their colour
+    is the background's, so judging their thread is the category error
+    `revalidate_threads` already refuses to make. Worth one finding across the
+    whole corpus, and it sharpens `loaded` below into what its own comment
+    already claims — the machine's real cone list.
     """
     rows = _region_color_errors(p, result, plan, cfg)
     chart = chart_for(cfg)

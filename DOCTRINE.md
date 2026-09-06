@@ -641,6 +641,39 @@ its hedge as it is copied forward** — is why this file is split.
 
 ## Gotchas — cost someone a session once
 
+- **`StitchRun.jump` is NOT travel — never filter on it to decide whether a
+  shape is sewn.** The field means *"the machine must lift the needle to reach
+  `points[0]`"*; the class above it is *"One needle-down path."* A jump says
+  how the needle ARRIVED. An instrument that skipped `run.jump` runs when
+  counting a region's emitted stitches reported **11 of 25 blocking
+  `THREAD_MATCH_POOR` findings as riding on shapes that sew nothing — all
+  three of `gaulke_roofing`'s, 6 of 10 on `screenshot_phone_ui`, including its
+  headline 33.0 dE00 shard. The true count is 0.** The filter discards exactly
+  the shapes a thread finding is likeliest to name, because a small isolated
+  shape is one the router must jump to: re-measured, `S43831dcd` sews 24
+  stitches, `Se6eddd27` 60, `Sf90801f2` 162. **The sewn count is
+  `len(run.points)` summed over EVERY run whose `_owning_region_id` resolves,
+  jumps included** — the form `preflight._uncovered_findings` already uses.
+  Caught only because the fix built on it scored 26 fixtures and moved
+  nothing: **a no-op where a large effect was predicted is evidence about the
+  instrument.** `tests/test_thread_match_enclosed_background.py::
+  test_jump_runs_are_sewing_not_travel` fails if the filter comes back.
+  *(measured 2026-09-06 — scope-history 09-06)*
+
+- **A denominator taken from the PLAN empties a preflight check whenever the
+  caller passes a plan that is not that design's — and ten `test_preflight.py`
+  cases do exactly that on purpose.** Skipping regions the plan emits no run
+  for is the right idea (`_uncovered_findings` does it, quoting
+  `SHAPES_LEFT_UNSEWN`), but in `_region_color_errors` it broke ten deliberate
+  tests — among them *"the single-row path must survive an empty plan"* —
+  to remove ONE finding across the whole 26-fixture matrix. The region's own
+  `enclosed_background` flag says the same thing without making the row set
+  depend on the plan, and cost exactly one test, the one whose contract the
+  change corrects. On `logo_gaulke_roofing` the two sets are identical anyway:
+  all 46 of its 56 runless regions are enclosed background. **Rule: before
+  deriving a denominator from the plan, check what the module's own tests
+  pass in as a plan.** *(measured 2026-09-06 — scope-history 09-06)*
+
 - **"NOT wired / nothing calls this" comments go stale silently — verify one
   before you trust it.** Nothing tests a comment, so a module docstring keeps
   asserting an absence long after the seam it describes was built, and the

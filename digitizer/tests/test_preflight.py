@@ -413,7 +413,15 @@ def test_a_flat_design_scores_exactly_one_row_per_region_as_before():
     """The byte-identity half of the promise. Nothing without shade runs may
     move: every flat region, every satin, every non-gradient design keeps the
     same single row, with the same `shape_id` and the same `thread_index` it
-    had before shade rows existed."""
+    had before shade rows existed.
+
+    "Every region" here means every region this check judges — 2026-09-06 the
+    denominator dropped `enclosed_background` regions, which are unstitched by
+    default and whose colour is the background's, so judging their thread is
+    the category error `revalidate_threads` already refuses to make. This
+    fixture carries exactly one (`stitched: False`), and it is the only reason
+    the count moved: the per-row assertions below are untouched.
+    """
     from digitizer_core.stage1_prep import prep
 
     c = cfg(**PLAN_CFG_KW)
@@ -423,11 +431,16 @@ def test_a_flat_design_scores_exactly_one_row_per_region_as_before():
     assert not any(r.shade_thread_index is not None
                    for _b, r in plan_.iter_runs()), "fixture drift: not flat"
 
+    judged = [r for r in result.regions if not r.meta.get("enclosed_background")]
+    assert len(judged) == len(result.regions) - 1, (
+        "fixture drift: this design is supposed to carry exactly one "
+        "enclosed-background region, which is what makes it a useful control")
+
     rows = _region_color_errors(p, result, plan_, c)
-    assert len(rows) == len(result.regions)
+    assert len(rows) == len(judged)
     by_id = {r["shape_id"]: r for r in rows}
-    assert by_id.keys() == {r.shape_id for r in result.regions}
-    for region in result.regions:
+    assert by_id.keys() == {r.shape_id for r in judged}
+    for region in judged:
         assert by_id[region.shape_id]["thread_index"] == region.thread_index
         # And the row is the one the empty-plan path produces, unchanged.
         assert by_id[region.shape_id]["delta_e"] == pytest.approx(
