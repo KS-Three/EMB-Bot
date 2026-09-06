@@ -5733,3 +5733,85 @@ filter comes back.
 **Rule: `run.jump` is how the needle got there. Never filter on it to decide
 whether a shape is sewn — sum `len(run.points)` over every run whose
 `_owning_region_id` resolves.**
+
+## 2026-09-06 — the pixel floor, fixed behind a flag, and two constructions that lost
+
+MASTER_SCOPE 28's cause 3, built: **`cfg.revalidate_small_shapes`**, DEFAULT
+OFF and byte-identical off. ON, `revalidate_threads` uses
+`THREAD_REVALIDATE_MIN_PX_SMALL = 50` — deliberately
+`preflight._MIN_COLOR_PIXELS` — instead of `THREAD_REVALIDATE_MIN_PX = 200`,
+so the two instruments stop disagreeing about what is measurable and the
+50–199 px band stops being a place a design can be condemned and never
+corrected.
+
+Everything else is untouched: the 3.0 ΔE00 improvement gate (the real churn
+guard), the photo-route palette binding, and geometry — the tests compare
+shape id → polygon WKT maps across the flag.
+
+### The headline is honest and it is not a grade
+
+| | |
+|---|---|
+| `screenshot_phone_ui_golke` worst thread ΔE00 | **33.0 → 21.2** |
+| `S43831dcd` (0.94 mm², **177 px** against a floor of 200) | `0111 Whale` 32.7 → **`0015 White` 1.4** |
+| grades, all seven F fixtures | **unchanged** |
+| `THREAD_MATCH_POOR` blocks, everywhere | **unchanged** |
+| corpus | **21 of 26 byte-identical** |
+
+`THREAD_MATCH_POOR` blocks per THREAD on that thread's worst patch, so fixing
+six of a thread's shards changes nothing while a seventh is still bad. **The
+flag fixes sewn colour; the scorecard cannot see it.** That is a datum for
+phase 1 (*"a yardstick that agrees with Kent's eyes"*), not a disappointment —
+and the reason there is a render rather than only a table:
+`docs/renders/small-shape-resnap-2026-09-06/`.
+
+All six cone changes on that fixture land on cones the design **already
+loads**: `0111→0015`, `0134→0020` ×3, `2776→1776`, `0111→0142`.
+
+### Corpus A/B (80 mm, left_chest)
+
+| fixture | stitches | cones | resnaps |
+|---|---|---|---|
+| `drone_render` | 16,297 → 16,297 | 19 → **20** | 16 → 18 |
+| `photo_dof_meadow` | 19,809 → 19,974 | 5 → 5 | 8 → 11 |
+| `summit_badge` | 17,863 → 17,863 | 13 → 13 | 5 → 7 |
+| `logo_bridge_bar` | 14,342 → 14,500 | 18 → 18 | 6 → 13 |
+| `screenshot_phone_ui` | 7,624 → 7,617 | 16 → 16 | 45 → 51 |
+| the other 21 | byte-identical | | |
+
+### Construction 1, REJECTED: the unrestricted chart argmin
+
+Off the photo route `revalidate_threads` picks over the whole chart, so
+re-snapping a crowd of shards pulls new spools in: **`bridge_bar` 18 → 22
+cones, `drone_render` 19 → 21.** Every new spool is another row
+`THREAD_MATCH_POOR` scores, and **`drone_render` went 4 → 5 blocks on cones it
+did not previously carry.** It did buy `screenshot` 10 → **9** blocks — the
+only construction that moved a block count at all — and that is not worth a
+regression plus four extra colour stops on a customer logo.
+
+### Construction 2, REJECTED: restrict to the stage-2 palette
+
+No regression and no win: `screenshot` back to 10 → 10. The reason is
+measurable — `select_palette` chose **13** spools and the design carries
+**16**, because earlier re-snaps already moved shapes outside the palette. So
+the palette forbids moves onto cones that are *already on the machine*:
+`S967c0c7f` stayed on `0111 Whale` over 182-grey artwork with `0142` sitting
+loaded.
+
+### What ships: the cones the design already carries
+
+`loaded` is snapshotted at pass entry from the non-enclosed regions' own
+thread indices. **Not** unioned with the palette — an earlier build did that
+and it re-admitted spools nothing wears, taking `drone_render` to 20 cones for
+that reason instead of the real one.
+
+**And the real one is worth stating precisely, because "never grows the cone
+set" is FALSE.** `drone_render` still goes 19 → 20, and the mechanism is
+measured, not guessed: the extra cone is **`0674`**, it WAS in the pass-entry
+set, and the shipped pass **vacates** it with the flag off — the last region
+wearing it re-snaps away. With the flag on a shard lands on it and keeps it
+alive. So the invariant is *"a shard can only take a cone the design already
+carried when the pass began"*, which is what
+`test_a_small_shape_can_only_take_a_cone_the_design_already_carried` asserts.
+The stronger *"gains no cone at all"* holds on the two fixtures cause 3 is
+actually about, and has its own test.

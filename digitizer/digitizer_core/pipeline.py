@@ -594,6 +594,7 @@ def build_generation(
         regions, p, cfg,
         palette_indices=list(q.thread_indices),
         design_class=classification.class_,
+        small_shapes=cfg.revalidate_small_shapes,
     )
     # Defect 16's remainder (2026-08-31): a re-snapped region joins the layer
     # that declares its new cone, so one spool sews at one position and the

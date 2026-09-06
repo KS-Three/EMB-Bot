@@ -279,6 +279,35 @@ Moved verbatim 2026-08-28 — no section was rewritten in the move.
 
 ## Measured negatives — built or proposed, then rejected. Do not rebuild.
 
+- **Letting a re-snapped SHARD pick any spool on the chart costs more than it
+  buys — two constructions measured, both rejected.** `cfg.
+  revalidate_small_shapes` lowers `revalidate_threads`' pixel floor to
+  preflight's 50 so the 50-199 px band stops being condemnable-but-uncorrectable
+  (MASTER_SCOPE 28). What a shard admitted by that floor may CHOOSE from was
+  measured three ways on the 26-fixture corpus:
+  **(a) the whole chart** — the shipped off-photo behaviour — pulls new spools
+  in: `logo_bridge_bar` 18 -> **22** cones, `drone_render` 19 -> **21**, and
+  each new spool is another row `THREAD_MATCH_POOR` scores, so `drone_render`
+  went **4 -> 5 blocks on cones it did not previously carry**. It is the only
+  construction that ever moved a block count in the good direction
+  (`screenshot` 10 -> 9) and it is not worth a regression plus four colour
+  stops on a customer logo.
+  **(b) the stage-2 palette** (`q.thread_indices`) — no regression AND no win.
+  Measured cause: `select_palette` chose **13** spools while the design carries
+  **16**, because earlier re-snaps already moved shapes outside it, so the
+  palette forbids moves onto cones ALREADY ON THE MACHINE (`S967c0c7f` stayed
+  on `0111 Whale` over 182-grey artwork with `0142` loaded).
+  **(c) the cones the design carried at pass entry** — what ships.
+  **And "never grows the cone set" is FALSE even for (c)**: `drone_render` goes
+  19 -> **20** because the extra cone `0674` was in the entry set and the
+  shipped pass VACATES it (its last region re-snaps away), so a shard landing
+  there keeps it alive. The honest invariant is *"can only take a cone the
+  design already carried when the pass began."* **Rule: a sub-1 mm2 shard is
+  never worth a colour change on the machine — the choice set for a shard is
+  what is already threaded, and the entry snapshot must NOT be unioned with the
+  palette** (that re-admits spools nothing wears). *(measured 2026-09-06 —
+  scope-history 09-06)*
+
 - **Do not tune a threshold on `becker_marine_logo.png` — its source is
   146 x 91 px.** That is **1.46 px/mm at 100 mm**, the lowest-resolution
   fixture in the corpus by a wide margin (whitebg 800 px, enthusiast 1400,

@@ -1244,6 +1244,29 @@ class PipelineConfig:
     # answers and a number does not.
     satin_patch_junctions: bool = False
 
+    # Let stage 4's thread re-validation reach the shapes preflight condemns.
+    # `stage4_vectorize.revalidate_threads` re-snaps a thread that drifted off
+    # its colour during outline simplification, gated on
+    # `THREAD_REVALIDATE_MIN_PX = 200`. `preflight._MIN_COLOR_PIXELS` is 50 —
+    # so a shape of 50-199 px is scored and BLOCKED by preflight and can never
+    # be corrected by stage 4. ON, the re-ask uses preflight's floor instead,
+    # so the two agree on what is measurable.
+    #
+    # Measured 2026-09-06 (`tools/revalidate_floor.py`, MASTER_SCOPE 28): on
+    # `screenshot_phone_ui_golke` the pass refuses 12 shapes, all 12 in that
+    # band, 7 of which would change answer under the function's own estimator
+    # and its own 3.0 dE improvement gate — worst 177 px, `0111 Whale` at
+    # 32.7 dE00 where `0015 White` scores 1.4. Across the seven fixtures
+    # THREAD_MATCH_POOR grades F, refusals are 0/0/0/4/7 against
+    # `logo_bridge_bar` 63 and `screenshot_phone_ui` 12.
+    #
+    # DEFAULT OFF and byte-identical off. The estimator does not need the
+    # extra pixels (a median over 50 per-pixel dE00 is sound, and
+    # THREAD_REVALIDATE_MIN_IMPROVEMENT_DE00 is the real churn guard) — the
+    # 200 was protecting goldens, so moving it is a scorecard recapture, and
+    # that is Kent's call rather than a silent default change.
+    revalidate_small_shapes: bool = False
+
     # Split satin. A satin cross longer than the threshold carries
     # intermediate penetrations, staggered station to station so the holes
     # never line up (machine.SPLIT_* carry the corpus measurements: the
