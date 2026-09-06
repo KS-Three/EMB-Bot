@@ -1133,3 +1133,35 @@ its hedge as it is copied forward** — is why this file is split.
   appended at the END of the shape, so the needle hops in and out and Becker
   goes 29 → 32 trims at 80 mm on a fixture `TRIM_HEAVY` already flags. *(2026-09-06 —
   scope-history 09-06; renders in `docs/renders/junction-bare-2026-09-06/`)*
+
+- **Becker's TRIM_HEAVY is the "never travel over finished satin" rule meeting
+  a 27-stroke shape. Four hypotheses, all measured, all refuted.** Ours runs 29
+  trims on 5,531 stitches (5.2/1k) against the professional's 12 on 11,274
+  (1.1/1k) for the SAME artwork; 19 of our 28 pen-ups stay inside `Sead76620`.
+  `_graph_travel` already walks the unsewn skeleton — 32 calls, 8 succeed.
+  **(1) Order.** A connectivity-aware `_order_strokes` preferring reachable
+  strokes gives **29 trims, 5,531 stitches, byte-identical**; it changed the
+  pick zero times in 32.
+  **(2) `TRIM_AT_MM`.** Raising it from 3.0 looked obvious (16 of 28 pen-ups
+  are 3.5-8.4 mm; a 10 mm threshold gives exactly the pro's 12) and the pro
+  file appeared to show 71 JUMPs against 12 trims. **Wrong reading.**
+  Classifying every needle-up move in all five pro files: **69 cut, ZERO
+  floats**, shortest cut **3.9 mm**, p50 21.3. The "jumps" are DST encoding a
+  long move. Professionals cut everything to ~4 mm. **Do not raise it.**
+  **(3) Spurs.** The degree histogram is `{1: 1, 2: 1, 3: 17, 5: 23, 6: 4,
+  7: 1, 8: 1, 10: 1}` — one degree-1 node in 49. Pruning buys nothing.
+  **(4) The Eulerian floor.** `odd/2 − 1` = 20 against 19 in-shape trims is a
+  tempting match, and widening `_build_travel_graph`'s 0.5 mm `node_at` merge
+  lowers it (1.0 → 17, 1.5 → 14). Measured end to end: **29 trims at every
+  radius 0.5-2.0 mm.** A real bound, not the binding one.
+  **What binds is TEMPORAL.** Travel is permitted over unsewn strokes only, so
+  logging that shape's 20-stroke sequence against progress: ok at 5/15/20/40%,
+  then **"no route" on every call from 45% to 85%.** After a quarter of a shape
+  is down the walk never succeeds again, and a 27-stroke shape spends nearly
+  all its life mostly-sewn. **Rule: a trim count on a many-stroke satin shape
+  is the price of not running stitches over finished satin — check how far
+  through the shape the failures start before touching any knob.** The lever is
+  the number of strokes in the shape; WHERE to change that (segmentation,
+  skeletonization, stroke decomposition) is not established.
+  *(measured 2026-09-06 — scope-history 09-06)*
+

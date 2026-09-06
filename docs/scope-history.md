@@ -5222,3 +5222,103 @@ artwork; a fully covered bar gets no patch; both call sites forward the flag.
 
 Renders: `docs/renders/junction-bare-2026-09-06/becker_80mm_patch_off.png` and
 `_on.png`.
+
+## 2026-09-06 — TRIM_HEAVY on Becker: four hypotheses, all refuted, one measured cause
+
+`TRIM_HEAVY` is the only finding left on `becker_marine_logo` once the junction
+patch clears `ARTWORK_UNCOVERED`. Against the professional's own file on the
+same artwork:
+
+| | stitches | trims | per 1k |
+|---|---:|---:|---:|
+| ours @ 80 mm | 5,531 | 29 | **5.2** |
+| `beckers_logolc.dst` | 11,274 | 12 | 1.1 |
+| `beckers_logo_lc_2_a.dst` | 8,694 | 12 | 1.4 |
+
+Five times the rate, and **19 of our 28 pen-ups stay inside ONE shape** —
+`Sead76620`, the 638.8 mm² 27-stroke region that also carries the junction
+hole. Every long one is a hop into a stroke's underlay.
+
+`satin_shape` already walks the unsewn skeleton needle-down (`_graph_travel`,
+"the professional trick the corpus files all use"). Instrumented: **32 calls,
+8 succeed** — 13 "no route over the unsewn web", 9 "cursor more than 3 mm off
+the web", 2 "target 1.1-2.0 mm off-web".
+
+### Four things that looked like the fix, and were not
+
+**1. The stroke ORDER strands the needle.** `_order_strokes` is pure
+nearest-neighbour on stroke endpoints and knows nothing about the web's
+connectivity, so this looked obvious. Built a connectivity-aware order that
+prefers strokes still reachable over the unsewn web: **29 trims and 5,531
+stitches, byte-identical to shipped.** Instrumented, it narrowed the candidate
+set once in 32 picks and changed the pick **zero** times.
+
+**2. `TRIM_AT_MM = 3.0` is too aggressive.** 16 of our 28 pen-ups are 3.5-8.4
+mm; at a 10 mm threshold we would cut 12, exactly the pro's count. The constant
+carries no corpus citation, only a judgement, and the pro file appeared to show
+71 JUMPs against 12 trims. **That reading was wrong, and measuring it is what
+caught it.** Classifying every needle-up move in all five Becker reference
+files by whether a TRIM precedes it: **69 cut, ZERO left as floats**, shortest
+cut **3.9 mm** (3.9-6.2 across the files). The 71 "jumps" are DST encoding a
+long move as a run of JUMP records, not floats.
+
+> **And the answer was already in the record, better measured than this.**
+> `.claude/memory/pro-trim-threshold.md` (2026-08-15) walked **910 needle-up
+> moves across all 23 pro designs**: **542 CUT, p50 7.9 mm, min 1.9**; **368
+> FLOATED, p50 9.1, max 16.1**. The distributions overlap heavily and *"no
+> single threshold reproduces this pro"* — which is a better reason not to
+> retune the constant than anything measured here, and it says pros both cut
+> below our 3.0 and float well above it. The five Becker files are a subset
+> whose digitizer happens to cut everything.
+>
+> **That also corrects a live claim.** `MASTER_SCOPE` said *"the pro never cuts
+> under 11.8 mm"*, from `docs/fragmentation-attribution-2026-08-18.md` §"The
+> pro's actual cut rule" — which measured **one file**, `becker_hat_small`.
+> Generalised to "the pro", it contradicts the 23-design corpus's 1.9 mm
+> minimum. Corrected in place 2026-09-06; the source doc keeps its own
+> single-file numbers, which are not wrong about that file.
+
+**Do not raise `TRIM_AT_MM` to close this finding** — not because pros cut
+everything (they do not), but because distance is not their decision variable.
+
+**3. The skeleton is full of spurs.** It is not. The degree histogram of
+`Sead76620`'s web is `{1: 1, 2: 1, 3: 17, 5: 23, 6: 4, 7: 1, 8: 1, 10: 1}` —
+**one** degree-1 node in 49. The 42 odd-degree vertices are 17 three-way and 24
+five-or-more-way junctions. More aggressive spur pruning buys nothing.
+
+**4. The Eulerian floor is binding.** A connected web with `odd` odd-degree
+vertices needs `odd/2 − 1` lifts whatever the order, and `Sead76620` scores 20
+against the 19 in-shape trims it takes — a tempting match. But
+`_build_travel_graph`'s `node_at` merges points within 0.5 mm, and widening
+that lowers the floor (0.5 mm → 20, 1.0 → 17, 1.5 → 14). Measured end to end:
+**29 trims at every radius from 0.5 to 2.0 mm**, stitch count moving by two.
+The floor is a real bound and it is *not* what binds.
+
+### What actually does
+
+Travel is allowed over UNSEWN strokes only — a running stitch on a stroke
+whose column sews later is covered; one over finished satin shows. So the
+constraint is temporal, not topological. Logging every call in that shape's
+20-stroke sequence against how much of it was already sewn:
+
+| sewn | outcome |
+|---|---|
+| 0% | cursor off-web (arriving from another shape) |
+| 5% | ok |
+| 10% | no route |
+| 15%, 20% | ok |
+| 25%, 30%, 35% | no route |
+| 40% | ok — the last one |
+| **45% … 85%** | **no route, all nine calls** |
+| 90%, 95% | target off-web |
+
+**After 40% of the shape is down, the walk never succeeds again.** A
+27-stroke shape spends nearly all of its life mostly-sewn, so nearly every move
+in it is a lift. That is the price of "never run stitches over finished satin",
+and no ordering, threshold or graph parameter changes it.
+
+Which puts the cause back where the junction hole put it: **one region carrying
+27 strokes.** The pro takes 14 pen-ups on this artwork because their
+decomposition needs 14. WHERE to fix that — segmentation, skeletonization, or
+stroke decomposition — is not established here, and the first draft of this
+entry overreached by naming segmentation.

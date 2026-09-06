@@ -61,11 +61,8 @@ icon. Cloth pointers added to defects 3, 6 and 16 below.
    80 mm datum now exists — the 2026-09-01 sew-out icon at 26 trims / 7
    stops, pinned to an actual decoded file rather than to a number nobody
    could reproduce.) Quote the rate or the break count, never a run
-   count and never raw `trims`. **Cause: trim policy, not travel** — the pro
-   never cuts under 11.8 mm, ours is 3.0, and gate 1 says cloth settles that.
-   The `_graph_travel` half of the old attribution is RETRACTED. Not blocked:
-   five pro variants sit in `digitizer/testdata/reference/`.
-   *(measured 2026-08-18/21 — `docs/fragmentation-attribution-2026-08-18.md`)*
+   count and never raw `trims`. **Cause: trim policy, not travel** (ours 3.0; gate 1 says cloth settles it) — but **"the pro never cuts under 11.8 mm" stood here and is WRONG**, corrected 2026-09-06: that is `becker_hat_small` alone, while the 23-design 910-move corpus (`.claude/memory/pro-trim-threshold.md`) has **542 cuts, min 1.9 mm** beside 368 floats to 16.1 — heavily overlapping, so **no single threshold reproduces this pro**, which is the real reason not to retune it (our five Becker refs cut all 69 moves, shortest 3.9). `_graph_travel` stays RETRACTED as the cause and was re-measured 2026-09-06: it fails because travel may only cross UNSEWN strokes, "no route" on every call from 45% of a 27-stroke shape on (DOCTRINE). Not blocked: five pro variants sit in `testdata/reference/`.
+   *(2026-08-15/18/21, corrected 2026-09-06 — `docs/fragmentation-attribution-2026-08-18.md`, scope-history 09-06)*
 
 5. **Satin-vs-fill routing sits at chance, and misroutes in BOTH directions.**
    The *mix* looked close by AREA; by THREAD it is not (2.2% against 44.3% —
