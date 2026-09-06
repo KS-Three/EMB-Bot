@@ -279,6 +279,31 @@ Moved verbatim 2026-08-28 — no section was rewritten in the move.
 
 ## Measured negatives — built or proposed, then rejected. Do not rebuild.
 
+- **Do not tune a threshold on `becker_marine_logo.png` — its source is
+  146 x 91 px.** That is **1.46 px/mm at 100 mm**, the lowest-resolution
+  fixture in the corpus by a wide margin (whitebg 800 px, enthusiast 1400,
+  Fremont 2500), so one source pixel is ~0.68 mm and every width it reports is
+  quantised in ~0.7 mm steps. Consequences measured 2026-09-05/06, all of
+  which look like artwork properties and are not: its 17 regions cluster
+  within +-0.10 of the `cv = 0.50` gate (11 of 17 at 80 mm, 16 of 17 at
+  100 mm); 80 mm and 100 mm segment to region sets sharing NO shape ids; and
+  `stage4_vectorize._CURVE_MIN_PX_PER_MM` (20.0) gates curve refinement off
+  for it entirely at 4.0 prepped px/mm, which is the staircase visible on
+  every curve in its renders and is NOT an engine defect — the detail is not
+  in the artwork to recover. Becker is an excellent END-TO-END fixture (it is
+  the one with a professional's own file to compare against) and a bad one for
+  calibrating anything threshold-sensitive.
+
+  **There is no higher-resolution Becker source in the repo, and the files
+  that look like one are a trap.** `testdata/reference/becker_*.jpg` are
+  ~810 px and CLAUDE.md calls them artwork, but each sits 1:1 beside a
+  `.dst`/`.pes` and each is a STITCH-FILE PREVIEW — the professional's
+  embroidery rendered on white and on black, two panels to an image.
+  Digitizing one would be digitizing a picture of embroidery: it would run
+  happily and produce nonsense. Making Becker's threshold numbers meaningful
+  needs the original logo from Kent, not anything already committed.
+  *(measured 2026-09-06)*
+
 - **A per-stroke satin rung must treat the machine cap as a VETO, never as a
   vote.** Scoring `dt_p90_cap` per stroke and then letting an area majority
   outweigh it is a different rule, and the difference is bare cloth: measured
