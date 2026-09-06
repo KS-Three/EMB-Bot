@@ -854,6 +854,15 @@ def _thread_match_findings(p, result: PipelineResult, plan: StitchPlan,
     # unreachable colour.
     photo = _is_photo_class(plan, cfg)
     loaded = sorted(by_thread)
+    # Denominator for the "% of the design" the message now carries: the
+    # regions this check actually SCORED, which is the sewn, non-enclosed set
+    # (`_region_color_errors` skips enclosed background). Not `result.regions`
+    # — that would include shapes nothing stitches and quietly shrink every
+    # share. A shade row's id is `"<shape_id> shade <n>"`, so it is stripped
+    # back the same way the finding's own reader has to.
+    scored_ids = {str(r["shape_id"]).split(" shade ")[0] for r in rows}
+    total_area = sum(r.area_mm2 for r in result.regions
+                     if r.shape_id in scored_ids)
 
     for t, t_rows in sorted(by_thread.items()):
         # `score` is what the thresholds judge; `delta_e` stays the reported
@@ -882,9 +891,35 @@ def _thread_match_findings(p, result: PipelineResult, plan: StitchPlan,
         clearly = top["_score"] > DELTA_E_CLEARLY_DIFFERENT
         what = "is clearly a different color than" if clearly else "is visibly off"
         n = len(offenders)
-        where = (f"the shape it sews ({top['shape_id']})" if len(t_rows) == 1
+        # How big the offender actually is. This check has NO area floor —
+        # measured 2026-09-06 over the seven F-grade fixtures, the worst shape
+        # behind a blocking finding runs min 0.58 mm2, p50 3.17, max 1,648.5,
+        # and 12 of the 23 measurable ones are under 5 mm2. So `gaulke_roofing`
+        # is told "do not sew" over 63.6 dE00 on 0.03% of its area in exactly
+        # the words `drone_render` gets for 14.1 dE00 over 54.48% of its own.
+        # Both figures are what the message below PRINTS, at its own two
+        # decimals and over the denominator built above — the raw shares are
+        # 0.0260% and 54.4820%, and the F-wall table's 53.6% for drone is the
+        # older all-regions denominator, not a drift.
+        #
+        # Whether the SEVERITY should have a floor is a product call that
+        # re-bases the scorecard for at least four fixtures (recorded, not
+        # proposed). Saying the size is not: the finding already carries
+        # `worst_shape_id`, and a reader could not act on it without going and
+        # measuring the shape. Message prose only — `corpus_scorecard.diff`
+        # compares `code:severity` and states that wording may change without
+        # a geometry change, so no baseline moves.
+        base_id = str(top["shape_id"]).split(" shade ")[0]
+        area = next((r.area_mm2 for r in result.regions
+                     if r.shape_id == base_id), None)
+        size = ""
+        if area is not None:
+            share = (100.0 * area / total_area) if total_area else 0.0
+            size = f", {area:.2f} mm² — {share:.2f}% of the design"
+        where = (f"the shape it sews ({top['shape_id']}{size})"
+                 if len(t_rows) == 1
                  else f"{n} of the {len(t_rows)} shapes it sews "
-                      f"(worst: {top['shape_id']})")
+                      f"(worst: {top['shape_id']}{size})")
         if top["_alt"] is not None:
             alt = chart[top["_alt"]]
             remedy = (f"{alt.number} ({alt.name}) is already loaded for this "
@@ -906,6 +941,12 @@ def _thread_match_findings(p, result: PipelineResult, plan: StitchPlan,
                             else round(top["_score"], 1)),
             better_spool=(None if top["_alt"] is None else alt.number),
             worst_shape_id=top["shape_id"],
+            # The size of the shape being condemned. In `extra` as well as in
+            # the message so a review screen can sort or filter on it without
+            # parsing prose; None when the id resolves to no region.
+            worst_shape_area_mm2=(None if area is None else round(area, 2)),
+            worst_shape_area_frac=(None if area is None or not total_area
+                                   else round(area / total_area, 5)),
             region_count=n,
             regions_scored=len(t_rows),
             # Offenders are ORDERED by whichever yardstick judged them, so on

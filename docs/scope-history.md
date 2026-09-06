@@ -6020,3 +6020,41 @@ And the design decision that matters most: **it fails only on the
 current-state docs.** `docs/scope/*` hits are advisory, because a dated
 snapshot there is legitimate under that file's own rules, and a checker that
 cries wolf on legitimate narrative is a checker nobody runs.
+
+## 2026-09-06 — `THREAD_MATCH_POOR` now says how big the shape it condemns is
+
+The check has no area floor, measured over the seven F-grade fixtures: the
+worst shape behind a blocking finding runs **min 0.58 mm², p50 3.17, max
+1,648.5 — 12 of the 23 measurable ones under 5 mm².** So `logo_gaulke_roofing`
+was told *"do not sew"* over 63.6 ΔE00 on **0.03%** of its area in exactly the
+words `drone_render` gets for 14.1 ΔE00 over **54%** of its own, and nothing in
+the finding let a reader tell them apart without going and measuring the shape.
+
+Whether the SEVERITY should have a floor is a product call that re-bases the
+scorecard for at least four fixtures — still recorded, still not proposed.
+**Saying the size is not a product call**, so the message says it:
+
+```
+… is clearly a different color than the shape it sews
+  (Se6eddd27, 0.58 mm² — 0.03% of the design). Pick a closer thread …
+… is clearly a different color than the shape it sews
+  (Sb62447f7, 1648.54 mm² — 54.48% of the design). Pick a closer thread …
+```
+
+`extra` carries `worst_shape_area_mm2` and `worst_shape_area_frac` too, so a
+review screen can sort or filter without parsing prose.
+
+**No severity moves** — this is message prose plus two payload fields, and
+`corpus_scorecard.diff` compares `code:severity` while stating outright that
+wording may change without a geometry change. `test_no_severity_moved` pins
+the two fixtures' block counts (2 and 4) so a shift shows up as a test failure
+rather than as silent scorecard drift.
+
+**One number changed meaning, deliberately.** The share is over the SCORED
+regions — the sewn, non-enclosed set `_region_color_errors` builds rows from —
+not `result.regions`. `logo_gaulke_roofing` carries 46 enclosed-background
+regions out of 56, and counting them would quietly shrink every share. That is
+why `drone_render`'s worst reads **54.48%** here where the 2026-09-06 F-wall
+table gave 53.6%: a different and better denominator, not a drift.
+`test_the_fraction_is_over_the_scored_regions_not_all_of_them` fails if someone
+simplifies it back.
