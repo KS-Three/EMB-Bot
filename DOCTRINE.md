@@ -1433,3 +1433,19 @@ its hedge as it is copied forward** — is why this file is split.
     to real fields, and no line states both** — so this is insurance, not a
     haul, and `tests/test_doc_claims.py` is what keeps it honest.
   *(measured 2026-09-06 — scope-history 09-06)*
+
+- **When a field's ABSENCE is the signal, adding that field somewhere else
+  silently breaks a contract nobody wrote down.** `THREAD_MATCH_POOR` carried
+  `excess_delta_e` only on the photo route, and
+  `test_non_photo_routes_keep_the_raw_yardstick_untouched` read that
+  emptiness as *"this was judged on raw distance"* — stating the reason
+  outright: *"the excess fields stay None so nothing downstream can mistake a
+  raw finding for a rescored one."* Reporting the excess on every route
+  (2026-09-06) is strictly more information and still destroyed that signal,
+  and the test that caught it looked at first like a test to relax. **It was
+  not: the guarantee was real, only its encoding was accidental.** The fix is
+  to state the fact — the payload gained `yardstick: "excess" | "raw"` — and
+  assert it directly. **Rule: before widening where a field appears, grep for
+  what reads its absence.** A test asserting `x is None` is the cheap way to
+  find it; a downstream consumer inferring the same thing is not, which is why
+  the fact is now stated instead of encoded. *(2026-09-06 — scope-history)*

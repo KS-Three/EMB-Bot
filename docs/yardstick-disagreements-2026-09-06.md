@@ -85,6 +85,20 @@ Whether the gradient lane *should* get the excess yardstick is a product call
 (a logo's palette can be changed; a photograph's cannot), which is why this is
 listed as a disagreement and not filed as a fix. *(measured 2026-09-06)*
 
+**Half of this was not a product call, and is fixed (2026-09-06).** The
+*scoring* question above stands. But the same gate also suppressed the SEARCH,
+so off the photo route the finding never checked the design's own cone list
+before saying *"pick a closer thread."* Of the F-wall's **24 blocking
+findings, 5 name a spool the design already loads** — `gaulke_roofing`'s 63.6
+ΔE00 sits 58.6 from a loaded `1375 Dark Charcoal`, `screenshot`'s 33.0 sits
+32.4 from a loaded `0015 White`. Those are the two numbers this very list
+quotes elsewhere. The finding now names them on every route, with no severity
+or grade moving anywhere, and the payload states `yardstick` so a reader can
+still tell what judged it. **What remains a disagreement is only whether the
+gradient lane should be JUDGED on excess** — which is the part that would
+re-base the scorecard, and is Kent's.
+`digitizer/tools/spool_remedy.py`. *(measured 2026-09-06)*
+
 ## 5. It scored the colour of regions that never sew
 
 Until 2026-09-06 `_region_color_errors` built a row for every region including
