@@ -6587,3 +6587,161 @@ legitimate narrative is a checker nobody runs.
 
 `tests/test_doc_claims.py` grew 11 → 23 tests, four of which pin those exact
 four prose strings as **not** matched.
+
+---
+
+## 2026-09-06 — two findings, one threshold, and a button justified by half a sentence
+
+`STITCHES_TOO_SHORT` and `LETTERING_TOO_SMALL` sit two checks apart in
+`preflight.py` and measure the **same quantity at the same threshold**:
+`MIN_COLUMN_MM` **is** `machine.MIN_STITCH_MM` (1.0 mm), and both read the
+consecutive-step distance inside a SATIN run, which crosses the column. They
+differ only in aggregation — lettering takes a per-shape MEDIAN, the
+short-stitch check a global FRACTION. Both are `warn`, so a design pays **24
+points** for one physical defect.
+
+### Measured before deciding anything
+
+`tools/short_satin_overlap.py`, 26 fixtures at 80 mm / left_chest:
+
+| | |
+|---|---|
+| fired both | 10 |
+| lettering only | 1 |
+| **short-stitch ALONE** | **0** |
+| neither | 15 |
+| short steps inside a shape lettering named | **6,483 / 9,883 = 65.6%** |
+
+So the design-level SIGNAL is redundant — its 12 points always land on a design
+already warned — and the obvious move is to delete it. **The 66% is why that
+would be wrong.** A shape passes lettering on its MEDIAN column, so a third of
+the short steps live in shapes lettering correctly declines to name:
+
+```
+ 3.15 mm median     11/69    short  Sda755ce2   photo/photo_dof_meadow.png
+ 2.65 mm median    205/1597  short  S22a5e094   photo/logo_bridge_bar.jpg
+ 2.32 mm median     71/665   short  S71ddac97   photo/logo_bridge_bar.jpg
+ 2.27 mm median     27/121   short  S6cc4a060   photo/drone_render.png
+```
+
+These are not small lettering. They are **sewable columns with a narrow
+waist** — a taper, a pinch, a curve where the rails converge — and they break
+thread exactly as a hairline does. That is a different defect with a different
+remedy, and the finding emitted **no shape ids at all**: `{fraction, count,
+total}`.
+
+Fixed: `shapes` (every carrier, worst first, with `short`, `steps`,
+`median_mm`, `also_too_small`) and `uncovered_shapes`. The hand-off is one set
+of ids passed from `_lettering_findings`' own output to
+`_stitch_length_findings`, which were already called back to back.
+
+### The remedy it printed was measured false one check away
+
+The message ended *"enlarge the design or thicken its thinnest strokes."*
+`_lettering_findings`' docstring, forty lines up, already carried the table
+that kills it — `logo_hotel_fremont.webp` at 92.5 / 120 / 165 / 220 mm:
+
+    width   flagged/total   worst col   median col
+     92.5        38/46        0.56         0.80
+    120          27/47        0.62         0.80
+    165          25/56        0.52         0.94
+    220          13/63        0.66         0.79
+
+The COUNT falls honestly. The median flagged column is **flat near 0.8 mm at
+every size**, because segmentation keeps generating sub-millimetre shapes as
+the design grows (satin total 46 → 63 over the same range). And the documented
+root cause is per-stroke satin routing
+(`docs/superpowers/plans/2026-09-04-per-stroke-satin-routing.md`: our median
+column 0.80–0.84 mm against a professional's 1.40–2.52), which is
+**scale-invariant**. The message now names the shapes instead.
+
+### The Studio button rests on a misquote — and it was wrong on day one
+
+`DigitizePanel.svelte` offers exactly one cure for both findings, *"Make it
+bigger"* (`target_width_mm` × 1.25), justified by this comment:
+
+> `LETTERING_TOO_SMALL`'s own message ends "Enlarging helps", and until now
+> nothing offered to enlarge it.
+
+At the commit that added the button (`1c20ec9`, 2026-09-02) the message
+**already** read:
+
+> Enlarging helps **but does not fully clear it**: the smallest shapes
+> regenerate at any size. Remove or simplify the smallest lettering.
+
+The quote stops at the exact word where the sentence reverses, and the action
+it justifies ("make it bigger") is not the action the message ends on ("remove
+or simplify"). **Not drift** — wrong the day it was written.
+
+**No checker catches this, and that is worth stating.** "Enlarging helps" is a
+truthful substring of the source string, so a fidelity check passes. The
+failure is a truncation that inverts meaning, which is a reading problem, not a
+parsing one. The same is true of every partial quote in a comment: they are
+legitimate, common, and unverifiable by machine.
+
+The comment is corrected in place, carrying its own history. **The button is
+left alone** — whether a partial remedy earns a button is Kent's call, and
+"Make it bigger" does do what its label says. How partial, exactly, was the
+next question, and it had never been asked; the section below asks it.
+
+### And then the button was measured: one in ten
+
+`tools/enlarge_cure.py` — the ten fixtures that fire the finding at 80 mm,
+swept through one press (100 mm) and two (125 mm):
+
+| fixture | 80 | 100 | 125 | satin shapes 80→125 |
+|---|---:|---:|---:|---:|
+| `photo/drone_render.png` | 0.28 | **0.23** | 0.21 | 43 → 51 |
+| `photo/photo_chrome_specular.png` | 0.49 | 0.27 | 0.25 | 2 → 7 |
+| `photo/photo_dof_meadow.png` | 0.36 | 0.58 | **0.71** | 2 → 9 |
+| `photo/photo_sunset_backlit.png` | 0.65 | 0.66 | 0.59 | 1 → 3 |
+| `photo/summit_badge.png` | 0.36 | 0.26 | **0.19** | 19 → 28 |
+| `photo/logo_bridge_bar.jpg` | 0.30 | 0.36 | 0.28 | 29 → 54 |
+| `photo/logo_gaulke_roofing.png` | 0.74 | 0.38 | **0.19** | 2 → 3 |
+| `photo/logo_golden_tee.jpg` | 0.32 | 0.29 | **0.24** | 32 → 40 |
+| `photo/logo_hotel_fremont.webp` | 0.89 | 0.52 | 0.32 | 38 → 51 |
+| `photo/screenshot_phone_ui_golke.jpg` | 0.42 | 0.37 | 0.29 | 42 → 71 |
+
+(bold = the finding stopped firing at that width; the bar is 0.25)
+
+- **One press cleared it on 1 of 10.** Two presses on 4 of 10.
+- **It made the number WORSE on 3 of 10.** `photo_dof_meadow` goes
+  0.36 → 0.58 → **0.71** — worse at every press, twice as bad after two.
+- **The satin shape count rose on EVERY fixture**, 2 → 9 and 42 → 71 at the
+  extremes. That is the lettering table's *"the smallest shapes regenerate at
+  any size"* seen from the short-step side: enlarging buys new small shapes as
+  fast as it widens the ones already there, which is why the fraction is so
+  stubborn.
+
+**No grade claim is drawn from that sweep, deliberately.** Several checks move
+with size at once, and **5 of the 10 sit on the clamped score floor at 0**
+(`tools/floor_depth.py`, measured earlier the same day), where nothing
+registers either way. `photo_sunset_backlit` does fall B 76 → F 34 on one
+press, and that is real, but it is not attributed here — no instrument in this
+session decomposed it.
+
+The knob is real. The cure is one in ten, and the root cause is
+scale-invariant.
+
+### The confound, named rather than thresholded away
+
+A carrier is any shape with **at least one** short step, and
+`app/src/lib/generate.js`'s `letteringNote` already paid for the reason that
+bar is not obviously right: *"nearly every authored column tapers through 1 mm
+at its tips"*, which is why its own thin-stroke note stays quiet under a
+quarter of stroke length. **Tip taper is therefore counted here.**
+
+It is left counted, with `short` and `steps` riding out per shape so any reader
+can apply their own bar, because the corpus residue is mostly far past taper —
+`S22a5e094` 205 of 1,597, `S86cc6879` 49 of 137, `Sd3950c67` 43 of 95 — with
+only a couple down in taper territory (`S99ee112d` 35 of 626, `Sebce2b7a` 4 of
+43). Picking a share threshold is picking a CONSTANT, and this one has had no
+sew-out. `letteringNote`'s quarter is the prior art if it is ever wanted.
+
+### What did not change
+
+Same code, same severity, same count, same score. Message prose, five payload
+fields, one hand-off. `tests/test_short_satin_shapes.py` (14, synthetic plans,
+0.05s) pins both singular branches of the generated sentence — *"All 1 shapes"*
+would otherwise have shipped — and pins the fixture that carries the whole
+argument: a waisted column the size warning must NOT name.

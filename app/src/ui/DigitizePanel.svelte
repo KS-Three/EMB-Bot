@@ -141,8 +141,47 @@
   // So this is not a preset list. It is the quality report's own findings,
   // each paired with the one adjustment that addresses it — the app already
   // computes "31 trims" and "sews below readable size"; what was missing was
-  // an action. `LETTERING_TOO_SMALL`'s own message ends "Enlarging helps",
-  // and until now nothing offered to enlarge it.
+  // an action.
+  //
+  // ONE OF THESE BUTTONS RESTS ON A MISQUOTE, and it is recorded here rather
+  // than quietly removed. This comment used to read: *"`LETTERING_TOO_SMALL`'s
+  // own message ends 'Enlarging helps', and until now nothing offered to
+  // enlarge it."* On the day that was written (1c20ec9, 2026-09-02) the
+  // message ALREADY read "Enlarging helps BUT DOES NOT FULLY CLEAR IT: the
+  // smallest shapes regenerate at any size. Remove or simplify the smallest
+  // lettering." The quote stopped at the word where the sentence reverses, and
+  // the action it justified ("make it bigger") is not the action the message
+  // ends on ("remove or simplify"). Not drift -- wrong on the day it was
+  // written, and a truthful substring, which is why no checker catches it.
+  //
+  // `preflight.py`'s own docstring carries the measurement: over 92.5 -> 220 mm
+  // the flagged COUNT falls 38 -> 13 while the median flagged column stays FLAT
+  // near 0.8 mm, because segmentation keeps generating sub-millimetre shapes as
+  // the design grows. The documented root cause is per-stroke satin routing
+  // (`docs/superpowers/plans/2026-09-04-per-stroke-satin-routing.md`), which is
+  // scale-invariant. So enlarging is a real knob that moves a real number, and
+  // it is NOT the cure either finding describes.
+  //
+  // MEASURED, 2026-09-06 (`digitizer/tools/enlarge_cure.py`) -- the ten corpus
+  // fixtures that fire STITCHES_TOO_SHORT at 80 mm, swept through one press
+  // (100 mm) and two (125 mm):
+  //
+  //   * one press CLEARED the finding on 1 of 10; two presses on 4 of 10;
+  //   * it made the number WORSE on 3 of 10 -- photo_dof_meadow 0.36 -> 0.58
+  //     -> 0.71, worse at every press; logo_bridge_bar 0.30 -> 0.36;
+  //     photo_sunset_backlit 0.65 -> 0.66;
+  //   * the satin SHAPE count rose on EVERY fixture (2 -> 9, 42 -> 71), which
+  //     is "the smallest shapes regenerate at any size" seen from the other
+  //     side: enlarging buys new small shapes as fast as it widens the ones
+  //     already there.
+  //
+  // Read no grade claim into that. Several checks move with size at once, and
+  // 5 of the 10 sit on the clamped score floor where nothing registers either
+  // way (`digitizer/tools/floor_depth.py`).
+  //
+  // Left in place, not removed. The button does what its LABEL says, and
+  // whether a one-in-ten remedy earns one is a product call -- Kent's, not a
+  // session's. The numbers are here so it is an informed one.
   //
   // DELIBERATELY SHORT, and the omissions are the honest part. Most findings
   // have no knob that helps and get nothing rather than a button that does
