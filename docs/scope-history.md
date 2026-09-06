@@ -4772,3 +4772,51 @@ of its fixtures, `logo_script_tires.png`, is in fact `photo_scene`; re-run
 correctly it reads identically (1 flip, 763.1 -> 774.1 mm²) because its columns
 median 3.42 mm and never approach the 1.0 mm floor. Corpus totals unchanged at
 +143.8 mm², 21 flips, 15 demotions.
+
+## 2026-09-06 — the per-stroke satin flag, default OFF, measured on the stitches
+
+PR 3 of `docs/superpowers/plans/2026-09-04-per-stroke-satin-routing.md`.
+`cfg.satin_per_stroke` (default OFF), `classify_ribbon`/`is_satin_candidate`
+gain `per_stroke=`, and the three call sites — `stage5_overlap._comp_axis`,
+`stage7_sequence._sews_satin`, `stitch_one`'s ladder — pass it, so
+compensation and routing cannot disagree about which shapes are satin.
+`tests/test_satin_per_stroke_flag.py` (6).
+
+The rung sits on the `dt_irregular` branch ALONE, which is what makes it
+promotion-only. `dt_p90_cap` stays out of its reach and `_floor_or` still
+applies, so neither the machine cap nor Law 31's width floor can be sidestepped
+by splitting a region. `classify_strokes` calls `classify_ribbon`, so the rung
+consults a shared `_stroke_rows` helper rather than recursing.
+
+**On the emitted stitches** (`tools/satin_columns.py` — the instrument built
+first precisely so this could be proved on stitches, not on the plan):
+
+| becker_marine_logo.png | crossing | median | <0.7 mm | penetrations |
+|---|---:|---:|---:|---:|
+| @ 100 mm OFF | 2.2% | 0.29 mm | 84% | 11,374 |
+| @ 100 mm **ON** | **35.0%** | **2.12 mm** | **11%** | 8,512 |
+| the pro's own file | 44.3% | 2.52 mm | 5% | 11,274 |
+| @ 80 mm, OFF and ON | 54.5% | 1.82 mm | 13% | 5,531 |
+
+At 100 mm the flag closes most of the gap this line of work opened with, and
+the design sheds a quarter of its stitches because satin covers a ribbon more
+cheaply than fill rows. At 80 mm it is byte-identical — not a null result:
+Becker there already reads 54.5%, ABOVE the pro's 44.3%.
+
+Two qualifications kept in the record rather than smoothed over:
+
+- **The classifier's "+1,434 mm², five regions" overstates what sews.** Four
+  shapes change tier; the fifth (`S4d48640b`, 333 mm²) is one of seven
+  ENCLOSED-BACKGROUND regions the fixture leaves unsewn at either setting.
+  `SHAPES_LEFT_UNSEWN` names all seven (1,462 mm², `enclosed_background: 7`)
+  and `BACKGROUND_ENCLOSED` explains them as holes toggleable in review. Its
+  promotion is inert. Checked before reporting: preflight's silence there is
+  correct — `_uncovered_findings` defers unsewn regions to that warning on
+  purpose, and the warning fires.
+- **One fixture, one size.** The breadth number is PR 2's corpus sweep and it
+  is small: +143.8 mm² (2%) over 14 fixtures at 80 mm.
+
+**The flip to ON is Kent's.** ROADMAP gate 3's instrument requirement is met
+(`tools/satin_columns.py`, #352); what is missing is a RENDER — every number
+here is geometric, and whether a 2.12 mm column reads better than the fill it
+replaces is for his eyes.

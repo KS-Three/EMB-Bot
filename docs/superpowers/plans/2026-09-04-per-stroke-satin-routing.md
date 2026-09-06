@@ -258,3 +258,61 @@ those 15 demotions.
 little across the corpus at the size the corpus runs, and its real value is
 decisiveness at a threshold this project has already measured as fragile.
 PR 3's flag is unchanged in shape; what it must NOT be is a replacement.
+
+---
+
+## PR 3 — the flag, built and measured on the stitches (2026-09-06)
+
+`cfg.satin_per_stroke`, **default OFF**. `classify_ribbon` and
+`is_satin_candidate` take `per_stroke=`; the three call sites §1 identified
+(`stage5_overlap._comp_axis`, `stage7_sequence._sews_satin`, and `stitch_one`'s
+ladder) pass `cfg.satin_per_stroke`, so compensation and routing cannot
+disagree about which shapes are satin. `tests/test_satin_per_stroke_flag.py`
+(6).
+
+The rung sits on the `dt_irregular` branch **alone**, which is what makes it
+promotion-only: it can turn a refusal into a satin call and nothing else.
+`dt_p90_cap` stays out of its reach (a stroke past the machine cap must still
+be refused, or `_rail_points`' per-station guard leaves bare cloth), and
+`_floor_or` still applies, so Law 31's width floor cannot be sidestepped by
+splitting. No recursion: `classify_strokes` calls `classify_ribbon`, so the
+rung consults a shared `_stroke_rows` helper instead of calling back.
+
+**Measured on the emitted stitches** with `tools/satin_columns.py` — this
+repo's rule, and the reason the instrument was built first:
+
+| `becker_marine_logo.png` | crossing share | median column | under 0.7 mm | penetrations |
+|---|---:|---:|---:|---:|
+| @ 100 mm, flag OFF | 2.2% | 0.29 mm | 84% | 11,374 |
+| **@ 100 mm, flag ON** | **35.0%** | **2.12 mm** | **11%** | 8,512 |
+| *the professional's own file* | *44.3%* | *2.52 mm* | *5%* | *11,274* |
+| @ 80 mm, OFF and ON | 54.5% | 1.82 mm | 13% | 5,531 |
+
+So at 100 mm the flag closes most of the gap the audit opened this whole line
+of work with — a 0.29 mm hairline median becomes a real 2.12 mm column — and
+the design sheds a quarter of its stitches, because satin covers a ribbon far
+more cheaply than fill rows do. At 80 mm it is **byte-identical**, and that is
+not a null result: Becker at 80 mm already reads 54.5%, ABOVE the pro's 44.3%,
+which is the same fact §PR 2 found from the classifier side (88.2% satin
+there already).
+
+Two honest qualifications.
+
+- **The classifier's "+1,434 mm², five regions" overstates what sews.** Four
+  shapes actually change tier (`S6d3d3130`, `S92a90056`, `Sc9b48e5a`,
+  `Sf48a80bd`). The fifth, `S4d48640b` (333 mm²), is one of seven
+  ENCLOSED-BACKGROUND regions this fixture leaves unsewn at either flag
+  setting — `SHAPES_LEFT_UNSEWN` names all seven, 1,462 mm², with
+  `enclosed_background: 7`, and `BACKGROUND_ENCLOSED` explains them as holes
+  the user can toggle on in review. Its promotion is inert. (Checked before
+  reporting: preflight's silence about that area is correct, not a hole —
+  `_uncovered_findings` defers unsewn regions to `SHAPES_LEFT_UNSEWN` on
+  purpose, and that warning does fire.)
+- **One fixture, one size.** Everything above is Becker at 100 mm. §PR 2's
+  corpus sweep is the breadth number and it is small: +143.8 mm² (2%) over 14
+  fixtures at 80 mm.
+
+**The flip to ON is Kent's**, and ROADMAP gate 3 wants the instrument rebuilt
+first — it is (`tools/satin_columns.py`, #352). What is still missing is a
+RENDER: every number here is geometric, and the question "does a 2.12 mm
+column read better on this logo than the fill it replaces" is one for his eyes.

@@ -1191,6 +1191,30 @@ class PipelineConfig:
     satin: bool = True
     satin_max_width_mm: float | None = None
 
+    # Per-stroke satin routing, DEFAULT OFF (2026-09-06). `classify_ribbon`
+    # pools the distance transform over a whole region's skeleton, so a
+    # branchy letterform — wide at its junctions, thin along its arms — fails
+    # the `2 sigma < mu` regularity gate as a unit even when every arm of it
+    # is a clean ribbon. On this flag a region the pooled gate refused is
+    # taken when at least `stage6_satin._STROKE_AREA_FRAC_MIN` of its
+    # stroke-partitioned area passes both gates PER STROKE.
+    #
+    # Promotion-only by construction: it sits on the `dt_irregular` branch
+    # alone, so it can only ever turn a refusal into a satin call. Off is
+    # byte-identical — nothing on this path runs.
+    #
+    # Measured before it was written (plan
+    # 2026-09-04-per-stroke-satin-routing, §PR 2): worth 274.0 -> 1,708.3 mm2
+    # of satin on becker_marine_logo at 100 mm, but only +5.7 mm2 at the 80 mm
+    # the corpus runs, where that logo is already 88.2% satin; +143.8 mm2
+    # (2%) across 14 fixtures. Scored on tools/ribbon_stability.py: total
+    # flips 5 -> 6, 17 shipped verdicts changed, all seven archetype
+    # invariants holding. Every verdict it changes sits at cv 0.51-0.64, a
+    # whisker from the 0.50 gate — so it is re-deciding marginal regions, not
+    # correcting large pooling errors. **Flipping it ON is Kent's call and
+    # wants a render first.**
+    satin_per_stroke: bool = False
+
     # Split satin. A satin cross longer than the threshold carries
     # intermediate penetrations, staggered station to station so the holes
     # never line up (machine.SPLIT_* carry the corpus measurements: the
