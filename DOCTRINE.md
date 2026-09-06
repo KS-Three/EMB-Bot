@@ -1449,3 +1449,36 @@ its hedge as it is copied forward** — is why this file is split.
   what reads its absence.** A test asserting `x is None` is the cheap way to
   find it; a downstream consumer inferring the same thing is not, which is why
   the fact is now stated instead of encoded. *(2026-09-06 — scope-history)*
+
+- **A `--durations` line under a shared cache is NOT a saving you can bank by
+  deleting the test, and `lru_cache` does not survive xdist.** The five
+  `test_off_is_byte_identical_to_the_shipped_engine` instances took the top
+  two slots in the whole digitizer suite and four of the top six — **over 380
+  seconds**. Dropping all five saved **13**. A plugin wrapping
+  `pipeline.run_stages` and dumping calls per worker says why:
+  `test_bind_resnap_all_classes.py` does **20 real pipeline runs for 8
+  distinct `(fixture, flag)` cases** (gw0 3, gw1 6, gw2 4, gw3 7) —
+  `lru_cache` is **per-process**, xdist puts tests in different processes, and
+  `screenshot_phone_ui_golke(False)` was computed on three workers. A duration
+  is that test's share of a bill several workers each pay anyway, and
+  wall-clock is the slowest worker's queue. **Rule: `--durations` before
+  optimising a suite, and a run-count before believing `--durations`.**
+  `--dist loadfile` recovers some of it — measured at CI's two workers,
+  23m53s → **22m27s**, 5.8%, same 1889 passed — but it floors wall-clock at
+  the slowest single FILE, so it is recorded as an option with its trade
+  named, not taken. *(measured 2026-09-06 — scope-history 09-06)*
+
+- **A long benchmark and an active worktree cannot share a machine.** Two
+  measurements of the above were thrown away for the same reason: pytest reads
+  the tree at COLLECTION, so any edit between two runs of a pair silently
+  re-bases the comparison. Attempt 1 compared different trees (accounted-for
+  counts 1887 against a collected 1888). Attempt 2 looked like a clean frozen
+  pair — until the passed counts read **1870 against 1878**, because a branch
+  reset onto a newly-merged `main` mid-pair added another PR's 8 tests between
+  the halves; the loadfile side did MORE work, so its "31 seconds slower" was
+  not a result in either direction. **The corruption always shows as a passed
+  count differing by exactly the tests you added — which is easy to skim past
+  when the wall-clock numbers look plausible.** Attempt 3 recorded `HEAD` and
+  `git status` before AND after, so the freeze is checkable rather than
+  asserted. Sequence it the other way round: edit first, benchmark when the
+  tree is quiet. *(2026-09-06 — scope-history 09-06)*
