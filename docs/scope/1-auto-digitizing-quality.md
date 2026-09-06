@@ -177,7 +177,18 @@ Worst is the design's worst finding: `S43831dcd`, **177 px against a floor of
 200**, `0111 Whale` at 32.7 dE where `0015 White` scores **1.4**. Across the
 seven F-grade fixtures the refusal counts are 0/0/0/4/7 against `bridge_bar`
 **63** and `screenshot` **12** — the two the F-wall decomposition attributes to
-this cause. Lowering the floor moves goldens, so it wants its own A/B.
+this cause.
+
+**FIXED, DEFAULT OFF** (`cfg.revalidate_small_shapes`, 2026-09-06). ON, the
+re-ask uses `THREAD_REVALIDATE_MIN_PX_SMALL = 50` — preflight's own floor — and
+a shape admitted only by it may take only a cone the design already carried at
+pass entry. `screenshot_phone_ui_golke`'s worst thread ΔE00 **33.0 → 21.2**
+(`S43831dcd`, 177 px, `0111 Whale` 32.7 → `0015 White` **1.4**), 21 of 26
+fixtures byte-identical, and **no grade or block count moves anywhere**:
+`THREAD_MATCH_POOR` blocks per thread on that thread's worst patch, so fixing
+six of a thread's shards is invisible while a seventh is bad. It fixes sewn
+colour the scorecard cannot see — a phase-1 datum, with the render at
+`docs/renders/small-shape-resnap-2026-09-06/`. Flipping it ON is Kent's.
 
 **And a sibling correction in the check that condemns those shapes**
 (2026-09-06): `preflight._region_color_errors` scored `enclosed_background`
