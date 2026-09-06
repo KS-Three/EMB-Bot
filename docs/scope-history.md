@@ -4819,6 +4819,15 @@ and §7 predicted. No routing change closes that; it is sizing and
 segmentation. At 80 mm the flag is byte-identical — Becker there already reads
 54.5%, above the pro.
 
+The veto changes WHICH regions the rung takes, not just the numbers: at 100 mm
+it promotes **3 regions totalling 78.8 mm²** (`S6d3d3130`, `Sc9b48e5a`,
+`Sf48a80bd`, all frac 1.00 with no over-cap stroke), where the bare area rule
+took 5 and 1,434.3 mm². The two it drops are exactly the two carrying over-cap
+strokes — `S92a90056` (97.5 mm² over cap, one stroke at 9.32 mm) and
+`S4d48640b` (56.1 mm², and an enclosed-background region that never sewed).
+**Anywhere the figure 1,708.3 mm² appears it describes the INERT classifier at
+the bare area rule, never the shipped rung.**
+
 Render for Kent: `docs/renders/satin-per-stroke-2026-09-06/`.
 
 Two qualifications kept in the record rather than smoothed over:

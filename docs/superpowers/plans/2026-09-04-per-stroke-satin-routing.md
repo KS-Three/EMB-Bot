@@ -307,6 +307,14 @@ worth 2.2% -> 4.0% crossing and 0.29 -> 0.64 mm of median column on this
 fixture — modest — but it clears `DENSITY_EXTREME` and takes the design to
 **A 100 with no findings at all**, at zero coverage cost.
 
+Concretely, the veto changes WHICH regions the rung takes, not just the
+numbers: at 100 mm it now promotes **3 regions totalling 78.8 mm²**
+(`S6d3d3130`, `Sc9b48e5a`, `Sf48a80bd` — all frac 1.00, no over-cap stroke
+among them), where the bare area rule took 5 and 1,434.3 mm². The two it drops
+are exactly the two carrying over-cap strokes: `S92a90056` (97.5 mm² over cap,
+one stroke at 9.32 mm) and `S4d48640b` (56.1 mm², and an enclosed-background
+region that never sewed anyway).
+
 And the remaining gap to the pro is now diagnosed rather than open: it is the
 **5.0 mm machine cap against Becker's genuinely 6-9 mm letter strokes**, which
 is what §2 and §7 both said. It is not a routing problem and no routing change
@@ -334,8 +342,10 @@ Two honest qualifications.
 
 **The flip to ON is Kent's**, and ROADMAP gate 3 wants the instrument rebuilt
 first — it is (`tools/satin_columns.py`, #352). What is still missing is a
-RENDER: every number here is geometric, and the question "does a 2.12 mm
-column read better on this logo than the fill it replaces" is one for his eyes.
+RENDER: every number here is geometric, and the question "does a 0.64 mm
+median column read better on this logo than the fill it replaces" is one for
+his eyes. (0.64, not the 2.12 an earlier draft of this line quoted — that was
+the area-vote cut, before the cap became a veto.)
 
 ### A caveat on every Becker number above (2026-09-06)
 
