@@ -37,6 +37,29 @@ columns that exist are sewable: `machine.SATIN_MIN_WIDTH_MM` is the floor a
 needle can hold, and a population sitting under it is hairline satin, which
 sews as thread-on-thread rather than as a stroke.
 
+**Two rows for ours, and the second one is not a detail.** The detector is
+geometric because a machine file has no run kinds — which means on OUR plan
+it also picks up fill turns that happen to sign-alternate. Those are 0.2-0.5
+mm "columns", and on a fill-dominated design they swamp the real ones.
+Measured on `becker_marine_logo.png` 2026-09-06:
+
+  @ 100 mm  whole plan  184 cols, median 0.29 mm  <-- 148 of them NOT satin
+            satin runs   26 cols, median 3.82 mm      (non-satin: med 0.24,
+                                                       p90 0.45)
+  @  80 mm  whole plan 2,876 cols, median 1.82 mm <-- only 34 not satin
+            satin runs 2,796 cols, median 1.85 mm
+
+The contamination scales with the fill:satin ratio, so it is invisible where
+the design is satin-heavy and total where it is not — and 100 mm is exactly
+where every per-stroke number was quoted from. "Median column 0.29 mm" was a
+statistic about tatami turns; our satin there is 3.82 mm, against the pro's
+2.52. Compare FILES on the whole-plan row (it is all a file can offer);
+judge OUR OWN columns on the satin row.
+
+The satin row's `share` has a DIFFERENT DENOMINATOR — satin penetrations, not
+the design's — so it is not comparable to the whole-plan share or to a file's.
+Read the widths off that row and the share off the one above it.
+
   .venv/bin/python tools/satin_columns.py becker_marine_logo.png --width 100
   .venv/bin/python tools/satin_columns.py --file testdata/reference/becker_hat_polo_large_beckers_logolc.dst
   .venv/bin/python tools/satin_columns.py logo_whitebg.png --file <pro.dst>   # both, side by side
@@ -154,19 +177,35 @@ def measure(passes: list[list[tuple[float, float]]]) -> dict:
     return out
 
 
-def passes_from_plan(plan) -> list[list[tuple[float, float]]]:
+def passes_from_plan(plan, kinds: frozenset | None = None
+                     ) -> list[list[tuple[float, float]]]:
     """Needle-down passes of one of our plans: every run's points, split at
-    a lift (`run.jump`), so a column never spans a jump."""
+    a lift (`run.jump`), so a column never spans a jump.
+
+    `kinds` restricts to runs of those `stitches` kinds, and a run of any
+    other kind BREAKS the pass rather than being skipped over — a column
+    cannot run from a fill row into a satin cross, and stitching the two
+    sides together would invent crossings at the seam. `None` (the default)
+    is the whole plan, which is the only thing a machine file can be compared
+    against and is therefore what the file rows measure too.
+    """
     passes: list[list[tuple[float, float]]] = []
     cur: list[tuple[float, float]] = []
+
+    def flush() -> None:
+        nonlocal cur
+        if len(cur) >= 3:
+            passes.append(cur)
+        cur = []
+
     for _block, run in plan.iter_runs():
-        if run.jump or not cur:
-            if len(cur) >= 3:
-                passes.append(cur)
-            cur = []
+        if kinds is not None and run.kind not in kinds:
+            flush()
+            continue
+        if run.jump:
+            flush()
         cur.extend(run.points)
-    if len(cur) >= 3:
-        passes.append(cur)
+    flush()
     return passes
 
 
@@ -219,7 +258,7 @@ def main(argv=None) -> int:
     print(f"{'':36} {'crossing':>6} {'':>12} "
           f"| {'columns':>12} {'median':>7} {'p10':>10} {'p90':>10} | thin")
     if args.image:
-        from digitizer_core import PipelineConfig
+        from digitizer_core import PipelineConfig, stitches
         from digitizer_core.pipeline import plan_stitches, run_stages
         path = Path(args.image)
         if not path.is_absolute():
@@ -227,7 +266,12 @@ def main(argv=None) -> int:
         cfg = PipelineConfig(target_width_mm=args.width, garment_id=args.garment)
         result = run_stages(str(path), cfg)
         plan = plan_stitches(result, cfg)
-        print(_row(f"ours {path.name} @ {args.width:g}mm", measure(passes_from_plan(plan))))
+        print(_row(f"ours {path.name} @ {args.width:g}mm",
+                   measure(passes_from_plan(plan))))
+        # The second row is not a detail. On a fill-dominated design the
+        # whole-plan row is mostly fill turns -- see "Two rows for ours".
+        print(_row("  of which our SATIN runs",
+                   measure(passes_from_plan(plan, kinds=frozenset({stitches.SATIN})))))
     for f in args.file:
         print(_row(f"file {f.name}", measure(passes_from_file(f))))
     return 0

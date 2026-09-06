@@ -186,12 +186,26 @@ and re-rank it.
 
 `stage6_satin._stroke_dt_stats` / `classify_strokes` / `_partition_area_mm2`,
 `tests/test_stroke_classify.py` (10), `tools/stroke_verdicts.py`. Nothing in
-the pipeline calls any of it, and a test pins that.
+the pipeline called any of it, and a test pinned that — **true only until PR 3
+on 2026-09-06**, which wired the reading through `_stroke_rung_takes` behind
+`cfg.satin_per_stroke` and replaced that test with
+`test_the_per_stroke_path_is_reachable_only_behind_the_flag`. Left as written
+because this section is PR 2's record; do not read it as current state.
 
 **The headline reproduces exactly.** An independent implementation of §2's
 recipe reads `becker_marine_logo.png` @ 100 mm as satin **274.0 → 1,708.3 mm²,
 7.6% → 47.6%, five regions flipping 1,434.3 mm²** at the ≥ 0.75 area rule —
-the plan's numbers to the decimal. §2's two claims hold: per-stroke cv runs
+the plan's numbers to the decimal.
+
+> **Both of those figures need a caveat the plan did not carry** (2026-09-06).
+> The ≥ 0.75 area rule is NOT what shipped — the cap veto and Law 31's floor
+> cut it to **3 regions, 78.8 mm²** — and the percentages divide by ALL region
+> area, 1,462 mm² of which is `BACKGROUND_ENCLOSED` shapes that never become
+> thread. Against the 2,125.6 mm² that actually sews, the shipped rung reads
+> **75.2 → 154.0 mm², 3.5% → 7.2%**. Same direction, real units. The bare-rule
+> figures stay here because they are the plan's own arithmetic and have to
+> stay reproducible; `tools/stroke_verdicts.py` now prints all three rules and
+> both denominators side by side so neither can be quoted alone again. §2's two claims hold: per-stroke cv runs
 0.03–0.52 where the region pools to 0.50–0.69, and the p90 cap stays real
 (Becker's big strokes measure 5.2–6.7 mm p90 against the 5.0 cap and are
 correctly refused per stroke, so `S334e3a12` reaches only frac 0.23).

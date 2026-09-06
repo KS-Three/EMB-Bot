@@ -993,3 +993,115 @@ its hedge as it is copied forward** — is why this file is split.
   the sewn crosses (`tools/rail_edge.py --bare`), never as a distance from
   a penetration to the nearest boundary.** *(2026-09-03 —
   `docs/rail-dents-2026-09-03.md` §7)*
+
+- **An area percentage is a fraction of what SEWS, never of what the
+  classifier looked at.** `tools/stroke_verdicts.py` divided satin area by all
+  region area, and on `becker_marine_logo` @ 100 mm that denominator carries
+  1,462 mm² of `BACKGROUND_ENCLOSED` shapes the plan leaves open by design —
+  40% of the design, never thread. The published headline "274.0 mm² of satin,
+  7.6% of region area" was **75.2 mm² and 3.5%** once measured against the
+  2,125.6 mm² that actually sews: `S805585ef` (191.4) and `S501501b6` (7.4)
+  are enclosed background, so 27% of that figure was real. The same divisor
+  sat under both sides of every "x% → y%" arrow quoted for the per-stroke
+  rung. **Rule: derive the shape ids from `plan_stitches(...).iter_runs()` and
+  report both columns — a verdict on a region that never becomes thread is not
+  coverage, and a report that prints only the flattering one will be quoted.**
+  Same family as the pull-comp defect above: prove it on the emitted stitches,
+  never on the plan — here the plan is the honest half and the CLASSIFIER is
+  the flattering one, which is why the rule has to name the source rather than
+  the layer. *(measured 2026-09-06 — scope-history 09-06)*
+
+- **A report tool must CALL the shipped function, not restate its rule.**
+  The same tool printed the plan's bare `frac >= 0.75` arithmetic under the
+  heading "would flip", and that read as what `cfg.satin_per_stroke` does: 5
+  regions and 1,434.3 mm². What ships takes **3 regions and 78.8 mm²** — the
+  cap veto and Law 31's floor both sit between the arithmetic and the verdict,
+  and neither existed when the report was written. Restating a rule in a tool
+  gives you a second copy that drifts the moment the first one is corrected,
+  and nothing fails when it does. **Rule: call `classify_ribbon` both ways and
+  diff the verdicts; keep the plan's arithmetic only if it is LABELLED as not
+  shipped.** The rewrite reproduced 3/78.8 independently, which is the
+  cross-check that had been missing while every number came from one path.
+  It also surfaced the veto on real artwork rather than on the fixture built
+  for it: `S4d48640b` reads frac 0.83, and one of its eight strokes measures
+  p90 5.52 mm against the 5.0 cap. *(measured 2026-09-06)*
+
+- **A geometric column detector counts fill turns as columns — read OUR
+  numbers off the satin runs, the file's off the whole plan.**
+  `tools/satin_columns.py` finds columns by sign-alternating leg pairs
+  because a professional's file has no run kinds, and on our own plan that
+  also catches tatami row turns: 0.2–0.5 mm "columns" that swamp the real
+  population wherever fill dominates. On `becker_marine_logo` @ 100 mm,
+  **148 of 184 columns were not satin**, dragging the reported median to
+  0.29 mm when our satin measures **3.82 mm** (p90 4.93). At 80 mm, where
+  the design is satin-heavy, only 34 of 2,876 stray and the number is fine —
+  so the defect hides exactly where the design is worst, and 100 mm is where
+  every per-stroke figure was quoted from. It also inverted the tool's own
+  hairline alarm: 87% of "our" columns under 1.0 mm is 23% for the ones we
+  sew. **Rule: `passes_from_plan(..., kinds=...)` for our own width
+  distribution; whole-plan only for the cross-file comparison, which is all a
+  machine file can offer.** *(measured 2026-09-06 — scope-history 09-06)*
+
+- **`SATIN_MAX_WIDTH_MM = 5.0` is not what separates us from the pro — the
+  professional's own p90 column is 5.00 mm.** The record diagnosed the
+  residual gap to the pro's 44.3% as "the 5 mm cap against Becker's genuinely
+  6–9 mm letter strokes". Measured on the pro's own files with our own
+  instrument: median column **2.52 mm, p90 5.00** on `beckers_logolc.dst`,
+  which is **95.7 × 58.3 mm** — the same artwork at essentially our 100 mm
+  test size, so the scale confound is ruled out by measurement rather than
+  assumed. Whatever that digitizer chose to satin, they satined it under the
+  cap. **Do not propose raising `SATIN_MAX_WIDTH_MM` to close this gap.** What
+  differs is how few shapes reach the tier — ONE satin shape at 100 mm — and
+  the columns we do sew are already professional width (3.82 median). The gap
+  is segmentation, full stop. *(measured 2026-09-06)*
+
+- **A p90 width gate IS blind to a 3% tail — but that tail is NOT what leaves
+  the bare cloth. Hypothesised, tested and refuted the same day.**
+  `classify_ribbon` admits a shape when the DOUBLED p90 medial radius is under
+  `SATIN_MAX_WIDTH_MM`, and `promoted_ribbon`'s guard is the same statistic, so
+  `Sead76620` @ 80 mm passes at **p90 2.67 mm** while its medial width MAXES at
+  **7.80 mm**, 2.8% of the spine over the cap (`Sf6b42aaf` @ 90 mm: 2.85 /
+  8.86 / 3.5%). That gap is real and worth knowing. The inference drawn from it
+  was not. `_rail_points`' hard ceiling — `min(..., machine.SATIN_MAX_WIDTH_MM
+  / 2)`, ~line 2085, whose own comment justifies itself with *"a satin cross
+  this module will not classify past 5.0mm in the first place"*, which the p90
+  gate makes FALSE — looked like the mechanism. **Lifting that ceiling to 99 mm
+  moved uncovered 23.8 → 22.8 mm² and cost 718 stitches (+13%).**
+  `satin_rails_follow_edge=True` moved it to 21.0. Neither is the cause.
+  **What stands:** 100% of that fixture's `ARTWORK_UNCOVERED` at 80 AND 90 mm
+  is inside SATIN shapes — read off preflight's own per-shape attribution — and
+  it is the whole reason it grades B 76. **What does not:** any claim about
+  WHY. Under a corridor model (farther from the spine than 1.25x the local
+  half-width + 0.2) the shape carries 160.6 mm² outside every stroke's corridor
+  in **163 components**, largest 15.6 mm² — diffuse shortfall across a branchy
+  27-stroke shape, not one missed arm and not one bulge. **Rule: judge a width
+  gate on the tail it cannot see — print the MAX and the fraction over cap —
+  but never attribute bare cloth to that tail without lifting the ceiling and
+  re-measuring.** Both experiments were cheap and I nearly skipped both.
+  *(measured and refuted 2026-09-06 — scope-history 09-06)*
+
+
+- **Bare cloth in a satin shape is at the JUNCTION, and no cross-length knob
+  reaches it — four of them measured.** Across the whole corpus at 80 mm,
+  `tools/width_tail.py --corpus` finds **2 of 255 satin shapes** leaving any
+  bare cloth: `Sead76620` (`becker_marine_logo`, 23.8 mm²) and `Sf80b4c46`
+  (`photo_scene_stub`, 6.5). Both `promoted_ribbon`, both MAX medial width
+  ≈ 7.8 mm, both p90 under the cap. A `MAX > 6.0` gate demotes exactly those
+  two with ZERO false demotions — but read it as a MARKER, not a mechanism,
+  and note n = 2: MAX ≫ p90 means "this shape has a big junction", and the
+  junction is where the thread is missing. Located by replicating preflight's
+  own coverage grid: the dominant patch is 37.2 mm², **0.42 mm from a stroke
+  END, with five strokes within 3 mm**. Ruled out, each by experiment on
+  Becker (23.8 mm² shipped): `_rail_points`' 5 mm ceiling lifted to 99 → 22.8
+  for +13% thread; `satin_rails_follow_edge` → 21.0; the corridor cap
+  `floors*1.6` → `floors*3.5` → **23.8, no change at all**;
+  `_JUNCTION_TUCK_MM` 0.4 → 1.6 → 22.8. **Every one of those changes how LONG
+  a cross is; none changes WHERE crosses are placed** — along a spine,
+  perpendicular to one arm, sized by a ray that measures that arm's width, so
+  at a junction it reads ~2 mm and not the junction's 5.27. The interior is
+  covered only by arm overlap, which is what the docstring intends ("the
+  junction gets the modest overlap of its arms") and which does not close on
+  five arms. **Rule: do not reach for a cap when thread is missing at a
+  junction — check whether any cross is PLACED there first.** The fix, if the
+  hypothesis holds, is covering a junction explicitly; it is untested.
+  *(measured 2026-09-06 — scope-history 09-06)*

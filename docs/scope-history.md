@@ -4847,3 +4847,257 @@ Two qualifications kept in the record rather than smoothed over:
 (`tools/satin_columns.py`, #352); what is missing is a RENDER — every number
 here is geometric, and whether a 2.12 mm column reads better than the fill it
 replaces is for his eyes.
+
+## 2026-09-06 — the denominator under every satin percentage this session
+
+`tools/stroke_verdicts.py` printed satin as a fraction of ALL region area and
+the plan's bare `frac >= 0.75` arithmetic as though it were the shipped rung.
+Both are now wrong in the same direction — flattering — and both were quoted.
+
+Found from the other end: `app/src/lib/digitizer.js:1268` records that ~40% of
+`becker_marine_logo` sits behind `BACKGROUND_ENCLOSED` as bare fabric. That
+prompted checking what the satin figures were a fraction OF.
+
+**Measured on `becker_marine_logo.png` @ 100 mm** (`plan_stitches`, shape ids
+off the emitted runs — the plan, not the classifier, decides what is thread):
+
+| | classified | that SEWS |
+|---|---|---|
+| region area, all 17 | 3,587.9 mm² | 2,125.6 mm² (59.2%) |
+| satin, flag OFF | 274.0 mm² (7.6% of all) | **75.2 mm² (3.5% of sewn)** |
+| the flag adds | 78.8 mm², 3 regions | 78.8 mm² |
+| satin, flag ON | 352.9 mm² (9.8% of all) | **154.0 mm² (7.2% of sewn)** |
+| bare ≥ 0.75 rule, NOT shipped | 1,434.3 mm², 5 regions | 1,101.3 mm² |
+
+So of the headline **274.0 mm² of satin, 198.8 mm² never becomes thread** —
+`S805585ef` (191.4) and `S501501b6` (7.4) are enclosed-background regions.
+**27% of that figure is thread.** The published "7.6% → 47.6% of region area"
+counted area that never sews on both sides of the arrow AND in the divisor.
+
+The honest pair for the shipped rung is **75.2 → 154.0 mm², 3.5% → 7.2% of
+the area that actually sews.** Same direction, same modesty, real units.
+
+**The instrument now calls `classify_ribbon` BOTH ways** rather than restating
+the rung's rule, so `flag adds 3 regions, 78.8 mm²` is read off the shipped
+function and cannot drift from it. It reproduces every number published for
+the flag independently, which is the cross-check that was missing. The bare
+rule stays in the report, labelled `the PLAN's rule, NOT shipped`, because the
+plan's headline has to stay reproducible to stay auditable.
+
+Visible in the run, and worth keeping: `S4d48640b` reads frac **0.83** — the
+bare rule takes it, the flag refuses it, because one of its eight strokes
+measures p90 **5.52 mm** against the 5.0 cap. The cap veto working on real
+artwork, not just on the T-fixture built to test it.
+
+Two stale absence claims went with it: `tools/stroke_verdicts.py`'s *"Nothing
+in the pipeline consults `stage6_satin.classify_strokes`"* and
+`tests/test_stroke_classify.py`'s *"which nothing in the pipeline consults"*.
+Both were LITERALLY true — the pipeline calls `_stroke_rung_takes`, not
+`classify_strokes` — and both read as "inert", which stopped being true on
+2026-09-06. Third and fourth of the same kind this session (#358, #359).
+
+## 2026-09-06 — the satin instrument was measuring tatami turns
+
+Second instrument defect of the day, found by pulling the same thread: if the
+denominator under a satin figure could be wrong, so could the population.
+
+`tools/satin_columns.py` detects columns GEOMETRICALLY — sign-alternating leg
+pairs — because a professional's machine file carries no run kinds. On our own
+plan that same detector picks up fill row turns that happen to alternate.
+Those are 0.2–0.5 mm "columns". Measured on `becker_marine_logo.png`:
+
+| | cols | median | p90 |
+|---|---:|---:|---:|
+| @ 100 mm whole plan (what it printed) | 184 | **0.29 mm** | 1.58 |
+| @ 100 mm SATIN runs only | 26 | **3.82 mm** | 4.93 |
+| @ 100 mm everything except satin | 148 | 0.24 mm | 0.45 |
+| @ 80 mm whole plan | 2,876 | 1.82 mm | 3.70 |
+| @ 80 mm SATIN runs only | 2,796 | 1.85 mm | 3.73 |
+
+**The contamination scales with the fill:satin ratio**, so it is invisible
+where a design is satin-heavy (34 stray columns at 80 mm) and total where it
+is not (148 of 184 at 100 mm) — and 100 mm is exactly the configuration every
+per-stroke number was quoted from. `MASTER_SCOPE`'s "median column 0.29 →
+0.64 mm" is a statistic about tatami turns.
+
+It also made the tool's own alarm read backwards. Its docstring says a
+population under `SATIN_MIN_WIDTH_MM` is "hairline satin, which sews as
+thread-on-thread rather than as a stroke", and it printed **87% of ours under
+1.0 mm**. For the columns we actually sew that figure is **23%**, against the
+professional's 7%.
+
+**Fix:** `passes_from_plan(plan, kinds=...)` — a run of another kind BREAKS
+the pass rather than being skipped, so no column is stitched across a
+fill/satin seam — and the CLI prints both rows. File rows are untouched:
+whole-plan is all a machine file can offer, so that stays the comparison row.
+Byte-identical for `kinds=None`.
+
+### And the "6–9 mm strokes" diagnosis does not survive it
+
+The record said the residual gap to the pro's 44.3% was "the 5 mm cap against
+Becker's genuinely 6–9 mm letter strokes … no routing change closes that; it
+is sizing and segmentation." Measured, same instrument, the professional's own
+file:
+
+| | size | crossing | columns | median | p90 |
+|---|---:|---:|---:|---:|---:|
+| `becker_hat_polo_large_beckers_logolc.dst` | 95.7 × 58.3 mm | 44.3% | 4,811 | 2.52 | **5.00** |
+| `becker_hat_polo_large_beckers_logo_hat.dst` | 101.9 × 62.1 mm | 42.6% | 5,088 | 2.66 | 5.20 |
+| `becker_chest_small_beckers_logo_lc_2_a.dst` | 76.5 × 46.8 mm | 48.6% | 3,999 | 2.09 | 4.10 |
+| ours @ 100 mm, SATIN runs | 100 mm | — | 26 | 3.82 | 4.93 |
+
+**The pro's p90 column is 5.00 mm — our cap, to the hundredth — on the same
+artwork at essentially our test size.** The scale confound is ruled out by
+measurement, not assumed: the "large" files are 95.7 and 101.9 mm wide.
+Whatever that digitizer chose to satin, they satined it UNDER the cap. So
+raising `SATIN_MAX_WIDTH_MM` is not the path to 44.3%, and the cap is not what
+separates us from it.
+
+What separates us is how few shapes reach the tier at all: **one satin shape
+at 100 mm**, 148 of 11,374 penetrations. The columns we do sew are already
+professional width. The gap is segmentation, and only segmentation — which is
+the half of the old sentence that was right.
+
+### The corrected instrument immediately found a real one: p90 is blind to a 3% tail
+
+Sweeping `becker_marine_logo.png` at 80/85/90/95/100 mm (`logo_alpha.png` and
+`logo_whitebg.png` swept as controls — both perfectly flat, A 100 and one satin
+shape at every size, so this is Becker's artwork and not a size bug):
+
+| mm | grade | uncovered | satin shapes | satin % | findings |
+|---:|---|---:|---:|---:|---|
+| 80 | B 76 | 23.8 mm² | 8 | 56.3% | ARTWORK_UNCOVERED, TRIM_HEAVY |
+| 85 | A 100 | 0.0 | 6 | 12.0% | — |
+| 90 | B 76 | 44.5 mm² | 5 | 44.8% | ARTWORK_UNCOVERED, TRIM_HEAVY |
+| 95 | A 100 | 0.0 | 2 | 4.3% | — |
+| 100 | B 88 | 0.0 | 1 | 1.3% | DENSITY_EXTREME |
+
+B 76 at 80 mm is the RECORDED baseline (`corpus_scorecard_baseline.json`,
+`becker_marine_logo.png @ 80mm/left_chest`), so the grade is not news. What is:
+
+**100% of that uncovered artwork is inside SATIN shapes, at both sizes.**
+Preflight already attributes each patch to a shape, so this is read straight
+off the finding: 80 mm — `Sead76620`, 23.8 of 638.8 mm² (3.7%); 90 mm —
+`Sf6b42aaf` 38.8 of 817.7 (4.7%) and `S6e61a8e7` 5.8 of 148.2 (3.9%). Nothing
+in a fill shape. The two sizes with plentiful satin are the two with bare
+cloth; the three without satin have none.
+
+**Why they pass the cap and still go bare:**
+
+| | verdict | classifier p90 | spine p50 | p90 | p99 | MAX | over 5 mm |
+|---|---|---:|---:|---:|---:|---:|---:|
+| `Sead76620` @ 80 | `promoted_ribbon` | 2.67 | 1.37 | 2.75 | 6.67 | **7.80** | **2.8%** |
+| `Sf6b42aaf` @ 90 | `promoted_ribbon` | 2.85 | 1.67 | 3.00 | 7.36 | **8.86** | **3.5%** |
+
+`classify_ribbon` gates on the DOUBLED p90 medial radius. **A p90 statistic
+cannot see a tail that is 3% of the spine.** Both shapes read 2.67 / 2.85 mm
+against a 5.0 cap — not marginal, comfortable — while carrying a bulge nearly
+twice the cap. That gap is real.
+
+> **The mechanism I then inferred from it is WRONG, and two experiments the
+> same day say so.** The reasoning was: `_rail_points` caps every cross at
+> `machine.SATIN_MAX_WIDTH_MM / 2` (~line 2085), whose own comment justifies
+> the ceiling with *"a satin cross this module will not classify past 5.0mm in
+> the first place"* — which the p90 gate makes false — so the crosses in that
+> 3% get truncated and the middle of a 7.8 mm bulge goes bare. It fit: the
+> bare fraction (3.7%, 4.7%) tracks the over-cap fraction (2.8%, 3.5%).
+> **Lifting that ceiling to 99 mm moved uncovered 23.8 → 22.8 mm² — 4% — and
+> cost 718 stitches (+13%).** `satin_rails_follow_edge=True`, the flag already
+> measured to cut Becker's bare satin area 8.6% → 5.8%, moved it to 21.0.
+> Neither is the cause, and a matching ratio was not evidence of one.
+>
+> Where it actually is, is unresolved. Under a corridor model — farther from
+> the spine than 1.25× the local half-width + 0.2 — `Sead76620` carries
+> **160.6 mm² outside every stroke's corridor in 163 components**, largest
+> 15.6 mm². Diffuse shortfall across a branchy 27-stroke shape, not one missed
+> arm and not one bulge. A crude penetration-distance probe agrees on the
+> shape of it: of the cells it calls bare, only **1.2%** sit where the medial
+> width exceeds the cap, and their median local width is 1.67 mm — narrow
+> places, not wide ones.
+>
+> Kept in place rather than deleted, because the negative is the useful part:
+> the next person to notice that p90/MAX gap will reach for the same
+> explanation.
+
+Both arrive through **`promoted_ribbon`** — the `explained` rescue that exists
+to save tapered and script strokes from the `cv` gate — and its own guard is
+`stats.p90_mm <= max_width_mm`, the same blind statistic.
+
+**DOCTRINE already has this failure mode, filed as a hazard the per-stroke
+rung would INTRODUCE** ("`_rail_points`' per-station guard holds each cross to
+5 mm and leaves bare cloth down the middle of a 6.4 mm stroke"). The shipped
+default is doing it today, on the flagship fixture, at two of five sizes, and
+it is the entire reason that fixture grades B 76.
+
+Note what this does to the other standing ruling: `Sead76620` is **638.8 mm²**,
+the exact area DOCTRINE names as the largest region a REPLACEMENT per-stroke
+rung would demote — recorded as the cost of replacement. That region, sewn as
+satin today, is where all of the bare cloth is. Demoting it may be the fix
+rather than the harm. Not acted on: DOCTRINE requires a classifier change to
+be scored on shipped verdicts changed AND flips left, across the real
+fixtures, before any threshold moves. That scoring is the next piece of work.
+
+### Where it actually is: the junction, and four mechanisms that are not it
+
+Continued the same day rather than left open, and the corpus answers most of it.
+
+**`tools/width_tail.py --corpus` at 80 mm — 255 satin shapes, and only TWO
+leave bare cloth:**
+
+| fixture | shape | verdict | gate p90 | p99 | MAX | >cap | bare |
+|---|---|---|---:|---:|---:|---:|---:|
+| `becker_marine_logo.png` | `Sead76620` | `promoted_ribbon` | 2.67 | 6.67 | **7.80** | 2.80% | 23.8 of 639 |
+| `photo/photo_scene_stub.png` | `Sf80b4c46` | `promoted_ribbon` | 4.33 | 6.70 | **7.81** | 5.12% | 6.5 of 858 |
+
+Both `promoted_ribbon`. Both MAX ≈ 7.8 mm. Both p90 comfortably under the cap.
+Scoring candidate gates against that:
+
+| gate | demotes | catches | leaves | false demotes |
+|---|---:|---:|---:|---:|
+| MAX > 5.0 | 5 | 30.3 (100%) | 0.0 | 3 shapes, 391 mm² |
+| MAX > 5.5 | 3 | 30.3 (100%) | 0.0 | 1 shape, 223 mm² |
+| **MAX > 6.0** | **2** | **30.3 (100%)** | **0.0** | **none** |
+| P99 > 5.5 | 2 | 30.3 (100%) | 0.0 | none |
+| FRAC > 0.03 | 2 | 6.5 (21%) | 23.8 | 1 shape — MISSES Becker |
+
+`MAX > 6.0` demotes exactly the two offenders out of 255 with no collateral.
+**Read that as a marker, not a mechanism, and note n = 2 positives** — a rule
+fitted to two cases is a rule fitted to two cases. What it is really detecting
+is a JUNCTION: the inscribed circle at a place where arms meet is large, so
+MAX ≫ p90 says "this shape has a big junction", and that is where the thread
+is missing.
+
+**Located.** Replicating preflight's own coverage grid (`_coverage_map` at
+`_UNCOVERED_CELL_MM`, `>= _COVERAGE_FLOOR_UNITS`) and labelling inside
+`Sead76620` alone: the dominant patch is **37.2 mm² at (−6.37, −16.09)**,
+**0.42 mm from a stroke END**, with **five strokes within 3 mm** and a local
+medial width of 5.27 mm. The second (7.5 mm²) is 1.86 mm from a stroke end
+with one stroke near it. Junctions and stroke ends, not bulges along a stroke.
+
+**Four emission-side mechanisms, all ruled out by experiment:**
+
+| change | Becker uncovered | stitches |
+|---|---:|---:|
+| shipped | 23.8 mm² | 5,531 |
+| `_rail_points` 5 mm ceiling → 99 mm | 22.8 | 6,249 (+13%) |
+| `satin_rails_follow_edge=True` | 21.0 | 5,723 |
+| corridor cap `floors*1.6` → `floors*3.5` | **23.8 — no change at all** | 5,552 |
+| `_JUNCTION_TUCK_MM` 0.4 → 1.6 | 22.8 | 5,800 |
+
+(the tuck also leaves `photo_scene_stub` at 6.5 mm², unmoved.)
+
+**The synthesis, consistent with all five rows and offered as a hypothesis
+rather than a proof.** Every one of those knobs changes how LONG a cross is.
+None changes where crosses are PLACED, which is along a stroke's spine,
+perpendicular to that stroke, sized by a ray cast that measures *that arm's*
+width. Widening the cap cannot widen the measurement: at a junction the
+perpendicular ray from an arm hits the arm's own sides and reads ~2 mm, not
+the junction's 5.27. So the junction's interior is covered only where arms
+happen to overlap — which is exactly what `_rail_points`' docstring says it
+intends ("the junction gets the modest overlap of its arms — which is exactly
+what a human digitizer does there"). On a FIVE-arm junction 5.27 mm across,
+that overlap does not close, and no cross-length knob can reach it.
+
+If that is right, the fix is not a cap and not a demotion — it is covering a
+junction's interior explicitly. Untested, and named here so the next person
+starts from the four negatives instead of repeating them.
