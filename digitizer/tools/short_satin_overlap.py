@@ -23,6 +23,12 @@ Measured 2026-09-06, 26 fixtures at 80 mm / left_chest:
 That split is why the finding now emits `shapes` / `uncovered_shapes` instead
 of a bare fraction, and why neither check should be deleted to "dedupe" them.
 
+**A carrier here is any shape with at least one short step, so tip taper is
+counted.** `app/src/lib/generate.js`'s `letteringNote` holds its own thin-stroke
+note quiet under a quarter of stroke length because "nearly every authored
+column tapers through 1 mm at its tips" — read the `short`/`steps` share below,
+not just the shape count, before calling a carrier a defect.
+
 Re-run this after per-stroke satin routing lands
 (`docs/superpowers/plans/2026-09-04-per-stroke-satin-routing.md`) — that is the
 documented root cause of the short columns, so both numbers should move.

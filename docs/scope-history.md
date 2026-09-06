@@ -6681,7 +6681,62 @@ legitimate, common, and unverifiable by machine.
 
 The comment is corrected in place, carrying its own history. **The button is
 left alone** — whether a partial remedy earns a button is Kent's call, and
-"Make it bigger" does do what its label says.
+"Make it bigger" does do what its label says. How partial, exactly, was the
+next question, and it had never been asked; the section below asks it.
+
+### And then the button was measured: one in ten
+
+`tools/enlarge_cure.py` — the ten fixtures that fire the finding at 80 mm,
+swept through one press (100 mm) and two (125 mm):
+
+| fixture | 80 | 100 | 125 | satin shapes 80→125 |
+|---|---:|---:|---:|---:|
+| `photo/drone_render.png` | 0.28 | **0.23** | 0.21 | 43 → 51 |
+| `photo/photo_chrome_specular.png` | 0.49 | 0.27 | 0.25 | 2 → 7 |
+| `photo/photo_dof_meadow.png` | 0.36 | 0.58 | **0.71** | 2 → 9 |
+| `photo/photo_sunset_backlit.png` | 0.65 | 0.66 | 0.59 | 1 → 3 |
+| `photo/summit_badge.png` | 0.36 | 0.26 | **0.19** | 19 → 28 |
+| `photo/logo_bridge_bar.jpg` | 0.30 | 0.36 | 0.28 | 29 → 54 |
+| `photo/logo_gaulke_roofing.png` | 0.74 | 0.38 | **0.19** | 2 → 3 |
+| `photo/logo_golden_tee.jpg` | 0.32 | 0.29 | **0.24** | 32 → 40 |
+| `photo/logo_hotel_fremont.webp` | 0.89 | 0.52 | 0.32 | 38 → 51 |
+| `photo/screenshot_phone_ui_golke.jpg` | 0.42 | 0.37 | 0.29 | 42 → 71 |
+
+(bold = the finding stopped firing at that width; the bar is 0.25)
+
+- **One press cleared it on 1 of 10.** Two presses on 4 of 10.
+- **It made the number WORSE on 3 of 10.** `photo_dof_meadow` goes
+  0.36 → 0.58 → **0.71** — worse at every press, twice as bad after two.
+- **The satin shape count rose on EVERY fixture**, 2 → 9 and 42 → 71 at the
+  extremes. That is the lettering table's *"the smallest shapes regenerate at
+  any size"* seen from the short-step side: enlarging buys new small shapes as
+  fast as it widens the ones already there, which is why the fraction is so
+  stubborn.
+
+**No grade claim is drawn from that sweep, deliberately.** Several checks move
+with size at once, and **5 of the 10 sit on the clamped score floor at 0**
+(`tools/floor_depth.py`, measured earlier the same day), where nothing
+registers either way. `photo_sunset_backlit` does fall B 76 → F 34 on one
+press, and that is real, but it is not attributed here — no instrument in this
+session decomposed it.
+
+The knob is real. The cure is one in ten, and the root cause is
+scale-invariant.
+
+### The confound, named rather than thresholded away
+
+A carrier is any shape with **at least one** short step, and
+`app/src/lib/generate.js`'s `letteringNote` already paid for the reason that
+bar is not obviously right: *"nearly every authored column tapers through 1 mm
+at its tips"*, which is why its own thin-stroke note stays quiet under a
+quarter of stroke length. **Tip taper is therefore counted here.**
+
+It is left counted, with `short` and `steps` riding out per shape so any reader
+can apply their own bar, because the corpus residue is mostly far past taper —
+`S22a5e094` 205 of 1,597, `S86cc6879` 49 of 137, `Sd3950c67` 43 of 95 — with
+only a couple down in taper territory (`S99ee112d` 35 of 626, `Sebce2b7a` 4 of
+43). Picking a share threshold is picking a CONSTANT, and this one has had no
+sew-out. `letteringNote`'s quarter is the prior art if it is ever wanted.
 
 ### What did not change
 

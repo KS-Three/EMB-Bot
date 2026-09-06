@@ -695,6 +695,18 @@ its hedge as it is copied forward** — is why this file is split.
   fidelity checking passes; only reading the rest of the sentence finds it.
   Corrected in place 2026-09-06; the button was LEFT alone, because whether a
   partial remedy earns a button is Kent's call, not a session's.
+  **And then the button was MEASURED** (`tools/enlarge_cure.py`, the ten corpus
+  fixtures that fire `STITCHES_TOO_SHORT` at 80 mm, swept through one press and
+  two): **one press cleared the finding on 1 of 10**, two presses on 4 of 10,
+  and it made the number **WORSE on 3 of 10** — `photo_dof_meadow`
+  0.36 → 0.58 → **0.71**, worse at every press; `logo_bridge_bar` 0.30 → 0.36;
+  `photo_sunset_backlit` 0.65 → 0.66. The satin SHAPE count rose on **every**
+  fixture (2 → 9, 42 → 71), which is `_lettering_findings`' own *"the smallest
+  shapes regenerate at any size"* seen from the short-step side: enlarging buys
+  new small shapes as fast as it widens the ones already there. **Claim nothing
+  about grades from that sweep** — several checks move with size at once, and 5
+  of the 10 sit on the clamped score floor where nothing registers either way.
+  The knob is real; the cure is one in ten.
 
 - **`STITCHES_TOO_SHORT` and `LETTERING_TOO_SMALL` bill 24 points for one
   defect — but do NOT delete either to "dedupe" them.** They measure the SAME

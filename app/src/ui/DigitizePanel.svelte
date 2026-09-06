@@ -162,8 +162,26 @@
   // scale-invariant. So enlarging is a real knob that moves a real number, and
   // it is NOT the cure either finding describes.
   //
-  // Left in place, not removed: whether a partial remedy is worth a button is
-  // Kent's call, and "Make it bigger" at least does what its label says.
+  // MEASURED, 2026-09-06 (`digitizer/tools/enlarge_cure.py`) -- the ten corpus
+  // fixtures that fire STITCHES_TOO_SHORT at 80 mm, swept through one press
+  // (100 mm) and two (125 mm):
+  //
+  //   * one press CLEARED the finding on 1 of 10; two presses on 4 of 10;
+  //   * it made the number WORSE on 3 of 10 -- photo_dof_meadow 0.36 -> 0.58
+  //     -> 0.71, worse at every press; logo_bridge_bar 0.30 -> 0.36;
+  //     photo_sunset_backlit 0.65 -> 0.66;
+  //   * the satin SHAPE count rose on EVERY fixture (2 -> 9, 42 -> 71), which
+  //     is "the smallest shapes regenerate at any size" seen from the other
+  //     side: enlarging buys new small shapes as fast as it widens the ones
+  //     already there.
+  //
+  // Read no grade claim into that. Several checks move with size at once, and
+  // 5 of the 10 sit on the clamped score floor where nothing registers either
+  // way (`digitizer/tools/floor_depth.py`).
+  //
+  // Left in place, not removed. The button does what its LABEL says, and
+  // whether a one-in-ten remedy earns one is a product call -- Kent's, not a
+  // session's. The numbers are here so it is an informed one.
   //
   // DELIBERATELY SHORT, and the omissions are the honest part. Most findings
   // have no knob that helps and get nothing rather than a button that does

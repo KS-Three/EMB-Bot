@@ -1405,6 +1405,19 @@ def _stitch_length_findings(plan: StitchPlan,
     a perfectly sewable column with a narrow waist passes it and still breaks
     thread. Naming those shapes is the whole reason this finding earns its 12
     points.
+
+    A carrier is any shape with AT LEAST ONE short step, and that bar is
+    deliberate but not free: `app/src/lib/generate.js`'s `letteringNote` says
+    *"nearly every authored column tapers through 1 mm at its tips"* and holds
+    its own thin-stroke note quiet under a quarter of stroke length for exactly
+    that reason. So tip taper IS counted here. It is reported rather than
+    thresholded away because `short`/`steps` ride out beside every shape, which
+    lets a reader apply any bar they like — and because the corpus residue is
+    mostly well past taper (bridge_bar `S22a5e094` 205 of 1,597 steps, summit
+    `S86cc6879` 49 of 137, screenshot `Sd3950c67` 43 of 95) with only a couple
+    of shapes down in taper territory (summit `S99ee112d` 35 of 626, hotel
+    `Sebce2b7a` 4 of 43). Picking a share threshold is a constant, and this one
+    has had no sew-out.
     """
     too_long = 0
     longest = 0.0
@@ -2647,8 +2660,8 @@ def run_preflight(result: PipelineResult, plan: StitchPlan,
     # The shapes lettering just named, so the short-stitch check can say which
     # of ITS carriers are not covered by that warning. The two measure the same
     # quantity (`MIN_COLUMN_MM is machine.MIN_STITCH_MM`) and this one never
-    # fired alone on the corpus, so without the hand-off it is a second 12-point
-    # bill for one defect.
+    # fired alone over the 26-fixture corpus AT 80 MM — the only width swept —
+    # so without the hand-off it is a second 12-point bill for one defect.
     already_small = {sh["shape_id"] for f in lettering
                      for sh in f.get("extra", {}).get("shapes", ())}
     length_findings, length_metrics = _stitch_length_findings(plan, already_small)
