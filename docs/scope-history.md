@@ -5415,3 +5415,94 @@ earlier draft of this entry said "FILL-tier shape" and was wrong.)
 and nearly filed a defect. It keyed on the raw `shape_id`; the fill runs are
 stamped with derived suffixes and only appear once `_owning_region_id` strips
 them — the trap DOCTRINE already records from four sites in one day.)*
+
+## 2026-09-06 — the corpus's biggest blocker, decomposed
+
+**Seven of the 26 scorecard fixtures grade F 0**, and every one of them for the
+same reason: `THREAD_MATCH_POOR` at `block`. That is 14 of the 52 matrix
+entries, all recorded baseline, and it is the largest single quality wall in
+the corpus. Pulled apart, it is **three unrelated problems wearing one finding
+code.**
+
+All seven classify **`gradient`** — which is where real customer logo art goes
+(MASTER_SCOPE: stage 0 routes six of the seven logos to the gradient lane).
+
+### The yardstick only covers the photo route
+
+`_thread_match_findings` scores the PHOTO route on **excess over the best spool
+the design's own regions already sew** — added 2026-08-24 because raw distance
+*"condemned work that was already optimal … every photo job graded F / do not
+sew."* Off that route it scores raw distance. `gradient` is off that route.
+
+Measured by isolating that one line (`photo = _is_photo_class(...)`, forced;
+edit reverted, tree verified clean — forcing `_is_photo_class` itself is a
+confound, it also gates `PHOTO_RESOLUTION_LOW` and the subject-background
+check, and doing that made Becker read B 76 → C 64 on findings that have
+nothing to do with thread):
+
+| fixture | raw (shipped) | + halo dissolve | excess | excess + halo |
+|---|---|---|---|---|
+| `logo_bridge_bar` | F 0 · 3 blk | F 0 · **4** blk | F 22 · 1 blk | F 4 · 2 blk |
+| `logo_gaulke_roofing` | F 0 · 3 blk | **C 64 · 0 blk** | F 4 · 2 blk | **B 76 · 0 blk** |
+| `logo_golden_tee` | F 0 · 2 blk | F 0 · 2 blk | **D 52 · 0 blk** | **D 52 · 0 blk** |
+| `screenshot_phone_ui` | F 0 · 10 blk | F 0 · 10 blk | F 0 · 2 blk | F 0 · **3** blk |
+| `drone_render` | F 0 · 4 blk | F 0 · 4 blk | **D 40 · 0 blk** | **D 40 · 0 blk** |
+| `region_blobs` | F 0 · 2 blk | F 0 · 2 blk | **B 88 · 0 blk** | **B 88 · 0 blk** |
+| `summit_badge` | F 0 · 1 blk | F 0 · 1 blk | **D 52 · 0 blk** | **D 52 · 0 blk** |
+
+(`becker_marine_logo`, `logo_alpha` and `logo_script_tires` are unchanged by
+the yardstick — the control that says the isolation worked.)
+
+**Cause 1 — the raw yardstick, 4 of 7.** `golden_tee`, `drone_render`,
+`region_blobs` and `summit_badge` clear EVERY block under excess and are
+untouched by halo dissolve. No loaded cone matches better: their assignments
+are already optimal and raw distance condemns them anyway. Exactly the failure
+the photo route's rescoring was built for, still live on the gradient lane.
+
+**Cause 2 — halo cones, 1 of 7.** `logo_gaulke_roofing` needs no yardstick
+change: `cfg.dissolve_phantom_blends` alone takes it **F 0 → C 64, blocks 3 →
+0, worst ΔE 63.6 → 6.8, cones 4 → 3, stitches 10,229 → 8,744 (−15%)** — and
+B 76 with excess as well. **Kent ruled that flag OFF on 2026-09-04 having seen
+the render**, on trims, cone counts and worst-excess; the record carries no
+GRADE for it. This is that number, and on this fixture it is the difference
+between "do not sew" and a usable design. Not a re-opening — a datum his
+ruling did not have. It also costs: bridge_bar goes 3 → **4** blocks, and
+under excess screenshot goes 2 → **3**.
+
+**Cause 3 — a genuinely wrong assignment, 2 of 7.** `bridge_bar` and
+`screenshot_phone_ui` keep blocks under every combination. And the screenshot's
+worst is not subtle:
+
+| thread assigned | its RGB | the artwork it sews | ΔE |
+|---|---|---|---|
+| **0111 Whale** | 127, 127, 127 | **252, 252, 252** | **33.0** |
+| 3971 Silver | 204, 204, 204 | 132, 132, 132 | 21.2 |
+| 0150 Mystik Grey | 190, 190, 180 | 137, 137, 137 | 16.6 |
+
+**The design already loads `0015 White` (255, 255, 255)** — and put a mid-grey
+on near-white artwork anyway. The pairing reads as permuted on a greyscale
+design. Not recorded anywhere; `0111 Whale` appears in the record only as
+bridge_bar's 12-shard residual, a different fixture.
+
+### And a structural note on the check itself
+
+`THREAD_MATCH_POOR` is driven by *"each thread's worst such patch"* with **no
+area floor at all**. Across the seven fixtures, 25 blocking findings; the worst
+shape behind each measures:
+
+**min 0.58 mm², p50 3.17 mm², max 1,648.5 mm² — and 12 of the 23 measurable
+ones are under 5 mm².**
+
+- `gaulke_roofing` / `3971 Silver`: 63.6 ΔE on **0.58 mm², 0.02%** of the design
+- `screenshot` / `0111 Whale`: 33.0 ΔE on **0.94 mm², 0.09%**
+- against `drone_render` / `0020 Black`: 14.1 ΔE on **1,648.5 mm², 53.6%**
+
+A 0.02% shard and a 53% field produce the same `block` — "do not sew". Every
+sibling check in this module has a floor (`_uncovered_findings` 5.0 mm²,
+`_lettering_findings` `MIN_LETTER_EXTENT_MM` 4.0 mm); this one has none.
+**Stated as a measurement, not a proposal:** what "do not sew" should mean is a
+product call, and moving it re-bases the scorecard for at least four fixtures.
+
+*(One probe artefact worth naming: two `region_blobs` rows report their worst
+shape as `Sb971b1c2 shade 3770`, a derived id my lookup could not resolve — the
+suffix trap again, this time in my own instrument rather than in the pipeline.)*

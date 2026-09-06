@@ -1211,3 +1211,44 @@ its hedge as it is copied forward** — is why this file is split.
   reporting a deliberate choice. **Do not re-open it.** (Their runs carry `fill`
   KIND, which is not the fill TIER; a first draft confused the two.) *(measured 2026-09-06 —
   scope-history 09-06)*
+
+- **All seven F-grade fixtures fail on ONE finding, and it is three unrelated
+  problems.** `THREAD_MATCH_POOR:block` grades 7 of 26 corpus fixtures (14 of
+  52 matrix entries) at F 0, all baseline, all class `gradient` — which is
+  where real logo art goes. Isolating the yardstick line
+  (`photo = _is_photo_class(...)`; forcing `_is_photo_class` itself is a
+  CONFOUND, it also gates `PHOTO_RESOLUTION_LOW` and the subject check):
+  **(1) the raw yardstick, 4 of 7.** `golden_tee`, `drone_render`,
+  `region_blobs`, `summit_badge` clear every block under EXCESS scoring and are
+  untouched by halo dissolve — their assignments are already optimal and raw
+  distance condemns them anyway, which is the exact failure the photo route's
+  2026-08-24 rescoring was built for and which the gradient lane never got.
+  **(2) halo cones, 1 of 7.** `gaulke_roofing` needs no yardstick change:
+  `cfg.dissolve_phantom_blends` alone gives **F 0 → C 64, blocks 3 → 0, worst
+  ΔE 63.6 → 6.8, −15% stitches** (B 76 with excess too). Kent ruled that flag
+  OFF 2026-09-04 on trims, cones and worst-excess; **the record carries no
+  grade for it and this is it.** It costs elsewhere — bridge_bar 3 → 4 blocks.
+  **(3) a wrong assignment, 2 of 7.** `bridge_bar` and `screenshot_phone_ui`
+  block under every combination, and the screenshot's is blatant: **`0111
+  Whale` (127,127,127) sews artwork at (252,252,252) for 33.0 ΔE while the
+  design already loads `0015 White` (255,255,255)**; Silver (204) sits on
+  (132) and Mystik Grey (190) on (137). The pairing reads as permuted on a
+  greyscale design. Unrecorded before 2026-09-06.
+  **Rule: never treat a THREAD_MATCH_POOR wall as one defect — split it by
+  yardstick, palette and assignment before proposing anything.**
+  *(measured 2026-09-06 — scope-history 09-06)*
+
+- **`THREAD_MATCH_POOR` has NO area floor, and half its blocks ride on
+  slivers.** It is driven by "each thread's worst such patch", with no minimum.
+  Across the seven F fixtures, 25 blocking findings; the worst shape behind
+  each measures **min 0.58 mm², p50 3.17, max 1,648.5 — and 12 of the 23
+  measurable ones are under 5 mm².** `gaulke_roofing`'s 63.6 ΔE rides a
+  **0.58 mm² shard, 0.02% of the design**; `drone_render`'s 14.1 rides
+  **1,648.5 mm², 53.6%**. Both emit `block` — "do not sew". Every sibling check
+  here has a floor (`_uncovered_findings` 5.0 mm², `_lettering_findings`
+  `MIN_LETTER_EXTENT_MM` 4.0). **Rule: when a design grades F on thread match,
+  read the worst shape's AREA before believing the design is unsewable.**
+  Whether the check should have a floor is a product call — moving it re-bases
+  the scorecard for at least four fixtures — so this is recorded as a
+  measurement, not a proposal. *(measured 2026-09-06)*
+
