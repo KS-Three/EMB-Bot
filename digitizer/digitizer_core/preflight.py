@@ -144,7 +144,7 @@ STITCHES_TOO_SHORT = "STITCHES_TOO_SHORT"      # extra: {fraction, count, total,
 TRIM_HEAVY = "TRIM_HEAVY"                      # extra: {per_1000, trims, stitches, in_shape, between_shapes, worst_shape_id, shapes: [{shape_id, trims}]} — in_shape + between_shapes == trims by construction; a cut INSIDE a shape is that shape failing to sew in one pass and merging shapes cannot remove it, which is the OPPOSITE of where the old message ("merge or remove the smallest shapes") sent people. Corpus-wide the split is 53/47, so one remedy was only ever right half the time
 DENSITY_EXTREME = "DENSITY_EXTREME"            # extra: {kind, measured_mm, target_mm, ratio} (+ technique, band_mm on a tonal fill)
 DENSITY_STACKED = "DENSITY_STACKED"            # extra: {peak_units, p95_units, over_warn_mm2, over_block_mm2, cell_mm, patches, worst_patch_mm2, worst_patch_at_mm} — the mm2 figures are SUMS and cannot tell one blob from twenty specks; `patches`/`worst_patch_mm2` separate them and `worst_patch_at_mm` is the plan-mm centre of the largest, which is the "where" the message always asked for
-SAME_HOLE_HEAVY = "SAME_HOLE_HEAVY"            # extra: {fraction, repeat_points, penetrations, baseline}
+SAME_HOLE_HEAVY = "SAME_HOLE_HEAVY"            # extra: {fraction, repeat_points, penetrations, baseline, max_strikes, points_3plus, worst_at_mm} — `fraction` counts 2+-strike points and cannot tell thousands of doubles from one spot struck twelve times; max_strikes/points_3plus are the DEPTH the check's own corpus argument ("ALL 36 files contain 3+ stacked points") is made on, and worst_at_mm is the "where" its message asks for
 LINK_UNCOVERED = "LINK_UNCOVERED"              # extra: {max_mm, limit_mm, total_mm, at_mm, thread_mm}
 ARTWORK_UNCOVERED = "ARTWORK_UNCOVERED"        # extra: {count, worst_mm2, total_mm2, wanted_mm2, shapes: [{shape_id, missing_mm2, area_mm2}]}
 CONTOUR_STARVED = "CONTOUR_STARVED"            # extra: {count, rings, shapes}
@@ -2695,6 +2695,40 @@ def _same_hole_findings(plan: StitchPlan) -> tuple[list[dict], float | None]:
     number here is comparable to the 9.455% figure rather than merely similar
     in spirit. Ties are deliberately INCLUDED: they are most of what this
     measures.
+
+    **"our benchmark is 9.8%" is in the PRE-2026-09-03 base and is now about
+    2.7%, for no physical reason.** The rate is a ratio, and `FILL_ROW_MM`
+    moved 0.40 -> 0.15 that day, so the DENOMINATOR grew while the thing being
+    counted did not. A/B'd on four fixtures at both row pitches (2026-09-06):
+
+        fixture              pens x   repeat x   3plus x   max_strikes
+        logo_whitebg           2.30       1.00      1.13   8 -> 8
+        becker_marine_logo     1.17       0.98      1.00   4 -> 4
+        logo_hotel_fremont     1.62       1.15      0.98   8 -> 8
+        screenshot_phone_ui    1.37       1.09      1.02   9 -> 9
+
+    Penetrations grew 1.17-2.30x, repeat POINTS moved 0.98-1.15x (28 against
+    28 on `logo_whitebg` — the same number), and the rate fell to 0.43-0.83x
+    of what it was. **The needle is not landing in fewer old holes; there is
+    simply more denominator.** That is ROADMAP gate 4's warning in miniature —
+    a raw ratio moves when the mix moves — and it is why the corpus now reads
+    0.001 to 0.103 against a threshold set as "far above" 9.8%.
+
+    **So the DEPTH rides out beside the rate, and it is the density-invariant
+    half.** `max_strikes` was IDENTICAL on all four fixtures across that row
+    change; `points_3plus` moved by at most 13%. A rate of 2+-strike points
+    also cannot distinguish thousands of doubles — which every professional
+    file has, and which the paragraph above defends — from one point the
+    needle hits twelve times, which is a hole. `max_strikes`, `points_3plus`
+    and `worst_at_mm` answer both; `worst_at_mm` is additionally the "where"
+    the message asks for ("expect the odd thread break WHERE the stitching
+    doubles back").
+
+    `SAME_HOLE_RATE_MAX` is NOT retuned here. Moving it would be a physical
+    call on a constant whose baseline is a professional corpus measured at its
+    own row pitch, and re-deriving that comparison needs the pro files
+    re-walked, not our side rescaled. Recorded so the next reader knows the
+    threshold is looser in practice than the prose implies.
     """
     q = _SAME_HOLE_QUANTUM_MM
     keys: list[tuple[int, int]] = []
@@ -2712,17 +2746,27 @@ def _same_hole_findings(plan: StitchPlan) -> tuple[list[dict], float | None]:
     rate = repeats / total
     if rate <= SAME_HOLE_RATE_MAX:
         return [], rate
+
+    deep = sum(1 for v in counts.values() if v >= 3)
+    # Ties break on the grid key, so two spots struck equally often give a
+    # stable answer rather than one that depends on dict order.
+    worst_key, max_strikes = max(counts.items(), key=lambda kv: (kv[1], kv[0]))
     return [finding(
         SAME_HOLE_HEAVY,
         "info",
         f"{rate:.0%} of the needle's landings are on a spot it has already "
         f"struck — professional files run about 9%. The design will sew, but "
         f"expect the odd thread break where the stitching doubles back on "
-        f"itself.",
+        f"itself. The deepest spot takes {max_strikes} strikes, near "
+        f"({worst_key[0] * q:.0f}, {worst_key[1] * q:.0f}) mm; "
+        f"{deep} spots take three or more.",
         fraction=round(rate, 3),
         repeat_points=repeats,
         penetrations=total,
         baseline=0.09455,
+        max_strikes=max_strikes,
+        points_3plus=deep,
+        worst_at_mm=[round(worst_key[0] * q, 1), round(worst_key[1] * q, 1)],
     )], rate
 
 

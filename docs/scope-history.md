@@ -6914,3 +6914,77 @@ moves them together or fails here.
 row pitch"* was read and **left alone**: the unit definition did not change in
 the re-base, and verifying a zigzag's coverage arithmetic is not something this
 pass measured. Not a claim that it is right — a claim that it was not checked.
+
+---
+
+## 2026-09-06 — the fill-row ruling silently recalibrated a check nobody thought it touched
+
+The fourth and last preflight finding with no location turned out to be the
+most interesting, and not for the reason it was opened.
+
+### The small part: depth and place
+
+`SAME_HOLE_HEAVY` emitted `{fraction, repeat_points, penetrations, baseline}`.
+Its message ends *"expect the odd thread break WHERE the stitching doubles back
+on itself"* — no where — and its own docstring argues its threshold on DEPTH
+(*"ALL 36 [professional] files contain 3+ stacked points"*) while the payload
+could not answer on depth at all. A rate of 2+-strike points cannot tell
+thousands of doubles, which every pro file has, from one spot the needle hits
+twelve times, which is a hole. It now emits `max_strikes`, `points_3plus` and
+`worst_at_mm`.
+
+### The large part: the rate had already moved, for no physical reason
+
+Swept over the corpus, `SAME_HOLE_HEAVY` fires on **0 of 26** and the rates run
+**0.001 to 0.103** — against a docstring that says *"our benchmark is 9.8%"*
+and a threshold set as "far above" it. Either the benchmark design is not in
+this corpus, or the number is stale.
+
+It is stale, and the cause is a ruling three days old. The rate is
+**(points struck 2+ times) / (total penetrations)**, and `FILL_ROW_MM` moved
+0.40 → 0.15 mm on 2026-09-03. A/B at both row pitches:
+
+| fixture | penetrations | repeat points | 3+ points | `max_strikes` | rate |
+|---|---:|---:|---:|---|---:|
+| `logo_whitebg` | 1,982 → 4,558 (**×2.30**) | 28 → 28 (**×1.00**) | ×1.13 | 8 → **8** | ×0.43 |
+| `becker_marine_logo` | 4,710 → 5,531 (×1.17) | 142 → 139 (×0.98) | ×1.00 | 4 → **4** | ×0.83 |
+| `logo_hotel_fremont` | 7,403 → 11,979 (×1.62) | 616 → 707 (×1.15) | ×0.98 | 8 → **8** | ×0.71 |
+| `screenshot_phone_ui_golke` | 5,551 → 7,624 (×1.37) | 582 → 633 (×1.09) | ×1.02 | 9 → **9** | ×0.79 |
+
+**The denominator grew 1.17–2.30×. The numerator did not move** — 28 against
+28 on `logo_whitebg`, the same integer. **`max_strikes` is identical on every
+fixture.** The needle lands in old holes exactly as often, in exactly the same
+places, to exactly the same depth; there is simply more denominator.
+
+So the rate fell to 0.43–0.83× of what it was, the benchmark prose is
+old-base, and the check went quiet across the whole corpus without anything
+about the sewing changing. **Its silence is not evidence that anything
+improved.**
+
+That is ROADMAP gate 4 in miniature — *"no quality claim on a raw agreement
+number; raw moves when the mix moves"* — arriving in a check nobody connected
+to the fill-row ruling. It is also the third place today that ruling left a
+stale number behind, after the four coverage statements.
+
+### What was NOT done, and why
+
+**`SAME_HOLE_RATE_MAX` was not retuned.** Its baseline is 9.455% measured
+across a 36-file professional corpus, at whatever row pitch those digitizers
+chose. Rescaling our side of that comparison by 2.67 would be inventing a
+number; re-deriving it means re-walking the pro files with the current
+definition, which is its own piece of work and needs the corpus, not this
+check. Recorded so the next reader knows the threshold is looser in practice
+than the prose implies, and knows what closing it would cost.
+
+The fix is to emit the half that survives a density change. `max_strikes` and
+`points_3plus` are physical facts about the fabric; the rate is a ratio. A test
+pins exactly that, synthetically and instantly — landings on fresh fabric leave
+`repeat_points`, `points_3plus`, `max_strikes` and `worst_at_mm` all unchanged
+while `fraction` falls, and enough of them silence the finding outright while
+the fabric is struck identically.
+
+### Severity did not move
+
+`SAME_HOLE_HEAVY` is `info`, worth 0 points, deliberately — law 17's trade
+phrasing is stricter than professional files themselves. A test pins that the
+new payload has not turned it into a deduction.
