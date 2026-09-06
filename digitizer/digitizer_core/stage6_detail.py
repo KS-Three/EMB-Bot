@@ -81,8 +81,17 @@ between a portrait and 'dead eyes'"). That half is deliberately absent
 here, the same way `stage6_streamline`'s module docstring documented its
 multi-color seam before building it, because it has a hard dependency this
 repo does not yet satisfy: eye placement needs FACE LANDMARKS from the
-plan's row 2 (`cv2.FaceDetectorYN` / YuNet, 5-point — present in the
-wheel, NOT wired into any stage). When that lands, the seam is here: the
+plan's row 2 (`cv2.FaceDetectorYN` / YuNet, 5-point). **Those landmarks
+ARE wired** — `stage1_photo_prep.detect_faces_seam` runs the detector and
+`pipeline` calls it at stage 1.5, behind `cfg.photo_prep`'s double gate AND a
+successful subject cutout; `stage2_photo_segment` already derives its
+"eyes"/"skin" region classes from them, and `palette.py` calls that seam
+"FULLY WIRED for real". This said "NOT wired into any stage" until 2026-09-06,
+which predates the 2026-08-04 slice that wired it. What is still missing here
+is only this module's own consumption of them. (Note for anyone verifying:
+the gate needs `rembg` for the cutout, so on a container without it the
+detector never runs and a spy counts zero calls — that is the environment,
+not the wiring.) When THIS module consumes them, the seam is here: the
 landmark ellipses select which extracted detail lines are eye-adjacent,
 suppress bean runs inside the iris disc in favor of the pupil/iris fill
 recipe, and append the satin glint as the final run of this block —
