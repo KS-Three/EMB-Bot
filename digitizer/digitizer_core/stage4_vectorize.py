@@ -573,8 +573,27 @@ def revalidate_threads(regions: list[Region], p: Prep,
     if palette_indices is not None and len(palette_indices) > 0:
         palette_only = np.unique(np.asarray(list(palette_indices),
                                             dtype=np.int64))
+    # `cfg.bind_resnap_all_classes` extends the 2026-08-23 photo binding to
+    # every class. OFF (default) this reads exactly as it always has.
+    #
+    # WHY IT EXISTS (MASTER_SCOPE 15, counted 2026-09-06 with
+    # `tools/resnap_escape.py`): off the photo route the argmin runs over the
+    # whole chart, and across the corpus this pass adds **34 cones, 25 of them
+    # outside the selected palette — every escape on the GRADIENT lane**, which
+    # is where real customer logo art goes. `screenshot_phone_ui_golke` 7,
+    # `drone_render` 5, `logo_bridge_bar` 5, `logo_golden_tee` 4,
+    # `logo_gaulke_roofing` 3. All nine photo-class fixtures add none, which is
+    # the control: the binding works, and this lane never got it.
+    #
+    # It is a FLAG and not a default because the phase-4 spec pins the flat and
+    # gradient lanes byte-for-byte and this moves their goldens — the same
+    # reason `revalidate_threads` gave for leaving them unbound in the first
+    # place. That argument is about golden churn, not about the escape being
+    # wanted.
+    bind_all = bool(cfg.bind_resnap_all_classes)
     allowed: np.ndarray | None = (
-        palette_only if is_photographic(cfg, design_class) else None)
+        palette_only if (bind_all or is_photographic(cfg, design_class))
+        else None)
     # The cone list an operator actually loads for this design, snapshotted
     # BEFORE the loop mutates any of it. This — not `palette_only` — is what a
     # shape admitted only by the lowered floor may choose from, and the

@@ -5913,3 +5913,61 @@ change that moves the flat and gradient goldens, which the phase-4 spec pins
 byte-for-byte, so it wants a flag, an A/B and Kent — the same route
 `cfg.revalidate_small_shapes` took for the small-shape half of the same
 argmin.
+
+## 2026-09-06 — the cone escape gets a PRICE, and my hypothesis about it was wrong
+
+`cfg.bind_resnap_all_classes` (DEFAULT OFF, byte-identical off) extends the
+2026-08-23 photo palette binding to every class, so a re-snapped shape can only
+take a spool the palette selected. It closes defect 15's escape exactly — and
+**it is not free, which is the finding.**
+
+### What it removes
+
+| fixture | cones | stitches | shipped grade | blocks |
+|---|---|---|---|---|
+| `screenshot_phone_ui_golke` | 16 → **11** | −53 | F 0 → F 0 | **10 → 8** |
+| `drone_render` | 19 → **14** | **+3.1%** | F 0 → F 0 | 4 → 4 |
+| `logo_bridge_bar` | 18 → **14** | +50 | F 0 → F 0 | 3 → **4** |
+| `logo_golden_tee` | 16 → **13** | −5 | F 0 → F 0 | 2 → **5** |
+| `logo_gaulke_roofing` | 6 → **4** | **−10.9%** | **F 4 → F 16** | 2 → 2 |
+| the other 21 | | byte-identical | | |
+
+**19 colour stops gone across five designs.** And `+2 blocks net`: two fewer on
+`screenshot`, three more on `golden_tee`, one more on `bridge_bar`.
+
+### The hypothesis I had, and the measurement that killed it
+
+The gradient lane is scored on RAW ΔE (cause 1 of the F-wall). A bound shape
+keeps a loaded cone that raw distance then condemns, so I expected the extra
+blocks to be that same artefact and to vanish under the EXCESS yardstick —
+where a shape already on its best loaded cone scores zero excess by
+construction.
+
+Measured with the yardstick line probed to `True` on every route (probe
+reverted, `git status` verified clean):
+
+| fixture, EXCESS yardstick | bind OFF | bind ON | TM blocks |
+|---|---|---|---|
+| `logo_golden_tee` | D 52 | **F 22** | 0 → 1 |
+| `drone_render` | D 40 | **F 28** | 0 → 0 |
+| `logo_bridge_bar` | F 22 | **F 10** | 1 → 1 |
+| `screenshot_phone_ui_golke` | F 0 | F 0 | 2 → **3** |
+| `logo_gaulke_roofing` | D 46 | D 46 | 1 → 1 |
+
+**Wrong.** Binding costs grade under the excess yardstick too, and on
+`drone_render` it costs 12 points with no thread-match block moving at all —
+so part of the price is not colour but the +3.1% stitches and what they do to
+density. The extra blocks are real, not an instrument artefact.
+
+### So what the escape actually is
+
+Not a bug. **The pipeline is buying colour accuracy with cones the operator has
+to load, silently and without a bound.** Suppressing the purchase costs colour
+accuracy; allowing it costs up to seven unplanned spools on one design. Both
+halves are now measured, which is what defect 15 was missing.
+
+**On this evidence I would not flip it.** The value here is the price tag, not
+the switch — but the switch is built, tested and default OFF, so the trade can
+be re-taken cheaply if the gradient lane ever gets the excess yardstick (which
+would change one side of it) or if the cone count starts costing real money on
+real jobs.

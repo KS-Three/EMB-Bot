@@ -1267,6 +1267,24 @@ class PipelineConfig:
     # that is Kent's call rather than a silent default change.
     revalidate_small_shapes: bool = False
 
+    # Bind stage 4's thread re-snap to the selected palette on EVERY class,
+    # not only the photo ones. `revalidate_threads`' argmin runs over the whole
+    # chart off the photo route, so a re-snapped shape can pull in a spool the
+    # palette never chose and the operator loads a cone the plan does not name.
+    #
+    # Counted 2026-09-06 (`tools/resnap_escape.py`, MASTER_SCOPE 15): across
+    # the corpus the pass adds **34 cones, 25 of them outside the selected
+    # palette, and every escape is on the GRADIENT lane** — screenshot 7,
+    # drone_render 5, bridge_bar 5, golden_tee 4, gaulke 3. All nine
+    # photo-class fixtures add none: the 2026-08-23 binding does its job, and
+    # the lane real customer logo art routes to never got it.
+    #
+    # DEFAULT OFF and byte-identical off. It is a flag rather than a default
+    # because the phase-4 spec pins the flat and gradient lanes byte-for-byte
+    # — which is an argument about golden churn, not one that the escape is
+    # wanted. Flipping it is Kent's: it is a scorecard recapture.
+    bind_resnap_all_classes: bool = False
+
     # Split satin. A satin cross longer than the threshold carries
     # intermediate penetrations, staggered station to station so the holes
     # never line up (machine.SPLIT_* carry the corpus measurements: the
