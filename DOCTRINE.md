@@ -755,6 +755,33 @@ its hedge as it is copied forward** — is why this file is split.
   plans in `tests/test_preflight.py` and `tests/test_stacked_where.py`. A
   corpus A/B can prove nothing about it either way.
 
+- **The same-hole RATE is a ratio whose denominator moved on 2026-09-03, and
+  the fall is dilution, not improvement.** `SAME_HOLE_HEAVY` scores
+  (points struck 2+ times) / (total penetrations). `FILL_ROW_MM` went
+  0.40 → 0.15 that day, so the denominator grew and the numerator did not.
+  A/B'd at both row pitches on four fixtures (2026-09-06):
+
+  | fixture | penetrations | repeat points | 3+ points | `max_strikes` |
+  |---|---:|---:|---:|---|
+  | `logo_whitebg` | **×2.30** | ×1.00 (28 vs 28) | ×1.13 | 8 → **8** |
+  | `becker_marine_logo` | ×1.17 | ×0.98 | ×1.00 | 4 → **4** |
+  | `logo_hotel_fremont` | ×1.62 | ×1.15 | ×0.98 | 8 → **8** |
+  | `screenshot_phone_ui` | ×1.37 | ×1.09 | ×1.02 | 9 → **9** |
+
+  The rate fell to **0.43–0.83×** while `max_strikes` was **identical on every
+  one**. The needle is not landing in fewer old holes; there is more
+  denominator. So the docstring's *"our benchmark is 9.8%"* is in the old base
+  and now reads about 2.7%, the corpus runs **0.001–0.103**, and the finding
+  fires on **0 of 26** against a threshold set as "far above" 9.8%. **Its
+  silence is not evidence that anything improved.** This is ROADMAP gate 4 in
+  miniature — a raw ratio moves when the mix moves — on a check nobody thought
+  the fill-row ruling touched. **`SAME_HOLE_RATE_MAX` was deliberately NOT
+  retuned**: its baseline is a professional corpus measured at its own row
+  pitch, and re-deriving the comparison means re-walking the pro files, not
+  rescaling our side. Fixed instead by emitting the density-invariant half —
+  `max_strikes`, `points_3plus`, `worst_at_mm`.
+  *(measured 2026-09-06 — scope-history 09-06)*
+
 - **`STITCHES_TOO_SHORT` and `LETTERING_TOO_SMALL` bill 24 points for one
   defect — but do NOT delete either to "dedupe" them.** They measure the SAME
   quantity at the SAME threshold: `MIN_COLUMN_MM` **is**
