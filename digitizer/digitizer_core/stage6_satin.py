@@ -3458,6 +3458,157 @@ def _order_strokes(strokes: list[Stroke],
     return out
 
 
+# --- junction patches ------------------------------------------------------
+#
+# What a letter's crotch gets when every arm's crosses stop at its own edge.
+#
+# Crosses are placed ALONG a spine, perpendicular to one arm, and sized by a
+# ray that measures THAT arm's width. Where several arms meet, the ray from
+# each hits its own sides and reads the arm's ~2 mm, not the junction's 5+ mm,
+# so the interior is covered only by whatever overlap the arms happen to have.
+# `_rail_points` says so outright ("the junction gets the modest overlap of
+# its arms — which is exactly what a human digitizer does there"), and on a
+# five-arm junction that overlap does not close.
+#
+# Measured 2026-09-06 on `becker_marine_logo.png`: the K's crotch is bare —
+# 37.2 mm2 at 80 mm, 32.2 at 90 — and it is the whole reason that fixture
+# grades B 76 rather than A 100. Four cross-LENGTH knobs were tried against it
+# and none reached it, because none of them changes where a cross is PLACED:
+# the 5 mm ceiling lifted to 99 (23.8 -> 22.8 mm2 for +13% thread), the
+# corridor cap 1.6x -> 3.5x (no change at all), `_JUNCTION_TUCK_MM` 0.4 -> 1.6
+# (-1.0), `satin_rails_follow_edge` (-2.8). Full trail in DOCTRINE and
+# `docs/renders/junction-bare-2026-09-06/`.
+#
+# So this does not adjust a cross. It finds what the emitted thread actually
+# missed and sews it, which is what a human does when a junction will not take
+# a column. Behind `PipelineConfig.satin_patch_junctions`, DEFAULT OFF; off,
+# not one byte of this module's output changes.
+_JUNCTION_PATCH_MIN_MM2 = 5.0
+# Deliberately equal to `preflight._UNCOVERED_MIN_PATCH_MM2`. The grader is
+# what decides whether a hole counts, so patching to a different floor would
+# either leave findings standing or spend thread on holes nobody grades.
+_JUNCTION_PATCH_CELL_MM = 0.25
+# Half preflight's coverage cell: a patch outline at 0.5 mm is a staircase of
+# half-millimetre steps, and the fill inside it inherits every step.
+_JUNCTION_PATCH_GROW_MM = 0.30
+# The patch is grown before it is sewn so its rows OVERLAP the columns around
+# it instead of butting against them — a patch cut exactly to the bare cells
+# leaves a thread-width seam on every side, which is the defect again at
+# smaller scale. Clipped back to the artwork, so growth never sews outside it.
+
+
+def _uncovered_patches(poly: Polygon, runs: list[StitchRun],
+                       min_mm2: float = _JUNCTION_PATCH_MIN_MM2
+                       ) -> list[Polygon]:
+    """Parts of `poly` the emitted thread does not reach, largest first.
+
+    The thread model is `machine.COVERAGE_THREAD_W_MM` centred on every
+    needle-down segment — the same ribbon `preflight._coverage_map` lays down,
+    from the same constant, so a patch this finds is a patch that instrument
+    would have counted. Ties are stripped for the same reason it strips them:
+    a lock is 3.2 mm of thread on one point and would erase a hole it never
+    covers.
+    """
+    if poly.is_empty or poly.area <= 0:
+        return []
+    C = _JUNCTION_PATCH_CELL_MM
+    pad = 2.0
+    x0, y0, x1, y1 = poly.bounds
+    ox, oy = x0 - pad, y0 - pad
+    w = int((x1 - x0 + 2 * pad) / C) + 2
+    h = int((y1 - y0 + 2 * pad) / C) + 2
+    if w < 3 or h < 3 or w * h > 8_000_000:
+        # A shape too small to raster or too large to raster cheaply. Silent
+        # by design: this is an additive pass, and skipping it costs only the
+        # patch it would have added.
+        return []
+
+    def to_px(pts) -> np.ndarray:
+        return np.round(np.asarray([[(px - ox) / C, (py - oy) / C]
+                                    for px, py in pts], np.float64)).astype(np.int32)
+
+    def to_mm(contour) -> list[tuple[float, float]]:
+        return [(ox + float(q[0][0]) * C, oy + float(q[0][1]) * C) for q in contour]
+
+    art = np.zeros((h, w), np.uint8)
+    cv2.fillPoly(art, [to_px(poly.exterior.coords)], 1)
+    for ring in poly.interiors:
+        cv2.fillPoly(art, [to_px(ring.coords)], 0)
+
+    thread = np.zeros((h, w), np.uint8)
+    t = max(1, int(round(machine.COVERAGE_THREAD_W_MM / C)))
+    for run in runs:
+        pts = stitches.strip_ties(run.points)
+        if len(pts) >= 2:
+            cv2.polylines(thread, [to_px(pts)], False, 1, t)
+
+    missing = (art & (1 - thread)).astype(np.uint8)
+    n, labels, stats, _cents = cv2.connectedComponentsWithStats(missing,
+                                                                connectivity=8)
+    found: list[tuple[float, Polygon]] = []
+    for i in range(1, n):
+        area_mm2 = float(stats[i, cv2.CC_STAT_AREA]) * C * C
+        if area_mm2 < min_mm2:
+            continue
+        # CCOMP, not EXTERNAL: a bare ring around thread that DID land — one
+        # cross crossing the junction is enough to make one — would come back
+        # from EXTERNAL as a solid disc, and re-sewing that middle stacks a
+        # second layer over thread already there. Holes are kept and handed to
+        # the fill as holes.
+        cnts, hier = cv2.findContours((labels == i).astype(np.uint8),
+                                      cv2.RETR_CCOMP, cv2.CHAIN_APPROX_SIMPLE)
+        if hier is None:
+            continue
+        hier = hier[0]
+        for ci, c in enumerate(cnts):
+            if len(c) < 3 or hier[ci][3] != -1:
+                continue                      # a hole; collected with its parent
+            holes = [to_mm(cnts[hi]) for hi in range(len(cnts))
+                     if hier[hi][3] == ci and len(cnts[hi]) >= 3]
+            g = Polygon(to_mm(c), holes)
+            if not g.is_valid:
+                g = g.buffer(0)
+            g = g.buffer(_JUNCTION_PATCH_GROW_MM).intersection(poly)
+            for part in getattr(g, "geoms", [g]):
+                if isinstance(part, Polygon) and part.area >= min_mm2:
+                    found.append((part.area, part))
+    found.sort(key=lambda kv: -kv[0])
+    return [g for _a, g in found]
+
+
+def _junction_patch_runs(poly: Polygon, runs: list[StitchRun], shape_id: str,
+                         start_near: tuple[float, float] | None
+                         ) -> list[StitchRun]:
+    """Sew what `_uncovered_patches` found, as ordinary tatami.
+
+    Tatami and not a column: a hole between arms has no two rails to run
+    between, which is the whole reason the satin tier left it. Underlay is
+    "none" — the arms around it already carry theirs, and a second support
+    pass under a 5 mm patch is thread for nothing.
+
+    The runs carry the SHAPE'S OWN id, so preflight attributes them to the
+    same shape its `ARTWORK_UNCOVERED` finding names and the fix shows up
+    where the defect was reported.
+    """
+    from . import stage6_fill  # local: keeps the tier import one-directional
+
+    out: list[StitchRun] = []
+    cursor = runs[-1].points[-1] if runs else start_near
+    for patch in _uncovered_patches(poly, runs):
+        try:
+            got, _report = stage6_fill.stitch_shape(
+                patch, shape_id, angle_deg=None,
+                row_mm=machine.FILL_ROW_MM, stitch_mm=machine.FILL_STITCH_MM,
+                underlay_style="none", trim_at_mm=math.inf, start_near=cursor)
+        except Exception:  # noqa: BLE001 -- an additive pass must never sink a shape
+            continue
+        for r in got:
+            if len(r.points) >= 2:
+                out.append(r)
+                cursor = r.points[-1]
+    return out
+
+
 def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
                 trim_at_mm: float,
                 start_near: tuple[float, float] | None = None,
@@ -3469,6 +3620,7 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
                 art_poly: Polygon | None = None,
                 rails_follow_edge: bool = False,
                 hairline_floor_mm: float = 0.0,
+                patch_junctions: bool = False,
                 ) -> tuple[list[StitchRun], dict]:
     """One satin-classified shape -> runs in sew order, plus the same report
     contract `stitch_shape` uses, so stage 7 can treat the two identically.
@@ -3628,6 +3780,18 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
     if not any(r.kind in (stitches.SATIN, stitches.RUN) for r in runs):
         report["empty"] = True
         return [], report
+
+    # `PipelineConfig.satin_patch_junctions`, default OFF. Appended BEFORE the
+    # linking pass below so a patch's hop is jump/trim-marked by the same rule
+    # as every other run rather than arriving unlinked at the end.
+    # Deliberately NOT counted into `report`. Stage 7 shares this key set with
+    # the fill tier and reads it with `.get`, so a `junction_patches` key would
+    # be accepted and then read by nothing — which is the kind of thing three
+    # separate sweeps removed from this repo on 2026-09-06. If a consumer ever
+    # wants the count it goes in beside `hairline_runs`, aggregated at
+    # `stage7_sequence` ~2114, with something that actually reads it.
+    if patch_junctions and runs:
+        runs.extend(_junction_patch_runs(poly, runs, shape_id, start_near))
 
     # Link EVERY consecutive run pair, underlay included. A short hop whose
     # stitch would stay INSIDE the shape is sewn as a stitch, not jumped —

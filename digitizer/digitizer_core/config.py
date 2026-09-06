@@ -1224,6 +1224,26 @@ class PipelineConfig:
     # docs/renders/satin-per-stroke-2026-09-06/.
     satin_per_stroke: bool = False
 
+    # Sew what the satin tier missed. Crosses are placed along a spine,
+    # perpendicular to one arm, sized by a ray that measures THAT arm's width
+    # — so where several arms meet, the junction's interior is covered only by
+    # whatever overlap the arms happen to have, and on a five-arm junction it
+    # does not close. Measured 2026-09-06: the K's crotch in
+    # `becker_marine_logo` is bare, 37.2 mm2 at 80 mm and 32.2 at 90, and it
+    # is the whole reason that fixture grades B 76 instead of A 100.
+    #
+    # ON, `stage6_satin` rasterizes the thread it actually emitted (the same
+    # `machine.COVERAGE_THREAD_W_MM` ribbon preflight grades with), finds what
+    # the shape's artwork it missed, and sews patches over
+    # `_JUNCTION_PATCH_MIN_MM2` as ordinary tatami under the shape's own id.
+    # It does NOT adjust any cross: four cross-length knobs were measured
+    # against this hole and none of them reached it (DOCTRINE 2026-09-06).
+    #
+    # DEFAULT OFF and byte-identical off. Flipping it is Kent's — it puts
+    # tatami sheen inside a satin letter, which is a look question a render
+    # answers and a number does not.
+    satin_patch_junctions: bool = False
+
     # Split satin. A satin cross longer than the threshold carries
     # intermediate penetrations, staggered station to station so the holes
     # never line up (machine.SPLIT_* carry the corpus measurements: the
