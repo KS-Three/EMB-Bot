@@ -1183,7 +1183,13 @@ its hedge as it is copied forward** — is why this file is split.
   where there is nothing to find" holds for 23 of 26, not all.** And read "100%
   of the corpus's bare cloth" as *100% of the bare cloth in SATIN shapes* — the
   two largest figures in the corpus are `photo_subject_stub` **956.0 mm²
-  (23.4%, D 58)** and `photo_grass_macro` **407.5 mm² (8.9%, B 76)**, both in a
-  FILL-tier shape apiece, both the recorded baseline, and an order of magnitude
-  larger than the 30.3 mm² this flag clears. *(measured 2026-09-06 —
+  (23.4%, D 58)** and `photo_grass_macro` **407.5 mm² (8.9%, B 76)**, both the
+  recorded baseline and an order of magnitude larger than the 30.3 mm² this flag
+  clears — and **both are the PARKED thread-paint ruling, not open defects**: a
+  tier spy shows `photo_subject` routes to `streamline_fill` (`photo_scene` goes
+  to `stage6_fill.stitch_shape` — meadow, 10 calls, coverage p50 2.95, uncovered
+  0.0), and their coverage p50 of 0.49 / 0.54 sits inside the 0.52-0.59 band
+  recorded above for thread-paint, which Kent tabled. The grader is correctly
+  reporting a deliberate choice. **Do not re-open it.** (Their runs carry `fill`
+  KIND, which is not the fill TIER; a first draft confused the two.) *(measured 2026-09-06 —
   scope-history 09-06)*

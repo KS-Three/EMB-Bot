@@ -5368,14 +5368,27 @@ than landing exactly on its boundary. The price is an occasional patch on a
 hole preflight would not have counted. "Nothing pays for it where there is
 nothing to find" was true of 23 of 26 fixtures, not of all of them.
 
-**And what it cannot reach.** The corpus's two largest uncovered figures are
-untouched, correctly: `photo_subject_stub` **956.0 mm² (23.4% of its claimed
-artwork, D 58)** and `photo_grass_macro` **407.5 mm² (8.9%, B 76)**. Both sit
-in one FILL-tier shape apiece, so `satin_shape` never runs on them. **Both are
-the recorded scorecard baseline**, so neither is news — but they are an order
-of magnitude larger than the 30.3 mm² this flag clears, and anyone reading
-"100% of the corpus's bare cloth" should read it as *100% of the bare cloth in
-SATIN shapes*.
+**And what it cannot reach — which is where the corpus's real bare cloth is.**
+The two largest uncovered figures are untouched, correctly: `photo_subject_stub`
+**956.0 mm² (23.4% of its claimed artwork, D 58)** and `photo_grass_macro`
+**407.5 mm² (8.9%, B 76)**. `satin_shape` never runs on them, so this flag
+cannot help, and **both are the recorded scorecard baseline** — neither is news.
+Anyone reading "100% of the corpus's bare cloth" should read it as *100% of the
+bare cloth in SATIN shapes*; these are an order of magnitude larger.
+
+**They are also already ruled on, which is the part worth connecting.** Both
+are `photo_subject`, and a spy on the tiers shows that class routes to
+`streamline_fill` — thread-paint — while `photo_scene` goes to
+`stage6_fill.stitch_shape` (`photo_dof_meadow`: 10 calls, coverage p50 **2.95**,
+uncovered **0.0**). The two subject fixtures run coverage p50 **0.49** and
+**0.54**, which lands inside the **0.52-0.59** band DOCTRINE already records for
+thread-paint — *"bare cloth between strokes"* — and which Kent looked at and
+tabled: *"let's just table it for later when the tool gets more powerful."*
+So `ARTWORK_UNCOVERED` on those two is the grader correctly reporting a
+deliberate, parked design choice, not an open defect. **Do not re-open it.**
+
+(Their runs carry `fill` KIND, which is not the same as the fill TIER — an
+earlier draft of this entry said "FILL-tier shape" and was wrong.)
 
 *(A first pass at attributing those two read their tiers as "border, travel"
 and nearly filed a defect. It keyed on the raw `shape_id`; the fill runs are
