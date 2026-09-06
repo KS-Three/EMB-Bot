@@ -240,20 +240,49 @@ def test_splitting_a_region_is_not_a_way_around_law_31s_width_floor():
         "a region of floor-refused strokes must not reach any area fraction"
 
 
-def test_nothing_in_the_pipeline_consults_the_per_stroke_path():
-    """This PR is deliberately inert: the flag, the wiring and the flip are
-    later slices. If a future change starts calling `classify_strokes` from
-    the engine, that is a decision to make on purpose — with the scorecard
-    recapture and the `ribbon_stability` re-run the plan (§4, §7) requires —
-    not a thing to discover from a moved golden.
+def test_the_per_stroke_path_is_reachable_only_behind_the_flag():
+    """The invariant that actually holds, and the one the old test only
+    APPEARED to check.
+
+    Until 2026-09-06 this asserted that no module in `digitizer_core/` calls
+    `classify_strokes`, under the name
+    `test_nothing_in_the_pipeline_consults_the_per_stroke_path`. PR 3 then
+    wired the rung — `classify_ribbon`'s `dt_irregular` branch calls
+    `_stroke_rung_takes` behind `cfg.satin_per_stroke` — and the test went on
+    passing, because it greps for a symbol the pipeline does not use. A test
+    whose name promises an invariant it no longer checks is worse than no
+    test.
+
+    So: the per-stroke path may be reached, but ONLY behind the flag. Every
+    call site outside `stage6_satin.py` must pass `per_stroke=`, never rely on
+    a default, and nothing may call the stroke helpers unconditionally.
     """
     import pathlib
+    import re
 
     root = pathlib.Path(__file__).resolve().parent.parent / "digitizer_core"
-    callers = []
-    for p in sorted(root.glob("*.py")):
-        if p.name == "stage6_satin.py":
+    helpers = ("classify_strokes(", "_stroke_rung_takes(", "_stroke_rows(")
+    stray = []
+    unflagged = []
+    for mod in sorted(root.glob("*.py")):
+        if mod.name == "stage6_satin.py":
             continue
-        if "classify_strokes(" in p.read_text():
-            callers.append(p.name)
-    assert callers == [], f"classify_strokes is wired into {callers}"
+        src = mod.read_text()
+        for h in helpers:
+            if h in src:
+                stray.append(f"{mod.name}:{h}")
+        # Every satin verdict the pipeline asks for must name the flag.
+        for call in re.finditer(r"(?:is_satin_candidate|classify_ribbon)\(", src):
+            tail = src[call.end():call.end() + 400]
+            if "per_stroke=" not in tail.split(")\n")[0] + ")":
+                if "per_stroke=" not in tail[:300]:
+                    unflagged.append(f"{mod.name}@{src[:call.start()].count(chr(10)) + 1}")
+
+    assert stray == [], (
+        f"the stroke helpers are called directly from the pipeline: {stray} — "
+        "the rung must be reached through classify_ribbon's flag, so a caller "
+        "cannot get per-stroke routing without asking for it")
+    assert unflagged == [], (
+        f"a satin verdict is taken without naming per_stroke=: {unflagged}. "
+        "All three call sites must agree, or compensation and routing "
+        "disagree about which shapes are satin")

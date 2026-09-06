@@ -549,24 +549,39 @@ def _dt_stats(poly: Polygon) -> _DtStats | None:
     )
 
 
-# --- Per-stroke classification (MEASUREMENT ONLY) --------------------------
+# --- Per-stroke classification ---------------------------------------------
 #
-# Nothing in the pipeline calls anything below. `classify_ribbon` pools the
-# distance transform over a whole region's skeleton and returns one bool, so a
-# branchy letterform — wide at its junctions, thin along its arms — fails
-# `2σ < μ` as a unit even when every arm of it is a clean ribbon. These
-# functions ask the same question per STROKE, so the size of that effect can be
-# read off real fixtures before any routing changes.
+# `classify_ribbon` pools the distance transform over a whole region's
+# skeleton and returns one bool, so a branchy letterform — wide at its
+# junctions, thin along its arms — fails `2σ < μ` as a unit even when every
+# arm of it is a clean ribbon. These functions ask the same question per
+# STROKE.
 #
-# The plan is `docs/superpowers/plans/2026-09-04-per-stroke-satin-routing.md`;
-# this is its PR 2, deliberately inert. Its §7 records why: a new
-# area-fraction threshold on a classifier DOCTRINE has already measured as
-# threshold-fragile (MASTER_SCOPE defect 26 — 5 of 219 verdicts flip on
-# boundary detail alone) must be scored on `tools/ribbon_stability.py` BEFORE
-# a number is adopted, not after.
+# REACHED FROM THE PIPELINE, but only behind `cfg.satin_per_stroke` (default
+# OFF): `classify_ribbon`'s `dt_irregular` branch calls `_stroke_rung_takes`
+# when the flag is on, and nothing else here is called from
+# `digitizer_core/`. This block said "nothing in the pipeline calls anything
+# below" until 2026-09-06, which was true of the plan's PR 2 and stopped
+# being true when PR 3 wired the flag — the kind of comment that goes stale
+# silently because no test reads it. `test_the_per_stroke_path_is_reachable_
+# only_behind_the_flag` is the one that does.
+#
+# The plan is `docs/superpowers/plans/2026-09-04-per-stroke-satin-routing.md`.
 
-# The plan's PROPOSED area fraction, carried here so a report can be read
-# against it. Not adopted, not read by any caller.
+# The area fraction the rung takes a region at: at least this much of its
+# stroke-partitioned area must pass BOTH per-stroke gates.
+#
+# ADOPTED 2026-09-06 by `cfg.satin_per_stroke`, and only after being scored
+# the way §7 demanded — a new threshold on a classifier DOCTRINE has already
+# measured as fragile (MASTER_SCOPE defect 26: 5 of 219 verdicts flip on
+# boundary detail alone) had to go through `tools/ribbon_stability.py` BEFORE
+# adoption, not after. It did: `--variant strokes` reads total flips 5 -> 6,
+# one added flip against the shipped classifier's own five, 17 shipped
+# verdicts changed, and all seven archetype invariants holding.
+#
+# It is NOT the whole rule. `_stroke_rung_takes` vetoes any region carrying an
+# over-cap stroke before this fraction is consulted at all — see there for the
+# 28 mm² of bare cloth that bought.
 _STROKE_AREA_FRAC_MIN = 0.75
 
 
