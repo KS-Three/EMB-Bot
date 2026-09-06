@@ -336,3 +336,19 @@ Two honest qualifications.
 first — it is (`tools/satin_columns.py`, #352). What is still missing is a
 RENDER: every number here is geometric, and the question "does a 2.12 mm
 column read better on this logo than the fill it replaces" is one for his eyes.
+
+### A caveat on every Becker number above (2026-09-06)
+
+`becker_marine_logo.png` is **146 x 91 px** — 1.46 px/mm at 100 mm, the
+corpus's lowest-resolution fixture by a wide margin. One source pixel is
+~0.68 mm, so every width it reports is quantised in ~0.7 mm steps, and
+`_CURVE_MIN_PX_PER_MM` (20.0) gates curve refinement off for it entirely at
+4.0 prepped px/mm — the staircase on every curve in its renders is the
+artwork's own resolution, not an engine defect.
+
+That does not invalidate the work: the flag is correct, the cap veto is
+correct, and the sewn-stitch measurements are what they are. But it does mean
+the threshold-sensitive findings here — the cv clustering at the 0.50 gate,
+the 80-vs-100 mm segmentation difference — are **plausibly quantisation, not
+artwork**, and none of them should be used to calibrate a constant. Recorded
+in DOCTRINE.
