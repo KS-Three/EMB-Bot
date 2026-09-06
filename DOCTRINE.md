@@ -1386,7 +1386,16 @@ its hedge as it is copied forward** — is why this file is split.
   **1,648.5 mm², 53.6%**. Both emit `block` — "do not sew". Every sibling check
   here has a floor (`_uncovered_findings` 5.0 mm², `_lettering_findings`
   `MIN_LETTER_EXTENT_MM` 4.0). **Rule: when a design grades F on thread match,
-  read the worst shape's AREA before believing the design is unsewable.**
+  read the worst shape's AREA before believing the design is unsewable** — the
+  finding SAYS it as of 2026-09-06 (`0.58 mm² — 0.03% of the design`, plus
+  `worst_shape_area_mm2` / `worst_shape_area_frac` in `extra`), so this no
+  longer costs a measurement. The share is over the SCORED regions, not all of
+  them: `logo_gaulke_roofing` has 46 enclosed-background regions of 56, and
+  counting those would shrink every share. **So every share the finding prints
+  is slightly LARGER than the row above** — 54.48% against 53.6% on
+  `drone_render`, 0.03% against 0.02% on `gaulke_roofing`. The rows are the
+  older all-regions denominator, kept as the numbers that were actually
+  measured; the finding is the better one. Neither is a drift to chase.
   Whether the check should have a floor is a product call — moving it re-bases
   the scorecard for at least four fixtures — so this is recorded as a
   measurement, not a proposal. *(measured 2026-09-06)*
