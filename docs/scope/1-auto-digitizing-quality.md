@@ -179,6 +179,18 @@ seven F-grade fixtures the refusal counts are 0/0/0/4/7 against `bridge_bar`
 **63** and `screenshot` **12** — the two the F-wall decomposition attributes to
 this cause. Lowering the floor moves goldens, so it wants its own A/B.
 
+**And a sibling correction in the check that condemns those shapes**
+(2026-09-06): `preflight._region_color_errors` scored `enclosed_background`
+regions, which are unstitched by default and whose colour is the background's
+— the category error `revalidate_threads` already refuses. Skipping them
+removes exactly ONE finding across the 26-fixture matrix
+(`logo_gaulke_roofing`'s `4174`, F 0 → F 4, blocks 3 → 2) and moves no grade
+letter. Two constructions were rejected on the way and are recorded in
+DOCTRINE: a plan-derived denominator (breaks ten deliberate `test_preflight`
+cases that pass a synthetic plan) and an instrument that filtered `run.jump`,
+which is how the needle ARRIVED and not travel — it falsely made this look
+like eleven findings.
+
 **The estimator is the fix, and the first build got it wrong** — worth
 knowing because the same trap has now caught this codebase twice. Scoring a
 region by MEAN Lab put the traced sliver at dE00 **5.54**, i.e. reported the
