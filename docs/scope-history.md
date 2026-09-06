@@ -5542,9 +5542,22 @@ sits nearer Whale (127) than Silver (204), yet it holds Silver — so the colour
 the palette actually saw is not simply the mean over its FINAL polygon either.
 Preflight's own docstring says why that cannot be checked from the result
 (*"the pipeline does not carry the pre-snap cluster colors into its result"*);
-closing it needs stage-2 instrumentation. The pipeline already names the
-answer to the class, though, in the section that comment introduces: **tonal
-region splitting.**
+closing it needs stage-2 instrumentation.
+
+**And the mechanism that comment introduces does NOT reach these two — checked
+rather than assumed.** `split_tonal_regions` exists and is built, but
+`TONAL_SPLIT_MIN_AREA_MM2 = 150.0`: *"A region has to be big enough that its
+parts are still sewable. Below this the split just manufactures slivers for
+`resolve_small_regions` to absorb again."* Our offenders are **0.94 and
+1.72 mm²** — three orders of magnitude under that floor. Measured on
+`screenshot_phone_ui_golke` with `cfg.split_tonal_regions=True`: **F 0, 10
+blocks, 153 regions, 7,621 stitches — identical in every figure to OFF**, and
+the same two shapes still worst. A complete no-op.
+
+So the tonal-splitting answer is for LARGE bimodal regions (Kent's 4,200 mm²
+owl body, which is what it was built for). The bimodal SLIVER is a different
+problem with no built answer, and the floor excluding it is deliberate.
+**Nobody should flip that flag expecting this wall to move.**
 
 ### And a structural note on the check itself
 

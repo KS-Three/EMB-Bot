@@ -1253,8 +1253,14 @@ its hedge as it is copied forward** — is why this file is split.
   bimodal-pool failure recorded above for the OLD thread check. Established in
   KIND; not in detail, because `S05f7940d`'s mean luminance sits nearer Whale
   than the Silver it holds, and the pre-snap cluster colour is not carried
-  into the result. The pipeline already names the answer to the class: tonal
-  region splitting. **Rule: before calling a cone assignment wrong,
+  into the result. **And `split_tonal_regions` does NOT reach them** — checked,
+  not assumed: its `TONAL_SPLIT_MIN_AREA_MM2` is **150.0 mm²** against these
+  0.94 and 1.72, and turning it on leaves `screenshot_phone_ui_golke`
+  identical in grade, blocks, region count and stitch count. That mechanism is
+  for LARGE bimodal regions (the 4,200 mm² owl body it was built for); the
+  bimodal SLIVER has no built answer and the floor excluding it is deliberate
+  — *"below this the split just manufactures slivers"*. Do not flip that flag
+  expecting this wall to move. **Rule: before calling a cone assignment wrong,
   rasterise the region's own polygon over the artwork and compare — `argmin`
   cannot mis-pair, so a bad cone means a bad region colour, and check whether
   its neighbours of the same size and colour got it right before calling it
