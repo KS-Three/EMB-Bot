@@ -377,6 +377,13 @@ hand-rolling it in JS.
   `split_tonal_regions=False` — cost and quality printed together, because the
   question is the trade). Run each from `digitizer/` with `.venv/bin/python`.
 
+  Two more added 2026-09-06, both born of a finding that would not say what
+  it knew: `digitizer/tools/spool_remedy.py` (per blocking
+  `THREAD_MATCH_POOR`, whether a spool the design ALREADY LOADS is
+  meaningfully closer — 5 of the F-wall's 24 blocks name one) and
+  `digitizer/tools/floor_depth.py` (how far BELOW zero the floored designs
+  sit, since the score clamps at 0 and hides a 234-point spread behind it).
+
   **`digitizer/tools/doc_claims.py` is the odd one out** — it reads no artwork
   and runs in seconds. It checks the two kinds of doc claim a script can
   settle, documented `cfg.<flag>` defaults and `NAME = <number>` constants,

@@ -1505,3 +1505,21 @@ its hedge as it is copied forward** — is why this file is split.
   different parents landing on one cone, is genuinely separate: bands are
   built in stage 6, long after the fold, and the bind does not touch it.)
   *(measured 2026-09-06 — scope-history 09-06)*
+
+- **A CLAMPED score hides magnitude — read the unclamped value before
+  concluding a fix "moved nothing".** `run_preflight` prints
+  `max(0, 100 - 30*blocks - 12*warns)`, and **12 of the corpus's 52
+  design/garment combos sit on exactly 0 with unclamped scores from −272 to
+  −38** (`tools/floor_depth.py`, 2026-09-06) — a 234-point spread behind one
+  printed value. `screenshot_phone_ui_golke` must clear **312 points, about
+  eleven blocking findings**, before its grade moves a single letter, so a fix
+  clearing TEN of them still prints `F 0`. This is the missing half of
+  yardstick-disagreement 1: a real thread fix there is invisible because
+  `THREAD_MATCH_POOR` judges per thread on its worst patch **and** because the
+  design is hundreds of points under water. It also explains the exception —
+  `dissolve_phantom_blends` moves `gaulke_roofing` F 0 → C 64 because gaulke
+  grades F **4**, shallow rather than floored, so its improvement had
+  somewhere to go. **Rule: on a floored design the grade is not evidence in
+  either direction; quote the metric that moved, or the render.** Un-clamping
+  or widening the bands re-bases every grade in the scorecard, so it is a
+  product call, not a cleanup. *(measured 2026-09-06 — scope-history 09-06)*
