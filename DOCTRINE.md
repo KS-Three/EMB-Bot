@@ -708,6 +708,21 @@ its hedge as it is copied forward** — is why this file is split.
   of the 10 sit on the clamped score floor where nothing registers either way.
   The knob is real; the cure is one in ten.
 
+- **A trim INSIDE a shape and a trim BETWEEN shapes need opposite advice, and
+  the corpus splits them almost evenly.** 26 fixtures at 80 mm: **866 trims,
+  456 in-shape (53%), 410 between (47%)**, with the majority flipping per
+  design — in-shape dominant on 11 fixtures, between-shape on 11, one tie,
+  from `photo_grass_macro` at 93% in-shape to `logo_alpha` and `logo_whitebg`
+  at 100% between. Merging or removing shapes removes a BETWEEN cut and cannot
+  touch an IN-shape one: `satin_shape` may travel over UNSEWN strokes only, and
+  the walk on a 27-stroke region succeeds up to 40% sewn and never again after.
+  **This was not a discovery** — MASTER_SCOPE defect 6 has said "the trim bulk
+  is INSIDE one shape, 69% intra-shape" since 2026-08-21, on one design. What
+  was missing is that `TRIM_HEAVY` never reported it, so every design got the
+  between-shape remedy. Fixed 2026-09-06. `tools/trim_locality.py` re-measures
+  it; Becker reproduces the August number independently at 19 of 28 (68%), the
+  1-point gap being the file's first cut, which does not exist.
+
 - **`STITCHES_TOO_SHORT` and `LETTERING_TOO_SMALL` bill 24 points for one
   defect — but do NOT delete either to "dedupe" them.** They measure the SAME
   quantity at the SAME threshold: `MIN_COLUMN_MM` **is**

@@ -133,7 +133,7 @@ THREAD_MATCH_POOR = "THREAD_MATCH_POOR"        # extra: {thread_number, thread_n
 LETTERING_TOO_SMALL = "LETTERING_TOO_SMALL"    # extra: {count, satin_total, shapes: [{shape_id, column_mm, extent_mm}]} — satin_total is the DENOMINATOR the message needs ("38 of 46"), which reads very differently from a bare 38
 STITCHES_TOO_LONG = "STITCHES_TOO_LONG"        # extra: {count, max_mm}
 STITCHES_TOO_SHORT = "STITCHES_TOO_SHORT"      # extra: {fraction, count, total, uncovered_shapes, shapes: [{shape_id, short, steps, median_mm, also_too_small}]} — `shapes` is every satin shape carrying a short step, worst first; `also_too_small` is whether LETTERING_TOO_SMALL already named it, and `uncovered_shapes` counts the ones it did NOT (a sewable column with a narrow waist passes lettering's median test and still breaks thread)
-TRIM_HEAVY = "TRIM_HEAVY"                      # extra: {per_1000, trims, stitches}
+TRIM_HEAVY = "TRIM_HEAVY"                      # extra: {per_1000, trims, stitches, in_shape, between_shapes, worst_shape_id, shapes: [{shape_id, trims}]} — in_shape + between_shapes == trims by construction; a cut INSIDE a shape is that shape failing to sew in one pass and merging shapes cannot remove it, which is the OPPOSITE of where the old message ("merge or remove the smallest shapes") sent people. Corpus-wide the split is 53/47, so one remedy was only ever right half the time
 DENSITY_EXTREME = "DENSITY_EXTREME"            # extra: {kind, measured_mm, target_mm, ratio} (+ technique, band_mm on a tonal fill)
 DENSITY_STACKED = "DENSITY_STACKED"            # extra: {peak_units, p95_units, over_warn_mm2, over_block_mm2, cell_mm}
 SAME_HOLE_HEAVY = "SAME_HOLE_HEAVY"            # extra: {fraction, repeat_points, penetrations, baseline}
@@ -1508,28 +1508,89 @@ def _stitch_length_findings(plan: StitchPlan,
 # --- Trims ------------------------------------------------------------------
 
 def _trim_findings(plan: StitchPlan) -> tuple[list[dict], float]:
-    """Trims per 1,000 stitches against the professional corpus.
+    """Trims per 1,000 stitches against the professional corpus, split by cause.
 
     The plan marks the first run of every color block as trimmed, but the
     first block of the design has no thread to cut yet, so the FILE contains
     one trim fewer than plan.stats reports (the same correction the service's
     stats payload makes). The rate uses what the machine will actually do.
+
+    **The split is the point.** A cut BETWEEN shapes is the machine moving on,
+    and merging or removing shapes removes it. A cut INSIDE one shape is that
+    shape failing to sew in one pass, and no amount of merging touches it — the
+    2026-09-06 Becker investigation measured why: `satin_shape` may travel over
+    UNSEWN strokes only, and on a 27-stroke region the walk succeeds up to 40%
+    sewn and **never again after**, so a big multi-stroke shape spends nearly
+    all its life unable to reach anywhere. That investigation counted PEN-UPS
+    (trims and floats together) and found **19 of 28 inside one shape**,
+    `Sead76620`, a 638.8 mm² 27-stroke region — a big multi-stroke shape, not
+    a small one, which is the opposite end of the design from where the old
+    message ("merge or remove the smallest shapes") sent people. Five other
+    remedies were measured and refuted there (stroke order, `TRIM_AT_MM`, spur
+    pruning, the Eulerian floor, end-to-end chaining); the one that remains is
+    decomposing the shape, and that is not a knob.
+
+    This split counts TRIMS, which is what the finding is scored on, so its
+    numbers are not that 19/28 and should not be quoted as it.
+
+    Attribution walks the runs in the SAME order and with the SAME empty-run
+    skip as `iter_machine_commands`, which is what produced `stats.trims` — a
+    run with no points emits nothing at all, its trim included. `in_shape`
+    plus `between_shapes` therefore equals `trims` by construction, which a
+    test pins.
     """
     s = plan.stats
-    first = plan.blocks[0].runs[0] if plan.blocks and plan.blocks[0].runs else None
+    sewn = [run for _b, run in plan.iter_runs() if run.points]
+    first = sewn[0] if sewn else None
     trims = s.trims - (1 if first is not None and first.trim else 0)
     per_1000 = 1000.0 * trims / s.stitch_count if s.stitch_count else 0.0
     if per_1000 <= TRIMS_PER_1000_MAX or s.stitch_count < _MIN_SAMPLES:
         return [], per_1000
+
+    # `shape_id` defaults to "", so an unattributed run would otherwise match
+    # its unattributed neighbour and claim a shape's worth of cuts as ones
+    # merging "cannot remove". Only a NON-EMPTY id that matches counts as
+    # in-shape, which is the conservative direction: it never over-claims that
+    # the cheap remedy is unavailable.
+    in_shape = between = 0
+    by_shape: dict[str, int] = {}
+    prev_sid: str | None = None
+    for i, run in enumerate(sewn):
+        if run.trim and i > 0:                 # i == 0 is the correction above
+            if run.shape_id:
+                by_shape[run.shape_id] = by_shape.get(run.shape_id, 0) + 1
+            if run.shape_id and run.shape_id == prev_sid:
+                in_shape += 1
+            else:
+                between += 1
+        prev_sid = run.shape_id
+    carriers = sorted(({"shape_id": sid, "trims": n}
+                       for sid, n in by_shape.items()),
+                      key=lambda c: (-c["trims"], c["shape_id"]))
+    worst = carriers[0] if carriers else None
+
+    if in_shape > between and worst is not None:
+        where = (f" {in_shape} of {trims} happen INSIDE a shape rather than "
+                 f"between shapes ({worst['shape_id']} takes "
+                 f"{worst['trims']}) — merging or removing shapes cannot "
+                 f"remove those, the shape has to sew in fewer strokes.")
+    else:
+        where = (f" {between} of {trims} are moves between shapes, so merging "
+                 f"or removing the smallest is the cheapest thing to try; the "
+                 f"other {in_shape} are inside a shape and it will not touch "
+                 f"them.")
     return [finding(
         TRIM_HEAVY,
         "warn",
         f"{per_1000:.1f} trims per 1,000 stitches — professional files run "
-        "0.1 to 4.1. Each cut is 2-3 seconds of machine time; consider "
-        "merging or removing the smallest shapes.",
+        f"0.1 to 4.1. Each cut is 2-3 seconds of machine time.{where}",
         per_1000=round(per_1000, 1),
         trims=trims,
         stitches=s.stitch_count,
+        in_shape=in_shape,
+        between_shapes=between,
+        worst_shape_id=None if worst is None else worst["shape_id"],
+        shapes=carriers,
     )], per_1000
 
 
