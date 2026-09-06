@@ -1211,3 +1211,105 @@ its hedge as it is copied forward** — is why this file is split.
   reporting a deliberate choice. **Do not re-open it.** (Their runs carry `fill`
   KIND, which is not the fill TIER; a first draft confused the two.) *(measured 2026-09-06 —
   scope-history 09-06)*
+
+- **All seven F-grade fixtures fail on ONE finding, and it is three unrelated
+  problems.** `THREAD_MATCH_POOR:block` grades 7 of 26 corpus fixtures (14 of
+  52 matrix entries) at F 0, all baseline, all class `gradient` — which is
+  where real logo art goes. Isolating the yardstick line
+  (`photo = _is_photo_class(...)`; forcing `_is_photo_class` itself is a
+  CONFOUND, it also gates `PHOTO_RESOLUTION_LOW` and the subject check):
+  **(1) the raw yardstick, 4 of 7.** `golden_tee`, `drone_render`,
+  `region_blobs`, `summit_badge` clear every block under EXCESS scoring and are
+  untouched by halo dissolve — their assignments are already optimal and raw
+  distance condemns them anyway, which is the exact failure the photo route's
+  2026-08-24 rescoring was built for and which the gradient lane never got.
+  **(2) halo cones, 1 of 7.** `gaulke_roofing` needs no yardstick change:
+  `cfg.dissolve_phantom_blends` alone gives **F 0 → C 64, blocks 3 → 0, worst
+  ΔE 63.6 → 6.8, −15% stitches** (B 76 with excess too). Kent ruled that flag
+  OFF 2026-09-04 on trims, cones and worst-excess; **the record carries no
+  grade for it and this is it.** It costs elsewhere — bridge_bar 3 → 4 blocks.
+  **(3) region colour != the artwork under it, 2 of 7.** `bridge_bar` and
+  `screenshot_phone_ui` block under every combination, and the screenshot's
+  looks blatant: **`0111 Whale` (127,127,127) scores 33.0 ΔE on artwork read
+  as (252,252,252) while the design already loads `0015 White`**. **It is NOT
+  a permuted palette, and the code says so without another measurement:**
+  `select_palette` ends `assignment = np.argmin(dist[:, sel], axis=1)` — every
+  region gets its NEAREST selected medoid, so with White selected the region's
+  own colour must be nearer Whale. So the fault is UPSTREAM: the region's
+  stored colour disagrees with the artwork inside its own polygon, which
+  rasterising that polygon over the re-read artwork confirms — 114 clean
+  pixels at (252,252,252) on a 0.94 mm² shard holding a 127 grey.
+  **It is not the erosion fallback** (that path never fires here) **and it is
+  not systematic**: slivers of 0.45-0.60 mm² at 251-253 take `0015 White`
+  correctly and a 41 mm² region at 118 takes Whale correctly. Two regions of a
+  hundred-plus are wrong, and the 53%-area block on the same fixture is an
+  honest "no closer cone" (artwork 46 vs Dark Charcoal 40,40,33, ΔE 10.5).
+  **What separates them from the slivers beside them is that they are
+  BIMODAL** — luminance 24-254 and 0-255, 18% and 42% below mid-grey, against
+  a correctly-assigned 0.60 mm² control whose 117 pixels sit in ONE 32-wide
+  bin. **I read that as a palette failure (a mean over a bimodal pool) and
+  that was WRONG.** `revalidate_threads` names bimodality as the fingerprint
+  of something else: *"a drifted sliver is bimodal by construction — part of
+  it still sits on the colour its thread was chosen from, part has moved onto
+  something else."* **The real cause is that stage 4 ALREADY FIXES THIS and a
+  pixel floor excludes exactly these shapes.** `revalidate_threads` (fix #6.3,
+  2026-08-11) re-reads every final polygon and re-snaps the drifted — on this
+  fixture 46 of 153 shapes wear a thread that differs from the stage-2 label
+  under their own outline, i.e. it ran and worked. Instrumenting the real
+  function: **74 asked, 67 skipped as `enclosed_background` (by design), 12
+  REFUSED on `THREAD_REVALIDATE_MIN_PX = 200` — every one of them 50-199 px.**
+  **`preflight._MIN_COLOR_PIXELS` is 50.** A shape in that band is scored and
+  BLOCKED by preflight and can never be corrected by stage 4; the F lives in
+  the gap between two floors that were set 4x apart by different authors.
+  Asking anyway for those 12, with the function's own estimator, argmin and
+  3.0 dE gate: **7 would change answer**, worst `S43831dcd` — 0.94 mm²,
+  **177 px against a floor of 200** — `0111 Whale` at 32.7 dE, would take
+  `0015 White` at **1.4**. And this CLOSES the hedge an earlier entry left
+  open: `S05f7940d` holds Silver though its mean sits nearer Whale because at
+  365 px it is ABOVE the floor, so it WAS re-asked and moved there on the
+  median-per-pixel estimator — its thread was never a mean of anything, and
+  no stage-2 instrumentation was needed. **And `split_tonal_regions` does NOT
+  reach them** — checked, not assumed: its `TONAL_SPLIT_MIN_AREA_MM2` is
+  **150.0 mm²** against these 0.94 and 1.72, and turning it on leaves
+  `screenshot_phone_ui_golke` identical in grade, blocks, region count and
+  stitch count. That mechanism is for LARGE bimodal regions (the 4,200 mm²
+  owl body it was built for) and was never the answer here, because this
+  bimodality is drift — *"below this the split just manufactures slivers"*.
+  Do not flip that flag expecting this wall to move. **The corpus separates
+  along exactly this line, which is the independent check on a decomposition
+  I got wrong three times first:** refused-on-the-floor counts across the
+  seven F fixtures are `golden_tee` 0, `region_blobs` 0, `gaulke_roofing` 0
+  (46 of its 56 regions are `enclosed_background` — cause 2 is its story),
+  `drone_render` 7, `summit_badge` 4 — against **`bridge_bar` 63 and
+  `screenshot` 12**, the two cause 3 is about. `bridge_bar`'s 29 movers
+  exceed its 23 in-band shapes: six are UNDER 50 px, so preflight will not
+  score them and stage 4 will not fix them — a wrong colour no instrument in
+  this repo reports. Instrument: `digitizer/tools/revalidate_floor.py`. **Rule: before calling a cone assignment wrong,
+  rasterise the region's own polygon over the artwork and compare — `argmin`
+  cannot mis-pair, so a bad cone means the thread was chosen from different
+  pixels, and check whether its neighbours of the same size and colour got it
+  right before calling it systematic.** **Rule: a bimodal shape in this
+  pipeline means DRIFT, not a bad segmentation colour — `revalidate_threads`
+  says so in its own docstring, and the next question is always whether that
+  function was allowed to run on it.** **Rule: when two instruments disagree
+  about what is measurable, read both floors — a defect that one can report
+  and the other cannot fix is invisible from either side alone.**
+  Unrecorded before 2026-09-06.
+  **Rule: never treat a THREAD_MATCH_POOR wall as one defect — split it by
+  yardstick, palette and assignment before proposing anything.**
+  *(measured 2026-09-06 — scope-history 09-06)*
+
+- **`THREAD_MATCH_POOR` has NO area floor, and half its blocks ride on
+  slivers.** It is driven by "each thread's worst such patch", with no minimum.
+  Across the seven F fixtures, 25 blocking findings; the worst shape behind
+  each measures **min 0.58 mm², p50 3.17, max 1,648.5 — and 12 of the 23
+  measurable ones are under 5 mm².** `gaulke_roofing`'s 63.6 ΔE rides a
+  **0.58 mm² shard, 0.02% of the design**; `drone_render`'s 14.1 rides
+  **1,648.5 mm², 53.6%**. Both emit `block` — "do not sew". Every sibling check
+  here has a floor (`_uncovered_findings` 5.0 mm², `_lettering_findings`
+  `MIN_LETTER_EXTENT_MM` 4.0). **Rule: when a design grades F on thread match,
+  read the worst shape's AREA before believing the design is unsewable.**
+  Whether the check should have a floor is a product call — moving it re-bases
+  the scorecard for at least four fixtures — so this is recorded as a
+  measurement, not a proposal. *(measured 2026-09-06)*
+

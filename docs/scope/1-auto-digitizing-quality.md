@@ -167,6 +167,18 @@ new `THREAD_RESNAPPED_AFTER_DRIFT` warning. **Threads only — never geometry**
 `THREAD_REVALIDATE_MIN_PX=200` and `THREAD_REVALIDATE_MIN_IMPROVEMENT_DE00=3.0`
 so ordinary sub-unit wobble cannot churn assignments or goldens.
 
+**And that pixel gate is now a measured defect of its own (2026-09-06 —
+MASTER_SCOPE 28).** `preflight._MIN_COLOR_PIXELS` is **50**, so every shape of
+**50–199 px** can be scored and BLOCKED by preflight and never corrected here.
+On `screenshot_phone_ui_golke` the function asks about 74 shapes, skips 67 as
+`enclosed_background`, and REFUSES 12 — all 12 in that band, 7 of which would
+change answer under this function's own estimator and its own 3.0 dE gate.
+Worst is the design's worst finding: `S43831dcd`, **177 px against a floor of
+200**, `0111 Whale` at 32.7 dE where `0015 White` scores **1.4**. Across the
+seven F-grade fixtures the refusal counts are 0/0/0/4/7 against `bridge_bar`
+**63** and `screenshot` **12** — the two the F-wall decomposition attributes to
+this cause. Lowering the floor moves goldens, so it wants its own A/B.
+
 **The estimator is the fix, and the first build got it wrong** — worth
 knowing because the same trap has now caught this codebase twice. Scoring a
 region by MEAN Lab put the traced sliver at dE00 **5.54**, i.e. reported the
