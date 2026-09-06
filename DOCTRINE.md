@@ -1165,7 +1165,15 @@ its hedge as it is copied forward** — is why this file is split.
   logging that shape's 20-stroke sequence against progress: ok at 5/15/20/40%,
   then **"no route" on all nine calls from 45% to 85%.** After 40% of a shape
   is down the walk never succeeds again, and a 27-stroke shape spends nearly
-  all its life mostly-sewn. **Rule: a trim count on a many-stroke satin shape
+  all its life mostly-sewn.
+  **The fill tier got here first** — `docs/scope/1-auto-digitizing-quality.md`
+  ruled out ordering, threshold and travel for `stage6_fill` on 2026-08-21
+  (*"no route stays inside the shape, at any length"*, 52 of 56; travel's
+  ceiling 4 of 56). Two tiers, two shapes, three weeks apart, same answer —
+  **cite it rather than re-deriving it.** What the satin side adds is WHEN it
+  dies: "no path to find" is not a fixed property of a shape, it BECOMES true
+  as the shape fills in, which is why no static property of the geometry
+  predicts it. **Rule: a trim count on a many-stroke satin shape
   is the price of not running stitches over finished satin — check how far
   through the shape the failures start before touching any knob.** The lever is
   the number of strokes in the shape; WHERE to change that (segmentation,
