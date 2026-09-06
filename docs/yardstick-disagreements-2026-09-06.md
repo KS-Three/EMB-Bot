@@ -141,6 +141,32 @@ is — which is row 1's advice, now with the number that says why.
 
 `digitizer/tools/floor_depth.py`. *(measured 2026-09-06)*
 
+## 7. It prefers a design that dropped its ink
+
+The first six rows are the metric failing to SEE an improvement. This one is
+the metric preferring a regression, and it was found by measuring cones
+instead of grades (`digitizer/tools/flip_sheet.py`, `docs/flip-sheet-2026-09-06.md`).
+
+`logo_gaulke_roofing` is black lettering on a white label. Four arms:
+
+| arm | darkest cone | grade |
+|---|---:|---|
+| off | `1375 Dark Charcoal`, **L\* 15.9**, 288 st | F 4 |
+| `dissolve_phantom_blends` | `0145 Skylight`, L\* 85.7 | **C 64** |
+| `bind_resnap_all_classes` | `0020 Black`, **L\* 0.0** | F 16 |
+| all five parked flags | `3971 Silver`, L\* 82.0 | **C 64** |
+
+**The two best grades load no thread darker than L\* 82 for lettering on a
+white ground. The only arm that loads Black grades second-worst.**
+
+*Why:* `THREAD_MATCH_POOR` grades per thread on that thread's worst patch, so
+deleting the dark cone deletes the thread that was scoring badly — you cannot
+have a poor thread match on a thread you never loaded.
+
+The practical consequence is in row 1's terms: on a fixture where a flag
+removes a cone, the grade is not evidence of anything, and the cone list is.
+*(measured 2026-09-06)*
+
 ---
 
 ## What this list is not

@@ -686,6 +686,20 @@ its hedge as it is copied forward** — is why this file is split.
 
 ## Gotchas — cost someone a session once
 
+- **A flag that removes a cone cannot be judged on its grade. Check the cone
+  list.** `THREAD_MATCH_POOR` grades per thread on that thread's worst patch,
+  so deleting a cone deletes the thread that was scoring badly — you cannot
+  have a poor thread match on a thread you never loaded. On
+  `logo_gaulke_roofing` (black lettering on a white label) the two arms that
+  grade BEST load nothing darker than L* 82, and the only arm that loads real
+  Black grades second-worst. A whole claim was built on the wrong side of
+  this: MASTER_SCOPE carried "F 0 → C 64, the difference between 'do not sew'
+  and a usable design" for two days about a design that had dropped its ink.
+  Machine units do not save you either — the same change reads "blocks 4→3,
+  trims 30→18", both true. *(measured 2026-09-06 — `docs/flip-sheet-2026-09-06.md`;
+  yardstick-disagreements row 7)*
+
+
 - **`StitchRun.jump` is NOT travel — never filter on it to decide whether a
   shape is sewn.** The field means *"the machine must lift the needle to reach
   `points[0]`"*; the class above it is *"One needle-down path."* A jump says

@@ -6496,3 +6496,67 @@ grade in the scorecard and is a product call. What lands is the number, and
 disagreement 6 in `docs/yardstick-disagreements-2026-09-06.md`, so that the
 next "this fix moved no grade" is read against the design's depth rather than
 taken as evidence the fix did nothing.
+
+
+## 2026-09-06 — five parked flags measured together, and the grade caught preferring a design that dropped its ink
+
+Kent picked "flip sheet" off four candidates: five flags built, measured and
+OFF, each priced against `main` on its own and each in its own units — cones,
+ΔE00, bare mm², grade. `digitizer/tools/flip_sheet.py` runs seven arms (the
+default, each flag alone, and **all five together — never measured before**)
+over the scorecard's own 26 fixtures at 80 mm / `left_chest`, caching one JSON
+per run so an interrupted pass resumes. A stitch digest — blocks, cones, run
+kinds, micron-rounded coordinates — makes "unchanged" provable rather than
+approximate. Full sheet: `docs/flip-sheet-2026-09-06.md`.
+
+| arm | moved | stitches | trims | blocks | cones | grades |
+|---|---:|---:|---:|---:|---:|---|
+| `dissolve_phantom_blends` | 5/26 | −4,272 | −76 | −9 | −8 | gaulke F 4 → C 64 |
+| `revalidate_small_shapes` | 5/26 | +313 | +6 | +1 | +1 | meadow D 52 → C 64 |
+| `bind_resnap_all_classes` | 5/26 | −614 | −13 | −18 | −17 | gaulke F 4 → F 16 |
+| `satin_per_stroke` | 6/26 | −3,021 | +33 | 0 | 0 | chrome C 64 → B 76; meadow D 52 → C 64 |
+| `satin_patch_junctions` | 3/26 | +789 | +10 | 0 | 0 | scene_stub and becker B 76 → B 88 |
+| all five | 12/26 | −6,070 | −24 | −23 | −22 | five up |
+
+**No grade moves down anywhere, in any arm**, and 14 of 26 fixtures are
+byte-identical with all five on.
+
+**The headline is a retraction, not a win.** MASTER_SCOPE defect 27 carried
+*"gaulke F 0 → C 64 … the difference between 'do not sew' and a usable
+design"*. Measured on the CONES rather than the grade: gaulke is black
+lettering on a white label; `off` loads `1375 Dark Charcoal` (L* 15.9, 288 st)
+and the flag leaves nothing darker than `0145 Skylight` (L* 85.7). All five
+together leave `0015 White` and `3971 Silver` — **two cones, neither one you
+would see on a white ground.** The only arm that loads real Black
+(`bind_resnap_all_classes`) grades **F 16**. `THREAD_MATCH_POOR` grades per
+thread on its worst patch, so deleting the dark cone deletes the badly-scoring
+thread: **the metric rewards not sewing the hard part.** Recorded as
+yardstick-disagreements row 7, and it is a different shape from rows 1–6 —
+those are the metric failing to see an improvement, this is the metric
+preferring a regression.
+
+**The blind spot is the dissolve's own, and it is nameable.** Anti-aliased
+black text on white at 3 px/mm sits on the black→white Lab line for exactly
+the reason ringing does, so `_blend_ramp` cannot separate them.
+`tests/test_phantom_blend_photo.py`'s teal guard covers only a band whose
+colour is OFF the line; there is no guard for a band that is genuinely on it
+and genuinely artwork. **And the 09-04 corpus check could not have caught it:**
+it recorded gaulke as "a second clear win (blocks 4→3, trims 30→18)" — both
+true, both machine units — because it asked what the flag COST and never asked
+which cones survived. Check the cone list, not only the totals.
+
+**Interaction, the arm's own purpose.** `all` is not the sum of the parts on
+three fixtures: `photo_dof_meadow` goes D 52 → **B 76** where `resnap_small`
+and `satin_stroke` each give C 64 alone; `photo_chrome_specular` and
+`logo_script_tires` each end somewhere neither their single mover nor the
+default reaches. `summit_badge`, `becker_marine_logo` and `logo_hotel_fremont`
+do behave as their single mover.
+
+**Costs named rather than netted.** The −24 net trims hides
+`photo_chrome_specular` at 84 → 116; `satin_patch_junctions` costs becker
++383 stitches, which IS the fix (the K's crotch, 37.2 mm² of bare cloth).
+
+Renders: `docs/renders/flip-sheet-2026-09-06/` — off-vs-all for gaulke,
+bridge_bar, chrome_specular and becker, plus a four-arm lettering crop that
+shows black thread in `off` and `bind_resnap_all_classes` and none in the
+other two.
