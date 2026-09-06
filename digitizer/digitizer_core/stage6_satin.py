@@ -524,6 +524,220 @@ def _dt_stats(poly: Polygon) -> _DtStats | None:
     )
 
 
+# --- Per-stroke classification (MEASUREMENT ONLY) --------------------------
+#
+# Nothing in the pipeline calls anything below. `classify_ribbon` pools the
+# distance transform over a whole region's skeleton and returns one bool, so a
+# branchy letterform — wide at its junctions, thin along its arms — fails
+# `2σ < μ` as a unit even when every arm of it is a clean ribbon. These
+# functions ask the same question per STROKE, so the size of that effect can be
+# read off real fixtures before any routing changes.
+#
+# The plan is `docs/superpowers/plans/2026-09-04-per-stroke-satin-routing.md`;
+# this is its PR 2, deliberately inert. Its §7 records why: a new
+# area-fraction threshold on a classifier DOCTRINE has already measured as
+# threshold-fragile (MASTER_SCOPE defect 26 — 5 of 219 verdicts flip on
+# boundary detail alone) must be scored on `tools/ribbon_stability.py` BEFORE
+# a number is adopted, not after.
+
+# The plan's PROPOSED area fraction, carried here so a report can be read
+# against it. Not adopted, not read by any caller.
+_STROKE_AREA_FRAC_MIN = 0.75
+
+
+@dataclass(frozen=True)
+class StrokeVerdict:
+    """One stroke's own answer to `classify_ribbon`'s two DT gates.
+
+    `reason` uses `classify_ribbon`'s vocabulary exactly — `satin`,
+    `dt_irregular`, `dt_p90_cap`, `dt_degenerate` — so a per-stroke table can
+    be read beside a region-level one without a translation step. The width
+    cap and aspect gates are NOT re-applied per stroke: they are properties of
+    the region the machine sews and `classify_ribbon` has already ruled on
+    them.
+    """
+
+    index: int
+    satin: bool
+    reason: str
+    area_mm2: float
+    stats: _DtStats | None
+
+
+@dataclass(frozen=True)
+class StrokesVerdict:
+    """What the strokes of one region say, and what the region itself says.
+
+    `region` is `classify_ribbon`'s shipped verdict on the same polygon,
+    carried alongside so the two are never compared across separate calls with
+    drifting arguments. `passing_frac` is stroke-partitioned AREA, not a count:
+    a letter's hairline serif must not outvote its stem.
+
+    `area_mm2` sums the partition, which covers the region's raster and so
+    lands within a pixel of `poly.area`; it is reported rather than assumed so
+    a caller can see when a degenerate raster lost some.
+    """
+
+    strokes: list[StrokeVerdict]
+    region: RibbonVerdict
+    area_mm2: float
+    passing_mm2: float
+    passing_frac: float
+
+
+def _stroke_dt_stats(spine: list[tuple[float, float]], field: _WidthField,
+                     area_mm2: float) -> _DtStats | None:
+    """`_dt_stats`' arithmetic for ONE stroke, read off the PARENT's field.
+
+    Radii come from `field.half_at` along the stroke's own spine rather than
+    from a re-rasterized sub-polygon, which would give the stroke a different
+    skeleton than the one it was extracted from — slower, and less true.
+
+    Two deliberate differences from `_dt_stats`, both of which make the
+    per-stroke number the more accurate one:
+
+      * `spine_len_mm` is the POLYLINE length, not a skeleton pixel count.
+        `_dt_stats` counts pixels, which overcharges a diagonal run by up to
+        sqrt(2); it can afford that because `explained` only has to separate a
+        blob (0.13) from a ribbon (0.85+), but a per-stroke `explained` is
+        being read as a number, so it uses the real length.
+      * `area_mm2` is the caller's nearest-spine partition of the parent mask
+        (`_partition_area_mm2`), because a stroke has no polygon of its own.
+
+    `mean` and `std` stay in the parent's PIXEL units, exactly as `_dt_stats`
+    reports them, so `std / mean` is the same ratio on both paths and a
+    per-stroke row can be read beside a region row without a unit conversion.
+
+    None when the spine carries fewer than two points, or when no point of it
+    lands on a positive distance — a stroke the field has no opinion about,
+    which every caller must read as "no answer", never as a rejection.
+    """
+    if len(spine) < 2:
+        return None
+    r_px = [field.half_at(p) * field.scale for p in spine]
+    r = np.asarray([v for v in r_px if v > 0.0], float)
+    if r.size == 0 or r.mean() <= 0:
+        return None
+    spine_len_mm = sum(math.dist(a, b) for a, b in zip(spine, spine[1:]))
+    if spine_len_mm <= 0:
+        return None
+    p90_mm = 2.0 * float(np.percentile(r, _DT_TIGHTEN_PERCENTILE)) / field.scale
+    width_mm = 2.0 * float(r.mean()) / field.scale
+    swept = spine_len_mm * width_mm
+    return _DtStats(
+        mean=float(r.mean()),
+        std=float(r.std()),
+        p90_mm=p90_mm,
+        spine_len_mm=spine_len_mm,
+        explained=(area_mm2 / swept) if swept > 0 else 0.0,
+        elongation=(spine_len_mm / width_mm) if width_mm > 0 else 0.0,
+    )
+
+
+def _partition_area_mm2(strokes: list[Stroke], field: _WidthField,
+                        total_mm2: float) -> list[float]:
+    """Each stroke's share of the parent mask, by nearest spine, in mm².
+
+    The parent's foreground is `field.dist > 0` — the distance transform is
+    zero exactly outside the shape — so this needs no second rasterize and is
+    guaranteed to partition the same pixels the skeleton came from.
+
+    One `cv2.distanceTransform` per stroke and a running minimum across them,
+    rather than one labelled transform: with a handful of strokes over a
+    raster capped at `_RASTER_MAX_PX` it costs little, and it does not depend
+    on the order OpenCV happens to enumerate label pixels in. The comparison
+    is strictly `<`, so ties go to the lower-indexed stroke, which is stable
+    because `extract_strokes` sorts longest-first.
+
+    **The result is normalized to sum to `total_mm2`** (the polygon's own
+    area). A filled raster carries a half-pixel skin all round, so the pixel
+    count runs high by about `perimeter / (2 * scale)` — measured on a 40x3 mm
+    bar at 6 px/mm, 127.2 mm² against the polygon's 120.0, which is that
+    figure to the square millimetre. That skin belongs to the rasterizer, not
+    to any stroke, and leaving it in would inflate every `explained` by the
+    same few percent and make a stroke row incomparable with a region row
+    (`_dt_stats` divides the polygon's exact area). Normalizing also makes
+    `passing_mm2` quotable as real region area rather than as raster area.
+    """
+    inside = field.dist > 0
+    if not strokes or not inside.any():
+        return [0.0] * len(strokes)
+    h, w = field.dist.shape
+    # Running argmin rather than an (n_strokes, h, w) stack: a region with
+    # many strokes would otherwise allocate n * h * w floats at once, which is
+    # unbounded in the one dimension this function does not control.
+    best = np.full((h, w), np.inf, np.float32)
+    owner = np.full((h, w), -1, np.int32)
+    for i, s in enumerate(strokes):
+        img = np.full((h, w), 255, np.uint8)
+        pts = np.asarray([((p[0] - field.ox) * field.scale,
+                           (p[1] - field.oy) * field.scale)
+                          for p in s.spine], np.float64)
+        cv2.polylines(img, [np.round(pts).astype(np.int32)],
+                      s.closed, 0, thickness=1)
+        if img.min() != 0:
+            # The spine fell entirely outside the raster: give it no pixels
+            # rather than letting an all-255 image transform to zeros and win
+            # every comparison.
+            continue
+        d = cv2.distanceTransform(img, cv2.DIST_L2, 3)
+        closer = d < best
+        best[closer] = d[closer]
+        owner[closer] = i
+    counts = [int(np.count_nonzero(inside & (owner == i)))
+              for i in range(len(strokes))]
+    px = sum(counts)
+    if px <= 0 or total_mm2 <= 0:
+        return [0.0] * len(strokes)
+    per_px = total_mm2 / px
+    return [c * per_px for c in counts]
+
+
+def classify_strokes(poly: Polygon, max_width_mm: float, *,
+                     design_class: str = "flat") -> StrokesVerdict:
+    """Per-stroke DT verdicts for one region, beside the region's own.
+
+    The two gates are `classify_ribbon`'s, applied to per-stroke numbers:
+    `2σ >= μ` is `dt_irregular` and a doubled p90 medial width over
+    `max_width_mm` is `dt_p90_cap`. They are re-expressed here rather than
+    shared, because this module's shipped path must stay byte-identical while
+    this is inert; `tests/test_stroke_classify.py` pins the two readings equal
+    on a shape that IS one stroke, so they cannot drift apart unnoticed.
+
+    The p90 cap is deliberately kept PER STROKE and not relaxed. Becker's big
+    letter strokes are genuinely 4.3-6.4 mm wide against a 5.0 mm machine cap,
+    and DOCTRINE's measured negative is what happens if they sew anyway:
+    `_rail_points`' per-station guard holds each cross to 5 mm and leaves bare
+    cloth down the middle of a 6.4 mm stroke.
+
+    A region with no strokes — one too small or thin to skeletonize — comes
+    back with an empty list and `passing_frac` 0.0, which is a "no answer" and
+    not a rejection; `region.reason` is where the answer for such a shape is.
+    """
+    region = classify_ribbon(poly, max_width_mm, design_class=design_class,
+                             full_metrics=True)
+    strokes, _half_mm, field = extract_strokes(poly)
+    if field is None or not strokes:
+        return StrokesVerdict([], region, 0.0, 0.0, 0.0)
+
+    areas = _partition_area_mm2(strokes, field, float(poly.area))
+    rows: list[StrokeVerdict] = []
+    for i, (s, area) in enumerate(zip(strokes, areas)):
+        st = _stroke_dt_stats(s.spine, field, area)
+        if st is None:
+            rows.append(StrokeVerdict(i, False, "dt_degenerate", area, None))
+        elif 2.0 * st.std >= st.mean:
+            rows.append(StrokeVerdict(i, False, "dt_irregular", area, st))
+        elif st.p90_mm > max_width_mm:
+            rows.append(StrokeVerdict(i, False, "dt_p90_cap", area, st))
+        else:
+            rows.append(StrokeVerdict(i, True, "satin", area, st))
+
+    total = float(sum(areas))
+    passing = float(sum(r.area_mm2 for r in rows if r.satin))
+    return StrokesVerdict(rows, region, total, passing,
+                          (passing / total) if total > 0 else 0.0)
+
 # --- Skeleton extraction ---------------------------------------------------
 
 def _rasterize(poly: Polygon) -> tuple[np.ndarray, float, float, float]:

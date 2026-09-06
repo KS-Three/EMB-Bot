@@ -4675,3 +4675,62 @@ first**, before any routing change.
   **it will not move Gaulke**, whose 43 of 56 regions already earn satin and
   whose real defect is segmentation shattering a two-ink logo into hairlines.
   Two different defects behind one headline.
+
+## 2026-09-05 — the per-stroke satin rung, built inert and measured
+
+PR 2 of `docs/superpowers/plans/2026-09-04-per-stroke-satin-routing.md`.
+`stage6_satin._stroke_dt_stats` / `classify_strokes` / `_partition_area_mm2`
+plus `tools/stroke_verdicts.py` and `tests/test_stroke_classify.py` (10).
+Nothing in the pipeline calls any of it and a test pins that, so no stitch
+moves and no golden shifts.
+
+`classify_ribbon` pools the distance transform over a whole region's skeleton
+and returns one bool, so a branchy letterform — wide at its junctions, thin
+along its arms — can fail `2σ < μ` as a unit while every arm of it is a clean
+ribbon. This reads the same two gates per STROKE, off the parent's field
+(`field.half_at` along the stroke's own spine, polyline length, and a
+nearest-spine partition of the parent mask normalized to the polygon's area).
+
+- **The plan's headline reproduces to the decimal, from an independent
+  implementation.** `becker_marine_logo.png` @ 100 mm: satin **274.0 →
+  1,708.3 mm², 7.6% → 47.6%**, five regions flipping 1,434.3 mm² at the
+  proposed ≥ 0.75 area rule. Per-stroke cv runs 0.03–0.52 where the region
+  pools to 0.50–0.69 (`dt_irregular` really is largely a pooling artifact),
+  and the p90 cap stays real per stroke — Becker's big strokes measure
+  5.2–6.7 mm against the 5.0 machine cap and stay correctly refused, so
+  `S334e3a12` reaches only frac 0.23.
+- **But the gain is a 100 mm number and the corpus runs at 80.** At
+  80 mm/`left_chest` the same 17 regions are already **88.2% satin** (1,982.3
+  of 2,248.2 mm²) and the rung adds **5.7 mm²**. Corpus-wide across 14
+  fixtures: **+143.8 mm², 2%, 21 regions**.
+- **Because Becker's region set sits ON the `cv = 0.50` gate.** 11 of 17
+  within ±0.10 of it at 80 mm, 16 of 17 at 100 mm. Checked and rejected as a
+  classifier scale cliff: scaling a fixed polygon 1.25× moves cv by under 0.02
+  and flips only `dt_p90_cap`, which is correct because p90 is a length. The
+  two widths segment to region sets sharing no shape ids; which side of the
+  gate a region lands on is that run's segmentation. Defect 26 at design scale.
+- **The strongest argument for the rung turns out to be decisiveness, not
+  area.** Over 149 regions and 740 strokes on five fixtures, median
+  |cv − 0.50| is **0.154 per region against 0.221 per stroke**, and the share
+  within ±0.10 of the gate falls **40.9% → 24.7%**. Better, not fixed: a
+  quarter of strokes still sit on the line, and the area rule adds a second
+  threshold on top — §7's reason to score it on `ribbon_stability.py` first.
+- **The starburst needs no extra guard, by 9%.** §4 expected
+  `_PROMOTE_ELONGATION_MIN` to have to be carried onto the per-stroke path to
+  keep refusing `Sff37b029`; its two arms are themselves irregular (cv 0.546,
+  0.522), so the fraction is 0.00 unaided. Pinned as a test because the margin
+  is 9% and 4%.
+- **The rung must be promotion-only.** §4's reverse case does not exist as
+  described (`logo_alpha`'s `Sf5200f3f` reads `dt_irregular` at region level,
+  so it cannot be demoted), but swept across the corpus **15 regions that sew
+  satin today do not reach frac 0.75** — mostly `promoted_ribbon`, largest
+  Becker's `Sead76620` at 638.8 mm², with four bridge-bar regions at frac 0.00.
+  Recorded in DOCTRINE.
+- One implementation note worth keeping: a filled raster carries a half-pixel
+  skin, so a pixel-count partition runs high by `perimeter / (2·scale)` —
+  127.2 mm² against 120.0 on a 40×3 mm bar at 6 px/mm, to the square
+  millimetre. It is normalized to the polygon's own area, or every `explained`
+  would read a few percent high and a stroke row would not be comparable with
+  a region row. Separately, `_rasterize` RAISES resolution for thin shapes, so
+  the degenerate branch is unreachable from real geometry: a 300 × 0.005 mm
+  sliver still skeletonizes.

@@ -179,3 +179,82 @@ current answer: the per-stroke rung is worth roughly +1,434 mm² of satin on
 Becker, nothing on Gaulke, and Fremont is unmeasured. The decision for Kent is
 whether that is the biggest gap, or whether the instrument should land first
 and re-rank it.
+
+---
+
+## PR 2 — built and measured (2026-09-05)
+
+`stage6_satin._stroke_dt_stats` / `classify_strokes` / `_partition_area_mm2`,
+`tests/test_stroke_classify.py` (10), `tools/stroke_verdicts.py`. Nothing in
+the pipeline calls any of it, and a test pins that.
+
+**The headline reproduces exactly.** An independent implementation of §2's
+recipe reads `becker_marine_logo.png` @ 100 mm as satin **274.0 → 1,708.3 mm²,
+7.6% → 47.6%, five regions flipping 1,434.3 mm²** at the ≥ 0.75 area rule —
+the plan's numbers to the decimal. §2's two claims hold: per-stroke cv runs
+0.03–0.52 where the region pools to 0.50–0.69, and the p90 cap stays real
+(Becker's big strokes measure 5.2–6.7 mm p90 against the 5.0 cap and are
+correctly refused per stroke, so `S334e3a12` reaches only frac 0.23).
+
+Four things the measurement changed.
+
+### 1. The gain is a 100 mm number, and the corpus runs at 80
+
+At 80 mm / `left_chest` the same 17 regions are **already 88.2% satin**
+(1,982.3 of 2,248.2 mm²) and the rung adds **5.7 mm²**. At 100 mm they are
+7.6% satin. Same artwork, same design class, same region count.
+
+The cause is not a scale cliff in the classifier — that was checked and is
+false. Scaling a fixed Becker polygon by 1.25 moves its cv by under 0.02
+(0.694→0.701, 0.472→0.476, 0.368→0.355); the only verdict it changes is
+`dt_p90_cap`, which is correct, because p90 is a length. What differs between
+the two widths is **segmentation**: the region sets share no shape ids at all,
+and their cv distributions sit at 0.37–0.51 (80 mm) against 0.43–0.55
+(100 mm).
+
+### 2. Becker's whole region set sits ON the gate
+
+`2σ ≥ μ` is `cv ≥ 0.50`, and Becker's regions cluster there: **11 of 17 within
+±0.10 of the gate at 80 mm, 16 of 17 at 100 mm**, with 2 and 9 respectively
+over it. So `dt_irregular` on this design is not a property of the artwork —
+it is which side of a knife-edge that run's segmentation happened to land on.
+This is MASTER_SCOPE defect 26 (5 of 219 verdicts flip on boundary detail
+alone) showing up at whole-design scale.
+
+That is the strongest argument for the rung so far, and a better one than the
+mm²: **a per-stroke reading is measurably more decisive.** Over 149 regions
+and 740 strokes across five fixtures, median |cv − 0.50| is **0.154 per region
+against 0.221 per stroke**, and the share sitting within ±0.10 of the gate
+falls from **40.9% to 24.7%**. Better — not fixed. A quarter of strokes still
+sit on the line, and the ≥ 0.75 area rule adds a second new threshold on top,
+which is exactly what §7 said to score on `ribbon_stability.py` first.
+
+### 3. The starburst needs no extra guard, by 9%
+
+§4 expected `_PROMOTE_ELONGATION_MIN` to have to be carried onto the
+per-stroke path to keep refusing `Sff37b029`. It does not: the star's two arms
+are **themselves** irregular (cv 0.546 and 0.522, both past 0.50), so the area
+fraction is 0.00 with no extra guard. The margin is 9% and 4% past the gate —
+thin enough that it is pinned as a test, not noted as a remark.
+
+### 4. The rung must be PROMOTION-ONLY — it demotes 15 regions otherwise
+
+§4 asked for the reverse case to be measured. As described it does not exist:
+`logo_alpha.png`'s `Sf5200f3f` reads `dt_irregular` at region level on this
+tree, so it is not satin today and cannot be demoted.
+
+Swept across 14 fixtures at 80 mm, though, **15 regions that sew satin today
+do not reach frac 0.75**, and most are `promoted_ribbon` — shapes the shipped
+`explained` path deliberately rescued. The largest are Becker's `Sead76620`
+(**638.8 mm²**, frac 0.71) and `S579cb1c2` (226.4 mm², frac 0.19), and four
+bridge-bar regions come back at frac **0.00**.
+
+So a per-stroke rung has to read `region.satin OR per-stroke flip`, never
+replace the region call. Written as a replacement it would cost more area than
+it wins: corpus-wide the flips are **+143.8 mm² (2%, 21 regions)** against
+those 15 demotions.
+
+**Net for the decision:** the rung is worth a lot on one fixture at one size,
+little across the corpus at the size the corpus runs, and its real value is
+decisiveness at a threshold this project has already measured as fragile.
+PR 3's flag is unchanged in shape; what it must NOT be is a replacement.
