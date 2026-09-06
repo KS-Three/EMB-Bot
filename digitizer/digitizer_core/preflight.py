@@ -41,7 +41,15 @@ budget is a per-REGION sum — everything overlapping one patch of fabric,
 underlay included — so a stack of individually-correct layers passes every
 per-object check ever written and still puckers the garment. Its instrument
 is `_coverage_map`, which rasterizes the whole plan's stitch geometry into
-coverage units where 1.0 is one full covering layer of 40wt thread.
+coverage units where 1.0 is one tiled layer of 0.40 mm 40wt ribbon.
+
+That is NOT "one full covering layer" any more, and the difference bites: since
+`FILL_ROW_MM` moved to the professional's 0.15 mm (2026-09-03) a single plain
+fill lays `COVERAGE_FILL_LAYER_UNITS` = 0.40 / 0.15 = **2.67** units on its
+own. The thresholds are multiples of THAT, not of 1.0 — see
+`_coverage_findings`. Every coverage figure written down before that date is in
+the old base and reads 2.67x smaller than the same thread does today
+(`machine.COVERAGE_WARN_UNITS` carries the full note).
 
 The thread-colour instrument is per-SPOOL, and became per-region on
 2026-08-11 and per-shade-band on 2026-09-04. `_thread_match_findings` scores
@@ -135,7 +143,7 @@ STITCHES_TOO_LONG = "STITCHES_TOO_LONG"        # extra: {count, max_mm}
 STITCHES_TOO_SHORT = "STITCHES_TOO_SHORT"      # extra: {fraction, count, total, uncovered_shapes, shapes: [{shape_id, short, steps, median_mm, also_too_small}]} — `shapes` is every satin shape carrying a short step, worst first; `also_too_small` is whether LETTERING_TOO_SMALL already named it, and `uncovered_shapes` counts the ones it did NOT (a sewable column with a narrow waist passes lettering's median test and still breaks thread)
 TRIM_HEAVY = "TRIM_HEAVY"                      # extra: {per_1000, trims, stitches, in_shape, between_shapes, worst_shape_id, shapes: [{shape_id, trims}]} — in_shape + between_shapes == trims by construction; a cut INSIDE a shape is that shape failing to sew in one pass and merging shapes cannot remove it, which is the OPPOSITE of where the old message ("merge or remove the smallest shapes") sent people. Corpus-wide the split is 53/47, so one remedy was only ever right half the time
 DENSITY_EXTREME = "DENSITY_EXTREME"            # extra: {kind, measured_mm, target_mm, ratio} (+ technique, band_mm on a tonal fill)
-DENSITY_STACKED = "DENSITY_STACKED"            # extra: {peak_units, p95_units, over_warn_mm2, over_block_mm2, cell_mm}
+DENSITY_STACKED = "DENSITY_STACKED"            # extra: {peak_units, p95_units, over_warn_mm2, over_block_mm2, cell_mm, patches, worst_patch_mm2, worst_patch_at_mm} — the mm2 figures are SUMS and cannot tell one blob from twenty specks; `patches`/`worst_patch_mm2` separate them and `worst_patch_at_mm` is the plan-mm centre of the largest, which is the "where" the message always asked for
 SAME_HOLE_HEAVY = "SAME_HOLE_HEAVY"            # extra: {fraction, repeat_points, penetrations, baseline}
 LINK_UNCOVERED = "LINK_UNCOVERED"              # extra: {max_mm, limit_mm, total_mm, at_mm, thread_mm}
 ARTWORK_UNCOVERED = "ARTWORK_UNCOVERED"        # extra: {count, worst_mm2, total_mm2, wanted_mm2, shapes: [{shape_id, missing_mm2, area_mm2}]}
@@ -1969,11 +1977,28 @@ def _coverage_findings(plan: StitchPlan) -> tuple[list[dict], dict]:
     check exists for.
 
     Thresholds are `machine.COVERAGE_WARN_UNITS` / `COVERAGE_BLOCK_UNITS` —
-    2.5 and 3.5, both [D] in the playbook and not primary-sourced. They fire
-    on the area of CONNECTED patches at or over `_COVERAGE_MIN_PATCH_MM2`,
-    never on a peak cell: clean work speckles over 2.5 wherever two satin
-    columns join or a sub-5 mm shape is rescued with a triple run, and a
-    check that reads those as pucker would flag both house fixtures.
+    **2.5 and 3.5 FILL LAYERS**, both [D] in the playbook and not
+    primary-sourced. Read the multiplier, not a bare number: since the
+    2026-09-03 re-base one fill layer is `COVERAGE_FILL_LAYER_UNITS` = 2.67
+    units, so the constants evaluate to **6.67 and 9.33**. This docstring said
+    "2.5 and 3.5" as if they were the constants' values until 2026-09-06, which
+    made every corpus peak (2.20 to 7.97) look like a gross overshoot when in
+    fact none of them reaches the block ceiling.
+
+    They fire on the area of CONNECTED patches at or over
+    `_COVERAGE_MIN_PATCH_MM2`, never on a peak cell: clean work speckles over
+    the warn level wherever two satin columns join or a sub-5 mm shape is
+    rescued with a triple run, and a check that reads those as pucker would
+    flag both house fixtures.
+
+    **That filter is doing all the work, and the corpus proves it.** Swept
+    2026-09-06 over all 26 fixtures at 80 mm: six carry a PEAK over the warn
+    level (`photo_dof_meadow` 7.97, `drone_render` and `gaulke_roofing` 7.51,
+    `chrome_specular` 7.09, `sunset_backlit` 7.04, `bridge_bar` 6.89) and
+    **every one of them yields 0.0 mm2 of qualifying patch** — so this finding
+    fires on **0 of the 52 design/garment combos**, and its only exercise is
+    the synthetic `_stacked(n)` plans in `tests/test_preflight.py`. Keep those:
+    they are the whole test coverage of a `block`-severity check.
     """
     empty = {"coverage_p50": None, "coverage_p95": None, "coverage_max": None,
              "coverage_area_mm2": None, "coverage_over_warn_mm2": 0.0,
@@ -1981,25 +2006,46 @@ def _coverage_findings(plan: StitchPlan) -> tuple[list[dict], dict]:
     got = _coverage_map(plan)
     if got is None:
         return [], empty
-    grid, _origin = got
+    grid, (x0, y0) = got
     cell_area = machine.COVERAGE_CELL_MM ** 2
     covered = grid[grid >= _COVERAGE_FLOOR_UNITS]
     if not covered.size:
         return [], empty
 
-    def patch_area_mm2(limit: float) -> float:
-        """Area of the patches over `limit` that are big enough to act on."""
+    def patches(limit: float) -> list[tuple[float, float, float]]:
+        """The patches over `limit` big enough to act on, worst area first.
+
+        -> [(area_mm2, centre_x_mm, centre_y_mm)]. The centre is in the plan's
+        own mm, recovered through `_coverage_map`'s origin — which this
+        function used to discard, so the check knew where the stack was and
+        threw it away while its own message said "cut the bottom layer back
+        WHERE the top one covers it".
+        """
         mask = (grid >= limit).astype(np.uint8)
         if not mask.any():
-            return 0.0
-        _n, _lab, stats, _c = cv2.connectedComponentsWithStats(mask, connectivity=8)
-        areas = stats[1:, cv2.CC_STAT_AREA] * cell_area
-        return float(areas[areas >= _COVERAGE_MIN_PATCH_MM2].sum())
+            return []
+        _n, _lab, stats, cents = cv2.connectedComponentsWithStats(
+            mask, connectivity=8)
+        out = []
+        for i in range(1, len(stats)):
+            a = float(stats[i, cv2.CC_STAT_AREA]) * cell_area
+            if a < _COVERAGE_MIN_PATCH_MM2:
+                continue
+            # +0.5 because `_coverage_map` FLOORS a point into its cell, so
+            # cell i spans [x0 + i*cell, x0 + (i+1)*cell) and its centre is
+            # half a cell along. Centroids come back (column, row) = (x, y).
+            cx = x0 + (float(cents[i][0]) + 0.5) * machine.COVERAGE_CELL_MM
+            cy = y0 + (float(cents[i][1]) + 0.5) * machine.COVERAGE_CELL_MM
+            out.append((a, cx, cy))
+        out.sort(reverse=True)
+        return out
 
     peak = float(grid.max())
     p95 = float(np.percentile(covered, 95))
-    over_warn = patch_area_mm2(machine.COVERAGE_WARN_UNITS)
-    over_block = patch_area_mm2(machine.COVERAGE_BLOCK_UNITS)
+    warn_patches = patches(machine.COVERAGE_WARN_UNITS)
+    block_patches = patches(machine.COVERAGE_BLOCK_UNITS)
+    over_warn = float(sum(a for a, _x, _y in warn_patches))
+    over_block = float(sum(a for a, _x, _y in block_patches))
     metrics = {
         "coverage_p50": round(float(np.percentile(covered, 50)), 2),
         "coverage_p95": round(p95, 2),
@@ -2011,11 +2057,21 @@ def _coverage_findings(plan: StitchPlan) -> tuple[list[dict], dict]:
 
     if over_block > 0.0:
         sev, limit, area = "block", machine.COVERAGE_BLOCK_UNITS, over_block
+        hits = block_patches
     elif over_warn > 0.0:
         sev, limit, area = "warn", machine.COVERAGE_WARN_UNITS, over_warn
+        hits = warn_patches
     else:
         return [], metrics
 
+    # "N mm2 of this design" is a SUM, and a sum cannot tell 40 mm2 in one
+    # blob from 40 mm2 speckled over twenty — which are different defects
+    # with different fixes. The worst patch and its count separate them, and
+    # the centre gives the review screen somewhere to point.
+    worst_a, worst_x, worst_y = hits[0]
+    where = (f" The worst of {len(hits)} is {worst_a:.0f} mm2 near "
+             f"({worst_x:.0f}, {worst_y:.0f}) mm." if len(hits) > 1 else
+             f" It is one patch, centred near ({worst_x:.0f}, {worst_y:.0f}) mm.")
     advice = ("Cut the bottom layer back where the top one covers it, or "
               "drop a layer." if sev == "block" else
               "Check that the layers there are meant to overlap.")
@@ -2025,12 +2081,15 @@ def _coverage_findings(plan: StitchPlan) -> tuple[list[dict], dict]:
         f"{area:.0f} mm2 of this design stacks more than {limit:g} layers "
         f"of thread on one patch of fabric (peak {peak:.1f}), counting "
         f"underlay, fill and outlines together. That much thread puckers the "
-        f"garment and breaks needles. {advice}",
+        f"garment and breaks needles.{where} {advice}",
         peak_units=round(peak, 2),
         p95_units=round(p95, 2),
         over_warn_mm2=round(over_warn, 1),
         over_block_mm2=round(over_block, 1),
         cell_mm=machine.COVERAGE_CELL_MM,
+        patches=len(hits),
+        worst_patch_mm2=round(worst_a, 1),
+        worst_patch_at_mm=[round(worst_x, 1), round(worst_y, 1)],
     )], metrics
 
 

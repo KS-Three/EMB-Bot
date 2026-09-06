@@ -6823,3 +6823,94 @@ the `in_shape + between_shapes == trims` invariant on every plan it builds,
 both branches of the generated sentence, and the agreement between the shipped
 check and the instrument that audits it — which re-walks the plan on purpose,
 because an auditor that calls the thing it audits proves nothing.
+
+---
+
+## 2026-09-06 — the coverage re-base left its old numbers in the prose, and the check it governs has never fired
+
+Chasing a third locationless finding turned up something better than the fix.
+
+### `DENSITY_STACKED` said "cut the bottom layer back WHERE" and had no where
+
+`_coverage_map` returns `(grid, origin)`. `_coverage_findings` bound the second
+to `_origin` — the underscore says it — and its `patch_area_mm2` helper
+collapsed `cv2.connectedComponentsWithStats`, bounding boxes and centroids and
+all, into one summed area. So the check knew where the stack was, and its own
+message asked for exactly that, and the two never met.
+
+A sum also cannot tell **40 mm² in one blob from 40 mm² speckled over twenty**,
+which are different defects with different fixes. It now emits `patches`,
+`worst_patch_mm2` and `worst_patch_at_mm` — the plan-mm centre of the largest,
+matching `LINK_UNCOVERED`'s `at_mm`.
+
+### And then the corpus refused to exercise any of it
+
+**`DENSITY_STACKED` fires on 0 of the 52 design/garment combos.** Not "rarely" —
+zero. So the fix above is, on today's corpus, unmeasurable, and this entry says
+so rather than dressing it up.
+
+Swept at 80 mm, the coverage metrics per fixture:
+
+| | peak units | > warn patch | > block patch |
+|---|---:|---:|---:|
+| `photo/photo_dof_meadow.png` | **7.97** | 0.0 | 0.0 |
+| `photo/drone_render.png` | 7.51 | 0.0 | 0.0 |
+| `photo/logo_gaulke_roofing.png` | 7.51 | 0.0 | 0.0 |
+| `photo/photo_chrome_specular.png` | 7.09 | 0.0 | 0.0 |
+| `photo/photo_sunset_backlit.png` | 7.04 | 0.0 | 0.0 |
+| `photo/logo_bridge_bar.jpg` | 6.89 | 0.0 | 0.0 |
+| …20 more, peaks 2.20 to 6.68 | | 0.0 | 0.0 |
+
+Six fixtures carry a PEAK over the 6.67 warn level and **every one of them
+yields 0.0 mm² of qualifying patch**. `_COVERAGE_MIN_PATCH_MM2` (25 mm²) is
+doing all the work — which is what it was built to do, since clean work
+speckles over the warn level wherever two satin columns join.
+
+**The consequence is a coverage fact worth knowing: the entire test coverage of
+this `block`-severity check is synthetic.** `test_preflight.py`'s `_stacked(n)`
+plans and the new `test_stacked_where.py`. A corpus A/B can prove nothing about
+it in either direction, so do not read its silence as evidence the corpus is
+clean, and do not delete those synthetic plans as redundant.
+
+### The find under the find: four old-base numbers still in the prose
+
+Reading those peaks against the docstring is what exposed it. `preflight`
+said:
+
+> Thresholds are `machine.COVERAGE_WARN_UNITS` / `COVERAGE_BLOCK_UNITS` — **2.5
+> and 3.5**, both [D] in the playbook and not primary-sourced.
+
+They evaluate to **6.67 and 9.33**. On 2026-09-03 `FILL_ROW_MM` moved to the
+professional's 0.15 mm, so one plain fill went from 1.00 to
+`COVERAGE_FILL_LAYER_UNITS` = 0.40/0.15 = **2.67** units, and the thresholds
+were restated as `2.5 *` and `3.5 *` that. `machine.py` documents the change in
+twenty lines and warns in as many words: *"every coverage number recorded
+before this date is in the old base and is 2.67x smaller than the same stack
+reads today."*
+
+**It did not save the file next door.** Four statements still in the old base
+three days later:
+
+| where | said | is |
+|---|---|---|
+| `preflight` module docstring | "1.0 is one full covering layer of 40wt thread" | 1.0 is one **0.40 mm ribbon**; a fill lays 2.67 |
+| `_coverage_findings` docstring | names both constants, "2.5 and 3.5" | 6.67 and 9.33 |
+| `test_a_third_stacked_layer_warns…` | "Measured 3.00 units over 175 mm2" | 8.00 (its own assertion computes it) |
+| `test_a_fourth_stacked_layer_blocks` | "Past 3.5 units…" | past 3.5 **fill layers** = 9.33 |
+
+**The harm is specific, not stylistic.** A reader comparing the corpus's peaks
+(2.20–7.97) against "3.5" concludes every design is grossly over a
+needle-breaking ceiling. Against the real 9.33, **none of them reaches it**.
+That is the difference between "the corpus is full of pucker" and "the corpus
+is clean and the check is untested", and this session started down the first
+road.
+
+All four corrected, each keeping its own history. And the new test pins the
+**relationship** rather than either number —
+`COVERAGE_WARN_UNITS == 2.5 * COVERAGE_FILL_LAYER_UNITS` — so the next re-base
+moves them together or fails here.
+
+`stage6_scanline.py`'s *"lays ~1.4 coverage units in solid shadow at the 0.45 mm
+row pitch"* was read and **left alone**: the unit definition did not change in
+the re-base, and verifying a zigzag's coverage arithmetic is not something this
+pass measured. Not a claim that it is right — a claim that it was not checked.

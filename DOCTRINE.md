@@ -723,6 +723,38 @@ its hedge as it is copied forward** — is why this file is split.
   it; Becker reproduces the August number independently at 19 of 28 (68%), the
   1-point gap being the file's first cut, which does not exist.
 
+- **A constant re-base fixes the code and leaves the PROSE lying, and the
+  prose is what people read.** `COVERAGE_WARN_UNITS`/`COVERAGE_BLOCK_UNITS`
+  became `2.5 *` and `3.5 * COVERAGE_FILL_LAYER_UNITS` on 2026-09-03 when
+  `FILL_ROW_MM` moved to 0.15 — so they evaluate to **6.67 and 9.33**, and
+  `machine.py` says so at length. Four places still quoted the old bare
+  numbers three days later, found 2026-09-06: `preflight`'s module docstring
+  ("1.0 is one full covering layer" — 1.0 is one 0.40 mm ribbon; a fill lays
+  2.67), `_coverage_findings`' docstring (naming both constants and giving
+  "2.5 and 3.5" as their values), and two `test_preflight.py` docstrings
+  quoting 3.00 and 3.5 beside assertions that compute 8.00 and 9.33. **The
+  harm is specific:** a reader comparing the corpus's peaks (2.20 to 7.97)
+  against "3.5" concludes every design is grossly over the block ceiling when
+  in fact **none of them reaches it**. `machine.py`'s own warning — *"every
+  coverage number recorded before this date is in the old base and is 2.67x
+  smaller"* — was written for exactly this and did not save the files beside
+  it. **When a constant is re-based, grep the prose, and prefer pinning a
+  RELATIONSHIP in tests over a number** (`tests/test_stacked_where.py` asserts
+  the 2.5x/3.5x multiple, not 6.67/9.33).
+
+- **`DENSITY_STACKED` has never fired on real artwork — do not read its
+  silence as a clean corpus, and do not delete its synthetic tests.** Swept
+  2026-09-06 over all 26 fixtures at 80 mm: **0 of 52 design/garment combos**
+  produce the finding. Six carry a PEAK over the warn level
+  (`photo_dof_meadow` 7.97, `drone_render` and `gaulke_roofing` 7.51,
+  `chrome_specular` 7.09, `sunset_backlit` 7.04, `bridge_bar` 6.89) and every
+  one yields **0.0 mm² of qualifying patch**: `_COVERAGE_MIN_PATCH_MM2` (25
+  mm²) is doing all the work, which is what it was built to do — clean work
+  speckles over the warn level wherever two satin columns join. So the whole
+  test coverage of this `block`-severity check is the synthetic `_stacked(n)`
+  plans in `tests/test_preflight.py` and `tests/test_stacked_where.py`. A
+  corpus A/B can prove nothing about it either way.
+
 - **`STITCHES_TOO_SHORT` and `LETTERING_TOO_SMALL` bill 24 points for one
   defect — but do NOT delete either to "dedupe" them.** They measure the SAME
   quantity at the SAME threshold: `MIN_COLUMN_MM` **is**
