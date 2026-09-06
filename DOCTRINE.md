@@ -533,15 +533,25 @@ Moved verbatim 2026-08-28 — no section was rewritten in the move.
 - **"Our satin-vs-fill MIX nearly matches the professional's" was an AREA
   statistic, and by thread it is false.** Defect 5 carried that premise from
   `tools/pro_parity/scorecard.py`'s `cell_stats`, which assigns ONE stitch
-  type per 2 mm cell (`CELL = 2.0`) — so our 0.29 mm hairline column claims a
-  cell exactly as the professional's 2.52 mm column does. Measured as thread
-  on 2026-09-04 with `tools/satin_columns.py`, on the professional's own file
-  for a logo we also digitize: **2.2% of our penetrations sit in a column
-  against their 44.3%**, our median column 0.29 mm against their 2.52, and
-  84% of ours under the 0.7 mm the needle can hold. The paragraph's
-  CONCLUSION survives — retuning `satin_max` is still a measured negative,
-  separately, below — but not for the reason it gave: the mix was never
-  already right.
+  type per 2 mm cell (`CELL = 2.0`), so a column of ours claims a cell exactly
+  as the professional's 2.52 mm column does. Measured as thread on 2026-09-04
+  with `tools/satin_columns.py`, on the professional's own file for a logo we
+  also digitize: **2.2% of our penetrations sit in a column against their
+  44.3%**. The paragraph's CONCLUSION survives — retuning `satin_max` is still
+  a measured negative, separately, below — but not for the reason it gave: the
+  mix was never already right.
+  **The WIDTH half of this entry was contaminated and is withdrawn
+  (2026-09-06).** It read "our median column 0.29 mm against their 2.52, and
+  84% of ours under the 0.7 mm the needle can hold" — that is
+  `satin_columns.py`'s WHOLE-PLAN row, 80% of it tatami turns rather than
+  columns. Our SATIN runs on that fixture measure **3.82 mm median, p90 4.93,
+  23% under 1.0 mm** against the pro's 2.52 / 5.00 / 7%: our columns are not
+  hairlines, there are simply very few of them. The 2.2%-vs-44.3% SHARE is
+  unaffected (both sides whole-plan, same detector) and carries the entry on
+  its own. What is NOT re-derived here is the original mechanism sentence — it
+  explained the cell-level tie by our columns being hairline-thin, and that
+  premise is gone; the blindness of an area-per-cell statistic to a share this
+  small is real either way, but do not quote a width to argue it.
   **Two instruments carry the same blind spot and are annotated in place:**
   `cell_stats` (area, not thread) and `tools/study_pro.py`'s `classify`,
   which gates satin at a median segment ≥ 0.7 mm and therefore *structurally
