@@ -993,3 +993,35 @@ its hedge as it is copied forward** — is why this file is split.
   the sewn crosses (`tools/rail_edge.py --bare`), never as a distance from
   a penetration to the nearest boundary.** *(2026-09-03 —
   `docs/rail-dents-2026-09-03.md` §7)*
+
+- **An area percentage is a fraction of what SEWS, never of what the
+  classifier looked at.** `tools/stroke_verdicts.py` divided satin area by all
+  region area, and on `becker_marine_logo` @ 100 mm that denominator carries
+  1,462 mm² of `BACKGROUND_ENCLOSED` shapes the plan leaves open by design —
+  40% of the design, never thread. The published headline "274.0 mm² of satin,
+  7.6% of region area" was **75.2 mm² and 3.5%** once measured against the
+  2,125.6 mm² that actually sews: `S805585ef` (191.4) and `S501501b6` (7.4)
+  are enclosed background, so 27% of that figure was real. The same divisor
+  sat under both sides of every "x% → y%" arrow quoted for the per-stroke
+  rung. **Rule: derive the shape ids from `plan_stitches(...).iter_runs()` and
+  report both columns — a verdict on a region that never becomes thread is not
+  coverage, and a report that prints only the flattering one will be quoted.**
+  Same family as the pull-comp defect above: prove it on the emitted stitches,
+  never on the plan — here the plan is the honest half and the CLASSIFIER is
+  the flattering one, which is why the rule has to name the source rather than
+  the layer. *(measured 2026-09-06 — scope-history 09-06)*
+
+- **A report tool must CALL the shipped function, not restate its rule.**
+  The same tool printed the plan's bare `frac >= 0.75` arithmetic under the
+  heading "would flip", and that read as what `cfg.satin_per_stroke` does: 5
+  regions and 1,434.3 mm². What ships takes **3 regions and 78.8 mm²** — the
+  cap veto and Law 31's floor both sit between the arithmetic and the verdict,
+  and neither existed when the report was written. Restating a rule in a tool
+  gives you a second copy that drifts the moment the first one is corrected,
+  and nothing fails when it does. **Rule: call `classify_ribbon` both ways and
+  diff the verdicts; keep the plan's arithmetic only if it is LABELLED as not
+  shipped.** The rewrite reproduced 3/78.8 independently, which is the
+  cross-check that had been missing while every number came from one path.
+  It also surfaced the veto on real artwork rather than on the fixture built
+  for it: `S4d48640b` reads frac 0.83, and one of its eight strokes measures
+  p90 5.52 mm against the 5.0 cap. *(measured 2026-09-06)*

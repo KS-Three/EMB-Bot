@@ -4847,3 +4847,51 @@ Two qualifications kept in the record rather than smoothed over:
 (`tools/satin_columns.py`, #352); what is missing is a RENDER — every number
 here is geometric, and whether a 2.12 mm column reads better than the fill it
 replaces is for his eyes.
+
+## 2026-09-06 — the denominator under every satin percentage this session
+
+`tools/stroke_verdicts.py` printed satin as a fraction of ALL region area and
+the plan's bare `frac >= 0.75` arithmetic as though it were the shipped rung.
+Both are now wrong in the same direction — flattering — and both were quoted.
+
+Found from the other end: `app/src/lib/digitizer.js:1268` records that ~40% of
+`becker_marine_logo` sits behind `BACKGROUND_ENCLOSED` as bare fabric. That
+prompted checking what the satin figures were a fraction OF.
+
+**Measured on `becker_marine_logo.png` @ 100 mm** (`plan_stitches`, shape ids
+off the emitted runs — the plan, not the classifier, decides what is thread):
+
+| | classified | that SEWS |
+|---|---|---|
+| region area, all 17 | 3,587.9 mm² | 2,125.6 mm² (59.2%) |
+| satin, flag OFF | 274.0 mm² (7.6% of all) | **75.2 mm² (3.5% of sewn)** |
+| the flag adds | 78.8 mm², 3 regions | 78.8 mm² |
+| satin, flag ON | 352.9 mm² (9.8% of all) | **154.0 mm² (7.2% of sewn)** |
+| bare ≥ 0.75 rule, NOT shipped | 1,434.3 mm², 5 regions | 1,101.3 mm² |
+
+So of the headline **274.0 mm² of satin, 198.8 mm² never becomes thread** —
+`S805585ef` (191.4) and `S501501b6` (7.4) are enclosed-background regions.
+**27% of that figure is thread.** The published "7.6% → 47.6% of region area"
+counted area that never sews on both sides of the arrow AND in the divisor.
+
+The honest pair for the shipped rung is **75.2 → 154.0 mm², 3.5% → 7.2% of
+the area that actually sews.** Same direction, same modesty, real units.
+
+**The instrument now calls `classify_ribbon` BOTH ways** rather than restating
+the rung's rule, so `flag adds 3 regions, 78.8 mm²` is read off the shipped
+function and cannot drift from it. It reproduces every number published for
+the flag independently, which is the cross-check that was missing. The bare
+rule stays in the report, labelled `the PLAN's rule, NOT shipped`, because the
+plan's headline has to stay reproducible to stay auditable.
+
+Visible in the run, and worth keeping: `S4d48640b` reads frac **0.83** — the
+bare rule takes it, the flag refuses it, because one of its eight strokes
+measures p90 **5.52 mm** against the 5.0 cap. The cap veto working on real
+artwork, not just on the T-fixture built to test it.
+
+Two stale absence claims went with it: `tools/stroke_verdicts.py`'s *"Nothing
+in the pipeline consults `stage6_satin.classify_strokes`"* and
+`tests/test_stroke_classify.py`'s *"which nothing in the pipeline consults"*.
+Both were LITERALLY true — the pipeline calls `_stroke_rung_takes`, not
+`classify_strokes` — and both read as "inert", which stopped being true on
+2026-09-06. Third and fourth of the same kind this session (#358, #359).

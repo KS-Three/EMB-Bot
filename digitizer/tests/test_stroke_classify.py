@@ -1,5 +1,11 @@
-"""`stage6_satin.classify_strokes` — the per-stroke DT reading, which nothing
-in the pipeline consults.
+"""`stage6_satin.classify_strokes` — the per-stroke DT reading.
+
+`classify_strokes` itself has no caller in the pipeline, but the READING does
+since PR 3: `classify_ribbon` consults `_stroke_rows` through
+`_stroke_rung_takes` behind `cfg.satin_per_stroke`. Do not read the first
+sentence as "inert" — it stopped being that on 2026-09-06, and
+`test_the_per_stroke_path_is_reachable_only_behind_the_flag` is what pins the
+distinction.
 
 PR 2 of `docs/superpowers/plans/2026-09-04-per-stroke-satin-routing.md`.
 `classify_ribbon` pools the distance transform over a whole region's skeleton
