@@ -4772,3 +4772,69 @@ of its fixtures, `logo_script_tires.png`, is in fact `photo_scene`; re-run
 correctly it reads identically (1 flip, 763.1 -> 774.1 mm²) because its columns
 median 3.42 mm and never approach the 1.0 mm floor. Corpus totals unchanged at
 +143.8 mm², 21 flips, 15 demotions.
+
+## 2026-09-06 — the per-stroke satin flag, default OFF, measured on the stitches
+
+PR 3 of `docs/superpowers/plans/2026-09-04-per-stroke-satin-routing.md`.
+`cfg.satin_per_stroke` (default OFF), `classify_ribbon`/`is_satin_candidate`
+gain `per_stroke=`, and the three call sites — `stage5_overlap._comp_axis`,
+`stage7_sequence._sews_satin`, `stitch_one`'s ladder — pass it, so
+compensation and routing cannot disagree about which shapes are satin.
+`tests/test_satin_per_stroke_flag.py` (6).
+
+The rung sits on the `dt_irregular` branch ALONE, which is what makes it
+promotion-only. `dt_p90_cap` stays out of its reach and `_floor_or` still
+applies, so neither the machine cap nor Law 31's width floor can be sidestepped
+by splitting a region. `classify_strokes` calls `classify_ribbon`, so the rung
+consults a shared `_stroke_rows` helper rather than recursing.
+
+**The RENDER corrected the rule before it shipped, and that is the entry.**
+The first cut scored the machine cap per stroke and then let the area vote
+outweigh it — not the same rule as refusing an over-cap stroke, and the
+difference is bare cloth. `S92a90056` (1,022 mm²) passed at frac 0.79 while
+carrying 97.5 mm² of over-cap strokes, one of them **9.32 mm against the
+5.0 mm cap**; `_rail_points`' per-station guard holds every cross to the cap,
+so the middle of that stroke got no thread. Preflight: `uncovered_total_mm2`
+**0.0 → 28.0**, worst patch 22.2, and ARTWORK_UNCOVERED appeared — DOCTRINE's
+own measured negative, reached by a new road. **The cap is a VETO now.**
+`dt_irregular` strokes stay outvotable by area, because pooled irregularity is
+the artifact the rung exists to correct and a stroke wider than the needle can
+hold is not.
+
+With the veto, `becker_marine_logo.png` @ 100 mm:
+
+| | grade | uncovered | crossing | median | penetrations |
+|---|---|---:|---:|---:|---:|
+| OFF | B 88 (`DENSITY_EXTREME`) | 0.0 mm² | 2.2% | 0.29 mm | 11,374 |
+| **ON** | **A 100, no findings** | **0.0 mm²** | 4.0% | 0.64 mm | 11,206 |
+| *the unsafe cut* | *B 88 (`ARTWORK_UNCOVERED`)* | *28.0* | *35.0%* | *2.12 mm* | *8,512* |
+| the pro's own file | — | — | 44.3% | 2.52 mm | 11,274 |
+
+Read the 35% as what it was: **bought with bare fabric**. The safe rung is
+modest — 2.2% → 4.0% crossing, 0.29 → 0.64 mm median — but it clears
+`DENSITY_EXTREME` and takes the design to A 100 with no findings, at zero
+coverage cost. And the remaining gap to the pro is now DIAGNOSED: the 5.0 mm
+machine cap against Becker's genuinely 6–9 mm letter strokes, exactly as §2
+and §7 predicted. No routing change closes that; it is sizing and
+segmentation. At 80 mm the flag is byte-identical — Becker there already reads
+54.5%, above the pro.
+
+Render for Kent: `docs/renders/satin-per-stroke-2026-09-06/`.
+
+Two qualifications kept in the record rather than smoothed over:
+
+- **The classifier's "+1,434 mm², five regions" overstates what sews.** Four
+  shapes change tier; the fifth (`S4d48640b`, 333 mm²) is one of seven
+  ENCLOSED-BACKGROUND regions the fixture leaves unsewn at either setting.
+  `SHAPES_LEFT_UNSEWN` names all seven (1,462 mm², `enclosed_background: 7`)
+  and `BACKGROUND_ENCLOSED` explains them as holes toggleable in review. Its
+  promotion is inert. Checked before reporting: preflight's silence there is
+  correct — `_uncovered_findings` defers unsewn regions to that warning on
+  purpose, and the warning fires.
+- **One fixture, one size.** The breadth number is PR 2's corpus sweep and it
+  is small: +143.8 mm² (2%) over 14 fixtures at 80 mm.
+
+**The flip to ON is Kent's.** ROADMAP gate 3's instrument requirement is met
+(`tools/satin_columns.py`, #352); what is missing is a RENDER — every number
+here is geometric, and whether a 2.12 mm column reads better than the fill it
+replaces is for his eyes.

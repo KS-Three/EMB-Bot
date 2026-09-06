@@ -218,7 +218,8 @@ def ribbon_width_mm(poly: Polygon) -> float:
 
 
 def is_satin_candidate(poly: Polygon, max_width_mm: float, *,
-                        design_class: str = "flat") -> bool:
+                        design_class: str = "flat",
+                        per_stroke: bool = False) -> bool:
     """Should this shape be satin rather than fill?
 
     Two conditions, both about how the result reads on fabric: the ribbon must
@@ -267,8 +268,8 @@ def is_satin_candidate(poly: Polygon, max_width_mm: float, *,
     `_dt_regular_and_within_cap`, deleted 2026-08-17 once `classify_ribbon`
     absorbed both of its checks.)
     """
-    return classify_ribbon(poly, max_width_mm,
-                           design_class=design_class).satin
+    return classify_ribbon(poly, max_width_mm, design_class=design_class,
+                           per_stroke=per_stroke).satin
 
 
 # Law 31's satin minimum width, adopted VERBATIM from the printed rule
@@ -314,7 +315,8 @@ class RibbonVerdict:
 
 def classify_ribbon(poly: Polygon, max_width_mm: float, *,
                     design_class: str = "flat",
-                    full_metrics: bool = False) -> RibbonVerdict:
+                    full_metrics: bool = False,
+                    per_stroke: bool = False) -> RibbonVerdict:
     """`is_satin_candidate`'s implementation. Same verdict, with attribution.
 
     `full_metrics` runs the distance transform even for a shape an earlier
@@ -385,6 +387,29 @@ def classify_ribbon(poly: Polygon, max_width_mm: float, *,
                 <= _PROMOTE_EXPLAINED_MAX
                 and stats.elongation >= _PROMOTE_ELONGATION_MIN):
             return _floor_or(RibbonVerdict(True, "promoted_ribbon", metrics),
+                             stats, design_class, metrics)
+        if per_stroke and _stroke_rung_takes(poly, max_width_mm, design_class):
+            # `cfg.satin_per_stroke`, default OFF. The pooled radii above are
+            # one number for a whole region, so a branchy letterform — wide at
+            # its junctions, thin along its arms — fails `2s < m` as a unit
+            # while every arm of it is a clean ribbon. The rung asks the same
+            # two gates per stroke and takes the region when enough of its
+            # stroke-partitioned AREA passes both.
+            #
+            # PROMOTION-ONLY, and that is load-bearing rather than tidy: it
+            # sits on the `dt_irregular` branch alone, so it can only turn a
+            # refusal into a satin call. DOCTRINE records what a REPLACEMENT
+            # costs — 15 regions demoted across the corpus, one of them
+            # 638.8 mm2, most of them `promoted_ribbon` shapes the `explained`
+            # path above had deliberately rescued.
+            #
+            # `dt_p90_cap` below stays out of its reach on purpose: a stroke
+            # genuinely wider than the machine cap must still be refused, or
+            # `_rail_points`' per-station guard sews capped crosses down a
+            # wider stroke and leaves bare cloth (DOCTRINE's measured
+            # negative). `_floor_or` still applies, so Law 31's width floor
+            # cannot be sidestepped by splitting either.
+            return _floor_or(RibbonVerdict(True, "stroke_ribbon", metrics),
                              stats, design_class, metrics)
         return RibbonVerdict(False, "dt_irregular", metrics)
     if stats.p90_mm > max_width_mm:
@@ -716,9 +741,27 @@ def classify_strokes(poly: Polygon, max_width_mm: float, *,
     """
     region = classify_ribbon(poly, max_width_mm, design_class=design_class,
                              full_metrics=True)
+    rows, total = _stroke_rows(poly, max_width_mm, design_class)
+    if not rows:
+        return StrokesVerdict([], region, 0.0, 0.0, 0.0)
+    passing = float(sum(r.area_mm2 for r in rows if r.satin))
+    return StrokesVerdict(rows, region, total, passing,
+                          (passing / total) if total > 0 else 0.0)
+
+
+def _stroke_rows(poly: Polygon, max_width_mm: float,
+                 design_class: str) -> tuple[list[StrokeVerdict], float]:
+    """-> (one verdict per stroke, total partitioned area mm2).
+
+    Split out of `classify_strokes` so `classify_ribbon` can consult the
+    per-stroke reading behind its flag WITHOUT recursing: `classify_strokes`
+    calls `classify_ribbon` for the region row, so the rung cannot call
+    `classify_strokes` back. Everything the two gates need lives here; the
+    region verdict does not.
+    """
     strokes, _half_mm, field = extract_strokes(poly)
     if field is None or not strokes:
-        return StrokesVerdict([], region, 0.0, 0.0, 0.0)
+        return [], 0.0
 
     areas = _partition_area_mm2(strokes, field, float(poly.area))
     rows: list[StrokeVerdict] = []
@@ -744,11 +787,38 @@ def classify_strokes(poly: Polygon, max_width_mm: float, *,
             rows.append(StrokeVerdict(i, False, "photo_width_floor", area, st))
         else:
             rows.append(StrokeVerdict(i, True, "satin", area, st))
+    return rows, float(sum(areas))
 
-    total = float(sum(areas))
+
+def _stroke_rung_takes(poly: Polygon, max_width_mm: float,
+                       design_class: str) -> bool:
+    """Would the per-stroke rung take a region the pooled DT refused?
+
+    `>= _STROKE_AREA_FRAC_MIN` of the region's stroke-partitioned area passing
+    BOTH per-stroke gates. A region with no strokes answers False: no strokes
+    is no evidence, and the rung may only ever ADD to the shipped verdict.
+    """
+    rows, total = _stroke_rows(poly, max_width_mm, design_class)
+    if not rows or total <= 0:
+        return False
+    # The machine cap is a VETO, not a vote. Scoring it per stroke and then
+    # letting an area majority outvote it is not the same rule, and the
+    # difference is bare cloth: measured 2026-09-06 on `becker_marine_logo`
+    # at 100 mm, `S92a90056` (1,022 mm2) passed at frac 0.79 while carrying
+    # 97.5 mm2 of over-cap strokes, one of them 9.32 mm against the 5.0 mm
+    # cap. `_rail_points`' per-station guard holds every cross to the cap, so
+    # the middle of that stroke got no thread at all — preflight went
+    # `uncovered_total_mm2` 0.0 -> 28.0 with a 22.2 mm2 worst patch, and
+    # ARTWORK_UNCOVERED appeared. DOCTRINE already recorded that as a
+    # measured negative; this is the line that keeps the rung out of it.
+    #
+    # `dt_irregular` strokes stay outvotable by area, which is the whole
+    # point of the rung: pooled irregularity is the artifact it exists to
+    # correct. A stroke wider than the needle can hold is not an artifact.
+    if any(r.reason == "dt_p90_cap" for r in rows):
+        return False
     passing = float(sum(r.area_mm2 for r in rows if r.satin))
-    return StrokesVerdict(rows, region, total, passing,
-                          (passing / total) if total > 0 else 0.0)
+    return (passing / total) >= _STROKE_AREA_FRAC_MIN
 
 # --- Skeleton extraction ---------------------------------------------------
 

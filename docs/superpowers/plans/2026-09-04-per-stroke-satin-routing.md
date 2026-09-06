@@ -258,3 +258,81 @@ those 15 demotions.
 little across the corpus at the size the corpus runs, and its real value is
 decisiveness at a threshold this project has already measured as fragile.
 PR 3's flag is unchanged in shape; what it must NOT be is a replacement.
+
+---
+
+## PR 3 — the flag, built and measured on the stitches (2026-09-06)
+
+`cfg.satin_per_stroke`, **default OFF**. `classify_ribbon` and
+`is_satin_candidate` take `per_stroke=`; the three call sites §1 identified
+(`stage5_overlap._comp_axis`, `stage7_sequence._sews_satin`, and `stitch_one`'s
+ladder) pass `cfg.satin_per_stroke`, so compensation and routing cannot
+disagree about which shapes are satin. `tests/test_satin_per_stroke_flag.py`
+(6).
+
+The rung sits on the `dt_irregular` branch **alone**, which is what makes it
+promotion-only: it can turn a refusal into a satin call and nothing else.
+`dt_p90_cap` stays out of its reach (a stroke past the machine cap must still
+be refused, or `_rail_points`' per-station guard leaves bare cloth), and
+`_floor_or` still applies, so Law 31's width floor cannot be sidestepped by
+splitting. No recursion: `classify_strokes` calls `classify_ribbon`, so the
+rung consults a shared `_stroke_rows` helper instead of calling back.
+
+**Measured on the emitted stitches** with `tools/satin_columns.py` — this
+repo's rule, and the reason the instrument was built first:
+
+**The render corrected the rule before any of this shipped.** The first cut
+scored the machine cap per stroke and then let the area vote outweigh it. That
+is not the same rule as refusing an over-cap stroke, and the difference is bare
+cloth: `S92a90056` (1,022 mm2) passed at frac 0.79 carrying 97.5 mm2 of
+over-cap strokes, one of them **9.32 mm against the 5.0 mm cap**.
+`_rail_points`' per-station guard holds every cross to the cap, so the middle
+of that stroke got no thread — `uncovered_total_mm2` 0.0 -> **28.0**, worst
+patch 22.2, and ARTWORK_UNCOVERED appeared. DOCTRINE had already recorded that
+shape of failure. **The cap is a VETO now**; `dt_irregular` strokes stay
+outvotable, because pooled irregularity is the artifact the rung exists to
+correct and a stroke wider than the needle can hold is not.
+
+With the veto, on `becker_marine_logo.png`:
+
+| @ 100 mm | grade | uncovered | crossing | median column | penetrations |
+|---|---|---:|---:|---:|---:|
+| flag OFF | B 88 (`DENSITY_EXTREME`) | 0.0 mm2 | 2.2% | 0.29 mm | 11,374 |
+| **flag ON** | **A 100, no findings** | **0.0 mm2** | 4.0% | 0.64 mm | 11,206 |
+| *area-vote cut, for the record* | *B 88 (`ARTWORK_UNCOVERED`)* | *28.0* | *35.0%* | *2.12 mm* | *8,512* |
+| *the professional's own file* | — | — | *44.3%* | *2.52 mm* | *11,274* |
+
+**Read the 35% as what it was: bought with bare fabric.** The safe rung is
+worth 2.2% -> 4.0% crossing and 0.29 -> 0.64 mm of median column on this
+fixture — modest — but it clears `DENSITY_EXTREME` and takes the design to
+**A 100 with no findings at all**, at zero coverage cost.
+
+And the remaining gap to the pro is now diagnosed rather than open: it is the
+**5.0 mm machine cap against Becker's genuinely 6-9 mm letter strokes**, which
+is what §2 and §7 both said. It is not a routing problem and no routing change
+will close it — it is a sizing and segmentation question.
+
+At 80 mm the flag is **byte-identical**, and that is not a null result: Becker
+there already reads 54.5%, ABOVE the pro's 44.3%, the same fact §PR 2 found
+from the classifier side (88.2% satin already).
+
+Two honest qualifications.
+
+- **The classifier's "+1,434 mm², five regions" overstates what sews.** Four
+  shapes actually change tier (`S6d3d3130`, `S92a90056`, `Sc9b48e5a`,
+  `Sf48a80bd`). The fifth, `S4d48640b` (333 mm²), is one of seven
+  ENCLOSED-BACKGROUND regions this fixture leaves unsewn at either flag
+  setting — `SHAPES_LEFT_UNSEWN` names all seven, 1,462 mm², with
+  `enclosed_background: 7`, and `BACKGROUND_ENCLOSED` explains them as holes
+  the user can toggle on in review. Its promotion is inert. (Checked before
+  reporting: preflight's silence about that area is correct, not a hole —
+  `_uncovered_findings` defers unsewn regions to `SHAPES_LEFT_UNSEWN` on
+  purpose, and that warning does fire.)
+- **One fixture, one size.** Everything above is Becker at 100 mm. §PR 2's
+  corpus sweep is the breadth number and it is small: +143.8 mm² (2%) over 14
+  fixtures at 80 mm.
+
+**The flip to ON is Kent's**, and ROADMAP gate 3 wants the instrument rebuilt
+first — it is (`tools/satin_columns.py`, #352). What is still missing is a
+RENDER: every number here is geometric, and the question "does a 2.12 mm
+column read better on this logo than the fill it replaces" is one for his eyes.

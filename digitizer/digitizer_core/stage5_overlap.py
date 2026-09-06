@@ -254,8 +254,10 @@ def _comp_axis(region: Region, cfg: PipelineConfig, satin_max: float,
     """
     tier = str(region.meta.get("tier", "auto")).lower()
     if tier == "satin" or (tier == "auto"
-                           and is_satin_candidate(region.polygon, satin_max,
-                                                   design_class=design_class)):
+                           and is_satin_candidate(
+                               region.polygon, satin_max,
+                               design_class=design_class,
+                               per_stroke=cfg.satin_per_stroke)):
         return None, True
     angle = region.meta.get("fill_angle_deg")
     if angle is not None:

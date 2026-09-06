@@ -250,7 +250,8 @@ def _sews_satin(region, cfg: PipelineConfig, satin_max_mm: float,
         return True
     return (tier == "auto" and cfg.satin
             and is_satin_candidate(region.polygon, satin_max_mm,
-                                   design_class=design_class))
+                                   design_class=design_class,
+                                   per_stroke=cfg.satin_per_stroke))
 
 
 def borders_last_layers(regions, thread_indices: list[int],
@@ -1567,7 +1568,8 @@ def sequence(
             # outline the run tier cannot close falls through to fill rather
             # than silently dropping artwork, exactly like the satin branch.
             ribbon = (classify_ribbon(p.region.polygon, satin_max,
-                                      design_class=design_class)
+                                      design_class=design_class,
+                                      per_stroke=cfg.satin_per_stroke)
                       if tier == "auto" and cfg.satin else None)
             # Kent's gradient ruling (2026-09-04): a shape that RIDES the
             # design's ramp is part of the sweep and sews the sweep's bands,

@@ -279,6 +279,20 @@ Moved verbatim 2026-08-28 — no section was rewritten in the move.
 
 ## Measured negatives — built or proposed, then rejected. Do not rebuild.
 
+- **A per-stroke satin rung must treat the machine cap as a VETO, never as a
+  vote.** Scoring `dt_p90_cap` per stroke and then letting an area majority
+  outweigh it is a different rule, and the difference is bare cloth: measured
+  2026-09-06 on `becker_marine_logo` at 100 mm, `S92a90056` (1,022 mm²) passed
+  at frac 0.79 carrying 97.5 mm² of over-cap strokes, one of them **9.32 mm
+  against the 5.0 mm cap**, and `_rail_points`' per-station guard left the
+  middle of it unsewn — `uncovered_total_mm2` 0.0 → 28.0, ARTWORK_UNCOVERED
+  where there had been none. `dt_irregular` strokes stay outvotable: pooled
+  irregularity is the artifact the rung exists to correct, a stroke wider than
+  the needle can hold is not. **Found by rendering it, not by the suite** —
+  every test was green and the geometric numbers looked like a win (35%
+  crossing) right up until the picture showed hollow letters.
+  *(measured 2026-09-06 — `docs/renders/satin-per-stroke-2026-09-06/`)*
+
 - **Splitting a region is not a way around a REGION-LEVEL floor.** Any rung
   that decomposes a shape and re-runs the satin gates per piece must re-apply
   `_floor_or` (Law 31's `PHOTO_MIN_SATIN_WIDTH_MM`) to each piece, or a
