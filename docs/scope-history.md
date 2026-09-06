@@ -5479,10 +5479,28 @@ worst is not subtle:
 | 3971 Silver | 204, 204, 204 | 132, 132, 132 | 21.2 |
 | 0150 Mystik Grey | 190, 190, 180 | 137, 137, 137 | 16.6 |
 
-**The design already loads `0015 White` (255, 255, 255)** — and put a mid-grey
-on near-white artwork anyway. The pairing reads as permuted on a greyscale
-design. Not recorded anywhere; `0111 Whale` appears in the record only as
-bridge_bar's 12-shard residual, a different fixture.
+**The design already loads `0015 White` (255, 255, 255).** The obvious reading
+is that the pairing is permuted — and that reading is WRONG, which the code
+settles without another measurement.
+
+`palette.select_palette` ends with `assignment = np.argmin(dist[:, sel],
+axis=1)`: every region is given its NEAREST selected medoid in ΔE00. A
+permutation is not reachable from that line. White is selected. Therefore the
+region's own colour is nearer Whale than White — the palette did the right
+thing for the region it was given.
+
+**So the mismatch is not in the palette; it is that the region's own colour is
+not the colour of the artwork its stitches land on.** Preflight scores "the
+artwork pixels that spool's own stitches land on", and it measures 33.0 ΔE
+from Whale there. `S43831dcd` is **0.94 mm²**. Both regions Whale sews are
+offenders (33.0 and 21.8) out of the three it was scored on.
+
+That is the same shape as the sliver observation below, and it is where the
+next person should dig: not "which cone was picked" but "why does a 0.94 mm²
+shard's own colour differ from the artwork under it". `0111 Whale` appears in
+the record only as bridge_bar's 12-shard residual — a different fixture, and
+`docs/scope-history.md` 09-04 already flagged that one's cause as
+"not established".
 
 ### And a structural note on the check itself
 

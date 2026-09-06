@@ -1228,12 +1228,18 @@ its hedge as it is copied forward** — is why this file is split.
   ΔE 63.6 → 6.8, −15% stitches** (B 76 with excess too). Kent ruled that flag
   OFF 2026-09-04 on trims, cones and worst-excess; **the record carries no
   grade for it and this is it.** It costs elsewhere — bridge_bar 3 → 4 blocks.
-  **(3) a wrong assignment, 2 of 7.** `bridge_bar` and `screenshot_phone_ui`
-  block under every combination, and the screenshot's is blatant: **`0111
-  Whale` (127,127,127) sews artwork at (252,252,252) for 33.0 ΔE while the
-  design already loads `0015 White` (255,255,255)**; Silver (204) sits on
-  (132) and Mystik Grey (190) on (137). The pairing reads as permuted on a
-  greyscale design. Unrecorded before 2026-09-06.
+  **(3) region colour != the artwork under it, 2 of 7.** `bridge_bar` and
+  `screenshot_phone_ui` block under every combination, and the screenshot's
+  looks blatant: **`0111 Whale` (127,127,127) scores 33.0 ΔE on artwork read
+  as (252,252,252) while the design already loads `0015 White`**. **It is NOT
+  a permuted palette, and the code says so without another measurement:**
+  `select_palette` ends `assignment = np.argmin(dist[:, sel], axis=1)` — every
+  region gets its NEAREST selected medoid, so with White selected the region's
+  own colour must be nearer Whale. The palette was right for the region it was
+  given; what differs is the artwork under that region's STITCHES, on a
+  0.94 mm² shard. **Rule: before calling a cone assignment wrong, check that
+  the region's own colour is the colour its stitches land on — `argmin` cannot
+  mis-pair.** Unrecorded before 2026-09-06.
   **Rule: never treat a THREAD_MATCH_POOR wall as one defect — split it by
   yardstick, palette and assignment before proposing anything.**
   *(measured 2026-09-06 — scope-history 09-06)*
