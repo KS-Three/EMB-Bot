@@ -5222,3 +5222,196 @@ artwork; a fully covered bar gets no patch; both call sites forward the flag.
 
 Renders: `docs/renders/junction-bare-2026-09-06/becker_80mm_patch_off.png` and
 `_on.png`.
+
+## 2026-09-06 — TRIM_HEAVY on Becker: four hypotheses, all refuted, one measured cause
+
+`TRIM_HEAVY` is the only finding left on `becker_marine_logo` once the junction
+patch clears `ARTWORK_UNCOVERED`. Against the professional's own file on the
+same artwork:
+
+| | stitches | trims | per 1k |
+|---|---:|---:|---:|
+| ours @ 80 mm | 5,531 | 29 | **5.2** |
+| `beckers_logolc.dst` | 11,274 | 12 | 1.1 |
+| `beckers_logo_lc_2_a.dst` | 8,694 | 12 | 1.4 |
+
+Five times the rate, and **19 of our 28 pen-ups stay inside ONE shape** —
+`Sead76620`, the 638.8 mm² 27-stroke region that also carries the junction
+hole. Every long one is a hop into a stroke's underlay.
+
+`satin_shape` already walks the unsewn skeleton needle-down (`_graph_travel`,
+"the professional trick the corpus files all use"). Instrumented: **32 calls,
+8 succeed** — 13 "no route over the unsewn web", 9 "cursor more than 3 mm off
+the web", 2 "target 1.1-2.0 mm off-web".
+
+### Four things that looked like the fix, and were not
+
+**1. The stroke ORDER strands the needle.** `_order_strokes` is pure
+nearest-neighbour on stroke endpoints and knows nothing about the web's
+connectivity, so this looked obvious. Built a connectivity-aware order that
+prefers strokes still reachable over the unsewn web: **29 trims and 5,531
+stitches, byte-identical to shipped.** Instrumented, it narrowed the candidate
+set once in 32 picks and changed the pick **zero** times.
+
+**2. `TRIM_AT_MM = 3.0` is too aggressive.** 16 of our 28 pen-ups are 3.5-8.4
+mm; at a 10 mm threshold we would cut 12, exactly the pro's count. The constant
+carries no corpus citation, only a judgement, and the pro file appeared to show
+71 JUMPs against 12 trims. **That reading was wrong, and measuring it is what
+caught it.** Classifying every needle-up move in all five Becker reference
+files by whether a TRIM precedes it: **69 cut, ZERO left as floats**, shortest
+cut **3.9 mm** (3.9-6.2 across the files). The 71 "jumps" are DST encoding a
+long move as a run of JUMP records, not floats.
+
+> **And the answer was already in the record, better measured than this.**
+> `.claude/memory/pro-trim-threshold.md` (2026-08-15) walked **910 needle-up
+> moves across all 23 pro designs**: **542 CUT, p50 7.9 mm, min 1.9**; **368
+> FLOATED, p50 9.1, max 16.1**. The distributions overlap heavily and *"no
+> single threshold reproduces this pro"* — which is a better reason not to
+> retune the constant than anything measured here, and it says pros both cut
+> below our 3.0 and float well above it. The five Becker files are a subset
+> whose digitizer happens to cut everything.
+>
+> **That also corrects a live claim.** `MASTER_SCOPE` said *"the pro never cuts
+> under 11.8 mm"*, from `docs/fragmentation-attribution-2026-08-18.md` §"The
+> pro's actual cut rule" — which measured **one file**, `becker_hat_small`.
+> Generalised to "the pro", it contradicts the 23-design corpus's 1.9 mm
+> minimum. Corrected in place 2026-09-06; the source doc keeps its own
+> single-file numbers, which are not wrong about that file.
+
+**Do not raise `TRIM_AT_MM` to close this finding** — not because pros cut
+everything (they do not), but because distance is not their decision variable.
+
+**3. The skeleton is full of spurs.** It is not. The degree histogram of
+`Sead76620`'s web is `{1: 1, 2: 1, 3: 17, 5: 23, 6: 4, 7: 1, 8: 1, 10: 1}` —
+**one** degree-1 node in 49. The 42 odd-degree vertices are 17 three-way and 24
+five-or-more-way junctions. More aggressive spur pruning buys nothing.
+
+**4. The Eulerian floor is binding.** A connected web with `odd` odd-degree
+vertices needs `odd/2 − 1` lifts whatever the order, and `Sead76620` scores 20
+against the 19 in-shape trims it takes — a tempting match. But
+`_build_travel_graph`'s `node_at` merges points within 0.5 mm, and widening
+that lowers the floor (0.5 mm → 20, 1.0 → 17, 1.5 → 14). Measured end to end:
+**29 trims at every radius from 0.5 to 2.0 mm**, stitch count moving by two.
+The floor is a real bound and it is *not* what binds.
+
+### What actually does
+
+Travel is allowed over UNSEWN strokes only — a running stitch on a stroke
+whose column sews later is covered; one over finished satin shows. So the
+constraint is temporal, not topological. Logging every call in that shape's
+20-stroke sequence against how much of it was already sewn:
+
+| sewn | outcome |
+|---|---|
+| 0% | cursor off-web (arriving from another shape) |
+| 5% | ok |
+| 10% | no route |
+| 15%, 20% | ok |
+| 25%, 30%, 35% | no route |
+| 40% | ok — the last one |
+| **45% … 85%** | **no route, all nine calls** |
+| 90%, 95% | target off-web |
+
+**After 40% of the shape is down, the walk never succeeds again.** A
+27-stroke shape spends nearly all of its life mostly-sewn, so nearly every move
+in it is a lift. That is the price of "never run stitches over finished satin",
+and no ordering, threshold or graph parameter changes it.
+
+Which puts the cause back where the junction hole put it: **one region carrying
+27 strokes.** The pro takes 14 pen-ups on this artwork because their
+decomposition needs 14. WHERE to fix that — segmentation, skeletonization, or
+stroke decomposition — is not established here, and the first draft of this
+entry overreached by naming segmentation.
+
+### A fifth hypothesis, and why chaining makes it worse
+
+**5. Chain the strokes END TO END.** The one thing nearest-neighbour cannot
+arrange is consecutive strokes that *share* an endpoint — those need no travel
+at all, so an Eulerian order over the stroke graph should beat any distance
+heuristic. Built it (Hierholzer over stroke endpoints merged at 0.5 mm, falling
+back to nearest when nothing chains):
+
+| | trims | per 1k | stitches |
+|---|---:|---:|---:|
+| shipped nearest-neighbour | 29 | 5.2 | 5,531 |
+| **Eulerian chaining** | **32** | **5.8** | 5,555 |
+
+**Worse.** And the reason is the same one behind the 9 "cursor off-web" and 2
+"target off-web" failures: **a satin column does not start or end at a spine
+node.** It starts at a cap-extended RAIL point, a millimetre or two off the
+web, and the underlay starts somewhere else again. Chaining spines end-to-end
+buys nothing when the needle never lands on the spine. The web is built from
+skeletons; the needle lives on rails.
+
+That is five measured negatives on this one finding. Recorded so the sixth
+person to look starts past them.
+
+### And the fill tier got here first — this is a confirmation, not a discovery
+
+`docs/scope/1-auto-digitizing-quality.md` reached the same three dead ends for
+`stage6_fill` on 2026-08-21, on a different shape:
+
+> *"Do not re-propose 'add nearest-neighbour fill ordering.' It is already
+> there."* … *"Travel coverage sized, and it is NOT the lever either — the
+> ceiling is 4 of 56 cuts, 7%."* … replaying all 56 cut pairs against every
+> ring fragment with the candidate cap and detour budget removed: **"no route
+> stays inside the shape, at any length" — 52 of 56** … *"the shape genuinely
+> disconnects its own fill rows — there is no path to find."*
+
+Ordering ruled out, threshold ruled out (gate 1), travel ruled out by sizing.
+Two tiers, two shapes, three weeks apart, same answer. **Say so rather than
+claiming novelty**: what the satin side adds is the Eulerian bound and its
+refutation, the rail-versus-spine reason chaining fails, and — the one genuinely
+new part — **WHEN** it dies. "There is no path to find" reads as a fixed
+property of the shape; the progress log shows it is not. The web is walkable at
+5/15/20/40% and closed from 45% on. It *becomes* true as the shape fills in,
+which is why no static property of the geometry predicts it.
+
+## 2026-09-06 — what the junction patch costs across the whole corpus
+
+`cfg.satin_patch_junctions` ON vs OFF, all 26 scorecard fixtures at 80 mm:
+
+**23 byte-cost-identical; 3 patched; 315,371 → 316,160 stitches, +0.25%.**
+
+| fixture | off | on | Δ | uncovered off → on |
+|---|---:|---:|---:|---|
+| `becker_marine_logo.png` | 5,531 | 5,914 | +383 | 23.8 → **0.0** |
+| `photo/photo_scene_stub.png` | 16,247 | 16,594 | +347 | 6.5 → **0.0** |
+| `photo/logo_bridge_bar.jpg` | 14,338 | 14,397 | +59 | 0.0 → 0.0 |
+| the other 23 | — | — | **+0** | unchanged |
+
+**The Bridge Bar row is an over-fire, and it corrects the absolute form of the
+claim in #361.** That fixture has no `ARTWORK_UNCOVERED` either way, yet the
+pass spends 59 stitches (+0.4%) on it. The cause is deliberate: this pass uses
+a STRICTER coverage test than the grader — no 0.4 mm erosion, a 0.25 mm cell
+against preflight's 0.5 — so that a patch clears the finding with margin rather
+than landing exactly on its boundary. The price is an occasional patch on a
+hole preflight would not have counted. "Nothing pays for it where there is
+nothing to find" was true of 23 of 26 fixtures, not of all of them.
+
+**And what it cannot reach — which is where the corpus's real bare cloth is.**
+The two largest uncovered figures are untouched, correctly: `photo_subject_stub`
+**956.0 mm² (23.4% of its claimed artwork, D 58)** and `photo_grass_macro`
+**407.5 mm² (8.9%, B 76)**. `satin_shape` never runs on them, so this flag
+cannot help, and **both are the recorded scorecard baseline** — neither is news.
+Anyone reading "100% of the corpus's bare cloth" should read it as *100% of the
+bare cloth in SATIN shapes*; these are an order of magnitude larger.
+
+**They are also already ruled on, which is the part worth connecting.** Both
+are `photo_subject`, and a spy on the tiers shows that class routes to
+`streamline_fill` — thread-paint — while `photo_scene` goes to
+`stage6_fill.stitch_shape` (`photo_dof_meadow`: 10 calls, coverage p50 **2.95**,
+uncovered **0.0**). The two subject fixtures run coverage p50 **0.49** and
+**0.54**, which lands inside the **0.52-0.59** band DOCTRINE already records for
+thread-paint — *"bare cloth between strokes"* — and which Kent looked at and
+tabled: *"let's just table it for later when the tool gets more powerful."*
+So `ARTWORK_UNCOVERED` on those two is the grader correctly reporting a
+deliberate, parked design choice, not an open defect. **Do not re-open it.**
+
+(Their runs carry `fill` KIND, which is not the same as the fill TIER — an
+earlier draft of this entry said "FILL-tier shape" and was wrong.)
+
+*(A first pass at attributing those two read their tiers as "border, travel"
+and nearly filed a defect. It keyed on the raw `shape_id`; the fill runs are
+stamped with derived suffixes and only appear once `_owning_region_id` strips
+them — the trap DOCTRINE already records from four sites in one day.)*

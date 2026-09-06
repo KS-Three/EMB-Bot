@@ -533,15 +533,25 @@ Moved verbatim 2026-08-28 — no section was rewritten in the move.
 - **"Our satin-vs-fill MIX nearly matches the professional's" was an AREA
   statistic, and by thread it is false.** Defect 5 carried that premise from
   `tools/pro_parity/scorecard.py`'s `cell_stats`, which assigns ONE stitch
-  type per 2 mm cell (`CELL = 2.0`) — so our 0.29 mm hairline column claims a
-  cell exactly as the professional's 2.52 mm column does. Measured as thread
-  on 2026-09-04 with `tools/satin_columns.py`, on the professional's own file
-  for a logo we also digitize: **2.2% of our penetrations sit in a column
-  against their 44.3%**, our median column 0.29 mm against their 2.52, and
-  84% of ours under the 0.7 mm the needle can hold. The paragraph's
-  CONCLUSION survives — retuning `satin_max` is still a measured negative,
-  separately, below — but not for the reason it gave: the mix was never
-  already right.
+  type per 2 mm cell (`CELL = 2.0`), so a column of ours claims a cell exactly
+  as the professional's 2.52 mm column does. Measured as thread on 2026-09-04
+  with `tools/satin_columns.py`, on the professional's own file for a logo we
+  also digitize: **2.2% of our penetrations sit in a column against their
+  44.3%**. The paragraph's CONCLUSION survives — retuning `satin_max` is still
+  a measured negative, separately, below — but not for the reason it gave: the
+  mix was never already right.
+  **The WIDTH half of this entry was contaminated and is withdrawn
+  (2026-09-06).** It read "our median column 0.29 mm against their 2.52, and
+  84% of ours under the 0.7 mm the needle can hold" — that is
+  `satin_columns.py`'s WHOLE-PLAN row, 80% of it tatami turns rather than
+  columns. Our SATIN runs on that fixture measure **3.82 mm median, p90 4.93,
+  23% under 1.0 mm** against the pro's 2.52 / 5.00 / 7%: our columns are not
+  hairlines, there are simply very few of them. The 2.2%-vs-44.3% SHARE is
+  unaffected (both sides whole-plan, same detector) and carries the entry on
+  its own. What is NOT re-derived here is the original mechanism sentence — it
+  explained the cell-level tie by our columns being hairline-thin, and that
+  premise is gone; the blindness of an area-per-cell statistic to a share this
+  small is real either way, but do not quote a width to argue it.
   **Two instruments carry the same blind spot and are annotated in place:**
   `cell_stats` (area, not thread) and `tools/study_pro.py`'s `classify`,
   which gates satin at a median segment ≥ 0.7 mm and therefore *structurally
@@ -1133,3 +1143,71 @@ its hedge as it is copied forward** — is why this file is split.
   appended at the END of the shape, so the needle hops in and out and Becker
   goes 29 → 32 trims at 80 mm on a fixture `TRIM_HEAVY` already flags. *(2026-09-06 —
   scope-history 09-06; renders in `docs/renders/junction-bare-2026-09-06/`)*
+
+- **Becker's TRIM_HEAVY is the "never travel over finished satin" rule meeting
+  a 27-stroke shape. Four hypotheses, all measured, all refuted.** Ours runs 29
+  trims on 5,531 stitches (5.2/1k) against the professional's 12 on 11,274
+  (1.1/1k) for the SAME artwork; 19 of our 28 pen-ups stay inside `Sead76620`.
+  `_graph_travel` already walks the unsewn skeleton — 32 calls, 8 succeed.
+  **(1) Order.** A connectivity-aware `_order_strokes` preferring reachable
+  strokes gives **29 trims, 5,531 stitches, byte-identical**; it changed the
+  pick zero times in 32.
+  **(2) `TRIM_AT_MM`.** Raising it from 3.0 looked obvious (16 of 28 pen-ups
+  are 3.5-8.4 mm; a 10 mm threshold gives exactly the pro's 12) and the pro
+  file appeared to show 71 JUMPs against 12 trims. **Wrong reading.**
+  Classifying every needle-up move in all five pro files: **69 cut, ZERO
+  floats**, shortest cut **3.9 mm**, p50 21.3. The "jumps" are DST encoding a
+  long move. Professionals cut everything to ~4 mm. **Do not raise it.**
+  **(3) Spurs.** The degree histogram is `{1: 1, 2: 1, 3: 17, 5: 23, 6: 4,
+  7: 1, 8: 1, 10: 1}` — one degree-1 node in 49. Pruning buys nothing.
+  **(4) The Eulerian floor.** `odd/2 − 1` = 20 against 19 in-shape trims is a
+  tempting match, and widening `_build_travel_graph`'s 0.5 mm `node_at` merge
+  lowers it (1.0 → 17, 1.5 → 14). Measured end to end: **29 trims at every
+  radius 0.5-2.0 mm.** A real bound, not the binding one.
+  **(5) Eulerian chaining.** Consecutive strokes that SHARE an endpoint need no
+  travel at all, so an Eulerian order should beat any distance heuristic. It is
+  **worse: 32 trims against 29.** The reason also explains the 9 "cursor
+  off-web" and 2 "target off-web" failures — **a satin column starts at a
+  cap-extended RAIL point, not at a spine node**, and the underlay starts
+  somewhere else again. The web is built from skeletons; the needle lives on
+  rails, so chaining spines buys nothing.
+  **What binds is TEMPORAL.** Travel is permitted over unsewn strokes only, so
+  logging that shape's 20-stroke sequence against progress: ok at 5/15/20/40%,
+  then **"no route" on all nine calls from 45% to 85%.** After 40% of a shape
+  is down the walk never succeeds again, and a 27-stroke shape spends nearly
+  all its life mostly-sewn.
+  **The fill tier got here first** — `docs/scope/1-auto-digitizing-quality.md`
+  ruled out ordering, threshold and travel for `stage6_fill` on 2026-08-21
+  (*"no route stays inside the shape, at any length"*, 52 of 56; travel's
+  ceiling 4 of 56). Two tiers, two shapes, three weeks apart, same answer —
+  **cite it rather than re-deriving it.** What the satin side adds is WHEN it
+  dies: "no path to find" is not a fixed property of a shape, it BECOMES true
+  as the shape fills in, which is why no static property of the geometry
+  predicts it. **Rule: a trim count on a many-stroke satin shape
+  is the price of not running stitches over finished satin — check how far
+  through the shape the failures start before touching any knob.** The lever is
+  the number of strokes in the shape; WHERE to change that (segmentation,
+  skeletonization, stroke decomposition) is not established.
+  *(measured 2026-09-06 — scope-history 09-06)*
+
+- **`cfg.satin_patch_junctions` costs +0.25% across the corpus — and over-fires
+  on one fixture.** ON vs OFF over all 26 scorecard fixtures at 80 mm: **23
+  byte-cost-identical, 3 patched, 315,371 → 316,160 stitches.** Becker +383
+  (uncovered 23.8 → 0.0), `photo_scene_stub` +347 (6.5 → 0.0), and
+  **`logo_bridge_bar` +59 with 0.0 uncovered BOTH ways** — a patch on a hole
+  the grader does not count, because this pass is deliberately stricter than
+  preflight (no 0.4 mm erosion, a 0.25 mm cell against 0.5) so a patch clears
+  the finding with margin. **Correct the absolute claim: "nothing pays for it
+  where there is nothing to find" holds for 23 of 26, not all.** And read "100%
+  of the corpus's bare cloth" as *100% of the bare cloth in SATIN shapes* — the
+  two largest figures in the corpus are `photo_subject_stub` **956.0 mm²
+  (23.4%, D 58)** and `photo_grass_macro` **407.5 mm² (8.9%, B 76)**, both the
+  recorded baseline and an order of magnitude larger than the 30.3 mm² this flag
+  clears — and **both are the PARKED thread-paint ruling, not open defects**: a
+  tier spy shows `photo_subject` routes to `streamline_fill` (`photo_scene` goes
+  to `stage6_fill.stitch_shape` — meadow, 10 calls, coverage p50 2.95, uncovered
+  0.0), and their coverage p50 of 0.49 / 0.54 sits inside the 0.52-0.59 band
+  recorded above for thread-paint, which Kent tabled. The grader is correctly
+  reporting a deliberate choice. **Do not re-open it.** (Their runs carry `fill`
+  KIND, which is not the fill TIER; a first draft confused the two.) *(measured 2026-09-06 —
+  scope-history 09-06)*

@@ -2299,10 +2299,21 @@ boundary in that shape, split by whether it cut:
 
 That is `trim_at_mm = 3.0` and only that — no distance-band logic, no
 cover test, no travel attempt recorded at the boundary. **48 of 56 cuts (86%)
-are moves under 11.8 mm**, the floor
-`docs/fragmentation-attribution-2026-08-18.md` measured the professional as
-never cutting below. `trim_at_mm` is gate-1 territory and the sew-out is
-accepted as-is, so this is **not retunable** — it is the diagnosis, not a fix.
+are moves under 11.8 mm.**
+
+> **Correction 2026-09-06: 11.8 mm is not "the floor the professional never
+> cuts below."** That figure is `becker_hat_small` ALONE
+> (`docs/fragmentation-attribution-2026-08-18.md` §"The pro's actual cut
+> rule", 35 trims). The broader measurement already in the record —
+> `.claude/memory/pro-trim-threshold.md`, **910 needle-up moves across all 23
+> pro designs**, 2026-08-15 — has **542 cuts with a minimum of 1.9 mm** beside
+> 368 floats to 16.1 mm, heavily overlapping, and concludes *"no single
+> threshold reproduces this pro"*. Pros cut BELOW our 3.0 and float well above
+> it. The 86% figure above stands; what it is measured against does not.
+
+`trim_at_mm` is gate-1 territory and the sew-out is accepted as-is, so this is
+**not retunable** — it is the diagnosis, not a fix. And the corpus gives a
+second reason: distance is not the pro's decision variable at all.
 
 ### Ordering is NOT the gap — a first read of this said it was
 
@@ -2365,6 +2376,17 @@ with the candidate cap and the detour budget both removed:
 Recovering all 4 costs 216 mm of extra travel (~86 stitches), 54 mm per cut.
 That is the whole prize. With 46 holes and only 20 inset-ring fragments, the
 shape genuinely disconnects its own fill rows — there is no path to find.
+
+> **The satin tier reached the same place independently, 2026-09-06.**
+> `stage6_satin`'s `_graph_travel` on `becker_marine_logo`'s 27-stroke
+> `Sead76620`: 32 calls, 8 succeed; a connectivity-aware `_order_strokes` is
+> byte-identical; Eulerian chaining is WORSE (32 trims vs 29); widening the
+> travel graph's node merge moves nothing. Same three dead ends as this
+> section, on the other tier. What the satin side adds is *when* it dies —
+> travel may only cross UNSEWN strokes, so logging progress through the shape
+> gives ok at 5/15/20/40% and then "no route" on all nine calls from 45% to
+> 85%. "There is no path to find" is not a fixed property of the shape; it
+> becomes true as the shape fills in. (scope-history 09-06, DOCTRINE)
 
 **Two knobs ruled out on the way, both gate-clear and both worthless here:**
 
