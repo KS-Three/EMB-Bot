@@ -6326,3 +6326,71 @@ duplication `loadfile` removes scales with worker count — at two workers a
 case can be recomputed at most twice, not the four times seen in the
 `gw0..gw3` dump above. The 4-worker impression was always going to overstate
 what CI could get.
+
+## 2026-09-06 — "merge similar colors" now says which two, and finding out cost two hypotheses
+
+`COLOR_STOPS_HEAVY`'s remedy has read *"Merge similar colors"* since it was
+written, without ever naming a pair — the same shape as `THREAD_MATCH_POOR`
+telling an operator to *"pick a closer thread"* without consulting the design's
+own cone list, fixed one check over the same day. The answer is a pairwise
+CIEDE2000 over the cones the plan actually sews, and it costs nothing: no
+pixels, and the corpus tops out around 25 cones.
+
+    17 thread changes — … Merge similar colors (0182 Saturn Grey and 0145
+    Skylight are the closest match), or sew this on a multi-needle machine.
+
+On `logo_bridge_bar` that pair is **1.8 ΔE00** apart — below
+`DELTA_E_VISIBLE`, the same threshold this module uses to call a colour
+visibly off. The operator was loading and hand-re-threading two cones a person
+can barely tell apart, with nothing in the report saying which two.
+
+**Deduped by number first, which is not optional.** `plan.palette` is one
+entry PER BLOCK, so a cone sewn in two blocks appears twice and the closest
+pair would trivially be that cone with itself at 0.0.
+
+### The cliff hypothesis is REFUTED on this corpus
+
+`docs/scope/1` has carried, since 2026-08 and explicitly flagged as not
+re-measured, the worry that a fix improving per-region colour fidelity could
+LOWER a grade by adding one spool and tripping this finding (−12):
+
+> a design sitting at, say, a B grade going in could plausibly drop a full
+> letter grade or more if this fires on it
+
+Measured across all **52 design/garment combos**:
+
+- **12 already fire** `COLOR_STOPS_HEAVY` — so the finding is common enough
+  that naming the merge is worth having.
+- **0 sit within one cone of the cliff** without already firing.
+- **0 would lose a letter grade** to one added cone.
+
+The reason is that the distribution is **bimodal** — designs cluster at 0–6
+stops or 11–17, and `COLOR_STOPS_MAX = 10` sits in the empty middle. So the
+exposure is not zero by luck of thresholds; it is zero because nothing lands
+near the threshold. Worth keeping as a negative so the worry is not
+re-litigated, and worth re-checking only if a design ever lands in the 9–10 gap.
+
+### A THIRD spool-revisit mechanism, found by the new field
+
+`repeated_cones` was added for completeness and immediately found something.
+**4 of the 52 combos sew a cone in more than one block with
+`cfg.merge_duplicate_cones` ON** — and two DISTINCT mechanisms produce it,
+neither of which that fold can see:
+
+- **`region_blobs`, `0182 Saturn Grey`, blocks 1 and 12** — each block is a
+  gradient BLEND BAND (`Sb971b1c2-blend2`, `S0ad9734d-blend4`) from a
+  *different* parent region. A band is not a layer declaration, and the fold
+  folds layer declarations.
+- **`screenshot_phone_ui_golke`, `3971 Silver`, blocks 5 and 12** — four plain
+  regions, all carrying `thread_resnapped_de00`, in **layers 2 and 8**. The
+  duplicate is created by `revalidate_threads`, not by stage 2's quantize,
+  which is the only thing defect 18's fold addresses.
+
+MASTER_SCOPE 18 describes itself as *"the second spool-revisit mechanism,
+untouched by defect 16's fix"*. This is a **third**, it costs a real machine
+stop, and in both cases the merge is free — the cone is already loaded.
+
+**Recorded, not fixed.** Extending the fold to blend bands and to re-snap
+output is a sequencing change and deserves its own measured work; what lands
+here is that the finding now TELLS the operator, which is the immediate value.
+`tests/test_color_stops_merge.py` (7 tests, 35s) pins both branches.

@@ -108,7 +108,7 @@ icon. Cloth pointers added to defects 3, 6 and 16 below.
     `cfg.merge_duplicate_cones` folds each into the FIRST layer declaring its
     cone, upstream of stage 5 so coverage/seams derive from the merged order.
     Blocks 19→17, revisits 2→0, needle-up 1295→1237 mm, no golden moved.
-    *(2026-09-01 — `test_duplicate_cone_layers.py`, 13)*
+    *(2026-09-01 — `test_duplicate_cone_layers.py`, 13)* **A THIRD mechanism is open, found 2026-09-06 by `COLOR_STOPS_HEAVY`'s new `repeated_cones` field: 4 of the corpus's 52 design/garment combos still sew a cone in more than one block WITH this fold ON**, by two routes it cannot see — `region_blobs` sews `0182` in two blocks that are each a gradient BLEND BAND from a different parent (`Sb971b1c2-blend2`, `S0ad9734d-blend4`; a band is not a layer declaration), and `screenshot_phone_ui_golke` sews `3971` in two blocks of plain regions that all carry `thread_resnapped_de00` in layers 2 and 8 — i.e. the duplicate is created by `revalidate_threads`, not by stage 2's quantize, which is the only thing this fold addresses. Each costs a real machine stop and each merge is FREE (the cone is already loaded). Recorded, not fixed: extending the fold to bands and to re-snap output is a sequencing change owed its own measured work. The finding now names it to the operator. *(measured 2026-09-06 — scope-history 09-06)*
 
 19. **The design's own outer edge is uncapped — every fill row ends in open
     air.** The other sew-out edge finding, and one no per-shape border can

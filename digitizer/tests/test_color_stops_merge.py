@@ -109,3 +109,37 @@ def test_the_closest_pair_is_closer_than_the_visible_threshold():
     threshold `THREAD_MATCH_POOR` uses to decide a color is visibly off."""
     hits, _ = _run(HEAVY)
     assert hits[0]["extra"]["closest_pair_delta_e"] < pf.DELTA_E_VISIBLE
+
+
+# The repeated-cone branch is NOT dead code: 4 of the corpus's 52
+# design/garment combos sew a cone in more than one block with
+# `cfg.merge_duplicate_cones` ON (measured 2026-09-06). Two distinct
+# mechanisms produce it, and both survive that fold:
+#
+#   region_blobs   0182 in blocks 1 and 12, each a gradient BLEND BAND
+#                  (`Sb971b1c2-blend2`, `S0ad9734d-blend4`) from a different
+#                  parent region — a band is not a layer declaration, so the
+#                  fold never sees it.
+#   screenshot     3971 in blocks 5 and 12, four plain regions all carrying
+#                  `thread_resnapped_de00`, in layers 2 and 8 — the duplicate
+#                  is created by `revalidate_threads`, not by stage 2's
+#                  quantize, which is the only thing the fold folds.
+#
+# Both cost a real machine stop, and both are free to merge. Recorded as a
+# THIRD spool-revisit mechanism (MASTER_SCOPE 18 calls itself the second).
+REPEATER = "photo/region_blobs.png"
+
+
+def test_a_repeated_cone_is_reported_and_named_first():
+    """A cone already sewn twice is the CHEAPEST merge there is — it costs no
+    color fidelity at all, where every other merge trades some — so it
+    pre-empts the closest-pair advice rather than competing with it."""
+    hits, plan = _run(REPEATER)
+    assert len(hits) == 1
+    extra = hits[0]["extra"]
+    assert extra["repeated_cones"], "fixture drift: no cone repeats any more"
+    num = extra["repeated_cones"][0]
+    assert num in hits[0]["message"]
+    assert "costs no color at all" in hits[0]["message"]
+    # and it really is sewn more than once
+    assert sum(1 for p in plan.palette if str(p["number"]) == num) > 1
