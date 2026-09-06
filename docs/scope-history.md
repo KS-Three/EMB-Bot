@@ -5101,3 +5101,124 @@ that overlap does not close, and no cross-length knob can reach it.
 If that is right, the fix is not a cap and not a demotion — it is covering a
 junction's interior explicitly. Untested, and named here so the next person
 starts from the four negatives instead of repeating them.
+
+### The render settles it: it is the crotch of the K
+
+`tools/bare_patch_render.py` (new) draws preflight's OWN bare cells — the same
+`_coverage_map` grid under `_COVERAGE_FLOOR_UNITS`, intersected with what the
+plan claims — over the emitted thread. Renders in
+`docs/renders/junction-bare-2026-09-06/`.
+
+**Both patches are letter junctions, and the big one is the same letter at
+both sizes: the K of BECKER.** 37.2 mm² in its crotch at 80 mm, 32.2 at 90,
+where the upper arm, the leg and the stem meet. The second patch is the
+crotch of an R. Nothing is bare along a stroke; it is all where arms converge.
+
+**And that explains the size oscillation, which is not mysterious at all:**
+
+| mm | satin shapes | largest | largest MAX | bare |
+|---:|---:|---:|---:|---:|
+| 80 | 8 | **638.8 mm²** | **7.80** | 23.8 mm² |
+| 85 | 6 | 132.8 | 5.33 | 0.0 |
+| 90 | 5 | **817.7 mm²** | **8.86** | 44.5 mm² |
+| 95 | 2 | 164.5 | 6.00 | 0.0 |
+| 100 | 1 | 75.2 | 5.27 | 0.0 |
+
+The hole appears exactly when segmentation hands the satin tier a LARGE
+branchy multi-arm shape. At 85/95/100 mm the satin shapes are small and
+simple — no junction, no hole. **The A 100 / B 76 swing across sizes is just
+whether the wordmark's junction-bearing shape lands in satin.**
+
+**A caution on the MAX > 6.0 marker, found by checking rather than assumed.**
+`Sa1103fec` @ 95 mm sits at MAX **exactly 6.00** with **17.6% of its spine
+over the 5 mm cap** — nearly six times Becker's 2.8% — and leaves **zero** bare
+cloth. So the over-cap FRACTION does not predict bare cloth at all (already
+refuted as a mechanism; this kills it as a marker too), and MAX > 6.0 survives
+only by a hundredth of a millimetre on this fixture. With n = 2 positives and
+a near-miss that close, it is a thing to measure with, not a threshold to
+ship.
+
+## 2026-09-06 — the junction hole, fixed behind a flag
+
+`cfg.satin_patch_junctions`, DEFAULT OFF, byte-identical off.
+
+Not another cap. Four cross-LENGTH knobs were measured against this hole and
+none reached it, because none of them changes where a cross is PLACED — along
+a spine, perpendicular to one arm, sized by a ray that measures that arm's
+width. So the flag rasterizes the thread the shape actually emitted (the same
+`machine.COVERAGE_THREAD_W_MM` ribbon `preflight._coverage_map` grades with),
+finds the artwork that thread missed, and sews patches over 5.0 mm² as
+ordinary tatami under the shape's own id.
+
+**Measured on `becker_marine_logo.png`, through the grader that reported the
+defect rather than on the patch geometry the module computed for itself:**
+
+| | grade | uncovered | worst | stitches | trims |
+|---|---|---:|---:|---:|---:|
+| OFF @ 80 mm | B 76 | 23.8 mm² | 23.8 | 5,531 | 29 |
+| **ON @ 80 mm** | **B 88** | **0.0** | 2.0 | 5,914 (+7%) | 32 |
+| OFF @ 90 mm | B 76 | 44.5 mm² | 33.5 | 6,740 | 29 |
+| **ON @ 90 mm** | **B 88** | **0.0** | 2.2 | 7,281 (+8%) | 33 |
+
+`ARTWORK_UNCOVERED` is gone at both sizes; only `TRIM_HEAVY` remains, and the
+worst surviving patch (2.0 mm²) is under the grader's own 5.0 mm² floor.
+
+**And it clears the corpus, not just its worst case.** The 80 mm sweep found
+exactly two satin shapes leaving any bare cloth out of 255. The other one goes
+the same way:
+
+| `photo/photo_scene_stub.png` @ 80 mm | grade | uncovered | stitches |
+|---|---|---:|---:|
+| OFF | B 76 | 6.5 mm² | 16,247 |
+| **ON** | **B 88** | **0.0** | 16,594 (+2%) |
+
+So the flag takes **30.3 → 0.0 mm², 100% of the corpus's bare cloth**, at
++2-8% thread on the two designs that had any and zero cost on the other 253
+(there is nothing for it to find, and a shape with no patch adds no runs).
+
+**Sized right, and checked rather than assumed.** On `Sead76620` the finder
+returns exactly two patches — **37.2 mm² (the K's crotch) and 8.6 (the R)**,
+45.8 total against preflight's 23.8. The difference is preflight's 0.4 mm
+erosion plus this pass's own 0.30 mm grow, and the grow is deliberate: a patch
+cut exactly to the bare cells butts against the columns around it and leaves a
+thread-width seam on every side, which is the same defect at smaller scale.
+Growth is clipped to the polygon, and a test pins that no patch stitch lands
+outside the artwork.
+
+**The density risk was measured, not inferred from a silent grader.** A dense
+tatami patch (`FILL_ROW_MM` is 0.15 mm) grown 0.30 mm INTO the columns around
+it could stack layers where they overlap. It does not: on Becker @ 80 mm
+`coverage_max` is **4.67 both ways — identical** — `coverage_p95` 3.05 both
+ways, `coverage_p50` 1.38 → 1.40, and `coverage_over_warn_mm2` /
+`coverage_over_block_mm2` stay 0.0. `coverage_area_mm2` 1,844 → 1,921, which
+is the patch adding covered area where there was none. No new peak anywhere.
+
+**Constants chosen against the grader, not invented.**
+`_JUNCTION_PATCH_MIN_MM2 = 5.0` is deliberately equal to
+`preflight._UNCOVERED_MIN_PATCH_MM2` — patching to a different floor would
+either leave findings standing or spend thread on holes nobody grades.
+`_JUNCTION_PATCH_CELL_MM = 0.25` is half preflight's coverage cell, because a
+patch outline at 0.5 mm is a staircase of half-millimetre steps and the fill
+inside it inherits every one.
+
+**Two things left open, both named rather than quietly accepted.**
+
+1. **Sheen.** The patch sews at `best_fill_angle_deg` rather than at the
+   neighbouring crosses' angle, so it will not match the satin around it.
+   Whether that reads worse than bare fabric is Kent's eye, not a number —
+   which is the whole reason the flag is OFF.
+2. **Trims.** The patch runs are appended at the END of the shape, so the
+   needle hops in from the last column and out again: Becker goes 29 → 32
+   trims at 80 mm and 29 → 33 at 90, which nudges the rate the wrong way on a
+   fixture `TRIM_HEAVY` already flags. Inserting each patch after the stroke
+   nearest it would shorten that hop; it is not done here because it means
+   reaching into `satin_shape`'s travel-graph ordering, and the cost is
+   disclosed rather than hidden in a total.
+
+`tests/test_junction_patch_flag.py` (7): default OFF; OFF byte-identical on the
+fixture the flag moves; ON clears the finding through preflight AND costs
+thread; the patch sews under the shape's own id; nothing sews outside the
+artwork; a fully covered bar gets no patch; both call sites forward the flag.
+
+Renders: `docs/renders/junction-bare-2026-09-06/becker_80mm_patch_off.png` and
+`_on.png`.

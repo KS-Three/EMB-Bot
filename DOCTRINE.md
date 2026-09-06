@@ -1105,3 +1105,31 @@ its hedge as it is copied forward** — is why this file is split.
   junction — check whether any cross is PLACED there first.** The fix, if the
   hypothesis holds, is covering a junction explicitly; it is untested.
   *(measured 2026-09-06 — scope-history 09-06)*
+
+- **When thread is missing at a junction, sew the hole — do not tune a cross.**
+  The fix that worked, after four that did not: `cfg.satin_patch_junctions`
+  (2026-09-06, DEFAULT OFF, byte-identical off) rasterizes the thread a satin
+  shape actually emitted, using the same `machine.COVERAGE_THREAD_W_MM` ribbon
+  `preflight._coverage_map` grades with, finds the artwork that thread missed,
+  and sews patches over 5.0 mm² as tatami under the shape's own id. On
+  `becker_marine_logo`: `ARTWORK_UNCOVERED` **23.8 → 0.0 mm² at 80 mm and
+  44.5 → 0.0 at 90**, B 76 → B 88, for +7-8% stitches and 3-4 trims — and on
+  the corpus's only other positive, `photo_scene_stub`, **6.5 → 0.0** for +2%.
+  **30.3 → 0.0 mm², 100% of the corpus's bare cloth**, at no cost on the 253
+  shapes with nothing to find. Two
+  patches on `Sead76620` — the K's crotch (37.2 mm²) and an R (8.6) — 45.8
+  against preflight's eroded 23.8, the difference being that erosion plus a
+  deliberate 0.30 mm grow so the patch runs UNDER the columns around it
+  instead of butting against them and leaving a thread-width seam on every
+  side. **Two rules fall out.** First: the patch floor is
+  `preflight._UNCOVERED_MIN_PATCH_MM2` on purpose — a fix that patches to a
+  different floor than the grader measures either leaves findings standing or
+  spends thread on holes nobody grades. Second: **prove the fix through the
+  instrument that reported the defect**, not on the geometry the fix computed
+  for itself, or you have only tested that a function agrees with itself.
+  Two costs disclosed rather than buried: the patch sews at
+  `best_fill_angle_deg`, so its sheen will not match the satin around it
+  (Kent's eye, not a number — the whole reason the flag is OFF), and it is
+  appended at the END of the shape, so the needle hops in and out and Becker
+  goes 29 → 32 trims at 80 mm on a fixture `TRIM_HEAVY` already flags. *(2026-09-06 —
+  scope-history 09-06; renders in `docs/renders/junction-bare-2026-09-06/`)*
