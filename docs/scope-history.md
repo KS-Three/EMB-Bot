@@ -5515,10 +5515,36 @@ does not support, and those two produce the design's worst thread findings.
 The 53%-area block (`Sb01e1b97`, artwork 46 against Dark Charcoal's 40,40,33
 for ΔE 10.5) is not a bug at all — it is an honest "no closer cone".
 
-**Cause not established**, and named that way: what makes these two regions
-different from the slivers next to them is the question, not which cone was
-picked. `0111 Whale` appears in the record only as bridge_bar's 12-shard
-residual — a different fixture whose cause 09-04 also left open.
+**What makes them different from the slivers next to them: they are BIMODAL**,
+and the module already says why that is fatal. `stage2_photo_segment`'s own
+comment: *"`kept_masks_to_quant` takes a region's MEAN Lab as its colour,
+`select_palette` snaps that mean to one spool … a region whose pixels disagree
+with each other cannot be rendered honestly no matter what the fill tier does
+— the mean is the only colour it is allowed to have."*
+
+Luminance inside each polygon, with the correctly-assigned sliver as a control:
+
+| shape | px | mean | median | min–max | below mid-grey | |
+|---|---:|---:|---:|---|---:|---|
+| `S43831dcd` | 175 | 203.7 | 249.0 | **24–254** | **18%** | BIMODAL |
+| `S05f7940d` | 365 | 135.6 | 149.0 | **0–255** | **42%** | BIMODAL |
+| `S7c5e42fc` ✓ | 117 | 250.6 | 251.0 | 235–254 | 0% | unimodal |
+
+The control's 117 pixels sit entirely in one 32-wide bin. The two offenders
+smear across all eight. A mean over that is a colour almost none of their
+pixels carry — the mirror of the failure DOCTRINE already records for the OLD
+pooled thread check ("the independent per-channel median of a bimodal pool is
+a colour almost no pixel carries"), and the reason that check was rebuilt
+per-region in the first place.
+
+**Established in kind, not in detail.** `S05f7940d`'s mean luminance (135.6)
+sits nearer Whale (127) than Silver (204), yet it holds Silver — so the colour
+the palette actually saw is not simply the mean over its FINAL polygon either.
+Preflight's own docstring says why that cannot be checked from the result
+(*"the pipeline does not carry the pre-snap cluster colors into its result"*);
+closing it needs stage-2 instrumentation. The pipeline already names the
+answer to the class, though, in the section that comment introduces: **tonal
+region splitting.**
 
 ### And a structural note on the check itself
 

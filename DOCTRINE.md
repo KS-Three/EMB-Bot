@@ -1244,7 +1244,17 @@ its hedge as it is copied forward** — is why this file is split.
   correctly and a 41 mm² region at 118 takes Whale correctly. Two regions of a
   hundred-plus are wrong, and the 53%-area block on the same fixture is an
   honest "no closer cone" (artwork 46 vs Dark Charcoal 40,40,33, ΔE 10.5).
-  **Cause not established.** **Rule: before calling a cone assignment wrong,
+  **What separates them from the slivers beside them is that they are
+  BIMODAL** — luminance 24-254 and 0-255, 18% and 42% below mid-grey, against
+  a correctly-assigned 0.60 mm² control whose 117 pixels sit in ONE 32-wide
+  bin. `stage2_photo_segment` states the consequence itself: *"the mean is the
+  only colour it [a region] is allowed to have"*, and a mean over a bimodal
+  sliver is a colour almost none of its pixels carry — the mirror of the
+  bimodal-pool failure recorded above for the OLD thread check. Established in
+  KIND; not in detail, because `S05f7940d`'s mean luminance sits nearer Whale
+  than the Silver it holds, and the pre-snap cluster colour is not carried
+  into the result. The pipeline already names the answer to the class: tonal
+  region splitting. **Rule: before calling a cone assignment wrong,
   rasterise the region's own polygon over the artwork and compare — `argmin`
   cannot mis-pair, so a bad cone means a bad region colour, and check whether
   its neighbours of the same size and colour got it right before calling it
