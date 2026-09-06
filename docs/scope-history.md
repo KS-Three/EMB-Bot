@@ -6394,3 +6394,66 @@ stop, and in both cases the merge is free — the cone is already loaded.
 output is a sequencing change and deserves its own measured work; what lands
 here is that the finding now TELLS the operator, which is the immediate value.
 `tests/test_color_stops_merge.py` (7 tests, 35s) pins both branches.
+
+## 2026-09-06 — the third revisit mechanism is two, and one of them is already priced
+
+The `repeated_cones` field added hours earlier found 4 of 52 corpus combos
+sewing a cone in more than one block with `cfg.merge_duplicate_cones` ON.
+Chased to the mechanism, it is **two unrelated mechanisms**, and the split
+matters because one needs no new code at all.
+
+### Half one: a re-snap onto a cone NO layer declares — CLOSED by an existing flag
+
+Both passes that could rejoin those blocks are individually correct, and the
+gap falls between them:
+
+- `rehome_resnapped_regions` moves a re-snapped region to the layer that
+  DECLARES its new cone, and refuses when none does — its own docstring says
+  why: *"there is no 'home' to send it to, and inventing one would reorder
+  against nothing."*
+- `merge_duplicate_cone_layers` folds layers that declare the same thread,
+  working on that same **quantize-time** layer→cone list.
+
+So a cone the re-snap invents is invisible to both. Verified on
+`screenshot_phone_ui_golke`: the 13 declared cones are `2776 0020 1776 0111
+0134 3820 0108 3630 0145 0142 5664 3810 0015` — **`3971` is not among them** —
+and four regions were re-snapped onto `3971` out of layers 3 and 6.
+
+**An undeclared cone exists only because the re-snap escaped the selected
+palette, which is defect 15, and defect 15 already has a priced switch.**
+Measured with `cfg.bind_resnap_all_classes`:
+
+| fixture | bind OFF | bind ON |
+|---|---|---|
+| `screenshot_phone_ui_golke` | 17 blocks, 16 distinct, `3971` **twice** | **11 blocks, 11 distinct, no duplicate** |
+| `region_blobs` | 16 blocks, 15 distinct, `0182` twice | **unchanged** |
+
+(The block fall is the combined effect — that flag also takes the design from
+16 cones to 11, as #367 measured. The claim here is narrower and is the one
+the table settles: **with the bind on, the duplicate is gone.**)
+
+**So this half must NOT be fixed in the rehome.** A patch there would treat
+the symptom and add a SECOND switch for a cause the first already removes.
+It also hands `bind_resnap_all_classes` a benefit its price tag did not have:
+#367 weighed it as 19 colour stops removed against +2 blocks, with the value
+called "the price tag, not the switch". Removing a spool revisit on real
+customer artwork belongs on the credit side of that trade.
+
+### Half two: two blend bands from different parents — genuinely open
+
+`region_blobs` sews `0182 Saturn Grey` in blocks 1 and 12, each a gradient
+BAND of a *different* parent region (`Sb971b1c2-blend2`, `S0ad9734d-blend4`).
+Bands are built in stage 6, long after the fold runs, so **no upstream pass
+can see them** — and the table above shows the bind does not touch it.
+
+Open, and low priority: one synthetic fixture, and any fix is a sequencing
+change owed a corpus A/B and care around the goldens.
+
+### The rule
+
+**Before building a fix for a newly found mechanism, check whether an
+existing, already-priced flag removes its CAUSE.** Half of this one dissolved
+into a switch that was built, measured and waiting a decision — and the
+half-hour spent measuring that was cheaper than the flag, the tests, the
+corpus A/B and the second decision Kent would have had to make about the same
+underlying problem.

@@ -1482,3 +1482,26 @@ its hedge as it is copied forward** — is why this file is split.
   `git status` before AND after, so the freeze is checkable rather than
   asserted. Sequence it the other way round: edit first, benchmark when the
   tree is quiet. *(2026-09-06 — scope-history 09-06)*
+
+- **Before building a fix for a newly found mechanism, check whether an
+  existing, already-priced flag removes its CAUSE.** `COLOR_STOPS_HEAVY`'s new
+  `repeated_cones` field found 4 of 52 corpus combos still sewing a cone in
+  two blocks with `cfg.merge_duplicate_cones` ON, and the obvious next move
+  was a flag extending the fold. **Half the problem did not need one.** A
+  duplicate arising from a re-snap onto a cone NO layer declares is invisible
+  to both passes that could rejoin it — `rehome_resnapped_regions` refuses it
+  by design (*"there is no 'home' to send it to, and inventing one would
+  reorder against nothing"*) and the fold works on the same quantize-time
+  layer→cone list — but such a cone exists ONLY because the re-snap escaped
+  the selected palette, which is defect 15, which already has a built,
+  measured, default-OFF switch waiting on Kent. Measured:
+  `cfg.bind_resnap_all_classes` takes `screenshot_phone_ui_golke` from **17
+  blocks / 16 distinct with `3971` twice to 11 / 11 with none**. Patching the
+  rehome would have shipped a SECOND switch for one underlying problem, and
+  split the decision across two flags. The half-hour of measurement cost less
+  than the flag, its tests, a corpus A/B and that second decision. **Both
+  passes were individually correct — the gap fell between them, which is why
+  neither looked wrong on inspection.** (The other half, two gradient BANDS of
+  different parents landing on one cone, is genuinely separate: bands are
+  built in stage 6, long after the fold, and the bind does not touch it.)
+  *(measured 2026-09-06 — scope-history 09-06)*
