@@ -279,6 +279,22 @@ Moved verbatim 2026-08-28 — no section was rewritten in the move.
 
 ## Measured negatives — built or proposed, then rejected. Do not rebuild.
 
+- **Binding the thread re-snap to the palette on every class is a REAL trade,
+  not a free win — and it is not a yardstick artefact.**
+  `cfg.bind_resnap_all_classes` closes defect 15's escape exactly (19 colour
+  stops removed across five designs) and costs **+2 blocks net** on the shipped
+  scorecard: `screenshot_phone_ui_golke` 10 -> 8, `logo_golden_tee` 2 -> **5**,
+  `logo_bridge_bar` 3 -> **4**. **The hypothesis that those extra blocks were
+  the gradient lane's RAW yardstick (F-wall cause 1) is REFUTED**: with the
+  excess yardstick forced on every route, `golden_tee` still goes D 52 ->
+  **F 22** and `drone_render` D 40 -> **F 28** — the latter with no
+  thread-match block moving at all, so part of the price is the +3.1% stitches
+  and their density cost, not colour. **Rule: the re-snap's chart-wide argmin
+  is the pipeline BUYING colour accuracy with cones the operator must load.
+  Treat it as an unpriced trade, not a bug — closing it costs colour.** Built,
+  tested, DEFAULT OFF; do not flip it without a reason the corpus does not
+  currently supply. *(measured 2026-09-06 — scope-history 09-06)*
+
 - **Letting a re-snapped SHARD pick any spool on the chart costs more than it
   buys — two constructions measured, both rejected.** `cfg.
   revalidate_small_shapes` lowers `revalidate_threads`' pixel floor to
