@@ -6988,3 +6988,75 @@ the fabric is struck identically.
 `SAME_HOLE_HEAVY` is `info`, worth 0 points, deliberately — law 17's trade
 phrasing is stricter than professional files themselves. A test pins that the
 new payload has not turned it into a deduction.
+
+---
+
+## 2026-09-06 — the last open half of defect 16, priced: one generated fixture and an 11-block reorder
+
+Defect 16's blend-band half has stood as *"one synthetic fixture; any fix is a
+sequencing change"* since it was split that morning, with the note that
+extending the fold is **"owed its own measured work"**. This is that work. It
+changes nothing and recommends nothing; it counts, and it prices.
+
+`tools/cone_revisits.py` asks a different question from
+`tools/cone_merge_survey.py`. That one asks whether two DIFFERENT cones are
+near enough to fold into one, trading colour fidelity. This asks about the free
+case: the **same cone number sewn in more than one block**, which costs a
+machine stop and a manual re-thread for no colour gain at all.
+
+### The count reproduces, and the gap is new
+
+26 fixtures × 2 garments:
+
+| fixture | garment | cone | blocks | gap | route |
+|---|---|---|---|---:|---|
+| `photo/region_blobs.png` | left_chest | `0182` | [1, 12] | **11** | band |
+| `photo/region_blobs.png` | hat_front | `0182` | [1, 12] | **11** | band |
+| `photo/screenshot_phone_ui_golke.jpg` | left_chest | `3971` | [5, 12] | **7** | resnap |
+| `photo/screenshot_phone_ui_golke.jpg` | hat_front | `3971` | [5, 12] | **7** | resnap |
+
+**4 of 52, matching the recorded count exactly** — and **not one of the four is
+adjacent.** That corrects the framing the defect is filed under. MASTER_SCOPE
+says *"each merge is FREE (the cone is already loaded)"*, which is true of
+THREAD cost and false of sequencing cost: folding block 12 into block 1 on
+`region_blobs` moves a gradient band past **eleven** intervening blocks, and
+stage 5 built `covered_by` from the un-merged order. `cone_merge_survey.py`
+already drew exactly this line — a within-layer fold is free, an across-layer
+one is a real geometry change — and measured the second as the expensive kind.
+
+### Both halves re-confirmed by running the flag, not by citing the record
+
+| | blocks | duplicate |
+|---|---:|---|
+| `screenshot_phone_ui`, `bind_resnap_all_classes=False` | 17 | `3971` at gap 7 |
+| `screenshot_phone_ui`, `=True` | **11** | **none** |
+| `region_blobs`, `False` | 16 | `0182` at gap 11 |
+| `region_blobs`, `True` | 16 | `0182` at gap 11 |
+
+The `resnap` half is closed by a flag that already exists, and closing it buys
+`screenshot` **six blocks** on its own. The `band` half is untouched by it.
+
+### So the open half is one generated fixture
+
+`region_blobs.png` is not artwork. `tools/make_photo_region_fixture.py` renders
+it — *"three overlapping Gaussian-falloff color blobs"* — as the step-4
+region-former fixture. **No client artwork in the corpus produces a band
+duplicate.**
+
+**That is the case against building the band fold, in numbers rather than as a
+preference:** one synthetic design, an 11-block reorder through `covered_by`,
+against a flag already built that closes the other half. Re-run the tool after
+any sequencing change; if a real design ever appears in that table, the
+arithmetic changes and so should the answer.
+
+### A semantic bug the tests caught in the tool itself
+
+The first cut labelled routes **per block** and unioned them, so a duplicate
+with one re-snapped block and one ordinary one came out `"plain,resnap"`. But
+`plain` carries a specific meaning — *the fold's own territory, where a
+survivor would be a defect in `merge_duplicate_cones` rather than a gap in its
+reach* — so that label would send a reader hunting a bug that is not there.
+`plain` is now the **residual for the duplicate**, computed after the union,
+and never appears beside another route. Found by a synthetic test, not by the
+corpus: the corpus's two cases are each purely one route, so it would have
+shipped.

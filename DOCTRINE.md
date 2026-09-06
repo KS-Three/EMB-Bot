@@ -782,6 +782,26 @@ its hedge as it is copied forward** — is why this file is split.
   `max_strikes`, `points_3plus`, `worst_at_mm`.
   *(measured 2026-09-06 — scope-history 09-06)*
 
+- **"The cone is already loaded, so the merge is FREE" prices the THREAD and
+  not the SEQUENCE — and every remaining duplicate is 7 to 11 blocks apart.**
+  Measured over 26 fixtures × 2 garments with `tools/cone_revisits.py`: the
+  4 surviving duplicate cones sit at block gaps of 7 (`screenshot_phone_ui`,
+  `3971`) and 11 (`region_blobs`, `0182`), and **not one of the four is
+  adjacent**. Folding block 12 into block 1 moves regions past everything in
+  between, and stage 5 built `covered_by` from the un-merged order — which is
+  exactly the across-layer case `cone_merge_survey.py` had already measured as
+  the expensive kind. **Do not quote "free" without the gap.** The saving is
+  one machine stop; the cost is a reorder.
+
+  Re-confirmed by re-running with the flag rather than trusting the record:
+  `cfg.bind_resnap_all_classes` takes `screenshot_phone_ui` from **17 blocks to
+  11 with the duplicate gone**, and leaves `region_blobs` at 16 with its
+  duplicate intact. So the open blend-band half is **one design, and it is a
+  GENERATED fixture** — `make_photo_region_fixture.py` renders `region_blobs`
+  as three Gaussian-falloff blobs. No client artwork in the corpus produces
+  one. Re-run the tool after any sequencing change; a real design appearing
+  there changes the arithmetic.
+
 - **`STITCHES_TOO_SHORT` and `LETTERING_TOO_SMALL` bill 24 points for one
   defect — but do NOT delete either to "dedupe" them.** They measure the SAME
   quantity at the SAME threshold: `MIN_COLUMN_MM` **is**
