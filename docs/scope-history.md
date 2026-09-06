@@ -4895,3 +4895,121 @@ in the pipeline consults `stage6_satin.classify_strokes`"* and
 Both were LITERALLY true — the pipeline calls `_stroke_rung_takes`, not
 `classify_strokes` — and both read as "inert", which stopped being true on
 2026-09-06. Third and fourth of the same kind this session (#358, #359).
+
+## 2026-09-06 — the satin instrument was measuring tatami turns
+
+Second instrument defect of the day, found by pulling the same thread: if the
+denominator under a satin figure could be wrong, so could the population.
+
+`tools/satin_columns.py` detects columns GEOMETRICALLY — sign-alternating leg
+pairs — because a professional's machine file carries no run kinds. On our own
+plan that same detector picks up fill row turns that happen to alternate.
+Those are 0.2–0.5 mm "columns". Measured on `becker_marine_logo.png`:
+
+| | cols | median | p90 |
+|---|---:|---:|---:|
+| @ 100 mm whole plan (what it printed) | 184 | **0.29 mm** | 1.58 |
+| @ 100 mm SATIN runs only | 26 | **3.82 mm** | 4.93 |
+| @ 100 mm everything except satin | 148 | 0.24 mm | 0.45 |
+| @ 80 mm whole plan | 2,876 | 1.82 mm | 3.70 |
+| @ 80 mm SATIN runs only | 2,796 | 1.85 mm | 3.73 |
+
+**The contamination scales with the fill:satin ratio**, so it is invisible
+where a design is satin-heavy (34 stray columns at 80 mm) and total where it
+is not (148 of 184 at 100 mm) — and 100 mm is exactly the configuration every
+per-stroke number was quoted from. `MASTER_SCOPE`'s "median column 0.29 →
+0.64 mm" is a statistic about tatami turns.
+
+It also made the tool's own alarm read backwards. Its docstring says a
+population under `SATIN_MIN_WIDTH_MM` is "hairline satin, which sews as
+thread-on-thread rather than as a stroke", and it printed **87% of ours under
+1.0 mm**. For the columns we actually sew that figure is **23%**, against the
+professional's 7%.
+
+**Fix:** `passes_from_plan(plan, kinds=...)` — a run of another kind BREAKS
+the pass rather than being skipped, so no column is stitched across a
+fill/satin seam — and the CLI prints both rows. File rows are untouched:
+whole-plan is all a machine file can offer, so that stays the comparison row.
+Byte-identical for `kinds=None`.
+
+### And the "6–9 mm strokes" diagnosis does not survive it
+
+The record said the residual gap to the pro's 44.3% was "the 5 mm cap against
+Becker's genuinely 6–9 mm letter strokes … no routing change closes that; it
+is sizing and segmentation." Measured, same instrument, the professional's own
+file:
+
+| | size | crossing | columns | median | p90 |
+|---|---:|---:|---:|---:|---:|
+| `becker_hat_polo_large_beckers_logolc.dst` | 95.7 × 58.3 mm | 44.3% | 4,811 | 2.52 | **5.00** |
+| `becker_hat_polo_large_beckers_logo_hat.dst` | 101.9 × 62.1 mm | 42.6% | 5,088 | 2.66 | 5.20 |
+| `becker_chest_small_beckers_logo_lc_2_a.dst` | 76.5 × 46.8 mm | 48.6% | 3,999 | 2.09 | 4.10 |
+| ours @ 100 mm, SATIN runs | 100 mm | — | 26 | 3.82 | 4.93 |
+
+**The pro's p90 column is 5.00 mm — our cap, to the hundredth — on the same
+artwork at essentially our test size.** The scale confound is ruled out by
+measurement, not assumed: the "large" files are 95.7 and 101.9 mm wide.
+Whatever that digitizer chose to satin, they satined it UNDER the cap. So
+raising `SATIN_MAX_WIDTH_MM` is not the path to 44.3%, and the cap is not what
+separates us from it.
+
+What separates us is how few shapes reach the tier at all: **one satin shape
+at 100 mm**, 148 of 11,374 penetrations. The columns we do sew are already
+professional width. The gap is segmentation, and only segmentation — which is
+the half of the old sentence that was right.
+
+### The corrected instrument immediately found a real one: p90 is blind to a 3% tail
+
+Sweeping `becker_marine_logo.png` at 80/85/90/95/100 mm (`logo_alpha.png` and
+`logo_whitebg.png` swept as controls — both perfectly flat, A 100 and one satin
+shape at every size, so this is Becker's artwork and not a size bug):
+
+| mm | grade | uncovered | satin shapes | satin % | findings |
+|---:|---|---:|---:|---:|---|
+| 80 | B 76 | 23.8 mm² | 8 | 56.3% | ARTWORK_UNCOVERED, TRIM_HEAVY |
+| 85 | A 100 | 0.0 | 6 | 12.0% | — |
+| 90 | B 76 | 44.5 mm² | 5 | 44.8% | ARTWORK_UNCOVERED, TRIM_HEAVY |
+| 95 | A 100 | 0.0 | 2 | 4.3% | — |
+| 100 | B 88 | 0.0 | 1 | 1.3% | DENSITY_EXTREME |
+
+B 76 at 80 mm is the RECORDED baseline (`corpus_scorecard_baseline.json`,
+`becker_marine_logo.png @ 80mm/left_chest`), so the grade is not news. What is:
+
+**100% of that uncovered artwork is inside SATIN shapes, at both sizes.**
+Preflight already attributes each patch to a shape, so this is read straight
+off the finding: 80 mm — `Sead76620`, 23.8 of 638.8 mm² (3.7%); 90 mm —
+`Sf6b42aaf` 38.8 of 817.7 (4.7%) and `S6e61a8e7` 5.8 of 148.2 (3.9%). Nothing
+in a fill shape. The two sizes with plentiful satin are the two with bare
+cloth; the three without satin have none.
+
+**Why they pass the cap and still go bare:**
+
+| | verdict | classifier p90 | spine p50 | p90 | p99 | MAX | over 5 mm |
+|---|---|---:|---:|---:|---:|---:|---:|
+| `Sead76620` @ 80 | `promoted_ribbon` | 2.67 | 1.37 | 2.75 | 6.67 | **7.80** | **2.8%** |
+| `Sf6b42aaf` @ 90 | `promoted_ribbon` | 2.85 | 1.67 | 3.00 | 7.36 | **8.86** | **3.5%** |
+
+`classify_ribbon` gates on the DOUBLED p90 medial radius. **A p90 statistic
+cannot see a tail that is 3% of the spine.** Both shapes read 2.67 / 2.85 mm
+against a 5.0 cap — not marginal, comfortable — while carrying a bulge nearly
+twice the cap. `_rail_points`' per-station guard then holds every cross in
+that 3% to 5 mm, and the middle of a 7.8 mm bulge gets no thread. The bare
+fraction (3.7%, 4.7%) tracks the over-cap fraction (2.8%, 3.5%).
+
+Both arrive through **`promoted_ribbon`** — the `explained` rescue that exists
+to save tapered and script strokes from the `cv` gate — and its own guard is
+`stats.p90_mm <= max_width_mm`, the same blind statistic.
+
+**DOCTRINE already has this failure mode, filed as a hazard the per-stroke
+rung would INTRODUCE** ("`_rail_points`' per-station guard holds each cross to
+5 mm and leaves bare cloth down the middle of a 6.4 mm stroke"). The shipped
+default is doing it today, on the flagship fixture, at two of five sizes, and
+it is the entire reason that fixture grades B 76.
+
+Note what this does to the other standing ruling: `Sead76620` is **638.8 mm²**,
+the exact area DOCTRINE names as the largest region a REPLACEMENT per-stroke
+rung would demote — recorded as the cost of replacement. That region, sewn as
+satin today, is where all of the bare cloth is. Demoting it may be the fix
+rather than the harm. Not acted on: DOCTRINE requires a classifier change to
+be scored on shipped verdicts changed AND flips left, across the real
+fixtures, before any threshold moves. That scoring is the next piece of work.

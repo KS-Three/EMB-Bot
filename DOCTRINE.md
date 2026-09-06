@@ -1025,3 +1025,52 @@ its hedge as it is copied forward** — is why this file is split.
   It also surfaced the veto on real artwork rather than on the fixture built
   for it: `S4d48640b` reads frac 0.83, and one of its eight strokes measures
   p90 5.52 mm against the 5.0 cap. *(measured 2026-09-06)*
+
+- **A geometric column detector counts fill turns as columns — read OUR
+  numbers off the satin runs, the file's off the whole plan.**
+  `tools/satin_columns.py` finds columns by sign-alternating leg pairs
+  because a professional's file has no run kinds, and on our own plan that
+  also catches tatami row turns: 0.2–0.5 mm "columns" that swamp the real
+  population wherever fill dominates. On `becker_marine_logo` @ 100 mm,
+  **148 of 184 columns were not satin**, dragging the reported median to
+  0.29 mm when our satin measures **3.82 mm** (p90 4.93). At 80 mm, where
+  the design is satin-heavy, only 34 of 2,876 stray and the number is fine —
+  so the defect hides exactly where the design is worst, and 100 mm is where
+  every per-stroke figure was quoted from. It also inverted the tool's own
+  hairline alarm: 87% of "our" columns under 1.0 mm is 23% for the ones we
+  sew. **Rule: `passes_from_plan(..., kinds=...)` for our own width
+  distribution; whole-plan only for the cross-file comparison, which is all a
+  machine file can offer.** *(measured 2026-09-06 — scope-history 09-06)*
+
+- **`SATIN_MAX_WIDTH_MM = 5.0` is not what separates us from the pro — the
+  professional's own p90 column is 5.00 mm.** The record diagnosed the
+  residual gap to the pro's 44.3% as "the 5 mm cap against Becker's genuinely
+  6–9 mm letter strokes". Measured on the pro's own files with our own
+  instrument: median column **2.52 mm, p90 5.00** on `beckers_logolc.dst`,
+  which is **95.7 × 58.3 mm** — the same artwork at essentially our 100 mm
+  test size, so the scale confound is ruled out by measurement rather than
+  assumed. Whatever that digitizer chose to satin, they satined it under the
+  cap. **Do not propose raising `SATIN_MAX_WIDTH_MM` to close this gap.** What
+  differs is how few shapes reach the tier — ONE satin shape at 100 mm — and
+  the columns we do sew are already professional width (3.82 median). The gap
+  is segmentation, full stop. *(measured 2026-09-06)*
+
+- **A p90 width gate is blind to a 3% tail, and the shipped default already
+  leaves bare cloth because of it.** `classify_ribbon` admits a shape when the
+  DOUBLED p90 medial radius is under `SATIN_MAX_WIDTH_MM`; `promoted_ribbon`'s
+  own guard is the same statistic. Measured on `becker_marine_logo`:
+  `Sead76620` @ 80 mm reads **p90 2.67 mm** against the 5.0 cap — comfortable,
+  not marginal — while its medial width MAXES at **7.80 mm**, with 2.8% of the
+  spine over the cap. `_rail_points` holds every cross in that 2.8% to 5 mm,
+  and 23.8 mm² of the shape gets no thread. Same at 90 mm on `Sf6b42aaf`
+  (p90 2.85, max 8.86, 3.5% over, 38.8 mm² bare). **100% of that fixture's
+  `ARTWORK_UNCOVERED` at both sizes is inside satin shapes**, and it is the
+  whole reason it grades B 76. This is the SAME failure this document files as
+  a hazard the per-stroke rung would introduce — the default has been doing it
+  all along. **Rule: judge a width gate on the tail it cannot see. Before
+  trusting any p-statistic gate, print the MAX and the fraction over the cap.**
+  Also note `Sead76620` is the 638.8 mm² region recorded above as the largest
+  casualty of a REPLACEMENT rung: it is where all the bare cloth is, so
+  demoting it may be the fix and not the cost. *(measured 2026-09-06 —
+  scope-history 09-06; no threshold moved, because a classifier change is
+  scored across the fixtures first)*
