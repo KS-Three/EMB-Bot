@@ -23,6 +23,8 @@ What these tests pin, in the order that matters:
 """
 
 import hashlib
+from functools import lru_cache
+from typing import NamedTuple
 
 import pytest
 
@@ -51,23 +53,95 @@ def _cfg(**kw) -> PipelineConfig:
     return PipelineConfig(target_width_mm=80.0, **kw)
 
 
-def _digest(fixture: str, **kw) -> tuple[str, int]:
-    """A stitch-level fingerprint. The cardinal repo rule is prove it on the
-    emitted stitches, so byte-identity is asserted there and not on the plan."""
-    result = run_stages(TESTDATA / fixture, _cfg(**kw))
-    plan = plan_stitches(result, _cfg(**kw))
+class _Case(NamedTuple):
+    """Everything this file asks of one (fixture, flag) pipeline run.
+
+    Plain, immutable values — never the `PipelineResult`, because the cache
+    below shares one object across every test that asks for the same case and
+    a mutable region list would let one test's edit corrupt another's.
+    """
+    digest: tuple           # (sha20 of the emitted stitches, stitch count)
+    geometry: dict          # shape_id -> (area rounded 6, polygon WKT)
+    threads: dict           # shape_id -> thread_number
+    resnapped: dict         # shape_id -> thread_resnapped_de00, present only
+    cones: frozenset        # thread_index the design ends up sewing
+    entry_cones: frozenset  # ... and the set it carried at pass entry
+    warning: tuple | None   # (min_px, count, frozenset(ids)) or None
+
+
+@lru_cache(maxsize=None)
+def _default_digest(fixture: str) -> tuple:
+    """The shipped engine with NO flag mentioned at all, for the byte-identity
+    contract. Deliberately not `_case(fixture, False)`: that passes the flag
+    explicitly, and comparing the two is the whole point."""
+    cfg = _cfg()
+    result = run_stages(TESTDATA / fixture, cfg)
+    plan = plan_stitches(result, cfg)
     coords = [
         (round(x, 4), round(y, 4), run.kind, run.jump, run.trim)
         for _b, run in plan.iter_runs()
         for x, y in run.points
     ]
-    h = hashlib.sha256(repr(coords).encode()).hexdigest()[:20]
-    return h, len(coords)
+    return (hashlib.sha256(repr(coords).encode()).hexdigest()[:20], len(coords))
 
 
-def _resnap_warning(result):
-    return next((w for w in result.warnings
+@lru_cache(maxsize=None)
+def _case(fixture: str, small: bool) -> _Case:
+    """One pipeline run per (fixture, flag), reused by every test.
+
+    WHY THE CACHE. Written straight through, this file ran `run_stages` about
+    23 times over 8 distinct (fixture, flag) pairs — roughly 65% of the work
+    repeated. That is not free: MASTER_SCOPE's "CI feedback speed" section
+    records that GitHub's runners are 2-core, so `-n auto` gets two workers and
+    *"the remaining lever is `--durations`, not parallelism"* — i.e. making
+    each test cheaper is the only lever left, and this file is one of four
+    added in a day that each re-digitize the corpus's heaviest fixtures.
+
+    The entry-cone probe is installed here rather than in its own run for the
+    same reason. It patches `pipeline.revalidate_threads`, NOT
+    `stage4_vectorize`'s: `pipeline` binds the name at import, so patching the
+    defining module does nothing (that cost a silent empty run when
+    `tools/revalidate_floor.py` was written).
+    """
+    from digitizer_core import pipeline as pl
+
+    real = pl.revalidate_threads
+    seen: dict = {}
+
+    def probe(regions, p, cfg, **kw):
+        seen["entry"] = frozenset(r.thread_index for r in regions
+                                  if not r.meta.get("enclosed_background"))
+        return real(regions, p, cfg, **kw)
+
+    cfg = _cfg(revalidate_small_shapes=small)
+    pl.revalidate_threads = probe
+    try:
+        result = run_stages(TESTDATA / fixture, cfg)
+    finally:
+        pl.revalidate_threads = real
+    plan = plan_stitches(result, cfg)
+
+    coords = [
+        (round(x, 4), round(y, 4), run.kind, run.jump, run.trim)
+        for _b, run in plan.iter_runs()
+        for x, y in run.points
+    ]
+    warn = next((w for w in result.warnings
                  if w["code"] == THREAD_RESNAPPED_AFTER_DRIFT), None)
+    return _Case(
+        digest=(hashlib.sha256(repr(coords).encode()).hexdigest()[:20],
+                len(coords)),
+        geometry={r.shape_id: (round(r.area_mm2, 6), r.polygon.wkt)
+                  for r in result.regions},
+        threads={r.shape_id: r.thread_number for r in result.regions},
+        resnapped={r.shape_id: r.meta["thread_resnapped_de00"]
+                   for r in result.regions
+                   if "thread_resnapped_de00" in r.meta},
+        cones=frozenset(r.thread_index for r in result.regions),
+        entry_cones=seen["entry"],
+        warning=(None if warn is None
+                 else (warn["min_px"], warn["count"], frozenset(warn["ids"]))),
+    )
 
 
 def test_small_floor_is_preflights_floor():
@@ -95,7 +169,13 @@ def test_off_is_byte_identical_to_the_shipped_engine():
     """The contract every flag here carries. Explicit False against the
     default, so a change to the default is caught as a difference rather than
     silently agreeing with itself."""
-    assert _digest(FIXTURE) == _digest(FIXTURE, revalidate_small_shapes=False)
+    # The DEFAULT config against an EXPLICIT False — not `_case(F, False)`
+    # against itself, which is what a first pass at the cache made this, and
+    # which asserts nothing. The two configs are identical only while the
+    # default is False, so a flipped default fails here as well as in
+    # `test_flag_defaults_off`. Worth the one extra pipeline run: it is this
+    # file's core contract.
+    assert _default_digest(FIXTURE) == _case(FIXTURE, False).digest
 
 
 @pytest.mark.parametrize("fixture", [
@@ -116,37 +196,7 @@ def test_on_never_changes_a_shape_id_or_its_geometry(fixture):
     positional comparison here failed on exactly that and would have read as
     a geometry change.
     """
-    off = run_stages(TESTDATA / fixture, _cfg())
-    on = run_stages(TESTDATA / fixture, _cfg(revalidate_small_shapes=True))
-    assert {r.shape_id: round(r.area_mm2, 6) for r in on.regions} == \
-           {r.shape_id: round(r.area_mm2, 6) for r in off.regions}
-    assert {r.shape_id: r.polygon.wkt for r in on.regions} == \
-           {r.shape_id: r.polygon.wkt for r in off.regions}
-
-
-def _cones_at_pass_entry(fixture: str, small: bool) -> tuple[set, set]:
-    """(cones the design carried when `revalidate_threads` began, cones it
-    ends with). Probes `pipeline.revalidate_threads` — patched on `pipeline`,
-    NOT on `stage4_vectorize`, because `pipeline` binds the name at import and
-    patching the defining module does nothing (that cost a silent empty run
-    when `tools/revalidate_floor.py` was written)."""
-    from digitizer_core import pipeline as pl
-
-    real = pl.revalidate_threads
-    seen: dict = {}
-
-    def probe(regions, p, cfg, **kw):
-        seen["entry"] = {r.thread_index for r in regions
-                         if not r.meta.get("enclosed_background")}
-        return real(regions, p, cfg, **kw)
-
-    pl.revalidate_threads = probe
-    try:
-        result = run_stages(TESTDATA / fixture,
-                            _cfg(revalidate_small_shapes=small))
-    finally:
-        pl.revalidate_threads = real
-    return seen["entry"], {r.thread_index for r in result.regions}
+    assert _case(fixture, True).geometry == _case(fixture, False).geometry
 
 
 @pytest.mark.parametrize("fixture", [
@@ -172,10 +222,11 @@ def test_a_small_shape_can_only_take_a_cone_the_design_already_carried(fixture):
     alive. So the honest statement is that the flag can never introduce a cone
     the design did not already carry, which is what this asserts.
     """
-    entry_off, end_off = _cones_at_pass_entry(fixture, False)
-    entry_on, end_on = _cones_at_pass_entry(fixture, True)
-    assert entry_off == entry_on, "the flag must not change anything upstream"
-    assert (end_on - end_off) <= entry_on, sorted(end_on - end_off - entry_on)
+    off, on = _case(fixture, False), _case(fixture, True)
+    assert off.entry_cones == on.entry_cones, \
+        "the flag must not change anything upstream"
+    extra = on.cones - off.cones
+    assert extra <= on.entry_cones, sorted(extra - on.entry_cones)
 
 
 @pytest.mark.parametrize("fixture", [FIXTURE, "photo/logo_bridge_bar.jpg"])
@@ -184,10 +235,7 @@ def test_the_two_cause_3_fixtures_gain_no_cone_at_all(fixture):
     fixtures the F-wall decomposition attributes to the pixel floor (63 and 12
     refusals); on both the cone count is unchanged, which is the operator-side
     promise — no extra colour stop for a sub-1 mm2 shard."""
-    off = run_stages(TESTDATA / fixture, _cfg())
-    on = run_stages(TESTDATA / fixture, _cfg(revalidate_small_shapes=True))
-    assert len({r.thread_index for r in on.regions}) == \
-           len({r.thread_index for r in off.regions})
+    assert len(_case(fixture, True).cones) == len(_case(fixture, False).cones)
 
 
 def test_on_resnaps_the_shape_the_measurement_named():
@@ -196,33 +244,30 @@ def test_on_resnaps_the_shape_the_measurement_named():
     Asserted by SHAPE, not by count: a count would pass on any seven shapes
     moving, and the point of the flag is this one.
     """
-    off = run_stages(TESTDATA / FIXTURE, _cfg())
-    on = run_stages(TESTDATA / FIXTURE, _cfg(revalidate_small_shapes=True))
-    by_id_off = {r.shape_id: r for r in off.regions}
-    by_id_on = {r.shape_id: r for r in on.regions}
-    assert DRIFTED in by_id_off, "fixture drifted; re-derive from the tool"
+    off, on = _case(FIXTURE, False), _case(FIXTURE, True)
+    assert DRIFTED in off.threads, "fixture drifted; re-derive from the tool"
 
-    assert by_id_off[DRIFTED].thread_number == "0111"
-    assert by_id_on[DRIFTED].thread_number == "0015"
-    assert "thread_resnapped_de00" not in by_id_off[DRIFTED].meta
-    assert by_id_on[DRIFTED].meta["thread_resnapped_de00"] > 30.0
+    assert off.threads[DRIFTED] == "0111"
+    assert on.threads[DRIFTED] == "0015"
+    assert DRIFTED not in off.resnapped
+    assert on.resnapped[DRIFTED] > 30.0
 
 
 def test_on_reports_which_floor_produced_the_list():
     """Without `min_px` in the payload a reader cannot tell a design with no
     small drifted shapes from one whose small drifted shapes were never asked
     about."""
-    off = _resnap_warning(run_stages(TESTDATA / FIXTURE, _cfg()))
-    on = _resnap_warning(
-        run_stages(TESTDATA / FIXTURE, _cfg(revalidate_small_shapes=True)))
+    off, on = _case(FIXTURE, False).warning, _case(FIXTURE, True).warning
     assert on is not None
-    assert on["min_px"] == THREAD_REVALIDATE_MIN_PX_SMALL
+    on_min_px, on_count, on_ids = on
+    assert on_min_px == THREAD_REVALIDATE_MIN_PX_SMALL
     if off is not None:
-        assert off["min_px"] == THREAD_REVALIDATE_MIN_PX
-        assert on["count"] > off["count"]
+        off_min_px, off_count, off_ids = off
+        assert off_min_px == THREAD_REVALIDATE_MIN_PX
+        assert on_count > off_count
         # Every shape the strict floor already re-snapped is still re-snapped:
         # a lower floor may only ADD shapes to the list.
-        assert set(off["ids"]) <= set(on["ids"])
+        assert off_ids <= on_ids
 
 
 def test_the_improvement_gate_is_untouched():
@@ -231,9 +276,7 @@ def test_the_improvement_gate_is_untouched():
     guard that stops sub-unit wobble churning every assignment in the design.
     """
     assert THREAD_REVALIDATE_MIN_IMPROVEMENT_DE00 == 3.0
-    on = run_stages(TESTDATA / FIXTURE, _cfg(revalidate_small_shapes=True))
-    resnapped = [r for r in on.regions if "thread_resnapped_de00" in r.meta]
+    resnapped = _case(FIXTURE, True).resnapped
     assert resnapped, "flag fired nothing — the rest of this test proves nothing"
-    for r in resnapped:
-        assert r.meta["thread_resnapped_de00"] >= \
-            THREAD_REVALIDATE_MIN_IMPROVEMENT_DE00
+    for de00 in resnapped.values():
+        assert de00 >= THREAD_REVALIDATE_MIN_IMPROVEMENT_DE00

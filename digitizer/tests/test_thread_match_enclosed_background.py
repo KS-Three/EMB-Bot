@@ -32,6 +32,7 @@ TWO THINGS THIS FILE EXISTS TO STOP SOMEONE REDOING.
 """
 
 import collections
+from functools import lru_cache
 
 import pytest
 
@@ -49,11 +50,34 @@ GAULKE = "photo/logo_gaulke_roofing.png"
 FIXTURES = [GAULKE, "photo/logo_bridge_bar.jpg", "logo_alpha.png"]
 
 
+@lru_cache(maxsize=None)
 def _digest(fixture: str):
+    """One `digitize` per fixture, reused by every test in this file.
+
+    WHY THE CACHE. Written straight through this file digitized each fixture
+    once per test — six runs over three fixtures. MASTER_SCOPE's "CI feedback
+    speed" section records that GitHub's runners are 2-core, so `-n auto` gets
+    two workers and *"the remaining lever is `--durations`, not parallelism"*.
+
+    Unlike the flag suites' `_case`, this one DOES hand back the live
+    `PipelineResult` and `StitchPlan`: every test here only reads them, and the
+    checks are about preflight's output on the shipped objects rather than
+    about a flag's A/B, so reducing them to plain values would mean rebuilding
+    most of preflight's payload in the helper. **If a test here ever needs to
+    mutate a result, give it its own uncached run rather than making this one
+    return copies.**
+    """
     art = TESTDATA / fixture
     cfg = PipelineConfig(target_width_mm=80.0, garment_id="left_chest")
     result, plan = digitize(art, cfg)
     return art, cfg, result, plan
+
+
+@lru_cache(maxsize=None)
+def _report(fixture: str):
+    """`run_preflight` on the cached digitize — the other repeated cost here."""
+    art, cfg, result, plan = _digest(fixture)
+    return run_preflight(result, plan, cfg, image=art)
 
 
 def _sewn_stitches(result, plan) -> collections.Counter:
@@ -93,8 +117,8 @@ def test_no_row_is_scored_for_an_enclosed_background_region(fixture):
 
 @pytest.mark.parametrize("fixture", FIXTURES)
 def test_no_finding_names_an_enclosed_background_region(fixture):
-    art, cfg, result, plan = _digest(fixture)
-    report = run_preflight(result, plan, cfg, image=art)
+    _art, _cfg, result, plan = _digest(fixture)
+    report = _report(fixture)
     enclosed = {r.shape_id for r in result.regions
                 if r.meta.get("enclosed_background")}
     for f in report["findings"]:
@@ -115,8 +139,7 @@ def test_gaulke_drops_the_one_finding_this_change_removes():
     stitches) and MUST remain, because the point is a correct denominator, not
     a smaller number.
     """
-    art, cfg, result, plan = _digest(GAULKE)
-    report = run_preflight(result, plan, cfg, image=art)
+    report = _report(GAULKE)
     threads = sorted(f["extra"]["thread_number"] for f in report["findings"]
                      if f.get("code") == "THREAD_MATCH_POOR"
                      and f.get("severity") == "block")
@@ -130,8 +153,8 @@ def test_every_surviving_block_rides_a_shape_that_really_sews():
     sew nothing. Counting every needle-down run says 0 — this asserts the 0.
     """
     for fixture in FIXTURES:
-        art, cfg, result, plan = _digest(fixture)
-        report = run_preflight(result, plan, cfg, image=art)
+        _art, _cfg, result, plan = _digest(fixture)
+        report = _report(fixture)
         sewn = _sewn_stitches(result, plan)
         for f in report["findings"]:
             if (f.get("code") != "THREAD_MATCH_POOR"
@@ -145,7 +168,7 @@ def test_jump_runs_are_sewing_not_travel():
     """The trap, pinned directly rather than only described: on
     `gaulke_roofing` at least one blocking shape's runs are all reached BY a
     jump, so the wrong filter calls it unsewn while the machine sews it."""
-    art, cfg, result, plan = _digest(GAULKE)
+    _art, _cfg, result, plan = _digest(GAULKE)
     ids = {r.shape_id for r in result.regions}
     with_jumps = _sewn_stitches(result, plan)
     without: collections.Counter = collections.Counter()
@@ -155,7 +178,7 @@ def test_jump_runs_are_sewing_not_travel():
         rid = _owning_region_id(run.shape_id, ids)
         if rid is not None:
             without[rid] += len(run.points)
-    report = run_preflight(result, plan, cfg, image=art)
+    report = _report(GAULKE)
     worst = [_base(f["extra"]["worst_shape_id"]) for f in report["findings"]
              if f.get("code") == "THREAD_MATCH_POOR"
              and f.get("severity") == "block"]
