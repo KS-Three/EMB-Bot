@@ -1224,15 +1224,79 @@ def _color_stop_findings(plan: StitchPlan) -> tuple[list[dict], int]:
     changes = plan.stats.color_changes
     if changes <= COLOR_STOPS_MAX:
         return [], changes
+
+    # WHICH colors to merge. The remedy has said "Merge similar colors" since
+    # it was written without ever saying WHICH TWO — the same shape as
+    # THREAD_MATCH_POOR telling an operator to "pick a closer thread" without
+    # consulting the design's own cone list (fixed 2026-09-06, and this is the
+    # same fix one check over). The answer is a pairwise CIEDE2000 over the
+    # cones this plan actually sews, and it is nearly free: no pixels, and the
+    # corpus tops out around 25 cones, so at most a few hundred pairs.
+    #
+    # DEDUPED BY NUMBER FIRST, which is not optional. `plan.palette` is one
+    # entry PER BLOCK (its own docstring is emphatic about this — reading it
+    # positionally against layers shipped a black block labelled "0020
+    # Tangerine"), so a cone sewn in two blocks appears twice and the closest
+    # pair would trivially be that cone with itself at 0.0.
+    #
+    # A repeat is worth saying on its own, and FIRST: merging two blocks that
+    # already wear the same cone costs no color fidelity at all, where any
+    # other merge trades some. `cfg.merge_duplicate_cones` (default ON since
+    # 2026-09-01) folds these upstream, so a survivor here means a specialty
+    # step put its own stop in — still a real, free saving for the operator.
+    cones: dict[str, dict] = {}
+    repeated: list[str] = []
+    for entry in plan.palette:
+        num = str(entry["number"])
+        if num in cones:
+            if num not in repeated:
+                repeated.append(num)
+        else:
+            cones[num] = entry
+
+    order = list(cones.values())
+    pair: list[str] | None = None
+    pair_de: float | None = None
+    pair_names: list[str] = []
+    if len(order) >= 2:
+        labs = rgb_to_lab(np.asarray([c["rgb"] for c in order], np.float64))
+        iu = np.triu_indices(len(order), k=1)
+        d = deltaE_ciede2000(labs[iu[0]], labs[iu[1]])
+        k = int(np.argmin(d))
+        a, b = order[int(iu[0][k])], order[int(iu[1][k])]
+        pair = [str(a["number"]), str(b["number"])]
+        pair_names = [str(a["name"]), str(b["name"])]
+        pair_de = float(d[k])
+
+    # The message names the pair; the DISTANCE goes in `extra` only. An
+    # operator does not think in dE00 — no other message in this module puts
+    # one in prose, and THREAD_MATCH_POOR's remedy names its spool the same
+    # way while keeping delta_e for the review screen.
+    # Keep the INSTRUCTION and add the specifics in parentheses. An earlier
+    # cut replaced "Merge similar colors" with the pair and left the operator
+    # told which two cones are alike but not what to do about them.
+    if repeated:
+        which = (f" ({repeated[0]} is already sewn in more than one block, so "
+                 f"merging those costs no color at all)")
+    elif pair is not None:
+        which = (f" ({pair[0]} {pair_names[0]} and {pair[1]} {pair_names[1]} "
+                 f"are the closest match)")
+    else:
+        which = ""
+
     return [finding(
         COLOR_STOPS_HEAVY,
         "warn",
         f"{changes} thread changes — a single-needle machine stops for a "
         f"manual re-thread at every one, and past {COLOR_STOPS_MAX} that is "
-        "an afternoon at the machine. Merge similar colors, or sew this on "
-        "a multi-needle machine.",
+        f"an afternoon at the machine. Merge similar colors{which}, or sew "
+        "this on a multi-needle machine.",
         color_changes=changes,
         max_stops=COLOR_STOPS_MAX,
+        distinct_cones=len(cones),
+        closest_pair=pair,
+        closest_pair_delta_e=(None if pair_de is None else round(pair_de, 1)),
+        repeated_cones=repeated,
     )], changes
 
 
