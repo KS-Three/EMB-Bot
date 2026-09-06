@@ -5815,3 +5815,58 @@ carried when the pass began"*, which is what
 `test_a_small_shape_can_only_take_a_cone_the_design_already_carried` asserts.
 The stronger *"gains no cone at all"* holds on the two fixtures cause 3 is
 actually about, and has its own test.
+
+## 2026-09-06 — what tonal splitting BUYS, measured at last (defect 20's other half)
+
+MASTER_SCOPE 20 has said since 2026-09-02 that the tier could not be measured
+against its own absence: *"**No off switch for photo classes**
+(`effective_split_tonal` ORs flag with class)."*
+
+**That claim was already false when it was written.** The off switch landed
+**2026-09-01** in PR #316 (`231ca4b`, *"Recapture the scorecard baseline,
+ratify tonal splitting, and give it an off switch"*), and
+`effective_split_tonal`'s docstring names defect 20 as the reason:
+
+> *"An explicit answer WINS, in both directions. This used to read
+> `bool(cfg.split_tonal_regions) or class_ in PHOTO_CLASSES`, which could only
+> ever turn the tier ON … It could not be measured against its own absence,
+> which is why defect 20 records what it costs but not what it buys."*
+
+So it was measured. Every photo-class fixture in the corpus, default against
+`split_tonal_regions=False`, 80 mm / left_chest
+(`digitizer/tools/tonal_split_ab.py`):
+
+| fixture | grade ON → OFF | coverage_max | same_hole | worst ΔE00 | regions | stitches |
+|---|---|---|---|---|---|---|
+| `photo_chrome_specular` | C 64 → **B 88** | 7.09 → 6.98 | 0.03 → 0.03 | 8.80 → **5.90** | 19 → 6 | **−15.8%** |
+| `photo_dof_meadow` | D 52 → **B 88** | 7.97 → **7.01** | 0.04 → **0.01** | 10.70 → **9.40** | 20 → 5 | **−31.8%** |
+| `photo_scene_stub` | B 76 → **A 100** | 6.68 → 6.52 | 0.03 → 0.03 | 6.30 → **9.70** | 21 → 4 | **−20.9%** |
+| `photo_sunset_backlit` | B 76 → **A 100** | 7.04 → **6.43** | 0.04 → **0.02** | 12.00 → **11.00** | 10 → 3 | **−29.6%** |
+| `fur_ramp`, `photo_grass_macro`, `photo_owl_pale`, `photo_subject_stub`, `logo_script_tires` | unchanged | | | | | byte-identical |
+
+**Four of nine score HIGHER with the tier off. None score lower.** Over the
+photo lane it is **−22,352 stitches, −16.4%**, `coverage_max` down on every
+fixture that moves, `same_hole_fraction` down or equal everywhere, and colour
+fidelity improves on three of the four (`photo_scene_stub` is the one that
+worsens, 6.30 → 9.70).
+
+### And the honest reading, which is not "turn it off"
+
+**The scorecard has no instrument for what this tier is FOR.** It measures
+density, coverage, trims, and thread-to-artwork ΔE00; nothing in it scores
+tonal gradation. A photo sewn in 3 cones instead of 5 can score better and
+look flatter, and this table cannot tell the difference. So the result is
+*"the corpus's yardstick prefers the tier off by a wide margin, on a design
+question the yardstick cannot see"* — which is phase 1's exit condition
+restated (*"nothing he judges better ever scores worse"*), not a verdict.
+
+**Kent ratified tonal splitting as spec decision 2 (2026-08-18) and it was
+re-confirmed deliberate 2026-09-02. This is a datum for him, not a flip.**
+What it does settle is that defect 20's cost is no longer half a story: the
+tier costs 16% of the photo lane's thread and every density metric it touches,
+and buys nothing this repo can currently measure.
+
+*(One instrument correction, named rather than buried: the summary line of the
+first run compared grades as STRINGS — `"100" < "76"` — and reported two
+fixtures moving the wrong way. The per-fixture table above was right
+throughout, and the tool uses `int()` now.)*

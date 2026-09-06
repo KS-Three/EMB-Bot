@@ -3823,3 +3823,41 @@ Kent's flip. *(measured 2026-09-03 — `docs/rail-dents-2026-09-03.md` §7)*
 ## 2026-09-03 — fill density: the professional's rows, read as rows
 
 `tools/row_pitch_union.py` (7 tests) reads the adjacent-row pitch of the UNION of every pass: pro Fremont patch ground **0.141 mm** (one pass, 52 rows in 8 mm), pro Becker letter bodies **0.166–0.169**; ours **0.400** on every fill including the blend bands. The per-pass `fill_pitch.py` reading of 0.37–0.40 on the same pro files is its autocorrelation locking onto the tatami penetration cycle. Gate 1 untouched. Record and the tool-wide plan for Kent's five sew-out findings: `docs/sewout-findings-2026-09-03.md`.
+
+
+## What photo tonal splitting BUYS — measured 2026-09-06 (MASTER_SCOPE 20)
+
+Defect 20 recorded the tier's cost and said the other half could not be
+measured: *"No off switch for photo classes (`effective_split_tonal` ORs flag
+with class)."* **That was already false when written** — the switch landed
+2026-09-01 in PR #316 (`231ca4b`), and `effective_split_tonal`'s docstring
+names defect 20 as the reason it exists.
+
+Every photo-class fixture, default against `split_tonal_regions=False`, 80 mm /
+left_chest (`digitizer/tools/tonal_split_ab.py`):
+
+| fixture | grade ON → OFF | coverage_max | same_hole | worst ΔE00 | regions | stitches |
+|---|---|---|---|---|---|---|
+| `photo_chrome_specular` | C 64 → **B 88** | 7.09 → 6.98 | 0.03 → 0.03 | 8.80 → **5.90** | 19 → 6 | **−15.8%** |
+| `photo_dof_meadow` | D 52 → **B 88** | 7.97 → **7.01** | 0.04 → **0.01** | 10.70 → **9.40** | 20 → 5 | **−31.8%** |
+| `photo_scene_stub` | B 76 → **A 100** | 6.68 → 6.52 | 0.03 → 0.03 | 6.30 → **9.70** | 21 → 4 | **−20.9%** |
+| `photo_sunset_backlit` | B 76 → **A 100** | 7.04 → **6.43** | 0.04 → **0.02** | 12.00 → **11.00** | 10 → 3 | **−29.6%** |
+| `fur_ramp` · `photo_grass_macro` · `photo_owl_pale` · `photo_subject_stub` · `logo_script_tires` | unchanged | | | | | byte-identical |
+
+**Four of nine score higher with the tier off; none score lower.** Over the
+photo lane: **−22,352 stitches, −16.4%**, `coverage_max` down on every fixture
+that moves, `same_hole_fraction` down or equal everywhere, colour fidelity
+better on three of the four (`photo_scene_stub` worsens, 6.30 → 9.70).
+
+### The caveat is the point
+
+**The scorecard has no instrument for what this tier is FOR.** It scores
+density, coverage, trims and thread-to-artwork ΔE00; nothing in it scores
+tonal gradation. A photo sewn in 3 cones instead of 5 can score better and
+look flatter, and this table cannot tell the difference. So the honest reading
+is *"the yardstick prefers the tier off by a wide margin, on a design question
+the yardstick cannot see"* — phase 1's exit condition restated
+(*"nothing he judges better ever scores worse"*), not a verdict on the tier.
+
+Kent ratified tonal splitting as spec decision 2 (2026-08-18), re-confirmed
+deliberate 2026-09-02. **A datum for him, not a flip.**
