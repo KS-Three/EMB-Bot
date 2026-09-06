@@ -1170,7 +1170,11 @@ is now fixed (see below), four remain open:
 - **Fill row spacing (law 19)** — unresolved two-population finding: the
   0.20mm figure is a satin-rail artifact for one file population (refuted)
   but looks like a genuine denser pitch on 43 commissioned cap logos (still
-  alive). Shipped `FILL_ROW_MM=0.40` unchanged pending sew-out.
+  alive). ~~Shipped `FILL_ROW_MM=0.40` unchanged pending sew-out.~~
+  **STALE — `FILL_ROW_MM` is 0.15 since `a794208`** ("the professional's
+  pitch, by Kent's ruling; the coverage grader re-based in fill layers"). The
+  two-population finding above is untouched by that; only the shipped number
+  moved. *(confirmed 2026-09-06 — `tools/doc_claims.py`)*
 - **Border tier seam-sharing — REAL FIX landed (was KNOWN LIMITATION,
   mitigated-not-fixed as of PR #67).** `stage6_border.py`'s module docstring
   used to document an unresolved defect: under `border="auto"` (or any
@@ -3569,7 +3573,10 @@ the convention — raw "axis + 45" gave drone 45.1 and Fremont 134.4.
 Fires on `drone_render`'s THERMAL (T, H, E, R gain 45.1°, +0.4% stitches,
 trims flat) — the letters of the 2026-08-26 complaint.
 
-**Default OFF — `PipelineConfig.satin_house_fourfold`.** On `enthusiast_logo`
+**Default OFF — `PipelineConfig.satin_house_fourfold`.** *(A 2026-09-02
+snapshot. **Kent flipped it DEFAULT ON on 2026-09-03** once the stitch-angle
+rule's pass 1 landed — see `config.py`'s own note; the benchmark reads
+4.09/1k under its 4.1 ceiling.)* On `enthusiast_logo`
 @ 93 mm (the chaining benchmark's pitch) the reading angles the eleven
 ENTHUSIAST capitals at 48°: E, T, H uniform, but the N's diagonal runs near
 the house and `_clamp_to_span` piles it at the junction, and trims go 19 → 22
@@ -3649,7 +3656,8 @@ recapture doctrine with the pre-change tree.
 ## Stitch-angle rule, pass 1 — fading lean, 30° cap, density under lean (2026-09-03)
 
 Kent's ruling (DOCTRINE) built in `stage6_satin` and `textcluster`, flag
-`satin_house_fourfold` still OFF; every fixture without a house angle
+`satin_house_fourfold` still OFF **at the time of this pass — Kent flipped
+it ON later the same day (2026-09-03)**; every fixture without a house angle
 md5-identical. Full record `docs/stitch-angle-convention-2026-09-03.md` §7.
 
 - `_clamp_to_span`: house held within the lean cap (`SATIN_HOUSE_MIN_SPAN_DEG`

@@ -5971,3 +5971,52 @@ the switch — but the switch is built, tested and default OFF, so the trade can
 be re-taken cheaply if the gradient lane ever gets the excess yardstick (which
 would change one side of it) or if the cone count starts costing real money on
 real jobs.
+
+## 2026-09-06 — a checker for the claims a script can settle
+
+Two doc claims outlived their fixes this week and both cost real time: defect
+20's *"No off switch for photo classes"* (the switch landed the day before, and
+its absence is what made the tier's benefit look unmeasurable), and defect 28's
+cause-3 mechanism. MASTER_SCOPE's rule is that every claim carries a
+`(verb date — source)` pointer, but nothing checks the claims.
+
+`digitizer/tools/doc_claims.py` checks the two kinds a script can settle:
+every `cfg.<flag>` the docs name with "DEFAULT ON/OFF" **on the same line**,
+against `PipelineConfig`'s real default; and every `NAME = <number>`, against
+the module that defines NAME.
+
+**The sweep of the current-state docs came back CLEAN** — 11 flag defaults and
+16 constants in `MASTER_SCOPE.md` and `DOCTRINE.md` all agree with the code.
+Worth recording as a negative so nobody re-runs it expecting a haul: the two
+stale claims were specific misses, not a pattern.
+
+**The per-area doc had three.** One real, two snapshots:
+
+- `FILL_ROW_MM` — *"Shipped `FILL_ROW_MM=0.40` unchanged pending sew-out"*, in
+  an **unsectioned** legacy list, so no date warns the reader. It is **0.15**
+  since `a794208` (Kent's ruling, the professional's pitch). Corrected; the
+  two-population finding it sits beside is untouched, only the shipped number
+  moved.
+- `satin_house_fourfold` — documented Default OFF at two sites, both inside
+  **dated** sections (2026-09-02 and 2026-09-03). Kent flipped it **ON**
+  2026-09-03. The file's own header licenses snapshots (*"do not quote one as
+  a current baseline"*), so these are narrative, not defects — but a reader
+  grepping the flag name finds "OFF" twice and nothing saying otherwise, so
+  both now carry a one-line pointer to the current state.
+- `SATIN_MAX_WIDTH_MM = 3.0` — a **false positive**, and the doc was already
+  careful: it says *"(`main`'s cap at the time)"*. The cap is 5.0 now.
+
+### Two things the checker had to learn, both from being wrong first
+
+**Scientific notation.** A first pass read `SPLIT_TOLERANCE_MM = 1e-6` as `1`
+and reported a mismatch that was the regex, not the doc.
+
+**Same LINE, not a character window.** A ±400-character window bled into the
+neighbouring MASTER_SCOPE entry and paired `border` with both "DEFAULT ON" and
+"DEFAULT OFF". The file's entries are one long line each, so the line is the
+natural unit.
+
+And the design decision that matters most: **it fails only on the
+current-state docs.** `docs/scope/*` hits are advisory, because a dated
+snapshot there is legitimate under that file's own rules, and a checker that
+cries wolf on legitimate narrative is a checker nobody runs.
