@@ -354,8 +354,32 @@ hand-rolling it in JS.
   `digitizer/tools/halo_spools.py` (cones a design spends on JPEG/anti-alias
   ringing rather than on artwork — thin bands, grouped into the stacks stage 4
   shatters them from, whose thread is a Lab interpolation of the two things
-  they lie between; `--detail` per region). Run each from `digitizer/` with
-  `.venv/bin/python`.
+  they lie between; `--detail` per region),
+  `digitizer/tools/stroke_verdicts.py` (per-stroke satin verdicts against TWO
+  denominators — all regions and the ones the plan actually SEWS — and it calls
+  `classify_ribbon` both ways rather than restating the rung's rule),
+  `digitizer/tools/satin_columns.py` (satin passes rebuilt from the plan, where
+  a run of another kind BREAKS the pass), `digitizer/tools/width_tail.py`
+  (per satin shape: gate p90, MAX, over-cap fraction and the bare mm2 preflight
+  attributes — the p90 gate is blind to a 3% over-cap tail),
+  `digitizer/tools/bare_patch_render.py` (preflight's OWN bare cells drawn over
+  the artwork, `--patch-junctions` for the fix),
+  `digitizer/tools/revalidate_floor.py` (which shapes `revalidate_threads`
+  REFUSES on its pixel floor and whether the answer would have changed — it
+  wraps the real function and lets the real pass run, so it measures the
+  shipped design), `digitizer/tools/thread_color_render.py` (a design drawn in
+  the cones it will actually sew, each changed shape tiled OFF beside ON at
+  90 px/mm — a 0.9 mm2 shard is four pixels at whole-design scale). Run each
+  from `digitizer/` with `.venv/bin/python`.
+
+  **Two traps these instruments have already sprung, both costly:**
+  `StitchRun.jump` means the needle was lifted to REACH the run — the run is
+  still needle-down, so filtering on it does NOT exclude travel, it excludes
+  genuinely sewn work (a `sewn` count built that way reported 11 of 25
+  `THREAD_MATCH_POOR` blocks on unsewn shapes when the real number was 0). And
+  a finding labels a shade row `"<shape_id> shade <number>"` for its message —
+  that string is not a shape id, and looking it up directly reports every
+  gradient band as 0.00 mm2 and unsewn.
 - **Acceptance A/B contact sheet** (`digitizer/tools/acceptance_ab.py`, pure
   logic in `digitizer_core/tools_acceptance.py`): the phase-4 eyeball loop.
   Runs every image in the gitignored `digitizer/testdata/photo/acceptance/`
