@@ -4992,9 +4992,32 @@ cloth; the three without satin have none.
 `classify_ribbon` gates on the DOUBLED p90 medial radius. **A p90 statistic
 cannot see a tail that is 3% of the spine.** Both shapes read 2.67 / 2.85 mm
 against a 5.0 cap — not marginal, comfortable — while carrying a bulge nearly
-twice the cap. `_rail_points`' per-station guard then holds every cross in
-that 3% to 5 mm, and the middle of a 7.8 mm bulge gets no thread. The bare
-fraction (3.7%, 4.7%) tracks the over-cap fraction (2.8%, 3.5%).
+twice the cap. That gap is real.
+
+> **The mechanism I then inferred from it is WRONG, and two experiments the
+> same day say so.** The reasoning was: `_rail_points` caps every cross at
+> `machine.SATIN_MAX_WIDTH_MM / 2` (~line 2085), whose own comment justifies
+> the ceiling with *"a satin cross this module will not classify past 5.0mm in
+> the first place"* — which the p90 gate makes false — so the crosses in that
+> 3% get truncated and the middle of a 7.8 mm bulge goes bare. It fit: the
+> bare fraction (3.7%, 4.7%) tracks the over-cap fraction (2.8%, 3.5%).
+> **Lifting that ceiling to 99 mm moved uncovered 23.8 → 22.8 mm² — 4% — and
+> cost 718 stitches (+13%).** `satin_rails_follow_edge=True`, the flag already
+> measured to cut Becker's bare satin area 8.6% → 5.8%, moved it to 21.0.
+> Neither is the cause, and a matching ratio was not evidence of one.
+>
+> Where it actually is, is unresolved. Under a corridor model — farther from
+> the spine than 1.25× the local half-width + 0.2 — `Sead76620` carries
+> **160.6 mm² outside every stroke's corridor in 163 components**, largest
+> 15.6 mm². Diffuse shortfall across a branchy 27-stroke shape, not one missed
+> arm and not one bulge. A crude penetration-distance probe agrees on the
+> shape of it: of the cells it calls bare, only **1.2%** sit where the medial
+> width exceeds the cap, and their median local width is 1.67 mm — narrow
+> places, not wide ones.
+>
+> Kept in place rather than deleted, because the negative is the useful part:
+> the next person to notice that p90/MAX gap will reach for the same
+> explanation.
 
 Both arrive through **`promoted_ribbon`** — the `explained` rescue that exists
 to save tapered and script strokes from the `cv` gate — and its own guard is

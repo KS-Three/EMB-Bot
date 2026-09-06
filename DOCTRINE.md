@@ -1055,22 +1055,27 @@ its hedge as it is copied forward** — is why this file is split.
   the columns we do sew are already professional width (3.82 median). The gap
   is segmentation, full stop. *(measured 2026-09-06)*
 
-- **A p90 width gate is blind to a 3% tail, and the shipped default already
-  leaves bare cloth because of it.** `classify_ribbon` admits a shape when the
-  DOUBLED p90 medial radius is under `SATIN_MAX_WIDTH_MM`; `promoted_ribbon`'s
-  own guard is the same statistic. Measured on `becker_marine_logo`:
-  `Sead76620` @ 80 mm reads **p90 2.67 mm** against the 5.0 cap — comfortable,
-  not marginal — while its medial width MAXES at **7.80 mm**, with 2.8% of the
-  spine over the cap. `_rail_points` holds every cross in that 2.8% to 5 mm,
-  and 23.8 mm² of the shape gets no thread. Same at 90 mm on `Sf6b42aaf`
-  (p90 2.85, max 8.86, 3.5% over, 38.8 mm² bare). **100% of that fixture's
-  `ARTWORK_UNCOVERED` at both sizes is inside satin shapes**, and it is the
-  whole reason it grades B 76. This is the SAME failure this document files as
-  a hazard the per-stroke rung would introduce — the default has been doing it
-  all along. **Rule: judge a width gate on the tail it cannot see. Before
-  trusting any p-statistic gate, print the MAX and the fraction over the cap.**
-  Also note `Sead76620` is the 638.8 mm² region recorded above as the largest
-  casualty of a REPLACEMENT rung: it is where all the bare cloth is, so
-  demoting it may be the fix and not the cost. *(measured 2026-09-06 —
-  scope-history 09-06; no threshold moved, because a classifier change is
-  scored across the fixtures first)*
+- **A p90 width gate IS blind to a 3% tail — but that tail is NOT what leaves
+  the bare cloth. Hypothesised, tested and refuted the same day.**
+  `classify_ribbon` admits a shape when the DOUBLED p90 medial radius is under
+  `SATIN_MAX_WIDTH_MM`, and `promoted_ribbon`'s guard is the same statistic, so
+  `Sead76620` @ 80 mm passes at **p90 2.67 mm** while its medial width MAXES at
+  **7.80 mm**, 2.8% of the spine over the cap (`Sf6b42aaf` @ 90 mm: 2.85 /
+  8.86 / 3.5%). That gap is real and worth knowing. The inference drawn from it
+  was not. `_rail_points`' hard ceiling — `min(..., machine.SATIN_MAX_WIDTH_MM
+  / 2)`, ~line 2085, whose own comment justifies itself with *"a satin cross
+  this module will not classify past 5.0mm in the first place"*, which the p90
+  gate makes FALSE — looked like the mechanism. **Lifting that ceiling to 99 mm
+  moved uncovered 23.8 → 22.8 mm² and cost 718 stitches (+13%).**
+  `satin_rails_follow_edge=True` moved it to 21.0. Neither is the cause.
+  **What stands:** 100% of that fixture's `ARTWORK_UNCOVERED` at 80 AND 90 mm
+  is inside SATIN shapes — read off preflight's own per-shape attribution — and
+  it is the whole reason it grades B 76. **What does not:** any claim about
+  WHY. Under a corridor model (farther from the spine than 1.25x the local
+  half-width + 0.2) the shape carries 160.6 mm² outside every stroke's corridor
+  in **163 components**, largest 15.6 mm² — diffuse shortfall across a branchy
+  27-stroke shape, not one missed arm and not one bulge. **Rule: judge a width
+  gate on the tail it cannot see — print the MAX and the fraction over cap —
+  but never attribute bare cloth to that tail without lifting the ceiling and
+  re-measuring.** Both experiments were cheap and I nearly skipped both.
+  *(measured and refuted 2026-09-06 — scope-history 09-06)*
