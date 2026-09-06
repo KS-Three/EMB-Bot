@@ -650,7 +650,7 @@ an "Edit shapes (N)" disclosure, closed by default; a re-digitize reads as a
 delta against `priorRun`; `COLOR_STOPS_HEAVY`, `LETTERING_TOO_SMALL` and
 `STITCHES_TOO_SHORT` render as one-click adjustment chips offered AFTER the run
 (Kent's call — an adjustment, not a pre-run form). `QualityReport` surfaces
-trims. *(2026-09-02 — PRs #317/#318)*
+trims. *(2026-09-02 — PRs #317/#318)* **Both "Make it bigger" chips offer a PARTIAL remedy, and the comment justifying them misquoted the finding it cited** — it read `LETTERING_TOO_SMALL`'s message as ending *"Enlarging helps"* when on that same commit it already ended *"...but does not fully clear it ... Remove or simplify the smallest lettering"*. Corrected in place with the history; the buttons are LEFT for Kent, since whether a partial remedy earns one is his call. `STITCHES_TOO_SHORT` no longer recommends enlarging at all and now names the shapes carrying the short steps — it and `LETTERING_TOO_SMALL` measure the same quantity at the same threshold (`MIN_COLUMN_MM` **is** `machine.MIN_STITCH_MM`) and it never fired alone on the corpus, but only **66%** of its short steps sit in a shape lettering named: the rest are sewable columns (1.1–3.2 mm median) with a narrow waist. *(measured 2026-09-06 — `tools/short_satin_overlap.py`, `tests/test_short_satin_shapes.py` (14); DOCTRINE)*
 
 **`cfg.border` could never reach its own default — the Studio always sent one.**
 `project.js` seeded `border: "off"` and `digitizer.js` sent the key

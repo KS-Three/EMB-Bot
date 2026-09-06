@@ -205,3 +205,25 @@ def test_the_singular_branch_of_the_covered_message_reads():
     msg = _hit(report, pf.STITCHES_TOO_SHORT)["message"]
     assert "The one shape carrying them is already flagged" in msg
     assert "All 1 shapes" not in msg
+
+
+# --- The instrument that produced the corpus numbers -------------------------
+
+def test_the_overlap_tool_measures_satin_steps_independently():
+    """`tools/short_satin_overlap.py` deliberately re-walks the geometry rather
+    than importing `_stitch_length_findings`' loop — an auditor that calls the
+    thing it audits proves nothing. That makes divergence possible, so pin the
+    two properties the re-implementation has to keep: SATIN runs only, and one
+    distance per consecutive pair."""
+    from tools.short_satin_overlap import _satin_steps
+
+    fill = StitchRun(points=[(0.0, 0.0), (5.0, 0.0)], kind=st.FILL,
+                     shape_id="Sfill")
+    got = _satin_steps(_plan(WAIST, fill))
+    assert list(got) == ["Swaist"]
+    assert len(got["Swaist"]) == len(WAIST.points) - 1
+
+    # ...and it agrees with the finding's own denominator on the same plan.
+    _f, metrics = pf._stitch_length_findings(_plan(TINY, WAIST))
+    assert sum(len(v) for v in _satin_steps(_plan(TINY, WAIST)).values()) \
+        == metrics["satin_steps"]

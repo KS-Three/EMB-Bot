@@ -682,6 +682,41 @@ its hedge as it is copied forward** — is why this file is split.
   live defect on the code read, then withdrawn on the measurement; instrument:
   scratch sweep patching `_hoist_same_thread` and `detail_runs`)*
 
+- **The Studio's "Make it bigger" button was justified by a misquote, and the
+  quote was wrong on the day it was written.** `DigitizePanel.svelte`'s
+  `FIX_FOR` comment read *"`LETTERING_TOO_SMALL`'s own message ends 'Enlarging
+  helps', and until now nothing offered to enlarge it."* At that commit
+  (`1c20ec9`, 2026-09-02) the message already read *"Enlarging helps **but does
+  not fully clear it**: the smallest shapes regenerate at any size. Remove or
+  simplify the smallest lettering."* The quote stopped at the word where the
+  sentence reverses, and the action it justified ("make it bigger") is not the
+  action the message ends on ("remove or simplify"). **No checker can catch
+  this** — "Enlarging helps" IS a truthful substring of the source string, so
+  fidelity checking passes; only reading the rest of the sentence finds it.
+  Corrected in place 2026-09-06; the button was LEFT alone, because whether a
+  partial remedy earns a button is Kent's call, not a session's.
+
+- **`STITCHES_TOO_SHORT` and `LETTERING_TOO_SMALL` bill 24 points for one
+  defect — but do NOT delete either to "dedupe" them.** They measure the SAME
+  quantity at the SAME threshold: `MIN_COLUMN_MM` **is**
+  `machine.MIN_STITCH_MM`, and both read the consecutive-step distance inside a
+  satin run, which crosses the column. They differ only in aggregation —
+  per-shape MEDIAN against a global FRACTION. Over the 26-fixture corpus at
+  80 mm the short-stitch check **never fired without the size check** (10 both,
+  1 lettering only, **0 alone**), so as a design-level signal it is redundant.
+  As a LOCATION report it is not: only **66%** of the short steps sat inside a
+  shape lettering named, because a shape passes lettering on its MEDIAN. The
+  residue is not small lettering — uncovered carriers run **1.1 to 3.2 mm
+  median column**, and `logo_bridge_bar`'s worst has a **2.65 mm median** with
+  205 of its 1,597 steps under the needle minimum: sewable columns with a
+  narrow WAIST, which lettering's median test cannot see and should not. The
+  redundancy is in the SCORE; the information is not. Fixed 2026-09-06 by
+  making the finding emit `shapes` / `uncovered_shapes` and stop recommending
+  a cure the neighbouring docstring had already measured false.
+  *(measure it again with `tools/short_satin_overlap.py`, and expect both
+  numbers to move once per-stroke satin routing lands — that is the documented
+  root cause of the short columns, and it is scale-invariant)*
+
 ---
 
 ## Gotchas — cost someone a session once
