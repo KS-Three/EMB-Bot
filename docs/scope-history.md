@@ -5870,3 +5870,46 @@ and buys nothing this repo can currently measure.
 first run compared grades as STRINGS — `"100" < "76"` — and reported two
 fixtures moving the wrong way. The per-fixture table above was right
 throughout, and the tool uses `int()` now.)*
+
+## 2026-09-06 — defect 15's cone escape gets its number
+
+MASTER_SCOPE 15 says an undeclared photograph *"sews more spools than the cone
+list names"* because `revalidate_threads`' argmin runs over the WHOLE chart off
+the photo route. Deliberate and byte-identity-pinned — the function argues it
+at length — but never counted. Counted now
+(`digitizer/tools/resnap_escape.py`, 80 mm, every scorecard fixture):
+
+**34 cones added across the corpus, 25 of them outside the selected palette,
+and every escape is on the GRADIENT lane.**
+
+| fixture | class | entry → final cones | outside the palette |
+|---|---|---:|---:|
+| `screenshot_phone_ui_golke` | gradient | 13 → 16 | **7** |
+| `drone_render` | gradient | 14 → 19 | **5** |
+| `logo_bridge_bar` | gradient | 14 → 18 | **5** |
+| `logo_golden_tee` | gradient | 12 → 16 | **4** |
+| `logo_gaulke_roofing` | gradient | 4 → 6 | **3** |
+| `gradient_ramp_linear` | gradient | 1 → 1 | **1** (a swap, not a gain) |
+| `summit_badge` | gradient | 12 → 13 | 0 |
+| `logo_alpha`, `logo_whitebg`, `enthusiast_logo`, `logo_script_tires` | flat / photo_scene | +1 each | 0 |
+| **all nine photo-class fixtures** | photo_* | **no change** | **0** |
+
+**The photo lane is the control and it is clean.** The 2026-08-23 palette
+binding does exactly what it was built for; the lane real customer logo art
+actually routes to never got it — the same shape as defect 27's missing port.
+
+Two columns, because the difference decides whether a number is a defect:
+`ADDED` counts cones no region wore at pass ENTRY, and a re-snap onto a palette
+spool that nothing happened to be wearing is legitimate — every flat-lane `+1`
+above is that. `outside palette` counts cones in neither the entry set nor the
+selection, and that is the escape.
+
+**Scale:** four of the seven real-customer-art fixtures sew **3–7** cones the
+palette never chose. On a design whose whole purpose is a bounded cone list,
+that is an operator loading spools the plan does not name.
+
+Not proposed as a fix here. Binding the re-snap on every class is a one-line
+change that moves the flat and gradient goldens, which the phase-4 spec pins
+byte-for-byte, so it wants a flag, an A/B and Kent — the same route
+`cfg.revalidate_small_shapes` took for the small-shape half of the same
+argmin.

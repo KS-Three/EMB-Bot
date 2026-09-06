@@ -87,7 +87,7 @@ icon. Cloth pointers added to defects 3, 6 and 16 below.
     bind, and its region re-snap escapes the selected palette.** `is_photographic`
     gates the fix and is DECLARED, not detected — `owl_kent.jpg` reads LESS
     photographic than two logos, so a photograph left undeclared routes
-    gradient and the re-snap sews more spools than the cone list names.
+    gradient and the re-snap sews more spools than the cone list names. **Counted 2026-09-06** (`digitizer/tools/resnap_escape.py`): **34 cones added corpus-wide, 25 outside the selected palette, every escape on the GRADIENT lane** — screenshot 7, drone 5, bridge_bar 5, golden_tee 4, gaulke 3 — while all nine photo-class fixtures add none. The binding works; the lane real logo art routes to never got it.
     **UI HALF FIXED 2026-09-02 (Kent's call):** the reading row's "It's a
     photo" correction now sends `is_photographic` instead of
     `forced_class="photo_subject"`. It was answering the wrong question —
