@@ -6457,3 +6457,42 @@ into a switch that was built, measured and waiting a decision — and the
 half-hour spent measuring that was cheaper than the flag, the tests, the
 corpus A/B and the second decision Kent would have had to make about the same
 underlying problem.
+
+## 2026-09-06 — the score saturates, and that is the mechanism under disagreement 1
+
+`run_preflight` scores `max(0, 100 - 30*blocks - 12*warns)`. The clamp is
+deliberate — a negative grade means nothing to an operator — but it means the
+metric SATURATES, and a saturated metric cannot rank the designs sitting on it
+or register any improvement to them.
+
+Measured over the scorecard corpus (`digitizer/tools/floor_depth.py`):
+**12 of 52 design/garment combos land on exactly 0**, and their unclamped
+scores run **−272 to −38 — a 234-point spread behind one printed value.**
+
+Points that must be cleared before F → D (40) shows anything:
+
+| fixture | needs | ≈ blocking findings |
+|---|---:|---:|
+| `screenshot_phone_ui_golke` | 312 | 11 |
+| `drone_render` | 228 | 8 |
+| `logo_golden_tee` | 156 | 6 |
+| `region_blobs` | 96 | 4 |
+| `logo_bridge_bar` | 90 / 78 | 3 |
+| `summit_badge` | 78 | 3 |
+
+**This explains a pattern that recurred all day.** `cfg.revalidate_small_shapes`
+fixes a 32.7 → 1.4 ΔE00 thread error on `screenshot_phone_ui_golke` and moves
+no grade. Disagreement 1 attributes that to `THREAD_MATCH_POOR` judging per
+THREAD on its worst patch, which is true — and incomplete. **The design is
+also 312 points under water.** Even a fix clearing ten of its eleven blocking
+findings would print the same `F 0`.
+
+It also explains the one case that DOES move: `dissolve_phantom_blends` takes
+`gaulke_roofing` **F 0 → C 64** because gaulke is the shallow one — it grades
+F 4, not floored, so its improvement had somewhere to go.
+
+**Recorded, not fixed.** Un-clamping, or widening the bands, re-bases every
+grade in the scorecard and is a product call. What lands is the number, and
+disagreement 6 in `docs/yardstick-disagreements-2026-09-06.md`, so that the
+next "this fix moved no grade" is read against the design's depth rather than
+taken as evidence the fix did nothing.

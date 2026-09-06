@@ -8,8 +8,8 @@ entry happened to surface it.
 
 This is the list. **Every row is a measurement made on this corpus, with the
 instrument that produced it named**, so the gate can be argued from evidence
-rather than from impression. It is not a complaint about preflight: four of
-the five are consequences of deliberate, documented choices.
+rather than from impression. It is not a complaint about preflight: five of
+the six are consequences of deliberate, documented choices.
 
 Assembled 2026-09-06 from that day's work. **Append to it; do not curate it.**
 
@@ -110,18 +110,50 @@ background's. Worth one finding across the whole matrix once fixed
 The sibling `_uncovered_findings` had applied the right denominator since
 2026-09-04, quoting `SHAPES_LEFT_UNSEWN`. *(measured 2026-09-06)*
 
+## 6. The score saturates, and twelve combos sit on the floor
+
+`run_preflight` scores `max(0, 100 - 30*blocks - 12*warns)`. The clamp is
+deliberate — a negative grade means nothing to an operator — but a saturated
+metric cannot rank the designs sitting on it.
+
+**12 of the 52 design/garment combos land on exactly 0**, and their unclamped
+scores run **-272 to -38 — a 234-point spread behind one printed value.**
+Points that must be cleared before F -> D (40) shows *anything*:
+
+| fixture | needs | ≈ blocking findings |
+|---|---:|---:|
+| `screenshot_phone_ui_golke` | 312 | 11 |
+| `drone_render` | 228 | 8 |
+| `logo_golden_tee` | 156 | 6 |
+| `region_blobs` | 96 | 4 |
+| `logo_bridge_bar` | 90 / 78 | 3 |
+| `summit_badge` | 78 | 3 |
+
+**This is the mechanism under row 1.** `cfg.revalidate_small_shapes` fixing a
+32.7 -> 1.4 ΔE00 thread error moves no grade partly because the check is per
+THREAD — and partly because the design is 312 points under water. It also
+explains the one case that DOES move: `dissolve_phantom_blends` takes
+`gaulke_roofing` F 0 -> C 64 because gaulke is the shallow one, at F 4 rather
+than floored.
+
+So on a floored design the grade is not evidence either way, and the render
+is — which is row 1's advice, now with the number that says why.
+
+`digitizer/tools/floor_depth.py`. *(measured 2026-09-06)*
+
 ---
 
 ## What this list is not
 
-**Not an argument that the scorecard is bad.** Rows 3–5 are small; rows 1 and
-2 are the load-bearing ones, and both say the same thing in different words:
+**Not an argument that the scorecard is bad.** Rows 3–5 are small; rows 1, 2
+and 6 are the load-bearing ones (6 is the mechanism under 1), and both say the same thing in different words:
 *the metric has no term for the thing the change improved.* That is the gap
 phase 1 names, and it will not close by tuning thresholds.
 
-**Not a to-do list.** Two of the five (3 and 4) are product calls that re-base
-the scorecard for at least four fixtures. One (5) is fixed. The other two are
-measurements waiting for a yardstick that can hold them.
+**Not a to-do list.** Two of the six (3 and 4) are product calls that re-base
+the scorecard for at least four fixtures — and half of 4 turned out not to be
+one, and is fixed. One (5) is fixed. The other three are measurements waiting
+for a yardstick that can hold them.
 
 **The honest use of it:** before claiming a digitizing change improved
 quality, check whether it lands in one of these five shapes. If it does, the
