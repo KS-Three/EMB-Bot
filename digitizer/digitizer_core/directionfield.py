@@ -5,8 +5,17 @@ foundational piece for the streamline/portrait tiers (row 10). "Stitch
 direction that follows image structure (hair flow, fur growth)" is the
 plan's stated biggest visible gap between our output and every commercial
 auto tool; this module computes that direction, per pixel and per region.
-NOT yet wired into stitch emission — nothing in the pipeline imports this
-module; row 10 (the streamline tier) is the slice that will consume it.
+**WIRED, and has been since the streamline tier landed** (row 10, the slice
+this docstring used to say "will consume it"): `stage6_streamline` imports
+`compute_direction_field`/`region_direction` at module level and
+`stage7_sequence` imports `streamline_fill`, so the import chain runs from the
+pipeline into here. Measured 2026-09-06 on `photo/photo_owl_pale.png` forced
+to `photo_subject`: `streamline_fill` runs 4 times, `compute_direction_field`
+once, and 7,090 stitches are emitted from the field it returns.
+`stage6_detail` reads the same ETF machinery. This paragraph said "NOT yet
+wired into stitch emission — nothing in the pipeline imports this module"
+until then, which had stopped being true and is the sort of claim that sends
+someone off to build a seam that already exists.
 
 Two stages, per the plan's own recipe:
 

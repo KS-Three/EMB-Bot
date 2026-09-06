@@ -631,6 +631,24 @@ its hedge as it is copied forward** — is why this file is split.
 
 ## Gotchas — cost someone a session once
 
+- **"NOT wired / nothing calls this" comments go stale silently — verify one
+  before you trust it.** Nothing tests a comment, so a module docstring keeps
+  asserting an absence long after the seam it describes was built, and the
+  cost is real: it sends the next reader off to build something that already
+  exists. Three found in one sweep on 2026-09-06, all of which had been true
+  when written:
+  `directionfield.py` said "nothing in the pipeline imports this module" while
+  `stage6_streamline` imports it at module level and a forced `photo_subject`
+  run emits 7,090 stitches from its field; `stage6_detail.py` said YuNet
+  landmarks were "NOT wired into any stage", 2026-08-04 having wired them into
+  stage 1.5 with `stage2_photo_segment` consuming eye/skin classes; and
+  `stage6_satin.py` said its per-stroke block was "deliberately inert" one PR
+  after the flag wired it. `match_shape_ids`' "no production caller" is the
+  one that checked out. The cheap verification is a grep for the symbol plus a
+  spy on a real `digitize()` — and mind the environment: YuNet's gate needs
+  `rembg`, so on a container without it a spy counts zero calls and the
+  wiring still exists. *(measured 2026-09-06)*
+
 - **There are TWO segmenting lanes, and a rule one of them has is not a rule
   the other has. Grep the other lane before you build a mechanism.** The flat
   lane (`stage2_quantize._quantize_population`) has run "majority filter, then
