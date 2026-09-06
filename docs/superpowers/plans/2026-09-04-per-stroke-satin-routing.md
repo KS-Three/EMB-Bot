@@ -281,20 +281,40 @@ rung consults a shared `_stroke_rows` helper instead of calling back.
 **Measured on the emitted stitches** with `tools/satin_columns.py` — this
 repo's rule, and the reason the instrument was built first:
 
-| `becker_marine_logo.png` | crossing share | median column | under 0.7 mm | penetrations |
-|---|---:|---:|---:|---:|
-| @ 100 mm, flag OFF | 2.2% | 0.29 mm | 84% | 11,374 |
-| **@ 100 mm, flag ON** | **35.0%** | **2.12 mm** | **11%** | 8,512 |
-| *the professional's own file* | *44.3%* | *2.52 mm* | *5%* | *11,274* |
-| @ 80 mm, OFF and ON | 54.5% | 1.82 mm | 13% | 5,531 |
+**The render corrected the rule before any of this shipped.** The first cut
+scored the machine cap per stroke and then let the area vote outweigh it. That
+is not the same rule as refusing an over-cap stroke, and the difference is bare
+cloth: `S92a90056` (1,022 mm2) passed at frac 0.79 carrying 97.5 mm2 of
+over-cap strokes, one of them **9.32 mm against the 5.0 mm cap**.
+`_rail_points`' per-station guard holds every cross to the cap, so the middle
+of that stroke got no thread — `uncovered_total_mm2` 0.0 -> **28.0**, worst
+patch 22.2, and ARTWORK_UNCOVERED appeared. DOCTRINE had already recorded that
+shape of failure. **The cap is a VETO now**; `dt_irregular` strokes stay
+outvotable, because pooled irregularity is the artifact the rung exists to
+correct and a stroke wider than the needle can hold is not.
 
-So at 100 mm the flag closes most of the gap the audit opened this whole line
-of work with — a 0.29 mm hairline median becomes a real 2.12 mm column — and
-the design sheds a quarter of its stitches, because satin covers a ribbon far
-more cheaply than fill rows do. At 80 mm it is **byte-identical**, and that is
-not a null result: Becker at 80 mm already reads 54.5%, ABOVE the pro's 44.3%,
-which is the same fact §PR 2 found from the classifier side (88.2% satin
-there already).
+With the veto, on `becker_marine_logo.png`:
+
+| @ 100 mm | grade | uncovered | crossing | median column | penetrations |
+|---|---|---:|---:|---:|---:|
+| flag OFF | B 88 (`DENSITY_EXTREME`) | 0.0 mm2 | 2.2% | 0.29 mm | 11,374 |
+| **flag ON** | **A 100, no findings** | **0.0 mm2** | 4.0% | 0.64 mm | 11,206 |
+| *area-vote cut, for the record* | *B 88 (`ARTWORK_UNCOVERED`)* | *28.0* | *35.0%* | *2.12 mm* | *8,512* |
+| *the professional's own file* | — | — | *44.3%* | *2.52 mm* | *11,274* |
+
+**Read the 35% as what it was: bought with bare fabric.** The safe rung is
+worth 2.2% -> 4.0% crossing and 0.29 -> 0.64 mm of median column on this
+fixture — modest — but it clears `DENSITY_EXTREME` and takes the design to
+**A 100 with no findings at all**, at zero coverage cost.
+
+And the remaining gap to the pro is now diagnosed rather than open: it is the
+**5.0 mm machine cap against Becker's genuinely 6-9 mm letter strokes**, which
+is what §2 and §7 both said. It is not a routing problem and no routing change
+will close it — it is a sizing and segmentation question.
+
+At 80 mm the flag is **byte-identical**, and that is not a null result: Becker
+there already reads 54.5%, ABOVE the pro's 44.3%, the same fact §PR 2 found
+from the classifier side (88.2% satin already).
 
 Two honest qualifications.
 

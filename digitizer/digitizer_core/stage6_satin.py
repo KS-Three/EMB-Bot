@@ -801,6 +801,22 @@ def _stroke_rung_takes(poly: Polygon, max_width_mm: float,
     rows, total = _stroke_rows(poly, max_width_mm, design_class)
     if not rows or total <= 0:
         return False
+    # The machine cap is a VETO, not a vote. Scoring it per stroke and then
+    # letting an area majority outvote it is not the same rule, and the
+    # difference is bare cloth: measured 2026-09-06 on `becker_marine_logo`
+    # at 100 mm, `S92a90056` (1,022 mm2) passed at frac 0.79 while carrying
+    # 97.5 mm2 of over-cap strokes, one of them 9.32 mm against the 5.0 mm
+    # cap. `_rail_points`' per-station guard holds every cross to the cap, so
+    # the middle of that stroke got no thread at all — preflight went
+    # `uncovered_total_mm2` 0.0 -> 28.0 with a 22.2 mm2 worst patch, and
+    # ARTWORK_UNCOVERED appeared. DOCTRINE already recorded that as a
+    # measured negative; this is the line that keeps the rung out of it.
+    #
+    # `dt_irregular` strokes stay outvotable by area, which is the whole
+    # point of the rung: pooled irregularity is the artifact it exists to
+    # correct. A stroke wider than the needle can hold is not an artifact.
+    if any(r.reason == "dt_p90_cap" for r in rows):
+        return False
     passing = float(sum(r.area_mm2 for r in rows if r.satin))
     return (passing / total) >= _STROKE_AREA_FRAC_MIN
 

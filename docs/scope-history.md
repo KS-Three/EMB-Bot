@@ -4788,20 +4788,38 @@ applies, so neither the machine cap nor Law 31's width floor can be sidestepped
 by splitting a region. `classify_strokes` calls `classify_ribbon`, so the rung
 consults a shared `_stroke_rows` helper rather than recursing.
 
-**On the emitted stitches** (`tools/satin_columns.py` — the instrument built
-first precisely so this could be proved on stitches, not on the plan):
+**The RENDER corrected the rule before it shipped, and that is the entry.**
+The first cut scored the machine cap per stroke and then let the area vote
+outweigh it — not the same rule as refusing an over-cap stroke, and the
+difference is bare cloth. `S92a90056` (1,022 mm²) passed at frac 0.79 while
+carrying 97.5 mm² of over-cap strokes, one of them **9.32 mm against the
+5.0 mm cap**; `_rail_points`' per-station guard holds every cross to the cap,
+so the middle of that stroke got no thread. Preflight: `uncovered_total_mm2`
+**0.0 → 28.0**, worst patch 22.2, and ARTWORK_UNCOVERED appeared — DOCTRINE's
+own measured negative, reached by a new road. **The cap is a VETO now.**
+`dt_irregular` strokes stay outvotable by area, because pooled irregularity is
+the artifact the rung exists to correct and a stroke wider than the needle can
+hold is not.
 
-| becker_marine_logo.png | crossing | median | <0.7 mm | penetrations |
-|---|---:|---:|---:|---:|
-| @ 100 mm OFF | 2.2% | 0.29 mm | 84% | 11,374 |
-| @ 100 mm **ON** | **35.0%** | **2.12 mm** | **11%** | 8,512 |
-| the pro's own file | 44.3% | 2.52 mm | 5% | 11,274 |
-| @ 80 mm, OFF and ON | 54.5% | 1.82 mm | 13% | 5,531 |
+With the veto, `becker_marine_logo.png` @ 100 mm:
 
-At 100 mm the flag closes most of the gap this line of work opened with, and
-the design sheds a quarter of its stitches because satin covers a ribbon more
-cheaply than fill rows. At 80 mm it is byte-identical — not a null result:
-Becker there already reads 54.5%, ABOVE the pro's 44.3%.
+| | grade | uncovered | crossing | median | penetrations |
+|---|---|---:|---:|---:|---:|
+| OFF | B 88 (`DENSITY_EXTREME`) | 0.0 mm² | 2.2% | 0.29 mm | 11,374 |
+| **ON** | **A 100, no findings** | **0.0 mm²** | 4.0% | 0.64 mm | 11,206 |
+| *the unsafe cut* | *B 88 (`ARTWORK_UNCOVERED`)* | *28.0* | *35.0%* | *2.12 mm* | *8,512* |
+| the pro's own file | — | — | 44.3% | 2.52 mm | 11,274 |
+
+Read the 35% as what it was: **bought with bare fabric**. The safe rung is
+modest — 2.2% → 4.0% crossing, 0.29 → 0.64 mm median — but it clears
+`DENSITY_EXTREME` and takes the design to A 100 with no findings, at zero
+coverage cost. And the remaining gap to the pro is now DIAGNOSED: the 5.0 mm
+machine cap against Becker's genuinely 6–9 mm letter strokes, exactly as §2
+and §7 predicted. No routing change closes that; it is sizing and
+segmentation. At 80 mm the flag is byte-identical — Becker there already reads
+54.5%, above the pro.
+
+Render for Kent: `docs/renders/satin-per-stroke-2026-09-06/`.
 
 Two qualifications kept in the record rather than smoothed over:
 
