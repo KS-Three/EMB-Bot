@@ -1154,9 +1154,16 @@ its hedge as it is copied forward** — is why this file is split.
   tempting match, and widening `_build_travel_graph`'s 0.5 mm `node_at` merge
   lowers it (1.0 → 17, 1.5 → 14). Measured end to end: **29 trims at every
   radius 0.5-2.0 mm.** A real bound, not the binding one.
+  **(5) Eulerian chaining.** Consecutive strokes that SHARE an endpoint need no
+  travel at all, so an Eulerian order should beat any distance heuristic. It is
+  **worse: 32 trims against 29.** The reason also explains the 9 "cursor
+  off-web" and 2 "target off-web" failures — **a satin column starts at a
+  cap-extended RAIL point, not at a spine node**, and the underlay starts
+  somewhere else again. The web is built from skeletons; the needle lives on
+  rails, so chaining spines buys nothing.
   **What binds is TEMPORAL.** Travel is permitted over unsewn strokes only, so
   logging that shape's 20-stroke sequence against progress: ok at 5/15/20/40%,
-  then **"no route" on every call from 45% to 85%.** After a quarter of a shape
+  then **"no route" on all nine calls from 45% to 85%.** After 40% of a shape
   is down the walk never succeeds again, and a 27-stroke shape spends nearly
   all its life mostly-sewn. **Rule: a trim count on a many-stroke satin shape
   is the price of not running stitches over finished satin — check how far
@@ -1165,3 +1172,18 @@ its hedge as it is copied forward** — is why this file is split.
   skeletonization, stroke decomposition) is not established.
   *(measured 2026-09-06 — scope-history 09-06)*
 
+- **`cfg.satin_patch_junctions` costs +0.25% across the corpus — and over-fires
+  on one fixture.** ON vs OFF over all 26 scorecard fixtures at 80 mm: **23
+  byte-cost-identical, 3 patched, 315,371 → 316,160 stitches.** Becker +383
+  (uncovered 23.8 → 0.0), `photo_scene_stub` +347 (6.5 → 0.0), and
+  **`logo_bridge_bar` +59 with 0.0 uncovered BOTH ways** — a patch on a hole
+  the grader does not count, because this pass is deliberately stricter than
+  preflight (no 0.4 mm erosion, a 0.25 mm cell against 0.5) so a patch clears
+  the finding with margin. **Correct the absolute claim: "nothing pays for it
+  where there is nothing to find" holds for 23 of 26, not all.** And read "100%
+  of the corpus's bare cloth" as *100% of the bare cloth in SATIN shapes* — the
+  two largest figures in the corpus are `photo_subject_stub` **956.0 mm²
+  (23.4%, D 58)** and `photo_grass_macro` **407.5 mm² (8.9%, B 76)**, both in a
+  FILL-tier shape apiece, both the recorded baseline, and an order of magnitude
+  larger than the 30.3 mm² this flag clears. *(measured 2026-09-06 —
+  scope-history 09-06)*

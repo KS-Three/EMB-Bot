@@ -5322,3 +5322,62 @@ Which puts the cause back where the junction hole put it: **one region carrying
 decomposition needs 14. WHERE to fix that — segmentation, skeletonization, or
 stroke decomposition — is not established here, and the first draft of this
 entry overreached by naming segmentation.
+
+### A fifth hypothesis, and why chaining makes it worse
+
+**5. Chain the strokes END TO END.** The one thing nearest-neighbour cannot
+arrange is consecutive strokes that *share* an endpoint — those need no travel
+at all, so an Eulerian order over the stroke graph should beat any distance
+heuristic. Built it (Hierholzer over stroke endpoints merged at 0.5 mm, falling
+back to nearest when nothing chains):
+
+| | trims | per 1k | stitches |
+|---|---:|---:|---:|
+| shipped nearest-neighbour | 29 | 5.2 | 5,531 |
+| **Eulerian chaining** | **32** | **5.8** | 5,555 |
+
+**Worse.** And the reason is the same one behind the 9 "cursor off-web" and 2
+"target off-web" failures: **a satin column does not start or end at a spine
+node.** It starts at a cap-extended RAIL point, a millimetre or two off the
+web, and the underlay starts somewhere else again. Chaining spines end-to-end
+buys nothing when the needle never lands on the spine. The web is built from
+skeletons; the needle lives on rails.
+
+That is five measured negatives on this one finding. Recorded so the sixth
+person to look starts past them.
+
+## 2026-09-06 — what the junction patch costs across the whole corpus
+
+`cfg.satin_patch_junctions` ON vs OFF, all 26 scorecard fixtures at 80 mm:
+
+**23 byte-cost-identical; 3 patched; 315,371 → 316,160 stitches, +0.25%.**
+
+| fixture | off | on | Δ | uncovered off → on |
+|---|---:|---:|---:|---|
+| `becker_marine_logo.png` | 5,531 | 5,914 | +383 | 23.8 → **0.0** |
+| `photo/photo_scene_stub.png` | 16,247 | 16,594 | +347 | 6.5 → **0.0** |
+| `photo/logo_bridge_bar.jpg` | 14,338 | 14,397 | +59 | 0.0 → 0.0 |
+| the other 23 | — | — | **+0** | unchanged |
+
+**The Bridge Bar row is an over-fire, and it corrects the absolute form of the
+claim in #361.** That fixture has no `ARTWORK_UNCOVERED` either way, yet the
+pass spends 59 stitches (+0.4%) on it. The cause is deliberate: this pass uses
+a STRICTER coverage test than the grader — no 0.4 mm erosion, a 0.25 mm cell
+against preflight's 0.5 — so that a patch clears the finding with margin rather
+than landing exactly on its boundary. The price is an occasional patch on a
+hole preflight would not have counted. "Nothing pays for it where there is
+nothing to find" was true of 23 of 26 fixtures, not of all of them.
+
+**And what it cannot reach.** The corpus's two largest uncovered figures are
+untouched, correctly: `photo_subject_stub` **956.0 mm² (23.4% of its claimed
+artwork, D 58)** and `photo_grass_macro` **407.5 mm² (8.9%, B 76)**. Both sit
+in one FILL-tier shape apiece, so `satin_shape` never runs on them. **Both are
+the recorded scorecard baseline**, so neither is news — but they are an order
+of magnitude larger than the 30.3 mm² this flag clears, and anyone reading
+"100% of the corpus's bare cloth" should read it as *100% of the bare cloth in
+SATIN shapes*.
+
+*(A first pass at attributing those two read their tiers as "border, travel"
+and nearly filed a defect. It keyed on the raw `shape_id`; the fill runs are
+stamped with derived suffixes and only appear once `_owning_region_id` strips
+them — the trap DOCTRINE already records from four sites in one day.)*
