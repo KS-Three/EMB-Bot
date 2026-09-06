@@ -129,7 +129,7 @@ from .threads import chart_for, rgb_to_lab
 
 # --- Codes (may migrate to warnings_codes.py at merge) ---------------------
 
-THREAD_MATCH_POOR = "THREAD_MATCH_POOR"        # extra: {thread_number, thread_name, brand_id, delta_e, excess_delta_e, better_spool, worst_shape_id, region_count, regions_scored, regions, artwork_rgb, thread_rgb} — excess_delta_e/better_spool are None off the photo route (raw yardstick), populated on it
+THREAD_MATCH_POOR = "THREAD_MATCH_POOR"        # extra: {thread_number, thread_name, brand_id, delta_e, yardstick, excess_delta_e, better_spool, worst_shape_id, worst_shape_area_mm2, worst_shape_area_frac, region_count, regions_scored, regions, artwork_rgb, thread_rgb} — excess_delta_e/better_spool are the gap to the best ALREADY-LOADED spool and that spool, populated on EVERY route since 2026-09-06 (both None when nothing loaded is meaningfully closer). `yardstick` ("excess"/"raw") says which one produced the SEVERITY, so a populated excess is never mistaken for a rescored finding
 LETTERING_TOO_SMALL = "LETTERING_TOO_SMALL"    # extra: {count, shapes: [{shape_id, column_mm, extent_mm}]}
 STITCHES_TOO_LONG = "STITCHES_TOO_LONG"        # extra: {count, max_mm}
 STITCHES_TOO_SHORT = "STITCHES_TOO_SHORT"      # extra: {fraction, count, total}
@@ -873,14 +873,45 @@ def _thread_match_findings(p, result: PipelineResult, plan: StitchPlan,
             # DELTA_E_VISIBLE therefore cannot become an offender under either
             # yardstick, and searching the cone list for it is pure cost —
             # 39 of baby_deck_laugh's 110 regions, 35% of the work.
-            if photo and len(loaded) > 1 and r["delta_e"] > DELTA_E_VISIBLE:
+            #
+            # THE SEARCH RUNS ON EVERY ROUTE (2026-09-06); only the SCORING
+            # stays photo-only. It used to be gated on `photo` as well, so off
+            # that route the finding said "Pick a closer thread or a different
+            # brand" WITHOUT EVER LOOKING at the design's own cone list — and
+            # all seven F-grade fixtures are `gradient`, which is where real
+            # logo art routes. Counted over those seven (`tools/spool_remedy.py`):
+            # of 24 blocking findings, **5 name a spool the design ALREADY
+            # LOADS** — `gaulke_roofing`'s 63.6 dE00 `3971 Silver` sits 58.6
+            # from `1375 Dark Charcoal`, already on the machine; `screenshot`'s
+            # 33.0 `0111 Whale` sits 32.4 from a loaded `0015 White`. Both are
+            # the headline numbers of the F-wall decomposition. The other 19
+            # genuinely need a cone the design does not carry, and still say so.
+            want_alt = len(loaded) > 1 and r["delta_e"] > DELTA_E_VISIBLE
+            if want_alt:
                 best_err, best_spool = _best_loaded_spool_error(
                     r["_lab_px"], loaded, chart)
-                r["_score"] = max(0.0, r["delta_e"] - best_err)
-                r["_alt"] = best_spool
+                excess = max(0.0, r["delta_e"] - best_err)
+                r["_excess"] = excess
+                # Surface an alternative only when it is a DIFFERENT spool and
+                # meaningfully better. Both halves are belt-and-braces on the
+                # photo route (an offender there already has excess >
+                # DELTA_E_VISIBLE, and `best_spool == t` forces excess to 0
+                # because `delta_e` and `_best_loaded_spool_error` are the same
+                # median-CIEDE2000 on the same pixels) — but off it the
+                # offender set is chosen on RAW, so a raw offender with a small
+                # excess reaches here and must NOT be told to reassign.
+                r["_alt"] = (best_spool if best_spool != t
+                             and excess > DELTA_E_VISIBLE else None)
             else:
-                r["_score"] = r["delta_e"]
+                r["_excess"] = None
                 r["_alt"] = None
+            # WHAT JUDGES IS UNCHANGED. Excess is REPORTED on every route;
+            # only the photo route is SCORED on it. Whether the gradient lane
+            # should also be judged on excess is a product call (a logo's
+            # palette can be changed, a photograph's cannot) — recorded as
+            # disagreement 4 in docs/yardstick-disagreements-2026-09-06.md,
+            # deliberately not taken here. So no severity and no grade moves.
+            r["_score"] = r["_excess"] if (photo and want_alt) else r["delta_e"]
 
         offenders = sorted((r for r in t_rows if r["_score"] > DELTA_E_VISIBLE),
                            key=lambda r: -r["_score"])
@@ -935,10 +966,23 @@ def _thread_match_findings(p, result: PipelineResult, plan: StitchPlan,
             thread_number=thread.number,
             thread_name=thread.name,
             delta_e=round(top["delta_e"], 1),
-            # Present only on the rescored route, so a reader can tell which
-            # yardstick produced the severity without inferring it.
+            # WHICH yardstick produced the severity above. Until 2026-09-06
+            # a reader inferred it from `excess_delta_e` being non-None, and
+            # `test_non_photo_routes_keep_the_raw_yardstick_untouched` pinned
+            # that inference: *"the excess fields stay None so nothing
+            # downstream can mistake a raw finding for a rescored one."* Now
+            # that the excess is reported on every route that inference would
+            # be WRONG, so the fact is stated outright instead of being
+            # encoded in the presence of another field.
+            yardstick=("excess" if photo and len(loaded) > 1 else "raw"),
+            # Excess over the best ALREADY-LOADED spool — information about
+            # the design's cone list, not a statement about scoring. Present
+            # on every route as of 2026-09-06; `_score` is what the severity
+            # was judged on, and off the photo route that is still RAW, so
+            # this must read `_excess` — reading `_score` here would print the
+            # raw distance under an "excess" label on the gradient lane.
             excess_delta_e=(None if top["_alt"] is None
-                            else round(top["_score"], 1)),
+                            else round(top["_excess"], 1)),
             better_spool=(None if top["_alt"] is None else alt.number),
             worst_shape_id=top["shape_id"],
             # The size of the shape being condemned. In `extra` as well as in
@@ -949,13 +993,14 @@ def _thread_match_findings(p, result: PipelineResult, plan: StitchPlan,
                                    else round(area / total_area, 5)),
             region_count=n,
             regions_scored=len(t_rows),
-            # Offenders are ORDERED by whichever yardstick judged them, so on
-            # the photo route each entry carries its excess too — otherwise
-            # the list reads as unsorted by the only number it shows.
+            # Offenders are ORDERED by whichever yardstick judged them, so an
+            # entry carries its excess too wherever one was found — otherwise
+            # the list reads as unsorted by the only number it shows. Same
+            # `_excess`-not-`_score` rule as above.
             regions=[{"shape_id": r["shape_id"],
                       "delta_e": round(r["delta_e"], 1),
                       **({} if r["_alt"] is None
-                         else {"excess_delta_e": round(r["_score"], 1)})}
+                         else {"excess_delta_e": round(r["_excess"], 1)})}
                      for r in offenders],
             artwork_rgb=top["artwork_rgb"],
             thread_rgb=list(thread.rgb),
