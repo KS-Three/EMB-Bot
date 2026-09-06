@@ -1247,24 +1247,54 @@ its hedge as it is copied forward** — is why this file is split.
   **What separates them from the slivers beside them is that they are
   BIMODAL** — luminance 24-254 and 0-255, 18% and 42% below mid-grey, against
   a correctly-assigned 0.60 mm² control whose 117 pixels sit in ONE 32-wide
-  bin. `stage2_photo_segment` states the consequence itself: *"the mean is the
-  only colour it [a region] is allowed to have"*, and a mean over a bimodal
-  sliver is a colour almost none of its pixels carry — the mirror of the
-  bimodal-pool failure recorded above for the OLD thread check. Established in
-  KIND; not in detail, because `S05f7940d`'s mean luminance sits nearer Whale
-  than the Silver it holds, and the pre-snap cluster colour is not carried
-  into the result. **And `split_tonal_regions` does NOT reach them** — checked,
-  not assumed: its `TONAL_SPLIT_MIN_AREA_MM2` is **150.0 mm²** against these
-  0.94 and 1.72, and turning it on leaves `screenshot_phone_ui_golke`
-  identical in grade, blocks, region count and stitch count. That mechanism is
-  for LARGE bimodal regions (the 4,200 mm² owl body it was built for); the
-  bimodal SLIVER has no built answer and the floor excluding it is deliberate
-  — *"below this the split just manufactures slivers"*. Do not flip that flag
-  expecting this wall to move. **Rule: before calling a cone assignment wrong,
+  bin. **I read that as a palette failure (a mean over a bimodal pool) and
+  that was WRONG.** `revalidate_threads` names bimodality as the fingerprint
+  of something else: *"a drifted sliver is bimodal by construction — part of
+  it still sits on the colour its thread was chosen from, part has moved onto
+  something else."* **The real cause is that stage 4 ALREADY FIXES THIS and a
+  pixel floor excludes exactly these shapes.** `revalidate_threads` (fix #6.3,
+  2026-08-11) re-reads every final polygon and re-snaps the drifted — on this
+  fixture 46 of 153 shapes wear a thread that differs from the stage-2 label
+  under their own outline, i.e. it ran and worked. Instrumenting the real
+  function: **74 asked, 67 skipped as `enclosed_background` (by design), 12
+  REFUSED on `THREAD_REVALIDATE_MIN_PX = 200` — every one of them 50-199 px.**
+  **`preflight._MIN_COLOR_PIXELS` is 50.** A shape in that band is scored and
+  BLOCKED by preflight and can never be corrected by stage 4; the F lives in
+  the gap between two floors that were set 4x apart by different authors.
+  Asking anyway for those 12, with the function's own estimator, argmin and
+  3.0 dE gate: **7 would change answer**, worst `S43831dcd` — 0.94 mm²,
+  **177 px against a floor of 200** — `0111 Whale` at 32.7 dE, would take
+  `0015 White` at **1.4**. And this CLOSES the hedge an earlier entry left
+  open: `S05f7940d` holds Silver though its mean sits nearer Whale because at
+  365 px it is ABOVE the floor, so it WAS re-asked and moved there on the
+  median-per-pixel estimator — its thread was never a mean of anything, and
+  no stage-2 instrumentation was needed. **And `split_tonal_regions` does NOT
+  reach them** — checked, not assumed: its `TONAL_SPLIT_MIN_AREA_MM2` is
+  **150.0 mm²** against these 0.94 and 1.72, and turning it on leaves
+  `screenshot_phone_ui_golke` identical in grade, blocks, region count and
+  stitch count. That mechanism is for LARGE bimodal regions (the 4,200 mm²
+  owl body it was built for) and was never the answer here, because this
+  bimodality is drift — *"below this the split just manufactures slivers"*.
+  Do not flip that flag expecting this wall to move. **The corpus separates
+  along exactly this line, which is the independent check on a decomposition
+  I got wrong three times first:** refused-on-the-floor counts across the
+  seven F fixtures are `golden_tee` 0, `region_blobs` 0, `gaulke_roofing` 0
+  (46 of its 56 regions are `enclosed_background` — cause 2 is its story),
+  `drone_render` 7, `summit_badge` 4 — against **`bridge_bar` 63 and
+  `screenshot` 12**, the two cause 3 is about. `bridge_bar`'s 29 movers
+  exceed its 23 in-band shapes: six are UNDER 50 px, so preflight will not
+  score them and stage 4 will not fix them — a wrong colour no instrument in
+  this repo reports. Instrument: `digitizer/tools/revalidate_floor.py`. **Rule: before calling a cone assignment wrong,
   rasterise the region's own polygon over the artwork and compare — `argmin`
-  cannot mis-pair, so a bad cone means a bad region colour, and check whether
-  its neighbours of the same size and colour got it right before calling it
-  systematic.** Unrecorded before 2026-09-06.
+  cannot mis-pair, so a bad cone means the thread was chosen from different
+  pixels, and check whether its neighbours of the same size and colour got it
+  right before calling it systematic.** **Rule: a bimodal shape in this
+  pipeline means DRIFT, not a bad segmentation colour — `revalidate_threads`
+  says so in its own docstring, and the next question is always whether that
+  function was allowed to run on it.** **Rule: when two instruments disagree
+  about what is measurable, read both floors — a defect that one can report
+  and the other cannot fix is invisible from either side alone.**
+  Unrecorded before 2026-09-06.
   **Rule: never treat a THREAD_MATCH_POOR wall as one defect — split it by
   yardstick, palette and assignment before proposing anything.**
   *(measured 2026-09-06 — scope-history 09-06)*

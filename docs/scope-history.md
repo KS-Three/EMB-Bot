@@ -5489,9 +5489,10 @@ permutation is not reachable from that line. White is selected. Therefore the
 region's own colour is nearer Whale than White — the palette did the right
 thing for the region it was given.
 
-**So the mismatch is upstream of the palette: this region's stored colour
-disagrees with the artwork inside its own polygon.** Measured rather than
-inferred — rasterising each region's polygon over the re-read artwork exactly
+**So the mismatch is not in the palette at all: this region's stored colour
+disagrees with the artwork inside its own polygon.** (I wrote "upstream of the
+palette" here first. It is DOWNSTREAM — see the cause below.) Measured rather
+than inferred — rasterising each region's polygon over the re-read artwork exactly
 as `_thread_match_findings` does (1-px erosion, background excluded):
 
 | shape | area | artwork median RGB | cone |
@@ -5515,12 +5516,7 @@ does not support, and those two produce the design's worst thread findings.
 The 53%-area block (`Sb01e1b97`, artwork 46 against Dark Charcoal's 40,40,33
 for ΔE 10.5) is not a bug at all — it is an honest "no closer cone".
 
-**What makes them different from the slivers next to them: they are BIMODAL**,
-and the module already says why that is fatal. `stage2_photo_segment`'s own
-comment: *"`kept_masks_to_quant` takes a region's MEAN Lab as its colour,
-`select_palette` snaps that mean to one spool … a region whose pixels disagree
-with each other cannot be rendered honestly no matter what the fill tier does
-— the mean is the only colour it is allowed to have."*
+**What makes them different from the slivers next to them: they are BIMODAL.**
 
 Luminance inside each polygon, with the correctly-assigned sliver as a control:
 
@@ -5530,33 +5526,128 @@ Luminance inside each polygon, with the correctly-assigned sliver as a control:
 | `S05f7940d` | 365 | 135.6 | 149.0 | **0–255** | **42%** | BIMODAL |
 | `S7c5e42fc` ✓ | 117 | 250.6 | 251.0 | 235–254 | 0% | unimodal |
 
-The control's 117 pixels sit entirely in one 32-wide bin. The two offenders
-smear across all eight. A mean over that is a colour almost none of their
-pixels carry — the mirror of the failure DOCTRINE already records for the OLD
-pooled thread check ("the independent per-channel median of a bimodal pool is
-a colour almost no pixel carries"), and the reason that check was rebuilt
-per-region in the first place.
+The control's 117 pixels sit entirely in one 32-wide bin; the two offenders
+smear across all eight.
 
-**Established in kind, not in detail.** `S05f7940d`'s mean luminance (135.6)
-sits nearer Whale (127) than Silver (204), yet it holds Silver — so the colour
-the palette actually saw is not simply the mean over its FINAL polygon either.
-Preflight's own docstring says why that cannot be checked from the result
-(*"the pipeline does not carry the pre-snap cluster colors into its result"*);
-closing it needs stage-2 instrumentation.
+**I read that as a palette failure — a mean over a bimodal pool being a colour
+no pixel carries — and that reading was WRONG.** The module that owns this
+already names bimodality as the fingerprint of something else entirely.
+`stage4_vectorize.revalidate_threads`:
 
-**And the mechanism that comment introduces does NOT reach these two — checked
-rather than assumed.** `split_tonal_regions` exists and is built, but
-`TONAL_SPLIT_MIN_AREA_MM2 = 150.0`: *"A region has to be big enough that its
-parts are still sewable. Below this the split just manufactures slivers for
-`resolve_small_regions` to absorb again."* Our offenders are **0.94 and
-1.72 mm²** — three orders of magnitude under that floor. Measured on
-`screenshot_phone_ui_golke` with `cfg.split_tonal_regions=True`: **F 0, 10
-blocks, 153 regions, 7,621 stitches — identical in every figure to OFF**, and
-the same two shapes still worst. A complete no-op.
+> *"A drifted sliver is bimodal by construction — part of it still sits on the
+> colour its thread was chosen from, part has moved onto something else."*
 
-So the tonal-splitting answer is for LARGE bimodal regions (Kent's 4,200 mm²
-owl body, which is what it was built for). The bimodal SLIVER is a different
-problem with no built answer, and the floor excluding it is deliberate.
+### The real cause: stage 4 already fixes this, and a pixel floor excludes these two
+
+`revalidate_threads` exists for precisely this defect (written 2026-08-11,
+fix #6.3): *"a thread is chosen at stage 2, from the pixels a region occupied
+THEN. Simplification here moves the boundary — `cfg.simplify_tol_mm` is 0.2mm,
+which is a rounding error on a 20mm shape and a large fraction of a
+1.3mm-wide one."* It re-reads every final polygon's own pixels and re-snaps the
+ones that drifted.
+
+It runs on this design and it works. Comparing each region's thread against the
+stage-2 LABEL under its own outline (label map captured from
+`kept_masks_to_quant`, preflight's mm→px transform):
+
+```
+screenshot_phone_ui_golke   153 regions
+  wear their stage-2 label's thread   107
+  wear a DIFFERENT thread              46   <- revalidate re-snapped them
+```
+
+So the palette is not in the loop for these at all — 46 of 153 shapes already
+carry a thread chosen from their final pixels rather than their segmentation
+colour. **Which makes the question: why not these two?** Instrumenting the real
+function and recording the gate each region hits:
+
+```
+  asked (>= 200 px)                    74
+  skipped: enclosed_background         67   (by design — its colour IS the bg)
+  REFUSED on the pixel floor           12   <- every one of them 50-199 px
+```
+
+`THREAD_REVALIDATE_MIN_PX = 200`. **Preflight's own floor is
+`_MIN_COLOR_PIXELS = 50`.** Every shape in the 50–199 band can be *scored and
+blocked* by preflight and can never be *corrected* by stage 4. All 12 refusals
+on this fixture sit in that band, and the F-grade lives in the gap.
+
+Asking the question anyway for those 12 — with the function's own estimator
+(median per-pixel ΔE00), its own unrestricted argmin, and its own 3.0 ΔE
+improvement gate — **7 of the 12 would have changed answer**:
+
+| shape | area | px | wears | ΔE | would take | ΔE | gain |
+|---|---:|---:|---|---:|---|---:|---:|
+| `S43831dcd` | 0.94 mm² | **177** | 0111 Whale | 32.7 | **0015 White** | **1.4** | **31.3** |
+| `S9a8fa366` | 0.48 mm² | 102 | 0134 | 16.4 | 0020 | 1.4 | 15.0 |
+| `S600e9a86` | 0.62 mm² | 139 | 0134 | 16.2 | 0020 | 9.6 | 6.6 |
+| `S92e4b8c1` | 0.54 mm² | 118 | 2776 | 17.0 | 1375 | 10.7 | 6.3 |
+| `S65ea87db` | 0.49 mm² | 105 | 0134 | 16.4 | 0020 | 10.2 | 6.2 |
+| `S967c0c7f` | 0.61 mm² | 131 | 0111 Whale | 20.8 | 0150 | 14.7 | 6.1 |
+| `Sae12285f` | 0.20 mm² | 52 | 0145 | 11.8 | 3840 | 6.0 | 5.8 |
+
+The top row is the design's worst thread finding. **177 pixels against a floor
+of 200** — and the answer waiting on the other side of it is 32.7 ΔE → 1.4.
+
+### And the corpus separates along exactly these lines
+
+The same instrument across all seven F fixtures — regions, how many
+`revalidate_threads` asked about, how many it skipped as
+`enclosed_background`, how many it REFUSED on the 200-px floor, how many of
+those sit in the 50–199 band preflight will still score and block, and how many
+would have changed answer:
+
+| fixture | regs | asked | encl | **refused** | 50–199 | would move | best gain |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| `logo_golden_tee` | 39 | 35 | 4 | 0 | 0 | 0 | — |
+| `region_blobs` | 4 | 4 | 0 | 0 | 0 | 0 | — |
+| `logo_gaulke_roofing` | 56 | 10 | 46 | 0 | 0 | 0 | — |
+| `drone_render` | 74 | 56 | 11 | 7 | 7 | 2 | 5.2 |
+| `summit_badge` | 43 | 32 | 7 | 4 | 4 | 2 | 7.3 |
+| **`logo_bridge_bar`** | 77 | 14 | 0 | **63** | **23** | **29** | **14.4** |
+| **`screenshot_phone_ui`** | 153 | 74 | 67 | **12** | **12** | **7** | **31.3** |
+
+**The two fixtures cause 3 is about are exactly the two with a large refused
+population**, and the five it is not about have 0–7 between them. The three
+causes were separated by yardstick and halo-dissolve A/Bs; this is an
+independent instrument agreeing with that split, which is the only reason to
+trust a decomposition I got wrong three times first.
+
+The instrument is `digitizer/tools/revalidate_floor.py` (committed with this
+entry) — it wraps the real function rather than reimplementing it, and the real
+pass still runs, so what it measures is the shipped design.
+
+Two honest details in that table. `gaulke_roofing` refuses nothing because 46
+of its 56 regions are `enclosed_background` — a different skip, and cause 2 is
+its story. And `bridge_bar`'s 29 movers exceed its 23 in-band shapes: six of
+them are under 50 px, so **preflight will not score them and stage 4 will not
+fix them** — they sew a wrong colour that no instrument in this repo reports.
+
+**And this closes the one thing the earlier reading could not.** `S05f7940d`
+holds `3971 Silver` while its mean luminance (135.6) sits nearer Whale (127) —
+which looked like proof that the palette had seen some third colour, and looked
+unanswerable without stage-2 instrumentation. It is answered: at 365 px it is
+*above* the floor, so it WAS re-asked, and revalidate moved it to Silver on the
+median-per-pixel estimator its docstring defends at length (*"the mean says
+this shape is fine … an earlier build of this function used the mean and scored
+the traced shape at 5.54, i.e. reported the defect it exists to find as
+absent"*). Its thread was never a mean of anything. **The hedge is retired, and
+no stage-2 instrumentation was needed — the answer was in stage 4.**
+
+### The mechanism the bimodal reading pointed at does NOT reach these — checked
+
+`split_tonal_regions` exists and is built, but `TONAL_SPLIT_MIN_AREA_MM2 =
+150.0`: *"A region has to be big enough that its parts are still sewable. Below
+this the split just manufactures slivers for `resolve_small_regions` to absorb
+again."* Our offenders are **0.94 and 1.72 mm²** — two orders of magnitude
+under that floor. Measured on `screenshot_phone_ui_golke` with
+`cfg.split_tonal_regions=True`: **F 0, 10 blocks, 153 regions, 7,621 stitches —
+identical in every figure to OFF**, and the same two shapes still worst. A
+complete no-op.
+
+That is the answer for LARGE bimodal regions (Kent's 4,200 mm² owl body, which
+is what it was built for) — and it was never the answer here, because the
+bimodality here is drift, not a segmentation colour that needs splitting.
 **Nobody should flip that flag expecting this wall to move.**
 
 ### And a structural note on the check itself
