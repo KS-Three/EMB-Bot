@@ -5489,18 +5489,36 @@ permutation is not reachable from that line. White is selected. Therefore the
 region's own colour is nearer Whale than White — the palette did the right
 thing for the region it was given.
 
-**So the mismatch is not in the palette; it is that the region's own colour is
-not the colour of the artwork its stitches land on.** Preflight scores "the
-artwork pixels that spool's own stitches land on", and it measures 33.0 ΔE
-from Whale there. `S43831dcd` is **0.94 mm²**. Both regions Whale sews are
-offenders (33.0 and 21.8) out of the three it was scored on.
+**So the mismatch is upstream of the palette: this region's stored colour
+disagrees with the artwork inside its own polygon.** Measured rather than
+inferred — rasterising each region's polygon over the re-read artwork exactly
+as `_thread_match_findings` does (1-px erosion, background excluded):
 
-That is the same shape as the sliver observation below, and it is where the
-next person should dig: not "which cone was picked" but "why does a 0.94 mm²
-shard's own colour differ from the artwork under it". `0111 Whale` appears in
-the record only as bridge_bar's 12-shard residual — a different fixture, and
-`docs/scope-history.md` 09-04 already flagged that one's cause as
-"not established".
+| shape | area | artwork median RGB | cone |
+|---|---:|---|---|
+| `S43831dcd` | 0.94 mm² | **252, 252, 252** | **0111 Whale** (127) |
+| `S05f7940d` | 1.72 mm² | **132, 132, 132** | **3971 Silver** (204) |
+| `S7c5e42fc` | 0.60 mm² | 251, 251, 251 | 0015 White ✓ |
+| `Sab51509e` | 0.59 mm² | 253, 253, 253 | 0015 White ✓ |
+| `S7407a854` | 0.45 mm² | 252, 252, 252 | 0015 White ✓ |
+| `Sa5732b09` | 41.18 mm² | 118, 118, 118 | 0111 Whale ✓ |
+| `Sb01e1b97` | 469.31 mm² | 46, 46, 46 | 1375 Dark Charcoal (ΔE 10.5) |
+
+The erosion leaves 114 clean pixels on `S43831dcd`, so this is not the
+"hairline shape: erosion ate it" fallback re-admitting anti-alias halo — that
+path never fires here, which was my second wrong guess.
+
+**And it is NOT systematic, which was my first.** Slivers of 0.45-0.60 mm² at
+251-253 get `0015 White` correctly; a 41 mm² region at 118 gets Whale
+correctly. Two regions out of a hundred-plus carry a colour their own polygon
+does not support, and those two produce the design's worst thread findings.
+The 53%-area block (`Sb01e1b97`, artwork 46 against Dark Charcoal's 40,40,33
+for ΔE 10.5) is not a bug at all — it is an honest "no closer cone".
+
+**Cause not established**, and named that way: what makes these two regions
+different from the slivers next to them is the question, not which cone was
+picked. `0111 Whale` appears in the record only as bridge_bar's 12-shard
+residual — a different fixture whose cause 09-04 also left open.
 
 ### And a structural note on the check itself
 

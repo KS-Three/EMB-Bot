@@ -1235,11 +1235,20 @@ its hedge as it is copied forward** — is why this file is split.
   a permuted palette, and the code says so without another measurement:**
   `select_palette` ends `assignment = np.argmin(dist[:, sel], axis=1)` — every
   region gets its NEAREST selected medoid, so with White selected the region's
-  own colour must be nearer Whale. The palette was right for the region it was
-  given; what differs is the artwork under that region's STITCHES, on a
-  0.94 mm² shard. **Rule: before calling a cone assignment wrong, check that
-  the region's own colour is the colour its stitches land on — `argmin` cannot
-  mis-pair.** Unrecorded before 2026-09-06.
+  own colour must be nearer Whale. So the fault is UPSTREAM: the region's
+  stored colour disagrees with the artwork inside its own polygon, which
+  rasterising that polygon over the re-read artwork confirms — 114 clean
+  pixels at (252,252,252) on a 0.94 mm² shard holding a 127 grey.
+  **It is not the erosion fallback** (that path never fires here) **and it is
+  not systematic**: slivers of 0.45-0.60 mm² at 251-253 take `0015 White`
+  correctly and a 41 mm² region at 118 takes Whale correctly. Two regions of a
+  hundred-plus are wrong, and the 53%-area block on the same fixture is an
+  honest "no closer cone" (artwork 46 vs Dark Charcoal 40,40,33, ΔE 10.5).
+  **Cause not established.** **Rule: before calling a cone assignment wrong,
+  rasterise the region's own polygon over the artwork and compare — `argmin`
+  cannot mis-pair, so a bad cone means a bad region colour, and check whether
+  its neighbours of the same size and colour got it right before calling it
+  systematic.** Unrecorded before 2026-09-06.
   **Rule: never treat a THREAD_MATCH_POOR wall as one defect — split it by
   yardstick, palette and assignment before proposing anything.**
   *(measured 2026-09-06 — scope-history 09-06)*
