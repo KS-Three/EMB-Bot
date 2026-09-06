@@ -1196,23 +1196,32 @@ class PipelineConfig:
     # branchy letterform — wide at its junctions, thin along its arms — fails
     # the `2 sigma < mu` regularity gate as a unit even when every arm of it
     # is a clean ribbon. On this flag a region the pooled gate refused is
-    # taken when at least `stage6_satin._STROKE_AREA_FRAC_MIN` of its
-    # stroke-partitioned area passes both gates PER STROKE.
+    # taken when BOTH: no stroke of it is over the machine cap (a VETO, not a
+    # vote — see `stage6_satin._stroke_rung_takes`), and at least
+    # `stage6_satin._STROKE_AREA_FRAC_MIN` of its stroke-partitioned area
+    # passes both gates per stroke.
     #
     # Promotion-only by construction: it sits on the `dt_irregular` branch
     # alone, so it can only ever turn a refusal into a satin call. Off is
     # byte-identical — nothing on this path runs.
     #
-    # Measured before it was written (plan
-    # 2026-09-04-per-stroke-satin-routing, §PR 2): worth 274.0 -> 1,708.3 mm2
-    # of satin on becker_marine_logo at 100 mm, but only +5.7 mm2 at the 80 mm
-    # the corpus runs, where that logo is already 88.2% satin; +143.8 mm2
-    # (2%) across 14 fixtures. Scored on tools/ribbon_stability.py: total
-    # flips 5 -> 6, 17 shipped verdicts changed, all seven archetype
-    # invariants holding. Every verdict it changes sits at cv 0.51-0.64, a
-    # whisker from the 0.50 gate — so it is re-deciding marginal regions, not
-    # correcting large pooling errors. **Flipping it ON is Kent's call and
-    # wants a render first.**
+    # What it is worth, measured ON THE STITCHES (tools/satin_columns.py) at
+    # 100 mm on becker_marine_logo: 3 regions promoted totalling 78.8 mm2,
+    # crossing share 2.2 -> 4.0%, median column 0.29 -> 0.64 mm, and preflight
+    # B 88 (DENSITY_EXTREME) -> A 100 with no findings and no coverage cost.
+    # Byte-identical at the 80 mm the corpus runs, where the same logo is
+    # already 88.2% satin. Scored on tools/ribbon_stability.py before the
+    # threshold was adopted: total flips 5 -> 6, 17 shipped verdicts changed,
+    # all seven archetype invariants holding.
+    #
+    # Do NOT quote 274.0 -> 1,708.3 mm2 as this flag's number: that is the
+    # inert classifier at the bare area rule, before the cap became a veto.
+    # The veto drops the two regions carrying over-cap strokes, and it exists
+    # because without it a 9.32 mm stroke sewed as capped satin and left
+    # 28 mm2 of bare cloth.
+    #
+    # **Flipping it ON is Kent's call.** The render is at
+    # docs/renders/satin-per-stroke-2026-09-06/.
     satin_per_stroke: bool = False
 
     # Split satin. A satin cross longer than the threshold carries
