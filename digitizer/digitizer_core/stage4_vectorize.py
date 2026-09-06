@@ -40,6 +40,29 @@ except ImportError:  # pragma: no cover - defensive, matches stage2's own import
 # 1,990 px, comfortably clear.
 THREAD_REVALIDATE_MIN_PX = 200
 
+# The floor when `cfg.revalidate_small_shapes` is ON, and it is deliberately
+# `preflight._MIN_COLOR_PIXELS` — quoted rather than imported, because
+# preflight imports the pipeline and this module is upstream of it.
+# `tests/test_revalidate_small_shapes.py` pins the two together so the coupling
+# cannot drift silently.
+#
+# WHY IT EXISTS (measured 2026-09-06, MASTER_SCOPE 28,
+# `tools/revalidate_floor.py`). Preflight scores and BLOCKS any shape with 50
+# measurable pixels; this function refuses to re-ask about anything under 200.
+# Every shape in that band can be condemned and never corrected. On
+# `screenshot_phone_ui_golke` this pass refuses 12 shapes, all 12 in the band,
+# and 7 of them would change answer under this function's own estimator and
+# its own improvement gate — the worst being the design's worst thread
+# finding: 177 px against a floor of 200, `0111 Whale` at 32.7 dE00 where
+# `0015 White` scores 1.4.
+#
+# The 200 was never the estimator's requirement. A median over 50 per-pixel
+# dE00 samples is a sound estimate; what the number was really protecting is
+# the goldens, and `THREAD_REVALIDATE_MIN_IMPROVEMENT_DE00` is the churn guard
+# that does that job on merit. Hence a FLAG rather than a lowered default:
+# off, this file is byte-identical to before it existed.
+THREAD_REVALIDATE_MIN_PX_SMALL = 50
+
 # Re-snap only when the newly-measured colour is at least this much closer to a
 # different spool than to the one already assigned. Guards against churning
 # thread assignments (and every golden) by fractions of a dE00 — this rule
@@ -443,7 +466,8 @@ def _sample_lab(lab: np.ndarray) -> np.ndarray:
 def revalidate_threads(regions: list[Region], p: Prep,
                        cfg: PipelineConfig, *,
                        palette_indices: list[int] | None = None,
-                       design_class: str = "flat") -> list[dict]:
+                       design_class: str = "flat",
+                       small_shapes: bool = False) -> list[dict]:
     """Re-check every shape's thread against the pixels its FINAL polygon
     covers, and re-snap the ones that drifted. -> warnings.
 
@@ -470,6 +494,14 @@ def revalidate_threads(regions: list[Region], p: Prep,
 
     * `THREAD_REVALIDATE_MIN_PX` — a handful of pixels cannot support a
       colour estimate, and a shape that small is the run tier's problem.
+      **`small_shapes=True` lowers this to `THREAD_REVALIDATE_MIN_PX_SMALL`,
+      which is preflight's own floor** — see that constant's comment for why
+      the gap between the two is a defect. The caller is
+      `cfg.revalidate_small_shapes`, default OFF and byte-identical off.
+      A shape only the lowered floor admits re-snaps WITHIN the selected
+      palette on every class, not just the photo ones (see `small_only`
+      below): a shard that small is never worth a new cone, and letting it
+      have one was measured as the worse construction.
     * `THREAD_REVALIDATE_MIN_IMPROVEMENT_DE00` — re-snap only when the new
       spool is meaningfully better than the one already assigned. Without
       it this would churn thread assignments by fractions of a dE00 across
@@ -526,14 +558,46 @@ def revalidate_threads(regions: list[Region], p: Prep,
     """
     if not regions:
         return []
+    min_px = (THREAD_REVALIDATE_MIN_PX_SMALL if small_shapes
+              else THREAD_REVALIDATE_MIN_PX)
     chart = chart_for(cfg)
-    # The photo-route palette binding (docstring above). `None` — every
-    # non-photo class, and any caller that passes no palette — is the
-    # unrestricted chart argmin this function has always run.
-    allowed: np.ndarray | None = None
-    if is_photographic(cfg, design_class) and palette_indices is not None \
-            and len(palette_indices) > 0:
-        allowed = np.unique(np.asarray(list(palette_indices), dtype=np.int64))
+    # `palette_only` is the caller's selected spools, class-independent; it is
+    # what a shape admitted only by the LOWERED floor is restricted to (see
+    # `small_only` in the loop). `allowed` is the shipped photo-route binding
+    # (docstring above): `None` — every non-photo class, and any caller that
+    # passes no palette — is the unrestricted chart argmin this function has
+    # always run, and with the flag OFF every shape reaching the argmin has
+    # `n >= THREAD_REVALIDATE_MIN_PX`, so `small_only` IS `allowed` and this
+    # split cannot change a byte.
+    palette_only: np.ndarray | None = None
+    if palette_indices is not None and len(palette_indices) > 0:
+        palette_only = np.unique(np.asarray(list(palette_indices),
+                                            dtype=np.int64))
+    allowed: np.ndarray | None = (
+        palette_only if is_photographic(cfg, design_class) else None)
+    # The cone list an operator actually loads for this design, snapshotted
+    # BEFORE the loop mutates any of it. This — not `palette_only` — is what a
+    # shape admitted only by the lowered floor may choose from, and the
+    # difference is load-bearing: `palette_only` is stage 2's selection, but
+    # earlier work already re-snapped shapes OUTSIDE it, so the design carries
+    # cones the palette never chose (16 against 13 on
+    # `screenshot_phone_ui_golke`). Restricting to the palette therefore
+    # forbids moves onto cones already on the machine, which is a cost with no
+    # matching benefit — measured 2026-09-06, it left `0111 Whale` sewing a
+    # 182-grey shard it had a better loaded home for.
+    #
+    # Enclosed-background shapes are excluded: they do not sew by default, so
+    # their cone is not one the operator has loaded.
+    #
+    # And it is NOT unioned with `palette_only`, which an earlier build did:
+    # stage 2 can select a spool that no surviving region ends up wearing, so
+    # the union re-admits cones the machine is not actually threaded with and
+    # the "never grow the cone set" rule breaks. Measured — `drone_render`
+    # went 19 -> 20 cones with the union and 19 -> 19 without it, which is
+    # what `test_a_small_shape_never_adds_a_cone` now pins.
+    loaded = np.unique(np.asarray(
+        [r.thread_index for r in regions
+         if not r.meta.get("enclosed_background")] or [0], dtype=np.int64))
     x0, y0, x1, y1 = p.art_bbox
     cx, cy = (x0 + x1) / 2.0, (y0 + y1) / 2.0
     shape = p.rgb.shape[:2]
@@ -549,8 +613,19 @@ def revalidate_threads(regions: list[Region], p: Prep,
             continue
         fp = _region_footprint(r, shape, cx, cy, p.px_per_mm)
         n = int(fp.sum())
-        if n < THREAD_REVALIDATE_MIN_PX:
+        if n < min_px:
             continue
+        # A shape only the LOWERED floor admits may re-snap onto a cone the
+        # design already loads, never onto a new one — measured 2026-09-06,
+        # and the unrestricted version is why this is a rule rather than a
+        # preference. Off the photo route the argmin runs over the whole
+        # chart, so re-snapping a crowd of shards pulled new spools in:
+        # `logo_bridge_bar` 18 -> 22 cones, `drone_render` 19 -> 21. Each new
+        # spool is another row `THREAD_MATCH_POOR` scores, and drone_render
+        # went 4 -> 5 blocks on cones it did not have before. A 0.9 mm2 shard
+        # is never worth a colour change on the machine; it is worth being
+        # sewn in a colour already on it.
+        small_only = allowed if n >= THREAD_REVALIDATE_MIN_PX else loaded
         samples = _sample_lab(flat_lab[fp])
         # (S, K) — every sampled pixel against every spool in the chart, then
         # the median down the pixel axis: one honest error per spool.
@@ -558,8 +633,8 @@ def revalidate_threads(regions: list[Region], p: Prep,
             deltaE_ciede2000(samples[:, None, :], chart.lab[None, :, :]), axis=0
         )
         before = float(per_spool[r.thread_index])
-        best = (int(np.argmin(per_spool)) if allowed is None
-                else int(allowed[np.argmin(per_spool[allowed])]))
+        best = (int(np.argmin(per_spool)) if small_only is None
+                else int(small_only[np.argmin(per_spool[small_only])]))
         if best == r.thread_index:
             continue
         after = float(per_spool[best])
@@ -584,6 +659,10 @@ def revalidate_threads(regions: list[Region], p: Prep,
         ids=sorted(resnapped),
         worst_before_de00=round(worst_before, 2),
         worst_after_de00=round(worst_after, 2),
+        # Which floor produced this list. Without it a reader cannot tell a
+        # design that had no small drifted shapes from one whose small
+        # drifted shapes were never asked about.
+        min_px=min_px,
     )]
 
 
