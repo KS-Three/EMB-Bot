@@ -292,7 +292,17 @@ Moved verbatim 2026-08-28 — no section was rewritten in the move.
   every curve in its renders and is NOT an engine defect — the detail is not
   in the artwork to recover. Becker is an excellent END-TO-END fixture (it is
   the one with a professional's own file to compare against) and a bad one for
-  calibrating anything threshold-sensitive. *(measured 2026-09-06)*
+  calibrating anything threshold-sensitive.
+
+  **There is no higher-resolution Becker source in the repo, and the files
+  that look like one are a trap.** `testdata/reference/becker_*.jpg` are
+  ~810 px and CLAUDE.md calls them artwork, but each sits 1:1 beside a
+  `.dst`/`.pes` and each is a STITCH-FILE PREVIEW — the professional's
+  embroidery rendered on white and on black, two panels to an image.
+  Digitizing one would be digitizing a picture of embroidery: it would run
+  happily and produce nonsense. Making Becker's threshold numbers meaningful
+  needs the original logo from Kent, not anything already committed.
+  *(measured 2026-09-06)*
 
 - **A per-stroke satin rung must treat the machine cap as a VETO, never as a
   vote.** Scoring `dt_p90_cap` per stroke and then letting an area majority
