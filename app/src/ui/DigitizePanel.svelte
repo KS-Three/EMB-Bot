@@ -141,8 +141,29 @@
   // So this is not a preset list. It is the quality report's own findings,
   // each paired with the one adjustment that addresses it — the app already
   // computes "31 trims" and "sews below readable size"; what was missing was
-  // an action. `LETTERING_TOO_SMALL`'s own message ends "Enlarging helps",
-  // and until now nothing offered to enlarge it.
+  // an action.
+  //
+  // ONE OF THESE BUTTONS RESTS ON A MISQUOTE, and it is recorded here rather
+  // than quietly removed. This comment used to read: *"`LETTERING_TOO_SMALL`'s
+  // own message ends 'Enlarging helps', and until now nothing offered to
+  // enlarge it."* On the day that was written (1c20ec9, 2026-09-02) the
+  // message ALREADY read "Enlarging helps BUT DOES NOT FULLY CLEAR IT: the
+  // smallest shapes regenerate at any size. Remove or simplify the smallest
+  // lettering." The quote stopped at the word where the sentence reverses, and
+  // the action it justified ("make it bigger") is not the action the message
+  // ends on ("remove or simplify"). Not drift -- wrong on the day it was
+  // written, and a truthful substring, which is why no checker catches it.
+  //
+  // `preflight.py`'s own docstring carries the measurement: over 92.5 -> 220 mm
+  // the flagged COUNT falls 38 -> 13 while the median flagged column stays FLAT
+  // near 0.8 mm, because segmentation keeps generating sub-millimetre shapes as
+  // the design grows. The documented root cause is per-stroke satin routing
+  // (`docs/superpowers/plans/2026-09-04-per-stroke-satin-routing.md`), which is
+  // scale-invariant. So enlarging is a real knob that moves a real number, and
+  // it is NOT the cure either finding describes.
+  //
+  // Left in place, not removed: whether a partial remedy is worth a button is
+  // Kent's call, and "Make it bigger" at least does what its label says.
   //
   // DELIBERATELY SHORT, and the omissions are the honest part. Most findings
   // have no knob that helps and get nothing rather than a button that does

@@ -132,7 +132,7 @@ from .threads import chart_for, rgb_to_lab
 THREAD_MATCH_POOR = "THREAD_MATCH_POOR"        # extra: {thread_number, thread_name, brand_id, delta_e, yardstick, excess_delta_e, better_spool, worst_shape_id, worst_shape_area_mm2, worst_shape_area_frac, region_count, regions_scored, regions, artwork_rgb, thread_rgb} — excess_delta_e/better_spool are the gap to the best ALREADY-LOADED spool and that spool, populated on EVERY route since 2026-09-06 (both None when nothing loaded is meaningfully closer). `yardstick` ("excess"/"raw") says which one produced the SEVERITY, so a populated excess is never mistaken for a rescored finding
 LETTERING_TOO_SMALL = "LETTERING_TOO_SMALL"    # extra: {count, satin_total, shapes: [{shape_id, column_mm, extent_mm}]} — satin_total is the DENOMINATOR the message needs ("38 of 46"), which reads very differently from a bare 38
 STITCHES_TOO_LONG = "STITCHES_TOO_LONG"        # extra: {count, max_mm}
-STITCHES_TOO_SHORT = "STITCHES_TOO_SHORT"      # extra: {fraction, count, total}
+STITCHES_TOO_SHORT = "STITCHES_TOO_SHORT"      # extra: {fraction, count, total, uncovered_shapes, shapes: [{shape_id, short, steps, median_mm, also_too_small}]} — `shapes` is every satin shape carrying a short step, worst first; `also_too_small` is whether LETTERING_TOO_SMALL already named it, and `uncovered_shapes` counts the ones it did NOT (a sewable column with a narrow waist passes lettering's median test and still breaks thread)
 TRIM_HEAVY = "TRIM_HEAVY"                      # extra: {per_1000, trims, stitches}
 DENSITY_EXTREME = "DENSITY_EXTREME"            # extra: {kind, measured_mm, target_mm, ratio} (+ technique, band_mm on a tonal fill)
 DENSITY_STACKED = "DENSITY_STACKED"            # extra: {peak_units, p95_units, over_warn_mm2, over_block_mm2, cell_mm}
@@ -1384,17 +1384,32 @@ def _lettering_findings(plan: StitchPlan) -> tuple[list[dict], int]:
 
 # --- Stitch length ----------------------------------------------------------
 
-def _stitch_length_findings(plan: StitchPlan) -> tuple[list[dict], dict]:
+def _stitch_length_findings(plan: StitchPlan,
+                            already_small: set[str] | None = None
+                            ) -> tuple[list[dict], dict]:
     """The format ceiling as a backstop, and the satin-short fraction.
 
     A plan should never contain a needle-down step past MAX_STITCH_MM — the
     planner splits them at the source — so any count here is a regression
     report, not a normal state. The short fraction is a quality score even
     when it stays under threshold; it rides out in the metrics.
+
+    `already_small` is the shape ids LETTERING_TOO_SMALL just named, and it is
+    what keeps this finding from being a second bill for one defect. Both
+    checks measure the SAME quantity — `MIN_COLUMN_MM is machine.MIN_STITCH_MM`
+    — off the same consecutive-step distance inside a satin run, and across
+    the 26-fixture corpus at 80 mm this one never fired without the other
+    (10 fired both, 1 lettering only, 0 here alone). What it does see that the
+    other does not is WHERE: only 66% of the short steps sit inside a shape
+    lettering named, because lettering judges a shape on its MEDIAN column, so
+    a perfectly sewable column with a narrow waist passes it and still breaks
+    thread. Naming those shapes is the whole reason this finding earns its 12
+    points.
     """
     too_long = 0
     longest = 0.0
     satin_total = satin_short = 0
+    steps: dict[str, list[float]] = {}
     for _b, run in plan.iter_runs():
         for a, b in zip(run.points, run.points[1:]):
             d = math.dist(a, b)
@@ -1403,6 +1418,7 @@ def _stitch_length_findings(plan: StitchPlan) -> tuple[list[dict], dict]:
                 longest = max(longest, d)
             if run.kind == stitches.SATIN:
                 satin_total += 1
+                steps.setdefault(run.shape_id, []).append(d)
                 if d < machine.MIN_STITCH_MM:
                     satin_short += 1
 
@@ -1421,16 +1437,56 @@ def _stitch_length_findings(plan: StitchPlan) -> tuple[list[dict], dict]:
         ))
     frac = satin_short / satin_total if satin_total else 0.0
     if satin_total >= _MIN_SAMPLES and frac > SATIN_SHORT_FRACTION_MAX:
+        named = already_small or set()
+        carriers = []
+        for sid, ds in sorted(steps.items()):
+            n = sum(1 for d in ds if d < machine.MIN_STITCH_MM)
+            if not n:
+                continue
+            med = sorted(ds)[len(ds) // 2]
+            carriers.append({"shape_id": sid, "short": n, "steps": len(ds),
+                             "median_mm": round(med, 2),
+                             "also_too_small": sid in named})
+        carriers.sort(key=lambda c: (-c["short"], c["shape_id"]))
+        missed = [c for c in carriers if not c["also_too_small"]]
+
+        # The remedy sentence, and it is NOT "enlarge". LETTERING_TOO_SMALL
+        # sits beside this one offering exactly that, and its own docstring
+        # carries the measurement that kills it: over 92.5 -> 220 mm the
+        # flagged COUNT falls 38 -> 13 while the median flagged column stays
+        # flat near 0.8 mm, because segmentation keeps generating
+        # sub-millimetre shapes as the design grows. The documented root cause
+        # is per-stroke satin routing, not scale
+        # (`docs/superpowers/plans/2026-09-04-per-stroke-satin-routing.md`:
+        # our median column 0.80-0.84 mm against a professional's 1.40-2.52).
+        # So this says what a person can act on today — which shapes, and
+        # which of them the size warning did not already cover.
+        if missed:
+            verb = "has" if len(missed) == 1 else "have"
+            where = (f" {len(missed)} of the {len(carriers)} shapes carrying "
+                     f"them {verb} a normal column width that pinches in "
+                     f"places, so the size warning does not cover them — "
+                     f"widen those waists.")
+        elif len(carriers) == 1:
+            where = (" The one shape carrying them is already flagged as too "
+                     "small to sew; fixing that clears this too.")
+        elif carriers:
+            where = (f" All {len(carriers)} shapes carrying them are already "
+                     f"flagged as too small to sew; fixing those clears this "
+                     f"too.")
+        else:                                            # pragma: no cover
+            where = ""
         findings.append(finding(
             STITCHES_TOO_SHORT,
             "warn",
             f"{frac:.0%} of satin stitches are under the "
             f"{machine.MIN_STITCH_MM:g} mm needle minimum (a healthy plan "
-            "runs about 10%). Thread breaks are likely — enlarge the design "
-            "or thicken its thinnest strokes.",
+            f"runs about 10%). Thread breaks are likely.{where}",
             fraction=round(frac, 3),
             count=satin_short,
             total=satin_total,
+            uncovered_shapes=len(missed),
+            shapes=carriers,
         ))
     return findings, {"satin_short_fraction": round(frac, 3),
                       "satin_steps": satin_total}
@@ -2588,7 +2644,14 @@ def run_preflight(result: PipelineResult, plan: StitchPlan,
     findings.extend(lettering)
     metrics["satin_shapes"] = satin_shape_count
 
-    length_findings, length_metrics = _stitch_length_findings(plan)
+    # The shapes lettering just named, so the short-stitch check can say which
+    # of ITS carriers are not covered by that warning. The two measure the same
+    # quantity (`MIN_COLUMN_MM is machine.MIN_STITCH_MM`) and this one never
+    # fired alone on the corpus, so without the hand-off it is a second 12-point
+    # bill for one defect.
+    already_small = {sh["shape_id"] for f in lettering
+                     for sh in f.get("extra", {}).get("shapes", ())}
+    length_findings, length_metrics = _stitch_length_findings(plan, already_small)
     findings.extend(length_findings)
     metrics.update(length_metrics)
 
