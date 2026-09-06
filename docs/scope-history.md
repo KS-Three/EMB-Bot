@@ -5987,6 +5987,13 @@ the module that defines NAME.
 
 **The sweep of the current-state docs came back CLEAN** — 11 flag defaults and
 16 constants in `MASTER_SCOPE.md` and `DOCTRINE.md` all agree with the code.
+*(Correction, 2026-09-06 — see the entry below. CLEAN holds; the two numbers
+do not. They came from a side probe, not from the tool, which at that commit
+printed no flag count at all and `18` for constants across every doc. The
+reproducible figures are **6 flag-default checks and 9 constant checks** on
+the two current-state docs, and the tool now prints both, plus the distinct
+names behind them.)*
+
 Worth recording as a negative so nobody re-runs it expecting a haul: the two
 stale claims were specific misses, not a pattern.
 
@@ -6058,3 +6065,67 @@ why `drone_render`'s worst reads **54.48%** here where the 2026-09-06 F-wall
 table gave 53.6%: a different and better denominator, not a drift.
 `test_the_fraction_is_over_the_scored_regions_not_all_of_them` fails if someone
 simplifies it back.
+
+## 2026-09-06 — the claim-checker gets checked, and two numbers it published do not survive
+
+`tools/doc_claims.py` landed earlier the same day to catch doc claims that
+outlive their fixes. It shipped with **no tests**, and the entry announcing it
+published two figures — *"11 flag defaults and 16 constants in
+`MASTER_SCOPE.md` and `DOCTRINE.md` all agree with the code"* — that the tool
+does not produce.
+
+Re-run at its own commit (`a066580`), it prints **no flag count at all** and
+`18` constant checks **across every doc, not the two strict ones**. The
+reproducible strict-doc figures are **6 flag-default checks and 9 constant
+checks**. The CLEAN verdict was right and still is; the numbers beside it came
+from a throwaway probe nobody could re-run.
+
+**Rule: if the tool does not print the number you want to publish, add the
+print, then quote it.** Which is what happened here.
+
+### What the checker now says, and why each line moved
+
+```
+7 flag-default check(s) agree, over 8 distinct flag(s)
+18 constant check(s) agree, over 11 distinct name(s)
+
+1 claim(s) this checker CANNOT settle (not a defect — it just did not check them):
+  MASTER_SCOPE.md: cfg.edge_cap default is 'none', not a bool — …
+```
+
+- **It reports what it EXAMINED, not only what it found.** A clean run that
+  checked nothing read exactly like a clean run that checked everything —
+  the same trap as CLAUDE.md's quiet-venv failure, where a 3.11 venv leaves
+  no pystitch in it and `node --test` silently SKIPS the six format
+  cross-validation tests and still reports green.
+- **Four silent `continue`s now report.** A default claim is unsettleable when
+  the name is not a `PipelineConfig` field, when the field has no plain
+  default, when the default is not a bool (`cfg.edge_cap` is `'none'` — the
+  live instance, and MASTER_SCOPE does put it on a DEFAULT line), or when one
+  line states both ON and OFF. Each was a bare `continue`, so a skipped flag
+  and a passing flag were indistinguishable.
+- **Checks are not things.** 18 checks cover 11 distinct names, because
+  `FILL_ROW_MM` and `SATIN_MAX_WIDTH_MM` are each defined in TWO modules and a
+  name quoted in three docs is three claims. Reporting only the larger number
+  overstates coverage — which is how `16` looked plausible.
+
+**Measured, and worth recording as a negative:** all **33** `cfg.<flag>`
+mentions across the eight docs resolve to real fields, and **no line states
+both ON and OFF**. So the ambiguous-line branch this work was opened to fix
+has never once fired on the real corpus — it is insurance, not a haul. (The
+±400-character window that produced the original `border` ambiguity was
+retired when the checker moved to line scope; the case went with it.)
+
+### The rejected construction
+
+**Pairing each flag with the nearer DEFAULT phrase**, to settle a two-flag
+line instead of reporting it. Not built: English puts the phrase on either
+side of the flag (*"`a` is DEFAULT ON while `b` is DEFAULT OFF"* against
+*"DEFAULT OFF for `b`"*), so a nearest-match rule would report disagreements
+that are the heuristic rather than the doc — the same failure mode as the
+character window, rebuilt one layer up. Reporting the line and letting a human
+split it costs one line of output and cannot be wrong.
+
+`tests/test_doc_claims.py` (11 tests, **0.04s** — it reads text and a
+dataclass, so nothing digitizes) pins all of it, including a regression guard
+that the two current-state docs still agree with the code.
