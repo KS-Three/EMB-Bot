@@ -1523,3 +1523,20 @@ its hedge as it is copied forward** — is why this file is split.
   either direction; quote the metric that moved, or the render.** Un-clamping
   or widening the bands re-bases every grade in the scorecard, so it is a
   product call, not a cleanup. *(measured 2026-09-06 — scope-history 09-06)*
+
+- **A checker's first output is not evidence its pattern is right — read the
+  MATCHES, not the count.** A first cut of `doc_claims`' test-count check
+  matched "the first number within 40 characters of the filename" and
+  reported **six drifts** in `docs/scope/1`, the worst `test_satin.py` at a
+  documented 43 against 99 collected. Every one was false: `**43/43**` is a
+  pass/total at the time, `gains 6` and `(17 → 22 tests)` are deltas, and
+  `together **46/46**` is two files combined. **None was a claim about the
+  file's current size at all.** Shipping on that count would have produced
+  exactly what this tool's own design note warns against — a checker that
+  cries wolf on legitimate narrative is a checker nobody runs. The same
+  discipline killed a sibling idea outright: sweeping doc-cited FILE PATHS
+  found **373 references and 0 stale**, because a path here is either right or
+  cited inside a sentence saying it was deleted (`tools/bundle.mjs`,
+  `src/app.js`) — so that checker was not built. **Rule: before building a
+  checker, sweep for the thing it would catch; then read what it matched, and
+  only then decide the pattern.** *(measured 2026-09-06 — scope-history 09-06)*
