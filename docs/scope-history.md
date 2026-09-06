@@ -6745,3 +6745,81 @@ fields, one hand-off. `tests/test_short_satin_shapes.py` (14, synthetic plans,
 0.05s) pins both singular branches of the generated sentence — *"All 1 shapes"*
 would otherwise have shipped — and pins the fixture that carries the whole
 argument: a waisted column the size warning must NOT name.
+
+---
+
+## 2026-09-06 — TRIM_HEAVY gave one remedy for two opposite defects
+
+The message has read *"consider merging or removing the smallest shapes"*
+since it was written. That is right for a cut BETWEEN shapes — the machine
+moving on — and wrong for a cut INSIDE one, which is that shape failing to sew
+in a single pass. `satin_shape` may travel over UNSEWN strokes only, and the
+Becker investigation earlier the same day logged the walk succeeding up to 40%
+sewn and **never again after**, so a big multi-stroke shape spends nearly all
+its life unable to reach anywhere. Merging shapes cannot touch that.
+
+### Say plainly that this was already known
+
+**MASTER_SCOPE defect 6 has carried *"the trim bulk is INSIDE one shape, not
+between them — 69% of trims are intra-shape"* since 2026-08-21.** The fact is
+three weeks old. What was missing is that **the finding never said it**, so
+every design in the corpus got the between-shape remedy regardless. That is
+the whole change: a repo that knew, and an instrument that did not report.
+
+### The corpus number, and it flips per design
+
+`tools/trim_locality.py`, 26 fixtures at 80 mm / left_chest:
+
+**866 trims = 456 inside a shape (53%) + 410 between shapes (47%).**
+
+Almost even, which is the point — a single remedy sentence was only ever right
+about half the time. And it is not a stable 53%: the majority flips per design,
+**in-shape dominant on 11 fixtures, between-shape on 11, one tie**.
+
+| fixture | trims | in-shape | between | worst carrier |
+|---|---:|---:|---:|---|
+| `photo/photo_grass_macro.png` | 15 | **14 (93%)** | 1 | `Scfe3827c-shad` 14 |
+| `photo/photo_sunset_backlit.png` | 52 | **44 (85%)** | 8 | `S96ae75f4` 14 |
+| `photo/photo_chrome_specular.png` | 83 | **67 (81%)** | 16 | `Sb8e04858` 39 |
+| `photo/logo_gaulke_roofing.png` | 29 | **22 (76%)** | 7 | `Sa94910d1` 22 |
+| `becker_marine_logo.png` | 28 | **19 (68%)** | 9 | `Sead76620` 16 |
+| … | | | | |
+| `photo/logo_bridge_bar.jpg` | 124 | 60 | 64 | `S22a5e094` 23 |
+| `photo/screenshot_phone_ui_golke.jpg` | 70 | 14 | **56 (80%)** | `Sb01e1b97` 6 |
+| `logo_alpha.png` / `logo_whitebg.png` | 5 | 0 | **5 (100%)** | `S09c5bd0d` 1 |
+
+`photo_grass_macro` and `logo_alpha` are the same finding with opposite causes,
+and until now they read the same sentence.
+
+**Becker reproduces the August figure independently.** 19 in-shape of 28
+against the recorded 69%: 19/28 is 67.9%, and the gap is the file's first cut,
+which `plan.stats` counts and the machine does not (`_trim_findings` has always
+corrected for it; the August pass evidently did not). One number tightened, the
+conclusion unchanged. It also tightens a phrase: scope-history's Becker entry
+reads *"19 of our 28 pen-ups stay inside ONE shape"*; 19 is the in-shape
+TOTAL and **16** of them are in that one shape.
+
+### Two structural facts the sweep settled
+
+- **No run in the corpus carries an empty `shape_id`** (0 of 26). The guard
+  against an unattributed run matching its unattributed neighbour is therefore
+  defensive, not load-bearing — and it stays, because `StitchRun.shape_id`
+  defaults to `""` and any synthetic plan hits it. Without the guard those runs
+  would all match each other and claim a whole shape's worth of cuts as ones
+  merging "cannot remove", which is the direction that misleads.
+- **No plan has an empty leading run.** So redefining *"the run whose trim the
+  file does not contain"* as the first run WITH POINTS — matching
+  `iter_machine_commands`, which skips empty runs entirely, trim included — is
+  a no-op on the corpus today. It is still the correct definition: the old one
+  read `blocks[0].runs[0]` regardless and would have silently subtracted a cut
+  that was never emitted, losing a real one. Fixed and pinned by a test rather
+  than left as a comment.
+
+### What did not change
+
+Same code, same severity, same rate, same denominator. Message prose and four
+payload fields. `tests/test_trim_locality.py` (9, synthetic plans, 0.05s) pins
+the `in_shape + between_shapes == trims` invariant on every plan it builds,
+both branches of the generated sentence, and the agreement between the shipped
+check and the instrument that audits it — which re-walks the plan on purpose,
+because an auditor that calls the thing it audits proves nothing.
