@@ -5036,3 +5036,68 @@ satin today, is where all of the bare cloth is. Demoting it may be the fix
 rather than the harm. Not acted on: DOCTRINE requires a classifier change to
 be scored on shipped verdicts changed AND flips left, across the real
 fixtures, before any threshold moves. That scoring is the next piece of work.
+
+### Where it actually is: the junction, and four mechanisms that are not it
+
+Continued the same day rather than left open, and the corpus answers most of it.
+
+**`tools/width_tail.py --corpus` at 80 mm — 255 satin shapes, and only TWO
+leave bare cloth:**
+
+| fixture | shape | verdict | gate p90 | p99 | MAX | >cap | bare |
+|---|---|---|---:|---:|---:|---:|---:|
+| `becker_marine_logo.png` | `Sead76620` | `promoted_ribbon` | 2.67 | 6.67 | **7.80** | 2.80% | 23.8 of 639 |
+| `photo/photo_scene_stub.png` | `Sf80b4c46` | `promoted_ribbon` | 4.33 | 6.70 | **7.81** | 5.12% | 6.5 of 858 |
+
+Both `promoted_ribbon`. Both MAX ≈ 7.8 mm. Both p90 comfortably under the cap.
+Scoring candidate gates against that:
+
+| gate | demotes | catches | leaves | false demotes |
+|---|---:|---:|---:|---:|
+| MAX > 5.0 | 5 | 30.3 (100%) | 0.0 | 3 shapes, 391 mm² |
+| MAX > 5.5 | 3 | 30.3 (100%) | 0.0 | 1 shape, 223 mm² |
+| **MAX > 6.0** | **2** | **30.3 (100%)** | **0.0** | **none** |
+| P99 > 5.5 | 2 | 30.3 (100%) | 0.0 | none |
+| FRAC > 0.03 | 2 | 6.5 (21%) | 23.8 | 1 shape — MISSES Becker |
+
+`MAX > 6.0` demotes exactly the two offenders out of 255 with no collateral.
+**Read that as a marker, not a mechanism, and note n = 2 positives** — a rule
+fitted to two cases is a rule fitted to two cases. What it is really detecting
+is a JUNCTION: the inscribed circle at a place where arms meet is large, so
+MAX ≫ p90 says "this shape has a big junction", and that is where the thread
+is missing.
+
+**Located.** Replicating preflight's own coverage grid (`_coverage_map` at
+`_UNCOVERED_CELL_MM`, `>= _COVERAGE_FLOOR_UNITS`) and labelling inside
+`Sead76620` alone: the dominant patch is **37.2 mm² at (−6.37, −16.09)**,
+**0.42 mm from a stroke END**, with **five strokes within 3 mm** and a local
+medial width of 5.27 mm. The second (7.5 mm²) is 1.86 mm from a stroke end
+with one stroke near it. Junctions and stroke ends, not bulges along a stroke.
+
+**Four emission-side mechanisms, all ruled out by experiment:**
+
+| change | Becker uncovered | stitches |
+|---|---:|---:|
+| shipped | 23.8 mm² | 5,531 |
+| `_rail_points` 5 mm ceiling → 99 mm | 22.8 | 6,249 (+13%) |
+| `satin_rails_follow_edge=True` | 21.0 | 5,723 |
+| corridor cap `floors*1.6` → `floors*3.5` | **23.8 — no change at all** | 5,552 |
+| `_JUNCTION_TUCK_MM` 0.4 → 1.6 | 22.8 | 5,800 |
+
+(the tuck also leaves `photo_scene_stub` at 6.5 mm², unmoved.)
+
+**The synthesis, consistent with all five rows and offered as a hypothesis
+rather than a proof.** Every one of those knobs changes how LONG a cross is.
+None changes where crosses are PLACED, which is along a stroke's spine,
+perpendicular to that stroke, sized by a ray cast that measures *that arm's*
+width. Widening the cap cannot widen the measurement: at a junction the
+perpendicular ray from an arm hits the arm's own sides and reads ~2 mm, not
+the junction's 5.27. So the junction's interior is covered only where arms
+happen to overlap — which is exactly what `_rail_points`' docstring says it
+intends ("the junction gets the modest overlap of its arms — which is exactly
+what a human digitizer does there"). On a FIVE-arm junction 5.27 mm across,
+that overlap does not close, and no cross-length knob can reach it.
+
+If that is right, the fix is not a cap and not a demotion — it is covering a
+junction's interior explicitly. Untested, and named here so the next person
+starts from the four negatives instead of repeating them.

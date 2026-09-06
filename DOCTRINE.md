@@ -1079,3 +1079,29 @@ its hedge as it is copied forward** — is why this file is split.
   but never attribute bare cloth to that tail without lifting the ceiling and
   re-measuring.** Both experiments were cheap and I nearly skipped both.
   *(measured and refuted 2026-09-06 — scope-history 09-06)*
+
+
+- **Bare cloth in a satin shape is at the JUNCTION, and no cross-length knob
+  reaches it — four of them measured.** Across the whole corpus at 80 mm,
+  `tools/width_tail.py --corpus` finds **2 of 255 satin shapes** leaving any
+  bare cloth: `Sead76620` (`becker_marine_logo`, 23.8 mm²) and `Sf80b4c46`
+  (`photo_scene_stub`, 6.5). Both `promoted_ribbon`, both MAX medial width
+  ≈ 7.8 mm, both p90 under the cap. A `MAX > 6.0` gate demotes exactly those
+  two with ZERO false demotions — but read it as a MARKER, not a mechanism,
+  and note n = 2: MAX ≫ p90 means "this shape has a big junction", and the
+  junction is where the thread is missing. Located by replicating preflight's
+  own coverage grid: the dominant patch is 37.2 mm², **0.42 mm from a stroke
+  END, with five strokes within 3 mm**. Ruled out, each by experiment on
+  Becker (23.8 mm² shipped): `_rail_points`' 5 mm ceiling lifted to 99 → 22.8
+  for +13% thread; `satin_rails_follow_edge` → 21.0; the corridor cap
+  `floors*1.6` → `floors*3.5` → **23.8, no change at all**;
+  `_JUNCTION_TUCK_MM` 0.4 → 1.6 → 22.8. **Every one of those changes how LONG
+  a cross is; none changes WHERE crosses are placed** — along a spine,
+  perpendicular to one arm, sized by a ray that measures that arm's width, so
+  at a junction it reads ~2 mm and not the junction's 5.27. The interior is
+  covered only by arm overlap, which is what the docstring intends ("the
+  junction gets the modest overlap of its arms") and which does not close on
+  five arms. **Rule: do not reach for a cap when thread is missing at a
+  junction — check whether any cross is PLACED there first.** The fix, if the
+  hypothesis holds, is covering a junction explicitly; it is untested.
+  *(measured 2026-09-06 — scope-history 09-06)*
