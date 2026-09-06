@@ -279,6 +279,17 @@ Moved verbatim 2026-08-28 — no section was rewritten in the move.
 
 ## Measured negatives — built or proposed, then rejected. Do not rebuild.
 
+- **Splitting a region is not a way around a REGION-LEVEL floor.** Any rung
+  that decomposes a shape and re-runs the satin gates per piece must re-apply
+  `_floor_or` (Law 31's `PHOTO_MIN_SATIN_WIDTH_MM`) to each piece, or a
+  hairline that the region call correctly refused sews anyway. Caught
+  2026-09-05 on `classify_strokes`, which took `design_class` and forwarded it
+  only to the region call: five `meadow`/`sunset` regions of 0.42-0.55 mm read
+  `photo_width_floor -> stroke_ribbon`. The gates that are region properties
+  (width cap, aspect) are the ones a per-piece path may skip; the floors that
+  describe what a NEEDLE can sew are not. *(measured 2026-09-05 —
+  `tools/ribbon_stability.py --variant strokes`)*
+
 - **A per-stroke satin rung must be PROMOTION-ONLY — `region.satin OR
   per-stroke pass`, never a replacement.** Measured 2026-09-05 over 14
   fixtures at 80 mm: written as a replacement it demotes **15 regions that
