@@ -87,7 +87,7 @@ icon. Cloth pointers added to defects 3, 6 and 16 below.
     bind, and its region re-snap escapes the selected palette.** `is_photographic`
     gates the fix and is DECLARED, not detected — `owl_kent.jpg` reads LESS
     photographic than two logos, so a photograph left undeclared routes
-    gradient and the re-snap sews more spools than the cone list names.
+    gradient and the re-snap sews more spools than the cone list names. **Counted 2026-09-06** (`digitizer/tools/resnap_escape.py`): **34 cones added corpus-wide, 25 outside the selected palette, every escape on the GRADIENT lane** — screenshot 7, drone 5, bridge_bar 5, golden_tee 4, gaulke 3 — while all nine photo-class fixtures add none. The binding works; the lane real logo art routes to never got it.
     **UI HALF FIXED 2026-09-02 (Kent's call):** the reading row's "It's a
     photo" correction now sends `is_photographic` instead of
     `forced_class="photo_subject"`. It was answering the wrong question —
@@ -132,9 +132,7 @@ icon. Cloth pointers added to defects 3, 6 and 16 below.
     **4.40 → 6.44** on that commit, **7.18** today against a 3.5-layer ceiling
     — a `DENSITY_STACKED` **block** on a fixture that scored 64. Lane-wide:
     `photo_dof_meadow` 3.45 → 5.04, `same_hole_fraction` up **4–7x** — the
-    needle-breakage signal. **No off switch for photo classes**
-    (`effective_split_tonal` ORs flag with class). *(2026-09-02 — bisect on
-    `coverage_max`; [notes](docs/scorecard-baseline-attribution-2026-09-02.md))* **Numbers above are in the pre-2026-09-03 coverage base** (one 0.40 fill = 1.0); since the fill row moved to 0.15 the same stack reads 8.0 against a 9.33 block / 6.67 warn, i.e. a warn — the thread is unchanged, the ruler is in fill layers now (scope-history 2026-09-03).
+    needle-breakage signal. ~~No off switch for photo classes~~ — stale when written; it landed 2026-09-01 (PR #316), so **the other half is measured: the tier costs −22,352 st / −16.4% of the photo lane and with it OFF four of nine score HIGHER, none lower** (B 88, B 88, A 100, A 100), coverage_max falling wherever it moves. **A yardstick finding, not a flip** — nothing in the scorecard scores tonal gradation, and Kent ratified the tier (spec decision 2). Detail: `docs/scope/1-auto-digitizing-quality.md`. *(2026-09-06 — `digitizer/tools/tonal_split_ab.py`; 2026-09-02 bisect, [notes](docs/scorecard-baseline-attribution-2026-09-02.md))* **Numbers above are in the pre-2026-09-03 coverage base** (one 0.40 fill = 1.0); since the fill row moved to 0.15 the same stack reads 8.0 against a 9.33 block / 6.67 warn, i.e. a warn — the thread is unchanged, the ruler is in fill layers now (scope-history 2026-09-03).
 
 21. **Fill travel is laid OVER columns already sewn — FIXED, DEFAULT ON (Kent's flip
     2026-09-03)** (`cfg.fill_travel_under_cover`, PR #323): the column order prefers a next
