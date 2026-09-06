@@ -389,9 +389,9 @@ permission screenshots (audit §8).
 
 `-n auto` (pytest-xdist, pinned) roughly halved the digitizer suite. **Do not
 re-tune hoping for the 2.5-3x seen locally:** GitHub's standard runners are
-2-core, so `-n auto` gets two workers and OpenCV's threading competes with
-them. The remaining lever is `--durations`, not parallelism. Parallel-safety is
-verified, not assumed. *(measured 2026-08-14 — scope-history)*
+2-core, so `-n auto` gets two workers and OpenCV's threading competes with them. Parallel-safety is verified, not assumed.
+**`--durations` has now been run (2026-09-06), and the lever it named was a mirage:** its top five entries were one `lru_cache` bill split across workers — the suite does **20 real pipeline runs for 8 distinct cases**, because the cache is per-process and xdist is not — so deleting them saved **13s of a predicted 380**. The real win was caching the suites themselves, **18m38s → 14m00s** (#369). `--dist loadfile` measures **5.8%** at CI's own two workers (23m53s → 22m27s, 1889 passed both ways) but floors wall-clock at the slowest single FILE: an option with its trade named, not taken.
+*(measured 2026-08-14, 2026-09-06 — DOCTRINE, scope-history 09-06)*
 
 ### No physical sew-out testing has occurred yet
 

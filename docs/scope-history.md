@@ -6194,3 +6194,135 @@ off the photo route"*, and it had never picked up `worst_shape_area_mm2` /
 
 `tests/test_thread_match_better_spool.py` (11 tests, 1m55s, cached one
 digitize+preflight per fixture).
+
+## 2026-09-06 — `--durations` swept the suite, and the one target it named was a mirage
+
+MASTER_SCOPE's CI-speed entry has said since 2026-08-14 that *"the remaining
+lever is `--durations`, not parallelism."* Nobody had run it. Run now on the
+full digitizer suite, `-n auto`, 4-core box.
+
+**Everything at the top of the list that I did not write is inherently
+expensive, not wasteful** — recorded so nobody "optimises" it:
+
+| test | | why it costs what it costs |
+|---|---:|---|
+| `test_merge_adjacent_same_thread::…changes_no_pixels_on_the_owl` | 87.0s | the owl at 100 mm digitized **twice** under different configs, plus **two** PNG renders — the render equality IS the safety argument |
+| `test_merge_adjacent_same_thread::…no_longer_needs_the_merge` | 45.8s | a third owl digitize, a third distinct config |
+| `test_preflight::…full_bleed_design_does_not_report_its_own_border` | 59.2s | one design, one preflight |
+| `test_is_photographic::…brings_it_inside_max_colors` | 59.0s | the owl twice, declared vs not — the comparison IS the test |
+| `test_duplicate_cone_layers` (4 entries, ~108s) | | **already** `scope="module"`; the "setup" figures are two fixtures built once each, attributed to whichever test triggered them |
+
+The owl appears three times under three different configs, so there is nothing
+to share; `test_duplicate_cone_layers` was already doing the right thing and
+its setup line reads like waste only if you do not check the scope.
+
+**The only waste the sweep found was mine** — that day's four new thread suites
+re-running identical pipelines. Cached to one run per `(fixture, flag)`:
+19m52s → 8m03s across three files, whole suite **18m38s → 14m00s**.
+
+### And then the sweep named a target that was not there
+
+`test_off_is_byte_identical_to_the_shipped_engine` — one instance in
+`test_revalidate_small_shapes.py`, four parametrized in
+`test_bind_resnap_all_classes.py` — took the **top two slots in the whole
+suite** and four of the top six:
+
+```
+125.02s  test_revalidate_small_shapes.py::…off_is_byte_identical…
+122.06s  test_bind_resnap_all_classes.py::…[screenshot_phone_ui_golke.jpg]
+ 70.75s  test_bind_resnap_all_classes.py::…[photo_dof_meadow.png]
+ 62.26s  test_bind_resnap_all_classes.py::…[drone_render.png]
+```
+
+**Over 380 seconds**, with the fifth instance below the cut. Each runs the
+heaviest fixture through the pipeline twice — a default config against an
+explicit `False` — and I argued myself into dropping all five: the one-line
+`test_flag_defaults_off` beside them catches a flipped default too, so this
+read as six minutes of defence in depth.
+
+**Measured instead of assumed: 28 tests in 5m42s → 23 tests in 5m29s.
+Thirteen seconds.** A report attributing 380s to five tests overstated their
+removal by a factor of about thirty. The drop was reverted; the tests are
+still there.
+
+### Why, measured — and it is NOT what I first wrote down
+
+The first explanation I reached for was "first-caller cost transfers to the
+next asker": with an `lru_cache`, whoever triggers the run is billed for it,
+so deleting that test just moves the bill. True, and not the whole story.
+
+A pytest plugin that wraps `pipeline.run_stages` and dumps its calls per
+worker settles it. On `test_bind_resnap_all_classes.py`, 13 tests over **8
+distinct `(fixture, flag)` cases**:
+
+```
+gw0: 3 runs   gw1: 6 runs   gw2: 4 runs   gw3: 7 runs      = 20 runs
+```
+
+**Twenty pipeline runs for eight distinct cases.** `lru_cache` is
+**per-process**, and xdist puts tests in different processes:
+`screenshot_phone_ui_golke` at flag `False` was computed on **gw0, gw1 AND
+gw2**. The cache only ever helps *within* one worker, and which tests share a
+worker is xdist's scheduling decision, not the test author's.
+
+So a `--durations` line under a shared cache is **not a saving you can bank by
+deleting the test**. It is that test's share of a bill several workers are
+each paying anyway, and wall-clock is the slowest worker's queue — gw1's
+125.2s of pipeline time here, against a 221s run.
+
+**Rule: `--durations` before optimising a suite, and a run-count before
+believing `--durations`.** Three of the five things that looked slow were
+irreducible; the one real target was the file I had written that morning; and
+the biggest single number in the report was worth thirteen seconds.
+
+### Can the duplicated work be recovered? `--dist loadfile` — MEASURED TWICE, BOTH VOID
+
+If the cache only helps within a worker, putting every test of a FILE on one
+worker should recover it. **Two attempts at this measurement were thrown away,
+and the reason is the same both times: I was editing the worktree while the
+benchmark ran.**
+
+- **Attempt 1** (4 workers): 12m48s against a remembered 14m00s. Different
+  trees, and the accounted-for test counts do not reconcile — 1887 against a
+  collected 1888, from a baseline of 1877.
+- **Attempt 2** (2 workers, meant to be a frozen-tree pair): default 20m58s /
+  **1870 passed**, loadfile 21m29s / **1878 passed**. Between the two runs I
+  reset the branch onto a newly-merged `main`, which added another PR's 8 tests
+  to the tree. The loadfile half therefore ran MORE work in its 21m29s, so the
+  31-second gap is not a result in either direction.
+
+**Rule: a long benchmark and an active worktree cannot share a machine.** The
+run reads the tree at collection, so any edit between two runs of a pair
+silently re-bases the comparison — and the corruption shows up as a passed
+count that differs by exactly the tests you added, which is easy to skim past
+when the wall-clock numbers look plausible. Sequence it the other way: do the
+editing first, benchmark when the tree is quiet.
+
+### Attempt 3, on a frozen tree, at CI's worker count
+
+Both halves back-to-back with the worktree untouched — and the script recorded
+`HEAD` and `git status` before AND after, so the freeze is checkable rather
+than asserted (`ac92707`, clean, both times):
+
+| 2 workers | wall clock | |
+|---|---:|---|
+| default (`--dist load`, per test) | 23m53s | 1889 passed |
+| `--dist loadfile` | **22m27s** | 1889 passed |
+
+**86 seconds, 5.8%.** Identical pass counts and the same three known platform
+failures either way, so nothing changed but the scheduling.
+
+**Real, and modest.** On CI's 33–40 minute `digitizer` job that is roughly two
+minutes. Worth having, not worth contorting for — and it carries a risk this
+single measurement does not bound: **`loadfile` floors wall-clock at the
+slowest single FILE**, where the default can always split that file across
+workers. Today's suite has enough files to hide that; one big new file could
+change it. So this is recorded as a measured option with its trade named, not
+taken unilaterally: the change is one flag in
+`.github/workflows/python-package-conda.yml`.
+
+**Why the win is small, and why that was predictable from the run-count.** The
+duplication `loadfile` removes scales with worker count — at two workers a
+case can be recomputed at most twice, not the four times seen in the
+`gw0..gw3` dump above. The 4-worker impression was always going to overstate
+what CI could get.
