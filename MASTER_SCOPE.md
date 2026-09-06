@@ -414,6 +414,8 @@ question queues behind a corpus nobody has or a sew-out nobody has scheduled. A
 labelled corpus plus a scoring harness would let a classifier change be judged
 against *something* before either arrives.
 
+**Five measured cases where the harness disagrees with the sewn result:** [`docs/yardstick-disagreements-2026-09-06.md`](docs/yardstick-disagreements-2026-09-06.md) — phase 1's exit condition is a claim about disagreements and nothing was gathering them. Two are load-bearing: a 32.7 → 1.4 ΔE00 thread fix that moves no grade or block (the metric moves; the verdict does not), and four photo fixtures that score HIGHER with a ratified quality tier off. Append; do not curate. *(assembled 2026-09-06)*
+
 **Harness half: BUILT — `digitizer/tools/corpus_scorecard.py`.** `capture`/`diff`
 over 26 fixtures x 2, aggregating preflight's score. REPORTING, not a CI gate;
 detail: [area 1](docs/scope/1-auto-digitizing-quality.md). **The 2026-08-12
