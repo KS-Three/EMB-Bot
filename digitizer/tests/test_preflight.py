@@ -2247,9 +2247,21 @@ def test_photo_route_still_blocks_a_cone_swap_that_was_free():
 
 def test_non_photo_routes_keep_the_raw_yardstick_untouched():
     """Byte-identity guard, the #216 discipline: only the photo route is
-    rescored. On a flat design the same swapped fixture scores on raw
-    distance, and the excess fields stay None so nothing downstream can
-    mistake a raw finding for a rescored one."""
+    RESCORED. On a flat design the same swapped fixture is still judged on
+    raw distance.
+
+    **How that is asserted changed on 2026-09-06.** It used to be inferred
+    from `excess_delta_e` being None, with the stated reason *"nothing
+    downstream can mistake a raw finding for a rescored one"*. The excess is
+    now reported on every route — it describes the design's cone list, not
+    the scoring — so that inference would be wrong, and the payload states
+    the yardstick outright instead. The guarantee this test exists for is
+    unchanged and now checked directly.
+
+    This fixture is exactly the case the reporting change is for: the spools
+    are SWAPPED, so the other loaded cone is 39.4 dE00 closer and the old
+    message told the operator to go buy thread.
+    """
     result, img, _chart, _r, _b = _two_spool_photo_scene(assign_swapped=True)
     empty = StitchPlan(blocks=[], palette=[])
 
@@ -2257,9 +2269,10 @@ def test_non_photo_routes_keep_the_raw_yardstick_untouched():
     hit = [f for f in report["findings"] if f["code"] == THREAD_MATCH_POOR]
     assert hit
     for f in hit:
-        assert f["extra"]["excess_delta_e"] is None
-        assert f["extra"]["better_spool"] is None
-        assert "Pick a closer thread" in f["message"]
+        assert f["extra"]["yardstick"] == "raw"          # the real contract
+        assert f["extra"]["excess_delta_e"] > 0          # and now reported
+        assert f["extra"]["better_spool"] is not None
+        assert "already loaded for this design" in f["message"]
 
 
 def test_a_one_cone_photo_design_is_not_silenced_by_the_rescoring():

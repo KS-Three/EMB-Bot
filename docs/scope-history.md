@@ -6129,3 +6129,68 @@ split it costs one line of output and cannot be wrong.
 `tests/test_doc_claims.py` (11 tests, **0.04s** — it reads text and a
 dataclass, so nothing digitizes) pins all of it, including a regression guard
 that the two current-state docs still agree with the code.
+
+## 2026-09-06 — the check knew which cone to use and did not say
+
+`_thread_match_findings` computes the best already-loaded spool by calling
+`_best_loaded_spool_error`. It ran that search **only on the photo route**,
+because that route is also SCORED on excess over it (2026-08-24). Off that
+route the finding's remedy read *"Pick a closer thread or a different brand
+before sewing"* — **without ever looking at the design's own cone list.**
+
+All seven F-grade fixtures are `gradient`, which is where six of the seven
+real customer logos route. Counted there (`digitizer/tools/spool_remedy.py`),
+of **24 blocking findings, 5 name a spool the design ALREADY LOADS**:
+
+| fixture | thread | raw ΔE00 | already loaded | closer by |
+|---|---|---:|---|---:|
+| `logo_gaulke_roofing` | 3971 Silver | 63.6 | 1375 Dark Charcoal | **58.6** |
+| `screenshot_phone_ui_golke` | 0111 Whale | 33.0 | 0015 White | **32.4** |
+| `logo_bridge_bar` | 6156 Olive | 21.3 | 1375 Dark Charcoal | **10.3** |
+| `screenshot_phone_ui_golke` | 2776 Black Chrome | 17.3 | 1776 Blackberry | 5.0 |
+| `drone_render` | 0111 Whale | 12.8 | 0142 Sterling | 9.0 |
+
+**The top two are the headline numbers of the whole F-wall decomposition** —
+gaulke's 63.6 and screenshot's 33.0, quoted in DOCTRINE, MASTER_SCOPE 28 and
+the yardstick-disagreements list. Both are designs that already carry a far
+better cone. `gaulke_roofing` has **four cones**, and one of them is 58.6 ΔE00
+closer than the one the plan assigned.
+
+The other 19 genuinely need a cone the design does not carry, and still say
+so — the change is precise, not a blanket rewrite.
+
+### What did NOT change
+
+**No severity, no grade, nowhere.** Measured before and after over ten
+fixtures: every block count, warn count and grade identical; only
+`better_spool` moves, 0 → 5 across the gradient lane, with the photo control
+(`photo_dof_meadow`) unchanged at 1. `_score` still carries raw distance off
+the photo route, so the offender set, the `clearly` threshold and the grade
+are what they were.
+
+**Whether the gradient lane should be JUDGED on excess is still Kent's** — a
+logo's palette can be changed, a photograph's cannot (disagreement 4). This
+reports the fact; it does not score on it.
+
+### The contract this broke, and the better one that replaced it
+
+`test_preflight.test_non_photo_routes_keep_the_raw_yardstick_untouched` failed,
+and it was right to. It asserted *"the excess fields stay None so nothing
+downstream can mistake a raw finding for a rescored one"* — the **absence** of
+`excess_delta_e` was doing duty as the signal for which yardstick judged the
+finding. Reporting the excess everywhere destroys that signal.
+
+Relaxing the test would have thrown away a real guarantee. Instead the payload
+now carries **`yardstick: "excess" | "raw"`**, stating the fact outright, and
+the test asserts that directly — the guarantee is unchanged and now checked
+rather than inferred. Its own fixture turned out to be the case the change is
+for: the spools are SWAPPED, so the other loaded cone is 39.4 ΔE00 closer and
+the old message told the operator to buy thread.
+
+Two stale claims fixed in passing, both in the `extra:` header on
+`preflight.py:132`: it still said `excess_delta_e`/`better_spool` are *"None
+off the photo route"*, and it had never picked up `worst_shape_area_mm2` /
+`worst_shape_area_frac` from the same day's area change.
+
+`tests/test_thread_match_better_spool.py` (11 tests, 1m55s, cached one
+digitize+preflight per fixture).
