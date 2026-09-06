@@ -6533,3 +6533,57 @@ remains is the grade itself, which is still Kent's.
 `tests/test_raw_score_metric.py` (7 tests) re-derives `raw_score` from the
 findings rather than trusting the field, so the check and its test do not
 share an implementation.
+
+## 2026-09-06 — a checker built, a checker declined, and a first output that was wrong
+
+Two candidate extensions to `tools/doc_claims.py` were measured before either
+was built. One was worth it, one was not, and the one that was worth it
+reported six findings on its first run that were all false.
+
+### Declined: checking that doc-cited FILE PATHS exist
+
+Swept every backticked path in the five current-state docs and `docs/scope/*`:
+**373 distinct references, 0 genuinely stale.**
+
+Getting there took two corrections, both mine:
+
+- A first pass said **24 unresolved** — but it only tried the repo root and
+  `digitizer/`. Paths in these docs are written relative to the citing file
+  (`../scope-history.md`), to `digitizer/testdata/` (`photo/drone_render.png`)
+  and to `app/src/` (`lib/simulate.js`). Resolving properly: **9**.
+- Of those 9, **every one is deliberate**: `.playwright-mcp/*.png` is
+  gitignored scratch (`.gitignore` line 6), `stage6_scanline/meander/…` is
+  shorthand for four modules rather than a path, and `tools/bundle.mjs` and
+  `src/app.js` are both cited **inside sentences saying they were deleted**.
+
+So paths do not rot here — they are either right or intentionally historical.
+A checker would be a pure false-positive machine. **Not built.**
+
+### Built: checking documented per-file TEST COUNTS
+
+Counts are the opposite: they go stale every time someone adds a test, which
+is the whole difference. `check_test_counts` collects the suite ONCE
+(`pytest --collect-only`, not one subprocess per file — that turns a
+seconds-long checker into a half-minute one, which is how a checker stops
+being run) and compares.
+
+**The first cut was wrong, and the way it was wrong is the point.** Matching
+"the first number within 40 characters of the filename" reported **six drifts**
+in `docs/scope/1`, the worst `test_satin.py` at a documented 43 against 99
+collected. Reading the matches instead of the count: **all six were false.**
+None is a claim about the file's current size —
+
+    `tests/test_satin.py` **43/43**             pass/total at the time
+    `tests/test_textcluster.py` gains 6         a DELTA
+    `tests/test_pushcomp.py` together **46/46** combined across TWO files
+    `tests/test_border.py` (17 → 22 tests)      a before/after from a PR
+
+The shipped pattern therefore matches only unambiguous totals — a number in
+parens followed by `tests`, `)` or `,` — and ignores prose. Swept that way:
+**all three real count claims are in the current-state docs and all three are
+correct.** Six false alarms would have been noise, and
+`doc_claims`' own design note already says a checker that cries wolf on
+legitimate narrative is a checker nobody runs.
+
+`tests/test_doc_claims.py` grew 11 → 23 tests, four of which pin those exact
+four prose strings as **not** matched.

@@ -39,6 +39,8 @@ import dataclasses
 import importlib
 import pathlib
 import re
+import subprocess
+import sys
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 
@@ -74,6 +76,16 @@ MODULES = [
 ]
 
 _FLAG = re.compile(r"`(?:cfg|PipelineConfig)\.([a-z_0-9]+)`")
+# A documented test count, in the two shapes the docs actually use:
+#   `tests/test_x.py` (13)      `tests/test_x.py` (7 tests, 35s)
+#   (`tests/test_x.py`, 13)     `digitizer/tests/test_x.py` (11)
+# The number must sit in PARENS and be followed by `tests`, `)` or `,` — an
+# unanchored "first number within N characters" also matches "at 80 mm" and
+# a 4-digit date, which is how the first cut of this found phantom claims.
+_TESTS = re.compile(
+    r"`(?:digitizer/)?(tests/test_[a-z0-9_]+\.py)`[^`\n]{0,24}?"
+    r"\((\d{1,3})(?:\s+tests?)?[),]"
+    r"|\(`(?:digitizer/)?(tests/test_[a-z0-9_]+\.py)`,\s*(\d{1,3})\)")
 # `NAME = 0.4`, `NAME = 1e-6`, `NAME is 200` — the shapes the docs actually use.
 _CONST = re.compile(
     r"`?\b([A-Z][A-Z0-9_]{4,})\b`?\s*(?:=|is)\s*\*{0,2}"
@@ -161,6 +173,82 @@ def check_defaults(text: str, doc: str
     return problems, verified, unverifiable, seen
 
 
+def test_counts() -> dict[str, int]:
+    """One `pytest --collect-only` for the whole suite -> {relpath: count}.
+
+    ONE collection, not one per file: the docs name a dozen files and a
+    per-file subprocess each would turn a seconds-long checker into a
+    half-minute one, which is how a checker stops being run.
+
+    Returns {} when collection fails (a missing venv, an import error). The
+    caller reports that as unverifiable rather than as agreement — a checker
+    that goes quiet when its input is broken is the failure this whole tool
+    exists to stop.
+    """
+    try:
+        out = subprocess.run(
+            [sys.executable, "-m", "pytest", "-q", "--collect-only"],
+            capture_output=True, text=True, cwd=ROOT / "digitizer", timeout=300)
+    except Exception:                                   # pragma: no cover
+        return {}
+    counts: dict[str, int] = {}
+    for line in out.stdout.splitlines():
+        if line.startswith("tests/") and "::" in line:
+            counts[line.split("::", 1)[0]] = counts.get(
+                line.split("::", 1)[0], 0) + 1
+    return counts
+
+
+def check_test_counts(text: str, doc: str, counts: dict[str, int]
+                      ) -> tuple[list[str], int, list[str]]:
+    """Documented per-file test counts against a real collection.
+
+    These DRIFT, which is what makes them worth checking and is the whole
+    difference from file paths: a path the docs name is usually either right
+    or deliberately historical (`tools/bundle.mjs`, `src/app.js` — both cited
+    in sentences saying they were deleted), while a count goes stale every
+    time someone adds a test.
+
+    **WHY THE PATTERN IS NARROW, which is the load-bearing decision here.**
+    A first cut matched "the first number within 40 characters of the
+    filename" and reported SIX drifts in `docs/scope/1`, the worst
+    `test_satin.py` documented 43 against 99 collected. Every one was a false
+    positive, because none of those is a claim about the file's current size:
+
+        `tests/test_satin.py` **43/43**             pass/total at the time
+        `tests/test_textcluster.py` gains 6         a DELTA
+        `tests/test_pushcomp.py` together **46/46** combined across TWO files
+        `tests/test_border.py` (17 -> 22 tests)     a before/after from a PR
+
+    So this matches only the unambiguous total forms — a number in parens,
+    followed by `tests`, `)` or `,` — and deliberately ignores prose. Swept
+    2026-09-06 that way: **all three real count claims, every one of them in
+    the current-state docs, are correct.** A checker that flagged the other
+    six would have been noise, and noise is how a checker stops being run.
+    """
+    problems: list[str] = []
+    unverifiable: list[str] = []
+    agreed = 0
+    for a, b, c, d in _TESTS.findall(text):
+        rel, claimed = (a, b) if a else (c, d)
+        if not counts:
+            unverifiable.append(
+                f"{doc}: {rel} claims {claimed} tests — collection "
+                f"unavailable, so nothing was checked")
+            continue
+        real = counts.get(rel)
+        if real is None:
+            unverifiable.append(
+                f"{doc}: {rel} claims {claimed} tests but collects nothing "
+                f"(renamed, moved, or not collected here)")
+        elif real != int(claimed):
+            problems.append(
+                f"{doc}: {rel} documented as {claimed} tests, collects {real}")
+        else:
+            agreed += 1
+    return problems, agreed, unverifiable
+
+
 def check_constants(text: str, doc: str, mods: dict
                     ) -> tuple[list[str], int, set[str]]:
     """Returns (disagreements, agreements, distinct constant names touched).
@@ -193,11 +281,15 @@ def check_constants(text: str, doc: str, mods: dict
 
 def main() -> int:
     mods = _modules()
+    counts = test_counts()
+    if not counts:
+        print("  (test collection unavailable — no count was checked)")
     hard: list[str] = []
     soft: list[str] = []
     unchecked: list[str] = []
     agreed = 0
     flags_ok = 0
+    tests_ok = 0
     flag_names: set[str] = set()
     const_names: set[str] = set()
     for doc in STRICT + ADVISORY:
@@ -208,7 +300,11 @@ def main() -> int:
         text = path.read_text(encoding="utf-8")
         found, n_flags, cannot, flags = check_defaults(text, doc)
         const_problems, n, consts = check_constants(text, doc, mods)
-        found += const_problems
+        test_problems, n_tests, test_cannot = check_test_counts(
+            text, doc, counts)
+        found += const_problems + test_problems
+        cannot += test_cannot
+        tests_ok += n_tests
         agreed += n
         flags_ok += n_flags
         unchecked += cannot
@@ -231,6 +327,7 @@ def main() -> int:
           f"{len(flag_names)} distinct flag(s)")
     print(f"{agreed} constant check(s) agree, over "
           f"{len(const_names)} distinct name(s)")
+    print(f"{tests_ok} documented test count(s) match a real collection")
     if unchecked:
         print(f"\n{len(unchecked)} claim(s) this checker CANNOT settle "
               f"(not a defect — it just did not check them):")
