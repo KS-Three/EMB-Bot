@@ -276,7 +276,9 @@ its own merits.
    `test/run-fonts.test.js:44`). Full per-font diagnosis: area 2 doc,
    "stripRunParamsIfSatin". **Still open, one grep not a session:** count
    `running_stitch_length_mm` in `<ink-stitch>/src/roaring_twenties_KOR/
-   ltr.svg`. **>0** → the narrow fix (scope the strip to glyphs WITH columns)
+   ltr.svg`. **It has to be a LOCAL session** — that path is inside
+   `scratch_ink/`, which is gitignored and absent from a cloud checkout
+   (confirmed 2026-09-06), the same way item 6 blocks the corpus legs. **>0** → the narrow fix (scope the strip to glyphs WITH columns)
    revives the 20 — Kent's call, since inking those glyphs changes the bbox
    auto-scaling of any text containing `+ - / < = > \ _ ¯ °`. **0** → all 26
    are the same gate-1 case and this closes permanently.
