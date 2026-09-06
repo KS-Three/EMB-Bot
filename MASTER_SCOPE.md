@@ -276,7 +276,9 @@ its own merits.
    `test/run-fonts.test.js:44`). Full per-font diagnosis: area 2 doc,
    "stripRunParamsIfSatin". **Still open, one grep not a session:** count
    `running_stitch_length_mm` in `<ink-stitch>/src/roaring_twenties_KOR/
-   ltr.svg`. **>0** → the narrow fix (scope the strip to glyphs WITH columns)
+   ltr.svg`. **It has to be a LOCAL session** — that path is inside
+   `scratch_ink/`, which is gitignored and absent from a cloud checkout
+   (confirmed 2026-09-06), the same way item 6 blocks the corpus legs. **>0** → the narrow fix (scope the strip to glyphs WITH columns)
    revives the 20 — Kent's call, since inking those glyphs changes the bbox
    auto-scaling of any text containing `+ - / < = > \ _ ¯ °`. **0** → all 26
    are the same gate-1 case and this closes permanently.
@@ -411,6 +413,8 @@ see DOCTRINE, "Raising `SATIN_MAX_WIDTH_MM`". *(2026-09-02 — reverted branch)*
 question queues behind a corpus nobody has or a sew-out nobody has scheduled. A
 labelled corpus plus a scoring harness would let a classifier change be judged
 against *something* before either arrives.
+
+**Five measured cases where the harness disagrees with the sewn result:** [`docs/yardstick-disagreements-2026-09-06.md`](docs/yardstick-disagreements-2026-09-06.md) — phase 1's exit condition is a claim about disagreements and nothing was gathering them. Two are load-bearing: a 32.7 → 1.4 ΔE00 thread fix that moves no grade or block (the metric moves; the verdict does not), and four photo fixtures that score HIGHER with a ratified quality tier off. Append; do not curate. *(assembled 2026-09-06)*
 
 **Harness half: BUILT — `digitizer/tools/corpus_scorecard.py`.** `capture`/`diff`
 over 26 fixtures x 2, aggregating preflight's score. REPORTING, not a CI gate;
