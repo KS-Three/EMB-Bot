@@ -8038,6 +8038,59 @@ its way out costs three real contracts, and that is not a trade worth making.
 **A test suite that fails a change on its own merits, and turns out to be
 right, is worth more than the change was.**
 
+### And a screenshot that looked like a catastrophe, measured, and was not
+
+The download step on `logo_gaulke_roofing.png` rendered near-white and grey —
+"Snow White / Silver Grey / Silver Grey" in the thread list. Read against
+MASTER_SCOPE defect 27, which says that fixture goes **F 0 → C 64** with
+`dissolve_phantom_blends` and its worst thread error **63.6 → 6.8 ΔE00**, it
+looked like a customer being handed halo greys instead of their logo's ink.
+
+**Measured, at both `max_colors` 6 and 12:**
+
+| | grade | cones | blocking `THREAD_MATCH_POOR` | worst ΔE00 |
+|---|---|---:|---:|---:|
+| flag OFF | **B 76** | 4 | **0** | **0.0** |
+| flag ON | B 76 | 3 | 0 | 0.0 |
+
+**No catastrophe.** What `dissolve_phantom_blends` buys on gaulke today is
+**4 cones → 3 and −14.5% stitches**, with no grade change and no thread-match
+change.
+
+**And PR #380 got to the other half first, and deeper.** It landed on `main`
+while this was being written and RETRACTS the C 64 outright: measured on the
+cones rather than the grade, that "improvement" is a design that **dropped its
+lettering** — gaulke is black text on a white label, `off` loads `1375 Dark
+Charcoal`, and the flag leaves `0015`/`4071`/`0145`, nothing dark enough to be
+the text. The grade rewarded losing the ink. **That is the finding; this
+entry's contribution is the narrower half** — that the *"F 0"* baseline is
+stale too, now **B 76 with zero blocking `THREAD_MATCH_POOR`** at both
+`max_colors` 6 and 12.
+
+The two agree independently: the run here shows the flag-ON cones as exactly
+`0015`/`0145`/`4071` and `1375 Dark Charcoal` dropped, which is the cone-level
+evidence #380 reasoned from. **Both halves of "F 0 → C 64" are now unusable at
+a flag decision**, for different reasons, and Kent's 2026-09-04 *"leave it OFF
+and bank it"* stands more firmly for both.
+
+**Read this as a footgun-8 case.** The finding existed on a lane this session
+could not see, and the fetch at merge time is what surfaced it — after the
+work was done twice.
+
+**Third hypothesis of mine killed by a measurement I ran to test it**, after
+the palette tool's two overstatements. The screenshot was right that something
+looked odd and wrong about what it was.
+
+### An instrument limit found the same way
+
+`tools/thread_color_render.py` answered *"the flag changes no cone here —
+nothing to draw"* for that fixture, because it diffs cones PER SHAPE and
+`dissolve_phantom_blends` changes the region SET, so the ids do not line up.
+**That is a limit of the renderer, not evidence the flag does nothing** — and
+reading it as the latter is exactly the mistake the numbers above corrected.
+Noted here because the renderer now A/Bs any flag, so the next person will
+point it at one that reshapes regions and get the same empty answer.
+
 ### What is still not saleable
 
 The grade. Seven of 26 fixtures read F 0 and twelve of 52 design/garment

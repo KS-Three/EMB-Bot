@@ -149,7 +149,16 @@ wants your eye on `docs/renders/color-cap-2026-09-07/` first.
 leave it OFF and bank it** — deliberately parked, not pending. A datum arrived
 2026-09-06 (on `gaulke_roofing` the flag alone is **F 0 → C 64**, blocks 3 → 0,
 worst ΔE 63.6 → 6.8, −15% stitches) and MASTER_SCOPE records it as exactly
-that: *"Not a re-opening, a datum."* His stated reasons on the day — two mild
+that: *"Not a re-opening, a datum."*
+
+**That datum is GONE — twice over.** PR #380 retracted the C 64 itself (measured on the cones, it is a design that DROPPED ITS LETTERING; the grade rewarded losing the ink), and re-measured 2026-09-07 the other half has moved too. `gaulke_roofing` grades
+**B 76 with the flag OFF**, zero blocking `THREAD_MATCH_POOR`, worst ΔE00
+**0.0**, at both `max_colors` 6 and 12. The flag now buys **4 cones → 3 and
+−14.5% stitches** there, with no grade and no thread-match change — so the
+one thing that might have re-opened the 2026-09-04 ruling no longer says
+what it said. **His ruling stands more firmly, not less.** The cause of the
+drift is not attributed: defect 28's enclosed-background exclusion accounts
+for F 0 → F 4, not for the rest. His stated reasons on the day — two mild
 negatives and the five-of-six residual — are unchanged.
 
 ## Not decidable yet, and why
