@@ -793,6 +793,32 @@ its hedge as it is copied forward** — is why this file is split.
   the expensive kind. **Do not quote "free" without the gap.** The saving is
   one machine stop; the cost is a reorder.
 
+- **CI's `digitizer` job runs 10 to 42 minutes, not the 12–18 every doc said —
+  and the cause is NOT concurrency.** Measured 2026-09-06 from the Actions API
+  over the last 220 completed jobs. The daily median walked 15.0 → 16.5 → 17.6
+  → 18.7 → 20.7 and jumped to **29.6** on 2026-09-06 (max 41.8); the old figure
+  was true when written (medians 15.0–15.2 on 2026-08-27/28) and now holds for
+  half the jobs. Three things are settled and one is not:
+  - **All of it is in the test step.** `Install` measures 0.27 min on fast and
+    slow runs alike, Tesseract 0.20/0.17; `Digitizer tests` is 14.3 against
+    32.4. Not caching, not dependency install.
+  - **Concurrency is refuted, not merely doubted.** Bucketing every job by how
+    many other `digitizer` jobs overlapped it: the **41.8-minute worst case ran
+    with ZERO**, and the most-contended bucket (2+) tops out at 19.8 min. The
+    obvious hypothesis is backwards.
+  - **Suite growth cannot carry it either.** The SAME test count lands
+    19.6–34.5 min (1,851 tests) and 17.9–33.7 (1,968) — a **1.9× spread on
+    identical work** — with seconds-per-test at 0.54–1.32.
+  - **What is left is the runner, and nothing recorded which one we drew.** The
+    job now echoes `nproc` before pytest for exactly that reason. Until a log
+    settles it, do not attribute a slow job to a cause; the three above are
+    already eliminated.
+
+  **Practical consequence: budget half an hour and read a 35-minute job as
+  normal rather than stuck.** This does not weaken item 7's rule — three green
+  checks is still not a green PR — it makes the wait longer than the rule
+  implied, so the temptation to merge early is stronger, not weaker.
+
   Re-confirmed by re-running with the flag rather than trusting the record:
   `cfg.bind_resnap_all_classes` takes `screenshot_phone_ui` from **17 blocks to
   11 with the duplicate gone**, and leaves `region_blobs` at 16 with its
