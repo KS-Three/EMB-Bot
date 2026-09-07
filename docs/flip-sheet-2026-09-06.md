@@ -66,13 +66,19 @@ improvement. This is the metric actively *preferring* a regression.
 2. **My own corpus check missed it, and I can say exactly how.** The 09-04 A/B
    recorded gaulke as *"a second clear win (blocks 4→3, trims 30→18)"* — both
    true, both machine units. I checked what the flag *cost* and never checked
-   **which cones survived**. The halo instrument I built cannot catch this
-   either: it asks whether a band's colour is an interpolation of its two
-   sides, and **anti-aliased black text on white at 3 px/mm is exactly that** —
-   it sits on the black→white line for the same reason ringing does. The
-   `test_a_thin_TEAL_band_survives` guard only covers a band whose colour is
-   *off* the line. There is no guard for a band that is genuinely on it and
-   genuinely artwork.
+   **which cones survived**.
+
+**The OUTCOME is verified; the MECHANISM offered for it is NOT, and the probe
+argues against it.** Re-measured on `main` at `258f8e1` (a different main from
+the sheet's `8c7edf7`, so the outcome holds twice): OFF sews `1375 Dark
+Charcoal` (L* 15.9, 288 st) and ON sews nothing below `0145 Skylight`
+(L* 85.7). But the first explanation — that `_blend_ramp` mistakes
+anti-aliased black text for ringing — does not survive instrumenting the pass.
+At gaulke's 16 px/mm the fold takes **9 labels, every one 0.4-0.6 mm²**, while
+every lettering label (L* 28-47, the largest 21 mm²) survives stage 2, and
+`result.palette` carries `0020 Black` in BOTH arms. **The dark cone is lost
+between stage 2 and the sewn block list, not by the fold.** Where, is open.
+Do not repeat the anti-aliasing story as fact until someone finds it.
 
 ## Per flag
 
@@ -99,9 +105,9 @@ and worth seeing before it becomes a default.
 
 **`dissolve_phantom_blends`** — the one I would now hold. Its corpus numbers
 are the best in the table (−76 trims, bridge_bar 125 → 62) and its gaulke
-result is a regression the grade calls a win. The fix is not a threshold: the
-pass needs a reason to spare a band whose two sides are ink-and-page when the
-band is *lettering*, and the current test cannot express that.
+result is a regression the grade calls a win. What the fix IS remains open —
+the fold itself is not doing it (retraction above), so the next step is
+finding where between stage 2 and the block list gaulke's dark cone goes.
 
 ## Interaction — `all` is not the sum of the parts
 
@@ -122,8 +128,10 @@ existed to establish. `summit_badge`, `becker_marine_logo` and
 Flip `satin_patch_junctions`, `bind_resnap_all_classes` and
 `revalidate_small_shapes` — small, structural, and none of them depends on a
 grade to justify it. Take `satin_per_stroke` with the chrome trim cost stated.
-**Hold `dissolve_phantom_blends`** until the lettering case has a guard, and
-strike its gaulke grade from the record either way.
+**Hold `dissolve_phantom_blends`** — not for the reason first given (that
+guess is retracted above) but because the outcome is real and unexplained:
+something between stage 2 and the block list drops gaulke's dark cone when
+this flag is on. Strike its gaulke grade from the record either way.
 
 All of it is Kent's call. `docs/renders/flip-sheet-2026-09-06/` has off-vs-all
 sheets for gaulke, bridge_bar, chrome_specular and becker, plus the

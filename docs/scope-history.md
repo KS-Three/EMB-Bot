@@ -7100,12 +7100,17 @@ yardstick-disagreements row 7, and it is a different shape from rows 1–6 —
 those are the metric failing to see an improvement, this is the metric
 preferring a regression.
 
-**The blind spot is the dissolve's own, and it is nameable.** Anti-aliased
-black text on white at 3 px/mm sits on the black→white Lab line for exactly
-the reason ringing does, so `_blend_ramp` cannot separate them.
-`tests/test_phantom_blend_photo.py`'s teal guard covers only a band whose
-colour is OFF the line; there is no guard for a band that is genuinely on it
-and genuinely artwork. **And the 09-04 corpus check could not have caught it:**
+**The blind spot was named too fast, and the name is RETRACTED the same day.**
+The first account — anti-aliased black text sits on the black→white Lab line
+for the reason ringing does, so `_blend_ramp` cannot separate them — does not
+survive instrumenting the pass. At gaulke's 16 px/mm the fold takes **9
+labels, all 0.4-0.6 mm²**, every lettering label (L* 28-47, largest 21 mm²)
+survives stage 2, and `result.palette` carries `0020 Black` in BOTH arms. The
+OUTCOME re-measured on a second main (`258f8e1`) and holds; the dark cone is
+lost **between stage 2 and the sewn block list, not by the fold**, and where
+is open. Two hours after writing a note about one claim living in three files,
+the same session put an unverified mechanism in four. **And the 09-04 corpus
+check could not have caught the outcome either:**
 it recorded gaulke as "a second clear win (blocks 4→3, trims 30→18)" — both
 true, both machine units — because it asked what the flag COST and never asked
 which cones survived. Check the cone list, not only the totals.

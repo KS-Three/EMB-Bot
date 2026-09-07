@@ -39,11 +39,14 @@ generally". It is not, and the flip sheet found the counter-example
 black lettering on a white label — this pass removes the design's only dark
 cone: `off` loads `1375 Dark Charcoal` (L* 15.9, 288 st) and ON leaves nothing
 below `0145 Skylight` (L* 85.7), i.e. lettering you would not see on a white
-ground. **Anti-aliased black text on white at 3 px/mm sits on the black→white
-Lab line for exactly the reason ringing does**, so `_blend_ramp` cannot tell
-them apart. The teal case below guards only a band whose colour is OFF that
-line; there is no guard yet for one genuinely on it and genuinely artwork,
-and that is the open work before this flag can be flipped.
+ground. Verified on two different mains.
+
+**The mechanism first offered for that — "anti-aliased text reads as ringing"
+— is RETRACTED.** Instrumenting the pass on that fixture (16 px/mm) shows it
+folds 9 labels, all 0.4-0.6 mm², while every lettering label (L* 28-47, the
+largest 21 mm²) survives stage 2 and `result.palette` carries `0020 Black` in
+BOTH arms. The dark cone is lost somewhere between stage 2 and the sewn block
+list. Finding where is the open work before this flag can be flipped.
 
 DEFAULT OFF, and that is a RULING rather than a holding position. It moves
 the region set on every gradient-class design, so it went to Kent as a picture
