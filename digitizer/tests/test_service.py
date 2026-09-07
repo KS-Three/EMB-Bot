@@ -298,6 +298,74 @@ def test_export_reports_the_size_the_file_will_sew(client):
     assert float(r.headers["x-design-height-mm"]) == pytest.approx(design["heightMM"], abs=0.05)
 
 
+def test_export_bytes_read_back_at_the_size_the_app_promised(client):
+    """The headers are not the file. Decode what a customer actually gets.
+
+    The test above pins `x-design-width-mm` against `design.widthMM` — two
+    numbers the service computes, which agree whether or not the BYTES do.
+    This decodes the response with pystitch, the third-party reader CI
+    cross-validates against, and asserts the file sews the size the app put
+    on screen.
+
+    It matters more than it did. Until 2026-09-07 Studio's `/export`
+    preference never fired for a real project — `isPurelyDigitized` required
+    EVERY element to be `digitized` and every project carries an empty text
+    placeholder — so essentially every customer DST came from the browser
+    codec instead, which is transposed: a design the app called 81x16 mm read
+    back **16.3 x 80.5 mm with 0 colour changes and 10 SEQUIN_EJECTs**
+    (CLAUDE.md footgun 1; MASTER_SCOPE "DST codec axis bug"). Fixing that gate
+    routed every customer onto this endpoint, so this is now the path the
+    machine actually reads and nothing checked its output end to end.
+
+    `tests/test_adapter.py` pins the same invariant one layer down on a
+    hand-built plan; this one runs a real digitize through the real endpoint,
+    which is where an integration mistake would live instead.
+    """
+    payload = _digitize(client, {"target_width_mm": 80.0})
+    design = payload["design"]
+    w_mm, h_mm = design["widthMM"], design["heightMM"]
+    # The fixture is a wide logo; a transpose is only detectable if the design
+    # is not square, so refuse to pass vacuously.
+    assert w_mm > h_mm * 1.5, f"fixture is not clearly wide ({w_mm}x{h_mm}) — this test would not see a transpose"
+
+    # Format-specific readers: `pystitch.read` dispatches on a FILENAME and
+    # cannot take a stream.
+    readers = {"dst": pystitch.read_dst, "pes": pystitch.read_pes, "exp": pystitch.read_exp}
+    for fmt, reader in readers.items():
+        r = client.post("/export", json={"design": design, "format": fmt})
+        assert r.status_code == 200, fmt
+        pattern = reader(io.BytesIO(r.content))
+        sewn = [(s[0], s[1]) for s in pattern.stitches if s[2] == pystitch.STITCH]
+        assert sewn, f"{fmt}: no stitches survived the round trip"
+        got_w = (max(x for x, _ in sewn) - min(x for x, _ in sewn)) / 10.0
+        got_h = (max(y for _, y in sewn) - min(y for _, y in sewn)) / 10.0
+        # Wider than tall, the whole way — the transpose's own signature.
+        assert got_w > got_h, f"{fmt}: reads {got_w:.1f}x{got_h:.1f} mm, TRANSPOSED"
+        assert got_w == pytest.approx(w_mm, abs=1.0), f"{fmt}: width {got_w:.1f} vs promised {w_mm:.1f}"
+        assert got_h == pytest.approx(h_mm, abs=1.0), f"{fmt}: height {got_h:.1f} vs promised {h_mm:.1f}"
+
+
+def test_export_keeps_the_colour_change_a_two_colour_design_needs(client):
+    """A colour stop the machine does not see is a job that sews in one thread.
+
+    The browser codec writes DST's colour-change byte as `0x43` not `0xC3`;
+    pystitch reads that as a SEQUIN toggle, so a two-colour design decodes
+    with ZERO colour changes and, measured 2026-09-07, `1 SEQUIN_MODE + 10
+    SEQUIN_EJECT` instead. This endpoint must not do that.
+    """
+    design = _digitize(client, {"target_width_mm": 80.0})["design"]
+    assert len(design["colors"]) >= 2, "fixture needs 2+ colours to have a stop at all"
+    expected = len(design["colors"]) - 1
+
+    for fmt, reader in (("dst", pystitch.read_dst), ("pes", pystitch.read_pes)):
+        r = client.post("/export", json={"design": design, "format": fmt})
+        pattern = reader(io.BytesIO(r.content))
+        changes = sum(1 for s in pattern.stitches if s[2] == pystitch.COLOR_CHANGE)
+        assert changes == expected, f"{fmt}: {changes} colour changes, expected {expected}"
+        assert not any(s[2] == pystitch.SEQUIN_EJECT for s in pattern.stitches), \
+            f"{fmt}: a colour stop decoded as a sequin eject"
+
+
 def test_export_accepts_a_hand_built_design(client):
     """Lettering and imported designs come from the browser, not from here."""
     design = {

@@ -283,11 +283,25 @@ These are the ones that cost real time here.
   `PipelineConfig`'s 70 dataclass fields:
   `.venv/bin/python -c "from dataclasses import fields; from digitizer_core.config import PipelineConfig; print(sorted(f.name for f in fields(PipelineConfig)))"`
 
-- **`app/scripts/ensure-digitizer.mjs` is Windows-only.** It looks for
-  `.venv/Scripts/python.exe` and, on Linux, just warns
-  `digitizer venv not found (…Scripts/python.exe)` and exits 0. So
-  `npm run dev` **never** auto-starts the digitizer here — start it yourself.
-  (The e2e specs handle both layouts; only this predev hook doesn't.)
+- **`npm run dev` DOES auto-start the digitizer here — do not start a second
+  one.** This entry said the opposite until 2026-09-07, and the opposite was
+  true until 2026-08-26: `app/scripts/ensure-digitizer.mjs` checked only
+  `.venv/Scripts/python.exe`, the Windows layout, and declined on Linux. It
+  checks **both** now (`Scripts/python.exe` and `bin/python`), probes
+  `/health` first so an already-running service is a no-op, and spawns
+  detached so Vite exiting does not kill it.
+
+  **The stale advice costs a session real time, and did in the one that fixed
+  this line**: follow it and you start a duplicate that dies on
+  `[Errno 98] address already in use` — and, worse, you then read the OLD
+  process's output and think your change did not apply. Check
+  `curl -s localhost:8721/health` before starting anything.
+
+  Only when no venv exists at either path does it warn and fall through to
+  the browser lane. The fix's own comment records why it mattered: without
+  it each e2e spec bootstrapped its own service, which is racy under two
+  workers and reads as a flaky suite — 2–3 digitize-* specs failing together
+  while each passes alone.
 
 - **A green `npx playwright test` can be a smaller run than you think.** The
   digitize specs `test.skip` when the service is down. 13 tests pass with it
@@ -302,6 +316,21 @@ These are the ones that cost real time here.
   Vite, so killing the wrapper leaves the port bound and the next run dies on
   `EADDRINUSE`. The driver spawns `detached: true` and kills the whole process
   group. By hand: `lsof -ti:5173 -sTCP:LISTEN | xargs -r kill`.
+
+- **Do not run the 18-minute digitizer suite against a tree you are still
+  editing.** Same family as the polling rule below — reading a moving target —
+  but the target is the working tree, and the failure looks like a REGRESSION
+  rather than a flake. On 2026-09-07 a full run came back `4 failed` against
+  the three expected platform reds; the fourth was `test_scope_budget`, which
+  reads `MASTER_SCOPE.md` off disk and happened to execute while that file was
+  mid-merge-resolution. Both the working tree and the committed tree were at
+  exactly 800 and the test passed on its own a minute later.
+
+  A fourth failure is the documented tripwire for a real regression
+  (CLAUDE.md footgun 7), so this wastes exactly the attention that tripwire is
+  for. Either start the run and stop touching the repo, or run it from a clean
+  worktree — and when a doc-reading test is the odd one out, re-run that test
+  alone before believing it.
 
 - **Never read a value after a fixed `sleep` — poll until it STOPS changing.**
   The upload gotcha above says this for the stitch caption; it is the general
