@@ -10103,3 +10103,37 @@ thread-brand chunk failing costs nothing** (the design still builds — 1,336
 stitches, no message, because the chunk only feeds the picker), and a failed
 manifest degrades the same way a failed binary does rather than blanking the
 page.
+
+### A same-hole baseline for the LETTERING lane, and the alarm it isn't (2026-09-07)
+
+The `SAME_HOLE_HEAVY` instrument has only ever been run on the digitizer lane.
+Measured here for the browser lettering lane for the first time — 83 shipped
+fonts, "Fritsch 2026" auto-fit on left_chest, penetrations quantised to 0.3 mm
+cells:
+
+| | median | p90 | max |
+|---|---:|---:|---:|
+| `max_strikes` | 6 | 9 | **24** (allegria20) |
+| `points_3plus` | 56 | 295 | 2,285 |
+
+**This is not a defect finding, and the first version of it nearly was.** Two
+things stopped it:
+
+1. **The first instrument was the wrong one.** Consecutive-stitch distance
+   gave "34.6% same-hole, 72 of 166 designs over 5%" — a raw ratio, which
+   DOCTRINE's 2026-09-06 ruling says moves when the mix moves and is ROADMAP
+   gate 4 in miniature. The density-invariant half is strikes at a point, and
+   that is what the table above reports.
+2. **The shape is bean stitch, by design.** `LETTERING_GUARDS.BEAN_PASSES` is
+   3, and `allegria20` — the 24 — reports `columns: 0`, `nSatin: 0`,
+   `nFill: 0`: it is all running stitch, sewn three times over. Its
+   `points_3plus` equals its `points_2plus` exactly (165 = 165), which is the
+   bean signature: every repeated point is struck three times, never twice.
+
+And the numbers sit in the same range as the digitizer's own accepted fixtures
+(`max_strikes` 4, 8, 8, 9 in the 2026-09-06 A/B). Whether 24 is too many for
+one needle is a **sew-out question — ROADMAP gate 1** — not something a
+measurement here can settle.
+
+Recorded so the next person who measures 34.6% and reaches for the alarm finds
+this first.
