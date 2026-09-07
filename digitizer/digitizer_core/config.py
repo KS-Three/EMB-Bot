@@ -1213,7 +1213,11 @@ class PipelineConfig:
     satin: bool = True
     satin_max_width_mm: float | None = None
 
-    # Per-stroke satin routing, DEFAULT OFF (2026-09-06). `classify_ribbon`
+    # Per-stroke satin routing. **FLIPPED ON — Kent's ruling 2026-09-07**, as
+    # part of the `rec4_mask` set (see `resnap_mask_matches_grader`). Its own
+    # cost is real and concentrated: `photo_chrome_specular` 84 -> 116 trims,
+    # bought against that fixture's own grade C 64 -> B 76. Was DEFAULT OFF
+    # 2026-09-06. `classify_ribbon`
     # pools the distance transform over a whole region's skeleton, so a
     # branchy letterform — wide at its junctions, thin along its arms — fails
     # the `2 sigma < mu` regularity gate as a unit even when every arm of it
@@ -1244,7 +1248,7 @@ class PipelineConfig:
     #
     # **Flipping it ON is Kent's call.** The render is at
     # docs/renders/satin-per-stroke-2026-09-06/.
-    satin_per_stroke: bool = False
+    satin_per_stroke: bool = True
 
     # Sew what the satin tier missed. Crosses are placed along a spine,
     # perpendicular to one arm, sized by a ray that measures THAT arm's width
@@ -1261,10 +1265,18 @@ class PipelineConfig:
     # It does NOT adjust any cross: four cross-length knobs were measured
     # against this hole and none of them reached it (DOCTRINE 2026-09-06).
     #
-    # DEFAULT OFF and byte-identical off. Flipping it is Kent's — it puts
-    # tatami sheen inside a satin letter, which is a look question a render
-    # answers and a number does not.
-    satin_patch_junctions: bool = False
+    # **FLIPPED ON — Kent's ruling 2026-09-07**, as the `rec4_mask` set:
+    # this flag plus `bind_resnap_all_classes`, `revalidate_small_shapes`,
+    # `satin_per_stroke` and `resnap_mask_matches_grader`, measured together
+    # as one arm of `tools/flip_sheet.py` rather than inferred from five
+    # rows: 11 of 26 fixtures move, -2,965 stitches, -22 blocks, -21 cones,
+    # FIVE grades up and NONE down. `docs/flip-sheet-2026-09-06.md` carries
+    # the arm table and the per-flag costs.
+    # Its own cost, named rather than netted: becker +383 stitches for the K's
+    # crotch — the 37.2 mm² of bare cloth that is the whole reason that fixture
+    # graded B. It puts tatami sheen inside a satin letter; Kent has seen that
+    # trade and taken it.
+    satin_patch_junctions: bool = True
 
     # Let stage 4's thread re-validation reach the shapes preflight condemns.
     # `stage4_vectorize.revalidate_threads` re-snaps a thread that drifted off
@@ -1282,12 +1294,18 @@ class PipelineConfig:
     # THREAD_MATCH_POOR grades F, refusals are 0/0/0/4/7 against
     # `logo_bridge_bar` 63 and `screenshot_phone_ui` 12.
     #
-    # DEFAULT OFF and byte-identical off. The estimator does not need the
-    # extra pixels (a median over 50 per-pixel dE00 is sound, and
-    # THREAD_REVALIDATE_MIN_IMPROVEMENT_DE00 is the real churn guard) — the
-    # 200 was protecting goldens, so moving it is a scorecard recapture, and
-    # that is Kent's call rather than a silent default change.
-    revalidate_small_shapes: bool = False
+    # **FLIPPED ON — Kent's ruling 2026-09-07**, as the `rec4_mask` set:
+    # this flag plus `bind_resnap_all_classes`, `revalidate_small_shapes`,
+    # `satin_per_stroke` and `resnap_mask_matches_grader`, measured together
+    # as one arm of `tools/flip_sheet.py` rather than inferred from five
+    # rows: 11 of 26 fixtures move, -2,965 stitches, -22 blocks, -21 cones,
+    # FIVE grades up and NONE down. `docs/flip-sheet-2026-09-06.md` carries
+    # the arm table and the per-flag costs.
+    # The estimator does not need the extra pixels (a median over 50 per-pixel
+    # dE00 is sound, and THREAD_REVALIDATE_MIN_IMPROVEMENT_DE00 is the real
+    # churn guard) — the 200 was protecting goldens, and the recapture it
+    # required is part of the same ruling.
+    revalidate_small_shapes: bool = True
 
     # Score the thread re-validation on the SAME pixels the grader uses.
     # `stage4_vectorize.revalidate_threads` and
@@ -1337,10 +1355,18 @@ class PipelineConfig:
     # so it is deliberately left alone; `tests/test_resnap_mask_matches_grader
     # .py::test_the_flagged_mask_really_matches_the_graders` pins the gap.
     #
-    # DEFAULT OFF and byte-identical off. It moves the flat and gradient
-    # goldens the phase-4 spec pins, so the flip is a scorecard recapture and
-    # Kent's call.
-    resnap_mask_matches_grader: bool = False
+    # **FLIPPED ON — Kent's ruling 2026-09-07**, as the `rec4_mask` set:
+    # this flag plus `bind_resnap_all_classes`, `revalidate_small_shapes`,
+    # `satin_per_stroke` and `resnap_mask_matches_grader`, measured together
+    # as one arm of `tools/flip_sheet.py` rather than inferred from five
+    # rows: 11 of 26 fixtures move, -2,965 stitches, -22 blocks, -21 cones,
+    # FIVE grades up and NONE down. `docs/flip-sheet-2026-09-06.md` carries
+    # the arm table and the per-flag costs.
+    # It moves the flat and gradient goldens the phase-4 spec pins; that
+    # recapture is part of the same ruling, taken per key with
+    # `tools/recapture_flat_lane_key.py --pre-change-tree` so every moved byte
+    # is provably this change and not the machine.
+    resnap_mask_matches_grader: bool = True
 
     # Bind stage 4's thread re-snap to the selected palette on EVERY class,
     # not only the photo ones. `revalidate_threads`' argmin runs over the whole
@@ -1354,11 +1380,15 @@ class PipelineConfig:
     # photo-class fixtures add none: the 2026-08-23 binding does its job, and
     # the lane real customer logo art routes to never got it.
     #
-    # DEFAULT OFF and byte-identical off. It is a flag rather than a default
-    # because the phase-4 spec pins the flat and gradient lanes byte-for-byte
-    # — which is an argument about golden churn, not one that the escape is
-    # wanted. Flipping it is Kent's: it is a scorecard recapture.
-    bind_resnap_all_classes: bool = False
+    # **FLIPPED ON — Kent's ruling 2026-09-07**, as the `rec4_mask` set:
+    # this flag plus the other four, measured together as ONE arm of
+    # `tools/flip_sheet.py` rather than inferred from five rows — 11 of 26
+    # fixtures move, -2,965 stitches, -22 blocks, -21 cones, FIVE grades up
+    # and NONE down. `docs/flip-sheet-2026-09-06.md` has the arm table.
+    # It was a flag rather than a default only because the phase-4 spec pins the
+    # flat and gradient lanes byte-for-byte — an argument about golden churn,
+    # never one that the escape was wanted. The recapture is part of the ruling.
+    bind_resnap_all_classes: bool = True
 
     # Split satin. A satin cross longer than the threshold carries
     # intermediate penetrations, staggered station to station so the holes
