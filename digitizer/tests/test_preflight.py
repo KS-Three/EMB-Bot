@@ -936,7 +936,9 @@ def test_a_third_stacked_layer_warns_though_every_object_passes_alone():
     because each layer is exactly on target — DENSITY_EXTREME compares
     emitted spacing against the planner's own, and 0.40 is the planner's own.
     Only the per-REGION sum sees it. Law 27: 'a third layer means cutting a
-    hole in the base'. Measured 3.00 units over 175 mm2.
+    hole in the base'. Measured 3.00 units over 175 mm2 in the PRE-2026-09-03
+    coverage base; the same thread reads 8.00 today, which is what the
+    assertion below computes rather than hard-codes.
     """
     report = run_preflight(None, _stacked(3), cfg())
 
@@ -951,8 +953,13 @@ def test_a_third_stacked_layer_warns_though_every_object_passes_alone():
 
 
 def test_a_fourth_stacked_layer_blocks():
-    """Past 3.5 units the file is not a judgement call. Embrilliance's red
-    line is 6 thread layers ~ 3 lockstitch passes and we are over it."""
+    """Past 3.5 FILL LAYERS the file is not a judgement call. Embrilliance's
+    red line is 6 thread layers ~ 3 lockstitch passes and we are over it.
+
+    3.5 layers is `COVERAGE_BLOCK_UNITS` = 9.33 units since the 2026-09-03
+    re-base, not the bare 3.5 this docstring used to name — and no corpus
+    fixture reaches it (peaks run 2.20 to 7.97), so this synthetic plan is the
+    only thing that exercises the block branch at all."""
     hit = [f for f in run_preflight(None, _stacked(4), cfg())["findings"]
            if f["code"] == DENSITY_STACKED]
 

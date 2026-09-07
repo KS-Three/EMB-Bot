@@ -6497,6 +6497,571 @@ disagreement 6 in `docs/yardstick-disagreements-2026-09-06.md`, so that the
 next "this fix moved no grade" is read against the design's depth rather than
 taken as evidence the fix did nothing.
 
+## 2026-09-06 — the floored designs can move again, without re-basing a grade
+
+Measured hours earlier: `run_preflight` prints `max(0, 100 − 30·blocks −
+12·warns)`, and **12 of the corpus's 52 design/garment combos sit on exactly
+0** with true scores from **−272 to −38**. `screenshot_phone_ui_golke` must
+clear about **eleven blocking findings** before `score` moves at all, so a fix
+clearing ten of them reads as doing nothing.
+
+Un-clamping is a product call — it re-bases every grade in the scorecard. But
+the **magnitude** does not have to stay hidden to keep the grade still.
+`report["metrics"]` gains **`raw_score`**, the unclamped value:
+
+    screenshot_phone_ui_golke   score=0    raw_score=-272   grade=F
+    logo_alpha                  score=100  raw_score= 100   grade=A
+
+`corpus_scorecard.diff` compares `report["metrics"]` and reports any move past
+`_METRIC_NOISE_FRAC` (5%), so an improvement to a floored design now shows up
+in a scorecard diff instead of vanishing. `−272 → −242` is an 11% move; the
+denominator is `abs(a)`, so negative baselines behave.
+
+**No grade, score or finding moves.** `score` stays clamped and the bands are
+untouched — `test_the_clamped_score_and_grade_are_untouched` fails if that
+ever stops being true.
+
+**INERT UNTIL THE BASELINE IS RECAPTURED, and that is deliberate.**
+`_metric_deltas` iterates `set(old) & set(new)`, so a key the stored baseline
+lacks is skipped. The new metric therefore cannot disturb a single existing
+diff line — and it starts reporting the day someone recaptures, which is
+already a deliberate act in this repo, not a side effect of this change.
+
+This closes the practical half of yardstick-disagreement 6. The half that
+remains is the grade itself, which is still Kent's.
+
+`tests/test_raw_score_metric.py` (7 tests) re-derives `raw_score` from the
+findings rather than trusting the field, so the check and its test do not
+share an implementation.
+
+## 2026-09-06 — a checker built, a checker declined, and a first output that was wrong
+
+Two candidate extensions to `tools/doc_claims.py` were measured before either
+was built. One was worth it, one was not, and the one that was worth it
+reported six findings on its first run that were all false.
+
+### Declined: checking that doc-cited FILE PATHS exist
+
+Swept every backticked path in the five current-state docs and `docs/scope/*`:
+**373 distinct references, 0 genuinely stale.**
+
+Getting there took two corrections, both mine:
+
+- A first pass said **24 unresolved** — but it only tried the repo root and
+  `digitizer/`. Paths in these docs are written relative to the citing file
+  (`../scope-history.md`), to `digitizer/testdata/` (`photo/drone_render.png`)
+  and to `app/src/` (`lib/simulate.js`). Resolving properly: **9**.
+- Of those 9, **every one is deliberate**: `.playwright-mcp/*.png` is
+  gitignored scratch (`.gitignore` line 6), `stage6_scanline/meander/…` is
+  shorthand for four modules rather than a path, and `tools/bundle.mjs` and
+  `src/app.js` are both cited **inside sentences saying they were deleted**.
+
+So paths do not rot here — they are either right or intentionally historical.
+A checker would be a pure false-positive machine. **Not built.**
+
+### Built: checking documented per-file TEST COUNTS
+
+Counts are the opposite: they go stale every time someone adds a test, which
+is the whole difference. `check_test_counts` collects the suite ONCE
+(`pytest --collect-only`, not one subprocess per file — that turns a
+seconds-long checker into a half-minute one, which is how a checker stops
+being run) and compares.
+
+**The first cut was wrong, and the way it was wrong is the point.** Matching
+"the first number within 40 characters of the filename" reported **six drifts**
+in `docs/scope/1`, the worst `test_satin.py` at a documented 43 against 99
+collected. Reading the matches instead of the count: **all six were false.**
+None is a claim about the file's current size —
+
+    `tests/test_satin.py` **43/43**             pass/total at the time
+    `tests/test_textcluster.py` gains 6         a DELTA
+    `tests/test_pushcomp.py` together **46/46** combined across TWO files
+    `tests/test_border.py` (17 → 22 tests)      a before/after from a PR
+
+The shipped pattern therefore matches only unambiguous totals — a number in
+parens followed by `tests`, `)` or `,` — and ignores prose. Swept that way:
+**all three real count claims are in the current-state docs and all three are
+correct.** Six false alarms would have been noise, and
+`doc_claims`' own design note already says a checker that cries wolf on
+legitimate narrative is a checker nobody runs.
+
+`tests/test_doc_claims.py` grew 11 → 23 tests, four of which pin those exact
+four prose strings as **not** matched.
+
+---
+
+## 2026-09-06 — two findings, one threshold, and a button justified by half a sentence
+
+`STITCHES_TOO_SHORT` and `LETTERING_TOO_SMALL` sit two checks apart in
+`preflight.py` and measure the **same quantity at the same threshold**:
+`MIN_COLUMN_MM` **is** `machine.MIN_STITCH_MM` (1.0 mm), and both read the
+consecutive-step distance inside a SATIN run, which crosses the column. They
+differ only in aggregation — lettering takes a per-shape MEDIAN, the
+short-stitch check a global FRACTION. Both are `warn`, so a design pays **24
+points** for one physical defect.
+
+### Measured before deciding anything
+
+`tools/short_satin_overlap.py`, 26 fixtures at 80 mm / left_chest:
+
+| | |
+|---|---|
+| fired both | 10 |
+| lettering only | 1 |
+| **short-stitch ALONE** | **0** |
+| neither | 15 |
+| short steps inside a shape lettering named | **6,483 / 9,883 = 65.6%** |
+
+So the design-level SIGNAL is redundant — its 12 points always land on a design
+already warned — and the obvious move is to delete it. **The 66% is why that
+would be wrong.** A shape passes lettering on its MEDIAN column, so a third of
+the short steps live in shapes lettering correctly declines to name:
+
+```
+ 3.15 mm median     11/69    short  Sda755ce2   photo/photo_dof_meadow.png
+ 2.65 mm median    205/1597  short  S22a5e094   photo/logo_bridge_bar.jpg
+ 2.32 mm median     71/665   short  S71ddac97   photo/logo_bridge_bar.jpg
+ 2.27 mm median     27/121   short  S6cc4a060   photo/drone_render.png
+```
+
+These are not small lettering. They are **sewable columns with a narrow
+waist** — a taper, a pinch, a curve where the rails converge — and they break
+thread exactly as a hairline does. That is a different defect with a different
+remedy, and the finding emitted **no shape ids at all**: `{fraction, count,
+total}`.
+
+Fixed: `shapes` (every carrier, worst first, with `short`, `steps`,
+`median_mm`, `also_too_small`) and `uncovered_shapes`. The hand-off is one set
+of ids passed from `_lettering_findings`' own output to
+`_stitch_length_findings`, which were already called back to back.
+
+### The remedy it printed was measured false one check away
+
+The message ended *"enlarge the design or thicken its thinnest strokes."*
+`_lettering_findings`' docstring, forty lines up, already carried the table
+that kills it — `logo_hotel_fremont.webp` at 92.5 / 120 / 165 / 220 mm:
+
+    width   flagged/total   worst col   median col
+     92.5        38/46        0.56         0.80
+    120          27/47        0.62         0.80
+    165          25/56        0.52         0.94
+    220          13/63        0.66         0.79
+
+The COUNT falls honestly. The median flagged column is **flat near 0.8 mm at
+every size**, because segmentation keeps generating sub-millimetre shapes as
+the design grows (satin total 46 → 63 over the same range). And the documented
+root cause is per-stroke satin routing
+(`docs/superpowers/plans/2026-09-04-per-stroke-satin-routing.md`: our median
+column 0.80–0.84 mm against a professional's 1.40–2.52), which is
+**scale-invariant**. The message now names the shapes instead.
+
+### The Studio button rests on a misquote — and it was wrong on day one
+
+`DigitizePanel.svelte` offers exactly one cure for both findings, *"Make it
+bigger"* (`target_width_mm` × 1.25), justified by this comment:
+
+> `LETTERING_TOO_SMALL`'s own message ends "Enlarging helps", and until now
+> nothing offered to enlarge it.
+
+At the commit that added the button (`1c20ec9`, 2026-09-02) the message
+**already** read:
+
+> Enlarging helps **but does not fully clear it**: the smallest shapes
+> regenerate at any size. Remove or simplify the smallest lettering.
+
+The quote stops at the exact word where the sentence reverses, and the action
+it justifies ("make it bigger") is not the action the message ends on ("remove
+or simplify"). **Not drift** — wrong the day it was written.
+
+**No checker catches this, and that is worth stating.** "Enlarging helps" is a
+truthful substring of the source string, so a fidelity check passes. The
+failure is a truncation that inverts meaning, which is a reading problem, not a
+parsing one. The same is true of every partial quote in a comment: they are
+legitimate, common, and unverifiable by machine.
+
+The comment is corrected in place, carrying its own history. **The button is
+left alone** — whether a partial remedy earns a button is Kent's call, and
+"Make it bigger" does do what its label says. How partial, exactly, was the
+next question, and it had never been asked; the section below asks it.
+
+### And then the button was measured: one in ten
+
+`tools/enlarge_cure.py` — the ten fixtures that fire the finding at 80 mm,
+swept through one press (100 mm) and two (125 mm):
+
+| fixture | 80 | 100 | 125 | satin shapes 80→125 |
+|---|---:|---:|---:|---:|
+| `photo/drone_render.png` | 0.28 | **0.23** | 0.21 | 43 → 51 |
+| `photo/photo_chrome_specular.png` | 0.49 | 0.27 | 0.25 | 2 → 7 |
+| `photo/photo_dof_meadow.png` | 0.36 | 0.58 | **0.71** | 2 → 9 |
+| `photo/photo_sunset_backlit.png` | 0.65 | 0.66 | 0.59 | 1 → 3 |
+| `photo/summit_badge.png` | 0.36 | 0.26 | **0.19** | 19 → 28 |
+| `photo/logo_bridge_bar.jpg` | 0.30 | 0.36 | 0.28 | 29 → 54 |
+| `photo/logo_gaulke_roofing.png` | 0.74 | 0.38 | **0.19** | 2 → 3 |
+| `photo/logo_golden_tee.jpg` | 0.32 | 0.29 | **0.24** | 32 → 40 |
+| `photo/logo_hotel_fremont.webp` | 0.89 | 0.52 | 0.32 | 38 → 51 |
+| `photo/screenshot_phone_ui_golke.jpg` | 0.42 | 0.37 | 0.29 | 42 → 71 |
+
+(bold = the finding stopped firing at that width; the bar is 0.25)
+
+- **One press cleared it on 1 of 10.** Two presses on 4 of 10.
+- **It made the number WORSE on 3 of 10.** `photo_dof_meadow` goes
+  0.36 → 0.58 → **0.71** — worse at every press, twice as bad after two.
+- **The satin shape count rose on EVERY fixture**, 2 → 9 and 42 → 71 at the
+  extremes. That is the lettering table's *"the smallest shapes regenerate at
+  any size"* seen from the short-step side: enlarging buys new small shapes as
+  fast as it widens the ones already there, which is why the fraction is so
+  stubborn.
+
+**No grade claim is drawn from that sweep, deliberately.** Several checks move
+with size at once, and **5 of the 10 sit on the clamped score floor at 0**
+(`tools/floor_depth.py`, measured earlier the same day), where nothing
+registers either way. `photo_sunset_backlit` does fall B 76 → F 34 on one
+press, and that is real, but it is not attributed here — no instrument in this
+session decomposed it.
+
+The knob is real. The cure is one in ten, and the root cause is
+scale-invariant.
+
+### The confound, named rather than thresholded away
+
+A carrier is any shape with **at least one** short step, and
+`app/src/lib/generate.js`'s `letteringNote` already paid for the reason that
+bar is not obviously right: *"nearly every authored column tapers through 1 mm
+at its tips"*, which is why its own thin-stroke note stays quiet under a
+quarter of stroke length. **Tip taper is therefore counted here.**
+
+It is left counted, with `short` and `steps` riding out per shape so any reader
+can apply their own bar, because the corpus residue is mostly far past taper —
+`S22a5e094` 205 of 1,597, `S86cc6879` 49 of 137, `Sd3950c67` 43 of 95 — with
+only a couple down in taper territory (`S99ee112d` 35 of 626, `Sebce2b7a` 4 of
+43). Picking a share threshold is picking a CONSTANT, and this one has had no
+sew-out. `letteringNote`'s quarter is the prior art if it is ever wanted.
+
+### What did not change
+
+Same code, same severity, same count, same score. Message prose, five payload
+fields, one hand-off. `tests/test_short_satin_shapes.py` (14, synthetic plans,
+0.05s) pins both singular branches of the generated sentence — *"All 1 shapes"*
+would otherwise have shipped — and pins the fixture that carries the whole
+argument: a waisted column the size warning must NOT name.
+
+---
+
+## 2026-09-06 — TRIM_HEAVY gave one remedy for two opposite defects
+
+The message has read *"consider merging or removing the smallest shapes"*
+since it was written. That is right for a cut BETWEEN shapes — the machine
+moving on — and wrong for a cut INSIDE one, which is that shape failing to sew
+in a single pass. `satin_shape` may travel over UNSEWN strokes only, and the
+Becker investigation earlier the same day logged the walk succeeding up to 40%
+sewn and **never again after**, so a big multi-stroke shape spends nearly all
+its life unable to reach anywhere. Merging shapes cannot touch that.
+
+### Say plainly that this was already known
+
+**MASTER_SCOPE defect 6 has carried *"the trim bulk is INSIDE one shape, not
+between them — 69% of trims are intra-shape"* since 2026-08-21.** The fact is
+three weeks old. What was missing is that **the finding never said it**, so
+every design in the corpus got the between-shape remedy regardless. That is
+the whole change: a repo that knew, and an instrument that did not report.
+
+### The corpus number, and it flips per design
+
+`tools/trim_locality.py`, 26 fixtures at 80 mm / left_chest:
+
+**866 trims = 456 inside a shape (53%) + 410 between shapes (47%).**
+
+Almost even, which is the point — a single remedy sentence was only ever right
+about half the time. And it is not a stable 53%: the majority flips per design,
+**in-shape dominant on 11 fixtures, between-shape on 11, one tie**.
+
+| fixture | trims | in-shape | between | worst carrier |
+|---|---:|---:|---:|---|
+| `photo/photo_grass_macro.png` | 15 | **14 (93%)** | 1 | `Scfe3827c-shad` 14 |
+| `photo/photo_sunset_backlit.png` | 52 | **44 (85%)** | 8 | `S96ae75f4` 14 |
+| `photo/photo_chrome_specular.png` | 83 | **67 (81%)** | 16 | `Sb8e04858` 39 |
+| `photo/logo_gaulke_roofing.png` | 29 | **22 (76%)** | 7 | `Sa94910d1` 22 |
+| `becker_marine_logo.png` | 28 | **19 (68%)** | 9 | `Sead76620` 16 |
+| … | | | | |
+| `photo/logo_bridge_bar.jpg` | 124 | 60 | 64 | `S22a5e094` 23 |
+| `photo/screenshot_phone_ui_golke.jpg` | 70 | 14 | **56 (80%)** | `Sb01e1b97` 6 |
+| `logo_alpha.png` / `logo_whitebg.png` | 5 | 0 | **5 (100%)** | `S09c5bd0d` 1 |
+
+`photo_grass_macro` and `logo_alpha` are the same finding with opposite causes,
+and until now they read the same sentence.
+
+**Becker reproduces the August figure independently.** 19 in-shape of 28
+against the recorded 69%: 19/28 is 67.9%, and the gap is the file's first cut,
+which `plan.stats` counts and the machine does not (`_trim_findings` has always
+corrected for it; the August pass evidently did not). One number tightened, the
+conclusion unchanged. It also tightens a phrase: scope-history's Becker entry
+reads *"19 of our 28 pen-ups stay inside ONE shape"*; 19 is the in-shape
+TOTAL and **16** of them are in that one shape.
+
+### Two structural facts the sweep settled
+
+- **No run in the corpus carries an empty `shape_id`** (0 of 26). The guard
+  against an unattributed run matching its unattributed neighbour is therefore
+  defensive, not load-bearing — and it stays, because `StitchRun.shape_id`
+  defaults to `""` and any synthetic plan hits it. Without the guard those runs
+  would all match each other and claim a whole shape's worth of cuts as ones
+  merging "cannot remove", which is the direction that misleads.
+- **No plan has an empty leading run.** So redefining *"the run whose trim the
+  file does not contain"* as the first run WITH POINTS — matching
+  `iter_machine_commands`, which skips empty runs entirely, trim included — is
+  a no-op on the corpus today. It is still the correct definition: the old one
+  read `blocks[0].runs[0]` regardless and would have silently subtracted a cut
+  that was never emitted, losing a real one. Fixed and pinned by a test rather
+  than left as a comment.
+
+### What did not change
+
+Same code, same severity, same rate, same denominator. Message prose and four
+payload fields. `tests/test_trim_locality.py` (9, synthetic plans, 0.05s) pins
+the `in_shape + between_shapes == trims` invariant on every plan it builds,
+both branches of the generated sentence, and the agreement between the shipped
+check and the instrument that audits it — which re-walks the plan on purpose,
+because an auditor that calls the thing it audits proves nothing.
+
+---
+
+## 2026-09-06 — the coverage re-base left its old numbers in the prose, and the check it governs has never fired
+
+Chasing a third locationless finding turned up something better than the fix.
+
+### `DENSITY_STACKED` said "cut the bottom layer back WHERE" and had no where
+
+`_coverage_map` returns `(grid, origin)`. `_coverage_findings` bound the second
+to `_origin` — the underscore says it — and its `patch_area_mm2` helper
+collapsed `cv2.connectedComponentsWithStats`, bounding boxes and centroids and
+all, into one summed area. So the check knew where the stack was, and its own
+message asked for exactly that, and the two never met.
+
+A sum also cannot tell **40 mm² in one blob from 40 mm² speckled over twenty**,
+which are different defects with different fixes. It now emits `patches`,
+`worst_patch_mm2` and `worst_patch_at_mm` — the plan-mm centre of the largest,
+matching `LINK_UNCOVERED`'s `at_mm`.
+
+### And then the corpus refused to exercise any of it
+
+**`DENSITY_STACKED` fires on 0 of the 52 design/garment combos.** Not "rarely" —
+zero. So the fix above is, on today's corpus, unmeasurable, and this entry says
+so rather than dressing it up.
+
+Swept at 80 mm, the coverage metrics per fixture:
+
+| | peak units | > warn patch | > block patch |
+|---|---:|---:|---:|
+| `photo/photo_dof_meadow.png` | **7.97** | 0.0 | 0.0 |
+| `photo/drone_render.png` | 7.51 | 0.0 | 0.0 |
+| `photo/logo_gaulke_roofing.png` | 7.51 | 0.0 | 0.0 |
+| `photo/photo_chrome_specular.png` | 7.09 | 0.0 | 0.0 |
+| `photo/photo_sunset_backlit.png` | 7.04 | 0.0 | 0.0 |
+| `photo/logo_bridge_bar.jpg` | 6.89 | 0.0 | 0.0 |
+| …20 more, peaks 2.20 to 6.68 | | 0.0 | 0.0 |
+
+Six fixtures carry a PEAK over the 6.67 warn level and **every one of them
+yields 0.0 mm² of qualifying patch**. `_COVERAGE_MIN_PATCH_MM2` (25 mm²) is
+doing all the work — which is what it was built to do, since clean work
+speckles over the warn level wherever two satin columns join.
+
+**The consequence is a coverage fact worth knowing: the entire test coverage of
+this `block`-severity check is synthetic.** `test_preflight.py`'s `_stacked(n)`
+plans and the new `test_stacked_where.py`. A corpus A/B can prove nothing about
+it in either direction, so do not read its silence as evidence the corpus is
+clean, and do not delete those synthetic plans as redundant.
+
+### The find under the find: four old-base numbers still in the prose
+
+Reading those peaks against the docstring is what exposed it. `preflight`
+said:
+
+> Thresholds are `machine.COVERAGE_WARN_UNITS` / `COVERAGE_BLOCK_UNITS` — **2.5
+> and 3.5**, both [D] in the playbook and not primary-sourced.
+
+They evaluate to **6.67 and 9.33**. On 2026-09-03 `FILL_ROW_MM` moved to the
+professional's 0.15 mm, so one plain fill went from 1.00 to
+`COVERAGE_FILL_LAYER_UNITS` = 0.40/0.15 = **2.67** units, and the thresholds
+were restated as `2.5 *` and `3.5 *` that. `machine.py` documents the change in
+twenty lines and warns in as many words: *"every coverage number recorded
+before this date is in the old base and is 2.67x smaller than the same stack
+reads today."*
+
+**It did not save the file next door.** Four statements still in the old base
+three days later:
+
+| where | said | is |
+|---|---|---|
+| `preflight` module docstring | "1.0 is one full covering layer of 40wt thread" | 1.0 is one **0.40 mm ribbon**; a fill lays 2.67 |
+| `_coverage_findings` docstring | names both constants, "2.5 and 3.5" | 6.67 and 9.33 |
+| `test_a_third_stacked_layer_warns…` | "Measured 3.00 units over 175 mm2" | 8.00 (its own assertion computes it) |
+| `test_a_fourth_stacked_layer_blocks` | "Past 3.5 units…" | past 3.5 **fill layers** = 9.33 |
+
+**The harm is specific, not stylistic.** A reader comparing the corpus's peaks
+(2.20–7.97) against "3.5" concludes every design is grossly over a
+needle-breaking ceiling. Against the real 9.33, **none of them reaches it**.
+That is the difference between "the corpus is full of pucker" and "the corpus
+is clean and the check is untested", and this session started down the first
+road.
+
+All four corrected, each keeping its own history. And the new test pins the
+**relationship** rather than either number —
+`COVERAGE_WARN_UNITS == 2.5 * COVERAGE_FILL_LAYER_UNITS` — so the next re-base
+moves them together or fails here.
+
+`stage6_scanline.py`'s *"lays ~1.4 coverage units in solid shadow at the 0.45 mm
+row pitch"* was read and **left alone**: the unit definition did not change in
+the re-base, and verifying a zigzag's coverage arithmetic is not something this
+pass measured. Not a claim that it is right — a claim that it was not checked.
+
+---
+
+## 2026-09-06 — the fill-row ruling silently recalibrated a check nobody thought it touched
+
+The fourth and last preflight finding with no location turned out to be the
+most interesting, and not for the reason it was opened.
+
+### The small part: depth and place
+
+`SAME_HOLE_HEAVY` emitted `{fraction, repeat_points, penetrations, baseline}`.
+Its message ends *"expect the odd thread break WHERE the stitching doubles back
+on itself"* — no where — and its own docstring argues its threshold on DEPTH
+(*"ALL 36 [professional] files contain 3+ stacked points"*) while the payload
+could not answer on depth at all. A rate of 2+-strike points cannot tell
+thousands of doubles, which every pro file has, from one spot the needle hits
+twelve times, which is a hole. It now emits `max_strikes`, `points_3plus` and
+`worst_at_mm`.
+
+### The large part: the rate had already moved, for no physical reason
+
+Swept over the corpus, `SAME_HOLE_HEAVY` fires on **0 of 26** and the rates run
+**0.001 to 0.103** — against a docstring that says *"our benchmark is 9.8%"*
+and a threshold set as "far above" it. Either the benchmark design is not in
+this corpus, or the number is stale.
+
+It is stale, and the cause is a ruling three days old. The rate is
+**(points struck 2+ times) / (total penetrations)**, and `FILL_ROW_MM` moved
+0.40 → 0.15 mm on 2026-09-03. A/B at both row pitches:
+
+| fixture | penetrations | repeat points | 3+ points | `max_strikes` | rate |
+|---|---:|---:|---:|---|---:|
+| `logo_whitebg` | 1,982 → 4,558 (**×2.30**) | 28 → 28 (**×1.00**) | ×1.13 | 8 → **8** | ×0.43 |
+| `becker_marine_logo` | 4,710 → 5,531 (×1.17) | 142 → 139 (×0.98) | ×1.00 | 4 → **4** | ×0.83 |
+| `logo_hotel_fremont` | 7,403 → 11,979 (×1.62) | 616 → 707 (×1.15) | ×0.98 | 8 → **8** | ×0.71 |
+| `screenshot_phone_ui_golke` | 5,551 → 7,624 (×1.37) | 582 → 633 (×1.09) | ×1.02 | 9 → **9** | ×0.79 |
+
+**The denominator grew 1.17–2.30×. The numerator did not move** — 28 against
+28 on `logo_whitebg`, the same integer. **`max_strikes` is identical on every
+fixture.** The needle lands in old holes exactly as often, in exactly the same
+places, to exactly the same depth; there is simply more denominator.
+
+So the rate fell to 0.43–0.83× of what it was, the benchmark prose is
+old-base, and the check went quiet across the whole corpus without anything
+about the sewing changing. **Its silence is not evidence that anything
+improved.**
+
+That is ROADMAP gate 4 in miniature — *"no quality claim on a raw agreement
+number; raw moves when the mix moves"* — arriving in a check nobody connected
+to the fill-row ruling. It is also the third place today that ruling left a
+stale number behind, after the four coverage statements.
+
+### What was NOT done, and why
+
+**`SAME_HOLE_RATE_MAX` was not retuned.** Its baseline is 9.455% measured
+across a 36-file professional corpus, at whatever row pitch those digitizers
+chose. Rescaling our side of that comparison by 2.67 would be inventing a
+number; re-deriving it means re-walking the pro files with the current
+definition, which is its own piece of work and needs the corpus, not this
+check. Recorded so the next reader knows the threshold is looser in practice
+than the prose implies, and knows what closing it would cost.
+
+The fix is to emit the half that survives a density change. `max_strikes` and
+`points_3plus` are physical facts about the fabric; the rate is a ratio. A test
+pins exactly that, synthetically and instantly — landings on fresh fabric leave
+`repeat_points`, `points_3plus`, `max_strikes` and `worst_at_mm` all unchanged
+while `fraction` falls, and enough of them silence the finding outright while
+the fabric is struck identically.
+
+### Severity did not move
+
+`SAME_HOLE_HEAVY` is `info`, worth 0 points, deliberately — law 17's trade
+phrasing is stricter than professional files themselves. A test pins that the
+new payload has not turned it into a deduction.
+
+---
+
+## 2026-09-06 — the last open half of defect 16, priced: one generated fixture and an 11-block reorder
+
+Defect 16's blend-band half has stood as *"one synthetic fixture; any fix is a
+sequencing change"* since it was split that morning, with the note that
+extending the fold is **"owed its own measured work"**. This is that work. It
+changes nothing and recommends nothing; it counts, and it prices.
+
+`tools/cone_revisits.py` asks a different question from
+`tools/cone_merge_survey.py`. That one asks whether two DIFFERENT cones are
+near enough to fold into one, trading colour fidelity. This asks about the free
+case: the **same cone number sewn in more than one block**, which costs a
+machine stop and a manual re-thread for no colour gain at all.
+
+### The count reproduces, and the gap is new
+
+26 fixtures × 2 garments:
+
+| fixture | garment | cone | blocks | gap | route |
+|---|---|---|---|---:|---|
+| `photo/region_blobs.png` | left_chest | `0182` | [1, 12] | **11** | band |
+| `photo/region_blobs.png` | hat_front | `0182` | [1, 12] | **11** | band |
+| `photo/screenshot_phone_ui_golke.jpg` | left_chest | `3971` | [5, 12] | **7** | resnap |
+| `photo/screenshot_phone_ui_golke.jpg` | hat_front | `3971` | [5, 12] | **7** | resnap |
+
+**4 of 52, matching the recorded count exactly** — and **not one of the four is
+adjacent.** That corrects the framing the defect is filed under. MASTER_SCOPE
+says *"each merge is FREE (the cone is already loaded)"*, which is true of
+THREAD cost and false of sequencing cost: folding block 12 into block 1 on
+`region_blobs` moves a gradient band past **eleven** intervening blocks, and
+stage 5 built `covered_by` from the un-merged order. `cone_merge_survey.py`
+already drew exactly this line — a within-layer fold is free, an across-layer
+one is a real geometry change — and measured the second as the expensive kind.
+
+### Both halves re-confirmed by running the flag, not by citing the record
+
+| | blocks | duplicate |
+|---|---:|---|
+| `screenshot_phone_ui`, `bind_resnap_all_classes=False` | 17 | `3971` at gap 7 |
+| `screenshot_phone_ui`, `=True` | **11** | **none** |
+| `region_blobs`, `False` | 16 | `0182` at gap 11 |
+| `region_blobs`, `True` | 16 | `0182` at gap 11 |
+
+The `resnap` half is closed by a flag that already exists, and closing it buys
+`screenshot` **six blocks** on its own. The `band` half is untouched by it.
+
+### So the open half is one generated fixture
+
+`region_blobs.png` is not artwork. `tools/make_photo_region_fixture.py` renders
+it — *"three overlapping Gaussian-falloff color blobs"* — as the step-4
+region-former fixture. **No client artwork in the corpus produces a band
+duplicate.**
+
+**That is the case against building the band fold, in numbers rather than as a
+preference:** one synthetic design, an 11-block reorder through `covered_by`,
+against a flag already built that closes the other half. Re-run the tool after
+any sequencing change; if a real design ever appears in that table, the
+arithmetic changes and so should the answer.
+
+### A semantic bug the tests caught in the tool itself
+
+The first cut labelled routes **per block** and unioned them, so a duplicate
+with one re-snapped block and one ordinary one came out `"plain,resnap"`. But
+`plain` carries a specific meaning — *the fold's own territory, where a
+survivor would be a defect in `merge_duplicate_cones` rather than a gap in its
+reach* — so that label would send a reader hunting a bug that is not there.
+`plain` is now the **residual for the duplicate**, computed after the union,
+and never appears beside another route. Found by a synthetic test, not by the
+corpus: the corpus's two cases are each purely one route, so it would have
+shipped.
+
+---
 
 ## 2026-09-06 — five parked flags measured together, and the grade caught preferring a design that dropped its ink
 
@@ -6560,3 +7125,439 @@ Renders: `docs/renders/flip-sheet-2026-09-06/` — off-vs-all for gaulke,
 bridge_bar, chrome_specular and becker, plus a four-arm lettering crop that
 shows black thread in `off` and `bind_resnap_all_classes` and none in the
 other two.
+
+
+## 2026-09-07 — the CI wait is twice what every doc said, and the obvious cause is refuted
+
+CLAUDE.md item 7 has said `digitizer` takes **12–18 minutes** since it was
+written. That number drives the whole "three green checks is NOT a green PR"
+warning: someone who waits eighteen minutes and sees 3/4 green concludes the
+fourth job is stuck. Measured from the Actions API over the **last 220
+completed jobs** — the repo is public, so plain `curl` reads it unauthenticated:
+
+| date | n | min | **p50** | max |
+|---|---:|---:|---:|---:|
+| 2026-08-27 | 7 | 11.7 | 15.2 | 16.6 |
+| 2026-08-28 | 22 | 11.4 | 15.0 | 16.7 |
+| 2026-08-29 | 3 | 10.1 | 10.2 | 16.6 |
+| 2026-08-30 | 2 | 12.7 | 14.7 | 16.8 |
+| 2026-09-01 | 25 | 12.1 | 16.5 | 18.5 |
+| 2026-09-02 | 30 | 12.0 | 17.6 | 21.7 |
+| 2026-09-03 | 38 | 11.6 | 17.1 | 20.4 |
+| 2026-09-04 | 28 | 10.7 | 18.7 | 20.7 |
+| 2026-09-05 | 5 | 12.1 | 20.7 | 20.9 |
+| **2026-09-06** | 60 | 12.2 | **29.6** | **41.8** |
+
+**The figure was true when written and is now true of half the jobs.** Across
+all 220: min 10.1, p50 17.6, p90 31.8, max 41.8 — and exactly **50% land inside
+12–18**. Corrected to "10 to 42 minutes, budget half an hour".
+
+The other three jobs are as documented and were re-measured with it: `engine`
+p50 0.5, `studio` 0.8, `studio-e2e` 2.7.
+
+### Three causes eliminated, one left standing
+
+**It is entirely in the test step.** Splitting every job's steps into fast
+(≤18 min) and slow (≥25 min) buckets:
+
+| step | fast p50 | slow p50 | delta |
+|---|---:|---:|---:|
+| `Digitizer tests` | 14.28 | 32.41 | **+18.12** |
+| `Install` | 0.27 | 0.27 | +0.00 |
+| Tesseract install | 0.20 | 0.17 | −0.03 |
+
+Not caching, not dependency install, not checkout.
+
+**Concurrency is refuted, and it was my hypothesis.** The floor is stable at
+10–12 minutes on every single day while the tail grew, which is the classic
+signature of contention, and 2026-09-06 ran 60 digitizer jobs against 2–38 on
+every other day — two lanes pushing at once. Bucketing each job by how many
+other `digitizer` jobs overlapped it says otherwise:
+
+| concurrent others | n | min | p50 | max |
+|---:|---:|---:|---:|---:|
+| 0 | 105 | 10.1 | 16.9 | **41.8** |
+| 1 | 91 | 10.7 | 19.7 | 40.3 |
+| 2 | 18 | 11.6 | 16.0 | 19.8 |
+| 3 | 5 | 14.1 | 16.3 | 18.3 |
+| 4+ | 1 | 16.0 | 16.0 | 16.0 |
+
+**The 41.8-minute worst case ran with zero others in flight, and the
+most-contended bucket tops out at 19.8.** The obvious explanation is backwards.
+
+**Suite growth cannot carry it either.** It is real — 1,546 tests on 2026-08-31
+against 1,979 today — but pulling the `N passed … in Xs` line out of forty job
+logs and grouping by count:
+
+```
+tests passed    n     min     p50     max   spread
+        1851    4    19.6    33.3    34.5    1.76x
+        1883    2    17.0    23.6    30.1    1.78x
+        1968    2    17.9    25.8    33.7    1.88x
+```
+
+**The same test count lands at 19.6 or 34.5 minutes.** Seconds-per-test runs
+0.54 to 1.32 across the sample, and 0.35 on the fastest jobs measured
+separately. Growth moves the middle; it does not produce a 1.9× spread on
+identical work.
+
+### What is left, and the one line that will settle it
+
+The runner. `-n auto` follows the machine's core count, and the local
+frozen-tree benchmark from the `--durations` work measured **2 workers 23m53s
+against 4 workers ~14m00s on the same tree** — the same shape as CI's 14.3/32.4
+split. That is a hypothesis, not a finding: **nothing in the log records which
+runner we drew**, and `-q` suppresses xdist's worker ids.
+
+So the job now echoes `nproc`, `os.cpu_count()` and the first line of
+`/proc/meminfo` before pytest. Three lines, seconds to run, and the next person
+answers this from a log instead of an eight-page API sweep.
+
+**Until a log settles it, do not attribute a slow job to a cause** — the three
+above are eliminated, and guessing past that is what this entry exists to stop.
+
+### And a stale count in the workflow's own comment
+
+`.github/workflows/python-package-conda.yml` justifies `-n auto` with *"~1,100
+tests of real OpenCV/shapely work ran ~19 minutes serially"*. The count is the
+one at the time and the suite passed **1,979** on 2026-09-06; annotated in
+place rather than rewritten, because the *reason* for `-n auto` is unchanged
+and the original measurement is still the one that made the case.
+
+---
+
+## 2026-09-07 — a resolved defect left a stale twin, and the code had already said so
+
+MASTER_SCOPE defect 11 read *"The setting that helps a misrouted photograph has
+no UI, and the control that looks like it is a different, harsher one."* Two of
+its claims are checkable in one command each, and **both are false**:
+
+| claim | measured 2026-09-07 |
+|---|---|
+| `cfg.is_photographic` "appears **nowhere** in `app/src` (grep, 0 hits)" | **14 hits**, including the send at `digitizer.js:180` |
+| the checkbox sends `forced_class="photo_subject"` (`digitizer.js:144`) | line 144 does not; the only `photo_subject` mentions there are comments describing the OLD behaviour |
+
+**Kent ruled on 2026-09-02, under defect 15**, that the reading row's "It's a
+photo" correction should send `is_photographic=true` rather than
+`forced_class="photo_subject"` — declaring photographic CONTENT, which buys
+depth sequencing and the palette bind, instead of forcing the FILL TIER. On
+`owl_kent.jpg` @ 80 mm the forced route goes 13 stops → **17**, the declared
+one → **11 on 12 cones**, for ~6% more stitches.
+
+**Defect 15 records all of that correctly. Defect 11 was never touched** — and
+it ends with *"See defect 15."* The pointer was there the whole time; a reader
+who followed it got the truth and a reader who stopped at the first paragraph
+got a fixed condition presented as live, with nothing to distinguish them.
+**A cross-reference is not an update.**
+
+### The code had already flagged it
+
+`digitizer.js`, in the comment right above the send:
+
+> *(MASTER_SCOPE's 26-stop figure for the forced route is from 2026-08-28 and
+> predates the rehome, borders-last and the cone fold; **17** is what it
+> measures today. The ordering it was cited for is unchanged.)*
+
+and `DigitizePanel.svelte`:
+
+> *WHAT GETS SENT CHANGED 2026-09-02 (Kent's call, defect 15): isPhoto now
+> means `is_photographic=true` … not `forced_class=photo_subject`, which
+> forced the FILL TIER and measurably hurt.*
+
+Both files knew. Neither could update MASTER_SCOPE, and nobody did. That is the
+same shape as the four documentation defects the day before — the repo knowing
+something its own status file does not — and it is the one variant a checker
+could plausibly catch, since `"appears nowhere in app/src"` is a claim a grep
+can settle. It is not worth a checker on one instance; **the habit is to grep
+MASTER_SCOPE for every other entry describing the same control when a fix
+lands.**
+
+### What changed
+
+Defect 11 compacted from 25 lines to a 14-line RESOLVED pointer at defect 15,
+which carries the current state. Nothing was lost: the 08-28 measurement table
+it led with — including the **26 stops / 0.591 coverage** figure, now
+superseded by 17 — already lives in this file at the 08-28 entry, so rule 5's
+"overflow goes somewhere, never to the bin" is satisfied by what was already
+there.
+
+**MASTER_SCOPE 800 → 789 lines.** The file has sat at exactly 800 through this
+whole session, with every addition threaded into existing lines to stay under
+rule 4's budget. Removing a false live claim is the first thing all day to buy
+budget back rather than spend it.
+
+---
+
+## 2026-09-07 — the diagnostic answered on its first run, and refuted the hypothesis that motivated it
+
+The PR one entry above added three lines to the `digitizer` job — `nproc`,
+`os.cpu_count()`, the first line of `/proc/meminfo` — on the reasoning that
+`-n auto` follows the core count and the local frozen-tree benchmark had
+measured **2 workers 23m53s against 4 workers ~14m00s** on the same tree, the
+same shape as CI's 14.3/32.4 bimodal split. The entry was careful to call that
+a hypothesis rather than a finding.
+
+**Its own CI run settled it, in the wrong direction for the hypothesis:**
+
+```
+nproc: 4
+os.cpu_count: 4
+MemTotal:       16373448 kB
+1984 passed, 3 skipped, 7 xfailed, 4 warnings in 1679.00s (0:27:59)
+```
+
+**Four cores, 16 GB, 28 minutes.** `-n auto` had four workers, not two. So the
+core-count explanation is dead alongside concurrency and suite growth.
+
+### What that leaves
+
+This box runs the same suite in **~15 minutes on four cores** (five consecutive
+frozen-tree runs today: 15m34, 15m41, 14m58, 15m09, 15m03 — very stable). The
+runner takes **28 on four**. The difference is therefore **per-core throughput
+or hypervisor contention on a shared host**, and *one reading cannot separate
+those two.*
+
+**Four hypotheses, four eliminated.** Concurrency (the 41.8-minute worst case
+ran with zero other digitizer jobs), suite growth (the same test count lands at
+19.6 or 34.5 minutes), the setup steps (`Install` is 0.27 min on fast and slow
+runs alike), and now the core count. **Do not attribute a slow job to a cause.**
+
+### Why this is a good outcome anyway
+
+The diagnostic cost three lines and seconds of runtime, and it converted an
+eight-page API sweep into a number printed in every future log. Every run from
+here records its own `nproc`, so the next question — *does the core count vary
+at all between a 14-minute run and a 34-minute one?* — is answered by reading
+two logs instead of by another sweep. That is the whole reason to record a
+thing you cannot yet explain.
+
+It is also worth stating plainly that **the hypothesis was mine and the
+measurement I built to test it is what killed it.** That is the fourth time
+today: the ambiguous-line branch, the `--durations` target, the concurrency
+theory, and now this. The pattern is not that the guesses were careless — each
+had a real mechanism behind it — but that a mechanism is not evidence.
+
+---
+
+## 2026-09-07 — the Studio names 34 Python codes as bare strings, and one of them prints a server path to the customer
+
+Two directions across the same seam. `warnings_codes.py`'s header states the
+contract — *"UI switches on codes, never prose"* — and it is the right one.
+Nobody had priced its cost: **the Studio cannot import a Python constant, so
+it names every code as a bare string literal.**
+
+### Direction one: nothing ties the two sides together
+
+| site | codes | owner | what a rename deletes |
+|---|---:|---|---|
+| `digitizer.js` `WARNING_TEXT` | 28 | `warnings_codes` | the translation — `describeWarnings` falls back to `String(w.message)` |
+| `DigitizePanel` flat-art nudge | 4 | `warnings_codes` | the nudge never appears again |
+| `DigitizePanel` `otherWarningLines` | 1 | `warnings_codes` | the enclosed-background banner duplicates into the plain list |
+| `DigitizePanel` merge/split notes | 2 | `warnings_codes` | the review-screen note vanishes |
+| `DigitizePanel` `FIX_FOR` + trim panel | 4 | `preflight` | the one-press fix button stops being offered |
+| `preflight.py` mirrored constants | 5 | `warnings_codes` | `_tonal_fill_technique` reads "tatami" for a tonal plan; the face and contour guards go quiet |
+
+**34 distinct strings, six sites, every one live.** By the standing rule —
+*sweep first, and if it finds nothing the convention is sound* — that is a
+fifth zero-yield sweep and the check should not exist. It was built anyway,
+and the reason is the distinction now in DOCTRINE: **a sweep is judged on
+what it finds today, a tripwire on what its failure would cost.** Here the
+failure is silent, customer-facing, and looks exactly like a code that was
+never translated. Contrast `stage7_sequence.py`, which consumes the same
+codes by import: delete one and the package will not load.
+
+`digitizer/tests/test_code_wires.py` (4). **Two ways it could have
+been decoration, both hit while writing it:**
+
+- The first `_map_keys` sliced the object literal at a nearby `\n  };` and
+  got the right answer for both maps **by luck** — it never reached
+  `FIX_FOR`'s nested braces. Every assertion in the file is a "not in" check,
+  and a parser that finds nothing passes all of them.
+- preflight holds private copies of four pipeline codes. Admitting them to
+  the "live" set would let a stale mirror vouch for a consumer — a check
+  comparing a string to a second copy of itself. Excluded by name, and the
+  exclusion is asserted.
+
+**Six mutations, six reds, tree restored.** A rename in each consumer and in
+each owner, plus dropping the mirror filter.
+
+### Direction two: what the corpus actually shows a customer
+
+`digitizer/tools/warning_coverage.py`, 26 fixtures at 80 mm / left_chest:
+**27 distinct codes emitted, 11 untranslated.** Untranslated is not the
+defect — the engine writes English by default, and four of the eleven need no
+help (`SMALL_SHAPES_AS_RUN`, `BACKGROUND_ABSENT`, `TONAL_REGIONS_SPLIT`,
+`DUPLICATE_CONE_LAYERS_MERGED` all read as plain sentences) and two sit in
+between — `BORDER_SEAM_SHARED` (1/26) and `SHAPES_LEFT_UNSEWN` (10/26), which
+is accurate but repeats in raw form what `BACKGROUND_ENCLOSED`'s dedicated
+banner already says (see the shadow below). The remaining five split three
+ways, and only the last has no product question in it:
+
+- **Telemetry, and the two most frequent codes in the corpus.**
+  `PHOTO_SEGMENT_REGION_COUNT` and `PHOTO_PALETTE_SELECTED`, 20/26 each:
+  *"982 superpixels, 32 after merging"*, *"chart-restricted weighted
+  k-medoids"*. Suppress or translate is a voice call.
+- **Real events in a unit nobody outside this repo reads.**
+  `THREAD_RESNAPPED_AFTER_DRIFT` 13/26 (*"worst dE00 37.3"*) and
+  `PALETTE_THREAD_MISMATCH` 6/26. Worth saying — in other words.
+- **A server filesystem path.** `PHOTO_BACKGROUND_REMOVAL_UNAVAILABLE`,
+  9/26: *"isolated rembg venv not found at
+  /home/user/EMB-Bot/digitizer/rembg_isolated/venv/bin/python"*. Now
+  MASTER_SCOPE defect 29.
+
+**The 9/26 is not a corpus artefact.** `cfg.photo_prep_background_removal`
+defaults `True`, so this fires on every photographic design on any machine
+where the optional isolated venv was never built. Six sibling `bg_reason`
+strings reach the same sentence, one of them carrying the last line of the
+rembg worker's STDERR. `pipeline.run_stages` already passes the string as a
+separate `reason=` payload field, so removing it from the human sentence
+costs no diagnostic at all.
+
+**It is still not fixed in this PR, and that is the point of the split.**
+Measuring what a customer sees and changing what a customer sees are
+different acts with different review needs. The same reasoning left the
+"Make it bigger" button in place yesterday after measuring it at one in ten.
+
+### The dedup works, and the duplicate arrives anyway
+
+`otherWarningLines` hand-filters exactly ONE code out of the plain list —
+`BACKGROUND_ENCLOSED`, because it owns a dedicated banner and would otherwise
+show twice. **`SHAPES_LEFT_UNSEWN` carries the same news, untranslated, and is
+not filtered:** *"1 shape (156.5 mm², largest 156.5 mm²) in thread 0020 was
+planned but not sewn — enclosed background, showing the garment through."* It
+fires on **10 fixtures and all 10 also emit `BACKGROUND_ENCLOSED`** — total
+containment, not a correlation. The customer reads the banner, then reads the
+same fact again in engine words directly beneath it.
+
+**The report that found it produced five candidates and one survived
+reading.** The tool requires the overlap in BOTH directions, because a one-way
+test is a base-rate generator — `LONG_JUMPS_TRIMMED` fires on 20 of 26
+fixtures, so almost anything covers 80% of its own fixtures with it. The
+mutual test still let four through, and all four are simply pairs of codes
+that fire on photographs: `PHOTO_SEGMENT_REGION_COUNT` and
+`PHOTO_PALETTE_SELECTED` with `LONG_JUMPS_TRIMMED`,
+`THREAD_RESNAPPED_AFTER_DRIFT` and `SMALL_SHAPES_AS_RUN` with
+`SAME_THREAD_SHAPES_MERGED`. **Same rule as always, now applied to a tool
+written the same hour: read the matches, not the count.** The tool prints that
+caveat beside its own output rather than in a doc nobody opens.
+
+### The third direction was swept and found nothing
+
+All 57 of `warnings_codes.py`'s codes are **imported by name** somewhere in
+`digitizer_core` — checked by walking each module's AST, because a grep
+counts a mention in a comment, and every one of
+`WARNING_TEXT`'s 28 keys resolves to a live wire value. **No dead codes, no
+dead translations.** Recorded so nobody sweeps it again.
+
+---
+
+## 2026-09-07 — the diagnostic was the customer sentence, at three sites built from one pattern
+
+The measurement two hours earlier found `PHOTO_BACKGROUND_REMOVAL_UNAVAILABLE`
+printing an absolute venv path to whoever digitized, on 9 of 26 fixtures. It
+was left unfixed on purpose — measuring what a customer sees and changing it
+are different acts. This is the change.
+
+### It was a family, and the measured site was the smallest part of it
+
+Three photo-prep seams degrade to a documented no-op when the machine cannot
+run them, and every one of them was written the same way:
+
+```
+warn(CODE, f"X was skipped — {reason}. <consequence>", reason=reason)
+```
+
+| code | what the customer read |
+|---|---|
+| `PHOTO_BACKGROUND_REMOVAL_UNAVAILABLE` | *"isolated rembg venv not found at `/home/user/EMB-Bot/digitizer/rembg_isolated/venv/bin/python`"* |
+| `PHOTO_FACE_PRIORS_UNAVAILABLE` | *"YuNet model file missing at `<absolute path>`"* |
+| `PHOTO_SAM2_SEGMENTATION_UNAVAILABLE` | *"SAM2 worker exited 137: `<last line of the worker's STDERR>`"* |
+
+**Fixing only the one that was measured would have left two identical
+siblings** — the same missing-port shape as defect 27, where the flat lane had
+dissolved compression halos all along and the SLIC+RAG lane simply never got
+the pass. The sweep that found the other two is four lines of `ast`, and it is
+now the test.
+
+### The fix is a MOVE, and the field already existed
+
+All three route through `pipeline._environment_warning`: the sentence becomes
+*"X could not run here. &lt;consequence&gt;"* and the diagnostic goes to
+`reason=` alone. **Nothing is dropped.** Every one of the three already passed
+`reason=` beside the message that duplicated it — the payload has carried the
+full string the whole time, so the change removes a duplicate rather than a
+fact. Confirmed end to end on `photo_chrome_specular`:
+
+```
+MESSAGE: Background removal could not run here. Tone, texture and face prep
+         were skipped with it, because prep without the cutout measures worse
+         than no prep at all; this photo took the plain classical route.
+REASON : isolated rembg venv not found at /home/user/EMB-Bot/digitizer/
+         rembg_isolated/venv/bin/python — see digitizer/rembg_isolated/
+         README.md to build it
+```
+
+### The tripwire, and what makes it non-vacuous
+
+`tests/test_environment_warnings.py` (7). The load-bearing one AST-walks every
+`.py` in `digitizer_core`, finds each `warn(code, message, ...)` whose message
+is an f-string, and rejects any that interpolates a name called `reason` or
+ending `_reason`. Other interpolations are fine and everywhere — counts,
+millimetres, thread numbers; it is the diagnostic-shaped one that must not be
+in a sentence a customer reads.
+
+Three things keep it from being decoration:
+
+- **Run against the pre-fix `pipeline.py` it reports exactly three sites**, by
+  line and by variable: 391 `bg_reason`, 430 `reason`, 494 `sam2_reason`.
+- A separate test pins that the walker parses **at least 30 `warn()` calls**,
+  because the assertion is a "no hits" check and a broken walk passes it.
+- Both message assertions were mutation-proved: re-introducing the leak at one
+  call site reds the tripwire with the file and line, and leaking inside the
+  helper itself reds four tests.
+
+And one test guards the other direction — that the diagnostic was not softened
+along with the sentence. It monkeypatches `REMBG_VENV_PYTHON` to a path that
+does not exist rather than relying on the venv's absence, **because a test
+that only fires where rembg is missing is a test that skips on the machines
+that ship it.**
+
+### The same read over preflight's own messages found nothing
+
+`warning_coverage` is about `plan.warnings`. Preflight's 18 `finding()`
+messages are a separate voice reaching the same panel, so they got the same
+read — statically, off the AST, no corpus run needed. **All 18 are good
+customer prose:** every one names the effect on the garment and a remedy, in
+the customer's units. No shape ids, no dE00, no engine vocabulary.
+
+One looked wrong and is not, which is the part worth writing down.
+`SAME_HOLE_HEAVY` says *"professional files run about 9%"* — and the memory
+entry for 2026-09-06 lists *"our benchmark is 9.8%"* as one of four
+documentation defects the `FILL_ROW_MM` re-base created. **Different
+numbers.** The 9% in the message is the professional 36-file corpus's
+**9.455%** (732,246 penetrations, the pro's own pitch and the 0.1 mm DST
+grid), which is what `baseline=0.09455` carries and what the docstring says
+outright is comparable. The stale 9.8% was OUR OWN rate, in prose, and the
+docstring already corrects it in place. **Nothing to fix here** — recorded
+because the next reader will land on the same apparent contradiction and
+spend the same twenty minutes.
+
+The threshold question is separate and stays open by design:
+`SAME_HOLE_RATE_MAX` was set "far above" our old 9.8%, and our corpus now
+reads 0.001–0.103, so it fires on 0 of 26. Retuning it is a physical call on
+a constant whose baseline is a professional corpus, and the docstring
+declines it deliberately.
+
+### Why this one was mine to make and the other two were not
+
+Of the eleven untranslated codes, two are engine telemetry
+(`PHOTO_SEGMENT_REGION_COUNT`, `PHOTO_PALETTE_SELECTED`) and two are real
+events named in a unit nobody outside this repo reads (dE00). Suppressing or
+rewording those is a decision about product voice. **This one is not a voice
+question**: nobody would rule that the panel should print a venv path, the
+information survives untouched in the payload, and the CONSEQUENCE clause —
+the half that tells the customer what happened to their design — is unchanged
+word for word in all three. Only the lead clause moves, from *"X was skipped —
+<diagnostic>."* to *"X could not run here."*, which is the interpolation
+coming out and the sentence still needing a verb. That is a deletion with a
+grammatical repair, not a rewrite of copy.

@@ -137,3 +137,82 @@ def test_the_shipped_current_state_docs_still_agree():
         problems += doc_claims.check_defaults(text, doc)[0]
         problems += doc_claims.check_constants(text, doc, mods)[0]
     assert problems == [], problems
+
+
+# --- documented test counts ------------------------------------------------
+# These drift every time someone adds a test, which is what makes them worth
+# checking. The pattern is narrow ON PURPOSE: a first cut matched "the first
+# number within 40 characters" and reported six drifts in `docs/scope/1`, all
+# of them false positives on prose that is not a total.
+
+def test_a_plain_count_is_checked():
+    problems, agreed, cannot = doc_claims.check_test_counts(
+        "`tests/test_x.py` (13)", "T.md", {"tests/test_x.py": 13})
+    assert (problems, agreed, cannot) == ([], 1, [])
+
+
+def test_a_wrong_count_is_reported():
+    problems, agreed, _ = doc_claims.check_test_counts(
+        "`tests/test_x.py` (13)", "T.md", {"tests/test_x.py": 99})
+    assert agreed == 0
+    assert len(problems) == 1 and "13" in problems[0] and "99" in problems[0]
+
+
+@pytest.mark.parametrize("text", [
+    "`tests/test_x.py` (7 tests, 35s)",     # count plus a runtime
+    "(`tests/test_x.py`, 7)",               # file and count inside one paren
+    "`digitizer/tests/test_x.py` (7)",      # repo-relative spelling
+])
+def test_every_shape_the_docs_actually_use_is_matched(text):
+    problems, agreed, cannot = doc_claims.check_test_counts(
+        text, "T.md", {"tests/test_x.py": 7})
+    assert (problems, agreed, cannot) == ([], 1, []), text
+
+
+# The four real strings that fooled the first cut. None is a claim about the
+# file's current size, so matching any of them is a FALSE POSITIVE, and noise
+# is how a checker stops being run.
+@pytest.mark.parametrize("text", [
+    "`tests/test_satin.py` **43/43**",                  # pass/total, a moment
+    "`tests/test_textcluster.py` gains 6 (3 candidate", # a delta
+    "`tests/test_pushcomp.py` together **46/46**",      # two files combined
+    "`tests/test_border.py` (17 → 22 tests)",           # a before/after
+])
+def test_prose_that_is_not_a_total_is_left_alone(text):
+    problems, agreed, cannot = doc_claims.check_test_counts(
+        text, "T.md", {"tests/test_satin.py": 99,
+                       "tests/test_textcluster.py": 50,
+                       "tests/test_pushcomp.py": 26,
+                       "tests/test_border.py": 28})
+    assert (problems, agreed, cannot) == ([], 0, []), text
+
+
+def test_a_file_that_collects_nothing_is_unverifiable_not_agreement():
+    problems, agreed, cannot = doc_claims.check_test_counts(
+        "`tests/test_gone.py` (13)", "T.md", {"tests/test_x.py": 1})
+    assert problems == [] and agreed == 0
+    assert len(cannot) == 1 and "collects nothing" in cannot[0]
+
+
+def test_no_collection_reports_unverifiable_rather_than_going_quiet():
+    """A checker that reports nothing when its input is broken is the exact
+    failure this whole tool exists to stop."""
+    problems, agreed, cannot = doc_claims.check_test_counts(
+        "`tests/test_x.py` (13)", "T.md", {})
+    assert problems == [] and agreed == 0
+    assert len(cannot) == 1 and "collection unavailable" in cannot[0]
+
+
+def test_the_shipped_current_state_docs_have_accurate_test_counts():
+    """The regression guard. Swept 2026-09-06: all three real count claims
+    live in the current-state docs and all three were correct."""
+    counts = doc_claims.test_counts()
+    if not counts:
+        pytest.skip("collection unavailable in this environment")
+    problems = []
+    for doc in doc_claims.STRICT:
+        path = doc_claims.ROOT / doc
+        if path.is_file():
+            problems += doc_claims.check_test_counts(
+                path.read_text(encoding="utf-8"), doc, counts)[0]
+    assert problems == [], problems

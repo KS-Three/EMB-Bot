@@ -288,6 +288,36 @@ class Generation:
         )
 
 
+def _environment_warning(code: str, what: str, consequence: str,
+                        reason: str) -> dict:
+    """One shape for the three "this machine cannot run X" warnings.
+
+    `remove_background_seam`, `detect_faces_seam` and the SAM2 seam each
+    degrade to a documented no-op and say so, and each produces a `reason`
+    for it. Those reasons are DIAGNOSTICS, not customer sentences: they carry
+    an absolute path (`isolated rembg venv not found at
+    /home/.../rembg_isolated/venv/bin/python`, `YuNet model file missing at
+    ...`), a subprocess exit code, or the last line of a worker's STDERR.
+
+    All three used to interpolate that straight into the human message, and
+    the delivery chain has no severity filter and no translation for any of
+    the three codes — `describeWarnings` falls back to `String(w.message)`
+    and `DigitizePanel` renders it as a plain list item. So a customer read
+    the server's filesystem layout. Measured 2026-09-07 on 9 of 26 corpus
+    fixtures for the background-removal one alone, and that is not a corpus
+    artefact: `cfg.photo_prep_background_removal` defaults True, so it is
+    every photographic design on any machine where the optional isolated
+    venv was never built.
+
+    **The reason is not dropped, only moved out of the sentence.** It rides
+    in the `reason` payload field exactly as before — where it always
+    belonged, and where it already WAS: every one of the three passed
+    `reason=` alongside the message that duplicated it.
+    """
+    return warn(code, f"{what} could not run here. {consequence}",
+                reason=reason)
+
+
 def _cone(chart, thread_index: int) -> dict:
     """One palette entry — the cone list's element shape, in one place.
 
@@ -388,13 +418,13 @@ def build_generation(
             # hard failure — but no longer a partial one either.
             cutout_failed = True
             prep_warnings.append(
-                warn(
+                _environment_warning(
                     PHOTO_BACKGROUND_REMOVAL_UNAVAILABLE,
-                    f"Background removal was skipped — {bg_reason}. Tone, "
-                    "texture and face prep were skipped with it, because "
-                    "prep without the cutout measures worse than no prep "
-                    "at all; this photo took the plain classical route.",
-                    reason=bg_reason,
+                    "Background removal",
+                    "Tone, texture and face prep were skipped with it, "
+                    "because prep without the cutout measures worse than no "
+                    "prep at all; this photo took the plain classical route.",
+                    bg_reason,
                 )
             )
         else:
@@ -427,11 +457,12 @@ def build_generation(
             # The job proceeds exactly as if no faces existed — and says so.
             reason = face_detector_unavailable_reason() or "detector unavailable"
             prep_warnings.append(
-                warn(
+                _environment_warning(
                     PHOTO_FACE_PRIORS_UNAVAILABLE,
-                    f"Face detection was skipped — {reason}. Faces in this "
-                    "photo get no protective treatment this run.",
-                    reason=reason,
+                    "Face detection",
+                    "Faces in this photo get no protective treatment this "
+                    "run.",
+                    reason,
                 )
             )
         elif faces:
@@ -491,12 +522,12 @@ def build_generation(
         )
         if q is None:
             prep_warnings.append(
-                warn(
+                _environment_warning(
                     PHOTO_SAM2_SEGMENTATION_UNAVAILABLE,
-                    f"SAM2 segmentation was skipped — {sam2_reason}. This "
-                    "photo used the classical SLIC+RAG region former "
+                    "SAM2 segmentation",
+                    "This photo used the classical SLIC+RAG region former "
                     "instead.",
-                    reason=sam2_reason,
+                    sam2_reason,
                 )
             )
 

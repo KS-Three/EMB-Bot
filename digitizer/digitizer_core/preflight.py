@@ -41,7 +41,15 @@ budget is a per-REGION sum — everything overlapping one patch of fabric,
 underlay included — so a stack of individually-correct layers passes every
 per-object check ever written and still puckers the garment. Its instrument
 is `_coverage_map`, which rasterizes the whole plan's stitch geometry into
-coverage units where 1.0 is one full covering layer of 40wt thread.
+coverage units where 1.0 is one tiled layer of 0.40 mm 40wt ribbon.
+
+That is NOT "one full covering layer" any more, and the difference bites: since
+`FILL_ROW_MM` moved to the professional's 0.15 mm (2026-09-03) a single plain
+fill lays `COVERAGE_FILL_LAYER_UNITS` = 0.40 / 0.15 = **2.67** units on its
+own. The thresholds are multiples of THAT, not of 1.0 — see
+`_coverage_findings`. Every coverage figure written down before that date is in
+the old base and reads 2.67x smaller than the same thread does today
+(`machine.COVERAGE_WARN_UNITS` carries the full note).
 
 The thread-colour instrument is per-SPOOL, and became per-region on
 2026-08-11 and per-shade-band on 2026-09-04. `_thread_match_findings` scores
@@ -130,20 +138,20 @@ from .threads import chart_for, rgb_to_lab
 # --- Codes (may migrate to warnings_codes.py at merge) ---------------------
 
 THREAD_MATCH_POOR = "THREAD_MATCH_POOR"        # extra: {thread_number, thread_name, brand_id, delta_e, yardstick, excess_delta_e, better_spool, worst_shape_id, worst_shape_area_mm2, worst_shape_area_frac, region_count, regions_scored, regions, artwork_rgb, thread_rgb} — excess_delta_e/better_spool are the gap to the best ALREADY-LOADED spool and that spool, populated on EVERY route since 2026-09-06 (both None when nothing loaded is meaningfully closer). `yardstick` ("excess"/"raw") says which one produced the SEVERITY, so a populated excess is never mistaken for a rescored finding
-LETTERING_TOO_SMALL = "LETTERING_TOO_SMALL"    # extra: {count, shapes: [{shape_id, column_mm, extent_mm}]}
+LETTERING_TOO_SMALL = "LETTERING_TOO_SMALL"    # extra: {count, satin_total, shapes: [{shape_id, column_mm, extent_mm}]} — satin_total is the DENOMINATOR the message needs ("38 of 46"), which reads very differently from a bare 38
 STITCHES_TOO_LONG = "STITCHES_TOO_LONG"        # extra: {count, max_mm}
-STITCHES_TOO_SHORT = "STITCHES_TOO_SHORT"      # extra: {fraction, count, total}
-TRIM_HEAVY = "TRIM_HEAVY"                      # extra: {per_1000, trims, stitches}
+STITCHES_TOO_SHORT = "STITCHES_TOO_SHORT"      # extra: {fraction, count, total, uncovered_shapes, shapes: [{shape_id, short, steps, median_mm, also_too_small}]} — `shapes` is every satin shape carrying a short step, worst first; `also_too_small` is whether LETTERING_TOO_SMALL already named it, and `uncovered_shapes` counts the ones it did NOT (a sewable column with a narrow waist passes lettering's median test and still breaks thread)
+TRIM_HEAVY = "TRIM_HEAVY"                      # extra: {per_1000, trims, stitches, in_shape, between_shapes, worst_shape_id, shapes: [{shape_id, trims}]} — in_shape + between_shapes == trims by construction; a cut INSIDE a shape is that shape failing to sew in one pass and merging shapes cannot remove it, which is the OPPOSITE of where the old message ("merge or remove the smallest shapes") sent people. Corpus-wide the split is 53/47, so one remedy was only ever right half the time
 DENSITY_EXTREME = "DENSITY_EXTREME"            # extra: {kind, measured_mm, target_mm, ratio} (+ technique, band_mm on a tonal fill)
-DENSITY_STACKED = "DENSITY_STACKED"            # extra: {peak_units, p95_units, over_warn_mm2, over_block_mm2, cell_mm}
-SAME_HOLE_HEAVY = "SAME_HOLE_HEAVY"            # extra: {fraction, repeat_points, penetrations, baseline}
+DENSITY_STACKED = "DENSITY_STACKED"            # extra: {peak_units, p95_units, over_warn_mm2, over_block_mm2, cell_mm, patches, worst_patch_mm2, worst_patch_at_mm} — the mm2 figures are SUMS and cannot tell one blob from twenty specks; `patches`/`worst_patch_mm2` separate them and `worst_patch_at_mm` is the plan-mm centre of the largest, which is the "where" the message always asked for
+SAME_HOLE_HEAVY = "SAME_HOLE_HEAVY"            # extra: {fraction, repeat_points, penetrations, baseline, max_strikes, points_3plus, worst_at_mm} — `fraction` counts 2+-strike points and cannot tell thousands of doubles from one spot struck twelve times; max_strikes/points_3plus are the DEPTH the check's own corpus argument ("ALL 36 files contain 3+ stacked points") is made on, and worst_at_mm is the "where" its message asks for
 LINK_UNCOVERED = "LINK_UNCOVERED"              # extra: {max_mm, limit_mm, total_mm, at_mm, thread_mm}
 ARTWORK_UNCOVERED = "ARTWORK_UNCOVERED"        # extra: {count, worst_mm2, total_mm2, wanted_mm2, shapes: [{shape_id, missing_mm2, area_mm2}]}
 CONTOUR_STARVED = "CONTOUR_STARVED"            # extra: {count, rings, shapes}
 PHOTO_RESOLUTION_LOW = "PHOTO_RESOLUTION_LOW"  # extra: {px_per_mm, min_px_per_mm}
 SUBJECT_CONTRAST_LOW = "SUBJECT_CONTRAST_LOW"  # extra: {delta_l, min_delta_l, bg_lightness}
 STABILIZER_CUTAWAY = "STABILIZER_CUTAWAY"      # extra: {stitch_count, threshold}
-COLOR_STOPS_HEAVY = "COLOR_STOPS_HEAVY"        # extra: {color_changes, max_stops}
+COLOR_STOPS_HEAVY = "COLOR_STOPS_HEAVY"        # extra: {color_changes, max_stops, distinct_cones, closest_pair, closest_pair_delta_e, repeated_cones} — closest_pair is the two cones a CIEDE2000 over the deduped palette says are nearest (None under two distinct cones); repeated_cones names any cone already sewn in more than one block, which is a free merge
 FACE_TOO_SMALL = "FACE_TOO_SMALL"              # extra: {count, design_mm, fits_hoop_mm, min_hoop_mm}
 CLASS_OVERRIDE_TECHNIQUE_MISMATCH = "CLASS_OVERRIDE_TECHNIQUE_MISMATCH"  # extra: {forced_class, detected_class, fill_technique}
 
@@ -1384,17 +1392,45 @@ def _lettering_findings(plan: StitchPlan) -> tuple[list[dict], int]:
 
 # --- Stitch length ----------------------------------------------------------
 
-def _stitch_length_findings(plan: StitchPlan) -> tuple[list[dict], dict]:
+def _stitch_length_findings(plan: StitchPlan,
+                            already_small: set[str] | None = None
+                            ) -> tuple[list[dict], dict]:
     """The format ceiling as a backstop, and the satin-short fraction.
 
     A plan should never contain a needle-down step past MAX_STITCH_MM — the
     planner splits them at the source — so any count here is a regression
     report, not a normal state. The short fraction is a quality score even
     when it stays under threshold; it rides out in the metrics.
+
+    `already_small` is the shape ids LETTERING_TOO_SMALL just named, and it is
+    what keeps this finding from being a second bill for one defect. Both
+    checks measure the SAME quantity — `MIN_COLUMN_MM is machine.MIN_STITCH_MM`
+    — off the same consecutive-step distance inside a satin run, and across
+    the 26-fixture corpus at 80 mm this one never fired without the other
+    (10 fired both, 1 lettering only, 0 here alone). What it does see that the
+    other does not is WHERE: only 66% of the short steps sit inside a shape
+    lettering named, because lettering judges a shape on its MEDIAN column, so
+    a perfectly sewable column with a narrow waist passes it and still breaks
+    thread. Naming those shapes is the whole reason this finding earns its 12
+    points.
+
+    A carrier is any shape with AT LEAST ONE short step, and that bar is
+    deliberate but not free: `app/src/lib/generate.js`'s `letteringNote` says
+    *"nearly every authored column tapers through 1 mm at its tips"* and holds
+    its own thin-stroke note quiet under a quarter of stroke length for exactly
+    that reason. So tip taper IS counted here. It is reported rather than
+    thresholded away because `short`/`steps` ride out beside every shape, which
+    lets a reader apply any bar they like — and because the corpus residue is
+    mostly well past taper (bridge_bar `S22a5e094` 205 of 1,597 steps, summit
+    `S86cc6879` 49 of 137, screenshot `Sd3950c67` 43 of 95) with only a couple
+    of shapes down in taper territory (summit `S99ee112d` 35 of 626, hotel
+    `Sebce2b7a` 4 of 43). Picking a share threshold is a constant, and this one
+    has had no sew-out.
     """
     too_long = 0
     longest = 0.0
     satin_total = satin_short = 0
+    steps: dict[str, list[float]] = {}
     for _b, run in plan.iter_runs():
         for a, b in zip(run.points, run.points[1:]):
             d = math.dist(a, b)
@@ -1403,6 +1439,7 @@ def _stitch_length_findings(plan: StitchPlan) -> tuple[list[dict], dict]:
                 longest = max(longest, d)
             if run.kind == stitches.SATIN:
                 satin_total += 1
+                steps.setdefault(run.shape_id, []).append(d)
                 if d < machine.MIN_STITCH_MM:
                     satin_short += 1
 
@@ -1421,16 +1458,56 @@ def _stitch_length_findings(plan: StitchPlan) -> tuple[list[dict], dict]:
         ))
     frac = satin_short / satin_total if satin_total else 0.0
     if satin_total >= _MIN_SAMPLES and frac > SATIN_SHORT_FRACTION_MAX:
+        named = already_small or set()
+        carriers = []
+        for sid, ds in sorted(steps.items()):
+            n = sum(1 for d in ds if d < machine.MIN_STITCH_MM)
+            if not n:
+                continue
+            med = sorted(ds)[len(ds) // 2]
+            carriers.append({"shape_id": sid, "short": n, "steps": len(ds),
+                             "median_mm": round(med, 2),
+                             "also_too_small": sid in named})
+        carriers.sort(key=lambda c: (-c["short"], c["shape_id"]))
+        missed = [c for c in carriers if not c["also_too_small"]]
+
+        # The remedy sentence, and it is NOT "enlarge". LETTERING_TOO_SMALL
+        # sits beside this one offering exactly that, and its own docstring
+        # carries the measurement that kills it: over 92.5 -> 220 mm the
+        # flagged COUNT falls 38 -> 13 while the median flagged column stays
+        # flat near 0.8 mm, because segmentation keeps generating
+        # sub-millimetre shapes as the design grows. The documented root cause
+        # is per-stroke satin routing, not scale
+        # (`docs/superpowers/plans/2026-09-04-per-stroke-satin-routing.md`:
+        # our median column 0.80-0.84 mm against a professional's 1.40-2.52).
+        # So this says what a person can act on today — which shapes, and
+        # which of them the size warning did not already cover.
+        if missed:
+            verb = "has" if len(missed) == 1 else "have"
+            where = (f" {len(missed)} of the {len(carriers)} shapes carrying "
+                     f"them {verb} a normal column width that pinches in "
+                     f"places, so the size warning does not cover them — "
+                     f"widen those waists.")
+        elif len(carriers) == 1:
+            where = (" The one shape carrying them is already flagged as too "
+                     "small to sew; fixing that clears this too.")
+        elif carriers:
+            where = (f" All {len(carriers)} shapes carrying them are already "
+                     f"flagged as too small to sew; fixing those clears this "
+                     f"too.")
+        else:                                            # pragma: no cover
+            where = ""
         findings.append(finding(
             STITCHES_TOO_SHORT,
             "warn",
             f"{frac:.0%} of satin stitches are under the "
             f"{machine.MIN_STITCH_MM:g} mm needle minimum (a healthy plan "
-            "runs about 10%). Thread breaks are likely — enlarge the design "
-            "or thicken its thinnest strokes.",
+            f"runs about 10%). Thread breaks are likely.{where}",
             fraction=round(frac, 3),
             count=satin_short,
             total=satin_total,
+            uncovered_shapes=len(missed),
+            shapes=carriers,
         ))
     return findings, {"satin_short_fraction": round(frac, 3),
                       "satin_steps": satin_total}
@@ -1439,28 +1516,89 @@ def _stitch_length_findings(plan: StitchPlan) -> tuple[list[dict], dict]:
 # --- Trims ------------------------------------------------------------------
 
 def _trim_findings(plan: StitchPlan) -> tuple[list[dict], float]:
-    """Trims per 1,000 stitches against the professional corpus.
+    """Trims per 1,000 stitches against the professional corpus, split by cause.
 
     The plan marks the first run of every color block as trimmed, but the
     first block of the design has no thread to cut yet, so the FILE contains
     one trim fewer than plan.stats reports (the same correction the service's
     stats payload makes). The rate uses what the machine will actually do.
+
+    **The split is the point.** A cut BETWEEN shapes is the machine moving on,
+    and merging or removing shapes removes it. A cut INSIDE one shape is that
+    shape failing to sew in one pass, and no amount of merging touches it — the
+    2026-09-06 Becker investigation measured why: `satin_shape` may travel over
+    UNSEWN strokes only, and on a 27-stroke region the walk succeeds up to 40%
+    sewn and **never again after**, so a big multi-stroke shape spends nearly
+    all its life unable to reach anywhere. That investigation counted PEN-UPS
+    (trims and floats together) and found **19 of 28 inside one shape**,
+    `Sead76620`, a 638.8 mm² 27-stroke region — a big multi-stroke shape, not
+    a small one, which is the opposite end of the design from where the old
+    message ("merge or remove the smallest shapes") sent people. Five other
+    remedies were measured and refuted there (stroke order, `TRIM_AT_MM`, spur
+    pruning, the Eulerian floor, end-to-end chaining); the one that remains is
+    decomposing the shape, and that is not a knob.
+
+    This split counts TRIMS, which is what the finding is scored on, so its
+    numbers are not that 19/28 and should not be quoted as it.
+
+    Attribution walks the runs in the SAME order and with the SAME empty-run
+    skip as `iter_machine_commands`, which is what produced `stats.trims` — a
+    run with no points emits nothing at all, its trim included. `in_shape`
+    plus `between_shapes` therefore equals `trims` by construction, which a
+    test pins.
     """
     s = plan.stats
-    first = plan.blocks[0].runs[0] if plan.blocks and plan.blocks[0].runs else None
+    sewn = [run for _b, run in plan.iter_runs() if run.points]
+    first = sewn[0] if sewn else None
     trims = s.trims - (1 if first is not None and first.trim else 0)
     per_1000 = 1000.0 * trims / s.stitch_count if s.stitch_count else 0.0
     if per_1000 <= TRIMS_PER_1000_MAX or s.stitch_count < _MIN_SAMPLES:
         return [], per_1000
+
+    # `shape_id` defaults to "", so an unattributed run would otherwise match
+    # its unattributed neighbour and claim a shape's worth of cuts as ones
+    # merging "cannot remove". Only a NON-EMPTY id that matches counts as
+    # in-shape, which is the conservative direction: it never over-claims that
+    # the cheap remedy is unavailable.
+    in_shape = between = 0
+    by_shape: dict[str, int] = {}
+    prev_sid: str | None = None
+    for i, run in enumerate(sewn):
+        if run.trim and i > 0:                 # i == 0 is the correction above
+            if run.shape_id:
+                by_shape[run.shape_id] = by_shape.get(run.shape_id, 0) + 1
+            if run.shape_id and run.shape_id == prev_sid:
+                in_shape += 1
+            else:
+                between += 1
+        prev_sid = run.shape_id
+    carriers = sorted(({"shape_id": sid, "trims": n}
+                       for sid, n in by_shape.items()),
+                      key=lambda c: (-c["trims"], c["shape_id"]))
+    worst = carriers[0] if carriers else None
+
+    if in_shape > between and worst is not None:
+        where = (f" {in_shape} of {trims} happen INSIDE a shape rather than "
+                 f"between shapes ({worst['shape_id']} takes "
+                 f"{worst['trims']}) — merging or removing shapes cannot "
+                 f"remove those, the shape has to sew in fewer strokes.")
+    else:
+        where = (f" {between} of {trims} are moves between shapes, so merging "
+                 f"or removing the smallest is the cheapest thing to try; the "
+                 f"other {in_shape} are inside a shape and it will not touch "
+                 f"them.")
     return [finding(
         TRIM_HEAVY,
         "warn",
         f"{per_1000:.1f} trims per 1,000 stitches — professional files run "
-        "0.1 to 4.1. Each cut is 2-3 seconds of machine time; consider "
-        "merging or removing the smallest shapes.",
+        f"0.1 to 4.1. Each cut is 2-3 seconds of machine time.{where}",
         per_1000=round(per_1000, 1),
         trims=trims,
         stitches=s.stitch_count,
+        in_shape=in_shape,
+        between_shapes=between,
+        worst_shape_id=None if worst is None else worst["shape_id"],
+        shapes=carriers,
     )], per_1000
 
 
@@ -1839,11 +1977,28 @@ def _coverage_findings(plan: StitchPlan) -> tuple[list[dict], dict]:
     check exists for.
 
     Thresholds are `machine.COVERAGE_WARN_UNITS` / `COVERAGE_BLOCK_UNITS` —
-    2.5 and 3.5, both [D] in the playbook and not primary-sourced. They fire
-    on the area of CONNECTED patches at or over `_COVERAGE_MIN_PATCH_MM2`,
-    never on a peak cell: clean work speckles over 2.5 wherever two satin
-    columns join or a sub-5 mm shape is rescued with a triple run, and a
-    check that reads those as pucker would flag both house fixtures.
+    **2.5 and 3.5 FILL LAYERS**, both [D] in the playbook and not
+    primary-sourced. Read the multiplier, not a bare number: since the
+    2026-09-03 re-base one fill layer is `COVERAGE_FILL_LAYER_UNITS` = 2.67
+    units, so the constants evaluate to **6.67 and 9.33**. This docstring said
+    "2.5 and 3.5" as if they were the constants' values until 2026-09-06, which
+    made every corpus peak (2.20 to 7.97) look like a gross overshoot when in
+    fact none of them reaches the block ceiling.
+
+    They fire on the area of CONNECTED patches at or over
+    `_COVERAGE_MIN_PATCH_MM2`, never on a peak cell: clean work speckles over
+    the warn level wherever two satin columns join or a sub-5 mm shape is
+    rescued with a triple run, and a check that reads those as pucker would
+    flag both house fixtures.
+
+    **That filter is doing all the work, and the corpus proves it.** Swept
+    2026-09-06 over all 26 fixtures at 80 mm: six carry a PEAK over the warn
+    level (`photo_dof_meadow` 7.97, `drone_render` and `gaulke_roofing` 7.51,
+    `chrome_specular` 7.09, `sunset_backlit` 7.04, `bridge_bar` 6.89) and
+    **every one of them yields 0.0 mm2 of qualifying patch** — so this finding
+    fires on **0 of the 52 design/garment combos**, and its only exercise is
+    the synthetic `_stacked(n)` plans in `tests/test_preflight.py`. Keep those:
+    they are the whole test coverage of a `block`-severity check.
     """
     empty = {"coverage_p50": None, "coverage_p95": None, "coverage_max": None,
              "coverage_area_mm2": None, "coverage_over_warn_mm2": 0.0,
@@ -1851,25 +2006,46 @@ def _coverage_findings(plan: StitchPlan) -> tuple[list[dict], dict]:
     got = _coverage_map(plan)
     if got is None:
         return [], empty
-    grid, _origin = got
+    grid, (x0, y0) = got
     cell_area = machine.COVERAGE_CELL_MM ** 2
     covered = grid[grid >= _COVERAGE_FLOOR_UNITS]
     if not covered.size:
         return [], empty
 
-    def patch_area_mm2(limit: float) -> float:
-        """Area of the patches over `limit` that are big enough to act on."""
+    def patches(limit: float) -> list[tuple[float, float, float]]:
+        """The patches over `limit` big enough to act on, worst area first.
+
+        -> [(area_mm2, centre_x_mm, centre_y_mm)]. The centre is in the plan's
+        own mm, recovered through `_coverage_map`'s origin — which this
+        function used to discard, so the check knew where the stack was and
+        threw it away while its own message said "cut the bottom layer back
+        WHERE the top one covers it".
+        """
         mask = (grid >= limit).astype(np.uint8)
         if not mask.any():
-            return 0.0
-        _n, _lab, stats, _c = cv2.connectedComponentsWithStats(mask, connectivity=8)
-        areas = stats[1:, cv2.CC_STAT_AREA] * cell_area
-        return float(areas[areas >= _COVERAGE_MIN_PATCH_MM2].sum())
+            return []
+        _n, _lab, stats, cents = cv2.connectedComponentsWithStats(
+            mask, connectivity=8)
+        out = []
+        for i in range(1, len(stats)):
+            a = float(stats[i, cv2.CC_STAT_AREA]) * cell_area
+            if a < _COVERAGE_MIN_PATCH_MM2:
+                continue
+            # +0.5 because `_coverage_map` FLOORS a point into its cell, so
+            # cell i spans [x0 + i*cell, x0 + (i+1)*cell) and its centre is
+            # half a cell along. Centroids come back (column, row) = (x, y).
+            cx = x0 + (float(cents[i][0]) + 0.5) * machine.COVERAGE_CELL_MM
+            cy = y0 + (float(cents[i][1]) + 0.5) * machine.COVERAGE_CELL_MM
+            out.append((a, cx, cy))
+        out.sort(reverse=True)
+        return out
 
     peak = float(grid.max())
     p95 = float(np.percentile(covered, 95))
-    over_warn = patch_area_mm2(machine.COVERAGE_WARN_UNITS)
-    over_block = patch_area_mm2(machine.COVERAGE_BLOCK_UNITS)
+    warn_patches = patches(machine.COVERAGE_WARN_UNITS)
+    block_patches = patches(machine.COVERAGE_BLOCK_UNITS)
+    over_warn = float(sum(a for a, _x, _y in warn_patches))
+    over_block = float(sum(a for a, _x, _y in block_patches))
     metrics = {
         "coverage_p50": round(float(np.percentile(covered, 50)), 2),
         "coverage_p95": round(p95, 2),
@@ -1881,11 +2057,21 @@ def _coverage_findings(plan: StitchPlan) -> tuple[list[dict], dict]:
 
     if over_block > 0.0:
         sev, limit, area = "block", machine.COVERAGE_BLOCK_UNITS, over_block
+        hits = block_patches
     elif over_warn > 0.0:
         sev, limit, area = "warn", machine.COVERAGE_WARN_UNITS, over_warn
+        hits = warn_patches
     else:
         return [], metrics
 
+    # "N mm2 of this design" is a SUM, and a sum cannot tell 40 mm2 in one
+    # blob from 40 mm2 speckled over twenty — which are different defects
+    # with different fixes. The worst patch and its count separate them, and
+    # the centre gives the review screen somewhere to point.
+    worst_a, worst_x, worst_y = hits[0]
+    where = (f" The worst of {len(hits)} is {worst_a:.0f} mm2 near "
+             f"({worst_x:.0f}, {worst_y:.0f}) mm." if len(hits) > 1 else
+             f" It is one patch, centred near ({worst_x:.0f}, {worst_y:.0f}) mm.")
     advice = ("Cut the bottom layer back where the top one covers it, or "
               "drop a layer." if sev == "block" else
               "Check that the layers there are meant to overlap.")
@@ -1895,12 +2081,15 @@ def _coverage_findings(plan: StitchPlan) -> tuple[list[dict], dict]:
         f"{area:.0f} mm2 of this design stacks more than {limit:g} layers "
         f"of thread on one patch of fabric (peak {peak:.1f}), counting "
         f"underlay, fill and outlines together. That much thread puckers the "
-        f"garment and breaks needles. {advice}",
+        f"garment and breaks needles.{where} {advice}",
         peak_units=round(peak, 2),
         p95_units=round(p95, 2),
         over_warn_mm2=round(over_warn, 1),
         over_block_mm2=round(over_block, 1),
         cell_mm=machine.COVERAGE_CELL_MM,
+        patches=len(hits),
+        worst_patch_mm2=round(worst_a, 1),
+        worst_patch_at_mm=[round(worst_x, 1), round(worst_y, 1)],
     )], metrics
 
 
@@ -2506,6 +2695,40 @@ def _same_hole_findings(plan: StitchPlan) -> tuple[list[dict], float | None]:
     number here is comparable to the 9.455% figure rather than merely similar
     in spirit. Ties are deliberately INCLUDED: they are most of what this
     measures.
+
+    **"our benchmark is 9.8%" is in the PRE-2026-09-03 base and is now about
+    2.7%, for no physical reason.** The rate is a ratio, and `FILL_ROW_MM`
+    moved 0.40 -> 0.15 that day, so the DENOMINATOR grew while the thing being
+    counted did not. A/B'd on four fixtures at both row pitches (2026-09-06):
+
+        fixture              pens x   repeat x   3plus x   max_strikes
+        logo_whitebg           2.30       1.00      1.13   8 -> 8
+        becker_marine_logo     1.17       0.98      1.00   4 -> 4
+        logo_hotel_fremont     1.62       1.15      0.98   8 -> 8
+        screenshot_phone_ui    1.37       1.09      1.02   9 -> 9
+
+    Penetrations grew 1.17-2.30x, repeat POINTS moved 0.98-1.15x (28 against
+    28 on `logo_whitebg` — the same number), and the rate fell to 0.43-0.83x
+    of what it was. **The needle is not landing in fewer old holes; there is
+    simply more denominator.** That is ROADMAP gate 4's warning in miniature —
+    a raw ratio moves when the mix moves — and it is why the corpus now reads
+    0.001 to 0.103 against a threshold set as "far above" 9.8%.
+
+    **So the DEPTH rides out beside the rate, and it is the density-invariant
+    half.** `max_strikes` was IDENTICAL on all four fixtures across that row
+    change; `points_3plus` moved by at most 13%. A rate of 2+-strike points
+    also cannot distinguish thousands of doubles — which every professional
+    file has, and which the paragraph above defends — from one point the
+    needle hits twelve times, which is a hole. `max_strikes`, `points_3plus`
+    and `worst_at_mm` answer both; `worst_at_mm` is additionally the "where"
+    the message asks for ("expect the odd thread break WHERE the stitching
+    doubles back").
+
+    `SAME_HOLE_RATE_MAX` is NOT retuned here. Moving it would be a physical
+    call on a constant whose baseline is a professional corpus measured at its
+    own row pitch, and re-deriving that comparison needs the pro files
+    re-walked, not our side rescaled. Recorded so the next reader knows the
+    threshold is looser in practice than the prose implies.
     """
     q = _SAME_HOLE_QUANTUM_MM
     keys: list[tuple[int, int]] = []
@@ -2523,17 +2746,27 @@ def _same_hole_findings(plan: StitchPlan) -> tuple[list[dict], float | None]:
     rate = repeats / total
     if rate <= SAME_HOLE_RATE_MAX:
         return [], rate
+
+    deep = sum(1 for v in counts.values() if v >= 3)
+    # Ties break on the grid key, so two spots struck equally often give a
+    # stable answer rather than one that depends on dict order.
+    worst_key, max_strikes = max(counts.items(), key=lambda kv: (kv[1], kv[0]))
     return [finding(
         SAME_HOLE_HEAVY,
         "info",
         f"{rate:.0%} of the needle's landings are on a spot it has already "
         f"struck — professional files run about 9%. The design will sew, but "
         f"expect the odd thread break where the stitching doubles back on "
-        f"itself.",
+        f"itself. The deepest spot takes {max_strikes} strikes, near "
+        f"({worst_key[0] * q:.0f}, {worst_key[1] * q:.0f}) mm; "
+        f"{deep} spots take three or more.",
         fraction=round(rate, 3),
         repeat_points=repeats,
         penetrations=total,
         baseline=0.09455,
+        max_strikes=max_strikes,
+        points_3plus=deep,
+        worst_at_mm=[round(worst_key[0] * q, 1), round(worst_key[1] * q, 1)],
     )], rate
 
 
@@ -2588,7 +2821,14 @@ def run_preflight(result: PipelineResult, plan: StitchPlan,
     findings.extend(lettering)
     metrics["satin_shapes"] = satin_shape_count
 
-    length_findings, length_metrics = _stitch_length_findings(plan)
+    # The shapes lettering just named, so the short-stitch check can say which
+    # of ITS carriers are not covered by that warning. The two measure the same
+    # quantity (`MIN_COLUMN_MM is machine.MIN_STITCH_MM`) and this one never
+    # fired alone over the 26-fixture corpus AT 80 MM — the only width swept —
+    # so without the hand-off it is a second 12-point bill for one defect.
+    already_small = {sh["shape_id"] for f in lettering
+                     for sh in f.get("extra", {}).get("shapes", ())}
+    length_findings, length_metrics = _stitch_length_findings(plan, already_small)
     findings.extend(length_findings)
     metrics.update(length_metrics)
 
@@ -2644,6 +2884,25 @@ def run_preflight(result: PipelineResult, plan: StitchPlan,
     score = 100
     for f in findings:
         score -= _DEDUCT.get(f["severity"], 0)
+    # The UNCLAMPED score, before `max(0, ...)` throws the magnitude away.
+    #
+    # The clamp is right for an operator — a negative grade means nothing —
+    # but it makes the metric SATURATE, and 12 of the corpus's 52
+    # design/garment combos sit on that floor with true scores from -272 to
+    # -38 (`tools/floor_depth.py`, 2026-09-06): a 234-point spread behind one
+    # printed value. `screenshot_phone_ui_golke` would have to clear ~11
+    # blocking findings before `score` moved at all, so a fix clearing ten of
+    # them reads as doing nothing.
+    #
+    # Riding out as a METRIC changes no grade and re-bases nothing — that
+    # would be a product call — but `corpus_scorecard.diff` compares
+    # `report["metrics"]` and reports any move past 5%, so a real improvement
+    # to a floored design becomes visible instead of silent.
+    #
+    # INERT UNTIL THE BASELINE IS RECAPTURED: `_metric_deltas` iterates
+    # `set(old) & set(new)`, so a key the stored baseline lacks is skipped.
+    # That is also why adding it cannot disturb any existing diff.
+    metrics["raw_score"] = score
     score = max(0, score)
     grade = ("A" if score >= 90 else "B" if score >= 75 else
              "C" if score >= 60 else "D" if score >= 40 else "F")

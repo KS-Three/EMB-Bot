@@ -270,6 +270,30 @@ Moved verbatim 2026-08-28 — no section was rewritten in the move.
   singly; an unavailable cutout skips prep entirely rather than degrading onto
   prep-alone. **Ships KNOWINGLY INERT for real uploads** — all four acceptance
   photos classify `gradient` at 1.00, which the gate excludes; revisit at gate 2. *(ruled 2026-08-24 — Kent; [area 1](docs/scope/1-auto-digitizing-quality.md))*
+- **A DIAGNOSTIC and a CUSTOMER SENTENCE are two different strings. Never
+  build one out of the other.** Three photo-prep seams degrade to a documented
+  no-op when the machine cannot run them, and all three used to write
+  `f"X was skipped — {reason}. ..."` while ALSO passing `reason=` beside it —
+  so the panel printed the server's own filesystem: *"isolated rembg venv not
+  found at /home/user/EMB-Bot/digitizer/rembg_isolated/venv/bin/python"*,
+  *"YuNet model file missing at …"*, *"SAM2 worker exited 137: <the last line
+  of somebody's STDERR>"*. None of the three codes is translated, and
+  `describeWarnings` falls back to `String(w.message)` with no severity
+  filter, so every one of them rendered verbatim as a list item. **Measured
+  9 of 26 corpus fixtures for the background-removal one alone — and not a
+  corpus artefact:** `cfg.photo_prep_background_removal` defaults True and the
+  ruling directly above ships rembg as a DEPLOY REQUIREMENT, so this is the
+  expected field condition, not an edge case. Fixed 2026-09-07 by routing all
+  three through `pipeline._environment_warning`, which is a MOVE and not a
+  deletion — the reason was already in the payload. **The reusable half is the
+  shape, not the fix:** it was a FAMILY of three built from one pattern, and
+  fixing only the site that was measured would have left two identical
+  siblings, which is exactly the missing-port defect (27) this repo keeps
+  rediscovering. `tests/test_environment_warnings.py` (7) carries an AST
+  tripwire over the whole package that rejects a `warn()` message f-string
+  interpolating any `*_reason` name; run against the pre-fix file it names all
+  three sites and their line numbers. *(measured and fixed 2026-09-07 —
+  `digitizer/tools/warning_coverage.py`; scope-history 09-07)*
 - **`feat/svg-import-shapes` is not resumed.** Far behind, and the one task
   attempted past the tokenizer is broken against its own tolerance. Treat a
   revival as a fresh plan against `main`, not a rebase; branch left in place,
@@ -637,7 +661,7 @@ its hedge as it is copied forward** — is why this file is split.
   trusting it" and hardened into a stated defect as it was copied. It computes
   an **unnormalised Laplacian-gain ratio**, so its scale is not comparable to a
   0–1 ratio by inspection, and it discriminates correctly at the shipped
-  threshold. *(confirmed 2026-08-14 — `stage6_blend.py:295-299`)*
+  threshold. *(confirmed 2026-08-14 — `stage6_blend._speckle_ratio`; the line reference this carried, `stage6_blend.py:295-299`, had drifted to a different function by 2026-09-07 — cite the symbol)*
 - **Not a defect, recorded so it isn't re-found:** the noise fixture in
   `test_blend_falls_back_to_ordinary_tatami_on_speckle` never reaches the speckle
   gate — r² is tested first and random noise fails it, so the branch that test is
@@ -681,6 +705,202 @@ its hedge as it is copied forward** — is why this file is split.
   tally move. *(raised and disproved in one session, 2026-08-31 — filed as a
   live defect on the code read, then withdrawn on the measurement; instrument:
   scratch sweep patching `_hoist_same_thread` and `detail_runs`)*
+
+- **The Studio's "Make it bigger" button was justified by a misquote, and the
+  quote was wrong on the day it was written.** `DigitizePanel.svelte`'s
+  `FIX_FOR` comment read *"`LETTERING_TOO_SMALL`'s own message ends 'Enlarging
+  helps', and until now nothing offered to enlarge it."* At that commit
+  (`1c20ec9`, 2026-09-02) the message already read *"Enlarging helps **but does
+  not fully clear it**: the smallest shapes regenerate at any size. Remove or
+  simplify the smallest lettering."* The quote stopped at the word where the
+  sentence reverses, and the action it justified ("make it bigger") is not the
+  action the message ends on ("remove or simplify"). **No checker can catch
+  this** — "Enlarging helps" IS a truthful substring of the source string, so
+  fidelity checking passes; only reading the rest of the sentence finds it.
+  Corrected in place 2026-09-06; the button was LEFT alone, because whether a
+  partial remedy earns a button is Kent's call, not a session's.
+  **And then the button was MEASURED** (`tools/enlarge_cure.py`, the ten corpus
+  fixtures that fire `STITCHES_TOO_SHORT` at 80 mm, swept through one press and
+  two): **one press cleared the finding on 1 of 10**, two presses on 4 of 10,
+  and it made the number **WORSE on 3 of 10** — `photo_dof_meadow`
+  0.36 → 0.58 → **0.71**, worse at every press; `logo_bridge_bar` 0.30 → 0.36;
+  `photo_sunset_backlit` 0.65 → 0.66. The satin SHAPE count rose on **every**
+  fixture (2 → 9, 42 → 71), which is `_lettering_findings`' own *"the smallest
+  shapes regenerate at any size"* seen from the short-step side: enlarging buys
+  new small shapes as fast as it widens the ones already there. **Claim nothing
+  about grades from that sweep** — several checks move with size at once, and 5
+  of the 10 sit on the clamped score floor where nothing registers either way.
+  The knob is real; the cure is one in ten.
+
+- **A trim INSIDE a shape and a trim BETWEEN shapes need opposite advice, and
+  the corpus splits them almost evenly.** 26 fixtures at 80 mm: **866 trims,
+  456 in-shape (53%), 410 between (47%)**, with the majority flipping per
+  design — in-shape dominant on 11 fixtures, between-shape on 11, one tie,
+  from `photo_grass_macro` at 93% in-shape to `logo_alpha` and `logo_whitebg`
+  at 100% between. Merging or removing shapes removes a BETWEEN cut and cannot
+  touch an IN-shape one: `satin_shape` may travel over UNSEWN strokes only, and
+  the walk on a 27-stroke region succeeds up to 40% sewn and never again after.
+  **This was not a discovery** — MASTER_SCOPE defect 6 has said "the trim bulk
+  is INSIDE one shape, 69% intra-shape" since 2026-08-21, on one design. What
+  was missing is that `TRIM_HEAVY` never reported it, so every design got the
+  between-shape remedy. Fixed 2026-09-06. `tools/trim_locality.py` re-measures
+  it; Becker reproduces the August number independently at 19 of 28 (68%), the
+  1-point gap being the file's first cut, which does not exist.
+
+- **A constant re-base fixes the code and leaves the PROSE lying, and the
+  prose is what people read.** `COVERAGE_WARN_UNITS`/`COVERAGE_BLOCK_UNITS`
+  became `2.5 *` and `3.5 * COVERAGE_FILL_LAYER_UNITS` on 2026-09-03 when
+  `FILL_ROW_MM` moved to 0.15 — so they evaluate to **6.67 and 9.33**, and
+  `machine.py` says so at length. Four places still quoted the old bare
+  numbers three days later, found 2026-09-06: `preflight`'s module docstring
+  ("1.0 is one full covering layer" — 1.0 is one 0.40 mm ribbon; a fill lays
+  2.67), `_coverage_findings`' docstring (naming both constants and giving
+  "2.5 and 3.5" as their values), and two `test_preflight.py` docstrings
+  quoting 3.00 and 3.5 beside assertions that compute 8.00 and 9.33. **The
+  harm is specific:** a reader comparing the corpus's peaks (2.20 to 7.97)
+  against "3.5" concludes every design is grossly over the block ceiling when
+  in fact **none of them reaches it**. `machine.py`'s own warning — *"every
+  coverage number recorded before this date is in the old base and is 2.67x
+  smaller"* — was written for exactly this and did not save the files beside
+  it. **When a constant is re-based, grep the prose, and prefer pinning a
+  RELATIONSHIP in tests over a number** (`tests/test_stacked_where.py` asserts
+  the 2.5x/3.5x multiple, not 6.67/9.33).
+
+- **`DENSITY_STACKED` has never fired on real artwork — do not read its
+  silence as a clean corpus, and do not delete its synthetic tests.** Swept
+  2026-09-06 over all 26 fixtures at 80 mm: **0 of 52 design/garment combos**
+  produce the finding. Six carry a PEAK over the warn level
+  (`photo_dof_meadow` 7.97, `drone_render` and `gaulke_roofing` 7.51,
+  `chrome_specular` 7.09, `sunset_backlit` 7.04, `bridge_bar` 6.89) and every
+  one yields **0.0 mm² of qualifying patch**: `_COVERAGE_MIN_PATCH_MM2` (25
+  mm²) is doing all the work, which is what it was built to do — clean work
+  speckles over the warn level wherever two satin columns join. So the whole
+  test coverage of this `block`-severity check is the synthetic `_stacked(n)`
+  plans in `tests/test_preflight.py` and `tests/test_stacked_where.py`. A
+  corpus A/B can prove nothing about it either way.
+
+- **The same-hole RATE is a ratio whose denominator moved on 2026-09-03, and
+  the fall is dilution, not improvement.** `SAME_HOLE_HEAVY` scores
+  (points struck 2+ times) / (total penetrations). `FILL_ROW_MM` went
+  0.40 → 0.15 that day, so the denominator grew and the numerator did not.
+  A/B'd at both row pitches on four fixtures (2026-09-06):
+
+  | fixture | penetrations | repeat points | 3+ points | `max_strikes` |
+  |---|---:|---:|---:|---|
+  | `logo_whitebg` | **×2.30** | ×1.00 (28 vs 28) | ×1.13 | 8 → **8** |
+  | `becker_marine_logo` | ×1.17 | ×0.98 | ×1.00 | 4 → **4** |
+  | `logo_hotel_fremont` | ×1.62 | ×1.15 | ×0.98 | 8 → **8** |
+  | `screenshot_phone_ui` | ×1.37 | ×1.09 | ×1.02 | 9 → **9** |
+
+  The rate fell to **0.43–0.83×** while `max_strikes` was **identical on every
+  one**. The needle is not landing in fewer old holes; there is more
+  denominator. So the docstring's *"our benchmark is 9.8%"* is in the old base
+  and now reads about 2.7%, the corpus runs **0.001–0.103**, and the finding
+  fires on **0 of 26** against a threshold set as "far above" 9.8%. **Its
+  silence is not evidence that anything improved.** This is ROADMAP gate 4 in
+  miniature — a raw ratio moves when the mix moves — on a check nobody thought
+  the fill-row ruling touched. **`SAME_HOLE_RATE_MAX` was deliberately NOT
+  retuned**: its baseline is a professional corpus measured at its own row
+  pitch, and re-deriving the comparison means re-walking the pro files, not
+  rescaling our side. Fixed instead by emitting the density-invariant half —
+  `max_strikes`, `points_3plus`, `worst_at_mm`.
+  *(measured 2026-09-06 — scope-history 09-06)*
+
+- **"The cone is already loaded, so the merge is FREE" prices the THREAD and
+  not the SEQUENCE — and every remaining duplicate is 7 to 11 blocks apart.**
+  Measured over 26 fixtures × 2 garments with `tools/cone_revisits.py`: the
+  4 surviving duplicate cones sit at block gaps of 7 (`screenshot_phone_ui`,
+  `3971`) and 11 (`region_blobs`, `0182`), and **not one of the four is
+  adjacent**. Folding block 12 into block 1 moves regions past everything in
+  between, and stage 5 built `covered_by` from the un-merged order — which is
+  exactly the across-layer case `cone_merge_survey.py` had already measured as
+  the expensive kind. **Do not quote "free" without the gap.** The saving is
+  one machine stop; the cost is a reorder.
+
+- **CI's `digitizer` job runs 10 to 42 minutes, not the 12–18 every doc said —
+  and the cause is NOT concurrency.** Measured 2026-09-06 from the Actions API
+  over the last 220 completed jobs. The daily median walked 15.0 → 16.5 → 17.6
+  → 18.7 → 20.7 and jumped to **29.6** on 2026-09-06 (max 41.8); the old figure
+  was true when written (medians 15.0–15.2 on 2026-08-27/28) and now holds for
+  half the jobs. Three things are settled and one is not:
+  - **All of it is in the test step.** `Install` measures 0.27 min on fast and
+    slow runs alike, Tesseract 0.20/0.17; `Digitizer tests` is 14.3 against
+    32.4. Not caching, not dependency install.
+  - **Concurrency is refuted, not merely doubted.** Bucketing every job by how
+    many other `digitizer` jobs overlapped it: the **41.8-minute worst case ran
+    with ZERO**, and the most-contended bucket (2+) tops out at 19.8 min. The
+    obvious hypothesis is backwards.
+  - **Suite growth cannot carry it either.** The SAME test count lands
+    19.6–34.5 min (1,851 tests) and 17.9–33.7 (1,968) — a **1.9× spread on
+    identical work** — with seconds-per-test at 0.54–1.32.
+  - **The runner's CORE COUNT is refuted too, on the diagnostic's first run.**
+    The `nproc` echo was added by the very PR that proposed the core-count
+    hypothesis, and answered it immediately: `nproc: 4`, `os.cpu_count: 4`,
+    `MemTotal: 16 GB` — on a job that took **27m59s** for 1,984 tests, so
+    `-n auto` had four workers. The local frozen-tree benchmark that suggested
+    it (2 workers 23m53s against 4 workers ~14m00s) does not transfer: **this
+    box does the same suite in ~15 minutes on four cores and the runner takes
+    28 on four.** What remains is per-core throughput or hypervisor
+    contention, and one reading cannot separate them.
+    **Four hypotheses, four eliminated — do not attribute a slow job to a
+    cause.** Every run now records its own `nproc`, so a fast one will say
+    whether the core count varies at all.
+
+  **Practical consequence: budget half an hour and read a 35-minute job as
+  normal rather than stuck.** This does not weaken item 7's rule — three green
+  checks is still not a green PR — it makes the wait longer than the rule
+  implied, so the temptation to merge early is stronger, not weaker.
+
+- **A cross-reference is not an update: a fix can land under one defect and
+  leave its twin describing the world before it.** MASTER_SCOPE defect 11 said
+  *"the setting that helps a misrouted photograph has no UI"* and that
+  `cfg.is_photographic` *"appears **nowhere** in `app/src` (grep, 0 hits)"*.
+  Kent's 2026-09-02 call made `isPhoto` send exactly that flag; defect **15**
+  recorded the change fully and correctly, and defect 11 — which ends *"See
+  defect 15"* — was never touched. Five days later it still asserted the fixed
+  condition as live, with 14 grep hits against its stated 0. **Both source
+  files had already flagged the staleness in their own comments**
+  (`digitizer.js`: *"MASTER_SCOPE's 26-stop figure … predates the rehome …
+  17 is what it measures today"*), so the code knew and the doc did not — the
+  same shape as everything else that day.
+
+  **The habit: when a fix lands under defect N, grep MASTER_SCOPE for every
+  OTHER entry describing the same control.** Pointing at the updated entry
+  from the stale one is what made this survive — a reader who follows the
+  pointer gets the truth, and a reader who does not gets a false live claim,
+  and nothing distinguishes them. Compacting 11 to a resolved pointer also
+  bought **11 lines** of the 800-line budget, which is the rule-4 trade the
+  file is supposed to make. *(confirmed 2026-09-07)*
+
+  Re-confirmed by re-running with the flag rather than trusting the record:
+  `cfg.bind_resnap_all_classes` takes `screenshot_phone_ui` from **17 blocks to
+  11 with the duplicate gone**, and leaves `region_blobs` at 16 with its
+  duplicate intact. So the open blend-band half is **one design, and it is a
+  GENERATED fixture** — `make_photo_region_fixture.py` renders `region_blobs`
+  as three Gaussian-falloff blobs. No client artwork in the corpus produces
+  one. Re-run the tool after any sequencing change; a real design appearing
+  there changes the arithmetic.
+
+- **`STITCHES_TOO_SHORT` and `LETTERING_TOO_SMALL` bill 24 points for one
+  defect — but do NOT delete either to "dedupe" them.** They measure the SAME
+  quantity at the SAME threshold: `MIN_COLUMN_MM` **is**
+  `machine.MIN_STITCH_MM`, and both read the consecutive-step distance inside a
+  satin run, which crosses the column. They differ only in aggregation —
+  per-shape MEDIAN against a global FRACTION. Over the 26-fixture corpus at
+  80 mm the short-stitch check **never fired without the size check** (10 both,
+  1 lettering only, **0 alone**), so as a design-level signal it is redundant.
+  As a LOCATION report it is not: only **66%** of the short steps sat inside a
+  shape lettering named, because a shape passes lettering on its MEDIAN. The
+  residue is not small lettering — uncovered carriers run **1.1 to 3.2 mm
+  median column**, and `logo_bridge_bar`'s worst has a **2.65 mm median** with
+  205 of its 1,597 steps under the needle minimum: sewable columns with a
+  narrow WAIST, which lettering's median test cannot see and should not. The
+  redundancy is in the SCORE; the information is not. Fixed 2026-09-06 by
+  making the finding emit `shapes` / `uncovered_shapes` and stop recommending
+  a cure the neighbouring docstring had already measured false.
+  *(measure it again with `tools/short_satin_overlap.py`, and expect both
+  numbers to move once per-stroke satin routing lands — that is the documented
+  root cause of the short columns, and it is scale-invariant)*
 
 ---
 
@@ -1537,3 +1757,95 @@ its hedge as it is copied forward** — is why this file is split.
   either direction; quote the metric that moved, or the render.** Un-clamping
   or widening the bands re-bases every grade in the scorecard, so it is a
   product call, not a cleanup. *(measured 2026-09-06 — scope-history 09-06)*
+
+- **A checker's first output is not evidence its pattern is right — read the
+  MATCHES, not the count.** A first cut of `doc_claims`' test-count check
+  matched "the first number within 40 characters of the filename" and
+  reported **six drifts** in `docs/scope/1`, the worst `test_satin.py` at a
+  documented 43 against 99 collected. Every one was false: `**43/43**` is a
+  pass/total at the time, `gains 6` and `(17 → 22 tests)` are deltas, and
+  `together **46/46**` is two files combined. **None was a claim about the
+  file's current size at all.** Shipping on that count would have produced
+  exactly what this tool's own design note warns against — a checker that
+  cries wolf on legitimate narrative is a checker nobody runs. The same
+  discipline killed a sibling idea outright: sweeping doc-cited FILE PATHS
+  found **373 references and 0 stale**, because a path here is either right or
+  cited inside a sentence saying it was deleted (`tools/bundle.mjs`,
+  `src/app.js`) — so that checker was not built. **Rule: before building a
+  checker, sweep for the thing it would catch; then read what it matched, and
+  only then decide the pattern.** *(measured 2026-09-06 — scope-history 09-06)*
+
+  **Two more sweeps the next day, and now the DISCRIMINATOR is visible.**
+  Five in all:
+
+  | sweep | raw hits | real |
+  |---|---:|---:|
+  | doc file PATHS still exist | 24 | **0** |
+  | documented TEST COUNTS drifted | 6 | **0** |
+  | `extra:` comment fields, comma-parsed | 4 | 2 |
+  | `file.ext:NNN` still points at its subject | 8 | **2** |
+  | backticked `module.symbol` still defined | 19 | **0** |
+
+  The symbol sweep is the clearest miss: all nineteen "unresolved" were `cfg.*`
+  dataclass fields (indented and type-annotated, so a `^name =` pattern misses
+  them), fixture filenames, third-party calls (`cv2.fillPoly`, `vi.mock`) and
+  attribute access on local variables — **62 of 62 references are live**, and
+  the convention of citing a symbol is sound.
+
+  **What separates the one that paid is not effort, it is what the check
+  RESOLVES AGAINST.** The line-number sweep found two real stale pointers
+  because "does line N contain its subject?" has a single unambiguous ground
+  truth you can go and read. The four that found nothing were pattern-matching
+  prose, where a legitimate narrative sentence and a stale claim look
+  identical. **Budget the resolution step, not the regex** — a sweep whose
+  output has to be hand-classified before it can be believed has not saved
+  anyone the reading. *(measured 2026-09-07)*
+
+  **A SIXTH sweep the same day inverts the question, and the ruling above
+  only half applies.** The Studio names Python warning and finding codes as
+  bare string literals — `WARNING_TEXT`'s 28 keys, `FIX_FOR`'s three, eight
+  `.code === "..."` switches, and four mirrored constants inside preflight
+  holding five more:
+  **34 distinct code strings crossing a module boundary by literal, over six
+  sites, every one of them live.** By the rule above that is one more
+  zero-yield sweep and the check should not be built. It was built anyway
+  (`digitizer/tests/test_code_wires.py`, 4), and the distinction is worth
+  carrying:
+
+  **A SWEEP is judged on what it finds today. A TRIPWIRE is judged on what
+  its failure would cost.** The five above looked for drift that had already
+  happened, so a zero means the convention is sound and there is nothing to
+  automate. This one guards a rename that has NOT happened — and when it
+  does, `describeWarnings` falls back to `String(w.message)` and ships the
+  engine's build-status prose to a customer without throwing, logging or
+  blanking anything, while a stranded `FIX_FOR` key simply stops offering its
+  button. Silent, customer-facing, and indistinguishable from a code that was
+  never translated in the first place. The contrast is one module over:
+  `stage7_sequence.py` consumes the same codes by IMPORT, and deleting one
+  from `warnings_codes.py` stops the package loading with a named ImportError
+  before any test runs.
+
+  **The discriminator still decides WHICH tripwires earn their keep, and it is
+  the same one** — this resolves against an OBJECT (a set of live wire values
+  parsed from both owners) rather than pattern-matching prose, so its verdict
+  needs no hand-classification.
+
+  **Two ways this class of test dies, both hit while writing that one.** Both
+  are the `test_stitchviz.py` lesson (a first draft matched a `LIGHT_DEG` a
+  merge had left behind as dead code and passed for weeks over a live canvas
+  lighting from the wrong corner), and neither shows up as anything but green:
+
+  - **A "not in" assertion over a parser that finds nothing passes
+    trivially.** The first `_map_keys` sliced the object literal at a nearby
+    `\n  };` and returned the right answer for both maps **by luck** — it
+    never reached `FIX_FOR`'s nested braces. Fixing the slice is what
+    surfaced the nesting, not any test.
+  - **A MIRROR must never be allowed to vouch for a consumer.** preflight
+    holds private copies of four pipeline codes; admitting them to the
+    "live" set would have let a stale copy of a deleted string keep every
+    Studio assertion green — a check comparing a string against a second
+    copy of itself. Excluded by name, and the exclusion is itself asserted.
+
+  **Every assertion was proved able to fail by mutating the source it reads**
+  — six mutations, six reds, tree restored. Do that, or the file is
+  decoration. *(measured 2026-09-07)*

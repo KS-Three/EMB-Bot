@@ -166,7 +166,10 @@ jobs:
           flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
       # `-n auto` (pytest-xdist): ~1,100 tests of real OpenCV/shapely work ran
       # ~19 minutes serially here, on every push, which is long enough that a
-      # red digitizer job stops being noticed promptly. Verified parallel-safe
+      # red digitizer job stops being noticed promptly. (That count is the one
+      # at the time; the suite passed 1,979 on 2026-09-06 and the job now runs
+      # 10-42 minutes -- see CLAUDE.md item 7 for the measured distribution and
+      # the step below for why the runner is worth recording.) Verified parallel-safe
       # by running the whole suite both ways and comparing the pass/fail set —
       # identical, including the deselects below. Nothing in the suite
       # writes to a shared path (fixtures are read-only, every test that writes
@@ -176,6 +179,26 @@ jobs:
       # re-captured, and the measurement that cut the list from five to three.
       # Do not restate any of that here — that duplication is what let the
       # header go on claiming "five" after the list became three.
+      # The runner's own size, because `-n auto` follows it and this job's
+      # duration follows that. Measured 2026-09-06 over 220 jobs: the SAME test
+      # count lands anywhere from 19.6 to 34.5 minutes (1,851 tests) and 17.9
+      # to 33.7 (1,968) -- a 1.9x spread on identical work. It is all in this
+      # step, not in setup (Install is 0.27 min on fast and slow runs alike),
+      # and it is NOT concurrency: the 41.8-minute worst case ran with zero
+      # other digitizer jobs in flight, and the most-contended jobs are the
+      # fastest. What is left is the runner, and nothing in the log records
+      # which one we drew. Three lines, seconds to run, and the next person
+      # gets to answer it from the log instead of an API sweep.
+      - name: Runner size (for the timing note in CLAUDE.md item 7)
+        # A diagnostic must never be able to fail the build. `python` is on
+        # PATH here (setup-python ran, and `Digitizer tests` below invokes it
+        # the same way), but a required check going red over an echo would be
+        # the worst possible trade for three lines of information.
+        continue-on-error: true
+        run: |
+          echo "nproc: $(nproc)"
+          python -c "import os; print('os.cpu_count:', os.cpu_count())"
+          cat /proc/meminfo | head -1
       - name: Digitizer tests
         working-directory: digitizer
         run: >
