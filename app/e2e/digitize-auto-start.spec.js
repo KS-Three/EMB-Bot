@@ -34,6 +34,11 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // on white, which stage 0 reads as flat art -- so this spec's expected reading
 // is the flat one, and the correction offered beside it is "It's a photo".
 const ART_PNG = path.join(__dirname, "fixtures", "two-squares.png");
+// A vector logo with a `viewBox` and NO width/height — the shape SVGO and most
+// hand-written exports produce, and the one Chrome hands back at its 300 px
+// default size. Three inks on white: one blue circle, one red bar, one blue
+// bar, so the ONLY honest answer is two thread colours.
+const ART_SVG = path.join(__dirname, "fixtures", "vector_logo.svg");
 
 async function healthy() {
   try {
@@ -148,4 +153,87 @@ test("uploading artwork digitizes it on its own, and the panel says what it read
   // ---- and back, in one click, with no override left behind --------------
   await read.getByRole("button", { name: "Use automatic detection" }).click();
   await expect(read).toContainText("Read as flat art", { timeout: 120_000 });
+});
+
+test("JEF downloads a real file through the service — the format with no browser encoder", async ({ page }) => {
+  test.skip(!serviceUp, skipReason);
+  test.setTimeout(300_000);
+
+  // PRODUCT.md's launch checklist counted JEF as shipped from 2026-08-11
+  // because `digitizer_service/formats.py` can write it. There was no button,
+  // so a Janome owner could not export anything. That gap is invisible to a
+  // unit test of the writer AND to a component test with a mocked exporter —
+  // it lives exactly in the space this spec covers, so the guard lives here
+  // rather than beside the other download tests in wizard-smoke.spec.js,
+  // which deliberately has no service bootstrap.
+  await page.goto("/");
+  await page.getByRole("button", { name: "Left Chest", exact: true }).click();
+  await page.getByRole("button", { name: "Next", exact: true }).click();
+  await page.getByRole("button", { name: "Artwork" }).click();
+  await page.locator(".dgp-upload input[type=file]").setInputFiles(ART_PNG);
+  await expect(page.locator(".dgp-stats")).toBeVisible({ timeout: 120_000 });
+
+  await page.getByRole("button", { name: "4 Download", exact: true }).click();
+  const jef = page.getByTestId("jef-button");
+  // Enabled, because the service this spec bootstrapped is answering. The
+  // disabled case is a component test (DownloadStep.spec.js) — reaching it
+  // here would mean killing the service mid-spec.
+  await expect(jef).toBeEnabled();
+
+  const downloadPromise = page.waitForEvent("download");
+  await jef.click();
+  const download = await downloadPromise;
+  expect(download.suggestedFilename()).toBe("design.jef");
+  const jefPath = await download.path();
+  const jefBytes = readFileSync(jefPath);
+  expect(jefBytes.length).toBeGreaterThan(512);
+
+  // The panel names the encoder, and for JEF there is only one it can be —
+  // this is the assertion that a browser-encoded file was not quietly
+  // substituted, which is what the removed fallback would have done.
+  await expect(page.getByText("Downloaded JEF (digitizer service encoder)")).toBeVisible();
+
+  // And it is genuinely a different file from the DST of the same design, not
+  // the same bytes under another name. (What the bytes MEAN is decoded with
+  // pystitch in digitizer/tests/test_service.py, which owns that claim.)
+  const dstPromise = page.waitForEvent("download");
+  await page.getByRole("button", { name: "DST", exact: true }).click();
+  const dst = await dstPromise;
+  expect(dst.suggestedFilename()).toBe("design.dst");
+  expect(readFileSync(await dst.path()).equals(jefBytes)).toBe(false);
+});
+
+test("a vector logo is rendered at the work size, not at the browser's default", async ({ page }) => {
+  test.skip(!serviceUp, skipReason);
+  test.setTimeout(300_000);
+
+  // Measured in the shipped app on 2026-09-07, this exact file, before the
+  // fix: 3,445 stitches in **4 colors**, with
+  //
+  //   "The image gives 3.1 pixels per millimetre at this size and needs 4.
+  //    Enlarging it can't add detail that isn't in the file — about 1.3x
+  //    wider, or a smaller design, will sew sharper."
+  //
+  // Every clause of which is false for a vector: the detail IS in the file,
+  // and the app threw it away by keeping Chrome's 300 px default size. The two
+  // extra "colors" were anti-alias fringe from that raster — two spools a
+  // customer would have had to buy and two extra machine stops.
+  //
+  // Asserted on the COLOUR COUNT rather than on the absence of the warning: an
+  // absence can pass for any reason, and the colour count is the thing the
+  // customer pays for. Two is what the artwork has.
+  await page.goto("/");
+  await page.getByRole("button", { name: "Left Chest", exact: true }).click();
+  await page.getByRole("button", { name: "Next", exact: true }).click();
+  await page.getByRole("button", { name: "Artwork" }).click();
+  await page.locator(".dgp-upload input[type=file]").setInputFiles(ART_SVG);
+
+  const stats = page.locator(".dgp-stats");
+  await expect(stats).toBeVisible({ timeout: 120_000 });
+  await expect(stats).toContainText("2 colors");
+
+  // …and with the resolution genuinely there, the low-resolution finding has
+  // nothing to report. This one IS an absence, and it is only meaningful
+  // beside the assertion above.
+  await expect(page.getByText(/pixels per millimetre/)).toHaveCount(0);
 });

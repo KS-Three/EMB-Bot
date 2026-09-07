@@ -1176,6 +1176,14 @@ and controllable to the user.
     is why `build-embf` runs the QC gate itself (see the font section).
     (The old "14 fonts" count here was the legacy eager registry
     `src/fonts/satin-fonts.js`, which is out of the shipping pipeline.)
+    Also `manifest-coverage.json` (2026-09-07): which code points each shipped
+    font can set, derived from the BINARIES by `tools/build-font-coverage.mjs`
+    so a cloud checkout without `scratch_ink/` can still rebuild it. It powers
+    "this font can't stitch X — these can". **The `manifest` prefix is
+    load-bearing**: every other `*.json` in `src/fonts/` is read as a font
+    SOURCE by both `build-embf.mjs` and `test/embf-guard.test.js`, whose stated
+    invariant is "static JSON here ⇒ shipped". A new artifact here takes the
+    prefix; it does not widen that filter.
   - `dst.js` / `exp.js` / `pes.js` — stitch file encoders. DST is
     byte-verified/primary; PES is best-effort. All three are cross-validated
     against pystitch as the third-party reference decoder
@@ -1199,7 +1207,14 @@ and controllable to the user.
   `element.sourcePng` on project load — they used to live only in App's
   unpersisted `runtime` and a refresh deleted them), and `designChart.js`
   (which thread chart the design's cones came from, as a store because
-  `ThreadPicker` has nine call sites).
+  `ThreadPicker` has nine call sites). A fourth landed the same day for the
+  same reason: `rasterize.js` (decode an uploaded file, and decide the pixel
+  size to draw it at) — `DigitizePanel`, `ImagePanel` and `TraceImportPanel`
+  each held a byte-identical `loadImage` and its own copy of
+  `Math.min(1, MAX / longestSide)`, which is right for a raster and wrong for
+  a vector, whose "natural" size is a browser default. Never write a fourth
+  copy of either. And a fifth, `fontCoverage.js` (which shipped fonts can set a
+  given text), pure, with `fontLoader.loadCoverage()` doing the fetch.
 
   **What is persisted is what survives.** `projects.js` is a plain
   `JSON.stringify(project)`, so anything an element does not carry is gone on

@@ -39,6 +39,18 @@ const manifestSrc = usePersonal ? personalManifest : join(srcDir, "fonts", "mani
 
 mkdirSync(join(fontsOut, "bin"), { recursive: true });
 copyFileSync(manifestSrc, join(fontsOut, "manifest.json"));
+// Which characters each font can stitch (tools/build-font-coverage.mjs), so
+// "this font can't stitch X" can name the fonts that can. Follows the same
+// personal/sellable switch as the manifest — a personal build's extra fonts
+// must not be suggested by a sale build, and vice versa. Optional on purpose:
+// an older checkout with no coverage file still serves, and lib/fontCoverage
+// falls back to the generic advice when the fetch 404s.
+const coverageSrc = usePersonal
+  ? join(srcDir, "fonts", "manifest-coverage-personal.json")
+  : join(srcDir, "fonts", "manifest-coverage.json");
+const coverageOut = join(fontsOut, "manifest-coverage.json");
+if (existsSync(coverageSrc)) copyFileSync(coverageSrc, coverageOut);
+else if (existsSync(coverageOut)) unlinkSync(coverageOut);
 const wantBins = new Set(readdirSync(binSrc).filter((f) => f.endsWith(".embf")));
 // Orphan-clean FIRST: switching between personal and sellable builds must not
 // leave the previous build's binaries being served. Without this, one personal

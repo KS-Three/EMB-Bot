@@ -10,6 +10,15 @@ const fb = require("../src/fontbin.js");
 
 const FONT_DIR = path.join(__dirname, "..", "src", "fonts");
 const BIN_DIR = path.join(FONT_DIR, "bin");
+// EVERY `*.json` here that is not a `manifest*` artifact is a font SOURCE, and
+// must have a shipped binary. That is the invariant this file pins (see the
+// first test), and it is load-bearing in two places at once: tools/
+// build-embf.mjs applies the identical filter when it decides what to build.
+// Adding a non-font JSON to this directory therefore breaks the font build AND
+// four tests here — which is what `src/fonts/coverage.json` did on 2026-09-07
+// before it was renamed `manifest-coverage.json` to sit inside the existing
+// exclusion. If a new artifact belongs here, give it the `manifest` prefix
+// rather than widening this filter.
 const keys = fs.readdirSync(FONT_DIR)
   .filter((f) => f.endsWith(".json") && !f.startsWith("manifest"))
   .map((f) => f.replace(/\.json$/, ""));
@@ -24,7 +33,11 @@ test("every static shipped font has a committed .embf", () => {
   // "static JSON here ⇒ shipped" invariant this file pins stays true.
   assert.ok(keys.length >= 14, "expected >=14 font JSONs, found " + keys.length);
   for (const k of keys)
-    assert.ok(fs.existsSync(path.join(BIN_DIR, k + ".embf")), "missing bin for " + k);
+    assert.ok(fs.existsSync(path.join(BIN_DIR, k + ".embf")),
+      `no src/fonts/bin/${k}.embf. Every non-"manifest" *.json in src/fonts/ is ` +
+      `read as a FONT SOURCE — by this test and by tools/build-embf.mjs. If ` +
+      `${k}.json is an artifact about the fonts rather than one of them, name ` +
+      `it manifest-${k}.json; if it is a font, build its binary.`);
 });
 
 for (const k of keys) {

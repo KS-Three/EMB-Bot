@@ -265,7 +265,10 @@
     if (token === digitizerProbeToken) digitizerHealth = h;
   }
   checkDigitizer();
-  $: if (step === "content") checkDigitizer();
+  // Content AND download: the download step now has a control that only the
+  // service can serve (JEF), so "start the service and navigate back" has to
+  // work from there too, not just from the content step.
+  $: if (step === "content" || step === "download") checkDigitizer();
   // Dims of the SELECTED element's last generated design ({ widthMM, heightMM })
   // or null on failure/no-content -- fed to SizePanel so its W/H display
   // (and the below-5mm warning) always reflects the real current design,
@@ -931,7 +934,7 @@
           <SizePanel project={{ ...project, ...selectedElement }} {designDims} on:update={(e) => elUpdate(selectedElement.id, e.detail)} />
         </div>
       {:else}
-        <DownloadStep {project} {runtime} on:credits={(e) => openCredits(e.detail)} />
+        <DownloadStep {project} {runtime} {digitizerHealth} on:credits={(e) => openCredits(e.detail)} />
       {/if}
     </div>
     <StepNav

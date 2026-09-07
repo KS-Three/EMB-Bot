@@ -124,6 +124,48 @@ test("exportDesignPreferService tags via:\"service\" only when the service call 
   expect(out.bytes).toBe(serviceOut.bytes);
 });
 
+// ---- JEF: the service is the only encoder, so the rules are different ------
+//
+// `preferService` picks between TWO encoders that can both write a format.
+// JEF has no browser encoder at all, so it cannot fall back and must not be
+// allowed to reach exportDesign(), whose answer would be the developer-facing
+// "Unknown format: jef".
+
+test("JEF goes through the service even when preferService is false — there is no browser encoder to prefer", async () => {
+  const { exportDesignPreferService } = await import("./exporters.js");
+  const serviceOut = { bytes: new Blob(["x"]), filename: "design.jef", mime: "application/octet-stream" };
+  let seen = null;
+  const exportViaServiceFn = async (d, fmt, label) => { seen = { fmt, label }; return serviceOut; };
+  const out = await exportDesignPreferService(design, "jef", { label: "Hat", exportViaServiceFn });
+  expect(seen).toEqual({ fmt: "jef", label: "Hat" });
+  expect(out.via).toBe("service");
+  expect(out.filename).toBe("design.jef");
+});
+
+test("JEF surfaces a customer-readable error when the service is down, and never falls through to the browser", async () => {
+  const { exportDesignPreferService, exportDesign } = await import("./exporters.js");
+  const exportViaServiceFn = async () => { throw new Error("fetch failed"); };
+  await expect(exportDesignPreferService(design, "jef", { preferService: true, exportViaServiceFn }))
+    .rejects.toThrow(/JEF is written by the digitizer service/);
+  // The cause rides along rather than being swallowed — "it isn't answering"
+  // without saying what happened is the message this replaces.
+  await expect(exportDesignPreferService(design, "jef", { exportViaServiceFn }))
+    .rejects.toThrow(/fetch failed/);
+  // And what the fallback WOULD have said, which is why it must not run.
+  expect(() => exportDesign(design, "jef")).toThrow(/Unknown format: jef/);
+});
+
+test("isServiceOnlyFormat names exactly the formats with no browser encoder", async () => {
+  const { isServiceOnlyFormat, exportDesign } = await import("./exporters.js");
+  expect(isServiceOnlyFormat("jef")).toBe(true);
+  // Every format that is NOT service-only must actually have a browser
+  // encoder — that is the whole claim the flag makes, and it is checkable.
+  for (const fmt of ["dst", "exp", "pes", "svg"]) {
+    expect(isServiceOnlyFormat(fmt)).toBe(false);
+    expect(() => exportDesign(design, fmt)).not.toThrow();
+  }
+});
+
 test("exportWorksheetPDF wires window.jspdf and forwards garment box (mm) to EMB.buildWorksheetPDF", async () => {
   const { exportWorksheetPDF } = await import("./exporters.js");
   const { EMB } = await import("./emb.js");

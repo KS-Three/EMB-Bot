@@ -45,6 +45,10 @@ vi.mock("../lib/exporters.js", () => ({
   },
   exportWorksheetPDF: async () => {},
   exportPNG: async () => ({ blob: new Blob(), filename: "design.png", mime: "image/png" }),
+  // Kept faithful to the real module rather than stubbed to a constant: the
+  // JEF button's disabled state is derived from this, so a mock that always
+  // said false would test a gate that never closes.
+  isServiceOnlyFormat: (fmt) => fmt === "jef",
 }));
 vi.mock("../lib/download.js", () => ({ triggerDownload: () => {} }));
 vi.mock("../lib/fontLoader.js", () => ({ ensureFonts: async () => {} }));
@@ -180,7 +184,7 @@ test("every format is still reachable in both encoder states", () => {
     });
     const labels = [...container.querySelectorAll(".formats button")]
       .map((b) => b.textContent.trim().replace(/\*.*$/s, "").trim());
-    for (const want of ["DST", "PES", "EXP", "SVG", "PNG", "PDF worksheet"]) {
+    for (const want of ["DST", "PES", "EXP", "JEF", "SVG", "PNG", "PDF worksheet"]) {
       expect(labels).toContain(want);
     }
     unmount();
@@ -435,4 +439,56 @@ test("a digitized element that has never run is not exportable through the servi
   });
   await fireEvent.click(fmtButton(view, "DST"));
   expect(exportCalls).toEqual([{ format: "dst", preferService: false }]);
+});
+
+// ---- JEF (Janome) ---------------------------------------------------------
+//
+// The only format here the browser cannot write, so it is the only button
+// whose availability depends on something outside the app. PRODUCT.md's launch
+// checklist has counted JEF as shipped since 2026-08-11 on the evidence that
+// `digitizer_service/formats.py` can write it — which was true, and which no
+// customer could reach, because nothing rendered a button.
+
+test("JEF is offered, and is disabled with a reason when the service is not running", () => {
+  const { getByTestId, unmount } = render(DownloadStep, {
+    props: { project: project(LETTERING), runtime: {}, digitizerHealth: null },
+  });
+  const off = getByTestId("jef-button");
+  expect(off).toBeDisabled();
+  // The reason has to name the fix, not just the state.
+  expect(off.getAttribute("title")).toMatch(/digitizer service running/i);
+  unmount();
+
+  const { getByTestId: get2 } = render(DownloadStep, {
+    props: { project: project(LETTERING), runtime: {}, digitizerHealth: { status: "ok" } },
+  });
+  expect(get2("jef-button")).toBeEnabled();
+});
+
+test("JEF downloads through the service on a LETTERING project too — the preferService split does not apply to it", async () => {
+  // `preferService` chooses between two encoders for dst/exp/pes and is false
+  // here (lettering). JEF has no second encoder, so exporters.js routes it to
+  // the service regardless; this asserts the panel actually asks for it rather
+  // than quietly skipping the button's format.
+  exportCalls.length = 0;
+  nextVia = "service";
+  const { getByTestId, getByText } = render(DownloadStep, {
+    props: { project: project(LETTERING), runtime: {}, digitizerHealth: { status: "ok" } },
+  });
+  await fireEvent.click(getByTestId("jef-button"));
+  await waitFor(() => expect(getByText(/Downloaded JEF/)).toBeInTheDocument());
+  expect(exportCalls).toEqual([{ format: "jef", preferService: false }]);
+});
+
+test("an oversize design still has to be confirmed before a JEF leaves — the gate is per format, not per encoder", async () => {
+  fitNote = "Exceeds your 4×4 in hoop";
+  exportCalls.length = 0;
+  const { getByTestId, getByRole } = render(DownloadStep, {
+    props: { project: project(LETTERING), runtime: {}, digitizerHealth: { status: "ok" } },
+  });
+  await fireEvent.click(getByTestId("jef-button"));
+  expect(exportCalls).toEqual([]);
+  const dialog = getByRole("dialog");
+  await fireEvent.click(within(dialog).getByRole("button", { name: "Download JEF anyway" }));
+  await waitFor(() => expect(exportCalls).toEqual([{ format: "jef", preferService: false }]));
 });

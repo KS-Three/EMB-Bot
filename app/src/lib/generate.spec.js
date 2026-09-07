@@ -619,8 +619,14 @@ test("shape element: rect honors width AND height (w/h contract), circle sews ro
     garment,
     {}
   );
-  expect(rect.widthMM).toBeCloseTo(60, 0);
-  expect(rect.heightMM).toBeCloseTo(20, 0);
+  // 60.6 x 20.6, not 60 x 20: since 2026-09-07 a design reports the extent it
+  // SEWS, and pull compensation pushes the outline's rails 0.3 mm past it on
+  // each side. The contract this test exists for is unaffected — a 60x20 rect
+  // must not come back square — so the tolerance stays loose enough to survive
+  // a routing change and tight enough to catch an axis being ignored.
+  expect(rect.widthMM).toBeCloseTo(60.6, 1);
+  expect(rect.heightMM).toBeCloseTo(20.6, 1);
+  expect(rect.widthMM / rect.heightMM).toBeGreaterThan(2.5);
   const circle = generateElement(shapeElement({ kind: "circle", sizeMm: 40 }), garment, {});
   expect(circle.heightMM).toBeCloseTo(circle.widthMM, 1);
 });
@@ -808,4 +814,62 @@ test("generateElement: a text element's design carries the lettering report", as
   expect(d.lettering.capMm).toBeGreaterThan(0);
   expect(d.lettering.strokeMm).toBeGreaterThan(0);
   expect(d.lettering.crossFloorMm).toBe(0.5);
+});
+
+// ---- One design, one width ------------------------------------------------
+//
+// The Studio shows a design's size in two places at once: EmbroideryField's
+// caption reads `combined.widthMM`, SizePanel reads `perElement[].bboxMm`.
+// For a single-element project combineDesigns returns that element's design
+// UNCHANGED (combine.js documents this deliberately), so the caption gets
+// whatever the engine builder reported while the panel gets the stitch bbox —
+// and until 2026-09-07 those were two different measurements. Driving the
+// shipped app: caption "127×13 mm", size field "5.05 in" (=128.3 mm), max
+// "5.00". Same design, same instant, two answers, one of them out of its own
+// input's range.
+//
+// The engine now reports the stitch bbox (digitize.js designExtentMm), so this
+// holds by construction — which is exactly why it needs a test: nothing else
+// in either codebase asserts that the two numbers describe the same thing, and
+// the last thing to break it was a builder change three files away.
+test("caption width and size-panel width are the same number, for one element and for many", async () => {
+  const { generateAll } = await import("./generate.js");
+  const { EMB } = await import("./emb.js");
+  const garment = EMB.getGarment("hat_front");
+  const mk = (n) => ({
+    garmentId: "hat_front", fabricRgb: [255, 255, 255], selectedId: "e1",
+    elements: Array.from({ length: n }, (_, i) => textElement({ id: `e${i + 1}`, text: "YOUR NAME", offsetYMm: i * 8 })),
+  });
+  for (const n of [1, 2, 3]) {
+    const { combined, perElement } = generateAll(mk(n), {});
+    expect(perElement.length, `${n} elements`).toBe(n);
+    const xs = perElement.flatMap((pe) => [pe.bboxMm.x0, pe.bboxMm.x1]);
+    const ys = perElement.flatMap((pe) => [pe.bboxMm.y0, pe.bboxMm.y1]);
+    expect(combined.widthMM, `${n}: caption vs panel width`).toBeCloseTo(Math.max(...xs) - Math.min(...xs), 6);
+    expect(combined.heightMM, `${n}: caption vs panel height`).toBeCloseTo(Math.max(...ys) - Math.min(...ys), 6);
+  }
+});
+
+test("the reported size is thread, not the box the design was fit to", async () => {
+  const { generateAll } = await import("./generate.js");
+  const { EMB } = await import("./emb.js");
+  // hat_front's placement box is 5.00 x 2.25 in. An auto-fit text element is
+  // scaled to that box; the satin rails then sew past it. Before this was
+  // fixed the design reported exactly 127.0 — the box — and the hoop ceiling
+  // check in hoop.js therefore ran against a number the thread had already
+  // left. Measured across 7,470 designs (10 garments x 85 shipped fonts x 3
+  // texts x 3 weights): 65.6% sewed outside their own placement box, by up to
+  // 9.6 mm, and four told the ceiling check "fits" when the thread needed the
+  // hoop rotated.
+  const garment = EMB.getGarment("hat_front");
+  const boxWmm = garment.widthIn * 25.4;
+  const { combined } = generateAll({
+    garmentId: "hat_front", fabricRgb: [255, 255, 255], selectedId: "e1",
+    elements: [textElement({ id: "e1", text: "YOUR NAME" })],
+  }, {});
+  expect(combined.widthMM).toBeGreaterThan(boxWmm);
+  // The stitches back it up — this is a measurement, not a fudge factor.
+  const geo = combined.stitches.filter((s) => s.type !== "color" && s.type !== "end");
+  const xs = geo.map((s) => s.x);
+  expect((Math.max(...xs) - Math.min(...xs)) / 10).toBeCloseTo(combined.widthMM, 6);
 });

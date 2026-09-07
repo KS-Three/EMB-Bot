@@ -461,3 +461,117 @@ test("the review recap names every element, not just the selected one", async ({
   await expect(summary.locator("dt", { hasText: /^Content 1$/ })).toBeVisible();
   await expect(summary.locator("dt", { hasText: /^Content 2$/ })).toBeVisible();
 });
+
+test("the size field and the field caption report one width, and the field is not in an invalid state", async ({ page }) => {
+  // The two numbers a customer sees for the size of their design come from
+  // different places: the field caption reads the design's own widthMM, the
+  // Size panel reads the stitch bbox. Until 2026-09-07 those were different
+  // measurements, and the very first screen of the most common quick start
+  // showed it: caption "127×13 mm" next to a W field reading 5.05 in
+  // (= 128.3 mm) whose own max was 5.00 — so the browser had the input at
+  // `rangeOverflow: true, valid: false` on a design with nothing wrong with it.
+  //
+  // Both halves are asserted here because they failed together and the fix is
+  // in two places: the engine now reports the sewn extent (digitize.js
+  // designExtentMm), and SizePanel no longer puts a REQUEST bound on a field
+  // that displays a SEWN size (the clamp lives in onWidthChange, unchanged).
+  await page.goto("/");
+  await page.getByRole("button", { name: /^Name on a hat/ }).click();
+  await page.getByRole("button", { name: "2 Content", exact: true }).click();
+
+  const stats = page.locator("span.stats");
+  await expect(stats).toBeVisible({ timeout: 60_000 });
+  const caption = await stats.innerText();
+  const capW = Number(caption.match(/(\d+)×\d+ mm/)[1]);
+
+  const w = page.getByLabel("Width");
+  const unit = await page.locator("select.unitselect").inputValue();
+  expect(unit).toBe("in");
+  const fieldMm = Number(await w.inputValue()) * 25.4;
+
+  // The caption rounds to whole mm; agreement to within that rounding is the
+  // strongest claim the two displays can make, and it is the one that broke
+  // (127 vs 128.3 is 1.3 mm apart, not a rounding step).
+  expect(Math.abs(fieldMm - capW)).toBeLessThanOrEqual(0.5);
+
+  // …and the honest number is not fighting a constraint on its own input.
+  expect(await w.evaluate((el) => el.validity.valid)).toBe(true);
+  expect(await w.evaluate((el) => el.checkValidity())).toBe(true);
+});
+
+test("a font that can't set the text names the fonts that can — or says none can", async ({ page }) => {
+  // "This font can’t stitch «Р», «у», «с». Try a different font, or different
+  // text." was true and unactionable: three shipped fonts cover Cyrillic,
+  // three cover Greek, two cover Hebrew, and NONE covers Japanese, Korean or
+  // Arabic. Finding that out meant opening up to 85 fonts by hand, or looking
+  // for something that is not there.
+  //
+  // The suggestion is async (a lazily fetched 16 KB index) and lands after the
+  // paint that shows the generic sentence, so both assertions wait rather than
+  // reading once.
+  await page.goto("/");
+  await page.getByRole("button", { name: "Left Chest", exact: true }).click();
+  await page.getByRole("button", { name: "Next", exact: true }).click();
+
+  await page.locator("textarea").first().fill("Иван");
+  await expect(page.getByText(/Switch fonts and it will stitch/)).toBeVisible({ timeout: 60_000 });
+  // Named, not just promised — the point is that the customer can act on it.
+  await expect(page.getByText(/can\. Switch fonts/)).toBeVisible();
+
+  // And the other answer, which is a different one on purpose: no font in the
+  // library covers Japanese, so "try a different font" would be bad advice.
+  await page.locator("textarea").first().fill("日本語");
+  await expect(page.getByText(/No font in this library can stitch/)).toBeVisible({ timeout: 60_000 });
+  await expect(page.getByText(/Switch fonts/)).toHaveCount(0);
+});
+
+// Playwright's ARIA snapshot renders each control as `- role "accessible
+// name"`. A control with no name renders without the quoted part, which is
+// what this looks for — the same thing a screen reader would announce as a
+// bare "slider" or "combobox".
+async function unnamedControls(page) {
+  const snap = await page.locator("body").ariaSnapshot();
+  return [...new Set(snap.split("\n").map((l) => l.trim())
+    .filter((l) => /^- (button|slider|spinbutton|textbox|combobox|checkbox|radio|link)\b/.test(l))
+    .filter((l) => !l.includes('"')))];
+}
+
+test("every control in the wizard has an accessible name", async ({ page }) => {
+  // Swept 2026-09-07 across all four steps: exactly ONE control in the app was
+  // unnamed (SizePanel's in/cm/mm select). Most are named implicitly by a
+  // wrapping <label> — the four TextStep sliders read "Letter spacing 0.0 mm",
+  // "Curve 0°", "Rotation 0°", "Slant 0°" — which is easy to break by moving
+  // an input out of its label while everything still LOOKS right.
+  await page.goto("/");
+  expect(await unnamedControls(page), "garment step").toEqual([]);
+
+  await page.getByRole("button", { name: /^Name on a hat/ }).click();
+  await page.getByRole("button", { name: "2 Content", exact: true }).click();
+  await expect(page.locator("span.stats")).toBeVisible({ timeout: 60_000 });
+  expect(await unnamedControls(page), "content step, text").toEqual([]);
+
+  await page.getByRole("button", { name: "Artwork", exact: true }).click();
+  expect(await unnamedControls(page), "content step, artwork").toEqual([]);
+
+  await page.getByRole("button", { name: "3 Review", exact: true }).click();
+  expect(await unnamedControls(page), "review step").toEqual([]);
+
+  await page.getByRole("button", { name: "4 Download", exact: true }).click();
+  expect(await unnamedControls(page), "download step").toEqual([]);
+});
+
+test("a page load produces no console errors and no failed requests", async ({ page }) => {
+  // The only one there has ever been is the /favicon.ico 404 every browser
+  // makes when a page declares no icon — which is also why a customer's
+  // bookmark showed a blank tab. `app/public/favicon.svg` (the topbar's own
+  // accent tile, with a stitch zigzag instead of the word "EMB", which is
+  // illegible at 16 px) settles both.
+  const problems = [];
+  page.on("console", (m) => { if (m.type() === "error") problems.push("[console] " + m.text().slice(0, 160)); });
+  page.on("pageerror", (e) => problems.push("[pageerror] " + e.message.slice(0, 160)));
+  page.on("requestfailed", (r) => problems.push("[requestfailed] " + r.url()));
+
+  await page.goto("/", { waitUntil: "networkidle" });
+  await expect(page.getByRole("heading", { name: "What are you putting this on?" })).toBeVisible();
+  expect(problems).toEqual([]);
+});

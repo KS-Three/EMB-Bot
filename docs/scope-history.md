@@ -8435,3 +8435,248 @@ it.
 `THREAD_MATCH_POOR` carries `yardstick` in `extra` precisely because a
 severity means nothing without knowing which yardstick judged it. A grade
 quoted without its arm AND its yardstick is not a measurement.
+
+---
+
+## 2026-09-07 — the reported design size was the box, not the thread
+
+**Live defect 34.** Found by driving the shipped Studio, not by a test.
+
+**What the app showed.** "Name on a hat" quick start, Content step, one
+instant: the field caption read `2355 stitches · 127×13 mm · 5×7 in hoop`
+while the Size panel's W field read `5.05` in (= 128.3 mm) with its own `max`
+at `5.00` — `input.validity` reporting `rangeOverflow: true, valid: false`.
+
+**Why.** `buildLetteringDesign` and `buildQualityDesign` reported `fitScale`'s
+target box as `widthMM`/`heightMM`. That box is the INPUT to routing; pull
+compensation (`emitZigzag` pushes the two satin rails apart by `pullCompMm/2`
+each) and the weight preset then move the thread outside it. SizePanel reads
+`combine.js`'s `bboxMmFromStitches` instead, which is the honest number — so
+the two displays had been measuring different things.
+
+**The sweep** (`node`, all 85 shipped `.embf` fonts, engine at `a5a1c5e`):
+
+| designs | outside their own placement box | worst overrun | hoop verdict wrong |
+|---|---|---|---|
+| 7,470 (10 garments × 85 fonts × 3 texts × 3 weights) | 4,898 (65.6%) | +9.6 mm (`manga_impact` "Sam", full_back) | 4 (all hat_front @ 5×7) |
+
+Per-design width under-report over the hat_front slice (747 designs):
+min −0.30, p50 +0.20, p90 +0.90, max +4.00 mm. It runs both ways — 13 of 747
+report WIDER than they sew. Image path: `enthusiast_logo` at hat_front
+reported 127.0 × 25.4 mm and sews 128.6 × 25.2.
+
+**Who read the wrong number.** The field caption; `hoopFitNote`, which gates
+`DownloadStep`'s oversize-export confirm; and `pdfsheet.js`'s printed
+design-size line.
+
+**Fix.** `designExtentMm` in `src/digitize.js`, used by both builders, applying
+`combine.js`'s rule exactly (skip `color` and `end`, keep stitch/jump/trim).
+`SizePanel.svelte` drops the `min`/`max` DOM attributes — the clamp has always
+lived in `onWidthChange` and is untouched — and gains the `aria-label` and a
+`title` naming the bound in words.
+
+**The Python engine was already correct.** `adapter.design_bbox_units` has
+always measured its own stitches. The two engines' record sets differ (JS
+stitch+jump+trim to match `preview.js`'s framing; Python sewn-only) and agree
+anyway: 0 disagreements over 249 lettering designs plus the image path, worst
+gap 0.000 mm. Now pinned.
+
+**Blast radius.** No stitch coordinate moved. Two assertions moved, both
+pinning "we report back the width you asked for": `satinfont.test.js`'s AB
+snapshot (40 → 40.2, stitch count and first/last coordinates unchanged) and
+`generate.spec.js`'s rect w/h contract (60 × 20 → 60.6 × 20.6). The new e2e
+guard was run against the pre-fix engine and fails there.
+
+---
+
+## 2026-09-07 — JEF shipped, and the launch row that said it already had
+
+**Found by comparing what the service advertises against what the Studio
+renders.** `GET /health` lists nine export formats; `DownloadStep.svelte`
+rendered three of them.
+
+PRODUCT.md's launch checklist item 1 ("PES hardened to byte-verified + JEF
+export") has been ✅ Done since 2026-08-11, evidenced by *"PES/JEF live in
+`digitizer/digitizer_service/formats.py`"*. They do. There was no button, so a
+Janome owner could not export anything from this product.
+
+**Decoded, not inferred** (`pystitch`, the reader CI cross-validates against).
+The design under test: a digitized logo the app reported as 80.5 × 16.6 mm,
+2 colours, 2,459 stitches.
+
+| format | machine | sewn | reads back | colour changes | threadlist |
+|---|---|---|---|---|---|
+| dst | Tajima | 2459 | 80.5 × 16.6 | 1 | 0 (DST carries no palette) |
+| pes | Brother / Baby Lock | 2459 | 80.5 × 16.6 | 1 | 2 |
+| exp | Melco / Bernina | 2459 | 80.5 × 16.6 | 1 | 0 |
+| **jef** | **Janome** | **2459** | **80.5 × 16.6** | **1** | **2** |
+| vp3 | Husqvarna / Pfaff | 2459 | 80.4 × 16.6 | 1 | 2 |
+| xxx | Singer | 2459 | 80.5 × 16.6 | 1 | 2 |
+| pec | Brother (PEC) | 2459 | 80.5 × 16.6 | 1 | 2 |
+| u01 | Barudan | 2459 | 80.5 × 16.6 | **0** | 0 |
+
+**U01 is the one that is not ready**: zero colour changes on a two-colour
+design means a machine sews both blocks in one thread. The rest are correct.
+Only JEF is shipped — which machines this product supports is a scope call,
+and PRODUCT.md's is DST/PES/JEF (+EXP).
+
+**JEF is the first format with no browser encoder**, so it is the first control
+whose availability depends on the service. It is disabled with a reason rather
+than throwing when pressed, and `App.svelte` now re-probes health on the
+download step as well as the content step, so "start the service and navigate
+back" works from where the button is.
+
+### And the lettering DST measurement Kent's routing call needs
+
+Not a change — a number. Lettering/manual designs download through the browser
+encoder by the standing scope ruling. Fed the SAME design object (`manga_impact`
+"Lp", 61.7 × 31.7 mm landscape, 906 stitches), stitch-for-stitch:
+
+| encoder | reads back | file x equals |
+|---|---|---|
+| service `/export` | **61.7 × 31.7 mm** | the design's **x**, 906/906 |
+| browser `encodeDST` | **31.7 × 61.7 mm** (a quarter turn) | the design's **y**, 906/906 |
+
+So the service path is spec-correct for browser-built lettering too, and
+routing lettering there needs no change to `src/dst.js` at all. What the
+standing ruling protects is the browser encoder's sew evidence — and that
+evidence is evidence of a transposed file sewing. Both the routing and the
+codec are Kent's call; neither was touched.
+
+---
+
+## 2026-09-07 — what happens when you drop the wrong file, and the right one
+
+Two defects, both found by uploading things to the panel rather than by
+reading it. Live defect 35.
+
+### (a) The error was trapped in the branch that could never render it
+
+`DigitizePanel`'s `{#if error}` sat inside the `{:else}` arm of
+`{#if !element.sourcePng}`. A file that fails to decode never sets
+`sourcePng`, so the message could only appear once artwork had already
+loaded.
+
+| upload | `error` set | rendered |
+|---|---|---|
+| `.txt` on a fresh panel | yes | **no** |
+| `.txt` after a logo already loaded | yes | yes |
+
+Moved out of the branch, directly under the upload control. The component
+test was mutation-proved: putting the paragraph back where it was fails the
+fresh-panel test and leaves the replace-artwork test green — the same
+asymmetry the defect had.
+
+The message itself now names what works, measured in this browser rather than
+assumed:
+
+| file | decodes |
+|---|---|
+| PNG / JPEG / WebP | yes (`createImageBitmap`) |
+| GIF | yes (`createImageBitmap`) |
+| BMP | yes (`<img>`) |
+| SVG with `image/svg+xml` | yes (`<img>`) |
+| SVG with an empty MIME type | **no** |
+| PDF | **no** |
+
+### (b) A vector logo was rasterised at Chrome's default size
+
+All three upload panels held byte-identical copies of `loadImage` and of
+`Math.min(1, MAX / longestSide)`. That rule is right for a raster and wrong
+for a vector, whose natural size is a browser default (300 px wide for a
+`viewBox`-only SVG).
+
+Same fixture (`app/e2e/fixtures/vector_logo.svg`, three inks on white),
+before and after, in the shipped app at Left Chest:
+
+| | before | after |
+|---|---|---|
+| stitches | 3,445 | 3,424 |
+| **thread colours** | **4** | **2** |
+| warnings | *"3.1 pixels per millimetre at this size and needs 4 … about 1.3x wider, or a smaller design"* + *"One part of the art was too small to sew"* | none |
+
+The two extra colours were anti-alias fringe from the small raster — two
+spools to buy and two machine stops the artwork never called for.
+
+**Why no SVG parsing is needed.** Chrome re-rasterises an SVG at whatever
+destination size `drawImage` is given. Measured on a 0.25-unit stripe in a
+200-unit viewBox — thinner than one pixel at the default size — the darkest
+pixel each approach produces:
+
+| approach | darkest pixel |
+|---|---|
+| rasterised at the natural 300 px (what shipped) | 160 (a grey smear) |
+| `drawImage(img, 0, 0, 1200, 480)` | **0** (a black line) |
+| `img.width`/`img.height` set before drawing | 0 |
+| `width`/`height` injected into the SVG source | 0 |
+
+The first is the destination size the panels already passed, so only the
+number changed. `app/src/lib/rasterize.js` now owns the decode and the
+work-size rule for all three panels.
+
+---
+
+## 2026-09-07 — the font library's answer to "I can't type my own name"
+
+Live defect 36. Found by typing a Russian name into the default font.
+
+**What the library actually covers**, measured across all 85 shipped `.embf`:
+
+| script | fonts that can set it |
+|---|---|
+| Latin (incl. accents) | 70 |
+| Cyrillic | 3 (`cyrillic` carries 271 glyphs) |
+| Greek | 3 |
+| Hebrew | 2 |
+| Japanese | **0** |
+| Korean | **0** |
+| Arabic | **0** |
+
+The app said *"This font can’t stitch «Р», «у», «с». Try a different font, or
+different text."* in every one of those rows. For the middle three that meant
+opening up to 85 fonts by hand; for the last three it meant looking for
+something that is not there.
+
+**A trap the index also closes:** `caffeine_KOR` and `magnolia_KOR` are named
+for their designer's origin, not their script — both hold ASCII and Latin-1 and
+**no Hangul at all**. A customer picking one to type Korean gets nothing, and
+the suggestion must never send them there. `test/font-coverage.test.js` asserts
+that directly.
+
+### What ships
+
+- `tools/build-font-coverage.mjs` → `src/fonts/manifest-coverage.json`: exact
+  per-font code-point ranges read from the **binaries**, not from the sources
+  (`scratch_ink/` is gitignored and supplies 68 of the 85, so a cloud checkout
+  cannot rebuild the manifest — and the binaries are what ships). 16,552 bytes;
+  3.4 KB gzipped. Exact rather than a per-script summary because a font with
+  *some* Greek and not the letters typed is a worse answer than none.
+- `app/src/lib/fontCoverage.js` — pure. `fontLoader.loadCoverage()` owns the
+  lazy fetch, so a design that stitches never pays for the index.
+- One message builder, three worded outcomes: fonts found / none in the library
+  / no index (the pre-existing generic advice).
+
+Live, in the shipped app:
+
+| typed | message |
+|---|---|
+| `Иван` | This font can’t stitch “И”, “в”, “а” and “н” — Кирилиця, Egyptian and Egyptian Small can. Switch fonts and it will stitch. |
+| `Δοκιμή` | …— AGS Γαραμου Garamond, Egyptian and Egyptian Small can. Switch fonts and it will stitch. |
+| `日本語` | No font in this library can stitch “日”, “本” and “語” — try different text. |
+| `Shalom שלום` | No font in this library can stitch “ש”, “ל”, “ו” and “ם” — try different text. |
+
+The last row is the design decision working: the check is against the **whole
+text**, so `hebrew_font_large` (29 glyphs, no ASCII) is correctly not offered
+for a name that is half Latin.
+
+### The naming detour, recorded because it cost four test failures
+
+The first cut wrote `src/fonts/coverage.json`. That directory is enumerated as
+font SOURCES by `tools/build-embf.mjs` and by `test/embf-guard.test.js`, whose
+stated invariant is "static JSON here ⇒ shipped"; both exclude only names
+starting with `manifest`. Four tests went red (`missing bin for coverage`,
+`ENOENT … coverage.embf`, `manifest missing coverage`, `coverage: not a font
+object`) and the font build would have tried to compile it. Renamed to
+`manifest-coverage.json` — inside the existing exclusion, and named for what it
+is. The guard's failure message now says so instead of naming a font that never
+existed.

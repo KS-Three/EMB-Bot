@@ -35,6 +35,53 @@
   // buildQualityDesign for the split.
   const SATIN_SPACING_MM = 0.4;
 
+  // The size of a design is the size of its THREAD — measured from the records
+  // that actually carry geometry, never from the shape the design was fit to.
+  //
+  // Both builders below used to report `fitScale`'s target box: the glyph
+  // outline (or the traced region polygons) scaled to the garment's placement
+  // box. That box is the INPUT to routing. Satin rails are then pushed apart
+  // by pull compensation and the weight preset, and underlay reaches past the
+  // outline too, so the thread lands outside the box the number describes.
+  //
+  // Measured 2026-09-07 across 7,470 lettering designs (10 garments x 85
+  // shipped fonts x 3 texts x 3 weights): 4,898 of them (65.6%) put thread
+  // outside the placement box they had just been fit to, by up to 9.6 mm, and
+  // the reported number could not show it because it WAS the box. On the
+  // image path (buildQualityDesign, enthusiast_logo at hat_front) the same gap
+  // is +1.6 mm of width. It runs the other way too — that logo's height reads
+  // 0.2 mm SMALLER than the polygons it was traced from, because the fill
+  // never reaches the outermost point.
+  //
+  // Two things downstream were reading the box as if it were the thread:
+  //   - the Studio's field caption and its hoop CEILING check (hoop.js:
+  //     "a warning, not a silent resize") — on 4 of those 7,470 the ceiling
+  //     check said "fits" where the actual thread needs the hoop rotated;
+  //   - the printed worksheet's design-size line (pdfsheet.js).
+  // And SizePanel already showed the honest number, via combine.js's
+  // bboxMmFromStitches — so one design displayed two different widths at once
+  // (127.0 mm in the caption, 5.05 in = 128.3 mm in the size field, with the
+  // field's own max at 5.00). Same rule here as there, deliberately: skip
+  // `color` (a marker at wherever the last record happened to be) and `end`
+  // (buildQualityDesign's is at the absolute origin), keep stitch/jump/trim.
+  //
+  // `fallback` is what to report when nothing geometric was emitted at all.
+  function designExtentMm(stitches, fallbackWmm, fallbackHmm) {
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const s of stitches) {
+      if (s.type === "color" || s.type === "end") continue;
+      if (s.x < minX) minX = s.x;
+      if (s.x > maxX) maxX = s.x;
+      if (s.y < minY) minY = s.y;
+      if (s.y > maxY) maxY = s.y;
+    }
+    if (!isFinite(minX)) return { widthMM: fallbackWmm, heightMM: fallbackHmm };
+    return {
+      widthMM: (maxX - minX) / units.DST_UNITS_PER_MM,
+      heightMM: (maxY - minY) / units.DST_UNITS_PER_MM,
+    };
+  }
+
   function polyArea(p) { let a = 0; for (let i = 0, j = p.length - 1; i < p.length; j = i++) a += (p[j].x * p[i].y - p[i].x * p[j].y); return Math.abs(a) / 2; }
   // SIGNED shoelace area (sign encodes winding). Do NOT confuse with polyArea (abs).
   function signedArea(p) { let a = 0; for (let i = 0, j = p.length - 1; i < p.length; j = i++) a += (p[j].x * p[i].y - p[i].x * p[j].y); return a / 2; }
@@ -588,7 +635,10 @@
     }
     stitches.push({ x: 0, y: 0, type: "end" });
     const stitchCount = stitches.filter((s) => s.type === "stitch").length;
-    return { stitches, colors, widthMM: designWmm, heightMM: designHmm, stitchCount, colorCount: colors.length, _debug: { nSatin, nFill, nTrims, nCenterOut } };
+    // designWmm/designHmm is the traced-polygon box this was fit to; the sewn
+    // extent is what the customer gets. See designExtentMm.
+    const extent = designExtentMm(stitches, designWmm, designHmm);
+    return { stitches, colors, widthMM: extent.widthMM, heightMM: extent.heightMM, stitchCount, colorCount: colors.length, _debug: { nSatin, nFill, nTrims, nCenterOut } };
   }
 
   // Build a Design from a PRE-DIGITIZED satin font (src/satinfont.js) instead of
@@ -887,29 +937,21 @@
       lastPt = pts[pts.length - 1];
     }
     const stitchCount = stitches.filter((s) => s.type === "stitch").length;
-    // Rotation (other than a multiple of 180) changes the axis-aligned
-    // bounding box relative to the unrotated glyph bbox (e.g. landscape text
-    // rotated 90 becomes portrait) -- widthMM/heightMM must reflect the
-    // ACTUAL rotated footprint (the field's stats line, SizePanel, and
-    // hoop-clamping all ultimately trace back to this value for a
-    // single-element project; see combine.js's bboxMmFromStitches for the
-    // identical pattern used once multiple elements are combined). Gated on
-    // rotDeg (falsy at 0/absent) so the overwhelmingly common unrotated case
-    // -- including every existing test -- computes designWmm/designHmm
-    // exactly as before, unchanged.
-    let outWmm = designWmm, outHmm = designHmm;
-    if (rotDeg) {
-      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-      for (const s of stitches) {
-        if (s.type === "color" || s.type === "end") continue;
-        if (s.x < minX) minX = s.x; if (s.x > maxX) maxX = s.x;
-        if (s.y < minY) minY = s.y; if (s.y > maxY) maxY = s.y;
-      }
-      if (isFinite(minX)) {
-        outWmm = (maxX - minX) / units.DST_UNITS_PER_MM;
-        outHmm = (maxY - minY) / units.DST_UNITS_PER_MM;
-      }
-    }
+    // widthMM/heightMM must reflect the ACTUAL sewn footprint — the field's
+    // stats line, SizePanel, the hoop ceiling check and the printed worksheet
+    // all trace back to this value for a single-element project (see
+    // combine.js's bboxMmFromStitches for the identical rule used once
+    // multiple elements are combined).
+    //
+    // This recompute used to be GATED on rotDeg, on the reasoning that only
+    // rotation moves the axis-aligned box away from the glyph bbox (landscape
+    // text rotated 90 becomes portrait). Rotation is the largest such move,
+    // not the only one: pull compensation and the weight preset push the
+    // satin rails outward at every angle including none, so the unrotated
+    // case — the overwhelmingly common one — kept reporting the glyph box
+    // while sewing wider than it. designExtentMm carries the measurement.
+    const extent = designExtentMm(stitches, designWmm, designHmm);
+    const outWmm = extent.widthMM, outHmm = extent.heightMM;
     // `unsupported`: characters this font has no glyph for. Carried out of the
     // layout so a caller can explain a design that came back empty or short —
     // before this, typing Latin into a Hebrew font returned a valid-looking

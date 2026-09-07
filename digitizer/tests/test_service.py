@@ -330,7 +330,8 @@ def test_export_bytes_read_back_at_the_size_the_app_promised(client):
 
     # Format-specific readers: `pystitch.read` dispatches on a FILENAME and
     # cannot take a stream.
-    readers = {"dst": pystitch.read_dst, "pes": pystitch.read_pes, "exp": pystitch.read_exp}
+    readers = {"dst": pystitch.read_dst, "pes": pystitch.read_pes,
+               "exp": pystitch.read_exp, "jef": pystitch.read_jef}
     for fmt, reader in readers.items():
         r = client.post("/export", json={"design": design, "format": fmt})
         assert r.status_code == 200, fmt
@@ -1369,3 +1370,73 @@ def test_a_gradients_regions_carry_their_sew_facts(client):
     ids = {s["shape_id"] for s in shapes}
     for cone in state["stats"]["blocks"]:
         assert set(cone["shape_ids"]) <= ids, cone
+
+
+def test_every_stitch_format_health_advertises_decodes_to_the_same_design(client):
+    """The surface, not one format at a time.
+
+    `/health` advertises the formats this service will write, and the Studio
+    renders buttons for a SUBSET of them — which is how JEF spent four weeks
+    marked shipped on PRODUCT.md's launch checklist with no way for a customer
+    to reach it (DOCTRINE, "a launch-checklist item verified against the module
+    that CAN do the thing"). The lesson generalises to the bytes: a format
+    nobody ships is a format nobody decodes, so the day it IS shipped its first
+    reader is a customer's machine.
+
+    This walks the advertised list rather than a hand-kept one, so adding a
+    format to `formats.py` puts it under test the moment it is advertised.
+    Every stitch format must sew the size the design claims and carry the
+    colour stops the design needs.
+
+    U01 is the measured exception and is pinned as such rather than skipped
+    (2026-09-07): it decodes at the right size but with ZERO colour changes on
+    a two-colour design, so a machine would sew both blocks in one thread. It
+    is not offered in the Studio. If this assertion starts failing because U01
+    grew its colour changes, that is good news — ship it and delete the
+    exception.
+    """
+    readers = {
+        "dst": pystitch.read_dst, "pes": pystitch.read_pes, "exp": pystitch.read_exp,
+        "jef": pystitch.read_jef, "vp3": pystitch.read_vp3, "xxx": pystitch.read_xxx,
+        "u01": pystitch.read_u01, "pec": pystitch.read_pec,
+    }
+    NO_COLOR_CHANGES = {"u01"}
+
+    advertised = [f["format"] for f in client.get("/health").json()["formats"]]
+    stitch_formats = [f for f in advertised if f != "svg"]
+    assert stitch_formats, "/health advertised no stitch formats at all"
+    unknown = [f for f in stitch_formats if f not in readers]
+    assert not unknown, (
+        f"/health advertises {unknown} and this test has no reader for it — add one "
+        "(pystitch.read_*) rather than narrowing the sweep, or the new format ships unread"
+    )
+
+    design = _digitize(client, {"target_width_mm": 80.0})["design"]
+    w_mm, h_mm = design["widthMM"], design["heightMM"]
+    assert w_mm > h_mm * 1.5, f"fixture is not clearly wide ({w_mm}x{h_mm}) — a transpose would pass"
+    expected_changes = len(design["colors"]) - 1
+    assert expected_changes >= 1, "fixture needs 2+ colours or the colour-stop half is vacuous"
+
+    for fmt in stitch_formats:
+        r = client.post("/export", json={"design": design, "format": fmt})
+        assert r.status_code == 200, f"{fmt}: HTTP {r.status_code}"
+        pattern = readers[fmt](io.BytesIO(r.content))
+        mask = pystitch.COMMAND_MASK
+        sewn = [(s[0], s[1]) for s in pattern.stitches if s[2] & mask == pystitch.STITCH]
+        assert sewn, f"{fmt}: no stitches survived the round trip"
+        got_w = (max(x for x, _ in sewn) - min(x for x, _ in sewn)) / 10.0
+        got_h = (max(y for _, y in sewn) - min(y for _, y in sewn)) / 10.0
+        assert got_w > got_h, f"{fmt}: reads {got_w:.1f}x{got_h:.1f} mm, TRANSPOSED"
+        assert got_w == pytest.approx(w_mm, abs=1.0), f"{fmt}: width {got_w:.1f} vs promised {w_mm:.1f}"
+        assert got_h == pytest.approx(h_mm, abs=1.0), f"{fmt}: height {got_h:.1f} vs promised {h_mm:.1f}"
+
+        changes = sum(1 for s in pattern.stitches if s[2] & mask == pystitch.COLOR_CHANGE)
+        if fmt in NO_COLOR_CHANGES:
+            assert changes == 0, (
+                f"{fmt}: {changes} colour changes — it used to write none, which is why it is "
+                "not offered in the Studio. If it writes them now, ship it and drop it from "
+                "NO_COLOR_CHANGES"
+            )
+        else:
+            assert changes == expected_changes, \
+                f"{fmt}: {changes} colour changes, expected {expected_changes}"

@@ -2359,3 +2359,187 @@ its hedge as it is copied forward** — is why this file is split.
   **Every assertion was proved able to fail by mutating the source it reads**
   — six mutations, six reds, tree restored. Do that, or the file is
   decoration. *(measured 2026-09-07)*
+
+- **A number that is the INPUT to a computation, reported as its OUTPUT — and
+  the second display that already knew better.** `buildLetteringDesign` and
+  `buildQualityDesign` both returned `fitScale`'s target box as the design's
+  `widthMM`/`heightMM`. That box is what routing is handed: pull compensation
+  and the weight preset then push the satin rails outward, so the thread lands
+  outside the number naming it. Swept over 7,470 lettering designs (10 garments
+  x 85 shipped fonts x 3 texts x 3 weights), **65.6% sew outside the placement
+  box they were just fit to**, by up to 9.6 mm.
+
+  **The tell was on screen the whole time, and it took driving the app to see
+  it.** The Studio shows the size twice — the field caption from the design's
+  `widthMM`, SizePanel from the stitch bbox — and on the first screen of the
+  most common quick start they read `127×13 mm` and `5.05 in` (= 128.3 mm).
+  The size field's own `max` was `5.00`, so the browser had it at
+  `rangeOverflow: true, valid: false` on a design with nothing wrong with it.
+  Nothing was red. No test compared the two numbers, because each was correct
+  against the thing it was written against.
+
+  **Three rules that generalise:**
+
+  - **When two displays of one quantity disagree, one is measuring the input.**
+    Look for the fit target, the request, the pre-clamp value. The honest
+    display is the one derived from the artifact — here, the stitches.
+  - **A UI constraint and the value it constrains must measure the same
+    thing.** `max` bounded what the user may REQUEST; the field displayed what
+    the design SEWS. A request bound policing a sewn readout is a category
+    error, and it renders as a broken input on a correct design.
+  - **A gate is only as honest as its input.** The hoop CEILING check, which
+    gates `DownloadStep`'s oversize-export confirm, ran on the under-reported
+    number — 4 of the 7,470 said "fits" where the thread needs the hoop
+    rotated. Fixing a check's threshold is worthless while what it reads is
+    the wrong quantity.
+
+  **The Python engine had it right the entire time.** `adapter.design_bbox_units`
+  has always measured its own stitches ("jump/trim/color mark where the needle
+  travels, not where thread lands"). So this was the recurring cross-language
+  divergence again — except the browser held the wrong answer, and nothing
+  compared them. The two engines use DIFFERENT record sets (JS takes
+  stitch+jump+trim to match `preview.js`'s framing, Python sewn-only) and agree
+  anyway, because a jump is emitted at the first point of the run it travels to
+  and a trim at the previous sewn position — both already sewn points. Measured:
+  0 disagreements over 249 designs plus the image path, worst gap 0.000 mm, and
+  now pinned by a test so the day it stops holding is the day it shows up.
+
+  **The blast radius was one number.** Every stitch coordinate is unchanged;
+  exactly one engine snapshot and one Studio assertion moved, both of which were
+  pinning "we report back the width you asked for" (40 → 40.2, 60 → 60.6). The
+  e2e guard was proved to fail on the pre-fix engine before being kept.
+  *(found by driving the app, measured 2026-09-07)*
+
+- **A launch-checklist item verified against the module that CAN do the thing,
+  not against the product that exposes it.** PRODUCT.md item 1 — *"PES hardened
+  to byte-verified + JEF export"* — was marked ✅ Done on 2026-08-11 with the
+  evidence *"PES/JEF live in `digitizer/digitizer_service/formats.py`"*. True,
+  and checkable, and the reason nobody looked again. The Studio's Download step
+  offered DST / PES / EXP, so **a Janome owner could not export anything from
+  this product** for four weeks while a launch-scope row said the feature
+  shipped.
+
+  This is the same shape as the DST entry above (*"the code WAS right and the
+  product was not"*) arriving through a different door: there the gate's
+  condition was unreachable, here the capability had no control. **The test in
+  both cases is the same — can a customer get to it?** A module that can write
+  a format, a function that returns the right answer, a flag that defaults
+  correctly: none of them is a feature until something on screen reaches it.
+
+  **Two habits that would have caught it, and both are cheap:**
+
+  - **Read the checklist's evidence as a claim about the PRODUCT, not the
+    repo.** "Lives in `formats.py`" answers a different question than the row
+    asks. A row about export is done when a button downloads the file.
+  - **Enumerate the surface, not the capability.** The service advertises nine
+    formats on `/health`; the Studio renders three of them. That is one `grep`
+    against one `curl`, and it is the whole finding.
+
+  Ship-check for the rest, measured the same day by decoding `/export`'s bytes
+  with `pystitch`: VP3 (Husqvarna/Pfaff), XXX (Singer) and PEC all come back
+  correct at 80.5×16.6 mm with 1 colour change and 2 threads. **U01 (Barudan)
+  does not — ZERO colour changes on a two-colour design**, so a machine would
+  sew both blocks in one thread. Adding a format is one line in
+  `exporters.js`'s `SERVICE_ONLY_FORMATS` and one button; which machines this
+  product supports is a scope call, and PRODUCT.md's is DST/PES/JEF (+EXP).
+  *(found by comparing /health's format list against the Download step,
+  2026-09-07)*
+
+- **A message the code sets and the template cannot show — and the branch it
+  was trapped in was the one that mattered.** `DigitizePanel`'s
+  `{#if error}` lived beside the Digitize button, which sits in the `{:else}`
+  arm of `{#if !element.sourcePng}`. So the upload error could only render
+  once artwork had ALREADY loaded, and a file that fails to decode never sets
+  `sourcePng`. Dropping a `.txt` on a fresh panel: `onFile` set
+  *"Could not read this image file."*, and the screen did not change.
+
+  The asymmetry is the whole lesson. **The case that stayed silent was the one
+  where the customer has nothing on screen and no way to tell a rejected file
+  from a broken app; the case that spoke was the one where their artwork is
+  still visible and they can see it did not change.** Exactly backwards, and
+  invisible to every test in the repo, because the string was correct, the
+  handler was correct, and nothing asserted that a user could see it.
+
+  **Check where an error renders relative to the state that produces it.** A
+  message about a failed load belongs beside the *upload control*, not beside
+  the controls that only exist once a load succeeded. The test that catches it
+  has to start from the empty state — the spec for this panel deliberately
+  seeded a truthy `sourcePng` "to clear the upload-prompt gate", which is
+  exactly the gate the bug was behind.
+
+- **`Math.min(1, MAX / longest)` is right for a raster and wrong for a
+  vector, and it was copied three times.** `DigitizePanel`, `ImagePanel` and
+  `TraceImportPanel` each held a byte-identical `loadImage` and its own copy
+  of that work-size rule — one of them with a comment saying so (*"Identical …
+  pattern DigitizePanel/ImagePanel already use"*), which is the repo noticing
+  the duplication and keeping it anyway.
+
+  Never scaling up is correct for a photo: a 300 px JPEG has 300 px of detail
+  however big the canvas is. An SVG has no pixels at all, and its "natural"
+  size is a **browser default** — Chrome gives a `viewBox`-only SVG a 300 px
+  width, which is the shape SVGO and most hand-written exports produce. So an
+  80 mm design built from a vector logo arrived at **3.1 px/mm** and the
+  customer was told *"Enlarging it can't add detail that isn't in the file"* —
+  false, and `INPUT_LOW_RESOLUTION` firing on the one format that cannot be
+  low-resolution.
+
+  **Measured before and after in the shipped app, same file: 3,445 stitches in
+  4 colours with two warnings → 3,424 in 2 colours with none.** The two extra
+  colours were anti-alias fringe from the small raster: two spools to buy and
+  two machine stops the artwork never called for. That is what a resolution
+  defect costs downstream — not blur, thread.
+
+  The fix needs no SVG parsing, because Chrome re-rasterises an SVG at
+  whatever destination size `drawImage` is handed. Measured on a 0.25-unit
+  stripe in a 200-unit viewBox — thinner than one pixel at the default size —
+  the darkest pixel produced: **160 at the natural 300 px, 0 at 1200**, and 0
+  for both of the other two approaches (setting `img.width/height` first,
+  injecting `width`/`height` into the SVG source). The cheapest of the three
+  was already what the panels did; only the size they asked for was wrong.
+  *(found by driving the app, 2026-09-07)*
+
+- **A finding that states the problem and stops is half a finding — and the
+  lettering path was the one place still doing it.** "This font can’t stitch
+  «Р», «у», «с». Try a different font, or different text." is true, and a
+  customer cannot act on it: three of the 85 shipped fonts cover Cyrillic,
+  three cover Greek, two cover Hebrew, and **none covers Japanese, Korean or
+  Arabic**, so for half the cases the advice was to keep looking for something
+  that is not there.
+
+  The convention was already settled and applied five times over on the
+  digitizing side — `THREAD_MATCH_POOR` names a loaded better spool,
+  `COLOR_STOPS_HEAVY` the cheapest merge, `STITCHES_TOO_SHORT` the shapes,
+  `TRIM_HEAVY` and `DENSITY_STACKED` the same. **When a rule has been applied
+  five times in one capability area, go look for the sixth place it has not
+  been.** It is a cheaper search than finding a new rule.
+
+  **Ask about the whole input, not the part that failed.** The obvious
+  implementation checks which fonts cover the UNSUPPORTED characters, and it
+  is wrong: `hebrew_font_large` holds 29 glyphs and no ASCII, so on "Shalom
+  שלום" it covers exactly what failed and nothing that worked. Suggesting it
+  moves the dead end one step along. Checking the whole text answers "no font
+  in this library can" there, which is the truth.
+
+  **And "nothing can" is a different sentence, not a weaker one.** The first
+  cut composed one prefix with one suffix and produced *"This font can’t stitch
+  «日», «本» and «語» — No font in this library can stitch those characters —
+  try different text."*: two sentences arguing with each other, with the
+  current font blamed for something no font can do. One builder that owns the
+  whole message, three worded outcomes.
+  *(found by typing a Russian name into the default font, 2026-09-07)*
+
+- **`src/fonts/*.json` is a namespace with a rule, and the rule is enforced by
+  four tests and the font build.** Every non-`manifest` JSON there is read as a
+  font SOURCE — `test/embf-guard.test.js` states the invariant outright
+  ("static JSON here ⇒ shipped") and `tools/build-embf.mjs` applies the
+  identical filter when deciding what to build. Dropping a `coverage.json` in
+  beside them broke four tests instantly and would have made the font build try
+  to compile it into a `.embf`.
+
+  The fix was not to widen the filter — that is the invariant's only teeth —
+  but to use the escape hatch that already existed: the `manifest` prefix means
+  "an artifact ABOUT the fonts, not one of them". `manifest.json` says which
+  fonts ship; `manifest-coverage.json` says what each covers. **The guard's
+  failure message now names that fix**, because "missing bin for coverage" sent
+  the first reader looking for a font that never existed.
+  *(2026-09-07)*

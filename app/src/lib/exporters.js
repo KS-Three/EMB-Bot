@@ -39,8 +39,47 @@ export function exportDesign(design, format) {
 // bytes (DownloadStep uses this to label the download).
 const SERVICE_EXPORT_FORMATS = new Set(["dst", "exp", "pes"]);
 
+// Formats ONLY the service can write. `preferService` above is a choice
+// between two encoders that can both write the same format; this set is a
+// different thing entirely — there is no browser JEF encoder, so for these the
+// service is the path or there is no path, and falling through to
+// exportDesign() would raise "Unknown format: jef" at a customer.
+//
+// JEF is Janome, and it is on PRODUCT.md's launch checklist ("PES hardened to
+// byte-verified + JEF export", item 1, marked done because
+// `digitizer_service/formats.py` has always been able to write it). The
+// service could write it; the Studio offered no button, so from the
+// customer's seat the feature did not exist and a Janome owner could not use
+// the product at all.
+//
+// Verified 2026-09-07 by decoding what the endpoint actually returns, with
+// `pystitch` — the same third-party reader CI cross-validates against. A
+// digitized logo the app reported as 80.5 x 16.6 mm, 2 colours, 2459 stitches
+// reads back from JEF as 2459 sewn stitches, 80.5 x 16.6 mm, 1 colour change,
+// 2 threads in the threadlist. Not an inference from the writer existing.
+//
+// `isServiceOnlyFormat` is exported so the UI can disable the control with a
+// reason instead of offering a button that throws.
+const SERVICE_ONLY_FORMATS = new Set(["jef"]);
+
+export function isServiceOnlyFormat(format) {
+  return SERVICE_ONLY_FORMATS.has(format);
+}
+
 export async function exportDesignPreferService(design, format, opts = {}) {
   const { label = "EMBBOT", exportViaServiceFn = exportViaService, fetchFn, preferService = false } = opts;
+  if (SERVICE_ONLY_FORMATS.has(format)) {
+    // No browser fallback exists, so a failure here is the end of the road and
+    // has to say so in words a customer can act on. The service's own message
+    // rides along: it names the actual cause (down, 4xx, timeout) and this
+    // wrapper would otherwise swallow it.
+    try {
+      const out = await exportViaServiceFn(design, format, label, fetchFn);
+      return { ...out, via: "service" };
+    } catch (e) {
+      throw new Error(`${format.toUpperCase()} is written by the digitizer service, which isn\u2019t answering — start it and try again. (${e.message})`);
+    }
+  }
   if (preferService && SERVICE_EXPORT_FORMATS.has(format)) {
     try {
       const out = await exportViaServiceFn(design, format, label, fetchFn);

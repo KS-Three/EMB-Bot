@@ -24,6 +24,18 @@ import "@testing-library/jest-dom/vitest";
 import Harness from "./DigitizePanel.testHarness.svelte";
 import { DEFAULT_DIGITIZE_PARAMS } from "../lib/project.js";
 
+// Only `loadImage` is controlled; the rest of lib/rasterize.js is the real
+// module, so `isVectorFile`/`rasterSize`/`UNREADABLE` are the shipped ones and
+// this cannot pass against a stub of the thing under test. jsdom neither
+// implements `createImageBitmap` nor loads a blob: URL into an <img>, so the
+// real loadImage would hang rather than reject — the failure has to be
+// injected to be observable at all.
+let loadImageResult = () => Promise.reject(new Error("stub"));
+vi.mock("../lib/rasterize.js", async (importOriginal) => {
+  const real = await importOriginal();
+  return { ...real, loadImage: (...args) => loadImageResult(...args) };
+});
+
 function shapeRow(id, overrides = {}) {
   return {
     id,
@@ -929,5 +941,48 @@ describe("auto-restitch on shape edits", () => {
     vi.advanceTimersByTime(2500);
     await Promise.resolve();
     expect(calls.length).toBeLessThanOrEqual(1);
+  });
+});
+
+// ---- the upload error, on a panel that has no artwork yet ------------------
+//
+// `{#if error}` used to sit beside the Digitize button, which lives in the
+// `{:else}` arm of `{#if !element.sourcePng}` — so it could only ever render
+// once artwork had ALREADY loaded. A file that fails to decode never sets
+// `sourcePng`, so `onFile` set the message and the template had no way to show
+// it. Measured 2026-09-07 by dropping a .txt on a fresh panel: `error` set,
+// unchanged empty state on screen.
+//
+// The case that stayed silent is the one where the user has nothing to look at
+// and no reason to think the app is working; the case that spoke is the one
+// where their artwork is still on screen. Exactly backwards.
+describe("a file that cannot be decoded", () => {
+  test("says so on a FRESH panel, where there is no artwork to explain the silence", async () => {
+    loadImageResult = () => Promise.reject(new Error("Couldn’t read that file as an image."));
+    const { container, findByRole } = render(Harness, {
+      props: { element: baseElement([], { sourcePng: null, result: null, review: null }) },
+    });
+    const input = container.querySelector('.dgp-upload input[type="file"]');
+    Object.defineProperty(input, "files", {
+      value: [new File(["nope"], "logo.pdf", { type: "application/pdf" })],
+    });
+    await fireEvent.change(input);
+
+    const alert = await findByRole("alert");
+    expect(alert).toHaveTextContent(/Couldn’t read that file as an image/);
+    // Still no artwork — the message is the ONLY thing that changed, which is
+    // the whole point: the empty-upload state must be able to carry it.
+    expect(container.querySelector(".dgp-stats")).toBeNull();
+  });
+
+  test("and still says so when REPLACING artwork that already loaded", async () => {
+    loadImageResult = () => Promise.reject(new Error("Couldn’t read that file as an image."));
+    const { container, findByRole } = render(Harness, { props: { element: baseElement([]) } });
+    const input = container.querySelector('.dgp-upload input[type="file"]');
+    Object.defineProperty(input, "files", {
+      value: [new File(["nope"], "logo.pdf", { type: "application/pdf" })],
+    });
+    await fireEvent.change(input);
+    expect(await findByRole("alert")).toHaveTextContent(/Couldn’t read that file as an image/);
   });
 });

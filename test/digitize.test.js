@@ -1132,3 +1132,117 @@ test("buildLetteringDesign: satinSpacingMm names the satin pitch; default, named
   const withFillRow = DG.buildLetteringDesign(font, "AB", { ...base, fillRowMm: 0.15 });
   assert.deepStrictEqual(withFillRow, dflt, "fillRowMm is not a lettering option and changes nothing");
 });
+
+// ---- The reported size IS the sewn size ----------------------------------
+//
+// Both builders used to report `fitScale`'s target box — the glyph outline (or
+// the traced polygons) scaled to the garment placement box. That box is the
+// INPUT to routing: pull compensation and the weight preset then push the
+// satin rails outward, so the thread lands outside the number describing it.
+//
+// The measurement that opened this (2026-09-07, 10 garments x 85 shipped fonts
+// x 3 texts x 3 weights = 7,470 lettering designs): 4,898 of them — 65.6% —
+// put thread outside the placement box they had just been fit to, by up to
+// 9.6 mm, and 4 of them told the hoop ceiling check "fits" when the actual
+// thread needs the hoop rotated. Meanwhile SizePanel showed the honest number
+// (combine.js bboxMmFromStitches), so ONE design displayed two widths at once:
+// 127.0 mm in the field caption and 5.05 in = 128.3 mm in the size field,
+// whose own max was 5.00.
+//
+// These pin the invariant, not any particular number — the sizes here move
+// whenever routing does, and that is fine; what must never come back is a
+// reported size that is not the extent of the thread.
+const bboxOfStitches = (stitches) => {
+  const geo = stitches.filter((s) => s.type !== "color" && s.type !== "end");
+  const xs = geo.map((s) => s.x), ys = geo.map((s) => s.y);
+  return { w: (Math.max(...xs) - Math.min(...xs)) / 10, h: (Math.max(...ys) - Math.min(...ys)) / 10 };
+};
+
+test("buildLetteringDesign: widthMM/heightMM are the stitch bbox, not the width that was asked for", () => {
+  const font = JSON.parse(fs.readFileSync(__dirname + "/../test/fixtures/fonts/geneva_simple.json", "utf8"));
+  const base = { garment: { widthIn: 5, heightIn: 2.25 }, pxPerMm: 8, underlay: false };
+  for (const targetWidthMm of [20, 40, 80]) {
+    const d = DG.buildLetteringDesign(font, "AB", { ...base, targetWidthMm });
+    const bb = bboxOfStitches(d.stitches);
+    assert.ok(Math.abs(d.widthMM - bb.w) < 1e-9, `w@${targetWidthMm}: reported ${d.widthMM} vs sewn ${bb.w}`);
+    assert.ok(Math.abs(d.heightMM - bb.h) < 1e-9, `h@${targetWidthMm}: reported ${d.heightMM} vs sewn ${bb.h}`);
+    // And it is genuinely WIDER than the request — the gap this closes.
+    assert.ok(d.widthMM > targetWidthMm, `pull comp widens ${targetWidthMm} to ${d.widthMM}`);
+  }
+});
+
+test("buildLetteringDesign: the sewn extent is reported unrotated too, not only when rotationDeg is set", () => {
+  // The recompute used to be gated on rotationDeg, on the reasoning that only
+  // rotation moves the axis-aligned box. Rotation is the largest such move,
+  // not the only one.
+  const font = JSON.parse(fs.readFileSync(__dirname + "/../test/fixtures/fonts/geneva_simple.json", "utf8"));
+  const base = { garment: { widthIn: 5, heightIn: 2.25 }, pxPerMm: 8, targetWidthMm: 40, underlay: false };
+  for (const rotationDeg of [0, 90]) {
+    const d = DG.buildLetteringDesign(font, "AB", { ...base, rotationDeg });
+    const bb = bboxOfStitches(d.stitches);
+    assert.ok(Math.abs(d.widthMM - bb.w) < 1e-9, `rot ${rotationDeg}: ${d.widthMM} vs ${bb.w}`);
+    assert.ok(Math.abs(d.heightMM - bb.h) < 1e-9, `rot ${rotationDeg}: ${d.heightMM} vs ${bb.h}`);
+  }
+});
+
+test("buildQualityDesign: widthMM/heightMM are the stitch bbox, and the end record at the origin does not stretch it", () => {
+  // A square placed well away from the design origin — if the trailing
+  // {x:0,y:0,type:"end"} were counted, the reported size would blow up to the
+  // distance from the origin instead of the size of the square.
+  const d = DG.buildQualityDesign(
+    [{ rgb: [10, 10, 10], shapes: [{ outer: sq(200, 200, 100), holes: [] }] }],
+    { garment: { widthIn: 4, heightIn: 4 }, pxPerMm: 1, underlay: false, satinMaxWidthMm: 3 }
+  );
+  assert.ok(d.stitches.some((s) => s.type === "end"), "this builder does append an end record");
+  const bb = bboxOfStitches(d.stitches);
+  assert.ok(Math.abs(d.widthMM - bb.w) < 1e-9, `reported ${d.widthMM} vs sewn ${bb.w}`);
+  assert.ok(Math.abs(d.heightMM - bb.h) < 1e-9, `reported ${d.heightMM} vs sewn ${bb.h}`);
+});
+
+test("designExtentMm falls back to the fit target when a build emits no geometry at all", () => {
+  // An empty region list returns the documented empty design (0x0) rather than
+  // an Infinity-derived NaN from an empty bbox.
+  const d = DG.buildQualityDesign([], { garment: { widthIn: 4, heightIn: 4 }, pxPerMm: 1 });
+  assert.strictEqual(d.widthMM, 0);
+  assert.strictEqual(d.heightMM, 0);
+  assert.strictEqual(d.stitchCount, 0);
+});
+
+test("engine parity: travel records never widen a design, so the JS and Python size rules agree", () => {
+  // The two engines define "how big is this design" with DIFFERENT record sets
+  // and must still return the same number:
+  //   - JS (app/src/lib/combine.js bboxMmFromStitches, and designExtentMm here)
+  //     takes stitch + jump + trim, skipping color and end — matching
+  //     preview.js's fitTransform, so the preview frames what it measures.
+  //   - Python (digitizer_core/adapter.design_bbox_units) takes sewn
+  //     penetrations ONLY: "jump/trim/color records mark where the needle
+  //     travels, not where thread lands".
+  // They agree because of an invariant neither file states: a jump is emitted
+  // at the first point of the run it travels to, and a trim at the PREVIOUS
+  // sewn position — both are already sewn points, so neither can sit outside
+  // the sewn hull. Measured 2026-09-07 over 249 lettering designs (85 shipped
+  // fonts x 3 texts) plus the image path: zero disagreements, worst gap 0.000
+  // mm. If that ever stops holding, one engine starts reporting a size the
+  // other does not, and this is where it shows up.
+  const withTravel = (s) => s.type !== "color" && s.type !== "end";
+  const sewnOnly = (s) => s.type === "stitch";
+  const span = (st, pred) => {
+    const pts = st.filter(pred);
+    const xs = pts.map((s) => s.x), ys = pts.map((s) => s.y);
+    return [Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys)];
+  };
+
+  // Two squares far apart: forces real trims and jumps between them.
+  const d = DG.buildQualityDesign(
+    [{ rgb: [10, 10, 10], shapes: [{ outer: sq(0, 0, 60), holes: [] }, { outer: sq(200, 200, 60), holes: [] }] }],
+    { garment: { widthIn: 4, heightIn: 4 }, pxPerMm: 1, underlay: true, satinMaxWidthMm: 3 }
+  );
+  const types = new Set(d.stitches.map((s) => s.type));
+  assert.ok(types.has("jump") && types.has("trim") && types.has("end"),
+    "fixture must actually contain travel records: " + [...types].join(","));
+  assert.deepStrictEqual(span(d.stitches, withTravel), span(d.stitches, sewnOnly));
+
+  const font = JSON.parse(fs.readFileSync(__dirname + "/../test/fixtures/fonts/geneva_simple.json", "utf8"));
+  const lt = DG.buildLetteringDesign(font, "A B", { garment: { widthIn: 5, heightIn: 2.25 }, pxPerMm: 8, targetWidthMm: 40 });
+  assert.deepStrictEqual(span(lt.stitches, withTravel), span(lt.stitches, sewnOnly));
+});
