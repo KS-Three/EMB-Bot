@@ -891,7 +891,22 @@
     const heightMM = pe.bboxMm.y1 - pe.bboxMm.y0;
     // Text elements carry the engine's own width-guard report; image and
     // shape elements have no `lettering` and get an empty note.
-    letterNote = letteringNote(pe.design && pe.design.lettering);
+    //
+    // `atWidthCap` decides which advice is TRUE. Lettering is fit by width, so
+    // for a fixed character count the letters can only get bigger if the
+    // design does — and an auto-fit design (sizeMm null, the default) is
+    // already as wide as the garment's placement box allows. Telling that
+    // customer to "size up" is telling them to do the one thing they cannot.
+    // Read off the REQUEST, not the sewn width: the sewn extent is slightly
+    // past the box by construction (pull compensation — defect 34), so
+    // comparing it to the box would read "capped" for every design.
+    const el = project.elements.find((e) => e.id === pe.id);
+    const capWmm = (() => {
+      const g = EMB.getGarment(project.garmentId);
+      return g ? g.widthIn * 25.4 : Infinity;
+    })();
+    const atWidthCap = !!el && (el.sizeMm == null || el.sizeMm >= capWmm - 0.05);
+    letterNote = letteringNote(pe.design && pe.design.lettering, { atWidthCap });
     // "Smaller than 5 mm" is advice about a design that IS there and is too
     // small to sew cleanly. On an element with no stitches at all it is not
     // advice, it is noise — and it sat directly in front of the message that

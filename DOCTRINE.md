@@ -2595,3 +2595,31 @@ its hedge as it is copied forward** — is why this file is split.
   record type. The tests drive both from the same fixtures and assert their
   lengths match, which is the property that makes the two arrays index together.
   *(2026-09-07)*
+
+- **Advice that names a lever the default state does not have.** "Size up for
+  crisp letters" is the right fix for thin lettering — unless the design is
+  already as wide as the garment's placement box, which is what auto-fit
+  produces and therefore what every quick start produces. Lettering is fit by
+  width, so at that box the cap height is fixed by the character count:
+  measured on left_chest's 101.6 mm box with `medium_font`, "WIDE DESIGN TEXT
+  HERE" gives a 4.33 mm cap, "SHORTER TEXT" 7.16, "ABC" 30.03 — all at the same
+  101.6 mm.
+
+  This is a third variant of the same defect this repo keeps finding, and the
+  three are worth naming together because they need different fixes:
+
+  - **A capability with no control** (JEF): add the control.
+  - **A control with no announcement** (the shapes tool behind a right-click):
+    say where it is.
+  - **Advice with no lever** (this): name the levers that exist in the state
+    the customer is actually in.
+
+  The last one is the easiest to ship and the hardest to notice, because the
+  sentence is *correct in general*. The test is not "is this true" but "can the
+  person reading it do it right now".
+
+  **And derive the state from the REQUEST, not the result.** The obvious check
+  — is the sewn width equal to the placement box — reads true for every design
+  since defect 34, because the sewn extent sits slightly past the box by
+  construction. `sizeMm == null` (auto-fit) is the exact signal.
+  *(2026-09-07)*

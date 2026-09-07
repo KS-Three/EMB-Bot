@@ -8808,3 +8808,43 @@ area 3 carries, and it is Kent's — capping would silently shrink every
 back-of-jacket design. The four impossible garments are asserted as a SET, so
 adding a garment or a bigger hoop preset surfaces in the tests rather than
 quietly changing what 40% of the picker says.
+
+---
+
+## 2026-09-07 — "size up for crisp letters", to a design already at the cap
+
+Live defect 40. Found while reading the warnings on a long left-chest name.
+
+Lettering is fit by **width**, so for a fixed character count the cap height is
+proportional to the design width. Measured with `medium_font` on left_chest's
+101.6 mm placement box — every one of these is at that same 101.6 mm:
+
+| text | design | cap height | share under 1 mm |
+|---|---|---|---|
+| WIDE DESIGN TEXT HERE | 101.7 × 4.9 mm | **4.33 mm** | 100% |
+| SHORTER TEXT | 101.7 × 8.0 mm | 7.16 mm | 43% |
+| ABC | 101.7 × 32.2 mm | 30.03 mm | 0% |
+
+An **auto-fit** design — `sizeMm` null, the default, and what every quick start
+produces — is already at that box. So "size up for crisp letters" named the one
+lever the customer does not have, while the three they do have (fewer
+characters, a bolder font, a bigger placement) went unnamed.
+
+`letteringNote(l, { atWidthCap })` swaps only the advice clause:
+
+| state | thin-lettering finding |
+|---|---|
+| at the cap | …under 1 mm wide — **already the full width of the placement, so fewer characters or a bigger placement is what makes them crisper** |
+| below the cap | …under 1 mm wide — **size up for crisp letters** *(unchanged; it is the fix there)* |
+
+Both verified in the running app: auto-fit gives the first, setting W to
+2.60 in gives the second.
+
+**The flag is read off the REQUEST (`sizeMm`), not the sewn width.** Since
+defect 34 the sewn extent sits slightly past the placement box by construction
+(pull compensation), so comparing it to the box would read "capped" for every
+design including ones the customer had shrunk by hand.
+
+The two findings that are not about size are untouched, and that is asserted:
+a cap under the 4 mm floor already names a height rather than an action, and a
+lone hairline span reports what the engine *did*, which is not advice at all.
