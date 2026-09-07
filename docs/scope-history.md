@@ -8949,3 +8949,113 @@ stitch, so everything counted there is thread that really goes down.
   `1289`** where QualityReport, DigitizePanel, DesignPanel and the review
   summary all say `1,289`. Six e2e matchers pinned the bare form and were
   widened, with the reason recorded at the helper.
+
+## 2026-09-07 — the JEF file declares a hoop it does not fit, and the dialog that would have hidden it
+
+Snapshot. Not live status — read `MASTER_SCOPE.md` area 4 for that.
+
+JEF shipped this morning (#399). A JEF file carries a **hoop code in its
+header**, and a Janome reads that before it reads a stitch, so the header is
+now part of what this product ships and nothing was checking it.
+
+`pystitch.JefWriter.get_jef_hoop_size` derives the code from the design's own
+bbox correctly, then falls off the end of its own ladder:
+
+```python
+if width < 1400 and height < 2000: return HOOP_140X200
+if width < 2000 and height < 2000: return HOOP_200X200
+return HOOP_110X110          # the second SMALLEST of the five it knows
+```
+
+Measured by reading the bytes `/export` actually returns (offset 32, little-endian):
+
+| asked | declares | fits? |
+|---|---|---|
+| 199.0 × 12 mm | code 4 = 200 × 200 | yes |
+| 201.0 × 12 mm | **code 0 = 110 × 110** | **no** |
+| 203.2 (tote) | code 0 | no |
+| 254.0 (blanket) | code 0 | no |
+| 304.8 (jacket_back, full_back) | code 0 | no |
+
+### The band is wider than the warning — which decided where the caveat goes
+
+The first version of the fix put the sentence inside the existing hoop-exceeds
+confirm dialog. That dialog was already going to open for all four oversize
+garments, so it looked like the natural home. **It is not the same condition.**
+The app's largest hoop is 200 × 200 mm and its 6×10 is 160 × 250, and JEF falls
+through at 200 mm in *either* axis:
+
+| design | Studio hoop check | JEF header |
+|---|---|---|
+| 140 × 200 mm | **fits the 8×8 — the largest offered** | 110 × 110 |
+| 120 × 200 mm | fits the 8×8 | 110 × 110 |
+| 150 × 240 mm | **fits the 6×10** | 110 × 110 |
+| 160 × 250 mm | fits the 6×10 | 110 × 110 |
+
+`hoopFitNote` is silent for every row. The caveat would have shown on exactly
+the designs the customer had already been warned about and stayed quiet on the
+ones they had not. It is now a persistent note beside the JEF button — the same
+convention the DST encoder-provenance note uses (`class="caveat"`, an
+aria-hidden asterisk, the text on `aria-describedby`, the button still named
+plain "JEF").
+
+Driven in the running app, Jacket Back + `FRITSCHS`:
+
+- **305.1 × 38.9 mm** — note present, JEF button carries the asterisk and
+  `aria-describedby="jef-hoop-note"`; clicking through the oversize confirm
+  gives `POST /export` and *"Downloaded JEF (digitizer service encoder)"*.
+- **200.2 × 25.5 mm** (Width typed as 200) — hoop line reads *"a 6×10 in hoop
+  fits it"*, i.e. the design **does** fit a hoop the app sells, and the JEF note
+  is still there. The case in one screenshot.
+- **199.0 × 25.6 mm** — no hoop line, no JEF note. Only the DST note.
+
+### What it may claim, and what it may not
+
+That the header says 110 × 110 is a byte. What a given Janome *does* with the
+mismatch is machine behaviour and there is no machine here — gate 1 — so the
+note says "may refuse the file" and stops there.
+
+Same reason the obvious repair was not taken. Rewriting the byte to the largest
+code the writer knows (200 × 200) is **still wrong for a 250 mm design**, and
+the argument for it — *a machine that accepts a 110 declaration accepts a 200
+one* — is a claim about firmware, not about bytes. Recorded as a live option
+for Kent instead.
+
+The two levers the note names are both measured: under 200 mm the header is
+correct, and **DST and EXP carry no hoop header at all** — grepping pystitch's
+writers, exactly two mention a hoop, `JefWriter` and `PesWriter`. **PES is
+deliberately left unnamed** even though three formats would read better than
+two: its hoop bytes are an unconditional constant that never described the
+design, and whether a Brother acts on them is the same unmeasurable. Fixing
+"advice with no lever" by inventing a lever is the same defect in a new hat.
+
+### Tests
+
+- `digitizer/tests/test_jef_hoop_code.py` — **10 tests**, through the real
+  `/export`. Includes the four fits-a-hoop-anyway pairs, each of which first
+  asserts the Studio's hoop table still takes that size, so the day the table
+  changes the test says the case stopped being the silent one it was written
+  for rather than quietly passing.
+- `app/src/ui/DownloadStep.spec.js` — 7 new (32 total). Mutation-proved: a
+  strict `>` boundary, a width-only check, a dropped `aria-describedby`, a
+  dropped `caveat` class and naming PES each fail at least one.
+- `app/e2e/digitize-auto-start.spec.js` — one new e2e, and the only test that
+  can make the claim the customer is actually being asked to trust: the python
+  test pins the BYTE and the component test pins the SENTENCE, and neither can
+  prove they agree. It downloads a real JEF from the running app and reads
+  offset 32 — **Full Back → the note is on screen and the code is 0; Left Chest
+  → no note, and the code is not 0.** Mutation-proved by moving the threshold
+  to 500 mm. Full e2e **37/37**.
+- Studio suite **1018/1018**. Full digitizer suite **2050 passed, 3 failed,
+  8 skipped, 7 xfailed** in 23m08s — the three are the expected golden trio for
+  this container (`test_flat_lane_byte_identical`, `test_pushcomp`,
+  `test_stage2_photo_segment`).
+
+### One refactor that came with it
+
+`DownloadStep` called `generateAll` — a full re-run of the stitch engine over
+every element — three separate times per project change once this note existed:
+the thread shopping list, the hoop gate, and the header note. Now one reactive
+`combined`, three readers. `combinedColors` is gone and the three comments that
+named it were updated rather than left pointing at a function that no longer
+exists.

@@ -237,3 +237,66 @@ test("a vector logo is rendered at the work size, not at the browser's default",
   // beside the assertion above.
   await expect(page.getByText(/pixels per millimetre/)).toHaveCount(0);
 });
+
+// ---- The hoop code JEF writes into its own header --------------------------
+//
+// `pystitch.JefWriter.get_jef_hoop_size` derives the code from the design's
+// bbox correctly and then falls off the end of its ladder: anything at or over
+// 200 mm in either axis is written as HOOP_110X110 — the second smallest of
+// the five it knows. A Janome reads that before it reads a stitch.
+//
+// digitizer/tests/test_jef_hoop_code.py pins the BYTE and DownloadStep.spec.js
+// pins the SENTENCE. Neither can prove the two agree, and that is the whole
+// claim the customer is being asked to trust — so it is asserted here, on one
+// real download, in both directions.
+//
+// Lettering rather than artwork on purpose: it is fast, it needs no upload,
+// and JEF has no browser encoder, so a text design goes through the service
+// exactly as a digitized one does.
+const JEF_HOOP_CODE_OFFSET = 32;   // after the 4+4 header, the date and the counts
+
+async function jefHoopCode(page) {
+  const downloadPromise = page.waitForEvent("download");
+  await page.getByTestId("jef-button").click();
+  // Only opens for a design bigger than every hoop; harmless when it does not.
+  const anyway = page.getByRole("button", { name: "Download JEF anyway", exact: true });
+  if (await anyway.isVisible().catch(() => false)) await anyway.click();
+  const download = await downloadPromise;
+  expect(download.suggestedFilename()).toBe("design.jef");
+  return readFileSync(await download.path()).readInt32LE(JEF_HOOP_CODE_OFFSET);
+}
+
+async function reachDownloadWithText(page, garmentLabel, text) {
+  await page.goto("/");
+  await page.getByRole("button", { name: garmentLabel, exact: true }).click();
+  await page.getByRole("button", { name: "Next", exact: true }).click();
+  await page.getByPlaceholder("Type a name or word").fill(text);
+  await expect(page.getByText(/^[\d,]+ stitches/)).toBeVisible();
+  await page.getByRole("button", { name: "4 Download", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Download", exact: true })).toBeVisible();
+}
+
+test("the JEF caveat appears exactly when the file's hoop code is the bad one", async ({ page }) => {
+  test.skip(!serviceUp, skipReason);
+  test.setTimeout(300_000);
+
+  // ---- over the band: Full Back's placement box is 304.8 mm ---------------
+  await reachDownloadWithText(page, "Full Back", "FRITSCHS");
+  const note = page.getByTestId("jef-hoop-header-note");
+  await expect(note).toBeVisible();
+  await expect(note).toContainText("110 × 110 mm");
+  // The button says so too, without the asterisk becoming part of its name.
+  const jef = page.getByTestId("jef-button");
+  await expect(jef).toHaveAttribute("aria-describedby", "jef-hoop-note");
+  await expect(jef).toHaveAccessibleName("JEF");
+  expect(await jefHoopCode(page)).toBe(0);   // HOOP_110X110
+
+  // ---- under it: Left Chest is 101.6 mm -----------------------------------
+  // The negative matters as much as the positive. A note that fired on every
+  // design would pass the assertion above and be worthless, and a note wired
+  // to the wrong threshold would leave real files unflagged.
+  await reachDownloadWithText(page, "Left Chest", "FRITSCHS");
+  await expect(page.getByTestId("jef-hoop-header-note")).toHaveCount(0);
+  await expect(page.getByTestId("jef-button")).not.toHaveAttribute("aria-describedby", /./);
+  expect(await jefHoopCode(page)).not.toBe(0);
+});

@@ -2605,18 +2605,21 @@ its hedge as it is copied forward** — is why this file is split.
   HERE" gives a 4.33 mm cap, "SHORTER TEXT" 7.16, "ABC" 30.03 — all at the same
   101.6 mm.
 
-  This is a third variant of the same defect this repo keeps finding, and the
-  three are worth naming together because they need different fixes:
+  This is a third variant of the same defect this repo keeps finding, and they
+  are worth naming together because they need different fixes:
 
   - **A capability with no control** (JEF): add the control.
   - **A control with no announcement** (the shapes tool behind a right-click):
     say where it is.
   - **Advice with no lever** (this): name the levers that exist in the state
     the customer is actually in.
+  - **A true warning the case it describes never reaches** (the JEF
+    hoop-header caveat, found later the same day — its own entry below): put
+    it where the customer is, not where the nearest existing dialog is.
 
-  The last one is the easiest to ship and the hardest to notice, because the
+  The last two are the easiest to ship and the hardest to notice, because the
   sentence is *correct in general*. The test is not "is this true" but "can the
-  person reading it do it right now".
+  person reading it see it, and do it, right now".
 
   **And derive the state from the REQUEST, not the result.** The obvious check
   — is the sewn width equal to the placement box — reads true for every design
@@ -2667,3 +2670,54 @@ its hedge as it is copied forward** — is why this file is split.
   they never answer the same question.** Averaging them, or picking one and
   quoting it everywhere, would have shipped a number that is wrong somewhere.
   *(2026-09-07)*
+
+- **A caveat is only as good as the screen it is on: the JEF hoop header, and
+  the dialog that does not open for it.** A JEF file carries a hoop code in its
+  header and a Janome reads it before it reads a stitch.
+  `pystitch.JefWriter.get_jef_hoop_size` derives that code from the design's own
+  bbox, correctly, and then falls off the end of its own ladder:
+  `return HOOP_110X110` — the second SMALLEST of the five codes it knows —
+  for anything at or over 200 mm in either axis. Read off the bytes `/export`
+  actually returns: **199 mm declares 200x200 and fits; 201 mm declares 110x110
+  and does not.**
+
+  **The first version of the fix put the caveat inside the hoop-exceeds confirm
+  dialog, and that was wrong for a reason worth keeping.** The dialog looked
+  like the natural home — it is the one place the app already says "this design
+  is too big", and it was already going to open for all four oversize garments.
+  But the two conditions are not the same condition. The app's largest hoop is
+  200x200 mm and its 6x10 is 160x250, so a **140 x 200 mm design FITS the
+  largest hoop** and a 150 x 240 fits the 6x10: `hoopFitNote` returns null,
+  no dialog opens, and the file is stamped 110x110 anyway. The caveat would
+  have appeared on exactly the designs the customer had already been warned
+  about and stayed silent on the ones they had not. **Check the overlap of the
+  two conditions before hanging one warning off another's trigger — "it is
+  already going to open" is a fact about the dialog, not about the defect.**
+  It is now a persistent note beside the JEF button, the same convention the
+  DST encoder-provenance note uses.
+
+  **What the note may claim is bounded by gate 1.** That the header says
+  110x110 is a byte, measured. What a given Janome *does* with a mismatch is a
+  machine behaviour and there is no machine here — so the note says "may refuse
+  the file" and stops. Same reason the obvious "fix" was not taken: rewriting
+  the byte to the largest code the writer knows (200x200) is still a lie for a
+  250 mm design, and the argument for it ("a machine that would accept 110
+  accepts 200 too") is a claim about firmware, not about bytes. Recorded here
+  as a live option for Kent rather than shipped.
+
+  **The two levers the note names are both verified.** Under 200 mm the header
+  is correct (measured, same route). And DST and EXP carry no hoop header at
+  all — from grepping pystitch's writers, where exactly two mention a hoop:
+  `JefWriter` and `PesWriter`. **PES is deliberately NOT named**, even though
+  naming three formats would read better than two: its hoop bytes are a
+  constant that never described the design (`0x64, 0x64` unconditionally), and
+  whether a Brother acts on them is the same unmeasurable as above. A note that
+  fixes "advice with no lever" by inventing a lever is the same defect wearing
+  a different hat.
+
+  Pinned by `digitizer/tests/test_jef_hoop_code.py` (10 tests, through the real
+  `/export`), including the four fits-a-hoop-anyway pairs — which assert the
+  Studio hoop table still takes them, so the day that table changes the test
+  says the case stopped being the silent one it was written for, rather than
+  quietly passing. If the whole file goes red, pystitch fixed the ladder: drop
+  it and the MASTER_SCOPE area 4 note with it. *(2026-09-07)*

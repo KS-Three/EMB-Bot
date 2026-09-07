@@ -129,44 +129,58 @@
   let lastExport = null;
 
   // fontsReady gates the (necessarily synchronous, template-bound)
-  // combinedColors() derivation below -- it starts false so the very first
-  // render never runs generateAll against a possibly-missing font, then
-  // flips true once the mount-time ensureFonts() resolves, which re-triggers
-  // the `$:` derivation. A load failure just leaves it false forever;
-  // combinedColors' own try/catch keeps returning [] in that case, same as
-  // any other "nothing to summarize yet" state.
+  // `combined` derivation below -- it starts false so the very first render
+  // never runs generateAll against a possibly-missing font, then flips true
+  // once the mount-time ensureFonts() resolves, which re-triggers the `$:`
+  // derivation. A load failure just leaves it false forever; safeCombined's
+  // own try/catch keeps returning null in that case, same as any other
+  // "nothing to summarize yet" state.
   let fontsReady = false;
   onMount(() => {
     ensureFonts(fontKeysOf(project)).then(() => {
       fontsReady = true;
     }).catch(() => {
-      // Font fetch failed; fontsReady stays false, so combinedColors derivation
-      // returns [] — the intended degrade when fonts aren't available.
+      // Font fetch failed; fontsReady stays false, so the `combined`
+      // derivation returns null — the intended degrade when fonts aren't
+      // available.
     });
   });
 
+  // Deliberately NOT the shared `combined` below: this runs after the
+  // download's own `ensureFonts` await, so it sees fonts the reactive
+  // derivation may have been computed without, and it MUST throw with a
+  // message where that one must never throw at all.
   function buildDesign() {
-    const { combined } = generateAll(project, runtime);
-    if (!combined) throw new Error("Nothing to stitch yet — add some content first.");
-    return combined;
+    const { combined: design } = generateAll(project, runtime);
+    if (!design) throw new Error("Nothing to stitch yet — add some content first.");
+    return design;
   }
 
-  // "Threads" summary (Slice 8 Task 4) -- so a shopper knows what to buy
-  // before they even download. Mirrors buildDesign() but never throws: this
-  // recomputes reactively on every project/runtime change (including while
-  // nothing is ready to stitch yet), so it can't surface as an error banner
-  // the way a real download attempt should. `project`/`runtime` are passed
-  // as explicit args (not read from closure) so Svelte's static dependency
-  // tracking on the `$:` statement below actually sees them (same caveat
-  // ImagePanel.svelte documents for its own reactive statements).
-  function combinedColors(project, runtime, fontsReady) {
+  // ONE generated design, read by three things.
+  //
+  // Mirrors buildDesign() but never throws: this recomputes reactively on
+  // every project/runtime change (including while nothing is ready to stitch
+  // yet), so it can't surface as an error banner the way a real download
+  // attempt should. `project`/`runtime` are passed as explicit args (not read
+  // from closure) so Svelte's static dependency tracking on the `$:` statement
+  // below actually sees them (same caveat ImagePanel.svelte documents for its
+  // own reactive statements); `fontsReady` is a dependency only — it is read
+  // for the re-trigger, never for a value.
+  //
+  // It used to be three separate calls: the "Threads" shopping list (Slice 8
+  // Task 4), the hoop-exceeds gate, and — as of the JEF header note below —
+  // a third. generateAll re-runs the stitch engine over every element, so a
+  // third caller was the point at which paying for it once became worth the
+  // one shared `$:`.
+  function safeCombined(project, runtime, fontsReady) {
     try {
-      const { combined } = generateAll(project, runtime);
-      return (combined && combined.colors) || [];
+      return generateAll(project, runtime).combined || null;
     } catch (e) {
-      return [];
+      return null;
     }
   }
+  $: combined = safeCombined(project, runtime, fontsReady);
+
   // Which thread chart the summary (and PDF worksheet) names cones from --
   // shared preference with ThreadPicker, changeable right here too so a
   // shopper can flip between "generic shade names" and their actual brand's
@@ -217,7 +231,7 @@
     return t.code ? `${t.code} ${t.name}` : t.name;
   }
 
-  $: threadRows = combinedColors(project, runtime, fontsReady).map((c, i) => {
+  $: threadRows = ((combined && combined.colors) || []).map((c, i) => {
     const nearest = nearestInList(chart.threads, [c.r, c.g, c.b]);
     return { block: i + 1, rgb: nearest.rgb, name: threadLabel(nearest) };
   });
@@ -232,20 +246,71 @@
   // Computed here rather than plumbed down from the canvas: `hoopNote` is a
   // local `let` inside EmbroideryField and is never dispatched anywhere, and
   // this component already has both halves (it imports `effectiveHoop` for the
-  // worksheet, and `generateAll` for the design). Never-throws for the same
-  // reason `combinedColors` does not: it runs on every project change,
-  // including while nothing is ready to stitch.
-  function exceedsNote(project, runtime) {
+  // worksheet, and `safeCombined` for the design). Still never-throws even
+  // though the generate call moved out: `effectiveHoop` reads the engine's
+  // garment/hoop tables, and this runs on every project change including a
+  // corrupt or half-loaded one.
+  function exceedsNote(combined, project) {
+    if (!combined) return "";
     try {
-      const { combined } = generateAll(project, runtime);
-      if (!combined) return "";
       const { hoop } = effectiveHoop(project);
       return hoopFitNote(combined.widthMM, combined.heightMM, hoop) || "";
     } catch (e) {
       return "";
     }
   }
-  $: hoopExceeds = exceedsNote(project, runtime);
+  $: hoopExceeds = exceedsNote(combined, project);
+
+  // ---- The JEF header says a hoop the design does not fit ---------------
+  //
+  // A JEF file carries a HOOP CODE in its header and a Janome reads it before
+  // it reads a stitch. `pystitch.JefWriter.get_jef_hoop_size` derives that
+  // code from the design's own bbox, correctly, until the last line:
+  //
+  //     if width < 1400 and height < 2000: return HOOP_140X200
+  //     if width < 2000 and height < 2000: return HOOP_200X200
+  //     return HOOP_110X110
+  //
+  // The fallthrough is HOOP_110X110 — the second SMALLEST of the five codes
+  // it knows, handed to the largest designs. Measured 2026-09-07 by reading
+  // the bytes back off the real /export route (digitizer/tests/
+  // test_jef_hoop_code.py pins it): 199 mm declares 200x200 and fits; 201 mm
+  // declares 110x110 and does not.
+  //
+  // Said as a persistent note beside the button rather than inside the
+  // hoop-exceeds confirm, which is where this first went — because the
+  // confirm does NOT open on the case that matters most. Measured the same
+  // day: a 140 x 200 mm design FITS the 8x8 hoop (the app's largest) and a
+  // 150 x 240 mm design FITS the 6x10 hoop, so `hoopFitNote` is silent for
+  // both — and both are stamped 110 x 110. Riding the confirm would have
+  // shown the caveat to the four oversize garments only and stayed quiet for
+  // every design that fits a hoop the customer actually owns.
+  //
+  // Threshold is the writer's own test, in the writer's own units, so there
+  // is no rounding sliver between what this says and what the file gets:
+  // pystitch rounds the bbox to whole 0.1 mm units before comparing.
+  const JEF_HOOP_UNITS_MAX = 2000; // 0.1 mm units — get_jef_hoop_size's last rung
+  function overJefHoopBand(mm) {
+    return isFinite(mm) && Math.round(mm * 10) >= JEF_HOOP_UNITS_MAX;
+  }
+  // Names only levers that exist in the product: the Size panel back on the
+  // Content step, and the two formats VERIFIED to write no hoop header (grep
+  // pystitch's writers: only JefWriter and PesWriter mention one, so DST and
+  // EXP are clean and PES is deliberately NOT named here — its hoop bytes are
+  // a constant that never described the design, and what a Brother does with
+  // them is not something this repo can measure).
+  function jefHoopHeaderNote(combined) {
+    if (!combined) return "";
+    const { widthMM: w, heightMM: h } = combined;
+    if (!overJefHoopBand(w) && !overJefHoopBand(h)) return "";
+    return `a JEF file records a hoop size in its header, and this design is `
+      + `${w.toFixed(1)} \u00d7 ${h.toFixed(1)} mm. Over 200 mm that header is written as `
+      + `110 \u00d7 110 mm \u2014 smaller than the design itself \u2014 and a Janome reads it `
+      + `before it reads a stitch, so the machine may refuse the file even with a hoop `
+      + `mounted that would take the design. Under 200 mm the header is correct; DST and `
+      + `EXP carry no hoop header at all.`;
+  }
+  $: jefHoopNote = jefHoopHeaderNote(combined);
 
   // The format the confirm is holding, or null when it is closed. Holding the
   // FORMAT rather than a boolean is what lets one dialog serve every button
@@ -418,12 +483,18 @@
     <button on:click={() => askThenDl("pes")}>PES</button>
     <button on:click={() => askThenDl("exp")}>EXP</button>
   {/if}
+  <!-- Same caveat convention the DST button above documents: the name stays
+       exactly "JEF" so voice control and every existing query still reach it,
+       the asterisk is the sighted marker and is aria-hidden, and the note
+       itself rides aria-describedby. -->
   <button
     data-testid="jef-button"
+    class:caveat={jefHoopNote}
+    aria-describedby={jefHoopNote ? "jef-hoop-note" : undefined}
     disabled={!jefAvailable}
     title={jefTitle}
     on:click={() => askThenDl("jef")}
-  >JEF</button>
+  >JEF{#if jefHoopNote}<span class="caveat-mark" aria-hidden="true">*</span>{/if}</button>
   <button on:click={() => askThenDl("svg")}>SVG</button>
   <button on:click={dlPNG}>PNG</button>
   <button on:click={dlWorksheet} disabled={worksheetBusy}>PDF worksheet</button>
@@ -459,6 +530,11 @@
       </div>
     </div>
   </div>
+{/if}
+{#if jefHoopNote}
+  <p class="encodernote" id="jef-hoop-note" data-testid="jef-hoop-header-note">
+    <strong>* Heads up about JEF:</strong> {jefHoopNote}
+  </p>
 {/if}
 {#if dstUsesBrowserEncoder}
   <p class="encodernote" id="dst-encoder-note" data-testid="dst-browser-encoder-note">
