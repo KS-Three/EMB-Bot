@@ -1086,7 +1086,27 @@ its hedge as it is copied forward** — is why this file is split.
   no pixel carries"* — fixed on preflight's side 2026-08-11 and never
   inherited by stage 4. When two instruments disagree about one region, diff
   their pixel sets before their arithmetic.
-  *(2026-09-07 — `tools/spool_remedy.py --masks`)*
+
+  **It is also a SECOND cause of the resnap escape** (MASTER_SCOPE 15): an
+  argmin run on halo pixels goes shopping for a spool matching a colour the
+  artwork does not contain. On gaulke the shipped engine re-snaps its way to
+  `1375 Dark Charcoal` and `3971 Silver` and loads NEITHER once the mask is
+  right — region cones 6 -> 3, plan palette 4 -> 2.
+  `bind_resnap_all_classes` restricts WHERE the argmin may land; this is WHY
+  it goes wrong, and they are not the same fix.
+
+  **FIXED behind `cfg.resnap_mask_matches_grader`, DEFAULT OFF**: 19 of 26
+  fixtures byte-identical, -1,715 stitches, -5 blocks, -4 cones, +2 trims,
+  `logo_gaulke_roofing` F 4 -> D 46, nothing down anywhere. **And fixing the
+  mask does not finish the shape** — worth expecting. `Se6eddd27` goes
+  63.6 -> **16.7**, not the 5.0 `1375 Dark Charcoal` would give it: once the
+  halo is gone the region falls under the re-snap's own floor AND the cone
+  list it could choose from has shrunk, so it keeps stage 2's `4174`.
+  `revalidate_small_shapes` is byte-identical on top of this flag for the same
+  reason. An earlier draft of its test asserted the shape would CLEAR; it does
+  not, and the residual is pinned instead.
+  *(2026-09-07 — `tools/spool_remedy.py --masks`;
+  `tests/test_resnap_mask_matches_grader.py`, 10)*
 
 - **A measurement cache must record the tree it was measured on, or a table
   will mix two engines and look consistent.** `flip_sheet.py` cached its first

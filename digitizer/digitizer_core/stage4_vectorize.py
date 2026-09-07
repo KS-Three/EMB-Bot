@@ -591,6 +591,7 @@ def revalidate_threads(regions: list[Region], p: Prep,
     # reason `revalidate_threads` gave for leaving them unbound in the first
     # place. That argument is about golden churn, not about the escape being
     # wanted.
+    grader_mask = bool(cfg.resnap_mask_matches_grader)
     bind_all = bool(cfg.bind_resnap_all_classes)
     allowed: np.ndarray | None = (
         palette_only if (bind_all or is_photographic(cfg, design_class))
@@ -632,7 +633,29 @@ def revalidate_threads(regions: list[Region], p: Prep,
         if r.meta.get("enclosed_background"):
             continue
         fp = _region_footprint(r, shape, cx, cy, p.px_per_mm)
+        if grader_mask:
+            # Preflight's two operations, in its order and with its fallback.
+            # A bare `fillPoly` hands this function the anti-alias halo AND
+            # the background either side of a thin shape, and the median of
+            # that bimodal set is a colour almost no pixel carries — the same
+            # failure `_region_color_errors`' docstring calls this
+            # instrument's original sin. Measured on `logo_gaulke_roofing`'s
+            # `Se6eddd27`: 247 px against preflight's 54, 103 near-black plus
+            # 65 near-white, and `3971 Silver` reads 11.4 dE00 here and 63.6
+            # there — a 52.2 dE00 gap on one polygon.
+            eroded = cv2.erode(fp.astype(np.uint8), np.ones((3, 3), np.uint8))
+            sel = (eroded > 0) & (~p.bg_mask)
+            if not sel.any():
+                sel = fp & (~p.bg_mask)   # hairline shape: erosion ate it
+            fp = sel
         n = int(fp.sum())
+        # `n` is now the pixels that will actually be SCORED, and it feeds TWO
+        # decisions below, deliberately: the `min_px` floor here, and
+        # `small_only` further down. Both should read the masked count. A
+        # floor satisfied by halo pixels and then scored on three real ones is
+        # not measuring what it claims to; and a shape whose SCOREABLE core is
+        # small is exactly the shape that should be held to cones the design
+        # already loads, whatever its raster spills over.
         if n < min_px:
             continue
         # A shape only the LOWERED floor admits may re-snap onto a cone the

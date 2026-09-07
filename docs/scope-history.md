@@ -123,9 +123,32 @@ that falls, named down to the pair.**
   three excess-surviving blocks (`tools/spool_remedy.py --masks`), the masks
   agree to 0.4 dE00 on `screenshot` (the floor, already documented) and 1.3 on
   `bridge_bar` (240 px, above the floor, both instruments condemn `6156 Olive`
-  at ~20 — still open). Three survivors, three causes. Not fixed: aligning the
-  masks moves the flat and gradient goldens the phase-4 spec pins, so it wants
-  a flag and a price, like every other change on this lane.
+  at ~20 — still open). Three survivors, three causes.
+
+- **Fixed the same day behind `cfg.resnap_mask_matches_grader`, DEFAULT OFF,
+  and it turned out to be bigger than the one shape.** The re-snap applies
+  preflight's two operations (erode one pixel, drop `p.bg_mask`, hairline
+  fallback), and the pixel floor then counts the MASKED set — which also feeds
+  the small-shape restriction, deliberately: a shape whose scoreable core is
+  small is exactly the one to hold to cones already loaded. The masks agree to
+  **99.99% IoU** on gaulke and 100% on `logo_alpha`; the residual is
+  `_region_footprint` rounding mm->px where `_region_color_errors` truncates,
+  and aligning the rasteriser would touch `tag_enclosed_background`, so it is
+  left alone and pinned by a test. **Corpus A/B: 19 of 26 byte-identical,
+  -1,715 stitches, -5 blocks, -4 cones, +2 trims, `logo_gaulke_roofing`
+  F 4 -> D 46, nothing down anywhere.** **A SECOND cause of defect 15's resnap
+  escape:** the argmin was running on halo pixels and going shopping for a
+  spool matching a colour the artwork does not contain — gaulke's region cones
+  6 -> 3 and its plan palette 4 -> 2, with `1375` and `3971` never reached.
+  `bind_resnap_all_classes` restricts WHERE the argmin lands; this fixes WHY
+  it goes wrong. **Residual, named rather than buried:** `Se6eddd27` improves
+  63.6 -> **16.7**, not to the 5.0 Dark Charcoal would give — with the halo
+  gone the region falls under the re-snap's own floor and Dark Charcoal is no
+  longer loaded for the small-shape rule to offer, so
+  `revalidate_small_shapes` is byte-identical on top of this flag. An earlier
+  draft of the test asserted the shape would clear; it does not.
+  `tests/test_resnap_mask_matches_grader.py` (10). Flipping it moves the flat
+  and gradient goldens the phase-4 spec pins, so it is Kent's.
 
 - **The sheet was resting on two engines and nobody had checked. Now verified,
   not inferred.** Its first pass was cached before the halo fix; the two
