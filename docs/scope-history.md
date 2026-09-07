@@ -8680,3 +8680,53 @@ object`) and the font build would have tried to compile it. Renamed to
 `manifest-coverage.json` — inside the existing exclusion, and named for what it
 is. The guard's failure message now says so instead of naming a font that never
 existed.
+
+---
+
+## 2026-09-07 — polish, and the two launch items nobody could find
+
+### Live defect 37 — the shapes tool was behind an unannounced right-click
+
+Found by listing the Content step's buttons: `Text`, `Artwork`, `Design file`
+— and nothing else. The basic shapes tool (PRODUCT.md launch item 4, ✅ Done)
+and the manual draw lane are on the canvas's context menu, which is Kent's
+placement call from 2026-08-13 and which nothing in the UI mentions.
+
+The lane itself is fine — driven from that menu end to end: **Draw shapes /
+Basic shape → Circle, Rectangle, Heart, Star → 3,918 stitches at 51 × 51 mm**.
+This was discoverability alone.
+
+**The drag hint was the wrong place to say it.** `hints.js` gates `drag-field`
+on `stitchCount > 0` (condition A8), so it appears only once a design already
+exists. The empty-canvas line now reads:
+
+> Your embroidery appears here as you add content. **Right-click the canvas for
+> drawing tools.**
+
+Kent's placement is untouched; reverting is one string. The e2e pins the
+sentence *and* that the gesture it names reaches both tools and sews.
+
+### Polish: the one console error, and the one unnamed control
+
+A full browser pass — upload, digitize, review, three downloads, reload —
+produced exactly one console error: `/favicon.ico` 404, which every browser
+requests when a page declares no icon. A bookmarked tab showed a blank square.
+
+`app/public/favicon.svg` is the mark the topbar already wears (theme.css
+`.logomark`, `--accent` #4f46e5) with a stitch zigzag instead of the word
+"EMB", which is illegible at 16 px. Looked at at 16, 32 and 64 px and on a dark
+ground. A placeholder for a real Fritsch's Stitches mark, not a brand claim.
+
+An ARIA sweep across all four steps found exactly one control with no
+accessible name — SizePanel's in/cm/mm select. Everything else is named, most
+of it implicitly by a wrapping `<label>`; the four TextStep sliders read
+"Letter spacing 0.0 mm", "Curve 0°", "Rotation 0°", "Slant 0°".
+
+**A correction to an earlier note in the same session:** those four sliders
+were first reported here as unnamed. They were not — the probe checked
+`aria-label` and `label[for]` and missed the implicit wrapping label. Nothing
+was published on that reading, and the sweep that replaced it uses Playwright's
+ARIA snapshot, which computes the name the way a screen reader does.
+
+Both now have e2e guards: no control on any step renders without a name, and a
+page load produces no console error, no pageerror and no failed request.

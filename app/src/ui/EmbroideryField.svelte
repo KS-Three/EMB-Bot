@@ -1053,7 +1053,22 @@
       // different answers, and the second one used to get the first one's.
       hint = result.unsupported && result.unsupported.length
         ? `This font can\u2019t stitch ${charList(result.unsupported)}. Try a different font, or different text.`
-        : "Your embroidery appears here as you add content.";
+        // The drawing tools live on the canvas's right-click menu (Kent's
+        // placement call, 2026-08-13 — a tool, not an upload button) and
+        // NOTHING in the UI says so. Two of PRODUCT.md's four launch-scope
+        // items are behind that gesture ("Basic shapes tool", and the manual
+        // draw lane), and right-click on a canvas is a power-user idiom a
+        // first-time customer has no reason to try.
+        //
+        // Said HERE rather than in the drag hint because the drag hint is
+        // gated on `stitchCount > 0` (hints.js, condition A8) — it appears
+        // only once there is already a design, which is exactly when the
+        // question has stopped being asked. This line is what a customer is
+        // looking at while wondering what to do. Desktop-only is a stated
+        // launch posture (PRODUCT.md), so naming the right button is safe.
+        //
+        // This changes the PLACEMENT of nothing: it is one sentence.
+        : "Your embroidery appears here as you add content. Right-click the canvas for drawing tools.";
       // paint() clears hint/unsupportedNote/… at the top of every run, so
       // exactly one of the two is set here and suggestFonts can tell which
       // message it is amending.

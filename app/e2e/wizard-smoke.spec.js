@@ -575,3 +575,32 @@ test("a page load produces no console errors and no failed requests", async ({ p
   await expect(page.getByRole("heading", { name: "What are you putting this on?" })).toBeVisible();
   expect(problems).toEqual([]);
 });
+
+test("the empty canvas says how to reach the drawing tools", async ({ page }) => {
+  // Two of PRODUCT.md's four launch-scope items — the basic shapes tool and
+  // the manual draw lane — live on the canvas's right-click menu (Kent's
+  // placement call, 2026-08-13: a tool, not an upload button). Nothing in the
+  // UI said so, and right-click on a canvas is a power-user idiom a first-time
+  // customer has no reason to try.
+  //
+  // The drag hint would be the obvious place and is the wrong one: hints.js
+  // gates it on `stitchCount > 0`, so it appears only once there is already a
+  // design — after the question has stopped being asked.
+  await page.goto("/");
+  await page.getByRole("button", { name: "Left Chest", exact: true }).click();
+  await page.getByRole("button", { name: "Next", exact: true }).click();
+  await expect(page.locator(".fieldhint")).toContainText("Right-click the canvas for drawing tools");
+
+  // …and the gesture it names actually reaches both tools, on the real canvas.
+  await page.locator("canvas").first().click({ button: "right", position: { x: 200, y: 120 } });
+  const menu = page.getByRole("menu", { name: "Canvas tools" });
+  await expect(menu).toBeVisible();
+  await expect(menu.getByRole("menuitem")).toHaveText(["Draw shapes", "Basic shape"]);
+
+  // The shape lane produces real stitches — the launch-scope item, end to end.
+  await menu.getByRole("menuitem", { name: "Basic shape" }).click();
+  await expect(page.locator("span.stats")).toBeVisible({ timeout: 60_000 });
+  for (const kind of ["Circle", "Rectangle", "Heart", "Star"]) {
+    await expect(page.getByRole("button", { name: kind, exact: true })).toBeVisible();
+  }
+});

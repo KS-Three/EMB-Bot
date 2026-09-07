@@ -2543,3 +2543,30 @@ its hedge as it is copied forward** — is why this file is split.
   failure message now names that fix**, because "missing bin for coverage" sent
   the first reader looking for a font that never existed.
   *(2026-09-07)*
+
+- **"Reachable" and "findable" are different questions, and this repo has now
+  been bitten by both in one day.** JEF was a capability with no control
+  (DOCTRINE above). The basic shapes tool is the mirror image: a control that
+  exists, works end to end, and is behind a gesture nothing announces — the
+  canvas's right-click menu, Kent's deliberate placement (2026-08-13, *"keep
+  them, but as a right-click tool rather than an upload button"*). Two of
+  PRODUCT.md's four launch-scope items live there. The Content step offers
+  three tiles and no fourth thing to try.
+
+  **The check that catches this is the same one either way: sit where the
+  customer sits and count what they can see.** Listing the Content step's
+  buttons is one line of `document.querySelectorAll`, and it is what turned
+  this up.
+
+  **And the obvious place to say it was the wrong place.** The drag hint reads
+  "Drag the design to move it — corners resize", which is exactly the register
+  wanted — but `hints.js` gates it on `stitchCount > 0` (condition A8), so it
+  appears only once a design exists, i.e. after the question has stopped being
+  asked. **When adding a hint, check what gates the hint you are copying**: an
+  onboarding line behind a "you already succeeded" condition teaches nothing.
+  The empty-canvas message is the one a customer reads while wondering what to
+  do.
+
+  Fixing discoverability did not require re-opening the placement ruling: it
+  is one sentence, and reverting it is one string.
+  *(2026-09-07)*
