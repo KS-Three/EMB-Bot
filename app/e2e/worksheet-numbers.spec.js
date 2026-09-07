@@ -73,3 +73,37 @@ test("the printed worksheet states the same trims and thread the review does", a
   expect(texts).toContain(`Thread: ${thread[1]} m (estimate)`);
   expect(texts).toContain(`Stitch count: ${stitches[1]}`);
 });
+
+test("the worksheet names the chart its codes came out of", async ({ page }) => {
+  // "1375 Dark Charcoal" is not a thread anyone can buy until the sheet says
+  // whose 1375 it is. Measured 2026-09-07: picking Isacord in the Studio
+  // re-labelled the design's black to that catalog's nearest cone, the
+  // Download step showed "Chart: Isacord Polyester 40" beside it, and the
+  // printed sheet gave the code alone. All 68 charts number independently.
+  await page.goto("/");
+  await page.getByRole("button", { name: "Next", exact: true }).click();
+  await page.locator("textarea").first().fill("FRITSCH");
+  await expect(page.locator("span.stats")).toContainText(/\d[\d,]* stitches/, { timeout: 20000 });
+
+  await page.getByRole("button", { name: "Next", exact: true }).click();   // Review
+  await page.getByRole("button", { name: "Next", exact: true }).click();   // Download
+
+  // Pick a real manufacturer chart, the way a customer with a thread rack does.
+  const chart = page.getByLabel("Thread chart");
+  await chart.selectOption({ label: "Isacord Polyester 40" });
+  // The codes only arrive once the lazy brand chunk lands.
+  await expect(page.locator(".threadrow-name").first()).toContainText(/^\d{3,4}\s/, { timeout: 20000 });
+  const cone = (await page.locator(".threadrow-name").first().innerText()).trim();
+  const shownChart = await chart.locator("option:checked").innerText();
+
+  const dl = await Promise.all([
+    page.waitForEvent("download"),
+    page.getByRole("button", { name: /PDF worksheet/i }).click(),
+  ]).then(([d]) => d);
+  const texts = pdfText(readFileSync(await dl.path()));
+
+  // The sheet prints the code the screen printed...
+  expect(texts).toContain(`1. ${cone}`);
+  // ...and says whose numbering it is, matching the screen exactly.
+  expect(texts).toContain(`Chart: ${shownChart}`);
+});

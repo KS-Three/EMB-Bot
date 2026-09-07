@@ -401,3 +401,38 @@ test("buildWorksheetPDF prints zero trims but never invents a number it wasn't g
     globalThis.window.jspdf = originalJspdf;
   }
 });
+
+test("buildWorksheetPDF names the chart the codes belong to, above the list", () => {
+  const dom = installFakeDom();
+  const originalJspdf = globalThis.window.jspdf;
+  globalThis.window.jspdf = { jsPDF: FakeJsPDF };
+  try {
+    // Measured 2026-09-07: picking "Isacord Polyester 40" snapped the
+    // design's black to that catalog and the sheet printed "1. 1375 Dark
+    // Charcoal" — a code with no chart. All 68 charts number independently,
+    // so 1375 is a different colour in each of them.
+    const doc = buildWorksheetPDF(baseDesign(), {
+      fileName: "chart.pdf",
+      chartLabel: "Isacord Polyester 40",
+    });
+    const strings = doc.texts.map((t) => t.str);
+    expect(strings).toContain("Chart: Isacord Polyester 40");
+    // Between the heading and the first cone: a customer scanning for a code
+    // should meet the chart before the first number.
+    const headY = doc.texts.find((t) => t.str === "Thread Sequence").y;
+    const chartY = doc.texts.find((t) => t.str.startsWith("Chart:")).y;
+    const firstConeY = doc.texts.find((t) => /^1\. /.test(t.str)).y;
+    expect(chartY).toBeGreaterThan(headY);
+    expect(chartY).toBeLessThan(firstConeY);
+
+    // A caller with no chart to name gets no line — an empty "Chart:" is
+    // worse than none.
+    const bare = buildWorksheetPDF(baseDesign(), { fileName: "b.pdf" });
+    expect(bare.texts.some((t) => t.str.startsWith("Chart:"))).toBe(false);
+    const blank = buildWorksheetPDF(baseDesign(), { fileName: "e.pdf", chartLabel: "" });
+    expect(blank.texts.some((t) => t.str.startsWith("Chart:"))).toBe(false);
+  } finally {
+    dom.restore();
+    globalThis.window.jspdf = originalJspdf;
+  }
+});

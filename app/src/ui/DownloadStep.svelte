@@ -400,7 +400,11 @@
       // into any cached/shared state. The palette load is awaited here (not
       // read from `chart`) so a worksheet clicked before the lazy chunk
       // lands still bakes the RIGHT chart's names, never Studio's.
-      const list = (await loadPalette(paletteId)).threads;
+      // One palette object for both the codes and the chart name below them,
+      // so the sheet can never print one chart's numbers under another
+      // chart's heading.
+      const palette = await loadPalette(paletteId);
+      const list = palette.threads;
       design.colors = (design.colors || []).map((c) => ({
         ...c,
         name: threadLabel(nearestInList(list, [c.r, c.g, c.b])),
@@ -408,7 +412,9 @@
       const garment = EMB.getGarment(project.garmentId);
       // The worksheet names the chosen hoop (manual pick or suggestion,
       // lib/hoop.js) — the operator mounts a physical hoop, not a garment.
-      await exportWorksheetPDF(design, garment, effectiveHoop(project).hoop);
+      // ...and the chart those codes came out of. "1375 Dark Charcoal" is
+      // not a thread anyone can buy until the sheet says whose 1375 it is.
+      await exportWorksheetPDF(design, garment, effectiveHoop(project).hoop, palette.label);
       // Not a stitch format — clear the encoder note so it can't linger next
       // to a message about a different download.
       lastExport = null;

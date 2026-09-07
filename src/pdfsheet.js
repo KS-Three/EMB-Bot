@@ -162,6 +162,21 @@ const deps =
 
     doc.setFontSize(10);
     doc.setFont(undefined, "normal");
+    // WHOSE numbering the codes below are. Measured 2026-09-07: picking
+    // "Isacord Polyester 40" in the Studio snapped the design's black to
+    // that catalog's nearest cone and this sheet printed "1. 1375 Dark
+    // Charcoal" — a code with no chart. Every one of the 68 charts numbers
+    // independently, so 1375 names a different colour in each of them, and
+    // the sheet is what a customer carries to a shop or orders from. The
+    // screen said "Chart: Isacord Polyester 40" one panel away.
+    //
+    // Above the list rather than beside the heading: it qualifies every row
+    // under it, and a customer scanning for a code should meet the chart
+    // before the first number, not after.
+    if (options.chartLabel) {
+      doc.text("Chart: " + options.chartLabel, MARGIN_IN, cursorY);
+      cursorY += 0.2;
+    }
     const swatchSize = 0.16;
     for (let i = 0; i < colors.length; i++) {
       const color = colors[i];

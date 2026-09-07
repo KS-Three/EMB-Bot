@@ -199,6 +199,19 @@ test("exportWorksheetPDF wires window.jspdf and forwards garment box (mm) to EMB
     );
     const hoopMeta = buildSpy.mock.calls[1][1];
     expect(hoopMeta.hoop).toEqual({ label: "4×4 in", widthMm: 100, heightMm: 100 });
+    // No chart named by this caller -> empty, and pdfsheet prints no line.
+    expect(hoopMeta.chartLabel).toBe("");
+
+    // The chart the codes came out of, when the caller has one. Without it
+    // the sheet prints a bare "1375 Dark Charcoal", and all 68 charts number
+    // independently.
+    await exportWorksheetPDF(
+      design,
+      { label: "Left chest", widthIn: 5, heightIn: 2.25 },
+      null,
+      "Isacord Polyester 40"
+    );
+    expect(buildSpy.mock.calls[2][1].chartLabel).toBe("Isacord Polyester 40");
 
     // The two operator numbers the printed sheet used to drop (2026-09-07).
     // Asserted against sewFacts on the SAME design rather than against
