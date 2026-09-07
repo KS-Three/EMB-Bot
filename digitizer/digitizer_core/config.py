@@ -1362,10 +1362,21 @@ class PipelineConfig:
     # rows: 11 of 26 fixtures move, -2,965 stitches, -22 blocks, -21 cones,
     # FIVE grades up and NONE down. `docs/flip-sheet-2026-09-06.md` carries
     # the arm table and the per-flag costs.
-    # It moves the flat and gradient goldens the phase-4 spec pins; that
-    # recapture is part of the same ruling, taken per key with
-    # `tools/recapture_flat_lane_key.py --pre-change-tree` so every moved byte
-    # is provably this change and not the machine.
+    # **It does NOT move `flat_lane_golden.json`, and the record said it
+    # would.** Every entry on this flag — including an earlier draft of this
+    # comment — repeated that flipping it "moves the flat and gradient goldens
+    # the phase-4 spec pins". Measured 2026-09-07, key by key, against a
+    # pre-change worktree on the same machine: `logo_whitebg`, `logo_alpha`
+    # and `ribbon_curve` are byte-IDENTICAL under the shipped engine, and
+    # `photo/enthusiast_logo` is identical between the pre-change tree and the
+    # shipped one (it disagrees with the stored golden either way — that is
+    # this container's documented platform drift, unchanged by the flip). So
+    # no key was recaptured and none needed to be.
+    #
+    # It makes sense once looked at: these four fixtures have no palette
+    # escape, no sub-200-px shard, no branchy letterform, no bare junction and
+    # no halo, so none of the five flags has anything to act on. The golden
+    # churn argument was about the SCORECARD, which does move.
     resnap_mask_matches_grader: bool = True
 
     # Bind stage 4's thread re-snap to the selected palette on EVERY class,

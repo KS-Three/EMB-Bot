@@ -195,7 +195,11 @@ def _shipped_cfg(**kw) -> PipelineConfig:
 
 
 @lru_cache(maxsize=None)
-def _plan_digest(cfg: PipelineConfig) -> tuple:
+def _plan_digest(small: bool) -> tuple:
+    """Keyed on the FLAG, not on a config object: `PipelineConfig` is an
+    unhashable dataclass, and `lru_cache` on one raises TypeError as a test
+    ERROR rather than a failure — which is how this arrived, five of them."""
+    cfg = _shipped_cfg() if small else _shipped_cfg(revalidate_small_shapes=False)
     result = run_stages(TESTDATA / FIXTURE, cfg)
     plan = plan_stitches(result, cfg)
     coords = [(round(x, 4), round(y, 4), run.kind, run.jump, run.trim)
@@ -215,8 +219,8 @@ def test_the_shipped_default_is_the_RESNAPPED_engine():
     # Built here rather than from `_case`/`_default_digest`, both of which pin
     # PRE_REC4_MASK for isolation and so cannot speak about the shipped engine
     # at all. This is the one test in the file that asks what a customer gets.
-    shipped = _plan_digest(_shipped_cfg())
-    without = _plan_digest(_shipped_cfg(revalidate_small_shapes=False))
+    shipped = _plan_digest(True)
+    without = _plan_digest(False)
     assert PipelineConfig().revalidate_small_shapes is True
     assert shipped != without, (
         "turning the flag off changes nothing on the shipped engine, so it is "
