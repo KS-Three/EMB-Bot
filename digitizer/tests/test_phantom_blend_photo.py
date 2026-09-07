@@ -41,12 +41,19 @@ cone: `off` loads `1375 Dark Charcoal` (L* 15.9, 288 st) and ON leaves nothing
 below `0145 Skylight` (L* 85.7), i.e. lettering you would not see on a white
 ground. Verified on two different mains.
 
-**The mechanism first offered for that — "anti-aliased text reads as ringing"
-— is RETRACTED.** Instrumenting the pass on that fixture (16 px/mm) shows it
-folds 9 labels, all 0.4-0.6 mm², while every lettering label (L* 28-47, the
-largest 21 mm²) survives stage 2 and `result.palette` carries `0020 Black` in
-BOTH arms. The dark cone is lost somewhere between stage 2 and the sewn block
-list. Finding where is the open work before this flag can be flipped.
+**FOUND AND FIXED (2026-09-06) — and the account above is superseded twice
+over, which is why both are kept.** First guess: "anti-aliased text reads as
+ringing". Then a probe seemed to clear the fold, because it counted only
+labels whose pixels changed LABEL — and this pass has a second exit, the page,
+where a label keeps its label and leaves through `base_valid`. Counting both,
+the fold WAS the cause: 42 labels, every dark one on that fixture sent to the
+page, 12,961 px and 50.3 mm².
+
+The bug is that `valid` here is `base_valid`, ENCLOSED pixels already removed,
+so its complement is not the page — it is also donut holes, letter counters
+and the inside of a label. `page_mask` now carries stage 1's real background.
+`test_an_INTERIOR_band_is_never_sent_to_the_page` below pins it in both
+directions.
 
 DEFAULT OFF, and that is a RULING rather than a holding position. It moves
 the region set on every gradient-class design, so it went to Kent as a picture

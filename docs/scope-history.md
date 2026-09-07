@@ -8148,3 +8148,85 @@ The grade. Seven of 26 fixtures read F 0 and twelve of 52 design/garment
 combos sit on a clamped zero with true scores from −272 to −38 (defect 28),
 and one sew-out at 6/10 is the whole physical evidence base (gate 1). Neither
 is a copy problem and neither closed tonight.
+
+
+## 2026-09-07 — the all-five arm re-measured on the fixed tree, and one grade does go down
+
+Addendum to 09-06. The flip sheet's `all five` row was measured before the
+`page_mask` fix and contained `dissolve_phantom_blends`, so it needed redoing.
+Re-run on `main` at `20fa551`, same 26 fixtures, 80 mm / `left_chest`:
+
+| | pre-fix | post-fix |
+|---|---:|---:|
+| moved | 12/26 | 12/26 |
+| stitches | −6,070 | **−5,719** |
+| trims | −24 | **−28** |
+| blocks | −23 | **−21** |
+| cones | −22 | **−20** |
+| grades | 5 up | **5 up, 1 DOWN** |
+
+**The sheet's "no grade moves DOWN in any arm, on any fixture" is now false,
+and the exception is exactly what the combination arm exists to find:**
+`logo_script_tires` goes **A 100 → B 88** with all five on (trims 8 → 12,
++54 stitches) — a fixture no single flag takes below A. It reads A 100 → A 100
+under `dissolve_phantom_blends` alone. Corrected in the sheet rather than
+left as a headline that is true of five rows and false of the sixth.
+
+**Gaulke's all-five grade also changes, and now agrees with the honest arm:**
+F 4 → **F 16**, the same answer `bind_resnap_all_classes` gives on its own,
+from the arm that actually loads `0020 Black`. The C 64 it used to read was
+the dropped cone; with the cone back, so is the F.
+
+Also corrected: `tests/test_phantom_blend_photo.py`'s docstring still carried
+the middle account — "the dark cone is lost somewhere between stage 2 and the
+sewn block list, finding where is the open work" — on a tree where the finding
+and the fix had both landed in the same PR. That is the **fifth** surface this
+one claim has needed correcting on (PR body, MASTER_SCOPE, DOCTRINE, the
+sheet, the docstring), across three separate passes. The claim was written in
+several places before it was verified in any of them, and each copy made the
+next look corroborated.
+
+
+## 2026-09-07 — the low-resolution warning fires for the first time, and the panel says how much bigger the file must be
+
+`INPUT_LOW_RESOLUTION` has existed for months, sits in the Studio's
+`ATTENTION_WARNINGS`, and has its own `WARNING_TEXT` sentence. **It had never
+been shown to anyone.** `stage1_prep` re-tested the resolution AFTER its own
+capped Lanczos upscale:
+
+```
+want = min(cfg.upscale_cap, cfg.min_px_per_mm / px_per_mm)   # both 4.0
+px_per_mm *= want
+if px_per_mm < cfg.min_px_per_mm:      # false for any source >= 1.0 px/mm
+```
+
+With the cap equal to the floor the upscale lands every real source exactly ON
+the floor, so the inner test is unreachable by construction. A test now pins
+that property directly, so changing either constant cannot quietly restore it.
+
+**It now fires on what the FILE supplied** (`Prep.input_px_per_mm`, which
+already existed for preflight's photo check) and reports `px_per_mm`,
+`upscaled_to` and `min_px_per_mm`. The old extra reported the post-upscale
+value — the constant 4.0, dressed as a measurement.
+
+**Precise rather than noisy: 2 of the scorecard's 26 fixtures arrive under the
+floor** — `becker_marine_logo` at 1.81 px/mm and `logo_bridge_bar` at 3.49
+(80 mm); Becker at its 100 mm review size is 1.45. Every other fixture sits at
+6.2 to 31.3 and stays silent. Those two are two of the three renders
+`docs/kent-review-2026-09-03.md` reports as decided before the engine ran —
+*"the source is 146 pixels wide for a 100 mm design"*, *"a higher-resolution
+Becker source would change this render more than any engine change"* — and
+neither run said so.
+
+**The panel sentence carries the number now.** It read "The image is low
+resolution for this stitch size. A larger image or a smaller size will sew
+sharper." That tells a customer they have a problem and not what fixes it; the
+engine has always known the figure and the panel threw it away. It now reads
+"The image gives 1.4 pixels per millimetre at this size and needs 4. Enlarging
+it can't add detail that isn't in the file — about 2.8x wider, or a smaller
+design, will sew sharper." The multiple is the actionable part: it is the
+difference between "get a bigger file" and knowing which file will do.
+
+Same shape as #392's "Colors (max 6) starts meaning 6", arrived at
+independently: a warning the customer could not act on, and a number the
+engine had all along.

@@ -1736,6 +1736,39 @@ test("describeWarnings speaks all four stage-0 classification codes instead of f
   }
 });
 
+// ---- INPUT_LOW_RESOLUTION carries the number ------------------------------
+//
+// The engine has always known the figure; the panel threw it away and said
+// "the image is low resolution", which tells a customer they have a problem
+// and not what would fix it. And until 2026-09-07 the warning could not fire
+// at all — stage1_prep tested the resolution AFTER its own capped upscale,
+// which by construction always reaches the floor — so this sentence had never
+// been shown to anyone. Two of the scorecard's 26 fixtures arrive under the
+// floor (becker_marine_logo 1.81 px/mm, logo_bridge_bar 3.49 at 80 mm) and
+// both were silent.
+
+test("INPUT_LOW_RESOLUTION tells the customer how much bigger the file has to be", async () => {
+  stubStorage({});
+  const { describeWarnings } = await import("./digitizer.js");
+  const [line] = describeWarnings([{
+    code: "INPUT_LOW_RESOLUTION",
+    message: "ENGINE VOICE, not for customers.",
+    px_per_mm: 1.45, upscaled_to: 4.0, min_px_per_mm: 4.0,
+  }]);
+  expect(line.text).not.toContain("ENGINE VOICE");
+  expect(line.text).toContain("1.4");   // what the file gives
+  expect(line.text).toContain("4");     // what it needs
+  expect(line.text).toMatch(/2\.8x|3x|2\.9x/);  // how much wider, ceil to 0.1
+});
+
+test("INPUT_LOW_RESOLUTION falls back to prose when the engine sends no numbers", async () => {
+  stubStorage({});
+  const { describeWarnings } = await import("./digitizer.js");
+  const [line] = describeWarnings([{ code: "INPUT_LOW_RESOLUTION", message: "x" }]);
+  expect(line.text).toContain("low resolution");
+  expect(line.text).not.toContain("NaN");
+});
+
 describe("isPhoto forced class (spec 2026-08-18 decision 4)", () => {
   // Defect 15, Kent's 2026-09-02 call. "It's a photo" answers "is this
   // photographic CONTENT", which is `is_photographic` — depth sequencing and
