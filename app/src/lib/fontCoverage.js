@@ -19,6 +19,34 @@
 // Ranges are `cp | [lo, hi]`, sorted ascending — a binary search would be
 // tidier, but the longest list is 137 entries (egyptian) and this runs once
 // per unsupported-character event, not per frame.
+// The engine folds typographic punctuation to its ASCII twin when a font has
+// no glyph for the fancy form (satinfont.js TYPOGRAPHIC_FOLD — read from EMB
+// rather than copied, so the suggestion list and the message can never
+// disagree with what actually stitches). A font that lacks U+2019 but has an
+// apostrophe DOES cover "Fritsch’s", and excluding it here would suggest the
+// customer keep looking past fonts that already work.
+//
+// Missing map = a stale `app/public/engine/` copy, the same trap estimate.js
+// documents for THREAD_LENGTH_FACTOR. No map, no folding: the pre-fold
+// behaviour, which is conservative rather than wrong.
+function foldedAlternative(cp) {
+  // Read off the global rather than importing emb.js: THIS MODULE IS PURE and
+  // stays importable with no engine present (emb.js throws at import time when
+  // the engine scripts have not run, which is how fontCoverage.spec.js runs).
+  const g = typeof globalThis !== "undefined" ? globalThis : null;
+  const fold = g && g.EMB && g.EMB.TYPOGRAPHIC_FOLD;
+  if (!fold) return null;
+  const twin = fold[String.fromCodePoint(cp)];
+  return twin ? twin.codePointAt(0) : null;
+}
+
+// Does this font stitch this codepoint — directly, or through the fold?
+function fontStitches(ranges, cp) {
+  if (rangesCover(ranges, cp)) return true;
+  const twin = foldedAlternative(cp);
+  return twin != null && rangesCover(ranges, twin);
+}
+
 function rangesCover(ranges, cp) {
   for (const r of ranges) {
     if (typeof r === "number") { if (r === cp) return true; if (r > cp) return false; continue; }
@@ -45,7 +73,7 @@ export function fontsCovering(text, coverage) {
   const cps = [...new Set([...text].filter((c) => !/\s/.test(c)).map((c) => c.codePointAt(0)))];
   if (!cps.length) return [];
   return Object.keys(fonts)
-    .filter((key) => cps.every((cp) => rangesCover(fonts[key], cp)))
+    .filter((key) => cps.every((cp) => fontStitches(fonts[key], cp)))
     .sort();
 }
 
