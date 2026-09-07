@@ -3,7 +3,7 @@
   import { createHistory } from "./lib/history.js";
   import { applyTemplate } from "./lib/templates.js";
   import { canAdvance, nextStep, prevStep } from "./lib/flow.js";
-  import { contentSummary } from "./lib/summary.js";
+  import { designSummary } from "./lib/summary.js";
   import { rehydrateImages } from "./lib/imageSource.js";
   import { flattenRGBA, WORK_MAX_PX, ALPHA_CUTOFF } from "./lib/flatten.js";
   import {
@@ -897,14 +897,18 @@
           <dl class="summary">
             <div><dt>Garment</dt><dd>{readable(project.garmentId)}</dd></div>
             <div><dt>Hoop</dt><dd>{hoopInEffect.hoop.label}{hoopInEffect.suggested ? " (suggested)" : ""}</dd></div>
-            <!-- One row per fact, from lib/summary.js. This was three
+            <!-- One row per fact for EVERY element, from lib/summary.js.
+                 It keyed off `selectedElement` alone until 2026-09-07, so a
+                 name plus a logo — the commonest real job — reached this
+                 screen described only as the one the user last clicked.
+                 This was three
                  `{:else if}` rungs ending in a text-shaped catch-all, and
                  `digitized`/`design`/`shape` all landed on it: measured in a
                  browser 2026-09-07, an auto-digitized logo recapped as
                  `Content: Text — ""` with a blank `Font`, on the screen right
                  before Download. Svelte prints a missing field as empty, so it
                  read as a plausible empty-text design rather than as a bug. -->
-            {#each contentSummary(selectedElement) as row}
+            {#each designSummary(project) as row}
               <div><dt>{row.label}</dt><dd>{row.value}</dd></div>
             {/each}
           </dl>

@@ -22,6 +22,8 @@
 // that against project.js's OWN factory list rather than a copy of it — so a
 // seventh element type fails a test instead of shipping "undefined".
 
+import { isSewable } from "./flow.js";
+
 const NOT_YET = "not uploaded yet";
 
 export function contentSummary(element) {
@@ -70,4 +72,36 @@ function titleCase(id) {
     .split("_")
     .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
     .join(" ");
+}
+
+
+// Every element's rows, for the review step's recap.
+//
+// The recap keyed off `selectedElement` alone, which is right for the SIZE
+// panel below it (that edits one element) and wrong for a summary sitting
+// under "Ready to stitch": a name plus a logo — the commonest real job there
+// is — reached the last screen before Download described only as
+// "Auto-digitized artwork", with no mention of the lettering also sewing.
+// Measured 2026-09-07: two elements, 3542 stitches, one of them named.
+//
+// The rows are numbered ONLY when there is more than one element, so a
+// single-element project renders exactly as before (and the e2e assertions
+// on "Content" keep meaning what they meant).
+export function designSummary(project) {
+  const all = (project && project.elements) || [];
+  // Only what will actually SEW, by flow.js's rule rather than a second one.
+  // A brand-new project always carries an empty text element, so listing
+  // every element verbatim recapped a digitized logo as
+  // "Content 1: Text — nothing typed yet / Content 2: Auto-digitized
+  // artwork" — numbering the real content second behind a placeholder that
+  // sews nothing. Caught by an assertion written for a different defect.
+  const els = all.filter(isSewable);
+  // Nothing sewable is its own honest state: describe the first element as
+  // it is, which is what the "Nothing to stitch yet" headline sits above.
+  if (!els.length) return contentSummary(all[0]);
+  if (els.length === 1) return contentSummary(els[0]);
+  return els.flatMap((el, i) => {
+    const rows = contentSummary(el);
+    return [{ ...rows[0], label: `${rows[0].label} ${i + 1}` }, ...rows.slice(1)];
+  });
 }

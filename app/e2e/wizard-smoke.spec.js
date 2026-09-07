@@ -423,3 +423,32 @@ test("artwork uploaded with the digitizer offline survives a page refresh", asyn
   await expect(page.getByRole("heading", { name: "Nothing to stitch yet" })).toHaveCount(0);
   await expect(page.locator("dl.summary")).toContainText("Logo / image");
 });
+
+// A name PLUS a logo — the commonest real job, and the one the review recap
+// described only half of. It keyed off the selected element, so a design with
+// lettering under an uploaded logo reached the last screen before Download
+// saying "Auto-digitized artwork" and nothing about the words also sewing.
+// Measured 2026-09-07: left chest, 3542 stitches, three cones, one element
+// named. This is the browser flatten lane (service left alone) so the test
+// needs no digitizer.
+test("the review recap names every element, not just the selected one", async ({ page }) => {
+  await page.route("**/health", (r) => r.abort());   // browser lane: `image`
+  await page.goto("/");
+  await page.getByRole("button", { name: "Left Chest", exact: true }).click();
+  await page.getByRole("button", { name: "Next", exact: true }).click();
+
+  await page.locator("textarea").first().fill("FRITSCH'S");
+  await expect(page.locator("span.stats")).toBeVisible({ timeout: 60_000 });
+
+  await page.getByRole("button", { name: "Artwork" }).click();
+  await page.locator("input[type=file]").first().setInputFiles(ART_PNG);
+  await expect(page.locator("span.stats")).toBeVisible({ timeout: 60_000 });
+
+  await page.getByRole("button", { name: "3 Review" }).click();
+  const summary = page.locator("dl.summary");
+  await expect(summary).toContainText('Text — "FRITSCH\'S"');
+  await expect(summary).toContainText("Logo / image");
+  // Numbered, so two "Content" rows are tellable apart.
+  await expect(summary.locator("dt", { hasText: /^Content 1$/ })).toBeVisible();
+  await expect(summary.locator("dt", { hasText: /^Content 2$/ })).toBeVisible();
+});

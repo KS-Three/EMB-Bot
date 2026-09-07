@@ -124,3 +124,78 @@ test("a missing or malformed element never throws", () => {
     expect(contentSummary(bad)).toHaveLength(2);
   }
 });
+
+// --- the whole design, not just the element the user last clicked -----------
+
+import { designSummary } from "./summary.js";
+
+test("a single-element project reads exactly as it did before numbering existed", () => {
+  const p = { elements: [{ ...defaultTextElement("e1"), text: "EMB TEST", fontKey: "medium_font" }] };
+  expect(designSummary(p)).toEqual([
+    { label: "Content", value: 'Text — "EMB TEST"' },
+    { label: "Font", value: "Medium Font" },
+  ]);
+  // wizard-smoke.spec.js asserts `Text — "EMB TEST"` and "Logo / image" on
+  // this screen; an unconditional "Content 1" would break it elsewhere.
+  expect(designSummary(p)[0].label).toBe("Content");
+});
+
+test("a name plus a logo names BOTH — the commonest real job", () => {
+  // Measured 2026-09-07 in a browser: left chest, "FRITSCH'S" plus
+  // enthusiast_logo.png, 3542 stitches across three cones. The recap keyed
+  // off the selected element and said only "Auto-digitized artwork".
+  const p = { elements: [
+    { ...defaultTextElement("e1"), text: "FRITSCH'S", fontKey: "medium_font" },
+    // `result` set: designSummary lists what will SEW, so a digitized element
+    // that has not run yet is not part of the recap.
+    { ...defaultDigitizedElement("e2"), name: "enthusiast_logo.png", result: { design: {} } },
+  ]};
+  expect(designSummary(p)).toEqual([
+    { label: "Content 1", value: 'Text — "FRITSCH\'S"' },
+    { label: "Font", value: "Medium Font" },
+    { label: "Content 2", value: "Auto-digitized artwork" },
+    { label: "Artwork", value: "enthusiast_logo.png" },
+  ]);
+});
+
+test("numbering follows sew order, and every element is present exactly once", () => {
+  const p = { elements: ["e1", "e2", "e3", "e4"].map((id, i) =>
+    ({ ...defaultTextElement(id), text: "T" + i })) };
+  const rows = designSummary(p);
+  expect(rows.filter((r) => r.label.startsWith("Content")).map((r) => r.label))
+    .toEqual(["Content 1", "Content 2", "Content 3", "Content 4"]);
+  expect(rows).toHaveLength(8);
+});
+
+test("an empty or missing project falls back to the text empty state, never throws", () => {
+  for (const p of [null, undefined, {}, { elements: [] }]) {
+    expect(() => designSummary(p)).not.toThrow();
+    expect(designSummary(p)[0].value).toBe("Text — nothing typed yet");
+  }
+});
+
+test("a placeholder that sews nothing is left out, and does not push real content down the list", () => {
+  // Every project is born with an empty text element. Listing elements
+  // verbatim recapped a digitized logo as "Content 1: Text — nothing typed
+  // yet / Content 2: Auto-digitized artwork" — the real content numbered
+  // second, behind something that sews nothing. `flow.js`'s isSewable is the
+  // rule, so this can never disagree with the Next button or the headline.
+  const p = { elements: [
+    defaultTextElement("e1"),                                    // untouched default
+    { ...defaultDigitizedElement("e2"), name: "logo.png", result: { design: {} } },
+  ]};
+  expect(designSummary(p)).toEqual([
+    { label: "Content", value: "Auto-digitized artwork" },
+    { label: "Artwork", value: "logo.png" },
+  ]);
+});
+
+test("a project with nothing sewable still describes itself", () => {
+  // The state "Nothing to stitch yet" sits above — the recap must not go
+  // blank there, or the screen says nothing at all about the design.
+  const p = { elements: [defaultTextElement("e1")] };
+  expect(designSummary(p)).toEqual([
+    { label: "Content", value: "Text — nothing typed yet" },
+    { label: "Font", value: "Medium Font" },
+  ]);
+});
