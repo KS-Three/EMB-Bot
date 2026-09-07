@@ -9312,3 +9312,66 @@ splicing the change, comparing names instead of thread, and keeping the
 duplicate colour entry each fail at least one.
 
 engine **492/492** · studio **1025/1025** · e2e **43/43**
+
+## 2026-09-07 — the export note said "rotated" too, and rotation cannot fix a mirror
+
+Snapshot. Not live status.
+
+The import-side correction above has an export-side twin that was still
+shipping. `DownloadStep`'s DST notes — one before the download, one after —
+both read *"other embroidery software reads it rotated a quarter turn"*.
+
+Rendered the same day, from a DST the app produced for a design that is now
+correctly oriented: a standard reader sees it **a quarter turn round and
+mirror-imaged**, letters backwards. So the word was the same understatement
+in both directions, and on the export side it is just as actionable: a
+customer told "rotated" opens the file in their own software and rotates it
+back, which cannot work.
+
+Both strings now name the symptom rather than the transform: *"a quarter turn
+round **and flipped**: text comes out backwards, and rotating it back there
+will not fix that."* "Mirror-imaged" was the first wording and is what the
+measurement says; "text comes out backwards" is what the customer will
+actually see, and it is the half that makes the failed remedy obvious. The comments that asserted the old framing
+were corrected with them (`exporters.js`, the button-emphasis comment), and so
+was **CLAUDE.md footgun 1**, which is the doc every session reads first and
+which would have handed the next person doing the codec fix the wrong shape to
+fix — a transpose applied as a repair mirrors the design while leaving the
+bounding box looking right.
+
+The component test that pinned the wording was pinning the wrong wording:
+`/rotated a quarter turn/` became `/quarter turn/` + `/mirror/` +
+`/will\s+not fix/`. Mutation: putting the old sentence back fails it.
+
+studio **1025/1025** · e2e **43/43** · doc guards **35/35**
+
+### A negative, measured the same afternoon: the phone layout is fine
+
+Walked the whole wizard at **390 × 844** (iPhone-class). Horizontal overflow is
+**0 px at every step**; the canvas gets 366 × 271 and the panel scrolls
+internally, so every control including the format buttons is reachable. Earlier
+sessions had measured 600 × 800; this extends the floor and closes the
+question. No change made.
+
+### A negative that nearly became a false claim
+
+A synthetic 3000 × 2000 "photo" — smooth gradients plus Gaussian noise — did
+not finish digitizing in **6.7 minutes**, which reads like a serious
+performance defect. It is an artifact of the input: high-entropy noise is
+pathological for a colour-quantising pipeline and nothing like a photograph.
+
+Re-measured by upscaling **real artwork** (`enthusiast_logo.png`) and timing
+`/digitize` directly, which varies pixel count and holds content honest:
+
+| size | MP | wall time |
+|---|---|---|
+| 500 × 113 | 0.06 | 12.2 s |
+| 1000 × 226 | 0.23 | 18.2 s |
+| 1500 × 339 | 0.51 | 18.3 s |
+| 2000 × 451 | 0.90 | 26.2 s |
+| 3000 × 677 | 2.03 | 33.4 s |
+
+Gentle, not cliff-shaped. The 6.7-minute figure says nothing about a customer's
+photo. **Gate 2's rule — synthetic fixtures are barred as substitutes for real
+artwork — is not only about quality metrics; it bites performance claims the
+same way.**

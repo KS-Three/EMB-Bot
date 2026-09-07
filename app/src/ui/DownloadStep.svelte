@@ -82,9 +82,17 @@
   // the user which one they got. That matters for exactly one format: the
   // browser's own DST codec is confirmed transposed against the Tajima
   // standard (five independent sources, incl. Ink/Stitch's pystitch — see
-  // MASTER_SCOPE.md's "DST codec axis bug"), so a browser-encoded DST reads a
-  // quarter-turn rotated in third-party software, and its color-change record
-  // (0x43 vs the standard 0xC3) is not seen as a color change at all.
+  // MASTER_SCOPE.md's "DST codec axis bug"), so a browser-encoded DST reads
+  // wrong in third-party software, and its color-change record (0x43 vs the
+  // standard 0xC3) is not seen as a color change at all.
+  //
+  // Both notes below said "rotated a quarter turn" until 2026-09-07, which is
+  // the understatement that matters: rendered on 2026-09-07, a standard reader
+  // sees the design a quarter turn round AND MIRRORED — letters backwards. A
+  // customer told "rotated" tries to rotate it back in their own software and
+  // cannot, because rotation preserves orientation and this does not. Same
+  // correction as the import side (src/dstimport.js, DOCTRINE 2026-09-07);
+  // only a picture separates the two, and nobody had rendered one.
   //
   // Deliberately NOT extended to PES/EXP. Both browser encoders had real
   // byte-framing defects, both were FIXED 2026-08-05 (PR #58) and now decode
@@ -456,8 +464,8 @@
      DST is the industry default and stays first and primary for a project
      that exports through the service (pyembroidery convention, spec-correct).
      But when the browser's own encoder will write it — `dstUsesBrowserEncoder`,
-     i.e. any project with lettering or hand-drawn shapes — DST is the one
-     format we KNOW reads a quarter-turn rotated in other software, and it was
+     i.e. anything the digitizer service did not make — DST is the one format
+     we KNOW reads a quarter turn round AND MIRRORED elsewhere, and it was
      still the filled button sitting directly above the paragraph saying so.
      The most prominent choice was the broken one. In that case PES leads
      instead: it is unaffected, it round-trips against pyembroidery, and it is
@@ -547,10 +555,11 @@
     <strong>* Heads up about DST:</strong> this project has content the
     digitizer service did not make — lettering, a hand-drawn shape, or an
     imported design file — so its DST is written by EMB-Bot's own encoder. That
-    file opens correctly in EMB-Bot, but other embroidery software reads it
-    rotated a quarter turn and may not see the color stops. PES and EXP are
-    unaffected — use one of those, or a project made only of auto-digitized
-    images, if the file is going somewhere else.
+    file opens correctly in EMB-Bot, but other embroidery software reads it a
+    quarter turn round <em>and flipped</em>: text comes out backwards, and
+    rotating it back there will not fix that. It may not see the color stops
+    either. PES and EXP are unaffected — use one of those, or a project made
+    only of auto-digitized images, if the file is going somewhere else.
   </p>
 {/if}
 <p>{msg}</p>
@@ -571,8 +580,9 @@
 {#if lastExport && lastExport.fmt === "dst" && lastExport.via === "browser"}
   <p class="encodernote" data-testid="dst-browser-encoder-downloaded">
     <strong>That DST came from EMB-Bot's own encoder.</strong> It opens
-    correctly in EMB-Bot, but other embroidery software reads it rotated a
-    quarter turn and may not see the color stops.
+    correctly in EMB-Bot, but other embroidery software reads it a quarter turn
+    round <em>and flipped</em>: text comes out backwards, and rotating it back
+    there will not fix that. It may not see the color stops either.
     {#if dstUsesBrowserEncoder}
       Download PES or EXP instead if the file is going somewhere else.
     {:else}
