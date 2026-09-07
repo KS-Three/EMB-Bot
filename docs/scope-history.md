@@ -9697,3 +9697,97 @@ cached as a module singleton — so the tiles show what the customer will
 actually get rather than a picture of it. `mam_script`, `manga_impact` and
 `medium_font` are exactly those tiles' fonts. Nothing to fix; recorded so the
 next person who sees three font fetches before any interaction knows why.
+
+## 2026-09-07 — driving the app on a phone, and reading the sheet it prints
+
+Snapshot. Not live status.
+
+### The empty canvas told a phone to right-click
+
+The empty field is the only place in the product that says the drawing tools
+exist — two of PRODUCT.md's four launch-scope items are behind them. It said
+"Right-click the canvas for drawing tools" to every device.
+
+Measured against the production build:
+
+| | result |
+|---|---|
+| `(any-pointer: fine)` on a 390×844 touch context | **false** — the app can tell |
+| a real 1.4 s long-press on the canvas (CDP touch, not a synthetic event) | **0** `contextmenu` events, menu never opened |
+| a real right-click on a desktop context | menu opens, every time |
+| buttons anywhere in the app reaching those two tools | **none** — `contextmenu` is the only route in the code |
+
+Fixed: on a device with no fine pointer the sentence names what is reachable
+there instead. Both lanes it names were driven on that phone viewport with
+taps and no mouse events — typing gave 1,223 stitches at 102×19 mm with a
+5×7 hoop picked.
+
+**The wiring was nearly wrong and the mutation proved it.** The media query
+is read at declaration, not in `onMount`: the first `paint()` runs before
+onMount's callbacks, so a phone that saw the desktop sentence on first paint
+would have kept it. Moving the read into onMount reddens the phone assertion
+on its own.
+
+### The sheet that goes to the machine dropped two of the four numbers
+
+One design, one session, both read at the same moment:
+
+| | Review step | worksheet PDF |
+|---|---|---|
+| Size | 102 × 15 mm | 101.8 mm x 15.1 mm |
+| Stitches | 1,336 | 1,336 |
+| Trims | **6** | **absent** |
+| Thread | **2.5 m (estimate)** | **absent** |
+
+`estimate.js` calls these "the four facts an operator needs before loading a
+machine". The screen stays at the desk; the sheet is what goes to the machine.
+
+### And it gave a spool number without saying whose
+
+Picking "Isacord Polyester 40" snaps the design's colours to that catalog and
+re-labels them with its codes. The sheet then read:
+
+    Thread Sequence
+    1. 1375 Dark Charcoal
+
+68 charts ship in this product and every one numbers independently, so 1375
+names a different colour in each of them. The Download step said "Chart:
+Isacord Polyester 40" one panel away. Both fixed; `loadPalette` already
+returned `{ id, label, threads }` and the label was sitting on the object
+whose threads were being used.
+
+### Four verified negatives from the same pass
+
+- **A project round-trips byte-identically through a full page reload.**
+  Non-default font, letter spacing 4, curve 70°, rotation 252°, width forced
+  to 70 mm; saved, browser reloaded, reopened from the drawer. Caption
+  identical (872 stitches · 41×95 mm · 5×7 in hoop) and the exported PES
+  hashes `f0e9c729db9da9e0`, 6,599 bytes, before and after.
+- **The caption's promise holds in every exported format.** "1,336 stitches ·
+  102×15 mm" against pystitch: dst/exp/jef/pes all carry exactly 1,336
+  stitches at 101.8 × 15.1 mm. DST reads transposed (15.1 × 101.8) — the
+  known axis bug, which the Download step now warns about verbatim.
+- **Deleting a design cannot happen by accident.** The drawer's Delete is a
+  two-step confirm — the button turns into a red "Really delete?" and nothing
+  is removed until that is pressed. A probe reported it as a silent no-op
+  because its regex looked for a button *starting* with "delete".
+- **The layout does not overflow at any width driven.** 360, 390, 768 and
+  1280 px: `document.scrollWidth` equals `innerWidth` at every one, zero
+  elements past the right edge, no console errors.
+
+### Recorded for Kent, not built
+
+- **Four working machine formats have no button.** `/health` advertises
+  `pec`, `vp3`, `xxx` and `u01` alongside the exposed five. Exported a real
+  two-colour design through `/export` in all nine and decoded each with
+  pystitch: every one carries the same 99 stitches at 80.0 × 24.0 mm, and
+  `vp3`, `xxx` and `pec` carry the 2-thread colour table (dst/exp/u01 carry
+  none, which is the format). **VP3 is Husqvarna Viking / Pfaff and XXX is
+  Singer** — two major consumer brands whose owners cannot use this product
+  today, with the capability already built and answering. Same shape as the
+  JEF gap closed this morning, but PRODUCT.md item 1 named PES and JEF
+  specifically, so this is scope rather than a doc-vs-reality gap.
+- **PRODUCT.md's launch posture reads "Desktop-only, stated on the site" and
+  nothing in the app states it.** Every hit for "desktop" in `app/src/` is a
+  code comment. Meanwhile the lettering lane demonstrably works on a phone,
+  measured above. Whether to state the posture or drop it is a product call.

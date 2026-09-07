@@ -622,9 +622,7 @@ where the art is actually on a tonal lane, by reading or by override. Nothing
 changed in what gets sent, so area 1's photo-control numbers are untouched, and
 the engine's routing is unchanged — ROADMAP gate 2 bars recalibrating stage 0,
 and phase-4 v1 works around it with exactly this override.
-*(confirmed 2026-08-30 — driven in a real browser against the
-real service, every state of the row clicked through and looked at; pinned by
-e2e `digitize-auto-start.spec.js`; numbers in scope-history 08-30)*
+*(confirmed 2026-08-30 — driven in a real browser against the real service, every state of the row clicked through and looked at; pinned by e2e `digitize-auto-start.spec.js`; numbers in scope-history 08-30)*
 
 **The hoop you picked is now DRAWN, and the export gate uses it.** `preview.js`
 had one box — the garment's PLACEMENT box — and called it the hoop, so choosing a
@@ -667,6 +665,10 @@ from the product for purely-digitized designs — anything containing lettering
 or manual shapes downloads through the browser encoders — **except JEF, which
 the browser cannot write at all** and which therefore always goes through the
 service, on every project type.
+
+**Four more machine formats work and have no button (Kent's call).** `/health` also advertises `pec`, `vp3`, `xxx`, `u01`; one two-colour design exported in all nine and decoded with pystitch gives the same 99 stitches at 80.0 x 24.0 mm each, vp3/xxx/pec carrying the 2-thread colour table. **VP3 is Husqvarna Viking / Pfaff, XXX is Singer** — two major consumer brands whose owners cannot use the product today. Scope, not a doc-vs-reality gap like JEF: PRODUCT.md item 1 names PES and JEF and is silent on these four. *(measured 2026-09-07 — DOCTRINE; scope-history 09-07)*
+
+**The printed worksheet now carries what the screen carries.** It stated size and stitch count, dropped trims and thread metres (two of the four numbers estimate.js calls what an operator needs before loading a machine), and printed a spool code without naming which of the 68 charts numbers it. Both fixed; the facts are computed once and passed, never re-derived at the sheet, and an e2e reads the screen and the real PDF bytes and requires them to agree verbatim. *(fixed 2026-09-07 — scope-history 09-07)*
 
 - **DST — split by path.** Browser DST is Medium as Studio's sewn-and-shipping
   default, Low if treated as verified-correct-orientation in the abstract; that

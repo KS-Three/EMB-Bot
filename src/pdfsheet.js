@@ -114,6 +114,30 @@ const deps =
       "Stitch count: " + stitchCount.toLocaleString("en-US"),
       "Color count: " + colorCount,
     ];
+    // The two operator numbers the SCREEN has always had and this sheet did
+    // not. Measured 2026-09-07 on one lettering design, same session, same
+    // design: the Review step read "Size 102 x 15 mm / Stitches 1,336 /
+    // Trims 6 / Thread 2.5 m (estimate)", and the worksheet printed the
+    // first two and dropped the last two. estimate.js calls these "the four
+    // facts an operator needs before loading a machine" — and this sheet is
+    // the one that goes to the machine, while the screen stays at the desk.
+    //
+    // Same wording as `sewSummary`'s rows on purpose: two documents about
+    // one design that phrase the same fact differently invite the reader to
+    // wonder which is right.
+    //
+    // Optional, like `hoop` above: a caller that passes no `sew` gets no
+    // lines rather than a zero. "0 trims" is a real and useful answer (there
+    // is nothing to clip), so absence has to be distinguishable from zero,
+    // which is why this tests the object and not the numbers.
+    if (options.sew) {
+      if (typeof options.sew.trims === "number") {
+        statsLines.push("Trims: " + options.sew.trims);
+      }
+      if (typeof options.sew.threadM === "number" && options.sew.threadM > 0) {
+        statsLines.push("Thread: " + options.sew.threadM.toFixed(1) + " m (estimate)");
+      }
+    }
     if (stitchCount > CUTAWAY_STITCHES) {
       // The cutaway prescription (see CUTAWAY_STITCHES above). A line in
       // the stats block, not a warning banner: nothing is wrong with the
@@ -138,6 +162,21 @@ const deps =
 
     doc.setFontSize(10);
     doc.setFont(undefined, "normal");
+    // WHOSE numbering the codes below are. Measured 2026-09-07: picking
+    // "Isacord Polyester 40" in the Studio snapped the design's black to
+    // that catalog's nearest cone and this sheet printed "1. 1375 Dark
+    // Charcoal" — a code with no chart. Every one of the 68 charts numbers
+    // independently, so 1375 names a different colour in each of them, and
+    // the sheet is what a customer carries to a shop or orders from. The
+    // screen said "Chart: Isacord Polyester 40" one panel away.
+    //
+    // Above the list rather than beside the heading: it qualifies every row
+    // under it, and a customer scanning for a code should meet the chart
+    // before the first number, not after.
+    if (options.chartLabel) {
+      doc.text("Chart: " + options.chartLabel, MARGIN_IN, cursorY);
+      cursorY += 0.2;
+    }
     const swatchSize = 0.16;
     for (let i = 0; i < colors.length; i++) {
       const color = colors[i];

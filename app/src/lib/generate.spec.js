@@ -934,3 +934,42 @@ test("the reported size is thread, not the box the design was fit to", async () 
   const xs = geo.map((s) => s.x);
   expect((Math.max(...xs) - Math.min(...xs)) / 10).toBeCloseTo(combined.widthMM, 6);
 });
+
+// ---- emptyFieldHint (the pointer the advice assumes, 2026-09-07) -----------
+//
+// The empty canvas is the only place in the product that says the drawing
+// tools exist, and it used to say "right-click" to everyone. Measured that
+// day against the production build at 390x844 with touch emulation: a real
+// 1.4-second long-press (dispatched through CDP, not as a synthetic event)
+// produced zero contextmenu events and never opened the menu, while a real
+// right-click on a desktop context opened it every time — and no button
+// anywhere in the app reaches those tools. So on a device reporting no fine
+// pointer the sentence has to name something else.
+
+test("emptyFieldHint names right-click only where a mouse exists", async () => {
+  const { emptyFieldHint } = await import("./generate.js");
+  expect(emptyFieldHint(true)).toBe(
+    "Your embroidery appears here as you add content. Right-click the canvas for drawing tools.",
+  );
+});
+
+test("emptyFieldHint on a device with no mouse names a lane that device has", async () => {
+  const { emptyFieldHint } = await import("./generate.js");
+  const n = emptyFieldHint(false);
+  // The point of the change: no gesture this device cannot perform.
+  expect(n).not.toMatch(/right-click/i);
+  // And not a dead end either — it says what IS reachable there. Both lanes
+  // were driven on that phone viewport: typing gave 1,223 stitches at
+  // 102x19 mm with a 5x7 hoop picked.
+  expect(n).toMatch(/text/i);
+  expect(n).toMatch(/artwork/i);
+  // ...and says why the tools are missing rather than pretending they aren't.
+  expect(n).toMatch(/mouse/i);
+});
+
+test("emptyFieldHint keeps the same lead sentence either way", async () => {
+  const { emptyFieldHint } = await import("./generate.js");
+  const lead = "Your embroidery appears here as you add content.";
+  expect(emptyFieldHint(true).startsWith(lead)).toBe(true);
+  expect(emptyFieldHint(false).startsWith(lead)).toBe(true);
+});

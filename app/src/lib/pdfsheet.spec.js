@@ -337,3 +337,102 @@ test("buildWorksheetPDF prescribes cutaway stabilizer past 25k stitches, and onl
     globalThis.window.jspdf = originalJspdf;
   }
 });
+
+// ---- the operator's numbers reach the printed sheet (2026-09-07) ----------
+//
+// The Review step has always stated four facts — estimate.js calls them "the
+// four facts an operator needs before loading a machine" — and this sheet
+// printed two of them. Measured that day on one lettering design, one
+// session, one design: the screen read "Size 102 × 15 mm / Stitches 1,336 /
+// Trims 6 / Thread 2.5 m (estimate)" and the worksheet printed the size and
+// the stitch count and dropped the other two. The screen stays at the desk;
+// this sheet is what goes to the machine.
+
+test("buildWorksheetPDF prints the trims and the thread estimate when given them", () => {
+  const dom = installFakeDom();
+  const originalJspdf = globalThis.window.jspdf;
+  globalThis.window.jspdf = { jsPDF: FakeJsPDF };
+  try {
+    const doc = buildWorksheetPDF(baseDesign(), {
+      fileName: "sew.pdf",
+      sew: { trims: 6, threadM: 2.4813 },
+    });
+    const strings = doc.texts.map((t) => t.str);
+    expect(strings).toContain("Trims: 6");
+    // Same wording and the same one decimal as sewSummary's row: two
+    // documents about one design must not phrase a fact differently.
+    expect(strings).toContain("Thread: 2.5 m (estimate)");
+    // In the stats block, under the counts it belongs with.
+    const stitchY = doc.texts.find((t) => t.str.startsWith("Stitch count:")).y;
+    const threadY = doc.texts.find((t) => t.str.startsWith("Thread:")).y;
+    const seqY = doc.texts.find((t) => t.str === "Thread Sequence").y;
+    expect(threadY).toBeGreaterThan(stitchY);
+    expect(threadY).toBeLessThan(seqY);
+  } finally {
+    dom.restore();
+    globalThis.window.jspdf = originalJspdf;
+  }
+});
+
+test("buildWorksheetPDF prints zero trims but never invents a number it wasn't given", () => {
+  const dom = installFakeDom();
+  const originalJspdf = globalThis.window.jspdf;
+  globalThis.window.jspdf = { jsPDF: FakeJsPDF };
+  try {
+    // Zero trims is a real answer — there is nothing to clip — so it prints.
+    const zero = buildWorksheetPDF(baseDesign(), { fileName: "z.pdf", sew: { trims: 0, threadM: 1.2 } });
+    expect(zero.texts.map((t) => t.str)).toContain("Trims: 0");
+
+    // A caller that says nothing about sewing gets no lines, rather than
+    // "Trims: 0 / Thread: 0.0 m" which reads as a measured zero.
+    const silent = buildWorksheetPDF(baseDesign(), { fileName: "s.pdf" });
+    expect(silent.texts.some((t) => t.str.startsWith("Trims:"))).toBe(false);
+    expect(silent.texts.some((t) => t.str.startsWith("Thread:"))).toBe(false);
+
+    // And a thread estimate that could not be computed (estimate.js returns
+    // null when the engine constant is missing — a stale engine copy) is
+    // dropped rather than printed as 0.0 m, for the same reason sewSummary
+    // drops the row.
+    const noFactor = buildWorksheetPDF(baseDesign(), { fileName: "n.pdf", sew: { trims: 3, threadM: null } });
+    expect(noFactor.texts.map((t) => t.str)).toContain("Trims: 3");
+    expect(noFactor.texts.some((t) => t.str.startsWith("Thread:"))).toBe(false);
+  } finally {
+    dom.restore();
+    globalThis.window.jspdf = originalJspdf;
+  }
+});
+
+test("buildWorksheetPDF names the chart the codes belong to, above the list", () => {
+  const dom = installFakeDom();
+  const originalJspdf = globalThis.window.jspdf;
+  globalThis.window.jspdf = { jsPDF: FakeJsPDF };
+  try {
+    // Measured 2026-09-07: picking "Isacord Polyester 40" snapped the
+    // design's black to that catalog and the sheet printed "1. 1375 Dark
+    // Charcoal" — a code with no chart. All 68 charts number independently,
+    // so 1375 is a different colour in each of them.
+    const doc = buildWorksheetPDF(baseDesign(), {
+      fileName: "chart.pdf",
+      chartLabel: "Isacord Polyester 40",
+    });
+    const strings = doc.texts.map((t) => t.str);
+    expect(strings).toContain("Chart: Isacord Polyester 40");
+    // Between the heading and the first cone: a customer scanning for a code
+    // should meet the chart before the first number.
+    const headY = doc.texts.find((t) => t.str === "Thread Sequence").y;
+    const chartY = doc.texts.find((t) => t.str.startsWith("Chart:")).y;
+    const firstConeY = doc.texts.find((t) => /^1\. /.test(t.str)).y;
+    expect(chartY).toBeGreaterThan(headY);
+    expect(chartY).toBeLessThan(firstConeY);
+
+    // A caller with no chart to name gets no line — an empty "Chart:" is
+    // worse than none.
+    const bare = buildWorksheetPDF(baseDesign(), { fileName: "b.pdf" });
+    expect(bare.texts.some((t) => t.str.startsWith("Chart:"))).toBe(false);
+    const blank = buildWorksheetPDF(baseDesign(), { fileName: "e.pdf", chartLabel: "" });
+    expect(blank.texts.some((t) => t.str.startsWith("Chart:"))).toBe(false);
+  } finally {
+    dom.restore();
+    globalThis.window.jspdf = originalJspdf;
+  }
+});

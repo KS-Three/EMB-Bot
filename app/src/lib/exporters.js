@@ -1,6 +1,7 @@
 import { EMB } from "./emb.js";
 import { renderRealistic } from "./preview.js";
 import { exportViaService } from "./digitizer.js";
+import { sewFacts } from "./estimate.js";
 
 export function exportDesign(design, format) {
   switch (format) {
@@ -100,12 +101,25 @@ export async function exportDesignPreferService(design, format, opts = {}) {
 // garments.js HOOPS preset) puts the chosen hoop on the sheet next to the
 // placement — worksheets printed before the hoop picker existed simply
 // omitted the line, and a missing hoop still does.
-export async function exportWorksheetPDF(design, garment, hoop) {
+export async function exportWorksheetPDF(design, garment, hoop, chartLabel) {
   const mod = await import("jspdf");
   window.jspdf = window.jspdf || { jsPDF: mod.jsPDF };
+  // Trims and thread metres, computed by the same walk the Review step uses
+  // so the printed sheet and the screen cannot disagree. Computed HERE and
+  // passed through `meta` rather than inside pdfsheet.js: the engine copy
+  // takes no Studio imports (it is loaded as a plain script by
+  // `app/public/engine/`), and duplicating the walk is how two numbers for
+  // one design start to drift.
+  const facts = sewFacts(design);
   EMB.buildWorksheetPDF(design, {
     garmentLabel: garment.label || "",
     hoop: hoop ? { label: hoop.label, widthMm: hoop.widthMm, heightMm: hoop.heightMm } : null,
+    sew: { trims: facts.trims, threadM: facts.threadM },
+    // Whose thread numbering the sheet's codes belong to. The caller has
+    // already snapped every colour to this chart's nearest cone, so the
+    // label and the codes come from one palette object and cannot name
+    // different charts.
+    chartLabel: chartLabel || "",
     fileName: "embbot-worksheet.pdf",
     garmentBox: { widthMM: garment.widthIn * 25.4, heightMM: garment.heightIn * 25.4 },
   });
