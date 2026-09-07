@@ -35,7 +35,7 @@ import { test, expect } from "@playwright/test";
 async function reachDesign(page) {
   await page.goto("/");
   await page.locator(".tcard", { hasText: "Left-chest name" }).click();
-  await expect(page.getByText(/^\d+ stitches/)).toBeVisible();
+  await expect(page.getByText(/^[\d,]+ stitches/)).toBeVisible();
 }
 
 // Area of the intersection of two elements' boxes, in CSS px. 0 = no overlap.

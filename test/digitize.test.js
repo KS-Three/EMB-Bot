@@ -1057,6 +1057,12 @@ test("engine parity: FILL_ROW_MM and SATIN_SPACING_MM equal the Python engine's 
   assert.strictEqual(DG.SATIN_SPACING_MM, 0.4, "the same-rail satin pitch, which did not move");
   assert.strictEqual(DG.FILL_ROW_MM, machinePy("FILL_ROW_MM"), "both engines make the same physical choice (fabrics.py)");
   assert.strictEqual(DG.SATIN_SPACING_MM, machinePy("SATIN_SPACING_MM"));
+  // Not a geometry constant — it changes what the shopping list says, never
+  // where a needle goes — but it has to agree for the same reason: a name and
+  // a logo in one project must be priced on one basis. The browser lane quotes
+  // metres for lettering/manual/shape designs, which never reach the service.
+  assert.strictEqual(DG.THREAD_LENGTH_FACTOR, 1.35, "machine.py's operator-estimate rule of thumb");
+  assert.strictEqual(DG.THREAD_LENGTH_FACTOR, machinePy("THREAD_LENGTH_FACTOR"));
 });
 
 test("buildQualityDesign: the fill default is FILL_ROW_MM (0.15), three times the rows of the old 0.45", () => {

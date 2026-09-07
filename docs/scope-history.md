@@ -8848,3 +8848,60 @@ design including ones the customer had shrunk by hand.
 The two findings that are not about size are untouched, and that is asserted:
 a cap under the 4 mm floor already names a height rather than an action, and a
 lone hairline span reports what the engine *did*, which is not advice at all.
+
+---
+
+## 2026-09-07 — what it costs to sew, on the lane that had no numbers
+
+Live defect 41. Found by reading the Review step for a lettering design.
+
+`QualityReport` prints the four facts an operator needs before loading a
+machine — stitches, thread changes, trims, metres — from the service's
+`preflight`/`stats`. A lettering, hand-drawn, shape or imported-DST design
+never reaches the service. Its review screen showed:
+
+> Garment · Left Chest · Hoop · 5×7 in (suggested) · Content · Text —
+> "FRITSCH'S" · Font · Medium Font
+
+`section.quality` absent; no mention of thread, metres or trims anywhere on the
+page. It now reads Size 102 × 12 mm · Stitches 1,289 · Trims 8 · Thread 2.1 m
+(estimate), matching the canvas caption's own stitch count and size exactly.
+
+### The basis, and the 1.6% that will not close
+
+Path length on `designToStrands`'s chain-break rule — the same quantity
+Python's `StitchRun.length_mm` sums per run — times
+`machine.THREAD_LENGTH_FACTOR` **1.35**, hand-ported into the JS engine and
+guarded by `test/digitize.test.js`. The third constant to take that treatment,
+after `FILL_ROW_MM` and `SATIN_SPACING_MM`.
+
+Measured against the service on `enthusiast_logo`:
+
+| | block 1 | block 2 | total |
+|---|---|---|---|
+| browser walk × 1.35 | 3.42 m | 1.53 m | **4.95 m** |
+| service `thread_m_by_color` | 3.35 m | 1.51 m | **4.87 m** |
+
+**1.6% high, and irreducible from the browser.** `plan_to_design` emits a run
+the machine reaches *without travelling* as plain consecutive stitches, so the
+design records carry no marker for that boundary and the walk joins two runs,
+counting a segment the plan does not. The design has lost information the plan
+had.
+
+So the browser figure is shown **only where the service has said nothing** —
+one design never gets two answers. And the browser lane's own designs do not
+have the problem: `buildLetteringDesign` sews its short travel as running
+stitch, so everything counted there is thread that really goes down.
+
+### Two defects caught while building it, both mine
+
+- **`EMB.THREAD_LENGTH_FACTOR || 1`** quoted the path length as thread against
+  a stale `app/public/engine/` copy: the review read **"1.5 m (estimate)" for a
+  design that needs 2.1**, with nothing red anywhere. Caught only because the
+  same probe ran twice and the number moved with no code change in between.
+  Now: no factor, no row. The test deletes the constant and asserts the row
+  disappears.
+- **The field caption was the one stitch count in the app printing a bare
+  `1289`** where QualityReport, DigitizePanel, DesignPanel and the review
+  summary all say `1,289`. Six e2e matchers pinned the bare form and were
+  widened, with the reason recorded at the helper.

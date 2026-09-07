@@ -1104,7 +1104,10 @@
     // runs against the combined design (not just the selected element) —
     // the whole design has to fit the physical hoop.
     const { hoop } = effectiveHoop(project);
-    stats = `${c.stitchCount} stitches · ${c.widthMM.toFixed(0)}×${c.heightMM.toFixed(0)} mm · ${hoop.label} hoop`;
+    // toLocaleString like every other stitch count in the app (QualityReport,
+    // DigitizePanel, DesignPanel, and the review summary this line sits above)
+    // — it was the one place printing a bare 1289 where the rest say 1,289.
+    stats = `${c.stitchCount.toLocaleString()} stitches · ${c.widthMM.toFixed(0)}×${c.heightMM.toFixed(0)} mm · ${hoop.label} hoop`;
     hoopNote = hoopFitNote(c.widthMM, c.heightMM, hoop) || "";
     // Something DID stitch, but not all of it — e.g. Latin mixed into Hebrew.
     // Rides the stats line next to the other warnings rather than blocking.

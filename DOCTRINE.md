@@ -2623,3 +2623,47 @@ its hedge as it is copied forward** — is why this file is split.
   since defect 34, because the sewn extent sits slightly past the box by
   construction. `sizeMm == null` (auto-fit) is the exact signal.
   *(2026-09-07)*
+
+- **A fallback that turns a missing constant into a plausible number, written
+  by me, in the same session that spent all day on exactly this class.**
+  `lib/estimate.js` quotes thread metres as `pathMm * (EMB.THREAD_LENGTH_FACTOR
+  || 1)`. The factor lives in the engine, which `copy-engine.mjs` syncs into
+  `app/public/engine/` on predev and prebuild — so against a stale copy the
+  `|| 1` silently quoted the PATH LENGTH as thread: the review read **"1.5 m
+  (estimate)" for a design that needs 2.1**, and nothing anywhere was red.
+
+  Caught only because the same probe ran twice and the number moved between
+  runs with no code change in between. **A number that changes when nothing
+  changed is the loudest signal there is; a number that is merely wrong is
+  silent.**
+
+  `|| 1` is the shape to distrust — a default that is a VALID VALUE of the
+  thing it defaults for. `?? 1` would be no better. **No factor, no row:** the
+  estimate is withheld and everything countable is still counted. The test
+  deletes the constant and asserts the row disappears.
+
+- **Two engines, one operator-facing number, and the browser cannot quite get
+  there.** `lib/estimate.js` had to quote thread on the same basis the service
+  does, or a name and a logo in one project would be priced two ways. The basis
+  is path length × `machine.THREAD_LENGTH_FACTOR` (1.35) — hand-ported into the
+  JS engine and guarded by `test/digitize.test.js`, the third constant after
+  `FILL_ROW_MM` and `SATIN_SPACING_MM` to take that treatment.
+
+  **It still does not agree exactly: 4.95 m against the service's 4.87, 1.6%
+  high on the same artwork.** `plan_to_design` emits a run the machine reaches
+  WITHOUT travelling as plain consecutive stitches, so the design records carry
+  no marker for that run boundary and the walk joins two runs, counting one
+  segment the plan does not. **The design has lost information the plan had**,
+  and no amount of care on the JS side recovers it.
+
+  So the answer was not to make the numbers match — it was to make sure they
+  are never both on screen. The browser figure is shown ONLY where the service
+  has said nothing, which is exactly the lane that had no numbers at all. And
+  that lane's own designs do not have the problem, because
+  `buildLetteringDesign` SEWS its short travel as running stitch: everything
+  the walk counts there is thread that really goes down.
+
+  **When two implementations of one number cannot be reconciled, scope them so
+  they never answer the same question.** Averaging them, or picking one and
+  quoting it everywhere, would have shipped a number that is wrong somewhere.
+  *(2026-09-07)*
