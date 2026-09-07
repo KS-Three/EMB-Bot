@@ -368,6 +368,8 @@ SEQUIN_MODE + 10 SEQUIN_EJECT**; service 80.5×16.3, 1 COLOR_CHANGE. The gate no
 elements that SEW. `dstimport.js` stays transposed — a service DST re-imported HERE reads
 16×81, the bugs used to cancel — and that fix is still Kent's. *(2026-09-07 — DOCTRINE)*
 
+**The LETTERING half is now measured too, and the fix needs no codec change — KENT'S CALL 2026-09-07.** Lettering/manual designs still download through the browser encoder by the standing scope ruling ("the one with actual sew evidence behind it"). Measured stitch-for-stitch on ONE browser-built lettering design (`manga_impact` "Lp", 61.7×31.7 mm landscape, 906 stitches), both encoders fed the SAME design object: the service's `/export` DST reads back **61.7×31.7 mm** with the file's x equal to the design's x on **906/906**; the browser's `encodeDST` reads back **31.7×61.7 mm** — a quarter turn — with the file's x equal to the design's **y** on **906/906**. The service path is spec-correct for browser-built lettering as well, so routing lettering there is available today with `src/dst.js` untouched. **What the ruling is actually protecting is the sew evidence, and that evidence is evidence of a TRANSPOSED file sewing** — which is the thing to weigh. Not flipped: the routing ruling and the codec are both Kent's. *(2026-09-07)*
+
 **The cross-validation harness is ALIVE again — revived 2026-08-21.** It
 reproduced the DST transposition exactly (rms 0.0) and caught the broken browser
 PES/EXP encoders; the 2026-08-11 pystitch swap had silently starved it to 0 of 6
@@ -517,16 +519,7 @@ be able to agree with a partly craft-driven ranking at all.
 `0.0 mm²` on the rest with `uncovered_checked: True`, because it is scoped to
 shapes the design already sews. `tools/dropped_elements.py` measures it from the
 artwork's side — 99.1% lost on the logo Kent called "5% completed at most".
-**Both halves of the smoothness complaint now have instruments, and they are not
-the same measurement** (Spearman 0.028, n = 12 — rules out redundancy, not
-dependence). `tools/edge_smoothness.py` owns edge noise; `tools/curve_fidelity.py`
-owns the curve half, read from `plan.iter_runs()` because **curve fidelity is
-not readable from a raster**. Read **`roughness_deg`** per design; `turn_gini` is
-substantially a COMPLEXITY statistic (Pearson −0.763 vs log trace count), valid
-only on the ladder or a paired arm; the floor is **stitch length**. On Kent's
-four Becker artworks the two SPARSE ones measure roughest — complexity, not
-size (an earlier "small placements sew rougher" reading is withdrawn).
-*(measured 2026-08-27/28 — PR #281; `docs/curve-fidelity-from-the-stitch-path-2026-08-27.md`)*
+**Both halves of the smoothness complaint now have instruments, and they are not the same measurement** (Spearman 0.028, n = 12 — rules out redundancy, not dependence). `tools/edge_smoothness.py` owns edge noise; `tools/curve_fidelity.py` owns the curve half, read from `plan.iter_runs()` because **curve fidelity is not readable from a raster**. Read **`roughness_deg`** per design; `turn_gini` is substantially a COMPLEXITY statistic (Pearson −0.763 vs log trace count), valid only on the ladder or a paired arm; the floor is **stitch length**. On Kent's four Becker artworks the two SPARSE ones measure roughest — complexity, not size (an earlier "small placements sew rougher" reading is withdrawn). *(measured 2026-08-27/28 — PR #281; `docs/curve-fidelity-from-the-stitch-path-2026-08-27.md`)*
 **Two engine defects open, unfixed:** `summit_badge`'s half-removed background,
 and `stage1_prep.py:254-266` answering a structural question (`BACKGROUND_ABSENT`)
 through a colour threshold (`bg_tolerance_lab`).
@@ -666,11 +659,13 @@ thumbnail. Pinned on the literal 0.4 and both ratios. *(2026-09-04 — `preview.
 
 ### 4. Export formats — [detail](docs/scope/4-export-formats.md)
 
-**Implemented (all five) · Confidence varies by format, not one score.**
-DST, EXP, PES, SVG and the PDF worksheet, via both the browser encoders and the
+**Implemented (all six) · Confidence varies by format, not one score.**
+DST, EXP, PES, **JEF**, SVG and the PDF worksheet, via both the browser encoders and the
 service's `/export` route. One reachability caveat: `/export` is only reachable
 from the product for purely-digitized designs — anything containing lettering
-or manual shapes downloads through the browser encoders.
+or manual shapes downloads through the browser encoders — **except JEF, which
+the browser cannot write at all** and which therefore always goes through the
+service, on every project type.
 
 - **DST — split by path.** Browser DST is Medium as Studio's sewn-and-shipping
   default, Low if treated as verified-correct-orientation in the abstract; that
@@ -679,6 +674,7 @@ or manual shapes downloads through the browser encoders.
 - **EXP — Medium-High.** The 2-byte trim record (fatal to pyembroidery-convention
   readers at the first trim) and the phantom terminal end-stitch are both fixed.
   *(confirmed 2026-08-06 — PR #58)*
+- **JEF (Janome) — SHIPPED 2026-09-07, and it had been counted as shipped since 2026-08-11 without a button.** PRODUCT.md launch item 1 ("PES hardened to byte-verified + JEF export") was marked Done on the evidence that `digitizer_service/formats.py` can write JEF. It can; the Download step offered DST/PES/EXP only, so **a Janome owner could not export anything from this product**. Same defect shape as the DST section below: the module was right and the product did not expose it. Now a button, disabled with a reason when the service is down (no browser JEF encoder exists). Verified by decoding `/export`'s bytes with `pystitch`, not by the writer existing: a logo the app reported as 80.5×16.6 mm, 2 colours, 2459 stitches reads back **2459 sewn, 80.5×16.6 mm, 1 colour change, 2 threads**. Medium-High, same ceiling as PES: pyembroidery cross-validation, not a verified Janome load. **Not shipped, but measured the same day:** VP3 (Husqvarna/Pfaff) 80.4×16.6, XXX (Singer) and PEC both 80.5×16.6, all 1 colour change and 2 threads — correct, and adding one is one line in `exporters.js`'s `SERVICE_ONLY_FORMATS` plus a button. **U01 (Barudan) is the one that needs work first: ZERO colour changes on a two-colour design.** Which machines this product supports is Kent's scope call, and PRODUCT.md's is DST/PES/JEF (+EXP). *(2026-09-07)*
 - **PES — Medium-High.** The 5-byte stitch-stream mis-framing, jump records
   flagged as trims, and never-set palette indices are all fixed.
   *(confirmed 2026-08-05 — PR #58)* Held below High because nearest-chart colour

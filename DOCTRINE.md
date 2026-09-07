@@ -2390,3 +2390,38 @@ its hedge as it is copied forward** — is why this file is split.
   pinning "we report back the width you asked for" (40 → 40.2, 60 → 60.6). The
   e2e guard was proved to fail on the pre-fix engine before being kept.
   *(found by driving the app, measured 2026-09-07)*
+
+- **A launch-checklist item verified against the module that CAN do the thing,
+  not against the product that exposes it.** PRODUCT.md item 1 — *"PES hardened
+  to byte-verified + JEF export"* — was marked ✅ Done on 2026-08-11 with the
+  evidence *"PES/JEF live in `digitizer/digitizer_service/formats.py`"*. True,
+  and checkable, and the reason nobody looked again. The Studio's Download step
+  offered DST / PES / EXP, so **a Janome owner could not export anything from
+  this product** for four weeks while a launch-scope row said the feature
+  shipped.
+
+  This is the same shape as the DST entry above (*"the code WAS right and the
+  product was not"*) arriving through a different door: there the gate's
+  condition was unreachable, here the capability had no control. **The test in
+  both cases is the same — can a customer get to it?** A module that can write
+  a format, a function that returns the right answer, a flag that defaults
+  correctly: none of them is a feature until something on screen reaches it.
+
+  **Two habits that would have caught it, and both are cheap:**
+
+  - **Read the checklist's evidence as a claim about the PRODUCT, not the
+    repo.** "Lives in `formats.py`" answers a different question than the row
+    asks. A row about export is done when a button downloads the file.
+  - **Enumerate the surface, not the capability.** The service advertises nine
+    formats on `/health`; the Studio renders three of them. That is one `grep`
+    against one `curl`, and it is the whole finding.
+
+  Ship-check for the rest, measured the same day by decoding `/export`'s bytes
+  with `pystitch`: VP3 (Husqvarna/Pfaff), XXX (Singer) and PEC all come back
+  correct at 80.5×16.6 mm with 1 colour change and 2 threads. **U01 (Barudan)
+  does not — ZERO colour changes on a two-colour design**, so a machine would
+  sew both blocks in one thread. Adding a format is one line in
+  `exporters.js`'s `SERVICE_ONLY_FORMATS` and one button; which machines this
+  product supports is a scope call, and PRODUCT.md's is DST/PES/JEF (+EXP).
+  *(found by comparing /health's format list against the Download step,
+  2026-09-07)*

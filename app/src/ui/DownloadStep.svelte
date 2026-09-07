@@ -1,7 +1,7 @@
 <script>
   import { onMount, createEventDispatcher } from "svelte";
   import { generateAll } from "../lib/generate.js";
-  import { exportDesignPreferService, exportWorksheetPDF, exportPNG } from "../lib/exporters.js";
+  import { exportDesignPreferService, exportWorksheetPDF, exportPNG, isServiceOnlyFormat } from "../lib/exporters.js";
   import { chartIdForProject } from "../lib/designChart.js";
   import { isSewable } from "../lib/flow.js";
   import { triggerDownload } from "../lib/download.js";
@@ -15,6 +15,12 @@
   // `runtime` (the per-element flattened-image map, owned by App) is needed
   // for that, replacing the old singleton `flat` prop.
   export let runtime;
+  // The digitizer service's /health answer, or null when it isn't reachable
+  // (App owns the probe; see its `digitizerHealth`). Needed HERE and not only
+  // on the content step because JEF has no browser encoder — the service is
+  // the only thing that can write it, so the button has to be able to say why
+  // it is unavailable instead of throwing when pressed.
+  export let digitizerHealth = null;
   const d = createEventDispatcher();
   let msg = "";
   let worksheetBusy = false;
@@ -92,6 +98,31 @@
   // so a purely-digitized project can still produce a browser DST. The
   // post-download message below reports what actually happened, from `via`.
   $: dstUsesBrowserEncoder = !isPurelyDigitized(project);
+
+  // ---- JEF (Janome) ---------------------------------------------------
+  //
+  // PRODUCT.md's launch checklist item 1 is "PES hardened to byte-verified +
+  // JEF export", marked done because `digitizer_service/formats.py` can write
+  // JEF. It could; there was no button, so a Janome owner could not export
+  // anything from this app. Every other format here has a browser encoder
+  // behind it, so this is the first control whose availability depends on the
+  // service being up — hence a disabled state with a reason rather than a
+  // button that throws.
+  //
+  // Deliberately NOT extended to the other five formats pyembroidery can
+  // write (VP3, XXX, U01, PEC, plus PES's PEC variant). All were decoded and
+  // measured on 2026-09-07 and VP3/XXX/PEC come back correct — but which
+  // machines this product supports is a scope call, and PRODUCT.md's is
+  // DST/PES/JEF (+EXP). Adding one is one line in exporters.js's
+  // SERVICE_ONLY_FORMATS and one button here. U01 is the one that would need
+  // work first: it came back with ZERO colour changes on a two-colour design.
+  // Asked of exporters.js rather than hardcoded here, so that the day a
+  // browser JEF encoder exists, removing "jef" from SERVICE_ONLY_FORMATS is
+  // the whole change and this gate disappears with it.
+  $: jefAvailable = !isServiceOnlyFormat("jef") || !!digitizerHealth;
+  $: jefTitle = jefAvailable
+    ? "Janome JEF, written by the digitizer service"
+    : "Janome JEF needs the digitizer service running — it has no in-browser encoder";
 
   // What the download actually used, set from the returned `via` after every
   // stitch-format download so the label is observed rather than predicted.
@@ -387,6 +418,12 @@
     <button on:click={() => askThenDl("pes")}>PES</button>
     <button on:click={() => askThenDl("exp")}>EXP</button>
   {/if}
+  <button
+    data-testid="jef-button"
+    disabled={!jefAvailable}
+    title={jefTitle}
+    on:click={() => askThenDl("jef")}
+  >JEF</button>
   <button on:click={() => askThenDl("svg")}>SVG</button>
   <button on:click={dlPNG}>PNG</button>
   <button on:click={dlWorksheet} disabled={worksheetBusy}>PDF worksheet</button>

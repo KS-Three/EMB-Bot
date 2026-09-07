@@ -8470,3 +8470,59 @@ pinning "we report back the width you asked for": `satinfont.test.js`'s AB
 snapshot (40 → 40.2, stitch count and first/last coordinates unchanged) and
 `generate.spec.js`'s rect w/h contract (60 × 20 → 60.6 × 20.6). The new e2e
 guard was run against the pre-fix engine and fails there.
+
+---
+
+## 2026-09-07 — JEF shipped, and the launch row that said it already had
+
+**Found by comparing what the service advertises against what the Studio
+renders.** `GET /health` lists nine export formats; `DownloadStep.svelte`
+rendered three of them.
+
+PRODUCT.md's launch checklist item 1 ("PES hardened to byte-verified + JEF
+export") has been ✅ Done since 2026-08-11, evidenced by *"PES/JEF live in
+`digitizer/digitizer_service/formats.py`"*. They do. There was no button, so a
+Janome owner could not export anything from this product.
+
+**Decoded, not inferred** (`pystitch`, the reader CI cross-validates against).
+The design under test: a digitized logo the app reported as 80.5 × 16.6 mm,
+2 colours, 2,459 stitches.
+
+| format | machine | sewn | reads back | colour changes | threadlist |
+|---|---|---|---|---|---|
+| dst | Tajima | 2459 | 80.5 × 16.6 | 1 | 0 (DST carries no palette) |
+| pes | Brother / Baby Lock | 2459 | 80.5 × 16.6 | 1 | 2 |
+| exp | Melco / Bernina | 2459 | 80.5 × 16.6 | 1 | 0 |
+| **jef** | **Janome** | **2459** | **80.5 × 16.6** | **1** | **2** |
+| vp3 | Husqvarna / Pfaff | 2459 | 80.4 × 16.6 | 1 | 2 |
+| xxx | Singer | 2459 | 80.5 × 16.6 | 1 | 2 |
+| pec | Brother (PEC) | 2459 | 80.5 × 16.6 | 1 | 2 |
+| u01 | Barudan | 2459 | 80.5 × 16.6 | **0** | 0 |
+
+**U01 is the one that is not ready**: zero colour changes on a two-colour
+design means a machine sews both blocks in one thread. The rest are correct.
+Only JEF is shipped — which machines this product supports is a scope call,
+and PRODUCT.md's is DST/PES/JEF (+EXP).
+
+**JEF is the first format with no browser encoder**, so it is the first control
+whose availability depends on the service. It is disabled with a reason rather
+than throwing when pressed, and `App.svelte` now re-probes health on the
+download step as well as the content step, so "start the service and navigate
+back" works from where the button is.
+
+### And the lettering DST measurement Kent's routing call needs
+
+Not a change — a number. Lettering/manual designs download through the browser
+encoder by the standing scope ruling. Fed the SAME design object (`manga_impact`
+"Lp", 61.7 × 31.7 mm landscape, 906 stitches), stitch-for-stitch:
+
+| encoder | reads back | file x equals |
+|---|---|---|
+| service `/export` | **61.7 × 31.7 mm** | the design's **x**, 906/906 |
+| browser `encodeDST` | **31.7 × 61.7 mm** (a quarter turn) | the design's **y**, 906/906 |
+
+So the service path is spec-correct for browser-built lettering too, and
+routing lettering there needs no change to `src/dst.js` at all. What the
+standing ruling protects is the browser encoder's sew evidence — and that
+evidence is evidence of a transposed file sewing. Both the routing and the
+codec are Kent's call; neither was touched.
