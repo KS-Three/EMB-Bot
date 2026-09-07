@@ -180,6 +180,49 @@ def test_a_stack_of_rings_all_settles_on_real_labels():
     assert survivors <= {1, 4}, f"a band landed on a dissolved id: {survivors}"
 
 
+def test_an_INTERIOR_band_is_never_sent_to_the_page():
+    """The gaulke regression, in miniature (2026-09-06).
+
+    `valid` here is `base_valid` — stage 2 has already taken the ENCLOSED
+    pixels out of it — so "not valid" is NOT the page: it also covers a donut
+    hole, a letter counter, the inside of a label. Reading it as the page
+    tells any feature sitting beside enclosed ground that it borders the one
+    endpoint that can DELETE it, and the colour test cannot object because
+    such a feature genuinely does lie between its ground and the page.
+
+    Below, columns 30-34 are enclosed — out of `base_valid`, not the page —
+    and the dark band beside them never touches the real background off to
+    the left. Measured both ways: **0 band pixels survive the old read, 80
+    survive with the true mask.** On `logo_gaulke_roofing` that difference
+    was 12,961 px — 50.3 mm² of black lettering on a white label, the
+    21.0 mm² wordmark included — and it cost the design its only dark cone.
+    """
+    dark = np.array([35.0, 0.0, 0.0])
+    h, w = 40, 56
+    labels = np.zeros((h, w), np.int64)
+    lab_img = np.zeros((h, w, 3), np.float64)
+    valid = np.zeros((h, w), bool)
+    page = np.zeros((h, w), bool)
+    page[:, :8] = True                                  # the real background
+    for lbl, lab, x0, x1 in ((1, WHITE, 8, 28), (2, dark, 28, 30),
+                             (3, WHITE, 34, 56)):        # 30-34 = enclosed
+        labels[:, x0:x1] = lbl
+        lab_img[:, x0:x1] = lab
+        valid[:, x0:x1] = True
+
+    def band_kept(page_mask):
+        out, drop, _w = dissolve_phantom_blends(
+            labels, valid, lab_img, PipelineConfig(),
+            np.array([5, 5, 5]), 4.0, page_mask=page_mask)
+        gone = drop if drop is not None else np.zeros_like(valid)
+        return int(((out == 2) & valid & ~gone).sum())
+
+    assert band_kept(page) == 80, "the interior band must survive"
+    assert band_kept(None) == 0, (
+        "the old read must still delete it — if this stops failing, the test "
+        "has stopped discriminating and proves nothing")
+
+
 def test_fewer_than_three_labels_is_a_no_op():
     labels, lab_img, valid = _striped([(1, BLACK, 20), (2, WHITE, 20)])
     out, drop, warns = dissolve_phantom_blends(

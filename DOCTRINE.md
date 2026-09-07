@@ -906,6 +906,25 @@ its hedge as it is copied forward** — is why this file is split.
 
 ## Gotchas — cost someone a session once
 
+- **A pass that can DELETE as well as relabel needs a probe that counts both,
+  or it will look innocent.** `dissolve_phantom_blends` folds a label two
+  ways: relabel it, or send it to the page. A probe written to find labels
+  "whose pixels changed label" sees only the first — a page-dropped label
+  keeps its label and leaves through `base_valid` — so it reported 9 tiny
+  folds on a fixture where the real answer was 42 labels and 50.3 mm² of
+  lettering. That miscount was published as a retraction of a correct
+  diagnosis before the second count found it. Count every exit a pass has.
+  *(2026-09-06 — scope-history 09-06)*
+
+- **`~base_valid` is not the page.** Stage 2 hands a pass `base_valid`, which
+  already has ENCLOSED pixels removed, so its complement covers donut holes,
+  letter counters and the inside of a label as well as the real background.
+  Any rule that treats that complement as "the background" will tell an
+  interior feature it borders the page — and where the page is an endpoint
+  that DELETES, that is artwork gone. Take stage 1's own background mask.
+  *(2026-09-06 — same entry)*
+
+
 - **A flag that removes a cone cannot be judged on its grade. Check the cone
   list.** `THREAD_MATCH_POOR` grades per thread on that thread's worst patch,
   so deleting a cone deletes the thread that was scoring badly — you cannot

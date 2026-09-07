@@ -7100,7 +7100,21 @@ yardstick-disagreements row 7, and it is a different shape from rows 1–6 —
 those are the metric failing to see an improvement, this is the metric
 preferring a regression.
 
-**The blind spot was named too fast, and the name is RETRACTED the same day.**
+**Named fast, retracted wrongly, then found — all in one day; the retraction
+is itself retracted.** The fold WAS the cause, by the page-drop path. The
+probe that appeared to exonerate it counted only labels whose pixels changed
+LABEL, and a label sent to the page keeps its label and leaves through
+`base_valid` — counting both, every dark label on gaulke went to the page:
+**12,961 px, 50.3 mm², the 21.0 mm² wordmark included.** One line: `valid`
+inside the pass is `base_valid`, ENCLOSED pixels already removed, so `~valid`
+is not the page but also donut holes, counters and the inside of a label.
+Gaulke is black lettering on a white label on a black canvas, so every letter
+read as bordering the near-black page, and that endpoint deletes rather than
+recolours. Fixed by passing stage 1's real background (`page_mask`), which
+**costs the flag nothing** — bridge_bar keeps 125 → 62 trims and 18 → 12
+blocks, screenshot 71 → 66, gaulke byte-identical, no grade moving either way,
+and the arm becomes the cleanest of the five. Superseded account, kept because
+it is the lesson: 
 The first account — anti-aliased black text sits on the black→white Lab line
 for the reason ringing does, so `_blend_ramp` cannot separate them — does not
 survive instrumenting the pass. At gaulke's 16 px/mm the fold takes **9

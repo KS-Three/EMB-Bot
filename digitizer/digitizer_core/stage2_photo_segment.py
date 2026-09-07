@@ -1504,6 +1504,7 @@ def dissolve_phantom_blends(
     cfg: PipelineConfig,
     bg_edge_rgb: np.ndarray | None,
     px_per_mm: float,
+    page_mask: np.ndarray | None = None,
 ) -> tuple[np.ndarray, np.ndarray | None, list[dict]]:
     """Fold every merged label that is a COLOUR BLEND of its own two sides
     into whichever side it is nearer. -> (labels, drop_mask, warnings).
@@ -1596,7 +1597,20 @@ def dissolve_phantom_blends(
         if bg_edge_rgb is not None else None
     )
     if bg_endpoint is not None:
-        outside = ~valid
+        # The PAGE is the removed background, NOT merely "outside this
+        # population". `valid` here is `base_valid`, which already has the
+        # ENCLOSED pixels taken out of it -- a donut hole, a letter counter,
+        # the interior of a label. Reading `~valid` as the page therefore
+        # tells every feature sitting on an enclosed ground that it borders
+        # the page, and the page endpoint is the one that can DELETE it.
+        # Measured on `logo_gaulke_roofing`: black lettering on a white label
+        # on a black canvas: with `~valid` as the page every dark label --
+        # 12,961 px, 50.3 mm², the 21.0 mm² wordmark among them -- read as a
+        # transition between the label's L* 98.8 ground and the near-black
+        # page and was dropped to background. `page_mask` is stage 1's own
+        # background, enclosed pixels excluded; None reduces to the old
+        # behaviour for any caller that does not have it.
+        outside = (~valid) if page_mask is None else page_mask
         for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)):
             touch = valid & np.roll(outside, (dy, dx), (0, 1))
             for a in np.unique(code_frame[touch]):
@@ -1674,7 +1688,23 @@ def dissolve_phantom_blends(
             # happens to be thin and to sit in the middle of one.
             if float(np.linalg.norm(cj - (la + t * seg))) >= cfg.merge_delta_e:
                 continue
-            target[j] = ia if t < 0.5 else ib
+            dest = ia if t < 0.5 else ib
+            # A member may only be sent to the PAGE if it touches the page.
+            # Grouping unions every touching thin label, so an interior
+            # feature can join a rim group and inherit an endpoint it does
+            # not border -- and "leaves the foreground" is the one outcome
+            # that destroys artwork rather than recolouring it. Measured on
+            # `logo_gaulke_roofing` (black lettering on a white label, on a
+            # black canvas): the label's ground is L* 98.8 and the page is
+            # near-black, so lettering at L* 28-47 reads as a transition
+            # between them, and EVERY dark label -- 12,961 px, 50.3 mm²,
+            # including the 21.0 mm² wordmark -- was dropped to background.
+            # None of them touches the page; they sit in the middle of the
+            # white label. The rim labels that really do border it are
+            # unaffected, which is why this costs the bridge_bar win nothing.
+            if dest == _PAGE and _PAGE not in adj[j]:
+                continue
+            target[j] = dest
 
     if not target:
         return labels, None, []
@@ -2269,7 +2299,8 @@ def segment(p: Prep, cfg: PipelineConfig, face_regions=None, bg_mask=None,
     if cfg.dissolve_phantom_blends and merged_count:
         merged, blend_drop, blend_warnings = dissolve_phantom_blends(
             merged, base_valid, true_lab, cfg,
-            None if p.bg_from_alpha else p.bg_edge_rgb, p.px_per_mm)
+            None if p.bg_from_alpha else p.bg_edge_rgb, p.px_per_mm,
+            page_mask=~valid)
         if blend_drop is not None:
             # Page-side halo leaves the foreground before regions are cut
             # from it, so nothing downstream ever sees those pixels as

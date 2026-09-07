@@ -68,17 +68,30 @@ improvement. This is the metric actively *preferring* a regression.
    true, both machine units. I checked what the flag *cost* and never checked
    **which cones survived**.
 
-**The OUTCOME is verified; the MECHANISM offered for it is NOT, and the probe
-argues against it.** Re-measured on `main` at `258f8e1` (a different main from
-the sheet's `8c7edf7`, so the outcome holds twice): OFF sews `1375 Dark
-Charcoal` (L* 15.9, 288 st) and ON sews nothing below `0145 Skylight`
-(L* 85.7). But the first explanation — that `_blend_ramp` mistakes
-anti-aliased black text for ringing — does not survive instrumenting the pass.
-At gaulke's 16 px/mm the fold takes **9 labels, every one 0.4-0.6 mm²**, while
-every lettering label (L* 28-47, the largest 21 mm²) survives stage 2, and
-`result.palette` carries `0020 Black` in BOTH arms. **The dark cone is lost
-between stage 2 and the sewn block list, not by the fold.** Where, is open.
-Do not repeat the anti-aliasing story as fact until someone finds it.
+**FOUND AND FIXED, same day — and my retraction of the first account was
+itself wrong.** The mechanism IS the fold, by the page-drop path, and the
+probe that seemed to exonerate it was miscounting: it looked for labels whose
+pixels changed LABEL, and a label sent to the page keeps its label and leaves
+via `base_valid`. Counting both, **every dark label on gaulke went to the
+page — 12,961 px, 50.3 mm², the 21.0 mm² wordmark included.**
+
+The cause is one line. `valid` inside the pass is `base_valid`, which already
+has the ENCLOSED pixels removed, so `~valid` is not the page — it also covers
+donut holes, letter counters and the inside of a label. Gaulke is black
+lettering on a white label on a black canvas: reading `~valid` as the page
+told every letter it bordered the near-black background, its colour genuinely
+lies between that and the label's L* 98.8 ground, and the page endpoint is the
+one that DELETES rather than recolours. The pass now takes stage 1's real
+background (`page_mask=~valid` at the call site, before the enclosed
+subtraction).
+
+**Cost of the fix: nothing.** `logo_bridge_bar` keeps the whole win — 14,338 →
+11,506 stitches, **125 → 62 trims**, 18 → 12 blocks and cones, unchanged from
+before the guard — `screenshot_phone_ui` still improves (71 → 66 trims,
+17 → 15 blocks), and **gaulke is now byte-identical off vs on**, dark cone
+intact. The arm goes 5 fixtures moved to 4, −67 trims, and **no grade moves in
+either direction** — gaulke's spurious C 64 is gone, which is the correct
+outcome, not a loss.
 
 ## Per flag
 
@@ -103,11 +116,11 @@ is real and concentrated: **`photo_chrome_specular` 84 → 111 trims** alone,
 84 → 116 under all five. Worth it on that fixture's own grade (C 64 → B 76),
 and worth seeing before it becomes a default.
 
-**`dissolve_phantom_blends`** — the one I would now hold. Its corpus numbers
-are the best in the table (−76 trims, bridge_bar 125 → 62) and its gaulke
-result is a regression the grade calls a win. What the fix IS remains open —
-the fold itself is not doing it (retraction above), so the next step is
-finding where between stage 2 and the block list gaulke's dark cone goes.
+**`dissolve_phantom_blends`** — **the regression is fixed; this row's numbers
+are the pre-fix ones.** Post-fix the arm moves 4 fixtures instead of 5:
+−2,865 stitches, **−67 trims**, −8 blocks, −7 cones, no grade moving either
+way, bridge_bar's 125 → 62 trims intact and gaulke byte-identical. On the
+measurements it is now the cleanest of the five.
 
 ## Interaction — `all` is not the sum of the parts
 
@@ -128,10 +141,10 @@ existed to establish. `summit_badge`, `becker_marine_logo` and
 Flip `satin_patch_junctions`, `bind_resnap_all_classes` and
 `revalidate_small_shapes` — small, structural, and none of them depends on a
 grade to justify it. Take `satin_per_stroke` with the chrome trim cost stated.
-**Hold `dissolve_phantom_blends`** — not for the reason first given (that
-guess is retracted above) but because the outcome is real and unexplained:
-something between stage 2 and the block list drops gaulke's dark cone when
-this flag is on. Strike its gaulke grade from the record either way.
+`dissolve_phantom_blends` was the one to hold; **its regression is now fixed
+and it is a candidate again** — on the numbers, the cleanest of the five.
+Strike its gaulke C 64 from the record either way: that grade was the metric
+rewarding a dropped cone, and the cone is back.
 
 All of it is Kent's call. `docs/renders/flip-sheet-2026-09-06/` has off-vs-all
 sheets for gaulke, bridge_bar, chrome_specular and becker, plus the
