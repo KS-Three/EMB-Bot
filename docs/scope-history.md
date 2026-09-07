@@ -10408,3 +10408,39 @@ with the realistic stitch texture over the fabric tone.
 
 So every downloadable output has now been opened or rendered rather than
 byte-checked, and six of the seven are correct. The seventh is the DST writer.
+
+## 2026-09-07 — MASTER_SCOPE refreshed for #406-#410, and compacted to fit
+
+The dashboard had gone stale in a specific way: its `Last updated` line still
+read 2026-09-02 while the file already carried 09-07 entries from the earlier
+PRs, and #410's work was absent entirely. Both fixed.
+
+Getting the new entries in meant finding 15 lines in a file at 798 of its 800.
+Worth recording HOW, because the obvious move does not work here: **the budget
+is `wc -l`, and this file's fattest paragraphs are single lines** — one defect
+entry is 11,120 characters on one line, so moving it reclaims exactly one. Bulk
+lives in multi-line blocks, not in long ones.
+
+What moved, all verbatim, none deleted:
+
+- Three evaluation-corpus blocks (real-artwork vs synthetics, `pro_parity`,
+  which half of the corpus a checkout has) → `docs/scope/1`, verdict + link
+  left behind. −19.
+- Decision-queue item 11's correction → `DOCTRINE.md`. Corrections are kept
+  visible by rule, and they do not go stale, so a queue of open questions was
+  the wrong home for it.
+- Queue item 12's ΔE table → `docs/scope/1`; Kent's tabling ruling stays.
+- Six RESOLVED queue entries compacted to one line each, numbers kept. The
+  queue was 110 lines, second only to the defect list, which is the failure the
+  skill names outright: *a queue that only grows is a queue nobody reads.*
+
+Also compacted: the header's START-HERE block, the sew-out section (the ruling
+kept word for word), and a leftover duplicate pointer line in CI feedback speed.
+
+Added: the naming/registry-write and bundle-base-path entries to area 3, the
+worksheet entry to area 4, two new open calls to the queue (the four unexposed
+formats — VP3 is Pfaff, XXX is Singer; and browser Back), the render evidence to
+the DST cross-cutting section, and the 09-07 sweep to the At-a-glance row.
+
+**The file now sits at exactly 800.** That is at the ceiling, not under it: the
+next entry has to move something out first.

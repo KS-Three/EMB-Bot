@@ -12,17 +12,12 @@ on demand via the `/update-master-scope` skill. See "How this document works"
 at the bottom for the authority model behind the confidence ratings.
 
 **START HERE if you are picking up the real-artwork parity work:**
-[`docs/handoff-2026-08-16.md`](docs/handoff-2026-08-16.md) indexes the
-2026-08-15/16 session — the honest baseline (**42.5**, not the older ~70), the
-metric's own **75-84** pro-vs-pro ceiling, four defects real customer artwork
-exposed, and the traps that cost that session time. Four of its findings are
-standing rulings in [`DOCTRINE.md`](DOCTRINE.md). **The code and instruments it
-describes are ON `main`**
-— PR #157 merged (`4967ed5`), so `digitizer/tools/pro_parity/` including
-`selfconsistency.py` is in a plain checkout.
-*(confirmed 2026-08-17 — `git ls-tree origin/main`)*
+[`docs/handoff-2026-08-16.md`](docs/handoff-2026-08-16.md) — the honest baseline
+(**42.5**, not the older ~70) and the metric's own **75-84** pro-vs-pro ceiling;
+four of its findings are standing rulings in [`DOCTRINE.md`](DOCTRINE.md). Its
+code and instruments are ON `main`. *(confirmed 2026-08-17 — `git ls-tree`)*
 
-**Last updated:** 2026-09-02. **This file is current state only, under an
+**Last updated:** 2026-09-07. **This file is current state only, under an
 800-line budget.** Its three companions: standing rulings, rejected approaches,
 corrections and session-costing traps live in [`DOCTRINE.md`](DOCTRINE.md);
 dated snapshots in [`docs/scope-history.md`](docs/scope-history.md); per-area
@@ -247,7 +242,7 @@ standing content was winning: this file ran 268 lines over before the split, and
 |---|---|---|
 | 1. Auto-digitizing quality (image → stitches) | In progress | **Low** beyond flat spot-color art; human faces TABLED pending a more capable tier *(Kent, 2026-08-25)* |
 | 2. Font library & lettering | Implemented — 85 fonts, satin + bean/running + cross-stitch, LTR + Hebrew RTL | High (tech) / High (compliance). Zero stunted glyphs since the 2026-08-22 transform fix; the guards now assert their own coverage |
-| 3. Studio app / guided wizard | Implemented | Medium (fabric-preset accuracy: **pending sew-out** — unchanged, no sew-out has happened). Held at Medium by that gate alone; the display layer had a defect class that shipped unseen for want of UI-behaviour coverage, and a 2026-08-25 sweep closed the known ones *(confirmed — area doc)*. The preview now renders thread as a lit cylinder at physical width; its lighting is eye-tuned, not sew-verified |
+| 3. Studio app / guided wizard | Implemented | Medium (fabric-preset accuracy: **pending sew-out** — unchanged, no sew-out has happened). Held at Medium by that gate alone; the display layer had a defect class that shipped unseen for want of UI-behaviour coverage, and hand-driving sweeps on 2026-08-25 and 2026-09-07 closed the known ones — the 09-07 pass added the project lifecycle, the built bundle and the printed worksheet, none of which had been driven before *(confirmed — area doc)*. The preview now renders thread as a lit cylinder at physical width; its lighting is eye-tuned, not sew-verified |
 | 4. Export formats | Implemented | Varies by format — see below |
 | 5. Stitch-out review & manual editing tools | Implemented — Kent's direct-manipulation request is **complete** (2026-08-13) | High. Every surviving requirement of the 2026-08-12 request ships: outlines+nodes on the canvas, the pulse cue, select-then-edit, node drag, line drag, add node, delete. Requirement 5 (whole-shape drag) was withdrawn by Kent. Geometry is unit-tested and every interaction was driven in a real browser against a live service. Manual draw mode now traces over the uploaded artwork, and right-click places a curved node |
 
@@ -261,13 +256,11 @@ being deleted, same as the defect list. Detail stays in its own section rather
 than duplicated here, so this list can go stale about WHAT IS OPEN but never
 about the facts.
 
-1. **RESOLVED 2026-08-22 — the stage 0-4 cache is funded and built.** Split at
-   the review-edit seam; an edited re-digitize re-runs only the finish,
-   byte-identically. *(confirmed — tests/test_generation_cache.py)*
+1. **RESOLVED 2026-08-22 — the stage 0-4 cache is funded and built**, split at
+   the review-edit seam. *(confirmed — tests/test_generation_cache.py)*
 
-9. **RESOLVED 2026-08-24 — tonal v1: shade escape closed, bind ships ON.**
-   2026-08-23 Kent ruled v1 not done at 68–78 stops a portrait; 2026-08-24 he
-   took `bound_shade` as the photo-route default, declining (b). *(2026-08-24)*
+9. **RESOLVED 2026-08-24 — tonal v1: shade escape closed, `bound_shade` ships
+   ON** as the photo-route default. *(2026-08-24 — area 1)*
 
 **Also open, same category — so this queue is not a half-truth. All predate
 2026-08-14 except where noted:**
@@ -277,8 +270,8 @@ about the facts.
 its own merits.
    Re-orienting the table changes every DST EMB-Bot has written. See "DST codec
    axis bug".
-3. **RESOLVED 2026-08-19, ratified 2026-09-02 — `split_tonal_regions` is ON for photo
-   classes** (`effective_split_tonal`); this said "default-OFF, parked until the sew-out" until today. Cost: defect 20.
+3. **RESOLVED 2026-08-19, ratified 2026-09-02 — `split_tonal_regions` is ON for
+   photo classes** (`effective_split_tonal`). Cost: defect 20.
 4. **Billing / backend.** Tabled since the pivot; Stripe + an entitlement
    check is the leaning, nothing committed. Needs its own session. See
    `PRODUCT.md`, "Open — not yet decided".
@@ -305,48 +298,44 @@ its own merits.
    are the same gate-1 case and this closes permanently.
    *(measured 2026-08-28 — `.embf` decode; detail: area 2)*
 10. **RESOLVED 2026-08-25 — Studio typography: "tighter and more editorial."**
-   Kent's direction, given when asked. It settled the three items the earlier
-   type work left alone (irregular scale ratios, `h3` at body size, untokenised
-   weights) and it is a STANDING one — new UI is set to it, not re-litigated.
-   What it means in practice is in the area doc. *(2026-08-25)*
+   Kent's standing direction; new UI is set to it, not re-litigated. What it
+   means in practice is in the area doc. *(2026-08-25)*
 
-11. **RESOLVED 2026-09-02 (Kent's call) — the control that helps IS reachable,
-   and this entry described the world before that.** It said
-   `cfg.is_photographic` "appears **nowhere** in `app/src` (grep, 0 hits)" and
-   that the reading row's "It's a photo" correction sent the harsher
-   `forced_class="photo_subject"` instead. Both halves moved that day and the
-   entry did not: `isPhoto` now sends `is_photographic=true`
-   (`digitizer.js:180`; **14** hits in `app/src`), and `forced_class` stays
-   reachable only for the OPPOSITE correction — flat art on a misrouted photo.
-   Current state and its numbers are defect 15's "UI HALF FIXED" note; the
-   08-28 measurement table this entry led with, **26 stops / 0.591 coverage**
-   included, is in scope-history 08-28 and is superseded — the forced route
-   measures **17** today. Still open is DETECTION, which is defect 15's.
-   Both source files had already flagged this staleness in their own comments.
+11. **RESOLVED 2026-09-02 (Kent's call) — `cfg.is_photographic` is reachable
+   from the UI.** Detection remains open as defect 15. The correction this
+   entry carried — it described the world before the fix — is in
+   [`DOCTRINE.md`](DOCTRINE.md).
    *(confirmed 2026-09-07 — grep; `digitizer.js`, `DigitizePanel.svelte`)*
+
 8. **Font lawyer consult — optional.** Only gates RESTORING the 13 pulled
    ShareAlike fonts; the brief is written and ready to send. Nothing waits
    on it. See the font-licence entry.
 
-12. **Merge a tiny cone into an ADJACENT SHADE — a colour call, and the
-   COMMITTED corpus can now pose it.** The sew-out's b4/b7 class: cutting such
-   a cone further means sewing its patches in a neighbouring shade's thread —
-   a colour step for a stop, quality not gate-1 physics. `sequence_census.py`
-   reports colour since 2026-09-02, and committed art carries defensible
-   pairs — ΔE **1.41** (`screenshot_phone_ui_golke`, 62st → 79st), **1.78**
-   (`logo_bridge_bar`, 197st → 444st), **2.65** (`drone_render`, 338st →
-   1560st); the repro had none (closest cones 33.4 ΔE) until 2026-09-04, when its sweep became five shade bands 5–6 ΔE apart by design — adjacent shades of one ramp, not candidates. Real artwork runs
-   15–18 cones, so the population is not rare.
-   **TABLED — Kent, 2026-09-02:** *"I'm honestly not concerned about the
-   hopping idea, we can table this one for a further discussion."* Do not
-   build the shade-merge or further hopping polish until he reopens it; the
-   08-31 mechanical fixes (`start_near`, the re-snap rehome) are merged and
-   unaffected. *(measured 2026-09-02 — `sequence_census.py`, 26 fixtures; tabled 2026-09-02 — Kent)*
+12. **Merge a tiny cone into an ADJACENT SHADE — TABLED, Kent 2026-09-02:**
+   *"I'm honestly not concerned about the hopping idea, we can table this one
+   for a further discussion."* Do not build the shade-merge or further hopping
+   polish until he reopens it; the 08-31 mechanical fixes are merged and
+   unaffected. The committed corpus can now pose the question — defensible
+   adjacent-shade pairs and their ΔE are in [area 1](docs/scope/1-auto-digitizing-quality.md).
+   *(measured 2026-09-02; tabled 2026-09-02 — Kent)*
 
-13. **RESOLVED 2026-09-03 — the stitch-angle rule is ADOPTED (cap 30°), pass 1 BUILT:**
-    fading lean, cap, spacing / cos(lean); bisector deleted; stems = the family square to the
-    line of text. Leaned-column thread pitch 0.152 → 0.20 mm; ENTHUSIAST benchmark 4.62 → 4.09/1k.
-    **Flag FLIPPED ON by Kent; the Goldman join (pass 2) BUILT: trims flat, benchmark 3.81/1k, bare fabric drone 2.8 → 2.2%.** *(2026-09-03 — area 1)*
+13. **RESOLVED 2026-09-03 — the stitch-angle rule is ADOPTED (cap 30°)**, both
+   passes built and flipped ON by Kent. *(2026-09-03 — area 1)*
+
+14. **Four working machine formats have no button.** `/health` advertises
+   `pec`, `vp3`, `xxx`, `u01`; all decode correctly with pystitch (u01 excepted
+   — zero colour changes). **VP3 is Husqvarna Viking / Pfaff, XXX is Singer** —
+   two major consumer brands whose owners cannot use the product today. Adding
+   one is a line in `exporters.js`'s `SERVICE_ONLY_FORMATS` plus a button, so
+   this is scope, not effort: PRODUCT.md item 1 names PES and JEF and is silent
+   on these four. See area 4. *(measured 2026-09-07)*
+
+15. **The wizard pushes no history entries, so browser Back exits the Studio**
+   rather than stepping back (`history.length` 2 after three steps). Work is
+   not lost — Forward restores the design — but Back is the primary gesture on
+   a phone, and the lettering and artwork lanes both work on a phone. Adding
+   history routing changes navigation app-wide and traps Back if done wrong.
+   *(measured 2026-09-07 — area 3)*
 
 ## Cross-cutting issues
 
@@ -360,7 +349,9 @@ Tajima/pyembroidery standard — confirmed, wrong in **both directions**, and it
 against itself so the pair's own tests never saw it. **The WORD was wrong until 2026-09-07: it
 is a MIRROR, not a quarter turn.** A bbox swap fits both equally, nobody had looked at the
 canvas, and the Studio told customers to "use Rotate to stand it up" — which no rotation can
-do, and the app has no mirror control. **The IMPORT half is FIXED 2026-09-07**
+do, and the app has no mirror control. **The writer's output has now been DRAWN, not inferred** — a "FRITSCH" export decoded by
+pystitch reads backwards at 15.1 x 101.8 mm where PES/EXP/JEF each read upright at
+101.8 x 15.1, and the Studio's DST caveat is accurate clause for clause (scope-history 09-07). **The IMPORT half is FIXED 2026-09-07**
 (`EMB.decodeDSTStandard`; `decodeDST` and its 12 round-trip tests untouched): a becker logo
 lands `96×58 mm` reading forwards, and PES/EXP/JEF re-export **identity, rms 0** against the
 source file where all three were mirrored. **Not only orientation:** `dst.js` writes the
@@ -409,22 +400,19 @@ permission screenshots (audit §8).
 `-n auto` (pytest-xdist, pinned) roughly halved the digitizer suite. **Do not
 re-tune hoping for the 2.5-3x seen locally:** GitHub's standard runners are
 2-core, so `-n auto` gets two workers and OpenCV's threading competes with them. Parallel-safety is verified, not assumed.
-**`--durations` has now been run (2026-09-06), and the lever it named was a mirage:** its top five entries were one `lru_cache` bill split across workers — the suite does **20 real pipeline runs for 8 distinct cases**, because the cache is per-process and xdist is not — so deleting them saved **13s of a predicted 380**. The real win was caching the suites themselves, **18m38s → 14m00s** (#369). `--dist loadfile` measures **5.8%** at CI's own two workers (23m53s → 22m27s, 1889 passed both ways) but floors wall-clock at the slowest single FILE: an option with its trade named, not taken. **And the job's own duration is not what anything here documented** — measured 2026-09-06 over the last 220 completed `digitizer` jobs from the Actions API: **10 to 42 minutes**, daily median walking 15.0 → 16.5 → 17.6 → 18.7 → 20.7 and then jumping to **29.6 on 2026-09-06** (max 41.8). CLAUDE.md's "12–18" was true when written and now holds for half. **Cause not settled, but bounded:** it is entirely in the test step (`Install` is 0.27 min on fast and slow runs alike), it is NOT concurrency (the 41.8-minute worst case ran with ZERO other digitizer jobs, and the most-contended jobs are the fastest — hypothesis refuted), and suite growth alone cannot carry it: the SAME test count lands 19.6–34.5 min (1,851 tests) and 17.9–33.7 (1,968), a **1.9× spread on identical work**, with seconds-per-test running 0.54–1.32. **The runner's CORE COUNT is refuted too, by the diagnostic on its first run** (2026-09-07): `nproc: 4`, 16 GB, on a **27m59s** job of 1,984 tests — `-n auto` had four workers, and this box does the same suite in ~15 min on four. Four hypotheses, four eliminated; what remains is per-core throughput or hypervisor contention, which one reading cannot separate. Every run now records its own `nproc`. *(measured 2026-09-06/07 — scope-history 09-06, 09-07)*
-*(measured 2026-08-14, 2026-09-06 — DOCTRINE, scope-history 09-06)*
+**`--durations` has now been run (2026-09-06), and the lever it named was a mirage:** its top five entries were one `lru_cache` bill split across workers — the suite does **20 real pipeline runs for 8 distinct cases**, because the cache is per-process and xdist is not — so deleting them saved **13s of a predicted 380**. The real win was caching the suites themselves, **18m38s → 14m00s** (#369). `--dist loadfile` measures **5.8%** at CI's own two workers (23m53s → 22m27s, 1889 passed both ways) but floors wall-clock at the slowest single FILE: an option with its trade named, not taken. **And the job's own duration is not what anything here documented** — measured 2026-09-06 over the last 220 completed `digitizer` jobs from the Actions API: **10 to 42 minutes**, daily median walking 15.0 → 16.5 → 17.6 → 18.7 → 20.7 and then jumping to **29.6 on 2026-09-06** (max 41.8). CLAUDE.md's "12–18" was true when written and now holds for half. **Cause not settled, but bounded:** it is entirely in the test step (`Install` is 0.27 min on fast and slow runs alike), it is NOT concurrency (the 41.8-minute worst case ran with ZERO other digitizer jobs, and the most-contended jobs are the fastest — hypothesis refuted), and suite growth alone cannot carry it: the SAME test count lands 19.6–34.5 min (1,851 tests) and 17.9–33.7 (1,968), a **1.9× spread on identical work**, with seconds-per-test running 0.54–1.32. **The runner's CORE COUNT is refuted too, by the diagnostic on its first run** (2026-09-07): `nproc: 4`, 16 GB, on a **27m59s** job of 1,984 tests — `-n auto` had four workers, and this box does the same suite in ~15 min on four. Four hypotheses, four eliminated; what remains is per-core throughput or hypervisor contention, which one reading cannot separate. Every run now records its own `nproc`. *(measured 2026-08-14, 2026-09-06/07 — DOCTRINE, scope-history 09-06, 09-07)*
 
 ### No physical sew-out testing has occurred yet
 
-Zero sew-out testing anywhere in this project — confirmed across three
-independent research passes. `docs/hardening-closeout-2026-08-02.md`: "Nothing
-was sewn. Every number above... is geometry." It is the single biggest
-confidence ceiling here — fabric presets, real stitch quality, the DST axis
-question all wait on it — and that doc already specifies four hoopings that
-would settle nine open geometric questions at once. **Kent accepted this as-is
-2026-08-21:** not a queued action; scores under it read `pending sew-out`
-permanently. Do not re-raise it as the highest-leverage next action.
-One specific question is now queued behind it with the code change already
-measured both ways: whether a split, underlaid 5.3 mm satin column is sound —
-see DOCTRINE, "Raising `SATIN_MAX_WIDTH_MM`". *(2026-09-02 — reverted branch)*
+Zero sew-out testing, confirmed across three independent research passes;
+`docs/hardening-closeout-2026-08-02.md` specifies four hoopings that would
+settle nine open geometric questions at once. The single biggest confidence
+ceiling here — fabric presets, real stitch quality, the DST axis question all
+wait on it. **Kent accepted this as-is 2026-08-21:** not a queued action, scores
+under it read `pending sew-out` permanently, and it is not to be re-raised as
+the highest-leverage next action. One question is queued behind it with the code
+already measured both ways — DOCTRINE, "Raising `SATIN_MAX_WIDTH_MM`".
+*(2026-08-21; 2026-09-02 — reverted branch)*
 
 ### Evaluation corpus & harness — real gap, newly tracked here
 
@@ -443,17 +431,15 @@ mover was real**, and all were attributed before the 2026-09-02 recapture,
 which also drops the duplicate fixture and stamps its commit.
 *(2026-08-21; 2026-09-02 — [notes](docs/scorecard-baseline-attribution-2026-09-02.md))*
 
-**Corpus half — the real-artwork entries keep contradicting the synthetics.**
-Seven distinct real customer logos ship in `FIXTURES`: **stage 0 routes six of
-seven to GRADIENT**, because real logo art carries JPEG ringing and anti-aliased
-edges the synthetics lack, so a "flat spot-colour art" claim tuned only on
-synthetics is untested against real input.
-`logo_script_tires.png` classifies `photo_scene` outright — a misroute kept so
-the bug has a fixture. **Real PHOTOGRAPHS go further: all four of Kent's
-portraits classify `gradient` with the LOWEST `unique_color_mass` in the corpus,
-below every gradient logo** — the measurement behind `cfg.is_photographic`
-being declared rather than detected.
-*(2026-08-15 / 08-25 — `corpus_scorecard.py:FIXTURES`; scope-history 08-25)*
+**The corpus is half-present, and its real-artwork half keeps contradicting the
+synthetics** — six of seven real customer logos route to GRADIENT at stage 0, so
+a "flat spot-colour art" claim tuned on synthetics is untested against real
+input. **A second harness, `tools/pro_parity/`, measures distance from the
+PROFESSIONAL digitization** of the same 23 designs; its scale changed
+2026-08-14, so read the Gotcha in [`DOCTRINE.md`](DOCTRINE.md) before comparing
+to any earlier number. Which fixtures misroute, and which half of the corpus a
+fresh checkout actually has: [area 1](docs/scope/1-auto-digitizing-quality.md).
+*(2026-08-15 / 08-18 / 08-25; detail moved 2026-09-07 — rule 5)*
 
 **The tonal corpus is machine-bound and does not survive a session.** Kent's
 portraits live in the gitignored `testdata/photo/acceptance/` (spec decision 6 —
@@ -463,18 +449,6 @@ measurement shows binary corrupts silently in transit, and these are 3-8 MB.
 `scratch_corpus/`'s 37 files remain unreachable from a cloud session (Waiting on
 Kent #7). **Consequence: every threshold validated on faces today is validated
 by evidence CI cannot see.** *(confirmed 2026-08-25)*
-
-**A second harness exists: `tools/pro_parity/`** — how close our output is to
-the PROFESSIONAL digitization of the same design, 23 designs, six weighted
-components. **Its scale changed 2026-08-14** (chance-corrected floors); see the
-Gotcha in [`DOCTRINE.md`](DOCTRINE.md) before comparing to any earlier number.
-*(confirmed — PR #151)*
-
-**Half that corpus is in the repo; the half that matters is not.** The tracked
-`Embroidery Files.zip` carries all 23 pro STITCH files, so `prep_all.py`'s recon
-lane runs from a fresh checkout. It carries **zero customer artwork**, so
-`prep_both.py`'s real lane — the one behind the 42.5 baseline — still needs the
-Drive copy. *(corrected 2026-08-18 — prep_both from the zip fails 0/15)*
 
 **Area 1 is deliberately NOT split into "image analysis" + "stitch planning"**, and
 the four gaps an external review named have owners in code — [area 1](docs/scope/1-auto-digitizing-quality.md). *(moved 2026-08-21 — rule 5)*
@@ -653,6 +627,22 @@ thumbnail. Pinned on the literal 0.4 and both ratios. *(2026-09-04 — `preview.
 
 **Typographic punctuation folds to its ASCII twin where a font lacks it.** A customer's phone substitutes U+2019 for an apostrophe silently and 26 of the 85 fonts have no glyph for it, so "Fritsch's Stitches" sewed as "Fritschs Stitches" (1,326 stitches against 1,354) under a note naming a character that looks identical to the one they typed. `satinfont.js TYPOGRAPHIC_FOLD` stitches the twin ONLY where the fancy form is missing — 367 font x character combinations rescued, and all 85 fonts hash identically on text that never needed it. Not NFKD: accented letters are different letters and stay unfolded (33–73 fonts cover the common ones, and the "these fonts can" message is good advice there). *(fixed 2026-09-07 — DOCTRINE; scope-history 09-07)*
 
+**A design is named after what is in it, and the registry stops swallowing
+failed writes.** Every project was "Untitled design", so "My designs" listed
+rows a customer could only tell apart by opening each, and every backup
+downloaded as `untitled-design.embproj`. A still-unnamed design now takes its
+name from its content; a name typed by hand is sticky. Separately,
+`renameProject` and `deleteProject` reported success for an index write that
+never landed — a name and a project's membership of the registry live ONLY in
+that index — and `deleteProject` removed the record before writing it. Both
+propagate now, index first. *(fixed 2026-09-07 — area 3; DOCTRINE)*
+
+**The built bundle works wherever it is served.** `vite.config.js` sets
+`base: "./"` and five hand-written `/fonts/…` paths ignored it, so below the
+domain root the lettering lane produced nothing; font LICENCE links were among
+the five. Document-relative now, identical at the root. *(fixed 2026-09-07 —
+`assetPaths.spec.js`)*
+
 **Lettering under the cap floor now names a way out.** The one verdict meaning "cannot be sewn" was the only one with no fix while the milder branch named two — 74 characters at the default left chest reads 1.3 mm against a 4 mm floor. Levers measured before being named: 3 lines 4.8 mm, 6 lines 6.3 mm, 18 characters 6.7 mm, full back 4.0 mm; 40 characters is still 3.1 mm, so line breaks lead and "fewer characters" is second. "Size up" is withheld at the width cap, the rule the hairline branch already followed. *(fixed 2026-09-07 — scope-history 09-07)*
 
 ### 4. Export formats — [detail](docs/scope/4-export-formats.md)
@@ -668,6 +658,18 @@ service, on every project type.
 **Four more machine formats work and have no button (Kent's call).** `/health` also advertises `pec`, `vp3`, `xxx`, `u01`; one two-colour design exported in all nine and decoded with pystitch gives the same 99 stitches at 80.0 x 24.0 mm each, vp3/xxx/pec carrying the 2-thread colour table. **VP3 is Husqvarna Viking / Pfaff, XXX is Singer** — two major consumer brands whose owners cannot use the product today. Scope, not a doc-vs-reality gap like JEF: PRODUCT.md item 1 names PES and JEF and is silent on these four. *(measured 2026-09-07 — DOCTRINE; scope-history 09-07)*
 
 **The printed worksheet now carries what the screen carries.** It stated size and stitch count, dropped trims and thread metres (two of the four numbers estimate.js calls what an operator needs before loading a machine), and printed a spool code without naming which of the 68 charts numbers it. Both fixed; the facts are computed once and passed, never re-derived at the sheet, and an e2e reads the screen and the real PDF bytes and requires them to agree verbatim. *(fixed 2026-09-07 — scope-history 09-07)*
+
+**The worksheet's thread list was not on the paper.** The page break ran after
+each row instead of before it, so on a one-colour design the single row was
+drawn at y = 11.09 in on an 11.00 in page — off the sheet — with a blank second
+page after it. Three tiers of test passed throughout: a string is in the
+content stream whether or not it lands on the paper. The render is capped at
+5.5 in so an ordinary design prints on one page, and the sheet now states
+whether the design fits the hoop it names (its picture is the GARMENT placement
+box, not the hoop, so a 305 mm design looked like it fitted an 8x8). **Six of
+the seven downloadable outputs are now verified by PICTURE, not bytes** — PES,
+EXP, JEF, SVG, PNG and the sheet; DST is the exception, below.
+*(fixed 2026-09-07 — area 4; DOCTRINE)*
 
 - **DST — split by path.** Browser DST is Medium as Studio's sewn-and-shipping
   default, Low if treated as verified-correct-orientation in the abstract; that

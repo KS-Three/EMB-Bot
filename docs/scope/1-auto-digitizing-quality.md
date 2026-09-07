@@ -3887,3 +3887,56 @@ hold it.** `docs/exterior-notch-guard-2026-08-28.md`. *(prototyped 2026-08-28)*
 worst vs 72.7% mean). **Still blind to TILT**; the obvious tilt metric was
 built and REJECTED (ranks a good O worse than the deformed H). Detail in
 `tools/letterform_fidelity/README.md`. *(2026-08-28)*
+
+## Evaluation corpus — detail moved from MASTER_SCOPE 2026-09-07
+
+Moved under the 800-line budget (skill rule: per-area supporting detail
+belongs here, with the verdict and a link left behind). Verbatim; the
+dates and pointers are the originals.
+
+**Corpus half — the real-artwork entries keep contradicting the synthetics.**
+Seven distinct real customer logos ship in `FIXTURES`: **stage 0 routes six of
+seven to GRADIENT**, because real logo art carries JPEG ringing and anti-aliased
+edges the synthetics lack, so a "flat spot-colour art" claim tuned only on
+synthetics is untested against real input.
+`logo_script_tires.png` classifies `photo_scene` outright — a misroute kept so
+the bug has a fixture. **Real PHOTOGRAPHS go further: all four of Kent's
+portraits classify `gradient` with the LOWEST `unique_color_mass` in the corpus,
+below every gradient logo** — the measurement behind `cfg.is_photographic`
+being declared rather than detected.
+*(2026-08-15 / 08-25 — `corpus_scorecard.py:FIXTURES`; scope-history 08-25)*
+
+
+**A second harness exists: `tools/pro_parity/`** — how close our output is to
+the PROFESSIONAL digitization of the same design, 23 designs, six weighted
+components. **Its scale changed 2026-08-14** (chance-corrected floors); see the
+Gotcha in [`DOCTRINE.md`](DOCTRINE.md) before comparing to any earlier number.
+*(confirmed — PR #151)*
+
+
+**Half that corpus is in the repo; the half that matters is not.** The tracked
+`Embroidery Files.zip` carries all 23 pro STITCH files, so `prep_all.py`'s recon
+lane runs from a fresh checkout. It carries **zero customer artwork**, so
+`prep_both.py`'s real lane — the one behind the 42.5 baseline — still needs the
+Drive copy. *(corrected 2026-08-18 — prep_both from the zip fails 0/15)*
+
+
+## Shade-merge candidates — measurement moved from MASTER_SCOPE 2026-09-07
+
+Kent TABLED the shade-merge 2026-09-02; the ruling stays in the decision
+queue, the numbers behind it live here. Verbatim.
+
+12. **Merge a tiny cone into an ADJACENT SHADE — a colour call, and the
+   COMMITTED corpus can now pose it.** The sew-out's b4/b7 class: cutting such
+   a cone further means sewing its patches in a neighbouring shade's thread —
+   a colour step for a stop, quality not gate-1 physics. `sequence_census.py`
+   reports colour since 2026-09-02, and committed art carries defensible
+   pairs — ΔE **1.41** (`screenshot_phone_ui_golke`, 62st → 79st), **1.78**
+   (`logo_bridge_bar`, 197st → 444st), **2.65** (`drone_render`, 338st →
+   1560st); the repro had none (closest cones 33.4 ΔE) until 2026-09-04, when its sweep became five shade bands 5–6 ΔE apart by design — adjacent shades of one ramp, not candidates. Real artwork runs
+   15–18 cones, so the population is not rare.
+   **TABLED — Kent, 2026-09-02:** *"I'm honestly not concerned about the
+   hopping idea, we can table this one for a further discussion."* Do not
+   build the shade-merge or further hopping polish until he reopens it; the
+   08-31 mechanical fixes (`start_near`, the re-snap rehome) are merged and
+   unaffected. *(measured 2026-09-02 — `sequence_census.py`, 26 fixtures; tabled 2026-09-02 — Kent)*
