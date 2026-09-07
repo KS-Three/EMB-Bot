@@ -2960,3 +2960,31 @@ its hedge as it is copied forward** — is why this file is split.
   unsewable however it is encoded, and what to do about it — split satin,
   route wide columns to fill, cap the width — is a look-and-fabric decision
   with a sew-out behind it, not an encoder one. *(2026-09-07)*
+
+- **A deferred decision priced on the wrong lane stays deferred for the wrong
+  reason.** `encodeDST` does not stop at the terminal `{type:"end"}` sentinel
+  the way `exp.js` and `pes.js` both do — one line, `if (st.type === "end")
+  break;` — so it writes the sentinel as a real stitch. The 2026-08-04 verdict
+  looked at it, called it *"one extra phantom stitch"*, and parked it with the
+  axis bug.
+
+  That price is right for LETTERING, where the sentinel sits on the last stitch
+  and the extra record is zero-delta — and where `buildLetteringDesign` appends
+  none at all. It is wrong for the lane most customers use.
+  `buildImportedDesign` puts the sentinel at the **element's offset**, so
+  measured 2026-09-07 on a real 95.7 × 58.3 mm logo the DST ends with a stitch
+  **0.07 mm from the design's centre and 46.4 mm from the previous one** — a
+  stray needle penetration in the middle of the design, with 46 mm of travel to
+  reach it. PES and EXP of that same design end where the design ends: 11,274
+  stitches against DST's 11,275.
+
+  **The harness had been printing it the whole time.**
+  `test/crossval-stitch-formats.test.js`'s DST control reported `decoded 16 /
+  expected 15` from the day it was written; the EXP and PES tests assert their
+  counts and the DST one never did, because the count was "known bad" and
+  nobody wrote down HOW bad. It is asserted now.
+
+  **When you defer something, price it on the lane it actually ships to.** A
+  defect measured on the quiet path and parked reads as cosmetic forever.
+  Still Kent's — the DST codec is (CLAUDE.md footgun 1) — but it is a one-line
+  change now costed against a real logo instead of a fixture. *(2026-09-07)*

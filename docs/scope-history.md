@@ -9583,3 +9583,44 @@ monogram at left-chest size, or any short text on a big garment. A 17.9 mm
 satin crossing is unsewable however it is encoded, and what to do about it
 (split satin, route wide columns to fill, cap the width) is a look-and-fabric
 decision with a sew-out behind it, not an encoder one.
+
+## 2026-09-07 — the DST ends with a stray stitch in the middle of the design
+
+Snapshot. Not live status.
+
+`encodeDST` does not stop at the terminal `{type:"end"}` sentinel the way
+`exp.js` and `pes.js` both do — one line, `if (st.type === "end") break;` — so
+it writes the sentinel as a real stitch record.
+
+The 2026-08-04 crossval verdict looked at this, called it *"one extra phantom
+stitch"*, and parked it with the axis bug. That price is right for **lettering**,
+where the sentinel is zero-delta — and where `buildLetteringDesign` in fact
+appends none at all. It is wrong for the lane most customers use.
+
+`buildImportedDesign` puts the sentinel at the **element's offset**. Measured on
+a real 95.7 × 58.3 mm logo, re-exported through the shipped app and decoded with
+pystitch:
+
+| file | stitches | last stitch | gap from the previous |
+|---|---|---|---|
+| `.dst` | **11,275** | **0.07 mm from the design's centre** | **46.39 mm** |
+| `.pes` | 11,274 | 46.42 mm from the centre — where the design ends | 1.02 mm |
+| `.exp` | 11,274 | 46.42 mm from the centre | 1.02 mm |
+
+A stray needle penetration in the middle of the design, with 46 mm of travel to
+reach it, on **every** single-element imported, digitized, shape or manual
+project. Pure lettering is untouched.
+
+### The harness had been printing it the whole time
+
+`crossval-stitch-formats` reports `dst.notrim: expected 15, decoded 16` and has
+since the day it was written. The EXP and PES tests assert their counts; the DST
+control asserted the transform and the colour-change bytes and never the count,
+because the count was "known bad" and nobody had written down HOW bad.
+
+It is asserted now, as a `DOCUMENTS KNOWN DEFECT` pin, and mutation-proved by
+making the proposed one-line fix: the pin fails, which is exactly what should
+happen the day the call is made.
+
+**Left in place — the DST codec is Kent's** (CLAUDE.md footgun 1). But it is a
+one-line change now costed against a real logo instead of a fixture.

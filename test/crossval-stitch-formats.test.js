@@ -82,6 +82,28 @@ test("crossval control: DST shows the documented axis transposition", async (t) 
   // third-party readers see a sequin-mode toggle and ZERO color changes.
   assert.strictEqual(r.decodedColorChanges, 0);
   assert.strictEqual(r.decodedSequinToggles, 1);
+  // DOCUMENTS KNOWN DEFECT, and the harness has shown it since the day it was
+  // written without anyone asserting it: DST decodes ONE MORE stitch than the
+  // design has. encodeDST does not stop at the terminal {type:"end"} sentinel
+  // the way exp.js and pes.js both do (one line, `if (st.type === "end")
+  // break;`), so it writes it as a real stitch record.
+  //
+  // The 2026-08-04 verdict deferred this as "one extra phantom stitch",
+  // priced on the LETTERING lane where the sentinel sits on the last stitch
+  // and the extra record is zero-delta. Measured on the imported/digitized
+  // lane 2026-09-07, that price is wrong: buildImportedDesign puts the
+  // sentinel at the ELEMENT'S OFFSET, so on a real 95.7 x 58.3 mm logo the DST
+  // ends with a stitch **0.07 mm from the design's centre, 46.4 mm from the
+  // previous one** — a stray needle penetration in the middle of the design,
+  // with 46 mm of travel to reach it. PES and EXP of the same design end where
+  // the design ends. Every single-element imported, digitized, shape or manual
+  // project carries it; pure lettering does not (buildLetteringDesign appends
+  // no sentinel at all).
+  //
+  // Left in place because the DST codec is Kent's (CLAUDE.md footgun 1). If
+  // this starts failing, that call was made — drop this assertion and the
+  // MASTER_SCOPE note with it.
+  assert.strictEqual(r.decodedStitches, r.expectedStitches + 1);
 });
 
 test("crossval control: DST trim-as-3-jumps IS read back as a trim", async (t) => {
