@@ -28,6 +28,8 @@ from digitizer_core.pipeline import digitize
 from digitizer_core.stage7_sequence import _merge_adjacent_same_thread
 from digitizer_core.stitches import StitchBlock, StitchRun
 
+from .conftest import PRE_REC4_MASK
+
 
 TESTDATA = Path(__file__).resolve().parent.parent / "testdata"
 
@@ -275,8 +277,9 @@ def test_the_hoist_moves_no_stitches_and_changes_no_pixels_on_the_owl():
 
     img = TESTDATA / "photo/owl_kent.jpg"
     off = digitize(img, PipelineConfig(target_width_mm=100.0,
-                                       hoist_same_thread_margin_mm=0.0))[1]
-    on = digitize(img, PipelineConfig(target_width_mm=100.0))[1]
+                                       hoist_same_thread_margin_mm=0.0,
+                                       **PRE_REC4_MASK))[1]
+    on = digitize(img, PipelineConfig(target_width_mm=100.0, **PRE_REC4_MASK))[1]
 
     assert len(on.blocks) < len(off.blocks), "no revisit was hoisted at all"
     n_off = sum(len(r.points) for b in off.blocks for r in b.runs)

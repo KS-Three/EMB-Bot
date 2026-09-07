@@ -255,9 +255,18 @@ def test_page_side_halo_is_returned_to_the_background():
 @pytest.fixture(scope="module")
 def bridge_pair():
     def run(on: bool):
+        # PRE_REC4_MASK: this file measures `dissolve_phantom_blends` ALONE,
+        # and its numbers were taken before Kent flipped the other five ON
+        # (2026-09-07). With them live, `bind_resnap_all_classes` has already
+        # removed the escape cones this fixture is supposed to LOSE — `0182`
+        # is not there to lose and `0501` reads as dissolved when nothing
+        # dissolved it. Isolation keeps the test and its measurement saying
+        # the same thing; `dissolve_phantom_blends` itself stays OFF and is
+        # not part of that set.
         return digitize(BRIDGE, PipelineConfig(
             target_width_mm=80.0, max_colors=6, satin=True,
-            garment_id="left_chest", dissolve_phantom_blends=on))
+            garment_id="left_chest", dissolve_phantom_blends=on,
+            **PRE_REC4_MASK))
     return run(False), run(True)
 
 

@@ -87,9 +87,12 @@ class _Case(NamedTuple):
 
 @lru_cache(maxsize=None)
 def _default_digest(fixture: str) -> tuple:
-    """The shipped engine with NO flag mentioned at all, for the byte-identity
-    contract. Deliberately not `_case(fixture, False)`: that passes the flag
-    explicitly, and comparing the two is the whole point."""
+    """This flag left UNMENTIONED inside the isolated context — i.e. at its
+    pre-flip value, since `_cfg` pins `PRE_REC4_MASK`.
+
+    It stopped meaning "the shipped engine" on 2026-09-07: the shipped engine
+    has all five flags ON, and `test_the_shipped_default_is_the_RESNAPPED_engine`
+    is what covers that now, with its own configs."""
     cfg = _cfg()
     result = run_stages(TESTDATA / fixture, cfg)
     plan = plan_stitches(result, cfg)
@@ -186,21 +189,38 @@ def test_flag_defaults_on():
     assert PipelineConfig().revalidate_small_shapes is True
 
 
+def _shipped_cfg(**kw) -> PipelineConfig:
+    """The engine a customer gets — no PRE_REC4_MASK pinning."""
+    return PipelineConfig(target_width_mm=80.0, **kw)
+
+
+@lru_cache(maxsize=None)
+def _plan_digest(cfg: PipelineConfig) -> tuple:
+    result = run_stages(TESTDATA / FIXTURE, cfg)
+    plan = plan_stitches(result, cfg)
+    coords = [(round(x, 4), round(y, 4), run.kind, run.jump, run.trim)
+              for _b, run in plan.iter_runs() for x, y in run.points]
+    return (hashlib.sha256(repr(coords).encode()).hexdigest()[:20], len(coords))
+
+
 def test_the_shipped_default_is_the_RESNAPPED_engine():
-    """The contract every flag here carries, inverted by Kent's 2026-09-07
-    flip. Explicit True against the default, so a change to the default is
-    caught as a difference rather than silently agreeing with itself — and
-    explicit False must still differ, or the flag has gone inert."""
+    """The contract every flag here carries, restated for Kent's 2026-09-07
+    flip: the SHIPPED engine has this flag on, and turning only it off must
+    still change the sewn result — otherwise the flag has gone inert and this
+    file has stopped testing anything."""
     # The DEFAULT config against an EXPLICIT False — not `_case(F, False)`
     # against itself, which is what a first pass at the cache made this, and
     # which asserts nothing. The two configs are identical only while the
     # default is False, so a flipped default fails here as well as in
-    # `test_flag_defaults_on`. Worth the one extra pipeline run: it is this
-    # file's core contract.
-    assert _default_digest(FIXTURE) == _case(FIXTURE, True).digest
-    assert _default_digest(FIXTURE) != _case(FIXTURE, False).digest, (
-        "the flag no longer moves this fixture, so this file has stopped "
-        "testing it")
+    # Built here rather than from `_case`/`_default_digest`, both of which pin
+    # PRE_REC4_MASK for isolation and so cannot speak about the shipped engine
+    # at all. This is the one test in the file that asks what a customer gets.
+    shipped = _plan_digest(_shipped_cfg())
+    without = _plan_digest(_shipped_cfg(revalidate_small_shapes=False))
+    assert PipelineConfig().revalidate_small_shapes is True
+    assert shipped != without, (
+        "turning the flag off changes nothing on the shipped engine, so it is "
+        "either inert or no longer reaching this fixture")
 
 
 @pytest.mark.parametrize("fixture", [

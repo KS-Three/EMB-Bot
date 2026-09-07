@@ -43,7 +43,7 @@ from digitizer_core.stage3_segment import merge_duplicate_cone_layers
 from digitizer_core.threads import CHART
 from digitizer_core.warnings_codes import DUPLICATE_CONE_LAYERS_MERGED
 
-from .conftest import cfg
+from .conftest import PRE_REC4_MASK, cfg
 
 TESTDATA = Path(__file__).resolve().parent.parent / "testdata"
 DRONE = TESTDATA / "photo" / "drone_render.png"
@@ -124,12 +124,13 @@ def test_three_declarations_of_one_cone_all_land_on_the_first():
 @pytest.fixture(scope="module")
 def drone_off():
     return digitize(DRONE, cfg(target_width_mm=80.0,
-                              merge_duplicate_cones=False))
+                              merge_duplicate_cones=False, **PRE_REC4_MASK))
 
 
 @pytest.fixture(scope="module")
 def drone_on():
-    return digitize(DRONE, cfg(target_width_mm=80.0, merge_duplicate_cones=True))
+    return digitize(DRONE, cfg(target_width_mm=80.0, merge_duplicate_cones=True,
+                               **PRE_REC4_MASK))
 
 
 def test_the_default_is_on():

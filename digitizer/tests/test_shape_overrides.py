@@ -32,7 +32,7 @@ from digitizer_core.regions import Region, apply_shape_edits, match_shape_ids
 from digitizer_core.stage5_overlap import resolve_overlaps
 from digitizer_core.stage7_sequence import sequence
 
-from .conftest import TESTDATA, cfg
+from .conftest import PRE_REC4_MASK, TESTDATA, cfg
 from .test_pushcomp import GOLDEN_FLAG_OFF
 
 ART = TESTDATA / "logo_whitebg.png"
@@ -110,7 +110,7 @@ def plan_for(regions: list[Region], **cfg_kw):
 
 @pytest.fixture(scope="module")
 def base():
-    return digitize(ART, cfg())
+    return digitize(ART, cfg(**PRE_REC4_MASK))
 
 
 @pytest.fixture(scope="module")
