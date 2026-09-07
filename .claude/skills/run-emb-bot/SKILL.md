@@ -303,6 +303,21 @@ These are the ones that cost real time here.
   `EADDRINUSE`. The driver spawns `detached: true` and kills the whole process
   group. By hand: `lsof -ti:5173 -sTCP:LISTEN | xargs -r kill`.
 
+- **Do not run the 18-minute digitizer suite against a tree you are still
+  editing.** Same family as the polling rule below — reading a moving target —
+  but the target is the working tree, and the failure looks like a REGRESSION
+  rather than a flake. On 2026-09-07 a full run came back `4 failed` against
+  the three expected platform reds; the fourth was `test_scope_budget`, which
+  reads `MASTER_SCOPE.md` off disk and happened to execute while that file was
+  mid-merge-resolution. Both the working tree and the committed tree were at
+  exactly 800 and the test passed on its own a minute later.
+
+  A fourth failure is the documented tripwire for a real regression
+  (CLAUDE.md footgun 7), so this wastes exactly the attention that tripwire is
+  for. Either start the run and stop touching the repo, or run it from a clean
+  worktree — and when a doc-reading test is the odd one out, re-run that test
+  alone before believing it.
+
 - **Never read a value after a fixed `sleep` — poll until it STOPS changing.**
   The upload gotcha above says this for the stitch caption; it is the general
   rule, and it cost three separate wrong conclusions in one session
