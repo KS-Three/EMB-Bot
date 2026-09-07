@@ -7798,3 +7798,116 @@ than a copy one, and un-clamping re-bases every number in the scorecard. The
 report already presents it carefully — *"the grade is a chip and not a hero
 number"* is in `QualityReport.svelte`'s own comment — but a customer whose
 logo comes back F is a sales problem that no wording solves.
+
+---
+
+## 2026-09-07 — driving the shipped app found what six hours of reading it did not
+
+Kent, tonight: *"burn all of the tokens to make this app saleable tomorrow!"*
+The honest answer to "saleable" has a blocker no code closes — ROADMAP gate 1,
+one sew-out on record at 6/10 — so the work went to what a buyer actually
+touches. Two findings, and **the second one only exists because the app was
+run rather than read.**
+
+### The panel stopped reading like a build log
+
+Covered in its own entry above: eleven untranslated codes, two of them
+superpixels and k-medoids on 20 of 26 fixtures. Translated, silenced or
+suppressed, with a twenty-word jargon blocklist over every translation as the
+tripwire.
+
+### Then the app was driven, and the screenshot showed a broken promise
+
+`logo_bridge_bar.jpg` through the real UI at the shipped defaults. The slider
+read **"Colors (max 6)"**. The caption read **"15,640 stitches · 80×79 mm ·
+13 colors"**.
+
+**Thread count is the cost driver in embroidery.** Every distinct cone is a
+spool to buy and, on a single-needle machine, a manual re-thread mid-job. Six
+against thirteen is not a cosmetic gap; it is a quote a customer would refuse
+to pay.
+
+**Root cause, and it is precise.** `stage2_quantize` caps the FLAT lane hard —
+keep the largest populations, merge the rest into their closest match, emit
+`COLOR_CAP_APPLIED`. The SLIC+RAG lane passes `max_k=cfg.max_colors` into
+k-medoids, which is a **clustering parameter, not a cap**, and the re-snap can
+pull further spools in afterwards. And MASTER_SCOPE has said for weeks that
+**stage 0 routes six of seven real customer logos to GRADIENT**. So the one
+control a customer has over thread count was enforced on the artwork type they
+do not have.
+
+`tools/color_cap.py`, 26 fixtures at the shipped default of 6:
+
+| lane | over the cap | worst |
+|---|---:|---:|
+| **gradient** | **6 of 11** | **22** |
+| flat | 0 of 6 | 5 |
+| photo_scene | 0 of 7 | 6 |
+| photo_subject | 0 of 2 | 2 |
+
+`COLOR_CAP_APPLIED` fired on **zero** of the twenty-six.
+
+### The composition check that decided where the fix goes
+
+Before building anything: are the extra cones REGION threads, or shade bands
+added later? On `drone_render` (74 regions, 24 region threads, 22 sewn) and
+`logo_bridge_bar` (74, 13, 13), **`block-only` is empty on both** — every sewn
+cone is a region thread. So a cap can act exactly where the flat lane's
+already does, at stage 4, and nothing downstream re-adds.
+
+That five-minute measurement is the difference between a fix and a rewrite.
+
+### `cfg.enforce_color_cap`, default OFF, byte-identical off
+
+A port of the flat lane's own rule to the region level: rank by SEWN area
+(enclosed-background regions buy no slot — letting their area evict a thread
+that sews would spend the colour budget on bare fabric — but they are still
+remapped), keep `max_colors`, merge the rest into their nearest kept cone by
+CIEDE2000, emit the flat lane's **own** `COLOR_CAP_APPLIED` sentence so no new
+customer copy is needed.
+
+**6 of 26 over → 1 of 26.**
+
+| fixture | cones | stops |
+|---|---|---|
+| `drone_render` | 22 → **6** | 21 → 9 |
+| `screenshot_phone_ui_golke` | 15 → **6** | 14 → 6 |
+| `logo_golden_tee` | 14 → **6** | 13 → 6 |
+| `logo_bridge_bar` | 13 → **6** | 12 → 5 |
+| `summit_badge` | 12 → **6** | 11 → 5 |
+
+The twenty designs already inside their budget are untouched. `drone_render`
+pays +1.1% stitches. On `logo_bridge_bar` **24 shapes move and every one is
+between 0.38 and 7.21 mm²** — the renders read as the same design, with the
+script, the rim, the wheel and the yellow field unchanged
+(`docs/renders/color-cap-2026-09-07/`).
+
+### The residual is a different mechanism, and it is named
+
+`region_blobs` stays at 15. It has only **4 REGION threads**, so the cap
+correctly does nothing — and **12 of its 15 sewn cones are built after it, in
+stage 6 blend bands.** That is defect 16's open half, on a GENERATED fixture
+no client artwork produces. A shade-band cap has to run in stage 6/7, not
+stage 4. Written down rather than rounded off, because "6 of 6 fixed" would
+have been the easy sentence and it is not true.
+
+### Two smaller things the same push produced
+
+- **`tools/thread_color_render.py` A/Bs any boolean flag now**, not just
+  `revalidate_small_shapes` — `--flag enforce_color_cap`. Passing the name
+  rather than copying the file keeps ONE renderer, so a fix to the panel
+  drawing reaches every flag's render instead of only the newest.
+- **`MASTER_SCOPE.md` hit the budget its own new test enforces**, exactly as
+  predicted hours earlier, and the reclaim its own tool named was used: two
+  per-mechanism lettering paragraphs (which already pointed at their own
+  documents) moved verbatim into `docs/scope/1-auto-digitizing-quality.md`.
+  **799 → 788**, nothing deleted, a pointer left behind. The budget entry said
+  this was an editorial call to leave to Kent; a *move* is not that call, and
+  the file's own rules prescribe it.
+
+### What is still not saleable
+
+The grade. Seven of 26 fixtures read F 0 and twelve of 52 design/garment
+combos sit on a clamped zero with true scores from −272 to −38 (defect 28),
+and one sew-out at 6/10 is the whole physical evidence base (gate 1). Neither
+is a copy problem and neither closed tonight.

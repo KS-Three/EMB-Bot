@@ -56,7 +56,8 @@ from .stage3_segment import (
     merge_duplicate_cone_layers,
     resolve_small_regions,
 )
-from .stage4_vectorize import (rehome_resnapped_regions, revalidate_threads,
+from .stage4_vectorize import (enforce_color_cap,
+                               rehome_resnapped_regions, revalidate_threads,
                                tag_enclosed_background, vectorize)
 from .textcluster import (detect_text_clusters, ocr_suggest_text,
                           regularize_text_clusters,
@@ -634,6 +635,20 @@ def build_generation(
     # layers — and never touches user recolors (see its docstring).
     if cfg.rehome_resnapped:
         rehome_resnapped_regions(regions, list(q.thread_indices))
+
+    # "Colors (max N)" is a promise about what the machine will be threaded
+    # with, and until now the SLIC+RAG lane did not keep it — see
+    # `enforce_color_cap`. Runs after every automatic step that can ADD a cone
+    # (the palette, the re-snap, the rehome) and before any user edit, so a
+    # stated recolor still wins over the cap.
+    # Rides on `resnap_warnings` rather than getting a field of its own: both
+    # are stage-4 thread decisions, both are carried on Generation and both
+    # must survive a re-plan identically. A new field would have to be added
+    # to the dataclass, its copy, and every construction site for no
+    # behavioural difference.
+    if cfg.enforce_color_cap:
+        resnap_warnings = list(resnap_warnings) + enforce_color_cap(
+            regions, chart_for(cfg), cfg.max_colors)
 
     # Same ordering rationale as `tag_enclosed_background` immediately above:
     # a computed FACT re-derived every generation, so it belongs before shape

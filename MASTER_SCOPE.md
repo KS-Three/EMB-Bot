@@ -161,6 +161,8 @@ icon. Cloth pointers added to defects 3, 6 and 16 below.
 
 30. **The review screen's per-layer cone list names threads its layer does not sew — REAL, TRACKED, and currently HARMLESS.** `PALETTE_THREAD_MISMATCH` fires on **6 of 26** fixtures (34 shapes; `tools/palette_mismatch.py`) and appeared in NO document until now, though the code has described it since 2026-08-14. `result.palette` is per LAYER and `revalidate_threads` re-snaps individual shapes; `rehome_resnapped_regions` (2026-08-31) moves a re-snapped region to the layer declaring its new cone, so what survives is the re-snap whose target NO layer declares — and on **all six** fixtures the thread those shapes sew is on no review layer at all. **Three things bound it, each read off a contract rather than measured** (DOCTRINE): the OPERATOR's list is `plan.palette`, per BLOCK, verified consistent **26 of 26**; a layer legitimately sewing several shades is the blend tier, not this; and every Studio consumer is already hardened — `reviewFromJob` resolves a shape's colour with a `stats.blocks` fallback keyed by its own `sew_block`, and `QualityReport.svelte` refuses the layer palette outright. **Nothing renders the layer list as a cone list, so the customer-visible impact today is nil.** Kept as a regression detector for the day a consumer reads `review.palette` positionally; do not spend a session on it before then. *(measured 2026-09-07 — `digitizer/tools/palette_mismatch.py`; scope-history 09-07)*
 
+31. **"Colors (max 6)" is not enforced on the lane real customer logos take — FIXED BEHIND A FLAG 2026-09-07.** Thread count is the cost driver: every distinct cone is a spool to buy and, on a single-needle machine, a manual re-thread mid-job, so the slider is a pricing promise. `stage2_quantize` caps the FLAT lane hard (largest populations kept, the rest merged into their closest match, `COLOR_CAP_APPLIED` emitted); the SLIC+RAG lane passes `max_k=cfg.max_colors` into k-medoids, which is a clustering parameter and **not a cap**, and the re-snap can add spools on top. **Stage 0 routes six of seven real customer logos to GRADIENT**, so the control was enforced on the artwork type customers do not have. Measured at the Studio's shipped default of 6 (`tools/color_cap.py`): **6 of 26 designs sew more cones than the slider promises and all six are gradient** — flat 0/6, photo_scene 0/7, photo_subject 0/2 — worst `drone_render` at **22 cones and 21 colour stops** against a promised 6, with `COLOR_CAP_APPLIED` never firing. Found by driving the shipped app, not by a test. **FIXED, DEFAULT OFF** (`cfg.enforce_color_cap`, `stage4_vectorize.enforce_color_cap`): ranks threads by SEWN area (enclosed-background regions buy no slot but are still remapped), keeps `max_colors`, merges the rest into their nearest kept cone by CIEDE2000, and emits the flat lane's own `COLOR_CAP_APPLIED` sentence so no new customer copy is needed. ON: **6 of 26 over → 1 of 26**; `drone_render` 22 → 6 cones and 21 → 9 stops, `screenshot_phone_ui` 15 → 6 and 14 → 6, `logo_golden_tee` 14 → 6, `logo_bridge_bar` 13 → 6 and 12 → 5, `summit_badge` 12 → 6; the 20 designs already inside their budget are untouched; +1.1% stitches on drone. **The residual is a different mechanism and is named, not hidden**: `region_blobs` has only 4 REGION threads (so the cap correctly does nothing) and **12 of its 15 sewn cones are built after it, in stage 6 blend bands** — defect 16's open half, on a GENERATED fixture no client artwork produces. A shade-band cap would have to run in stage 6/7. Byte-identical off. Render: `docs/renders/color-cap-2026-09-07/` — 24 shapes move on bridge_bar, all 0.38–7.21 mm², and the design reads the same. Flipping it ON is Kent's. `tests/test_color_cap.py` (11). *(found and fixed 2026-09-07 — `digitizer/tools/color_cap.py`; scope-history 09-07)*
+
 ### Closed — kept numbered, because ten other docs cite them by number
 
 Full text moved to [`docs/scope-history.md`](docs/scope-history.md) 2026-08-27;
@@ -557,18 +559,7 @@ Fremont **0.152 → 0.198 mm**, ENTHUSIAST 0.152 → 0.200; benchmark **4.62 →
 drone 2.8 → 2.2%, Becker 6.0 → 5.5%; crosses past 45° off perpendicular drone 26 → 17%. Capitals
 measured, lowercase not. *(measured 2026-09-03 — area 1)*
 
-**Mechanism 2 — pull comp's min-feature guard scoped to `poly.interiors` —
-PROTOTYPED AND COSTED, not shipped.** An exterior-pocket branch holds 15 real
-slots at 0.528–0.920 mm and reds the chaining benchmark (3.8 → 6.4 trims/1k vs
-4.1; +2 trims at the shipped `chain_links=False`). **Kent's call 2026-08-28:
-hold it.** `docs/exterior-notch-guard-2026-08-28.md`. *(prototyped 2026-08-28)*
-
-**Mechanism 4 — the instrument that hid all of it — is HALF CLOSED
-2026-08-28.** Coverage and IoU average, and deformation is local, so
-`stroke_coverage.py` reports the WORST medial-axis stroke (DRONE's E: 58.3%
-worst vs 72.7% mean). **Still blind to TILT**; the obvious tilt metric was
-built and REJECTED (ranks a good O worse than the deformed H). Detail in
-`tools/letterform_fidelity/README.md`. *(2026-08-28)*
+**Mechanisms 2 and 4 — prototyped/costed and half-closed respectively — moved to [area 1 detail](docs/scope/1-auto-digitizing-quality.md) 2026-09-07 to keep this file inside its own 800-line budget.** Kent held the exterior-notch guard 2026-08-28 (reds the chaining benchmark 3.8 → 6.4 trims/1k); the letterform instrument reports the WORST medial-axis stroke and is **still blind to TILT**. *(moved 2026-09-07 — no content changed)*
 
 **Still open and unfixed:** `_prune_spurs` drops a 3-way node to 2-way so
 the walker welds the N's diagonal to its stem through a 108° fold — the same

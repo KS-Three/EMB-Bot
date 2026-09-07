@@ -27,7 +27,8 @@ from .regions import Region, assign_shape_ids
 from .stage1_prep import Prep
 from .stage3_segment import RegionMask
 from .threads import chart_for, rgb_to_lab
-from .warnings_codes import THREAD_RESNAPPED_AFTER_DRIFT, warn
+from .warnings_codes import (COLOR_CAP_APPLIED,
+                             THREAD_RESNAPPED_AFTER_DRIFT, warn)
 
 try:  # skimage's own spelling moved between versions; match the rest of the pkg
     from skimage.color import deltaE_ciede2000
@@ -682,6 +683,89 @@ def revalidate_threads(regions: list[Region], p: Prep,
         # design that had no small drifted shapes from one whose small
         # drifted shapes were never asked about.
         min_px=min_px,
+    )]
+
+
+def enforce_color_cap(regions: list[Region], chart, max_colors: int) -> list[dict]:
+    """Make "Colors (max N)" true on every lane, not just the flat one.
+
+    `stage2_quantize` already caps hard: past `cfg.max_colors` it keeps the
+    largest populations, merges the rest into their closest kept match, and
+    says so with `COLOR_CAP_APPLIED`. **The SLIC+RAG lane has no equivalent.**
+    It passes `max_k=cfg.max_colors` into k-medoids, which is a clustering
+    parameter, and the re-snap can then pull further spools in on top.
+
+    That matters because of a number already in MASTER_SCOPE: **stage 0 routes
+    six of seven real customer logos to GRADIENT.** So the one control a
+    customer has over thread count is enforced on the artwork type they do not
+    have. Measured over the corpus at the shipped default of 6
+    (`tools/color_cap.py`, 2026-09-07): **6 of 26 designs sew more cones than
+    the slider promises, and all six are gradient** — flat 0 of 6, photo_scene
+    0 of 7, photo_subject 0 of 2. Worst is `drone_render` at **22 cones and
+    21 colour stops** against a promised 6.
+
+    Thread count is the cost driver. Every distinct cone is a spool to buy
+    and, on a single-needle machine, a manual re-thread mid-job, so this is a
+    pricing promise rather than a preference.
+
+    **Rank by SEWN area.** A thread carried only by `enclosed_background`
+    regions buys no slot — those do not sew by default, so letting their area
+    evict a thread that does sew would spend the customer's colour budget on
+    bare fabric. They are still remapped, so nothing is left naming a cone the
+    design dropped.
+
+    Nearest is CIEDE2000 against the chart, matching `revalidate_threads`
+    above rather than the flat lane's Euclidean Lab — same file, same
+    yardstick, and the difference only ever moves which of two near-identical
+    spools a dropped colour lands on.
+
+    Runs BEFORE user shape edits so an explicit recolor still wins: automatic
+    decisions first, stated intent last.
+    """
+    if max_colors < 1 or not regions:
+        return []
+    present = {r.thread_index for r in regions}
+    if len(present) <= max_colors:
+        return []
+
+    sewn_area: dict[int, float] = {}
+    for r in regions:
+        if r.meta.get("enclosed_background", False):
+            continue
+        sewn_area[r.thread_index] = (sewn_area.get(r.thread_index, 0.0)
+                                     + float(r.area_mm2 or 0.0))
+    # Ties break on the thread index so the answer does not depend on set
+    # iteration order -- the same rule `_same_hole_findings` settled on.
+    ranked = sorted(present, key=lambda t: (-sewn_area.get(t, 0.0), t))
+    kept, dropped = ranked[:max_colors], ranked[max_colors:]
+
+    kept_lab = np.array([chart.lab[t] for t in kept])
+    remap: dict[int, int] = {}
+    for t in dropped:
+        d = deltaE_ciede2000(np.array([chart.lab[t]])[:, None, :],
+                             kept_lab[None, :, :])[0]
+        remap[t] = kept[int(np.argmin(d))]
+
+    moved = 0
+    for r in regions:
+        dst = remap.get(r.thread_index)
+        if dst is None:
+            continue
+        r.meta["color_cap_merged_from"] = r.thread_number
+        r.thread_index = dst
+        r.thread_number = chart[dst].number
+        moved += 1
+
+    # Same sentence the flat lane uses, deliberately: `COLOR_CAP_APPLIED` is
+    # already translated in the Studio, so this needs no new customer copy.
+    return [warn(
+        COLOR_CAP_APPLIED,
+        f"Artwork needed more than {max_colors} thread colors; the smallest "
+        "areas were merged into their closest match.",
+        dropped=len(dropped),
+        shapes=moved,
+        before=len(present),
+        after=len(kept),
     )]
 
 

@@ -29,6 +29,7 @@ shapes; this one shows them.
 from __future__ import annotations
 
 import argparse
+from dataclasses import fields as dc_fields
 import sys
 from pathlib import Path
 
@@ -52,9 +53,16 @@ def _bgr(rgb) -> tuple[int, int, int]:
     return (int(b), int(g), int(r))
 
 
-def _run(art: Path, width_mm: float, garment: str, small: bool):
+def _run(art: Path, width_mm: float, garment: str, on: bool,
+         flag: str = "revalidate_small_shapes"):
+    """A/B any boolean `PipelineConfig` flag, not just the one this was
+    written for. Generalised 2026-09-07 for `enforce_color_cap`; passing the
+    name rather than copying the file keeps ONE renderer, so a fix to the
+    panel drawing reaches every flag's render instead of the newest one."""
+    if flag not in {f.name for f in dc_fields(PipelineConfig)}:
+        raise SystemExit(f"unknown PipelineConfig flag: {flag}")
     cfg = PipelineConfig(target_width_mm=width_mm, garment_id=garment,
-                         revalidate_small_shapes=small)
+                         **{flag: on})
     result, plan = digitize(art, cfg)
     return cfg, result, plan
 
@@ -156,10 +164,11 @@ def _tiles(art: Path, changed, off, on, out_dir: Path, width_mm: float,
 
 
 def render(fixture: str, width_mm: float, garment: str, out_dir: Path,
-           px_per_mm: float, zoom: bool) -> int:
+           px_per_mm: float, zoom: bool,
+           flag: str = "revalidate_small_shapes") -> int:
     art = TESTDATA / fixture
-    cfg_a, res_a, plan_a = _run(art, width_mm, garment, False)
-    cfg_b, res_b, plan_b = _run(art, width_mm, garment, True)
+    cfg_a, res_a, plan_a = _run(art, width_mm, garment, False, flag)
+    cfg_b, res_b, plan_b = _run(art, width_mm, garment, True, flag)
 
     a = {r.shape_id: r.thread_number for r in res_a.regions}
     b = {r.shape_id: r.thread_number for r in res_b.regions}
@@ -188,7 +197,7 @@ def render(fixture: str, width_mm: float, garment: str, out_dir: Path,
     for tag, cfg, res, plan in (("off", cfg_a, res_a, plan_a),
                                 ("on", cfg_b, res_b, plan_b)):
         img = _panel(art, cfg, res, plan, bounds, px_per_mm, changed,
-                     f"{stem} @ {width_mm:g}mm  revalidate_small_shapes={tag.upper()}"
+                     f"{stem} @ {width_mm:g}mm  {flag}={tag.upper()}"
                      f"   {len(changed)} cone(s) changed")
         path = out_dir / f"{stem}_{width_mm:g}mm_{tag}.png"
         cv2.imwrite(str(path), img)
@@ -208,8 +217,11 @@ def main() -> int:
     ap.add_argument("--px-per-mm", type=float, default=14.0)
     ap.add_argument("--zoom", action="store_true",
                     help="crop to the changed shapes instead of the design")
+    ap.add_argument("--flag", default="revalidate_small_shapes",
+                    help="the boolean PipelineConfig flag to A/B")
     a = ap.parse_args()
-    return render(a.fixture, a.width, a.garment, a.out, a.px_per_mm, a.zoom)
+    return render(a.fixture, a.width, a.garment, a.out, a.px_per_mm, a.zoom,
+                  a.flag)
 
 
 if __name__ == "__main__":

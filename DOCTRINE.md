@@ -270,6 +270,51 @@ Moved verbatim 2026-08-28 — no section was rewritten in the move.
   singly; an unavailable cutout skips prep entirely rather than degrading onto
   prep-alone. **Ships KNOWINGLY INERT for real uploads** — all four acceptance
   photos classify `gradient` at 1.00, which the gate excludes; revisit at gate 2. *(ruled 2026-08-24 — Kent; [area 1](docs/scope/1-auto-digitizing-quality.md))*
+- **RUN THE APP. A screenshot found in one look what six hours of reading the
+  same code did not.** 2026-09-07, after a session spent measuring warning
+  voice, code seams and doc budgets by reading source: the Studio was launched
+  and `logo_bridge_bar.jpg` pushed through it. The slider said **"Colors
+  (max 6)"**. The caption said **"13 colors"**.
+
+  Nothing in the repo was hiding it. `tools/warning_coverage.py` had run over
+  the same fixture that morning and could not see it, because it read
+  warnings; MASTER_SCOPE had said for weeks that stage 0 routes **six of seven
+  real customer logos to gradient**, and `stage2_quantize`'s cap had a comment
+  explaining itself. **The defect was the JOIN between three documented facts,
+  and a join is what a screenshot shows and a file read does not.**
+
+  Root cause: `stage2_quantize` caps the FLAT lane hard; the SLIC+RAG lane
+  passes `max_k=cfg.max_colors` into k-medoids, which is a clustering
+  parameter and not a cap. So the one control a customer has over thread count
+  — **the cost driver**, one spool to buy and one manual re-thread per cone on
+  a single-needle machine — was enforced on the artwork type customers do not
+  have. Measured: **6 of 26 designs over the cap and all six gradient**, worst
+  `drone_render` at **22 cones against a promised 6**, `COLOR_CAP_APPLIED`
+  firing on zero of twenty-six. Fixed behind `cfg.enforce_color_cap`
+  (MASTER_SCOPE 31): 6 over → 1.
+
+  **The generalisation is not "test the UI".** It is that a promise made in
+  one file and kept in another is invisible to every instrument that reads one
+  file at a time, and this repo's instruments all read one file at a time.
+  Drive the product when the question is whether it does what it says.
+
+  *(found 2026-09-07 — `digitizer/tools/color_cap.py`; scope-history 09-07)*
+
+- **Before capping, splitting or merging anything, ask WHERE the thing comes
+  from — it is five minutes and it decides between a fix and a rewrite.**
+  The cap above could only work at stage 4 if the surplus cones were REGION
+  threads; if they were shade bands built in stage 6 it would have been
+  useless there. One probe answered it: on `drone_render` (74 regions, 24
+  region threads, 22 sewn) and `logo_bridge_bar` (74, 13, 13) the set of block
+  threads that are NOT region threads is **empty on both**. Build at stage 4.
+
+  The same probe named the residual honestly instead of rounding it off:
+  `region_blobs` keeps 15 cones because it has only **4 region threads** — the
+  cap correctly does nothing — and **12 of its 15 sewn cones are built after
+  it**, in stage 6 blend bands. That is defect 16's open half, on a generated
+  fixture no client artwork produces. "6 of 6 fixed" was the available
+  sentence and it was not true. *(measured 2026-09-07)*
+
 - **A budget nothing checks is a preference — and when MASTER_SCOPE's hit,
   the reclaim is NOT a defect.** `MASTER_SCOPE.md` has stated *"Current state
   ONLY, under an 800-line budget"* since it was split from DOCTRINE, with
