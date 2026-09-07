@@ -1068,6 +1068,31 @@ its hedge as it is copied forward** — is why this file is split.
 
 ## Gotchas — cost someone a session once
 
+- **When you fix a rule, COUNT ITS READERS FIRST. Three defects in one
+  session were the same shape.** Each was one question being answered in more
+  than one place, with only one place right:
+  1. **Two copies, drifted.** `GARMENT_FABRIC` and the `FABRICS` table exist
+     in `src/fabrics.js` and `digitizer_core/fabrics.py`, hand-ported, with
+     the Python file's docstring promising they match. A ruling landed in one.
+  2. **Three readers, three versions.** "Is this element sewable" was in
+     `canAdvance("create")`, absent from the review headline (which just said
+     "Ready to stitch"), and a `{:else}` in the recap that assumed text.
+  3. **Two callers, one fixed.** `loadPreferredPaletteId()` defaults the
+     thread chart. The Download step's shopping list was given the design's
+     own brand at 07:00; `ThreadPicker` was not, and was found half an hour
+     later showing **"Studio basics" directly above a label reading
+     `0134 Smoky`** — offering 56 generic shades to replace a cone chosen
+     from 398, so picking one threw the catalog number away.
+  **The third is the instructive one because it was MY OWN half-fix**, found
+  by driving a screen I had not thought to open rather than by reading. The
+  cheap habit that would have caught it: after changing a shared function,
+  grep its name and look at every call site, not just the one the bug was
+  reported on. `loadPreferredPaletteId` had two; `ThreadPicker` itself has
+  **nine** call sites across seven components, which is why the fix is a
+  store (`lib/designChart.js`) rather than a prop threaded through all of
+  them — a fact that belongs to the project should not be carried by every
+  component between it and the reader. *(2026-09-07)*
+
 - **A refresh destroyed the offline user's artwork, and `_hasImage: true`
   was the only thing saved about it.** An `image` element's pixels lived in
   App's `runtime.workImages`, which is deliberately not persisted; the element

@@ -5,6 +5,7 @@
   import { canAdvance, nextStep, prevStep } from "./lib/flow.js";
   import { designSummary } from "./lib/summary.js";
   import { rehydrateImages } from "./lib/imageSource.js";
+  import { chartIdForProject, designChartId } from "./lib/designChart.js";
   import { flattenRGBA, WORK_MAX_PX, ALPHA_CUTOFF } from "./lib/flatten.js";
   import {
     migrateLegacy,
@@ -280,6 +281,12 @@
   // — shown in the "Ready to stitch" summary so the review step names the
   // physical hoop the operator will actually mount.
   $: hoopInEffect = effectiveHoop(project);
+
+  // The chart the engine snapped this design's cones out of, published
+  // for every ThreadPicker in the app (nine call sites across seven
+  // components — a prop threaded through all of them would be the wrong
+  // shape for a fact that belongs to the project). See lib/designChart.js.
+  $: designChartId.set(chartIdForProject(project));
 
   // Does this project contain anything a machine could sew?
   //

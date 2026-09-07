@@ -2,6 +2,7 @@
   import { onMount, createEventDispatcher } from "svelte";
   import { generateAll } from "../lib/generate.js";
   import { exportDesignPreferService, exportWorksheetPDF, exportPNG } from "../lib/exporters.js";
+  import { chartIdForProject } from "../lib/designChart.js";
   import { triggerDownload } from "../lib/download.js";
   import { EMB } from "../lib/emb.js";
   import { PALETTE_INDEX, STUDIO_PALETTE, getCachedPalette, loadPalette, nearestInList, loadPreferredPaletteId, savePreferredPaletteId } from "../lib/threads.js";
@@ -125,9 +126,7 @@
   // `palette[0].brand_id`). Every element in a project shares it, so the
   // first one that has it wins. See `loadPreferredPaletteId` for what a
   // generic default costs a shopper.
-  const designPaletteId = (project.elements || [])
-    .map((el) => el && el.review && el.review.brandId)
-    .find((id) => !!id) || null;
+  const designPaletteId = chartIdForProject(project);
   let paletteId = loadPreferredPaletteId(designPaletteId);
   function onPaletteChange(e) {
     paletteId = e.currentTarget.value;
