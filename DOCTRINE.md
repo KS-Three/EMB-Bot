@@ -270,6 +270,30 @@ Moved verbatim 2026-08-28 — no section was rewritten in the move.
   singly; an unavailable cutout skips prep entirely rather than degrading onto
   prep-alone. **Ships KNOWINGLY INERT for real uploads** — all four acceptance
   photos classify `gradient` at 1.00, which the gate excludes; revisit at gate 2. *(ruled 2026-08-24 — Kent; [area 1](docs/scope/1-auto-digitizing-quality.md))*
+- **A DIAGNOSTIC and a CUSTOMER SENTENCE are two different strings. Never
+  build one out of the other.** Three photo-prep seams degrade to a documented
+  no-op when the machine cannot run them, and all three used to write
+  `f"X was skipped — {reason}. ..."` while ALSO passing `reason=` beside it —
+  so the panel printed the server's own filesystem: *"isolated rembg venv not
+  found at /home/user/EMB-Bot/digitizer/rembg_isolated/venv/bin/python"*,
+  *"YuNet model file missing at …"*, *"SAM2 worker exited 137: <the last line
+  of somebody's STDERR>"*. None of the three codes is translated, and
+  `describeWarnings` falls back to `String(w.message)` with no severity
+  filter, so every one of them rendered verbatim as a list item. **Measured
+  9 of 26 corpus fixtures for the background-removal one alone — and not a
+  corpus artefact:** `cfg.photo_prep_background_removal` defaults True and the
+  ruling directly above ships rembg as a DEPLOY REQUIREMENT, so this is the
+  expected field condition, not an edge case. Fixed 2026-09-07 by routing all
+  three through `pipeline._environment_warning`, which is a MOVE and not a
+  deletion — the reason was already in the payload. **The reusable half is the
+  shape, not the fix:** it was a FAMILY of three built from one pattern, and
+  fixing only the site that was measured would have left two identical
+  siblings, which is exactly the missing-port defect (27) this repo keeps
+  rediscovering. `tests/test_environment_warnings.py` (7) carries an AST
+  tripwire over the whole package that rejects a `warn()` message f-string
+  interpolating any `*_reason` name; run against the pre-fix file it names all
+  three sites and their line numbers. *(measured and fixed 2026-09-07 —
+  `digitizer/tools/warning_coverage.py`; scope-history 09-07)*
 - **`feat/svg-import-shapes` is not resumed.** Far behind, and the one task
   attempted past the tokenizer is broken against its own tolerance. Treat a
   revival as a fresh plan against `main`, not a rebase; branch left in place,

@@ -7384,3 +7384,116 @@ All 57 of `warnings_codes.py`'s codes are **imported by name** somewhere in
 counts a mention in a comment, and every one of
 `WARNING_TEXT`'s 28 keys resolves to a live wire value. **No dead codes, no
 dead translations.** Recorded so nobody sweeps it again.
+
+---
+
+## 2026-09-07 — the diagnostic was the customer sentence, at three sites built from one pattern
+
+The measurement two hours earlier found `PHOTO_BACKGROUND_REMOVAL_UNAVAILABLE`
+printing an absolute venv path to whoever digitized, on 9 of 26 fixtures. It
+was left unfixed on purpose — measuring what a customer sees and changing it
+are different acts. This is the change.
+
+### It was a family, and the measured site was the smallest part of it
+
+Three photo-prep seams degrade to a documented no-op when the machine cannot
+run them, and every one of them was written the same way:
+
+```
+warn(CODE, f"X was skipped — {reason}. <consequence>", reason=reason)
+```
+
+| code | what the customer read |
+|---|---|
+| `PHOTO_BACKGROUND_REMOVAL_UNAVAILABLE` | *"isolated rembg venv not found at `/home/user/EMB-Bot/digitizer/rembg_isolated/venv/bin/python`"* |
+| `PHOTO_FACE_PRIORS_UNAVAILABLE` | *"YuNet model file missing at `<absolute path>`"* |
+| `PHOTO_SAM2_SEGMENTATION_UNAVAILABLE` | *"SAM2 worker exited 137: `<last line of the worker's STDERR>`"* |
+
+**Fixing only the one that was measured would have left two identical
+siblings** — the same missing-port shape as defect 27, where the flat lane had
+dissolved compression halos all along and the SLIC+RAG lane simply never got
+the pass. The sweep that found the other two is four lines of `ast`, and it is
+now the test.
+
+### The fix is a MOVE, and the field already existed
+
+All three route through `pipeline._environment_warning`: the sentence becomes
+*"X could not run here. &lt;consequence&gt;"* and the diagnostic goes to
+`reason=` alone. **Nothing is dropped.** Every one of the three already passed
+`reason=` beside the message that duplicated it — the payload has carried the
+full string the whole time, so the change removes a duplicate rather than a
+fact. Confirmed end to end on `photo_chrome_specular`:
+
+```
+MESSAGE: Background removal could not run here. Tone, texture and face prep
+         were skipped with it, because prep without the cutout measures worse
+         than no prep at all; this photo took the plain classical route.
+REASON : isolated rembg venv not found at /home/user/EMB-Bot/digitizer/
+         rembg_isolated/venv/bin/python — see digitizer/rembg_isolated/
+         README.md to build it
+```
+
+### The tripwire, and what makes it non-vacuous
+
+`tests/test_environment_warnings.py` (7). The load-bearing one AST-walks every
+`.py` in `digitizer_core`, finds each `warn(code, message, ...)` whose message
+is an f-string, and rejects any that interpolates a name called `reason` or
+ending `_reason`. Other interpolations are fine and everywhere — counts,
+millimetres, thread numbers; it is the diagnostic-shaped one that must not be
+in a sentence a customer reads.
+
+Three things keep it from being decoration:
+
+- **Run against the pre-fix `pipeline.py` it reports exactly three sites**, by
+  line and by variable: 391 `bg_reason`, 430 `reason`, 494 `sam2_reason`.
+- A separate test pins that the walker parses **at least 30 `warn()` calls**,
+  because the assertion is a "no hits" check and a broken walk passes it.
+- Both message assertions were mutation-proved: re-introducing the leak at one
+  call site reds the tripwire with the file and line, and leaking inside the
+  helper itself reds four tests.
+
+And one test guards the other direction — that the diagnostic was not softened
+along with the sentence. It monkeypatches `REMBG_VENV_PYTHON` to a path that
+does not exist rather than relying on the venv's absence, **because a test
+that only fires where rembg is missing is a test that skips on the machines
+that ship it.**
+
+### The same read over preflight's own messages found nothing
+
+`warning_coverage` is about `plan.warnings`. Preflight's 18 `finding()`
+messages are a separate voice reaching the same panel, so they got the same
+read — statically, off the AST, no corpus run needed. **All 18 are good
+customer prose:** every one names the effect on the garment and a remedy, in
+the customer's units. No shape ids, no dE00, no engine vocabulary.
+
+One looked wrong and is not, which is the part worth writing down.
+`SAME_HOLE_HEAVY` says *"professional files run about 9%"* — and the memory
+entry for 2026-09-06 lists *"our benchmark is 9.8%"* as one of four
+documentation defects the `FILL_ROW_MM` re-base created. **Different
+numbers.** The 9% in the message is the professional 36-file corpus's
+**9.455%** (732,246 penetrations, the pro's own pitch and the 0.1 mm DST
+grid), which is what `baseline=0.09455` carries and what the docstring says
+outright is comparable. The stale 9.8% was OUR OWN rate, in prose, and the
+docstring already corrects it in place. **Nothing to fix here** — recorded
+because the next reader will land on the same apparent contradiction and
+spend the same twenty minutes.
+
+The threshold question is separate and stays open by design:
+`SAME_HOLE_RATE_MAX` was set "far above" our old 9.8%, and our corpus now
+reads 0.001–0.103, so it fires on 0 of 26. Retuning it is a physical call on
+a constant whose baseline is a professional corpus, and the docstring
+declines it deliberately.
+
+### Why this one was mine to make and the other two were not
+
+Of the eleven untranslated codes, two are engine telemetry
+(`PHOTO_SEGMENT_REGION_COUNT`, `PHOTO_PALETTE_SELECTED`) and two are real
+events named in a unit nobody outside this repo reads (dE00). Suppressing or
+rewording those is a decision about product voice. **This one is not a voice
+question**: nobody would rule that the panel should print a venv path, the
+information survives untouched in the payload, and the CONSEQUENCE clause —
+the half that tells the customer what happened to their design — is unchanged
+word for word in all three. Only the lead clause moves, from *"X was skipped —
+<diagnostic>."* to *"X could not run here."*, which is the interpolation
+coming out and the sentence still needing a verb. That is a deletion with a
+grammatical repair, not a rewrite of copy.
