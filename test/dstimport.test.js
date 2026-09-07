@@ -74,8 +74,13 @@ test("decodeDST centers an off-origin design on its stitch bbox midpoint", () =>
 
 test("decodeDST rejects non-DST inputs", () => {
   assert.throws(() => decodeDST(new Uint8Array(10)), /too small/);
-  // 512-byte header + only jump records -> no stitches
-  const empty = new Uint8Array(512 + 3);
+  // A REAL header (three Tajima fields, the floor the guard added 2026-09-07
+  // wants) plus nothing but the end record -> no stitches. The header used to
+  // be 512 zero bytes here, which now fails the earlier "is it a DST at all"
+  // check and would have tested that instead of this.
+  const empty = new Uint8Array(512 + 3).fill(0x20, 0, 512);
+  const head = "LA:EMPTY\rST:     0\rCO:  1\r";
+  for (let i = 0; i < head.length; i++) empty[i] = head.charCodeAt(i);
   empty[512] = 0; empty[513] = 0; empty[514] = 0xf3;
   assert.throws(() => decodeDST(empty), /No stitches/);
 });
@@ -289,4 +294,70 @@ test("a standard file keeps its blocks, trims and label through the corrected re
   assert.strictEqual(d.colorCount, 2);
   assert.strictEqual(d.stitchCount, 10);
   assert.strictEqual(d.trimCount, 2);
+});
+
+// ---- is it even a DST? ---------------------------------------------------
+//
+// The only gate used to be `length >= 515`, so any file bigger than that
+// decoded into "a design". Measured through the shipped UI 2026-09-07: a
+// Brother .pes fed to the import lane raised no error and reported
+// **3736 x 7624 mm with 10,878 colour blocks**, and the panel rendered a
+// thread picker for every one of them.
+
+// Swap a synthetic 512-byte header onto a real DST's record stream, so these
+// tests vary ONLY the header and the body stays a stream that is known to
+// decode.
+function withHeader(lines) {
+  const body = standardBytes().subarray(512);
+  const head = new Uint8Array(512).fill(0x20);
+  const text = lines.map((l) => l + "\r").join("");
+  for (let i = 0; i < text.length && i < 512; i++) head[i] = text.charCodeAt(i) & 0xff;
+  const out = new Uint8Array(512 + body.length);
+  out.set(head, 0);
+  out.set(body, 512);
+  return out;
+}
+
+test("a file with no Tajima header is refused, and the message names the way out", () => {
+  // 4 KB of nothing — stands in for every non-DST tried: PES, JEF, EXP, SVG,
+  // PNG, random bytes and a JSON project file all score zero header tags.
+  const notADst = new Uint8Array(4096);
+  assert.throws(() => decodeDST(notADst), (e) => {
+    assert.match(e.message, /Not a DST file/);
+    // A dead end would be "invalid file". The formats a customer is most
+    // likely holding are named, with what to do about them.
+    assert.match(e.message, /\.pes/);
+    assert.match(e.message, /\.dst download/);
+    return true;
+  });
+});
+
+test("three header fields are enough, two are not", () => {
+  // The floor is deliberately well under the twelve every real writer emits
+  // (a sparse writer must not be rejected) and well over the one a file
+  // hand-built out of "ST:" lines can reach by coincidence.
+  assert.throws(() => decodeDST(withHeader(["LA:X", "ST:  10"])), /Not a DST file/);
+  const ok = decodeDST(withHeader(["LA:X", "ST:  10", "CO:  2"]));
+  assert.strictEqual(ok.stitchCount, 10);
+});
+
+test("only the twelve real tags count, and only at the start of a line", () => {
+  // "ST:" inside a label is not a header field. Three junk tags plus a label
+  // that contains one must still fail.
+  assert.throws(() => decodeDST(withHeader(["ZZ:1", "QQ:2", "WW:3", "LA:my ST:file"])), /Not a DST file/);
+});
+
+test("every DST in the repo still decodes", () => {
+  // The guard's job is to reject what is not a DST, and its risk is rejecting
+  // one that is. These come from three unrelated writers — a commissioned
+  // professional file, pystitch, and EMB-Bot's own encoder.
+  const dir = path.join(__dirname, "..", "digitizer", "testdata", "reference");
+  const files = fs.readdirSync(dir).filter((f) => f.endsWith(".dst"));
+  assert.ok(files.length >= 5, "expected the committed reference DSTs to be present");
+  for (const f of files) {
+    const d = decodeDST(new Uint8Array(fs.readFileSync(path.join(dir, f))));
+    assert.ok(d.stitchCount > 0, f);
+  }
+  assert.ok(decodeDST(standardBytes()).stitchCount > 0, "pystitch fixture");
+  assert.ok(decodeDST(dst.encodeDST(fixtureDesign())).stitchCount > 0, "EMB-Bot's own encoder");
 });

@@ -2806,3 +2806,38 @@ its hedge as it is copied forward** — is why this file is split.
   first in the DOM. The mutation is what found it, which is the argument for
   running one on every new assertion rather than on the ones that feel risky.
   *(2026-09-07)*
+
+- **"It parsed" is not "it is that format", and a size check is not a
+  validation.** `decodeDST`'s only gate was `length >= 512 + 3`. Everything
+  after it is a walk over 3-byte groups, and arbitrary bytes group into 3s
+  perfectly well — so **any** file over 515 bytes decoded into "a design".
+
+  Measured through the shipped UI 2026-09-07 by feeding the import lane a
+  Brother `.pes` — the mistake a customer makes when a design site hands them
+  the wrong format: **no error, and a design reading 3736 × 7624 mm with
+  10,878 colour blocks.** The panel then rendered a thread picker for every
+  one of the 10,878.
+
+  The signal that was there all along is the header. A DST's first 512 bytes
+  are CR-terminated `XX:value` fields, and the codec was already scanning them
+  — for the label, and only the label. Measured over every DST in the repo
+  (five commissioned professional files, one written by pystitch, two by
+  EMB-Bot's own encoder — **three unrelated writers**): all twelve standard
+  tags present in all eight. Every negative tried — PES, JEF, EXP, SVG, PNG,
+  two blocks of random bytes, a JSON project file — scores **zero**, and a
+  file hand-built out of sixty `ST:` lines scores one. The floor is set at
+  three: far below twelve so a sparse writer is not rejected, far above one so
+  a coincidence is not admitted.
+
+  **Two things generalise.** First: when a parser accepts anything, look for
+  what it is already reading and discarding — the discriminator is usually
+  right there. Second: **measure a discriminator's margin on real files of
+  both classes before shipping it.** "Twelve versus zero, over three writers"
+  is a reason to trust a floor of three; "it worked on the file I tried" is
+  not.
+
+  And the message names the way out — the formats a customer is most likely
+  holding, and the fact that a `.dst` download of the same design usually
+  exists. "Invalid file" would have been the same dead end this repo keeps
+  finding.
+  *(2026-09-07)*

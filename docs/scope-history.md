@@ -9198,3 +9198,66 @@ to distrust in a spec whose whole point is that two components agree: it can
 only ever find whichever comes first in the DOM. The mutation found it, which
 is the argument for running one on every new assertion rather than on the ones
 that feel risky.
+
+## 2026-09-07 — the import lane accepted a Brother .pes and called it a design
+
+Snapshot. Not live status.
+
+Found while driving the error paths of the same lane as the mirror fix above.
+`decodeDST`'s only gate was `length >= 512 + 3`; everything after it walks
+3-byte groups, and arbitrary bytes group into 3s perfectly well.
+
+Fed a Brother `.pes` through the shipped UI — the mistake a customer makes when
+a design site hands them the wrong format, or their file dialog is on *All
+Files*:
+
+```
+FILE brother.pes
+   error: (no .dp-error)
+   stats: brother.pes — 10,213 stitches · 3736×7624 mm · 10878 colors · 11 trims
+```
+
+**3.7 × 7.6 metres, and 10,878 colour blocks** — for each of which the panel
+renders a `ThreadPicker` row.
+
+### The discriminator, and its margin
+
+The header was already being read — for the label, and nothing else. A DST's
+first 512 bytes are CR-terminated `XX:value` fields.
+
+| file | writer | header tags |
+|---|---|---|
+| 5 × `becker_*.dst` | a commercial digitizer | **12** |
+| `standard-tajima.dst` | pystitch | **12** |
+| 2 × EMB-Bot exports | `src/dst.js` | **12** |
+| PES · JEF · EXP · SVG · PNG | — | **0** |
+| 4 KB and 20 KB of random bytes | — | **0** |
+| a JSON `.embproj` | — | **0** |
+| a file built out of sixty `ST:` lines | — | **1** |
+
+Twelve against zero, across three unrelated writers. The floor is **three**:
+far below twelve so a sparse writer is not rejected, far above one so a
+coincidence is not admitted. Tags are matched at the START of a delimited line,
+so `ST:` inside a label is not a field.
+
+The message names the way out rather than saying "invalid file":
+
+> Not a DST file — no Tajima header fields in the first 512 bytes. If this is a
+> .pes, .jef or .exp, look for the .dst download of the same design: DST is the
+> only stitch format EMB-Bot can read.
+
+### Tests
+
+- `test/dstimport.test.js` — 4 new (21 total): the refusal and its wording, the
+  three-versus-two floor, that only real tags at line starts count, and that
+  **every DST in the repo still decodes** (the guard's own risk is rejecting a
+  real file). One pre-existing test had to change: it built a 512-byte header
+  of zeros, which now fails the new check first and would have been testing
+  that instead of "no stitches".
+- `app/e2e/design-import.spec.js` — the app exports a PES and then feeds it to
+  its own DST lane, which is exactly the customer's mistake. Asserts the error,
+  that it names `.pes`, and that nothing landed on the element.
+
+Mutation: dropping the floor to 0 fails 3 engine tests and the e2e.
+
+engine **492/492** · studio **1020/1020** · e2e **43/43**

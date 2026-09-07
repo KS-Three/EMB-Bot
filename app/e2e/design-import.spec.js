@@ -96,3 +96,42 @@ test("the DST note's premise fits a project with no lettering in it", async ({ p
   await expect(note).toBeVisible();
   await expect(note).toContainText("imported design file");
 });
+
+// ---- is it even a DST? -----------------------------------------------------
+//
+// decodeDST's only gate was `length >= 515`, so any file bigger than that
+// decoded into "a design". Measured through this UI on 2026-09-07: a Brother
+// .pes produced NO error and a design reading 3736 x 7624 mm with 10,878
+// colour blocks — and the panel rendered a thread picker for every one.
+//
+// The wrong file is exported by this same app, which is exactly the mistake a
+// customer makes (a design site hands them a .pes; they rename it, or their
+// file dialog is set to All Files).
+
+test("a .pes fed to the DST lane is refused, with the way out named", async ({ page }) => {
+  test.setTimeout(180_000);
+  await page.goto("/");
+  await page.getByRole("button", { name: "Left Chest", exact: true }).click();
+  await page.getByRole("button", { name: "Next", exact: true }).click();
+  await page.getByPlaceholder("Type a name or word").fill("WRONG FORMAT");
+  await expect(page.getByText(/^[\d,]+ stitches/)).toBeVisible();
+  await page.getByRole("button", { name: "4 Download", exact: true }).click();
+  const dl = page.waitForEvent("download");
+  await page.getByRole("button", { name: "PES", exact: true }).click();
+  const anyway = page.getByRole("button", { name: "Download PES anyway", exact: true });
+  if (await anyway.isVisible().catch(() => false)) await anyway.click();
+  const pes = await (await dl).path();
+
+  await page.goto("/");
+  await page.getByRole("button", { name: "Left Chest", exact: true }).click();
+  await page.getByRole("button", { name: "Next", exact: true }).click();
+  await page.getByRole("button", { name: "Design file" }).click();
+  await page.locator(".dp-upload input[type=file]").setInputFiles(pes);
+
+  const err = page.locator(".dp-error");
+  await expect(err).toBeVisible();
+  await expect(err).toContainText("Not a DST file");
+  await expect(err).toContainText(".pes");
+  // Nothing landed on the element — the panel is still asking for a file.
+  await expect(page.locator(".dp-stats")).toHaveCount(0);
+});
