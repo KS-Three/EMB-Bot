@@ -2,13 +2,26 @@
 
 A decision sheet for the flags that are built, measured and still OFF. Every
 number is one pass of `digitizer/tools/flip_sheet.py` over the scorecard's own
-26 fixtures at 80 mm / `left_chest`. Seven arms: the shipped default, each flag
-alone, and **all five together — the combination nobody had measured.**
+26 fixtures at 80 mm / `left_chest`. **Ten arms**: the shipped default, each
+flag alone, all five together, and — added 2026-09-07 — the three
+combinations someone would actually ship (`rec3`, `rec4`, `halo_patch`).
+260 measured rows.
 
-**Every number below is post-fix**, on `main` at `20fa551`. The sheet found a
-regression in `dissolve_phantom_blends` on its first pass; that flag is fixed
-and re-measured, and the history is in "What this sheet went through" at the
-end rather than interleaved with the numbers. Read the table as current.
+**Every number below is post-fix**, on `20fa551` for the six original arms and
+`50f103e` for the combinations added 2026-09-07; the two trees are verified
+identical wherever they overlap (see "Provenance" at the end — 104 rows
+compared, 0 differ). The sheet found a regression in `dissolve_phantom_blends`
+on its first pass; that flag is fixed and re-measured, and the history is in
+"What this sheet went through" at the end rather than interleaved with the
+numbers. Read the tables as current.
+
+**Two things the first version of this sheet asserted are settled below rather
+than in a changelog**, because a reader deciding a flip needs them where the
+claim was. One was WRONG: the yardstick finding it drew from
+`logo_gaulke_roofing` — retracted 2026-09-07, it was the bug's artifact, not
+the metric's preference. One was merely UNMEASURED: its own three-flag
+recommendation, which the sheet's own header warns cannot be read off three
+rows. Measured now, and it holds — better than it claimed.
 
 Two flags are deliberately absent. `edge_cap` is gate 1 (cloth settles which
 cap, if either — defect 19) and `chain_links` is barred permanently under gate
@@ -29,6 +42,8 @@ cap, if either — defect 19) and `chain_links` is barred permanently under gate
 exception, and finding it is what the `all` arm is for: with all five on,
 `logo_script_tires` goes **A 100 → B 88** (trims 8 → 12) — a fixture no single
 flag takes below A. Fourteen of 26 are byte-identical even with all five on.
+**It is a two-flag interaction and it is named below** — `halo` +
+`satin_patch`, which alone reproduces the all-five result exactly.
 
 **Read the grade with the floor in mind.** `yardstick-disagreements-2026-09-06.md`
 row 6: twelve of the corpus's 52 combos score exactly 0 with unclamped scores
@@ -77,23 +92,119 @@ So "flip these three" cannot be read off three rows, which is what this arm
 existed to establish. `summit_badge`, `becker_marine_logo` and
 `logo_hotel_fremont` do behave as the single flag that moves them.
 
+### The one grade that falls is a PAIR, and it is nameable
+
+All ten pairs of the five, measured on `logo_script_tires`
+(2026-09-07): **exactly one moves it, and it reproduces the all-five result
+exactly** — `dissolve_phantom_blends` + `satin_patch_junctions`, B 88, 12
+trims, 2,394 stitches, the same three numbers the five-flag arm produces. The
+other three flags contribute nothing to it. So this is a two-flag
+interaction, not an emergent five-way, and the mechanism is visible in the
+run set rather than inferred:
+
+| arm | satin runs | fill runs | underlay | trims | stitches |
+|---|---:|---:|---:|---:|---:|
+| off | 7 | 1 | 12 | 8 | 2,340 |
+| `dissolve_phantom_blends` | **9** | 1 | 14 | 9 | 2,256 |
+| `satin_patch_junctions` | 7 | 1 | 12 | 8 | 2,340 — byte-identical to off |
+| both | 9 | **5** | 14 | **12** | 2,394 |
+
+`satin_patch_junctions` is not inert on this fixture — **it is inert on the
+geometry `off` produces.** The halo pass splits the script into two more satin
+strokes, and the patch pass then finds junctions between strokes that do not
+exist without it: four extra fill runs, three of them carrying a trim.
+
+**The patches are real work, not waste.** Preflight's own coverage instrument
+puts the worst uncovered patch at **2.8 mm² under `halo` alone and 0.8 mm²
+under both** — the halo pass opens a small hole at the new junction and the
+patch pass closes it.
+
+**And the grade fall is a threshold crossing that `halo` alone sets up.**
+`TRIM_HEAVY` fires on trims per 1,000 stitches against a ceiling of 4.1:
+
+    off    8 / 2,340  = 3.42   0.68 under
+    halo   9 / 2,256  = 3.99   0.11 under
+    both  12 / 2,394  = 5.01   OVER
+
+`dissolve_phantom_blends` alone spends **96.5% of this fixture's trim budget**
+and still reads A 100. Anything that adds a trim after it trips the warn;
+`satin_patch_junctions` is simply the flag that does. Read the risk as
+"`halo` leaves tires with no headroom", not "these two flags are
+incompatible".
+
+**What it costs to take both anyway:** 4 trims and 138 stitches on one
+fixture, to close a 2 mm² hole and drop a warn-level finding. Small either
+way — but it is the only grade any arm takes down, so it should be a choice
+rather than a surprise.
+
 ## Costs named rather than netted
 
 The −28 net trims on the all-five arm hides `photo_chrome_specular` at
 84 → 116. `satin_patch_junctions` costs becker +383 stitches, which *is* the
 fix. `logo_script_tires` is the only fixture any arm takes down a grade.
 
+## The combinations someone would actually ship — measured 2026-09-07
+
+Nobody flips all five. **This sheet's own recommendation was three flags
+nobody had run together**, which is precisely the error the header above warns
+against, so they are arms now:
+
+| arm | flags | moved | stitches | trims | blocks | cones | grades |
+|---|---|---:|---:|---:|---:|---:|---|
+| **`rec3`** | patch + bind + resnap | 9/26 | +413 | **+1** | **−18** | **−17** | **4 up, 0 down** |
+| **`rec4`** | `rec3` + `satin_per_stroke` | 11/26 | **−2,814** | +34 | −18 | −17 | **5 up, 0 down** |
+| `halo_patch` | halo + patch | 6/26 | −1,997 | −55 | −8 | −7 | 2 up, **1 down** |
+| all five | | 12/26 | −5,719 | −28 | −21 | −20 | 5 up, **1 down** |
+
+**`rec3` costs +413 stitches and ONE trim across the whole corpus** — **+0.13%**
+of its 315,371 stitches — and buys −18 blocks, −17 cones and four grades up: becker
+B 76 → B 88, gaulke F 4 → F 16, `photo_dof_meadow` D 52 → C 64,
+`photo_scene_stub` B 76 → B 88. Nothing anywhere goes down.
+
+**`rec4` adds `satin_per_stroke` and is still regression-free**: it turns the
++413 into **−2,814 stitches** (−0.89%), lifts `photo_chrome_specular`
+C 64 → B 76, and carries `photo_dof_meadow` further than `rec3` does —
+**D 52 → B 76** against `rec3`'s D 52 → C 64. The cost is +33 trims,
+concentrated on chrome (84 → 116). Five grades up, none down.
+
+**Everything that falls, falls because of `dissolve_phantom_blends`.** It is
+the only flag not in `rec4`, and adding it (= all five) buys a further −2,905
+stitches and −62 trims — bridge_bar's 125 → 62 is most of it — at the cost of
+the one grade in the corpus that any arm takes down. That is now a two-row
+read rather than a judgement call.
+
 ## What I would do
 
-Flip `satin_patch_junctions`, `bind_resnap_all_classes` and
-`revalidate_small_shapes` — small, structural, and none of them depends on a
-grade to justify it. Take `satin_per_stroke` with the chrome trim cost stated.
-`dissolve_phantom_blends` was the one to hold and its regression is now fixed,
-so it is a candidate again — on the numbers, the cleanest of the five.
+**Flip `rec4`** — `satin_patch_junctions`, `bind_resnap_all_classes`,
+`revalidate_small_shapes` and `satin_per_stroke`. Five grades up, none down,
+−2,814 stitches, −18 blocks, −17 cones, measured as a combination rather than
+inferred from four rows. If the chrome trim cost (84 → 116) is unwelcome, drop
+to `rec3` and keep four grades up for +1 trim corpus-wide.
+
+**Hold `dissolve_phantom_blends` a little longer, but not for its own sake.**
+On its own it is the cleanest of the five (−67 trims, no grade moving either
+way, bridge_bar 125 → 62). What argues for waiting is that it is the flag that
+makes `logo_script_tires` trip `TRIM_HEAVY` once anything else is on, and the
+sheet can now say exactly why (3.99 against a 4.1 ceiling). Flipping it
+together with `rec4` is a defensible call with that number in hand — it is
+one warn on one fixture against −62 trims corpus-wide — but it should be
+chosen, not inherited.
 
 All of it is Kent's call. `docs/renders/flip-sheet-2026-09-06/` has off-vs-all
 sheets for gaulke, bridge_bar, chrome_specular and becker, plus a four-arm
 lettering crop.
+
+## Provenance — verified, not assumed
+
+The first pass of this sheet was cached before `dissolve_phantom_blends` was
+fixed; the two affected arms were re-measured into a second directory, and the
+table above draws rows from both. That was sound, and it is now **measured
+rather than inferred**: all 26 `off` rows are byte-identical across the two
+trees (so the flag gate provably holds), and re-measuring the four
+fix-unaffected single arms on the current tree reproduces the old cache
+exactly — **104 rows compared, 0 differ**. `flip_sheet.py` stamps `head` into
+every row from 2026-09-07 so the next reader does not have to take this on
+trust.
 
 ---
 
@@ -102,7 +213,10 @@ lettering crop.
 Kept because the sequence is the useful part, and because two of its three
 steps were wrong in ways worth not repeating.
 
-### The yardstick finding, which stands
+### The yardstick finding, which did NOT stand
+
+**Retracted 2026-09-07 — kept because the retraction is the finding.** Read
+this table as a measurement of the PRE-FIX tree, which is what it was.
 
 `logo_gaulke_roofing` is black lettering on a white label. Measured on the
 CONES rather than the grade, on the pre-fix tree:
@@ -116,13 +230,29 @@ CONES rather than the grade, on the pre-fix tree:
 **The best grade loaded no thread you would see on a white ground; the only arm
 that loads Black graded second-worst.** `THREAD_MATCH_POOR` grades per thread
 on its worst patch, so deleting the dark cone deletes the badly-scoring
-thread — **the metric rewards not sewing the hard part.** That is
-`yardstick-disagreements` row 7, and a different shape from rows 1–6: those are
-the metric failing to *see* an improvement, this is it preferring a regression.
+thread — **the metric rewards not sewing the hard part.**
+
+**On the fixed tree that disagreement is gone.** `dissolve_phantom_blends` is
+byte-identical to `off` on gaulke now (F 4, `1375 Dark Charcoal`), and the two
+arms that load `0020 Black` grade F 16 — every arm loading real Black grades
+HIGHER than every arm that does not. The C 64 rows were the dropped ink, not
+the metric's preference. Swept across all seven arms × 26 fixtures on the fixed
+tree, **ten (arm, fixture) pairs remove a cone and not one scores higher**, and
+all ten sit on fixtures scoring exactly 0 in both arms — so row 6's floor is
+now why this question cannot be asked of this corpus at all.
+`yardstick-disagreements` row 7 is retracted with that trail.
+
+What survives is the rule that caught the bug: **on a fixture where a flag
+removes a cone, the grade is not evidence of anything and the cone list is.**
 
 It also forced a retraction in MASTER_SCOPE defect 27, which had read *"gaulke
 F 0 → C 64 … the difference between 'do not sew' and a usable design"* about a
 design that had dropped its ink.
+
+**So this table did its job twice over and was wrong about why.** Measuring
+cones instead of grades found a real bug; the conclusion drawn from it — that
+the metric prefers a dropped cone — was the bug's own artifact. The habit is
+sound, the ruling was not.
 
 ### Three steps to the cause, two of them wrong
 

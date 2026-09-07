@@ -61,6 +61,32 @@ ARMS: dict[str, dict] = {
     "resnap_bind": {"bind_resnap_all_classes": True},
     "satin_stroke": {"satin_per_stroke": True},
     "satin_patch": {"satin_patch_junctions": True},
+    # --- combinations -------------------------------------------------------
+    # `all` answers "flip everything"; nobody flips everything. These are the
+    # combinations someone would actually ship, and the reason they are arms
+    # rather than arithmetic is the header above: a combination is not the sum
+    # of its rows, and this sheet's OWN recommendation was three flags nobody
+    # had run together.
+    "rec3": {
+        "revalidate_small_shapes": True,
+        "bind_resnap_all_classes": True,
+        "satin_patch_junctions": True,
+    },
+    "rec4": {
+        "revalidate_small_shapes": True,
+        "bind_resnap_all_classes": True,
+        "satin_patch_junctions": True,
+        "satin_per_stroke": True,
+    },
+    # The only pair in the ten that takes any fixture down a grade. `halo`
+    # splits `logo_script_tires` into two more satin strokes and `satin_patch`
+    # then finds junctions to fill that do not exist without it; neither flag
+    # alone moves that fixture off A 100. Kept as an arm so the interaction is
+    # reproducible rather than a number in a doc.
+    "halo_patch": {
+        "dissolve_phantom_blends": True,
+        "satin_patch_junctions": True,
+    },
     "all": {
         "dissolve_phantom_blends": True,
         "revalidate_small_shapes": True,
@@ -69,6 +95,11 @@ ARMS: dict[str, dict] = {
         "satin_patch_junctions": True,
     },
 }
+
+# An arm is a "single" if it flips exactly one flag. Derived, not listed, so
+# adding a combination above cannot silently make it a baseline for the
+# interaction table.
+SINGLES = [a for a, kw in ARMS.items() if len(kw) == 1]
 
 # `edge_cap` and `chain_links` are deliberately NOT arms here.
 #   * `edge_cap` ("bean"/"satin", defect 19) is gate 1: which cap, if either,
@@ -89,6 +120,41 @@ WIDTH_MM = 80.0
 def fixtures() -> list[str]:
     from tools.corpus_scorecard import FIXTURES
     return list(FIXTURES)
+
+
+_HEAD: str | None = None   # computed once per process, not per measurement
+
+
+def _head() -> str:
+    """The engine tree a row was measured on.
+
+    Not decoration. The first pass of this sheet was cached before
+    `dissolve_phantom_blends` was fixed, the fixed arms were re-measured into a
+    SECOND directory, and the published sheet drew rows from both — resting on
+    the reasonable but unverified inference that the four untouched arms could
+    not have moved. A row that names its own tree makes that detectable instead
+    of inferable, and `report` refuses to mix trees silently.
+    """
+    global _HEAD
+    if _HEAD is not None:
+        return _HEAD
+    import subprocess
+
+    def _git(*args) -> str:
+        return subprocess.run(["git", *args], cwd=ROOT, capture_output=True,
+                              text=True, timeout=10, check=True).stdout
+    try:
+        head = _git("rev-parse", "--short", "HEAD").strip()
+        # A dirty tree is NOT the commit it sits on, and a row that claims to
+        # be is exactly the over-claim this field exists to stop. Engine and
+        # tool changes both count: a tool edit cannot move a stitch, but
+        # proving that per row is not this function's job.
+        if _git("status", "--porcelain").strip():
+            head += "-dirty"
+    except Exception:  # noqa: BLE001 — a missing git must not sink a measurement
+        head = "?"
+    _HEAD = head
+    return _HEAD
 
 
 def _stitch_digest(plan) -> str:
@@ -144,6 +210,7 @@ def measure(fixture: str, arm: str) -> dict:
         "score": report["score"],
         "findings": sorted(f"{f['code']}:{f['severity']}" for f in report["findings"]),
         "digest": _stitch_digest(plan),
+        "head": _head(),
         "secs": round(time.time() - t0, 1),
     }
 
@@ -196,6 +263,38 @@ def report(out: Path) -> int:
     base = {f: rows.get(("off", f)) for f in fxs}
 
     print(f"# Flip sheet — {len(fxs)} fixtures @ {WIDTH_MM:g} mm / {GARMENT}\n")
+    # Two different findings, and the banner must not conflate them: rows
+    # stamped with DIFFERENT commits were provably measured on different
+    # engines; rows with no stamp at all predate `head` (2026-09-07) and are
+    # merely unknown. Saying "different engines" about unknown rows would be
+    # the same over-claim this banner exists to catch.
+    heads: dict[str, list[str]] = {}
+    for (arm, fx), r in rows.items():
+        heads.setdefault(r.get("head") or "unrecorded", []).append(f"{arm}/{fx}")
+    known = {h: w for h, w in heads.items() if h != "unrecorded"}
+    unknown = heads.get("unrecorded", [])
+
+    def _line(h, who):
+        arms = sorted({w.split("/")[0] for w in who})
+        print(f"  - `{h}`: {len(who)} rows, arms {', '.join(arms)}")
+
+    if len(known) > 1:
+        print("**MIXED TREES — these rows were measured on different engines.** "
+              "A cross-arm comparison below may be an artifact of the "
+              "difference between them, not of the flags:")
+        for h, who in sorted(known.items()):
+            _line(h, who)
+        if unknown:
+            _line("unrecorded", unknown)
+        print()
+    elif unknown:
+        print(f"**PROVENANCE UNKNOWN for {len(unknown)} of {len(rows)} rows** — "
+              "they predate `head` stamping (2026-09-07), so this sheet cannot "
+              "show they came from one engine. Re-run those arms to be sure:")
+        _line("unrecorded", unknown)
+        for h, who in sorted(known.items()):
+            _line(h, who)
+        print()
     print("Barred from this sheet on purpose:")
     for k, why in BARRED.items():
         print(f"  - `{k}`: {why}")
@@ -244,7 +343,7 @@ def report(out: Path) -> int:
         print()
 
     # Interaction: does `all` equal the fixtures each single flag moved?
-    singles = [a for a in ARMS if a not in ("off", "all")]
+    singles = SINGLES
     print("## interaction — does `all` behave like the union of the singles?\n")
     print(f"{'fixture':<40} {'singles that move it':<34} {'all == that single?'}")
     for f in fxs:
@@ -270,6 +369,50 @@ def report(out: Path) -> int:
         else:
             verdict = f"n/a ({len(movers)} singles move it)"
         print(f"{f:<40} {','.join(movers) or '-':<34} {verdict}")
+
+    # Every multi-flag arm against the singles it is made of. `all` answers
+    # "flip everything" and nobody flips everything; this answers the question
+    # a flip decision actually asks.
+    combos = [a for a in ARMS if len(ARMS[a]) > 1]
+    print("\n## combinations — where a combination differs from its parts\n")
+    for arm in combos:
+        parts = [s_ for s_ in SINGLES
+                 if ARMS[s_].items() <= ARMS[arm].items()]
+        print(f"### {arm} = {' + '.join(parts)}")
+        surprises = 0
+        for f in fxs:
+            b, a = base.get(f), rows.get((arm, f))
+            if not b or not a or "error" in b or "error" in a:
+                continue
+            movers = [s_ for s_ in parts
+                      if rows.get((s_, f)) and "error" not in rows[(s_, f)]
+                      and rows[(s_, f)]["digest"] != b["digest"]]
+            moved = a["digest"] != b["digest"]
+            # The combination is "as expected" when no part moves it and it
+            # does not move, or when exactly one part moves it and the
+            # combination reproduces that part byte for byte.
+            if not movers and not moved:
+                continue
+            if len(movers) == 1 and moved and a["digest"] == rows[(movers[0], f)]["digest"]:
+                continue
+            surprises += 1
+            best = max((rows[(s_, f)]["score"] for s_ in movers), default=b["score"])
+            worst = min((rows[(s_, f)]["score"] for s_ in movers), default=b["score"])
+            if a["score"] < min(worst, b["score"]):
+                tag = "WORSE than any part"
+            elif a["score"] > max(best, b["score"]):
+                tag = "better than any part"
+            elif movers:
+                tag = "best part's grade, different geometry"
+            else:
+                tag = "moves only in combination"
+            print(f"  {f:<38} parts:{','.join(movers) or '-':<26} "
+                  f"{b['grade']} {b['score']} -> {a['grade']} {a['score']}  "
+                  f"tr {b['trims']}->{a['trims']}  {tag}")
+        if not surprises:
+            print("  behaves as the union of its parts on all "
+                  f"{len(fxs)} fixtures")
+        print()
     return 0
 
 
