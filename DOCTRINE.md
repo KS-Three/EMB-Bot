@@ -809,10 +809,18 @@ its hedge as it is copied forward** — is why this file is split.
   - **Suite growth cannot carry it either.** The SAME test count lands
     19.6–34.5 min (1,851 tests) and 17.9–33.7 (1,968) — a **1.9× spread on
     identical work** — with seconds-per-test at 0.54–1.32.
-  - **What is left is the runner, and nothing recorded which one we drew.** The
-    job now echoes `nproc` before pytest for exactly that reason. Until a log
-    settles it, do not attribute a slow job to a cause; the three above are
-    already eliminated.
+  - **The runner's CORE COUNT is refuted too, on the diagnostic's first run.**
+    The `nproc` echo was added by the very PR that proposed the core-count
+    hypothesis, and answered it immediately: `nproc: 4`, `os.cpu_count: 4`,
+    `MemTotal: 16 GB` — on a job that took **27m59s** for 1,984 tests, so
+    `-n auto` had four workers. The local frozen-tree benchmark that suggested
+    it (2 workers 23m53s against 4 workers ~14m00s) does not transfer: **this
+    box does the same suite in ~15 minutes on four cores and the runner takes
+    28 on four.** What remains is per-core throughput or hypervisor
+    contention, and one reading cannot separate them.
+    **Four hypotheses, four eliminated — do not attribute a slow job to a
+    cause.** Every run now records its own `nproc`, so a fast one will say
+    whether the core count varies at all.
 
   **Practical consequence: budget half an hour and read a 35-minute job as
   normal rather than stuck.** This does not weaken item 7's rule — three green

@@ -7221,3 +7221,54 @@ there.
 whole session, with every addition threaded into existing lines to stay under
 rule 4's budget. Removing a false live claim is the first thing all day to buy
 budget back rather than spend it.
+
+---
+
+## 2026-09-07 — the diagnostic answered on its first run, and refuted the hypothesis that motivated it
+
+The PR one entry above added three lines to the `digitizer` job — `nproc`,
+`os.cpu_count()`, the first line of `/proc/meminfo` — on the reasoning that
+`-n auto` follows the core count and the local frozen-tree benchmark had
+measured **2 workers 23m53s against 4 workers ~14m00s** on the same tree, the
+same shape as CI's 14.3/32.4 bimodal split. The entry was careful to call that
+a hypothesis rather than a finding.
+
+**Its own CI run settled it, in the wrong direction for the hypothesis:**
+
+```
+nproc: 4
+os.cpu_count: 4
+MemTotal:       16373448 kB
+1984 passed, 3 skipped, 7 xfailed, 4 warnings in 1679.00s (0:27:59)
+```
+
+**Four cores, 16 GB, 28 minutes.** `-n auto` had four workers, not two. So the
+core-count explanation is dead alongside concurrency and suite growth.
+
+### What that leaves
+
+This box runs the same suite in **~15 minutes on four cores** (five consecutive
+frozen-tree runs today: 15m34, 15m41, 14m58, 15m09, 15m03 — very stable). The
+runner takes **28 on four**. The difference is therefore **per-core throughput
+or hypervisor contention on a shared host**, and *one reading cannot separate
+those two.*
+
+**Four hypotheses, four eliminated.** Concurrency (the 41.8-minute worst case
+ran with zero other digitizer jobs), suite growth (the same test count lands at
+19.6 or 34.5 minutes), the setup steps (`Install` is 0.27 min on fast and slow
+runs alike), and now the core count. **Do not attribute a slow job to a cause.**
+
+### Why this is a good outcome anyway
+
+The diagnostic cost three lines and seconds of runtime, and it converted an
+eight-page API sweep into a number printed in every future log. Every run from
+here records its own `nproc`, so the next question — *does the core count vary
+at all between a 14-minute run and a 34-minute one?* — is answered by reading
+two logs instead of by another sweep. That is the whole reason to record a
+thing you cannot yet explain.
+
+It is also worth stating plainly that **the hypothesis was mine and the
+measurement I built to test it is what killed it.** That is the fourth time
+today: the ambiguous-line branch, the `--durations` target, the concurrency
+theory, and now this. The pattern is not that the guesses were careless — each
+had a real mechanism behind it — but that a mechanism is not evidence.
