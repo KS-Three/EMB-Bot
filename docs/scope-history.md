@@ -8730,3 +8730,37 @@ ARIA snapshot, which computes the name the way a screen reader does.
 
 Both now have e2e guards: no control on any step renders without a name, and a
 page load produces no console error, no pageerror and no failed request.
+
+---
+
+## 2026-09-07 — the simulator's counter, one screen over from defect 34
+
+Live defect 38. Found by watching the stitch simulator run to the end.
+
+Both numbers visible at once, on a `FRITSCH'S` design at Left Chest:
+
+| where | reads |
+|---|---|
+| field caption, under the canvas | `1289 stitches · 102×12 mm · 5×7 in hoop` |
+| simulator bar | `1280 / 1280` |
+
+Nine apart, and both correct. A **strand** is the segment BETWEEN two
+consecutive stitches, and the chain breaks at every jump, trim and colour
+change — so N stitches in K runs make N − K strands. Measured on that design:
+**1,289 stitches, 1,280 strands, 9 runs, 0 single-stitch runs**. The simulator
+animates strands because strands are what paint; it was *displaying* that index
+with no unit next to a caption that says "stitches".
+
+`strandStitchOrdinals(design)` (strands.js) maps each strand to the stitch
+number it ends at — the same walk `designToStrands` does, deliberately, so the
+two arrays index together and a future change to one cannot silently skew the
+other. The counter now reads **`1289 / 1289 stitches`**.
+
+**The displayed total is the last ordinal, not `design.stitchCount`.** A run of
+a single stitch paints no segment, so its ordinal never appears and the
+simulator must not claim to have drawn it. The review fixture has none; the
+unit tests cover a design that does.
+
+`field-chrome.spec.js` pinned the old `N / M` format; updated with the reason
+rather than loosened — what that assertion cares about (the number moves off
+zero) is unchanged.

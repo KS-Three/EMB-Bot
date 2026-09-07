@@ -604,3 +604,28 @@ test("the empty canvas says how to reach the drawing tools", async ({ page }) =>
     await expect(page.getByRole("button", { name: kind, exact: true })).toBeVisible();
   }
 });
+
+test("the simulator counts in the same unit the caption does", async ({ page }) => {
+  // The animation is driven by STRANDS — the segments between consecutive
+  // stitches — so N stitches in K runs make N − K strands. The counter showed
+  // that raw number: "1289 stitches · 102×12 mm" under the canvas and
+  // "1280 / 1280" in the simulator bar, nine apart on a design with nine runs.
+  // Both correct, measuring different things, only one of them labelled.
+  await page.goto("/");
+  await page.getByRole("button", { name: "Left Chest", exact: true }).click();
+  await page.getByRole("button", { name: "Next", exact: true }).click();
+  await page.locator("textarea").first().fill("FRITSCH'S");
+  await expect(page.locator("span.stats")).toBeVisible({ timeout: 60_000 });
+  const captionCount = Number((await page.locator("span.stats").innerText()).match(/([\d,]+) stitches/)[1].replace(/,/g, ""));
+  expect(captionCount).toBeGreaterThan(100);
+
+  await page.getByRole("button", { name: "Stitch simulator" }).click();
+  const counter = page.locator(".simcount");
+  await expect(counter).toBeVisible();
+  // The total is asserted immediately; the running number is left alone,
+  // because it is mid-animation and racing it would be the flaky assertion.
+  await expect(counter).toContainText(new RegExp(`/ ${captionCount} stitches$`));
+  // …and it gets there. The design is short, so the default 1x run finishes
+  // well inside this budget.
+  await expect(counter).toHaveText(`${captionCount} / ${captionCount} stitches`, { timeout: 60_000 });
+});

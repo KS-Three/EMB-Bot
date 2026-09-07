@@ -4,7 +4,7 @@
   import { ensureFonts, loadCoverage, loadManifest } from "../lib/fontLoader.js";
   import { unsupportedMessage } from "../lib/fontCoverage.js";
   import { renderRealistic, isDark } from "../lib/preview.js";
-  import { designToStrands } from "../lib/strands.js";
+  import { designToStrands, strandStitchOrdinals } from "../lib/strands.js";
   import { advanceIndex, clampIndex, nextSpeed } from "../lib/simulate.js";
   import { EMB } from "../lib/emb.js";
   import { designRectPx, hitTest, pickElement, dragResize, clampOffsets, clampPan, buildSnapLines, snapMove, snapResizeWidth, rotateHandlePx, dragRotate, unionBBox, clampGroupDelta, groupResizePatches } from "../lib/interact.js";
@@ -139,6 +139,10 @@
   let simPlaying = false;
   let simIndex = 0;
   let simTotal = 0;
+  // Stitch number per strand — see startSim. The DISPLAY total is the last
+  // entry, not `combined.stitchCount`: a run of a single stitch paints no
+  // segment, so the simulator must not claim to have drawn it.
+  let simOrdinals = [];
   let simSpeed = 1;
   let simRafId = 0;
   let simLastTs = 0;
@@ -1206,6 +1210,15 @@
   function startSim() {
     if (!lastGenerateResult || !lastGenerateResult.combined) return;
     simTotal = designToStrands(lastGenerateResult.combined).length;
+    // The animation is driven by STRANDS (segments) because strands are what
+    // paint; the counter is shown in STITCHES because that is the unit the
+    // field caption right underneath it uses. A strand is the segment BETWEEN
+    // two consecutive stitches, so N stitches in K runs make N − K strands —
+    // and the two numbers were on screen together nine apart ("1289 stitches"
+    // in the caption, "1280 / 1280" here, on a design with nine runs).
+    // Computed once per run rather than per frame; one entry per strand, so
+    // the two arrays index together.
+    simOrdinals = strandStitchOrdinals(lastGenerateResult.combined);
     if (!simTotal) return;
     simActive = true;
     simIndex = 0;
@@ -2144,7 +2157,7 @@
           on:input={simScrub}
           aria-label="Stitch progress"
         />
-        <span class="simcount">{Math.floor(simIndex)} / {simTotal}</span>
+        <span class="simcount">{simIndex >= 1 ? simOrdinals[Math.floor(simIndex) - 1] : 0} / {simOrdinals[simOrdinals.length - 1] || 0} stitches</span>
         <button type="button" class="zoombtn simspeed" on:click={simCycleSpeed} aria-label="Playback speed">
           {simSpeed}x
         </button>

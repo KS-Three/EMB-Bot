@@ -2570,3 +2570,28 @@ its hedge as it is copied forward** — is why this file is split.
   Fixing discoverability did not require re-opening the placement ruling: it
   is one sentence, and reverting it is one string.
   *(2026-09-07)*
+
+- **Two numbers on one screen measuring different things, again — and the
+  second one was a unit label away.** Defect 34 was the design's width; this is
+  the simulator's counter, one screen over. The field caption read "1289
+  stitches" and the simulator bar read "1280 / 1280", both visible at once,
+  nine apart. Neither was wrong: the simulator animates STRANDS — the segment
+  between two consecutive stitches, chain broken at every jump, trim and colour
+  change — so N stitches in K runs make N − K strands.
+
+  **The tell is a bare number.** "1280 / 1280" carries no unit, sitting under a
+  line that names one. Anything a customer will read as a quantity should say
+  what quantity it is, and the moment it does, a mismatch with a neighbouring
+  readout becomes visible instead of invisible.
+
+  **Convert for display; do not change what the code runs on.** The animation
+  still steps strands, because strands are what paint. Only the label maps back
+  to stitches — and it maps to the LAST ORDINAL rather than
+  `design.stitchCount`, because a run of a single stitch paints no segment and
+  the simulator must never claim to have drawn a stitch it cannot.
+
+  **The mapping walks the same records the renderer does, on purpose.** Two
+  walks that "obviously" agree drift the day one of them learns about a new
+  record type. The tests drive both from the same fixtures and assert their
+  lengths match, which is the property that makes the two arrays index together.
+  *(2026-09-07)*
