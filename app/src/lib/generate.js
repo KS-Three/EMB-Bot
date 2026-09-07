@@ -247,7 +247,38 @@ export function letteringNote(l, opts = {}) {
   const pct = (mm) => Math.round(100 * share(mm));
   const capped = !!opts.atWidthCap;
   if (l.capMm > 0 && l.capMm < l.capFloorMm) {
-    return `Letters ${l.capMm.toFixed(1)} mm tall — under the ${l.capFloorMm} mm floor, thin strokes will shred`;
+    // The most severe verdict this function gives — the lettering cannot be
+    // sewn at all — and until 2026-09-07 it was the only one that named no
+    // fix, while the milder branch below named two. Measured that day: a
+    // 74-character sentence auto-fit to the default left chest gives 1.7 mm
+    // letters against a 4 mm floor, and the customer was told what was wrong
+    // and nothing about what to do, ranked BELOW a 6 mm design that got a
+    // named fix.
+    //
+    // All three levers were measured on that sentence and that garment before
+    // being named here, medium_font at emMm 18:
+    //
+    //   as typed, left chest .............. 1.7 mm   under
+    //   same words over 3 lines ........... 4.8 mm   clears
+    //   same words over 6 lines ........... 6.3 mm   clears
+    //   cut to 18 characters .............. 6.7 mm   clears
+    //   same words, full back placement ... 4.0 mm   clears
+    //
+    // Line breaks lead because that is the lever a customer does not think of
+    // and the only one that keeps every word. "Fewer characters" has to mean
+    // meaningfully fewer — the same sentence trimmed to 40 characters is
+    // still 3.1 mm, under the floor — so it is named second, not first.
+    const more = (opts.lines || 1) > 1 ? "use more lines" : "break it across lines";
+    // Phrased like the thinMm branch below rather than the hairline one: the
+    // hairline branch's capped form appends "— it is already the full width of
+    // the placement" as a THIRD dash-separated clause, and pasted onto this
+    // verdict (which carries a dash of its own) that read as three dashes in
+    // one sentence. Folding the cap in with "so" is the same information in
+    // prose that holds together.
+    const fix = capped
+      ? `already the full width of the placement, so ${more} or use fewer characters`
+      : `size up, or ${more}`;
+    return `Letters ${l.capMm.toFixed(1)} mm tall — under the ${l.capFloorMm} mm floor, thin strokes will shred — ${fix}`;
   }
   if (share(l.hairlineMm) >= 0.5) {
     const fix = capped

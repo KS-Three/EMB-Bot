@@ -925,7 +925,11 @@
       return g ? g.widthIn * 25.4 : Infinity;
     })();
     const atWidthCap = !!el && (el.sizeMm == null || el.sizeMm >= capWmm - 0.05);
-    letterNote = letteringNote(pe.design && pe.design.lettering, { atWidthCap });
+    // `lines` only picks the wording of the cap-floor fix ("break it across
+    // lines" vs "use more lines"); read off the element's own text, which is
+    // what the customer would be editing.
+    const lines = el && typeof el.text === "string" ? el.text.split("\n").length : 1;
+    letterNote = letteringNote(pe.design && pe.design.lettering, { atWidthCap, lines });
     // "Smaller than 5 mm" is advice about a design that IS there and is too
     // small to sew cleanly. On an element with no stitches at all it is not
     // advice, it is noise — and it sat directly in front of the message that
