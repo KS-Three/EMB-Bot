@@ -9,9 +9,12 @@ entry happened to surface it.
 This is the list. **Every row is a measurement made on this corpus, with the
 instrument that produced it named**, so the gate can be argued from evidence
 rather than from impression. It is not a complaint about preflight: five of
-the six are consequences of deliberate, documented choices.
+the seven are consequences of deliberate, documented choices, one is fixed,
+and one (row 7) was retracted the day after it was written when the engine
+under it turned out to have a bug.
 
-Assembled 2026-09-06 from that day's work. **Append to it; do not curate it.**
+Assembled 2026-09-06 from that day's work. **Append to it; do not curate it** —
+a retracted row stays, marked, because the retraction is itself a measurement.
 
 ---
 
@@ -149,46 +152,74 @@ GRADE would re-base the scorecard and is still a product call. Inert until the
 scorecard baseline is recaptured (`_metric_deltas` intersects key sets), which
 is also why it cannot disturb an existing diff.
 
-## 7. It prefers a design that dropped its ink
+## 7. It preferred a design that dropped its ink — and then the ink came back
 
-The first six rows are the metric failing to SEE an improvement. This one is
-the metric preferring a regression, and it was found by measuring cones
-instead of grades (`digitizer/tools/flip_sheet.py`, `docs/flip-sheet-2026-09-06.md`).
+**This row is RETRACTED as a disagreement (2026-09-07), and kept because the
+retraction is the finding.** It read, on 2026-09-06, that `logo_gaulke_roofing`
+scored C 64 under `dissolve_phantom_blends` while loading no thread darker than
+L\* 82, and F 16 under `bind_resnap_all_classes`, the one arm that loaded
+`0020 Black` — the metric preferring a design that had dropped its ink.
 
-`logo_gaulke_roofing` is black lettering on a white label. Four arms:
+**Both C 64 rows were produced by a bug in the flag, not by the metric.**
+`dissolve_phantom_blends` was reading `~base_valid` as "the page" when
+`base_valid` already has ENCLOSED pixels removed, so gaulke's black lettering
+— inside a white label, on a black canvas — read as bordering the page and was
+deleted rather than recoloured (50.3 mm², the 21.0 mm² wordmark included). Fixed
+in #380; the trail is in `docs/flip-sheet-2026-09-06.md`.
+
+On the fixed tree the metric ranks gaulke **correctly**:
 
 | arm | darkest cone | grade |
 |---|---:|---|
-| off | `1375 Dark Charcoal`, **L\* 15.9**, 288 st | F 4 |
-| `dissolve_phantom_blends` | `0145 Skylight`, L\* 85.7 | **C 64** |
-| `bind_resnap_all_classes` | `0020 Black`, **L\* 0.0** | F 16 |
-| all five parked flags | `3971 Silver`, L\* 82.0 | **C 64** |
+| off, `halo`, `resnap_small`, `satin_stroke`, `satin_patch` | `1375 Dark Charcoal`, L\* 15.9 | F 4 |
+| `bind_resnap_all_classes`, all five | `0020 Black`, **L\* 0.0** | **F 16** |
 
-**The two best grades load no thread darker than L\* 82 for lettering on a
-white ground. The only arm that loads Black grades second-worst.**
+Every arm that loads real Black grades HIGHER than every arm that does not.
+That is agreement.
 
-*Why:* `THREAD_MATCH_POOR` grades per thread on that thread's worst patch, so
-deleting the dark cone deletes the thread that was scoring badly — you cannot
-have a poor thread match on a thread you never loaded.
+**The mechanism the row asserted is still true, and is now untestable on this
+corpus.** `THREAD_MATCH_POOR` is driven by each thread's worst patch
+(`preflight.py` module docstring), so a cone that is never loaded cannot carry
+a poor match — deleting it deletes the finding. But swept across all seven
+arms × 26 fixtures on the fixed tree, **ten (arm, fixture) pairs remove a cone
+and not one of them scores higher**; all ten sit on fixtures scoring exactly 0
+in both arms, where the grade is saturated and cannot express a preference in
+either direction.
 
-The practical consequence is in row 1's terms: on a fixture where a flag
-removes a cone, the grade is not evidence of anything, and the cone list is.
-*(measured 2026-09-06)*
+**So row 6 is why row 7 can no longer be measured.** The floor swallows the
+question. That interaction is the durable finding here, and it is worth more
+than the row it replaces: two entries on this list are not independent, and
+un-clamping the grade (row 6's open half) is what would make this one testable.
+
+The practical rule is unchanged and was always the useful part: **on a fixture
+where a flag removes a cone, the grade is not evidence of anything and the cone
+list is.** It is what caught the bug above.
+
+`digitizer/tools/flip_sheet.py`, `docs/flip-sheet-2026-09-06.md`.
+*(measured 2026-09-06, retracted on re-measurement 2026-09-07)*
 
 ---
 
 ## What this list is not
 
 **Not an argument that the scorecard is bad.** Rows 3–5 are small; rows 1, 2
-and 6 are the load-bearing ones (6 is the mechanism under 1), and both say the same thing in different words:
-*the metric has no term for the thing the change improved.* That is the gap
-phase 1 names, and it will not close by tuning thresholds.
+and 6 are the load-bearing ones (6 is the mechanism under 1), and both say the
+same thing in different words: *the metric has no term for the thing the change
+improved.* That is the gap phase 1 names, and it will not close by tuning
+thresholds.
 
-**Not a to-do list.** Two of the six (3 and 4) are product calls that re-base
+**Not a to-do list.** Two of the seven (3 and 4) are product calls that re-base
 the scorecard for at least four fixtures — and half of 4 turned out not to be
-one, and is fixed. One (5) is fixed. The other three are measurements waiting
-for a yardstick that can hold them.
+one, and is fixed. One (5) is fixed. One (7) is retracted. The other three are
+measurements waiting for a yardstick that can hold them.
+
+**Not proof that a row keeps standing.** Row 7 held for one day. It was a real
+measurement, correctly reported, on an engine with a bug in it — and the row
+itself is what found the bug. **A row here is evidence about the tree it was
+measured on, and the tree moves.** That is the argument for `head` being
+recorded in every `flip_sheet.py` row from 2026-09-07 on, and for re-measuring
+a row before quoting it at a gate.
 
 **The honest use of it:** before claiming a digitizing change improved
-quality, check whether it lands in one of these five shapes. If it does, the
+quality, check whether it lands in one of these shapes. If it does, the
 grade is not evidence either way, and the render is.

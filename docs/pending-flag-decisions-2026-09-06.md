@@ -151,15 +151,25 @@ leave it OFF and bank it** — deliberately parked, not pending. A datum arrived
 worst ΔE 63.6 → 6.8, −15% stitches) and MASTER_SCOPE records it as exactly
 that: *"Not a re-opening, a datum."*
 
-**That datum is GONE — twice over.** PR #380 retracted the C 64 itself (measured on the cones, it is a design that DROPPED ITS LETTERING; the grade rewarded losing the ink), and re-measured 2026-09-07 the other half has moved too. `gaulke_roofing` grades
-**B 76 with the flag OFF**, zero blocking `THREAD_MATCH_POOR`, worst ΔE00
-**0.0**, at both `max_colors` 6 and 12. The flag now buys **4 cones → 3 and
-−14.5% stitches** there, with no grade and no thread-match change — so the
-one thing that might have re-opened the 2026-09-04 ruling no longer says
-what it said. **His ruling stands more firmly, not less.** The cause of the
-drift is not attributed: defect 28's enclosed-background exclusion accounts
-for F 0 → F 4, not for the rest. His stated reasons on the day — two mild
-negatives and the five-of-six residual — are unchanged.
+**That datum is GONE — but only once, and the second retraction was mine and
+wrong.** PR #380 retracted the C 64 itself: measured on the cones, it is a
+design that DROPPED ITS LETTERING, and the grade rewarded losing the ink.
+That stands.
+
+**This document also claimed the OTHER half had moved — "B 76 with the flag
+OFF, zero blocking `THREAD_MATCH_POOR`". That claim is RETRACTED
+2026-09-07.** Re-measured on the merged tree with `tools/flip_sheet.py` at
+the same config, `off` grades **F 4, four cones, TWO blocking
+`THREAD_MATCH_POOR`**, at 10,229 stitches — the identical stitch count the
+2026-09-06 entry records, so `off` never moved. The "B 76" was that entry's
+flag-**ON** state under the **excess** yardstick, lifted onto the wrong arm
+and the wrong yardstick. #396 read the same fixture independently and got
+F 4 / 2 blocking; it is right. See scope-history 09-07.
+
+So the baseline is NOT stale, and the one thing that might have re-opened the
+2026-09-04 ruling is #380's retraction alone — which cuts the same way. **His
+ruling stands, on his stated reasons — two mild negatives and the
+five-of-six residual — which are unchanged.**
 
 ## Not decidable yet, and why
 
