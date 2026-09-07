@@ -1276,6 +1276,22 @@ its hedge as it is copied forward** — is why this file is split.
   *(2026-09-06 — same entry)*
 
 
+- **When you ask "would this change the outcome?", compare the DECISION, not
+  the score of the thing already chosen.** Twice in one day, on the same
+  fixture set. `--yardstick` first: `_thread_match_findings` picks its top row
+  on `_score`, so under excess a thread can block on its SECOND-worst raw row
+  — 6 of 24 findings change row, and a probe that keeps the raw top and prints
+  its excess answers a different question. Then `--masks` made the same
+  mistake and shipped a wrong verdict: it compared the two masks on the
+  ASSIGNED thread's dE00, found `bridge_bar` agreed to 1.3, and published
+  *"not the mask"*. `revalidate_threads` re-snaps on the improvement over the
+  best LOADED spool, and there the two masks read **1.8 against 10.3**, across
+  a 3.0 gate — opposite answers. The corrected tool prints the floor check,
+  the best loaded spool and the gain under each mask, then says whether each
+  WOULD re-snap. **The quantity a check reads is the quantity to compare;
+  anything else is a proxy that can agree while the decision disagrees.**
+  *(2026-09-07 — `tools/spool_remedy.py --masks`, corrected before merge)*
+
 - **Two functions can share an estimator and still score different artwork —
   check the MASK, not the formula.** `stage4_vectorize.revalidate_threads` and
   `preflight._region_color_errors` both take the median of the per-pixel
@@ -2021,13 +2037,16 @@ its hedge as it is copied forward** — is why this file is split.
   **(3) survives excess too — 3 of 7, not 2 (2026-09-07).** `gaulke_roofing`
   joins this group now that category (2) is empty: 2 raw blocks -> **1** under
   excess, and the survivor is `3971 Silver` at raw 63.6 / **excess 58.6**.
-  **ROOT-CAUSED the same day, and the three survivors have THREE causes**
-  (`tools/spool_remedy.py --masks`). Gaulke's is **the mask gap**, below.
-  `screenshot`'s is the small-shape floor already documented (`S43831dcd`,
-  177 px, masks agree to 0.4 dE00, `revalidate_small_shapes` takes it
-  32.7 -> 1.4). `bridge_bar`'s is neither and is still open (`S880e5dff`,
-  240 px so above the floor, masks agree to 1.3, both instruments condemn
-  `6156 Olive` at ~20 — stage 4 looked and found nothing better).
+  **ROOT-CAUSED the same day** (`tools/spool_remedy.py --masks`): **the mask
+  gap accounts for TWO of the three** — `gaulke` and `bridge_bar` — and
+  `screenshot` is the small-shape floor already documented (`S43831dcd`,
+  177/114 px, both footprints pick `0015` either way,
+  `revalidate_small_shapes` takes it 32.7 -> 1.4). **A first version of this
+  entry put `bridge_bar` in "neither"**, because it compared the two masks on
+  the ASSIGNED thread's score (19.9 vs 21.3, agreement) — the wrong quantity.
+  The gate reads the improvement over the best LOADED spool, and there they
+  read **1.8 against 10.3**, on opposite sides of the 3.0 threshold. See the
+  gotcha below.
   The other two are also **region colour != the artwork under it**:
   `bridge_bar` and `screenshot_phone_ui` block under every combination, and the screenshot's
   looks blatant: **`0111 Whale` (127,127,127) scores 33.0 ΔE on artwork read
