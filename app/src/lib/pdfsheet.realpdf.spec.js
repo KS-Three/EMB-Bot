@@ -293,3 +293,55 @@ test("a real worksheet PDF carries the trims and the thread estimate", () => {
     dom.restore();
   }
 });
+
+// The sheet a customer emails or prints. jsPDF's addImage defaults to NO
+// compression, so the 900x900 render was embedded as RAW pixels: measured
+// 2026-09-07 on a real worksheet, 2.43 MB of image plus a 0.81 MB alpha mask,
+// 100% of a 3.24 MB file. Same render, one argument, in the shipped jsPDF:
+// NONE 2.43 MB / 157 ms, FAST 0.20 / 193, MEDIUM 0.12 / 201, SLOW 0.10 / 373.
+// End to end the real sheet went 3.244 MB -> 0.054 MB, a 60x reduction, in
+// 370 ms.
+//
+// zlib is lossless, so this is the same page — which is what the assertions
+// below check alongside the size: every line of text still present, both
+// images still 900x900, and the alpha mask still there.
+test("the worksheet's embedded render is compressed, and still the same page", () => {
+  const dom = installFakeDom();
+  const realPdf = installRealJsPDF();
+  try {
+    const bytes = toBytes(buildWorksheetPDF(baseDesign(), {
+      garmentLabel: "Left chest",
+      fileName: "embbot-worksheet.pdf",
+      garmentBox: { widthMM: 127, heightMM: 57.15 },
+      sew: { trims: 6, threadM: 2.4813 },
+      chartLabel: "Isacord Polyester 40",
+    }));
+    const raw = bytes.toString("latin1");
+
+    // The image streams are deflated, not raw.
+    const images = [...raw.matchAll(/\/Subtype\s*\/Image([\s\S]{0,400}?)stream/g)].map((m) => m[1]);
+    expect(images.length).toBeGreaterThanOrEqual(1);
+    for (const h of images) {
+      expect(h).toMatch(/\/Filter\s*\/FlateDecode/);
+    }
+    // NOTHING ELSE about the image is asserted here, deliberately.
+    // installFakeDom's canvas is 1x1 and opaque, so /Width 900 and /SMask
+    // would both be checking the HARNESS rather than the product — the first
+    // draft asserted both and failed on both — and for the same reason a
+    // byte-count bound would pass with compression off. `/FlateDecode` is the
+    // one property that means the same thing in both environments, and it is
+    // what dropping the "MEDIUM" argument actually reddens. The 900x900
+    // render, its alpha mask and the 60x figure come from a real browser
+    // download, recorded in scope-history.
+
+    // ...and it is still the whole sheet.
+    const texts = extractPdfText(bytes);
+    for (const line of ["Embroidery Worksheet", "Design Stats", "Thread Sequence",
+                        "Trims: 6", "Thread: 2.5 m (estimate)", "Chart: Isacord Polyester 40"]) {
+      expect(texts).toContain(line);
+    }
+  } finally {
+    realPdf.restore();
+    dom.restore();
+  }
+});

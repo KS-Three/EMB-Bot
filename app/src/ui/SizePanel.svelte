@@ -22,13 +22,24 @@
   // since Kent (the primary user) is US-based.
   let unit = "in";
 
-  // The width shown always reflects the *actual* generated width
+  // The width shown reflects the *actual* generated width
   // (designDims.widthMM), not the requested sizeMm -- the engine clamps
   // sizeMm to the placement box (typed over-box value) or further limits it
   // when a tall-aspect design is height-bound, and since 2026-09-07
   // designDims is the stitch bbox, which pull compensation puts slightly
   // OUTSIDE the box the design was fit to. All three make the requested and
   // the sewn width legitimately differ.
+  //
+  // "ALWAYS" is what this said until 2026-09-07, and it is not true after the
+  // user types: `value={wDisplay}` is one-way, and measured that day, an edit
+  // leaves later reactive changes stranded — start at 80 mm, type 90, let the
+  // engine come back at its pull-compensated 90.2, and the field keeps
+  // showing 90. That residual is ~0.2 mm on plain lettering and the number it
+  // shows is the one the customer just typed, so it is recorded rather than
+  // chased; an effect that re-asserts the DOM on every wDisplay change was
+  // tried and did not measurably fix it. What IS fixed is the case where the
+  // clamp bit and the design therefore did not change at all — see
+  // onWidthChange, where the field used to keep "150" over a 102 mm design.
   // Falls back to the requested sizeMm only before anything has stitched.
   $: widthMm = designDims ? designDims.widthMM : project.sizeMm;
   // Height is never user-editable -- it's always whatever the last
@@ -101,11 +112,40 @@
 
   $: warn = !!designDims && (designDims.widthMM < MIN_SIZE_MM || designDims.heightMM < MIN_SIZE_MM);
 
+  // A request the clamp changed has to be shown as changed.
+  //
+  // `value={wDisplay}` is ONE-WAY, and Svelte only touches the DOM when that
+  // expression's value changes. Two out-of-range entries in a row produce the
+  // same clamped design, so the second one leaves the customer's typed text
+  // sitting in a field whose whole job is to say how big the design is.
+  //
+  // Measured 2026-09-07 on Left Chest (4 x 4 in = 101.6 mm), asking in mm:
+  //
+  //   100 -> field "100", sews 100   honoured
+  //   105 -> field "102", sews 102   clamped, and the field said so
+  //   110 -> field "110", sews 102   clamped, and the field did NOT
+  //   115, 120, 125, 127, 130, 150, 200 -> same, all the way up
+  //
+  // So a customer asking for a 6-inch left-chest design saw "150" over a
+  // 102 mm design, with `checkValidity()` true and no message anywhere. The
+  // engine and the clamp are both correct — this is only the display.
+  //
+  // Written back as the BOUND rather than the sewn width because the bound is
+  // the number that explains what happened, and it is what `wTitle` already
+  // promises ("Up to N fits this garment — larger values are scaled down to
+  // fit"). The sewn width differs from it by pull compensation, ~0.2 mm on
+  // plain lettering, and the reactive statement takes the field back over as
+  // soon as the design actually changes.
+  function resyncIfClamped(target, requestedMm, clampedMm) {
+    if (clampedMm !== requestedMm) target.value = fromMm(clampedMm, unit);
+  }
+
   function onWidthChange(e) {
     const v = parseFloat(e.target.value);
     if (!Number.isFinite(v)) return;
     const mm = toMm(v, unit);
     const clamped = Math.min(hoopWmm, Math.max(MIN_SIZE_MM, mm));
+    resyncIfClamped(e.target, mm, clamped);
     d("update", { sizeMm: clamped });
   }
 
@@ -121,6 +161,10 @@
     const aspect = designDims.widthMM / designDims.heightMM;
     const wMm = hMm * aspect;
     const clamped = Math.min(hoopWmm, Math.max(MIN_SIZE_MM, wMm));
+    // Same one-way-display trap as the width field, in the height the caller
+    // solved through the aspect ratio: show the height the clamped width
+    // produces, not the one that was asked for.
+    if (clamped !== wMm) e.target.value = fromMm(clamped / aspect, unit);
     d("update", { sizeMm: clamped });
   }
 

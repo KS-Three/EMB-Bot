@@ -89,7 +89,27 @@ const deps =
 
     const imgSizeIn = PAGE_W_IN - 2 * MARGIN_IN;
     const imgY = cursorY + 0.1;
-    doc.addImage(dataUrl, "PNG", MARGIN_IN, imgY, imgSizeIn, imgSizeIn);
+    // The 8th argument is jsPDF's zlib level, and it defaults to NONE — the
+    // 900x900 render was embedded as RAW pixels. Measured 2026-09-07 on a real
+    // worksheet: 2.43 MB of image plus a 0.81 MB alpha mask, 100% of a 3.24 MB
+    // file, with 900 x 900 x 3 and 900 x 900 x 1 landing on those numbers
+    // exactly.
+    //
+    // Same render, same page, one argument, measured in the shipped jsPDF:
+    //
+    //   NONE (shipping) .... 2.43 MB   157 ms
+    //   FAST ............... 0.20 MB   193 ms
+    //   MEDIUM ............. 0.12 MB   201 ms
+    //   SLOW ............... 0.10 MB   373 ms
+    //
+    // MEDIUM: FAST's time for 40% less, and well short of SLOW's. zlib is
+    // lossless, so the sheet a customer prints is pixel-identical to the one
+    // this used to produce.
+    //
+    // NOT JPEG, which measured smaller still (0.07 MB, 2 ms): this render is
+    // thin dark lines on a pale ground, exactly the content JPEG ringing
+    // damages, and the sheet is the reference an operator works from.
+    doc.addImage(dataUrl, "PNG", MARGIN_IN, imgY, imgSizeIn, imgSizeIn, undefined, "MEDIUM");
     cursorY = imgY + imgSizeIn + 0.25;
 
     // Stats block.

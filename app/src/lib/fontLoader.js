@@ -22,7 +22,25 @@ async function readBytes(rel) {
     const here = dirname(fileURLToPath(import.meta.url));
     return readFileSync(join(here, "..", "..", "..", "src", "fonts", rel));
   }
-  const res = await fetch("/fonts/" + rel);
+  // A dead connection is the one font failure a customer can do something
+  // about, and it was the one that reached them worst: `fetch` rejects with a
+  // bare TypeError and EmbroideryField rendered its `.message` verbatim, so
+  // the whole of what the app said was "Failed to fetch" — no cause, no
+  // action, no retry control. Measured 2026-09-07 by aborting
+  // `**/fonts/bin/**`.
+  //
+  // Flagged rather than reworded here so the component decides the wording
+  // and this module keeps saying what happened. `offline` is set only for a
+  // transport failure; an HTTP status is a different problem (a bad deploy,
+  // a missing file) and keeps its own message.
+  let res;
+  try {
+    res = await fetch("/fonts/" + rel);
+  } catch (e) {
+    const err = new Error("Font fetch failed: " + rel + " (" + (e && e.message ? e.message : "network error") + ")");
+    err.offline = true;
+    throw err;
+  }
   if (!res.ok) throw new Error("Font fetch failed: " + rel + " (" + res.status + ")");
   return new Uint8Array(await res.arrayBuffer());
 }

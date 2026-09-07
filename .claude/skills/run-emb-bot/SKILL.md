@@ -381,6 +381,42 @@ These are the ones that cost real time here.
   round-tripping, decode through pyembroidery/the service's `/export`, never
   `src/dstimport.js` — CLAUDE.md footgun #1.
 
+### Six locator traps, all measured 2026-09-07
+
+A day of driving the shipped app produced one defect per probe error, roughly.
+Every one of these looked like an app bug for a while.
+
+- **`/red|crimson|scarlet/i` matches the Redo button.** It is disabled, so the
+  click times out and reads as a disabled colour swatch. Anchor colour
+  locators to the picker: `button.tp-cell[aria-label="Scarlet"]`.
+
+- **The thread swatches have EMPTY text content.** Their colour is in
+  `aria-label` and `title` only, so `filter({ hasText: "Navy" })` finds
+  nothing and `getByRole("button", { name: "Navy" })` is the way in.
+
+- **The canvas tool menu closes on any pointerdown outside `.fieldmenu`.** Open
+  it and then run a page-wide `getByRole` lookup after a wait and it has
+  dismissed itself. Click inside the menu:
+  `page.locator(".fieldmenu button").filter({ hasText: "Basic shape" })`.
+
+- **The drawing canvas is the SMALL one in the left panel** (411 x 274), not
+  the field (932 x 766). A run that drew a pentagon on the field placed
+  nothing and left the element reading "Shapes - empty". Pick the leftmost
+  canvas, not the last one.
+
+- **The simulator auto-plays on open**, so a click on a button matching
+  `/^(Play|Pause)/` is a click on PAUSE and freezes the counter. Do not touch
+  the transport; just read `span.simcount`.
+
+- **A locator goes stale across a step navigation.** A size sweep that walked
+  to Download and back between cases only ever applied its first value, and
+  the resulting table read like an engine bug that clamped everything to one
+  width. One fresh page per case.
+
+And two things the caption cannot tell you, because it reports SIZE and STITCH
+COUNT: whether a drag moved anything, and whether align did. Read the offsets
+out of the saved project instead.
+
 ## Troubleshooting
 
 - **`Cannot find module '…/app/.claude/skills/run-emb-bot/driver.mjs'`** —

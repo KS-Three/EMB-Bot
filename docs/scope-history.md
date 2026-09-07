@@ -9876,3 +9876,302 @@ does not, which is why "fewer characters" is named second.
   ignored (identical caption to the trimmed text), a tab lays out, three lines
   stack to 102×73 mm, an all-space string produces no design and no error, and
   an emoji takes the honest "no font in this library can stitch" branch.
+
+## 2026-09-07 — four more things driven and found sound
+
+Snapshot. Not live status. Recorded so nobody re-checks them.
+
+- **Undo and redo are exact.** Four forward states (three texts, then a letter
+  spacing change), four undos walking back through every one to the empty
+  design, four redos walking forward — the caption after the last redo is
+  identical to the state before the first undo, and the Undo/Redo buttons
+  disable at each end. Zero console errors.
+
+- **The Review step's headline promise holds.** *"Looks good? The live field
+  is your stitch-out."* The canvas and the exported PES were rendered side by
+  side for a two-line design: same words, same line break, same apostrophe,
+  same letterforms, 2,411 stitches and 101.8 × 35.1 mm in both, against a
+  caption reading "2,411 stitches · 102×35 mm".
+
+- **A `.embproj` file round-trips across browsers.** Exported from the drawer
+  (732 bytes), imported into a completely fresh browser context with empty
+  storage: same caption, and the PES regenerated from it hashes
+  `51d49a9bac4a5195` / 12,999 bytes — identical to the one exported before
+  the round trip. The design carried a curly apostrophe, so the typographic
+  fold survives the file too.
+
+- **No control is trapped behind the sticky step bar.** Content, Review and
+  Download at 1440×900, 1280×720 and 1366×768: every step panel scrolls
+  (44–736 px of overflow depending on step and height), and after scrolling to
+  the end, zero buttons, inputs or selects remain under the footer. The
+  apparent clipping in a screenshot is the fold, not a trap.
+
+- **A two-element, two-colour project agrees on every surface.** "FRITSCH" in
+  Scarlet and "STITCHES" in Navy:
+
+  | | app | exported PES |
+  |---|---|---|
+  | stitches | 1,826 | 1,826 |
+  | size | 102 × 20 mm | 101.8 × 20.2 mm |
+  | thread changes | 1 | 1 |
+  | trims | 12 | 12 |
+  | threads | Scarlet, Navy | 2 — `#ed171f`, `#0e1f7c` |
+
+  The PES's own thread *descriptions* read "Red" and "Prussian Blue" — those
+  are pyembroidery's nearest-name labels for the RGB it was handed, not
+  EMB-Bot's names. The colours are exact and the worksheet carries the names
+  the customer picked, which is the list they shop from.
+
+- **The hoop gate is honest and names the lever.** A 305 mm design on Jacket
+  Back: *"Exceeds your 8×8 in hoop, and every hoop this app offers — make it
+  smaller under Size. The machine cannot stitch past the edge of the hoop —
+  the needle would hit the frame"*, with "Go back" and "Download PES anyway".
+  It names the problem, why it matters physically, and where the control is.
+  The JEF button carries its own asterisk on the same design, which is this
+  morning's hoop-header note firing exactly where it should.
+
+Two probe errors worth naming, because both cost time and neither was the
+app's fault: `/red|crimson|scarlet/i` matched the **Redo** button (disabled,
+so the click timed out and looked like a disabled swatch), and the picker's
+swatches carry their colour in `aria-label` with empty text content, so
+`filter({ hasText })` found nothing. Target them as
+`button.tp-cell[aria-label="…"]`.
+
+## 2026-09-07 — the size field, and a 3.2 MB worksheet
+
+Snapshot. Not live status.
+
+### The size field kept showing a width the design does not have
+
+Left Chest (4 x 4 in = 101.6 mm), asking in mm:
+
+| asked | field showed | design sewed |
+|---:|---|---|
+| 100 | 100 | 100 — honoured |
+| 105 | **102** | 102 — clamped, and said so |
+| 110 | **110** | 102 — clamped, and did not |
+| 115, 120, 125, 127, 130, 150, 200 | as typed | 102 |
+
+`checkValidity()` true throughout, no message anywhere. A customer asking for
+a 6-inch left-chest design saw "150" over a 102 mm one.
+
+**The engine and the clamp are both correct.** `buildLetteringDesign` called
+directly honours 105, 110, 120 and 127 exactly and clamps only above the box;
+the UI clamp is `Math.min(garment placement width, …)`. The defect is the
+one-way `value={wDisplay}`: two out-of-range entries produce the same clamped
+design, so Svelte never rewrites the field.
+
+Residual, recorded not fixed: after ANY edit a later reactive change also
+fails to reach the field — 80 → type 90 → engine returns 90.2 → field keeps
+90. ~0.2 mm, and the number shown is the one just typed.
+
+### The printed worksheet was 3.2 MB of uncompressed pixels
+
+jsPDF's `addImage` takes a zlib level as its eighth argument and defaults to
+NONE, so the 900×900 render was embedded raw: 2.43 MB of image plus a 0.81 MB
+alpha mask, 100% of a 3.24 MB file — 900 × 900 × 3 and 900 × 900 × 1 exactly.
+
+| level | size | time |
+|---|---:|---:|
+| NONE (shipping) | 2.43 MB | 157 ms |
+| FAST | 0.20 MB | 193 ms |
+| **MEDIUM** | **0.12 MB** | **201 ms** |
+| SLOW | 0.10 MB | 373 ms |
+
+End to end in a real browser: **3.244 MB → 0.054 MB, a 60× reduction**, in
+370 ms — the alpha mask deflates even harder than the image. zlib is
+lossless, so the printed page is pixel-identical. Not JPEG (0.07 MB, 2 ms):
+thin dark lines on a pale ground is exactly what JPEG ringing damages.
+
+### Three more driven and found sound (2026-09-07)
+
+- **The PNG export** is 1200×414 RGBA for a 102×35 mm design — the aspect
+  matches to within a pixel (1200/414 = 2.90 against 102/35 = 2.91) and the
+  transparent background is what a mockup overlay needs.
+- **The SVG export carries real-world dimensions.** `viewBox="0 0 101.8 35.1"
+  width="101.8mm" height="35.1mm"` — the same 101.8 × 35.1 mm the PES decodes
+  to, so it opens at the right physical size in a vector editor. 19 polylines
+  at a 0.4 mm stroke, which is the satin cross pitch.
+- **The stitch simulator plays the whole design and stops.** Auto-plays on
+  open, advances monotonically (322 → 552 → 777 → 1,003 → 1,234 → 1,437 over
+  5.4 s, about 225 stitches a second), and its total is exactly the caption's
+  1,437. Transport is Pause and Playback speed; zero console errors.
+
+  A first probe reported the counter frozen at 335 — the run had clicked a
+  button matching `/^(Play|Pause|▶)/`, which on an ALREADY-PLAYING simulator
+  is Pause. Same class as the Redo and aria-label probe errors above: the
+  harness, not the app.
+
+### Drag, the hoop clamp and align — driven and found sound (2026-09-07)
+
+A 40 mm design on Left Chest (101.6 mm placement box), offsets read out of the
+saved project rather than off the screen:
+
+| action | offset X | offset Y |
+|---|---:|---:|
+| start | 0 | 0 |
+| a 120 × 60 px drag | +30.17 | −34.20 |
+| a 1200 × 900 px drag, far off canvas | **+30.17** | **−34.20** |
+| align Left | −30.70 | −34.20 |
+| align Center | 0 | −34.20 |
+| align Right | +30.70 | −34.20 |
+
+The clamp holds — a drag ten times past the edge moves nothing further — and
+the limits are right: ±30.7 mm is (101.6 − 40) / 2 to a tenth. Align is
+symmetric about centre.
+
+A first pass reported "align does nothing", on an auto-fit design that fills
+the placement box's width, where Left, Centre and Right genuinely coincide and
+X is already pinned. The caption cannot see any of this either: it reports
+size and stitch count, which a move does not change. **Read the state, not
+the screen, when testing a control that moves something.**
+
+### Auto-fit respects both constraints, on all ten garments (2026-09-07)
+
+`medium_step` lettering, one line and three, against each placement box:
+
+| garment | box mm | 1 line | 3 lines | height used |
+|---|---|---|---|---|
+| hat_front | 127×57 | 127×19 | 101×57 | **100%** — height-bound, width shrank |
+| beanie | 114×64 | 115×17 | 112×64 | **100%** — height-bound |
+| jacket_back | 305×254 | 305×45 | 305×174 | 68% |
+| blanket | 254×203 | 254×38 | 254×145 | 71% |
+| left_chest, full_back, sleeve, tote, patch, towel | square boxes | width-bound | | 57% |
+
+Whichever constraint binds is the one that wins: the two shallow boxes give up
+width to fit three lines, the square ones stay width-bound. Nothing to fix.
+
+Checked because `left_chest` is 4 × 4 in and a square left-chest envelope
+looked worth questioning. It is not: three lines there comes to 102 × 58 mm =
+4.0 × 2.3 in, an ordinary left-chest size, because the design is width-bound
+long before the box's height matters. **Measured before writing the concern
+down, which is why the concern is not in the defect list.**
+
+### The two tools behind the right-click menu, driven end to end at last (2026-09-07)
+
+Both are PRODUCT.md launch-scope items, both marked done, and neither had been
+driven through the shipped UI before today — which is what made this morning's
+discoverability work about a menu nobody here had opened.
+
+**Basic shapes tool (item 4).** Right-click → the menu offers "Draw shapes" and
+"Basic shape". Adding one and switching kinds:
+
+| kind | stitches | size |
+|---|---:|---|
+| Circle | 3,918 | 51 × 51 mm |
+| Rectangle | 2,935 | 51 × 31 mm |
+| Heart | 2,974 | 51 × 46 mm |
+| Star | 2,263 | 51 × 49 mm |
+
+Exported to PES (15,701 bytes) and rendered from the bytes: a clean
+five-pointed star, row-filled, sharp tips, 51.3 × 49.0 mm. Zero console errors.
+
+**Manual draw lane.** Right-click → "Draw shapes" opens a panel with its own
+canvas and a full instruction line (straight vs curved nodes, how to close, how
+to curve an edge, what Backspace/Escape/Enter/Delete do). Five clicks and Enter
+gave a pentagon: **2,380 stitches · 42 × 40 mm**, drawn in the panel and
+stitched on the field, element reading "Shapes · 1". Zero console errors.
+
+Two probe errors on the way, both the harness: the tool menu closes on any
+pointerdown outside `.fieldmenu`, so a page-wide `getByRole` lookup after a
+wait finds nothing — click inside the menu. And the drawing canvas is the
+SMALL one in the left panel (411 × 274) not the field (932 × 766); the first
+run drew on the field and placed nothing, leaving "Shapes · empty".
+
+### "Failed to fetch" was the whole message (2026-09-07)
+
+Aborting `**/fonts/bin/**` in a real browser, what the customer got:
+
+    <span class="err">Failed to fetch</span>
+
+and nothing else — no cause, no action, no retry control on the page. The app
+does not crash, the page is not blank, zero console errors. Just those three
+words, which are `fetch`'s own TypeError message rendered verbatim.
+
+Also measured, and the reason "try again" is honest advice rather than a
+platitude: **the app fully recovers with no reload.** `fontLoader` clears its
+cached promise on failure deliberately, so once the connection is back any
+edit re-runs the load — network restored, one more character typed, design
+back at 1,336 stitches with the error gone.
+
+Scoped to transport failures. A 404 is a bad deploy or a missing file and
+keeps its own message; telling that customer to check their connection sends
+them chasing the wrong thing.
+
+Two adjacent lanes checked at the same time and found sound: **the
+thread-brand chunk failing costs nothing** (the design still builds — 1,336
+stitches, no message, because the chunk only feeds the picker), and a failed
+manifest degrades the same way a failed binary does rather than blanking the
+page.
+
+### A same-hole baseline for the LETTERING lane, and the alarm it isn't (2026-09-07)
+
+The `SAME_HOLE_HEAVY` instrument has only ever been run on the digitizer lane.
+Measured here for the browser lettering lane for the first time — 83 shipped
+fonts, "Fritsch 2026" auto-fit on left_chest, penetrations quantised to 0.3 mm
+cells:
+
+| | median | p90 | max |
+|---|---:|---:|---:|
+| `max_strikes` | 6 | 9 | **24** (allegria20) |
+| `points_3plus` | 56 | 295 | 2,285 |
+
+**This is not a defect finding, and the first version of it nearly was.** Two
+things stopped it:
+
+1. **The first instrument was the wrong one.** Consecutive-stitch distance
+   gave "34.6% same-hole, 72 of 166 designs over 5%" — a raw ratio, which
+   DOCTRINE's 2026-09-06 ruling says moves when the mix moves and is ROADMAP
+   gate 4 in miniature. The density-invariant half is strikes at a point, and
+   that is what the table above reports.
+2. **The shape is bean stitch, by design.** `LETTERING_GUARDS.BEAN_PASSES` is
+   3, and `allegria20` — the 24 — reports `columns: 0`, `nSatin: 0`,
+   `nFill: 0`: it is all running stitch, sewn three times over. Its
+   `points_3plus` equals its `points_2plus` exactly (165 = 165), which is the
+   bean signature: every repeated point is struck three times, never twice.
+
+And the numbers sit in the same range as the digitizer's own accepted fixtures
+(`max_strikes` 4, 8, 8, 9 in the 2026-09-06 A/B). Whether 24 is too many for
+one needle is a **sew-out question — ROADMAP gate 1** — not something a
+measurement here can settle.
+
+Recorded so the next person who measures 34.6% and reaches for the alarm finds
+this first.
+
+### A refused digitize job, checked for leaks (2026-09-07)
+
+Three degenerate uploads — a 1×1 pixel, an all-white 400×300, and a fully
+transparent one — all take the same refusal, and the service's customer-facing
+`error` is good prose:
+
+> "The whole image read as background, so there was nothing to stitch. This
+> usually means the art blends into its backdrop — try a version with the
+> subject on a clearly different colour, or crop tighter."
+
+Cause, why, and two levers.
+
+Its sibling `detail` field carries the raw traceback, **including server
+paths** (`/home/user/EMB-Bot/digitizer/digitizer_service/jobs.py`, line 171).
+Driven through the shipped Studio with the all-white image, the panel shows
+the prose and **leaks nothing**: no `/home/...` path, no "Traceback (most
+recent call last)", no `.py", line N`, no bare `ValueError`. The 2026-08-28
+fix for the panel printing server paths and worker STDERR holds against a real
+service error, which is the case it was written for and had not been re-checked
+against since.
+
+### The trace-import lane, driven by hand at last (2026-09-07)
+
+The last panel nobody here had driven. Right-click → Draw shapes → **"Trace
+image…"** → upload `trace-holes-and-colors.png` → it finds **3 shapes** →
+"Add 3 shapes" → **1,637 stitches · 42 × 16 mm**. Zero console errors.
+
+And it names its own limitation, unprompted and in the right shape:
+
+> "A traced shape had an interior hole that isn't supported yet — it will
+> render solid; cut it in by hand if needed."
+
+Cause, consequence, and a lever — which is the standard the rest of the
+product's messages were measured against today, met here already.
+
+That closes the sweep: every customer-facing surface in the Studio has now
+been driven by hand at least once.

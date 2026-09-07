@@ -1064,7 +1064,25 @@
       // Font load failure surfaces through the existing element-error UI
       // (same treatment as a generateAll() throw below), never an unhandled
       // rejection.
-      error = String(fontErr.message || fontErr);
+      // A dead connection said "Failed to fetch" and nothing else — `fetch`'s
+      // own TypeError message, rendered verbatim. No cause, no action, no
+      // retry control anywhere on the page. Measured 2026-09-07 by aborting
+      // the font requests in a real browser.
+      //
+      // "Try again" is an honest lever here, measured the same way: the
+      // loader clears its cached promise on failure on purpose, so once the
+      // connection is back ANY edit re-runs the load. Restored the network,
+      // typed one more character, and the design came straight back —
+      // 1,336 stitches, error gone, no reload. And the work really is safe:
+      // the project is written to storage on every change.
+      //
+      // Only for a transport failure (fontLoader marks it). An HTTP status is
+      // a bad deploy or a missing file, which "check your connection" would
+      // send the customer chasing the wrong thing, so that keeps the message
+      // the loader gave it.
+      error = fontErr && fontErr.offline
+        ? "Couldn\u2019t load the font \u2014 check your connection, then edit anything to try again. Your design is saved."
+        : String(fontErr.message || fontErr);
       hasDesign = false;
       lastGenerateResult = null;
       clearToFabric();

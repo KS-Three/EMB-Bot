@@ -825,13 +825,31 @@ don't push for it.
 
 ## Known bugs (unresolved, not accepted — Kent's call on the fix)
 
-- **DST axis transposition.** EMB-Bot's own DST codec (`src/dst.js` /
-  `src/dstimport.js`) is transposed vs. the Tajima/pyembroidery standard —
-  confirmed via 4 independent sources + a clean-room decode. Browser DST
-  round-trips correctly against itself, so it's shipped this way undetected;
-  every existing EMB-Bot DST is affected. Fixing it means a migration path
-  for old files. See `dst-codec-axis-discrepancy` in Kent's memory and
-  `docs/dst-axis-verdict-2026-07-31.md`.
+- **DST axis transposition — the WRITER half only, since 2026-09-07.**
+  EMB-Bot's own DST codec was transposed vs. the Tajima/pyembroidery standard
+  on both sides — confirmed via 4 independent sources + a clean-room decode.
+  Browser DST round-trips correctly against itself, which is why it shipped
+  undetected; every existing EMB-Bot DST is affected, so fixing the writer
+  means a migration path for old files.
+
+  **`src/dstimport.js` is FIXED** (PR #404): third-party DST now decodes
+  through `decodeDSTStandard`, so an imported file lands the right way round
+  instead of mirrored. That half needed no migration — nothing this app wrote
+  goes through it.
+
+  **`src/dst.js`, the writer, is still transposed and still Kent's call.** It
+  also carries a second defect found the same day: a **phantom end stitch**,
+  because the `end` record's coordinates are written as a move, so every DST
+  this product has ever produced has one extra stitch past the design's last.
+  One line fixes it (`if (st.type === "end") break;`) and it changes the bytes
+  of every file, which is the same call as the transposition.
+
+  What IS safe to hand out today: a project made only of auto-digitized
+  images exports DST through the service, and that path is correct —
+  measured 2026-09-07 at 80.3 x 16.7 mm in dst, pes and jef alike, all three
+  2,187 stitches, all three carrying the colour stop. The Download step says
+  so in those words. See `dst-codec-axis-discrepancy` in Kent's memory,
+  `docs/dst-axis-verdict-2026-07-31.md`, and scope-history 09-07.
 - **Gradient-class designs fragment before blend treatment** — **FIXED
   2026-08-03**, same-day follow-up session. `gradient` class still segments
   via plain k-means (23 regions on the repro fixture, unchanged), but every

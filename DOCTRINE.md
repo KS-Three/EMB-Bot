@@ -3144,3 +3144,93 @@ And name the levers only after measuring them: 3 lines 4.8 mm, 6 lines
 6.3 mm, 18 characters 6.7 mm, a full-back placement 4.0 mm — all clear the
 floor; the same sentence trimmed to 40 characters gives 3.1 mm and does not,
 which is why "fewer characters" is named second and line breaks lead.
+
+## A one-way `value={}` stops telling the truth after the user types (2026-09-07)
+
+Svelte only touches the DOM when the bound expression's VALUE changes. Two
+identical outcomes in a row therefore leave whatever the customer typed
+sitting in a field whose job is to report state.
+
+Measured in SizePanel on Left Chest (101.6 mm placement box), asking in mm:
+100 honoured; 105 clamped and the field corrected itself to 102; 110, 115,
+120, 125, 127, 130, 150 and 200 all clamped to 102 with the field still
+showing what was typed. `checkValidity()` true throughout, no message
+anywhere.
+
+The trap is that the FIRST out-of-range entry corrects, so the behaviour
+looks right when you try it once. It is the second one that lies.
+
+**Where a control both accepts input and reports state, test it TWICE with
+values that produce the same outcome.** One is not a test.
+
+The residual half is recorded rather than fixed: after any edit, a later
+reactive change also fails to reach the field (type 90, engine returns its
+pull-compensated 90.2, field keeps 90). ~0.2 mm, and the number shown is the
+one just typed. An effect re-asserting the DOM on every change was tried and
+did not measurably help, so it was reverted rather than shipped
+undemonstrated — and the source comment that claimed the field "always"
+shows the sewn width was corrected, because it no longer did.
+
+## Check the engine before blaming it, and the probe before blaming either (2026-09-07)
+
+The size investigation started from a table showing 60, 80, 100 and 120 mm
+requests all sewing 102. Three things were wrong with that reading and none
+of them was the app:
+
+1. **The probe reused a stale locator** across a navigation, so only the
+   first row's request ever landed. A fresh page per case gave 40, 60, 80 and
+   100 honoured exactly.
+2. **The "ceiling" was the garment.** left_chest is 4 x 4 in = 101.6 mm, so
+   102 was the placement box doing its job — not a bug, and not the hoop.
+3. **The engine was innocent.** `buildLetteringDesign` called directly
+   honoured 105, 110, 120 and 127 and clamped only above the box.
+
+Only after all three did the real defect show up, and it was two layers away
+from where the first table pointed. Two more probe errors the same afternoon:
+`/red|crimson|scarlet/i` matched the **Redo** button, and the thread picker's
+swatches carry their colour in `aria-label` with EMPTY text content, so
+`filter({ hasText })` found nothing.
+
+**Isolate the layer before writing anything down.** A measurement that
+crosses the UI, the Studio and the engine at once attributes the fault to
+whichever one you were already suspicious of.
+
+## The one failure a customer can fix is the one to word carefully (2026-09-07)
+
+A dead connection made the app say **"Failed to fetch"** — `fetch`'s own
+TypeError message, rendered verbatim — and nothing else. No cause, no action,
+no retry control. Measured by aborting the font requests in a real browser:
+the app does not crash, the page is not blank, there are zero console errors,
+and those three words are the entire communication.
+
+Same shape as the digitize panel that printed server paths and worker STDERR,
+but worse placed: a network failure is the ONE thing a customer can actually
+resolve, and it got the least usable message in the product.
+
+**Two rules from it.**
+
+Name the lever only after checking it works. "Try again" is honest here
+because `fontLoader` clears its cached promise on failure on purpose, so any
+edit re-runs the load — restored the network, typed one more character, design
+back at 1,336 stitches with no reload. Had the loader cached the rejection, the
+only honest advice would have been "reload".
+
+And classify at the source, not at the surface. `fontLoader` marks the
+transport case; the component picks the wording. Matching on browser message
+text would have been fragile (Chrome "Failed to fetch", Firefox
+"NetworkError…", Safari "Load failed") and would have wrongly told a customer
+hitting a 404 — a bad deploy — to check their connection.
+
+## A stubbed global proves nothing if the code takes the other branch (2026-09-07)
+
+Three unit tests for the fetch classification stubbed `globalThis.fetch` and
+all three passed **against the real 85-font manifest read off the filesystem**:
+`fontLoader.readBytes` branches on `IS_NODE` and never calls fetch under
+vitest. The assertions were about a code path the environment cannot reach.
+
+Fourth time this session a new test passed against its own subject. The
+others were a locator matching the wrong element, and twice a run-count
+comparison between different glyphs. **Every one was caught by mutation, and
+none by reading the test.**
+
+Where the fix only exists in a browser, test it in a browser.
