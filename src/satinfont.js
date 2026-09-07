@@ -229,6 +229,49 @@
   // here rather than pretending em is cap. `capIsProxy` is returned alongside
   // so callers can tell the two apart. This path is unreachable for every font
   // we currently ship.
+  // Typographic punctuation folded to its plain-ASCII twin, used ONLY when the
+  // font has no glyph for the fancy form.
+  //
+  // A customer types an apostrophe. Their phone, Word, Notes and every paste
+  // buffer in the world substitute U+2019 for it silently, and 26 of the 85
+  // shipped fonts have no glyph for that codepoint — so "Fritsch’s Stitches"
+  // sewed as "Fritschs Stitches", and the note explaining it named a character
+  // that looks exactly like the one they typed, inside quotes made of the same
+  // mark. Measured 2026-09-07 in the shipped app: 1,354 stitches with the
+  // straight form, 1,326 with the curly one, and the apostrophe simply gone.
+  //
+  // At thread resolution a curly apostrophe and a straight one are the same
+  // mark, so stitching the twin is what the customer asked for. The rule is
+  // deliberately narrow — it fires only where the font LACKS the typographic
+  // form and HAS the plain one, so a font that owns the nicer glyph keeps
+  // using it and nothing that worked before changes. Measured across the
+  // library that rescues 367 font x character combinations.
+  //
+  // Not a general Unicode normalisation: NFKD would also fold ligatures,
+  // fractions and accented letters, and an accented letter is a DIFFERENT
+  // letter to someone whose name carries it. Only marks whose ASCII twin is
+  // the same mark are listed.
+  //
+  // `fontCoverage.js` reads this same map through EMB so the suggestion list
+  // and the message agree with what actually stitches.
+  const TYPOGRAPHIC_FOLD = {
+    "\u2018": "'", "\u2019": "'", "\u201A": "'", "\u201B": "'",
+    "\u2032": "'", "\u02BC": "'", "\u00B4": "'", "\u0060": "'",
+    "\u201C": '"', "\u201D": '"', "\u201E": '"', "\u201F": '"',
+    "\u2033": '"', "\u00AB": '"', "\u00BB": '"',
+    "\u2010": "-", "\u2011": "-", "\u2012": "-", "\u2013": "-",
+    "\u2014": "-", "\u2015": "-", "\u2212": "-",
+  };
+
+  // The one place a character becomes a glyph. Tries the character, then the
+  // case variants (a pre-existing rule, unchanged), then the ASCII twin.
+  function glyphFor(font, ch) {
+    const g = font.glyphs[ch] || font.glyphs[ch.toUpperCase()] || font.glyphs[ch.toLowerCase()];
+    if (g) return g;
+    const twin = TYPOGRAPHIC_FOLD[ch];
+    return twin ? font.glyphs[twin] || null : null;
+  }
+
   const CAP_REF_CHARS = ["H", "E", "T", "I", "L", "F", "B", "D", "N", "M"];
   const CAP_EM_PROXY = 0.73;
   const capUnitsCache = new WeakMap();
@@ -783,7 +826,7 @@
         const ch = chars[i];
         const charIdx = lineStart + i;
         if (ch === " " || ch === "\t") { penX += (font.advSpace || font.advDefault); prev = null; continue; }
-        const g = font.glyphs[ch] || font.glyphs[ch.toUpperCase()] || font.glyphs[ch.toLowerCase()];
+        const g = glyphFor(font, ch);
         // A character the font has no glyph for advances the pen and stitches
         // NOTHING, silently. That was survivable while the library was all
         // Latin; with Hebrew in it, picking a Hebrew font and typing "Emb"
@@ -1081,7 +1124,7 @@
   }
 
   return {
-    layoutText, capHeightMm, underlayModeForCapMm,
+    layoutText, capHeightMm, underlayModeForCapMm, TYPOGRAPHIC_FOLD,
     LETTERING_GUARDS: { SATIN_MIN_CROSS_MM, BEAN_STITCH_MM, BEAN_PASSES, COLUMN_FLOOR_MM, CAP_FLOOR_MM, SHORT_STITCH_AT_MM, SHORT_STITCH_PULL, SHORT_STITCH_MAX_MM },
   };
 });

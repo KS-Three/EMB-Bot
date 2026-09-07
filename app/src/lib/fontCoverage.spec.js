@@ -88,3 +88,47 @@ test("with no index at all, the message is exactly what shipped before it existe
   expect(unsupportedMessage("“Я”", "AЯ", null))
     .toBe("This font can’t stitch “Я”. Try a different font, or different text.");
 });
+
+// ---- the typographic fold (2026-09-07) ------------------------------------
+//
+// The engine stitches an ASCII twin when a font lacks the typographic form
+// (satinfont.js TYPOGRAPHIC_FOLD). This module has to agree, or it suggests
+// the customer keep looking past fonts that already work.
+
+test("a font that lacks U+2019 but has an apostrophe counts as covering it", async () => {
+  const { fontsCovering } = await import("./fontCoverage.js");
+  // Ranges must be SORTED ASCENDING — rangesCover bails early on the first
+  // range past the codepoint, so 39 has to precede [65,90]. (A first draft put
+  // it last and both assertions failed, which is the guard working.)
+  const coverage = { fonts: {
+    plainonly: [39, [65, 90], [97, 122]],           // plain apostrophe only
+    curlyonly: [[65, 90], [97, 122], 0x2019],       // curly only
+    neither: [[65, 90], [97, 122]],
+  } };
+  const prior = globalThis.EMB;
+  globalThis.EMB = { TYPOGRAPHIC_FOLD: { "’": "'" } };
+  try {
+    expect(fontsCovering("Fritsch’s", coverage)).toEqual(["curlyonly", "plainonly"]);
+    // The fold is one-directional by design: a font with only the curly form
+    // is not offered for text containing a plain apostrophe, because the
+    // engine does not fold that way either.
+    expect(fontsCovering("Fritsch's", coverage)).toEqual(["plainonly"]);
+  } finally {
+    globalThis.EMB = prior;
+  }
+});
+
+test("with no engine loaded the fold is skipped rather than guessed", async () => {
+  // A stale app/public/engine/ copy leaves EMB without the map. The honest
+  // answer there is the pre-fold one — conservative, never wrong.
+  const { fontsCovering } = await import("./fontCoverage.js");
+  const coverage = { fonts: { plainonly: [39, [65, 90], [97, 122]] } };
+  const prior = globalThis.EMB;
+  globalThis.EMB = undefined;
+  try {
+    expect(fontsCovering("Fritsch’s", coverage)).toEqual([]);
+    expect(fontsCovering("Fritsch's", coverage)).toEqual(["plainonly"]);
+  } finally {
+    globalThis.EMB = prior;
+  }
+});

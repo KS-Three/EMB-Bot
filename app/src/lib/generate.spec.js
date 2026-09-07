@@ -800,7 +800,11 @@ test("letteringNote is silent on a healthy report, a null report, and an empty o
 test("letteringNote: a cap under the 4 mm floor wins over everything else", async () => {
   const { letteringNote } = await import("./generate.js");
   const n = letteringNote(report({ capMm: 3.24, hairlineMm: 90, hairlineSpans: 5, thinMm: 100 }));
-  expect(n).toBe("Letters 3.2 mm tall — under the 4 mm floor, thin strokes will shred");
+  // The verdict half is what this test is about — it outranks the hairline and
+  // thin findings that are also present in this report. The fix half after it
+  // gained levers 2026-09-07 and is pinned in its own tests below.
+  expect(n.startsWith("Letters 3.2 mm tall — under the 4 mm floor, thin strokes will shred")).toBe(true);
+  expect(n).not.toMatch(/running stitch/);
 });
 
 test("letteringNote: lettering that is mostly hairline at this size says so, with the share", async () => {
@@ -854,16 +858,23 @@ test("letteringNote: below the cap, 'size up' stays — it is the fix there", as
   expect(letteringNote(report({ thinMm: 30 }), {})).toBe(letteringNote(report({ thinMm: 30 })));
 });
 
-test("letteringNote: the two findings that do not depend on size are untouched by the cap", async () => {
+test("letteringNote: a lone hairline span is a report, not advice, so the cap cannot change it", async () => {
   const { letteringNote } = await import("./generate.js");
-  // A cap under the floor already names a height, not an action; and a lone
-  // hairline span reports what the ENGINE did, which is not advice at all.
+  // This one states what the ENGINE did — it is not advice, so there is no fix
+  // clause for the width cap to switch. (The cap-floor line used to be in here
+  // too, on the reasoning that naming a height was not an action either. That
+  // was the defect: it was the most severe verdict and the only one with no
+  // way out. It now varies with the cap, and is pinned separately.)
   for (const opts of [{}, { atWidthCap: true }]) {
-    expect(letteringNote(report({ capMm: 3.24, hairlineMm: 90, thinMm: 100 }), opts))
-      .toBe("Letters 3.2 mm tall — under the 4 mm floor, thin strokes will shred");
     expect(letteringNote(report({ hairlineMm: 4, thinMm: 6, hairlineSpans: 1 }), opts))
       .toBe("1 hairline stroke under 0.5 mm sewn as running stitch");
   }
+  // And the cap-floor verdict itself is identical either way — only its fix moves.
+  const a = letteringNote(report({ capMm: 3.24, hairlineMm: 90, thinMm: 100 }), {});
+  const b = letteringNote(report({ capMm: 3.24, hairlineMm: 90, thinMm: 100 }), { atWidthCap: true });
+  const verdict = (n) => n.split(" — ").slice(0, 2).join(" — ");
+  expect(verdict(a)).toBe(verdict(b));
+  expect(a).not.toBe(b);
 });
 
 test("generateElement: a text element's design carries the lettering report", async () => {
@@ -972,4 +983,52 @@ test("emptyFieldHint keeps the same lead sentence either way", async () => {
   const lead = "Your embroidery appears here as you add content.";
   expect(emptyFieldHint(true).startsWith(lead)).toBe(true);
   expect(emptyFieldHint(false).startsWith(lead)).toBe(true);
+});
+
+// ---- the cap-floor branch names a fix (2026-09-07) ------------------------
+//
+// The most severe verdict letteringNote gives — the lettering cannot be sewn
+// at all — was the only one that named no fix, while the milder branch below
+// it named two. Measured that day: a 74-character sentence auto-fit to the
+// default left chest gives 1.7 mm letters against a 4 mm floor, and the
+// customer was told what was wrong and nothing about what to do.
+//
+// All three levers were measured on that sentence and garment before being
+// named: 3 lines -> 4.8 mm, 6 lines -> 6.3 mm, 18 characters -> 6.7 mm, full
+// back placement -> 4.0 mm. All clear the floor. 40 characters gives 3.1 mm
+// and does NOT, which is why "fewer characters" is named second.
+
+test("letteringNote: a design under the cap floor says what to do about it", async () => {
+  const { letteringNote } = await import("./generate.js");
+  const under = report({ capMm: 1.7, capFloorMm: 4 });
+
+  // At the width cap "size up" is the one thing the customer cannot do, so it
+  // must not appear — the same rule the hairline branch already follows.
+  const capped = letteringNote(under, { atWidthCap: true, lines: 1 });
+  expect(capped).toMatch(/1\.7 mm tall/);
+  expect(capped).toMatch(/shred/);
+  expect(capped).toMatch(/break it across lines/);
+  expect(capped).toMatch(/fewer characters/);
+  expect(capped).not.toMatch(/size up/);
+
+  // Off the cap, sizing up IS available and leads.
+  const free = letteringNote(under, { atWidthCap: false, lines: 1 });
+  expect(free).toMatch(/size up/);
+  expect(free).toMatch(/break it across lines/);
+});
+
+test("letteringNote: text already on several lines is told to use more, not to start", async () => {
+  const { letteringNote } = await import("./generate.js");
+  const n = letteringNote(report({ capMm: 2.2, capFloorMm: 4 }), { atWidthCap: true, lines: 3 });
+  expect(n).toMatch(/use more lines/);
+  expect(n).not.toMatch(/break it across lines/);
+});
+
+test("letteringNote: the cap floor still outranks the width warnings", async () => {
+  // Unchanged precedence — a design that cannot be sewn at all is reported
+  // ahead of one whose strokes are merely thin.
+  const { letteringNote } = await import("./generate.js");
+  const n = letteringNote(report({ capMm: 1.7, capFloorMm: 4, hairlineMm: 90, hairlineSpans: 5, thinMm: 100 }), { atWidthCap: true });
+  expect(n).toMatch(/1\.7 mm tall/);
+  expect(n).not.toMatch(/running stitch/);
 });

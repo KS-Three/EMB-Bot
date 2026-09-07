@@ -3071,3 +3071,76 @@ under `app/src/` is a code comment. The lettering lane meanwhile works on a
 phone: 1,223 stitches at 102×19 mm, driven with taps and no mouse events. So
 the posture is either unstated or untrue, and which one to fix is a product
 call with revenue behind it.
+
+## The invisible character: ask what the customer's KEYBOARD types (2026-09-07)
+
+Every defect in this session's family was found by asking what the app says.
+The apostrophe one needed a different question: **what does the customer's
+device actually produce, as opposed to what they think they typed.**
+
+Phones, Word, Notes and every paste buffer substitute U+2019 for an
+apostrophe silently. 26 of 85 shipped fonts had no glyph for it, so the
+company's own name sewed as "Fritschs Stitches" — and the note explaining it
+named a character indistinguishable from the one they typed, inside
+quotation marks made of the same mark, then advised abandoning the font.
+
+That is the sharpest form of the family yet: **a true message about a
+difference the customer cannot see, offering a fix that is not the fix.**
+
+The general rule this leaves behind: when text comes from a human, the bytes
+are not what they typed. Check the substituted forms — smart quotes, dashes,
+non-breaking spaces, the modifier apostrophe — before concluding a font or a
+parser is at fault.
+
+**And keep the fold narrow.** NFKD was the tempting answer and is wrong here:
+it folds ligatures, fractions AND accented letters, and an accented letter is
+a different letter to someone whose name carries it. Only marks whose ASCII
+twin is the same mark belong in the map. Measured the same day: accented
+names are covered by 33–73 of the 85 fonts and the existing "these fonts can"
+message is already good advice there — nothing to fix, and folding would
+have broken it.
+
+## Fire a fallback only where the real thing is absent (2026-09-07)
+
+The typographic fold fires ONLY when the font has no glyph for the fancy
+form. A font that owns the nicer glyph keeps using it, so no design that
+worked before changes — proved, not argued: all 85 fonts laid out with text
+free of typographic punctuation hash `d15975c22fbf1d7b…4ad4a230` with the
+fold in and with it stubbed out.
+
+The eager version — fold first, then look — is the mutation that reddens the
+never-downgrade guards, and it is the version that would have been written
+without thinking about it.
+
+## Run-count comparisons prove nothing about glyphs (2026-09-07)
+
+Two of my own assertions passed against the defect they were written for, for
+the same reason both times: **two DIFFERENT glyphs routed at one spacing can
+land on the same NUMBER of points.** `alchemy`'s straight and curly
+apostrophes do exactly that. Compare the full geometry.
+
+That is the second and third time this session a new test passed against its
+own subject (the first was an e2e locator matching a panel line instead of
+the canvas). Mutation-proving every new assertion is what caught all three —
+it is not optional here.
+
+## Rank the fix by severity, not by which branch was written last (2026-09-07)
+
+`letteringNote`'s most severe verdict — the lettering cannot be sewn at all —
+was the only one naming no fix, while the milder branch two lines below named
+two. Measured: 74 characters at the default left chest gives 1.3 mm letters
+against a 4 mm floor and got a bare diagnosis; 18 characters gives 6 mm and
+got "already the full width of the placement, so fewer characters or a bigger
+placement is what makes them crisper".
+
+The comment justifying it had hardened into doctrine — *"a cap under the
+floor already names a height, not an action"* — and a test pinned the string
+so the gap looked deliberate. Both were the defect.
+
+**When auditing a family of messages, sort them by how bad the situation is
+and check that help does not decrease as severity rises.**
+
+And name the levers only after measuring them: 3 lines 4.8 mm, 6 lines
+6.3 mm, 18 characters 6.7 mm, a full-back placement 4.0 mm — all clear the
+floor; the same sentence trimmed to 40 characters gives 3.1 mm and does not,
+which is why "fewer characters" is named second and line breaks lead.

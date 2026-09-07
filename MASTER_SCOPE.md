@@ -185,8 +185,7 @@ icon. Cloth pointers added to defects 3, 6 and 16 below.
 
 ### Closed — kept numbered, because ten other docs cite them by number
 
-Full text moved to [`docs/scope-history.md`](docs/scope-history.md) 2026-08-27;
-these are pointers, not status.
+Full text moved to [`docs/scope-history.md`](docs/scope-history.md) 2026-08-27; these are pointers, not status.
 
 1. shade-thread collapse (`_shade_blocks`) — RESOLVED 2026-08-19.
 3. 14 jump-trims on an 80mm design — RETIRED 2026-09-01 (Kent's call) as UNREPRODUCIBLE: the entry never named the design and its pointer carried none, so the number was never checkable. A 2026-08-31 repro (two fixtures x three fill variants, three trim readings each) found nothing near 14 and nothing variant-invariant. Do NOT read those readings as a regression — without the design or the metric they are not comparable to 14, which is the mistake this line exists to prevent. The live concern moved to defect 4, which supports it independently and now carries a real 80 mm datum.
@@ -232,17 +231,13 @@ here, so a good-faith flip would have shipped bare-fabric thread unwarned.)*
 
 ## Doctrine — moved to [`DOCTRINE.md`](DOCTRINE.md)
 
-**Standing rulings, Measured negatives, Corrections and Gotchas now live in
-[`DOCTRINE.md`](DOCTRINE.md)** (split 2026-08-28). Read it before proposing work,
-the same way you read this file for status.
+**Standing rulings, Measured negatives, Corrections and Gotchas now live in [`DOCTRINE.md`](DOCTRINE.md)** (split 2026-08-28). Read it before proposing work, the same way you read this file for status.
 
 The split is not filing. Those four sections answer *"has this already been
 decided, tried, disproved, or paid for?"* — which does not go stale and only ever
 accumulates. This file answers *"where does the project stand today?"* — current
 state only, under a line budget. They were competing for one budget and the
-standing content was winning: this file ran 268 lines over before the split, and
-two compaction passes could not close it without deleting things that still
-govern decisions.
+standing content was winning: this file ran 268 lines over before the split, and two compaction passes could not close it without deleting things that still govern decisions.
 
 ---
 
@@ -655,6 +650,10 @@ PDF sheet (`src/render.js`) and the SVG export draw the same width since
 thumbnail. Pinned on the literal 0.4 and both ratios. *(2026-09-04 — `preview.spec.js`)*
 
 **Thread lighting is unverified against real thread** — eye-tuned, no sew-out to compare against. Treat the look as a preference, not a calibration. *(suspected 2026-08-25)*
+
+**Typographic punctuation folds to its ASCII twin where a font lacks it.** A customer's phone substitutes U+2019 for an apostrophe silently and 26 of the 85 fonts have no glyph for it, so "Fritsch's Stitches" sewed as "Fritschs Stitches" (1,326 stitches against 1,354) under a note naming a character that looks identical to the one they typed. `satinfont.js TYPOGRAPHIC_FOLD` stitches the twin ONLY where the fancy form is missing — 367 font x character combinations rescued, and all 85 fonts hash identically on text that never needed it. Not NFKD: accented letters are different letters and stay unfolded (33–73 fonts cover the common ones, and the "these fonts can" message is good advice there). *(fixed 2026-09-07 — DOCTRINE; scope-history 09-07)*
+
+**Lettering under the cap floor now names a way out.** The one verdict meaning "cannot be sewn" was the only one with no fix while the milder branch named two — 74 characters at the default left chest reads 1.3 mm against a 4 mm floor. Levers measured before being named: 3 lines 4.8 mm, 6 lines 6.3 mm, 18 characters 6.7 mm, full back 4.0 mm; 40 characters is still 3.1 mm, so line breaks lead and "fewer characters" is second. "Size up" is withheld at the width cap, the rule the hairline branch already followed. *(fixed 2026-09-07 — scope-history 09-07)*
 
 ### 4. Export formats — [detail](docs/scope/4-export-formats.md)
 
