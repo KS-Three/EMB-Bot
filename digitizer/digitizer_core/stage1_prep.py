@@ -416,15 +416,40 @@ def prep(image: str | Path | bytes | np.ndarray, cfg: PipelineConfig) -> Prep:
         art_bbox = tuple(int(round(v * want)) for v in art_bbox)  # type: ignore[assignment]
         if bg_outline_px is not None:
             bg_outline_px = (bg_outline_px.astype(np.float64) * want).astype(np.int32)
-        if px_per_mm < cfg.min_px_per_mm:
-            warnings.append(
-                warn(
-                    INPUT_LOW_RESOLUTION,
-                    f"Image resolution is low for a {cfg.target_width_mm:.0f} mm design "
-                    "— fine detail may be lost.",
-                    px_per_mm=round(px_per_mm, 2),
-                )
+        # Warn on what the SOURCE delivered, not on what the upscale produced.
+        # This test used to re-read `px_per_mm` AFTER the resize, and with
+        # `upscale_cap` and `min_px_per_mm` both 4.0 the capped upscale lands
+        # any source at or above 1.0 px/mm exactly ON the floor -- so the
+        # condition was false for every design a customer would ever send and
+        # the warning was unreachable. The Studio has listed it in
+        # `ATTENTION_WARNINGS` the whole time, wired to display something that
+        # could not fire.
+        #
+        # Measured 2026-09-07 over the scorecard's 26 fixtures: exactly 2
+        # arrive under the floor -- `becker_marine_logo` at 1.81 px/mm and
+        # `logo_bridge_bar` at 3.49 (80 mm) -- and neither said so. Those are
+        # two of the three renders in `docs/kent-review-2026-09-03.md` whose
+        # outcome was settled before the engine ran ("a higher-resolution
+        # Becker source is a bigger lever on this render than any engine
+        # change"). Two of 26 is a precise warning, not a noisy one.
+        #
+        # Lanczos manufactures pixels, not detail: reaching the floor by
+        # enlargement is exactly the case worth reporting, not the case that
+        # excuses silence.
+        warnings.append(
+            warn(
+                INPUT_LOW_RESOLUTION,
+                f"The artwork supplies {input_px_per_mm:.1f} pixels per "
+                f"millimetre at {cfg.target_width_mm:.0f} mm, under the "
+                f"{cfg.min_px_per_mm:.0f} this needs. It was enlarged to fit, "
+                "which cannot add detail the file does not have — fine "
+                "features may be lost. A larger source image, or a smaller "
+                "design, is the fix.",
+                px_per_mm=round(input_px_per_mm, 2),
+                upscaled_to=round(px_per_mm, 2),
+                min_px_per_mm=cfg.min_px_per_mm,
             )
+        )
 
     # Color the artwork's outer anti-alias band blends toward (see Prep).
     # Measured from the background side of the boundary, so it is correct for

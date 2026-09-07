@@ -1319,8 +1319,24 @@ const WARNING_TEXT = {
   photo_auto_tier: () => "Rendered as a photo (thread-paint).",
   BACKGROUND_UNCERTAIN: () =>
     "The background was hard to separate from the art. Check the stitch preview for missing or extra areas.",
-  INPUT_LOW_RESOLUTION: () =>
-    "The image is low resolution for this stitch size. A larger image or a smaller size will sew sharper.",
+  // The NUMBER is the actionable part and this sentence used to omit it.
+  // "low resolution" tells a customer they have a problem; "1.4 pixels per
+  // millimetre, this needs 4" tells them the file has to be about three times
+  // wider, which is a thing they can go and do. The engine has always had the
+  // figure and the panel threw it away — and until 2026-09-07 the warning
+  // could not fire at all (stage1_prep tested the resolution AFTER its own
+  // upscale, which by construction always reaches the floor), so this text
+  // had never been shown to anyone.
+  INPUT_LOW_RESOLUTION: (w) => {
+    const have = Number(w.px_per_mm);
+    const need = Number(w.min_px_per_mm);
+    if (!Number.isFinite(have) || !Number.isFinite(need) || have <= 0) {
+      return "The image is low resolution for this stitch size. A larger image or a smaller size will sew sharper.";
+    }
+    const times = Math.ceil((need / have) * 10) / 10;
+    return `The image gives ${have.toFixed(1)} pixels per millimetre at this size and needs ${need.toFixed(0)}. `
+      + `Enlarging it can't add detail that isn't in the file — about ${times}x wider, or a smaller design, will sew sharper.`;
+  },
   // "like the hole in an O" explains the concept well and conveys scale badly.
   // Measured on the Becker Marine artwork 2026-08-15: 40% of the design sat
   // behind that sentence as bare fabric, and switching those areas on is worth

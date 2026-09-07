@@ -8031,3 +8031,48 @@ one claim has needed correcting on (PR body, MASTER_SCOPE, DOCTRINE, the
 sheet, the docstring), across three separate passes. The claim was written in
 several places before it was verified in any of them, and each copy made the
 next look corroborated.
+
+
+## 2026-09-07 — the low-resolution warning fires for the first time, and the panel says how much bigger the file must be
+
+`INPUT_LOW_RESOLUTION` has existed for months, sits in the Studio's
+`ATTENTION_WARNINGS`, and has its own `WARNING_TEXT` sentence. **It had never
+been shown to anyone.** `stage1_prep` re-tested the resolution AFTER its own
+capped Lanczos upscale:
+
+```
+want = min(cfg.upscale_cap, cfg.min_px_per_mm / px_per_mm)   # both 4.0
+px_per_mm *= want
+if px_per_mm < cfg.min_px_per_mm:      # false for any source >= 1.0 px/mm
+```
+
+With the cap equal to the floor the upscale lands every real source exactly ON
+the floor, so the inner test is unreachable by construction. A test now pins
+that property directly, so changing either constant cannot quietly restore it.
+
+**It now fires on what the FILE supplied** (`Prep.input_px_per_mm`, which
+already existed for preflight's photo check) and reports `px_per_mm`,
+`upscaled_to` and `min_px_per_mm`. The old extra reported the post-upscale
+value — the constant 4.0, dressed as a measurement.
+
+**Precise rather than noisy: 2 of the scorecard's 26 fixtures arrive under the
+floor** — `becker_marine_logo` at 1.81 px/mm and `logo_bridge_bar` at 3.49
+(80 mm); Becker at its 100 mm review size is 1.45. Every other fixture sits at
+6.2 to 31.3 and stays silent. Those two are two of the three renders
+`docs/kent-review-2026-09-03.md` reports as decided before the engine ran —
+*"the source is 146 pixels wide for a 100 mm design"*, *"a higher-resolution
+Becker source would change this render more than any engine change"* — and
+neither run said so.
+
+**The panel sentence carries the number now.** It read "The image is low
+resolution for this stitch size. A larger image or a smaller size will sew
+sharper." That tells a customer they have a problem and not what fixes it; the
+engine has always known the figure and the panel threw it away. It now reads
+"The image gives 1.4 pixels per millimetre at this size and needs 4. Enlarging
+it can't add detail that isn't in the file — about 2.8x wider, or a smaller
+design, will sew sharper." The multiple is the actionable part: it is the
+difference between "get a bigger file" and knowing which file will do.
+
+Same shape as #392's "Colors (max 6) starts meaning 6", arrived at
+independently: a warning the customer could not act on, and a number the
+engine had all along.
