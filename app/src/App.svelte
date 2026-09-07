@@ -3,6 +3,7 @@
   import { createHistory } from "./lib/history.js";
   import { applyTemplate } from "./lib/templates.js";
   import { canAdvance, nextStep, prevStep } from "./lib/flow.js";
+  import { contentSummary } from "./lib/summary.js";
   import {
     migrateLegacy,
     currentProjectId,
@@ -277,6 +278,20 @@
   // — shown in the "Ready to stitch" summary so the review step names the
   // physical hoop the operator will actually mount.
   $: hoopInEffect = effectiveHoop(project);
+
+  // Does this project contain anything a machine could sew?
+  //
+  // `canAdvance("create", …)` is the existing answer — one predicate per
+  // element type, already specced — and until 2026-09-07 the review step's
+  // own headline ignored it. A brand-new project holds one EMPTY text
+  // element, so the step opened on "**Ready to stitch** — Looks good? The
+  // live field is your stitch-out." above a summary reading `Text — ""` and
+  // a canvas reading "Your embroidery appears here as you add content." The
+  // disabled Next button was the only contradiction, and it gives no reason.
+  // Reusing the gate rather than writing a second rule is the point: a new
+  // element type that flow.js calls sewable is sewable here too, with no
+  // second list to forget.
+  $: readyToStitch = canAdvance("create", project);
 
   const MM_PER_INCH = 25.4;
 
@@ -799,21 +814,30 @@
         />
       {:else if step === "create"}
         <div class="createstep">
-          <h2>Ready to stitch</h2>
-          <p>Looks good? The live field is your stitch-out.</p>
+          {#if readyToStitch}
+            <h2>Ready to stitch</h2>
+            <p>Looks good? The live field is your stitch-out.</p>
+          {:else}
+            <h2>Nothing to stitch yet</h2>
+            <p>
+              This design has no content the machine can sew. Go back to
+              Content and type some lettering, upload artwork, or draw a
+              shape — the field updates live as you do.
+            </p>
+          {/if}
           <dl class="summary">
             <div><dt>Garment</dt><dd>{readable(project.garmentId)}</dd></div>
             <div><dt>Hoop</dt><dd>{hoopInEffect.hoop.label}{hoopInEffect.suggested ? " (suggested)" : ""}</dd></div>
-            {#if selectedElement.type === "image"}
-              <div><dt>Content</dt><dd>Logo / image</dd></div>
-              <div><dt>Colors</dt><dd>{selectedElement.nColors}{selectedElement.removeBg ? " · background removed" : ""}</dd></div>
-            {:else if selectedElement.type === "manual"}
-              <div><dt>Content</dt><dd>Hand-drawn shapes</dd></div>
-              <div><dt>Shapes</dt><dd>{(selectedElement.shapes || []).length}</dd></div>
-            {:else}
-              <div><dt>Content</dt><dd>Text — "{selectedElement.text}"</dd></div>
-              <div><dt>Font</dt><dd>{readable(selectedElement.fontKey)}</dd></div>
-            {/if}
+            <!-- One row per fact, from lib/summary.js. This was three
+                 `{:else if}` rungs ending in a text-shaped catch-all, and
+                 `digitized`/`design`/`shape` all landed on it: measured in a
+                 browser 2026-09-07, an auto-digitized logo recapped as
+                 `Content: Text — ""` with a blank `Font`, on the screen right
+                 before Download. Svelte prints a missing field as empty, so it
+                 read as a plausible empty-text design rather than as a bug. -->
+            {#each contentSummary(selectedElement) as row}
+              <div><dt>{row.label}</dt><dd>{row.value}</dd></div>
+            {/each}
           </dl>
           <QualityReport entries={qualityEntries} />
           <p class="hint">Not quite right? Go back to adjust the garment or content — the field updates live.</p>

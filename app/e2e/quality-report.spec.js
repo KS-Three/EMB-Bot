@@ -106,6 +106,22 @@ test("the review step shows the grade, the findings, and the thread bill", async
   await page.setViewportSize({ width: 1440, height: 1000 });
   await digitizeThenReview(page);
 
+  // The recap ABOVE the grade, which nothing had ever looked at on this path.
+  // Every assertion in this file was about `.quality`, and every recap
+  // assertion lives in wizard-smoke.spec.js on the text and image paths —
+  // both of which have their own branch. So an auto-digitized design, the
+  // commonest thing this app does, recapped as `Content: Text — ""` with a
+  // blank `Font` (measured in a browser 2026-09-07): App.svelte's summary
+  // ended in a text-shaped `{:else}`, and `digitized` fell into it.
+  const summary = page.locator("dl.summary");
+  await expect(summary).toContainText("Auto-digitized artwork");
+  await expect(summary).toContainText(path.basename(ART_PNG));
+  await expect(summary).not.toContainText("Text —");
+  // A blank <dd> is how the old Font row rendered — assert every row has one.
+  const values = await summary.locator("dd").allInnerTexts();
+  expect(values.length).toBeGreaterThanOrEqual(4);
+  for (const v of values) expect(v.trim()).not.toBe("");
+
   const quality = page.locator(".quality");
   await expect(quality).toBeVisible();
 

@@ -416,10 +416,32 @@
   </p>
 {/if}
 <p>{msg}</p>
+<!-- This note has to stand ALONE, and until 2026-09-07 it did not: it said
+     "see the note above", and the note above renders only
+     `{#if dstUsesBrowserEncoder}` — which is false in the exact case this one
+     exists to cover. A purely-digitized project whose service call fails gets
+     the browser encoder silently, shows no up-front caveat (DST is the filled
+     primary button, no asterisk), and was then told to consult a paragraph
+     that is not on the page. `DownloadStep.spec.js` asserted both halves —
+     `dst-browser-encoder-note` absent, `dst-browser-encoder-downloaded`
+     present — without noticing they contradict.
+
+     So it carries the consequence itself, and in the fallback case names the
+     cause too: the service was ASKED for this file (preferService is
+     isPurelyDigitized) and could not answer, which is both why the file is
+     the transposed one and how to get a good one. -->
 {#if lastExport && lastExport.fmt === "dst" && lastExport.via === "browser"}
   <p class="encodernote" data-testid="dst-browser-encoder-downloaded">
-    That DST came from EMB-Bot's own encoder — see the note above before
-    opening it in other software.
+    <strong>That DST came from EMB-Bot's own encoder.</strong> It opens
+    correctly in EMB-Bot, but other embroidery software reads it rotated a
+    quarter turn and may not see the color stops.
+    {#if dstUsesBrowserEncoder}
+      Download PES or EXP instead if the file is going somewhere else.
+    {:else}
+      The digitizer service was meant to write this one and could not be
+      reached — start it and download again for a file other software reads
+      correctly, or use PES or EXP now.
+    {/if}
   </p>
 {/if}
 <p class="fontcredits-footer">

@@ -226,6 +226,50 @@ test("a browser-encoded DST is flagged after the download, even for a digitized 
   expect(await ui(view).findByTestId("dst-browser-encoder-downloaded")).toBeInTheDocument();
 });
 
+test("the post-download DST note stands alone — it never points at absent text", async () => {
+  // The bug this replaces: the note said "see the note above", and the note
+  // above (`dst-browser-encoder-note`) renders only when the browser encoder
+  // was PREDICTED. On a purely-digitized project it is not, so in the one
+  // case the post-download note exists for, it referred the customer to a
+  // paragraph that is not on the page. The test directly above proves the
+  // up-front note is absent here; this proves what the message then has to
+  // carry on its own.
+  nextVia = "browser";
+  const view = render(DownloadStep, {
+    props: { project: project(DIGITIZED), runtime: {} },
+  });
+  expect(ui(view).queryByTestId("dst-browser-encoder-note")).not.toBeInTheDocument();
+  await fireEvent.click(fmtButton(view, "DST"));
+  const note = await ui(view).findByTestId("dst-browser-encoder-downloaded");
+
+  // No dangling cross-reference, whatever wording a future edit picks.
+  expect(note.textContent).not.toMatch(/note above|above before|see above/i);
+  // The consequence, in the customer's terms rather than the encoder's name.
+  expect(note.textContent).toMatch(/quarter turn/i);
+  expect(note.textContent).toMatch(/color stops/i);
+  // And the cause, which is the actionable half: the service was asked for
+  // this file and could not answer.
+  expect(note.textContent).toMatch(/digitizer service/i);
+  expect(note.textContent).toMatch(/PES or EXP/i);
+});
+
+test("a lettering project's post-download note is self-contained too, and does not blame the service", async () => {
+  // Here the up-front note IS rendered, so the two paragraphs sit together
+  // and the second must not read as a fragment of the first — nor claim a
+  // service failure, since a lettering project never asks the service at all
+  // (preferService is false, so `via: "browser"` is the intended path).
+  nextVia = "browser";
+  const view = render(DownloadStep, {
+    props: { project: project(LETTERING), runtime: {} },
+  });
+  expect(ui(view).getByTestId("dst-browser-encoder-note")).toBeInTheDocument();
+  await fireEvent.click(fmtButton(view, "DST"));
+  const note = await ui(view).findByTestId("dst-browser-encoder-downloaded");
+  expect(note.textContent).not.toMatch(/note above|above before|see above/i);
+  expect(note.textContent).toMatch(/quarter turn/i);
+  expect(note.textContent).not.toMatch(/digitizer service/i);
+});
+
 test("a service-encoded DST is not flagged after the download", async () => {
   nextVia = "service";
   const view = render(DownloadStep, {

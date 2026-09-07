@@ -613,9 +613,9 @@ Studio lanes (image, manual, shape presets). Ported; both tables plus `FILL_ROW_
 7 mutations), asserting AGREEMENT only. *(measured 2026-09-07 — DOCTRINE "Gotchas")*
 
 **A Studio change is not verified until it has been *looked at* in a browser.**
-A 2026-08-25 sweep found a primary CTA rendering white-on-white on every wizard
-step and a canvas menu creating elements with no feedback — both shipped, both
-invisible to a green suite. *(confirmed 2026-08-25 — area doc)*
+A 2026-08-25 sweep found a white-on-white CTA and a silent canvas menu; 2026-09-07,
+"Ready to stitch" over an empty design and an auto-digitized logo recapped as
+`Content: Text — ""`. Four, none seen by a green suite. *(DOCTRINE "Gotchas")*
 
 **Uploading artwork is the whole interaction — the panel no longer asks the
 user to classify it first.** The run starts on upload and the panel STATES what

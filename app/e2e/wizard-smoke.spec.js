@@ -324,3 +324,47 @@ test("the step panel is scrolled to the top after every step change", async ({ p
   await expect(page.getByRole("heading", { name: "What are you putting this on?" })).toBeVisible();
   await expect.poll(scrollTop).toBe(0);
 });
+
+// The review step on an EMPTY project, which nothing had ever driven: every
+// test above types text or uploads art before advancing, so the summary was
+// only ever seen full. A brand-new project holds one empty text element, and
+// the stepper lets you jump straight to Review from the garment step.
+//
+// Until 2026-09-07 that screen read "**Ready to stitch** — Looks good? The
+// live field is your stitch-out." over a summary saying `Text — ""` and a
+// canvas saying "Your embroidery appears here as you add content." The only
+// contradiction was a disabled Next button with no reason attached.
+//
+// `flow.js`'s `canAdvance("create", …)` already computed the right answer and
+// only the button consulted it; the headline now does too. This drives the
+// state transition in both directions, because a headline that is merely
+// pessimistic would be its own bug.
+test("the review step does not claim readiness for a design with nothing in it", async ({ page }) => {
+  await page.goto("/");
+
+  await page.getByRole("button", { name: "Left Chest", exact: true }).click();
+
+  // Jump the stepper straight to Review, skipping Content entirely — the
+  // badge carries the step number, so the accessible name is "3 Review".
+  await page.getByRole("button", { name: "3 Review" }).click();
+
+  await expect(page.getByRole("heading", { name: "Nothing to stitch yet" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Ready to stitch" })).toHaveCount(0);
+  // The summary says it in words, not as two quote marks.
+  await expect(page.locator("dl.summary")).toContainText("nothing typed yet");
+  await expect(page.locator("dl.summary")).not.toContainText('Text — ""');
+  // And Next stays shut, which is the behaviour the headline now agrees with.
+  await expect(page.getByRole("button", { name: "Next", exact: true })).toBeDisabled();
+
+  // Now give it something to sew and watch the same screen change its mind.
+  await page.getByRole("button", { name: "Content" }).click();
+  const textInput = page.locator("textarea").first();
+  await textInput.fill("HELLO");
+  await expect(page.getByText(/^\d+ stitches/)).toBeVisible();
+
+  await page.getByRole("button", { name: "3 Review" }).click();
+  await expect(page.getByRole("heading", { name: "Ready to stitch" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Nothing to stitch yet" })).toHaveCount(0);
+  await expect(page.locator("dl.summary")).toContainText('Text — "HELLO"');
+  await expect(page.getByRole("button", { name: "Next", exact: true })).toBeEnabled();
+});

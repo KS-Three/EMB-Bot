@@ -1068,6 +1068,41 @@ its hedge as it is copied forward** — is why this file is split.
 
 ## Gotchas — cost someone a session once
 
+- **A trailing `{:else}` answers a question about the wrong type, and a
+  missing field renders as EMPTY rather than as "undefined".** The review
+  step's recap branched `image` / `manual` / else-assume-text. Three of the six
+  element types `addElement` builds are neither — `digitized`, `design`,
+  `shape` — so all three landed on the text rung. `digitized` is the
+  commonest path in the app, and on the screen immediately before Download it
+  recapped a finished auto-digitized logo as **`Content: Text — ""`** above a
+  blank `Font`. Svelte prints a missing property as nothing, so the wrong
+  answer read as a plausible *empty* design rather than as a bug — which is
+  why it survived; `Text — "undefined"` would have been reported in a day.
+  **The suites all passed and always would have**: `wizard-smoke.spec.js`
+  asserts the recap on the text and image paths, both of which have their own
+  rung, and `quality-report.spec.js` drives the digitized path but only ever
+  looked at `.quality`, below it. Two tests over the same screen, and the gap
+  was exactly where they met. Cut to `lib/summary.js` with one branch per
+  type, and `summary.spec.js` enumerates them from `project.js`'s OWN factory
+  ternary, so a seventh type fails a test instead of shipping.
+  **Found by breaking it**: adding `.trim()` to that line turned the silent
+  wrong answer into a render-time throw, which took out step navigation
+  entirely — the failing e2e pointed at a disabled-looking button on the
+  Content step, three components away from the cause.
+  *(measured 2026-09-07 in a browser; the mutation quotes the shipped string
+  verbatim)*
+
+- **The review step said "Ready to stitch" for a design with nothing in it.**
+  A brand-new project holds one EMPTY text element, so the headline, the
+  lead-in ("Looks good? The live field is your stitch-out.") and the summary
+  all rendered over a canvas reading "Your embroidery appears here as you add
+  content." `flow.js`'s `canAdvance("create", …)` already computed exactly the
+  right predicate and ONLY the Next button consulted it — so the one signal
+  the customer got was a disabled button with no reason attached. When a gate
+  already exists, the copy above it should read from the same gate rather than
+  assume the happy case. *(2026-09-07 — same session; e2e in
+  `wizard-smoke.spec.js`, mutation-proved)*
+
 - **A ruling marked "shipped" may have shipped into ONE of the two engines.**
   Corpus law 26 (`edge_lattice` → `edge_run` under a knit fill) is recorded as
   **shipped 2026-08-05**. It landed in `digitizer_core/fabrics.py` and never in
