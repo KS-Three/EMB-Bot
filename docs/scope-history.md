@@ -9936,3 +9936,49 @@ so the click timed out and looked like a disabled swatch), and the picker's
 swatches carry their colour in `aria-label` with empty text content, so
 `filter({ hasText })` found nothing. Target them as
 `button.tp-cell[aria-label="…"]`.
+
+## 2026-09-07 — the size field, and a 3.2 MB worksheet
+
+Snapshot. Not live status.
+
+### The size field kept showing a width the design does not have
+
+Left Chest (4 x 4 in = 101.6 mm), asking in mm:
+
+| asked | field showed | design sewed |
+|---:|---|---|
+| 100 | 100 | 100 — honoured |
+| 105 | **102** | 102 — clamped, and said so |
+| 110 | **110** | 102 — clamped, and did not |
+| 115, 120, 125, 127, 130, 150, 200 | as typed | 102 |
+
+`checkValidity()` true throughout, no message anywhere. A customer asking for
+a 6-inch left-chest design saw "150" over a 102 mm one.
+
+**The engine and the clamp are both correct.** `buildLetteringDesign` called
+directly honours 105, 110, 120 and 127 exactly and clamps only above the box;
+the UI clamp is `Math.min(garment placement width, …)`. The defect is the
+one-way `value={wDisplay}`: two out-of-range entries produce the same clamped
+design, so Svelte never rewrites the field.
+
+Residual, recorded not fixed: after ANY edit a later reactive change also
+fails to reach the field — 80 → type 90 → engine returns 90.2 → field keeps
+90. ~0.2 mm, and the number shown is the one just typed.
+
+### The printed worksheet was 3.2 MB of uncompressed pixels
+
+jsPDF's `addImage` takes a zlib level as its eighth argument and defaults to
+NONE, so the 900×900 render was embedded raw: 2.43 MB of image plus a 0.81 MB
+alpha mask, 100% of a 3.24 MB file — 900 × 900 × 3 and 900 × 900 × 1 exactly.
+
+| level | size | time |
+|---|---:|---:|
+| NONE (shipping) | 2.43 MB | 157 ms |
+| FAST | 0.20 MB | 193 ms |
+| **MEDIUM** | **0.12 MB** | **201 ms** |
+| SLOW | 0.10 MB | 373 ms |
+
+End to end in a real browser: **3.244 MB → 0.054 MB, a 60× reduction**, in
+370 ms — the alpha mask deflates even harder than the image. zlib is
+lossless, so the printed page is pixel-identical. Not JPEG (0.07 MB, 2 ms):
+thin dark lines on a pale ground is exactly what JPEG ringing damages.
