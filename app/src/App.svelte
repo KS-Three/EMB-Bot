@@ -120,22 +120,11 @@
   //
   // Text, shape and hand-drawn elements are absent on purpose, not by
   // oversight: preflight runs in the Python digitizer, so nothing generated in
-  // the browser has a report to show. That is a real gap in the coverage this
-  // screen implies, and it belongs to the engine, not to this component.
-  // Sew facts for the COMBINED design, for the review step. Derived here (not
-  // in the template) so it recomputes with project/runtime like every other
-  // `$:` and never runs inside a render loop. Never throws: it runs on every
-  // change, including while nothing is ready to stitch — same posture as
-  // DownloadStep's combinedColors.
-  $: sewFacts = (() => {
-    try {
-      const { combined } = generateAll(project, runtime);
-      return combined ? sewSummary(combined) : [];
-    } catch (e) {
-      return [];
-    }
-  })();
-
+  // the browser has a QUALITY judgement to show, and that belongs to the
+  // engine rather than to this component. What the browser CAN state about
+  // them — how big, how many stitches, how many stops, how much thread — it
+  // now does: `sewFacts` below, rendered only when this list is empty, so one
+  // design never gets two answers.
   $: qualityEntries = (project.elements || [])
     .filter((el) => el.type === "digitized" && (el.preflight || el.stats))
     .map((el) => ({
@@ -144,6 +133,21 @@
       preflight: el.preflight,
       stats: el.stats,
     }));
+
+  // What the COMBINED design costs to sew, for the review step's summary —
+  // the numbers `qualityEntries` above cannot supply for a browser-built
+  // design. Derived here rather than in the template so it recomputes with
+  // project/runtime like every other `$:` and never runs inside a render loop.
+  // Never throws: it runs on every change, including while nothing is ready to
+  // stitch, the same posture as DownloadStep's combinedColors.
+  $: sewFacts = (() => {
+    try {
+      const { combined } = generateAll(project, runtime);
+      return combined ? sewSummary(combined) : [];
+    } catch (e) {
+      return [];
+    }
+  })();
 
   // ---- Undo/redo (Ember-audit follow-up) ------------------------------------
   // Per-project, in-memory only (never persisted). Every committed project
