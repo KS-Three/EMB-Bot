@@ -9791,3 +9791,88 @@ whose threads were being used.
   nothing in the app states it.** Every hit for "desktop" in `app/src/` is a
   code comment. Meanwhile the lettering lane demonstrably works on a phone,
   measured above. Whether to state the posture or drop it is a product call.
+
+## 2026-09-07 — what a customer types, and what the app does with it
+
+Snapshot. Not live status.
+
+### A curly apostrophe silently dropped the letter from the design
+
+The company's own name, typed two ways in the shipped app:
+
+| | stitches | message |
+|---|---:|---|
+| `Fritsch's Stitches` (U+0027) | 1,354 | none |
+| `Fritsch’s Stitches` (U+2019) | **1,326** | *"This font can't stitch "'" — Alchemy, Allegria 20 and Allegria 55 (55 more too) can. Switch fonts and it will stitch."* |
+
+The design sewed as "Fritschs Stitches". Phones, Word, Notes and every paste
+buffer substitute U+2019 without telling anyone, and **26 of the 85 shipped
+fonts have no glyph for it.** The note named a character indistinguishable
+from the one they typed, inside quotation marks made of the same mark, and
+offered a fix — abandon your font — that was not the fix.
+
+Coverage across the library, every typographic form against its ASCII twin:
+
+| character | fonts that can | fonts that cannot |
+|---|---:|---:|
+| `’` U+2019 | 59 | **26** |
+| `'` U+0027 | 75 | 10 |
+| `“` U+201C | 25 | **60** |
+| `"` U+0022 | 60 | 25 |
+| `–` U+2013 | 12 | **73** |
+| `-` U+002D | 70 | 15 |
+
+Every smart form is worse supported than its twin, and the two look the same.
+
+**Fixed narrowly**: the engine stitches the twin when — and only when — the
+font has no glyph for the typographic form, so a font that owns the nicer
+glyph keeps using it. That rescues **367 font x character combinations**.
+Deliberately not NFKD, which would also fold ligatures, fractions and
+accented letters — and an accented letter is a different letter to someone
+whose name carries it.
+
+**Inertness measured, not argued**: all 85 fonts laid out with text containing
+no typographic punctuation hash `d15975c22fbf1d7b…4ad4a230` both with the fold
+and with it stubbed out.
+
+### The one verdict that meant "unsewable" named no way out
+
+Same default garment, same font:
+
+| text | size | what the app said |
+|---|---|---|
+| 74 characters | 101×2 mm | *"Letters 1.3 mm tall — under the 4 mm floor, thin strokes will shred"* |
+| 18 characters | 102×6 mm | *"100% of this lettering is under 1 mm wide — already the full width of the placement, so fewer characters or a bigger placement is what makes them crisper"* |
+
+The ranking was inverted: the design that will shred got a diagnosis and
+nothing else; the merely-thin one got a named fix. All three levers measured
+before being named — 3 lines 4.8 mm, 6 lines 6.3 mm, 18 characters 6.7 mm,
+full back 4.0 mm, all clearing the 4 mm floor; 40 characters gives 3.1 mm and
+does not, which is why "fewer characters" is named second.
+
+### Five more verified negatives
+
+- **Transparency is handled on both lanes.** `logo_alpha.png` is 77.1% fully
+  transparent; the browser engine's own digitize path renders exactly the
+  shapes — green disc, orange ring with its hole intact, purple bar, two
+  squares — and no background rectangle. The service lane likewise
+  (`enthusiast_logo.png`, 74.3% transparent, 2,187 stitches in 2 colours).
+- **The digitized lane's DST really is unaffected by the axis bug**, which is
+  what the Download step's note promises. A purely auto-digitized project
+  exports 80.3 × 16.7 mm in dst, pes AND jef — all three 2,187 stitches, all
+  three correct orientation, all three carrying `COLOR_CHANGE=1`. The
+  browser-encoded DST is the one that loses the colour stop (and adds a
+  spurious `SEQUIN_MODE`), which is exactly the case the note is scoped to.
+- **Three of the four quick starts produce real files** with zero console
+  errors — 2,355 / 966 / 1,798 stitches, PES 15,477 / 7,115 / 12,087 bytes.
+  The fourth ("Logo patch — Upload your logo next") waits for an upload, as
+  its own label says, and completes: 2,187 stitches, 80×17 mm, 2 colours, and
+  PES/DST/JEF all download.
+- **Accented names are well covered and the advice is real.** José, Müller,
+  Renée, Zoë, Björk and Beyoncé all set in the default font; Ñuñez, Søren,
+  François, Kraków and Åsa do not, and the message names 33–73 fonts that can.
+  No fold is right here — an accented letter is a different letter.
+- **Whitespace and multi-line inputs behave.** Leading and trailing spaces are
+  ignored (identical caption to the trimmed text), a tab lays out, three lines
+  stack to 102×73 mm, an all-space string produces no design and no error, and
+  an emoji takes the honest "no font in this library can stitch" branch.
