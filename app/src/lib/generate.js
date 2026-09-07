@@ -268,6 +268,42 @@ export function letteringNote(l, opts = {}) {
   return "";
 }
 
+// What the empty field says while a customer is deciding what to do.
+//
+// The drawing tools live on the canvas's right-click menu (Kent's placement
+// call, 2026-08-13 — a tool, not an upload button) and this sentence is the
+// only thing in the product that says so. Two of PRODUCT.md's four
+// launch-scope items are behind that gesture ("Basic shapes tool" and the
+// manual draw lane).
+//
+// It used to name the gesture unconditionally, which made it advice a touch
+// customer cannot take. Measured 2026-09-07 against the production build at
+// 390x844 with touch emulation: the phone reports `(any-pointer: fine)`
+// false — the app CAN tell no mouse is attached — and a real 1.4-second
+// long-press on the canvas, dispatched through CDP rather than as a
+// synthetic event, produced zero `contextmenu` events and never opened the
+// menu, while the desktop control (a real right-click) opened it every time.
+// There is no other route: no button, anywhere in the app, reaches those two
+// tools.
+//
+// So on a device with no fine pointer the sentence names what IS reachable
+// there instead. Both lanes it names were driven on that same phone viewport
+// and work: typing gave 1,223 stitches at 102x19 mm with a 5x7 hoop picked.
+//
+// `any-pointer` rather than `pointer`: a laptop with a touchscreen reports
+// `pointer: coarse` when touch is the primary input while still having a
+// mouse plugged in, and that customer can right-click perfectly well. The
+// question is whether ANY fine pointer exists, which is what this asks.
+//
+// Taking the capability as an argument keeps the decision testable without a
+// browser, and keeps `matchMedia` at the one edge that owns it.
+export function emptyFieldHint(hasFinePointer) {
+  const lead = "Your embroidery appears here as you add content.";
+  return hasFinePointer
+    ? `${lead} Right-click the canvas for drawing tools.`
+    : `${lead} Add text or artwork below \u2014 the drawing tools need a mouse.`;
+}
+
 export function charList(chars, max = 6) {
   const list = (chars || []).filter((c) => typeof c === "string" && c.length);
   if (!list.length) return "";

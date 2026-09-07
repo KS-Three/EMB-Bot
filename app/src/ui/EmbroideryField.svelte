@@ -1,6 +1,6 @@
 <script>
   import { onMount, onDestroy, createEventDispatcher } from "svelte";
-  import { generateAll, charList, letteringNote } from "../lib/generate.js";
+  import { generateAll, charList, letteringNote, emptyFieldHint } from "../lib/generate.js";
   import { ensureFonts, loadCoverage, loadManifest } from "../lib/fontLoader.js";
   import { unsupportedMessage } from "../lib/fontCoverage.js";
   import { renderRealistic, isDark } from "../lib/preview.js";
@@ -48,6 +48,25 @@
   let warn = false;
   let hasDesign = false;
   let hint = "";
+  // Does this device have a mouse? `emptyFieldHint` picks its sentence from
+  // this, because the drawing tools are only reachable by right-click and a
+  // touch customer cannot perform that gesture (generate.js carries the
+  // measurement). Not a viewport question — a phone-sized window on a laptop
+  // still has a mouse, and a tablet with a trackpad attached mid-session
+  // gains one, which is what the listener below is for.
+  //
+  // Read EAGERLY here, not in onMount: the first paint() can run before
+  // onMount's callbacks do, and a phone that saw the desktop sentence on
+  // first paint would keep it — which is the whole defect. onMount only adds
+  // the listener. `true` when there is no matchMedia at all (jsdom, SSR):
+  // the mouse sentence is the one that was shipping, so an environment that
+  // cannot answer keeps the old behaviour rather than inventing a new one.
+  let hasFinePointer = readFinePointer();
+  let pointerMq = null;
+  function readFinePointer() {
+    if (typeof window === "undefined" || !window.matchMedia) return true;
+    return window.matchMedia("(any-pointer: fine)").matches;
+  }
   // Spoken to a screen reader after a keyboard nudge (see nudgeSelected). It
   // is the position readout a sighted user gets from the moveBadge and from
   // simply watching the design move, so it carries the same two facts: where
@@ -1072,22 +1091,13 @@
       // different answers, and the second one used to get the first one's.
       hint = result.unsupported && result.unsupported.length
         ? `This font can\u2019t stitch ${charList(result.unsupported)}. Try a different font, or different text.`
-        // The drawing tools live on the canvas's right-click menu (Kent's
-        // placement call, 2026-08-13 — a tool, not an upload button) and
-        // NOTHING in the UI says so. Two of PRODUCT.md's four launch-scope
-        // items are behind that gesture ("Basic shapes tool", and the manual
-        // draw lane), and right-click on a canvas is a power-user idiom a
-        // first-time customer has no reason to try.
-        //
         // Said HERE rather than in the drag hint because the drag hint is
         // gated on `stitchCount > 0` (hints.js, condition A8) — it appears
         // only once there is already a design, which is exactly when the
         // question has stopped being asked. This line is what a customer is
-        // looking at while wondering what to do. Desktop-only is a stated
-        // launch posture (PRODUCT.md), so naming the right button is safe.
-        //
-        // This changes the PLACEMENT of nothing: it is one sentence.
-        : "Your embroidery appears here as you add content. Right-click the canvas for drawing tools.";
+        // looking at while wondering what to do. Which sentence, and why it
+        // depends on the pointer, is `emptyFieldHint` in generate.js.
+        : emptyFieldHint(hasFinePointer);
       // paint() clears hint/unsupportedNote/… at the top of every run, so
       // exactly one of the two is set here and suggestFonts can tell which
       // message it is amending.
@@ -1358,6 +1368,7 @@
     // old ratio. A `resolution` media query is the standard way to hear it;
     // it only matches the CURRENT ratio, so it's re-armed after each change.
     watchDpr();
+    watchPointer();
     fitCanvasToPane();
   });
 
@@ -1373,6 +1384,23 @@
     fitCanvasToPane();
   }
 
+  // Same shape as watchDpr: ask once, then listen, because the answer can
+  // change without a layout change. Plugging a mouse into a tablet flips
+  // `any-pointer: fine` while the empty-canvas sentence is on screen, and
+  // that sentence is the only thing telling this customer the drawing tools
+  // exist. `paint()` is what writes it, so the handler has to re-run paint
+  // rather than just set the flag.
+  function watchPointer() {
+    if (typeof window === "undefined" || !window.matchMedia) return;
+    pointerMq = window.matchMedia("(any-pointer: fine)");
+    pointerMq.addEventListener("change", onPointerCapabilityChange);
+  }
+
+  function onPointerCapabilityChange() {
+    hasFinePointer = readFinePointer();
+    if (canvas) paint();
+  }
+
   onDestroy(() => {
     // The outline pulse is the one loop here that can be mid-flight with no
     // user input driving it, so it has to be cancelled explicitly — otherwise
@@ -1381,6 +1409,8 @@
     pulseRafId = 0;
     if (dprQuery) dprQuery.removeEventListener("change", onDprChange);
     dprQuery = null;
+    if (pointerMq) pointerMq.removeEventListener("change", onPointerCapabilityChange);
+    pointerMq = null;
     if (sizeRaf) cancelAnimationFrame(sizeRaf);
     sizeRaf = 0;
     if (sizeObserver) sizeObserver.disconnect();
