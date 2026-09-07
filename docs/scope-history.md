@@ -7994,3 +7994,40 @@ The grade. Seven of 26 fixtures read F 0 and twelve of 52 design/garment
 combos sit on a clamped zero with true scores from −272 to −38 (defect 28),
 and one sew-out at 6/10 is the whole physical evidence base (gate 1). Neither
 is a copy problem and neither closed tonight.
+
+
+## 2026-09-07 — the all-five arm re-measured on the fixed tree, and one grade does go down
+
+Addendum to 09-06. The flip sheet's `all five` row was measured before the
+`page_mask` fix and contained `dissolve_phantom_blends`, so it needed redoing.
+Re-run on `main` at `20fa551`, same 26 fixtures, 80 mm / `left_chest`:
+
+| | pre-fix | post-fix |
+|---|---:|---:|
+| moved | 12/26 | 12/26 |
+| stitches | −6,070 | **−5,719** |
+| trims | −24 | **−28** |
+| blocks | −23 | **−21** |
+| cones | −22 | **−20** |
+| grades | 5 up | **5 up, 1 DOWN** |
+
+**The sheet's "no grade moves DOWN in any arm, on any fixture" is now false,
+and the exception is exactly what the combination arm exists to find:**
+`logo_script_tires` goes **A 100 → B 88** with all five on (trims 8 → 12,
++54 stitches) — a fixture no single flag takes below A. It reads A 100 → A 100
+under `dissolve_phantom_blends` alone. Corrected in the sheet rather than
+left as a headline that is true of five rows and false of the sixth.
+
+**Gaulke's all-five grade also changes, and now agrees with the honest arm:**
+F 4 → **F 16**, the same answer `bind_resnap_all_classes` gives on its own,
+from the arm that actually loads `0020 Black`. The C 64 it used to read was
+the dropped cone; with the cone back, so is the F.
+
+Also corrected: `tests/test_phantom_blend_photo.py`'s docstring still carried
+the middle account — "the dark cone is lost somewhere between stage 2 and the
+sewn block list, finding where is the open work" — on a tree where the finding
+and the fix had both landed in the same PR. That is the **fifth** surface this
+one claim has needed correcting on (PR body, MASTER_SCOPE, DOCTRINE, the
+sheet, the docstring), across three separate passes. The claim was written in
+several places before it was verified in any of them, and each copy made the
+next look corroborated.

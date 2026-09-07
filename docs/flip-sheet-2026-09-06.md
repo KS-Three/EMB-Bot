@@ -19,10 +19,16 @@ cap, if either — defect 19) and `chain_links` is barred permanently under gate
 | `bind_resnap_all_classes` | 5/26 | −614 | −13 | **−18** | **−17** | gaulke F 4 → F 16 |
 | `satin_per_stroke` | 6/26 | −3,021 | +33 | 0 | 0 | chrome C 64 → B 76; meadow D 52 → C 64 |
 | `satin_patch_junctions` | 3/26 | +789 | +10 | 0 | 0 | scene_stub B 76 → B 88; becker B 76 → B 88 |
-| **all five** | **12/26** | **−6,070** | −24 | **−23** | **−22** | **5 up** |
+| **all five** (post-fix) | **12/26** | **−5,719** | −28 | **−21** | **−20** | **5 up, 1 DOWN** |
 
-**No grade moves DOWN in any arm, on any fixture.** Fourteen of 26 fixtures are
-byte-identical even with all five on.
+**No grade moves DOWN in any SINGLE-flag arm.** The combination is the
+exception, and finding it is what the `all` arm is for: with all five on,
+`logo_script_tires` goes **A 100 → B 88** (trims 8 → 12) — a fixture no single
+flag takes below A. Fourteen of 26 are byte-identical even with all five on.
+
+The `dissolve_phantom_blends` row is **pre-fix** (see §3); its post-fix numbers
+are 4/26 moved, −2,865 stitches, −67 trims, −8 blocks, −7 cones and no grade
+moving either way. The all-five row is post-fix and includes that flag.
 
 ## The finding that changes the decision
 
@@ -36,7 +42,8 @@ The artwork is black lettering on a white label. What each arm actually loads:
 | off | White 100, Ghost White 91.8, **Dark Charcoal 15.9**, Silver 82.0 | **L\* 15.9**, 288 st | F 4 |
 | `dissolve_phantom_blends` | White 100, Glacier Green 96.7, Skylight 85.7 | L\* 85.7 | **C 64** |
 | `bind_resnap_all_classes` | White 100, Skylight 85.7, Charcoal 36.1, **Black 0.0** | **L\* 0.0** | F 16 |
-| all five | White 100, **Silver 82.0** | L\* 82.0 | **C 64** |
+| all five, pre-fix | White 100, **Silver 82.0** | L\* 82.0 | **C 64** |
+| all five, post-fix | White 100, Skylight 85.7, Charcoal 36.1, **Black 0.0** | **L\* 0.0** | F 16 |
 
 The two arms that grade **best** load no thread darker than L\* 82 for
 lettering sitting on a white ground — thread you would not see. The only arm
@@ -84,6 +91,10 @@ lies between that and the label's L* 98.8 ground, and the page endpoint is the
 one that DELETES rather than recolours. The pass now takes stage 1's real
 background (`page_mask=~valid` at the call site, before the enclosed
 subtraction).
+
+**Gaulke's grade now reads F 4 → F 16 under all five, not C 64** — the same
+answer `bind_resnap_all_classes` gives alone, from the arm that actually loads
+Black. The C 64 was the dropped cone all along.
 
 **Cost of the fix: nothing.** `logo_bridge_bar` keeps the whole win — 14,338 →
 11,506 stitches, **125 → 62 trims**, 18 → 12 blocks and cones, unchanged from
