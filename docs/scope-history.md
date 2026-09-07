@@ -10046,3 +10046,34 @@ looked worth questioning. It is not: three lines there comes to 102 × 58 mm =
 4.0 × 2.3 in, an ordinary left-chest size, because the design is width-bound
 long before the box's height matters. **Measured before writing the concern
 down, which is why the concern is not in the defect list.**
+
+### The two tools behind the right-click menu, driven end to end at last (2026-09-07)
+
+Both are PRODUCT.md launch-scope items, both marked done, and neither had been
+driven through the shipped UI before today — which is what made this morning's
+discoverability work about a menu nobody here had opened.
+
+**Basic shapes tool (item 4).** Right-click → the menu offers "Draw shapes" and
+"Basic shape". Adding one and switching kinds:
+
+| kind | stitches | size |
+|---|---:|---|
+| Circle | 3,918 | 51 × 51 mm |
+| Rectangle | 2,935 | 51 × 31 mm |
+| Heart | 2,974 | 51 × 46 mm |
+| Star | 2,263 | 51 × 49 mm |
+
+Exported to PES (15,701 bytes) and rendered from the bytes: a clean
+five-pointed star, row-filled, sharp tips, 51.3 × 49.0 mm. Zero console errors.
+
+**Manual draw lane.** Right-click → "Draw shapes" opens a panel with its own
+canvas and a full instruction line (straight vs curved nodes, how to close, how
+to curve an edge, what Backspace/Escape/Enter/Delete do). Five clicks and Enter
+gave a pentagon: **2,380 stitches · 42 × 40 mm**, drawn in the panel and
+stitched on the field, element reading "Shapes · 1". Zero console errors.
+
+Two probe errors on the way, both the harness: the tool menu closes on any
+pointerdown outside `.fieldmenu`, so a page-wide `getByRole` lookup after a
+wait finds nothing — click inside the menu. And the drawing canvas is the
+SMALL one in the left panel (411 × 274) not the field (932 × 766); the first
+run drew on the field and placed nothing, leaving "Shapes · empty".
