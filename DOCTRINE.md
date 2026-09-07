@@ -1066,6 +1066,28 @@ its hedge as it is copied forward** — is why this file is split.
   *(2026-09-06 — same entry)*
 
 
+- **Two functions can share an estimator and still score different artwork —
+  check the MASK, not the formula.** `stage4_vectorize.revalidate_threads` and
+  `preflight._region_color_errors` both take the median of the per-pixel
+  CIEDE2000, each docstring says so, and they still disagreed by **52.2 dE00
+  on one polygon**. The difference is two operations nobody had lined up:
+  preflight erodes the polygon raster one pixel and drops `p.bg_mask`
+  (*"to keep anti-alias halo pixels from dragging a flat color toward the
+  background"*); `_region_footprint` is a bare `cv2.fillPoly` and does
+  neither. On `logo_gaulke_roofing`'s `Se6eddd27` (0.58 mm2 at 16.1 px/mm)
+  that is **247 px against 54**, and stage 4's set is BIMODAL — 103 near-black
+  plus 65 near-white — so its median makes `3971 Silver` the chart-wide argmin
+  at 11.4 while the region's own core is near-black and scores that same
+  Silver **63.6**. **The re-snap picks a thread on pixels the grader refuses,
+  and the grader then condemns the thread the re-snap picked.** This is the
+  named cause of one of the F wall's three excess-surviving blocks. It is also
+  the SAME failure `_region_color_errors`' docstring calls this instrument's
+  original sin — *"the per-channel median of a bimodal pool is a colour almost
+  no pixel carries"* — fixed on preflight's side 2026-08-11 and never
+  inherited by stage 4. When two instruments disagree about one region, diff
+  their pixel sets before their arithmetic.
+  *(2026-09-07 — `tools/spool_remedy.py --masks`)*
+
 - **A measurement cache must record the tree it was measured on, or a table
   will mix two engines and look consistent.** `flip_sheet.py` cached its first
   pass into `build/flip_sheet` before `dissolve_phantom_blends` was fixed; the
@@ -1741,6 +1763,15 @@ its hedge as it is copied forward** — is why this file is split.
   untouched by halo dissolve — their assignments are already optimal and raw
   distance condemns them anyway, which is the exact failure the photo route's
   2026-08-24 rescoring was built for and which the gradient lane never got.
+  **REPRODUCIBLE 2026-09-07** — `tools/spool_remedy.py --yardstick` names those
+  same four and no others. It needs NO patch: excess has been reported on every
+  route since 2026-09-06, so the confound this entry warns about (forcing
+  `_is_photo_class`, which also gates `PHOTO_RESOLUTION_LOW` and the subject
+  check) is avoidable entirely. **And the offender set moves with the
+  yardstick** — `_thread_match_findings` picks the top row on `_score`, so a
+  thread whose worst RAW patch has a close loaded alternative can block on its
+  SECOND-worst under excess: 6 of the 24 findings change row. A probe that
+  keeps the raw top and prints its excess answers a different question.
   **(2) halo cones, 1 of 7 — RETRACTED 2026-09-07, this category is EMPTY.**
   It read: *"`gaulke_roofing` needs no yardstick change:
   `cfg.dissolve_phantom_blends` alone gives F 0 → C 64, blocks 3 → 0, worst
@@ -1757,8 +1788,18 @@ its hedge as it is copied forward** — is why this file is split.
   operator nothing — which points at the raw yardstick (category 1), not at
   halo cones. Whether it actually clears under excess scoring is UNMEASURED;
   do not assume it from this note.
-  **(3) region colour != the artwork under it, 2 of 7.** `bridge_bar` and
-  `screenshot_phone_ui` block under every combination, and the screenshot's
+  **(3) survives excess too — 3 of 7, not 2 (2026-09-07).** `gaulke_roofing`
+  joins this group now that category (2) is empty: 2 raw blocks -> **1** under
+  excess, and the survivor is `3971 Silver` at raw 63.6 / **excess 58.6**.
+  **ROOT-CAUSED the same day, and the three survivors have THREE causes**
+  (`tools/spool_remedy.py --masks`). Gaulke's is **the mask gap**, below.
+  `screenshot`'s is the small-shape floor already documented (`S43831dcd`,
+  177 px, masks agree to 0.4 dE00, `revalidate_small_shapes` takes it
+  32.7 -> 1.4). `bridge_bar`'s is neither and is still open (`S880e5dff`,
+  240 px so above the floor, masks agree to 1.3, both instruments condemn
+  `6156 Olive` at ~20 — stage 4 looked and found nothing better).
+  The other two are also **region colour != the artwork under it**:
+  `bridge_bar` and `screenshot_phone_ui` block under every combination, and the screenshot's
   looks blatant: **`0111 Whale` (127,127,127) scores 33.0 ΔE on artwork read
   as (252,252,252) while the design already loads `0015 White`**. **It is NOT
   a permuted palette, and the code says so without another measurement:**
