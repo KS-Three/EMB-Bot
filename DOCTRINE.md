@@ -2721,3 +2721,123 @@ its hedge as it is copied forward** — is why this file is split.
   says the case stopped being the silent one it was written for, rather than
   quietly passing. If the whole file goes red, pystitch fixed the ladder: drop
   it and the MASTER_SCOPE area 4 note with it. *(2026-09-07)*
+
+- **A bounding box cannot tell a rotation from a mirror, and the word you pick
+  decides what fix anyone tries.** EMB-Bot's DST reader disagrees with the
+  Tajima standard. That was measured correctly in August — five committed
+  professional reference files, 5/5, width and height swapped — and then
+  written down as *"an exact axis transposition"*, *"a quarter turn"*, *"arrives
+  sideways"*. The Studio's import panel followed the word and told customers:
+  *"Use Rotate to stand it up."*
+
+  **It was a mirror.** Measured on the canvas 2026-09-07: an imported logo
+  renders with its letters backwards. No rotation repairs that, the app has no
+  mirror control, and a customer who followed the advice would have ended up
+  with a right-way-up backwards logo and more confidence than before.
+
+  Both facts were available in August. `tools/crossval-stitch-formats.mjs` had
+  been reporting `anti-transpose` — a reflection — for the export direction the
+  whole time; the prose translated it to "quarter turn" and nobody looked at a
+  picture. **The bbox measurement was right and the inference from it was not**,
+  and the two are easy to conflate because a swapped bbox is exactly what both
+  produce.
+
+  Why it reads as a rotation in one frame and a mirror in another, since this
+  will come up again: against pystitch's own coordinates `decodeDST` is an
+  exact 90° CCW rotation, rms 0. But the model's +y points UP and a raster
+  frame's +y points DOWN, so on screen that rotation composes with the flip
+  into a reflection. **Both descriptions are true of different frames, and only
+  one of them is the customer's.** Name the transform in the frame the person
+  reading it is in.
+
+  The permanent guard is a SIGNED AREA, not a bbox: `test/dstimport.test.js`
+  takes three non-collinear points off a pystitch-written fixture and asserts
+  the sign flips between the two readers. A bbox check passes against both a
+  turn and a mirror; the sign of a triangle does not.
+
+  **And a picture is cheap.** Two `pystitch.write_png` calls settled in a
+  minute what a year of correct byte measurements had left ambiguous. When a
+  claim is about ORIENTATION, render it.
+  *(2026-09-07)*
+
+- **Two bugs that cancel look like one feature, and fixing either one alone
+  makes a working path break.** With the transposed reader in place, an
+  imported third-party `.dst` re-exported as DST came out byte-exact against
+  the source (identity, rms 0) — the reader's error and the writer's error
+  annihilated. PES, EXP and JEF, which are all correct, faithfully exported the
+  mirrored model and came out mirrored. So the ONE format the repo documents as
+  broken was the only one that worked here, and the Download step's advice —
+  *"PES and EXP are unaffected — use one of those"* — was exactly backwards for
+  this project type.
+
+  Measured through the shipped UI, before and after pointing the import lane at
+  a standard-convention reader:
+
+  | | before | after |
+  |---|---|---|
+  | DST | identity, 0 colour changes | mirrored, 0 colour changes |
+  | PES | mirrored | **identity, 3 colour changes** |
+  | EXP | mirrored | **identity, 3 colour changes** |
+  | JEF | mirrored | **identity, 3 colour changes** |
+
+  Three of four go from broken to exact and the fourth joins the DST bug the
+  app already warns about — and DST was never the good option anyway, because
+  it loses every colour stop to a standard reader. **Count what the customer
+  can actually use, not how many cells changed colour.**
+
+  The reader was NOT changed: `decodeDST` still pairs with `dst.js` and its 12
+  round-trip tests are untouched. A second entry point, `decodeDSTStandard`,
+  reads the other convention, and the product's three import call sites use it.
+  When the codec itself is put right the two collapse into one and the extra
+  function is deleted. **When a symmetric pair of errors serves two different
+  audiences, split the reader before you touch the writer** — the writer is the
+  one with files already in the world behind it.
+  *(2026-09-07)*
+
+- **A test that passes against the defect it was written for, caught by
+  mutation in the same hour it was written.** The new import e2e asserted the
+  canvas agreed with the panel using `page.getByText(/40×10 mm/).first()` —
+  which matched the PANEL's own line, twice, and never looked at the canvas.
+  Reverting `generate.js` to the old reader left it green. The fix is
+  `page.locator("span.stats")`: name the element, not the string.
+
+  **`.first()` on a text match is the shape to distrust in a spec that is
+  checking two components agree** — it can only ever find whichever one comes
+  first in the DOM. The mutation is what found it, which is the argument for
+  running one on every new assertion rather than on the ones that feel risky.
+  *(2026-09-07)*
+
+- **"It parsed" is not "it is that format", and a size check is not a
+  validation.** `decodeDST`'s only gate was `length >= 512 + 3`. Everything
+  after it is a walk over 3-byte groups, and arbitrary bytes group into 3s
+  perfectly well — so **any** file over 515 bytes decoded into "a design".
+
+  Measured through the shipped UI 2026-09-07 by feeding the import lane a
+  Brother `.pes` — the mistake a customer makes when a design site hands them
+  the wrong format: **no error, and a design reading 3736 × 7624 mm with
+  10,878 colour blocks.** The panel then rendered a thread picker for every
+  one of the 10,878.
+
+  The signal that was there all along is the header. A DST's first 512 bytes
+  are CR-terminated `XX:value` fields, and the codec was already scanning them
+  — for the label, and only the label. Measured over every DST in the repo
+  (five commissioned professional files, one written by pystitch, two by
+  EMB-Bot's own encoder — **three unrelated writers**): all twelve standard
+  tags present in all eight. Every negative tried — PES, JEF, EXP, SVG, PNG,
+  two blocks of random bytes, a JSON project file — scores **zero**, and a
+  file hand-built out of sixty `ST:` lines scores one. The floor is set at
+  three: far below twelve so a sparse writer is not rejected, far above one so
+  a coincidence is not admitted.
+
+  **Two things generalise.** First: when a parser accepts anything, look for
+  what it is already reading and discarding — the discriminator is usually
+  right there. Second: **measure a discriminator's margin on real files of
+  both classes before shipping it.** "Twelve versus zero, over three writers"
+  is a reason to trust a floor of three; "it worked on the file I tried" is
+  not.
+
+  And the message names the way out — the formats a customer is most likely
+  holding, and the fact that a `.dst` download of the same design usually
+  exists. "Invalid file" would have been the same dead end this repo keeps
+  finding.
+  *(2026-09-07)*

@@ -1,7 +1,9 @@
 const assert = require("node:assert");
 const { test } = require("node:test");
 const dst = require("../src/dst.js");
-const { decodeDST, buildImportedDesign, IMPORT_BLOCK_COLORS } = require("../src/dstimport.js");
+const { decodeDST, decodeDSTStandard, buildImportedDesign, IMPORT_BLOCK_COLORS } = require("../src/dstimport.js");
+const fs = require("node:fs");
+const path = require("node:path");
 
 // Round-trip fixture: a small hand-built design pushed through our own
 // byte-verified encodeDST, then decoded back. Coordinates are chosen already
@@ -72,8 +74,13 @@ test("decodeDST centers an off-origin design on its stitch bbox midpoint", () =>
 
 test("decodeDST rejects non-DST inputs", () => {
   assert.throws(() => decodeDST(new Uint8Array(10)), /too small/);
-  // 512-byte header + only jump records -> no stitches
-  const empty = new Uint8Array(512 + 3);
+  // A REAL header (three Tajima fields, the floor the guard added 2026-09-07
+  // wants) plus nothing but the end record -> no stitches. The header used to
+  // be 512 zero bytes here, which now fails the earlier "is it a DST at all"
+  // check and would have tested that instead of this.
+  const empty = new Uint8Array(512 + 3).fill(0x20, 0, 512);
+  const head = "LA:EMPTY\rST:     0\rCO:  1\r";
+  for (let i = 0; i < head.length; i++) empty[i] = head.charCodeAt(i);
   empty[512] = 0; empty[513] = 0; empty[514] = 0xf3;
   assert.throws(() => decodeDST(empty), /No stitches/);
 });
@@ -202,4 +209,155 @@ test("buildImportedDesign honors per-block color overrides and falls back to dis
   assert.deepStrictEqual(design.colors[1], { r: 9, g: 8, b: 7 });
   const def = IMPORT_BLOCK_COLORS[0];
   assert.deepStrictEqual(design.colors[0], { r: def[0], g: def[1], b: def[2] });
+});
+
+// ---- reading a file EMB-Bot did NOT write --------------------------------
+//
+// Every test above encodes with `dst.js` and decodes with `decodeDST`, so a
+// symmetric error in the pair cancels and is invisible to all of them. That
+// is not a hypothetical: the pair IS symmetrically wrong, and the import lane
+// exists for files written by other software.
+//
+// `test/fixtures/standard-tajima.dst` is written by pystitch — an independent
+// Tajima/pyembroidery-convention implementation — via
+// digitizer/tools/make_standard_dst_fixture.py. 40 x 10 mm, deliberately
+// asymmetric under all eight dihedral transforms: one long arm along +x, ONE
+// short arm at ONE end, and a second colour block in ONE corner. A bbox
+// comparison cannot tell a rotation from a mirror; these points can.
+const STANDARD_DST = path.join(__dirname, "fixtures", "standard-tajima.dst");
+function standardBytes() {
+  return new Uint8Array(fs.readFileSync(STANDARD_DST));
+}
+
+// pystitch reads this file as 40.0 x 10.0 mm. The model's +y points UP where
+// pystitch's points down, so the model point for a pystitch point (px, py) is
+// (px, -py) — the same mapping tools/crossval-stitch-formats.mjs calls
+// "identity" going the other way.
+const EXPECTED_STANDARD = [
+  { x: -200, y: -50, type: "stitch" }, { x: -100, y: -50, type: "stitch" },
+  { x: 0, y: -50, type: "stitch" }, { x: 100, y: -50, type: "stitch" },
+  { x: 200, y: -50, type: "stitch" },
+  { x: 200, y: 0, type: "stitch" }, { x: 200, y: 50, type: "stitch" },
+  { x: 200, y: 50, type: "trim" }, { x: 200, y: 50, type: "color" },
+  { x: -200, y: 50, type: "trim" },
+  { x: -200, y: 50, type: "stitch" }, { x: -150, y: 50, type: "stitch" },
+  { x: -200, y: 10, type: "stitch" },
+];
+
+test("decodeDSTStandard reads a third-party DST as its writer meant it", () => {
+  const d = decodeDSTStandard(standardBytes());
+  assert.strictEqual(d.widthMM, 40, "pystitch reads this file as 40.0 mm wide");
+  assert.strictEqual(d.heightMM, 10);
+  assert.deepStrictEqual(d.stitches, EXPECTED_STANDARD);
+});
+
+test("decodeDST reads the same file with width and height swapped (the defect)", () => {
+  // Pinned, not worked around: this is the state `dst.js`'s writer pairs with,
+  // and the round-trip tests above depend on it. If THIS test fails, the codec
+  // was fixed — delete decodeDSTStandard and point the import lane back at
+  // decodeDST.
+  const d = decodeDST(standardBytes());
+  assert.strictEqual(d.widthMM, 10);
+  assert.strictEqual(d.heightMM, 40);
+});
+
+test("the two readers differ by a MIRROR, not by a turn", () => {
+  // The whole reason this fixture is asymmetric. Until 2026-09-07 the repo
+  // recorded the import defect as "a quarter turn" and the Studio told
+  // customers to use Rotate — advice that cannot work, because rotation
+  // preserves orientation and this does not. The bbox swap that was measured
+  // is equally consistent with both; the SIGNED AREA of three non-collinear
+  // points is what separates them.
+  const bytes = standardBytes();
+  const a = decodeDST(bytes).stitches;
+  const b = decodeDSTStandard(bytes).stitches;
+  const cross = (p, q, r) => (q.x - p.x) * (r.y - p.y) - (q.y - p.y) * (r.x - p.x);
+  const [i, j, k] = [0, 4, 6]; // start of the long arm, its far end, tip of the short arm
+  const sa = cross(a[i], a[j], a[k]);
+  const sb = cross(b[i], b[j], b[k]);
+  assert.notStrictEqual(sa, 0, "the three sample points must not be collinear");
+  assert.ok(sa * sb < 0, `signed area keeps its sign (${sa} vs ${sb}) — that would be a rotation, not a mirror`);
+  assert.strictEqual(Math.abs(sa), Math.abs(sb), "same triangle, opposite handedness");
+});
+
+test("decodeDSTStandard is a transpose, so applying it twice is the identity", () => {
+  // Cheap guard on the correction itself: the fix is an involution, so a
+  // future edit that turns it into a rotation (the intuitive but wrong repair)
+  // shows up here rather than in a customer's sew-out.
+  const d = decodeDSTStandard(standardBytes());
+  const back = d.stitches.map((s) => ({ x: s.y, y: s.x, type: s.type }));
+  assert.deepStrictEqual(back, decodeDST(standardBytes()).stitches);
+});
+
+test("a standard file keeps its blocks, trims and label through the corrected read", () => {
+  const d = decodeDSTStandard(standardBytes());
+  assert.strictEqual(d.colorCount, 2);
+  assert.strictEqual(d.stitchCount, 10);
+  assert.strictEqual(d.trimCount, 2);
+});
+
+// ---- is it even a DST? ---------------------------------------------------
+//
+// The only gate used to be `length >= 515`, so any file bigger than that
+// decoded into "a design". Measured through the shipped UI 2026-09-07: a
+// Brother .pes fed to the import lane raised no error and reported
+// **3736 x 7624 mm with 10,878 colour blocks**, and the panel rendered a
+// thread picker for every one of them.
+
+// Swap a synthetic 512-byte header onto a real DST's record stream, so these
+// tests vary ONLY the header and the body stays a stream that is known to
+// decode.
+function withHeader(lines) {
+  const body = standardBytes().subarray(512);
+  const head = new Uint8Array(512).fill(0x20);
+  const text = lines.map((l) => l + "\r").join("");
+  for (let i = 0; i < text.length && i < 512; i++) head[i] = text.charCodeAt(i) & 0xff;
+  const out = new Uint8Array(512 + body.length);
+  out.set(head, 0);
+  out.set(body, 512);
+  return out;
+}
+
+test("a file with no Tajima header is refused, and the message names the way out", () => {
+  // 4 KB of nothing — stands in for every non-DST tried: PES, JEF, EXP, SVG,
+  // PNG, random bytes and a JSON project file all score zero header tags.
+  const notADst = new Uint8Array(4096);
+  assert.throws(() => decodeDST(notADst), (e) => {
+    assert.match(e.message, /Not a DST file/);
+    // A dead end would be "invalid file". The formats a customer is most
+    // likely holding are named, with what to do about them.
+    assert.match(e.message, /\.pes/);
+    assert.match(e.message, /\.dst download/);
+    return true;
+  });
+});
+
+test("three header fields are enough, two are not", () => {
+  // The floor is deliberately well under the twelve every real writer emits
+  // (a sparse writer must not be rejected) and well over the one a file
+  // hand-built out of "ST:" lines can reach by coincidence.
+  assert.throws(() => decodeDST(withHeader(["LA:X", "ST:  10"])), /Not a DST file/);
+  const ok = decodeDST(withHeader(["LA:X", "ST:  10", "CO:  2"]));
+  assert.strictEqual(ok.stitchCount, 10);
+});
+
+test("only the twelve real tags count, and only at the start of a line", () => {
+  // "ST:" inside a label is not a header field. Three junk tags plus a label
+  // that contains one must still fail.
+  assert.throws(() => decodeDST(withHeader(["ZZ:1", "QQ:2", "WW:3", "LA:my ST:file"])), /Not a DST file/);
+});
+
+test("every DST in the repo still decodes", () => {
+  // The guard's job is to reject what is not a DST, and its risk is rejecting
+  // one that is. These come from three unrelated writers — a commissioned
+  // professional file, pystitch, and EMB-Bot's own encoder.
+  const dir = path.join(__dirname, "..", "digitizer", "testdata", "reference");
+  const files = fs.readdirSync(dir).filter((f) => f.endsWith(".dst"));
+  assert.ok(files.length >= 5, "expected the committed reference DSTs to be present");
+  for (const f of files) {
+    const d = decodeDST(new Uint8Array(fs.readFileSync(path.join(dir, f))));
+    assert.ok(d.stitchCount > 0, f);
+  }
+  assert.ok(decodeDST(standardBytes()).stitchCount > 0, "pystitch fixture");
+  assert.ok(decodeDST(dst.encodeDST(fixtureDesign())).stitchCount > 0, "EMB-Bot's own encoder");
 });

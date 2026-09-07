@@ -538,8 +538,15 @@
 {/if}
 {#if dstUsesBrowserEncoder}
   <p class="encodernote" id="dst-encoder-note" data-testid="dst-browser-encoder-note">
-    <strong>* Heads up about DST:</strong> this project includes lettering or
-    hand-drawn shapes, so its DST is written by EMB-Bot's own encoder. That
+    <!-- The premise used to read "includes lettering or hand-drawn shapes",
+         which is FALSE for the third kind of content that lands on this
+         encoder: an imported .dst. `dstUsesBrowserEncoder` is
+         !isPurelyDigitized, so an import-only project — no lettering, no
+         shapes — got this note anyway, opening on a claim about itself that
+         was not true. Named by the actual gate instead. -->
+    <strong>* Heads up about DST:</strong> this project has content the
+    digitizer service did not make — lettering, a hand-drawn shape, or an
+    imported design file — so its DST is written by EMB-Bot's own encoder. That
     file opens correctly in EMB-Bot, but other embroidery software reads it
     rotated a quarter turn and may not see the color stops. PES and EXP are
     unaffected — use one of those, or a project made only of auto-digitized

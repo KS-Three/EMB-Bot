@@ -52,9 +52,56 @@
   //
   // Returns { stitches, stitchCount, jumpCount, trimCount, colorCount,
   // widthMM, heightMM, label }. Throws on anything that can't be a DST.
+  // A DST's first 512 bytes are an ASCII header of CR-terminated "XX:value"
+  // fields. Nothing downstream trusts their VALUES — the counts and extents
+  // are recomputed from the record stream — but their PRESENCE is what says
+  // this is a DST at all, and until 2026-09-07 nothing checked it.
+  //
+  // What that cost: the size check below is the only thing that stood between
+  // a customer and a decode of arbitrary bytes, so ANY file over 515 bytes
+  // decoded. Feeding the panel a Brother .pes produced no error and a design
+  // reading **3736 x 7624 mm with 10,878 colour blocks** — the panel then
+  // rendered a thread picker for every one of them. Measured through the
+  // shipped UI.
+  //
+  // The signal is decisive. Measured over every DST in the repo — five
+  // commissioned professional files, one written by pystitch, two by
+  // EMB-Bot's own encoder, i.e. three unrelated writers — ALL twelve tags are
+  // present in all eight. Every negative tried (PES, JEF, EXP, SVG, PNG, two
+  // blocks of random bytes, a JSON project file) scores ZERO, and a file
+  // hand-built to contain sixty "ST:" lines scores one. The floor of three is
+  // set well under twelve so a sparse writer is not rejected, and well over
+  // one so a coincidence is not admitted.
+  const DST_HEADER_TAGS = ["LA", "ST", "CO", "+X", "-X", "+Y", "-Y", "AX", "AY", "MX", "MY", "PD"];
+  const DST_HEADER_TAGS_MIN = 3;
+
+  function dstHeaderTagCount(bytes) {
+    let text = "";
+    for (let i = 0; i < 512 && i < bytes.length; i++) text += String.fromCharCode(bytes[i]);
+    const seen = {};
+    let n = 0;
+    // Tags are matched at the START of a delimited line, not anywhere in the
+    // block: "ST:" inside a filename or a comment is not a header field.
+    for (const line of text.split(/[\r\n\x1a]/)) {
+      const tag = line.replace(/^\s+/, "").slice(0, 2);
+      if (line.replace(/^\s+/, "").charAt(2) !== ":") continue;
+      if (DST_HEADER_TAGS.indexOf(tag) === -1 || seen[tag]) continue;
+      seen[tag] = true;
+      n++;
+    }
+    return n;
+  }
+
   function decodeDST(bytes) {
     if (!bytes || bytes.length < 512 + 3) {
       throw new Error("Not a DST file (too small).");
+    }
+    if (dstHeaderTagCount(bytes) < DST_HEADER_TAGS_MIN) {
+      throw new Error(
+        "Not a DST file \u2014 no Tajima header fields in the first 512 bytes. " +
+        "If this is a .pes, .jef or .exp, look for the .dst download of the same " +
+        "design: DST is the only stitch format EMB-Bot can read."
+      );
     }
     let label = "";
     // Header is 512 bytes of ASCII "LA:name\r ST:count\r ..." — permissive
@@ -135,6 +182,47 @@
       heightMM: (maxY - minY) / DST_UNITS_PER_MM,
       label,
     };
+  }
+
+  // The SAME file, read the way a Tajima/pyembroidery writer meant it.
+  //
+  // `decodeDST` above reads a DST in EMB-Bot's OWN convention — the one
+  // `dst.js` writes — so the two round-trip against each other exactly and
+  // `test/dstimport.test.js` pins that. Third-party files are not written in
+  // that convention, and the import lane exists for third-party files.
+  //
+  // What the difference LOOKS like, measured 2026-09-07 and worth stating
+  // precisely because the repo had it recorded wrong since August:
+  //
+  //   * against pystitch's own coordinates, `decodeDST` is an exact 90 deg
+  //     CCW rotation: (px, py) -> (-py, px), rms 0 over all five committed pro
+  //     reference DSTs and over test/fixtures/standard-tajima.dst.
+  //   * but the model's +y points UP and a raster frame's +y points DOWN, so
+  //     ON SCREEN that rotation composes with the flip into a REFLECTION. An
+  //     imported logo does not arrive on its side; it arrives BACKWARDS, and
+  //     no amount of rotation repairs it. (The Studio told customers to use
+  //     Rotate until this was looked at rather than measured — a bbox swap is
+  //     equally consistent with a turn and a mirror, and only a picture tells
+  //     them apart. docs/scope-history.md 2026-09-07 carries the numbers.)
+  //
+  // The correction is therefore a plain transpose of the decoded points,
+  // which is its own inverse and leaves the bbox-centered contract intact:
+  // the result's model point is exactly (px, -py) of what pystitch reads,
+  // which is the same mapping tools/crossval-stitch-formats.mjs calls
+  // "identity" in the export direction.
+  //
+  // Deliberately a SECOND entry point rather than a change to `decodeDST`:
+  // `dst.js`'s writer is unchanged and still speaks EMB-Bot's convention, so
+  // the reader that pairs with it has to stay as it is. When the codec itself
+  // is put right (Kent's call — it re-orients every DST EMB-Bot has written)
+  // these two collapse into one and this function is deleted.
+  function decodeDSTStandard(bytes) {
+    const d = decodeDST(bytes);
+    return Object.assign({}, d, {
+      stitches: d.stitches.map((s) => ({ x: s.y, y: s.x, type: s.type })),
+      widthMM: d.heightMM,
+      heightMM: d.widthMM,
+    });
   }
 
   // Default per-block thread colors for imports (DST files carry NO color
@@ -255,5 +343,5 @@
     };
   }
 
-  return { decodeDST, buildImportedDesign, IMPORT_BLOCK_COLORS };
+  return { decodeDST, decodeDSTStandard, buildImportedDesign, IMPORT_BLOCK_COLORS };
 });

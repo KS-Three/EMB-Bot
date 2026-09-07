@@ -360,14 +360,21 @@ area they drag down, documented once here.
 
 ### DST codec axis bug
 
-EMB-Bot's browser DST codec (`src/dst.js` / `src/dstimport.js`) is transposed vs. the
-Tajima/pyembroidery standard — confirmed, unresolved. It round-trips against itself and reads
-a quarter-turn wrong elsewhere, **in both directions**: measured 2026-09-07 on the commissioned
-becker files, EMB-Bot displays a professional `76.5×46.8 mm` DST as `47×77` and `101.9×62.1` as
-`62×102` — a customer's paid-for logo arrives sideways. **Not only orientation:** `dst.js`
-writes the colour-change byte `0x43` not `0xC3`, read as a spurious sequin toggle, so a
-two-colour design decodes with ZERO colour changes elsewhere. PES and EXP are identity-clean.
-`dst-codec-axis-discrepancy` in memory. *(export 2026-08-22; import 2026-09-07)*
+EMB-Bot's browser DST codec (`src/dst.js` / `src/dstimport.js`) disagrees with the
+Tajima/pyembroidery standard — confirmed, wrong in **both directions**, and it round-trips
+against itself so the pair's own tests never saw it. **The WORD was wrong until 2026-09-07: it
+is a MIRROR, not a quarter turn.** A bbox swap fits both equally, nobody had looked at the
+canvas, and the Studio told customers to "use Rotate to stand it up" — which no rotation can
+do, and the app has no mirror control. **The IMPORT half is FIXED 2026-09-07**
+(`EMB.decodeDSTStandard`; `decodeDST` and its 12 round-trip tests untouched): a becker logo
+lands `96×58 mm` reading forwards, and PES/EXP/JEF re-export **identity, rms 0** against the
+source file where all three were mirrored. **Not only orientation:** `dst.js` writes the
+colour-change byte `0x43` not `0xC3`, read as a spurious sequin toggle, so a two-colour design
+decodes with ZERO colour changes elsewhere — which is why DST was never the good option here
+even while it was the only correctly-oriented one. The EXPORT half is still Kent's, and it now
+owns the leftover: EMB-Bot's own `.dst` read back in is the file that comes in mirrored (named
+in DesignPanel; the lever is My designs). `dst-codec-axis-discrepancy` in memory.
+*(export 2026-08-22; import measured and fixed 2026-09-07)*
 
 **Not a conflict:** CLAUDE.md's "browser DST is EMB-Bot-internal only" is about
 orientation elsewhere; `digitizer/README.md`'s "browser DST stays the default"
@@ -379,8 +386,8 @@ and `defaultProject()` seeds an empty text one a logo customer never removes, so
 never fired and **every** DST left by the browser codec. The resolution path's third-party read
 is DONE, from the shipped UI via pystitch: browser **16.3×80.5 mm, 0 COLOR_CHANGE, 1
 SEQUIN_MODE + 10 SEQUIN_EJECT**; service 80.5×16.3, 1 COLOR_CHANGE. The gate now counts only
-elements that SEW. `dstimport.js` stays transposed — a service DST re-imported HERE reads
-16×81, the bugs used to cancel — and that fix is still Kent's. *(2026-09-07 — DOCTRINE)*
+elements that SEW. `dstimport.js`'s `decodeDST` stays as it is (it pairs with `dst.js`), but
+the import LANE moved off it the same day — see the mirror correction above. *(2026-09-07)*
 
 **The LETTERING half is now measured too, and the fix needs no codec change — KENT'S CALL 2026-09-07.** Lettering/manual designs still download through the browser encoder by the standing scope ruling ("the one with actual sew evidence behind it"). Measured stitch-for-stitch on ONE browser-built lettering design (`manga_impact` "Lp", 61.7×31.7 mm landscape, 906 stitches), both encoders fed the SAME design object: the service's `/export` DST reads back **61.7×31.7 mm** with the file's x equal to the design's x on **906/906**; the browser's `encodeDST` reads back **31.7×61.7 mm** — a quarter turn — with the file's x equal to the design's **y** on **906/906**. The service path is spec-correct for browser-built lettering as well, so routing lettering there is available today with `src/dst.js` untouched. **What the ruling is actually protecting is the sew evidence, and that evidence is evidence of a TRANSPOSED file sewing** — which is the thing to weigh. Not flipped: the routing ruling and the codec are both Kent's. *(2026-09-07)*
 

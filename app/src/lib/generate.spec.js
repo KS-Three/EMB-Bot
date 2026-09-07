@@ -233,29 +233,34 @@ function designElement(overrides = {}) {
   };
 }
 
-function makeDstBase64(EMB) {
-  const bytes = EMB.encodeDST({
-    stitches: [
-      { x: -100, y: -50, type: "stitch" },
-      { x: 100, y: -50, type: "stitch" },
-      { x: 100, y: 50, type: "color" },
-      { x: 100, y: 50, type: "stitch" },
-      { x: -100, y: 50, type: "stitch" },
-      { x: -100, y: 50, type: "end" },
-    ],
-    colors: [{ r: 0, g: 0, b: 0 }, { r: 1, g: 1, b: 1 }],
-    label: "SPEC",
-  });
-  return Buffer.from(bytes).toString("base64");
+// The import lane reads TAJIMA-convention files (generate.js's decodeCached
+// calls EMB.decodeDSTStandard), so its fixture has to be one. This used to be
+// EMB.encodeDST of a hand-built design — a file in EMB-Bot's OWN convention,
+// which is the one kind of .dst a customer is told not to bring back in here.
+// Reading it with the corrected reader gives the swapped dimensions, and the
+// old expectations below were passing on exactly that.
+//
+// test/fixtures/standard-tajima.dst is written by pystitch (see
+// digitizer/tools/make_standard_dst_fixture.py): 40 x 10 mm, two colour
+// blocks, asymmetric under all eight dihedral transforms. No EMB-Bot encoder
+// anywhere in the loop.
+const STANDARD_DST_MM = { widthMM: 40, heightMM: 10 };
+function makeDstBase64() {
+  const require = createRequire(import.meta.url);
+  const fs = require("node:fs");
+  const path = require("node:path");
+  const file = path.resolve(path.dirname(new URL(import.meta.url).pathname), "../../../test/fixtures/standard-tajima.dst");
+  return fs.readFileSync(file).toString("base64");
 }
 
 test("generateElement decodes a DST design element at native size with default block colors", async () => {
   const { generateElement } = await import("./generate.js");
   const { EMB } = await import("./emb.js");
   const garment = EMB.getGarment("left_chest");
-  const d = generateElement(designElement({ dstBase64: makeDstBase64(EMB) }), garment, {});
-  expect(d.widthMM).toBeCloseTo(20, 5); // 200 units native
-  expect(d.heightMM).toBeCloseTo(10, 5);
+  const d = generateElement(designElement({ dstBase64: makeDstBase64() }), garment, {});
+  // The size pystitch reads off the same file, not its transpose.
+  expect(d.widthMM).toBeCloseTo(STANDARD_DST_MM.widthMM, 5);
+  expect(d.heightMM).toBeCloseTo(STANDARD_DST_MM.heightMM, 5);
   expect(d.colorCount).toBe(2);
   expect(d.stitchCount).toBeGreaterThan(0);
   expect(d.stitches[d.stitches.length - 1].type).toBe("end");
@@ -268,11 +273,11 @@ test("generateElement: design element without a file yet returns null (not ready
   expect(generateElement(designElement(), garment, {})).toBeNull();
 
   const d = generateElement(
-    designElement({ dstBase64: makeDstBase64(EMB), sizeMm: 40, blockColors: { 0: [7, 8, 9] } }),
+    designElement({ dstBase64: makeDstBase64(), sizeMm: 20, blockColors: { 0: [7, 8, 9] } }),
     garment,
     {}
   );
-  expect(d.widthMM).toBeCloseTo(40, 5);
+  expect(d.widthMM).toBeCloseTo(20, 5); // asked for half the 40 mm native width
   expect(d.colors[0]).toMatchObject({ r: 7, g: 8, b: 9 });
 });
 
@@ -282,24 +287,24 @@ test("generateElement passes a design element's rotationDeg through (90 swaps di
   const garment = EMB.getGarment("left_chest");
 
   const rotated = generateElement(
-    designElement({ dstBase64: makeDstBase64(EMB), rotationDeg: 90 }),
+    designElement({ dstBase64: makeDstBase64(), rotationDeg: 90 }),
     garment,
     {}
   );
-  expect(rotated.widthMM).toBeCloseTo(10, 1); // native 20x10 -> 10x20
-  expect(rotated.heightMM).toBeCloseTo(20, 1);
+  expect(rotated.widthMM).toBeCloseTo(10, 1); // native 40x10 -> 10x40
+  expect(rotated.heightMM).toBeCloseTo(40, 1);
 
   const sized = generateElement(
-    designElement({ dstBase64: makeDstBase64(EMB), rotationDeg: 90, sizeMm: 15 }),
+    designElement({ dstBase64: makeDstBase64(), rotationDeg: 90, sizeMm: 15 }),
     garment,
     {}
   );
   expect(sized.widthMM).toBeCloseTo(15, 1); // 15mm wide IN the rotated orientation
-  expect(sized.heightMM).toBeCloseTo(30, 1);
+  expect(sized.heightMM).toBeCloseTo(60, 1); // 40:10 native, so 15 wide is 60 tall
 
   // absent rotationDeg stays the unrotated path
-  const plain = generateElement(designElement({ dstBase64: makeDstBase64(EMB) }), garment, {});
-  expect(plain.widthMM).toBeCloseTo(20, 5);
+  const plain = generateElement(designElement({ dstBase64: makeDstBase64() }), garment, {});
+  expect(plain.widthMM).toBeCloseTo(STANDARD_DST_MM.widthMM, 5);
 });
 
 test("generateAll combines an imported design with a text element into one multi-color design", async () => {
@@ -309,7 +314,7 @@ test("generateAll combines an imported design with a text element into one multi
     version: 2, garmentId: "left_chest", selectedId: "e1", fabricRgb: [235, 232, 223],
     elements: [
       textElement({ id: "e1", text: "AB" }),
-      designElement({ id: "e2", dstBase64: makeDstBase64(EMB), offsetYMm: -20 }),
+      designElement({ id: "e2", dstBase64: makeDstBase64(), offsetYMm: -20 }),
     ],
   };
   const { combined, perElement } = generateAll(project, {});
