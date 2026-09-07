@@ -2871,3 +2871,43 @@ its hedge as it is copied forward** — is why this file is split.
   gets the right number for the wrong reason still goes green when the reason
   changes**; the second one's premise was made real rather than its
   expectation lowered. *(2026-09-07)*
+
+- **Everything is in localStorage, and a failed write said nothing.**
+  `saveProject` has always returned `false` when the write fails;
+  `App.persist()` called it and dropped the answer on the floor. There is no
+  server, so a failed write is silent data loss — and the work stays on screen
+  looking saved, which is worse than an error.
+
+  Measured in the shipped app with the origin's store filled to the byte. Its
+  real quota, read by the app rather than assumed: **5,241,856 characters**.
+  Upload a logo → it digitizes, the panel reads *"2,253 stitches · 81×16 mm ·
+  2 colors"* and the canvas caption 3,818 stitches; the stored record is **842
+  characters**, the element saved WITHOUT its baked result; reload → back on
+  the quick-start screen, caption 1,565 stitches. The logo is gone, and
+  nothing was said at any point. One digitized project measures **~186,600
+  characters**, so the store holds about **28** of them.
+
+  **Getting there took four attempts, and the first three "passed" wrongly.**
+  Replacing an existing key with a same-or-smaller value succeeds at quota —
+  the browser accounts for the replacement — so a `"BEFORE"` → `"AFTER"` edit
+  persists with zero bytes free, and so does a moderately longer one. Only a
+  write that grows the record past the free space fails. **A quota test that
+  edits in place is testing nothing**; it has to grow the record.
+
+  One of those attempts also reported *"the app says something about storage:
+  YES"* — from a regex matching the word "full" inside the thin-lettering
+  finding's *"already the full width of the placement"*. **A loose regex over
+  `document.body.innerText` will find your keyword in someone else's
+  sentence.**
+
+  The banner names controls that exist on that screen: My designs holds both
+  the export and the delete. And it reports the LAST save rather than latching:
+  free space, touch the design, it goes.
+
+  **`saveProject` returns false for two different things** — a failed write and
+  an id that is no longer in the registry (the A2/A10 no-op contract, e.g. a
+  project deleted out from under an in-flight edit). Only the first is about
+  space. Raising a "delete some designs" banner on the second would send the
+  customer to fix something unrelated, so the check is `!ok && the id is still
+  registered`. **A boolean that means two things needs the caller to
+  disambiguate before it can be shown to anyone.** *(2026-09-07)*

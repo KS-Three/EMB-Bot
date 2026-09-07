@@ -9375,3 +9375,64 @@ Gentle, not cliff-shaped. The 6.7-minute figure says nothing about a customer's
 photo. **Gate 2's rule — synthetic fixtures are barred as substitutes for real
 artwork — is not only about quality metrics; it bites performance claims the
 same way.**
+
+## 2026-09-07 — the app stops saving and does not mention it
+
+Snapshot. Not live status.
+
+Everything EMB-Bot holds lives in localStorage. `saveProject` returns `false`
+when the write fails; `App.persist()` ignored it. So a failed save was silent,
+and the work stays on screen looking saved.
+
+Measured in the shipped app, with the origin's store filled to the byte — real
+quota, read by the app rather than assumed from a 5 MB rule of thumb:
+**5,241,856 characters**.
+
+| | |
+|---|---|
+| upload a logo | digitizes; panel reads *2,253 stitches · 81×16 mm · 2 colors*, caption 3,818 stitches |
+| stored record | **842 characters** — the element saved WITHOUT its baked result |
+| reload | back on the quick-start screen, caption **1,565 stitches** |
+| said about it | **nothing**, at any point |
+
+One digitized project measures **~186,600 characters**, so the store holds
+about **28**. This is a browser-storage app with no server; a working customer
+reaches that.
+
+A banner now sits above the whole studio (not inside a panel — the drawer's own
+notice is only visible with the drawer open) and names the controls that exist:
+
+> **Your changes aren't being saved — this browser's storage is full.** Open
+> **My designs**, download anything you want to keep as a design file, then
+> delete it there to make room. Until you do, what you add is only on screen
+> and will be gone if you reload.
+
+It reports the LAST save rather than latching: free space, touch the design,
+it goes.
+
+### `saveProject`'s false means two different things
+
+It also returns false for an id no longer in the registry — projects.js's
+A2/A10 no-op contract, e.g. a project deleted out from under an in-flight
+edit. Only the first is about space, and a "delete some designs" banner on the
+second would send the customer to fix something unrelated. The check is
+`!ok && the id is still registered`, and the second e2e covers exactly that
+(the state is not reachable by clicking, so the registry is emptied directly).
+
+### Three earlier attempts passed for the wrong reason
+
+Replacing an existing key with a same-or-smaller value **succeeds at quota** —
+the browser accounts for the replacement — so a `"BEFORE"` → `"AFTER"` edit
+persists with zero bytes free, and so does a moderately longer one. Only a
+write that grows the record past the free space fails. A quota test that edits
+in place is testing nothing.
+
+And one attempt reported *"app says something about storage: YES"* — from a
+regex matching **"full"** inside the thin-lettering finding's *"already the
+full width of the placement"*. A loose regex over `document.body.innerText`
+finds your keyword in someone else's sentence.
+
+`app/e2e/storage-full.spec.js`, 2 tests. Mutation: never raising the banner
+fails the first, dropping the registry guard fails the second.
+
+engine **492/492** · studio **1025/1025** · e2e **45/45**

@@ -376,6 +376,20 @@ h1, h2 { letter-spacing: var(--tracking-tight); }
 
 .drawer-new:hover { border-color: var(--accent); background: var(--tint); }
 
+/* "Your changes aren't being saved" — a full localStorage, surfaced.
+   Full width and above the whole studio rather than inside a panel: this is
+   data loss in progress, and the drawer's own notice is only visible with the
+   drawer open. Measured 2026-09-07 — see App.svelte's persist(). */
+.savefail {
+  margin: 0;
+  padding: var(--space-3) var(--space-5);
+  background: var(--danger-tint, #fdecec);
+  color: var(--danger);
+  border-bottom: 1px solid var(--danger);
+  font-size: var(--fs-sm);
+  line-height: 1.45;
+}
+
 /* .embproj import outcome line (ProjectsDrawer `notice` prop) */
 .drawer-notice {
   margin: 0 var(--space-5) var(--space-2);
