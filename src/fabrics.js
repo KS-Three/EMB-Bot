@@ -18,11 +18,22 @@
       trimAtMm: 3.0,
       notes: "Foam/structured cap front; firm, sew center-out.",
     },
+    // fillUnderlay was "edge_lattice" on both knits until corpus law 26
+    // (docs/corpus-laws-round3-2026-08-01.md, ruled SHIPPED 2026-08-05): under
+    // a fill the professional corpus runs a walk, not a crosshatch -- sparse-
+    // grid tatami underlay is 7 cases in 507, and "the shipped edge_lattice
+    // default is not what this corpus does" is that law verbatim. It landed in
+    // digitizer/digitizer_core/fabrics.py and NOT here, so for a month the two
+    // engines sewed different underlay on left_chest, beanie and sleeve.
+    // Lattice stays where the law leaves it -- the pile presets below.
+    // digitize.js keeps a bare `|| "edge_lattice"` for the no-fabric-at-all
+    // case; that answers "no garment chosen", not "this garment", and is a
+    // separate question left alone here.
     {
       id: "pique_knit",
       label: "Pique knit (polo)",
       pullCompMm: 0.3,
-      fillUnderlay: "edge_lattice",
+      fillUnderlay: "edge_run",
       satinUnderlay: "center_run",
       densityAdjust: 1.0,
       trimAtMm: 3.0,
@@ -32,7 +43,7 @@
       id: "jersey_tee",
       label: "Jersey / t-shirt",
       pullCompMm: 0.35,
-      fillUnderlay: "edge_lattice",
+      fillUnderlay: "edge_run",   // law 26, with pique_knit above
       satinUnderlay: "center_run",
       densityAdjust: 1.0,
       trimAtMm: 3.0,

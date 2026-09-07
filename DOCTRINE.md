@@ -1068,6 +1068,24 @@ its hedge as it is copied forward** — is why this file is split.
 
 ## Gotchas — cost someone a session once
 
+- **A ruling marked "shipped" may have shipped into ONE of the two engines.**
+  Corpus law 26 (`edge_lattice` → `edge_run` under a knit fill) is recorded as
+  **shipped 2026-08-05**. It landed in `digitizer_core/fabrics.py` and never in
+  `src/fabrics.js`, so for a month the browser engine ran an extra crosshatch
+  pass under every fill on **left_chest, beanie and sleeve** — the commonest
+  placement there is, plus two — worth **+1.4% to +5.7% stitches** against the
+  Python engine on the same artwork. Three shipped Studio lanes read that table
+  (image mode, manual digitizing, shape presets). Nothing failed: `fabrics.py`'s
+  own docstring asserts the two tables are "the same values, deliberately", in
+  prose, and **475 engine tests and 936 Studio tests all pass with either
+  value** — no test pinned the knit underlay at all. When a status column says
+  shipped, ask *shipped where*; a physical table that exists twice needs a test
+  that compares the two copies, not a comment saying they match.
+  *(found 2026-09-07 by diffing the tables field-for-field while checking
+  whether the Studio's garment choice reaches the digitizer at all; both copies
+  and both spacing constants now guarded by
+  `digitizer/tests/test_fabric_wire.py`)*
+
 - **A pass that can DELETE as well as relabel needs a probe that counts both,
   or it will look innocent.** `dissolve_phantom_blends` folds a label two
   ways: relabel it, or send it to the page. A probe written to find labels

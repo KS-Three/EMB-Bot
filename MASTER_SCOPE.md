@@ -604,6 +604,14 @@ content path, four export formats, and the embroidery field's own chrome.
 **What holds it at Medium:** fabric-preset accuracy is sew-out-gated, and no
 sew-out has happened. See Cross-cutting issues.
 
+**The two engines' fabric tables disagreed for a month, and now can't (2026-09-07).**
+Corpus law 26 (`edge_lattice` → `edge_run` under a knit fill) reads shipped 2026-08-05
+but landed in Python only, so the browser ran an extra crosshatch pass on **left_chest,
+beanie and sleeve** — +1.4% to +5.7% stitches on the same artwork, across three live
+Studio lanes (image, manual, shape presets). Ported; both tables plus `FILL_ROW_MM`/
+`SATIN_SPACING_MM` are now compared field-for-field by `test_fabric_wire.py` (5 tests,
+7 mutations), asserting AGREEMENT only. *(measured 2026-09-07 — DOCTRINE "Gotchas")*
+
 **A Studio change is not verified until it has been *looked at* in a browser.**
 A 2026-08-25 sweep found a primary CTA rendering white-on-white on every wizard
 step and a canvas menu creating elements with no feedback — both shipped, both
