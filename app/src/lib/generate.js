@@ -30,7 +30,12 @@ function decodeCached(dstBase64) {
   const bin = atob(dstBase64);
   const bytes = new Uint8Array(bin.length);
   for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-  hit = EMB.decodeDST(bytes);
+  // decodeDSTStandard, NOT decodeDST: this lane exists for files written by
+  // other software, and the two readers speak different conventions. See
+  // src/dstimport.js — reading a third-party file with the EMB-Bot-convention
+  // reader put it on the canvas mirrored, which no control in the app could
+  // undo.
+  hit = EMB.decodeDSTStandard(bytes);
   if (dstCache.size >= DST_CACHE_MAX) {
     dstCache.delete(dstCache.keys().next().value); // drop oldest insertion
   }

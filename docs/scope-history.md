@@ -9059,3 +9059,142 @@ the thread shopping list, the hoop gate, and the header note. Now one reactive
 `combined`, three readers. `combinedColors` is gone and the three comments that
 named it were updated rather than left pointing at a function that no longer
 exists.
+
+## 2026-09-07 — the imported logo was not sideways, it was backwards
+
+Snapshot. Not live status — read `MASTER_SCOPE.md`'s "DST codec axis bug" for that.
+
+The "Design file" lane — one of the three tiles on the Content step, and the
+one with no end-to-end coverage at all — read third-party `.dst` files with
+EMB-Bot's own reader. That much was known: measured in August across five
+committed professional reference files, 5 of 5 came in with width and height
+swapped, and the panel said so.
+
+**It was written down as "a quarter turn" and it is a mirror.** Screenshotting
+the shipped canvas on 2026-09-07 shows an imported `BECKER MARINE` logo with
+its letters backwards. The panel's advice — *"Use Rotate to stand it up"* — is
+something no rotation can do, and the app has no mirror control at all. A
+customer who followed it ends up with a right-way-up backwards logo and more
+confidence than they started with.
+
+Both facts were available in August: `tools/crossval-stitch-formats.mjs` had
+been reporting `anti-transpose` — a reflection — for the export direction the
+whole time. The bbox measurement was right; the word chosen for it was not, and
+a swapped bbox is exactly what a rotation and a mirror both produce.
+
+### Why it looks like a rotation from one seat
+
+Against pystitch's own coordinates, `decodeDST` is an exact 90° CCW rotation —
+`(px, py) -> (-py, px)`, mean error **0.0000** over all five reference files
+(8,694 to 12,562 stitches each) and over the new fixture. But the model's +y
+points UP where a raster frame's points DOWN, so on screen that rotation
+composes with the flip into a reflection. Both descriptions are true of
+different frames. Only one of them is the customer's.
+
+### What every export did, before
+
+Measured through the shipped UI: import
+`becker_hat_polo_large_beckers_logolc.dst` (95.7 × 58.3 mm) at Left Chest, then
+press each button and decode what came back with pystitch.
+
+| format | bbox | vs the source file |
+|---|---|---|
+| DST | 95.7 × 58.3 mm | **identity, err 0.000** — but **0 colour changes** |
+| PES | 58.3 × 95.7 | mirrored (anti-transpose), err 0.000 |
+| EXP | 58.3 × 95.7 | mirrored, err 0.000 |
+| JEF | 58.3 × 95.7 | mirrored, err 0.000 |
+
+**Two bugs that cancelled.** The reader's error and `dst.js`'s writer error
+annihilate, so the one format the repo documents as broken was the only one
+that came out right — while the three correct encoders faithfully exported a
+mirrored model. And the Download step, on exactly this project type, said
+*"PES and EXP are unaffected — use one of those."*
+
+Its opening clause was false here too: *"this project includes lettering or
+hand-drawn shapes"*, on a project containing neither. `dstUsesBrowserEncoder`
+is `!isPurelyDigitized`, which an import-only project also trips.
+
+### After
+
+The import lane now reads the Tajima convention (`EMB.decodeDSTStandard`).
+Same measurement, same route:
+
+| format | bbox | vs the source file |
+|---|---|---|
+| DST | 58.3 × 95.7 mm | mirrored — joins the DST bug the app already warns about |
+| PES | 95.7 × 58.3 | **identity, err 0.000, 3 colour changes** |
+| EXP | 95.7 × 58.3 | **identity, err 0.000, 3 colour changes** |
+| JEF | 95.7 × 58.3 | **identity, err 0.000, 3 colour changes** |
+
+Three of four go from broken to exact. The fourth was never usable anyway — it
+loses every colour stop to a standard reader — and the Download step's advice
+is now true instead of inverted. On the canvas the logo reads forwards at
+`96×58 mm`, and the panel and the caption agree.
+
+**`decodeDST` is untouched**, along with its 12 round-trip tests: it pairs with
+`dst.js` and the pair is self-consistent. `decodeDSTStandard` is a second entry
+point reading the other convention; the product's three import call sites use
+it. When the codec itself is put right the two collapse into one and the extra
+function is deleted. Fixing the WRITER stays Kent's — it re-orients every DST
+this app has ever written.
+
+### What is left, and it is named
+
+EMB-Bot's own `.dst` read back in is now the file that comes in mirrored — the
+same defect pointing the other way, and much smaller, because `.embproj` and My
+designs are how you reopen your own work. Measured (a lettering `FRITSCHS`
+exported and re-imported: vertical, backwards). The panel says so and names My
+designs; the empty-state copy says it before you pick a file, which is where it
+can still be prevented.
+
+**A saved `.embproj` stores the raw bytes**, so reopening one decodes through
+the new reader and its imported element changes orientation. Nobody loses
+correct work: rotation never repaired the mirror, so a project where someone
+rotated to compensate was already wrong — it is now wrong differently. No
+migration; there are no customers yet, and baking a compensation into saved
+data is what would have to be undone the day the writer is fixed.
+
+Detection was considered and dropped: EMB-Bot's DST header carries no marker
+(`LA` is the project label, `PD:******`), and the one fingerprint that does
+exist — the non-standard `0x43` colour-change byte — is absent from any
+single-colour design. A heuristic right most of the time is the class of thing
+this repo keeps deleting.
+
+### Tests
+
+- **`test/dstimport.test.js`** — 5 new (17 total), against
+  `test/fixtures/standard-tajima.dst`: 40 × 10 mm, two colour blocks, written
+  by **pystitch** via `digitizer/tools/make_standard_dst_fixture.py` so no
+  EMB-Bot encoder is in the loop. Every test that existed before encodes with
+  `dst.js` and decodes with `decodeDST`, so a symmetric error cancels and is
+  invisible to all of them.
+  The load-bearing one is a **signed area**: three non-collinear points, and the
+  sign must FLIP between the two readers. A bbox check passes against both a
+  turn and a mirror; the sign of a triangle does not.
+- **`app/e2e/design-import.spec.js`** — 5 new, the import lane's first e2e.
+  Asserts the size the panel and the canvas caption report, that the "use
+  Rotate" advice is gone, that the remaining case is named, and that the DST
+  note's premise fits a project with no lettering in it.
+- **`app/src/ui/DesignPanel.spec.js`** — rewritten; it used to assert the
+  opposite. Its stub now returns the LANDSCAPE truth, so a stub that still
+  returned the swapped read would let the file pass against the defect.
+- `app/src/lib/generate.spec.js` — its DST fixture was `EMB.encodeDST` of a
+  hand-built design, i.e. the one kind of `.dst` a customer is told not to bring
+  back in. Now the pystitch fixture.
+- `app/src/lib/emb.spec.js` — a name-existence guard for the `EMB.*` strings
+  the import lane calls. `DesignPanel`'s `decodeSafe` catches and returns null,
+  so a rename renders as "no file chosen yet" and the upload silently does
+  nothing.
+
+engine **488/488** · studio **1019/1019** · e2e **42/42** · doc guards **35/35**
+
+### One of my own tests passed against the defect, for an hour
+
+The new e2e asserted the canvas agreed with the panel using
+`page.getByText(/40×10 mm/).first()` — which matched the PANEL's line and never
+looked at the canvas. Reverting `generate.js` to the old reader left it green.
+Fixed to `page.locator("span.stats")`. `.first()` on a text match is the shape
+to distrust in a spec whose whole point is that two components agree: it can
+only ever find whichever comes first in the DOM. The mutation found it, which
+is the argument for running one on every new assertion rather than on the ones
+that feel risky.

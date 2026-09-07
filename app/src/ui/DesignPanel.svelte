@@ -42,7 +42,7 @@
     }
     try {
       const bytes = new Uint8Array(await file.arrayBuffer());
-      EMB.decodeDST(bytes); // validate BEFORE storing — a bad file never lands on the element
+      EMB.decodeDSTStandard(bytes); // validate BEFORE storing — a bad file never lands on the element
       patch({ dstBase64: toBase64(bytes), name: file.name, blockColors: {}, sizeMm: null });
     } catch (err) {
       error = String((err && err.message) || err);
@@ -59,7 +59,10 @@
       const bin = atob(b64);
       const bytes = new Uint8Array(bin.length);
       for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-      return EMB.decodeDST(bytes);
+      // Same reader the generation path uses (generate.js's decodeCached), so
+      // the stats line below and the stitches on the canvas can never disagree
+      // about which way round the file is.
+      return EMB.decodeDSTStandard(bytes);
     } catch (e) {
       return null; // corrupt stored data -- treat as "no file yet"
     }
@@ -121,20 +124,26 @@
       {decoded.colorCount} color{decoded.colorCount === 1 ? "" : "s"} · {decoded.trimCount} trims
     </p>
 
-    <!-- The import side of the axis bug DownloadStep already warns about on
-         the export side. EMB-Bot's DST codec is transposed vs. the Tajima
-         standard, so a file digitized anywhere else arrives on its side and
-         the stats line above prints those swapped numbers as fact. Fixing the
-         codec is gated (it would re-orient every DST EMB-Bot has written), so
-         say so and point at Rotate. Measured on all five committed pro
-         references: 5/5 exact transposition. -->
-    <p class="dp-note warn" data-testid="dst-import-orientation-note">
-      <span class="dp-warn-icon"><Icon name="warning" size={14} /></span> If this
-      came from other software and looks turned on its side, it is: EMB-Bot reads
-      DST on the opposite axis convention, so the {decoded.widthMM.toFixed(0)}×{decoded.heightMM.toFixed(0)} mm
-      above is swapped too. Use Rotate to stand it up, then check the size — on a
-      hat or beanie a sideways design gets shrunk to fit the short side. Designs
-      made in EMB-Bot are unaffected.
+    <!-- This note used to say the opposite, and was wrong in a way that
+         mattered. A third-party file DID arrive turned round — but measured on
+         the canvas on 2026-09-07, it arrived MIRRORED as well, and the note
+         told customers to "use Rotate to stand it up", which no rotation can
+         do. The import now reads DST in the Tajima convention
+         (EMB.decodeDSTStandard), so a file from anywhere else lands correct and
+         there is nothing left to warn about on that side.
+
+         What is left is the mirror image of the old problem, and it is small:
+         EMB-Bot's own DST writer still speaks EMB-Bot's convention (fixing
+         THAT re-orients every DST this app has ever written, and is Kent's
+         call), so its own .dst read back in is the file that now comes in
+         wrong. Named here with the lever that exists — My designs — rather
+         than left silent. -->
+    <p class="dp-note warn" data-testid="dst-own-file-note">
+      <span class="dp-warn-icon"><Icon name="warning" size={14} /></span> Reopening
+      something you made here? Use <strong>My designs</strong>. A .dst that EMB-Bot
+      itself wrote reads mirrored when it comes back in — EMB-Bot writes DST on the
+      opposite axis convention from every other program. Files from anywhere else
+      import correctly.
     </p>
 
     <div class="dp-blocks">
@@ -183,7 +192,8 @@
     <p class="dp-note">
       Drop in any Tajima .dst design — from a design site, a digitizer, or another machine —
       and place it like any other element. Colors aren't stored in DST files, so pick a thread
-      per block below once it's loaded.
+      per block below once it's loaded. To reopen something you made in EMB-Bot, use
+      My designs rather than its .dst: EMB-Bot's own DST files read mirrored coming back in.
     </p>
   {/if}
 </div>

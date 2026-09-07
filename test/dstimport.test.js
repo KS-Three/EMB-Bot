@@ -1,7 +1,9 @@
 const assert = require("node:assert");
 const { test } = require("node:test");
 const dst = require("../src/dst.js");
-const { decodeDST, buildImportedDesign, IMPORT_BLOCK_COLORS } = require("../src/dstimport.js");
+const { decodeDST, decodeDSTStandard, buildImportedDesign, IMPORT_BLOCK_COLORS } = require("../src/dstimport.js");
+const fs = require("node:fs");
+const path = require("node:path");
 
 // Round-trip fixture: a small hand-built design pushed through our own
 // byte-verified encodeDST, then decoded back. Coordinates are chosen already
@@ -202,4 +204,89 @@ test("buildImportedDesign honors per-block color overrides and falls back to dis
   assert.deepStrictEqual(design.colors[1], { r: 9, g: 8, b: 7 });
   const def = IMPORT_BLOCK_COLORS[0];
   assert.deepStrictEqual(design.colors[0], { r: def[0], g: def[1], b: def[2] });
+});
+
+// ---- reading a file EMB-Bot did NOT write --------------------------------
+//
+// Every test above encodes with `dst.js` and decodes with `decodeDST`, so a
+// symmetric error in the pair cancels and is invisible to all of them. That
+// is not a hypothetical: the pair IS symmetrically wrong, and the import lane
+// exists for files written by other software.
+//
+// `test/fixtures/standard-tajima.dst` is written by pystitch — an independent
+// Tajima/pyembroidery-convention implementation — via
+// digitizer/tools/make_standard_dst_fixture.py. 40 x 10 mm, deliberately
+// asymmetric under all eight dihedral transforms: one long arm along +x, ONE
+// short arm at ONE end, and a second colour block in ONE corner. A bbox
+// comparison cannot tell a rotation from a mirror; these points can.
+const STANDARD_DST = path.join(__dirname, "fixtures", "standard-tajima.dst");
+function standardBytes() {
+  return new Uint8Array(fs.readFileSync(STANDARD_DST));
+}
+
+// pystitch reads this file as 40.0 x 10.0 mm. The model's +y points UP where
+// pystitch's points down, so the model point for a pystitch point (px, py) is
+// (px, -py) — the same mapping tools/crossval-stitch-formats.mjs calls
+// "identity" going the other way.
+const EXPECTED_STANDARD = [
+  { x: -200, y: -50, type: "stitch" }, { x: -100, y: -50, type: "stitch" },
+  { x: 0, y: -50, type: "stitch" }, { x: 100, y: -50, type: "stitch" },
+  { x: 200, y: -50, type: "stitch" },
+  { x: 200, y: 0, type: "stitch" }, { x: 200, y: 50, type: "stitch" },
+  { x: 200, y: 50, type: "trim" }, { x: 200, y: 50, type: "color" },
+  { x: -200, y: 50, type: "trim" },
+  { x: -200, y: 50, type: "stitch" }, { x: -150, y: 50, type: "stitch" },
+  { x: -200, y: 10, type: "stitch" },
+];
+
+test("decodeDSTStandard reads a third-party DST as its writer meant it", () => {
+  const d = decodeDSTStandard(standardBytes());
+  assert.strictEqual(d.widthMM, 40, "pystitch reads this file as 40.0 mm wide");
+  assert.strictEqual(d.heightMM, 10);
+  assert.deepStrictEqual(d.stitches, EXPECTED_STANDARD);
+});
+
+test("decodeDST reads the same file with width and height swapped (the defect)", () => {
+  // Pinned, not worked around: this is the state `dst.js`'s writer pairs with,
+  // and the round-trip tests above depend on it. If THIS test fails, the codec
+  // was fixed — delete decodeDSTStandard and point the import lane back at
+  // decodeDST.
+  const d = decodeDST(standardBytes());
+  assert.strictEqual(d.widthMM, 10);
+  assert.strictEqual(d.heightMM, 40);
+});
+
+test("the two readers differ by a MIRROR, not by a turn", () => {
+  // The whole reason this fixture is asymmetric. Until 2026-09-07 the repo
+  // recorded the import defect as "a quarter turn" and the Studio told
+  // customers to use Rotate — advice that cannot work, because rotation
+  // preserves orientation and this does not. The bbox swap that was measured
+  // is equally consistent with both; the SIGNED AREA of three non-collinear
+  // points is what separates them.
+  const bytes = standardBytes();
+  const a = decodeDST(bytes).stitches;
+  const b = decodeDSTStandard(bytes).stitches;
+  const cross = (p, q, r) => (q.x - p.x) * (r.y - p.y) - (q.y - p.y) * (r.x - p.x);
+  const [i, j, k] = [0, 4, 6]; // start of the long arm, its far end, tip of the short arm
+  const sa = cross(a[i], a[j], a[k]);
+  const sb = cross(b[i], b[j], b[k]);
+  assert.notStrictEqual(sa, 0, "the three sample points must not be collinear");
+  assert.ok(sa * sb < 0, `signed area keeps its sign (${sa} vs ${sb}) — that would be a rotation, not a mirror`);
+  assert.strictEqual(Math.abs(sa), Math.abs(sb), "same triangle, opposite handedness");
+});
+
+test("decodeDSTStandard is a transpose, so applying it twice is the identity", () => {
+  // Cheap guard on the correction itself: the fix is an involution, so a
+  // future edit that turns it into a rotation (the intuitive but wrong repair)
+  // shows up here rather than in a customer's sew-out.
+  const d = decodeDSTStandard(standardBytes());
+  const back = d.stitches.map((s) => ({ x: s.y, y: s.x, type: s.type }));
+  assert.deepStrictEqual(back, decodeDST(standardBytes()).stitches);
+});
+
+test("a standard file keeps its blocks, trims and label through the corrected read", () => {
+  const d = decodeDSTStandard(standardBytes());
+  assert.strictEqual(d.colorCount, 2);
+  assert.strictEqual(d.stitchCount, 10);
+  assert.strictEqual(d.trimCount, 2);
 });

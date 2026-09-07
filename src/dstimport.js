@@ -137,6 +137,47 @@
     };
   }
 
+  // The SAME file, read the way a Tajima/pyembroidery writer meant it.
+  //
+  // `decodeDST` above reads a DST in EMB-Bot's OWN convention — the one
+  // `dst.js` writes — so the two round-trip against each other exactly and
+  // `test/dstimport.test.js` pins that. Third-party files are not written in
+  // that convention, and the import lane exists for third-party files.
+  //
+  // What the difference LOOKS like, measured 2026-09-07 and worth stating
+  // precisely because the repo had it recorded wrong since August:
+  //
+  //   * against pystitch's own coordinates, `decodeDST` is an exact 90 deg
+  //     CCW rotation: (px, py) -> (-py, px), rms 0 over all five committed pro
+  //     reference DSTs and over test/fixtures/standard-tajima.dst.
+  //   * but the model's +y points UP and a raster frame's +y points DOWN, so
+  //     ON SCREEN that rotation composes with the flip into a REFLECTION. An
+  //     imported logo does not arrive on its side; it arrives BACKWARDS, and
+  //     no amount of rotation repairs it. (The Studio told customers to use
+  //     Rotate until this was looked at rather than measured — a bbox swap is
+  //     equally consistent with a turn and a mirror, and only a picture tells
+  //     them apart. docs/scope-history.md 2026-09-07 carries the numbers.)
+  //
+  // The correction is therefore a plain transpose of the decoded points,
+  // which is its own inverse and leaves the bbox-centered contract intact:
+  // the result's model point is exactly (px, -py) of what pystitch reads,
+  // which is the same mapping tools/crossval-stitch-formats.mjs calls
+  // "identity" in the export direction.
+  //
+  // Deliberately a SECOND entry point rather than a change to `decodeDST`:
+  // `dst.js`'s writer is unchanged and still speaks EMB-Bot's convention, so
+  // the reader that pairs with it has to stay as it is. When the codec itself
+  // is put right (Kent's call — it re-orients every DST EMB-Bot has written)
+  // these two collapse into one and this function is deleted.
+  function decodeDSTStandard(bytes) {
+    const d = decodeDST(bytes);
+    return Object.assign({}, d, {
+      stitches: d.stitches.map((s) => ({ x: s.y, y: s.x, type: s.type })),
+      widthMM: d.heightMM,
+      heightMM: d.widthMM,
+    });
+  }
+
   // Default per-block thread colors for imports (DST files carry NO color
   // information — only change markers). Deliberately distinct hues so a
   // multi-block design is readable before the user assigns real threads.
@@ -255,5 +296,5 @@
     };
   }
 
-  return { decodeDST, buildImportedDesign, IMPORT_BLOCK_COLORS };
+  return { decodeDST, decodeDSTStandard, buildImportedDesign, IMPORT_BLOCK_COLORS };
 });
