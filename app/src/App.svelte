@@ -390,13 +390,44 @@
   // no-op contract in projects.js), and bumps the registry's updatedAt, so
   // every persist also refreshes the `projects` snapshot (see instruction 3
   // in the task brief: refresh after every registry mutation).
+  // ---- "your changes aren't being saved" ------------------------------
+  //
+  // `saveProject` has always returned false when the write fails, and this
+  // function has always ignored it. Everything in EMB-Bot lives in
+  // localStorage, so a failed write is silent data loss and the customer is
+  // the last to know.
+  //
+  // Measured in the shipped app 2026-09-07, with the origin's store filled to
+  // the byte (its real quota here is 5,241,856 characters — the app's own
+  // reading of it, not a 5 MB rule of thumb):
+  //
+  //   * upload a logo -> it digitizes, the panel reads "2,253 stitches ·
+  //     81x16 mm · 2 colors", the canvas caption reads 3,818 stitches;
+  //   * the stored record is 842 characters, the element saved WITHOUT its
+  //     baked result;
+  //   * reload -> back on the quick-start screen, caption 1,565 stitches.
+  //     The logo is gone. Nothing was said at any point.
+  //
+  // One digitized project measures ~186,600 characters, so the store holds
+  // about 28 of them. This is a browser-storage app with no server; a working
+  // customer reaches that.
+  //
+  // The banner names controls that exist on this screen: My designs holds
+  // both the export and the delete.
+  let saveFailed = false;
+
   function persist(record = true) {
     if (record) {
       history.record(project);
       syncHistoryFlags();
     }
-    saveProject(currentId, project);
+    const ok = saveProject(currentId, project);
     refreshProjects();
+    // saveProject ALSO returns false for an id that is no longer in the
+    // registry — the A2/A10 no-op contract, e.g. a project deleted out from
+    // under an in-flight edit. That is not a storage problem and must not
+    // raise this. `refreshProjects()` above makes `projects` current.
+    saveFailed = !ok && projects.some((p) => p.id === currentId);
   }
 
   function refreshProjects() {
@@ -866,6 +897,15 @@
     </button>
   </div>
 </header>
+
+{#if saveFailed}
+  <p class="savefail" role="alert" data-testid="save-failed-banner">
+    <strong>Your changes aren’t being saved — this browser’s storage is full.</strong>
+    Open <strong>My designs</strong>, download anything you want to keep as a design
+    file, then delete it there to make room. Until you do, what you add is only on
+    screen and will be gone if you reload.
+  </p>
+{/if}
 
 {#if drawerOpen}
   <ProjectsDrawer

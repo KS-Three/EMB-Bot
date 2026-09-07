@@ -2841,3 +2841,73 @@ its hedge as it is copied forward** — is why this file is split.
   exists. "Invalid file" would have been the same dead end this repo keeps
   finding.
   *(2026-09-07)*
+
+- **A colour change is a machine stop, and the app was spending one between
+  every pair of elements whatever colour they were.** `combineDesigns` spliced
+  `trim + color` at each element boundary unconditionally. So the commonest
+  real design there is — a two-line name in one thread — carried a stop it
+  could not use. On a single-needle home machine that is a full pause with a
+  prompt to rethread, and the colour being asked for is the one already
+  loaded. Measured 2026-09-07: two black text elements gave
+  `colors: [Color 1 (20,20,20), Color 1 (20,20,20)]`, `colorCount: 2`, one
+  colour-change record — and the review's thread list and the PDF worksheet
+  each listed the same cone twice.
+
+  Adjacent-only, and the trim STAYS. Merging a black/red/black project down to
+  two blocks would mean reordering the sew, which changes what lands on top of
+  what — a different question and not a free one. And the needle still has to
+  travel between two elements without dragging thread across the garment, so
+  removing the stop is not removing the cut.
+
+  **Compare the thread, not the label.** Every lettering block is named
+  "Color 1" and the import builder numbers its own per element, so two entries
+  that sew identically routinely carry different names. `name` is display
+  text; r/g/b is the thread.
+
+  Two of `generate.spec.js`'s tests were pinning the old count incidentally —
+  one asserted `colorCount === 2` on two default-black elements while its real
+  subject was per-element bboxes, and one was called "…into one multi-color
+  design" while giving both elements the same default black. **A test that
+  gets the right number for the wrong reason still goes green when the reason
+  changes**; the second one's premise was made real rather than its
+  expectation lowered. *(2026-09-07)*
+
+- **Everything is in localStorage, and a failed write said nothing.**
+  `saveProject` has always returned `false` when the write fails;
+  `App.persist()` called it and dropped the answer on the floor. There is no
+  server, so a failed write is silent data loss — and the work stays on screen
+  looking saved, which is worse than an error.
+
+  Measured in the shipped app with the origin's store filled to the byte. Its
+  real quota, read by the app rather than assumed: **5,241,856 characters**.
+  Upload a logo → it digitizes, the panel reads *"2,253 stitches · 81×16 mm ·
+  2 colors"* and the canvas caption 3,818 stitches; the stored record is **842
+  characters**, the element saved WITHOUT its baked result; reload → back on
+  the quick-start screen, caption 1,565 stitches. The logo is gone, and
+  nothing was said at any point. One digitized project measures **~186,600
+  characters**, so the store holds about **28** of them.
+
+  **Getting there took four attempts, and the first three "passed" wrongly.**
+  Replacing an existing key with a same-or-smaller value succeeds at quota —
+  the browser accounts for the replacement — so a `"BEFORE"` → `"AFTER"` edit
+  persists with zero bytes free, and so does a moderately longer one. Only a
+  write that grows the record past the free space fails. **A quota test that
+  edits in place is testing nothing**; it has to grow the record.
+
+  One of those attempts also reported *"the app says something about storage:
+  YES"* — from a regex matching the word "full" inside the thin-lettering
+  finding's *"already the full width of the placement"*. **A loose regex over
+  `document.body.innerText` will find your keyword in someone else's
+  sentence.**
+
+  The banner names controls that exist on that screen: My designs holds both
+  the export and the delete. And it reports the LAST save rather than latching:
+  free space, touch the design, it goes.
+
+  **`saveProject` returns false for two different things** — a failed write and
+  an id that is no longer in the registry (the A2/A10 no-op contract, e.g. a
+  project deleted out from under an in-flight edit). Only the first is about
+  space. Raising a "delete some designs" banner on the second would send the
+  customer to fix something unrelated, so the check is `!ok && the id is still
+  registered`. **A boolean that means two things needs the caller to
+  disambiguate before it can be shown to anyone.** *(2026-09-07)*

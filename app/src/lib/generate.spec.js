@@ -199,7 +199,12 @@ test("generateAll over a 2-element project combines both, with per-element bboxe
   expect(perElement[0].id).toBe("e1");
   expect(perElement[1].id).toBe("e2");
   expect(perElement[0].bboxMm.y0).not.toBeCloseTo(perElement[1].bboxMm.y0, 0);
-  expect(combined.colorCount).toBe(2);
+  // ONE block: both elements are the default black, and since 2026-09-07
+  // combineDesigns merges adjacent blocks in the same thread instead of
+  // splicing a colour change — a machine stop — between every pair. This read
+  // 2 and was pinning that incidentally; the subject here is the per-element
+  // bboxes above, and combine.spec.js owns the merge itself.
+  expect(combined.colorCount).toBe(1);
 });
 
 test("generateAll returns { combined: null, perElement: [] } when nothing is ready", async () => {
@@ -522,6 +527,12 @@ test("generateAll combines a manual shape element with a text element into one m
   const { defaultManualElement, defaultManualShape } = await import("./project.js");
   const shape = {
     ...defaultManualShape("s1"),
+    // Red, not the default black the text also uses. This test says
+    // "multi-color" and was only getting two blocks because combineDesigns
+    // spliced a colour change between every pair whatever colour they were;
+    // now that same-thread neighbours merge (2026-09-07) the premise has to
+    // be real for the subject to be.
+    colorRgb: [200, 20, 20],
     points: [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 }, { x: 0, y: 100 }],
   };
   const project = {

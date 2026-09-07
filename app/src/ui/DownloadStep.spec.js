@@ -112,8 +112,19 @@ test("a lettering project is warned that its DST comes from the browser encoder"
   const note = getByTestId("dst-browser-encoder-note");
   expect(note).toBeInTheDocument();
   // The two consequences that actually bite a user opening the file
-  // elsewhere, per the audit: a quarter-turn rotation and unseen color stops.
-  expect(note.textContent).toMatch(/rotated a quarter turn/i);
+  // elsewhere: the orientation and the unseen color stops.
+  //
+  // "MIRROR" is load-bearing and this assertion used to read
+  // /rotated a quarter turn/. Rendered 2026-09-07: a standard reader sees a
+  // browser-encoded DST a quarter turn round AND mirror-imaged — letters
+  // backwards. A customer told only "rotated" tries to rotate it back in
+  // their own software and cannot, because rotation preserves orientation and
+  // this does not. Naming the mirror is the difference between a warning they
+  // can act on and one that sends them somewhere that will not work.
+  expect(note.textContent).toMatch(/quarter turn/i);
+  expect(note.textContent).toMatch(/flipped/i);
+  expect(note.textContent).toMatch(/backwards/i);
+  expect(note.textContent).toMatch(/will\s+not fix/i); // the note wraps mid-phrase
   expect(note.textContent).toMatch(/color stops/i);
 });
 

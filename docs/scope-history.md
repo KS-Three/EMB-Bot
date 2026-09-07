@@ -9261,3 +9261,178 @@ The message names the way out rather than saying "invalid file":
 Mutation: dropping the floor to 0 fails 3 engine tests and the e2e.
 
 engine **492/492** · studio **1020/1020** · e2e **43/43**
+
+## 2026-09-07 — a machine stop between every pair of elements, whatever colour they were
+
+Snapshot. Not live status.
+
+`combineDesigns` spliced `trim + color` at each element boundary
+unconditionally, so a **two-line name in one thread** — about the commonest
+real design there is — carried a colour change it could not use. On a
+single-needle home machine that is a full pause with a prompt to rethread, to
+the colour already loaded.
+
+Measured on two black text elements through the real generator:
+
+```
+colors:      [{r:20,g:20,b:20,name:"Color 1"}, {r:20,g:20,b:20,name:"Color 1"}]
+colorCount:  2
+colour-change records: 1
+trim records: 8
+```
+
+The review's thread list and the PDF worksheet each listed the same cone
+twice. Driven in the app after the fix, a two-element one-thread project shows
+a single row: **Black · Block 1**.
+
+**Adjacent only, and the trim stays.** Merging a black/red/black project down
+to two would mean reordering the sew, which changes what lands on top of what —
+a different question and not a free one. The needle still has to travel between
+elements without dragging thread across the garment, so removing the stop is
+not removing the cut. Within a single design nothing changes: this is an
+element-boundary rule, and duplicate cones inside one digitized design are the
+Python preflight's ground (`COLOR_STOPS_HEAVY`, `PALETTE_THREAD_MISMATCH`).
+
+**The merge compares r/g/b, not `name`.** Every lettering block is named
+"Color 1" and the import builder numbers its own per element, so two entries
+that sew identically routinely carry different names.
+
+### Two tests were green for the wrong reason
+
+`generate.spec.js` had one asserting `colorCount === 2` on two default-black
+elements while its real subject was the per-element bboxes, and one named
+"…combines a manual shape element with a text element into one **multi-color**
+design" in which both elements were the same default black. The first now
+asserts 1 with the reason recorded; the second had its **premise** made real
+(the shape is red) rather than its expectation lowered — it says multi-colour,
+so it should be.
+
+Five new tests in `combine.spec.js` (8 total). Mutation-proved: always
+splicing the change, comparing names instead of thread, and keeping the
+duplicate colour entry each fail at least one.
+
+engine **492/492** · studio **1025/1025** · e2e **43/43**
+
+## 2026-09-07 — the export note said "rotated" too, and rotation cannot fix a mirror
+
+Snapshot. Not live status.
+
+The import-side correction above has an export-side twin that was still
+shipping. `DownloadStep`'s DST notes — one before the download, one after —
+both read *"other embroidery software reads it rotated a quarter turn"*.
+
+Rendered the same day, from a DST the app produced for a design that is now
+correctly oriented: a standard reader sees it **a quarter turn round and
+mirror-imaged**, letters backwards. So the word was the same understatement
+in both directions, and on the export side it is just as actionable: a
+customer told "rotated" opens the file in their own software and rotates it
+back, which cannot work.
+
+Both strings now name the symptom rather than the transform: *"a quarter turn
+round **and flipped**: text comes out backwards, and rotating it back there
+will not fix that."* "Mirror-imaged" was the first wording and is what the
+measurement says; "text comes out backwards" is what the customer will
+actually see, and it is the half that makes the failed remedy obvious. The comments that asserted the old framing
+were corrected with them (`exporters.js`, the button-emphasis comment), and so
+was **CLAUDE.md footgun 1**, which is the doc every session reads first and
+which would have handed the next person doing the codec fix the wrong shape to
+fix — a transpose applied as a repair mirrors the design while leaving the
+bounding box looking right.
+
+The component test that pinned the wording was pinning the wrong wording:
+`/rotated a quarter turn/` became `/quarter turn/` + `/mirror/` +
+`/will\s+not fix/`. Mutation: putting the old sentence back fails it.
+
+studio **1025/1025** · e2e **43/43** · doc guards **35/35**
+
+### A negative, measured the same afternoon: the phone layout is fine
+
+Walked the whole wizard at **390 × 844** (iPhone-class). Horizontal overflow is
+**0 px at every step**; the canvas gets 366 × 271 and the panel scrolls
+internally, so every control including the format buttons is reachable. Earlier
+sessions had measured 600 × 800; this extends the floor and closes the
+question. No change made.
+
+### A negative that nearly became a false claim
+
+A synthetic 3000 × 2000 "photo" — smooth gradients plus Gaussian noise — did
+not finish digitizing in **6.7 minutes**, which reads like a serious
+performance defect. It is an artifact of the input: high-entropy noise is
+pathological for a colour-quantising pipeline and nothing like a photograph.
+
+Re-measured by upscaling **real artwork** (`enthusiast_logo.png`) and timing
+`/digitize` directly, which varies pixel count and holds content honest:
+
+| size | MP | wall time |
+|---|---|---|
+| 500 × 113 | 0.06 | 12.2 s |
+| 1000 × 226 | 0.23 | 18.2 s |
+| 1500 × 339 | 0.51 | 18.3 s |
+| 2000 × 451 | 0.90 | 26.2 s |
+| 3000 × 677 | 2.03 | 33.4 s |
+
+Gentle, not cliff-shaped. The 6.7-minute figure says nothing about a customer's
+photo. **Gate 2's rule — synthetic fixtures are barred as substitutes for real
+artwork — is not only about quality metrics; it bites performance claims the
+same way.**
+
+## 2026-09-07 — the app stops saving and does not mention it
+
+Snapshot. Not live status.
+
+Everything EMB-Bot holds lives in localStorage. `saveProject` returns `false`
+when the write fails; `App.persist()` ignored it. So a failed save was silent,
+and the work stays on screen looking saved.
+
+Measured in the shipped app, with the origin's store filled to the byte — real
+quota, read by the app rather than assumed from a 5 MB rule of thumb:
+**5,241,856 characters**.
+
+| | |
+|---|---|
+| upload a logo | digitizes; panel reads *2,253 stitches · 81×16 mm · 2 colors*, caption 3,818 stitches |
+| stored record | **842 characters** — the element saved WITHOUT its baked result |
+| reload | back on the quick-start screen, caption **1,565 stitches** |
+| said about it | **nothing**, at any point |
+
+One digitized project measures **~186,600 characters**, so the store holds
+about **28**. This is a browser-storage app with no server; a working customer
+reaches that.
+
+A banner now sits above the whole studio (not inside a panel — the drawer's own
+notice is only visible with the drawer open) and names the controls that exist:
+
+> **Your changes aren't being saved — this browser's storage is full.** Open
+> **My designs**, download anything you want to keep as a design file, then
+> delete it there to make room. Until you do, what you add is only on screen
+> and will be gone if you reload.
+
+It reports the LAST save rather than latching: free space, touch the design,
+it goes.
+
+### `saveProject`'s false means two different things
+
+It also returns false for an id no longer in the registry — projects.js's
+A2/A10 no-op contract, e.g. a project deleted out from under an in-flight
+edit. Only the first is about space, and a "delete some designs" banner on the
+second would send the customer to fix something unrelated. The check is
+`!ok && the id is still registered`, and the second e2e covers exactly that
+(the state is not reachable by clicking, so the registry is emptied directly).
+
+### Three earlier attempts passed for the wrong reason
+
+Replacing an existing key with a same-or-smaller value **succeeds at quota** —
+the browser accounts for the replacement — so a `"BEFORE"` → `"AFTER"` edit
+persists with zero bytes free, and so does a moderately longer one. Only a
+write that grows the record past the free space fails. A quota test that edits
+in place is testing nothing.
+
+And one attempt reported *"app says something about storage: YES"* — from a
+regex matching **"full"** inside the thin-lettering finding's *"already the
+full width of the placement"*. A loose regex over `document.body.innerText`
+finds your keyword in someone else's sentence.
+
+`app/e2e/storage-full.spec.js`, 2 tests. Mutation: never raising the banner
+fails the first, dropping the registry guard fails the second.
+
+engine **492/492** · studio **1025/1025** · e2e **45/45**

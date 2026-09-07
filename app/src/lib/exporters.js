@@ -20,8 +20,11 @@ export function exportDesign(design, format) {
 // dst/exp/pes CAN prefer the Python digitizer service's pyembroidery-
 // convention encoder (the trustworthy path for third-party software — see
 // MASTER_SCOPE.md's DST codec axis bug section: the browser's own DST
-// encoder is confirmed transposed a quarter-turn against the Tajima
-// standard) — but only when the caller opts in via `preferService`. That
+// encoder disagrees with the Tajima standard, and rendered 2026-09-07 a
+// standard reader sees its output a quarter turn round AND MIRRORED, which
+// is why "transposed" and "a quarter turn" were both understatements —
+// rotating the file back elsewhere cannot repair it) — but only when the
+// caller opts in via `preferService`. That
 // gate exists because MASTER_SCOPE.md scopes the service-preference to
 // purely-digitized designs only: lettering/manual designs stay on the
 // browser's own encoder, the one with actual sew evidence behind it (the

@@ -77,3 +77,91 @@ test("_debug counters are summed across inputs when present", async () => {
   expect(combined._debug.nSatin).toBe((d1._debug.nSatin || 0) + (d2._debug.nSatin || 0));
   expect(combined._debug.nTrims).toBe((d1._debug.nTrims || 0) + (d2._debug.nTrims || 0));
 });
+
+// ---- two elements in one thread are one block ----------------------------
+//
+// A colour change is a machine stop, and on a single-needle home machine it
+// is a full pause with a prompt to rethread — to the colour already loaded.
+// combineDesigns spliced one between EVERY pair whatever colour they were, so
+// the commonest real design there is (a two-line name in one thread) cost a
+// stop it could not use, and the review's thread list and the PDF worksheet
+// each listed the same cone twice.
+
+test("two designs in the same thread merge into one block", async () => {
+  const { combineDesigns } = await import("./combine.js");
+  const { EMB } = await import("./emb.js");
+  const garment = EMB.getGarment("left_chest");
+  const d1 = letteringDesign("TOP", garment, { rgb: [20, 20, 20] });
+  const d2 = letteringDesign("BOTTOM", garment, { rgb: [20, 20, 20], offsetYMm: -15 });
+
+  const combined = combineDesigns([d1, d2]);
+
+  expect(combined.colors.length).toBe(1);
+  expect(combined.colorCount).toBe(1);
+  expect(combined.stitches.filter((s) => s.type === "color")).toHaveLength(0);
+  // Every stitch still sews, and the needle still travels between the two —
+  // the merge removes a machine STOP, not the trim that keeps thread off the
+  // garment.
+  expect(combined.stitchCount).toBe(d1.stitchCount + d2.stitchCount);
+  const d1Own = d1.stitches.filter((s) => s.type !== "end");
+  expect(combined.stitches[d1Own.length].type).toBe("trim");
+  expect(combined.stitches[d1Own.length + 1].type).not.toBe("color");
+});
+
+test("different threads still get their colour change", async () => {
+  const { combineDesigns } = await import("./combine.js");
+  const { EMB } = await import("./emb.js");
+  const garment = EMB.getGarment("left_chest");
+  const combined = combineDesigns([
+    letteringDesign("A", garment, { rgb: [200, 20, 20] }),
+    letteringDesign("B", garment, { rgb: [20, 20, 200], offsetYMm: -15 }),
+  ]);
+  expect(combined.colors.length).toBe(2);
+  expect(combined.stitches.filter((s) => s.type === "color")).toHaveLength(1);
+});
+
+test("only ADJACENT blocks merge — black/red/black stays three", async () => {
+  // Merging the two blacks would mean reordering the sew, which changes what
+  // lands on top of what. That is a different question and not a free one.
+  const { combineDesigns } = await import("./combine.js");
+  const { EMB } = await import("./emb.js");
+  const garment = EMB.getGarment("left_chest");
+  const combined = combineDesigns([
+    letteringDesign("A", garment, { rgb: [20, 20, 20] }),
+    letteringDesign("B", garment, { rgb: [200, 20, 20], offsetYMm: -12 }),
+    letteringDesign("C", garment, { rgb: [20, 20, 20], offsetYMm: -24 }),
+  ]);
+  expect(combined.colors.length).toBe(3);
+  expect(combined.stitches.filter((s) => s.type === "color")).toHaveLength(2);
+});
+
+test("the merge compares thread, not the label", async () => {
+  // Every lettering block is named "Color 1" and the import builder numbers
+  // its own per element, so `name` cannot decide this — and two entries that
+  // sew identically must merge whatever they are called.
+  const { combineDesigns } = await import("./combine.js");
+  const { EMB } = await import("./emb.js");
+  const garment = EMB.getGarment("left_chest");
+  const d1 = letteringDesign("A", garment, { rgb: [20, 20, 20] });
+  const d2 = letteringDesign("B", garment, { rgb: [20, 20, 20], offsetYMm: -15 });
+  d1.colors = [{ ...d1.colors[0], name: "Isacord 0020" }];
+  d2.colors = [{ ...d2.colors[0], name: "Block 2" }];
+
+  const combined = combineDesigns([d1, d2]);
+  expect(combined.colors).toHaveLength(1);
+  expect(combined.colors[0].name).toBe("Isacord 0020"); // the first block keeps its name
+});
+
+test("a merged first block does not swallow the rest of that design's blocks", async () => {
+  // A two-colour design whose FIRST block matches the previous one loses only
+  // that entry; its second block still needs its own colour and its own stop.
+  const { combineDesigns } = await import("./combine.js");
+  const { EMB } = await import("./emb.js");
+  const garment = EMB.getGarment("left_chest");
+  const d1 = letteringDesign("A", garment, { rgb: [20, 20, 20] });
+  const d2 = letteringDesign("B", garment, { rgb: [20, 20, 20], offsetYMm: -15 });
+  d2.colors = [{ r: 20, g: 20, b: 20 }, { r: 200, g: 20, b: 20 }];
+
+  const combined = combineDesigns([d1, d2]);
+  expect(combined.colors).toEqual([{ r: 20, g: 20, b: 20, name: "Color 1" }, { r: 200, g: 20, b: 20 }]);
+});
