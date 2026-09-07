@@ -2175,7 +2175,13 @@
           on:input={simScrub}
           aria-label="Stitch progress"
         />
-        <span class="simcount">{simIndex >= 1 ? simOrdinals[Math.floor(simIndex) - 1] : 0} / {simOrdinals[simOrdinals.length - 1] || 0} stitches</span>
+        <!-- Grouped, like every other stitch count in the app. #402 gave this
+             counter its UNIT because it sat beside a caption reading
+             "1,289 stitches" while showing a bare strand index; measured again
+             2026-09-07, the two still did not look alike: caption
+             "1,779 stitches", counter "302 / 1779 stitches". Same number, two
+             renderings, one screen. -->
+        <span class="simcount">{(simIndex >= 1 ? simOrdinals[Math.floor(simIndex) - 1] : 0).toLocaleString()} / {(simOrdinals[simOrdinals.length - 1] || 0).toLocaleString()} stitches</span>
         <button type="button" class="zoombtn simspeed" on:click={simCycleSpeed} aria-label="Playback speed">
           {simSpeed}x
         </button>

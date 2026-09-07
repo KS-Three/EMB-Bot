@@ -9436,3 +9436,28 @@ finds your keyword in someone else's sentence.
 fails the first, dropping the registry guard fails the second.
 
 engine **492/492** · studio **1025/1025** · e2e **45/45**
+
+## 2026-09-07 — the same two numbers, one screen, two renderings (again)
+
+Snapshot. Not live status.
+
+The simulator counter and the field caption sit one above the other. Earlier
+today they were nine apart because one counted strands and the other stitches;
+that was fixed by giving the counter the unit. Measured again this afternoon,
+on a two-element design:
+
+```
+caption   1,779 stitches · 102×19 mm · 5×7 in hoop
+simcount  302 / 1779 stitches
+```
+
+Same count. Two renderings. Every other stitch count in the app groups
+thousands — QualityReport, DigitizePanel, DesignPanel, the review summary, and
+since this morning the caption — so the counter was the last one that did not.
+
+`toLocaleString()` on both halves. **The e2e that was supposed to catch this
+was building its expectation from a comma-stripped Number**, so it compared
+1779 against 1779 and passed while the screen showed `1,779` beside `1779`. It
+now compares the STRINGS, which is what a person reads.
+
+studio **1025/1025** · e2e **45/45**. Mutation: ungrouping the total fails it.

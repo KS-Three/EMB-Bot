@@ -144,7 +144,7 @@ test("simulator opens and stays open, without covering the canvas", async ({ pag
   // number moves off zero.
   await expect
     .poll(async () => page.locator(".simcount").textContent(), { timeout: 15_000 })
-    .toMatch(/^[1-9]\d*\s*\/\s*\d+ stitches$/);
+    .toMatch(/^[1-9][\d,]*\s*\/\s*[\d,]+ stitches$/); // grouped since 2026-09-07
 
   // And closing it hands the field back.
   await page.locator('.simbar button[aria-label="Close simulator"]').click();
