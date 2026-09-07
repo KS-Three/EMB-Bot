@@ -2,6 +2,8 @@
   import { createEventDispatcher } from "svelte";
   import { PALETTE_INDEX, STUDIO_PALETTE, getCachedPalette, loadPalette, nearestInList, filterThreads, loadPreferredPaletteId, savePreferredPaletteId } from "../lib/threads.js";
   import Icon from "./Icon.svelte";
+  import { get } from "svelte/store";
+  import { designChartId } from "../lib/designChart.js";
 
   // Named-thread color picker (Slice 8 Task 4), used everywhere a thread
   // color is chosen (TextStep's element color, ImagePanel's per-swatch
@@ -30,7 +32,16 @@
 
   let open = false;
   let query = "";
-  let paletteId = loadPreferredPaletteId();
+  // Default to the chart the DESIGN's cones came from, not Studio's 56
+  // generic shades. This picker was found offering "Studio basics" directly
+  // above a label reading `0134 Smoky` — so a customer changing one thread
+  // was shown 56 generic names to replace a cone chosen from 398, and picking
+  // one threw the catalog number away. A SAVED preference still wins;
+  // `loadPreferredPaletteId` only consults the fallback when nothing is
+  // stored. Read once with `get` rather than `$designChartId`: this is an
+  // initial default, and a reactive binding would yank the chart out from
+  // under someone who had just chosen a different one in the open picker.
+  let paletteId = loadPreferredPaletteId(get(designChartId));
 
   function onPaletteChange(e) {
     paletteId = e.currentTarget.value;

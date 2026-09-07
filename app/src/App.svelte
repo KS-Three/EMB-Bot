@@ -3,6 +3,10 @@
   import { createHistory } from "./lib/history.js";
   import { applyTemplate } from "./lib/templates.js";
   import { canAdvance, nextStep, prevStep } from "./lib/flow.js";
+  import { designSummary } from "./lib/summary.js";
+  import { rehydrateImages } from "./lib/imageSource.js";
+  import { chartIdForProject, designChartId } from "./lib/designChart.js";
+  import { flattenRGBA, WORK_MAX_PX, ALPHA_CUTOFF } from "./lib/flatten.js";
   import {
     migrateLegacy,
     currentProjectId,
@@ -278,6 +282,26 @@
   // physical hoop the operator will actually mount.
   $: hoopInEffect = effectiveHoop(project);
 
+  // The chart the engine snapped this design's cones out of, published
+  // for every ThreadPicker in the app (nine call sites across seven
+  // components — a prop threaded through all of them would be the wrong
+  // shape for a fact that belongs to the project). See lib/designChart.js.
+  $: designChartId.set(chartIdForProject(project));
+
+  // Does this project contain anything a machine could sew?
+  //
+  // `canAdvance("create", …)` is the existing answer — one predicate per
+  // element type, already specced — and until 2026-09-07 the review step's
+  // own headline ignored it. A brand-new project holds one EMPTY text
+  // element, so the step opened on "**Ready to stitch** — Looks good? The
+  // live field is your stitch-out." above a summary reading `Text — ""` and
+  // a canvas reading "Your embroidery appears here as you add content." The
+  // disabled Next button was the only contradiction, and it gives no reason.
+  // Reusing the gate rather than writing a second rule is the point: a new
+  // element type that flow.js calls sewable is sewable here too, with no
+  // second list to forget.
+  $: readyToStitch = canAdvance("create", project);
+
   const MM_PER_INCH = 25.4;
 
   // ---- Onboarding hints (Slice 7 Task 3) ------------------------------------
@@ -527,10 +551,83 @@
     runtime = { ...runtime, workImages: { ...runtime.workImages, [elementId]: workImage } };
   }
 
-  function onFlat(elementId, flat) {
+  // `record` is false when this is a RESTORE rather than an edit — see
+  // restoreArtwork. Rehydrating a saved project's artwork must not become an
+  // undo step: the user did nothing to undo, and undoing it returned
+  // `_hasImage` to false while `runtime.flats` still held the flat, so the
+  // design stayed on screen while the review step called it empty and Next
+  // went disabled. Measured 2026-09-07 — 1473 stitches visible under
+  // "Nothing to stitch yet".
+  function onFlat(elementId, flat, record = true) {
     runtime = { ...runtime, flats: { ...runtime.flats, [elementId]: flat } };
-    elUpdate(elementId, { _hasImage: !!flat });
+    elUpdate(elementId, { _hasImage: !!flat }, record);
   }
+
+  // ---- bringing a saved project's artwork back ------------------------------
+  //
+  // `enterProject` and boot both clear `runtime` and strip `_hasImage`,
+  // which is correct — at that instant no pixels are loaded. The artwork
+  // itself lives on the element as `sourcePng`, and this is what turns it
+  // back into runtime state. Until 2026-09-07 nothing did: an `image`
+  // element (the type an upload makes when the digitizer service is DOWN)
+  // came back from a reload with no pixels at all, no stitches, and no
+  // message. Measured in a browser: 2739 stitches before a refresh, none
+  // after.
+  //
+  // The token guards a switch that overtakes an in-flight decode — the same
+  // shape as `digitizerProbeToken` above, and for the same reason.
+  let rehydrateToken = 0;
+
+  async function decodeWorkImage(b64) {
+    const img = await new Promise((resolve, reject) => {
+      const im = new Image();
+      im.onload = () => resolve(im);
+      im.onerror = () => reject(new Error("saved artwork could not be decoded"));
+      im.src = "data:image/png;base64," + b64;
+    });
+    const scale = Math.min(1, WORK_MAX_PX / (Math.max(img.width, img.height) || 1));
+    const w = Math.max(1, Math.round(img.width * scale));
+    const h = Math.max(1, Math.round(img.height * scale));
+    const cv = document.createElement("canvas");
+    cv.width = w;
+    cv.height = h;
+    cv.getContext("2d").drawImage(img, 0, 0, w, h);
+    const rgba = cv.getContext("2d").getImageData(0, 0, w, h).data;
+    // Same alpha cut ImagePanel's prepRGBA applies, so a rehydrated working
+    // image is the one the flatten was built for rather than a near-miss.
+    for (let i = 3; i < rgba.length; i += 4) if (rgba[i] < ALPHA_CUTOFF) rgba[i] = 0;
+    return { rgba, w, h };
+  }
+
+  function restoreArtwork(proj) {
+    const mine = ++rehydrateToken;
+    rehydrateImages(proj, runtime, {
+      decode: decodeWorkImage,
+      flatten: (img, nColors, removeBg) =>
+        flattenRGBA(img.rgba, img.w, img.h, { nColors, removeBg }),
+      onImage,
+      onFlat: (id, flat) => onFlat(id, flat, false),   // a restore, not an edit
+      // A record that will not decode is dropped, not retried: the field is
+      // on every step, so a decode failing on every reactive pass would spin
+      // forever. Clearing the name too leaves the panel in its honest "no
+      // artwork" state rather than showing a filename with nothing behind
+      // it — which is exactly the mismatch this whole change removes.
+      onError: (id) => elUpdate(id, { sourcePng: null, name: "" }, false),
+      token: () => mine === rehydrateToken,
+    });
+  }
+
+  // Boot does NOT go through enterProject — it assigns `project` directly,
+  // near the top — so the artwork of whatever was loaded from storage is
+  // restored here. Both entry points now call the same thing; there is no
+  // third.
+  //
+  // Placed BELOW `restoreArtwork` rather than beside the `project`
+  // assignment on purpose: Svelte hoists the function declaration but not
+  // the `let rehydrateToken` it closes over, so calling it any earlier
+  // throws "Cannot access 'rehydrateToken' before initialization" and the
+  // whole app renders an empty body. (Done exactly that, 2026-09-07.)
+  restoreArtwork(project);
 
   function onDims(detail) {
     designDims = detail;
@@ -565,6 +662,7 @@
     step = targetStep;
     history.reset(project); // history is per-project; a switch starts fresh
     syncHistoryFlags();
+    restoreArtwork(project);
   }
 
   // Drawer "Open" (plan amendment A6): lands on "content", not "garment" --
@@ -799,21 +897,34 @@
         />
       {:else if step === "create"}
         <div class="createstep">
-          <h2>Ready to stitch</h2>
-          <p>Looks good? The live field is your stitch-out.</p>
+          {#if readyToStitch}
+            <h2>Ready to stitch</h2>
+            <p>Looks good? The live field is your stitch-out.</p>
+          {:else}
+            <h2>Nothing to stitch yet</h2>
+            <p>
+              This design has no content the machine can sew. Go back to
+              Content and type some lettering, upload artwork, or draw a
+              shape — the field updates live as you do.
+            </p>
+          {/if}
           <dl class="summary">
             <div><dt>Garment</dt><dd>{readable(project.garmentId)}</dd></div>
             <div><dt>Hoop</dt><dd>{hoopInEffect.hoop.label}{hoopInEffect.suggested ? " (suggested)" : ""}</dd></div>
-            {#if selectedElement.type === "image"}
-              <div><dt>Content</dt><dd>Logo / image</dd></div>
-              <div><dt>Colors</dt><dd>{selectedElement.nColors}{selectedElement.removeBg ? " · background removed" : ""}</dd></div>
-            {:else if selectedElement.type === "manual"}
-              <div><dt>Content</dt><dd>Hand-drawn shapes</dd></div>
-              <div><dt>Shapes</dt><dd>{(selectedElement.shapes || []).length}</dd></div>
-            {:else}
-              <div><dt>Content</dt><dd>Text — "{selectedElement.text}"</dd></div>
-              <div><dt>Font</dt><dd>{readable(selectedElement.fontKey)}</dd></div>
-            {/if}
+            <!-- One row per fact for EVERY element, from lib/summary.js.
+                 It keyed off `selectedElement` alone until 2026-09-07, so a
+                 name plus a logo — the commonest real job — reached this
+                 screen described only as the one the user last clicked.
+                 This was three
+                 `{:else if}` rungs ending in a text-shaped catch-all, and
+                 `digitized`/`design`/`shape` all landed on it: measured in a
+                 browser 2026-09-07, an auto-digitized logo recapped as
+                 `Content: Text — ""` with a blank `Font`, on the screen right
+                 before Download. Svelte prints a missing field as empty, so it
+                 read as a plausible empty-text design rather than as a bug. -->
+            {#each designSummary(project) as row}
+              <div><dt>{row.label}</dt><dd>{row.value}</dd></div>
+            {/each}
           </dl>
           <QualityReport entries={qualityEntries} />
           <p class="hint">Not quite right? Go back to adjust the garment or content — the field updates live.</p>

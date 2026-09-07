@@ -81,8 +81,21 @@ function project(elements) {
 }
 
 const LETTERING = [{ id: "e1", type: "text", text: "Hi" }];
-const DIGITIZED = [{ id: "e1", type: "digitized" }];
-const MIXED = [{ id: "e1", type: "digitized" }, { id: "e2", type: "text", text: "Hi" }];
+// `result` present, because a digitized element that has never RUN has no
+// stitches for the service to re-encode -- `isPurelyDigitized` counts only
+// elements that actually sew. Without it these fixtures described a project
+// no customer can produce, and the gate they exercise would read false for a
+// reason unrelated to the one under test.
+const DIGITIZED = [{ id: "e1", type: "digitized", result: { design: {} } }];
+const MIXED = [{ id: "e1", type: "digitized", result: { design: {} } },
+               { id: "e2", type: "text", text: "Hi" }];
+// The shape of EVERY real logo-only project: defaultProject seeds an empty
+// text element and a customer who uploads a logo never removes it. See the
+// test at the end of this file for what that placeholder used to cost.
+const DIGITIZED_PLUS_PLACEHOLDER = [
+  { id: "e1", type: "text", text: "" },
+  { id: "e2", type: "digitized", result: { design: {} } },
+];
 
 test("a lettering project is warned that its DST comes from the browser encoder", () => {
   const { getByTestId } = render(DownloadStep, {
@@ -226,6 +239,50 @@ test("a browser-encoded DST is flagged after the download, even for a digitized 
   expect(await ui(view).findByTestId("dst-browser-encoder-downloaded")).toBeInTheDocument();
 });
 
+test("the post-download DST note stands alone — it never points at absent text", async () => {
+  // The bug this replaces: the note said "see the note above", and the note
+  // above (`dst-browser-encoder-note`) renders only when the browser encoder
+  // was PREDICTED. On a purely-digitized project it is not, so in the one
+  // case the post-download note exists for, it referred the customer to a
+  // paragraph that is not on the page. The test directly above proves the
+  // up-front note is absent here; this proves what the message then has to
+  // carry on its own.
+  nextVia = "browser";
+  const view = render(DownloadStep, {
+    props: { project: project(DIGITIZED), runtime: {} },
+  });
+  expect(ui(view).queryByTestId("dst-browser-encoder-note")).not.toBeInTheDocument();
+  await fireEvent.click(fmtButton(view, "DST"));
+  const note = await ui(view).findByTestId("dst-browser-encoder-downloaded");
+
+  // No dangling cross-reference, whatever wording a future edit picks.
+  expect(note.textContent).not.toMatch(/note above|above before|see above/i);
+  // The consequence, in the customer's terms rather than the encoder's name.
+  expect(note.textContent).toMatch(/quarter turn/i);
+  expect(note.textContent).toMatch(/color stops/i);
+  // And the cause, which is the actionable half: the service was asked for
+  // this file and could not answer.
+  expect(note.textContent).toMatch(/digitizer service/i);
+  expect(note.textContent).toMatch(/PES or EXP/i);
+});
+
+test("a lettering project's post-download note is self-contained too, and does not blame the service", async () => {
+  // Here the up-front note IS rendered, so the two paragraphs sit together
+  // and the second must not read as a fragment of the first — nor claim a
+  // service failure, since a lettering project never asks the service at all
+  // (preferService is false, so `via: "browser"` is the intended path).
+  nextVia = "browser";
+  const view = render(DownloadStep, {
+    props: { project: project(LETTERING), runtime: {} },
+  });
+  expect(ui(view).getByTestId("dst-browser-encoder-note")).toBeInTheDocument();
+  await fireEvent.click(fmtButton(view, "DST"));
+  const note = await ui(view).findByTestId("dst-browser-encoder-downloaded");
+  expect(note.textContent).not.toMatch(/note above|above before|see above/i);
+  expect(note.textContent).toMatch(/quarter turn/i);
+  expect(note.textContent).not.toMatch(/digitizer service/i);
+});
+
 test("a service-encoded DST is not flagged after the download", async () => {
   nextVia = "service";
   const view = render(DownloadStep, {
@@ -314,4 +371,68 @@ test("PNG is NOT gated — it is not a file a machine stitches", async () => {
   const view = render(DownloadStep, P);
   await fireEvent.click(fmtButton(view, "PNG"));
   expect(view.queryByRole("dialog")).toBeNull();
+});
+
+// --- the placeholder that made the service export path unreachable ---------
+//
+// Measured 2026-09-07 by downloading from the shipped UI and decoding with
+// pystitch, the third-party reader CI cross-validates against. The app
+// claimed 81x16 mm; the DST a customer actually gets read back as
+//
+//     16.3 x 80.5 mm, 0 threads
+//
+// — the quarter turn and the unrecognised colour-change record of CLAUDE.md
+// footgun 1. PES from the same design read 80.5 x 16.3 with 2 threads, so
+// the design was fine and the encoder was not.
+//
+// The app HAS a mitigation for exactly this: prefer the service's
+// pyembroidery-convention encoder for a purely-digitized project. It never
+// fired, because `defaultProject()` seeds an empty text element that a
+// customer who uploads a logo never removes, and `every(el => el.type ===
+// "digitized")` counted that placeholder as mixed content.
+//
+// Worse than silent: the caveat the customer DID see says "this project
+// includes lettering or hand-drawn shapes", which was not true of a logo-only
+// design — a false reason for steering them off a format that was available
+// and correct.
+
+test("a logo-only project exports through the service despite its empty text placeholder", async () => {
+  exportCalls.length = 0;
+  nextVia = "service";
+  const view = render(DownloadStep, {
+    props: { project: project(DIGITIZED_PLUS_PLACEHOLDER), runtime: {} },
+  });
+  // No caveat, and DST leads again — it is the industry default and, on this
+  // path, spec-correct.
+  expect(ui(view).queryByTestId("dst-browser-encoder-note")).not.toBeInTheDocument();
+  await fireEvent.click(fmtButton(view, "DST"));
+  expect(exportCalls).toEqual([{ format: "dst", preferService: true }]);
+  await ui(view).findByText(/digitizer service encoder/i);
+});
+
+test("a project that genuinely mixes SEWABLE content still stays on the browser encoder", async () => {
+  // The scoping ruling is unchanged: there is no way to export part of a
+  // combined design through two encoders, so a real text element beside the
+  // logo keeps the whole thing on the browser path — and the caveat, whose
+  // stated reason ("includes lettering") is then true.
+  exportCalls.length = 0;
+  nextVia = "browser";
+  const view = render(DownloadStep, {
+    props: { project: project(MIXED), runtime: {} },
+  });
+  expect(ui(view).getByTestId("dst-browser-encoder-note")).toBeInTheDocument();
+  await fireEvent.click(fmtButton(view, "DST"));
+  expect(exportCalls).toEqual([{ format: "dst", preferService: false }]);
+});
+
+test("a digitized element that has never run is not exportable through the service", async () => {
+  // There are no stitches to re-encode, so the browser path is correct here
+  // and the gate must not be fooled by the element's TYPE alone.
+  exportCalls.length = 0;
+  nextVia = "browser";
+  const view = render(DownloadStep, {
+    props: { project: project([{ id: "e1", type: "digitized", result: null }]), runtime: {} },
+  });
+  await fireEvent.click(fmtButton(view, "DST"));
+  expect(exportCalls).toEqual([{ format: "dst", preferService: false }]);
 });

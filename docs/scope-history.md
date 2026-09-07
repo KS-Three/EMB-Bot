@@ -8059,6 +8059,160 @@ have been the easy sentence and it is not true.
   this was an editorial call to leave to Kent; a *move* is not that call, and
   the file's own rules prescribe it.
 
+### Then the error paths, because that is where a frustrated buyer is
+
+Three bad uploads a real customer would produce: a text file wearing a `.png`
+extension, a 1×1 PNG, and a 20 MB image over the 12 MB limit.
+
+**Two of the three are answered beautifully already.** *"That file isn't an
+image the engine can read. PNG, JPEG, WebP and TIFF all work; PDF and SVG
+don't."* and *"Artwork is 19 MB; the limit is 12 MB. Export it smaller and try
+again."* Both name the problem and the next move. Somebody did that work well.
+
+**The third was accepted and then failed with a repr.**
+
+```
+ValueError: no foreground pixels — the whole image reads as background
+```
+
+`jobs.py` set `job.error = f"{type(exc).__name__}: {exc}"` and `digitizer.js`
+does `throw new Error(job.error)`, so that string is customer copy whether or
+not anyone treated it as such. **And the condition is not pathological**:
+`stage1_prep` raises it for any artwork whose subject the background detector
+eats. A class name and the phrase "foreground pixels", three lines after two
+sentences written for exactly that person.
+
+`digitizer_service/errors.py` maps it, and `job.detail` gains the raw form
+beside the traceback so a developer reading a failed job sees strictly more
+than before.
+
+### The first cut was too broad, and the tests were right
+
+It replaced **every** unmatched exception with one generic sentence. Three
+service tests failed, and reading them was the whole lesson:
+
+- a `boundary_override` whose hole pokes outside its shell fails with a
+  message naming `boundary_override` and the hole;
+- a `merge_shape_ids` of two regions 13.8 mm apart fails with *"does not touch
+  or overlap"*.
+
+**Those are not the engine leaking. They are the caller being told exactly
+which of its own edits was wrong**, which is the only thing that lets the
+Studio — or the person who made the edit — undo it. A generic there destroys
+information and breaks a posture the service documents as "a clean JOB error".
+
+So the map is an **allowlist of artwork-caused failures**, and anything
+unmatched passes through unchanged. That leaves `KeyError: thread_index`
+reachable in principle, which is the status quo and not a regression. Buying
+its way out costs three real contracts, and that is not a trade worth making.
+
+**A test suite that fails a change on its own merits, and turns out to be
+right, is worth more than the change was.**
+
+### And a screenshot that looked like a catastrophe, measured, and was not
+
+The download step on `logo_gaulke_roofing.png` rendered near-white and grey —
+"Snow White / Silver Grey / Silver Grey" in the thread list. Read against
+MASTER_SCOPE defect 27, which says that fixture goes **F 0 → C 64** with
+`dissolve_phantom_blends` and its worst thread error **63.6 → 6.8 ΔE00**, it
+looked like a customer being handed halo greys instead of their logo's ink.
+
+**Measured, at both `max_colors` 6 and 12:**
+
+| | grade | cones | blocking `THREAD_MATCH_POOR` | worst ΔE00 |
+|---|---|---:|---:|---:|
+| flag OFF | **B 76** | 4 | **0** | **0.0** |
+| flag ON | B 76 | 3 | 0 | 0.0 |
+
+**No catastrophe.** What `dissolve_phantom_blends` buys on gaulke today is
+**4 cones → 3 and −14.5% stitches**, with no grade change and no thread-match
+change.
+
+**And PR #380 got to the other half first, and deeper.** It landed on `main`
+while this was being written and RETRACTS the C 64 outright: measured on the
+cones rather than the grade, that "improvement" is a design that **dropped its
+lettering** — gaulke is black text on a white label, `off` loads `1375 Dark
+Charcoal`, and the flag leaves `0015`/`4071`/`0145`, nothing dark enough to be
+the text. The grade rewarded losing the ink. **That is the finding; this
+entry's contribution is the narrower half** — that the *"F 0"* baseline is
+stale too, now **B 76 with zero blocking `THREAD_MATCH_POOR`** at both
+`max_colors` 6 and 12.
+
+The two agree independently: the run here shows the flag-ON cones as exactly
+`0015`/`0145`/`4071` and `1375 Dark Charcoal` dropped, which is the cone-level
+evidence #380 reasoned from. **Both halves of "F 0 → C 64" are now unusable at
+a flag decision**, for different reasons, and Kent's 2026-09-04 *"leave it OFF
+and bank it"* stands more firmly for both.
+
+**Read this as a footgun-8 case.** The finding existed on a lane this session
+could not see, and the fetch at merge time is what surfaced it — after the
+work was done twice.
+
+**Third hypothesis of mine killed by a measurement I ran to test it**, after
+the palette tool's two overstatements. The screenshot was right that something
+looked odd and wrong about what it was.
+
+### An instrument limit found the same way
+
+`tools/thread_color_render.py` answered *"the flag changes no cone here —
+nothing to draw"* for that fixture, because it diffs cones PER SHAPE and
+`dissolve_phantom_blends` changes the region SET, so the ids do not line up.
+**That is a limit of the renderer, not evidence the flag does nothing** — and
+reading it as the latter is exactly the mistake the numbers above corrected.
+Noted here because the renderer now A/Bs any flag, so the next person will
+point it at one that reshapes regions and get the same empty answer.
+
+### The last screen before money: the shopping list renamed their threads
+
+The Download step's chart selector read **"Studio basics"** on a design the
+engine had snapped against Isacord. That looked cosmetic. It is not.
+
+The selector drives `nearestInList(chart.threads, rgb)` — it re-derives a name
+for every cone from the *chosen* chart. Studio's list has **56** shades;
+Isacord has **398**. Mapping down collides, and `loadPreferredPaletteId()`
+returned `"studio"` for anyone who had never picked a chart, which is every
+first-time customer.
+
+Measured on real logos at 80 mm:
+
+| engine's cone | shopping list said |
+|---|---|
+| `0501 Sun` | Lemon |
+| `0713 Lemon` | Lemon |
+| `6031 Limelight` | Lemon |
+| `0182 Saturn Grey` | Silver Grey |
+| `3971 Silver` | Silver Grey |
+| `0145 Skylight` | Silver Grey |
+
+**`logo_bridge_bar`'s 13 distinct cones collapsed to 9 names.** A customer
+buys nine spools for a thirteen-cone design and the machine stops mid-job on a
+colour they do not have.
+
+**And the names were wrong, not merely coarse.** On `logo_golden_tee` the
+engine's `0670 Cream` printed as *"Natural White"* while its `0630 Buttercup`
+printed as *"Cream"* — two adjacent rows naming each other's colours — and
+`0465 Umber`, a brown, printed as *"Olive"*, a green. `logo_golden_tee`'s 14
+cones collapsed to 11 names.
+
+**The fix is one parameter.** `loadPreferredPaletteId(fallback)` takes the
+design's own `review.brandId` — set from the service's `palette[0].brand_id` —
+and falls back to `"studio"` only when there is none (a lettering-only
+project) or the id is one this build cannot load. **A saved preference still
+wins**, so someone who deliberately chose generic shade names keeps them; the
+selector is unchanged, and only the never-chosen default moves.
+
+Verified in the running app: the list now reads **13 distinct Isacord
+numbers** — `0501 Sun`, `0713 Lemon`, `6031 Limelight` … `0145 Skylight` —
+the cones the file actually sews.
+
+**Two process notes.** The first read of the live page showed the OLD generic
+names *after* the fix, because `ensureChart` loads a brand chart
+asynchronously and the list renders from `STUDIO_PALETTE` until it lands — a
+poll for real cone numbers was needed before believing either result. And no
+test covered this: the Download step has never been driven end to end, which
+is exactly why a wrong default survived in the last screen before money
+changes hands.
+
 ### What is still not saleable
 
 The grade. Seven of 26 fixtures read F 0 and twelve of 52 design/garment
@@ -8147,3 +8301,53 @@ difference between "get a bigger file" and knowing which file will do.
 Same shape as #392's "Colors (max 6) starts meaning 6", arrived at
 independently: a warning the customer could not act on, and a number the
 engine had all along.
+
+## 2026-09-07 — a number of mine, retracted: "B 76" was the wrong arm and the wrong yardstick
+
+The entry above at *"driving the shipped app…"* claims gaulke's `"F 0"`
+baseline is stale and the flag-OFF state is now **"B 76 with zero blocking
+`THREAD_MATCH_POOR`"** at both `max_colors` 6 and 12.
+
+**That is wrong, and it is not a staleness — it is a misattribution.**
+Re-measured on the merged tree with #396's own `tools/flip_sheet.py`
+(`left_chest`, 80 mm, `max_colors` 12, the same config that entry used):
+
+    arm=off  grade F  score 4  blocks 4  cones 4 (0015, 0003, 1375, 3971)
+             stitches 10229  trims 30
+             findings: LETTERING_TOO_SMALL:warn, STITCHES_TOO_SHORT:warn,
+                       THREAD_MATCH_POOR:block, THREAD_MATCH_POOR:block,
+                       THREAD_MATCH_POOR:warn
+
+**Two blocking `THREAD_MATCH_POOR`, not zero. F 4, not B 76.** #396's
+independent reading of the same fixture — *"F 4, raw 4, 2 blocking, worst ΔE
+63.6 unchanged"* — is right, and this file's earlier claim conflicted with it
+in a merge, which is how it was caught.
+
+**Where the number actually came from.** The 2026-09-06 entry reads: the flag
+*"alone takes it F 0 → C 64 … and **B 76 with excess as well**"*. B 76 was the
+flag-**ON** state under the **excess** yardstick. It was lifted across two axes
+at once — onto the OFF arm and onto the default yardstick — and then reported
+as a new measurement. The tell was available: that same entry records `off` at
+**10,229 stitches**, and the re-measurement above returns exactly 10,229, so
+`off` had not moved at all.
+
+**And the flag is INERT on this fixture now, which kills the rest of that
+entry too.** The `halo` arm returns the identical row — F 4, 4 blocks, 4
+cones, 10,229 stitches, 30 trims — so the claim that it "buys 4 cones → 3 and
+−14.5% stitches" on gaulke is wrong as well, and so is the cone-level
+corroboration that entry offered (*"the run here shows the flag-ON cones as
+exactly `0015`/`0145`/`4071` with `1375` dropped"*): ON and OFF both load
+`0015`, `0003`, `1375`, `3971`. That "independent agreement" with #380 was
+not independent and not agreement — it was the same misread.
+
+**What survives.** #380's retraction of the C 64 stands and is untouched by
+this — measured on the cones, the flag's "improvement" on gaulke is a design
+that dropped its lettering. Kent's 2026-09-04 *"leave it OFF and bank it"*
+stands on its original reasons. What does NOT survive is this session's claim
+to have independently found the baseline stale; there was nothing stale about
+it.
+
+**The rule, which this repo already had and I did not apply to myself:**
+`THREAD_MATCH_POOR` carries `yardstick` in `extra` precisely because a
+severity means nothing without knowing which yardstick judged it. A grade
+quoted without its arm AND its yardstick is not a measurement.

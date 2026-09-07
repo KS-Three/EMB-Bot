@@ -324,3 +324,140 @@ test("the step panel is scrolled to the top after every step change", async ({ p
   await expect(page.getByRole("heading", { name: "What are you putting this on?" })).toBeVisible();
   await expect.poll(scrollTop).toBe(0);
 });
+
+// The review step on an EMPTY project, which nothing had ever driven: every
+// test above types text or uploads art before advancing, so the summary was
+// only ever seen full. A brand-new project holds one empty text element, and
+// the stepper lets you jump straight to Review from the garment step.
+//
+// Until 2026-09-07 that screen read "**Ready to stitch** — Looks good? The
+// live field is your stitch-out." over a summary saying `Text — ""` and a
+// canvas saying "Your embroidery appears here as you add content." The only
+// contradiction was a disabled Next button with no reason attached.
+//
+// `flow.js`'s `canAdvance("create", …)` already computed the right answer and
+// only the button consulted it; the headline now does too. This drives the
+// state transition in both directions, because a headline that is merely
+// pessimistic would be its own bug.
+test("the review step does not claim readiness for a design with nothing in it", async ({ page }) => {
+  await page.goto("/");
+
+  await page.getByRole("button", { name: "Left Chest", exact: true }).click();
+
+  // Jump the stepper straight to Review, skipping Content entirely — the
+  // badge carries the step number, so the accessible name is "3 Review".
+  await page.getByRole("button", { name: "3 Review" }).click();
+
+  await expect(page.getByRole("heading", { name: "Nothing to stitch yet" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Ready to stitch" })).toHaveCount(0);
+  // The summary says it in words, not as two quote marks.
+  await expect(page.locator("dl.summary")).toContainText("nothing typed yet");
+  await expect(page.locator("dl.summary")).not.toContainText('Text — ""');
+  // And Next stays shut, which is the behaviour the headline now agrees with.
+  await expect(page.getByRole("button", { name: "Next", exact: true })).toBeDisabled();
+
+  // Now give it something to sew and watch the same screen change its mind.
+  await page.getByRole("button", { name: "Content" }).click();
+  const textInput = page.locator("textarea").first();
+  await textInput.fill("HELLO");
+  await expect(page.getByText(/^\d+ stitches/)).toBeVisible();
+
+  await page.getByRole("button", { name: "3 Review" }).click();
+  await expect(page.getByRole("heading", { name: "Ready to stitch" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Nothing to stitch yet" })).toHaveCount(0);
+  await expect(page.locator("dl.summary")).toContainText('Text — "HELLO"');
+  await expect(page.getByRole("button", { name: "Next", exact: true })).toBeEnabled();
+});
+
+// Artwork must survive a refresh — the case that was silently losing work.
+//
+// An `image` element (the browser flatten lane) is created only when the
+// digitizer service is DOWN: App.onAddElement routes "artwork" through
+// resolveArtworkType(digitizerHealth), and the Content step tells the user
+// outright that art will be "placed but not auto-digitized". So this is an
+// explicitly supported state — and until 2026-09-07 it was the one where a
+// page refresh destroyed the user's work. Measured on the shipped build:
+// 2739 stitches before, no stitch caption after, and no message either way,
+// because the pixels lived only in App's `runtime` (not persisted) while
+// `_hasImage: true` was written to localStorage.
+//
+// Aborting /health is what makes the app believe the service is down; it is
+// the only lever, and it is the real code path rather than a stubbed one.
+test("artwork uploaded with the digitizer offline survives a page refresh", async ({ page }) => {
+  await page.route("**/health", (r) => r.abort());
+  await page.goto("/");
+
+  await page.getByRole("button", { name: "Tote", exact: true }).click();
+  await page.getByRole("button", { name: "Next", exact: true }).click();
+  await page.getByRole("button", { name: "Artwork" }).click();
+  await page.locator("input[type=file]").first().setInputFiles(ART_PNG);
+
+  const caption = page.locator("span.stats");
+  await expect(caption).toBeVisible({ timeout: 60_000 });
+  const before = await caption.innerText();
+  expect(before).toMatch(/[\d,]+ stitches/);
+
+  // The pixels must be ON the element, not only in runtime — that is what
+  // makes the reload below possible at all.
+  const saved = await page.evaluate(() => {
+    const id = localStorage.getItem("embstudio:current");
+    const el = JSON.parse(localStorage.getItem("embstudio:p:" + id)).elements
+      .find((e) => e.type === "image");
+    return { name: el.name, hasPng: typeof el.sourcePng === "string" && el.sourcePng.length > 100 };
+  });
+  expect(saved.hasPng).toBe(true);
+  expect(saved.name).toBe("two-squares.png");
+
+  await page.reload();
+
+  // On the step the reload LANDS on, not after navigating to Content: the
+  // embroidery field is visible beside every step, so restoring in the panel
+  // would leave this empty and read as lost work.
+  await expect(caption).toHaveText(before, { timeout: 30_000 });
+  await expect(page.getByRole("heading", { name: "What are you putting this on?" })).toBeVisible();
+
+  // Opening a project is a RESTORE, not an edit. The rehydrate publishes
+  // `_hasImage` through the same path an upload does, and letting that record
+  // an undo step meant one press of Undo returned `_hasImage` to false while
+  // `runtime.flats` still held the flat — the design stayed on screen while
+  // the review step called it empty and Next went disabled (measured
+  // 2026-09-07: 1473 stitches visible under "Nothing to stitch yet"). Undo
+  // must have nothing to undo here, because the user did nothing.
+  await expect(page.getByRole("button", { name: "Undo", exact: true })).toBeDisabled();
+
+  // And the design is really there, not just a stale caption: the review
+  // step's own gate has to agree.
+  await page.getByRole("button", { name: "3 Review" }).click();
+  await expect(page.getByRole("heading", { name: "Ready to stitch" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Nothing to stitch yet" })).toHaveCount(0);
+  await expect(page.locator("dl.summary")).toContainText("Logo / image");
+});
+
+// A name PLUS a logo — the commonest real job, and the one the review recap
+// described only half of. It keyed off the selected element, so a design with
+// lettering under an uploaded logo reached the last screen before Download
+// saying "Auto-digitized artwork" and nothing about the words also sewing.
+// Measured 2026-09-07: left chest, 3542 stitches, three cones, one element
+// named. This is the browser flatten lane (service left alone) so the test
+// needs no digitizer.
+test("the review recap names every element, not just the selected one", async ({ page }) => {
+  await page.route("**/health", (r) => r.abort());   // browser lane: `image`
+  await page.goto("/");
+  await page.getByRole("button", { name: "Left Chest", exact: true }).click();
+  await page.getByRole("button", { name: "Next", exact: true }).click();
+
+  await page.locator("textarea").first().fill("FRITSCH'S");
+  await expect(page.locator("span.stats")).toBeVisible({ timeout: 60_000 });
+
+  await page.getByRole("button", { name: "Artwork" }).click();
+  await page.locator("input[type=file]").first().setInputFiles(ART_PNG);
+  await expect(page.locator("span.stats")).toBeVisible({ timeout: 60_000 });
+
+  await page.getByRole("button", { name: "3 Review" }).click();
+  const summary = page.locator("dl.summary");
+  await expect(summary).toContainText('Text — "FRITSCH\'S"');
+  await expect(summary).toContainText("Logo / image");
+  // Numbered, so two "Content" rows are tellable apart.
+  await expect(summary.locator("dt", { hasText: /^Content 1$/ })).toBeVisible();
+  await expect(summary.locator("dt", { hasText: /^Content 2$/ })).toBeVisible();
+});

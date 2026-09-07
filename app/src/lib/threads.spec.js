@@ -192,3 +192,47 @@ test("loadPreferredPaletteId degrades to studio when storage is unavailable or h
   // Node test env has no localStorage at all -- the helper must swallow that.
   expect(loadPreferredPaletteId()).toBe("studio");
 });
+
+// --- The shopping list must name the cones the design actually sews --------
+//
+// Measured 2026-09-07 driving the real Download step: it defaulted to Studio's
+// 56 generic shades on a design whose cones the engine had picked out of a
+// 398-colour catalog. On `logo_bridge_bar` at 80 mm that collapsed 13 distinct
+// cones to 9 names — 0501 Sun, 0713 Lemon and 6031 Limelight all printing
+// "Lemon" — so a customer buys nine spools for a thirteen-cone design. And the
+// names are not merely coarse: on `logo_golden_tee` the engine's `0670 Cream`
+// printed as "Natural White" while `0630 Buttercup` printed as "Cream".
+//
+// This env has no localStorage (see the test above), so these exercise the
+// no-stored-preference path — which is the one every first-time customer is
+// on, and the only one that changed.
+
+test("a design's own chart becomes the default when nothing is stored", () => {
+  expect(loadPreferredPaletteId("isacord")).toBe("isacord");
+  expect(loadPreferredPaletteId("madeira-rayon")).toBe("madeira-rayon");
+});
+
+test("a lettering-only project, with no design chart, keeps generic names", () => {
+  expect(loadPreferredPaletteId()).toBe("studio");
+  expect(loadPreferredPaletteId(null)).toBe("studio");
+  expect(loadPreferredPaletteId("")).toBe("studio");
+});
+
+test("a chart id this build cannot load is never selected", () => {
+  // The service knows 69 brands; a build that shipped before one of them must
+  // not select a chart it cannot fetch — the summary would render no cones.
+  expect(loadPreferredPaletteId("brand-from-the-future")).toBe("studio");
+});
+
+test("a stored preference still wins over the design's chart", () => {
+  // The one case this env cannot reach on its own: someone who deliberately
+  // picked "Studio basics" keeps it, and the selector is right there anyway.
+  const saved = globalThis.localStorage;
+  globalThis.localStorage = { getItem: () => "studio", setItem: () => {} };
+  try {
+    expect(loadPreferredPaletteId("isacord")).toBe("studio");
+  } finally {
+    if (saved === undefined) delete globalThis.localStorage;
+    else globalThis.localStorage = saved;
+  }
+});

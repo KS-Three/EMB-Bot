@@ -303,6 +303,37 @@ These are the ones that cost real time here.
   `EADDRINUSE`. The driver spawns `detached: true` and kills the whole process
   group. By hand: `lsof -ti:5173 -sTCP:LISTEN | xargs -r kill`.
 
+- **Never read a value after a fixed `sleep` — poll until it STOPS changing.**
+  The upload gotcha above says this for the stitch caption; it is the general
+  rule, and it cost three separate wrong conclusions in one session
+  (2026-09-07). Everything here settles asynchronously and at a different
+  pace:
+
+  | what | how long it read the OLD value |
+  |---|---|
+  | Download step's thread list (brand chart loads lazily) | ~580 ms |
+  | `.dgp-stats` after a shape edit re-digitizes | ~2.9 s |
+  | the delta note vs the stats it describes | ~500 ms apart |
+  | `.dgp-stats` after "Sew all N" enclosed areas | ~2.3 s |
+
+  Each of those looked like a defect — "the shopping list ignores the chart",
+  "hiding a shape changes nothing", "the delta contradicts the stats" — and
+  each was a screenshot taken mid-update.
+
+  **A stability window ALONE is not enough, and that mistake was made with a
+  poller in hand.** "Unchanged for 5 × 300 ms" is satisfied *while* a
+  re-digitize is still in flight, because the old value sits there perfectly
+  stable until the new one lands 2.3 s later. That produced a sixth wrong
+  conclusion — "Sew all 4 changes nothing" — from a helper written to prevent
+  exactly this. **Wait for the value to CHANGE first, then settle.** Where a
+  change is not guaranteed, key the wait on something that IS: `.dgp-delta`
+  appearing, a spinner clearing, a network response. Print the timeline, and
+  if it never changes, THEN it is a bug and you have the evidence:
+
+  ```
+  eval new Promise(r=>{const base=document.querySelector('.dgp-stats')?.innerText;let last=null,same=0,moved=false;const t=setInterval(()=>{const v=document.querySelector('.dgp-stats')?.innerText;if(!moved){if(v!==base)moved=true;return}if(v===last){if(++same>4){clearInterval(t);r(v)}}else{last=v;same=0}},400);setTimeout(()=>{clearInterval(t);r((moved?'UNSETTLED ':'NEVER CHANGED ')+last)},60000)})
+  ```
+
 - **Never pipe a test run to `tail`** — you get tail's exit code, so a red run
   reads green. (CLAUDE.md says this for pytest; it bites identically for the
   driver: `node driver.mjs smoke | tail` reported `EXIT=0` on a failing run.)

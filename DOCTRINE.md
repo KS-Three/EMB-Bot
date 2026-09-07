@@ -270,6 +270,27 @@ Moved verbatim 2026-08-28 — no section was rewritten in the move.
   singly; an unavailable cutout skips prep entirely rather than degrading onto
   prep-alone. **Ships KNOWINGLY INERT for real uploads** — all four acceptance
   photos classify `gradient` at 1.00, which the gate excludes; revisit at gate 2. *(ruled 2026-08-24 — Kent; [area 1](docs/scope/1-auto-digitizing-quality.md))*
+- **The ERROR path is customer copy too — and an error caused by the
+  CALLER'S own edit must keep its own message.** `jobs.py` set
+  `job.error = f"{type(exc).__name__}: {exc}"` and `digitizer.js` throws that
+  at the user, so a 1x1 upload read *"ValueError: no foreground pixels — the
+  whole image reads as background"* three lines after the upload gate's two
+  well-written rejections. Not pathological: `stage1_prep` raises it for any
+  artwork whose subject the background detector eats.
+  `digitizer_service/errors.py` maps the artwork-caused failures and puts the
+  raw form in `job.detail` beside the traceback.
+
+  **The correction is the reusable half.** The first cut replaced EVERY
+  unmatched exception with one generic sentence, and three service tests
+  failed: a bad `boundary_override` and a non-adjacent `merge_shape_ids` fail
+  with messages naming the caller's own edit, which is the only thing that
+  lets it be undone. **Engine-leak and caller-feedback look identical from the
+  job boundary and are opposites.** So it is an ALLOWLIST of artwork failures,
+  and anything unmatched passes through unchanged — `KeyError: thread_index`
+  stays reachable in principle, which is the status quo, and buying it out
+  costs three real contracts. `tests/test_job_errors.py` (9).
+  *(found and fixed 2026-09-07 — scope-history 09-07)*
+
 - **RUN THE APP. A screenshot found in one look what six hours of reading the
   same code did not.** 2026-09-07, after a session spent measuring warning
   voice, code seams and doc budgets by reading source: the Studio was launched
@@ -740,6 +761,33 @@ Moved verbatim 2026-08-28 — no section was rewritten in the move.
 
 ## Corrections — suspicions this document itself raised, then disproved
 
+- **A grade quoted without its ARM and its YARDSTICK is not a measurement —
+  and I published one.** This session reported gaulke's `dissolve_phantom_blends`
+  baseline as *"stale: B 76 with the flag OFF, zero blocking
+  `THREAD_MATCH_POOR`, worst ΔE00 0.0"*. Re-measured on the merged tree with
+  #396's own `tools/flip_sheet.py`, same config: **F 4, four cones, TWO
+  blocking `THREAD_MATCH_POOR`, 10,229 stitches** — and the `halo` arm returns
+  a byte-identical row, so the flag is INERT there and the claimed "4 cones →
+  3, −14.5% stitches" is wrong too.
+
+  **Where the number came from is the instructive part.** The 2026-09-06 entry
+  reads *"F 0 → C 64 … and B 76 with excess as well"* — B 76 was the flag-**ON**
+  state under the **excess** yardstick. It was carried across two axes at once,
+  onto the OFF arm and onto the default yardstick, and then reported as a fresh
+  measurement corroborating #380. It corroborated nothing; it was the same
+  misread wearing a second hat.
+
+  **The tell was in the entry it was lifted from.** That same 2026-09-06 line
+  records `off` at **10,229 stitches**; the re-measurement returns exactly
+  10,229. The baseline had not moved at all, and one number would have said so.
+
+  Caught only because a merge with #396 put the two readings side by side and
+  they disagreed — not by any check here. `THREAD_MATCH_POOR` already carries
+  `yardstick` in `extra` for exactly this reason (MASTER_SCOPE defect 28's
+  "the yardstick that judged the severity"), and this repo already had the
+  rule. **Before quoting any grade: which arm, which yardstick, and does one
+  cheap invariant from the same source agree?** *(2026-09-07)*
+
 - **"Our satin-vs-fill MIX nearly matches the professional's" was an AREA
   statistic, and by thread it is false.** Defect 5 carried that premise from
   `tools/pro_parity/scorecard.py`'s `cell_stats`, which assigns ONE stitch
@@ -1046,6 +1094,168 @@ its hedge as it is copied forward** — is why this file is split.
 ---
 
 ## Gotchas — cost someone a session once
+
+- **A "CLOSED, confirmed by code read" entry survived three weeks because the
+  code WAS right and the product was not.** MASTER_SCOPE's DST section said
+  the axis bug was unreachable from the real product: *"Auto-digitized designs
+  leave by pyembroidery `/export`"*, confirmed 2026-08-17 by reading the code.
+  `isPurelyDigitized` does say that, and reads correctly in isolation. What a
+  code read cannot see is that **`defaultProject()` seeds an empty text
+  element** which a customer who uploads a logo never removes — so
+  `every(el => el.type === "digitized")` was false for essentially every real
+  design, the `/export` preference never fired, and **every** DST left by the
+  browser codec.
+
+  **Measured on the artifact, not the code** — downloaded from the shipped UI,
+  decoded with `pystitch`, the same third-party reader CI cross-validates
+  against. The app claimed `81×16 mm`:
+
+  | | bbox pystitch reads | colour |
+  |---|---|---|
+  | browser DST | **16.3 × 80.5 mm** | **0 COLOR_CHANGE, 1 SEQUIN_MODE + 10 SEQUIN_EJECT** |
+  | service DST | 80.5 × 16.3 mm | 1 COLOR_CHANGE |
+  | PES (either) | 80.5 × 16.3 mm | 1 COLOR_CHANGE, 2 threads |
+
+  The colour-change byte is not merely unread — on a two-colour design it
+  decodes as **switch to sequin mode and eject ten sequins**. That is a job
+  that goes wrong loudly, not quietly.
+
+  **The lesson is about the word "confirmed".** A code read confirms what the
+  code says; only running the product confirms what the customer gets. Both
+  entries were written honestly and the second one is what caught the first.
+  When a closure rests on a code read, say so in the pointer — that entry did,
+  which is the only reason this was checkable.
+
+  **And the trade-off, stated because it is real:** `dstimport.js` is
+  transposed too, so a service-encoded DST re-imported into EMB-Bot now reads
+  `16×81`. The two bugs used to cancel for a browser→browser round trip. The
+  machine is the side that matters — a stitch file exists to be sewn — but
+  fixing the codec remains Kent's call.
+
+  **The import half is not hypothetical, and it never was mine to introduce.**
+  Imported the commissioned becker DSTs — a professional digitizer's own files,
+  already in the repo — and EMB-Bot shows them **rotated**: `76.5×46.8 mm` as
+  `47×77`, `101.9×62.1` as `62×102`. So a customer who brings a logo they paid
+  a digitizer for sees it sideways, hoop-fitted wrong and auto-fit scaled off
+  the wrong axis, and that has been true the whole time — independent of any
+  change here. **MASTER_SCOPE's stated resolution path was "a sew-out or
+  third-party read of a browser-encoded DST"; both directions are now read and
+  neither needs a sew-out to settle.** What is left is genuinely a decision, not
+  a measurement: fixing import alone breaks the self round-trip, fixing both
+  makes every DST EMB-Bot has ever written read rotated until re-exported.
+  That is why it is Kent's, and it is now costed rather than merely flagged.
+  *(measured 2026-09-07)*
+
+- **When you fix a rule, COUNT ITS READERS FIRST. Three defects in one
+  session were the same shape.** Each was one question being answered in more
+  than one place, with only one place right:
+  1. **Two copies, drifted.** `GARMENT_FABRIC` and the `FABRICS` table exist
+     in `src/fabrics.js` and `digitizer_core/fabrics.py`, hand-ported, with
+     the Python file's docstring promising they match. A ruling landed in one.
+  2. **Three readers, three versions.** "Is this element sewable" was in
+     `canAdvance("create")`, absent from the review headline (which just said
+     "Ready to stitch"), and a `{:else}` in the recap that assumed text.
+  3. **Two callers, one fixed.** `loadPreferredPaletteId()` defaults the
+     thread chart. The Download step's shopping list was given the design's
+     own brand at 07:00; `ThreadPicker` was not, and was found half an hour
+     later showing **"Studio basics" directly above a label reading
+     `0134 Smoky`** — offering 56 generic shades to replace a cone chosen
+     from 398, so picking one threw the catalog number away.
+  **The third is the instructive one because it was MY OWN half-fix**, found
+  by driving a screen I had not thought to open rather than by reading. The
+  cheap habit that would have caught it: after changing a shared function,
+  grep its name and look at every call site, not just the one the bug was
+  reported on. `loadPreferredPaletteId` had two; `ThreadPicker` itself has
+  **nine** call sites across seven components, which is why the fix is a
+  store (`lib/designChart.js`) rather than a prop threaded through all of
+  them — a fact that belongs to the project should not be carried by every
+  component between it and the reader. *(2026-09-07)*
+
+- **A refresh destroyed the offline user's artwork, and `_hasImage: true`
+  was the only thing saved about it.** An `image` element's pixels lived in
+  App's `runtime.workImages`, which is deliberately not persisted; the element
+  itself carried nine scalar settings and no picture. Measured in a browser:
+  **2739 stitches before a refresh, no stitch caption after**, the canvas back
+  to "Your embroidery appears here as you add content", and not one word of
+  explanation. The sibling `digitized` element had solved this from the start
+  by keeping `sourcePng` on the element — same session, same fixture, 2187
+  stitches before AND after — so the answer already existed one factory down.
+  **Who it hit is the sharp part**: `image` is created only when the digitizer
+  service is DOWN (`resolveArtworkType`), a state the Content step explicitly
+  supports and advertises ("Artwork will be placed but not auto-digitized").
+  The app invited people to work offline and then threw the work away.
+  When runtime state is the ONLY home for something a user made, a refresh is
+  a delete key. *(measured 2026-09-07; `sourcePng` at WORK_MAX_PX now on the
+  element, restored by `lib/imageSource.js` from the load path)*
+
+- **Restore in the load path, not in the panel that edits the thing.** The
+  first cut put the rehydrate in `ImagePanel`, which mounts only on the
+  Content step with that element selected. The embroidery field is beside
+  EVERY step, so a reloaded project showed an empty field until the user
+  happened to click Content — and `_hasImage` stayed false meanwhile, so the
+  review step would have called a design with real artwork in it empty. It
+  measured as "fixed" (the stitches came back) while still reading as lost
+  work on the screen the reload lands on. Moving it to `enterProject` and boot
+  covers every step at once, and leaves one path instead of two.
+  **Its own trap**: Svelte hoists a function declaration but not the `let` it
+  closes over, so calling `restoreArtwork(project)` up beside the `project`
+  assignment threw *"Cannot access 'rehydrateToken' before initialization"* —
+  and a throw in that block renders an EMPTY BODY, which looks like a dead
+  server rather than a scripting error. Check `pageerror`, not the network.
+  *(2026-09-07 — same session)*
+
+- **A trailing `{:else}` answers a question about the wrong type, and a
+  missing field renders as EMPTY rather than as "undefined".** The review
+  step's recap branched `image` / `manual` / else-assume-text. Three of the six
+  element types `addElement` builds are neither — `digitized`, `design`,
+  `shape` — so all three landed on the text rung. `digitized` is the
+  commonest path in the app, and on the screen immediately before Download it
+  recapped a finished auto-digitized logo as **`Content: Text — ""`** above a
+  blank `Font`. Svelte prints a missing property as nothing, so the wrong
+  answer read as a plausible *empty* design rather than as a bug — which is
+  why it survived; `Text — "undefined"` would have been reported in a day.
+  **The suites all passed and always would have**: `wizard-smoke.spec.js`
+  asserts the recap on the text and image paths, both of which have their own
+  rung, and `quality-report.spec.js` drives the digitized path but only ever
+  looked at `.quality`, below it. Two tests over the same screen, and the gap
+  was exactly where they met. Cut to `lib/summary.js` with one branch per
+  type, and `summary.spec.js` enumerates them from `project.js`'s OWN factory
+  ternary, so a seventh type fails a test instead of shipping.
+  **Found by breaking it**: adding `.trim()` to that line turned the silent
+  wrong answer into a render-time throw, which took out step navigation
+  entirely — the failing e2e pointed at a disabled-looking button on the
+  Content step, three components away from the cause.
+  *(measured 2026-09-07 in a browser; the mutation quotes the shipped string
+  verbatim)*
+
+- **The review step said "Ready to stitch" for a design with nothing in it.**
+  A brand-new project holds one EMPTY text element, so the headline, the
+  lead-in ("Looks good? The live field is your stitch-out.") and the summary
+  all rendered over a canvas reading "Your embroidery appears here as you add
+  content." `flow.js`'s `canAdvance("create", …)` already computed exactly the
+  right predicate and ONLY the Next button consulted it — so the one signal
+  the customer got was a disabled button with no reason attached. When a gate
+  already exists, the copy above it should read from the same gate rather than
+  assume the happy case. *(2026-09-07 — same session; e2e in
+  `wizard-smoke.spec.js`, mutation-proved)*
+
+- **A ruling marked "shipped" may have shipped into ONE of the two engines.**
+  Corpus law 26 (`edge_lattice` → `edge_run` under a knit fill) is recorded as
+  **shipped 2026-08-05**. It landed in `digitizer_core/fabrics.py` and never in
+  `src/fabrics.js`, so for a month the browser engine ran an extra crosshatch
+  pass under every fill on **left_chest, beanie and sleeve** — the commonest
+  placement there is, plus two — worth **+1.4% to +5.7% stitches** against the
+  Python engine on the same artwork. Three shipped Studio lanes read that table
+  (image mode, manual digitizing, shape presets). Nothing failed: `fabrics.py`'s
+  own docstring asserts the two tables are "the same values, deliberately", in
+  prose, and **475 engine tests and 936 Studio tests all pass with either
+  value** — no test pinned the knit underlay at all. When a status column says
+  shipped, ask *shipped where*; a physical table that exists twice needs a test
+  that compares the two copies, not a comment saying they match.
+  *(found 2026-09-07 by diffing the tables field-for-field while checking
+  whether the Studio's garment choice reaches the digitizer at all; both copies
+  and both spacing constants now guarded by
+  `digitizer/tests/test_fabric_wire.py`)*
 
 - **A pass that can DELETE as well as relabel needs a probe that counts both,
   or it will look innocent.** `dissolve_phantom_blends` folds a label two

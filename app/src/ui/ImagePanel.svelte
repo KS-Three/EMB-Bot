@@ -29,8 +29,13 @@
     d("elupdate", { id: element.id, patch: p });
   }
 
+  // Same limit DigitizePanel uses for its own `sourcePng`, for the same
+  // reason: a project too big to write is a project that silently stops
+  // saving (projects.js swallows a quota throw).
+  const MAX_SOURCE_B64 = 2_000_000;
+
   let previewCanvas;
-  let fileName = "";
+  let fileName = element.name || "";
   let error = "";
   let busy = false;
 
@@ -42,13 +47,14 @@
   // WORK_MAX_PX long side, read pixels, and force low-alpha pixels fully
   // transparent so downstream flattening treats them as background.
   // Ported from src/app.js prepRGBA (lines 95-108).
-  function prepRGBA(img) {
+  function workSize(img) {
     const iw = img.width, ih = img.height;
-    const longest = Math.max(iw, ih) || 1;
-    const scale = Math.min(1, WORK_MAX_PX / longest);
-    const w = Math.max(1, Math.round(iw * scale));
-    const h = Math.max(1, Math.round(ih * scale));
+    const scale = Math.min(1, WORK_MAX_PX / (Math.max(iw, ih) || 1));
+    return { w: Math.max(1, Math.round(iw * scale)), h: Math.max(1, Math.round(ih * scale)) };
+  }
 
+  function prepRGBA(img) {
+    const { w, h } = workSize(img);
     const cv = document.createElement("canvas");
     cv.width = w;
     cv.height = h;
@@ -60,6 +66,24 @@
       if (rgba[i] < ALPHA_CUTOFF) rgba[i] = 0;
     }
     return { rgba, w, h };
+  }
+
+  // The working image as base64 PNG, for `element.sourcePng`.
+  //
+  // Encoded at WORK_MAX_PX, the SAME size prepRGBA consumes, so a reload
+  // rehydrates the exact pixels the flatten was working from rather than a
+  // re-downscale of the original. `digitized` keeps its source at
+  // PROCESS_MAX_PX because the service re-derives everything from it; here
+  // nothing downstream ever sees more than 480 px, so storing more would be
+  // quota spent on pixels no code path reads.
+  function encodeWorkPng(img) {
+    const { w, h } = workSize(img);
+    const cv = document.createElement("canvas");
+    cv.width = w;
+    cv.height = h;
+    cv.getContext("2d").drawImage(img, 0, 0, w, h);
+    const url = cv.toDataURL("image/png");
+    return url.slice(url.indexOf(",") + 1);
   }
 
   async function loadImage(file) {
@@ -121,6 +145,17 @@
     try {
       const img = await loadImage(file);
       const prep = prepRGBA(img);
+      // Persist the working image BEFORE anything else can fail: without it
+      // the pixels live only in App's runtime and a refresh destroys them.
+      const b64 = encodeWorkPng(img);
+      if (b64.length > MAX_SOURCE_B64) {
+        // Not reachable for ordinary artwork — a 480 px PNG is tens of KB —
+        // but a pathological one (huge palette, full-frame noise) must fail
+        // with a sentence rather than silently save a project it cannot
+        // reload. Same posture, and the same limit, as DigitizePanel's.
+        throw new Error("That image is too heavy to save with the design. Simplify or shrink it and try again.");
+      }
+      patch({ sourcePng: b64, name: file.name });
       fileName = file.name;
       // keep the reactive re-flatten guard in sync so it doesn't immediately
       // re-fire with stale "previous" values
@@ -134,6 +169,7 @@
     } catch (err) {
       error = (err && err.message) || "Could not read this image file.";
       fileName = "";
+      patch({ sourcePng: null, name: "" });
       d("image", null);
       flattenFrom(null, element.nColors, element.removeBg);
     } finally {
@@ -149,6 +185,15 @@
   function onRemoveBgChange(e) {
     patch({ removeBg: e.target.checked });
   }
+
+  // Rehydration lives in App (lib/imageSource.js), not here: this panel
+  // mounts only on the Content step with this element selected, and the
+  // embroidery field is on every step. A panel-level restore left a reloaded
+  // project showing an empty field — and `_hasImage` false, so the Review
+  // step called a design with real artwork in it empty — until the user
+  // happened to click Content. App's load path is the one place that is true
+  // for every step at once, so `workImage` is already populated by the time
+  // this component exists.
 
   // Re-flatten whenever the colors slider / remove-bg checkbox change the
   // element settings (they round-trip through App before landing back here).

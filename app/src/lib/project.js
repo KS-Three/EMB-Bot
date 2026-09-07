@@ -28,10 +28,27 @@ export function defaultTextElement(id) {
   };
 }
 
+// `sourcePng` and `name` postdate this element type by a long way, and their
+// absence was silent data loss: an image element's pixels lived ONLY in
+// App's `runtime.workImages`, which is not persisted, so a saved project
+// reloaded with `_hasImage: true` and nothing behind it. Measured in a
+// browser 2026-09-07 — 2739 stitches before a refresh, no stitch caption
+// after, no message of any kind. The sibling `digitized` element had solved
+// exactly this from the start by keeping `sourcePng` on the element; this is
+// the same answer, at WORK_MAX_PX (480) rather than PROCESS_MAX_PX, because
+// 480 is the size the flatten actually consumes, so a reload rehydrates the
+// same pixels it was showing.
+//
+// An `image` element is only ever created when the digitizer service is
+// DOWN (App.onAddElement -> resolveArtworkType), which is a state the
+// Content step explicitly supports and tells the user about — so this was
+// the offline user's work, and only theirs, that a refresh destroyed.
 export function defaultImageElement(id) {
   return {
     id,
     type: "image",
+    name: "",
+    sourcePng: null,
     nColors: 4,
     removeBg: true,
     threadRgb: {},
@@ -539,6 +556,15 @@ export function migrateProject(input) {
       if (!el || el.type !== "manual") return el;
       const d = defaultManualElement(el.id);
       return { ...d, ...el, shapes: Array.isArray(el.shapes) ? el.shapes : d.shapes };
+    });
+    // Image elements: same additive treatment, so a project saved before
+    // `sourcePng`/`name` existed loads with them null/"" rather than
+    // undefined. Those saves carry no pixels and never will — nothing can
+    // recover what was not written — but they now take the same "no artwork"
+    // path a fresh element does instead of a subtly different one.
+    merged.elements = merged.elements.map((el) => {
+      if (!el || el.type !== "image") return el;
+      return { ...defaultImageElement(el.id), ...el };
     });
     // Shape elements: same additive treatment again — defaults filled in for
     // fields that postdate the save, and `params` guaranteed to be a real

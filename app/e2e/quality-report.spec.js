@@ -106,6 +106,22 @@ test("the review step shows the grade, the findings, and the thread bill", async
   await page.setViewportSize({ width: 1440, height: 1000 });
   await digitizeThenReview(page);
 
+  // The recap ABOVE the grade, which nothing had ever looked at on this path.
+  // Every assertion in this file was about `.quality`, and every recap
+  // assertion lives in wizard-smoke.spec.js on the text and image paths —
+  // both of which have their own branch. So an auto-digitized design, the
+  // commonest thing this app does, recapped as `Content: Text — ""` with a
+  // blank `Font` (measured in a browser 2026-09-07): App.svelte's summary
+  // ended in a text-shaped `{:else}`, and `digitized` fell into it.
+  const summary = page.locator("dl.summary");
+  await expect(summary).toContainText("Auto-digitized artwork");
+  await expect(summary).toContainText(path.basename(ART_PNG));
+  await expect(summary).not.toContainText("Text —");
+  // A blank <dd> is how the old Font row rendered — assert every row has one.
+  const values = await summary.locator("dd").allInnerTexts();
+  expect(values.length).toBeGreaterThanOrEqual(4);
+  for (const v of values) expect(v.trim()).not.toBe("");
+
   const quality = page.locator(".quality");
   await expect(quality).toBeVisible();
 
@@ -144,4 +160,35 @@ test("a lettering-only project shows no quality section", async ({ page }) => {
   await page.getByRole("button", { name: "3 Review" }).click();
   await expect(page.getByRole("heading", { name: "Ready to stitch" })).toBeVisible();
   await expect(page.locator(".quality")).toHaveCount(0);
+});
+
+// The thread picker offers replacements from a chart — and it defaulted to
+// Studio's 56 generic shades on a design whose cones the engine chose out of
+// a 398-colour catalog. Found 2026-09-07 with the picker open, showing
+// "Studio basics" directly above a label reading `0134 Smoky`: a customer
+// changing one thread was offered generic names to replace a real cone, and
+// picking one threw the catalog number away.
+//
+// Same defect as the Download step's shopping list, on a screen the fix for
+// that one did not touch — `loadPreferredPaletteId()` has two callers and
+// only one was passed the design's brand. It is now a store both read
+// (lib/designChart.js), because ThreadPicker is used in nine places.
+test("the thread picker offers the chart the design's cones came from", async ({ page }) => {
+  test.skip(!serviceUp, skipReason);
+  test.setTimeout(300_000);
+
+  await page.goto("/");
+  await page.getByRole("button", { name: "Tote", exact: true }).click();
+  await page.getByRole("button", { name: "Next", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "What are you making?" })).toBeVisible();
+  await page.getByRole("button", { name: "Artwork" }).click();
+  await page.locator(".dgp-upload input[type=file]").setInputFiles(ART_PNG);
+  await expect(page.locator(".dgp-stats")).toBeVisible({ timeout: 120_000 });
+
+  await page.getByRole("button", { name: /^Thread color/ }).first().click();
+  const brand = page.locator("select.tp-brand").first();
+  await expect(brand).toBeVisible();
+  await expect(brand).toHaveValue("isacord");
+  // And the grid really is the brand chart: catalog numbers, not shade names.
+  await expect(page.locator(".tp-cell").first()).toHaveAttribute("title", /^\d{4}\s/);
 });

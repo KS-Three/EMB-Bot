@@ -149,8 +149,27 @@ wants your eye on `docs/renders/color-cap-2026-09-07/` first.
 leave it OFF and bank it** — deliberately parked, not pending. A datum arrived
 2026-09-06 (on `gaulke_roofing` the flag alone is **F 0 → C 64**, blocks 3 → 0,
 worst ΔE 63.6 → 6.8, −15% stitches) and MASTER_SCOPE records it as exactly
-that: *"Not a re-opening, a datum."* His stated reasons on the day — two mild
-negatives and the five-of-six residual — are unchanged.
+that: *"Not a re-opening, a datum."*
+
+**That datum is GONE — but only once, and the second retraction was mine and
+wrong.** PR #380 retracted the C 64 itself: measured on the cones, it is a
+design that DROPPED ITS LETTERING, and the grade rewarded losing the ink.
+That stands.
+
+**This document also claimed the OTHER half had moved — "B 76 with the flag
+OFF, zero blocking `THREAD_MATCH_POOR`". That claim is RETRACTED
+2026-09-07.** Re-measured on the merged tree with `tools/flip_sheet.py` at
+the same config, `off` grades **F 4, four cones, TWO blocking
+`THREAD_MATCH_POOR`**, at 10,229 stitches — the identical stitch count the
+2026-09-06 entry records, so `off` never moved. The "B 76" was that entry's
+flag-**ON** state under the **excess** yardstick, lifted onto the wrong arm
+and the wrong yardstick. #396 read the same fixture independently and got
+F 4 / 2 blocking; it is right. See scope-history 09-07.
+
+So the baseline is NOT stale, and the one thing that might have re-opened the
+2026-09-04 ruling is #380's retraction alone — which cuts the same way. **His
+ruling stands, on his stated reasons — two mild negatives and the
+five-of-six residual — which are unchanged.**
 
 ## Not decidable yet, and why
 

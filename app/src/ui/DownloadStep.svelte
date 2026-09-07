@@ -2,6 +2,8 @@
   import { onMount, createEventDispatcher } from "svelte";
   import { generateAll } from "../lib/generate.js";
   import { exportDesignPreferService, exportWorksheetPDF, exportPNG } from "../lib/exporters.js";
+  import { chartIdForProject } from "../lib/designChart.js";
+  import { isSewable } from "../lib/flow.js";
   import { triggerDownload } from "../lib/download.js";
   import { EMB } from "../lib/emb.js";
   import { PALETTE_INDEX, STUDIO_PALETTE, getCachedPalette, loadPalette, nearestInList, loadPreferredPaletteId, savePreferredPaletteId } from "../lib/threads.js";
@@ -46,8 +48,26 @@
   // stays on the browser path too -- there's no way to export "part" of a
   // combined design through two different encoders.
   function isPurelyDigitized(project) {
-    const els = project.elements || [];
-    return els.length > 0 && els.every((el) => el.type === "digitized");
+    // Only elements that actually SEW count. Every project is born holding an
+    // empty text element (defaultProject), and a customer who uploads a logo
+    // never removes it — so `every(el => el.type === "digitized")` was false
+    // for essentially every real design, and this gate never fired.
+    //
+    // Measured 2026-09-07 by downloading from the shipped UI and decoding
+    // with pystitch, the same third-party reader CI cross-validates against:
+    // the app claimed 81x16 mm, and the DST a customer gets read back
+    // **16.3 x 80.5 mm with 0 threads** — the quarter turn and the
+    // unrecognised colour-change record of CLAUDE.md footgun 1. PES from the
+    // same design read 80.5 x 16.3 with 2 threads.
+    //
+    // The scoping ruling is unchanged and deliberate — lettering and manual
+    // designs stay on the browser encoder, the one with sew evidence behind
+    // it, and a design genuinely MIXING sewable types still does too, because
+    // there is no way to export part of a combined design through two
+    // encoders. What changes is that a placeholder which contributes no
+    // stitches no longer counts as "mixing".
+    const sewable = (project.elements || []).filter(isSewable);
+    return sewable.length > 0 && sewable.every((el) => el.type === "digitized");
   }
 
   // Encoder provenance, surfaced rather than left implicit.
@@ -120,7 +140,13 @@
   // shared preference with ThreadPicker, changeable right here too so a
   // shopper can flip between "generic shade names" and their actual brand's
   // catalog numbers at the moment they're writing the shopping list.
-  let paletteId = loadPreferredPaletteId();
+  // The brand the ENGINE snapped this design's cones out of, when a digitized
+  // element carries one (`review.brandId`, set from the service's own
+  // `palette[0].brand_id`). Every element in a project shares it, so the
+  // first one that has it wins. See `loadPreferredPaletteId` for what a
+  // generic default costs a shopper.
+  const designPaletteId = chartIdForProject(project);
+  let paletteId = loadPreferredPaletteId(designPaletteId);
   function onPaletteChange(e) {
     paletteId = e.currentTarget.value;
     savePreferredPaletteId(paletteId);
@@ -408,10 +434,32 @@
   </p>
 {/if}
 <p>{msg}</p>
+<!-- This note has to stand ALONE, and until 2026-09-07 it did not: it said
+     "see the note above", and the note above renders only
+     `{#if dstUsesBrowserEncoder}` — which is false in the exact case this one
+     exists to cover. A purely-digitized project whose service call fails gets
+     the browser encoder silently, shows no up-front caveat (DST is the filled
+     primary button, no asterisk), and was then told to consult a paragraph
+     that is not on the page. `DownloadStep.spec.js` asserted both halves —
+     `dst-browser-encoder-note` absent, `dst-browser-encoder-downloaded`
+     present — without noticing they contradict.
+
+     So it carries the consequence itself, and in the fallback case names the
+     cause too: the service was ASKED for this file (preferService is
+     isPurelyDigitized) and could not answer, which is both why the file is
+     the transposed one and how to get a good one. -->
 {#if lastExport && lastExport.fmt === "dst" && lastExport.via === "browser"}
   <p class="encodernote" data-testid="dst-browser-encoder-downloaded">
-    That DST came from EMB-Bot's own encoder — see the note above before
-    opening it in other software.
+    <strong>That DST came from EMB-Bot's own encoder.</strong> It opens
+    correctly in EMB-Bot, but other embroidery software reads it rotated a
+    quarter turn and may not see the color stops.
+    {#if dstUsesBrowserEncoder}
+      Download PES or EXP instead if the file is going somewhere else.
+    {:else}
+      The digitizer service was meant to write this one and could not be
+      reached — start it and download again for a file other software reads
+      correctly, or use PES or EXP now.
+    {/if}
   </p>
 {/if}
 <p class="fontcredits-footer">
