@@ -28,9 +28,13 @@ import "@testing-library/jest-dom/vitest";
 const exportCalls = [];
 let nextVia = "browser";
 
+// Mutable for the same reason `fitNote` below is: the JEF hoop-header note is
+// derived from the combined design's SIZE, so a fixed 50x50 mock would leave
+// every assertion about it passing against a band it never enters.
+let designSize = { widthMM: 50, heightMM: 50 };
 vi.mock("../lib/generate.js", () => ({
   generateAll: () => ({
-    combined: { widthMM: 50, heightMM: 50, colors: [], blocks: [] },
+    combined: { ...designSize, colors: [], blocks: [] },
   }),
 }));
 vi.mock("../lib/exporters.js", () => ({
@@ -78,7 +82,7 @@ beforeAll(async () => {
   ({ default: DownloadStep } = await import("./DownloadStep.svelte"));
 });
 
-beforeEach(() => { fitNote = ""; });
+beforeEach(() => { fitNote = ""; designSize = { widthMM: 50, heightMM: 50 }; });
 
 function project(elements) {
   return { version: 2, name: "EMBBOT", garmentId: "left_chest", elements };
@@ -491,4 +495,102 @@ test("an oversize design still has to be confirmed before a JEF leaves — the g
   const dialog = getByRole("dialog");
   await fireEvent.click(within(dialog).getByRole("button", { name: "Download JEF anyway" }));
   await waitFor(() => expect(exportCalls).toEqual([{ format: "jef", preferService: false }]));
+});
+
+// ---- The JEF header declares a hoop the design does not fit -------------
+//
+// pystitch's `get_jef_hoop_size` ladder falls through to HOOP_110X110 — the
+// second smallest of its five codes — for any design at or over 200 mm in
+// either axis, and a Janome reads that code before it reads a stitch.
+// Measured through the real /export route on 2026-09-07 and pinned in
+// digitizer/tests/test_jef_hoop_code.py; these tests own only what the panel
+// SAYS about it, the same split the DST notice above uses.
+
+test("a design over 200 mm carries the JEF hoop-header caveat", () => {
+  designSize = { widthMM: 240.0, heightMM: 60.0 };
+  const view = render(DownloadStep, {
+    props: { project: project(DIGITIZED), runtime: {} },
+  });
+  const note = view.getByTestId("jef-hoop-header-note");
+  expect(note).toBeInTheDocument();
+  // The three things a customer needs: what the file says, what it means, and
+  // what they can do instead.
+  expect(note.textContent).toMatch(/110 × 110 mm/);
+  expect(note.textContent).toMatch(/240\.0 × 60\.0 mm/);
+  expect(note.textContent).toMatch(/Under 200 mm the header is correct/);
+});
+
+test("the caveat rides the JEF button by description, not by name", () => {
+  designSize = { widthMM: 240.0, heightMM: 60.0 };
+  const view = render(DownloadStep, {
+    props: { project: project(DIGITIZED), runtime: {} },
+  });
+  const jef = view.getByTestId("jef-button");
+  expect(jef).toHaveAccessibleName("JEF");
+  expect(jef.classList.contains("caveat")).toBe(true);
+  expect(jef.getAttribute("aria-describedby")).toBe("jef-hoop-note");
+  expect(view.container.querySelector("#jef-hoop-note")).toBe(
+    view.getByTestId("jef-hoop-header-note"),
+  );
+});
+
+test("a design that fits every hoop is left alone", () => {
+  const view = render(DownloadStep, {
+    props: { project: project(DIGITIZED), runtime: {} },
+  });
+  expect(view.queryByTestId("jef-hoop-header-note")).not.toBeInTheDocument();
+  const jef = view.getByTestId("jef-button");
+  expect(jef.classList.contains("caveat")).toBe(false);
+  expect(jef.getAttribute("aria-describedby")).toBeNull();
+});
+
+test("the boundary is the writer's own, in the writer's own units", () => {
+  // get_jef_hoop_size compares ROUNDED 0.1 mm units against 2000, so 199.9 mm
+  // is the last size that declares a hoop it fits and 200.0 mm is the first
+  // that does not. A threshold expressed in whole mm would put the note on
+  // the wrong side of exactly this pair.
+  designSize = { widthMM: 199.9, heightMM: 60 };
+  const under = render(DownloadStep, { props: { project: project(DIGITIZED), runtime: {} } });
+  expect(under.queryByTestId("jef-hoop-header-note")).not.toBeInTheDocument();
+  under.unmount();
+
+  designSize = { widthMM: 200.0, heightMM: 60 };
+  const over = render(DownloadStep, { props: { project: project(DIGITIZED), runtime: {} } });
+  expect(over.getByTestId("jef-hoop-header-note")).toBeInTheDocument();
+});
+
+test("height alone triggers it — the ladder tests both axes", () => {
+  // 150 x 240 mm is not a hypothetical: it FITS the 6x10 hoop, so the
+  // hoop-exceeds confirm never opens for it, and it is still stamped 110x110.
+  designSize = { widthMM: 150, heightMM: 240 };
+  const view = render(DownloadStep, {
+    props: { project: project(DIGITIZED), runtime: {} },
+  });
+  expect(view.getByTestId("jef-hoop-header-note")).toBeInTheDocument();
+});
+
+test("the note does not depend on the hoop-exceeds gate", () => {
+  // The whole reason this is a persistent note and not a line in the confirm
+  // dialog. `fitNote` stays "" here — the design fits the customer's hoop —
+  // and the caveat must still appear, because the FILE is wrong either way.
+  designSize = { widthMM: 200, heightMM: 150 };
+  fitNote = "";
+  const view = render(DownloadStep, {
+    props: { project: project(DIGITIZED), runtime: {} },
+  });
+  expect(view.getByTestId("jef-hoop-header-note")).toBeInTheDocument();
+});
+
+test("only the formats verified to carry no hoop header are named", () => {
+  // Scope pin. Grepping pystitch's writers, exactly two mention a hoop:
+  // JefWriter and PesWriter. So DST and EXP are safe to name and PES is not —
+  // its hoop bytes are a constant that never described the design, and what a
+  // Brother machine does with them is not measurable in this repo.
+  designSize = { widthMM: 240, heightMM: 60 };
+  const view = render(DownloadStep, {
+    props: { project: project(DIGITIZED), runtime: {} },
+  });
+  const note = view.getByTestId("jef-hoop-header-note");
+  expect(note.textContent).toMatch(/DST and\s+EXP carry no hoop header at all/);
+  expect(note.textContent).not.toMatch(/PES/);
 });
