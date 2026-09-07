@@ -2988,3 +2988,86 @@ its hedge as it is copied forward** — is why this file is split.
   defect measured on the quiet path and parked reads as cosmetic forever.
   Still Kent's — the DST codec is (CLAUDE.md footgun 1) — but it is a one-line
   change now costed against a real logo instead of a fixture. *(2026-09-07)*
+
+## Advice that names a gesture the device does not have (2026-09-07)
+
+The session's recurring defect gained a fifth shape. The first four were a
+capability with no control (JEF), a control with no announcement (the shapes
+behind right-click), advice with no lever ("size up" at the cap), and a true
+warning the case it describes never reaches (the JEF caveat on a dialog that
+does not open). The fifth: **advice naming a gesture the device cannot
+perform.**
+
+Not a dead end being described — a dead end being *recommended*, by a product
+that already knows better. `(any-pointer: fine)` was false on the phone the
+whole time.
+
+The check to run on any instruction the product gives: not just "is this
+true" and "is the lever reachable", but **"can the person reading this
+actually do the thing it names, on the machine they are holding".**
+
+`any-pointer` and not `pointer`, whenever this comes up again. A laptop with
+a touchscreen reports `pointer: coarse` when touch is the primary input while
+still having a mouse plugged in, and that customer can right-click perfectly
+well. The question is whether ANY fine pointer exists.
+
+## A capability read too late is the same as a capability not read (2026-09-07)
+
+Reading a `matchMedia` in `onMount` and letting `paint()` consume it looks
+correct and is not: **the first `paint()` runs before onMount's callbacks
+do.** A phone would have shown the desktop sentence on first paint and kept
+it forever, because nothing repaints an empty canvas.
+
+Mutation-proved rather than reasoned about: moving the read from the
+declaration into onMount reddens the phone assertion on its own, with the
+rest of the change untouched. Read at declaration; use onMount only for the
+listener.
+
+## Two documents about one design must not disagree (2026-09-07)
+
+Three separate defects landed the same day from one root: a fact the app
+computes and displays on screen, missing from the document that leaves the
+app.
+
+- the worksheet printed the size and the stitch count and dropped the trims
+  and the thread metres — two of the four numbers `estimate.js` itself calls
+  "the four facts an operator needs before loading a machine";
+- the worksheet printed "1375 Dark Charcoal" with no chart, while the screen
+  said "Chart: Isacord Polyester 40" one panel away, and all 68 charts number
+  independently;
+- (this morning) the DST caveat that named a fix rotation cannot perform.
+
+**The screen stays at the desk. The sheet goes to the machine.** Anything the
+customer needs while standing at the machine has to be ON the artifact, not
+one panel back in an app they closed.
+
+The shape of the fix matters too: compute the fact ONCE and pass it, never
+re-derive it at the second site. `exporters.js` calls `sewFacts` and hands
+the result to the sheet; `dlWorksheet` takes the codes AND the chart name off
+one `loadPalette` object. Re-deriving is how one design starts having two
+thread numbers, or one chart's codes under another chart's heading.
+
+## Four working machine formats have no button (2026-09-07 — Kent's call)
+
+`/health` advertises `pec`, `vp3`, `xxx` and `u01` alongside the five the
+Studio exposes. Exported a real two-colour design through `/export` in all
+nine and decoded each with pystitch: every one carries the same 99 stitches
+at 80.0 × 24.0 mm, and `vp3`, `xxx` and `pec` carry the 2-thread colour table
+(`dst`, `exp` and `u01` carry none, which is the format, not a fault).
+
+**VP3 is Husqvarna Viking / Pfaff. XXX is Singer.** Two major consumer brands
+whose owners cannot use this product today, against a capability that is
+already built, already answering, and verified above.
+
+Not shipped, deliberately: this is the same shape as the JEF gap closed the
+same morning, but that one was a doc-vs-reality gap — PRODUCT.md item 1
+claimed JEF was done while no button existed. Here PRODUCT.md names PES and
+JEF and says nothing about the other four, so exposing them is scope, and
+scope is Kent's.
+
+Related and also his: PRODUCT.md's launch posture reads "Desktop-only, stated
+on the site" and **nothing in the app states it** — every hit for "desktop"
+under `app/src/` is a code comment. The lettering lane meanwhile works on a
+phone: 1,223 stitches at 102×19 mm, driven with taps and no mouse events. So
+the posture is either unstated or untrue, and which one to fix is a product
+call with revenue behind it.
