@@ -3194,3 +3194,43 @@ swatches carry their colour in `aria-label` with EMPTY text content, so
 **Isolate the layer before writing anything down.** A measurement that
 crosses the UI, the Studio and the engine at once attributes the fault to
 whichever one you were already suspicious of.
+
+## The one failure a customer can fix is the one to word carefully (2026-09-07)
+
+A dead connection made the app say **"Failed to fetch"** — `fetch`'s own
+TypeError message, rendered verbatim — and nothing else. No cause, no action,
+no retry control. Measured by aborting the font requests in a real browser:
+the app does not crash, the page is not blank, there are zero console errors,
+and those three words are the entire communication.
+
+Same shape as the digitize panel that printed server paths and worker STDERR,
+but worse placed: a network failure is the ONE thing a customer can actually
+resolve, and it got the least usable message in the product.
+
+**Two rules from it.**
+
+Name the lever only after checking it works. "Try again" is honest here
+because `fontLoader` clears its cached promise on failure on purpose, so any
+edit re-runs the load — restored the network, typed one more character, design
+back at 1,336 stitches with no reload. Had the loader cached the rejection, the
+only honest advice would have been "reload".
+
+And classify at the source, not at the surface. `fontLoader` marks the
+transport case; the component picks the wording. Matching on browser message
+text would have been fragile (Chrome "Failed to fetch", Firefox
+"NetworkError…", Safari "Load failed") and would have wrongly told a customer
+hitting a 404 — a bad deploy — to check their connection.
+
+## A stubbed global proves nothing if the code takes the other branch (2026-09-07)
+
+Three unit tests for the fetch classification stubbed `globalThis.fetch` and
+all three passed **against the real 85-font manifest read off the filesystem**:
+`fontLoader.readBytes` branches on `IS_NODE` and never calls fetch under
+vitest. The assertions were about a code path the environment cannot reach.
+
+Fourth time this session a new test passed against its own subject. The
+others were a locator matching the wrong element, and twice a run-count
+comparison between different glyphs. **Every one was caught by mutation, and
+none by reading the test.**
+
+Where the fix only exists in a browser, test it in a browser.

@@ -10077,3 +10077,29 @@ pointerdown outside `.fieldmenu`, so a page-wide `getByRole` lookup after a
 wait finds nothing — click inside the menu. And the drawing canvas is the
 SMALL one in the left panel (411 × 274) not the field (932 × 766); the first
 run drew on the field and placed nothing, leaving "Shapes · empty".
+
+### "Failed to fetch" was the whole message (2026-09-07)
+
+Aborting `**/fonts/bin/**` in a real browser, what the customer got:
+
+    <span class="err">Failed to fetch</span>
+
+and nothing else — no cause, no action, no retry control on the page. The app
+does not crash, the page is not blank, zero console errors. Just those three
+words, which are `fetch`'s own TypeError message rendered verbatim.
+
+Also measured, and the reason "try again" is honest advice rather than a
+platitude: **the app fully recovers with no reload.** `fontLoader` clears its
+cached promise on failure deliberately, so once the connection is back any
+edit re-runs the load — network restored, one more character typed, design
+back at 1,336 stitches with the error gone.
+
+Scoped to transport failures. A 404 is a bad deploy or a missing file and
+keeps its own message; telling that customer to check their connection sends
+them chasing the wrong thing.
+
+Two adjacent lanes checked at the same time and found sound: **the
+thread-brand chunk failing costs nothing** (the design still builds — 1,336
+stitches, no message, because the chunk only feeds the picker), and a failed
+manifest degrades the same way a failed binary does rather than blanking the
+page.
