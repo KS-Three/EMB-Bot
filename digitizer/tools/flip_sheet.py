@@ -85,6 +85,15 @@ ARMS: dict[str, dict] = {
         "satin_patch_junctions": True,
         "satin_per_stroke": True,
     },
+    # The matched pair, isolated. `resnap_mask_matches_grader` shrinks the
+    # footprint below `THREAD_REVALIDATE_MIN_PX = 200`, so on its own it makes
+    # the re-snap DECLINE regions rather than improve them; the lowered floor
+    # is what lets it act. `rec4_mask` contains both but also three other
+    # flags, so it cannot price this pair — this arm can.
+    "mask_small": {
+        "resnap_mask_matches_grader": True,
+        "revalidate_small_shapes": True,
+    },
     # `rec4` plus the sixth flag. The sheet's recommendation was measured
     # before `resnap_mask_matches_grader` existed, and a combination is not
     # the sum of its rows — the whole thesis of this tool. Both flags touch

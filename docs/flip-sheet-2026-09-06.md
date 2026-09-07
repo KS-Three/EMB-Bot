@@ -201,6 +201,31 @@ F 4 → **D 46** instead of stopping at F 16. Nothing goes down anywhere.
 Seven fixtures are moved by both parts, so this could not have been read off
 the two rows — which is why it is an arm.
 
+### The mask and the floor are a matched pair — priced
+
+`resnap_mask_matches_grader` shrinks the re-snap's footprint below its own
+200-px floor (gaulke 247 → 54, bridge_bar 240 → 156), so **on its own it makes
+the pass DECLINE regions rather than re-snap them better.**
+`revalidate_small_shapes` is what lets it act. Measured as its own arm
+2026-09-07, because `rec4_mask` carries three other flags and cannot price it:
+
+| arm | moved | stitches | trims | blocks | cones | grades |
+|---|---:|---:|---:|---:|---:|---|
+| `resnap_mask_matches_grader` | 7/26 | −1,715 | +2 | −5 | −4 | gaulke F 4 → D 46 |
+| `revalidate_small_shapes` | 5/26 | +313 | +6 | +1 | +1 | meadow D 52 → C 64 |
+| **`mask_small`** | 8/26 | −1,181 | **+0** | −5 | −4 | **both, 0 down** |
+
+The pair collects **both** grade improvements and the two trim costs cancel to
+**exactly zero**. Nothing goes down.
+
+**But read the last column honestly: the pair buys no grade the two do not
+buy separately.** Its distinctive win is mechanical and invisible here —
+`logo_bridge_bar`'s `S880e5dff` is the one region only the pair reaches, and it
+re-snaps `6156 Olive` → `5866`, **21.3 → 16.2 dE00**, on a fixture that scores
+**exactly 0 either way**. That is `yardstick-disagreements` row 6 again: the
+design is hundreds of points under water, so a real thread fix has nowhere to
+show. Judge this pair on the ΔE00 and the cone list, not on its grade column.
+
 If the chrome trim cost (84 → 116) is unwelcome, drop `satin_per_stroke` and
 keep four grades up for +1 trim corpus-wide.
 
