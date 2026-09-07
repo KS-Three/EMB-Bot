@@ -10001,3 +10001,27 @@ thin dark lines on a pale ground is exactly what JPEG ringing damages.
   button matching `/^(Play|Pause|▶)/`, which on an ALREADY-PLAYING simulator
   is Pause. Same class as the Redo and aria-label probe errors above: the
   harness, not the app.
+
+### Drag, the hoop clamp and align — driven and found sound (2026-09-07)
+
+A 40 mm design on Left Chest (101.6 mm placement box), offsets read out of the
+saved project rather than off the screen:
+
+| action | offset X | offset Y |
+|---|---:|---:|
+| start | 0 | 0 |
+| a 120 × 60 px drag | +30.17 | −34.20 |
+| a 1200 × 900 px drag, far off canvas | **+30.17** | **−34.20** |
+| align Left | −30.70 | −34.20 |
+| align Center | 0 | −34.20 |
+| align Right | +30.70 | −34.20 |
+
+The clamp holds — a drag ten times past the edge moves nothing further — and
+the limits are right: ±30.7 mm is (101.6 − 40) / 2 to a tenth. Align is
+symmetric about centre.
+
+A first pass reported "align does nothing", on an auto-fit design that fills
+the placement box's width, where Left, Centre and Right genuinely coincide and
+X is already pinned. The caption cannot see any of this either: it reports
+size and stitch count, which a move does not change. **Read the state, not
+the screen, when testing a control that moves something.**
