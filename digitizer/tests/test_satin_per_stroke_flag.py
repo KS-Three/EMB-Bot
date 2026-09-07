@@ -26,11 +26,18 @@ def _points(plan) -> list:
     return [tuple(map(tuple, r.points)) for _b, r in plan.iter_runs()]
 
 
-def test_the_flag_is_off_by_default():
-    """ROADMAP gate 3 — a default-OFF tier is not flipped on without Kent, and
-    the flip for this one wants a render first. The default lives here so a
-    change to it is a visible diff rather than a quiet one."""
-    assert PipelineConfig().satin_per_stroke is False
+def test_the_flag_is_on_by_default():
+    """A default-OFF tier is not flipped on without Kent. He flipped it.
+
+    Kent's ruling 2026-09-07 flipped this ON as part of the `rec4_mask` set —
+    five flags measured together as one arm of `tools/flip_sheet.py` (11 of 26
+    fixtures move, -2,965 stitches, -22 blocks, -21 cones, five grades up, none
+    down). The default still lives in a test so the NEXT change to it is a
+    visible diff rather than a quiet one.
+
+    Its own cost is real and named rather than netted: `photo_chrome_specular`
+    84 -> 116 trims, bought against that fixture's own grade C 64 -> B 76."""
+    assert PipelineConfig().satin_per_stroke is True
 
 
 def test_off_is_byte_identical_on_a_fixture_the_flag_moves():
@@ -44,9 +51,14 @@ def test_off_is_byte_identical_on_a_fixture_the_flag_moves():
     _r1, p1 = digitize(art, base)
     _r2, p2 = digitize(art, PipelineConfig(target_width_mm=100.0,
                                            garment_id="left_chest",
-                                           satin_per_stroke=False))
+                                           satin_per_stroke=True))
     assert _points(p1) == _points(p2), \
-        "the default and an explicit False must be the same plan"
+        "the default and an explicit True must be the same plan"
+    _r3, p3 = digitize(art, PipelineConfig(target_width_mm=100.0,
+                                           garment_id="left_chest",
+                                           satin_per_stroke=False))
+    assert _points(p1) != _points(p3), \
+        "the flag no longer moves becker, so this file has stopped testing it"
 
 
 def test_on_moves_the_sewn_result_where_the_measurement_said_it_would():
@@ -60,7 +72,8 @@ def test_on_moves_the_sewn_result_where_the_measurement_said_it_would():
     """
     art = TESTDATA / "becker_marine_logo.png"
     kw = dict(target_width_mm=100.0, garment_id="left_chest")
-    _off_r, off = digitize(art, PipelineConfig(**kw))
+    # Explicit False for the baseline: the default is ON since 2026-09-07.
+    _off_r, off = digitize(art, PipelineConfig(**kw, satin_per_stroke=False))
     _on_r, on = digitize(art, PipelineConfig(**kw, satin_per_stroke=True))
 
     def kinds(plan):

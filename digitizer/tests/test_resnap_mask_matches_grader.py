@@ -47,7 +47,7 @@ from digitizer_core.pipeline import digitize
 from digitizer_core.stage4_vectorize import _region_footprint
 from digitizer_core.threads import chart_for
 
-from .conftest import TESTDATA
+from .conftest import PRE_REC4_MASK, TESTDATA
 
 GAULKE = "photo/logo_gaulke_roofing.png"
 # The region the flag exists for, and the spool the unmasked footprint picks.
@@ -59,6 +59,17 @@ CONTROLS = ["logo_alpha.png", "photo/photo_dof_meadow.png"]
 
 
 def _cfg(**kw) -> PipelineConfig:
+    """This flag ISOLATED, with the other four of the `rec4_mask` set held at
+    their pre-flip values.
+
+    Kent flipped all five ON 2026-09-07. Every number in this file was
+    measured one flag at a time, so `_cfg(resnap_mask_matches_grader=False)`
+    has to mean "the engine before this flag" and not "today's engine minus
+    one flag" — with the other four live, gaulke's `Se6eddd27` no longer wears
+    `3971` at all and every premise below would read as broken when nothing
+    is. Isolation keeps the measurement and the test saying the same thing."""
+    for k, v in PRE_REC4_MASK.items():
+        kw.setdefault(k, v)
     return PipelineConfig(target_width_mm=80.0, garment_id="left_chest", **kw)
 
 
@@ -77,17 +88,29 @@ def _run(fixture: str, on: bool):
 
 
 @pytest.mark.parametrize("fixture", [GAULKE, *CONTROLS])
-def test_off_is_byte_identical_to_the_shipped_engine(fixture):
-    """The flag's price of admission on this lane. `_region_footprint` is used
-    by `tag_enclosed_background` too, so an edit that leaked out of the OFF
-    path would move far more than the re-snap."""
-    shipped, _, _, _ = _run(fixture, False)
+def test_off_is_inert_on_this_lane(fixture):
+    """The flag's price of admission: with it off, it costs nothing.
+    `_region_footprint` is used by `tag_enclosed_background` too, so an edit
+    that leaked out of the OFF path would move far more than the re-snap.
+
+    Since Kent's 2026-09-07 flip this is no longer a statement about the
+    SHIPPED default — the shipped default has this flag ON, and
+    `test_the_shipped_default_has_the_flag_on` covers that. This one still
+    earns its place: it pins that the off path is untouched, which is what
+    makes every one-flag-at-a-time number in this file meaningful."""
+    off, _, _, _ = _run(fixture, False)
     art = TESTDATA / fixture
-    result, plan = digitize(art, _cfg())          # no keyword at all
+    result, plan = digitize(art, _cfg())          # no keyword: PRE_REC4_MASK
     coords = tuple(
         (round(x, 4), round(y, 4), run.kind, run.jump, run.trim)
         for _b, run in plan.iter_runs() for x, y in run.points)
-    assert coords == shipped
+    assert coords == off
+
+
+def test_the_shipped_default_has_the_flag_on():
+    """Kent's ruling 2026-09-07, as part of the `rec4_mask` set. The default
+    lives in a test so the NEXT change to it is a visible diff."""
+    assert PipelineConfig().resnap_mask_matches_grader is True
 
 
 def test_the_two_masks_really_do_disagree_on_this_region():

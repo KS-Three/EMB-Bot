@@ -33,6 +33,38 @@ def cfg(**kw) -> PipelineConfig:
     return PipelineConfig(**kw)
 
 
+# The five flags Kent flipped ON 2026-09-07 (the `rec4_mask` set), at their
+# pre-flip values.
+#
+# **This is for tests of OTHER features, not for the flags' own tests.** The
+# flip removed several conditions that tests elsewhere were built to exercise:
+# `logo_bridge_bar` no longer sews the escape cone a dissolve test needed to
+# lose, `screenshot_phone_ui_golke` no longer carries the duplicate cone the
+# revisit hoist was written against, and a fixture that used to drop a limb
+# now keeps it. Those tests are about dissolve, hoisting and preflight
+# REPORTING — not about these five flags — so pinning them here keeps them
+# testing their own subject instead of quietly losing it.
+#
+# It is NOT a way to avoid updating a test whose subject genuinely changed.
+# A test that asserts something the flip deliberately made false
+# (`test_thread_revalidate_palette`'s unrestricted-argmin invariant, for one)
+# gets rewritten against the new behaviour, not pinned to the old.
+PRE_REC4_MASK = {
+    "satin_patch_junctions": False,
+    "bind_resnap_all_classes": False,
+    "revalidate_small_shapes": False,
+    "satin_per_stroke": False,
+    "resnap_mask_matches_grader": False,
+}
+
+
+def legacy_cfg(**kw) -> PipelineConfig:
+    """`cfg()` as it behaved before the 2026-09-07 flip. See PRE_REC4_MASK."""
+    for k, v in PRE_REC4_MASK.items():
+        kw.setdefault(k, v)
+    return cfg(**kw)
+
+
 @pytest.fixture(scope="session")
 def whitebg():
     return run_stages(TESTDATA / "logo_whitebg.png", cfg())

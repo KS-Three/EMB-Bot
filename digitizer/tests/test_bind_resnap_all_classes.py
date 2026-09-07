@@ -109,15 +109,29 @@ def _default_digest(fixture: str) -> tuple:
     return hashlib.sha256(repr(coords).encode()).hexdigest()[:20], len(coords)
 
 
-def test_flag_defaults_off():
-    assert PipelineConfig().bind_resnap_all_classes is False
+def test_flag_defaults_on():
+    """Kent's ruling 2026-09-07 flipped this ON as part of the `rec4_mask`
+    set — five flags measured together as one arm of `tools/flip_sheet.py`
+    (11 of 26 fixtures move, -2,965 stitches, -22 blocks, -21 cones, five
+    grades up, none down). The default still lives in a test so the NEXT
+    change to it is a visible diff rather than a quiet one."""
+    assert PipelineConfig().bind_resnap_all_classes is True
 
 
 @pytest.mark.parametrize("fixture", ESCAPERS + CONTROLS)
-def test_off_is_byte_identical_to_the_shipped_engine(fixture):
-    """Explicit False against the default, so a change to the default shows up
-    as a difference rather than silently agreeing with itself."""
-    assert _default_digest(fixture) == _case(fixture, False).digest
+def test_the_shipped_default_is_the_BOUND_engine(fixture):
+    """Explicit True against the default, so a change to the default shows up
+    as a difference rather than silently agreeing with itself.
+
+    Both halves are load-bearing. The first would pass trivially if the flag
+    stopped doing anything at all, so the ESCAPERS also assert that explicit
+    False still differs — that is what proves the default is carrying a real
+    behaviour rather than an inert keyword."""
+    assert _default_digest(fixture) == _case(fixture, True).digest
+    if fixture in ESCAPERS:
+        assert _default_digest(fixture) != _case(fixture, False).digest, (
+            f"{fixture}: the flag no longer changes anything, so this file "
+            "has stopped testing it")
 
 
 @pytest.mark.parametrize("fixture", ESCAPERS)

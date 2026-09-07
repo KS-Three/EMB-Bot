@@ -38,20 +38,32 @@ def _cfg(**kw) -> PipelineConfig:
     return PipelineConfig(target_width_mm=80.0, garment_id="left_chest", **kw)
 
 
-def test_the_flag_is_off_by_default():
+def test_the_flag_is_on_by_default():
     """It puts tatami sheen inside a satin letter, which is a look question a
-    render answers and a number does not. The default lives here so a change
-    to it is a visible diff rather than a quiet one."""
-    assert PipelineConfig().satin_patch_junctions is False
+    render answers and a number does not — and Kent answered it.
+
+    Kent's ruling 2026-09-07 flipped this ON as part of the `rec4_mask` set —
+    five flags measured together as one arm of `tools/flip_sheet.py` (11 of 26
+    fixtures move, -2,965 stitches, -22 blocks, -21 cones, five grades up, none
+    down). The default still lives in a test so the NEXT change to it is a
+    visible diff rather than a quiet one."""
+    assert PipelineConfig().satin_patch_junctions is True
 
 
-def test_off_is_byte_identical_on_the_fixture_the_flag_moves():
+def test_the_shipped_default_is_the_PATCHED_engine():
     """On the ONE fixture where the flag is known to change the sewn result —
-    a byte test on a fixture it cannot move would prove nothing."""
+    a byte test on a fixture it cannot move would prove nothing.
+
+    Both directions, because the first alone would still pass if the flag went
+    inert: the default must equal explicit True AND differ from explicit
+    False."""
     _r1, p1 = digitize(BECKER, _cfg())
-    _r2, p2 = digitize(BECKER, _cfg(satin_patch_junctions=False))
+    _r2, p2 = digitize(BECKER, _cfg(satin_patch_junctions=True))
     assert _points(p1) == _points(p2), \
-        "the default and an explicit False must be the same plan"
+        "the default and an explicit True must be the same plan"
+    _r3, p3 = digitize(BECKER, _cfg(satin_patch_junctions=False))
+    assert _points(p1) != _points(p3), \
+        "the flag no longer moves becker, so this file has stopped testing it"
 
 
 def test_on_clears_the_graders_finding_rather_than_merely_moving_a_number():
@@ -61,8 +73,9 @@ def test_on_clears_the_graders_finding_rather_than_merely_moving_a_number():
     Measured 2026-09-06 at 80 mm: `ARTWORK_UNCOVERED` 23.8 -> 0.0 mm2,
     B 76 -> B 88, for +383 stitches (~7%). At 90 mm, 44.5 -> 0.0.
     """
-    r_off, p_off = digitize(BECKER, _cfg())
-    rep_off = run_preflight(r_off, p_off, _cfg(), image=BECKER)
+    off = _cfg(satin_patch_junctions=False)   # the default is ON since 2026-09-07
+    r_off, p_off = digitize(BECKER, off)
+    rep_off = run_preflight(r_off, p_off, off, image=BECKER)
     on = _cfg(satin_patch_junctions=True)
     r_on, p_on = digitize(BECKER, on)
     rep_on = run_preflight(r_on, p_on, on, image=BECKER)

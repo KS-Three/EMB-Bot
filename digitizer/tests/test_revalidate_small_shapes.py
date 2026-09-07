@@ -161,21 +161,30 @@ def test_the_gap_between_the_two_floors_is_the_defect():
     )
 
 
-def test_flag_defaults_off():
-    assert PipelineConfig().revalidate_small_shapes is False
+def test_flag_defaults_on():
+    """Kent's ruling 2026-09-07 flipped this ON as part of the `rec4_mask` set —
+    five flags measured together as one arm of `tools/flip_sheet.py` (11 of 26
+    fixtures move, -2,965 stitches, -22 blocks, -21 cones, five grades up, none
+    down). The default still lives in a test so the NEXT change to it is a
+    visible diff rather than a quiet one."""
+    assert PipelineConfig().revalidate_small_shapes is True
 
 
-def test_off_is_byte_identical_to_the_shipped_engine():
-    """The contract every flag here carries. Explicit False against the
-    default, so a change to the default is caught as a difference rather than
-    silently agreeing with itself."""
+def test_the_shipped_default_is_the_RESNAPPED_engine():
+    """The contract every flag here carries, inverted by Kent's 2026-09-07
+    flip. Explicit True against the default, so a change to the default is
+    caught as a difference rather than silently agreeing with itself — and
+    explicit False must still differ, or the flag has gone inert."""
     # The DEFAULT config against an EXPLICIT False — not `_case(F, False)`
     # against itself, which is what a first pass at the cache made this, and
     # which asserts nothing. The two configs are identical only while the
     # default is False, so a flipped default fails here as well as in
-    # `test_flag_defaults_off`. Worth the one extra pipeline run: it is this
+    # `test_flag_defaults_on`. Worth the one extra pipeline run: it is this
     # file's core contract.
-    assert _default_digest(FIXTURE) == _case(FIXTURE, False).digest
+    assert _default_digest(FIXTURE) == _case(FIXTURE, True).digest
+    assert _default_digest(FIXTURE) != _case(FIXTURE, False).digest, (
+        "the flag no longer moves this fixture, so this file has stopped "
+        "testing it")
 
 
 @pytest.mark.parametrize("fixture", [
