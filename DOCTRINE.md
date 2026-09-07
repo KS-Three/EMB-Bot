@@ -1762,3 +1762,52 @@ its hedge as it is copied forward** — is why this file is split.
   identical. **Budget the resolution step, not the regex** — a sweep whose
   output has to be hand-classified before it can be believed has not saved
   anyone the reading. *(measured 2026-09-07)*
+
+  **A SIXTH sweep the same day inverts the question, and the ruling above
+  only half applies.** The Studio names Python warning and finding codes as
+  bare string literals — `WARNING_TEXT`'s 28 keys, `FIX_FOR`'s three, eight
+  `.code === "..."` switches, and four mirrored constants inside preflight
+  holding five more:
+  **34 distinct code strings crossing a module boundary by literal, over six
+  sites, every one of them live.** By the rule above that is one more
+  zero-yield sweep and the check should not be built. It was built anyway
+  (`digitizer/tests/test_code_wires.py`, 4), and the distinction is worth
+  carrying:
+
+  **A SWEEP is judged on what it finds today. A TRIPWIRE is judged on what
+  its failure would cost.** The five above looked for drift that had already
+  happened, so a zero means the convention is sound and there is nothing to
+  automate. This one guards a rename that has NOT happened — and when it
+  does, `describeWarnings` falls back to `String(w.message)` and ships the
+  engine's build-status prose to a customer without throwing, logging or
+  blanking anything, while a stranded `FIX_FOR` key simply stops offering its
+  button. Silent, customer-facing, and indistinguishable from a code that was
+  never translated in the first place. The contrast is one module over:
+  `stage7_sequence.py` consumes the same codes by IMPORT, and deleting one
+  from `warnings_codes.py` stops the package loading with a named ImportError
+  before any test runs.
+
+  **The discriminator still decides WHICH tripwires earn their keep, and it is
+  the same one** — this resolves against an OBJECT (a set of live wire values
+  parsed from both owners) rather than pattern-matching prose, so its verdict
+  needs no hand-classification.
+
+  **Two ways this class of test dies, both hit while writing that one.** Both
+  are the `test_stitchviz.py` lesson (a first draft matched a `LIGHT_DEG` a
+  merge had left behind as dead code and passed for weeks over a live canvas
+  lighting from the wrong corner), and neither shows up as anything but green:
+
+  - **A "not in" assertion over a parser that finds nothing passes
+    trivially.** The first `_map_keys` sliced the object literal at a nearby
+    `\n  };` and returned the right answer for both maps **by luck** — it
+    never reached `FIX_FOR`'s nested braces. Fixing the slice is what
+    surfaced the nesting, not any test.
+  - **A MIRROR must never be allowed to vouch for a consumer.** preflight
+    holds private copies of four pipeline codes; admitting them to the
+    "live" set would have let a stale copy of a deleted string keep every
+    Studio assertion green — a check comparing a string against a second
+    copy of itself. Excluded by name, and the exclusion is itself asserted.
+
+  **Every assertion was proved able to fail by mutating the source it reads**
+  — six mutations, six reds, tree restored. Do that, or the file is
+  decoration. *(measured 2026-09-07)*
