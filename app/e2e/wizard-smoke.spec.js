@@ -59,6 +59,10 @@ async function confirmOversizeExport(page, fmt) {
   await page.getByRole("button", { name: `Download ${fmt} anyway`, exact: true }).click();
 }
 
+// The caption groups thousands (`toLocaleString`) since 2026-09-07 — it was
+// the one stitch count in the app printing a bare 1289 where QualityReport,
+// DigitizePanel, DesignPanel and the review summary all say 1,289. Every
+// `[\d,]+` in this file's caption matchers is that, not a loosened assertion.
 async function reachReviewWithText(page, garmentLabel, text) {
   await page.goto("/");
 
@@ -73,7 +77,7 @@ async function reachReviewWithText(page, garmentLabel, text) {
   const textInput = page.getByPlaceholder("Type a name or word");
   await textInput.fill(text);
   await expect(textInput).toHaveValue(text);
-  await expect(page.getByText(/^\d+ stitches/)).toBeVisible();
+  await expect(page.getByText(/^[\d,]+ stitches/)).toBeVisible();
   await expect(page.locator(".topbar-download")).toBeEnabled();
   await page.getByRole("button", { name: "Next", exact: true }).click();
 
@@ -106,7 +110,7 @@ test("guided wizard: garment -> content -> review -> download", async ({ page })
   // Real content produced real stitches on the field -- the topbar Download
   // shortcut and the Download step in the stepper both gate on hasStitches
   // (App.svelte), and the field's own stats readout reports a nonzero count.
-  await expect(page.getByText(/^\d+ stitches/)).toBeVisible();
+  await expect(page.getByText(/^[\d,]+ stitches/)).toBeVisible();
   await expect(page.locator(".topbar-download")).toBeEnabled();
 
   await page.getByRole("button", { name: "Next", exact: true }).click();
@@ -203,7 +207,7 @@ test("guided wizard: image content path -> review reflects it -> download", asyn
   // text-path test checks).
   await expect(page.locator(".uploadbox .filename")).toHaveText("two-squares.png");
   await expect(page.locator(".flatprev")).not.toHaveClass(/hidden/);
-  await expect(page.getByText(/^\d+ stitches/)).toBeVisible();
+  await expect(page.getByText(/^[\d,]+ stitches/)).toBeVisible();
   await expect(page.locator(".topbar-download")).toBeEnabled();
 
   await page.getByRole("button", { name: "Next", exact: true }).click();
@@ -360,7 +364,7 @@ test("the review step does not claim readiness for a design with nothing in it",
   await page.getByRole("button", { name: "Content" }).click();
   const textInput = page.locator("textarea").first();
   await textInput.fill("HELLO");
-  await expect(page.getByText(/^\d+ stitches/)).toBeVisible();
+  await expect(page.getByText(/^[\d,]+ stitches/)).toBeVisible();
 
   await page.getByRole("button", { name: "3 Review" }).click();
   await expect(page.getByRole("heading", { name: "Ready to stitch" })).toBeVisible();
@@ -574,4 +578,84 @@ test("a page load produces no console errors and no failed requests", async ({ p
   await page.goto("/", { waitUntil: "networkidle" });
   await expect(page.getByRole("heading", { name: "What are you putting this on?" })).toBeVisible();
   expect(problems).toEqual([]);
+});
+
+test("the empty canvas says how to reach the drawing tools", async ({ page }) => {
+  // Two of PRODUCT.md's four launch-scope items — the basic shapes tool and
+  // the manual draw lane — live on the canvas's right-click menu (Kent's
+  // placement call, 2026-08-13: a tool, not an upload button). Nothing in the
+  // UI said so, and right-click on a canvas is a power-user idiom a first-time
+  // customer has no reason to try.
+  //
+  // The drag hint would be the obvious place and is the wrong one: hints.js
+  // gates it on `stitchCount > 0`, so it appears only once there is already a
+  // design — after the question has stopped being asked.
+  await page.goto("/");
+  await page.getByRole("button", { name: "Left Chest", exact: true }).click();
+  await page.getByRole("button", { name: "Next", exact: true }).click();
+  await expect(page.locator(".fieldhint")).toContainText("Right-click the canvas for drawing tools");
+
+  // …and the gesture it names actually reaches both tools, on the real canvas.
+  await page.locator("canvas").first().click({ button: "right", position: { x: 200, y: 120 } });
+  const menu = page.getByRole("menu", { name: "Canvas tools" });
+  await expect(menu).toBeVisible();
+  await expect(menu.getByRole("menuitem")).toHaveText(["Draw shapes", "Basic shape"]);
+
+  // The shape lane produces real stitches — the launch-scope item, end to end.
+  await menu.getByRole("menuitem", { name: "Basic shape" }).click();
+  await expect(page.locator("span.stats")).toBeVisible({ timeout: 60_000 });
+  for (const kind of ["Circle", "Rectangle", "Heart", "Star"]) {
+    await expect(page.getByRole("button", { name: kind, exact: true })).toBeVisible();
+  }
+});
+
+test("the simulator counts in the same unit the caption does", async ({ page }) => {
+  // The animation is driven by STRANDS — the segments between consecutive
+  // stitches — so N stitches in K runs make N − K strands. The counter showed
+  // that raw number: "1289 stitches · 102×12 mm" under the canvas and
+  // "1280 / 1280" in the simulator bar, nine apart on a design with nine runs.
+  // Both correct, measuring different things, only one of them labelled.
+  await page.goto("/");
+  await page.getByRole("button", { name: "Left Chest", exact: true }).click();
+  await page.getByRole("button", { name: "Next", exact: true }).click();
+  await page.locator("textarea").first().fill("FRITSCH'S");
+  await expect(page.locator("span.stats")).toBeVisible({ timeout: 60_000 });
+  const captionCount = Number((await page.locator("span.stats").innerText()).match(/([\d,]+) stitches/)[1].replace(/,/g, ""));
+  expect(captionCount).toBeGreaterThan(100);
+
+  await page.getByRole("button", { name: "Stitch simulator" }).click();
+  const counter = page.locator(".simcount");
+  await expect(counter).toBeVisible();
+  // The total is asserted immediately; the running number is left alone,
+  // because it is mid-animation and racing it would be the flaky assertion.
+  await expect(counter).toContainText(new RegExp(`/ ${captionCount} stitches$`));
+  // …and it gets there. The design is short, so the default 1x run finishes
+  // well inside this budget.
+  await expect(counter).toHaveText(`${captionCount} / ${captionCount} stitches`, { timeout: 60_000 });
+});
+
+test("the review names what it costs to sew — on the lane the service never sees", async ({ page }) => {
+  // An auto-digitized design gets these from the service (QualityReport). A
+  // lettering, hand-drawn, shape or imported-DST design never reaches it, and
+  // this screen showed the garment, the hoop, the content, the font — and not
+  // one number about the sew-out.
+  await page.goto("/");
+  await page.getByRole("button", { name: "Left Chest", exact: true }).click();
+  await page.getByRole("button", { name: "Next", exact: true }).click();
+  await page.locator("textarea").first().fill("FRITSCH'S");
+  await expect(page.locator("span.stats")).toBeVisible({ timeout: 60_000 });
+  const caption = await page.locator("span.stats").innerText();
+  const stitches = caption.match(/([\d,]+) stitches/)[1];
+  const size = caption.match(/(\d+)×(\d+) mm/);
+
+  await page.getByRole("button", { name: "3 Review", exact: true }).click();
+  const summary = page.locator("dl.summary");
+  // The same design, so the same numbers as the caption — this is the
+  // assertion that catches the two drifting apart.
+  await expect(summary).toContainText(`${size[1]} × ${size[2]} mm`);
+  await expect(summary).toContainText(stitches);
+  await expect(summary).toContainText("Trims");
+  await expect(summary).toContainText(/\d+\.\d m \(estimate\)/);
+  // No service report on this lane, so nothing can contradict it.
+  await expect(page.locator("section.quality")).toHaveCount(0);
 });

@@ -225,22 +225,40 @@ export function generateElement(element, garment, runtime) {
 // quoted comes from the report itself, so the note can never drift from the
 // constant the engine actually applied. Exported and tested for the same
 // reason charList is: wording is logic.
-export function letteringNote(l) {
+// `opts.atWidthCap` — the design is already as wide as the garment's placement
+// box allows, which is the DEFAULT state (auto-fit targets that box), and it
+// changes which advice is true.
+//
+// Lettering is fit by width, so for a fixed character count the cap height is
+// proportional to the width: at left_chest's 101.6 mm box, `medium_font`
+// measures a 4.33 mm cap on "WIDE DESIGN TEXT HERE", 7.16 on "SHORTER TEXT",
+// 30.03 on "ABC" (all measured 2026-09-07, all at that same 101.6 mm). So
+// "size up for crisp letters" on a design already at the cap is advice the
+// customer cannot take — the levers that remain are fewer characters, a bolder
+// font, or a bigger placement.
+export function letteringNote(l, opts = {}) {
   if (!l || !(l.strokeMm > 0)) return "";
   const share = (mm) => mm / l.strokeMm;
   const pct = (mm) => Math.round(100 * share(mm));
+  const capped = !!opts.atWidthCap;
   if (l.capMm > 0 && l.capMm < l.capFloorMm) {
     return `Letters ${l.capMm.toFixed(1)} mm tall — under the ${l.capFloorMm} mm floor, thin strokes will shred`;
   }
   if (share(l.hairlineMm) >= 0.5) {
-    return `${pct(l.hairlineMm)}% of this lettering is under ${l.crossFloorMm} mm wide at this size and sews as running stitch — size up or pick a bolder font`;
+    const fix = capped
+      ? "pick a bolder font or use fewer characters — it is already the full width of the placement"
+      : "size up or pick a bolder font";
+    return `${pct(l.hairlineMm)}% of this lettering is under ${l.crossFloorMm} mm wide at this size and sews as running stitch — ${fix}`;
   }
   if (l.hairlineSpans > 0) {
     const n = l.hairlineSpans;
     return `${n} hairline stroke${n === 1 ? "" : "s"} under ${l.crossFloorMm} mm sewn as running stitch`;
   }
   if (share(l.thinMm) >= 0.25) {
-    return `${pct(l.thinMm)}% of this lettering is under ${l.columnFloorMm} mm wide — size up for crisp letters`;
+    const fix = capped
+      ? "already the full width of the placement, so fewer characters or a bigger placement is what makes them crisper"
+      : "size up for crisp letters";
+    return `${pct(l.thinMm)}% of this lettering is under ${l.columnFloorMm} mm wide — ${fix}`;
   }
   return "";
 }

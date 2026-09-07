@@ -35,7 +35,7 @@ import { test, expect } from "@playwright/test";
 async function reachDesign(page) {
   await page.goto("/");
   await page.locator(".tcard", { hasText: "Left-chest name" }).click();
-  await expect(page.getByText(/^\d+ stitches/)).toBeVisible();
+  await expect(page.getByText(/^[\d,]+ stitches/)).toBeVisible();
 }
 
 // Area of the intersection of two elements' boxes, in CSS px. 0 = no overlap.
@@ -136,10 +136,15 @@ test("simulator opens and stays open, without covering the canvas", async ({ pag
   // It covers the zoom bar it replaces, not the field being simulated.
   expect(await overlapArea(page, ".simbar", ".hoop canvas")).toBe(0);
 
-  // Playback actually advances rather than sitting at zero.
+  // Playback actually advances rather than sitting at zero. The unit is part
+  // of the string since 2026-09-07: the counter reads STITCHES, matching the
+  // field caption underneath it, rather than the raw strand index it used to
+  // show (a strand is the segment BETWEEN two stitches, so the two numbers sat
+  // on screen nine apart). What this test cares about is unchanged — that the
+  // number moves off zero.
   await expect
     .poll(async () => page.locator(".simcount").textContent(), { timeout: 15_000 })
-    .toMatch(/^[1-9]\d*\s*\/\s*\d+$/);
+    .toMatch(/^[1-9]\d*\s*\/\s*\d+ stitches$/);
 
   // And closing it hands the field back.
   await page.locator('.simbar button[aria-label="Close simulator"]').click();

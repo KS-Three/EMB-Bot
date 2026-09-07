@@ -2543,3 +2543,127 @@ its hedge as it is copied forward** — is why this file is split.
   failure message now names that fix**, because "missing bin for coverage" sent
   the first reader looking for a font that never existed.
   *(2026-09-07)*
+
+- **"Reachable" and "findable" are different questions, and this repo has now
+  been bitten by both in one day.** JEF was a capability with no control
+  (DOCTRINE above). The basic shapes tool is the mirror image: a control that
+  exists, works end to end, and is behind a gesture nothing announces — the
+  canvas's right-click menu, Kent's deliberate placement (2026-08-13, *"keep
+  them, but as a right-click tool rather than an upload button"*). Two of
+  PRODUCT.md's four launch-scope items live there. The Content step offers
+  three tiles and no fourth thing to try.
+
+  **The check that catches this is the same one either way: sit where the
+  customer sits and count what they can see.** Listing the Content step's
+  buttons is one line of `document.querySelectorAll`, and it is what turned
+  this up.
+
+  **And the obvious place to say it was the wrong place.** The drag hint reads
+  "Drag the design to move it — corners resize", which is exactly the register
+  wanted — but `hints.js` gates it on `stitchCount > 0` (condition A8), so it
+  appears only once a design exists, i.e. after the question has stopped being
+  asked. **When adding a hint, check what gates the hint you are copying**: an
+  onboarding line behind a "you already succeeded" condition teaches nothing.
+  The empty-canvas message is the one a customer reads while wondering what to
+  do.
+
+  Fixing discoverability did not require re-opening the placement ruling: it
+  is one sentence, and reverting it is one string.
+  *(2026-09-07)*
+
+- **Two numbers on one screen measuring different things, again — and the
+  second one was a unit label away.** Defect 34 was the design's width; this is
+  the simulator's counter, one screen over. The field caption read "1289
+  stitches" and the simulator bar read "1280 / 1280", both visible at once,
+  nine apart. Neither was wrong: the simulator animates STRANDS — the segment
+  between two consecutive stitches, chain broken at every jump, trim and colour
+  change — so N stitches in K runs make N − K strands.
+
+  **The tell is a bare number.** "1280 / 1280" carries no unit, sitting under a
+  line that names one. Anything a customer will read as a quantity should say
+  what quantity it is, and the moment it does, a mismatch with a neighbouring
+  readout becomes visible instead of invisible.
+
+  **Convert for display; do not change what the code runs on.** The animation
+  still steps strands, because strands are what paint. Only the label maps back
+  to stitches — and it maps to the LAST ORDINAL rather than
+  `design.stitchCount`, because a run of a single stitch paints no segment and
+  the simulator must never claim to have drawn a stitch it cannot.
+
+  **The mapping walks the same records the renderer does, on purpose.** Two
+  walks that "obviously" agree drift the day one of them learns about a new
+  record type. The tests drive both from the same fixtures and assert their
+  lengths match, which is the property that makes the two arrays index together.
+  *(2026-09-07)*
+
+- **Advice that names a lever the default state does not have.** "Size up for
+  crisp letters" is the right fix for thin lettering — unless the design is
+  already as wide as the garment's placement box, which is what auto-fit
+  produces and therefore what every quick start produces. Lettering is fit by
+  width, so at that box the cap height is fixed by the character count:
+  measured on left_chest's 101.6 mm box with `medium_font`, "WIDE DESIGN TEXT
+  HERE" gives a 4.33 mm cap, "SHORTER TEXT" 7.16, "ABC" 30.03 — all at the same
+  101.6 mm.
+
+  This is a third variant of the same defect this repo keeps finding, and the
+  three are worth naming together because they need different fixes:
+
+  - **A capability with no control** (JEF): add the control.
+  - **A control with no announcement** (the shapes tool behind a right-click):
+    say where it is.
+  - **Advice with no lever** (this): name the levers that exist in the state
+    the customer is actually in.
+
+  The last one is the easiest to ship and the hardest to notice, because the
+  sentence is *correct in general*. The test is not "is this true" but "can the
+  person reading it do it right now".
+
+  **And derive the state from the REQUEST, not the result.** The obvious check
+  — is the sewn width equal to the placement box — reads true for every design
+  since defect 34, because the sewn extent sits slightly past the box by
+  construction. `sizeMm == null` (auto-fit) is the exact signal.
+  *(2026-09-07)*
+
+- **A fallback that turns a missing constant into a plausible number, written
+  by me, in the same session that spent all day on exactly this class.**
+  `lib/estimate.js` quotes thread metres as `pathMm * (EMB.THREAD_LENGTH_FACTOR
+  || 1)`. The factor lives in the engine, which `copy-engine.mjs` syncs into
+  `app/public/engine/` on predev and prebuild — so against a stale copy the
+  `|| 1` silently quoted the PATH LENGTH as thread: the review read **"1.5 m
+  (estimate)" for a design that needs 2.1**, and nothing anywhere was red.
+
+  Caught only because the same probe ran twice and the number moved between
+  runs with no code change in between. **A number that changes when nothing
+  changed is the loudest signal there is; a number that is merely wrong is
+  silent.**
+
+  `|| 1` is the shape to distrust — a default that is a VALID VALUE of the
+  thing it defaults for. `?? 1` would be no better. **No factor, no row:** the
+  estimate is withheld and everything countable is still counted. The test
+  deletes the constant and asserts the row disappears.
+
+- **Two engines, one operator-facing number, and the browser cannot quite get
+  there.** `lib/estimate.js` had to quote thread on the same basis the service
+  does, or a name and a logo in one project would be priced two ways. The basis
+  is path length × `machine.THREAD_LENGTH_FACTOR` (1.35) — hand-ported into the
+  JS engine and guarded by `test/digitize.test.js`, the third constant after
+  `FILL_ROW_MM` and `SATIN_SPACING_MM` to take that treatment.
+
+  **It still does not agree exactly: 4.95 m against the service's 4.87, 1.6%
+  high on the same artwork.** `plan_to_design` emits a run the machine reaches
+  WITHOUT travelling as plain consecutive stitches, so the design records carry
+  no marker for that run boundary and the walk joins two runs, counting one
+  segment the plan does not. **The design has lost information the plan had**,
+  and no amount of care on the JS side recovers it.
+
+  So the answer was not to make the numbers match — it was to make sure they
+  are never both on screen. The browser figure is shown ONLY where the service
+  has said nothing, which is exactly the lane that had no numbers at all. And
+  that lane's own designs do not have the problem, because
+  `buildLetteringDesign` SEWS its short travel as running stitch: everything
+  the walk counts there is thread that really goes down.
+
+  **When two implementations of one number cannot be reconciled, scope them so
+  they never answer the same question.** Averaging them, or picking one and
+  quoting it everywhere, would have shipped a number that is wrong somewhere.
+  *(2026-09-07)*

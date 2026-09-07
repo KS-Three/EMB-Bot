@@ -4,6 +4,8 @@
   import { applyTemplate } from "./lib/templates.js";
   import { canAdvance, nextStep, prevStep } from "./lib/flow.js";
   import { designSummary } from "./lib/summary.js";
+  import { sewSummary } from "./lib/estimate.js";
+  import { generateAll } from "./lib/generate.js";
   import { rehydrateImages } from "./lib/imageSource.js";
   import { chartIdForProject, designChartId } from "./lib/designChart.js";
   import { flattenRGBA, WORK_MAX_PX, ALPHA_CUTOFF } from "./lib/flatten.js";
@@ -120,6 +122,20 @@
   // oversight: preflight runs in the Python digitizer, so nothing generated in
   // the browser has a report to show. That is a real gap in the coverage this
   // screen implies, and it belongs to the engine, not to this component.
+  // Sew facts for the COMBINED design, for the review step. Derived here (not
+  // in the template) so it recomputes with project/runtime like every other
+  // `$:` and never runs inside a render loop. Never throws: it runs on every
+  // change, including while nothing is ready to stitch — same posture as
+  // DownloadStep's combinedColors.
+  $: sewFacts = (() => {
+    try {
+      const { combined } = generateAll(project, runtime);
+      return combined ? sewSummary(combined) : [];
+    } catch (e) {
+      return [];
+    }
+  })();
+
   $: qualityEntries = (project.elements || [])
     .filter((el) => el.type === "digitized" && (el.preflight || el.stats))
     .map((el) => ({
@@ -928,6 +944,22 @@
             {#each designSummary(project) as row}
               <div><dt>{row.label}</dt><dd>{row.value}</dd></div>
             {/each}
+            <!-- The four facts an operator needs before loading a machine —
+                 size, stitches, thread changes, trims, metres — computed in
+                 the browser (lib/estimate.js) from the design already in hand.
+                 ONLY when the service has said nothing: an auto-digitized
+                 design gets them from QualityReport below, measured on the
+                 plan rather than on the design records, and the two bases
+                 differ by ~1.6% (estimate.js documents why). One design, one
+                 number: whichever lane produced it. Until 2026-09-07 the
+                 browser lane produced none at all — a lettering design reached
+                 this screen with the garment, the hoop, the content, the font,
+                 and not one number about the sew-out. -->
+            {#if !qualityEntries.length}
+              {#each sewFacts as row}
+                <div><dt>{row.label}</dt><dd>{row.value}</dd></div>
+              {/each}
+            {/if}
           </dl>
           <QualityReport entries={qualityEntries} />
           <p class="hint">Not quite right? Go back to adjust the garment or content — the field updates live.</p>

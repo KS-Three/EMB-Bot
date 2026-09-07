@@ -4,7 +4,7 @@
   import { ensureFonts, loadCoverage, loadManifest } from "../lib/fontLoader.js";
   import { unsupportedMessage } from "../lib/fontCoverage.js";
   import { renderRealistic, isDark } from "../lib/preview.js";
-  import { designToStrands } from "../lib/strands.js";
+  import { designToStrands, strandStitchOrdinals } from "../lib/strands.js";
   import { advanceIndex, clampIndex, nextSpeed } from "../lib/simulate.js";
   import { EMB } from "../lib/emb.js";
   import { designRectPx, hitTest, pickElement, dragResize, clampOffsets, clampPan, buildSnapLines, snapMove, snapResizeWidth, rotateHandlePx, dragRotate, unionBBox, clampGroupDelta, groupResizePatches } from "../lib/interact.js";
@@ -139,6 +139,10 @@
   let simPlaying = false;
   let simIndex = 0;
   let simTotal = 0;
+  // Stitch number per strand — see startSim. The DISPLAY total is the last
+  // entry, not `combined.stitchCount`: a run of a single stitch paints no
+  // segment, so the simulator must not claim to have drawn it.
+  let simOrdinals = [];
   let simSpeed = 1;
   let simRafId = 0;
   let simLastTs = 0;
@@ -887,7 +891,22 @@
     const heightMM = pe.bboxMm.y1 - pe.bboxMm.y0;
     // Text elements carry the engine's own width-guard report; image and
     // shape elements have no `lettering` and get an empty note.
-    letterNote = letteringNote(pe.design && pe.design.lettering);
+    //
+    // `atWidthCap` decides which advice is TRUE. Lettering is fit by width, so
+    // for a fixed character count the letters can only get bigger if the
+    // design does — and an auto-fit design (sizeMm null, the default) is
+    // already as wide as the garment's placement box allows. Telling that
+    // customer to "size up" is telling them to do the one thing they cannot.
+    // Read off the REQUEST, not the sewn width: the sewn extent is slightly
+    // past the box by construction (pull compensation — defect 34), so
+    // comparing it to the box would read "capped" for every design.
+    const el = project.elements.find((e) => e.id === pe.id);
+    const capWmm = (() => {
+      const g = EMB.getGarment(project.garmentId);
+      return g ? g.widthIn * 25.4 : Infinity;
+    })();
+    const atWidthCap = !!el && (el.sizeMm == null || el.sizeMm >= capWmm - 0.05);
+    letterNote = letteringNote(pe.design && pe.design.lettering, { atWidthCap });
     // "Smaller than 5 mm" is advice about a design that IS there and is too
     // small to sew cleanly. On an element with no stitches at all it is not
     // advice, it is noise — and it sat directly in front of the message that
@@ -1053,7 +1072,22 @@
       // different answers, and the second one used to get the first one's.
       hint = result.unsupported && result.unsupported.length
         ? `This font can\u2019t stitch ${charList(result.unsupported)}. Try a different font, or different text.`
-        : "Your embroidery appears here as you add content.";
+        // The drawing tools live on the canvas's right-click menu (Kent's
+        // placement call, 2026-08-13 — a tool, not an upload button) and
+        // NOTHING in the UI says so. Two of PRODUCT.md's four launch-scope
+        // items are behind that gesture ("Basic shapes tool", and the manual
+        // draw lane), and right-click on a canvas is a power-user idiom a
+        // first-time customer has no reason to try.
+        //
+        // Said HERE rather than in the drag hint because the drag hint is
+        // gated on `stitchCount > 0` (hints.js, condition A8) — it appears
+        // only once there is already a design, which is exactly when the
+        // question has stopped being asked. This line is what a customer is
+        // looking at while wondering what to do. Desktop-only is a stated
+        // launch posture (PRODUCT.md), so naming the right button is safe.
+        //
+        // This changes the PLACEMENT of nothing: it is one sentence.
+        : "Your embroidery appears here as you add content. Right-click the canvas for drawing tools.";
       // paint() clears hint/unsupportedNote/… at the top of every run, so
       // exactly one of the two is set here and suggestFonts can tell which
       // message it is amending.
@@ -1070,7 +1104,10 @@
     // runs against the combined design (not just the selected element) —
     // the whole design has to fit the physical hoop.
     const { hoop } = effectiveHoop(project);
-    stats = `${c.stitchCount} stitches · ${c.widthMM.toFixed(0)}×${c.heightMM.toFixed(0)} mm · ${hoop.label} hoop`;
+    // toLocaleString like every other stitch count in the app (QualityReport,
+    // DigitizePanel, DesignPanel, and the review summary this line sits above)
+    // — it was the one place printing a bare 1289 where the rest say 1,289.
+    stats = `${c.stitchCount.toLocaleString()} stitches · ${c.widthMM.toFixed(0)}×${c.heightMM.toFixed(0)} mm · ${hoop.label} hoop`;
     hoopNote = hoopFitNote(c.widthMM, c.heightMM, hoop) || "";
     // Something DID stitch, but not all of it — e.g. Latin mixed into Hebrew.
     // Rides the stats line next to the other warnings rather than blocking.
@@ -1191,6 +1228,15 @@
   function startSim() {
     if (!lastGenerateResult || !lastGenerateResult.combined) return;
     simTotal = designToStrands(lastGenerateResult.combined).length;
+    // The animation is driven by STRANDS (segments) because strands are what
+    // paint; the counter is shown in STITCHES because that is the unit the
+    // field caption right underneath it uses. A strand is the segment BETWEEN
+    // two consecutive stitches, so N stitches in K runs make N − K strands —
+    // and the two numbers were on screen together nine apart ("1289 stitches"
+    // in the caption, "1280 / 1280" here, on a design with nine runs).
+    // Computed once per run rather than per frame; one entry per strand, so
+    // the two arrays index together.
+    simOrdinals = strandStitchOrdinals(lastGenerateResult.combined);
     if (!simTotal) return;
     simActive = true;
     simIndex = 0;
@@ -2129,7 +2175,7 @@
           on:input={simScrub}
           aria-label="Stitch progress"
         />
-        <span class="simcount">{Math.floor(simIndex)} / {simTotal}</span>
+        <span class="simcount">{simIndex >= 1 ? simOrdinals[Math.floor(simIndex) - 1] : 0} / {simOrdinals[simOrdinals.length - 1] || 0} stitches</span>
         <button type="button" class="zoombtn simspeed" on:click={simCycleSpeed} aria-label="Playback speed">
           {simSpeed}x
         </button>

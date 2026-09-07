@@ -805,6 +805,51 @@ test("letteringNote: thin lettering warns at a quarter of the stroke length and 
   expect(letteringNote(report({ thinMm: 20 }))).toBe("");
 });
 
+// ---- atWidthCap: which advice is actually available ------------------------
+//
+// Lettering is fit by WIDTH, so for a fixed character count the cap height is
+// proportional to the design width. Measured 2026-09-07 with `medium_font` on
+// left_chest's 101.6 mm placement box, every one of them at that same width:
+// "WIDE DESIGN TEXT HERE" → 4.33 mm cap, "SHORTER TEXT" → 7.16, "ABC" → 30.03.
+//
+// An auto-fit design (the default) is already AT that box. "Size up for crisp
+// letters" is then advice to do the one thing the customer cannot, and the
+// levers that remain — fewer characters, a bolder font, a bigger placement —
+// went unnamed.
+test("letteringNote: at the width cap, 'size up' is replaced by the levers that exist", async () => {
+  const { letteringNote } = await import("./generate.js");
+  const thin = letteringNote(report({ thinMm: 30 }), { atWidthCap: true });
+  expect(thin).toContain("30% of this lettering is under 1 mm wide");
+  expect(thin).toContain("fewer characters or a bigger placement");
+  expect(thin).not.toContain("size up");
+
+  const hairline = letteringNote(report({ hairlineMm: 61, thinMm: 80, hairlineSpans: 7 }), { atWidthCap: true });
+  expect(hairline).toContain("sews as running stitch");
+  expect(hairline).toContain("fewer characters");
+  expect(hairline).toContain("bolder font");     // still true at the cap
+  expect(hairline).not.toContain("size up");
+});
+
+test("letteringNote: below the cap, 'size up' stays — it is the fix there", async () => {
+  const { letteringNote } = await import("./generate.js");
+  expect(letteringNote(report({ thinMm: 30 }), { atWidthCap: false }))
+    .toBe("30% of this lettering is under 1 mm wide — size up for crisp letters");
+  // Omitting the option is the same as false, so no caller is silently changed.
+  expect(letteringNote(report({ thinMm: 30 }), {})).toBe(letteringNote(report({ thinMm: 30 })));
+});
+
+test("letteringNote: the two findings that do not depend on size are untouched by the cap", async () => {
+  const { letteringNote } = await import("./generate.js");
+  // A cap under the floor already names a height, not an action; and a lone
+  // hairline span reports what the ENGINE did, which is not advice at all.
+  for (const opts of [{}, { atWidthCap: true }]) {
+    expect(letteringNote(report({ capMm: 3.24, hairlineMm: 90, thinMm: 100 }), opts))
+      .toBe("Letters 3.2 mm tall — under the 4 mm floor, thin strokes will shred");
+    expect(letteringNote(report({ hairlineMm: 4, thinMm: 6, hairlineSpans: 1 }), opts))
+      .toBe("1 hairline stroke under 0.5 mm sewn as running stitch");
+  }
+});
+
 test("generateElement: a text element's design carries the lettering report", async () => {
   const { generateElement } = await import("./generate.js");
   const { EMB } = await import("./emb.js");

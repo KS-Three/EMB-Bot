@@ -156,7 +156,7 @@ test("a lettering-only project shows no quality section", async ({ page }) => {
   // imply the check ran and passed.
   await page.goto("/");
   await page.locator(".tcard", { hasText: "Left-chest name" }).click();
-  await expect(page.getByText(/^\d+ stitches/)).toBeVisible();
+  await expect(page.getByText(/^[\d,]+ stitches/)).toBeVisible();
   await page.getByRole("button", { name: "3 Review" }).click();
   await expect(page.getByRole("heading", { name: "Ready to stitch" })).toBeVisible();
   await expect(page.locator(".quality")).toHaveCount(0);

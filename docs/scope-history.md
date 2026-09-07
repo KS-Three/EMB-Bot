@@ -8724,3 +8724,228 @@ object`) and the font build would have tried to compile it. Renamed to
 `manifest-coverage.json` — inside the existing exclusion, and named for what it
 is. The guard's failure message now says so instead of naming a font that never
 existed.
+
+---
+
+## 2026-09-07 — polish, and the two launch items nobody could find
+
+### Live defect 37 — the shapes tool was behind an unannounced right-click
+
+Found by listing the Content step's buttons: `Text`, `Artwork`, `Design file`
+— and nothing else. The basic shapes tool (PRODUCT.md launch item 4, ✅ Done)
+and the manual draw lane are on the canvas's context menu, which is Kent's
+placement call from 2026-08-13 and which nothing in the UI mentions.
+
+The lane itself is fine — driven from that menu end to end: **Draw shapes /
+Basic shape → Circle, Rectangle, Heart, Star → 3,918 stitches at 51 × 51 mm**.
+This was discoverability alone.
+
+**The drag hint was the wrong place to say it.** `hints.js` gates `drag-field`
+on `stitchCount > 0` (condition A8), so it appears only once a design already
+exists. The empty-canvas line now reads:
+
+> Your embroidery appears here as you add content. **Right-click the canvas for
+> drawing tools.**
+
+Kent's placement is untouched; reverting is one string. The e2e pins the
+sentence *and* that the gesture it names reaches both tools and sews.
+
+### Polish: the one console error, and the one unnamed control
+
+A full browser pass — upload, digitize, review, three downloads, reload —
+produced exactly one console error: `/favicon.ico` 404, which every browser
+requests when a page declares no icon. A bookmarked tab showed a blank square.
+
+`app/public/favicon.svg` is the mark the topbar already wears (theme.css
+`.logomark`, `--accent` #4f46e5) with a stitch zigzag instead of the word
+"EMB", which is illegible at 16 px. Looked at at 16, 32 and 64 px and on a dark
+ground. A placeholder for a real Fritsch's Stitches mark, not a brand claim.
+
+An ARIA sweep across all four steps found exactly one control with no
+accessible name — SizePanel's in/cm/mm select. Everything else is named, most
+of it implicitly by a wrapping `<label>`; the four TextStep sliders read
+"Letter spacing 0.0 mm", "Curve 0°", "Rotation 0°", "Slant 0°".
+
+**A correction to an earlier note in the same session:** those four sliders
+were first reported here as unnamed. They were not — the probe checked
+`aria-label` and `label[for]` and missed the implicit wrapping label. Nothing
+was published on that reading, and the sweep that replaced it uses Playwright's
+ARIA snapshot, which computes the name the way a screen reader does.
+
+Both now have e2e guards: no control on any step renders without a name, and a
+page load produces no console error, no pageerror and no failed request.
+
+---
+
+## 2026-09-07 — the simulator's counter, one screen over from defect 34
+
+Live defect 38. Found by watching the stitch simulator run to the end.
+
+Both numbers visible at once, on a `FRITSCH'S` design at Left Chest:
+
+| where | reads |
+|---|---|
+| field caption, under the canvas | `1289 stitches · 102×12 mm · 5×7 in hoop` |
+| simulator bar | `1280 / 1280` |
+
+Nine apart, and both correct. A **strand** is the segment BETWEEN two
+consecutive stitches, and the chain breaks at every jump, trim and colour
+change — so N stitches in K runs make N − K strands. Measured on that design:
+**1,289 stitches, 1,280 strands, 9 runs, 0 single-stitch runs**. The simulator
+animates strands because strands are what paint; it was *displaying* that index
+with no unit next to a caption that says "stitches".
+
+`strandStitchOrdinals(design)` (strands.js) maps each strand to the stitch
+number it ends at — the same walk `designToStrands` does, deliberately, so the
+two arrays index together and a future change to one cannot silently skew the
+other. The counter now reads **`1289 / 1289 stitches`**.
+
+**The displayed total is the last ordinal, not `design.stitchCount`.** A run of
+a single stitch paints no segment, so its ordinal never appears and the
+simulator must not claim to have drawn it. The review fixture has none; the
+unit tests cover a design that does.
+
+`field-chrome.spec.js` pinned the old `N / M` format; updated with the reason
+rather than loosened — what that assertion cares about (the number moves off
+zero) is unchanged.
+
+---
+
+## 2026-09-07 — "try a bigger hoop" on the 40% of garments where there isn't one
+
+Live defect 39. Found by putting three text elements on a Full Back and
+noticing the warning never goes away.
+
+Auto-fit targets the garment's **placement box**. Measured over the shipped
+garment table against the four hoop presets:
+
+| garment | placement box | any hoop fits it? |
+|---|---|---|
+| hat_front | 127.0 × 57.1 mm | 5×7, 6×10, 8×8 |
+| left_chest | 101.6 × 101.6 | 5×7, 6×10, 8×8 |
+| beanie | 114.3 × 63.5 | 5×7, 6×10, 8×8 |
+| sleeve | 76.2 × 76.2 | 4×4, 5×7, 6×10, 8×8 |
+| patch | 88.9 × 88.9 | 4×4, 5×7, 6×10, 8×8 |
+| towel | 152.4 × 152.4 | 6×10, 8×8 |
+| **tote** | **203.2 × 203.2** | **none** |
+| **blanket** | **254.0 × 203.2** | **none** |
+| **jacket_back** | **304.8 × 254.0** | **none** |
+| **full_back** | **304.8 × 304.8** | **none** |
+
+**Four of ten.** Every design on those garments is oversize on every run, and
+the message read "Exceeds your 8×8 in hoop" — naming the chosen hoop as though
+a bigger one would help. 8×8 is the biggest one offered.
+
+`hoopFitNote` now separates the three fixes, which are genuinely different:
+
+| case | message |
+|---|---|
+| only the rotated orientation fits | Exceeds your 5×7 in hoop — rotate the design 90° and it fits *(unchanged)* |
+| a bigger preset fits | Exceeds your 4×4 in hoop — **a 5×7 in hoop fits it** |
+| nothing fits | Exceeds your 8×8 in hoop, **and every hoop this app offers — make it smaller under Size** |
+
+The middle one is information the app already had and made the customer work
+out for themselves.
+
+**Message only.** Whether auto-fit should cap to the hoop is the open question
+area 3 carries, and it is Kent's — capping would silently shrink every
+back-of-jacket design. The four impossible garments are asserted as a SET, so
+adding a garment or a bigger hoop preset surfaces in the tests rather than
+quietly changing what 40% of the picker says.
+
+---
+
+## 2026-09-07 — "size up for crisp letters", to a design already at the cap
+
+Live defect 40. Found while reading the warnings on a long left-chest name.
+
+Lettering is fit by **width**, so for a fixed character count the cap height is
+proportional to the design width. Measured with `medium_font` on left_chest's
+101.6 mm placement box — every one of these is at that same 101.6 mm:
+
+| text | design | cap height | share under 1 mm |
+|---|---|---|---|
+| WIDE DESIGN TEXT HERE | 101.7 × 4.9 mm | **4.33 mm** | 100% |
+| SHORTER TEXT | 101.7 × 8.0 mm | 7.16 mm | 43% |
+| ABC | 101.7 × 32.2 mm | 30.03 mm | 0% |
+
+An **auto-fit** design — `sizeMm` null, the default, and what every quick start
+produces — is already at that box. So "size up for crisp letters" named the one
+lever the customer does not have, while the three they do have (fewer
+characters, a bolder font, a bigger placement) went unnamed.
+
+`letteringNote(l, { atWidthCap })` swaps only the advice clause:
+
+| state | thin-lettering finding |
+|---|---|
+| at the cap | …under 1 mm wide — **already the full width of the placement, so fewer characters or a bigger placement is what makes them crisper** |
+| below the cap | …under 1 mm wide — **size up for crisp letters** *(unchanged; it is the fix there)* |
+
+Both verified in the running app: auto-fit gives the first, setting W to
+2.60 in gives the second.
+
+**The flag is read off the REQUEST (`sizeMm`), not the sewn width.** Since
+defect 34 the sewn extent sits slightly past the placement box by construction
+(pull compensation), so comparing it to the box would read "capped" for every
+design including ones the customer had shrunk by hand.
+
+The two findings that are not about size are untouched, and that is asserted:
+a cap under the 4 mm floor already names a height rather than an action, and a
+lone hairline span reports what the engine *did*, which is not advice at all.
+
+---
+
+## 2026-09-07 — what it costs to sew, on the lane that had no numbers
+
+Live defect 41. Found by reading the Review step for a lettering design.
+
+`QualityReport` prints the four facts an operator needs before loading a
+machine — stitches, thread changes, trims, metres — from the service's
+`preflight`/`stats`. A lettering, hand-drawn, shape or imported-DST design
+never reaches the service. Its review screen showed:
+
+> Garment · Left Chest · Hoop · 5×7 in (suggested) · Content · Text —
+> "FRITSCH'S" · Font · Medium Font
+
+`section.quality` absent; no mention of thread, metres or trims anywhere on the
+page. It now reads Size 102 × 12 mm · Stitches 1,289 · Trims 8 · Thread 2.1 m
+(estimate), matching the canvas caption's own stitch count and size exactly.
+
+### The basis, and the 1.6% that will not close
+
+Path length on `designToStrands`'s chain-break rule — the same quantity
+Python's `StitchRun.length_mm` sums per run — times
+`machine.THREAD_LENGTH_FACTOR` **1.35**, hand-ported into the JS engine and
+guarded by `test/digitize.test.js`. The third constant to take that treatment,
+after `FILL_ROW_MM` and `SATIN_SPACING_MM`.
+
+Measured against the service on `enthusiast_logo`:
+
+| | block 1 | block 2 | total |
+|---|---|---|---|
+| browser walk × 1.35 | 3.42 m | 1.53 m | **4.95 m** |
+| service `thread_m_by_color` | 3.35 m | 1.51 m | **4.87 m** |
+
+**1.6% high, and irreducible from the browser.** `plan_to_design` emits a run
+the machine reaches *without travelling* as plain consecutive stitches, so the
+design records carry no marker for that boundary and the walk joins two runs,
+counting a segment the plan does not. The design has lost information the plan
+had.
+
+So the browser figure is shown **only where the service has said nothing** —
+one design never gets two answers. And the browser lane's own designs do not
+have the problem: `buildLetteringDesign` sews its short travel as running
+stitch, so everything counted there is thread that really goes down.
+
+### Two defects caught while building it, both mine
+
+- **`EMB.THREAD_LENGTH_FACTOR || 1`** quoted the path length as thread against
+  a stale `app/public/engine/` copy: the review read **"1.5 m (estimate)" for a
+  design that needs 2.1**, with nothing red anywhere. Caught only because the
+  same probe ran twice and the number moved with no code change in between.
+  Now: no factor, no row. The test deletes the constant and asserts the row
+  disappears.
+- **The field caption was the one stitch count in the app printing a bare
+  `1289`** where QualityReport, DigitizePanel, DesignPanel and the review
+  summary all say `1,289`. Six e2e matchers pinned the bare form and were
+  widened, with the reason recorded at the helper.

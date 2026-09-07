@@ -34,6 +34,18 @@
   // fill row to 0.15. One `densityMm` used to feed both; see
   // buildQualityDesign for the split.
   const SATIN_SPACING_MM = 0.4;
+  // Thread consumed per mm of stitch PATH — `machine.THREAD_LENGTH_FACTOR`.
+  // The top thread goes down and back through the fabric, so the cone gives up
+  // more than the path measures. Explicitly a rule of thumb for the
+  // operator-facing estimate ("nothing geometric", machine.py's own words) and
+  // NOT a geometry constant: it changes what the shopping list says, never
+  // where a needle goes.
+  //
+  // Hand-ported for the same reason `fabrics.js` is: the browser lane has to
+  // quote the same metres the Python lane would for the same path, or a name
+  // and a logo in one project would be priced on two different bases.
+  // test/digitize.test.js reads machine.py and fails if they drift.
+  const THREAD_LENGTH_FACTOR = 1.35;
 
   // The size of a design is the size of its THREAD — measured from the records
   // that actually carry geometry, never from the shape the design was fit to.
@@ -963,5 +975,5 @@
     return { stitches, colors, widthMM: outWmm, heightMM: outHmm, stitchCount, colorCount: colors.length, unsupported: lay.unsupported || [], lettering: lay.lettering || null, _debug: { nSatin, nFill: 0, nTrims } };
   }
 
-  return { buildQualityDesign, buildLetteringDesign, groupRingsIntoShapes, offsetRing, signedArea, underlayRuns, FILL_ROW_MM, SATIN_SPACING_MM };
+  return { buildQualityDesign, buildLetteringDesign, groupRingsIntoShapes, offsetRing, signedArea, underlayRuns, FILL_ROW_MM, SATIN_SPACING_MM, THREAD_LENGTH_FACTOR };
 });
