@@ -270,6 +270,49 @@ Moved verbatim 2026-08-28 — no section was rewritten in the move.
   singly; an unavailable cutout skips prep entirely rather than degrading onto
   prep-alone. **Ships KNOWINGLY INERT for real uploads** — all four acceptance
   photos classify `gradient` at 1.00, which the gate excludes; revisit at gate 2. *(ruled 2026-08-24 — Kent; [area 1](docs/scope/1-auto-digitizing-quality.md))*
+- **A warning's SEVERITY is decided by its CONSUMERS, not by its own words.
+  Read them before writing the number down.** `PALETTE_THREAD_MISMATCH` fires
+  on **6 of 26** corpus fixtures, appears in NO document, and its own code
+  comment says *"the operator loads a cone that sews nothing while the thread
+  that IS sewn is missing from the list"*. That reads like a defect that
+  ruins a job at the machine. It is not, and getting from there to the true
+  answer took **three corrections, every one from reading a contract rather
+  than from measuring harder** — each of which made the finding SMALLER:
+
+  1. **Wrong list.** The first cut of `tools/palette_mismatch.py` compared
+     `result.palette` against what sews and printed "RACK-WRONG". But the
+     operator threads from `plan.palette` — per BLOCK, `palette[i]` describes
+     `blocks[i]` — while `result.palette` is the per-LAYER list the review
+     screen edits. Reading the layer list positionally against blocks is the
+     exact mistake `StitchPlan.palette`'s own comment records as shipping
+     `golf_hat`'s black block labelled "0020 Tangerine" until 2026-08-14. The
+     operator list is now CHECKED per fixture rather than assumed: **26 of
+     26 consistent.**
+  2. **Confounded.** The second cut reported "threads that sew but are absent
+     from the review list" — which is BY DESIGN: a blend or tonal region sews
+     several shades inside one layer and the shades ride in `stats.blocks`.
+     `gradient_ramp_linear` gave it away, **1** mismatched shape beside
+     **4** "missing" threads.
+  3. **Already defended.** The clean number is real — 34 shapes over the six
+     fixtures, and on all six the thread those shapes sew is on **no review
+     layer at all**. Then read the consumers. `reviewFromJob` resolves a
+     shape's colour `byNumber.get(s.thread_number)` **with a `stats.blocks`
+     fallback keyed by the shape's own `sew_block`**, and
+     `QualityReport.svelte` refuses the layer palette outright with a comment
+     saying why. **Nothing in the Studio renders the layer list as a cone
+     list**, so the customer-visible impact today is nil.
+
+  **So it is a real internal inconsistency with a nil blast radius, and the
+  value of the warning is as a regression detector** for the day someone adds
+  a consumer that reads `review.palette` positionally or as a cone list. That
+  is worth knowing and worth NOT chasing. MASTER_SCOPE defect 30.
+
+  **The reusable half:** an instrument that only ever confirms is not
+  measuring. Three passes, three shrinks, and the correcting evidence was in
+  a docstring each time — not in another corpus run.
+  *(measured 2026-09-07 — `digitizer/tools/palette_mismatch.py`;
+  scope-history 09-07)*
+
 - **A DIAGNOSTIC and a CUSTOMER SENTENCE are two different strings. Never
   build one out of the other.** Three photo-prep seams degrade to a documented
   no-op when the machine cannot run them, and all three used to write
