@@ -809,15 +809,44 @@ its hedge as it is copied forward** — is why this file is split.
   - **Suite growth cannot carry it either.** The SAME test count lands
     19.6–34.5 min (1,851 tests) and 17.9–33.7 (1,968) — a **1.9× spread on
     identical work** — with seconds-per-test at 0.54–1.32.
-  - **What is left is the runner, and nothing recorded which one we drew.** The
-    job now echoes `nproc` before pytest for exactly that reason. Until a log
-    settles it, do not attribute a slow job to a cause; the three above are
-    already eliminated.
+  - **The runner's CORE COUNT is refuted too, on the diagnostic's first run.**
+    The `nproc` echo was added by the very PR that proposed the core-count
+    hypothesis, and answered it immediately: `nproc: 4`, `os.cpu_count: 4`,
+    `MemTotal: 16 GB` — on a job that took **27m59s** for 1,984 tests, so
+    `-n auto` had four workers. The local frozen-tree benchmark that suggested
+    it (2 workers 23m53s against 4 workers ~14m00s) does not transfer: **this
+    box does the same suite in ~15 minutes on four cores and the runner takes
+    28 on four.** What remains is per-core throughput or hypervisor
+    contention, and one reading cannot separate them.
+    **Four hypotheses, four eliminated — do not attribute a slow job to a
+    cause.** Every run now records its own `nproc`, so a fast one will say
+    whether the core count varies at all.
 
   **Practical consequence: budget half an hour and read a 35-minute job as
   normal rather than stuck.** This does not weaken item 7's rule — three green
   checks is still not a green PR — it makes the wait longer than the rule
   implied, so the temptation to merge early is stronger, not weaker.
+
+- **A cross-reference is not an update: a fix can land under one defect and
+  leave its twin describing the world before it.** MASTER_SCOPE defect 11 said
+  *"the setting that helps a misrouted photograph has no UI"* and that
+  `cfg.is_photographic` *"appears **nowhere** in `app/src` (grep, 0 hits)"*.
+  Kent's 2026-09-02 call made `isPhoto` send exactly that flag; defect **15**
+  recorded the change fully and correctly, and defect 11 — which ends *"See
+  defect 15"* — was never touched. Five days later it still asserted the fixed
+  condition as live, with 14 grep hits against its stated 0. **Both source
+  files had already flagged the staleness in their own comments**
+  (`digitizer.js`: *"MASTER_SCOPE's 26-stop figure … predates the rehome …
+  17 is what it measures today"*), so the code knew and the doc did not — the
+  same shape as everything else that day.
+
+  **The habit: when a fix lands under defect N, grep MASTER_SCOPE for every
+  OTHER entry describing the same control.** Pointing at the updated entry
+  from the stale one is what made this survive — a reader who follows the
+  pointer gets the truth, and a reader who does not gets a false live claim,
+  and nothing distinguishes them. Compacting 11 to a resolved pointer also
+  bought **11 lines** of the 800-line budget, which is the rule-4 trade the
+  file is supposed to make. *(confirmed 2026-09-07)*
 
   Re-confirmed by re-running with the flag rather than trusting the record:
   `cfg.bind_resnap_all_classes` takes `screenshot_phone_ui` from **17 blocks to

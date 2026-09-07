@@ -1,8 +1,12 @@
 # The day the instruments were the defect
 
-**2026-09-06.** Sixteen PRs, and the through-line is one shape: *a check that
-computed the answer and did not say it.* Read this before proposing preflight
-work, before quoting a grade, and before building any checker.
+**2026-09-06.** Twenty-two PRs over the day (#363-#386), and the through-line
+of the first sixteen is one shape: *a check that computed the answer and did
+not say it.* Part two below is the second half of the day and a different
+shape: *a number that stopped being true, and nothing noticing.* Read this
+before proposing preflight work, before quoting a grade, and — especially —
+**before building a checker**, because part two is largely about the class that
+defeats one.
 
 ## The load-bearing finding: the score SATURATES
 
@@ -88,3 +92,113 @@ pay anyway.
 - **Four flag decisions**, now consolidated in
   `docs/pending-flag-decisions-2026-09-06.md` with what each buys, costs and
   risks — and which are gate-blocked rather than waiting.
+
+---
+
+## Part two: the same day, six more PRs, and what a checker cannot catch
+
+The entry above stops at PR #379. The day ran to **#386**. The second half
+found a different shape: not a check withholding what it knew, but a NUMBER
+that stopped being true and nothing noticing.
+
+### Four documentation defects, and only ONE was catchable by a checker
+
+This is the part worth carrying forward, because the instinct after finding a
+doc defect is to build a checker for it, and three of these four defeat that
+instinct on structure rather than on effort.
+
+| # | the defect | catchable? |
+|---|---|---|
+| 1 | a finding emits a payload field its `extra:` comment does not name | **YES** — `tests/test_finding_extra_documented.py` (#379) ast-parses the call and requires the field in the comment |
+| 2 | `DigitizePanel.svelte` justified a button by quoting a message as ending *"Enlarging helps"* when it ended *"Enlarging helps BUT DOES NOT FULLY CLEAR IT … Remove or simplify"* | **NO** |
+| 3 | `_coverage_findings` named `COVERAGE_WARN_UNITS`/`COVERAGE_BLOCK_UNITS` and gave their values as "2.5 and 3.5" when they evaluate to 6.67 and 9.33 | **NO** |
+| 4 | `_same_hole_findings` says *"our benchmark is 9.8%"*, which the same ruling made ~2.7% | **NO** |
+
+**Why each of the three defeats a checker, specifically:**
+
+- **#2 is a TRUTHFUL SUBSTRING.** "Enlarging helps" really does appear in the
+  source string. A fidelity check passes. The failure is a truncation that
+  inverts the sentence — a reading problem, not a parsing one. And partial
+  quotes in comments are legitimate and everywhere, so a checker that flagged
+  them would flag almost every comment in the repo.
+- **#3 names the constants but gives their values in a DIFFERENT FORM.**
+  `doc_claims`' `_CONST` regex wants `NAME = <number>`; this is
+  "`NAME` / `NAME` — 2.5 and 3.5" across an em-dash, and 2.5/3.5 are true as
+  MULTIPLES (`2.5 * COVERAGE_FILL_LAYER_UNITS`). Both numbers are real; only
+  the relationship is missing.
+- **#4 names no constant at all.** It is a measured baseline in prose.
+
+**So: do not build a fifth checker for this class.** `doc_claims.py` covers
+what it can (`cfg.<flag>` defaults, `NAME = <number>`, documented test counts)
+and #379 closed the payload-comment gap. What is left needs a reader.
+
+### The habit that WOULD have caught #3 and #4, and it is not a checker
+
+Both came from one ruling: `FILL_ROW_MM` 0.40 → 0.15 on 2026-09-03. `machine.py`
+documents that change in twenty lines and warns in as many words —
+*"every coverage number recorded before this date is in the old base and is
+2.67x smaller than the same stack reads today"* — and **it did not save the
+file next door.** Five statements were still in the old base three days later
+(four coverage, one same-hole).
+
+**When a constant's VALUE changes, grep the repo for the old literal.** That is
+the practice. It is cheap, it is not a checker, and it would have found all
+five in one pass.
+
+Related, and the reason #4 matters beyond tidiness: the same-hole RATE is a
+ratio whose denominator moved. A/B'd at both row pitches, penetrations grew
+**×1.17–2.30** while repeat points moved ×0.98–1.15 (28 against 28 on
+`logo_whitebg` — the same integer) and **`max_strikes` was identical on all
+four fixtures**. The check went quiet across the whole corpus with the fabric
+struck in exactly the same places. **Its silence is not evidence that anything
+improved** — ROADMAP gate 4, arriving somewhere nobody had connected it to.
+
+### Two of preflight's checks cannot be exercised by the corpus AT ALL
+
+`DENSITY_STACKED` fires on **0 of 52** design/garment combos; `SAME_HOLE_HEAVY`
+on **0 of 26**. Six fixtures carry a coverage PEAK over the warn level and every
+one yields 0.0 mm² of qualifying patch, because `_COVERAGE_MIN_PATCH_MM2` is
+doing all the work — as designed.
+
+**Consequences, both directions:** a corpus A/B proves nothing about either
+check, so their silence is not evidence the corpus is clean; and their
+synthetic `_stacked(n)` / bounce plans are their ONLY test coverage, so do not
+delete them as redundant.
+
+### The four locationless findings are done
+
+`STITCHES_TOO_SHORT`, `TRIM_HEAVY`, `DENSITY_STACKED`, `SAME_HOLE_HEAVY` all
+now emit WHERE. Two carried a measurement that changed the advice:
+
+- **`TRIM_HEAVY` was pointing at the wrong end of the design.** 866 corpus
+  trims split **53% inside a shape / 47% between**, and the majority flips per
+  design — in-shape dominant on 11 fixtures, between-shape on 11. Its one
+  remedy ("merge or remove the smallest shapes") was right about half the time.
+  **Not a discovery**: MASTER_SCOPE defect 6 has said "69% intra-shape" since
+  2026-08-21. The repo knew; the instrument did not report.
+- **`STITCHES_TOO_SHORT` never fires alone** (0 of 26) but only 66% of its
+  short steps sit in a shape `LETTERING_TOO_SMALL` named — the rest are
+  sewable columns (1.1–3.2 mm median) with a narrow waist. Redundant as a
+  signal, not as a location. **Do not delete either check to dedupe them.**
+
+### Two numbers that were simply wrong, and are now measured
+
+- **The Studio's "Make it bigger" button clears `STITCHES_TOO_SHORT` on 1 of
+  10** fixtures in one press (4 of 10 in two), and makes it **worse on 3** —
+  `photo_dof_meadow` 0.36 → 0.58 → 0.71. The satin shape count rises on every
+  fixture. The button is left in place; the numbers now sit beside it.
+- **CI's `digitizer` job runs 10–42 minutes, not 12–18.** 220 jobs from the
+  Actions API; the old figure was true when written and now holds for half.
+  **Concurrency is refuted** (the 41.8-minute worst case ran with zero others
+  in flight) and suite growth cannot carry it (the same test count lands at
+  19.6 or 34.5 min). What is left is the runner, which nothing logged — the
+  job now echoes `nproc`.
+
+### And defect 16's last open half is priced, not built
+
+Every surviving duplicate cone is **7 to 11 blocks apart — none adjacent** — so
+"each merge is FREE (the cone is already loaded)" prices the thread and not the
+sequence. The open blend-band half is **one GENERATED fixture**
+(`region_blobs`, three Gaussian blobs); no client artwork in the corpus
+produces one. `tools/cone_revisits.py` re-measures it after any sequencing
+change.

@@ -289,31 +289,20 @@ its own merits.
    weights) and it is a STANDING one — new UI is set to it, not re-litigated.
    What it means in practice is in the area doc. *(2026-08-25)*
 
-11. **The setting that helps a misrouted photograph has no UI, and the
-   control that looks like it is a different, harsher one.**
-   (That control is now the reading row's "It's a photo" correction; it was
-   a "This is a photo" checkbox until 2026-08-30. Renamed and moved out of
-   the params list — what it SENDS is unchanged, so every number below still
-   stands.)
-   CORRECTED 2026-08-28 — the first draft of this entry said an unticked
-   "This is a photo" costs the palette bind and depth sequencing, implying
-   ticking it is a free win. It is not, and the error was mine.
-   `cfg.is_photographic` — the declaration that turns on the bind and depth
-   sequencing while the fill tier stays FILLED — appears **nowhere** in
-   `app/src` (grep, 0 hits). The checkbox sends something else entirely:
-   `digitizer.js:144` sets `forced_class="photo_subject"`, which also fires
-   `auto_photo_tier` → streamline. Measured on `owl_kent.jpg` at 100 mm:
-   16 stops / 0.992 coverage undeclared, 12 / 0.990 with `is_photographic`
-   (2026-08-31: the rehome shrinks these to 13 and 11 — the ordering holds),
-   and **26 stops / 0.591 coverage** through the checkbox — 0.591 being the
-   thread-paint number Kent's own 2026-08-25 filled-beats-thread-paint ruling
-   already records. So the one control the Studio offers makes his artwork
-   worse on every axis, and the one that helps cannot be reached.
-   The product call is what to expose, not whether to nag: surface
-   `is_photographic` on its own, split the checkbox into declaration vs tier,
-   or leave both alone. See defect 15. *(measured 2026-08-28 —
-   scope-history 08-28)*
-
+11. **RESOLVED 2026-09-02 (Kent's call) — the control that helps IS reachable,
+   and this entry described the world before that.** It said
+   `cfg.is_photographic` "appears **nowhere** in `app/src` (grep, 0 hits)" and
+   that the reading row's "It's a photo" correction sent the harsher
+   `forced_class="photo_subject"` instead. Both halves moved that day and the
+   entry did not: `isPhoto` now sends `is_photographic=true`
+   (`digitizer.js:180`; **14** hits in `app/src`), and `forced_class` stays
+   reachable only for the OPPOSITE correction — flat art on a misrouted photo.
+   Current state and its numbers are defect 15's "UI HALF FIXED" note; the
+   08-28 measurement table this entry led with, **26 stops / 0.591 coverage**
+   included, is in scope-history 08-28 and is superseded — the forced route
+   measures **17** today. Still open is DETECTION, which is defect 15's.
+   Both source files had already flagged this staleness in their own comments.
+   *(confirmed 2026-09-07 — grep; `digitizer.js`, `DigitizePanel.svelte`)*
 8. **Font lawyer consult — optional.** Only gates RESTORING the 13 pulled
    ShareAlike fonts; the brief is written and ready to send. Nothing waits
    on it. See the font-licence entry.
@@ -390,7 +379,7 @@ permission screenshots (audit §8).
 `-n auto` (pytest-xdist, pinned) roughly halved the digitizer suite. **Do not
 re-tune hoping for the 2.5-3x seen locally:** GitHub's standard runners are
 2-core, so `-n auto` gets two workers and OpenCV's threading competes with them. Parallel-safety is verified, not assumed.
-**`--durations` has now been run (2026-09-06), and the lever it named was a mirage:** its top five entries were one `lru_cache` bill split across workers — the suite does **20 real pipeline runs for 8 distinct cases**, because the cache is per-process and xdist is not — so deleting them saved **13s of a predicted 380**. The real win was caching the suites themselves, **18m38s → 14m00s** (#369). `--dist loadfile` measures **5.8%** at CI's own two workers (23m53s → 22m27s, 1889 passed both ways) but floors wall-clock at the slowest single FILE: an option with its trade named, not taken. **And the job's own duration is not what anything here documented** — measured 2026-09-06 over the last 220 completed `digitizer` jobs from the Actions API: **10 to 42 minutes**, daily median walking 15.0 → 16.5 → 17.6 → 18.7 → 20.7 and then jumping to **29.6 on 2026-09-06** (max 41.8). CLAUDE.md's "12–18" was true when written and now holds for half. **Cause not settled, but bounded:** it is entirely in the test step (`Install` is 0.27 min on fast and slow runs alike), it is NOT concurrency (the 41.8-minute worst case ran with ZERO other digitizer jobs, and the most-contended jobs are the fastest — hypothesis refuted), and suite growth alone cannot carry it: the SAME test count lands 19.6–34.5 min (1,851 tests) and 17.9–33.7 (1,968), a **1.9× spread on identical work**, with seconds-per-test running 0.54–1.32. What is left is the runner, which nothing logs — so the job now echoes `nproc` before pytest and the next reader answers it from the log. *(measured 2026-09-06 — scope-history 09-06)*
+**`--durations` has now been run (2026-09-06), and the lever it named was a mirage:** its top five entries were one `lru_cache` bill split across workers — the suite does **20 real pipeline runs for 8 distinct cases**, because the cache is per-process and xdist is not — so deleting them saved **13s of a predicted 380**. The real win was caching the suites themselves, **18m38s → 14m00s** (#369). `--dist loadfile` measures **5.8%** at CI's own two workers (23m53s → 22m27s, 1889 passed both ways) but floors wall-clock at the slowest single FILE: an option with its trade named, not taken. **And the job's own duration is not what anything here documented** — measured 2026-09-06 over the last 220 completed `digitizer` jobs from the Actions API: **10 to 42 minutes**, daily median walking 15.0 → 16.5 → 17.6 → 18.7 → 20.7 and then jumping to **29.6 on 2026-09-06** (max 41.8). CLAUDE.md's "12–18" was true when written and now holds for half. **Cause not settled, but bounded:** it is entirely in the test step (`Install` is 0.27 min on fast and slow runs alike), it is NOT concurrency (the 41.8-minute worst case ran with ZERO other digitizer jobs, and the most-contended jobs are the fastest — hypothesis refuted), and suite growth alone cannot carry it: the SAME test count lands 19.6–34.5 min (1,851 tests) and 17.9–33.7 (1,968), a **1.9× spread on identical work**, with seconds-per-test running 0.54–1.32. **The runner's CORE COUNT is refuted too, by the diagnostic on its first run** (2026-09-07): `nproc: 4`, 16 GB, on a **27m59s** job of 1,984 tests — `-n auto` had four workers, and this box does the same suite in ~15 min on four. Four hypotheses, four eliminated; what remains is per-core throughput or hypervisor contention, which one reading cannot separate. Every run now records its own `nproc`. *(measured 2026-09-06/07 — scope-history 09-06, 09-07)*
 *(measured 2026-08-14, 2026-09-06 — DOCTRINE, scope-history 09-06)*
 
 ### No physical sew-out testing has occurred yet

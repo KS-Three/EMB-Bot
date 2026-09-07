@@ -7159,3 +7159,116 @@ tests of real OpenCV/shapely work ran ~19 minutes serially"*. The count is the
 one at the time and the suite passed **1,979** on 2026-09-06; annotated in
 place rather than rewritten, because the *reason* for `-n auto` is unchanged
 and the original measurement is still the one that made the case.
+
+---
+
+## 2026-09-07 — a resolved defect left a stale twin, and the code had already said so
+
+MASTER_SCOPE defect 11 read *"The setting that helps a misrouted photograph has
+no UI, and the control that looks like it is a different, harsher one."* Two of
+its claims are checkable in one command each, and **both are false**:
+
+| claim | measured 2026-09-07 |
+|---|---|
+| `cfg.is_photographic` "appears **nowhere** in `app/src` (grep, 0 hits)" | **14 hits**, including the send at `digitizer.js:180` |
+| the checkbox sends `forced_class="photo_subject"` (`digitizer.js:144`) | line 144 does not; the only `photo_subject` mentions there are comments describing the OLD behaviour |
+
+**Kent ruled on 2026-09-02, under defect 15**, that the reading row's "It's a
+photo" correction should send `is_photographic=true` rather than
+`forced_class="photo_subject"` — declaring photographic CONTENT, which buys
+depth sequencing and the palette bind, instead of forcing the FILL TIER. On
+`owl_kent.jpg` @ 80 mm the forced route goes 13 stops → **17**, the declared
+one → **11 on 12 cones**, for ~6% more stitches.
+
+**Defect 15 records all of that correctly. Defect 11 was never touched** — and
+it ends with *"See defect 15."* The pointer was there the whole time; a reader
+who followed it got the truth and a reader who stopped at the first paragraph
+got a fixed condition presented as live, with nothing to distinguish them.
+**A cross-reference is not an update.**
+
+### The code had already flagged it
+
+`digitizer.js`, in the comment right above the send:
+
+> *(MASTER_SCOPE's 26-stop figure for the forced route is from 2026-08-28 and
+> predates the rehome, borders-last and the cone fold; **17** is what it
+> measures today. The ordering it was cited for is unchanged.)*
+
+and `DigitizePanel.svelte`:
+
+> *WHAT GETS SENT CHANGED 2026-09-02 (Kent's call, defect 15): isPhoto now
+> means `is_photographic=true` … not `forced_class=photo_subject`, which
+> forced the FILL TIER and measurably hurt.*
+
+Both files knew. Neither could update MASTER_SCOPE, and nobody did. That is the
+same shape as the four documentation defects the day before — the repo knowing
+something its own status file does not — and it is the one variant a checker
+could plausibly catch, since `"appears nowhere in app/src"` is a claim a grep
+can settle. It is not worth a checker on one instance; **the habit is to grep
+MASTER_SCOPE for every other entry describing the same control when a fix
+lands.**
+
+### What changed
+
+Defect 11 compacted from 25 lines to a 14-line RESOLVED pointer at defect 15,
+which carries the current state. Nothing was lost: the 08-28 measurement table
+it led with — including the **26 stops / 0.591 coverage** figure, now
+superseded by 17 — already lives in this file at the 08-28 entry, so rule 5's
+"overflow goes somewhere, never to the bin" is satisfied by what was already
+there.
+
+**MASTER_SCOPE 800 → 789 lines.** The file has sat at exactly 800 through this
+whole session, with every addition threaded into existing lines to stay under
+rule 4's budget. Removing a false live claim is the first thing all day to buy
+budget back rather than spend it.
+
+---
+
+## 2026-09-07 — the diagnostic answered on its first run, and refuted the hypothesis that motivated it
+
+The PR one entry above added three lines to the `digitizer` job — `nproc`,
+`os.cpu_count()`, the first line of `/proc/meminfo` — on the reasoning that
+`-n auto` follows the core count and the local frozen-tree benchmark had
+measured **2 workers 23m53s against 4 workers ~14m00s** on the same tree, the
+same shape as CI's 14.3/32.4 bimodal split. The entry was careful to call that
+a hypothesis rather than a finding.
+
+**Its own CI run settled it, in the wrong direction for the hypothesis:**
+
+```
+nproc: 4
+os.cpu_count: 4
+MemTotal:       16373448 kB
+1984 passed, 3 skipped, 7 xfailed, 4 warnings in 1679.00s (0:27:59)
+```
+
+**Four cores, 16 GB, 28 minutes.** `-n auto` had four workers, not two. So the
+core-count explanation is dead alongside concurrency and suite growth.
+
+### What that leaves
+
+This box runs the same suite in **~15 minutes on four cores** (five consecutive
+frozen-tree runs today: 15m34, 15m41, 14m58, 15m09, 15m03 — very stable). The
+runner takes **28 on four**. The difference is therefore **per-core throughput
+or hypervisor contention on a shared host**, and *one reading cannot separate
+those two.*
+
+**Four hypotheses, four eliminated.** Concurrency (the 41.8-minute worst case
+ran with zero other digitizer jobs), suite growth (the same test count lands at
+19.6 or 34.5 minutes), the setup steps (`Install` is 0.27 min on fast and slow
+runs alike), and now the core count. **Do not attribute a slow job to a cause.**
+
+### Why this is a good outcome anyway
+
+The diagnostic cost three lines and seconds of runtime, and it converted an
+eight-page API sweep into a number printed in every future log. Every run from
+here records its own `nproc`, so the next question — *does the core count vary
+at all between a 14-minute run and a 34-minute one?* — is answered by reading
+two logs instead of by another sweep. That is the whole reason to record a
+thing you cannot yet explain.
+
+It is also worth stating plainly that **the hypothesis was mine and the
+measurement I built to test it is what killed it.** That is the fourth time
+today: the ambiguous-line branch, the `--durations` target, the concurrency
+theory, and now this. The pattern is not that the guesses were careless — each
+had a real mechanism behind it — but that a mechanism is not evidence.
