@@ -1068,6 +1068,39 @@ its hedge as it is copied forward** — is why this file is split.
 
 ## Gotchas — cost someone a session once
 
+- **A refresh destroyed the offline user's artwork, and `_hasImage: true`
+  was the only thing saved about it.** An `image` element's pixels lived in
+  App's `runtime.workImages`, which is deliberately not persisted; the element
+  itself carried nine scalar settings and no picture. Measured in a browser:
+  **2739 stitches before a refresh, no stitch caption after**, the canvas back
+  to "Your embroidery appears here as you add content", and not one word of
+  explanation. The sibling `digitized` element had solved this from the start
+  by keeping `sourcePng` on the element — same session, same fixture, 2187
+  stitches before AND after — so the answer already existed one factory down.
+  **Who it hit is the sharp part**: `image` is created only when the digitizer
+  service is DOWN (`resolveArtworkType`), a state the Content step explicitly
+  supports and advertises ("Artwork will be placed but not auto-digitized").
+  The app invited people to work offline and then threw the work away.
+  When runtime state is the ONLY home for something a user made, a refresh is
+  a delete key. *(measured 2026-09-07; `sourcePng` at WORK_MAX_PX now on the
+  element, restored by `lib/imageSource.js` from the load path)*
+
+- **Restore in the load path, not in the panel that edits the thing.** The
+  first cut put the rehydrate in `ImagePanel`, which mounts only on the
+  Content step with that element selected. The embroidery field is beside
+  EVERY step, so a reloaded project showed an empty field until the user
+  happened to click Content — and `_hasImage` stayed false meanwhile, so the
+  review step would have called a design with real artwork in it empty. It
+  measured as "fixed" (the stitches came back) while still reading as lost
+  work on the screen the reload lands on. Moving it to `enterProject` and boot
+  covers every step at once, and leaves one path instead of two.
+  **Its own trap**: Svelte hoists a function declaration but not the `let` it
+  closes over, so calling `restoreArtwork(project)` up beside the `project`
+  assignment threw *"Cannot access 'rehydrateToken' before initialization"* —
+  and a throw in that block renders an EMPTY BODY, which looks like a dead
+  server rather than a scripting error. Check `pageerror`, not the network.
+  *(2026-09-07 — same session)*
+
 - **A trailing `{:else}` answers a question about the wrong type, and a
   missing field renders as EMPTY rather than as "undefined".** The review
   step's recap branched `image` / `manual` / else-assume-text. Three of the six

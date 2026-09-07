@@ -4,6 +4,8 @@
   import { applyTemplate } from "./lib/templates.js";
   import { canAdvance, nextStep, prevStep } from "./lib/flow.js";
   import { contentSummary } from "./lib/summary.js";
+  import { rehydrateImages } from "./lib/imageSource.js";
+  import { flattenRGBA, WORK_MAX_PX, ALPHA_CUTOFF } from "./lib/flatten.js";
   import {
     migrateLegacy,
     currentProjectId,
@@ -547,6 +549,72 @@
     elUpdate(elementId, { _hasImage: !!flat });
   }
 
+  // ---- bringing a saved project's artwork back ------------------------------
+  //
+  // `enterProject` and boot both clear `runtime` and strip `_hasImage`,
+  // which is correct — at that instant no pixels are loaded. The artwork
+  // itself lives on the element as `sourcePng`, and this is what turns it
+  // back into runtime state. Until 2026-09-07 nothing did: an `image`
+  // element (the type an upload makes when the digitizer service is DOWN)
+  // came back from a reload with no pixels at all, no stitches, and no
+  // message. Measured in a browser: 2739 stitches before a refresh, none
+  // after.
+  //
+  // The token guards a switch that overtakes an in-flight decode — the same
+  // shape as `digitizerProbeToken` above, and for the same reason.
+  let rehydrateToken = 0;
+
+  async function decodeWorkImage(b64) {
+    const img = await new Promise((resolve, reject) => {
+      const im = new Image();
+      im.onload = () => resolve(im);
+      im.onerror = () => reject(new Error("saved artwork could not be decoded"));
+      im.src = "data:image/png;base64," + b64;
+    });
+    const scale = Math.min(1, WORK_MAX_PX / (Math.max(img.width, img.height) || 1));
+    const w = Math.max(1, Math.round(img.width * scale));
+    const h = Math.max(1, Math.round(img.height * scale));
+    const cv = document.createElement("canvas");
+    cv.width = w;
+    cv.height = h;
+    cv.getContext("2d").drawImage(img, 0, 0, w, h);
+    const rgba = cv.getContext("2d").getImageData(0, 0, w, h).data;
+    // Same alpha cut ImagePanel's prepRGBA applies, so a rehydrated working
+    // image is the one the flatten was built for rather than a near-miss.
+    for (let i = 3; i < rgba.length; i += 4) if (rgba[i] < ALPHA_CUTOFF) rgba[i] = 0;
+    return { rgba, w, h };
+  }
+
+  function restoreArtwork(proj) {
+    const mine = ++rehydrateToken;
+    rehydrateImages(proj, runtime, {
+      decode: decodeWorkImage,
+      flatten: (img, nColors, removeBg) =>
+        flattenRGBA(img.rgba, img.w, img.h, { nColors, removeBg }),
+      onImage,
+      onFlat,
+      // A record that will not decode is dropped, not retried: the field is
+      // on every step, so a decode failing on every reactive pass would spin
+      // forever. Clearing the name too leaves the panel in its honest "no
+      // artwork" state rather than showing a filename with nothing behind
+      // it — which is exactly the mismatch this whole change removes.
+      onError: (id) => elUpdate(id, { sourcePng: null, name: "" }),
+      token: () => mine === rehydrateToken,
+    });
+  }
+
+  // Boot does NOT go through enterProject — it assigns `project` directly,
+  // near the top — so the artwork of whatever was loaded from storage is
+  // restored here. Both entry points now call the same thing; there is no
+  // third.
+  //
+  // Placed BELOW `restoreArtwork` rather than beside the `project`
+  // assignment on purpose: Svelte hoists the function declaration but not
+  // the `let rehydrateToken` it closes over, so calling it any earlier
+  // throws "Cannot access 'rehydrateToken' before initialization" and the
+  // whole app renders an empty body. (Done exactly that, 2026-09-07.)
+  restoreArtwork(project);
+
   function onDims(detail) {
     designDims = detail;
   }
@@ -580,6 +648,7 @@
     step = targetStep;
     history.reset(project); // history is per-project; a switch starts fresh
     syncHistoryFlags();
+    restoreArtwork(project);
   }
 
   // Drawer "Open" (plan amendment A6): lands on "content", not "garment" --

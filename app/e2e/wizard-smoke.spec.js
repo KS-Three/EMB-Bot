@@ -368,3 +368,58 @@ test("the review step does not claim readiness for a design with nothing in it",
   await expect(page.locator("dl.summary")).toContainText('Text — "HELLO"');
   await expect(page.getByRole("button", { name: "Next", exact: true })).toBeEnabled();
 });
+
+// Artwork must survive a refresh — the case that was silently losing work.
+//
+// An `image` element (the browser flatten lane) is created only when the
+// digitizer service is DOWN: App.onAddElement routes "artwork" through
+// resolveArtworkType(digitizerHealth), and the Content step tells the user
+// outright that art will be "placed but not auto-digitized". So this is an
+// explicitly supported state — and until 2026-09-07 it was the one where a
+// page refresh destroyed the user's work. Measured on the shipped build:
+// 2739 stitches before, no stitch caption after, and no message either way,
+// because the pixels lived only in App's `runtime` (not persisted) while
+// `_hasImage: true` was written to localStorage.
+//
+// Aborting /health is what makes the app believe the service is down; it is
+// the only lever, and it is the real code path rather than a stubbed one.
+test("artwork uploaded with the digitizer offline survives a page refresh", async ({ page }) => {
+  await page.route("**/health", (r) => r.abort());
+  await page.goto("/");
+
+  await page.getByRole("button", { name: "Tote", exact: true }).click();
+  await page.getByRole("button", { name: "Next", exact: true }).click();
+  await page.getByRole("button", { name: "Artwork" }).click();
+  await page.locator("input[type=file]").first().setInputFiles(ART_PNG);
+
+  const caption = page.locator("span.stats");
+  await expect(caption).toBeVisible({ timeout: 60_000 });
+  const before = await caption.innerText();
+  expect(before).toMatch(/[\d,]+ stitches/);
+
+  // The pixels must be ON the element, not only in runtime — that is what
+  // makes the reload below possible at all.
+  const saved = await page.evaluate(() => {
+    const id = localStorage.getItem("embstudio:current");
+    const el = JSON.parse(localStorage.getItem("embstudio:p:" + id)).elements
+      .find((e) => e.type === "image");
+    return { name: el.name, hasPng: typeof el.sourcePng === "string" && el.sourcePng.length > 100 };
+  });
+  expect(saved.hasPng).toBe(true);
+  expect(saved.name).toBe("two-squares.png");
+
+  await page.reload();
+
+  // On the step the reload LANDS on, not after navigating to Content: the
+  // embroidery field is visible beside every step, so restoring in the panel
+  // would leave this empty and read as lost work.
+  await expect(caption).toHaveText(before, { timeout: 30_000 });
+  await expect(page.getByRole("heading", { name: "What are you putting this on?" })).toBeVisible();
+
+  // And the design is really there, not just a stale caption: the review
+  // step's own gate has to agree.
+  await page.getByRole("button", { name: "3 Review" }).click();
+  await expect(page.getByRole("heading", { name: "Ready to stitch" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Nothing to stitch yet" })).toHaveCount(0);
+  await expect(page.locator("dl.summary")).toContainText("Logo / image");
+});

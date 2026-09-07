@@ -72,11 +72,17 @@ test("defaultTextElement has sane beginner defaults", () => {
   });
 });
 
-test("defaultImageElement has sane beginner defaults", () => {
+test("defaultImageElement has sane beginner defaults, and a place to KEEP the artwork", () => {
   const el = defaultImageElement("e7");
   expect(el).toEqual({
     id: "e7",
     type: "image",
+    name: "",
+    // Pixels live on the element, not only in App's runtime. Without this
+    // field a saved project reloaded with `_hasImage: true` and nothing
+    // behind it — measured in a browser 2026-09-07: 2739 stitches before a
+    // refresh, no stitch caption after, and no message either way.
+    sourcePng: null,
     nColors: 4,
     removeBg: true,
     threadRgb: {},
@@ -602,12 +608,28 @@ test("migrateProject fills the shape-layers fields on a pre-layers digitized sav
   expect(kept.appliedEdits).toBe('[["Sdef"],{}]');
 });
 
-test("migrateProject leaves non-digitized elements byte-identical (old projects load unchanged)", () => {
+test("migrateProject passes a text element through untouched", () => {
   const text = defaultTextElement("e1");
-  const image = { ...defaultImageElement("e2"), nColors: 5 };
-  const m = migrateProject({ version: 2, garmentId: "left_chest", selectedId: "e1", elements: [text, image] });
+  const m = migrateProject({ version: 2, garmentId: "left_chest", selectedId: "e1", elements: [text] });
   expect(m.elements[0]).toBe(text); // same object, untouched by the map
-  expect(m.elements[1]).toBe(image);
+});
+
+test("migrateProject fills in an image element's new fields without disturbing its old ones", () => {
+  // `image` joined digitized/manual/shape in the additive treatment when
+  // `sourcePng`/`name` were added (2026-09-07), so it is no longer passed
+  // through by identity. A save that predates those fields carries no pixels
+  // and never can — nothing recovers what was not written — but it must load
+  // with them null/"" rather than undefined, so it takes the same "no
+  // artwork" path a fresh element does.
+  const old = { id: "e2", type: "image", nColors: 5, removeBg: false, threadRgb: { 0: [1, 2, 3] },
+                underlay: false, sizeMm: 40, offsetXMm: 3, offsetYMm: -4, _hasImage: true };
+  const m = migrateProject({ version: 2, garmentId: "left_chest", selectedId: "e2", elements: [old] });
+  expect(m.elements[0]).toEqual({ ...old, name: "", sourcePng: null });
+
+  // And a save that already has them keeps them.
+  const saved = { ...old, name: "logo.png", sourcePng: "iVBORw0KGgo=" };
+  const m2 = migrateProject({ version: 2, garmentId: "left_chest", selectedId: "e2", elements: [saved] });
+  expect(m2.elements[0]).toEqual(saved);
 });
 
 // --- manual digitizing mode (element factory) ------------------------------
