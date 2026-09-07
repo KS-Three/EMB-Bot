@@ -1,6 +1,7 @@
 <script>
   import { createEventDispatcher } from "svelte";
   import { flattenRGBA, flatToRGBA, flatShares, mergeFlat, WORK_MAX_PX, ALPHA_CUTOFF } from "../lib/flatten.js";
+  import { loadImage, rasterSize, isVectorFile, UNREADABLE } from "../lib/rasterize.js";
   import ThreadPicker from "./ThreadPicker.svelte";
   import Icon from "./Icon.svelte";
 
@@ -47,10 +48,12 @@
   // WORK_MAX_PX long side, read pixels, and force low-alpha pixels fully
   // transparent so downstream flattening treats them as background.
   // Ported from src/app.js prepRGBA (lines 95-108).
+  // `vector` rides in from onFileChange rather than being re-derived here:
+  // workSize is called from prepRGBA and encodeWorkPng, neither of which has
+  // the File. See lib/rasterize.js for why a vector is allowed to scale UP.
+  let sourceIsVector = false;
   function workSize(img) {
-    const iw = img.width, ih = img.height;
-    const scale = Math.min(1, WORK_MAX_PX / (Math.max(iw, ih) || 1));
-    return { w: Math.max(1, Math.round(iw * scale)), h: Math.max(1, Math.round(ih * scale)) };
+    return rasterSize(img, WORK_MAX_PX, { vector: sourceIsVector });
   }
 
   function prepRGBA(img) {
@@ -84,27 +87,6 @@
     cv.getContext("2d").drawImage(img, 0, 0, w, h);
     const url = cv.toDataURL("image/png");
     return url.slice(url.indexOf(",") + 1);
-  }
-
-  async function loadImage(file) {
-    if (typeof createImageBitmap === "function") {
-      try {
-        return await createImageBitmap(file);
-      } catch (e) {
-        // fall through to the <img> + object URL fallback below
-      }
-    }
-    const url = URL.createObjectURL(file);
-    try {
-      return await new Promise((resolve, reject) => {
-        const img = new Image();
-        img.onload = () => resolve(img);
-        img.onerror = () => reject(new Error("Could not read this image file."));
-        img.src = url;
-      });
-    } finally {
-      URL.revokeObjectURL(url);
-    }
   }
 
   // Flatten `img` ({ rgba, w, h }) at the given settings and dispatch the
@@ -142,6 +124,9 @@
     if (!file) return;
     error = "";
     busy = true;
+    // Set BEFORE the first workSize() call — prepRGBA and encodeWorkPng both
+    // read it, and neither is handed the File.
+    sourceIsVector = isVectorFile(file);
     try {
       const img = await loadImage(file);
       const prep = prepRGBA(img);
@@ -167,7 +152,7 @@
       d("image", prep);
       flattenFrom(prep, element.nColors, element.removeBg);
     } catch (err) {
-      error = (err && err.message) || "Could not read this image file.";
+      error = (err && err.message) || UNREADABLE;
       fileName = "";
       patch({ sourcePng: null, name: "" });
       d("image", null);

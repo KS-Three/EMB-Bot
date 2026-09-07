@@ -1199,7 +1199,13 @@ and controllable to the user.
   `element.sourcePng` on project load — they used to live only in App's
   unpersisted `runtime` and a refresh deleted them), and `designChart.js`
   (which thread chart the design's cones came from, as a store because
-  `ThreadPicker` has nine call sites).
+  `ThreadPicker` has nine call sites). A fourth landed the same day for the
+  same reason: `rasterize.js` (decode an uploaded file, and decide the pixel
+  size to draw it at) — `DigitizePanel`, `ImagePanel` and `TraceImportPanel`
+  each held a byte-identical `loadImage` and its own copy of
+  `Math.min(1, MAX / longestSide)`, which is right for a raster and wrong for
+  a vector, whose "natural" size is a browser default. Never write a fourth
+  copy of either.
 
   **What is persisted is what survives.** `projects.js` is a plain
   `JSON.stringify(project)`, so anything an element does not carry is gone on

@@ -8526,3 +8526,74 @@ routing lettering there needs no change to `src/dst.js` at all. What the
 standing ruling protects is the browser encoder's sew evidence — and that
 evidence is evidence of a transposed file sewing. Both the routing and the
 codec are Kent's call; neither was touched.
+
+---
+
+## 2026-09-07 — what happens when you drop the wrong file, and the right one
+
+Two defects, both found by uploading things to the panel rather than by
+reading it. Live defect 35.
+
+### (a) The error was trapped in the branch that could never render it
+
+`DigitizePanel`'s `{#if error}` sat inside the `{:else}` arm of
+`{#if !element.sourcePng}`. A file that fails to decode never sets
+`sourcePng`, so the message could only appear once artwork had already
+loaded.
+
+| upload | `error` set | rendered |
+|---|---|---|
+| `.txt` on a fresh panel | yes | **no** |
+| `.txt` after a logo already loaded | yes | yes |
+
+Moved out of the branch, directly under the upload control. The component
+test was mutation-proved: putting the paragraph back where it was fails the
+fresh-panel test and leaves the replace-artwork test green — the same
+asymmetry the defect had.
+
+The message itself now names what works, measured in this browser rather than
+assumed:
+
+| file | decodes |
+|---|---|
+| PNG / JPEG / WebP | yes (`createImageBitmap`) |
+| GIF | yes (`createImageBitmap`) |
+| BMP | yes (`<img>`) |
+| SVG with `image/svg+xml` | yes (`<img>`) |
+| SVG with an empty MIME type | **no** |
+| PDF | **no** |
+
+### (b) A vector logo was rasterised at Chrome's default size
+
+All three upload panels held byte-identical copies of `loadImage` and of
+`Math.min(1, MAX / longestSide)`. That rule is right for a raster and wrong
+for a vector, whose natural size is a browser default (300 px wide for a
+`viewBox`-only SVG).
+
+Same fixture (`app/e2e/fixtures/vector_logo.svg`, three inks on white),
+before and after, in the shipped app at Left Chest:
+
+| | before | after |
+|---|---|---|
+| stitches | 3,445 | 3,424 |
+| **thread colours** | **4** | **2** |
+| warnings | *"3.1 pixels per millimetre at this size and needs 4 … about 1.3x wider, or a smaller design"* + *"One part of the art was too small to sew"* | none |
+
+The two extra colours were anti-alias fringe from the small raster — two
+spools to buy and two machine stops the artwork never called for.
+
+**Why no SVG parsing is needed.** Chrome re-rasterises an SVG at whatever
+destination size `drawImage` is given. Measured on a 0.25-unit stripe in a
+200-unit viewBox — thinner than one pixel at the default size — the darkest
+pixel each approach produces:
+
+| approach | darkest pixel |
+|---|---|
+| rasterised at the natural 300 px (what shipped) | 160 (a grey smear) |
+| `drawImage(img, 0, 0, 1200, 480)` | **0** (a black line) |
+| `img.width`/`img.height` set before drawing | 0 |
+| `width`/`height` injected into the SVG source | 0 |
+
+The first is the destination size the panels already passed, so only the
+number changed. `app/src/lib/rasterize.js` now owns the decode and the
+work-size rule for all three panels.

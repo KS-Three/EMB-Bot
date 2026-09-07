@@ -30,6 +30,7 @@
     remapBlockColors,
   } from "../lib/digitizer.js";
   import { loadPalette, nearestInList } from "../lib/threads.js";
+  import { loadImage, rasterSize, isVectorFile } from "../lib/rasterize.js";
 
   // Editor panel for an auto-digitized artwork element (build step 10).
   // The element stores the source image (processing size, PNG base64), the
@@ -68,27 +69,6 @@
 
   // ---- upload ---------------------------------------------------------------
 
-  async function loadImage(file) {
-    if (typeof createImageBitmap === "function") {
-      try {
-        return await createImageBitmap(file);
-      } catch (e) {
-        // fall through to the <img> + object URL fallback
-      }
-    }
-    const url = URL.createObjectURL(file);
-    try {
-      return await new Promise((resolve, reject) => {
-        const img = new Image();
-        img.onload = () => resolve(img);
-        img.onerror = () => reject(new Error("Could not read this image file."));
-        img.src = url;
-      });
-    } finally {
-      URL.revokeObjectURL(url);
-    }
-  }
-
   async function onFile(e) {
     const file = e.currentTarget.files && e.currentTarget.files[0];
     e.currentTarget.value = ""; // re-selecting the same file must re-fire change
@@ -97,10 +77,9 @@
     fileBusy = true;
     try {
       const img = await loadImage(file);
-      const iw = img.width, ih = img.height;
-      const scale = Math.min(1, PROCESS_MAX_PX / (Math.max(iw, ih) || 1));
-      const w = Math.max(1, Math.round(iw * scale));
-      const h = Math.max(1, Math.round(ih * scale));
+      // A vector renders AT the work size, not at whatever default size the
+      // browser gave it — see lib/rasterize.js for the measurement.
+      const { w, h } = rasterSize(img, PROCESS_MAX_PX, { vector: isVectorFile(file) });
       const cv = document.createElement("canvas");
       cv.width = w;
       cv.height = h;
@@ -1507,6 +1486,18 @@
     <input type="file" accept="image/png,image/jpeg,image/webp,image/*" on:change={onFile} disabled={fileBusy} />
   </label>
   {#if fileBusy}<p class="dgp-note">Reading the image…</p>{/if}
+  <!-- Directly under the upload control, and OUTSIDE the `element.sourcePng`
+       branch below.
+       It used to live beside the Digitize button, which is in the `{:else}`
+       arm — so it could only ever render once artwork had already loaded. A
+       file that FAILS to load never sets `sourcePng`, so `onFile` set this
+       message and the template had no way to show it: measured 2026-09-07 by
+       dropping a .txt on a fresh panel, which set `error` and rendered the
+       unchanged empty state. The one case where the user has nothing on
+       screen and most needs telling was the one case that stayed silent, and
+       a failed REPLACE — where they can already see their artwork — was the
+       only case that spoke. -->
+  {#if error}<p class="dgp-error" role="alert">{error}</p>{/if}
 
   {#if !element.sourcePng}
     <p class="dgp-note">
@@ -1688,7 +1679,6 @@
       {pending ? "Digitizing…" : element.result ? "Digitize again" : "Digitize"}
     </button>
     {#if statusLine}<p class="dgp-status" role="status">{statusLine}</p>{/if}
-    {#if error}<p class="dgp-error" role="alert">{error}</p>{/if}
 
     {#if element.result}
       <p class="dgp-stats">

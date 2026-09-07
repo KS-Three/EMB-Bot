@@ -2425,3 +2425,56 @@ its hedge as it is copied forward** — is why this file is split.
   product supports is a scope call, and PRODUCT.md's is DST/PES/JEF (+EXP).
   *(found by comparing /health's format list against the Download step,
   2026-09-07)*
+
+- **A message the code sets and the template cannot show — and the branch it
+  was trapped in was the one that mattered.** `DigitizePanel`'s
+  `{#if error}` lived beside the Digitize button, which sits in the `{:else}`
+  arm of `{#if !element.sourcePng}`. So the upload error could only render
+  once artwork had ALREADY loaded, and a file that fails to decode never sets
+  `sourcePng`. Dropping a `.txt` on a fresh panel: `onFile` set
+  *"Could not read this image file."*, and the screen did not change.
+
+  The asymmetry is the whole lesson. **The case that stayed silent was the one
+  where the customer has nothing on screen and no way to tell a rejected file
+  from a broken app; the case that spoke was the one where their artwork is
+  still visible and they can see it did not change.** Exactly backwards, and
+  invisible to every test in the repo, because the string was correct, the
+  handler was correct, and nothing asserted that a user could see it.
+
+  **Check where an error renders relative to the state that produces it.** A
+  message about a failed load belongs beside the *upload control*, not beside
+  the controls that only exist once a load succeeded. The test that catches it
+  has to start from the empty state — the spec for this panel deliberately
+  seeded a truthy `sourcePng` "to clear the upload-prompt gate", which is
+  exactly the gate the bug was behind.
+
+- **`Math.min(1, MAX / longest)` is right for a raster and wrong for a
+  vector, and it was copied three times.** `DigitizePanel`, `ImagePanel` and
+  `TraceImportPanel` each held a byte-identical `loadImage` and its own copy
+  of that work-size rule — one of them with a comment saying so (*"Identical …
+  pattern DigitizePanel/ImagePanel already use"*), which is the repo noticing
+  the duplication and keeping it anyway.
+
+  Never scaling up is correct for a photo: a 300 px JPEG has 300 px of detail
+  however big the canvas is. An SVG has no pixels at all, and its "natural"
+  size is a **browser default** — Chrome gives a `viewBox`-only SVG a 300 px
+  width, which is the shape SVGO and most hand-written exports produce. So an
+  80 mm design built from a vector logo arrived at **3.1 px/mm** and the
+  customer was told *"Enlarging it can't add detail that isn't in the file"* —
+  false, and `INPUT_LOW_RESOLUTION` firing on the one format that cannot be
+  low-resolution.
+
+  **Measured before and after in the shipped app, same file: 3,445 stitches in
+  4 colours with two warnings → 3,424 in 2 colours with none.** The two extra
+  colours were anti-alias fringe from the small raster: two spools to buy and
+  two machine stops the artwork never called for. That is what a resolution
+  defect costs downstream — not blur, thread.
+
+  The fix needs no SVG parsing, because Chrome re-rasterises an SVG at
+  whatever destination size `drawImage` is handed. Measured on a 0.25-unit
+  stripe in a 200-unit viewBox — thinner than one pixel at the default size —
+  the darkest pixel produced: **160 at the natural 300 px, 0 at 1200**, and 0
+  for both of the other two approaches (setting `img.width/height` first,
+  injecting `width`/`height` into the SVG source). The cheapest of the three
+  was already what the panels did; only the size they asked for was wrong.
+  *(found by driving the app, 2026-09-07)*

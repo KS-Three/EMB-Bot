@@ -1,6 +1,7 @@
 <script>
   import { createEventDispatcher } from "svelte";
   import { WORK_MAX_PX, ALPHA_CUTOFF } from "../lib/flatten.js";
+  import { loadImage, rasterSize, isVectorFile, UNREADABLE } from "../lib/rasterize.js";
   import { traceShapesFromRGBA, rescaleTracedShapes } from "../lib/manualTrace.js";
   import { CANVAS_W, CANVAS_H, nextShapeIds, flattenShape } from "../lib/manualShapes.js";
 
@@ -44,28 +45,12 @@
   let removeBg = true;
 
   // ---- upload + decode ---------------------------------------------------
-  // Identical createImageBitmap-with-<img>+object-URL-fallback pattern
-  // DigitizePanel.svelte/ImagePanel.svelte already use for file decode.
-  async function loadImage(file) {
-    if (typeof createImageBitmap === "function") {
-      try {
-        return await createImageBitmap(file);
-      } catch (e) {
-        // fall through to the <img> + object URL fallback below
-      }
-    }
-    const url = URL.createObjectURL(file);
-    try {
-      return await new Promise((resolve, reject) => {
-        const img = new Image();
-        img.onload = () => resolve(img);
-        img.onerror = () => reject(new Error("Could not read this image file."));
-        img.src = url;
-      });
-    } finally {
-      URL.revokeObjectURL(url);
-    }
-  }
+  // Decode and work-size both come from lib/rasterize.js. This file used to
+  // hold the third byte-identical copy of the same `loadImage`, with its own
+  // comment saying so ("Identical … pattern DigitizePanel/ImagePanel already
+  // use"). Three copies of a rule is three places for it to be wrong, and it
+  // was wrong in all three: none of them would render a vector at anything but
+  // the browser's default size.
 
   // Draw `img` to an offscreen canvas at WORK_MAX_PX long side and read raw
   // RGBA — same offscreen-canvas-downscale step ImagePanel.svelte's own
@@ -73,12 +58,8 @@
   // low-alpha edge pixels fully transparent so flattenRGBA's background-
   // removal/palette step (inside traceShapesFromRGBA) never treats an
   // anti-aliased edge pixel as its own spurious "opaque" stray color.
-  function prepRGBA(img) {
-    const iw = img.width, ih = img.height;
-    const longest = Math.max(iw, ih) || 1;
-    const scale = Math.min(1, WORK_MAX_PX / longest);
-    const w = Math.max(1, Math.round(iw * scale));
-    const h = Math.max(1, Math.round(ih * scale));
+  function prepRGBA(img, vector) {
+    const { w, h } = rasterSize(img, WORK_MAX_PX, { vector });
 
     const cv = document.createElement("canvas");
     cv.width = w;
@@ -101,7 +82,7 @@
     busy = true;
     try {
       const img = await loadImage(file);
-      workImage = prepRGBA(img);
+      workImage = prepRGBA(img, isVectorFile(file));
       fileName = file.name;
       // Hand the decoded image straight up as a tracing BACKDROP, before any
       // question of auto-tracing. The two ways to digitize this artwork are
@@ -111,7 +92,7 @@
       // manual tool and was impossible while the drawing canvas was blank.
       d("image", { image: workImage });
     } catch (err) {
-      error = (err && err.message) || "Could not read this image file.";
+      error = (err && err.message) || UNREADABLE;
       workImage = null;
       fileName = "";
       // Deliberately does NOT clear the parent's tracing backdrop. A failed
