@@ -183,12 +183,33 @@ export function loadPalette(id) {
 // failures (private mode, disabled) just mean "studio" every session.
 export const PALETTE_STORAGE_KEY = "embstudio:threadPalette";
 
-export function loadPreferredPaletteId() {
+// `fallback` is the chart the DESIGN already uses, when it has one. A
+// digitized design's cones are real spools the engine picked out of a real
+// catalog — `3971 Silver`, `0713 Lemon` — and naming the shopping list from
+// Studio's 56 generic shades instead throws that away and prints an
+// approximation. Measured 2026-09-07 on `logo_bridge_bar` at 80 mm:
+//
+//   0501 Sun, 0713 Lemon and 6031 Limelight  ->  all three read "Lemon"
+//   0182 Saturn Grey, 3971 Silver, 0145 Skylight  ->  all three "Silver Grey"
+//
+// **13 distinct cones collapse to 9 names.** A customer buys nine spools for
+// a thirteen-cone design and the machine stops on a colour they do not have.
+// And the names are not merely coarse, they are WRONG: on `logo_golden_tee`
+// the engine's `0670 Cream` prints as "Natural White" while its `0630
+// Buttercup` prints as "Cream", so two adjacent rows name each other's
+// colours; `0465 Umber` (brown) prints as "Olive" (green).
+//
+// A SAVED preference still wins — someone who deliberately chose generic
+// shade names keeps them, and the selector is right there either way. Only
+// the never-chosen default moves, from "studio" to what the design sews.
+export function loadPreferredPaletteId(fallback = "studio") {
+  const known = (id) => !!id && PALETTE_INDEX.some((p) => p.id === id);
+  const backstop = known(fallback) ? fallback : "studio";
   try {
     const id = localStorage.getItem(PALETTE_STORAGE_KEY);
-    return PALETTE_INDEX.some((p) => p.id === id) ? id : "studio";
+    return known(id) ? id : backstop;
   } catch (e) {
-    return "studio";
+    return backstop;
   }
 }
 

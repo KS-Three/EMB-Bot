@@ -8091,6 +8091,57 @@ reading it as the latter is exactly the mistake the numbers above corrected.
 Noted here because the renderer now A/Bs any flag, so the next person will
 point it at one that reshapes regions and get the same empty answer.
 
+### The last screen before money: the shopping list renamed their threads
+
+The Download step's chart selector read **"Studio basics"** on a design the
+engine had snapped against Isacord. That looked cosmetic. It is not.
+
+The selector drives `nearestInList(chart.threads, rgb)` — it re-derives a name
+for every cone from the *chosen* chart. Studio's list has **56** shades;
+Isacord has **398**. Mapping down collides, and `loadPreferredPaletteId()`
+returned `"studio"` for anyone who had never picked a chart, which is every
+first-time customer.
+
+Measured on real logos at 80 mm:
+
+| engine's cone | shopping list said |
+|---|---|
+| `0501 Sun` | Lemon |
+| `0713 Lemon` | Lemon |
+| `6031 Limelight` | Lemon |
+| `0182 Saturn Grey` | Silver Grey |
+| `3971 Silver` | Silver Grey |
+| `0145 Skylight` | Silver Grey |
+
+**`logo_bridge_bar`'s 13 distinct cones collapsed to 9 names.** A customer
+buys nine spools for a thirteen-cone design and the machine stops mid-job on a
+colour they do not have.
+
+**And the names were wrong, not merely coarse.** On `logo_golden_tee` the
+engine's `0670 Cream` printed as *"Natural White"* while its `0630 Buttercup`
+printed as *"Cream"* — two adjacent rows naming each other's colours — and
+`0465 Umber`, a brown, printed as *"Olive"*, a green. `logo_golden_tee`'s 14
+cones collapsed to 11 names.
+
+**The fix is one parameter.** `loadPreferredPaletteId(fallback)` takes the
+design's own `review.brandId` — set from the service's `palette[0].brand_id` —
+and falls back to `"studio"` only when there is none (a lettering-only
+project) or the id is one this build cannot load. **A saved preference still
+wins**, so someone who deliberately chose generic shade names keeps them; the
+selector is unchanged, and only the never-chosen default moves.
+
+Verified in the running app: the list now reads **13 distinct Isacord
+numbers** — `0501 Sun`, `0713 Lemon`, `6031 Limelight` … `0145 Skylight` —
+the cones the file actually sews.
+
+**Two process notes.** The first read of the live page showed the OLD generic
+names *after* the fix, because `ensureChart` loads a brand chart
+asynchronously and the list renders from `STUDIO_PALETTE` until it lands — a
+poll for real cone numbers was needed before believing either result. And no
+test covered this: the Download step has never been driven end to end, which
+is exactly why a wrong default survived in the last screen before money
+changes hands.
+
 ### What is still not saleable
 
 The grade. Seven of 26 fixtures read F 0 and twelve of 52 design/garment

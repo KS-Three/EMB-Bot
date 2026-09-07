@@ -120,7 +120,15 @@
   // shared preference with ThreadPicker, changeable right here too so a
   // shopper can flip between "generic shade names" and their actual brand's
   // catalog numbers at the moment they're writing the shopping list.
-  let paletteId = loadPreferredPaletteId();
+  // The brand the ENGINE snapped this design's cones out of, when a digitized
+  // element carries one (`review.brandId`, set from the service's own
+  // `palette[0].brand_id`). Every element in a project shares it, so the
+  // first one that has it wins. See `loadPreferredPaletteId` for what a
+  // generic default costs a shopper.
+  const designPaletteId = (project.elements || [])
+    .map((el) => el && el.review && el.review.brandId)
+    .find((id) => !!id) || null;
+  let paletteId = loadPreferredPaletteId(designPaletteId);
   function onPaletteChange(e) {
     paletteId = e.currentTarget.value;
     savePreferredPaletteId(paletteId);
