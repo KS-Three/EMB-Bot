@@ -620,18 +620,22 @@ test("the simulator counts in the same unit the caption does", async ({ page }) 
   await page.getByRole("button", { name: "Next", exact: true }).click();
   await page.locator("textarea").first().fill("FRITSCH'S");
   await expect(page.locator("span.stats")).toBeVisible({ timeout: 60_000 });
-  const captionCount = Number((await page.locator("span.stats").innerText()).match(/([\d,]+) stitches/)[1].replace(/,/g, ""));
-  expect(captionCount).toBeGreaterThan(100);
+  // Compared as the STRINGS on screen, not as numbers: "1,779" and "1779" are
+  // the same count and were still two different things to read, side by side.
+  // The unit was fixed 2026-09-07 and the grouping the same day, after this
+  // very test passed on a screen showing both renderings at once.
+  const captionText = (await page.locator("span.stats").innerText()).match(/([\d,]+) stitches/)[1];
+  expect(Number(captionText.replace(/,/g, ""))).toBeGreaterThan(100);
 
   await page.getByRole("button", { name: "Stitch simulator" }).click();
   const counter = page.locator(".simcount");
   await expect(counter).toBeVisible();
   // The total is asserted immediately; the running number is left alone,
   // because it is mid-animation and racing it would be the flaky assertion.
-  await expect(counter).toContainText(new RegExp(`/ ${captionCount} stitches$`));
+  await expect(counter).toContainText(`/ ${captionText} stitches`);
   // …and it gets there. The design is short, so the default 1x run finishes
   // well inside this budget.
-  await expect(counter).toHaveText(`${captionCount} / ${captionCount} stitches`, { timeout: 60_000 });
+  await expect(counter).toHaveText(`${captionText} / ${captionText} stitches`, { timeout: 60_000 });
 });
 
 test("the review names what it costs to sew — on the lane the service never sees", async ({ page }) => {

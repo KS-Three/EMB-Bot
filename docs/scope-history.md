@@ -9436,3 +9436,264 @@ finds your keyword in someone else's sentence.
 fails the first, dropping the registry guard fails the second.
 
 engine **492/492** · studio **1025/1025** · e2e **45/45**
+
+## 2026-09-07 — the same two numbers, one screen, two renderings (again)
+
+Snapshot. Not live status.
+
+The simulator counter and the field caption sit one above the other. Earlier
+today they were nine apart because one counted strands and the other stitches;
+that was fixed by giving the counter the unit. Measured again this afternoon,
+on a two-element design:
+
+```
+caption   1,779 stitches · 102×19 mm · 5×7 in hoop
+simcount  302 / 1779 stitches
+```
+
+Same count. Two renderings. Every other stitch count in the app groups
+thousands — QualityReport, DigitizePanel, DesignPanel, the review summary, and
+since this morning the caption — so the counter was the last one that did not.
+
+`toLocaleString()` on both halves. **The e2e that was supposed to catch this
+was building its expectation from a comma-stripped Number**, so it compared
+1779 against 1779 and passed while the screen showed `1,779` beside `1779`. It
+now compares the STRINGS, which is what a person reads.
+
+studio **1025/1025** · e2e **45/45**. Mutation: ungrouping the total fails it.
+
+### And the PDF worksheet was arguing with itself
+
+Sweeping every place the app renders a stitch count turned up one more, on the
+document that actually goes to the machine:
+
+```
+Stitch count: 26676
+Color count: 2
+Stabilizer: cutaway (over 8,000 stitches - tear-away releases under this much thread)
+```
+
+Two lines apart, on one sheet. The cutaway line has always grouped. Fixed with
+`toLocaleString("en-US")` — explicit locale for the same reason that line uses
+it: a PDF's text should not change with the machine that generated it. The
+Studio's on-screen counts keep the bare `toLocaleString()`, which follows the
+viewer's locale and is the right default there.
+
+That is now every stitch count in the product: caption, simulator, quality
+report, digitize panel, design panel, review summary, worksheet.
+
+## 2026-09-07 — one design, three encoders, three different sew-outs
+
+Snapshot. Not live status.
+
+A DST record carries ±121 units per axis, an EXP record ±127, a PEC record
+±2047. All three encoders split an oversized move into intermediate records.
+Only the choice of WHAT those intermediates are differed, and nobody had put
+the three side by side.
+
+Measured on a real `manga_impact` "AB" monogram at Full Back — 304.9 × 146.2
+mm, 5,830 stitches — with each file decoded by pystitch:
+
+| | stitches | jumps | longest sewn segment |
+|---|---|---|---|
+| `.dst` **before** | 5,830 | **3,769** | 16.7 mm |
+| `.dst` **after** | 9,591 | 8 | 17.1 mm |
+| `.exp` | 9,426 | 8 | 18.0 mm |
+| `.pes` | 5,830 | 3 | **51.1 mm** |
+
+DST turned thread into **travel**: 3,769 needle-up moves where the design said
+to sew. `exp.js`'s identical loop had always split a stitch into stitches
+(`isJump ? jumpRecord : stitchRecord`); only `dst.js` did not, and its comment
+— *"Emit intermediate jump records for oversized moves"* — was written for the
+jump case and applied to every case.
+
+(The 17.1 mm is not a leak: `clampStep` bounds each AXIS at 121 units, so a
+diagonal step reaches 121·√2 = 17.1 mm. That is the format's own maximum single
+stitch, and EXP's 127·√2 = 18.0 mm is the same arithmetic.)
+
+### The chain rule, which the naive fix gets wrong
+
+"A stitch splits into stitches" draws a line from the origin across the
+garment: the move to the FIRST stitch of a run is travel. It splits as stitches
+only when the move CONTINUES a sewn run — this record is a stitch AND the last
+emitted one was — and a trim, a colour change and the start of the file all cut
+the chain.
+
+`test/dstimport.test.js`'s off-origin-centering fixture caught the naive
+version on the first run. **The old unconditional "jump" was right for that one
+case by accident**, which is why nothing had ever failed.
+
+### The safety property is a measurement
+
+The DST of all **85** shipped fonts at left-chest size hashes
+`e24e181fc8dd89aae12221fe21ab889197a501d0dd3ec59291f8e5d1c591dc9f` **both
+before and after**. Not one contains an over-length segment, so the split fires
+only on designs that were already unsewable. Crossval pins 6/6, engine 497/497,
+studio 1025/1025, e2e 45/45.
+
+Five new tests in `test/dst.test.js`, mutation-proved three ways: reverting to
+always-jump, dropping the chain rule, and letting a trim not cut the chain each
+fail at least one.
+
+### And the comparison is now standing, not a one-off
+
+`tools/crossval-stitch-formats.mjs` gained a third fixture — a 300-unit segment
+between two stitches — and reports the **longest SEWN segment** each reader
+sees (consecutive needle-down records, any other command breaking the chain).
+Three new pins in `test/crossval-stitch-formats.test.js`:
+
+| | decoded stitches | longest sewn |
+|---|---|---|
+| `dst.long` | more than expected — split | **121 units** |
+| `exp.long` | more than expected — split | **127 units** |
+| `pes.long` | exactly expected — no split | **300 units = 30 mm** |
+
+The PES row is a `DOCUMENTS KNOWN DEFECT` pin in this file's own convention:
+PEC's long form reaches ±2047, so nothing in the FORMAT forces a split, and
+imposing one means importing a limit from another format — a machine-behaviour
+call, not a spec one. Left to Kent, and the pin says so.
+
+What this harness could not see before is precisely what bit: it only ever
+encoded an 18 × 8 mm fixture, where no segment is close to a record's reach.
+
+One thing observed and not explained, recorded rather than smoothed over:
+pystitch reports `JUMP 1` for the EXP file and `JUMP 0` for the DST one on an
+identical **zero-length** leading jump. It is a no-op either way, and real
+designs carry their travel IN the jump record — decoded from a real
+`medium_font` design, both files start `J J J J S S S`, four jump records for
+the 448-unit travel and then stitches, which is correct in both.
+
+### What is NOT fixed, and is Kent's
+
+The engine emits those segments in the first place. Across the 85 shipped fonts
+at three texts, **18 fonts** produce stitches longer than one DST record, worst
+**32.8 mm**:
+
+| design | over-length | worst |
+|---|---|---|
+| `YOUR NAME` hat (quick start) | 0 / 2,346 | 5.2 mm |
+| `Your Name` left chest (quick start) | 0 / 958 | 2.9 mm |
+| `Yours` left chest (quick start) | 0 / 1,792 | 7.7 mm |
+| `AB` mam_script left chest | 0 / 2,159 | 10.9 mm |
+| **`A` mam_script left chest** | **278 / 1,607** | **17.9 mm** |
+| **`AB` manga_impact full back** | **1,933 / 5,828** | **44.9 mm** |
+
+The quick starts are clean; it starts when letters get big — a single-letter
+monogram at left-chest size, or any short text on a big garment. A 17.9 mm
+satin crossing is unsewable however it is encoded, and what to do about it
+(split satin, route wide columns to fill, cap the width) is a look-and-fabric
+decision with a sew-out behind it, not an encoder one.
+
+## 2026-09-07 — the DST ends with a stray stitch in the middle of the design
+
+Snapshot. Not live status.
+
+`encodeDST` does not stop at the terminal `{type:"end"}` sentinel the way
+`exp.js` and `pes.js` both do — one line, `if (st.type === "end") break;` — so
+it writes the sentinel as a real stitch record.
+
+The 2026-08-04 crossval verdict looked at this, called it *"one extra phantom
+stitch"*, and parked it with the axis bug. That price is right for **lettering**,
+where the sentinel is zero-delta — and where `buildLetteringDesign` in fact
+appends none at all. It is wrong for the lane most customers use.
+
+`buildImportedDesign` puts the sentinel at the **element's offset**. Measured on
+a real 95.7 × 58.3 mm logo, re-exported through the shipped app and decoded with
+pystitch:
+
+| file | stitches | last stitch | gap from the previous |
+|---|---|---|---|
+| `.dst` | **11,275** | **0.07 mm from the design's centre** | **46.39 mm** |
+| `.pes` | 11,274 | 46.42 mm from the centre — where the design ends | 1.02 mm |
+| `.exp` | 11,274 | 46.42 mm from the centre | 1.02 mm |
+
+A stray needle penetration in the middle of the design, with 46 mm of travel to
+reach it, on **every** single-element imported, digitized, shape or manual
+project. Pure lettering is untouched.
+
+### The harness had been printing it the whole time
+
+`crossval-stitch-formats` reports `dst.notrim: expected 15, decoded 16` and has
+since the day it was written. The EXP and PES tests assert their counts; the DST
+control asserted the transform and the colour-change bytes and never the count,
+because the count was "known bad" and nobody had written down HOW bad.
+
+It is asserted now, as a `DOCUMENTS KNOWN DEFECT` pin, and mutation-proved by
+making the proposed one-line fix: the pin fails, which is exactly what should
+happen the day the call is made.
+
+**Left in place — the DST codec is Kent's** (CLAUDE.md footgun 1). But it is a
+one-line change now costed against a real logo instead of a fixture.
+
+## 2026-09-07 — four things driven and found sound
+
+Snapshot. Not live status. Recorded because a measured negative is worth as
+much as a fix when it stops the next session re-opening the same question.
+
+**The PDF worksheet's preview is correct — and nearly wasn't reported as a
+defect.** Extracting the embedded 900 × 900 image straight out of the PDF shows
+a dark logo on a BLACK field, unreadable. That is an artifact of the
+extraction: the XObject carries an `/SMask`, and compositing over white gives a
+clean, realistic stitch render with the placement outline dashed around it.
+**A raw stream pulled out of a container is not what the reader shows.**
+
+**Text a customer will actually type, all five handled, no page errors:**
+
+| typed | result |
+|---|---|
+| `Team 🧵🪡` | *"No font in this library can stitch “🧵” and “🪡” — try different text."* |
+| a 70-character sentence | stitches, and warns *"Letters 1.4 mm tall — under the 4 mm floor, thin strokes will shred"* |
+| `שלום` | 0 stitches, and names the two fonts that can: *חוכמה Large and חוכמה Medium* |
+| `Café Ñoño` | stitches the rest and names 46 fonts that carry `Ñ` |
+| `Est. 1999 — #1` | names 10 fonts that carry the em dash |
+
+That is #399's font-coverage work and #402's size findings both doing their job
+on input nobody wrote them for.
+
+**Two browser tabs do not clobber each other.** Each holds its own `currentId`
+in memory and writes its own record; the index keeps both entries and
+`embstudio:current` only decides which project a NEW tab opens. Driven with two
+real pages editing at once.
+
+**`.embproj` import is properly guarded.** `parseProjectFile` rejects non-JSON,
+non-objects, arrays, and anything without either the format marker or the
+bare-project markers, and `App.importFromDrawer` gives each failure its own
+notice. The DST lane was the one with only a size check.
+
+## 2026-09-07 — what the shipped app actually weighs on a first load
+
+Snapshot. Not live status. No number for this existed; the lazy-loading claims
+in the code had never been measured against a production build.
+
+Built with `vite build`, served with `vite preview`, measured by the browser's
+own `performance.getEntriesByType("resource")` — `transferSize`, not
+`content-length`, because the preview server omits that header on most
+responses and a naive read of it reports 0.05 MB.
+
+| point | resources | transferred |
+|---|---|---|
+| **first paint** | 32 | **0.55 MB** |
+| after typing a design | 34 | 0.55 MB — **nothing more** |
+| after a PDF worksheet | 37 | 0.68 MB (+126 KB, jsPDF) |
+
+The biggest items at first paint:
+
+| | |
+|---|---|
+| `fonts/bin/mam_script.embf` | 144.6 KB |
+| `assets/index-*.js` (the whole app) | 106.1 KB |
+| `fonts/bin/manga_impact.embf` | 72.0 KB |
+| `inter-latin-wght-normal.woff2` | 47.4 KB |
+| `fonts/bin/medium_font.embf` | 15.3 KB |
+
+**Both lazy-loading claims hold.** The 957 KB `threadBrandsData` chunk is
+**never fetched** unless the thread picker is opened, and jsPDF's 126 KB
+arrives only when a worksheet is asked for.
+
+**232 KB of that first paint is three font binaries, and that is deliberate.**
+`TemplateRow.svelte` renders a REAL stitch preview for each of the four
+quick-start tiles — `ensureFont` → `buildLetteringDesign` → `renderRealistic`,
+cached as a module singleton — so the tiles show what the customer will
+actually get rather than a picture of it. `mam_script`, `manga_impact` and
+`medium_font` are exactly those tiles' fonts. Nothing to fix; recorded so the
+next person who sees three font fetches before any interaction knows why.

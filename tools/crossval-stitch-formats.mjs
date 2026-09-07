@@ -84,6 +84,51 @@ export function buildFixture({ withTrim = true } = {}) {
   };
 }
 
+// The same fixture with ONE over-length segment inside a stitch run.
+//
+// A DST record reaches +/-121 units per axis, an EXP record +/-127, a PEC
+// record +/-2047 — so a 300-unit (30 mm) move between two stitches is one
+// record for PES and several for the other two. What those extra records ARE
+// is the thing this fixture exists to pin: until 2026-09-07 dst.js emitted
+// JUMPS for them, silently turning thread into travel, while exp.js emitted
+// stitches. One design, two sew-outs, and nothing compared them.
+//
+// The long segment sits BETWEEN two stitches on purpose. The move to the first
+// stitch of a run is travel, and both encoders must keep splitting that as
+// jumps — see the chain rule in dst.js's encodeDST.
+export function buildLongFixture() {
+  const s = [];
+  s.push({ x: 0, y: 0, type: "jump" });      // travel in: not thread
+  s.push({ x: 0, y: 0, type: "stitch" });
+  s.push({ x: 60, y: 0, type: "stitch" });   // ordinary, one record everywhere
+  s.push({ x: 360, y: 0, type: "stitch" });  // 300 units: the subject
+  s.push({ x: 360, y: 40, type: "stitch" });
+  s.push({ x: 360, y: 40, type: "end" });
+  return {
+    label: "CROSSLONG",
+    stitches: s,
+    colors: [{ r: 200, g: 30, b: 30, name: "Red" }],
+    widthMM: 36,
+    heightMM: 4,
+    stitchCount: s.filter((t) => (t.type || "stitch") === "stitch").length,
+    colorCount: 1,
+  };
+}
+
+// The longest segment a reader sees SEWN — consecutive needle-down records,
+// with any other command breaking the chain. This is what says whether a
+// too-long move was laid as thread or travelled over.
+export function longestSewnSegment(records) {
+  let prev = null;
+  let worst = 0;
+  for (const s of records) {
+    if (s[2] !== "STITCH") { prev = null; continue; }
+    if (prev) worst = Math.max(worst, Math.hypot(s[0] - prev[0], s[1] - prev[1]));
+    prev = [s[0], s[1]];
+  }
+  return +worst.toFixed(1);
+}
+
 // Expected pystitch view of the fixture's needle-down points: (x, -y).
 export function expectedPyembStitches(design) {
   return design.stitches
@@ -190,6 +235,7 @@ export function runCrossval({ python = resolvePython(), keepDir = null } = {}) {
   const fixtures = {
     full: buildFixture({ withTrim: true }),
     notrim: buildFixture({ withTrim: false }),
+    long: buildLongFixture(),
   };
   const files = [];
   for (const [variant, design] of Object.entries(fixtures)) {
@@ -225,6 +271,10 @@ export function runCrossval({ python = resolvePython(), keepDir = null } = {}) {
         decodedColorChanges: d.counts.COLOR_CHANGE || 0,
         decodedTrims: d.counts.TRIM || 0,
         decodedSequinToggles: d.counts.SEQUIN_MODE || 0,
+        // Units, in pystitch's frame. For the `long` fixture this is the
+        // whole point; for the others it is a cheap invariant.
+        longestSewnUnits: longestSewnSegment(d.stitches),
+        decodedJumps: d.counts.JUMP || 0,
       };
     }
   }

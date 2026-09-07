@@ -1,6 +1,7 @@
 const assert = require("node:assert");
 const { test } = require("node:test");
 const dst = require("../src/dst.js");
+const { decodeDST } = require("../src/dstimport.js");
 const b = (...xs) => Uint8Array.from(xs);
 
 test("zero stitch record", () => assert.deepStrictEqual(dst.encodeRecord(0,0,"stitch"), b(0x00,0x00,0x03)));
@@ -108,4 +109,86 @@ test("trim huge delta (>363) emits >=3 jump records, all jump-flagged, sum corre
   }
   assert.strictEqual(sx, 900);
   assert.strictEqual(sy, -500);
+});
+
+// ---- a move too big for one record ---------------------------------------
+//
+// One DST record carries +/-121 units (12.1 mm). A bigger move is split into
+// intermediate records, and WHAT those are decides whether the design is sewn
+// or travelled over. This emitted "jump" for every case until 2026-09-07,
+// including for a STITCH — silently turning thread the design asked for into
+// travel — while exp.js's identical loop had always split a stitch into
+// stitches. Measured that day on an "AB" monogram at Full Back (5,830
+// stitches), decoded with pystitch: .dst gave 3,769 jumps and .exp gave 8.
+//
+// The rule is the chain rule `designToStrands` uses: a move splits into
+// stitches only when it CONTINUES a sewn run.
+
+// Round-trips through decodeDST rather than counting raw records: it is the
+// reader this encoder is paired with, and its stitchCount is exactly "how many
+// times the needle went down".
+function sewn(design) {
+  return decodeDST(dst.encodeDST(design)).stitchCount;
+}
+
+test("a long move INSIDE a stitch run is sewn, not travelled", () => {
+  // 300 units = 30 mm between two stitches: 2 intermediates + the final one.
+  const near = { stitches: [
+    { x: 0, y: 0, type: "jump" }, { x: 0, y: 0, type: "stitch" }, { x: 100, y: 0, type: "stitch" },
+  ], colors: [{ r: 0, g: 0, b: 0 }] };
+  const far = { stitches: [
+    { x: 0, y: 0, type: "jump" }, { x: 0, y: 0, type: "stitch" }, { x: 300, y: 0, type: "stitch" },
+  ], colors: [{ r: 0, g: 0, b: 0 }] };
+  assert.strictEqual(sewn(near), 2);
+  assert.strictEqual(sewn(far), 4, "300 units needs three records, all of them stitches");
+});
+
+test("the move to the FIRST stitch is travel, however far", () => {
+  // Nothing to sew between where the needle was and where the design begins.
+  // Splitting this into stitches would draw a line from the origin across the
+  // garment — which is what a naive "a stitch splits into stitches" does, and
+  // what test/dstimport.test.js's off-origin centering fixture caught.
+  const d = { stitches: [
+    { x: 400, y: 500, type: "stitch" }, { x: 450, y: 500, type: "stitch" },
+  ], colors: [{ r: 0, g: 0, b: 0 }] };
+  assert.strictEqual(sewn(d), 2);
+});
+
+test("a trim and a colour change both cut the chain", () => {
+  for (const cut of ["trim", "color"]) {
+    const d = { stitches: [
+      { x: 0, y: 0, type: "jump" }, { x: 0, y: 0, type: "stitch" }, { x: 50, y: 0, type: "stitch" },
+      { x: 50, y: 0, type: cut },
+      { x: 400, y: 0, type: "stitch" }, { x: 450, y: 0, type: "stitch" },
+    ], colors: [{ r: 0, g: 0, b: 0 }, { r: 1, g: 1, b: 1 }] };
+    assert.strictEqual(sewn(d), 4, cut + " must not leave the next long move sewing across the garment");
+  }
+});
+
+test("a long JUMP is still a jump", () => {
+  const d = { stitches: [
+    { x: 0, y: 0, type: "jump" }, { x: 0, y: 0, type: "stitch" },
+    { x: 900, y: 0, type: "jump" },
+    { x: 950, y: 0, type: "stitch" },
+  ], colors: [{ r: 0, g: 0, b: 0 }] };
+  assert.strictEqual(sewn(d), 2);
+});
+
+test("a design whose stitches all fit a record is byte-identical to before", () => {
+  // The safety property, in miniature. Proved at scale the same day: the DST
+  // of all 85 shipped fonts at left-chest size hashes
+  // e24e181fc8dd89aae12221fe21ab889197a501d0dd3ec59291f8e5d1c591dc9f both
+  // before and after this change, because none of them contains an
+  // over-length segment. The split only fires on designs that were already
+  // unsewable.
+  const d = { stitches: [
+    { x: 0, y: 0, type: "jump" }, { x: 0, y: 0, type: "stitch" },
+    { x: 100, y: 0, type: "stitch" }, { x: 100, y: 100, type: "stitch" },
+    { x: 100, y: 100, type: "end" },
+  ], colors: [{ r: 0, g: 0, b: 0 }] };
+  const bytes = dst.encodeDST(d);
+  // One record each, no splits: the leading jump, three stitches, the design's
+  // own "end" (this encoder has never special-cased it), and encodeDST's own
+  // terminator. Six 3-byte records after the 512-byte header.
+  assert.strictEqual((bytes.length - 512) / 3, 6);
 });
