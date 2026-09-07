@@ -9905,3 +9905,34 @@ Snapshot. Not live status. Recorded so nobody re-checks them.
   (44–736 px of overflow depending on step and height), and after scrolling to
   the end, zero buttons, inputs or selects remain under the footer. The
   apparent clipping in a screenshot is the fold, not a trap.
+
+- **A two-element, two-colour project agrees on every surface.** "FRITSCH" in
+  Scarlet and "STITCHES" in Navy:
+
+  | | app | exported PES |
+  |---|---|---|
+  | stitches | 1,826 | 1,826 |
+  | size | 102 × 20 mm | 101.8 × 20.2 mm |
+  | thread changes | 1 | 1 |
+  | trims | 12 | 12 |
+  | threads | Scarlet, Navy | 2 — `#ed171f`, `#0e1f7c` |
+
+  The PES's own thread *descriptions* read "Red" and "Prussian Blue" — those
+  are pyembroidery's nearest-name labels for the RGB it was handed, not
+  EMB-Bot's names. The colours are exact and the worksheet carries the names
+  the customer picked, which is the list they shop from.
+
+- **The hoop gate is honest and names the lever.** A 305 mm design on Jacket
+  Back: *"Exceeds your 8×8 in hoop, and every hoop this app offers — make it
+  smaller under Size. The machine cannot stitch past the edge of the hoop —
+  the needle would hit the frame"*, with "Go back" and "Download PES anyway".
+  It names the problem, why it matters physically, and where the control is.
+  The JEF button carries its own asterisk on the same design, which is this
+  morning's hoop-header note firing exactly where it should.
+
+Two probe errors worth naming, because both cost time and neither was the
+app's fault: `/red|crimson|scarlet/i` matched the **Redo** button (disabled,
+so the click timed out and looked like a disabled swatch), and the picker's
+swatches carry their colour in `aria-label` with empty text content, so
+`filter({ hasText })` found nothing. Target them as
+`button.tp-cell[aria-label="…"]`.
