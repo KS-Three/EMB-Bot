@@ -498,3 +498,29 @@ test("the size field and the field caption report one width, and the field is no
   expect(await w.evaluate((el) => el.validity.valid)).toBe(true);
   expect(await w.evaluate((el) => el.checkValidity())).toBe(true);
 });
+
+test("a font that can't set the text names the fonts that can — or says none can", async ({ page }) => {
+  // "This font can’t stitch «Р», «у», «с». Try a different font, or different
+  // text." was true and unactionable: three shipped fonts cover Cyrillic,
+  // three cover Greek, two cover Hebrew, and NONE covers Japanese, Korean or
+  // Arabic. Finding that out meant opening up to 85 fonts by hand, or looking
+  // for something that is not there.
+  //
+  // The suggestion is async (a lazily fetched 16 KB index) and lands after the
+  // paint that shows the generic sentence, so both assertions wait rather than
+  // reading once.
+  await page.goto("/");
+  await page.getByRole("button", { name: "Left Chest", exact: true }).click();
+  await page.getByRole("button", { name: "Next", exact: true }).click();
+
+  await page.locator("textarea").first().fill("Иван");
+  await expect(page.getByText(/Switch fonts and it will stitch/)).toBeVisible({ timeout: 60_000 });
+  // Named, not just promised — the point is that the customer can act on it.
+  await expect(page.getByText(/can\. Switch fonts/)).toBeVisible();
+
+  // And the other answer, which is a different one on purpose: no font in the
+  // library covers Japanese, so "try a different font" would be bad advice.
+  await page.locator("textarea").first().fill("日本語");
+  await expect(page.getByText(/No font in this library can stitch/)).toBeVisible({ timeout: 60_000 });
+  await expect(page.getByText(/Switch fonts/)).toHaveCount(0);
+});

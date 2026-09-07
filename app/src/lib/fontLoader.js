@@ -41,6 +41,32 @@ export function loadManifest() {
   return manifestPromise;
 }
 
+// Which characters each shipped font can stitch — src/fonts/manifest-coverage.json,
+// built by tools/build-font-coverage.mjs from the .embf binaries. Loaded HERE
+// rather than in lib/fontCoverage.js so the pure logic stays pure and there is
+// one reader (`readBytes`) that works in both Node and the browser.
+//
+// Lazy on purpose: it is 16 KB and only ever needed once a font has failed on
+// a character, so a design that stitches never fetches it. A failure resolves
+// to null rather than throwing — fontSuggestion falls back to the generic
+// advice, which is what shipped before this existed, so an older build with no
+// coverage file degrades instead of erroring.
+let coveragePromise = null;
+export function loadCoverage() {
+  if (!coveragePromise) {
+    coveragePromise = readBytes("manifest-coverage.json")
+      .then((b) => {
+        const cov = JSON.parse(new TextDecoder().decode(b));
+        return cov && cov.fonts ? cov : null;
+      })
+      .catch(() => {
+        coveragePromise = null; // transient failure must not poison the session
+        return null;
+      });
+  }
+  return coveragePromise;
+}
+
 export function ensureFont(key) {
   const cached = (EMB.SATIN_FONTS || {})[key];
   if (cached) return Promise.resolve(cached);

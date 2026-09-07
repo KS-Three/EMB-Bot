@@ -8597,3 +8597,70 @@ pixel each approach produces:
 The first is the destination size the panels already passed, so only the
 number changed. `app/src/lib/rasterize.js` now owns the decode and the
 work-size rule for all three panels.
+
+---
+
+## 2026-09-07 — the font library's answer to "I can't type my own name"
+
+Live defect 36. Found by typing a Russian name into the default font.
+
+**What the library actually covers**, measured across all 85 shipped `.embf`:
+
+| script | fonts that can set it |
+|---|---|
+| Latin (incl. accents) | 70 |
+| Cyrillic | 3 (`cyrillic` carries 271 glyphs) |
+| Greek | 3 |
+| Hebrew | 2 |
+| Japanese | **0** |
+| Korean | **0** |
+| Arabic | **0** |
+
+The app said *"This font can’t stitch «Р», «у», «с». Try a different font, or
+different text."* in every one of those rows. For the middle three that meant
+opening up to 85 fonts by hand; for the last three it meant looking for
+something that is not there.
+
+**A trap the index also closes:** `caffeine_KOR` and `magnolia_KOR` are named
+for their designer's origin, not their script — both hold ASCII and Latin-1 and
+**no Hangul at all**. A customer picking one to type Korean gets nothing, and
+the suggestion must never send them there. `test/font-coverage.test.js` asserts
+that directly.
+
+### What ships
+
+- `tools/build-font-coverage.mjs` → `src/fonts/manifest-coverage.json`: exact
+  per-font code-point ranges read from the **binaries**, not from the sources
+  (`scratch_ink/` is gitignored and supplies 68 of the 85, so a cloud checkout
+  cannot rebuild the manifest — and the binaries are what ships). 16,552 bytes;
+  3.4 KB gzipped. Exact rather than a per-script summary because a font with
+  *some* Greek and not the letters typed is a worse answer than none.
+- `app/src/lib/fontCoverage.js` — pure. `fontLoader.loadCoverage()` owns the
+  lazy fetch, so a design that stitches never pays for the index.
+- One message builder, three worded outcomes: fonts found / none in the library
+  / no index (the pre-existing generic advice).
+
+Live, in the shipped app:
+
+| typed | message |
+|---|---|
+| `Иван` | This font can’t stitch “И”, “в”, “а” and “н” — Кирилиця, Egyptian and Egyptian Small can. Switch fonts and it will stitch. |
+| `Δοκιμή` | …— AGS Γαραμου Garamond, Egyptian and Egyptian Small can. Switch fonts and it will stitch. |
+| `日本語` | No font in this library can stitch “日”, “本” and “語” — try different text. |
+| `Shalom שלום` | No font in this library can stitch “ש”, “ל”, “ו” and “ם” — try different text. |
+
+The last row is the design decision working: the check is against the **whole
+text**, so `hebrew_font_large` (29 glyphs, no ASCII) is correctly not offered
+for a name that is half Latin.
+
+### The naming detour, recorded because it cost four test failures
+
+The first cut wrote `src/fonts/coverage.json`. That directory is enumerated as
+font SOURCES by `tools/build-embf.mjs` and by `test/embf-guard.test.js`, whose
+stated invariant is "static JSON here ⇒ shipped"; both exclude only names
+starting with `manifest`. Four tests went red (`missing bin for coverage`,
+`ENOENT … coverage.embf`, `manifest missing coverage`, `coverage: not a font
+object`) and the font build would have tried to compile it. Renamed to
+`manifest-coverage.json` — inside the existing exclusion, and named for what it
+is. The guard's failure message now says so instead of naming a font that never
+existed.

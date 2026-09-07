@@ -2478,3 +2478,49 @@ its hedge as it is copied forward** — is why this file is split.
   injecting `width`/`height` into the SVG source). The cheapest of the three
   was already what the panels did; only the size they asked for was wrong.
   *(found by driving the app, 2026-09-07)*
+
+- **A finding that states the problem and stops is half a finding — and the
+  lettering path was the one place still doing it.** "This font can’t stitch
+  «Р», «у», «с». Try a different font, or different text." is true, and a
+  customer cannot act on it: three of the 85 shipped fonts cover Cyrillic,
+  three cover Greek, two cover Hebrew, and **none covers Japanese, Korean or
+  Arabic**, so for half the cases the advice was to keep looking for something
+  that is not there.
+
+  The convention was already settled and applied five times over on the
+  digitizing side — `THREAD_MATCH_POOR` names a loaded better spool,
+  `COLOR_STOPS_HEAVY` the cheapest merge, `STITCHES_TOO_SHORT` the shapes,
+  `TRIM_HEAVY` and `DENSITY_STACKED` the same. **When a rule has been applied
+  five times in one capability area, go look for the sixth place it has not
+  been.** It is a cheaper search than finding a new rule.
+
+  **Ask about the whole input, not the part that failed.** The obvious
+  implementation checks which fonts cover the UNSUPPORTED characters, and it
+  is wrong: `hebrew_font_large` holds 29 glyphs and no ASCII, so on "Shalom
+  שלום" it covers exactly what failed and nothing that worked. Suggesting it
+  moves the dead end one step along. Checking the whole text answers "no font
+  in this library can" there, which is the truth.
+
+  **And "nothing can" is a different sentence, not a weaker one.** The first
+  cut composed one prefix with one suffix and produced *"This font can’t stitch
+  «日», «本» and «語» — No font in this library can stitch those characters —
+  try different text."*: two sentences arguing with each other, with the
+  current font blamed for something no font can do. One builder that owns the
+  whole message, three worded outcomes.
+  *(found by typing a Russian name into the default font, 2026-09-07)*
+
+- **`src/fonts/*.json` is a namespace with a rule, and the rule is enforced by
+  four tests and the font build.** Every non-`manifest` JSON there is read as a
+  font SOURCE — `test/embf-guard.test.js` states the invariant outright
+  ("static JSON here ⇒ shipped") and `tools/build-embf.mjs` applies the
+  identical filter when deciding what to build. Dropping a `coverage.json` in
+  beside them broke four tests instantly and would have made the font build try
+  to compile it into a `.embf`.
+
+  The fix was not to widen the filter — that is the invariant's only teeth —
+  but to use the escape hatch that already existed: the `manifest` prefix means
+  "an artifact ABOUT the fonts, not one of them". `manifest.json` says which
+  fonts ship; `manifest-coverage.json` says what each covers. **The guard's
+  failure message now names that fix**, because "missing bin for coverage" sent
+  the first reader looking for a font that never existed.
+  *(2026-09-07)*

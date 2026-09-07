@@ -1,7 +1,8 @@
 <script>
   import { onMount, onDestroy, createEventDispatcher } from "svelte";
   import { generateAll, charList, letteringNote } from "../lib/generate.js";
-  import { ensureFonts } from "../lib/fontLoader.js";
+  import { ensureFonts, loadCoverage, loadManifest } from "../lib/fontLoader.js";
+  import { unsupportedMessage } from "../lib/fontCoverage.js";
   import { renderRealistic, isDark } from "../lib/preview.js";
   import { designToStrands } from "../lib/strands.js";
   import { advanceIndex, clampIndex, nextSpeed } from "../lib/simulate.js";
@@ -897,6 +898,47 @@
     dispatch("dims", { widthMM, heightMM });
   }
 
+  // ---- "which font CAN stitch this" ---------------------------------------
+  //
+  // "This font can’t stitch «Р», «у», «с». Try a different font, or different
+  // text." is true and unactionable: three shipped fonts cover Cyrillic, three
+  // cover Greek, two cover Hebrew, and finding them meant opening up to 85
+  // fonts by hand. Naming the fix is the same convention the preflight
+  // findings already follow five times over.
+  //
+  // Async, so it cannot be part of the synchronous paint: `paint()` sets the
+  // generic sentence, then this replaces it once the (lazily fetched, 16 KB)
+  // index arrives. The token drops a stale answer when the text changes while
+  // a fetch is in flight — the same guard App uses for its health probe.
+  //
+  // Asked about the WHOLE text, not the characters that failed: a font
+  // covering exactly the failures and none of the rest (hebrew_font_large has
+  // 29 glyphs and no ASCII) would move the dead end, not clear it.
+  let suggestToken = 0;
+  function textOfProject(p) {
+    return (p.elements || [])
+      .filter((el) => el.type === "text" && el.text)
+      .map((el) => el.text)
+      .join("");
+  }
+  async function suggestFonts(unsupported) {
+    const token = ++suggestToken;
+    const text = textOfProject(project);
+    if (!unsupported || !unsupported.length || !text) return;
+    const [coverage, man] = await Promise.all([
+      loadCoverage(),
+      loadManifest().catch(() => null),
+    ]);
+    if (token !== suggestToken || !coverage) return;
+    const nameOf = new Map(((man && man.fonts) || []).map((f) => [f.key, f.name || f.key]));
+    const msg = unsupportedMessage(charList(unsupported), text, coverage, (k) => nameOf.get(k) || k);
+    // Whichever of the two the paint() that scheduled this had set — they are
+    // mutually exclusive (an empty design shows `hint`, a partial one shows
+    // `unsupportedNote`), and paint() clears both at the top of every run.
+    if (hint) hint = msg;
+    else if (unsupportedNote) unsupportedNote = msg;
+  }
+
   // Invariant: every element's persisted offset must keep ITS bbox inside
   // the hoop. dragMove enforces this live for whichever element is being
   // dragged, but a stale offset (garment switched to a smaller hoop, size
@@ -1012,6 +1054,10 @@
       hint = result.unsupported && result.unsupported.length
         ? `This font can\u2019t stitch ${charList(result.unsupported)}. Try a different font, or different text.`
         : "Your embroidery appears here as you add content.";
+      // paint() clears hint/unsupportedNote/… at the top of every run, so
+      // exactly one of the two is set here and suggestFonts can tell which
+      // message it is amending.
+      suggestFonts(result.unsupported);
       lastGenerateResult = null;
       clearToFabric();
       dispatch("dims", null);
@@ -1030,6 +1076,7 @@
     // Rides the stats line next to the other warnings rather than blocking.
     unsupportedNote = (result.unsupported && result.unsupported.length)
       ? `This font can\u2019t stitch ${charList(result.unsupported)}` : "";
+    suggestFonts(result.unsupported);
     // Reports the COMBINED design's stitch count (not just the selected
     // element's) -- App uses this for the "drag-field" hint's A8 eligibility
     // condition, which is about whether there's anything on the field to
