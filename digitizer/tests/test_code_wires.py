@@ -74,6 +74,20 @@ def _wire_values(src: str) -> set[str]:
     return set(re.findall(r'^[A-Z_][A-Z_0-9]*\s*=\s*"([^"]+)"', src, re.M))
 
 
+def _set_members(src: str, name: str) -> set[str]:
+    """String literals of an `export const <name> = new Set([...])`.
+
+    `SILENT_WARNINGS` (2026-09-07) is a fifth by-string crossing and the
+    quietest yet: a TYPO in it does not throw, does not blank anything, and
+    does not stop the page rendering — the code simply is not silenced, and
+    "982 superpixels, 32 after merging" is back in the customer's panel on 20
+    of 26 designs. Exactly the shape this file exists for, so it joins it.
+    """
+    m = re.search(rf"const {name}\s*=\s*new Set\(\[(.*?)\]\)", src, re.S)
+    assert m, f"no `const {name} = new Set([...])` in the source"
+    return set(re.findall(r'"([^"]+)"', m.group(1)))
+
+
 def _map_keys(src: str, name: str) -> set[str]:
     """Top-level keys of a `const <name> = { ... };` object literal.
 
@@ -163,6 +177,10 @@ def test_the_parsers_are_not_vacuous(live):
     compared = _compared_codes()
     assert sum(len(v) for v in compared.values()) >= 8, compared
 
+    silent = _set_members(DIGITIZER_JS.read_text(encoding="utf-8"),
+                          "SILENT_WARNINGS")
+    assert len(silent) >= 3, sorted(silent)
+
 
 def test_every_translation_has_a_code_to_translate(live):
     """A WARNING_TEXT key that matches nothing is a customer-facing regression.
@@ -175,6 +193,38 @@ def test_every_translation_has_a_code_to_translate(live):
     keys = _map_keys(DIGITIZER_JS.read_text(encoding="utf-8"), "WARNING_TEXT")
     assert not (keys - live), (
         f"{DIGITIZER_JS.name} translates codes nothing emits: {sorted(keys - live)}")
+
+
+def test_every_silenced_code_is_one_the_engine_still_emits(live):
+    """A stale entry in SILENT_WARNINGS silently un-silences telemetry.
+
+    The panel filters this set out of its rendered list, so a code that no
+    longer matches is simply not filtered — and the two entries that matter
+    fire on **20 of 26** corpus fixtures each, in the engine's own words. No
+    error, no blank, just a build log back in front of a customer.
+    """
+    silent = _set_members(DIGITIZER_JS.read_text(encoding="utf-8"),
+                          "SILENT_WARNINGS")
+    assert not (silent - live), (
+        f"SILENT_WARNINGS names codes nothing emits — they are no longer "
+        f"being silenced: {sorted(silent - live)}")
+
+
+def test_nothing_the_studio_switches_on_is_also_silenced(live):
+    """Silencing a code the panel BRANCHES on would delete a feature.
+
+    `warningLines` keeps every code and only the rendered list filters, so
+    this cannot happen today — but the two live one import apart, and the
+    failure would be a nudge or a classification readout that simply never
+    appears again.
+    """
+    src = DIGITIZER_JS.read_text(encoding="utf-8")
+    silent = _set_members(src, "SILENT_WARNINGS")
+    switched = {c for cs in _compared_codes().values() for c in cs}
+    switched |= _map_keys(PANEL.read_text(encoding="utf-8"), "FIX_FOR")
+    assert not (silent & switched), (
+        f"these codes are both silenced and branched on: "
+        f"{sorted(silent & switched)}")
 
 
 def test_every_studio_code_comparison_matches_a_live_code(live):

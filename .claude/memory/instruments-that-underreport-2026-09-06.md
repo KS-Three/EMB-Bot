@@ -73,7 +73,20 @@ Do this before writing code, every time. It was right five times out of five.
 while they ran; pytest reads it at COLLECTION, so an edit between two runs of
 a pair silently re-bases the comparison. It shows as a passed count differing
 by exactly the tests you added — easy to skim past when the wall-clock looks
-plausible. The third attempt recorded `HEAD` and `git status` before AND
+plausible.
+
+**Hit again 2026-09-07, in a shape this paragraph does not name, and it is
+the worse one.** The edit was not a new FILE: `tests/test_scope_budget.py` was
+already collected with three tests when three more were appended to it. The
+run finished clean and reported **1993 passed** against the previous 1990 —
+`+3`, exactly and plausibly "the new file" — while the three tests written
+after collection were simply not in it. No error, no skip, and a total that
+is *arithmetically consistent with what you intended*, which is the one case
+a careful reader does not look at twice. Settled by PREDICTION: if 1993 was
+1990 plus the first three only, a clean re-run must read **1996**, and it did
+(3 failed, 1996 passed, 8 skipped, 7 xfailed). **Appending to an
+already-collected file is the version with no tell at all. Do not touch the
+tree during a full run; if you did, re-run.** The third attempt recorded `HEAD` and `git status` before AND
 after. Result at CI's two workers: **23m53s → 22m27s, 5.8%**, not taken
 because `loadfile` floors wall-clock at the slowest single FILE.
 

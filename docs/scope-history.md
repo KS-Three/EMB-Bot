@@ -7385,7 +7385,7 @@ failure is silent, customer-facing, and looks exactly like a code that was
 never translated. Contrast `stage7_sequence.py`, which consumes the same
 codes by import: delete one and the package will not load.
 
-`digitizer/tests/test_code_wires.py` (4). **Two ways it could have
+`digitizer/tests/test_code_wires.py` (6). **Two ways it could have
 been decoration, both hit while writing it:**
 
 - The first `_map_keys` sliced the object literal at a nearby `\n  };` and
@@ -7665,3 +7665,332 @@ produced the answer.
 Defect 29 was compacted to a fixed-state pointer in the same pass to make
 room, and the file's long-line style means an entry costs a line regardless of
 prose. **The next addition needs a retirement first.**
+
+---
+
+## 2026-09-07 — the 800-line budget was a preference, and the reclaim is not where anyone would look
+
+`MASTER_SCOPE.md` has stated its own rule since the DOCTRINE split — *"Current
+state ONLY, under an 800-line budget"* — with `docs/scope/` and this file as
+the two places overflow is supposed to go. **Nothing enforced it.** It reached
+**799** on 2026-09-07, and the only reason anybody noticed is that the next
+entry did not fit.
+
+`tests/test_scope_budget.py` (6) enforces it now. Its failure message names
+the reclaim instead of just saying "too long", because a bare limit gets the
+next line squeezed in somewhere else:
+
+```
+MASTER_SCOPE.md is 802 lines against its own 800-line budget.
+Biggest sections: Capability areas 255, Cross-cutting issues 141,
+Live defects — believed true right now 138.
+The reclaim is capability area '1. Auto-digitizing quality (image → stitches)'
+— 107 lines here against 3871 in its own docs/scope/ detail file, which is
+the offload mechanism this document already documents.
+Retiring a numbered defect reclaims NOTHING: the Closed section keeps every
+number, so Live -> Closed swaps a line for a line.
+```
+
+### The instinct is aimed at the wrong section
+
+| section | lines | share |
+|---|---:|---:|
+| Capability areas | 255 | 31.9% |
+| Cross-cutting issues | 141 | 17.6% |
+| **Live defects** | **138** | **17.2%** |
+| Waiting on Kent | 95 | 11.9% |
+| How this document works | 70 | 8.8% |
+
+**Live defects are 17% of the file**, across 30 numbered entries. And
+retiring one reclaims *nothing*: the Closed section keeps every number
+*"because ten other docs cite them by number"*, so a Live → Closed move swaps
+a line for a line.
+
+| capability area | here | its detail file |
+|---|---:|---:|
+| 1. Auto-digitizing quality | **107** | 3,871 |
+| 3. Studio app / guided wizard | 63 | 386 |
+| 5. Stitch-out review & manual editing | 43 | 827 |
+| 4. Export formats | 21 | 145 |
+| 2. Font library & lettering | 14 | 547 |
+
+Area 1's summary is larger than areas 2, 4 and 5 combined and sits on a
+detail file thirty-six times its size. **Summarising it back down to a
+summary is the document's own mechanism**, already built and linked from the
+section header — and it is an editorial call about what Kent reads the
+dashboard for, so it is measured here and left to him.
+
+### Two smaller things the same read turned up
+
+- **The counter has to be `wc -l`.** `text.split("\n")` on a trailing-newline
+  file returns one extra empty element, and the first cut of
+  `tools/scope_budget.py` reported **800** for a file `wc -l` calls **799** —
+  an instrument off by one against the very number it exists to enforce, and
+  it would have failed the budget test a line early. `line_count` is pinned
+  by its own test.
+- **The pressure is structural, not editorial.** Entries here are single very
+  long lines, so compacting an entry's prose reclaims exactly zero lines.
+  Defect 29 was compacted from its measured form to a fixed-state pointer
+  earlier the same day and the file stayed at 799. Only removing or
+  offloading a paragraph moves the number.
+
+### A second rule the same file states and nothing checked
+
+CLAUDE.md's rule for this document, in its own words: *"Every claim carries a
+`(verb date — source)` pointer; one without a pointer is unverified."*
+Measured **clean — 18 of 18 live entries**, and all 12 closed pointers carry a
+date inline. Both are now asserted, because the failure they prevent is an
+unsourced claim that reads exactly like a measured one.
+
+**And the first cut of that check reported twelve violations, every one
+false.** `### Closed` is an H3 *inside* the Live defects H2, and its entries
+are pointers by design — dated inline ("RESOLVED 2026-08-19") rather than with
+the italic `*(verb date — source)*` tail. Slicing on the H2 alone swept them
+in. **Read the matches, not the count** — third time today, after the
+uppercase-only warning-code regex and the palette tool's two overstatements.
+The split is pinned by its own test so a parser refactor cannot quietly merge
+the two populations again.
+
+### The worktree-during-a-benchmark trap, in a shape the entry for it does not name
+
+The 2026-09-06 memory entry warns that *"a long benchmark and an active
+worktree cannot share a machine"* — pytest reads the tree at COLLECTION, so an
+edit mid-run silently re-bases the comparison — and says the tell is *"a
+passed count differing by exactly the tests you added"*. **Hit it again the
+next day, writing this very PR**, and the shape is worse than the entry
+describes.
+
+The edit was not a new FILE. `tests/test_scope_budget.py` was already
+collected with three tests when three more were added to it. So the run
+finished clean, reported **1993 passed** against the previous run's 1990 —
+`+3`, exactly and plausibly the new file — and **nothing about the number
+looks wrong.** The three tests written after collection simply were not in it.
+There is no error, no skip, no count that reads short of anything a reader
+would know to compare against.
+
+**Confirmed by prediction rather than by argument.** The suspicion was that
+1993 = 1990 (the previous run, before the file existed) + the first three
+tests only. That predicts a clean re-run of **1996**. The re-run returned
+`3 failed, 1996 passed, 8 skipped, 7 xfailed` — the three expected platform
+reds and nothing else.
+
+**The rule that survives is the same, stated harder: do not touch the tree
+while a full run is in flight, and if you did, re-run.** The first run was
+discarded; the honest number is the second one. The added
+diagnostic value here is only that the trap does not require adding a file —
+appending to a file already collected produces a total that is *arithmetically
+consistent with what you intended*, which is the one case where a careful
+reader would not look twice.
+
+### And a note this file cannot record in the file it is about
+
+The budget finding cannot go in `MASTER_SCOPE.md`, because there is one line
+left and the entry would consume it. That is not a joke at the document's
+expense — it is the clearest possible statement of the problem, and the
+reason the enforcement lives in a test and the evidence lives here.
+
+### Unrelated, from the same afternoon: why the warnings list has no severity
+
+`QualityReport.svelte` sorts preflight findings `{block: 0, warn: 1, info: 2}`
+and paints them `--danger` / `--warn` / `--muted`. The pipeline-warnings list
+one panel over has no sort, no colour, and one hand-named filter — **and it
+could not have more**: `warnings_codes.warn()` returns
+`{code, message, **extra}` while `preflight.finding()` returns
+`{code, severity, message, **extra}`. The weak surface is not a Studio
+oversight; **the field does not exist upstream.** Adding it means assigning a
+severity to each of 57 codes, which is a product call about voice and volume
+rather than a refactor. Recorded, not built.
+
+---
+
+## 2026-09-07 — the panel stops reading like a build log
+
+Kent, tonight: *"burn all of the tokens to make this app saleable tomorrow!"*
+That resolves a product question this session deliberately left open twice.
+The measurement earlier today found **eleven of twenty-seven** emitted warning
+codes reaching the customer in the engine's own words, and stopped there on
+the grounds that suppressing or rewording telemetry is a call about voice.
+It is his call, and he made it.
+
+### What a customer saw before this
+
+| code | fixtures | what it said |
+|---|---:|---|
+| `PHOTO_SEGMENT_REGION_COUNT` | **20/26** | *"produced 58 regions (982 superpixels, 32 after merging), consolidated to 14 thread colors"* |
+| `PHOTO_PALETTE_SELECTED` | **20/26** | *"Palette selected 14 threads for 58 regions (chart-restricted weighted k-medoids)"* |
+| `THREAD_RESNAPPED_AFTER_DRIFT` | 13/26 | *"…had moved off the colour their thread was chosen from … (worst dE00 37.3)"* |
+| `SHAPES_LEFT_UNSEWN` | 10/26 | the enclosed-background banner's own news, again, in raw form |
+| `PALETTE_THREAD_MISMATCH` | 6/26 | an internal per-layer inconsistency with a measured nil blast radius |
+| `BORDER_SEAM_SHARED` | 1/26 | *"both circuits still ride the same line"* |
+
+The two most frequent codes in the entire corpus were superpixels and
+k-medoids.
+
+### Three dispositions, and the reason each is the right one
+
+**Translated (8).** `SMALL_SHAPES_AS_RUN`, `THREAD_RESNAPPED_AFTER_DRIFT`,
+`SHAPES_LEFT_UNSEWN`, `BACKGROUND_ABSENT`, `TONAL_REGIONS_SPLIT`,
+`DUPLICATE_CONE_LAYERS_MERGED`, `BORDER_SEAM_SHARED`, and the two
+machine-cannot-run-it seams. Each says what happened to **their design** and,
+where there is one, what to do: *"Removing or cropping the background yourself
+before uploading gives a noticeably cleaner result."* The drift one is
+reassurance rather than a fault — the engine caught its own error and fixed
+it — so it now ends *"The preview shows the colours that will sew"* instead of
+a ΔE00 reading.
+
+**Silenced (4), in `SILENT_WARNINGS`.** The two telemetry codes, the internal
+`PALETTE_THREAD_MISMATCH` (MASTER_SCOPE defect 30 — every consumer already
+prefers `stats.blocks`, so it is a regression detector for us and not news for
+them), and the dev-only SAM2 note. **They are not dropped from
+`describeWarnings`** — `warningLines` still carries every code, because the
+flat-art nudge and the classification readout branch on codes there, and
+filtering upstream would delete two features instead of two lines. Only the
+rendered list filters.
+
+**Conditionally silent (1).** `SHAPES_LEFT_UNSEWN` returns `""` when every
+unsewn shape is enclosed background, because `BACKGROUND_ENCLOSED`'s banner
+already says it and says it better, with a live count that tracks the user's
+own restores. Measured: **on all 10 fixtures that emit it, the banner emits
+too.** An engine that sends no `enclosed_background` count keeps the full
+sentence — the same "absent key = default" reading `stitched` uses.
+
+### The tripwire that keeps it fixed
+
+Copy rots back. `digitizer.spec.js` now renders **37 codes** through
+`describeWarnings` with generous payloads and asserts that none of them
+contains any of twenty engine words — `superpixel`, `k-medoid`, `de00`,
+`slic`, `tatami`, `underlay`, `venv`, `stderr`, `traceback`, `shape_id`,
+`px_per_mm`, `polygon`, `raster` and the rest — **and that none falls through
+to the engine's own message**, which is the fallback the whole defect lived
+in. Mutation-proved: putting *"the superpixel pass found no background"* into
+one translation reds it with the code and the offending word.
+
+`test_code_wires.py` gained two cases, because `SILENT_WARNINGS` is a **fifth
+by-string crossing and the quietest yet**: a typo in it does not throw, does
+not blank anything, and does not stop the page rendering — the code simply is
+not silenced, and superpixels are back in front of a customer on 20 of 26
+designs. So every silenced code must be a live wire value, and nothing
+silenced may also be a code the panel branches on. Both mutation-proved.
+
+### What this does not fix
+
+The grade. Seven of twenty-six fixtures still read F 0, and twelve of
+fifty-two design/garment combos sit on a clamped zero with true scores from
+−272 to −38. That is MASTER_SCOPE defect 28, it is a scoring question rather
+than a copy one, and un-clamping re-bases every number in the scorecard. The
+report already presents it carefully — *"the grade is a chip and not a hero
+number"* is in `QualityReport.svelte`'s own comment — but a customer whose
+logo comes back F is a sales problem that no wording solves.
+
+---
+
+## 2026-09-07 — driving the shipped app found what six hours of reading it did not
+
+Kent, tonight: *"burn all of the tokens to make this app saleable tomorrow!"*
+The honest answer to "saleable" has a blocker no code closes — ROADMAP gate 1,
+one sew-out on record at 6/10 — so the work went to what a buyer actually
+touches. Two findings, and **the second one only exists because the app was
+run rather than read.**
+
+### The panel stopped reading like a build log
+
+Covered in its own entry above: eleven untranslated codes, two of them
+superpixels and k-medoids on 20 of 26 fixtures. Translated, silenced or
+suppressed, with a twenty-word jargon blocklist over every translation as the
+tripwire.
+
+### Then the app was driven, and the screenshot showed a broken promise
+
+`logo_bridge_bar.jpg` through the real UI at the shipped defaults. The slider
+read **"Colors (max 6)"**. The caption read **"15,640 stitches · 80×79 mm ·
+13 colors"**.
+
+**Thread count is the cost driver in embroidery.** Every distinct cone is a
+spool to buy and, on a single-needle machine, a manual re-thread mid-job. Six
+against thirteen is not a cosmetic gap; it is a quote a customer would refuse
+to pay.
+
+**Root cause, and it is precise.** `stage2_quantize` caps the FLAT lane hard —
+keep the largest populations, merge the rest into their closest match, emit
+`COLOR_CAP_APPLIED`. The SLIC+RAG lane passes `max_k=cfg.max_colors` into
+k-medoids, which is a **clustering parameter, not a cap**, and the re-snap can
+pull further spools in afterwards. And MASTER_SCOPE has said for weeks that
+**stage 0 routes six of seven real customer logos to GRADIENT**. So the one
+control a customer has over thread count was enforced on the artwork type they
+do not have.
+
+`tools/color_cap.py`, 26 fixtures at the shipped default of 6:
+
+| lane | over the cap | worst |
+|---|---:|---:|
+| **gradient** | **6 of 11** | **22** |
+| flat | 0 of 6 | 5 |
+| photo_scene | 0 of 7 | 6 |
+| photo_subject | 0 of 2 | 2 |
+
+`COLOR_CAP_APPLIED` fired on **zero** of the twenty-six.
+
+### The composition check that decided where the fix goes
+
+Before building anything: are the extra cones REGION threads, or shade bands
+added later? On `drone_render` (74 regions, 24 region threads, 22 sewn) and
+`logo_bridge_bar` (74, 13, 13), **`block-only` is empty on both** — every sewn
+cone is a region thread. So a cap can act exactly where the flat lane's
+already does, at stage 4, and nothing downstream re-adds.
+
+That five-minute measurement is the difference between a fix and a rewrite.
+
+### `cfg.enforce_color_cap`, default OFF, byte-identical off
+
+A port of the flat lane's own rule to the region level: rank by SEWN area
+(enclosed-background regions buy no slot — letting their area evict a thread
+that sews would spend the colour budget on bare fabric — but they are still
+remapped), keep `max_colors`, merge the rest into their nearest kept cone by
+CIEDE2000, emit the flat lane's **own** `COLOR_CAP_APPLIED` sentence so no new
+customer copy is needed.
+
+**6 of 26 over → 1 of 26.**
+
+| fixture | cones | stops |
+|---|---|---|
+| `drone_render` | 22 → **6** | 21 → 9 |
+| `screenshot_phone_ui_golke` | 15 → **6** | 14 → 6 |
+| `logo_golden_tee` | 14 → **6** | 13 → 6 |
+| `logo_bridge_bar` | 13 → **6** | 12 → 5 |
+| `summit_badge` | 12 → **6** | 11 → 5 |
+
+The twenty designs already inside their budget are untouched. `drone_render`
+pays +1.1% stitches. On `logo_bridge_bar` **24 shapes move and every one is
+between 0.38 and 7.21 mm²** — the renders read as the same design, with the
+script, the rim, the wheel and the yellow field unchanged
+(`docs/renders/color-cap-2026-09-07/`).
+
+### The residual is a different mechanism, and it is named
+
+`region_blobs` stays at 15. It has only **4 REGION threads**, so the cap
+correctly does nothing — and **12 of its 15 sewn cones are built after it, in
+stage 6 blend bands.** That is defect 16's open half, on a GENERATED fixture
+no client artwork produces. A shade-band cap has to run in stage 6/7, not
+stage 4. Written down rather than rounded off, because "6 of 6 fixed" would
+have been the easy sentence and it is not true.
+
+### Two smaller things the same push produced
+
+- **`tools/thread_color_render.py` A/Bs any boolean flag now**, not just
+  `revalidate_small_shapes` — `--flag enforce_color_cap`. Passing the name
+  rather than copying the file keeps ONE renderer, so a fix to the panel
+  drawing reaches every flag's render instead of only the newest.
+- **`MASTER_SCOPE.md` hit the budget its own new test enforces**, exactly as
+  predicted hours earlier, and the reclaim its own tool named was used: two
+  per-mechanism lettering paragraphs (which already pointed at their own
+  documents) moved verbatim into `docs/scope/1-auto-digitizing-quality.md`.
+  **799 → 788**, nothing deleted, a pointer left behind. The budget entry said
+  this was an editorial call to leave to Kent; a *move* is not that call, and
+  the file's own rules prescribe it.
+
+### What is still not saleable
+
+The grade. Seven of 26 fixtures read F 0 and twelve of 52 design/garment
+combos sit on a clamped zero with true scores from −272 to −38 (defect 28),
+and one sew-out at 6/10 is the whole physical evidence base (gate 1). Neither
+is a copy problem and neither closed tonight.

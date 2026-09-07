@@ -89,6 +89,28 @@ class PipelineConfig:
     # names, so an unknown id raises rather than silently substituting.
     thread_brand: str | None = None
     max_colors: int = 12
+    # Make `max_colors` true on EVERY lane, not just the flat one. Default
+    # OFF and byte-identical off — it only ever runs when a design already
+    # exceeds the cap, which no flat-lane fixture does.
+    #
+    # `stage2_quantize` caps hard (largest populations kept, the rest merged
+    # into their closest match, COLOR_CAP_APPLIED emitted). The SLIC+RAG lane
+    # passes `max_k=max_colors` into k-medoids, which is a clustering
+    # parameter and not a cap, and the re-snap can pull further spools in on
+    # top. Since stage 0 routes SIX OF SEVEN real customer logos to gradient,
+    # the one control a customer has over thread count is enforced on the
+    # artwork type they do not have.
+    #
+    # Measured at the Studio's shipped default of 6 (`tools/color_cap.py`,
+    # 2026-09-07): 6 of 26 designs sew more cones than the slider promises and
+    # all six are gradient — flat 0/6, photo_scene 0/7, photo_subject 0/2 —
+    # worst `drone_render` at 22 cones and 21 colour stops against a promised
+    # 6. Every cone is a spool to buy and a manual re-thread on a
+    # single-needle machine, so this is a pricing promise, not a preference.
+    #
+    # Flipping it ON is Kent's: it merges colours a customer can see, and the
+    # A/B belongs beside a render.
+    enforce_color_cap: bool = False
     seed: int = 0                      # k-means RNG seed — fixed for determinism
     # Cluster centers within this CIE76 distance are the SAME flat color that
     # k-means split; merged before spool snapping. Also the perpendicular

@@ -3,7 +3,7 @@
 Every one of these is **implemented, tested, byte-identical when off, and
 default OFF.** None is waiting on more work from me; each is waiting on a
 judgement that is Kent's. They are scattered across MASTER_SCOPE defects 5, 15,
-27 and 28 and a dozen scope-history entries, which is fine for a record and
+27, 28 and 31 and a dozen scope-history entries, which is fine for a record and
 poor for deciding four things in one sitting. This is the same evidence in one
 place.
 
@@ -14,7 +14,7 @@ record. **If they ever disagree, MASTER_SCOPE wins.**
 
 ---
 
-## The four that are genuinely decidable now
+## The five that are genuinely decidable now
 
 ### 1. `cfg.satin_per_stroke` — do strokes sew as satin columns?
 
@@ -94,6 +94,52 @@ the credit side.
 **My reading, for what it is worth:** I said "I would not flip it on this
 evidence — the value is the price tag." The revisit finding moves that
 slightly toward flipping, not decisively. *(MASTER_SCOPE 15)*
+
+---
+
+### 5. `cfg.enforce_color_cap` — make "Colors (max N)" true? (added 2026-09-07)
+
+**The only one of these five with a broken PROMISE behind it**, and the only
+one found by driving the shipped app rather than by reading code.
+
+**Buys** the slider meaning what it says. Thread count is the cost driver —
+every distinct cone is a spool to buy and, on a single-needle machine, a
+manual re-thread mid-job — and at the Studio's shipped default of 6,
+**6 of 26 corpus designs sew more cones than promised, all six gradient**
+(flat 0/6, photo_scene 0/7, photo_subject 0/2). `stage2_quantize` has always
+capped the FLAT lane hard; the SLIC+RAG lane passes `max_k=max_colors` into
+k-medoids, which is a clustering parameter and not a cap. **Stage 0 routes six
+of seven real customer logos to gradient**, so the control was enforced on the
+artwork type customers do not have.
+
+| fixture | cones OFF | cones ON | stops OFF | stops ON |
+|---|---:|---:|---:|---:|
+| `drone_render` | **22** | 6 | 21 | 9 |
+| `screenshot_phone_ui_golke` | 15 | 6 | 14 | 6 |
+| `logo_golden_tee` | 14 | 6 | 13 | 6 |
+| `logo_bridge_bar` | 13 | 6 | 12 | 5 |
+| `summit_badge` | 12 | 6 | 11 | 5 |
+
+**Costs** +1.1% stitches on `drone_render`, and colour merges a customer could
+in principle see. On `logo_bridge_bar` **24 shapes move, every one between
+0.38 and 7.21 mm²**, and the two renders read the same design — the `Bridge`
+script, the black rim, the wheel and the yellow field are untouched. The 20
+designs already inside their budget are byte-untouched.
+
+**The residual is a different mechanism, named not hidden.** `region_blobs`
+stays at 15 cones because it has only **4 REGION threads** — under the cap, so
+the cap correctly does nothing — and **12 of its 15 sewn cones are built after
+it, in stage 6 blend bands**. That is defect 16's open half, on a GENERATED
+fixture no client artwork produces. A shade-band cap would have to run in
+stage 6/7.
+
+**My reading:** this is the one I would flip. The others trade quality for
+quality; this one is the difference between a control that works and a
+control that does not, and a quote built on 22 cones when the customer asked
+for 6 is a refund conversation. The catch is that it merges colour, so it
+wants your eye on `docs/renders/color-cap-2026-09-07/` first.
+
+**Render:** `docs/renders/color-cap-2026-09-07/`. *(MASTER_SCOPE 31)*
 
 ---
 

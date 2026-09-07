@@ -3869,3 +3869,21 @@ the yardstick cannot see"* — phase 1's exit condition restated
 
 Kent ratified tonal splitting as spec decision 2 (2026-08-18), re-confirmed
 deliberate 2026-09-02. **A datum for him, not a flip.**
+
+
+## Letterform mechanisms 2 and 4 — moved out of MASTER_SCOPE 2026-09-07
+
+Moved verbatim, not edited. `MASTER_SCOPE.md` hit its own 800-line budget (now enforced by `digitizer/tests/test_scope_budget.py`), and its own tool named this section as the reclaim: **107 lines in the dashboard against 3,871 here.** These two are per-mechanism detail that already point at their own documents, which is exactly what this file is for. Nothing is dropped; the dashboard keeps a pointer.
+
+**Mechanism 2 — pull comp's min-feature guard scoped to `poly.interiors` —
+PROTOTYPED AND COSTED, not shipped.** An exterior-pocket branch holds 15 real
+slots at 0.528–0.920 mm and reds the chaining benchmark (3.8 → 6.4 trims/1k vs
+4.1; +2 trims at the shipped `chain_links=False`). **Kent's call 2026-08-28:
+hold it.** `docs/exterior-notch-guard-2026-08-28.md`. *(prototyped 2026-08-28)*
+
+**Mechanism 4 — the instrument that hid all of it — is HALF CLOSED
+2026-08-28.** Coverage and IoU average, and deformation is local, so
+`stroke_coverage.py` reports the WORST medial-axis stroke (DRONE's E: 58.3%
+worst vs 72.7% mean). **Still blind to TILT**; the obvious tilt metric was
+built and REJECTED (ranks a good O worse than the deformed H). Detail in
+`tools/letterform_fidelity/README.md`. *(2026-08-28)*

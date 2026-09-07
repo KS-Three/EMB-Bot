@@ -1230,6 +1230,67 @@ function areaSuffix(w) {
   return ` (largest ${Math.round(a).toLocaleString("en-US")} mm²)`;
 }
 
+// Codes a customer must never be shown, because there is nothing in them a
+// customer could do. Two kinds, and both were measured reaching the panel on
+// 2026-09-07 (`digitizer/tools/warning_coverage.py`, 26 fixtures at 80 mm):
+//
+//   ENGINE TELEMETRY. PHOTO_SEGMENT_REGION_COUNT and PHOTO_PALETTE_SELECTED
+//   fire on 20 of 26 fixtures each — the two most frequent codes in the whole
+//   corpus — and read "produced 58 regions (982 superpixels, 32 after
+//   merging)" and "(chart-restricted weighted k-medoids)". Superpixels and
+//   k-medoids, on most photographs, in the customer's panel.
+//
+//   INTERNAL DIAGNOSTICS. PALETTE_THREAD_MISMATCH is a real inconsistency in
+//   the review screen's per-layer list with a measured NIL blast radius —
+//   every consumer already prefers `stats.blocks` (MASTER_SCOPE defect 30) —
+//   so it is a regression detector for us, not news for them.
+//   PHOTO_SAM2_SEGMENTATION_UNAVAILABLE only fires when a dev has opted into
+//   SAM2 through localStorage.
+//
+// They are NOT dropped from `describeWarnings`: `warningLines` still carries
+// every code, because the flat-art nudge and the classification readout switch
+// on codes there. Only the rendered LIST filters this set — the same shape as
+// the BACKGROUND_ENCLOSED filter, which exists because that code owns a richer
+// banner rather than because it is noise.
+export const SILENT_WARNINGS = new Set([
+  "PHOTO_SEGMENT_REGION_COUNT",
+  "PHOTO_PALETTE_SELECTED",
+  "PALETTE_THREAD_MISMATCH",
+  "PHOTO_SAM2_SEGMENTATION_UNAVAILABLE",
+]);
+
+// Of the warnings that DO reach the panel, most are the engine reporting what
+// it decided — "34 tiny details were merged into the shapes around them",
+// "Same-color shapes that nearly touch were held apart". True, worth having,
+// and not a problem with anybody's artwork. A real logo run on 2026-09-07
+// (`logo_bridge_bar.jpg`, 80 mm) produced **ten** of them in one flat list,
+// every bullet the same weight, and it reads as ten things wrong with your
+// art. Exactly one of the ten asked the reader to do anything.
+//
+// So this set is the ones that ASK: check something, change a setting, or
+// decide whether to sew. Everything else is a note, shown behind a
+// disclosure. Membership is by that test alone, not by how bad the underlying
+// thing is — LONG_JUMPS_TRIMMED reporting 134 cuts is a big number and still
+// a note, because there is no move the person who uploaded the art can make
+// about it.
+//
+// **A code not listed here defaults to a NOTE**, deliberately. An unlisted
+// actionable warning is one disclosure click away; the other default is how a
+// panel becomes a wall nobody reads, which is the state this replaced.
+export const ATTENTION_WARNINGS = new Set([
+  // "check the preview closely before stitching this one out"
+  "CLASSIFIED_PHOTO_SUBJECT", "CLASSIFIED_PHOTO_SCENE", "CLASSIFICATION_UNCERTAIN",
+  // something is missing, or may be
+  "BACKGROUND_UNCERTAIN", "DROPPED_SMALL_SHAPES", "SHAPE_NOT_STITCHED",
+  "SHAPES_LEFT_UNSEWN", "SHAPE_TOO_THIN_TO_FILL",
+  // a setting of theirs is the lever
+  "INPUT_LOW_RESOLUTION", "COLOR_CAP_APPLIED", "EDGE_CAP_EMPTY",
+  // their own edit did not survive, which they cannot see any other way
+  "SHAPE_EDIT_UNKNOWN_ID",
+  // this machine could not run a step, and cropping the art is the workaround
+  "PHOTO_BACKGROUND_REMOVAL_UNAVAILABLE", "PHOTO_FACE_PRIORS_UNAVAILABLE",
+]);
+
 const WARNING_TEXT = {
   // Stage 0's four classification codes (warnings_codes.py). Untranslated,
   // they reached the panel as the engine's own build-status prose —
@@ -1377,6 +1438,60 @@ const WARNING_TEXT = {
     plural(w.count || 0,
       "One stretch of the design edge was too narrow for a satin cap and sews as a light run line instead.",
       "{n} stretches of the design edge were too narrow for a satin cap and sew as light run lines instead."),
+  // --- Added 2026-09-07 -----------------------------------------------------
+  // Eleven codes were reaching the panel in the engine's own words, measured
+  // over the 26-fixture corpus (`digitizer/tools/warning_coverage.py`). Four
+  // read as plain English already and are translated here only so the wording
+  // is owned in one place; the rest were the problem. The two telemetry codes
+  // and the internal diagnostic are in SILENT_WARNINGS above instead.
+  SMALL_SHAPES_AS_RUN: (w) =>
+    plural(w.count || 0,
+      "One shape was too small to fill and sews as a light outline instead.",
+      "{n} shapes were too small to fill and sew as light outlines instead."),
+  // The engine caught its own drift and corrected it, so this is reassurance,
+  // not a fault — but the message it replaces ended "worst dE00 37.3", which
+  // tells a customer nothing except that something went wrong somewhere.
+  THREAD_RESNAPPED_AFTER_DRIFT: (w) =>
+    plural(w.count || 0,
+      "One shape shifted colour slightly while its outline was smoothed and was re-matched to the closest thread. The preview shows the colours that will sew.",
+      "{n} shapes shifted colour slightly while their outlines were smoothed and were re-matched to the closest threads. The preview shows the colours that will sew."),
+  // Returns "" — suppressed — when EVERY unsewn shape is enclosed background,
+  // because BACKGROUND_ENCLOSED's banner already says that, and says it better
+  // with a live count that tracks the user's own restores. Measured
+  // 2026-09-07: on all 10 corpus fixtures that emit this, BACKGROUND_ENCLOSED
+  // emits too. An engine that sends no `enclosed_background` count keeps the
+  // full sentence, the same "absent key = default" reading `stitched` uses.
+  SHAPES_LEFT_UNSEWN: (w) => {
+    const n = w.count || 0;
+    if (typeof w.enclosed_background === "number" && n > 0
+        && w.enclosed_background === n) return "";
+    return plural(n,
+      `One shape is planned but not sewn${areaSuffix(w)}, so the garment shows through there. Find it in the Layers list to sew it.`,
+      `{n} shapes are planned but not sewn${areaSuffix(w)}, so the garment shows through there. Find them in the Layers list to sew them.`);
+  },
+  BACKGROUND_ABSENT: () =>
+    "This art runs edge to edge — there's no background to leave out, so all of it will be stitched.",
+  TONAL_REGIONS_SPLIT: (w) =>
+    plural(w.count || 0,
+      "One area shaded through more tones than a single thread can show, so it sews in several colors.",
+      "{n} areas shaded through more tones than a single thread can show, so each sews in several colors."),
+  DUPLICATE_CONE_LAYERS_MERGED: (w) =>
+    plural(w.count || 0,
+      "One color layer asked for a thread another layer already uses, so they sew together — one less trip to the thread rack.",
+      "{n} color layers asked for threads other layers already use, so they sew together — fewer trips to the thread rack."),
+  BORDER_SEAM_SHARED: (w) =>
+    plural(w.count || 0,
+      "Two bordered shapes share an outline, so that line sews twice — expect a heavier edge there.",
+      "{n} pairs of bordered shapes share an outline, so those lines sew twice — expect heavier edges there."),
+  // The two "this machine cannot run it" seams a customer can act on. Their
+  // engine messages used to interpolate a diagnostic — an absolute venv path,
+  // a model path, a line of a worker's STDERR — which the panel rendered
+  // verbatim; the engine now keeps that in the `reason` payload (MASTER_SCOPE
+  // defect 29). What the customer needs is the effect on THEIR design.
+  PHOTO_BACKGROUND_REMOVAL_UNAVAILABLE: () =>
+    "Automatic background removal isn't set up on this machine, so this photo was digitized without it — and the tone and texture passes were skipped with it. Removing or cropping the background yourself before uploading gives a noticeably cleaner result.",
+  PHOTO_FACE_PRIORS_UNAVAILABLE: () =>
+    "Face detection isn't set up on this machine, so faces in this photo get no special protection. Check faces closely in the preview before stitching.",
 };
 
 // [{ code, message, ...extra }] -> [{ code, text }] for the panel.
