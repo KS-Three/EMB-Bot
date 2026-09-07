@@ -9659,3 +9659,41 @@ real pages editing at once.
 non-objects, arrays, and anything without either the format marker or the
 bare-project markers, and `App.importFromDrawer` gives each failure its own
 notice. The DST lane was the one with only a size check.
+
+## 2026-09-07 — what the shipped app actually weighs on a first load
+
+Snapshot. Not live status. No number for this existed; the lazy-loading claims
+in the code had never been measured against a production build.
+
+Built with `vite build`, served with `vite preview`, measured by the browser's
+own `performance.getEntriesByType("resource")` — `transferSize`, not
+`content-length`, because the preview server omits that header on most
+responses and a naive read of it reports 0.05 MB.
+
+| point | resources | transferred |
+|---|---|---|
+| **first paint** | 32 | **0.55 MB** |
+| after typing a design | 34 | 0.55 MB — **nothing more** |
+| after a PDF worksheet | 37 | 0.68 MB (+126 KB, jsPDF) |
+
+The biggest items at first paint:
+
+| | |
+|---|---|
+| `fonts/bin/mam_script.embf` | 144.6 KB |
+| `assets/index-*.js` (the whole app) | 106.1 KB |
+| `fonts/bin/manga_impact.embf` | 72.0 KB |
+| `inter-latin-wght-normal.woff2` | 47.4 KB |
+| `fonts/bin/medium_font.embf` | 15.3 KB |
+
+**Both lazy-loading claims hold.** The 957 KB `threadBrandsData` chunk is
+**never fetched** unless the thread picker is opened, and jsPDF's 126 KB
+arrives only when a worksheet is asked for.
+
+**232 KB of that first paint is three font binaries, and that is deliberate.**
+`TemplateRow.svelte` renders a REAL stitch preview for each of the four
+quick-start tiles — `ensureFont` → `buildLetteringDesign` → `renderRealistic`,
+cached as a module singleton — so the tiles show what the customer will
+actually get rather than a picture of it. `mam_script`, `manga_impact` and
+`medium_font` are exactly those tiles' fonts. Nothing to fix; recorded so the
+next person who sees three font fetches before any interaction knows why.
