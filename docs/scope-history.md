@@ -10158,3 +10158,20 @@ recent call last)", no `.py", line N`, no bare `ValueError`. The 2026-08-28
 fix for the panel printing server paths and worker STDERR holds against a real
 service error, which is the case it was written for and had not been re-checked
 against since.
+
+### The trace-import lane, driven by hand at last (2026-09-07)
+
+The last panel nobody here had driven. Right-click → Draw shapes → **"Trace
+image…"** → upload `trace-holes-and-colors.png` → it finds **3 shapes** →
+"Add 3 shapes" → **1,637 stitches · 42 × 16 mm**. Zero console errors.
+
+And it names its own limitation, unprompted and in the right shape:
+
+> "A traced shape had an interior hole that isn't supported yet — it will
+> render solid; cut it in by hand if needed."
+
+Cause, consequence, and a lever — which is the standard the rest of the
+product's messages were measured against today, met here already.
+
+That closes the sweep: every customer-facing surface in the Studio has now
+been driven by hand at least once.
