@@ -88,6 +88,26 @@ worker's STDERR. `pipeline.run_stages` already passes the string as a
 separate `reason=` payload field, **so removing it from the human sentence
 costs no diagnostic.** MASTER_SCOPE defect 29.
 
+**FIXED the same day, and it was a FAMILY of three.** `detect_faces_seam`
+(*"YuNet model file missing at ..."*) and the SAM2 seam (*"SAM2 worker exited
+137: <last line of STDERR>"*) are built from the identical pattern —
+`warn(CODE, f"X was skipped — {reason}. ...", reason=reason)` — so fixing only
+the site that was MEASURED would have left two siblings doing the same thing,
+which is the missing-port shape (defect 27) this repo keeps rediscovering.
+**Sweep for the pattern, not the instance.** All three now route through
+`pipeline._environment_warning`; the CONSEQUENCE clause is unchanged word for
+word in all three and only the lead moves (*"X was skipped — <diagnostic>."* →
+*"X could not run here."*, the interpolation coming out and the sentence still
+needing a verb), and the reason goes to `reason=` alone — a move, not a
+deletion, since all three already passed it there.
+`tests/test_environment_warnings.py` (7) carries the tripwire: an AST walk
+over `digitizer_core` rejecting any `warn()` message f-string that
+interpolates a `*_reason` name. Run against the pre-fix file it names all
+three by line. It also pins that the walk sees >= 30 `warn()` calls, because
+the assertion is a "no hits" check, and it monkeypatches the venv path rather
+than relying on its absence — **a test that only fires where rembg is missing
+skips on the machines that ship it.**
+
 **And the panel says one thing twice, once in each voice.**
 `otherWarningLines` hand-filters exactly ONE code out of the plain list —
 `BACKGROUND_ENCLOSED`, which owns a banner — and `SHAPES_LEFT_UNSEWN` carries
