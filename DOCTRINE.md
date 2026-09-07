@@ -2841,3 +2841,33 @@ its hedge as it is copied forward** — is why this file is split.
   exists. "Invalid file" would have been the same dead end this repo keeps
   finding.
   *(2026-09-07)*
+
+- **A colour change is a machine stop, and the app was spending one between
+  every pair of elements whatever colour they were.** `combineDesigns` spliced
+  `trim + color` at each element boundary unconditionally. So the commonest
+  real design there is — a two-line name in one thread — carried a stop it
+  could not use. On a single-needle home machine that is a full pause with a
+  prompt to rethread, and the colour being asked for is the one already
+  loaded. Measured 2026-09-07: two black text elements gave
+  `colors: [Color 1 (20,20,20), Color 1 (20,20,20)]`, `colorCount: 2`, one
+  colour-change record — and the review's thread list and the PDF worksheet
+  each listed the same cone twice.
+
+  Adjacent-only, and the trim STAYS. Merging a black/red/black project down to
+  two blocks would mean reordering the sew, which changes what lands on top of
+  what — a different question and not a free one. And the needle still has to
+  travel between two elements without dragging thread across the garment, so
+  removing the stop is not removing the cut.
+
+  **Compare the thread, not the label.** Every lettering block is named
+  "Color 1" and the import builder numbers its own per element, so two entries
+  that sew identically routinely carry different names. `name` is display
+  text; r/g/b is the thread.
+
+  Two of `generate.spec.js`'s tests were pinning the old count incidentally —
+  one asserted `colorCount === 2` on two default-black elements while its real
+  subject was per-element bboxes, and one was called "…into one multi-color
+  design" while giving both elements the same default black. **A test that
+  gets the right number for the wrong reason still goes green when the reason
+  changes**; the second one's premise was made real rather than its
+  expectation lowered. *(2026-09-07)*

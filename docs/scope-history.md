@@ -9261,3 +9261,54 @@ The message names the way out rather than saying "invalid file":
 Mutation: dropping the floor to 0 fails 3 engine tests and the e2e.
 
 engine **492/492** · studio **1020/1020** · e2e **43/43**
+
+## 2026-09-07 — a machine stop between every pair of elements, whatever colour they were
+
+Snapshot. Not live status.
+
+`combineDesigns` spliced `trim + color` at each element boundary
+unconditionally, so a **two-line name in one thread** — about the commonest
+real design there is — carried a colour change it could not use. On a
+single-needle home machine that is a full pause with a prompt to rethread, to
+the colour already loaded.
+
+Measured on two black text elements through the real generator:
+
+```
+colors:      [{r:20,g:20,b:20,name:"Color 1"}, {r:20,g:20,b:20,name:"Color 1"}]
+colorCount:  2
+colour-change records: 1
+trim records: 8
+```
+
+The review's thread list and the PDF worksheet each listed the same cone
+twice. Driven in the app after the fix, a two-element one-thread project shows
+a single row: **Black · Block 1**.
+
+**Adjacent only, and the trim stays.** Merging a black/red/black project down
+to two would mean reordering the sew, which changes what lands on top of what —
+a different question and not a free one. The needle still has to travel between
+elements without dragging thread across the garment, so removing the stop is
+not removing the cut. Within a single design nothing changes: this is an
+element-boundary rule, and duplicate cones inside one digitized design are the
+Python preflight's ground (`COLOR_STOPS_HEAVY`, `PALETTE_THREAD_MISMATCH`).
+
+**The merge compares r/g/b, not `name`.** Every lettering block is named
+"Color 1" and the import builder numbers its own per element, so two entries
+that sew identically routinely carry different names.
+
+### Two tests were green for the wrong reason
+
+`generate.spec.js` had one asserting `colorCount === 2` on two default-black
+elements while its real subject was the per-element bboxes, and one named
+"…combines a manual shape element with a text element into one **multi-color**
+design" in which both elements were the same default black. The first now
+asserts 1 with the reason recorded; the second had its **premise** made real
+(the shape is red) rather than its expectation lowered — it says multi-colour,
+so it should be.
+
+Five new tests in `combine.spec.js` (8 total). Mutation-proved: always
+splicing the change, comparing names instead of thread, and keeping the
+duplicate colour entry each fail at least one.
+
+engine **492/492** · studio **1025/1025** · e2e **43/43**

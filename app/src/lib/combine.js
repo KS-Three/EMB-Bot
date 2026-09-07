@@ -42,16 +42,43 @@ export function combineDesigns(designs) {
   let nSatin = 0, nFill = 0, nTrims = 0, haveDebug = false;
 
   list.forEach((d, i) => {
+    // ---- Two elements in the same thread are ONE block ------------------
+    //
+    // A colour change is a machine stop. On a single-needle home machine it
+    // is a full pause with a prompt to rethread; the operator then loads the
+    // colour that is already loaded. This spliced one between EVERY pair,
+    // whatever colour they were, so the commonest real design there is — a
+    // two-line name, one thread — cost a stop it could not use, and the
+    // review's thread list and the PDF worksheet both listed the same cone
+    // twice. Measured 2026-09-07: two black text elements produced
+    // `colors: [Color 1 (20,20,20), Color 1 (20,20,20)]`, colorCount 2, one
+    // colour-change record.
+    //
+    // Only ADJACENT blocks merge, and only across the splice. Merging a
+    // black/red/black project down to two would mean reordering the sew,
+    // which changes what lands on top of what — that is a different question
+    // and not a free one. (`COLOR_STOPS_HEAVY` in the Python preflight names
+    // the same saving on the digitized lane; this is the browser lane's.)
+    //
+    // The TRIM stays either way: the needle still has to travel between two
+    // elements without dragging thread across the garment.
+    const first = (d.colors || [])[0];
+    const prev = colors[colors.length - 1];
+    const mergesWithPrevious = i > 0 && !!first && !!prev && sameThread(prev, first);
     if (i > 0) {
       const last = stitches[stitches.length - 1] || { x: 0, y: 0 };
       stitches.push({ x: last.x, y: last.y, type: "trim" });
-      stitches.push({ x: last.x, y: last.y, type: "color" });
+      if (!mergesWithPrevious) stitches.push({ x: last.x, y: last.y, type: "color" });
     }
     for (const s of d.stitches || []) {
       if (s.type === "end") continue;
       stitches.push(s);
     }
-    for (const c of d.colors || []) colors.push(c);
+    // When the splice carried no colour change, this design's first block is
+    // a continuation of the previous one — the colours array has to lose the
+    // duplicate with it, or `colors[i]` stops naming block i.
+    const own = d.colors || [];
+    for (let c = mergesWithPrevious ? 1 : 0; c < own.length; c++) colors.push(own[c]);
     if (d._debug) {
       haveDebug = true;
       nSatin += d._debug.nSatin || 0;
@@ -73,6 +100,14 @@ export function combineDesigns(designs) {
   };
   if (haveDebug) combined._debug = { nSatin, nFill, nTrims };
   return combined;
+}
+
+// Two colour entries name the same thread. Compared on r/g/b alone: `name`
+// is display text (the lettering builder labels every block "Color 1", the
+// import builder numbers them per element), so two entries that sew
+// identically can carry different names and must still merge.
+function sameThread(a, b) {
+  return a.r === b.r && a.g === b.g && a.b === b.b;
 }
 
 // Shared bbox helper (mm, from DST-unit stitches /10). "color" and "end"
