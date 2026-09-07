@@ -222,7 +222,11 @@ files from `/export` are written by pystitch in the standard convention and
 every response says so in `X-Stitch-Convention`; for DST specifically, Studio's
 own encoder stays the default for lettering/manual designs, the one with sewn
 evidence behind it, while projects made entirely of auto-digitized elements now
-route through this service's `/export` instead. PES and JEF, the formats the
+route through this service's `/export` instead. **That last clause only became
+true on 2026-09-07:** Studio's gate required EVERY element to be `digitized`,
+and a new project always carries an empty text element a logo customer never
+removes, so the `/export` preference never actually fired and every DST left by
+the browser codec. It counts only elements that SEW now. PES and JEF, the formats the
 service exists to unlock, have no competing implementation and no conflict.
 
 DST verification on this side still goes through pystitch, never through

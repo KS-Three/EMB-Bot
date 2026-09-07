@@ -344,14 +344,14 @@ area they drag down, documented once here.
 
 ### DST codec axis bug
 
-EMB-Bot's browser DST codec (`src/dst.js` / `src/dstimport.js`) is transposed
-vs. the Tajima/pyembroidery standard — confirmed, unresolved. It round-trips
-against itself but reads a quarter-turn wrong elsewhere. **Not only
-orientation:** `dst.js` writes the colour-change byte as `0x43` not `0xC3`, read
-as a spurious sequin toggle, so a two-colour design decodes with ZERO colour
-changes elsewhere. PES and EXP are identity-clean. Full evidence trail, and a
-fifth independent corroboration from Ink/Stitch's `pystitch`:
-`dst-codec-axis-discrepancy` in memory. *(re-measured 2026-08-22)*
+EMB-Bot's browser DST codec (`src/dst.js` / `src/dstimport.js`) is transposed vs. the
+Tajima/pyembroidery standard — confirmed, unresolved. It round-trips against itself and reads
+a quarter-turn wrong elsewhere, **in both directions**: measured 2026-09-07 on the commissioned
+becker files, EMB-Bot displays a professional `76.5×46.8 mm` DST as `47×77` and `101.9×62.1` as
+`62×102` — a customer's paid-for logo arrives sideways. **Not only orientation:** `dst.js`
+writes the colour-change byte `0x43` not `0xC3`, read as a spurious sequin toggle, so a
+two-colour design decodes with ZERO colour changes elsewhere. PES and EXP are identity-clean.
+`dst-codec-axis-discrepancy` in memory. *(export 2026-08-22; import 2026-09-07)*
 
 **Not a conflict:** CLAUDE.md's "browser DST is EMB-Bot-internal only" is about
 orientation elsewhere; `digitizer/README.md`'s "browser DST stays the default"

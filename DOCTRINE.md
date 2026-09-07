@@ -1103,8 +1103,21 @@ its hedge as it is copied forward** — is why this file is split.
   transposed too, so a service-encoded DST re-imported into EMB-Bot now reads
   `16×81`. The two bugs used to cancel for a browser→browser round trip. The
   machine is the side that matters — a stitch file exists to be sewn — but
-  fixing the codec remains Kent's call, and this makes the import half
-  reachable where it was not before. *(measured 2026-09-07)*
+  fixing the codec remains Kent's call.
+
+  **The import half is not hypothetical, and it never was mine to introduce.**
+  Imported the commissioned becker DSTs — a professional digitizer's own files,
+  already in the repo — and EMB-Bot shows them **rotated**: `76.5×46.8 mm` as
+  `47×77`, `101.9×62.1` as `62×102`. So a customer who brings a logo they paid
+  a digitizer for sees it sideways, hoop-fitted wrong and auto-fit scaled off
+  the wrong axis, and that has been true the whole time — independent of any
+  change here. **MASTER_SCOPE's stated resolution path was "a sew-out or
+  third-party read of a browser-encoded DST"; both directions are now read and
+  neither needs a sew-out to settle.** What is left is genuinely a decision, not
+  a measurement: fixing import alone breaks the self round-trip, fixing both
+  makes every DST EMB-Bot has ever written read rotated until re-exported.
+  That is why it is Kent's, and it is now costed rather than merely flagged.
+  *(measured 2026-09-07)*
 
 - **When you fix a rule, COUNT ITS READERS FIRST. Three defects in one
   session were the same shape.** Each was one question being answered in more
