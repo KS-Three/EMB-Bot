@@ -2005,3 +2005,42 @@ test("no translated warning speaks engine, and this is the tripwire that keeps i
     }
   }
 });
+
+test("what asks for something is separated from what merely happened", async () => {
+  stubStorage({});
+  const { ATTENTION_WARNINGS, SILENT_WARNINGS } = await import("./digitizer.js");
+  // A real logo at 80 mm produced TEN warning lines in one flat list on
+  // 2026-09-07 and exactly one of them asked the reader for anything. Ten
+  // equal bullets read as ten faults in the customer's artwork.
+  expect(ATTENTION_WARNINGS.has("BACKGROUND_UNCERTAIN")).toBe(true);   // "Check the stitch preview"
+  expect(ATTENTION_WARNINGS.has("INPUT_LOW_RESOLUTION")).toBe(true);   // a setting is the lever
+  expect(ATTENTION_WARNINGS.has("SHAPE_EDIT_UNKNOWN_ID")).toBe(true);  // their own edit was lost
+  // Membership is "does it ASK", not "is the underlying thing big".
+  // LONG_JUMPS_TRIMMED can report 134 cuts and is still a note, because there
+  // is no move the person who uploaded the art can make about it.
+  expect(ATTENTION_WARNINGS.has("LONG_JUMPS_TRIMMED")).toBe(false);
+  expect(ATTENTION_WARNINGS.has("ABSORBED_SMALL_SHAPES")).toBe(false);
+  expect(ATTENTION_WARNINGS.has("SAME_THREAD_SHAPES_MERGED")).toBe(false);
+  expect(ATTENTION_WARNINGS.has("THREAD_RESNAPPED_AFTER_DRIFT")).toBe(false);
+  // A silenced code can never also be an attention code — it would be
+  // promoted and then filtered, which reads as a lost warning.
+  for (const code of ATTENTION_WARNINGS) {
+    expect(SILENT_WARNINGS.has(code), `${code} is both silenced and promoted`)
+      .toBe(false);
+  }
+});
+
+test("an unlisted code is a NOTE, deliberately, and is still shown", async () => {
+  stubStorage({});
+  const { ATTENTION_WARNINGS, describeWarnings } = await import("./digitizer.js");
+  // The default has to be quiet: an unlisted actionable warning is one
+  // disclosure click away, while the other default is how a panel becomes a
+  // wall nobody reads — the state this replaced.
+  expect(ATTENTION_WARNINGS.has("HOLE_NEARLY_CLOSED")).toBe(false);
+  // "Note" is not "dropped". It must still translate and still render.
+  const [line] = describeWarnings([
+    { code: "HOLE_NEARLY_CLOSED", message: "ENGINE PROSE", count: 2 },
+  ]);
+  expect(line.text).toContain("2 small openings were held open");
+  expect(line.text).not.toContain("ENGINE PROSE");
+});

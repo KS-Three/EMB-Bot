@@ -8,6 +8,7 @@
     decodedFromDesignCached,
     describeWarnings,
     SILENT_WARNINGS,
+    ATTENTION_WARNINGS,
     canonicalShapeEdits,
     editsKey,
     reviewFromJob,
@@ -508,6 +509,14 @@
   $: otherWarningLines = warningLines.filter(
     (w) => w.code !== "BACKGROUND_ENCLOSED" && !SILENT_WARNINGS.has(w.code)
            && w.text);
+  // And of what survives, most is the engine saying what it decided rather
+  // than anything to act on. A real logo at 80 mm produced TEN lines in one
+  // flat list on 2026-09-07 and exactly one of them asked for anything --
+  // ten equal bullets read as ten faults in the customer's artwork. The ones
+  // that ask stay in the list; the rest go behind a disclosure that says how
+  // many there are, so nothing is hidden and nothing is shouted.
+  $: attentionLines = otherWarningLines.filter((w) => ATTENTION_WARNINGS.has(w.code));
+  $: noteLines = otherWarningLines.filter((w) => !ATTENTION_WARNINGS.has(w.code));
 
   // ---- what stage 0 made of the art, and correcting it ----------------------
   //
@@ -1731,12 +1740,22 @@
           </button>
         </div>
       {/if}
-      {#if otherWarningLines.length}
+      {#if attentionLines.length}
         <ul class="dgp-warnings">
-          {#each otherWarningLines as w (w.code + w.text)}
+          {#each attentionLines as w (w.code + w.text)}
             <li>{w.text}</li>
           {/each}
         </ul>
+      {/if}
+      {#if noteLines.length}
+        <details class="dgp-notes">
+          <summary>{noteLines.length} note{noteLines.length === 1 ? "" : "s"} about how this was digitized</summary>
+          <ul>
+            {#each noteLines as w (w.code + w.text)}
+              <li>{w.text}</li>
+            {/each}
+          </ul>
+        </details>
       {/if}
 
       {#if resized}
@@ -2553,6 +2572,17 @@
     color: var(--warn-text, #8a6d1a);
   }
   .dgp-warnings li { margin-top: 2px; }
+  /* Notes are the engine's own account of what it did: present, countable,
+     and quiet. Muted rather than --warn-text, because nothing in here is a
+     warning about the customer's artwork. */
+  .dgp-notes {
+    margin: 8px 0 0;
+    font-size: var(--fs-xs, 12px);
+    color: var(--muted, #6f685c);
+  }
+  .dgp-notes summary { cursor: pointer; }
+  .dgp-notes ul { margin: 4px 0 0; padding-left: 18px; }
+  .dgp-notes li { margin-top: 2px; }
   /* Louder than .dgp-warnings on purpose (Kent's own diagnosis of the
      Instagram-icon complaint: the per-shape "Sew it" restore already existed
      but was easy to miss as a dim list line) -- a bordered, actionable box

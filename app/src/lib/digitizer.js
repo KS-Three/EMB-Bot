@@ -1259,6 +1259,38 @@ export const SILENT_WARNINGS = new Set([
   "PHOTO_SAM2_SEGMENTATION_UNAVAILABLE",
 ]);
 
+// Of the warnings that DO reach the panel, most are the engine reporting what
+// it decided — "34 tiny details were merged into the shapes around them",
+// "Same-color shapes that nearly touch were held apart". True, worth having,
+// and not a problem with anybody's artwork. A real logo run on 2026-09-07
+// (`logo_bridge_bar.jpg`, 80 mm) produced **ten** of them in one flat list,
+// every bullet the same weight, and it reads as ten things wrong with your
+// art. Exactly one of the ten asked the reader to do anything.
+//
+// So this set is the ones that ASK: check something, change a setting, or
+// decide whether to sew. Everything else is a note, shown behind a
+// disclosure. Membership is by that test alone, not by how bad the underlying
+// thing is — LONG_JUMPS_TRIMMED reporting 134 cuts is a big number and still
+// a note, because there is no move the person who uploaded the art can make
+// about it.
+//
+// **A code not listed here defaults to a NOTE**, deliberately. An unlisted
+// actionable warning is one disclosure click away; the other default is how a
+// panel becomes a wall nobody reads, which is the state this replaced.
+export const ATTENTION_WARNINGS = new Set([
+  // "check the preview closely before stitching this one out"
+  "CLASSIFIED_PHOTO_SUBJECT", "CLASSIFIED_PHOTO_SCENE", "CLASSIFICATION_UNCERTAIN",
+  // something is missing, or may be
+  "BACKGROUND_UNCERTAIN", "DROPPED_SMALL_SHAPES", "SHAPE_NOT_STITCHED",
+  "SHAPES_LEFT_UNSEWN", "SHAPE_TOO_THIN_TO_FILL",
+  // a setting of theirs is the lever
+  "INPUT_LOW_RESOLUTION", "COLOR_CAP_APPLIED", "EDGE_CAP_EMPTY",
+  // their own edit did not survive, which they cannot see any other way
+  "SHAPE_EDIT_UNKNOWN_ID",
+  // this machine could not run a step, and cropping the art is the workaround
+  "PHOTO_BACKGROUND_REMOVAL_UNAVAILABLE", "PHOTO_FACE_PRIORS_UNAVAILABLE",
+]);
+
 const WARNING_TEXT = {
   // Stage 0's four classification codes (warnings_codes.py). Untranslated,
   // they reached the panel as the engine's own build-status prose —
