@@ -1314,10 +1314,19 @@ class PipelineConfig:
     # carries"), fixed on preflight's side 2026-08-11 and never inherited
     # here.
     #
-    # It is NOT a general cure: measured on all three F-wall blocks that
-    # survive excess scoring, the masks agree to 0.4 dE00 on `screenshot`
-    # (that one is the floor above) and 1.3 on `bridge_bar`. One fixture,
-    # named.
+    # It accounts for TWO of the three F-wall blocks that survive excess
+    # scoring — `gaulke` and `bridge_bar`; `screenshot` is the floor above
+    # (both footprints pick `0015` either way). **And it needs that floor
+    # flag to finish either one.** Masking out the halo SHRINKS the footprint,
+    # so a shape the raw raster floated over `THREAD_REVALIDATE_MIN_PX = 200`
+    # drops under it — gaulke 247 -> 54 px, bridge_bar 240 -> 156 — and this
+    # flag alone therefore declines both re-snaps rather than improving them.
+    # Gaulke's F 4 -> D 46 is the value of DECLINING a wrong re-snap, not of
+    # making a better one. Measured: bridge_bar moves only under
+    # mask + `revalidate_small_shapes` (`6156` -> `5866`, 21.3 -> 16.2, one
+    # more block on that fixture); on gaulke that pair is byte-identical to
+    # this flag alone, because the palette has collapsed and `1375` is no
+    # longer loaded for the small-shape rule to offer.
     #
     # "MATCHES" is a claim, so it carries its residual: it is not bit-for-bit.
     # `_region_footprint` rounds mm->px and `_region_color_errors` truncates,

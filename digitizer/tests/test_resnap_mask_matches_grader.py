@@ -21,10 +21,19 @@ instrument's original sin — *"the per-channel median of a bimodal pool is a
 colour almost no pixel carries"* — fixed on preflight's side 2026-08-11 and
 never inherited here.
 
-**It is not a general cure and these tests do not claim it is.** On the other
-two F-wall blocks that survive excess scoring the two masks agree to 0.4 dE00
-(`screenshot`, which is the small-shape floor) and 1.3 (`bridge_bar`, open).
-One fixture, named.
+**It accounts for two of the three F-wall blocks that survive excess scoring**
+— `gaulke` and `bridge_bar`; `screenshot` is the small-shape floor (both
+footprints pick `0015` either way). An earlier version of this docstring put
+`bridge_bar` in "neither" because the two masks agree to 1.3 dE00 on its
+ASSIGNED thread; the re-snap's gate reads the improvement over the best LOADED
+spool, and there they read 1.8 against 10.3 across a 3.0 threshold.
+
+**And this flag cannot finish either one on its own.** Masking out the halo
+SHRINKS the footprint, so a shape the raw raster floated over
+`THREAD_REVALIDATE_MIN_PX = 200` drops under it — gaulke 247 -> 54 px,
+bridge_bar 240 -> 156. What the flag buys on gaulke is therefore the value of
+DECLINING a wrong re-snap, not of making a better one, which is what the
+tests below pin.
 """
 from functools import lru_cache
 

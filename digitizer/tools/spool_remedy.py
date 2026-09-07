@@ -194,37 +194,70 @@ def masks(fixture: str, spool: str, testdata) -> None:
         print(f"\n=== {fixture}: {sid} resolves to no region")
         return
 
+    import cv2
     import numpy as np
     from skimage.color import deltaE_ciede2000
-    from digitizer_core.stage4_vectorize import _region_footprint, _sample_lab
+    from digitizer_core.stage4_vectorize import (
+        _region_footprint, _sample_lab, THREAD_REVALIDATE_MIN_PX,
+        THREAD_REVALIDATE_MIN_IMPROVEMENT_DE00)
     from digitizer_core.threads import rgb_to_lab
 
     x0, y0, x1, y1 = p.art_bbox
     cx, cy = (x0 + x1) / 2.0, (y0 + y1) / 2.0
-    fp = _region_footprint(reg, p.rgb.shape[:2], cx, cy, p.px_per_mm)
     lab = rgb_to_lab(p.rgb.reshape(-1, 3)).reshape(*p.rgb.shape[:2], 3)
-    samples = _sample_lab(lab[fp])
-    per_spool = np.median(
-        deltaE_ciede2000(samples[:, None, :], chart.lab[None, :, :]), axis=0)
-    s4 = float(per_spool[reg.thread_index])
-    lum = p.rgb[fp].reshape(-1, 3).mean(axis=1)
-    n_raw, n_pf = int(fp.sum()), len(worst["_lab_px"])
+    raw = _region_footprint(reg, p.rgb.shape[:2], cx, cy, p.px_per_mm)
+    er = cv2.erode(raw.astype(np.uint8), np.ones((3, 3), np.uint8))
+    grader = (er > 0) & (~p.bg_mask)
+    if not grader.any():
+        grader = raw & (~p.bg_mask)
+    loaded = np.unique([r.thread_index for r in result.regions
+                        if not r.meta.get("enclosed_background")])
 
+    def scores(sel):
+        s = _sample_lab(lab[sel])
+        return np.median(
+            deltaE_ciede2000(s[:, None, :], chart.lab[None, :, :]), axis=0)
+
+    lum = p.rgb[raw].reshape(-1, 3).mean(axis=1)
     print(f"\n=== {fixture}  {sid}  {reg.area_mm2:.2f} mm² @ {p.px_per_mm:.1f} px/mm")
-    print(f"  stage 4 (raw fillPoly)   {n_raw:>5} px  -> {spool} reads {s4:5.1f} dE00")
-    print(f"  preflight (erode + ~bg)  {n_pf:>5} px  -> {spool} reads "
-          f"{worst['delta_e']:5.1f} dE00")
-    print(f"  gap {abs(s4 - worst['delta_e']):.1f} dE00 over {n_raw / max(n_pf, 1):.1f}x "
-          f"the pixels ({int((lum < 64).sum())} near-black + "
-          f"{int((lum >= 192).sum())} near-white in stage 4's set)")
-    # The gap is what matters, not either number's absolute size: stage 4 can
-    # read a thread as mediocre and preflight as catastrophic, and it is the
-    # DISTANCE between them that says the two saw different artwork.
-    if abs(s4 - worst["delta_e"]) >= pf.DELTA_E_CLEARLY_DIFFERENT:
-        print("  -> MASK GAP: the two instruments scored different artwork.")
+    print(f"    {int(raw.sum())} px raw / {int(grader.sum())} px grader "
+          f"({int((lum < 64).sum())} near-black + {int((lum >= 192).sum())} "
+          f"near-white in the raw set)")
+
+    verdicts = {}
+    for label, sel in (("stage 4 today", raw), ("grader mask ", grader)):
+        ps = scores(sel)
+        assigned = float(ps[reg.thread_index])
+        best_i = int(loaded[np.argmin(ps[loaded])])
+        best = float(ps[best_i])
+        gain = assigned - best
+        n = int(sel.sum())
+        # The DECISION, not the score. `revalidate_threads` re-snaps only when
+        # the region clears its pixel floor AND the best loaded spool beats the
+        # assigned one by `THREAD_REVALIDATE_MIN_IMPROVEMENT_DE00`. Two masks
+        # can agree closely on the assigned thread and still land on opposite
+        # sides of that gate, because they disagree about the ALTERNATIVE.
+        acts = n >= THREAD_REVALIDATE_MIN_PX and gain >= THREAD_REVALIDATE_MIN_IMPROVEMENT_DE00
+        verdicts[label.strip()] = (acts, n, gain)
+        print(f"  {label}  {n:>5} px  assigned {spool} {assigned:5.1f} | "
+              f"best loaded {chart[best_i].number} {best:5.1f} | "
+              f"gain {gain:5.1f} | floor {'ok ' if n >= THREAD_REVALIDATE_MIN_PX else 'FAIL'} "
+              f"| would re-snap: {'YES' if acts else 'no'}")
+
+    a_raw, n_raw, g_raw = verdicts["stage 4 today"]
+    a_gr, n_gr, g_gr = verdicts["grader mask"]
+    if a_raw != a_gr or abs(g_raw - g_gr) >= THREAD_REVALIDATE_MIN_IMPROVEMENT_DE00:
+        print(f"  -> MASK IS IMPLICATED: the improvement over the best loaded "
+              f"spool reads {g_raw:.1f} on the raw footprint and {g_gr:.1f} on "
+              f"the grader's, across a {THREAD_REVALIDATE_MIN_IMPROVEMENT_DE00} "
+              f"gate.")
+        if not a_gr and n_gr < THREAD_REVALIDATE_MIN_PX:
+            print(f"     ...but the grader mask leaves only {n_gr} px, under the "
+                  f"{THREAD_REVALIDATE_MIN_PX} floor, so the mask ALONE cannot "
+                  f"fix it — it needs `revalidate_small_shapes` as well.")
     else:
-        print("  -> not the mask: both instruments agree on this region, so "
-              "the cause is elsewhere (stage 4's floor, or no better cone).")
+        print("  -> not the mask: both footprints reach the same decision, so "
+              "the cause is elsewhere (the floor, or no better cone).")
 
 
 def main(argv: list[str]) -> int:

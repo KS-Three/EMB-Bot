@@ -2,11 +2,11 @@
 
 A decision sheet for the flags that are built, measured and still OFF. Every
 number is one pass of `digitizer/tools/flip_sheet.py` over the scorecard's own
-26 fixtures at 80 mm / `left_chest`. **Eleven arms**: the shipped default,
-each flag alone, all five together, the three combinations someone would
-actually ship (`rec3`, `rec4`, `halo_patch`), and a **sixth parked flag**,
+26 fixtures at 80 mm / `left_chest`. **Twelve arms**: the shipped default,
+each flag alone, all five together, the combinations someone would actually
+ship (`rec3`, `rec4`, `rec4_mask`, `halo_patch`), and a **sixth parked flag**,
 `resnap_mask_matches_grader`, which did not exist when this sheet was written
-— all four added 2026-09-07.
+— all five added 2026-09-07.
 
 **Every number below is post-fix**, on `20fa551` for the six original arms and
 `50f103e` for the combinations added 2026-09-07; the two trees are verified
@@ -186,11 +186,23 @@ read rather than a judgement call.
 
 ## What I would do
 
-**Flip `rec4`** — `satin_patch_junctions`, `bind_resnap_all_classes`,
-`revalidate_small_shapes` and `satin_per_stroke`. Five grades up, none down,
-−2,814 stitches, −18 blocks, −17 cones, measured as a combination rather than
-inferred from four rows. If the chrome trim cost (84 → 116) is unwelcome, drop
-to `rec3` and keep four grades up for +1 trim corpus-wide.
+**Flip `rec4_mask`** — `rec4` plus the sixth flag, measured 2026-09-07 as its
+own arm rather than inferred:
+
+| arm | moved | stitches | trims | blocks | cones | grades |
+|---|---:|---:|---:|---:|---:|---|
+| `rec4` | 11/26 | −2,814 | +34 | −18 | −17 | 5 up, 0 down |
+| **`rec4_mask`** | 11/26 | **−2,965** | **+32** | **−22** | **−21** | **5 up, 0 down** |
+
+The sixth flag is **strictly additive on top of the recommendation**: the same
+eleven fixtures move, every axis improves, and `logo_gaulke_roofing` goes
+F 4 → **D 46** instead of stopping at F 16. Nothing goes down anywhere.
+
+Seven fixtures are moved by both parts, so this could not have been read off
+the two rows — which is why it is an arm.
+
+If the chrome trim cost (84 → 116) is unwelcome, drop `satin_per_stroke` and
+keep four grades up for +1 trim corpus-wide.
 
 **Hold `dissolve_phantom_blends` a little longer, but not for its own sake.**
 On its own it is the cleanest of the five (−67 trims, no grade moving either

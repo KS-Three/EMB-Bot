@@ -85,6 +85,18 @@ ARMS: dict[str, dict] = {
         "satin_patch_junctions": True,
         "satin_per_stroke": True,
     },
+    # `rec4` plus the sixth flag. The sheet's recommendation was measured
+    # before `resnap_mask_matches_grader` existed, and a combination is not
+    # the sum of its rows — the whole thesis of this tool. Both flags touch
+    # the thread assignment (one lowers the re-snap's floor, one changes the
+    # pixels it reads), so this pair in particular could not be inferred.
+    "rec4_mask": {
+        "revalidate_small_shapes": True,
+        "bind_resnap_all_classes": True,
+        "satin_patch_junctions": True,
+        "satin_per_stroke": True,
+        "resnap_mask_matches_grader": True,
+    },
     # The only pair in the ten that takes any fixture down a grade. `halo`
     # splits `logo_script_tires` into two more satin strokes and `satin_patch`
     # then finds junctions to fill that do not exist without it; neither flag

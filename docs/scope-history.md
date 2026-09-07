@@ -119,11 +119,27 @@ that falls, named down to the pair.**
   picked. It is the same failure `_region_color_errors`' docstring calls this
   instrument's original sin (*"the per-channel median of a bimodal pool is a
   colour almost no pixel carries"*), fixed on preflight's side 2026-08-11 and
-  never inherited by stage 4. **It does NOT generalise** — measured on all
-  three excess-surviving blocks (`tools/spool_remedy.py --masks`), the masks
-  agree to 0.4 dE00 on `screenshot` (the floor, already documented) and 1.3 on
-  `bridge_bar` (240 px, above the floor, both instruments condemn `6156 Olive`
-  at ~20 — still open). Three survivors, three causes.
+  never inherited by stage 4. **It accounts for TWO of the three
+  excess-surviving blocks** — `gaulke` and `bridge_bar`. `screenshot` is the
+  small-shape floor already documented (177/114 px, both footprints pick
+  `0015` either way). **A first draft of this entry put `bridge_bar` in
+  "neither"** on the strength of the two masks agreeing to 1.3 dE00 on the
+  ASSIGNED thread — the wrong quantity. The re-snap's gate reads the
+  improvement over the best LOADED spool, and there they read **1.8 against
+  10.3**, on opposite sides of `THREAD_REVALIDATE_MIN_IMPROVEMENT_DE00 = 3.0`.
+  `tools/spool_remedy.py --masks` compares the decision now, not the score.
+
+- **The mask and the floor turn out to be a matched pair, which is the
+  operational point.** Masking OUT the halo shrinks the footprint, so a shape
+  the raw raster floated over the 200-px floor drops under it — gaulke
+  247 -> 54, bridge_bar 240 -> 156. So `resnap_mask_matches_grader` alone
+  cannot re-snap either region. Measured: bridge_bar needs **mask +
+  `revalidate_small_shapes`**, which does move it (`6156` -> `5866`,
+  21.3 -> **16.2**) at the cost of one more block on that fixture — improved,
+  not solved. On gaulke the same pair is byte-identical to the mask alone,
+  because the mask collapses the palette and `1375 Dark Charcoal` is no longer
+  loaded for the small-shape rule to offer. Gaulke's F 4 -> D 46 comes from
+  the mask DECLINING a wrong re-snap, not from making a better one.
 
 - **Fixed the same day behind `cfg.resnap_mask_matches_grader`, DEFAULT OFF,
   and it turned out to be bigger than the one shape.** The re-snap applies
