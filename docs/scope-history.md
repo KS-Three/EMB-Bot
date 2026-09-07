@@ -9876,3 +9876,32 @@ does not, which is why "fewer characters" is named second.
   ignored (identical caption to the trimmed text), a tab lays out, three lines
   stack to 102×73 mm, an all-space string produces no design and no error, and
   an emoji takes the honest "no font in this library can stitch" branch.
+
+## 2026-09-07 — four more things driven and found sound
+
+Snapshot. Not live status. Recorded so nobody re-checks them.
+
+- **Undo and redo are exact.** Four forward states (three texts, then a letter
+  spacing change), four undos walking back through every one to the empty
+  design, four redos walking forward — the caption after the last redo is
+  identical to the state before the first undo, and the Undo/Redo buttons
+  disable at each end. Zero console errors.
+
+- **The Review step's headline promise holds.** *"Looks good? The live field
+  is your stitch-out."* The canvas and the exported PES were rendered side by
+  side for a two-line design: same words, same line break, same apostrophe,
+  same letterforms, 2,411 stitches and 101.8 × 35.1 mm in both, against a
+  caption reading "2,411 stitches · 102×35 mm".
+
+- **A `.embproj` file round-trips across browsers.** Exported from the drawer
+  (732 bytes), imported into a completely fresh browser context with empty
+  storage: same caption, and the PES regenerated from it hashes
+  `51d49a9bac4a5195` / 12,999 bytes — identical to the one exported before
+  the round trip. The design carried a curly apostrophe, so the typographic
+  fold survives the file too.
+
+- **No control is trapped behind the sticky step bar.** Content, Review and
+  Download at 1440×900, 1280×720 and 1366×768: every step panel scrolls
+  (44–736 px of overflow depending on step and height), and after scrolling to
+  the end, zero buttons, inputs or selects remain under the footer. The
+  apparent clipping in a screenshot is the fold, not a trap.
