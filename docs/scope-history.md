@@ -10380,10 +10380,31 @@ turn and a mirror equally and only a picture separates them.
 customer the file "opens correctly in EMB-Bot, but other embroidery software
 reads it a quarter turn round *and flipped*: text comes out backwards, and
 rotating it back there will not fix that... PES and EXP are unaffected." Every
-one of those claims reproduces. Not verified here: "it may not see the color
-stops either" — this design is single-colour, so there were no stops to lose,
-and that clause stays unexercised rather than confirmed.
+one of those claims reproduces. Not verified *by this render*: "it may not see
+the color stops either" — the design was single-colour, so there were no stops
+to lose.
+
+**Correction to that, made the same day.** Calling the clause "unexercised"
+understated what the repo already knows.
+`test/crossval-stitch-formats.test.js` pins `decodedColorChanges === 0` and
+`decodedSequinToggles === 1` for a DST EMB-Bot wrote, because the colour change
+goes out as `0x43` where the spec wants `0xC3` — a standard reader sees a
+sequin-mode toggle and no colour stops at all. So every clause of the caveat is
+backed: three by this render, the fourth by that harness.
 
 That materially changes how urgent the writer fix is (task #44, Kent's call):
 the defect is real, but it is disclosed honestly at the point of download, with
 a working alternative named. It is a documented limitation rather than a trap.
+
+### Addendum — the other three outputs
+
+The Download step offers seven things, not four: SVG and PNG sit beside the
+stitch formats and the worksheet, and an earlier enumeration in this session
+missed both because its filter matched only `DST|PES|EXP|JEF|PDF`. Both check
+out. The SVG carries `viewBox="0 0 101.8 15.1"` with real `mm` width and height
+— physical units, not pixels — and seven polylines for the seven letters of
+FRITSCH, rendering upright in a browser. The PNG opens at 1200 x 178, upright,
+with the realistic stitch texture over the fabric tone.
+
+So every downloadable output has now been opened or rendered rather than
+byte-checked, and six of the seven are correct. The seventh is the DST writer.
