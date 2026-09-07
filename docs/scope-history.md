@@ -10137,3 +10137,24 @@ measurement here can settle.
 
 Recorded so the next person who measures 34.6% and reaches for the alarm finds
 this first.
+
+### A refused digitize job, checked for leaks (2026-09-07)
+
+Three degenerate uploads — a 1×1 pixel, an all-white 400×300, and a fully
+transparent one — all take the same refusal, and the service's customer-facing
+`error` is good prose:
+
+> "The whole image read as background, so there was nothing to stitch. This
+> usually means the art blends into its backdrop — try a version with the
+> subject on a clearly different colour, or crop tighter."
+
+Cause, why, and two levers.
+
+Its sibling `detail` field carries the raw traceback, **including server
+paths** (`/home/user/EMB-Bot/digitizer/digitizer_service/jobs.py`, line 171).
+Driven through the shipped Studio with the all-white image, the panel shows
+the prose and **leaks nothing**: no `/home/...` path, no "Traceback (most
+recent call last)", no `.py", line N`, no bare `ValueError`. The 2026-08-28
+fix for the panel printing server paths and worker STDERR holds against a real
+service error, which is the case it was written for and had not been re-checked
+against since.
