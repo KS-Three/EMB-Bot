@@ -270,6 +270,59 @@ Moved verbatim 2026-08-28 — no section was rewritten in the move.
   singly; an unavailable cutout skips prep entirely rather than degrading onto
   prep-alone. **Ships KNOWINGLY INERT for real uploads** — all four acceptance
   photos classify `gradient` at 1.00, which the gate excludes; revisit at gate 2. *(ruled 2026-08-24 — Kent; [area 1](docs/scope/1-auto-digitizing-quality.md))*
+- **A budget nothing checks is a preference — and when MASTER_SCOPE's hit,
+  the reclaim is NOT a defect.** `MASTER_SCOPE.md` has stated *"Current state
+  ONLY, under an 800-line budget"* since it was split from DOCTRINE, with
+  `docs/scope/` and `docs/scope-history.md` as the two places overflow goes.
+  Nothing enforced it, and on 2026-09-07 it reached **799** — noticed only
+  because the next entry did not fit. `tests/test_scope_budget.py` (6) now
+  enforces it, and its failure message names the reclaim rather than just
+  saying "too long", because a bare limit gets the next line squeezed in
+  somewhere else.
+
+  **Where the lines actually are** (`tools/scope_budget.py`, measured
+  2026-09-07): capability areas **255**, cross-cutting **141**, live defects
+  **138** over 30 numbered entries, waiting-on-Kent 95. Live defects are
+  **17%** of the file — the instinct to retire one is aimed at the wrong
+  section, and it reclaims **nothing** anyway, because the Closed section
+  keeps every number *"because ten other docs cite them by number"*, so Live
+  → Closed swaps a line for a line. **Area 1 alone takes 107 lines against a
+  detail file of 3,871**; areas 2, 4 and 5 take 14, 21 and 43. Summarising
+  area 1 back down to a summary is the document's own offload mechanism,
+  already built and already linked from the section header.
+
+  Two smaller notes from the same read. **The counter must be `wc -l`** —
+  `split("\n")` on a trailing-newline file returns one extra element, and the
+  first cut of the tool reported 800 for a file `wc -l` calls 799, which
+  would have failed the budget a line early. And **the pressure is structural,
+  not editorial**: entries here are single very long lines, so compacting an
+  entry's prose reclaims nothing at all; only removing or offloading a
+  paragraph does.
+
+  **The same file states a SECOND rule nothing checked** — CLAUDE.md's *"Every
+  claim carries a `(verb date — source)` pointer; one without a pointer is
+  unverified."* Measured clean, **18 of 18** live entries, and all 12 closed
+  pointers dated inline; both are asserted now, because an unsourced claim
+  reads exactly like a measured one. **The first cut of that check reported
+  twelve violations and every one was false**: `### Closed` is an H3 INSIDE
+  the Live defects H2 and its entries are pointers by design, so slicing on
+  the H2 alone swept them in. Read the matches, not the count — the third time
+  in one day, after an uppercase-only warning-code regex and the palette
+  tool's two overstatements. *(measured 2026-09-07 — scope-history 09-07)*
+
+- **Preflight findings reach the customer ranked and coloured; pipeline
+  warnings cannot be, because they carry no severity at all.**
+  `QualityReport.svelte` sorts findings `{block: 0, warn: 1, info: 2}` and
+  paints `sev-block` `--danger`, `sev-warn` `--warn`, `sev-info` `--muted`.
+  The warnings list one panel over has no sort, no filter beyond a single
+  hand-named code, and no colour — **and it could not have one**:
+  `warnings_codes.warn()` returns `{code, message, **extra}` while
+  `preflight.finding()` returns `{code, severity, message, **extra}`. So the
+  weak surface is not a Studio oversight; the field does not exist upstream.
+  Adding it means assigning a severity to each of 57 codes, which is a
+  product call about voice and volume, not a refactor. **Recorded, not
+  built.** *(measured 2026-09-07)*
+
 - **A warning's SEVERITY is decided by its CONSUMERS, not by its own words.
   Read them before writing the number down.** `PALETTE_THREAD_MISMATCH` fires
   on **6 of 26** corpus fixtures, appears in NO document, and its own code

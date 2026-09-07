@@ -7582,3 +7582,138 @@ produced the answer.
 Defect 29 was compacted to a fixed-state pointer in the same pass to make
 room, and the file's long-line style means an entry costs a line regardless of
 prose. **The next addition needs a retirement first.**
+
+---
+
+## 2026-09-07 — the 800-line budget was a preference, and the reclaim is not where anyone would look
+
+`MASTER_SCOPE.md` has stated its own rule since the DOCTRINE split — *"Current
+state ONLY, under an 800-line budget"* — with `docs/scope/` and this file as
+the two places overflow is supposed to go. **Nothing enforced it.** It reached
+**799** on 2026-09-07, and the only reason anybody noticed is that the next
+entry did not fit.
+
+`tests/test_scope_budget.py` (6) enforces it now. Its failure message names
+the reclaim instead of just saying "too long", because a bare limit gets the
+next line squeezed in somewhere else:
+
+```
+MASTER_SCOPE.md is 802 lines against its own 800-line budget.
+Biggest sections: Capability areas 255, Cross-cutting issues 141,
+Live defects — believed true right now 138.
+The reclaim is capability area '1. Auto-digitizing quality (image → stitches)'
+— 107 lines here against 3871 in its own docs/scope/ detail file, which is
+the offload mechanism this document already documents.
+Retiring a numbered defect reclaims NOTHING: the Closed section keeps every
+number, so Live -> Closed swaps a line for a line.
+```
+
+### The instinct is aimed at the wrong section
+
+| section | lines | share |
+|---|---:|---:|
+| Capability areas | 255 | 31.9% |
+| Cross-cutting issues | 141 | 17.6% |
+| **Live defects** | **138** | **17.2%** |
+| Waiting on Kent | 95 | 11.9% |
+| How this document works | 70 | 8.8% |
+
+**Live defects are 17% of the file**, across 30 numbered entries. And
+retiring one reclaims *nothing*: the Closed section keeps every number
+*"because ten other docs cite them by number"*, so a Live → Closed move swaps
+a line for a line.
+
+| capability area | here | its detail file |
+|---|---:|---:|
+| 1. Auto-digitizing quality | **107** | 3,871 |
+| 3. Studio app / guided wizard | 63 | 386 |
+| 5. Stitch-out review & manual editing | 43 | 827 |
+| 4. Export formats | 21 | 145 |
+| 2. Font library & lettering | 14 | 547 |
+
+Area 1's summary is larger than areas 2, 4 and 5 combined and sits on a
+detail file thirty-six times its size. **Summarising it back down to a
+summary is the document's own mechanism**, already built and linked from the
+section header — and it is an editorial call about what Kent reads the
+dashboard for, so it is measured here and left to him.
+
+### Two smaller things the same read turned up
+
+- **The counter has to be `wc -l`.** `text.split("\n")` on a trailing-newline
+  file returns one extra empty element, and the first cut of
+  `tools/scope_budget.py` reported **800** for a file `wc -l` calls **799** —
+  an instrument off by one against the very number it exists to enforce, and
+  it would have failed the budget test a line early. `line_count` is pinned
+  by its own test.
+- **The pressure is structural, not editorial.** Entries here are single very
+  long lines, so compacting an entry's prose reclaims exactly zero lines.
+  Defect 29 was compacted from its measured form to a fixed-state pointer
+  earlier the same day and the file stayed at 799. Only removing or
+  offloading a paragraph moves the number.
+
+### A second rule the same file states and nothing checked
+
+CLAUDE.md's rule for this document, in its own words: *"Every claim carries a
+`(verb date — source)` pointer; one without a pointer is unverified."*
+Measured **clean — 18 of 18 live entries**, and all 12 closed pointers carry a
+date inline. Both are now asserted, because the failure they prevent is an
+unsourced claim that reads exactly like a measured one.
+
+**And the first cut of that check reported twelve violations, every one
+false.** `### Closed` is an H3 *inside* the Live defects H2, and its entries
+are pointers by design — dated inline ("RESOLVED 2026-08-19") rather than with
+the italic `*(verb date — source)*` tail. Slicing on the H2 alone swept them
+in. **Read the matches, not the count** — third time today, after the
+uppercase-only warning-code regex and the palette tool's two overstatements.
+The split is pinned by its own test so a parser refactor cannot quietly merge
+the two populations again.
+
+### The worktree-during-a-benchmark trap, in a shape the entry for it does not name
+
+The 2026-09-06 memory entry warns that *"a long benchmark and an active
+worktree cannot share a machine"* — pytest reads the tree at COLLECTION, so an
+edit mid-run silently re-bases the comparison — and says the tell is *"a
+passed count differing by exactly the tests you added"*. **Hit it again the
+next day, writing this very PR**, and the shape is worse than the entry
+describes.
+
+The edit was not a new FILE. `tests/test_scope_budget.py` was already
+collected with three tests when three more were added to it. So the run
+finished clean, reported **1993 passed** against the previous run's 1990 —
+`+3`, exactly and plausibly the new file — and **nothing about the number
+looks wrong.** The three tests written after collection simply were not in it.
+There is no error, no skip, no count that reads short of anything a reader
+would know to compare against.
+
+**Confirmed by prediction rather than by argument.** The suspicion was that
+1993 = 1990 (the previous run, before the file existed) + the first three
+tests only. That predicts a clean re-run of **1996**. The re-run returned
+`3 failed, 1996 passed, 8 skipped, 7 xfailed` — the three expected platform
+reds and nothing else.
+
+**The rule that survives is the same, stated harder: do not touch the tree
+while a full run is in flight, and if you did, re-run.** The first run was
+discarded; the honest number is the second one. The added
+diagnostic value here is only that the trap does not require adding a file —
+appending to a file already collected produces a total that is *arithmetically
+consistent with what you intended*, which is the one case where a careful
+reader would not look twice.
+
+### And a note this file cannot record in the file it is about
+
+The budget finding cannot go in `MASTER_SCOPE.md`, because there is one line
+left and the entry would consume it. That is not a joke at the document's
+expense — it is the clearest possible statement of the problem, and the
+reason the enforcement lives in a test and the evidence lives here.
+
+### Unrelated, from the same afternoon: why the warnings list has no severity
+
+`QualityReport.svelte` sorts preflight findings `{block: 0, warn: 1, info: 2}`
+and paints them `--danger` / `--warn` / `--muted`. The pipeline-warnings list
+one panel over has no sort, no colour, and one hand-named filter — **and it
+could not have more**: `warnings_codes.warn()` returns
+`{code, message, **extra}` while `preflight.finding()` returns
+`{code, severity, message, **extra}`. The weak surface is not a Studio
+oversight; **the field does not exist upstream.** Adding it means assigning a
+severity to each of 57 codes, which is a product call about voice and volume
+rather than a refactor. Recorded, not built.
