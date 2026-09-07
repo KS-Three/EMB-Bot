@@ -384,3 +384,39 @@ contract. This was nearly rebuilt from scratch on the assumption it was a gap.
 sheen ceiling and shadow weight are eye-tuned judgement calls. No sew-out has
 happened, so there is nothing to compare a render against — treat the look as
 a preference setting, not a calibrated one. *(suspected 2026-08-25)*
+
+**The project lifecycle holds — driven end to end, not assumed (2026-09-07).**
+The registry had never been exercised by hand, only read. Every step checked in
+a real browser: a design survives a reload (caption identical either side);
+switching between two projects keeps each one's text and stitch count; an
+`.embproj` export → delete → re-import round-trips to the identical caption; a
+garbage file is refused with *"That doesn't look like a design file
+(.embproj)."*; the two-tap delete arms and confirms. Zero console errors
+throughout. *(driven 2026-09-07 — `app/e2e/design-naming.spec.js` pins the
+naming half; `storage-full.spec.js` the failure half)*
+
+**Every design used to be called "Untitled design" — FIXED (2026-09-07).**
+The drawer listed `Untitled design / today` twice for two designs, and both
+exported as `untitled-design.embproj`, so a customer backing up three designs
+got three files they could only tell apart by importing each one. A design now
+takes its name from its content while it is still unnamed — the first non-blank
+line of text, else the uploaded artwork's filename minus its extension, clipped
+to 40 characters — and the guess follows the content in both directions,
+falling back to the placeholder when the text is deleted. A name the customer
+types is sticky and is never overwritten; clearing the field is how they ask
+for the guess back. Projects saved before the flag existed are caught up on
+open and at boot, which is the whole existing population.
+*(`deriveProjectName` in `app/src/lib/project.js`, `isAutoNamed`/
+`autoNameProject` in `app/src/lib/projects.js`)*
+
+**Two storage-write failures that reported success — FIXED (2026-09-07).**
+`renameProject` and `deleteProject` both ended `writeIndex(idx); return true;`,
+and a name and a project's membership of the registry live ONLY in that index.
+On a blocked store a rename repainted the topbar and the drawer and was gone at
+the next reload with nothing said. `deleteProject` additionally removed the
+project record BEFORE writing the index, so a failed write left an unopenable
+row behind. Both now propagate, the delete writes the index first, and the App
+routes the failure to the storage banner that already existed. `saveProject`
+deliberately still reports success when only the index write fails — the design
+itself is in its own record and did land. *(DOCTRINE "Where the index IS the
+data, a swallowed write is a lie")*

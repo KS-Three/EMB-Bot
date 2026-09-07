@@ -11,8 +11,10 @@ import {
   currentProjectId,
   setCurrentProject,
   migrateLegacy,
+  isAutoNamed,
+  autoNameProject,
 } from "./projects.js";
-import { defaultProject, updateElement } from "./project.js";
+import { defaultProject, updateElement, UNTITLED_NAME } from "./project.js";
 
 // --- in-memory localStorage stubs -------------------------------------
 //
@@ -84,7 +86,9 @@ test("createProject registers a fresh project, sets it current, and returns it",
   expect(id.length).toBeGreaterThan(0);
   expect(project).toEqual(defaultProject());
   expect(currentProjectId()).toBe(id);
-  expect(listProjects()).toEqual([{ id, name: "Hat design", updatedAt: expect.any(Number) }]);
+  expect(listProjects()).toEqual([
+    { id, name: "Hat design", updatedAt: expect.any(Number), autoName: true },
+  ]);
 });
 
 test("createProject defaults the name when omitted", () => {
@@ -437,4 +441,150 @@ test("importProject rolls back the record and returns null when only the index w
 test("importProject returns null (and does not throw) on total storage failure", () => {
   globalThis.localStorage = makeThrowingStorage();
   expect(importProject(defaultProject(), "X")).toBeNull();
+});
+
+// --- auto-naming (isAutoNamed / autoNameProject) -----------------------
+//
+// The contract: the app may keep guessing a name until the customer picks
+// one, and must never overwrite the one they picked. See deriveProjectName
+// in project.js for the defect this exists to fix.
+
+const entryFor = (id) => listProjects().find((p) => p.id === id);
+
+test("a freshly created project is flagged as auto-named", () => {
+  const { id } = createProject(UNTITLED_NAME);
+  expect(entryFor(id).autoName).toBe(true);
+  expect(isAutoNamed(entryFor(id))).toBe(true);
+});
+
+test("autoNameProject renames and KEEPS the entry auto-named", () => {
+  const { id } = createProject(UNTITLED_NAME);
+  expect(autoNameProject(id, "ACME")).toBe(true);
+  expect(entryFor(id).name).toBe("ACME");
+  expect(isAutoNamed(entryFor(id))).toBe(true);
+  // ...so a later content change can replace it again
+  expect(autoNameProject(id, "ACME CORP")).toBe(true);
+  expect(entryFor(id).name).toBe("ACME CORP");
+});
+
+test("renameProject ENDS auto-naming, and a later guess cannot overwrite it", () => {
+  const { id } = createProject(UNTITLED_NAME);
+  autoNameProject(id, "ACME");
+  renameProject(id, "Kent's cap job");
+  expect(isAutoNamed(entryFor(id))).toBe(false);
+  expect(autoNameProject(id, "SOMETHING ELSE")).toBe(false);
+  expect(entryFor(id).name).toBe("Kent's cap job");
+});
+
+test("renaming BACK to the placeholder re-arms the guess", () => {
+  // Clearing the name field is how a customer asks for the app's guess
+  // back -- App's renameCurrent normalises an empty field to the
+  // placeholder, and this is the half that makes that mean something.
+  const { id } = createProject(UNTITLED_NAME);
+  renameProject(id, "Mine");
+  expect(isAutoNamed(entryFor(id))).toBe(false);
+  renameProject(id, UNTITLED_NAME);
+  expect(isAutoNamed(entryFor(id))).toBe(true);
+  expect(autoNameProject(id, "GUESSED")).toBe(true);
+});
+
+test("an entry written before the flag existed is auto-named only while it holds the placeholder", () => {
+  // Every project already in a customer's browser predates autoName; all
+  // of them are called "Untitled design", and they are the set that needs
+  // this most.
+  expect(isAutoNamed({ id: "x", name: UNTITLED_NAME })).toBe(true);
+  expect(isAutoNamed({ id: "x", name: "Their design" })).toBe(false);
+});
+
+test("isAutoNamed is false for nothing at all", () => {
+  expect(isAutoNamed(null)).toBe(false);
+  expect(isAutoNamed(undefined)).toBe(false);
+});
+
+test("autoNameProject is a no-op for an unknown id (A10), like every other registry write", () => {
+  createProject(UNTITLED_NAME);
+  expect(autoNameProject("no-such-id", "X")).toBe(false);
+  expect(listProjects().every((p) => p.name !== "X")).toBe(true);
+});
+
+test("autoNameProject does not throw on total storage failure", () => {
+  const { id } = createProject(UNTITLED_NAME);
+  globalThis.localStorage = makeThrowingStorage(Object.fromEntries(globalThis.localStorage._store));
+  expect(autoNameProject(id, "X")).toBe(false);
+});
+
+test("an imported design still called the placeholder is open to a guess; a named one is not", () => {
+  // importProject writes no flag, so this rides entirely on the
+  // second clause of isAutoNamed -- and it is the right outcome: importing
+  // an unnamed .embproj should not add another "Untitled design" row.
+  const a = importProject(defaultProject(), UNTITLED_NAME);
+  expect(isAutoNamed(entryFor(a.id))).toBe(true);
+  const b = importProject(defaultProject(), "Sent by a friend");
+  expect(isAutoNamed(entryFor(b.id))).toBe(false);
+});
+
+test("a duplicate keeps its own explicit name rather than being re-guessed", () => {
+  const { id } = createProject(UNTITLED_NAME);
+  autoNameProject(id, "ACME");
+  const dup = duplicateProject(id);
+  expect(entryFor(dup.id).name).toBe("ACME copy");
+  expect(isAutoNamed(entryFor(dup.id))).toBe(false);
+});
+
+test("saveProject leaves the auto-name flag alone", () => {
+  // saveProject rewrites the index entry on every keystroke; if it dropped
+  // autoName, naming would silently stop working after the first edit.
+  const { id } = createProject(UNTITLED_NAME);
+  saveProject(id, defaultProject());
+  expect(isAutoNamed(entryFor(id))).toBe(true);
+});
+
+// --- a failed index write is a failed operation ------------------------
+//
+// A name and a project's very membership of the registry live ONLY in the
+// index -- there is no second copy in the record to fall back on. All three
+// of these used to `writeIndex(idx); return true;`, so on a full store they
+// reported success for a write that never landed. Found 2026-09-07.
+
+// Storage that accepts everything except the index -- the exact shape a
+// nearly-full store takes once the big record write still fits but the
+// index rewrite does not.
+const indexWriteFails = () =>
+  makePartialThrowingStorage(["embstudio:index"], Object.fromEntries(globalThis.localStorage._store));
+
+test("renameProject reports FAILURE when the index write fails", () => {
+  const { id } = createProject("Before");
+  globalThis.localStorage = indexWriteFails();
+  expect(renameProject(id, "After")).toBe(false);
+  // and the old name is what actually survives, which is the point
+  expect(listProjects().find((p) => p.id === id).name).toBe("Before");
+});
+
+test("deleteProject reports FAILURE when the index write fails, and takes nothing away", () => {
+  const { id } = createProject("Doomed");
+  globalThis.localStorage = indexWriteFails();
+  expect(deleteProject(id)).toBe(false);
+  // The record has to survive too. A removeItem is never quota-blocked, so
+  // removing it before the index write would leave the row in the drawer
+  // pointing at a design that no longer exists -- unopenable, and reported
+  // as deleted. Index first, record second (A1's ordering).
+  expect(loadProject(id)).not.toBeNull();
+  expect(listProjects().find((p) => p.id === id).name).toBe("Doomed");
+});
+
+test("autoNameProject reports FAILURE when the index write fails", () => {
+  const { id } = createProject(UNTITLED_NAME);
+  globalThis.localStorage = indexWriteFails();
+  expect(autoNameProject(id, "GUESS")).toBe(false);
+});
+
+test("saveProject still reports SUCCESS when only the index write fails", () => {
+  // Deliberately different from the three above: the design itself is in
+  // the record, which did land. Raising "your changes aren't being saved"
+  // over a saved design would be its own lie.
+  const { id } = createProject("Keeps working");
+  const edited = updateElement(defaultProject(), "e1", { text: "SAVED" });
+  globalThis.localStorage = indexWriteFails();
+  expect(saveProject(id, edited)).toBe(true);
+  expect(loadProject(id).elements[0].text).toBe("SAVED");
 });

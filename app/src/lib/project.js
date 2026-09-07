@@ -311,6 +311,65 @@ export function defaultProject() {
   };
 }
 
+// The placeholder every new project is created under. Exported because
+// three separate places need to agree on it: projects.js (an entry still
+// carrying this name has never been named by hand), App's rename handlers
+// (an emptied name field falls back to it), and the auto-naming rule below.
+export const UNTITLED_NAME = "Untitled design";
+
+// Long enough for a line of lettering, short enough to stay readable in a
+// drawer row and in a Downloads folder.
+const DERIVED_NAME_MAX = 40;
+
+function clipName(s) {
+  const t = s.replace(/\s+/g, " ").trim();
+  return t.length > DERIVED_NAME_MAX ? t.slice(0, DERIVED_NAME_MAX).trimEnd() + "\u2026" : t;
+}
+
+// The name an as-yet-unnamed design should carry, derived from what is
+// actually IN it. Returns null when there is nothing to go on, and the
+// caller keeps the placeholder.
+//
+// Why this exists. Every project the Studio creates is called "Untitled
+// design" and nothing ever changes that unless the customer finds Rename
+// in the drawer. Measured in the shipped app 2026-09-07, two designs deep:
+// "My designs" listed `Untitled design / today` twice — two rows a customer
+// cannot tell apart, so the only way to find one is to open each in turn.
+//
+// The exported backup is the worse half, because it leaves the app: both
+// designs download as `untitled-design.embproj` (projectFile.js slugs the
+// project name), so backing up three designs puts three files in a
+// Downloads folder that can only be told apart by importing each one. A
+// backup you cannot identify is most of the way to no backup.
+//
+// Text beats artwork wherever both exist: a customer names a design by what
+// it SAYS. Artwork falls back to the uploaded filename minus its extension,
+// which is the name they already know it by — image, DST and digitized
+// elements all carry `name` (set from `file.name` on upload; see
+// ImagePanel/DesignPanel/DigitizePanel).
+//
+// Shape and manual-draw elements deliberately derive nothing: "Circle"
+// would be no more distinguishing than the placeholder once there are two
+// of them, and a name that only pretends to identify the row is the defect
+// this fixes, not a fix for it.
+export function deriveProjectName(project) {
+  const els = (project && project.elements) || [];
+  for (const el of els) {
+    if (!el || el.type !== "text") continue;
+    const line = String(el.text || "")
+      .split(/\r?\n/)
+      .map((t) => t.trim())
+      .find(Boolean);
+    if (line) return clipName(line);
+  }
+  for (const el of els) {
+    if (!el || typeof el.name !== "string") continue;
+    const base = el.name.trim().replace(/\.[a-z0-9]{1,5}$/i, "");
+    if (base) return clipName(base);
+  }
+  return null;
+}
+
 // Top-level patch merge — unchanged behavior from v1, still used for
 // garment/selectedId-level fields (not per-element fields).
 export function update(project, patch) {

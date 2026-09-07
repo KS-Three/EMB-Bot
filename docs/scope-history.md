@@ -10175,3 +10175,57 @@ product's messages were measured against today, met here already.
 
 That closes the sweep: every customer-facing surface in the Studio has now
 been driven by hand at least once.
+
+## 2026-09-07 — the lifecycle nobody had driven, and two designs with one name
+
+The sweep had closed on panels. The project **lifecycle** — reload, switching,
+delete, backup — had only ever been read, never driven, and a customer hits
+every one of those.
+
+Most of it is sound. A design survives a reload with an identical caption
+(`1,345 stitches · 102×11 mm · 5×7 in hoop` either side). Switching between two
+projects returns each one's own text. An `.embproj` export → delete → re-import
+round-trips to the identical caption. A garbage file is refused in plain words.
+Zero console errors across all of it.
+
+Two things fell out.
+
+**Every design was called "Untitled design."** With two saved, the drawer
+listed:
+
+    ["Untitled design", "Untitled design"]
+
+Two rows that cannot be told apart, so the only way to find one is to open each
+in turn. The backup is the worse half because it leaves the app: both downloaded
+as `untitled-design.embproj`. Three backups, three indistinguishable files, and
+the only way to identify one is to import it. A backup you cannot identify is
+most of the way to no backup.
+
+Fixed by deriving the name from the content while it is still unnamed. After:
+
+    ["SECOND DESIGN", "Kent's cap job"]   →   polo-left-chest.embproj
+
+**The topbar's name field lied.** Same `value={expr}` one-way trap the size
+field had, at a second site: clearing the field left the topbar blank while the
+drawer one panel over read "Untitled design". Typing only spaces did the same.
+
+And the obvious fix reproduced the defect one layer up — writing the corrected
+name into the field immediately, then having auto-naming move the name back to
+what Svelte had already rendered, left the field reading "Untitled design" over
+a design called HELLO. The resync has to be the LAST write and has to read the
+name that survived. Both halves are in DOCTRINE.
+
+**A test written for the new code found two shipped bugs.** A storage-failure
+test for the new `autoNameProject` was the same shape as `renameProject` and
+`deleteProject` — both of which ended `writeIndex(idx); return true;` while
+`writeIndex` swallows its own quota failure. A rename on a blocked store
+reported success and was gone on reload. `deleteProject` also removed the
+record before writing the index, and a `removeItem` never fails on quota, so a
+failed write left a drawer row whose design was already gone. Sibling-pattern
+sweep, second time this session it has paid.
+
+Nine source mutations run against the new unit tests, all nine caught; five
+against the e2e, four caught and the fifth masked by a second guard that its
+own unit test pins — verified by removing both, which fails the e2e.
+
+Suites: engine 505 pass, Studio 1071 pass, e2e 62 pass.

@@ -3171,6 +3171,22 @@ did not measurably help, so it was reverted rather than shipped
 undemonstrated — and the source comment that claimed the field "always"
 shows the sewn width was corrected, because it no longer did.
 
+**Confirmed at a SECOND site the same day, and the obvious fix has its own
+trap.** The topbar's project-name field is the same `value={projectName}`
+shape. Clearing it and tabbing away left the topbar blank while the drawer
+one panel over still read "Untitled design" and the export still wrote
+`untitled-design.embproj`; typing only spaces did the same. Both normalise
+back to the value already rendered, so Svelte left the DOM alone.
+
+The fix is NOT "write the corrected value into the field". Doing that
+immediately after normalising reproduced this very defect one layer up: on a
+design auto-named HELLO, clearing the field wrote "Untitled design" into the
+DOM, a later step in the same handler took the name back to "HELLO" — the
+value Svelte had last rendered — and the field then sat there reading
+"Untitled design" over a design called HELLO. **A resync must be the LAST
+write in the handler, and must read the name that actually survived rather
+than the intermediate one the handler computed first.**
+
 ## Check the engine before blaming it, and the probe before blaming either (2026-09-07)
 
 The size investigation started from a table showing 60, 80, 100 and 120 mm
@@ -3234,3 +3250,37 @@ comparison between different glyphs. **Every one was caught by mutation, and
 none by reading the test.**
 
 Where the fix only exists in a browser, test it in a browser.
+
+## Where the index IS the data, a swallowed write is a lie (2026-09-07)
+
+`projects.js` keeps a project's NAME and its very membership of the registry
+in one localStorage key, `embstudio:index` — there is no second copy in the
+project record to fall back on. `renameProject` and `deleteProject` both
+ended `writeIndex(idx); return true;`, and `writeIndex` catches its own
+quota failure and returns a boolean. So on a full or blocked store both
+reported success for a write that never landed: the topbar and the drawer
+repainted with the new name, and the old one was back on the next reload
+with nothing said.
+
+Found by a storage-failure test written for a NEW function of the same
+shape — the sibling-pattern sweep finding the two shipped cases, not the one
+being added.
+
+Two rules came out of it, and they pull in different directions, which is
+the point:
+
+- **Propagate the failure where the index IS the data** (rename, delete,
+  auto-name). The customer's change did not happen.
+- **Do NOT propagate it where the index is only metadata.** `saveProject`
+  writes the design to its own record first and only then bumps `updatedAt`;
+  a record that fit while the index rewrite did not is a SAVED design with a
+  stale sort key, and raising "your changes aren't being saved" over it would
+  be its own lie. Same file, opposite answer, and the difference is which
+  key holds the thing the customer would lose.
+
+`deleteProject` also had its writes in the wrong order — it removed the
+record and then wrote the index. A `removeItem` is never quota-blocked, so a
+failed index write left a row in the drawer whose design was already gone:
+unopenable, and reported as deleted. Index first, record second, which is the
+ordering `migrateLegacy` in the same file already documents as
+non-negotiable (A1). **When one of two writes cannot fail, do it second.**

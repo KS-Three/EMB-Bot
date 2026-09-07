@@ -1,9 +1,12 @@
 // Client-side project registry (localStorage-backed).
 //
 // Storage shape:
-//   embstudio:index      JSON array of {id, name, updatedAt} — one entry per
-//                        saved project, newest-first once sorted by
-//                        listProjects().
+//   embstudio:index      JSON array of {id, name, updatedAt, autoName} — one
+//                        entry per saved project, newest-first once sorted by
+//                        listProjects(). `autoName` is true while the name is
+//                        still the app's own guess (see isAutoNamed below);
+//                        entries written before it existed simply lack it,
+//                        which is why isAutoNamed has a second clause.
 //   embstudio:p:<id>     one JSON project record per id (same shape as the
 //                        legacy `embstudio:last` blob). Written via save.js's
 //                        serialize(); read via loadProject()'s own
@@ -33,7 +36,7 @@
 //      before the legacy key is touched, so the user's original data is
 //      never lost even if storage fails mid-migration (see A1).
 
-import { defaultProject, migrateProject } from "./project.js";
+import { defaultProject, migrateProject, UNTITLED_NAME } from "./project.js";
 import { serialize } from "./save.js";
 
 const INDEX_KEY = "embstudio:index";
@@ -98,11 +101,11 @@ export function setCurrentProject(id) {
 export function createProject(name) {
   const id = genId();
   const project = defaultProject();
-  const finalName = name || "Untitled design";
+  const finalName = name || UNTITLED_NAME;
   try {
     localStorage.setItem(projectKey(id), serialize(project));
     const idx = readIndex();
-    idx.push({ id, name: finalName, updatedAt: Date.now() });
+    idx.push({ id, name: finalName, updatedAt: Date.now(), autoName: true });
     if (writeIndex(idx)) {
       localStorage.setItem(CURRENT_KEY, id);
     } else {
@@ -162,11 +165,40 @@ export function saveProject(id, project) {
     if (i === -1) return false;
     localStorage.setItem(projectKey(id), serialize(project));
     idx[i] = { ...idx[i], updatedAt: Date.now() };
+    // Deliberately NOT propagated, unlike the three writes below. The
+    // design itself lives in the record written on the line above; all the
+    // index carries here is `updatedAt`, i.e. the drawer's sort order. A
+    // record that fit while the index write did not is a saved design with
+    // a stale timestamp, and reporting that as a save failure would put the
+    // "your changes aren't being saved" banner over changes that were.
     writeIndex(idx);
     return true;
   } catch (e) {
     return false;
   }
+}
+
+// Is this entry's name still the app's own guess, rather than something
+// the customer chose? Two clauses, and the second is not redundant:
+//
+//   1. `autoName === true` — written by createProject and kept by
+//      autoNameProject. The authoritative answer for anything created
+//      since auto-naming shipped.
+//   2. no flag at all AND the name is still the placeholder — every entry
+//      already sitting in a customer's browser predates the flag, and all
+//      of those are called "Untitled design". Without this clause the
+//      feature would only ever help projects created after the upgrade,
+//      which is exactly the set that needs it least.
+//
+// An entry the customer renamed is never auto-named again, INCLUDING a
+// rename back to the placeholder: clearing the name is how you ask for the
+// app's guess, and that is the one case where resuming is right — so
+// renameProject stores autoName for a placeholder rename and false
+// otherwise, rather than a blanket false.
+export function isAutoNamed(entry) {
+  if (!entry) return false;
+  if (entry.autoName === true) return true;
+  return entry.autoName === undefined && entry.name === UNTITLED_NAME;
 }
 
 // No-op for an unknown id (A10).
@@ -175,9 +207,36 @@ export function renameProject(id, name) {
     const idx = readIndex();
     const i = idx.findIndex((e) => e.id === id);
     if (i === -1) return false;
-    idx[i] = { ...idx[i], name };
-    writeIndex(idx);
-    return true;
+    idx[i] = { ...idx[i], name, autoName: name === UNTITLED_NAME };
+    // Propagated, because a name lives ONLY in the index -- there is no
+    // second copy in the project record to fall back on. This used to
+    // `writeIndex(idx); return true;`, so a rename on a full store reported
+    // success, repainted the topbar and the drawer, and was simply gone on
+    // the next reload with nothing said. Found 2026-09-07 by the storage-
+    // failure test written for autoNameProject below, which is the same
+    // shape.
+    return writeIndex(idx);
+  } catch (e) {
+    return false;
+  }
+}
+
+// Renames WITHOUT making the name sticky — the app's own guess, not the
+// customer's choice, so the next content change may replace it. Separate
+// from renameProject on purpose: a boolean parameter on that function
+// would put "this rename is not really a rename" at every call site, and
+// the whole contract of renameProject is that a rename ends auto-naming.
+// No-op for an unknown id, and for an entry that is no longer auto-named —
+// so a rename that lands between the caller's check and this write cannot
+// be clobbered by a queued guess.
+export function autoNameProject(id, name) {
+  try {
+    const idx = readIndex();
+    const i = idx.findIndex((e) => e.id === id);
+    if (i === -1) return false;
+    if (!isAutoNamed(idx[i])) return false;
+    idx[i] = { ...idx[i], name, autoName: true };
+    return writeIndex(idx);
   } catch (e) {
     return false;
   }
@@ -191,7 +250,16 @@ export function deleteProject(id) {
     const i = idx.findIndex((e) => e.id === id);
     if (i === -1) return false;
     idx.splice(i, 1);
-    writeIndex(idx);
+    // Index FIRST, record second -- the same write ordering migrateLegacy
+    // treats as non-negotiable (A1), for the same reason. Membership of the
+    // index IS a project's existence, and a removeItem is never quota-
+    // blocked, so removing the record first and then failing to write the
+    // index would leave a row in the drawer whose design is already gone:
+    // an entry that can never be opened. This way a failed index write
+    // changes nothing at all, and the false return says so -- it used to
+    // `writeIndex(idx); return true;` and report a delete that had not
+    // happened.
+    if (!writeIndex(idx)) return false;
     try {
       localStorage.removeItem(projectKey(id));
     } catch (e) {}

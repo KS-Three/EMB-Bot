@@ -1,5 +1,5 @@
 <script>
-  import { update, updateElement, updateElements, selectElement, toggleSelectElement, addElement, addSeededTextElement, removeElement, resolveArtworkType } from "./lib/project.js";
+  import { update, updateElement, updateElements, selectElement, toggleSelectElement, addElement, addSeededTextElement, removeElement, resolveArtworkType, deriveProjectName, UNTITLED_NAME } from "./lib/project.js";
   import { createHistory } from "./lib/history.js";
   import { applyTemplate } from "./lib/templates.js";
   import { canAdvance, nextStep, prevStep } from "./lib/flow.js";
@@ -21,6 +21,8 @@
     duplicateProject,
     importProject,
     listProjects,
+    isAutoNamed,
+    autoNameProject,
   } from "./lib/projects.js";
   import { buildProjectFile, parseProjectFile, projectFileName } from "./lib/projectFile.js";
   import { triggerDownload } from "./lib/download.js";
@@ -55,7 +57,7 @@
   // keeps the topbar from ever showing a blank name).
   function nameFor(id) {
     const entry = projects.find((p) => p.id === id);
-    return entry ? entry.name : "Untitled design";
+    return entry ? entry.name : UNTITLED_NAME;
   }
 
   // ---- Boot (Slice 7 Task 2) ------------------------------------------------
@@ -78,7 +80,7 @@
   // pointed at an id the registry doesn't know about.
   let bootProject = currentId && projects.some((p) => p.id === currentId) ? loadProject(currentId) : null;
   if (!bootProject) {
-    const created = createProject("Untitled design");
+    const created = createProject(UNTITLED_NAME);
     currentId = created.id;
     bootProject = created.project;
     projects = listProjects();
@@ -87,6 +89,9 @@
   let project = resetHasImage(bootProject);
   let projectName = nameFor(currentId);
   let step = "garment";
+  // Boot builds `project` directly rather than through enterProject(), so
+  // the open-a-legacy-project case above needs its twin here.
+  applyAutoName();
 
   // The step panel scrolls, and its scroll offset used to survive a step
   // change — which lands on the path EVERY user takes, because the fabric
@@ -428,6 +433,20 @@
     // under an in-flight edit. That is not a storage problem and must not
     // raise this. `refreshProjects()` above makes `projects` current.
     saveFailed = !ok && projects.some((p) => p.id === currentId);
+    applyAutoName();
+  }
+
+  // A registry write that reported failure, routed to the same banner
+  // persist() raises. Renames and deletes live ONLY in the index, so unlike
+  // a design edit there is no saved copy to fall back on -- a rename that
+  // silently didn't stick is gone at the next reload with the customer
+  // still looking at the new name.
+  //
+  // Same A2/A10 distinction persist() makes: a false return for an id the
+  // registry no longer holds is the deliberate no-op contract, not a full
+  // disk, and must not raise a storage banner.
+  function noteWriteFailed(ok, id) {
+    if (!ok && projects.some((p) => p.id === id)) saveFailed = true;
   }
 
   function refreshProjects() {
@@ -717,6 +736,13 @@
     history.reset(project); // history is per-project; a switch starts fresh
     syncHistoryFlags();
     restoreArtwork(project);
+    // Catch the name up on OPEN, not only on the next edit. Every project
+    // already in a customer's browser predates auto-naming and is called
+    // "Untitled design"; without this they would each keep that name until
+    // something was typed into them, which is the population the drawer's
+    // identical rows hurt most. A no-op for a design the customer has
+    // named, and for a blank one there is nothing to derive from.
+    applyAutoName();
   }
 
   // Drawer "Open" (plan amendment A6): lands on "content", not "garment" --
@@ -743,24 +769,83 @@
   // Drawer "+ New design": a genuinely blank project, so (unlike Open) it
   // lands on "garment" -- there's no content yet to jump into.
   function newDesign() {
-    const created = createProject("Untitled design");
-    enterProject(created.id, created.project, "Untitled design", "garment");
+    const created = createProject(UNTITLED_NAME);
+    enterProject(created.id, created.project, UNTITLED_NAME, "garment");
     drawerOpen = false;
     refreshProjects();
   }
 
-  function renameCurrent(name) {
-    const finalName = (name || "").trim() || "Untitled design";
-    projectName = finalName;
-    renameProject(currentId, finalName);
+  // Keeps the still-unnamed design's name tracking what is actually in it,
+  // so "My designs" lists rows a customer can tell apart and a backup
+  // downloads under a filename that says what it is. See
+  // deriveProjectName() in lib/project.js for the measured defect and
+  // isAutoNamed() in lib/projects.js for when this is allowed to fire.
+  //
+  // A no-op the moment the customer names the design by hand, and a no-op
+  // when the guess has not moved -- so the common case of a keystroke that
+  // does not change the first line costs one array scan and no write.
+  //
+  // Falls back to the placeholder rather than holding the last guess: the
+  // name is a function of the content, and a design whose text has been
+  // deleted is once again a design with nothing to go on.
+  function applyAutoName() {
+    const entry = projects.find((p) => p.id === currentId);
+    if (!isAutoNamed(entry)) return;
+    const derived = deriveProjectName(project) || UNTITLED_NAME;
+    if (derived === entry.name) return;
+    if (!autoNameProject(currentId, derived)) return;
+    projectName = derived;
     refreshProjects();
   }
 
+  // Takes the INPUT ELEMENT, not its value, because committing a name has
+  // to be able to correct the field it came from.
+  //
+  // `value={projectName}` is a one-way binding, and Svelte only touches the
+  // DOM when the EXPRESSION changes. A name that normalises back to the
+  // stored one therefore leaves the typed text sitting in the field for
+  // good. Measured in the shipped app 2026-09-07: with the design called
+  // "Untitled design", clearing the name field and tabbing away left the
+  // topbar showing an empty name while the drawer one panel over showed
+  // "Untitled design" and the export still wrote untitled-design.embproj --
+  // two places disagreeing about one design's name, with the blank one
+  // being the one the customer is looking at. Typing only spaces did the
+  // same. This is the same defect the size field had (see SizePanel's
+  // resyncIfClamped), at a second site.
+  function renameCurrent(target) {
+    const finalName = (target.value || "").trim() || UNTITLED_NAME;
+    projectName = finalName;
+    const ok = renameProject(currentId, finalName);
+    refreshProjects();
+    noteWriteFailed(ok, currentId);
+    // Clearing the name is how a customer asks for the app's guess back;
+    // renameProject re-arms auto-naming for exactly that case, so apply it
+    // now instead of leaving the placeholder up until the next edit. This
+    // can move projectName again, which is why the resync below comes
+    // after it and reads projectName rather than finalName.
+    applyAutoName();
+    // The resync, and it has to be the LAST thing here. Writing the
+    // intermediate name straight after normalising it reproduced this very
+    // defect one layer up, measured 2026-09-07: clearing the field on a
+    // design auto-named HELLO wrote "Untitled design" into the DOM, then
+    // applyAutoName took projectName back to "HELLO" -- the same value
+    // Svelte had last rendered, so it left the DOM alone and the field
+    // sat there reading "Untitled design" over a design called HELLO.
+    // Setting the field from the name that actually SURVIVED cannot go
+    // stale that way.
+    if (target.value !== projectName) target.value = projectName;
+  }
+
   function renameFromDrawer(id, name) {
-    const finalName = (name || "").trim() || "Untitled design";
-    renameProject(id, finalName);
+    const finalName = (name || "").trim() || UNTITLED_NAME;
+    const ok = renameProject(id, finalName);
     if (id === currentId) projectName = finalName;
     refreshProjects();
+    noteWriteFailed(ok, id);
+    // Only the open project has a live `project` object to derive from; a
+    // cleared name on any other row keeps the placeholder until it is
+    // opened and edited.
+    if (id === currentId) applyAutoName();
   }
 
   function duplicateFromDrawer(id) {
@@ -830,8 +915,19 @@
 
   function deleteFromDrawer(id) {
     const wasCurrent = id === currentId;
-    deleteProject(id);
+    const deleted = deleteProject(id);
     refreshProjects();
+    if (!deleted) {
+      // A false return ALSO covers "that id isn't in the registry any more"
+      // (the A2/A10 no-op contract) -- not a storage problem, and already
+      // put right by the refresh above. So only speak up if the row
+      // genuinely survived the delete, and say it in the drawer the
+      // customer is looking at rather than moving them somewhere else.
+      if (projects.some((p) => p.id === id)) {
+        drawerNotice = "Couldn’t delete that design — this browser is blocking storage.";
+      }
+      return;
+    }
     if (!wasCurrent) return;
 
     // Walk survivors newest-updated first (listProjects()'s sort) and adopt
@@ -856,8 +952,8 @@
       setCurrentProject(survivor.id);
       enterProject(survivor.id, survivor.project, survivor.name, "content");
     } else {
-      const created = createProject("Untitled design");
-      enterProject(created.id, created.project, "Untitled design", "garment");
+      const created = createProject(UNTITLED_NAME);
+      enterProject(created.id, created.project, UNTITLED_NAME, "garment");
       refreshProjects();
     }
   }
@@ -877,7 +973,7 @@
   <input
     class="projectname"
     value={projectName}
-    on:change={(e) => renameCurrent(e.currentTarget.value)}
+    on:change={(e) => renameCurrent(e.currentTarget)}
     aria-label="Project name"
   />
   <div class="topbar-actions">
