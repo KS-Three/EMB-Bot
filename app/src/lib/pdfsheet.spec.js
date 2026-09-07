@@ -491,15 +491,32 @@ function buildWith(design, meta) {
 // here; guessing is not.
 const COLOUR_COUNTS = Array.from({ length: 45 }, (_, i) => i + 1);
 
+// ...and with and without the hoop note, because it is the TALLEST optional
+// thing above the list and it moves where the list starts: measured, the first
+// row sits at 9.09 in with no note and 9.83 in with a three-line one, which is
+// 6 rows on page one versus 3. The pagination does not care -- breaking before
+// a row is height-independent -- but a test that only ever ran the short
+// layout would not notice if that stopped being true. Found by reading the
+// whole PR diff at once rather than each commit as it was written.
+const HOOP_NOTES = [
+  "",
+  "Exceeds your 8\u00d78 in hoop \u2014 rotate the design 90\u00b0 and it fits",
+  "Exceeds your 8\u00d78 in hoop, and every hoop this app offers \u2014 make it smaller under Size",
+];
+
 test("no part of the sheet is drawn past the bottom margin, at any colour count", () => {
   for (const n of COLOUR_COUNTS) {
-    const colors = Array.from({ length: n }, (_, i) => ({ r: i * 6, g: 40, b: 90, name: "Thread " + (i + 1) }));
-    const doc = buildWith(baseDesign({ colors, colorCount: n }), {
-      hoop: { label: "8\u00d78 in", widthMm: 200, heightMm: 200 },
-      chartLabel: "Studio basics",
-      sew: { trims: 16, threadM: 7.1 },
-    });
-    expect({ n, offPage: drawsBelowMargin(doc) }).toEqual({ n, offPage: [] });
+    for (const hoopNote of HOOP_NOTES) {
+      const colors = Array.from({ length: n }, (_, i) => ({ r: i * 6, g: 40, b: 90, name: "Thread " + (i + 1) }));
+      const doc = buildWith(baseDesign({ colors, colorCount: n }), {
+        hoop: { label: "8\u00d78 in", widthMm: 200, heightMm: 200 },
+        chartLabel: "Studio basics",
+        sew: { trims: 16, threadM: 7.1 },
+        hoopNote,
+      });
+      expect({ n, noteLen: hoopNote.length, offPage: drawsBelowMargin(doc) })
+        .toEqual({ n, noteLen: hoopNote.length, offPage: [] });
+    }
   }
 });
 
@@ -507,11 +524,14 @@ test("a page is never added unless there is a thread row to put on it", () => {
   // The break used to fire AFTER the last row, so a list whose final row
   // happened to cross the margin emitted a blank trailing page.
   for (const n of COLOUR_COUNTS) {
-    const colors = Array.from({ length: n }, (_, i) => ({ r: 0, g: 0, b: 0, name: "T" + i }));
-    const doc = buildWith(baseDesign({ colors, colorCount: n }), {});
-    const lastPage = doc.pageCount;
-    const drawnOnLast = doc.texts.filter((t) => t.page === lastPage).length;
-    expect({ n, lastPage, drawnOnLast: drawnOnLast > 0 }).toEqual({ n, lastPage, drawnOnLast: true });
+    for (const hoopNote of HOOP_NOTES) {
+      const colors = Array.from({ length: n }, (_, i) => ({ r: 0, g: 0, b: 0, name: "T" + i }));
+      const doc = buildWith(baseDesign({ colors, colorCount: n }), { hoopNote });
+      const lastPage = doc.pageCount;
+      const drawnOnLast = doc.texts.filter((t) => t.page === lastPage).length;
+      expect({ n, noteLen: hoopNote.length, lastPage, drawnOnLast: drawnOnLast > 0 })
+        .toEqual({ n, noteLen: hoopNote.length, lastPage, drawnOnLast: true });
+    }
   }
 });
 
