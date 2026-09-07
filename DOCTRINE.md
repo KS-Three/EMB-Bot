@@ -1066,17 +1066,63 @@ its hedge as it is copied forward** — is why this file is split.
   *(2026-09-06 — same entry)*
 
 
+- **A measurement cache must record the tree it was measured on, or a table
+  will mix two engines and look consistent.** `flip_sheet.py` cached its first
+  pass into `build/flip_sheet` before `dissolve_phantom_blends` was fixed; the
+  two affected arms were re-measured into `build/flip_sheet_v2`; the published
+  sheet then drew four rows from the first directory and two from the second,
+  and asserted *"every number below is post-fix"*. It happened to be TRUE —
+  all 26 `off` digests match across the two trees, so the flag gate provably
+  holds and the four arms that leave the flag off could not have moved — but
+  nothing checked, and the claim was an inference presented as a measurement.
+  The cheap fix is structural: every row carries `head` now and `report`
+  prints a **MIXED TREES** banner rather than comparing silently. If you write
+  a tool that caches measurements, stamp the commit into each row.
+  *(2026-09-07 — `tests/test_flip_sheet.py`)*
+
+- **"Byte-identical to `off`" does not mean a flag is inert — it means it is
+  inert on the geometry the DEFAULT produces.** `satin_patch_junctions` is
+  byte-identical to `off` on `logo_script_tires`, so the sheet called it inert
+  there. Turn on `dissolve_phantom_blends` as well and it adds **four fill
+  runs and three trims** to that same fixture: the halo pass splits the script
+  into two more satin strokes (7 → 9), and the patch pass then finds junctions
+  between strokes that do not exist without it. Neither flag alone moves the
+  fixture off A 100; together they take it to B 88. **A single-flag arm prices
+  a flag against one geometry only**, so never generalise "no effect" from it
+  — which is the whole reason `flip_sheet.py` has combination arms.
+  *(2026-09-07 — `docs/flip-sheet-2026-09-06.md`, the interaction section)*
+
+- **A row in an evidence doc is evidence about the TREE it was measured on,
+  and the tree moves.** `yardstick-disagreements` row 7 ("it prefers a design
+  that dropped its ink") was a correct measurement, correctly reported, and
+  wrong one day later: the engine under it had the `~base_valid` bug, and the
+  row was the artifact of the very bug it helped find. Fixing the bug reversed
+  its direction — the arms that load real Black now grade HIGHER. **Before
+  quoting a measured row at a gate or a decision, re-measure it.** The
+  measurement is cheap; the doc is not self-invalidating.
+  *(2026-09-07 — yardstick-disagreements row 7, retracted)*
+
+
 - **A flag that removes a cone cannot be judged on its grade. Check the cone
   list.** `THREAD_MATCH_POOR` grades per thread on that thread's worst patch,
   so deleting a cone deletes the thread that was scoring badly — you cannot
-  have a poor thread match on a thread you never loaded. On
-  `logo_gaulke_roofing` (black lettering on a white label) the two arms that
-  grade BEST load nothing darker than L* 82, and the only arm that loads real
-  Black grades second-worst. A whole claim was built on the wrong side of
-  this: MASTER_SCOPE carried "F 0 → C 64, the difference between 'do not sew'
-  and a usable design" for two days about a design that had dropped its ink.
-  Machine units do not save you either — the same change reads "blocks 4→3,
-  trims 30→18", both true. *(measured 2026-09-06 — `docs/flip-sheet-2026-09-06.md`;
+  have a poor thread match on a thread you never loaded. **This rule is what
+  found the `~base_valid` bug above**: `logo_gaulke_roofing` (black lettering
+  on a white label) graded C 64 under `dissolve_phantom_blends` while loading
+  nothing darker than L* 82, and MASTER_SCOPE carried "F 0 → C 64, the
+  difference between 'do not sew' and a usable design" for two days about a
+  design that had dropped its ink. Machine units do not save you either — the
+  same change read "blocks 4→3, trims 30→18", both true.
+  **The conclusion drawn NEXT was wrong, and that half is retracted
+  (2026-09-07).** From those numbers the record concluded that the metric
+  prefers a design that dropped its ink, and shipped it as
+  yardstick-disagreements row 7. It was the bug's artifact: post-fix, every
+  gaulke arm that loads real `0020 Black` grades HIGHER (F 16) than every arm
+  that does not (F 4), and swept over seven arms × 26 fixtures, **ten
+  (arm, fixture) pairs remove a cone and not one scores higher.** The rule
+  above is sound; **"the metric rewards not sewing the hard part" was never
+  measured on a correct engine and should not be repeated.**
+  *(measured 2026-09-06, half retracted 2026-09-07 — `docs/flip-sheet-2026-09-06.md`;
   yardstick-disagreements row 7)*
 
 
@@ -1695,11 +1741,22 @@ its hedge as it is copied forward** — is why this file is split.
   untouched by halo dissolve — their assignments are already optimal and raw
   distance condemns them anyway, which is the exact failure the photo route's
   2026-08-24 rescoring was built for and which the gradient lane never got.
-  **(2) halo cones, 1 of 7.** `gaulke_roofing` needs no yardstick change:
-  `cfg.dissolve_phantom_blends` alone gives **F 0 → C 64, blocks 3 → 0, worst
-  ΔE 63.6 → 6.8, −15% stitches** (B 76 with excess too). Kent ruled that flag
-  OFF 2026-09-04 on trims, cones and worst-excess; **the record carries no
-  grade for it and this is it.** It costs elsewhere — bridge_bar 3 → 4 blocks.
+  **(2) halo cones, 1 of 7 — RETRACTED 2026-09-07, this category is EMPTY.**
+  It read: *"`gaulke_roofing` needs no yardstick change:
+  `cfg.dissolve_phantom_blends` alone gives F 0 → C 64, blocks 3 → 0, worst
+  ΔE 63.6 → 6.8, −15% stitches."* Every one of those numbers was the flag
+  DELETING gaulke's lettering — the `~base_valid`-is-not-the-page bug, fixed in
+  #380. **On the fixed tree the flag is byte-identical to `off` on gaulke, on
+  BOTH garments**: F 4, raw 4, 2 blocking `THREAD_MATCH_POOR`, worst ΔE **63.6
+  unchanged**, same stitch count, same four cones. Blocks 3 → 0 was three
+  blocks removed by not sewing the thread that carried them.
+  **So the wall decomposes 4 + 0 + 2, and gaulke is the seventh, unexplained.**
+  Do not plan against this category. The lead someone should follow instead is
+  already in defect 28: gaulke's 63.6 ΔE names `1375`, **a spool the design
+  already loads**, with 58.6 of that distance closable by a swap that costs the
+  operator nothing — which points at the raw yardstick (category 1), not at
+  halo cones. Whether it actually clears under excess scoring is UNMEASURED;
+  do not assume it from this note.
   **(3) region colour != the artwork under it, 2 of 7.** `bridge_bar` and
   `screenshot_phone_ui` block under every combination, and the screenshot's
   looks blatant: **`0111 Whale` (127,127,127) scores 33.0 ΔE on artwork read
@@ -1910,10 +1967,13 @@ its hedge as it is copied forward** — is why this file is split.
   clearing TEN of them still prints `F 0`. This is the missing half of
   yardstick-disagreement 1: a real thread fix there is invisible because
   `THREAD_MATCH_POOR` judges per thread on its worst patch **and** because the
-  design is hundreds of points under water. It also explains the exception —
-  `dissolve_phantom_blends` moves `gaulke_roofing` F 0 → C 64 because gaulke
-  grades F **4**, shallow rather than floored, so its improvement had
-  somewhere to go. **Rule: on a floored design the grade is not evidence in
+  design is hundreds of points under water. **The "exception" this used to cite
+  is withdrawn (2026-09-07)** — it read that `dissolve_phantom_blends` moves
+  `gaulke_roofing` F 0 → C 64 because gaulke grades F **4**, shallow rather
+  than floored, so its improvement had somewhere to go. The shallowness is
+  real and still measured (F 4, raw 4, on both garments); the move was the
+  flag deleting the lettering, and post-fix the flag does not move gaulke at
+  all. **Rule: on a floored design the grade is not evidence in
   either direction; quote the metric that moved, or the render.** Un-clamping
   or widening the bands re-bases every grade in the scorecard, so it is a
   product call, not a cleanup. *(measured 2026-09-06 — scope-history 09-06)*

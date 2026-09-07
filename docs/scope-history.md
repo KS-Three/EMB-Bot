@@ -25,6 +25,77 @@ that is the whole point of the file. Corrections go in `MASTER_SCOPE.md`.
 
 ---
 
+**Last updated:** 2026-09-07 — **the flip sheet's own recommendation, measured
+at last; a yardstick row retracted one day after it shipped; and the one grade
+that falls, named down to the pair.**
+
+- **The one grade any arm takes down is a PAIR, and it reproduces the five-flag
+  result exactly.** All ten pairs of the five parked flags, on
+  `logo_script_tires` at 80 mm / `left_chest`: exactly one moves it —
+  `dissolve_phantom_blends` + `satin_patch_junctions`, **B 88, 12 trims, 2,394
+  stitches**, the same three numbers all five produce. The other three flags
+  contribute nothing to it. Mechanism read off the run set, not inferred: halo
+  splits the script **7 → 9 satin runs**, and the patch pass then finds
+  junctions that do not exist without it — **fill runs 1 → 5**, three carrying
+  a trim. The extra thread is real work: preflight's own coverage instrument
+  puts the worst uncovered patch at **2.8 mm² under halo alone and 0.8 mm²
+  under both**. And the fall is a threshold crossing halo sets up on its own:
+  `TRIM_HEAVY` fires above 4.1 trims per 1,000 stitches, and the arms read
+  **3.42 (off) → 3.99 (halo, 0.11 under) → 5.01 (both)**. Halo alone spends
+  96.5% of that fixture's trim budget and still reads A 100.
+
+- **This sheet recommended three flags nobody had run together — the exact
+  error its own header warns against. Measured now, and it holds.** Three
+  combination arms added to `tools/flip_sheet.py` (`rec3`, `rec4`,
+  `halo_patch`), 78 new rows. **`rec3`** (patch + bind + resnap) costs **+413
+  stitches and ONE trim** corpus-wide and buys **−18 blocks, −17 cones and
+  four grades up** (becker B 76 → B 88, gaulke F 4 → F 16, meadow D 52 → C 64,
+  scene_stub B 76 → B 88) with **nothing down anywhere**. **`rec4`** adds
+  `satin_per_stroke`: **−2,814 stitches**, five grades up, still **none down**,
+  for +33 trims concentrated on `photo_chrome_specular` (84 → 116).
+  **Everything that falls, falls because of `dissolve_phantom_blends`** — the
+  only flag not in `rec4`; adding it buys a further −2,905 stitches and −62
+  trims and costs the one grade.
+
+- **`yardstick-disagreements` row 7 is RETRACTED — it was the bug's artifact,
+  not the metric's preference.** It shipped 2026-09-06 reading that the metric
+  prefers a design that dropped its ink, from `logo_gaulke_roofing` grading
+  C 64 under `dissolve_phantom_blends` while loading nothing darker than
+  L\* 82. That C 64 was the `~base_valid`-is-not-the-page bug deleting the
+  lettering. **Post-fix the metric ranks gaulke correctly**: every arm loading
+  real `0020 Black` grades **F 16**, every arm that does not grades **F 4**, on
+  BOTH garments. Swept over seven arms × 26 fixtures, **ten (arm, fixture)
+  pairs remove a cone and not one scores higher** — and all ten sit on fixtures
+  scoring exactly 0 in both arms, so **row 6's floor is now why row 7 cannot be
+  asked of this corpus at all.** Two entries on that list are not independent.
+  What survives is the rule that caught the bug: on a fixture where a flag
+  removes a cone, read the cone list, not the grade.
+
+- **Two stale claims that fell out of the same retraction, both on the credit
+  side of a flag.** MASTER_SCOPE defect 27 carried *"gaulke a second clear win
+  (blocks 4→3, trims 30→18)"* — post-fix gaulke is **byte-identical**; halo
+  moves exactly four fixtures now (bridge_bar 125 → 62 trims, screenshot
+  71 → **66** — the recorded "+2 trims" negative reversed — golden_tee +24 st,
+  tires +1 trim), 22 of 26 unchanged. And **defect 28's F-wall category (2) is
+  EMPTY**: it credited halo with clearing `gaulke_roofing` (*"F 0 → C 64,
+  blocks 3 → 0, worst ΔE 63.6 → 6.8"*), and on the fixed tree the flag changes
+  nothing there — F 4, raw 4, 2 blocking, **worst ΔE 63.6 unchanged**. The wall
+  decomposes **4 + 0 + 2** and gaulke is the seventh, unexplained.
+
+- **The sheet was resting on two engines and nobody had checked. Now verified,
+  not inferred.** Its first pass was cached before the halo fix; the two
+  affected arms were re-measured into a second directory; the published table
+  drew from both while asserting *"every number below is post-fix"*. It was
+  true — all 26 `off` digests match across the trees, so the flag gate provably
+  holds — but it was an inference. Re-measured the four fix-unaffected single
+  arms on the current tree: **104 rows compared, 0 differ.** Structural fix:
+  every row carries `head` now, and `report` prints **MIXED TREES** for rows
+  stamped with different commits and the weaker **PROVENANCE UNKNOWN** for
+  unstamped ones — a distinction the banner has to keep, or it makes the same
+  over-claim it exists to catch. `tests/test_flip_sheet.py` (6).
+
+---
+
 **Last updated:** 2026-08-31 — **the sew-out fragmentation follow-up: two
 mechanical causes of the patch-quilt, measured and closed.**
 
