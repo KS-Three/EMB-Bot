@@ -7497,3 +7497,88 @@ word for word in all three. Only the lead clause moves, from *"X was skipped —
 <diagnostic>."* to *"X could not run here."*, which is the interpolation
 coming out and the sentence still needing a verb. That is a deletion with a
 grammatical repair, not a rewrite of copy.
+
+---
+
+## 2026-09-07 — a warning that reads like a ruined job, bounded to nil in three corrections
+
+`PALETTE_THREAD_MISMATCH` fires on **6 of 26** corpus fixtures and appears in
+**no document at all** — not MASTER_SCOPE, not DOCTRINE, not `docs/`, not
+memory — though the code has described it since 2026-08-14. Its own comment
+reads:
+
+> the operator loads a cone that sews nothing while the thread that IS sewn is
+> missing from the list; only this human-facing color list is wrong, which is
+> exactly why it could stay invisible
+
+That is a job ruined at the machine. It is not what happens, and the route
+from there to the true answer is the point of this entry: **three
+corrections, every one of them from reading a contract rather than from
+measuring harder, each making the finding smaller.**
+
+### 1. Wrong list
+
+The first `tools/palette_mismatch.py` compared `result.palette` against what
+sews and printed a verdict of **RACK-WRONG** on all six fixtures — *told to
+load, sews nothing: `['0674', '0931', '1565', '2776']`*.
+
+There are two palettes. `plan.palette` is per BLOCK, `palette[i]` describes
+`blocks[i]`, the service ships it as `stats.blocks`, and **that is what the
+operator threads from.** `result.palette` is the per-LAYER list the review
+screen edits. Reading the layer list positionally against blocks is precisely
+the mistake `StitchPlan.palette`'s own comment records as having shipped
+`golf_hat`'s black block labelled "0020 Tangerine" until 2026-08-14.
+
+The operator list is now **checked** rather than assumed —
+`_operator_list_is_consistent`, **26 of 26**.
+
+### 2. Confounded
+
+The corrected tool then reported *"threads that sew but are absent from the
+review list"*, up to seven on one fixture. **That is by design.** A blend or
+tonal region sews several shades inside one layer (`shade_thread_index`
+blocks) and the shades ride in `stats.blocks`; both `StitchPlan.palette` and
+the service's `_stats_payload` say so in as many words.
+`gradient_ramp_linear` gave it away — **one** mismatched shape beside
+**four** "missing" threads. A layer whose regions all went unstitched
+(`SHAPES_LEFT_UNSEWN`, 10 of 26) confounds the other direction identically.
+
+`mismatched` is computed over REGIONS and each region's own `thread_number`,
+so blend bands never enter it; the warning itself was clean the whole time.
+The tool was the thing adding noise.
+
+### 3. Already defended
+
+The clean number is real: **34 shapes over six fixtures, and on all six the
+thread those shapes sew is on no review layer at all** — the documented
+survivor after `rehome_resnapped_regions`, a re-snap whose target no layer
+declares.
+
+Then read the consumers, which is the step that should have come first:
+
+| consumer | what it does with `review.palette` |
+|---|---|
+| `reviewFromJob` (`digitizer.js`) | `byNumber.get(s.thread_number)` **with a `stats.blocks` fallback keyed by the shape's own `sew_block`** — the miss falls through to the correct cone |
+| `reviewFromJob` | `palette[0].brand_id` for `brandId` — brand is uniform, so a wrong entry cannot change it |
+| `QualityReport.svelte` | refuses it outright: *"Never the colours this app otherwise has — `review.palette` is per LAYER"* |
+
+**Nothing in the Studio renders the layer list as a cone list.** The
+customer-visible impact today is nil, and the warning's value is as a
+regression detector for the day someone adds a consumer that reads
+`review.palette` positionally. MASTER_SCOPE defect 30, with that bound stated
+in the entry so nobody spends a session on it.
+
+### The part worth carrying
+
+**An instrument that only ever confirms is not measuring.** Three passes,
+three shrinks, and every piece of correcting evidence was sitting in a
+docstring — `StitchPlan.palette`'s, `_stats_payload`'s, `reviewFromJob`'s —
+not in another corpus run. The 7-minute runs produced the number; the reading
+produced the answer.
+
+### Budget note
+
+`MASTER_SCOPE.md` is at **799 of its 800-line budget** after defect 30.
+Defect 29 was compacted to a fixed-state pointer in the same pass to make
+room, and the file's long-line style means an entry costs a line regardless of
+prose. **The next addition needs a retirement first.**
