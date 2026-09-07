@@ -819,6 +819,27 @@ its hedge as it is copied forward** — is why this file is split.
   checks is still not a green PR — it makes the wait longer than the rule
   implied, so the temptation to merge early is stronger, not weaker.
 
+- **A cross-reference is not an update: a fix can land under one defect and
+  leave its twin describing the world before it.** MASTER_SCOPE defect 11 said
+  *"the setting that helps a misrouted photograph has no UI"* and that
+  `cfg.is_photographic` *"appears **nowhere** in `app/src` (grep, 0 hits)"*.
+  Kent's 2026-09-02 call made `isPhoto` send exactly that flag; defect **15**
+  recorded the change fully and correctly, and defect 11 — which ends *"See
+  defect 15"* — was never touched. Five days later it still asserted the fixed
+  condition as live, with 14 grep hits against its stated 0. **Both source
+  files had already flagged the staleness in their own comments**
+  (`digitizer.js`: *"MASTER_SCOPE's 26-stop figure … predates the rehome …
+  17 is what it measures today"*), so the code knew and the doc did not — the
+  same shape as everything else that day.
+
+  **The habit: when a fix lands under defect N, grep MASTER_SCOPE for every
+  OTHER entry describing the same control.** Pointing at the updated entry
+  from the stale one is what made this survive — a reader who follows the
+  pointer gets the truth, and a reader who does not gets a false live claim,
+  and nothing distinguishes them. Compacting 11 to a resolved pointer also
+  bought **11 lines** of the 800-line budget, which is the rule-4 trade the
+  file is supposed to make. *(confirmed 2026-09-07)*
+
   Re-confirmed by re-running with the flag rather than trusting the record:
   `cfg.bind_resnap_all_classes` takes `screenshot_phone_ui` from **17 blocks to
   11 with the duplicate gone**, and leaves `region_blobs` at 16 with its

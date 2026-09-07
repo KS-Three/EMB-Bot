@@ -289,31 +289,20 @@ its own merits.
    weights) and it is a STANDING one — new UI is set to it, not re-litigated.
    What it means in practice is in the area doc. *(2026-08-25)*
 
-11. **The setting that helps a misrouted photograph has no UI, and the
-   control that looks like it is a different, harsher one.**
-   (That control is now the reading row's "It's a photo" correction; it was
-   a "This is a photo" checkbox until 2026-08-30. Renamed and moved out of
-   the params list — what it SENDS is unchanged, so every number below still
-   stands.)
-   CORRECTED 2026-08-28 — the first draft of this entry said an unticked
-   "This is a photo" costs the palette bind and depth sequencing, implying
-   ticking it is a free win. It is not, and the error was mine.
-   `cfg.is_photographic` — the declaration that turns on the bind and depth
-   sequencing while the fill tier stays FILLED — appears **nowhere** in
-   `app/src` (grep, 0 hits). The checkbox sends something else entirely:
-   `digitizer.js:144` sets `forced_class="photo_subject"`, which also fires
-   `auto_photo_tier` → streamline. Measured on `owl_kent.jpg` at 100 mm:
-   16 stops / 0.992 coverage undeclared, 12 / 0.990 with `is_photographic`
-   (2026-08-31: the rehome shrinks these to 13 and 11 — the ordering holds),
-   and **26 stops / 0.591 coverage** through the checkbox — 0.591 being the
-   thread-paint number Kent's own 2026-08-25 filled-beats-thread-paint ruling
-   already records. So the one control the Studio offers makes his artwork
-   worse on every axis, and the one that helps cannot be reached.
-   The product call is what to expose, not whether to nag: surface
-   `is_photographic` on its own, split the checkbox into declaration vs tier,
-   or leave both alone. See defect 15. *(measured 2026-08-28 —
-   scope-history 08-28)*
-
+11. **RESOLVED 2026-09-02 (Kent's call) — the control that helps IS reachable,
+   and this entry described the world before that.** It said
+   `cfg.is_photographic` "appears **nowhere** in `app/src` (grep, 0 hits)" and
+   that the reading row's "It's a photo" correction sent the harsher
+   `forced_class="photo_subject"` instead. Both halves moved that day and the
+   entry did not: `isPhoto` now sends `is_photographic=true`
+   (`digitizer.js:180`; **14** hits in `app/src`), and `forced_class` stays
+   reachable only for the OPPOSITE correction — flat art on a misrouted photo.
+   Current state and its numbers are defect 15's "UI HALF FIXED" note; the
+   08-28 measurement table this entry led with, **26 stops / 0.591 coverage**
+   included, is in scope-history 08-28 and is superseded — the forced route
+   measures **17** today. Still open is DETECTION, which is defect 15's.
+   Both source files had already flagged this staleness in their own comments.
+   *(confirmed 2026-09-07 — grep; `digitizer.js`, `DigitizePanel.svelte`)*
 8. **Font lawyer consult — optional.** Only gates RESTORING the 13 pulled
    ShareAlike fonts; the brief is written and ready to send. Nothing waits
    on it. See the font-licence entry.

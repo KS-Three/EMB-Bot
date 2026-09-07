@@ -7159,3 +7159,65 @@ tests of real OpenCV/shapely work ran ~19 minutes serially"*. The count is the
 one at the time and the suite passed **1,979** on 2026-09-06; annotated in
 place rather than rewritten, because the *reason* for `-n auto` is unchanged
 and the original measurement is still the one that made the case.
+
+---
+
+## 2026-09-07 — a resolved defect left a stale twin, and the code had already said so
+
+MASTER_SCOPE defect 11 read *"The setting that helps a misrouted photograph has
+no UI, and the control that looks like it is a different, harsher one."* Two of
+its claims are checkable in one command each, and **both are false**:
+
+| claim | measured 2026-09-07 |
+|---|---|
+| `cfg.is_photographic` "appears **nowhere** in `app/src` (grep, 0 hits)" | **14 hits**, including the send at `digitizer.js:180` |
+| the checkbox sends `forced_class="photo_subject"` (`digitizer.js:144`) | line 144 does not; the only `photo_subject` mentions there are comments describing the OLD behaviour |
+
+**Kent ruled on 2026-09-02, under defect 15**, that the reading row's "It's a
+photo" correction should send `is_photographic=true` rather than
+`forced_class="photo_subject"` — declaring photographic CONTENT, which buys
+depth sequencing and the palette bind, instead of forcing the FILL TIER. On
+`owl_kent.jpg` @ 80 mm the forced route goes 13 stops → **17**, the declared
+one → **11 on 12 cones**, for ~6% more stitches.
+
+**Defect 15 records all of that correctly. Defect 11 was never touched** — and
+it ends with *"See defect 15."* The pointer was there the whole time; a reader
+who followed it got the truth and a reader who stopped at the first paragraph
+got a fixed condition presented as live, with nothing to distinguish them.
+**A cross-reference is not an update.**
+
+### The code had already flagged it
+
+`digitizer.js`, in the comment right above the send:
+
+> *(MASTER_SCOPE's 26-stop figure for the forced route is from 2026-08-28 and
+> predates the rehome, borders-last and the cone fold; **17** is what it
+> measures today. The ordering it was cited for is unchanged.)*
+
+and `DigitizePanel.svelte`:
+
+> *WHAT GETS SENT CHANGED 2026-09-02 (Kent's call, defect 15): isPhoto now
+> means `is_photographic=true` … not `forced_class=photo_subject`, which
+> forced the FILL TIER and measurably hurt.*
+
+Both files knew. Neither could update MASTER_SCOPE, and nobody did. That is the
+same shape as the four documentation defects the day before — the repo knowing
+something its own status file does not — and it is the one variant a checker
+could plausibly catch, since `"appears nowhere in app/src"` is a claim a grep
+can settle. It is not worth a checker on one instance; **the habit is to grep
+MASTER_SCOPE for every other entry describing the same control when a fix
+lands.**
+
+### What changed
+
+Defect 11 compacted from 25 lines to a 14-line RESOLVED pointer at defect 15,
+which carries the current state. Nothing was lost: the 08-28 measurement table
+it led with — including the **26 stops / 0.591 coverage** figure, now
+superseded by 17 — already lives in this file at the 08-28 entry, so rule 5's
+"overflow goes somewhere, never to the bin" is satisfied by what was already
+there.
+
+**MASTER_SCOPE 800 → 789 lines.** The file has sat at exactly 800 through this
+whole session, with every addition threaded into existing lines to stay under
+rule 4's budget. Removing a false live claim is the first thing all day to buy
+budget back rather than spend it.
