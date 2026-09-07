@@ -7060,3 +7060,102 @@ reach* — so that label would send a reader hunting a bug that is not there.
 and never appears beside another route. Found by a synthetic test, not by the
 corpus: the corpus's two cases are each purely one route, so it would have
 shipped.
+
+---
+
+## 2026-09-07 — the CI wait is twice what every doc said, and the obvious cause is refuted
+
+CLAUDE.md item 7 has said `digitizer` takes **12–18 minutes** since it was
+written. That number drives the whole "three green checks is NOT a green PR"
+warning: someone who waits eighteen minutes and sees 3/4 green concludes the
+fourth job is stuck. Measured from the Actions API over the **last 220
+completed jobs** — the repo is public, so plain `curl` reads it unauthenticated:
+
+| date | n | min | **p50** | max |
+|---|---:|---:|---:|---:|
+| 2026-08-27 | 7 | 11.7 | 15.2 | 16.6 |
+| 2026-08-28 | 22 | 11.4 | 15.0 | 16.7 |
+| 2026-08-29 | 3 | 10.1 | 10.2 | 16.6 |
+| 2026-08-30 | 2 | 12.7 | 14.7 | 16.8 |
+| 2026-09-01 | 25 | 12.1 | 16.5 | 18.5 |
+| 2026-09-02 | 30 | 12.0 | 17.6 | 21.7 |
+| 2026-09-03 | 38 | 11.6 | 17.1 | 20.4 |
+| 2026-09-04 | 28 | 10.7 | 18.7 | 20.7 |
+| 2026-09-05 | 5 | 12.1 | 20.7 | 20.9 |
+| **2026-09-06** | 60 | 12.2 | **29.6** | **41.8** |
+
+**The figure was true when written and is now true of half the jobs.** Across
+all 220: min 10.1, p50 17.6, p90 31.8, max 41.8 — and exactly **50% land inside
+12–18**. Corrected to "10 to 42 minutes, budget half an hour".
+
+The other three jobs are as documented and were re-measured with it: `engine`
+p50 0.5, `studio` 0.8, `studio-e2e` 2.7.
+
+### Three causes eliminated, one left standing
+
+**It is entirely in the test step.** Splitting every job's steps into fast
+(≤18 min) and slow (≥25 min) buckets:
+
+| step | fast p50 | slow p50 | delta |
+|---|---:|---:|---:|
+| `Digitizer tests` | 14.28 | 32.41 | **+18.12** |
+| `Install` | 0.27 | 0.27 | +0.00 |
+| Tesseract install | 0.20 | 0.17 | −0.03 |
+
+Not caching, not dependency install, not checkout.
+
+**Concurrency is refuted, and it was my hypothesis.** The floor is stable at
+10–12 minutes on every single day while the tail grew, which is the classic
+signature of contention, and 2026-09-06 ran 60 digitizer jobs against 2–38 on
+every other day — two lanes pushing at once. Bucketing each job by how many
+other `digitizer` jobs overlapped it says otherwise:
+
+| concurrent others | n | min | p50 | max |
+|---:|---:|---:|---:|---:|
+| 0 | 105 | 10.1 | 16.9 | **41.8** |
+| 1 | 91 | 10.7 | 19.7 | 40.3 |
+| 2 | 18 | 11.6 | 16.0 | 19.8 |
+| 3 | 5 | 14.1 | 16.3 | 18.3 |
+| 4+ | 1 | 16.0 | 16.0 | 16.0 |
+
+**The 41.8-minute worst case ran with zero others in flight, and the
+most-contended bucket tops out at 19.8.** The obvious explanation is backwards.
+
+**Suite growth cannot carry it either.** It is real — 1,546 tests on 2026-08-31
+against 1,979 today — but pulling the `N passed … in Xs` line out of forty job
+logs and grouping by count:
+
+```
+tests passed    n     min     p50     max   spread
+        1851    4    19.6    33.3    34.5    1.76x
+        1883    2    17.0    23.6    30.1    1.78x
+        1968    2    17.9    25.8    33.7    1.88x
+```
+
+**The same test count lands at 19.6 or 34.5 minutes.** Seconds-per-test runs
+0.54 to 1.32 across the sample, and 0.35 on the fastest jobs measured
+separately. Growth moves the middle; it does not produce a 1.9× spread on
+identical work.
+
+### What is left, and the one line that will settle it
+
+The runner. `-n auto` follows the machine's core count, and the local
+frozen-tree benchmark from the `--durations` work measured **2 workers 23m53s
+against 4 workers ~14m00s on the same tree** — the same shape as CI's 14.3/32.4
+split. That is a hypothesis, not a finding: **nothing in the log records which
+runner we drew**, and `-q` suppresses xdist's worker ids.
+
+So the job now echoes `nproc`, `os.cpu_count()` and the first line of
+`/proc/meminfo` before pytest. Three lines, seconds to run, and the next person
+answers this from a log instead of an eight-page API sweep.
+
+**Until a log settles it, do not attribute a slow job to a cause** — the three
+above are eliminated, and guessing past that is what this entry exists to stop.
+
+### And a stale count in the workflow's own comment
+
+`.github/workflows/python-package-conda.yml` justifies `-n auto` with *"~1,100
+tests of real OpenCV/shapely work ran ~19 minutes serially"*. The count is the
+one at the time and the suite passed **1,979** on 2026-09-06; annotated in
+place rather than rewritten, because the *reason* for `-n auto` is unchanged
+and the original measurement is still the one that made the case.
