@@ -200,6 +200,18 @@ test("exportWorksheetPDF wires window.jspdf and forwards garment box (mm) to EMB
     const hoopMeta = buildSpy.mock.calls[1][1];
     expect(hoopMeta.hoop).toEqual({ label: "4×4 in", widthMm: 100, heightMm: 100 });
 
+    // The two operator numbers the printed sheet used to drop (2026-09-07).
+    // Asserted against sewFacts on the SAME design rather than against
+    // hand-copied numbers: the point of computing them here is that the
+    // sheet and the Review step cannot disagree, and a literal would let
+    // them drift apart without failing.
+    const { sewFacts } = await import("./estimate.js");
+    const facts = sewFacts(design);
+    expect(meta.sew).toEqual({ trims: facts.trims, threadM: facts.threadM });
+    // Not a vacuous pass: this fixture really does sew and really does trim.
+    expect(facts.trims).toBeGreaterThan(0);
+    expect(facts.threadM).toBeGreaterThan(0);
+
     expect(window.jspdf).toBeDefined();
     expect(typeof window.jspdf.jsPDF).toBe("function");
   } finally {

@@ -268,3 +268,28 @@ describe("buildWorksheetPDF against real jsPDF (byte/structure-level checks)", (
     }
   });
 });
+
+// The two operator numbers, proved against real PDF bytes rather than the
+// fake jsPDF — same reason every other claim in this file is: what matters is
+// what a printer receives, and a spy can agree with a bug.
+test("a real worksheet PDF carries the trims and the thread estimate", () => {
+  const dom = installFakeDom();
+  const realPdf = installRealJsPDF();
+  try {
+    const doc = buildWorksheetPDF(baseDesign(), {
+      garmentLabel: "Left chest",
+      fileName: "embbot-worksheet.pdf",
+      garmentBox: { widthMM: 127, heightMM: 57.15 },
+      sew: { trims: 6, threadM: 2.4813 },
+    });
+    const texts = extractPdfText(toBytes(doc));
+    expect(texts).toContain("Trims: 6");
+    expect(texts).toContain("Thread: 2.5 m (estimate)");
+    // Between the counts and the sequence, where an operator reads them.
+    expect(texts.indexOf("Trims: 6")).toBeGreaterThan(texts.indexOf("Stitch count: 4,321"));
+    expect(texts.indexOf("Thread: 2.5 m (estimate)")).toBeLessThan(texts.indexOf("Thread Sequence"));
+  } finally {
+    realPdf.restore();
+    dom.restore();
+  }
+});

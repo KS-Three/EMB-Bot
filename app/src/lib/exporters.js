@@ -1,6 +1,7 @@
 import { EMB } from "./emb.js";
 import { renderRealistic } from "./preview.js";
 import { exportViaService } from "./digitizer.js";
+import { sewFacts } from "./estimate.js";
 
 export function exportDesign(design, format) {
   switch (format) {
@@ -103,9 +104,17 @@ export async function exportDesignPreferService(design, format, opts = {}) {
 export async function exportWorksheetPDF(design, garment, hoop) {
   const mod = await import("jspdf");
   window.jspdf = window.jspdf || { jsPDF: mod.jsPDF };
+  // Trims and thread metres, computed by the same walk the Review step uses
+  // so the printed sheet and the screen cannot disagree. Computed HERE and
+  // passed through `meta` rather than inside pdfsheet.js: the engine copy
+  // takes no Studio imports (it is loaded as a plain script by
+  // `app/public/engine/`), and duplicating the walk is how two numbers for
+  // one design start to drift.
+  const facts = sewFacts(design);
   EMB.buildWorksheetPDF(design, {
     garmentLabel: garment.label || "",
     hoop: hoop ? { label: hoop.label, widthMm: hoop.widthMm, heightMm: hoop.heightMm } : null,
+    sew: { trims: facts.trims, threadM: facts.threadM },
     fileName: "embbot-worksheet.pdf",
     garmentBox: { widthMM: garment.widthIn * 25.4, heightMM: garment.heightIn * 25.4 },
   });
