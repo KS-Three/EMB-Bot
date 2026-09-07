@@ -10260,3 +10260,43 @@ and the test was asking the wrong question. The wait is now commented so nobody
 removes it as dead time.
 
 Suites after: engine 505, Studio 1071, e2e 63.
+
+## 2026-09-07 — the bundle nobody had run
+
+Everything in this repo tests `vite dev`. `npm run build` output had never been
+driven, by any test or by hand, and the two are not the same program.
+
+At the domain root the built bundle is sound: the full lane, 1,356 stitches,
+zero failed requests, zero console errors, and the day's auto-naming work
+survives minification. That is a launch-readiness fact that had never been
+established.
+
+Served one directory down it produced nothing:
+
+    domain root   1,356 stitches · 0 failed requests · 0 console errors
+    /studio/      no stitches    · 7x 404 /fonts/manifest.json
+
+`vite.config.js` sets `base: "./"` — a setting whose only purpose is making the
+bundle work wherever it is served — and Vite honours it for everything it owns.
+Five hand-written asset paths did not: fontLoader's fetch, two preview
+thumbnails, and credits' `binHref` and `licenseHref`. The config and the code
+had disagreed about a deployment fact for as long as both existed, and no test
+could see it, because the dev server is always at a root where both forms
+resolve the same.
+
+The font licence links were among the five, which makes this a compliance
+surface as well as a functional one: below the root, "the licence must
+accompany the font" was a 404. Verified 200 in both deployments after the fix.
+
+Also established, so nobody chases it: `file://` cannot work at all. Opening
+`dist/index.html` directly is blocked by CORS for ES modules — a blank page and
+four console errors, nothing the app can do about it. So the only deployments
+in play are "served at a root" and "served under a path", and both work now.
+
+The app was NOT silent about the failure — it showed "Font fetch failed:
+manifest.json (404)". An earlier note in this session said otherwise; that was
+a regex in the probe missing the message, not the app failing to show one. The
+wording stays as is on purpose: an HTTP status means a bad deploy, and the
+person who can act on it is the one deploying.
+
+Suites: engine 505, Studio 1072, e2e 63, doc guards 29.

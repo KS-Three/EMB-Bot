@@ -3309,3 +3309,42 @@ first place.
 the state that path is supposed to own, not just for calls to the path.** The
 bypass will be the one place with a good local reason to be different, and that
 reason usually only justifies skipping ONE part of what the path does.
+
+## Test the artifact you ship, not the dev server that stands in for it (2026-09-07)
+
+Every test in this repo — unit, component, e2e, and every hand-drive in this
+session — runs against `vite dev`. Nothing had ever exercised `npm run build`
+output, and the two are not the same program.
+
+`vite.config.js` sets `base: "./"`. That setting exists for exactly one
+purpose: so the bundle works wherever it is served from, and Vite honours it
+for everything it owns (`index.html` references `./assets/…`). Five
+hand-written asset paths did not: `"/fonts/" + rel` in fontLoader, two
+`"/fonts/previews/"` thumbnails, and credits' `binHref` and `licenseHref`.
+The config and the code disagreed about a deployment fact, and no test could
+see it because the dev server is always at the domain root, where both forms
+resolve identically.
+
+Measured on a real build, served two ways:
+
+    domain root   1,356 stitches · 0 failed requests · 0 console errors
+    /studio/      no stitches    · 7x 404 /fonts/manifest.json
+
+The customer is not left in silence — the app shows "Font fetch failed:
+manifest.json (404)" — but that is a developer's sentence, and it is the whole
+lettering lane that is gone.
+
+Two things worth keeping beyond the fix:
+
+- **A `base` setting is a claim, and a claim in config is as testable as one in
+  prose.** `./` promised path-independence the code did not deliver, for as
+  long as both have existed.
+- **`file://` is not the fallback you think it is.** Opening `dist/index.html`
+  directly is blocked by CORS for ES modules — a blank page, no app at all. So
+  `base: "./"` buys nothing there either; the only deployments that exist are
+  "served at a root" and "served under a path".
+
+The guard is source-level (`app/src/lib/assetPaths.spec.js`), because the bug
+was one call site not following a rule the others did. The behavioural version
+needs a built bundle on a static server, which is what the measurement above
+did by hand.

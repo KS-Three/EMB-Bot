@@ -10,7 +10,7 @@ describe("creditLines", () => {
   it("sorts by display name and carries license fields through", () => {
     const lines = creditLines(FONTS);
     expect(lines.map((l) => l.name)).toEqual(["Alpha", "Bravo"]);
-    expect(lines[0]).toMatchObject({ licenseId: "OFL-1.1", attribution: "Adapted by Y", source: "Ink/Stitch", binHref: "/fonts/bin/a_font.embf" });
+    expect(lines[0]).toMatchObject({ licenseId: "OFL-1.1", attribution: "Adapted by Y", source: "Ink/Stitch", binHref: "fonts/bin/a_font.embf" });
   });
   it("tolerates missing attribution without throwing", () => {
     const lines = creditLines([{ key: "x", name: "X", licenseId: "CC0" }]);
@@ -20,9 +20,17 @@ describe("creditLines", () => {
     // font-license-audit-2026-07-31.md item 7: author/copyright line
     // (attribution, covered above), modification note (CC §3(a)(1)(B)),
     // and a link to the LOCAL LICENSE.txt shipped by copy-engine.mjs.
+    //
+    // Document-RELATIVE since 2026-09-07, like every other hand-written asset
+    // path (see assetPaths.spec.js for the rule and the measurement). These
+    // are a licence-compliance surface, so the change is deliberate rather
+    // than incidental: the absolute form 404s wherever the bundle is served
+    // below the domain root, which would have broken exactly the "the licence
+    // must accompany the font" link this test exists to protect. At the root
+    // both forms resolve to the same URL.
     const lines = creditLines(FONTS);
-    expect(lines[0].licenseHref).toBe("/fonts/a_font.LICENSE.txt");
-    expect(lines[1].licenseHref).toBe("/fonts/b_font.LICENSE.txt");
+    expect(lines[0].licenseHref).toBe("fonts/a_font.LICENSE.txt");
+    expect(lines[1].licenseHref).toBe("fonts/b_font.LICENSE.txt");
     expect(lines[0].modificationNote).toBe(MODIFICATION_NOTE);
     expect(MODIFICATION_NOTE).toMatch(/[Mm]odified/);
   });

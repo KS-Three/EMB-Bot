@@ -428,3 +428,17 @@ skipped everything else in `persist()`'s tail — the storage-failure banner, an
 reading HELLO with every name surface still reading GOODBYE. It now calls
 `persist(false)`; the `false` skips the history record, which was the only
 reason it had its own path. *(pinned by `app/e2e/design-naming.spec.js`)*
+
+**The production bundle is verified, and now works below the domain root
+(2026-09-07).** Every test here runs against `vite dev`; `npm run build` output
+had never been driven. At the domain root it is sound — full lane, 1,356
+stitches, zero failed requests, zero console errors, and the auto-naming above
+survives minification. Served from `/studio/` it produced no stitches at all
+(7x 404 on `/fonts/manifest.json`), because five hand-written asset paths were
+absolute while `vite.config.js` sets `base: "./"` precisely so the bundle is
+path-independent. All five are document-relative now; at the root the two forms
+resolve identically, so nothing about today's deployment changes. Font licence
+links — a compliance surface — were among the five and are verified 200 in both
+deployments. `file://` cannot work at all (browsers block ES modules from a
+`null` origin), so the only deployments in play are root and sub-path.
+*(guard: `app/src/lib/assetPaths.spec.js`)*

@@ -74,7 +74,7 @@
     dispatch("pick", e.detail);
   }
 
-  $: triggerThumb = selThumb || (selected ? "/fonts/previews/" + selected + ".png" : "");
+  $: triggerThumb = selThumb || (selected ? "fonts/previews/" + selected + ".png" : "");
 </script>
 
 <div class="fontselect">
