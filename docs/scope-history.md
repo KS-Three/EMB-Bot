@@ -7063,6 +7063,89 @@ shipped.
 
 ---
 
+## 2026-09-06 — five parked flags measured together, and the grade caught preferring a design that dropped its ink
+
+Kent picked "flip sheet" off four candidates: five flags built, measured and
+OFF, each priced against `main` on its own and each in its own units — cones,
+ΔE00, bare mm², grade. `digitizer/tools/flip_sheet.py` runs seven arms (the
+default, each flag alone, and **all five together — never measured before**)
+over the scorecard's own 26 fixtures at 80 mm / `left_chest`, caching one JSON
+per run so an interrupted pass resumes. A stitch digest — blocks, cones, run
+kinds, micron-rounded coordinates — makes "unchanged" provable rather than
+approximate. Full sheet: `docs/flip-sheet-2026-09-06.md`.
+
+| arm | moved | stitches | trims | blocks | cones | grades |
+|---|---:|---:|---:|---:|---:|---|
+| `dissolve_phantom_blends` | 5/26 | −4,272 | −76 | −9 | −8 | gaulke F 4 → C 64 |
+| `revalidate_small_shapes` | 5/26 | +313 | +6 | +1 | +1 | meadow D 52 → C 64 |
+| `bind_resnap_all_classes` | 5/26 | −614 | −13 | −18 | −17 | gaulke F 4 → F 16 |
+| `satin_per_stroke` | 6/26 | −3,021 | +33 | 0 | 0 | chrome C 64 → B 76; meadow D 52 → C 64 |
+| `satin_patch_junctions` | 3/26 | +789 | +10 | 0 | 0 | scene_stub and becker B 76 → B 88 |
+| all five | 12/26 | −6,070 | −24 | −23 | −22 | five up |
+
+**No grade moves down anywhere, in any arm**, and 14 of 26 fixtures are
+byte-identical with all five on.
+
+**The headline is a retraction, not a win.** MASTER_SCOPE defect 27 carried
+*"gaulke F 0 → C 64 … the difference between 'do not sew' and a usable
+design"*. Measured on the CONES rather than the grade: gaulke is black
+lettering on a white label; `off` loads `1375 Dark Charcoal` (L* 15.9, 288 st)
+and the flag leaves nothing darker than `0145 Skylight` (L* 85.7). All five
+together leave `0015 White` and `3971 Silver` — **two cones, neither one you
+would see on a white ground.** The only arm that loads real Black
+(`bind_resnap_all_classes`) grades **F 16**. `THREAD_MATCH_POOR` grades per
+thread on its worst patch, so deleting the dark cone deletes the badly-scoring
+thread: **the metric rewards not sewing the hard part.** Recorded as
+yardstick-disagreements row 7, and it is a different shape from rows 1–6 —
+those are the metric failing to see an improvement, this is the metric
+preferring a regression.
+
+**Named fast, retracted wrongly, then found — all in one day; the retraction
+is itself retracted.** The fold WAS the cause, by the page-drop path. The
+probe that appeared to exonerate it counted only labels whose pixels changed
+LABEL, and a label sent to the page keeps its label and leaves through
+`base_valid` — counting both, every dark label on gaulke went to the page:
+**12,961 px, 50.3 mm², the 21.0 mm² wordmark included.** One line: `valid`
+inside the pass is `base_valid`, ENCLOSED pixels already removed, so `~valid`
+is not the page but also donut holes, counters and the inside of a label.
+Gaulke is black lettering on a white label on a black canvas, so every letter
+read as bordering the near-black page, and that endpoint deletes rather than
+recolours. Fixed by passing stage 1's real background (`page_mask`), which
+**costs the flag nothing** — bridge_bar keeps 125 → 62 trims and 18 → 12
+blocks, screenshot 71 → 66, gaulke byte-identical, no grade moving either way,
+and the arm becomes the cleanest of the five. Superseded account, kept because
+it is the lesson: 
+The first account — anti-aliased black text sits on the black→white Lab line
+for the reason ringing does, so `_blend_ramp` cannot separate them — does not
+survive instrumenting the pass. At gaulke's 16 px/mm the fold takes **9
+labels, all 0.4-0.6 mm²**, every lettering label (L* 28-47, largest 21 mm²)
+survives stage 2, and `result.palette` carries `0020 Black` in BOTH arms. The
+OUTCOME re-measured on a second main (`258f8e1`) and holds; the dark cone is
+lost **between stage 2 and the sewn block list, not by the fold**, and where
+is open. Two hours after writing a note about one claim living in three files,
+the same session put an unverified mechanism in four. **And the 09-04 corpus
+check could not have caught the outcome either:**
+it recorded gaulke as "a second clear win (blocks 4→3, trims 30→18)" — both
+true, both machine units — because it asked what the flag COST and never asked
+which cones survived. Check the cone list, not only the totals.
+
+**Interaction, the arm's own purpose.** `all` is not the sum of the parts on
+three fixtures: `photo_dof_meadow` goes D 52 → **B 76** where `resnap_small`
+and `satin_stroke` each give C 64 alone; `photo_chrome_specular` and
+`logo_script_tires` each end somewhere neither their single mover nor the
+default reaches. `summit_badge`, `becker_marine_logo` and `logo_hotel_fremont`
+do behave as their single mover.
+
+**Costs named rather than netted.** The −24 net trims hides
+`photo_chrome_specular` at 84 → 116; `satin_patch_junctions` costs becker
++383 stitches, which IS the fix (the K's crotch, 37.2 mm² of bare cloth).
+
+Renders: `docs/renders/flip-sheet-2026-09-06/` — off-vs-all for gaulke,
+bridge_bar, chrome_specular and becker, plus a four-arm lettering crop that
+shows black thread in `off` and `bind_resnap_all_classes` and none in the
+other two.
+
+
 ## 2026-09-07 — the CI wait is twice what every doc said, and the obvious cause is refuted
 
 CLAUDE.md item 7 has said `digitizer` takes **12–18 minutes** since it was

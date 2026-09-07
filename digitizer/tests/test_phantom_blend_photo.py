@@ -31,9 +31,22 @@ residual, not a clean sweep.
 `tools/halo_spools.py` is the instrument that bills it, and it reads 44 halo
 regions before and 2 after. Across the committed corpus it finds halo cones on
 exactly three fixtures — bridge (4), golden_tee (1), gaulke (1) — and none on
-becker, fremont, enthusiast, drone, whitebg, golke, summit or tires, which is
-the evidence that the test is specific to compression artefacts rather than to
-thin features generally.
+becker, fremont, enthusiast, drone, whitebg, golke, summit or tires.
+
+**That was read as "specific to compression rather than to thin features
+generally". It is not, and the flip sheet found the counter-example
+(2026-09-06, `docs/flip-sheet-2026-09-06.md`).** On `logo_gaulke_roofing` —
+black lettering on a white label — this pass removes the design's only dark
+cone: `off` loads `1375 Dark Charcoal` (L* 15.9, 288 st) and ON leaves nothing
+below `0145 Skylight` (L* 85.7), i.e. lettering you would not see on a white
+ground. Verified on two different mains.
+
+**The mechanism first offered for that — "anti-aliased text reads as ringing"
+— is RETRACTED.** Instrumenting the pass on that fixture (16 px/mm) shows it
+folds 9 labels, all 0.4-0.6 mm², while every lettering label (L* 28-47, the
+largest 21 mm²) survives stage 2 and `result.palette` carries `0020 Black` in
+BOTH arms. The dark cone is lost somewhere between stage 2 and the sewn block
+list. Finding where is the open work before this flag can be flipped.
 
 DEFAULT OFF, and that is a RULING rather than a holding position. It moves
 the region set on every gradient-class design, so it went to Kent as a picture
@@ -165,6 +178,49 @@ def test_a_stack_of_rings_all_settles_on_real_labels():
         labels, valid, lab_img, PipelineConfig(), None, 4.0)
     survivors = set(np.unique(out).tolist())
     assert survivors <= {1, 4}, f"a band landed on a dissolved id: {survivors}"
+
+
+def test_an_INTERIOR_band_is_never_sent_to_the_page():
+    """The gaulke regression, in miniature (2026-09-06).
+
+    `valid` here is `base_valid` — stage 2 has already taken the ENCLOSED
+    pixels out of it — so "not valid" is NOT the page: it also covers a donut
+    hole, a letter counter, the inside of a label. Reading it as the page
+    tells any feature sitting beside enclosed ground that it borders the one
+    endpoint that can DELETE it, and the colour test cannot object because
+    such a feature genuinely does lie between its ground and the page.
+
+    Below, columns 30-34 are enclosed — out of `base_valid`, not the page —
+    and the dark band beside them never touches the real background off to
+    the left. Measured both ways: **0 band pixels survive the old read, 80
+    survive with the true mask.** On `logo_gaulke_roofing` that difference
+    was 12,961 px — 50.3 mm² of black lettering on a white label, the
+    21.0 mm² wordmark included — and it cost the design its only dark cone.
+    """
+    dark = np.array([35.0, 0.0, 0.0])
+    h, w = 40, 56
+    labels = np.zeros((h, w), np.int64)
+    lab_img = np.zeros((h, w, 3), np.float64)
+    valid = np.zeros((h, w), bool)
+    page = np.zeros((h, w), bool)
+    page[:, :8] = True                                  # the real background
+    for lbl, lab, x0, x1 in ((1, WHITE, 8, 28), (2, dark, 28, 30),
+                             (3, WHITE, 34, 56)):        # 30-34 = enclosed
+        labels[:, x0:x1] = lbl
+        lab_img[:, x0:x1] = lab
+        valid[:, x0:x1] = True
+
+    def band_kept(page_mask):
+        out, drop, _w = dissolve_phantom_blends(
+            labels, valid, lab_img, PipelineConfig(),
+            np.array([5, 5, 5]), 4.0, page_mask=page_mask)
+        gone = drop if drop is not None else np.zeros_like(valid)
+        return int(((out == 2) & valid & ~gone).sum())
+
+    assert band_kept(page) == 80, "the interior band must survive"
+    assert band_kept(None) == 0, (
+        "the old read must still delete it — if this stops failing, the test "
+        "has stopped discriminating and proves nothing")
 
 
 def test_fewer_than_three_labels_is_a_no_op():
