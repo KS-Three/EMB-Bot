@@ -10025,3 +10025,24 @@ the placement box's width, where Left, Centre and Right genuinely coincide and
 X is already pinned. The caption cannot see any of this either: it reports
 size and stitch count, which a move does not change. **Read the state, not
 the screen, when testing a control that moves something.**
+
+### Auto-fit respects both constraints, on all ten garments (2026-09-07)
+
+`medium_step` lettering, one line and three, against each placement box:
+
+| garment | box mm | 1 line | 3 lines | height used |
+|---|---|---|---|---|
+| hat_front | 127×57 | 127×19 | 101×57 | **100%** — height-bound, width shrank |
+| beanie | 114×64 | 115×17 | 112×64 | **100%** — height-bound |
+| jacket_back | 305×254 | 305×45 | 305×174 | 68% |
+| blanket | 254×203 | 254×38 | 254×145 | 71% |
+| left_chest, full_back, sleeve, tote, patch, towel | square boxes | width-bound | | 57% |
+
+Whichever constraint binds is the one that wins: the two shallow boxes give up
+width to fit three lines, the square ones stay width-bound. Nothing to fix.
+
+Checked because `left_chest` is 4 × 4 in and a square left-chest envelope
+looked worth questioning. It is not: three lines there comes to 102 × 58 mm =
+4.0 × 2.3 in, an ordinary left-chest size, because the design is width-bound
+long before the box's height matters. **Measured before writing the concern
+down, which is why the concern is not in the defect list.**
