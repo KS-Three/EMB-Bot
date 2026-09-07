@@ -1873,3 +1873,135 @@ test("machineBlocksForRows lists every machine block that sews one of the row's 
   expect(machineBlocksForRows(null, [{ id: "icon" }])).toEqual([]);
   expect(machineBlocksForRows(blocks, [])).toEqual([]);
 });
+
+// --- The panel is a product surface, not a build log (2026-09-07) -----------
+//
+// `digitizer/tools/warning_coverage.py` measured 27 distinct codes reaching
+// the panel over the 26-fixture corpus, ELEVEN of them untranslated and
+// rendered in the engine's own words with no severity filter and no sort.
+// Two fired on 20 of 26 fixtures each. These specs pin the fix, and the last
+// one is the tripwire that keeps it fixed.
+
+test("engine telemetry never reaches the rendered list", async () => {
+  stubStorage({});
+  const { SILENT_WARNINGS } = await import("./digitizer.js");
+  // The two most frequent codes in the whole corpus, and the two whose
+  // messages name superpixels and k-medoids.
+  expect(SILENT_WARNINGS.has("PHOTO_SEGMENT_REGION_COUNT")).toBe(true);
+  expect(SILENT_WARNINGS.has("PHOTO_PALETTE_SELECTED")).toBe(true);
+  // A real internal inconsistency with a measured NIL blast radius — a
+  // regression detector for us, not news for a customer (MASTER_SCOPE 30).
+  expect(SILENT_WARNINGS.has("PALETTE_THREAD_MISMATCH")).toBe(true);
+});
+
+test("silencing a code must never disable a feature that switches on it", async () => {
+  stubStorage({});
+  const { SILENT_WARNINGS } = await import("./digitizer.js");
+  // DigitizePanel reads `warningLines` (unfiltered) for the flat-art nudge,
+  // the classification readout, the review-screen notes and the enclosed
+  // banner. Silencing any of these would delete a feature, not a line.
+  for (const code of [
+    "CLASSIFIED_GRADIENT", "CLASSIFIED_PHOTO_SUBJECT", "CLASSIFIED_PHOTO_SCENE",
+    "CLASSIFICATION_UNCERTAIN", "BACKGROUND_ENCLOSED",
+    "SHAPES_MERGED_BY_USER", "SHAPE_SPLIT_BY_USER",
+  ]) {
+    expect(SILENT_WARNINGS.has(code)).toBe(false);
+  }
+});
+
+test("SHAPES_LEFT_UNSEWN steps aside for the enclosed-background banner, and only then", async () => {
+  stubStorage({});
+  const { describeWarnings } = await import("./digitizer.js");
+  const out = describeWarnings([
+    // Every unsewn shape IS enclosed background — the banner already says it,
+    // with a live count. Measured: on all 10 corpus fixtures that emit this,
+    // BACKGROUND_ENCLOSED emits too.
+    { code: "SHAPES_LEFT_UNSEWN", message: "engine prose", count: 3, enclosed_background: 3 },
+    // Mixed, so the banner does not cover it and the customer needs the line.
+    { code: "SHAPES_LEFT_UNSEWN", message: "engine prose", count: 3, enclosed_background: 1, largest_mm2: 156.5 },
+    // An engine predating the field keeps the full sentence — the same
+    // "absent key = default" reading `stitched` uses.
+    { code: "SHAPES_LEFT_UNSEWN", message: "engine prose", count: 1 },
+  ]);
+  expect(out[0].text).toBe("");
+  expect(out[1].text).toContain("3 shapes are planned but not sewn");
+  expect(out[1].text).toContain("157 mm²");
+  expect(out[2].text).toContain("One shape is planned but not sewn");
+});
+
+test("the machine-cannot-run-it seams say what it costs the design, not what is missing from the disk", async () => {
+  stubStorage({});
+  const { describeWarnings } = await import("./digitizer.js");
+  const out = describeWarnings([
+    { code: "PHOTO_BACKGROUND_REMOVAL_UNAVAILABLE", message: "engine prose",
+      reason: "isolated rembg venv not found at /home/user/EMB-Bot/digitizer/rembg_isolated/venv/bin/python" },
+    { code: "PHOTO_FACE_PRIORS_UNAVAILABLE", message: "engine prose",
+      reason: "YuNet model file missing at /opt/models/yunet.onnx" },
+  ]);
+  for (const line of out) {
+    expect(line.text).not.toContain("/home/");
+    expect(line.text).not.toContain("/opt/");
+    expect(line.text).not.toContain("venv");
+  }
+  expect(out[0].text).toContain("Removing or cropping the background yourself");
+  expect(out[1].text).toContain("Check faces closely in the preview");
+});
+
+test("a thread the engine re-matched is reassurance, not a dE00 reading", async () => {
+  stubStorage({});
+  const { describeWarnings } = await import("./digitizer.js");
+  const out = describeWarnings([
+    { code: "THREAD_RESNAPPED_AFTER_DRIFT", message: "engine prose", count: 16,
+      worst_before_de00: 37.3, worst_after_de00: 1.4 },
+  ]);
+  expect(out[0].text).toContain("16 shapes shifted colour slightly");
+  expect(out[0].text).toContain("The preview shows the colours that will sew");
+  expect(out[0].text).not.toMatch(/de00|dE00|37\.3/i);
+});
+
+test("no translated warning speaks engine, and this is the tripwire that keeps it that way", async () => {
+  stubStorage({});
+  const { describeWarnings } = await import("./digitizer.js");
+  // Every code the corpus emits, plus the ones a user's own edits produce.
+  // Payloads are generous on purpose: a translator that reads a field we do
+  // not send here still has to produce a sentence.
+  const codes = [
+    "CLASSIFIED_GRADIENT", "CLASSIFIED_PHOTO_SUBJECT", "CLASSIFIED_PHOTO_SCENE",
+    "CLASSIFICATION_UNCERTAIN", "photo_auto_tier", "BACKGROUND_UNCERTAIN",
+    "INPUT_LOW_RESOLUTION", "BACKGROUND_ENCLOSED", "COLOR_CAP_APPLIED",
+    "DROPPED_SMALL_SHAPES", "ABSORBED_SMALL_SHAPES", "EMPTY_THREAD_LAYER",
+    "HOLE_NEARLY_CLOSED", "SAME_THREAD_SHAPES_MERGED", "SHAPE_TOO_THIN_TO_FILL",
+    "HAIRLINE_STROKES_AS_RUN", "SHAPE_NOT_STITCHED", "BLEND_NO_REGIONS_DECOMPOSED",
+    "LONG_JUMPS_TRIMMED", "BORDER_SKIPPED_TOO_NARROW", "BORDER_LIGHTENED",
+    "SHAPES_DELETED_BY_USER", "SHAPE_EDIT_UNKNOWN_ID", "SHAPES_MERGED_BY_USER",
+    "SHAPE_SPLIT_BY_USER", "EDGE_CAP_APPLIED", "EDGE_CAP_EMPTY",
+    "EDGE_CAP_LIGHTENED", "SMALL_SHAPES_AS_RUN", "THREAD_RESNAPPED_AFTER_DRIFT",
+    "SHAPES_LEFT_UNSEWN", "BACKGROUND_ABSENT", "TONAL_REGIONS_SPLIT",
+    "DUPLICATE_CONE_LAYERS_MERGED", "BORDER_SEAM_SHARED",
+    "PHOTO_BACKGROUND_REMOVAL_UNAVAILABLE", "PHOTO_FACE_PRIORS_UNAVAILABLE",
+  ];
+  // Words that mean something to whoever wrote the engine and nothing to
+  // whoever uploaded a logo. Each one was actually printed to a customer
+  // before 2026-09-07 except the last two, which are here so they never are.
+  const ENGINE_SPEAK = [
+    "superpixel", "k-medoid", "de00", "slic", "rag", "tatami", "streamline",
+    "quantiz", "underlay", "venv", "stderr", "traceback", "cv2", "numpy",
+    "shape_id", "px_per_mm", "argmin", "centroid", "polygon", "raster",
+  ];
+  const out = describeWarnings(codes.map((code) => ({
+    code, message: "ENGINE PROSE — should never be rendered",
+    count: 3, area_frac: 0.4, all_small: false, largest_mm2: 940,
+    stitches: 1572, percent: 13.2, edges: 4, enclosed_background: 1,
+  })));
+  expect(out).toHaveLength(codes.length);
+  for (const line of out) {
+    // Every one of these codes must be TRANSLATED — the fallback ships the
+    // engine's own sentence, which is the whole defect this suite pins.
+    expect(line.text, `${line.code} fell through to the engine message`)
+      .not.toContain("ENGINE PROSE");
+    for (const word of ENGINE_SPEAK) {
+      expect(line.text.toLowerCase(), `${line.code} says "${word}"`)
+        .not.toContain(word);
+    }
+  }
+});

@@ -1891,7 +1891,7 @@ its hedge as it is copied forward** — is why this file is split.
   **34 distinct code strings crossing a module boundary by literal, over six
   sites, every one of them live.** By the rule above that is one more
   zero-yield sweep and the check should not be built. It was built anyway
-  (`digitizer/tests/test_code_wires.py`, 4), and the distinction is worth
+  (`digitizer/tests/test_code_wires.py`, 6), and the distinction is worth
   carrying:
 
   **A SWEEP is judged on what it finds today. A TRIPWIRE is judged on what

@@ -7302,7 +7302,7 @@ failure is silent, customer-facing, and looks exactly like a code that was
 never translated. Contrast `stage7_sequence.py`, which consumes the same
 codes by import: delete one and the package will not load.
 
-`digitizer/tests/test_code_wires.py` (4). **Two ways it could have
+`digitizer/tests/test_code_wires.py` (6). **Two ways it could have
 been decoration, both hit while writing it:**
 
 - The first `_map_keys` sliced the object literal at a nearby `\n  };` and
@@ -7717,3 +7717,84 @@ could not have more**: `warnings_codes.warn()` returns
 oversight; **the field does not exist upstream.** Adding it means assigning a
 severity to each of 57 codes, which is a product call about voice and volume
 rather than a refactor. Recorded, not built.
+
+---
+
+## 2026-09-07 — the panel stops reading like a build log
+
+Kent, tonight: *"burn all of the tokens to make this app saleable tomorrow!"*
+That resolves a product question this session deliberately left open twice.
+The measurement earlier today found **eleven of twenty-seven** emitted warning
+codes reaching the customer in the engine's own words, and stopped there on
+the grounds that suppressing or rewording telemetry is a call about voice.
+It is his call, and he made it.
+
+### What a customer saw before this
+
+| code | fixtures | what it said |
+|---|---:|---|
+| `PHOTO_SEGMENT_REGION_COUNT` | **20/26** | *"produced 58 regions (982 superpixels, 32 after merging), consolidated to 14 thread colors"* |
+| `PHOTO_PALETTE_SELECTED` | **20/26** | *"Palette selected 14 threads for 58 regions (chart-restricted weighted k-medoids)"* |
+| `THREAD_RESNAPPED_AFTER_DRIFT` | 13/26 | *"…had moved off the colour their thread was chosen from … (worst dE00 37.3)"* |
+| `SHAPES_LEFT_UNSEWN` | 10/26 | the enclosed-background banner's own news, again, in raw form |
+| `PALETTE_THREAD_MISMATCH` | 6/26 | an internal per-layer inconsistency with a measured nil blast radius |
+| `BORDER_SEAM_SHARED` | 1/26 | *"both circuits still ride the same line"* |
+
+The two most frequent codes in the entire corpus were superpixels and
+k-medoids.
+
+### Three dispositions, and the reason each is the right one
+
+**Translated (8).** `SMALL_SHAPES_AS_RUN`, `THREAD_RESNAPPED_AFTER_DRIFT`,
+`SHAPES_LEFT_UNSEWN`, `BACKGROUND_ABSENT`, `TONAL_REGIONS_SPLIT`,
+`DUPLICATE_CONE_LAYERS_MERGED`, `BORDER_SEAM_SHARED`, and the two
+machine-cannot-run-it seams. Each says what happened to **their design** and,
+where there is one, what to do: *"Removing or cropping the background yourself
+before uploading gives a noticeably cleaner result."* The drift one is
+reassurance rather than a fault — the engine caught its own error and fixed
+it — so it now ends *"The preview shows the colours that will sew"* instead of
+a ΔE00 reading.
+
+**Silenced (4), in `SILENT_WARNINGS`.** The two telemetry codes, the internal
+`PALETTE_THREAD_MISMATCH` (MASTER_SCOPE defect 30 — every consumer already
+prefers `stats.blocks`, so it is a regression detector for us and not news for
+them), and the dev-only SAM2 note. **They are not dropped from
+`describeWarnings`** — `warningLines` still carries every code, because the
+flat-art nudge and the classification readout branch on codes there, and
+filtering upstream would delete two features instead of two lines. Only the
+rendered list filters.
+
+**Conditionally silent (1).** `SHAPES_LEFT_UNSEWN` returns `""` when every
+unsewn shape is enclosed background, because `BACKGROUND_ENCLOSED`'s banner
+already says it and says it better, with a live count that tracks the user's
+own restores. Measured: **on all 10 fixtures that emit it, the banner emits
+too.** An engine that sends no `enclosed_background` count keeps the full
+sentence — the same "absent key = default" reading `stitched` uses.
+
+### The tripwire that keeps it fixed
+
+Copy rots back. `digitizer.spec.js` now renders **37 codes** through
+`describeWarnings` with generous payloads and asserts that none of them
+contains any of twenty engine words — `superpixel`, `k-medoid`, `de00`,
+`slic`, `tatami`, `underlay`, `venv`, `stderr`, `traceback`, `shape_id`,
+`px_per_mm`, `polygon`, `raster` and the rest — **and that none falls through
+to the engine's own message**, which is the fallback the whole defect lived
+in. Mutation-proved: putting *"the superpixel pass found no background"* into
+one translation reds it with the code and the offending word.
+
+`test_code_wires.py` gained two cases, because `SILENT_WARNINGS` is a **fifth
+by-string crossing and the quietest yet**: a typo in it does not throw, does
+not blank anything, and does not stop the page rendering — the code simply is
+not silenced, and superpixels are back in front of a customer on 20 of 26
+designs. So every silenced code must be a live wire value, and nothing
+silenced may also be a code the panel branches on. Both mutation-proved.
+
+### What this does not fix
+
+The grade. Seven of twenty-six fixtures still read F 0, and twelve of
+fifty-two design/garment combos sit on a clamped zero with true scores from
+−272 to −38. That is MASTER_SCOPE defect 28, it is a scoring question rather
+than a copy one, and un-clamping re-bases every number in the scorecard. The
+report already presents it carefully — *"the grade is a chip and not a hero
+number"* is in `QualityReport.svelte`'s own comment — but a customer whose
+logo comes back F is a sales problem that no wording solves.

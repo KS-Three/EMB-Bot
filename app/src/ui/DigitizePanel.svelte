@@ -7,6 +7,7 @@
     digitize,
     decodedFromDesignCached,
     describeWarnings,
+    SILENT_WARNINGS,
     canonicalShapeEdits,
     editsKey,
     reviewFromJob,
@@ -482,11 +483,31 @@
 
   $: decoded = element.result ? decodedFromDesignCached(element.result) : null;
   $: warningLines = describeWarnings(element.warnings);
-  // BACKGROUND_ENCLOSED gets its own live, actionable banner (below, next to
-  // unstitchedRows) instead of this generic list -- showing both would just
-  // repeat the same fact once as a static server message and once as a count
-  // that tracks the user's own restores.
-  $: otherWarningLines = warningLines.filter((w) => w.code !== "BACKGROUND_ENCLOSED");
+  // Three reasons a warning does not reach this list, and only the first is
+  // about presentation:
+  //
+  //   BACKGROUND_ENCLOSED owns its own live, actionable banner (below, next to
+  //   unstitchedRows). Showing both would repeat one fact as a static server
+  //   message and again as a count that tracks the user's own restores.
+  //
+  //   SILENT_WARNINGS (digitizer.js) is engine telemetry and internal
+  //   diagnostics -- "982 superpixels, 32 after merging", "chart-restricted
+  //   weighted k-medoids" -- which fired on 20 of 26 corpus fixtures each,
+  //   the two most frequent codes in the whole corpus, straight into this
+  //   list. Nothing in them is actionable by the person who uploaded art.
+  //
+  //   An empty `text` is a translator declining THIS instance: SHAPES_LEFT_
+  //   UNSEWN returns "" when every unsewn shape is enclosed background,
+  //   because the banner above already said so and said it better. Measured
+  //   2026-09-07: on all 10 fixtures that emit it, BACKGROUND_ENCLOSED emits
+  //   too.
+  //
+  // `warningLines` itself keeps every code -- the flat-art nudge and the
+  // classification readout below switch on codes there, so filtering upstream
+  // would silently disable them.
+  $: otherWarningLines = warningLines.filter(
+    (w) => w.code !== "BACKGROUND_ENCLOSED" && !SILENT_WARNINGS.has(w.code)
+           && w.text);
 
   // ---- what stage 0 made of the art, and correcting it ----------------------
   //
