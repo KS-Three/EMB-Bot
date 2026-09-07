@@ -551,9 +551,16 @@
     runtime = { ...runtime, workImages: { ...runtime.workImages, [elementId]: workImage } };
   }
 
-  function onFlat(elementId, flat) {
+  // `record` is false when this is a RESTORE rather than an edit — see
+  // restoreArtwork. Rehydrating a saved project's artwork must not become an
+  // undo step: the user did nothing to undo, and undoing it returned
+  // `_hasImage` to false while `runtime.flats` still held the flat, so the
+  // design stayed on screen while the review step called it empty and Next
+  // went disabled. Measured 2026-09-07 — 1473 stitches visible under
+  // "Nothing to stitch yet".
+  function onFlat(elementId, flat, record = true) {
     runtime = { ...runtime, flats: { ...runtime.flats, [elementId]: flat } };
-    elUpdate(elementId, { _hasImage: !!flat });
+    elUpdate(elementId, { _hasImage: !!flat }, record);
   }
 
   // ---- bringing a saved project's artwork back ------------------------------
@@ -599,13 +606,13 @@
       flatten: (img, nColors, removeBg) =>
         flattenRGBA(img.rgba, img.w, img.h, { nColors, removeBg }),
       onImage,
-      onFlat,
+      onFlat: (id, flat) => onFlat(id, flat, false),   // a restore, not an edit
       // A record that will not decode is dropped, not retried: the field is
       // on every step, so a decode failing on every reactive pass would spin
       // forever. Clearing the name too leaves the panel in its honest "no
       // artwork" state rather than showing a filename with nothing behind
       // it — which is exactly the mismatch this whole change removes.
-      onError: (id) => elUpdate(id, { sourcePng: null, name: "" }),
+      onError: (id) => elUpdate(id, { sourcePng: null, name: "" }, false),
       token: () => mine === rehydrateToken,
     });
   }

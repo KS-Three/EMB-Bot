@@ -416,6 +416,15 @@ test("artwork uploaded with the digitizer offline survives a page refresh", asyn
   await expect(caption).toHaveText(before, { timeout: 30_000 });
   await expect(page.getByRole("heading", { name: "What are you putting this on?" })).toBeVisible();
 
+  // Opening a project is a RESTORE, not an edit. The rehydrate publishes
+  // `_hasImage` through the same path an upload does, and letting that record
+  // an undo step meant one press of Undo returned `_hasImage` to false while
+  // `runtime.flats` still held the flat — the design stayed on screen while
+  // the review step called it empty and Next went disabled (measured
+  // 2026-09-07: 1473 stitches visible under "Nothing to stitch yet"). Undo
+  // must have nothing to undo here, because the user did nothing.
+  await expect(page.getByRole("button", { name: "Undo", exact: true })).toBeDisabled();
+
   // And the design is really there, not just a stale caption: the review
   // step's own gate has to agree.
   await page.getByRole("button", { name: "3 Review" }).click();
