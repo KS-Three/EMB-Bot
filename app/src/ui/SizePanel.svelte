@@ -182,7 +182,7 @@
       on:change={onHeightChange}
       aria-label="Height"
     />
-    <select class="unitselect" bind:value={unit}>
+    <select class="unitselect" bind:value={unit} aria-label="Size unit">
       <option value="in">in</option>
       <option value="cm">cm</option>
       <option value="mm">mm</option>

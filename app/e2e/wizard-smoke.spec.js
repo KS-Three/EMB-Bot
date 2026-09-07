@@ -524,3 +524,54 @@ test("a font that can't set the text names the fonts that can — or says none c
   await expect(page.getByText(/No font in this library can stitch/)).toBeVisible({ timeout: 60_000 });
   await expect(page.getByText(/Switch fonts/)).toHaveCount(0);
 });
+
+// Playwright's ARIA snapshot renders each control as `- role "accessible
+// name"`. A control with no name renders without the quoted part, which is
+// what this looks for — the same thing a screen reader would announce as a
+// bare "slider" or "combobox".
+async function unnamedControls(page) {
+  const snap = await page.locator("body").ariaSnapshot();
+  return [...new Set(snap.split("\n").map((l) => l.trim())
+    .filter((l) => /^- (button|slider|spinbutton|textbox|combobox|checkbox|radio|link)\b/.test(l))
+    .filter((l) => !l.includes('"')))];
+}
+
+test("every control in the wizard has an accessible name", async ({ page }) => {
+  // Swept 2026-09-07 across all four steps: exactly ONE control in the app was
+  // unnamed (SizePanel's in/cm/mm select). Most are named implicitly by a
+  // wrapping <label> — the four TextStep sliders read "Letter spacing 0.0 mm",
+  // "Curve 0°", "Rotation 0°", "Slant 0°" — which is easy to break by moving
+  // an input out of its label while everything still LOOKS right.
+  await page.goto("/");
+  expect(await unnamedControls(page), "garment step").toEqual([]);
+
+  await page.getByRole("button", { name: /^Name on a hat/ }).click();
+  await page.getByRole("button", { name: "2 Content", exact: true }).click();
+  await expect(page.locator("span.stats")).toBeVisible({ timeout: 60_000 });
+  expect(await unnamedControls(page), "content step, text").toEqual([]);
+
+  await page.getByRole("button", { name: "Artwork", exact: true }).click();
+  expect(await unnamedControls(page), "content step, artwork").toEqual([]);
+
+  await page.getByRole("button", { name: "3 Review", exact: true }).click();
+  expect(await unnamedControls(page), "review step").toEqual([]);
+
+  await page.getByRole("button", { name: "4 Download", exact: true }).click();
+  expect(await unnamedControls(page), "download step").toEqual([]);
+});
+
+test("a page load produces no console errors and no failed requests", async ({ page }) => {
+  // The only one there has ever been is the /favicon.ico 404 every browser
+  // makes when a page declares no icon — which is also why a customer's
+  // bookmark showed a blank tab. `app/public/favicon.svg` (the topbar's own
+  // accent tile, with a stitch zigzag instead of the word "EMB", which is
+  // illegible at 16 px) settles both.
+  const problems = [];
+  page.on("console", (m) => { if (m.type() === "error") problems.push("[console] " + m.text().slice(0, 160)); });
+  page.on("pageerror", (e) => problems.push("[pageerror] " + e.message.slice(0, 160)));
+  page.on("requestfailed", (r) => problems.push("[requestfailed] " + r.url()));
+
+  await page.goto("/", { waitUntil: "networkidle" });
+  await expect(page.getByRole("heading", { name: "What are you putting this on?" })).toBeVisible();
+  expect(problems).toEqual([]);
+});

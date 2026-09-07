@@ -4,6 +4,14 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>EMB Bot Studio</title>
+    <!-- Same mark the topbar already wears: the accent tile (theme.css
+         `.logomark`, `--accent` #4f46e5) with a stitch zigzag instead of the
+         word "EMB", which is illegible at 16 px. It is a placeholder for a
+         real Fritsch's Stitches mark, not a brand claim — swapping it is one
+         file. Without any icon link a browser requests /favicon.ico on every
+         page load and gets a 404, which was the only console error in a full
+         upload -> digitize -> review -> download -> reload pass. -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <script src="/engine/units.js"></script>
     <script src="/engine/garments.js"></script>
     <script src="/engine/fabrics.js"></script>
