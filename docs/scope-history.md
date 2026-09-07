@@ -8764,3 +8764,47 @@ unit tests cover a design that does.
 `field-chrome.spec.js` pinned the old `N / M` format; updated with the reason
 rather than loosened — what that assertion cares about (the number moves off
 zero) is unchanged.
+
+---
+
+## 2026-09-07 — "try a bigger hoop" on the 40% of garments where there isn't one
+
+Live defect 39. Found by putting three text elements on a Full Back and
+noticing the warning never goes away.
+
+Auto-fit targets the garment's **placement box**. Measured over the shipped
+garment table against the four hoop presets:
+
+| garment | placement box | any hoop fits it? |
+|---|---|---|
+| hat_front | 127.0 × 57.1 mm | 5×7, 6×10, 8×8 |
+| left_chest | 101.6 × 101.6 | 5×7, 6×10, 8×8 |
+| beanie | 114.3 × 63.5 | 5×7, 6×10, 8×8 |
+| sleeve | 76.2 × 76.2 | 4×4, 5×7, 6×10, 8×8 |
+| patch | 88.9 × 88.9 | 4×4, 5×7, 6×10, 8×8 |
+| towel | 152.4 × 152.4 | 6×10, 8×8 |
+| **tote** | **203.2 × 203.2** | **none** |
+| **blanket** | **254.0 × 203.2** | **none** |
+| **jacket_back** | **304.8 × 254.0** | **none** |
+| **full_back** | **304.8 × 304.8** | **none** |
+
+**Four of ten.** Every design on those garments is oversize on every run, and
+the message read "Exceeds your 8×8 in hoop" — naming the chosen hoop as though
+a bigger one would help. 8×8 is the biggest one offered.
+
+`hoopFitNote` now separates the three fixes, which are genuinely different:
+
+| case | message |
+|---|---|
+| only the rotated orientation fits | Exceeds your 5×7 in hoop — rotate the design 90° and it fits *(unchanged)* |
+| a bigger preset fits | Exceeds your 4×4 in hoop — **a 5×7 in hoop fits it** |
+| nothing fits | Exceeds your 8×8 in hoop, **and every hoop this app offers — make it smaller under Size** |
+
+The middle one is information the app already had and made the customer work
+out for themselves.
+
+**Message only.** Whether auto-fit should cap to the hoop is the open question
+area 3 carries, and it is Kent's — capping would silently shrink every
+back-of-jacket design. The four impossible garments are asserted as a SET, so
+adding a garment or a bigger hoop preset surfaces in the tests rather than
+quietly changing what 40% of the picker says.
