@@ -9535,6 +9535,34 @@ Five new tests in `test/dst.test.js`, mutation-proved three ways: reverting to
 always-jump, dropping the chain rule, and letting a trim not cut the chain each
 fail at least one.
 
+### And the comparison is now standing, not a one-off
+
+`tools/crossval-stitch-formats.mjs` gained a third fixture — a 300-unit segment
+between two stitches — and reports the **longest SEWN segment** each reader
+sees (consecutive needle-down records, any other command breaking the chain).
+Three new pins in `test/crossval-stitch-formats.test.js`:
+
+| | decoded stitches | longest sewn |
+|---|---|---|
+| `dst.long` | more than expected — split | **121 units** |
+| `exp.long` | more than expected — split | **127 units** |
+| `pes.long` | exactly expected — no split | **300 units = 30 mm** |
+
+The PES row is a `DOCUMENTS KNOWN DEFECT` pin in this file's own convention:
+PEC's long form reaches ±2047, so nothing in the FORMAT forces a split, and
+imposing one means importing a limit from another format — a machine-behaviour
+call, not a spec one. Left to Kent, and the pin says so.
+
+What this harness could not see before is precisely what bit: it only ever
+encoded an 18 × 8 mm fixture, where no segment is close to a record's reach.
+
+One thing observed and not explained, recorded rather than smoothed over:
+pystitch reports `JUMP 1` for the EXP file and `JUMP 0` for the DST one on an
+identical **zero-length** leading jump. It is a no-op either way, and real
+designs carry their travel IN the jump record — decoded from a real
+`medium_font` design, both files start `J J J J S S S`, four jump records for
+the 448-unit travel and then stitches, which is correct in both.
+
 ### What is NOT fixed, and is Kent's
 
 The engine emits those segments in the first place. Across the 85 shipped fonts
