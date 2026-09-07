@@ -1068,6 +1068,44 @@ its hedge as it is copied forward** — is why this file is split.
 
 ## Gotchas — cost someone a session once
 
+- **A "CLOSED, confirmed by code read" entry survived three weeks because the
+  code WAS right and the product was not.** MASTER_SCOPE's DST section said
+  the axis bug was unreachable from the real product: *"Auto-digitized designs
+  leave by pyembroidery `/export`"*, confirmed 2026-08-17 by reading the code.
+  `isPurelyDigitized` does say that, and reads correctly in isolation. What a
+  code read cannot see is that **`defaultProject()` seeds an empty text
+  element** which a customer who uploads a logo never removes — so
+  `every(el => el.type === "digitized")` was false for essentially every real
+  design, the `/export` preference never fired, and **every** DST left by the
+  browser codec.
+
+  **Measured on the artifact, not the code** — downloaded from the shipped UI,
+  decoded with `pystitch`, the same third-party reader CI cross-validates
+  against. The app claimed `81×16 mm`:
+
+  | | bbox pystitch reads | colour |
+  |---|---|---|
+  | browser DST | **16.3 × 80.5 mm** | **0 COLOR_CHANGE, 1 SEQUIN_MODE + 10 SEQUIN_EJECT** |
+  | service DST | 80.5 × 16.3 mm | 1 COLOR_CHANGE |
+  | PES (either) | 80.5 × 16.3 mm | 1 COLOR_CHANGE, 2 threads |
+
+  The colour-change byte is not merely unread — on a two-colour design it
+  decodes as **switch to sequin mode and eject ten sequins**. That is a job
+  that goes wrong loudly, not quietly.
+
+  **The lesson is about the word "confirmed".** A code read confirms what the
+  code says; only running the product confirms what the customer gets. Both
+  entries were written honestly and the second one is what caught the first.
+  When a closure rests on a code read, say so in the pointer — that entry did,
+  which is the only reason this was checkable.
+
+  **And the trade-off, stated because it is real:** `dstimport.js` is
+  transposed too, so a service-encoded DST re-imported into EMB-Bot now reads
+  `16×81`. The two bugs used to cancel for a browser→browser round trip. The
+  machine is the side that matters — a stitch file exists to be sewn — but
+  fixing the codec remains Kent's call, and this makes the import half
+  reachable where it was not before. *(measured 2026-09-07)*
+
 - **When you fix a rule, COUNT ITS READERS FIRST. Three defects in one
   session were the same shape.** Each was one question being answered in more
   than one place, with only one place right:

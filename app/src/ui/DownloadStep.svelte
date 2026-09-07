@@ -3,6 +3,7 @@
   import { generateAll } from "../lib/generate.js";
   import { exportDesignPreferService, exportWorksheetPDF, exportPNG } from "../lib/exporters.js";
   import { chartIdForProject } from "../lib/designChart.js";
+  import { isSewable } from "../lib/flow.js";
   import { triggerDownload } from "../lib/download.js";
   import { EMB } from "../lib/emb.js";
   import { PALETTE_INDEX, STUDIO_PALETTE, getCachedPalette, loadPalette, nearestInList, loadPreferredPaletteId, savePreferredPaletteId } from "../lib/threads.js";
@@ -47,8 +48,26 @@
   // stays on the browser path too -- there's no way to export "part" of a
   // combined design through two different encoders.
   function isPurelyDigitized(project) {
-    const els = project.elements || [];
-    return els.length > 0 && els.every((el) => el.type === "digitized");
+    // Only elements that actually SEW count. Every project is born holding an
+    // empty text element (defaultProject), and a customer who uploads a logo
+    // never removes it — so `every(el => el.type === "digitized")` was false
+    // for essentially every real design, and this gate never fired.
+    //
+    // Measured 2026-09-07 by downloading from the shipped UI and decoding
+    // with pystitch, the same third-party reader CI cross-validates against:
+    // the app claimed 81x16 mm, and the DST a customer gets read back
+    // **16.3 x 80.5 mm with 0 threads** — the quarter turn and the
+    // unrecognised colour-change record of CLAUDE.md footgun 1. PES from the
+    // same design read 80.5 x 16.3 with 2 threads.
+    //
+    // The scoping ruling is unchanged and deliberate — lettering and manual
+    // designs stay on the browser encoder, the one with sew evidence behind
+    // it, and a design genuinely MIXING sewable types still does too, because
+    // there is no way to export part of a combined design through two
+    // encoders. What changes is that a placeholder which contributes no
+    // stitches no longer counts as "mixing".
+    const sewable = (project.elements || []).filter(isSewable);
+    return sewable.length > 0 && sewable.every((el) => el.type === "digitized");
   }
 
   // Encoder provenance, surfaced rather than left implicit.

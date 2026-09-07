@@ -357,14 +357,14 @@ fifth independent corroboration from Ink/Stitch's `pystitch`:
 orientation elsewhere; `digitizer/README.md`'s "browser DST stays the default"
 is about which encoder Studio picks.
 
-**CLOSED — the "unreachable from the real product" claim was false when
-written.** Auto-digitized designs leave by pyembroidery `/export`, lettering and
-manual stay on the browser codec (the sew-evidenced combination), and the
-download step warns before every browser-DST download.
-*(confirmed 2026-08-17 — code read, commits dated)*
-
-**Resolution path:** a sew-out or third-party read of a browser-encoded DST.
-Fixing the codec is **Kent's call** — every existing EMB-Bot DST is affected.
+**RE-OPENED and FIXED 2026-09-07 — the 2026-08-17 "CLOSED" was a CODE READ, and the code was
+right while the product was not.** `isPurelyDigitized` required EVERY element to be `digitized`
+and `defaultProject()` seeds an empty text one a logo customer never removes, so `/export`
+never fired and **every** DST left by the browser codec. The resolution path's third-party read
+is DONE, from the shipped UI via pystitch: browser **16.3×80.5 mm, 0 COLOR_CHANGE, 1
+SEQUIN_MODE + 10 SEQUIN_EJECT**; service 80.5×16.3, 1 COLOR_CHANGE. The gate now counts only
+elements that SEW. `dstimport.js` stays transposed — a service DST re-imported HERE reads
+16×81, the bugs used to cancel — and that fix is still Kent's. *(2026-09-07 — DOCTRINE)*
 
 **The cross-validation harness is ALIVE again — revived 2026-08-21.** It
 reproduced the DST transposition exactly (rms 0.0) and caught the broken browser
@@ -606,11 +606,11 @@ content path, four export formats, and the embroidery field's own chrome.
 **What holds it at Medium:** fabric-preset accuracy is sew-out-gated, and no
 sew-out has happened. See Cross-cutting issues.
 
-**The two engines' fabric tables disagreed for a month, and now can't (2026-09-07).**
-Corpus law 26 (`edge_lattice` → `edge_run` under a knit fill) reads shipped 2026-08-05 but landed
-in Python only, so the browser ran an extra crosshatch pass on left_chest, beanie and sleeve —
-+1.4% to +5.7% stitches, across three live Studio lanes. Ported; both tables plus `FILL_ROW_MM`/ `SATIN_SPACING_MM` are now compared field-for-field by `test_fabric_wire.py` (5 tests, 7 mutations
-proved), asserting AGREEMENT only — the numbers stay gate 1. *(2026-09-07 — DOCTRINE)*
+**The two engines' fabric tables agree again, and a test keeps them so (2026-09-07).**
+Corpus law 26 (`edge_lattice` → `edge_run` under a knit fill) landed in Python only, so the
+browser ran an extra crosshatch pass on left_chest/beanie/sleeve for a month (+1.4–5.7%
+stitches). `test_fabric_wire.py` compares both tables field-for-field and asserts AGREEMENT
+only — the numbers stay gate 1. *(2026-09-07 — DOCTRINE)*
 
 **A Studio change is not verified until it has been *looked at* in a browser.**
 A 2026-08-25 sweep found a white-on-white CTA and a silent canvas menu; 2026-09-07,
