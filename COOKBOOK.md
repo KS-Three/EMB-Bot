@@ -1158,6 +1158,15 @@ and controllable to the user.
     every engine file it needs registering in all THREE places (see
     "Engine-file lists live in THREE places" in the font-library section).
   - `fabrics.js` — 7 fabric presets driving pull-comp/underlay/density/trim.
+    **Hand-ported to `digitizer_core/fabrics.py` and they must not drift** —
+    the two engines have to make the same physical choice on the same
+    garment. They DID drift for a month (corpus law 26 landed in Python only;
+    the browser ran an extra crosshatch pass under every knit fill on
+    left_chest/beanie/sleeve, +1.4–5.7% stitches). `digitizer/tests/
+    test_fabric_wire.py` now compares both tables field-for-field, both
+    `GARMENT_FABRIC` maps, both fallback defaults, and the second hand-copied
+    pair `FILL_ROW_MM`/`SATIN_SPACING_MM`. It asserts AGREEMENT, never a
+    value — the numbers themselves are gate 1.
   - `flatten.js` — medianCut → modeFilter → absorbSmallRegions pipeline.
   - `fonts/` — pre-digitized font library: `manifest.json` (85
     shipping fonts — recount it, the number drifts) + `bin/*.embf` binaries
@@ -1179,7 +1188,24 @@ and controllable to the user.
   model, v2 = `{version,garmentId,selectedId,elements:[...]}`), `generate.js`
   (bridges to engine), `combine.js` (multi-element stitch merge), `preview.js`
   (2.5D canvas render), `projects.js` (localStorage save/load registry),
-  `threads.js` (named thread-color catalog), `hints.js` (onboarding).
+  `threads.js` (named thread-color catalog), `hints.js` (onboarding),
+  `flow.js` (the step gates — its `isSewable` is the ONE definition of
+  "this element has real content", read by the Next button, the review
+  headline and the review recap; do not write a fourth), and three modules
+  added 2026-09-07, each because a rule had grown a second answer:
+  `summary.js` (the review recap, one branch per element type — the
+  `{:else}` it replaced assumed text and described an auto-digitized logo as
+  `Text — ""`), `imageSource.js` (restores an `image` element's pixels from
+  `element.sourcePng` on project load — they used to live only in App's
+  unpersisted `runtime` and a refresh deleted them), and `designChart.js`
+  (which thread chart the design's cones came from, as a store because
+  `ThreadPicker` has nine call sites).
+
+  **What is persisted is what survives.** `projects.js` is a plain
+  `JSON.stringify(project)`, so anything an element does not carry is gone on
+  reload. `runtime` (`{flats, workImages}`) is deliberately NOT persisted —
+  that is why `image` elements keep `sourcePng` and why `imageSource.js`
+  exists.
 - **`digitizer/`** — Python auto-digitizing engine + optional FastAPI
   service (`digitizer_core/` importable lib, `digitizer_service/` wrapper).
   Own venv, own test suite, own docs. See "The Python digitizer" above.
