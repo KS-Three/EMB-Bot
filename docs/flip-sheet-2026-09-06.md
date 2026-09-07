@@ -184,6 +184,31 @@ stitches and −62 trims — bridge_bar's 125 → 62 is most of it — at the co
 the one grade in the corpus that any arm takes down. That is now a two-row
 read rather than a judgement call.
 
+### And `all six` — the arm this sheet twice had to call unmeasured
+
+`all` predates the sixth flag and keeps its five-flag meaning so its published
+row stays comparable. `all6` is the honest "flip everything" arm, measured
+2026-09-07:
+
+| arm | moved | stitches | trims | blocks | cones | grades |
+|---|---:|---:|---:|---:|---:|---|
+| `rec4_mask` | 11/26 | −2,965 | +32 | −22 | −21 | **5 up, 0 down** |
+| all five | 12/26 | −5,719 | −28 | −21 | −20 | 5 up, 1 down |
+| **`all6`** | 12/26 | **−5,865** | **−37** | **−26** | **−25** | 5 up, **1 down** |
+
+The sixth flag is additive here too — against `all` it buys a further −146
+stitches, −9 trims, −5 blocks and −5 cones, and takes gaulke to **D 46**
+instead of stopping at F 16. **It neither creates nor fixes the one grade that
+falls**: `logo_script_tires` A 100 → B 88 is the `halo` + `satin_patch` pair,
+identical in both.
+
+**So the real decision is two rows.** `all6` beats `rec4_mask` by **−2,900
+stitches and −69 trims** corpus-wide — a fifth of the corpus's thread and most
+of its cutting — and costs exactly one thing: tires drops A → B on a single
+`TRIM_HEAVY` warn, because `dissolve_phantom_blends` leaves that fixture 0.11
+under the 4.1 ceiling and the patch pass then adds three trims. Whether one
+warn on one fixture is worth that is a product call, not a measurement.
+
 ## What I would do
 
 **Flip `rec4_mask`** — `rec4` plus the sixth flag, measured 2026-09-07 as its
@@ -228,6 +253,13 @@ show. Judge this pair on the ΔE00 and the cone list, not on its grade column.
 
 If the chrome trim cost (84 → 116) is unwelcome, drop `satin_per_stroke` and
 keep four grades up for +1 trim corpus-wide.
+
+**`all6` is the live alternative and I would not argue hard against it.** It is
+better on every machine axis by a wide margin; what it costs is the one grade,
+and this sheet's own floor caveat cuts both ways — a fixture at A 100 has room
+to fall in a way the floored ones do not, so that B 88 is one of the few grade
+moves here that means what it says. `rec4_mask` is the choice that never has to
+be defended; `all6` is the choice that sews less thread.
 
 **Hold `dissolve_phantom_blends` a little longer, but not for its own sake.**
 On its own it is the cleanest of the five (−67 trims, no grade moving either

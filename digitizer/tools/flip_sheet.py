@@ -115,6 +115,20 @@ ARMS: dict[str, dict] = {
         "dissolve_phantom_blends": True,
         "satin_patch_junctions": True,
     },
+    # Every parked flag at once, including the sixth. `all` predates
+    # `resnap_mask_matches_grader` and deliberately keeps its five-flag
+    # meaning so its published row stays comparable; this is the honest
+    # "flip everything" arm now. Added because the sheet twice had to say the
+    # six-flag combination was unmeasured, and that is a gap the tool can
+    # close rather than a caveat the reader should carry.
+    "all6": {
+        "dissolve_phantom_blends": True,
+        "revalidate_small_shapes": True,
+        "bind_resnap_all_classes": True,
+        "satin_per_stroke": True,
+        "satin_patch_junctions": True,
+        "resnap_mask_matches_grader": True,
+    },
     "all": {
         "dissolve_phantom_blends": True,
         "revalidate_small_shapes": True,

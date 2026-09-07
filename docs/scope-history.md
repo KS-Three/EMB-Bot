@@ -51,6 +51,22 @@ one distinctive win lands on a floored fixture.**
   disagreement, so it is recorded here and in the flip sheet, NOT as a new row
   on that list. Judge the pair on the dE00 and the cone list, not the grade.
 
+- **`all6` measured — the arm this sheet twice had to call unmeasured.** `all`
+  predates the sixth flag and keeps its five-flag meaning so its published row
+  stays comparable; `all6` is the honest "flip everything".
+
+      rec4_mask  11/26  -2,965 st  +32 tr  -22 blocks  -21 cones  5 up, 0 down
+      all        12/26  -5,719 st  -28 tr  -21 blocks  -20 cones  5 up, 1 down
+      all6       12/26  -5,865 st  -37 tr  -26 blocks  -25 cones  5 up, 1 down
+
+  The sixth flag is additive here too (-146 st, -9 tr, -5 blocks, -5 cones
+  against `all`, and gaulke reaches D 46 rather than F 16), and it **neither
+  creates nor fixes the one grade that falls** — `logo_script_tires`
+  A 100 -> B 88 is the `halo` + `satin_patch` pair, identical in both arms.
+  **So the decision is two rows:** `all6` beats `rec4_mask` by -2,900 stitches
+  and -69 trims corpus-wide and costs one warn on one fixture. That is a
+  product call, not a measurement.
+
 ---
 
 **Last updated:** 2026-09-07 — **the flip sheet's own recommendation, measured
