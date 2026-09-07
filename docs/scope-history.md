@@ -9982,3 +9982,22 @@ End to end in a real browser: **3.244 MB → 0.054 MB, a 60× reduction**, in
 370 ms — the alpha mask deflates even harder than the image. zlib is
 lossless, so the printed page is pixel-identical. Not JPEG (0.07 MB, 2 ms):
 thin dark lines on a pale ground is exactly what JPEG ringing damages.
+
+### Three more driven and found sound (2026-09-07)
+
+- **The PNG export** is 1200×414 RGBA for a 102×35 mm design — the aspect
+  matches to within a pixel (1200/414 = 2.90 against 102/35 = 2.91) and the
+  transparent background is what a mockup overlay needs.
+- **The SVG export carries real-world dimensions.** `viewBox="0 0 101.8 35.1"
+  width="101.8mm" height="35.1mm"` — the same 101.8 × 35.1 mm the PES decodes
+  to, so it opens at the right physical size in a vector editor. 19 polylines
+  at a 0.4 mm stroke, which is the satin cross pitch.
+- **The stitch simulator plays the whole design and stops.** Auto-plays on
+  open, advances monotonically (322 → 552 → 777 → 1,003 → 1,234 → 1,437 over
+  5.4 s, about 225 stitches a second), and its total is exactly the caption's
+  1,437. Transport is Pause and Playback speed; zero console errors.
+
+  A first probe reported the counter frozen at 335 — the run had clicked a
+  button matching `/^(Play|Pause|▶)/`, which on an ALREADY-PLAYING simulator
+  is Pause. Same class as the Redo and aria-label probe errors above: the
+  harness, not the app.
