@@ -9461,3 +9461,23 @@ was building its expectation from a comma-stripped Number**, so it compared
 now compares the STRINGS, which is what a person reads.
 
 studio **1025/1025** · e2e **45/45**. Mutation: ungrouping the total fails it.
+
+### And the PDF worksheet was arguing with itself
+
+Sweeping every place the app renders a stitch count turned up one more, on the
+document that actually goes to the machine:
+
+```
+Stitch count: 26676
+Color count: 2
+Stabilizer: cutaway (over 8,000 stitches - tear-away releases under this much thread)
+```
+
+Two lines apart, on one sheet. The cutaway line has always grouped. Fixed with
+`toLocaleString("en-US")` — explicit locale for the same reason that line uses
+it: a PDF's text should not change with the machine that generated it. The
+Studio's on-screen counts keep the bare `toLocaleString()`, which follows the
+viewer's locale and is the right default there.
+
+That is now every stitch count in the product: caption, simulator, quality
+report, digitize panel, design panel, review summary, worksheet.

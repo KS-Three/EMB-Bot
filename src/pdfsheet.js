@@ -104,7 +104,14 @@ const deps =
       "Dimensions: " +
         widthIn.toFixed(2) + " in x " + heightIn.toFixed(2) + " in  (" +
         widthMM.toFixed(1) + " mm x " + heightMM.toFixed(1) + " mm)",
-      "Stitch count: " + stitchCount,
+      // Grouped, like the cutaway line four lines down — which has always
+      // said "over 8,000 stitches" while this one printed a bare 26676 two
+      // lines above it, on the same sheet. Explicit "en-US" for the same
+      // reason that line uses it: a PDF's text should not change with the
+      // machine that generated it. (The Studio's on-screen counts use a bare
+      // toLocaleString(), which follows the viewer's locale, and that is the
+      // right default there.)
+      "Stitch count: " + stitchCount.toLocaleString("en-US"),
       "Color count: " + colorCount,
     ];
     if (stitchCount > CUTAWAY_STITCHES) {

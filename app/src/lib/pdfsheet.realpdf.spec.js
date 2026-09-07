@@ -225,7 +225,7 @@ describe("buildWorksheetPDF against real jsPDF (byte/structure-level checks)", (
       expect(texts).toContain(
         "Dimensions: 3.94 in x 1.97 in  (100.0 mm x 50.0 mm)"
       );
-      expect(texts).toContain("Stitch count: 4321");
+      expect(texts).toContain("Stitch count: 4,321"); // grouped since 2026-09-07
       expect(texts).toContain("Color count: 2");
 
       expect(texts).toContain("Thread Sequence");

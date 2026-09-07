@@ -135,7 +135,7 @@ test("buildWorksheetPDF renders title, placement, stats, and thread sequence", (
     expect(strings).toContain(
       "Dimensions: 3.94 in x 1.97 in  (100.0 mm x 50.0 mm)"
     );
-    expect(strings).toContain("Stitch count: 4321");
+    expect(strings).toContain("Stitch count: 4,321"); // grouped since 2026-09-07, like the cutaway line
     expect(strings).toContain("Color count: 2");
 
     // Thread sequence: numbered, named, one swatch (rect) per color, in order.
