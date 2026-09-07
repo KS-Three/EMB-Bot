@@ -23,7 +23,7 @@ from digitizer_core.pipeline import digitize
 
 from .conftest import TESTDATA
 
-FLOORED = "photo/screenshot_phone_ui_golke.jpg"   # score 0, raw -272
+FLOORED = "photo/screenshot_phone_ui_golke.jpg"   # score 0, raw -146
 CLEAN = "logo_alpha.png"                          # score 100, raw 100
 
 
@@ -49,11 +49,23 @@ def test_an_unfloored_design_reports_the_same_number_twice():
 
 def test_a_floored_design_reports_its_real_depth():
     """The point of the metric. `score` says 0 for every floored design;
-    `raw_score` says how far under water this one is."""
+    `raw_score` says how far under water this one is.
+
+    **The number moved because the engine got better, and that is the metric
+    working.** This read -272 until Kent flipped the `rec4_mask` set on
+    2026-09-07; on the shipped engine it is -146. The design is 126 points less
+    under water and its printed grade is still F 0 — which is precisely the
+    blindness `raw_score` was added to see through (yardstick-disagreements
+    row 6), now demonstrated by a real improvement rather than argued from a
+    hypothetical.
+
+    NOT pinned to the pre-flip config on purpose. This test is about what the
+    SHIPPED engine reports, so it should move when the shipped engine moves;
+    pinning it would freeze a number no customer gets."""
     rep = _report(FLOORED)
     assert rep["score"] == 0
     assert rep["metrics"]["raw_score"] < 0
-    assert rep["metrics"]["raw_score"] == pytest.approx(-272, abs=30)
+    assert rep["metrics"]["raw_score"] == pytest.approx(-146, abs=30)
 
 
 @pytest.mark.parametrize("fixture", [FLOORED, CLEAN])

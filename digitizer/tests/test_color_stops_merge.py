@@ -25,7 +25,7 @@ from digitizer_core.config import PipelineConfig
 from digitizer_core.pipeline import digitize
 from digitizer_core.threads import rgb_to_lab
 
-from .conftest import TESTDATA
+from .conftest import PRE_REC4_MASK, TESTDATA
 
 HEAVY = "photo/logo_bridge_bar.jpg"     # 17 changes, 18 distinct cones
 QUIET = "logo_alpha.png"                # far under COLOR_STOPS_MAX
@@ -36,7 +36,14 @@ def _run(fixture: str):
     """One digitize + preflight per fixture, reused by every test here.
     Read-only; take an uncached run if one ever needs to mutate."""
     art = TESTDATA / fixture
-    cfg = PipelineConfig(target_width_mm=80.0, garment_id="left_chest")
+    # The five `rec4_mask` flags at their pre-flip values. Kent flipped them ON
+    # 2026-09-07; this file's subject is not one of them, and the flip removes
+    # the CONDITION these tests need — the cone pair they measure consolidates,
+    # the finding they count clears, the shard they name gets re-snapped. Pinned
+    # so each keeps testing its own feature rather than quietly losing it. See
+    # `conftest.PRE_REC4_MASK`.
+    cfg = PipelineConfig(target_width_mm=80.0, garment_id="left_chest",
+                         **PRE_REC4_MASK)
     result, plan = digitize(art, cfg)
     report = pf.run_preflight(result, plan, cfg, image=art)
     hits = [f for f in report["findings"]

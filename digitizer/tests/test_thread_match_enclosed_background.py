@@ -42,7 +42,7 @@ from digitizer_core.preflight import (_owning_region_id, _region_color_errors,
                                       run_preflight)
 from digitizer_core.stage1_prep import prep
 
-from .conftest import TESTDATA
+from .conftest import PRE_REC4_MASK, TESTDATA
 
 GAULKE = "photo/logo_gaulke_roofing.png"
 # The fixture the one real change lands on, a fixture with no runless regions
@@ -68,7 +68,14 @@ def _digest(fixture: str):
     return copies.**
     """
     art = TESTDATA / fixture
-    cfg = PipelineConfig(target_width_mm=80.0, garment_id="left_chest")
+    # The five `rec4_mask` flags at their pre-flip values. Kent flipped them ON
+    # 2026-09-07; this file's subject is not one of them, and the flip removes
+    # the CONDITION these tests need — the cone pair they measure consolidates,
+    # the finding they count clears, the shard they name gets re-snapped. Pinned
+    # so each keeps testing its own feature rather than quietly losing it. See
+    # `conftest.PRE_REC4_MASK`.
+    cfg = PipelineConfig(target_width_mm=80.0, garment_id="left_chest",
+                         **PRE_REC4_MASK)
     result, plan = digitize(art, cfg)
     return art, cfg, result, plan
 

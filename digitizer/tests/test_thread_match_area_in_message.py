@@ -30,7 +30,7 @@ from digitizer_core.config import PipelineConfig
 from digitizer_core.pipeline import digitize
 from digitizer_core.preflight import run_preflight
 
-from .conftest import TESTDATA
+from .conftest import PRE_REC4_MASK, TESTDATA
 
 # The two extremes the measurement named: a 0.58 mm² shard and a 1,648 mm²
 # field, both emitting `block`.
@@ -56,7 +56,14 @@ def _blocks(fixture: str):
     this return copies.
     """
     art = TESTDATA / fixture
-    cfg = PipelineConfig(target_width_mm=80.0, garment_id="left_chest")
+    # The five `rec4_mask` flags at their pre-flip values. Kent flipped them ON
+    # 2026-09-07; this file's subject is not one of them, and the flip removes
+    # the CONDITION these tests need — the cone pair they measure consolidates,
+    # the finding they count clears, the shard they name gets re-snapped. Pinned
+    # so each keeps testing its own feature rather than quietly losing it. See
+    # `conftest.PRE_REC4_MASK`.
+    cfg = PipelineConfig(target_width_mm=80.0, garment_id="left_chest",
+                         **PRE_REC4_MASK)
     result, plan = digitize(art, cfg)
     report = run_preflight(result, plan, cfg, image=art)
     return [f for f in report["findings"]

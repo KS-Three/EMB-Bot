@@ -38,7 +38,7 @@ from digitizer_core.stage4_vectorize import (
 from digitizer_core.pipeline import plan_stitches
 from digitizer_core.warnings_codes import THREAD_RESNAPPED_AFTER_DRIFT
 
-from .conftest import TESTDATA
+from .conftest import PRE_REC4_MASK, TESTDATA
 
 # The fixture the defect was traced on. Its worst thread finding is a 177-px
 # shape — inside the band, and the largest single dE00 the corpus offers.
@@ -50,6 +50,22 @@ DRIFTED = "S43831dcd"
 
 
 def _cfg(**kw) -> PipelineConfig:
+    """This flag ISOLATED, with the other four of the `rec4_mask` set held at
+    their pre-flip values.
+
+    Kent flipped all five ON 2026-09-07. Every number in this file was measured
+    one flag at a time, and with the other four live the comparison silently
+    becomes "today's engine plus or minus one flag" — on
+    `screenshot_phone_ui_golke` that reads 11 cones against 10 and fails
+    `test_the_two_cause_3_fixtures_gain_no_cone_at_all`, which is a real
+    interaction (this flag costs a cone in the presence of the other four) but
+    NOT the promise that test was written to hold. The isolated promise still
+    holds exactly: alone, this flag leaves screenshot on its 16 cones.
+
+    `test_the_operator_promise_holds_on_the_SHIPPED_engine` covers the
+    question that replaces it — what the operator actually loads."""
+    for k, v in PRE_REC4_MASK.items():
+        kw.setdefault(k, v)
     return PipelineConfig(target_width_mm=80.0, **kw)
 
 
@@ -236,6 +252,38 @@ def test_a_small_shape_can_only_take_a_cone_the_design_already_carried(fixture):
         "the flag must not change anything upstream"
     extra = on.cones - off.cones
     assert extra <= on.entry_cones, sorted(extra - on.entry_cones)
+
+
+@pytest.mark.parametrize("fixture", [FIXTURE, "photo/logo_bridge_bar.jpg"])
+def test_the_operator_promise_holds_on_the_SHIPPED_engine(fixture):
+    """The promise that actually reaches a customer, restated for the engine
+    Kent shipped 2026-09-07 rather than for this flag alone.
+
+    The isolated test below says this flag adds no colour stop by itself. That
+    was the operator-side promise while the flag was OFF by default; now that
+    all five of the `rec4_mask` set ship, the honest version is about the whole
+    set: the machine must not load MORE cones than the pre-flip engine did.
+
+    Measured 2026-09-07 on the plan palette: `screenshot_phone_ui_golke`
+    16 -> 11 cones, `logo_bridge_bar` 18 -> 13, and -21 across the corpus. The
+    set sheds colour stops; it does not buy them. (Read on the REGION threads
+    here, which is this file's own unit — a different denominator from the flip
+    sheet's plan palette, and the direction is what is being pinned.)"""
+    shipped = _shipped_cones(fixture)
+    pre = _case(fixture, False).cones          # PRE_REC4_MASK, flag off
+    assert len(shipped) <= len(pre), (
+        f"{fixture}: the shipped engine loads {len(shipped)} cones against the "
+        f"pre-flip {len(pre)} — the set is buying colour stops, not shedding "
+        "them")
+
+
+@lru_cache(maxsize=None)
+def _shipped_cones(fixture: str) -> frozenset:
+    """Region threads under the SHIPPED defaults — no keyword at all."""
+    result = run_stages(TESTDATA / fixture,
+                        PipelineConfig(target_width_mm=80.0))
+    return frozenset(r.thread_index for r in result.regions
+                     if not r.meta.get("enclosed_background"))
 
 
 @pytest.mark.parametrize("fixture", [FIXTURE, "photo/logo_bridge_bar.jpg"])

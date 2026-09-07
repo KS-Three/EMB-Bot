@@ -34,7 +34,7 @@ from digitizer_core import preflight as pf
 from digitizer_core.config import PipelineConfig
 from digitizer_core.pipeline import digitize
 
-from .conftest import TESTDATA
+from .conftest import PRE_REC4_MASK, TESTDATA
 
 TINY = "photo/logo_gaulke_roofing.png"      # 4 cones, the 63.6 -> 58.6 case
 BRIDGE = "photo/logo_bridge_bar.jpg"        # 8 cones, the 21.3 -> 10.3 case
@@ -54,7 +54,14 @@ def _findings(fixture: str):
     return copies — the same rule as the other cached thread suites.
     """
     art = TESTDATA / fixture
-    cfg = PipelineConfig(target_width_mm=80.0, garment_id="left_chest")
+    # The five `rec4_mask` flags at their pre-flip values. Kent flipped them ON
+    # 2026-09-07; this file's subject is not one of them, and the flip removes
+    # the CONDITION these tests need — the cone pair they measure consolidates,
+    # the finding they count clears, the shard they name gets re-snapped. Pinned
+    # so each keeps testing its own feature rather than quietly losing it. See
+    # `conftest.PRE_REC4_MASK`.
+    cfg = PipelineConfig(target_width_mm=80.0, garment_id="left_chest",
+                         **PRE_REC4_MASK)
     result, plan = digitize(art, cfg)
     report = pf.run_preflight(result, plan, cfg, image=art)
     return [f for f in report["findings"]
