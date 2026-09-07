@@ -283,11 +283,25 @@ These are the ones that cost real time here.
   `PipelineConfig`'s 70 dataclass fields:
   `.venv/bin/python -c "from dataclasses import fields; from digitizer_core.config import PipelineConfig; print(sorted(f.name for f in fields(PipelineConfig)))"`
 
-- **`app/scripts/ensure-digitizer.mjs` is Windows-only.** It looks for
-  `.venv/Scripts/python.exe` and, on Linux, just warns
-  `digitizer venv not found (…Scripts/python.exe)` and exits 0. So
-  `npm run dev` **never** auto-starts the digitizer here — start it yourself.
-  (The e2e specs handle both layouts; only this predev hook doesn't.)
+- **`npm run dev` DOES auto-start the digitizer here — do not start a second
+  one.** This entry said the opposite until 2026-09-07, and the opposite was
+  true until 2026-08-26: `app/scripts/ensure-digitizer.mjs` checked only
+  `.venv/Scripts/python.exe`, the Windows layout, and declined on Linux. It
+  checks **both** now (`Scripts/python.exe` and `bin/python`), probes
+  `/health` first so an already-running service is a no-op, and spawns
+  detached so Vite exiting does not kill it.
+
+  **The stale advice costs a session real time, and did in the one that fixed
+  this line**: follow it and you start a duplicate that dies on
+  `[Errno 98] address already in use` — and, worse, you then read the OLD
+  process's output and think your change did not apply. Check
+  `curl -s localhost:8721/health` before starting anything.
+
+  Only when no venv exists at either path does it warn and fall through to
+  the browser lane. The fix's own comment records why it mattered: without
+  it each e2e spec bootstrapped its own service, which is racy under two
+  workers and reads as a flaky suite — 2–3 digitize-* specs failing together
+  while each passes alone.
 
 - **A green `npx playwright test` can be a smaller run than you think.** The
   digitize specs `test.skip` when the service is down. 13 tests pass with it
