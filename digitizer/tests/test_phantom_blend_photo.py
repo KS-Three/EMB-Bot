@@ -31,9 +31,19 @@ residual, not a clean sweep.
 `tools/halo_spools.py` is the instrument that bills it, and it reads 44 halo
 regions before and 2 after. Across the committed corpus it finds halo cones on
 exactly three fixtures — bridge (4), golden_tee (1), gaulke (1) — and none on
-becker, fremont, enthusiast, drone, whitebg, golke, summit or tires, which is
-the evidence that the test is specific to compression artefacts rather than to
-thin features generally.
+becker, fremont, enthusiast, drone, whitebg, golke, summit or tires.
+
+**That was read as "specific to compression rather than to thin features
+generally". It is not, and the flip sheet found the counter-example
+(2026-09-06, `docs/flip-sheet-2026-09-06.md`).** On `logo_gaulke_roofing` —
+black lettering on a white label — this pass removes the design's only dark
+cone: `off` loads `1375 Dark Charcoal` (L* 15.9, 288 st) and ON leaves nothing
+below `0145 Skylight` (L* 85.7), i.e. lettering you would not see on a white
+ground. **Anti-aliased black text on white at 3 px/mm sits on the black→white
+Lab line for exactly the reason ringing does**, so `_blend_ramp` cannot tell
+them apart. The teal case below guards only a band whose colour is OFF that
+line; there is no guard yet for one genuinely on it and genuinely artwork,
+and that is the open work before this flag can be flipped.
 
 DEFAULT OFF, and that is a RULING rather than a holding position. It moves
 the region set on every gradient-class design, so it went to Kent as a picture
