@@ -7988,6 +7988,56 @@ have been the easy sentence and it is not true.
   this was an editorial call to leave to Kent; a *move* is not that call, and
   the file's own rules prescribe it.
 
+### Then the error paths, because that is where a frustrated buyer is
+
+Three bad uploads a real customer would produce: a text file wearing a `.png`
+extension, a 1×1 PNG, and a 20 MB image over the 12 MB limit.
+
+**Two of the three are answered beautifully already.** *"That file isn't an
+image the engine can read. PNG, JPEG, WebP and TIFF all work; PDF and SVG
+don't."* and *"Artwork is 19 MB; the limit is 12 MB. Export it smaller and try
+again."* Both name the problem and the next move. Somebody did that work well.
+
+**The third was accepted and then failed with a repr.**
+
+```
+ValueError: no foreground pixels — the whole image reads as background
+```
+
+`jobs.py` set `job.error = f"{type(exc).__name__}: {exc}"` and `digitizer.js`
+does `throw new Error(job.error)`, so that string is customer copy whether or
+not anyone treated it as such. **And the condition is not pathological**:
+`stage1_prep` raises it for any artwork whose subject the background detector
+eats. A class name and the phrase "foreground pixels", three lines after two
+sentences written for exactly that person.
+
+`digitizer_service/errors.py` maps it, and `job.detail` gains the raw form
+beside the traceback so a developer reading a failed job sees strictly more
+than before.
+
+### The first cut was too broad, and the tests were right
+
+It replaced **every** unmatched exception with one generic sentence. Three
+service tests failed, and reading them was the whole lesson:
+
+- a `boundary_override` whose hole pokes outside its shell fails with a
+  message naming `boundary_override` and the hole;
+- a `merge_shape_ids` of two regions 13.8 mm apart fails with *"does not touch
+  or overlap"*.
+
+**Those are not the engine leaking. They are the caller being told exactly
+which of its own edits was wrong**, which is the only thing that lets the
+Studio — or the person who made the edit — undo it. A generic there destroys
+information and breaks a posture the service documents as "a clean JOB error".
+
+So the map is an **allowlist of artwork-caused failures**, and anything
+unmatched passes through unchanged. That leaves `KeyError: thread_index`
+reachable in principle, which is the status quo and not a regression. Buying
+its way out costs three real contracts, and that is not a trade worth making.
+
+**A test suite that fails a change on its own merits, and turns out to be
+right, is worth more than the change was.**
+
 ### What is still not saleable
 
 The grade. Seven of 26 fixtures read F 0 and twelve of 52 design/garment

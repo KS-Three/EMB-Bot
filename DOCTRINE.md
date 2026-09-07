@@ -270,6 +270,27 @@ Moved verbatim 2026-08-28 — no section was rewritten in the move.
   singly; an unavailable cutout skips prep entirely rather than degrading onto
   prep-alone. **Ships KNOWINGLY INERT for real uploads** — all four acceptance
   photos classify `gradient` at 1.00, which the gate excludes; revisit at gate 2. *(ruled 2026-08-24 — Kent; [area 1](docs/scope/1-auto-digitizing-quality.md))*
+- **The ERROR path is customer copy too — and an error caused by the
+  CALLER'S own edit must keep its own message.** `jobs.py` set
+  `job.error = f"{type(exc).__name__}: {exc}"` and `digitizer.js` throws that
+  at the user, so a 1x1 upload read *"ValueError: no foreground pixels — the
+  whole image reads as background"* three lines after the upload gate's two
+  well-written rejections. Not pathological: `stage1_prep` raises it for any
+  artwork whose subject the background detector eats.
+  `digitizer_service/errors.py` maps the artwork-caused failures and puts the
+  raw form in `job.detail` beside the traceback.
+
+  **The correction is the reusable half.** The first cut replaced EVERY
+  unmatched exception with one generic sentence, and three service tests
+  failed: a bad `boundary_override` and a non-adjacent `merge_shape_ids` fail
+  with messages naming the caller's own edit, which is the only thing that
+  lets it be undone. **Engine-leak and caller-feedback look identical from the
+  job boundary and are opposites.** So it is an ALLOWLIST of artwork failures,
+  and anything unmatched passes through unchanged — `KeyError: thread_index`
+  stays reachable in principle, which is the status quo, and buying it out
+  costs three real contracts. `tests/test_job_errors.py` (9).
+  *(found and fixed 2026-09-07 — scope-history 09-07)*
+
 - **RUN THE APP. A screenshot found in one look what six hours of reading the
   same code did not.** 2026-09-07, after a session spent measuring warning
   voice, code seams and doc budgets by reading source: the Studio was launched

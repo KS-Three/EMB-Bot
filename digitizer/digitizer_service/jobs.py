@@ -20,6 +20,8 @@ import hashlib
 import json
 import threading
 import traceback
+
+from .errors import customer_message, raw as raw_error
 import uuid
 from collections import OrderedDict
 from concurrent.futures import Future, ThreadPoolExecutor
@@ -170,8 +172,14 @@ class JobRegistry:
             except Exception as exc:                      # noqa: BLE001
                 with self._lock:
                     job.state = ERROR
-                    job.error = f"{type(exc).__name__}: {exc}"
-                    job.detail = traceback.format_exc(limit=8)
+                    # `error` is the line the Studio throws at the user
+                    # (digitizer.js: `throw new Error(job.error)`), so it is
+                    # customer copy, not a repr. The raw form goes to `detail`
+                    # alongside the traceback — a developer reading a job now
+                    # sees strictly more than before. See errors.py.
+                    job.error = customer_message(exc)
+                    job.detail = (raw_error(exc) + "\n"
+                                  + traceback.format_exc(limit=8))
                 raise
             with self._lock:
                 job.result = result
