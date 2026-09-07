@@ -197,7 +197,7 @@ one concealed it; entry 2 is a flag that LEFT this list unnoticed for two weeks.
    PHOTO_CLASSES` — the field only turns it ON. The old "confirmed OFF —
    `config.py`" read the FIELD, which stopped deciding two days later: **a
    per-class default cannot be confirmed from a dataclass line.** Ratified
-   2026-09-02, left gate 3; cost is defect 20. *(`pipeline.py:92`)*
+   2026-09-02, left gate 3; cost is defect 20. *(`pipeline.effective_split_tonal`)*
 
 *(added 2026-08-17 — `docs/project-review-2026-08-16.md` §1.6: chaining was absent
 here, so a good-faith flip would have shipped bare-fabric thread unwarned.)*
@@ -762,7 +762,13 @@ measurement read as a current claim.
 3. **Every claim carries a pointer:** `(verb date — source)`. The verb is
    load-bearing and is not optional — `confirmed` means checked against code or
    a passing test, `measured` means a number was produced, `suspected` means
-   neither. A claim with no pointer is unverified by definition. This exists
+   neither. **Name the SYMBOL, not a line number.** Swept 2026-09-07: this file
+   and DOCTRINE carry only eight `file.ext:NNN` references between them —
+   because the convention is already to cite a backticked function — and **two
+   of the eight had drifted**, `stage6_blend.py:295-299` by forty lines onto a
+   different function and `pipeline.py:92` onto the blank line above its own.
+   Both claims were still true; only the pointers had moved, which is the worst
+   kind of stale because the reader lands somewhere plausible. A claim with no pointer is unverified by definition. This exists
    because two suspicions in this document hardened into stated defects as they
    were copied forward, and both were later disproved by measurement; see
    Corrections in [`DOCTRINE.md`](DOCTRINE.md), kept precisely so that pattern

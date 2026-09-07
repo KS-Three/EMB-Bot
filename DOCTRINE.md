@@ -637,7 +637,7 @@ its hedge as it is copied forward** — is why this file is split.
   trusting it" and hardened into a stated defect as it was copied. It computes
   an **unnormalised Laplacian-gain ratio**, so its scale is not comparable to a
   0–1 ratio by inspection, and it discriminates correctly at the shipped
-  threshold. *(confirmed 2026-08-14 — `stage6_blend.py:295-299`)*
+  threshold. *(confirmed 2026-08-14 — `stage6_blend._speckle_ratio`; the line reference this carried, `stage6_blend.py:295-299`, had drifted to a different function by 2026-09-07 — cite the symbol)*
 - **Not a defect, recorded so it isn't re-found:** the noise fixture in
   `test_blend_falls_back_to_ordinary_tatami_on_speckle` never reaches the speckle
   gate — r² is tested first and random noise fails it, so the branch that test is
@@ -1736,3 +1736,29 @@ its hedge as it is copied forward** — is why this file is split.
   `src/app.js`) — so that checker was not built. **Rule: before building a
   checker, sweep for the thing it would catch; then read what it matched, and
   only then decide the pattern.** *(measured 2026-09-06 — scope-history 09-06)*
+
+  **Two more sweeps the next day, and now the DISCRIMINATOR is visible.**
+  Five in all:
+
+  | sweep | raw hits | real |
+  |---|---:|---:|
+  | doc file PATHS still exist | 24 | **0** |
+  | documented TEST COUNTS drifted | 6 | **0** |
+  | `extra:` comment fields, comma-parsed | 4 | 2 |
+  | `file.ext:NNN` still points at its subject | 8 | **2** |
+  | backticked `module.symbol` still defined | 19 | **0** |
+
+  The symbol sweep is the clearest miss: all nineteen "unresolved" were `cfg.*`
+  dataclass fields (indented and type-annotated, so a `^name =` pattern misses
+  them), fixture filenames, third-party calls (`cv2.fillPoly`, `vi.mock`) and
+  attribute access on local variables — **62 of 62 references are live**, and
+  the convention of citing a symbol is sound.
+
+  **What separates the one that paid is not effort, it is what the check
+  RESOLVES AGAINST.** The line-number sweep found two real stale pointers
+  because "does line N contain its subject?" has a single unambiguous ground
+  truth you can go and read. The four that found nothing were pattern-matching
+  prose, where a legitimate narrative sentence and a stale claim look
+  identical. **Budget the resolution step, not the regex** — a sweep whose
+  output has to be hand-classified before it can be believed has not saved
+  anyone the reading. *(measured 2026-09-07)*
