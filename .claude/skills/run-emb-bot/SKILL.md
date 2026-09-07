@@ -303,6 +303,28 @@ These are the ones that cost real time here.
   `EADDRINUSE`. The driver spawns `detached: true` and kills the whole process
   group. By hand: `lsof -ti:5173 -sTCP:LISTEN | xargs -r kill`.
 
+- **Never read a value after a fixed `sleep` — poll until it STOPS changing.**
+  The upload gotcha above says this for the stitch caption; it is the general
+  rule, and it cost three separate wrong conclusions in one session
+  (2026-09-07). Everything here settles asynchronously and at a different
+  pace:
+
+  | what | how long it read the OLD value |
+  |---|---|
+  | Download step's thread list (brand chart loads lazily) | ~580 ms |
+  | `.dgp-stats` after a shape edit re-digitizes | ~2.9 s |
+  | the delta note vs the stats it describes | ~500 ms apart |
+
+  Each of those looked like a defect — "the shopping list ignores the chart",
+  "hiding a shape changes nothing", "the delta contradicts the stats" — and
+  each was a screenshot taken mid-update. Poll for the value to settle and
+  print the timeline; if it never settles, THEN it is a bug and you have the
+  evidence:
+
+  ```
+  eval new Promise(r=>{let last=null,same=0;const t=setInterval(()=>{const v=document.querySelector('.dgp-stats')?.innerText;if(v===last){if(++same>4){clearInterval(t);r(v)}}else{last=v;same=0}},400);setTimeout(()=>{clearInterval(t);r('TIMEOUT '+last)},60000)})
+  ```
+
 - **Never pipe a test run to `tail`** — you get tail's exit code, so a red run
   reads green. (CLAUDE.md says this for pytest; it bites identically for the
   driver: `node driver.mjs smoke | tail` reported `EXIT=0` on a failing run.)
