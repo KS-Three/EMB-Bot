@@ -10300,3 +10300,57 @@ wording stays as is on purpose: an HTTP status means a bad deploy, and the
 person who can act on it is the one deploying.
 
 Suites: engine 505, Studio 1072, e2e 63, doc guards 29.
+
+## 2026-09-07 — the sheet that goes to the machine, looked at for the first time
+
+The worksheet is the only thing EMB-Bot makes that leaves the screen. Three
+tiers of test cover it — a call recorder, a real-PDF byte/structure check, and
+a text-extraction comparison against the screen — and not one of them had ever
+rendered a page to an image. Doing that took one `pypdfium2` call and showed:
+
+    one-colour design -> thread row drawn at y = 11.09 on an 11.00 in page
+                      -> page 2 entirely blank
+
+The operator's colour sequence was not on the sheet. The page-break check ran
+AFTER drawing each row instead of before it, which does both halves at once:
+draws a row that does not fit, then adds a page for content already drawn.
+
+None of the three tiers could see it. **A string is in the content stream
+whether it lands on the paper or past its edge**, and the call recorder logged
+`text(str, x, y)` without recording which page — so it could not have answered
+the question even in principle. It records `page` now.
+
+My own earlier work that day (the trims/thread lines, then the chart label)
+pushed the first row from 10.53 to 11.09. Adding a line to a layout with no fit
+check is how a latent margin becomes a missing row.
+
+**The blank page was already known, and asserted.** `pdfsheet.spec.js` had
+`expect(doc.pageCount).toBe(2)` under a comment saying the second page was
+"mostly blank", that it had been confirmed by hand-tracing the cursorY math,
+and that asserting it was better than papering over it. Right instinct, wrong
+artifact: an assertion says the behaviour is correct, and the test was named
+"correctly-paginated". Nobody had a reason to look after that.
+
+**The sheet also never said the design could not be hooped.** The Download step
+refuses an oversize stitch export until the customer confirms — and rightly
+does not gate the worksheet, which is a reference document. But the sheet
+printed "Hoop: 8x8 in (200 mm x 200 mm)" above a 305.0 mm design, with a
+picture showing it comfortably inside the dashed box, because that box is the
+GARMENT placement area (Full Back, 12 x 12 in), not the hoop. It now carries
+the same sentence the screen shows, in bold, directly under the hoop line it
+contradicts:
+
+    Exceeds your 8x8 in hoop, and every hoop this app offers -- make it
+    smaller under Size
+
+Passed in from DownloadStep rather than re-derived, like the trims and the
+chart label before it.
+
+**And the first guard I wrote for the fix passed against the bug.** It sampled
+colour counts {1, 2, 8, 40}; with the render now 5.5 in, the defect emits a
+blank trailing page at exactly n = 7. The sample straddled it. The tests sweep
+1-45 now, which costs milliseconds and cannot straddle anything. Fifth time
+this session a new test passed against its own subject, and every one was found
+by mutation rather than by reading.
+
+Suites: engine 505, Studio 1077, e2e 64.

@@ -3348,3 +3348,72 @@ The guard is source-level (`app/src/lib/assetPaths.spec.js`), because the bug
 was one call site not following a rule the others did. The behavioural version
 needs a built bundle on a static server, which is what the measurement above
 did by hand.
+
+## Look at the artifact. Bytes and extracted text cannot see a page (2026-09-07)
+
+The printed worksheet is the one thing EMB-Bot makes that physically leaves the
+screen and goes to a machine. Nobody had ever looked at one. Rendering a real
+sheet to an image showed two things at once:
+
+- the single thread row on a ONE-colour design was drawn at y = 11.09 on an
+  11.00 in page — off the paper, so the operator's colour sequence was simply
+  not on the sheet;
+- page two was entirely blank.
+
+Both came from one line: the page-break check ran AFTER drawing each row
+instead of before it, which draws a row that does not fit and then adds a page
+for content already drawn.
+
+**Three tiers of test passed throughout.** `pdfsheet.spec.js` recorded the
+right calls in the right order; `pdfsheet.realpdf.spec.js` built a real PDF and
+checked byte size, page objects, and the Pages tree's declared count;
+`worksheet-numbers.spec.js` extracted the text and matched it against the
+screen. None could see the defect, because **a string is in the content stream
+whether it lands on the paper or past its edge.** A recorder that logs
+`text(str, x, y)` without which PAGE it landed on cannot answer the question at
+all.
+
+`git log` also shows the previous fix that added the trims/thread/chart lines —
+mine, earlier the same day — pushed the row from 10.53 to 11.09. Adding a line
+to a layout with no fit check is how a latent margin becomes a missing row.
+
+### The worse half: a defect that was noticed and then asserted
+
+The blank second page was already known. `pdfsheet.spec.js` asserted
+`pageCount === 2` under this comment:
+
+> "2-color worksheet already spills onto a (mostly blank) second page.
+> Confirmed by hand-tracing pdfsheet.js's cursorY math; not something this test
+> suite should silently paper over, so it's asserted explicitly rather than
+> assumed to be 1."
+
+Someone found it, traced the arithmetic, and refused to paper over it — all
+correct instincts. But the artifact they produced was an **assertion**, and an
+assertion says the behaviour is right. The test was even named
+"correctly-paginated". After that, nobody had a reason to look.
+
+**Noticing a defect and pinning it in a test are not the same act.** If a test
+must encode current-but-wrong behaviour, it has to be marked as such — an
+xfail, a TODO, a line on the defect list — never a plain assertion, and never
+under a name that calls it correct.
+
+## A hand-picked fixture set can straddle the only value that fails (2026-09-07)
+
+The first guard written for the pagination fix swept colour counts
+`{1, 2, 8, 40}` and **passed against the very bug it was written for.**
+
+With the render at 5.5 in, the break-after-the-row defect emits a blank
+trailing page at exactly **n = 7** — the one count where the final row is also
+the row that crosses the margin. The sample straddled it: 2 below, 8 above.
+
+The boundary is not a property of the bug, it is a property of everything
+stacked above the list — image height, how many stat lines, whether a chart
+label is present. **It moves whenever any of those change**, so no fixture set
+chosen by hand stays on top of it.
+
+`Array.from({length: 45}, (_, i) => i + 1)` costs milliseconds here and cannot
+straddle anything. **Where the input is a small integer and the run is cheap,
+sweep the range instead of guessing which values matter.**
+
+Fifth time this session a new test passed against its own subject, and again it
+was mutation that found it, not reading.

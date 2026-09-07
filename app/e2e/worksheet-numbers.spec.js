@@ -107,3 +107,47 @@ test("the worksheet names the chart its codes came out of", async ({ page }) => 
   // ...and says whose numbering it is, matching the screen exactly.
   expect(texts).toContain(`Chart: ${shownChart}`);
 });
+
+test("a design that cannot be hooped says so on the sheet, not only in the export confirm", async ({ page }) => {
+  // The Download step refuses a STITCH export for an oversize design until the
+  // customer confirms ("the machine cannot stitch past the edge of the hoop"),
+  // and rightly does not gate the worksheet — printing a reference sheet is
+  // harmless. But the sheet carried no trace of it.
+  //
+  // Measured 2026-09-07 by rendering a real worksheet to an image and looking
+  // at it: Full Back, a name auto-fitted to the placement area, "Hoop: 8x8 in
+  // (200 mm x 200 mm)" printed above a 305.0 mm design — and the picture below
+  // showed it comfortably inside the dashed box, because that box is the
+  // GARMENT placement area, not the hoop. The one document that goes to the
+  // machine was the one that never mentioned the design cannot be hooped.
+  //
+  // e2e rather than unit because the unit tier only proves pdfsheet.js prints
+  // the sentence it is HANDED; this proves the Studio actually hands it over,
+  // across DownloadStep -> exporters.js -> the engine copy.
+  await page.goto("/");
+  await page.getByRole("button", { name: "Full Back", exact: true }).click();
+  await page.getByRole("button", { name: "Next", exact: true }).click();
+  await page.getByPlaceholder("Type a name or word").fill("FRITSCH'S STITCHES");
+  await expect(page.locator("span.stats")).toContainText(/\d[\d,]* stitches/, { timeout: 20000 });
+
+  await page.getByRole("button", { name: "Next", exact: true }).click();
+  await page.getByRole("button", { name: "Next", exact: true }).click();
+
+  const dl = await Promise.all([
+    page.waitForEvent("download"),
+    page.getByRole("button", { name: /PDF worksheet/i }).click(),
+  ]).then(([d]) => d);
+  const texts = pdfText(readFileSync(await dl.path()));
+
+  // The premise: this design really does exceed every hoop the app offers. If
+  // the garment or the auto-fit changes so it fits, the assertion below would
+  // hold vacuously — so fail loudly instead.
+  const exceeds = texts.find((t) => t.startsWith("Exceeds your "));
+  expect(exceeds, "the sheet states the design exceeds its hoop").toBeTruthy();
+  // Cause, consequence and a lever — the standard every other message here is
+  // held to. It must not merely say "too big".
+  expect(exceeds).toMatch(/hoop/);
+  expect(exceeds).toMatch(/smaller|rotate|fits it/);
+  // And it names the hoop the sheet itself printed two lines above.
+  expect(texts.some((t) => t.startsWith("Hoop: "))).toBe(true);
+});

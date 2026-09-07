@@ -76,6 +76,33 @@ const deps =
       doc.text(hoopLine, MARGIN_IN, cursorY + 0.15);
       cursorY += 0.3;
     }
+    // ...and whether the design actually FITS that hoop.
+    //
+    // The Download step refuses a stitch export for an oversize design until
+    // the customer confirms ("the machine cannot stitch past the edge of the
+    // hoop"), and rightly does not gate the worksheet, which is a reference
+    // document. But the sheet then carried no trace of it. Measured
+    // 2026-09-07 by rendering a real worksheet and looking at it: Full Back,
+    // a name auto-fitted to the placement area, "Hoop: 8x8 in (200 mm x
+    // 200 mm)" printed above a 305.0 mm design -- and the picture below shows
+    // it comfortably inside the dashed box, because that box is the GARMENT
+    // placement area, not the hoop. The one document that goes to the machine
+    // was the one that did not mention the design cannot be hooped.
+    //
+    // Directly under the hoop line, not down in the stats: it contradicts the
+    // line above it, and a reader should meet the contradiction there rather
+    // than eight lines later. Same sentence the screen shows, passed in
+    // rather than re-derived -- two documents about one design must not
+    // phrase the same fact differently.
+    if (options.hoopNote) {
+      doc.setFont(undefined, "bold");
+      for (const line of doc.splitTextToSize(options.hoopNote, PAGE_W_IN - 2 * MARGIN_IN)) {
+        doc.text(line, MARGIN_IN, cursorY + 0.15);
+        cursorY += 0.22;
+      }
+      doc.setFont(undefined, "normal");
+      cursorY += 0.08;
+    }
 
     // Rendered stitch simulation image.
     const canvas = document.createElement("canvas");
@@ -87,7 +114,24 @@ const deps =
     });
     const dataUrl = canvas.toDataURL("image/png");
 
-    const imgSizeIn = PAGE_W_IN - 2 * MARGIN_IN;
+    // The render used to take the full text width, 7.5 in of an 11 in page,
+    // and everything below it was pushed toward the bottom edge with nothing
+    // checking that it fit. Measured 2026-09-07 by rendering a real worksheet
+    // to an image and LOOKING at it: on a one-colour design the single thread
+    // row was drawn at y = 11.09 on an 11.00 in page -- off the paper -- and a
+    // blank second page followed. The operator's colour sequence was simply
+    // not on the sheet.
+    //
+    // Nothing caught it because the row IS in the content stream: text
+    // extraction (worksheet-numbers.spec.js, pdfsheet.realpdf.spec.js) finds
+    // it wherever it sits, on the page or past its edge.
+    //
+    // 5.5 in is a judgement call, not a measurement. It keeps the picture the
+    // dominant thing on the sheet while leaving room for the stats block and
+    // about seven thread rows, so an ordinary design prints on ONE page. The
+    // pagination below is what makes any number correct; this only decides how
+    // often a second page is needed at all.
+    const imgSizeIn = Math.min(PAGE_W_IN - 2 * MARGIN_IN, 5.5);
     const imgY = cursorY + 0.1;
     // The 8th argument is jsPDF's zlib level, and it defaults to NONE — the
     // 900x900 render was embedded as RAW pixels. Measured 2026-09-07 on a real
@@ -198,18 +242,25 @@ const deps =
       cursorY += 0.2;
     }
     const swatchSize = 0.16;
+    const ROW_H = 0.22;
     for (let i = 0; i < colors.length; i++) {
+      // BEFORE the row, not after it. Checking afterwards did both halves of
+      // the defect at once: it drew a row that did not fit (at worst past the
+      // paper's edge, where it is invisible but still "printed"), and then it
+      // added a page for content already drawn -- so a list ending near the
+      // bottom always emitted a blank trailing page. A page is now only ever
+      // added because there is a row to put on it.
+      if (cursorY + ROW_H > PAGE_H_IN - MARGIN_IN) {
+        doc.addPage();
+        cursorY = MARGIN_IN;
+      }
       const color = colors[i];
       const [r, g, b] = rgbCss(color);
       doc.setFillColor(r, g, b);
       doc.rect(MARGIN_IN, cursorY - swatchSize + 0.03, swatchSize, swatchSize, "F");
       const label = (i + 1) + ". " + (color.name || "Color " + (i + 1));
       doc.text(label, MARGIN_IN + swatchSize + 0.12, cursorY);
-      cursorY += 0.22;
-      if (cursorY > PAGE_H_IN - MARGIN_IN) {
-        doc.addPage();
-        cursorY = MARGIN_IN;
-      }
+      cursorY += ROW_H;
     }
 
     doc.save(options.fileName || "worksheet.pdf");

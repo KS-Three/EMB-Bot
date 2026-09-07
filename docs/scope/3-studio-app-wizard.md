@@ -442,3 +442,18 @@ links — a compliance surface — were among the five and are verified 200 in b
 deployments. `file://` cannot work at all (browsers block ES modules from a
 `null` origin), so the only deployments in play are root and sub-path.
 *(guard: `app/src/lib/assetPaths.spec.js`)*
+
+**The printed worksheet, looked at for the first time (2026-09-07).** Three
+tiers of test covered it and none had rendered a page. On a one-colour design
+the thread row was drawn at y = 11.09 on an 11.00 in page — off the paper — and
+page two was blank; the page break ran after each row instead of before it. The
+render is now capped at 5.5 in so an ordinary design prints on ONE page, and
+the break happens before a row is drawn, so a page is only added when there is a
+row to put on it. The sheet also now states whether the design fits the hoop it
+names: the Download step already refuses an oversize STITCH export until the
+customer confirms, but the worksheet said nothing, and its picture shows the
+design inside the GARMENT placement box, not the hoop — so a 305 mm design under
+"Hoop: 8x8 in (200 mm x 200 mm)" looked like it fitted. Same sentence as the
+screen, passed in rather than re-derived. *(guards: `pdfsheet.spec.js` sweeps
+1-45 colours for off-page draws and blank pages; `worksheet-numbers.spec.js`
+pins the hoop verdict end to end)*
