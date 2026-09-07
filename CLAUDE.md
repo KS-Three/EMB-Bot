@@ -188,8 +188,14 @@ cd digitizer && .venv/Scripts/python -m digitizer_service   # service on 127.0.0
 6. **Playwright MCP needs an explicit browser path in this class of sandbox.** `@playwright/mcp`'s bundled `playwright-core` expects a newer browser revision than what's pre-cached at `/opt/pw-browsers/`, and outbound access to Playwright's browser-download CDN is blocked (403) in this environment class — so the plain `npx @playwright/mcp@latest` config fails outright, with no download fallback. `.mcp.json` launches it through `tools/mcp-playwright.mjs` instead, which passes `--executable-path /opt/pw-browsers/chromium` only when that path exists (so a machine without it, e.g. Kent's local setup, still gets normal auto-download behavior). Don't simplify `.mcp.json` back to a bare `npx @playwright/mcp@latest` command. Confirmed 2026-08-03.
 
 7. **Three green checks is NOT a green PR — the fourth is the slow one.** CI runs
-   four jobs on a PR. `engine` and `studio` finish in well under a minute;
-   `digitizer` takes 12–18 minutes and `studio-e2e` several. (A fifth job,
+   four jobs on a PR. `engine` and `studio` finish in well under a minute
+   (p50 0.5 and 0.8) and `studio-e2e` in about three (p50 2.7).
+   **`digitizer` runs 10 to 42 minutes** — measured 2026-09-06 over the last
+   220 completed jobs, not estimated. This line said "12–18" until then, which
+   was TRUE WHEN WRITTEN (medians 15.0–15.2 on 2026-08-27/28) and now holds
+   for **half** of them: the daily median walked 15.0 → 16.5 → 17.6 → 18.7 →
+   20.7 and then jumped to **29.6 on 2026-09-06**, max 41.8. Budget half an
+   hour, and read a 35-minute job as normal rather than stuck. (A fifth job,
    `art-fidelity-baseline`, is push-to-`main`-only and `continue-on-error` — it
    never appears on a PR and gates nothing.) So a PR shows 3/4 green long
    before it is green, and merging there is how `main` has gone red — run 994
