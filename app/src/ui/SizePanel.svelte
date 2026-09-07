@@ -24,16 +24,22 @@
 
   // The width shown always reflects the *actual* generated width
   // (designDims.widthMM), not the requested sizeMm -- the engine clamps
-  // sizeMm to the hoop (typed over-hoop value) or further limits it when a
-  // tall-aspect design is height-bound, so the two can legitimately differ.
+  // sizeMm to the placement box (typed over-box value) or further limits it
+  // when a tall-aspect design is height-bound, and since 2026-09-07
+  // designDims is the stitch bbox, which pull compensation puts slightly
+  // OUTSIDE the box the design was fit to. All three make the requested and
+  // the sewn width legitimately differ.
   // Falls back to the requested sizeMm only before anything has stitched.
   $: widthMm = designDims ? designDims.widthMM : project.sizeMm;
   // Height is never user-editable -- it's always whatever the last
   // generated design came out to, so aspect ratio follows automatically.
   $: heightMm = designDims ? designDims.heightMM : null;
 
-  // Hoop width in mm for the current garment -- upper bound for typed W
-  // input. Infinity (no clamp) when the garment can't be resolved.
+  // The garment's PLACEMENT BOX width in mm -- the upper bound for a typed W.
+  // Named "hoop" for historical reasons and kept that way because every call
+  // site below reads it; it is not the physical hoop, which is a separate
+  // ceiling check (lib/hoop.js: "the hoop is a CEILING check, never a clamp").
+  // Infinity (no clamp) when the garment can't be resolved.
   function hoopWidthMm(p) {
     const garment = p && EMB.getGarment(p.garmentId);
     return garment ? garment.widthIn * MM_PER_INCH : Infinity;
@@ -64,8 +70,34 @@
 
   $: wDisplay = fromMm(widthMm, unit);
   $: hDisplay = fromMm(heightMm, unit);
-  $: wMin = fromMm(MIN_SIZE_MM, unit);
   $: wMax = isFinite(hoopWmm) ? fromMm(hoopWmm, unit) : undefined;
+
+  // The bound is enforced in onWidthChange, NOT as a min/max on the input.
+  //
+  // These two numbers measure different things and it is a category error to
+  // let one police the other: what the field DISPLAYS is the width the design
+  // actually sews (designDims, the stitch bbox), while `hoopWmm` bounds what
+  // the user may REQUEST. A design auto-fit to the garment's placement box
+  // sews slightly wider than that box — pull compensation pushes the satin
+  // rails outward, by 0.2 mm on plain lettering and up to 9.6 mm on the widest
+  // of the 7,470 designs measured 2026-09-07 — so the honest display is
+  // legitimately, permanently over the request bound.
+  //
+  // With max="5.00" on the input that made the FIRST screen of the most common
+  // quick start ("Name on a hat") render an input the browser reports as
+  // `rangeOverflow: true, valid: false` — value 5.05, max 5.00 — on a design
+  // with nothing wrong with it. Any `:invalid` styling, and any future form
+  // validation, would fire on a correct design; the spinner arrows also
+  // refused to move.
+  //
+  // Removing the attributes changes no behaviour a user can reach: every typed
+  // value has always gone through onWidthChange's
+  // Math.min(hoopWmm, Math.max(MIN_SIZE_MM, mm)) clamp, which is untouched.
+  // `wMax` is kept because the title below tells the user the bound in words —
+  // which the bare attribute never did.
+  $: wTitle = isFinite(hoopWmm)
+    ? `Width of the stitched design. Up to ${wMax} ${unit} fits this garment — larger values are scaled down to fit.`
+    : "Width of the stitched design.";
 
   $: warn = !!designDims && (designDims.widthMM < MIN_SIZE_MM || designDims.heightMM < MIN_SIZE_MM);
 
@@ -134,10 +166,10 @@
       class="sizeinput"
       type="number"
       step={stepFor(unit)}
-      min={wMin}
-      max={wMax}
       value={wDisplay}
       on:change={onWidthChange}
+      aria-label="Width"
+      title={wTitle}
     />
     <span class="sizex">×</span>
     <span class="sizelabel">H</span>

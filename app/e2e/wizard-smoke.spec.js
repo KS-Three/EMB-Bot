@@ -461,3 +461,40 @@ test("the review recap names every element, not just the selected one", async ({
   await expect(summary.locator("dt", { hasText: /^Content 1$/ })).toBeVisible();
   await expect(summary.locator("dt", { hasText: /^Content 2$/ })).toBeVisible();
 });
+
+test("the size field and the field caption report one width, and the field is not in an invalid state", async ({ page }) => {
+  // The two numbers a customer sees for the size of their design come from
+  // different places: the field caption reads the design's own widthMM, the
+  // Size panel reads the stitch bbox. Until 2026-09-07 those were different
+  // measurements, and the very first screen of the most common quick start
+  // showed it: caption "127×13 mm" next to a W field reading 5.05 in
+  // (= 128.3 mm) whose own max was 5.00 — so the browser had the input at
+  // `rangeOverflow: true, valid: false` on a design with nothing wrong with it.
+  //
+  // Both halves are asserted here because they failed together and the fix is
+  // in two places: the engine now reports the sewn extent (digitize.js
+  // designExtentMm), and SizePanel no longer puts a REQUEST bound on a field
+  // that displays a SEWN size (the clamp lives in onWidthChange, unchanged).
+  await page.goto("/");
+  await page.getByRole("button", { name: /^Name on a hat/ }).click();
+  await page.getByRole("button", { name: "2 Content", exact: true }).click();
+
+  const stats = page.locator("span.stats");
+  await expect(stats).toBeVisible({ timeout: 60_000 });
+  const caption = await stats.innerText();
+  const capW = Number(caption.match(/(\d+)×\d+ mm/)[1]);
+
+  const w = page.getByLabel("Width");
+  const unit = await page.locator("select.unitselect").inputValue();
+  expect(unit).toBe("in");
+  const fieldMm = Number(await w.inputValue()) * 25.4;
+
+  // The caption rounds to whole mm; agreement to within that rounding is the
+  // strongest claim the two displays can make, and it is the one that broke
+  // (127 vs 128.3 is 1.3 mm apart, not a rounding step).
+  expect(Math.abs(fieldMm - capW)).toBeLessThanOrEqual(0.5);
+
+  // …and the honest number is not fighting a constraint on its own input.
+  expect(await w.evaluate((el) => el.validity.valid)).toBe(true);
+  expect(await w.evaluate((el) => el.checkValidity())).toBe(true);
+});

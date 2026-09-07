@@ -8419,3 +8419,54 @@ it.
 `THREAD_MATCH_POOR` carries `yardstick` in `extra` precisely because a
 severity means nothing without knowing which yardstick judged it. A grade
 quoted without its arm AND its yardstick is not a measurement.
+
+---
+
+## 2026-09-07 — the reported design size was the box, not the thread
+
+**Live defect 34.** Found by driving the shipped Studio, not by a test.
+
+**What the app showed.** "Name on a hat" quick start, Content step, one
+instant: the field caption read `2355 stitches · 127×13 mm · 5×7 in hoop`
+while the Size panel's W field read `5.05` in (= 128.3 mm) with its own `max`
+at `5.00` — `input.validity` reporting `rangeOverflow: true, valid: false`.
+
+**Why.** `buildLetteringDesign` and `buildQualityDesign` reported `fitScale`'s
+target box as `widthMM`/`heightMM`. That box is the INPUT to routing; pull
+compensation (`emitZigzag` pushes the two satin rails apart by `pullCompMm/2`
+each) and the weight preset then move the thread outside it. SizePanel reads
+`combine.js`'s `bboxMmFromStitches` instead, which is the honest number — so
+the two displays had been measuring different things.
+
+**The sweep** (`node`, all 85 shipped `.embf` fonts, engine at `a5a1c5e`):
+
+| designs | outside their own placement box | worst overrun | hoop verdict wrong |
+|---|---|---|---|
+| 7,470 (10 garments × 85 fonts × 3 texts × 3 weights) | 4,898 (65.6%) | +9.6 mm (`manga_impact` "Sam", full_back) | 4 (all hat_front @ 5×7) |
+
+Per-design width under-report over the hat_front slice (747 designs):
+min −0.30, p50 +0.20, p90 +0.90, max +4.00 mm. It runs both ways — 13 of 747
+report WIDER than they sew. Image path: `enthusiast_logo` at hat_front
+reported 127.0 × 25.4 mm and sews 128.6 × 25.2.
+
+**Who read the wrong number.** The field caption; `hoopFitNote`, which gates
+`DownloadStep`'s oversize-export confirm; and `pdfsheet.js`'s printed
+design-size line.
+
+**Fix.** `designExtentMm` in `src/digitize.js`, used by both builders, applying
+`combine.js`'s rule exactly (skip `color` and `end`, keep stitch/jump/trim).
+`SizePanel.svelte` drops the `min`/`max` DOM attributes — the clamp has always
+lived in `onWidthChange` and is untouched — and gains the `aria-label` and a
+`title` naming the bound in words.
+
+**The Python engine was already correct.** `adapter.design_bbox_units` has
+always measured its own stitches. The two engines' record sets differ (JS
+stitch+jump+trim to match `preview.js`'s framing; Python sewn-only) and agree
+anyway: 0 disagreements over 249 lettering designs plus the image path, worst
+gap 0.000 mm. Now pinned.
+
+**Blast radius.** No stitch coordinate moved. Two assertions moved, both
+pinning "we report back the width you asked for": `satinfont.test.js`'s AB
+snapshot (40 → 40.2, stitch count and first/last coordinates unchanged) and
+`generate.spec.js`'s rect w/h contract (60 × 20 → 60.6 × 20.6). The new e2e
+guard was run against the pre-fix engine and fails there.

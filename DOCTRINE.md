@@ -2340,3 +2340,53 @@ its hedge as it is copied forward** — is why this file is split.
   **Every assertion was proved able to fail by mutating the source it reads**
   — six mutations, six reds, tree restored. Do that, or the file is
   decoration. *(measured 2026-09-07)*
+
+- **A number that is the INPUT to a computation, reported as its OUTPUT — and
+  the second display that already knew better.** `buildLetteringDesign` and
+  `buildQualityDesign` both returned `fitScale`'s target box as the design's
+  `widthMM`/`heightMM`. That box is what routing is handed: pull compensation
+  and the weight preset then push the satin rails outward, so the thread lands
+  outside the number naming it. Swept over 7,470 lettering designs (10 garments
+  x 85 shipped fonts x 3 texts x 3 weights), **65.6% sew outside the placement
+  box they were just fit to**, by up to 9.6 mm.
+
+  **The tell was on screen the whole time, and it took driving the app to see
+  it.** The Studio shows the size twice — the field caption from the design's
+  `widthMM`, SizePanel from the stitch bbox — and on the first screen of the
+  most common quick start they read `127×13 mm` and `5.05 in` (= 128.3 mm).
+  The size field's own `max` was `5.00`, so the browser had it at
+  `rangeOverflow: true, valid: false` on a design with nothing wrong with it.
+  Nothing was red. No test compared the two numbers, because each was correct
+  against the thing it was written against.
+
+  **Three rules that generalise:**
+
+  - **When two displays of one quantity disagree, one is measuring the input.**
+    Look for the fit target, the request, the pre-clamp value. The honest
+    display is the one derived from the artifact — here, the stitches.
+  - **A UI constraint and the value it constrains must measure the same
+    thing.** `max` bounded what the user may REQUEST; the field displayed what
+    the design SEWS. A request bound policing a sewn readout is a category
+    error, and it renders as a broken input on a correct design.
+  - **A gate is only as honest as its input.** The hoop CEILING check, which
+    gates `DownloadStep`'s oversize-export confirm, ran on the under-reported
+    number — 4 of the 7,470 said "fits" where the thread needs the hoop
+    rotated. Fixing a check's threshold is worthless while what it reads is
+    the wrong quantity.
+
+  **The Python engine had it right the entire time.** `adapter.design_bbox_units`
+  has always measured its own stitches ("jump/trim/color mark where the needle
+  travels, not where thread lands"). So this was the recurring cross-language
+  divergence again — except the browser held the wrong answer, and nothing
+  compared them. The two engines use DIFFERENT record sets (JS takes
+  stitch+jump+trim to match `preview.js`'s framing, Python sewn-only) and agree
+  anyway, because a jump is emitted at the first point of the run it travels to
+  and a trim at the previous sewn position — both already sewn points. Measured:
+  0 disagreements over 249 designs plus the image path, worst gap 0.000 mm, and
+  now pinned by a test so the day it stops holding is the day it shows up.
+
+  **The blast radius was one number.** Every stitch coordinate is unchanged;
+  exactly one engine snapshot and one Studio assertion moved, both of which were
+  pinning "we report back the width you asked for" (40 → 40.2, 60 → 60.6). The
+  e2e guard was proved to fail on the pre-fix engine before being kept.
+  *(found by driving the app, measured 2026-09-07)*

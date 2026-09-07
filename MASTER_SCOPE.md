@@ -167,6 +167,8 @@ icon. Cloth pointers added to defects 3, 6 and 16 below.
 
 33. **The shopping list renamed the customer's threads — FIXED 2026-09-07.** The Download step's chart selector defaults to `loadPreferredPaletteId()`, which returned **"studio"** — Studio's 56 generic shade names — for anyone who had never chosen one, i.e. every first-time customer. A digitized design's cones are real spools the engine picked out of a 398-colour catalog, so the list re-derived *nearest generic names* and threw the actual numbers away. Measured on real logos at 80 mm: **`logo_bridge_bar`'s 13 distinct cones collapsed to 9 NAMES** — `0501 Sun`, `0713 Lemon` and `6031 Limelight` all printing *"Lemon"*; `0182 Saturn Grey`, `3971 Silver` and `0145 Skylight` all *"Silver Grey"* — so a customer buys nine spools for a thirteen-cone design and the machine stops on a colour they do not have. **And the names were wrong, not merely coarse**: on `logo_golden_tee` the engine's `0670 Cream` printed as *"Natural White"* while its `0630 Buttercup` printed as *"Cream"* — two adjacent rows naming each other's colours — and `0465 Umber` (brown) printed as *"Olive"* (green). **FIXED, DEFAULT ON**: `loadPreferredPaletteId(fallback)` now takes the design's own `review.brandId` and only falls back to `"studio"` when there is none (a lettering-only project) or the id is one this build cannot load. **A SAVED preference still wins**, so anyone who deliberately chose generic shade names keeps them, and the selector is unchanged. Verified in the running app: the list now reads 13 distinct Isacord numbers, the cones the file actually sews. Found by driving the Download step, which no test covers end to end. `threads.spec.js` (4 new). *(found and fixed 2026-09-07 — scope-history 09-07)*
 
+34. **The size the app reported was the box the design was fit to, not the thread — FIXED 2026-09-07.** `buildLetteringDesign` and `buildQualityDesign` both returned `fitScale`'s target — the glyph outline (or the traced polygons) scaled to the garment's placement box — as `widthMM`/`heightMM`. That box is the INPUT to routing: pull compensation and the weight preset then push the satin rails outward, so the thread lands outside the number describing it. Swept over **7,470 lettering designs** (10 garments x 85 shipped fonts x 3 texts x 3 weights): **4,898 — 65.6% — sew outside the placement box they were just fit to**, worst +9.6 mm (`manga_impact` "Sam" on full_back), and **4 tell the hoop CEILING check "fits" when the thread needs the hoop rotated** (hat_front at the suggested 5x7). Image path too: `enthusiast_logo` at hat_front reported 127.0x25.4 mm and sews 128.6x25.2 — it runs both ways, the height reads 0.2 mm SMALL because the fill never reaches the outermost traced point. **Three consumers read the box as thread**: the field caption, the hoop ceiling check that gates `DownloadStep`'s oversize-export confirm, and the printed worksheet. **And SizePanel already showed the honest number** (`combine.js bboxMmFromStitches`), so one design displayed two widths at once — caption "127x13 mm" beside a W field reading 5.05 in = 128.3 mm whose own `max` was 5.00, which the browser reports as `rangeOverflow: true, valid: false` on the FIRST screen of the "Name on a hat" quick start. **FIXED, no flag**: `designExtentMm` (digitize.js) measures the emitted records, same rule as `combine.js`, and SizePanel stops putting a REQUEST bound on a field that displays a SEWN size (the clamp in `onWidthChange` is untouched). **The Python engine was already right** — `adapter.design_bbox_units` has always measured its own stitches — so this was the two engines disagreeing with the browser holding the wrong answer; their two record sets (JS stitch+jump+trim, Python sewn-only) are now pinned as agreeing, 0 disagreements over 249 designs, worst gap 0.000 mm. Exactly one geometry-free number moved in the suites, and the e2e guard was proved to fail on the pre-fix engine. `test/digitize.test.js` (5), `generate.spec.js` (2), `wizard-smoke.spec.js` (1). *(found by driving the app and measured 2026-09-07 — DOCTRINE; scope-history 09-07)*
+
 ### Closed — kept numbered, because ten other docs cite them by number
 
 Full text moved to [`docs/scope-history.md`](docs/scope-history.md) 2026-08-27;
@@ -637,7 +639,7 @@ larger; `DownloadStep` warns before a stitch export that will not fit (confirm,
 not block; PNG and PDF worksheet ungated — not machine files). **Live: the stock
 Tote / Full Back preset is 203.2 mm against a 200 mm max hoop**, so it fires on a
 shipped preset — whether auto-fit should CAP is open. *(2026-09-02 — PR #317;
-`preview.spec.js`, `DownloadStep.spec.js`, e2e)*
+`preview.spec.js`, `DownloadStep.spec.js`, e2e)* **What that gate is fed changed 2026-09-07**: it used the box the design was fit to, which 65.6% of designs sew outside of (defect 34), so it now reads the thread's own extent.
 
 **The digitize panel states what CHANGED and offers the fix.** Shape list behind
 an "Edit shapes (N)" disclosure, closed by default; a re-digitize reads as a
@@ -660,9 +662,7 @@ PDF sheet (`src/render.js`) and the SVG export draw the same width since
 1.2 px floor (1 px on the sheet), so the property holds zoomed in, not on a
 thumbnail. Pinned on the literal 0.4 and both ratios. *(2026-09-04 — `preview.spec.js`)*
 
-**Thread lighting is unverified against real thread** — eye-tuned, no sew-out to
-compare against. Treat the look as a preference, not a calibration.
-*(suspected 2026-08-25)*
+**Thread lighting is unverified against real thread** — eye-tuned, no sew-out to compare against. Treat the look as a preference, not a calibration. *(suspected 2026-08-25)*
 
 ### 4. Export formats — [detail](docs/scope/4-export-formats.md)
 

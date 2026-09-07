@@ -62,12 +62,32 @@ test("layoutText: charIdx accounts for a skipped space and a newline exactly lik
 // carries byte-identity, and 701 is the unchanged pre-refactor number. With
 // underlay ON (the default) this same design is 855 stitches — see
 // "underlay ladder: default-on is a real, intended output change" below.
-test("buildLetteringDesign: straight 'AB' targetWidthMm 40 matches the pre-refactor snapshot", () => {
+//
+// widthMM/heightMM MOVED on 2026-09-07 and the geometry did not: every stitch
+// coordinate below (first, last, and the count) is byte-identical to the
+// pre-refactor capture. What changed is which number the design reports as its
+// size. It used to report the fit TARGET — "you asked for 40 mm, here is 40" —
+// while the thread it emitted spanned 40.2. It now reports the sewn extent
+// (digitize.js designExtentMm), so the two numbers the Studio shows for one
+// design (field caption and SizePanel) finally agree, and the hoop ceiling
+// check runs against thread rather than against the box the thread overflows.
+//
+// The 0.2 mm gap is pull compensation: emitZigzag pushes the two satin rails
+// apart by pullCompMm/2 each (0.2 mm default → 0.1 mm per side → 0.2 mm of
+// width the fit target never accounted for). Underlay ON reports the same
+// 40.2 × 23.0, so the widening is the rails, not the underlay reaching wider.
+test("buildLetteringDesign: straight 'AB' targetWidthMm 40 reports the extent it actually sews", () => {
   const base = { garment: { widthIn: 5, heightIn: 2.25 }, pxPerMm: 8, targetWidthMm: 40, underlay: false };
   const d = DG.buildLetteringDesign(font, "AB", base);
   assert.strictEqual(d.stitchCount, 701, "stitchCount frozen");
-  closeTo(d.widthMM, 40, 0.2, "widthMM");
-  closeTo(d.heightMM, 22.839506172839506, 0.2, "heightMM");
+  closeTo(d.widthMM, 40.2, 0.01, "widthMM = the sewn span, 0.2 mm wider than the 40 mm asked for");
+  closeTo(d.heightMM, 23.0, 0.01, "heightMM");
+  // And it is the stitches' own bbox, not a second opinion about them — the
+  // same rule app/src/lib/combine.js applies for a multi-element design.
+  const geo = d.stitches.filter((s) => s.type !== "color" && s.type !== "end");
+  const xs = geo.map((s) => s.x), ys = geo.map((s) => s.y);
+  closeTo(d.widthMM, (Math.max(...xs) - Math.min(...xs)) / 10, 1e-9, "widthMM is the stitch bbox");
+  closeTo(d.heightMM, (Math.max(...ys) - Math.min(...ys)) / 10, 1e-9, "heightMM is the stitch bbox");
   const sew = d.stitches.filter((s) => s.type === "stitch");
   assert.strictEqual(sew.length, 701);
   assert.deepStrictEqual(sew[0], { x: -56, y: -54, type: "stitch" });
