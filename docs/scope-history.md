@@ -10229,3 +10229,34 @@ against the e2e, four caught and the fifth masked by a second guard that its
 own unit test pins — verified by removing both, which fails the e2e.
 
 Suites: engine 505 pass, Studio 1071 pass, e2e 62 pass.
+
+## 2026-09-07 — the undo path, found by asking what the new feature could break
+
+Auto-naming shipped hung off `persist()`. The question worth asking of any
+change like that is which paths change the state WITHOUT going through it, and
+here there was exactly one: `applyHistorySnapshot()` called `saveProject`
+directly, so undo and redo skipped persist's whole tail.
+
+Measured within the hour, waiting past history.js's 500 ms coalesce window
+between the two edits:
+
+    after HELLO    text "HELLO"    name "HELLO"    index ["HELLO"]
+    after GOODBYE  text "GOODBYE"  name "GOODBYE"  index ["GOODBYE"]
+    after UNDO     text "HELLO"    name "GOODBYE"  index ["GOODBYE"]
+
+A fresh instance of the two-surfaces-disagree family, created by the change
+that was fixing that family elsewhere — caught before it merged. The same call
+site was also swallowing `saveProject`'s return, a third site of the
+silent-write-failure defect, and NOT one the sibling sweep found: it is a
+caller of the write rather than another write.
+
+`persist(false)` fixes both — the `false` skips the history record, which was
+the only reason that path existed.
+
+One test-authoring note worth keeping: the first version of the e2e guard typed
+both words inside the 500 ms window, so they coalesced into one history step
+and a single undo correctly went back to the empty design. The app was right
+and the test was asking the wrong question. The wait is now commented so nobody
+removes it as dead time.
+
+Suites after: engine 505, Studio 1071, e2e 63.

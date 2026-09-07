@@ -420,3 +420,11 @@ routes the failure to the storage banner that already existed. `saveProject`
 deliberately still reports success when only the index write fails — the design
 itself is in its own record and did land. *(DOCTRINE "Where the index IS the
 data, a swallowed write is a lie")*
+
+**Undo/redo goes through the same write path as an edit (2026-09-07).**
+`applyHistorySnapshot()` used to call `saveProject` directly, which meant undo
+skipped everything else in `persist()`'s tail — the storage-failure banner, and
+(from the same day) the auto-name. Undoing a text change left the design
+reading HELLO with every name surface still reading GOODBYE. It now calls
+`persist(false)`; the `false` skips the history record, which was the only
+reason it had its own path. *(pinned by `app/e2e/design-naming.spec.js`)*

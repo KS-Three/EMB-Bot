@@ -185,8 +185,18 @@
   function applyHistorySnapshot(p) {
     if (!p) return;
     project = truthHasImage(p);
-    saveProject(currentId, project);
-    refreshProjects();
+    // persist(false) rather than a bare saveProject: `false` skips the
+    // history record (an undo must not push a new step), and everything
+    // else in persist's tail applies to an undo exactly as it does to an
+    // edit -- the storage-failure banner, and the auto-name.
+    //
+    // The auto-name half was a real defect, measured 2026-09-07 the same
+    // day auto-naming shipped: type HELLO, type GOODBYE, undo -- the
+    // design read HELLO and the topbar, the drawer and the stored index
+    // all still read GOODBYE. An undo is an edit as far as every surface
+    // downstream of it is concerned, and this function was the one path
+    // that changed `project` without going through persist().
+    persist(false);
     syncHistoryFlags();
   }
 

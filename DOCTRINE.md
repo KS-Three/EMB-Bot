@@ -3284,3 +3284,28 @@ failed index write left a row in the drawer whose design was already gone:
 unopenable, and reported as deleted. Index first, record second, which is the
 ordering `migrateLegacy` in the same file already documents as
 non-negotiable (A1). **When one of two writes cannot fail, do it second.**
+
+## Behaviour hung off a shared write path needs a sweep for the paths that skip it (2026-09-07)
+
+Auto-naming was hung off `App.persist()`, which every edit routes through —
+except one. `applyHistorySnapshot()` called `saveProject` directly, so undo and
+redo changed `project` without any of persist's tail. Measured within the hour
+of shipping it: type HELLO, wait past the 500 ms coalesce window, type GOODBYE,
+undo — the design read HELLO while the topbar, the drawer and the stored index
+all still read GOODBYE. A brand-new instance of the two-surfaces-disagree
+family, created by the change that was fixing that family elsewhere.
+
+The same call site was also swallowing `saveProject`'s return, so an undo on a
+full store was silently lost — a third site of the same defect as
+`renameProject` and `deleteProject`, and it was not found by the sibling sweep
+that found those two, because it is a *caller* of the write rather than another
+write.
+
+The fix was to route it through `persist(false)` — the `false` skips the
+history record, which is the only reason it had been given its own path in the
+first place.
+
+**When you add behaviour to a shared write path, grep for every assignment to
+the state that path is supposed to own, not just for calls to the path.** The
+bypass will be the one place with a good local reason to be different, and that
+reason usually only justifies skipping ONE part of what the path does.

@@ -141,3 +141,34 @@ test("a design saved before auto-naming existed gets caught up when it is opened
   await page.reload();
   await expect(page.getByLabel("Project name")).toHaveValue("OLD PROJECT");
 });
+
+test("undo carries the name back with the text, and redo carries it forward", async ({ page }) => {
+  // An undo is an edit as far as every surface downstream of it is
+  // concerned. Measured 2026-09-07, the same day auto-naming shipped:
+  // applyHistorySnapshot() was the one path that changed `project` without
+  // going through persist(), so after an undo the design read HELLO while
+  // the topbar, the drawer and the stored index all still read GOODBYE.
+  await page.goto("/");
+  await startDesign(page, "HELLO");
+  await expect(nameField(page)).toHaveValue("HELLO");
+
+  // history.js coalesces records landing within 500 ms into ONE step (the
+  // drag/slider storm it exists for). Without this wait both edits merge and
+  // a single undo correctly goes back past HELLO to the empty design -- the
+  // app behaving right, and the test asking the wrong question. Do not
+  // "optimise" this away.
+  await page.waitForTimeout(700);
+  await page.getByPlaceholder("Type a name or word").fill("GOODBYE");
+  await expect(nameField(page)).toHaveValue("GOODBYE");
+
+  await page.getByRole("button", { name: "Undo" }).click();
+  await expect(page.getByPlaceholder("Type a name or word")).toHaveValue("HELLO");
+  await expect(nameField(page)).toHaveValue("HELLO");
+  await openDrawer(page);
+  await expect(rows(page)).toHaveText(["HELLO"]);
+  await page.keyboard.press("Escape");
+
+  await page.getByRole("button", { name: "Redo" }).click();
+  await expect(page.getByPlaceholder("Type a name or word")).toHaveValue("GOODBYE");
+  await expect(nameField(page)).toHaveValue("GOODBYE");
+});
