@@ -7272,3 +7272,115 @@ measurement I built to test it is what killed it.** That is the fourth time
 today: the ambiguous-line branch, the `--durations` target, the concurrency
 theory, and now this. The pattern is not that the guesses were careless — each
 had a real mechanism behind it — but that a mechanism is not evidence.
+
+---
+
+## 2026-09-07 — the Studio names 34 Python codes as bare strings, and one of them prints a server path to the customer
+
+Two directions across the same seam. `warnings_codes.py`'s header states the
+contract — *"UI switches on codes, never prose"* — and it is the right one.
+Nobody had priced its cost: **the Studio cannot import a Python constant, so
+it names every code as a bare string literal.**
+
+### Direction one: nothing ties the two sides together
+
+| site | codes | owner | what a rename deletes |
+|---|---:|---|---|
+| `digitizer.js` `WARNING_TEXT` | 28 | `warnings_codes` | the translation — `describeWarnings` falls back to `String(w.message)` |
+| `DigitizePanel` flat-art nudge | 4 | `warnings_codes` | the nudge never appears again |
+| `DigitizePanel` `otherWarningLines` | 1 | `warnings_codes` | the enclosed-background banner duplicates into the plain list |
+| `DigitizePanel` merge/split notes | 2 | `warnings_codes` | the review-screen note vanishes |
+| `DigitizePanel` `FIX_FOR` + trim panel | 4 | `preflight` | the one-press fix button stops being offered |
+| `preflight.py` mirrored constants | 5 | `warnings_codes` | `_tonal_fill_technique` reads "tatami" for a tonal plan; the face and contour guards go quiet |
+
+**34 distinct strings, six sites, every one live.** By the standing rule —
+*sweep first, and if it finds nothing the convention is sound* — that is a
+fifth zero-yield sweep and the check should not exist. It was built anyway,
+and the reason is the distinction now in DOCTRINE: **a sweep is judged on
+what it finds today, a tripwire on what its failure would cost.** Here the
+failure is silent, customer-facing, and looks exactly like a code that was
+never translated. Contrast `stage7_sequence.py`, which consumes the same
+codes by import: delete one and the package will not load.
+
+`digitizer/tests/test_code_wires.py` (4). **Two ways it could have
+been decoration, both hit while writing it:**
+
+- The first `_map_keys` sliced the object literal at a nearby `\n  };` and
+  got the right answer for both maps **by luck** — it never reached
+  `FIX_FOR`'s nested braces. Every assertion in the file is a "not in" check,
+  and a parser that finds nothing passes all of them.
+- preflight holds private copies of four pipeline codes. Admitting them to
+  the "live" set would let a stale mirror vouch for a consumer — a check
+  comparing a string to a second copy of itself. Excluded by name, and the
+  exclusion is asserted.
+
+**Six mutations, six reds, tree restored.** A rename in each consumer and in
+each owner, plus dropping the mirror filter.
+
+### Direction two: what the corpus actually shows a customer
+
+`digitizer/tools/warning_coverage.py`, 26 fixtures at 80 mm / left_chest:
+**27 distinct codes emitted, 11 untranslated.** Untranslated is not the
+defect — the engine writes English by default, and four of the eleven need no
+help (`SMALL_SHAPES_AS_RUN`, `BACKGROUND_ABSENT`, `TONAL_REGIONS_SPLIT`,
+`DUPLICATE_CONE_LAYERS_MERGED` all read as plain sentences) and two sit in
+between — `BORDER_SEAM_SHARED` (1/26) and `SHAPES_LEFT_UNSEWN` (10/26), which
+is accurate but repeats in raw form what `BACKGROUND_ENCLOSED`'s dedicated
+banner already says (see the shadow below). The remaining five split three
+ways, and only the last has no product question in it:
+
+- **Telemetry, and the two most frequent codes in the corpus.**
+  `PHOTO_SEGMENT_REGION_COUNT` and `PHOTO_PALETTE_SELECTED`, 20/26 each:
+  *"982 superpixels, 32 after merging"*, *"chart-restricted weighted
+  k-medoids"*. Suppress or translate is a voice call.
+- **Real events in a unit nobody outside this repo reads.**
+  `THREAD_RESNAPPED_AFTER_DRIFT` 13/26 (*"worst dE00 37.3"*) and
+  `PALETTE_THREAD_MISMATCH` 6/26. Worth saying — in other words.
+- **A server filesystem path.** `PHOTO_BACKGROUND_REMOVAL_UNAVAILABLE`,
+  9/26: *"isolated rembg venv not found at
+  /home/user/EMB-Bot/digitizer/rembg_isolated/venv/bin/python"*. Now
+  MASTER_SCOPE defect 29.
+
+**The 9/26 is not a corpus artefact.** `cfg.photo_prep_background_removal`
+defaults `True`, so this fires on every photographic design on any machine
+where the optional isolated venv was never built. Six sibling `bg_reason`
+strings reach the same sentence, one of them carrying the last line of the
+rembg worker's STDERR. `pipeline.run_stages` already passes the string as a
+separate `reason=` payload field, so removing it from the human sentence
+costs no diagnostic at all.
+
+**It is still not fixed in this PR, and that is the point of the split.**
+Measuring what a customer sees and changing what a customer sees are
+different acts with different review needs. The same reasoning left the
+"Make it bigger" button in place yesterday after measuring it at one in ten.
+
+### The dedup works, and the duplicate arrives anyway
+
+`otherWarningLines` hand-filters exactly ONE code out of the plain list —
+`BACKGROUND_ENCLOSED`, because it owns a dedicated banner and would otherwise
+show twice. **`SHAPES_LEFT_UNSEWN` carries the same news, untranslated, and is
+not filtered:** *"1 shape (156.5 mm², largest 156.5 mm²) in thread 0020 was
+planned but not sewn — enclosed background, showing the garment through."* It
+fires on **10 fixtures and all 10 also emit `BACKGROUND_ENCLOSED`** — total
+containment, not a correlation. The customer reads the banner, then reads the
+same fact again in engine words directly beneath it.
+
+**The report that found it produced five candidates and one survived
+reading.** The tool requires the overlap in BOTH directions, because a one-way
+test is a base-rate generator — `LONG_JUMPS_TRIMMED` fires on 20 of 26
+fixtures, so almost anything covers 80% of its own fixtures with it. The
+mutual test still let four through, and all four are simply pairs of codes
+that fire on photographs: `PHOTO_SEGMENT_REGION_COUNT` and
+`PHOTO_PALETTE_SELECTED` with `LONG_JUMPS_TRIMMED`,
+`THREAD_RESNAPPED_AFTER_DRIFT` and `SMALL_SHAPES_AS_RUN` with
+`SAME_THREAD_SHAPES_MERGED`. **Same rule as always, now applied to a tool
+written the same hour: read the matches, not the count.** The tool prints that
+caveat beside its own output rather than in a doc nobody opens.
+
+### The third direction was swept and found nothing
+
+All 57 of `warnings_codes.py`'s codes are **imported by name** somewhere in
+`digitizer_core` — checked by walking each module's AST, because a grep
+counts a mention in a comment, and every one of
+`WARNING_TEXT`'s 28 keys resolves to a live wire value. **No dead codes, no
+dead translations.** Recorded so nobody sweeps it again.
