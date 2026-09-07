@@ -3171,6 +3171,22 @@ did not measurably help, so it was reverted rather than shipped
 undemonstrated — and the source comment that claimed the field "always"
 shows the sewn width was corrected, because it no longer did.
 
+**Confirmed at a SECOND site the same day, and the obvious fix has its own
+trap.** The topbar's project-name field is the same `value={projectName}`
+shape. Clearing it and tabbing away left the topbar blank while the drawer
+one panel over still read "Untitled design" and the export still wrote
+`untitled-design.embproj`; typing only spaces did the same. Both normalise
+back to the value already rendered, so Svelte left the DOM alone.
+
+The fix is NOT "write the corrected value into the field". Doing that
+immediately after normalising reproduced this very defect one layer up: on a
+design auto-named HELLO, clearing the field wrote "Untitled design" into the
+DOM, a later step in the same handler took the name back to "HELLO" — the
+value Svelte had last rendered — and the field then sat there reading
+"Untitled design" over a design called HELLO. **A resync must be the LAST
+write in the handler, and must read the name that actually survived rather
+than the intermediate one the handler computed first.**
+
 ## Check the engine before blaming it, and the probe before blaming either (2026-09-07)
 
 The size investigation started from a table showing 60, 80, 100 and 120 mm
@@ -3234,3 +3250,170 @@ comparison between different glyphs. **Every one was caught by mutation, and
 none by reading the test.**
 
 Where the fix only exists in a browser, test it in a browser.
+
+## Where the index IS the data, a swallowed write is a lie (2026-09-07)
+
+`projects.js` keeps a project's NAME and its very membership of the registry
+in one localStorage key, `embstudio:index` — there is no second copy in the
+project record to fall back on. `renameProject` and `deleteProject` both
+ended `writeIndex(idx); return true;`, and `writeIndex` catches its own
+quota failure and returns a boolean. So on a full or blocked store both
+reported success for a write that never landed: the topbar and the drawer
+repainted with the new name, and the old one was back on the next reload
+with nothing said.
+
+Found by a storage-failure test written for a NEW function of the same
+shape — the sibling-pattern sweep finding the two shipped cases, not the one
+being added.
+
+Two rules came out of it, and they pull in different directions, which is
+the point:
+
+- **Propagate the failure where the index IS the data** (rename, delete,
+  auto-name). The customer's change did not happen.
+- **Do NOT propagate it where the index is only metadata.** `saveProject`
+  writes the design to its own record first and only then bumps `updatedAt`;
+  a record that fit while the index rewrite did not is a SAVED design with a
+  stale sort key, and raising "your changes aren't being saved" over it would
+  be its own lie. Same file, opposite answer, and the difference is which
+  key holds the thing the customer would lose.
+
+`deleteProject` also had its writes in the wrong order — it removed the
+record and then wrote the index. A `removeItem` is never quota-blocked, so a
+failed index write left a row in the drawer whose design was already gone:
+unopenable, and reported as deleted. Index first, record second, which is the
+ordering `migrateLegacy` in the same file already documents as
+non-negotiable (A1). **When one of two writes cannot fail, do it second.**
+
+## Behaviour hung off a shared write path needs a sweep for the paths that skip it (2026-09-07)
+
+Auto-naming was hung off `App.persist()`, which every edit routes through —
+except one. `applyHistorySnapshot()` called `saveProject` directly, so undo and
+redo changed `project` without any of persist's tail. Measured within the hour
+of shipping it: type HELLO, wait past the 500 ms coalesce window, type GOODBYE,
+undo — the design read HELLO while the topbar, the drawer and the stored index
+all still read GOODBYE. A brand-new instance of the two-surfaces-disagree
+family, created by the change that was fixing that family elsewhere.
+
+The same call site was also swallowing `saveProject`'s return, so an undo on a
+full store was silently lost — a third site of the same defect as
+`renameProject` and `deleteProject`, and it was not found by the sibling sweep
+that found those two, because it is a *caller* of the write rather than another
+write.
+
+The fix was to route it through `persist(false)` — the `false` skips the
+history record, which is the only reason it had been given its own path in the
+first place.
+
+**When you add behaviour to a shared write path, grep for every assignment to
+the state that path is supposed to own, not just for calls to the path.** The
+bypass will be the one place with a good local reason to be different, and that
+reason usually only justifies skipping ONE part of what the path does.
+
+## Test the artifact you ship, not the dev server that stands in for it (2026-09-07)
+
+Every test in this repo — unit, component, e2e, and every hand-drive in this
+session — runs against `vite dev`. Nothing had ever exercised `npm run build`
+output, and the two are not the same program.
+
+`vite.config.js` sets `base: "./"`. That setting exists for exactly one
+purpose: so the bundle works wherever it is served from, and Vite honours it
+for everything it owns (`index.html` references `./assets/…`). Five
+hand-written asset paths did not: `"/fonts/" + rel` in fontLoader, two
+`"/fonts/previews/"` thumbnails, and credits' `binHref` and `licenseHref`.
+The config and the code disagreed about a deployment fact, and no test could
+see it because the dev server is always at the domain root, where both forms
+resolve identically.
+
+Measured on a real build, served two ways:
+
+    domain root   1,356 stitches · 0 failed requests · 0 console errors
+    /studio/      no stitches    · 7x 404 /fonts/manifest.json
+
+The customer is not left in silence — the app shows "Font fetch failed:
+manifest.json (404)" — but that is a developer's sentence, and it is the whole
+lettering lane that is gone.
+
+Two things worth keeping beyond the fix:
+
+- **A `base` setting is a claim, and a claim in config is as testable as one in
+  prose.** `./` promised path-independence the code did not deliver, for as
+  long as both have existed.
+- **`file://` is not the fallback you think it is.** Opening `dist/index.html`
+  directly is blocked by CORS for ES modules — a blank page, no app at all. So
+  `base: "./"` buys nothing there either; the only deployments that exist are
+  "served at a root" and "served under a path".
+
+The guard is source-level (`app/src/lib/assetPaths.spec.js`), because the bug
+was one call site not following a rule the others did. The behavioural version
+needs a built bundle on a static server, which is what the measurement above
+did by hand.
+
+## Look at the artifact. Bytes and extracted text cannot see a page (2026-09-07)
+
+The printed worksheet is the one thing EMB-Bot makes that physically leaves the
+screen and goes to a machine. Nobody had ever looked at one. Rendering a real
+sheet to an image showed two things at once:
+
+- the single thread row on a ONE-colour design was drawn at y = 11.09 on an
+  11.00 in page — off the paper, so the operator's colour sequence was simply
+  not on the sheet;
+- page two was entirely blank.
+
+Both came from one line: the page-break check ran AFTER drawing each row
+instead of before it, which draws a row that does not fit and then adds a page
+for content already drawn.
+
+**Three tiers of test passed throughout.** `pdfsheet.spec.js` recorded the
+right calls in the right order; `pdfsheet.realpdf.spec.js` built a real PDF and
+checked byte size, page objects, and the Pages tree's declared count;
+`worksheet-numbers.spec.js` extracted the text and matched it against the
+screen. None could see the defect, because **a string is in the content stream
+whether it lands on the paper or past its edge.** A recorder that logs
+`text(str, x, y)` without which PAGE it landed on cannot answer the question at
+all.
+
+`git log` also shows the previous fix that added the trims/thread/chart lines —
+mine, earlier the same day — pushed the row from 10.53 to 11.09. Adding a line
+to a layout with no fit check is how a latent margin becomes a missing row.
+
+### The worse half: a defect that was noticed and then asserted
+
+The blank second page was already known. `pdfsheet.spec.js` asserted
+`pageCount === 2` under this comment:
+
+> "2-color worksheet already spills onto a (mostly blank) second page.
+> Confirmed by hand-tracing pdfsheet.js's cursorY math; not something this test
+> suite should silently paper over, so it's asserted explicitly rather than
+> assumed to be 1."
+
+Someone found it, traced the arithmetic, and refused to paper over it — all
+correct instincts. But the artifact they produced was an **assertion**, and an
+assertion says the behaviour is right. The test was even named
+"correctly-paginated". After that, nobody had a reason to look.
+
+**Noticing a defect and pinning it in a test are not the same act.** If a test
+must encode current-but-wrong behaviour, it has to be marked as such — an
+xfail, a TODO, a line on the defect list — never a plain assertion, and never
+under a name that calls it correct.
+
+## A hand-picked fixture set can straddle the only value that fails (2026-09-07)
+
+The first guard written for the pagination fix swept colour counts
+`{1, 2, 8, 40}` and **passed against the very bug it was written for.**
+
+With the render at 5.5 in, the break-after-the-row defect emits a blank
+trailing page at exactly **n = 7** — the one count where the final row is also
+the row that crosses the margin. The sample straddled it: 2 below, 8 above.
+
+The boundary is not a property of the bug, it is a property of everything
+stacked above the list — image height, how many stat lines, whether a chart
+label is present. **It moves whenever any of those change**, so no fixture set
+chosen by hand stays on top of it.
+
+`Array.from({length: 45}, (_, i) => i + 1)` costs milliseconds here and cannot
+straddle anything. **Where the input is a small integer and the run is cheap,
+sweep the range instead of guessing which values matter.**
+
+Fifth time this session a new test passed against its own subject, and again it
+was mutation that found it, not reading.

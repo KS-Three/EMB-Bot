@@ -101,7 +101,7 @@ export async function exportDesignPreferService(design, format, opts = {}) {
 // garments.js HOOPS preset) puts the chosen hoop on the sheet next to the
 // placement — worksheets printed before the hoop picker existed simply
 // omitted the line, and a missing hoop still does.
-export async function exportWorksheetPDF(design, garment, hoop, chartLabel) {
+export async function exportWorksheetPDF(design, garment, hoop, chartLabel, hoopNote) {
   const mod = await import("jspdf");
   window.jspdf = window.jspdf || { jsPDF: mod.jsPDF };
   // Trims and thread metres, computed by the same walk the Review step uses
@@ -120,6 +120,11 @@ export async function exportWorksheetPDF(design, garment, hoop, chartLabel) {
     // label and the codes come from one palette object and cannot name
     // different charts.
     chartLabel: chartLabel || "",
+    // Whether the design fits the hoop named above. Passed in, not
+    // re-derived: DownloadStep already computes this for its export gate,
+    // and a second computation is how one document starts disagreeing with
+    // the other about the same design.
+    hoopNote: hoopNote || "",
     fileName: "embbot-worksheet.pdf",
     garmentBox: { widthMM: garment.widthIn * 25.4, heightMM: garment.heightIn * 25.4 },
   });

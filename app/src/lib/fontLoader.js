@@ -33,9 +33,22 @@ async function readBytes(rel) {
   // and this module keeps saying what happened. `offline` is set only for a
   // transport failure; an HTTP status is a different problem (a bad deploy,
   // a missing file) and keeps its own message.
+  // DOCUMENT-RELATIVE, not "/fonts/". vite.config.js sets `base: "./"`, which
+  // exists precisely so the bundle works wherever it is served from, and Vite
+  // emits every asset it owns that way (index.html references "./assets/…").
+  // These hand-written asset paths were the exception, and an absolute one
+  // silently breaks the whole lettering lane anywhere but the domain root.
+  //
+  // Measured 2026-09-07 on a real `npm run build`, served from /studio/: seven
+  // 404s on /fonts/manifest.json and not one stitch. At the domain root the
+  // two forms resolve identically, so this is a no-op for the deployment
+  // shipping today. (A path served without its trailing slash -- /studio
+  // rather than /studio/ -- still resolves a directory up, which no
+  // client-side scheme can fix; static servers redirect for exactly this
+  // reason.)
   let res;
   try {
-    res = await fetch("/fonts/" + rel);
+    res = await fetch("fonts/" + rel);
   } catch (e) {
     const err = new Error("Font fetch failed: " + rel + " (" + (e && e.message ? e.message : "network error") + ")");
     err.offline = true;

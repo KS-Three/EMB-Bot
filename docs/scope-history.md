@@ -10175,3 +10175,236 @@ product's messages were measured against today, met here already.
 
 That closes the sweep: every customer-facing surface in the Studio has now
 been driven by hand at least once.
+
+## 2026-09-07 — the lifecycle nobody had driven, and two designs with one name
+
+The sweep had closed on panels. The project **lifecycle** — reload, switching,
+delete, backup — had only ever been read, never driven, and a customer hits
+every one of those.
+
+Most of it is sound. A design survives a reload with an identical caption
+(`1,345 stitches · 102×11 mm · 5×7 in hoop` either side). Switching between two
+projects returns each one's own text. An `.embproj` export → delete → re-import
+round-trips to the identical caption. A garbage file is refused in plain words.
+Zero console errors across all of it.
+
+Two things fell out.
+
+**Every design was called "Untitled design."** With two saved, the drawer
+listed:
+
+    ["Untitled design", "Untitled design"]
+
+Two rows that cannot be told apart, so the only way to find one is to open each
+in turn. The backup is the worse half because it leaves the app: both downloaded
+as `untitled-design.embproj`. Three backups, three indistinguishable files, and
+the only way to identify one is to import it. A backup you cannot identify is
+most of the way to no backup.
+
+Fixed by deriving the name from the content while it is still unnamed. After:
+
+    ["SECOND DESIGN", "Kent's cap job"]   →   polo-left-chest.embproj
+
+**The topbar's name field lied.** Same `value={expr}` one-way trap the size
+field had, at a second site: clearing the field left the topbar blank while the
+drawer one panel over read "Untitled design". Typing only spaces did the same.
+
+And the obvious fix reproduced the defect one layer up — writing the corrected
+name into the field immediately, then having auto-naming move the name back to
+what Svelte had already rendered, left the field reading "Untitled design" over
+a design called HELLO. The resync has to be the LAST write and has to read the
+name that survived. Both halves are in DOCTRINE.
+
+**A test written for the new code found two shipped bugs.** A storage-failure
+test for the new `autoNameProject` was the same shape as `renameProject` and
+`deleteProject` — both of which ended `writeIndex(idx); return true;` while
+`writeIndex` swallows its own quota failure. A rename on a blocked store
+reported success and was gone on reload. `deleteProject` also removed the
+record before writing the index, and a `removeItem` never fails on quota, so a
+failed write left a drawer row whose design was already gone. Sibling-pattern
+sweep, second time this session it has paid.
+
+Nine source mutations run against the new unit tests, all nine caught; five
+against the e2e, four caught and the fifth masked by a second guard that its
+own unit test pins — verified by removing both, which fails the e2e.
+
+Suites: engine 505 pass, Studio 1071 pass, e2e 62 pass.
+
+## 2026-09-07 — the undo path, found by asking what the new feature could break
+
+Auto-naming shipped hung off `persist()`. The question worth asking of any
+change like that is which paths change the state WITHOUT going through it, and
+here there was exactly one: `applyHistorySnapshot()` called `saveProject`
+directly, so undo and redo skipped persist's whole tail.
+
+Measured within the hour, waiting past history.js's 500 ms coalesce window
+between the two edits:
+
+    after HELLO    text "HELLO"    name "HELLO"    index ["HELLO"]
+    after GOODBYE  text "GOODBYE"  name "GOODBYE"  index ["GOODBYE"]
+    after UNDO     text "HELLO"    name "GOODBYE"  index ["GOODBYE"]
+
+A fresh instance of the two-surfaces-disagree family, created by the change
+that was fixing that family elsewhere — caught before it merged. The same call
+site was also swallowing `saveProject`'s return, a third site of the
+silent-write-failure defect, and NOT one the sibling sweep found: it is a
+caller of the write rather than another write.
+
+`persist(false)` fixes both — the `false` skips the history record, which was
+the only reason that path existed.
+
+One test-authoring note worth keeping: the first version of the e2e guard typed
+both words inside the 500 ms window, so they coalesced into one history step
+and a single undo correctly went back to the empty design. The app was right
+and the test was asking the wrong question. The wait is now commented so nobody
+removes it as dead time.
+
+Suites after: engine 505, Studio 1071, e2e 63.
+
+## 2026-09-07 — the bundle nobody had run
+
+Everything in this repo tests `vite dev`. `npm run build` output had never been
+driven, by any test or by hand, and the two are not the same program.
+
+At the domain root the built bundle is sound: the full lane, 1,356 stitches,
+zero failed requests, zero console errors, and the day's auto-naming work
+survives minification. That is a launch-readiness fact that had never been
+established.
+
+Served one directory down it produced nothing:
+
+    domain root   1,356 stitches · 0 failed requests · 0 console errors
+    /studio/      no stitches    · 7x 404 /fonts/manifest.json
+
+`vite.config.js` sets `base: "./"` — a setting whose only purpose is making the
+bundle work wherever it is served — and Vite honours it for everything it owns.
+Five hand-written asset paths did not: fontLoader's fetch, two preview
+thumbnails, and credits' `binHref` and `licenseHref`. The config and the code
+had disagreed about a deployment fact for as long as both existed, and no test
+could see it, because the dev server is always at a root where both forms
+resolve the same.
+
+The font licence links were among the five, which makes this a compliance
+surface as well as a functional one: below the root, "the licence must
+accompany the font" was a 404. Verified 200 in both deployments after the fix.
+
+Also established, so nobody chases it: `file://` cannot work at all. Opening
+`dist/index.html` directly is blocked by CORS for ES modules — a blank page and
+four console errors, nothing the app can do about it. So the only deployments
+in play are "served at a root" and "served under a path", and both work now.
+
+The app was NOT silent about the failure — it showed "Font fetch failed:
+manifest.json (404)". An earlier note in this session said otherwise; that was
+a regex in the probe missing the message, not the app failing to show one. The
+wording stays as is on purpose: an HTTP status means a bad deploy, and the
+person who can act on it is the one deploying.
+
+Suites: engine 505, Studio 1072, e2e 63, doc guards 29.
+
+## 2026-09-07 — the sheet that goes to the machine, looked at for the first time
+
+The worksheet is the only thing EMB-Bot makes that leaves the screen. Three
+tiers of test cover it — a call recorder, a real-PDF byte/structure check, and
+a text-extraction comparison against the screen — and not one of them had ever
+rendered a page to an image. Doing that took one `pypdfium2` call and showed:
+
+    one-colour design -> thread row drawn at y = 11.09 on an 11.00 in page
+                      -> page 2 entirely blank
+
+The operator's colour sequence was not on the sheet. The page-break check ran
+AFTER drawing each row instead of before it, which does both halves at once:
+draws a row that does not fit, then adds a page for content already drawn.
+
+None of the three tiers could see it. **A string is in the content stream
+whether it lands on the paper or past its edge**, and the call recorder logged
+`text(str, x, y)` without recording which page — so it could not have answered
+the question even in principle. It records `page` now.
+
+My own earlier work that day (the trims/thread lines, then the chart label)
+pushed the first row from 10.53 to 11.09. Adding a line to a layout with no fit
+check is how a latent margin becomes a missing row.
+
+**The blank page was already known, and asserted.** `pdfsheet.spec.js` had
+`expect(doc.pageCount).toBe(2)` under a comment saying the second page was
+"mostly blank", that it had been confirmed by hand-tracing the cursorY math,
+and that asserting it was better than papering over it. Right instinct, wrong
+artifact: an assertion says the behaviour is correct, and the test was named
+"correctly-paginated". Nobody had a reason to look after that.
+
+**The sheet also never said the design could not be hooped.** The Download step
+refuses an oversize stitch export until the customer confirms — and rightly
+does not gate the worksheet, which is a reference document. But the sheet
+printed "Hoop: 8x8 in (200 mm x 200 mm)" above a 305.0 mm design, with a
+picture showing it comfortably inside the dashed box, because that box is the
+GARMENT placement area (Full Back, 12 x 12 in), not the hoop. It now carries
+the same sentence the screen shows, in bold, directly under the hoop line it
+contradicts:
+
+    Exceeds your 8x8 in hoop, and every hoop this app offers -- make it
+    smaller under Size
+
+Passed in from DownloadStep rather than re-derived, like the trims and the
+chart label before it.
+
+**And the first guard I wrote for the fix passed against the bug.** It sampled
+colour counts {1, 2, 8, 40}; with the render now 5.5 in, the defect emits a
+blank trailing page at exactly n = 7. The sample straddled it. The tests sweep
+1-45 now, which costs milliseconds and cannot straddle anything. Fifth time
+this session a new test passed against its own subject, and every one was found
+by mutation rather than by reading.
+
+Suites: engine 505, Studio 1077, e2e 64.
+
+## 2026-09-07 — all four export formats, rendered by a reader that is not ours
+
+The last artifact nobody had looked at. The bytes had been checked (magic
+numbers, stitch counts, sizes) and PES/EXP/DST cross-validated, but no one had
+drawn the four shipped formats back out and compared the pictures.
+
+One lettering design, "FRITSCH" — asymmetric both ways on purpose, so a mirror
+or a turn is unmistakable — exported from the app, decoded with pystitch (an
+independent standard-conformant reader, not EMB-Bot's own codec), and drawn:
+
+    fritsch.pes   1336 stitches   101.8 x 15.1 mm   reads FRITSCH, upright
+    fritsch.exp   1336 stitches   101.8 x 15.1 mm   reads FRITSCH, upright
+    fritsch.jef   1336 stitches   101.8 x 15.1 mm   reads FRITSCH, upright
+    fritsch.dst   1336 stitches    15.1 x 101.8 mm  a quarter turn AND mirrored
+
+Three of the four shipped formats are correct, which is the reassuring half and
+had never been established by picture. The fourth is CLAUDE.md footgun #1,
+confirmed on the current build, with a current render rather than a
+bounding-box inference — the footgun itself warns that a swapped box fits a
+turn and a mirror equally and only a picture separates them.
+
+**The app's own DST caveat is accurate, clause for clause.** It tells the
+customer the file "opens correctly in EMB-Bot, but other embroidery software
+reads it a quarter turn round *and flipped*: text comes out backwards, and
+rotating it back there will not fix that... PES and EXP are unaffected." Every
+one of those claims reproduces. Not verified *by this render*: "it may not see
+the color stops either" — the design was single-colour, so there were no stops
+to lose.
+
+**Correction to that, made the same day.** Calling the clause "unexercised"
+understated what the repo already knows.
+`test/crossval-stitch-formats.test.js` pins `decodedColorChanges === 0` and
+`decodedSequinToggles === 1` for a DST EMB-Bot wrote, because the colour change
+goes out as `0x43` where the spec wants `0xC3` — a standard reader sees a
+sequin-mode toggle and no colour stops at all. So every clause of the caveat is
+backed: three by this render, the fourth by that harness.
+
+That materially changes how urgent the writer fix is (task #44, Kent's call):
+the defect is real, but it is disclosed honestly at the point of download, with
+a working alternative named. It is a documented limitation rather than a trap.
+
+### Addendum — the other three outputs
+
+The Download step offers seven things, not four: SVG and PNG sit beside the
+stitch formats and the worksheet, and an earlier enumeration in this session
+missed both because its filter matched only `DST|PES|EXP|JEF|PDF`. Both check
+out. The SVG carries `viewBox="0 0 101.8 15.1"` with real `mm` width and height
+— physical units, not pixels — and seven polylines for the seven letters of
+FRITSCH, rendering upright in a browser. The PNG opens at 1200 x 178, upright,
+with the realistic stitch texture over the fabric tone.
+
+So every downloadable output has now been opened or rendered rather than
+byte-checked, and six of the seven are correct. The seventh is the DST writer.

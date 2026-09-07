@@ -209,7 +209,7 @@
                   <span class="fb-tile-noimg" aria-hidden="true">Aa</span>
                 {:else}
                   <img
-                    src={liveThumbs[f.key] || "/fonts/previews/" + f.key + ".png"}
+                    src={liveThumbs[f.key] || "fonts/previews/" + f.key + ".png"}
                     alt=""
                     loading="lazy"
                     on:error={() => (tileFailed = { ...tileFailed, [f.key]: true })}

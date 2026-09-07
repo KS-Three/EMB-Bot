@@ -384,3 +384,108 @@ contract. This was nearly rebuilt from scratch on the assumption it was a gap.
 sheen ceiling and shadow weight are eye-tuned judgement calls. No sew-out has
 happened, so there is nothing to compare a render against — treat the look as
 a preference setting, not a calibrated one. *(suspected 2026-08-25)*
+
+**The project lifecycle holds — driven end to end, not assumed (2026-09-07).**
+The registry had never been exercised by hand, only read. Every step checked in
+a real browser: a design survives a reload (caption identical either side);
+switching between two projects keeps each one's text and stitch count; an
+`.embproj` export → delete → re-import round-trips to the identical caption; a
+garbage file is refused with *"That doesn't look like a design file
+(.embproj)."*; the two-tap delete arms and confirms. Zero console errors
+throughout. *(driven 2026-09-07 — `app/e2e/design-naming.spec.js` pins the
+naming half; `storage-full.spec.js` the failure half)*
+
+**Every design used to be called "Untitled design" — FIXED (2026-09-07).**
+The drawer listed `Untitled design / today` twice for two designs, and both
+exported as `untitled-design.embproj`, so a customer backing up three designs
+got three files they could only tell apart by importing each one. A design now
+takes its name from its content while it is still unnamed — the first non-blank
+line of text, else the uploaded artwork's filename minus its extension, clipped
+to 40 characters — and the guess follows the content in both directions,
+falling back to the placeholder when the text is deleted. A name the customer
+types is sticky and is never overwritten; clearing the field is how they ask
+for the guess back. Projects saved before the flag existed are caught up on
+open and at boot, which is the whole existing population.
+*(`deriveProjectName` in `app/src/lib/project.js`, `isAutoNamed`/
+`autoNameProject` in `app/src/lib/projects.js`)*
+
+**Two storage-write failures that reported success — FIXED (2026-09-07).**
+`renameProject` and `deleteProject` both ended `writeIndex(idx); return true;`,
+and a name and a project's membership of the registry live ONLY in that index.
+On a blocked store a rename repainted the topbar and the drawer and was gone at
+the next reload with nothing said. `deleteProject` additionally removed the
+project record BEFORE writing the index, so a failed write left an unopenable
+row behind. Both now propagate, the delete writes the index first, and the App
+routes the failure to the storage banner that already existed. `saveProject`
+deliberately still reports success when only the index write fails — the design
+itself is in its own record and did land. *(DOCTRINE "Where the index IS the
+data, a swallowed write is a lie")*
+
+**Undo/redo goes through the same write path as an edit (2026-09-07).**
+`applyHistorySnapshot()` used to call `saveProject` directly, which meant undo
+skipped everything else in `persist()`'s tail — the storage-failure banner, and
+(from the same day) the auto-name. Undoing a text change left the design
+reading HELLO with every name surface still reading GOODBYE. It now calls
+`persist(false)`; the `false` skips the history record, which was the only
+reason it had its own path. *(pinned by `app/e2e/design-naming.spec.js`)*
+
+**The production bundle is verified, and now works below the domain root
+(2026-09-07).** Every test here runs against `vite dev`; `npm run build` output
+had never been driven. At the domain root it is sound — full lane, 1,356
+stitches, zero failed requests, zero console errors, and the auto-naming above
+survives minification. Served from `/studio/` it produced no stitches at all
+(7x 404 on `/fonts/manifest.json`), because five hand-written asset paths were
+absolute while `vite.config.js` sets `base: "./"` precisely so the bundle is
+path-independent. All five are document-relative now; at the root the two forms
+resolve identically, so nothing about today's deployment changes. Font licence
+links — a compliance surface — were among the five and are verified 200 in both
+deployments. `file://` cannot work at all (browsers block ES modules from a
+`null` origin), so the only deployments in play are root and sub-path.
+*(guard: `app/src/lib/assetPaths.spec.js`)*
+
+**The printed worksheet, looked at for the first time (2026-09-07).** Three
+tiers of test covered it and none had rendered a page. On a one-colour design
+the thread row was drawn at y = 11.09 on an 11.00 in page — off the paper — and
+page two was blank; the page break ran after each row instead of before it. The
+render is now capped at 5.5 in so an ordinary design prints on ONE page, and
+the break happens before a row is drawn, so a page is only added when there is a
+row to put on it. The sheet also now states whether the design fits the hoop it
+names: the Download step already refuses an oversize STITCH export until the
+customer confirms, but the worksheet said nothing, and its picture shows the
+design inside the GARMENT placement box, not the hoop — so a 305 mm design under
+"Hoop: 8x8 in (200 mm x 200 mm)" looked like it fitted. Same sentence as the
+screen, passed in rather than re-derived. *(guards: `pdfsheet.spec.js` sweeps
+1-45 colours for off-page draws and blank pages; `worksheet-numbers.spec.js`
+pins the hoop verdict end to end)*
+
+**The lettering lane on a phone: sound, and the gap is narrower than
+"desktop-only" suggests (2026-09-07).** Driven at iPhone 13 size (390 x 664),
+by tap: no horizontal overflow on either step, the garment tiles and the text
+field are usable, the design sews identically (1,336 stitches, 102 x 15 mm),
+every one of the 38 visible controls carries an accessible name, and the
+console is clean. The layout stacks properly — canvas, view toolbar, caption,
+text field, step nav — with no cramping.
+
+What a phone genuinely cannot reach is the DRAWING tools (Draw shapes, Trace
+image), which live behind the canvas's right-click menu; the toolbar visible
+under the canvas is view-only (zoom, fit, auto-snap, outline/jump/trim
+toggles, realistic view, simulator). The empty-canvas hint already says
+exactly that — "the drawing tools need a mouse" — and this drive confirms the
+claim rather than contradicting it.
+
+The artwork lane works there too: a logo uploaded at phone size digitizes to
+2,187 stitches, 80 x 17 mm, 2 colours, with no overflow and a clean console.
+
+One caution recorded because it cost a detour: a probe that reads
+`aria-label || innerText` off a control is NOT reading its accessible name, and
+it reported the digitize panel's file input as unnamed on both phone and
+desktop. The real accessibility tree calls it `button "Replace artwork…"` — the
+input is wrapped in a `<label>` and hidden with CSS, which is the intended
+pattern, and `unnamedControls()` in `wizard-smoke.spec.js` (which reads
+`ariaSnapshot()`) had it right all along: zero unnamed controls, before and
+after digitizing, at both sizes. The app was correct; the probe was not.
+
+So PRODUCT.md's "Desktop-only, stated on the site" (still stated nowhere)
+covers a narrower gap than it sounds: lettering and artwork work on a phone,
+two launch-scope tools do not, and the app already says so at the point it
+matters. Kent's call what, if anything, the site should say.

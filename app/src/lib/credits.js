@@ -22,8 +22,8 @@ export function creditLines(manifestFonts) {
       licenseId: f.licenseId || "",
       attribution: f.attribution || "",
       source: f.source || "",
-      binHref: "/fonts/bin/" + f.key + ".embf",
-      licenseHref: "/fonts/" + f.key + ".LICENSE.txt",
+      binHref: "fonts/bin/" + f.key + ".embf",
+      licenseHref: "fonts/" + f.key + ".LICENSE.txt",
       modificationNote: MODIFICATION_NOTE,
     }))
     .sort((a, b) => a.name.localeCompare(b.name));

@@ -36,13 +36,22 @@ class FakeJsPDF {
   setFontSize() {}
   setFont() {}
   text(str, x, y) {
-    this.texts.push({ str, x, y });
+    // `page` matters: without it this recorder cannot tell a row printed on
+    // the paper from one printed past its bottom edge, which is exactly the
+    // defect that shipped (see the off-the-paper test below).
+    this.texts.push({ str, x, y, page: this.pageCount });
+  }
+  splitTextToSize(str) {
+    // Real jsPDF wraps to a width; buildWorksheetPDF only asks it to wrap the
+    // hoop note. One line back is enough for a recorder — the wrapping itself
+    // is jsPDF's, and pdfsheet.realpdf.spec.js exercises the real one.
+    return [str];
   }
   setFillColor(r, g, b) {
     this.fillColors.push([r, g, b]);
   }
   rect(x, y, w, h, style) {
-    this.rects.push({ x, y, w, h, style });
+    this.rects.push({ x, y, w, h, style, page: this.pageCount });
   }
   addImage(dataUrl, format, x, y, w, h) {
     this.images.push({ dataUrl, format, x, y, w, h });
@@ -165,11 +174,16 @@ test("buildWorksheetPDF renders title, placement, stats, and thread sequence", (
     // so it alone eats most of the page's height. With a placement label
     // present, only ~1 thread row fits before the cursor crosses the
     // bottom margin and pdfsheet.js calls addPage() -- so even this
-    // 2-color worksheet already spills onto a (mostly blank) second page.
-    // Confirmed by hand-tracing pdfsheet.js's cursorY math; not something
-    // this test suite should silently paper over, so it's asserted
-    // explicitly rather than assumed to be 1.
-    expect(doc.pageCount).toBe(2);
+    // ONE page. This asserted 2 until 2026-09-07, with a comment saying the
+    // second page was "mostly blank" and that asserting it explicitly was
+    // better than papering over it. Calling a defect out is right; making it
+    // the contract is not — the assertion said the behaviour was correct, so
+    // nobody went and looked at the sheet. When they did, the second page was
+    // entirely blank AND the single thread row on a one-colour design was
+    // being drawn at y = 11.09 on an 11.00 in page, i.e. off the paper. The
+    // page break ran AFTER each row instead of before it, which produced both
+    // symptoms at once.
+    expect(doc.pageCount).toBe(1);
   } finally {
     dom.restore();
     globalThis.window.jspdf = originalJspdf;
@@ -435,4 +449,130 @@ test("buildWorksheetPDF names the chart the codes belong to, above the list", ()
     dom.restore();
     globalThis.window.jspdf = originalJspdf;
   }
+});
+
+// --- nothing is drawn off the paper ------------------------------------
+//
+// The guard that was missing. Page count alone cannot catch a row printed
+// past the bottom edge, and neither can text extraction (the string is in the
+// content stream wherever it sits) — which is why every existing tier passed
+// while the operator's colour sequence was not on the sheet.
+
+const PAGE_H_IN = 11;
+const MARGIN_IN = 0.5;
+
+function drawsBelowMargin(doc) {
+  const bad = [];
+  for (const t of doc.texts) if (t.y > PAGE_H_IN - MARGIN_IN) bad.push(`text ${JSON.stringify(t.str)} at y=${t.y.toFixed(2)}`);
+  for (const r of doc.rects) if (r.y + r.h > PAGE_H_IN - MARGIN_IN) bad.push(`rect at y=${(r.y + r.h).toFixed(2)}`);
+  return bad;
+}
+
+function buildWith(design, meta) {
+  const dom = installFakeDom();
+  const originalJspdf = globalThis.window.jspdf;
+  globalThis.window.jspdf = { jsPDF: FakeJsPDF };
+  try {
+    return buildWorksheetPDF(design, Object.assign({ garmentLabel: "Left chest" }, meta));
+  } finally {
+    dom.restore();
+    globalThis.window.jspdf = originalJspdf;
+  }
+}
+
+// EVERY count from 1 to 45, not a hand-picked few.
+//
+// The first version of these two tests sampled {1, 2, 8, 40} and passed
+// against the very bug they were written for. With the render at 5.5 in the
+// break-after-the-row defect produces a blank trailing page at EXACTLY n = 7
+// — and that sample straddles it. A boundary that exists at one value is
+// missed by any fixture set that does not happen to contain it, and the value
+// moves whenever anything above the list changes height. Sweeping is cheap
+// here; guessing is not.
+const COLOUR_COUNTS = Array.from({ length: 45 }, (_, i) => i + 1);
+
+// ...and with and without the hoop note, because it is the TALLEST optional
+// thing above the list and it moves where the list starts: measured, the first
+// row sits at 9.09 in with no note and 9.83 in with a three-line one, which is
+// 6 rows on page one versus 3. The pagination does not care -- breaking before
+// a row is height-independent -- but a test that only ever ran the short
+// layout would not notice if that stopped being true. Found by reading the
+// whole PR diff at once rather than each commit as it was written.
+const HOOP_NOTES = [
+  "",
+  "Exceeds your 8\u00d78 in hoop \u2014 rotate the design 90\u00b0 and it fits",
+  "Exceeds your 8\u00d78 in hoop, and every hoop this app offers \u2014 make it smaller under Size",
+];
+
+test("no part of the sheet is drawn past the bottom margin, at any colour count", () => {
+  for (const n of COLOUR_COUNTS) {
+    for (const hoopNote of HOOP_NOTES) {
+      const colors = Array.from({ length: n }, (_, i) => ({ r: i * 6, g: 40, b: 90, name: "Thread " + (i + 1) }));
+      const doc = buildWith(baseDesign({ colors, colorCount: n }), {
+        hoop: { label: "8\u00d78 in", widthMm: 200, heightMm: 200 },
+        chartLabel: "Studio basics",
+        sew: { trims: 16, threadM: 7.1 },
+        hoopNote,
+      });
+      expect({ n, noteLen: hoopNote.length, offPage: drawsBelowMargin(doc) })
+        .toEqual({ n, noteLen: hoopNote.length, offPage: [] });
+    }
+  }
+});
+
+test("a page is never added unless there is a thread row to put on it", () => {
+  // The break used to fire AFTER the last row, so a list whose final row
+  // happened to cross the margin emitted a blank trailing page.
+  for (const n of COLOUR_COUNTS) {
+    for (const hoopNote of HOOP_NOTES) {
+      const colors = Array.from({ length: n }, (_, i) => ({ r: 0, g: 0, b: 0, name: "T" + i }));
+      const doc = buildWith(baseDesign({ colors, colorCount: n }), { hoopNote });
+      const lastPage = doc.pageCount;
+      const drawnOnLast = doc.texts.filter((t) => t.page === lastPage).length;
+      expect({ n, noteLen: hoopNote.length, lastPage, drawnOnLast: drawnOnLast > 0 })
+        .toEqual({ n, noteLen: hoopNote.length, lastPage, drawnOnLast: true });
+    }
+  }
+});
+
+test("every thread row reaches the sheet, however many there are", () => {
+  const n = 40;
+  const colors = Array.from({ length: n }, (_, i) => ({ r: 1, g: 2, b: 3, name: "Thread " + (i + 1) }));
+  const doc = buildWith(baseDesign({ colors, colorCount: n }), {});
+  const strings = doc.texts.map((t) => t.str);
+  for (let i = 1; i <= n; i++) expect(strings).toContain(i + ". Thread " + i);
+});
+
+// --- the sheet says whether the design fits the hoop it names -----------
+
+test("the worksheet prints the hoop-fit verdict directly under the hoop line", () => {
+  // The Download step refuses a STITCH export for an oversize design until
+  // the customer confirms, and rightly does not gate the worksheet. But the
+  // sheet carried no trace of it: measured 2026-09-07, "Hoop: 8x8 in (200 mm
+  // x 200 mm)" printed above a 305.0 mm design, with a picture showing it
+  // comfortably inside the dashed box — because that box is the GARMENT
+  // placement area, not the hoop. The one document that goes to the machine
+  // was the one that did not mention the design cannot be hooped.
+  const note = "Exceeds your 8\u00d78 in hoop, and every hoop this app offers \u2014 make it smaller under Size";
+  const doc = buildWith(baseDesign({ widthMM: 305 }), {
+    hoop: { label: "8\u00d78 in", widthMm: 200, heightMm: 200 },
+    hoopNote: note,
+  });
+  const strings = doc.texts.map((t) => t.str);
+  expect(strings).toContain(note);
+  // Directly under the hoop line, above the render — a reader must meet the
+  // contradiction where the claim is, not eight lines later.
+  const hoopIdx = strings.findIndex((s) => s.startsWith("Hoop: "));
+  const noteIdx = strings.indexOf(note);
+  expect(noteIdx).toBe(hoopIdx + 1);
+});
+
+test("the worksheet says nothing about the hoop when the design fits", () => {
+  // Absence has to be distinguishable from a design that fits: a sheet that
+  // always carried a hoop sentence would train the reader to skip it.
+  const doc = buildWith(baseDesign(), {
+    hoop: { label: "5\u00d77 in", widthMm: 130, heightMm: 180 },
+    hoopNote: "",
+  });
+  expect(doc.texts.map((t) => t.str).some((s) => /Exceeds/.test(s))).toBe(false);
 });

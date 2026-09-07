@@ -143,3 +143,24 @@ replacement for this area's `pyembroidery` dependency is now evaluated —
 `docs/pystitch-evaluation-2026-08-11.md`, verdict **Adopt**, checked
 against `digitizer_service/formats.py` and the other call sites — with
 adoption in progress in a parallel lane as of 2026-08-11.
+
+**Three of the four shipped formats verified by PICTURE, not just bytes
+(2026-09-07).** "FRITSCH" exported from the app and drawn back by pystitch, an
+independent reader: PES, EXP and JEF each read upright and correct at
+101.8 x 15.1 mm, matching what the app reported. DST comes back 15.1 x 101.8 —
+a quarter turn AND mirrored, letters backwards (footgun #1, writer half, still
+Kent's call). The Download step's DST caveat was checked against that render
+and is accurate clause for clause. Its "may not see the color stops" clause was
+not exercised by that render (single-colour design) but is pinned separately by
+`test/crossval-stitch-formats.test.js`, which asserts a standard reader sees
+ZERO colour changes and one sequin toggle — the colour change is written `0x43`
+where the spec wants `0xC3`. *(render: `tools/crossval_decode.py` + pystitch)*
+
+**Every downloadable output has now been LOOKED at (2026-09-07).** The Download
+step offers seven: PES, EXP, DST, JEF, SVG, PNG and the PDF worksheet. Each was
+opened or rendered, not merely byte-checked, on one "FRITSCH" lettering design:
+PES/EXP/JEF decode through pystitch and draw upright at 101.8 x 15.1 mm; SVG
+carries `viewBox="0 0 101.8 15.1"` with real `mm` width/height and seven
+polylines for seven letters, and renders upright in a browser; PNG opens at
+1200 x 178 with the design upright. DST is the one exception (footgun #1,
+writer half). The PDF worksheet was broken and is fixed — see area 3.

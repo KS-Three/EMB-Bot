@@ -188,12 +188,19 @@ describe("buildWorksheetPDF against real jsPDF (byte/structure-level checks)", (
       // stats block, and thread list is comfortably larger.
       expect(bytes.byteLength).toBeGreaterThan(3000);
 
-      // Real jsPDF's own page count (from the actual document it built)...
-      expect(doc.internal.getNumberOfPages()).toBe(2);
-      // ...matches what's structurally present in the raw bytes: two real
-      // page objects, and the Pages tree's own declared count agrees too.
-      expect(countPageObjects(bytes)).toBe(2);
-      expect(declaredPageCount(bytes)).toBe(2);
+      // ONE page, and the raw bytes agree. This asserted 2 until 2026-09-07,
+      // when rendering a real worksheet to an image and looking at it showed
+      // the second page was entirely blank and the thread rows were being
+      // drawn past the bottom of the first. Both came from one bug: the page
+      // break ran after each row instead of before it.
+      //
+      // Note what this tier could NOT see, and why the fix needed a picture:
+      // every assertion here — byte size, page objects, extractable text —
+      // passes just as happily when a row is drawn off the paper, because the
+      // string is in the content stream either way.
+      expect(doc.internal.getNumberOfPages()).toBe(1);
+      expect(countPageObjects(bytes)).toBe(1);
+      expect(declaredPageCount(bytes)).toBe(1);
 
       // The stitch-simulation PNG was actually embedded as an image
       // XObject, not just "some addImage call was made to a fake".

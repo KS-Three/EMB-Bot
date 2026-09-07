@@ -12,6 +12,8 @@ import {
   selectElement,
   updateElement,
   migrateProject,
+  deriveProjectName,
+  UNTITLED_NAME,
 } from "./project.js";
 
 // --- defaults ---------------------------------------------------------
@@ -746,4 +748,70 @@ test("migrateProject preserves a shape element's real kind/params", () => {
   expect(el.kind).toBe("star");
   expect(el.params).toEqual({ points: 7, innerRatio: 0.3 });
   expect(el.sizeMm).toBe(32);
+});
+
+// --- deriveProjectName -------------------------------------------------
+//
+// The rule these pin: a design's guessed name is a function of its CONTENT.
+// The defect was two designs listing as "Untitled design / today" in the
+// drawer and both exporting as untitled-design.embproj -- see
+// deriveProjectName's own comment for the measurement.
+
+const withElements = (...els) => ({ ...defaultProject(), elements: els });
+const text = (t) => ({ ...defaultTextElement("e1"), text: t });
+
+test("deriveProjectName reads the text off a text element", () => {
+  expect(deriveProjectName(withElements(text("FRITSCH'S STITCHES")))).toBe("FRITSCH'S STITCHES");
+});
+
+test("deriveProjectName takes the first NON-BLANK line and trims it", () => {
+  expect(deriveProjectName(withElements(text("\n\n  TOP LINE  \nsecond")))).toBe("TOP LINE");
+});
+
+test("deriveProjectName collapses internal whitespace", () => {
+  expect(deriveProjectName(withElements(text("A   B\tC")))).toBe("A B C");
+});
+
+test("deriveProjectName clips a long line and marks the clip", () => {
+  const got = deriveProjectName(withElements(text("THE QUICK BROWN FOX JUMPS OVER THE LAZY DOG AND KEEPS GOING")));
+  expect(got).toBe("THE QUICK BROWN FOX JUMPS OVER THE LAZY\u2026");
+  // The ellipsis is one char, so the cap holds including it.
+  expect(got.length).toBeLessThanOrEqual(41);
+});
+
+test("deriveProjectName returns null for an empty design, so the caller keeps the placeholder", () => {
+  expect(deriveProjectName(defaultProject())).toBeNull();
+  expect(deriveProjectName(withElements(text("   \n  ")))).toBeNull();
+});
+
+test("deriveProjectName falls back to artwork's uploaded filename, extension stripped", () => {
+  const img = { ...defaultImageElement("e1"), name: "enthusiast_logo.png" };
+  expect(deriveProjectName(withElements(img))).toBe("enthusiast_logo");
+});
+
+test("deriveProjectName prefers TEXT over artwork when a design has both", () => {
+  const img = { ...defaultImageElement("e2"), name: "logo.png" };
+  expect(deriveProjectName(withElements(img, text("ACME")))).toBe("ACME");
+});
+
+test("deriveProjectName leaves a dotless artwork name alone", () => {
+  const img = { ...defaultImageElement("e1"), name: "scan" };
+  expect(deriveProjectName(withElements(img))).toBe("scan");
+});
+
+test("deriveProjectName derives nothing from a shape or manual element", () => {
+  // Deliberate: "Circle" is no more distinguishing than the placeholder
+  // once there are two of them (see the function's own comment).
+  expect(deriveProjectName(withElements({ id: "e1", type: "shape", kind: "circle" }))).toBeNull();
+  expect(deriveProjectName(withElements({ id: "e1", type: "manual", shapes: [] }))).toBeNull();
+});
+
+test("deriveProjectName survives junk elements without throwing", () => {
+  expect(deriveProjectName({ elements: [null, undefined, {}, { type: "text" }] })).toBeNull();
+  expect(deriveProjectName(null)).toBeNull();
+  expect(deriveProjectName({})).toBeNull();
+});
+
+test("UNTITLED_NAME is the placeholder the whole app agrees on", () => {
+  expect(UNTITLED_NAME).toBe("Untitled design");
 });

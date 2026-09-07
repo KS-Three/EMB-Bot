@@ -414,7 +414,11 @@
       // lib/hoop.js) — the operator mounts a physical hoop, not a garment.
       // ...and the chart those codes came out of. "1375 Dark Charcoal" is
       // not a thread anyone can buy until the sheet says whose 1375 it is.
-      await exportWorksheetPDF(design, garment, effectiveHoop(project).hoop, palette.label);
+      // `hoopExceeds` is the same string the export confirm shows. The
+      // worksheet is not gated on it -- printing a reference sheet is
+      // harmless -- but it must SAY it, because the sheet is the document
+      // that goes to the machine.
+      await exportWorksheetPDF(design, garment, effectiveHoop(project).hoop, palette.label, hoopExceeds);
       // Not a stitch format — clear the encoder note so it can't linger next
       // to a message about a different download.
       lastExport = null;
