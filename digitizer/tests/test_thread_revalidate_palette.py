@@ -10,14 +10,24 @@ resnapped onto 19 out-of-palette spools, 55 block-level threads sewn off a
 12-cone colour list, 92 machine colour stops. The resnapped shape ids equal
 the `PALETTE_THREAD_MISMATCH` ids exactly.
 
-The binding is CLASS-GATED, and the gate is load-bearing: fix #6.3's own
-motivating case (`repro_gradient_white_icon.png`, pinned end-to-end with
-measured numbers in `tests/test_thread_revalidate.py`) is GRADIENT-lane, and
-the flat/gradient byte-identity guards require those lanes untouched — so
-every non-photo class keeps the unrestricted chart argmin even when a caller
-passes a palette. The gate mirrors `stage7_sequence.PHOTO_CLASSES` the same
-way `stage6_satin._PHOTO_CLASSES` does; the lockstep is pinned here exactly
-as `tests/test_photo_width_floor.py` pins that one.
+The binding WAS class-gated, and that gate was load-bearing while it lasted:
+fix #6.3's own motivating case (`repro_gradient_white_icon.png`, pinned
+end-to-end with measured numbers in `tests/test_thread_revalidate.py`) is
+GRADIENT-lane, and the flat/gradient byte-identity guards required those lanes
+untouched — so every non-photo class kept the unrestricted chart argmin even
+when a caller passed a palette. The gate mirrors
+`stage7_sequence.PHOTO_CLASSES` the same way `stage6_satin._PHOTO_CLASSES`
+does; the lockstep is pinned here exactly as `tests/test_photo_width_floor.py`
+pins that one.
+
+**`cfg.bind_resnap_all_classes` extends the binding to EVERY class, and Kent
+flipped it ON 2026-09-07** with the rest of the `rec4_mask` set. So the
+default now binds flat and gradient too, and the "keeps the unrestricted
+argmin" invariant lives on only as the flag's OFF path — which still has its
+own test here, because the `off` arm of every measurement in
+`docs/flip-sheet-2026-09-06.md` depends on it. The golden churn that argument
+was really about is handled where it belongs: a per-key recapture of
+`flat_lane_golden.json` against a pre-change tree.
 
 Spool indices in these tests are selected from the real Isacord chart by
 CRITERIA (distance bands measured in-test), not hardcoded — a chart update
@@ -133,10 +143,23 @@ def test_photo_class_resnap_stays_inside_the_palette():
     assert w["ids"] == ["Stest0001"]
 
 
-def test_flat_and_gradient_keep_the_unrestricted_chart_argmin():
-    """The load-bearing gate: even with a palette PASSED, a non-photo class
-    re-snaps chart-wide — fix #6.3's gradient-lane behaviour, byte-identical
-    to before the parameter existed (the flat/gradient goldens rely on it)."""
+def test_flat_and_gradient_are_BOUND_to_the_palette_by_default():
+    """**This assertion is the inverse of what it was**, and deliberately so.
+
+    It read: *"even with a palette PASSED, a non-photo class re-snaps
+    chart-wide — byte-identical to before the parameter existed (the
+    flat/gradient goldens rely on it)."* That WAS the load-bearing gate while
+    `bind_resnap_all_classes` was default OFF. Kent flipped it ON 2026-09-07
+    with the rest of the `rec4_mask` set, and binding every class is the whole
+    point of the flag: off the photo route the argmin ran over the entire
+    chart, so a re-snapped shape pulled in a spool the palette never chose and
+    the operator loaded a cone the plan does not name — 34 cones corpus-wide,
+    25 outside the palette, every escape on the gradient lane
+    (MASTER_SCOPE 15).
+
+    So this is NOT pinned to the old default. A test that asserts something a
+    ruling deliberately made false gets rewritten against the new behaviour;
+    the old path keeps its own test directly below."""
     p, de, global_best = _scenario()
     wrong = _pick(de, 20.0, 60.0, exclude={global_best})
     in_palette = _pick(de, 5.0, 15.0, exclude={global_best, wrong})
@@ -145,6 +168,28 @@ def test_flat_and_gradient_keep_the_unrestricted_chart_argmin():
         r = _region(wrong)
         V.revalidate_threads(
             [r], p, CFG,
+            palette_indices=[wrong, in_palette],
+            design_class=cls,
+        )
+        assert r.thread_index == in_palette, (cls, r.thread_index)
+        assert r.thread_index != global_best, (
+            f"{cls}: still reaching the chart-wide argmin, so the binding is "
+            "not actually applied")
+
+
+def test_with_the_flag_OFF_flat_and_gradient_keep_the_unrestricted_argmin():
+    """The pre-2026-09-07 behaviour, which the flag's OFF path must still
+    deliver — `revalidate_small_shapes`' small-shape rule and the `off` arm of
+    every measurement in `docs/flip-sheet-2026-09-06.md` depend on it."""
+    p, de, global_best = _scenario()
+    wrong = _pick(de, 20.0, 60.0, exclude={global_best})
+    in_palette = _pick(de, 5.0, 15.0, exclude={global_best, wrong})
+    unbound = PipelineConfig(bind_resnap_all_classes=False)
+
+    for cls in ("flat", "gradient"):
+        r = _region(wrong)
+        V.revalidate_threads(
+            [r], p, unbound,
             palette_indices=[wrong, in_palette],
             design_class=cls,
         )
