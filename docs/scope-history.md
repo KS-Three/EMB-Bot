@@ -9624,3 +9624,38 @@ happen the day the call is made.
 
 **Left in place — the DST codec is Kent's** (CLAUDE.md footgun 1). But it is a
 one-line change now costed against a real logo instead of a fixture.
+
+## 2026-09-07 — four things driven and found sound
+
+Snapshot. Not live status. Recorded because a measured negative is worth as
+much as a fix when it stops the next session re-opening the same question.
+
+**The PDF worksheet's preview is correct — and nearly wasn't reported as a
+defect.** Extracting the embedded 900 × 900 image straight out of the PDF shows
+a dark logo on a BLACK field, unreadable. That is an artifact of the
+extraction: the XObject carries an `/SMask`, and compositing over white gives a
+clean, realistic stitch render with the placement outline dashed around it.
+**A raw stream pulled out of a container is not what the reader shows.**
+
+**Text a customer will actually type, all five handled, no page errors:**
+
+| typed | result |
+|---|---|
+| `Team 🧵🪡` | *"No font in this library can stitch “🧵” and “🪡” — try different text."* |
+| a 70-character sentence | stitches, and warns *"Letters 1.4 mm tall — under the 4 mm floor, thin strokes will shred"* |
+| `שלום` | 0 stitches, and names the two fonts that can: *חוכמה Large and חוכמה Medium* |
+| `Café Ñoño` | stitches the rest and names 46 fonts that carry `Ñ` |
+| `Est. 1999 — #1` | names 10 fonts that carry the em dash |
+
+That is #399's font-coverage work and #402's size findings both doing their job
+on input nobody wrote them for.
+
+**Two browser tabs do not clobber each other.** Each holds its own `currentId`
+in memory and writes its own record; the index keeps both entries and
+`embstudio:current` only decides which project a NEW tab opens. Driven with two
+real pages editing at once.
+
+**`.embproj` import is properly guarded.** `parseProjectFile` rejects non-JSON,
+non-objects, arrays, and anything without either the format marker or the
+bare-project markers, and `App.importFromDrawer` gives each failure its own
+notice. The DST lane was the one with only a size check.
