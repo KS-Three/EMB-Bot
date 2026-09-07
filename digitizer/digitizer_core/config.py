@@ -1289,6 +1289,50 @@ class PipelineConfig:
     # that is Kent's call rather than a silent default change.
     revalidate_small_shapes: bool = False
 
+    # Score the thread re-validation on the SAME pixels the grader uses.
+    # `stage4_vectorize.revalidate_threads` and
+    # `preflight._region_color_errors` claim the same estimator and have it —
+    # both take the median of the per-pixel CIEDE2000 — but they do not share
+    # a MASK. Preflight erodes the polygon raster one pixel and drops
+    # `p.bg_mask` ("to keep anti-alias halo pixels from dragging a flat color
+    # toward the background"); `_region_footprint` is a bare `cv2.fillPoly`
+    # and does neither. ON, the re-snap applies preflight's two operations,
+    # hairline fallback included, and the pixel floor counts the MASKED set —
+    # a floor that admits a shape on halo pixels and then scores it on three
+    # real ones is not measuring what it thinks.
+    #
+    # Measured 2026-09-07 (`tools/spool_remedy.py --masks`, MASTER_SCOPE 28):
+    # on `logo_gaulke_roofing`'s `Se6eddd27` (0.58 mm2 at 16.1 px/mm) the two
+    # masks are 247 px against 54 and disagree by **52.2 dE00 on one
+    # polygon**. Stage 4's set is BIMODAL — 103 near-black + 65 near-white —
+    # so its median makes `3971 Silver` the chart-wide argmin at 11.4 while
+    # the region's own core is near-black and scores that same Silver 63.6.
+    # The re-snap picks a thread on pixels the grader refuses, and the grader
+    # then condemns the thread the re-snap picked. It is the same failure
+    # `_region_color_errors`' docstring calls this instrument's original sin
+    # ("the per-channel median of a bimodal pool is a colour almost no pixel
+    # carries"), fixed on preflight's side 2026-08-11 and never inherited
+    # here.
+    #
+    # It is NOT a general cure: measured on all three F-wall blocks that
+    # survive excess scoring, the masks agree to 0.4 dE00 on `screenshot`
+    # (that one is the floor above) and 1.3 on `bridge_bar`. One fixture,
+    # named.
+    #
+    # "MATCHES" is a claim, so it carries its residual: it is not bit-for-bit.
+    # `_region_footprint` rounds mm->px and `_region_color_errors` truncates,
+    # so the two rasters differ by up to a pixel at a vertex before either
+    # mask is applied — measured 2026-09-07, 80 px out of 557,046 on gaulke
+    # (99.99% IoU) and zero on `logo_alpha`. Aligning the rasteriser itself
+    # would touch `tag_enclosed_background`, which shares `_region_footprint`,
+    # so it is deliberately left alone; `tests/test_resnap_mask_matches_grader
+    # .py::test_the_flagged_mask_really_matches_the_graders` pins the gap.
+    #
+    # DEFAULT OFF and byte-identical off. It moves the flat and gradient
+    # goldens the phase-4 spec pins, so the flip is a scorecard recapture and
+    # Kent's call.
+    resnap_mask_matches_grader: bool = False
+
     # Bind stage 4's thread re-snap to the selected palette on EVERY class,
     # not only the photo ones. `revalidate_threads`' argmin runs over the whole
     # chart off the photo route, so a re-snapped shape can pull in a spool the

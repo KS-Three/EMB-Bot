@@ -2,10 +2,11 @@
 
 A decision sheet for the flags that are built, measured and still OFF. Every
 number is one pass of `digitizer/tools/flip_sheet.py` over the scorecard's own
-26 fixtures at 80 mm / `left_chest`. **Ten arms**: the shipped default, each
-flag alone, all five together, and — added 2026-09-07 — the three
-combinations someone would actually ship (`rec3`, `rec4`, `halo_patch`).
-260 measured rows.
+26 fixtures at 80 mm / `left_chest`. **Eleven arms**: the shipped default,
+each flag alone, all five together, the three combinations someone would
+actually ship (`rec3`, `rec4`, `halo_patch`), and a **sixth parked flag**,
+`resnap_mask_matches_grader`, which did not exist when this sheet was written
+— all four added 2026-09-07.
 
 **Every number below is post-fix**, on `20fa551` for the six original arms and
 `50f103e` for the combinations added 2026-09-07; the two trees are verified
@@ -37,6 +38,16 @@ cap, if either — defect 19) and `chain_links` is barred permanently under gate
 | `satin_per_stroke` | 6/26 | −3,021 | +33 | 0 | 0 | chrome C 64 → B 76; meadow D 52 → C 64 |
 | `satin_patch_junctions` | 3/26 | +789 | +10 | 0 | 0 | scene_stub B 76 → B 88; becker B 76 → B 88 |
 | **all five** | **12/26** | **−5,719** | −28 | **−21** | **−20** | **5 up, 1 down** |
+| `resnap_mask_matches_grader` † | 7/26 | −1,715 | +2 | −5 | −4 | gaulke F 4 → **D 46** |
+
+† **The sixth flag, added 2026-09-07 and NOT part of "all five" above.** The
+thread re-validation was scoring its argmin on a raw `cv2.fillPoly` footprint
+while the grader erodes one pixel and drops the background, so on a thin shape
+the re-snap picked a thread for the anti-alias halo — `logo_gaulke_roofing`'s
+`Se6eddd27` reads **11.4 dE00** to stage 4 and **63.6** to preflight, a 52.2
+gap on one polygon. It is also a second cause of the resnap escape: gaulke's
+plan palette goes 4 → 2 because `1375` and `3971` were only ever reached for
+halo pixels. No grade moves down anywhere. MASTER_SCOPE 28.
 
 **No grade moves down in any SINGLE-flag arm.** The combination is the
 exception, and finding it is what the `all` arm is for: with all five on,

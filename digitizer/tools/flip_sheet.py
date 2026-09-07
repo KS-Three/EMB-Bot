@@ -61,6 +61,13 @@ ARMS: dict[str, dict] = {
     "resnap_bind": {"bind_resnap_all_classes": True},
     "satin_stroke": {"satin_per_stroke": True},
     "satin_patch": {"satin_patch_junctions": True},
+    # Added 2026-09-07. `revalidate_threads` scored its argmin on a raw
+    # `cv2.fillPoly` footprint while the grader erodes and drops the
+    # background, so on a thin shape the re-snap chose a thread for the
+    # anti-alias halo — `logo_gaulke_roofing`'s `Se6eddd27` reads 11.4 dE00
+    # there and 63.6 in preflight. A sixth parked flag belongs in the sheet
+    # that exists to price parked flags.
+    "resnap_mask": {"resnap_mask_matches_grader": True},
     # --- combinations -------------------------------------------------------
     # `all` answers "flip everything"; nobody flips everything. These are the
     # combinations someone would actually ship, and the reason they are arms

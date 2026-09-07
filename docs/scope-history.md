@@ -82,6 +82,74 @@ that falls, named down to the pair.**
   nothing there — F 4, raw 4, 2 blocking, **worst ΔE 63.6 unchanged**. The wall
   decomposes **4 + 0 + 2** and gaulke is the seventh, unexplained.
 
+- **The F wall's category (1) is reproducible for the first time, and gaulke
+  is no longer unexplained — it survives excess scoring.**
+  `tools/spool_remedy.py --yardstick` (new mode; no patch, because excess has
+  been reported on every route since 2026-09-06) re-runs the check's own
+  scoring under each yardstick and counts blocks. It names **exactly the four**
+  defect 28 claimed — `drone_render`, `golden_tee`, `region_blobs`,
+  `summit_badge` — a claim nothing had reproduced, sitting next to one that
+  turned out to be a bug's artifact. **The offender set moves with the
+  yardstick**: `_thread_match_findings` picks the top row on `_score`, so a
+  thread can block on its SECOND-worst raw row under excess — 6 of the 24
+  findings change row, and a probe that keeps the raw top and prints its excess
+  answers a different question. Three fixtures still block: `screenshot`
+  (`0111 Whale` excess 32.4, `2776 Black Chrome` 16.3), `bridge_bar`
+  (`6156 Olive` 10.3), and **`gaulke_roofing`** (`3971 Silver` raw 63.6,
+  **excess 58.6**) — so the wall is **4 + 0 + 3**. **Gaulke's survivor is 54
+  pixels**: 0.58 mm2, 0.03% of the design, artwork **[45,45,45]** sewn in
+  Silver **(204,204,204)** with `1375 Dark Charcoal` loaded **5.0 dE00** away,
+  on a region stage 4 already re-snapped (`thread_resnapped_de00` 30.29) and
+  chose Silver for. **54 px is inside the 50-199 band
+  `cfg.revalidate_small_shapes` was built to reach, and that flag leaves it
+  byte-identical** — 247 px is above stage 4's own 200 floor, so that flag was
+  never the mechanism, and a first draft of this entry had it backwards.
+
+- **Root cause, same day: `revalidate_threads` and `_region_color_errors`
+  share an estimator and NOT a mask.** Both take the median of the per-pixel
+  CIEDE2000 — each docstring says so — and on `gaulke`'s `Se6eddd27` they
+  disagree by **52.2 dE00 on one polygon**. Preflight erodes the raster one
+  pixel and drops `p.bg_mask` (*"to keep anti-alias halo pixels from dragging a
+  flat color toward the background"*); `_region_footprint` is a bare
+  `cv2.fillPoly` and does neither. **247 px against 54**, and stage 4's set is
+  bimodal — **103 near-black + 65 near-white** — so its median makes
+  `3971 Silver` the chart-wide argmin at **11.4** while the region's own core
+  is near-black and scores that Silver **63.6**. The re-snap picks a thread on
+  pixels the grader refuses, and the grader condemns the thread the re-snap
+  picked. It is the same failure `_region_color_errors`' docstring calls this
+  instrument's original sin (*"the per-channel median of a bimodal pool is a
+  colour almost no pixel carries"*), fixed on preflight's side 2026-08-11 and
+  never inherited by stage 4. **It does NOT generalise** — measured on all
+  three excess-surviving blocks (`tools/spool_remedy.py --masks`), the masks
+  agree to 0.4 dE00 on `screenshot` (the floor, already documented) and 1.3 on
+  `bridge_bar` (240 px, above the floor, both instruments condemn `6156 Olive`
+  at ~20 — still open). Three survivors, three causes.
+
+- **Fixed the same day behind `cfg.resnap_mask_matches_grader`, DEFAULT OFF,
+  and it turned out to be bigger than the one shape.** The re-snap applies
+  preflight's two operations (erode one pixel, drop `p.bg_mask`, hairline
+  fallback), and the pixel floor then counts the MASKED set — which also feeds
+  the small-shape restriction, deliberately: a shape whose scoreable core is
+  small is exactly the one to hold to cones already loaded. The masks agree to
+  **99.99% IoU** on gaulke and 100% on `logo_alpha`; the residual is
+  `_region_footprint` rounding mm->px where `_region_color_errors` truncates,
+  and aligning the rasteriser would touch `tag_enclosed_background`, so it is
+  left alone and pinned by a test. **Corpus A/B: 19 of 26 byte-identical,
+  -1,715 stitches, -5 blocks, -4 cones, +2 trims, `logo_gaulke_roofing`
+  F 4 -> D 46, nothing down anywhere.** **A SECOND cause of defect 15's resnap
+  escape:** the argmin was running on halo pixels and going shopping for a
+  spool matching a colour the artwork does not contain — gaulke's region cones
+  6 -> 3 and its plan palette 4 -> 2, with `1375` and `3971` never reached.
+  `bind_resnap_all_classes` restricts WHERE the argmin lands; this fixes WHY
+  it goes wrong. **Residual, named rather than buried:** `Se6eddd27` improves
+  63.6 -> **16.7**, not to the 5.0 Dark Charcoal would give — with the halo
+  gone the region falls under the re-snap's own floor and Dark Charcoal is no
+  longer loaded for the small-shape rule to offer, so
+  `revalidate_small_shapes` is byte-identical on top of this flag. An earlier
+  draft of the test asserted the shape would clear; it does not.
+  `tests/test_resnap_mask_matches_grader.py` (10). Flipping it moves the flat
+  and gradient goldens the phase-4 spec pins, so it is Kent's.
+
 - **The sheet was resting on two engines and nobody had checked. Now verified,
   not inferred.** Its first pass was cached before the halo fix; the two
   affected arms were re-measured into a second directory; the published table
