@@ -143,6 +143,10 @@
 
     let lastX = 0;
     let lastY = 0;
+    // Whether the previous EMITTED record laid thread — the chain rule the
+    // oversized-move split below needs. Starts false: the file's first move is
+    // travel to wherever the design begins.
+    let lastWasStitch = false;
     let xMin = 0, xMax = 0, yMin = 0, yMax = 0;
     let haveExtents = false;
 
@@ -170,18 +174,64 @@
         }
         lastX = targetX;
         lastY = targetY;
+        lastWasStitch = false; // a trim cuts the chain
         continue;
       }
 
       const flag = st.type === "color" ? "color" : st.type === "jump" ? "jump" : "stitch";
 
-      // Emit intermediate jump records for oversized moves.
+      // A move too big for one record is split into intermediate ones. What
+      // those intermediates ARE is the whole question, and this emitted
+      // "jump" for every case until 2026-09-07 — including a STITCH, which
+      // silently turned thread the design asked for into travel.
+      //
+      // exp.js's identical loop has always split a stitch into STITCHES
+      // (`isJump ? jumpRecord : stitchRecord`); only this one did not, so one
+      // design produced two different sew-outs. Measured that day on a real
+      // "AB" monogram at Full Back (304.9 x 146.2 mm, 5,830 stitches), decoded
+      // with pystitch:
+      //
+      //   .dst  5,830 stitches, 3,769 JUMPS, longest sewn segment 16.7 mm
+      //   .exp  9,426 stitches,     8 jumps, longest sewn segment 18.0 mm
+      //   .pes  5,830 stitches,     3 jumps, longest sewn segment 51.1 mm
+      //
+      // Three encoders, three answers. This one now matches exp.js: a stitch
+      // splits into stitches, a jump into jumps. It is byte-identical for
+      // every design whose stitches already fit a record — which is every
+      // quick start and every crossval fixture; the split only fires on
+      // segments no machine could sew in one go anyway.
+      //
+      // It splits as stitches only when the move CONTINUES a sewn chain —
+      // this record is a stitch AND the last one emitted was too. The move to
+      // the FIRST stitch after a jump, a trim, a colour change or the start of
+      // the file is TRAVEL: there is nothing to sew between where the needle
+      // was and where the design begins, and splitting it into stitches would
+      // draw a line across the garment from the origin. (Same chain rule
+      // `designToStrands` uses; the old unconditional "jump" was right for
+      // this one case by accident, and `test/dstimport.test.js`'s
+      // off-origin-centering fixture is exactly it.)
+      //
+      // A "color" record splits as JUMPS, never as itself: intermediate
+      // colour records would insert extra machine stops. In practice colour
+      // records carry a zero delta, so that is a guard rather than a path.
+      //
+      // Whether the ENGINE should emit such segments at all is the bigger
+      // question and not this function's: a 17.9 mm satin crossing is
+      // unsewable however it is encoded. Measured and recorded for Kent —
+      // 18 of 85 shipped fonts produce them at large sizes, and a
+      // single-letter monogram at left-chest size gives 278 of 1,607.
+      // "end" reaches the "stitch" flag by fallthrough (this encoder has never
+      // special-cased it, and combine.js documents why that matters), but it
+      // is a terminator, not thread — so it is excluded here even though a
+      // real design puts it at the last stitch's own position, delta zero.
+      const isStitch = flag === "stitch" && st.type !== "end";
+      const splitFlag = isStitch && lastWasStitch ? "stitch" : "jump";
       let dx = targetX - lastX;
       let dy = targetY - lastY;
       while (Math.abs(dx) > MAX_DELTA || Math.abs(dy) > MAX_DELTA) {
         const stepX = clampStep(dx);
         const stepY = clampStep(dy);
-        records.push(encodeRecord(stepX, stepY, "jump"));
+        records.push(encodeRecord(stepX, stepY, splitFlag));
         lastX += stepX;
         lastY += stepY;
         dx = targetX - lastX;
@@ -189,6 +239,7 @@
       }
 
       records.push(encodeRecord(dx, dy, flag));
+      lastWasStitch = isStitch;
       lastX = targetX;
       lastY = targetY;
     }

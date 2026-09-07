@@ -2911,3 +2911,52 @@ its hedge as it is copied forward** — is why this file is split.
   customer to fix something unrelated, so the check is `!ok && the id is still
   registered`. **A boolean that means two things needs the caller to
   disambiguate before it can be shown to anyone.** *(2026-09-07)*
+
+- **One design, three encoders, three different sew-outs — because each
+  invented its own answer to "this stitch is too long".** A DST record carries
+  ±121 units per axis, an EXP record ±127, a PEC record ±2047. All three
+  encoders split an oversized move into intermediate records; only the choice
+  of WHAT those intermediates are differed, and nobody had compared them.
+
+  Measured 2026-09-07 on a real `manga_impact` "AB" monogram at Full Back
+  (304.9 × 146.2 mm, 5,830 stitches), each file decoded with pystitch:
+
+  | | stitches | jumps | longest sewn |
+  |---|---|---|---|
+  | `.dst` | 5,830 | **3,769** | 16.7 mm |
+  | `.exp` | 9,426 | 8 | 18.0 mm |
+  | `.pes` | 5,830 | 3 | **51.1 mm** |
+
+  DST turned the thread into **travel** — 3,769 needle-up moves where the
+  design said to sew. EXP split into stitches. PES emitted a 51 mm stitch no
+  machine can make. `dst.js` now matches `exp.js`: 9,591 stitches, 8 jumps.
+
+  **The chain rule is the part that is easy to get wrong, and I did first.**
+  "A stitch splits into stitches" draws a line from the origin across the
+  garment, because the move to the FIRST stitch of a run is travel — there is
+  nothing to sew between where the needle was and where the design begins. It
+  splits as stitches only when the move CONTINUES a sewn run: this record is a
+  stitch AND the last emitted one was. A trim, a colour change and the start of
+  the file all cut the chain. `test/dstimport.test.js`'s off-origin-centering
+  fixture caught the naive version on the first run — **the old unconditional
+  "jump" was right for that one case by accident**, which is why nothing had
+  ever failed.
+
+  **The safety property is a measurement, not an argument.** The DST of all 85
+  shipped fonts at left-chest size hashes
+  `e24e181fc8dd89aae12221fe21ab889197a501d0dd3ec59291f8e5d1c591dc9f` both
+  before and after: not one of them contains an over-length segment, so the
+  split fires only on designs that were already unsewable. **When a change
+  touches an encoder, hash the corpus rather than reasoning about blast
+  radius.**
+
+  **What is NOT fixed, and is Kent's.** The engine emits those segments in the
+  first place. Measured across the 85 shipped fonts at three texts: **18 fonts**
+  produce stitches over one DST record, worst **32.8 mm**. The quick starts are
+  clean (`YOUR NAME` on a hat: 0 of 2,346; `Your Name`: 0 of 958; `Yours`: 0 of
+  1,792) — it starts when letters get big: a **single-letter monogram at
+  left-chest size gives 278 of 1,607**, and a two-letter monogram on a Full
+  Back gives **1,933 of 5,828, worst 44.9 mm**. A 17.9 mm satin crossing is
+  unsewable however it is encoded, and what to do about it — split satin,
+  route wide columns to fill, cap the width — is a look-and-fabric decision
+  with a sew-out behind it, not an encoder one. *(2026-09-07)*

@@ -9481,3 +9481,77 @@ viewer's locale and is the right default there.
 
 That is now every stitch count in the product: caption, simulator, quality
 report, digitize panel, design panel, review summary, worksheet.
+
+## 2026-09-07 — one design, three encoders, three different sew-outs
+
+Snapshot. Not live status.
+
+A DST record carries ±121 units per axis, an EXP record ±127, a PEC record
+±2047. All three encoders split an oversized move into intermediate records.
+Only the choice of WHAT those intermediates are differed, and nobody had put
+the three side by side.
+
+Measured on a real `manga_impact` "AB" monogram at Full Back — 304.9 × 146.2
+mm, 5,830 stitches — with each file decoded by pystitch:
+
+| | stitches | jumps | longest sewn segment |
+|---|---|---|---|
+| `.dst` **before** | 5,830 | **3,769** | 16.7 mm |
+| `.dst` **after** | 9,591 | 8 | 17.1 mm |
+| `.exp` | 9,426 | 8 | 18.0 mm |
+| `.pes` | 5,830 | 3 | **51.1 mm** |
+
+DST turned thread into **travel**: 3,769 needle-up moves where the design said
+to sew. `exp.js`'s identical loop had always split a stitch into stitches
+(`isJump ? jumpRecord : stitchRecord`); only `dst.js` did not, and its comment
+— *"Emit intermediate jump records for oversized moves"* — was written for the
+jump case and applied to every case.
+
+(The 17.1 mm is not a leak: `clampStep` bounds each AXIS at 121 units, so a
+diagonal step reaches 121·√2 = 17.1 mm. That is the format's own maximum single
+stitch, and EXP's 127·√2 = 18.0 mm is the same arithmetic.)
+
+### The chain rule, which the naive fix gets wrong
+
+"A stitch splits into stitches" draws a line from the origin across the
+garment: the move to the FIRST stitch of a run is travel. It splits as stitches
+only when the move CONTINUES a sewn run — this record is a stitch AND the last
+emitted one was — and a trim, a colour change and the start of the file all cut
+the chain.
+
+`test/dstimport.test.js`'s off-origin-centering fixture caught the naive
+version on the first run. **The old unconditional "jump" was right for that one
+case by accident**, which is why nothing had ever failed.
+
+### The safety property is a measurement
+
+The DST of all **85** shipped fonts at left-chest size hashes
+`e24e181fc8dd89aae12221fe21ab889197a501d0dd3ec59291f8e5d1c591dc9f` **both
+before and after**. Not one contains an over-length segment, so the split fires
+only on designs that were already unsewable. Crossval pins 6/6, engine 497/497,
+studio 1025/1025, e2e 45/45.
+
+Five new tests in `test/dst.test.js`, mutation-proved three ways: reverting to
+always-jump, dropping the chain rule, and letting a trim not cut the chain each
+fail at least one.
+
+### What is NOT fixed, and is Kent's
+
+The engine emits those segments in the first place. Across the 85 shipped fonts
+at three texts, **18 fonts** produce stitches longer than one DST record, worst
+**32.8 mm**:
+
+| design | over-length | worst |
+|---|---|---|
+| `YOUR NAME` hat (quick start) | 0 / 2,346 | 5.2 mm |
+| `Your Name` left chest (quick start) | 0 / 958 | 2.9 mm |
+| `Yours` left chest (quick start) | 0 / 1,792 | 7.7 mm |
+| `AB` mam_script left chest | 0 / 2,159 | 10.9 mm |
+| **`A` mam_script left chest** | **278 / 1,607** | **17.9 mm** |
+| **`AB` manga_impact full back** | **1,933 / 5,828** | **44.9 mm** |
+
+The quick starts are clean; it starts when letters get big — a single-letter
+monogram at left-chest size, or any short text on a big garment. A 17.9 mm
+satin crossing is unsewable however it is encoded, and what to do about it
+(split satin, route wide columns to fill, cap the width) is a look-and-fabric
+decision with a sew-out behind it, not an encoder one.
