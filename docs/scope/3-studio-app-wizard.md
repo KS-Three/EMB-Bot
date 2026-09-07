@@ -457,3 +457,35 @@ design inside the GARMENT placement box, not the hoop — so a 305 mm design und
 screen, passed in rather than re-derived. *(guards: `pdfsheet.spec.js` sweeps
 1-45 colours for off-page draws and blank pages; `worksheet-numbers.spec.js`
 pins the hoop verdict end to end)*
+
+**The lettering lane on a phone: sound, and the gap is narrower than
+"desktop-only" suggests (2026-09-07).** Driven at iPhone 13 size (390 x 664),
+by tap: no horizontal overflow on either step, the garment tiles and the text
+field are usable, the design sews identically (1,336 stitches, 102 x 15 mm),
+every one of the 38 visible controls carries an accessible name, and the
+console is clean. The layout stacks properly — canvas, view toolbar, caption,
+text field, step nav — with no cramping.
+
+What a phone genuinely cannot reach is the DRAWING tools (Draw shapes, Trace
+image), which live behind the canvas's right-click menu; the toolbar visible
+under the canvas is view-only (zoom, fit, auto-snap, outline/jump/trim
+toggles, realistic view, simulator). The empty-canvas hint already says
+exactly that — "the drawing tools need a mouse" — and this drive confirms the
+claim rather than contradicting it.
+
+The artwork lane works there too: a logo uploaded at phone size digitizes to
+2,187 stitches, 80 x 17 mm, 2 colours, with no overflow and a clean console.
+
+One caution recorded because it cost a detour: a probe that reads
+`aria-label || innerText` off a control is NOT reading its accessible name, and
+it reported the digitize panel's file input as unnamed on both phone and
+desktop. The real accessibility tree calls it `button "Replace artwork…"` — the
+input is wrapped in a `<label>` and hidden with CSS, which is the intended
+pattern, and `unnamedControls()` in `wizard-smoke.spec.js` (which reads
+`ariaSnapshot()`) had it right all along: zero unnamed controls, before and
+after digitizing, at both sizes. The app was correct; the probe was not.
+
+So PRODUCT.md's "Desktop-only, stated on the site" (still stated nowhere)
+covers a narrower gap than it sounds: lettering and artwork work on a phone,
+two launch-scope tools do not, and the app already says so at the point it
+matters. Kent's call what, if anything, the site should say.
