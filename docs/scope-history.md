@@ -10354,3 +10354,36 @@ this session a new test passed against its own subject, and every one was found
 by mutation rather than by reading.
 
 Suites: engine 505, Studio 1077, e2e 64.
+
+## 2026-09-07 — all four export formats, rendered by a reader that is not ours
+
+The last artifact nobody had looked at. The bytes had been checked (magic
+numbers, stitch counts, sizes) and PES/EXP/DST cross-validated, but no one had
+drawn the four shipped formats back out and compared the pictures.
+
+One lettering design, "FRITSCH" — asymmetric both ways on purpose, so a mirror
+or a turn is unmistakable — exported from the app, decoded with pystitch (an
+independent standard-conformant reader, not EMB-Bot's own codec), and drawn:
+
+    fritsch.pes   1336 stitches   101.8 x 15.1 mm   reads FRITSCH, upright
+    fritsch.exp   1336 stitches   101.8 x 15.1 mm   reads FRITSCH, upright
+    fritsch.jef   1336 stitches   101.8 x 15.1 mm   reads FRITSCH, upright
+    fritsch.dst   1336 stitches    15.1 x 101.8 mm  a quarter turn AND mirrored
+
+Three of the four shipped formats are correct, which is the reassuring half and
+had never been established by picture. The fourth is CLAUDE.md footgun #1,
+confirmed on the current build, with a current render rather than a
+bounding-box inference — the footgun itself warns that a swapped box fits a
+turn and a mirror equally and only a picture separates them.
+
+**The app's own DST caveat is accurate, clause for clause.** It tells the
+customer the file "opens correctly in EMB-Bot, but other embroidery software
+reads it a quarter turn round *and flipped*: text comes out backwards, and
+rotating it back there will not fix that... PES and EXP are unaffected." Every
+one of those claims reproduces. Not verified here: "it may not see the color
+stops either" — this design is single-colour, so there were no stops to lose,
+and that clause stays unexercised rather than confirmed.
+
+That materially changes how urgent the writer fix is (task #44, Kent's call):
+the defect is real, but it is disclosed honestly at the point of download, with
+a working alternative named. It is a documented limitation rather than a trap.

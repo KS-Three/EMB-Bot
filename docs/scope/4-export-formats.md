@@ -143,3 +143,13 @@ replacement for this area's `pyembroidery` dependency is now evaluated —
 `docs/pystitch-evaluation-2026-08-11.md`, verdict **Adopt**, checked
 against `digitizer_service/formats.py` and the other call sites — with
 adoption in progress in a parallel lane as of 2026-08-11.
+
+**Three of the four shipped formats verified by PICTURE, not just bytes
+(2026-09-07).** "FRITSCH" exported from the app and drawn back by pystitch, an
+independent reader: PES, EXP and JEF each read upright and correct at
+101.8 x 15.1 mm, matching what the app reported. DST comes back 15.1 x 101.8 —
+a quarter turn AND mirrored, letters backwards (footgun #1, writer half, still
+Kent's call). The Download step's DST caveat was checked against that render
+and is accurate clause for clause; its "may not see the color stops" clause was
+NOT exercised, the test design being single-colour. *(render:
+`tools/crossval_decode.py` + pystitch)*
