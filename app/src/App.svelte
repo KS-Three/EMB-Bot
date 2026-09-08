@@ -154,11 +154,19 @@
   // was about a part. The comment below promised "one design never gets two
   // answers"; what a mixed design got was one answer to a different question.
   //
-  // Whole-design totals are suppressed only when the digitized elements ARE
-  // the design, which is the case that comment was written for.
-  $: digitizedCoversDesign = (() => {
+  // Whole-design totals are suppressed only when a single quality entry IS the
+  // design, which is the case that comment was written for.
+  //
+  // "every sewable element is digitized" was the first version of this and it
+  // still had a residual, found by driving TWO logos into one design
+  // (2026-09-08): each entry reported 2,187 stitches, the design was 4,374,
+  // and no number on the recap was the design's. Neither entry is wrong there
+  // — but neither is the answer either, and the customer is left adding them
+  // up from two panels. One entry covering everything is the only case where
+  // showing the totals as well would really be two answers to one question.
+  $: qualityIsTheWholeDesign = (() => {
     const sewable = (project.elements || []).filter(isSewable);
-    return sewable.length > 0 && sewable.every((el) => el.type === "digitized");
+    return sewable.length === 1 && sewable[0].type === "digitized";
   })();
 
   // What the COMBINED design costs to sew, for the review step's summary —
@@ -1127,13 +1135,13 @@
                  browser lane produced none at all — a lettering design reached
                  this screen with the garment, the hoop, the content, the font,
                  and not one number about the sew-out. -->
-            {#if !digitizedCoversDesign}
+            {#if !qualityIsTheWholeDesign}
               {#each sewFacts as row}
                 <div><dt>{row.label}</dt><dd>{row.value}</dd></div>
               {/each}
             {/if}
           </dl>
-          <QualityReport entries={qualityEntries} partial={!digitizedCoversDesign} />
+          <QualityReport entries={qualityEntries} partial={!qualityIsTheWholeDesign} />
           <p class="hint">Not quite right? Go back to adjust the garment or content — the field updates live.</p>
           <SizePanel project={{ ...project, ...selectedElement }} {designDims} on:update={(e) => elUpdate(selectedElement.id, e.detail)} />
         </div>
