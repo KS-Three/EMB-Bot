@@ -69,7 +69,7 @@ from .config import is_photographic
 from .stage7_sequence import (PHOTO_CLASSES, borders_last_layers,
                               depth_sort_layers, sequence)
 from .stitches import StitchPlan
-from .threads import chart_for
+from .threads import chart_for, rgb_to_lab
 from .warnings_codes import (
     DROPPED_SMALL_SHAPES,
     PALETTE_THREAD_MISMATCH,
@@ -592,7 +592,13 @@ def build_generation(
         debugviz.stage2(dbg, q.labels, q.thread_indices, chart_for(cfg))
 
     masks = seg.segment(q, p, cfg)
-    masks, small_warnings = resolve_small_regions(masks, cfg, p.px_per_mm, p.enclosed_mask)
+    # `layer_lab` arms `cfg.keep_thin_strokes` (see `resolve_small_regions`):
+    # the quantiser's own cluster colours, one per layer, so a contrasting
+    # sub-floor stroke is kept rather than absorbed into what it touches. The
+    # photo segmenters make their own call without it, on purpose.
+    masks, small_warnings = resolve_small_regions(
+        masks, cfg, p.px_per_mm, p.enclosed_mask,
+        layer_lab=rgb_to_lab(q.cluster_rgb) if cfg.keep_thin_strokes else None)
     if dbg:
         debugviz.stage3(dbg, p.rgb, masks)
 

@@ -176,6 +176,38 @@ red circle differs in colour but fails the loop proxy (2 mm against 2.2),
 so it is absorbed as today and the golden holds. The orange 1 mm dot is
 isolated and drops as today. State this as a test, not a comment.
 
+**BUILT 2026-09-08** (`cfg.keep_thin_strokes`, 8 tests, PR #426). Two
+things the measurement corrected:
+
+- **The teal-patch prediction was wrong by 0.19 mm.** The patch is 10 px =
+  1.19 mm at 80 mm, its proxy 2.38 mm clears the 2.2 mm floor, and ON it is
+  kept and sewn as a 27-point run in its own thread (+1 cone, +3 stitches,
+  +1 trim). It is exactly the class of element the rule exists for — a
+  contrasting small mark that clears the floors — so the rule stands and
+  the test pins the measured pair: OFF absorbs (the golden holds), ON keeps.
+- **The rule is armed on the flat lane only.** The photo segmenters call
+  `resolve_small_regions` without layer colours, as they call it without
+  the chain rescue and for the same reason (a quantised photograph is
+  mutually adjacent contrasting fragments everywhere), so ON is inert there
+  until PR 3 — which the two-band finding of PR 1 already said was the
+  right split.
+
+What it buys, on the stitches (`tools/thin_strokes.py --corpus
+--forced-class flat --flag keep_thin_strokes`; the full cost table is in
+scope-history's fourth 09-08 entry): Fremont forced flat loses **3 thin
+strokes instead of 135** (recall 86.1% → 97.3%; the 0.5–1.0 mm band 51% →
+88%, none of its 110 strokes lost; the sub-0.5 band 26% → 92%) for 33 → 165
+regions, 13,268 → 16,628 stitches and 71 → 81 trims at the same three
+colour blocks. golden_tee 13 → 4 lost, drone 31 → 9; enthusiast and
+screenshot within a stroke or two; gaulke unchanged at 43 of 46, which is
+its black frame and not this absorb. **The cost shows where there is
+nothing to gain:** `logo_bridge_bar` (a 5 px/mm JPEG) keeps the same 12
+thin strokes either way and pays 74 → 110 regions and 111 → 134 trims for
+it — contrasting compression fragments that clear the floors. A pixel-width
+guard of the kind `thin_strokes.py` already carries (`_MIN_STROKE_PX`) is
+the obvious next question, measured before it is added. The routed Fremont
+(gradient lane) sees none of this until PR 3 or the lane decision (§4e).
+
 ### 4c. Photo lane: thin strokes as a third population (PR 3)
 
 Same flag. The precedent is already in the code: enclosed-background
@@ -290,7 +322,7 @@ Renders in every PR body — Kent's 2026-09-04 rule.
 | PR | content | size | gate |
 |---|---|---|---|
 | 1 | **BUILT 2026-09-08** — `thin_strokes.py`, `legibility.py`, tests (9 + 6), baseline numbers on the real-art fixtures (nine distinct files: `logo_drone_thermal_badge.png` is byte-identical to `drone_render.png`, run once); scope-history 09-08 has the tables | ~1,000 lines | none |
-| 2 | `cfg.keep_thin_strokes` on the flat lane | ~80 + tests | none; goldens predicted unmoved |
+| 2 | **BUILT 2026-09-08** (PR #426) — `cfg.keep_thin_strokes` on the flat lane; goldens unmoved OFF, whitebg gains its teal patch ON (§4b) | ~60 + 8 tests | none |
 | 3 | the thin population on the photo lane, same flag | ~200 + tests | none; photo goldens byte-identical OFF, empty population ON for photographs |
 | 4 | `cfg.lettering_min_column_mm` | ~60 + tests | G1 on the number |
 | 5 | `color_diversity.py` + the decision doc with the margin | ~150 | G2 — reports, changes nothing |

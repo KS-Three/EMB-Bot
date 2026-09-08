@@ -53,7 +53,7 @@ from digitizer_core.pipeline import (build_generation, finish_generation,  # noq
 from digitizer_core.stage1_prep import Prep                            # noqa: E402
 from digitizer_core.stitchviz import UNITS_PER_MM, _bounds, render_design  # noqa: E402
 from digitizer_core.textcluster import _one_tesseract_thread            # noqa: E402
-from thin_strokes import _plan_frame, corpus_cases                      # noqa: E402
+from thin_strokes import _plan_frame, corpus_cases, parse_flag               # noqa: E402
 
 RENDER_PX_PER_MM = 12.0     # the review renders' scale
 RENDER_PAD_MM = 2.0         # `render_design`'s own default pad
@@ -367,8 +367,9 @@ def measure(p: Prep, result, plan, px_per_mm: float = RENDER_PX_PER_MM,
 
 
 def run(art: Path, width_mm: float, garment: str, forced_class: str | None = None,
-        dump: Path | None = None) -> dict:
-    cfg = PipelineConfig(target_width_mm=width_mm, garment_id=garment, forced_class=forced_class)
+        dump: Path | None = None, flag: str | None = None) -> dict:
+    extra = dict([parse_flag(flag)]) if flag else {}
+    cfg = PipelineConfig(target_width_mm=width_mm, garment_id=garment, forced_class=forced_class, **extra)
     gen = build_generation(str(art), cfg)
     result = finish_generation(gen.fork(), cfg)
     plan = plan_stitches(result, cfg)
@@ -399,8 +400,14 @@ def main(argv=None) -> int:
     ap.add_argument("--forced-class", default=None, dest="forced_class")
     ap.add_argument("--corpus", action="store_true")
     ap.add_argument("--dump", type=Path, default=None, help="write the OCR crops here")
+    ap.add_argument("--flag", default=None, help="PipelineConfig field to turn on, NAME or NAME=VALUE")
     ap.add_argument("--json", action="store_true")
     a = ap.parse_args(argv)
+    if a.flag:
+        try:
+            parse_flag(a.flag)
+        except ValueError as e:
+            ap.error(str(e))
     if not tesseract_available():
         print("tesseract binary not on PATH — nothing measured (CI installs tesseract-ocr)")
         return 2
@@ -417,7 +424,7 @@ def main(argv=None) -> int:
         cases = [(art.stem, art, a.width, a.garment)]
     results = []
     for name, art, w, g in cases:
-        r = run(art, w, g, a.forced_class, a.dump)
+        r = run(art, w, g, a.forced_class, a.dump, a.flag)
         results.append(r)
         _print(name, r)
     if a.json:
