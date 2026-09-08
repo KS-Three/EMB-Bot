@@ -48,3 +48,46 @@ which now exist.
   top independently; where they differed (construction for item 3: smoothing
   the raw contour vs reading the anti-alias ramp) both are recorded in the
   doc and neither is decided.
+
+## PR 1 of the thin-stroke plan — BUILT the same day
+
+`digitizer/tools/thin_strokes.py` and `digitizer/tools/legibility.py`, with
+tests; baseline tables in scope-history 09-08 (second 09-08 entry). What
+they said on first run:
+
+- **The two lanes lose DIFFERENT bands, exactly as the plan's §3 predicted.**
+  Fremont routed (gradient): strokes under 0.5 mm sew at 53% recall, the
+  0.5–1.0 mm band at 90%. Fremont forced flat: the sub-0.5 band drops to
+  26% and the 0.5–1.0 band to **51%** (97 of 110 strokes lost) — the
+  small-shape absorb, not the superpixels. "Fix the lane" is wrong on its
+  own; PR 2 (absorb by colour) and PR 3 (thin population) each own a band.
+- **Gaulke is the standout and the lane is not why: its background is the
+  BLACK FRAME.** 42 of 46 thin strokes lost on both lanes, lettering 0.32.
+  The PNG is a white card in a black frame; `bg_mask` is 80% of the raster,
+  `enclosed_mask` 16% of the design, so every black element inside the card
+  is "enclosed background" and unstitched by default — the roof line-art
+  reads 0%, the letters are bare holes in a fill. A product default, not a
+  segmentation defect. First thing to look at before PR 2 claims gaulke.
+- **Forced flat is better on drone (74 → 90%), bridge (79 → 98%) and
+  golden_tee (81 → 89%)**, worse on Fremont and level on screenshot.
+- **Legibility is a LOWER bound on lettering loss.** Fremont's THE reads
+  1.00 at confidence 95 on a render that shows "T H C" (the E's middle arm
+  never sews): tesseract's word model fills it in, and the best-over-variants
+  read keeps the filled-in reading. In single-line mode with no
+  preprocessing the confidence had caught it (80 → 40) — an earlier draft of
+  this entry and the tool's docstring claimed the confidence drop as the
+  detector; measured on the final code it is not. The thin-stroke
+  instrument sees the arm directly: T 100%, H 82%, **E 74%**. Read both
+  instruments; never quote a per-cluster 1.00 as "the glyphs sew".
+- Fremont's tagline is not a text cluster, so legibility cannot see it at
+  all; `thin_strokes` reads its 0.30 mm tan strokes at 68% and 0%.
+- Traps the instruments needed: a webp's 2-px compression halo quantises to
+  its own label and read as a 34.6 mm "stroke" 0.07 mm wide (hence
+  `_MIN_STROKE_PX` 3, a PIXEL floor because the artefact is a raster one);
+  the pipeline's default 12 colours is not what a customer gets — the
+  corpus runs at the Studio's 6; ENTHUSIAST's render reads as nothing until
+  the ink is thinned by ~0.25 mm; Becker's art is unreadable at 1.46 px/mm
+  (a false zero without the confidence floor of 60) while its RENDER reads
+  BECKER 96 / MARINE 95.
+- `logo_drone_thermal_badge.png` is byte-identical to `drone_render.png`
+  (blockcensus already knew); both tools run it once, checked by digest.

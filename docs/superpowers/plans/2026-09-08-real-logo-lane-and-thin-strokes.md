@@ -138,6 +138,26 @@ the tagline reads on the art and not on the render). This is the
 phase-1 exit instrument for "lost" that no existing tool has, and it is
 G4-clean: a per-cluster edit distance is not an agreement rate.
 
+**BUILT 2026-09-08** — both tools, 9 + 6 tests, baseline tables in
+scope-history's second 09-08 entry. Four corrections to the calibration
+expectations above, from the measurements: (1) the synthetic fixture is
+`tests/test_thin_strokes.py`'s own crisp bar-and-hairline raster (0.5 mm
+hairline found, 3.4 mm bar not), not a `make_hard_cases` pattern; (2) Becker
+does NOT read on both sides — at 1.46 px/mm source the art is unreadable
+(confidence 43 and 0) while the RENDER reads BECKER 96 / MARINE 95, so the
+tool carries a confidence floor of 60 on the art side and reports that row
+n/a rather than 0; (3) Fremont's tagline is not a text cluster, so
+`legibility` cannot see it at all — `thin_strokes` does, at 68% and 0%
+recall on its 0.30 mm strokes; (4) OCR is a LOWER bound on loss: THE reads
+1.00 at confidence 95 on a render that shows "T H C", because tesseract's
+word model fills the missing arm in, and `thin_strokes` reads that E at 74%.
+The lane finding the plan needed is in: **the two lanes lose different
+bands** (Fremont routed, sub-0.5 mm at 53%; forced flat, 0.5–1.0 mm at
+51%), so PR 2 and PR 3 each own one. And the corpus's worst fixture,
+gaulke (42 of 46 strokes lost on both lanes, legibility 0.32), is neither
+mechanism: its black frame makes stage 1's background black and every black
+element inside the card "enclosed background", unstitched by default.
+
 ### 4b. Flat lane: absorb by colour, not by adjacency (PR 2)
 
 Behind `cfg.keep_thin_strokes` (default OFF, byte-identical off). In
@@ -269,7 +289,7 @@ Renders in every PR body — Kent's 2026-09-04 rule.
 
 | PR | content | size | gate |
 |---|---|---|---|
-| 1 | `thin_strokes.py`, `legibility.py`, tests, baseline numbers on the ten real-art fixtures | ~400 lines | none |
+| 1 | **BUILT 2026-09-08** — `thin_strokes.py`, `legibility.py`, tests (9 + 6), baseline numbers on the real-art fixtures (nine distinct files: `logo_drone_thermal_badge.png` is byte-identical to `drone_render.png`, run once); scope-history 09-08 has the tables | ~1,000 lines | none |
 | 2 | `cfg.keep_thin_strokes` on the flat lane | ~80 + tests | none; goldens predicted unmoved |
 | 3 | the thin population on the photo lane, same flag | ~200 + tests | none; photo goldens byte-identical OFF, empty population ON for photographs |
 | 4 | `cfg.lettering_min_column_mm` | ~60 + tests | G1 on the number |
