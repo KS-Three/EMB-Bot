@@ -1318,10 +1318,14 @@ test("export: Studio bakes its OWN DST from a digitized element and it round-tri
   const bytes = EMB.encodeDST(combined);
   expect(bytes.length).toBeGreaterThan(512);
   const back = EMB.decodeDST(bytes);
-  // +1: the trailing "end" record encodes as one extra stitch at the design
-  // origin (encodeDST's documented fall-through — see combine.js's note);
-  // identical behavior to every other single-element export.
-  expect(back.stitchCount).toBe(fixture.design.stitchCount + 1);
+  // Exactly the design's stitches, no more. This asserted `+ 1` until
+  // 2026-09-08, and its own comment named the consequence: "one extra stitch
+  // at the design origin". On a digitized element the origin is not where the
+  // design is, so that extra record was a needle going into the garment
+  // somewhere the artwork does not cover, reached by a run of jumps.
+  // encodeDST now stops at the {type:"end"} sentinel the way exp.js and
+  // pes.js always have.
+  expect(back.stitchCount).toBe(fixture.design.stitchCount);
   expect(back.colorCount).toBe(fixture.design.colorCount);
   expect(back.widthMM).toBeCloseTo(combined.widthMM, 0);
 });
