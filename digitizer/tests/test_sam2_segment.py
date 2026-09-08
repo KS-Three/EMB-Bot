@@ -719,10 +719,10 @@ def _spy_photo_segment(monkeypatch):
     calls: list[int] = []
 
     def _spy(p, cfg, face_regions=None, bg_mask=None, split_tonal=False,
-             shade_demand=False, design_ramp=None):
+             shade_demand=False, design_ramp=None, **kwargs):
         calls.append(1)
         return real(p, cfg, face_regions=face_regions, bg_mask=bg_mask, split_tonal=split_tonal,
-                            shade_demand=shade_demand, design_ramp=design_ramp)
+                            shade_demand=shade_demand, design_ramp=design_ramp, **kwargs)
 
     monkeypatch.setattr(pipeline_module, "photo_segment", _spy)
     return calls
