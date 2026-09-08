@@ -10,6 +10,7 @@ import {
 
 const PROJECT_JS = fileURLToPath(new URL("./project.js", import.meta.url));
 
+
 // The types `addElement` can actually build, read off project.js's own
 // factory ternary rather than copied here. A copied list is a second source
 // of truth that agrees on the day it is written; this one cannot.
@@ -198,4 +199,72 @@ test("a project with nothing sewable still describes itself", () => {
     { label: "Content", value: "Text — nothing typed yet" },
     { label: "Font", value: "Medium Font" },
   ]);
+});
+
+// ---- the Colors row reports what SEWS, not what the slider says (2026-09-08)
+//
+// Measured in a browser that day, on the shipped "Logo patch" starter with its
+// default 4-colour slider, driving the browser flatten lane (which is what a
+// phone always gets, and what any machine gets with the service down). The
+// review card — the last screen before Download — read:
+//
+//     Colors          4 · background removed
+//     Stitches        3,011
+//     Thread changes  1
+//
+// Colors and Thread changes are two rows apart and contradict each other: one
+// thread change is two colour blocks. The panel one click back rendered two
+// swatches, 70.1% and 29.9%. `Thread changes` is counted from the design's own
+// {type:"color"} records (estimate.js); `Colors` alone was asserted from
+// `element.nColors`, the slider, and never looked at the design at all.
+//
+// This matters in money, not tidiness: a colour is a cone to buy and, on a
+// single-needle machine, a re-thread mid-job.
+
+// `sewnColorCount` itself is proven against a real flattened palette in
+// flatten.spec.js (a two-colour image reports 2 at every slider value from 2
+// to 8). What is proven HERE is the wiring: that the row reports that number
+// and not the element's own field.
+
+test("the review recap counts the colours that sew, not the slider setting", () => {
+  const el = { ...defaultImageElement("e1"), nColors: 4, removeBg: true, _hasImage: true };
+  // Plant the shipped defect back and this reads "4 · background removed".
+  expect(contentSummary(el, 2)[1].value).toBe("2 · background removed");
+  // The slider is untouched — it is still the ceiling the customer chose, and
+  // ImagePanel still shows 4 there. Only the recap's claim changed.
+  expect(el.nColors).toBe(4);
+});
+
+test("the recap follows the art, not a fixed number", () => {
+  // Two colours reported whether the customer asked for 2 or 8: the row is
+  // about the artwork, so it must not track the slider in either direction.
+  for (const asked of [2, 4, 8]) {
+    const el = { ...defaultImageElement("e1"), nColors: asked, removeBg: false, _hasImage: true };
+    expect(contentSummary(el, 2)[1].value, `asked=${asked}`).toBe("2");
+  }
+});
+
+test("with nothing flattened the recap falls back to the ceiling rather than claiming zero", () => {
+  // designSummary reaches an image element with no image only through its
+  // "nothing sewable" branch, under the "Nothing to stitch yet" headline.
+  // "Colors 0" there would be a confident lie about an empty element.
+  const el = { ...defaultImageElement("e1"), nColors: 4, removeBg: true };
+  for (const nothing of [null, undefined]) {
+    expect(contentSummary(el, nothing)[1].value).toBe("4 · background removed");
+  }
+  expect(contentSummary(el)[1].value).toBe("4 · background removed");
+  // Zero is a real answer and must survive the fallback, not be swallowed as
+  // "no value" — `||` here would print the slider over a genuine zero.
+  expect(contentSummary(el, 0)[1].value).toBe("0 · background removed");
+});
+
+test("designSummary looks each element's count up by ITS id", () => {
+  const a = { ...defaultImageElement("a"), nColors: 6, removeBg: false, _hasImage: true };
+  const b = { ...defaultImageElement("b"), nColors: 6, removeBg: false, _hasImage: true };
+  const rows = designSummary({ elements: [a, b] }, { a: 2 });
+  // Two image elements: the one with a flattened palette reports its sewn 2,
+  // the one without falls back to its own ceiling. A lookup keyed on the wrong
+  // id, or one that reused the first hit, would give both the same answer.
+  const colors = rows.filter((r) => r.label === "Colors").map((r) => r.value);
+  expect(colors).toEqual(["2", "6"]);
 });
