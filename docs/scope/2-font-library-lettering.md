@@ -136,6 +136,47 @@ the floor at a 5.5 mm cap (jersey_15, pixel10, mai_en_fleur) keep most of
 their bunching because the gate refuses the pull. §10 of the review doc.
 *(measured 2026-09-03 — `test/satinplay.test.js` +3, `test/satinfont.test.js` +1, `test/digitize.test.js` +1)*
 
+## Trims on the lettering lane — measured 2026-09-08, and GATED
+
+This file had **no trim content at all** before today, while `MASTER_SCOPE.md`
+item 4 and most of `docs/scope/1` are about trims on the *auto-digitizing*
+lane. The lettering lane is a different code path and nobody had put a number
+on it, so a session reading the Review screen's "Trims 7" on a nine-character
+name had nothing to compare it against. Now it does.
+
+**The engine chains short travel and trims only past `trimAtMm` (3.0 mm
+default, `src/digitize.js`; per-fabric override).** So the count is
+size-dependent, not per-letter by construction — `"ABCDEFGH"`, eight glyphs,
+fit to a range of widths:
+
+| font | 10 mm | 20 | 40 | 76.2 | 101.6 | 127 |
+|---|---:|---:|---:|---:|---:|---:|
+| `medium_font` | **0** | 4 | 6 | 7 | 7 | 7 |
+| `manga_impact` | **0** | 1 | 5 | 8 | 9 | 9 |
+| `mam_script` | **0** | 4 | 9 | 9 | 9 | 9 |
+| `small_font` | **0** | 3 | 5 | 7 | 7 | 7 |
+
+Zero at 10 mm, saturating by ~76 mm. So `MASTER_SCOPE` item 41's *"the browser
+lane's own designs do not have it — `buildLetteringDesign` SEWS its short
+travel"* holds; it is just that at any realistic garment width the letter gaps
+are all over 3 mm. Two fonts exceed glyphs−1 (9 > 7) because some of their
+glyphs are multi-part.
+
+**Letter spacing does not move it** (−2 / −1 / 0 / +2 / +5 mm all give 7),
+which looks wrong for a distance rule and is not: lettering is fit to a target
+WIDTH, so wider spacing shrinks the glyphs and the gaps come out much the same.
+Worth stating because it is the first thing someone will try.
+
+**This is GATE 1 territory — do not retune it here.** The lever is `trimAtMm`,
+a physical constant, and `MASTER_SCOPE` item 4 already carries the position
+with the professional datum against it (*"we trim far more than the
+professional … Cause: trim policy, not travel (ours 3.0; gate 1 says cloth
+settles it)"*), plus the 2026-09-06 correction that **no single threshold
+reproduces the pro corpus** (542 cuts from 1.9 mm overlapping 368 floats to
+16.1). This entry adds the lettering lane's numbers to that position; it does
+not open a second one. *(measured 2026-09-08 — `buildLetteringDesign` over four
+shipped fonts x six widths)*
+
 ## Licence position
 
 **ShareAlike is permanently closed, and NC/ND/GPL are excluded.**
@@ -165,6 +206,32 @@ second, so the chain depended on a reader opening the linked file.
 The 13 pulled ShareAlike fonts remain pulled. The lawyer consult
 (`docs/lawyer-brief-cc-by-sa-2026-08-04.md`) is optional and only gates
 restoring them.
+
+**The three-way claim above is now MEASURED across all 85, and driven in a
+browser — first time either had been done.** *(2026-09-08)*
+
+| check | result |
+|---|---|
+| manifest fonts / sidecars on disk / binaries | 85 / 85 / 85, zero orphans |
+| fonts with an empty `attribution` or `licenseId` | **0** |
+| `.embf` binaries embedding a licence string | **85 of 85** |
+| …of those, carrying a full licence body | 82 (median 4,648 chars) |
+| credits dialog rows rendered in the shipped UI | **85** |
+| a sidecar link clicked from that dialog | `200 text/plain`, 4,582 bytes of real OFL text |
+
+**The three short embeds are all correct, and worth naming so the next reader
+does not re-derive them.** `excalibur_KOR` (502 chars) and `excalibur_small`
+(573) are **CC0** — public domain imposes no attribution or full-text duty, so
+a short notice is complete. `roman_ags` (1,682) carries the complete GUST
+e-foundry text it actually has, which is the point of the section above.
+**So "full licence text" means each font's own complete licence, not a uniform
+4.6 kB block** — a reader checking the byte counts alone would file three false
+defects, which is exactly the trip this measurement was made to spare them.
+
+Both credits triggers are live (the topbar button and the Download step's), so
+the notice is reachable, not merely bundled — which is what "travel with every
+copy" has to mean for a web app. *(measured 2026-09-08 — `app/public/fonts/`
+sweep; driver `repl` against the built Studio)*
 
 ## Fixed — the transform bug (2026-08-22)
 

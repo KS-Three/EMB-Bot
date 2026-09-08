@@ -1120,6 +1120,23 @@ its hedge as it is copied forward** — is why this file is split.
   decodes as **switch to sequin mode and eject ten sequins**. That is a job
   that goes wrong loudly, not quietly.
 
+  > **The colour half was FIXED 2026-09-08 (#412); the table above is the
+  > measurement as it stood, not current behaviour.** `dst.js` wrote `0x43`
+  > where the standard wants `0xC3` — the colour bit without the jump bit.
+  > With `0xC3` a browser DST reads **1 COLOR_CHANGE, no sequin**, stitch
+  > count unchanged, matching the service DST and PES in the colour column;
+  > a six-block design with a trim before each stop reads back as exactly
+  > 5 COLOR_CHANGE and 5 TRIM. **The axis half was then fixed too, later the
+  > same day (#414), so the bbox column is historical as well** — this note
+  > was written between the two and said the axis was "untouched and still
+  > Kent's", which held for a few hours. Both weight tables were swapped to
+  > match `pystitch.DstWriter.encode_record`, verified byte-identical across a
+  > spread of deltas, and gate 1's DST entry was retired (#415). What made the
+  > colour half separable is that it moves no geometry, and EMB-Bot's own
+  > decode is byte-identical either way (`dstimport.js` already tested
+  > `b2 & 0x40` ahead of the jump bit), so it was never really part of the
+  > axis call it had been filed under since 2026-07-31.
+
   **The lesson is about the word "confirmed".** A code read confirms what the
   code says; only running the product confirms what the customer gets. Both
   entries were written honestly and the second one is what caught the first.
@@ -1689,7 +1706,7 @@ its hedge as it is copied forward** — is why this file is split.
   or a default. *(2026-09-02 — PR #316)*
 
 - **A `var(--x, fallback)` whose name is undefined is not a fallback — it is a
-  silent bespoke value.** Three such names shipped in `app/src/theme.css`; two
+  silent bespoke value.** Three such names shipped in `app/src/ui/theme.css`; two
   more tokens failed WCAG AA on the app's own non-white grounds while passing
   on white. The named cases are fixed, but the CHECK is standing: **re-run it
   whenever a new component lands.** It is two halves and only one is cheap.
@@ -2339,6 +2356,31 @@ its hedge as it is copied forward** — is why this file is split.
   the same one** — this resolves against an OBJECT (a set of live wire values
   parsed from both owners) rather than pattern-matching prose, so its verdict
   needs no hand-classification.
+
+  **The path sweep's "0 stale" was a FALSE NEGATIVE, found 2026-09-08 — and it
+  lands exactly where the rule above predicts.** Re-swept the same docs and got
+  the same cascade (651 raw → 363 → **19** once resolved against the right base
+  directories), and 19 is again almost all deliberate. But one was real, and had
+  been the whole time: **PRODUCT.md row 7 — the row gating the first dollar —
+  cited `src/fonts/milli_marif_bold.LICENSE.txt` as the evidence that per-font
+  licence research had been done.** That file was deleted 2026-08-04 *by* that
+  research: the font was pulled for having no written confirmation the grant
+  covered commercial distribution. The row was offering a pulled font's removed
+  sidecar as proof of compliance.
+
+  **Why the hand-pass cleared it.** The rule of thumb was *"a path here is
+  either right or cited inside a sentence saying it was deleted"* — and row 7
+  does say "All license-flagged fonts were pulled from the build in the
+  2026-08-04 audit pass", one sentence later. The filter fired on the
+  neighbouring sentence and never asked which claim the path was serving.
+
+  **The entry above stands, and gets sharper: don't build the checker, and
+  don't trust the hand-pass either.** The question a path sweep cannot answer is
+  the only one that matters — *does the SENTENCE survive the file being gone?*
+  "Cited in a deletion note" and "cited as live evidence" are the same string to
+  a checker **and** to a reader skimming the paragraph for the word "pulled".
+  Where a missing path sits in a row that gates money, read the clause it is in,
+  not the paragraph around it. *(measured 2026-09-08)*
 
   **Two ways this class of test dies, both hit while writing that one.** Both
   are the `test_stitchviz.py` lesson (a first draft matched a `LIGHT_DEG` a

@@ -229,7 +229,33 @@ twice over now and should be corrected the next time that file is touched.
    reaches 150 on a schedule we control, and it is a labor cost, not a
    licensing one — auto-tracing remains rejected.
 
-## 9. Still open: `roman_ags` ships mislabeled
+## 9. `roman_ags` — RESOLVED 2026-08-22, one day after this was written
+
+**This section said "Still open … Kent's call" until 2026-09-08, and it was
+neither.** `docs/scope/2-font-library-lettering.md` ("Licence position")
+settled it on 2026-08-22 against LPPL 1.3c primary text: **clause 10a expressly
+permits a Derived Work under a different licence**, and clause 6d ("information
+sufficient to obtain a complete, unmodified copy of the Work") is met by the
+fontsquirrel URL carried in the sidecar. GUST's rename request is itself
+"requested, but not legally required", and is honoured anyway. So the adapter's
+OFL-1.1 relicensing of the Ink/Stitch adaptation is legitimate and the
+manifest id is **correct** — there is no policy call to make and nothing for
+Kent to decide.
+
+The one real defect was the CREDIT, not the label: `extractAttribution` takes
+the first paragraph and the provenance sat in the second, so the derivation
+chain depended on a reader opening the linked file. Fixed 2026-08-22 via
+`ATTRIBUTION_OVERRIDES`, and `test/font-license.test.js` now pins `roman_ags`
+**by name** in its cross-family check, so the case cannot be silently lost.
+
+The general detector gap the text below describes is still real, and is still
+why `dejavufont` was pulled rather than relabeled — `licenseId()` does read an
+adapter's header claim before the licence body under it. What is no longer true
+is that `roman_ags` is an instance of it that costs anything.
+
+The original text follows, unedited, for the record.
+
+### As written 2026-08-21
 
 Unchanged from the first pass and **not fixed here**. `roman_ags` is in the
 manifest as `OFL-1.1`, but its sidecar shows the base font is Latin Modern Roman
@@ -244,4 +270,6 @@ and commercially redistributable, so this is much milder than the NC hole — th
 defect is that the manifest asserts a license the source does not support.
 Options remain the audit's: teach `licenseId()` to prefer a recognized license
 *body* over a bare adapter claim, or decide LPPL/GUST joins the allowed set.
-**Kent's call.**
+**Kent's call.** — superseded; see the heading above. Neither option is needed
+for `roman_ags`; the first would still be worth doing on its own merits, since
+`dejavufont` is a genuine instance of the same gap.

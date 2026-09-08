@@ -214,3 +214,68 @@ polylines for seven letters, and renders upright in a browser; PNG opens at
 writer half) and is no longer: fixed and re-rendered 2026-09-08, so all seven
 downloadable outputs now read correctly to something other than EMB-Bot. The
 PDF worksheet was broken and is fixed — see area 3.
+
+## The service writes ten formats and the Studio offers four (2026-09-08)
+
+**Three more brands are one button away, with zero backend work.** The service's
+`FORMATS` table declares ten; `DownloadStep.svelte` offers **DST, PES, EXP, JEF**
+(plus SVG/PNG/PDF, which are not machine files). Unoffered: **PEC, VP3, XXX,
+U01**. `/export` already validates against `formats.FORMATS`, so the wire API
+accepts all four today — the client is the only thing missing them, and its
+whole registry is two sets in `app/src/lib/exporters.js`
+(`SERVICE_EXPORT_FORMATS = {dst, exp, pes}`, `SERVICE_ONLY_FORMATS = {jef}`).
+
+This is the **same defect #403 fixed for Janome** — "the service can write it and
+there is no button, so that brand's owner cannot use the product" — standing for
+three more brands.
+
+**Round-tripped every writer through `pystitch`** (70 stitches, one colour
+change, bbox 1725 × 200 units), because "the writer exists" is not "the writer
+works":
+
+| | format | label | bytes | read-back |
+|---|---|---|---:|---|
+| shipped | `dst` | Tajima | 731 | 70 st, 1 cc, 1725 × 200 |
+| shipped | `pes` | Brother | 1812 | 70 st, 1 cc, 1725 × 200 |
+| shipped | `jef` | Janome | 290 | 70 st, 1 cc, 1725 × 200 |
+| shipped | `exp` | Melco | 156 | 70 st, 1 cc, 1725 × 200 |
+| **not offered** | `pec` | Brother PEC | 1376 | **70 st, 1 cc, 1725 × 200 — exact** |
+| **not offered** | `vp3` | Husqvarna Viking / Pfaff | 486 | 70 st, 1 cc, **1724** × 200 |
+| **not offered** | `xxx` | Singer XXX | 500 | **70 st, 1 cc, 1725 × 200 — exact** |
+| **not offered** | `u01` | Barudan U01 | 478 | 70 st, **0 cc**, **1825 × 300** |
+
+**Correction, same night: the U01 half was ALREADY KNOWN and I claimed it was
+not.** `DownloadStep.svelte` has carried *"U01 is the one that would need work
+first: it came back with ZERO colour changes on a two-colour design"* since
+**2026-09-07, PR #399** — the very PR that added the JEF button. This entry
+first read "which nobody knew", which was false about the one format the
+project had actually already measured. What is new here is the **positive**
+evidence for the other three: the earlier note said adding a format is "one
+line in `exporters.js` and one button", without any round-trip showing that a
+particular one survives it. Now there is one.
+
+PEC and XXX
+round-trip exactly as well as the four already shipping. VP3 is off by **one
+unit — 0.1 mm** on width, which is quantisation, not a defect. **U01 loses the
+colour change entirely** (0 against 1) and reads back 100 units larger on both
+axes; whether that is the writer or pystitch's own U01 reader is unestablished,
+so U01 must NOT be exposed on this evidence. It is also the least relevant of
+the four here — Barudan is industrial, and this product is aimed at home
+machines.
+
+**So the recommendation is PEC + VP3 + XXX, and U01 held — but it is a
+RECOMMENDATION, not a fix waiting to be applied.** `DownloadStep.svelte` says
+so in the same comment: *"Which machines this product supports is a scope call,
+and PRODUCT.md's is DST/PES/JEF (+EXP)."* That makes the format list Kent's,
+and this entry exists to make the call cheap rather than to pre-empt it.
+Husqvarna Viking, Pfaff and Singer are home brands with a real installed base;
+the mechanical change is three entries in `SERVICE_ONLY_FORMATS` and three
+buttons, on the JEF pattern already in the file (disabled with a reason when
+the service is down — there is no browser encoder for any of them).
+
+**Not done in the same pass because `DownloadStep.svelte` is being rewritten by
+the DST-caveat removal**, and two edits to one file across two PRs is how a
+conflict gets resolved by whoever merges second rather than by whoever
+understood it. *(measured 2026-09-08 — `digitizer_service/formats.py` writers
+round-tripped through `pystitch.read`; endpoint validation read from
+`app.py:901-905`)*

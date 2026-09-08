@@ -368,6 +368,24 @@ These are the ones that cost real time here.
   driver: `node driver.mjs smoke | tail` reported `EXIT=0` on a failing run.)
   Redirect to a file and read it.
 
+- **`npx vitest run` from the REPO ROOT reports a green subset and exits 0.**
+  The Studio suite must be run from `app/`. From the root, npx resolves a
+  DIFFERENT vitest (v5.0.0, against `app/node_modules`' 4.1.10), globs the
+  node:test engine files in `test/` and prints `Error: No test suite found in
+  file …` for each — then runs a **subset** of the Studio specs and exits **0**
+  anyway. Measured 2026-09-08 on the same tree, same moment:
+
+  ```
+  cd /repo      && npx vitest run   ->  838 passed,  13 errors, EXIT=0
+  cd /repo/app  && npx vitest run   -> 1083 passed, 53 files,   EXIT=0
+  ```
+
+  Both look like a pass. The root one is 245 tests short and its "13 errors"
+  invite you to go hunting for a regression that does not exist. Same shape as
+  the playwright-from-root trap above, but worse: that one at least exits 1.
+  **Read the `RUN v… <path>` banner** — it names the directory vitest actually
+  resolved, and it is the fastest way to tell the two runs apart.
+
 - **A "404 Not Found" console error is almost always the favicon.** The
   message text is generic — the URL is only in `location()`. The driver
   records and prints it; its smoke filters favicon 404s and the digitizer

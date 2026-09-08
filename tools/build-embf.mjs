@@ -102,10 +102,22 @@ for (const k of ["apex_lake", "aventurina", "bluenesia_satin",
 //
 // Note what this set does NOT protect against on its own: licenseId() derives
 // these ids from license TEXT, and it has been wrong twice — NonCommercial and
-// NoDerivatives both resolved to plain "CC-BY-4.0" until 2026-08-21, and a
-// non-CC license body under an OFL/CC header claim still mislabels today
-// (roman_ags, GUST/LPPL). Adding a font is a text-reading job, not an id-
-// trusting one. See docs/font-expansion-research-2026-08-21.md §5 and §9.
+// NoDerivatives both resolved to plain "CC-BY-4.0" until 2026-08-21, and it
+// still reads an adapter's header claim before the real license body further
+// down the same blob. That gap is real and is why dejavufont was pulled rather
+// than relabeled. Adding a font is a text-reading job, not an id-trusting one.
+// See docs/font-expansion-research-2026-08-21.md §5.
+//
+// This comment named roman_ags as a live mislabel until 2026-09-08. It is NOT
+// one: docs/scope/2-font-library-lettering.md "Licence position" settled it on
+// 2026-08-22 against LPPL 1.3c primary text — clause 10a expressly permits a
+// Derived Work under a different licence and clause 6d is met by the
+// fontsquirrel URL in the sidecar, so the adapter's OFL-1.1 relicensing of the
+// Ink/Stitch adaptation is legitimate and the manifest id is correct. The one
+// real defect was the CREDIT (extractAttribution took only the first
+// paragraph, and the provenance sat in the second); fixed 2026-08-22 via
+// ATTRIBUTION_OVERRIDES, and test/font-license.test.js pins roman_ags BY NAME
+// so the cross-family case cannot be silently lost.
 const ALLOWED_LICENSES = new Set(["OFL-1.1", "CC-BY-4.0", "CC0"]);
 const GRANDFATHERED = new Set(
   readdirSync(FONT_DIR)
