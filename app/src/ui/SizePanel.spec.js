@@ -128,3 +128,34 @@ test("a design change after an edit does NOT reach the field — recorded, not f
   await rerender({ project, designDims: { widthMM: 90.2, heightMM: 13.5 }, onUpdate: () => {} });
   expect(getByLabelText("Width").value).toBe("90");   // ...not "90.2"
 });
+
+// ---- The align row names what it actually aligns to -----------------------
+//
+// `hoopWmm` here is garment.widthIn — the PLACEMENT box, not the hoop, which
+// this file's own comment has said since it was written ("it is not the
+// physical hoop, which is a separate ceiling check"). The row on top of it
+// said "Align in hoop" and its tooltips said "the hoop's right edge", and on a
+// left chest that is a 101.6 mm box inside a 130 mm hoop: clicking Right left
+// the design visibly 14 mm short of the hoop outline drawn on the canvas, so
+// the one control whose whole job is "put it flush" named the wrong edge.
+//
+// Guarding the WORDS, not the geometry — alignOffset is unchanged and
+// interact.spec.js still covers it.
+
+test("the align row names the garment placement, not the hoop", async () => {
+  const { getByText, getByRole } = renderPanel({ widthMM: 60, heightMM: 9 });
+
+  // The label names the garment the customer picked on step 1.
+  expect(getByText("Align in Left Chest")).toBeInTheDocument();
+
+  for (const [name, expected] of [
+    ["Left", "flush against the left edge of the Left Chest area"],
+    ["Center", "flush to the center of the Left Chest area"],
+    ["Right", "flush against the right edge of the Left Chest area"],
+  ]) {
+    const title = getByRole("button", { name }).getAttribute("title");
+    expect(title).toBe(`Move this element ${expected}`);
+    // The hoop is not the constraint here and must not be blamed for it.
+    expect(title).not.toMatch(/hoop/i);
+  }
+});

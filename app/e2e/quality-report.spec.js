@@ -192,3 +192,61 @@ test("the thread picker offers the chart the design's cones came from", async ({
   // And the grid really is the brand chart: catalog numbers, not shade names.
   await expect(page.locator(".tp-cell").first()).toHaveAttribute("title", /^\d{4}\s/);
 });
+
+// A NAME BESIDE A LOGO — the commonest thing a customer combines, and the case
+// where "one design, one number" stopped being true.
+//
+// App.svelte suppressed the whole-design totals whenever `qualityEntries` was
+// non-empty, on the reasoning that an auto-digitized design already gets its
+// numbers from the quality report. That holds when the digitized elements ARE
+// the design. On a mixed one it left the artwork's figures standing alone, and
+// QualityReport hides its per-entry label at exactly one entry, so nothing
+// said the number was about a part. Measured in a browser 2026-09-08:
+//
+//   canvas caption ....... 3,219 stitches   (966 lettering + 2,253 artwork)
+//   review summary ....... 2,253 stitches   the artwork alone
+//
+// A 30% understatement on the screen headed "Ready to stitch", whose entire
+// job is to say what you are about to sew. Same defect shape as the thread
+// total that did not add up (#412) and the two widths for one design (#403).
+test("a name beside a logo is summarised as one design, not as the logo", async ({ page }) => {
+  test.skip(!serviceUp, skipReason);
+  test.setTimeout(300_000);
+
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto("/");
+  // Start from a real starter so the lettering is whatever the app ships,
+  // not a string invented here.
+  await page.locator(".tcard", { hasText: "Left-chest name" }).click();
+  await expect(page.getByText(/^[\d,]+ stitches/)).toBeVisible();
+
+  await page.getByRole("button", { name: "Artwork" }).click();
+  await page.locator(".dgp-upload input[type=file]").setInputFiles(ART_PNG);
+  await expect(page.locator(".dgp-stats")).toBeVisible({ timeout: 120_000 });
+  await page.getByRole("button", { name: "3 Review" }).click();
+  await expect(page.getByRole("heading", { name: "Ready to stitch" })).toBeVisible();
+
+  const num = (s) => Number(String(s).replace(/[^\d]/g, ""));
+
+  // The canvas caption is the combined design — it always was, which is what
+  // made the disagreement visible on one screen.
+  const caption = await page.locator(".fieldmeta").innerText();
+  const combined = num((caption.match(/([\d,]+) stitches/) || [])[1]);
+  expect(combined).toBeGreaterThan(0);
+
+  // The recap must quote that same design, not one element of it.
+  const summary = page.locator("dl.summary");
+  await expect(summary).toContainText("Stitches");
+  const dts = await summary.locator("dt").allInnerTexts();
+  const dds = await summary.locator("dd").allInnerTexts();
+  const stitchRow = dds[dts.findIndex((t) => t.trim() === "Stitches")];
+  expect(num(stitchRow), `recap says ${stitchRow}, the field says ${combined}`).toBe(combined);
+
+  // And the quality entry, which really is about one element, says so — the
+  // label is what stops its smaller figure reading as the design's.
+  const quality = page.locator(".quality");
+  await expect(quality).toBeVisible();
+  await expect(quality.locator(".qr-name")).toHaveText(path.basename(ART_PNG));
+  const bill = num((await quality.locator(".qr-bill").innerText()).match(/([\d,]+) stitches/)[1]);
+  expect(bill).toBeLessThan(combined);
+});

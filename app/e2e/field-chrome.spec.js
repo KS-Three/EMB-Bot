@@ -264,3 +264,36 @@ test("the design can be placed from the keyboard alone", async ({ page }) => {
   await page.keyboard.press("Shift+ArrowRight");
   await expect.poll(readOffset).toBeGreaterThan(afterOne);
 });
+
+// The live region is the ONLY feedback a non-sighted user gets from the arrow
+// keys, so what it names has to be what actually refused the move. It said
+// "At the edge of the hoop" until 2026-09-08 and the hoop is not what refused:
+// the clamp is against the GARMENT PLACEMENT BOX (EmbroideryField.hoopSizeMm
+// returns garment.widthIn — the name says hoop, the value is the placement).
+// On a left chest that box is 101.6 mm inside a 130 mm hoop, so the message
+// pointed at something with 14 mm of room on each side. A sighted user can see
+// the hoop outline and shrug; a screen-reader user has only this sentence, and
+// it sends them to pick a bigger hoop, which changes nothing.
+test("the edge announcement names the placement that refused, not the hoop", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await reachDesign(page);
+
+  const canvas = page.locator(".hoop canvas");
+  await canvas.focus();
+
+  // Walk it to the placement edge. The coarse step is 10 mm and a left chest
+  // leaves a few mm of slack, so a handful of presses is plenty; the poll is
+  // what actually decides when we have arrived.
+  await expect
+    .poll(async () => {
+      await page.keyboard.press("Shift+ArrowRight");
+      return (await page.locator(".fieldlive").textContent()) || "";
+    }, { timeout: 15_000 })
+    .toMatch(/At the edge of the .+ area/);
+
+  const msg = (await page.locator(".fieldlive").textContent()) || "";
+  // Names the garment the user actually picked on step 1 …
+  expect(msg).toContain("Left Chest");
+  // … and does not blame the hoop, which is not the constraint here.
+  expect(msg).not.toMatch(/hoop/i);
+});

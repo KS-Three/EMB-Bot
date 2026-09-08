@@ -57,6 +57,19 @@
   }
   $: hoopWmm = hoopWidthMm(project);
 
+  // What `hoopWmm` above actually bounds: the garment's PLACEMENT area. The
+  // align row said "Align in hoop" and its tooltips said "the hoop's right
+  // edge" until 2026-09-08, and both were wrong in a way the customer can SEE
+  // — on a left chest the placement is 101.6 mm inside a 130 mm hoop, so
+  // "flush against the hoop's right edge" left the design visibly 14 mm short
+  // of the hoop outline drawn on the canvas. Naming the garment they picked on
+  // step 1 is both true and more useful to them than the word "placement".
+  $: placementLabel = (() => {
+    const g = project && EMB.getGarment(project.garmentId);
+    return (g && g.label) || "";
+  })();
+  $: alignArea = placementLabel ? `${placementLabel} area` : "placement area";
+
   // `unit` is passed in (rather than closed over) so Svelte's dependency
   // tracking for the `$:` statements below -- which only sees identifiers
   // textually present in the reactive statement itself, not ones read
@@ -172,7 +185,7 @@
     d("update", { sizeMm: null, offsetXMm: 0, offsetYMm: 0 });
   }
 
-  // ---- Align in hoop --------------------------------------------------------
+  // ---- Align in the placement area --------------------------------------------------------
   // Element-level placement, distinct from TextStep's "Justify lines" (which
   // positions LINES against each other inside one text block). This moves the
   // whole selected element -- any type -- flush against a hoop edge, i.e. the
@@ -234,7 +247,7 @@
     <button type="button" class="autofit" on:click={autoFit}>Auto-fit</button>
   </div>
   <div class="alignrow">
-    <span class="alignlabel">Align in hoop</span>
+    <span class="alignlabel">Align in {placementLabel || "placement"}</span>
     <div class="alignbtns">
       {#each [["left", "Left"], ["center", "Center"], ["right", "Right"]] as [mode, label]}
         <button
@@ -243,7 +256,7 @@
           class:active={alignActive === mode}
           disabled={!canAlign}
           title={canAlign
-            ? `Move this element flush ${mode === "center" ? "to the hoop's center" : "against the hoop's " + mode + " edge"}`
+            ? `Move this element flush ${mode === "center" ? `to the center of the ${alignArea}` : `against the ${mode} edge of the ${alignArea}`}`
             : "Available once the design has stitched"}
           on:click={() => alignTo(mode)}
         >{label}</button>

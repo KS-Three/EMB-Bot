@@ -142,7 +142,7 @@
      circle). This used to be HIDDEN until the text had a line break, which
      read as "the feature doesn't exist" -- it now always renders, disabled
      with an explanatory tooltip, so it's discoverable. Named "Justify lines"
-     (not "Align") to distinguish it from SizePanel's "Align in hoop", which
+     (not "Align") to distinguish it from SizePanel's align row, which
      moves the whole ELEMENT rather than lines within it. -->
 <div class="weightpresets">
   <span class="weightlabel">Justify lines</span>
