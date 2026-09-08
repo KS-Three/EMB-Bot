@@ -1120,6 +1120,23 @@ its hedge as it is copied forward** — is why this file is split.
   decodes as **switch to sequin mode and eject ten sequins**. That is a job
   that goes wrong loudly, not quietly.
 
+  > **The colour half was FIXED 2026-09-08 (#412); the table above is the
+  > measurement as it stood, not current behaviour.** `dst.js` wrote `0x43`
+  > where the standard wants `0xC3` — the colour bit without the jump bit.
+  > With `0xC3` a browser DST reads **1 COLOR_CHANGE, no sequin**, stitch
+  > count unchanged, matching the service DST and PES in the colour column;
+  > a six-block design with a trim before each stop reads back as exactly
+  > 5 COLOR_CHANGE and 5 TRIM. **The axis half was then fixed too, later the
+  > same day (#414), so the bbox column is historical as well** — this note
+  > was written between the two and said the axis was "untouched and still
+  > Kent's", which held for a few hours. Both weight tables were swapped to
+  > match `pystitch.DstWriter.encode_record`, verified byte-identical across a
+  > spread of deltas, and gate 1's DST entry was retired (#415). What made the
+  > colour half separable is that it moves no geometry, and EMB-Bot's own
+  > decode is byte-identical either way (`dstimport.js` already tested
+  > `b2 & 0x40` ahead of the jump bit), so it was never really part of the
+  > axis call it had been filed under since 2026-07-31.
+
   **The lesson is about the word "confirmed".** A code read confirms what the
   code says; only running the product confirms what the customer gets. Both
   entries were written honestly and the second one is what caught the first.
