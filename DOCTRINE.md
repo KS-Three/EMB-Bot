@@ -1729,6 +1729,21 @@ its hedge as it is copied forward** — is why this file is split.
   `git fetch --all` before concluding prior work does not exist (CLAUDE.md 8).
   *(2026-09-02 — `docs/scorecard-baseline-attribution-2026-09-02.md`)*
 
+- **`git checkout <file>` on an UNCOMMITTED file destroys it, with no
+  confirmation and nothing in the reflog.** The reflex is "discard my edits to
+  this one file", and it is correct — but only when the edits are the ones you
+  meant to discard. Hit 2026-09-08: reaching for it to revert a probe mutation
+  wiped a set of derivations made in the same file an hour earlier and not yet
+  committed, and the tell was eight failing tests in a component nobody had
+  touched. The same reflex came back an hour later on a second file and was
+  blocked by the auto-mode permission classifier, which is the only reason it
+  cost one incident and not two. **Copy the file to the scratchpad first and
+  restore from that copy** — `cp <file> $SCRATCH/<name>.bak`, mutate, test,
+  `cp` back. Cheap, reversible, and it works on a file git has never seen.
+  Committing before mutating is the other answer, and is better when the state
+  is worth keeping. `git stash push <paths>` is safe too (it is recoverable);
+  a bare `git checkout` is not. *(2026-09-08)*
+
 - **A `vi.mock` that omits an export the component newly calls does not fail
   the spec — it silently disables the feature under test.**
   `DownloadStep.spec.js` mocked `../lib/hoop.js` without `hoopFitNote`; the
