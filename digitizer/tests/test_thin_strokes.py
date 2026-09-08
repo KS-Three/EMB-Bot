@@ -149,12 +149,34 @@ def test_measure_reports_the_lost_stroke_first(gen):
 def test_the_floors_are_the_run_tiers_own_constants():
     """No new millimetre: the width floor is `min_detail_mm`, the length floor
     is `RUN_MIN_LOOP_MM / 2`. If either constant moves, this instrument moves
-    with it — that is the point of pinning the wiring, not the values."""
+    with it — that is the point of pinning the wiring, not the values. The
+    test itself lives in the engine (`thin_ink.iter_thin_components`), shared
+    with the photo lane's population, so the two cannot drift apart."""
     import inspect
 
-    import thin_strokes as ts
+    from digitizer_core import thin_ink
 
-    src = inspect.getsource(ts.find_thin_strokes)
+    src = inspect.getsource(thin_ink.iter_thin_components)
     assert "cfg.min_detail_mm" in src
     assert "machine.RUN_MIN_LOOP_MM / 2.0" in src
     assert machine.RUN_MIN_LOOP_MM > 0
+
+
+def test_a_ground_threaded_between_letters_is_not_a_stroke(tmp_path):
+    """The retraction of 2026-09-08: a median-width test admitted Fremont's
+    white ground — one component whose skeleton threads the gaps between
+    letters, median 1.32 mm against a p90 of 3.77 — as a 1,758 mm "stroke".
+    A panel pierced by a grid of holes has the same shape: its skeleton runs
+    the narrow bridges between holes (thin at the median) while its rim is
+    wide. It must not be a thin stroke; the bridges' width test holds at the
+    90th percentile."""
+    img = np.full((300, 400, 3), 255, np.uint8)
+    cv2.rectangle(img, (40, 40), (359, 259), (30, 30, 30), -1)           # a dark panel
+    for y in range(60, 250, 24):
+        for x in range(60, 350, 24):
+            cv2.rectangle(img, (x, y), (x + 17, y + 17), (255, 255, 255), -1)   # 18 px holes, 6 px bridges
+    path = tmp_path / "pierced_panel.png"
+    cv2.imwrite(str(path), img)
+    g = build_generation(str(path), PipelineConfig(target_width_mm=32.0))   # 10 px/mm: bridges 0.6 mm
+    strokes = find_thin_strokes(g.p, PipelineConfig(target_width_mm=32.0))
+    assert strokes == [], [(s.width_mm, s.length_mm) for s in strokes]

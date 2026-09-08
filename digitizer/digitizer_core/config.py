@@ -412,16 +412,27 @@ class PipelineConfig:
     # --forced-class flat --flag keep_thin_strokes`, scope-history 09-08):
     # see that entry for the per-fixture table.
     #
-    # FLAT LANE ONLY in this step. The photo segmenters call
-    # `resolve_small_regions` without layer colours, as they call it without
-    # the chain rescue and for the same reason — quantisation shatters a
-    # photograph into mutually adjacent contrasting fragments everywhere,
-    # which is exactly what this rule would keep — so ON is byte-identical on
-    # the gradient and photo lanes until the plan's PR 3 gives them a thin
-    # population of their own.
+    # ON THE GRADIENT AND PHOTO LANES the same flag adds a THIRD population
+    # (`thin_ink.find_thin_ink`, plan §4c, PR 3): before SEEDS, the flat
+    # lane's own quantiser runs over the foreground and every connected
+    # component that reads as a stroke — thin along its whole skeleton (width
+    # under `min_detail_mm` at the 90th percentile, at least
+    # `THIN_INK_MIN_PX` wide), at least `RUN_MIN_LOOP_MM / 2` long, and ON ONE
+    # GROUND (the two-pixel ring around it dominated by a single label, which
+    # is what separates a stroke drawn on something from a band a posterised
+    # ramp leaves between two levels) — leaves the SEEDS foreground and comes
+    # back as its own label block after the palette, the way the enclosed
+    # population already does. A superpixel is ~47 px a side on Fremont; a
+    # 0.4 mm stroke was a quarter of a block and gone before any floor.
+    # Where nothing qualifies the lane is byte-identical to the flag being
+    # off — measured EMPTY on the smooth ramps and the photo stubs, and the
+    # photographs keep only what the one-ground rule lets through (scope-
+    # history 09-08 has the per-fixture table at three ring shares). The
+    # photo lane's `resolve_small_regions` still runs without layer colours:
+    # the absorb rule above is the flat lane's, the population is this lane's.
     #
     # DEFAULT OFF and byte-identical off. Flipping it is Kent's: it adds
-    # regions to real logos, and the flat goldens move with them.
+    # regions to real logos, and the flat AND photo goldens move with them.
     keep_thin_strokes: bool = False
 
     # Stage 4

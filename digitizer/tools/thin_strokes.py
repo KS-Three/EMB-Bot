@@ -79,6 +79,8 @@ from digitizer_core.stitches import (CMD_COLOR_CHANGE, CMD_JUMP,        # noqa: 
                                      CMD_STITCH, CMD_TRIM, StitchPlan,
                                      iter_machine_commands)
 from digitizer_core.textcluster import TEXT_CLUSTER_DELTA_E_MAX         # noqa: E402
+from digitizer_core.thin_ink import (THIN_INK_MIN_PX, THIN_INK_WIDTH_PCT,  # noqa: E402
+                                     iter_thin_components)
 from digitizer_core.threads import rgb_to_lab                           # noqa: E402
 
 # The ten real-art fixtures at the Studio's own defaults — the set the review
@@ -120,19 +122,13 @@ def corpus_cases(root: Path = ROOT) -> list[tuple[str, Path, float, str]]:
         out.append((name, path, w, g))
     return out
 
-# A component with fewer skeleton pixels than this is a speck the length
-# floor would refuse anyway; skipping it early keeps the per-component loop
-# cheap on a photograph's thousands of fragments.
-_MIN_SKELETON_PX = 3
-# A component narrower than this many PIXELS is the raster's anti-alias or
-# compression halo, not ink: a halo is one or two pixels wide at any
-# resolution, while the thinnest stroke a pro widened on Fremont is 0.24 mm =
-# 6.5 px at that file's 27 px/mm. Measured 2026-09-08 on Fremont at the
-# pipeline's default 12 colours: without this floor the "worst lost stroke"
-# was a 34.6 mm sliver 0.07 mm (2 px) wide — the webp's ringing around the
-# black band, quantised to its own label. A pixel floor, not a millimetre
-# one, because the artefact is a raster phenomenon.
-_MIN_STROKE_PX = 3.0
+# What a thin stroke IS lives in `digitizer_core/thin_ink.py`
+# (`iter_thin_components`), shared with the photo lane's thin population so
+# the instrument and the engine never disagree. The pixel floor — a one- or
+# two-pixel component is halo, not ink; found here 2026-09-08 when Fremont's
+# "worst lost stroke" was a 34.6 mm webp-ringing sliver 0.07 mm wide — is
+# `THIN_INK_MIN_PX`, kept under its old name for the tests that pin it.
+_MIN_STROKE_PX = THIN_INK_MIN_PX
 # The Studio sends this; the pipeline's own default is 12. The corpus runs at
 # what a customer gets.
 STUDIO_MAX_COLORS = 6
@@ -186,46 +182,47 @@ def _plan_frame(p: Prep) -> tuple[float, float, float]:
 
 def find_thin_strokes(p: Prep, cfg: PipelineConfig,
                       width_floor_mm: float | None = None,
-                      min_length_mm: float | None = None) -> list[ThinStroke]:
-    """Every thin stroke in the artwork, read with the flat lane's quantizer.
+                      min_length_mm: float | None = None,
+                      ground_test: bool = True) -> list[ThinStroke]:
+    """Every thin stroke in the artwork, read with the flat lane's quantizer
+    through `thin_ink.iter_thin_components` — the engine's own definition.
 
-    `width_floor_mm` defaults to `cfg.min_detail_mm`; `min_length_mm` to
-    `machine.RUN_MIN_LOOP_MM / 2`. Returned sorted longest first.
+    `width_floor_mm` and `min_length_mm` override `cfg.min_detail_mm` and
+    `machine.RUN_MIN_LOOP_MM / 2.0` for calibration only (the shared iterator
+    reads them off a config copy). Returned sorted longest first.
+
+    The width test holds at the 90th percentile along the skeleton, not the
+    median: the first version of this instrument used the median and counted
+    Fremont's white GROUND — one component threading the gaps between the
+    letters, median 1.32 mm, p90 3.77, max 7.41 — as a 1,758 mm stroke, which
+    inflated every recall it printed on that design (retracted 2026-09-08,
+    scope-history). `ground_test` is the one-ground rule the photo lane's
+    population uses; off, a band between two levels of a ramp counts too.
     """
-    floor = cfg.min_detail_mm if width_floor_mm is None else width_floor_mm
-    min_len = (machine.RUN_MIN_LOOP_MM / 2.0) if min_length_mm is None else min_length_mm
+    local = dataclasses.replace(cfg)
+    if width_floor_mm is not None:
+        local.min_detail_mm = width_floor_mm
     q = quantize(p, cfg)
     cx, cy, ppm = _plan_frame(p)
+    if min_length_mm is not None:
+        # The iterator's length floor is `machine.RUN_MIN_LOOP_MM / 2.0`;
+        # a calibration override scales the resolution it sees instead.
+        scale = (machine.RUN_MIN_LOOP_MM / 2.0) / min_length_mm if min_length_mm > 0 else 1.0
+    else:
+        scale = 1.0
     out: list[ThinStroke] = []
-    for j in range(len(q.thread_indices)):
-        label_mask = q.labels == j
-        if not label_mask.any():
-            continue
-        # One distance transform and one skeleton per LABEL: components of one
-        # label are disjoint, so a component's own distances and skeleton are
-        # exactly the union's restricted to it.
-        dt = cv2.distanceTransform(label_mask.astype(np.uint8), cv2.DIST_L2, 5)
-        skel = skeletonize(label_mask)
-        n, cc, stats, _ = cv2.connectedComponentsWithStats(label_mask.astype(np.uint8), connectivity=8)
-        rgb = tuple(int(round(float(v))) for v in q.cluster_rgb[j])
-        for c in range(1, n):
-            bx, by, bw, bh, _area = (int(v) for v in stats[c, :5])
-            comp = cc[by:by + bh, bx:bx + bw] == c
-            sk = skel[by:by + bh, bx:bx + bw] & comp
-            npx = int(sk.sum())
-            if npx < _MIN_SKELETON_PX:
+    for t in iter_thin_components(q.labels, len(q.thread_indices), ppm * scale, local,
+                                  ground_test=ground_test):
+        if scale != 1.0:
+            # Undo the resolution trick on the width floor the override did
+            # not ask to move.
+            if t.width_p90_px >= local.min_detail_mm * ppm:
                 continue
-            width_px = 2.0 * float(np.median(dt[by:by + bh, bx:bx + bw][sk]))
-            width = width_px / ppm
-            if width >= floor or width_px < _MIN_STROKE_PX:
-                continue
-            length = _link_length_mm(sk, ppm)
-            if length < min_len:
-                continue
-            out.append(ThinStroke(
-                label=j, rgb=rgb, length_mm=length, width_mm=width,
-                bbox_mm=((bx - cx) / ppm, (by - cy) / ppm,
-                         (bx + bw - cx) / ppm, (by + bh - cy) / ppm)))
+        bx, by, bw, bh = t.bbox
+        rgb = tuple(int(round(float(v))) for v in q.cluster_rgb[t.label])
+        out.append(ThinStroke(
+            label=t.label, rgb=rgb, length_mm=t.length_px / ppm, width_mm=t.width_px / ppm,
+            bbox_mm=((bx - cx) / ppm, (by - cy) / ppm, (bx + bw - cx) / ppm, (by + bh - cy) / ppm)))
     out.sort(key=lambda s: -s.length_mm)
     return out
 
@@ -414,7 +411,8 @@ def main(argv=None) -> int:
         except ValueError as e:
             ap.error(str(e))
     lane = (f"  forced_class={a.forced_class}" if a.forced_class else "") + (f"  {a.flag} ON" if a.flag else "")
-    print(f"thin-stroke recall — width floor {PipelineConfig().min_detail_mm} mm (and >= {_MIN_STROKE_PX:g} px), "
+    print(f"thin-stroke recall — width floor {PipelineConfig().min_detail_mm} mm at p{THIN_INK_WIDTH_PCT} "
+          f"(and >= {_MIN_STROKE_PX:g} px), "
           f"min length {machine.RUN_MIN_LOOP_MM / 2:.2f} mm, thread {machine.COVERAGE_THREAD_W_MM} mm, "
           f"colour match <= {TEXT_CLUSTER_DELTA_E_MAX} dE00, max_colors {a.max_colors}{lane}")
     if a.corpus:

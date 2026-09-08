@@ -106,6 +106,7 @@ from .config import PipelineConfig
 from .palette import region_weight, select_palette
 from .stage1_prep import Prep
 from .stage2_quantize import Quant, _quantize_population
+from .thin_ink import ThinInk, find_thin_ink
 from .stage3_segment import RegionMask, resolve_small_regions
 from .threads import chart_for, rgb_to_lab
 from .warnings_codes import (PHOTO_BLEND_DISSOLVED, PHOTO_PALETTE_SELECTED,
@@ -1868,6 +1869,7 @@ def kept_masks_to_quant(
     oversegment_labels: np.ndarray | None = None,
     split_tonal: bool = False,
     shade_demand: bool = False,
+    thin: ThinInk | None = None,
 ) -> Quant:
     """Steps 6-7, shared by EVERY photo-path region former.
 
@@ -1916,6 +1918,12 @@ def kept_masks_to_quant(
     the photo-lane golden. Gating (photo classes only, flag off = never) is
     the CALLER's job — `pipeline.run_stages` derives and passes the bool,
     the same division of labour the stage-7 bind keeps with `_shade_layers`.
+
+    `thin` (`thin_ink.find_thin_ink`, `cfg.keep_thin_strokes`) is the third
+    population: appended after the enclosed block as its own label block,
+    wearing the spools the flat quantiser snapped it to. None — every
+    pre-existing caller, and the flag on with nothing thin found — is
+    byte-identical by construction.
     """
     h, w = p.rgb.shape[:2]
     flat_rgb = p.rgb.reshape(-1, 3)
@@ -2035,6 +2043,15 @@ def kept_masks_to_quant(
         enc_valid = enc_labels >= 0
         out[enc_valid] = enc_labels[enc_valid] + base_k
         thread_indices = thread_indices + enc_spools
+
+    # --- thin population, the flat quantiser's own labels, appended last ----
+    # Its pixels left `base_valid` before SEEDS (see `segment`), so no region
+    # above overlaps them; the labels were compacted to the spools they use.
+    if thin is not None:
+        base_k = len(thread_indices)
+        thin_valid = thin.labels >= 0
+        out[thin_valid] = thin.labels[thin_valid] + base_k
+        thread_indices = thread_indices + thin.spools
 
     warnings: list[dict] = list(floor_warnings) + enc_warnings
     if tonal_splits:
@@ -2195,6 +2212,18 @@ def segment(p: Prep, cfg: PipelineConfig, face_regions=None, bg_mask=None,
     enclosed = p.enclosed_mask
     has_enclosed = enclosed is not None and enclosed.any()
     base_valid = valid & ~enclosed if has_enclosed else valid
+
+    # --- thin ink, the THIRD population (`cfg.keep_thin_strokes`) -----------
+    # The same split again, for the same reason: a stroke a quarter of a
+    # superpixel wide is assigned to a block whose mean is the ground and is
+    # gone before any floor is consulted (`thin_ink.py`). Found with the flat
+    # lane's own quantiser, taken out of `base_valid` so no superpixel
+    # straddles it, and appended after the palette as its own label block
+    # by `kept_masks_to_quant`. None — the flag off, or nothing thin — is
+    # byte-identical to the path below never having heard of it.
+    thin: ThinInk | None = find_thin_ink(p, cfg, base_valid) if cfg.keep_thin_strokes else None
+    if thin is not None:
+        base_valid = base_valid & ~thin.mask
 
     lab_img = rgb_to_lab(flat_rgb).reshape(h, w, 3)
     # The artwork's REAL colours, kept whatever the merge below does to
@@ -2359,4 +2388,5 @@ def segment(p: Prep, cfg: PipelineConfig, face_regions=None, bg_mask=None,
         oversegment_labels=slic_labels,
         split_tonal=split_tonal,
         shade_demand=shade_demand,
+        thin=thin,
     )
