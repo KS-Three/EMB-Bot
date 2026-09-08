@@ -489,3 +489,45 @@ So PRODUCT.md's "Desktop-only, stated on the site" (still stated nowhere)
 covers a narrower gap than it sounds: lettering and artwork work on a phone,
 two launch-scope tools do not, and the app already says so at the point it
 matters. Kent's call what, if anything, the site should say.
+
+## The phone measurement above was taken with the service UP (2026-09-08)
+
+Re-driven that day with the digitizer deliberately unreachable, which is not a
+scenario — it is **every real phone**. `DEFAULT_DIGITIZER_URL` is
+`http://127.0.0.1:8721` and `digitizer.js` says the localStorage override is
+"never a way to leave the machine", so on a phone that loopback is the phone's
+own, and nothing is listening on it.
+
+The conclusion above survives — **artwork does work on a phone** — but by a
+different route than the numbers suggest, and the numbers change with it:
+
+| | lane | measured |
+|---|---|---|
+| service reachable (the run above) | auto-digitize | 2,187 stitches · 80 × 17 mm · 2 colours |
+| service unreachable (a real phone) | browser flatten-and-sew | **3,011 stitches · 90 × 18 mm** |
+
+Same fixture, same 390×844 viewport with touch. `ContentStep`'s own comment has
+this right — the tile stopped disappearing when the service is down because
+"Artwork still works, it just falls back to the browser engine's own
+flatten-and-sew lane" — and the note it shows is honest: *"Artwork will be
+placed but not auto-digitized."* This entry exists because the earlier
+measurement, taken on a desktop at phone SIZE, reads as though the phone gets
+the auto-digitizer. **A phone-sized viewport on a machine running the service
+is not a phone**, and only the unreachable-service run separates them.
+
+Two things fell out of that run, one fixed and one recorded:
+
+- **Fixed here:** the review card's `Colors` row was the slider, not the sewn
+  count — `Colors 4` beside `Thread changes 1`. It is a browser-flatten-lane
+  row, so the phone is where it always shows. MASTER_SCOPE defect 42(e).
+- **Recorded, not fixed, Kent's call because it is wording on a lane that
+  works:** the offline note's remedy is *"Start it, then check again"*, and
+  `DigitizePanel` adds *"Start it: `python -m digitizer_service` in the
+  digitizer folder."* Neither is followable on a phone. This is the same shape
+  as the `emptyFieldHint` defect already fixed for this device class — advice
+  naming something the device cannot do — but milder: there the customer was
+  sent to a gesture with no alternative, whereas here the lane completes anyway
+  and the note is about quality, not access. Worth a sentence that varies on
+  `(any-pointer: fine)` the way `emptyFieldHint` already does; not worth
+  inventing a phone story PRODUCT.md has not decided on (launch posture is
+  still "Desktop-only, stated on the site", still stated nowhere).
