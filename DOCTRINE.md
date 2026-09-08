@@ -1706,7 +1706,7 @@ its hedge as it is copied forward** — is why this file is split.
   or a default. *(2026-09-02 — PR #316)*
 
 - **A `var(--x, fallback)` whose name is undefined is not a fallback — it is a
-  silent bespoke value.** Three such names shipped in `app/src/theme.css`; two
+  silent bespoke value.** Three such names shipped in `app/src/ui/theme.css`; two
   more tokens failed WCAG AA on the app's own non-white grounds while passing
   on white. The named cases are fixed, but the CHECK is standing: **re-run it
   whenever a new component lands.** It is two halves and only one is cheap.
@@ -2356,6 +2356,31 @@ its hedge as it is copied forward** — is why this file is split.
   the same one** — this resolves against an OBJECT (a set of live wire values
   parsed from both owners) rather than pattern-matching prose, so its verdict
   needs no hand-classification.
+
+  **The path sweep's "0 stale" was a FALSE NEGATIVE, found 2026-09-08 — and it
+  lands exactly where the rule above predicts.** Re-swept the same docs and got
+  the same cascade (651 raw → 363 → **19** once resolved against the right base
+  directories), and 19 is again almost all deliberate. But one was real, and had
+  been the whole time: **PRODUCT.md row 7 — the row gating the first dollar —
+  cited `src/fonts/milli_marif_bold.LICENSE.txt` as the evidence that per-font
+  licence research had been done.** That file was deleted 2026-08-04 *by* that
+  research: the font was pulled for having no written confirmation the grant
+  covered commercial distribution. The row was offering a pulled font's removed
+  sidecar as proof of compliance.
+
+  **Why the hand-pass cleared it.** The rule of thumb was *"a path here is
+  either right or cited inside a sentence saying it was deleted"* — and row 7
+  does say "All license-flagged fonts were pulled from the build in the
+  2026-08-04 audit pass", one sentence later. The filter fired on the
+  neighbouring sentence and never asked which claim the path was serving.
+
+  **The entry above stands, and gets sharper: don't build the checker, and
+  don't trust the hand-pass either.** The question a path sweep cannot answer is
+  the only one that matters — *does the SENTENCE survive the file being gone?*
+  "Cited in a deletion note" and "cited as live evidence" are the same string to
+  a checker **and** to a reader skimming the paragraph for the word "pulled".
+  Where a missing path sits in a row that gates money, read the clause it is in,
+  not the paragraph around it. *(measured 2026-09-08)*
 
   **Two ways this class of test dies, both hit while writing that one.** Both
   are the `test_stitchviz.py` lesson (a first draft matched a `LIGHT_DEG` a
