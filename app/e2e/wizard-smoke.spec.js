@@ -247,6 +247,14 @@ test("guided wizard: image content path -> review reflects it -> download", asyn
   await expect(page.getByRole("heading", { name: "Download", exact: true })).toBeVisible();
   await expect(page.locator(".threadlist .threadrow").first()).toBeVisible();
 
+  // …and the same count one step later, where the customer reads it as a
+  // shopping list. `worksheet-digitized-lane.spec.js` guards this for the
+  // DIGITIZED lane; the browser flatten lane had no equivalent, which is the
+  // lane the Colors row was wrong on. One cone row per colour block.
+  await expect(page.locator(".threadlist .threadrow"),
+    `${colors} colours on the review card against the Download step's cone rows`)
+    .toHaveCount(colors);
+
   const downloadPromise = page.waitForEvent("download");
   await page.getByRole("button", { name: "DST", exact: true }).click();
   // NO confirm here, deliberately: the imported PNG does not fill the
