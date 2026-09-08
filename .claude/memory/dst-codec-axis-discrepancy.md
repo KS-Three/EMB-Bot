@@ -78,3 +78,58 @@ has 5 independent confirmations; EMB-Bot's JS table is the outlier. Bonus:
 replace or supplement the Python digitizer's `pyembroidery` dependency
 (broader format coverage per the research doc) — separate decision from the
 axis fix itself.
+
+---
+
+## RESOLVED 2026-09-08 — and it never needed the sew-out
+
+Both directions fixed. `src/dst.js`'s two weight tables and
+`src/dstimport.js`'s `decodeDelta` swapped to low-nibble=X / high-nibble=Y,
+exactly the change this entry RECOMMENDED on 2026-07-29 and exactly what all
+five sources said. `decodeDSTStandard` — the 2026-09-07 import workaround —
+collapsed to a plain alias of `decodeDST`, which its own comment had predicted
+it would.
+
+**The lesson is the sew-out.** This entry, and every doc that cited it, said
+the fix was "gated on a sew-out" and "Kent's call". It sat for six weeks on
+that. It did not need a sew-out, and could not have been settled by one any
+faster: what settled it was
+
+1. reading `pystitch.DstWriter.encode_record` — already installed in this
+   repo's own venv — and comparing bytes. Ours came out **10/10 identical**
+   across a spread of deltas once the tables were swapped;
+2. the crossval harness, which already existed and already had a word for the
+   answer: `identity`, the same verdict PES and EXP get;
+3. a picture. `TEXT=FRITSCH node tools/run-lettering.mjs` → pystitch → PIL.
+   The old bytes draw a vertical column of REVERSED letters; the new ones draw
+   FRITSCH upright at the design's own 127.2 × 22.6 mm.
+
+A sew-out settles a PHYSICAL question — will this thread, at this density, on
+this fabric, hold. Which nibble carries X is not a physical question; it is a
+question about a file format with a reference implementation sitting in
+`digitizer/.venv`. Filing it behind a sew-out was a category error that cost
+six weeks, and the tell was there the whole time: every one of the five
+sources agreed, and none of them owned a machine.
+
+**What the fix does not do:** a `.dst` written before it is in the old dialect
+and re-imports transposed. The one-time migration read path this entry
+suggested (detect via header-vs-stitch extent mismatch) was NOT built —
+DesignPanel carries a scoped note instead ("a file this app wrote before
+September 2026 comes back mirrored"), which is cheaper and honest. Build the
+migration only if someone actually turns up with old files.
+
+Two more DST defects closed the same week, both of which had been filed under
+the same "it's the axis, it's Kent's call" umbrella and neither of which was
+the axis:
+
+- the colour-change byte was `0x43` where the standard wants `0xC3`, so a
+  standard reader saw a sequin toggle and ZERO colour stops — every
+  multi-colour DST sewed straight through elsewhere;
+- `encodeDST` wrote the terminal `{type:"end"}` sentinel as a real stitch,
+  which on a non-lettering design is a stray needle penetration reached by a
+  jump run a reader counts as a TRIM, and which also widened the header's
+  declared bounding box (a 50×20 mm design declared 90×50).
+
+Both were independent of the axis, both moved no geometry, and both were
+visible in this entry's own "bonus finding" from 2026-07-31. Bundling
+independent defects under one reserved decision is how all three stayed open.
