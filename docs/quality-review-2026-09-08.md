@@ -180,11 +180,16 @@ halo cones, and the colour slider not meaning what it says.
 
 Forcing flat is not the fix on its own: today it drops Fremont's rope and
 EST 1895 outright (`DROPPED_SMALL_SHAPES`), which is why this lands with item
-2. **Gate 2** bars recalibrating stage 0 without real artwork; the real
-artwork now exists — seven logos in the corpus and fifteen on Kent's box —
-and the recalibration is on it, not on fixtures. Photographs should be
-detected by item 13's signals so stage 0 only has to separate flat from
-gradient among logos.
+2. **Gate 2** bars recalibrating stage 0 without real TONAL artwork, and
+the 2026-08-15 spec
+(`docs/superpowers/specs/2026-08-15-stage0-flat-gradient-recalibration-design.md`)
+already rejected four approaches and designed the replacement signal; what
+blocked it was positives — one real gradient logo against six flat. The
+real tonal set is larger now (Kent's icon, five real photographs), which is
+what the plan's instrument re-measures first; a threshold moves only if
+the boundary sites on that set. Photographs should be detected by item
+13's signals so stage 0 only has to separate flat from gradient among
+logos. Plan: `docs/superpowers/plans/2026-09-08-real-logo-lane-and-thin-strokes.md`.
 
 Where: `stage0_classify.py`, `stage2_quantize.py`, `stage2_photo_segment.py`,
 `pipeline.build_generation`. Effort: large; ten fixtures change lane, so
@@ -231,6 +236,7 @@ evaluated 2026-08-17, with a keyword-argument crash on Python 3.14 untested on
 
 Where: `stage4_vectorize.vectorize`, `_refine_curves`, `_CURVE_MIN_PX_PER_MM`.
 Effort: large; every golden moves. No gate. This is Kent's smoothness theme.
+Plan: `docs/superpowers/plans/2026-09-08-subpixel-edges.md`.
 
 ### 4. A wide-column policy: satin between 5 and about 6.5 mm instead of tatami
 

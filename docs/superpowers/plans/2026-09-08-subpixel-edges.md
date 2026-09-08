@@ -1,0 +1,167 @@
+# Sub-pixel, anti-alias-aware edges in stage 4 — plan
+
+**Date:** 2026-09-08
+**Status:** decision document. Nothing built. Item 3 of
+`docs/quality-review-2026-09-08.md`, Kent's pick.
+**Instrument this plan proposes:** `tools/edge_truth_ladder.py`.
+
+## 0. What already governs this — read before changing the plan
+
+- **Smoothing region polygons is a measured negative** (DOCTRINE):
+  Douglas-Peucker already meets its 0.2 mm tolerance to 0.002 mm, the
+  raggedness number on the owl was macro sprawl, and a smoothing radius
+  would be a new gate-1 constant. This plan does not smooth a polygon; it
+  changes where the polygon's vertices come from.
+- **A sub-pixel refinement below a few pixels of tolerance reads raster
+  texture as geometry, and the damage shows in the CLASSIFIER** (DOCTRINE
+  gotcha, 2026-09-03): `curve_turn_deg`'s one-pixel floor at 10–16 px/mm
+  read anti-aliasing and JPEG as arcs, every such fixture got rougher, and
+  two borderline ribbons changed tier through the DT skeleton. The cure was
+  `_CURVE_MIN_PX_PER_MM` = 20. **Rule from the same entry: any stage-4
+  geometry change flips with a per-shape tier diff on every fixture,
+  paired by centroid** (`tools/curve_tiers.py`).
+- **`simplify_tol_mm` stays at 0.2** (ruling 2026-08-17) and
+  size-proportional scaling is closed (2026-08-07). This plan moves neither.
+- **Near-floor lettering is exempt per ring** from refinement (Kent,
+  2026-09-03: the Douglas-Peucker inflation is what keeps 0.38–0.47 mm
+  strokes above the cross floor). The exemption stays.
+- **The satin/fill classifier's boundary-detail sensitivity is intrinsic to
+  its thresholds** (eight cures measured, none adopted). This plan may
+  REDUCE the raster grain that feeds it; it must not be sold as a cure for
+  the thresholds.
+
+## 1. The gap
+
+`stage4_vectorize.vectorize` traces each label mask with OpenCV, simplifies
+at 0.2 mm, and, since 2026-09-03, re-reads each simplified edge against the
+raw contour arc — but only at 20 px/mm or above. Measured 2026-09-08
+(`docs/quality-review-2026-09-08.md` §2a): **2 of 29 fixtures** reach that
+gate at 80 mm. Every design Kent called jagged, sawtoothed or not smooth on
+2026-08-27 — `logo_whitebg`, `ribbon_curve`, `becker_marine`,
+`logo_script_tires`, `enthusiast_logo` — sits at 1.8–19.8 px/mm, so the
+round-curves fix is byte-identical on the designs it was asked for.
+`tools/edge_smoothness.py` reads 0.13–0.22 mm of raggedness on the corpus,
+measured against the raster, which is itself the staircase.
+
+## 2. Why the current refinement cannot go lower
+
+`_refine_curves` estimates a sub-pixel point as the MEAN of the raw contour
+pixels within two steps of an arc's midpoint. That averages staircase
+corners, which is why its floor is one pixel: below it the staircase is
+read as arcs. At 10 px/mm one pixel is 0.1 mm — half the tolerance — so
+the gate refuses, correctly, and the polygon stays a polygon.
+
+The information that locates an edge below a pixel is in the grey levels.
+Every fixture in `testdata/` is drawn at 4× and downscaled with
+`INTER_AREA` precisely so that "every edge carries a realistic 1–2 px
+anti-alias halo" (`tools/make_test_logo.py`); real exports and photographs
+carry the same ramp. Stage 4 never reads it — it reads the label mask,
+which is the ramp thresholded at whatever the majority filter left. The
+edge's true position inside that ramp is where the pixel colour is halfway
+between the two sides, and that is readable to a small fraction of a pixel.
+
+## 3. The design
+
+`cfg.subpixel_edges`, default OFF, byte-identical off. One new step in
+`vectorize`, between `findContours` (`CHAIN_APPROX_NONE`) and
+Douglas-Peucker:
+
+1. **For each raw contour vertex** `v` (a pixel centre) take the local
+   normal `n` from its neighbours two steps either side.
+2. **Sample the prepped image along `n`** at seven offsets from −1.5 to
+   +1.5 px (bilinear), in Lab (`p.rgb`), or in alpha when `p.bg_from_alpha`
+   and the outside is background.
+3. **Project each sample onto the axis between the two side colours**: the
+   inside colour is this label's cluster colour (`Quant.cluster_rgb`, or the
+   local mean two pixels inside), the outside colour the neighbouring
+   label's, or `Prep.bg_edge_rgb` against background. That gives `t(s)` in
+   [0, 1] along the profile.
+4. **Accept** when `t` is monotonic over the window and crosses 0.5 exactly
+   once within ±0.75 px; the edge point is `v + s* · n`. **Reject** (keep the
+   pixel centre) otherwise — JPEG ringing fails monotonicity, texture fails
+   it, a third label meeting at the vertex fails the two-colour axis.
+5. **Carry an `accepted` mask** with the sub-pixel contour. Douglas-Peucker
+   runs on the sub-pixel coordinates at the same 0.2 mm; `_refine_curves`
+   runs with its floor lowered from `_CURVE_FLOOR_PX` 1.0 to a sub-pixel
+   floor (0.25 px) only on chords whose raw points were at least 80%
+   accepted; and the `_CURVE_MIN_PX_PER_MM` gate is replaced by that
+   acceptance test. Refinement then happens where the edge is actually
+   known to sub-pixel precision, at any resolution, and stays off where it
+   is not.
+
+Holes get the same treatment. Sub-detail shapes keep their 0.5 px epsilon.
+The near-floor lettering exemption stays per ring. The enclosed population
+and the majority filter can move a LABEL by a pixel; the position now
+comes from the image, so that wobble stops mattering.
+
+**A stated limit:** a stroke under about three pixels wide has no plateau
+between its two ramps, so the crossing is undefined and the vertex is kept
+at the pixel centre. Those strokes are item 2's plan, not this one. Sources
+under the resolution floor (Becker at 1.46 px/mm, Lanczos-upscaled to 4)
+have a smooth ramp by construction; whether it locates the edge or the
+upscale's own ringing is measured, not assumed (§5).
+
+**Why not a tracer.** vtracer (MIT, evaluated 2026-08-17) fits splines to a
+BINARY mask; it does not read the ramp either, and its Python wheel has an
+untested keyword-argument crash on 3.14. It stays the fallback for sources
+with no ramp to read.
+
+## 4. What it should move — predictions, to be tested
+
+- `tools/edge_smoothness.py` `ragged_mm` down on every fixture between 5
+  and 20 px/mm, unchanged above.
+- `tools/curve_fidelity.py` `roughness_deg` down on `logo_whitebg`,
+  `ribbon_curve`, `logo_alpha`, `enthusiast`.
+- `tools/ribbon_stability.py` flips 5 of 219 → fewer, because the raster
+  grain that grows spurs on the classifier's skeleton is what leaves the
+  polygon. Not a promise: DOCTRINE says the thresholds are the mechanism.
+- `tools/curve_tiers.py`: a small number of tier changes on borderline
+  ribbons, listed by centroid, each looked at.
+- Stitch counts and trims move a little everywhere; nothing should move by
+  a tenth.
+
+## 5. Instrument first (PR 1) — `tools/edge_truth_ladder.py`
+
+The synthetic fixtures carry their own vector truth: `make_test_logo.py`
+draws a circle at (200, 250) with radius 120, a ring at (450, 250) radii
+110/60, rectangles at known corners, a stroked polyline for the ribbon. The
+ladder regenerates `logo_whitebg` and `ribbon_curve` at 200, 400, 800,
+1600 and 3200 px, runs stages 1–4 at 80 mm, and measures each shape's
+polygon against the analytic edge in the same frame — RMS and Hausdorff
+deviation in mm, plus the vertex-turn statistics `curve_fidelity` reads —
+with no registration search and no rasterised truth. Flag OFF today, the
+deviation is bounded below by the staircase and falls with resolution;
+flag ON, it should be close to flat across the ladder. That is the
+acceptance criterion, and it is stated before any engine code exists.
+
+The same tool runs `curve_tiers.py`'s cases on the real fixtures so the
+per-shape tier diff the doctrine requires comes out of one command.
+
+## 6. What must not regress, with its fixture
+
+| invariant | pinned by |
+|---|---|
+| flag OFF byte-identical | `test_flat_lane_byte_identical.py`, `test_photo_lane_byte_identical.py` |
+| per-shape tier diff on every fixture, paired by centroid | `tools/curve_tiers.py` output in the PR body, every tier change named |
+| near-floor lettering untouched | Fremont `S54b55cf1`'s 24 satin penetrations (the PR #328 review case) |
+| sub-detail epsilon | `test_stages.py` rescued-lettering cases |
+| the archetypes and the serrated disc | `tests/test_satin.py` |
+| trim ceiling 4.1/1k | `tests/test_chaining.py` |
+| JPEG art does not gain vertices from ringing | `logo_bridge_bar`, `logo_golden_tee`: vertex count and `ragged_mm` flag ON vs OFF |
+| goldens | every fixture's polygons move ON; re-capture is Kent's approval, in CI, never on Windows |
+
+## 7. Size and staging
+
+| PR | content | size | gate |
+|---|---|---|---|
+| 1 | the ladder, baseline numbers OFF | ~250 lines + tests | none |
+| 2 | `cfg.subpixel_edges` — the profile crossing, `accepted` mask, OFF | ~200 + tests | none |
+| 3 | the refinement floor and gate keyed to acceptance, same flag | ~60 + tests | none |
+| 4 | the flip: ladder ON, tier diff, `ragged_mm`/`roughness_deg` table, renders, golden churn | docs + goldens | Kent's approval of the churn |
+
+## 8. Decisions for Kent
+
+1. Approve the construction (read the ramp; never smooth the polygon).
+2. Accept that the flip moves every golden, judged in CI.
+3. Whether Becker-class sources (under the resolution floor, upscaled) are
+   in scope for the flip or excluded until measured.
