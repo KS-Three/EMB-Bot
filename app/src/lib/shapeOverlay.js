@@ -509,3 +509,46 @@ export function fieldMmToOutlineMm(pointsFieldMm, shapes, bboxMm, rotationDeg = 
     return [ux, -uy];   // back to y-down
   });
 }
+
+/**
+ * Where to put the selection chip, in CSS px relative to the canvas's own
+ * positioned parent (`.hoop`, which is position:relative).
+ *
+ * `scale` converts DRAWING px — everything hitOverlay and toCanvas speak — into
+ * CSS px. It is `canvas.getBoundingClientRect().width / canvas.width`, which is
+ * 1/devicePixelRatio on a settled layout and something else entirely during the
+ * ResizeObserver catch-up frame. Passing it in rather than reading dpr means the
+ * one case that actually breaks — a resize in flight — is expressible in a test.
+ *
+ * Clamping is not decoration: `.fieldmenu`, the only other absolutely-positioned
+ * child of `.hoop`, is positioned straight off a pointer event with no clamp,
+ * and it can only get away with that because a pointer is by definition inside
+ * the canvas. A chip anchored to a SHAPE has no such guarantee — a shape at the
+ * top of the hoop puts the chip off the top edge.
+ */
+export function chipAnchorPx(pointsPx, box) {
+  const pts = pointsPx || [];
+  if (pts.length < MIN_RING_POINTS) return null;
+  const { chipW, chipH, hostW, hostH, scale = 1, gap = 8 } = box || {};
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const [x, y] of pts) {
+    if (x < minX) minX = x;
+    if (x > maxX) maxX = x;
+    if (y < minY) minY = y;
+    if (y > maxY) maxY = y;
+  }
+  const cx = ((minX + maxX) / 2) * scale;
+  const top = minY * scale;
+  const bottom = maxY * scale;
+
+  const above = top - chipH - gap;
+  const placement = above >= 0 ? "above" : "below";
+  const rawTop = placement === "above" ? above : bottom + gap;
+
+  const clamp = (v, lo, hi) => (hi < lo ? lo : Math.max(lo, Math.min(hi, v)));
+  return {
+    left: clamp(cx - chipW / 2, 0, hostW - chipW),
+    top: clamp(rawTop, 0, hostH - chipH),
+    placement,
+  };
+}

@@ -4,6 +4,7 @@
 // so it is tested here, without a browser or a live digitizer service.
 import { describe, expect, test } from "vitest";
 import {
+  chipAnchorPx,
   createPulseTracker,
   fieldMmToOutlineMm,
   hitOverlay,
@@ -613,5 +614,54 @@ describe("explicitly-closed rings", () => {
     const ring = outlineOf({ outlineFull: CLOSED });
     const moved = moveEdge(ring, 0, 0, 4);
     expect(moved).toEqual([[-10, -1], [10, -1], [10, 5], [-10, 5]]);
+  });
+});
+
+// --- chip anchor -------------------------------------------------------------
+
+describe("chipAnchorPx", () => {
+  // A 100x100 drawing-px square. scale 1 means CSS px == drawing px.
+  const SQ = [[100, 100], [200, 100], [200, 200], [100, 200]];
+  const BOX = { chipW: 160, chipH: 32, hostW: 800, hostH: 600, scale: 1, gap: 8 };
+
+  test("centres the chip horizontally over the shape and sits above it", () => {
+    const a = chipAnchorPx(SQ, BOX);
+    expect(a.placement).toBe("above");
+    expect(a.left).toBe(150 - 80);        // shape centre 150, half chip 80
+    expect(a.top).toBe(100 - 32 - 8);     // shape top, minus chip, minus gap
+  });
+
+  test("flips below when there is no room above", () => {
+    const high = [[100, 5], [200, 5], [200, 60], [100, 60]];
+    const a = chipAnchorPx(high, BOX);
+    expect(a.placement).toBe("below");
+    expect(a.top).toBe(60 + 8);
+  });
+
+  test("clamps to the left edge instead of going negative", () => {
+    const left = [[0, 100], [40, 100], [40, 200], [0, 200]];
+    expect(chipAnchorPx(left, BOX).left).toBe(0);
+  });
+
+  test("clamps to the right edge instead of overflowing the host", () => {
+    const right = [[760, 100], [800, 100], [800, 200], [760, 200]];
+    expect(chipAnchorPx(right, BOX).left).toBe(800 - 160);
+  });
+
+  test("converts drawing px to CSS px with scale", () => {
+    // scale 0.5 is a dpr-2 display: 200 drawing px is 100 CSS px.
+    const a = chipAnchorPx(SQ, { ...BOX, scale: 0.5 });
+    expect(a.left).toBe(75 - 80 < 0 ? 0 : 75 - 80);  // centre 75, clamped at 0
+    expect(a.top).toBe(50 - 32 - 8);
+  });
+
+  test("a chip wider than the host clamps to 0 rather than a negative left", () => {
+    const a = chipAnchorPx(SQ, { ...BOX, chipW: 900 });
+    expect(a.left).toBe(0);
+  });
+
+  test("returns null for a degenerate ring", () => {
+    expect(chipAnchorPx([], BOX)).toBe(null);
+    expect(chipAnchorPx(null, BOX)).toBe(null);
   });
 });
