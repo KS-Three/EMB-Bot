@@ -1,21 +1,25 @@
 // @vitest-environment jsdom
 //
-// Component-level coverage for DownloadStep.svelte's DST encoder-provenance
-// notice.
+// Component-level coverage for DownloadStep.svelte: which formats it offers,
+// what it says about them, and the gates in front of a download.
 //
-// The gap this closes is a product-correctness one, not a styling one:
-// `exportDesignPreferService` has always tagged its result `via: "service"`
-// or `via: "browser"`, but the panel only ever surfaced the service case, so
-// a browser-encoded DST — the one encoder confirmed transposed against the
-// Tajima standard (MASTER_SCOPE.md, "DST codec axis bug") — was the silent
-// default. A lettering or hand-drawn project can never take the service
-// path, so it is exactly the case that most needed telling and got told
-// least.
+// This file was written for a DST encoder-provenance NOTICE. A browser-encoded
+// DST was the one file confirmed transposed against the Tajima standard, and
+// `exportDesignPreferService` tagged every result `via: "service"` or
+// `via: "browser"` while the panel surfaced only the service case — so the
+// broken encoder was the silent default, on exactly the projects (lettering,
+// hand-drawn) that can never take the service path.
+//
+// **That codec was fixed on 2026-09-08** — both record weight tables swapped,
+// byte-identical to `pystitch.DstWriter.encode_record`, crossval reading
+// `identity`, a rendered "FRITSCH" coming back upright — and the notice came
+// out with it. What is left here of that work is a set of ABSENCE assertions:
+// no caveat, no asterisk, no demotion, on any project type. They are the
+// tripwire against re-adding a warning for a defect that no longer exists.
 //
 // Deliberately NOT covered here: the actual encoders' bytes (test/dst.test.js
 // and the crossval harness own that), and the service round trip
-// (exporters.spec.js owns the `via` tagging itself). This file only asserts
-// what the panel SAYS about which encoder ran.
+// (exporters.spec.js owns the `via` tagging itself).
 import { beforeAll, beforeEach, expect, test, vi } from "vitest";
 import { render, fireEvent, waitFor, within } from "@testing-library/svelte";
 import "@testing-library/jest-dom/vitest";
@@ -105,96 +109,59 @@ const DIGITIZED_PLUS_PLACEHOLDER = [
   { id: "e2", type: "digitized", result: { design: {} } },
 ];
 
-test("a lettering project is warned that its DST comes from the browser encoder", () => {
-  const { getByTestId } = render(DownloadStep, {
-    props: { project: project(LETTERING), runtime: {} },
-  });
-  const note = getByTestId("dst-browser-encoder-note");
-  expect(note).toBeInTheDocument();
-  // The consequence that actually bites a user opening the file elsewhere:
-  // the orientation.
+// ---- the DST caveats are GONE, and stay gone -------------------------------
+//
+// From 2026-08 to 2026-09-08 a browser-encoded DST carried two warning
+// paragraphs, an asterisk, and a demotion behind PES, because the browser's
+// own codec wrote a private dialect: a standard reader saw the design a
+// quarter turn round AND mirrored, letters backwards. Every word of that was
+// true and every word of it is now false — the codec was put right (both
+// record weight tables swapped, byte-identical to pystitch, crossval
+// `identity`, a rendered "FRITSCH" upright at the design's own size), and the
+// colour-change byte went `0x43` -> `0xC3` the day before.
+//
+// Asserted as ABSENCES rather than deleted, because a warning left standing
+// after its defect is fixed is not the safe side of the trade: it steers
+// people off the format most of their machines want, and it teaches them to
+// distrust the ones we keep. If a real difference reappears, MEASURE it and
+// write a note about THAT — do not restore these.
+
+test("no DST caveat renders, on any project type", () => {
+  for (const [name, els] of [["lettering", LETTERING], ["mixed", MIXED], ["digitized", DIGITIZED]]) {
+    const view = render(DownloadStep, { props: { project: project(els), runtime: {} } });
+    expect(
+      ui(view).queryByTestId("dst-browser-encoder-note"),
+      `${name} project must render no DST caveat`,
+    ).not.toBeInTheDocument();
+    // The words themselves, not just the testid — a note that came back under
+    // a different id would still be the same false claim on the page.
+    expect(view.container.textContent).not.toMatch(/quarter turn/i);
+    expect(view.container.textContent).not.toMatch(/backwards/i);
+    view.unmount();
+  }
+});
+
+test("DST leads and is primary on every project type, with no asterisk", () => {
+  // DST was demoted behind PES, and given a `caveat` class and an asterisk,
+  // whenever the browser encoder would write it — because then the most
+  // prominent choice was the one we knew read wrong elsewhere. With the codec
+  // correct that reasoning is gone, and leaving the demotion would push people
+  // off the industry default for no reason.
   //
-  // "MIRROR" is load-bearing and this assertion used to read
-  // /rotated a quarter turn/. Rendered 2026-09-07: a standard reader sees a
-  // browser-encoded DST a quarter turn round AND mirror-imaged — letters
-  // backwards. A customer told only "rotated" tries to rotate it back in
-  // their own software and cannot, because rotation preserves orientation and
-  // this does not. Naming the mirror is the difference between a warning they
-  // can act on and one that sends them somewhere that will not work.
-  expect(note.textContent).toMatch(/quarter turn/i);
-  expect(note.textContent).toMatch(/flipped/i);
-  expect(note.textContent).toMatch(/backwards/i);
-  expect(note.textContent).toMatch(/will\s+not fix/i); // the note wraps mid-phrase
-  // And NOT the colour stops, which used to be the note's second consequence.
-  // The browser encoder wrote the colour change as 0x43 instead of 0xC3, so a
-  // standard reader saw a sequin toggle and no stop at all; fixed 2026-09-08
-  // (src/dst.js, pinned by test/crossval-stitch-formats.test.js against
-  // pystitch). Asserted as an ABSENCE so the stale clause cannot come back:
-  // telling a customer to distrust something that now works costs them the
-  // format they most likely need.
-  expect(note.textContent).not.toMatch(/color stops/i);
-});
-
-test("a purely-digitized project gets no browser-DST warning", () => {
-  const { queryByTestId } = render(DownloadStep, {
-    props: { project: project(DIGITIZED), runtime: {} },
-  });
-  expect(queryByTestId("dst-browser-encoder-note")).not.toBeInTheDocument();
-});
-
-test("a mixed project is warned — it cannot take the service path either", () => {
-  // Guards the real reason `isPurelyDigitized` requires EVERY element to be
-  // digitized: a combined design is encoded once, so one text element puts
-  // the whole download on the browser encoder.
-  const { getByTestId } = render(DownloadStep, {
-    props: { project: project(MIXED), runtime: {} },
-  });
-  expect(getByTestId("dst-browser-encoder-note")).toBeInTheDocument();
-});
-
-// The warning was doing its job while the layout undid it: DST was the
-// filled `primary` button, first in the grid, sitting directly above the
-// paragraph explaining that this exact file reads a quarter-turn rotated
-// everywhere else. The most prominent choice was the broken one, and a user
-// who trusts the emphasis rather than reading the note gets a ruined
-// sew-out. Emphasis now follows the encoder.
-test("when the browser encoder writes the DST, PES leads and DST carries the caveat", () => {
-  const view = render(DownloadStep, {
-    props: { project: project(LETTERING), runtime: {} },
-  });
-  const { container } = view;
-  const formats = [...container.querySelectorAll(".formats button")];
-  const primary = formats.filter((b) => b.classList.contains("primary"));
-
-  expect(primary).toHaveLength(1);
-  expect(primary[0].textContent.trim()).toBe("PES");
-  // First in the grid as well as filled — reading order is emphasis too.
-  expect(formats[0].textContent.trim()).toBe("PES");
-
-  const dst = formats.find((b) => b.textContent.trim().startsWith("DST"));
-  expect(dst.classList.contains("primary")).toBe(false);
-  expect(dst.classList.contains("caveat")).toBe(true);
-  // The button is still NAMED "DST" — the caveat is a description, not part
-  // of the name — so it stays addressable by voice and by every existing
-  // query. The asterisk is aria-hidden because "star" announces nothing.
-  expect(dst).toHaveAccessibleName("DST");
-  expect(dst.getAttribute("aria-describedby")).toBe("dst-encoder-note");
-  expect(container.querySelector("#dst-encoder-note")).toBe(
-    view.getByTestId("dst-browser-encoder-note"),
-  );
-});
-
-test("a project that exports through the service keeps DST primary", () => {
-  // The point is not that DST is bad — it is the industry default and the
-  // service's DST is spec-correct. Demoting it unconditionally would push
-  // users off the right format for their machine.
-  const { container } = render(DownloadStep, {
-    props: { project: project(DIGITIZED), runtime: {} },
-  });
-  const formats = [...container.querySelectorAll(".formats button")];
-  expect(formats[0].textContent.trim()).toBe("DST");
-  expect(formats[0].classList.contains("primary")).toBe(true);
-  expect(container.querySelector(".formats button.caveat")).toBeNull();
+  // The JEF button keeps its own asterisk when the hoop-header note applies;
+  // that is a different caveat about a real, still-live pystitch behaviour, so
+  // this looks only at the DST/PES/EXP group.
+  for (const [name, els] of [["lettering", LETTERING], ["mixed", MIXED], ["digitized", DIGITIZED]]) {
+    const view = render(DownloadStep, { props: { project: project(els), runtime: {} } });
+    const formats = [...view.container.querySelectorAll(".formats button")];
+    expect(formats[0].textContent.trim(), `${name}: DST leads`).toBe("DST");
+    expect(formats[0].classList.contains("primary"), `${name}: DST is filled`).toBe(true);
+    const dst = formats.find((b) => b.textContent.trim().startsWith("DST"));
+    expect(dst.classList.contains("caveat"), `${name}: no caveat class`).toBe(false);
+    expect(dst).toHaveAccessibleName("DST");
+    expect(dst.getAttribute("aria-describedby"), `${name}: nothing to describe`).toBeNull();
+    view.unmount();
+  }
 });
 
 test("every format is still reachable in both encoder states", () => {
@@ -213,16 +180,11 @@ test("every format is still reachable in both encoder states", () => {
   }
 });
 
-test("the warning names PES and EXP as the unaffected formats", () => {
-  // PR #58 fixed both browser encoders' byte framing (identity/rms 0 against
-  // pyembroidery). Warning about them too would be telling the user
-  // something untrue, so this pins the DST-only scope.
-  const { getByTestId } = render(DownloadStep, {
-    props: { project: project(LETTERING), runtime: {} },
-  });
-  expect(getByTestId("dst-browser-encoder-note").textContent)
-    .toMatch(/PES and EXP are\s+unaffected/i);
-});
+// (Removed 2026-09-08: "the warning names PES and EXP as the unaffected
+// formats". It pinned the DST-only scope of a warning that no longer exists —
+// PR #58 had fixed both browser encoders' byte framing, and the DST codec
+// caught up. There is no format here to warn about, so there is no scope to
+// pin; the absence test above covers what is left to say.)
 
 // Two reasons every query below goes through this helper rather than the
 // view's own bound queries. First, the warning copy itself contains "DST"
@@ -251,64 +213,27 @@ test("the download message names the encoder in both directions", async () => {
   expect(await ui(digitized).findByText(/digitizer service encoder/i)).toBeInTheDocument();
 });
 
-test("a browser-encoded DST is flagged after the download, even for a digitized project", async () => {
-  // The prediction and the observation can disagree: the service falling
-  // over makes `exportDesignPreferService` fall back to the browser encoder
-  // silently, so a purely-digitized project shows no up-front warning and
-  // still gets a browser DST. The post-download note is what catches it.
-  nextVia = "browser";
-  const view = render(DownloadStep, {
-    props: { project: project(DIGITIZED), runtime: {} },
-  });
-  expect(ui(view).queryByTestId("dst-browser-encoder-note")).not.toBeInTheDocument();
-  await fireEvent.click(fmtButton(view, "DST"));
-  expect(await ui(view).findByTestId("dst-browser-encoder-downloaded")).toBeInTheDocument();
-});
-
-test("the post-download DST note stands alone — it never points at absent text", async () => {
-  // The bug this replaces: the note said "see the note above", and the note
-  // above (`dst-browser-encoder-note`) renders only when the browser encoder
-  // was PREDICTED. On a purely-digitized project it is not, so in the one
-  // case the post-download note exists for, it referred the customer to a
-  // paragraph that is not on the page. The test directly above proves the
-  // up-front note is absent here; this proves what the message then has to
-  // carry on its own.
-  nextVia = "browser";
-  const view = render(DownloadStep, {
-    props: { project: project(DIGITIZED), runtime: {} },
-  });
-  expect(ui(view).queryByTestId("dst-browser-encoder-note")).not.toBeInTheDocument();
-  await fireEvent.click(fmtButton(view, "DST"));
-  const note = await ui(view).findByTestId("dst-browser-encoder-downloaded");
-
-  // No dangling cross-reference, whatever wording a future edit picks.
-  expect(note.textContent).not.toMatch(/note above|above before|see above/i);
-  // The consequence, in the customer's terms rather than the encoder's name.
-  expect(note.textContent).toMatch(/quarter turn/i);
-  // Not the colour stops — those survive as of 2026-09-08. See the absence
-  // assertion in the up-front-note test above for why this is pinned.
-  expect(note.textContent).not.toMatch(/color stops/i);
-  // And the cause, which is the actionable half: the service was asked for
-  // this file and could not answer.
-  expect(note.textContent).toMatch(/digitizer service/i);
-  expect(note.textContent).toMatch(/PES or EXP/i);
-});
-
-test("a lettering project's post-download note is self-contained too, and does not blame the service", async () => {
-  // Here the up-front note IS rendered, so the two paragraphs sit together
-  // and the second must not read as a fragment of the first — nor claim a
-  // service failure, since a lettering project never asks the service at all
-  // (preferService is false, so `via: "browser"` is the intended path).
-  nextVia = "browser";
-  const view = render(DownloadStep, {
-    props: { project: project(LETTERING), runtime: {} },
-  });
-  expect(ui(view).getByTestId("dst-browser-encoder-note")).toBeInTheDocument();
-  await fireEvent.click(fmtButton(view, "DST"));
-  const note = await ui(view).findByTestId("dst-browser-encoder-downloaded");
-  expect(note.textContent).not.toMatch(/note above|above before|see above/i);
-  expect(note.textContent).toMatch(/quarter turn/i);
-  expect(note.textContent).not.toMatch(/digitizer service/i);
+test("no post-download DST note appears, whichever encoder actually ran", async () => {
+  // Three tests lived here: one proving a browser-encoded DST got flagged
+  // even on a digitized project (the service can fall back silently), one
+  // proving that note stood alone rather than pointing at absent text, and
+  // one proving it did not blame the service on a lettering project. All
+  // three guarded the WORDING of a warning that no longer has anything to
+  // warn about.
+  //
+  // What replaces them is the property that matters now: whichever encoder
+  // ran, the customer is told which one and nothing more. The `via` label is
+  // neutral provenance; it is not a caveat, and it must not grow back into
+  // one.
+  for (const [via, els] of [["browser", DIGITIZED], ["browser", LETTERING], ["service", DIGITIZED]]) {
+    nextVia = via;
+    const view = render(DownloadStep, { props: { project: project(els), runtime: {} } });
+    await fireEvent.click(fmtButton(view, "DST"));
+    await ui(view).findByText(/encoder/i);
+    expect(ui(view).queryByTestId("dst-browser-encoder-downloaded")).not.toBeInTheDocument();
+    expect(view.container.textContent).not.toMatch(/quarter turn|backwards/i);
+    view.unmount();
+  }
 });
 
 test("a service-encoded DST is not flagged after the download", async () => {
@@ -333,18 +258,8 @@ test("PES and EXP downloads are never flagged, whichever encoder ran", async () 
   }
 });
 
-test("the post-download note clears when a non-stitch format is downloaded next", async () => {
-  nextVia = "browser";
-  const view = render(DownloadStep, {
-    props: { project: project(LETTERING), runtime: {} },
-  });
-  await fireEvent.click(fmtButton(view, "DST"));
-  await ui(view).findByTestId("dst-browser-encoder-downloaded");
-  await fireEvent.click(fmtButton(view, "PNG"));
-  await waitFor(() =>
-    expect(ui(view).queryByTestId("dst-browser-encoder-downloaded")).not.toBeInTheDocument()
-  );
-});
+// (Removed 2026-09-08: "the post-download note clears when a non-stitch format
+// is downloaded next". It guarded a note that no longer renders at all.)
 
 // --- the hoop-exceeds export gate ------------------------------------------
 //
@@ -441,14 +356,17 @@ test("a logo-only project exports through the service despite its empty text pla
 test("a project that genuinely mixes SEWABLE content still stays on the browser encoder", async () => {
   // The scoping ruling is unchanged: there is no way to export part of a
   // combined design through two encoders, so a real text element beside the
-  // logo keeps the whole thing on the browser path — and the caveat, whose
-  // stated reason ("includes lettering") is then true.
+  // logo keeps the whole thing on the browser path.
+  //
+  // This used to assert the caveat as well. The ROUTING is the part worth
+  // pinning and it is unaffected by the caveat going away — which encoder
+  // runs still matters to the code even though it no longer matters to the
+  // customer.
   exportCalls.length = 0;
   nextVia = "browser";
   const view = render(DownloadStep, {
     props: { project: project(MIXED), runtime: {} },
   });
-  expect(ui(view).getByTestId("dst-browser-encoder-note")).toBeInTheDocument();
   await fireEvent.click(fmtButton(view, "DST"));
   expect(exportCalls).toEqual([{ format: "dst", preferService: false }]);
 });
@@ -489,45 +407,13 @@ test("JEF is offered, and is disabled with a reason when the service is not runn
   expect(get2("jef-button")).toBeEnabled();
 });
 
-test("the DST caveat names JEF as a way out when JEF is available, and does not when it is not", async () => {
-  // The caveat shipped 2026-09-07 saying only "PES and EXP are unaffected".
-  // That was written before JEF had a button (#403 added it) and was never
-  // revisited: a Janome owner hitting the DST warning was steered to two
-  // formats their machine may not read, away from the one it does — which
-  // this app offers, and which decodes upright through pystitch.
-  //
-  // Conditional on availability in both directions, because JEF has no
-  // in-browser encoder: naming a disabled button as the escape route would
-  // just be a different dead end.
-  const up = render(DownloadStep, {
-    props: { project: project(LETTERING), runtime: {}, digitizerHealth: { status: "ok" } },
-  });
-  const withJef = ui(up).getByTestId("dst-browser-encoder-note");
-  expect(withJef.textContent).toMatch(/JEF/);
-  expect(withJef.textContent).toMatch(/PES and EXP/);
-  up.unmount();
-
-  const down = render(DownloadStep, {
-    props: { project: project(LETTERING), runtime: {}, digitizerHealth: null },
-  });
-  const noJef = ui(down).getByTestId("dst-browser-encoder-note");
-  expect(noJef.textContent).not.toMatch(/JEF/);
-  expect(noJef.textContent).toMatch(/PES and EXP/);
-});
-
-test("the service-unreachable post-download note never offers JEF — there is no JEF without the service", async () => {
-  // The other branch of the post-download note fires when the service was
-  // ASKED for the DST and could not answer. JEF needs that same service, so
-  // it cannot be the answer here; the note's own advice is to start the
-  // service and download again.
-  const view = render(DownloadStep, {
-    props: { project: project(DIGITIZED), runtime: {}, digitizerHealth: null },
-  });
-  await fireEvent.click(fmtButton(view, "DST"));
-  const note = await ui(view).findByTestId("dst-browser-encoder-downloaded");
-  expect(note.textContent).not.toMatch(/JEF/);
-  expect(note.textContent).toMatch(/digitizer service/i);
-});
+// (Removed 2026-09-08, hours after being added: two tests pinned that the DST
+// caveat NAMED JEF as an alternative when the service was up, and did not when
+// it was down. Both were right about the caveat that existed that morning. The
+// codec fix removed the caveat, so there is nothing left to name JEF in --
+// which is the better outcome for the Janome owner those tests were written
+// for: the format they need no longer needs recommending, because the one they
+// were being steered away from now works too.)
 
 test("JEF downloads through the service on a LETTERING project too — the preferService split does not apply to it", async () => {
   // `preferService` chooses between two encoders for dst/exp/pes and is false

@@ -155,7 +155,7 @@ ten deltas and the crossval DST control reads `identity` beside PES and EXP.
 Re-rendered the same day: the old bytes draw a vertical column of reversed
 letters, the new ones draw FRITSCH upright at its own 127.2 x 22.6 mm.** The
 Download step's DST caveat was checked against the old render and was accurate
-clause for clause; it now OVER-warns and comes out separately. Its "may not see the color stops" clause is
+clause for clause. It is GONE now, along with the asterisk on the DST button and the demotion of DST behind PES: with the codec correct there is no difference left to warn about, and a warning that outlives its defect steers people off the format most of their machines want. Both absences are asserted (`DownloadStep.spec.js`, and end to end in `design-import.spec.js`) rather than merely untested. DesignPanel's note survives, scoped to files written BEFORE the fix -- those really are in the old dialect and nothing inside a .dst says which it is. Its "may not see the color stops" clause is
 GONE as of 2026-09-08 — not softened, removed, because the defect behind it is
 fixed. `dst.js` wrote the colour change as `0x43` where the spec wants `0xC3`,
 so a standard reader saw a spurious sequin toggle and ZERO colour changes: every

@@ -132,18 +132,20 @@
          (EMB.decodeDSTStandard), so a file from anywhere else lands correct and
          there is nothing left to warn about on that side.
 
-         What is left is the mirror image of the old problem, and it is small:
-         EMB-Bot's own DST writer still speaks EMB-Bot's convention (fixing
-         THAT re-orients every DST this app has ever written, and is Kent's
-         call), so its own .dst read back in is the file that now comes in
-         wrong. Named here with the lever that exists — My designs — rather
-         than left silent. -->
+         The writer was put right on 2026-09-08 (both record weight tables
+         swapped, byte-identical to pystitch), so a .dst this app writes NOW
+         re-imports correctly. What survives is narrower and does not shrink
+         on its own: a file written BEFORE that fix is in the old dialect and
+         still comes back mirrored, and nothing in the file says which it is.
+         So the note stays, scoped to old files, and keeps the advice that was
+         always the better one anyway — My designs preserves more than any
+         .dst can. -->
     <p class="dp-note warn" data-testid="dst-own-file-note">
       <span class="dp-warn-icon"><Icon name="warning" size={14} /></span> Reopening
-      something you made here? Use <strong>My designs</strong>. A .dst that EMB-Bot
-      itself wrote reads mirrored when it comes back in — EMB-Bot writes DST on the
-      opposite axis convention from every other program. Files from anywhere else
-      import correctly.
+      something you made here? Use <strong>My designs</strong>. A .dst this app
+      wrote <strong>before September 2026</strong> comes back mirrored — EMB-Bot
+      used to write DST on the opposite axis convention from every other program.
+      Files written since, and files from anywhere else, import correctly.
     </p>
 
     <div class="dp-blocks">
@@ -193,7 +195,8 @@
       Drop in any Tajima .dst design — from a design site, a digitizer, or another machine —
       and place it like any other element. Colors aren't stored in DST files, so pick a thread
       per block below once it's loaded. To reopen something you made in EMB-Bot, use
-      My designs rather than its .dst: EMB-Bot's own DST files read mirrored coming back in.
+      My designs rather than its .dst — it keeps more than a DST can, and a file this
+      app wrote before September 2026 comes back mirrored.
     </p>
   {/if}
 </div>

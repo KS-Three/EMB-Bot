@@ -17,11 +17,13 @@
 // mirror control at all. The import now goes through EMB.decodeDSTStandard,
 // so a file from anywhere else lands correct and reports its real size.
 //
-// What is left is the same defect pointing the other way, and much smaller:
-// EMB-Bot's own .dst read back in is now the one that comes in mirrored,
-// because the WRITER still speaks EMB-Bot's convention (fixing that
-// re-orients every DST this app has written and is Kent's call). The panel
-// names that case and the lever for it.
+// The WRITER was put right on 2026-09-08 too (both record weight tables
+// swapped, byte-identical to pystitch), so a .dst this app writes NOW
+// re-imports correctly. What survives is narrower and does not shrink on its
+// own: a file written BEFORE that fix is in the old dialect and still comes
+// back mirrored, and nothing inside a .dst says which it is. So the note
+// stays, SCOPED TO OLD FILES -- and the scoping is the part that is easy to
+// lose, so it is asserted rather than left to the copy.
 //
 // Deliberately NOT covered here: the codec itself — test/dstimport.test.js
 // owns the bytes, including the signed-area test that separates a mirror from
@@ -101,6 +103,12 @@ test("the case that IS still wrong is named, with the lever that exists", () => 
   expect(note).toBeInTheDocument();
   expect(note.textContent).toMatch(/mirrored/i);
   expect(note.textContent).toMatch(/My designs/);
+  // The SCOPE, which is what keeps this note honest after 2026-09-08: it is
+  // about files this app wrote BEFORE the codec fix, not about the ones it
+  // writes now. An unscoped version of this sentence would be a false warning
+  // -- the same failure the Download step's caveat had to be removed for.
+  expect(note.textContent).toMatch(/before September 2026/i);
+  expect(note.textContent).toMatch(/import correctly/i);
 });
 
 test("nothing is claimed before a file is chosen", () => {

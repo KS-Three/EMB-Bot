@@ -76,36 +76,23 @@
     return sewable.length > 0 && sewable.every((el) => el.type === "digitized");
   }
 
-  // Encoder provenance, surfaced rather than left implicit.
+  // Encoder provenance is no longer surfaced, because it no longer changes
+  // what the customer gets.
   //
-  // The gate above decides WHICH DST encoder runs, and until now nothing told
-  // the user which one they got. That matters for exactly one format: the
-  // browser's own DST codec is confirmed transposed against the Tajima
-  // standard (five independent sources, incl. Ink/Stitch's pystitch — see
-  // MASTER_SCOPE.md's "DST codec axis bug"), so a browser-encoded DST reads
-  // wrong in third-party software, and its color-change record (0x43 vs the
-  // standard 0xC3) is not seen as a color change at all.
+  // `dstUsesBrowserEncoder` lived here from 2026-08 to 2026-09-08 and drove
+  // three things: DST demoted behind PES, an asterisk on the DST button, and
+  // two paragraphs saying a browser-written DST reads a quarter turn round
+  // AND MIRRORED elsewhere. All of that was true and all of it is now false —
+  // the codec was put right on 2026-09-08 (both record weight tables swapped;
+  // byte-identical to pystitch; crossval `identity`; a rendered "FRITSCH"
+  // upright at the design's own size), and the colour-change record went from
+  // `0x43` to the standard `0xC3` the day before.
   //
-  // Both notes below said "rotated a quarter turn" until 2026-09-07, which is
-  // the understatement that matters: rendered on 2026-09-07, a standard reader
-  // sees the design a quarter turn round AND MIRRORED — letters backwards. A
-  // customer told "rotated" tries to rotate it back in their own software and
-  // cannot, because rotation preserves orientation and this does not. Same
-  // correction as the import side (src/dstimport.js, DOCTRINE 2026-09-07);
-  // only a picture separates the two, and nobody had rendered one.
-  //
-  // Deliberately NOT extended to PES/EXP. Both browser encoders had real
-  // byte-framing defects, both were FIXED 2026-08-05 (PR #58) and now decode
-  // identity/rms 0 against pyembroidery, so warning on them would be telling
-  // the user something untrue. DST is the one still open, and it is open
-  // pending a sew-out — fixing the codec would re-orient every DST EMB-Bot
-  // has ever written, which is Kent's call, not this dialog's.
-  //
-  // This is a prediction, not an observation: `exportDesignPreferService`
-  // silently falls back to the browser encoder if the service is unreachable,
-  // so a purely-digitized project can still produce a browser DST. The
-  // post-download message below reports what actually happened, from `via`.
-  $: dstUsesBrowserEncoder = !isPurelyDigitized(project);
+  // PES and EXP had their own byte-framing defects, fixed 2026-08-05 (PR #58).
+  // With DST joining them there is no format here whose provenance is worth a
+  // warning, so the gate, the demotion, the asterisk and both notes are gone
+  // together. If a future difference appears, MEASURE it and write a note
+  // about that difference rather than restoring these.
 
   // ---- JEF (Janome) ---------------------------------------------------
   //
@@ -128,23 +115,17 @@
   // browser JEF encoder exists, removing "jef" from SERVICE_ONLY_FORMATS is
   // the whole change and this gate disappears with it.
   //
-  // `jefAvailable` also gates whether the DST caveat below NAMES JEF as a
-  // good alternative. It shipped 2026-09-07 saying only "PES and EXP are
-  // unaffected", which was written before JEF had a button and was never
-  // revisited when it got one — so a Janome owner was steered to two formats
-  // their machine may not read, away from the one it does, which this app
-  // offers and which decodes upright. Conditional because JEF needs the
-  // service: naming a disabled button as the way out would be its own dead
-  // end. For the same reason the "service could not be reached" branch does
-  // NOT name JEF — there is no JEF without the service.
+  // `jefAvailable` briefly also gated whether the DST caveat NAMED JEF as an
+  // alternative — that caveat had shipped saying only "PES and EXP are
+  // unaffected", written before JEF had a button and never revisited when it
+  // got one, so a Janome owner was steered to two formats their machine may
+  // not read and away from the one it does. Both the caveat and that sentence
+  // are gone now that DST itself is correct; `jefAvailable` is back to doing
+  // one job, which is enabling or disabling the button.
   $: jefAvailable = !isServiceOnlyFormat("jef") || !!digitizerHealth;
   $: jefTitle = jefAvailable
     ? "Janome JEF, written by the digitizer service"
     : "Janome JEF needs the digitizer service running — it has no in-browser encoder";
-
-  // What the download actually used, set from the returned `via` after every
-  // stitch-format download so the label is observed rather than predicted.
-  let lastExport = null;
 
   // fontsReady gates the (necessarily synchronous, template-bound)
   // `combined` derivation below -- it starts false so the very first render
@@ -386,14 +367,12 @@
         preferService: isPurelyDigitized(project),
       });
       triggerDownload(out);
-      // Name the encoder in BOTH directions. The old message only ever
-      // labelled the service path, so a browser-encoded file — the one case
-      // where the encoder is known to matter — was the silent default.
-      lastExport = { fmt, via: out.via };
+      // The message still names which encoder ran -- neutral provenance, not
+      // a caveat. It stopped being a caveat on 2026-09-08, when the browser
+      // DST codec was put right and both warning notes came out.
       msg = "Downloaded " + fmt.toUpperCase()
         + (out.via === "service" ? " (digitizer service encoder)" : " (browser encoder)");
     } catch (e) {
-      lastExport = null;
       msg = e.message;
     }
   }
@@ -429,9 +408,6 @@
       // harmless -- but it must SAY it, because the sheet is the document
       // that goes to the machine.
       await exportWorksheetPDF(design, garment, effectiveHoop(project).hoop, palette.label, hoopExceeds);
-      // Not a stitch format — clear the encoder note so it can't linger next
-      // to a message about a different download.
-      lastExport = null;
       msg = "Worksheet saved.";
     } catch (e) {
       msg = e.message;
@@ -446,7 +422,6 @@
       const design = buildDesign();
       const out = await exportPNG(design);
       triggerDownload({ bytes: out.blob, filename: out.filename, mime: out.mime });
-      lastExport = null;
       msg = "Downloaded PNG";
     } catch (e) {
       msg = e.message;
@@ -480,37 +455,20 @@
   </div>
 {/if}
 
-<!-- Which format is PRE-BLESSED follows the encoder, not habit.
-     DST is the industry default and stays first and primary for a project
-     that exports through the service (pyembroidery convention, spec-correct).
-     But when the browser's own encoder will write it — `dstUsesBrowserEncoder`,
-     i.e. anything the digitizer service did not make — DST is the one format
-     we KNOW reads a quarter turn round AND MIRRORED elsewhere, and it was
-     still the filled button sitting directly above the paragraph saying so.
-     The most prominent choice was the broken one. In that case PES leads
-     instead: it is unaffected, it round-trips against pyembroidery, and it is
-     what a home machine wants anyway.
+<!-- DST is the industry default and is first and primary again, on every
+     project type.
 
-     This changes button order and emphasis only. Nothing here touches the
-     codec — the axis fix re-orients every DST EMB-Bot has ever written and is
-     gated on a sew-out, which is Kent's call, not this dialog's. -->
+     It was demoted behind PES whenever the browser's own encoder would write
+     it, because that encoder was the one format we KNEW read a quarter turn
+     round AND MIRRORED elsewhere — leaving the most prominent choice as the
+     broken one. The codec was put right on 2026-09-08 (both weight tables
+     swapped; byte-identical to pystitch, crossval reads `identity`, and a
+     rendered "FRITSCH" comes back upright), so the demotion, the asterisk and
+     the paragraph it pointed at have all gone with it. -->
 <div class="formats">
-  {#if dstUsesBrowserEncoder}
-    <button class="primary" on:click={() => askThenDl("pes")}>PES</button>
-    <button on:click={() => askThenDl("exp")}>EXP</button>
-    <!-- The caveat rides aria-describedby, NOT the button's name: the name
-         stays exactly "DST" so the control is still called what it is, and
-         "click DST" still works for voice control. The asterisk is the
-         sighted equivalent and is aria-hidden, since "star" announces
-         nothing useful. -->
-    <button class="caveat" aria-describedby="dst-encoder-note" on:click={() => askThenDl("dst")}>
-      DST<span class="caveat-mark" aria-hidden="true">*</span>
-    </button>
-  {:else}
-    <button class="primary" on:click={() => askThenDl("dst")}>DST</button>
-    <button on:click={() => askThenDl("pes")}>PES</button>
-    <button on:click={() => askThenDl("exp")}>EXP</button>
-  {/if}
+  <button class="primary" on:click={() => askThenDl("dst")}>DST</button>
+  <button on:click={() => askThenDl("pes")}>PES</button>
+  <button on:click={() => askThenDl("exp")}>EXP</button>
   <!-- Same caveat convention the DST button above documents: the name stays
        exactly "JEF" so voice control and every existing query still reach it,
        the asterisk is the sighted marker and is aria-hidden, and the note
@@ -564,56 +522,25 @@
     <strong>* Heads up about JEF:</strong> {jefHoopNote}
   </p>
 {/if}
-{#if dstUsesBrowserEncoder}
-  <p class="encodernote" id="dst-encoder-note" data-testid="dst-browser-encoder-note">
-    <!-- The premise used to read "includes lettering or hand-drawn shapes",
-         which is FALSE for the third kind of content that lands on this
-         encoder: an imported .dst. `dstUsesBrowserEncoder` is
-         !isPurelyDigitized, so an import-only project — no lettering, no
-         shapes — got this note anyway, opening on a claim about itself that
-         was not true. Named by the actual gate instead. -->
-    <strong>* Heads up about DST:</strong> this project has content the
-    digitizer service did not make — lettering, a hand-drawn shape, or an
-    imported design file — so its DST is written by EMB-Bot's own encoder. That
-    file opens correctly in EMB-Bot, but other embroidery software reads it a
-    quarter turn round <em>and flipped</em>: text comes out backwards, and
-    rotating it back there will not fix that. PES and EXP are
-    unaffected{#if jefAvailable}, and so is JEF (the Janome format){/if} — use
-    one of those, or a project made only of auto-digitized images, if the file
-    is going somewhere else.
-  </p>
-{/if}
-<p>{msg}</p>
-<!-- This note has to stand ALONE, and until 2026-09-07 it did not: it said
-     "see the note above", and the note above renders only
-     `{#if dstUsesBrowserEncoder}` — which is false in the exact case this one
-     exists to cover. A purely-digitized project whose service call fails gets
-     the browser encoder silently, shows no up-front caveat (DST is the filled
-     primary button, no asterisk), and was then told to consult a paragraph
-     that is not on the page. `DownloadStep.spec.js` asserted both halves —
-     `dst-browser-encoder-note` absent, `dst-browser-encoder-downloaded`
-     present — without noticing they contradict.
+<!-- BOTH DST caveats are gone as of 2026-09-08, and their absence is asserted
+     in DownloadStep.spec.js rather than merely untested.
 
-     So it carries the consequence itself, and in the fallback case names the
-     cause too: the service was ASKED for this file (preferService is
-     isPurelyDigitized) and could not answer, which is both why the file is
-     the transposed one and how to get a good one. -->
-{#if lastExport && lastExport.fmt === "dst" && lastExport.via === "browser"}
-  <p class="encodernote" data-testid="dst-browser-encoder-downloaded">
-    <strong>That DST came from EMB-Bot's own encoder.</strong> It opens
-    correctly in EMB-Bot, but other embroidery software reads it a quarter turn
-    round <em>and flipped</em>: text comes out backwards, and rotating it back
-    there will not fix that.
-    {#if dstUsesBrowserEncoder}
-      Download PES or EXP{#if jefAvailable}, or JEF for a Janome,{/if} instead
-      if the file is going somewhere else.
-    {:else}
-      The digitizer service was meant to write this one and could not be
-      reached — start it and download again for a file other software reads
-      correctly, or use PES or EXP now.
-    {/if}
-  </p>
-{/if}
+     They existed for one reason: the browser's own DST encoder wrote a
+     private dialect, so a file it produced read a quarter turn round AND
+     mirrored in anything but EMB-Bot. That codec is fixed — both record
+     weight tables swapped, `encodeRecord` byte-identical to
+     `pystitch.DstWriter.encode_record` across ten deltas, the crossval DST
+     control reading `identity` beside PES and EXP, and a rendered "FRITSCH"
+     export coming back upright at the design's own size. The colour-change
+     byte went the same way on 2026-09-07 (`0x43` -> `0xC3`).
+
+     Which encoder wrote a DST no longer changes what the customer gets, so
+     the app no longer says. Leaving a warning up after its defect is fixed
+     is not the safe side of the trade: it steers people off the format most
+     of their machines want, and it teaches them to distrust the ones we keep.
+     If a future difference reappears, MEASURE it and write a note about that
+     difference — do not restore these. -->
+<p>{msg}</p>
 <p class="fontcredits-footer">
   <button type="button" class="linklike" on:click={openCredits}>Fonts: open-source — see credits</button>
 </p>
