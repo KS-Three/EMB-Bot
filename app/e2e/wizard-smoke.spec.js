@@ -230,6 +230,14 @@ test("guided wizard: image content path -> review reflects it -> download", asyn
   //
   // Asserted as the RELATIONSHIP rather than as "2", so the guard survives a
   // change of fixture: N colour blocks means N-1 changes, whatever N is.
+  //
+  // SINGLE-ELEMENT only, and deliberately so — do not copy this line into a
+  // mixed-design spec. `Colors` is scoped to ITS element while `Thread
+  // changes` is the whole design, so a name beside this logo reads Colors 2
+  // against Thread changes 2 (one text colour + two image colours = three
+  // blocks) and both are right. Measured 2026-09-08. This project carries only
+  // the artwork, because the starter's empty text element is not sewable and
+  // `designSummary` lists only what sews.
   const summaryRow = async (label) => {
     const dd = page.locator("dl.summary div").filter({ has: page.locator(`dt:text-is("${label}")`) }).locator("dd");
     await expect(dd).toHaveCount(1);
