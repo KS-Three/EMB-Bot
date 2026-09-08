@@ -384,6 +384,33 @@ hand-rolling it in JS.
   `digitizer/tools/floor_depth.py` (how far BELOW zero the floored designs
   sit, since the score clamps at 0 and hides a 234-point spread behind it).
 
+  Three more added 2026-09-08 for the quality review and the plans it opened
+  (`docs/quality-review-2026-09-08.md`): `digitizer/tools/sewn_tiers.py` (the
+  tier each shape actually SEWS, read off the emitted plan's run kinds, flag
+  off and on — `stroke_verdicts.py` prints what the classifier says, this
+  prints what the plan did), `digitizer/tools/thin_strokes.py` (the strokes
+  the ARTWORK carries under the detail floor, read with the flat lane's
+  quantizer whichever lane the design took, and how much of each the plan
+  sews in the right colour — recall per width band, because a design total
+  is dominated by whatever thin structure is longest; `--corpus` for the
+  real-art fixtures, nine distinct files, `--forced-class flat` for the lane
+  A/B), and
+  `digitizer/tools/legibility.py` (OCR on the RENDER against the artwork, per
+  text cluster, masked to the cluster's own members, best over three page
+  modes and three preprocessing variants on each side; a LOWER bound on
+  lettering loss, because tesseract's word model reads Fremont's sewn
+  "T H C" as THE at confidence 95 — a per-cluster 1.00 certifies the word,
+  not the glyphs, and the missing arm is `thin_strokes.py`'s to see; needs
+  the tesseract binary, which CI has). The first two run anywhere; the third
+  skips without tesseract the way the OCR tests do. A fourth, the same day,
+  for the sub-pixel edges plan: `digitizer/tools/edge_truth_ladder.py` (stage
+  4's polygons against the synthetic fixtures' VECTOR truth at 200–3200 px —
+  the first edge instrument here that measures against the curve and not a
+  raster; `--flag NAME[=VALUE]` runs it with any `PipelineConfig` field on,
+  `--tiers` prints the per-shape tier diff DOCTRINE asks of every stage-4
+  change). Its baseline found the floor above ~15 px/mm is the 0.2 mm
+  simplification tolerance, not the pixel.
+
   **`digitizer/tools/doc_claims.py` is the odd one out** — it reads no artwork
   and runs in seconds. It checks the two kinds of doc claim a script can
   settle, documented `cfg.<flag>` defaults and `NAME = <number>` constants,

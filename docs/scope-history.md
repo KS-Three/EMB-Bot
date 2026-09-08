@@ -10531,3 +10531,246 @@ two other cheap JS-lane defects (no fill stagger, connectors sewn across
 counters under 4 mm) ahead of the ranked list.
 
 Also: MASTER_SCOPE area 1 carries a one-line pointer (790 of 800).
+
+
+## 2026-09-08 — the thin-stroke plan's two instruments, and what they read on first run
+
+PR 1 of `docs/superpowers/plans/2026-09-08-real-logo-lane-and-thin-strokes.md`:
+two instruments, no engine change, on Kent's "yes, both plans' first PRs".
+
+**`digitizer/tools/thin_strokes.py`** reads the strokes the ARTWORK carries
+under the detail floor and asks the plan how much of each one it sews. The
+art is read with the flat lane's own quantizer at the Studio's 6 colours,
+whichever lane the design took; each label's components are skeletonised and
+a component whose median full width (twice the distance transform on the
+skeleton — a half-width doubled, the trap `textcluster.py` names) is under
+`cfg.min_detail_mm` (1.5 mm) and at least 3 px, and whose skeleton is at
+least `RUN_MIN_LOOP_MM / 2` (1.1 mm) long, is a thin stroke. A stroke's
+skeleton pixel counts as sewn when it lies inside thread of a block within
+`TEXT_CLUSTER_DELTA_E_MAX` of its colour, thread being the needle-down
+segments of `iter_machine_commands` drawn at `COVERAGE_THREAD_W_MM` — a jump
+or trim paints nothing. Recall is reported per width band because the design
+total is dominated by whatever thin structure is longest (Fremont's rope,
+which sews). No opening anywhere: `dropped_elements.py` opens by 0.5 mm and
+that is why it read Fremont at 0.2% lost.
+
+**`digitizer/tools/legibility.py`** crops each text cluster
+(`meta["text_cluster_id"]`) out of the prepped art and out of
+`stitchviz.render_design`'s thread render at 12 px/mm, runs tesseract on both
+(best over page modes 6/7/11 and three preprocessing variants, on a crop
+masked to the cluster's members and an unmasked one), and reports the
+normalised edit similarity between the readings, with tesseract's word
+confidence on each side. An art reading under confidence 60 is not a truth
+and its row is n/a rather than a false zero. Needs the tesseract binary; CI
+has it, and the tool exits 2 without it the way the OCR tests skip.
+
+Tests: `tests/test_thin_strokes.py` (9, a crisp synthetic bar-and-hairline
+fixture: 0.5 mm hairline found, 3.4 mm bar not, wrong colour is lost, thread
+3 mm away is lost, a jump paints nothing, the floors are the run tier's own
+constants) and `tests/test_legibility.py` (6, one behind `requires_tesseract`).
+Nine distinct real-art fixtures: `logo_drone_thermal_badge.png` is
+byte-identical to `drone_render.png` and both tools run it once, by digest.
+
+### Thin strokes, routed lane → forced flat
+
+Bands are "strokes: recall routed → flat"; a stroke is lost under 50% sewn.
+
+| fixture | routed class | thin strokes | lost, routed → flat | recall, routed → flat | < 0.5 mm | 0.5–1.0 mm | 1.0–1.5 mm |
+|---|---|---:|---|---|---|---|---|
+| `logo_hotel_fremont` @ 92.5 | gradient | 163 | 18 → **135** | 94.3% → 86.1% | 47: 53% → 26% | 110: 90% → **51%** | 6: 99% → 100% |
+| `logo_gaulke_roofing` | gradient | 46 | **42 → 43** | **14.5% → 14.2%** | 2: 17% → 17% | 41: **16% → 16%** | 3: 0% → 0% |
+| `drone_render` | gradient | 131 | 71 → 31 | 74.2% → 90.0% | 51: 24% → 61% | 50: 82% → 93% | 30: 74% → 96% |
+| `logo_golden_tee` | gradient | 87 | 21 → 13 | 81.0% → 89.3% | 52: 82% → 89% | 25: 68% → 84% | 10: 99% → 98% |
+| `logo_bridge_bar` | gradient | 12 | 5 → 0 | 78.9% → 97.6% | — | — | 12: 79% → 98% |
+| `screenshot_phone_ui_golke` | gradient | 115 | 40 → 43 | 80.2% → 78.9% | 73: 70% → 68% | 22: 82% → 80% | 20: 98% → 98% |
+| `enthusiast_logo` | flat | 16 | 1 → 1 | 95.8% both | 14: 100% | 1: 0% | 1: 98% |
+| `becker_marine_logo` @ 100, `logo_script_tires` | flat, photo_scene | 0 | — | n/a | — | — | — |
+
+### Legibility, routed lane
+
+| fixture | clusters | art readable | render readable | legibility | confidence drop | what the rows say |
+|---|---:|---:|---:|---:|---:|---|
+| `enthusiast_logo` | 2 | 2 | 2 | **1.00** | +5.5 | ENTHUSIAST 96 → 94; ENTERPRISES INC 96 → 88 |
+| `logo_hotel_fremont` @ 92.5 | 2 | 2 | 2 | 0.83 | +7.7 | THE 96 → 95 reads **1.00** (see below); HOTEL FREMONT 81 → 72, 0.80 — the art reading carries banner noise |
+| `screenshot_phone_ui_golke` | 5 | 5 | 1 | 0.59 | +40.5 | C GOLKE INDUSTRIES 94 → 52 (0.81); SPOTIFY 92 → 59 (0.33); three rows of 2–3 mm read 0.00 |
+| `drone_render` | 3 | 1 | 1 | 0.50 | +23.5 | DRONE 80 → 56 (0.50); two rows unreadable on the art |
+| `logo_gaulke_roofing` | 2 | 2 | 1 | **0.32** | **+55.9** | C GOLKE INDUSTRIES STEEL… 94 → **35** (0.33); a 5.7 mm row 91 → 79 (0.00) |
+| `logo_bridge_bar` | 0 → whole design | 1 | 0 | **0.13** | +43.7 | the art reads BRIDGE… at 72, the render garbage at 28 |
+| `logo_golden_tee` | 1 | 0 | 1 | n/a | n/a | art 59, one point under the floor; render "AR" 64 |
+| `becker_marine_logo` @ 100 | 2 | 0 | 2 | n/a | n/a | art unreadable at 1.46 px/mm source (43 / 0); the RENDER reads BECKER 96, MARINE 95 |
+| `logo_script_tires` | 0 → whole design | 0 | 0 | n/a | n/a | script lettering, neither side reads |
+
+### What the two tables say
+
+1. **The two lanes lose DIFFERENT bands, as the plan's §3 predicted from the
+   code.** Fremont routed (gradient) sews its sub-0.5 mm strokes at 53% and
+   its 0.5–1.0 mm strokes at 90%; forced flat, the sub-0.5 band drops to 26%
+   and the 0.5–1.0 band to **51%** (97 of 110 strokes lost) — the flat
+   lane's small-shape absorb, not the superpixels. "Route real logos flat"
+   is not a fix on its own: PR 2 (absorb by colour) and PR 3 (the thin
+   population on the photo lane) each own one band. Forced flat is BETTER
+   on drone (74 → 90%), bridge (79 → 98%) and golden_tee (81 → 89%) and
+   level on screenshot.
+2. **Gaulke is the worst real logo on both instruments, and the lane is not
+   why.** 42 of 46 thin strokes lost on BOTH lanes; lettering 0.32. The
+   mechanism is the background estimate: the PNG is a white card inside a
+   black frame, so stage 1's background is BLACK — `bg_mask` covers 80% of
+   the raster, `art_bbox` is the 546-px card, and `enclosed_mask` is 16% of
+   the design (the `BACKGROUND_ENCLOSED` warning fires). Every black element
+   inside the card is therefore "enclosed background", left unstitched by
+   default: the roof line-art (three 43.8 mm strokes at 0.50–1.05 mm) reads
+   0% on both lanes, and both text clusters are tagged `enclosed` — the
+   letters are the bare holes of a fill sewn around them, which is what the
+   render crop shows (`docs/renders/legibility-2026-09-08/gaulke_lettering_*`).
+   The review's "15.7% enclosed bg left bare" on this fixture was this.
+   Not the small-shape floor, not the superpixels: a product default meeting
+   a logo framed in black. The Studio's toggle sews them; the digitizer's
+   default does not.
+3. **Legibility is a LOWER bound on lettering loss, and the two instruments
+   are complementary.** Fremont's THE reads 1.00 at confidence 95 on a
+   render that plainly shows "T H C" — the E's middle arm never sews
+   (`docs/renders/legibility-2026-09-08/fremont_THE_*`). Tesseract's word
+   model fills the arm in; in single-line mode with no preprocessing the
+   confidence caught it (art 80, render 40), but the best-over-variants read
+   this tool takes scores 95, so the loss is invisible to OCR. The
+   thin-stroke instrument sees it directly: THE is three black strokes
+   0.44–0.52 mm wide, T at 100% recall, H 82%, **E 74%** — the arm is a
+   quarter of the E's skeleton. A per-cluster 1.00 certifies the word, not
+   the glyphs. Likewise Fremont's tagline is not a text cluster, so
+   legibility cannot see it at all; `thin_strokes` reads its 0.30 mm tan
+   strokes at 68% and **0%**. HOTEL FREMONT's own letters are 0.81 mm
+   strokes at 99–100% recall — that lettering sews, and its 0.80 is OCR
+   noise from the banner, not loss.
+4. **Becker's thread says more than its source could.** At 1.46 px/mm the
+   art reads "I" at 43 and nothing at 0; the render reads BECKER 96 and
+   MARINE 95. Without the confidence floor that is a false zero on the
+   design the pro parity work is built on.
+
+### Traps the instruments needed before their numbers meant anything
+
+- A webp's 2-px compression ringing around a black band quantises to its
+  own label and read as the "worst lost stroke": 34.6 mm long, 0.07 mm
+  wide. Hence a PIXEL floor of 3 (`_MIN_STROKE_PX`), because the artefact
+  is a raster phenomenon; the thinnest stroke the pro widened on Fremont is
+  0.24 mm = 6.5 px at that file's 27 px/mm.
+- The pipeline's default is 12 colours; the Studio sends 6. The corpus runs
+  at 6 — what a customer gets — and the numbers differ.
+- ENTHUSIAST's render read as NOTHING at every blur; thinning the binarised
+  ink by 0.25 mm (about the thread's half-width — a sewn letter is bolder
+  than its art and its counters close) reads it at 94. The same variants
+  run on the art so neither side is favoured.
+- Single-line mode read nothing on either Fremont cluster (one box holds
+  the Wisconsin silhouette above THE, the other the banner under HOTEL
+  FREMONT); the art side picks the mode that recovers the most letters and
+  the render is read in that mode. Masking to the cluster's members stopped
+  the banner reading as "DMZYY".
+- A crop box wholly outside the render produced a negative slice end and
+  wrapped onto real thread. Clamp before ordering; pinned by a test.
+
+
+## 2026-09-08 — the edge truth ladder, and the floor under the polygon that is not the pixel
+
+PR 1 of `docs/superpowers/plans/2026-09-08-subpixel-edges.md` (item 3, Kent's
+pick): `digitizer/tools/edge_truth_ladder.py`, 10 tests, no engine change.
+The synthetic fixtures carry their own vector truth, so this is the first
+edge instrument in the repo that measures against the CURVE rather than
+against a raster: it regenerates `logo_whitebg` and `ribbon_curve` at 200,
+400, 800, 1600 and 3200 px with `make_test_logo.py`'s own drawing code at
+its own 4x supersample (the 800 rung is the committed fixture pixel for
+pixel — pinned), runs stages 0–4 at 80 mm on the flat lane, and measures
+every shape's polygon against the analytic disc, ring, rectangles and
+stroked polyline in the prepped raster's own pixel frame. No registration
+search: the truth is scaled in analytically (supersampled px / 4, times
+stage 1's Lanczos upscale on the rung under the resolution floor) and the
+polygon is mapped back by inverting stage 4's `_to_mm`. cv2's conventions
+had to be measured to do that: its integer coordinates name pixel centres,
+a disc of radius r covers r + 0.5, a rectangle includes both corners, and a
+thick polyline has ROUND caps (the generator's docstring says square; the
+ribbon's caps are excluded from the measure either way). Per shape: signed
+`offset_mm` (+ where the polygon has material the truth lacks), `spread_mm`
+(the standard deviation along the boundary — the staircase and the chord
+sag), `rms_mm`, `hausdorff_mm`, and `curve_fidelity`'s roughness on the
+vertices, sampled every half pixel along shell and holes so a chord is read
+at its sag. `--flag NAME[=VALUE]` runs the ladder with any `PipelineConfig`
+field on; `--tiers` runs `curve_tiers.py`'s cases with the same flag and
+prints the per-shape tier diff DOCTRINE requires of every stage-4 change.
+
+### The baseline, flag OFF (shipped defaults, flat lane forced)
+
+Spread in mm by rung; vertices in brackets where they tell the story.
+
+| shape | 200 px (2.1 → 4.0 px/mm, ×1.9) | 400 (4.2) | 800 (8.4) | 1600 (16.8) | 3200 (33.5) |
+|---|---:|---:|---:|---:|---:|
+| circle (r 14.3 mm) | 0.202 [82] | 0.057 [31] | 0.047 [32] | 0.035 [34] | 0.023 [35] |
+| ring (r 13.1 / 7.2) | 0.197 [88] | 0.085 [40] | 0.070 [44] | 0.063 [47] | 0.031 [68] |
+| bar (2.3 mm wide) | 0.031 | 0.043 | 0.015 | 0.016 | 0.008 |
+| purple / orange rects | 0.035 / 0.063 | 0.026 / 0.030 | 0.039 / 0.040 | 0.007 / 0.021 | 0.003 / 0.010 |
+| dot (1.3 mm²) | not produced | 0.048 | 0.025 | 0.014 | 0.006 |
+| ribbon (2.2 mm stroke) | 0.182 [150] | 0.057 [37] | 0.067 [37] | 0.065 [37] | 0.067 [55] |
+
+Offset, the same rungs: circle −0.102 / −0.045 / −0.047 / −0.042 / −0.040;
+ring −0.031 / −0.040 / −0.012 / +0.001 / −0.018; bar −0.310 / −0.084 /
+−0.074 / −0.021 / −0.011; purple −0.213 / −0.135 / −0.036 / −0.034 / −0.017;
+orange −0.241 / −0.149 / −0.030 / −0.007 / −0.004; ribbon −0.033 / −0.021 /
+−0.020 / +0.001 / −0.001. Hausdorff: circle 1.052 / 0.179 / 0.181 / 0.191 /
+0.096; ring 0.519 / 0.285 / 0.218 / 0.162 / 0.073; ribbon 0.585 / 0.141 /
+0.235 / 0.158 / 0.156; every rectangle 0.022 at 3200.
+
+### What it says
+
+1. **There are two floors under the polygon, and the plan had priced one.**
+   Below about 15 px/mm the spread is the PIXEL: the circle's falls 0.202 →
+   0.057 → 0.047 from 200 to 800 px as the plan predicted. Above it the
+   spread is the 0.2 mm Douglas-Peucker tolerance's chord sag, and does NOT
+   fall: the ribbon's polygon has the same **37 vertices at 400, 800 and
+   1600 px** and the same 0.057–0.067 mm spread, and with the existing
+   refinement off it reads 0.076 at 3200 — no better than at 400. The
+   circle's inward offset plateaus at −0.04 mm from 400 px up, which is the
+   mean sag of a 34-chord polygon of that radius (⅔ · r(1 − cos π/34) =
+   0.041 mm), while the rectangles' offsets go to −0.004…−0.017 mm at 3200,
+   the half-pixel a centre-traced contour owes (0.015 mm there). A sub-pixel
+   vertex fed to the same simplifier lands on the same floor.
+   **The plan's acceptance criterion is corrected by this.** "Close to flat
+   across the ladder" is ALREADY true flag OFF for the ribbon from 400 px
+   up. The criterion is now: flag ON, every rung's spread at or under the
+   OFF ladder's 3200 rung (circle 0.023, ring 0.031, ribbon 0.067), with the
+   200 and 400 rungs falling toward it — and since the simplifier is the
+   floor above 400 px, PR 2 (the profile crossing alone) is predicted to
+   move only the 200 and 400 rungs; PR 3 (the refinement floor keyed to
+   acceptance) is where the ribbon has to move. Stated before either exists.
+2. **What the existing refinement buys, measured at the one rung its gate
+   admits.** `curve_turn_deg` is ON by default (15°) and gated at 20 px/mm,
+   so of the five rungs only 3200 (33–35 px/mm) is refined. There, against
+   `--flag curve_turn_deg=0`: the ring goes 48 → 68 vertices and its spread
+   HALVES, 0.064 → 0.031 (Hausdorff 0.144 → 0.073); the ribbon 38 → 55
+   vertices, spread 0.076 → 0.067, Hausdorff 0.186 → 0.156; the circle is
+   untouched, 35 vertices either way — its chords turn 10° each, under the
+   15° the flag asks for, which is consistent with the mechanism and not a
+   proof of it. At 1600 px the two arms are identical, as the gate says.
+   The plan's §1 point in one table: the refinement that works is closed
+   to every fixture under 20 px/mm.
+3. **The Becker-class rung is a different regime.** At 200 px (2.1 px/mm,
+   Lanczos-upscaled ×1.9 to the 4.0 floor) `logo_whitebg` vectorises to
+   **19 regions instead of 7** and the ribbon to 6 instead of 1 (halo
+   fragments), the rectangles sit 0.21–0.31 mm inside their edges (a pixel
+   is 0.25 mm), the circle's worst point is 1.05 mm off, and the dot is not
+   produced. Plan §8's third decision — whether sources under the
+   resolution floor are in scope for the flip — now has its baseline.
+4. **The 1 mm dot is a region from 400 px up** (iou 0.78 → 0.97), rescued
+   by the run tier; only the upscaled rung loses it.
+
+### Traps
+
+- The hole's sign. A first draft read a hole ring "the other way" (a hole
+  sample inside the truth's material as an excess); a synthetic square with
+  a square hole gave a mean of 0.70 where 1.0 was owed, and the rule is one
+  rule for both ring kinds: minus where the sample lies inside the truth's
+  material, plus outside. The ring's rows were re-measured; nothing else
+  had a hole.
+- "Spread under a pixel" is the wrong invariant above ~15 px/mm: the ring
+  at 1600 px reads 0.063 mm against a 0.060 mm pixel because the tolerance
+  is the floor there. The test bounds the spread by the larger of the pixel
+  and half the tolerance, and says why.
+- The circle's Hausdorff of 0.18–0.19 mm at 400–1600 px is not the absorbed
+  teal patch (checked: the worst point sits at 32° and −39° from the
+  centre, the patch at 0°); it is a Douglas-Peucker chord at the tolerance.
