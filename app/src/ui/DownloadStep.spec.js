@@ -489,6 +489,46 @@ test("JEF is offered, and is disabled with a reason when the service is not runn
   expect(get2("jef-button")).toBeEnabled();
 });
 
+test("the DST caveat names JEF as a way out when JEF is available, and does not when it is not", async () => {
+  // The caveat shipped 2026-09-07 saying only "PES and EXP are unaffected".
+  // That was written before JEF had a button (#403 added it) and was never
+  // revisited: a Janome owner hitting the DST warning was steered to two
+  // formats their machine may not read, away from the one it does — which
+  // this app offers, and which decodes upright through pystitch.
+  //
+  // Conditional on availability in both directions, because JEF has no
+  // in-browser encoder: naming a disabled button as the escape route would
+  // just be a different dead end.
+  const up = render(DownloadStep, {
+    props: { project: project(LETTERING), runtime: {}, digitizerHealth: { status: "ok" } },
+  });
+  const withJef = ui(up).getByTestId("dst-browser-encoder-note");
+  expect(withJef.textContent).toMatch(/JEF/);
+  expect(withJef.textContent).toMatch(/PES and EXP/);
+  up.unmount();
+
+  const down = render(DownloadStep, {
+    props: { project: project(LETTERING), runtime: {}, digitizerHealth: null },
+  });
+  const noJef = ui(down).getByTestId("dst-browser-encoder-note");
+  expect(noJef.textContent).not.toMatch(/JEF/);
+  expect(noJef.textContent).toMatch(/PES and EXP/);
+});
+
+test("the service-unreachable post-download note never offers JEF — there is no JEF without the service", async () => {
+  // The other branch of the post-download note fires when the service was
+  // ASKED for the DST and could not answer. JEF needs that same service, so
+  // it cannot be the answer here; the note's own advice is to start the
+  // service and download again.
+  const view = render(DownloadStep, {
+    props: { project: project(DIGITIZED), runtime: {}, digitizerHealth: null },
+  });
+  await fireEvent.click(fmtButton(view, "DST"));
+  const note = await ui(view).findByTestId("dst-browser-encoder-downloaded");
+  expect(note.textContent).not.toMatch(/JEF/);
+  expect(note.textContent).toMatch(/digitizer service/i);
+});
+
 test("JEF downloads through the service on a LETTERING project too — the preferService split does not apply to it", async () => {
   // `preferService` chooses between two encoders for dst/exp/pes and is false
   // here (lettering). JEF has no second encoder, so exporters.js routes it to

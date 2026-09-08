@@ -51,7 +51,12 @@ HOOP_CODE_OFFSET = 32   # bytes: after the 4+4 header, the date, and the counts
 
 
 def _bar_design(width_mm: float, height_mm: float = 12.0) -> dict:
-    """A plain two-colour sewn rectangle of an exact size, in 0.1 mm units.
+    """A plain single-colour sewn rectangle of an exact size, in 0.1 mm units.
+
+    (Said "two-colour" until 2026-09-08 and never was: one entry in `colors`
+    and no `type: "color"` stitch anywhere. Nothing depended on the claim --
+    every test here reads the header's hoop code -- but a false docstring is
+    how the next person picks the wrong fixture.)
 
     Hand-built rather than digitized: the point is to control the WIDTH to the
     tenth of a millimetre across the 200 mm boundary, which a real pipeline run

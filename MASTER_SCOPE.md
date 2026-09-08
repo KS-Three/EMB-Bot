@@ -650,7 +650,7 @@ service's `/export` route. One reachability caveat: `/export` is only reachable
 from the product for purely-digitized designs — anything containing lettering
 or manual shapes downloads through the browser encoders — **except JEF, which
 the browser cannot write at all** and which therefore always goes through the
-service, on every project type.
+service, on every project type. **The DST caveat now names JEF as a way out (2026-09-08).** It said only "PES and EXP are unaffected" — written before JEF had a button and never revisited when #403 gave it one — so a Janome owner hitting the warning was steered to two formats their machine may not read, away from the one it does. Conditional on `jefAvailable` in both directions, and deliberately NOT named in the service-unreachable branch, since JEF needs that same service. `DownloadStep.spec.js` pins both.
 
 **Four more machine formats work and have no button (Kent's call).** `/health` also advertises `pec`, `vp3`, `xxx`, `u01`; one two-colour design exported in all nine and decoded with pystitch gives the same 99 stitches at 80.0 x 24.0 mm each, vp3/xxx/pec carrying the 2-thread colour table. **VP3 is Husqvarna Viking / Pfaff, XXX is Singer** — two major consumer brands whose owners cannot use the product today. Scope, not a doc-vs-reality gap like JEF: PRODUCT.md item 1 names PES and JEF and is silent on these four. *(measured 2026-09-07 — DOCTRINE; scope-history 09-07)*
 
