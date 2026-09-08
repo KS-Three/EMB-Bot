@@ -825,3 +825,39 @@ and reverted, including faithful reproductions of each original bug — and one
 test was caught passing for the WRONG reason (a `blockColors` fixture that never
 actually collided two blocks onto one index) and its fixture corrected until the
 mutation killed it. *(fixed 2026-08-26 — PR #269, mutation-checked)*
+
+## The thread total and the cone rows now add up (2026-09-08)
+
+The review panel is a shopping list — one row per cone the machine loads, with
+metres — under a headline total. The two were rounded independently, so they
+stopped agreeing in front of the person spending the money.
+
+Measured by driving the shipped app, not by reading the code: `enthusiast_logo`
+at 80 mm (job `d57e0033`, 2,187 stitches — the same number the screen showed)
+comes back with `thread_m_total` **4.03** and `thread_m_by_color`
+**[2.85, 1.19]**. `toFixed(1)` on each independently renders
+
+    2,187 stitches · 1 thread change · 23 trims · 4.0 m of thread
+    0134 Smoky          2.9 m
+    1720 Not Quite Red  1.2 m
+
+— a list adding to **4.1** under a stated total of **4.0**.
+
+The raw values already disagree before any display rounding: the service rounds
+each to 2 dp on its own, so the parts sum to 4.04 against a stated 4.03. So this
+could not be fixed by rounding the total more carefully; the two numbers have
+different provenance.
+
+**Fixed by deriving the headline from the rows that are on screen.** The rows
+are what an operator buys against, so they keep their own rounding and the total
+is their sum — the arithmetic a customer can do is the arithmetic that works.
+Where there is no cone list (`cones()` returns `[]` unless `blocks` and
+`thread_m_by_color` are the same length, which a job from before that field
+cannot satisfy) nothing on screen can contradict anything, so the service's own
+`thread_m_total` still stands and is the more accurate number there.
+
+Confirmed in the running app afterwards: the same design now reads `4.1 m of
+thread` over rows of `2.9 m` and `1.2 m`. `QualityReport.spec.js` pins both
+branches with these exact numbers, and the pin was verified to fail against the
+old code ("expected 4 to be close to 4.1"). *(found and fixed 2026-09-08 by
+driving the app — `app/src/ui/QualityReport.svelte`)*

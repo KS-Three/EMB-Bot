@@ -5,7 +5,11 @@ const { decodeDST } = require("../src/dstimport.js");
 const b = (...xs) => Uint8Array.from(xs);
 
 test("zero stitch record", () => assert.deepStrictEqual(dst.encodeRecord(0,0,"stitch"), b(0x00,0x00,0x03)));
-test("color change record", () => assert.deepStrictEqual(dst.encodeRecord(0,0,"color"), b(0x00,0x00,0x43)));
+// 0xC3, not 0x43: a colour change carries the jump bit too. This pinned 0x43
+// until 2026-09-08 -- pinning the defect rather than the format, so the pin
+// held while every multi-colour .dst EMB-Bot wrote sewed straight through on
+// another machine (pystitch read 0 COLOR_CHANGE and one spurious SEQUIN_MODE).
+test("color change record", () => assert.deepStrictEqual(dst.encodeRecord(0,0,"color"), b(0x00,0x00,0xc3)));
 test("jump record", () => assert.deepStrictEqual(dst.encodeRecord(0,0,"jump"), b(0x00,0x00,0x83)));
 test("dx=1", () => assert.deepStrictEqual(dst.encodeRecord(1,0,"stitch"), b(0x80,0x00,0x03)));
 test("dx=-1", () => assert.deepStrictEqual(dst.encodeRecord(-1,0,"stitch"), b(0x40,0x00,0x03)));

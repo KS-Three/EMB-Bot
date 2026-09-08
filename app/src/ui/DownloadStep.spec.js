@@ -111,8 +111,8 @@ test("a lettering project is warned that its DST comes from the browser encoder"
   });
   const note = getByTestId("dst-browser-encoder-note");
   expect(note).toBeInTheDocument();
-  // The two consequences that actually bite a user opening the file
-  // elsewhere: the orientation and the unseen color stops.
+  // The consequence that actually bites a user opening the file elsewhere:
+  // the orientation.
   //
   // "MIRROR" is load-bearing and this assertion used to read
   // /rotated a quarter turn/. Rendered 2026-09-07: a standard reader sees a
@@ -125,7 +125,14 @@ test("a lettering project is warned that its DST comes from the browser encoder"
   expect(note.textContent).toMatch(/flipped/i);
   expect(note.textContent).toMatch(/backwards/i);
   expect(note.textContent).toMatch(/will\s+not fix/i); // the note wraps mid-phrase
-  expect(note.textContent).toMatch(/color stops/i);
+  // And NOT the colour stops, which used to be the note's second consequence.
+  // The browser encoder wrote the colour change as 0x43 instead of 0xC3, so a
+  // standard reader saw a sequin toggle and no stop at all; fixed 2026-09-08
+  // (src/dst.js, pinned by test/crossval-stitch-formats.test.js against
+  // pystitch). Asserted as an ABSENCE so the stale clause cannot come back:
+  // telling a customer to distrust something that now works costs them the
+  // format they most likely need.
+  expect(note.textContent).not.toMatch(/color stops/i);
 });
 
 test("a purely-digitized project gets no browser-DST warning", () => {
@@ -278,7 +285,9 @@ test("the post-download DST note stands alone — it never points at absent text
   expect(note.textContent).not.toMatch(/note above|above before|see above/i);
   // The consequence, in the customer's terms rather than the encoder's name.
   expect(note.textContent).toMatch(/quarter turn/i);
-  expect(note.textContent).toMatch(/color stops/i);
+  // Not the colour stops — those survive as of 2026-09-08. See the absence
+  // assertion in the up-front-note test above for why this is pinned.
+  expect(note.textContent).not.toMatch(/color stops/i);
   // And the cause, which is the actionable half: the service was asked for
   // this file and could not answer.
   expect(note.textContent).toMatch(/digitizer service/i);
@@ -478,6 +487,46 @@ test("JEF is offered, and is disabled with a reason when the service is not runn
     props: { project: project(LETTERING), runtime: {}, digitizerHealth: { status: "ok" } },
   });
   expect(get2("jef-button")).toBeEnabled();
+});
+
+test("the DST caveat names JEF as a way out when JEF is available, and does not when it is not", async () => {
+  // The caveat shipped 2026-09-07 saying only "PES and EXP are unaffected".
+  // That was written before JEF had a button (#403 added it) and was never
+  // revisited: a Janome owner hitting the DST warning was steered to two
+  // formats their machine may not read, away from the one it does — which
+  // this app offers, and which decodes upright through pystitch.
+  //
+  // Conditional on availability in both directions, because JEF has no
+  // in-browser encoder: naming a disabled button as the escape route would
+  // just be a different dead end.
+  const up = render(DownloadStep, {
+    props: { project: project(LETTERING), runtime: {}, digitizerHealth: { status: "ok" } },
+  });
+  const withJef = ui(up).getByTestId("dst-browser-encoder-note");
+  expect(withJef.textContent).toMatch(/JEF/);
+  expect(withJef.textContent).toMatch(/PES and EXP/);
+  up.unmount();
+
+  const down = render(DownloadStep, {
+    props: { project: project(LETTERING), runtime: {}, digitizerHealth: null },
+  });
+  const noJef = ui(down).getByTestId("dst-browser-encoder-note");
+  expect(noJef.textContent).not.toMatch(/JEF/);
+  expect(noJef.textContent).toMatch(/PES and EXP/);
+});
+
+test("the service-unreachable post-download note never offers JEF — there is no JEF without the service", async () => {
+  // The other branch of the post-download note fires when the service was
+  // ASKED for the DST and could not answer. JEF needs that same service, so
+  // it cannot be the answer here; the note's own advice is to start the
+  // service and download again.
+  const view = render(DownloadStep, {
+    props: { project: project(DIGITIZED), runtime: {}, digitizerHealth: null },
+  });
+  await fireEvent.click(fmtButton(view, "DST"));
+  const note = await ui(view).findByTestId("dst-browser-encoder-downloaded");
+  expect(note.textContent).not.toMatch(/JEF/);
+  expect(note.textContent).toMatch(/digitizer service/i);
 });
 
 test("JEF downloads through the service on a LETTERING project too — the preferService split does not apply to it", async () => {

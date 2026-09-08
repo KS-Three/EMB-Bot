@@ -2,6 +2,22 @@
 
 **Date:** 2026-07-31 · **Verdict: EMB-Bot's JS table is transposed. The consensus table is correct.**
 
+> **Status added 2026-09-08 — the memo below is the original, unedited.** Two
+> separate defects were reported here, and only one is still open.
+>
+> - **The AXIS finding (the memo's subject) is still open**, and the writer half
+>   is Kent's call — see CLAUDE.md footgun #1. The *import* half was fixed
+>   2026-09-07 (`EMB.decodeDSTStandard`).
+> - **The "bonus finding" in §2 — colour change written `0x43` instead of
+>   `0xC3` — is FIXED (2026-09-08).** It turned out to be independent of the
+>   axis it was filed with: it moves no geometry, and EMB-Bot's own decode is
+>   byte-identical either way, because `dstimport.js` already tested
+>   `b2 & 0x40` ahead of the jump bit. Re-measured with pystitch before the
+>   change (0 colour changes, 1 spurious `SEQUIN_MODE`) and after (1 colour
+>   change, no sequin, stitch count unchanged). Pinned in
+>   `test/crossval-stitch-formats.test.js`, which asserted the defect until
+>   then.
+
 ## 1. What the published record says
 
 Four independent sources were extracted: pyembroidery (reader + writer cross-checked bit-for-bit), libembroidery (decode + encode functions cross-checked), EduTech Wiki (transcribed twice, identical), and achatina.de (the earliest known public DST decode, late 1990s, pre-dating pyembroidery, recovered via Wayback Machine and verified against its own worked example). **All four agree bit-for-bit: low nibble = X, high nibble = Y** in every record byte (byte1 = ±1/±9, byte2 = ±3/±27, byte3 bits 2–5 = ±81, bits 6–7 = control, bits 0–1 always set). Zero disagreement on movement bits. The only nuances in the record: X pairs put positive on the lower bit while Y pairs put positive on the higher bit (a table can look "off" without being transposed), and achatina's byte-3 control reading is slightly simplified vs. real machine behavior — neither touches the axis question.

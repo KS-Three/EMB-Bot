@@ -127,6 +127,16 @@
   // Asked of exporters.js rather than hardcoded here, so that the day a
   // browser JEF encoder exists, removing "jef" from SERVICE_ONLY_FORMATS is
   // the whole change and this gate disappears with it.
+  //
+  // `jefAvailable` also gates whether the DST caveat below NAMES JEF as a
+  // good alternative. It shipped 2026-09-07 saying only "PES and EXP are
+  // unaffected", which was written before JEF had a button and was never
+  // revisited when it got one — so a Janome owner was steered to two formats
+  // their machine may not read, away from the one it does, which this app
+  // offers and which decodes upright. Conditional because JEF needs the
+  // service: naming a disabled button as the way out would be its own dead
+  // end. For the same reason the "service could not be reached" branch does
+  // NOT name JEF — there is no JEF without the service.
   $: jefAvailable = !isServiceOnlyFormat("jef") || !!digitizerHealth;
   $: jefTitle = jefAvailable
     ? "Janome JEF, written by the digitizer service"
@@ -567,9 +577,10 @@
     imported design file — so its DST is written by EMB-Bot's own encoder. That
     file opens correctly in EMB-Bot, but other embroidery software reads it a
     quarter turn round <em>and flipped</em>: text comes out backwards, and
-    rotating it back there will not fix that. It may not see the color stops
-    either. PES and EXP are unaffected — use one of those, or a project made
-    only of auto-digitized images, if the file is going somewhere else.
+    rotating it back there will not fix that. PES and EXP are
+    unaffected{#if jefAvailable}, and so is JEF (the Janome format){/if} — use
+    one of those, or a project made only of auto-digitized images, if the file
+    is going somewhere else.
   </p>
 {/if}
 <p>{msg}</p>
@@ -592,9 +603,10 @@
     <strong>That DST came from EMB-Bot's own encoder.</strong> It opens
     correctly in EMB-Bot, but other embroidery software reads it a quarter turn
     round <em>and flipped</em>: text comes out backwards, and rotating it back
-    there will not fix that. It may not see the color stops either.
+    there will not fix that.
     {#if dstUsesBrowserEncoder}
-      Download PES or EXP instead if the file is going somewhere else.
+      Download PES or EXP{#if jefAvailable}, or JEF for a Janome,{/if} instead
+      if the file is going somewhere else.
     {:else}
       The digitizer service was meant to write this one and could not be
       reached — start it and download again for a file other software reads

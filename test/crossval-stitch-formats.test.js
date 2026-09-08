@@ -78,10 +78,19 @@ test("crossval control: DST shows the documented axis transposition", async (t) 
   // If it reads anything else, the HARNESS is broken.
   assert.strictEqual(r.fit.transform, "anti-transpose");
   assert.ok(r.fit.rms < 0.5, "transposition is exact, rms=" + r.fit.rms);
-  // DOCUMENTS KNOWN DEFECT: color change written as 0x43 instead of 0xC3 —
-  // third-party readers see a sequin-mode toggle and ZERO color changes.
-  assert.strictEqual(r.decodedColorChanges, 0);
-  assert.strictEqual(r.decodedSequinToggles, 1);
+  // FIXED 2026-09-08 (was DOCUMENTS KNOWN DEFECT): the colour change is
+  // written 0xC3, so a standard reader sees a real colour stop. It was 0x43,
+  // which is not a colour change to anyone but us — pystitch read ZERO colour
+  // changes and one spurious sequin-mode toggle, so every multi-colour .dst
+  // EMB-Bot wrote sewed straight through on another machine: no stop, no
+  // thread change, the whole design in one colour.
+  //
+  // This is the colour half of docs/dst-axis-verdict-2026-07-31.md's finding.
+  // The AXIS half above is still open and still Kent's (CLAUDE.md footgun 1);
+  // the two were filed together but are independent — this one changes no
+  // geometry.
+  assert.strictEqual(r.decodedColorChanges, 1, "the colour stop is visible to a standard reader");
+  assert.strictEqual(r.decodedSequinToggles, 0, "and is no longer read as a sequin toggle");
   // DOCUMENTS KNOWN DEFECT, and the harness has shown it since the day it was
   // written without anyone asserting it: DST decodes ONE MORE stitch than the
   // design has. encodeDST does not stop at the terminal {type:"end"} sentinel
