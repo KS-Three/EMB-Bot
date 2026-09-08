@@ -1109,6 +1109,34 @@ its hedge as it is copied forward** — is why this file is split.
 
 ## Gotchas — cost someone a session once
 
+- **A loose PROBE produces false positives at a steady rate, and the tell is
+  always in what the tool reported rather than what the page looked like
+  afterwards.** The neighbouring rule — *read the MATCHES, not the count* — is
+  about building a checker. This is its cheaper cousin: the one-off measurement
+  you take while driving the app, where there is no pattern to review and the
+  temptation is to read the number and move. **Five of these in one session
+  (2026-09-08), every one of which looked like a defect and was not:**
+
+  | what looked wrong | what it actually was |
+  |---|---|
+  | `grep -c` said two fonts pulled for licensing were still in `satin-fonts.js` | the only hit was the comment recording their removal |
+  | the simulator's scrub `max` was 3324 against a 3,367-stitch design | an internal STRAND index; the counter reads 3,367 / 3,367 at that position |
+  | a DST read back with a stitch count that did not match | strands vs stitches again, one layer down |
+  | a redo showed 2,253 for a 3,367-stitch design | the digitize panel's own element line, scraped from `document.body.innerText` instead of `.fieldmeta` |
+  | the drawing tools "did nothing" when clicked | `ERR btn: no button matching "Basic shape"` — the click never landed |
+
+  **Three of the five are the same mistake:** a pattern loose enough to match a
+  neighbouring, differently-scoped quantity — an internal index, an element's
+  own stats, a removal note. The other two are a tool that reported its own
+  failure into a log nobody read.
+
+  **The rule, and it costs one extra call each time:** before a probe's output
+  becomes a finding, read the tool's OWN report (`ERR` lines, exit codes, what a
+  click resolved to), and re-take the measurement against the narrowest element
+  that can carry the answer — `.fieldmeta`, not the page. A finding that
+  survives that is worth writing down; one that does not would have cost a
+  reviewer their afternoon. *(2026-09-08 — five instances in one session)*
+
 - **A "CLOSED, confirmed by code read" entry survived three weeks because the
   code WAS right and the product was not.** MASTER_SCOPE's DST section said
   the axis bug was unreachable from the real product: *"Auto-digitized designs
