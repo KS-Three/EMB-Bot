@@ -386,6 +386,16 @@ These are the ones that cost real time here.
   **Read the `RUN v… <path>` banner** — it names the directory vitest actually
   resolved, and it is the fastest way to tell the two runs apart.
 
+  **And the mirror image, hit within the hour of writing the above:
+  `node --test` from `app/` reports `# tests 0 · # pass 0 · # fail 0` and exits
+  0.** The engine suite lives at the repo ROOT; from `app/` nothing matches its
+  default glob, so it finds no tests and says so in the one format that looks
+  exactly like a clean run to anyone scanning for `# fail 0`.
+
+  **Both directions of this trap read as a pass. The only reliable tell is a
+  COUNT you recognise** — 505 for the engine, 53 files for the Studio — so
+  check the number, never just the `fail 0`.
+
 - **A "404 Not Found" console error is almost always the favicon.** The
   message text is generic — the URL is only in `location()`. The driver
   records and prints it; its smoke filters favicon 404s and the digitizer
