@@ -63,8 +63,25 @@
     decompose(dy, Y_WEIGHTS, bytes);
     // Byte2 low bits 0x03 always set for stitch/jump/color.
     bytes[2] |= 0x03;
+    // 0x83 jump, 0xC3 colour change, 0x03 plain stitch. The colour flag is
+    // 0xC0 -- BOTH high bits -- not 0x40: a colour change is a jump that also
+    // stops the machine, so it carries the jump bit too.
+    //
+    // This wrote 0x40 (=> 0x43) until 2026-09-08, which is not a colour change
+    // in any other reader. Measured that day with pystitch on a two-colour
+    // design: 0 COLOR_CHANGE and one spurious SEQUIN_MODE toggle, so every
+    // multi-colour .dst EMB-Bot wrote sewed straight through on someone else's
+    // machine -- no stop, no thread change, the whole design in one colour.
+    // With 0xC3: 1 COLOR_CHANGE, no sequin, stitch count unchanged.
+    //
+    // Found by docs/dst-axis-verdict-2026-07-31.md as its "bonus finding" and
+    // left open since, because it was filed with the axis question. It is NOT
+    // the axis question: this changes no geometry, and dstimport.js
+    // already reads the standard code (it tests `b2 & 0x40` BEFORE the 0x80
+    // jump test, so 0xC3 lands as a colour change), so EMB-Bot's own decode of
+    // its own file is byte-identical before and after.
     if (flag === "jump") bytes[2] |= 0x80;
-    else if (flag === "color") bytes[2] |= 0x40;
+    else if (flag === "color") bytes[2] |= 0xc0;
     return bytes;
   }
 

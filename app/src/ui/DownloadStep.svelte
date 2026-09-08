@@ -567,9 +567,9 @@
     imported design file — so its DST is written by EMB-Bot's own encoder. That
     file opens correctly in EMB-Bot, but other embroidery software reads it a
     quarter turn round <em>and flipped</em>: text comes out backwards, and
-    rotating it back there will not fix that. It may not see the color stops
-    either. PES and EXP are unaffected — use one of those, or a project made
-    only of auto-digitized images, if the file is going somewhere else.
+    rotating it back there will not fix that. PES and EXP are unaffected — use
+    one of those, or a project made only of auto-digitized images, if the file
+    is going somewhere else.
   </p>
 {/if}
 <p>{msg}</p>
@@ -592,7 +592,7 @@
     <strong>That DST came from EMB-Bot's own encoder.</strong> It opens
     correctly in EMB-Bot, but other embroidery software reads it a quarter turn
     round <em>and flipped</em>: text comes out backwards, and rotating it back
-    there will not fix that. It may not see the color stops either.
+    there will not fix that.
     {#if dstUsesBrowserEncoder}
       Download PES or EXP instead if the file is going somewhere else.
     {:else}

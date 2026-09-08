@@ -111,8 +111,8 @@ test("a lettering project is warned that its DST comes from the browser encoder"
   });
   const note = getByTestId("dst-browser-encoder-note");
   expect(note).toBeInTheDocument();
-  // The two consequences that actually bite a user opening the file
-  // elsewhere: the orientation and the unseen color stops.
+  // The consequence that actually bites a user opening the file elsewhere:
+  // the orientation.
   //
   // "MIRROR" is load-bearing and this assertion used to read
   // /rotated a quarter turn/. Rendered 2026-09-07: a standard reader sees a
@@ -125,7 +125,14 @@ test("a lettering project is warned that its DST comes from the browser encoder"
   expect(note.textContent).toMatch(/flipped/i);
   expect(note.textContent).toMatch(/backwards/i);
   expect(note.textContent).toMatch(/will\s+not fix/i); // the note wraps mid-phrase
-  expect(note.textContent).toMatch(/color stops/i);
+  // And NOT the colour stops, which used to be the note's second consequence.
+  // The browser encoder wrote the colour change as 0x43 instead of 0xC3, so a
+  // standard reader saw a sequin toggle and no stop at all; fixed 2026-09-08
+  // (src/dst.js, pinned by test/crossval-stitch-formats.test.js against
+  // pystitch). Asserted as an ABSENCE so the stale clause cannot come back:
+  // telling a customer to distrust something that now works costs them the
+  // format they most likely need.
+  expect(note.textContent).not.toMatch(/color stops/i);
 });
 
 test("a purely-digitized project gets no browser-DST warning", () => {
@@ -278,7 +285,9 @@ test("the post-download DST note stands alone — it never points at absent text
   expect(note.textContent).not.toMatch(/note above|above before|see above/i);
   // The consequence, in the customer's terms rather than the encoder's name.
   expect(note.textContent).toMatch(/quarter turn/i);
-  expect(note.textContent).toMatch(/color stops/i);
+  // Not the colour stops — those survive as of 2026-09-08. See the absence
+  // assertion in the up-front-note test above for why this is pinned.
+  expect(note.textContent).not.toMatch(/color stops/i);
   // And the cause, which is the actionable half: the service was asked for
   // this file and could not answer.
   expect(note.textContent).toMatch(/digitizer service/i);

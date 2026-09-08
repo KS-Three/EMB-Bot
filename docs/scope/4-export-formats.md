@@ -150,11 +150,20 @@ independent reader: PES, EXP and JEF each read upright and correct at
 101.8 x 15.1 mm, matching what the app reported. DST comes back 15.1 x 101.8 —
 a quarter turn AND mirrored, letters backwards (footgun #1, writer half, still
 Kent's call). The Download step's DST caveat was checked against that render
-and is accurate clause for clause. Its "may not see the color stops" clause was
-not exercised by that render (single-colour design) but is pinned separately by
-`test/crossval-stitch-formats.test.js`, which asserts a standard reader sees
-ZERO colour changes and one sequin toggle — the colour change is written `0x43`
-where the spec wants `0xC3`. *(render: `tools/crossval_decode.py` + pystitch)*
+and was accurate clause for clause. Its "may not see the color stops" clause is
+GONE as of 2026-09-08 — not softened, removed, because the defect behind it is
+fixed. `dst.js` wrote the colour change as `0x43` where the spec wants `0xC3`,
+so a standard reader saw a spurious sequin toggle and ZERO colour changes: every
+multi-colour DST sewed straight through on another machine, no stop and no
+thread change. `test/crossval-stitch-formats.test.js` now asserts the opposite
+(one colour change, no sequin) where it used to assert the defect, and
+`DownloadStep.spec.js` asserts the stale clause's ABSENCE so it cannot come
+back. This was independent of the axis question it was filed with — it moves no
+geometry, and EMB-Bot's own decode of its own file is byte-identical either way,
+because `dstimport.js` already tested `b2 & 0x40` ahead of the jump bit. **The
+orientation half of the caveat stands unchanged and is still Kent's call.**
+*(render: `tools/crossval_decode.py` + pystitch; colour half measured and fixed
+2026-09-08)*
 
 **Every downloadable output has now been LOOKED at (2026-09-07).** The Download
 step offers seven: PES, EXP, DST, JEF, SVG, PNG and the PDF worksheet. Each was
