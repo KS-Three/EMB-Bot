@@ -166,6 +166,32 @@ The 13 pulled ShareAlike fonts remain pulled. The lawyer consult
 (`docs/lawyer-brief-cc-by-sa-2026-08-04.md`) is optional and only gates
 restoring them.
 
+**The three-way claim above is now MEASURED across all 85, and driven in a
+browser — first time either had been done.** *(2026-09-08)*
+
+| check | result |
+|---|---|
+| manifest fonts / sidecars on disk / binaries | 85 / 85 / 85, zero orphans |
+| fonts with an empty `attribution` or `licenseId` | **0** |
+| `.embf` binaries embedding a licence string | **85 of 85** |
+| …of those, carrying a full licence body | 82 (median 4,648 chars) |
+| credits dialog rows rendered in the shipped UI | **85** |
+| a sidecar link clicked from that dialog | `200 text/plain`, 4,582 bytes of real OFL text |
+
+**The three short embeds are all correct, and worth naming so the next reader
+does not re-derive them.** `excalibur_KOR` (502 chars) and `excalibur_small`
+(573) are **CC0** — public domain imposes no attribution or full-text duty, so
+a short notice is complete. `roman_ags` (1,682) carries the complete GUST
+e-foundry text it actually has, which is the point of the section above.
+**So "full licence text" means each font's own complete licence, not a uniform
+4.6 kB block** — a reader checking the byte counts alone would file three false
+defects, which is exactly the trip this measurement was made to spare them.
+
+Both credits triggers are live (the topbar button and the Download step's), so
+the notice is reachable, not merely bundled — which is what "travel with every
+copy" has to mean for a web app. *(measured 2026-09-08 — `app/public/fonts/`
+sweep; driver `repl` against the built Studio)*
+
 ## Fixed — the transform bug (2026-08-22)
 
 `build-font.mjs` had two path walks: a transform-aware one, and a simpler one
