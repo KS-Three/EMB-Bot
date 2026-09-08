@@ -3439,3 +3439,38 @@ goes stale, instead of in a queue of things still open.
    measures **17** today. Still open is DETECTION, which is defect 15's.
    Both source files had already flagged this staleness in their own comments.
    *(confirmed 2026-09-07 — grep; `digitizer.js`, `DigitizePanel.svelte`)*
+
+## A sew-out settles a physical question. A file format is not one (2026-09-08)
+
+CLAUDE.md's footgun 1, `docs/dst-axis-verdict-2026-07-31.md`, MASTER_SCOPE and
+the `dst-codec-axis-discrepancy` memory all said the DST axis fix was gated on
+a sew-out and was Kent's call. It sat there for six weeks. **It never needed
+one, and a sew-out could not have answered it any faster than what did:**
+
+1. `pystitch.DstWriter.encode_record` — the reference implementation, already
+   installed in `digitizer/.venv` — read directly and compared byte for byte.
+   With the two weight tables swapped, ours came out **10/10 identical**.
+2. `tools/crossval-stitch-formats.mjs`, which already existed and already had
+   a word for the answer: `identity`, the same verdict PES and EXP get.
+3. A picture: `TEXT=FRITSCH node tools/run-lettering.mjs` → pystitch → PIL.
+   The old bytes draw a vertical column of REVERSED letters; the new ones draw
+   FRITSCH upright at the design's own 127.2 × 22.6 mm.
+
+**The test to apply.** A sew-out answers *will this thread, at this density, on
+this fabric, hold* — questions about the physical world, where the machine is
+the only authority. Which nibble carries X is a question about a documented
+format with a reference implementation on disk and five sources already in
+agreement. Before filing anything behind ROADMAP gate 1, ask which kind it is;
+if every source you would consult owns no machine, the gate does not apply.
+
+**The second half, which cost as much: three independent defects were bundled
+under one reserved decision.** The colour-change byte (`0x43` vs `0xC3`, so a
+standard reader saw a sequin toggle and zero colour stops) and the
+`{type:"end"}` sentinel written as a real stitch (a stray needle penetration,
+plus a header bounding box a machine reads for hoop fit) were BOTH recorded as
+"the DST codec is Kent's". Neither was the axis. Neither moved any geometry.
+Both were sitting in the 2026-07-31 verdict's own "bonus finding" the whole
+time. **When a reserved call is written down, write down its SCOPE with it** —
+footgun 1's stated reason was "it re-orients every DST EMB-Bot has written",
+which was never true of either of those two, and nobody re-read the reason.
+*(2026-09-08 — #412, #414 and the follow-ups; memory `dst-codec-axis-discrepancy`)*

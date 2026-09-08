@@ -32,10 +32,11 @@ test("decodeDST round-trips our own encodeDST output (positions, types, counts)"
   const bytes = dst.encodeDST(fixtureDesign());
   const d = decodeDST(bytes);
 
-  // 6 real stitches + 1: encodeDST writes the design's trailing {type:"end"}
-  // marker as a zero-delta stitch record before the true DST end record, so
-  // it decodes back as one extra (zero-length, harmless) stitch.
-  assert.strictEqual(d.stitchCount, 7);
+  // 6 real stitches, and 6 back. encodeDST stops at the trailing
+  // {type:"end"} sentinel as of 2026-09-08, the way exp.js and pes.js always
+  // have; before that it wrote the sentinel as a real stitch record and this
+  // read back 7.
+  assert.strictEqual(d.stitchCount, 6);
   assert.strictEqual(d.colorCount, 2);
   assert.strictEqual(d.trimCount, 1); // the trim survived the jump-run wire format
   assert.strictEqual(d.widthMM, 10);  // 100 units
@@ -45,7 +46,10 @@ test("decodeDST round-trips our own encodeDST output (positions, types, counts)"
   const stitchesOnly = d.stitches.filter((s) => s.type === "stitch");
   assert.deepStrictEqual(
     stitchesOnly.map((s) => [s.x, s.y]),
-    [[-50, -20], [0, -20], [50, -20], [50, 20], [0, 20], [-50, 20], [-50, 20]]
+    // `[-50, 20]` appeared TWICE here until 2026-09-08 -- the design's last
+    // stitch, and then the {type:"end"} sentinel written at the same spot as
+    // a second, zero-length needle penetration.
+    [[-50, -20], [0, -20], [50, -20], [50, 20], [0, 20], [-50, 20]]
   );
   // The trim collapsed to ONE record at the run's landing position.
   const trims = d.stitches.filter((s) => s.type === "trim");
@@ -92,7 +96,7 @@ test("buildImportedDesign defaults to native size and matches the lettering Desi
   const design = buildImportedDesign(d, { garment: GARMENT });
   assert.strictEqual(design.widthMM, 10);
   assert.strictEqual(design.heightMM, 4);
-  assert.strictEqual(design.stitchCount, 7);
+  assert.strictEqual(design.stitchCount, 6);  // 6 real; the end sentinel is no longer written as a stitch
   assert.strictEqual(design.colorCount, 2);
   assert.strictEqual(design.colors.length, 2);
   assert.strictEqual(design.stitches[design.stitches.length - 1].type, "end");
@@ -141,7 +145,7 @@ test("rotationDeg 90 swaps the design's reported and actual extents", () => {
   const design = buildImportedDesign(d, { garment: GARMENT, rotationDeg: 90 });
   assert.ok(Math.abs(design.widthMM - 4) < 0.05, `widthMM ${design.widthMM}`);
   assert.ok(Math.abs(design.heightMM - 10) < 0.05, `heightMM ${design.heightMM}`);
-  assert.strictEqual(design.stitchCount, 7);
+  assert.strictEqual(design.stitchCount, 6);  // 6 real; the end sentinel is no longer written as a stitch
   // (x, y) -> (-y, x): the first real stitch (-50,-20) lands at (20,-50).
   const first = design.stitches.find((s) => s.type === "stitch");
   assert.deepStrictEqual([first.x, first.y], [20, -50]);

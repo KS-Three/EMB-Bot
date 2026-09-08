@@ -186,6 +186,27 @@
 
     for (let i = 0; i < stitches.length; i++) {
       const st = stitches[i];
+
+      // Stop at the terminal sentinel, the way exp.js and pes.js both already
+      // do. Without this it fell through to the "stitch" branch and was
+      // written as a real needle penetration -- and `endRecord()` below is
+      // appended unconditionally anyway, so nothing needs it.
+      //
+      // The 2026-08-04 verdict deferred this as "one extra phantom stitch",
+      // which was true of LETTERING: buildLetteringDesign appends no sentinel
+      // at all, and where one exists it sits on the last stitch with a zero
+      // delta. buildImportedDesign puts it at the ELEMENT'S OFFSET, so on
+      // every imported, digitized, shape or manual project it lands somewhere
+      // else entirely. Measured 2026-09-08 on an off-origin bar with the
+      // sentinel at (0,0): pystitch read a STITCH at the origin 64.0 mm from
+      // the previous one and 51.5 mm from the design's centre, reached by a
+      // run of jumps -- a stray penetration with 6 cm of travel to get to it.
+      //
+      // Placed BEFORE the extents update on purpose: the sentinel was also
+      // widening the header's declared bounding box to a corner the design
+      // does not occupy.
+      if (st.type === "end") break;
+
       const targetX = st.x | 0;
       const targetY = st.y | 0;
 

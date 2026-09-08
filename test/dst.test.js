@@ -199,8 +199,13 @@ test("a design whose stitches all fit a record is byte-identical to before", () 
     { x: 100, y: 100, type: "end" },
   ], colors: [{ r: 0, g: 0, b: 0 }] };
   const bytes = dst.encodeDST(d);
-  // One record each, no splits: the leading jump, three stitches, the design's
-  // own "end" (this encoder has never special-cased it), and encodeDST's own
-  // terminator. Six 3-byte records after the 512-byte header.
-  assert.strictEqual((bytes.length - 512) / 3, 6);
+  // One record each, no splits: the leading jump, three stitches, and
+  // encodeDST's own terminator. FIVE 3-byte records after the 512-byte header.
+  //
+  // Was six until 2026-09-08, because the design's own {type:"end"} fell
+  // through to the "stitch" branch and was written as a real needle
+  // penetration. Harmless in THIS fixture, where the sentinel sits on the last
+  // stitch at a zero delta -- which is exactly why it was priced as harmless
+  // and left. It is not harmless where the sentinel sits somewhere else.
+  assert.strictEqual((bytes.length - 512) / 3, 5);
 });

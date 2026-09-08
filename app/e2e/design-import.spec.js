@@ -84,17 +84,28 @@ test("an imported design reaches Download and exports", async ({ page }) => {
   expect(d.suggestedFilename()).toBe("design.dst");
 });
 
-test("the DST note's premise fits a project with no lettering in it", async ({ page }) => {
-  // It read "this project includes lettering or hand-drawn shapes" while
-  // firing on the gate !isPurelyDigitized — which an import-only project also
-  // trips. The note opened on a claim about the customer's own project that
-  // was not true.
+test("no DST caveat appears on the Download step, and DST leads", async ({ page }) => {
+  // This asserted the caveat's PREMISE: it once read "this project includes
+  // lettering or hand-drawn shapes" while firing on !isPurelyDigitized, which
+  // an import-only project also trips, so it opened on a claim about the
+  // customer's own project that was not true. That was fixed by naming the
+  // actual gate.
+  //
+  // The whole note is gone as of 2026-09-08: the browser DST codec was put
+  // right (both record weight tables swapped, byte-identical to pystitch, a
+  // rendered "FRITSCH" coming back upright), so there is no longer a
+  // difference to warn about. Kept as the end-to-end absence check —
+  // DownloadStep.spec.js asserts the same thing at component level, but only
+  // a real import proves the shipped app agrees.
   await importFixture(page);
   await page.getByRole("button", { name: "4 Download", exact: true }).click();
 
-  const note = page.getByTestId("dst-browser-encoder-note");
-  await expect(note).toBeVisible();
-  await expect(note).toContainText("imported design file");
+  await expect(page.getByTestId("dst-browser-encoder-note")).toHaveCount(0);
+  await expect(page.getByText(/quarter turn/i)).toHaveCount(0);
+
+  // And DST is the lead format again, not demoted behind PES with an asterisk.
+  const formats = page.locator(".formats button");
+  await expect(formats.first()).toHaveText("DST");
 });
 
 // ---- is it even a DST? -----------------------------------------------------

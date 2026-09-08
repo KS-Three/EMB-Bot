@@ -113,7 +113,8 @@ test("crossval control: DST shows the documented axis transposition", async (t) 
   // Left in place because the DST codec is Kent's (CLAUDE.md footgun 1). If
   // this starts failing, that call was made — drop this assertion and the
   // MASTER_SCOPE note with it.
-  assert.strictEqual(r.decodedStitches, r.expectedStitches + 1);
+  assert.strictEqual(r.decodedStitches, r.expectedStitches,
+    "the design ends where the design ends");
 });
 
 test("crossval control: DST trim-as-3-jumps IS read back as a trim", async (t) => {

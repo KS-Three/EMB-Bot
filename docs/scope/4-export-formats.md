@@ -155,7 +155,7 @@ ten deltas and the crossval DST control reads `identity` beside PES and EXP.
 Re-rendered the same day: the old bytes draw a vertical column of reversed
 letters, the new ones draw FRITSCH upright at its own 127.2 x 22.6 mm.** The
 Download step's DST caveat was checked against the old render and was accurate
-clause for clause; it now OVER-warns and comes out separately. Its "may not see the color stops" clause is
+clause for clause. It is GONE now, along with the asterisk on the DST button and the demotion of DST behind PES: with the codec correct there is no difference left to warn about, and a warning that outlives its defect steers people off the format most of their machines want. Both absences are asserted (`DownloadStep.spec.js`, and end to end in `design-import.spec.js`) rather than merely untested. DesignPanel's note survives, scoped to files written BEFORE the fix -- those really are in the old dialect and nothing inside a .dst says which it is. Its "may not see the color stops" clause is
 GONE as of 2026-09-08 — not softened, removed, because the defect behind it is
 fixed. `dst.js` wrote the colour change as `0x43` where the spec wants `0xC3`,
 so a standard reader saw a spurious sequin toggle and ZERO colour changes: every
@@ -169,6 +169,40 @@ because `dstimport.js` already tested `b2 & 0x40` ahead of the jump bit. **The
 orientation half of the caveat stands unchanged and is still Kent's call.**
 *(render: `tools/crossval_decode.py` + pystitch; colour half measured and fixed
 2026-09-08)*
+
+**All four shipped formats now agree stitch-for-stitch, across two independent
+encoder routes (2026-09-08).** One "FRITSCH" design, read back by pystitch:
+
+| format | route | STITCH records | size a standard reader sees |
+|---|---|---|---|
+| DST | browser | 2045 | 127.2 × 22.6 mm |
+| PES | browser | 2045 | 127.2 × 22.6 mm |
+| EXP | browser | 2045 | 127.2 × 22.6 mm |
+| JEF | **service** (`/export`, pyembroidery) | 2045 | 127.2 × 22.6 mm |
+
+against an engine that reports 2045 stitches at 127.2 × 22.6 mm, and an SVG
+carrying `viewBox="0 0 127.2 22.6"`. Only the JUMP counts differ among the
+browser three (17 / 13 / 15), which is the formats disagreeing about how far
+one record reaches, not about the design.
+
+JEF earns its own row because it comes from the OTHER encoder entirely — the
+Python service, on pyembroidery's own writer. Two independent implementations
+landing on the same 2045 and the same 127.2 × 22.6 is a stronger statement than
+three files from one codebase agreeing with each other.
+
+**The MULTI-element case checks out too**, which is the one a real customer
+hits (a logo plus lettering) and the one that always takes the browser
+encoder: two designs of 2045 and 1960 stitches through `combineDesigns` give
+4005 — exactly the sum, with every `{type:"end"}` sentinel stripped as that
+module documents — and both DST and PES read back **4005 STITCH, 1
+COLOR_CHANGE** (two colours, one stop) at 127.4 × 22.6 mm, PES also carrying
+both threads. *(measured 2026-09-08)*
+
+This is the first time DST has agreed with the other two on BOTH numbers.
+Before 2026-09-08 it read 22.6 × 127.2 — transposed and mirrored — with 2046
+stitches, the extra one being the `{type:"end"}` sentinel written as a real
+needle penetration. Both are fixed, and the agreement is the check that says
+so without needing a picture: three encoders, one design, one answer.
 
 **Every downloadable output has now been LOOKED at (2026-09-07).** The Download
 step offers seven: PES, EXP, DST, JEF, SVG, PNG and the PDF worksheet. Each was
