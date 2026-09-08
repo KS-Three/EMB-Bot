@@ -53,6 +53,7 @@ is what Bridge Bar's blue lettering painted in the ground yellow is.
 from __future__ import annotations
 
 import argparse
+import dataclasses
 import hashlib
 import json
 import math
@@ -345,10 +346,28 @@ def measure(p: Prep, cfg: PipelineConfig, plan: StitchPlan) -> dict:
     }
 
 
+def parse_flag(spec: str) -> tuple[str, object]:
+    """'NAME' -> (NAME, True); 'NAME=VALUE' -> (NAME, VALUE) with VALUE read
+    as JSON when it parses (15, 0.25, true, "flat") and as a string otherwise.
+    NAME must be a `PipelineConfig` field. Shared by the instruments' `--flag`
+    options so an A/B of any config field is one command."""
+    name, _, raw = spec.partition("=")
+    fields = {f.name for f in dataclasses.fields(PipelineConfig)}
+    if name not in fields:
+        raise ValueError(f"--flag {name!r}: PipelineConfig has no such field")
+    if not raw:
+        return name, True
+    try:
+        return name, json.loads(raw)
+    except json.JSONDecodeError:
+        return name, raw
+
+
 def run(art: Path, width_mm: float, garment: str, forced_class: str | None = None,
-        max_colors: int = STUDIO_MAX_COLORS) -> dict:
+        max_colors: int = STUDIO_MAX_COLORS, flag: str | None = None) -> dict:
+    extra = dict([parse_flag(flag)]) if flag else {}
     cfg = PipelineConfig(target_width_mm=width_mm, garment_id=garment,
-                         forced_class=forced_class, max_colors=max_colors)
+                         forced_class=forced_class, max_colors=max_colors, **extra)
     gen = build_generation(str(art), cfg)
     result = finish_generation(gen.fork(), cfg)
     plan = plan_stitches(result, cfg)
@@ -356,7 +375,7 @@ def run(art: Path, width_mm: float, garment: str, forced_class: str | None = Non
     out.update({
         "fixture": str(art), "width_mm": width_mm, "garment": garment,
         "design_class": result.design_class, "stitches": plan.stats.stitch_count,
-        "regions": len(result.regions),
+        "trims": plan.stats.trims, "regions": len(result.regions),
     })
     return out
 
@@ -372,7 +391,7 @@ def _fmt_row(name: str, r: dict) -> str:
         f"{'n/a' if bd['recall'] is None else format(bd['recall'], '.0%')}]" for bd in r["bands"])
     return (f"  {name:12} {r['design_class']:12} thin {r['thin_strokes']:4d} lost {r['lost_strokes']:4d} "
             f"{r['thin_length_mm']:8.1f} mm  sewn {r['sewn_length_mm']:8.1f}  recall {recall}{w}\n"
-            f"      bands {bands}")
+            f"      bands {bands}  regions {r['regions']}  stitches {r['stitches']}  trims {r['trims']}")
 
 
 def main(argv=None) -> int:
@@ -382,13 +401,19 @@ def main(argv=None) -> int:
     ap.add_argument("--garment", default="left_chest")
     ap.add_argument("--forced-class", default=None, dest="forced_class")
     ap.add_argument("--max-colors", type=int, default=STUDIO_MAX_COLORS, dest="max_colors")
+    ap.add_argument("--flag", default=None, help="PipelineConfig field to turn on, NAME or NAME=VALUE")
     ap.add_argument("--corpus", action="store_true", help="the ten real-art fixtures at Studio defaults")
     ap.add_argument("--json", action="store_true")
     a = ap.parse_args(argv)
     if not a.corpus and not a.fixture:
         ap.error("a fixture or --corpus")
     results = []
-    lane = f"  forced_class={a.forced_class}" if a.forced_class else ""
+    if a.flag:
+        try:
+            parse_flag(a.flag)
+        except ValueError as e:
+            ap.error(str(e))
+    lane = (f"  forced_class={a.forced_class}" if a.forced_class else "") + (f"  {a.flag} ON" if a.flag else "")
     print(f"thin-stroke recall — width floor {PipelineConfig().min_detail_mm} mm (and >= {_MIN_STROKE_PX:g} px), "
           f"min length {machine.RUN_MIN_LOOP_MM / 2:.2f} mm, thread {machine.COVERAGE_THREAD_W_MM} mm, "
           f"colour match <= {TEXT_CLUSTER_DELTA_E_MAX} dE00, max_colors {a.max_colors}{lane}")
@@ -400,7 +425,7 @@ def main(argv=None) -> int:
             art = ROOT / "testdata" / a.fixture
         cases = [(art.stem, art, a.width, a.garment)]
     for name, art, w, g in cases:
-        r = run(art, w, g, a.forced_class, a.max_colors)
+        r = run(art, w, g, a.forced_class, a.max_colors, a.flag)
         results.append(r)
         print(_fmt_row(name, r))
     if a.json:

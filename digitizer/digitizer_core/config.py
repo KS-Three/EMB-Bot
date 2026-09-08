@@ -387,6 +387,42 @@ class PipelineConfig:
     # thread's own visual weight (machine.RUN_MIN_LOOP_MM / RUN_MIN_AREA_MM2)
     # still drop. False restores the old drop-everything behaviour.
     small_shape_rescue: bool = True
+    # Keep a CONTRASTING sub-floor region instead of absorbing it into the
+    # shape it touches (`stage3_segment.resolve_small_regions`). Today a region
+    # under the detail floor that has any neighbour is unioned into whichever
+    # neighbour shares the longest halo, whatever colour either is: a 0.5 mm
+    # tan glyph on a white ground touches the ground and becomes ground; a
+    # dark stroke drawn across a coloured panel becomes panel. That is the
+    # flat lane's half of "whole elements missing" (`docs/superpowers/plans/
+    # 2026-09-08-real-logo-lane-and-thin-strokes.md` §3.1, §4b). ON, a small
+    # region is absorbed only when it is plausibly a sliver OF its absorber —
+    # its quantised colour within `merge_delta_e` (CIE76, the flat lane's own
+    # merge tolerance; no new number) of the absorber's. A contrasting region
+    # that clears the run tier's floors (`RUN_MIN_AREA_MM2` and the
+    # `RUN_MIN_LOOP_MM` loop proxy) is kept for the run tier exactly as an
+    # isolated small shape is today, and reaches stage 4 as a
+    # `rescued_small_shape` — door 1 of the text cluster. One that fails the
+    # floors is absorbed as before. The plan predicted `logo_whitebg`'s teal
+    # patch would be one of those (1 mm, proxy 2 mm against 2.2); measured, it
+    # is 1.19 mm with a 2.38 mm proxy, so ON it is kept and sewn as a 27-point
+    # run in its own thread — one more cone, +3 stitches, +1 trim — and the
+    # golden holds OFF only (both pinned in `tests/test_keep_thin_strokes.py`).
+    #
+    # Measured 2026-09-08 on the stitches (`tools/thin_strokes.py --corpus
+    # --forced-class flat --flag keep_thin_strokes`, scope-history 09-08):
+    # see that entry for the per-fixture table.
+    #
+    # FLAT LANE ONLY in this step. The photo segmenters call
+    # `resolve_small_regions` without layer colours, as they call it without
+    # the chain rescue and for the same reason — quantisation shatters a
+    # photograph into mutually adjacent contrasting fragments everywhere,
+    # which is exactly what this rule would keep — so ON is byte-identical on
+    # the gradient and photo lanes until the plan's PR 3 gives them a thin
+    # population of their own.
+    #
+    # DEFAULT OFF and byte-identical off. Flipping it is Kent's: it adds
+    # regions to real logos, and the flat goldens move with them.
+    keep_thin_strokes: bool = False
 
     # Stage 4
     # Polygon simplification tolerance. Both call sites (`stage4_vectorize.

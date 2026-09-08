@@ -284,8 +284,27 @@ def _chained_small_regions(regions, areas, boxes, small, min_area_px,
 def resolve_small_regions(
     regions: list[RegionMask], cfg: PipelineConfig, px_per_mm: float,
     enclosed_mask: np.ndarray | None = None, *, chain_rescue: bool = True,
+    layer_lab: np.ndarray | None = None,
 ) -> tuple[list[RegionMask], list[dict]]:
     """Absorb or drop sub-sewable regions. Returns (kept, warnings).
+
+    `layer_lab` (optional, `(K, 3)` CIELAB per `RegionMask.layer` — the
+    quantiser's own cluster colours) arms `cfg.keep_thin_strokes`: with both,
+    a sub-floor region is absorbed into its best-halo neighbour only when it
+    is plausibly a sliver OF that neighbour, its colour within
+    `cfg.merge_delta_e` (CIE76, the same tolerance and metric
+    `stage2_quantize._merge_similar` uses) of the absorber's. A CONTRASTING
+    small region that clears the run tier's floors is kept exactly as an
+    isolated one is — appended to `rescued`, so stage 4 tags it
+    `rescued_small_shape` — and one that fails them is absorbed as before.
+    Without `layer_lab` the flag is inert and this function is byte-identical
+    to its pre-flag self: the photo segmenters call it that way on purpose
+    (see `chain_rescue`, gated off there for the same reason — quantisation
+    shatters a photograph into mutually adjacent contrasting fragments, which
+    is exactly what this rule would keep). Measured 2026-09-08: Fremont
+    forced flat lost 97 of its 110 strokes between 0.5 and 1.0 mm wide to
+    this absorb (`tools/thin_strokes.py`); a tan glyph on a white ground
+    touches the ground, so adjacency alone always absorbed it.
 
     Every comparison here is windowed to the small region's own bounding box.
     A sliver's halo is a one-pixel ring a few dozen pixels around, and matching
@@ -380,6 +399,15 @@ def resolve_small_regions(
     # never rescue what geometry would then reject silently.
     noise_area_px = machine.RUN_MIN_AREA_MM2 * px_per_mm ** 2
     loop_floor_px = machine.RUN_MIN_LOOP_MM * px_per_mm
+    keep_contrast = bool(cfg.keep_thin_strokes) and layer_lab is not None
+
+    def clears_run_floors(i: int, box) -> bool:
+        """Stage 3's cheap proxy for "the run tier can sew this": at least the
+        thread's own visual weight, and a perimeter (2*max(w, h), a lower
+        bound) long enough for the bean run to close a loop."""
+        box_h, box_w = box[2] - box[0], box[3] - box[1]
+        return bool(cfg.small_shape_rescue and areas[i] >= noise_area_px
+                    and 2 * max(box_h, box_w) >= loop_floor_px)
 
     # Deterministic order: smallest first, then by top-left position.
     def sort_key(i: int) -> tuple:
@@ -424,14 +452,22 @@ def resolve_small_regions(
             # text, sitting alone on background. Keep it for the run tier
             # when it is at least the thread's own visual weight; below that
             # it is lint, and lint drops.
-            box_h, box_w = box[2] - box[0], box[3] - box[1]
-            if (cfg.small_shape_rescue and areas[i] >= noise_area_px
-                    and 2 * max(box_h, box_w) >= loop_floor_px):
+            if clears_run_floors(i, box):
                 rescued.append(i)
                 continue
             dropped += 1
             dropped_reportable += int(reportable)
             continue
+        if keep_contrast and clears_run_floors(i, box):
+            # `cfg.keep_thin_strokes`: a neighbour of another colour is not
+            # what this region is a sliver OF. Anti-alias and compression
+            # slivers sit within the merge tolerance of the shape they edge
+            # and are absorbed as before; a stroke drawn across it is not,
+            # and is kept for the run tier as an isolated one would be.
+            de = float(np.linalg.norm(layer_lab[regions[i].layer] - layer_lab[regions[best].layer]))
+            if de > cfg.merge_delta_e:
+                rescued.append(i)
+                continue
         regions[best].union_from(regions[i])
         # The absorbing region just grew; its box has to grow with it or a
         # later sliver could be rejected against a stale footprint.

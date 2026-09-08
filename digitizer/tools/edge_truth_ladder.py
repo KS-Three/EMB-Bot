@@ -81,7 +81,6 @@ geometry change, from one command. Without `--flag` it lists the baseline.
 from __future__ import annotations
 
 import argparse
-import dataclasses
 import json
 import math
 import sys
@@ -103,7 +102,7 @@ import curve_fidelity as cf                                            # noqa: E
 import make_test_logo as mtl                                           # noqa: E402
 from digitizer_core import PipelineConfig                              # noqa: E402
 from digitizer_core.pipeline import build_generation                   # noqa: E402
-from thin_strokes import _plan_frame                                   # noqa: E402
+from thin_strokes import _plan_frame, parse_flag                       # noqa: E402
 
 SUPER = 4                                  # the generator's supersample, relative to its output
 RUNGS = (200, 400, 800, 1600, 3200)        # output widths; 800 is the committed fixture
@@ -309,22 +308,6 @@ def measure_rung(fixture: str, width_px: int, forced_class: str | None = "flat",
 
 
 # --- the tier diff, from one command -----------------------------------------
-
-def parse_flag(spec: str) -> tuple[str, object]:
-    """'NAME' -> (NAME, True); 'NAME=VALUE' -> (NAME, VALUE) with VALUE read
-    as JSON when it parses (15, 0.25, true, "flat") and as a string otherwise.
-    NAME must be a `PipelineConfig` field."""
-    name, _, raw = spec.partition("=")
-    fields = {f.name for f in dataclasses.fields(PipelineConfig)}
-    if name not in fields:
-        raise ValueError(f"--flag {name!r}: PipelineConfig has no such field")
-    if not raw:
-        return name, True
-    try:
-        return name, json.loads(raw)
-    except json.JSONDecodeError:
-        return name, raw
-
 
 def tiers(cases: list[str], flag: str | None, show_all: bool = False) -> None:
     import curve_tiers as ct
