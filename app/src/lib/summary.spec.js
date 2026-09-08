@@ -16,7 +16,12 @@ const PROJECT_JS = fileURLToPath(new URL("./project.js", import.meta.url));
 // of truth that agrees on the day it is written; this one cannot.
 function typesAddElementBuilds() {
   const src = readFileSync(PROJECT_JS, "utf8");
-  const m = src.match(/export function addElement[\s\S]*?const factory =([\s\S]*?);\n/);
+  // `;\r?\n`, not `;\n`. git checks this repo out with CRLF on Windows, so the
+  // ternary really ends `defaultTextElement;\r\n` and a bare `;\n` matches
+  // nowhere in the file — the match returns null and every assertion below goes
+  // vacuous, which is what the guard test on this function exists to catch. CI
+  // runs on Linux with LF, so it has never failed there.
+  const m = src.match(/export function addElement[\s\S]*?const factory =([\s\S]*?);\r?\n/);
   expect(m, "addElement's factory ternary is no longer parseable").toBeTruthy();
   const types = [...m[1].matchAll(/type === "([a-z]+)"/g)].map((x) => x[1]);
   // Plus the ternary's own trailing fallback, which is text.

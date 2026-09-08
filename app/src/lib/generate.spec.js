@@ -254,7 +254,15 @@ function makeDstBase64() {
   const require = createRequire(import.meta.url);
   const fs = require("node:fs");
   const path = require("node:path");
-  const file = path.resolve(path.dirname(new URL(import.meta.url).pathname), "../../../test/fixtures/standard-tajima.dst");
+  // fileURLToPath, NOT `new URL(...).pathname` — this was the only place in the
+  // suite using the latter, and on Windows it hands back a string that is not a
+  // path: `/C:/Users/.../Claude%20Personal/...`, with a leading slash and the
+  // space still percent-encoded. path.resolve then builds `C:\C:\...%20...` and
+  // the read fails ENOENT. It needs BOTH a Windows host and a space in the repo
+  // path, which is why CI (Linux, /home/runner/work) has never seen it and four
+  // tests here have been red on every checkout under "Claude Personal".
+  const { fileURLToPath } = require("node:url");
+  const file = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../test/fixtures/standard-tajima.dst");
   return fs.readFileSync(file).toString("base64");
 }
 
