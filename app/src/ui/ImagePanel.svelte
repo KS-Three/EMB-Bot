@@ -1,6 +1,6 @@
 <script>
   import { createEventDispatcher } from "svelte";
-  import { flattenRGBA, flatToRGBA, flatShares, mergeFlat, WORK_MAX_PX, ALPHA_CUTOFF } from "../lib/flatten.js";
+  import { flattenRGBA, flatToRGBA, flatShares, mergeFlat, WORK_MAX_PX, ALPHA_CUTOFF, MIN_SWATCH_SHARE } from "../lib/flatten.js";
   import { loadImage, rasterSize, isVectorFile, UNREADABLE } from "../lib/rasterize.js";
   import ThreadPicker from "./ThreadPicker.svelte";
   import Icon from "./Icon.svelte";
@@ -303,9 +303,11 @@
 <div class="swatches">
   {#if flat}
     <!-- Hide empty palette slots (median-cut can return more entries than the
-         art uses — a 0.0% chip is just noise to a beginner). -->
+         art uses — a 0.0% chip is just noise to a beginner). The threshold
+         lives in flatten.js because the review card counts colours by the
+         same rule; it was a literal here and a different quantity there. -->
     {#each flat.palette as c, i}
-      {#if shares[i] > 0.0005}
+      {#if shares[i] > MIN_SWATCH_SHARE}
         <div class="swatchwrap">
           <button
             type="button"

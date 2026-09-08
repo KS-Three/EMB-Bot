@@ -8,7 +8,7 @@
   import { generateAll } from "./lib/generate.js";
   import { rehydrateImages } from "./lib/imageSource.js";
   import { chartIdForProject, designChartId } from "./lib/designChart.js";
-  import { flattenRGBA, WORK_MAX_PX, ALPHA_CUTOFF } from "./lib/flatten.js";
+  import { flattenRGBA, WORK_MAX_PX, ALPHA_CUTOFF, sewnColorCount } from "./lib/flatten.js";
   import {
     migrateLegacy,
     currentProjectId,
@@ -313,6 +313,16 @@
   // flattened palette derived from it. Neither is persisted -- only project
   // settings are (see persist() below).
   let runtime = { flats: {}, workImages: {} };
+
+  // How many colours each image element will actually SEW, for the review
+  // recap. `element.nColors` is the slider — a ceiling the customer asked for —
+  // and median-cut returns only as many entries as the art needs, so the card
+  // used to claim four colours beside a `Thread changes` row counted from the
+  // design's own records saying two. `runtime` is reassigned wholesale by
+  // onFlat, so this recomputes on every flatten.
+  $: sewnColors = Object.fromEntries(
+    Object.entries(runtime.flats).map(([id, flat]) => [id, sewnColorCount(flat)]),
+  );
 
   // ---- Digitizer service health (build step 10) -----------------------------
   // Whether the localhost auto-digitize service is reachable gates the
@@ -1079,6 +1089,7 @@
           {project}
           workImage={runtime.workImages[project.selectedId]}
           flat={runtime.flats[project.selectedId]}
+          {sewnColors}
           {designDims}
           {digitizerHealth}
           {showAddElementsHint}
@@ -1121,7 +1132,9 @@
                  `Content: Text — ""` with a blank `Font`, on the screen right
                  before Download. Svelte prints a missing field as empty, so it
                  read as a plausible empty-text design rather than as a bug. -->
-            {#each designSummary(project) as row}
+            <!-- `sewnColors` so the Colors row counts what will SEW rather
+                 than echoing the slider — see summary.js. -->
+            {#each designSummary(project, sewnColors) as row}
               <div><dt>{row.label}</dt><dd>{row.value}</dd></div>
             {/each}
             <!-- The four facts an operator needs before loading a machine —

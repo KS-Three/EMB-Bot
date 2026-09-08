@@ -2467,6 +2467,17 @@ its hedge as it is copied forward** — is why this file is split.
   - **When two displays of one quantity disagree, one is measuring the input.**
     Look for the fit target, the request, the pre-clamp value. The honest
     display is the one derived from the artifact — here, the stitches.
+    **Extended 2026-09-08: they need not be the SAME quantity, only linked
+    ones** — and that is the harder case, because nothing looks duplicated.
+    The review card carried `Colors 4` beside `Thread changes 1`, two rows
+    apart. N colour blocks means N−1 changes, so those numbers cannot both be
+    right; but they are not the same number, so no eye and no test compared
+    them, and the pair shipped. `Colors` was the slider — the REQUEST, exactly
+    what this rule says to look for — and `Thread changes` was counted off the
+    design's own colour records. **Read a summary card as a system of
+    equations, not a list of facts:** any two rows with an arithmetic relation
+    are a free consistency check, and the one with no code path to the artifact
+    is the one that is lying.
   - **A UI constraint and the value it constrains must measure the same
     thing.** `max` bounded what the user may REQUEST; the field displayed what
     the design SEWS. A request bound policing a sewn readout is a category

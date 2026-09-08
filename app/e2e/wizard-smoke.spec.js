@@ -210,6 +210,17 @@ test("guided wizard: image content path -> review reflects it -> download", asyn
   await expect(page.getByText(/^[\d,]+ stitches/)).toBeVisible();
   await expect(page.locator(".topbar-download")).toBeEnabled();
 
+  // The element chip and the swatch strip are on ONE screen, inches apart,
+  // and disagreed until 2026-09-08: the chip read `element.nColors` (the
+  // slider) and said "Image · 4 colors" above a strip rendering two. Same
+  // defect as the review card below, one step earlier. The strip is the
+  // honest one — it is drawn from the flattened palette — so the chip is
+  // asserted against it rather than against a literal.
+  const swatches = await page.locator(".swatchwrap").count();
+  expect(swatches, "the swatch strip rendered nothing to compare against").toBeGreaterThan(0);
+  await expect(page.locator(".elsummary").filter({ hasText: /^Image · / }))
+    .toHaveText(`Image · ${swatches} color${swatches === 1 ? "" : "s"}`);
+
   await page.getByRole("button", { name: "Next", exact: true }).click();
 
   await expect(page.getByRole("heading", { name: "Ready to stitch" })).toBeVisible();
@@ -219,10 +230,49 @@ test("guided wizard: image content path -> review reflects it -> download", asyn
   await expect(page.locator("dl.summary")).toContainText("Logo / image");
   await expect(page.locator("dl.summary")).toContainText("background removed");
 
+  // The two rows that used to contradict each other, on one card. `Colors`
+  // was `element.nColors` — the slider, a CEILING the customer asked for —
+  // while `Thread changes` two rows down is counted from the design's own
+  // {type:"color"} records. Measured 2026-09-08 on the shipped Logo-patch
+  // starter: "Colors 4 · background removed" beside "Thread changes 1", i.e.
+  // four colours claimed for a design that stops the machine once. Colours
+  // are cones to buy and re-threads on a single-needle machine, so this is
+  // the customer's money, not a tidiness point.
+  //
+  // Asserted as the RELATIONSHIP rather than as "2", so the guard survives a
+  // change of fixture: N colour blocks means N-1 changes, whatever N is.
+  //
+  // SINGLE-ELEMENT only, and deliberately so — do not copy this line into a
+  // mixed-design spec. `Colors` is scoped to ITS element while `Thread
+  // changes` is the whole design, so a name beside this logo reads Colors 2
+  // against Thread changes 2 (one text colour + two image colours = three
+  // blocks) and both are right. Measured 2026-09-08. This project carries only
+  // the artwork, because the starter's empty text element is not sewable and
+  // `designSummary` lists only what sews.
+  const summaryRow = async (label) => {
+    const dd = page.locator("dl.summary div").filter({ has: page.locator(`dt:text-is("${label}")`) }).locator("dd");
+    await expect(dd).toHaveCount(1);
+    return (await dd.innerText()).trim();
+  };
+  const colors = parseInt(await summaryRow("Colors"), 10);
+  const changes = parseInt(await summaryRow("Thread changes"), 10);
+  expect(Number.isNaN(colors), "the Colors row is not a number").toBe(false);
+  expect(Number.isNaN(changes), "the Thread changes row is not a number").toBe(false);
+  expect(colors, `Colors ${colors} against ${changes} thread change(s) on the same card`)
+    .toBe(changes + 1);
+
   await page.getByRole("button", { name: "Next", exact: true }).click();
 
   await expect(page.getByRole("heading", { name: "Download", exact: true })).toBeVisible();
   await expect(page.locator(".threadlist .threadrow").first()).toBeVisible();
+
+  // …and the same count one step later, where the customer reads it as a
+  // shopping list. `worksheet-digitized-lane.spec.js` guards this for the
+  // DIGITIZED lane; the browser flatten lane had no equivalent, which is the
+  // lane the Colors row was wrong on. One cone row per colour block.
+  await expect(page.locator(".threadlist .threadrow"),
+    `${colors} colours on the review card against the Download step's cone rows`)
+    .toHaveCount(colors);
 
   const downloadPromise = page.waitForEvent("download");
   await page.getByRole("button", { name: "DST", exact: true }).click();

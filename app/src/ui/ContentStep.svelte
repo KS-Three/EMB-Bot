@@ -30,6 +30,13 @@
   // this component only gates the "+ Auto-digitize" tile and hands the value
   // to DigitizePanel so an offline panel can say so honestly.
   export let digitizerHealth = null;
+
+  // element id -> how many colours that element's flattened palette will
+  // actually SEW (App derives it from runtime.flats via flatten.js's
+  // sewnColorCount). The chip below used `element.nColors` — the slider — so
+  // it read "Image · 4 colors" directly above a swatch strip rendering two,
+  // on one screen. Same defect the review card had; see lib/summary.js.
+  export let sewnColors = null;
   const d = createEventDispatcher();
 
   // ---- Task 5 (Slice 5): the real element manager --------------------------
@@ -101,7 +108,11 @@
 
   // One-line summary shown in an element's list row: quoted truncated text
   // for text elements, color count (or "empty") for image elements.
-  function summarize(element) {
+  //
+  // `sewn` is passed rather than read off the module scope so Svelte sees it
+  // in the call expression and re-renders the row when a re-flatten changes
+  // it — a bare `sewnColors` reference inside the body would not re-run this.
+  function summarize(element, sewn) {
     if (element.type === "text") {
       const t = (element.text || "").trim();
       return t ? `"${truncate(t, 18)}"` : "Text · empty";
@@ -121,7 +132,10 @@
       const label = labels[element.kind] || "Shape";
       return element.sizeMm ? `${label} · ${Math.round(element.sizeMm)} mm` : label;
     }
-    const n = element.nColors || 0;
+    // What it SEWS, falling back to the slider only before anything has been
+    // flattened — where the chip already reads "Image · empty" anyway.
+    const c = sewn && element.id in sewn ? sewn[element.id] : null;
+    const n = (typeof c === "number" ? c : element.nColors) || 0;
     return element._hasImage ? `Image · ${n} color${n === 1 ? "" : "s"}` : "Image · empty";
   }
 
@@ -196,7 +210,7 @@
           </svg>
         {/if}
       </span>
-      <span class="elsummary">{summarize(row)}</span>
+      <span class="elsummary">{summarize(row, sewnColors)}</span>
       <button
         type="button"
         class="elrow-x"
