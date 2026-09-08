@@ -46,8 +46,22 @@ Starter design pack (sourcing decision and billing pending).
 ## Hard gates — refuse, name the blocker, stop
 
 1. **No sew-out, no physical constants.** The satin width floor, link cover
-   tolerance, fabric presets, DST orientation (fill row spacing: settled, see
+   tolerance, fabric presets (fill row spacing: settled; **DST orientation:
+   settled 2026-09-08 and it was never a physical constant** — both see
    `DOCTRINE.md`). Fabric settles these, geometry cannot.
+
+   **DST orientation should not have been on this list, and being on it cost
+   six weeks.** The gate's own test is the sentence under it: *fabric settles
+   these*. Which nibble of a DST record carries X is settled by a documented
+   format with a reference implementation sitting in `digitizer/.venv`, and
+   five sources already agreed on the answer — none of which own a machine. It
+   was fixed on 2026-09-08 by reading `pystitch.DstWriter.encode_record` and
+   comparing bytes (10/10 identical), by the crossval harness that already had
+   a word for the answer (`identity`), and by a render. A sew-out could not
+   have answered it faster, or at all.
+
+   **Before adding anything here, ask which kind it is.** If every source you
+   would consult to settle it owns no machine, this gate does not apply.
 2. **No stage-0 recalibration without real tonal artwork.** Four approaches were
    measured and rejected; synthetic fixtures are barred as substitutes.
 3. **No default-OFF tier flipped on until its instrument is rebuilt.** Chaining
