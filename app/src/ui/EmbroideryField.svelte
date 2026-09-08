@@ -231,6 +231,18 @@
     return p && EMB.getGarment(p.garmentId);
   }
 
+  // Returns the GARMENT PLACEMENT BOX, not the hoop, despite the name — the
+  // same historical naming `SizePanel.hoopWidthMm` documents ("it is not the
+  // physical hoop, which is a separate ceiling check"). Kept for the same
+  // reason: every clamp site below reads it. Written down here too because the
+  // name cost real time on 2026-09-08 — a starter template sized to the full
+  // placement box became un-nudgeable, and the arrow keys blamed the hoop,
+  // which had 14 mm of room on each side.
+  //
+  // The four clamp sites (nudgeSelected, reclampAll, group drag, single
+  // drag/resize) all clamp to the PLACEMENT, which is the intended behaviour —
+  // a left-chest design should not wander onto the shoulder. What was wrong
+  // was only what the app SAID about it; see the two live-region strings below.
   function hoopSizeMm(p) {
     const garment = garmentFor(p);
     return garment
@@ -658,10 +670,17 @@
     );
     if (Math.abs(clamped.offsetXMm - curX) < 0.001 &&
         Math.abs(clamped.offsetYMm - curY) < 0.001) {
-      // The clamp refused the move — the design is already against the hoop
-      // edge on that axis. Saying so is the only feedback a non-sighted user
-      // gets that the key did anything at all.
-      liveMsg = "At the edge of the hoop";
+      // The clamp refused the move — the design is already against the edge of
+      // the PLACEMENT on that axis. Saying so is the only feedback a non-sighted
+      // user gets that the key did anything at all, which is exactly why it has
+      // to be true: this said "At the edge of the hoop" until 2026-09-08, and
+      // the hoop is not what refused. A sighted user can see the hoop outline
+      // still has room and shrug; a screen-reader user has only this sentence,
+      // and it sent them to pick a bigger hoop, which changes nothing.
+      const placement = garmentFor(project);
+      liveMsg = placement && placement.label
+        ? `At the edge of the ${placement.label} area`
+        : "At the edge of the placement area";
       return;
     }
     dispatch("elupdate", { id, patch: clamped });
@@ -677,7 +696,13 @@
     const parts = [];
     if (Math.abs(xMm) >= 0.05) parts.push(`${Math.abs(xMm).toFixed(1)} mm ${xMm > 0 ? "right" : "left"}`);
     if (Math.abs(yMm) >= 0.05) parts.push(`${Math.abs(yMm).toFixed(1)} mm ${yMm > 0 ? "up" : "down"}`);
-    return parts.length ? `${parts.join(" and ")} from center` : "Centered in the hoop";
+    if (parts.length) return `${parts.join(" and ")} from center`;
+    // Same correction as the refusal message above: centred in the PLACEMENT,
+    // which is what the offset is measured from, not in the hoop.
+    const placement = garmentFor(project);
+    return placement && placement.label
+      ? `Centered in the ${placement.label} area`
+      : "Centered in the placement area";
   }
 
   function onCanvasKey(e) {
