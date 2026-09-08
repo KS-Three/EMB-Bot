@@ -250,3 +250,62 @@ test("a name beside a logo is summarised as one design, not as the logo", async 
   const bill = num((await quality.locator(".qr-bill").innerText()).match(/([\d,]+) stitches/)[1]);
   expect(bill).toBeLessThan(combined);
 });
+
+// TWO LOGOS — the residual left by the first version of the rule above.
+//
+// That version suppressed the recap's totals whenever every sewable element
+// was digitized, which is true of two logos as much as of one. Measured
+// 2026-09-08: each entry reported 2,187 stitches, the design was 4,374, and no
+// number on the recap was the design's — the customer was left adding two
+// panels together. Neither entry is WRONG there, which is what makes it easy
+// to miss; neither is the answer either.
+//
+// The rule is now "a single entry IS the design", the only case where showing
+// the totals as well would really be two answers to one question.
+test("two logos in one design are summarised as one design, not as two panels", async ({ page }) => {
+  test.skip(!serviceUp, skipReason);
+  test.setTimeout(300_000);
+
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto("/");
+  await page.getByRole("button", { name: "Tote", exact: true }).click();
+  await page.getByRole("button", { name: "Next", exact: true }).click();
+  // `.eladd-row` is the add-element row. Once an element exists its own chip
+  // also matches the name "Artwork", so the bare role query is ambiguous from
+  // the second add onwards.
+  const addArtwork = page.locator(".eladd-row button", { hasText: "Artwork" });
+  await addArtwork.click();
+  await page.locator(".dgp-upload input[type=file]").setInputFiles(ART_PNG);
+  await expect(page.locator(".dgp-stats")).toBeVisible({ timeout: 120_000 });
+
+  const stitches = async () => {
+    const m = (await page.locator(".fieldmeta").innerText()).match(/([\d,]+) stitches/);
+    return m ? Number(m[1].replace(/[^\d]/g, "")) : 0;
+  };
+  const afterOne = await stitches();
+  expect(afterOne).toBeGreaterThan(0);
+
+  // A second one, so no single quality entry is the design any more.
+  await addArtwork.click();
+  await page.locator(".dgp-upload input[type=file]").setInputFiles(ART_PNG);
+  await expect.poll(stitches, { timeout: 120_000 }).toBeGreaterThan(afterOne);
+
+  await page.getByRole("button", { name: "3 Review" }).click();
+  await expect(page.getByRole("heading", { name: "Ready to stitch" })).toBeVisible();
+
+  const num = (s) => Number(String(s).replace(/[^\d]/g, ""));
+  const caption = await page.locator(".fieldmeta").innerText();
+  const combined = num((caption.match(/([\d,]+) stitches/) || [])[1]);
+  expect(combined).toBeGreaterThan(0);
+
+  const summary = page.locator("dl.summary");
+  const dts = await summary.locator("dt").allInnerTexts();
+  const dds = await summary.locator("dd").allInnerTexts();
+  const i = dts.findIndex((t) => t.trim() === "Stitches");
+  expect(i, "the recap states a stitch count for a two-element design").toBeGreaterThanOrEqual(0);
+  expect(num(dds[i]), `recap says ${dds[i]}, the field says ${combined}`).toBe(combined);
+
+  // Two entries, and each says which element it is about.
+  const names = page.locator(".quality .qr-name");
+  expect(await names.count()).toBe(2);
+});
