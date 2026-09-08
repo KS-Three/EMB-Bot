@@ -10535,6 +10535,9 @@ Also: MASTER_SCOPE area 1 carries a one-line pointer (790 of 800).
 
 ## 2026-09-08 — the thin-stroke plan's two instruments, and what they read on first run
 
+
+> **Superseded in part, later the same day.** The thin-stroke RECALL figures below (design totals and the 1.0–1.5 mm band) counted Fremont's white ground — one component threading the gaps between letters, median width 1.32 mm, p90 3.77 — as a 1,758 mm stroke. The per-component lost counts and the sub-1.0 mm bands stand. The corrected instrument and its re-measured tables are in the entry "the thin-stroke instrument counted the ground, retracted and re-measured" further down; quote from there.
+
 PR 1 of `docs/superpowers/plans/2026-09-08-real-logo-lane-and-thin-strokes.md`:
 two instruments, no engine change, on Kent's "yes, both plans' first PRs".
 
@@ -10777,6 +10780,9 @@ orange −0.241 / −0.149 / −0.030 / −0.007 / −0.004; ribbon −0.033 / �
 
 
 ## 2026-09-08 — `keep_thin_strokes`: the flat lane stops absorbing by adjacency, measured OFF against ON
+
+
+> **Superseded in part, later the same day.** The thin-stroke RECALL figures below (design totals and the 1.0–1.5 mm band) counted Fremont's white ground — one component threading the gaps between letters, median width 1.32 mm, p90 3.77 — as a 1,758 mm stroke. The per-component lost counts and the sub-1.0 mm bands stand. The corrected instrument and its re-measured tables are in the entry "the thin-stroke instrument counted the ground, retracted and re-measured" further down; quote from there.
 
 PR 2 of `docs/superpowers/plans/2026-09-08-real-logo-lane-and-thin-strokes.md`
 (PR #426), Kent's pick after PR 1's instruments landed. One flag,
