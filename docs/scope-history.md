@@ -10486,3 +10486,48 @@ the DST cross-cutting section, and the 09-07 sweep to the At-a-glance row.
 
 **The file now sits at exactly 800.** That is at the ceiling, not under it: the
 next entry has to move something out first.
+
+## 2026-09-08 — a quality review of the whole area, and three measurements under it
+
+Kent asked for the ten to fifteen changes that would most improve digitizing
+quality, not the low-hanging ones. The answer is `docs/quality-review-2026-09-08.md`:
+fourteen changes ranked, three cheap browser-lane defects from an audit pass,
+and what was left off. He picked items 1+2 (a real-logo lane with thin-stroke
+retention) and 3 (sub-pixel edge extraction) to start. Three measurements were
+made on `main` at `bca8434` to rank them, and each is a number this record did
+not have:
+
+- **The curve-refinement gate reaches 2 of 29 fixtures at 80 mm.**
+  `_CURVE_MIN_PX_PER_MM` = 20 admits `logo_hotel_fremont` (31.2 px/mm) and
+  `logo_golden_tee` (27.4); `logo_script_tires` misses at 19.8 and everything
+  else sits at 1.8–19.2. Every design Kent called jagged on 08-27 is under the
+  gate, so defect 22's flip is byte-identical on the designs it was asked for.
+- **MARINE sews tatami at 100 mm with `satin_per_stroke` ON, and the cap is
+  why.** Read off the emitted plan (`tools/sewn_tiers.py`, new): all five
+  letters (164–211 mm²) are `fill` both ways; the flag promotes three shapes
+  of 21.9, 22.7 and 34.2 mm² (11,373 → 11,205 stitches, 23 trims both).
+  `stroke_verdicts --all` gives the reason: every stroke of every letter is
+  `dt_p90_cap` at p90 5.05–8.00 mm. At 80 mm two of five still hit the cap.
+  **Correction:** `docs/kent-review-2026-09-03.md` quotes those strokes at
+  2.6–3.2 mm; the same distance transform read on the skeleton gives
+  half-widths p50 2.45–2.80 / p90 2.71–3.55, i.e. widths 5.4–7.1 mm. The
+  review's figure is the half-width. The letters are 5–7 mm columns and the
+  pro satins all six.
+- **The pro's sewn Becker files carry columns past the 5.0 mm cap.** Over
+  all crosses `satin_columns` finds: the large hat/polo files p95 5.2–5.5,
+  p99 6.1–6.4, max 8.5–9.1, with **7.4–22.7%** of crosses over 5.0 mm; the
+  chest/hat-small files p99 5.0, max 7.0, 1.0% over. DOCTRINE's ruling not to
+  raise the number stands; this measures what the 5–6.5 mm band is worth.
+
+The audit pass (same session, `digitize()` at shipped defaults over the ten
+real-art fixtures) added two readings that no single doc carried together:
+the largest dropped content by area on real logos is the enclosed-background
+default (Becker 40.8%, Golden Tee 42.4% never become thread), and in-shape
+trims dominate (Fremont 70 of 113). It also found that the browser engine
+emits **no lock stitches on any lane** — a grep for tie or lock over `src/`
+and `app/src/lib/` finds nothing, and a decoded geneva "AB" shows
+`stitch, trim, jump, stitch` around every cut — which the review lists with
+two other cheap JS-lane defects (no fill stagger, connectors sewn across
+counters under 4 mm) ahead of the ranked list.
+
+Also: MASTER_SCOPE area 1 carries a one-line pointer (790 of 800).
