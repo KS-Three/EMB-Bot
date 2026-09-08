@@ -244,7 +244,17 @@ works":
 | **not offered** | `xxx` | Singer XXX | 500 | **70 st, 1 cc, 1725 × 200 — exact** |
 | **not offered** | `u01` | Barudan U01 | 478 | 70 st, **0 cc**, **1825 × 300** |
 
-**Three of the four are ready and one is not, which nobody knew.** PEC and XXX
+**Correction, same night: the U01 half was ALREADY KNOWN and I claimed it was
+not.** `DownloadStep.svelte` has carried *"U01 is the one that would need work
+first: it came back with ZERO colour changes on a two-colour design"* since
+**2026-09-07, PR #399** — the very PR that added the JEF button. This entry
+first read "which nobody knew", which was false about the one format the
+project had actually already measured. What is new here is the **positive**
+evidence for the other three: the earlier note said adding a format is "one
+line in `exporters.js` and one button", without any round-trip showing that a
+particular one survives it. Now there is one.
+
+PEC and XXX
 round-trip exactly as well as the four already shipping. VP3 is off by **one
 unit — 0.1 mm** on width, which is quantisation, not a defect. **U01 loses the
 colour change entirely** (0 against 1) and reads back 100 units larger on both
@@ -253,11 +263,15 @@ so U01 must NOT be exposed on this evidence. It is also the least relevant of
 the four here — Barudan is industrial, and this product is aimed at home
 machines.
 
-**So the recommendation is PEC + VP3 + XXX, and U01 held.** Husqvarna Viking,
-Pfaff and Singer are home brands with a real installed base; the change is
-adding three entries to `SERVICE_ONLY_FORMATS` and three buttons, on the JEF
-pattern already in the file (disabled with a reason when the service is down —
-there is no browser encoder for any of them).
+**So the recommendation is PEC + VP3 + XXX, and U01 held — but it is a
+RECOMMENDATION, not a fix waiting to be applied.** `DownloadStep.svelte` says
+so in the same comment: *"Which machines this product supports is a scope call,
+and PRODUCT.md's is DST/PES/JEF (+EXP)."* That makes the format list Kent's,
+and this entry exists to make the call cheap rather than to pre-empt it.
+Husqvarna Viking, Pfaff and Singer are home brands with a real installed base;
+the mechanical change is three entries in `SERVICE_ONLY_FORMATS` and three
+buttons, on the JEF pattern already in the file (disabled with a reason when
+the service is down — there is no browser encoder for any of them).
 
 **Not done in the same pass because `DownloadStep.svelte` is being rewritten by
 the DST-caveat removal**, and two edits to one file across two PRs is how a
