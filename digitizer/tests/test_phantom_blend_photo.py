@@ -76,6 +76,8 @@ from digitizer_core.stage2_photo_segment import (_PAGE, _blend_side,
                                                  dissolve_phantom_blends)
 from digitizer_core.warnings_codes import PHOTO_BLEND_DISSOLVED
 
+from .conftest import PRE_REC4_MASK
+
 TESTDATA = Path(__file__).resolve().parent.parent / "testdata"
 BRIDGE = TESTDATA / "photo" / "logo_bridge_bar.jpg"
 
