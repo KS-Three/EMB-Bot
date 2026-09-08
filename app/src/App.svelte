@@ -2,7 +2,7 @@
   import { update, updateElement, updateElements, selectElement, toggleSelectElement, addElement, addSeededTextElement, removeElement, resolveArtworkType, deriveProjectName, UNTITLED_NAME } from "./lib/project.js";
   import { createHistory } from "./lib/history.js";
   import { applyTemplate } from "./lib/templates.js";
-  import { canAdvance, nextStep, prevStep } from "./lib/flow.js";
+  import { canAdvance, nextStep, prevStep, isSewable } from "./lib/flow.js";
   import { designSummary } from "./lib/summary.js";
   import { sewSummary } from "./lib/estimate.js";
   import { generateAll } from "./lib/generate.js";
@@ -138,6 +138,28 @@
       preflight: el.preflight,
       stats: el.stats,
     }));
+
+  // Does the quality report above cover the WHOLE design, or only part of it?
+  //
+  // This is the question `!qualityEntries.length` was standing in for, and it
+  // is not the same question. Measured in the shipped app 2026-09-08 on the
+  // commonest thing a customer combines — a name and a logo:
+  //
+  //   canvas caption ....... 3,219 stitches   (966 lettering + 2,253 artwork)
+  //   review summary ....... 2,253 stitches   the artwork alone
+  //
+  // One digitized element was enough to suppress `sewFacts`, so the screen
+  // headed "Ready to stitch" understated the design by 30% — and QualityReport
+  // hides its per-entry label at exactly one entry, so nothing said the number
+  // was about a part. The comment below promised "one design never gets two
+  // answers"; what a mixed design got was one answer to a different question.
+  //
+  // Whole-design totals are suppressed only when the digitized elements ARE
+  // the design, which is the case that comment was written for.
+  $: digitizedCoversDesign = (() => {
+    const sewable = (project.elements || []).filter(isSewable);
+    return sewable.length > 0 && sewable.every((el) => el.type === "digitized");
+  })();
 
   // What the COMBINED design costs to sew, for the review step's summary —
   // the numbers `qualityEntries` above cannot supply for a browser-built
@@ -1105,13 +1127,13 @@
                  browser lane produced none at all — a lettering design reached
                  this screen with the garment, the hoop, the content, the font,
                  and not one number about the sew-out. -->
-            {#if !qualityEntries.length}
+            {#if !digitizedCoversDesign}
               {#each sewFacts as row}
                 <div><dt>{row.label}</dt><dd>{row.value}</dd></div>
               {/each}
             {/if}
           </dl>
-          <QualityReport entries={qualityEntries} />
+          <QualityReport entries={qualityEntries} partial={!digitizedCoversDesign} />
           <p class="hint">Not quite right? Go back to adjust the garment or content — the field updates live.</p>
           <SizePanel project={{ ...project, ...selectedElement }} {designDims} on:update={(e) => elUpdate(selectedElement.id, e.detail)} />
         </div>

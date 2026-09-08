@@ -20,6 +20,13 @@
   // the selection because only it knows the project; this component owns how
   // a report READS.
   export let entries = [];
+  // True when the design has sewable content this report does NOT cover — a
+  // name beside a logo, say. It only changes whether each entry names itself:
+  // at exactly one entry the label was hidden as redundant, which is right
+  // when that entry IS the design and wrong when it is a part of one. On a
+  // mixed design the unlabelled "2,253 stitches" sat under a two-item content
+  // list describing a 3,219-stitch design (measured 2026-09-08).
+  export let partial = false;
 
   // A grade is a deduction from 100 (info 0, warn 12, block 30), so it counts
   // findings by weight rather than measuring the cloth. Treated as a
@@ -132,7 +139,7 @@
       {@const bill = facts(e.preflight, e.stats, spools)}
       <div class="qr">
         <div class="qr-head">
-          {#if entries.length > 1}<span class="qr-name">{e.label}</span>{/if}
+          {#if entries.length > 1 || partial}<span class="qr-name">{e.label}</span>{/if}
           {#if e.preflight}
             <span class="qr-grade tone-{tone(e.preflight.grade)}">
               <b>{e.preflight.grade}</b>
