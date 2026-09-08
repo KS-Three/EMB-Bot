@@ -2,12 +2,24 @@
 
 **Date:** 2026-07-31 · **Verdict: EMB-Bot's JS table is transposed. The consensus table is correct.**
 
-> **Status added 2026-09-08 — the memo below is the original, unedited.** Two
-> separate defects were reported here, and only one is still open.
+> **Status added 2026-09-08 — the memo below is the original, unedited.** Both
+> defects it reported are now closed, and the memo's verdict was right on both.
 >
-> - **The AXIS finding (the memo's subject) is still open**, and the writer half
->   is Kent's call — see CLAUDE.md footgun #1. The *import* half was fixed
->   2026-09-07 (`EMB.decodeDSTStandard`).
+> - **The AXIS finding (the memo's subject) is FIXED (2026-09-08).** The memo
+>   said "EMB-Bot's JS table is transposed; the consensus table is correct",
+>   and that is exactly what it was: X sat in the HIGH nibble of every record
+>   byte and Y in the LOW one, the reverse of all four sources cross-checked
+>   below. Both weight tables were swapped, in `src/dst.js`'s writer and in
+>   `src/dstimport.js`'s `decodeDelta`. `encodeRecord` is now byte-identical to
+>   `pystitch.DstWriter.encode_record` across ten deltas, the crossval DST
+>   control reads `identity` beside PES and EXP, and a rendered "FRITSCH"
+>   export that drew a vertical column of reversed letters now draws FRITSCH
+>   upright at its own 127.2 × 22.6 mm. The *import* half had been worked
+>   around on 2026-09-07 (`EMB.decodeDSTStandard`); that wrapper is now a plain
+>   alias, as its own comment predicted.
+>   **One thing the fix does not do:** a `.dst` written before it is in the old
+>   dialect and re-imports transposed. That was already true from 2026-09-07,
+>   so nothing regressed — but old files are not repaired.
 > - **The "bonus finding" in §2 — colour change written `0x43` instead of
 >   `0xC3` — is FIXED (2026-09-08).** It turned out to be independent of the
 >   axis it was filed with: it moves no geometry, and EMB-Bot's own decode is

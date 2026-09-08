@@ -344,20 +344,21 @@ area they drag down, documented once here.
 
 ### DST codec axis bug
 
-EMB-Bot's browser DST codec (`src/dst.js` / `src/dstimport.js`) disagrees with the
-Tajima/pyembroidery standard — confirmed, wrong in **both directions**, and it round-trips
-against itself so the pair's own tests never saw it. **The WORD was wrong until 2026-09-07: it
-is a MIRROR, not a quarter turn.** A bbox swap fits both equally, nobody had looked at the
-canvas, and the Studio told customers to "use Rotate to stand it up" — which no rotation can
-do, and the app has no mirror control. **The writer's output has now been DRAWN, not inferred** — a "FRITSCH" export decoded by
-pystitch reads backwards at 15.1 x 101.8 mm where PES/EXP/JEF each read upright at
-101.8 x 15.1, and the Studio's DST caveat is accurate clause for clause (scope-history 09-07). **The IMPORT half is FIXED 2026-09-07**
-(`EMB.decodeDSTStandard`; `decodeDST` and its 12 round-trip tests untouched): a becker logo
-lands `96×58 mm` reading forwards, and PES/EXP/JEF re-export **identity, rms 0** against the
-source file where all three were mirrored. **The COLOUR half is FIXED 2026-09-08.** `dst.js` wrote the colour-change byte `0x43` not `0xC3`, read as a spurious sequin toggle, so every multi-colour DST sewed straight through elsewhere — no stop, no thread change. Now `0xC3`: pystitch reads 1 colour change and no sequin, stitch count unchanged, our own decode byte-identical (`dstimport` already tested `b2 & 0x40` ahead of the jump bit). Independent of the axis — it moves no geometry — and pinned in the crossval DST control, which asserted the defect until now; the Download caveat's "may not see the color stops" clause is gone, asserted as an absence in `DownloadStep.spec.js`. **A SECOND deferred DST call was priced on the wrong lane, re-measured 2026-09-07.** `encodeDST` does not stop at the terminal `{type:"end"}` sentinel the way `exp.js` and `pes.js` both do (one line: `if (st.type === "end") break;`), so it writes it as a real stitch. The 2026-08-04 verdict deferred that as "one extra phantom stitch", true of LETTERING — where the sentinel sits on the last stitch and the record is zero-delta, and where `buildLetteringDesign` in fact appends none at all. On the imported/digitized lane `buildImportedDesign` puts the sentinel at the ELEMENT'S OFFSET: measured on a real 95.7×58.3 mm logo, the DST ends with a stitch **0.07 mm from the design's centre, 46.4 mm from the previous one** — a stray needle penetration mid-design with 46 mm of travel to reach it, on **every** single-element imported, digitized, shape or manual project. PES and EXP of that same design end where the design ends (11,274 stitches against DST's 11,275). Pinned in `test/crossval-stitch-formats.test.js`'s DST control, which had shown `decoded 16 / expected 15` since the day it was written without anyone asserting it. Still Kent's. *(2026-09-07)* The EXPORT half is still Kent's, and it now
-owns the leftover: EMB-Bot's own `.dst` read back in is the file that comes in mirrored (named
-in DesignPanel; the lever is My designs). `dst-codec-axis-discrepancy` in memory.
-*(export 2026-08-22; import measured and fixed 2026-09-07)*
+**FIXED 2026-09-08, both directions.** EMB-Bot's browser DST codec (`src/dst.js` /
+`src/dstimport.js`) had X in the HIGH nibble of every record byte and Y in the LOW one; the
+standard is the reverse. It round-tripped against itself, so the pair's own tests never saw it.
+**The WORD was wrong until 2026-09-07: it is a MIRROR, not a quarter turn.** A bbox swap fits
+both equally, nobody had looked at the canvas, and the Studio told customers to "use Rotate to
+stand it up" — which no rotation can do, and the app has no mirror control.
+**The fix is the two weight tables swapped, in the writer and in `decodeDelta`.** Both now match
+`pystitch.DstWriter.encode_record` bit-for-bit (10/10 byte-identical across a spread of deltas),
+the crossval DST control reads `identity` beside PES and EXP, and a "FRITSCH" export that drew a
+vertical column of reversed letters now draws FRITSCH upright at its own 127.2 × 22.6 mm.
+`decodeDSTStandard` — the 2026-09-07 import workaround — is a plain alias of `decodeDST` now, as
+its own comment predicted. **Still true:** a `.dst` written BEFORE the fix is in the old dialect
+and re-imports transposed; that was already so from 2026-09-07, so nothing regressed, but old
+files are not repaired either. The Studio's DST caveat now OVER-warns and comes out separately.
+*(fixed 2026-09-08 — `test/dst.test.js` byte pins from pystitch, crossval DST control)* **Two more DST defects closed the same week, both independent of the axis.** The colour-change byte was `0x43` where the standard wants `0xC3`, so a standard reader saw a sequin toggle and ZERO colour stops — every multi-colour DST sewed straight through elsewhere (fixed 2026-09-08, #412). And `encodeDST` wrote the terminal `{type:"end"}` sentinel as a real stitch: on the imported/digitized lane that is a stray needle penetration 0.07 mm from a logo's centre with 46.4 mm of travel to reach it, and it widened the header's declared bounding box to a corner the design does not occupy. Full teardown and the before/after numbers: DOCTRINE 2026-09-07/08, `docs/dst-axis-verdict-2026-07-31.md`, `docs/scope/4-export-formats.md`, `dst-codec-axis-discrepancy` in memory.
 
 **Not a conflict:** CLAUDE.md's "browser DST is EMB-Bot-internal only" is about
 orientation elsewhere; `digitizer/README.md`'s "browser DST stays the default"

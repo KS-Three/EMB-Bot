@@ -71,13 +71,14 @@ test("crossval control: DST shows the documented axis transposition", async (t) 
   await ensureRun();
   const r = skipOrGet(t, "dst.notrim");
   if (!r) return;
-  // DOCUMENTS KNOWN DEFECT (docs/dst-axis-verdict-2026-07-31.md): a
-  // standard-conformant reader sees the design transposed — decoded point is
-  // (y, -x) of the design point instead of (x, -y). If this reads
-  // "identity", the codec was fixed: update the verdict docs and this pin.
-  // If it reads anything else, the HARNESS is broken.
-  assert.strictEqual(r.fit.transform, "anti-transpose");
-  assert.ok(r.fit.rms < 0.5, "transposition is exact, rms=" + r.fit.rms);
+  // FIXED 2026-09-08 (was DOCUMENTS KNOWN DEFECT). This asserted
+  // "anti-transpose" and its own comment said: 'If this reads "identity", the
+  // codec was fixed: update the verdict docs and this pin.' It reads identity
+  // now. `dst.js` writes X to the low nibble and Y to the high one,
+  // byte-identical to `pystitch.DstWriter.encode_record` across ten deltas, so
+  // DST joins PES and EXP as standard-conformant.
+  assert.strictEqual(r.fit.transform, "identity");
+  assert.ok(r.fit.rms < 0.5, "exact, rms=" + r.fit.rms);
   // FIXED 2026-09-08 (was DOCUMENTS KNOWN DEFECT): the colour change is
   // written 0xC3, so a standard reader sees a real colour stop. It was 0x43,
   // which is not a colour change to anyone but us — pystitch read ZERO colour

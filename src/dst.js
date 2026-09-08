@@ -5,23 +5,40 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function () {
   const MAX_DELTA = 121;
 
-  // Signed-weight -> [byteIndex, bitMask], from the authoritative bit-weight table.
-  // Byte0: x+1=0x80 x-1=0x40 x+9=0x20 x-9=0x10  y-9=0x08 y+9=0x04 y-1=0x02 y+1=0x01
-  // Byte1: x+3=0x80 x-3=0x40 x+27=0x20 x-27=0x10 y-27=0x08 y+27=0x04 y-3=0x02 y+3=0x01
-  // Byte2: x+81=0x20 x-81=0x10 y-81=0x08 y+81=0x04
+  // Signed-weight -> [byteIndex, bitMask]. X is the LOW nibble of every byte
+  // and Y the HIGH nibble, bit-for-bit with `pystitch.DstWriter.encode_record`
+  // (and with libembroidery, EduTech and achatina — the four sources
+  // docs/dst-axis-verdict-2026-07-31.md cross-checked).
+  //
+  // Byte0: x+1=0x01 x-1=0x02 x+9=0x04 x-9=0x08   y+1=0x80 y-1=0x40 y+9=0x20 y-9=0x10
+  // Byte1: x+3=0x01 x-3=0x02 x+27=0x04 x-27=0x08 y+3=0x80 y-3=0x40 y+27=0x20 y-27=0x10
+  // Byte2: x+81=0x04 x-81=0x08                   y+81=0x20 y-81=0x10
+  //
+  // THESE TWO TABLES WERE SWAPPED until 2026-09-08 -- X in the high nibble,
+  // Y in the low one. That is the transposition the 2026-07-31 verdict
+  // identified, and it meant EMB-Bot round-tripped only itself: a standard
+  // reader saw every design a quarter turn round AND mirrored, letters
+  // backwards. Rendered both ways that day through pystitch on a "FRITSCH"
+  // lettering export -- the old bytes draw a vertical column of reversed
+  // letters, the new ones draw FRITSCH upright at 127.2 x 22.6 mm, the design's
+  // own size. `encodeRecord` is now byte-identical to pystitch across ten
+  // deltas, and the crossval DST control reads "identity" beside PES and EXP.
+  //
+  // `dstimport.js`'s `decodeDelta` was swapped in the same commit; the two are
+  // one codec and must move together.
   const X_WEIGHTS = {
+    "1":  [0, 0x01], "-1":  [0, 0x02],
+    "9":  [0, 0x04], "-9":  [0, 0x08],
+    "3":  [1, 0x01], "-3":  [1, 0x02],
+    "27": [1, 0x04], "-27": [1, 0x08],
+    "81": [2, 0x04], "-81": [2, 0x08],
+  };
+  const Y_WEIGHTS = {
     "1":  [0, 0x80], "-1":  [0, 0x40],
     "9":  [0, 0x20], "-9":  [0, 0x10],
     "3":  [1, 0x80], "-3":  [1, 0x40],
     "27": [1, 0x20], "-27": [1, 0x10],
     "81": [2, 0x20], "-81": [2, 0x10],
-  };
-  const Y_WEIGHTS = {
-    "9":  [0, 0x04], "-9":  [0, 0x08],
-    "1":  [0, 0x01], "-1":  [0, 0x02],
-    "27": [1, 0x04], "-27": [1, 0x08],
-    "3":  [1, 0x01], "-3":  [1, 0x02],
-    "81": [2, 0x04], "-81": [2, 0x08],
   };
   // Weight per balanced-ternary digit position i (3^i), i = 0..4.
   const MAGNITUDES = [1, 3, 9, 27, 81];
