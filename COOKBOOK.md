@@ -1239,6 +1239,21 @@ and controllable to the user.
   reload. `runtime` (`{flats, workImages}`) is deliberately NOT persisted —
   that is why `image` elements keep `sourcePng` and why `imageSource.js`
   exists.
+
+  **Two things about that registry are not obvious from reading it (both
+  2026-09-07).** First, a design's NAME is derived from its content while it is
+  still unnamed — `deriveProjectName` in `project.js`, gated by `isAutoNamed`
+  and written by `autoNameProject`; a name the customer types is sticky and is
+  never overwritten. Anything that changes `project` must reach `App.persist()`
+  or the name silently stops tracking: undo was the one path that did not, and
+  the design read HELLO while every name surface read GOODBYE. Second, **a name
+  and a project's membership of the registry live ONLY in `embstudio:index`** —
+  there is no second copy in the record — so a failed index write is real data
+  loss and `renameProject`/`deleteProject` propagate it. `saveProject`
+  deliberately does not: its design landed in its own record, and raising "your
+  changes aren't being saved" over a saved design would be its own lie. Delete
+  writes the index BEFORE removing the record, since a `removeItem` is never
+  quota-blocked.
 - **`digitizer/`** — Python auto-digitizing engine + optional FastAPI
   service (`digitizer_core/` importable lib, `digitizer_service/` wrapper).
   Own venv, own test suite, own docs. See "The Python digitizer" above.
@@ -1292,6 +1307,27 @@ here since it explains *why*, not *what's currently true*.
   both live on `main`, neither failing a spec. Drive the running app at more
   than one width, and read computed styles rather than the stylesheet —
   cascade bugs do not show up in the rule you are looking at.
+- **Looking at it in a browser is not enough for what the app GENERATES.**
+  The convention above catches what a screen shows; it does not catch what a
+  downloaded file contains. The printed worksheet was covered by three tiers of
+  test — a call recorder, a real-PDF byte/structure check, and a text
+  extraction compared against the screen — and on 2026-09-07 all three passed
+  while the operator's thread list was being drawn at y = 11.09 in on an
+  11.00 in page, i.e. off the paper, with a blank second page after it. **A
+  string is in a PDF's content stream whether or not it lands on the sheet**,
+  and the recorder logged `text(str, x, y)` without recording which PAGE, so it
+  could not have answered the question even in principle. Render the artifact
+  and look at it (`pypdfium2` is one call), and for stitch files decode with
+  `pystitch` and DRAW it — CLAUDE.md footgun #1 exists because a swapped
+  bounding box fits a quarter turn and a mirror equally.
+- **Hand-written asset paths are document-relative, never `/…`.**
+  `app/vite.config.js` sets `base: "./"`, whose entire purpose is that the
+  bundle works wherever it is served, and Vite honours it for everything it
+  owns. Five hand-written `/fonts/…` paths did not, so below the domain root
+  the lettering lane produced nothing (7x 404 on `manifest.json`) and the font
+  LICENCE links 404'd with it. No test could see it: every suite here runs
+  against the dev server at a root, where both forms resolve identically.
+  `app/src/lib/assetPaths.spec.js` pins the rule at source level.
 - **A regression test must be run against the real broken state before you
   trust it.** The first spec written for the 2026-08-25 simulator regression
   passed with the bug deliberately re-introduced, because the repro was

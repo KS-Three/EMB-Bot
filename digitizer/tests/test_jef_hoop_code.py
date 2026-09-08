@@ -43,20 +43,11 @@ import struct
 import pytest
 
 fastapi = pytest.importorskip("fastapi", reason="service extra not installed")
-from fastapi.testclient import TestClient  # noqa: E402
-
-from digitizer_service.app import app  # noqa: E402
 
 # JefWriter's own constants, by value. Named here rather than imported so this
 # file states what it believes and fails loudly if the writer renumbers them.
 HOOPS_MM = {0: (110, 110), 1: (50, 50), 2: (140, 200), 3: (126, 110), 4: (200, 200)}
 HOOP_CODE_OFFSET = 32   # bytes: after the 4+4 header, the date, and the counts
-
-
-@pytest.fixture(scope="module")
-def client():
-    with TestClient(app) as c:
-        yield c
 
 
 def _bar_design(width_mm: float, height_mm: float = 12.0) -> dict:

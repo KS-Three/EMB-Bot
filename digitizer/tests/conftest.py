@@ -6,6 +6,51 @@ import pytest
 
 from digitizer_core import PipelineConfig, run_stages
 
+
+# SESSION-scoped, and shared by every module that needs a client. It must not
+# be per-module, and that is not a style preference -- a per-module client
+# breaks the modules that run after it.
+#
+# `digitizer_service.app` holds `registry = JobRegistry(workers=1)` as a
+# MODULE-LEVEL singleton, and the app's `lifespan` calls `registry.shutdown()`
+# on shutdown, which is `ThreadPoolExecutor.shutdown(wait=False,
+# cancel_futures=True)` -- permanent. A module-scoped client therefore kills
+# the pool for every LATER module in the same process, and a fresh TestClient
+# does not revive it: only shutdown acts, startup does not rebuild the pool.
+#
+# Two modules used to build their own (test_service.py and
+# test_jef_hoop_code.py, the latter added 2026-09-07); both now take this one.
+# Under `-n auto` the collision only bites when xdist happens to put both in
+# the same worker, which is why it was intermittent: green locally and on one
+# main run, red on two consecutive CI runs of the same tree -- 13 failures in
+# test_service.py reading `RuntimeError: cannot schedule new futures after
+# shutdown` and `assert 'queued' == 'done'`.
+#
+# Measured 2026-09-08, single process: the two fast manual tests pass ALONE in
+# 0.86s and fail in 62s when test_jef_hoop_code.py runs first.
+#
+# One client per session means the app starts and stops once per worker, so no
+# module can take the pool away from another. Do not re-add a module-scoped
+# `client` fixture; add users to this one.
+#
+# Imported INSIDE the fixture, not at module scope: fastapi is the optional
+# `service` extra (pyproject keeps it optional so digitizer-core stays usable
+# as a plain library), and conftest.py is imported for EVERY test here -- a
+# module-level `from fastapi.testclient import TestClient` would fail
+# collection of the whole suite on a no-extras install, not just the service
+# tests. The modules that use this fixture already `pytest.importorskip`
+# fastapi themselves; the guard here keeps the conftest honest on its own.
+@pytest.fixture(scope="session")
+def client():
+    pytest.importorskip("fastapi", reason="service extra not installed")
+    from fastapi.testclient import TestClient
+
+    from digitizer_service.app import app
+
+    with TestClient(app) as c:
+        yield c
+
+
 TESTDATA = Path(__file__).resolve().parent.parent / "testdata"
 
 # The real-read OCR tests skip when the tesseract binary is absent — but

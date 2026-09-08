@@ -436,6 +436,37 @@ out of the saved project instead.
   the digitizer isn't running. Expected; text/lettering is unaffected and the
   Content step shows an offline note with a "check again" link.
 
+- **`npx playwright test` from the REPO ROOT runs the wrong suites and its
+  output OPENS green.** The Playwright config lives in `app/`, so from the root
+  there is none, and Playwright falls back to its default `testMatch` over the
+  whole tree. That sweeps up two suites it cannot run and imports every file:
+
+  - the **engine's** `test/*.test.js`, which register with `node:test` at import
+    time and therefore actually **run**, printing a long TAP stream of `ok N …`
+    lines;
+  - the **Studio's** `app/src/**/*.spec.js`, which fail as
+    `TypeError: Cannot redefine property: Symbol($$jest-matchers-object)` (two
+    runners' `expect()` colliding) and as `SyntaxError` on any `.svelte` import
+    (no Svelte transform outside vitest).
+
+  Playwright then says `Playwright Test did not expect test() to be called
+  here.` and finishes `Error: No tests found` / `Total: 0 tests in 0 files`.
+
+  **The trap is the shape of the output, not the exit code.** It exits **1**
+  (measured 2026-09-08, both `--list` and a plain run — an earlier note here
+  claimed exit 0, which is wrong), but the first ~1300 lines are passing engine
+  TAP and the verdict is at the very bottom. Read the TAIL. The skill already
+  says never pipe a run to `tail` because you get tail's exit code; this is the
+  mirror — never judge one by its head either.
+
+  It also drops `test-results/.last-run.json` at the **repo root**, where
+  `.gitignore` does not cover it (`/test-results/` is ignored only inside
+  `app/`). Delete it, and see CLAUDE.md footgun #2 on never `git add -A`-ing
+  from the root.
+
+  Correct invocation: `cd app && npx playwright test` (it starts its own dev
+  server on 5183 and stops it).
+
 ## Standalone bundle — deleted, do not rebuild
 
 `EMB-Bot-standalone.html` was deleted 2026-08-04 (Kent's call) and

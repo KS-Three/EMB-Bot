@@ -3417,3 +3417,25 @@ sweep the range instead of guessing which values matter.**
 
 Fifth time this session a new test passed against its own subject, and again it
 was mutation that found it, not reading.
+
+## Correction — the `cfg.is_photographic` reachability entry described a world that had moved (2026-09-02/09-07)
+
+Moved verbatim from MASTER_SCOPE's decision queue 2026-09-07 under the
+800-line budget. It is a correction, and the skill's rule is that corrections
+are kept visible rather than tidied away — so it lives here, where nothing
+goes stale, instead of in a queue of things still open.
+
+11. **RESOLVED 2026-09-02 (Kent's call) — the control that helps IS reachable,
+   and this entry described the world before that.** It said
+   `cfg.is_photographic` "appears **nowhere** in `app/src` (grep, 0 hits)" and
+   that the reading row's "It's a photo" correction sent the harsher
+   `forced_class="photo_subject"` instead. Both halves moved that day and the
+   entry did not: `isPhoto` now sends `is_photographic=true`
+   (`digitizer.js:180`; **14** hits in `app/src`), and `forced_class` stays
+   reachable only for the OPPOSITE correction — flat art on a misrouted photo.
+   Current state and its numbers are defect 15's "UI HALF FIXED" note; the
+   08-28 measurement table this entry led with, **26 stops / 0.591 coverage**
+   included, is in scope-history 08-28 and is superseded — the forced route
+   measures **17** today. Still open is DETECTION, which is defect 15's.
+   Both source files had already flagged this staleness in their own comments.
+   *(confirmed 2026-09-07 — grep; `digitizer.js`, `DigitizePanel.svelte`)*
