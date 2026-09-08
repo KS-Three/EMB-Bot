@@ -140,3 +140,35 @@ assumed). Scope-history's fourth 09-08 entry has the OFF → ON table.
   explosion first.
 - `parse_flag` lives in `tools/thin_strokes.py`; all three instruments take
   `--flag NAME[=VALUE]`, so any config A/B is one command.
+
+## Plan A PR 3 — the photo lane's thin population, BUILT (PR #427) — and a retraction
+
+- **RETRACTED: the thin-stroke recall figures of PR 1 and PR 2.** The
+  instrument tested width at the MEDIAN along the skeleton, and Fremont's
+  white ground — one component whose skeleton threads the gaps between
+  letters, median 1.32 mm, p90 3.77, max 7.41 — passed as a 1,758 mm
+  stroke, sewn and "recalled". Fremont forced flat is **61.2% → 92.7%**, not
+  86.1% → 97.3%; routed OFF is 84.8%, not 94.3%. Per-component lost counts
+  and the sub-1.0 mm bands were never affected. The definition now lives in
+  ONE place, `digitizer_core/thin_ink.iter_thin_components` (p90 width, 3 px
+  floor, `RUN_MIN_LOOP_MM / 2`, one ground), shared by engine and instrument.
+  **Rule: a median width along a skeleton is not "thin" — test p90.** A
+  pierced-panel test pins it.
+- **The photo lane's population** (`thin_ink.find_thin_ink`): flat quantiser
+  over the foreground before SEEDS, strokes leave `base_valid`, come back as
+  their own label block after the palette (the enclosed-population
+  precedent). Routed Fremont **18 → 3** lost strokes, 84.8% → 92.5%, at FEWER
+  stitches and trims (17,400 → 16,006; 114 → 66) — 138 strokes SEEDS
+  shattered now chain as regions. Drone 29 → 2 lost, 51% → 96%, +59 trims.
+- **The one-ground rule** (`THIN_INK_GROUND_SHARE` 0.75): the length gate
+  does not separate a stroke from a posterised band; the two-pixel ring
+  around a stroke is one label, a band's is two. 0.75 keeps Fremont's 162
+  strokes whole; 0.9 costs 15 of them.
+- **Photographs are NOT empty** at any share that keeps Fremont whole (owl
+  199 mm, chrome 230 mm at 0.75), so the plan's "empty on photographs" is
+  met by a GATE: the pipeline asks for the population on the `gradient`
+  class only (`thin_population=` at the `photo_segment` call). Do not widen
+  it to the photo classes without measuring what the owl's 199 mm are.
+- Gaulke's roof line-art is "enclosed background" and outside both the
+  absorb rule and the population; the instrument (full quantisation) counts
+  it, the finder (enclosed excluded) does not — say which one you ran.

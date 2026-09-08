@@ -193,20 +193,23 @@ things the measurement corrected:
   right split.
 
 What it buys, on the stitches (`tools/thin_strokes.py --corpus
---forced-class flat --flag keep_thin_strokes`; the full cost table is in
-scope-history's fourth 09-08 entry): Fremont forced flat loses **3 thin
-strokes instead of 135** (recall 86.1% → 97.3%; the 0.5–1.0 mm band 51% →
-88%, none of its 110 strokes lost; the sub-0.5 band 26% → 92%) for 33 → 165
-regions, 13,268 → 16,628 stitches and 71 → 81 trims at the same three
-colour blocks. golden_tee 13 → 4 lost, drone 31 → 9; enthusiast and
-screenshot within a stroke or two; gaulke unchanged at 43 of 46, which is
-its black frame and not this absorb. **The cost shows where there is
-nothing to gain:** `logo_bridge_bar` (a 5 px/mm JPEG) keeps the same 12
-thin strokes either way and pays 74 → 110 regions and 111 → 134 trims for
-it — contrasting compression fragments that clear the floors. A pixel-width
-guard of the kind `thin_strokes.py` already carries (`_MIN_STROKE_PX`) is
-the obvious next question, measured before it is added. The routed Fremont
-(gradient lane) sees none of this until PR 3 or the lane decision (§4e).
+--forced-class flat --flag keep_thin_strokes`; the cost table is in
+scope-history's 09-08 entries — **the corrected one**, "the thin-stroke
+instrument counted the ground": the first instrument's median-width test
+counted Fremont's white ground as a 1,758 mm stroke and inflated every
+recall it printed; the per-component counts stood): Fremont forced flat
+loses **3 thin strokes instead of 135** (recall **61.2% → 92.7%**; the
+0.5–1.0 mm band 51% → 88%, none of its 110 strokes lost; the sub-0.5 band
+26% → 92%) for 33 → 165 regions, 13,268 → 16,628 stitches and 71 → 81 trims
+at the same three colour blocks. drone 15 → 5 lost of 45; golden_tee 1 → 0
+of 3; enthusiast and screenshot within a stroke; gaulke unchanged at 16 of
+18, which is its black frame and not this absorb. **The cost shows where
+there is nothing to gain:** `logo_bridge_bar` (a 5 px/mm JPEG) has two thin
+strokes by the corrected definition and pays 74 → 110 regions and 111 → 134
+trims for them — contrasting compression fragments that clear the floors;
+gaulke pays 60 → 106 regions for a population that does not move. The
+routed Fremont (gradient lane) sees none of this until PR 3 (§4c, built)
+or the lane decision (§4e).
 
 ### 4c. Photo lane: thin strokes as a third population (PR 3)
 
@@ -236,6 +239,36 @@ answer, and `tools/halo_spools.py` bills it; and photo fragments are
 what separates a stroke from a fragment, and the population must come back
 EMPTY on the pure photographs (meadow, sunset, grass, the portraits) with
 the photo goldens byte-identical.
+
+**BUILT 2026-09-08** (`digitizer_core/thin_ink.py`, PR #427; 9 + 10 tests).
+Three things the measurement changed, all in scope-history's entry "the
+thin-stroke instrument counted the ground":
+
+- **The width test is at the 90th percentile along the skeleton, not the
+  median.** The first population run read 96.6% of Fremont's foreground as
+  thin ink: the white ground is one component whose skeleton threads the
+  gaps between letters (median 1.32 mm, p90 3.77). The same flaw was in
+  `tools/thin_strokes.py`, whose Fremont recalls in §4a/§4b above were
+  inflated by that one 1,758 mm "stroke"; engine and instrument now share
+  one definition (`thin_ink.iter_thin_components`).
+- **A third rule, on one ground.** The length gate does NOT separate a stroke
+  from a band: a posterised ramp leaves thin, long bands between its levels.
+  The two-pixel ring around a component must be dominated by one label
+  (`THIN_INK_GROUND_SHARE` 0.75 — the share that keeps Fremont's 162 strokes
+  whole; 0.9 costs it 15).
+- **The population is NOT empty on photographs at any share that does the
+  job on logos** (owl 199 mm, chrome 230 mm at 0.75), so the requirement
+  above is met by a gate, not a test: the pipeline asks for the population
+  on the `gradient` class only, and `photo_subject`/`photo_scene` are
+  byte-identical ON by construction.
+
+What it buys, routed (the shipped route): Fremont **18 → 3** lost thin
+strokes, recall 84.8% → 92.5%, the sub-0.5 mm band 53% → 92%, at 17,400 →
+16,006 stitches and 114 → 66 trims (the strokes SEEDS shattered into
+fragments now arrive as regions and chain); drone 29 → 2 lost, 51% → 96%,
+for 59 more trims; golden_tee 1 → 0 of 3; bridge's two strokes (2.9 mm) go
+the other way and its design simplifies (74 → 50 regions), which wants a
+render before it is called either way.
 
 ### 4d. Widen lettering strokes to a sewable column (PR 4)
 
@@ -323,7 +356,7 @@ Renders in every PR body — Kent's 2026-09-04 rule.
 |---|---|---|---|
 | 1 | **BUILT 2026-09-08** — `thin_strokes.py`, `legibility.py`, tests (9 + 6), baseline numbers on the real-art fixtures (nine distinct files: `logo_drone_thermal_badge.png` is byte-identical to `drone_render.png`, run once); scope-history 09-08 has the tables | ~1,000 lines | none |
 | 2 | **BUILT 2026-09-08** (PR #426) — `cfg.keep_thin_strokes` on the flat lane; goldens unmoved OFF, whitebg gains its teal patch ON (§4b) | ~60 + 8 tests | none |
-| 3 | the thin population on the photo lane, same flag | ~200 + tests | none; photo goldens byte-identical OFF, empty population ON for photographs |
+| 3 | **BUILT 2026-09-08** — the thin population on the gradient lane, same flag; the width test corrected to p90 and shared with the instrument; the one-ground rule; photo classes gated out | ~300 + 19 tests | none; photo goldens byte-identical OFF, photo classes byte-identical ON by the gate |
 | 4 | `cfg.lettering_min_column_mm` | ~60 + tests | G1 on the number |
 | 5 | `color_diversity.py` + the decision doc with the margin | ~150 | G2 — reports, changes nothing |
 | 6a or 6b | the lane | ~150 / ~60 | G2 (6a) or Kent's ruling on its letter (6b); golden churn for approval |

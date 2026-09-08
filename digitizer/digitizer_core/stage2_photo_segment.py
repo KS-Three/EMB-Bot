@@ -2181,7 +2181,8 @@ def kept_masks_to_quant(
 
 
 def segment(p: Prep, cfg: PipelineConfig, face_regions=None, bg_mask=None,
-            split_tonal=False, shade_demand=False, design_ramp=None) -> Quant:
+            split_tonal=False, shade_demand=False, design_ramp=None,
+            thin_population=False) -> Quant:
     h, w = p.rgb.shape[:2]
     valid = ~p.bg_mask
     flat_rgb = p.rgb.reshape(-1, 3)
@@ -2219,9 +2220,12 @@ def segment(p: Prep, cfg: PipelineConfig, face_regions=None, bg_mask=None,
     # gone before any floor is consulted (`thin_ink.py`). Found with the flat
     # lane's own quantiser, taken out of `base_valid` so no superpixel
     # straddles it, and appended after the palette as its own label block
-    # by `kept_masks_to_quant`. None — the flag off, or nothing thin — is
-    # byte-identical to the path below never having heard of it.
-    thin: ThinInk | None = find_thin_ink(p, cfg, base_valid) if cfg.keep_thin_strokes else None
+    # by `kept_masks_to_quant`. None — the caller not asking, or nothing thin
+    # — is byte-identical to the path below never having heard of it.
+    # `thin_population` is the caller's gate, the way `split_tonal` is: the
+    # pipeline passes `cfg.keep_thin_strokes and class_ == "gradient"`, so
+    # the photo classes keep today's path (see `pipeline.run_stages`).
+    thin: ThinInk | None = find_thin_ink(p, cfg, base_valid) if thin_population else None
     if thin is not None:
         base_valid = base_valid & ~thin.mask
 

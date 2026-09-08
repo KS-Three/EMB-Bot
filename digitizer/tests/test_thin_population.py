@@ -8,7 +8,9 @@ with the test OFF and NOTHING with it on, which is the discriminator that
 keeps photographs empty. End to end, the bars a superpixel swallows today are
 sewn in their own colour with the flag on, read by `tools/thin_strokes.py` on
 the stitches. And where the population comes back empty, ON is byte-identical
-to OFF on stage 2's own output — the invariant the photo goldens pin.
+to OFF on stage 2's own output — the invariant the photo goldens pin; the
+photo CLASSES are byte-identical ON by construction, because the pipeline
+asks for the population on the gradient class only.
 """
 from __future__ import annotations
 
@@ -131,4 +133,20 @@ def test_where_nothing_is_thin_the_flag_on_is_byte_identical_to_off(fixture):
     on_cfg = PipelineConfig(target_width_mm=80.0, keep_thin_strokes=True)
     p = prep(str(path), off_cfg)
     assert find_thin_ink(p, on_cfg, _foreground(p)) is None, "the population is not empty here"
-    assert _quant_digest(segment(p, off_cfg)) == _quant_digest(segment(prep(str(path), on_cfg), on_cfg))
+    assert _quant_digest(segment(p, off_cfg)) == _quant_digest(
+        segment(prep(str(path), on_cfg), on_cfg, thin_population=True))
+
+
+def test_the_population_is_gated_to_the_gradient_class_at_the_call_site():
+    """Measured 2026-09-08: on a photograph the population is NOT empty at
+    any ring share that keeps Fremont's lettering whole (the owl keeps 199 mm
+    of "strokes" at 0.75), so the pipeline asks for it only on the gradient
+    class and the photo classes are byte-identical ON by construction."""
+    import inspect
+
+    from digitizer_core import pipeline
+
+    src = inspect.getsource(pipeline.build_generation)
+    assert 'thin_population=bool(cfg.keep_thin_strokes and classification.class_ == "gradient")' in src
+    sig = inspect.signature(segment)
+    assert sig.parameters["thin_population"].default is False

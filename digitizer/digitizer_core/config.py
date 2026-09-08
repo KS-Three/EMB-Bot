@@ -424,12 +424,18 @@ class PipelineConfig:
     # back as its own label block after the palette, the way the enclosed
     # population already does. A superpixel is ~47 px a side on Fremont; a
     # 0.4 mm stroke was a quarter of a block and gone before any floor.
-    # Where nothing qualifies the lane is byte-identical to the flag being
-    # off — measured EMPTY on the smooth ramps and the photo stubs, and the
-    # photographs keep only what the one-ground rule lets through (scope-
-    # history 09-08 has the per-fixture table at three ring shares). The
-    # photo lane's `resolve_small_regions` still runs without layer colours:
-    # the absorb rule above is the flat lane's, the population is this lane's.
+    # GRADIENT CLASS ONLY: the pipeline passes the population gate as
+    # `keep_thin_strokes and class_ == "gradient"`, so `photo_subject` and
+    # `photo_scene` are byte-identical ON. Measured 2026-09-08 over the
+    # committed photo fixtures (scope-history 09-08, three ring shares): the
+    # population is empty on the smooth ramps and the stubs but NOT on the
+    # photographs — the owl keeps 199 mm and the chrome 230 mm of "strokes"
+    # at the share that keeps Fremont's lettering whole, and the share that
+    # empties them (0.9) costs Fremont 15 of its 162 strokes — so the plan's
+    # "empty on photographs" is met by the gate, not by the test. Where
+    # nothing qualifies the gradient lane is byte-identical too. The photo
+    # lane's `resolve_small_regions` still runs without layer colours: the
+    # absorb rule above is the flat lane's, the population is this lane's.
     #
     # DEFAULT OFF and byte-identical off. Flipping it is Kent's: it adds
     # regions to real logos, and the flat AND photo goldens move with them.
