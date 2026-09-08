@@ -60,7 +60,23 @@
   // wrong thing to hand an operator, who will clip a number of tails, not a
   // rate. Zero is worth printing for the same reason a clean report is:
   // "0 trims" says there is nothing to clip.
-  function facts(preflight, stats) {
+  // The headline total and the per-cone rows below are two renderings of the
+  // SAME measurement, so a customer can add the rows up and check -- and
+  // rounded independently they stop agreeing. Measured 2026-09-08 on the
+  // shipped app: `enthusiast_logo` at 80 mm reports thread_m_total 4.03 with
+  // thread_m_by_color [2.85, 1.19], which `toFixed(1)` renders as "4.0 m of
+  // thread" above rows of 2.9 m and 1.2 m -- a shopping list adding to 4.1
+  // under a stated total of 4.0. (The raw values already disagree by 0.01:
+  // the service rounds each to 2dp on its own, so the parts sum to 4.04
+  // against a stated 4.03.)
+  //
+  // The per-cone rows are what an operator actually buys against, so they
+  // keep their own rounding and the TOTAL is derived from them: the
+  // arithmetic on screen is then the arithmetic that works. With no cone
+  // list to add up there is nothing to disagree with, so the service's own
+  // total stands -- which is also the only case where `thread_m_total` is
+  // the more accurate number.
+  function facts(preflight, stats, spools) {
     const m = (preflight && preflight.metrics) || {};
     const out = [];
     const stitches = m.stitch_count ?? (stats && stats.stitch_count);
@@ -72,7 +88,14 @@
     if (stats && typeof stats.trims === "number") {
       out.push(`${stats.trims} ${stats.trims === 1 ? "trim" : "trims"}`);
     }
-    if (stats && typeof stats.thread_m_total === "number") {
+    const addable =
+      Array.isArray(spools) &&
+      spools.length > 0 &&
+      spools.every((c) => typeof c.metres === "number");
+    if (addable) {
+      const shown = spools.reduce((sum, c) => sum + Number(c.metres.toFixed(1)), 0);
+      out.push(`${shown.toFixed(1)} m of thread`);
+    } else if (stats && typeof stats.thread_m_total === "number") {
       out.push(`${stats.thread_m_total.toFixed(1)} m of thread`);
     }
     return out;
@@ -105,8 +128,8 @@
     <h3 id="quality-h">Quality check</h3>
     {#each entries as e (e.id)}
       {@const rows = ordered(e.preflight && e.preflight.findings)}
-      {@const bill = facts(e.preflight, e.stats)}
       {@const spools = cones(e.stats)}
+      {@const bill = facts(e.preflight, e.stats, spools)}
       <div class="qr">
         <div class="qr-head">
           {#if entries.length > 1}<span class="qr-name">{e.label}</span>{/if}

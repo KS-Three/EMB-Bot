@@ -244,3 +244,58 @@ test("shows no per-cone list when the block list is missing or does not match th
   ] } });
   expect(queryByRole("list", { name: "Threads to load" })).toBeNull();
 });
+
+// ---- the total and the cone rows have to add up ---------------------------
+//
+// A customer reads this panel to know what thread to buy, so the rows are a
+// shopping list and the headline is its total. Rounded independently they
+// disagree, which is not a rounding nicety -- it is the panel contradicting
+// itself in front of the person spending the money.
+
+test("the thread total is the sum of the cone rows a customer can add up", () => {
+  // The exact numbers the shipped app produced on 2026-09-08 for
+  // `enthusiast_logo` at 80 mm: thread_m_total 4.03, by-colour [2.85, 1.19].
+  // Independently rounded that read "4.0 m of thread" over rows of 2.9 and
+  // 1.2 -- 4.1 of shopping list under a 4.0 total.
+  const { container, getByText } = render(QualityReport, {
+    props: {
+      entries: [
+        entry({
+          stats: {
+            thread_m_total: 4.03,
+            thread_m_by_color: [2.85, 1.19],
+            blocks: [
+              { number: "0134", name: "Smoky", rgb: [70, 70, 70] },
+              { number: "1720", name: "Not Quite Red", rgb: [200, 40, 40] },
+            ],
+          },
+        }),
+      ],
+    },
+  });
+
+  const rows = Array.from(container.querySelectorAll(".qr-spool-m")).map((e) =>
+    Number(e.textContent.replace(/[^\d.]/g, "")),
+  );
+  expect(rows).toEqual([2.9, 1.2]);
+
+  const bill = container.querySelector(".qr-bill").textContent;
+  const total = Number(bill.match(/([\d.]+) m of thread/)[1]);
+  expect(total).toBeCloseTo(
+    rows.reduce((a, b) => a + b, 0),
+    5,
+  );
+  // Stated positively so the failure message names the real number.
+  expect(bill).toMatch(/4\.1 m of thread/);
+});
+
+test("with no cone rows to add up, the service's own total is used", () => {
+  // `cones()` returns [] unless blocks and thread_m_by_color are the same
+  // length -- a job from before that field cannot satisfy it. There is then
+  // nothing on screen to contradict, and thread_m_total is the better number.
+  const { container } = render(QualityReport, {
+    props: { entries: [entry({ stats: { thread_m_total: 4.03 } })] },
+  });
+  expect(container.querySelectorAll(".qr-spool-m").length).toBe(0);
+  expect(container.querySelector(".qr-bill").textContent).toMatch(/4\.0 m of thread/);
+});
