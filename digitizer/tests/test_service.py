@@ -16,9 +16,7 @@ import pystitch
 import pytest
 
 fastapi = pytest.importorskip("fastapi", reason="service extra not installed")
-from fastapi.testclient import TestClient  # noqa: E402
-
-from digitizer_service.app import MAX_PIXELS, app  # noqa: E402
+from digitizer_service.app import MAX_PIXELS  # noqa: E402
 from digitizer_service.jobs import JobRegistry, content_key  # noqa: E402
 
 from .conftest import requires_tesseract  # noqa: E402
@@ -40,12 +38,6 @@ ENTHUSIAST_LOGO = Path(__file__).resolve().parents[1] / "testdata" / "photo" / "
 # an untested shape.
 MANUAL_RECT = [[0.0, 0.0], [20.0, 0.0], [20.0, 15.0], [0.0, 15.0]]
 MANUAL_BAR = [[0.0, 0.0], [24.0, 0.0], [24.0, 2.0], [0.0, 2.0]]
-
-
-@pytest.fixture(scope="module")
-def client():
-    with TestClient(app) as c:
-        yield c
 
 
 def _digitize(client, config: dict | None = None, art: Path = ART) -> dict:
