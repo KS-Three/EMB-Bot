@@ -115,3 +115,28 @@ third 09-08 entry. The one thing to carry:
 - Trap: the hole's sign. Minus inside the truth's material, plus outside,
   for shell and hole alike — a first draft had holes inverted and a
   synthetic square-with-a-hole caught it.
+
+## Plan A PR 2 — `cfg.keep_thin_strokes`, BUILT (PR #426)
+
+Absorb by colour, not by adjacency, on the flat lane; DEFAULT OFF, byte-
+identical off (shown against the pre-change tree on this machine, not
+assumed). Scope-history's fourth 09-08 entry has the OFF → ON table.
+
+- **Fremont forced flat: 135 → 3 lost thin strokes**, the 0.5–1.0 mm band
+  from 97 of 110 lost to none, for 33 → 165 regions, +25% stitches, 71 → 81
+  trims, same three colour blocks. That is the "completely lost" lettering.
+- **The cost lands where there is no gain**: bridge (5 px/mm JPEG) +36
+  regions and +23 trims for zero strokes; drone +77 trims for 22 strokes.
+  Contrasting compression/gradient fragments that clear the floors — the
+  population the chain rescue was gated off the photo lane for, arriving on
+  the flat lane when a photo is FORCED there. A pixel-width floor like
+  `thin_strokes._MIN_STROKE_PX` is the obvious guard; measure first.
+- **The plan's teal-patch prediction was wrong by 0.19 mm** (1.19 mm, proxy
+  2.38 mm ≥ 2.2): ON, whitebg's patch is kept as a 27-point run in its own
+  thread. The rule stands; the test pins the measured pair.
+- Scoped by CALL SITE: the photo segmenters omit `layer_lab` as they omit
+  the chain rescue, so the flag is inert there until PR 3. Do not "fix" that
+  by passing colours from the photo lane without measuring the fragment
+  explosion first.
+- `parse_flag` lives in `tools/thin_strokes.py`; all three instruments take
+  `--flag NAME[=VALUE]`, so any config A/B is one command.

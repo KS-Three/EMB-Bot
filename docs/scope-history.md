@@ -10774,3 +10774,91 @@ orange −0.241 / −0.149 / −0.030 / −0.007 / −0.004; ribbon −0.033 / �
 - The circle's Hausdorff of 0.18–0.19 mm at 400–1600 px is not the absorbed
   teal patch (checked: the worst point sits at 32° and −39° from the
   centre, the patch at 0°); it is a Douglas-Peucker chord at the tolerance.
+
+
+## 2026-09-08 — `keep_thin_strokes`: the flat lane stops absorbing by adjacency, measured OFF against ON
+
+PR 2 of `docs/superpowers/plans/2026-09-08-real-logo-lane-and-thin-strokes.md`
+(PR #426), Kent's pick after PR 1's instruments landed. One flag,
+`cfg.keep_thin_strokes`, **DEFAULT OFF and byte-identical off** — the flat
+goldens hold, and the working tree reproduces the pre-change tree's
+`enthusiast_logo` snapshot on this machine (the platform red), so
+byte-identical was shown rather than assumed.
+
+**The change.** `stage3_segment.resolve_small_regions` unioned a sub-floor
+region into whichever neighbour shared the longest halo, whatever colour
+either was — a tan glyph on a white ground became ground. ON, a small region
+is absorbed only when its quantised colour is within `merge_delta_e`
+(CIE76, the flat lane's own merge tolerance; no new number) of the
+absorber's; a contrasting one that clears the run tier's floors is kept as
+an isolated small shape is today and reaches stage 4 as a
+`rescued_small_shape`. The rule is armed by the flat-lane call site passing
+the quantiser's cluster colours; the photo segmenters call without them —
+as they call without the chain rescue, for the same reason — so the flag is
+inert on the gradient and photo lanes until PR 3. Eight tests.
+
+### OFF → ON, forced flat, Studio defaults (6 colours)
+
+`tools/thin_strokes.py --corpus --forced-class flat [--flag keep_thin_strokes]`
+plus the plan's own counts. A stroke is lost under 50% sewn; "rescued" is
+the `rescued_small_shape` count among the regions.
+
+| fixture | lost thin strokes | recall | 0.5–1.0 mm band | regions (rescued) | stitches | trims | colour blocks |
+|---|---|---|---|---|---|---|---|
+| `logo_hotel_fremont` @ 92.5 | **135 → 3** of 163 | 86.1% → **97.3%** | **51% → 88%** (0 of 110 lost) | 33 (7) → **165 (139)** | 13,268 → 16,628 | 71 → 81 | 3 → 3 |
+| `logo_golden_tee` | 13 → 4 of 87 | 89.3% → 92.2% | 84% → 87% | 80 (23) → 94 (37) | 7,951 → 8,552 | 109 → 138 | 29 → 32 |
+| `drone_render` | 31 → 9 of 131 | 90.0% → 90.7% | 93% → 90% | 153 (31) → 219 (96) | 21,639 → 22,074 | 174 → **251** | 23 → 21 |
+| `screenshot_phone_ui_golke` | 43 → 39 of 115 | 78.9% → 79.8% | 80% → 80% | 268 (201) → 287 (220) | 10,272 → 10,809 | 124 → 134 | 8 → 7 |
+| `logo_bridge_bar` | 0 → 0 of 12 | 97.6% → 97.2% | — | 74 (29) → 110 (63) | 13,314 → 14,580 | 111 → **134** | 8 → 8 |
+| `enthusiast_logo` | 1 → 1 of 16 | 95.8% both | 0% both | 31 (18) → 31 (18) | 2,459 → 2,459 | 22 → 22 | 2 → 2 |
+| `logo_whitebg` (golden) | — | — | — | 7 → 8 | 4,558 → 4,561 | 6 → 7 | 5 → 6 |
+
+Gaulke does not move (43 of 46 lost either way, 14.2% → 14.3%): PR 1 traced
+its loss to the black frame making every black element "enclosed
+background", which is not this absorb.
+
+### What the table says
+
+1. **On the design it was built for, the flag does what the plan said.**
+   Fremont forced flat keeps 132 more small elements — its 0.5–1.0 mm band
+   goes from 97 of 110 strokes lost to none — for ten more trims and 25%
+   more stitches at the same three colour blocks. That band is EST 1895, the
+   rope chevrons and the tagline, the "completely lost" of Kent's review.
+2. **The cost lands where there is nothing to gain.** `logo_bridge_bar`, a
+   5 px/mm JPEG, keeps the same 12 thin strokes either way and pays 36 more
+   regions and 23 more trims; `drone_render` keeps 22 more strokes for 77
+   more trims. Those are contrasting compression and gradient fragments that
+   clear the floors — the population the chain rescue was gated off the photo
+   lane for, arriving on the flat lane when a photo is FORCED there. Forced
+   flat on a JPEG or a render is not the shipped configuration (stage 0 routes
+   both to gradient, where the flag is inert), but it is what the Studio's
+   override does, so the number is recorded against the flip. A pixel-width
+   floor of the kind `thin_strokes.py` already carries (`_MIN_STROKE_PX` —
+   a one- or two-pixel component is halo at any resolution) is the obvious
+   guard; measured before it is added, not assumed.
+3. **The plan's teal-patch prediction was wrong by 0.19 mm.** `logo_whitebg`'s
+   patch is 10 px = 1.19 mm at 80 mm, its proxy 2.38 mm clears the 2.2 mm
+   loop floor, and ON it is kept and sewn as a 27-point run in its own thread
+   (+1 cone, +3 stitches, +1 trim). It is exactly the class of element the
+   rule exists for, so the rule stands; the test pins the measured pair (OFF
+   absorbs, ON keeps) and the config docstring says so.
+4. **Trims per thousand stitches** on these forced-flat runs sit above the
+   4.1/1k chaining ceiling OFF already (Fremont 5.4, bridge 8.3, golden_tee
+   13.7, drone 8.0, screenshot 12.1), and ON moves them 4.9 / 9.2 / 16.1 /
+   11.4 / 12.4 — Fremont's falls because its stitches grow faster than its
+   trims. The ceiling was set on the shipped lanes; a forced-flat render was
+   never inside it.
+
+### Traps
+
+- The rule had to be scoped by CALL SITE, not by class name. `resolve_small_
+  regions` has no lane argument; the photo segmenters already distinguish
+  themselves by omitting the chain rescue, and the colour vector rides the
+  same way — a caller that cannot supply the quantiser's colours gets the
+  old behaviour, byte for byte, whatever the flag says.
+- Two test fixtures were wrong before the code was. A first end-to-end
+  fixture drew 1.2 × 1.5 mm blocks, which the instrument cannot see (a
+  block's skeleton is shorter than the 1.1 mm length floor); a second put
+  its bars over the detail floor by mis-stating the scale (the white margin
+  is background, so the 500 px panel is the art bbox). Bars 0.6 × 3 mm at a
+  50 mm target read 0% recall OFF and 100% ON.
