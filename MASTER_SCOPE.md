@@ -533,6 +533,8 @@ classifier. *(measured 2026-08-26 — `.claude/memory/letterform-fidelity-2026-0
 real-artwork lever is **`chain_links`: −33% trims AND fewer stitches**, gate-1
 frozen; every gate-clear alternative measures ≤9%. *(measured 2026-08-22)*
 
+**Quality review 2026-09-08 — fourteen ranked changes, three cheap JS-lane defects, and Kent's picks:** [`docs/quality-review-2026-09-08.md`](docs/quality-review-2026-09-08.md). Kent chose the real-logo lane with thin-stroke retention, and sub-pixel edge extraction, to start. Three measurements the ranking rests on: the curve-refinement gate reaches **2 of 29** fixtures at 80 mm; MARINE sews tatami at 100 mm with `satin_per_stroke` ON, refused by the width cap, not by irregularity; the pro's sewn Becker files carry **7–23%** of satin crosses over the 5.0 mm cap. The browser engine emits **no lock stitches** on any lane. *(measured 2026-09-08 — review doc; scope-history 09-08)*
+
 ### 2. Font library & lettering — [detail](docs/scope/2-font-library-lettering.md)
 
 **Implemented · High (tech) / High (compliance).**
