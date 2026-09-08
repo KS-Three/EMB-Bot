@@ -517,9 +517,14 @@ is not a phone**, and only the unreachable-service run separates them.
 
 Two things fell out of that run, one fixed and one recorded:
 
-- **Fixed here:** the review card's `Colors` row was the slider, not the sewn
-  count — `Colors 4` beside `Thread changes 1`. It is a browser-flatten-lane
-  row, so the phone is where it always shows. MASTER_SCOPE defect 42(e).
+- **Fixed here:** the `Colors` count was the slider, not the sewn count, on
+  **two** screens — the review card (`Colors 4` beside `Thread changes 1`) and
+  the content step's element chip (`Image · 4 colors` above a two-swatch
+  strip). Both are browser-flatten-lane surfaces, so the phone is where they
+  always show. The chip half surfaced only when the production bundle was
+  re-driven to confirm the first fix — worth remembering, because the obvious
+  move after a fix verifies the screen the report named and stops.
+  MASTER_SCOPE defect 42(e).
 - **Recorded, not fixed, Kent's call because it is wording on a lane that
   works:** the offline note's remedy is *"Start it, then check again"*, and
   `DigitizePanel` adds *"Start it: `python -m digitizer_service` in the

@@ -210,6 +210,17 @@ test("guided wizard: image content path -> review reflects it -> download", asyn
   await expect(page.getByText(/^[\d,]+ stitches/)).toBeVisible();
   await expect(page.locator(".topbar-download")).toBeEnabled();
 
+  // The element chip and the swatch strip are on ONE screen, inches apart,
+  // and disagreed until 2026-09-08: the chip read `element.nColors` (the
+  // slider) and said "Image · 4 colors" above a strip rendering two. Same
+  // defect as the review card below, one step earlier. The strip is the
+  // honest one — it is drawn from the flattened palette — so the chip is
+  // asserted against it rather than against a literal.
+  const swatches = await page.locator(".swatchwrap").count();
+  expect(swatches, "the swatch strip rendered nothing to compare against").toBeGreaterThan(0);
+  await expect(page.locator(".elsummary").filter({ hasText: /^Image · / }))
+    .toHaveText(`Image · ${swatches} color${swatches === 1 ? "" : "s"}`);
+
   await page.getByRole("button", { name: "Next", exact: true }).click();
 
   await expect(page.getByRole("heading", { name: "Ready to stitch" })).toBeVisible();

@@ -1089,6 +1089,7 @@
           {project}
           workImage={runtime.workImages[project.selectedId]}
           flat={runtime.flats[project.selectedId]}
+          {sewnColors}
           {designDims}
           {digitizerHealth}
           {showAddElementsHint}
