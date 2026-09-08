@@ -26,7 +26,12 @@ keeps improving alongside it but does not block shipping.
 
 ## Launch scope checklist
 
-Status verified against the repo on 2026-08-11 (not just taken from memory).
+Status verified against the repo on 2026-08-11, and **every row re-verified
+2026-09-08** (not just taken from memory). What moved since 2026-08-11: row 1
+became genuinely reachable (#403 gave JEF a button — the row had been verified
+against the module that can write JEF, not the product that exposes it), and
+row 7's sidecar count grew from 55 to 85 while staying one-per-font. Rows 2, 4,
+5 and 6 re-checked in place; row 3 is still ❌ with no trace in the repo.
 
 | # | Item | Status | Evidence |
 |---|---|---|---|
@@ -36,7 +41,7 @@ Status verified against the repo on 2026-08-11 (not just taken from memory).
 | 4 | Basic shapes tool (circle / rect / heart / star) | ✅ Done | `app/src/lib/shapePresets.js` generators + `ShapePanel.svelte`, new `"shape"` element type riding the manual-draw lane (`shapesToRegions → buildQualityDesign`); all four kinds verified digitizing live 2026-08-11 (star-tip coverage pinned in vitest); recipe (`kind`+`params`) persists in `.embproj` |
 | 5 | Thread palette sweep (remaining Ink/Stitch `.gpl` brands) | ✅ Done | 68 brand charts in `tools/palettes/`, matching the policy-filtered count (brands from companies that sell embroidery machines/software are excluded on purpose) |
 | 6 | `.embproj` project file save/load | ✅ Done | `app/src/lib/projectFile.js` |
-| 7 | Font-license compliance (hard gate before first dollar) | ✅ Done (shipping posture) | Per-font research done for flagged cases (e.g. `milli_marif_bold` — full permission-email trail + OFL text on file in `src/fonts/milli_marif_bold.LICENSE.txt`). The "zero sidecars ship" gap is closed: 55 `.LICENSE.txt` sidecars ship in `app/public/fonts/` (one per shipping font, counted 2026-08-11). All license-flagged fonts were pulled from the build in the 2026-08-04 audit pass rather than kept; the remaining legal question only gates *restoring* pulled fonts (see "Known compliance risk"). |
+| 7 | Font-license compliance (hard gate before first dollar) | ✅ Done (shipping posture) | Per-font research done for flagged cases (e.g. `milli_marif_bold` — full permission-email trail + OFL text on file in `src/fonts/milli_marif_bold.LICENSE.txt`). The "zero sidecars ship" gap is closed, and is now closed BY CONSTRUCTION rather than by a count: **85 fonts ship in `app/public/fonts/bin/` and 85 `.LICENSE.txt` sidecars ship beside them** (re-counted 2026-09-08; it was 55 when this row was written, so the invariant has held across a 30-font expansion). It is not a manual count any more — `test/font-license.test.js` asserts that *every shipped font's sidecar still resolves to its manifest `licenseId`*, and pins the two mislabels this project has actually hit (an NC/ND variant resolving to a permissive id, and the ALLOWED set widening silently); `test/embf-guard.test.js` guards the binary library. Both run in the `engine` CI job, which is required on `main`, so a font added without a sidecar or with a non-allowed licence fails the build rather than shipping. All license-flagged fonts were pulled from the build in the 2026-08-04 audit pass rather than kept; the remaining legal question only gates *restoring* pulled fonts (see "Known compliance risk"). |
 
 ## Launch posture (decided)
 
