@@ -25,6 +25,48 @@ that is the whole point of the file. Corrections go in `MASTER_SCOPE.md`.
 
 ---
 
+**Last updated:** 2026-09-08 — **five PRs, and the app now agrees with itself
+about what it will sew.**
+
+- **The DST codec is fixed in both directions** (#414/#415), and the detail
+  below is moved here from MASTER_SCOPE's cross-cutting section, which is now a
+  short current-state entry pointing at the full teardown. Historical, kept for
+  the record: the 2026-08-17 "CLOSED" was a code read while the product was not
+  fixed — `isPurelyDigitized` required EVERY element to be `digitized` and
+  `defaultProject()` seeds an empty text one a logo customer never removes, so
+  `/export` never fired and every DST left by the browser codec; measured from
+  the shipped UI via pystitch on 2026-09-07, browser **16.3×80.5 mm, 0
+  COLOR_CHANGE, 1 SEQUIN_MODE + 10 SEQUIN_EJECT** against the service's
+  80.5×16.3, 1 COLOR_CHANGE. The gate now counts only elements that SEW.
+- **The lettering-routing measurement is SUPERSEDED, not just old.** It read
+  `manga_impact` "Lp" at **61.7×31.7 mm** through the service and **31.7×61.7**
+  — a quarter turn — through the browser, 906/906 stitches with x equal to the
+  design's y, and framed routing lettering to the service as Kent's open call.
+  The axis fix removed its premise: both encoders are spec-correct now. Which
+  encoder lettering uses is still a routing question, but it is no longer a
+  correctness one.
+- **Four buyer-visible defects found by driving the app** (#416/#417/#418), all
+  fixed: the left-chest starter template sewing 69% of its lettering under the
+  1 mm column floor at its shipped 76.2 mm; PRODUCT.md row 7 citing a sidecar
+  the licence research itself deleted; the arrow-key and align-row copy blaming
+  the hoop for a limit the garment placement box set; and the review screen
+  summarising a mixed design as its digitized element alone — **2,253 shown for
+  a 3,367-stitch design**, with a second residual where two logos produced no
+  total at all.
+- **The numbers chain measured end to end on a mixed design**, all agreeing:
+  canvas caption, review recap, PDF worksheet, and the downloaded DST read back
+  by pystitch at **3,367 stitches / 2 colour changes / 26 trims / 92.2 × 22.9
+  mm**; the simulator counter reads 0 and 3,367 at its two ends. Verified
+  negatives from the same sweep: `.embproj` v1→v2 migration, `hoopFit`'s
+  zero-margin rule (a hoop's stated size IS its embroidery field), undo/redo
+  across a structural add, the custom fabric colour at both extremes, and the
+  font-licence chain (85 fonts / 85 sidecars / 85 binaries, the credits dialog
+  serving real OFL text in a browser).
+- Suite readings on the day, snapshots not baselines: engine 505, Studio 1075
+  in 53 files, e2e 68.
+
+---
+
 **Last updated:** 2026-09-07 (later) — **the mask/floor pair priced, and its
 one distinctive win lands on a floored fixture.**
 

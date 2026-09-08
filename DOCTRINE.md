@@ -34,6 +34,20 @@ Moved verbatim 2026-08-28 — no section was rewritten in the move.
 
 ## Standing rulings — decided, do not re-litigate
 
+- **Ink/Stitch is GPL-3.0 — concept-level clean-room reimplementation only.**
+  No literal copying and no near-verbatim translation, however convenient.
+  The one exception is `pystitch`, its MIT-licensed pyembroidery fork, which is
+  usable as a real runtime dependency and has been adopted as one. Moved here
+  from MASTER_SCOPE 2026-09-08: it is a constraint on how work may be done, not
+  a status, so it does not belong in a file that holds current state.
+  *(confirmed 2026-08-10 — `docs/inkstitch-research-2026-08-10.md` §0)*
+
+- **Ember's own editor toolset is on file — read it before scoping manual
+  digitizing work.** Pen/node, Closed Shape, Drawing Blocks, stitch simulator,
+  realistic-view toggle. Named here so the next person checks the teardown
+  instead of re-deriving a competitor's feature list.
+  *(confirmed 2026-08-08 — `docs/ember-technical-teardown-2026-08-08.md`)*
+
 - **Fill row spacing is settled: 0.15 mm, the professional's pitch.** Kent's
   call 2026-09-03 on two pieces of evidence, one of them cloth — his first
   stitch-out at 0.40 showed fabric between every fill row, and the

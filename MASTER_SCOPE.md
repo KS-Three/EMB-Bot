@@ -17,7 +17,7 @@ at the bottom for the authority model behind the confidence ratings.
 four of its findings are standing rulings in [`DOCTRINE.md`](DOCTRINE.md). Its
 code and instruments are ON `main`. *(confirmed 2026-08-17 — `git ls-tree`)*
 
-**Last updated:** 2026-09-07. **This file is current state only, under an
+**Last updated:** 2026-09-08. **This file is current state only, under an
 800-line budget.** Its three companions: standing rulings, rejected approaches,
 corrections and session-costing traps live in [`DOCTRINE.md`](DOCTRINE.md);
 dated snapshots in [`docs/scope-history.md`](docs/scope-history.md); per-area
@@ -178,6 +178,10 @@ icon. Cloth pointers added to defects 3, 6 and 16 below.
 
 41. **The review screen quoted the cost of a sew-out on one lane and nothing at all on the other — FIXED 2026-09-07.** An auto-digitized design comes back with `preflight`/`stats` and `QualityReport` prints the four facts an operator needs before loading a machine (stitches, thread changes, trims, metres). A lettering, hand-drawn, shape or imported-DST design never reaches the service, so the same screen showed the garment, the hoop, the content, the font — **and not one number**; measured by walking Review with a text design, `section.quality` absent and no mention of thread, metres or trims anywhere on the page. `lib/estimate.js` computes them in the browser from the design already in hand, **only when the service has said nothing**, so one design never gets two answers. **The basis is the service's**: path length on `designToStrands`'s chain-break rule (= Python's `StitchRun.length_mm`) times `machine.THREAD_LENGTH_FACTOR` **1.35**, hand-ported into the engine and guarded against drift by `test/digitize.test.js` — the third constant to take that treatment after `FILL_ROW_MM` and `SATIN_SPACING_MM`. **Measured, and it does NOT agree exactly with the service on the same geometry: 4.95 m against 4.87, 1.6% high**, because `plan_to_design` emits a run the machine reaches without travelling as plain consecutive stitches, so the design records carry no marker for that boundary and the walk joins two runs. Irreducible from the browser, and the reason for the gate. The browser lane's own designs do not have it — `buildLetteringDesign` SEWS its short travel. **Two self-inflicted defects caught while building it**: `EMB.THREAD_LENGTH_FACTOR || 1` quoted a path length as thread (1.5 m for a design needing 2.1) against a stale `app/public/engine/` copy — now no factor, no row; and the field caption was the ONE stitch count in the app printing a bare `1289` where everything else says `1,289`. `estimate.spec.js` (7). *(measured 2026-09-07)*
 
+42. **Four buyer-visible defects on the Studio's own screens — ALL FIXED 2026-09-08, all found by driving the app rather than reading it.** (a) **The second starter design failed the app's own quality check on click.** `chest-name` was the only template pinning a size, 76.2 mm, where its own default text sews 7.6 mm caps with **69% of the lettering under the 1 mm column floor** — so the app handed a beginner a design and immediately told them to size up, on the one screen where they have no reason to doubt it. 92 mm is the first width with no thin lettering AND 4.7 mm of slack; the first attempt used 101.6 (the cap-height optimum) and `field-chrome.spec.js` failed it, correctly — at the placement's full width the design cannot be nudged at all. Guarded from both sides, each mutation-proved. (b) **The review summarised a mixed design as its digitized element alone** — `2,253 stitches` shown for a **3,367-stitch** design, the commonest thing a customer combines. The gate asked "is there a quality report?" when the question is "does it cover the design?"; a residual where two logos gave no total at all was fixed the same day. Worksheet and exported file were right throughout, so the machine had the correct number and the customer did not. (c) **The arrow-key announcement and the align row blamed the hoop** for a limit the garment placement box set — `hoopSizeMm()` returns `garment.widthIn`, so on a left chest the app pointed at something with 14 mm free each side. Words only; the clamp is correct and untouched. (d) **PRODUCT.md row 7 cited `src/fonts/milli_marif_bold.LICENSE.txt`** as its proof that per-font licence research had been done — a file that research deleted, because the font was pulled. *(fixed 2026-09-08 — #416/#417/#418; area 3, area 2; scope-history 09-08)*
+
+43. **The numbers chain agrees end to end, and is now MEASURED rather than argued.** On one mixed design: canvas caption, review recap, PDF worksheet and the downloaded DST read back by `pystitch` all give **3,367 stitches / 2 colour changes / 26 trims / 92.2 × 22.9 mm**, and the simulator counter reads 0 and 3,367 at its ends. Recorded because the defect above was a disagreement inside that chain, and because the only reason this can be stated as fact is that each link was driven rather than reasoned from a shared code path. *(measured 2026-09-08 — scope-history 09-08)*
+
 ### Closed — kept numbered, because ten other docs cite them by number
 
 Full text moved to [`docs/scope-history.md`](docs/scope-history.md) 2026-08-27; these are pointers, not status.
@@ -226,13 +230,7 @@ here, so a good-faith flip would have shipped bare-fabric thread unwarned.)*
 
 ## Doctrine — moved to [`DOCTRINE.md`](DOCTRINE.md)
 
-**Standing rulings, Measured negatives, Corrections and Gotchas now live in [`DOCTRINE.md`](DOCTRINE.md)** (split 2026-08-28). Read it before proposing work, the same way you read this file for status.
-
-The split is not filing. Those four sections answer *"has this already been
-decided, tried, disproved, or paid for?"* — which does not go stale and only ever
-accumulates. This file answers *"where does the project stand today?"* — current
-state only, under a line budget. They were competing for one budget and the
-standing content was winning: this file ran 268 lines over before the split, and two compaction passes could not close it without deleting things that still govern decisions.
+**Standing rulings, Measured negatives, Corrections and Gotchas live in [`DOCTRINE.md`](DOCTRINE.md)** (split 2026-08-28). Read it before proposing work, the same way you read this file for status. The split is not filing: those four sections answer *"has this already been decided, tried, disproved, or paid for?"*, which never goes stale and only accumulates, while this file answers *"where does the project stand today?"* under a line budget. They were competing for one budget and the standing content was winning — this file ran 268 lines over before the split, and two compaction passes could not close it without deleting things that still govern decisions.
 
 ---
 
@@ -242,7 +240,7 @@ standing content was winning: this file ran 268 lines over before the split, and
 |---|---|---|
 | 1. Auto-digitizing quality (image → stitches) | In progress | **Low** beyond flat spot-color art; human faces TABLED pending a more capable tier *(Kent, 2026-08-25)* |
 | 2. Font library & lettering | Implemented — 85 fonts, satin + bean/running + cross-stitch, LTR + Hebrew RTL | High (tech) / High (compliance). Zero stunted glyphs since the 2026-08-22 transform fix; the guards now assert their own coverage |
-| 3. Studio app / guided wizard | Implemented | Medium (fabric-preset accuracy: **pending sew-out** — unchanged, no sew-out has happened). Held at Medium by that gate alone; the display layer had a defect class that shipped unseen for want of UI-behaviour coverage, and hand-driving sweeps on 2026-08-25 and 2026-09-07 closed the known ones — the 09-07 pass added the project lifecycle, the built bundle and the printed worksheet, none of which had been driven before *(confirmed — area doc)*. The preview now renders thread as a lit cylinder at physical width; its lighting is eye-tuned, not sew-verified |
+| 3. Studio app / guided wizard | Implemented | Medium (fabric-preset accuracy: **pending sew-out** — unchanged, no sew-out has happened). Held at Medium by that gate alone; the display layer had a defect class that shipped unseen for want of UI-behaviour coverage, and hand-driving sweeps on 2026-08-25, 2026-09-07 and 2026-09-08 closed the known ones — the 09-07 pass added the project lifecycle, the built bundle and the printed worksheet, and the 09-08 pass found four more on screens nobody had driven in combination (defect 42), including the review summarising a mixed design as one of its elements. **The pattern is worth the row:** every one came from driving the app, none from reading it *(confirmed — area doc, defect 42)*. The preview now renders thread as a lit cylinder at physical width; its lighting is eye-tuned, not sew-verified |
 | 4. Export formats | Implemented | Varies by format — see below |
 | 5. Stitch-out review & manual editing tools | Implemented — Kent's direct-manipulation request is **complete** (2026-08-13) | High. Every surviving requirement of the 2026-08-12 request ships: outlines+nodes on the canvas, the pulse cue, select-then-edit, node drag, line drag, add node, delete. Requirement 5 (whole-shape drag) was withdrawn by Kent. Geometry is unit-tested and every interaction was driven in a real browser against a live service. Manual draw mode now traces over the uploaded artwork, and right-click places a curved node |
 
@@ -265,11 +263,11 @@ about the facts.
 **Also open, same category — so this queue is not a half-truth. All predate
 2026-08-14 except where noted:**
 
-2. **The DST codec fix** — was gated on the sew-out; that gate is now permanent
-   (standing rulings, [`DOCTRINE.md`](DOCTRINE.md)), so this needs its own call on
-its own merits.
-   Re-orienting the table changes every DST EMB-Bot has written. See "DST codec
-   axis bug".
+2. **RESOLVED 2026-09-08 — the DST codec is fixed, both directions**, and it
+   never needed the call: gate 1 listed it as a physical constant, and which
+   nibble carries X is settled by a documented format with a reference
+   implementation in `digitizer/.venv`. Retired from the gate the same day.
+   *(DOCTRINE 2026-09-07/08; ROADMAP gate 1)*
 3. **RESOLVED 2026-08-19, ratified 2026-09-02 — `split_tonal_regions` is ON for
    photo classes** (`effective_split_tonal`). Cost: defect 20.
 4. **Billing / backend.** Tabled since the pivot; Stripe + an entitlement
@@ -328,7 +326,7 @@ its own merits.
    two major consumer brands whose owners cannot use the product today. Adding
    one is a line in `exporters.js`'s `SERVICE_ONLY_FORMATS` plus a button, so
    this is scope, not effort: PRODUCT.md item 1 names PES and JEF and is silent
-   on these four. See area 4. *(measured 2026-09-07)*
+   on these four. See area 4. *(measured 2026-09-07)* **Re-measured 2026-09-08 with a colour change in the pattern, and the verdict holds with numbers behind it:** PEC and XXX read back exactly as well as the four shipping (70 stitches, 1 colour change, 1725 × 200 units), VP3 is off by one unit — 0.1 mm, quantisation — and **U01 loses the colour change entirely** and reads 100 units larger on both axes, so it stays held. `DownloadStep.svelte` states the constraint in its own words: *"which machines this product supports is a scope call"*. Per-format round-trip table in area 4.
 
 15. **The wizard pushes no history entries, so browser Back exits the Studio**
    rather than stepping back (`history.length` 2 after three steps). Work is
@@ -342,43 +340,42 @@ its own merits.
 Things that don't respect one capability area's boundary. Referenced from the
 area they drag down, documented once here.
 
-### DST codec axis bug
+### DST codec — FIXED, both directions (2026-09-08)
 
-**FIXED 2026-09-08, both directions.** EMB-Bot's browser DST codec (`src/dst.js` /
-`src/dstimport.js`) had X in the HIGH nibble of every record byte and Y in the LOW one; the
-standard is the reverse. It round-tripped against itself, so the pair's own tests never saw it.
-**The WORD was wrong until 2026-09-07: it is a MIRROR, not a quarter turn.** A bbox swap fits
-both equally, nobody had looked at the canvas, and the Studio told customers to "use Rotate to
-stand it up" — which no rotation can do, and the app has no mirror control.
-**The fix is the two weight tables swapped, in the writer and in `decodeDelta`.** Both now match
-`pystitch.DstWriter.encode_record` bit-for-bit (10/10 byte-identical across a spread of deltas),
-the crossval DST control reads `identity` beside PES and EXP, and a "FRITSCH" export that drew a
-vertical column of reversed letters now draws FRITSCH upright at its own 127.2 × 22.6 mm.
-`decodeDSTStandard` — the 2026-09-07 import workaround — is a plain alias of `decodeDST` now, as
-its own comment predicted. **Still true:** a `.dst` written BEFORE the fix is in the old dialect
-and re-imports transposed; that was already so from 2026-09-07, so nothing regressed, but old
-files are not repaired either, so DesignPanel's note stays -- SCOPED to files written before the fix, and the scoping asserted. **The Download step's two DST caveats, its asterisk and its demotion of DST behind PES are GONE**, with their absence asserted in `DownloadStep.spec.js` and end to end in `design-import.spec.js`: a warning left standing after its defect is fixed steers people off the format most machines want.
-*(fixed 2026-09-08 — `test/dst.test.js` byte pins from pystitch, crossval DST control)* **Two more DST defects closed the same week, both independent of the axis.** The colour-change byte was `0x43` where the standard wants `0xC3`, so a standard reader saw a sequin toggle and ZERO colour stops — every multi-colour DST sewed straight through elsewhere (fixed 2026-09-08, #412). And `encodeDST` wrote the terminal `{type:"end"}` sentinel as a real stitch — a stray needle penetration reached by a run of jumps a standard reader counts as a TRIM, so the file told the machine to cut, travel and put one stitch in the garment (measured: 64.0 mm from the previous stitch, 51.5 mm from the design's centre) — and it widened the header's declared bounding box to a corner the design does not occupy, in the field a machine reads to decide whether a design fits its hoop: a 50×20 mm design declared 90×50. **Also fixed 2026-09-08**, by the one line `exp.js` and `pes.js` always had. Full teardown and the before/after numbers: DOCTRINE 2026-09-07/08, `docs/dst-axis-verdict-2026-07-31.md`, `docs/scope/4-export-formats.md`, `dst-codec-axis-discrepancy` in memory.
+`src/dst.js` / `src/dstimport.js` had X in the HIGH nibble of every record byte
+and Y in the LOW one; the standard is the reverse. It round-tripped against
+itself, so the pair's own tests never saw it. **The word was wrong until
+2026-09-07 too: it is a MIRROR, not a quarter turn** — a bbox swap fits both
+equally, and the Studio told customers to "use Rotate to stand it up", which no
+rotation can do. Fixed by swapping the two weight tables in the writer and in
+`decodeDelta`: both now match `pystitch.DstWriter.encode_record` bit-for-bit,
+the crossval DST control reads `identity` beside PES and EXP, and a "FRITSCH"
+export draws upright at its own 127.2 × 22.6 mm. Two independent DST defects
+closed the same week — the colour-change byte (`0x43` where the standard wants
+`0xC3`, so a standard reader saw a sequin toggle and ZERO stops) and the
+terminal `{type:"end"}` sentinel written as a real stitch, which also widened
+the header's declared hoop-fit box. *(fixed 2026-09-08 — `test/dst.test.js`
+byte pins from pystitch; crossval DST control)*
 
-**Not a conflict:** CLAUDE.md's "browser DST is EMB-Bot-internal only" is about
-orientation elsewhere; `digitizer/README.md`'s "browser DST stays the default"
-is about which encoder Studio picks.
+**Still true, and the only live part:** a `.dst` written BEFORE the fix is in
+the old dialect and re-imports mirrored. Old files are not repaired, so
+DesignPanel's note stays — scoped to files written before the fix, and the
+scoping asserted. The Download step's DST caveats, asterisk and demotion behind
+PES are gone, their absence asserted in `DownloadStep.spec.js` and end to end
+in `design-import.spec.js`.
 
-**RE-OPENED and FIXED 2026-09-07 — the 2026-08-17 "CLOSED" was a CODE READ, and the code was
-right while the product was not.** `isPurelyDigitized` required EVERY element to be `digitized`
-and `defaultProject()` seeds an empty text one a logo customer never removes, so `/export`
-never fired and **every** DST left by the browser codec. The resolution path's third-party read
-is DONE, from the shipped UI via pystitch: browser **16.3×80.5 mm, 0 COLOR_CHANGE, 1
-SEQUIN_MODE + 10 SEQUIN_EJECT**; service 80.5×16.3, 1 COLOR_CHANGE. The gate now counts only
-elements that SEW. `dstimport.js`'s `decodeDST` stays as it is (it pairs with `dst.js`), but
-the import LANE moved off it the same day — see the mirror correction above. *(2026-09-07)*
+**Superseded 2026-09-08:** the 2026-09-07 lettering-routing measurement (browser
+"Lp" at 31.7×61.7 against the service's 61.7×31.7) framed routing lettering to
+the service as Kent's open call *on correctness grounds*. The axis fix removed
+its premise — both encoders are spec-correct now. Which encoder lettering uses
+is still a routing question; it is no longer a correctness one. Full teardown
+and the superseded numbers: DOCTRINE 2026-09-07/08,
+`docs/dst-axis-verdict-2026-07-31.md`, `docs/scope/4-export-formats.md`,
+scope-history 09-08, `dst-codec-axis-discrepancy` in memory.
 
-**The LETTERING half is now measured too, and the fix needs no codec change — KENT'S CALL 2026-09-07.** Lettering/manual designs still download through the browser encoder by the standing scope ruling ("the one with actual sew evidence behind it"). Measured stitch-for-stitch on ONE browser-built lettering design (`manga_impact` "Lp", 61.7×31.7 mm landscape, 906 stitches), both encoders fed the SAME design object: the service's `/export` DST reads back **61.7×31.7 mm** with the file's x equal to the design's x on **906/906**; the browser's `encodeDST` reads back **31.7×61.7 mm** — a quarter turn — with the file's x equal to the design's **y** on **906/906**. The service path is spec-correct for browser-built lettering as well, so routing lettering there is available today with `src/dst.js` untouched. **What the ruling is actually protecting is the sew evidence, and that evidence is evidence of a TRANSPOSED file sewing** — which is the thing to weigh. Not flipped: the routing ruling and the codec are both Kent's. *(2026-09-07)*
-
-**The cross-validation harness is ALIVE again — revived 2026-08-21.** It
-reproduced the DST transposition exactly (rms 0.0) and caught the broken browser
-PES/EXP encoders; the 2026-08-11 pystitch swap had silently starved it to 0 of 6
-passes while staying green in CI. CI now fails loud when the pins cannot run.
+**The cross-validation harness is ALIVE** — revived 2026-08-21; it reproduced
+the transposition exactly (rms 0.0) and caught the broken browser PES/EXP
+encoders. CI fails loud when the pins cannot run.
 *(confirmed 2026-08-22 — engine green, 0 skips)*
 
 ### Font license compliance — RESOLVED, and kept resolved by construction
@@ -453,20 +450,13 @@ the four gaps an external review named have owners in code — [area 1](docs/sco
 
 ### Research backlog — competitive and open-source leads
 
-Two capability sweeps produced backlog items rather than status changes: Ember
-Design (a browser-based competitor) and Ink/Stitch. Both catalogues, the closed
-`simplify_tol_mm` investigation, and a sixth independent DST-axis corroboration
-live in [`docs/scope/research-backlog.md`](docs/scope/research-backlog.md).
-Nothing in there is a commitment or a defect. Two things from it bind here:
-
-- **Ink/Stitch is GPL-3.0** — concept-level clean-room reimplementation only,
-  no literal copying or near-verbatim translation. The exception is `pystitch`,
-  its MIT-licensed pyembroidery fork, usable as a real runtime dependency and
-  since adopted. *(confirmed 2026-08-10 — `docs/inkstitch-research-2026-08-10.md` §0)*
-- **Ember's own editor toolset is on file** (Pen/node, Closed Shape, Drawing
-  Blocks, stitch simulator, realistic-view toggle) — check it before scoping
-  manual-digitizing work rather than re-deriving it.
-  *(confirmed 2026-08-08 — `docs/ember-technical-teardown-2026-08-08.md`)*
+Two capability sweeps (Ember Design, Ink/Stitch), the closed `simplify_tol_mm`
+investigation and a sixth independent DST-axis corroboration live in
+[`docs/scope/research-backlog.md`](docs/scope/research-backlog.md). Nothing in
+there is a commitment or a defect. The two items that bind how work may be done
+— Ink/Stitch's GPL-3.0 clean-room rule (`pystitch` excepted) and Ember's editor
+toolset — moved to [`DOCTRINE.md`](DOCTRINE.md) 2026-09-08, since they are
+constraints rather than status.
 
 ---
 
