@@ -59,7 +59,16 @@ test("applyTemplate REPLACES the project entirely, ignoring prior dirty state", 
   expect(p.elements).toHaveLength(1); // the stray second element is gone
   expect(p.elements[0].offsetXMm).toBe(0);
   expect(p.elements[0].offsetYMm).toBe(0);
-  expect(p.elements[0].sizeMm).toBe(76.2);
+  // The template's size wins over the dirty project's — which is what this
+  // test is about. Asserted against the template's own value rather than a
+  // literal: this line read `toBe(76.2)` until 2026-09-08 and so doubled as an
+  // accidental pin on a product decision, failing when that decision changed
+  // for a measured reason. The behaviour this file should hold that size to is
+  // guarded at the bottom, against the engine's lettering verdict.
+  const templateSize = chestName.patch.elements[0].sizeMm;
+  expect(typeof templateSize).toBe("number");
+  expect(p.elements[0].sizeMm).toBe(templateSize);
+  expect(p.elements[0].sizeMm).not.toBe(dirty.elements[0].sizeMm);
   expect(p.elements[0].text).toBe("Your Name");
 });
 
@@ -168,4 +177,69 @@ test("text templates ignore digitizer health entirely", async () => {
     expect(up.elements[0].type).toBe("text");
     expect(up.elements[0]).toEqual(down.elements[0]);
   }
+});
+
+// ---- What the template HANDS THE USER, not just its shape -----------------
+//
+// Every test above this point checks structure: the patch is v2-shaped, the
+// garment resolves, the fontKey exists. All four passed on 2026-09-08 while
+// the chest-name template produced a design the app itself condemned the
+// instant you clicked it — "69% of this lettering is under 1 mm wide — size up
+// for crisp letters", on the second of four starters advertised under "One
+// click starts a ready-made design."
+//
+// A well-formed patch is not a good design. This generates each text
+// template's real design through the same generateElement() the Studio calls
+// and asserts the engine's own lettering verdict is silent — so the guard
+// resolves against the engine's report, not against the template's fields.
+
+test("no text template hands the user a design its own lettering check condemns", async () => {
+  const { generateElement } = await import("./generate.js");
+  const { letteringNote } = await import("./generate.js");
+  const { EMB } = await import("./emb.js");
+  const { TEMPLATES, applyTemplate } = await import("./templates.js");
+
+  let checked = 0;
+  for (const t of TEMPLATES) {
+    const project = applyTemplate({}, t, null);
+    const el = project.elements[0];
+    if (el.type !== "text") continue; // logo-patch has no text until the user uploads
+    const garment = EMB.getGarment(project.garmentId);
+    const design = generateElement(el, garment, {});
+    const note = letteringNote(design.lettering, { lines: 1 });
+    expect(note, `${t.id} ("${t.label}") starts the user at: ${note}`).toBe("");
+    checked += 1;
+  }
+  // The loop is all `continue`s away from asserting nothing, which is how a
+  // guard like this dies green. Pin the count.
+  expect(checked, "expected the three text templates to be reached").toBe(3);
+});
+
+test("the chest-name template leaves room to move inside its placement box", async () => {
+  const { generateElement } = await import("./generate.js");
+  const { EMB } = await import("./emb.js");
+  const { TEMPLATES, applyTemplate } = await import("./templates.js");
+
+  // EmbroideryField.nudgeSelected and pointer drags clamp against the GARMENT
+  // PLACEMENT BOX (hoopSizeMm returns garment.widthIn — the name says hoop,
+  // the value is the placement). A design sewing the full box width therefore
+  // has zero slack and cannot be moved at all: the arrow keys answer "At the
+  // edge of the hoop" on the first press.
+  //
+  // This is not hypothetical. The first version of the size fix used 101.6 mm
+  // for its cap height, and e2e/field-chrome.spec.js's keyboard-placement test
+  // failed on it — correctly. A starter design the user cannot nudge is worse
+  // than one 10 mm narrower, so the size is chosen to clear the lettering
+  // check AND keep slack, and both halves are guarded.
+  const t = TEMPLATES.find((x) => x.id === "chest-name");
+  const project = applyTemplate({}, t, null);
+  const garment = EMB.getGarment(project.garmentId);
+  const design = generateElement(project.elements[0], garment, {});
+
+  const placementMm = garment.widthIn * 25.4;
+  const slackEachSide = (placementMm - design.widthMM) / 2;
+  expect(
+    slackEachSide,
+    `sews ${design.widthMM.toFixed(1)} mm in a ${placementMm.toFixed(1)} mm placement — no room to nudge`
+  ).toBeGreaterThan(2);
 });

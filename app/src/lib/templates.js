@@ -21,7 +21,41 @@ export const TEMPLATES = [
     patch: {
       garmentId: "left_chest",
       selectedId: "e1",
-      elements: [{ ...defaultTextElement("e1"), fontKey: "medium_font", text: "Your Name", sizeMm: 76.2 }],
+      // 92 mm, not the 76.2 this shipped with until 2026-09-08. At 76.2 the
+      // template's own default text sews 7.6 mm caps with 69% of the lettering
+      // under the 1 mm column floor, so clicking the app's second advertised
+      // starter produced a design the app immediately told you to size up —
+      // the one screen where a beginner has no reason to doubt what it handed
+      // them.
+      //
+      // Two constraints, and the second is why this is not simply "as wide as
+      // it goes". Measured on this font and text:
+      //
+      //   sizeMm   sewn W   slack each side   cap     thin
+      //     76.2     76.4        12.6 mm      7.6      69%   <- shipped
+      //     85       85.2         8.2         8.4      14%
+      //     88.9     89.0         6.3         8.8       8%
+      //     92       92.2         4.7         9.1       0%   <- here
+      //     95       95.2         3.2         9.4       0%
+      //    101.6    101.8         0.0        10.1       0%
+      //
+      // 92 is the first width with NO thin lettering at all, and it still
+      // leaves 4.7 mm of room on each side. That room is the second
+      // constraint: `EmbroideryField.nudgeSelected` and pointer drags clamp
+      // against the GARMENT PLACEMENT BOX (`hoopSizeMm` returns
+      // garment.widthIn, 4 in = 101.6 mm here — the name says hoop, the value
+      // is the placement), so a design sewing 101.8 mm has ZERO slack and
+      // cannot be moved at all. An earlier version of this fix used 101.6 for
+      // its cap height and broke `field-chrome.spec.js`'s keyboard-placement
+      // test, which was right to fail: a starter you cannot nudge is worse
+      // than one 10 mm narrower. The e2e caught a real cost, not a stale
+      // assertion.
+      //
+      // Better on longer names too — measured on this font: "Alexandra
+      // Fitzgerald" and "Christopher Wetherington" both sit UNDER THE 4 mm CAP
+      // FLOOR at 76.2 (the verdict meaning "cannot be sewn at all") and clear
+      // it here. No input tested got worse.
+      elements: [{ ...defaultTextElement("e1"), fontKey: "medium_font", text: "Your Name", sizeMm: 92 }],
     },
   },
   {
