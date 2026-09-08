@@ -10666,3 +10666,111 @@ Bands are "strokes: recall routed → flat"; a stroke is lost under 50% sewn.
   the banner reading as "DMZYY".
 - A crop box wholly outside the render produced a negative slice end and
   wrapped onto real thread. Clamp before ordering; pinned by a test.
+
+
+## 2026-09-08 — the edge truth ladder, and the floor under the polygon that is not the pixel
+
+PR 1 of `docs/superpowers/plans/2026-09-08-subpixel-edges.md` (item 3, Kent's
+pick): `digitizer/tools/edge_truth_ladder.py`, 10 tests, no engine change.
+The synthetic fixtures carry their own vector truth, so this is the first
+edge instrument in the repo that measures against the CURVE rather than
+against a raster: it regenerates `logo_whitebg` and `ribbon_curve` at 200,
+400, 800, 1600 and 3200 px with `make_test_logo.py`'s own drawing code at
+its own 4x supersample (the 800 rung is the committed fixture pixel for
+pixel — pinned), runs stages 0–4 at 80 mm on the flat lane, and measures
+every shape's polygon against the analytic disc, ring, rectangles and
+stroked polyline in the prepped raster's own pixel frame. No registration
+search: the truth is scaled in analytically (supersampled px / 4, times
+stage 1's Lanczos upscale on the rung under the resolution floor) and the
+polygon is mapped back by inverting stage 4's `_to_mm`. cv2's conventions
+had to be measured to do that: its integer coordinates name pixel centres,
+a disc of radius r covers r + 0.5, a rectangle includes both corners, and a
+thick polyline has ROUND caps (the generator's docstring says square; the
+ribbon's caps are excluded from the measure either way). Per shape: signed
+`offset_mm` (+ where the polygon has material the truth lacks), `spread_mm`
+(the standard deviation along the boundary — the staircase and the chord
+sag), `rms_mm`, `hausdorff_mm`, and `curve_fidelity`'s roughness on the
+vertices, sampled every half pixel along shell and holes so a chord is read
+at its sag. `--flag NAME[=VALUE]` runs the ladder with any `PipelineConfig`
+field on; `--tiers` runs `curve_tiers.py`'s cases with the same flag and
+prints the per-shape tier diff DOCTRINE requires of every stage-4 change.
+
+### The baseline, flag OFF (shipped defaults, flat lane forced)
+
+Spread in mm by rung; vertices in brackets where they tell the story.
+
+| shape | 200 px (2.1 → 4.0 px/mm, ×1.9) | 400 (4.2) | 800 (8.4) | 1600 (16.8) | 3200 (33.5) |
+|---|---:|---:|---:|---:|---:|
+| circle (r 14.3 mm) | 0.202 [82] | 0.057 [31] | 0.047 [32] | 0.035 [34] | 0.023 [35] |
+| ring (r 13.1 / 7.2) | 0.197 [88] | 0.085 [40] | 0.070 [44] | 0.063 [47] | 0.031 [68] |
+| bar (2.3 mm wide) | 0.031 | 0.043 | 0.015 | 0.016 | 0.008 |
+| purple / orange rects | 0.035 / 0.063 | 0.026 / 0.030 | 0.039 / 0.040 | 0.007 / 0.021 | 0.003 / 0.010 |
+| dot (1.3 mm²) | not produced | 0.048 | 0.025 | 0.014 | 0.006 |
+| ribbon (2.2 mm stroke) | 0.182 [150] | 0.057 [37] | 0.067 [37] | 0.065 [37] | 0.067 [55] |
+
+Offset, the same rungs: circle −0.102 / −0.045 / −0.047 / −0.042 / −0.040;
+ring −0.031 / −0.040 / −0.012 / +0.001 / −0.018; bar −0.310 / −0.084 /
+−0.074 / −0.021 / −0.011; purple −0.213 / −0.135 / −0.036 / −0.034 / −0.017;
+orange −0.241 / −0.149 / −0.030 / −0.007 / −0.004; ribbon −0.033 / −0.021 /
+−0.020 / +0.001 / −0.001. Hausdorff: circle 1.052 / 0.179 / 0.181 / 0.191 /
+0.096; ring 0.519 / 0.285 / 0.218 / 0.162 / 0.073; ribbon 0.585 / 0.141 /
+0.235 / 0.158 / 0.156; every rectangle 0.022 at 3200.
+
+### What it says
+
+1. **There are two floors under the polygon, and the plan had priced one.**
+   Below about 15 px/mm the spread is the PIXEL: the circle's falls 0.202 →
+   0.057 → 0.047 from 200 to 800 px as the plan predicted. Above it the
+   spread is the 0.2 mm Douglas-Peucker tolerance's chord sag, and does NOT
+   fall: the ribbon's polygon has the same **37 vertices at 400, 800 and
+   1600 px** and the same 0.057–0.067 mm spread, and with the existing
+   refinement off it reads 0.076 at 3200 — no better than at 400. The
+   circle's inward offset plateaus at −0.04 mm from 400 px up, which is the
+   mean sag of a 34-chord polygon of that radius (⅔ · r(1 − cos π/34) =
+   0.041 mm), while the rectangles' offsets go to −0.004…−0.017 mm at 3200,
+   the half-pixel a centre-traced contour owes (0.015 mm there). A sub-pixel
+   vertex fed to the same simplifier lands on the same floor.
+   **The plan's acceptance criterion is corrected by this.** "Close to flat
+   across the ladder" is ALREADY true flag OFF for the ribbon from 400 px
+   up. The criterion is now: flag ON, every rung's spread at or under the
+   OFF ladder's 3200 rung (circle 0.023, ring 0.031, ribbon 0.067), with the
+   200 and 400 rungs falling toward it — and since the simplifier is the
+   floor above 400 px, PR 2 (the profile crossing alone) is predicted to
+   move only the 200 and 400 rungs; PR 3 (the refinement floor keyed to
+   acceptance) is where the ribbon has to move. Stated before either exists.
+2. **What the existing refinement buys, measured at the one rung its gate
+   admits.** `curve_turn_deg` is ON by default (15°) and gated at 20 px/mm,
+   so of the five rungs only 3200 (33–35 px/mm) is refined. There, against
+   `--flag curve_turn_deg=0`: the ring goes 48 → 68 vertices and its spread
+   HALVES, 0.064 → 0.031 (Hausdorff 0.144 → 0.073); the ribbon 38 → 55
+   vertices, spread 0.076 → 0.067, Hausdorff 0.186 → 0.156; the circle is
+   untouched, 35 vertices either way — its chords turn 10° each, under the
+   15° the flag asks for, which is consistent with the mechanism and not a
+   proof of it. At 1600 px the two arms are identical, as the gate says.
+   The plan's §1 point in one table: the refinement that works is closed
+   to every fixture under 20 px/mm.
+3. **The Becker-class rung is a different regime.** At 200 px (2.1 px/mm,
+   Lanczos-upscaled ×1.9 to the 4.0 floor) `logo_whitebg` vectorises to
+   **19 regions instead of 7** and the ribbon to 6 instead of 1 (halo
+   fragments), the rectangles sit 0.21–0.31 mm inside their edges (a pixel
+   is 0.25 mm), the circle's worst point is 1.05 mm off, and the dot is not
+   produced. Plan §8's third decision — whether sources under the
+   resolution floor are in scope for the flip — now has its baseline.
+4. **The 1 mm dot is a region from 400 px up** (iou 0.78 → 0.97), rescued
+   by the run tier; only the upscaled rung loses it.
+
+### Traps
+
+- The hole's sign. A first draft read a hole ring "the other way" (a hole
+  sample inside the truth's material as an excess); a synthetic square with
+  a square hole gave a mean of 0.70 where 1.0 was owed, and the rule is one
+  rule for both ring kinds: minus where the sample lies inside the truth's
+  material, plus outside. The ring's rows were re-measured; nothing else
+  had a hole.
+- "Spread under a pixel" is the wrong invariant above ~15 px/mm: the ring
+  at 1600 px reads 0.063 mm against a 0.060 mm pixel because the tolerance
+  is the floor there. The test bounds the spread by the larger of the pixel
+  and half the tolerance, and says why.
+- The circle's Hausdorff of 0.18–0.19 mm at 400–1600 px is not the absorbed
+  teal patch (checked: the worst point sits at 32° and −39° from the
+  centre, the patch at 0°); it is a Douglas-Peucker chord at the tolerance.

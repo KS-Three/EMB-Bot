@@ -1,9 +1,11 @@
 # Sub-pixel, anti-alias-aware edges in stage 4 — plan
 
 **Date:** 2026-09-08
-**Status:** decision document. Nothing built. Item 3 of
-`docs/quality-review-2026-09-08.md`, Kent's pick.
-**Instrument this plan proposes:** `tools/edge_truth_ladder.py`.
+**Status:** decision document; **PR 1 (the instrument) built 2026-09-08**,
+engine untouched. Item 3 of `docs/quality-review-2026-09-08.md`, Kent's
+pick.
+**Instrument this plan proposes:** `tools/edge_truth_ladder.py` — built; its
+baseline corrected the acceptance criterion in §5.
 
 ## 0. What already governs this — read before changing the plan
 
@@ -137,6 +139,32 @@ acceptance criterion, and it is stated before any engine code exists.
 The same tool runs `curve_tiers.py`'s cases on the real fixtures so the
 per-shape tier diff the doctrine requires comes out of one command.
 
+**BUILT 2026-09-08** — `digitizer/tools/edge_truth_ladder.py`, 10 tests,
+baseline in scope-history's third 09-08 entry. The baseline corrects the
+paragraph above in one place: **the deviation flag OFF is bounded below by
+the pixel only up to about 15 px/mm; above that the floor is the 0.2 mm
+Douglas-Peucker tolerance's chord sag, and it does not fall with
+resolution.** The ribbon's polygon has the same 37 vertices and the same
+0.06 mm spread at 400, 800 and 1600 px; the circle's inward offset plateaus
+at the mean sag of a 34-chord polygon. So "close to flat across the ladder"
+is already true OFF from 400 px up, and the criterion is restated:
+
+- **Flag ON, every rung's spread at or under the OFF ladder's 3200 rung**
+  (circle 0.023 mm, ring 0.031, ribbon 0.067), the 200 and 400 rungs
+  falling toward it.
+- **PR 2 alone (the profile crossing, same simplifier) is predicted to move
+  only the 200 and 400 rungs.** The ribbon cannot move until PR 3 keys the
+  refinement floor to acceptance, because the simplifier is its floor. If
+  PR 2 moves the 1600 rung, something other than the construction did.
+- The existing refinement, at the one rung its 20 px/mm gate admits (3200),
+  halves the ring's spread (0.064 → 0.031) and takes the ribbon's from
+  0.076 to 0.067; it leaves the circle untouched (its chords turn 10°,
+  under the 15° asked). That is the reference the flip is measured against
+  where both run: `--flag curve_turn_deg=0` is the OFF arm.
+- The 200 px rung (Lanczos-upscaled ×1.9 to the floor) is a different
+  regime — 19 regions instead of 7, rectangles 0.2–0.3 mm inside their
+  edges, the dot not produced — and is §8's third decision's baseline.
+
 ## 6. What must not regress, with its fixture
 
 | invariant | pinned by |
@@ -154,7 +182,7 @@ per-shape tier diff the doctrine requires comes out of one command.
 
 | PR | content | size | gate |
 |---|---|---|---|
-| 1 | the ladder, baseline numbers OFF | ~250 lines + tests | none |
+| 1 | **BUILT 2026-09-08** — the ladder, baseline numbers OFF, the criterion corrected (§5) | ~500 lines + 10 tests | none |
 | 2 | `cfg.subpixel_edges` — the profile crossing, `accepted` mask, OFF | ~200 + tests | none |
 | 3 | the refinement floor and gate keyed to acceptance, same flag | ~60 + tests | none |
 | 4 | the flip: ladder ON, tier diff, `ragged_mm`/`roughness_deg` table, renders, golden churn | docs + goldens | Kent's approval of the churn |

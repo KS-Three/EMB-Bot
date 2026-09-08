@@ -91,3 +91,27 @@ they said on first run:
   BECKER 96 / MARINE 95.
 - `logo_drone_thermal_badge.png` is byte-identical to `drone_render.png`
   (blockcensus already knew); both tools run it once, checked by digest.
+
+## Plan B PR 1 — the edge truth ladder, BUILT the same day
+
+`digitizer/tools/edge_truth_ladder.py`, 10 tests; baseline in scope-history's
+third 09-08 entry. The one thing to carry:
+
+- **Two floors under a stage-4 polygon.** Below ~15 px/mm the deviation
+  from the true curve is the PIXEL and falls with resolution. Above it the
+  floor is the 0.2 mm Douglas-Peucker tolerance's chord sag and does NOT
+  fall — the ribbon keeps 37 vertices and 0.065 mm spread from 400 to 1600
+  px. A sub-pixel vertex fed to the same simplifier lands on the same floor.
+  So the plan's acceptance criterion was restated (plan §5): ON at every rung
+  ≤ OFF's 3200 rung; PR 2 alone should move only the 200/400 rungs; the
+  ribbon cannot move before PR 3 (the refinement floor). Never quote
+  "flat across the ladder" as the pass — OFF is already flat above 400 px.
+- The existing `curve_turn_deg` refinement (ON by default, 15°, gated at
+  20 px/mm) reaches only the 3200 rung: there it halves the ring's spread
+  and leaves the circle alone (10° chords). `--flag curve_turn_deg=0` is its
+  OFF arm.
+- cv2 draws ROUND caps on thick polylines (the generator's docstring says
+  square); pixel centres are integer coordinates; a disc covers r + 0.5.
+- Trap: the hole's sign. Minus inside the truth's material, plus outside,
+  for shell and hole alike — a first draft had holes inverted and a
+  synthetic square-with-a-hole caught it.

@@ -402,7 +402,14 @@ hand-rolling it in JS.
   "T H C" as THE at confidence 95 — a per-cluster 1.00 certifies the word,
   not the glyphs, and the missing arm is `thin_strokes.py`'s to see; needs
   the tesseract binary, which CI has). The first two run anywhere; the third
-  skips without tesseract the way the OCR tests do.
+  skips without tesseract the way the OCR tests do. A fourth, the same day,
+  for the sub-pixel edges plan: `digitizer/tools/edge_truth_ladder.py` (stage
+  4's polygons against the synthetic fixtures' VECTOR truth at 200–3200 px —
+  the first edge instrument here that measures against the curve and not a
+  raster; `--flag NAME[=VALUE]` runs it with any `PipelineConfig` field on,
+  `--tiers` prints the per-shape tier diff DOCTRINE asks of every stage-4
+  change). Its baseline found the floor above ~15 px/mm is the 0.2 mm
+  simplification tolerance, not the pixel.
 
   **`digitizer/tools/doc_claims.py` is the odd one out** — it reads no artwork
   and runs in seconds. It checks the two kinds of doc claim a script can
