@@ -277,18 +277,45 @@ function distToSegment(px, py, ax, ay, bx, by) {
   return { dist: Math.hypot(px - cx, py - cy), t, x: cx, y: cy };
 }
 
+// Even-odd ray cast on this module's [x, y] tuples.
+//
+// A third copy of this algorithm in the repo, deliberately: manualShapes.js's
+// `pointInShape` is the same test on {x, y} OBJECTS and digitize.js's
+// `pointInPoly` is the engine's own on tuples but behind browser globals.
+// Adapting either would mean allocating a converted ring on every hit test,
+// and hitOverlay runs on every pointermove for the hover cursor.
+function pointInRingPx(pts, px, py) {
+  let inside = false;
+  for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+    const xi = pts[i][0], yi = pts[i][1], xj = pts[j][0], yj = pts[j][1];
+    if ((yi > py) !== (yj > py) && px < ((xj - xi) * (py - yi)) / (yj - yi) + xi) {
+      inside = !inside;
+    }
+  }
+  return inside;
+}
+
 /**
  * What is under the pointer, in one pass over the drawn outlines.
  *
  * @param outlinesPx [{ id, points: [[xPx, yPx], ...] }] — already projected
- * @returns { shapeId, kind: "node" | "edge", index, atPx } or null
+ * @param interiorIds Set<string> | null — shapes whose INTERIOR may select.
+ *   Null (the default) is exactly the historical behaviour: outlines only.
+ *   The caller passes only shapes a user can actually see, which is what keeps
+ *   a hidden or deleted shape — whose interior is a large target — unclickable.
+ * @returns { shapeId, kind: "node" | "edge" | "interior", index, atPx } or null
  *
  * Nodes beat edges everywhere, not just when strictly nearer: a node sits ON
  * two edges, so a distance comparison would hand a dead-centre node hit to
  * whichever edge happened to round smaller, and dragging a node is both the
- * more common intent and the harder target.
+ * more common intent and the harder target. Interiors come last for the same
+ * reason, one step further: an interior contains every one of its own nodes
+ * and edges, so testing it first would make node and edge grabs unreachable.
+ * Interiors must also be a SEPARATE pass rather than a branch inside the
+ * per-shape loop — the node loop returns early, so an in-loop interior test on
+ * shape 1 would shadow a node grab on shape 2.
  */
-export function hitOverlay(outlinesPx, px, py) {
+export function hitOverlay(outlinesPx, px, py, interiorIds = null) {
   let bestEdge = null;
   for (const o of outlinesPx) {
     const pts = o.points;
@@ -307,9 +334,22 @@ export function hitOverlay(outlinesPx, px, py) {
       }
     }
   }
-  if (!bestEdge) return null;
-  const { dist, ...hit } = bestEdge;
-  return hit;
+  if (bestEdge) {
+    const { dist, ...hit } = bestEdge;
+    return hit;
+  }
+  if (interiorIds && interiorIds.size) {
+    // Back to front: later in the array is drawn later, so it is on top. The
+    // drawing canvas already resolves overlap this way (manualShapes.js:149).
+    for (let i = outlinesPx.length - 1; i >= 0; i--) {
+      const o = outlinesPx[i];
+      if (!interiorIds.has(o.id)) continue;
+      if (pointInRingPx(o.points, px, py)) {
+        return { shapeId: o.id, kind: "interior", index: -1, atPx: [px, py] };
+      }
+    }
+  }
+  return null;
 }
 
 // ---------------------------------------------------------------------------

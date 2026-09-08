@@ -337,6 +337,58 @@ describe("hitOverlay", () => {
     const h = hitOverlay(SQ, 197, 150);
     expect(h).toMatchObject({ kind: "edge", index: 1 });
   });
+
+  // --- interior selection (opt-in) -----------------------------------------
+  //
+  // Interior hits are opt-in so the "misses cleanly" test above stays true:
+  // a caller that does not pass an eligible-id set gets exactly today's
+  // node/edge behaviour. The set is also the filter that keeps a hidden or
+  // deleted shape unselectable — its interior is a far bigger target than its
+  // outline, so without it, clicking empty-looking canvas inside a deleted
+  // shape would select it.
+  const ALL = new Set(["s1"]);
+
+  test("without an eligible set, a dead-centre point is still a miss", () => {
+    expect(hitOverlay(SQ, 150, 150)).toBe(null);
+  });
+
+  test("with an eligible set, a dead-centre point selects the shape", () => {
+    const h = hitOverlay(SQ, 150, 150, ALL);
+    expect(h).toMatchObject({ shapeId: "s1", kind: "interior", index: -1 });
+    expect(h.atPx).toEqual([150, 150]);
+  });
+
+  test("a shape absent from the eligible set is not interior-selectable", () => {
+    expect(hitOverlay(SQ, 150, 150, new Set())).toBe(null);
+  });
+
+  test("a node still beats an interior hit on the same shape", () => {
+    // The vertex at (200,200) is inside no shape but on one; more to the
+    // point, an interior test that ran inside the per-shape loop would
+    // short-circuit before later shapes' nodes were considered.
+    const h = hitOverlay(SQ, 200, 200, ALL);
+    expect(h.kind).toBe("node");
+  });
+
+  test("an edge still beats an interior hit", () => {
+    const h = hitOverlay(SQ, 150, 102, ALL);
+    expect(h.kind).toBe("edge");
+  });
+
+  test("a point outside every shape is a miss even when everything is eligible", () => {
+    expect(hitOverlay(SQ, 400, 400, ALL)).toBe(null);
+  });
+
+  test("the topmost shape wins when interiors overlap", () => {
+    // Later in the array = drawn later = on top, matching the convention
+    // manualShapes.js:149-151 already documents for the drawing canvas.
+    const NESTED = [
+      { id: "under", points: [[100, 100], [300, 100], [300, 300], [100, 300]] },
+      { id: "over", points: [[150, 150], [250, 150], [250, 250], [150, 250]] },
+    ];
+    const h = hitOverlay(NESTED, 200, 200, new Set(["under", "over"]));
+    expect(h.shapeId).toBe("over");
+  });
 });
 
 describe("node and edge editing", () => {
