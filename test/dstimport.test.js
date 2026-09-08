@@ -251,42 +251,47 @@ test("decodeDSTStandard reads a third-party DST as its writer meant it", () => {
   assert.deepStrictEqual(d.stitches, EXPECTED_STANDARD);
 });
 
-test("decodeDST reads the same file with width and height swapped (the defect)", () => {
-  // Pinned, not worked around: this is the state `dst.js`'s writer pairs with,
-  // and the round-trip tests above depend on it. If THIS test fails, the codec
-  // was fixed — delete decodeDSTStandard and point the import lane back at
-  // decodeDST.
+test("decodeDST reads a third-party DST correctly — it IS the standard reader now", () => {
+  // This asserted the DEFECT until 2026-09-08 (10 x 40, width and height
+  // swapped), and its own comment said what to do when it stopped failing:
+  // "the codec was fixed — delete decodeDSTStandard and point the import lane
+  // back at decodeDST". That is what happened. `decodeDelta` now reads X from
+  // the low nibble and Y from the high one, bit-for-bit with pystitch.
   const d = decodeDST(standardBytes());
-  assert.strictEqual(d.widthMM, 10);
-  assert.strictEqual(d.heightMM, 40);
+  assert.strictEqual(d.widthMM, 40, "pystitch reads this file as 40.0 mm wide");
+  assert.strictEqual(d.heightMM, 10);
+  assert.deepStrictEqual(d.stitches, EXPECTED_STANDARD);
 });
 
-test("the two readers differ by a MIRROR, not by a turn", () => {
+test("decodeDSTStandard is an ALIAS now, not a second reader", () => {
+  // Two entry points existed only while the writer spoke a private dialect.
+  // With one correct codec, a wrapper that transposes on top of it would be a
+  // second wrong turn — so this pins the collapse rather than the wrapper.
+  assert.strictEqual(decodeDSTStandard, decodeDST,
+    "decodeDSTStandard must stay the same function, not a re-added correction");
+});
+
+test("a transpose on top of the corrected read would MIRROR the design", () => {
   // The whole reason this fixture is asymmetric. Until 2026-09-07 the repo
   // recorded the import defect as "a quarter turn" and the Studio told
   // customers to use Rotate — advice that cannot work, because rotation
-  // preserves orientation and this does not. The bbox swap that was measured
-  // is equally consistent with both; the SIGNED AREA of three non-collinear
-  // points is what separates them.
-  const bytes = standardBytes();
-  const a = decodeDST(bytes).stitches;
-  const b = decodeDSTStandard(bytes).stitches;
+  // preserves orientation and a transpose does not. The bbox swap that was
+  // measured is equally consistent with both; the SIGNED AREA of three
+  // non-collinear points is what separates them.
+  //
+  // Kept and repointed. The intuitive "repair" for any future orientation
+  // report is to transpose the decode; this shows what that costs — the
+  // design comes back mirrored, letters backwards — so the next person
+  // reaches for a measurement instead of a transpose.
+  const good = decodeDST(standardBytes()).stitches;
+  const transposed = good.map((s) => ({ x: s.y, y: s.x, type: s.type }));
   const cross = (p, q, r) => (q.x - p.x) * (r.y - p.y) - (q.y - p.y) * (r.x - p.x);
   const [i, j, k] = [0, 4, 6]; // start of the long arm, its far end, tip of the short arm
-  const sa = cross(a[i], a[j], a[k]);
-  const sb = cross(b[i], b[j], b[k]);
+  const sa = cross(good[i], good[j], good[k]);
+  const sb = cross(transposed[i], transposed[j], transposed[k]);
   assert.notStrictEqual(sa, 0, "the three sample points must not be collinear");
   assert.ok(sa * sb < 0, `signed area keeps its sign (${sa} vs ${sb}) — that would be a rotation, not a mirror`);
   assert.strictEqual(Math.abs(sa), Math.abs(sb), "same triangle, opposite handedness");
-});
-
-test("decodeDSTStandard is a transpose, so applying it twice is the identity", () => {
-  // Cheap guard on the correction itself: the fix is an involution, so a
-  // future edit that turns it into a rotation (the intuitive but wrong repair)
-  // shows up here rather than in a customer's sew-out.
-  const d = decodeDSTStandard(standardBytes());
-  const back = d.stitches.map((s) => ({ x: s.y, y: s.x, type: s.type }));
-  assert.deepStrictEqual(back, decodeDST(standardBytes()).stitches);
 });
 
 test("a standard file keeps its blocks, trims and label through the corrected read", () => {

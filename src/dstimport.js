@@ -11,26 +11,29 @@
   // dstimport stays loadable standalone in Node tests.
   function decodeDelta(b0, b1, b2) {
     let x = 0, y = 0;
-    if (b0 & 0x80) x += 1;
-    if (b0 & 0x40) x -= 1;
-    if (b0 & 0x20) x += 9;
-    if (b0 & 0x10) x -= 9;
-    if (b0 & 0x08) y -= 9;
-    if (b0 & 0x04) y += 9;
-    if (b0 & 0x02) y -= 1;
-    if (b0 & 0x01) y += 1;
-    if (b1 & 0x80) x += 3;
-    if (b1 & 0x40) x -= 3;
-    if (b1 & 0x20) x += 27;
-    if (b1 & 0x10) x -= 27;
-    if (b1 & 0x08) y -= 27;
-    if (b1 & 0x04) y += 27;
-    if (b1 & 0x02) y -= 3;
-    if (b1 & 0x01) y += 3;
-    if (b2 & 0x20) x += 81;
-    if (b2 & 0x10) x -= 81;
-    if (b2 & 0x08) y -= 81;
-    if (b2 & 0x04) y += 81;
+    // X is the LOW nibble and Y the HIGH nibble, matching pystitch's
+    // DstReader/DstWriter bit-for-bit. This module had them the other way
+    // round until 2026-09-08 -- the transposition of docs/dst-axis-verdict.
+    if (b0 & 0x80) y += 1;
+    if (b0 & 0x40) y -= 1;
+    if (b0 & 0x20) y += 9;
+    if (b0 & 0x10) y -= 9;
+    if (b0 & 0x08) x -= 9;
+    if (b0 & 0x04) x += 9;
+    if (b0 & 0x02) x -= 1;
+    if (b0 & 0x01) x += 1;
+    if (b1 & 0x80) y += 3;
+    if (b1 & 0x40) y -= 3;
+    if (b1 & 0x20) y += 27;
+    if (b1 & 0x10) y -= 27;
+    if (b1 & 0x08) x -= 27;
+    if (b1 & 0x04) x += 27;
+    if (b1 & 0x02) x -= 3;
+    if (b1 & 0x01) x += 3;
+    if (b2 & 0x20) y += 81;
+    if (b2 & 0x10) y -= 81;
+    if (b2 & 0x08) x -= 81;
+    if (b2 & 0x04) x += 81;
     return [x, y];
   }
 
@@ -211,19 +214,21 @@
   // which is the same mapping tools/crossval-stitch-formats.mjs calls
   // "identity" in the export direction.
   //
-  // Deliberately a SECOND entry point rather than a change to `decodeDST`:
-  // `dst.js`'s writer is unchanged and still speaks EMB-Bot's convention, so
-  // the reader that pairs with it has to stay as it is. When the codec itself
-  // is put right (Kent's call — it re-orients every DST EMB-Bot has written)
-  // these two collapse into one and this function is deleted.
-  function decodeDSTStandard(bytes) {
-    const d = decodeDST(bytes);
-    return Object.assign({}, d, {
-      stitches: d.stitches.map((s) => ({ x: s.y, y: s.x, type: s.type })),
-      widthMM: d.heightMM,
-      heightMM: d.widthMM,
-    });
-  }
+  // COLLAPSED 2026-09-08. The comment above described this as a SECOND entry
+  // point that would exist only until "the codec itself is put right", at
+  // which point "these two collapse into one and this function is deleted".
+  // The codec is now put right: `decodeDelta` above reads X from the low
+  // nibble and Y from the high one, bit-for-bit with pystitch, so `decodeDST`
+  // IS the standard reader and a transpose on top of it would be a second
+  // wrong turn. Measured on the becker third-party fixture (ground truth
+  // 101.9 x 62.1 mm): `decodeDST` now returns 101.9 x 62.1; the old wrapper
+  // returned 62.1 x 101.9.
+  //
+  // Kept as a named alias rather than deleted, because three call sites read
+  // through it (`generate.js`, and DesignPanel twice) and the name still says
+  // the true thing: this is the standard-conformant read. New code should call
+  // `decodeDST`.
+  const decodeDSTStandard = decodeDST;
 
   // Default per-block thread colors for imports (DST files carry NO color
   // information — only change markers). Deliberately distinct hues so a

@@ -144,13 +144,18 @@ replacement for this area's `pyembroidery` dependency is now evaluated —
 against `digitizer_service/formats.py` and the other call sites — with
 adoption in progress in a parallel lane as of 2026-08-11.
 
-**Three of the four shipped formats verified by PICTURE, not just bytes
-(2026-09-07).** "FRITSCH" exported from the app and drawn back by pystitch, an
-independent reader: PES, EXP and JEF each read upright and correct at
-101.8 x 15.1 mm, matching what the app reported. DST comes back 15.1 x 101.8 —
-a quarter turn AND mirrored, letters backwards (footgun #1, writer half, still
-Kent's call). The Download step's DST caveat was checked against that render
-and was accurate clause for clause. Its "may not see the color stops" clause is
+**All four shipped formats verified by PICTURE, not just bytes (2026-09-07,
+DST added 2026-09-08).** "FRITSCH" exported from the app and drawn back by
+pystitch, an independent reader: PES, EXP and JEF each read upright and correct
+at 101.8 x 15.1 mm, matching what the app reported. DST came back 15.1 x 101.8
+— a quarter turn AND mirrored, letters backwards. **That is fixed (2026-09-08):
+the two record weight tables were swapped in both the writer and the reader, so
+`encodeRecord` is byte-identical to `pystitch.DstWriter.encode_record` across
+ten deltas and the crossval DST control reads `identity` beside PES and EXP.
+Re-rendered the same day: the old bytes draw a vertical column of reversed
+letters, the new ones draw FRITSCH upright at its own 127.2 x 22.6 mm.** The
+Download step's DST caveat was checked against the old render and was accurate
+clause for clause; it now OVER-warns and comes out separately. Its "may not see the color stops" clause is
 GONE as of 2026-09-08 — not softened, removed, because the defect behind it is
 fixed. `dst.js` wrote the colour change as `0x43` where the spec wants `0xC3`,
 so a standard reader saw a spurious sequin toggle and ZERO colour changes: every
@@ -171,5 +176,7 @@ opened or rendered, not merely byte-checked, on one "FRITSCH" lettering design:
 PES/EXP/JEF decode through pystitch and draw upright at 101.8 x 15.1 mm; SVG
 carries `viewBox="0 0 101.8 15.1"` with real `mm` width/height and seven
 polylines for seven letters, and renders upright in a browser; PNG opens at
-1200 x 178 with the design upright. DST is the one exception (footgun #1,
-writer half). The PDF worksheet was broken and is fixed — see area 3.
+1200 x 178 with the design upright. DST was the one exception (footgun #1,
+writer half) and is no longer: fixed and re-rendered 2026-09-08, so all seven
+downloadable outputs now read correctly to something other than EMB-Bot. The
+PDF worksheet was broken and is fixed — see area 3.
