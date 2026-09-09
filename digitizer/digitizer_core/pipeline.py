@@ -584,6 +584,14 @@ def build_generation(
                 split_tonal=effective_split_tonal(cfg, classification.class_),
                 shade_demand=shade_demand,
                 design_ramp=design_ramp,
+                # The thin population (`cfg.keep_thin_strokes`, `thin_ink.py`)
+                # is for LOGOS the classifier sent down this lane. Measured
+                # 2026-09-08 over the committed photo fixtures: on a
+                # photograph it is not empty at any ring share that keeps
+                # Fremont's lettering whole (owl 199 mm, chrome 230 mm of
+                # "strokes" at 0.75), so the photo classes keep today's path
+                # until that residue is understood — byte-identical ON.
+                thin_population=bool(cfg.keep_thin_strokes and classification.class_ == "gradient"),
             )
             if classification.class_ in (*PHOTO_CLASSES, "gradient")
             else quantize(p, cfg)

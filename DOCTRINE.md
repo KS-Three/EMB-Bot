@@ -3584,3 +3584,34 @@ time. **When a reserved call is written down, write down its SCOPE with it** —
 footgun 1's stated reason was "it re-orients every DST EMB-Bot has written",
 which was never true of either of those two, and nobody re-read the reason.
 *(2026-09-08 — #412, #414 and the follow-ups; memory `dst-codec-axis-discrepancy`)*
+
+
+## A median width along a skeleton is not "thin" (2026-09-08)
+
+`tools/thin_strokes.py` shipped in #425 calling a connected component a thin
+stroke when the MEDIAN of the distance transform along its skeleton was
+under the detail floor. It printed plausible recalls for two PRs. Then the
+photo lane's population finder, built on the same test, read 96.6% of
+Fremont's foreground as thin ink — and the biggest "stroke" was the white
+GROUND: one component of 1.54 million pixels whose skeleton threads the gaps
+between the letters, median full width 1.32 mm, 90th percentile 3.77,
+maximum 7.41, "length" 1,758 mm. Sewn, because it is the ground; recalled,
+because sewn; and so every design-level recall on Fremont in #425 and #426
+was inflated (forced flat 86.1 → 97.3% was really 61.2 → 92.7%). The
+per-component counts and the sub-1.0 mm bands were never touched by it.
+
+**The rule.** A structure is thin only if it is thin ALONG ITS WHOLE
+SKELETON: test a high percentile of the width (the 90th — a maximum refuses
+real strokes at serifs and junctions, where the transform swells for a few
+pixels; Fremont's letters read p90 1.04–1.05 against medians 1.03–1.04),
+never the median alone. A lettered design's ground, a panel pierced by
+holes, a photograph's shadow web all pass a median test. Pin it with a
+fixture that has narrow bridges and a wide rim (`tests/test_thin_strokes.py`,
+the pierced panel).
+
+**The second half.** An instrument and the engine feature it measures must
+share ONE definition of the thing measured, in one place
+(`digitizer_core/thin_ink.iter_thin_components`), or the day the feature is
+built the two will disagree and nobody will know which one to believe. The
+engine caught the instrument here only because they were written apart.
+*(2026-09-08 — #427; scope-history's retraction entry has the tables)*

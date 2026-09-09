@@ -412,16 +412,33 @@ class PipelineConfig:
     # --forced-class flat --flag keep_thin_strokes`, scope-history 09-08):
     # see that entry for the per-fixture table.
     #
-    # FLAT LANE ONLY in this step. The photo segmenters call
-    # `resolve_small_regions` without layer colours, as they call it without
-    # the chain rescue and for the same reason — quantisation shatters a
-    # photograph into mutually adjacent contrasting fragments everywhere,
-    # which is exactly what this rule would keep — so ON is byte-identical on
-    # the gradient and photo lanes until the plan's PR 3 gives them a thin
-    # population of their own.
+    # ON THE GRADIENT AND PHOTO LANES the same flag adds a THIRD population
+    # (`thin_ink.find_thin_ink`, plan §4c, PR 3): before SEEDS, the flat
+    # lane's own quantiser runs over the foreground and every connected
+    # component that reads as a stroke — thin along its whole skeleton (width
+    # under `min_detail_mm` at the 90th percentile, at least
+    # `THIN_INK_MIN_PX` wide), at least `RUN_MIN_LOOP_MM / 2` long, and ON ONE
+    # GROUND (the two-pixel ring around it dominated by a single label, which
+    # is what separates a stroke drawn on something from a band a posterised
+    # ramp leaves between two levels) — leaves the SEEDS foreground and comes
+    # back as its own label block after the palette, the way the enclosed
+    # population already does. A superpixel is ~47 px a side on Fremont; a
+    # 0.4 mm stroke was a quarter of a block and gone before any floor.
+    # GRADIENT CLASS ONLY: the pipeline passes the population gate as
+    # `keep_thin_strokes and class_ == "gradient"`, so `photo_subject` and
+    # `photo_scene` are byte-identical ON. Measured 2026-09-08 over the
+    # committed photo fixtures (scope-history 09-08, three ring shares): the
+    # population is empty on the smooth ramps and the stubs but NOT on the
+    # photographs — the owl keeps 199 mm and the chrome 230 mm of "strokes"
+    # at the share that keeps Fremont's lettering whole, and the share that
+    # empties them (0.9) costs Fremont 15 of its 162 strokes — so the plan's
+    # "empty on photographs" is met by the gate, not by the test. Where
+    # nothing qualifies the gradient lane is byte-identical too. The photo
+    # lane's `resolve_small_regions` still runs without layer colours: the
+    # absorb rule above is the flat lane's, the population is this lane's.
     #
     # DEFAULT OFF and byte-identical off. Flipping it is Kent's: it adds
-    # regions to real logos, and the flat goldens move with them.
+    # regions to real logos, and the flat AND photo goldens move with them.
     keep_thin_strokes: bool = False
 
     # Stage 4

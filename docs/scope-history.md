@@ -10535,6 +10535,9 @@ Also: MASTER_SCOPE area 1 carries a one-line pointer (790 of 800).
 
 ## 2026-09-08 — the thin-stroke plan's two instruments, and what they read on first run
 
+
+> **Superseded in part, later the same day.** The thin-stroke RECALL figures below (design totals and the 1.0–1.5 mm band) counted Fremont's white ground — one component threading the gaps between letters, median width 1.32 mm, p90 3.77 — as a 1,758 mm stroke. The per-component lost counts and the sub-1.0 mm bands stand. The corrected instrument and its re-measured tables are in the entry "the thin-stroke instrument counted the ground, retracted and re-measured" further down; quote from there.
+
 PR 1 of `docs/superpowers/plans/2026-09-08-real-logo-lane-and-thin-strokes.md`:
 two instruments, no engine change, on Kent's "yes, both plans' first PRs".
 
@@ -10778,6 +10781,9 @@ orange −0.241 / −0.149 / −0.030 / −0.007 / −0.004; ribbon −0.033 / �
 
 ## 2026-09-08 — `keep_thin_strokes`: the flat lane stops absorbing by adjacency, measured OFF against ON
 
+
+> **Superseded in part, later the same day.** The thin-stroke RECALL figures below (design totals and the 1.0–1.5 mm band) counted Fremont's white ground — one component threading the gaps between letters, median width 1.32 mm, p90 3.77 — as a 1,758 mm stroke. The per-component lost counts and the sub-1.0 mm bands stand. The corrected instrument and its re-measured tables are in the entry "the thin-stroke instrument counted the ground, retracted and re-measured" further down; quote from there.
+
 PR 2 of `docs/superpowers/plans/2026-09-08-real-logo-lane-and-thin-strokes.md`
 (PR #426), Kent's pick after PR 1's instruments landed. One flag,
 `cfg.keep_thin_strokes`, **DEFAULT OFF and byte-identical off** — the flat
@@ -10862,3 +10868,169 @@ background", which is not this absorb.
   its bars over the detail floor by mis-stating the scale (the white margin
   is background, so the 500 px panel is the art bbox). Bars 0.6 × 3 mm at a
   50 mm target read 0% recall OFF and 100% ON.
+
+
+## 2026-09-08 — the thin-stroke instrument counted the ground, retracted and re-measured; and the photo lane gets its thin population
+
+Two things in one entry because the second found the first. Building PR 3 of
+`docs/superpowers/plans/2026-09-08-real-logo-lane-and-thin-strokes.md` (the
+photo lane's thin population, PR #427), the first run of the population
+finder on Fremont read **96.6% of the foreground as thin ink**. It was the
+ground.
+
+### The retraction
+
+`tools/thin_strokes.py` (PR #425) tested a component's width at the MEDIAN
+of the distance transform along its skeleton. Fremont's white patch is one
+component of 1.54 million pixels whose skeleton threads the gaps between
+the letters, so its median full width is 1.32 mm — under the 1.5 mm floor —
+while its 90th percentile is 3.77 mm and its maximum 7.41. It passed as a
+**1,758 mm stroke**, was sewn (it is the ground), and was counted as
+recalled. Every design-level recall the instrument printed on Fremont in
+the two earlier 09-08 entries, PR #425 and PR #426 is inflated by that one
+component; the 1.0–1.5 mm band held it. **The per-component lost counts and
+the sub-1.0 mm bands were never affected** and every conclusion that rested
+on them stands. Same shape on the photographs: chrome's largest "stroke"
+read median 1.23 / p90 2.46 / max 5.17 mm, sunset's 1.44 / 10.80 / 12.59.
+
+The fix, shared: `digitizer_core/thin_ink.iter_thin_components` is now the
+one definition of a thin stroke, used by the engine's population and the
+instrument alike — width under the floor at the **90th percentile** along
+the skeleton (a maximum would refuse a real stroke at its serifs and
+junctions, where the transform swells for a few pixels; Fremont's letters
+read p90 1.04–1.05 against medians of 1.03–1.04), at least 3 px wide at the
+median (`THIN_INK_MIN_PX`, the halo floor `_MIN_STROKE_PX` already was),
+skeleton at least `RUN_MIN_LOOP_MM / 2`, and — new, below — on one ground.
+`tests/test_thin_strokes.py` pins it with a panel pierced by a grid of
+holes: bridges 0.6 mm wide at the median, a rim far wider, no stroke.
+
+### The population, and the one-ground rule
+
+The photo lane's thin population (`thin_ink.find_thin_ink`, `stage2_photo_
+segment.segment` → `kept_masks_to_quant`) is the enclosed-population
+precedent applied to strokes: the flat lane's own quantiser runs over the
+foreground before SEEDS, every component that reads as a stroke leaves
+`base_valid` so no superpixel straddles it, and comes back after the
+palette as its own label block wearing the spools the quantiser snapped it
+to. Stage 4 then treats each as any sub-floor mask: the real-geometry
+run-tier test and the `rescued_small_shape` tag. With the p90 test alone the
+population on a JPEG or a photograph is still full of BANDS — a posterised
+ramp leaves a thin, long band between two of its levels — so a third rule:
+the two-pixel ring around a component must be dominated by one label
+(`THIN_INK_GROUND_SHARE`). A stroke drawn on something has the same thing on
+both sides of it; a band has a different level on each side. Measured over
+every committed photo-lane fixture at the Studio's 6 colours (components /
+skeleton mm / share of the foreground):
+
+| fixture | no ground test | share 0.6 | **share 0.75** | share 0.9 |
+|---|---|---|---|---|
+| `logo_hotel_fremont` @ 92.5 | 162 / 975 / 23.6% | 162 / 975 / 23.6% | **162 / 975 / 23.6%** | 147 / 702 / 15.6% |
+| `logo_golden_tee` | 78 / 1,128 / 55.8% | 10 / 188 / 8.5% | **4 / 145 / 7.0%** | 2 / 140 / 6.6% |
+| `drone_render` | 94 / 1,010 / 16.8% | 69 / 644 / 12.0% | **47 / 409 / 7.7%** | 20 / 205 / 3.7% |
+| `screenshot_phone_ui_golke` | 79 / 539 / 31.9% | 58 / 407 / 27.5% | **35 / 293 / 20.4%** | 7 / 45 / 2.9% |
+| `logo_bridge_bar` | 5 / 104 / 4.0% | 5 / 104 / 4.0% | **2 / 2.9 / 0.2%** | 2 / 2.9 / 0.2% |
+| `logo_gaulke_roofing` | 4 / 77 / 1.8% | 3 / 69 / 1.8% | **3 / 69 / 1.8%** | 2 / 67 / 1.7% |
+| `enthusiast_logo` | 14 / 61 / 3.8% | same | **same** | same |
+| `summit_badge` | 30 / 204 / 3.0% | 22 / 146 / 2.5% | **19 / 127 / 2.2%** | 13 / 104 / 2.0% |
+| `logo_script_tires`, `repro_gradient_white_icon`, `region_blobs`, both gradient ramps, `photo_subject_stub` | 0 | 0 | **0** | 0 |
+| `photo_owl_kent` | 179 / 944 / 9.6% | 104 / 510 / 5.4% | **52 / 199 / 2.1%** | 24 / 74 / 0.8% |
+| `photo_chrome_specular` | 42 / 259 / 2.0% | 42 / 259 / 2.0% | **38 / 230 / 1.8%** | 36 / 214 / 1.7% |
+| `photo_scene_stub` | 36 / 114 / 1.9% | same | **same** | same |
+| `photo_dof_meadow` | 12 / 102 / 1.2% | 8 / 61 / 0.7% | **5 / 16 / 0.15%** | 3 / 9 / 0.08% |
+| `photo_grass_macro` | 38 / 88 / 0.5% | 22 / 61 / 0.4% | **6 / 12 / 0.08%** | 0 |
+| `fur_ramp`, `photo_sunset_backlit`, `photo_owl_pale` | 1 / 5.6, 5 / 7.3, 2 / 2.6 (≤ 0.14%) | same | **same** | same |
+
+Gaulke's roof line-art is not in its population: the black frame makes it
+"enclosed background", quantised as its own population, which the finder
+never sees (the instrument, reading the full quantisation, still counts it —
+18 strokes, 163 mm, 41% recall either arm).
+
+**0.75 is the share that keeps Fremont whole; nothing keeps the photographs
+empty.** At 0.9 grass empties and the owl halves, and Fremont loses 15 of
+its 162 strokes — real lettering. At 0.75 the owl keeps 199 mm and the
+chrome 230 mm of "strokes", about 2% of their foreground; the smooth ramps,
+the stubs and the icon repro are empty at every share. The plan's §4c
+required the population EMPTY on the pure photographs. It is not, at any
+share that does the job on the logos, so the requirement is met by a GATE
+rather than a test: the pipeline asks for the population only when stage 0's
+class is `gradient` — the lane six of seven real logos take — and
+`photo_subject` / `photo_scene` are byte-identical ON by construction
+(`pipeline.build_generation`, `thin_population=`; pinned). What the owl's
+199 mm are is a question for a later measurement, not a reason to hold the
+logos.
+
+### The corrected tables
+
+`tools/thin_strokes.py --corpus [--forced-class flat] [--flag keep_thin_strokes]`
+with the shared definition (p90, 3 px, one ground), Studio defaults. "Thin"
+is the population the instrument now finds; compare the earlier entries'
+counts to see what the old definition was admitting (golden_tee 87 → 3,
+drone 131 → 45, bridge 12 → 2, screenshot 115 → 28, gaulke 46 → 18).
+
+**Forced flat, OFF → ON (PR #426's flag, corrected):**
+
+| fixture | thin (mm) | lost | recall | regions (rescued) | stitches | trims | blocks |
+|---|---|---|---|---|---|---|---|
+| `logo_hotel_fremont` @ 92.5 | 162 (975) | **135 → 3** | **61.2% → 92.7%** | 33 (7) → 165 (139) | 13,268 → 16,628 | 71 → 81 | 3 → 3 |
+| `drone_render` | 45 (349) | 15 → 5 | 82.0% → 90.0% | 153 (31) → 219 (96) | 21,639 → 22,074 | 174 → 251 | 23 → 21 |
+| `screenshot_phone_ui_golke` | 28 (201) | 7 → 6 | 93.3% → 94.1% | 268 (201) → 287 (220) | 10,272 → 10,809 | 124 → 134 | 8 → 7 |
+| `logo_golden_tee` | 3 (7.8) | 1 → 0 | 79.6% → 97.5% | 80 (23) → 94 (37) | 7,951 → 8,552 | 109 → 138 | 29 → 32 |
+| `logo_gaulke_roofing` | 18 (163) | 16 → 16 | 41.2% both | 60 (8) → 106 (51) | 9,756 → 11,502 | 28 → 54 | 5 → 8 |
+| `logo_bridge_bar` | 2 (2.9) | 0 → 0 | 54.6% both | 74 (29) → 110 (63) | 13,314 → 14,580 | 111 → 134 | 8 → 8 |
+| `enthusiast_logo` | 14 (59) | 1 → 1 | 94.8% both | 31 → 31 | 2,459 | 22 | 2 |
+
+Fremont's headline was 86.1% → 97.3%; it is **61.2% → 92.7%**, and the
+thing it says is unchanged: 132 more small elements kept for ten trims.
+The cost reading of that entry sharpens: bridge and gaulke pay 36 and 46
+regions for populations of 2 and 18 strokes that do not move.
+
+**Routed, OFF → ON (PR #427's population, the shipped route):**
+
+| fixture | class | thin (mm) | lost | recall | regions (rescued) | stitches | trims | blocks |
+|---|---|---|---|---|---|---|---|---|
+| `logo_hotel_fremont` @ 92.5 | gradient | 162 (975) | **18 → 3** | **84.8% → 92.5%** | 55 (0) → 164 (138) | 17,400 → **16,006** | 114 → **66** | 3 → 3 |
+| `drone_render` | gradient | 45 (349) | **29 → 2** | **51.1% → 96.1%** | 74 (8) → 110 (30) | 16,454 → 17,936 | 82 → **141** | 22 → 23 |
+| `logo_golden_tee` | gradient | 3 (7.8) | 1 → 0 | 74.6% → 93.2% | 37 (1) → 38 (4) | 6,716 → 7,028 | 60 → 62 | 14 → 14 |
+| `screenshot_phone_ui_golke` | gradient | 28 (201) | 7 → 6 | 94.5% → 93.7% | 152 (83) → 155 (86) | 7,603 → 7,635 | 68 → 68 | 15 → 16 |
+| `logo_gaulke_roofing` | gradient | 18 (163) | 15 → 16 | 42.0% → 41.2% | 56 (1) → 62 (9) | 10,229 → 10,331 | 30 → 35 | 4 → 4 |
+| `logo_bridge_bar` | gradient | 2 (2.9) | 0 → 0 | 100% → 54.6% | 74 (22) → **50 (6)** | 14,499 → 13,976 | 120 → 97 | 13 → 13 |
+| `enthusiast_logo` | flat | 14 (59) | 1 → 1 | 94.8% both | 31 → 31 | 2,459 | 22 | 2 |
+
+### What it says
+
+1. **On the shipped route, Fremont keeps its lettering and sews FEWER
+   stitches and trims.** Routed (gradient lane), the population takes the
+   sub-0.5 mm band from 53% to 92% recall and the design from 18 lost
+   strokes to 3 — and the plan goes 17,400 → 16,006 stitches and 114 → 66
+   trims at the same three colour blocks, because 138 strokes SEEDS used to
+   shatter into fragments now arrive as their own regions and chain. Drone
+   goes 51% → 96% recall (29 → 2 lost) for 59 more trims.
+2. **The population is small everywhere else and empty where it should be.**
+   Golden Tee has three thin strokes by the corrected definition (7.8 mm);
+   Bridge Bar two (2.9 mm) — the 87 and 12 the old definition counted were
+   JPEG bands and fragments. Bridge's ON row moves 74 → 50 regions and 120 →
+   97 trims with the population EXCLUDED from SEEDS: the two strokes' 2.9 mm
+   drop to 55% sewn while the rest of the design simplifies, which is a
+   change worth a render before anyone calls it a win or a loss. Screenshot
+   and gaulke move by a stroke and a few trims.
+3. **Gaulke does not move on either lane**, 15–16 of 18 roof strokes lost at
+   41–42% recall, because its line-art is "enclosed background" and outside
+   both the absorb rule and the population. The black-frame default is
+   still the fix there.
+4. **The photo classes are untouched by design**, per the table above.
+
+### Traps
+
+- A MEDIAN width along a skeleton is not "thin": the ground of a lettered
+  design is one component whose skeleton threads the gaps. Test the 90th
+  percentile. The first instrument shipped with the median, and the number
+  it printed looked fine for two PRs because a sewn ground has perfect
+  recall. DOCTRINE carries the rule.
+- An "empty on photographs" requirement written before the measurement met
+  a population that is 2% of a photograph at the share the logos need. The
+  honest resolution was a class gate at the call site, recorded as such,
+  not a share tuned until the table said what the plan wanted.
+- Two runs of the same instrument disagree about gaulke (3 components in the
+  population finder, 18 in the instrument) because one excludes the enclosed
+  population and the other reads the full quantisation. Both are right;
+  say which one you ran.
