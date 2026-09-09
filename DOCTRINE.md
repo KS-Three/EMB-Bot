@@ -3899,7 +3899,7 @@ things the measurement settled, each of which changes what to do next:
   4.8–5.0 whole and their serifs as separate columns. Two letters are
   "wide" only because their diagonals meet their stems. A junction-aware
   width statistic is the next thing the classifier needs, not a higher
-  number.
+  number. **[Measured 2026-09-09, two entries on: it reads the leftovers — one verdict flips in the corpus and drone's 9 mm wing reads 1.1 mm. Not a classifier input.]**
 - **Admitting the band does not sew it well.** MARINE at 100 mm goes satin
   at −13% stitches and comes out with 251 self-crossing pairs at the feet
   and junctions, 3–5 strokes and 4–7 trims per letter against the pro's
@@ -3961,3 +3961,37 @@ the brief did not survive the reading:
   Kent's; the renders are in `docs/renders/junction-cover-2026-09-09/`. *(2026-09-09 —
   `docs/superpowers/plans/2026-09-09-serifs-and-junction-cover.md`;
   `tools/letterforms.py`; `tests/test_junction_patch_flag.py`)*
+
+## Our junctions are under-stacked against the pro, and a bold letter is mostly junction (2026-09-09)
+
+Item 5's PR 3 — the junction blob sewn as one column with the arms ending
+on it, and the classifier's width read off the arms alone — was measured
+out by its own instrument before any engine code:
+
+- **Calibrate the layers before decomposing.** `tools/pro_layers.py` puts
+  the pro's sewn Becker file in our frame and reads coverage layers
+  (`preflight._coverage_map`'s units) inside our own letters and junction
+  blobs. MARINE: ours p95 2.4–3.4 and max 3.8–5.2 per letter against the
+  pro's p95 4.1–6.0 and max 5.5–11.6; inside every junction blob the pro
+  stacks more (p95 3.7–7.3 against 1.8–3.8). The pro sews the word with 58%
+  more thread (12,109 mm against 7,642) and 39% more penetrations. The
+  clumps #434's render showed at the A's apex and the R's join are crosses
+  meeting at angles over LESS thread than the pro lays there. **Rule: a
+  render that looks over-sewn is a layer count, and the count is read
+  against the pro's file at the same spot before anything is added or
+  taken away.**
+- **A junction blob is not a column.** `tools/junction_blobs.py` builds the
+  blob as the medial balls bigger than the arms' own: on MARINE at 100 mm
+  that is 45–90% of every letter's skeleton, node balls of 3.4–4.4 mm
+  radius on 2.2–3.2 mm arms, and no arm between two junctions ever settles
+  to a corridor. The pro's A apex column is a slab the FONT defines; no
+  geometry of the raster blob recovers it. **Rule: at 17 mm a bold letter
+  has no arms to stand a junction against — decomposition rules written
+  for a T with a corridor do not transfer, and a "junction-aware" statistic
+  reads what is left after the blobs, which on drone's wing is a 9 mm blob
+  passed as a 1.1 mm hairline.**
+- What the census does count as a defect is bare blobs (Fremont's band
+  under `wide_columns`: 15 at least a quarter bare), which the junction
+  cover already sews. *(2026-09-09 —
+  `docs/superpowers/plans/2026-09-09-junction-blobs.md`;
+  `docs/renders/junction-blobs-2026-09-09/`)*

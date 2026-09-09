@@ -384,6 +384,14 @@ hand-rolling it in JS.
   plus the bare artwork at each junction node. It is what showed the wide
   band's "251 self-crossings" to be seams at two joins and the pro's file
   to carry 2,593 of them; `--flag` repeatable, `--widths`, `--json`),
+  `digitizer/tools/junction_blobs.py` (every junction cluster as a BLOB — the
+  node's radius against its arms' halves, what the merge did at each arm,
+  coverage layers / bare / seam pairs inside it, the arms-only DT p90 per
+  shape; `--render`; it is what showed a 17 mm bold letter to be 45–90%
+  junction) and `digitizer/tools/pro_layers.py` (a reference DST/PES in our
+  frame by the whole design's stitch box: coverage layers and thread inside
+  our own letters and blobs, ours beside the pro's — the calibration that
+  showed our junctions under-stacked, not over),
   `digitizer/tools/pushcomp_pins.py` (`test_pushcomp.GOLDEN_FLAG_OFF`'s tuples
   as THIS tree computes them, for a re-pin with the same pre-change proof),
   `digitizer/tools/resnap_escape.py` (cones `revalidate_threads` ADDS, and how
