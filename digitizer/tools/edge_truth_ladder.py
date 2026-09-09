@@ -102,7 +102,7 @@ import curve_fidelity as cf                                            # noqa: E
 import make_test_logo as mtl                                           # noqa: E402
 from digitizer_core import PipelineConfig                              # noqa: E402
 from digitizer_core.pipeline import build_generation                   # noqa: E402
-from thin_strokes import _plan_frame, parse_flag                       # noqa: E402
+from thin_strokes import _plan_frame, parse_flag, parse_flags          # noqa: E402
 
 SUPER = 4                                  # the generator's supersample, relative to its output
 RUNGS = (200, 400, 800, 1600, 3200)        # output widths; 800 is the committed fixture
@@ -266,7 +266,7 @@ def measure_rung(fixture: str, width_px: int, forced_class: str | None = "flat",
     workdir = workdir or Path(tempfile.mkdtemp(prefix="edge_ladder_"))
     path = workdir / f"{fixture}_{width_px}.png"
     cv2.imwrite(str(path), render(fixture, width_px))
-    extra = dict([parse_flag(flag)]) if flag else {}
+    extra = parse_flags(flag)
     cfg = PipelineConfig(target_width_mm=TARGET_MM, forced_class=forced_class, **extra)
     gen = build_generation(str(path), cfg)
     p = gen.p

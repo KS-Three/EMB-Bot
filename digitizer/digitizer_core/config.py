@@ -440,6 +440,30 @@ class PipelineConfig:
     # DEFAULT OFF and byte-identical off. Flipping it is Kent's: it adds
     # regions to real logos, and the flat AND photo goldens move with them.
     keep_thin_strokes: bool = False
+    # Widen rescued lettering to a sewable column
+    # (`textcluster.regularize_text_clusters`, plan §4d, PR 4). The strokes
+    # `keep_thin_strokes` keeps are 0.3-0.5 mm of ink: under
+    # `SATIN_MIN_CROSS_MM` they sew as a three-pass hairline bean, which is
+    # thread on thread, not a stroke — and the pro's Fremont file sews the same
+    # glyphs as 0.82-0.90 mm satin columns, two to three times the art. The
+    # regularizer already redraws every door-1 cluster member as a
+    # fixed-radius buffer around its own skeleton at the cluster's median
+    # half-width; this is one line of policy on top: the target radius is at
+    # least this many millimetres of SEWN column, halved, less the fabric's
+    # pull (stage 5 adds the pull back on every shape, so the artwork radius
+    # is the floor minus it — never narrower than the art's own median). Door
+    # 2, ordinary lettering, stays untouched, as that function's docstring
+    # argues; whatever still falls under the cross floor keeps the hairline
+    # bean as its fallback. Every gate the regularizer already has — the
+    # OCR-confidence drop, the shape-context distance, the sewability floor
+    # — still applies to the widened polygon.
+    #
+    # The number is gate 1's, and this is Kent's pick (2026-09-08): 1.0 mm,
+    # `stage6_satin.PHOTO_MIN_SATIN_WIDTH_MM` (Law 31, an existing constant;
+    # `2 * SATIN_MIN_CROSS_MM` is the same figure), against the pro's
+    # measured 0.82-0.90. None is today's behaviour, byte-identical; the
+    # flip is a sew-out's.
+    lettering_min_column_mm: float | None = None
 
     # Stage 4
     # Polygon simplification tolerance. Both call sites (`stage4_vectorize.

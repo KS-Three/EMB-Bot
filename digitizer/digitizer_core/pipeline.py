@@ -677,7 +677,11 @@ def build_generation(
     # a merge/split/boundary_override on a tagged shape should see the
     # regularized polygon, the same way it would see any other computed-fact
     # geometry from this generation.
-    regularize_text_clusters(regions, p)
+    # `cfg.lettering_min_column_mm` (plan §4d): the SEWN column floor, so the
+    # artwork radius is the floor less the pull stage 5 will add back. None
+    # is today's pass, byte for byte.
+    regularize_text_clusters(regions, p, min_column_mm=cfg.lettering_min_column_mm,
+                             pull_mm=fabric_for(cfg).pull_comp_mm)
 
     # OCR-suggested text (Studio "Convert to text" entry point): a read-only,
     # additive per-member OCR read of each tagged member's FINAL polygon —

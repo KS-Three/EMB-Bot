@@ -1034,7 +1034,9 @@ def _ocr_regularization_hurts_legibility(original_poly: Polygon, candidate_poly:
     return (before - after) >= _OCR_CONFIDENCE_DROP_THRESHOLD
 
 
-def regularize_text_clusters(regions: list[Region], p: Prep) -> None:
+def regularize_text_clusters(regions: list[Region], p: Prep, *,
+                             min_column_mm: float | None = None,
+                             pull_mm: float = 0.0) -> None:
     """Post-tagging pass (call immediately after `detect_text_clusters`):
     redraw every `text_cluster_id`-tagged region's polygon as a fixed-radius
     buffer around its own skeleton, sized to the cluster's shared target
@@ -1103,7 +1105,26 @@ def regularize_text_clusters(regions: list[Region], p: Prep) -> None:
     `p` is accepted, not read — same reason `detect_text_clusters` accepts
     it: signature parity with this module's other post-vectorization pass,
     not because today's algorithm needs it.
+
+    `min_column_mm` (`cfg.lettering_min_column_mm`, plan §4d) raises the
+    target radius to at least half that SEWN width less `pull_mm` (the
+    fabric's pull compensation, which stage 5 adds back to every shape) —
+    `max(cluster median, min_column_mm / 2 - pull_mm)`, never narrower than
+    the cluster's own median. A member the raised target WIDENS goes through
+    the sewability floor and the OCR-confidence gate exactly as before, but
+    NOT the shape-context gate: that gate exists to catch a redraw to the
+    median that blows out structure the median did not ask for, and a
+    deliberate doubling of a stroke's width changes the descriptor's
+    proportions by construction (a 0.3 mm stroke widened to 0.6 mm reads
+    as a different point arrangement however faithful it is — measured
+    2026-09-08, five of five test strokes refused). Legibility is the
+    question widening raises, and the OCR gate is the instrument that asks
+    it; the distance is still recorded for diagnostics. The widening is
+    recorded as `meta["text_cluster_widened_mm"]` (the radius added). None
+    — every pre-existing caller — is today's behaviour, byte for byte.
     """
+    floor_radius_mm = (max(0.0, min_column_mm / 2.0 - max(0.0, pull_mm))
+                       if min_column_mm else 0.0)
     for r in regions:
         if not r.meta.get("text_cluster_id"):
             continue
@@ -1130,6 +1151,10 @@ def regularize_text_clusters(regions: list[Region], p: Prep) -> None:
             continue
 
         radius_mm = r.meta.get("text_cluster_stroke_mm")
+        widened_mm = 0.0
+        if radius_mm and floor_radius_mm > radius_mm:
+            widened_mm = floor_radius_mm - radius_mm
+            radius_mm = floor_radius_mm
         field = build_shape_field(r.polygon)
         if field is not None and radius_mm and field.skel.any():
             own_stroke_mm = float(np.mean(field.dist[field.skel])) / field.scale
@@ -1152,12 +1177,14 @@ def regularize_text_clusters(regions: list[Region], p: Prep) -> None:
         sc_dist = shape_context_distance(r.polygon, new_poly)
         if sc_dist is not None:
             r.meta["text_cluster_shape_context_dist"] = sc_dist
-        if sc_dist is not None and sc_dist > SHAPE_CONTEXT_MAX_DIST:
+        if sc_dist is not None and sc_dist > SHAPE_CONTEXT_MAX_DIST and widened_mm <= 0.0:
             r.meta["text_cluster_regularize_skipped"] = True
             r.meta["text_cluster_regularize_shape_changed"] = True
             continue
         r.polygon = new_poly
         r.area_mm2 = new_poly.area
+        if widened_mm > 0.0:
+            r.meta["text_cluster_widened_mm"] = round(widened_mm, 4)
 
 
 # --- The house cross angle for a detected word (Step 6) -----------------------

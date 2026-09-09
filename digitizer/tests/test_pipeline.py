@@ -244,7 +244,7 @@ def test_full_pipeline_regularization_reduces_stroke_width_variance_on_benchmark
     from unittest.mock import patch
 
     with patch("digitizer_core.pipeline.regularize_text_clusters",
-               lambda regions, p: None):
+               lambda regions, p, **kwargs: None):
         before_result = run_stages(TESTDATA / "photo" / "enthusiast_logo.png",
                                     cfg(target_width_mm=90.0))
     with patch("digitizer_core.textcluster._ocr_regularization_hurts_legibility",
