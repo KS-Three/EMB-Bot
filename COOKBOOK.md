@@ -370,6 +370,15 @@ hand-rolling it in JS.
   shipped design), `digitizer/tools/thread_color_render.py` (a design drawn in
   the cones it will actually sew, each changed shape tiled OFF beside ON at
   90 px/mm — a 0.9 mm2 shard is four pixels at whole-design scale),
+  `digitizer/tools/junction_nodes.py` (every node-to-node edge of the satin
+  skeleton per shape with its length, the DT at both ends and the shape's
+  half-width — the histogram `_cluster_junctions`' threshold was read from;
+  `--clustered` for what is left after the pass), `digitizer/tools/wide_columns.py`
+  (the band above the satin width cap per fixture and size — which regions a
+  ceiling of X admits — and `--compare` for OFF/ON stitches, trims, sewn
+  tiers, satin self-crossing pairs, coverage and uncovered),
+  `digitizer/tools/pushcomp_pins.py` (`test_pushcomp.GOLDEN_FLAG_OFF`'s tuples
+  as THIS tree computes them, for a re-pin with the same pre-change proof),
   `digitizer/tools/resnap_escape.py` (cones `revalidate_threads` ADDS, and how
   many of them the selected palette never chose — the count behind
   `cfg.bind_resnap_all_classes`), `digitizer/tools/tonal_split_ab.py` (what
@@ -483,6 +492,38 @@ hand-rolling it in JS.
   measured and rejected (it fixed two fixtures and broke two others). Fixed by
   exempting a dead end the function itself created. Also: `_prune_spurs` is
   shared with `textcluster.py`, so its constant is not private to satin.
+
+- **The raster skeleton renders one junction as several pixels, and a fork
+  on a symmetric peak as a loop (2026-09-09).** `extract_strokes` now runs
+  two passes between `medial_axis` and `_merge_through_junctions` that
+  `textcluster.py`'s composition deliberately does NOT: `_collapse_pinholes`
+  (the 4-px diamond `medial_axis` leaves around a distance-transform peak,
+  which made a cap a junction — 13.6 mm² bare on enthusiast's "N"; a
+  Zhang-Suen `thin()` is a no-op on it, tried) and `_cluster_junctions`
+  (branch nodes joined by a stub under 0.5 half-widths are ONE junction,
+  rooted at the deepest-DT pixel, and a loop returning to its own cluster
+  within twice that goes too — the PLUS at 1.25× was two 3-way nodes a
+  pixel apart and three strokes). Threshold read off
+  `tools/junction_nodes.py`'s corpus histogram (bump 0.2–0.4, trough
+  0.4–0.5). Junction noise comes in two shapes, and removing the stubs
+  without the loops bared 7 mm² at a tab's tip. Both passes hand back the
+  same list when they find nothing, which is why the three flat-lane goldens
+  (single strokes, no branch node) did not move.
+
+- **The satin width ceiling is ONE number in four places, and the overlap
+  guard is about the bend, not the width (2026-09-09).** `machine.satin_
+  ceiling_mm(cfg)` — 5.0, or 6.5 under `cfg.wide_columns` (OFF), or an
+  explicit `satin_max_width_mm` — is what stages 5 and 7 classify at AND
+  what stage 7 threads into `satin_shape → satin_stroke → _rail_points` and
+  `_stroke_underlay`, so the emitter can never refuse what the classifier
+  admitted (the 2026-09-02 split route). Under the flag `_fold_caps` caps a
+  station at 0.7 × the spine's local radius of curvature; measured, that is
+  load-bearing on Becker's bends at 80 mm (coverage_max 7.07 → 5.08) and
+  nowhere else, and logo_alpha's apex no longer crosses itself at any
+  ceiling to 8.0 — the 2026-09-02 entry's premise has moved. What keeps
+  the flag OFF is the render: MARINE goes satin at −13% stitches and comes
+  out fanning and crossing at its feet and junctions, +18 trims. Width was
+  never the blocker; decomposition is (`docs/renders/wide-columns-2026-09-09/`).
 
 - **A warning that makes a large loss sound routine is itself the defect.**
   The above was reported on every run as "N details were too small or thin to
@@ -1079,6 +1120,22 @@ failures are EXPECTED:
    workflow, restoring the coverage they were costing, and the list is three.
    A golden failure outside the matrix's expected cell is a REAL regression,
    not this note being stale.
+   **Re-capturing on the judging machine takes a minute, not a session
+   (2026-09-09, PR #432).** A temporary `workflow_dispatch` workflow on the
+   branch (`git show 1c9fcba:.github/workflows/recapture-goldens.yml` for the
+   template) checks out the pre-change ref as a worktree, runs
+   `tools/recapture_flat_lane_key.py <key> --pre-change-tree ../../pre/digitizer`
+   per key — which writes a key ONLY after that machine reproduces the old
+   entry byte-for-byte on the pre-change engine — prints `pushcomp_pins.py`
+   in both trees, commits the JSON back to the branch and uploads the log as
+   an artifact. The whole job ran in 66 seconds on ubuntu-latest. Two traps:
+   a workflow that exists only on a feature branch is NOT registered until
+   something runs it (`workflow_dispatch` answers 404), so the file carries a
+   one-shot `push` trigger on its own path; and the enthusiast key is refused
+   by the guard on the runner too — it is the platform red CI deselects and
+   stays exactly as it was. Remove the workflow with the commit after the one
+   that lands the goldens, and `git pull` before pushing anything else: the
+   bot's commit is on the branch now.
 
 2. **OCR tests skip when the `tesseract` binary is not on PATH — except on
    CI, where a missing binary fails loud.** `textcluster.py`'s
