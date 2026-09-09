@@ -299,4 +299,11 @@ assumed). Scope-history's fourth 09-08 entry has the OFF → ON table.
   revisit). The `resolution_gated` fix in `_refine_curves` (unread chords
   under the 20 px/mm gate are not split) and preflight's `to_px` rounding
   (grader masks match `_region_footprint` again) landed in the same commit.
+- **Goldens landed** (run 34310689566, 66 s): main b13517d reproduced
+  whitebg/alpha/ribbon byte-for-byte on the runner first; whitebg 4558 →
+  4550, alpha 4534 → 4576, ribbon 999 → 991 (its id moved); enthusiast
+  refused (platform red, stays deselected); pushcomp re-pinned on three,
+  towel left. **`workflow_dispatch` is a 404 on a workflow that exists only
+  on a feature branch until something has run it** — a one-shot `push`
+  trigger on the file's own path registered it.
 
