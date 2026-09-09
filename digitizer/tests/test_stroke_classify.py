@@ -196,29 +196,10 @@ def test_the_regularity_reading_does_not_move_when_the_artwork_is_scaled():
         small = classify_strokes(poly, machine.SATIN_MAX_WIDTH_MM)
         big_poly = affinity.scale(poly, 1.25, 1.25, origin="centroid")
         big = classify_strokes(big_poly, machine.SATIN_MAX_WIDTH_MM)
-        if poly is PLUS:
-            # The crossing is the one shape `medial_axis` renders differently
-            # by raster parity. At 6 px/mm the 3 mm arms cross on a 4-px
-            # diamond, which `stage6_satin._collapse_pinholes` turns into one
-            # 4-way node since 2026-09-09 — two bars, the right answer —
-            # while the 1.25x arms cross on two 3-way nodes a pixel apart and
-            # decompose into three strokes. Before the collapse both scales
-            # read three, equal by the same artefact twice. Adjacent junction
-            # pixels are not clustered anywhere yet (measured, DOCTRINE
-            # 2026-09-09), so the crossing is compared stroke set to stroke
-            # set: every cv within the tolerance of every other, the widest
-            # stroke's p90 scaling like a length. BAR and T_SHAPE keep the
-            # stroke-for-stroke reading below.
-            assert (len(small.strokes), len(big.strokes)) == (2, 3), \
-                "the crossing's two decompositions are pinned on purpose"
-            cvs = [_cv(s.stats) for s in small.strokes + big.strokes]
-            assert max(cvs) - min(cvs) <= 0.05, f"cv must be scale-free: {cvs}"
-            p_small = max(s.stats.p90_mm for s in small.strokes)
-            p_big = max(s.stats.p90_mm for s in big.strokes)
-            assert p_big > p_small, "p90 is a length and must grow with the artwork"
-            assert p_big == pytest.approx(1.25 * p_small, abs=2.0 / 6.0), \
-                "p90 must scale to within one raster pixel of the artwork"
-            continue
+        # The PLUS at 1.25x read three strokes to the 6 px/mm two for one
+        # day (2026-09-09): its crossing was two 3-way nodes a pixel apart.
+        # `stage6_satin._cluster_junctions` makes them one node, so every
+        # shape here decomposes the same way at both scales again.
         assert len(small.strokes) == len(big.strokes), \
             "a scaled shape must decompose the same way"
         for a, b in zip(small.strokes, big.strokes):

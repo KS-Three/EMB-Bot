@@ -11604,3 +11604,123 @@ at 80 mm), which also undid meadow's two PR 3 tier changes.
 `tests/test_skeleton_pinholes.py`, `test_satin.py`'s starburst test,
 `test_flat_lane_byte_identical.py`'s fifth exception, `test_pushcomp.py`'s
 re-pin; renders in `docs/renders/subpixel-flip-2026-09-09/`)*
+
+## 2026-09-09 — junction clustering in stage 6: branch nodes a stub apart are one junction (quality review item 5, PR 1)
+
+Kent's pick after the `subpixel_edges` flip (#432), whose fallout named the
+mechanism: the PLUS in `tests/test_stroke_classify.py` decomposed into its
+two bars at 6 px/mm once its diamond was collapsed and into THREE at 1.25×,
+where the same crossing is two 3-way nodes a pixel apart. `_merge_through_
+junctions` pairs arms per node pixel, so at a split crossing each 3-way node
+welds one pair and the stub between them is dropped as junction noise only
+afterwards, when the pairing is already done. Plan:
+`docs/superpowers/plans/2026-09-09-junction-clustering.md`.
+
+### The instrument, and the threshold read off it
+
+`tools/junction_nodes.py` lists every node-to-node edge of every satin
+shape's skeleton (after the prune, before the merge) with its pixel length,
+the distance transform at both ends and the shape's half-width. Over the
+corpus at the default config, 247 such edges (228 on the old trace); the
+length/half-width histogram has a bump at 0.2–0.4 (37 edges), a trough at
+0.4–0.5 (5) and a rising tail from 0.5 up (8, 9, 9, 10 in the next bins,
+80 past 5). Every edge in the bump is also shorter than half the DT at its
+own ends — the two branch pixels sit inside one blob. Threshold: **0.5
+half-widths, floored at 3 px** (the diagonal pair on the narrowest
+ribbon). It is bounded above by `_MIN_STROKE_HALFWIDTHS` (1.2): a stub
+under that was never sewn as a stroke, so contracting it removes nothing
+that was ever sewn.
+
+| fixture (ON) | satin shapes | strokes | branch nodes | node-to-node edges | ≤ 0.5 half-widths |
+|---|---|---|---|---|---|
+| becker 80 mm | 8 | 35 | 73 | 84 | 26 |
+| drone | 43 | 88 | 80 | 76 | 9 |
+| enthusiast 93 mm | 12 | 25 | 20 | 17 | 5 |
+| fremont | 19 | 61 | 45 | 34 | 0 |
+| gaulke / sunset / meadow | 2 / 1 / 2 | 4 / 3 / 12 | 5 / 5 / 14 | 7 / 4 / 25 | 2 / 0 / 0 |
+| whitebg / alpha / ribbon | 1 each | 1 each | **0** | 0 | 0 |
+
+After the pass (`--clustered`): no edge under 0.5 half-widths anywhere,
+becker's branch nodes 73 → 52 and its node-to-node edges 84 → 54, drone's
+80 → 70 and 76 → 63. The 0.5–1.0 band (3 on becker, 7 on drone) is left on
+purpose — it is the next band, not this one's.
+
+### What it does
+
+`stage6_satin._cluster_junctions`, between `_skeleton_edges` and
+`_merge_through_junctions` in `extract_strokes` only (`textcluster`
+composes the two functions itself and is untouched):
+
+1. every open edge with both ends at branch nodes and pixel length ≤
+   `max(3, 0.5 × half_px)` is a stub; the nodes it joins are unioned;
+2. a cluster's representative is the member the DT reads deepest; every
+   arm that reached another member is re-rooted there BY WAY OF the stubs'
+   own pixels, so its path stays the skeleton's;
+3. **a loop inside the junction goes too** — an edge that leaves a node and
+   returns to it or to another member within twice the threshold. Found
+   the same afternoon: with the stubs alone, enthusiast's emblem bracket at
+   150 mm lost 7 mm² at the tab's tip (`test_the_bracket_tab_the_check_
+   found_is_now_sewn`). The tip is a tiny loop (paths of 4.4 and 6.7 px
+   between two nodes a pixel apart plus a 4.8 px self-loop — the pinhole
+   diamond's larger cousin, sizes 2–4 on becker's skeletons in the flip
+   entry's scan), which made it a five-arm junction instead of a cap: the
+   stroke ended there uncapped, and the old stub had happened to carry it
+   0.74 mm further. With the loop gone the node holds one arm and
+   `_merge_through_junctions` caps and extends it to the tip.
+4. a list with no stub and no loop comes back as the same object.
+
+Unit tests: `tests/test_junction_clustering.py` (a split crossing, a bar
+between two junctions, a chain of three nodes, a loop at a tip, a real
+ring, the PLUS at both scales); the scale test in `test_stroke_classify.py`
+is stroke-for-stroke again and its (2, 3) pin is gone.
+
+### Footprint — main's stage 6 → clustered, 14 fixtures × 2 traces
+
+Same instrument as the flip entry (`crowd` < 0.3 mm same-rail; `head` /
+`tail` > 0.8 mm in the first / last five crosses; `inner` elsewhere), plus
+trims and strokes:
+
+| | main | clustered |
+|---|---|---|
+| stitches | 328,391 | 329,085 (+0.21%) |
+| trims | 1,184 | 1,183 |
+| strokes over 148 satin shapes | 960 | 961 (23 shapes moved) |
+| crowded same-rail steps | 717 | 724 |
+| over-wide, head zones | 164 | 166 |
+| over-wide, tail zones | 107 | **121** |
+| over-wide, interior | 948 | **830** (−12.5%) |
+
+Per fixture the interior readings fall where the junctions are (becker
+139 → 97, bridge 83 → 62, drone 38 → 35 OFF) and the tail readings rise by
+the same mechanism: an arm that ends at a cluster's cap is a FREE end now
+and gets the terminal cross the cap finish is designed to put there, which
+the rail metric counts as over-wide (becker 3 → 6, enthusiast 150 ON
+7 → 13). `ARTWORK_UNCOVERED`: becker's two bare patches (`Sff8aab95` 8.2
+mm², the outline `Sead76620` 7.8) become one — `Sff8aab95`'s is gone with
+its 2 → 3 strokes, the outline's is 9.0 — total **16.0 → 9.0 mm²**, worst
+8.2 → 9.0; enthusiast 150 ON worst **4.5 → 1.2**, 93 mm OFF 0.8 → 0.0;
+nothing else moves. **No flat-lane golden moves**: whitebg, alpha and
+ribbon are single strokes with no branch node, byte-identical both traces,
+so this PR carries no re-capture.
+
+Renders (`docs/renders/junction-clustering-2026-09-09/`): the 1.25× PLUS —
+three strokes with two black junction ends before, two bars with four free
+caps after; Becker's outline, 20 → 19 strokes.
+
+### Predictions against results
+
+- The PLUS decomposes into its two bars at both scales — **held**.
+- Becker's outline: fewer strokes than 35, fewer trims — **missed**: 35 →
+  36 strokes on the fixture, 35 → 36 trims. The review's 27-stroke outline
+  was measured on a different tree; what clustering moved on becker is the
+  bare total (16 → 9) and the interior readings (139 → 97), not the count.
+- The K's crotch no worse — **missed by 1.2 mm²** (7.8 → 9.0). It is the
+  junction cover's problem (`satin_patch_junctions`, DOCTRINE 2026-09-06),
+  not the graph's; PR 2 of the plan is where it belongs.
+- Drone and enthusiast fewer strokes, stitches within a few percent —
+  held (88 → 85, 25 → 24; +0.7% and +3.2%).
+- No golden moves — held. `crowd`/`head` do not rise — held (+7, +2 over
+  the corpus); `tail` rises by 14, explained above.
+
+*(2026-09-09 — `tools/junction_nodes.py`; DOCTRINE "A junction is a
+cluster, not a pixel"; the plan doc's §4)*

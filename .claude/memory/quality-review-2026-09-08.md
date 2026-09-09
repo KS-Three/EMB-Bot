@@ -315,3 +315,20 @@ assumed). Scope-history's fourth 09-08 entry has the OFF → ON table.
   crossing decomposes 2 vs 3 across scales (adjacent 3-way nodes — the
   next mechanism, not built).
 
+## Item 5 PR 1 — junction clustering in stage 6, BUILT (2026-09-09, Kent's pick after #432)
+
+- `stage6_satin._cluster_junctions`: node-to-node edges ≤ max(3 px, 0.5 ×
+  half_px) contracted onto the deepest-DT pixel, arms re-rooted by way of
+  the stub pixels; loops returning to the cluster within 2× dropped too.
+  Threshold read off `tools/junction_nodes.py` (bump 0.2–0.4, trough
+  0.4–0.5, tail from 0.5). Bounded above by `_MIN_STROKE_HALFWIDTHS`.
+- **The loop rule was found by the bracket-tab test**: stubs alone bared
+  7 mm² at enthusiast 150's tab tip (a tiny loop made a cap a five-arm
+  junction; the old stub carried the uncapped stroke 0.74 mm further).
+- Footprint 14 × 2: interior over-wide 948 → 830, tail 107 → 121 (new caps'
+  terminal fans), stitches +0.21%, trims −1, becker bare 16.0 → 9.0 (worst
+  8.2 → 9.0, the K crotch — PR 2's), enthusiast 150 worst 4.5 → 1.2. No
+  golden moved (flat-lane keys have no branch node) — no re-capture.
+- Predictions missed and recorded in the plan's §4: becker's stroke and
+  trim counts went UP by one each.
+- Renders in `docs/renders/junction-clustering-2026-09-09/`.

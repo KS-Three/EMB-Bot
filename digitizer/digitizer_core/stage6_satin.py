@@ -81,6 +81,16 @@ _RASTER_PX_PER_MM = 6.0
 _RASTER_MAX_PX = 900
 # A stroke shorter than this many half-widths is skeleton noise, not artwork.
 _MIN_STROKE_HALFWIDTHS = 1.2
+# Two branch nodes joined by a skeleton edge shorter than this many
+# half-widths are ONE junction the raster split — see `_cluster_junctions`.
+# Read off the corpus with `tools/junction_nodes.py` (2026-09-09): the
+# splits a medial axis makes at a crossing or an off-centre meeting are a
+# small fraction of the stroke's half-width, a real bar between two junctions
+# is a stroke width or more. The floor is the diagonal pair (2 px apart
+# corner to corner, 2.83 px of path) on the narrowest ribbons the raster
+# admits.
+_JUNCTION_CLUSTER_HALFWIDTHS = 0.5
+_JUNCTION_CLUSTER_MIN_PX = 3.0
 # The half-width profile is median-filtered over this many samples to drop rays
 # that escaped through a junction, then averaged this many times to make the
 # two rails run parallel instead of tracking every wobble in the boundary.
@@ -1149,6 +1159,132 @@ def _arm_corridor(edge: dict, at_start: bool, dt_mm, reach_px: int) -> float:
     return sorted(seen)[len(seen) // 2]
 
 
+def _cluster_junctions(edges: list[dict], max_len_px: float,
+                       dt_mm=None) -> list[dict]:
+    """Contract every node-to-node edge of `max_len_px` or less into ONE
+    junction, so the arms that met at either end meet at the same node.
+
+    A raster medial axis renders a junction as several branch pixels a few
+    pixels apart whenever the stroke width is even in pixels or the arms
+    meet off-centre: a crossing becomes two 3-way nodes joined by a 2-3 px
+    stub, a 5-way node a chain of them. `_merge_through_junctions` pairs
+    arms per node, so at a split crossing each 3-way node welds one pair and
+    the crossing decomposes into three strokes, not its two bars — and the
+    stub itself is dropped as junction noise only afterwards
+    (`extract_strokes`' stub filter), when the pairing is already done.
+    Measured on `tests/test_stroke_classify.py`'s PLUS at 1.25x, and on the
+    corpus by `tools/junction_nodes.py` (2026-09-09).
+
+    Nodes are unioned across the short edges; each cluster's representative
+    is the member the distance transform reads deepest (`dt_mm`, a pixel ->
+    mm lookup; the first member in raster order without it), and every arm
+    that reached another member is re-rooted at the representative BY WAY OF
+    the contracted stubs' own pixels, so its path stays the skeleton's and
+    only its endpoint moves. The short edges themselves are gone.
+
+    A LOOP inside a junction goes with them: an edge that leaves a node and
+    comes back to the same node (or to another member of its cluster) within
+    twice `max_len_px` is the skeleton circling a two- or three-pixel hole of
+    its own making — the same artefact `_collapse_pinholes` removes at one
+    pixel — and it counts two arms at the node for nothing. On
+    `enthusiast_logo`'s emblem bracket at 150 mm the tab's tip is such a
+    loop (paths of 4.4 and 6.7 px between two nodes a pixel apart, plus a
+    4.8 px self-loop), which made the tip a five-arm junction instead of a
+    cap: the stroke ended there uncapped, and contracting the stub alone
+    pulled it 0.74 mm shorter and left 7 mm2 bare (2026-09-09). With the
+    loop gone the node holds one arm, and `_merge_through_junctions` caps and
+    extends it to the tip as it does at any flat end.
+
+    Edges the clustering does not touch are handed back as they were, so a
+    shape with no split junction and no junction loop is byte-identical to
+    before this existed; `textcluster` composes `_skeleton_edges` and
+    `_merge_through_junctions` without this pass and is untouched.
+    """
+    lengths = [sum(math.dist(a, b) for a, b in zip(e["pts"], e["pts"][1:]))
+               for e in edges]
+    short: list[int] = []
+    for i, e in enumerate(edges):
+        if e["closed"] or e["free_start"] or e["free_end"]:
+            continue
+        if len(e["pts"]) < 2 or e["pts"][0] == e["pts"][-1]:
+            continue
+        if lengths[i] <= max_len_px:
+            short.append(i)
+    loops = [i for i, e in enumerate(edges)
+             if not e["closed"] and not e["free_start"] and not e["free_end"]
+             and len(e["pts"]) >= 2 and e["pts"][0] == e["pts"][-1]
+             and lengths[i] <= 2.0 * max_len_px]
+    if not short and not loops:
+        return edges
+
+    parent: dict[tuple[int, int], tuple[int, int]] = {}
+
+    def find(p):
+        parent.setdefault(p, p)
+        while parent[p] != p:
+            parent[p] = parent[parent[p]]
+            p = parent[p]
+        return p
+
+    # member -> [(neighbour member, pixel path from member to neighbour)]
+    links: dict[tuple[int, int], list[tuple[tuple[int, int], list]]] = {}
+    for i in short:
+        a, b = edges[i]["pts"][0], edges[i]["pts"][-1]
+        ra, rb = find(a), find(b)
+        if ra != rb:
+            parent[ra] = rb
+        links.setdefault(a, []).append((b, list(edges[i]["pts"])))
+        links.setdefault(b, []).append((a, list(reversed(edges[i]["pts"]))))
+
+    members: dict[tuple[int, int], list[tuple[int, int]]] = {}
+    for p in links:
+        members.setdefault(find(p), []).append(p)
+
+    # representative, and the pixel path from it to every other member
+    route: dict[tuple[int, int], list[tuple[int, int]]] = {}
+    for group in members.values():
+        if dt_mm is not None:
+            rep = max(sorted(group), key=lambda p: dt_mm(p))
+        else:
+            rep = min(group)
+        route[rep] = [rep]
+        frontier = [rep]
+        while frontier:
+            cur = frontier.pop(0)
+            for nb, path in links.get(cur, ()):
+                if nb in route:
+                    continue
+                route[nb] = route[cur] + path[1:]
+                frontier.append(nb)
+
+    out: list[dict] = []
+    drop = set(short) | set(loops)
+    for i, e in enumerate(edges):
+        if i in drop:
+            continue
+        if e["closed"]:
+            out.append(e)
+            continue
+        head = None if e["free_start"] else route.get(e["pts"][0])
+        tail = None if e["free_end"] else route.get(e["pts"][-1])
+        if head is None and tail is None:
+            out.append(e)
+            continue
+        if (head is not None and tail is not None and head[0] == tail[0]
+                and lengths[i] <= 2.0 * max_len_px):
+            continue        # a loop between two members of one junction
+        pts = list(e["pts"])
+        if head is not None and len(head) > 1:
+            # the route runs rep -> member; the arm starts at the member
+            pts = head + pts[1:]
+        if tail is not None and len(tail) > 1:
+            pts = pts[:-1] + list(reversed(tail))
+        ne = dict(e)
+        ne["pts"] = pts
+        out.append(ne)
+    return out
+
+
 def _merge_through_junctions(edges: list[dict], dt_mm=None, half_mm: float = 0.0,
                              scale: float = 1.0) -> list[dict]:
     """Join skeleton edges that run straight through a branch node.
@@ -1723,8 +1859,11 @@ def extract_strokes(poly: Polygon, *,
 
     strokes: list[Stroke] = []
     min_len_px = max(3.0, _MIN_STROKE_HALFWIDTHS * half_px)
-    for e in _merge_through_junctions(_skeleton_edges(skel_mask), dt_mm,
-                                      half_px / scale, scale):
+    edges = _cluster_junctions(
+        _skeleton_edges(skel_mask),
+        max(_JUNCTION_CLUSTER_MIN_PX, _JUNCTION_CLUSTER_HALFWIDTHS * half_px),
+        dt_mm)
+    for e in _merge_through_junctions(edges, dt_mm, half_px / scale, scale):
         length = sum(math.dist(a, b) for a, b in zip(e["pts"], e["pts"][1:]))
         # "Free" here means free in the SKELETON — a corner end re-flagged by
         # `_merge_through_junctions` is still a chain between two branch nodes
