@@ -3995,3 +3995,72 @@ out by its own instrument before any engine code:
   cover already sews. *(2026-09-09 —
   `docs/superpowers/plans/2026-09-09-junction-blobs.md`;
   `docs/renders/junction-blobs-2026-09-09/`)*
+
+## A walk that dead-ends off a node has stranded a chain — read the tracer's output against its mask (2026-09-09)
+
+`stage6_satin._skeleton_edges` had two holes that the medial axis's
+three-pixel triangles fall through: at a junction whose three arms meet on a
+clique, the node's walk stepped to the clique's other member and came
+straight back — a 3 px self-loop that CONSUMED an arm's first pixel — and at
+a filled L-corner the walk stepped onto the filler and found both its
+neighbours already walked. Either way the chain beyond was never reached
+from a node, and the leftover pass at the end walks one way from each
+unconsumed pixel, so it came back as 1–3 px free/free fragments. Every one
+of those passes `extract_strokes`' stub filter (both ends free) and
+`satin_stroke` runs each to BOTH caps: ENTHUSIAST's H under
+`satin_rail_comp` sewed its left stem five times over, coverage peak 4.7 →
+9.27 layers, from a spine 0.17 mm long.
+
+Two rules, both firing only where the old walk had already gone wrong: the
+first step out of a node prefers a candidate that does not touch the node;
+a dead end on a non-node pixel steps back and takes the other way, and ends
+where it did if there is none (`_WALK_BACKTRACK_PX`). A skeleton without a
+triangle traces exactly as the port did — `tests/test_skeleton_tracer.py`
+pins the H's own pixels both ways.
+
+**The defect was live OFF, and invisible.** A scan of the tracer's own
+output against its mask (a self-loop, an open edge ending on a non-node, a
+free/free edge whose ends have two neighbours) found it on Becker (4
+shapes), drone (6), enthusiast (5) and gaulke (1) with the flag off — and
+the fix moves ONE of those shapes' stitches (drone's `S60de6f78`, 43 → 45,
+two stranded arms), because `_cluster_junctions` drops the loop downstream
+and the fillers happened to sit where nothing needed them. What it also
+moves is ENTHUSIAST's house angle, 1.4445° → 1.4757°, because `textcluster`
+composes the tracer WITHOUT the cluster pass and the loop's three pixels had
+been voting; every satin letter there shifts by a hair (+2 stitches in
+total). The rule: a pass that consumes pixels must account for every pixel
+it did not consume, and the check is the output against the mask, not the
+output against the eye. The browser engine's `skeletonEdges`, the port's
+original, still has both cases. *(2026-09-09 — the rail-comp plan doc §2b)*
+
+## The polygon growth was smoothing the outline for the skeleton — and the fidelity lives in the rails, not the skeleton (2026-09-09)
+
+Item 6's premise was that skeletonising the GROWN polygon is what seals an
+E's arm slots and welds its arms, so the flag should skeletonise the
+artwork. True, and measured (THERMAL's E: four strokes on the artwork, two
+grown; PRECISION's N: 21 vertices against 152). What the premise missed is
+the growth's other job: a 0.3 mm round buffer is a low-pass filter on the
+outline, and a source rasterised at 146 × 91 px has stair-stepped edges at
+80 mm that the artwork keeps and the grown polygon does not. Becker's A
+skeletonises into 7 strokes on the artwork for the default's 3 — a branch
+into every step, a wedge column across the left leg — for +4 trims on the
+design, and no closing-and-opening at the pull recovers the default's
+decomposition (6 strokes).
+
+Both designs were built and measured on four fixtures (plan doc §4c). The
+grown skeleton with artwork rails keeps the default's decomposition and
+still takes the drone wordmark's thread-vs-target IoU 0.797 → 0.829 and
+Fremont's lettering 0.675 → 0.813 (the artwork skeleton: 0.838 and 0.836):
+most of the fidelity is the RAILS reading the true edge and being pushed
+from it, not which polygon the spine came from. Two rules from it. **When a
+transform is removed, list what it was doing besides the thing it was
+blamed for** — the buffer compensated, smoothed, rounded and lengthened,
+and the design had accounted for one. **Measure the halves of a change
+separately before crediting either**: rails-only was one line away and
+carries three quarters of the gain. The vs-artwork IoU FALLS on small
+lettering under either design (drone 0.606 → 0.564, Fremont 0.702 → 0.492)
+because it penalises exactly the compensation being landed — a 1 mm stroke
+sews 1.6 mm — so read `iou_target`, and treat a fidelity number that
+improves when compensation is removed as a diagnostic, never a goal. *(2026-
+09-09 — `tools/rail_comp.py`; the choice between the two skeletons is
+Kent's, plan doc §7)*

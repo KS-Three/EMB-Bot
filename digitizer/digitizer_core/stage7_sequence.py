@@ -1631,6 +1631,14 @@ def sequence(
                 # a heavy fabric's compensation must not flip it.
                 ax0, ay0, ax1, ay1 = p.region.polygon.bounds
                 small = max(ax1 - ax0, ay1 - ay0) < machine.SATIN_UNDERLAY_MIN_EXTENT_MM
+                # `cfg.satin_rail_comp` (2026-09-09): stage 5 left this shape
+                # on its artwork polygon, so the fabric's pull lands on the
+                # rails here -- and the end cutback owes only the push, since
+                # nothing lengthened the column at its caps.
+                on_rails = (bool(cfg.satin_rail_comp) and p.satin_tier
+                            and not widened_lettering(p.region)
+                            and fabric.pull_comp_mm > 0)
+                rail_comp_mm = fabric.pull_comp_mm if on_rails else 0.0
                 runs, report = satin_shape(
                     p.polygon,
                     p.shape_id,
@@ -1638,7 +1646,10 @@ def sequence(
                     trim_at_mm=trim_at,
                     start_near=entry,
                     split_above_mm=split_above,
-                    end_cutback_mm=end_cutback,
+                    end_cutback_mm=(machine.PUSH_CUTBACK_MM if cfg.directional_comp else 0.0)
+                    if on_rails else end_cutback,
+                    rail_comp_mm=rail_comp_mm,
+                    rail_comp_floor_mm=cfg.min_detail_mm,
                     use_shapefield=use_shapefield,
                     spacing_mm=satin_spacing_mm,
                     angle_deg=satin_angle_deg,
