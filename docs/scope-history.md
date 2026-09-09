@@ -11839,3 +11839,75 @@ for item 5's next PR** (serifs as their own columns, junction cover).
 is a decomposition problem wearing a width problem's clothes";
 `tests/test_wide_columns.py`; renders in
 `docs/renders/wide-columns-2026-09-09/`)*
+
+## 2026-09-09 — item 5, PR 2: the census that overturned the serif brief, and the satin junction cover
+
+Kent's pick after #434: "serifs as their own columns and a junction cover
+on the clustered graph". The instrument came first
+(`digitizer/tools/letterforms.py`: every column end of every satin shape —
+kind, reach to the cap, cap obliquity, flare along the cap face, the
+crossing pairs seated there, split WITHIN one column vs BETWEEN two — and
+the bare artwork at every junction node) and the serif half did not
+survive it.
+
+### The crossing pairs were mitres
+
+| case, `wide_columns` on | pairs | within a column | between columns | seated at |
+|---|---|---|---|---|
+| becker 80 | 709 | **0** | 716 | capped 321, junction 338, free 50 |
+| becker 100 | 358 | **0** | 359 | the A's apex 213, the R's crossbar/leg join ~145 |
+| drone 80 | 426 | 0 | 486 | capped 197, junction 222 |
+| enthusiast 93 | 293 | 0 | 305 | capped 141, junction 152 |
+| fremont 92.5 | 263 | 0 | 263 | junction 189 |
+| gaulke 80 | 79 | 0 | 79 | capped 51 |
+
+OFF reads the same (becker 80: 6 within, 714 between). The pro's sewn
+MARINE (`becker_hat_polo_large_beckers_logolc.dst`, eleven passes in the
+band) carries **2,593** pairs within its own passes, 652 in the M's sixth.
+`crossing_pairs` counts joins when read over a run; it is a defect only
+within one column (DOCTRINE, same day).
+
+### The feet have no serif
+
+The M's stems read a constant 5.35 mm chord to the baseline (146 × 91 px
+source, 1.46 px/mm at 100 mm — the font's foot serif is under a pixel).
+ENTHUSIAST's slab serifs already sew as Goldman members (capped ends,
+flare 2.6–2.75, nothing bare). No fixture had a serif defect; the serif
+column was not built.
+
+### The satin cover — `cfg.satin_patch_junctions = "satin"`, DEFAULT OFF
+
+The grader's own patches sewn as satin columns along their long axis,
+FIRST in the shape under the arms, joined by needle-down web travel;
+`True` (tatami, appended last) byte-identical.
+
+| fixture | mode | stitches | trims | `ARTWORK_UNCOVERED` total / worst | grade |
+|---|---|---|---|---|---|
+| becker 80 left_chest | off | 5,592 | 36 | 9.0 / 9.0 | B 76 |
+| | tatami | 5,889 | 39 | 0.0 / 3.0 | B 88 |
+| | **satin** | **5,714** | **38** | **0.0 / 3.0** | **B 88** |
+| becker 80 `wide_columns` | off / tatami / satin | 5,315 / 5,767 / 5,473 | 53 / 59 / 56 | 9.0 → 0.0 → 0.0 | B 76 → 88 → 88 |
+| becker 100 `wide_columns` | off / tatami / satin | 9,897 / 10,073 / 9,933 | 41 / 44 / 43 | 0.0 all three | B 88 → **76** → **76** (`TRIM_HEAVY`) |
+| fremont `wide_columns` | off / tatami / satin | 8,005 / 10,766 / 8,851 | 61 / 79 / 78 | 128.2 → 6.0 → 13.0 (worst 35 → 6 → 7) | D 52 all three |
+| drone 80 `wide_columns` | off / tatami / satin | 15,983 / 16,160 / 16,021 | 104 / 105 / 105 | 7.0 → 0.0 → 0.0 (worst 7.0 → 1.2 → 2.5) | F 0 all three |
+
+A second round of the finder (asked again with the first round's thread
+down) moved nothing the grader reads on Becker 100 or Fremont and cost
++26 / +114 stitches — dropped.
+
+### The corpus — `tools/flip_sheet.py`, 26 fixtures @ 80 mm / left_chest, all rows on `a9d5d66`
+
+| arm | moved / identical | net stitches | net trims | grade up |
+|---|---|---|---|---|
+| `satin_patch` (tatami, `True`) | 4 / 22 | **+733** | +9 | scene_stub B 76 → 88, becker B 76 → 88 |
+| `satin_cover` (`"satin"`) | 4 / 22 | **+313** | +7 | the same two |
+
+The same four fixtures move under both (becker 5,592 → 5,714 against the
+tatami's 5,889; scene_stub 16,170 → 16,310 against 16,507; enthusiast
+2,353 → 2,379 against 2,401; bridge_bar 14,452 → 14,477 against 14,503,
+F 0 both ways). The cover reaches the tatami's grades at 43% of its
+thread. Renders: `docs/renders/junction-cover-2026-09-09/`.
+
+*(2026-09-09 — `docs/superpowers/plans/2026-09-09-serifs-and-junction-cover.md`;
+`tests/test_junction_patch_flag.py` 14; DOCTRINE "Crossing pairs at a join
+are the join")*

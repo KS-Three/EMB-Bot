@@ -377,6 +377,13 @@ hand-rolling it in JS.
   (the band above the satin width cap per fixture and size — which regions a
   ceiling of X admits — and `--compare` for OFF/ON stitches, trims, sewn
   tiers, satin self-crossing pairs, coverage and uncovered),
+  `digitizer/tools/letterforms.py` (every column END of every satin shape —
+  a plain stroke or one Goldman member, as `_satin_joined` sews them — with
+  its kind, reach to the cap, cap obliquity, flare along the cap face and
+  the crossing pairs seated there, split WITHIN one column vs BETWEEN two;
+  plus the bare artwork at each junction node. It is what showed the wide
+  band's "251 self-crossings" to be seams at two joins and the pro's file
+  to carry 2,593 of them; `--flag` repeatable, `--widths`, `--json`),
   `digitizer/tools/pushcomp_pins.py` (`test_pushcomp.GOLDEN_FLAG_OFF`'s tuples
   as THIS tree computes them, for a re-pin with the same pre-change proof),
   `digitizer/tools/resnap_escape.py` (cones `revalidate_threads` ADDS, and how

@@ -350,3 +350,35 @@ assumed). Scope-history's fourth 09-08 entry has the OFF → ON table.
   pricing** — the letters got worse. Ships OFF; item 5's next PR (serifs as
   columns, junction cover) is what makes the band worth flipping.
 - `tools/wide_columns.py` (band table, `--compare`, `crossing_pairs`).
+
+## Item 5, PR 2 — the census overturned the serif brief; the satin junction cover shipped (2026-09-09, Kent's pick after #434)
+
+- `tools/letterforms.py` first: every column END (stroke or Goldman member,
+  as `_satin_joined` sews them) — kind, reach, cap obliquity, flare along
+  the cap face, seated crossing pairs split WITHIN a column vs BETWEEN
+  columns; bare artwork per junction node.
+- **The 251 "self-crossings" were mitres**: 0 within any column, 359
+  between, all at two Goldman joins (the A's apex, the R's crossbar/leg
+  join). Corpus: becker 80 0/716 (off 6/714), drone 0/486, enthusiast
+  0/305, fremont 0/263. **The pro's sewn MARINE carries 2,593** within
+  its own passes. `crossing_pairs` is a defect only WITHIN a column.
+- **No serif in the feet**: the M's stems are a constant 5.35 mm chord to
+  the baseline (146 × 91 px source — the font's foot serif is under a
+  pixel). ENTHUSIAST's slab serifs already sew as Goldman members. The
+  serif column was NOT built — no fixture defect, and synthetic evidence
+  is barred.
+- **Shipped: `cfg.satin_patch_junctions = "satin"`, DEFAULT OFF** — the
+  grader's patches as satin columns along their long axis
+  (`_principal_spine`), FIRST in the shape under the arms, each turned to
+  end nearest the first run and joined by needle-down web travel; wider
+  than the ceiling or degenerate → the tatami patch for that hole. Becker
+  80: 9.0 → 0.0, B 76 → 88 at +122 st / +2 trims (tatami +297 / +3);
+  fremont under `wide_columns` 128.2 → 13.0 for +10.6% (tatami 6.0 for
+  +34.5%); over-fire at becker 100 wide (0.0 both ways, TRIM_HEAVY on +2
+  trims, B 88 → 76 — the tatami's too). A second finder round: measured,
+  no grader movement, dropped. Flip sheet, 26 fixtures @ 80 mm: the same
+  4 moved and 2 grade-ups as the tatami at +313 st / +7 trims vs +733 / +9.
+- Renders: `docs/renders/junction-cover-2026-09-09/`. Tests:
+  `tests/test_junction_patch_flag.py` (14).
+- PR 3 candidate: the junction BLOB as its own column with the arms
+  ending on it (the pro's A apex), and a junction-aware width statistic.

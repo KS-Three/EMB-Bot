@@ -156,3 +156,117 @@ def test_a_design_with_no_hole_pays_nothing_for_the_flag():
     _r2, p2 = digitize(art, _cfg(satin_patch_junctions=True))
     assert _points(p1) == _points(p2), \
         "the patch pass changed a design that has no hole to patch"
+
+
+# --- `satin_patch_junctions = "satin"` (2026-09-09, item 5 PR 2) -------------
+#
+# The same holes, each sewn as a satin COLUMN along its own long axis and
+# placed FIRST in the shape, under the arms (`_junction_cover_runs`). It
+# exists to answer the two reasons the tatami patch is OFF: the surface
+# inside a satin letter stays satin, and the needle never comes back for
+# the hole once the letter is done. `True` is untouched by it.
+
+
+def _first_run_of(plan, shape_id: str):
+    for _b, run in plan.iter_runs():
+        if run.shape_id == shape_id:
+            return run
+    return None
+
+
+def test_the_satin_cover_clears_the_graders_finding_with_no_tatami():
+    """Same proof as the tatami patch — through `ARTWORK_UNCOVERED` on the
+    emitted stitches — plus the property that makes it a different answer:
+    the shape it patches carries no fill run at all afterwards."""
+    off = _cfg()
+    r_off, p_off = digitize(BECKER, off)
+    rep_off = run_preflight(r_off, p_off, off, image=BECKER)
+    assert "ARTWORK_UNCOVERED" in {f["code"] for f in rep_off["findings"]}, \
+        "the fixture stopped exhibiting the defect these tests are about"
+    on = _cfg(satin_patch_junctions="satin")
+    r_on, p_on = digitize(BECKER, on)
+    rep_on = run_preflight(r_on, p_on, on, image=BECKER)
+    assert "ARTWORK_UNCOVERED" not in {f["code"] for f in rep_on["findings"]}
+    assert rep_on["metrics"]["uncovered_total_mm2"] == 0.0
+    assert rep_on["score"] > rep_off["score"]
+    assert p_on.stats.stitch_count > p_off.stats.stitch_count
+    kinds: dict[str, set] = {}
+    for _b, run in p_on.iter_runs():
+        if run.shape_id:
+            kinds.setdefault(run.shape_id, set()).add(run.kind)
+    assert not [s for s, k in kinds.items() if stitches.SATIN in k and stitches.FILL in k], \
+        "the satin cover put tatami inside a satin shape"
+
+
+def test_the_satin_cover_sews_first_under_the_arms():
+    """The cover is the shape's FIRST run — satin, where the tatami patch was
+    the shape's last run and a fill — so the arms' crosses land on its margin
+    and the needle is never sent back to the hole after the letter."""
+    _r_t, p_tatami = digitize(BECKER, _cfg(satin_patch_junctions=True))
+    _r_s, p_satin = digitize(BECKER, _cfg(satin_patch_junctions="satin"))
+    patched = set()
+    last_kind: dict[str, str] = {}
+    for _b, run in p_tatami.iter_runs():
+        if run.shape_id:
+            last_kind[run.shape_id] = run.kind
+            if run.kind == stitches.FILL:
+                patched.add(run.shape_id)
+    satin_shapes = {run.shape_id for _b, run in p_tatami.iter_runs() if run.kind == stitches.SATIN}
+    patched &= satin_shapes
+    assert patched, "the tatami patch stopped firing on this fixture"
+    for sid in patched:
+        assert last_kind[sid] == stitches.FILL, "the tatami patch is no longer the shape's last run"
+        first = _first_run_of(p_satin, sid)
+        assert first is not None and first.kind == stitches.SATIN, \
+            f"{sid}: the satin cover is not the shape's first run ({first and first.kind})"
+
+
+def test_the_satin_cover_never_sews_outside_the_artwork():
+    result, plan = digitize(BECKER, _cfg(satin_patch_junctions="satin"))
+    by_id = {r.shape_id: r.polygon for r in result.regions}
+    checked = 0
+    for _b, run in plan.iter_runs():
+        if run.kind != stitches.SATIN or run.shape_id not in by_id:
+            continue
+        allowed = by_id[run.shape_id].buffer(machine.COVERAGE_THREAD_W_MM)
+        outside = [p for p in run.points if not allowed.covers(Point(p))]
+        assert not outside, \
+            f"{run.shape_id} sews {len(outside)} satin stitches outside its artwork"
+        checked += len(run.points)
+    assert checked
+
+
+def test_the_tatami_patch_is_untouched_by_the_satin_mode():
+    """`True` and `"satin"` are two answers to the same hole; the first one
+    must not have moved when the second arrived."""
+    _r, plan = digitize(BECKER, _cfg(satin_patch_junctions=True))
+    kinds: dict[str, set] = {}
+    for _b, run in plan.iter_runs():
+        if run.shape_id:
+            kinds.setdefault(run.shape_id, set()).add(run.kind)
+    assert [s for s, k in kinds.items() if stitches.SATIN in k and stitches.FILL in k], \
+        "True no longer sews its tatami patch"
+
+
+def test_a_design_with_no_hole_pays_nothing_for_the_satin_mode():
+    art = TESTDATA / "logo_alpha.png"
+    _r1, p1 = digitize(art, _cfg())
+    _r2, p2 = digitize(art, _cfg(satin_patch_junctions="satin"))
+    assert _points(p1) == _points(p2), \
+        "the satin cover changed a design that has no hole to patch"
+
+
+def test_a_wedge_patch_gets_a_column_along_its_long_axis():
+    """`_principal_spine` on a plain wedge: the spine runs along the long
+    side, inside the patch, and the half-width is half the short side."""
+    from digitizer_core.stage6_satin import _principal_spine
+    wedge = Polygon([(0, 0), (8, 0), (8, 2.5), (0, 0.5)])
+    got = _principal_spine(wedge)
+    assert got is not None
+    spine, half = got
+    assert len(spine) >= 3
+    assert all(wedge.buffer(1e-6).covers(Point(p)) for p in spine)
+    dx = spine[-1][0] - spine[0][0]
+    dy = spine[-1][1] - spine[0][1]
+    assert abs(dx) > 6.0 and abs(dy) < abs(dx) * 0.4, "the spine does not run along the wedge"
+    assert 0.5 < half < 2.0

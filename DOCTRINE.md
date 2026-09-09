@@ -3910,4 +3910,54 @@ things the measurement settled, each of which changes what to do next:
   the stitch count fell and the letters got worse.** The flag ships OFF
   and the review's item 5 (serifs as columns, junction cover) is what
   makes the band worth flipping. *(2026-09-09 — scope-history's
-  wide-column entry; `tools/wide_columns.py`)*
+  wide-column entry; `tools/wide_columns.py`)* **[Corrected the same
+  day, next entry: the 251 are seams between columns at two Goldman
+  joins, none within a column, and the pro's own file carries 2,593 of
+  them — the count is not a defect and the feet have no serif. The
+  junction cover half of item 5 shipped; the serif half did not.]**
+
+## Crossing pairs at a join are the join — and the serif column had no defect to fix (2026-09-09)
+
+The entry above read MARINE's 251 crossing pairs as columns fanning at
+serif feet and wrote a two-flag brief on it. The census built to size
+that brief (`tools/letterforms.py`) read every column end instead, and
+the brief did not survive the reading:
+
+- **The count was mitres.** Split into pairs WITHIN one column and pairs
+  BETWEEN two, MARINE at 100 mm is 0 within and 359 between, all at two
+  Goldman joins (the A's apex, the R's crossbar/leg join) where the
+  owner's corner cap runs 5–6 mm crosses over the square the butting
+  member also covers. The corpus reads the same under `wide_columns`
+  and without it (Becker 80 mm 0 / 716 on, 6 / 714 off; drone 0 / 486;
+  ENTHUSIAST 0 / 305; Fremont 0 / 263). **The pro's sewn MARINE carries
+  2,593 such pairs within its own eleven passes, 652 in the M alone.**
+  `crossing_pairs` was built (2026-08-05) for one column folding over
+  itself and is that instrument; read over a whole run it counts every
+  join in the letter. **Rule: a crossing count is a defect only WITHIN a
+  column; between columns compare it with the pro's file before calling
+  it one.**
+- **The feet have no serif to give a column.** The M's stems read a
+  constant 5.35 mm chord to the baseline; the source is 146 × 91 px,
+  1.46 px/mm at 100 mm, so the font's foot serif is under a pixel and the
+  pro digitized the font, not the file. Where slab serifs DO survive in
+  the artwork (ENTHUSIAST at 93 mm) they already sew as Goldman members,
+  one column each, nothing bare. **Rule: before building a decomposition
+  feature, census the corpus for the geometry it decomposes — a render
+  read as "serifs" was a beak the skeleton runs along, and a synthetic
+  serif fixture would have proved a feature no fixture needs.**
+- **What IS bare is junction blobs, and the cover half shipped**:
+  `cfg.satin_patch_junctions = "satin"` sews the grader's own patches as
+  satin columns FIRST in the shape, under the arms, joined by needle-down
+  web travel. Becker 80 mm: `ARTWORK_UNCOVERED` 9.0 → 0.0, B 76 → B 88 —
+  the tatami's grade — at +122 stitches and +2 trims against the tatami's
+  +297 and +3. Fremont's band under `wide_columns`: 128.2 → 13.0 mm² for
+  +10.6% stitches (the tatami: 6.0 for +34.5%). Its over-fire is the
+  tatami's: Becker 100 mm under `wide_columns` reads 0.0 both ways and
+  the cover's 2 trims trip `TRIM_HEAVY` (B 88 → B 76, the tatami B 76 at
+  3). Across the 26-fixture sheet at 80 mm it moves the same four
+  fixtures as the tatami, to the same two grade-ups, at +313 stitches
+  against the tatami's +733. A second round of the finder was measured
+  and moved nothing the grader reads — dropped. Flipping any mode is
+  Kent's; the renders are in `docs/renders/junction-cover-2026-09-09/`. *(2026-09-09 —
+  `docs/superpowers/plans/2026-09-09-serifs-and-junction-cover.md`;
+  `tools/letterforms.py`; `tests/test_junction_patch_flag.py`)*
