@@ -210,6 +210,21 @@ Moved verbatim 2026-08-28 — no section was rewritten in the move.
   shape in a heavy rim so the bird reads as a cut-out, while `significant`
   spends its 4% on the eyes. *(re-measured 2026-08-26)*
 
+- **A union of fills is NOT a silhouette until its cracks are filled — and the
+  border loop gate cannot see a crack.** `unary_union` over neighbouring
+  regions' polygons leaves hairline holes wherever two edges nearly coincide
+  (Instagram icon at 80 mm: 20 of them, 0.0–0.1 mm wide, up to 7.7 mm long,
+  owned by no region). `BORDER_MIN_LOOP_MM` is a PERIMETER floor, which a long
+  thin crack clears; a hole's satin crosses are cast outward into the host,
+  so they always fit; and nothing in `border_runs` asks a hole's WIDTH. Result:
+  a 0.25 mm² crack sewn as an 89-cross, 3.4 mm satin bar mid-design — the
+  "satin border leaving the infill perimeter" Kent saw with Design edge =
+  Satin. Gate any hole on whether the column can stand in it
+  (`stage6_border._fill_cracks`), never on its perimeter. The per-shape
+  border's `visible` geometry (polygon minus later shapes) can carry the same
+  cracks; it is not gated yet. *(measured + fixed 2026-09-08 — Kent's call:
+  skip holes narrower than the column, keep real holes capped)*
+
 - **The satin stitch angle is DERIVED from the art, never chosen: house =
   perpendicular to the dominant stem family (where two balance, the stems
   are the family square to the LINE OF TEXT — never the bisector, and NOT

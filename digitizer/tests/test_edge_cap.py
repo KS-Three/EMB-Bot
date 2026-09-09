@@ -243,6 +243,7 @@ def test_the_cap_always_reports_what_it_cost():
         assert w["stitches"] == cap_block(plan).stitch_count
         assert w["edges"] >= 1
         assert w["percent"] > 0
+        assert w["cracks_filled"] == 0      # two clean bars: nothing to fill
 
 
 def test_no_cost_report_when_the_cap_is_off():
@@ -297,3 +298,50 @@ def test_the_cap_walks_holes_as_well_as_the_outer_edge():
     assert ring_report["loops"] > 1
     assert sum(len(r.points) for r in ring_runs) > \
         sum(len(r.points) for r in solid_runs)
+    assert ring_report["holes_skipped"] == 0
+
+
+def test_a_hairline_crack_in_the_silhouette_is_not_an_edge():
+    """Kent, 2026-09-08, Instagram icon with Design edge = Satin: a 3.4 mm
+    satin bar sewn down the MIDDLE of the design. The silhouette is a union
+    of adjacent fills' polygons, and that union carries hairline cracks where
+    neighbours' edges nearly coincide — measured 20 on the icon, 0.0-0.1 mm
+    wide, up to 7.7 mm long, none owned by any region. The loop gate is a
+    PERIMETER floor (`BORDER_MIN_LOOP_MM`, 8.8 mm), so a 7.7 mm crack clears
+    it with room to spare, and the crosses cast outward from a hole into the
+    host always fit — nothing asked whether the hole was wide enough to be
+    an edge. A hole narrower than the column is a crack, not an edge: it is
+    filled before either emitter sees the ring, and the cap reads exactly as
+    it does on the same shape without the crack."""
+    solid = bar(30, 30)
+    cracked = solid.difference(bar(0.05, 10))        # perimeter 20.1 mm > 8.8
+    assert len(cracked.interiors) == 1
+    for style in ("satin", "bean"):
+        s_runs, s_rep = silhouette_cap(solid, "S", style=style, entry=None,
+                                       trim_at_mm=6.0)
+        c_runs, c_rep = silhouette_cap(cracked, "S", style=style, entry=None,
+                                       trim_at_mm=6.0)
+        assert c_rep["holes_skipped"] == 1, style
+        assert c_rep["loops"] == s_rep["loops"], style
+        assert c_rep["bean_loops"] == s_rep["bean_loops"], style
+        assert sum(len(r.points) for r in c_runs) == \
+            sum(len(r.points) for r in s_runs), style
+
+
+def test_a_crack_is_judged_by_width_not_perimeter():
+    """The ruler is the column: `BORDER_WIDTH_MM` (or `width_mm`). A hole the
+    column can stand in is an edge; one it cannot is a crack — whatever its
+    perimeter says."""
+    solid = bar(30, 30)
+    wide = solid.difference(bar(2.0, 10))           # 2.0 mm > 1.70: an edge
+    thin = solid.difference(bar(1.5, 10))           # 1.5 mm < 1.70: a crack
+    _, wide_rep = silhouette_cap(wide, "S", style="bean", entry=None,
+                                 trim_at_mm=6.0)
+    _, thin_rep = silhouette_cap(thin, "S", style="bean", entry=None,
+                                 trim_at_mm=6.0)
+    assert wide_rep["holes_skipped"] == 0 and wide_rep["loops"] == 2
+    assert thin_rep["holes_skipped"] == 1 and thin_rep["loops"] == 1
+    # A narrower column lowers the bar the same way.
+    _, thin_narrow = silhouette_cap(thin, "S", style="bean", entry=None,
+                                    trim_at_mm=6.0, width_mm=1.0)
+    assert thin_narrow["holes_skipped"] == 0 and thin_narrow["loops"] == 2
