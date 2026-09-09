@@ -869,7 +869,18 @@ def _thread_match_findings(p, result: PipelineResult, plan: StitchPlan,
     # the check would go permanently silent instead of reporting an honestly
     # unreachable colour.
     photo = _is_photo_class(plan, cfg)
-    loaded = sorted(by_thread)
+    # The spools the machine really loads: every block that puts a needle
+    # down, whether or not the grader could score a region for it. Until
+    # 2026-09-09 this read the graded rows alone, and a spool whose only
+    # shapes fall under `_MIN_COLOR_PIXELS` vanished from the candidate
+    # set: on `logo_gaulke_roofing` the aligned grader mask (see
+    # `_region_color_errors`) left 1375's 1.03 mm2 sliver at 42 scoreable
+    # pixels, 1375 dropped out of `loaded`, and 3971's finding went back to
+    # "buy thread" with 1375 sitting on the machine 5.0 dE00 away. A row's
+    # spool is always a block's, so the union only ever adds.
+    loaded = sorted(set(by_thread) | {
+        b.thread_index for b in plan.blocks
+        if any(len(r.points) for r in b.runs)})
     # Denominator for the "% of the design" the message now carries: the
     # regions this check actually SCORED, which is the sewn, non-enclosed set
     # (`_region_color_errors` skips enclosed background). Not `result.regions`

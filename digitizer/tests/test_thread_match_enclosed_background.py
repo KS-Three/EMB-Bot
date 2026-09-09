@@ -143,7 +143,15 @@ def test_gaulke_drops_the_one_finding_this_change_removes():
     threads = sorted(f["extra"]["thread_number"] for f in report["findings"]
                      if f.get("code") == "THREAD_MATCH_POOR"
                      and f.get("severity") == "block")
-    assert threads == ["1375", "3971"]
+    # `1375` left on 2026-09-09 for a reason this test's change did not
+    # make: with `subpixel_edges` on by default the grader mask is rounded
+    # like `_region_footprint`, and 1375's 1.03 mm2 sliver has 42 scoreable
+    # pixels once it is sampled where it really sews — under the floor, so
+    # it is not judged. 3971 rides a 0.58 mm2 shape that IS judged (247
+    # pixels, 63.6 dE00) and stays; 4174's enclosed-background region stays
+    # gone. `test_thread_match_better_spool.py`'s SEVERITY note has the
+    # bisect.
+    assert threads == ["3971"]
 
 
 def test_every_surviving_block_rides_a_shape_that_really_sews():

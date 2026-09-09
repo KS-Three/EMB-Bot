@@ -11495,6 +11495,14 @@ names, never the polygon.
 | `test_doc_claims` | MASTER_SCOPE said DEFAULT OFF | pointer updated |
 | `test_color_stops_merge` repeated cone | passed once the gate fix and the rounding were in; not separately diagnosed | — |
 
+The full suite on the fixed tree found six more, all downstream of two of
+the fixes above (three platform reds aside):
+
+| what went red | cause | fix |
+|---|---|---|
+| five thread-match pins (gaulke blocks 2 → 1, bridge 3 → 2, the enclosed-background list, the better-spool naming) | the grader rounding: gaulke's `1375` block rode a 1.03 mm² sliver whose aligned eroded core is 42 scoreable px (57 misaligned) — under the 50-px floor; bridge's `0108` rode a 2.10 mm² shape whose aligned erosion leaves 2 px where 0 took the hairline fallback. Bisected by restoring truncation alone. And `loaded` was the graded rows, so 1375 left the candidate set and 3971 stopped naming it | severities re-pinned with the bisect in the notes — **a scorecard move of exactly two findings, Kent's to keep**; `loaded` is the plan's sewn blocks now (bridge's 4531 also names 3830, 6.9 excess, loaded and unscoreable) |
+| `test_stroke_classify`'s scale-invariance test on PLUS | the pinhole collapse gives the 3 mm crossing its two bars at 6 px/mm; at 1.25× the crossing is two 3-way nodes a pixel apart, three strokes; before, both read three | the crossing pinned as (2, 3) and compared stroke set to stroke set (cv range ≤ 0.05, p90 scaling); adjacent-node clustering is the next mechanism, not built |
+
 ### The pinhole diamond
 
 Rendered (`docs/renders/subpixel-flip-2026-09-09/enthusiast_n_foot_*.png`

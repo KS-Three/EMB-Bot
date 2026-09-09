@@ -42,7 +42,20 @@ PHOTO = "photo/photo_dof_meadow.png"        # photo route: must be untouched
 
 # Measured 2026-09-06 on the shipped engine, BEFORE this change. Severity may
 # not move, so these are pinned rather than recomputed.
-SEVERITY = {TINY: (2, 1), BRIDGE: (3, 1), PHOTO: (0, 1)}   # (block, warn)
+#
+# RE-PINNED 2026-09-09 with `subpixel_edges` ON by default: TINY (2, 1) ->
+# (1, 1), BRIDGE (3, 1) -> (2, 1). Neither is this file's change, and neither
+# is a rescoring: `_region_color_errors` now rasterises the grader mask the
+# way `_region_footprint` does (rounded, not truncated — with fractional
+# vertices truncation sampled half a pixel off the footprint), and two
+# blocking findings on shapes under 2.1 mm2 were that half pixel. gaulke's
+# 1375 rode a 1.03 mm2 sliver whose aligned eroded core is 42 pixels (57
+# misaligned), under `_MIN_COLOR_PIXELS`, so it is not judged at all; bridge's
+# 0108 rode a 2.10 mm2 shape whose aligned erosion leaves 2 pixels where the
+# misaligned one left 0 and took the hairline fallback. Bisected: restoring
+# truncation alone restores both counts. Kent's to keep or revisit — the
+# scorecard moves on these two fixtures by exactly those two findings.
+SEVERITY = {TINY: (1, 1), BRIDGE: (2, 1), PHOTO: (0, 1)}   # (block, warn)
 
 
 @lru_cache(maxsize=None)

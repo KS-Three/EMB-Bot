@@ -112,10 +112,16 @@ def test_the_fraction_is_over_the_scored_regions_not_all_of_them():
     assert f["extra"]["worst_shape_area_frac"] > over_all * 1.05
 
 
-@pytest.mark.parametrize("fixture,expected", [(TINY, 2), (HUGE, 4)])
+@pytest.mark.parametrize("fixture,expected", [(TINY, 1), (HUGE, 4)])
 def test_no_severity_moved(fixture, expected):
     """Prose only. These counts are the ones on record before the message
     changed, so a severity shift shows up here rather than as a silent
-    scorecard drift."""
+    scorecard drift.
+
+    TINY re-pinned 2 -> 1 on 2026-09-09: the grader mask is rasterised the
+    way `_region_footprint` is (rounded) now that `subpixel_edges` gives it
+    fractional vertices, and gaulke's 1375 finding rode a 1.03 mm2 sliver
+    whose aligned core is 42 scoreable pixels — under the floor, not judged.
+    `test_thread_match_better_spool.py`'s SEVERITY note has the bisect."""
     blocks, _result = _blocks(fixture)
     assert len(blocks) == expected

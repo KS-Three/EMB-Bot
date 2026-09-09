@@ -3808,8 +3808,36 @@ the polygon back:
   runs on the old trace because ON plans 14 blocks either way — the one
   revisit the argument needs is no longer planned.
 
+- **The grader sampled half a pixel off the footprint, and two blocking
+  findings were that half pixel.** `_region_color_errors` truncated mm→px
+  while `_region_footprint` rounds; on pixel-centre vertices the two agree
+  to a pixel, on fractional ones the whole grader mask sits half a pixel
+  down-left of where the shape sews (97.5% agreement, was 99.99%). Rounding
+  it moved the thread-match scorecard on two fixtures: gaulke's `1375` block
+  rode a 1.03 mm² sliver whose ALIGNED eroded core is 42 scoreable pixels
+  (57 misaligned) — under `_MIN_COLOR_PIXELS`, so it is not judged; bridge's
+  `0108` block rode a 2.10 mm² shape whose aligned erosion leaves 2 pixels
+  where the misaligned one left 0 and took the hairline fallback. Bisected
+  by restoring truncation alone: both counts come back. Re-pinned with the
+  bisect in the notes; the scorecard moving by exactly those two findings is
+  Kent's to keep or revisit. And a spool whose only shapes fall under the
+  floor vanished from `loaded` (it was built from the graded rows, not the
+  blocks its own comment named), so 3971's finding went back to "buy
+  thread" with 1375 on the machine 5.0 dE00 away — `loaded` is the plan's
+  sewn blocks now, and a row's spool is always one of them.
+- **A crossing is rendered by raster parity, and only one side of it is
+  fixed.** The pinhole collapse gives `test_stroke_classify`'s PLUS its two
+  bars at 6 px/mm (the diamond was the crossing); at 1.25× the same crossing
+  is two 3-way nodes a pixel apart and still decomposes into three strokes.
+  Before, both scales read three — equal by the same artefact twice, which
+  is what a scale-invariance test cannot tell from correctness. Adjacent
+  junction pixels are not clustered anywhere; that is the next mechanism in
+  this family, measured and not built.
+
 **Rule:** when a default flip moves every polygon, treat each downstream
 failure as the pixel-fragile mechanism it names — a skeleton, a ladder, a
-coincidence — and fix or re-pin THAT, with the probe re-run, never the
-polygon. *(2026-09-09 — scope-history's flip entry has the footprints;
-`tests/test_skeleton_pinholes.py`, `test_satin.py`'s starburst test)*
+grader mask, a coincidence — and fix or re-pin THAT, with the probe re-run
+and the bisect written down, never the polygon. *(2026-09-09 —
+scope-history's flip entry has the footprints;
+`tests/test_skeleton_pinholes.py`, `test_satin.py`'s starburst test, the
+three thread-match files' notes)*
