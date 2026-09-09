@@ -1503,6 +1503,12 @@ def sequence(
     # reroute (systematic, not degenerate) is bounded by the same argument —
     # every floored shape is under 1.0 mm wide, less than twice the 0.75 mm
     # inset, so its cover polygon erodes to empty rather than floating.
+    # A fourth, since the widened-lettering column route: a widened glyph
+    # predicted satin here that the classifier or `satin_shape` declines
+    # sews its bean run after all. Bounded the same way at today's floor —
+    # `covered_by` is the ARTWORK union, a widened artwork is `floor -
+    # 2 * pull` = 0.4 mm wide at 1.0 mm on a knit, under twice the inset —
+    # and unbounded only once the floor exceeds 1.5 mm + 2 * pull.
     run_tier_later: list[tuple[int, object]] = []
     if cfg.chain_links:
         for p in planned:
@@ -1559,6 +1565,7 @@ def sequence(
             # sews as a bean run instead — on the ARTWORK polygon, because a
             # run does not pull fabric and compensation would fatten a
             # thread-width stroke past its own letterform (see `run_outline`).
+            outline_tried = False
             if routes_to_run(p, tier):
                 runs, report = run_outline(p.region.polygon, p.shape_id,
                                            entry=entry, trim_at_mm=trim_at)
@@ -1566,6 +1573,7 @@ def sequence(
                     report["as_run"] = 1
                     return runs, report, False
                 tier = "auto"
+                outline_tried = True
             # Satin or fill is decided per shape, not per design: one logo
             # routinely holds both a big filled emblem and thin satin lettering.
             # Classified on the ARTWORK polygon, not the stage-5 grown one —
@@ -1653,7 +1661,7 @@ def sequence(
                     report["hairline_runs"] = sum(
                         1 for r in runs if r.kind == stitches.RUN)
                     return runs, report, False
-            if tier == "auto" and widened_lettering(p.region):
+            if tier == "auto" and not outline_tried and widened_lettering(p.region):
                 # Widened lettering the satin tier declined — the classifier
                 # read no ribbon in the column, or the skeleton could not
                 # resolve one — sews what it sewed before the floor: the bean

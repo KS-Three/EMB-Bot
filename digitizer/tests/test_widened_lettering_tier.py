@@ -34,8 +34,11 @@ from unittest.mock import patch
 import cv2
 import numpy as np
 
+from shapely.geometry import box
+
 from digitizer_core import PipelineConfig, stitches
-from digitizer_core.pipeline import digitize
+from digitizer_core.pipeline import digitize, fabric_for
+from digitizer_core.stage5_overlap import _comp_axis, resolve_overlaps
 from digitizer_core.stage6_satin import RibbonVerdict
 
 HERE = Path(__file__).resolve().parent
@@ -43,8 +46,7 @@ sys.path.insert(0, str(HERE.parent / "tools"))
 
 import satin_columns as sc  # noqa: E402
 
-from .test_keep_thin_strokes import PX_PER_MM  # noqa: E402
-from .test_textcluster import _OCR_GATE_PATH  # noqa: E402
+from .test_textcluster import _OCR_GATE_PATH, _row  # noqa: E402
 
 FLOOR_MM = 1.0
 
@@ -66,16 +68,22 @@ def _thin_bars(path: Path) -> None:
     cv2.imwrite(str(path), img)
 
 
-def _thin_bars_on_a_panel(path: Path) -> None:
+def _thin_bars_on_a_panel(path: Path, lettering_thread_first: bool = False) -> None:
     """The same six bars cut into a red panel that fills the 50 mm art
     width. Each bar is a contrasting sub-floor region on the panel, which
     `keep_thin_strokes` keeps for the run tier (`stage3_segment`), and the
-    panel is vectorized with a hole the bar's original width."""
-    img = np.full((220, 540, 3), 255, np.uint8)
+    panel is vectorized with a hole the bar's original width.
+
+    `lettering_thread_first` adds a 50 x 20 mm block in the bars' own
+    colour, larger than the 50 x 16 mm panel: largest-area-first thread
+    order then sews the dark thread — the lettering — BEFORE its ground."""
+    img = np.full((460 if lettering_thread_first else 220, 540, 3), 255, np.uint8)
     cv2.rectangle(img, (20, 30), (519, 189), (30, 30, 200), -1)          # 500 x 160 px red (BGR)
     for k in range(6):
         x = 130 + 48 * k
         cv2.rectangle(img, (x, 85), (x + 2, 114), (30, 30, 30), -1)     # 3 x 30 px
+    if lettering_thread_first:
+        cv2.rectangle(img, (20, 240), (519, 439), (30, 30, 30), -1)      # 500 x 200 px dark
     cv2.imwrite(str(path), img)
 
 
@@ -132,7 +140,6 @@ def test_bars_cut_into_a_panel_sew_the_same_column_over_the_ground(tmp_path):
     0.3 mm hairline it was."""
     art = tmp_path / "panel.png"
     _thin_bars_on_a_panel(art)
-    assert PX_PER_MM == 10.0
     off_cfg = PipelineConfig(target_width_mm=50.0, garment_id="left_chest", keep_thin_strokes=True)
     on_cfg = PipelineConfig(target_width_mm=50.0, garment_id="left_chest", keep_thin_strokes=True,
                             lettering_min_column_mm=FLOOR_MM)
@@ -182,3 +189,62 @@ def test_a_widened_glyph_the_satin_tier_declines_sews_the_bean_run_it_sewed_befo
     kinds = _cluster_kinds(result, plan)
     assert kinds.get("run", 0) > 0, kinds
     assert kinds.get("satin", 0) == 0 and kinds.get("fill", 0) == 0, kinds
+
+
+def test_the_column_survives_when_its_thread_sews_before_the_ground(tmp_path):
+    """Review of the first cut (2026-09-09): the stage-5 exemption only
+    helps when the ground is already down. Largest-area-first thread order
+    put the lettering's thread FIRST once it also held the design's biggest
+    shape, and the ground's own growth then buried 79% of the column,
+    because the ground was clipped by the glyph's 0.4 mm artwork. The
+    layers around widened lettering now plan against its sewn column."""
+    art = tmp_path / "panel_first.png"
+    _thin_bars_on_a_panel(art, lettering_thread_first=True)
+    cfg = PipelineConfig(target_width_mm=50.0, garment_id="left_chest", keep_thin_strokes=True,
+                         lettering_min_column_mm=FLOOR_MM)
+    with patch(_OCR_GATE_PATH, return_value=False):
+        result, plan = digitize(art, cfg)
+    widened = [r for r in result.regions if r.meta.get("text_cluster_widened_mm")]
+    assert len(widened) >= 5
+    ground = [r for r in result.regions if not r.meta.get("text_cluster_id")
+              and 700.0 < r.polygon.area < 800.0]
+    assert len(ground) == 1
+    ground = ground[0]
+    # The premise: the lettering's layer sews before the ground's.
+    assert widened[0].meta["layer"] < ground.meta["layer"], (widened[0].meta["layer"], ground.meta["layer"])
+
+    # The column sews (an earlier colour under a later one also carries its
+    # underlap tongue under the ground, so the stitches read wider than the
+    # floor) ...
+    m = _satin_columns_of(plan, widened)
+    assert m["columns"] >= 5 * 6 and m["median_mm"] >= 0.8, m
+    # ... and the ground's sewing polygon leaves the floor's width of it
+    # exposed: 1.0 mm, where clipping the ground by the artwork left 0.4.
+    stitched = [r for r in result.regions if r.meta.get("stitched", True)]
+    planned, _warnings = resolve_overlaps(stitched, fabric_for(cfg), cfg)
+    by_id = {pr.region.shape_id: pr for pr in planned}
+    ground_poly = by_id[ground.shape_id].polygon
+    for r in widened:
+        column = by_id[r.shape_id].polygon
+        exposed = column.difference(ground_poly)
+        x0, _y0, x1, _y1 = exposed.bounds
+        assert 0.85 <= x1 - x0 <= 1.25, (r.shape_id, x1 - x0)
+        assert ground_poly.intersection(column).area / column.area < 0.5, r.shape_id
+
+
+def test_directional_compensation_grows_widened_lettering_all_round():
+    """`_comp_axis` (Law 22, `directional_comp`) classifies the ARTWORK to
+    pick a growth axis; a widened glyph is classified by stage 7 on the
+    grown polygon instead, so its growth is isotropic and its tier satin
+    whatever its artwork reads — an axial add-back would leave a 0.4 mm
+    "column" stage 7 then declines."""
+    cfg = PipelineConfig(directional_comp=True)
+    a, b = _row("W", 2, w=0.3)
+    for r in (a, b):
+        r.polygon = box(0.0, 0.0, 1.6, 1.6)          # a blob: fill on its artwork
+        r.area_mm2 = r.polygon.area
+    b.meta["text_cluster_widened_mm"] = 0.2
+    axis_a, satin_a = _comp_axis(a, cfg, 5.0)
+    axis_b, satin_b = _comp_axis(b, cfg, 5.0)
+    assert satin_a is False and axis_a is not None
+    assert (axis_b, satin_b) == (None, True)

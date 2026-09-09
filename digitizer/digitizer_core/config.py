@@ -481,11 +481,15 @@ class PipelineConfig:
     # growth over the ground already sewn beneath it: a glyph on a ground is
     # a hole in that ground at its ORIGINAL width, and the "never grow back
     # over a colour already down" clip cut every widened Fremont glyph back
-    # to a 0.28 mm hole before the stage-7 half could see it. Every untagged
-    # shape keeps all three rules exactly as they were, and None leaves
-    # nothing tagged, so both stages are byte-identical off. Measured on
-    # `tools/satin_columns.py` (the widened shapes' own columns) and
-    # `tools/legibility.py`.
+    # to a 0.28 mm hole before the stage-7 half could see it; and the layers
+    # around it plan against its sewn COLUMN, so a ground whose thread sews
+    # after the lettering is clipped to the column instead of burying it.
+    # Every untagged shape keeps every one of those rules exactly as it was,
+    # and None leaves nothing tagged, so both stages are byte-identical off.
+    # Measured on `tools/satin_columns.py` (the widened shapes' own columns)
+    # and `tools/legibility.py`, and RENDERED: at a 2.2 mm cap height the
+    # 1.0 mm column fills the counters (scope-history 09-09), which is why
+    # this stays None until a glyph-height gate exists.
     lettering_min_column_mm: float | None = None
 
     # Stage 4

@@ -216,4 +216,18 @@ assumed). Scope-history's fourth 09-08 entry has the OFF → ON table.
   legibility 1.00 → 0.72. The floor needs a glyph-height gate (new constant,
   gate 1, Kent's) before it can be on. Flag stays None.
 - `satin_columns.passes_from_plan(shape_ids=...)` reads one cluster's columns.
+- **The review found the fourth decision: sew order.** Lettering thread
+  first (largest-area-first when it holds the biggest shape) → the ground
+  grew over the column, clipped only by the 0.4 mm artwork → 79% buried,
+  instrument still said "column". Fixed in stage 5's layer unions
+  (`sewn_footprint`: a widened member's column replaces its artwork in
+  `earlier`/`later`/`covered_by`); test asserts the premise and the exposed
+  width. Also `_comp_axis` → isotropic satin for widened members.
+- **Rendered, and the numbers are not the verdict**: at 2.2 mm cap height
+  the 1.0 mm column fills Fremont's counters (ON EST reads "OS"); the pro's
+  file (not in the repo) was recorded legible at 0.82–0.90 on 09-03 — the
+  crops put that to Kent with the height gate.
+- Pre-existing, not this PR: `forced_class="photo_subject"` on the small
+  synthetic bars fixture segfaults (exit 139) in
+  `stage2_photo_segment._seeds_superpixels`; reproduced 2026-09-09.
 

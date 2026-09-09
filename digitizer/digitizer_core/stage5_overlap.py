@@ -268,6 +268,14 @@ def _comp_axis(region: Region, cfg: PipelineConfig, satin_max: float,
     `stage6_satin.is_satin_candidate`) must not get compensated as satin here.
     """
     tier = str(region.meta.get("tier", "auto")).lower()
+    if tier == "auto" and widened_lettering(region):
+        # The column route: stage 7 classifies this population on the
+        # polygon THIS stage grows for it, not on the artwork, so the
+        # artwork verdict is the wrong one to compensate along. Isotropic,
+        # satin: the regularizer's `floor / 2 - pull` assumes the pull comes
+        # back all round, and an axial add-back would leave a 0.4 mm
+        # "column" stage 7 then declines, silently.
+        return None, True
     if tier == "satin" or (tier == "auto"
                            and is_satin_candidate(
                                region.polygon, satin_max,
@@ -328,7 +336,24 @@ def resolve_overlaps(
 
     layers = sorted({r.meta["layer"] for r in regions})
     by_layer = {L: [r for r in regions if r.meta["layer"] == L] for L in layers}
-    geom_by_layer = {L: unary_union([r.polygon for r in by_layer[L]]) for L in layers}
+
+    def sewn_footprint(r: Region):
+        """What a shape occupies on the fabric as far as the layers around
+        it are concerned: its artwork — or, for widened lettering, its
+        COLUMN, the artwork grown by the pull (no underlap tongue). The
+        column is what sews, and the layers on either side have to plan
+        against it: a ground that sews AFTER the lettering (largest-area-
+        first thread order can put the lettering's thread first when that
+        thread also holds the design's biggest shape) is clipped by this
+        footprint and so leaves the column exposed, where clipping by the
+        artwork buried 79% of it under the ground's own growth (measured
+        2026-09-09, review of the first cut); a ground that sews BEFORE it
+        reaches its tongue under the column, not just under the artwork."""
+        if widened_lettering(r):
+            return _grow(r.polygon, pull, axis_by_id[r.shape_id])
+        return r.polygon
+
+    geom_by_layer = {L: unary_union([sewn_footprint(r) for r in by_layer[L]]) for L in layers}
 
     # Bare fabric is everything the artwork does not cover. A same-thread gap is
     # only a gap where no other colour is filling it, so the keep-apart corridor
@@ -431,11 +456,14 @@ def resolve_overlaps(
             # redrew the glyph wider than its hole, and clipping it back here
             # is exactly how the floor sewed nothing (measured 2026-09-09 on
             # Fremont: every widened glyph classified on a 0.28 mm hole and
-            # sewn as the hairline it was). Lettering sews OVER its ground —
-            # the pro's Fremont file lays its satin columns on the patch fill
-            # — so the widened polygon keeps its growth here; the ground's
-            # underlap tongue still reaches under it as under any later
-            # colour. Everything without the tag is clipped exactly as before.
+            # sewn as the hairline it was). Lettering sews OVER whatever is
+            # already down — its ground, and any other earlier colour it
+            # abuts, by the pull band the clip removes from everything else;
+            # the pro's Fremont file lays its satin columns on the patch
+            # fill — so the widened polygon keeps its growth here, and the
+            # ground's underlap tongue still reaches under it as under any
+            # later colour (`sewn_footprint`). Everything without the tag is
+            # clipped exactly as before.
             if earlier[L] is not None and not widened_lettering(r):
                 grown = grown.difference(earlier[L])
 

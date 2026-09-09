@@ -11115,7 +11115,7 @@ The second half of plan §4d (`docs/superpowers/plans/2026-09-08-real-logo-lane-
 Kent's pick after #428's negative: *the tier rule for widened lettering*.
 A door-1 cluster member `cfg.lettering_min_column_mm` widened carries
 `meta["text_cluster_widened_mm"]` (`stage5_overlap.widened_lettering`), and
-that population — only that population — now takes the column route. Four
+that population — only that population — now takes the column route. Six
 tests in `tests/test_widened_lettering_tier.py`; None is byte-identical in
 both stages, and the flat and photo goldens hold.
 
@@ -11139,6 +11139,31 @@ colour. The bars-on-a-panel test pins exactly this: with the exemption the
 six bars sew 72 satin columns at 0.94 mm, without it zero — the mutation
 was run, not assumed.
 
+**The review of that cut found a third stage-5 decision, and it is about
+SEW ORDER.** The exemption only helps when the ground is already down.
+Flat-lane thread order is largest-area-first, and when the lettering's
+thread also holds the design's biggest shape (black lettering on a red
+field where black also sews the badge's border) the lettering sews FIRST;
+the ground then grows over it, clipped only by the glyph's 0.4 mm ARTWORK,
+and buries **79%** of the column — a 0.4 mm slit stays visible, the
+hairline the floor was built to remove, while `satin_columns` reads the
+glyph's own stitches and reports a full column (the same
+instrument-says-column / fabric-shows-hairline class as #428's negative).
+Fixed where the layers plan against each other: the layer unions stage 5
+builds (`earlier`, `later`, `covered_by`) now carry a widened member's
+SEWN COLUMN — its artwork grown by the pull, no tongue — in place of its
+artwork (`sewn_footprint`), so a ground that sews after it is clipped to
+the column and leaves the floor's width exposed, and a ground that sews
+before it reaches its tongue under the column. Pinned by
+`test_the_column_survives_when_its_thread_sews_before_the_ground`: the
+premise (lettering layer first) is asserted, the exposed width is
+0.85–1.25 mm where the artwork clip left 0.4. Two smaller things from the
+same review: `_comp_axis` (Law 22, `directional_comp`) now treats a
+widened member as isotropic satin rather than classifying its artwork —
+an axial add-back would have left a 0.4 mm "column" stage 7 declines,
+silently; and a forced-run glyph whose outline came back empty no longer
+tries the same outline twice on the way to fill.
+
 **Measured: OFF → ON at 1.0 mm, with `keep_thin_strokes` on, Studio defaults.**
 "Widened satin" is the satin row of the widened shapes alone
 (`satin_columns.passes_from_plan(shape_ids=...)`, new).
@@ -11150,11 +11175,20 @@ was run, not assumed.
 | `enthusiast_logo` @ 80 | 9 of 24 | satin 1,004 → 1,092; run 539 → 397 | **76 / 0.63 / 0.16 / 1.28** | 1,145 → 1,221 / 2.05 / 2.53 | **1.00 → 0.721** (ENTERPRISES INC 1.00 → 0.52) | 94.8% → 94.0% | 2,459 → 2,405 | 22 → 21 |
 | `becker_marine_logo` @ 100 | 0 of 11 | door 2 only | — | identical | n/a | n/a | identical | identical |
 
-**Fremont: the column, at the pro's width.** Eight of the ten widened
-glyphs (EST 1895's letters at 2.2–2.9 mm tall) classify as satin on their
-compensated polygon and sew 169 columns at a **0.91 mm median** — the pro's
-file sews the same glyphs at 0.82–0.90 — for fewer stitches than the runs
-they replace (16,006 → 15,823) and two more trims. The two the classifier
+**Fremont: the column, at the pro's width — and the counters it fills.**
+Eight of the ten widened glyphs (EST 1895's letters at 2.2–2.9 mm tall)
+classify as satin on their compensated polygon and sew 169 columns at a
+**0.91 mm median** — the pro's file sews the same glyphs at 0.82–0.90 — for
+fewer stitches than the runs they replace (16,006 → 15,823) and two more
+trims. Rendered (`docs/renders/column-tier-2026-09-09/`, art / OFF / ON per
+cluster): the OFF arm is faint bean outlines, the ON arm bold satin — and
+at a 2.2 mm cap height a 1.0 mm column fills the E's counters; OCR reads
+the ON EST as "OS" and EAT STAY PLAY falls 0.22 → 0.17 while EST rises
+0.25 → 0.40, so the 0.577 is the instrument's number, not a verdict. Kent's
+09-03 review recorded the pro's EST 1895 and EAT STAY PLAY as LEGIBLE at
+0.82–0.90 mm; that file is not in the repo, so this session could not put
+the two side by side, and whether the pro's letters hold their counters at
+this size is the question the crops put to him. The two the classifier
 declines fall back to their bean runs: a B (`aspect` 2.86 — a 1.9 × 2.3 mm
 glyph with a 1.2 mm ribbon is a blob) and one stroke (`dt_irregular`, cv
 0.535). Routed legibility rises 0.551 → 0.577 (EST 0.25 → 0.40); forced

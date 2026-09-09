@@ -3639,8 +3639,8 @@ size. A polygon change is measured on `tools/sewn_tiers.py` and
 `tools/satin_columns.py`'s satin row before it is called a sewing change;
 if those do not move, it was not one.
 
-**Built the same day — and it took THREE decisions, not the two the
-negative named.** Stage 7's routing and classifier input were the two; the
+**Built the same day — and it took FOUR decisions, not the two the
+negative named.** Stage 7's routing and classifier input were the two. The
 third was stage 5's *"never grow back over a colour that is already
 down"*, which clips every shape to the artwork of the layers sewn before
 it. A glyph on a ground is a HOLE in that ground at its original width, so
@@ -3648,17 +3648,29 @@ the widened glyph was cut back to its own hole before stage 7 saw it: the
 rule passed its test on bars over bare background and sewed nothing new on
 Fremont, and only instrumenting the classifier's INPUT (every widened glyph
 arrived 0.28 mm wide — the hole, not the 0.6 mm polygon) found the clip.
-The general form: a geometry change reaches the needle only through stage
-5's grown polygon (`PlannedRegion.polygon`), so measure THAT polygon, not
-the region's, before believing a polygon change is a sewing change — and
-test the fixture the feature is FOR (lettering on a ground), not the one
-that is easy to draw.
+The fourth was the same clip from the other side, found by the review's
+probe, not by any fixture: when the lettering's thread sews BEFORE its
+ground (largest-area-first order does that whenever that thread also holds
+the biggest shape), the ground grows over the column and is clipped only
+by the glyph's ARTWORK — 79% of the column buried, a 0.4 mm slit visible,
+and `satin_columns` still reporting a full column because it reads the
+glyph's own stitches. The layer unions now carry the sewn column. The
+general form: a geometry change reaches the needle only through stage 5's
+grown polygon (`PlannedRegion.polygon`) AND through what the layers around
+it are clipped against, so measure the grown polygon — and the visible
+part of it — before believing a polygon change is a sewing change; test
+the fixture the feature is FOR (lettering on a ground), and then the
+fixture that reverses its assumption (the ground sewing last).
 
 **And the column has a floor of its own.** A 1.0 mm column in a 1.6 mm
 glyph is a smear — ENTHUSIAST's subline sews 76 columns at a 0.63 mm median
 with a 0.16 mm p10 and its legibility falls 1.00 → 0.72 — while Fremont's
-2.2–2.9 mm letters sew 169 columns at 0.91 mm, the pro's width. A column
-needs a glyph tall enough to hold it; the floor needs a glyph-height gate
-(a new constant — gate 1) before `lettering_min_column_mm` can be on by
-default, and that is Kent's.
-*(2026-09-09 — scope-history's two entries of that date have the tables)*
+2.2–2.9 mm letters sew 169 columns at 0.91 mm, the pro's width, and the
+crops show even those filling their counters (the ON EST reads "OS"). A
+column needs a glyph tall enough to hold it; the floor needs a glyph-height
+gate (a new constant — gate 1) before `lettering_min_column_mm` can be on
+by default, and that is Kent's. **The instrument's number is not the
+verdict when a render is one command away**: routed legibility ROSE 0.551 →
+0.577 on Fremont while the pictures got blobbier.
+*(2026-09-09 — scope-history's two entries of that date have the tables;
+`docs/renders/column-tier-2026-09-09/` the crops)*
