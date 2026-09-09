@@ -108,6 +108,82 @@ BINARY mask; it does not read the ramp either, and its Python wheel has an
 untested keyword-argument crash on 3.14. It stays the fallback for sources
 with no ramp to read.
 
+**BUILT 2026-09-09 (PR 2) — `cfg.subpixel_edges`, `digitizer_core/subpixel.py`,
+default OFF and byte-identical off; three things the construction above did
+not say, each measured before it was written in:**
+
+1. **The position is area conservation, not the 0.5 crossing.** The ramp an
+   INTER_AREA downscale (or any renderer's coverage) leaves is piecewise
+   linear with its knots half a pixel off the pixel centres, so the 0.5
+   crossing of the linearly interpolated profile is biased by up to
+   ±0.09 px, antisymmetric in the edge's sub-pixel phase. Integrating the
+   inside fraction across the window instead is exact for a straight edge
+   whatever the ramp's width or angle, and for any ramp symmetric about the
+   edge: on a straight edge at four phases the integral errs −0.05 to
+   +0.01 px against −0.10 to +0.09; on a disc rendered at 16x, 0.037 px of
+   scatter and 0.014 of bias against 0.058 and 0.009. Acceptance still asks
+   for a monotonic profile with one crossing, plus both plateaus inside the
+   window (the integral's precondition). The 4x fixtures themselves are
+   only good to an eighth of a pixel, which is why the unit test renders
+   its disc at 16x.
+2. **Two windows, and dropped rejects.** A label can sit a whole pixel off
+   its edge (stage 2 hands a halo pixel to the darker cluster: the white
+   disc enclosed by the whitebg ring traces 0.8–1.0 px inside its
+   anti-alias edge and a ±1.5 px window refused 53% of its vertices), so a
+   ±2.5 px pass runs where the ±1.5 one refuses; it needs five pixels of
+   plateau either side and so admits nothing new on a stroke. And an
+   8-connected trace's inner corner pixels sit a full pixel inside the
+   edge, past any window: refused, each was an inward spike the simplifier
+   kept (the 400 px circle's Hausdorff 0.18 → 0.24 mm), so a run of at most
+   two rejected vertices between accepted ones is dropped before
+   Douglas-Peucker — their position is unknown and their neighbours' is
+   not.
+3. **Corners are read along each side.** The one-dimensional ramp model
+   fails where two sides meet inside the window: a right-angle corner pixel
+   moved along its blended diagonal reaches 0.5 px of the 0.71 it needs,
+   and every rectangle came out bevelled (the 800 px bar's Hausdorff 0.09 →
+   0.18 mm, spread tripled, while the curves improved). A vertex whose side
+   chords (±3 steps) turn ≥ 60° is read along each side's own normal and
+   placed where the two offset side lines meet, capped at the narrow window
+   along both sides (1.06 px — a one-pixel protrusion of the label turns
+   like a corner and met its side lines 2.4 px outside the circle before
+   the cap). Rectangles then land on their true corners: bar 0.119 →
+   0.021 mm Hausdorff at 400 px, 0.089 → 0.004 at 800; purple's four
+   vertices to 0.000 mm.
+
+**What the 400 and 800 rungs show, whitebg, flat lane.** The ladder gained
+vertex-only columns for this (`vertex_offset_mm`, `vertex_spread_mm`,
+`vertex_max_mm`): the polygon's VERTICES land on the edge — circle vertex
+spread 0.049 → 0.013 mm at 400 px (0.023 → 0.007 at 800), ring 0.061 →
+0.014 (0.032 → 0.007), rectangles 0.00–0.01 — while the polygon's boundary
+offset on the circle gets MORE negative (−0.045 → −0.067 mm at 400):
+with its vertices on the edge the polygon is inscribed, and every chord
+sags inward by the simplifier's tolerance, which the staircase's outer
+corners used to mask. That is the floor §5 named and PR 3 is for; the
+boundary spread still falls on the circle (0.057 → 0.048; 0.047 → 0.033)
+and the ring's rises slightly for the same inscribed reason (0.085 → 0.097).
+Reading the boundary offset alone here would call PR 2 a regression; the
+vertex columns are the ones it is judged on.
+
+**PR 3 BUILT the same day, same flag** — `_refine_curves(accepted=...)`: a
+chord whose spanned raw points are at least 80% accepted is floored at
+0.25 px instead of 1.0, its inserted vertex is the midpoint's own sub-pixel
+point (the windowed mean is a staircase remedy and pulls a known point
+inward on a curve), and the `_CURVE_MIN_PX_PER_MM` gate lifts when the flag
+is on — chord by chord, the acceptance test replaces it. Where it bites is
+where the plan did not quite say: the 15° turn rule, not the floor, decides
+where splitting stops on a large radius (on the ladder's 14 mm circle the
+one-pixel floor and the quarter-pixel floor end at the same chords), and
+the floor governs on SMALL radii, where the 15° chord is under ~30 px and
+its sagitta under a pixel — the ring's 7 mm hole went 40 → 70 vertices at
+400 px, Hausdorff 0.285 → 0.140 mm, and at 800 the circle's boundary spread
+fell 0.047 → 0.025 (PR 2 alone: 0.033) with its Hausdorff halved, the
+ring's 0.070 → 0.044 with Hausdorff 0.218 → 0.094. The ribbon's spread
+holds at the OFF 3200 rung's level (0.065–0.066 against 0.067) and its
+roughness falls (7.97 → 5.86 at 400 px; 6.55 → 4.20 at 1600). Whether
+every rung now clears §5's criterion is in scope-history's entry for the
+day, with the full ladder and the tier diff.
+
 ## 4. What it should move — predictions, to be tested
 
 - `tools/edge_smoothness.py` `ragged_mm` down on every fixture between 5
@@ -183,8 +259,8 @@ is already true OFF from 400 px up, and the criterion is restated:
 | PR | content | size | gate |
 |---|---|---|---|
 | 1 | **BUILT 2026-09-08** — the ladder, baseline numbers OFF, the criterion corrected (§5) | ~500 lines + 10 tests | none |
-| 2 | `cfg.subpixel_edges` — the profile crossing, `accepted` mask, OFF | ~200 + tests | none |
-| 3 | the refinement floor and gate keyed to acceptance, same flag | ~60 + tests | none |
+| 2 | **BUILT 2026-09-09** — `cfg.subpixel_edges`, OFF, byte-identical off: the area-integral edge position, two windows, dropped isolated rejects, corners read along each side (§3's BUILT note); the ladder's vertex-only columns; 13 tests. Vertices on the edge at every rung measured; the boundary offset is now the simplifier's sag, PR 3's | ~330 + 13 tests | none |
+| 3 | **BUILT 2026-09-09** — `_refine_curves(accepted=...)`: 0.25 px floor on ≥80%-accepted chords, the midpoint's own point inserted, the 20 px/mm gate lifted ON; bites on small radii where the 15° rule wanted chords the pixel floor refused (§3's BUILT note) | ~40 + 3 tests | none |
 | 4 | the flip: ladder ON, tier diff, `ragged_mm`/`roughness_deg` table, renders, golden churn | docs + goldens | Kent's approval of the churn |
 
 ## 8. Decisions for Kent

@@ -3617,6 +3617,41 @@ engine caught the instrument here only because they were written apart.
 *(2026-09-08 — #427; scope-history's retraction entry has the tables)*
 
 
+## A sub-pixel vertex makes the polygon inscribed — read the vertices, not the boundary offset (2026-09-09)
+
+`cfg.subpixel_edges` (plan `2026-09-08-subpixel-edges.md` PR 2) moves stage
+4's contour vertices from pixel centres onto the anti-alias edge. On the
+ladder's 400 px circle the vertex spread fell 0.049 → 0.013 mm and the
+boundary offset got WORSE, −0.045 → −0.067 mm. Both are right: with every
+vertex on the edge the polygon is inscribed, so each Douglas-Peucker chord
+sags inward by the 0.2 mm tolerance, where the staircase used to leave
+outer corner pixels for the simplifier to hang chords on. A geometry change
+upstream of the simplifier reaches the stitches only through the
+simplifier, and its floor is the chord — the same floor the ladder's
+baseline found OFF above 15 px/mm. **Judge a vertex change on the
+vertices** (`edge_truth_ladder`'s `vertex_*` columns exist for this) and
+the chords on the refinement that owns them; a boundary-offset reading
+alone would have called this PR a regression.
+
+**Three constructions that were wrong before they were measured, on the
+same PR.** (1) The 0.5 crossing of a linearly interpolated profile is
+biased ±0.09 px because the coverage ramp's knots sit half a pixel off the
+pixel centres; the area integral of the inside fraction is exact for a
+straight edge and any symmetric ramp (straight-edge error −0.05..+0.01 px;
+16x disc scatter 0.037 px). (2) A rejected vertex left between accepted
+neighbours is an inward spike the simplifier must keep — drop it, its
+position is unknown and theirs is not. (3) A corner read along one blended
+normal is bevelled (a right angle reaches 0.5 of 0.71 px); read each side
+and intersect. **Each was found by a fixture the plan did not name**: a
+straight edge at four sub-pixel phases, a 16x disc (the 4x fixtures are
+only good to an eighth of a pixel — cv2's fill rule at 4x put the disc's
+truth 0.1 px from where the generator's docstring says), and the
+rectangles nobody thought of as the hard case. When a construction claims
+sub-pixel accuracy, build the fixture whose truth is known to better than
+that before believing the number it reports on the fixtures you have.
+*(2026-09-09 — plan §3's BUILT note and scope-history's entry have the tables)*
+
+
 ## Widening a rescued glyph's polygon does not change how it is sewn (2026-09-09)
 
 `cfg.lettering_min_column_mm` (PR #428) raises a door-1 text cluster's

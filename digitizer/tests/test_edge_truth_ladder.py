@@ -75,8 +75,9 @@ def test_parse_flag_reads_values_and_refuses_unknown_fields():
     assert el.parse_flag("curve_turn_deg=15") == ("curve_turn_deg", 15)
     assert el.parse_flag("forced_class=flat") == ("forced_class", "flat")
     assert el.parse_flag("satin_per_stroke") == ("satin_per_stroke", True)
+    assert el.parse_flag("subpixel_edges") == ("subpixel_edges", True)     # PR 2's flag, since 2026-09-09
     with pytest.raises(ValueError):
-        el.parse_flag("subpixel_edges")     # PR 2's flag does not exist yet
+        el.parse_flag("no_such_flag")
 
 
 @pytest.fixture(scope="module")

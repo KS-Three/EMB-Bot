@@ -241,6 +241,21 @@ def deviation(poly: Polygon, target: Polygon, step_px: float = SAMPLE_STEP_PX,
     return np.asarray(out, float)
 
 
+def vertex_deviation(poly: Polygon, target: Polygon, exclude=()) -> np.ndarray:
+    """`deviation` at the polygon's own vertices only (shell and holes),
+    same sign convention, same exclusions."""
+    pts = [np.asarray(poly.exterior.coords)[:-1]] + [np.asarray(h.coords)[:-1] for h in poly.interiors]
+    pts = np.vstack(pts) if pts else np.zeros((0, 2))
+    out = []
+    for x, y in pts:
+        pt = Point(x, y)
+        if any(pt.distance(e) < r for e, r in exclude):
+            continue
+        dist = target.boundary.distance(pt)
+        out.append(-dist if target.contains(pt) else dist)
+    return np.asarray(out, dtype=float)
+
+
 def roughness(poly: Polygon) -> float | None:
     """`curve_fidelity.measure` on the polygon's rings as open polylines
     (the closing vertex repeated, so the wrap turn is read too)."""
@@ -291,6 +306,11 @@ def measure_rung(fixture: str, width_px: int, forced_class: str | None = "flat",
             continue
         r, poly = best
         d = deviation(poly, target, exclude=exclude) / ppm
+        # The VERTICES alone, the same signed distance: a polygon can have
+        # every vertex on the edge and still deviate along its chords by the
+        # simplifier's sag, and the two need telling apart (`subpixel_edges`
+        # moves the vertices; the refinement, PR 3 of that plan, the chords).
+        vd = vertex_deviation(poly, target, exclude=exclude) / ppm
         rows.append({
             **row, "produced": True, "shape_id": r.shape_id, "iou": round(best_iou, 4),
             "vertices": len(poly.exterior.coords) - 1 + sum(len(h.coords) - 1 for h in poly.interiors),
@@ -299,6 +319,9 @@ def measure_rung(fixture: str, width_px: int, forced_class: str | None = "flat",
             "spread_mm": round(float(d.std()), 4),
             "rms_mm": round(float(np.sqrt((d ** 2).mean())), 4),
             "hausdorff_mm": round(float(np.abs(d).max()), 4),
+            "vertex_offset_mm": round(float(vd.mean()), 4) if vd.size else None,
+            "vertex_spread_mm": round(float(vd.std()), 4) if vd.size else None,
+            "vertex_max_mm": round(float(np.abs(vd).max()), 4) if vd.size else None,
             "roughness_deg": roughness(poly),
         })
     return {"fixture": fixture, "width_px": width_px, "supersample": s, "flag": flag,
@@ -377,7 +400,8 @@ def _print_rung(r: dict) -> None:
         print(f"      {row['shape']:8} verts {row['vertices']:4d}  offset {_fmt(row['offset_mm'])}  "
               f"spread {_fmt(row['spread_mm'])}  rms {_fmt(row['rms_mm'])}  "
               f"hausdorff {_fmt(row['hausdorff_mm'])}  roughness {_fmt(row['roughness_deg'], 6, 2)} deg  "
-              f"iou {row['iou']:.3f}")
+              f"iou {row['iou']:.3f}  | vertices: offset {_fmt(row.get('vertex_offset_mm'))}  "
+              f"spread {_fmt(row.get('vertex_spread_mm'))}  max {_fmt(row.get('vertex_max_mm'))}")
 
 
 def _print_matrix(results: list[dict], key: str) -> None:
