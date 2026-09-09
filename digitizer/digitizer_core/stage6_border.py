@@ -43,24 +43,26 @@ that bug, returns every ring of a shape with holes in one call, and returns
 empty — rather than a curve in the wrong place — when the shape is too thin to
 hold a column.
 
-FIXED LIMITATION, one module up (adversarial review; mitigation-only in PR #67,
-real fix in the seam-suppression PR that added this paragraph): under
-`border="auto"` two different-color shapes that ABUT get coincident border
-rails on the shared seam — stage 5 makes both visible edges the same line, so
-each circuit's outer rail would ride it at full density: a double-thick bar in
-two threads, penetrating each other's holes for the seam's whole length. This
-module has no notion of "the other shape" — a border is built from one shape's
-own `visible` geometry and nothing else — so the fix could not live here; it
-lives in `stage7_sequence._yield_frontage`, which has both shapes and the sew
-order and pulls the LATER-sewn shape's input geometry back off any seam it
-shares with an ALREADY-bordered earlier shape before handing it to
-`border_runs`. From this module's side that is invisible: it is handed
-whatever polygon its caller wants outlined and traces it exactly as it always
-has, seam or no seam. The one case stage 7 cannot resolve — a shape's frontage
-so thoroughly hemmed in by earlier neighbors that the retreat would erase its
-border outright — falls back to the plain, unsuppressed geometry this module
-was always given, and stage 7 names it under `BORDER_SEAM_SHARED` for the
-operator instead.
+SEAM OWNERSHIP, one module up. Under `border="auto"` two different-colour
+shapes that ABUT get coincident border rails on the shared seam — stage 5
+makes both visible edges the same line — so two full circuits would ride it
+as a double-thick bar in two threads. This module has no notion of "the other
+shape" (a border is built from one shape's own `visible` geometry and nothing
+else), so the rule lives in `stage7_sequence._owned_by_later`, which has both
+shapes and the sew order: a seam is bordered ONCE, by the shape sewn LATER —
+it lies on top, so its column covers both fills' edges — and the earlier
+shape hands the stretch in here as `omit`. On this side that means a ring is
+sewn as the open arcs that remain, still on the edge and still the same
+column, rather than as a closed circuit; a ring with nothing left is skipped,
+and both are counted under `yielded` so the report never goes quiet about it.
+
+The first version of this (2026-08-06, `_yield_frontage`) had the LATER shape
+retreat its whole circuit a column width off the seam instead, and the test
+pinned that as the wanted outcome. On artwork where every colour abuts —
+which is every flat logo — that put a satin stripe 1.9 mm inside nearly every
+fill and no border on its edge at all; measured on Kent's Instagram icon,
+14 of 17 bordered shapes, one border lost outright (Kent, 2026-09-09: "the
+satin border is not following the outline of each color").
 """
 from __future__ import annotations
 
@@ -68,6 +70,7 @@ import math
 
 import numpy as np
 from shapely.geometry import LineString, Point, Polygon
+from shapely.ops import nearest_points
 from shapely.prepared import prep
 
 from . import machine, stitches
@@ -541,12 +544,146 @@ def _bean_loop(ring_pts: list[tuple[float, float]], entry: tuple[float, float] |
     return out
 
 
+# --- Open arcs: a ring with a stretch owned by a neighbour's border ---------
+
+# A ring sample whose edge lies this close to an omitted stretch is on it.
+# The corner relaxation can pull a sample further inside than this at a sharp
+# corner; such a sample keeps its cross, which then sits inside THIS shape
+# beside the neighbour's column rather than on top of it — a sub-column
+# patch at the seam's two ends, not a stripe.
+_OMIT_TOL_MM = machine.BORDER_HOST_MARGIN_MM
+
+# An arc shorter than the column is wide is a blob, not an edge.
+_ARC_MIN_MM = machine.BORDER_WIDTH_MM
+
+
+def _ring_arcs(ring_pts: list[tuple[float, float]], omit, edge
+               ) -> tuple[list[list[tuple[float, float]]], bool]:
+    """The arcs of a ring NOT on `omit`. -> (arcs, whole).
+
+    `whole` is True when no sample was omitted — the caller keeps the closed
+    circuit, byte-identical to a ring that was never asked. An empty list
+    with `whole` False is a ring omitted end to end.
+
+    Each sample is judged by the EDGE it stands in for, not by where it sits:
+    a satin ring's samples ARE the edge, but a bean ring rides a spine inset
+    half a column from it, and on a thin shape both sides of that spine are
+    within a column of the seam. `edge` is the host's boundary; the sample's
+    nearest point on it is what gets tested. Splitting is circular — index 0
+    is rotated onto a dropped sample first, so an arc that straddles the
+    ring's own start/end stays one arc.
+    """
+    if edge is None:
+        keep = [not omit.intersects(Point(p)) for p in ring_pts]
+    else:
+        keep = [not omit.intersects(nearest_points(edge, Point(p))[0])
+                for p in ring_pts]
+    if all(keep):
+        return [ring_pts], True
+    if not any(keep):
+        return [], False
+    n = len(ring_pts)
+    start = keep.index(False)
+    arcs: list[list[tuple[float, float]]] = []
+    cur: list[tuple[float, float]] = []
+    for i in range(1, n + 1):
+        j = (start + i) % n
+        if keep[j]:
+            cur.append(ring_pts[j])
+        elif cur:
+            arcs.append(cur)
+            cur = []
+    if cur:
+        arcs.append(cur)
+    return arcs, False
+
+
+def _open_tangents(pts: list[tuple[float, float]], k: int
+                   ) -> list[tuple[float, float]]:
+    """`_tangents` for an open polyline: the ±k baseline clamps at the ends
+    instead of wrapping, so the first and last tangents point along the arc
+    rather than across the gap it was cut from."""
+    n = len(pts)
+    out = []
+    for i in range(n):
+        a = pts[max(0, i - k)]
+        b = pts[min(n - 1, i + k)]
+        dx, dy = b[0] - a[0], b[1] - a[1]
+        d = math.hypot(dx, dy)
+        if d < 1e-12:
+            a = pts[max(0, i - 1)]
+            b = pts[min(n - 1, i + 1)]
+            dx, dy = b[0] - a[0], b[1] - a[1]
+            d = math.hypot(dx, dy) or 1.0
+        out.append((dx / d, dy / d))
+    return out
+
+
+def _towards(arc: list[tuple[float, float]], entry: tuple[float, float] | None
+             ) -> list[tuple[float, float]]:
+    """The arc, starting at whichever end is nearer the needle."""
+    if entry is None or math.dist(entry, arc[0]) <= math.dist(entry, arc[-1]):
+        return list(arc)
+    return list(reversed(arc))
+
+
+def _satin_arc(arc: list[tuple[float, float]], width: float, inside,
+               entry: tuple[float, float] | None, k_tan: int
+               ) -> tuple[list[tuple[float, float]], int, int]:
+    """One open stretch of edge as a satin column. -> (points, crosses, clamped).
+
+    `_satin_loop` without the loop: same crosses, same rails, same clamp
+    ladder and short-stitch guard, no closure overlap (there is nothing to
+    close) and no join search (it starts at the end nearer the needle).
+    """
+    pts_in = _towards(arc, entry)
+    tans = _open_tangents(pts_in, k_tan)
+    sign = _inward_sign(pts_in, tans, inside)
+    pts: list[tuple[float, float]] = []
+    rails: list[int] = []
+    partners: list[tuple[float, float]] = []
+    clamped = 0
+    kept = 0
+    for (px, py), (tx, ty) in zip(pts_in, tans):
+        nx, ny = -ty * sign, tx * sign
+        q, w = _clamped_cross(px, py, nx, ny, width, inside)
+        if w < machine.SATIN_MIN_CROSS_MM:
+            continue
+        if w < width - 1e-6:
+            clamped += 1
+        if kept % 2 == 0:
+            pts.append((px, py))
+            partners.append(q)
+            rails.append(0)
+        else:
+            pts.append(q)
+            partners.append((px, py))
+            rails.append(1)
+        kept += 1
+    _short_stitch_guard(pts, partners, rails)
+    return pts, kept, clamped
+
+
+def _bean_arc(arc: list[tuple[float, float]], entry: tuple[float, float] | None,
+              passes: int) -> list[tuple[float, float]]:
+    """One open stretch of spine as a bean run: there, back, and there again."""
+    lap = _towards(arc, entry)
+    if len(lap) < 2:
+        return []
+    out = list(lap)
+    for p in range(1, passes):
+        leg = list(reversed(lap)) if p % 2 == 1 else list(lap)
+        out.extend(leg[1:])
+    return out
+
+
 # --- Entry point -----------------------------------------------------------
 
 def border_runs(visible, shape_id: str, *, entry: tuple[float, float] | None,
                 trim_at_mm: float, style: str = "auto",
                 width_mm: float | None = None,
-                density_mm: float | None = None) -> tuple[list[StitchRun], dict]:
+                density_mm: float | None = None,
+                omit=None) -> tuple[list[StitchRun], dict]:
     """Outline the VISIBLE part of one shape. -> (runs, report).
 
     `visible` is stage 5's grown polygon with everything that sews after it
@@ -554,12 +691,23 @@ def border_runs(visible, shape_id: str, *, entry: tuple[float, float] | None,
     will actually see, and it is the only geometry a border may be drawn on.
 
     One `StitchRun` per ring that passes the gates: exterior first, then every
-    counter, each its own closed circuit (law 13, 18/18). Report keys:
-    `loops`, `bean_loops`, `crosses`, `clamped`, `too_narrow`, `jumps`,
-    `empty`, `split_at_pinch`.
+    counter, each its own closed circuit (law 13, 18/18).
+
+    `omit`, when given, is the part of this shape's edge that a neighbour's
+    border already covers — the seams `stage7_sequence._owned_by_later`
+    hands to the shape sewn UNDERNEATH (see the module docstring). Every
+    ring sample standing in for that stretch is dropped, and what remains of
+    the ring sews as open arcs — one `StitchRun` each, the same column, on
+    the same edge. `None` (or a geometry the ring never meets) is the closed
+    circuit, byte for byte.
+
+    Report keys: `loops`, `bean_loops`, `arcs`, `bean_arcs`, `yielded`
+    (rings that lost a stretch or all of themselves to `omit`), `crosses`,
+    `clamped`, `too_narrow`, `jumps`, `empty`, `split_at_pinch`.
     """
-    report = {"loops": 0, "bean_loops": 0, "crosses": 0, "clamped": 0,
-              "too_narrow": 0, "jumps": 0, "empty": True, "split_at_pinch": 0}
+    report = {"loops": 0, "bean_loops": 0, "arcs": 0, "bean_arcs": 0,
+              "yielded": 0, "crosses": 0, "clamped": 0, "too_narrow": 0,
+              "jumps": 0, "empty": True, "split_at_pinch": 0}
     if style == "none" or visible is None:
         return [], report
 
@@ -579,6 +727,10 @@ def border_runs(visible, shape_id: str, *, entry: tuple[float, float] | None,
     parts = _parts(visible)
     if len(parts) > 1:
         report["split_at_pinch"] = len(parts) - 1
+    # Prepared once; every ring sample of every part is tested against it.
+    omit_prep = None
+    if omit is not None and not getattr(omit, "is_empty", True):
+        omit_prep = prep(omit.buffer(_OMIT_TOL_MM))
 
     cursor = entry
     for part in parts:
@@ -612,45 +764,74 @@ def border_runs(visible, shape_id: str, *, entry: tuple[float, float] | None,
                 ring_pts, total = _ring_arc_samples(coords, n)
                 if not ring_pts:
                     continue
-                if lighten:
-                    pts = _bean_loop(ring_pts, cursor, sample_step,
-                                     machine.BEAN_PASSES)
-                    kind = stitches.BEAN
-                    crosses = 0
+                if omit_prep is None:
+                    arcs, whole = [ring_pts], True
                 else:
-                    k_tan = max(1, int(round(half / sample_step)))
-                    pts, crosses, clamped = _satin_loop(
-                        ring_pts, total, total / n, width, slack, cursor, k_tan)
-                    kind = stitches.BORDER
-                    report["clamped"] += clamped
-                if len(pts) < 2:
-                    continue
+                    # A satin ring's samples are the edge; a bean ring's sit
+                    # on the inset spine and are judged by the edge nearest
+                    # each one.
+                    arcs, whole = _ring_arcs(
+                        ring_pts, omit_prep, host.boundary if lighten else None)
+                    if not whole:
+                        report["yielded"] += 1
+                for arc in arcs:
+                    if whole:
+                        if lighten:
+                            pts = _bean_loop(ring_pts, cursor, sample_step,
+                                             machine.BEAN_PASSES)
+                            kind = stitches.BEAN
+                            crosses = 0
+                        else:
+                            k_tan = max(1, int(round(half / sample_step)))
+                            pts, crosses, clamped = _satin_loop(
+                                ring_pts, total, total / n, width, slack,
+                                cursor, k_tan)
+                            kind = stitches.BORDER
+                            report["clamped"] += clamped
+                    else:
+                        if len(arc) < 2 or LineString(arc).length < _ARC_MIN_MM:
+                            continue   # a blob, not an edge
+                        if lighten:
+                            pts = _bean_arc(arc, cursor, machine.BEAN_PASSES)
+                            kind = stitches.BEAN
+                            crosses = 0
+                        else:
+                            k_tan = max(1, int(round(half / sample_step)))
+                            pts, crosses, clamped = _satin_arc(
+                                arc, width, slack, cursor, k_tan)
+                            kind = stitches.BORDER
+                            report["clamped"] += clamped
+                    if len(pts) < 2:
+                        continue
 
-                # Bridge from wherever the needle is. A border starts on the
-                # shape's own edge and the fill ended inside the same shape, so
-                # this is a few millimetres and almost always stays needle-down.
-                jump = trim = False
-                if cursor is not None:
-                    bridge = travel_path(host, None, cursor, pts[0])
-                    if bridge is None:
-                        d = math.dist(cursor, pts[0])
-                        if d >= machine.TINY_STITCH_MM:
-                            jump = True
-                            trim = d > trim_at_mm
-                            report["jumps"] += 1
-                    elif len(bridge) > 1:
-                        runs.append(StitchRun(points=bridge[:-1],
-                                              kind=stitches.TRAVEL,
-                                              shape_id=shape_id))
-                runs.append(StitchRun(points=stitches.split_long_moves(pts),
-                                      kind=kind, jump=jump, trim=trim,
-                                      shape_id=shape_id))
-                cursor = pts[-1]
-                report["crosses"] += crosses
-                if lighten:
-                    report["bean_loops"] += 1
-                else:
-                    report["loops"] += 1
+                    # Bridge from wherever the needle is. A border starts on
+                    # the shape's own edge and the fill ended inside the same
+                    # shape, so this is a few millimetres and almost always
+                    # stays needle-down.
+                    jump = trim = False
+                    if cursor is not None:
+                        bridge = travel_path(host, None, cursor, pts[0])
+                        if bridge is None:
+                            d = math.dist(cursor, pts[0])
+                            if d >= machine.TINY_STITCH_MM:
+                                jump = True
+                                trim = d > trim_at_mm
+                                report["jumps"] += 1
+                        elif len(bridge) > 1:
+                            runs.append(StitchRun(points=bridge[:-1],
+                                                  kind=stitches.TRAVEL,
+                                                  shape_id=shape_id))
+                    runs.append(StitchRun(points=stitches.split_long_moves(pts),
+                                          kind=kind, jump=jump, trim=trim,
+                                          shape_id=shape_id))
+                    cursor = pts[-1]
+                    report["crosses"] += crosses
+                    if not whole:
+                        report["bean_arcs" if lighten else "arcs"] += 1
+                    elif lighten:
+                        report["bean_loops"] += 1
+                    else:
+                        report["loops"] += 1
 
     report["empty"] = not runs
     return runs, report

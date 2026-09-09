@@ -261,19 +261,15 @@ EDGE_CAP_LIGHTENED = "EDGE_CAP_LIGHTENED"
 # Stage 6 (border tier)
 BORDER_SKIPPED_TOO_NARROW = "BORDER_SKIPPED_TOO_NARROW"  # no room for an outline. extra: {"count": int}
 BORDER_LIGHTENED = "BORDER_LIGHTENED"                    # column would not fit; bean run instead. extra: {"count": int}
-# stage6_border's documented KNOWN LIMITATION — two bordered shapes of
-# different colors abut, stage 5 makes their visible edges the same line, so
-# each shape's own outline circuit would ride it at full density: a
-# double-thick bar sewn in two threads. `stage7_sequence._yield_frontage` now
-# fixes this automatically (sew-order tie-break: the shape sewn earlier keeps
-# the line, the one sewn later insets its circuit off the shared seam before
-# tracing it), so this WARNING now fires only for the residual case the
-# automatic fix cannot resolve without deleting the later shape's border
-# outright — its own frontage is entirely consumed by the retreat because it
-# is hemmed in by an already-bordered neighbor on more than one side. That
-# shape falls back to its unsuppressed geometry (a real border beats none)
-# and is named here so the operator still has the manual escape
-# (`Region.meta["border"] = False` on one side). extra: {"count": int,
+# Stage 6/7 (border tier) — two bordered shapes share an edge. Stage 5 makes
+# their visible edges the identical line, so two full circuits would ride it
+# as a doubled bar in two threads. `stage7_sequence._owned_by_later` settles
+# it: the shape sewn LATER owns the seam (it lies on top, its column covers
+# both edges) and the shape underneath skips that stretch of its own ring,
+# sewing the rest as open arcs still on its edge. This is a NOTE, not a
+# defect: it names the pairs so the operator can see why a shape's own
+# border stops short of an edge, and the manual escape stays
+# (`Region.meta["border"] = False` on either side). extra: {"count": int,
 # "pairs": list[[str, str]]}
 BORDER_SEAM_SHARED = "BORDER_SEAM_SHARED"
 
