@@ -382,3 +382,23 @@ assumed). Scope-history's fourth 09-08 entry has the OFF → ON table.
   `tests/test_junction_patch_flag.py` (14).
 - PR 3 candidate: the junction BLOB as its own column with the arms
   ending on it (the pro's A apex), and a junction-aware width statistic.
+
+## Item 5, PR 3 — measured out before engine code (2026-09-09, Kent's pick after #435)
+
+- `tools/junction_blobs.py` (per junction: node radius vs arms' halves, arm
+  count, merge decision per arm, the blob = medial balls bigger than the
+  arms' own, layers / bare / seams inside it; per shape the arms-only p90)
+  and `tools/pro_layers.py` (the pro's file in our frame: layers and thread
+  inside our letters and blobs).
+- **The pro stacks MORE at junctions than we do**: MARINE letters ours p95
+  2.4–3.4 / max 3.8–5.2 vs the pro's 4.1–6.0 / 5.5–11.6; every blob the pro
+  is above us; the pro sews MARINE with +58% thread (12,109 vs 7,642 mm)
+  and +39% penetrations. #434's "clumps" are angle meetings over LESS
+  thread. No column to add.
+- **A bold letter at 17 mm is 45–90% junction ball**; the blob is a disc
+  the size of the apex, not the pro's slab (which the font defines). The
+  arms-only width statistic flips one verdict (the M 7.34 → 5.67) and reads
+  drone's 9.4 mm wing as 1.08 — not a classifier input. DOCTRINE has both
+  rules and a dated bracket on the earlier "junction-aware statistic" line.
+- Open question for Kent: the density gap (+58% thread in lettering:
+  spacing and underlay, Law 27/50, a sew-out question) vs items 6/7.

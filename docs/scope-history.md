@@ -11911,3 +11911,39 @@ thread. Renders: `docs/renders/junction-cover-2026-09-09/`.
 *(2026-09-09 — `docs/superpowers/plans/2026-09-09-serifs-and-junction-cover.md`;
 `tests/test_junction_patch_flag.py` 14; DOCTRINE "Crossing pairs at a join
 are the join")*
+
+## 2026-09-09 — item 5, PR 3 measured out: the junction blob is not a column, and the pro stacks more at junctions than we do
+
+Kent's pick after #435. `digitizer/tools/junction_blobs.py` (per junction
+cluster: node radius against the arms' half-widths, arm count, the merge's
+decision per arm, the blob as the medial balls bigger than the arms' own,
+coverage layers / bare / seam pairs inside it; per shape the arms-only DT
+p90) and `digitizer/tools/pro_layers.py` (a reference file in our frame:
+layers and thread inside our letters and blobs).
+
+| case, `wide_columns` on | junction blobs | arms 3 / 4+ | weld / end / corner / tuck / dropped fork | blobs p95 ≥ 3.33 layers | blobs ≥ 25% bare |
+|---|---|---|---|---|---|
+| becker 80 | 61 | 50 / 9 | 104 / 29 / 15 / 11 / 35 | 20 | 5 |
+| becker 100 | 18 | 9 / 6 | 32 / 7 / 6 / 4 / 8 | 4 | 0 |
+| drone 80 | 76 | 63 / 7 | 116 / 53 / 20 / 15 / 23 | 13 | 2 |
+| enthusiast 93 | 16 | 14 / 2 | 26 / 7 / 5 / 5 / 7 | 5 | 0 |
+| fremont 92.5 | 89 | 82 / 6 | 170 / 70 / 10 / 6 / 16 | 14 | 15 |
+
+MARINE at 100 mm: 45–90% of each letter's skeleton lies inside a junction
+blob (node radii 3.4–4.4 mm on 2.2–3.2 mm arms).
+
+### Layers against the pro (whole-design alignment, scale 1.044 / 1.074)
+
+| | ours | pro (`beckers_logolc.dst`) |
+|---|---|---|
+| whole design p50 / p95 / p99 / max | 2.40 / 3.40 / 3.91 / 5.24 | 2.36 / 4.80 / 6.34 / 18.46 |
+| MARINE letters, mean / p95 / max | 1.2–1.6 / 2.4–3.4 / 3.8–5.2 | 1.8–2.8 / 4.1–6.0 / 5.5–11.6 |
+| inside the 18 junction blobs, p95 / max | 1.8–3.8 / 2.2–5.2 | 3.7–7.3 / 5.6–11.6 |
+| MARINE penetrations / thread (scaled to 100 mm) | 3,076 / 7,642 mm | 4,287 / 12,109 mm |
+
+The arms-only p90 flips one verdict in the corpus (MARINE's M, 7.34 →
+5.67) and reads drone's 9.4 mm wing as 1.08 mm (83% of its skeleton is
+blob). No engine flag; DOCTRINE carries the two rules. Renders:
+`docs/renders/junction-blobs-2026-09-09/`.
+
+*(2026-09-09 — `docs/superpowers/plans/2026-09-09-junction-blobs.md`)*
