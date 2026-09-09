@@ -3831,8 +3831,8 @@ the polygon back:
   is two 3-way nodes a pixel apart and still decomposes into three strokes.
   Before, both scales read three — equal by the same artefact twice, which
   is what a scale-invariance test cannot tell from correctness. Adjacent
-  junction pixels are not clustered anywhere; that is the next mechanism in
-  this family, measured and not built.
+  junction pixels were not clustered anywhere; that was the next mechanism
+  in this family, built the same day (the entry below).
 
 **Rule:** when a default flip moves every polygon, treat each downstream
 failure as the pixel-fragile mechanism it names — a skeleton, a ladder, a
@@ -3841,3 +3841,39 @@ and the bisect written down, never the polygon. *(2026-09-09 —
 scope-history's flip entry has the footprints;
 `tests/test_skeleton_pinholes.py`, `test_satin.py`'s starburst test, the
 three thread-match files' notes)*
+
+## A junction is a cluster, not a pixel — and a loop inside it is the pinhole's larger cousin (2026-09-09)
+
+A raster medial axis renders one junction as several branch pixels a few
+pixels apart whenever the stroke width is even in pixels or the arms meet
+off-centre, and `_merge_through_junctions` paired arms per PIXEL. So a
+crossing decomposed into three strokes (a bar and two half-bars) and a
+five-way meeting into a chain of welds nobody drew, while the stub between
+the pixels was dropped as junction noise only after the pairing had
+happened. `stage6_satin._cluster_junctions` contracts every node-to-node
+edge under **0.5 half-widths (floor 3 px)** into one junction rooted at the
+deepest-DT pixel. The number is read off the corpus, not guessed:
+`tools/junction_nodes.py`'s length/half-width histogram has a bump at
+0.2–0.4, a trough at 0.4–0.5 and a tail from 0.5 up, and every edge in the
+bump is shorter than half the DT at its own ends. It is bounded above by
+`_MIN_STROKE_HALFWIDTHS` (1.2): a stub under that was never sewn.
+
+**Junction noise comes in two shapes, and removing one without the other is
+worse than neither.** With the stubs contracted alone, enthusiast's emblem
+bracket at 150 mm lost 7 mm² at its tab: the tip is a tiny LOOP (two 4–7 px
+paths between two nodes a pixel apart plus a self-loop — the pinhole
+diamond at sizes 2–4), which made it a five-arm junction instead of a cap,
+and the old stub had happened to carry the uncapped stroke 0.74 mm further.
+A loop that returns to its own cluster within twice the threshold is
+dropped with the stubs; the node is then one arm, and the cap finish runs
+it out to the tip.
+
+What it moved (14 fixtures × 2 traces, scope-history's junction entry):
+interior over-wide rail readings **948 → 830**, becker's bare total 16.0 →
+9.0 mm², enthusiast 150's worst 4.5 → 1.2, at +0.21% stitches; end-zone
+readings 107 → 121, which are the terminal crosses of caps that are free
+ends now. The K's crotch (7.8 → 9.0) is the junction COVER's problem, not
+the graph's — the patch flag, PR 2. **No golden moved**: the flat-lane keys
+have no branch node, so a skeleton-graph change is provably byte-identical
+there before it is measured anywhere else. *(2026-09-09 — the plan doc's
+§4 has each prediction against its result)*

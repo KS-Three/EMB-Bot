@@ -113,18 +113,27 @@ half; `_corner_forks` already classifies corner forks by the DT profile), an
 explicit junction cover (the patch flag exists), the polygon-native medial
 axis.
 
-## 4. What it should move — predictions, to be tested
+## 4. What it should move — predictions, and what happened
 
 - The PLUS decomposes into its two bars at both scales
   (`test_stroke_classify.py`'s scale test back to stroke-for-stroke; the
-  (2, 3) pin of 2026-09-09 gone).
+  (2, 3) pin of 2026-09-09 gone). **Held.**
 - Becker's outline: fewer strokes than 35 at 80 mm, fewer trims; the K's
-  crotch (`Sead76620`) no worse on `ARTWORK_UNCOVERED`.
+  crotch (`Sead76620`) no worse on `ARTWORK_UNCOVERED`. **Missed on all
+  three, honestly**: 35 → 36 strokes, 35 → 36 trims, the crotch 7.8 → 9.0
+  mm². What moved on Becker is the second bare patch (`Sff8aab95`, 8.2 mm²,
+  gone with its 2 → 3 strokes: total 16.0 → 9.0) and the interior over-wide
+  readings (139 → 97). The crotch is the junction cover's problem — PR 2.
 - Drone and enthusiast: fewer strokes on the shapes with stubs; stitch
-  counts within a few percent.
-- No flat-lane golden moves (§0).
+  counts within a few percent. **Held** (88 → 85, 25 → 24; +0.7%, +3.2%);
+  enthusiast 150's worst uncovered 4.5 → 1.2 was not predicted.
+- No flat-lane golden moves (§0). **Held**, byte-identical on both traces.
 - `crowd`/`head`/`tail` same-rail readings (the flip entry's footprint) do
-  not rise.
+  not rise. **Held for crowd and head** (+7, +2 over 328k stitches);
+  **tail rose 107 → 121** — arms that end at a cluster's cap are free ends
+  now and get the terminal cross the cap finish is designed to put there,
+  which the rail metric counts as over-wide. Interior readings fell
+  948 → 830.
 
 ## 5. Instrument first — `tools/junction_nodes.py`
 
