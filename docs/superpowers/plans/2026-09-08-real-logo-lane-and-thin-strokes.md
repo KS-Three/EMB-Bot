@@ -308,6 +308,21 @@ for lettering only and is Kent's call (§8). Also settled: the shape-context
 gate applies to the median redraw only (a doubled stroke fails it by
 construction); the OCR gate judges the widening.
 
+**THE TIER RULE — BUILT 2026-09-09, the PR after #428 (Kent's call), and it
+took two stages.** Stage 7: a widened member (`meta["text_cluster_widened_mm"]`,
+`stage5_overlap.widened_lettering`) is exempt from the sub-floor run routing
+and is classified and sewn on its compensated polygon; one the satin tier
+declines sews its bean run, never a fill. Stage 5: the *"never grow back
+over a colour already down"* clip had cut every widened Fremont glyph back to
+the hole its ground was vectorized with (0.28 mm, the original stroke), so
+widened lettering keeps its growth over its ground. Fremont: 8 of 10 widened
+glyphs sew **169 columns at a 0.91 mm median** (the pro: 0.82–0.90), routed
+legibility 0.551 → 0.577, stitches 16,006 → 15,823. ENTHUSIAST: a 1.0 mm
+column in a 1.6 mm glyph is a smear (p10 0.16 mm; legibility 1.00 → 0.72),
+so the floor needs a glyph-height gate before it ships on — gate 1, Kent's.
+Tests: `tests/test_widened_lettering_tier.py` (4, the panel test mutation-
+proved against the stage-5 half). Table: scope-history 09-09, second entry.
+
 ## 5. The design for item 1 — the lane
 
 ### 5a. Re-measure the spec's signal on the real tonal artwork that exists now (PR 5)
@@ -376,6 +391,7 @@ Renders in every PR body — Kent's 2026-09-04 rule.
 | 2 | **BUILT 2026-09-08** (PR #426) — `cfg.keep_thin_strokes` on the flat lane; goldens unmoved OFF, whitebg gains its teal patch ON (§4b) | ~60 + 8 tests | none |
 | 3 | **BUILT 2026-09-08** — the thin population on the gradient lane, same flag; the width test corrected to p90 and shared with the instrument; the one-ground rule; photo classes gated out | ~300 + 19 tests | none; photo goldens byte-identical OFF, photo classes byte-identical ON by the gate |
 | 4 | **BUILT 2026-09-09, MEASURED NEGATIVE as written** — `cfg.lettering_min_column_mm` widens the polygon, the tier does not follow (§4d); the column needs a stage-7 tier rule, Kent's call | ~60 + 6 tests | G1 on the number |
+| 4, the tier rule | **BUILT 2026-09-09** — a widened door-1 member takes the column route in stage 7 (exempt from the sub-floor run routing; classified and sewn on its compensated polygon; bean-run fallback) AND in stage 5 (keeps its growth over the ground it was vectorized as a hole in — the half the negative did not name). Fremont: 8 of 10 widened glyphs sew 169 columns at 0.91 mm; ENTHUSIAST's 1.6 mm subline smears, legibility 1.00 → 0.72 — a glyph-height gate is the open question (§4d) | ~90 + 4 tests | G1 on the number, unchanged; the flag stays off |
 | 5 | `color_diversity.py` + the decision doc with the margin | ~150 | G2 — reports, changes nothing |
 | 6a or 6b | the lane | ~150 / ~60 | G2 (6a) or Kent's ruling on its letter (6b); golden churn for approval |
 

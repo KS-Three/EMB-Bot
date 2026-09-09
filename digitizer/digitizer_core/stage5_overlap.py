@@ -104,6 +104,21 @@ from .warnings_codes import (
 )
 
 
+# The meta key `textcluster.regularize_text_clusters` writes on a door-1
+# cluster member it widened to the sewn-column floor
+# (`cfg.lettering_min_column_mm`): the radius it added, in mm. Read here and
+# in stage 7, where that population — and only that population — takes the
+# column route: it may grow over the ground already sewn beneath it (below),
+# and it is classified and sewn on the polygon this stage grows for it
+# rather than routed to the run tier on its area.
+WIDENED_LETTERING_KEY = "text_cluster_widened_mm"
+
+
+def widened_lettering(region: Region) -> bool:
+    """True for a text-cluster member the column floor widened."""
+    return bool(region.meta.get(WIDENED_LETTERING_KEY))
+
+
 @dataclass
 class PlannedRegion:
     """A region with its sewing geometry and its place in the order."""
@@ -410,8 +425,18 @@ def resolve_overlaps(
                         if poly.distance(other.polygon) < fuse_reach:
                             fusing_pairs.add(tuple(sorted((r.shape_id, other.shape_id))))
 
-            # Never grow back over a color that is already down.
-            if earlier[L] is not None:
+            # Never grow back over a color that is already down — except
+            # widened lettering. A glyph on a ground was vectorized as a hole
+            # in that ground at its ORIGINAL width; the column floor then
+            # redrew the glyph wider than its hole, and clipping it back here
+            # is exactly how the floor sewed nothing (measured 2026-09-09 on
+            # Fremont: every widened glyph classified on a 0.28 mm hole and
+            # sewn as the hairline it was). Lettering sews OVER its ground —
+            # the pro's Fremont file lays its satin columns on the patch fill
+            # — so the widened polygon keeps its growth here; the ground's
+            # underlap tongue still reaches under it as under any later
+            # colour. Everything without the tag is clipped exactly as before.
+            if earlier[L] is not None and not widened_lettering(r):
                 grown = grown.difference(earlier[L])
 
             grown = _largest_polygon(grown)

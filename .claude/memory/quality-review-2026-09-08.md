@@ -195,3 +195,25 @@ assumed). Scope-history's fourth 09-08 entry has the OFF → ON table.
 - Lesson, now in DOCTRINE: a change meant to move a shape's TIER must be
   built where the tier is chosen and measured on `sewn_tiers` / the satin
   row before it is called a sewing change.
+
+## Plan A PR 5 — the tier rule for widened lettering, BUILT (2026-09-09, the PR after #428)
+
+- Kent's pick after #428's negative. Two stages: stage 7 exempts a widened
+  door-1 member (`stage5_overlap.widened_lettering`) from the sub-floor run
+  routing and classifies/sews it on `PlannedRegion.polygon` (compensated),
+  with a bean-run fallback when the satin tier declines; stage 5 skips the
+  "never grow back over a colour already down" clip for the same population.
+- **The stage-5 half was the one nobody named.** The rule passed on bars
+  over bare background and sewed nothing on Fremont: every widened glyph
+  reached the classifier 0.28 mm wide — the HOLE its ground was vectorized
+  with, not the 0.6 mm widened polygon. Found by instrumenting the
+  classifier's input. Lesson in DOCTRINE: measure the grown polygon, and test
+  the fixture the feature is FOR (lettering on a ground).
+- Fremont: 8 of 10 widened glyphs sew 169 columns at 0.91 mm median (pro
+  0.82–0.90); the B (aspect) and one stroke (dt_irregular) fall back to runs.
+  Routed legibility 0.551 → 0.577; stitches 16,006 → 15,823.
+- ENTHUSIAST: 1.6 mm subline smears — 76 columns, median 0.63, p10 0.16,
+  legibility 1.00 → 0.72. The floor needs a glyph-height gate (new constant,
+  gate 1, Kent's) before it can be on. Flag stays None.
+- `satin_columns.passes_from_plan(shape_ids=...)` reads one cluster's columns.
+

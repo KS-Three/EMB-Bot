@@ -3637,7 +3637,28 @@ be built where the tier is chosen (stage 7's routing and the classifier's
 input), not upstream in the geometry the classifier never reads at that
 size. A polygon change is measured on `tools/sewn_tiers.py` and
 `tools/satin_columns.py`'s satin row before it is called a sewing change;
-if those do not move, it was not one. The flag stays, default None, and the
-column is a tier rule for widened lettering — Kent's call, since it reverses
-two deliberate stage-7 decisions for one population.
-*(2026-09-09 — scope-history's entry has the table)*
+if those do not move, it was not one.
+
+**Built the same day — and it took THREE decisions, not the two the
+negative named.** Stage 7's routing and classifier input were the two; the
+third was stage 5's *"never grow back over a colour that is already
+down"*, which clips every shape to the artwork of the layers sewn before
+it. A glyph on a ground is a HOLE in that ground at its original width, so
+the widened glyph was cut back to its own hole before stage 7 saw it: the
+rule passed its test on bars over bare background and sewed nothing new on
+Fremont, and only instrumenting the classifier's INPUT (every widened glyph
+arrived 0.28 mm wide — the hole, not the 0.6 mm polygon) found the clip.
+The general form: a geometry change reaches the needle only through stage
+5's grown polygon (`PlannedRegion.polygon`), so measure THAT polygon, not
+the region's, before believing a polygon change is a sewing change — and
+test the fixture the feature is FOR (lettering on a ground), not the one
+that is easy to draw.
+
+**And the column has a floor of its own.** A 1.0 mm column in a 1.6 mm
+glyph is a smear — ENTHUSIAST's subline sews 76 columns at a 0.63 mm median
+with a 0.16 mm p10 and its legibility falls 1.00 → 0.72 — while Fremont's
+2.2–2.9 mm letters sew 169 columns at 0.91 mm, the pro's width. A column
+needs a glyph tall enough to hold it; the floor needs a glyph-height gate
+(a new constant — gate 1) before `lettering_min_column_mm` can be on by
+default, and that is Kent's.
+*(2026-09-09 — scope-history's two entries of that date have the tables)*
