@@ -563,3 +563,34 @@ describe("explicitly-closed rings", () => {
     expect(moved).toEqual([[-10, -1], [10, -1], [10, 5], [-10, 5]]);
   });
 });
+
+// ---- hitShapeInterior: which shape is the pointer OVER ---------------------
+import { hitShapeInterior } from "./shapeOverlay.js";
+
+describe("hitShapeInterior", () => {
+  const outer = { id: "outer", points: [[0, 0], [100, 0], [100, 100], [0, 100]] };
+  const inner = { id: "inner", points: [[40, 40], [60, 40], [60, 60], [40, 60]] };
+  const far = { id: "far", points: [[200, 200], [220, 200], [220, 220]] };
+
+  test("inside one ring names it; outside every ring is null", () => {
+    expect(hitShapeInterior([outer, far], 10, 10)).toEqual({ shapeId: "outer", kind: "interior" });
+    expect(hitShapeInterior([outer, far], 150, 150)).toBeNull();
+    expect(hitShapeInterior([], 10, 10)).toBeNull();
+  });
+
+  test("a shape inside another's hole wins: the smallest containing ring", () => {
+    expect(hitShapeInterior([outer, inner], 50, 50).shapeId).toBe("inner");
+    expect(hitShapeInterior([inner, outer], 50, 50).shapeId).toBe("inner");
+    // and the surround still answers for a point between them
+    expect(hitShapeInterior([outer, inner], 20, 80).shapeId).toBe("outer");
+  });
+
+  test("a point on the outline itself is inside — the border is the edge", () => {
+    expect(hitShapeInterior([outer], 100, 50).shapeId).toBe("outer");
+    expect(hitShapeInterior([outer], 0, 0).shapeId).toBe("outer");
+  });
+
+  test("a degenerate ring is skipped, not hit", () => {
+    expect(hitShapeInterior([{ id: "line", points: [[0, 0], [10, 10]] }], 5, 5)).toBeNull();
+  });
+});

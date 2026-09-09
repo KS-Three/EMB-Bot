@@ -10,7 +10,8 @@
   import { designRectPx, hitTest, pickElement, dragResize, clampOffsets, clampPan, buildSnapLines, snapMove, snapResizeWidth, rotateHandlePx, dragRotate, unionBBox, clampGroupDelta, groupResizePatches } from "../lib/interact.js";
   import { selectedIdsOf } from "../lib/project.js";
   import { effectiveHoop, hoopFitNote } from "../lib/hoop.js";
-  import { shapeOutlinesInFieldMm, pulseAt, createPulseTracker, hitOverlay, moveNode, moveEdge, insertNode, fieldMmToOutlineMm } from "../lib/shapeOverlay.js";
+  import { shapeOutlinesInFieldMm, pulseAt, createPulseTracker, hitOverlay, hitShapeInterior, moveNode, moveEdge, insertNode, fieldMmToOutlineMm } from "../lib/shapeOverlay.js";
+  import { borderMenuItems } from "../lib/borderMenu.js";
   import { boundaryIssues, canonicalShapeEdits, editsKey } from "../lib/digitizer.js";
   import Hint from "./Hint.svelte";
   import Icon from "./Icon.svelte";
@@ -534,11 +535,13 @@
     return { dx: dxPx / sx, dy: dyPx / sy };
   }
 
-  // The outlines of the SELECTED digitized element, in canvas px — what the
-  // pointer actually hit-tests against. Only the selected element is editable;
-  // the others' outlines are there to show what was found, not to be grabbed.
-  function editableOutlinesPx() {
-    const el = selectedElement();
+  // The outlines of ONE digitized element, in canvas px — what the pointer
+  // hit-tests against. The left-click editor only ever asks for the selected
+  // element's (`editableOutlinesPx`: the others' outlines are there to show
+  // what was found, not to be grabbed); the right-click menu asks for the
+  // element under the pointer, selected or not, because a per-shape command
+  // starts by saying which shape it means.
+  function outlinesPxFor(el) {
     if (!el || el.type !== "digitized" || !renderResult || !renderResult.toCanvas) return null;
     const rows = digitizedRows(el);
     const pe = peById[el.id];
@@ -559,6 +562,20 @@
       })),
       mmById: new Map(mm.map((o) => [o.id, o.points])),
     };
+  }
+
+  function editableOutlinesPx() {
+    return outlinesPxFor(selectedElement());
+  }
+
+  // Shapes that are not drawn and not addressable: the ones the user turned
+  // off in review, and the ones deleted there (a deleted shape stays in
+  // `review.shapes` so it is restorable from the Layers list).
+  function hiddenShapeIds(el, rows) {
+    return new Set([
+      ...rows.filter((r) => r && r.stitched === false).map((r) => r.id),
+      ...(el.deletedShapeIds || []),
+    ]);
   }
 
   // Commits the working ring through the SAME shapeOverrides path
@@ -801,10 +818,7 @@
       // A deleted shape stays in `review.shapes` on purpose (that is what
       // makes it restorable from the Layers list), so it has to be filtered
       // here or the canvas would keep outlining artwork that no longer sews.
-      const hidden = new Set([
-        ...rows.filter((r) => r && r.stitched === false).map((r) => r.id),
-        ...(el.deletedShapeIds || []),
-      ]);
+      const hidden = hiddenShapeIds(el, rows);
 
       ctx.save();
       ctx.lineJoin = "round";
@@ -1657,7 +1671,94 @@
     e.preventDefault();             // our menu, not the browser's
     if (!canvas) return;
     const r = canvas.getBoundingClientRect();
-    fieldMenu = { x: e.clientX - r.left, y: e.clientY - r.top };
+    fieldMenu = { x: e.clientX - r.left, y: e.clientY - r.top, shape: shapeUnderPointer(e) };
+  }
+
+  // The recognised shape under a right-click, if any, with the border items
+  // the menu offers for it (Kent's 2026-09-09 ask: a clickable border on the
+  // image — right-click, Add, Remove). The element is the one a left-click
+  // would pick; its shape is the outline the pointer is ON, else the smallest
+  // one it is INSIDE — the border is the outline, but nobody aims at a
+  // one-pixel line to ask for one. Hidden and deleted shapes are not offered.
+  // Selecting the element and the shape first is the editor's own rule
+  // ("first click on a shape selects it and stops there"): the amber
+  // highlight shows which shape the items are about to change.
+  function shapeUnderPointer(e) {
+    if (!renderResult || !project) return null;
+    const p = canvasPointFromEvent(e);
+    // Every digitized element's outlines, the selected one first and then
+    // the rest topmost first (later elements draw over earlier ones). Not
+    // gated on the element's bounding rect: an outline's drawn edge sits a
+    // pixel or two outside the geometry it is stroked around, and the whole
+    // point of `hitOverlay`'s grab tolerance is that aiming at the line
+    // works — the left-click editor has the same rule.
+    const els = (project.elements || []).filter((x) => x && x.type === "digitized");
+    const ordered = [
+      ...els.filter((x) => x.id === project.selectedId),
+      ...els.filter((x) => x.id !== project.selectedId).reverse(),
+    ];
+    const cands = [];
+    for (const el of ordered) {
+      const edit = outlinesPxFor(el);
+      if (!edit) continue;
+      const hidden = hiddenShapeIds(el, edit.rows);
+      cands.push({ el, edit, live: edit.outlines.filter((o) => !hidden.has(o.id)) });
+    }
+    let el = null;
+    let edit = null;
+    let hit = null;
+    for (const c of cands) {
+      hit = hitOverlay(c.live, p.x, p.y);
+      if (hit) { el = c.el; edit = c.edit; break; }
+    }
+    if (!hit) {
+      for (const c of cands) {
+        hit = hitShapeInterior(c.live, p.x, p.y);
+        if (hit) { el = c.el; edit = c.edit; break; }
+      }
+    }
+    if (!hit) return null;
+    if (project.selectedId !== el.id) dispatch("select", el.id);
+    selectedShapeId = hit.shapeId;
+    shapeEditError = "";
+    drawOverlay();
+    const row = edit.rows.find((x) => x && x.id === hit.shapeId) || {};
+    const entry = (el.shapeOverrides || {})[hit.shapeId];
+    const design = el.params ? el.params.border : null;
+    return {
+      elId: el.id,
+      shapeId: hit.shapeId,
+      name: shapeMenuName(row),
+      items: borderMenuItems(entry, design),
+    };
+  }
+
+  function shapeMenuName(row) {
+    const parts = [row.threadNumber ? "Thread #" + row.threadNumber : "Shape"];
+    const a = row.areaMm2;
+    if (a != null) parts.push((a >= 100 ? Math.round(a) : Number(a).toFixed(1)) + " mm²");
+    return parts.join(" · ");
+  }
+
+  // Writes the chosen border value into the SAME field the Digitize panel's
+  // Border select writes (`shapeOverrides[sid].border`, contract v1), through
+  // the same `elupdate` path `commitShapeEdit` uses — one undo step, the
+  // panel's select shows it, and the restitch follows after the idle pause.
+  // `null` clears the override (the "Use design setting" item); an entry
+  // left empty is dropped, as DigitizePanel's setOverride drops it.
+  function chooseBorder(item) {
+    const menu = fieldMenu;
+    fieldMenu = null;
+    if (!menu || !menu.shape || !project) return;
+    const el = (project.elements || []).find((x) => x.id === menu.shape.elId);
+    if (!el) return;
+    const cur = { ...(el.shapeOverrides || {}) };
+    const entry = { ...(cur[menu.shape.shapeId] || {}) };
+    if (item.value == null) delete entry.border;
+    else entry.border = item.value;
+    if (Object.keys(entry).length) cur[menu.shape.shapeId] = entry;
+    else delete cur[menu.shape.shapeId];
+    dispatch("elupdate", { id: el.id, patch: { shapeOverrides: cur } });
   }
 
   function chooseFieldMenu(type) {
@@ -2146,8 +2247,23 @@
         class="fieldmenu"
         style="left: {fieldMenu.x}px; top: {fieldMenu.y}px"
         role="menu"
-        aria-label="Canvas tools"
+        aria-label={fieldMenu.shape ? "Shape and canvas tools" : "Canvas tools"}
       >
+        {#if fieldMenu.shape}
+          <!-- The shape under the pointer, then its border actions (Kent's
+               2026-09-09 ask). One toggling item: Add border when it has
+               none, Remove border when it has one; and the way back to the
+               design-wide setting once an override exists. -->
+          <li role="none" class="fieldmenu-head">{fieldMenu.shape.name}</li>
+          {#each fieldMenu.shape.items as it (it.id)}
+            <li role="none">
+              <button type="button" role="menuitem" title={it.title} on:click={() => chooseBorder(it)}>
+                {it.label}
+              </button>
+            </li>
+          {/each}
+          <li role="separator" class="fieldmenu-sep"></li>
+        {/if}
         <li role="none">
           <button type="button" role="menuitem" on:click={() => chooseFieldMenu("manual")}>
             Draw shapes
