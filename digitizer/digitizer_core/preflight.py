@@ -704,10 +704,18 @@ def _region_color_errors(p, result: PipelineResult, plan: StitchPlan,
         mask = np.zeros((h, w), np.uint8)
 
         def to_px(coords) -> np.ndarray:
+            # ROUNDED, the same way `stage4_vectorize._region_footprint`
+            # rasterises the same polygon. This truncated until 2026-09-09,
+            # which agreed with rounding to within a pixel at a vertex while
+            # every vertex sat on a pixel centre; with `subpixel_edges` the
+            # vertices are fractional and truncation shifts the whole mask
+            # half a pixel down and left of the footprint — measured as the
+            # grader masks agreeing on 97.5% of pixels instead of 99.99%
+            # (`tests/test_resnap_mask_matches_grader.py`).
             a = np.asarray(coords, np.float64)
-            return np.column_stack(
+            return np.round(np.column_stack(
                 [a[:, 0] * p.px_per_mm + cx, a[:, 1] * p.px_per_mm + cy]
-            ).astype(np.int32)
+            )).astype(np.int32)
 
         cv2.fillPoly(mask, [to_px(r.polygon.exterior.coords)], 1)
         for ring in r.polygon.interiors:

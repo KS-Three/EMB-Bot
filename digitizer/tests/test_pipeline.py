@@ -143,9 +143,18 @@ def test_simplify_tol_mm_stays_fine_across_the_real_target_width_range():
     big = run_stages(TESTDATA / "logo_whitebg.png", cfg(target_width_mm=150.0))
 
     v_small, v_mid, v_big = vtx_total(small), vtx_total(mid), vtx_total(big)
-    assert 45 <= v_small <= 80, v_small
-    assert 85 <= v_mid <= 120, v_mid
-    assert 105 <= v_big <= 145, v_big
+    # Re-pinned 2026-09-09 for `subpixel_edges` ON by default: the same
+    # fixture reads 117 / 128 / 141 (was 62 / 101 / 125 on the pixel-centre
+    # trace). The refinement keyed to acceptance keeps a chord whose edge
+    # was read from the anti-alias ramp down to a 0.25 px sag, so the
+    # letters' curves carry the vertices the old 1 px floor simplified
+    # away, and most of the difference lands at the small end, where a pixel
+    # is the most millimetres. Growth with size is still monotone, which is
+    # the property this test exists to pin; the widths are `subpixel_edges=
+    # False`'s numbers to within a vertex or two if that flag is ever set.
+    assert 100 <= v_small <= 135, v_small
+    assert 110 <= v_mid <= 150, v_mid
+    assert 120 <= v_big <= 165, v_big
     assert v_small < v_mid < v_big, "vertex detail must grow with design size"
 
 

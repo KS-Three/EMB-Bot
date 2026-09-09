@@ -184,7 +184,8 @@ def _wide_enough_to_refine(shell_px: np.ndarray, px_per_mm: float) -> bool:
 
 
 def _refine_curves(raw: np.ndarray, simplified: np.ndarray, eps_px: float,
-                   turn_deg: float, accepted: np.ndarray | None = None) -> np.ndarray:
+                   turn_deg: float, accepted: np.ndarray | None = None,
+                   resolution_gated: bool = False) -> np.ndarray:
     """`simplified` (a Douglas-Peucker subset of the closed contour `raw`,
     both in px) with every edge that spans an ARC of the raw contour split
     at the arc's midpoint until each chord's sagitta is under
@@ -201,7 +202,12 @@ def _refine_curves(raw: np.ndarray, simplified: np.ndarray, eps_px: float,
     floored at `_CURVE_SUBPIXEL_FLOOR_PX`, and its inserted vertex is the
     midpoint's own sub-pixel point when that point was accepted (the
     windowed mean is a staircase remedy and would pull a known point inward
-    on a curve). Everything else is as without it.
+    on a curve). `resolution_gated` says the caller sits under
+    `_CURVE_MIN_PX_PER_MM`: there a chord BELOW the share is not split at
+    all — the one-pixel floor reads raster texture as arcs at that
+    resolution, which is what the gate exists for, and lifting the gate
+    only where the edge was actually read is the whole point of keying it.
+    Everything else is as without it.
     """
     n = len(raw)
     if n < 4 or len(simplified) < 3 or turn_deg <= 0.0:
@@ -249,11 +255,15 @@ def _refine_curves(raw: np.ndarray, simplified: np.ndarray, eps_px: float,
             dev = np.abs((seg[:, 0] - a[0]) * ab[1] - (seg[:, 1] - a[1]) * ab[0]) / length
         return float(dev.max()), length
 
-    def floor_px(i: int, jj: int) -> float:
+    def floor_px(i: int, jj: int) -> float | None:
+        """The sagitta floor for this chord — None means "do not split it":
+        an unread chord under the resolution gate."""
         if acc is None or jj - i < 2:
-            return _CURVE_FLOOR_PX
+            return None if resolution_gated else _CURVE_FLOOR_PX
         share = float(acc[[k % n for k in range(i + 1, jj)]].mean())
-        return _CURVE_SUBPIXEL_FLOOR_PX if share >= _CURVE_ACCEPT_SHARE else _CURVE_FLOOR_PX
+        if share >= _CURVE_ACCEPT_SHARE:
+            return _CURVE_SUBPIXEL_FLOOR_PX
+        return None if resolution_gated else _CURVE_FLOOR_PX
 
     stack: list[tuple[int, int]] = []
     for a, b in zip(idx, idx[1:] + [idx[0] + n]):
@@ -265,7 +275,8 @@ def _refine_curves(raw: np.ndarray, simplified: np.ndarray, eps_px: float,
         while work:
             i, jj = work.pop()
             s, length = chord_dev(i, jj)
-            if jj - i <= 2 or s <= min(eps_px, max(floor_px(i, jj), length * frac)):
+            floor = floor_px(i, jj)
+            if jj - i <= 2 or floor is None or s <= min(eps_px, max(floor, length * frac)):
                 pieces.append(i)
                 continue
             m = (i + jj) // 2
@@ -335,10 +346,14 @@ def vectorize(
     upscaled = bool(p.input_px_per_mm) and p.px_per_mm > p.input_px_per_mm * (1.0 + 1e-6)
     subpixel = bool(cfg.subpixel_edges) and not upscaled
     # The refinement's resolution gate (`_CURVE_MIN_PX_PER_MM`) is what keeps
-    # its one-pixel floor from reading raster texture as arcs; with the
+    # its one-pixel floor from reading raster texture as arcs. With the
     # profile reading on, the floor is keyed to acceptance chord by chord
-    # instead (PR 3, `_refine_curves`'s `accepted`), so the gate lifts.
-    if curve_turn is not None and not subpixel and p.px_per_mm < _CURVE_MIN_PX_PER_MM:
+    # instead (PR 3, `_refine_curves`'s `accepted`): under the gate a chord
+    # the reading accepted is refined at the quarter-pixel floor and one it
+    # did not is left alone — so a black synthetic image, a texture, a JPEG
+    # sky get exactly the gated polygon they always got, at any flag.
+    resolution_gated = p.px_per_mm < _CURVE_MIN_PX_PER_MM
+    if curve_turn is not None and not subpixel and resolution_gated:
         curve_turn = None
     lab_img = None
     if subpixel:
@@ -434,7 +449,7 @@ def vectorize(
         if refine:
             shell_px = _refine_curves(outer_src.reshape(-1, 2).astype(np.float64),
                                       shell_px.astype(np.float64), eps, curve_turn,
-                                      accepted=outer_acc)
+                                      accepted=outer_acc, resolution_gated=resolution_gated)
         shell = _to_mm(shell_px, cx, cy, p.px_per_mm)
 
         holes = []
@@ -448,7 +463,7 @@ def vectorize(
             if refine and _wide_enough_to_refine(h_px, p.px_per_mm):
                 h_px = _refine_curves(hole_src.reshape(-1, 2).astype(np.float64),
                                       h_px.astype(np.float64), eps, curve_turn,
-                                      accepted=hole_acc)
+                                      accepted=hole_acc, resolution_gated=resolution_gated)
             ring = _to_mm(h_px, cx, cy, p.px_per_mm)
             if Polygon(ring).area >= min_area_mm2:
                 holes.append(ring)

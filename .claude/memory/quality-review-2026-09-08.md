@@ -286,4 +286,17 @@ assumed). Scope-history's fourth 09-08 entry has the OFF → ON table.
   precedent).
 - `curve_turn_deg` stays 15° (10° would meet the ladder criterion on the
   ring — Kent's), upscaled sources stay declined.
+- **The flip's fallout — 21 red, 10 of them goldens/pins, the rest
+  pixel-balanced mechanisms** (DOCTRINE 2026-09-09, "A default that moves
+  every polygon by a pixel"): the "N" foot's `medial_axis` pinhole diamond
+  (`_collapse_pinholes`; `thin()` is a no-op on it — tried), the ribbon
+  head's taper-zone crowding (inserted stations now interpolated along
+  each rail; no crowding unless the long rail would gap over two pitches),
+  the unguarded-prune injection test pinned to `subpixel_edges=False`
+  (probed 80–180 mm ON: the coincidence is gone), three pins re-pinned with
+  their new numbers (whitebg vertices 117/128/141; the ramp's single-thread
+  14.60 via cone 3830; the owl hoist on the old trace, ON plans no
+  revisit). The `resolution_gated` fix in `_refine_curves` (unread chords
+  under the 20 px/mm gate are not split) and preflight's `to_px` rounding
+  (grader masks match `_region_footprint` again) landed in the same commit.
 
