@@ -21,6 +21,13 @@ on:
         description: the pre-change engine (default off) — a commit or ref
         required: true
         default: origin/main
+  # A workflow that lives only on a feature branch is not registered until
+  # something runs it, and until it is registered `workflow_dispatch` is a
+  # 404 (measured 2026-09-09). So the push that brings this file runs it
+  # once; later pushes that leave the file alone do not.
+  push:
+    branches: [claude/emb-bot-quality-review-acwj61]
+    paths: ['.github/workflows/recapture-goldens.yml']
 
 permissions:
   contents: write
@@ -44,7 +51,7 @@ jobs:
         run: pip install -r requirements.txt
       - name: Pre-change tree
         run: |
-          git worktree add ../pre "${{ github.event.inputs.pre_ref }}"
+          git worktree add ../pre "${{ github.event.inputs.pre_ref || 'origin/main' }}"
           echo "pre-change tree at $(git -C ../pre rev-parse HEAD)"
       - name: Re-capture the flat-lane keys that this engine moves
         working-directory: digitizer
@@ -66,7 +73,7 @@ jobs:
             echo "no golden moved on this machine"
           else
             git add digitizer/testdata/flat_lane_golden.json
-            git commit -m "Re-capture the flat-lane goldens on ubuntu-latest for the subpixel_edges flip" -m "Written by the temporary recapture-goldens workflow: each key was first reproduced byte-for-byte on the pre-change engine (${{ github.event.inputs.pre_ref }}) on this runner, so what moved is the engine. Evidence: this run's recapture-evidence artifact."
+            git commit -m "Re-capture the flat-lane goldens on ubuntu-latest for the subpixel_edges flip" -m "Written by the temporary recapture-goldens workflow: each key was first reproduced byte-for-byte on the pre-change engine (${{ github.event.inputs.pre_ref || 'origin/main' }}) on this runner, so what moved is the engine. Evidence: this run's recapture-evidence artifact."
             git push origin HEAD:${{ github.ref_name }}
           fi
       - uses: actions/upload-artifact@v4

@@ -43,15 +43,16 @@ def test_a_diamond_with_three_arms_becomes_one_junction_pixel():
     assert any(e["free_start"] == e["free_end"] == False for e in before), \
         "the fixture must contain a node-to-node edge (the loop) before the fix"
     out = s6._collapse_pinholes(sk)
-    assert out[3, 4], "the centre pixel is set"
-    assert not out[2, 3], "the ring pixel with no arm is dropped"
-    assert out[1, 4] and out[3, 5] and out[4, 4], "ring pixels carrying arms stay"
+    # rows are y, columns are x: the diamond's centre is (x=4, y=2)
+    assert out[2, 4], "the centre pixel is set"
+    assert not out[2, 3], "the ring pixel with no arm (west) is dropped"
+    assert out[1, 4] and out[2, 5] and out[3, 4], "ring pixels carrying arms stay"
     assert int(out.sum()) == int(sk.sum()), "one pixel in, one pixel out"
     after = _edges(out)
     assert len(after) == 3, [e["pts"] for e in after]
     assert all(e["free_start"] != e["free_end"] for e in after), \
         "three arms, each from the junction to a free end, no loop"
-    assert all(e["pts"][0] == (4, 3) or e["pts"][-1] == (4, 3) for e in after), \
+    assert all(e["pts"][0] == (4, 2) or e["pts"][-1] == (4, 2) for e in after), \
         "every arm now meets at the old diamond's centre"
 
 
