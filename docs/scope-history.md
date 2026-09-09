@@ -11544,7 +11544,7 @@ five crosses; `inner` elsewhere):
 | | HEAD | taper rule | both |
 |---|---|---|---|
 | stitches, 12 fixtures × 2 traces | 259,735 | 259,045 (−0.27%) | 259,261 (−0.18%) |
-| crowded steps | 826 | **467** | 461 |
+| crowded steps | 826 | **467** | 459 |
 | over-wide, head zones | 121 | 104 | 109 |
 | over-wide, tail zones | 104 | 104 | **73** |
 | over-wide, interior | 597 | 574 | 606 |
@@ -11572,11 +11572,14 @@ right to left (the default is ON now, so the flagged arm is OFF):
 | drone | 16173 → 16015 | 86 → 99 | 1318 → 1732 | 7.60 → 7.08 | `S473606e7` satin → fill (2.7 mm²), `S6c97ae19` satin → fill (15.8), `S7fe3ca35` fill → satin (3.4) |
 | enthusiast 93 mm | 2974 → 3061 | 20 → 27 | 541 → 784 | 9.37 → 9.39 | none |
 | gaulke | 10229 → 10313 | 30 → 23 | 1076 → 2001 | 8.90 → 10.32 | none |
-| sunset, meadow | *(the tool's last two fixtures were still running when this entry was written; their rows follow in the PR's last docs commit, as PR 3's did)* | | | | |
+| sunset | 24152 → 23950 | 53 → 48 | 2441 → 2602 | 16.74 → 15.74 | none |
+| meadow | 19799 → 19828 | 37 → 40 | 1479 → 1582 | 15.75 → 15.75 | none — PR 3's two meadow changes (a 25.7 mm² fill → satin, a 0.9 mm² run gone) are gone with the resolution-gate fix |
 
-The drone flips are PR 3's three, same shapes and directions; drone's ON
-vertex count is 1732 where PR 3 measured 2487, the resolution-gate fix's
-unread chords under 20 px/mm (drone at 80 mm sits under the gate).
+The drone flips are PR 3's three, same shapes and directions, and they are
+the only tier changes left: drone's ON vertex count is 1732 where PR 3
+measured 2487, and meadow's 1582 where PR 3 measured 2644 — the
+resolution-gate fix's unread chords under 20 px/mm (both sit under the gate
+at 80 mm), which also undid meadow's two PR 3 tier changes.
 
 ### What it says
 
