@@ -310,7 +310,7 @@ assumed). Scope-history's fourth 09-08 entry has the OFF → ON table.
   them): the grader rounding moved two blocking thread-match findings on
   sub-2.1 mm² shapes (42 vs 57 scoreable px under the 50-px floor; a
   hairline fallback that fired at 0 px now sees 2) — re-pinned, flagged as
-  a scorecard move for Kent;  is the plan's sewn blocks now (no
+  a scorecard move for Kent; `loaded` is the plan's sewn blocks now (no
   severity moves on eight fixtures, better-spool naming back); the PLUS
   crossing decomposes 2 vs 3 across scales (adjacent 3-way nodes — the
   next mechanism, not built).
