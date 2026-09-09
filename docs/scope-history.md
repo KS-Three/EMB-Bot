@@ -11407,10 +11407,13 @@ PR 2's numbers in the previous entry):
 | drone | 16,294 → 16,395 | 88 → 99 | 1,318 → **2,487** | 7.61 → 7.42 | the same 3: S473606e7 satin → fill, S6c97ae19 satin → fill (pen 70 → 171), S7fe3ca35 fill → satin |
 | enthusiast | 2,998 → 3,113 | 20 → 25 | 541 → 837 | 9.41 → 9.06 | none |
 | gaulke | 10,229 → 10,346 | 30 → 25 | 1,076 → **2,744** | 8.90 → 10.32 | none |
+| sunset (photo) | 24,152 → 24,592 | 53 → 47 | 2,441 → 4,616 | 16.74 → 16.27 | none |
+| meadow (photo) | 19,806 → 19,117 | 37 → 39 | 1,479 → 2,644 | 15.67 → 15.90 | **2**: Scedac1b7 fill → satin (25.7 mm², pen 268 → 41); a 0.9 mm² run shape gone |
 
 The vertex growth is the refinement running where the gate kept it off —
 every one of these logos sits at 8–19 px/mm — on chords the profile reading
-accepted: +45% on Fremont, +89% on the drone, +155% on gaulke. The 2026-09-03
+accepted: +45% on Fremont, +89% on the drone and on sunset, +79% on meadow,
++155% on gaulke. The 2026-09-03
 flip of the ungated refinement grew vertices 40–80% on the same fixtures by
 reading raster texture as arcs and was gated for it; this grows them by
 reading edges the image located, and the ladder says the polygon is truer
@@ -11426,6 +11429,7 @@ ribbons.
 **Disposition.** The flag ships OFF. The flip (PR 4) now has its full
 measurement: the vertices on the edge (PR 2), the chords following them
 where the turn rule allows (PR 3), the criterion met on the circle at 3200
-and bounded elsewhere by the 15° rule, three drone ribbons that change tier,
-and 45–155% more vertices on real logos. Kent's decisions: the flip itself;
+and bounded elsewhere by the 15° rule, three drone ribbons and one meadow
+ribbon that change tier, and 45–155% more vertices on real logos and
+photographs. Kent's decisions: the flip itself;
 whether `curve_turn_deg` comes down with it; and the upscaled regime.
