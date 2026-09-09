@@ -245,11 +245,24 @@ def rail_overhang(art: Polygon, pts) -> float:
 # ("6f13f5f4cc0274427618", 2997, 9566) here, not the committed tuple, so this
 # machine may not write it (the new engine gives ("35efa20c9dfed33ca4c9",
 # 6167, 19079) here, recorded for whoever re-pins it where it reproduces).
+# RE-PINNED 2026-09-09 for `subpixel_edges` ON by default (plan
+# 2026-09-08-subpixel-edges.md §7 row 4, Kent's approval) and the two stage-6
+# mechanisms the flip exposed (`_collapse_pinholes`, the taper zone's
+# rail-interpolated refinement — DOCTRINE 2026-09-09). Three entries move:
+# whitebg left_chest 4558 -> 4550, ribbon left_chest 999 -> 991, hat_front
+# 1001 -> 995. Proof, the same as `recapture_flat_lane_key.py` demands: on an
+# ubuntu-latest runner the pre-change engine (main at b13517d) reproduced the
+# flat-lane goldens of both fixtures byte-for-byte first (workflow run
+# 34310689566, `recapture-goldens (temporary)`), and `tools/pushcomp_pins.py`
+# then printed these tuples there; this container prints the identical four
+# tuples on the same tree. `towel` is left as it was: its tuple is the
+# original machine's, the platform red CI deselects, and nothing reproduces
+# it anywhere (this tree prints 6168 stitches for it on both machines).
 GOLDEN_FLAG_OFF = {
-    ("logo_whitebg.png", "left_chest"): ("6265b3856d27f635bc0b", 4558, 14255),
+    ("logo_whitebg.png", "left_chest"): ("d1efd02801fe0955b393", 4550, 14231),
     ("logo_whitebg.png", "towel"): ("98c918e7c1576e46f623", 3258, 10349),
-    ("ribbon_curve.png", "left_chest"): ("59dfa86e875344fcb491", 999, 3521),
-    ("ribbon_curve.png", "hat_front"): ("7ffa3be910eae7c0cbe2", 1001, 3527),
+    ("ribbon_curve.png", "left_chest"): ("723d6913a38596ea5a94", 991, 3497),
+    ("ribbon_curve.png", "hat_front"): ("fec9e9e6401f55d4c1dc", 995, 3509),
 }
 
 
