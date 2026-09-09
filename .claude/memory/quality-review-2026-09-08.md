@@ -376,7 +376,8 @@ assumed). Scope-history's fourth 09-08 entry has the OFF → ON table.
   fremont under `wide_columns` 128.2 → 13.0 for +10.6% (tatami 6.0 for
   +34.5%); over-fire at becker 100 wide (0.0 both ways, TRIM_HEAVY on +2
   trims, B 88 → 76 — the tatami's too). A second finder round: measured,
-  no grader movement, dropped. `satin_cover` arm on the flip sheet.
+  no grader movement, dropped. Flip sheet, 26 fixtures @ 80 mm: the same
+  4 moved and 2 grade-ups as the tatami at +313 st / +7 trims vs +733 / +9.
 - Renders: `docs/renders/junction-cover-2026-09-09/`. Tests:
   `tests/test_junction_patch_flag.py` (14).
 - PR 3 candidate: the junction BLOB as its own column with the arms

@@ -122,6 +122,7 @@ trims.
 | `coverage_max` under the warn line everywhere the flag fires | held (4.72 / 5.08 / 3.83 / 6.41, all unmoved by the cover) |
 | stitches within +2% where it fires | Becker 80 +2.2%; Fremont's band under `wide_columns` **+10.6%** (8,005 → 8,851, +17 trims) for 128.2 → 13.0 mm² — the tatami costs +34.5% for 6.0 |
 | not predicted | Becker 100 mm under `wide_columns`: the grader reads 0.0 both ways, the cover adds 2 trims and trips `TRIM_HEAVY`, B 88 → B 76 — the same over-fire the tatami has (B 76 at 44 trims): this pass is stricter than the grader by design |
+| corpus cost (the tatami's row: +0.25%, 3 of 26 moved) | 26 fixtures @ 80 mm: the cover moves the same 4 fixtures as the tatami, to the same 2 grade-ups, at **+313 stitches / +7 trims** against the tatami's +733 / +9 |
 
 ## 5. The instrument — `tools/letterforms.py`
 

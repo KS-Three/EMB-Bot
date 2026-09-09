@@ -11893,8 +11893,20 @@ FIRST in the shape under the arms, joined by needle-down web travel;
 
 A second round of the finder (asked again with the first round's thread
 down) moved nothing the grader reads on Becker 100 or Fremont and cost
-+26 / +114 stitches — dropped. The `satin_cover` arm is on the flip
-sheet beside `satin_patch`. Renders: `docs/renders/junction-cover-2026-09-09/`.
++26 / +114 stitches — dropped.
+
+### The corpus — `tools/flip_sheet.py`, 26 fixtures @ 80 mm / left_chest, all rows on `a9d5d66`
+
+| arm | moved / identical | net stitches | net trims | grade up |
+|---|---|---|---|---|
+| `satin_patch` (tatami, `True`) | 4 / 22 | **+733** | +9 | scene_stub B 76 → 88, becker B 76 → 88 |
+| `satin_cover` (`"satin"`) | 4 / 22 | **+313** | +7 | the same two |
+
+The same four fixtures move under both (becker 5,592 → 5,714 against the
+tatami's 5,889; scene_stub 16,170 → 16,310 against 16,507; enthusiast
+2,353 → 2,379 against 2,401; bridge_bar 14,452 → 14,477 against 14,503,
+F 0 both ways). The cover reaches the tatami's grades at 43% of its
+thread. Renders: `docs/renders/junction-cover-2026-09-09/`.
 
 *(2026-09-09 — `docs/superpowers/plans/2026-09-09-serifs-and-junction-cover.md`;
 `tests/test_junction_patch_flag.py` 14; DOCTRINE "Crossing pairs at a join

@@ -3954,8 +3954,10 @@ the brief did not survive the reading:
   +10.6% stitches (the tatami: 6.0 for +34.5%). Its over-fire is the
   tatami's: Becker 100 mm under `wide_columns` reads 0.0 both ways and
   the cover's 2 trims trip `TRIM_HEAVY` (B 88 → B 76, the tatami B 76 at
-  3). A second round of the finder was measured and moved nothing the
-  grader reads — dropped. Flipping any mode is Kent's; the renders are in
-  `docs/renders/junction-cover-2026-09-09/`. *(2026-09-09 —
+  3). Across the 26-fixture sheet at 80 mm it moves the same four
+  fixtures as the tatami, to the same two grade-ups, at +313 stitches
+  against the tatami's +733. A second round of the finder was measured
+  and moved nothing the grader reads — dropped. Flipping any mode is
+  Kent's; the renders are in `docs/renders/junction-cover-2026-09-09/`. *(2026-09-09 —
   `docs/superpowers/plans/2026-09-09-serifs-and-junction-cover.md`;
   `tools/letterforms.py`; `tests/test_junction_patch_flag.py`)*
