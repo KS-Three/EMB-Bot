@@ -2304,6 +2304,11 @@ def sequence(
                 "stitches": _cap_st,
                 "percent": round(100.0 * _cap_st / _art_st, 1) if _art_st else 0.0,
                 "edges": c_report["loops"] + c_report["bean_loops"],
+                # Hairline cracks in the union that were filled rather than
+                # ringed — see stage6_border._fill_cracks. Part of the bill
+                # because "1 edge, 20 cracks ignored" is the number that
+                # says the silhouette was one shape after all.
+                "cracks_filled": c_report["holes_skipped"],
             }
         else:
             cap_empty_style = cap_style

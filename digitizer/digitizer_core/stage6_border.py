@@ -659,6 +659,41 @@ def border_runs(visible, shape_id: str, *, entry: tuple[float, float] | None,
 EDGE_CAP_STYLES = ("none", "bean", "satin")
 
 
+def _fill_cracks(geom, width: float) -> tuple[object, int]:
+    """`geom` with every interior the column cannot stand in filled.
+    -> (geometry, how many were filled).
+
+    A hole is an edge only if a `width`-wide column fits inside it —
+    `Polygon(ring).buffer(-width / 2)` survives. Anything thinner is a crack
+    between two polygons that nearly share an edge, not bare fabric a person
+    would see, and outlining it lays a full column on EACH side of nothing.
+    Judged on the interior's own width, never its perimeter: a crack is long
+    and thin, which is exactly the shape a perimeter floor waves through.
+
+    Hands back the SAME object when nothing is filled, so a silhouette
+    without cracks reaches the emitters byte-identical to before this
+    existed. Part order is `_parts`' own, which both emitters re-apply, so
+    rebuilding changes nothing about which edge sews first.
+    """
+    parts = _parts(geom)
+    if not parts:
+        return geom, 0
+    filled = 0
+    out: list[Polygon] = []
+    for part in parts:
+        keep = [ring for ring in part.interiors
+                if not Polygon(ring).buffer(-width / 2.0).is_empty]
+        filled += len(part.interiors) - len(keep)
+        out.append(part if len(keep) == len(part.interiors)
+                   else Polygon(part.exterior, keep))
+    if filled == 0:
+        return geom, 0
+    if len(out) == 1:
+        return out[0], filled
+    from shapely.geometry import MultiPolygon
+    return MultiPolygon(out), filled
+
+
 def silhouette_cap(silhouette, shape_id: str, *, style: str,
                    entry: tuple[float, float] | None,
                    trim_at_mm: float,
@@ -689,18 +724,34 @@ def silhouette_cap(silhouette, shape_id: str, *, style: str,
 
     Interior holes of the silhouette are capped too: a hole's edge is bare
     fabric on the same terms as the outer boundary, and both emitters walk
-    exterior and interiors alike.
+    exterior and interiors alike — PROVIDED the hole is wide enough to be an
+    edge. The silhouette is a `unary_union` of neighbouring fills' polygons,
+    and that union carries hairline cracks wherever two neighbours' edges
+    nearly coincide: Kent's Instagram icon at 80 mm has 20 of them, 0.0-0.1
+    mm wide and up to 7.7 mm long, owned by no region at all. The loop gate
+    downstream is a PERIMETER floor (`BORDER_MIN_LOOP_MM`), which a long
+    crack clears easily, and a hole's crosses are cast outward into the host,
+    so they always fit — the satin emitter rang one crack as an 89-cross,
+    3.4 mm-wide bar down the middle of the design (Kent, 2026-09-08, "why
+    would the satin border ever leave the infill perimeter?"). So before
+    either emitter sees a ring, `_fill_cracks` drops every interior the
+    column cannot stand in: the ruler is the column width itself, no new
+    constant. A real hole — a counter, a donut's inside — survives untouched.
 
     -> (runs, report). Report keys are the union of both tiers' own, so a
     caller reads one shape regardless of style: `loops`, `bean_loops`,
-    `jumps`, `empty`, plus `style` (what actually ran).
+    `jumps`, `empty`, plus `style` (what actually ran) and `holes_skipped`
+    (cracks filled before capping).
     """
     report = {"loops": 0, "bean_loops": 0, "jumps": 0, "empty": True,
-              "style": "none"}
+              "style": "none", "holes_skipped": 0}
     if silhouette is None or style not in ("bean", "satin"):
         return [], report
     if getattr(silhouette, "is_empty", True):
         return [], report
+
+    width = machine.BORDER_WIDTH_MM if width_mm is None else float(width_mm)
+    silhouette, report["holes_skipped"] = _fill_cracks(silhouette, width)
 
     if style == "bean":
         runs, r = run_outline(silhouette, shape_id, entry=entry,

@@ -120,6 +120,15 @@ icon. Cloth pointers added to defects 3, 6 and 16 below.
     satin (+34.9%) is cheaper. Bills every run as `EDGE_CAP_APPLIED`.
     **A sew-out settles which cap, if either.**
     *(built 2026-09-01 — `tests/test_edge_cap.py`, 18 passing)*
+    **Rang hairline CRACKS as edges — FIXED 2026-09-08.** `"satin"` on the
+    icon sewed a 3.4 mm satin bar mid-design: the silhouette union carries
+    20 cracks where fills' edges nearly coincide (0.0–0.1 mm wide, ≤7.7 mm
+    long, owned by no region); the loop gate is a PERIMETER floor a long
+    crack clears. `stage6_border._fill_cracks` now fills any interior the
+    column cannot stand in (`BORDER_WIDTH_MM`, no new constant); real holes
+    still cap. Icon: 2 edges → **1**, 1,547 → 1,462 cap stitches, outer
+    ring unchanged; bill carries `cracks_filled`. *(measured 2026-09-08 —
+    `tests/test_edge_cap.py`, 20 passing)*
 
 20. **Photo tonal splitting stacks thread past the pucker ceiling.** The bill
     for the ratified spec-decision-2 flip (`d3f3c547`), found only because the
