@@ -1360,6 +1360,21 @@ class PipelineConfig:
     # kept as an escape hatch for comparison sew-outs.
     satin: bool = True
     satin_max_width_mm: float | None = None
+    # Wide columns (quality review 2026-09-08 item 4; plan
+    # `docs/superpowers/plans/2026-09-09-wide-column-policy.md`), DEFAULT
+    # OFF, byte-identical off. On, the satin ceiling is
+    # `machine.SATIN_WIDE_COLUMN_MAX_MM` (6.5 mm, read off the pro's sewn
+    # Becker files) in all four places `SATIN_MAX_WIDTH_MM` is load-bearing
+    # — the classifier, the emitter's per-station cap, the underlay's
+    # oversize trigger and leg clamp — threaded from stage 7 as one number
+    # (`machine.satin_ceiling_mm`), and `stage6_satin._rail_points` caps
+    # every station by the spine's local radius of curvature (`_fold_caps`)
+    # so a column can never bend faster than its width: the overlap guard
+    # rebuilt on local geometry that DOCTRINE 2026-09-02 asked for before
+    # any route past 5.0. Crosses over `SPLIT_SATIN_ABOVE_MM` split as they
+    # always did. An explicit `satin_max_width_mm` still overrides. The
+    # ceiling is a physical constant — flipping this is Kent's.
+    wide_columns: bool = False
 
     # Per-stroke satin routing, DEFAULT OFF (2026-09-06). `classify_ribbon`
     # pools the distance transform over a whole region's skeleton, so a

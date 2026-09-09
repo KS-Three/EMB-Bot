@@ -3877,3 +3877,37 @@ the graph's — the patch flag, PR 2. **No golden moved**: the flat-lane keys
 have no branch node, so a skeleton-graph change is provably byte-identical
 there before it is measured anywhere else. *(2026-09-09 — the plan doc's
 §4 has each prediction against its result)*
+
+## The band above the satin cap is a decomposition problem wearing a width problem's clothes (2026-09-09)
+
+Built and measured: `cfg.wide_columns` (OFF) raises the satin ceiling to
+6.5 mm — the pro's MARINE p99, read off files sewn on garments — as ONE
+number threaded from the classifier to the emitter, with the per-station
+cap replaced by the bend's radius of curvature (`_fold_caps`). Three
+things the measurement settled, each of which changes what to do next:
+
+- **The 2026-09-02 premise has moved.** The coupled route reopened
+  logo_alpha's apex to crossing itself; on this tree the apex reads 0
+  crossing pairs from 5.0 to 8.0 mm with or without any guard (122
+  unbounded, the two legs sharing the blob). Do not cite that entry's 18
+  failures as the reason a ceiling cannot move — cite this one: the guard
+  that IS load-bearing is on a BEND (Becker at 80 mm, radii ~5 mm under
+  5–6 mm columns: coverage_max 7.07 with no guard, 5.08 at 0.7 × R), and
+  it moves nothing anywhere else.
+- **A p90 of the medial radius over-reads a bold letter by its junctions.**
+  Our DT read MARINE's letters at 5.1–8.0 mm; the pro sews their stems at
+  4.8–5.0 whole and their serifs as separate columns. Two letters are
+  "wide" only because their diagonals meet their stems. A junction-aware
+  width statistic is the next thing the classifier needs, not a higher
+  number.
+- **Admitting the band does not sew it well.** MARINE at 100 mm goes satin
+  at −13% stitches and comes out with 251 self-crossing pairs at the feet
+  and junctions, 3–5 strokes and 4–7 trims per letter against the pro's
+  ~2, and drone's admitted wing leaves 7 mm² bare inside itself. The
+  render (`docs/renders/wide-columns-2026-09-09/`) is the argument: the
+  columns are the right width and the wrong shapes. **Rule: when a policy
+  admits a new population, render what it produces before pricing it —
+  the stitch count fell and the letters got worse.** The flag ships OFF
+  and the review's item 5 (serifs as columns, junction cover) is what
+  makes the band worth flipping. *(2026-09-09 — scope-history's
+  wide-column entry; `tools/wide_columns.py`)*
