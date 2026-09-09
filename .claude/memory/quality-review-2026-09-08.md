@@ -269,3 +269,21 @@ assumed). Scope-history's fourth 09-08 entry has the OFF → ON table.
   same 32-gon at eps 0.8, 1.0 and 1.5 — don't reason from eps to chord
   count.
 
+## Plan B PR 4 — the flip, `subpixel_edges` default ON (2026-09-09, Kent's approval)
+
+- Config default True; the tests that documented the OFF baseline pin
+  `subpixel_edges=False` explicitly (the ladder's `rungs` fixture and
+  ribbon test via `--flag subpixel_edges=false`; `test_subpixel_edges`'
+  OFF arms).
+- **Goldens are re-captured on ubuntu-latest, never here**: the remote
+  container drifts on the photo lane (enthusiast, 20 coords). The
+  temporary `.github/workflows/recapture-goldens.yml` (workflow_dispatch,
+  `pre_ref` = the engine with the flag off) runs
+  `recapture_flat_lane_key.py <key> --pre-change-tree` per key and pushes
+  the JSON back to the branch; `tools/pushcomp_pins.py` prints the pushcomp
+  tuples in both trees so the inline pins are re-pinned with the same proof.
+  Remove the workflow with the commit that lands the goldens (the 08-17
+  precedent).
+- `curve_turn_deg` stays 15° (10° would meet the ladder criterion on the
+  ring — Kent's), upscaled sources stay declined.
+

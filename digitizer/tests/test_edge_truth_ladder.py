@@ -83,7 +83,9 @@ def test_parse_flag_reads_values_and_refuses_unknown_fields():
 @pytest.fixture(scope="module")
 def rungs(tmp_path_factory):
     work = tmp_path_factory.mktemp("ladder")
-    return {w: el.measure_rung("whitebg", w, "flat", work) for w in (400, 1600)}
+    # The pre-flip baseline the plan's criterion is stated against: the
+    # flag OFF explicitly, since 2026-09-09's flip made ON the default.
+    return {w: el.measure_rung("whitebg", w, "flat", work, flag="subpixel_edges=false") for w in (400, 1600)}
 
 
 def test_every_truth_shape_is_produced_and_matched_from_400_px_up(rungs):
@@ -126,8 +128,8 @@ def test_the_ribbon_polygon_is_the_same_polygon_at_400_and_1600_px(tmp_path):
     400 px to 1600 px, flag OFF (37 vertices and 0.06 mm on 2026-09-08).
     That floor is the simplification's, not the pixel's — the reading the
     plan's acceptance criterion had to be corrected by."""
-    lo = el.measure_rung("ribbon", 400, "flat", tmp_path)["rows"][0]
-    hi = el.measure_rung("ribbon", 1600, "flat", tmp_path)["rows"][0]
+    lo = el.measure_rung("ribbon", 400, "flat", tmp_path, flag="subpixel_edges=false")["rows"][0]
+    hi = el.measure_rung("ribbon", 1600, "flat", tmp_path, flag="subpixel_edges=false")["rows"][0]
     assert lo["produced"] and hi["produced"]
     assert abs(lo["vertices"] - hi["vertices"]) <= 3, (lo["vertices"], hi["vertices"])
     assert abs(lo["spread_mm"] - hi["spread_mm"]) < 0.02, (lo["spread_mm"], hi["spread_mm"])

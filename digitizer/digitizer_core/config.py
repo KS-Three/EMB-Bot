@@ -622,11 +622,18 @@ class PipelineConfig:
     # edge, not the artwork's — the ladder's 200 px rung got worse on every
     # rectangle (plan §8 decision 3, measured 2026-09-09). Not a physical
     # constant anywhere (the windows, offsets and floors are raster
-    # quantities, the contrast floor is `merge_delta_e`). DEFAULT OFF and
-    # byte-identical off; the flip is plan §7 row 4 — Kent's approval of
-    # the golden churn, judged in CI with the per-shape tier diff
-    # (`tools/edge_truth_ladder.py --tiers`).
-    subpixel_edges: bool = False
+    # quantities, the contrast floor is `merge_delta_e`). DEFAULT ON — Kent's
+    # flip, 2026-09-09 (plan §7 row 4), on the measurement in scope-history's
+    # entries of that day: vertices on the edge at every rung drawn at its
+    # own resolution, the rectangles to 0.01 mm, the circle's boundary
+    # spread 0.057 -> 0.036 mm at 400 px, 45-155% more vertices on real
+    # logos at stitch counts within 3.5%, four borderline ribbons changing
+    # tier (three on drone, one on meadow), and every golden re-captured in
+    # CI for it. False is the pre-flip polygon, byte for byte. Two numbers
+    # travel with the flip as Kent's: `curve_turn_deg` (15 deg is now the
+    # floor under the ring and ribbon; 10 would meet the ladder's criterion
+    # on the ring) and the upscaled regime (declined, above).
+    subpixel_edges: bool = True
 
     # Stage 5 — sew order, underlap, pull compensation
     # Which garment/fabric the design is going on. The fabric preset supplies

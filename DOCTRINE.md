@@ -474,6 +474,28 @@ Moved verbatim 2026-08-28 — no section was rewritten in the move.
   attempted past the tokenizer is broken against its own tolerance. Treat a
   revival as a fresh plan against `main`, not a rebase; branch left in place,
   deleting it is Kent's call. *(decided 2026-08-07 — scope-history)*
+- **Stage 4 reads the anti-alias ramp: `subpixel_edges` is ON by default.**
+  Kent's flip 2026-09-09, on the plan's own instrument and nothing softer
+  (`docs/superpowers/plans/2026-09-08-subpixel-edges.md`;
+  `tools/edge_truth_ladder.py`): every vertex a trace hands the simplifier
+  moves to where the image crosses halfway between its two side colours (area
+  conservation, not the interpolated 0.5 crossing), the refinement's floor
+  follows that acceptance, and the polygon's vertices sit on the true edge at
+  every rung drawn at its own resolution — circle vertex spread 0.049 →
+  0.013 mm at 400 px, rectangles to 0.01 mm, boundary spread 0.057 → 0.036.
+  The costs were measured before the flip and accepted with it: 45–155% more
+  vertices on real logos at stitch counts within 3.5%, four borderline
+  ribbons changing tier (three on drone, one on meadow), every flat-lane
+  golden re-captured — on ubuntu-latest, by the temporary workflow that
+  proves the runner on the pre-change engine first, never on this container
+  (photo-lane drift) and never on Windows. Three things stay as they are and
+  are named, not open: `curve_turn_deg` 15° (now the floor under the ring
+  and ribbon; 10° would meet the ladder's criterion on the ring — Kent's if
+  ever), sources stage 1 upscaled are declined (the 200 px rung got worse on
+  every rectangle), and nothing is smoothed. `subpixel_edges=False` is the
+  pre-flip polygon byte for byte and is how the ladder's baseline tests pin
+  it. *(Kent's approval 2026-09-09 — scope-history's flip entry has the
+  ladder, the tier diff and the golden deltas)*
 
 ---
 
