@@ -861,3 +861,41 @@ thread` over rows of `2.9 m` and `1.2 m`. `QualityReport.spec.js` pins both
 branches with these exact numbers, and the pin was verified to fail against the
 old code ("expected 4 to be close to 4.1"). *(found and fixed 2026-09-08 by
 driving the app — `app/src/ui/QualityReport.svelte`)*
+
+## The border decision, on the canvas (2026-09-09)
+
+Kent's pick after item 6 of the quality review: *"clickable satin border on the
+image — right-click, Add / Remove."*
+
+What was already there: the engine's per-shape border override
+(`Region.meta["border"]`, contract v1; `off` / `auto` / `bean`), stored as
+`element.shapeOverrides[sid].border` and edited by the Border select in the
+Digitize panel's shape rows; `canonicalShapeEdits` folds it into the edits
+key that restitches after a two-second pause. What was missing: a way to make
+that decision where the shape is.
+
+What ships: `EmbroideryField`'s right-click reads the element under the
+pointer (the one a left-click would pick) and its shape — the outline the
+pointer is ON (`hitOverlay`), else the smallest outline it is INSIDE
+(`shapeOverlay.hitShapeInterior`, new) — selects both so the amber highlight
+shows what the items act on, and grows the existing tool menu with a shape
+section above the drawing tools: the shape's name (thread and area), then one
+toggling item — **Add border** when the shape has none, **Remove border** when
+it has one — and **Use design setting** once an override exists.
+`borderMenu.js` decides the list from the override entry and the design-wide
+`params.border` (`auto`/`bean`/`significant` count as bordered). Add writes
+`auto` (the panel's "Auto border": satin where a column fits, bean where not),
+Remove writes `off`; the commit is the same `elupdate` patch a boundary drag
+sends. A right-click that hits no shape shows the tools alone; Escape and a
+press outside close it, as before. A shape sewn as satin gets no border from
+either way in — the engine's rule (stage 7), on the item's tooltip.
+
+Tests: `borderMenu.spec.js` (the override × design table), `shapeOverlay.spec.js`
+(`hitShapeInterior`: inside, hole-inside-hole, on the edge, outside, degenerate),
+`e2e/field-border-menu.spec.js` against the live service on the two-squares
+fixture (Add reaches the panel's select and moves the stats line; Remove takes
+it back; the empty field still shows the tools; Escape). The open menu was
+looked at at 1440 × 900 and 1024 × 768.
+
+Open: whether Add should also offer the bean variant as a second item. Built as
+one gesture; the panel's select keeps the finer choice.

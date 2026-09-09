@@ -711,7 +711,7 @@ slightly off the artwork — a bug that reads as an inaccurate *tracer*.
 and indigo respectively. Ember's gesture and colour vocabulary, matched
 deliberately. The default bow takes its side from the turn the path is making,
 so a run of curved nodes arcs instead of scalloping. Backspace mid-draft takes
-back the last node. *(confirmed 2026-08-25 — `curvedNodeThrough` tests + browser)*
+back the last node. *(confirmed 2026-08-25 — `curvedNodeThrough` tests + browser)* **The border decision is on the canvas too (2026-09-09, Kent's pick after item 6):** right-click a recognised shape — on its outline, or anywhere inside it — and the field's tool menu grows a shape section: the shape's name, then **Add border** (writes the engine's `auto`: satin where a column fits, bean where not) or **Remove border** (`off`), and **Use design setting** once the shape has its own. It writes `shapeOverrides[sid].border`, the field the panel's Border select already edits, through the same `elupdate` path as a boundary drag, so undo, carry-forward across a re-digitize and the two-second idle restitch all come for free; a shape sewn as satin gets no border from either way in (stage 7's rule, on the item's tooltip). Interior picking is `shapeOverlay.hitShapeInterior` (smallest containing ring, so a mark inside a counter wins over its surround); the decision table is `borderMenu.js`. *(confirmed 2026-09-09 — `borderMenu.spec.js`, `shapeOverlay.spec.js`, `e2e/field-border-menu.spec.js` against the live service, and the open menu looked at at 1440 and 1024 px)*
 
 **Detail moved to the area doc (2026-08-27, rule 5):** the copy/paste, Duplicate
 and Dim-slider defects; the 2026-08-26 browser session (a canvas opening below

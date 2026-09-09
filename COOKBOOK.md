@@ -609,6 +609,15 @@ hand-rolling it in JS.
   what a fill row can occupy** — on line art (4-vertex squares, 25 mm apart)
   the same one-vertex code was always fine, which is exactly why this hid.
 
+- **The field's right-click menu is context-sensitive since 2026-09-09.** On
+  a recognised shape (outline or interior — `shapeOverlay.hitShapeInterior`,
+  smallest containing ring) it grows a shape section with the border items
+  (`borderMenu.js`: Add border → `auto`, Remove → `off`, Use design setting →
+  clears) above the drawing tools, and writes `shapeOverrides[sid].border`
+  through `elupdate` like a boundary drag. Its `aria-label` is then "Shape
+  and canvas tools", not "Canvas tools" — an e2e that right-clicks ON a
+  digitized shape and expects the plain name will not find it.
+
 - **`digitizer/` cites its own docs relative to the package root**, i.e.
   bare `docs/dt-classifier-spike-2026-08-02.md` meaning
   `digitizer/docs/...` (8 such references vs 2 spelled-out ones, mostly in

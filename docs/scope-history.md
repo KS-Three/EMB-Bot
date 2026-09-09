@@ -11987,3 +11987,23 @@ Renders: `docs/renders/rail-comp-2026-09-09/`. Flip-sheet arm `rail_comp`.
 *(2026-09-09 — `docs/superpowers/plans/2026-09-09-rail-side-pull-comp.md`;
 DOCTRINE "A walk that dead-ends off a node" and "The polygon growth was
 smoothing the outline")*
+
+## 2026-09-09 — the border decision on the canvas: right-click a recognised shape, Add / Remove border
+
+Kent's pick after item 6 (#437). `EmbroideryField`'s right-click now reads
+the shape under the pointer — the outline it is on (`hitOverlay`) or the
+smallest one it is inside (`shapeOverlay.hitShapeInterior`, new) — selects
+it, and grows the tool menu with a shape section: the shape's name, **Add
+border** (`auto`) or **Remove border** (`off`), and **Use design setting**
+once an override exists (`borderMenu.js` decides from the override and the
+design-wide `params.border`). It writes `shapeOverrides[sid].border`, the
+field the panel's Border select edits, through the same `elupdate` path as a
+boundary drag: one undo step, carry-forward, the two-second idle restitch.
+No engine change; a satin-tier shape gets no border either way (stage 7).
+
+Tests: `borderMenu.spec.js` (9), `shapeOverlay.spec.js` +4,
+`e2e/field-border-menu.spec.js` (2, live service, two-squares). Looked at in
+the browser at 1440 × 900 and 1024 × 768.
+
+*(2026-09-09 — `docs/superpowers/plans/2026-09-09-canvas-border-menu.md`;
+detail in `docs/scope/5-review-manual-editing.md`)*
