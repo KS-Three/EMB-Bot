@@ -348,7 +348,12 @@ def test_each_shade_band_is_scored_against_the_cone_that_band_sews():
     single = _single_thread_delta_e(p, c, region)
     assert single > DELTA_E_CLEARLY_DIFFERENT
     worst = max(r["delta_e"] for r in rows)
-    assert worst < single / 2.0, (
+    # 0.6 rather than a half since 2026-09-09: with `subpixel_edges` on by
+    # default the ramp region's mean colour picks cone 3830, whose single-
+    # thread reading is 14.60, where 3644's was 28.06 -- the per-band rows
+    # are the same five (worst 7.66) on either trace, so the ratio moved
+    # from 0.27 to 0.52 with no change in what the bands sew.
+    assert worst < single * 0.6, (
         f"per-band worst {worst:.2f} must be far under the single-thread "
         f"{single:.2f} this fixture's whole ramp used to score")
 
@@ -1864,6 +1869,16 @@ def test_a_dropped_limb_is_reported_and_names_its_shape(monkeypatch):
     anywhere, `S041897f7` sends them to the bracket. Asserted on the id rather
     than only the area so a change that keeps the area but loses the
     attribution still fails.
+
+    Run on the pixel-centre trace (`subpixel_edges=False`) since 2026-09-09:
+    the fault is a one-raster-pixel coincidence (a 19.000 px stem against a
+    19.477 px bar), and the sub-pixel polygon that is now the default moves
+    the tab's stem to the side of that bar where even the unguarded prune
+    keeps it -- probed at 80/93/100/120/150/180 mm, the unguarded prune
+    drops nothing the check can see on the default trace at any of them.
+    The old polygon still shows the fault at 150 mm, on the same shape, so
+    the injection keeps its ground there; the paired product test below
+    runs the shipped default.
     """
     def unguarded(mask, spur_len_px):
         """`_prune_spurs` exactly as it shipped before the 2026-08-21 fix."""
@@ -1887,7 +1902,7 @@ def test_a_dropped_limb_is_reported_and_names_its_shape(monkeypatch):
     monkeypatch.setattr(stage6_satin, "_prune_spurs", unguarded)
 
     art = TESTDATA / "photo/enthusiast_logo.png"
-    c = cfg(target_width_mm=150.0, max_colors=6)
+    c = cfg(target_width_mm=150.0, max_colors=6, subpixel_edges=False)
     result, plan_ = digitize(art, c)
     report = run_preflight(result, plan_, c, image=art)
 

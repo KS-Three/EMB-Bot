@@ -11433,3 +11433,174 @@ and bounded elsewhere by the 15° rule, three drone ribbons and one meadow
 ribbon that change tier, and 45–155% more vertices on real logos and
 photographs. Kent's decisions: the flip itself;
 whether `curve_turn_deg` comes down with it; and the upscaled regime.
+
+## 2026-09-09 — `subpixel_edges` ON by default: the flip, its goldens, and the pixel-balanced mechanisms it found
+
+Plan `docs/superpowers/plans/2026-09-08-subpixel-edges.md` §7 row 4, Kent's
+approval after PR 3. `PipelineConfig.subpixel_edges` defaults to True;
+`False` is the pre-flip polygon byte for byte, and is how the ladder's
+baseline tests and the fault-injection test below pin it. `curve_turn_deg`
+stays 15° and sources stage 1 upscaled stay declined — both carried forward
+as Kent's, not open. Stage 4's own numbers did not move between PR 3 and the
+flip: the final ladder ON is identical to PR 3's, rung for rung (its table
+is in the PR 3 entry above; the §5 criterion stands as stated there).
+
+### The goldens, on the machine whose CI judges them
+
+The temporary `recapture-goldens` workflow (ubuntu-latest, python 3.12,
+`requirements.txt`) ran `tools/recapture_flat_lane_key.py <key>
+--pre-change-tree` against a worktree at `origin/main` (b13517d, PR #431 —
+the flag off by default) and wrote a key only after that tree reproduced it
+byte-for-byte on the runner. Run 34310689566; the bot committed the JSON back
+to the branch, and this container prints the identical pushcomp tuples.
+
+| key | pre-change reproduced | stitches | `areas_mm2` | `shape_ids` | `warnings` |
+|---|---|---|---|---|---|
+| `logo_whitebg.png` | yes | 4558 → 4550 | 6 of 7 moved, largest 5.28 mm² | unmoved | unmoved |
+| `logo_alpha.png` | yes | 4534 → 4576 | 6 of 7 moved, largest 4.21 mm² | unmoved | unmoved |
+| `ribbon_curve.png` | yes | 999 → 991 | 1 of 1, 2.89 mm² | `S86873a7b` → `Sbd6e6f5f` | unmoved |
+| `photo/enthusiast_logo.png` | **no — refused** | — | — | — | — |
+
+enthusiast is the platform red CI deselects: the runner does not reproduce
+its pre-change entry either, so the guard left it exactly as deselected as it
+was. `test_pushcomp.GOLDEN_FLAG_OFF` moves on three of four: whitebg
+left_chest 4558 → 4550, ribbon left_chest 999 → 991, hat_front 1001 → 995;
+the towel tuple is the original machine's (the other platform red) and stays.
+Two things about the mechanics worth keeping: a workflow that lives only on
+a feature branch is **not registered until something runs it**, so
+`workflow_dispatch` answered 404 twice and the file had to carry a one-shot
+`push` trigger on its own path; and the whole job took **66 seconds** — the
+runner digitizes these fixtures in 4–6 s each, so "the goldens take a CI
+run" costs a minute, not the half-hour the digitizer job suggests.
+
+### What the flip turned red, and where each was fixed
+
+21 tests. Ten were the goldens and pins above (flat-lane ×3, the stage-2
+dispatch's re-use of them ×3, pushcomp ×3, `test_shape_overrides` ×1). The
+rest were mechanisms DOWNSTREAM of stage 4 that had been balanced on a raster
+coincidence, and the rule that came out of them is DOCTRINE 2026-09-09, "A
+default that moves every polygon by a pixel": fix the mechanism the failure
+names, never the polygon.
+
+| what went red | cause | fix |
+|---|---|---|
+| enthusiast 150 mm: `ARTWORK_UNCOVERED` 8.8 mm² on the "N" (`S890aaee6`), the bracket-tab product test | the diagonal's foot forks symmetrically ON and `medial_axis` leaves a 4-px diamond around the distance peak; the stub reaching it ends on a loop, not a free end, so nothing extends to the cap | `stage6_satin._collapse_pinholes` (below) |
+| `test_satin` starburst test: ribbon head same-rail steps 0.82 / 0.80 mm | taper-zone refinement cast its inserted stations from the spine onto the discrete ladder; pieces of 0.51 / 0.37 / 0.20 mm, the guard pulled the crowded one 0.6 mm and the metric read the pull as a gap | rail-interpolated insertion and the crowding rule (below) |
+| the unguarded-prune injection test lost its shape | the fault is a 19.000 px stem against a 19.477 px bar; ON the stem lands on the other side, at every size probed (80–180 mm) | pinned to `subpixel_edges=False`, where the same shape still shows it at 150 mm |
+| `test_run_tier` resolution-gate test | under the 20 px/mm gate an unread chord was split at the 1 px floor ON | `_refine_curves(resolution_gated=)`: an unread chord under the gate is not split at all |
+| `test_resnap_mask_matches_grader` ×2 (97.5% / 98.8% agreement) | `_region_color_errors` truncated mm→px while `_region_footprint` rounds; fractional vertices shifted the mask half a pixel | preflight rounds too (99.99% again) |
+| whitebg vertex totals 62 / 101 / 125 | the acceptance-keyed floor keeps curve vertices the 1 px floor simplified away | re-pinned 117 / 128 / 141, growth still monotone |
+| gradient ramp `worst < single / 2` | the region's mean colour picks cone 3830 ON: single-thread 28.06 → 14.60; the five per-band rows identical (worst 7.66) | bound 0.6 with the numbers in the note |
+| owl hoist end-to-end test | ON the owl at 100 mm plans 14 blocks with the hoist off or on — the one revisit is gone | runs on the old trace, the gate is flag-blind |
+| `test_doc_claims` | MASTER_SCOPE said DEFAULT OFF | pointer updated |
+| `test_color_stops_merge` repeated cone | passed once the gate fix and the rounding were in; not separately diagnosed | — |
+
+The full suite on the fixed tree found six more, all downstream of two of
+the fixes above (three platform reds aside):
+
+| what went red | cause | fix |
+|---|---|---|
+| five thread-match pins (gaulke blocks 2 → 1, bridge 3 → 2, the enclosed-background list, the better-spool naming) | the grader rounding: gaulke's `1375` block rode a 1.03 mm² sliver whose aligned eroded core is 42 scoreable px (57 misaligned) — under the 50-px floor; bridge's `0108` rode a 2.10 mm² shape whose aligned erosion leaves 2 px where 0 took the hairline fallback. Bisected by restoring truncation alone. And `loaded` was the graded rows, so 1375 left the candidate set and 3971 stopped naming it | severities re-pinned with the bisect in the notes — **a scorecard move of exactly two findings, Kent's to keep**; `loaded` is the plan's sewn blocks now (bridge's 4531 also names 3830, 6.9 excess, loaded and unscoreable) |
+| `test_stroke_classify`'s scale-invariance test on PLUS | the pinhole collapse gives the 3 mm crossing its two bars at 6 px/mm; at 1.25× the crossing is two 3-way nodes a pixel apart, three strokes; before, both read three | the crossing pinned as (2, 3) and compared stroke set to stroke set (cv range ≤ 0.05, p90 scaling); adjacent-node clustering is the next mechanism, not built |
+
+### The pinhole diamond
+
+Rendered (`docs/renders/subpixel-flip-2026-09-09/enthusiast_n_foot_*.png`
+for the skeletons, `enthusiast_n_stitches_off_before_after.png` for the
+thread): OFF the foot's axis forks one pixel off-centre and keeps a 5.6 mm
+branch into the corner — sewn, by luck; ON it forks in the middle, both cap
+twigs prune as any flat cap's do, and the stub ends on the diamond — the
+stitch render shows the foot bare with one stray cross hanging below it,
+and covered again after the fix. `medial_axis`
+keeps the ring of the peak's four orthogonal neighbours because every ring
+pixel is topologically necessary; a Zhang-Suen `thin()` pass after it is a
+no-op (219 → 219 px, identical edges — tried). `_collapse_pinholes` matches
+the exact pattern (four orthogonal skeleton neighbours, four diagonal
+non-skeleton), sets the peak and drops the ring pixel with no arm.
+
+Corpus scan of raw skeletons, both traces: diamonds on 5 becker shapes, 2
+drone, 1 (OFF) to 3 (ON) enthusiast, 1 gaulke; none on whitebg, alpha,
+ribbon. Its footprint alone, fix against identity, `run_preflight` on each:
+
+| fixture | stitches OFF / ON | uncovered worst → (mm²) | shapes changed |
+|---|---|---|---|
+| becker (upscaled: both traces identical) | 5531 → 5610 | **23.8 → 8.2** (total 23.8 → 16.0) | 7 |
+| drone | 16297 → 16266 / 16082 → 16108 | 1.0 → 1.0 / 0.2 → 0.5 | 3 / 2 |
+| enthusiast 93 mm | 2998 → 2996 / 3013 → 3115 | 0.8 / 2.0, unmoved | 1 / 2 |
+| enthusiast 150 mm | 4786 → 4730 / 5664 → 5684 | 3.2 → 2.2 / **8.8 → 4.5** (total 8.8 → 0) | 2 / 4 |
+
+becker's skeletons also carry enclosed holes of 2–4 px (loops around two or
+three pixels, sizes 2, 3, 4 on `Sead76620`); measured present, not touched,
+nobody has diagnosed one.
+
+### The taper zone
+
+Refinement in a taper zone now interpolates its inserted penetrations
+between the two PROVEN penetrations on each rail (even by construction; the
+chord is tested with the body's micron `inside`, and a side whose chord
+leaves the artwork falls back to the ladder), and refuses to crowd the short
+rail under `SATIN_SHORT_STITCH_AT_MM` unless the long rail would otherwise
+be left wider than two pitches. Flooring on the SHORT rail alone was tried
+first and left the pre-flip ribbon's long rail its whole 0.85 mm gap. On the
+ribbon ON the head reads 0.35 / 0.31 / 0.35 / 0.31 / 0.51 / 0.60 mm with the
+crosses monotone (0.6, 1.2, 1.81, 2.58 …); OFF, unchanged in kind.
+
+Corpus, same-rail steps over every satin run, HEAD → taper rule alone → both
+stage-6 changes (`crowd` < 0.3 mm; `head`/`tail` > 0.8 mm in the first/last
+five crosses; `inner` elsewhere):
+
+| | HEAD | taper rule | both |
+|---|---|---|---|
+| stitches, 12 fixtures × 2 traces | 259,735 | 259,045 (−0.27%) | 259,261 (−0.18%) |
+| crowded steps | 826 | **467** | 459 |
+| over-wide, head zones | 121 | 104 | 109 |
+| over-wide, tail zones | 104 | 104 | **73** |
+| over-wide, interior | 597 | 574 | 606 |
+
+Per fixture the crowding halves where there is any (becker 76 → 49, drone
+136 → 75, enthusiast 93 mm 32 → 16, owl 57 → 25) and the head/tail counts
+move by ±2 except where the pinhole fix rewrote a shape (becker tails 11 →
+3, enthusiast 150 ON tails 19 → 7). The readings that appear are marginal
+(0.80–0.85 mm, on leaned columns whose two pitches are longer than 0.8) and
+the largest reading per fixture is unchanged (drone 1.76, becker ~5.0 —
+terminal cap crosses).
+
+### The tier diff, OFF → ON, on the final tree
+
+`tools/edge_truth_ladder.py --tiers --flag subpixel_edges=false`, read
+right to left (the default is ON now, so the flagged arm is OFF):
+
+| fixture | stitches | trims | vertices | roughness | tier changes |
+|---|---|---|---|---|---|
+| whitebg | 4558 → 4550 | 6 → 6 | 113 → 160 | 1.61 → 4.18 | none |
+| alpha | 4534 → 4576 | 6 → 6 | 116 → 178 | 0.83 → 4.14 | none |
+| ribbon | 997 → 991 | 1 → 1 | 37 → 50 | 2.58 → 2.57 | none |
+| becker | 5524 → 5524 | 35 → 35 | 1324 → 1324 | 10.46 → 10.46 | none — upscaled source, declined |
+| fremont | 9800 → 9893 | 42 → 46 | 1501 → 2170 | 2.73 → 2.81 | none |
+| drone | 16173 → 16015 | 86 → 99 | 1318 → 1732 | 7.60 → 7.08 | `S473606e7` satin → fill (2.7 mm²), `S6c97ae19` satin → fill (15.8), `S7fe3ca35` fill → satin (3.4) |
+| enthusiast 93 mm | 2974 → 3061 | 20 → 27 | 541 → 784 | 9.37 → 9.39 | none |
+| gaulke | 10229 → 10313 | 30 → 23 | 1076 → 2001 | 8.90 → 10.32 | none |
+| sunset | 24152 → 23950 | 53 → 48 | 2441 → 2602 | 16.74 → 15.74 | none |
+| meadow | 19799 → 19828 | 37 → 40 | 1479 → 1582 | 15.75 → 15.75 | none — PR 3's two meadow changes (a 25.7 mm² fill → satin, a 0.9 mm² run gone) are gone with the resolution-gate fix |
+
+The drone flips are PR 3's three, same shapes and directions, and they are
+the only tier changes left: drone's ON vertex count is 1732 where PR 3
+measured 2487, and meadow's 1582 where PR 3 measured 2644 — the
+resolution-gate fix's unread chords under 20 px/mm (both sit under the gate
+at 80 mm), which also undid meadow's two PR 3 tier changes.
+
+### What it says
+
+- The flip's own cost was measured before it and did not change: every
+  flat-lane golden, 45–155% more vertices on real logos, four borderline
+  ribbons changing tier. What the flip ADDED was finding three mechanisms
+  that were balanced on a pixel — a skeleton, a ladder, a test fixture — and
+  two of them were real defects on the old trace too (becker's 23.8 mm² bare
+  patch is on main today).
+- A golden re-capture on the judging machine costs a minute of CI. The
+  refusal on enthusiast is the guard working, not a failure to chase.
+
+*(2026-09-09 — DOCTRINE "A default that moves every polygon by a pixel";
+`tests/test_skeleton_pinholes.py`, `test_satin.py`'s starburst test,
+`test_flat_lane_byte_identical.py`'s fifth exception, `test_pushcomp.py`'s
+re-pin; renders in `docs/renders/subpixel-flip-2026-09-09/`)*

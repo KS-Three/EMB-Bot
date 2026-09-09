@@ -489,6 +489,28 @@ Moved verbatim 2026-08-28 — no section was rewritten in the move.
   attempted past the tokenizer is broken against its own tolerance. Treat a
   revival as a fresh plan against `main`, not a rebase; branch left in place,
   deleting it is Kent's call. *(decided 2026-08-07 — scope-history)*
+- **Stage 4 reads the anti-alias ramp: `subpixel_edges` is ON by default.**
+  Kent's flip 2026-09-09, on the plan's own instrument and nothing softer
+  (`docs/superpowers/plans/2026-09-08-subpixel-edges.md`;
+  `tools/edge_truth_ladder.py`): every vertex a trace hands the simplifier
+  moves to where the image crosses halfway between its two side colours (area
+  conservation, not the interpolated 0.5 crossing), the refinement's floor
+  follows that acceptance, and the polygon's vertices sit on the true edge at
+  every rung drawn at its own resolution — circle vertex spread 0.049 →
+  0.013 mm at 400 px, rectangles to 0.01 mm, boundary spread 0.057 → 0.036.
+  The costs were measured before the flip and accepted with it: 45–155% more
+  vertices on real logos at stitch counts within 3.5%, four borderline
+  ribbons changing tier (three on drone, one on meadow), every flat-lane
+  golden re-captured — on ubuntu-latest, by the temporary workflow that
+  proves the runner on the pre-change engine first, never on this container
+  (photo-lane drift) and never on Windows. Three things stay as they are and
+  are named, not open: `curve_turn_deg` 15° (now the floor under the ring
+  and ribbon; 10° would meet the ladder's criterion on the ring — Kent's if
+  ever), sources stage 1 upscaled are declined (the 200 px rung got worse on
+  every rectangle), and nothing is smoothed. `subpixel_edges=False` is the
+  pre-flip polygon byte for byte and is how the ladder's baseline tests pin
+  it. *(Kent's approval 2026-09-09 — scope-history's flip entry has the
+  ladder, the tier diff and the golden deltas)*
 
 ---
 
@@ -3724,3 +3746,98 @@ verdict when a render is one command away**: routed legibility ROSE 0.551 →
 0.577 on Fremont while the pictures got blobbier.
 *(2026-09-09 — scope-history's two entries of that date have the tables;
 `docs/renders/column-tier-2026-09-09/` the crops)*
+
+## A default that moves every polygon by a pixel finds the mechanisms that were balanced on one (2026-09-09)
+
+`subpixel_edges` ON moves every stage 4 vertex by a fraction of a pixel. Of
+the 21 tests the flip turned red, ten were goldens and pins (re-captured in
+CI) and the rest were mechanisms DOWNSTREAM of stage 4 that had been sitting
+on a raster coincidence. Each was fixed in the mechanism, never by nudging
+the polygon back:
+
+- **A skeleton fork can land on a `medial_axis` pinhole.** On
+  `enthusiast_logo`'s "N" at 150 mm the diagonal's foot forks symmetrically
+  ON; the distance transform peaks on one pixel and `medial_axis` keeps the
+  ring of its four orthogonal neighbours instead of the peak. Every ring
+  pixel is topologically necessary (it keeps the enclosed pixel's
+  background separate from the outside), so its own thinning never removes
+  the ring, and **a Zhang-Suen `thin()` pass after it is a no-op — tried,
+  219 → 219 pixels, identical edges.** The stub that reaches the ring ends
+  on a loop, not a free end; both cap twigs prune as they should, nothing
+  extends to the cap, and 13.6 mm² of the foot sewed as bare fabric. OFF,
+  the same foot forked one pixel off-centre and kept a 5.6 mm corner branch
+  — sewn, by luck. `stage6_satin._collapse_pinholes` sets the peak and drops
+  the ring pixel that carries no arm; the pattern is exact (four orthogonal
+  skeleton neighbours, four diagonal non-skeleton), so a genuine loop around
+  a real hole never matches. Corpus scan: diamonds on 5 becker shapes, 2
+  drone, 1–3 enthusiast, 1 gaulke, on both traces — becker's worst bare
+  patch 23.8 → 8.2 mm² from that alone. becker's skeletons also carry
+  enclosed holes of 2–4 px (loops around two or three pixels); those are
+  measured present and NOT touched — nobody has diagnosed one.
+- **Taper-zone refinement placed its inserted stations even along the
+  SPINE and let the discrete ladder decide where each landed on the rail.**
+  On `ribbon_curve`'s head ON, a 1.05 mm interval came out as pieces of
+  0.51 / 0.37 / 0.20 mm; the guard pulled the crowded one 0.6 mm and every
+  rail-based density read (the pinned test, `tools/audit.py`) saw it as a
+  0.82 mm same-rail step. The pull's along-rail component near a tip is
+  what makes a 0.6 mm pull read as 0.8: the metric cannot tell a pulled
+  point from a gap, and the docstring of that test already said so about
+  the body. Now the inserted penetrations are interpolated between the two
+  PROVEN penetrations on each rail (even by construction, chord inside the
+  artwork on a straight or convex edge, ladder fallback where it is not),
+  and the zone refuses to crowd the short rail under the guard unless the
+  long rail would otherwise be left wider than two pitches — the definition
+  of over-wide every density read here uses. Corpus: crowded same-rail
+  steps roughly halve (becker 76 → 53, drone 136 → 75, enthusiast 93 mm
+  32 → 16), stitches −1 to −2%, over-wide head/tail readings within ±2 per
+  fixture. Flooring the piece count on the SHORT rail instead was tried
+  first and left the pre-flip ribbon's long rail its whole 0.85 mm gap.
+- **A fault-injection fixture is a coincidence with a shape id.** The
+  unguarded-prune test rested on a 19.000 px stem against a 19.477 px bar
+  (`_prune_spurs`' own docstring); ON, the stem lands on the other side of
+  that bar and the unguarded prune drops nothing the check can see at any
+  of 80/93/100/120/150/180 mm. The test pins `subpixel_edges=False`, where
+  the same shape still shows the fault at 150 mm; its paired product test
+  runs the default.
+- **Three pins moved with the polygon and were re-pinned, not loosened:**
+  `logo_whitebg`'s vertex totals 62/101/125 → 117/128/141 (the refinement
+  keyed to acceptance keeps curve vertices the 1 px floor simplified away;
+  growth with size still monotone); the gradient ramp's single-thread
+  reading 28.06 → 14.60 because the region's mean colour now picks cone
+  3830 (the per-band rows are identical, worst 7.66); the owl's hoist test
+  runs on the old trace because ON plans 14 blocks either way — the one
+  revisit the argument needs is no longer planned.
+
+- **The grader sampled half a pixel off the footprint, and two blocking
+  findings were that half pixel.** `_region_color_errors` truncated mm→px
+  while `_region_footprint` rounds; on pixel-centre vertices the two agree
+  to a pixel, on fractional ones the whole grader mask sits half a pixel
+  down-left of where the shape sews (97.5% agreement, was 99.99%). Rounding
+  it moved the thread-match scorecard on two fixtures: gaulke's `1375` block
+  rode a 1.03 mm² sliver whose ALIGNED eroded core is 42 scoreable pixels
+  (57 misaligned) — under `_MIN_COLOR_PIXELS`, so it is not judged; bridge's
+  `0108` block rode a 2.10 mm² shape whose aligned erosion leaves 2 pixels
+  where the misaligned one left 0 and took the hairline fallback. Bisected
+  by restoring truncation alone: both counts come back. Re-pinned with the
+  bisect in the notes; the scorecard moving by exactly those two findings is
+  Kent's to keep or revisit. And a spool whose only shapes fall under the
+  floor vanished from `loaded` (it was built from the graded rows, not the
+  blocks its own comment named), so 3971's finding went back to "buy
+  thread" with 1375 on the machine 5.0 dE00 away — `loaded` is the plan's
+  sewn blocks now, and a row's spool is always one of them.
+- **A crossing is rendered by raster parity, and only one side of it is
+  fixed.** The pinhole collapse gives `test_stroke_classify`'s PLUS its two
+  bars at 6 px/mm (the diamond was the crossing); at 1.25× the same crossing
+  is two 3-way nodes a pixel apart and still decomposes into three strokes.
+  Before, both scales read three — equal by the same artefact twice, which
+  is what a scale-invariance test cannot tell from correctness. Adjacent
+  junction pixels are not clustered anywhere; that is the next mechanism in
+  this family, measured and not built.
+
+**Rule:** when a default flip moves every polygon, treat each downstream
+failure as the pixel-fragile mechanism it names — a skeleton, a ladder, a
+grader mask, a coincidence — and fix or re-pin THAT, with the probe re-run
+and the bisect written down, never the polygon. *(2026-09-09 —
+scope-history's flip entry has the footprints;
+`tests/test_skeleton_pinholes.py`, `test_satin.py`'s starburst test, the
+three thread-match files' notes)*

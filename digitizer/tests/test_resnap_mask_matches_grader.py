@@ -116,14 +116,17 @@ def test_the_two_masks_really_do_disagree_on_this_region():
 def test_the_flagged_mask_really_matches_the_graders(fixture):
     """The flag's NAME is a claim, so it gets an invariant.
 
-    It is not bit-for-bit and cannot be: `_region_footprint` rounds mm->px
-    (`np.round(...).astype(int32)`) and `_region_color_errors` truncates, so
-    the two rasters differ by up to a pixel at a vertex before either mask is
-    applied. Measured 2026-09-07 the residual is 80 px out of 557,046 on
-    gaulke and zero on `logo_alpha` — 99.99% and 100% IoU. Aligning the
-    rasteriser itself would touch `tag_enclosed_background`, which shares
-    `_region_footprint`, so it is deliberately NOT done here; this pins how
-    close the cheap version gets.
+    It was not bit-for-bit and could not be: `_region_footprint` rounds
+    mm->px (`np.round(...).astype(int32)`) and `_region_color_errors`
+    truncated, so the two rasters differed by up to a pixel at a vertex
+    before either mask was applied. Measured 2026-09-07 the residual was 80
+    px out of 557,046 on gaulke and zero on `logo_alpha` — 99.99% and 100%
+    IoU — because every vertex sat on a pixel centre. `subpixel_edges` (on
+    by default since 2026-09-09) makes the vertices fractional, and
+    truncation then shifts the whole mask half a pixel down and left of the
+    footprint: 97.5% on alpha, 98.8% on gaulke. So `_region_color_errors`
+    now rounds the same way, and this replica of it rounds too; the
+    alignment touches preflight only, never `tag_enclosed_background`.
     """
     _, _, result, _ = _run(fixture, False)
     p = pf.prep(TESTDATA / fixture, _cfg())
@@ -143,8 +146,8 @@ def test_the_flagged_mask_really_matches_the_graders(fixture):
         m = np.zeros((h, w), np.uint8)
         def to_px(c):
             a = np.asarray(c, np.float64)
-            return np.column_stack([a[:, 0] * p.px_per_mm + cx,
-                                    a[:, 1] * p.px_per_mm + cy]).astype(np.int32)
+            return np.round(np.column_stack([a[:, 0] * p.px_per_mm + cx,
+                                             a[:, 1] * p.px_per_mm + cy])).astype(np.int32)
         cv2.fillPoly(m, [to_px(r.polygon.exterior.coords)], 1)
         for ring in r.polygon.interiors:
             cv2.fillPoly(m, [to_px(ring.coords)], 0)

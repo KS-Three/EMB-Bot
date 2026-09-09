@@ -274,9 +274,18 @@ def test_the_hoist_moves_no_stitches_and_changes_no_pixels_on_the_owl():
     from digitizer_core.stitchviz import render_png_bytes
 
     img = TESTDATA / "photo/owl_kent.jpg"
+    # Pinned to the pixel-centre trace (`subpixel_edges=False`) 2026-09-09:
+    # with sub-pixel edges on by default the owl at 100 mm plans 14 blocks
+    # with the hoist off as well as on -- the 15th block, the one revisit
+    # this argument needs, is no longer planned -- and the assertion below
+    # would read as "the hoist did nothing" on a plan that gave it nothing
+    # to do. The old polygon keeps the revisit, so the end-to-end argument
+    # keeps its ground; the gate itself is flag-blind.
     off = digitize(img, PipelineConfig(target_width_mm=100.0,
-                                       hoist_same_thread_margin_mm=0.0))[1]
-    on = digitize(img, PipelineConfig(target_width_mm=100.0))[1]
+                                       hoist_same_thread_margin_mm=0.0,
+                                       subpixel_edges=False))[1]
+    on = digitize(img, PipelineConfig(target_width_mm=100.0,
+                                      subpixel_edges=False))[1]
 
     assert len(on.blocks) < len(off.blocks), "no revisit was hoisted at all"
     n_off = sum(len(r.points) for b in off.blocks for r in b.runs)

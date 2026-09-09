@@ -882,6 +882,66 @@ def _crossing_number(mask: np.ndarray, x: int, y: int) -> int:
     return c
 
 
+def _collapse_pinholes(skel: np.ndarray) -> np.ndarray:
+    """Turn the 4-pixel diamond `medial_axis` leaves around ONE pixel at a
+    symmetric fork back into a plain junction pixel. Returns a bool copy.
+
+    Where a stroke's axis splits evenly -- the foot of `enthusiast_logo`'s
+    "N" at 150 mm, where the diagonal and the right stem share one flat cap
+    -- the distance transform peaks on a single pixel and `medial_axis`
+    keeps the ring of its four orthogonal neighbours instead of the peak:
+    every ring pixel is needed to keep the enclosed pixel's background
+    separate from the outside, so a topology-preserving thinning (its own,
+    or a Zhang-Suen pass after it -- tried, a no-op) never removes them.
+    `_skeleton_edges` then reads three arms meeting on a loop. The cap twigs
+    prune as they should, but the stub that reaches the loop ends on a
+    pixel with two loop neighbours, not on a free end, so nothing extends it
+    to the cap: 13.6 mm2 of the foot sewed as bare fabric. Found by the flip
+    of `subpixel_edges` (2026-09-09), whose polygon differs there by one
+    raster pixel from the old one that happened to fork off-centre and keep
+    a 5.6 mm corner branch instead.
+
+    The pattern is exact: a background pixel whose four orthogonal
+    neighbours are skeleton and whose four diagonal ones are not. A
+    genuine loop around a real hole in the artwork sits half a ribbon
+    width away from the hole and encloses far more than one pixel, so it
+    never matches. The centre is set, and each ring pixel that touches no
+    skeleton beyond the centre and the ring is dropped -- an arm attached
+    to a ring pixel keeps it, so the arms meet at the peak with the same
+    connectivity they had. A skeleton with no diamond comes back unchanged.
+    """
+    sk = skel.astype(bool)
+    if sk.shape[0] < 3 or sk.shape[1] < 3:
+        return sk.copy()
+    c = sk[1:-1, 1:-1]
+    inner = (~c & sk[:-2, 1:-1] & sk[2:, 1:-1] & sk[1:-1, :-2] & sk[1:-1, 2:]
+             & ~sk[:-2, :-2] & ~sk[:-2, 2:] & ~sk[2:, :-2] & ~sk[2:, 2:])
+    if not inner.any():
+        return sk.copy()
+    out = sk.copy()
+    h, w = out.shape
+    ring_off = ((-1, 0), (1, 0), (0, -1), (0, 1))
+    for y, x in zip(*np.nonzero(inner)):
+        y += 1
+        x += 1
+        out[y, x] = True
+        for dy, dx in ring_off:
+            ry, rx = y + dy, x + dx
+            keep = False
+            for ny in (ry - 1, ry, ry + 1):
+                for nx in (rx - 1, rx, rx + 1):
+                    if (ny, nx) == (ry, rx) or not (0 <= ny < h and 0 <= nx < w):
+                        continue
+                    if not out[ny, nx]:
+                        continue
+                    if (ny, nx) == (y, x) or abs(ny - y) + abs(nx - x) == 1:
+                        continue        # the centre, or another ring pixel
+                    keep = True
+            if not keep:
+                out[ry, rx] = False
+    return out
+
+
 def _skeleton_edges(mask: np.ndarray) -> list[dict]:
     """Decompose a 1-px skeleton into edges between nodes, plus closed loops.
 
@@ -1644,6 +1704,10 @@ def extract_strokes(poly: Polygon, *,
         # came out as the same artwork digitizing to different stitches run
         # to run.
         skel, dist = medial_axis(mask > 0, return_distance=True, rng=0)
+    # Both paths above hand over medial_axis's own skeleton; the one thing
+    # done to it before it is walked is collapsing its pinhole diamonds
+    # (see `_collapse_pinholes`), which leaves every other skeleton as it was.
+    skel = _collapse_pinholes(skel)
     skel_mask = skel.astype(np.uint8)
     half_px = float(dist[skel].mean()) if skel.any() else 0.0
     field = _WidthField(dist=dist, scale=scale, ox=ox, oy=oy)
@@ -2267,20 +2331,70 @@ def _rail_points(poly: Polygon, spine: list[tuple[float, float]], closed: bool,
             # halves, the guard fires on every one, and the retracted points
             # read as fresh ~0.8 mm same-rail steps — the defect rebuilt by
             # its own repair (measured on the ribbon tail before this floor).
-            m = max(1, min(m, int(adv / machine.SATIN_SHORT_STITCH_AT_MM)))
+            #
+            # The pieces below are even along EACH rail, and the rails of a
+            # taper advance unequally, so the short rail can crowd under the
+            # guard while the long one is still over-wide. A pulled station
+            # reads back as a same-rail step of up to 0.82 mm (the 0.6 mm
+            # pull has a component along the rail near a tip), so crowding
+            # is accepted only where the alternative is a real hole: the
+            # long rail left wider than two pitches, which is what every
+            # density read here calls over-wide. Measured on ribbon_curve's
+            # head, 80 mm: the flipped tip's second interval advances 0.52
+            # against 0.60 mm, took one station under the old floor, and the
+            # guard's pull on it read 0.82 mm -- now it takes none and the
+            # long rail keeps a 0.60 mm step; the pre-flip tip's first
+            # interval advances 0.50 against 0.85 mm and still takes its one
+            # station, the pull there reading 0.5 mm (2026-09-09).
+            adv_min = min(math.dist(rail_a[i - 1], rail_a[i]),
+                          math.dist(rail_b[i - 1], rail_b[i]))
+            m_clear = max(1, int(adv_min / machine.SATIN_SHORT_STITCH_AT_MM))
+            if m_clear < m and adv / m_clear > 2.0 * pitch:
+                m = max(1, min(m, int(adv / machine.SATIN_SHORT_STITCH_AT_MM)))
+            else:
+                m = min(m, m_clear)
         for j in range(1, m):
             t = j / m
+            if in_taper:
+                # A taper-zone station is placed on the discrete ladder, so
+                # a station cast from the spine between two of them lands
+                # wherever its own factor fits -- not evenly between its
+                # neighbours. On ribbon_curve's head the pieces of a 1.05 mm
+                # interval came out 0.51 / 0.37 / 0.20 mm: the last one under
+                # the guard, which pulled that cross 0.6 mm and read back as
+                # a 0.82 mm same-rail step (found by the flip of
+                # `subpixel_edges`, whose tip sits one station shorter;
+                # 2026-09-09). The inserted penetrations are interpolated
+                # between the two PROVEN penetrations on each rail instead:
+                # even along the rail by construction, and the crosses ramp
+                # between their neighbours' crosses. The chord between two
+                # rail points on a straight or convex edge lies in the
+                # artwork (tested with the same micron `inside` the body
+                # uses -- two points ON an edge put their chord an ulp
+                # either side of it); where an edge is concave and it does
+                # not, that side falls back to the ladder, as before.
+                qa = (rail_a[i - 1][0] * (1 - t) + rail_a[i][0] * t,
+                      rail_a[i - 1][1] * (1 - t) + rail_a[i][1] * t)
+                qb = (rail_b[i - 1][0] * (1 - t) + rail_b[i][0] * t,
+                      rail_b[i - 1][1] * (1 - t) + rail_b[i][1] * t)
+                ok_a, ok_b = inside.covers(SPoint(qa)), inside.covers(SPoint(qb))
+                if ok_a and ok_b:
+                    ref_a.append(qa)
+                    ref_b.append(qb)
+                    continue
             px = spine[i - 1][0] * (1 - t) + spine[i][0] * t
             py = spine[i - 1][1] * (1 - t) + spine[i][1] * t
             ang = angles[i - 1] * (1 - t) + angles[i] * t   # unwrapped: lerp-safe
             nx, ny = math.cos(ang), math.sin(ang)
             if in_taper:
                 wa = wb = width[i - 1] * (1 - t) + width[i] * t
-            else:
-                wa = off_a[i - 1] * (1 - t) + off_a[i] * t
-                wb = off_b[i - 1] * (1 - t) + off_b[i] * t
-            ref_a.append(place(px, py, nx, ny, wa, not in_taper))
-            ref_b.append(place(px, py, -nx, -ny, wb, not in_taper))
+                ref_a.append(qa if ok_a else place(px, py, nx, ny, wa, False))
+                ref_b.append(qb if ok_b else place(px, py, -nx, -ny, wb, False))
+                continue
+            wa = off_a[i - 1] * (1 - t) + off_a[i] * t
+            wb = off_b[i - 1] * (1 - t) + off_b[i] * t
+            ref_a.append(place(px, py, nx, ny, wa))
+            ref_b.append(place(px, py, -nx, -ny, wb))
         ref_a.append(rail_a[i])
         ref_b.append(rail_b[i])
     return ref_a, ref_b

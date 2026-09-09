@@ -153,6 +153,28 @@ the three-tree attribution log and the renders. The
 produces byte-identical output to main on this fixture — the elongation floor
 keeps the benchmark star `Sff37b029` out, as that commit designed — so this
 one capture serves both branches.
+
+**Fifth exception, TAKEN 2026-09-09 — `subpixel_edges` ON by default (plan
+2026-09-08-subpixel-edges.md §7 row 4, Kent's approval):** the
+`logo_whitebg.png`, `logo_alpha.png` and `ribbon_curve.png` entries were
+re-captured. Every stage 4 vertex now sits on the anti-alias edge instead
+of a pixel centre, so `areas_mm2` moves on 6 of 7 whitebg regions (largest
+5.28 mm2) and 6 of 7 alpha regions (largest 4.21 mm2), the ribbon's one area
+by 2.89 mm2 with its id (`S86873a7b` -> `Sbd6e6f5f`; the id hashes the
+polygon), and every stitch coordinate with them: whitebg 4558 -> 4550,
+alpha 4534 -> 4576, ribbon 999 -> 991. `warnings` are unmoved on all three.
+Two stage-6 mechanisms the flip exposed ride in the same capture
+(`_collapse_pinholes`, the taper zone's rail-interpolated refinement —
+DOCTRINE 2026-09-09, "A default that moves every polygon by a pixel"); the
+ribbon's -8 is the taper zone's (its head no longer takes a station the
+guard pulled). Captured on an ubuntu-latest runner by
+`tools/recapture_flat_lane_key.py --pre-change-tree` at main `b13517d`,
+which reproduced all three old entries byte-for-byte there first (workflow
+run 34310689566, `recapture-goldens (temporary)`, removed with the commit
+after the one that landed the goldens; its `recapture-evidence` artifact
+holds the log). `photo/enthusiast_logo.png` was REFUSED by that guard — the
+runner does not reproduce its pre-change entry, the platform red CI
+deselects — and stays exactly as it was.
 """
 
 from __future__ import annotations

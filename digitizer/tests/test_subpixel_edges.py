@@ -189,7 +189,7 @@ def test_off_never_runs_the_step_and_on_records_the_accepted_share():
     art = TESTDATA / "logo_whitebg.png"
     with patch("digitizer_core.stage4_vectorize.subpixel_contour",
                side_effect=AssertionError("the step ran with the flag off")):
-        off, _plan = digitize(art, PipelineConfig(target_width_mm=80.0))
+        off, _plan = digitize(art, PipelineConfig(target_width_mm=80.0, subpixel_edges=False))
     assert not any("subpixel_accepted" in r.meta for r in off.regions)
     on, _plan = digitize(art, PipelineConfig(target_width_mm=80.0, subpixel_edges=True))
     shares = [r.meta["subpixel_accepted"] for r in on.regions if "subpixel_accepted" in r.meta]
@@ -210,7 +210,7 @@ def _two_bars(path: Path) -> None:
 def test_near_floor_lettering_keeps_the_pixel_centre_polygon_per_ring(tmp_path):
     art = tmp_path / "bars.png"
     _two_bars(art)
-    off, _p = digitize(art, PipelineConfig(target_width_mm=50.0))
+    off, _p = digitize(art, PipelineConfig(target_width_mm=50.0, subpixel_edges=False))
     on, _p = digitize(art, PipelineConfig(target_width_mm=50.0, subpixel_edges=True))
 
     def height(r):
@@ -237,7 +237,7 @@ def test_near_floor_lettering_keeps_the_pixel_centre_polygon_per_ring(tmp_path):
 @pytest.fixture(scope="module")
 def rung_400(tmp_path_factory):
     work = tmp_path_factory.mktemp("subpixel_ladder")
-    return {"off": el.measure_rung("whitebg", 400, "flat", work),
+    return {"off": el.measure_rung("whitebg", 400, "flat", work, flag="subpixel_edges=false"),
             "on": el.measure_rung("whitebg", 400, "flat", work, flag="subpixel_edges")}
 
 
@@ -296,8 +296,8 @@ def test_the_resolution_gate_lifts_only_with_the_flag_on(tmp_path):
     img, _c, _r = _disc(w=100, h=100, c=50, r=40)            # the disc IS the art: 80 px at 20 mm = 4 px/mm
     art = tmp_path / "disc.png"
     cv2.imwrite(str(art), img)
-    no_turn, _p = digitize(art, PipelineConfig(target_width_mm=20.0, curve_turn_deg=0.0))
-    off, _p = digitize(art, PipelineConfig(target_width_mm=20.0, curve_turn_deg=15.0))
+    no_turn, _p = digitize(art, PipelineConfig(target_width_mm=20.0, curve_turn_deg=0.0, subpixel_edges=False))
+    off, _p = digitize(art, PipelineConfig(target_width_mm=20.0, curve_turn_deg=15.0, subpixel_edges=False))
     on, _p = digitize(art, PipelineConfig(target_width_mm=20.0, curve_turn_deg=15.0, subpixel_edges=True))
     n = lambda res: len(max(res.regions, key=lambda r: r.polygon.area).polygon.exterior.coords) - 1  # noqa: E731
     assert n(off) == n(no_turn), "under 20 px/mm the gate keeps the refinement off, flag off"
@@ -342,7 +342,7 @@ def test_a_source_upscaled_to_the_resolution_floor_keeps_the_pixel_centre_polygo
     img, _c, _r = _disc(w=120, h=120, c=60, r=40)
     art = tmp_path / "small.png"
     cv2.imwrite(str(art), img)
-    off, _p = digitize(art, PipelineConfig(target_width_mm=50.0))
+    off, _p = digitize(art, PipelineConfig(target_width_mm=50.0, subpixel_edges=False))
     on, _p = digitize(art, PipelineConfig(target_width_mm=50.0, subpixel_edges=True))
     assert not any("subpixel_accepted" in r.meta for r in on.regions)
     assert [list(r.polygon.exterior.coords) for r in on.regions] == \

@@ -269,3 +269,49 @@ assumed). Scope-history's fourth 09-08 entry has the OFF → ON table.
   same 32-gon at eps 0.8, 1.0 and 1.5 — don't reason from eps to chord
   count.
 
+## Plan B PR 4 — the flip, `subpixel_edges` default ON (2026-09-09, Kent's approval)
+
+- Config default True; the tests that documented the OFF baseline pin
+  `subpixel_edges=False` explicitly (the ladder's `rungs` fixture and
+  ribbon test via `--flag subpixel_edges=false`; `test_subpixel_edges`'
+  OFF arms).
+- **Goldens are re-captured on ubuntu-latest, never here**: the remote
+  container drifts on the photo lane (enthusiast, 20 coords). The
+  temporary `.github/workflows/recapture-goldens.yml` (workflow_dispatch,
+  `pre_ref` = the engine with the flag off) runs
+  `recapture_flat_lane_key.py <key> --pre-change-tree` per key and pushes
+  the JSON back to the branch; `tools/pushcomp_pins.py` prints the pushcomp
+  tuples in both trees so the inline pins are re-pinned with the same proof.
+  Remove the workflow with the commit that lands the goldens (the 08-17
+  precedent).
+- `curve_turn_deg` stays 15° (10° would meet the ladder criterion on the
+  ring — Kent's), upscaled sources stay declined.
+- **The flip's fallout — 21 red, 10 of them goldens/pins, the rest
+  pixel-balanced mechanisms** (DOCTRINE 2026-09-09, "A default that moves
+  every polygon by a pixel"): the "N" foot's `medial_axis` pinhole diamond
+  (`_collapse_pinholes`; `thin()` is a no-op on it — tried), the ribbon
+  head's taper-zone crowding (inserted stations now interpolated along
+  each rail; no crowding unless the long rail would gap over two pitches),
+  the unguarded-prune injection test pinned to `subpixel_edges=False`
+  (probed 80–180 mm ON: the coincidence is gone), three pins re-pinned with
+  their new numbers (whitebg vertices 117/128/141; the ramp's single-thread
+  14.60 via cone 3830; the owl hoist on the old trace, ON plans no
+  revisit). The `resolution_gated` fix in `_refine_curves` (unread chords
+  under the 20 px/mm gate are not split) and preflight's `to_px` rounding
+  (grader masks match `_region_footprint` again) landed in the same commit.
+- **Goldens landed** (run 34310689566, 66 s): main b13517d reproduced
+  whitebg/alpha/ribbon byte-for-byte on the runner first; whitebg 4558 →
+  4550, alpha 4534 → 4576, ribbon 999 → 991 (its id moved); enthusiast
+  refused (platform red, stays deselected); pushcomp re-pinned on three,
+  towel left. **`workflow_dispatch` is a 404 on a workflow that exists only
+  on a feature branch until something has run it** — a one-shot `push`
+  trigger on the file's own path registered it.
+- **The suite on the fixed tree found six more** (DOCTRINE's entry has
+  them): the grader rounding moved two blocking thread-match findings on
+  sub-2.1 mm² shapes (42 vs 57 scoreable px under the 50-px floor; a
+  hairline fallback that fired at 0 px now sees 2) — re-pinned, flagged as
+  a scorecard move for Kent; `loaded` is the plan's sewn blocks now (no
+  severity moves on eight fixtures, better-spool naming back); the PLUS
+  crossing decomposes 2 vs 3 across scales (adjacent 3-way nodes — the
+  next mechanism, not built).
+
