@@ -402,3 +402,30 @@ assumed). Scope-history's fourth 09-08 entry has the OFF → ON table.
   rules and a dated bracket on the earlier "junction-aware statistic" line.
 - Open question for Kent: the density gap (+58% thread in lettering:
   spacing and underlay, Law 27/50, a sew-out question) vs items 6/7.
+
+## Item 6 — `cfg.satin_rail_comp` BUILT, DEFAULT OFF (2026-09-09, Kent's pick after #436)
+
+- The pull on the rails: stage 5 leaves satin-tier shapes on the artwork,
+  `_rail_points` casts to the artwork edge and pushes each rail along its
+  cross by `pull_comp_mm` (`_push_rails`, counter guard at `min_detail_mm`);
+  caps end at the artwork, end cutback = push only; every field-fed
+  threshold restated in sewn terms (`half_extra_mm` in `extract_strokes`,
+  corridor cap, tuck, oversize, zigzag decision); the underlay runs to the
+  caps; `poly_link` grown. Instrument `tools/rail_comp.py --compare`.
+- Results (pique 0.3): IoU vs target ENTHUSIAST 0.876 → 0.897, drone
+  0.797 → 0.838, Fremont 0.675 → 0.836, Becker 0.887 → 0.884; trims −4 /
+  −13 / −1 / +4; stitches +3% / −1% / +1% / −9%; thread outside the
+  artwork → 0. Predictions that failed: trims unchanged, stitches ±3%,
+  byte-identical OFF (the tracer fix moved two fixtures).
+- **Skeleton choice measured both ways**: artwork (shipped) vs grown-with-
+  artwork-rails (drone 0.829, Fremont 0.813, Becker 34 trims / 3 strokes
+  on the A vs 7). The growth had been smoothing the outline; the fidelity
+  is mostly the rails. Kent's call — one line at `extract_strokes`.
+- **Tracer defect found and fixed ON BY DEFAULT**: `_skeleton_edges`
+  self-looped a junction clique and dead-ended on L-corner fillers,
+  stranding chains into fragments that each sewed to both caps (the H:
+  stem ×5, coverage 9.27). OFF cost: drone `S60de6f78` +2 st, ENTHUSIAST
+  house angle 1.4445 → 1.4757° (+2 st over 11 shapes). The JS
+  `skeletonEdges` still has it.
+- Open: which skeleton; flip after a sew-out; the 2× pull meaning
+  (Python per rail, JS total).

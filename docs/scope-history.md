@@ -11947,3 +11947,43 @@ blob). No engine flag; DOCTRINE carries the two rules. Renders:
 `docs/renders/junction-blobs-2026-09-09/`.
 
 *(2026-09-09 — `docs/superpowers/plans/2026-09-09-junction-blobs.md`)*
+
+## 2026-09-09 — item 6: `cfg.satin_rail_comp` BUILT, DEFAULT OFF — the pull on the rails instead of the polygon, and the tracer defect it found
+
+Kent's pick after #436. Stage 5 leaves a satin-tier shape on its artwork
+polygon; `_rail_points` casts every ray to the artwork's edge and pushes
+each rail outward along its cross by `Fabric.pull_comp_mm` (the AMOUNT is
+untouched, gate 1), held back where a counter would fall under
+`min_detail_mm`; caps end AT the artwork and the end cutback owes only the
+push; every threshold the field feeds is restated in sewn terms. The
+skeleton is the artwork's. `tools/rail_comp.py --compare`, pique 0.3 mm:
+
+| fixture | stitches | trims | coverage_max | uncovered total / worst | IoU vs target | IoU vs artwork | thread outside the artwork |
+|---|---|---|---|---|---|---|---|
+| ENTHUSIAST 93 (12 satin) | 3162 → 3266 | 26 → 22 | 4.70 → 4.44 | 0.0 / 2.0 → 0.0 / 0.0 | 0.876 → 0.897 | 0.715 → 0.743 | 147.5 → 0.0 mm² |
+| Becker 80 (8) | 5592 → 5095 | 36 → 40 | 4.72 → 4.31 | 9.0 → 10.5 | 0.887 → 0.884 | 0.766 → 0.795 | 322.2 → 0.0 |
+| drone 80 (43) | 16131 → 16014 | 96 → 83 | 7.02 → 7.10 | 0.0 / 0.5 → 0.0 / 0.0 | 0.797 → 0.838 | 0.606 → 0.564 | 298.8 → 0.8 |
+| Fremont 92.5 (19) | 9893 → 10004 | 46 → 45 | 5.72 → 5.93 | 0.0 → 0.0 | 0.675 → 0.836 | 0.702 → 0.492 | 4.5 → 0.0 |
+
+The alternative — skeletonise the grown polygon as the default does, rails
+on the artwork — measured the same day: ENTHUSIAST 2947 / 24 / 4.52 / worst
+2.0 / 0.877; Becker 5435 / 34 / 4.25 / 5.8 / 0.891; drone 15890 / 90 / 6.92
+/ 0.5 / 0.829; Fremont 9935 / 50 / 5.86 / 0.0 / 0.813. Becker's A: 7
+strokes on the artwork skeleton for the grown polygon's 3 (the growth had
+been smoothing a 146 × 91 px source's stair-steps). Which skeleton is Kent's
+call; both are one line at the `extract_strokes` call.
+
+Found and fixed on the way, ON BY DEFAULT: `_skeleton_edges` walked a
+junction clique back to its node and dead-ended on L-corner fillers,
+stranding chains into 1–3 px fragments each extended to both caps (the H
+under the flag: left stem sewn five times, coverage 4.7 → 9.27). OFF it was
+live on 16 corpus shapes and moves two fixtures: drone `S60de6f78` 43 → 45
+stitches; ENTHUSIAST +2 stitches over 11 shapes through the house angle
+(1.4445° → 1.4757°). Every other fixture HEAD-vs-work byte-identical.
+
+Tests: `tests/test_rail_comp.py` (7), `tests/test_skeleton_tracer.py` (5).
+Renders: `docs/renders/rail-comp-2026-09-09/`. Flip-sheet arm `rail_comp`.
+
+*(2026-09-09 — `docs/superpowers/plans/2026-09-09-rail-side-pull-comp.md`;
+DOCTRINE "A walk that dead-ends off a node" and "The polygon growth was
+smoothing the outline")*

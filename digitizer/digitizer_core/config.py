@@ -724,6 +724,29 @@ class PipelineConfig:
     # was tuned with the far rail stopping short -- a sew-out question, so
     # OFF until Kent flips it; off is byte-identical.
     satin_rails_follow_edge: bool = False
+    # Pull compensation on the RAILS instead of the polygon (quality review
+    # 2026-09-08 item 6, built 2026-09-09). Stage 5 grows every shape by the
+    # fabric's pull with a round join and the satin tier skeletonises the
+    # GROWN polygon: a 0.3 mm arc on every convex corner (PRECISION N: 21
+    # vertices -> 152), every exterior slot 2 x pull narrower, and the
+    # skeleton welding across the slots the growth sealed (THERMAL E: four
+    # strokes on the artwork, two on the grown polygon -- measured 2026-09-09,
+    # `tools/rail_comp.py`). ON, a satin-tier shape keeps its ARTWORK polygon
+    # in stage 5 (fills grow as before) and `_rail_points` moves each rail
+    # outward along its cross by the same `Fabric.pull_comp_mm` the buffer
+    # gave it, held back only where the push would close a counter under
+    # `min_detail_mm` -- the rail-side twin of stage 5's hole hold. The
+    # AMOUNT is untouched (gate 1); only where it lands moves. Widened
+    # lettering keeps its compensated column. Measured 2026-09-09 (pique,
+    # `tools/rail_comp.py --compare`): thread-vs-target IoU ENTHUSIAST
+    # 0.876 -> 0.897, drone 0.797 -> 0.838, Fremont 0.675 -> 0.836, Becker
+    # 0.887 -> 0.884; trims 26 -> 22 / 96 -> 83 / 46 -> 45 / 36 -> 40;
+    # thread sewn outside the artwork 147-322 mm2 -> 0. The skeleton is the
+    # artwork's; the grown polygon's with artwork rails was measured too
+    # (plan doc 4c) and is the safer decomposition on a blocky source.
+    # DEFAULT OFF, byte-identical off; flipping it is Kent's on a sew-out,
+    # the render and the goldens.
+    satin_rail_comp: bool = False
     # None = the fabric preset's fill underlay style. One of "none" |
     # "edge_run" | "center_run" | "edge_zigzag" | "edge_lattice" |
     # "double_lattice" | "zigzag" (fabrics.py's own vocabulary). Feeds the

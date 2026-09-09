@@ -1891,11 +1891,28 @@ def _split_sharp_corners(strokes: list[Stroke], half_mm: float,
 
 def extract_strokes(poly: Polygon, *,
                      use_shapefield: bool = False,
+                     half_extra_mm: float = 0.0,
                      ) -> tuple[list[Stroke], float, _WidthField | None]:
     """-> (strokes in mm, mean half-width in mm, local width field).
 
     Strokes are sorted longest first, so a letter's main stem sews before its
     serifs and the between-stroke hops stay short.
+
+    `half_extra_mm` (`cfg.satin_rail_comp`, 2026-09-09) is added to the mean
+    half-width wherever it sets a LENGTH -- the spur pruning threshold, the
+    stub filter, the junction cluster radius -- and nowhere it reads the
+    corridor. Under rail-side compensation `poly` is the artwork, whose
+    skeleton reads a pull narrower than the grown polygon's did, and those
+    three thresholds would otherwise sit a pull lower than the decisions the
+    flag is meant to leave alone. The one that bites is the spur: a flat
+    cap's medial axis forks 1.41 half-widths into each corner (a hair more
+    for the filled L-corner the walk detours through), the rounded cap the
+    growth gave it forks less, and at 1.6 half-widths of the ARTWORK's
+    width the raster decides which twig survives -- on `enthusiast_logo`'s
+    H one of the two at every cap. At 1.6 of the sewn half-width every
+    square-cap twig goes, which is what the rounded caps had been doing for
+    them. Returned `half_mm` and the field are the artwork's, as before;
+    0.0 is byte-identical.
 
     `use_shapefield` (DT-first migration M1, off by default) routes the
     rasterize + `medial_axis(rng=0)` pair below through
@@ -1929,7 +1946,11 @@ def extract_strokes(poly: Polygon, *,
     skel_mask = skel.astype(np.uint8)
     half_px = float(dist[skel].mean()) if skel.any() else 0.0
     field = _WidthField(dist=dist, scale=scale, ox=ox, oy=oy)
-    _prune_spurs(skel_mask, max(3.0, half_px * 1.6))
+    # The half-width the length thresholds below are stated in: the sewn
+    # one under rail-side comp (see `half_extra_mm`), the skeleton's own
+    # otherwise -- identical arithmetic at 0.0.
+    len_px = half_px + max(0.0, half_extra_mm) * scale
+    _prune_spurs(skel_mask, max(3.0, len_px * 1.6))
     if not skel_mask.any():
         return [], half_px / scale, field
 
@@ -1940,10 +1961,10 @@ def extract_strokes(poly: Polygon, *,
         return float(dist[p[1], p[0]]) / scale
 
     strokes: list[Stroke] = []
-    min_len_px = max(3.0, _MIN_STROKE_HALFWIDTHS * half_px)
+    min_len_px = max(3.0, _MIN_STROKE_HALFWIDTHS * len_px)
     edges = _cluster_junctions(
         _skeleton_edges(skel_mask),
-        max(_JUNCTION_CLUSTER_MIN_PX, _JUNCTION_CLUSTER_HALFWIDTHS * half_px),
+        max(_JUNCTION_CLUSTER_MIN_PX, _JUNCTION_CLUSTER_HALFWIDTHS * len_px),
         dt_mm)
     for e in _merge_through_junctions(edges, dt_mm, half_px / scale, scale):
         length = sum(math.dist(a, b) for a, b in zip(e["pts"], e["pts"][1:]))
@@ -2261,8 +2282,23 @@ def _rail_points(poly: Polygon, spine: list[tuple[float, float]], closed: bool,
                  angle_deg: float | None = None,
                  follow_edge: bool = False,
                  max_width_mm: float = machine.SATIN_MAX_WIDTH_MM,
-                 fold_guard: bool = False) -> tuple[list, list]:
+                 fold_guard: bool = False,
+                 rail_comp_mm: float = 0.0,
+                 rail_comp_floor_mm: float = 0.0) -> tuple[list, list]:
     """Cast the smoothed, unwrapped normals both ways to find the two rails.
+
+    `rail_comp_mm` (`cfg.satin_rail_comp`, 2026-09-09) is pull compensation
+    applied HERE instead of by stage 5's polygon buffer: `poly` is the
+    ARTWORK, every ray stops at its edge, and once every station is placed
+    and refined each rail moves outward along its own cross by that amount
+    -- the same per-rail widening the buffer gave the shape, landed from
+    the true edge instead of a rounded, sealed copy of it. The skeleton,
+    the field, the caps and the corners were all read off the artwork, so
+    every threshold the field feeds is restated in sewn terms below. A rail
+    whose push would cross a counter is held so the counter keeps
+    `rail_comp_floor_mm` across (stage 5's hole hold, on the rails); a
+    degenerate cross is not pushed into existence. 0.0, the default, is
+    byte-identical.
 
     Each rail is capped at ~1.6x the LOCAL medial half-width: at a branch
     junction the ray escapes the stroke's own ribbon and hits another arm's far
@@ -2408,8 +2444,14 @@ def _rail_points(poly: Polygon, spine: list[tuple[float, float]], closed: bool,
     # `max_width_mm` is the ceiling the CLASSIFIER admitted this shape at
     # (`machine.satin_ceiling_mm`, threaded from stage 7) -- the default is
     # the constant, byte-identical to before it was a parameter.
+    # Under rail-side comp (`rail_comp_mm` > 0) every width here is the
+    # ARTWORK's and the push adds the pull afterwards, so the caps are
+    # stated in SEWN terms: the corridor OFF read the grown polygon's
+    # distance transform (the artwork's plus the pull), and the ceiling is
+    # a ceiling on what sews. Identical arithmetic at 0.0.
     for i in range(n):
-        width[i] = min(width[i], floors[i] * 1.6 + 0.2, max_width_mm / 2)
+        width[i] = min(width[i], (floors[i] + rail_comp_mm) * 1.6 + 0.2 - rail_comp_mm,
+                       max_width_mm / 2 - rail_comp_mm)
     # The fold guard (`cfg.wide_columns`): the cap that is about the bend,
     # not the width. A straight column keeps whatever the ceiling allows; a
     # column bending faster than its width is cut back to `_FOLD_FRAC` of
@@ -2452,7 +2494,8 @@ def _rail_points(poly: Polygon, spine: list[tuple[float, float]], closed: bool,
                 off_a[i] = (pa_[i - 1] + pa_[i] + pa_[i + 1]) / 3.0
                 off_b[i] = (pb_[i - 1] + pb_[i] + pb_[i + 1]) / 3.0
         for i in range(n):
-            cap = min(floors[i] * 1.6 + 0.2, max_width_mm / 2)
+            cap = min((floors[i] + rail_comp_mm) * 1.6 + 0.2 - rail_comp_mm,
+                      max_width_mm / 2 - rail_comp_mm)
             if fold is not None:
                 cap = min(cap, fold[i])
             off_a[i] = max(width[i], min(off_a[i], cap))
@@ -2670,7 +2713,66 @@ def _rail_points(poly: Polygon, spine: list[tuple[float, float]], closed: bool,
             ref_b.append(place(px, py, -nx, -ny, wb))
         ref_a.append(rail_a[i])
         ref_b.append(rail_b[i])
+    if rail_comp_mm > 0:
+        ref_a, ref_b = _push_rails(ref_a, ref_b, poly, rail_comp_mm, rail_comp_floor_mm)
     return ref_a, ref_b
+
+
+def _push_rails(rail_a: list, rail_b: list, poly: Polygon, pull_mm: float,
+                floor_mm: float) -> tuple[list, list]:
+    """Move every real cross's two rails outward along the cross by `pull_mm`
+    each -- the rail-side form of stage 5's `poly.buffer(pull)`.
+
+    Across a counter the push is held to what keeps the counter `floor_mm`
+    wide along the cross: a ray from the rail along its push direction that
+    enters an interior ring reads the ring's chord there, and the rail takes
+    at most half of what the chord can spare (both sides of a counter push).
+    The same rule stage 5 applies to a hole that would fall under the sewable
+    floor, applied where the thread actually lands.
+
+    Every cross with a direction is pushed, the pinched ones included: on
+    the grown polygon a 0.3 mm cross at a taper was a 0.9 mm cross, and the
+    drop check downstream (`SATIN_MIN_CROSS_MM`) has to see the cross the
+    fabric will get. Measured 2026-09-09 with pinched crosses left alone:
+    THERMAL's T lost 16% of its stitches and Becker's `S4a0bffb0` 42%,
+    every one a station the grown polygon had kept. Only a cross with NO
+    direction -- both rails on the station, `place`'s last resort -- stays
+    as it is: there is nothing to push along.
+    """
+    holes = [Polygon(ring) for ring in poly.interiors]
+    holes = [h for h in holes if not h.is_empty]
+    reach = 2.0 * pull_mm + floor_mm + 0.5
+
+    def room(p: tuple, ux: float, uy: float) -> float:
+        if not holes:
+            return pull_mm
+        probe = LineString([p, (p[0] + ux * reach, p[1] + uy * reach)])
+        allowed = pull_mm
+        for h in holes:
+            chord = probe.intersection(h)
+            if chord.is_empty:
+                continue
+            # entered only if the counter is within the push itself
+            near = chord.distance(SPoint(p))
+            if near > pull_mm:
+                continue
+            allowed = min(allowed, max(0.0, (chord.length - floor_mm) / 2.0))
+        return allowed
+
+    out_a, out_b = [], []
+    for pa, pb in zip(rail_a, rail_b):
+        dx, dy = pa[0] - pb[0], pa[1] - pb[1]
+        d = math.hypot(dx, dy)
+        if d < 1e-9:
+            out_a.append(pa)
+            out_b.append(pb)
+            continue
+        ux, uy = dx / d, dy / d
+        ka = room(pa, ux, uy)
+        kb = room(pb, -ux, -uy)
+        out_a.append((pa[0] + ux * ka, pa[1] + uy * ka))
+        out_b.append((pb[0] - ux * kb, pb[1] - uy * kb))
+    return out_a, out_b
 
 
 def _short_stitch_guard(rail_a: list, rail_b: list) -> list[tuple]:
@@ -3128,7 +3230,9 @@ def _satin_joined(poly: Polygon, stroke: Stroke, half_mm: float,
                   hairline_floor_mm: float = 0.0,
                   rails_follow_edge: bool = False,
                   max_width_mm: float = machine.SATIN_MAX_WIDTH_MM,
-                  fold_guard: bool = False) -> list[tuple[float, float]]:
+                  fold_guard: bool = False,
+                  rail_comp_mm: float = 0.0,
+                  rail_comp_floor_mm: float = 0.0) -> list[tuple[float, float]]:
     """A stroke with Goldman corners (`Stroke.corners`) -> its members sewn as
     separate columns and laid end to end in chain order.
 
@@ -3172,7 +3276,8 @@ def _satin_joined(poly: Polygon, stroke: Stroke, half_mm: float,
                              end_cutback_mm, spacing_mm, angle_deg, parts=parts,
                              art_poly=art_poly, hairline_floor_mm=hairline_floor_mm,
                              rails_follow_edge=rails_follow_edge,
-                             max_width_mm=max_width_mm, fold_guard=fold_guard)
+                             max_width_mm=max_width_mm, fold_guard=fold_guard,
+                             rail_comp_mm=rail_comp_mm, rail_comp_floor_mm=rail_comp_floor_mm)
         above = machine.SPLIT_SATIN_ABOVE_MM if split_above_mm is None else split_above_mm
         if parts is not None and len(parts) > n_before and n_before > n_start_joined:
             # The join stays ONE stroke in `parts` as well: this member's
@@ -3213,7 +3318,9 @@ def satin_stroke(poly: Polygon, stroke: Stroke, half_mm: float,
                  hairline_floor_mm: float = 0.0,
                  rails_follow_edge: bool = False,
                  max_width_mm: float = machine.SATIN_MAX_WIDTH_MM,
-                 fold_guard: bool = False) -> list[tuple[float, float]]:
+                 fold_guard: bool = False,
+                 rail_comp_mm: float = 0.0,
+                 rail_comp_floor_mm: float = 0.0) -> list[tuple[float, float]]:
     """One stroke -> flat zigzag points (A1, B1, A2, B2, ...).
 
     `parts` (2026-09-03), when a list is passed, additionally receives the
@@ -3270,7 +3377,8 @@ def satin_stroke(poly: Polygon, stroke: Stroke, half_mm: float,
                              end_cutback_mm, spacing_mm, angle_deg, parts=parts,
                              art_poly=art_poly, hairline_floor_mm=hairline_floor_mm,
                              rails_follow_edge=rails_follow_edge,
-                             max_width_mm=max_width_mm, fold_guard=fold_guard)
+                             max_width_mm=max_width_mm, fold_guard=fold_guard,
+                             rail_comp_mm=rail_comp_mm, rail_comp_floor_mm=rail_comp_floor_mm)
 
     spine = _smooth(stroke.spine, 3, stroke.closed)
     spine = _round_corners(spine, half_mm, stroke.closed)
@@ -3318,7 +3426,10 @@ def satin_stroke(poly: Polygon, stroke: Stroke, half_mm: float,
             entry = _junction_entry_mm(spine, field, half_mm, at_start)
             if entry is not None:
                 edge = min(edge, max(entry, half_mm))
-            trims.append(max(0.0, edge - _JUNCTION_TUCK_MM))
+            # What has to be cleared is the other arm's SEWN width: under
+            # rail-side comp the field is the artwork's and the arm sews a
+            # pull wider (0.0 otherwise -- byte-identical).
+            trims.append(max(0.0, edge + rail_comp_mm - _JUNCTION_TUCK_MM))
         if trims[0] or trims[1]:
             spine = _trim_chain(spine, trims[0], trims[1])
 
@@ -3369,7 +3480,9 @@ def satin_stroke(poly: Polygon, stroke: Stroke, half_mm: float,
             spine = _resample_by_pitch(spine, leans, spacing_mm)
     rail_a, rail_b = _rail_points(poly, spine, stroke.closed, half_mm, field,
                                   spacing_mm, angle_deg, follow_edge=rails_follow_edge,
-                                  max_width_mm=max_width_mm, fold_guard=fold_guard)
+                                  max_width_mm=max_width_mm, fold_guard=fold_guard,
+                                  rail_comp_mm=rail_comp_mm,
+                                  rail_comp_floor_mm=rail_comp_floor_mm)
     crosses = _short_stitch_guard(rail_a, rail_b)
     above = machine.SPLIT_SATIN_ABOVE_MM if split_above_mm is None else split_above_mm
 
@@ -3570,14 +3683,39 @@ def _trim_to_art(stretches: list[tuple[int, int]], rail_a: list, rail_b: list,
 def _stroke_underlay(poly: Polygon, st: Stroke, style: str, shape_id: str,
                      field: _WidthField | None,
                      max_width_mm: float = machine.SATIN_MAX_WIDTH_MM,
-                     fold_guard: bool = False) -> list[StitchRun]:
+                     fold_guard: bool = False,
+                     rail_comp_mm: float = 0.0,
+                     rail_comp_floor_mm: float = 0.0,
+                     half_mm: float | None = None) -> list[StitchRun]:
     """Underlay for ONE stroke: a center run down its spine, plus a sparse
     zigzag for the styles that ask for it. Built from the same spine the satin
-    will follow, so it always sits under the column."""
+    will follow, so it always sits under the column.
+
+    Under rail-side comp (`rail_comp_mm` > 0) the free ends are run out to
+    the caps the way `satin_stroke` runs the column's (`_retract_cap_corner`,
+    `_extend_to_cap`). The raw skeleton stops half a width short of a flat
+    cap; on the GROWN polygon the corner arcs leave twigs that happen to
+    carry the underlay to the corners, on the artwork they do not, and the
+    hop from the underlay's end to the column's cap then reads past the
+    sew-vs-trim bound -- measured 2026-09-09 on Becker at 80 mm as a trim
+    on every single-stroke letter (36 -> 42 for the design). The zigzag's
+    `_rail_points` call gets the same two values, so its rails are cast
+    against the artwork and pushed like the column's and the inset below
+    narrows from the same edge it always did. 0.0 keeps the raw spine,
+    byte for byte.
+    """
     if style == "none":
         return []
     runs: list[StitchRun] = []
     spine = _smooth(st.spine, 3, st.closed)
+    if rail_comp_mm > 0 and not st.closed:
+        h = half_mm if half_mm is not None else ribbon_width_mm(poly) / 2
+        if st.free_start:
+            spine = _retract_cap_corner(spine, field, h, at_start=True)
+            spine = _extend_to_cap(spine, poly, h, at_start=True, corner=st.capped_start)
+        if st.free_end:
+            spine = _retract_cap_corner(spine, field, h, at_start=False)
+            spine = _extend_to_cap(spine, poly, h, at_start=False, corner=st.capped_end)
     length = sum(math.dist(a, b) for a, b in zip(spine, spine[1:]))
     if length < machine.UNDERLAY_STITCH_MM:
         return []
@@ -3622,13 +3760,17 @@ def _stroke_underlay(poly: Polygon, st: Stroke, style: str, shape_id: str,
     # 13.11 -- now 3.24, see the updated regression pin below.
     # `max_width_mm`: the ceiling this shape was admitted at (threaded from
     # stage 7 under `cfg.wide_columns`; the constant by default).
+    # Under rail-side comp the field is the artwork's and the column sews a
+    # pull wider on each side; the check is on what sews (0.0 otherwise).
     oversize = field is not None and any(
-        field.half_at(p) * 2.0 > max_width_mm for p in spine)
+        (field.half_at(p) + rail_comp_mm) * 2.0 > max_width_mm for p in spine)
     if style == "zigzag" and not oversize:
         steps = max(2, int(math.ceil(length / machine.SATIN_ZIGZAG_PITCH_MM)))
         sp = _resample(spine, steps)
         ra, rb = _rail_points(poly, sp, st.closed, ribbon_width_mm(poly) / 2, field,
-                              max_width_mm=max_width_mm, fold_guard=fold_guard)
+                              max_width_mm=max_width_mm, fold_guard=fold_guard,
+                              rail_comp_mm=rail_comp_mm,
+                              rail_comp_floor_mm=rail_comp_floor_mm)
         pts: list[tuple[float, float]] = []
         for i, (pa0, pb0) in enumerate(zip(ra, rb)):
             # Narrow both ends from the ORIGINALS — pulling pb toward an
@@ -4130,6 +4272,8 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
                 patch_junctions: bool | str = False,
                 max_width_mm: float = machine.SATIN_MAX_WIDTH_MM,
                 fold_guard: bool = False,
+                rail_comp_mm: float = 0.0,
+                rail_comp_floor_mm: float = 0.0,
                 ) -> tuple[list[StitchRun], dict]:
     """One satin-classified shape -> runs in sew order, plus the same report
     contract `stitch_shape` uses, so stage 7 can treat the two identically.
@@ -4146,6 +4290,12 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
     same number (`machine.satin_ceiling_mm`), and the fold guard
     (`_fold_caps`) that makes a ceiling past 5.0 safe. The defaults are the
     constant and off: byte-identical to before they existed.
+
+    `rail_comp_mm` / `rail_comp_floor_mm` (`cfg.satin_rail_comp`,
+    2026-09-09): the fabric's pull applied on the rails (`_rail_points`)
+    instead of by stage 5's buffer, for a shape stage 5 left on its artwork
+    polygon; the floor is `cfg.min_detail_mm`, what a counter keeps. Both
+    default to 0.0: byte-identical.
 
     `start_near` is where the needle is when this shape's turn comes.
     `split_above_mm` caps the stitch length before crosses split (None =
@@ -4169,7 +4319,23 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
     by default; stage 7 sets it from `cfg.extra["shapefield"]`.
     """
     report = {"too_thin": False, "jumps": 0, "empty": False}
-    strokes, half_mm, field = extract_strokes(poly, use_shapefield=use_shapefield)
+    # Under rail-side comp the skeleton is the ARTWORK's, with every length
+    # threshold that reads the mean half-width restated in sewn terms (see
+    # `half_extra_mm`). The alternative -- skeletonise the grown polygon as
+    # the default does and read only the rails off the artwork -- was built
+    # and measured the same day (2026-09-09, plan doc §4). It keeps the
+    # default's stroke decomposition, which the growth's outline smoothing
+    # makes cleaner on a blocky source (Becker's A at 80 mm: 3 strokes for
+    # the artwork's 7, and 34 trims for 40 on the design), and it gets most
+    # of the fidelity the rails alone deliver (thread-vs-target IoU on the
+    # drone wordmark 0.797 -> 0.829 against 0.838 here, Fremont's lettering
+    # 0.675 -> 0.813 against 0.836) -- but none of ENTHUSIAST's (0.877
+    # against 0.897, its bracket's 2.0 mm2 bare patch kept). The artwork
+    # skeleton is the item as specified, and it won the IoU on three of the
+    # four fixtures and the trims on three; the grown one is the safer
+    # decomposition. Kent's call which to keep; both are one line here.
+    strokes, half_mm, field = extract_strokes(poly, use_shapefield=use_shapefield,
+                                              half_extra_mm=rail_comp_mm)
     if not strokes:
         report["empty"] = True
         return [], report
@@ -4198,7 +4364,8 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
                      end_cutback_mm, spacing_mm, angle_deg, parts=parts,
                      art_poly=art_poly, hairline_floor_mm=hairline_floor_mm,
                      rails_follow_edge=rails_follow_edge,
-                     max_width_mm=max_width_mm, fold_guard=fold_guard)
+                     max_width_mm=max_width_mm, fold_guard=fold_guard,
+                     rail_comp_mm=rail_comp_mm, rail_comp_floor_mm=rail_comp_floor_mm)
         mixed = len(parts) > 1
         for kind, pts, piece, at_start, at_end in parts:
             if kind == stitches.SATIN and len(pts) < 4:
@@ -4242,6 +4409,11 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
                 stroke_w = 2.0 * (sum(halves) / len(halves)) if halves else 2.0 * half_mm
             else:
                 stroke_w = 2.0 * half_mm
+            # The column that SEWS: under rail-side comp the field is the
+            # artwork's and each rail moves out a pull (0.0 otherwise). Read
+            # without this, ENTHUSIAST's 3 mm columns fell under the zigzag
+            # threshold and lost 80% of their underlay (measured 2026-09-09).
+            stroke_w += 2.0 * rail_comp_mm
             eff_style = "zigzag" if (underlay_style != "none"
                                      and stroke_w > machine.SATIN_ZIGZAG_ABOVE_MM) \
                 else underlay_style
@@ -4251,7 +4423,10 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
             under = st if k["piece"] is None else Stroke(
                 spine=k["piece"], free_start=False, free_end=False, closed=False)
             stroke_runs = [*_stroke_underlay(poly, under, eff_style, shape_id, field,
-                                             max_width_mm=max_width_mm, fold_guard=fold_guard),
+                                             max_width_mm=max_width_mm, fold_guard=fold_guard,
+                                             rail_comp_mm=rail_comp_mm,
+                                             rail_comp_floor_mm=rail_comp_floor_mm,
+                                             half_mm=half_mm),
                            StitchRun(points=pts, kind=stitches.SATIN, shape_id=shape_id)]
         first_of_stroke = True
         for run in stroke_runs:
@@ -4351,7 +4526,12 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
     # when it is long, or when the straight line between the runs would cross
     # outside the artwork (a counter's hole, the gap between two strokes) —
     # thread over bare fabric is a float no matter how short.
-    poly_link = poly.buffer(0.1)
+    # Under rail-side comp the rails sit a pull OUTSIDE `poly` (the artwork),
+    # and a hop that ends on one is still inside the sewn column: measured
+    # 2026-09-09 on Becker at 80 mm, the artwork-tight link turned the hop
+    # from a single stroke's underlay to its own column into a trim, 36 -> 42
+    # for the design. 0.0 keeps the tenth of a millimetre it always had.
+    poly_link = poly.buffer(0.1 + rail_comp_mm)
     for prev, cur in zip(runs, runs[1:]):
         a, b = prev.points[-1], cur.points[0]
         d = math.dist(a, b)

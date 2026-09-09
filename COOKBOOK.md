@@ -392,6 +392,12 @@ hand-rolling it in JS.
   frame by the whole design's stitch box: coverage layers and thread inside
   our own letters and blobs, ours beside the pro's — the calibration that
   showed our junctions under-stacked, not over),
+  `digitizer/tools/rail_comp.py` (what stage 5's pull growth does to every
+  satin-tier shape — the corner-arc vertices, the exterior slots it seals,
+  the stroke graph on the artwork against the grown polygon — and the
+  thread's IoU against the compensated target and the artwork; `--compare`
+  digitizes OFF/ON `cfg.satin_rail_comp` with stitches, trims and
+  preflight's coverage/uncovered — the item 6 instrument),
   `digitizer/tools/pushcomp_pins.py` (`test_pushcomp.GOLDEN_FLAG_OFF`'s tuples
   as THIS tree computes them, for a re-pin with the same pre-change proof),
   `digitizer/tools/resnap_escape.py` (cones `revalidate_threads` ADDS, and how
