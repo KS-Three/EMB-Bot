@@ -1,7 +1,9 @@
 # The wide-column policy — satin between 5.0 and 6.5 mm (quality review item 4)
 
-**Status: IN BUILD 2026-09-09, Kent's pick after #433. `cfg.wide_columns`,
-DEFAULT OFF, byte-identical off. Flipping it is Kent's: the ceiling is a
+**Status: BUILT and MEASURED 2026-09-09, Kent's pick after #433.
+`cfg.wide_columns`, DEFAULT OFF, byte-identical off; the measurement (§4,
+scope-history's wide-column entry) says the band's blocker is the
+decomposition, not the width, so the flip waits on item 5's next PR. Flipping it is Kent's: the ceiling is a
 physical constant read from five files sewn on garments (gate 1's own
 evidence class), and the look is his.**
 
@@ -111,18 +113,24 @@ its width allows — not about the width.
 
 OFF, no line of this runs: byte-identical.
 
-## 4. What it should move — predictions, to be tested
+## 4. What it should move — predictions, and what happened
 
-- MARINE at 100 mm: the three letters whose p90 sits in (5.0, 6.5]
-  (`Sa587cbf9`, `Sd77c18ad`, `S35d83e6d`) sew satin; the two at 6.75–8.02
-  do not. At 80 mm the two letters at the cap (`Sf795e8d1`, `Saee8fbe5`)
-  sew satin.
+- MARINE at 100 mm: the three letters whose p90 sits in (5.0, 6.5] sew
+  satin; the two at 6.75–8.02 do not. **Four do** (`Sf62099db`'s
+  region-level p90 is 6.48; the 7.33 was per-stroke); `Sdd5f27fb` stays
+  tatami on `dt_irregular`. At 80 mm both cap-hitters sew satin — held.
 - Self-crossing pairs on `logo_alpha`'s `Sf5200f3f` stay at 0 under the
-  guard, and no fixture's count rises; `coverage_max` on alpha stays under
-  the test's 5.0.
-- `ARTWORK_UNCOVERED` on Becker does not rise where a letter turns satin.
-- Stitches: fewer on the admitted letters (satin against tatami), the
-  total within a few percent.
+  guard — **held, and 0 without the guard too** at every ceiling to 8.0:
+  the 2026-09-02 premise has moved. Where the guard is load-bearing is
+  Becker's bends at 80 mm (coverage_max 7.07 → 5.08). Becker at 100 mm
+  gains 251 crossing pairs ON — at the letters' feet and junctions, which
+  no width guard is about.
+- `ARTWORK_UNCOVERED` on Becker does not rise where a letter turns satin —
+  held at 80 mm, missed by 1.0 mm² at 100 (0.5 → 1.5); drone's admitted
+  wing 0.5 → 7.0, not predicted.
+- Stitches fewer on the admitted letters — held (−5% at 80, −13% at 100).
+  Trims were not predicted and are the largest cost: +17 and +18, 4–7 per
+  letter against the pro's ~2.
 
 ## 5. Instrument first — `tools/wide_columns.py`
 
@@ -150,6 +158,11 @@ and uncovered. `_FOLD_FRAC` is swept on it before it is fixed.
 
 ## 8. Decisions for Kent
 
-- Flip `wide_columns` on, or ask for the sew-out first (the ceiling is a
-  physical constant; the files it is read from were sewn on garments).
-- Whether PR 2's statistic comes before or after the review's item 5 PR 2.
+- The flag stays OFF on this measurement: MARINE at 100 mm is satin at
+  −13% stitches and looks worse (the renders), because the letters
+  decompose into fanning, crossing columns with 4–7 trims each. The band
+  is worth flipping once item 5's next PR (serifs as their own columns, a
+  junction cover on the clustered graph) sews a bold letter the way the
+  pro's M is sewn. Flip now anyway, wait for that PR, or ask for the
+  sew-out of a 6.5 mm column first — yours.
+- PR 2 of this plan (a junction-aware width statistic) after item 5's PR.

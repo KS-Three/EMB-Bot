@@ -11724,3 +11724,118 @@ caps after; Becker's outline, 20 → 19 strokes.
 
 *(2026-09-09 — `tools/junction_nodes.py`; DOCTRINE "A junction is a
 cluster, not a pixel"; the plan doc's §4)*
+
+## 2026-09-09 — the wide-column policy: `cfg.wide_columns` BUILT, DEFAULT OFF, and what the band above 5.0 mm actually buys
+
+Quality review item 4, Kent's pick after #433. Plan:
+`docs/superpowers/plans/2026-09-09-wide-column-policy.md`. The flag is off
+and byte-identical off; flipping it is Kent's, and the measurement below
+is the case for not flipping it yet.
+
+### What the pro sews
+
+The pro's `becker_hat_polo_large_beckers_logolc.dst` (95.7 mm — our 100 mm
+test size), read band by band with `satin_columns._crosses`: in the MARINE
+bands the satin crosses are **p50 4.8–4.9, p90 5.0–5.2, p99 6.2 mm, max
+7.2–8.5; 11–18.5% over 5.0, 0.6–0.7% over 6.5**, and they are sewn WHOLE —
+rail to rail, no mid-penetration (rendered:
+`docs/renders/wide-columns-2026-09-09/pro_marine_M.png`). The M's stems are
+~4.8 mm columns and its serifs are their own small columns. So the pro's
+MARINE letters are not the 7–8 mm columns the review's §2b DT reading
+suggested: our doubled-p90 medial radius is inflated by the junction blobs
+where the diagonals meet the stems. `SATIN_WIDE_COLUMN_MAX_MM = 6.5` is
+the pro's MARINE p99 rounded to the band edge; the number is read from
+files sewn on garments, gate 1's own evidence class.
+
+### The band, and what a 6.5 mm ceiling admits
+
+`tools/wide_columns.py --widths 80 100` (new): every region refused on
+width, at the default config:
+
+| fixture | mm | refused on width | admissible at 6.5 |
+|---|---|---|---|
+| becker | 80 | 2 | **2** — `Sf795e8d1` 130 mm² p90 5.77, `Saee8fbe5` 130 mm² p90 5.31 |
+| becker | 100 | 4 | **4** — `Sf62099db` 211 / 6.48, `Sa587cbf9` 184 / 5.27, `Sd77c18ad` 179 / 5.52, `S35d83e6d` 164 / 5.82 |
+| whitebg / alpha | 80 | 4 | 1 — `S09c5bd0d` 378 mm² p90 6.12 |
+| drone | 80 | 1 | 1 — `S0bae4b0d` 153 mm² p90 6.19 |
+| everything else at 80 / 100 | | 0–4 | 0 (photo blobs at p90 8.7–20; drone's 2,594 mm² wing at 12.1) |
+
+MARINE's fifth letter `Sdd5f27fb` is refused on `dt_irregular` (its
+strokes read 7.5–8.0) and stays tatami. The band is exactly what §2b
+named and nothing wider.
+
+### What it does
+
+`cfg.wide_columns` ON: `machine.satin_ceiling_mm(cfg)` is 6.5 in all four
+places `SATIN_MAX_WIDTH_MM` is load-bearing — the classifier (stages 5, 7)
+and, threaded from stage 7 through `satin_shape` → `satin_stroke` →
+`_rail_points` and `_stroke_underlay` as one number, the emitter's
+per-station cap, the underlay's oversize trigger and leg clamp — so the
+classifier and the emitter cannot disagree (the split route's failure).
+And `_fold_caps`: every station's half-width is capped at `_FOLD_FRAC` ×
+the spine's local radius of curvature, read from the cross angles the
+rails are laid along, so a column can never bend faster than its width —
+the overlap guard DOCTRINE 2026-09-02 asked for before any route past 5.0.
+
+### The guard, re-measured — the doctrine's premise has moved
+
+The 2026-09-02 coupled route reopened logo_alpha's apex (`Sf5200f3f`) to
+crossing itself. On this tree the apex reads **0 crossing pairs at 5.0,
+6.0, 6.5, 7.0 and 8.0 mm, guard or no guard**, and 122 unbounded — the two
+legs sharing the apex blob, which no width guard is about. The corridor
+cap, the clustering and the pinhole collapse got there first; pinned in
+`tests/test_wide_columns.py`. Where the guard IS load-bearing is a bend:
+Becker's outline at 80 mm, radii p10 4.85 mm under 5–6 mm columns, where
+the ceiling alone stacks the inner rails to **coverage_max 7.07** (past
+`COVERAGE_WARN_UNITS` 6.67 — the density spike the coupled route's four
+preflight failures were) and the guard holds **5.08**. Swept:
+
+| `_FOLD_FRAC` | becker 80 coverage_max | becker 100 uncovered worst | drone 80 |
+|---|---|---|---|
+| none | 7.07 | 1.5 | unmoved |
+| 0.9 | 6.32 | 1.5 | unmoved |
+| **0.7** | **5.08** | **1.5** | unmoved |
+| 0.5 | 5.08 | 3.0 (cloth lost at the caps) | unmoved |
+
+It bites at 2 of 234 stations on the golden fixtures, 130 of 1,697 on
+Becker at 80 mm, 339 of 1,788 on drone (min cap 0.09 mm at a corner the
+corner split did not cut), and moves nothing else measurable — drone,
+enthusiast and the apex are identical with and without it.
+
+### OFF → ON, where the band fires (`--compare`)
+
+| fixture, mm | stitches | trims | satin self-crossings | coverage_max | uncovered worst → |
+|---|---|---|---|---|---|
+| becker 80 | 5,592 → 5,315 (−5%) | 36 → **53** | 720 → 716 | 4.72 → 5.08 | 9.0 → 9.0 |
+| becker 100 | 11,373 → 9,897 (−13%) | 23 → **41** | 0 → **251** | 3.77 → 3.83 | 0.5 → 1.5 |
+| alpha 80 / whitebg 80 | 4,576 → 4,481 / 4,550 → 4,461 | 6 → 6 | 0 → 0 | unmoved | 0.0 → 0.0 |
+| drone 80 | 16,129 → 15,983 | 96 → 104 | 479 → 486 | 7.02 → 7.18 | 0.5 → **7.0** |
+
+MARINE at 100 mm is satin at 13% fewer stitches — and the render
+(`becker_marine_100mm_off_on`, `becker_R_100mm_off_on`,
+`becker_A_100mm_off_on`) shows why that is not yet a win: the R's bowl and
+the A's leg sew as columns that fan and cross at the letters' feet and
+junctions (145 and 214 crossing pairs, at the A's foot with 6.3–6.5 mm
+crosses), each letter is 3–5 strokes with 4–7 trims where the pro sews
+~2, and drone's admitted wing leaves 7 mm² bare inside itself. None of
+that is width: it is the raster skeleton's decomposition of a bold letter
+— serifs merged into stems, junction fans, arms that share a blob — the
+review's item 5. **The band is real and the ceiling is right; the
+decomposition is the blocker, and this measurement is the concrete brief
+for item 5's next PR** (serifs as their own columns, junction cover).
+
+### Predictions against results
+
+- Three MARINE letters admissible at 100 mm — **four** (the region-level
+  p90 of `Sf62099db` is 6.48; the review's 7.33 was a per-stroke number).
+- Apex crossings 0 under the guard — held, and 0 without it too (§ above).
+- Becker's uncovered no worse where a letter turns satin — held at 80
+  (9.0), missed at 100 by 1.0 mm² (0.5 → 1.5). Drone's wing, not
+  predicted: 0.5 → 7.0.
+- Stitches fewer on the admitted letters — held (−5%, −13%); trims not
+  predicted and the largest cost (+17, +18).
+
+*(2026-09-09 — `tools/wide_columns.py`; DOCTRINE "The band above the cap
+is a decomposition problem wearing a width problem's clothes";
+`tests/test_wide_columns.py`; renders in
+`docs/renders/wide-columns-2026-09-09/`)*

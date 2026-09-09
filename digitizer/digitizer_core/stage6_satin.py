@@ -97,9 +97,14 @@ _JUNCTION_CLUSTER_MIN_PX = 3.0
 # still and past it steps BACKWARDS — that is the fold, and every one of the
 # 2,580 crossing pairs the 2026-08-05 measurement counted on logo_alpha's
 # apex is one. Below the radius the inner rail merely crowds, which
-# `_short_stitch_guard` already handles. Read off `tools/wide_columns.py`'s
-# sweep (2026-09-09): the largest fraction at which no fixture's crossing
-# pairs or coverage_max rise above the flat cap's.
+# `_short_stitch_guard` already handles. Swept on the corpus with the
+# ceiling at 6.5 (2026-09-09, scope-history's wide-column entry): where it
+# is load-bearing is Becker's outline at 80 mm, bends of ~5 mm radius under
+# 5-6 mm columns -- coverage_max 7.07 (past COVERAGE_WARN_UNITS) with no
+# guard, 6.32 at 0.9, 5.08 at 0.7 and 0.5; at 0.5 Becker's 100 mm letters
+# lose cloth instead (uncovered worst 1.5 -> 3.0 mm2). Drone, enthusiast
+# and the apex fixture do not move at any fraction. 0.7 is the fraction
+# that holds the warn line without costing coverage.
 _FOLD_FRAC = 0.7
 # The half-width profile is median-filtered over this many samples to drop rays
 # that escaped through a junction, then averaged this many times to make the

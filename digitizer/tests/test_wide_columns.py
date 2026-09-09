@@ -6,8 +6,9 @@ fold guard that makes any ceiling past 5.0 safe.
 DOCTRINE 2026-09-02 measured both routes past 5.0 breaking something: moved
 together, the per-station cap in `_rail_points` moved too and logo_alpha's
 `Sf5200f3f` apex crossed itself again; split, the classifier admitted what
-the emitter refused. The first test here REPRODUCES that measurement with the
-ceiling alone and shows the fold guard closing it.
+the emitter refused. Re-measured here: at 6.5 the apex no longer reproduces that failure with
+or without the guard; where the guard is load-bearing is Becker's bends at
+80 mm, where it keeps the inner rails under the warn line.
 """
 from __future__ import annotations
 
@@ -69,14 +70,44 @@ def _apex_crossings(max_width_mm: float, fold_guard: bool) -> int:
     return crossings
 
 
-def test_the_fold_guard_closes_what_the_raised_ceiling_reopens():
-    """The 2026-09-02 coupled route, reproduced: the wide ceiling alone puts
-    logo_alpha's apex back to crossing itself; with the fold guard it does
-    not, and the shipped 5.0 stays at zero as it has since 2026-08-05."""
+def test_the_apex_stays_clean_at_the_wide_ceiling_with_or_without_the_guard():
+    """The 2026-09-02 coupled route, re-measured on this tree: at 6.5 mm the
+    apex does NOT cross itself even without the guard (0 pairs at 5.0, 6.0,
+    6.5, 7.0 and 8.0; 122 unbounded — the two legs sharing the apex blob,
+    which no width guard is about). Pinned both ways so a regression in the
+    corridor cap, the clustering or the pinhole collapse shows up here."""
     assert _apex_crossings(machine.SATIN_MAX_WIDTH_MM, False) == 0
-    reopened = _apex_crossings(machine.SATIN_WIDE_COLUMN_MAX_MM, False)
-    assert reopened > 0, "the ceiling alone should reproduce the measured failure"
+    assert _apex_crossings(machine.SATIN_WIDE_COLUMN_MAX_MM, False) == 0
     assert _apex_crossings(machine.SATIN_WIDE_COLUMN_MAX_MM, True) == 0
+
+
+def _becker_coverage(monkeypatch, guard: bool) -> tuple[float, float]:
+    """(coverage_max, uncovered_worst_mm2) on Becker at 80 mm, wide columns
+    on, with the fold guard live or neutralised."""
+    from digitizer_core.preflight import run_preflight
+    if not guard:
+        monkeypatch.setattr(s6, "_fold_caps",
+                            lambda spine, angles, closed, frac=None: [math.inf] * len(spine))
+    art = TESTDATA / "becker_marine_logo.png"
+    cfg = PipelineConfig(target_width_mm=80.0, wide_columns=True)
+    result, plan = digitize(art, cfg)
+    m = run_preflight(result, plan, cfg, image=art)["metrics"]
+    return float(m["coverage_max"]), float(m["uncovered_worst_mm2"])
+
+
+def test_the_fold_guard_keeps_a_wide_column_on_a_bend_under_the_warn_line(monkeypatch):
+    """Where the guard is load-bearing, measured (2026-09-09): Becker's
+    outline at 80 mm has bends of radius ~5 mm (p10 4.85) under 5-6 mm
+    columns, and with the ceiling at 6.5 the inner rails stack — coverage_max
+    7.07, past `COVERAGE_WARN_UNITS`, the density spike DOCTRINE 2026-09-02
+    recorded for the coupled route. Capped by the bend's radius it reads
+    5.08. Same stitches within 8, same trims, same bare cloth."""
+    with_guard, bare_with = _becker_coverage(monkeypatch, True)
+    assert with_guard < machine.COVERAGE_WARN_UNITS, with_guard
+    without, bare_without = _becker_coverage(monkeypatch, False)
+    assert without > machine.COVERAGE_WARN_UNITS, \
+        f"the guard has nothing left to do: {without:.2f} without it"
+    assert bare_with == bare_without, "the guard leaves coverage of the artwork alone"
 
 
 def test_fold_caps_read_the_bend_and_leave_the_straight():

@@ -332,3 +332,21 @@ assumed). Scope-history's fourth 09-08 entry has the OFF → ON table.
 - Predictions missed and recorded in the plan's §4: becker's stroke and
   trim counts went UP by one each.
 - Renders in `docs/renders/junction-clustering-2026-09-09/`.
+
+## Item 4 — the wide-column policy, `cfg.wide_columns` BUILT, DEFAULT OFF (2026-09-09, Kent's pick after #433)
+
+- 6.5 mm ceiling = the pro's MARINE p99 (crosses p50 4.8–4.9, p90 5.0–5.2,
+  sewn WHOLE — rendered), threaded as one number (`machine.satin_ceiling_mm`)
+  through all four load-bearing places; `_fold_caps` (0.7 × bend radius)
+  is the overlap guard. Off byte-identical; no golden moves.
+- **The 2026-09-02 premise moved**: the apex is 0 crossings at 5.0–8.0 mm
+  with or without the guard. The guard is load-bearing on Becker's bends at
+  80 mm only (coverage_max 7.07 → 5.08); swept 0.5/0.7/0.9.
+- **Our DT p90 over-reads bold letters by their junctions** (5.1–8.0 vs the
+  pro's 4.8–5.0 stems): a junction-aware width statistic is PR 2.
+- ON: exactly the band (MARINE letters, alpha/whitebg's `S09c5bd0d`,
+  drone's `S0bae4b0d`); MARINE −13% stitches but 251 self-crossings at feet
+  and junctions, +18 trims, drone wing 7 mm² bare. **Rendered before
+  pricing** — the letters got worse. Ships OFF; item 5's next PR (serifs as
+  columns, junction cover) is what makes the band worth flipping.
+- `tools/wide_columns.py` (band table, `--compare`, `crossing_pairs`).
