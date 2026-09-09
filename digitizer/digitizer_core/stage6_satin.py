@@ -160,6 +160,10 @@ _CORNER_BOUNDARY_WINDOW_MM = 1.0
 # 0.0 for square caps and tips alike (measured 0.0 on BAR, C and the ribbon).
 _TAPER_ZONE_FRAC = 0.8
 _RING8 = ((0, -1), (1, -1), (1, 0), (1, 1), (0, 1), (-1, 1), (-1, 0), (-1, -1))
+# How many pixels `_skeleton_edges`' walk steps back from a dead end on a
+# non-node pixel before giving up. One is the filled L-corner; a little more
+# covers a clique of fillers. See the function.
+_WALK_BACKTRACK_PX = 3
 
 
 @dataclass
@@ -970,10 +974,40 @@ def _collapse_pinholes(skel: np.ndarray) -> np.ndarray:
 def _skeleton_edges(mask: np.ndarray) -> list[dict]:
     """Decompose a 1-px skeleton into edges between nodes, plus closed loops.
 
-    A faithful port of the browser engine's `skeletonEdges` — see the module
+    A port of the browser engine's `skeletonEdges` — see the module
     docstring for why crossing number and the separate loop walk matter.
     Returns [{"pts": [(x, y), ...], "free_start": bool, "free_end": bool,
     "closed": bool}].
+
+    Two departures from the port, both 2026-09-09, both for the three-pixel
+    triangles `medial_axis` leaves where a chain bends (an L whose corner is
+    filled) or where three arms meet on a clique, and both changing nothing
+    on a skeleton without one:
+
+    * The first step out of a node never takes another neighbour of that
+      node when an onward pixel exists. Otherwise a node's walk into its own
+      clique comes straight back to the node as a 3 px self-loop, having
+      consumed the first pixel of a real arm -- and the arm is then walked
+      from nowhere. (`_cluster_junctions` drops the loop; the arm stays
+      stranded.)
+    * A walk that dead-ends on a pixel that is NOT a node (every candidate
+      already consumed) steps back and takes the other way at the pixel
+      before, up to `_WALK_BACKTRACK_PX` steps, and ends where it did if
+      there is none. A dead end off a node is always the walk having taken
+      a corner filler and left the chain beyond it stranded; the filler is
+      left unwalked, which is where it belongs.
+
+    What a stranded chain used to become: the leftover-pixel pass at the end
+    walks ONE way from each unconsumed pixel, so the chain came back as 1-3
+    px free/free fragments, each of which `extract_strokes` keeps (both ends
+    free) and `satin_stroke` extends to both caps. Measured on
+    `enthusiast_logo`'s H at 93 mm under `cfg.satin_rail_comp`: the left stem
+    as five columns on top of each other, the design's coverage peak 4.7 ->
+    9.27 layers. With the flag off the corpus hits both cases too (Becker 4
+    shapes, drone 6, enthusiast 5 -- `tools/rail_comp.py`'s scan of the
+    tracer's own output), and the fix moves exactly ONE of those shapes'
+    stitches (drone's `S60de6f78`, 43 -> 45): everywhere else the loop was
+    dropped downstream or the filler sat where nothing needed it.
     """
     h, w = mask.shape
     ys, xs = np.nonzero(mask)
@@ -981,6 +1015,9 @@ def _skeleton_edges(mask: np.ndarray) -> list[dict]:
 
     def nbrs(x: int, y: int) -> list[tuple[int, int]]:
         return [(x + dx, y + dy) for dx, dy in _RING8 if (x + dx, y + dy) in pixels]
+
+    def touching(a: tuple[int, int], b: tuple[int, int]) -> bool:
+        return max(abs(a[0] - b[0]), abs(a[1] - b[1])) <= 1
 
     # Node-ness depends only on the mask, so compute it once: the walks below
     # ask "is this a node" for nearly every pixel on every step, and doing the
@@ -1018,7 +1055,37 @@ def _skeleton_edges(mask: np.ndarray) -> list[dict]:
                 path.append(node_next)
                 break
             cand = [p for p in cand if p not in consumed]
+            if len(path) == 2 and len(cand) > 1:
+                # First step out of the node: a candidate that is itself a
+                # neighbour of the node is the junction's own clique, and the
+                # node walks it directly -- take the pixel that leads away.
+                away = [p for p in cand if not touching(p, start)]
+                if away:
+                    cand = away
             if not cand:
+                # Dead end on a non-node pixel: a corner filler. Step back
+                # and take the other way; with none, end here as before.
+                popped: list[tuple[int, int]] = []
+                found = False
+                while len(path) >= 3 and len(popped) < _WALK_BACKTRACK_PX:
+                    popped.append(path.pop())
+                    consumed.discard(popped[-1])
+                    cur, prev = path[-1], path[-2]
+                    if is_node(*cur):
+                        break
+                    alt = [p for p in nbrs(*cur) if p != prev and p not in consumed
+                           and not is_node(*p) and p not in popped]
+                    if alt:
+                        prev, cur = cur, alt[0]
+                        path.append(cur)
+                        consumed.add(cur)
+                        found = True
+                        break
+                if found:
+                    continue
+                for p in reversed(popped):
+                    path.append(p)
+                    consumed.add(p)
                 break
             prev, cur = cur, cand[0]
             path.append(cur)
