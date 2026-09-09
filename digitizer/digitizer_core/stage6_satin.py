@@ -3941,6 +3941,114 @@ def _junction_patch_runs(poly: Polygon, runs: list[StitchRun], shape_id: str,
     return out
 
 
+def _principal_spine(patch: Polygon) -> tuple[list[tuple[float, float]], float] | None:
+    """-> (a spine along the patch's long axis, the patch's half-width), or
+    None for a patch with no usable axis.
+
+    The long side of the patch's minimum-area bounding rectangle is the
+    direction a column across it runs along, and its short side is the
+    column's width. The spine is the patch's own chord along that axis
+    through its middle -- the representative point when the centroid lies
+    outside a concave patch -- trimmed a cap inset from each end so
+    `_extend_to_cap` finds boundary AHEAD of the tip rather than the tip
+    itself, and resampled the way a skeleton spine arrives.
+    """
+    rect = patch.minimum_rotated_rectangle
+    if rect.geom_type != "Polygon":
+        return None
+    corners = list(rect.exterior.coords)
+    if len(corners) < 4:
+        return None
+    s0 = math.dist(corners[0], corners[1])
+    s1 = math.dist(corners[1], corners[2])
+    long_side, short_side = max(s0, s1), min(s0, s1)
+    if long_side < 1e-6:
+        return None
+    a, b = (corners[0], corners[1]) if s0 >= s1 else (corners[1], corners[2])
+    ux, uy = (b[0] - a[0]) / long_side, (b[1] - a[1]) / long_side
+    mid = patch.centroid
+    if not patch.covers(mid):
+        mid = patch.representative_point()
+    reach = long_side + 1.0
+    line = LineString([(mid.x - ux * reach, mid.y - uy * reach),
+                       (mid.x + ux * reach, mid.y + uy * reach)])
+    inter = line.intersection(patch)
+    pieces = [g for g in getattr(inter, "geoms", [inter])
+              if g.geom_type == "LineString" and g.length > 0]
+    if not pieces:
+        return None
+    piece = min(pieces, key=lambda g: g.distance(mid))
+    pts = _trim_chain([(c[0], c[1]) for c in piece.coords], _CAP_INSET_MM, _CAP_INSET_MM)
+    n = max(3, int(math.ceil(piece.length / 0.5)) + 1)
+    return _resample(pts, n), short_side / 2.0
+
+
+def _junction_cover_runs(poly: Polygon, runs: list[StitchRun], shape_id: str,
+                         start_near: tuple[float, float] | None,
+                         split_above_mm: float | None, spacing_mm: float,
+                         max_width_mm: float) -> list[StitchRun]:
+    """`satin_patch_junctions = "satin"`: what `_uncovered_patches` found,
+    each sewn as a satin COLUMN along its own long axis, in the order the
+    finder returns them (largest first), each turned to end nearest the
+    shape's first run. The caller puts these FIRST in the shape, under
+    the arms: the arms' crosses then land on the cover's margin instead of
+    the cover's rows landing on finished satin, the surface inside the
+    letter stays satin, and the needle never comes back for the hole after
+    the letter is done -- the two reasons the tatami patch is OFF.
+
+    No underlay, for the same reason the tatami patch has none. A patch
+    wider across than the satin ceiling is a hole a column cannot span
+    and takes the tatami patch instead, as does one whose column comes out
+    degenerate -- the hole still sews, the grader's finding still clears.
+
+    One round, like the tatami patch. A second round -- the finder asked
+    again with the first round's thread down -- was measured 2026-09-09 and
+    moved nothing the grader reads (Becker 100 mm and Fremont under
+    `wide_columns`: `uncovered_total_mm2` identical, +26 and +114 stitches,
+    +1 and +3 trims), so it is not here.
+    """
+    from . import stage6_fill  # local: keeps the tier import one-directional
+
+    out: list[StitchRun] = []
+    # The needle leaves the last cover for the shape's first run, so each
+    # column is turned to END nearer that run's start: the hop into the
+    # shape is a jump whichever way round the cover lies, the hop out of it
+    # need not be. `runs` is never empty here (the caller checks).
+    target = runs[0].points[0] if runs and runs[0].points else start_near
+    cursor = start_near
+    for patch in _uncovered_patches(poly, runs):
+        pts: list[tuple[float, float]] = []
+        try:
+            got = _principal_spine(patch)
+            if got is not None and 2.0 * got[1] <= max_width_mm:
+                spine, half = got
+                column = Stroke(spine=spine, free_start=True, free_end=True, closed=False,
+                                capped_start=True, capped_end=True)
+                pts = satin_stroke(patch, column, max(half, machine.SATIN_MIN_CROSS_MM / 2),
+                                   None, split_above_mm, 0.0, spacing_mm, None,
+                                   max_width_mm=max_width_mm)
+        except Exception:  # noqa: BLE001 -- an additive pass must never sink a shape
+            pts = []
+        if len(pts) >= 4:
+            if target is not None and math.dist(target, pts[0]) < math.dist(target, pts[-1]):
+                pts = list(reversed(pts))
+            out.append(StitchRun(points=pts, kind=stitches.SATIN, shape_id=shape_id))
+            cursor = pts[-1]
+            continue
+        try:
+            got_runs, _report = stage6_fill.stitch_shape(
+                patch, shape_id, angle_deg=None,
+                row_mm=machine.FILL_ROW_MM, stitch_mm=machine.FILL_STITCH_MM,
+                underlay_style="none", trim_at_mm=math.inf, start_near=cursor)
+        except Exception:  # noqa: BLE001
+            continue
+        for r in got_runs:
+            if len(r.points) >= 2:
+                out.append(r)
+                cursor = r.points[-1]
+    return out
+
+
 def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
                 trim_at_mm: float,
                 start_near: tuple[float, float] | None = None,
@@ -3952,7 +4060,7 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
                 art_poly: Polygon | None = None,
                 rails_follow_edge: bool = False,
                 hairline_floor_mm: float = 0.0,
-                patch_junctions: bool = False,
+                patch_junctions: bool | str = False,
                 max_width_mm: float = machine.SATIN_MAX_WIDTH_MM,
                 fold_guard: bool = False,
                 ) -> tuple[list[StitchRun], dict]:
@@ -4133,7 +4241,38 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
     # separate sweeps removed from this repo on 2026-09-06. If a consumer ever
     # wants the count it goes in beside `hairline_runs`, aggregated at
     # `stage7_sequence` ~2114, with something that actually reads it.
-    if patch_junctions and runs:
+    if patch_junctions == "satin" and runs:
+        # The cover goes FIRST, under the arms (2026-09-09, item 5 PR 2):
+        # see `_junction_cover_runs`. Found on the runs as sewn so far, so
+        # it patches exactly what the arms leave; prepended so the arms'
+        # own runs, and the entry each column already chose, are untouched.
+        cover = _junction_cover_runs(poly, runs, shape_id, start_near,
+                                     split_above_mm, spacing_mm, max_width_mm)
+        if cover:
+            # From one cover to the next and from the last to the shape's
+            # first run the needle walks the unsewn web, needle down, the
+            # way it travels between strokes -- nothing is sewn yet, so every
+            # spine is open to it and every leg is covered later. Where the
+            # web does not reach, the linking pass below marks the hop as
+            # it marks any other.
+            linked: list[StitchRun] = []
+            for cur, nxt in zip(cover, cover[1:] + runs[:1]):
+                linked.append(cur)
+                a, b = cur.points[-1], nxt.points[0]
+                direct = math.dist(a, b)
+                if direct < machine.TINY_STITCH_MM:
+                    continue
+                path = _graph_travel(a, b, set(), set(), nodes, g_edges, g_adj,
+                                     trim_at_mm=trim_at_mm)
+                if path is None or len(path) < 2:
+                    continue
+                plen = sum(math.dist(p, q) for p, q in zip(path, path[1:]))
+                if plen <= max(20.0, 4.0 * direct):
+                    n = max(2, int(math.ceil(plen / machine.TRAVEL_STITCH_MM)) + 1)
+                    linked.append(StitchRun(points=_resample(path, n),
+                                            kind=stitches.TRAVEL, shape_id=shape_id))
+            runs = linked + runs
+    elif patch_junctions and runs:
         runs.extend(_junction_patch_runs(poly, runs, shape_id, start_near))
 
     # Link EVERY consecutive run pair, underlay included. A short hop whose

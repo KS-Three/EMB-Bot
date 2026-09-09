@@ -1427,7 +1427,17 @@ class PipelineConfig:
     # DEFAULT OFF and byte-identical off. Flipping it is Kent's — it puts
     # tatami sheen inside a satin letter, which is a look question a render
     # answers and a number does not.
-    satin_patch_junctions: bool = False
+    #
+    # `"satin"` (2026-09-09, item 5 PR 2): the same patches, each sewn as a
+    # satin COLUMN along its own long axis and placed FIRST in the shape's
+    # runs, under the arms (`stage6_satin._junction_cover_runs`). That
+    # answers both reasons the tatami patch is off: the surface inside a
+    # satin letter stays satin, and the needle never comes back for the
+    # hole once the letter is done. A patch wider across than the satin
+    # ceiling, or whose column comes out degenerate, takes the tatami patch
+    # for that one hole so the grader's finding still clears. `True` keeps
+    # the tatami patch appended last, byte for byte.
+    satin_patch_junctions: bool | str = False
 
     # Let stage 4's thread re-validation reach the shapes preflight condemns.
     # `stage4_vectorize.revalidate_threads` re-snaps a thread that drifted off
