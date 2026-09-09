@@ -11034,3 +11034,76 @@ regions for populations of 2 and 18 strokes that do not move.
   population finder, 18 in the instrument) because one excludes the enclosed
   population and the other reads the full quantisation. Both are right;
   say which one you ran.
+
+
+## 2026-09-09 — widening rescued lettering does not change how it is sewn: a measured negative, and the tier rule it points at
+
+PR 4 of `docs/superpowers/plans/2026-09-08-real-logo-lane-and-thin-strokes.md`
+(§4d, PR #428), Kent's pick after #427: `cfg.lettering_min_column_mm`,
+default None. `textcluster.regularize_text_clusters` already redraws every
+door-1 (rescued) cluster member as a buffer around its skeleton at the
+cluster's median half-width; the flag raises that target to at least half
+the SEWN floor less the fabric's pull, on the plan's premise that stage 5
+adds the pull back and the widened glyph then sews as a satin column of
+the floor's width. Kent's number: 1.0 mm, `PHOTO_MIN_SATIN_WIDTH_MM`. Six
+tests; None is byte-identical.
+
+**Built, then measured, and the premise is wrong at the tier.** With
+`keep_thin_strokes` on (so Fremont's lettering exists to widen), OFF → ON at
+1.0 mm, Studio defaults:
+
+| fixture | clustered | widened | cluster stitches by kind | satin row (cols / median / p90) | legibility | thin recall | stitches | trims |
+|---|---:|---:|---|---|---|---|---|---|
+| `logo_hotel_fremont` @ 92.5, routed | 32 | 0 → 10 | satin 1,356 → 1,356; run 817 → **564** | 2,578 / 0.93 / 1.04 → **identical** | 0.551 → 0.616 | 92.5% → 90.6% (3 → 8 lost) | 16,006 → 15,691 | 66 → 66 |
+| `logo_hotel_fremont`, forced flat | 32 | 0 → 10 | satin 1,362 → 1,362; run 792 → 539 | 2,587 / 0.93 / 1.04 → **identical** | 0.667 → 0.655 | 92.7% → 90.8% (3 → 8 lost) | 16,628 → 16,288 | 81 → 71 |
+| `enthusiast_logo` | 24 | 0 → 9 | satin 1,004 → 1,004; run 539 → 563 | 1,145 / 2.06 / 2.53 → **identical** | **1.00 → 0.917** (ENTERPRISES INC render 88 → 60) | 94.8% → 94.0% | 2,459 → 2,483 | 22 → 22 |
+| `becker_marine_logo` @ 100 | 11 | 0 → 0 | door 2 only | identical | n/a | n/a | identical | identical |
+
+Not one satin column appears. The widened members were sewn as RUNS before
+and are sewn as runs after — the same bean outline, on a fatter artwork
+polygon — and the run tier reads the widening as a shorter, simpler
+skeleton (Fremont's cluster runs 817 → 564 points). Legibility does not
+move on Fremont beyond the crop boxes shifting with the redrawn polygons,
+and it FALLS on ENTHUSIAST: the ENTERPRISES INC subline's render confidence
+88 → 60, similarity 1.00 → 0.86, because widening 1.6 mm glyphs by 0.1 mm of
+radius on a 0.3 mm-pull knit closes their gaps. Thin-stroke recall slips a
+point on both Fremont arms.
+
+**Why, with the line.** `stage7_sequence` routes every `tier: auto` shape
+whose ARTWORK polygon is under `min_detail_mm²` (2.25 mm²) to `run_outline`
+before satin or fill is ever asked — *"a shape below the sewable-detail
+floor has nowhere to put fill rows and pinches every satin cross under
+SATIN_MIN_CROSS_MM, so its outline sews as a bean run instead — on the
+ARTWORK polygon, because a run does not pull fabric"* — and the satin/fill
+classifier that follows reads the artwork polygon too, deliberately
+(*"otherwise heavy fabric flips the same artwork from satin to fill"*). A
+rescued glyph is under the area floor by definition (that is what rescued
+means), so no artwork width reaches a column: Fremont's EST 1895 glyphs at
+92.5 mm are 0.5–1.5 mm², and a 1.0 mm-wide version of a 1.6 mm glyph is
+still 1.6 mm². The plan's §4d wrote "the target is the SEWN column, so the
+artwork radius is the floor minus the pull (stage 5 adds it back)" — true
+of the polygon, false of the tier, and the tier is what a column is.
+
+**What would deliver the column.** The pro's Fremont file sews these same
+glyphs as 0.82–0.90 mm satin columns. Reaching that needs a TIER rule, not
+a wider polygon: a door-1 cluster member the floor widened would have to be
+exempt from the area routing and classified on its compensated width, so a
+1.0 mm sewn column takes the satin tier. That reverses, for lettering only,
+two deliberate stage-7 decisions (the area floor's run routing; classifying
+on the artwork polygon), and the second one exists because of towels. It is
+Kent's call, put to him with this entry; the widening half is in and
+tested, so that PR is the rule and its measurement.
+
+**Two things settled on the way.** (1) The shape-context gate refuses a
+deliberate widening by construction — a 0.3 mm stroke doubled reads as a
+different point arrangement however faithful — so the gate now applies to
+the median redraw only and a widened member is judged by the OCR gate,
+which is the legibility question anyway; the distance is still recorded.
+(2) The fabric pull on the Studio's garments: 0.3 mm on the knits, 0.2 on
+the patch canvas, 0.6 on terry — on terry the pull alone exceeds the 1.0 mm
+floor and the flag widens nothing, correctly.
+
+**Disposition.** The flag stays, default None, with this negative in its
+docstring and in DOCTRINE, so nobody flips it expecting a column. Its
+measured effect at 1.0 mm is nil on the stitches and a loss on ENTHUSIAST's
+legibility; do not turn it on without the tier rule.

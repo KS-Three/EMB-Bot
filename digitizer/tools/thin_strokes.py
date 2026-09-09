@@ -360,9 +360,19 @@ def parse_flag(spec: str) -> tuple[str, object]:
         return name, raw
 
 
+def parse_flags(specs) -> dict:
+    """Every `--flag` given, as PipelineConfig keyword arguments. Accepts a
+    single spec string too, for the callers that pass one."""
+    if not specs:
+        return {}
+    if isinstance(specs, str):
+        specs = [specs]
+    return dict(parse_flag(spec) for spec in specs)
+
+
 def run(art: Path, width_mm: float, garment: str, forced_class: str | None = None,
-        max_colors: int = STUDIO_MAX_COLORS, flag: str | None = None) -> dict:
-    extra = dict([parse_flag(flag)]) if flag else {}
+        max_colors: int = STUDIO_MAX_COLORS, flag=None) -> dict:
+    extra = parse_flags(flag)
     cfg = PipelineConfig(target_width_mm=width_mm, garment_id=garment,
                          forced_class=forced_class, max_colors=max_colors, **extra)
     gen = build_generation(str(art), cfg)
@@ -398,7 +408,8 @@ def main(argv=None) -> int:
     ap.add_argument("--garment", default="left_chest")
     ap.add_argument("--forced-class", default=None, dest="forced_class")
     ap.add_argument("--max-colors", type=int, default=STUDIO_MAX_COLORS, dest="max_colors")
-    ap.add_argument("--flag", default=None, help="PipelineConfig field to turn on, NAME or NAME=VALUE")
+    ap.add_argument("--flag", action="append", default=None,
+                    help="PipelineConfig field to turn on, NAME or NAME=VALUE (repeatable)")
     ap.add_argument("--corpus", action="store_true", help="the ten real-art fixtures at Studio defaults")
     ap.add_argument("--json", action="store_true")
     a = ap.parse_args(argv)
@@ -407,10 +418,10 @@ def main(argv=None) -> int:
     results = []
     if a.flag:
         try:
-            parse_flag(a.flag)
+            parse_flags(a.flag)
         except ValueError as e:
             ap.error(str(e))
-    lane = (f"  forced_class={a.forced_class}" if a.forced_class else "") + (f"  {a.flag} ON" if a.flag else "")
+    lane = (f"  forced_class={a.forced_class}" if a.forced_class else "") + (f"  {' '.join(a.flag)} ON" if a.flag else "")
     print(f"thin-stroke recall — width floor {PipelineConfig().min_detail_mm} mm at p{THIN_INK_WIDTH_PCT} "
           f"(and >= {_MIN_STROKE_PX:g} px), "
           f"min length {machine.RUN_MIN_LOOP_MM / 2:.2f} mm, thread {machine.COVERAGE_THREAD_W_MM} mm, "

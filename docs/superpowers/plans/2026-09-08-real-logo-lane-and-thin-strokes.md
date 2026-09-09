@@ -290,6 +290,24 @@ SATIN_MIN_CROSS_MM` 1.0 (also existing), and the pro's 0.82–0.90 mm
 measured on the Fremont file that was sewn on a patch — the evidence class
 that settled `FILL_ROW_MM`. The mechanism is identical whichever Kent picks.
 
+**BUILT 2026-09-09 (PR #428, Kent's number 1.0 mm) — and MEASURED NEGATIVE
+as written.** The paragraph above is right about the polygon and wrong
+about the tier: `stage7_sequence` routes every auto-tier shape under
+`min_detail_mm²` to `run_outline` before satin is asked, and classifies the
+rest on the ARTWORK polygon, deliberately (towels). A rescued glyph is under
+the area floor by definition, so no artwork width reaches a satin column —
+Fremont routed with `keep_thin_strokes` on widens 10 of 32 cluster members
+and the satin row is byte-identical (2,578 columns, median 0.93), the
+widened glyphs sewing as the same bean runs on a fatter outline; ENTHUSIAST
+widens 9 and its subline's legibility FALLS (1.00 → 0.917, render confidence
+88 → 60). Table and mechanism in scope-history 2026-09-09. The flag stays,
+default None, documented as a negative; the column needs a TIER rule — a
+door-1 member the floor widened exempt from the area routing and classified
+on its compensated width — which reverses two deliberate stage-7 decisions
+for lettering only and is Kent's call (§8). Also settled: the shape-context
+gate applies to the median redraw only (a doubled stroke fails it by
+construction); the OCR gate judges the widening.
+
 ## 5. The design for item 1 — the lane
 
 ### 5a. Re-measure the spec's signal on the real tonal artwork that exists now (PR 5)
@@ -357,7 +375,7 @@ Renders in every PR body — Kent's 2026-09-04 rule.
 | 1 | **BUILT 2026-09-08** — `thin_strokes.py`, `legibility.py`, tests (9 + 6), baseline numbers on the real-art fixtures (nine distinct files: `logo_drone_thermal_badge.png` is byte-identical to `drone_render.png`, run once); scope-history 09-08 has the tables | ~1,000 lines | none |
 | 2 | **BUILT 2026-09-08** (PR #426) — `cfg.keep_thin_strokes` on the flat lane; goldens unmoved OFF, whitebg gains its teal patch ON (§4b) | ~60 + 8 tests | none |
 | 3 | **BUILT 2026-09-08** — the thin population on the gradient lane, same flag; the width test corrected to p90 and shared with the instrument; the one-ground rule; photo classes gated out | ~300 + 19 tests | none; photo goldens byte-identical OFF, photo classes byte-identical ON by the gate |
-| 4 | `cfg.lettering_min_column_mm` | ~60 + tests | G1 on the number |
+| 4 | **BUILT 2026-09-09, MEASURED NEGATIVE as written** — `cfg.lettering_min_column_mm` widens the polygon, the tier does not follow (§4d); the column needs a stage-7 tier rule, Kent's call | ~60 + 6 tests | G1 on the number |
 | 5 | `color_diversity.py` + the decision doc with the margin | ~150 | G2 — reports, changes nothing |
 | 6a or 6b | the lane | ~150 / ~60 | G2 (6a) or Kent's ruling on its letter (6b); golden churn for approval |
 

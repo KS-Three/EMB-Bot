@@ -251,6 +251,8 @@ def main(argv=None) -> int:
                     help="a machine file to measure (repeatable) — e.g. a professional's")
     ap.add_argument("--width", type=float, default=80.0)
     ap.add_argument("--garment", default="left_chest")
+    ap.add_argument("--flag", action="append", default=None,
+                    help="PipelineConfig field to turn on, NAME or NAME=VALUE (repeatable)")
     args = ap.parse_args(argv)
     if not args.image and not args.file:
         ap.error("give an image, a --file, or both")
@@ -263,7 +265,9 @@ def main(argv=None) -> int:
         path = Path(args.image)
         if not path.is_absolute():
             path = ROOT / "testdata" / args.image
-        cfg = PipelineConfig(target_width_mm=args.width, garment_id=args.garment)
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        from thin_strokes import parse_flags
+        cfg = PipelineConfig(target_width_mm=args.width, garment_id=args.garment, **parse_flags(args.flag))
         result = run_stages(str(path), cfg)
         plan = plan_stitches(result, cfg)
         print(_row(f"ours {path.name} @ {args.width:g}mm",
