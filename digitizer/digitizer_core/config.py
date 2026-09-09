@@ -461,8 +461,17 @@ class PipelineConfig:
     # The number is gate 1's, and this is Kent's pick (2026-09-08): 1.0 mm,
     # `stage6_satin.PHOTO_MIN_SATIN_WIDTH_MM` (Law 31, an existing constant;
     # `2 * SATIN_MIN_CROSS_MM` is the same figure), against the pro's
-    # measured 0.82-0.90. None is today's behaviour, byte-identical; the
-    # flip is a sew-out's.
+    # measured 0.82-0.90. None is today's behaviour, byte-identical.
+    #
+    # MEASURED NEGATIVE AS WRITTEN (2026-09-09, scope-history): widening the
+    # polygon does not change the tier. `stage7_sequence` sends every
+    # auto-tier shape under `min_detail_mm**2` to the run tier before satin
+    # is asked, and classifies on the ARTWORK polygon, so a rescued glyph —
+    # under that floor by definition — sews as the same bean run on a fatter
+    # outline whatever this is set to. Fremont with `keep_thin_strokes` on:
+    # 10 members widened, the satin row byte-identical; ENTHUSIAST's subline
+    # legibility 1.00 -> 0.917. Do not set this expecting a column; the
+    # column needs a stage-7 tier rule for widened lettering, which is Kent's.
     lettering_min_column_mm: float | None = None
 
     # Stage 4

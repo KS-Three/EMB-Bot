@@ -3615,3 +3615,29 @@ share ONE definition of the thing measured, in one place
 built the two will disagree and nobody will know which one to believe. The
 engine caught the instrument here only because they were written apart.
 *(2026-09-08 — #427; scope-history's retraction entry has the tables)*
+
+
+## Widening a rescued glyph's polygon does not change how it is sewn (2026-09-09)
+
+`cfg.lettering_min_column_mm` (PR #428) raises a door-1 text cluster's
+regularized stroke radius to half a sewn floor less the fabric's pull, on
+the plan's premise that stage 5 adds the pull back and the glyph then sews
+as a satin column of the floor's width. Measured with `keep_thin_strokes`
+on: Fremont widens 10 of 32 cluster members and its satin row is
+byte-identical (2,578 columns, median 0.93 mm); the widened glyphs sew as
+the same bean runs on a fatter outline; ENTHUSIAST's subline legibility
+falls 1.00 → 0.917. **The tier is decided before the width is read.**
+`stage7_sequence` routes every auto-tier shape under `min_detail_mm²` to
+`run_outline` first, and classifies the rest on the ARTWORK polygon —
+deliberately, so a towel's pull does not flip satin to fill. A rescued glyph
+is under the area floor by definition, so no artwork width reaches a column.
+
+**The rule.** Anything that means to change WHICH TIER a shape sews in must
+be built where the tier is chosen (stage 7's routing and the classifier's
+input), not upstream in the geometry the classifier never reads at that
+size. A polygon change is measured on `tools/sewn_tiers.py` and
+`tools/satin_columns.py`'s satin row before it is called a sewing change;
+if those do not move, it was not one. The flag stays, default None, and the
+column is a tier rule for widened lettering — Kent's call, since it reverses
+two deliberate stage-7 decisions for one population.
+*(2026-09-09 — scope-history's entry has the table)*

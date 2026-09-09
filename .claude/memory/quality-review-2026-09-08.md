@@ -172,3 +172,26 @@ assumed). Scope-history's fourth 09-08 entry has the OFF → ON table.
 - Gaulke's roof line-art is "enclosed background" and outside both the
   absorb rule and the population; the instrument (full quantisation) counts
   it, the finder (enclosed excluded) does not — say which one you ran.
+
+## Plan A PR 4 — `cfg.lettering_min_column_mm`, BUILT and MEASURED NEGATIVE (PR #428, 2026-09-09)
+
+- The flag widens a door-1 cluster's regularized radius to half the sewn
+  floor less the pull. **It does not change the tier**: stage 7 routes every
+  auto-tier shape under `min_detail_mm²` to `run_outline` before satin is
+  asked and classifies on the ARTWORK polygon, so a rescued glyph sews as the
+  same bean run on a fatter outline. Fremont (keep_thin_strokes on): 10 of 32
+  members widened, satin row byte-identical; ENTHUSIAST's subline legibility
+  1.00 → 0.917. Default None; documented as a negative in config, plan §4d,
+  DOCTRINE, scope-history 09-09.
+- **What would deliver the column: a stage-7 tier rule** exempting a widened
+  door-1 member from the area routing and classifying it on its compensated
+  width. Reverses two deliberate decisions (area routing; artwork-polygon
+  classification, which exists for towels) for lettering only — Kent's call.
+- The shape-context gate refuses a deliberate doubling of a stroke by
+  construction (five of five); it now applies to the median redraw only and
+  the OCR gate judges the widening.
+- Pulls: knits 0.3, patch canvas 0.2, terry 0.6 (the floor is swallowed on
+  terry — nothing widens, correctly).
+- Lesson, now in DOCTRINE: a change meant to move a shape's TIER must be
+  built where the tier is chosen and measured on `sewn_tiers` / the satin
+  row before it is called a sewing change.
