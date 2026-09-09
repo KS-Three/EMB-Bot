@@ -165,6 +165,25 @@ and the ring's rises slightly for the same inscribed reason (0.085 → 0.097).
 Reading the boundary offset alone here would call PR 2 a regression; the
 vertex columns are the ones it is judged on.
 
+**PR 3 BUILT the same day, same flag** — `_refine_curves(accepted=...)`: a
+chord whose spanned raw points are at least 80% accepted is floored at
+0.25 px instead of 1.0, its inserted vertex is the midpoint's own sub-pixel
+point (the windowed mean is a staircase remedy and pulls a known point
+inward on a curve), and the `_CURVE_MIN_PX_PER_MM` gate lifts when the flag
+is on — chord by chord, the acceptance test replaces it. Where it bites is
+where the plan did not quite say: the 15° turn rule, not the floor, decides
+where splitting stops on a large radius (on the ladder's 14 mm circle the
+one-pixel floor and the quarter-pixel floor end at the same chords), and
+the floor governs on SMALL radii, where the 15° chord is under ~30 px and
+its sagitta under a pixel — the ring's 7 mm hole went 40 → 70 vertices at
+400 px, Hausdorff 0.285 → 0.140 mm, and at 800 the circle's boundary spread
+fell 0.047 → 0.025 (PR 2 alone: 0.033) with its Hausdorff halved, the
+ring's 0.070 → 0.044 with Hausdorff 0.218 → 0.094. The ribbon's spread
+holds at the OFF 3200 rung's level (0.065–0.066 against 0.067) and its
+roughness falls (7.97 → 5.86 at 400 px; 6.55 → 4.20 at 1600). Whether
+every rung now clears §5's criterion is in scope-history's entry for the
+day, with the full ladder and the tier diff.
+
 ## 4. What it should move — predictions, to be tested
 
 - `tools/edge_smoothness.py` `ragged_mm` down on every fixture between 5
@@ -241,7 +260,7 @@ is already true OFF from 400 px up, and the criterion is restated:
 |---|---|---|---|
 | 1 | **BUILT 2026-09-08** — the ladder, baseline numbers OFF, the criterion corrected (§5) | ~500 lines + 10 tests | none |
 | 2 | **BUILT 2026-09-09** — `cfg.subpixel_edges`, OFF, byte-identical off: the area-integral edge position, two windows, dropped isolated rejects, corners read along each side (§3's BUILT note); the ladder's vertex-only columns; 13 tests. Vertices on the edge at every rung measured; the boundary offset is now the simplifier's sag, PR 3's | ~330 + 13 tests | none |
-| 3 | the refinement floor and gate keyed to acceptance, same flag | ~60 + tests | none |
+| 3 | **BUILT 2026-09-09** — `_refine_curves(accepted=...)`: 0.25 px floor on ≥80%-accepted chords, the midpoint's own point inserted, the 20 px/mm gate lifted ON; bites on small radii where the 15° rule wanted chords the pixel floor refused (§3's BUILT note) | ~40 + 3 tests | none |
 | 4 | the flip: ladder ON, tier diff, `ragged_mm`/`roughness_deg` table, renders, golden churn | docs + goldens | Kent's approval of the churn |
 
 ## 8. Decisions for Kent

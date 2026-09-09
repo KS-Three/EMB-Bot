@@ -151,6 +151,17 @@ _CURVE_WINDOW_STEPS = 2
 _CURVE_MIN_PX_PER_MM = 20.0
 
 
+# `subpixel_edges` (plan `2026-09-08-subpixel-edges.md` §3 step 5, PR 3): a
+# chord whose raw points were accepted by the profile reading is known to
+# sub-pixel precision, so its sagitta floor is a quarter pixel instead of
+# the staircase's one — and the resolution gate above is replaced by this
+# test, chord by chord, since the floor's reason (the staircase amplitude)
+# no longer applies where the edge was read. Below the share the chord
+# keeps the one-pixel floor, which at ordinary resolution is above the
+# tolerance and refuses the split as it always did. Both raster quantities.
+_CURVE_SUBPIXEL_FLOOR_PX = 0.25
+_CURVE_ACCEPT_SHARE = 0.8
+
 # A shape this close to the satin minimum cross is not refined -- see the
 # note at the call site. 1.2 x SATIN_MIN_CROSS_MM = 0.6 mm.
 _REFINE_MIN_RIBBON_MM = 1.2 * machine.SATIN_MIN_CROSS_MM
@@ -173,7 +184,7 @@ def _wide_enough_to_refine(shell_px: np.ndarray, px_per_mm: float) -> bool:
 
 
 def _refine_curves(raw: np.ndarray, simplified: np.ndarray, eps_px: float,
-                   turn_deg: float) -> np.ndarray:
+                   turn_deg: float, accepted: np.ndarray | None = None) -> np.ndarray:
     """`simplified` (a Douglas-Peucker subset of the closed contour `raw`,
     both in px) with every edge that spans an ARC of the raw contour split
     at the arc's midpoint until each chord's sagitta is under
@@ -183,11 +194,22 @@ def _refine_curves(raw: np.ndarray, simplified: np.ndarray, eps_px: float,
     midpoint, a sub-pixel estimate of the curve instead of one staircase
     pixel. Straight edges never split; a chord that spans no raw points
     stays as it is. See `config.curve_turn_deg`.
+
+    `accepted` (per raw point, `subpixel.subpixel_contour`'s mask after
+    `drop_isolated_rejects`) keys the floor to what is known: a chord whose
+    spanned raw points are at least `_CURVE_ACCEPT_SHARE` accepted is
+    floored at `_CURVE_SUBPIXEL_FLOOR_PX`, and its inserted vertex is the
+    midpoint's own sub-pixel point when that point was accepted (the
+    windowed mean is a staircase remedy and would pull a known point inward
+    on a curve). Everything else is as without it.
     """
     n = len(raw)
     if n < 4 or len(simplified) < 3 or turn_deg <= 0.0:
         return simplified
     frac = math.radians(turn_deg) / 8.0
+    acc = None if accepted is None else np.asarray(accepted, dtype=bool)
+    if acc is not None and len(acc) != n:
+        acc = None
     # Map each simplified vertex back to its raw index by walking both rings
     # in lockstep -- Douglas-Peucker keeps input points, in order, so the
     # next vertex is the first exact match AHEAD of the last one. A nearest-
@@ -227,6 +249,12 @@ def _refine_curves(raw: np.ndarray, simplified: np.ndarray, eps_px: float,
             dev = np.abs((seg[:, 0] - a[0]) * ab[1] - (seg[:, 1] - a[1]) * ab[0]) / length
         return float(dev.max()), length
 
+    def floor_px(i: int, jj: int) -> float:
+        if acc is None or jj - i < 2:
+            return _CURVE_FLOOR_PX
+        share = float(acc[[k % n for k in range(i + 1, jj)]].mean())
+        return _CURVE_SUBPIXEL_FLOOR_PX if share >= _CURVE_ACCEPT_SHARE else _CURVE_FLOOR_PX
+
     stack: list[tuple[int, int]] = []
     for a, b in zip(idx, idx[1:] + [idx[0] + n]):
         stack.append((a, b))
@@ -237,12 +265,15 @@ def _refine_curves(raw: np.ndarray, simplified: np.ndarray, eps_px: float,
         while work:
             i, jj = work.pop()
             s, length = chord_dev(i, jj)
-            if jj - i <= 2 or s <= min(eps_px, max(_CURVE_FLOOR_PX, length * frac)):
+            if jj - i <= 2 or s <= min(eps_px, max(floor_px(i, jj), length * frac)):
                 pieces.append(i)
                 continue
             m = (i + jj) // 2
-            lo, hi = max(i, m - _CURVE_WINDOW_STEPS), min(jj, m + _CURVE_WINDOW_STEPS)
-            est[m % n] = raw[[k % n for k in range(lo, hi + 1)]].mean(axis=0)
+            if acc is not None and acc[m % n]:
+                est[m % n] = raw[m % n]
+            else:
+                lo, hi = max(i, m - _CURVE_WINDOW_STEPS), min(jj, m + _CURVE_WINDOW_STEPS)
+                est[m % n] = raw[[k % n for k in range(lo, hi + 1)]].mean(axis=0)
             work.append((m, jj))       # popped second: keeps chain order
             work.append((i, m))
         out.extend(pieces)
@@ -285,8 +316,6 @@ def vectorize(
     # `curve_turn_deg`: None, 0 and negatives all mean "today's polygon", and
     # so does a resolution under `_CURVE_MIN_PX_PER_MM` (see there).
     curve_turn = cfg.curve_turn_deg if (cfg.curve_turn_deg or 0.0) > 0.0 else None
-    if curve_turn is not None and p.px_per_mm < _CURVE_MIN_PX_PER_MM:
-        curve_turn = None
     # `subpixel_edges` (plan §3, PR 2): the raw contour's vertices move to
     # where the image's anti-alias ramp crosses halfway between the two side
     # colours before Douglas-Peucker sees them — see `subpixel.py`. It needs
@@ -305,6 +334,12 @@ def vectorize(
     # upscaled art the step declines there, and the polygon is today's.
     upscaled = bool(p.input_px_per_mm) and p.px_per_mm > p.input_px_per_mm * (1.0 + 1e-6)
     subpixel = bool(cfg.subpixel_edges) and not upscaled
+    # The refinement's resolution gate (`_CURVE_MIN_PX_PER_MM`) is what keeps
+    # its one-pixel floor from reading raster texture as arcs; with the
+    # profile reading on, the floor is keyed to acceptance chord by chord
+    # instead (PR 3, `_refine_curves`'s `accepted`), so the gate lifts.
+    if curve_turn is not None and not subpixel and p.px_per_mm < _CURVE_MIN_PX_PER_MM:
+        curve_turn = None
     lab_img = None
     if subpixel:
         h_img, w_img = p.rgb.shape[:2]
@@ -355,27 +390,28 @@ def vectorize(
                       and cv2.contourArea(contours[outer]) < min_detail_px2)
         eps = 0.5 if sub_detail else eps_px
 
-        def ring_source(contour: np.ndarray) -> tuple[np.ndarray, float | None]:
+        def ring_source(contour: np.ndarray) -> tuple[np.ndarray, float | None, np.ndarray | None]:
             """The points Douglas-Peucker simplifies for one ring — the raw
             pixel centres, or with `subpixel_edges` the sub-pixel vertices
-            — and the share of them accepted (None when the step did not
-            run). The near-floor lettering exemption below is judged on
-            the pixel-centre polygon, per ring, BEFORE the vertices move:
-            a ring within 20% of the minimum cross keeps today's polygon
-            here for the same reason it keeps it in the refinement."""
+            — the share of them accepted (None when the step did not run),
+            and the per-point accepted mask the refinement keys its floor
+            to. The near-floor lettering exemption below is judged on the
+            pixel-centre polygon, per ring, BEFORE the vertices move: a ring
+            within 20% of the minimum cross keeps today's polygon here for
+            the same reason it keeps it in the refinement."""
             raw_int = contour.reshape(-1, 2)
             if not subpixel:
-                return raw_int, None
+                return raw_int, None, None
             probe = cv2.approxPolyDP(contour, eps, True).reshape(-1, 2)
             if len(probe) >= 3 and not _wide_enough_to_refine(probe, p.px_per_mm):
-                return raw_int, None
+                return raw_int, None, None
             moved, accepted, corner = subpixel_contour(raw_int, lab_img, padded, (x0 - 1, y0 - 1),
                                                        min_contrast_de=cfg.merge_delta_e)
             share = float(accepted.mean()) if len(accepted) else 0.0
-            moved, _accepted = drop_isolated_rejects(moved, accepted, protect=corner)
-            return moved.astype(np.float32).reshape(-1, 1, 2), share
+            moved, accepted = drop_isolated_rejects(moved, accepted, protect=corner)
+            return moved.astype(np.float32).reshape(-1, 1, 2), share, accepted
 
-        outer_src, outer_share = ring_source(contours[outer])
+        outer_src, outer_share, outer_acc = ring_source(contours[outer])
         shell_px = cv2.approxPolyDP(outer_src, eps, True).reshape(-1, 2)
         if len(shell_px) < 3:
             note_drop(rm)
@@ -397,20 +433,22 @@ def vectorize(
         refine = curve_turn and not sub_detail and _wide_enough_to_refine(shell_px, p.px_per_mm)
         if refine:
             shell_px = _refine_curves(outer_src.reshape(-1, 2).astype(np.float64),
-                                      shell_px.astype(np.float64), eps, curve_turn)
+                                      shell_px.astype(np.float64), eps, curve_turn,
+                                      accepted=outer_acc)
         shell = _to_mm(shell_px, cx, cy, p.px_per_mm)
 
         holes = []
         for i in range(len(contours)):
             if hier[i][3] != outer:
                 continue
-            hole_src, _hole_share = ring_source(contours[i])
+            hole_src, _hole_share, hole_acc = ring_source(contours[i])
             h_px = cv2.approxPolyDP(hole_src, eps, True).reshape(-1, 2)
             if len(h_px) < 3:
                 continue
             if refine and _wide_enough_to_refine(h_px, p.px_per_mm):
                 h_px = _refine_curves(hole_src.reshape(-1, 2).astype(np.float64),
-                                      h_px.astype(np.float64), eps, curve_turn)
+                                      h_px.astype(np.float64), eps, curve_turn,
+                                      accepted=hole_acc)
             ring = _to_mm(h_px, cx, cy, p.px_per_mm)
             if Polygon(ring).area >= min_area_mm2:
                 holes.append(ring)

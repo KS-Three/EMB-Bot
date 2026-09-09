@@ -608,15 +608,24 @@ class PipelineConfig:
     # (Kent's 2026-09-03 exemption: the inflation is what keeps those
     # strokes above the cross floor) and sub-detail shapes keep their 0.5 px
     # epsilon. The share of a shell's vertices accepted is written to
-    # `meta["subpixel_accepted"]`. A source stage 1 UPSCALED to the
-    # resolution floor is declined whatever this says: the Lanczos ramp is
-    # manufactured and locates the resample's edge, not the artwork's — the
-    # ladder's 200 px rung got worse on every rectangle (plan §8 decision
-    # 3, measured 2026-09-09). Not a physical constant anywhere (the
-    # windows and offsets are raster quantities, the contrast floor is
-    # `merge_delta_e`). DEFAULT OFF and byte-identical off; the flip is
-    # plan §7 row 4 — Kent's approval of the golden churn, judged in CI
-    # with the per-shape tier diff (`tools/edge_truth_ladder.py --tiers`).
+    # `meta["subpixel_accepted"]`. The curve refinement above is keyed to
+    # that acceptance (plan §3 step 5, PR 3): a chord whose raw points were
+    # at least 80% accepted is floored at a quarter pixel instead of the
+    # staircase's one (`stage4_vectorize._CURVE_SUBPIXEL_FLOOR_PX`), its
+    # inserted vertex is the midpoint's own sub-pixel point, and the 20
+    # px/mm gate lifts — the floor's reason (the staircase) no longer
+    # applies where the edge was read, so arcs gain vertices at any
+    # resolution, on the chords that earned them, and the polygon follows
+    # its vertices onto the edge instead of sagging between them. A source
+    # stage 1 UPSCALED to the resolution floor is declined whatever this
+    # says: the Lanczos ramp is manufactured and locates the resample's
+    # edge, not the artwork's — the ladder's 200 px rung got worse on every
+    # rectangle (plan §8 decision 3, measured 2026-09-09). Not a physical
+    # constant anywhere (the windows, offsets and floors are raster
+    # quantities, the contrast floor is `merge_delta_e`). DEFAULT OFF and
+    # byte-identical off; the flip is plan §7 row 4 — Kent's approval of
+    # the golden churn, judged in CI with the per-shape tier diff
+    # (`tools/edge_truth_ladder.py --tiers`).
     subpixel_edges: bool = False
 
     # Stage 5 — sew order, underlap, pull compensation

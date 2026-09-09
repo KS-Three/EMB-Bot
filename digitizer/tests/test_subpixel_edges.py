@@ -1,5 +1,7 @@
 """`cfg.subpixel_edges` — sub-pixel, anti-alias-aware contour vertices
-(`digitizer_core/subpixel.py`, plan `2026-09-08-subpixel-edges.md` §3, PR 2).
+(`digitizer_core/subpixel.py`, plan `2026-09-08-subpixel-edges.md` §3, PR 2)
+and the curve refinement keyed to their acceptance (`stage4_vectorize.
+_refine_curves`, §3 step 5, PR 3).
 
 The contracts. On an anti-aliased disc the moved vertices sit on the
 circle to a fraction of a pixel where the pixel-centre trace carried the
@@ -22,6 +24,7 @@ import numpy as np
 import pytest
 
 from digitizer_core import PipelineConfig, digitize
+from digitizer_core import stage4_vectorize as s4
 from digitizer_core.subpixel import ACCEPT_WINDOW_PX, drop_isolated_rejects, subpixel_contour
 from digitizer_core.threads import rgb_to_lab
 
@@ -238,6 +241,69 @@ def rung_400(tmp_path_factory):
             "on": el.measure_rung("whitebg", 400, "flat", work, flag="subpixel_edges")}
 
 
+def _dp(points: np.ndarray, eps: float) -> np.ndarray:
+    return cv2.approxPolyDP(points.astype(np.float32).reshape(-1, 1, 2), eps, True).reshape(-1, 2)
+
+
+def _sag(poly: np.ndarray, c: float, r: float) -> float:
+    """Worst inward deviation of the polygon's edges from the circle, px."""
+    worst = 0.0
+    for a, b in zip(poly, np.roll(poly, -1, axis=0)):
+        for t in np.linspace(0.0, 1.0, 9):
+            p = a + t * (b - a)
+            worst = max(worst, r - float(np.hypot(p[0] - c, p[1] - c)))
+    return worst
+
+
+def test_the_refinement_floor_is_a_quarter_pixel_where_the_edge_was_read():
+    """PR 3. A small disc (r = 30 px, the whitebg ring's hole at 400 px),
+    rendered at 16x so its sub-pixel contour is known to ~0.04 px. At a
+    one-pixel tolerance Douglas-Peucker leaves chords sagging over half a
+    pixel, which today's refinement cannot touch — its floor IS a pixel, and
+    on a radius this small the 15 deg turn rule asks for less than that on
+    every chord under ~30 px — while keyed to acceptance the quarter-pixel
+    floor lets it split down to the turn rule and the sag falls under 0.4
+    px. `accepted=None`, or nothing accepted, is today's refinement
+    exactly. (On a 100 px radius the turn rule binds first and the floor
+    cannot show — the fixture's radius is the point.)"""
+    img, c, r = _disc(w=100, h=100, c=50, r=30, s=16)
+    mask = _mask(img)
+    raw = _trace(mask)
+    pts, accepted, _protect = subpixel_contour(raw, _lab(img), mask, (0, 0), min_contrast_de=CONTRAST)
+    pts, accepted = drop_isolated_rejects(pts, accepted)
+    pts = pts.astype(np.float32).astype(np.float64)     # the call site's round trip: DP keeps these exact values
+    eps = 1.0
+    simplified = _dp(pts, eps).astype(np.float64)
+    today = s4._refine_curves(pts, simplified, eps, 15.0)
+    keyed = s4._refine_curves(pts, simplified, eps, 15.0, accepted=accepted)
+    unkeyed = s4._refine_curves(pts, simplified, eps, 15.0, accepted=np.zeros(len(pts), bool))
+    assert np.array_equal(today, unkeyed), "nothing accepted must be today's refinement"
+    assert _sag(simplified, c, r) > 0.5, _sag(simplified, c, r)
+    assert np.array_equal(today, simplified), "the one-pixel floor leaves these chords alone"
+    assert _sag(keyed, c, r) < 0.4, (_sag(today, c, r), _sag(keyed, c, r))
+    assert len(keyed) > len(today)
+    # the inserted vertices are the raw sub-pixel points themselves
+    inserted = [v for v in keyed if not any(np.array_equal(v, q) for q in simplified)]
+    assert inserted and all(any(np.array_equal(v, q) for q in pts) for v in inserted)
+
+
+def test_the_resolution_gate_lifts_only_with_the_flag_on(tmp_path):
+    """Today's refinement refuses everything under 20 px/mm, and its
+    one-pixel floor refuses any chord shorter than ~30 px whatever the
+    resolution — so a small disc (r = 40 px, 4 px/mm) keeps its coarse
+    Douglas-Peucker polygon. Keyed to acceptance the floor is a quarter
+    pixel and the polygon reaches the 15 deg turn rule."""
+    img, _c, _r = _disc(w=100, h=100, c=50, r=40)            # the disc IS the art: 80 px at 20 mm = 4 px/mm
+    art = tmp_path / "disc.png"
+    cv2.imwrite(str(art), img)
+    no_turn, _p = digitize(art, PipelineConfig(target_width_mm=20.0, curve_turn_deg=0.0))
+    off, _p = digitize(art, PipelineConfig(target_width_mm=20.0, curve_turn_deg=15.0))
+    on, _p = digitize(art, PipelineConfig(target_width_mm=20.0, curve_turn_deg=15.0, subpixel_edges=True))
+    n = lambda res: len(max(res.regions, key=lambda r: r.polygon.area).polygon.exterior.coords) - 1  # noqa: E731
+    assert n(off) == n(no_turn), "under 20 px/mm the gate keeps the refinement off, flag off"
+    assert n(on) >= 22 and n(on) > n(off) + 4, (n(off), n(on))
+
+
 def test_on_the_400_rung_the_vertices_move_onto_the_edges(rung_400):
     """PR 2 moves the VERTICES; the polygon's remaining deviation is the
     simplifier's chord sag, which the plan's §5 assigns to PR 3 — so the
@@ -254,7 +320,12 @@ def test_on_the_400_rung_the_vertices_move_onto_the_edges(rung_400):
             name, off[name]["vertex_spread_mm"], on[name]["vertex_spread_mm"])
         assert abs(on[name]["vertex_offset_mm"]) < abs(off[name]["vertex_offset_mm"]), (
             name, off[name]["vertex_offset_mm"], on[name]["vertex_offset_mm"])
-    assert on["circle"]["spread_mm"] < off["circle"]["spread_mm"]
+    # With the refinement keyed to acceptance (PR 3) the boundary follows the
+    # vertices: the curves' spread and Hausdorff fall too.
+    for name in ("circle", "ring"):
+        assert on[name]["spread_mm"] < off[name]["spread_mm"], (name, off[name]["spread_mm"], on[name]["spread_mm"])
+        assert on[name]["hausdorff_mm"] < off[name]["hausdorff_mm"], (name, off[name]["hausdorff_mm"], on[name]["hausdorff_mm"])
+        assert on[name]["vertices"] > off[name]["vertices"]
     for name in ("bar", "purple", "orange"):
         assert on[name]["hausdorff_mm"] < off[name]["hausdorff_mm"] / 3, (
             name, off[name]["hausdorff_mm"], on[name]["hausdorff_mm"])

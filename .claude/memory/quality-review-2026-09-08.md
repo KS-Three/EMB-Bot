@@ -252,3 +252,20 @@ assumed). Scope-history's fourth 09-08 entry has the OFF → ON table.
 - Orange rectangle at 800 px: one corner 0.25 px short (its vertex max
   0.03 mm) — the only residual; not chased.
 
+## Plan B PR 3 — the refinement floor and gate keyed to acceptance, BUILT (2026-09-09)
+
+- `_refine_curves(accepted=...)`: per chord, ≥80% accepted raw points →
+  floor 0.25 px (else 1.0); inserted vertex = the midpoint's own sub-pixel
+  point when accepted; `_CURVE_MIN_PX_PER_MM` gate lifted when the flag is
+  on. OFF path byte-identical (`accepted=None`).
+- **Where it bites**: the 15° turn rule binds on large radii (r ≳ 117 px:
+  the 15° chord is longer than 30 px, whose sag exceeds the pixel floor
+  anyway), so the floor changes nothing there; on SMALL radii (the ring's
+  7 mm hole, r = 30 px at 400) the pixel floor blocked the 15° polygon and
+  the quarter-pixel floor allows it: 40 → 70 vertices, Hausdorff 0.285 →
+  0.140 mm. The unit test uses a 30 px disc for exactly this reason (a 100
+  px disc shows nothing).
+- cv2.approxPolyDP is not eps-minimal: on a smooth 16x disc it returns the
+  same 32-gon at eps 0.8, 1.0 and 1.5 — don't reason from eps to chord
+  count.
+

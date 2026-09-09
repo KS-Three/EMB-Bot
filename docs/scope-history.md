@@ -11329,3 +11329,103 @@ it should come after PR 3 (the refinement floor keyed to acceptance), not
 before: PR 2 alone moves the vertices and hands the simplifier a cleaner
 curve to sag under, and the ladder's flip criterion (every rung's spread ≤
 the OFF 3200 rung) is a chord question the refinement answers.
+
+
+## 2026-09-09 — `subpixel_edges` PR 3: the refinement keyed to acceptance, and where the 15° turn rule is the floor now
+
+PR 3 of `docs/superpowers/plans/2026-09-08-subpixel-edges.md` (§3 step 5),
+Kent's pick after PR 2, same flag, still OFF and byte-identical off.
+`stage4_vectorize._refine_curves` takes the per-point `accepted` mask
+`subpixel_contour` returns (after `drop_isolated_rejects`): a chord whose
+spanned raw points are at least 80% accepted is floored at 0.25 px instead
+of the staircase's 1.0, its inserted vertex is the midpoint's own sub-pixel
+point rather than the windowed mean (a staircase remedy that pulls a known
+point inward on a curve), and the `_CURVE_MIN_PX_PER_MM` gate lifts when
+the flag is on — the acceptance test replaces it chord by chord. Three
+tests; sixteen in the file.
+
+**Where the floor bites, and where it cannot.** The refinement splits a
+chord until its sagitta is under min(tolerance, max(floor, chord × turn/8)).
+On a large radius the turn term wins: the 15° chord on the ladder's 14 mm
+circle is 26 px at 400 px, its sagitta 0.85 px, above either floor, so the
+one-pixel and the quarter-pixel floor end at the same chords (the unit test
+had to move to a 30 px disc to see the floor at all). On a SMALL radius the
+15° chord is short and its sagitta under a pixel, which the old floor
+refused: the ring's 7 mm hole went 40 → 70 vertices at 400 px. So PR 3 is
+the refinement reaching the small curves and low resolutions the gate and
+floor kept it from, at the chord density the turn rule already asked for —
+not a finer polygon than 15° anywhere.
+
+**The ladder, whitebg and ribbon, flat lane, OFF → PR 2 → PR 3** (boundary
+spread mm; the §5 flip criterion is every rung ≤ OFF's 3200 rung: circle
+0.023, ring 0.031, ribbon 0.067):
+
+| shape | 200 (upscaled, declined) | 400 | 800 | 1600 | 3200 |
+|---|---|---|---|---|---|
+| circle | 0.202 → = → = | 0.057 → 0.048 → **0.036** | 0.047 → 0.033 → **0.025** | 0.035 → 0.034 → **0.024** | 0.023 → 0.021 → **0.022** ✓ |
+| ring | 0.197 → = → = | 0.085 → 0.097 → **0.050** | 0.070 → 0.077 → **0.044** | 0.063 → 0.073 → **0.039** | 0.031 → 0.037 → 0.037 |
+| ribbon | 0.182 → = → = | 0.057 → 0.071 → 0.065 ✓ | 0.067 → 0.076 → 0.072 | 0.065 → 0.072 → 0.066 ✓ | 0.067 → 0.077 → 0.077 |
+| bar / purple / orange | = | 0.007 / 0.004 / 0.007 (OFF 0.043 / 0.026 / 0.030) | 0.002 / 0.001 / 0.026 | 0.015 / 0.001 / 0.017 (= OFF) | 0.007 / 0.001 / 0.009 (= OFF) |
+
+Hausdorff, circle: 0.179 → 0.154 at 400, 0.181 → 0.096 at 800, 0.191 →
+0.102 at 1600, 0.096 → 0.083 at 3200; ring: 0.285 → 0.140, 0.218 → 0.094,
+0.162 → 0.086, 0.073 → 0.077. Boundary offset, circle: −0.045 → −0.055 at
+400 (PR 2 alone: −0.067), −0.047 → −0.049, −0.042 → −0.046, −0.040 → −0.043
+— still a shade more negative than OFF, because the polygon is inscribed
+where OFF's staircase corners leaned out, and much of PR 2's sag is gone;
+ring −0.02 at every rung (OFF −0.04 to 0); ribbon within 0.007 of zero
+everywhere.
+
+**Reading against the criterion.** The circle clears it at 3200 and falls
+toward it at every other rung (0.036 → 0.022, against OFF's 0.057 → 0.023);
+the ring does not (0.037–0.050 against 0.031) and the ribbon holds at the
+line (0.065–0.077 against 0.067), both for the same reason: what remains is
+the 15° turn rule's own chord sag — 0.06 mm on the ring's 7 mm hole, on any
+resolution, because the rule is in degrees — and the polygon is now exactly
+as fine as `curve_turn_deg` asks. Meeting the criterion on the ring would
+mean asking for a smaller turn (10° gives 0.027 mm of sag on that hole),
+which is a change to a default Kent flipped on 2026-09-03 and so his call
+for the flip, not this PR's. The ribbon's boundary numbers get slightly
+WORSE at 800 and 3200 while its vertices sit on the edge (vertex spread
+0.088 → 0.020 mm at 400, 0.024 → 0.007 at 1600) and its roughness falls
+(7.97 → 5.86; 6.55 → 4.20): its deviation concentrates at the caps, where
+the truth's own geometry is in question (cv2 draws round caps on a thick
+polyline; the generator's docstring says square — the memory trap from PR 1),
+and a trace more faithful to the raster deviates more from a wrong truth.
+To be settled on the flip by drawing the truth's caps the way cv2 does.
+
+**The per-shape tier diff, OFF → PR 3** (curve_tiers' cases at 80 mm;
+PR 2's numbers in the previous entry):
+
+| fixture | stitches | trims | vertices | `roughness_deg` | tier changes |
+|---|---|---|---|---|---|
+| whitebg | 4,558 → 4,550 | 6 → 6 | 113 → **166** | 1.61 → 4.18 | none |
+| alpha | 4,534 → 4,576 | 6 → 6 | 116 → 178 | 0.83 → 4.14 | none |
+| ribbon | 999 → 993 | 1 → 1 | 37 → 50 | 2.54 → 2.52 | none |
+| becker (upscaled) | identical | identical | identical | identical | none — declined |
+| fremont | 9,800 → 9,893 | 42 → 46 (PR 2: 56) | 1,501 → **2,170** | 2.73 → 2.81 | none |
+| drone | 16,294 → 16,395 | 88 → 99 | 1,318 → **2,487** | 7.61 → 7.42 | the same 3: S473606e7 satin → fill, S6c97ae19 satin → fill (pen 70 → 171), S7fe3ca35 fill → satin |
+| enthusiast | 2,998 → 3,113 | 20 → 25 | 541 → 837 | 9.41 → 9.06 | none |
+| gaulke | 10,229 → 10,346 | 30 → 25 | 1,076 → **2,744** | 8.90 → 10.32 | none |
+
+The vertex growth is the refinement running where the gate kept it off —
+every one of these logos sits at 8–19 px/mm — on chords the profile reading
+accepted: +45% on Fremont, +89% on the drone, +155% on gaulke. The 2026-09-03
+flip of the ungated refinement grew vertices 40–80% on the same fixtures by
+reading raster texture as arcs and was gated for it; this grows them by
+reading edges the image located, and the ladder says the polygon is truer
+for it on every shape with a known truth. Whether that many vertices is a
+cost at the stitches is the flip's question: stitch counts move by under
+1.5%, trims by −5 to +11 per design. `roughness_deg` did not move on
+whitebg or alpha between PR 2 and PR 3 (4.18, 4.14), so the inscribed-
+polygon explanation offered for it in the previous entry is incomplete for
+that stitch-trace metric; it is measured on the satin trace of one shape
+per fixture and belongs to the flip's inspection with the drone's three
+ribbons.
+
+**Disposition.** The flag ships OFF. The flip (PR 4) now has its full
+measurement: the vertices on the edge (PR 2), the chords following them
+where the turn rule allows (PR 3), the criterion met on the circle at 3200
+and bounded elsewhere by the 15° rule, three drone ribbons that change tier,
+and 45–155% more vertices on real logos. Kent's decisions: the flip itself;
+whether `curve_turn_deg` comes down with it; and the upscaled regime.
