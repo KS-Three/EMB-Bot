@@ -177,7 +177,8 @@ def measure(passes: list[list[tuple[float, float]]]) -> dict:
     return out
 
 
-def passes_from_plan(plan, kinds: frozenset | None = None
+def passes_from_plan(plan, kinds: frozenset | None = None,
+                     shape_ids: frozenset | set | None = None
                      ) -> list[list[tuple[float, float]]]:
     """Needle-down passes of one of our plans: every run's points, split at
     a lift (`run.jump`), so a column never spans a jump.
@@ -187,7 +188,9 @@ def passes_from_plan(plan, kinds: frozenset | None = None
     cannot run from a fill row into a satin cross, and stitching the two
     sides together would invent crossings at the seam. `None` (the default)
     is the whole plan, which is the only thing a machine file can be compared
-    against and is therefore what the file rows measure too.
+    against and is therefore what the file rows measure too. `shape_ids`
+    restricts to runs of those shapes the same way (a run of another shape
+    breaks the pass), so one cluster's columns can be read on their own.
     """
     passes: list[list[tuple[float, float]]] = []
     cur: list[tuple[float, float]] = []
@@ -200,6 +203,9 @@ def passes_from_plan(plan, kinds: frozenset | None = None
 
     for _block, run in plan.iter_runs():
         if kinds is not None and run.kind not in kinds:
+            flush()
+            continue
+        if shape_ids is not None and run.shape_id not in shape_ids:
             flush()
             continue
         if run.jump:

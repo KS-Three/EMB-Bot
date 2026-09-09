@@ -463,15 +463,33 @@ class PipelineConfig:
     # `2 * SATIN_MIN_CROSS_MM` is the same figure), against the pro's
     # measured 0.82-0.90. None is today's behaviour, byte-identical.
     #
-    # MEASURED NEGATIVE AS WRITTEN (2026-09-09, scope-history): widening the
-    # polygon does not change the tier. `stage7_sequence` sends every
+    # MEASURED NEGATIVE AS FIRST WRITTEN (2026-09-09, scope-history): widening
+    # the polygon alone did not change the tier. `stage7_sequence` sends every
     # auto-tier shape under `min_detail_mm**2` to the run tier before satin
     # is asked, and classifies on the ARTWORK polygon, so a rescued glyph —
-    # under that floor by definition — sews as the same bean run on a fatter
-    # outline whatever this is set to. Fremont with `keep_thin_strokes` on:
-    # 10 members widened, the satin row byte-identical; ENTHUSIAST's subline
-    # legibility 1.00 -> 0.917. Do not set this expecting a column; the
-    # column needs a stage-7 tier rule for widened lettering, which is Kent's.
+    # under that floor by definition — sewed as the same bean run on a fatter
+    # outline whatever this was set to (Fremont with `keep_thin_strokes` on:
+    # 10 members widened, the satin row byte-identical).
+    #
+    # THE TIER RULE (same day, Kent's call) — two stages, not one. A door-1
+    # member the floor widened carries `meta["text_cluster_widened_mm"]`
+    # (`stage5_overlap.widened_lettering`). Stage 7 exempts that population
+    # — only that population — from the sub-floor run routing and classifies
+    # AND sews it on its COMPENSATED polygon, the column this number sized;
+    # a widened glyph the satin tier still declines sews the bean run it
+    # sewed before, never a fill. Stage 5 lets the same population keep its
+    # growth over the ground already sewn beneath it: a glyph on a ground is
+    # a hole in that ground at its ORIGINAL width, and the "never grow back
+    # over a colour already down" clip cut every widened Fremont glyph back
+    # to a 0.28 mm hole before the stage-7 half could see it; and the layers
+    # around it plan against its sewn COLUMN, so a ground whose thread sews
+    # after the lettering is clipped to the column instead of burying it.
+    # Every untagged shape keeps every one of those rules exactly as it was,
+    # and None leaves nothing tagged, so both stages are byte-identical off.
+    # Measured on `tools/satin_columns.py` (the widened shapes' own columns)
+    # and `tools/legibility.py`, and RENDERED: at a 2.2 mm cap height the
+    # 1.0 mm column fills the counters (scope-history 09-09), which is why
+    # this stays None until a glyph-height gate exists.
     lettering_min_column_mm: float | None = None
 
     # Stage 4

@@ -59,7 +59,7 @@ from . import machine, stitches
 from .config import PipelineConfig
 from .fabrics import Fabric
 from .machine import FILL_ROW_MM, FILL_STITCH_MM, SATIN_MAX_WIDTH_MM, TINY_STITCH_MM
-from .stage5_overlap import PlannedRegion
+from .stage5_overlap import PlannedRegion, widened_lettering
 from .stage6_applique import applique_pass, nn_group_key
 from .stage6_blend import SourcePixels, blend_fill, region_rides_design_ramp
 from .stage6_border import border_runs, run_outline, silhouette_cap
@@ -1363,6 +1363,26 @@ def sequence(
     # The sewable-detail floor, as an area: stage 3 keeps shapes under it only
     # for the run tier, and this is where they are routed to it.
     detail_mm2 = cfg.min_detail_mm ** 2
+
+    # Widened lettering (`cfg.lettering_min_column_mm`, plan §4d). Measured
+    # 2026-09-09: widening a rescued glyph's polygon alone changed nothing it
+    # sewed — the area floor below routed it to the run tier before satin was
+    # asked, and the classifier read the artwork polygon, so Fremont's satin
+    # row was byte-identical with ten members widened. A door-1 cluster
+    # member the regularizer widened to the sewn-column floor
+    # (`stage5_overlap.widened_lettering`) is therefore exempt from the
+    # sub-floor run routing and is classified AND sewn on its COMPENSATED
+    # polygon — the column the widening was sized for, which stage 5 lets
+    # grow over the ground beneath it for the same population, the width the
+    # pro's file sews the same glyphs at. Every shape without the tag keeps
+    # both rules exactly as they are (the artwork-polygon classification
+    # exists so a towel's pull cannot flip a tier, and that stays true of
+    # everything but this population); with the flag off nothing carries the
+    # tag, so the ladder is byte-identical.
+    def routes_to_run(pr: PlannedRegion, pr_tier: str) -> bool:
+        return pr_tier == "run" or (pr_tier == "auto" and rescue
+                                    and pr.region.polygon.area < detail_mm2
+                                    and not widened_lettering(pr.region))
     # DT-first migration M1 (docs/dt-first-architecture-2026-08-01.md §2):
     # off by default, so `bool(cfg.extra.get(...))` reads False on both an
     # absent key and every falsy value a caller might pass. On, satin_shape
@@ -1483,12 +1503,17 @@ def sequence(
     # reroute (systematic, not degenerate) is bounded by the same argument —
     # every floored shape is under 1.0 mm wide, less than twice the 0.75 mm
     # inset, so its cover polygon erodes to empty rather than floating.
+    # A fourth, since the widened-lettering column route: a widened glyph
+    # predicted satin here that the classifier or `satin_shape` declines
+    # sews its bean run after all. Bounded the same way at today's floor —
+    # `covered_by` is the ARTWORK union, a widened artwork is `floor -
+    # 2 * pull` = 0.4 mm wide at 1.0 mm on a knit, under twice the inset —
+    # and unbounded only once the floor exceeds 1.5 mm + 2 * pull.
     run_tier_later: list[tuple[int, object]] = []
     if cfg.chain_links:
         for p in planned:
             p_tier = str(p.region.meta.get("tier", "auto")).lower()
-            if p_tier == "run" or (p_tier == "auto" and rescue
-                                   and p.region.polygon.area < detail_mm2):
+            if routes_to_run(p, p_tier):
                 run_tier_later.append((p.sew_index, p.region.polygon))
 
     # Group by (sew_index, step_key) rather than by sew_index alone — §0's
@@ -1540,14 +1565,15 @@ def sequence(
             # sews as a bean run instead — on the ARTWORK polygon, because a
             # run does not pull fabric and compensation would fatten a
             # thread-width stroke past its own letterform (see `run_outline`).
-            if tier == "run" or (tier == "auto" and rescue
-                                 and p.region.polygon.area < detail_mm2):
+            outline_tried = False
+            if routes_to_run(p, tier):
                 runs, report = run_outline(p.region.polygon, p.shape_id,
                                            entry=entry, trim_at_mm=trim_at)
                 if not report["empty"]:
                     report["as_run"] = 1
                     return runs, report, False
                 tier = "auto"
+                outline_tried = True
             # Satin or fill is decided per shape, not per design: one logo
             # routinely holds both a big filled emblem and thin satin lettering.
             # Classified on the ARTWORK polygon, not the stage-5 grown one —
@@ -1567,7 +1593,10 @@ def sequence(
             # the artwork polygon for the same no-compensation reason. An
             # outline the run tier cannot close falls through to fill rather
             # than silently dropping artwork, exactly like the satin branch.
-            ribbon = (classify_ribbon(p.region.polygon, satin_max,
+            # Widened lettering is classified on the polygon it will sew —
+            # `p.polygon`, the compensated column — see `widened_lettering`.
+            classify_poly = p.polygon if widened_lettering(p.region) else p.region.polygon
+            ribbon = (classify_ribbon(classify_poly, satin_max,
                                       design_class=design_class,
                                       per_stroke=cfg.satin_per_stroke)
                       if tier == "auto" and cfg.satin else None)
@@ -1619,7 +1648,7 @@ def sequence(
                     # `p.polygon` is the compensated outline, and pull comp
                     # grows a vectorization needle into a "stroke". The
                     # floor is the boundary tolerance stage 4 simplified to.
-                    art_poly=p.region.polygon,
+                    art_poly=classify_poly,
                     hairline_floor_mm=cfg.simplify_tol_mm,
                 )
                 # A ribbon the skeleton could not resolve still has to sew:
@@ -1631,6 +1660,18 @@ def sequence(
                     # the fill tier.
                     report["hairline_runs"] = sum(
                         1 for r in runs if r.kind == stitches.RUN)
+                    return runs, report, False
+            if tier == "auto" and not outline_tried and widened_lettering(p.region):
+                # Widened lettering the satin tier declined — the classifier
+                # read no ribbon in the column, or the skeleton could not
+                # resolve one — sews what it sewed before the floor: the bean
+                # run on its artwork outline. The floor can move a glyph from
+                # run to satin and nowhere else; a 1 mm tatami is not a tier
+                # it may fall to.
+                runs, report = run_outline(p.region.polygon, p.shape_id,
+                                           entry=entry, trim_at_mm=trim_at)
+                if not report["empty"]:
+                    report["as_run"] = 1
                     return runs, report, False
             # The ring tier. Tried first when it is on, and only when it is:
             # every golden in the suite is pinned to tatami, and the branch is

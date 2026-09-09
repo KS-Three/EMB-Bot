@@ -195,3 +195,39 @@ assumed). Scope-history's fourth 09-08 entry has the OFF → ON table.
 - Lesson, now in DOCTRINE: a change meant to move a shape's TIER must be
   built where the tier is chosen and measured on `sewn_tiers` / the satin
   row before it is called a sewing change.
+
+## Plan A PR 5 — the tier rule for widened lettering, BUILT (2026-09-09, the PR after #428)
+
+- Kent's pick after #428's negative. Two stages: stage 7 exempts a widened
+  door-1 member (`stage5_overlap.widened_lettering`) from the sub-floor run
+  routing and classifies/sews it on `PlannedRegion.polygon` (compensated),
+  with a bean-run fallback when the satin tier declines; stage 5 skips the
+  "never grow back over a colour already down" clip for the same population.
+- **The stage-5 half was the one nobody named.** The rule passed on bars
+  over bare background and sewed nothing on Fremont: every widened glyph
+  reached the classifier 0.28 mm wide — the HOLE its ground was vectorized
+  with, not the 0.6 mm widened polygon. Found by instrumenting the
+  classifier's input. Lesson in DOCTRINE: measure the grown polygon, and test
+  the fixture the feature is FOR (lettering on a ground).
+- Fremont: 8 of 10 widened glyphs sew 169 columns at 0.91 mm median (pro
+  0.82–0.90); the B (aspect) and one stroke (dt_irregular) fall back to runs.
+  Routed legibility 0.551 → 0.577; stitches 16,006 → 15,823.
+- ENTHUSIAST: 1.6 mm subline smears — 76 columns, median 0.63, p10 0.16,
+  legibility 1.00 → 0.72. The floor needs a glyph-height gate (new constant,
+  gate 1, Kent's) before it can be on. Flag stays None.
+- `satin_columns.passes_from_plan(shape_ids=...)` reads one cluster's columns.
+- **The review found the fourth decision: sew order.** Lettering thread
+  first (largest-area-first when it holds the biggest shape) → the ground
+  grew over the column, clipped only by the 0.4 mm artwork → 79% buried,
+  instrument still said "column". Fixed in stage 5's layer unions
+  (`sewn_footprint`: a widened member's column replaces its artwork in
+  `earlier`/`later`/`covered_by`); test asserts the premise and the exposed
+  width. Also `_comp_axis` → isotropic satin for widened members.
+- **Rendered, and the numbers are not the verdict**: at 2.2 mm cap height
+  the 1.0 mm column fills Fremont's counters (ON EST reads "OS"); the pro's
+  file (not in the repo) was recorded legible at 0.82–0.90 on 09-03 — the
+  crops put that to Kent with the height gate.
+- Pre-existing, not this PR: `forced_class="photo_subject"` on the small
+  synthetic bars fixture segfaults (exit 139) in
+  `stage2_photo_segment._seeds_superpixels`; reproduced 2026-09-09.
+
