@@ -1180,22 +1180,41 @@ def _cluster_junctions(edges: list[dict], max_len_px: float,
     mm lookup; the first member in raster order without it), and every arm
     that reached another member is re-rooted at the representative BY WAY OF
     the contracted stubs' own pixels, so its path stays the skeleton's and
-    only its endpoint moves. The short edges themselves are gone. Edges the
-    clustering does not touch are handed back as they were, so a shape with
-    no split junction is byte-identical to before this existed;
-    `textcluster` composes `_skeleton_edges` and `_merge_through_junctions`
-    without this pass and is untouched.
+    only its endpoint moves. The short edges themselves are gone.
+
+    A LOOP inside a junction goes with them: an edge that leaves a node and
+    comes back to the same node (or to another member of its cluster) within
+    twice `max_len_px` is the skeleton circling a two- or three-pixel hole of
+    its own making — the same artefact `_collapse_pinholes` removes at one
+    pixel — and it counts two arms at the node for nothing. On
+    `enthusiast_logo`'s emblem bracket at 150 mm the tab's tip is such a
+    loop (paths of 4.4 and 6.7 px between two nodes a pixel apart, plus a
+    4.8 px self-loop), which made the tip a five-arm junction instead of a
+    cap: the stroke ended there uncapped, and contracting the stub alone
+    pulled it 0.74 mm shorter and left 7 mm2 bare (2026-09-09). With the
+    loop gone the node holds one arm, and `_merge_through_junctions` caps and
+    extends it to the tip as it does at any flat end.
+
+    Edges the clustering does not touch are handed back as they were, so a
+    shape with no split junction and no junction loop is byte-identical to
+    before this existed; `textcluster` composes `_skeleton_edges` and
+    `_merge_through_junctions` without this pass and is untouched.
     """
+    lengths = [sum(math.dist(a, b) for a, b in zip(e["pts"], e["pts"][1:]))
+               for e in edges]
     short: list[int] = []
     for i, e in enumerate(edges):
         if e["closed"] or e["free_start"] or e["free_end"]:
             continue
         if len(e["pts"]) < 2 or e["pts"][0] == e["pts"][-1]:
             continue
-        length = sum(math.dist(a, b) for a, b in zip(e["pts"], e["pts"][1:]))
-        if length <= max_len_px:
+        if lengths[i] <= max_len_px:
             short.append(i)
-    if not short:
+    loops = [i for i, e in enumerate(edges)
+             if not e["closed"] and not e["free_start"] and not e["free_end"]
+             and len(e["pts"]) >= 2 and e["pts"][0] == e["pts"][-1]
+             and lengths[i] <= 2.0 * max_len_px]
+    if not short and not loops:
         return edges
 
     parent: dict[tuple[int, int], tuple[int, int]] = {}
@@ -1239,7 +1258,7 @@ def _cluster_junctions(edges: list[dict], max_len_px: float,
                 frontier.append(nb)
 
     out: list[dict] = []
-    drop = set(short)
+    drop = set(short) | set(loops)
     for i, e in enumerate(edges):
         if i in drop:
             continue
@@ -1251,6 +1270,9 @@ def _cluster_junctions(edges: list[dict], max_len_px: float,
         if head is None and tail is None:
             out.append(e)
             continue
+        if (head is not None and tail is not None and head[0] == tail[0]
+                and lengths[i] <= 2.0 * max_len_px):
+            continue        # a loop between two members of one junction
         pts = list(e["pts"])
         if head is not None and len(head) > 1:
             # the route runs rep -> member; the arm starts at the member

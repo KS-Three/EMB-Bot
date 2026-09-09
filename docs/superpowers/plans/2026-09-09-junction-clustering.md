@@ -52,13 +52,20 @@ axis the review asks for is PR 3 of this plan, not this one.
 | drone | 43 | 88 | 80 | 76 | 9 |
 | enthusiast (93 mm) | 12 | 25 | 20 | 17 | 5 |
 | fremont | 19 | 61 | 45 | 34 | 0 |
+| gaulke | — | — | — | 7 | 2 |
+| meadow | — | — | — | 25 | 0 |
+| sunset | — | — | — | 4 | 0 |
 | whitebg / alpha / ribbon | 1 each | 1 each | 0 | 0 | 0 |
 
-A stub of a quarter to half a half-width between two branch pixels is not a
-stroke; it is the raster's rendering of one junction whose arms meet
-off-centre or whose width is even in pixels. Paired per pixel, a crossing
-gives three strokes (one bar and two half-bars) and a five-way meeting a
-chain of welds nobody drew.
+Over all 247 node-to-node edges ON (228 OFF) the length/half-width
+histogram has a bump at 0.2–0.4 (37 edges), a trough at 0.4–0.5 (5) and a
+rising tail from 0.5 up (8, 9, 9, 10 in the next four bins, 80 past 5).
+Every edge in the bump is also shorter than half the distance transform at
+its own ends, so the two branch pixels sit inside one blob. That is the
+raster's rendering of one junction whose arms meet off-centre or whose width
+is even in pixels, not a stroke. Paired per pixel, a crossing gives three
+strokes (one bar and two half-bars) and a five-way meeting a chain of welds
+nobody drew. The threshold is the trough: 0.5 half-widths.
 
 ## 2. Why the current pipeline cannot do this itself
 
@@ -84,8 +91,17 @@ graph problem.
 3. every arm that reached another member is re-rooted at the representative
    BY WAY OF the stubs' own pixels — its path stays the skeleton's, only its
    endpoint moves — and the stubs themselves are gone;
-4. an edge list with no stub is handed back as the same object, so a shape
-   with no split junction is byte-identical to before.
+4. a **loop inside a junction** — an edge that leaves a node and returns to
+   the same node or cluster within twice `max_len_px` — is dropped too: it
+   is the skeleton circling a two- or three-pixel hole of its own making
+   (the pinhole diamond's larger cousins, sizes 2–4 on becker) and counts
+   two arms for nothing. Found the same day on the emblem bracket's tab at
+   150 mm: the tip is such a loop, which made it a five-arm junction instead
+   of a cap, and contracting its stub alone shortened the stroke 0.74 mm
+   and left 7 mm² bare. With the loop gone the node holds one arm and
+   `_merge_through_junctions` caps and extends it to the tip.
+5. an edge list with no stub and no junction loop is handed back as the
+   same object, so a shape with neither is byte-identical to before.
 
 `max_len_px = max(_JUNCTION_CLUSTER_MIN_PX, _JUNCTION_CLUSTER_HALFWIDTHS ×
 half_px)`. The fraction is read off the corpus (§1, §5) and is bounded above
