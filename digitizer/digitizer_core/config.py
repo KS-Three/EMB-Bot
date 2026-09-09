@@ -590,6 +590,34 @@ class PipelineConfig:
     # px at <= 100 mm -- a cliff a 1 mm width nudge can cross, changing
     # every curve's polygon (review of PR #330; Kent's to accept).
     curve_turn_deg: float | None = 15.0
+    # Sub-pixel, anti-alias-aware contour vertices (`digitizer_core/
+    # subpixel.py`; plan `docs/superpowers/plans/2026-09-08-subpixel-edges.md`
+    # §3, PR 2). Stage 4 traces the LABEL mask, so every vertex it hands
+    # Douglas-Peucker is a pixel centre: the polygon carries the raster's
+    # staircase and sits half a pixel inside every filled edge, and the
+    # curve refinement above cannot go under one pixel because it averages
+    # those same centres (`_CURVE_MIN_PX_PER_MM`). The edge's true position
+    # is in the anti-alias ramp the mask thresholded away. ON, each raw
+    # vertex is moved to where the image, sampled along the local normal in
+    # Lab, crosses halfway between its two side colours — accepted only when
+    # that profile is monotonic and crosses once within 0.75 px, else the
+    # pixel centre stays (ringing, texture, a third colour, a stroke under
+    # ~3 px with no plateau) — and the SAME simplifier runs on those points
+    # at the same 0.2 mm. Nothing is smoothed (a measured negative,
+    # DOCTRINE). Per ring, near-floor lettering keeps today's polygon
+    # (Kent's 2026-09-03 exemption: the inflation is what keeps those
+    # strokes above the cross floor) and sub-detail shapes keep their 0.5 px
+    # epsilon. The share of a shell's vertices accepted is written to
+    # `meta["subpixel_accepted"]`. A source stage 1 UPSCALED to the
+    # resolution floor is declined whatever this says: the Lanczos ramp is
+    # manufactured and locates the resample's edge, not the artwork's — the
+    # ladder's 200 px rung got worse on every rectangle (plan §8 decision
+    # 3, measured 2026-09-09). Not a physical constant anywhere (the
+    # windows and offsets are raster quantities, the contrast floor is
+    # `merge_delta_e`). DEFAULT OFF and byte-identical off; the flip is
+    # plan §7 row 4 — Kent's approval of the golden churn, judged in CI
+    # with the per-shape tier diff (`tools/edge_truth_ladder.py --tiers`).
+    subpixel_edges: bool = False
 
     # Stage 5 — sew order, underlap, pull compensation
     # Which garment/fabric the design is going on. The fabric preset supplies

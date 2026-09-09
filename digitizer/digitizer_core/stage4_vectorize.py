@@ -26,6 +26,7 @@ from .config import PipelineConfig
 from .regions import Region, assign_shape_ids
 from .stage1_prep import Prep
 from .stage3_segment import RegionMask
+from .subpixel import drop_isolated_rejects, subpixel_contour
 from .threads import chart_for, rgb_to_lab
 from .warnings_codes import (COLOR_CAP_APPLIED,
                              THREAD_RESNAPPED_AFTER_DRIFT, warn)
@@ -286,6 +287,28 @@ def vectorize(
     curve_turn = cfg.curve_turn_deg if (cfg.curve_turn_deg or 0.0) > 0.0 else None
     if curve_turn is not None and p.px_per_mm < _CURVE_MIN_PX_PER_MM:
         curve_turn = None
+    # `subpixel_edges` (plan §3, PR 2): the raw contour's vertices move to
+    # where the image's anti-alias ramp crosses halfway between the two side
+    # colours before Douglas-Peucker sees them — see `subpixel.py`. It needs
+    # every boundary pixel (CHAIN_APPROX_NONE) and the prepped image in Lab,
+    # converted once here. OFF, none of this runs and the trace is
+    # byte-identical.
+    # Not on a source stage 1 UPSCALED to the resolution floor: the Lanczos
+    # ramp is manufactured, about twice the width of the coverage ramp the
+    # step reads and ringing at both ends, and the edge it locates is the
+    # resample's, not the artwork's — measured on the ladder's 200 px rung
+    # (2.1 px/mm in, x1.91 to 4.0; scope-history 2026-09-09): the bar's
+    # polygon went from 4 vertices to 11, the orange rectangle's spread from
+    # 0.063 to 0.174 mm and its Hausdorff from 0.34 to 0.51, while every
+    # rung drawn at its own resolution improved. That regime is the plan's
+    # §8 decision 3 (Becker-class sources); until it is measured on real
+    # upscaled art the step declines there, and the polygon is today's.
+    upscaled = bool(p.input_px_per_mm) and p.px_per_mm > p.input_px_per_mm * (1.0 + 1e-6)
+    subpixel = bool(cfg.subpixel_edges) and not upscaled
+    lab_img = None
+    if subpixel:
+        h_img, w_img = p.rgb.shape[:2]
+        lab_img = rgb_to_lab(p.rgb.reshape(-1, 3)).reshape(h_img, w_img, 3).astype(np.float32)
     min_area_mm2 = (cfg.min_detail_mm ** 2) * 0.25  # a sliver after simplification
     min_detail_px2 = (cfg.min_detail_mm * p.px_per_mm) ** 2
 
@@ -310,7 +333,7 @@ def vectorize(
         padded[1:-1, 1:-1] = rm.crop
         contours, hierarchy = cv2.findContours(
             padded, cv2.RETR_CCOMP,
-            cv2.CHAIN_APPROX_NONE if curve_turn else cv2.CHAIN_APPROX_SIMPLE,
+            cv2.CHAIN_APPROX_NONE if (curve_turn or subpixel) else cv2.CHAIN_APPROX_SIMPLE,
             offset=(x0 - 1, y0 - 1),
         )
         if not contours or hierarchy is None:
@@ -332,7 +355,28 @@ def vectorize(
                       and cv2.contourArea(contours[outer]) < min_detail_px2)
         eps = 0.5 if sub_detail else eps_px
 
-        shell_px = cv2.approxPolyDP(contours[outer], eps, True).reshape(-1, 2)
+        def ring_source(contour: np.ndarray) -> tuple[np.ndarray, float | None]:
+            """The points Douglas-Peucker simplifies for one ring — the raw
+            pixel centres, or with `subpixel_edges` the sub-pixel vertices
+            — and the share of them accepted (None when the step did not
+            run). The near-floor lettering exemption below is judged on
+            the pixel-centre polygon, per ring, BEFORE the vertices move:
+            a ring within 20% of the minimum cross keeps today's polygon
+            here for the same reason it keeps it in the refinement."""
+            raw_int = contour.reshape(-1, 2)
+            if not subpixel:
+                return raw_int, None
+            probe = cv2.approxPolyDP(contour, eps, True).reshape(-1, 2)
+            if len(probe) >= 3 and not _wide_enough_to_refine(probe, p.px_per_mm):
+                return raw_int, None
+            moved, accepted, corner = subpixel_contour(raw_int, lab_img, padded, (x0 - 1, y0 - 1),
+                                                       min_contrast_de=cfg.merge_delta_e)
+            share = float(accepted.mean()) if len(accepted) else 0.0
+            moved, _accepted = drop_isolated_rejects(moved, accepted, protect=corner)
+            return moved.astype(np.float32).reshape(-1, 1, 2), share
+
+        outer_src, outer_share = ring_source(contours[outer])
+        shell_px = cv2.approxPolyDP(outer_src, eps, True).reshape(-1, 2)
         if len(shell_px) < 3:
             note_drop(rm)
             continue
@@ -352,7 +396,7 @@ def vectorize(
         # gating; 28 either way once the rail fix added two crosses).
         refine = curve_turn and not sub_detail and _wide_enough_to_refine(shell_px, p.px_per_mm)
         if refine:
-            shell_px = _refine_curves(contours[outer].reshape(-1, 2).astype(np.float64),
+            shell_px = _refine_curves(outer_src.reshape(-1, 2).astype(np.float64),
                                       shell_px.astype(np.float64), eps, curve_turn)
         shell = _to_mm(shell_px, cx, cy, p.px_per_mm)
 
@@ -360,11 +404,12 @@ def vectorize(
         for i in range(len(contours)):
             if hier[i][3] != outer:
                 continue
-            h_px = cv2.approxPolyDP(contours[i], eps, True).reshape(-1, 2)
+            hole_src, _hole_share = ring_source(contours[i])
+            h_px = cv2.approxPolyDP(hole_src, eps, True).reshape(-1, 2)
             if len(h_px) < 3:
                 continue
             if refine and _wide_enough_to_refine(h_px, p.px_per_mm):
-                h_px = _refine_curves(contours[i].reshape(-1, 2).astype(np.float64),
+                h_px = _refine_curves(hole_src.reshape(-1, 2).astype(np.float64),
                                       h_px.astype(np.float64), eps, curve_turn)
             ring = _to_mm(h_px, cx, cy, p.px_per_mm)
             if Polygon(ring).area >= min_area_mm2:
@@ -400,6 +445,8 @@ def vectorize(
             meta = {"layer": rm.layer}
             if sub_detail:
                 meta["rescued_small_shape"] = True
+            if outer_share is not None:
+                meta["subpixel_accepted"] = round(outer_share, 4)
             regions.append(
                 Region(
                     shape_id="",

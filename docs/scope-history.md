@@ -11208,3 +11208,124 @@ default None; the tier rule ships behind it, byte-identical off. Before it
 can be on, the floor needs a glyph-height gate (the pro's proportion on
 Fremont is roughly three column widths of cap height) — a new constant, so
 gate 1 and Kent's call, put to him with this entry.
+
+
+## 2026-09-09 — `subpixel_edges`: stage 4's vertices move onto the anti-alias edge, and the polygon becomes inscribed
+
+PR 2 of `docs/superpowers/plans/2026-09-08-subpixel-edges.md` (§3), Kent's
+pick after #429: `cfg.subpixel_edges`, `digitizer_core/subpixel.py`,
+default OFF and byte-identical off (the flat and photo goldens hold; a
+mock proves the step never runs OFF). Stage 4 traces the label mask, so
+every vertex it hands Douglas-Peucker is a pixel centre; ON, each raw
+vertex is read along its normal in Lab and, where the profile is monotonic
+with one crossing and both plateaus inside the window, moved to the edge
+position area conservation gives. The same simplifier then runs at the
+same 0.2 mm; nothing is smoothed. The near-floor lettering exemption holds
+per ring, judged on the pixel-centre polygon before anything moves.
+Fourteen tests.
+
+**Three constructions the plan did not name, each measured before it went
+in** (plan §3's BUILT note has the numbers): the 0.5 crossing of the
+interpolated profile is biased ±0.09 px and the area integral is not
+(straight edge at four sub-pixel phases: −0.05..+0.01 px; 16x disc: 0.037
+px scatter, 0.014 bias); a rejected vertex left between accepted neighbours
+is an inward spike the simplifier keeps, so runs of at most two are dropped
+(the 400 px circle's Hausdorff 0.18 → 0.24 mm before that); a corner read
+along one blended normal is bevelled, so a vertex whose side chords turn
+≥ 60° is read along each side and placed where the offset side lines meet
+(the 800 px bar's Hausdorff 0.09 → 0.18 mm before, 0.004 after). A second,
+wider window runs where the first refuses, because a LABEL can sit a
+pixel off its edge (stage 2 gives a halo pixel to the darker cluster: the
+whitebg ring's enclosed white disc traces 0.8–1.0 px inside its anti-alias
+edge and a ±1.5 px window refused 53% of its vertices).
+
+**The ladder, whitebg, flat lane, OFF → ON.** The ladder gained vertex-only
+columns (`vertex_offset_mm`, `vertex_spread_mm`, `vertex_max_mm`) because
+the polygon's VERTICES and its BOUNDARY now say different things:
+
+| shape | rung | boundary spread mm | vertex spread mm | Hausdorff mm | boundary offset mm |
+|---|---:|---|---|---|---|
+| circle | 400 | 0.057 → 0.048 | 0.049 → **0.013** | 0.179 → 0.240 | −0.045 → **−0.067** |
+| circle | 800 | 0.047 → 0.033 | 0.023 → 0.007 | 0.181 → 0.181 | −0.047 → −0.053 |
+| circle | 1600 / 3200 | 0.035 → 0.034 / 0.023 → 0.021 | — | 0.191 → 0.197 / 0.096 → 0.083 | −0.042 → −0.051 / −0.040 → −0.043 |
+| ring | 400 | 0.085 → **0.097** | 0.061 → **0.014** | 0.285 → 0.218 | −0.040 → −0.011 |
+| ring | 800 | 0.070 → 0.077 | 0.032 → 0.007 | 0.218 → 0.171 | −0.012 → +0.004 |
+| ring | 1600 / 3200 | 0.063 → 0.073 / 0.031 → 0.037 | — | 0.162 → 0.152 / 0.073 → 0.077 | +0.001 → +0.004 / −0.018 → −0.019 |
+| bar | 400 / 800 | 0.043 → 0.007 / 0.015 → 0.002 | 0.077 → 0.009 / 0.013 → 0.002 | 0.119 → **0.021** / 0.089 → **0.004** | −0.084 → +0.006 / −0.074 → −0.002 |
+| purple | 400 / 800 | 0.026 → 0.004 / 0.039 → 0.001 | 0.000 → 0.000 / 0.045 → 0.000 | 0.179 → **0.011** / 0.060 → 0.002 | −0.135 → −0.003 / −0.036 → −0.001 |
+| orange | 400 / 800 | 0.030 → 0.007 / 0.040 → 0.026 | 0.026 → 0.006 / 0.039 → 0.013 | 0.179 → **0.015** / 0.088 → 0.088 | −0.149 → −0.007 / −0.030 → −0.009 |
+| dot (1 mm) | all | identical | identical | identical | identical |
+| ribbon | 400 / 800 / 1600 / 3200 | 0.057 → 0.071 / 0.067 → 0.076 / 0.065 → 0.072 / 0.067 → 0.077 | — | 0.141 → 0.184 / 0.235 → 0.189 / 0.158 → 0.184 / 0.156 → 0.195 | −0.021 → −0.002 / −0.020 → −0.005 / +0.001 → +0.005 / −0.001 → −0.003 |
+
+Read it in two halves. **The vertices land on the edges**: the circle's
+vertex spread falls 0.049 → 0.013 mm at 400 px and 0.023 → 0.007 at 800,
+the ring's 0.061 → 0.014 and 0.032 → 0.007, the rectangles reach their
+true corners (purple's four vertices to 0.000 mm) and lose the half-pixel
+inward bias (offsets −0.08..−0.15 → within 0.01). **The boundary tells the
+simplifier's story**: with its vertices on the edge the polygon is
+INSCRIBED, so every chord sags inward by the 0.2 mm tolerance where the
+staircase's outer corner pixels used to hang the chords further out — the
+circle's boundary offset gets more negative at every rung (−0.045 →
+−0.067 at 400), the ring's and the ribbon's boundary spreads rise by
+0.005–0.014 mm from 400 px up, and the ribbon's Hausdorff rises with them.
+That is the floor §5 named after PR 1 ("the simplifier is its floor") and
+PR 3 is for; the plan predicted PR 2 alone would move the 200/400 rungs,
+and it moves the vertices at every rung while the chords stay where the
+tolerance puts them. Reading the boundary offset alone would call this a
+regression; the vertex columns exist so nobody has to.
+
+**The 200 px rung is a different regime, and it is now declined.** At
+2.1 px/mm in, Lanczos-upscaled ×1.91 to the 4.0 floor, the curves improved
+(circle spread 0.202 → 0.101, ring 0.197 → 0.143, ribbon 0.182 → 0.101)
+and every rectangle got worse: the bar's polygon 4 → 11 vertices, spread
+0.031 → 0.091; purple 4 → 9; orange 4 → 8, spread 0.063 → 0.174, Hausdorff
+0.34 → 0.51. The manufactured ramp is about twice the width of a coverage
+ramp and rings at both ends, and the edge it locates is the resample's.
+`vectorize` declines the step on any source stage 1 upscaled, so the 200
+rung — and Becker at 1.46 px/mm — is byte-identical OFF. Plan §8 decision 3
+(Becker-class sources in the flip, or excluded until measured) now has its
+measurement; it stays Kent's.
+
+**The per-shape tier diff (`edge_truth_ladder.py --tiers`, curve_tiers'
+cases at 80 mm), OFF → ON, the doctrine's requirement for any stage-4
+geometry change:**
+
+| fixture | stitches | trims | vertices | `roughness_deg` | tier changes |
+|---|---|---|---|---|---|
+| whitebg | 4,558 → 4,552 | 6 → 6 | 113 → 119 | 1.61 → **4.18** | none |
+| alpha | 4,534 → 4,575 | 6 → 6 | 116 → 121 | 0.83 → **4.14** | none |
+| ribbon | 999 → 997 | 1 → 1 | 37 → 38 | 2.54 → 2.35 | none |
+| becker (1.46 px/mm, upscaled) | identical | identical | identical | identical | none — declined |
+| fremont | 9,800 → 9,991 | 42 → **56** | 1,501 → 1,695 | 2.73 → 3.11 | none |
+| drone | 16,294 → 16,026 | 88 → 96 | 1,318 → 1,350 | 7.61 → 7.52 | **3**: S473606e7 satin → fill (2.7 mm², pen 28 → 44), S6c97ae19 satin → fill (15.8 mm², pen 70 → 171), S7fe3ca35 fill → satin (3.4 mm², pen 59 → 22); one 7.4 mm² shape newly dropped, one 1.7 mm² dropped shape gone |
+| enthusiast | 2,998 → 3,175 | 20 → 22 | 541 → 543 | 9.41 → 9.80 | none |
+
+Two of these contradict §4's predictions and both have the same cause.
+`roughness_deg` (`tools/curve_fidelity.py`) is the mean change of turn
+between consecutive vertices of the stitch traces — "whether the path is
+polygonised at all" — and a clean inscribed polygon with the same vertex
+count concentrates its whole turn at each vertex, which that metric reads
+as MORE polygonised than the staircase-derived polygon whose ±0.5 px
+scatter spread the turn out. It rises on whitebg and alpha for the same
+reason the circle's boundary offset falls: PR 2 makes the polygon exactly
+what the simplifier draws; PR 3 puts the arc vertices in. The drone's
+three flips are the classifier's boundary-detail sensitivity (DOCTRINE:
+intrinsic to its thresholds), each a borderline ribbon whose DT skeleton
+read a slightly different polygon — the "small number, listed by centroid"
+§4 expected, to be looked at on the flip. Fremont's trims (42 → 56) and
+vertices (+13%) are the one cost not predicted. Traced per shape at the
+Studio's 80 mm (31 px/mm, 53 regions): stitches 11,975 → 12,009 and trims
+87 → 87 there — the moves are a redistribution, the 1,582 mm² white field's
+fill travel 18 → 24 trims against a dozen satin letters shedding or gaining
+one or two each (shape ids re-bucket by centroid, so four letters pair as
+gone-and-new), one 6.7 mm² fragment going fill → satin, and every letter
+at 61–100% of its vertices accepted. At 31 px/mm the refinement
+(`curve_turn_deg`, on above 20 px/mm) now splits on a cleaner raw curve,
+which is where the vertices come from; what the tier tool's case adds in
+trims is the same travel redistribution at its settings.
+
+**Disposition.** The flag ships OFF. The flip (plan §7 row 4) is Kent's, and
+it should come after PR 3 (the refinement floor keyed to acceptance), not
+before: PR 2 alone moves the vertices and hands the simplifier a cleaner
+curve to sag under, and the ladder's flip criterion (every rung's spread ≤
+the OFF 3200 rung) is a chord question the refinement answers.
