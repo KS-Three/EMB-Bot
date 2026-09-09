@@ -92,7 +92,7 @@ from shapely.ops import unary_union
 
 from .config import PipelineConfig
 from .fabrics import Fabric
-from .machine import SATIN_MAX_WIDTH_MM
+from .machine import satin_ceiling_mm
 from .regions import Region
 from .stage6_fill import principal_angle_deg
 from .stage6_satin import is_satin_candidate
@@ -325,7 +325,7 @@ def resolve_overlaps(
     # Law 22. Off: one axis of None per shape, so every `_grow` below is the
     # `poly.buffer(pull)` this stage has always done, byte for byte.
     directional = bool(cfg.directional_comp) and pull > 0
-    satin_max = cfg.satin_max_width_mm or SATIN_MAX_WIDTH_MM
+    satin_max = satin_ceiling_mm(cfg)
     axis_by_id: dict[str, float | None] = {}
     satin_by_id: dict[str, bool] = {}
     for r in regions:

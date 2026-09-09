@@ -91,6 +91,16 @@ _MIN_STROKE_HALFWIDTHS = 1.2
 # admits.
 _JUNCTION_CLUSTER_HALFWIDTHS = 0.5
 _JUNCTION_CLUSTER_MIN_PX = 3.0
+# The fold guard (`_fold_caps`, live under `cfg.wide_columns`): a station's
+# half-width may not exceed this fraction of the spine's local radius of
+# curvature there. At a half-width equal to the radius the inner rail stands
+# still and past it steps BACKWARDS — that is the fold, and every one of the
+# 2,580 crossing pairs the 2026-08-05 measurement counted on logo_alpha's
+# apex is one. Below the radius the inner rail merely crowds, which
+# `_short_stitch_guard` already handles. Read off `tools/wide_columns.py`'s
+# sweep (2026-09-09): the largest fraction at which no fixture's crossing
+# pairs or coverage_max rise above the flat cap's.
+_FOLD_FRAC = 0.7
 # The half-width profile is median-filtered over this many samples to drop rays
 # that escaped through a junction, then averaged this many times to make the
 # two rails run parallel instead of tracking every wobble in the boundary.
@@ -2135,12 +2145,51 @@ def _cross_angles(spine: list[tuple[float, float]], closed: bool,
     return housed, leans
 
 
+def _fold_caps(spine: list[tuple[float, float]], angles: list[float],
+               closed: bool, frac: float | None = None) -> list[float]:
+    """Per-station half-width cap from the spine's local radius of curvature:
+    `frac x R_i`, with `R_i = ds / |d(angle)|` over the step(s) touching the
+    station, read from the cross angles the rails are actually laid along
+    (unwrapped, so a step's turn is a plain difference). A straight stretch
+    reads infinity and caps nothing; the tightest of a station's two steps
+    governs it. The guard DOCTRINE 2026-09-02 asked for: it is about the
+    thing that overlaps -- a column bending faster than its width -- and
+    not about the width."""
+    n = len(spine)
+    caps = [math.inf] * n
+    if n < 2:
+        return caps
+    f = _FOLD_FRAC if frac is None else frac
+    steps = n if closed else n - 1
+    radius = [math.inf] * steps
+    for i in range(steps):
+        j = (i + 1) % n
+        ds = math.dist(spine[i], spine[j])
+        dth = abs(angles[j] - angles[i])
+        if closed and dth > math.pi:
+            dth = abs(dth - 2.0 * math.pi)
+        radius[i] = math.inf if dth < 1e-9 else ds / dth
+    for i in range(n):
+        r = math.inf
+        if closed:
+            r = min(radius[(i - 1) % steps], radius[i % steps])
+        else:
+            if i > 0:
+                r = min(r, radius[i - 1])
+            if i < n - 1:
+                r = min(r, radius[i])
+        caps[i] = f * r
+    return caps
+
+
 def _rail_points(poly: Polygon, spine: list[tuple[float, float]], closed: bool,
                  fallback_half_mm: float,
                  field: _WidthField | None = None,
                  spacing_mm: float = machine.SATIN_SPACING_MM,
                  angle_deg: float | None = None,
-                 follow_edge: bool = False) -> tuple[list, list]:
+                 follow_edge: bool = False,
+                 max_width_mm: float = machine.SATIN_MAX_WIDTH_MM,
+                 fold_guard: bool = False) -> tuple[list, list]:
     """Cast the smoothed, unwrapped normals both ways to find the two rails.
 
     Each rail is capped at ~1.6x the LOCAL medial half-width: at a branch
@@ -2284,8 +2333,19 @@ def _rail_points(poly: Polygon, spine: list[tuple[float, float]], closed: bool,
     # not classify past 5.0mm in the first place should not be asked to sew
     # one past 5.0mm because comp grew it there either -- see that test's own
     # updated fixture comment.
+    # `max_width_mm` is the ceiling the CLASSIFIER admitted this shape at
+    # (`machine.satin_ceiling_mm`, threaded from stage 7) -- the default is
+    # the constant, byte-identical to before it was a parameter.
     for i in range(n):
-        width[i] = min(width[i], floors[i] * 1.6 + 0.2, machine.SATIN_MAX_WIDTH_MM / 2)
+        width[i] = min(width[i], floors[i] * 1.6 + 0.2, max_width_mm / 2)
+    # The fold guard (`cfg.wide_columns`): the cap that is about the bend,
+    # not the width. A straight column keeps whatever the ceiling allows; a
+    # column bending faster than its width is cut back to `_FOLD_FRAC` of
+    # the local radius, so its inner rail never steps backwards.
+    fold = _fold_caps(spine, angles, closed) if fold_guard else None
+    if fold is not None:
+        for i in range(n):
+            width[i] = min(width[i], fold[i])
 
     # --- each rail reaches its own edge ------------------------------------
     #
@@ -2320,7 +2380,9 @@ def _rail_points(poly: Polygon, spine: list[tuple[float, float]], closed: bool,
                 off_a[i] = (pa_[i - 1] + pa_[i] + pa_[i + 1]) / 3.0
                 off_b[i] = (pb_[i - 1] + pb_[i] + pb_[i + 1]) / 3.0
         for i in range(n):
-            cap = min(floors[i] * 1.6 + 0.2, machine.SATIN_MAX_WIDTH_MM / 2)
+            cap = min(floors[i] * 1.6 + 0.2, max_width_mm / 2)
+            if fold is not None:
+                cap = min(cap, fold[i])
             off_a[i] = max(width[i], min(off_a[i], cap))
             off_b[i] = max(width[i], min(off_b[i], cap))
     else:
@@ -2992,7 +3054,9 @@ def _satin_joined(poly: Polygon, stroke: Stroke, half_mm: float,
                   parts: list | None = None,
                   art_poly: Polygon | None = None,
                   hairline_floor_mm: float = 0.0,
-                  rails_follow_edge: bool = False) -> list[tuple[float, float]]:
+                  rails_follow_edge: bool = False,
+                  max_width_mm: float = machine.SATIN_MAX_WIDTH_MM,
+                  fold_guard: bool = False) -> list[tuple[float, float]]:
     """A stroke with Goldman corners (`Stroke.corners`) -> its members sewn as
     separate columns and laid end to end in chain order.
 
@@ -3035,7 +3099,8 @@ def _satin_joined(poly: Polygon, stroke: Stroke, half_mm: float,
         pts_m = satin_stroke(poly, member, half_mm, field, split_above_mm,
                              end_cutback_mm, spacing_mm, angle_deg, parts=parts,
                              art_poly=art_poly, hairline_floor_mm=hairline_floor_mm,
-                             rails_follow_edge=rails_follow_edge)
+                             rails_follow_edge=rails_follow_edge,
+                             max_width_mm=max_width_mm, fold_guard=fold_guard)
         above = machine.SPLIT_SATIN_ABOVE_MM if split_above_mm is None else split_above_mm
         if parts is not None and len(parts) > n_before and n_before > n_start_joined:
             # The join stays ONE stroke in `parts` as well: this member's
@@ -3074,7 +3139,9 @@ def satin_stroke(poly: Polygon, stroke: Stroke, half_mm: float,
                  parts: list | None = None,
                  art_poly: Polygon | None = None,
                  hairline_floor_mm: float = 0.0,
-                 rails_follow_edge: bool = False) -> list[tuple[float, float]]:
+                 rails_follow_edge: bool = False,
+                 max_width_mm: float = machine.SATIN_MAX_WIDTH_MM,
+                 fold_guard: bool = False) -> list[tuple[float, float]]:
     """One stroke -> flat zigzag points (A1, B1, A2, B2, ...).
 
     `parts` (2026-09-03), when a list is passed, additionally receives the
@@ -3130,7 +3197,8 @@ def satin_stroke(poly: Polygon, stroke: Stroke, half_mm: float,
         return _satin_joined(poly, stroke, half_mm, field, split_above_mm,
                              end_cutback_mm, spacing_mm, angle_deg, parts=parts,
                              art_poly=art_poly, hairline_floor_mm=hairline_floor_mm,
-                             rails_follow_edge=rails_follow_edge)
+                             rails_follow_edge=rails_follow_edge,
+                             max_width_mm=max_width_mm, fold_guard=fold_guard)
 
     spine = _smooth(stroke.spine, 3, stroke.closed)
     spine = _round_corners(spine, half_mm, stroke.closed)
@@ -3228,7 +3296,8 @@ def satin_stroke(poly: Polygon, stroke: Stroke, half_mm: float,
         if max(leans) > 1e-6:
             spine = _resample_by_pitch(spine, leans, spacing_mm)
     rail_a, rail_b = _rail_points(poly, spine, stroke.closed, half_mm, field,
-                                  spacing_mm, angle_deg, follow_edge=rails_follow_edge)
+                                  spacing_mm, angle_deg, follow_edge=rails_follow_edge,
+                                  max_width_mm=max_width_mm, fold_guard=fold_guard)
     crosses = _short_stitch_guard(rail_a, rail_b)
     above = machine.SPLIT_SATIN_ABOVE_MM if split_above_mm is None else split_above_mm
 
@@ -3427,7 +3496,9 @@ def _trim_to_art(stretches: list[tuple[int, int]], rail_a: list, rail_b: list,
 
 
 def _stroke_underlay(poly: Polygon, st: Stroke, style: str, shape_id: str,
-                     field: _WidthField | None) -> list[StitchRun]:
+                     field: _WidthField | None,
+                     max_width_mm: float = machine.SATIN_MAX_WIDTH_MM,
+                     fold_guard: bool = False) -> list[StitchRun]:
     """Underlay for ONE stroke: a center run down its spine, plus a sparse
     zigzag for the styles that ask for it. Built from the same spine the satin
     will follow, so it always sits under the column."""
@@ -3477,12 +3548,15 @@ def _stroke_underlay(poly: Polygon, st: Stroke, style: str, shape_id: str,
     # same way the zigzag skip above already treats this regime, at the same
     # ceiling). This shape's `coverage_max` before any of these fixes was
     # 13.11 -- now 3.24, see the updated regression pin below.
+    # `max_width_mm`: the ceiling this shape was admitted at (threaded from
+    # stage 7 under `cfg.wide_columns`; the constant by default).
     oversize = field is not None and any(
-        field.half_at(p) * 2.0 > machine.SATIN_MAX_WIDTH_MM for p in spine)
+        field.half_at(p) * 2.0 > max_width_mm for p in spine)
     if style == "zigzag" and not oversize:
         steps = max(2, int(math.ceil(length / machine.SATIN_ZIGZAG_PITCH_MM)))
         sp = _resample(spine, steps)
-        ra, rb = _rail_points(poly, sp, st.closed, ribbon_width_mm(poly) / 2, field)
+        ra, rb = _rail_points(poly, sp, st.closed, ribbon_width_mm(poly) / 2, field,
+                              max_width_mm=max_width_mm, fold_guard=fold_guard)
         pts: list[tuple[float, float]] = []
         for i, (pa0, pb0) in enumerate(zip(ra, rb)):
             # Narrow both ends from the ORIGINALS — pulling pb toward an
@@ -3504,8 +3578,8 @@ def _stroke_underlay(poly: Polygon, st: Stroke, style: str, shape_id: str,
             # the corpus never measured.
             rail_span = math.dist(pa0, pb0)
             frac = 0.09
-            if rail_span > machine.SATIN_MAX_WIDTH_MM:
-                capped_leg = machine.SATIN_MAX_WIDTH_MM * 0.82
+            if rail_span > max_width_mm:
+                capped_leg = max_width_mm * 0.82
                 frac = max(frac, 0.5 * (1.0 - capped_leg / rail_span))
             pa = (pa0[0] + (pb0[0] - pa0[0]) * frac, pa0[1] + (pb0[1] - pa0[1]) * frac)
             pb = (pb0[0] + (pa0[0] - pb0[0]) * frac, pb0[1] + (pa0[1] - pb0[1]) * frac)
@@ -3874,6 +3948,8 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
                 rails_follow_edge: bool = False,
                 hairline_floor_mm: float = 0.0,
                 patch_junctions: bool = False,
+                max_width_mm: float = machine.SATIN_MAX_WIDTH_MM,
+                fold_guard: bool = False,
                 ) -> tuple[list[StitchRun], dict]:
     """One satin-classified shape -> runs in sew order, plus the same report
     contract `stitch_shape` uses, so stage 7 can treat the two identically.
@@ -3883,6 +3959,13 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
     boundary tolerance, so a hairline stretch sews as a bean only where the
     artwork has ink. Stage 7 passes both; a caller that passes neither keeps
     today's output exactly.
+
+    `max_width_mm` / `fold_guard` (`cfg.wide_columns`, 2026-09-09): the
+    ceiling the classifier admitted this shape at, threaded here so the
+    emitter's per-station cap and the underlay's oversize checks sew at the
+    same number (`machine.satin_ceiling_mm`), and the fold guard
+    (`_fold_caps`) that makes a ceiling past 5.0 safe. The defaults are the
+    constant and off: byte-identical to before they existed.
 
     `start_near` is where the needle is when this shape's turn comes.
     `split_above_mm` caps the stitch length before crosses split (None =
@@ -3934,7 +4017,8 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
         satin_stroke(poly, st, half_mm, field, split_above_mm,
                      end_cutback_mm, spacing_mm, angle_deg, parts=parts,
                      art_poly=art_poly, hairline_floor_mm=hairline_floor_mm,
-                     rails_follow_edge=rails_follow_edge)
+                     rails_follow_edge=rails_follow_edge,
+                     max_width_mm=max_width_mm, fold_guard=fold_guard)
         mixed = len(parts) > 1
         for kind, pts, piece, at_start, at_end in parts:
             if kind == stitches.SATIN and len(pts) < 4:
@@ -3986,7 +4070,8 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
             # run, which Law 50 puts nothing under.
             under = st if k["piece"] is None else Stroke(
                 spine=k["piece"], free_start=False, free_end=False, closed=False)
-            stroke_runs = [*_stroke_underlay(poly, under, eff_style, shape_id, field),
+            stroke_runs = [*_stroke_underlay(poly, under, eff_style, shape_id, field,
+                                             max_width_mm=max_width_mm, fold_guard=fold_guard),
                            StitchRun(points=pts, kind=stitches.SATIN, shape_id=shape_id)]
         first_of_stroke = True
         for run in stroke_runs:
