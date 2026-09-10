@@ -254,6 +254,30 @@ points and the printed grade shows none of it.** `raw_score` now rides on
 the flip sheet's rows and verdicts and on the scorecard's score line, so
 the next such fix reads as one.
 
+### 4.4 The recapture, and what the diff attributed
+
+`tools/corpus_scorecard.py diff` against the 2026-09-04 baseline (lane
+commit `6180cca`, not on main): **46 of 52 pairs moved.** This PR's floor
+accounts for the `THREAD_MATCH_POOR` count moves on drone (block ×4 → ×2),
+gaulke (F 0 → B 76 — `4174` went with the enclosed-background rule on
+09-06, `1375` with the subpixel re-pin on 09-09, `3971` with the floor),
+Golden Tee (×2 → ×1) and the screenshot (×10 → ×3, the rest of that fall
+the colour bundle's) — exact, because the sweep reads the same pairs at
+floor 0. Everything else is the engine since 09-04: the colour bundle and
+the region colour (Bridge Bar F 0 → F 4 / 16, meadow D 52 → C 64, summit's
+warn, the scene stub's trims, the repro at hat_front 46 → 58), the satin
+work of 09-08/09 (script_tires at hat_front B 88 → A 100, the owl's
+stabilizer info), and metric-only drift on the rest (the subpixel flip
+moved every polygon by a pixel). **Two grade drops were bisected on
+main's first-parent history rather than attributed by class:**
+`photo_grass_macro` B 76 → D 40 at **#432** (the subpixel flip; D 52 since
+#437 — `LETTERING_TOO_SMALL` and `STITCHES_TOO_SHORT` appeared on a photo
+fixture with no lettering), and `becker_marine_logo` at hat_front B 88 →
+B 76 at **#433** (junction clustering — `ARTWORK_UNCOVERED` appeared on
+the cap's density only; that PR measured Becker's bare area on left_chest).
+Neither is this PR's; both are named in the recapture commit and left as
+a follow-up. Captured 2026-09-10 at `9f3d09c`.
+
 ## 5. Decisions — Kent's
 
 1. **`LETTERING_ILLEGIBLE`'s severity rule, and the flip of

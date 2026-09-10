@@ -864,3 +864,16 @@ page-mask bug was fixed — re-present, do not re-open.
   MASTER_SCOPE in place (800) and scope-history carry two angle-bracket
   placeholders (the recapture, the suite line) until the scorecard
   recapture and the full suite — grep them out before committing those two. Scorecard `diff` running for the attribution.
+- **~22:00Z — commit `9f3d09c` pushed (item 11's code, tests, tools, plan,
+  renders, DOCTRINE, COOKBOOK).** Scorecard diff vs the 09-04 baseline: 46
+  of 52 pairs moved; attributed (this PR's floor on four fixtures exactly,
+  the flips since 09-04 for the rest) and two grade drops BISECTED on
+  main's first-parent history with a one-pair scorer in a scratch
+  worktree: grass_macro B 76 → D 40 at #432 (subpixel flip; D 52 since
+  #437) and Becker @ hat_front B 88 → 76 at #433 (junction clustering;
+  hat_front only). Both left as a follow-up (plan §4.4; the task-card tool
+  timed out twice, so the record is the plan + the recapture commit).
+  Recapture running (`capture`, stamps `9f3d09c`); full suite running;
+  commit 2 = baseline + MASTER_SCOPE + scope-history + plan §4.4 + memory,
+  then the PR (body drafted in the scratchpad), auto-merge, subscribe,
+  send_later, AskUserQuestion on plan §5 + item 1 next.
