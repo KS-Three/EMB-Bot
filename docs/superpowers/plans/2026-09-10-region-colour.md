@@ -102,43 +102,45 @@ mean-to-median distance.
 | `logo_alpha` (flat) | 0 — flat lane | | | | |
 | `logo_whitebg` (flat) | 0 — flat lane | | | | |
 | `ribbon_curve` (flat) | 0 — flat lane | | | | |
-| `drone_render` (gradient) | 58 | 26 / 66.8% | 32 / 80.5% | 2 | 14.0 |
+| `drone_render` (gradient) | 58 | 26 / 65.2% | 33 / 79.5% | 2 | 23.4 |
 | `enthusiast_logo` (flat) | 0 — flat lane | | | | |
 | `fur_ramp` (photo_scene) | 8 | 0 / 0.0% | 0 / 0.0% | 0 | 0.1 |
-| `gradient_ramp_linear` (gradient) | 1 | 0 / 0.0% | 0 / 0.0% | 0 | 0.6 |
-| `gradient_ramp_radial` (gradient) | 1 | 0 / 0.0% | 0 / 0.0% | 0 | 2.3 |
-| `photo_chrome_specular` (photo_scene) | 12 | 4 / 36.4% | 4 / 36.4% | 0 | 2.1 |
-| `photo_dof_meadow` (photo_scene) | 16 | 4 / 7.6% | 3 / 4.7% | 0 | 4.2 |
-| `photo_grass_macro` (photo_subject) | 2 | 0 / 0.0% | 0 / 0.0% | 0 | 0.6 |
-| `photo_owl_pale` (photo_scene) | 6 | 0 / 0.0% | 0 / 0.0% | 0 | 5.1 |
-| `photo_scene_stub` (photo_scene) | 14 | 1 / 28.6% | 1 / 28.6% | 0 | 1.0 |
-| `photo_subject_stub` (photo_subject) | 1 | 1 / 100.0% | 1 / 100.0% | 0 | 1.7 |
-| `photo_sunset_backlit` (photo_scene) | 9 | 1 / 26.9% | 2 / 46.7% | 0 | 2.0 |
-| `region_blobs` (gradient) | 4 | 0 / 0.0% | 1 / 18.1% | 0 | 2.6 |
-| `repro_gradient_white_icon` (gradient) | 8 | 3 / 17.2% | 3 / 17.2% | 2 | 26.9 |
-| `summit_badge` (gradient) | 34 | 8 / 8.0% | 8 / 8.0% | 0 | 9.8 |
+| `gradient_ramp_linear` (gradient) | 1 | 0 / 0.0% | 0 / 0.0% | 0 | 0.3 |
+| `gradient_ramp_radial` (gradient) | 1 | 1 / 100.0% | 1 / 100.0% | 0 | 2.6 |
+| `photo_chrome_specular` (photo_scene) | 12 | 3 / 34.8% | 3 / 34.8% | 0 | 2.1 |
+| `photo_dof_meadow` (photo_scene) | 16 | 4 / 7.6% | 3 / 4.7% | 0 | 4.3 |
+| `photo_grass_macro` (photo_subject) | 2 | 0 / 0.0% | 0 / 0.0% | 0 | 0.5 |
+| `photo_owl_pale` (photo_scene) | 6 | 0 / 0.0% | 0 / 0.0% | 0 | 5.7 |
+| `photo_scene_stub` (photo_scene) | 14 | 1 / 28.6% | 1 / 28.6% | 0 | 1.1 |
+| `photo_subject_stub` (photo_subject) | 1 | 1 / 100.0% | 1 / 100.0% | 0 | 9.9 |
+| `photo_sunset_backlit` (photo_scene) | 9 | 0 / 0.0% | 1 / 19.7% | 0 | 2.2 |
+| `region_blobs` (gradient) | 4 | 0 / 0.0% | 1 / 18.1% | 0 | 2.8 |
+| `repro_gradient_white_icon` (gradient) | 8 | 4 / 33.2% | 4 / 33.2% | 2 | 28.6 |
+| `summit_badge` (gradient) | 34 | 8 / 8.0% | 8 / 8.0% | 0 | 9.3 |
 | `becker_marine_logo` (flat) | 0 — flat lane | | | | |
-| `logo_script_tires` (photo_scene) | 4 | 0 / 0.0% | 0 / 0.0% | 0 | 2.6 |
-| `logo_bridge_bar` (gradient) | 50 | 13 / 66.5% | 19 / 67.7% | 0 | 6.2 |
-| `logo_gaulke_roofing` (gradient) | 18 | 13 / 1.8% | 13 / 1.8% | 1 | 10.2 |
-| `logo_golden_tee` (gradient) | 35 | 17 / 54.4% | 17 / 54.4% | 2 | 13.5 |
-| `logo_hotel_fremont` (gradient) | 49 | 7 / 2.6% | 7 / 2.6% | 0 | 8.5 |
-| `screenshot_phone_ui_golke` (gradient) | 92 | 57 / 69.7% | 58 / 70.2% | 26 | 13.3 |
+| `logo_script_tires` (photo_scene) | 4 | 0 / 0.0% | 0 / 0.0% | 0 | 1.8 |
+| `logo_bridge_bar` (gradient) | 50 | 11 / 56.9% | 19 / 58.2% | 0 | 6.4 |
+| `logo_gaulke_roofing` (gradient) | 18 | 12 / 1.6% | 12 / 1.6% | 0 | 9.3 |
+| `logo_golden_tee` (gradient) | 35 | 15 / 33.8% | 15 / 33.8% | 2 | 15.0 |
+| `logo_hotel_fremont` (gradient) | 49 | 8 / 2.9% | 8 / 2.9% | 0 | 8.8 |
+| `screenshot_phone_ui_golke` (gradient) | 92 | 52 / 65.0% | 53 / 65.9% | 27 | 13.9 |
 
 **20 of 26 fixtures reach the lane; 422 regions; the median moves the
-spool of 155, the modal mean of 169; 33 are bimodal (26 of them on the
-phone-UI screenshot).** The synthetic ramps and the photographs move
+spool of 146, the modal mean of 163; 33 are bimodal (27 of them on the
+phone-UI screenshot).** (`mean` here is the engine's own OFF point — the
+RGB mean converted once; the first census averaged in Lab and read 155 /
+169, corrected with the seam.) The synthetic ramps and the photographs move
 nothing or next to nothing (fur ramp 0.1 ΔE00 worst); the real logos
-move most of their AREA — Bridge Bar 66.5%, Golden Tee 54.4%, drone
-66.8%, the screenshot 69.7% — because their big flat regions are the
+move most of their AREA — Bridge Bar 56.9%, drone 65.2%, the screenshot
+65.0%, Golden Tee 33.8% — because their big flat regions are the
 ones with things drawn on them; gaulke and Fremont move 13 and 7 small
-regions (1.8% and 2.6% of area). A moved spool is the region's own
+regions (1.6% and 2.9% of area). A moved spool is the region's own
 nearest thread, not the palette's choice: what a design actually sews
 is §4.2's flip sheet.
 
 **The statistic: the modal mean.** The two candidates move nearly the
-same regions; where they differ the modal mean lands on the artwork.
-On Bridge Bar's disc (18,804 px): mean → `6031` Limelight, median →
+same regions (146 and 163); where they differ the modal mean lands on the
+artwork. On Bridge Bar's disc (18,804 px): mean → `6031` Limelight, median →
 `0713` Lemon (2.1 ΔE00 from the disc's pixels), modal mean → `0501` Sun
 (1.0). A per-channel median is itself a colour no single pixel need
 carry; the modal mean averages the pixels that ARE the region's colour.

@@ -653,3 +653,7 @@ page-mask bug was fixed — re-present, do not re-open.
   the old expression exactly; candidates' `mean` is that point. DOCTRINE
   entry. Every `off` row of both flip-sheet caches, the census and the
   renders' OFF panels were the wrong engine → recomputed before the PR.
+- **Corrected census (exact OFF point):** median moves 146, modal mean 163
+  of 422 (was 155/169 under the Lab mean); Bridge Bar 56.9% of area, Golden
+  Tee 33.8%, drone 65.2%, screenshot 65.0%; 33 bimodal (27 screenshot).
+  Renders re-made on the exact engine; the change lists are the same.

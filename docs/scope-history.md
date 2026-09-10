@@ -12198,10 +12198,10 @@ Limelight. The one mean is now one seam (`_region_pixels_lab` +
 the modal mean of the region's Lab pixels — the mean over the pixels within
 5 ΔE00 of the per-channel median — chosen by `tools/region_colour.py`'s
 census (20 lane fixtures, 422 regions: the median and the modal mean move
-nearly the same regions' spools, 155 and 169, and where they differ the
+nearly the same regions' spools, 146 and 163, and where they differ the
 modal mean lands on the artwork — the disc goes to `0713` Lemon under the
 median, 2.1 ΔE00 from its pixels, and to `0501` Sun, 1.0, under the modal
-mean; 33 regions are bimodal, 26 of them on the phone-UI screenshot). Flip
+mean; 33 regions are bimodal, 27 of them on the phone-UI screenshot). Flip
 sheet, 26 fixtures at 80 mm: 11 move, 15 byte-identical. At 12: Bridge Bar
 12 cones with a repeated `0108` (13 blocks) → 11 / 11, the disc on Sun,
 `COLOR_STOPS_HEAVY` gone, F 0 → F 4; the screenshot 12 → 10 cones; Golden

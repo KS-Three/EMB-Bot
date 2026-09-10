@@ -1274,12 +1274,12 @@ def _percentile_extremes_deltae(lab: np.ndarray) -> float:
 # `tools/region_colour.py` measures both against the mean on every SLIC-lane
 # region of the corpus; the one here is the one that census picked
 # (2026-09-10, 20 lane fixtures, 422 regions): the two move nearly the
-# same regions' spools (155 median, 169 modal mean), and where they
+# same regions' spools (146 median, 163 modal mean), and where they
 # differ the modal mean lands on the artwork — Bridge Bar's disc goes to
 # 0501 Sun (1.0 dE00 from its pixels) under the modal mean and to 0713
 # Lemon (2.1) under the median, because a per-channel median is itself a
 # colour no single pixel need carry while the modal mean averages the
-# pixels that ARE the region's colour. 33 of the 422 are bimodal (26 on
+# pixels that ARE the region's colour. 33 of the 422 are bimodal (27 on
 # the phone-UI screenshot); there either statistic takes the majority
 # side, which the mean never does.
 ROBUST_REGION_STAT = "modal_mean"
