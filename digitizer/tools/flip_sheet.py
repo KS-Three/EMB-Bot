@@ -216,6 +216,14 @@ BARRED = {
 
 GARMENT = "left_chest"
 WIDTH_MM = 80.0
+# The colour budget every arm runs under. None is `PipelineConfig`'s own
+# default (12), which is what the published 2026-09-06 sheet was measured
+# at; the Studio SHIPS 6 (`app/src/lib/project.js` DEFAULT_DIGITIZE_PARAMS),
+# and for the colour flags the two are different questions -- drone at 6
+# sews 23 cones OFF and 6 under the cap, at 12 it sews 17 and 12 (measured
+# 2026-09-10, item 8). `--max-colors` sets it for a run; every row records
+# it, and `report` says which it is reading.
+MAX_COLORS: int | None = None
 
 
 def fixtures() -> list[str]:
@@ -285,6 +293,8 @@ def measure(fixture: str, arm: str) -> dict:
 
     path = TESTDATA / fixture
     kw = dict(target_width_mm=WIDTH_MM, garment_id=GARMENT, **_arm_kw(arm))
+    if MAX_COLORS is not None:
+        kw["max_colors"] = MAX_COLORS
     t0 = time.time()
     try:
         result, plan = digitize(path, PipelineConfig(**kw))
@@ -312,6 +322,7 @@ def measure(fixture: str, arm: str) -> dict:
         "findings": sorted(f"{f['code']}:{f['severity']}" for f in report["findings"]),
         "digest": _stitch_digest(plan),
         "head": _head(),
+        "max_colors": MAX_COLORS,
         "secs": round(time.time() - t0, 1),
     }
 
@@ -363,7 +374,12 @@ def report(out: Path) -> int:
     fxs = fixtures()
     base = {f: rows.get(("off", f)) for f in fxs}
 
-    print(f"# Flip sheet — {len(fxs)} fixtures @ {WIDTH_MM:g} mm / {GARMENT}\n")
+    budgets = sorted({str(r.get("max_colors")) for r in rows.values()})
+    print(f"# Flip sheet — {len(fxs)} fixtures @ {WIDTH_MM:g} mm / {GARMENT}  "
+          f"(max_colors {', '.join(budgets)}; None = the engine default, 12)\n")
+    if len(budgets) > 1:
+        print("**MIXED COLOUR BUDGETS — rows below were measured under different "
+              "`max_colors`; keep one budget per `--out` directory.**\n")
     # Two different findings, and the banner must not conflate them: rows
     # stamped with DIFFERENT commits were provably measured on different
     # engines; rows with no stamp at all predate `head` (2026-09-07) and are
@@ -543,8 +559,13 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--out", type=Path, default=ROOT / "build" / "flip_sheet")
     ap.add_argument("--workers", type=int, default=3)
     ap.add_argument("--arm", action="append", dest="arms")
+    ap.add_argument("--max-colors", type=int, default=None,
+                    help="the colour budget every arm runs under (default: the "
+                         "engine's 12; the Studio ships 6)")
     args = ap.parse_args(argv)
     if args.mode == "run":
+        global MAX_COLORS
+        MAX_COLORS = args.max_colors
         return run(args.out, args.workers, args.arms)
     return report(args.out)
 
