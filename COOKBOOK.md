@@ -367,7 +367,11 @@ hand-rolling it in JS.
   `digitizer/tools/revalidate_floor.py` (which shapes `revalidate_threads`
   REFUSES on its pixel floor and whether the answer would have changed — it
   wraps the real function and lets the real pass run, so it measures the
-  shipped design), `digitizer/tools/thread_color_render.py` (a design drawn in
+  shipped design), `digitizer/tools/enclosed_census.py` (every scorecard
+  fixture's enclosed regions — count, area, share of the design, the colour
+  they would sew in or "unknown" on an alpha hole — and the garment rule's
+  verdict against each Studio swatch at both thresholds; item 9's
+  instrument), `digitizer/tools/thread_color_render.py` (a design drawn in
   the cones it will actually sew, each changed shape tiled OFF beside ON at
   90 px/mm — a 0.9 mm2 shard is four pixels at whole-design scale),
   `digitizer/tools/junction_nodes.py` (every node-to-node edge of the satin

@@ -525,6 +525,56 @@ def test_stitched_default_and_override_round_trip_over_http(client):
     assert second["design"]["stitchCount"] > first["design"]["stitchCount"]
 
 
+@pytest.mark.parametrize("bad", [
+    {"garment_rgb": "#1c2a54"},            # a hex string
+    {"garment_rgb": [28, 42]},              # two channels
+    {"garment_rgb": [28, 42, 84, 255]},     # four
+    {"garment_rgb": [28, 42, 300]},         # out of range
+    {"garment_rgb": [28.5, 42, 84]},        # not integers
+    {"garment_rgb": [True, 42, 84]},        # bool is not a channel
+])
+def test_a_malformed_garment_rgb_is_a_400_at_submit_not_a_failed_job(client, bad):
+    with ART.open("rb") as f:
+        r = client.post("/digitize", files={"image": (ART.name, f, "image/png")},
+                        data={"config": json.dumps(bad)})
+    assert r.status_code == 400, r.text
+    assert "garment_rgb" in r.json()["detail"]
+
+
+def test_the_garment_rule_reaches_the_review_payload_over_http(client):
+    """`garment_rgb` + `enclosed_by_garment` (item 9): the whitebg fixture's
+    one white hole reports `stitched: False` by default, and on a navy
+    garment `stitched: True` with `enclosed_by_garment: True` beside it —
+    the same shape id, a real stitch-count change, and the enclosed warning
+    saying so. `null` is accepted and means "not known"."""
+    base = {"preflight": False, "garment_rgb": None}
+    first = _digitize(client, base)
+    holes = [s for s in first["review"]["shapes"] if s["stitched"] is False]
+    assert len(holes) == 1 and holes[0]["enclosed_by_garment"] is False
+    assert all(s["enclosed_by_garment"] is False for s in first["review"]["shapes"])
+
+    navy = _digitize(client, {"preflight": False, "garment_rgb": [28, 42, 84],
+                              "enclosed_by_garment": True})
+    after = {s["shape_id"]: s for s in navy["review"]["shapes"]}
+    hole = after[holes[0]["shape_id"]]
+    assert hole["stitched"] is True and hole["enclosed_by_garment"] is True
+    assert sum(s["enclosed_by_garment"] for s in after.values()) == 1
+    assert navy["design"]["stitchCount"] > first["design"]["stitchCount"]
+    # The pipeline's warnings ride the plan's (`plan_stitches` prepends
+    # `result.warnings`), which is the job's top-level list.
+    enclosed = [w for w in navy["warnings"] if w["code"] == "BACKGROUND_ENCLOSED"]
+    assert len(enclosed) == 1 and enclosed[0]["sews_by_garment"] is True
+    assert enclosed[0]["garment_rgb"] == [28, 42, 84]
+
+    # White garment: the same request shape, the hole stays a hole, and the
+    # rule says why.
+    white = _digitize(client, {"preflight": False, "garment_rgb": [255, 255, 255],
+                               "enclosed_by_garment": True})
+    w_hole = {s["shape_id"]: s for s in white["review"]["shapes"]}[holes[0]["shape_id"]]
+    assert w_hole["stitched"] is False and w_hole["enclosed_by_garment"] is False
+    assert white["design"]["stitchCount"] == first["design"]["stitchCount"]
+
+
 def test_review_payload_carries_enclosed_colour_unknown():
     """Contract v1.7: `_review_payload` echoes `enclosed_colour_unknown`
     straight off `Region.meta` — read-only, no `_OVERRIDE_KEYS` entry, same

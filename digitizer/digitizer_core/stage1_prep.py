@@ -93,6 +93,14 @@ class Prep:
     # tag_enclosed_background` reads `bg_from_alpha` and marks the latter
     # `enclosed_colour_unknown`.
     enclosed_mask: np.ndarray | None = None
+    # The colour the border flood matched, as (R, G, B) ints — the colour
+    # `enclosed_mask`'s pixels ARE on the no-alpha path, and therefore the
+    # colour an enclosed hole would sew in. None on the alpha path (the hole
+    # is transparent; see `bg_from_alpha`) and whenever no flood ran
+    # (BACKGROUND_ABSENT, the subject-dominated BACKGROUND_UNCERTAIN, a total
+    # miss). `pipeline.finish_generation` compares it with `cfg.garment_rgb`
+    # to decide whether those holes sew (`cfg.enclosed_by_garment`).
+    bg_rgb: tuple[int, int, int] | None = None
     warnings: list[dict] = field(default_factory=list)
 
 
@@ -240,6 +248,7 @@ def prep(image: str | Path | bytes | np.ndarray, cfg: PipelineConfig) -> Prep:
         alpha = None
 
     bg_from_alpha = alpha is not None
+    bg_rgb: tuple[int, int, int] | None = None
     if alpha is not None:
         bg = alpha < 128
         border_bg = _border_connected(bg)
@@ -300,6 +309,7 @@ def prep(image: str | Path | bytes | np.ndarray, cfg: PipelineConfig) -> Prep:
         else:
             border_bg = _border_connected(close)
             enclosed = close & ~border_bg
+            bg_rgb = tuple(int(round(float(v))) for v in bg_color)  # type: ignore[assignment]
             # Was `border_bg | enclosed` — the same fold described above, for
             # the far more common no-alpha path (BACKGROUND_ENCLOSED's usual
             # trigger: bg-colored icon linework enclosed by the surrounding
@@ -316,6 +326,7 @@ def prep(image: str | Path | bytes | np.ndarray, cfg: PipelineConfig) -> Prep:
         bg = np.zeros((h, w), bool)
         border_bg = bg
         enclosed = bg
+        bg_rgb = None
 
     fg = ~bg
     if not fg.any():
@@ -473,5 +484,6 @@ def prep(image: str | Path | bytes | np.ndarray, cfg: PipelineConfig) -> Prep:
         bg_outline_px=bg_outline_px,
         bg_edge_rgb=bg_edge_rgb,
         enclosed_mask=enclosed if enclosed.any() else None,
+        bg_rgb=bg_rgb,
         warnings=warnings,
     )

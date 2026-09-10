@@ -809,7 +809,8 @@ def revalidate_threads(regions: list[Region], p: Prep,
     )]
 
 
-def enforce_color_cap(regions: list[Region], chart, max_colors: int) -> list[dict]:
+def enforce_color_cap(regions: list[Region], chart, max_colors: int, *,
+                      count_enclosed: bool = False) -> list[dict]:
     """Make "Colors (max N)" true on every lane, not just the flat one.
 
     `stage2_quantize` already caps hard: past `cfg.max_colors` it keeps the
@@ -844,6 +845,13 @@ def enforce_color_cap(regions: list[Region], chart, max_colors: int) -> list[dic
 
     Runs BEFORE user shape edits so an explicit recolor still wins: automatic
     decisions first, stated intent last.
+
+    `count_enclosed` (the `enclosed_by_garment` rule's verdict for this
+    design, `garment_sews_enclosed`) says the flood-found holes WILL sew, so
+    their area is sewn area and their cone buys its slot like any other;
+    alpha holes (`enclosed_colour_unknown`) never sew under that rule and
+    stay out of the ranking either way. False is the pre-rule ranking byte
+    for byte.
     """
     if max_colors < 1 or not regions:
         return []
@@ -853,7 +861,8 @@ def enforce_color_cap(regions: list[Region], chart, max_colors: int) -> list[dic
 
     sewn_area: dict[int, float] = {}
     for r in regions:
-        if r.meta.get("enclosed_background", False):
+        if r.meta.get("enclosed_background", False) and not (
+                count_enclosed and not r.meta.get("enclosed_colour_unknown", False)):
             continue
         sewn_area[r.thread_index] = (sewn_area.get(r.thread_index, 0.0)
                                      + float(r.area_mm2 or 0.0))
@@ -940,6 +949,30 @@ def rehome_resnapped_regions(regions: list[Region],
         r.meta["layer"] = target
         moved += 1
     return moved
+
+
+def garment_sews_enclosed(p: Prep, cfg: PipelineConfig) -> tuple[bool, float | None]:
+    """Do this design's border-flood holes sew on the garment `cfg` names?
+    -> (sews, ΔE00 between the background colour and the garment).
+
+    The `enclosed_by_garment` rule's single verdict, taken once per design
+    (not per region — every flood hole is the same colour, the
+    background's): ON, a garment given, the background colour KNOWN
+    (`Prep.bg_rgb`, never the alpha path), and the two clearly different —
+    ΔE00 over `cfg.enclosed_by_garment_de00`. `(False, None)` whenever the
+    rule cannot speak (off, no garment, no flood colour), `(False, de)` when
+    it looked and the hole reads as the fabric. Shared by the colour cap's
+    ranking (a hole that sews is sewn area) and `pipeline.finish_generation`'s
+    stitched default, so the two cannot disagree.
+    """
+    if not cfg.enclosed_by_garment or cfg.garment_rgb is None or p.bg_rgb is None:
+        return False, None
+    garment = tuple(int(v) for v in list(cfg.garment_rgb)[:3])
+    if len(garment) != 3:
+        return False, None
+    labs = rgb_to_lab(np.array([p.bg_rgb, garment], dtype=np.float64))
+    de = float(deltaE_ciede2000(labs[0], labs[1]))
+    return de > float(cfg.enclosed_by_garment_de00), de
 
 
 def tag_enclosed_background(regions: list[Region], p: Prep) -> None:

@@ -26,11 +26,15 @@
     label: g.label || g.name || readable(g.id),
   }));
 
-  // 8 garment-common fabric tones (Slice 8 Task 2). Render-only -- picking
-  // one just patches project.fabricRgb (stitch generation never sees it, see
-  // generate.js); the field re-renders the SAME design against a different
-  // background/hoop-chrome/weave. Kept local rather than in lib/ -- this is
-  // UI-only data, not logic that needs its own spec.
+  // 8 garment-common fabric tones (Slice 8 Task 2). Picking one patches
+  // project.fabricRgb; the field re-renders the SAME design against a
+  // different background/hoop-chrome/weave, and the browser engine never
+  // sees it (generate.js). The auto-digitizer DOES, since 2026-09-10:
+  // digitizer.js sends it as garment_rgb so the service can decide whether
+  // enclosed background-coloured holes (letter bodies) sew on this garment
+  // (cfg.enclosed_by_garment — the engine's default, not a control here).
+  // Kept local rather than in lib/ -- this is UI-only data, not logic that
+  // needs its own spec.
   const FABRIC_SWATCHES = [
     { name: "White", rgb: [255, 255, 255] },
     { name: "Natural", rgb: [235, 232, 223] },

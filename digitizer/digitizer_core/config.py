@@ -645,6 +645,32 @@ class PipelineConfig:
     # naming a garment picks its usual fabric. An explicit fabric_id wins.
     garment_id: str | None = None
     fabric_id: str | None = None
+    # The garment's COLOUR, (R, G, B) 0-255, as the Studio knows it
+    # (`project.fabricRgb`, sent beside garment_id). None = not known. Read
+    # only by the enclosed-background rule below; nothing else in the
+    # pipeline sees the fabric's colour (the thread match is against the
+    # artwork, and the machine sews whatever it is told).
+    garment_rgb: tuple[int, int, int] | None = None
+    # Enclosed background-coloured regions — the `enclosed_background` tag:
+    # letter bodies, counters and donut holes stage 1 found in the artwork's
+    # own background colour — are left unstitched by default, on the
+    # 2026-08-15 verdict (`docs/enclosed-background-verdict-2026-08-15.md`:
+    # +8.0 points per design on the scorecard and wrong on every white
+    # garment). That verdict was made without knowing the garment. ON, a
+    # hole whose colour IS known (a border-flood hole, `Prep.bg_rgb`; never an
+    # alpha hole, whose colour nobody knows) sews by default when the garment
+    # is a clearly different colour from it — white letter bodies on a navy
+    # polo sew; on a white polo they stay fabric — in the thread it already
+    # carries. A review `stitched` override wins either way. DEFAULT OFF and
+    # byte-identical off; the Studio sends garment_rgb regardless, so the
+    # flip is one line here. Quality review 2026-09-08 item 9; plan and
+    # census `docs/superpowers/plans/2026-09-10-enclosed-by-garment.md`.
+    enclosed_by_garment: bool = False
+    # The rule's threshold on ΔE00(background, garment). 10 is
+    # `preflight.DELTA_E_CLEARLY_DIFFERENT` (pinned equal by test), so the
+    # Studio's default Natural garment (235, 232, 223) does NOT sew a white
+    # hole white (6.4 apart); 5 (`DELTA_E_VISIBLE`) would. Kent's number.
+    enclosed_by_garment_de00: float = 10.0
     # How far a color extends underneath the color that sews after it. Enough
     # to survive fabric pull, small enough never to read as a color error.
     overlap_mm: float = 0.25
