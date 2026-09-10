@@ -70,3 +70,9 @@ def test_load_pair_reads_manifest_regions_and_colours(tmp_path):
     assert [r["shape_id"] for r in pair.regions] == ["S1"]
     assert pair.pro_rgb == [(200, 30, 30), (30, 30, 200)]
     assert 19.0 < pair.width_mm < 21.0
+
+
+def test_file_segs_names_an_unreadable_file(tmp_path):
+    nonexistent = tmp_path / "does_not_exist.dst"
+    with pytest.raises(SystemExit, match="unreadable"):
+        pairframe.file_segs(nonexistent, False)

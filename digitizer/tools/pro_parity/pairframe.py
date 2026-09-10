@@ -141,7 +141,12 @@ def file_segs(path: Path, flip_y: bool = False) -> list:
     `thin_strokes` and measured ~2-2.4s to import, well past the 2s bar for a
     plain file reader, so the body lives here instead.
     """
-    pat = pystitch.read(str(path))
+    try:
+        pat = pystitch.read(str(path))
+    except Exception:
+        raise SystemExit(f"unreadable: {path}")
+    if pat is None:
+        raise SystemExit(f"unreadable: {path}")
     rows = []
     block = 0
     pending = False
