@@ -98,9 +98,11 @@ every flat row.
 `tools/thread_color_render.py` draws a design in the thread colours it
 sews and circles the shapes whose cone a flag changes; it takes one flag.
 It grows a repeatable `--flag` so the bundle renders as one ON panel, and
-`docs/renders/colour-bundle-2026-09-10/` holds OFF vs `colour4` vs
-`colour5` for every fixture the bundle moves — the look is the part of
-this decision that is Kent's.
+`docs/renders/colour-bundle-2026-09-10/` holds one contact sheet per
+fixture the bundle moves — OFF beside `colour4` beside `colour5`, each
+changed cone circled, downscaled to a JPEG of a few hundred KB (the full
+panels stay out of the repo) — because the look is the part of this
+decision that is Kent's.
 
 ## 4. Results — to be measured
 ## 5. The decision doc — to be written
