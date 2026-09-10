@@ -501,3 +501,4 @@ page-mask bug was fixed — re-present, do not re-open.
 - Two self-kills from `pgrep -f`/`grep` patterns that matched my own
   shell: match with a bracketed literal (`flip_sheet[.]py`) and never put
   the restart command in the same call as the kill.
+- Shipped as PR #441 (ready-for-review 03:18Z, auto-merge armed). Next: Kent's flip decision on the four not ruled (`colour4`) and his re-read of the halo render; then the next build pick.
