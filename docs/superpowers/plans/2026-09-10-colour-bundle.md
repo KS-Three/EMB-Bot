@@ -104,5 +104,42 @@ changed cone circled, downscaled to a JPEG of a few hundred KB (the full
 panels stay out of the repo) — because the look is the part of this
 decision that is Kent's.
 
-## 4. Results — to be measured
-## 5. The decision doc — to be written
+## 4. Results — measured 2026-09-10 (the decision doc carries the tables)
+
+Tree `920ebcd` (main with #439 and #440), 26 fixtures at 80 mm /
+`left_chest`, `build/flip_sheet_item8` (engine budget 12) and
+`build/flip_sheet_item8_mc6` (the Studio's 6).
+
+- **At the engine default (12)**: the five singles move 4–7 fixtures
+  each; `colour4` moves 9 for −995 stitches, −11 trims, **−22 blocks,
+  −22 cones, −22 stops**, three grades up and none down; `colour5` moves
+  10 for −4,023 stitches, **−77 trims**, −26 / −25 / −26 — the ruled flag
+  is the stitch and trim lever (Bridge Bar alone −2,936 / −63). The
+  bundle is not the sum of its rows: the cap's −18 cones and the bind's
+  −17 overlap to −22 together (drone −5 under either, −5 under both).
+- **The pair that moves a fixture no single moves**: `photo_chrome_specular`
+  D 52 → C 64 under `colour4` is `mask_small` — the mask plus the lowered
+  floor — reproduced byte for byte by that pair alone. Flip both or
+  neither.
+- **The colour-budget finding**: the sheet prices at `max_colors` 12 while
+  the Studio ships 6, and for the cap those are different questions —
+  drone at 6 sews 23 cones OFF and **6** under the cap (`COLOR_CAP_APPLIED`,
+  25 → 6 region threads); at 12, 17 and 12. At the Studio's shipped 6 the set is the bigger lever: `colour4` takes **−47 cones / −43 stops / −43 blocks** off nine fixtures (drone 23 → 6, Bridge Bar 13 → 6, Golden Tee 14 → 6, screenshot 14 → 6 — the slider's promise kept on every real logo), `colour5` adds −4,509 stitches and −80 trims; one grade falls, `summit_badge` (synthetic) F 16 → F 0 on a new `THREAD_MATCH_POOR` block from the cap's merge.
+- **The item-1 proxy corrects the lane story**: forced flat, `colour5`
+  still takes **28 cones and 28 stops** off five of the nine real logos
+  (Golden Tee sews 24 cones under a budget of 12 forced flat — the flat
+  lane's hard cap holds region threads, and the re-snap escapes past it
+  there too; "every escape was on the gradient lane" was a count over
+  routed fixtures). The flat-lane singles say the bind does most of that work (−26 cones on five logos) and the cap the rest (−21 on drone and Golden Tee); the dissolve is the one flag item 1 retires (byte-identical on all nine forced flat).
+- **Renders** (`docs/renders/colour-bundle-2026-09-10/`, ten contact
+  sheets): the one visible change is Bridge Bar under `colour5` — the
+  pink phantom outline around the script and the grey ghost spoke gone —
+  the render the 2026-09-04 ruling was made without (the flag was broken
+  then, #380). Every other move is a cone swap inside a hue family.
+
+## 5. The decision doc
+
+`docs/colour-bundle-decision-2026-09-10.md` — the tables, the renders,
+the lane question measured, and one recommendation per flag with its
+catch (§5 there). Kent's to accept or refuse; nothing here flips a
+default.

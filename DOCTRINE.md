@@ -4132,3 +4132,33 @@ Bridge Bar routed at 80 mm has 29 satin strokes and NO tatami fill, so the
 review's "fill angles spread across the half-circle" cannot have been read
 off that lane — measure the flag under `forced_class=flat`, where the
 real logos become tatami fills, to see it. *(2026-09-09 — plan doc §4)*
+
+**A flag's lane story is measured on that lane, not read off its docstring
+(2026-09-10).** Item 8 priced the five colour flags as one set and asked
+which of them item 1 (real logos routed to the flat lane) would make
+moot. The docstrings gave a confident answer — the flat lane "has always
+capped hard", "every counted re-snap escape was on the gradient lane" — and
+the proxy measurement (`forced_class=flat` on the nine real-logo fixtures,
+`flip_sheet.py`'s `PROXIES`) contradicted two of the three: forced flat,
+Golden Tee sews **24 cones under a budget of 12** and drone 21, because the
+flat lane's hard cap holds stage 2's REGION threads and the re-snap then
+escapes past it there exactly as on the gradient lane; `bind_resnap_all_
+classes` takes 26 cones off five forced-flat logos and `enforce_color_cap`
+21 off two. The count that said "gradient only" was a count over ROUTED
+fixtures, where every real logo is gradient — true, and the wrong
+population for the question. Only `dissolve_phantom_blends` was moot as
+described (byte-identical on all nine). **Before calling a flag retired by
+a lane change, run it on that lane.** *(measured 2026-09-10 —
+`docs/colour-bundle-decision-2026-09-10.md` §3)*
+
+**A colour flag priced at the engine's `max_colors` answers a different
+question from the one the Studio asks (2026-09-10).** `flip_sheet.py` ran
+every arm at `PipelineConfig`'s own default (12); the Studio ships **6**
+("Colors (max 6)"). For `enforce_color_cap` the two are different
+findings: at 12 drone sews 17 cones OFF and 12 under the cap, at 6 it sews
+**23 OFF and 6 under the cap** — the number the customer's promise is
+about, and the one the review quoted. The set's cone saving is −22 at 12
+and **−47 at 6**. Every flip-sheet row now records its budget and the
+report refuses to mix two silently (`--max-colors`, one budget per
+`--out`); **a colour decision is stated at the shipped budget.**
+*(measured 2026-09-10 — the same doc §1.1–1.2)*
