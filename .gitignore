@@ -47,3 +47,8 @@ digitizer/tools/letterform_fidelity/out/
 # artifact, not a file someone happened to leave in their checkout.
 digitizer/artfid-baseline.csv
 digitizer/artfid-baseline.txt
+
+# Regenerable contact sheets from tools/region_color_renders.py — the METHOD
+# is tracked, a run's PNGs are not (and this repo is public: renders of client
+# artwork do not belong in it by accident).
+digitizer/renders/
