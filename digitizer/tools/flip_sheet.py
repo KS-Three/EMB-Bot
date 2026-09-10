@@ -188,6 +188,16 @@ ARMS: dict[str, dict] = {
         "revalidate_small_shapes": False,
         "bind_resnap_all_classes": False,
     },
+    # 2026-09-10, the correction the colour flip's own test run found: stage 2
+    # hands `select_palette` a region's MEAN, and a region full of inclusions
+    # has a mean no pixel of it carries -- Bridge Bar's yellow disc sews
+    # `6031` Limelight instead of `0501` Sun, 7.0 dE00 on a logo's main
+    # colour, now that `bind_resnap_all_classes` holds the palette's answer.
+    # These arms price the two robust estimators end to end; the population
+    # they act on is counted by `tools/region_color_census.py`, which cannot
+    # see cones because it never runs the palette.
+    "rc_median": {"region_color": "median"},
+    "rc_modal": {"region_color": "modal"},
 }
 
 # An arm is a "single" if it flips exactly one flag. Derived, not listed, so

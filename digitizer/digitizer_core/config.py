@@ -1619,6 +1619,20 @@ class PipelineConfig:
     # pre-flip engine byte for byte.
     bind_resnap_all_classes: bool = True
 
+    # Which colour a SLIC+RAG region argues with when the palette is chosen
+    # (`stage2_photo_segment.region_lab` — that function's comment carries
+    # the mechanism and the estimators). The mean is what shipped, and a
+    # region full of inclusions has a mean no pixel of it carries: Bridge
+    # Bar's yellow disc reads 12 ΔE00 off its own pixels through the black
+    # lettering's anti-aliased halos, so the palette picks `6031` Limelight
+    # for a `0501` Sun disc — 7.0 ΔE00 on a logo's main colour. The unbound
+    # re-snap used to correct that quietly; `bind_resnap_all_classes` above
+    # holds the palette's answer, so the fix has to be here, upstream.
+    #
+    # "mean" | "median" | "modal". DEFAULT "mean" — the shipped engine byte
+    # for byte — until the census says which robust arm to flip to.
+    region_color: str = "mean"
+
     # Split satin. A satin cross longer than the threshold carries
     # intermediate penetrations, staggered station to station so the holes
     # never line up (machine.SPLIT_* carry the corpus measurements: the

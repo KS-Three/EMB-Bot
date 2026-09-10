@@ -1433,6 +1433,95 @@ def _shade_demand_count(delta_e: float) -> int:
     return max(_SHADE_DEMAND_COUNT_MIN, min(_SHADE_DEMAND_COUNT_MAX, n))
 
 
+# --- The one colour a region argues with -------------------------------------
+#
+# Step 6 hands `select_palette` ONE Lab per region, and until 2026-09-10 that
+# was always the region's MEAN — which a region full of inclusions does not
+# carry anywhere. Bridge Bar's yellow disc is (251, 235, 65) by its pixels,
+# 1.0 ΔE00 from `0501` Sun; the black lettering, the bird and the rope sitting
+# inside it contribute their anti-aliased edges and grey halos, and the mean
+# comes out (223, 220, 77) — 12 ΔE00 darker and greener, so the k-medoids
+# palette rightly picks `6031` Limelight for the colour it was handed. For as
+# long as the re-snap was unbound it read the SOURCE pixels and quietly
+# corrected the disc back to Sun; `bind_resnap_all_classes` (ON since
+# 2026-09-10) holds the palette's answer, which exposed the error rather than
+# causing it. DOCTRINE 2026-09-10 states the rule this implements: **a
+# region's colour for palette selection must be robust to its inclusions.**
+#
+# The estimators are arms of `cfg.region_color`, not a bool, because they are
+# not one fix with an on-switch — they disagree with each other on photo
+# regions, where there IS no dominant colour and the mean is defensible:
+#
+#   "mean"    the shipped behaviour, byte-identical when selected.
+#   "median"  per-channel median of the region's RGB. Parameter-free and
+#             cheap; a minority of inclusions cannot move it. Its known
+#             weakness is that three independent channel medians need not be
+#             a colour any pixel has.
+#   "modal"   the mean over the region's modal pixels: the geometric median
+#             in Lab (Weiszfeld, seeded from the per-channel median) picks
+#             the dominant mode, then the mean of the pixels within
+#             `_REGION_MODAL_DE00` of it. Respects colour geometry, and
+#             degrades to something very near the mean on a region with no
+#             mode (a photo's ramp), where every pixel is inside the ball.
+#
+# No physical constant here (gate 1): every number is an image-space
+# tolerance, and nothing about cloth settles which pixels of a logo are its
+# own colour.
+_REGION_MODAL_DE00 = 5.0      # the ball around the mode that counts as "the
+                              # region's own colour"; SHADE_STEP_DELTAE/2 -
+                              # half a shade step, so a single shade of a
+                              # ramp stays whole while a black inclusion's
+                              # halo (12 ΔE00 out on Bridge Bar) is refused.
+_REGION_MODAL_ITERS = 32      # Weiszfeld cap; it converges in far fewer.
+_REGION_MODAL_EPS = 1e-6      # both the zero-distance guard and the stop.
+
+
+def _geometric_median(pts: np.ndarray) -> np.ndarray:
+    """The L1 multivariate median of `pts` (Weiszfeld), seeded per-channel.
+
+    Unlike three independent channel medians this is a point in the same
+    space the ΔE00 ball below is measured in, and unlike the mean a minority
+    of outlying pixels cannot drag it: the pull of a pixel falls off as 1/d.
+    """
+    x = np.median(pts, axis=0)
+    for _ in range(_REGION_MODAL_ITERS):
+        d = np.linalg.norm(pts - x, axis=1)
+        if (d < _REGION_MODAL_EPS).all():
+            return x
+        # The distance FLOOR is the whole trick, and dropping the pixels that
+        # sit on the estimate instead — the textbook singularity dodge — is
+        # exactly wrong here: a flat region's own colour IS a pile of
+        # identical pixels, and zeroing them hands the estimate to the halo.
+        # Measured while writing `tests/test_region_color.py`: with 91% of a
+        # disc at its field colour, the drop-them form put the estimate
+        # 9.75 dE00 off that colour, the floor form lands ON it.
+        w = 1.0 / np.maximum(d, _REGION_MODAL_EPS)
+        nxt = (pts * w[:, None]).sum(axis=0) / w.sum()
+        if np.linalg.norm(nxt - x) < _REGION_MODAL_EPS:
+            return nxt
+        x = nxt
+    return x
+
+
+def region_lab(px: np.ndarray, method: str = "mean") -> np.ndarray:
+    """One Lab colour standing for a region's RGB pixels `px` (N x 3).
+
+    The seam `tools/region_color_census.py` reads, and the only place the
+    choice is made — step 6 calls this once per kept region.
+    """
+    if method == "mean":
+        return rgb_to_lab(px.mean(axis=0, keepdims=True))[0]
+    if method == "median":
+        return rgb_to_lab(np.median(px, axis=0).reshape(1, 3))[0]
+    if method == "modal":
+        lab = rgb_to_lab(px.reshape(-1, 3))
+        mode = _geometric_median(lab)
+        near = deltaE_ciede2000(lab, np.repeat(mode[None, :], len(lab), 0)) \
+            <= _REGION_MODAL_DE00
+        return lab[near].mean(axis=0) if near.any() else mode
+    raise ValueError(f"unknown region_color method: {method!r}")
+
+
 def _shade_demand_points(
     p: Prep, kept: list[RegionMask], weights: list[float]
 ) -> tuple[list[np.ndarray], list[float], int]:
@@ -1950,8 +2039,8 @@ def kept_masks_to_quant(
     # and every run with neither — stays None = plain area).
     chart = chart_for(cfg)
     region_labs = [
-        rgb_to_lab(p.rgb[r.frame_slice()][r.crop]
-                   .reshape(-1, 3).mean(axis=0, keepdims=True))[0]
+        region_lab(p.rgb[r.frame_slice()][r.crop].reshape(-1, 3),
+                   cfg.region_color)
         for r in kept
     ]
     classes = _region_classes(kept, face_regions, bg_mask)
