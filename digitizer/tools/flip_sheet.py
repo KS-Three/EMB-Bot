@@ -331,17 +331,28 @@ def _job(args) -> dict:
     return measure(*args)
 
 
-def run(out: Path, workers: int, only: list[str] | None) -> int:
+def run(out: Path, workers: int, only: list[str] | None,
+        only_fixtures: list[str] | None = None) -> int:
+    """`only_fixtures` narrows a pass to those corpus entries (paths under
+    testdata/, as FIXTURES spells them) -- added 2026-09-10 because the
+    forced-flat proxy arms are a question about REAL LOGOS, and forcing the
+    flat lane on a photograph costs ten minutes a fixture to answer nothing."""
     out.mkdir(parents=True, exist_ok=True)
     arms = only or list(ARMS)
+    fxs = fixtures()
+    if only_fixtures:
+        unknown = sorted(set(only_fixtures) - set(fxs))
+        if unknown:
+            raise SystemExit(f"--fixture not in the corpus: {unknown}")
+        fxs = [f for f in fxs if f in set(only_fixtures)]
     todo = []
     for arm in arms:
-        for fx in fixtures():
+        for fx in fxs:
             dest = out / f"{arm}__{fx.replace('/', '_')}.json"
             if dest.exists():
                 continue
             todo.append((fx, arm))
-    print(f"{len(todo)} runs to do ({len(arms)} arms x {len(fixtures())} fixtures, "
+    print(f"{len(todo)} runs to do ({len(arms)} arms x {len(fxs)} fixtures, "
           f"{workers} workers)", flush=True)
     if not todo:
         return 0
@@ -559,6 +570,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--out", type=Path, default=ROOT / "build" / "flip_sheet")
     ap.add_argument("--workers", type=int, default=3)
     ap.add_argument("--arm", action="append", dest="arms")
+    ap.add_argument("--fixture", action="append", dest="fixtures_only",
+                    help="limit a run to these corpus entries (repeatable)")
     ap.add_argument("--max-colors", type=int, default=None,
                     help="the colour budget every arm runs under (default: the "
                          "engine's 12; the Studio ships 6)")
@@ -566,7 +579,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.mode == "run":
         global MAX_COLORS
         MAX_COLORS = args.max_colors
-        return run(args.out, args.workers, args.arms)
+        return run(args.out, args.workers, args.arms, args.fixtures_only)
     return report(args.out)
 
 

@@ -68,14 +68,24 @@ sheet's rows stay comparable):
 | `color_cap` | `enforce_color_cap` — the missing single |
 | `colour4` | cap + mask + small + bind — the four NOT ruled |
 | `colour5` | `colour4` + `dissolve_phantom_blends` — the review's table, re-presented |
-| `flat_off` | `forced_class=flat`, nothing else — the item-1 proxy's baseline |
+| `flat_off` | `forced_class=flat`, nothing else — the item-1 proxy's baseline; PROXIES, not ARMS |
 | `flat_colour5` | `forced_class=flat` + all five — what survives once real logos take the flat lane |
+| `mask_small` (existing) | mask + floor — the pair the published sheet isolated; run here because one bundle-only grade move needed attributing |
 
-The report gains `stops` (colour changes) in every net line and a
-`--base ARM` option so `flat_colour5` is read against `flat_off`, not
-against `off`. Per fixture and per arm the sheet prints stitches, trims,
-blocks, cones, stops and grade; the interaction table says where the
-bundle is not the union of its parts.
+The report gains `stops` (colour changes) in every net line and reads the
+proxy pair against `flat_off`, never against `off`. Per fixture and per
+arm the sheet prints stitches, trims, blocks, cones, stops and grade; the
+interaction table says where the bundle is not the union of its parts.
+
+**Two things the measurement changed on contact.** (1) The proxy pair
+runs on the NINE real-logo fixtures only (`--fixture`, added for it):
+forcing the flat lane on a photograph took ten minutes a fixture and
+answers nothing about item 1, which is a question about logos. (2) Every
+arm runs at TWO colour budgets: `PipelineConfig`'s own `max_colors` (12,
+the published sheet's yardstick) and the Studio's shipped 6
+(`--max-colors`, added for it; every row records its budget). For the
+colour flags the two are different questions — drone at 6 sews 23 cones
+OFF and 6 under the cap; at 12, 17 and 12.
 
 **Forced flat is a proxy for item 1, not item 1**: it drops Fremont's
 rope and EST 1895 (`DROPPED_SMALL_SHAPES`) where item 1 lands with the
