@@ -186,6 +186,12 @@ Everything in §2, on the flipped tree (#442's engine):
   `garment_id` (three rounded channels; nothing when a pre-fabricRgb save
   has none). One cache-key change on existing designs, which re-digitize
   to the same bytes because the rule is off.
+- **The generation cache** keys on `garment_rgb` like any other
+  non-edit field, so changing the garment re-runs stages 0–4 rather
+  than only `finish_generation`. Deliberate: the cap's ranking (stage 4)
+  reads the verdict, so the generation genuinely depends on the garment;
+  a finish-only shortcut would let a cached generation carry the wrong
+  ranking. `garment_id` has always worked this way.
 - Tests: `tests/test_enclosed_by_garment.py` (12), seven in
   `test_service.py`, the Studio spec pinned (`garment_rgb` in the field
   list). OFF is byte-identical with a garment colour given, on whitebg,
@@ -224,3 +230,28 @@ Read off the sheets:
   default garment would sew whitebg's and Golden Tee's white holes white
   on natural — visible white on off-white, which the 08-15 verdict called
   wrong. That is §5.1, unchanged.
+
+**At the Studio's budget of 6** (the same three, ON Navy against OFF at
+`max_colors` 6): the cap now counts a sewing hole as sewn area, and on a
+logo that already fills its six cones that is a slot taken from the
+artwork. Golden Tee OFF at 6 merges the holes' White into Sterling (they
+do not sew, so nothing shows); ON Navy the holes keep `0015` White, sew
+all four, and the cap evicts the smallest sewn cone instead — **`1312`
+Burnt Orange, the GT letters' red edge, into Black (35 ΔE00, the nearest
+kept)** — 9,869 stitches / 60 trims / 6 cones against 6,546 / 62 / 6.
+whitebg lands on exactly 6 (5 + White) and gaulke on 3, so neither pays.
+The price is the slider's, not the rule's: a seventh cone is the customer's
+call, and `COLOR_CAP_APPLIED` names the merge either way — but it is the
+case to put beside the flip decision (§5.3), since the Studio ships 6.
+
+**One more thing the gaulke sheet shows, measured rather than read:** the
+white ground's fill rows turn from 0° (OFF: 6,585 of 6,645 row segments
+horizontal) to 45° (ON Navy: 7,097 of 7,175 diagonal) when the 46 bodies
+inside it sew. Nothing in this flag touches angles; `best_fill_angle_deg`
+(the fewest-monotone-columns objective) runs on the polygon the ground is
+SEWN as, and that polygon is different once the bodies are stitched shapes
+the ground extends `overlap_mm` under, so the objective's argmin moved. A
+customer who switches the garment from white to navy would see the card's
+stitch direction turn — item 7's design angle (`cfg.design_angle`, DEFAULT
+OFF) is the control that would hold it, which is a second reason that
+flag's flip is worth re-reading beside this one.

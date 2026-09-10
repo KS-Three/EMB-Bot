@@ -4162,3 +4162,40 @@ and **−47 at 6**. Every flip-sheet row now records its budget and the
 report refuses to mix two silently (`--max-colors`, one budget per
 `--out`); **a colour decision is stated at the shipped budget.**
 *(measured 2026-09-10 — the same doc §1.1–1.2)*
+
+**A flag that changes WHICH shapes sew changes fill directions it never
+touched (2026-09-10).** Item 9's rule stitches gaulke's 46 enclosed letter
+bodies on a light garment, and the white ground around them turned its
+fill rows from 0° to 45° — 6,585 of 6,645 row segments horizontal OFF,
+7,097 of 7,175 diagonal ON. Nothing in the rule reads an angle;
+`best_fill_angle_deg` picks the fewest-monotone-columns direction on the
+polygon a shape is SEWN as, and that polygon is different once the bodies
+inside it are stitched shapes the ground extends `overlap_mm` under. A
+customer who switches garments would see the card's stitch direction
+turn. **When a change alters the stitched set, measure the fill directions
+of the shapes that did not change, not only the counts** — a render on the
+fabric's colour showed it, the stitch and trim deltas did not. Item 7's
+`cfg.design_angle` (one direction per design) is the control that would
+hold it, which is a second reason to re-read that flip. *(measured
+2026-09-10 — `docs/superpowers/plans/2026-09-10-enclosed-by-garment.md`
+§6)*
+
+**Stage 2 hands the palette a region's MEAN, and a big region full of
+inclusions has a mean no pixel carries (2026-09-10).** Bridge Bar's yellow
+disc is (251, 235, 65) by its pixels, 1.0 ΔE00 from `0501` Sun; the region
+the palette sees is (223, 220, 77), 12 ΔE00 darker and greener, because
+the black lettering, the bird and the rope inside the disc contribute
+their anti-aliased edges and grey halos to `p.rgb[...].mean()`. The
+k-medoids palette then rightly picks `6031` Limelight for that mean, and
+for as long as the re-snap was unbound it read the SOURCE pixels and
+quietly corrected the disc to Sun (double-loading Lemon beside it) — so
+the flip that bound the re-snap (`bind_resnap_all_classes`) exposed the
+error rather than causing it, and a decision sheet that read the render
+as "a touch greener … the same logo" understated a 7 ΔE00 shift on a
+logo's main colour. Two rules: **a region's colour for palette selection
+must be robust to its inclusions** (a median, or the mean over the
+region's modal pixels — the fix is upstream, not in the bind), and **when
+a flag closes an escape, ask what the escape was correcting** before
+pricing the closure as pure saving. *(measured 2026-09-10 — the flip's
+test run, `docs/colour-bundle-decision-2026-09-10.md` §2 bind entry, PR
+#442)*
