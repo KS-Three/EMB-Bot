@@ -1814,6 +1814,15 @@ its hedge as it is copied forward** — is why this file is split.
   discipline the `satin_shape(angle_deg=)` inert-wiring finding already
   demanded. *(2026-09-02 — PR #317)*
 
+- **A per-class default cannot be confirmed from a dataclass line.**
+  MASTER_SCOPE's latent list carried `split_tonal_regions` as "confirmed OFF —
+  `config.py`" for two weeks after it stopped being off: `effective_split_tonal`
+  returns `bool(flag) or class_ in PHOTO_CLASSES`, so the FIELD stopped deciding
+  two days after that line was written and the field is what the checker read.
+  A flag whose effect is resolved per class is confirmed by calling the
+  resolver, never by reading its default. *(corrected 2026-09-02, moved here
+  from MASTER_SCOPE 2026-09-10 when the entry was compressed to its status)*
+
 - **A test whose NAME claims both directions will often assert only one.**
   `test_explicit_flag_still_wins_everywhere` checked only that the config flag
   could turn tonal splitting ON. `effective_split_tonal` ORed the flag with the
@@ -4199,3 +4208,22 @@ a flag closes an escape, ask what the escape was correcting** before
 pricing the closure as pure saving. *(measured 2026-09-10 — the flip's
 test run, `docs/colour-bundle-decision-2026-09-10.md` §2 bind entry, PR
 #442)*
+
+## A worker pool is not a global's scope (2026-09-10)
+
+`tools/flip_sheet.py`'s `--max-colors` set a module global and `measure`
+read it — and the workers are PROCESSES. On a spawn platform (Windows,
+i.e. Kent's box) a child re-imports the module, `MAX_COLORS` is None
+again, and the option is silently a no-op: every row in a `--max-colors 6`
+pass was measured at the engine's 12 and stamped `max_colors: null` while
+the sheet's header said 6. A fork platform — every cloud session —
+inherits the parent's globals and is right by luck, which is why the item-8
+decision sheet's two budget tables genuinely differ and its numbers stand.
+
+**The rule: a parameter that changes what is measured travels in the job,
+never in a global a worker re-imports.** And the tell was already in the
+data — a row that RECORDS its own budget (this one does, deliberately)
+disagreeing with the header is the whole diagnosis, so read a stored row
+before trusting a sweep whose option you cannot see in the output.
+*(found 2026-09-10 while pricing `cfg.region_color`; fixed the same day —
+the budget is a job-tuple field)*

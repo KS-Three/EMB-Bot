@@ -97,9 +97,67 @@ measurement in its own comment.
 
 ## 3. The census — how big the population is
 
-`.venv/Scripts/python -m tools.region_color_census --colors 6 --mm 80`
+`.venv/Scripts/python -m tools.region_color_census --colors 6 --mm 80`, whole
+corpus, 2026-09-10. The column that decides things is **agreed**: regions where
+BOTH robust arms name one thread and the mean names a different one — the mean
+is the odd answer out there, whichever estimator you prefer.
 
-*(filled in from the run — see §3 table in the PR body / scope-history entry)*
+| fixture | regions | agreed | agreed area | worst mean-modal |
+|---|---:|---:|---:|---:|
+| `screenshot_phone_ui_golke` | 92 | 46 | **63.1%** | 14.5 |
+| `logo_bridge_bar` | 50 | 10 | **56.3%** | 7.1 |
+| `logo_golden_tee` | 35 | 14 | **25.2%** | 15.4 |
+| `repro_gradient_white_icon` | 8 | 3 | 16.3% | 28.6 |
+| `drone_render` | 58 | 22 | 9.5% | 23.2 |
+| `logo_hotel_fremont` | 49 | 8 | 2.9% | 8.9 |
+| `photo_dof_meadow` | 16 | 2 | 2.1% | 5.9 |
+| `logo_gaulke_roofing` | 18 | 12 | 1.6% | 9.9 |
+| `summit_badge` | 34 | 7 | 0.5% | 10.1 |
+| `fur_ramp`, `grass_macro`, `gradient_ramp_linear`, `logo_script_tires`, `photo_owl_pale`, `photo_subject_stub`, `region_blobs` | — | **0** | 0.0% | ≤ 8.9 |
+
+Two facts fall out of it. **The population is real customer logo art**: the
+three logos and the phone screenshot carry a quarter to two thirds of their
+own area in regions the mean gets wrong, and the flat-lane fixtures carry
+none at all (they have no SLIC+RAG regions — the census says so per fixture).
+**The true photo fixtures are mostly untouched**: no dominant colour, no
+disagreement, which is the claim §2 makes about the ramp.
+
+## 3b. The sheet — what it costs end to end
+
+`tools/flip_sheet.py run --max-colors 6 --arm off --arm rc_median --arm
+rc_modal` (26 fixtures, 80 mm, `left_chest`, the Studio's colour budget).
+**Read this sheet and not the 12-colour one**: `--max-colors` was a no-op on
+this box until it was fixed on this branch (DOCTRINE 2026-09-10, "a worker
+pool is not a global's scope").
+
+| arm | moved | stitches | trims | blocks | cones | stops |
+|---|---:|---:|---:|---:|---:|---:|
+| `rc_median` | 10 / 26 | +2,974 | +24 | **−2** | +1 | **−2** |
+| `rc_modal` | 10 / 26 | +2,269 | 0 | +1 | +1 | +1 |
+
+Per fixture, where it matters (OFF → median → modal):
+
+| fixture | blocks | stitches | trims |
+|---|---|---|---|
+| `logo_bridge_bar` | 7 → **6** → **6** | 14,589 → 14,576 → **13,821** | 124 → 126 → **96** |
+| `drone_render` | 8 → **6** → 7 | 16,101 → 16,250 → 16,169 | 91 → **83** → 89 |
+| `logo_golden_tee` | 7 → 7 → **9** | 6,546 → 6,793 → 6,833 | 62 → 59 → **58** |
+| `photo_scene_stub` | 4 → 5 → 5 | 16,083 → **19,464** → **19,464** | 44 → **73** → **73** |
+| `photo_dof_meadow` | 5 → 5 → 5 | 19,892 → 19,412 → 19,412 | 34 → 41 → 41 |
+| `repro_gradient_white_icon` | 5 → 5 → 5 | 22,361 → 22,078 → 22,078 | 24 → **19** → **19** |
+| `logo_hotel_fremont`, `becker_marine`, every flat fixture | — | byte-identical | byte-identical |
+
+**The cost is one synthetic photo fixture.** `photo_scene_stub` pays +3,381
+stitches and +29 trims under either arm — a generated scene, not client
+artwork, and the lane where §2 says the estimator has least to offer.
+**The gain is on the logos**, and the two arms buy different things: `modal`
+takes 28 trims and a block off Bridge Bar (the disc sewing `0501` Sun again
+instead of `6031` Limelight), `median` takes two blocks off `drone_render`
+and never adds a stop anywhere; `modal` adds two on Golden Tee, which is two
+re-threads on a single-needle machine.
+
+Grades move once, on the saturated floor (`logo_bridge_bar` score 0 → 4 under
+`median`), which per gate 4 is not evidence either way.
 
 ## 4. What must be measured before any flip
 
@@ -118,20 +176,33 @@ measurement in its own comment.
    shipped expression, so nothing should move at all — a golden that moves
    on `"mean"` is a bug in this change, not a recapture.
 
-## 5. The decision for Kent
+## 5. The decision for Kent — measured, three live answers
 
-Three live answers, and the sheet has to say which:
+Both robust arms put Bridge Bar's disc back on `0501` Sun and neither
+changes a flat-lane fixture, Fremont or Becker at all. They differ on which
+logo they help:
 
-- **`"modal"` as the default.** The estimator that matches the mechanism:
-  it finds the region's own colour and averages only that. Costs a
-  Weiszfeld iteration per region (bounded at 32, converges in far fewer).
-- **`"median"` as the default.** Cheaper and parameter-free, and on flat
-  logo art it lands on the same answer; its failure mode is a colour no
-  pixel has, which is the defect's own shape in miniature.
-- **Leave the default `"mean"` and ship the arm parked.** The honest option
-  if the sheet shows cones moving on photo fixtures for no visible gain —
-  the population is real but the cure would then be trading one lane's
-  correctness for another's.
+- **`"median"`.** Parameter-free and cheapest. Corpus net at 6 colours:
+  **−2 blocks, −2 stops**, +2,974 stitches, +24 trims, and it adds a stop on
+  nothing. Takes two blocks off `drone_render`. Its failure mode is a colour
+  no pixel has (three independent channel medians), which is the defect's own
+  shape in miniature — it did not bite anywhere in this corpus.
+- **`"modal"`.** The estimator that matches the mechanism, and the best answer
+  on the design the defect was found on: Bridge Bar **−768 stitches, −28
+  trims, −1 block**. Corpus net: +2,269 stitches, trims flat, **+1 block /
+  +1 stop** — that stop is Golden Tee going 7 → 9 blocks, two extra
+  re-threads on a single-needle machine.
+- **Leave `"mean"` and keep the arm parked.** Honest if the renders say the
+  colours it moves are not better: the whole gain is on four gradient-lane
+  designs, and one synthetic photo fixture pays +3,381 stitches either way.
+
+**The renders** (artwork beside all three arms, captioned with cones, blocks,
+stitches and trims — `tools/region_color_renders.py`, gitignored output):
+Bridge Bar's disc reads olive under the mean and yellow under both robust
+arms; Hotel Fremont is byte-identical across the three; Golden Tee's GT
+letters carry their gold under the robust arms and read pale under the mean,
+which is the pair to look at before ruling, because Golden Tee is also where
+`modal` spends its two stops.
 
 ## 6. Risks
 

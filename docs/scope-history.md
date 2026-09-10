@@ -12185,3 +12185,66 @@ For a customer who never touches the swatch: a black-background logo's
 letter bodies now sew on Natural, a white one's do not.
 
 *(2026-09-10 — `docs/superpowers/plans/2026-09-10-enclosed-by-garment.md` §7)*
+
+## 2026-09-10 — the region colour the palette is handed: `cfg.region_color` BUILT, default `"mean"`
+
+Kent's pick after #444, and the correction the colour flip's own test run
+left open: stage 2 selects the palette over one Lab per SLIC+RAG region and
+that Lab was the region's MEAN. Bridge Bar's yellow disc is (251, 235, 65),
+1.0 ΔE00 from `0501` Sun; the mean is (223, 220, 77) — the black lettering,
+the bird and the rope inside it contributing anti-aliased edges and grey
+halos — so the k-medoids palette rightly picks `6031` Limelight for the
+colour it was handed, 7.0 ΔE00 off a logo's MAIN colour. The unbound re-snap
+used to read the source pixels and correct it; `bind_resnap_all_classes` (ON
+since 2026-09-10) holds the palette's answer, so the flip EXPOSED this. The
+fix is upstream: `stage2_photo_segment.region_lab`, the one seam where the
+choice is made, behind `cfg.region_color` — `"mean"` (the shipped expression
+byte for byte), `"median"` (per-channel RGB median), `"modal"` (the Lab
+geometric median, then the mean of the pixels within half a shade step of
+it, `_REGION_MODAL_DE00 = SHADE_STEP_DELTAE / 2`). An arm and not a bool
+because on a photo's ramp there is no dominant colour and the mean is
+defensible; the tests pin all three landing within 5 ΔE00 of each other
+there.
+
+**The census** (`tools/region_color_census.py`, new — it records every colour
+step 6 asks for and prices the three estimators on the same regions of the
+same run; 26 fixtures, 6 colours, 80 mm). Regions where BOTH robust arms name
+one thread and the mean names another, as a share of the design's region area:
+`screenshot_phone_ui_golke` **63.1%** (46 regions), `logo_bridge_bar` **56.3%**
+(10, the disc among them), `logo_golden_tee` **25.2%** (14),
+`repro_gradient_white_icon` 16.3%, `drone_render` 9.5% (22),
+`logo_hotel_fremont` 2.9%, `photo_dof_meadow` 2.1%, `logo_gaulke_roofing`
+1.6%, `summit_badge` 0.5% — and **zero** on `fur_ramp`, `grass_macro`,
+`gradient_ramp_linear`, `logo_script_tires`, `photo_owl_pale`,
+`photo_subject_stub` and `region_blobs`. The four flat-lane fixtures have no
+SLIC+RAG regions at all. **The population is real customer logo art.**
+
+**The sheet** (`flip_sheet`, 26 fixtures, 80 mm, `left_chest`, `--max-colors
+6`): `rc_median` moves 10 fixtures for −2 blocks, −2 stops, +2,974 stitches,
++24 trims; `rc_modal` moves 10 for +1 block, +1 stop, +2,269 stitches, trims
+flat. Per design: Bridge Bar 7 → 6 blocks under both, and under `modal`
+**14,589 → 13,821 stitches and 124 → 96 trims** with `0501` Sun sewing again;
+`drone_render` 8 → **6** blocks under `median` (7 under `modal`);
+`logo_golden_tee` 7 → 7 under `median` and 7 → **9** under `modal`, which is
+two extra re-threads. The whole corpus cost is one generated scene,
+`photo_scene_stub`, +3,381 stitches and +29 trims under either arm. Fremont,
+Becker and every flat fixture are byte-identical. One grade moves, on the
+saturated floor (Bridge Bar score 0 → 4 under `median`) — gate 4 says that is
+not evidence.
+
+**Found while measuring, and fixed on the same branch:** `flip_sheet`'s
+`--max-colors` set a module global that `measure` read, and the workers are
+processes — on a spawn platform (Windows, Kent's box) a child re-imports the
+module and gets `None`, so the option was silently a no-op and a row stamped
+`max_colors: null` sat beside `cones: 12` in a pass that said 6. It is a
+job-tuple field now. Fork platforms (every cloud session) inherited the global
+and were right by luck, which is why the item-8 decision sheet's two budget
+tables genuinely differ and its numbers stand. DOCTRINE: *a worker pool is not
+a global's scope.*
+
+**Open:** which arm becomes the default — Kent's, on the renders
+(`tools/region_color_renders.py`, artwork beside all three arms) and the
+trade-off above. Plan and full tables:
+`docs/superpowers/plans/2026-09-10-robust-region-colour.md`. Tests:
+`tests/test_region_color.py`, 12 passing, including the shipped-engine Bridge
+Bar pair that pins Limelight under the mean and Sun under the robust arm.

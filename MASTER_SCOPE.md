@@ -192,6 +192,8 @@ icon. Cloth pointers added to defects 3, 6 and 16 below.
 
 44. **Satin borders sat 1.9 mm INSIDE every abutting colour — FIXED 2026-09-09 (Kent's ruling: the colour sewn on top owns a shared seam).** `_yield_frontage` (2026-08-06) had the LATER shape retreat its whole circuit column + margin off any seam an earlier border already held; on a flat logo every colour abuts, so on the Instagram icon (`border="auto"`, 80 mm, flat) **14 of 17** bordered shapes sewed a satin stripe a median 1.4–1.9 mm inside their own fill and one lost its border outright — its own test pinned the inset as wanted, and nobody saw it for a month because the Studio could not reach `cfg.border` until #318. Now `stage7_sequence._owned_by_later` hands each seam to the bordered shape still to sew over it and `stage6_border.border_runs(omit=…)` sews the shape underneath as open arcs on the rest of its edge: every bordered shape has half its penetrations ON its visible edge (p10 0.00 mm), 33,292 → **30,420** st, trims 34 → 30, and `BORDER_SEAM_SHARED` is a note naming the pairs. Found under it: two abutting visible edges are NOT one curve (each side is its own DP contour of the same pixel boundary; p90 0.09–0.43 mm apart), so the seam tolerance is `2 × simplify_tol_mm`, not 0.02 mm — the hair-width found half of every seam and sewed 28 stubs of 1.6–2.4 mm on one ring. A fully enclosed EARLY shape now gets no border of its own (the ring over it borders that seam) — by the rule; a sew-out judges the look. Prediction blind spots (a fill whose rows all degenerate, a `photo_width_floor` reroute, a gradient shape riding the design ramp) leave one seam unbordered or doubled, never a stripe. *(measured 2026-09-09 — `tests/test_border.py` seam section, 32 passing; DOCTRINE standing ruling; memory `border-seam-ownership-2026-09-09`)*
 
+45. **The palette is handed a colour no pixel of the region carries — BUILT BEHIND AN ARM 2026-09-10, `cfg.region_color`, default `"mean"` (the shipped engine byte for byte).** Stage 2 selects the palette over one Lab per SLIC+RAG region and that Lab was the region's MEAN: Bridge Bar's yellow disc is (251, 235, 65), 1.0 ΔE00 from `0501` Sun, and the mean is (223, 220, 77) — the black lettering, bird and rope inside it contributing anti-aliased edges and grey halos — so the palette picks `6031` Limelight, **7.0 ΔE00 off a logo's main colour**. The unbound re-snap used to correct it from the source pixels, so `bind_resnap_all_classes` (ON since 2026-09-10) exposed this rather than causing it; the fix is upstream, in `stage2_photo_segment.region_lab`. **Counted** (`tools/region_color_census.py`, 6 colours / 80 mm): regions where BOTH robust estimators name one thread and the mean names another cover **63.1% of the phone screenshot's area, 56.3% of Bridge Bar's, 25.2% of Golden Tee's**, and **0%** of seven photo/ramp fixtures — the population is real customer logo art, and the flat lane has no such regions at all. **Priced** (`flip_sheet`, 26 fixtures at the Studio's 6): `median` −2 blocks / −2 stops / +2,974 st corpus-wide, `modal` +1 block / +1 stop / +2,269 st but Bridge Bar −768 st and **−28 trims** with Sun sewing again; the whole cost is `photo_scene_stub` (+3,381 st, +29 tr under either), a generated scene. Fremont, Becker and every flat fixture are byte-identical. **Which arm becomes the default is Kent's call** — renders and the trade-off are §5 of the plan. *(built + measured 2026-09-10 — `docs/superpowers/plans/2026-09-10-robust-region-colour.md`; `tests/test_region_color.py`, 12 passing; DOCTRINE 2026-09-10)*
+
 ### Closed — kept numbered, because ten other docs cite them by number
 
 Full text moved to [`docs/scope-history.md`](docs/scope-history.md) 2026-08-27; these are pointers, not status.
@@ -226,12 +228,10 @@ one concealed it; entry 2 is a flag that LEFT this list unnoticed for two weeks.
    lever on defects 4 and 6. *(`docs/hardening-closeout-2026-08-02.md`;
    [2026-09-02](docs/scorecard-baseline-attribution-2026-09-02.md))*
 2. ~~`split_tonal_regions`~~ — **NOT LATENT: ON for photo classes since
-   2026-08-19** (`d3f3c547`, spec decision 2); this said otherwise for two
-   weeks. `effective_split_tonal` returns `bool(flag) or class_ in
-   PHOTO_CLASSES` — the field only turns it ON. The old "confirmed OFF —
-   `config.py`" read the FIELD, which stopped deciding two days later: **a
-   per-class default cannot be confirmed from a dataclass line.** Ratified
-   2026-09-02, left gate 3; cost is defect 20. *(`pipeline.effective_split_tonal`)*
+   2026-08-19** (`d3f3c547`, spec decision 2), ratified 2026-09-02, left gate 3;
+   cost is defect 20. Why it sat here wrongly for two weeks is DOCTRINE's
+   "a per-class default cannot be confirmed from a dataclass line".
+   *(`pipeline.effective_split_tonal`)*
 
 *(added 2026-08-17 — `docs/project-review-2026-08-16.md` §1.6: chaining was absent
 here, so a good-faith flip would have shipped bare-fabric thread unwarned.)*
