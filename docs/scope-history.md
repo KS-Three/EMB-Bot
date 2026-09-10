@@ -12185,3 +12185,38 @@ For a customer who never touches the swatch: a black-background logo's
 letter bodies now sew on Natural, a white one's do not.
 
 *(2026-09-10 — `docs/superpowers/plans/2026-09-10-enclosed-by-garment.md` §7)*
+
+## 2026-09-10 — a robust region colour for the palette, BUILT as `cfg.robust_region_colour`, DEFAULT OFF
+
+Kent's pick after item 9: the loss the colour-bundle flip's own test run
+found (#442), repaired at its source. Stage 2 hands the palette each
+SLIC+RAG region's plain MEAN, which a big flat region full of drawn-on
+inclusions turns into a colour no pixel carries — Bridge Bar's disc reads
+(223, 220, 77) for pixels at (251, 235, 65) and the palette rightly picks
+Limelight. The one mean is now one seam (`_region_pixels_lab` +
+`_region_lab`, OFF byte for byte the old expression), and ON the point is
+the modal mean of the region's Lab pixels — the mean over the pixels within
+5 ΔE00 of the per-channel median — chosen by `tools/region_colour.py`'s
+census (20 lane fixtures, 422 regions: the median and the modal mean move
+nearly the same regions' spools, 146 and 163, and where they differ the
+modal mean lands on the artwork — the disc goes to `0713` Lemon under the
+median, 2.1 ΔE00 from its pixels, and to `0501` Sun, 1.0, under the modal
+mean; 33 regions are bimodal, 27 of them on the phone-UI screenshot). Flip
+sheet, 26 fixtures at 80 mm: 11 move, 15 byte-identical. At 12: Bridge Bar
+12 cones with a repeated `0108` (13 blocks) → 11 / 11, the disc on Sun,
+`COLOR_STOPS_HEAVY` gone, F 0 → F 4; the screenshot 11 → 10 cones; Golden
+Tee 11 → 12 cones (+118 stitches, +5 trims) while its blocking threads fall
+4 → 2; the synthetic photo-scene stub takes a fifth spool and +3,382
+stitches / +29 trims at the same B 76; net +2,498 stitches / +24 trims / +1
+cone / 0 blocks. At the Studio's 6: net +2,244 stitches / +3 trims / 0
+blocks / 0 stops; Bridge Bar 13,820 / 96 / 6 / 6 against 14,588 / 124 / 6 /
+7 (−768 stitches, −28 trims) with one more blocking thread on a shard while
+its 1,023 mm² disc leaves the blocking list, Golden Tee +249 stitches and
+one blocking shard fewer, the screenshot's 470 mm² ground off the list,
+drone level at five with its 211 mm² orange entering (the one large shape
+that gets worse); no grade letter moves. Renders: the disc goes from yellow-green to a clean yellow;
+Golden Tee's letters and drone read the same. Flipping it is Kent's — a
+photo-lane snapshot recapture on CI. `tests/test_robust_region_colour.py`
+(10).
+
+*(2026-09-10 — `docs/superpowers/plans/2026-09-10-region-colour.md` §4)*

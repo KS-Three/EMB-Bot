@@ -589,3 +589,110 @@ page-mask bug was fixed — re-present, do not re-open.
   `garment_rgb` appears in no other test and no golden names a garment, so
   nothing else moves. The e2e specs drive whitebg (6.4 from Natural, declines)
   and the alpha enthusiast logo (unknown colour, declines).
+- **Shipped as PR #444 (12:56Z, ready-for-review, auto-merge armed at
+  `blocked`, check-in scheduled ~60 min out).** The lane is restarted on
+  main (1ed05ae, #443's merge) with the flip commit on top; this memory
+  note is committed locally and pushes only after #444 merges (a push into
+  an armed PR resets its checks).
+
+## Next pick — the Bridge Bar yellow: a robust region colour in stage 2 (Kent, 2026-09-10 12:57Z)
+
+- Chosen over item 1 (the real-logo lane), item 11 (legibility yardstick)
+  and item 12 (fill travel under cover). Scope: stage 2 hands the palette
+  each region's plain MEAN (`stage2_photo_segment.py`, the `region_labs`
+  list before `select_palette`); a big region full of inclusions gets a
+  colour no pixel carries (Bridge Bar's disc: (223, 220, 77) for pixels at
+  (251, 235, 65), 12 ΔE00). Flag first, DEFAULT OFF, byte-identical off;
+  measure on the flip sheet's 26 fixtures; the photo-lane snapshot golden
+  pins stage 2, so a flip is a CI recapture.
+- **Built (13:05Z):** the seam `_region_pixels_lab` + `_region_lab` (OFF ==
+  the old mean byte for byte; the photo-lane and flat-lane goldens pass),
+  `region_colour_candidates` (mean / median / modal mean),
+  `cfg.robust_region_colour` DEFAULT OFF, `tools/region_colour.py`, the
+  flip-sheet arm `region_colour`, 10 tests. **Census (20 lane fixtures, 422
+  regions):** median moves 155 regions' spools, modal mean 169; 33 bimodal
+  (26 on the screenshot); the real logos move most of their AREA (Bridge Bar
+  66.5%, Golden Tee 54.4%, drone 66.8%), photos and ramps nothing. **The
+  statistic is the modal mean**: on the disc, mean → Limelight, median →
+  Lemon (2.1), modal mean → Sun (1.0). A per-channel median is a colour no
+  pixel need carry. Next: the flip sheet `off` vs `region_colour` at 12 and
+  6 (fresh caches `build/flip_sheet_rc*` — the item-8 caches' `off` rows are
+  the PRE-flip engine), Bridge Bar / Golden Tee / drone renders, PR after
+  #444 merges, then Kent: the flip (a photo-lane snapshot recapture on CI if
+  any golden fixture moves).
+- **#444 merged 13:41Z** (all four checks green at 13:40); the lane is
+  rebased onto its merge (698ce03) with the region-colour commits on top,
+  still unpushed until the flip sheet at 6 and the full suite are in.
+- **Measured (13:45Z):** flip sheet `off` vs `region_colour`, fresh caches
+  `build/flip_sheet_rc` (12) and `_mc6` (6): 11 move / 15 identical at
+  both budgets. At 12 Bridge Bar 12 cones + a repeated 0108 (13 blocks) →
+  11/11, disc → Sun, COLOR_STOPS_HEAVY gone, F 0 → F 4; screenshot 12 → 10
+  cones; Golden Tee 11 → 12 cones but blocking 4 → 2; the photo-scene STUB
+  +3,382 st / +29 tr (+1 spool, 21 → 31 regions). At 6: net −2 blocks / −2
+  stops; Bridge Bar −768 st / −28 tr (7 → 6 blocks, the repeated cone) with
+  +1 blocking thread; Golden Tee 9 → 7 blocks, −1 blocking; screenshot −1;
+  drone +1. The Golden Tee render's "0015 → 3971" is the CAP remapping its
+  unstitched holes at 12 (13 medoids for 12), not the region colour —
+  invisible on fabric, and on navy item 9 keeps White. gaulke and Fremont
+  byte-identical (their big regions are already pure).
+- **Trap (13:55Z, DOCTRINE):** `run_preflight(image=<PIL RGB array>)` grades
+  colours REVERSED (`_load` treats an ndarray as cv2's BGR); the scorecard
+  and flip sheet pass the PATH. My first blocking-findings census read the
+  disc as (63, 235, 251) and blocked Sun at 43.6 with a teal remedy. Also:
+  two self-kills again — `pkill -f 'x[.]py'` in a call whose text ALSO
+  names x.py elsewhere (sed/nohup) kills the shell (exit 144). Kill by PID,
+  in its own call.
+- **Full suite caught the seam (14:40Z): 12 failed** = 3 platform reds + 9
+  from the OFF path — I had averaged Lab pixels where the engine averages
+  RGB and converts once (`rgb_to_lab(mean)` ≠ `mean(rgb_to_lab)`). The
+  photo-lane byte-identity golden (`test_photo_lane_byte_identical.py`,
+  which I had NOT run — only the flat-lane and dispatch goldens) failed on
+  drone, summit, the white-icon repro and the subject stub; three
+  `test_thread_revalidate` facts, `test_bridge_bar_keeps_its_artwork` and
+  `better_spool[bridge]` moved. Fixed: the seam passes RGB pixels and OFF is
+  the old expression exactly; candidates' `mean` is that point. DOCTRINE
+  entry. Every `off` row of both flip-sheet caches, the census and the
+  renders' OFF panels were the wrong engine → recomputed before the PR.
+- **Corrected census (exact OFF point):** median moves 146, modal mean 163
+  of 422 (was 155/169 under the Lab mean); Bridge Bar 56.9% of area, Golden
+  Tee 33.8%, drone 65.2%, screenshot 65.0%; 33 bimodal (27 screenshot).
+  Renders re-made on the exact engine; the change lists are the same.
+- **Exact-engine blocking census at 6 (15:25Z):** Bridge Bar 2 → 3 blocks,
+  all shards, its 1,023 mm² disc off the list (Limelight warn 7.5 → nothing
+  under Sun; the script was never a finding); Golden Tee 4 → 3, all shards
+  (the Lab-mean OFF's "Black 40.4 on a red shard" and "153 mm² yellow-orange"
+  were artefacts of the wrong OFF); screenshot 5 → 4, the 470 mm² ground
+  off the list; drone 5 → 5 with the 211 mm² orange entering at Pumpkin 10.9
+  (Fox Fire 3.5 by colour) — the one large shape that gets worse, a
+  six-cone budget trade. Corpus block count level at both budgets.
+
+## HANDOFF — region colour, where things stand (2026-09-10 ~15:35Z)
+
+- **Lane `claude/emb-bot-quality-review-acwj61`: 11 local commits, UNPUSHED,
+  on top of main 698ce03 (#444's merge).** All the region-colour work:
+  seam + flag (DEFAULT OFF) + census tool + flip-sheet arm + 10 tests +
+  renders + plan §0–§5 + MASTER_SCOPE (800) + scope-history + DOCTRINE (two
+  entries) + memory. Working tree clean. Nothing is armed on the branch;
+  pushing is safe once the suite is green.
+- **Running:** the full digitizer suite on this tree —
+  `/tmp/claude-0/-home-user-EMB-Bot/3f5c00bb-5357-55fc-9cff-fc33fcf55405/scratchpad/rc/full_suite2.txt`
+  (started ~15:05Z; `EXIT` line when done). Green = exactly the three
+  platform reds (`test_flat_lane_byte_identical[enthusiast]`,
+  `test_stage2_photo_segment[enthusiast]`, `test_pushcomp[whitebg-towel]`).
+  If the container restarted and the log has no EXIT: re-run
+  `cd digitizer && .venv/bin/python -m pytest -q -n auto -p no:cacheprovider`.
+- **Then, in order:** (1) fill `<<COUNTS>>` in
+  `…/scratchpad/rc/pr_body.md` with the suite line (if the scratchpad is
+  gone, the PR body is reconstructible from the plan's §2–§5 and the
+  commit messages); (2) `git push -u origin claude/emb-bot-quality-review-acwj61`
+  (retry 2/4/8/16); (3) PR ready-for-review, title "Region colour: a
+  robust centre for the palette's per-region point, cfg.robust_region_colour
+  (DEFAULT OFF)", body from pr_body.md + the footer; (4)
+  `enable_pr_auto_merge` while `blocked`; (5) `subscribe_pr_activity`;
+  (6) `send_later` ~60 min; (7) memory note; (8) AskUserQuestion — Kent's
+  one decision: flip ON (recommended: the disc is the case it was built
+  for; price = a synthetic stub's +3,382 stitches / +29 trims and drone's
+  211 mm² orange one spool step at 6; catch = photo-lane snapshot golden
+  recapture on ubuntu CI) or keep OFF as a measured instrument until
+  item 1's lane decides where real logos go.
+- Renders are in `docs/renders/region-colour-2026-09-10/` (committed).

@@ -4199,3 +4199,30 @@ a flag closes an escape, ask what the escape was correcting** before
 pricing the closure as pure saving. *(measured 2026-09-10 — the flip's
 test run, `docs/colour-bundle-decision-2026-09-10.md` §2 bind entry, PR
 #442)*
+
+**`run_preflight(..., image=)` wants what the service hands it — a PATH, bytes, or
+cv2's BGR array — and a PIL RGB array grades every colour REVERSED.**
+`stage1_prep._load` treats an ndarray as cv2's decode (BGR) and converts it,
+because the service decodes with `cv2.imdecode`; `tools/corpus_scorecard.py` and
+`tools/flip_sheet.py` pass the path. A one-off instrument on 2026-09-10 passed
+`np.asarray(Image.open(...).convert("RGBA"))` and read Bridge Bar's yellow disc
+as (63, 235, 251): `THREAD_MATCH_POOR` blocked `0501` Sun at 43.6 ΔE00 with
+`4423` Marine Aqua as the remedy, on a shape whose pixels are 1.8 from Sun by
+the grader's own recipe. Twenty minutes went into a grader bug that was not
+there. Hand preflight the path. *(2026-09-10)*
+
+**A mean taken before a colour conversion is not the mean taken after it, and a
+refactor that reorders them is not a refactor.** Stage 2's palette point was
+`rgb_to_lab(pixels.mean())` — the RGB mean, converted once. The first cut of the
+`robust_region_colour` seam (2026-09-10) converted every pixel to Lab and
+averaged the Labs, called that "byte for byte the old expression", and shipped
+it to the flip sheet: the photo-lane byte-identity golden failed on four
+fixtures, three `test_thread_revalidate` facts and Bridge Bar's own tests moved,
+and every `off` row in two fresh caches was the wrong engine. The goldens that
+passed before the full suite were the FLAT lane's and the gradient dispatch's —
+not the lane the seam lives in. Two rules: a "byte-identical off" claim is made
+by the byte-identity test that covers THAT lane (`test_photo_lane_byte_identical`
+for SLIC, `test_flat_lane_byte_identical` for flat, `test_pushcomp` for stage 5),
+run before anything is measured against `off`; and when an expression's order
+of operations is the contract, keep the raw operands in the seam and reorder
+nothing. *(2026-09-10)*

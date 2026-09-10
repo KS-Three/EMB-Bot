@@ -367,7 +367,11 @@ hand-rolling it in JS.
   `digitizer/tools/revalidate_floor.py` (which shapes `revalidate_threads`
   REFUSES on its pixel floor and whether the answer would have changed — it
   wraps the real function and lets the real pass run, so it measures the
-  shipped design), `digitizer/tools/enclosed_census.py` (every scorecard
+  shipped design), `digitizer/tools/region_colour.py` (every SLIC-lane
+  region of every fixture: its mean, its median and its modal mean in Lab,
+  their distance from the mean, and the chart spool each would pick —
+  the census that chose the statistic behind `cfg.robust_region_colour`),
+  `digitizer/tools/enclosed_census.py` (every scorecard
   fixture's enclosed regions — count, area, share of the design, the colour
   they would sew in or "unknown" on an alpha hole — and the garment rule's
   verdict against each Studio swatch at both thresholds; item 9's
