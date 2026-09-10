@@ -12220,3 +12220,37 @@ photo-lane snapshot recapture on CI. `tests/test_robust_region_colour.py`
 (10).
 
 *(2026-09-10 — `docs/superpowers/plans/2026-09-10-region-colour.md` §4)*
+
+## 2026-09-10 (addendum) — the region colour, measured twice by two sessions
+
+Two sessions took the same pick after #444 and built the same fix in parallel:
+#445 landed `cfg.robust_region_colour` (DEFAULT OFF, `ROBUST_REGION_STAT =
+"modal_mean"`); the other branch built `cfg.region_color` as a
+mean/median/modal arm and was closed as a duplicate once #445 merged
+(PR #446, Kent's call).
+
+**Recorded because the accident is evidence.** The two measured independently
+and agree: the closed branch's flip-sheet OFF rows at the Studio's 6 match
+#445's fixture for fixture — Bridge Bar 14,588 · 124, Golden Tee 6,546 · 62,
+screenshot 7,530 · 66, drone 16,101 · 91, `photo_scene_stub` 16,083 · 44 —
+and its `modal` arm matches #445's ON row to **one stitch** (13,821 vs 13,820;
+96 trims either way). Its own census, same corpus at 6 colours, put the
+population where #445 puts it: regions whose robust centre names a thread the
+mean does not cover **63.1%** of the phone screenshot's region area, **56.3%**
+of Bridge Bar's, **25.2%** of Golden Tee's, 9.5% of drone's, and **0%** of
+seven photo/ramp fixtures, with no such regions at all on the flat lane. Its
+full digitizer suite ran 3 failed / 2,209 passed — CI's three platform reds,
+no golden moved.
+
+The two estimators are NOT interchangeable, which is the one thing the closed
+branch measured that #445's single statistic does not say: at 6 colours the
+per-channel median is −2 blocks / −2 stops corpus-wide and adds a stop
+nowhere (drone 8 → 6 blocks), while the modal mean is +1 block / +1 stop —
+Bridge Bar −768 stitches and −28 trims against Golden Tee 7 → 9 blocks, which
+is two re-threads on a single-needle machine. If the flip is ever close, that
+is the knob.
+
+**The process finding, for Kent:** nothing in the repo serialises "Kent's next
+pick", so two sessions can spend a day each on one item without either seeing
+the other — neither branch appeared in the other's `git branch -a` until the
+first one merged.
