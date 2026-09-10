@@ -577,3 +577,15 @@ page-mask bug was fixed — re-present, do not re-open.
   body carries Kent's three decisions; the AskUserQuestion follows.
   Full suite on the landed tree: 3 failed / 2,202 passed / 3 skipped / 7
   xfailed in 24 min — the three platform reds; PR body updated with it.
+
+## Kent's rulings 2026-09-10 ~06:40Z — item 9 flipped ON; threshold 10; alpha holes stay toggled
+
+- Answered the three-way AskUserQuestion with every recommended option:
+  threshold 10, alpha holes to the review toggle, **flip ON now**. He said
+  "in this PR" but #443 had auto-merged at 06:34Z while the question was
+  open, so the flip is its own PR on the lane restarted from main (the
+  merged-PR rule: never stack on merged history).
+- The flip is one line + the pinned test + MASTER_SCOPE/plan §7/scope-history;
+  `garment_rgb` appears in no other test and no golden names a garment, so
+  nothing else moves. The e2e specs drive whitebg (6.4 from Natural, declines)
+  and the alpha enthusiast logo (unknown colour, declines).

@@ -158,7 +158,7 @@ Three readings:
    sending `garment_rgb` from the project either way; flip on the renders —
    gaulke and Golden Tee on Black and on White, OFF beside ON.
 
-## 6. Built (2026-09-10) — `cfg.enclosed_by_garment`, DEFAULT OFF
+## 6. Built (2026-09-10) — `cfg.enclosed_by_garment`, built OFF, flipped ON the same day (§7)
 
 Everything in §2, on the flipped tree (#442's engine):
 
@@ -255,3 +255,20 @@ customer who switches the garment from white to navy would see the card's
 stitch direction turn — item 7's design angle (`cfg.design_angle`, DEFAULT
 OFF) is the control that would hold it, which is a second reason that
 flag's flip is worth re-reading beside this one.
+
+## 7. Kent's rulings (2026-09-10, on the renders and PR #443) — FLIPPED ON
+
+1. **Threshold: 10** (`DELTA_E_CLEARLY_DIFFERENT`), as built — the Studio's
+   default Natural never sews a white hole white.
+2. **Alpha holes: the review toggle**, as built — the 08-15 verdict's §5.2
+   stands; no fill colour is chosen for them.
+3. **The default: ON**, with the three catches stated and accepted —
+   gaulke's +43 trims and fragmentary letters (`keep_thin_strokes` is the
+   other half), the Golden Tee slot at the Studio's 6 (Burnt Orange → Black
+   on navy, the slider's price), and gaulke's ground turning its fill rows
+   45° (`cfg.design_angle` is the control). `enclosed_by_garment` defaults
+   True; False is the pre-flip engine byte for byte; with no `garment_rgb`
+   the rule declines, so nothing without a garment changes — including
+   every golden. What changes for a customer who never touches the swatch:
+   a black-background logo's letter bodies now sew on the default Natural
+   (gaulke), a white one's do not (whitebg, Golden Tee: 6.4 < 10).
