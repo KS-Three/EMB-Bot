@@ -877,3 +877,33 @@ page-mask bug was fixed — re-present, do not re-open.
   commit 2 = baseline + MASTER_SCOPE + scope-history + plan §4.4 + memory,
   then the PR (body drafted in the scratchpad), auto-merge, subscribe,
   send_later, AskUserQuestion on plan §5 + item 1 next.
+
+## 2026-09-10 ~22:40Z — item 11 SHIPPED as PR #449 (ready-for-review; auto-merge armed after this push)
+
+- Commits `9f3d09c` (the floor ON, raw_score read, legibility into the
+  package + `cfg.legibility_check` DEFAULT OFF with provisional warn-only
+  0.5 / block 0.0, tests, tools, plan §0–§5, renders, DOCTRINE, COOKBOOK),
+  `42312c8` (the scorecard recaptured at `9f3d09c` with every one of the
+  46 movers attributed — the floor's exactly, the flips since 09-04, two
+  grade drops bisected to #432 / #433 and left as a follow-up),
+  `b000277` (scope-history). Full suite: 3 failed / 2,224 passed — the
+  three platform reds.
+- **Kent's two decisions (plan §5), asked at the end of this turn:** the
+  `LETTERING_ILLEGIBLE` severity rule and the flip (A warn-only under 0.5
+  as built / B block 0.2 + warn 0.7 / C block 0.5 + warn 0.75 / D keep
+  OFF), and whether the gradient lane is judged on excess (row 4). A flip
+  ON is a follow-up PR: `legibility_check: bool = True`, the thresholds
+  as ruled, a scorecard recapture (the legibility metrics enter the
+  baseline; `legibility_checked` True on the tesseract box), tests that
+  pin finding sets on text fixtures re-read on the flipped default, and
+  the ~3.5 s per cluster cost stated in the Studio's terms.
+- **Then item 1 (the real-logo lane)** — Kent's pick; plan
+  `docs/superpowers/plans/2026-09-08-real-logo-lane-and-thin-strokes.md`:
+  the instrument re-measures stage 0's boundary on the enlarged real
+  tonal set first (gate 2 — no recalibration without real tonal artwork),
+  then the route; ten fixtures change lane, every gradient golden moves
+  (a CI recapture like #448's). Do not push to the lane while #449 is
+  armed.
+- Follow-up not this PR's: `photo_grass_macro` B 76 → D 52 at #432 and
+  Becker @ hat_front B 88 → 76 at #433 (plan §4.4; the task-card tool
+  timed out twice).
