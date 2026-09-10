@@ -72,7 +72,28 @@ def test_load_pair_reads_manifest_regions_and_colours(tmp_path):
     assert 19.0 < pair.width_mm < 21.0
 
 
-def test_file_segs_names_an_unreadable_file(tmp_path):
-    nonexistent = tmp_path / "does_not_exist.dst"
+def test_read_pattern_names_a_missing_file(tmp_path):
     with pytest.raises(SystemExit, match="unreadable"):
-        pairframe.file_segs(nonexistent, False)
+        pairframe.file_segs(tmp_path / "nope.dst", False)
+
+
+def test_read_pattern_refuses_garbage_bytes_with_a_stitch_extension(tmp_path):
+    # Measured (digitizer/.venv): `bytes(range(256)) * 4` decodes to n=68
+    # STITCH records -- pystitch treats it as a live, if nonsensical,
+    # pattern, so it would NOT trip the zero-stitch guard. `b"\x00" * 600`
+    # decodes to n=29 (0-delta stitches count), also not zero. `b"\xff" *
+    # 600` measured n=0 -- 0xFF is the END/colour-change control byte, so a
+    # run of them decodes to no STITCH records at all. Using that here.
+    bad = tmp_path / "garbage.dst"
+    bad.write_bytes(b"\xff" * 600)
+    with pytest.raises(SystemExit, match="unreadable"):
+        pairframe.file_segs(bad, False)
+    with pytest.raises(SystemExit, match="unreadable"):
+        pairframe.design_for(bad, None, None, "x")
+
+
+def test_read_pattern_refuses_an_empty_file(tmp_path):
+    empty = tmp_path / "empty.dst"
+    empty.write_bytes(b"")
+    with pytest.raises(SystemExit, match="no stitches|unreadable"):
+        pairframe.file_segs(empty, False)

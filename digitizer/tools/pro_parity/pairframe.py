@@ -133,6 +133,30 @@ def load_pair(d: Path) -> Pair:
 
 
 # ------------------------------------------------------------ registration
+def _read_pattern(path: Path):
+    """The one place a machine file is opened. Missing, garbage or empty
+    files all end here with the same message, chained to the real cause.
+
+    `pystitch.read` does not reliably raise on bad bytes with a recognised
+    extension (a `.dst` of random bytes decodes to a live `EmbPattern` with
+    zero or more STITCH records, no exception) -- so a missing/unreadable
+    file is caught by the `except`, and a garbage-but-parseable one is
+    caught by the stitch count below. `file_segs` and `design_for` both
+    call this instead of `pystitch.read` directly, so the two readers can't
+    diverge on what counts as unreadable.
+    """
+    try:
+        pat = pystitch.read(str(path))
+    except Exception as e:          # pystitch raises OSError, TypeError, ValueError on bad input
+        raise SystemExit(f"unreadable: {path} ({type(e).__name__}: {e})") from e
+    if pat is None:
+        raise SystemExit(f"unreadable: {path} (pystitch returned no pattern)")
+    n = sum(1 for _x, _y, c in pat.stitches if (c & pystitch.COMMAND_MASK) == pystitch.STITCH)
+    if n == 0:
+        raise SystemExit(f"unreadable: {path} (no stitches)")
+    return pat
+
+
 def file_segs(path: Path, flip_y: bool = False) -> list:
     """A machine file (DST/PES/...) as scorecard segs, `(x0,y0,x1,y1,len,block,trimmed)`.
 
@@ -141,12 +165,7 @@ def file_segs(path: Path, flip_y: bool = False) -> list:
     `thin_strokes` and measured ~2-2.4s to import, well past the 2s bar for a
     plain file reader, so the body lives here instead.
     """
-    try:
-        pat = pystitch.read(str(path))
-    except Exception:
-        raise SystemExit(f"unreadable: {path}")
-    if pat is None:
-        raise SystemExit(f"unreadable: {path}")
+    pat = _read_pattern(Path(path))
     rows = []
     block = 0
     pending = False
@@ -239,9 +258,7 @@ class Frame:
 
 def design_for(path: Path, reg: Reg | None, colors: list | None, name: str) -> dict:
     """A machine file as a Design dict, `reg` applied (ours) or not (pro)."""
-    pat = pystitch.read(str(path))
-    if pat is None:
-        raise SystemExit(f"unreadable: {path}")
+    pat = _read_pattern(Path(path))
     fb = colors or list(GREYS)
     t = (lambda x, y: reg.apply_xy(x, y)) if reg is not None else None
     return pattern_to_design(pat, name=name, transform_mm=t, fallback_colors=fb)
