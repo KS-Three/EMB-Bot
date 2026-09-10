@@ -196,6 +196,16 @@
       next: (p) => ({ target_width_mm: Math.min(400, Math.round((p.target_width_mm || 80) * 1.25)) }),
       spent: (p) => `${Math.round(p.target_width_mm)} → ${Math.min(400, Math.round((p.target_width_mm || 80) * 1.25))} mm wide`,
     },
+    // The same cure again (2026-09-10, quality review item 11): the check
+    // reads the lettering back off the RENDER and warns when the thread no
+    // longer says what the artwork says. Its own remedy line is "Make the
+    // lettering bigger or simpler", and size is the half this panel owns —
+    // the other half is the artwork, which no button here can change.
+    LETTERING_ILLEGIBLE: {
+      label: "Make it bigger",
+      next: (p) => ({ target_width_mm: Math.min(400, Math.round((p.target_width_mm || 80) * 1.25)) }),
+      spent: (p) => `${Math.round(p.target_width_mm)} → ${Math.min(400, Math.round((p.target_width_mm || 80) * 1.25))} mm wide`,
+    },
   };
 
   function offeredFixes(el) {

@@ -297,9 +297,10 @@ _COVERAGE_MIN_PATCH_MM2 = 25.0
 # 2026-09-10 behind `cfg.legibility_check`, DEFAULT OFF): per text cluster,
 # the edit similarity between what tesseract reads off the artwork and off
 # the thread render (`legibility.measure`; 1.0 the thread says what the art
-# says). PROVISIONAL, Kent's to rule (docs/superpowers/plans/
-# 2026-09-10-legibility-yardstick.md §4.2, §5). Read off the corpus on this
-# engine AND the OCR crops themselves (docs/renders/legibility-2026-09-10/):
+# says). RULED by Kent 2026-09-10 (option A of docs/superpowers/plans/
+# 2026-09-10-legibility-yardstick.md §5): a warn under 0.5, never a block,
+# and the check ON by default. Read off the corpus on this engine AND the
+# OCR crops themselves (docs/renders/legibility-2026-09-10/):
 # the similarity is trustworthy at its ends and noisy in the middle. Above
 # ~0.7 the thread reads back (ENTHUSIAST 1.00, THE 1.00, HOTEL FREMONT 0.74
 # — that one depressed by banner noise on the ART side, its letters clean);
@@ -313,7 +314,8 @@ _COVERAGE_MIN_PATCH_MM2 = 25.0
 # was dropped completely", DRONE 0.22/0.36, NVISK and 5G4 0.00) and stays
 # silent on every row that reads (GOLKE 0.59, HOTEL FREMONT 0.74); SPOTIFY
 # at 0.50 is the one miss, 2 mm lettering LETTERING_TOO_SMALL already
-# names. LEGIBILITY_BLOCK is 0.0 — never — until a picture supports one.
+# names. LEGIBILITY_BLOCK is 0.0 — never — until a picture supports one,
+# which is what Kent ruled.
 LEGIBILITY_BLOCK = 0.0
 LEGIBILITY_WARN = 0.5
 
@@ -982,10 +984,13 @@ def _thread_match_findings(p, result: PipelineResult, plan: StitchPlan,
                 r["_alt"] = None
             # WHAT JUDGES IS UNCHANGED. Excess is REPORTED on every route;
             # only the photo route is SCORED on it. Whether the gradient lane
-            # should also be judged on excess is a product call (a logo's
-            # palette can be changed, a photograph's cannot) — recorded as
-            # disagreement 4 in docs/yardstick-disagreements-2026-09-06.md,
-            # deliberately not taken here. So no severity and no grade moves.
+            # should also be judged on excess was a product call (a logo's
+            # palette can be changed, a photograph's cannot) — disagreement 4
+            # in docs/yardstick-disagreements-2026-09-06.md — and Kent RULED
+            # it 2026-09-10: the gradient lane stays on raw distance, because
+            # the customer can buy the closer cone this finding names. So no
+            # severity and no grade moves, by ruling now rather than by
+            # deferral.
             r["_score"] = r["_excess"] if (photo and want_alt) else r["delta_e"]
 
         offenders = sorted((r for r in t_rows if r["_score"] > DELTA_E_VISIBLE),
@@ -2897,13 +2902,17 @@ def _legibility_findings(p, result: PipelineResult, plan: StitchPlan,
     what = ("is lost on the thread" if clearly else "is damaged on the thread")
     where = (f"the lettering" if len(judged) == 1
              else f"{len(lost)} of the {len(judged)} text clusters")
+    # Both sides are READINGS — tesseract's, of the artwork and of the thread
+    # render. The first draft said "the artwork says \u2018DROM\u2019", which
+    # tells a customer their own art says something it does not: DROM is what
+    # the OCR made of DRONE. Attribute both readings to the reading.
     return [finding(
         LETTERING_ILLEGIBLE,
         "block" if clearly else "warn",
-        f"Read back from the stitched design, {where} {what}: the artwork says "
-        f"\u2018{art}\u2019 and the thread reads \u2018{render}\u2019 "
-        f"({worst['similarity']:.2f} of the letters). Make the lettering bigger "
-        f"or simpler before sewing.",
+        f"Reading the stitched design back, {where} {what}: the artwork reads "
+        f"\u2018{art}\u2019 where the thread reads \u2018{render}\u2019 "
+        f"({worst['similarity']:.0%} of the letters match). Make the lettering "
+        f"bigger or simpler before sewing.",
         clusters=r["clusters"],
         readable=r["readable_on_art"],
         judged=len(judged),
@@ -2955,9 +2964,9 @@ def run_preflight(result: PipelineResult, plan: StitchPlan,
 
     # Legibility on the render — what the thread SAYS against what the art
     # says, per text cluster. Needs the artwork, the regions (the clusters)
-    # and the tesseract binary; opt-in (`cfg.legibility_check`) until Kent
-    # rules on LEGIBILITY_BLOCK / LEGIBILITY_WARN, and the report says
-    # whether it ran either way.
+    # and the tesseract binary; `cfg.legibility_check` (ON by default since
+    # 2026-09-10, Kent's ruling), and the report says whether it ran either
+    # way.
     if (cfg.legibility_check and p is not None and result is not None
             and _legibility.tesseract_available()):
         leg_findings, leg_metrics = _legibility_findings(p, result, plan, cfg)

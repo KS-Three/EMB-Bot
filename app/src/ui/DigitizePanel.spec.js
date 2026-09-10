@@ -711,8 +711,23 @@ describe("findings that have a knob behind them", () => {
     const { container } = withFindings([
       { code: "LETTERING_TOO_SMALL", severity: "warn", message: "a" },
       { code: "STITCHES_TOO_SHORT", severity: "warn", message: "b" },
+      // The legibility check (2026-09-10) shares that cure and must not add
+      // a third identical button.
+      { code: "LETTERING_ILLEGIBLE", severity: "warn", message: "c" },
     ]);
     expect(container.querySelectorAll(".dgp-fix").length).toBe(1);
+  });
+
+  test("lettering the thread no longer says offers to enlarge", () => {
+    const { getByTestId } = withFindings(
+      [{ code: "LETTERING_ILLEGIBLE", severity: "warn",
+         message: "the artwork says ‘DRONE’ and the thread reads ‘VR74A’." }]);
+    const box = getByTestId("digitize-fixes");
+    expect(box.textContent).toMatch(/Make it bigger/);
+    expect(box.textContent).toMatch(/80 → 100 mm wide/);
+    // The finding's own words say WHY the button is offered — on the
+    // button's tooltip, where every fix carries its `why`.
+    expect(box.querySelector(".dgp-fix").title).toMatch(/the thread reads/);
   });
 
   test("a finding with NO knob behind it offers nothing — silence beats a button that does not help", () => {
