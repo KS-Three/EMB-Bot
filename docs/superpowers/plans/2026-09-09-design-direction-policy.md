@@ -168,7 +168,7 @@ the house rule moves it to the lettering's 155° for +751 stitches. Golden
 Tee has no fill at all: its 49 non-lettering satin strokes take the lean
 rule and sew fewer, longer crosses.
 
-### 4.4 The rule-2 designs: no lettering, the design-wide column objective
+### 4.4 The rule-3 designs: no lettering, no lane angle, the design-wide column objective
 
 | design | fills | spread R OFF → ON | bins | stitches | trims | design angle |
 |---|---|---|---|---|---|---|
@@ -185,7 +185,7 @@ Bridge Bar is the review's own example and the one that reproduces its
 one bin ON, at fewer stitches (the leaned satin sews fewer, longer
 crosses; the fills' columns cost less at 135° than the sky's own 90° plus
 the script's own 124° did together). The photo classes are the flag's
-live population at 80 mm (§4.5); they take rule 2 because they carry no
+live population at 80 mm (§4.5); they take rule 3 because they carry no
 lettering, at +0.7–1.7% stitches and trims moving both ways — the +7 on
 scene stub is the one clear cost. Whether a tonal design's fills SHOULD
 share one angle is §7.2; there is no pro photo file here to score it.

@@ -116,7 +116,7 @@ def house_design_angle(regions: list[Region]) -> float | None:
 
 
 def fewest_columns_angle(polys: list, row_mm: float) -> float | None:
-    """Rule 2: the candidate row direction with the fewest monotone columns
+    """Rule 3: the candidate row direction with the fewest monotone columns
     summed over `polys`, at the row spacing the fill will run at."""
     if not polys:
         return None

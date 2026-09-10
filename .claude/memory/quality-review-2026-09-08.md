@@ -451,7 +451,7 @@ assumed). Scope-history's fourth 09-08 entry has the OFF → ON table.
   (the slab's columns — the pro pays it too); trims 38→39, 27→22, 27→25.
   Forced flat 80 mm: Bridge Bar 15 fills 0.781 → 1.0 at −2.6% (39 satin
   leaned); gaulke +7.5% (ground leaves its own 0° for the house's 155°);
-  Fremont +3.9%; Golden Tee −1.6%. Photo classes (rule 2): R 0.42–0.91 → 1.0 at −0.1% to +1.7% stitches, scene stub +7 trims. Corpus 80 mm: 19 of 26 move, −0.08% stitches, +1 trim — outside the photo fills it is satin leaning. Rule 2 (the lane's ramp angle) came from that sweep: white_icon's strokes at 0° against 134° rows.
+  Fremont +3.9%; Golden Tee −1.6%. Photo classes (rule 3, the objective): R 0.42–0.91 → 1.0 at −0.1% to +1.7% stitches, scene stub +7 trims. Corpus 80 mm: 19 of 26 move, −0.08% stitches, +1 trim — outside the photo fills it is satin leaning. Rule 2 (the lane's ramp angle) came from that sweep: white_icon's strokes at 0° against 134° rows.
 - At 80 mm routed, every real logo takes the gradient lane (one angle
   already, no `stitch_shape` fill) — the review's Bridge Bar spread is a
   forced-flat population. Read a spread claim against the lane (DOCTRINE).
