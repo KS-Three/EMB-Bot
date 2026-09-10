@@ -429,3 +429,36 @@ assumed). Scope-history's fourth 09-08 entry has the OFF → ON table.
   `skeletonEdges` still has it.
 - Open: which skeleton; flip after a sew-out; the 2× pull meaning
   (Python per rail, JS total).
+
+## Item 7 — `cfg.design_angle` BUILT, DEFAULT OFF (2026-09-09, Kent's pick after #438)
+
+- Instrument `tools/design_direction.py` (`--pro` reads the sewn Becker
+  files the scorecard's way). **The pro holds ONE fill angle at every size
+  (20.5–20.6° in the slab, 12.6–14.2° in the small fills, three files at
+  76.5 / 95.7 / 101.9 mm) regardless of aspect** → no per-shape override,
+  no threshold. Ours at 95.7 mm: nine fills spread to R 0.15 (house 2°,
+  derived fills 85–91°); `direction` 0.0 (raw 0.43).
+- **No objective derives the pro's 20°**: the column objective summed over
+  the design picks 90° (the slab: 50 columns at 90, 58 at 0, 202 at 22.5),
+  the principal axis 0°, the house 2°, the trade 45°. The house is the
+  constant-free nearest → the flag takes the house where the lettering's
+  lines agree within the 30° cap, else the gradient lane's own shared
+  angle where the design holds one, else the design-wide column objective
+  (the per-shape one's 16 candidates plus the principal axis — the PCA
+  candidate was missing at first and a lone fill moved for no reason).
+- ON at 76.5 / 95.7 / 101.9 mm: spread → 1.0 / 0.999 / 0.995; `direction`
+  0.388 / 0.0 / 0.0 → 0.41 / 0.289 / 0.249; stitches −1.5% / +4.2% / +6.3%
+  (the slab's columns — the pro pays it too); trims 38→39, 27→22, 27→25.
+  Forced flat 80 mm: Bridge Bar 15 fills 0.781 → 1.0 at −2.6% (39 satin
+  leaned); gaulke +7.5% (ground leaves its own 0° for the house's 155°);
+  Fremont +3.9%; Golden Tee −1.6%. Photo classes (rule 2): R 0.42–0.91 → 1.0 at −0.1% to +1.7% stitches, scene stub +7 trims. Corpus 80 mm: 19 of 26 move, −0.08% stitches, +1 trim — outside the photo fills it is satin leaning. Rule 2 (the lane's ramp angle) came from that sweep: white_icon's strokes at 0° against 134° rows.
+- At 80 mm routed, every real logo takes the gradient lane (one angle
+  already, no `stitch_shape` fill) — the review's Bridge Bar spread is a
+  forced-flat population. Read a spread claim against the lane (DOCTRINE).
+- The last ~20° is a taste constant — Kent's; photo classes not gated (no
+  measured loss, no pro photo file); non-lettering satin leans as briefed.
+- Wiring: `designangle.set_design_angle` after the house pass (stage-4
+  polygon, since stage 5's `_comp_axis` reads the key); stage 7's
+  `_fill_angle_for` (five sites, one precedence); satin's fallback before
+  the per-stroke tangent. `tests/test_design_angle.py` (7). Byte-identical
+  off on ten fixtures. Renders in `docs/renders/design-direction-2026-09-09/`.

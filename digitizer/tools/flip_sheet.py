@@ -71,6 +71,12 @@ ARMS: dict[str, dict] = {
     # and the corners read off the artwork, each rail pushed out a pull.
     # Priced here because it moves every satin-tier letter at once.
     "rail_comp": {"satin_rail_comp": True},
+    # Added 2026-09-09 (item 7). One stitch direction for the design's
+    # shapes that have no house of their own: the lettering house angle
+    # where its lines agree, else the row direction that cuts the fills
+    # into the fewest columns in total; non-lettering satin gets the lean
+    # rule. Priced here because it moves every flat-lane fill at once.
+    "design_angle": {"design_angle": True},
     # Added 2026-09-07. `revalidate_threads` scored its argmin on a raw
     # `cv2.fillPoly` footprint while the grader erodes and drops the
     # background, so on a thin shape the re-snap chose a thread for the

@@ -12007,3 +12007,54 @@ the browser at 1440 × 900 and 1024 × 768.
 
 *(2026-09-09 — `docs/superpowers/plans/2026-09-09-canvas-border-menu.md`;
 detail in `docs/scope/5-review-manual-editing.md`)*
+
+## 2026-09-09 — item 7: one stitch direction per design, `cfg.design_angle`, DEFAULT OFF
+
+Kent's pick after #438. Measured first (`tools/design_direction.py --pro`,
+the three sewn Becker files that share the artwork, read the scorecard's
+way — dominant direction per 2 mm cell): **the pro holds ONE fill angle at
+every size** — 20.5–20.6° inside the aspect-2.5 slab, 12.6–14.2° inside
+the aspect-1.5–2.0 small fills — so the review's "per-shape override on
+strong aspect" had nothing to override for and was not built. Ours at the
+pro's 95.7 mm: nine fills at a resultant of **0.15** over the half-circle
+(the lettering's house at 2°, every other fill at 85–91° by its own column
+count); chance-corrected `direction` **0.0** (raw 0.43).
+
+The flag: after the house pass, one angle for every fill- and satin-tier
+shape without a house or review angle — the lettering house where its
+lines agree within the 30° cap, else the gradient lane's own shared angle
+where the design holds one, else the row direction with the fewest
+columns summed over the design's fills (the per-shape objective one level
+up: its sixteen candidates plus the principal axis, its tie rule). Stage 7
+reads it before the per-shape derivation at all five `stitch_shape` sites;
+satin before the per-stroke tangent, so non-lettering satin gets
+`_clamp_to_span`'s lean rule; stage 5's `_comp_axis` in the same order.
+Metadata only (`Region.meta["design_angle_deg"]`); no new constant.
+
+ON at the pro's three sizes (76.5 / 95.7 / 101.9 mm): spread 0.777 / 0.15
+/ 0.221 → **1.0 / 0.999 / 0.995**; `direction` 0.388 / 0.0 / 0.0 → **0.41
+/ 0.289 / 0.249** (raw 0.69 / 0.43 / 0.43 → 0.71 / 0.64 / 0.62); stitches
+−1.5% / +4.2% / +6.3% — the slab's columns (58 at 0°, 50 at 90°), the
+price of one angle, which the pro pays at its 20° too; trims 38 → 39, 27
+→ 22, 27 → 25. What remains is the pro's ~20° house-style offset from the
+lettering's cross, which no objective in the repo derives: a taste
+constant, Kent's (DOCTRINE). Forced flat at 80 mm, where the real logos
+become tatami: Bridge Bar's 15 fills 0.781 → 1.0 (10 bins → 1) at −2.6%
+stitches with its 39 satin strokes leaned; gaulke +7.5% (the card ground
+leaves its own 0° for the lettering's 155°); Fremont +3.9%, 46 → 49
+trims; Golden Tee's 49 non-lettering strokes −1.6%. Routed at 80 mm every
+real logo takes the gradient lane and has no tatami fill, so the flag's
+live population there is the photo-class fills and non-lettering satin:
+the four photo fixtures' 8–12 fills each go from R 0.42–0.91 (3–6 bins) to 1.0 at −0.1% to +1.7% stitches, trims 89 → 86, 42 → 49, 48 → 48, 40 → 37 — nothing to score them against, so a look (§7.2). the 26-fixture sweep at 80 mm moves 19 designs for −0.08% stitches
+(316,271 → 316,026) and +1 trim in total, and outside the photo fills it
+is non-lettering satin taking the lean — 1 to 29 strokes a design, −2.3%
+to +0.2%. The gradient lane's rule came from that sweep: the white icon's
+strokes had leaned to the objective's 0° against ramp rows at 134°.
+
+OFF byte-identical on ten fixtures. Tests: `tests/test_design_angle.py`
+(7). Renders: `docs/renders/design-direction-2026-09-09/` (Becker OFF /
+ON / the pro; Bridge Bar flat OFF / ON). Flip-sheet arm `design_angle`.
+
+*(2026-09-09 — `docs/superpowers/plans/2026-09-09-design-direction-policy.md`;
+DOCTRINE "The professional holds one fill angle per design, and no
+objective of ours derives it")*

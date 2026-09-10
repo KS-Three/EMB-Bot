@@ -392,6 +392,13 @@ hand-rolling it in JS.
   frame by the whole design's stitch box: coverage layers and thread inside
   our own letters and blobs, ours beside the pro's — the calibration that
   showed our junctions under-stacked, not over),
+  `digitizer/tools/design_direction.py` (where a design's stitch directions
+  point: per fill shape the row angle it sewed, its aspect and where the
+  angle came from; per design the spread over the half-circle; `--pro FILE`
+  registers a professional's stitch file into our frame the scorecard's way
+  and reports its spread, ours, the chance-corrected `direction` agreement
+  and the pro's direction inside each of our shapes — the item 7 instrument
+  that found the pro holding one fill angle at every size),
   `digitizer/tools/rail_comp.py` (what stage 5's pull growth does to every
   satin-tier shape — the corner-arc vertices, the exterior slots it seals,
   the stroke graph on the artwork against the grown polygon — and the

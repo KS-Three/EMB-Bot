@@ -4064,3 +4064,48 @@ sews 1.6 mm — so read `iou_target`, and treat a fidelity number that
 improves when compensation is removed as a diagnostic, never a goal. *(2026-
 09-09 — `tools/rail_comp.py`; the choice between the two skeletons is
 Kent's, plan doc §7)*
+
+## The professional holds one fill angle per design, and no objective of ours derives it (2026-09-09)
+
+Item 7 asked for a design-level stitch direction. Measured before building
+(`tools/design_direction.py --pro`, the five sewn Becker files under
+`testdata/reference/`, read the scorecard's way — dominant direction per 2 mm
+cell over the solid area): the pro's file holds **one fill angle at every
+size it was sewn at** — 18–21° inside the 1,223 mm² slab, 13–14° inside
+the small fills, three files at three sizes — and it holds it inside the
+slab of aspect 2.5 and the fills of aspect 1.5–2.0 alike. So the review's
+"per-shape override only on strong aspect" has nothing to override for, and
+no threshold was invented. Ours, at the pro's 95.7 mm: nine fills at a
+resultant of **0.15** over the half-circle — the lettering's house at 2°,
+every other fill at 85–91°, because `best_fill_angle_deg` minimises each
+shape's own column count and a wide slab fragments least along its own
+edges (50 columns at 90°, 58 at 0°, **202 at the pro's 22.5°**). The
+scorecard's chance-corrected `direction` on the design: **0.0** (raw 0.43,
+below chance).
+
+**The value the pro chose is a convention, not a derivation.** Nothing in
+this repo's vocabulary produces 20° from the art: the column objective
+summed over the design still picks 90°, the design's principal axis is 0°,
+the lettering's house is 2°, the trade's published default is 45°. Of the
+constant-free candidates the house angle is nearest the pro (22° off, raw
+agreement 0.76 on the slab's cells) and the column objective farthest (70°
+off), which is why `cfg.design_angle` takes the house where lettering exists,
+then the gradient lane's own shared angle where the design holds one, and
+falls to the design-wide column objective only where neither does. ON at
+95.7 mm: spread 0.15 → **0.999**, `direction` 0.0 → **0.289** (within 20° of
+the pro on 25% → 42% of shared cells), trims 27 → 22, stitches +4%. The
+remaining gap to the pro's 20° is a house-style number — "fills sit ~20°
+off the lettering's cross" — and putting it in is Kent's call, not a
+measurement: it would be the first taste constant in the angle code, and
+gate 1 does not cover it (an angle is a design choice) but the "no new
+constant" brief does.
+
+**Read a "spread across the half-circle" claim against the lane.** At
+80 mm every real logo in the corpus routes to the GRADIENT lane, whose fills
+already share one angle (the ramp fit, 2026-08-03) and never reach
+`stitch_shape`; the flat-lane population the flag governs at that size is
+the photo-class fixtures' fills and every design's non-lettering satin.
+Bridge Bar routed at 80 mm has 29 satin strokes and NO tatami fill, so the
+review's "fill angles spread across the half-circle" cannot have been read
+off that lane — measure the flag under `forced_class=flat`, where the
+real logos become tatami fills, to see it. *(2026-09-09 — plan doc §4)*
