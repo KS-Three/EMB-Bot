@@ -462,3 +462,18 @@ assumed). Scope-history's fourth 09-08 entry has the OFF → ON table.
   `_fill_angle_for` (five sites, one precedence); satin's fallback before
   the per-stroke tangent. `tests/test_design_angle.py` (7). Byte-identical
   off on ten fixtures. Renders in `docs/renders/design-direction-2026-09-09/`.
+
+## Next pick — item 8, the gradient-lane colour bundle (Kent, 2026-09-10 00:30Z)
+
+Chosen right after PR #440 (item 7) opened with auto-merge armed. **Do not
+push to `claude/emb-bot-quality-review-acwj61` until #440 merges** (a push
+lands in it and re-runs the 30-minute digitizer job); then `git fetch
+origin main && git merge --ff-only origin/main`. Item 8's brief (review
+§8): the five built colour flags — `enforce_color_cap`,
+`resnap_mask_matches_grader`, `revalidate_small_shapes`,
+`bind_resnap_all_classes`, `dissolve_phantom_blends` — measured TOGETHER
+as one set with a render sheet per fixture and one decision doc to default
+them from; it must say which flags survive item 1 (the real-logo lane).
+Their individual measurements: `docs/pending-flag-decisions-2026-09-06.md`;
+`dissolve_phantom_blends` was banked OFF by Kent 2026-09-04 before the
+page-mask bug was fixed — re-present, do not re-open.
