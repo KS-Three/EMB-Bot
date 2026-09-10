@@ -4226,3 +4226,22 @@ for SLIC, `test_flat_lane_byte_identical` for flat, `test_pushcomp` for stage 5)
 run before anything is measured against `off`; and when an expression's order
 of operations is the contract, keep the raw operands in the seam and reorder
 nothing. *(2026-09-10)*
+
+## A worker pool is not a global's scope (2026-09-10)
+
+`tools/flip_sheet.py`'s `--max-colors` set a module global and `measure`
+read it — and the workers are PROCESSES. A spawned child (Windows, i.e.
+Kent's box) re-imports the module, `MAX_COLORS` is None again, and the
+option is a silent no-op: measured 2026-09-10, a `--max-colors 6` pass
+stamped `max_colors: null` on every row and sewed **12** cones under a
+header that said 6. A fork platform inherits the parent's globals and is
+right by luck.
+
+**The rule: a parameter that changes what is measured travels in the job,
+never in a global a worker re-imports.** The tell was already in the data —
+a row that RECORDS its own budget (this one does, deliberately) disagreeing
+with the header is the whole diagnosis, so read a stored row before
+trusting a sweep whose option you cannot see in the output.
+*(found 2026-09-10 while pricing the region colour; fixed the same day —
+the budget is a job-tuple field. The published region-colour sheets are NOT
+affected: their OFF rows at 6 match a true-6 run fixture for fixture.)*

@@ -314,16 +314,28 @@ def _stitch_digest(plan) -> str:
     return h.hexdigest()
 
 
-def measure(fixture: str, arm: str) -> dict:
-    """Digitize one fixture under one arm. -> the row."""
+def measure(fixture: str, arm: str, max_colors: int | None = None) -> dict:
+    """Digitize one fixture under one arm. -> the row.
+
+    `max_colors` is a PARAMETER, not a read of the module global, because the
+    workers are processes: a spawned child re-imports this module and gets
+    `MAX_COLORS = None` however the parent set it. Measured 2026-09-10 on
+    Kent's Windows box: a `--max-colors 6` pass stamped `max_colors: null` on
+    every row and sewed 12 cones, so the option was silently a no-op and the
+    sheet's header said 6 over rows the engine ran at 12. A fork platform
+    inherits the global and is right by luck, which is the only reason a
+    sheet measured this way has ever come out right.
+    """
     from digitizer_core import PipelineConfig
     from digitizer_core.pipeline import digitize
     from digitizer_core.preflight import run_preflight
 
     path = TESTDATA / fixture
+    if max_colors is None:
+        max_colors = MAX_COLORS
     kw = dict(target_width_mm=WIDTH_MM, garment_id=GARMENT, **_arm_kw(arm))
-    if MAX_COLORS is not None:
-        kw["max_colors"] = MAX_COLORS
+    if max_colors is not None:
+        kw["max_colors"] = max_colors
     t0 = time.time()
     try:
         result, plan = digitize(path, PipelineConfig(**kw))
@@ -351,7 +363,7 @@ def measure(fixture: str, arm: str) -> dict:
         "findings": sorted(f"{f['code']}:{f['severity']}" for f in report["findings"]),
         "digest": _stitch_digest(plan),
         "head": _head(),
-        "max_colors": MAX_COLORS,
+        "max_colors": max_colors,
         "secs": round(time.time() - t0, 1),
     }
 
@@ -380,7 +392,7 @@ def run(out: Path, workers: int, only: list[str] | None,
             dest = out / f"{arm}__{fx.replace('/', '_')}.json"
             if dest.exists():
                 continue
-            todo.append((fx, arm))
+            todo.append((fx, arm, MAX_COLORS))
     print(f"{len(todo)} runs to do ({len(arms)} arms x {len(fxs)} fixtures, "
           f"{workers} workers)", flush=True)
     if not todo:
