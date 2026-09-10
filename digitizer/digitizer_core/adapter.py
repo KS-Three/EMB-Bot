@@ -218,6 +218,68 @@ def design_to_pattern(design: dict, label: str = "EMBBOT") -> pystitch.EmbPatter
     return pattern
 
 
+def pattern_to_design(pattern: pystitch.EmbPattern, name: str = "Reference",
+                      transform_mm=None, fallback_colors=None) -> dict:
+    """pystitch pattern -> EMB-Bot `Design`, the inverse of `design_to_pattern`.
+
+    A professional's machine file rendered through `stitchviz` has to be the
+    same kind of object our own plans become, or an overlay draws its two
+    sides by two rules. Coordinates: the file is 0.1 mm y-DOWN; the Design
+    is 0.1 mm y-UP (`_u`'s one flip). `transform_mm(x_mm, y_mm)` is applied
+    in the FILE frame before that flip, which is where a registration lives.
+
+    Colours come from the file's thread list. A DST carries none (every
+    thread reads black), so `fallback_colors` — one per block, cycled — fills
+    the list; blocks are counted from the colour-change records.
+    """
+    stitches: list[dict] = []
+    for x, y, cmd in pattern.stitches:
+        c = cmd & pystitch.COMMAND_MASK
+        if c == pystitch.END:
+            break
+        xm, ym = x / UNITS_PER_MM, y / UNITS_PER_MM
+        if transform_mm is not None:
+            xm, ym = transform_mm(xm, ym)
+        ux, uy = _u(xm, ym)
+        if c == pystitch.STITCH:
+            kind = STITCH
+        elif c == pystitch.JUMP:
+            kind = JUMP
+        elif c == pystitch.TRIM:
+            kind = TRIM
+        elif c in (pystitch.COLOR_CHANGE, pystitch.STOP):
+            kind = COLOR
+        else:
+            continue          # SEQUIN / NEEDLE_SET / ...: no thread, no travel we draw
+        stitches.append({"x": ux, "y": uy, "type": kind})
+    stitches.append({"x": 0, "y": 0, "type": END})
+
+    n_blocks = 1 + sum(1 for s in stitches if s["type"] == COLOR)
+    colors: list[dict] = []
+    for t in pattern.threadlist:
+        colors.append({"r": int(t.get_red()), "g": int(t.get_green()), "b": int(t.get_blue()),
+                       "name": str(getattr(t, "description", "") or "")})
+    if fallback_colors and (not colors or all((c["r"], c["g"], c["b"]) == (0, 0, 0) for c in colors)):
+        colors = []
+    while len(colors) < n_blocks and fallback_colors:
+        r, g, b = fallback_colors[len(colors) % len(fallback_colors)]
+        colors.append({"r": int(r), "g": int(g), "b": int(b), "name": ""})
+    if not colors:
+        colors = [{"r": 0, "g": 0, "b": 0, "name": ""}]
+
+    design = {
+        "stitches": stitches,
+        "colors": colors,
+        "stitchCount": sum(1 for s in stitches if s["type"] == STITCH),
+        "colorCount": len(colors),
+        "name": name,
+    }
+    w_mm, h_mm = design_size_mm(design)
+    design["widthMM"] = round(w_mm, 3)
+    design["heightMM"] = round(h_mm, 3)
+    return design
+
+
 def design_size_mm(design: dict) -> tuple[float, float]:
     x0, y0, x1, y1 = design_bbox_units(design)
     return ((x1 - x0) / UNITS_PER_MM, (y1 - y0) / UNITS_PER_MM)
