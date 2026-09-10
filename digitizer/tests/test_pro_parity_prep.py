@@ -8,6 +8,7 @@ damage. Each test below is one of those failures, written so it cannot come
 back quietly.
 """
 import importlib.util
+import json
 import math
 import sys
 from pathlib import Path
@@ -330,3 +331,31 @@ def test_art_fallback_prefers_the_drive_file_when_present(tmp_path, monkeypatch)
     drive.write_bytes(b"not a png, but present")
     monkeypatch.setattr(pb.prep_all, "ROOT", tmp_path)
     assert pb.resolve_art("becker_hat_large", "Becker Marine/Becker Marine Logo.png") == drive
+
+
+# ------------------------------------------------ parity_config / write_regions
+def test_parity_config_matches_run_ours_and_applies_extra(monkeypatch):
+    pa = _load("prep_all")
+    monkeypatch.delenv("PRO_PARITY_FORCED_CLASS", raising=False)
+    monkeypatch.delenv("PRO_PARITY_SIMPLIFY_TOL", raising=False)
+    cfg = pa.parity_config(95.66, "hat_front", keep_thin_strokes=True)
+    assert cfg.target_width_mm == 95.7
+    assert cfg.garment_id == "hat_front"
+    assert cfg.keep_thin_strokes is True
+    if "fill_density_boost" in type(cfg).__dataclass_fields__:
+        assert cfg.fill_density_boost is True
+    with pytest.raises(TypeError):
+        pa.parity_config(80.0, None, not_a_field=1)
+
+
+def test_write_regions_schema(tmp_path):
+    pa = _load("prep_all")
+    from types import SimpleNamespace
+    from shapely.geometry import box
+    r = SimpleNamespace(shape_id="S1", area_mm2=12.34, thread_number="0010",
+                        meta={"tier": "satin"}, polygon=box(0, 0, 3, 4))
+    out = pa.write_regions(SimpleNamespace(regions=[r]), tmp_path)
+    rows = json.loads(out.read_text())
+    assert rows == [{"shape_id": "S1", "area_mm2": 12.3, "thread": "0010", "tier": "satin",
+                     "bounds": [0.0, 0.0, 3.0, 4.0],
+                     "wkt": "POLYGON ((3.000 0.000, 3.000 4.000, 0.000 4.000, 0.000 0.000, 3.000 0.000))"}]
