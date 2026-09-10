@@ -131,6 +131,23 @@ class PipelineConfig:
     # region set on every gradient-class design, so it waits on Kent's
     # look at a render, not on a green suite.
     dissolve_phantom_blends: bool = False
+    # The colour each SLIC+RAG region hands the palette. OFF: the plain mean
+    # of its pixels, which a big flat region full of drawn-on inclusions
+    # turns into a colour no pixel carries — Bridge Bar's yellow disc
+    # reads (223, 220, 77) for pixels at (251, 235, 65), 12 ΔE00 towards
+    # lime, because the black lettering, bird and rope inside it pull the
+    # mean through their anti-aliased edges; the palette then rightly
+    # picks Limelight for that point and the bound re-snap holds it
+    # (found by #442's test run; DOCTRINE 2026-09-10). ON: a robust centre
+    # of the region's Lab pixels (`stage2_photo_segment.ROBUST_REGION_STAT`
+    # names the statistic — the per-channel median, or the mean over the
+    # pixels within DELTA_E_VISIBLE of it — chosen by
+    # `tools/region_colour.py`'s census). Only that one point moves: the
+    # shade-demand buckets and the tonal split keep their means. DEFAULT OFF
+    # and byte-identical off; every gradient/photo palette can move under
+    # it, so the flip waits on the flip sheet and the render. Plan:
+    # `docs/superpowers/plans/2026-09-10-region-colour.md`.
+    robust_region_colour: bool = False
 
     # Stage 1
     bg_tolerance_lab: float = 6.0      # Delta-E-ish flood tolerance

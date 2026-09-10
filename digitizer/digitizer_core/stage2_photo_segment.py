@@ -1267,6 +1267,46 @@ def _percentile_extremes_deltae(lab: np.ndarray) -> float:
         lo.mean(axis=0).reshape(1, 3), hi.mean(axis=0).reshape(1, 3))[0])
 
 
+# The statistic `cfg.robust_region_colour` hands the palette for a region:
+# "median" — the per-channel median of its Lab pixels; "modal_mean" — the
+# mean over the pixels within ROBUST_REGION_RADIUS_DE00 of that median (the
+# median's robustness with the mean's smoothness on a gradient region).
+# `tools/region_colour.py` measures both against the mean on every SLIC-lane
+# region of the corpus; the one here is the one that census picked.
+ROBUST_REGION_STAT = "median"
+ROBUST_REGION_RADIUS_DE00 = 5.0     # preflight.DELTA_E_VISIBLE (config cannot import it)
+
+
+def _region_pixels_lab(p: Prep, r: RegionMask) -> np.ndarray:
+    """(N, 3) CIELAB of every pixel under a region's footprint — the ONE
+    place the palette's per-region colour is read from the raster."""
+    return rgb_to_lab(p.rgb[r.frame_slice()][r.crop].reshape(-1, 3))
+
+
+def region_colour_candidates(pixels_lab: np.ndarray) -> dict[str, np.ndarray]:
+    """The mean and both robust centres of one region's Lab pixels, keyed
+    by name — `_region_lab` picks one; `tools/region_colour.py` prints all
+    three so the pick is a measurement."""
+    px = np.asarray(pixels_lab, np.float64).reshape(-1, 3)
+    mean = px.mean(axis=0)
+    if len(px) == 0:
+        return {"mean": mean, "median": mean, "modal_mean": mean}
+    median = np.median(px, axis=0)
+    near = deltaE_ciede2000(px, np.broadcast_to(median, px.shape)) <= ROBUST_REGION_RADIUS_DE00
+    modal = px[near].mean(axis=0) if near.any() else median
+    return {"mean": mean, "median": median, "modal_mean": modal}
+
+
+def _region_lab(pixels_lab: np.ndarray, cfg: PipelineConfig) -> np.ndarray:
+    """The colour a region hands `select_palette`. OFF (the shipped
+    engine): the plain mean, byte for byte what the list comprehension this
+    replaced computed. ON: `ROBUST_REGION_STAT` of `region_colour_candidates`."""
+    px = np.asarray(pixels_lab, np.float64).reshape(-1, 3)
+    if not cfg.robust_region_colour:
+        return px.mean(axis=0)
+    return region_colour_candidates(px)[ROBUST_REGION_STAT]
+
+
 def split_tonal_regions(
     p: Prep, kept: list[RegionMask], split_tonal: bool = False
 ) -> tuple[list[RegionMask], int]:
@@ -1949,11 +1989,7 @@ def kept_masks_to_quant(
     # subject/background regions from a real rembg mask (everything else —
     # and every run with neither — stays None = plain area).
     chart = chart_for(cfg)
-    region_labs = [
-        rgb_to_lab(p.rgb[r.frame_slice()][r.crop]
-                   .reshape(-1, 3).mean(axis=0, keepdims=True))[0]
-        for r in kept
-    ]
+    region_labs = [_region_lab(_region_pixels_lab(p, r), cfg) for r in kept]
     classes = _region_classes(kept, face_regions, bg_mask)
     weights = [
         region_weight(r.area, c) for r, c in zip(kept, classes)

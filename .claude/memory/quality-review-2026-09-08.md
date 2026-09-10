@@ -594,3 +594,14 @@ page-mask bug was fixed — re-present, do not re-open.
   main (1ed05ae, #443's merge) with the flip commit on top; this memory
   note is committed locally and pushes only after #444 merges (a push into
   an armed PR resets its checks).
+
+## Next pick — the Bridge Bar yellow: a robust region colour in stage 2 (Kent, 2026-09-10 12:57Z)
+
+- Chosen over item 1 (the real-logo lane), item 11 (legibility yardstick)
+  and item 12 (fill travel under cover). Scope: stage 2 hands the palette
+  each region's plain MEAN (`stage2_photo_segment.py`, the `region_labs`
+  list before `select_palette`); a big region full of inclusions gets a
+  colour no pixel carries (Bridge Bar's disc: (223, 220, 77) for pixels at
+  (251, 235, 65), 12 ΔE00). Flag first, DEFAULT OFF, byte-identical off;
+  measure on the flip sheet's 26 fixtures; the photo-lane snapshot golden
+  pins stage 2, so a flip is a CI recapture.

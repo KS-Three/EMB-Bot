@@ -89,6 +89,12 @@ ARMS: dict[str, dict] = {
     # on the colour flags as ONE set needs it here, beside the other four,
     # on the same tree.
     "color_cap": {"enforce_color_cap": True},
+    # Added 2026-09-10 (Kent's pick after item 9). The colour each SLIC-lane
+    # region hands the palette: a robust centre of its pixels instead of
+    # the plain mean that #442's test run caught handing Bridge Bar's
+    # yellow disc to Limelight. Every gradient/photo palette can move under
+    # it, which is exactly what this sheet exists to price.
+    "region_colour": {"robust_region_colour": True},
     # --- combinations -------------------------------------------------------
     # `all` answers "flip everything"; nobody flips everything. These are the
     # combinations someone would actually ship, and the reason they are arms
