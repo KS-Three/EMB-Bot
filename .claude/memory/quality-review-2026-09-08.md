@@ -620,3 +620,25 @@ page-mask bug was fixed — re-present, do not re-open.
   the PRE-flip engine), Bridge Bar / Golden Tee / drone renders, PR after
   #444 merges, then Kent: the flip (a photo-lane snapshot recapture on CI if
   any golden fixture moves).
+- **#444 merged 13:41Z** (all four checks green at 13:40); the lane is
+  rebased onto its merge (698ce03) with the region-colour commits on top,
+  still unpushed until the flip sheet at 6 and the full suite are in.
+- **Measured (13:45Z):** flip sheet `off` vs `region_colour`, fresh caches
+  `build/flip_sheet_rc` (12) and `_mc6` (6): 11 move / 15 identical at
+  both budgets. At 12 Bridge Bar 12 cones + a repeated 0108 (13 blocks) →
+  11/11, disc → Sun, COLOR_STOPS_HEAVY gone, F 0 → F 4; screenshot 12 → 10
+  cones; Golden Tee 11 → 12 cones but blocking 4 → 2; the photo-scene STUB
+  +3,382 st / +29 tr (+1 spool, 21 → 31 regions). At 6: net −2 blocks / −2
+  stops; Bridge Bar −768 st / −28 tr (7 → 6 blocks, the repeated cone) with
+  +1 blocking thread; Golden Tee 9 → 7 blocks, −1 blocking; screenshot −1;
+  drone +1. The Golden Tee render's "0015 → 3971" is the CAP remapping its
+  unstitched holes at 12 (13 medoids for 12), not the region colour —
+  invisible on fabric, and on navy item 9 keeps White. gaulke and Fremont
+  byte-identical (their big regions are already pure).
+- **Trap (13:55Z, DOCTRINE):** `run_preflight(image=<PIL RGB array>)` grades
+  colours REVERSED (`_load` treats an ndarray as cv2's BGR); the scorecard
+  and flip sheet pass the PATH. My first blocking-findings census read the
+  disc as (63, 235, 251) and blocked Sun at 43.6 with a teal remedy. Also:
+  two self-kills again — `pkill -f 'x[.]py'` in a call whose text ALSO
+  names x.py elsewhere (sed/nohup) kills the shell (exit 144). Kill by PID,
+  in its own call.

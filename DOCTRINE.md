@@ -4199,3 +4199,14 @@ a flag closes an escape, ask what the escape was correcting** before
 pricing the closure as pure saving. *(measured 2026-09-10 — the flip's
 test run, `docs/colour-bundle-decision-2026-09-10.md` §2 bind entry, PR
 #442)*
+
+**`run_preflight(..., image=)` wants what the service hands it — a PATH, bytes, or
+cv2's BGR array — and a PIL RGB array grades every colour REVERSED.**
+`stage1_prep._load` treats an ndarray as cv2's decode (BGR) and converts it,
+because the service decodes with `cv2.imdecode`; `tools/corpus_scorecard.py` and
+`tools/flip_sheet.py` pass the path. A one-off instrument on 2026-09-10 passed
+`np.asarray(Image.open(...).convert("RGBA"))` and read Bridge Bar's yellow disc
+as (63, 235, 251): `THREAD_MATCH_POOR` blocked `0501` Sun at 43.6 ΔE00 with
+`4423` Marine Aqua as the remedy, on a shape whose pixels are 1.8 from Sun by
+the grader's own recipe. Twenty minutes went into a grader bug that was not
+there. Hand preflight the path. *(2026-09-10)*

@@ -188,7 +188,51 @@ synthetic scene) takes a fifth spool, `4133`, and the label map falls into
 (`1334 → 1301`, `1334 → 1332`, `2762 → 0722`) at the same grade;
 **chrome** gains White and Whale for two greys.
 
-<<MC6>>
+**At the Studio's 6** (`build/flip_sheet_rc_mc6`): the same 11 move and
+15 are byte-identical. Net +1,922 stitches, +2 trims, **−2 blocks, −2
+stops**, +1 cone (the stub's); no grade letter moves — the real logos sit
+on the F floor either way, so the findings are the reading.
+
+| fixture | OFF: st · tr · cones · blocks · blocking | ON | what moved |
+|---|---|---|---|
+| Bridge Bar | 14,588 · 124 · 6 · 7 · 2 | **13,820 · 96 · 6 · 6** · 3 | the disc `6031 → 0501`; the repeated `0108` gone (7 blocks for 6 cones OFF); −768 stitches, **−28 trims**; one more blocking thread (below) |
+| Golden Tee | 6,828 · 62 · 6 · 9 · 4 | 6,795 · 59 · 6 · **7** · **3** | two repeated cones gone (9 blocks for 6 cones OFF); the yellows `1120/1220/0811 → 0703/1102/1902`; one blocking thread fewer |
+| screenshot | 7,530 · 66 · 6 · 6 · 5 | 7,563 · 66 · 6 · 6 · **4** | one blocking thread fewer; `0134/3640/0015 → 1776/0108/3630` |
+| drone | 16,141 · 92 · 6 · 8 · 4 | 16,190 · 91 · 6 · 8 · 5 | one more blocking thread (below); `2776/0904/0142 → 1776/1102/0145` |
+| photo_scene_stub | 16,083 · 44 · 4 · 4 · 0 | 19,465 · 73 · 5 · 5 · 0 | the same fifth spool and +29 trims as at 12 |
+| chrome, meadow, sunset, summit, subject stub, repro | spool swaps at the same counts (meadow −480 st / +7 tr; repro −283 / −5) | | |
+
+**The blocking threads at 6, named** (`THREAD_MATCH_POOR`, preflight given the
+artwork path as the scorecard gives it — see DOCTRINE 2026-09-10 on what a
+hand-fed RGB array does to this number):
+
+- **Bridge Bar** OFF: 2 blocks — Black 18.8 on a 13 mm² olive shard,
+  Caribbean 14.7 on 5 mm² teal shards; the script warns at 6.5 under
+  Flamingo and the disc at 7.5 under Limelight. ON: 3 blocks — Herb Green
+  16.2 on the same olive shard (better than Black's 18.8), Marine Aqua 11.5
+  on the same teal shards (better than 14.7), Cobblestone 10.6 on a 15 mm²
+  grey shard (new, at the threshold); **the disc and the script leave the
+  list entirely** — 1,246 mm² of artwork, under Sun and Not Quite Red, now
+  inside the visible threshold. "One more block" is three shards of 5–15
+  mm², each nearer its thread than before or within a unit of the line.
+- **Golden Tee** OFF: 4 blocks — Black **40.4** on a 16 mm² red shard,
+  Sunset 11.3 on the 153 mm² yellow-orange, Sterling 16.1 and Apricot 22.1
+  on 2–3 mm² shards. ON: 3 blocks, all on shards of 3–6 mm² (Orange Peel
+  13.5, Poinsettia 16.9, Silver 15.3); the red shard and the 153 mm²
+  yellow-orange leave the list.
+- **the screenshot** OFF: 5 blocks including Black 11.5 on the **470 mm²**
+  dark ground; ON: 4, all on shards of 1–10 mm²; the ground leaves the
+  list.
+- **drone** OFF: 4 blocks on shards of 3–17 mm². ON: 5 — the same Fox Fire
+  and Flag Blue shards, Blackberry 15.7 on 3 mm², Silver 33.1 on a 2 mm²
+  grey, and **Pumpkin 10.9 on the 211 mm² orange**, the one large shape
+  that gets worse: by colour that orange is 3.5 from Fox Fire and 6.0 from
+  Pumpkin, and at six cones the palette now spends one orange spool where
+  it spent two. The one real loss at the Studio's budget, and a budget
+  trade rather than a wrong point.
+
+So at 6 the flag moves the blocks OFF the big shapes and onto shards, on
+three of the four real logos, and costs drone's orange one spool step.
 
 ### 4.3 Looked at — `docs/renders/region-colour-2026-09-10/` (OFF left, ON right, 80 mm, the engine's 12)
 
