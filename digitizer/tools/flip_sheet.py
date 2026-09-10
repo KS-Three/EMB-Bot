@@ -194,6 +194,16 @@ SINGLES = [a for a, kw in ARMS.items() if len(kw) == 1]
 PROXIES: dict[str, dict] = {
     "flat_off": {"forced_class": "flat"},
     "flat_colour5": {"forced_class": "flat", **ARMS["colour5"]},
+    # The singles on the flat lane too (2026-09-10): `flat_colour5` took 28
+    # cones off five forced-flat logos, which the lane story said could not
+    # happen (the flat lane caps hard; every counted re-snap escape was on
+    # the gradient lane) -- so WHICH flag still has work there is a
+    # measurement, not a docstring.
+    "flat_color_cap": {"forced_class": "flat", **ARMS["color_cap"]},
+    "flat_resnap_mask": {"forced_class": "flat", **ARMS["resnap_mask"]},
+    "flat_resnap_small": {"forced_class": "flat", **ARMS["resnap_small"]},
+    "flat_resnap_bind": {"forced_class": "flat", **ARMS["resnap_bind"]},
+    "flat_halo": {"forced_class": "flat", **ARMS["halo"]},
 }
 
 
