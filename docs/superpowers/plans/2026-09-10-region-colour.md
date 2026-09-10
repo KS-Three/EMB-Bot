@@ -151,6 +151,34 @@ invented from an edge.
 
 *(pending)*
 
+### 4.3 Looked at — `docs/renders/region-colour-2026-09-10/` (OFF left, ON right, 80 mm, the engine's 12)
+
+- **Bridge Bar**: the disc is a yellow-green under the mean and a clean
+  yellow under the modal mean — `6031` Limelight to `0501` Sun, the one
+  visible change on the sheet and the one this build exists for. The
+  script, the greys and the wheel are the same cones; three sub-mm grey
+  shards go `0108 → 0142`.
+- **Golden Tee**: the render tool marks four shapes `0015 → 3971` — the GT
+  letter bodies and the arc, 643 mm² of *unstitched* holes. That is not the
+  region colour: those regions are quantized as their own population and
+  never enter the k-medoids. Under the modal mean the k-medoids selected
+  one more spool (13 for 12) and the design went over the engine's 12, so
+  the colour cap remapped the thread carried only by holes — "holes buy no
+  slot" — into its nearest kept cone. On fabric nothing changes: on the
+  Studio's default Natural the holes stay holes, and on navy item 9's rule
+  counts them as sewn area so their White keeps its slot. What DOES move is
+  the yellows: two of the GOLF letters' regions that the mean sent to
+  `1120`/`1220` land together on `0703`, and the darker band goes
+  `0700 → 1102` — the modal means of the yellow regions are brighter and
+  more saturated than their means, and they group differently. Six cones
+  of Golden Tee's twelve are different spools; the letters read the same.
+- **drone**: the same logo. Seven of the tagline's grey shards go `2564 →
+  0111` Whale, the emblem `0824 → 1310`, one white sliver to Skylight; the
+  window's blue reads a shade deeper.
+
+The render is at 12. The Studio ships 6, where the cap does most of the
+choosing; §4.2's sheet carries both budgets.
+
 ## 5. Decisions — Kent's
 
 1. The statistic (median or modal mean), on §3's numbers.
