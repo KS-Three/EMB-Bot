@@ -1,7 +1,11 @@
 # The colour bundle — one decision sheet for five flags (2026-09-10)
 
-**Status: MEASURED 2026-09-10, nothing flipped — Kent's to default from.**
-Quality review 2026-09-08 item 8, his pick after #440. Five built, default-OFF flags that each fix a piece of one problem —
+**Status: DECIDED 2026-09-10 — Kent flipped the four not ruled ON as one set
+(§5.1–3 and 5.5 accepted; the dissolve stays banked, §5.4).** **Corrected
+2026-09-10, after the flip's own test run: §4's Bridge Bar reading at 6
+understated one loss — the bind moves the logo's yellow 7 ΔE00 towards
+lime (§2's bind entry, §4, §5.3). The ruling was made without that line.**
+Measured on tree `920ebcd`; quality review 2026-09-08 item 8, his pick after #440. Five built, default-OFF flags that each fix a piece of one problem —
 cones and colour stops the customer did not ask for — priced TOGETHER on
 one tree, with the render beside the number. Plan:
 `docs/superpowers/plans/2026-09-10-colour-bundle.md`. Every number is one
@@ -151,6 +155,22 @@ tree, at the engine default budget (the shipped budget's rows are in
   Not moot under item 1: it is the flat lane's main worker, −26 cones on
   five logos forced flat (§3). The price the 2026-09-06 sheet named — "+2 blocks net" — is not
   on this tree: −18 blocks, nothing up anywhere.
+  **Its one visible price, found by the flip's test run and missed by the
+  sheets above: Bridge Bar's yellow.** The disc's own pixels sit at
+  (251, 235, 65), ΔE00 1.0 from `0501` Sun; stage 2 hands the palette
+  the disc REGION's mean, (223, 220, 77) — a big yellow region
+  riddled with black lettering, the bird and the rope, whose
+  anti-aliased edges and grey halos pull the mean 12 ΔE00 darker and
+  greener — and the k-medoids palette does the right thing with what
+  it is given: `6031` Limelight, that mean's own nearest spool (2.5).
+  Before the flip the unbound re-snap read the source pixels, escaped
+  to Sun (and double-loaded Lemon beside it); the bind holds the disc
+  to the palette's Limelight, 7.0 ΔE00 from the artwork, at 12 AND at
+  6 (`resnap_bind` alone drops `0501`/`0713` and keeps `6031` in both
+  caches; the cap alone keeps Sun). Over `DELTA_E_VISIBLE`, on the
+  logo's main colour: yellow to lime. The fix is upstream — a robust
+  region colour (median, or the mean over the region's modal pixels)
+  would hand the palette (251, 235, 65) and Sun — not in the bind.
 - **`dissolve_phantom_blends`** — ruled OFF; re-presented, not re-opened.
   On this tree it is the stitch and trim lever: Bridge Bar −2,936 stitches
   and **−63 trims** alone, and `colour5` over `colour4` is −3,028 stitches,
@@ -307,10 +327,17 @@ three panels at the shipped budget, where the cap does its real work):
   THERMAL's orange on the neighbouring orange (`1300 → 1305`), the top
   window's blue on a neighbouring blue. Six cones and it reads as the
   same logo.
-- **Bridge Bar** (13 → 6): under `colour4` the yellow field lands on a
-  neighbouring yellow (`0465 → 0111`, a touch greener on screen) and the
-  wheel's greys collapse to black; under `colour5` the halo is gone as at
-  12. Six cones, the same logo.
+- **Bridge Bar** (13 → 6): the wheel's greys collapse to black and under
+  `colour5` the halo is gone as at 12 — and the disc changes colour.
+  This bullet first read "a touch greener on screen … the same logo"
+  and labelled the change `0465 → 0111`, which is an olive shard; the
+  disc itself goes `0501` Sun → `6031` Limelight, 7.0 ΔE00 from the
+  artwork's yellow, under the bind, at both budgets (§2's bind entry
+  for the mechanism). Corrected 2026-09-10 after the flip's test run
+  (`test_bridge_bar_keeps_its_artwork` names `0501` as artwork and lost
+  it). Look at the middle panel of the `_mc6` sheet: yellow left,
+  lime middle. Beside Golden Tee's maroon this is the second merge on a
+  client logo a customer would notice, and the bigger one.
 - **summit badge** (synthetic, 11 → 6, the one grade that falls): the
   cap merges the badge's upper orange band into the cream cone — the
   top-right sector of the wheel turns pale where OFF sews it orange — and
@@ -353,7 +380,12 @@ One line per flag, the catch beside it, at the Studio's shipped budget:
    across six fixtures, gaulke F 34 → D 46, `3971` loaded once instead
    of twice on screenshot; and item 1 does not retire it (§3). Catch:
    the same synthetic block as the cap; the 2026-09-06 sheet's "+2 blocks
-   net" price is not on this tree (−34).
+   net" price is not on this tree (−34). **Added after the ruling:**
+   Bridge Bar's yellow sews lime under it (7 ΔE00, both budgets — §2),
+   because the bind closes an escape that was correcting a palette
+   entry stage 2 had contaminated; the fix belongs in stage 2's
+   region colour, and until it lands this is the bind's price on one
+   real logo.
 4. **`dissolve_phantom_blends` — Kent's ruling stands; the render it
    lacked is on file.** At 6 it is −3,082 stitches and −59 trims on
    Bridge Bar and −4,509 / −80 over the set; the sheet shows the phantom

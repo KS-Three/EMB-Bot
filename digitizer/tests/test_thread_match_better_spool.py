@@ -34,7 +34,7 @@ from digitizer_core import preflight as pf
 from digitizer_core.config import PipelineConfig
 from digitizer_core.pipeline import digitize
 
-from .conftest import TESTDATA
+from .conftest import PRE_FLIP, TESTDATA
 
 TINY = "photo/logo_gaulke_roofing.png"      # 4 cones, the 63.6 -> 58.6 case
 BRIDGE = "photo/logo_bridge_bar.jpg"        # 8 cones, the 21.3 -> 10.3 case
@@ -67,7 +67,10 @@ def _findings(fixture: str):
     return copies — the same rule as the other cached thread suites.
     """
     art = TESTDATA / fixture
-    cfg = PipelineConfig(target_width_mm=80.0, garment_id="left_chest")
+    cfg = PipelineConfig(target_width_mm=80.0, garment_id="left_chest", **PRE_FLIP)
+    # PRE_FLIP: the four colour flags Kent flipped ON on 2026-09-10 are
+    # held OFF here because this file documents a fact of the engine
+    # before that flip (conftest.PRE_FLIP says why).
     result, plan = digitize(art, cfg)
     report = pf.run_preflight(result, plan, cfg, image=art)
     return [f for f in report["findings"]

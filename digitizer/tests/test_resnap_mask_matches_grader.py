@@ -47,7 +47,7 @@ from digitizer_core.pipeline import digitize
 from digitizer_core.stage4_vectorize import _region_footprint
 from digitizer_core.threads import chart_for
 
-from .conftest import TESTDATA
+from .conftest import BUNDLE_ON, PRE_FLIP, TESTDATA
 
 GAULKE = "photo/logo_gaulke_roofing.png"
 # The region the flag exists for, and the spool the unmasked footprint picks.
@@ -68,7 +68,7 @@ def _run(fixture: str, on: bool):
     `test_bind_resnap_all_classes` records: CI runners are 2-core, so a
     straight-through file pays for every repeated `digitize`."""
     art = TESTDATA / fixture
-    result, plan = digitize(art, _cfg(resnap_mask_matches_grader=on))
+    result, plan = digitize(art, _cfg(**{**PRE_FLIP, "resnap_mask_matches_grader": on}))   # the flag alone, over the pre-flip engine
     coords = tuple(
         (round(x, 4), round(y, 4), run.kind, run.jump, run.trim)
         for _b, run in plan.iter_runs() for x, y in run.points)
@@ -76,18 +76,23 @@ def _run(fixture: str, on: bool):
     return coords, threads, result, plan
 
 
-@pytest.mark.parametrize("fixture", [GAULKE, *CONTROLS])
-def test_off_is_byte_identical_to_the_shipped_engine(fixture):
-    """The flag's price of admission on this lane. `_region_footprint` is used
-    by `tag_enclosed_background` too, so an edit that leaked out of the OFF
-    path would move far more than the re-snap."""
-    shipped, _, _, _ = _run(fixture, False)
-    art = TESTDATA / fixture
-    result, plan = digitize(art, _cfg())          # no keyword at all
-    coords = tuple(
-        (round(x, 4), round(y, 4), run.kind, run.jump, run.trim)
-        for _b, run in plan.iter_runs() for x, y in run.points)
-    assert coords == shipped
+def test_flag_defaults_on():
+    """Kent's ruling 2026-09-10: ON, as one half of the pair with
+    `revalidate_small_shapes` in the colour bundle."""
+    assert PipelineConfig().resnap_mask_matches_grader is True
+
+
+@pytest.mark.parametrize("fixture", [GAULKE, "logo_alpha.png"])
+def test_the_shipped_engine_is_the_four_flags_on(fixture):
+    """No keyword at all against the four colour flags spelled out True, so a
+    change to any of the four defaults shows up as a difference. The flag's
+    own price of admission -- OFF over the pre-flip engine is that engine --
+    is what every `_run(fixture, False)` below stands on."""
+    def coords(cfg):
+        _, plan = digitize(TESTDATA / fixture, cfg)
+        return tuple((round(x, 4), round(y, 4), run.kind, run.jump, run.trim)
+                     for _b, run in plan.iter_runs() for x, y in run.points)
+    assert coords(_cfg()) == coords(_cfg(**BUNDLE_ON))
 
 
 def test_the_two_masks_really_do_disagree_on_this_region():
@@ -179,7 +184,7 @@ def test_on_the_resnap_stops_choosing_silver_for_near_black_artwork():
 def _shape_delta_e(on: bool) -> float:
     art = TESTDATA / GAULKE
     _, _, result, plan = _run(GAULKE, on)
-    cfg = _cfg(resnap_mask_matches_grader=on)
+    cfg = _cfg(**{**PRE_FLIP, "resnap_mask_matches_grader": on})
     p = pf.prep(art, cfg)
     rows = pf._region_color_errors(p, result, plan, cfg)
     mine = [r for r in rows

@@ -179,7 +179,7 @@ seven F-grade fixtures the refusal counts are 0/0/0/4/7 against `bridge_bar`
 **63** and `screenshot` **12** — the two the F-wall decomposition attributes to
 this cause.
 
-**FIXED, DEFAULT OFF** (`cfg.revalidate_small_shapes`, 2026-09-06). ON, the
+**FIXED, DEFAULT ON since 2026-09-10** (`cfg.revalidate_small_shapes`, built 2026-09-06, flipped with the colour bundle). ON, the
 re-ask uses `THREAD_REVALIDATE_MIN_PX_SMALL = 50` — preflight's own floor — and
 a shape admitted only by it may take only a cone the design already carried at
 pass entry. `screenshot_phone_ui_golke`'s worst thread ΔE00 **33.0 → 21.2**

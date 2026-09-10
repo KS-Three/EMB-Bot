@@ -12093,3 +12093,41 @@ OFF / colour4 / colour5). Decision doc:
 Nothing flipped.
 
 *(2026-09-10 — `docs/superpowers/plans/2026-09-10-colour-bundle.md`)*
+
+## 2026-09-10 — the colour bundle FLIPPED: four defaults ON as one set
+
+Kent's ruling on the decision sheet, the same day it was measured:
+`enforce_color_cap`, `resnap_mask_matches_grader`, `revalidate_small_shapes`
+and `bind_resnap_all_classes` are **ON by default**; `dissolve_phantom_blends`
+stays banked OFF (his 2026-09-04 ruling). What the shipped engine now does
+at the Studio's 6 colours, against the pre-flip engine (`flip_sheet.py`'s
+`off4` arm): −47 cones, −43 stops, −43 blocks over nine corpus fixtures;
+every real logo sews exactly the promised 6 (drone 23 → 6, Bridge Bar 13 →
+6, Golden Tee 14 → 6, screenshot 14 → 6); chrome and meadow D 52 → C 64,
+gaulke F 34 → D 46; one synthetic grade down (summit F 16 → F 0, a new
+`THREAD_MATCH_POOR` block from the cap's merge). The visible costs are the
+cap's: Golden Tee's GT letters lose their maroon edge at 6, the badge's
+upper orange band goes cream. False on each flag is the pre-flip engine
+byte for byte, and the flip sheet's four colour singles are now inert
+against `off` (kept so the published rows stay nameable).
+
+**Tests.** Seventeen tests went red under the flip and every one was
+documenting the PRE-flip engine, not a flag: the spool-remedy findings and
+gaulke's block list, `COLOR_STOPS_HEAVY` on Bridge Bar, the raw-score depth
+on screenshot, the phantom-blend Bridge Bar pair, the owl hoist,
+`is_photographic`'s premise, the palette gate's unbound half. Each now
+builds its config on `conftest.PRE_FLIP` (the four False) and says so; the
+palette-gate test pins both halves. No golden moved — the flat-lane keys,
+the photo-lane snapshot and the pushcomp tuples pass — and the full suite
+on the flipped tree fails exactly CI's three platform reds (3 failed, 2,183 passed, 3 skipped, 7 xfailed in 29 min with `-n auto` on this box; the three are `test_flat_lane_byte_identical[enthusiast]`, `test_stage2_photo_segment[enthusiast]` and `test_pushcomp[whitebg-towel]`).
+**And the flip's own run found the one line the decision sheet got wrong:**
+`test_bridge_bar_keeps_its_artwork` names `0501` Sun as artwork and lost
+it. The disc's pixels are (251, 235, 65), ΔE00 1.0 from Sun; the flipped
+engine sews it `6031` Limelight, 7.0 away, at both budgets — the bind's
+price, not the cap's, because stage 2 hands the palette the disc REGION's
+mean, 12 ΔE00 off through the anti-aliased inclusions, and the bound
+re-snap can no longer correct it as the escape did. Sheet corrected in
+place; the fix is upstream, a robust region colour in stage 2.
+
+*(2026-09-10 — `docs/colour-bundle-decision-2026-09-10.md` §5; the ruling
+in `.claude/memory/quality-review-2026-09-08.md`)*

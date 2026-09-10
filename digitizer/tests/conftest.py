@@ -178,3 +178,16 @@ def segments(stitch_plan):
     for b, run in stitch_plan.iter_runs():
         for a, c in zip(run.points, run.points[1:]):
             yield b, run, a, c
+
+
+# The colour bundle (quality review 2026-09-08 item 8): four flags Kent
+# flipped ON by default as one set on 2026-09-10 (`docs/colour-bundle-
+# decision-2026-09-10.md`). Each flag's own test file still prices the flag
+# ALONE, so its baseline is the PRE-FLIP engine -- the four False -- and
+# "on" is that baseline plus the one flag; otherwise "off" would mean "this
+# flag off, the other three on", which is not the engine any measurement was
+# made on. The shipped engine is BUNDLE_ON, and each file pins that once.
+COLOUR_BUNDLE = ("enforce_color_cap", "resnap_mask_matches_grader",
+                 "revalidate_small_shapes", "bind_resnap_all_classes")
+PRE_FLIP = {name: False for name in COLOUR_BUNDLE}
+BUNDLE_ON = {name: True for name in COLOUR_BUNDLE}

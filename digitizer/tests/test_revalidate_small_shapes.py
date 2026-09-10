@@ -38,7 +38,7 @@ from digitizer_core.stage4_vectorize import (
 from digitizer_core.pipeline import plan_stitches
 from digitizer_core.warnings_codes import THREAD_RESNAPPED_AFTER_DRIFT
 
-from .conftest import TESTDATA
+from .conftest import BUNDLE_ON, PRE_FLIP, TESTDATA
 
 # The fixture the defect was traced on. Its worst thread finding is a 177-px
 # shape — inside the band, and the largest single dE00 the corpus offers.
@@ -70,11 +70,10 @@ class _Case(NamedTuple):
 
 
 @lru_cache(maxsize=None)
-def _default_digest(fixture: str) -> tuple:
-    """The shipped engine with NO flag mentioned at all, for the byte-identity
-    contract. Deliberately not `_case(fixture, False)`: that passes the flag
-    explicitly, and comparing the two is the whole point."""
-    cfg = _cfg()
+def _digest(fixture: str, **kw) -> tuple:
+    """A pipeline run under exactly `kw`, for the shipped-engine contract:
+    no keyword at all against the four colour flags spelled out True."""
+    cfg = _cfg(**kw)
     result = run_stages(TESTDATA / fixture, cfg)
     plan = plan_stitches(result, cfg)
     coords = [
@@ -113,7 +112,7 @@ def _case(fixture: str, small: bool) -> _Case:
                                   if not r.meta.get("enclosed_background"))
         return real(regions, p, cfg, **kw)
 
-    cfg = _cfg(revalidate_small_shapes=small)
+    cfg = _cfg(**{**PRE_FLIP, "revalidate_small_shapes": small})   # the flag alone, over the pre-flip engine
     pl.revalidate_threads = probe
     try:
         result = run_stages(TESTDATA / fixture, cfg)
@@ -161,21 +160,21 @@ def test_the_gap_between_the_two_floors_is_the_defect():
     )
 
 
-def test_flag_defaults_off():
-    assert PipelineConfig().revalidate_small_shapes is False
+def test_flag_defaults_on():
+    """Kent's ruling 2026-09-10: ON, as one half of the pair with
+    `resnap_mask_matches_grader` in the colour bundle."""
+    assert PipelineConfig().revalidate_small_shapes is True
 
 
-def test_off_is_byte_identical_to_the_shipped_engine():
-    """The contract every flag here carries. Explicit False against the
-    default, so a change to the default is caught as a difference rather than
-    silently agreeing with itself."""
-    # The DEFAULT config against an EXPLICIT False — not `_case(F, False)`
-    # against itself, which is what a first pass at the cache made this, and
-    # which asserts nothing. The two configs are identical only while the
-    # default is False, so a flipped default fails here as well as in
-    # `test_flag_defaults_off`. Worth the one extra pipeline run: it is this
-    # file's core contract.
-    assert _default_digest(FIXTURE) == _case(FIXTURE, False).digest
+def test_the_shipped_engine_is_the_four_flags_on():
+    """The contract every flag here carries, restated for the flip: the
+    DEFAULT config (no keyword at all) against the four colour flags spelled
+    out True, so a change to any of the four defaults is caught as a
+    difference rather than silently agreeing with itself. Worth the one
+    extra pipeline run: it is this file's core contract. (Every other test
+    here prices the flag ALONE over the pre-flip engine -- `_case` -- which
+    is the engine its numbers were measured on.)"""
+    assert _digest(FIXTURE) == _digest(FIXTURE, **BUNDLE_ON)
 
 
 @pytest.mark.parametrize("fixture", [

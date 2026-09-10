@@ -502,3 +502,45 @@ page-mask bug was fixed — re-present, do not re-open.
   shell: match with a bracketed literal (`flip_sheet[.]py`) and never put
   the restart command in the same call as the kill.
 - Shipped as PR #441 (ready-for-review 03:18Z, auto-merge armed). Next: Kent's flip decision on the four not ruled (`colour4`) and his re-read of the halo render; then the next build pick.
+
+## Kent's rulings 2026-09-10 03:30Z — flip the four as one set; item 9 next
+
+- **Flip `colour4` ON by default** (`enforce_color_cap`,
+  `resnap_mask_matches_grader`, `revalidate_small_shapes`,
+  `bind_resnap_all_classes`) — one PR, AFTER #441 merges (auto-merge
+  armed; no push to the branch until then). `dissolve_phantom_blends`
+  stays OFF (his 2026-09-04 ruling stands). The flip moves goldens: the
+  recapture is ubuntu CI only, never this box. Every "DEFAULT OFF" claim
+  for the four in docs and docstrings must move with it (test_doc_claims).
+- **Then item 9**: enclosed letter bodies decided by garment colour, not a
+  global unstitched default (review §9).
+- **Flip in progress (03:40Z, local, unpushed)**: the four defaults are True in config.py with docstrings; docs moved (MASTER_SCOPE defects 15/28/31, DOCTRINE 1443, scope/1, pending-flag-decisions, flip-sheet doc, decision sheet DECIDED, scope-history entry); flip_sheet.py has `off4`/`flat_off4` (the pre-flip engine). Pending: the pinned tests (`test_flag_defaults_off` ×2 → ON; the `_default_digest` vs explicit-False contracts in the bind/small/mask tests → default == explicit True), goldens only if the flat-lane/photo-lane/pushcomp runs move (the bundle left whitebg/alpha/ribbon untouched at 12, so probably none), full suite, then push after #441 merges (rebase the local commits onto origin/main first).
+- **The flip's own test run found a loss the sheet understated (04:30Z)**:
+  `test_bridge_bar_keeps_its_artwork` names `0501` Sun as artwork and lost
+  it under the four. Measured: the Bridge Bar disc's pixels are
+  (251, 235, 65), ΔE00 1.0 from Sun; the flipped engine sews the disc
+  `6031` Limelight, 7.0 away, at 12 AND at 6 (the `_mc6` sheet's middle
+  panel is lime where the left is yellow — I had written "a touch greener
+  … the same logo" and Kent ruled on that). It is the BIND's price, not
+  the cap's (`resnap_bind` alone drops Sun; `color_cap` alone keeps it).
+  Mechanism: stage 2 hands the palette the disc REGION's mean,
+  (223, 220, 77) — the black lettering, bird and rope inside it pull the
+  mean 12 ΔE00 darker and greener through their anti-aliased edges — and
+  the k-medoids palette rightly picks Limelight (2.5) for that mean; the
+  unbound re-snap used to read the source pixels and correct it to Sun
+  (double-loading Lemon beside it); the bind holds the palette's answer.
+  Fix upstream: a robust region colour in stage 2 (median, or the mean
+  over the region's modal pixels) — candidate next build; the decision
+  sheet (status line, §2, §4, §5.3), MASTER_SCOPE's item-8 block and the
+  flip PR body carry the correction. Shipped as ruled, flagged, not
+  withheld (his 2026-09-04 ruling on arming).
+- **Item 9 built in a scratch worktree while the flip's suite ran**
+  (`scratchpad/item9-wt`, local branch `item9-wip`, cut from the flip
+  commit) so the suite ran on an untouched tree; it lands on the lane by
+  cherry-pick after the flip PR merges. The main venv's python imports the
+  WORKTREE's package when cwd is the worktree's `digitizer/` (sys.path[0]
+  beats the editable install's finder) — verified before trusting a run.
+  The Studio's component specs cannot run there (vite refuses the
+  symlinked node_modules outside the root: 13 files, "Cannot find module
+  /@fs/…"); lib specs run fine; the full vitest runs on the main tree
+  after the cherry-pick.
