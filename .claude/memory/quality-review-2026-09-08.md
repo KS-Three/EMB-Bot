@@ -462,3 +462,43 @@ assumed). Scope-history's fourth 09-08 entry has the OFF → ON table.
   `_fill_angle_for` (five sites, one precedence); satin's fallback before
   the per-stroke tangent. `tests/test_design_angle.py` (7). Byte-identical
   off on ten fixtures. Renders in `docs/renders/design-direction-2026-09-09/`.
+
+## Next pick — item 8, the gradient-lane colour bundle (Kent, 2026-09-10 00:30Z)
+
+Chosen right after PR #440 (item 7) opened with auto-merge armed. **Do not
+push to `claude/emb-bot-quality-review-acwj61` until #440 merges** (a push
+lands in it and re-runs the 30-minute digitizer job); then `git fetch
+origin main && git merge --ff-only origin/main`. Item 8's brief (review
+§8): the five built colour flags — `enforce_color_cap`,
+`resnap_mask_matches_grader`, `revalidate_small_shapes`,
+`bind_resnap_all_classes`, `dissolve_phantom_blends` — measured TOGETHER
+as one set with a render sheet per fixture and one decision doc to default
+them from; it must say which flags survive item 1 (the real-logo lane).
+Their individual measurements: `docs/pending-flag-decisions-2026-09-06.md`;
+`dissolve_phantom_blends` was banked OFF by Kent 2026-09-04 before the
+page-mask bug was fixed — re-present, do not re-open.
+
+## Item 8 — the colour bundle MEASURED (2026-09-10, PR #441)
+
+- `tools/flip_sheet.py` grew the `color_cap` single, `colour4` (the four
+  not ruled) / `colour5` (+ the ruled `dissolve_phantom_blends`) bundle
+  arms, a `PROXIES` table (forced flat, OUTSIDE ARMS so `forced_class` is
+  never a "single"), `--fixture`, `--max-colors`, and a stops column.
+  Renderer takes repeated `--flag`.
+- At the engine budget (12): `colour4` 9 moved, −22 cones/−22 stops/−22
+  blocks, 3 grades up, none down; `colour5` 10 moved, −4,023 st, −77
+  trims. NOT the sum of its rows (cap −18 + bind −17 → −22 together).
+  chrome's D→C is the `mask_small` pair alone. At the Studio's 6: `colour4` −47 cones/−43 stops (every real logo lands ON the promised 6), `colour5` −4,509 st/−80 trims; one grade down, summit_badge (synthetic) F 16 → F 0, a new THREAD_MATCH_POOR block from the cap's merge.
+- **The sheet's budget is 12; the Studio ships 6** — different questions
+  for the cap (drone 23 → 6 at 6; 17 → 12 at 12). Every row now records
+  its budget; one budget per `--out`.
+- **Forced flat is NOT the item-1 answer the docstrings predicted**:
+  `flat_colour5` −28 cones on five logos; Golden Tee sews 24 cones under
+  12 forced flat — the re-snap escapes past the flat lane's hard cap too.
+  Flat singles: the bind −26 cones, the cap −21 (drone, golden tee), the mask −4, the floor 0, the dissolve BYTE-IDENTICAL on all nine — item 1 retires only the dissolve.
+- Forcing the flat lane on a PHOTOGRAPH costs ten minutes a fixture and
+  answers nothing; `--fixture` exists so the proxy runs on logos only.
+- Two self-kills from `pgrep -f`/`grep` patterns that matched my own
+  shell: match with a bracketed literal (`flip_sheet[.]py`) and never put
+  the restart command in the same call as the kill.
+- Shipped as PR #441 (ready-for-review 03:18Z, auto-merge armed). Next: Kent's flip decision on the four not ruled (`colour4`) and his re-read of the halo render; then the next build pick.

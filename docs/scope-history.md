@@ -12058,3 +12058,38 @@ ON / the pro; Bridge Bar flat OFF / ON). Flip-sheet arm `design_angle`.
 *(2026-09-09 — `docs/superpowers/plans/2026-09-09-design-direction-policy.md`;
 DOCTRINE "The professional holds one fill angle per design, and no
 objective of ours derives it")*
+
+## 2026-09-10 — item 8: the gradient-lane colour bundle priced as one set
+
+Kent's pick after #440. No engine change: the five built, default-OFF
+colour flags (`enforce_color_cap`, `resnap_mask_matches_grader`,
+`revalidate_small_shapes`, `bind_resnap_all_classes`, and the RULED
+`dissolve_phantom_blends`, re-presented and not re-opened) measured
+TOGETHER on one tree with `tools/flip_sheet.py`, which grew the missing
+`color_cap` single, the `colour4` / `colour5` bundle arms, a forced-flat
+proxy table, `--fixture`, `--max-colors` and a colour-stops column.
+
+At the engine budget (12), 26 fixtures at 80 mm: `colour4` moves 9 for
+−995 stitches, −11 trims, **−22 blocks / −22 cones / −22 stops**, three
+grades up, none down; `colour5` moves 10 for **−4,023 stitches, −77
+trims**, −26 / −25 / −26 — the ruled flag is the stitch and trim lever
+(Bridge Bar alone −2,936 / −63, and the render shows why: the pink
+phantom outline around the script and the grey ghost spoke are gone).
+Not the sum of its rows: the cap's −18 cones and the bind's −17 overlap
+to −22. `photo_chrome_specular`'s D 52 → C 64 under the bundle is the
+`mask_small` pair alone (mask + lowered floor), byte for byte. At the Studio's shipped 6 the set is the bigger lever: `colour4` takes **−47 cones / −43 stops / −43 blocks** off nine fixtures (drone 23 → 6, Bridge Bar 13 → 6, Golden Tee 14 → 6, screenshot 14 → 6 — the slider's promise kept on every real logo), `colour5` adds −4,509 stitches and −80 trims; one grade falls, `summit_badge` (synthetic) F 16 → F 0 on a new `THREAD_MATCH_POOR` block from the cap's merge.
+
+Two corrections the measurement made. **The sheet's budget is 12 and the
+Studio ships 6** — for the cap those are different questions (drone 23 →
+6 at 6, 17 → 12 at 12); every row now records its budget. **Item 1 does
+not make the bundle moot**: forced flat, `colour5` still takes 28 cones
+and 28 stops off five of the nine real logos — Golden Tee sews 24 cones
+under a budget of 12 on the flat lane, because the re-snap escapes past
+the flat lane's hard cap exactly as on the gradient lane. The flat-lane singles say the bind does most of that work (−26 cones on five logos) and the cap the rest (−21 on drone and Golden Tee); the dissolve is the one flag item 1 retires (byte-identical on all nine forced flat).
+
+Renders: `docs/renders/colour-bundle-2026-09-10/` (ten contact sheets,
+OFF / colour4 / colour5). Decision doc:
+`docs/colour-bundle-decision-2026-09-10.md`, one recommendation per flag.
+Nothing flipped.
+
+*(2026-09-10 — `docs/superpowers/plans/2026-09-10-colour-bundle.md`)*

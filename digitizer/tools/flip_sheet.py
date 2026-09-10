@@ -84,6 +84,11 @@ ARMS: dict[str, dict] = {
     # there and 63.6 in preflight. A sixth parked flag belongs in the sheet
     # that exists to price parked flags.
     "resnap_mask": {"resnap_mask_matches_grader": True},
+    # Added 2026-09-10 (item 8). The colour cap landed the day this sheet was
+    # published and was priced by `tools/color_cap.py` on its own; a decision
+    # on the colour flags as ONE set needs it here, beside the other four,
+    # on the same tree.
+    "color_cap": {"enforce_color_cap": True},
     # --- combinations -------------------------------------------------------
     # `all` answers "flip everything"; nobody flips everything. These are the
     # combinations someone would actually ship, and the reason they are arms
@@ -152,12 +157,60 @@ ARMS: dict[str, dict] = {
         "satin_per_stroke": True,
         "satin_patch_junctions": True,
     },
+    # The colour bundle (quality review 2026-09-08 item 8, measured
+    # 2026-09-10): the five flags that each fix a piece of "cones and stops
+    # the customer did not ask for". `colour4` is the four NOT ruled;
+    # `colour5` adds `dissolve_phantom_blends`, which Kent banked OFF
+    # 2026-09-04 and the review says to re-present, not re-open -- so the
+    # bundle is priced both ways and the doc says which is which.
+    "colour4": {
+        "enforce_color_cap": True,
+        "resnap_mask_matches_grader": True,
+        "revalidate_small_shapes": True,
+        "bind_resnap_all_classes": True,
+    },
+    "colour5": {
+        "enforce_color_cap": True,
+        "resnap_mask_matches_grader": True,
+        "revalidate_small_shapes": True,
+        "bind_resnap_all_classes": True,
+        "dissolve_phantom_blends": True,
+    },
 }
 
 # An arm is a "single" if it flips exactly one flag. Derived, not listed, so
 # adding a combination above cannot silently make it a baseline for the
 # interaction table.
 SINGLES = [a for a, kw in ARMS.items() if len(kw) == 1]
+
+# Item 1 (the real-logo lane) would route real logos to the FLAT lane, and
+# which colour flags that makes moot is a fact about lanes. These two arms
+# measure it by proxy -- `forced_class=flat`, which is NOT item 1 (it drops
+# the thin strokes item 1 lands with) but answers the one question asked
+# here: does the bundle still have work to do on the flat lane? They live
+# outside ARMS so `forced_class` never counts as a "single" in the
+# interaction tables, and `report` reads `flat_colour5` against `flat_off`,
+# never against `off`. Run them by name: `--arm flat_off --arm flat_colour5`.
+PROXIES: dict[str, dict] = {
+    "flat_off": {"forced_class": "flat"},
+    "flat_colour5": {"forced_class": "flat", **ARMS["colour5"]},
+    # The singles on the flat lane too (2026-09-10): `flat_colour5` took 28
+    # cones off five forced-flat logos, which the lane story said could not
+    # happen (the flat lane caps hard; every counted re-snap escape was on
+    # the gradient lane) -- so WHICH flag still has work there is a
+    # measurement, not a docstring.
+    "flat_color_cap": {"forced_class": "flat", **ARMS["color_cap"]},
+    "flat_resnap_mask": {"forced_class": "flat", **ARMS["resnap_mask"]},
+    "flat_resnap_small": {"forced_class": "flat", **ARMS["resnap_small"]},
+    "flat_resnap_bind": {"forced_class": "flat", **ARMS["resnap_bind"]},
+    "flat_halo": {"forced_class": "flat", **ARMS["halo"]},
+}
+
+
+def _arm_kw(arm: str) -> dict:
+    """The `PipelineConfig` keywords an arm name stands for, from ARMS or
+    PROXIES; a name in neither is a KeyError, as it always was."""
+    return ARMS[arm] if arm in ARMS else PROXIES[arm]
 
 # `edge_cap` and `chain_links` are deliberately NOT arms here.
 #   * `edge_cap` ("bean"/"satin", defect 19) is gate 1: which cap, if either,
@@ -173,6 +226,14 @@ BARRED = {
 
 GARMENT = "left_chest"
 WIDTH_MM = 80.0
+# The colour budget every arm runs under. None is `PipelineConfig`'s own
+# default (12), which is what the published 2026-09-06 sheet was measured
+# at; the Studio SHIPS 6 (`app/src/lib/project.js` DEFAULT_DIGITIZE_PARAMS),
+# and for the colour flags the two are different questions -- drone at 6
+# sews 23 cones OFF and 6 under the cap, at 12 it sews 17 and 12 (measured
+# 2026-09-10, item 8). `--max-colors` sets it for a run; every row records
+# it, and `report` says which it is reading.
+MAX_COLORS: int | None = None
 
 
 def fixtures() -> list[str]:
@@ -241,7 +302,9 @@ def measure(fixture: str, arm: str) -> dict:
     from digitizer_core.preflight import run_preflight
 
     path = TESTDATA / fixture
-    kw = dict(target_width_mm=WIDTH_MM, garment_id=GARMENT, **ARMS[arm])
+    kw = dict(target_width_mm=WIDTH_MM, garment_id=GARMENT, **_arm_kw(arm))
+    if MAX_COLORS is not None:
+        kw["max_colors"] = MAX_COLORS
     t0 = time.time()
     try:
         result, plan = digitize(path, PipelineConfig(**kw))
@@ -269,6 +332,7 @@ def measure(fixture: str, arm: str) -> dict:
         "findings": sorted(f"{f['code']}:{f['severity']}" for f in report["findings"]),
         "digest": _stitch_digest(plan),
         "head": _head(),
+        "max_colors": MAX_COLORS,
         "secs": round(time.time() - t0, 1),
     }
 
@@ -277,17 +341,28 @@ def _job(args) -> dict:
     return measure(*args)
 
 
-def run(out: Path, workers: int, only: list[str] | None) -> int:
+def run(out: Path, workers: int, only: list[str] | None,
+        only_fixtures: list[str] | None = None) -> int:
+    """`only_fixtures` narrows a pass to those corpus entries (paths under
+    testdata/, as FIXTURES spells them) -- added 2026-09-10 because the
+    forced-flat proxy arms are a question about REAL LOGOS, and forcing the
+    flat lane on a photograph costs ten minutes a fixture to answer nothing."""
     out.mkdir(parents=True, exist_ok=True)
     arms = only or list(ARMS)
+    fxs = fixtures()
+    if only_fixtures:
+        unknown = sorted(set(only_fixtures) - set(fxs))
+        if unknown:
+            raise SystemExit(f"--fixture not in the corpus: {unknown}")
+        fxs = [f for f in fxs if f in set(only_fixtures)]
     todo = []
     for arm in arms:
-        for fx in fixtures():
+        for fx in fxs:
             dest = out / f"{arm}__{fx.replace('/', '_')}.json"
             if dest.exists():
                 continue
             todo.append((fx, arm))
-    print(f"{len(todo)} runs to do ({len(arms)} arms x {len(fixtures())} fixtures, "
+    print(f"{len(todo)} runs to do ({len(arms)} arms x {len(fxs)} fixtures, "
           f"{workers} workers)", flush=True)
     if not todo:
         return 0
@@ -320,7 +395,12 @@ def report(out: Path) -> int:
     fxs = fixtures()
     base = {f: rows.get(("off", f)) for f in fxs}
 
-    print(f"# Flip sheet — {len(fxs)} fixtures @ {WIDTH_MM:g} mm / {GARMENT}\n")
+    budgets = sorted({str(r.get("max_colors")) for r in rows.values()})
+    print(f"# Flip sheet — {len(fxs)} fixtures @ {WIDTH_MM:g} mm / {GARMENT}  "
+          f"(max_colors {', '.join(budgets)}; None = the engine default, 12)\n")
+    if len(budgets) > 1:
+        print("**MIXED COLOUR BUDGETS — rows below were measured under different "
+              "`max_colors`; keep one budget per `--out` directory.**\n")
     # Two different findings, and the banner must not conflate them: rows
     # stamped with DIFFERENT commits were provably measured on different
     # engines; rows with no stamp at all predate `head` (2026-09-07) and are
@@ -358,14 +438,16 @@ def report(out: Path) -> int:
         print(f"  - `{k}`: {why}")
     print()
 
-    for arm in ARMS:
-        if arm == "off":
-            continue
+    def _net(arm: str, base_rows: dict, heading: str) -> None:
+        """One arm against a baseline: what moved and what it cost. `stops`
+        (colour changes) rides beside cones since 2026-09-10 -- a stop is a
+        re-thread on a single-needle machine, a cone a spool to buy, and the
+        colour bundle is priced in both."""
         moved, ident, errs = [], 0, []
-        d_st = d_tr = d_bl = d_cn = 0
+        d_st = d_tr = d_bl = d_cn = d_ch = 0
         up, down = [], []
         for f in fxs:
-            b, a = base.get(f), rows.get((arm, f))
+            b, a = base_rows.get(f), rows.get((arm, f))
             if not b or not a:
                 continue
             if "error" in a or "error" in b:
@@ -379,15 +461,16 @@ def report(out: Path) -> int:
             d_tr += a["trims"] - b["trims"]
             d_bl += a["blocks"] - b["blocks"]
             d_cn += a["cones"] - b["cones"]
+            d_ch += a.get("changes", 0) - b.get("changes", 0)
             if a["score"] > b["score"]:
                 up.append(f"{f} {b['grade']} {b['score']}->{a['grade']} {a['score']}")
             elif a["score"] < b["score"]:
                 down.append(f"{f} {b['grade']} {b['score']}->{a['grade']} {a['score']}")
-        print(f"## {arm}   {', '.join(f'{k}={v}' for k, v in ARMS[arm].items())}")
+        print(heading)
         print(f"  moved {len(moved)} / identical {ident}"
               + (f" / errors {len(errs)}" if errs else ""))
         print(f"  net   stitches {d_st:+d}  trims {d_tr:+d}  blocks {d_bl:+d}  "
-              f"cones {d_cn:+d}")
+              f"cones {d_cn:+d}  stops {d_ch:+d}")
         if up:
             print("  grade UP   : " + "; ".join(up))
         if down:
@@ -399,6 +482,22 @@ def report(out: Path) -> int:
         if errs:
             print("  ERRORS     : " + ", ".join(errs))
         print()
+
+    for arm in ARMS:
+        if arm == "off":
+            continue
+        _net(arm, base, f"## {arm}   {', '.join(f'{k}={v}' for k, v in ARMS[arm].items())}")
+
+    # The item-1 proxy pair, read against ITS OWN baseline (see PROXIES).
+    flat_base = {f: rows.get(("flat_off", f)) for f in fxs}
+    if any(flat_base.values()):
+        print("## item-1 proxy — the bundle on the FLAT lane, against `flat_off` "
+              "(forced_class=flat), not against `off`\n")
+        for arm in PROXIES:
+            if arm == "flat_off":
+                continue
+            _net(arm, flat_base, f"### {arm} vs flat_off   "
+                 f"{', '.join(f'{k}={v}' for k, v in PROXIES[arm].items())}")
 
     # Interaction: does `all` equal the fixtures each single flag moved?
     singles = SINGLES
@@ -481,9 +580,16 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--out", type=Path, default=ROOT / "build" / "flip_sheet")
     ap.add_argument("--workers", type=int, default=3)
     ap.add_argument("--arm", action="append", dest="arms")
+    ap.add_argument("--fixture", action="append", dest="fixtures_only",
+                    help="limit a run to these corpus entries (repeatable)")
+    ap.add_argument("--max-colors", type=int, default=None,
+                    help="the colour budget every arm runs under (default: the "
+                         "engine's 12; the Studio ships 6)")
     args = ap.parse_args(argv)
     if args.mode == "run":
-        return run(args.out, args.workers, args.arms)
+        global MAX_COLORS
+        MAX_COLORS = args.max_colors
+        return run(args.out, args.workers, args.arms, args.fixtures_only)
     return report(args.out)
 
 
