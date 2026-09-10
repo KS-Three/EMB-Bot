@@ -27,6 +27,7 @@ from digitizer_core import PipelineConfig
 from digitizer_core.pipeline import digitize
 from digitizer_core.stage7_sequence import _merge_adjacent_same_thread
 from digitizer_core.stitches import StitchBlock, StitchRun
+from tests.conftest import PRE_FLIP
 
 
 TESTDATA = Path(__file__).resolve().parent.parent / "testdata"
@@ -281,11 +282,14 @@ def test_the_hoist_moves_no_stitches_and_changes_no_pixels_on_the_owl():
     # would read as "the hoist did nothing" on a plan that gave it nothing
     # to do. The old polygon keeps the revisit, so the end-to-end argument
     # keeps its ground; the gate itself is flag-blind.
+    # ... and to the engine before the 2026-09-10 colour-bundle flip
+    # (PRE_FLIP), for the same reason: the four flags re-cone the owl's
+    # blocks and the plan the hoist argument needs is the pre-flip one.
     off = digitize(img, PipelineConfig(target_width_mm=100.0,
                                        hoist_same_thread_margin_mm=0.0,
-                                       subpixel_edges=False))[1]
+                                       subpixel_edges=False, **PRE_FLIP))[1]
     on = digitize(img, PipelineConfig(target_width_mm=100.0,
-                                      subpixel_edges=False))[1]
+                                      subpixel_edges=False, **PRE_FLIP))[1]
 
     assert len(on.blocks) < len(off.blocks), "no revisit was hoisted at all"
     n_off = sum(len(r.points) for b in off.blocks for r in b.runs)

@@ -75,6 +75,7 @@ from digitizer_core.pipeline import digitize
 from digitizer_core.stage2_photo_segment import (_PAGE, _blend_side,
                                                  dissolve_phantom_blends)
 from digitizer_core.warnings_codes import PHOTO_BLEND_DISSOLVED
+from tests.conftest import PRE_FLIP
 
 TESTDATA = Path(__file__).resolve().parent.parent / "testdata"
 BRIDGE = TESTDATA / "photo" / "logo_bridge_bar.jpg"
@@ -255,9 +256,14 @@ def test_page_side_halo_is_returned_to_the_background():
 @pytest.fixture(scope="module")
 def bridge_pair():
     def run(on: bool):
+        # PRE_FLIP: the dissolve flag alone, over the engine it was measured
+        # on (the four colour flags Kent flipped ON on 2026-09-10 held OFF;
+        # conftest.PRE_FLIP says why). Against the shipped engine the cap and
+        # the bind already take most of these greys, which the decision sheet
+        # prices as colour5 over colour4.
         return digitize(BRIDGE, PipelineConfig(
             target_width_mm=80.0, max_colors=6, satin=True,
-            garment_id="left_chest", dissolve_phantom_blends=on))
+            garment_id="left_chest", dissolve_phantom_blends=on, **PRE_FLIP))
     return run(False), run(True)
 
 

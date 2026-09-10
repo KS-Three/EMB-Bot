@@ -25,7 +25,7 @@ from digitizer_core.config import PipelineConfig
 from digitizer_core.pipeline import digitize
 from digitizer_core.threads import rgb_to_lab
 
-from .conftest import TESTDATA
+from .conftest import PRE_FLIP, TESTDATA
 
 HEAVY = "photo/logo_bridge_bar.jpg"     # 17 changes, 18 distinct cones
 QUIET = "logo_alpha.png"                # far under COLOR_STOPS_MAX
@@ -36,7 +36,10 @@ def _run(fixture: str):
     """One digitize + preflight per fixture, reused by every test here.
     Read-only; take an uncached run if one ever needs to mutate."""
     art = TESTDATA / fixture
-    cfg = PipelineConfig(target_width_mm=80.0, garment_id="left_chest")
+    cfg = PipelineConfig(target_width_mm=80.0, garment_id="left_chest", **PRE_FLIP)
+    # PRE_FLIP: the four colour flags Kent flipped ON on 2026-09-10 are
+    # held OFF here because this file documents a fact of the engine
+    # before that flip (conftest.PRE_FLIP says why).
     result, plan = digitize(art, cfg)
     report = pf.run_preflight(result, plan, cfg, image=art)
     hits = [f for f in report["findings"]

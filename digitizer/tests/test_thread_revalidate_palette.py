@@ -133,22 +133,34 @@ def test_photo_class_resnap_stays_inside_the_palette():
     assert w["ids"] == ["Stest0001"]
 
 
-def test_flat_and_gradient_keep_the_unrestricted_chart_argmin():
-    """The load-bearing gate: even with a palette PASSED, a non-photo class
-    re-snaps chart-wide — fix #6.3's gradient-lane behaviour, byte-identical
-    to before the parameter existed (the flat/gradient goldens rely on it)."""
+def test_flat_and_gradient_keep_the_unrestricted_chart_argmin_unless_bound():
+    """The class gate as built (2026-08-23): even with a palette PASSED, a
+    non-photo class re-snaps chart-wide -- fix #6.3's gradient-lane
+    behaviour, byte-identical to before the parameter existed. Since
+    2026-09-10 `bind_resnap_all_classes` is ON by default (Kent's ruling on
+    the colour bundle) and every class is bound; the gate is still there
+    under the flag, so this pins BOTH: unbound with the flag off, bound with
+    the shipped default."""
     p, de, global_best = _scenario()
     wrong = _pick(de, 20.0, 60.0, exclude={global_best})
     in_palette = _pick(de, 5.0, 15.0, exclude={global_best, wrong})
 
+    unbound = PipelineConfig(bind_resnap_all_classes=False)
     for cls in ("flat", "gradient"):
         r = _region(wrong)
         V.revalidate_threads(
-            [r], p, CFG,
+            [r], p, unbound,
             palette_indices=[wrong, in_palette],
             design_class=cls,
         )
         assert r.thread_index == global_best, (cls, r.thread_index)
+        r = _region(wrong)
+        V.revalidate_threads(
+            [r], p, CFG,                       # the shipped default binds
+            palette_indices=[wrong, in_palette],
+            design_class=cls,
+        )
+        assert r.thread_index == in_palette, (cls, r.thread_index)
 
 
 def test_the_default_arguments_are_the_old_signature():

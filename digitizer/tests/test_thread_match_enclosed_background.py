@@ -42,7 +42,7 @@ from digitizer_core.preflight import (_owning_region_id, _region_color_errors,
                                       run_preflight)
 from digitizer_core.stage1_prep import prep
 
-from .conftest import TESTDATA
+from .conftest import PRE_FLIP, TESTDATA
 
 GAULKE = "photo/logo_gaulke_roofing.png"
 # The fixture the one real change lands on, a fixture with no runless regions
@@ -68,7 +68,10 @@ def _digest(fixture: str):
     return copies.**
     """
     art = TESTDATA / fixture
-    cfg = PipelineConfig(target_width_mm=80.0, garment_id="left_chest")
+    cfg = PipelineConfig(target_width_mm=80.0, garment_id="left_chest", **PRE_FLIP)
+    # PRE_FLIP: the four colour flags Kent flipped ON on 2026-09-10 are
+    # held OFF here because this file documents a fact of the engine
+    # before that flip (conftest.PRE_FLIP says why).
     result, plan = digitize(art, cfg)
     return art, cfg, result, plan
 
