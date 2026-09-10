@@ -389,6 +389,33 @@ SATIN_SPACING_MM = 0.4
 # browser engine still classifies at 3.0 (satinMaxWidthMm) — divergence is
 # deliberate, corpus-driven, and Python-side only until its own sew-out.
 SATIN_MAX_WIDTH_MM = 5.0
+# The wide-column ceiling (quality review 2026-09-08 item 4; plan
+# 2026-09-09-wide-column-policy.md), live only under `cfg.wide_columns`,
+# DEFAULT OFF. Read off five commissioned Becker files sewn on garments —
+# gate 1's own evidence class, the one that settled FILL_ROW_MM: in the
+# MARINE bands of `becker_hat_polo_large_beckers_logolc.dst` (95.7 mm, our
+# 100 mm test size) the pro's satin crosses read p50 4.8-4.9, p90 5.0-5.2,
+# p99 6.2 mm, sewn WHOLE (rail to rail, no split penetration — rendered in
+# docs/renders/wide-columns-2026-09-09/); 0.6-0.7% of them sit past 6.5.
+# So 6.5 is the band the pro sews and 5.0 is where we stopped. The number
+# moves NOTHING on its own: DOCTRINE 2026-09-02 measured both routes past
+# 5.0 breaking something, because the per-station cap in
+# `stage6_satin._rail_points` was standing in for a guard against columns
+# that bend faster than their width. Under the flag that guard is the
+# local radius of curvature (`_fold_caps`), and this ceiling is threaded
+# from the classifier to the emitter as ONE number (`satin_ceiling_mm`).
+SATIN_WIDE_COLUMN_MAX_MM = 6.5
+
+
+def satin_ceiling_mm(cfg) -> float:
+    """The satin width ceiling a config asks for — the one number the
+    classifier (stages 5 and 7) admits at and the emitter (stage 6) sews at.
+    An explicit `satin_max_width_mm` wins; else the wide-column ceiling under
+    `wide_columns`; else `SATIN_MAX_WIDTH_MM`."""
+    explicit = getattr(cfg, "satin_max_width_mm", None)
+    if explicit:
+        return float(explicit)
+    return SATIN_WIDE_COLUMN_MAX_MM if getattr(cfg, "wide_columns", False) else SATIN_MAX_WIDTH_MM
 # Above this ribbon width a column must carry zigzag underlay: wide crosses
 # float without it. Every wide-satin file in the corpus shows support passes.
 SATIN_ZIGZAG_ABOVE_MM = 2.5

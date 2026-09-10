@@ -3854,8 +3854,8 @@ the polygon back:
   is two 3-way nodes a pixel apart and still decomposes into three strokes.
   Before, both scales read three — equal by the same artefact twice, which
   is what a scale-invariance test cannot tell from correctness. Adjacent
-  junction pixels are not clustered anywhere; that is the next mechanism in
-  this family, measured and not built.
+  junction pixels were not clustered anywhere; that was the next mechanism
+  in this family, built the same day (the entry below).
 
 **Rule:** when a default flip moves every polygon, treat each downstream
 failure as the pixel-fragile mechanism it names — a skeleton, a ladder, a
@@ -3864,3 +3864,226 @@ and the bisect written down, never the polygon. *(2026-09-09 —
 scope-history's flip entry has the footprints;
 `tests/test_skeleton_pinholes.py`, `test_satin.py`'s starburst test, the
 three thread-match files' notes)*
+
+## A junction is a cluster, not a pixel — and a loop inside it is the pinhole's larger cousin (2026-09-09)
+
+A raster medial axis renders one junction as several branch pixels a few
+pixels apart whenever the stroke width is even in pixels or the arms meet
+off-centre, and `_merge_through_junctions` paired arms per PIXEL. So a
+crossing decomposed into three strokes (a bar and two half-bars) and a
+five-way meeting into a chain of welds nobody drew, while the stub between
+the pixels was dropped as junction noise only after the pairing had
+happened. `stage6_satin._cluster_junctions` contracts every node-to-node
+edge under **0.5 half-widths (floor 3 px)** into one junction rooted at the
+deepest-DT pixel. The number is read off the corpus, not guessed:
+`tools/junction_nodes.py`'s length/half-width histogram has a bump at
+0.2–0.4, a trough at 0.4–0.5 and a tail from 0.5 up, and every edge in the
+bump is shorter than half the DT at its own ends. It is bounded above by
+`_MIN_STROKE_HALFWIDTHS` (1.2): a stub under that was never sewn.
+
+**Junction noise comes in two shapes, and removing one without the other is
+worse than neither.** With the stubs contracted alone, enthusiast's emblem
+bracket at 150 mm lost 7 mm² at its tab: the tip is a tiny LOOP (two 4–7 px
+paths between two nodes a pixel apart plus a self-loop — the pinhole
+diamond at sizes 2–4), which made it a five-arm junction instead of a cap,
+and the old stub had happened to carry the uncapped stroke 0.74 mm further.
+A loop that returns to its own cluster within twice the threshold is
+dropped with the stubs; the node is then one arm, and the cap finish runs
+it out to the tip.
+
+What it moved (14 fixtures × 2 traces, scope-history's junction entry):
+interior over-wide rail readings **948 → 830**, becker's bare total 16.0 →
+9.0 mm², enthusiast 150's worst 4.5 → 1.2, at +0.21% stitches; end-zone
+readings 107 → 121, which are the terminal crosses of caps that are free
+ends now. The K's crotch (7.8 → 9.0) is the junction COVER's problem, not
+the graph's — the patch flag, PR 2. **No golden moved**: the flat-lane keys
+have no branch node, so a skeleton-graph change is provably byte-identical
+there before it is measured anywhere else. *(2026-09-09 — the plan doc's
+§4 has each prediction against its result)*
+
+## The band above the satin cap is a decomposition problem wearing a width problem's clothes (2026-09-09)
+
+Built and measured: `cfg.wide_columns` (OFF) raises the satin ceiling to
+6.5 mm — the pro's MARINE p99, read off files sewn on garments — as ONE
+number threaded from the classifier to the emitter, with the per-station
+cap replaced by the bend's radius of curvature (`_fold_caps`). Three
+things the measurement settled, each of which changes what to do next:
+
+- **The 2026-09-02 premise has moved.** The coupled route reopened
+  logo_alpha's apex to crossing itself; on this tree the apex reads 0
+  crossing pairs from 5.0 to 8.0 mm with or without any guard (122
+  unbounded, the two legs sharing the blob). Do not cite that entry's 18
+  failures as the reason a ceiling cannot move — cite this one: the guard
+  that IS load-bearing is on a BEND (Becker at 80 mm, radii ~5 mm under
+  5–6 mm columns: coverage_max 7.07 with no guard, 5.08 at 0.7 × R), and
+  it moves nothing anywhere else.
+- **A p90 of the medial radius over-reads a bold letter by its junctions.**
+  Our DT read MARINE's letters at 5.1–8.0 mm; the pro sews their stems at
+  4.8–5.0 whole and their serifs as separate columns. Two letters are
+  "wide" only because their diagonals meet their stems. A junction-aware
+  width statistic is the next thing the classifier needs, not a higher
+  number. **[Measured 2026-09-09, two entries on: it reads the leftovers — one verdict flips in the corpus and drone's 9 mm wing reads 1.1 mm. Not a classifier input.]**
+- **Admitting the band does not sew it well.** MARINE at 100 mm goes satin
+  at −13% stitches and comes out with 251 self-crossing pairs at the feet
+  and junctions, 3–5 strokes and 4–7 trims per letter against the pro's
+  ~2, and drone's admitted wing leaves 7 mm² bare inside itself. The
+  render (`docs/renders/wide-columns-2026-09-09/`) is the argument: the
+  columns are the right width and the wrong shapes. **Rule: when a policy
+  admits a new population, render what it produces before pricing it —
+  the stitch count fell and the letters got worse.** The flag ships OFF
+  and the review's item 5 (serifs as columns, junction cover) is what
+  makes the band worth flipping. *(2026-09-09 — scope-history's
+  wide-column entry; `tools/wide_columns.py`)* **[Corrected the same
+  day, next entry: the 251 are seams between columns at two Goldman
+  joins, none within a column, and the pro's own file carries 2,593 of
+  them — the count is not a defect and the feet have no serif. The
+  junction cover half of item 5 shipped; the serif half did not.]**
+
+## Crossing pairs at a join are the join — and the serif column had no defect to fix (2026-09-09)
+
+The entry above read MARINE's 251 crossing pairs as columns fanning at
+serif feet and wrote a two-flag brief on it. The census built to size
+that brief (`tools/letterforms.py`) read every column end instead, and
+the brief did not survive the reading:
+
+- **The count was mitres.** Split into pairs WITHIN one column and pairs
+  BETWEEN two, MARINE at 100 mm is 0 within and 359 between, all at two
+  Goldman joins (the A's apex, the R's crossbar/leg join) where the
+  owner's corner cap runs 5–6 mm crosses over the square the butting
+  member also covers. The corpus reads the same under `wide_columns`
+  and without it (Becker 80 mm 0 / 716 on, 6 / 714 off; drone 0 / 486;
+  ENTHUSIAST 0 / 305; Fremont 0 / 263). **The pro's sewn MARINE carries
+  2,593 such pairs within its own eleven passes, 652 in the M alone.**
+  `crossing_pairs` was built (2026-08-05) for one column folding over
+  itself and is that instrument; read over a whole run it counts every
+  join in the letter. **Rule: a crossing count is a defect only WITHIN a
+  column; between columns compare it with the pro's file before calling
+  it one.**
+- **The feet have no serif to give a column.** The M's stems read a
+  constant 5.35 mm chord to the baseline; the source is 146 × 91 px,
+  1.46 px/mm at 100 mm, so the font's foot serif is under a pixel and the
+  pro digitized the font, not the file. Where slab serifs DO survive in
+  the artwork (ENTHUSIAST at 93 mm) they already sew as Goldman members,
+  one column each, nothing bare. **Rule: before building a decomposition
+  feature, census the corpus for the geometry it decomposes — a render
+  read as "serifs" was a beak the skeleton runs along, and a synthetic
+  serif fixture would have proved a feature no fixture needs.**
+- **What IS bare is junction blobs, and the cover half shipped**:
+  `cfg.satin_patch_junctions = "satin"` sews the grader's own patches as
+  satin columns FIRST in the shape, under the arms, joined by needle-down
+  web travel. Becker 80 mm: `ARTWORK_UNCOVERED` 9.0 → 0.0, B 76 → B 88 —
+  the tatami's grade — at +122 stitches and +2 trims against the tatami's
+  +297 and +3. Fremont's band under `wide_columns`: 128.2 → 13.0 mm² for
+  +10.6% stitches (the tatami: 6.0 for +34.5%). Its over-fire is the
+  tatami's: Becker 100 mm under `wide_columns` reads 0.0 both ways and
+  the cover's 2 trims trip `TRIM_HEAVY` (B 88 → B 76, the tatami B 76 at
+  3). Across the 26-fixture sheet at 80 mm it moves the same four
+  fixtures as the tatami, to the same two grade-ups, at +313 stitches
+  against the tatami's +733. A second round of the finder was measured
+  and moved nothing the grader reads — dropped. Flipping any mode is
+  Kent's; the renders are in `docs/renders/junction-cover-2026-09-09/`. *(2026-09-09 —
+  `docs/superpowers/plans/2026-09-09-serifs-and-junction-cover.md`;
+  `tools/letterforms.py`; `tests/test_junction_patch_flag.py`)*
+
+## Our junctions are under-stacked against the pro, and a bold letter is mostly junction (2026-09-09)
+
+Item 5's PR 3 — the junction blob sewn as one column with the arms ending
+on it, and the classifier's width read off the arms alone — was measured
+out by its own instrument before any engine code:
+
+- **Calibrate the layers before decomposing.** `tools/pro_layers.py` puts
+  the pro's sewn Becker file in our frame and reads coverage layers
+  (`preflight._coverage_map`'s units) inside our own letters and junction
+  blobs. MARINE: ours p95 2.4–3.4 and max 3.8–5.2 per letter against the
+  pro's p95 4.1–6.0 and max 5.5–11.6; inside every junction blob the pro
+  stacks more (p95 3.7–7.3 against 1.8–3.8). The pro sews the word with 58%
+  more thread (12,109 mm against 7,642) and 39% more penetrations. The
+  clumps #434's render showed at the A's apex and the R's join are crosses
+  meeting at angles over LESS thread than the pro lays there. **Rule: a
+  render that looks over-sewn is a layer count, and the count is read
+  against the pro's file at the same spot before anything is added or
+  taken away.**
+- **A junction blob is not a column.** `tools/junction_blobs.py` builds the
+  blob as the medial balls bigger than the arms' own: on MARINE at 100 mm
+  that is 45–90% of every letter's skeleton, node balls of 3.4–4.4 mm
+  radius on 2.2–3.2 mm arms, and no arm between two junctions ever settles
+  to a corridor. The pro's A apex column is a slab the FONT defines; no
+  geometry of the raster blob recovers it. **Rule: at 17 mm a bold letter
+  has no arms to stand a junction against — decomposition rules written
+  for a T with a corridor do not transfer, and a "junction-aware" statistic
+  reads what is left after the blobs, which on drone's wing is a 9 mm blob
+  passed as a 1.1 mm hairline.**
+- What the census does count as a defect is bare blobs (Fremont's band
+  under `wide_columns`: 15 at least a quarter bare), which the junction
+  cover already sews. *(2026-09-09 —
+  `docs/superpowers/plans/2026-09-09-junction-blobs.md`;
+  `docs/renders/junction-blobs-2026-09-09/`)*
+
+## A walk that dead-ends off a node has stranded a chain — read the tracer's output against its mask (2026-09-09)
+
+`stage6_satin._skeleton_edges` had two holes that the medial axis's
+three-pixel triangles fall through: at a junction whose three arms meet on a
+clique, the node's walk stepped to the clique's other member and came
+straight back — a 3 px self-loop that CONSUMED an arm's first pixel — and at
+a filled L-corner the walk stepped onto the filler and found both its
+neighbours already walked. Either way the chain beyond was never reached
+from a node, and the leftover pass at the end walks one way from each
+unconsumed pixel, so it came back as 1–3 px free/free fragments. Every one
+of those passes `extract_strokes`' stub filter (both ends free) and
+`satin_stroke` runs each to BOTH caps: ENTHUSIAST's H under
+`satin_rail_comp` sewed its left stem five times over, coverage peak 4.7 →
+9.27 layers, from a spine 0.17 mm long.
+
+Two rules, both firing only where the old walk had already gone wrong: the
+first step out of a node prefers a candidate that does not touch the node;
+a dead end on a non-node pixel steps back and takes the other way, and ends
+where it did if there is none (`_WALK_BACKTRACK_PX`). A skeleton without a
+triangle traces exactly as the port did — `tests/test_skeleton_tracer.py`
+pins the H's own pixels both ways.
+
+**The defect was live OFF, and invisible.** A scan of the tracer's own
+output against its mask (a self-loop, an open edge ending on a non-node, a
+free/free edge whose ends have two neighbours) found it on Becker (4
+shapes), drone (6), enthusiast (5) and gaulke (1) with the flag off — and
+the fix moves ONE of those shapes' stitches (drone's `S60de6f78`, 43 → 45,
+two stranded arms), because `_cluster_junctions` drops the loop downstream
+and the fillers happened to sit where nothing needed them. What it also
+moves is ENTHUSIAST's house angle, 1.4445° → 1.4757°, because `textcluster`
+composes the tracer WITHOUT the cluster pass and the loop's three pixels had
+been voting; every satin letter there shifts by a hair (+2 stitches in
+total). The rule: a pass that consumes pixels must account for every pixel
+it did not consume, and the check is the output against the mask, not the
+output against the eye. The browser engine's `skeletonEdges`, the port's
+original, still has both cases. *(2026-09-09 — the rail-comp plan doc §2b)*
+
+## The polygon growth was smoothing the outline for the skeleton — and the fidelity lives in the rails, not the skeleton (2026-09-09)
+
+Item 6's premise was that skeletonising the GROWN polygon is what seals an
+E's arm slots and welds its arms, so the flag should skeletonise the
+artwork. True, and measured (THERMAL's E: four strokes on the artwork, two
+grown; PRECISION's N: 21 vertices against 152). What the premise missed is
+the growth's other job: a 0.3 mm round buffer is a low-pass filter on the
+outline, and a source rasterised at 146 × 91 px has stair-stepped edges at
+80 mm that the artwork keeps and the grown polygon does not. Becker's A
+skeletonises into 7 strokes on the artwork for the default's 3 — a branch
+into every step, a wedge column across the left leg — for +4 trims on the
+design, and no closing-and-opening at the pull recovers the default's
+decomposition (6 strokes).
+
+Both designs were built and measured on four fixtures (plan doc §4c). The
+grown skeleton with artwork rails keeps the default's decomposition and
+still takes the drone wordmark's thread-vs-target IoU 0.797 → 0.829 and
+Fremont's lettering 0.675 → 0.813 (the artwork skeleton: 0.838 and 0.836):
+most of the fidelity is the RAILS reading the true edge and being pushed
+from it, not which polygon the spine came from. Two rules from it. **When a
+transform is removed, list what it was doing besides the thing it was
+blamed for** — the buffer compensated, smoothed, rounded and lengthened,
+and the design had accounted for one. **Measure the halves of a change
+separately before crediting either**: rails-only was one line away and
+carries three quarters of the gain. The vs-artwork IoU FALLS on small
+lettering under either design (drone 0.606 → 0.564, Fremont 0.702 → 0.492)
+because it penalises exactly the compensation being landed — a 1 mm stroke
+sews 1.6 mm — so read `iou_target`, and treat a fidelity number that
+improves when compensation is removed as a diagnostic, never a goal. *(2026-
+09-09 — `tools/rail_comp.py`; the choice between the two skeletons is
+Kent's, plan doc §7)*

@@ -58,7 +58,7 @@ from shapely.ops import unary_union
 from . import machine, stitches
 from .config import PipelineConfig
 from .fabrics import Fabric
-from .machine import FILL_ROW_MM, FILL_STITCH_MM, SATIN_MAX_WIDTH_MM, TINY_STITCH_MM
+from .machine import FILL_ROW_MM, FILL_STITCH_MM, SATIN_MAX_WIDTH_MM, TINY_STITCH_MM, satin_ceiling_mm
 from .stage5_overlap import PlannedRegion, widened_lettering
 from .stage6_applique import applique_pass, nn_group_key
 from .stage6_blend import SourcePixels, blend_fill, region_rides_design_ramp
@@ -301,7 +301,7 @@ def borders_last_layers(regions, thread_indices: list[int],
     """
     if not regions:
         return list(thread_indices)
-    satin_max = cfg.satin_max_width_mm or SATIN_MAX_WIDTH_MM
+    satin_max = satin_ceiling_mm(cfg)
     layers = sorted({r.meta["layer"] for r in regions})
     by_layer = {L: [r for r in regions if r.meta["layer"] == L] for L in layers}
 
@@ -1375,7 +1375,7 @@ def sequence(
     underlay_style = (cfg.underlay_style or class_fill_underlay) if cfg.underlay else "none"
     satin_underlay = ((_PHOTO_SATIN_UNDERLAY if photo else fabric.satin_underlay)
                       if cfg.underlay else "none")
-    satin_max = cfg.satin_max_width_mm or SATIN_MAX_WIDTH_MM
+    satin_max = satin_ceiling_mm(cfg)
     trim_at = fabric.trim_at_mm
 
     # `cfg.border is None` means "let the class decide" — see config.py's own
@@ -1705,6 +1705,14 @@ def sequence(
                 # a heavy fabric's compensation must not flip it.
                 ax0, ay0, ax1, ay1 = p.region.polygon.bounds
                 small = max(ax1 - ax0, ay1 - ay0) < machine.SATIN_UNDERLAY_MIN_EXTENT_MM
+                # `cfg.satin_rail_comp` (2026-09-09): stage 5 left this shape
+                # on its artwork polygon, so the fabric's pull lands on the
+                # rails here -- and the end cutback owes only the push, since
+                # nothing lengthened the column at its caps.
+                on_rails = (bool(cfg.satin_rail_comp) and p.satin_tier
+                            and not widened_lettering(p.region)
+                            and fabric.pull_comp_mm > 0)
+                rail_comp_mm = fabric.pull_comp_mm if on_rails else 0.0
                 runs, report = satin_shape(
                     p.polygon,
                     p.shape_id,
@@ -1712,12 +1720,21 @@ def sequence(
                     trim_at_mm=trim_at,
                     start_near=entry,
                     split_above_mm=split_above,
-                    end_cutback_mm=end_cutback,
+                    end_cutback_mm=(machine.PUSH_CUTBACK_MM if cfg.directional_comp else 0.0)
+                    if on_rails else end_cutback,
+                    rail_comp_mm=rail_comp_mm,
+                    rail_comp_floor_mm=cfg.min_detail_mm,
                     use_shapefield=use_shapefield,
                     spacing_mm=satin_spacing_mm,
                     angle_deg=satin_angle_deg,
                     rails_follow_edge=cfg.satin_rails_follow_edge,
                     patch_junctions=cfg.satin_patch_junctions,
+                    # The ceiling the classifier admitted at is the one the
+                    # emitter sews at — one number, threaded, never two
+                    # constants (DOCTRINE 2026-09-02). The fold guard rides
+                    # with the wide ceiling.
+                    max_width_mm=satin_max,
+                    fold_guard=cfg.wide_columns,
                     # A hairline sews as a bean only where the ART has ink:
                     # `p.polygon` is the compensated outline, and pull comp
                     # grows a vectorization needle into a "stroke". The

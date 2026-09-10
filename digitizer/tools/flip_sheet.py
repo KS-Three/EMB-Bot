@@ -61,6 +61,16 @@ ARMS: dict[str, dict] = {
     "resnap_bind": {"bind_resnap_all_classes": True},
     "satin_stroke": {"satin_per_stroke": True},
     "satin_patch": {"satin_patch_junctions": True},
+    # Added 2026-09-09 (item 5 PR 2). The same holes as `satin_patch`, sewn
+    # as satin columns FIRST in the shape, under the arms, instead of tatami
+    # appended last -- the answer to both reasons `satin_patch` is parked.
+    # Priced beside it so the sheet can say which of the two to flip.
+    "satin_cover": {"satin_patch_junctions": "satin"},
+    # Added 2026-09-09 (item 6). The fabric's pull applied on the satin
+    # rails instead of by stage 5's polygon growth: the skeleton, the caps
+    # and the corners read off the artwork, each rail pushed out a pull.
+    # Priced here because it moves every satin-tier letter at once.
+    "rail_comp": {"satin_rail_comp": True},
     # Added 2026-09-07. `revalidate_threads` scored its argmin on a raw
     # `cv2.fillPoly` footprint while the grader erodes and drops the
     # background, so on a thin shape the re-snap chose a thread for the

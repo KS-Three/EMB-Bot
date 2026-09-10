@@ -92,7 +92,7 @@ from shapely.ops import unary_union
 
 from .config import PipelineConfig
 from .fabrics import Fabric
-from .machine import SATIN_MAX_WIDTH_MM
+from .machine import satin_ceiling_mm
 from .regions import Region
 from .stage6_fill import principal_angle_deg
 from .stage6_satin import is_satin_candidate
@@ -325,13 +325,19 @@ def resolve_overlaps(
     # Law 22. Off: one axis of None per shape, so every `_grow` below is the
     # `poly.buffer(pull)` this stage has always done, byte for byte.
     directional = bool(cfg.directional_comp) and pull > 0
-    satin_max = cfg.satin_max_width_mm or SATIN_MAX_WIDTH_MM
+    # `cfg.satin_rail_comp` (2026-09-09): a satin-tier shape keeps its
+    # artwork polygon here and takes the pull on its rails in stage 6. The
+    # tier is read with the same call directional comp uses, for the same
+    # reason -- compensation must not be able to flip it. Widened lettering
+    # is exempt: its column IS the grown polygon (see `sewn_footprint`).
+    rail_comp = bool(getattr(cfg, "satin_rail_comp", False)) and pull > 0
+    satin_max = satin_ceiling_mm(cfg)
     axis_by_id: dict[str, float | None] = {}
     satin_by_id: dict[str, bool] = {}
     for r in regions:
         axis, is_satin = (_comp_axis(r, cfg, satin_max, design_class)
-                          if directional else (None, False))
-        axis_by_id[r.shape_id] = axis
+                          if directional or rail_comp else (None, False))
+        axis_by_id[r.shape_id] = axis if directional else None
         satin_by_id[r.shape_id] = is_satin
 
     layers = sorted({r.meta["layer"] for r in regions})
@@ -403,7 +409,8 @@ def resolve_overlaps(
         for r in by_layer[L]:
             poly = r.polygon
             axis = axis_by_id[r.shape_id]
-            grown = _grow(poly, pull, axis)
+            on_rails = rail_comp and satin_by_id[r.shape_id] and not widened_lettering(r)
+            grown = poly if on_rails else _grow(poly, pull, axis)
 
             # Extend under whatever sews later — the underlap that hides the seam.
             if overlap > 0 and later[L] is not None:

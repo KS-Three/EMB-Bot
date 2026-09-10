@@ -315,3 +315,117 @@ assumed). Scope-history's fourth 09-08 entry has the OFF → ON table.
   crossing decomposes 2 vs 3 across scales (adjacent 3-way nodes — the
   next mechanism, not built).
 
+## Item 5 PR 1 — junction clustering in stage 6, BUILT (2026-09-09, Kent's pick after #432)
+
+- `stage6_satin._cluster_junctions`: node-to-node edges ≤ max(3 px, 0.5 ×
+  half_px) contracted onto the deepest-DT pixel, arms re-rooted by way of
+  the stub pixels; loops returning to the cluster within 2× dropped too.
+  Threshold read off `tools/junction_nodes.py` (bump 0.2–0.4, trough
+  0.4–0.5, tail from 0.5). Bounded above by `_MIN_STROKE_HALFWIDTHS`.
+- **The loop rule was found by the bracket-tab test**: stubs alone bared
+  7 mm² at enthusiast 150's tab tip (a tiny loop made a cap a five-arm
+  junction; the old stub carried the uncapped stroke 0.74 mm further).
+- Footprint 14 × 2: interior over-wide 948 → 830, tail 107 → 121 (new caps'
+  terminal fans), stitches +0.21%, trims −1, becker bare 16.0 → 9.0 (worst
+  8.2 → 9.0, the K crotch — PR 2's), enthusiast 150 worst 4.5 → 1.2. No
+  golden moved (flat-lane keys have no branch node) — no re-capture.
+- Predictions missed and recorded in the plan's §4: becker's stroke and
+  trim counts went UP by one each.
+- Renders in `docs/renders/junction-clustering-2026-09-09/`.
+
+## Item 4 — the wide-column policy, `cfg.wide_columns` BUILT, DEFAULT OFF (2026-09-09, Kent's pick after #433)
+
+- 6.5 mm ceiling = the pro's MARINE p99 (crosses p50 4.8–4.9, p90 5.0–5.2,
+  sewn WHOLE — rendered), threaded as one number (`machine.satin_ceiling_mm`)
+  through all four load-bearing places; `_fold_caps` (0.7 × bend radius)
+  is the overlap guard. Off byte-identical; no golden moves.
+- **The 2026-09-02 premise moved**: the apex is 0 crossings at 5.0–8.0 mm
+  with or without the guard. The guard is load-bearing on Becker's bends at
+  80 mm only (coverage_max 7.07 → 5.08); swept 0.5/0.7/0.9.
+- **Our DT p90 over-reads bold letters by their junctions** (5.1–8.0 vs the
+  pro's 4.8–5.0 stems): a junction-aware width statistic is PR 2.
+- ON: exactly the band (MARINE letters, alpha/whitebg's `S09c5bd0d`,
+  drone's `S0bae4b0d`); MARINE −13% stitches but 251 self-crossings at feet
+  and junctions, +18 trims, drone wing 7 mm² bare. **Rendered before
+  pricing** — the letters got worse. Ships OFF; item 5's next PR (serifs as
+  columns, junction cover) is what makes the band worth flipping.
+- `tools/wide_columns.py` (band table, `--compare`, `crossing_pairs`).
+
+## Item 5, PR 2 — the census overturned the serif brief; the satin junction cover shipped (2026-09-09, Kent's pick after #434)
+
+- `tools/letterforms.py` first: every column END (stroke or Goldman member,
+  as `_satin_joined` sews them) — kind, reach, cap obliquity, flare along
+  the cap face, seated crossing pairs split WITHIN a column vs BETWEEN
+  columns; bare artwork per junction node.
+- **The 251 "self-crossings" were mitres**: 0 within any column, 359
+  between, all at two Goldman joins (the A's apex, the R's crossbar/leg
+  join). Corpus: becker 80 0/716 (off 6/714), drone 0/486, enthusiast
+  0/305, fremont 0/263. **The pro's sewn MARINE carries 2,593** within
+  its own passes. `crossing_pairs` is a defect only WITHIN a column.
+- **No serif in the feet**: the M's stems are a constant 5.35 mm chord to
+  the baseline (146 × 91 px source — the font's foot serif is under a
+  pixel). ENTHUSIAST's slab serifs already sew as Goldman members. The
+  serif column was NOT built — no fixture defect, and synthetic evidence
+  is barred.
+- **Shipped: `cfg.satin_patch_junctions = "satin"`, DEFAULT OFF** — the
+  grader's patches as satin columns along their long axis
+  (`_principal_spine`), FIRST in the shape under the arms, each turned to
+  end nearest the first run and joined by needle-down web travel; wider
+  than the ceiling or degenerate → the tatami patch for that hole. Becker
+  80: 9.0 → 0.0, B 76 → 88 at +122 st / +2 trims (tatami +297 / +3);
+  fremont under `wide_columns` 128.2 → 13.0 for +10.6% (tatami 6.0 for
+  +34.5%); over-fire at becker 100 wide (0.0 both ways, TRIM_HEAVY on +2
+  trims, B 88 → 76 — the tatami's too). A second finder round: measured,
+  no grader movement, dropped. Flip sheet, 26 fixtures @ 80 mm: the same
+  4 moved and 2 grade-ups as the tatami at +313 st / +7 trims vs +733 / +9.
+- Renders: `docs/renders/junction-cover-2026-09-09/`. Tests:
+  `tests/test_junction_patch_flag.py` (14).
+- PR 3 candidate: the junction BLOB as its own column with the arms
+  ending on it (the pro's A apex), and a junction-aware width statistic.
+
+## Item 5, PR 3 — measured out before engine code (2026-09-09, Kent's pick after #435)
+
+- `tools/junction_blobs.py` (per junction: node radius vs arms' halves, arm
+  count, merge decision per arm, the blob = medial balls bigger than the
+  arms' own, layers / bare / seams inside it; per shape the arms-only p90)
+  and `tools/pro_layers.py` (the pro's file in our frame: layers and thread
+  inside our letters and blobs).
+- **The pro stacks MORE at junctions than we do**: MARINE letters ours p95
+  2.4–3.4 / max 3.8–5.2 vs the pro's 4.1–6.0 / 5.5–11.6; every blob the pro
+  is above us; the pro sews MARINE with +58% thread (12,109 vs 7,642 mm)
+  and +39% penetrations. #434's "clumps" are angle meetings over LESS
+  thread. No column to add.
+- **A bold letter at 17 mm is 45–90% junction ball**; the blob is a disc
+  the size of the apex, not the pro's slab (which the font defines). The
+  arms-only width statistic flips one verdict (the M 7.34 → 5.67) and reads
+  drone's 9.4 mm wing as 1.08 — not a classifier input. DOCTRINE has both
+  rules and a dated bracket on the earlier "junction-aware statistic" line.
+- Open question for Kent: the density gap (+58% thread in lettering:
+  spacing and underlay, Law 27/50, a sew-out question) vs items 6/7.
+
+## Item 6 — `cfg.satin_rail_comp` BUILT, DEFAULT OFF (2026-09-09, Kent's pick after #436)
+
+- The pull on the rails: stage 5 leaves satin-tier shapes on the artwork,
+  `_rail_points` casts to the artwork edge and pushes each rail along its
+  cross by `pull_comp_mm` (`_push_rails`, counter guard at `min_detail_mm`);
+  caps end at the artwork, end cutback = push only; every field-fed
+  threshold restated in sewn terms (`half_extra_mm` in `extract_strokes`,
+  corridor cap, tuck, oversize, zigzag decision); the underlay runs to the
+  caps; `poly_link` grown. Instrument `tools/rail_comp.py --compare`.
+- Results (pique 0.3): IoU vs target ENTHUSIAST 0.876 → 0.897, drone
+  0.797 → 0.838, Fremont 0.675 → 0.836, Becker 0.887 → 0.884; trims −4 /
+  −13 / −1 / +4; stitches +3% / −1% / +1% / −9%; thread outside the
+  artwork → 0. Predictions that failed: trims unchanged, stitches ±3%,
+  byte-identical OFF (the tracer fix moved two fixtures).
+- **Skeleton choice measured both ways**: artwork (shipped) vs grown-with-
+  artwork-rails (drone 0.829, Fremont 0.813, Becker 34 trims / 3 strokes
+  on the A vs 7). The growth had been smoothing the outline; the fidelity
+  is mostly the rails. Kent's call — one line at `extract_strokes`.
+- **Tracer defect found and fixed ON BY DEFAULT**: `_skeleton_edges`
+  self-looped a junction clique and dead-ended on L-corner fillers,
+  stranding chains into fragments that each sewed to both caps (the H:
+  stem ×5, coverage 9.27). OFF cost: drone `S60de6f78` +2 st, ENTHUSIAST
+  house angle 1.4445 → 1.4757° (+2 st over 11 shapes). The JS
+  `skeletonEdges` still has it.
+- Open: which skeleton; flip after a sew-out; the 2× pull meaning
+  (Python per rail, JS total).

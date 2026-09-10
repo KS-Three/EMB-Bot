@@ -11604,3 +11604,406 @@ at 80 mm), which also undid meadow's two PR 3 tier changes.
 `tests/test_skeleton_pinholes.py`, `test_satin.py`'s starburst test,
 `test_flat_lane_byte_identical.py`'s fifth exception, `test_pushcomp.py`'s
 re-pin; renders in `docs/renders/subpixel-flip-2026-09-09/`)*
+
+## 2026-09-09 — junction clustering in stage 6: branch nodes a stub apart are one junction (quality review item 5, PR 1)
+
+Kent's pick after the `subpixel_edges` flip (#432), whose fallout named the
+mechanism: the PLUS in `tests/test_stroke_classify.py` decomposed into its
+two bars at 6 px/mm once its diamond was collapsed and into THREE at 1.25×,
+where the same crossing is two 3-way nodes a pixel apart. `_merge_through_
+junctions` pairs arms per node pixel, so at a split crossing each 3-way node
+welds one pair and the stub between them is dropped as junction noise only
+afterwards, when the pairing is already done. Plan:
+`docs/superpowers/plans/2026-09-09-junction-clustering.md`.
+
+### The instrument, and the threshold read off it
+
+`tools/junction_nodes.py` lists every node-to-node edge of every satin
+shape's skeleton (after the prune, before the merge) with its pixel length,
+the distance transform at both ends and the shape's half-width. Over the
+corpus at the default config, 247 such edges (228 on the old trace); the
+length/half-width histogram has a bump at 0.2–0.4 (37 edges), a trough at
+0.4–0.5 (5) and a rising tail from 0.5 up (8, 9, 9, 10 in the next bins,
+80 past 5). Every edge in the bump is also shorter than half the DT at its
+own ends — the two branch pixels sit inside one blob. Threshold: **0.5
+half-widths, floored at 3 px** (the diagonal pair on the narrowest
+ribbon). It is bounded above by `_MIN_STROKE_HALFWIDTHS` (1.2): a stub
+under that was never sewn as a stroke, so contracting it removes nothing
+that was ever sewn.
+
+| fixture (ON) | satin shapes | strokes | branch nodes | node-to-node edges | ≤ 0.5 half-widths |
+|---|---|---|---|---|---|
+| becker 80 mm | 8 | 35 | 73 | 84 | 26 |
+| drone | 43 | 88 | 80 | 76 | 9 |
+| enthusiast 93 mm | 12 | 25 | 20 | 17 | 5 |
+| fremont | 19 | 61 | 45 | 34 | 0 |
+| gaulke / sunset / meadow | 2 / 1 / 2 | 4 / 3 / 12 | 5 / 5 / 14 | 7 / 4 / 25 | 2 / 0 / 0 |
+| whitebg / alpha / ribbon | 1 each | 1 each | **0** | 0 | 0 |
+
+After the pass (`--clustered`): no edge under 0.5 half-widths anywhere,
+becker's branch nodes 73 → 52 and its node-to-node edges 84 → 54, drone's
+80 → 70 and 76 → 63. The 0.5–1.0 band (3 on becker, 7 on drone) is left on
+purpose — it is the next band, not this one's.
+
+### What it does
+
+`stage6_satin._cluster_junctions`, between `_skeleton_edges` and
+`_merge_through_junctions` in `extract_strokes` only (`textcluster`
+composes the two functions itself and is untouched):
+
+1. every open edge with both ends at branch nodes and pixel length ≤
+   `max(3, 0.5 × half_px)` is a stub; the nodes it joins are unioned;
+2. a cluster's representative is the member the DT reads deepest; every
+   arm that reached another member is re-rooted there BY WAY OF the stubs'
+   own pixels, so its path stays the skeleton's;
+3. **a loop inside the junction goes too** — an edge that leaves a node and
+   returns to it or to another member within twice the threshold. Found
+   the same afternoon: with the stubs alone, enthusiast's emblem bracket at
+   150 mm lost 7 mm² at the tab's tip (`test_the_bracket_tab_the_check_
+   found_is_now_sewn`). The tip is a tiny loop (paths of 4.4 and 6.7 px
+   between two nodes a pixel apart plus a 4.8 px self-loop — the pinhole
+   diamond's larger cousin, sizes 2–4 on becker's skeletons in the flip
+   entry's scan), which made it a five-arm junction instead of a cap: the
+   stroke ended there uncapped, and the old stub had happened to carry it
+   0.74 mm further. With the loop gone the node holds one arm and
+   `_merge_through_junctions` caps and extends it to the tip.
+4. a list with no stub and no loop comes back as the same object.
+
+Unit tests: `tests/test_junction_clustering.py` (a split crossing, a bar
+between two junctions, a chain of three nodes, a loop at a tip, a real
+ring, the PLUS at both scales); the scale test in `test_stroke_classify.py`
+is stroke-for-stroke again and its (2, 3) pin is gone.
+
+### Footprint — main's stage 6 → clustered, 14 fixtures × 2 traces
+
+Same instrument as the flip entry (`crowd` < 0.3 mm same-rail; `head` /
+`tail` > 0.8 mm in the first / last five crosses; `inner` elsewhere), plus
+trims and strokes:
+
+| | main | clustered |
+|---|---|---|
+| stitches | 328,391 | 329,085 (+0.21%) |
+| trims | 1,184 | 1,183 |
+| strokes over 148 satin shapes | 960 | 961 (23 shapes moved) |
+| crowded same-rail steps | 717 | 724 |
+| over-wide, head zones | 164 | 166 |
+| over-wide, tail zones | 107 | **121** |
+| over-wide, interior | 948 | **830** (−12.5%) |
+
+Per fixture the interior readings fall where the junctions are (becker
+139 → 97, bridge 83 → 62, drone 38 → 35 OFF) and the tail readings rise by
+the same mechanism: an arm that ends at a cluster's cap is a FREE end now
+and gets the terminal cross the cap finish is designed to put there, which
+the rail metric counts as over-wide (becker 3 → 6, enthusiast 150 ON
+7 → 13). `ARTWORK_UNCOVERED`: becker's two bare patches (`Sff8aab95` 8.2
+mm², the outline `Sead76620` 7.8) become one — `Sff8aab95`'s is gone with
+its 2 → 3 strokes, the outline's is 9.0 — total **16.0 → 9.0 mm²**, worst
+8.2 → 9.0; enthusiast 150 ON worst **4.5 → 1.2**, 93 mm OFF 0.8 → 0.0;
+nothing else moves. **No flat-lane golden moves**: whitebg, alpha and
+ribbon are single strokes with no branch node, byte-identical both traces,
+so this PR carries no re-capture.
+
+Renders (`docs/renders/junction-clustering-2026-09-09/`): the 1.25× PLUS —
+three strokes with two black junction ends before, two bars with four free
+caps after; Becker's outline, 20 → 19 strokes.
+
+### Predictions against results
+
+- The PLUS decomposes into its two bars at both scales — **held**.
+- Becker's outline: fewer strokes than 35, fewer trims — **missed**: 35 →
+  36 strokes on the fixture, 35 → 36 trims. The review's 27-stroke outline
+  was measured on a different tree; what clustering moved on becker is the
+  bare total (16 → 9) and the interior readings (139 → 97), not the count.
+- The K's crotch no worse — **missed by 1.2 mm²** (7.8 → 9.0). It is the
+  junction cover's problem (`satin_patch_junctions`, DOCTRINE 2026-09-06),
+  not the graph's; PR 2 of the plan is where it belongs.
+- Drone and enthusiast fewer strokes, stitches within a few percent —
+  held (88 → 85, 25 → 24; +0.7% and +3.2%).
+- No golden moves — held. `crowd`/`head` do not rise — held (+7, +2 over
+  the corpus); `tail` rises by 14, explained above.
+
+*(2026-09-09 — `tools/junction_nodes.py`; DOCTRINE "A junction is a
+cluster, not a pixel"; the plan doc's §4)*
+
+## 2026-09-09 — the wide-column policy: `cfg.wide_columns` BUILT, DEFAULT OFF, and what the band above 5.0 mm actually buys
+
+Quality review item 4, Kent's pick after #433. Plan:
+`docs/superpowers/plans/2026-09-09-wide-column-policy.md`. The flag is off
+and byte-identical off; flipping it is Kent's, and the measurement below
+is the case for not flipping it yet.
+
+### What the pro sews
+
+The pro's `becker_hat_polo_large_beckers_logolc.dst` (95.7 mm — our 100 mm
+test size), read band by band with `satin_columns._crosses`: in the MARINE
+bands the satin crosses are **p50 4.8–4.9, p90 5.0–5.2, p99 6.2 mm, max
+7.2–8.5; 11–18.5% over 5.0, 0.6–0.7% over 6.5**, and they are sewn WHOLE —
+rail to rail, no mid-penetration (rendered:
+`docs/renders/wide-columns-2026-09-09/pro_marine_M.png`). The M's stems are
+~4.8 mm columns and its serifs are their own small columns. So the pro's
+MARINE letters are not the 7–8 mm columns the review's §2b DT reading
+suggested: our doubled-p90 medial radius is inflated by the junction blobs
+where the diagonals meet the stems. `SATIN_WIDE_COLUMN_MAX_MM = 6.5` is
+the pro's MARINE p99 rounded to the band edge; the number is read from
+files sewn on garments, gate 1's own evidence class.
+
+### The band, and what a 6.5 mm ceiling admits
+
+`tools/wide_columns.py --widths 80 100` (new): every region refused on
+width, at the default config:
+
+| fixture | mm | refused on width | admissible at 6.5 |
+|---|---|---|---|
+| becker | 80 | 2 | **2** — `Sf795e8d1` 130 mm² p90 5.77, `Saee8fbe5` 130 mm² p90 5.31 |
+| becker | 100 | 4 | **4** — `Sf62099db` 211 / 6.48, `Sa587cbf9` 184 / 5.27, `Sd77c18ad` 179 / 5.52, `S35d83e6d` 164 / 5.82 |
+| whitebg / alpha | 80 | 4 | 1 — `S09c5bd0d` 378 mm² p90 6.12 |
+| drone | 80 | 1 | 1 — `S0bae4b0d` 153 mm² p90 6.19 |
+| everything else at 80 / 100 | | 0–4 | 0 (photo blobs at p90 8.7–20; drone's 2,594 mm² wing at 12.1) |
+
+MARINE's fifth letter `Sdd5f27fb` is refused on `dt_irregular` (its
+strokes read 7.5–8.0) and stays tatami. The band is exactly what §2b
+named and nothing wider.
+
+### What it does
+
+`cfg.wide_columns` ON: `machine.satin_ceiling_mm(cfg)` is 6.5 in all four
+places `SATIN_MAX_WIDTH_MM` is load-bearing — the classifier (stages 5, 7)
+and, threaded from stage 7 through `satin_shape` → `satin_stroke` →
+`_rail_points` and `_stroke_underlay` as one number, the emitter's
+per-station cap, the underlay's oversize trigger and leg clamp — so the
+classifier and the emitter cannot disagree (the split route's failure).
+And `_fold_caps`: every station's half-width is capped at `_FOLD_FRAC` ×
+the spine's local radius of curvature, read from the cross angles the
+rails are laid along, so a column can never bend faster than its width —
+the overlap guard DOCTRINE 2026-09-02 asked for before any route past 5.0.
+
+### The guard, re-measured — the doctrine's premise has moved
+
+The 2026-09-02 coupled route reopened logo_alpha's apex (`Sf5200f3f`) to
+crossing itself. On this tree the apex reads **0 crossing pairs at 5.0,
+6.0, 6.5, 7.0 and 8.0 mm, guard or no guard**, and 122 unbounded — the two
+legs sharing the apex blob, which no width guard is about. The corridor
+cap, the clustering and the pinhole collapse got there first; pinned in
+`tests/test_wide_columns.py`. Where the guard IS load-bearing is a bend:
+Becker's outline at 80 mm, radii p10 4.85 mm under 5–6 mm columns, where
+the ceiling alone stacks the inner rails to **coverage_max 7.07** (past
+`COVERAGE_WARN_UNITS` 6.67 — the density spike the coupled route's four
+preflight failures were) and the guard holds **5.08**. Swept:
+
+| `_FOLD_FRAC` | becker 80 coverage_max | becker 100 uncovered worst | drone 80 |
+|---|---|---|---|
+| none | 7.07 | 1.5 | unmoved |
+| 0.9 | 6.32 | 1.5 | unmoved |
+| **0.7** | **5.08** | **1.5** | unmoved |
+| 0.5 | 5.08 | 3.0 (cloth lost at the caps) | unmoved |
+
+It bites at 2 of 234 stations on the golden fixtures, 130 of 1,697 on
+Becker at 80 mm, 339 of 1,788 on drone (min cap 0.09 mm at a corner the
+corner split did not cut), and moves nothing else measurable — drone,
+enthusiast and the apex are identical with and without it.
+
+### OFF → ON, where the band fires (`--compare`)
+
+| fixture, mm | stitches | trims | satin self-crossings | coverage_max | uncovered worst → |
+|---|---|---|---|---|---|
+| becker 80 | 5,592 → 5,315 (−5%) | 36 → **53** | 720 → 716 | 4.72 → 5.08 | 9.0 → 9.0 |
+| becker 100 | 11,373 → 9,897 (−13%) | 23 → **41** | 0 → **251** | 3.77 → 3.83 | 0.5 → 1.5 |
+| alpha 80 / whitebg 80 | 4,576 → 4,481 / 4,550 → 4,461 | 6 → 6 | 0 → 0 | unmoved | 0.0 → 0.0 |
+| drone 80 | 16,129 → 15,983 | 96 → 104 | 479 → 486 | 7.02 → 7.18 | 0.5 → **7.0** |
+
+MARINE at 100 mm is satin at 13% fewer stitches — and the render
+(`becker_marine_100mm_off_on`, `becker_R_100mm_off_on`,
+`becker_A_100mm_off_on`) shows why that is not yet a win: the R's bowl and
+the A's leg sew as columns that fan and cross at the letters' feet and
+junctions (145 and 214 crossing pairs, at the A's foot with 6.3–6.5 mm
+crosses), each letter is 3–5 strokes with 4–7 trims where the pro sews
+~2, and drone's admitted wing leaves 7 mm² bare inside itself. None of
+that is width: it is the raster skeleton's decomposition of a bold letter
+— serifs merged into stems, junction fans, arms that share a blob — the
+review's item 5. **The band is real and the ceiling is right; the
+decomposition is the blocker, and this measurement is the concrete brief
+for item 5's next PR** (serifs as their own columns, junction cover).
+
+### Predictions against results
+
+- Three MARINE letters admissible at 100 mm — **four** (the region-level
+  p90 of `Sf62099db` is 6.48; the review's 7.33 was a per-stroke number).
+- Apex crossings 0 under the guard — held, and 0 without it too (§ above).
+- Becker's uncovered no worse where a letter turns satin — held at 80
+  (9.0), missed at 100 by 1.0 mm² (0.5 → 1.5). Drone's wing, not
+  predicted: 0.5 → 7.0.
+- Stitches fewer on the admitted letters — held (−5%, −13%); trims not
+  predicted and the largest cost (+17, +18).
+
+*(2026-09-09 — `tools/wide_columns.py`; DOCTRINE "The band above the cap
+is a decomposition problem wearing a width problem's clothes";
+`tests/test_wide_columns.py`; renders in
+`docs/renders/wide-columns-2026-09-09/`)*
+
+## 2026-09-09 — item 5, PR 2: the census that overturned the serif brief, and the satin junction cover
+
+Kent's pick after #434: "serifs as their own columns and a junction cover
+on the clustered graph". The instrument came first
+(`digitizer/tools/letterforms.py`: every column end of every satin shape —
+kind, reach to the cap, cap obliquity, flare along the cap face, the
+crossing pairs seated there, split WITHIN one column vs BETWEEN two — and
+the bare artwork at every junction node) and the serif half did not
+survive it.
+
+### The crossing pairs were mitres
+
+| case, `wide_columns` on | pairs | within a column | between columns | seated at |
+|---|---|---|---|---|
+| becker 80 | 709 | **0** | 716 | capped 321, junction 338, free 50 |
+| becker 100 | 358 | **0** | 359 | the A's apex 213, the R's crossbar/leg join ~145 |
+| drone 80 | 426 | 0 | 486 | capped 197, junction 222 |
+| enthusiast 93 | 293 | 0 | 305 | capped 141, junction 152 |
+| fremont 92.5 | 263 | 0 | 263 | junction 189 |
+| gaulke 80 | 79 | 0 | 79 | capped 51 |
+
+OFF reads the same (becker 80: 6 within, 714 between). The pro's sewn
+MARINE (`becker_hat_polo_large_beckers_logolc.dst`, eleven passes in the
+band) carries **2,593** pairs within its own passes, 652 in the M's sixth.
+`crossing_pairs` counts joins when read over a run; it is a defect only
+within one column (DOCTRINE, same day).
+
+### The feet have no serif
+
+The M's stems read a constant 5.35 mm chord to the baseline (146 × 91 px
+source, 1.46 px/mm at 100 mm — the font's foot serif is under a pixel).
+ENTHUSIAST's slab serifs already sew as Goldman members (capped ends,
+flare 2.6–2.75, nothing bare). No fixture had a serif defect; the serif
+column was not built.
+
+### The satin cover — `cfg.satin_patch_junctions = "satin"`, DEFAULT OFF
+
+The grader's own patches sewn as satin columns along their long axis,
+FIRST in the shape under the arms, joined by needle-down web travel;
+`True` (tatami, appended last) byte-identical.
+
+| fixture | mode | stitches | trims | `ARTWORK_UNCOVERED` total / worst | grade |
+|---|---|---|---|---|---|
+| becker 80 left_chest | off | 5,592 | 36 | 9.0 / 9.0 | B 76 |
+| | tatami | 5,889 | 39 | 0.0 / 3.0 | B 88 |
+| | **satin** | **5,714** | **38** | **0.0 / 3.0** | **B 88** |
+| becker 80 `wide_columns` | off / tatami / satin | 5,315 / 5,767 / 5,473 | 53 / 59 / 56 | 9.0 → 0.0 → 0.0 | B 76 → 88 → 88 |
+| becker 100 `wide_columns` | off / tatami / satin | 9,897 / 10,073 / 9,933 | 41 / 44 / 43 | 0.0 all three | B 88 → **76** → **76** (`TRIM_HEAVY`) |
+| fremont `wide_columns` | off / tatami / satin | 8,005 / 10,766 / 8,851 | 61 / 79 / 78 | 128.2 → 6.0 → 13.0 (worst 35 → 6 → 7) | D 52 all three |
+| drone 80 `wide_columns` | off / tatami / satin | 15,983 / 16,160 / 16,021 | 104 / 105 / 105 | 7.0 → 0.0 → 0.0 (worst 7.0 → 1.2 → 2.5) | F 0 all three |
+
+A second round of the finder (asked again with the first round's thread
+down) moved nothing the grader reads on Becker 100 or Fremont and cost
++26 / +114 stitches — dropped.
+
+### The corpus — `tools/flip_sheet.py`, 26 fixtures @ 80 mm / left_chest, all rows on `a9d5d66`
+
+| arm | moved / identical | net stitches | net trims | grade up |
+|---|---|---|---|---|
+| `satin_patch` (tatami, `True`) | 4 / 22 | **+733** | +9 | scene_stub B 76 → 88, becker B 76 → 88 |
+| `satin_cover` (`"satin"`) | 4 / 22 | **+313** | +7 | the same two |
+
+The same four fixtures move under both (becker 5,592 → 5,714 against the
+tatami's 5,889; scene_stub 16,170 → 16,310 against 16,507; enthusiast
+2,353 → 2,379 against 2,401; bridge_bar 14,452 → 14,477 against 14,503,
+F 0 both ways). The cover reaches the tatami's grades at 43% of its
+thread. Renders: `docs/renders/junction-cover-2026-09-09/`.
+
+*(2026-09-09 — `docs/superpowers/plans/2026-09-09-serifs-and-junction-cover.md`;
+`tests/test_junction_patch_flag.py` 14; DOCTRINE "Crossing pairs at a join
+are the join")*
+
+## 2026-09-09 — item 5, PR 3 measured out: the junction blob is not a column, and the pro stacks more at junctions than we do
+
+Kent's pick after #435. `digitizer/tools/junction_blobs.py` (per junction
+cluster: node radius against the arms' half-widths, arm count, the merge's
+decision per arm, the blob as the medial balls bigger than the arms' own,
+coverage layers / bare / seam pairs inside it; per shape the arms-only DT
+p90) and `digitizer/tools/pro_layers.py` (a reference file in our frame:
+layers and thread inside our letters and blobs).
+
+| case, `wide_columns` on | junction blobs | arms 3 / 4+ | weld / end / corner / tuck / dropped fork | blobs p95 ≥ 3.33 layers | blobs ≥ 25% bare |
+|---|---|---|---|---|---|
+| becker 80 | 61 | 50 / 9 | 104 / 29 / 15 / 11 / 35 | 20 | 5 |
+| becker 100 | 18 | 9 / 6 | 32 / 7 / 6 / 4 / 8 | 4 | 0 |
+| drone 80 | 76 | 63 / 7 | 116 / 53 / 20 / 15 / 23 | 13 | 2 |
+| enthusiast 93 | 16 | 14 / 2 | 26 / 7 / 5 / 5 / 7 | 5 | 0 |
+| fremont 92.5 | 89 | 82 / 6 | 170 / 70 / 10 / 6 / 16 | 14 | 15 |
+
+MARINE at 100 mm: 45–90% of each letter's skeleton lies inside a junction
+blob (node radii 3.4–4.4 mm on 2.2–3.2 mm arms).
+
+### Layers against the pro (whole-design alignment, scale 1.044 / 1.074)
+
+| | ours | pro (`beckers_logolc.dst`) |
+|---|---|---|
+| whole design p50 / p95 / p99 / max | 2.40 / 3.40 / 3.91 / 5.24 | 2.36 / 4.80 / 6.34 / 18.46 |
+| MARINE letters, mean / p95 / max | 1.2–1.6 / 2.4–3.4 / 3.8–5.2 | 1.8–2.8 / 4.1–6.0 / 5.5–11.6 |
+| inside the 18 junction blobs, p95 / max | 1.8–3.8 / 2.2–5.2 | 3.7–7.3 / 5.6–11.6 |
+| MARINE penetrations / thread (scaled to 100 mm) | 3,076 / 7,642 mm | 4,287 / 12,109 mm |
+
+The arms-only p90 flips one verdict in the corpus (MARINE's M, 7.34 →
+5.67) and reads drone's 9.4 mm wing as 1.08 mm (83% of its skeleton is
+blob). No engine flag; DOCTRINE carries the two rules. Renders:
+`docs/renders/junction-blobs-2026-09-09/`.
+
+*(2026-09-09 — `docs/superpowers/plans/2026-09-09-junction-blobs.md`)*
+
+## 2026-09-09 — item 6: `cfg.satin_rail_comp` BUILT, DEFAULT OFF — the pull on the rails instead of the polygon, and the tracer defect it found
+
+Kent's pick after #436. Stage 5 leaves a satin-tier shape on its artwork
+polygon; `_rail_points` casts every ray to the artwork's edge and pushes
+each rail outward along its cross by `Fabric.pull_comp_mm` (the AMOUNT is
+untouched, gate 1), held back where a counter would fall under
+`min_detail_mm`; caps end AT the artwork and the end cutback owes only the
+push; every threshold the field feeds is restated in sewn terms. The
+skeleton is the artwork's. `tools/rail_comp.py --compare`, pique 0.3 mm:
+
+| fixture | stitches | trims | coverage_max | uncovered total / worst | IoU vs target | IoU vs artwork | thread outside the artwork |
+|---|---|---|---|---|---|---|---|
+| ENTHUSIAST 93 (12 satin) | 3162 → 3266 | 26 → 22 | 4.70 → 4.44 | 0.0 / 2.0 → 0.0 / 0.0 | 0.876 → 0.897 | 0.715 → 0.743 | 147.5 → 0.0 mm² |
+| Becker 80 (8) | 5592 → 5095 | 36 → 40 | 4.72 → 4.31 | 9.0 → 10.5 | 0.887 → 0.884 | 0.766 → 0.795 | 322.2 → 0.0 |
+| drone 80 (43) | 16131 → 16014 | 96 → 83 | 7.02 → 7.10 | 0.0 / 0.5 → 0.0 / 0.0 | 0.797 → 0.838 | 0.606 → 0.564 | 298.8 → 0.8 |
+| Fremont 92.5 (19) | 9893 → 10004 | 46 → 45 | 5.72 → 5.93 | 0.0 → 0.0 | 0.675 → 0.836 | 0.702 → 0.492 | 4.5 → 0.0 |
+
+The alternative — skeletonise the grown polygon as the default does, rails
+on the artwork — measured the same day: ENTHUSIAST 2947 / 24 / 4.52 / worst
+2.0 / 0.877; Becker 5435 / 34 / 4.25 / 5.8 / 0.891; drone 15890 / 90 / 6.92
+/ 0.5 / 0.829; Fremont 9935 / 50 / 5.86 / 0.0 / 0.813. Becker's A: 7
+strokes on the artwork skeleton for the grown polygon's 3 (the growth had
+been smoothing a 146 × 91 px source's stair-steps). Which skeleton is Kent's
+call; both are one line at the `extract_strokes` call.
+
+Found and fixed on the way, ON BY DEFAULT: `_skeleton_edges` walked a
+junction clique back to its node and dead-ended on L-corner fillers,
+stranding chains into 1–3 px fragments each extended to both caps (the H
+under the flag: left stem sewn five times, coverage 4.7 → 9.27). OFF it was
+live on 16 corpus shapes and moves two fixtures: drone `S60de6f78` 43 → 45
+stitches; ENTHUSIAST +2 stitches over 11 shapes through the house angle
+(1.4445° → 1.4757°). Every other fixture HEAD-vs-work byte-identical.
+
+Tests: `tests/test_rail_comp.py` (7), `tests/test_skeleton_tracer.py` (5).
+Renders: `docs/renders/rail-comp-2026-09-09/`. Flip-sheet arm `rail_comp`.
+
+*(2026-09-09 — `docs/superpowers/plans/2026-09-09-rail-side-pull-comp.md`;
+DOCTRINE "A walk that dead-ends off a node" and "The polygon growth was
+smoothing the outline")*
+
+## 2026-09-09 — the border decision on the canvas: right-click a recognised shape, Add / Remove border
+
+Kent's pick after item 6 (#437). `EmbroideryField`'s right-click now reads
+the shape under the pointer — the outline it is on (`hitOverlay`) or the
+smallest one it is inside (`shapeOverlay.hitShapeInterior`, new) — selects
+it, and grows the tool menu with a shape section: the shape's name, **Add
+border** (`auto`) or **Remove border** (`off`), and **Use design setting**
+once an override exists (`borderMenu.js` decides from the override and the
+design-wide `params.border`). It writes `shapeOverrides[sid].border`, the
+field the panel's Border select edits, through the same `elupdate` path as a
+boundary drag: one undo step, carry-forward, the two-second idle restitch.
+No engine change; a satin-tier shape gets no border either way (stage 7).
+
+Tests: `borderMenu.spec.js` (9), `shapeOverlay.spec.js` +4,
+`e2e/field-border-menu.spec.js` (2, live service, two-squares). Looked at in
+the browser at 1440 × 900 and 1024 × 768.
+
+*(2026-09-09 — `docs/superpowers/plans/2026-09-09-canvas-border-menu.md`;
+detail in `docs/scope/5-review-manual-editing.md`)*

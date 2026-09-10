@@ -55,6 +55,12 @@ row 7's sidecar count grew from 55 to 85 while staying one-per-font. Rows 2, 4,
   `docs/sam2-ship-path-brief-2026-08-11.md`.
 - ~70 fonts is enough — launch does not wait on font expansion.
 - Fast-follow order after launch: ~~`ltr/` importer (mai_en_fleur)~~ **done** (mai_en_fleur ships in the 55-font manifest) → tablet audit → cloud sync (post-revenue).
+- **The border decision lives on the canvas too (Kent's call 2026-09-09):**
+  right-click a recognised shape on the field for Add border / Remove border
+  (and Use design setting once a shape has its own). It writes the same
+  per-shape override the Digitize panel's Border select does, so the panel
+  stays the place for the finer choice (bean vs auto). A shape sewn as satin
+  gets no border from either — the engine's rule, stated on the item.
 
 ## Explicit non-goals (parking list — not the Ember bar)
 

@@ -312,6 +312,48 @@ export function hitOverlay(outlinesPx, px, py) {
   return hit;
 }
 
+// Which outline the point is INSIDE, when it is on none of them: the smallest
+// ring that contains it, so a shape drawn inside another's hole (a counter,
+// a logo's inner mark) wins over the one around it. Ray cast on the closed
+// ring, boundary points counting as inside. `hitOverlay` above answers "is
+// the pointer ON an outline" for editing; this answers "which shape is the
+// pointer over" for a per-shape command that needs no aim at a line — the
+// field's right-click border menu (2026-09-09).
+export function hitShapeInterior(outlinesPx, px, py) {
+  let best = null;
+  for (const o of outlinesPx) {
+    const pts = o.points;
+    if (!pts || pts.length < 3) continue;
+    if (!pointInRing(pts, px, py)) continue;
+    const area = Math.abs(ringArea(pts));
+    if (!best || area < best.area) best = { shapeId: o.id, area };
+  }
+  return best ? { shapeId: best.shapeId, kind: "interior" } : null;
+}
+
+function pointInRing(pts, px, py) {
+  let inside = false;
+  for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+    const [xi, yi] = pts[i];
+    const [xj, yj] = pts[j];
+    // on the edge counts as inside — the border IS the edge
+    if (distToSegment(px, py, xi, yi, xj, yj).dist <= 1e-6) return true;
+    if ((yi > py) !== (yj > py)) {
+      const x = xi + ((py - yi) * (xj - xi)) / (yj - yi);
+      if (px < x) inside = !inside;
+    }
+  }
+  return inside;
+}
+
+function ringArea(pts) {
+  let a = 0;
+  for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+    a += pts[j][0] * pts[i][1] - pts[i][0] * pts[j][1];
+  }
+  return a / 2;
+}
+
 // ---------------------------------------------------------------------------
 // Proportional ("rubber-sheet") dragging, and why a drag is not one vertex
 //
