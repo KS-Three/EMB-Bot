@@ -605,3 +605,18 @@ page-mask bug was fixed — re-present, do not re-open.
   (251, 235, 65), 12 ΔE00). Flag first, DEFAULT OFF, byte-identical off;
   measure on the flip sheet's 26 fixtures; the photo-lane snapshot golden
   pins stage 2, so a flip is a CI recapture.
+- **Built (13:05Z):** the seam `_region_pixels_lab` + `_region_lab` (OFF ==
+  the old mean byte for byte; the photo-lane and flat-lane goldens pass),
+  `region_colour_candidates` (mean / median / modal mean),
+  `cfg.robust_region_colour` DEFAULT OFF, `tools/region_colour.py`, the
+  flip-sheet arm `region_colour`, 10 tests. **Census (20 lane fixtures, 422
+  regions):** median moves 155 regions' spools, modal mean 169; 33 bimodal
+  (26 on the screenshot); the real logos move most of their AREA (Bridge Bar
+  66.5%, Golden Tee 54.4%, drone 66.8%), photos and ramps nothing. **The
+  statistic is the modal mean**: on the disc, mean → Limelight, median →
+  Lemon (2.1), modal mean → Sun (1.0). A per-channel median is a colour no
+  pixel need carry. Next: the flip sheet `off` vs `region_colour` at 12 and
+  6 (fresh caches `build/flip_sheet_rc*` — the item-8 caches' `off` rows are
+  the PRE-flip engine), Bridge Bar / Golden Tee / drone renders, PR after
+  #444 merges, then Kent: the flip (a photo-lane snapshot recapture on CI if
+  any golden fixture moves).

@@ -78,3 +78,58 @@ def test_the_median_side_wins_while_the_artwork_is_the_majority(n_cont):
     px = _pixels(YELLOW, 500, BLACK, n_cont)
     yellow = rgb_to_lab(np.asarray([YELLOW], float))[0]
     assert np.allclose(s2.region_colour_candidates(px)["median"], yellow, atol=1e-6)
+
+
+# --- the fixture the defect was found on ---------------------------------------
+
+import hashlib
+from pathlib import Path
+
+from digitizer_core.pipeline import digitize
+from tests.conftest import TESTDATA
+
+BRIDGE = TESTDATA / "photo" / "logo_bridge_bar.jpg"
+# What each statistic hands the palette for the disc, measured by
+# `tools/region_colour.py` on 2026-09-10: the mean lands on 6031 Limelight
+# (218, 224, 86), the median on 0713 Lemon (2.1 dE00 from the artwork's
+# yellow), the modal mean on 0501 Sun (1.0).
+DISC_SPOOL = {"median": "0713", "modal_mean": "0501"}
+
+
+def _cfg(**kw) -> PipelineConfig:
+    return PipelineConfig(target_width_mm=80.0, max_colors=6, garment_id="left_chest", **kw)
+
+
+def _digest(plan) -> str:
+    h = hashlib.sha1()
+    for b in plan.blocks:
+        h.update(str(b.thread_number).encode())
+        for run in b.runs:
+            h.update(str(len(run.points)).encode())
+            for x, y in run.points:
+                h.update(f"{x:.4f},{y:.4f};".encode())
+    return h.hexdigest()
+
+
+def _disc(result):
+    """Bridge Bar's yellow disc: the largest region by area."""
+    return max(result.regions, key=lambda r: float(r.area_mm2 or 0.0))
+
+
+@pytest.fixture(scope="module")
+def bridge_pair():
+    return digitize(BRIDGE, _cfg(robust_region_colour=False)), digitize(BRIDGE, _cfg(robust_region_colour=True))
+
+
+def test_off_is_the_shipped_engine_on_bridge_bar(bridge_pair):
+    (_, off_plan), _ = bridge_pair
+    _, default_plan = digitize(BRIDGE, _cfg())
+    assert _digest(off_plan) == _digest(default_plan)
+
+
+def test_the_shipped_engine_sews_the_disc_limelight_and_on_sews_the_artworks_yellow(bridge_pair):
+    """The loss #442 found, and its repair: the disc is 1.0 dE00 from Sun
+    and sews Limelight because its mean is a colour no pixel carries."""
+    (off_r, _), (on_r, _) = bridge_pair
+    assert _disc(off_r).thread_number == "6031"
+    assert _disc(on_r).thread_number == DISC_SPOOL[s2.ROBUST_REGION_STAT]
