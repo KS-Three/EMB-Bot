@@ -298,6 +298,41 @@ one visible change (Bridge Bar's halo) is an improvement. That is a
 reading at 80 mm on a screen — the sheets are there for Kent's eye, which
 is the part of this decision that is his.
 
+**At the Studio's 6** (`<fixture>_off-colour4-colour5_mc6.jpg`, the same
+three panels at the shipped budget, where the cap does its real work):
+
+- **drone** (23 → 6 cones, 41 shapes re-coned under `colour4`): the black
+  body, the two blues and the orange are the same cones; every grey of
+  the PRECISION lettering and the tagline lands on one grey (`3971`),
+  THERMAL's orange on the neighbouring orange (`1300 → 1305`), the top
+  window's blue on a neighbouring blue. Six cones and it reads as the
+  same logo.
+- **Bridge Bar** (13 → 6): under `colour4` the yellow field lands on a
+  neighbouring yellow (`0465 → 0111`, a touch greener on screen) and the
+  wheel's greys collapse to black; under `colour5` the halo is gone as at
+  12. Six cones, the same logo.
+- **summit badge** (synthetic, 11 → 6, the one grade that falls): the
+  cap merges the badge's upper orange band into the cream cone — the
+  top-right sector of the wheel turns pale where OFF sews it orange — and
+  the SUMMIT lettering's off-white onto a near white. **That is a
+  visible loss**, on generated art with eleven close hues under a budget
+  of six; it is what the new `THREAD_MATCH_POOR` block is measuring, and
+  it is the case to hold in mind when a customer uploads a six-plus-hue
+  badge with the slider at 6. The flag reports it (`COLOR_CAP_APPLIED`
+  names the merged shapes); the Studio's slider is the customer's lever.
+- **Golden Tee** (14 → 6, 16 shapes re-coned): the maroon inner stroke
+  on the GT letters (`1904`) lands on gold (`1312`) — **the letters lose
+  their red edge**; the swing figure, the GOLF word and the drop shadow
+  keep their cones. That is a merge a customer might notice, on a
+  fourteen-hue logo under a budget of six, and the second case (with the
+  badge) for the slider's number being the customer's call.
+- **screenshot** (14 → 6, 19 shapes): the phone chrome's blues become one
+  blue (`3900 → 3630`), the truck's small parts merge into its greys; the
+  truck and both lines of lettering read the same.
+- gaulke, the three photo fixtures and script tires move at 6 exactly as
+  their rows at 12 (the same stitch, trim and cone deltas), so their
+  12-budget sheets stand for them.
+
 ## 5. Recommendation, one line per flag — Kent's to accept or refuse
 
 One line per flag, the catch beside it, at the Studio's shipped budget:
