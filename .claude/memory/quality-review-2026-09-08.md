@@ -502,3 +502,15 @@ page-mask bug was fixed — re-present, do not re-open.
   shell: match with a bracketed literal (`flip_sheet[.]py`) and never put
   the restart command in the same call as the kill.
 - Shipped as PR #441 (ready-for-review 03:18Z, auto-merge armed). Next: Kent's flip decision on the four not ruled (`colour4`) and his re-read of the halo render; then the next build pick.
+
+## Kent's rulings 2026-09-10 03:30Z — flip the four as one set; item 9 next
+
+- **Flip `colour4` ON by default** (`enforce_color_cap`,
+  `resnap_mask_matches_grader`, `revalidate_small_shapes`,
+  `bind_resnap_all_classes`) — one PR, AFTER #441 merges (auto-merge
+  armed; no push to the branch until then). `dissolve_phantom_blends`
+  stays OFF (his 2026-09-04 ruling stands). The flip moves goldens: the
+  recapture is ubuntu CI only, never this box. Every "DEFAULT OFF" claim
+  for the four in docs and docstrings must move with it (test_doc_claims).
+- **Then item 9**: enclosed letter bodies decided by garment colour, not a
+  global unstitched default (review §9).
