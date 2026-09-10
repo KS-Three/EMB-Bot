@@ -777,3 +777,32 @@ page-mask bug was fixed — re-present, do not re-open.
   local dry runs predicted, commit `27a7739` on the lane; the runner then
   ran both golden files green (13 passed, enthusiast deselected). Lane
   fast-forwarded; the workflow file removed for commit 2.
+
+## 2026-09-10 ~20:05Z — the flip SHIPPED as PR #448 (ready-for-review; auto-merge armed after this push)
+
+- `robust_region_colour` DEFAULT ON: commits `58a3255` (the flip, PRE_FLIP,
+  the restated pins, `off_rc`, the recapture tool, the temporary workflow),
+  `27a7739` (the runner's golden: six of seven keys, every key
+  machine-checked on `e0833d7`, run 34518855051), `a28ef6a` (the docstring
+  note, the workflow removed, docs). Suite on the final tree: 9 failed /
+  2,207 passed — the three platform reds and the six keys against the OLD
+  golden (that run started before the runner's commit landed); with the
+  runner's golden the photo-lane file passes here (8 passed).
+- Facts the next session should not re-derive: region_blobs moves at
+  STAGE 2 (one medoid, 293 → 276, the base spool of a 656 mm² blob the
+  tonal split sews as bands of its own) while its plan is byte-identical —
+  a plan-level sheet cannot see a stage-2 move, the golden can; drone's
+  duplicate-cone fold on the flipped engine is +21 stitches / −56 mm
+  needle-up / −2 stops (the test holds the pre-flip engine and records
+  this); `off_rc` == the #445 cache's `off` row byte for byte on Bridge Bar
+  at 12; `tools/recapture_photo_lane_key.py --dry-run` reads a change's
+  golden footprint on a box that must not capture.
+- CI on #448: four jobs; `digitizer` expected green (its three deselects
+  plus the runner's golden). Check-in scheduled ~60 min out; delete it
+  once the PR merges, then `git fetch origin main` and fast-forward the
+  lane before anything else is pushed.
+- Next: Kent's next-build pick (AskUserQuestion at the end of this turn):
+  item 11 (the legibility yardstick + un-clamped grade) recommended, item 1
+  (the real-logo lane), item 12 (fill travel under cover), item 13 (photo
+  detection from EXIF/face); items 10 (JS wide columns) and 14 (the
+  edge-finish flags) named as the other live candidates.
