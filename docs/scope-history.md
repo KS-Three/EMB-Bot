@@ -12204,14 +12204,17 @@ median, 2.1 ΔE00 from its pixels, and to `0501` Sun, 1.0, under the modal
 mean; 33 regions are bimodal, 27 of them on the phone-UI screenshot). Flip
 sheet, 26 fixtures at 80 mm: 11 move, 15 byte-identical. At 12: Bridge Bar
 12 cones with a repeated `0108` (13 blocks) → 11 / 11, the disc on Sun,
-`COLOR_STOPS_HEAVY` gone, F 0 → F 4; the screenshot 12 → 10 cones; Golden
-Tee 11 → 12 cones (+6 trims) while its blocking threads fall 4 → 2; the
-synthetic photo-scene stub takes a fifth spool and +3,382 stitches / +29
-trims at the same B 76. At the Studio's 6: net −2 blocks / −2 stops; Bridge
-Bar 13,820 / 96 / 6 / 6 against 14,588 / 124 / 6 / 7 (−768 stitches, −28
-trims) with one more blocking thread, Golden Tee two repeated cones and one
-blocking thread fewer, the screenshot one fewer, drone one more; no grade
-letter moves. Renders: the disc goes from yellow-green to a clean yellow;
+`COLOR_STOPS_HEAVY` gone, F 0 → F 4; the screenshot 11 → 10 cones; Golden
+Tee 11 → 12 cones (+118 stitches, +5 trims) while its blocking threads fall
+4 → 2; the synthetic photo-scene stub takes a fifth spool and +3,382
+stitches / +29 trims at the same B 76; net +2,498 stitches / +24 trims / +1
+cone / 0 blocks. At the Studio's 6: net +2,244 stitches / +3 trims / 0
+blocks / 0 stops; Bridge Bar 13,820 / 96 / 6 / 6 against 14,588 / 124 / 6 /
+7 (−768 stitches, −28 trims) with one more blocking thread on a shard while
+its disc and script leave the blocking list, Golden Tee +249 stitches and
+one blocking thread fewer, the screenshot one fewer, drone one more (its
+211 mm² orange, the one large shape that gets worse); no grade letter
+moves. Renders: the disc goes from yellow-green to a clean yellow;
 Golden Tee's letters and drone read the same. Flipping it is Kent's — a
 photo-lane snapshot recapture on CI. `tests/test_robust_region_colour.py`
 (10).

@@ -158,15 +158,16 @@ ON (no garment named, so it declines).
 
 **At the engine's 12:** 11 fixtures move, 15 are byte-identical (every
 flat-lane fixture, gaulke, Fremont, the ramps, the owl, the fur). Net
-+2,485 stitches, +27 trims, −1 block, 0 cones, −1 stop; one grade up
-(Bridge Bar F 0 → F 4), none down.
++2,498 stitches, +24 trims, +1 cone (the stub's), 0 blocks; one grade up
+(Bridge Bar F 0 → F 4), none down. (Re-measured on the exact OFF engine
+after the seam fix; the Lab-mean OFF rows had read +2,485 / +27 / 0 / −1.)
 
 | fixture | OFF: grade · st · tr · cones · blocks | ON | what moved |
 |---|---|---|---|
-| Bridge Bar | F · 14,586 · 126 · 12 · 13 | F · 14,386 · 125 · **11 · 11** | the disc `6031 → 0501`; −1 cone, −2 blocks, F 0 → F 4 |
-| screenshot | F · 7,550 · 71 · 12 · 12 | F · 7,546 · 63 · **10 · 10** | −2 cones, −2 blocks, −8 trims |
-| Golden Tee | F · 6,719 · 58 · 11 · 11 | F · 6,795 · 64 · 12 · 12 | the yellows regroup; +1 cone, +6 trims |
-| drone | F · 16,367 · 87 · 12 · 12 | F · 16,337 · 87 · 12 · 12 | grey shards `2564 → 0111`; −30 stitches |
+| Bridge Bar | F · 14,560 · 127 · 12 · 13 | F · 14,386 · 125 · **11 · 11** | the disc `6031 → 0501`; −1 cone, −2 blocks, F 0 → F 4 |
+| screenshot | F · 7,565 · 67 · 11 · 11 | F · 7,546 · 63 · **10 · 10** | −1 cone, −1 block, −4 trims |
+| Golden Tee | F · 6,677 · 59 · 11 · 11 | F · 6,795 · 64 · 12 · 12 | the yellows regroup; +1 cone, +118 stitches, +5 trims |
+| drone | F · 16,407 · 92 · 12 · 12 | F · 16,337 · 87 · 12 · 12 | grey shards `2564 → 0111`; −70 stitches, −5 trims |
 | chrome | C · 34,849 · 89 · 7 · 7 | C · 34,881 · 89 · 8 · 8 | +1 cone |
 | meadow | C · 19,892 · 34 · 5 · 5 | C · 19,412 · 41 · 5 · 5 | −480 stitches, +7 trims |
 | repro white icon | D · 22,361 · 24 · 5 · 5 | D · 22,078 · 19 · 5 · 5 | −283 stitches, −5 trims |
@@ -179,8 +180,8 @@ repeated `0108` cone (13 blocks for 12 cones OFF), Herb Green and one of
 its three `THREAD_MATCH_POOR` blocks; its script goes `1521 → 1720`, its
 teal `4531 → 4423`, its dark region `5866 → 1375` — every one a colour the
 mean had invented from an edge. **The screenshot** loses `COLOR_STOPS_HEAVY`
-with its two cones. **Golden Tee** goes the other way on cones — twelve
-for eleven, `COLOR_STOPS_HEAVY` gained, +6 trims — while its
+with its cone. **Golden Tee** goes the other way on cones — twelve
+for eleven, `COLOR_STOPS_HEAVY` gained, +5 trims — while its
 `THREAD_MATCH_POOR` blocks fall from four to two: the yellows regroup onto
 spools closer to the letters' own pixels. **The photo-scene stub** (a
 synthetic scene) takes a fifth spool, `4133`, and the label map falls into
@@ -191,16 +192,18 @@ synthetic scene) takes a fifth spool, `4133`, and the label map falls into
 **chrome** gains White and Whale for two greys.
 
 **At the Studio's 6** (`build/flip_sheet_rc_mc6`): the same 11 move and
-15 are byte-identical. Net +1,922 stitches, +2 trims, **−2 blocks, −2
-stops**, +1 cone (the stub's); no grade letter moves — the real logos sit
-on the F floor either way, so the findings are the reading.
+15 are byte-identical. Net +2,244 stitches, +3 trims, 0 blocks, 0 stops,
++1 cone (the stub's); no grade letter moves — the real logos sit on the F
+floor either way, so the findings are the reading. (The Lab-mean OFF rows
+had read +1,922 / +2 / −2 blocks; Golden Tee's OFF was the one that
+moved most under the correction.)
 
 | fixture | OFF: st · tr · cones · blocks · blocking | ON | what moved |
 |---|---|---|---|
 | Bridge Bar | 14,588 · 124 · 6 · 7 · 2 | **13,820 · 96 · 6 · 6** · 3 | the disc `6031 → 0501`; the repeated `0108` gone (7 blocks for 6 cones OFF); −768 stitches, **−28 trims**; one more blocking thread (below) |
-| Golden Tee | 6,828 · 62 · 6 · 9 · 4 | 6,795 · 59 · 6 · **7** · **3** | two repeated cones gone (9 blocks for 6 cones OFF); the yellows `1120/1220/0811 → 0703/1102/1902`; one blocking thread fewer |
+| Golden Tee | 6,546 · 62 · 6 · 7 · 4 | 6,795 · 59 · 6 · 7 · **3** | the yellows `1120/1220/0811 → 0703/1102/1902`; +249 stitches, −3 trims; one blocking thread fewer |
 | screenshot | 7,530 · 66 · 6 · 6 · 5 | 7,563 · 66 · 6 · 6 · **4** | one blocking thread fewer; `0134/3640/0015 → 1776/0108/3630` |
-| drone | 16,141 · 92 · 6 · 8 · 4 | 16,190 · 91 · 6 · 8 · 5 | one more blocking thread (below); `2776/0904/0142 → 1776/1102/0145` |
+| drone | 16,101 · 91 · 6 · 8 · 4 | 16,190 · 91 · 6 · 8 · 5 | one more blocking thread (below); `2776/0904/0142 → 1776/1102/0145` |
 | photo_scene_stub | 16,083 · 44 · 4 · 4 · 0 | 19,465 · 73 · 5 · 5 · 0 | the same fifth spool and +29 trims as at 12 |
 | chrome, meadow, sunset, summit, subject stub, repro | spool swaps at the same counts (meadow −480 st / +7 tr; repro −283 / −5) | | |
 
@@ -234,7 +237,8 @@ hand-fed RGB array does to this number):
   trade rather than a wrong point.
 
 So at 6 the flag moves the blocks OFF the big shapes and onto shards, on
-three of the four real logos, and costs drone's orange one spool step.
+three of the four real logos, at the same block count over the corpus,
+and costs drone's orange one spool step.
 
 ### 4.3 Looked at — `docs/renders/region-colour-2026-09-10/` (OFF left, ON right, 80 mm, the engine's 12)
 
