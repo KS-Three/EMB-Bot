@@ -696,3 +696,9 @@ page-mask bug was fixed — re-present, do not re-open.
   recapture on ubuntu CI) or keep OFF as a measured instrument until
   item 1's lane decides where real logos go.
 - Renders are in `docs/renders/region-colour-2026-09-10/` (committed).
+- **Shipped as PR #445 (15:45Z, ready-for-review, auto-merge armed at
+  `blocked`, subscribed, check-in ~60 min out).** Full suite on the pushed
+  tree: 3 failed / 2,213 passed / 3 skipped / 7 xfailed in 46 min — the
+  three platform reds; the photo-lane golden passes. The handoff section
+  above is now history except the flip decision, which is Kent's
+  (AskUserQuestion put at the end of this turn; he asked to clear after).
