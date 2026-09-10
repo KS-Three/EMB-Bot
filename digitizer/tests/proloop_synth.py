@@ -13,7 +13,6 @@ from pathlib import Path
 import numpy as np
 import pystitch
 from PIL import Image
-from shapely.geometry import box
 import shapely.wkt
 
 
@@ -104,6 +103,8 @@ def make_prep_dir(root, slug, pro_blocks, ours_blocks, regions, art_ink_boxes_mm
         [{"block": i, "rgb": list(rgb)} for i, (rgb, _) in enumerate(pro_blocks)]))
     # art: the ink boxes over ours' stitch extents, alpha where ink is
     pts = [p for _rgb, passes in ours_blocks for ps in passes for p in ps]
+    if not pts:
+        raise ValueError("ours_blocks carry no stitches; make_prep_dir needs at least one pass to size the art")
     ox0, oy0 = min(p[0] for p in pts), min(p[1] for p in pts)
     ox1, oy1 = max(p[0] for p in pts), max(p[1] for p in pts)
     W = max(8, int(round((ox1 - ox0) * art_px_per_mm)) + 1)
@@ -112,7 +113,11 @@ def make_prep_dir(root, slug, pro_blocks, ours_blocks, regions, art_ink_boxes_mm
     for bx0, by0, bx1, by1 in art_ink_boxes_mm:
         c0, r0 = int((bx0 - ox0) * art_px_per_mm), int((by0 - oy0) * art_px_per_mm)
         c1, r1 = int((bx1 - ox0) * art_px_per_mm), int((by1 - oy0) * art_px_per_mm)
-        a[max(0, r0):min(H, r1), max(0, c0):min(W, c1)] = (0, 0, 0, 255)
+        c0, c1 = max(0, c0), min(W, c1)
+        r0, r1 = max(0, r0), min(H, r1)
+        if c1 <= c0 or r1 <= r0:
+            continue
+        a[r0:r1, c0:c1] = (0, 0, 0, 255)
     Image.fromarray(a, "RGBA").save(d / "art.png")
     (d / "art_meta.json").write_text(json.dumps({"px_per_mm": art_px_per_mm, "origin_mm": [ox0, oy0]}))
     man = Path(root) / "real" / "manifest.json"
