@@ -31,6 +31,7 @@ from shapely.geometry import Polygon
 from . import debugviz
 from .config import PipelineConfig
 from .fabrics import Fabric, fabric_for_garment, get_fabric
+from .machine import FILL_ROW_MM
 from .regions import (
     Region,
     apply_layer_overrides,
@@ -59,6 +60,7 @@ from .stage3_segment import (
 from .stage4_vectorize import (enforce_color_cap,
                                rehome_resnapped_regions, revalidate_threads,
                                tag_enclosed_background, vectorize)
+from .designangle import set_design_angle
 from .textcluster import (detect_text_clusters, ocr_suggest_text,
                           regularize_text_clusters,
                           set_lettering_house_angle)
@@ -716,6 +718,21 @@ def build_generation(
         design_row_angle_deg = legacy_design_ramp_angle(p)
     else:
         design_row_angle_deg = None
+
+    # `cfg.design_angle` (2026-09-09): one direction for everything the house
+    # pass left alone -- the house angle where its lines agree, else the
+    # gradient lane's own shared angle just above where the design holds one
+    # (that lane's fills sew at it whatever the metadata says, so its satin
+    # should lean to the same number), else the row direction that cuts the
+    # design's fills into the fewest columns in total. Metadata only, read by
+    # stages 5 and 7 behind the review's and the house's own angles; absent,
+    # byte-identical. The row spacing is the one stage 7 will run at, so the
+    # objective counts the columns the fill will actually have.
+    if cfg.design_angle:
+        fabric = fabric_for(cfg)
+        set_design_angle(regions, cfg, classification.class_,
+                         row_mm=(cfg.fill_row_mm or FILL_ROW_MM) * max(0.1, fabric.density_adjust),
+                         lane_angle=design_row_angle_deg)
 
     return Generation(
         classification_class=classification.class_,

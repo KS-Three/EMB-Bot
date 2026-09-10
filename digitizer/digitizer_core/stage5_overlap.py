@@ -287,6 +287,11 @@ def _comp_axis(region: Region, cfg: PipelineConfig, satin_max: float,
         return float(angle), False
     if cfg.fill_angle_deg is not None:
         return cfg.fill_angle_deg, False
+    design = region.meta.get("design_angle_deg")
+    if design is not None:
+        # `cfg.design_angle` (2026-09-09): the design's one direction, in the
+        # same slot stage 7 reads it -- behind the review's and the global.
+        return float(design), False
     return principal_angle_deg(region.polygon), False
 
 

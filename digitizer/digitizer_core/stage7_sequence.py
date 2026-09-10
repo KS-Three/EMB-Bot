@@ -1263,6 +1263,24 @@ def _border_seam_warning(seams: list[tuple[str, str, float]]) -> dict | None:
     )
 
 
+def _fill_angle_for(p, cfg: PipelineConfig) -> float | None:
+    """The row angle a fill-tier shape sews at -- the precedence stated at
+    the plain-tatami call in `stitch_one`, in one place so the five
+    call sites (tatami and the four geometric techniques) cannot drift
+    apart: the review's own angle, the global, the design angle
+    (`cfg.design_angle`), stage 5's compensation axis, else None (stage 6
+    derives its own)."""
+    shape_angle = p.region.meta.get("fill_angle_deg")
+    if shape_angle is not None:
+        return float(shape_angle)
+    if cfg.fill_angle_deg is not None:
+        return cfg.fill_angle_deg
+    design = p.region.meta.get("design_angle_deg")
+    if design is not None:
+        return float(design)
+    return p.stitch_angle_deg
+
+
 def sequence(
     planned: list[PlannedRegion], fabric: Fabric, cfg: PipelineConfig,
     source_pixels: SourcePixels | None = None,
@@ -1699,6 +1717,13 @@ def sequence(
                 satin_angle_deg = p.region.meta.get("satin_angle_deg")
                 if satin_angle_deg is None:
                     satin_angle_deg = cfg.satin_angle_deg
+                if satin_angle_deg is None and p.region.meta.get("design_angle_deg") is not None:
+                    # `cfg.design_angle` (2026-09-09): non-lettering satin
+                    # takes the design's one direction as its house, so
+                    # `_clamp_to_span` gives it the lean rule lettering has.
+                    # Behind the review's and the house's own angle; absent
+                    # the key, the per-stroke tangent as before.
+                    satin_angle_deg = float(p.region.meta["design_angle_deg"])
                 # Law 50's first rung (machine.SATIN_UNDERLAY_MIN_EXTENT_MM,
                 # 2026-09-03): small lettering sews bare. Judged on the
                 # ARTWORK extent, the same reason the satin/fill call is —
@@ -1872,15 +1897,10 @@ def sequence(
                 # because crosshatch needs its angle now, to plan the +90
                 # pass; that call's own "decided here and nowhere else"
                 # comment still holds for the plain-tatami case it covers.
-                shape_angle = p.region.meta.get("fill_angle_deg")
                 runs, report = stitch_shape(
                     p.polygon,
                     p.shape_id,
-                    angle_deg=(float(shape_angle)
-                               if shape_angle is not None
-                               else cfg.fill_angle_deg
-                               if cfg.fill_angle_deg is not None
-                               else p.stitch_angle_deg),
+                    angle_deg=_fill_angle_for(p, cfg),
                     row_mm=row_mm,
                     stitch_mm=stitch_mm,
                     underlay_style=eff_underlay_style,
@@ -1907,15 +1927,10 @@ def sequence(
                 # plain-tatami call below would — it is duplicated here only
                 # to keep all four purely-geometric branches (crosshatch,
                 # wave, chevron, brick) reading the same way.
-                shape_angle = p.region.meta.get("fill_angle_deg")
                 runs, report = stitch_shape(
                     p.polygon,
                     p.shape_id,
-                    angle_deg=(float(shape_angle)
-                               if shape_angle is not None
-                               else cfg.fill_angle_deg
-                               if cfg.fill_angle_deg is not None
-                               else p.stitch_angle_deg),
+                    angle_deg=_fill_angle_for(p, cfg),
                     row_mm=row_mm,
                     stitch_mm=stitch_mm,
                     underlay_style=eff_underlay_style,
@@ -1935,15 +1950,10 @@ def sequence(
                 # (stage6_fill._chevron_row_points), on the same staggered
                 # grid plain tatami already builds. Same slot/contract as
                 # the wave branch immediately above.
-                shape_angle = p.region.meta.get("fill_angle_deg")
                 runs, report = stitch_shape(
                     p.polygon,
                     p.shape_id,
-                    angle_deg=(float(shape_angle)
-                               if shape_angle is not None
-                               else cfg.fill_angle_deg
-                               if cfg.fill_angle_deg is not None
-                               else p.stitch_angle_deg),
+                    angle_deg=_fill_angle_for(p, cfg),
                     row_mm=row_mm,
                     stitch_mm=stitch_mm,
                     underlay_style=eff_underlay_style,
@@ -1961,15 +1971,10 @@ def sequence(
                 # van-der-Corput anti-moire stagger (_stagger_phase) for
                 # this technique only; every other technique's stagger is
                 # untouched. Same slot/contract as wave and chevron above.
-                shape_angle = p.region.meta.get("fill_angle_deg")
                 runs, report = stitch_shape(
                     p.polygon,
                     p.shape_id,
-                    angle_deg=(float(shape_angle)
-                               if shape_angle is not None
-                               else cfg.fill_angle_deg
-                               if cfg.fill_angle_deg is not None
-                               else p.stitch_angle_deg),
+                    angle_deg=_fill_angle_for(p, cfg),
                     row_mm=row_mm,
                     stitch_mm=stitch_mm,
                     underlay_style=eff_underlay_style,
@@ -2054,26 +2059,25 @@ def sequence(
                 # 6 derives its own from the compensated polygon, which is a
                 # different number.
                 #
-                # FILL-ANGLE PRECEDENCE, decided here and nowhere else:
+                # FILL-ANGLE PRECEDENCE, decided in `_fill_angle_for` and
+                # nowhere else:
                 #   1. the shape's own review-screen angle
                 #      (meta["fill_angle_deg"], shape-layers contract v1)
                 #   2. the global cfg.fill_angle_deg
-                #   3. the axis stage 5 compensated along
+                #   3. the design angle (meta["design_angle_deg"], written
+                #      only under `cfg.design_angle` -- `designangle.py`)
+                #   4. the axis stage 5 compensated along
                 #      (p.stitch_angle_deg — the directional-comp lane; None
                 #      when compensation was isotropic)
-                #   4. None: stage 6 derives its own per-shape PCA.
-                # Stage 5's `_comp_axis` follows the same 1 > 2 order, so with
-                # directional comp on, the axis a shape was compensated along
-                # and the axis it sews along stay one number by construction.
-                shape_angle = p.region.meta.get("fill_angle_deg")
+                #   5. None: stage 6 derives its own per-shape PCA.
+                # Stage 5's `_comp_axis` follows the same 1 > 2 > 3 order, so
+                # with directional comp on, the axis a shape was compensated
+                # along and the axis it sews along stay one number by
+                # construction.
                 runs, report = stitch_shape(
                     p.polygon,
                     p.shape_id,
-                    angle_deg=(float(shape_angle)
-                               if shape_angle is not None
-                               else cfg.fill_angle_deg
-                               if cfg.fill_angle_deg is not None
-                               else p.stitch_angle_deg),
+                    angle_deg=_fill_angle_for(p, cfg),
                     row_mm=row_mm,
                     stitch_mm=stitch_mm,
                     underlay_style=eff_underlay_style,

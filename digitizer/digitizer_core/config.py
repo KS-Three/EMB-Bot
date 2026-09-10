@@ -668,6 +668,27 @@ class PipelineConfig:
     # None = per-region principal axis (what the browser engine does, and what
     # beat a fixed angle in practice). A number forces every region to it.
     fill_angle_deg: float | None = None
+    # ONE stitch direction for the design's shapes that have no house of
+    # their own (quality review 2026-09-08 item 7, built 2026-09-09;
+    # `designangle.py` has the rule and its evidence). OFF, every non-
+    # lettering fill picks its own row angle by its own column count and
+    # adjacent shapes land on different angles -- Becker Marine at the pro's
+    # 95.7 mm: nine fills at a resultant of 0.15 over the half-circle, the
+    # pro's file at one angle -- and non-lettering satin gets no cross angle
+    # at all. ON, the lettering house angle (where its lines agree within the
+    # lean cap), else the gradient lane's own shared angle where the design
+    # holds one, else the one row direction that cuts the design's fills into
+    # the fewest columns in total, is written to `Region.meta
+    # ["design_angle_deg"]` and read by stage 7 after the review's
+    # `fill_angle_deg` and this `fill_angle_deg`, before the per-shape
+    # derivation; satin reads it after `satin_angle_deg`, so `_clamp_to_span`
+    # gives non-lettering satin the lean rule lettering has. Stage 5's
+    # `_comp_axis` reads the same order. No new constant, no per-shape
+    # override on aspect (the pro's files hold one angle inside their
+    # aspect-2.5 slab and their aspect-1.5 fills alike). NOT gate 1: an angle
+    # is a design choice, as `fill_angle_deg` is. DEFAULT OFF, byte-identical
+    # off; flipping it is Kent's on the render.
+    design_angle: bool = False
     # SATIN's counterpart to fill_angle_deg, and until 2026-08-26 there was
     # none -- which is the whole defect. Every satin cross came from that
     # stroke's OWN spine tangent, so each letter, and each stroke inside a
