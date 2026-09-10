@@ -147,9 +147,48 @@ script `1521 → 1720`, a dark region `5866 Herb Green → 1375 Dark
 Charcoal`, an olive shard `6156 → 5866` — each a colour the mean had
 invented from an edge.
 
-### 4.2 The flip sheet — `off` against `region_colour`, 26 fixtures
+### 4.2 The flip sheet — `off` against `region_colour`, 26 fixtures at 80 mm
 
-*(pending)*
+`tools/flip_sheet.py`, fresh caches (`build/flip_sheet_rc`, `_mc6`) on this
+tree — the item-8 caches' `off` rows are the PRE-flip engine and cannot be
+reused. `off` here is the shipped engine: the four colour flags ON, item 9
+ON (no garment named, so it declines).
+
+**At the engine's 12:** 11 fixtures move, 15 are byte-identical (every
+flat-lane fixture, gaulke, Fremont, the ramps, the owl, the fur). Net
++2,485 stitches, +27 trims, −1 block, 0 cones, −1 stop; one grade up
+(Bridge Bar F 0 → F 4), none down.
+
+| fixture | OFF: grade · st · tr · cones · blocks | ON | what moved |
+|---|---|---|---|
+| Bridge Bar | F · 14,586 · 126 · 12 · 13 | F · 14,386 · 125 · **11 · 11** | the disc `6031 → 0501`; −1 cone, −2 blocks, F 0 → F 4 |
+| screenshot | F · 7,550 · 71 · 12 · 12 | F · 7,546 · 63 · **10 · 10** | −2 cones, −2 blocks, −8 trims |
+| Golden Tee | F · 6,719 · 58 · 11 · 11 | F · 6,795 · 64 · 12 · 12 | the yellows regroup; +1 cone, +6 trims |
+| drone | F · 16,367 · 87 · 12 · 12 | F · 16,337 · 87 · 12 · 12 | grey shards `2564 → 0111`; −30 stitches |
+| chrome | C · 34,849 · 89 · 7 · 7 | C · 34,881 · 89 · 8 · 8 | +1 cone |
+| meadow | C · 19,892 · 34 · 5 · 5 | C · 19,412 · 41 · 5 · 5 | −480 stitches, +7 trims |
+| repro white icon | D · 22,361 · 24 · 5 · 5 | D · 22,078 · 19 · 5 · 5 | −283 stitches, −5 trims |
+| summit badge | F · 17,882 · 37 · 12 · 12 | F · 17,874 · 36 · 12 · 12 | −8 stitches, −1 trim |
+| photo_scene_stub | B · 16,083 · 44 · 4 · 4 | B · 19,465 · 73 · 5 · 5 | **+3,382 stitches, +29 trims, +1 cone** — see below |
+| photo_subject_stub, sunset | = counts | = counts | a spool swap inside the same counts |
+
+Read against the findings: **Bridge Bar** loses `COLOR_STOPS_HEAVY`, a
+repeated `0108` cone (13 blocks for 12 cones OFF), Herb Green and one of
+its three `THREAD_MATCH_POOR` blocks; its script goes `1521 → 1720`, its
+teal `4531 → 4423`, its dark region `5866 → 1375` — every one a colour the
+mean had invented from an edge. **The screenshot** loses `COLOR_STOPS_HEAVY`
+with its two cones. **Golden Tee** goes the other way on cones — twelve
+for eleven, `COLOR_STOPS_HEAVY` gained, +6 trims — while its
+`THREAD_MATCH_POOR` blocks fall from four to two: the yellows regroup onto
+spools closer to the letters' own pixels. **The photo-scene stub** (a
+synthetic scene) takes a fifth spool, `4133`, and the label map falls into
+31 regions where it had 21: +3,382 stitches and +29 trims at the same B 76
+— the one real price on this sheet, on a fixture no customer uploads.
+**meadow, sunset and the subject stub** swap one spool for its neighbour
+(`1334 → 1301`, `1334 → 1332`, `2762 → 0722`) at the same grade;
+**chrome** gains White and Whale for two greys.
+
+<<MC6>>
 
 ### 4.3 Looked at — `docs/renders/region-colour-2026-09-10/` (OFF left, ON right, 80 mm, the engine's 12)
 
