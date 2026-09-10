@@ -20,6 +20,7 @@ sys.path.insert(0, str(HERE.parent / "tools" / "pro_parity"))
 
 import proloop_synth as synth                        # noqa: E402
 import pairframe                                     # noqa: E402
+import overlay                                       # noqa: E402
 
 
 def _design_blocks(offset=(0.0, 0.0)):
@@ -97,3 +98,35 @@ def test_read_pattern_refuses_an_empty_file(tmp_path):
     empty.write_bytes(b"")
     with pytest.raises(SystemExit, match="no stitches|unreadable"):
         pairframe.file_segs(empty, False)
+
+
+def test_masks_agree_with_renders_and_overlap_reads_dark(tmp_path):
+    ours = _design_blocks()
+    pro = [(rgb, synth.transform_passes(p, dx=2.0, dy=0.0)) for rgb, p in ours]
+    d = synth.make_prep_dir(tmp_path, "ov", pro, ours, [], [(0, 0, 20, 12)], 20.0)
+    pair = pairframe.load_pair(d)
+    reg = pairframe.register_pair(pair.pro_path, pair.ours_path)
+    r = overlay.render_pair(pair, reg, ppm=12.0)
+    assert r["pro"].shape == r["ours"].shape == r["overlay"].shape
+    assert r["pro_mask"].any() and r["ours_mask"].any()
+    both = r["pro_mask"] & r["ours_mask"]
+    assert both.sum() > 0.8 * r["pro_mask"].sum()            # registered: most thread overlaps
+    assert r["overlay"][both].mean() < 120                    # multiply of two tints is dark
+    assert not (r["pro_only"] & r["ours_only"]).any()
+    # pro_only image: magenta where pro-only, near-white elsewhere except the grey ghost
+    po = r["pro_only_img"]
+    assert po.shape == r["pro"].shape
+
+
+def test_write_overlay_set_writes_five_files(tmp_path):
+    ours = _design_blocks()
+    d = synth.make_prep_dir(tmp_path, "ws", ours, ours, [], [(0, 0, 20, 12)], 20.0)
+    pair = pairframe.load_pair(d)
+    reg = pairframe.register_pair(pair.pro_path, pair.ours_path)
+    r = overlay.render_pair(pair, reg)
+    files = overlay.write_overlay_set(d / "overlay", r, title="ws 20.0 mm")
+    assert sorted(p.name for p in files) == sorted([
+        "overlay.png", "pro_only.png", "ours_only.png", "flicker_pro.png", "flicker_ours.png"])
+    a = cv2.imread(str(d / "overlay" / "flicker_pro.png"))
+    b = cv2.imread(str(d / "overlay" / "flicker_ours.png"))
+    assert a.shape == b.shape
