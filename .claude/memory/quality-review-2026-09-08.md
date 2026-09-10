@@ -806,3 +806,104 @@ page-mask bug was fixed — re-present, do not re-open.
   (the real-logo lane), item 12 (fill travel under cover), item 13 (photo
   detection from EXIF/face); items 10 (JS wide columns) and 14 (the
   edge-finish flags) named as the other live candidates.
+
+## Kent's pick 2026-09-10 ~20:00Z — "Item 11 and 1"
+
+- Both, in that order: item 11 (the legibility yardstick on the render +
+  the un-clamped grade + THREAD_MATCH_POOR's area floor) first, so item 1
+  (the real-logo lane) is judged by a grade that moves. Item 1 after.
+- **Do not push to the lane until #448 merges** (auto-merge armed; the
+  check-in trigger `trig_01LgZ1jn26VmztuYsiabsuZy` fires 20:56Z). Build
+  locally; commits held.
+- **20:43Z — #448 MERGED** (auto-merge; `digitizer` green in 46 min on the
+  runner's golden). Check-in trigger deleted; lane fast-forwarded onto the
+  merge. The push hold is lifted — item 11's commits can go up as they
+  are ready.
+
+## Item 11 in progress (2026-09-10 ~20:00Z →) — the legibility yardstick, the un-clamped score, the thread-match floor
+
+- Plan `docs/superpowers/plans/2026-09-10-legibility-yardstick.md` (§0–§3
+  written; §4 tables pending the runs; §5 Kent's two decisions: the
+  LEGIBILITY thresholds/flip, and the gradient lane's yardstick).
+- BUILT so far (uncommitted): `_THREAD_MATCH_MIN_PATCH_MM2` (= the
+  uncovered sibling's 5.0 mm², ON; rows carry `footprint_mm2`, findings
+  `worst_patch_mm2` / `sub_floor_count`, sub-floor offenders listed and
+  flagged, a thread with only sub-floor offenders emits nothing);
+  `digitizer_core/legibility.py` (the tool's measurement moved in, plus a
+  `sewn` flag per cluster and `ART_MIN_LETTERS` = 3 — a one-letter OCR
+  "truth" on the art side (Bridge Bar reads "X" at 77) judged a cluster at
+  0.00); `tools/legibility.py` is now a CLI over it; preflight
+  `LETTERING_ILLEGIBLE` behind `cfg.legibility_check` DEFAULT OFF, with
+  PROVISIONAL `LEGIBILITY_BLOCK` 0.5 / `LEGIBILITY_WARN` 0.75 and
+  `legibility_*` metrics (checked False when off / no image / no
+  tesseract); flip sheet rows carry `raw_score` and read verdicts off it;
+  scorecard prints raw beside score. Tests: `tests/test_legibility_check.py`
+  (7; 38 with the wiring + legibility files, green).
+- Measured: the read costs 3.7–16.8 s per design (24 tesseract calls per
+  cluster) under load; Fremont's HOTEL FREMONT reads 0.74 today (banner
+  noise on the ART side — under a 0.75 warn, a false positive to weigh).
+- Running: `tools/thread_match_floor.py run` (the 0/2/5/10 sweep over the
+  scorecard matrix → §4.1 and §4.3), `tools/legibility.py --corpus` at 6
+  and 12 (→ §4.2), the preflight/thread-match test files against the floor
+  (→ `test_thread_match_area_in_message.py` needs restating: gaulke's
+  0.58 mm² shard no longer blocks — that is the point).
+- Then: scorecard `diff` on this tree (attribute every mover since the
+  09-04 baseline: the flips, then the floor), `capture`, docs (MASTER_SCOPE
+  in place at 800), full suite, PR, AskUserQuestion for §5.
+- **~21:40Z — item 11 measured and calibrated.** Floor sweep: 40 → 26
+  blocks at 5 mm², gaulke D 46 → B 76, no design leaves the 0 floor (10 of
+  52 on it, raw −140 .. −26). Legibility: the crops (kept in
+  `docs/renders/legibility-2026-09-10/`) showed the similarity noisy in the
+  middle (DRONE 0.22 readable under SPOTIFY 0.50 blobs; HOTEL FREMONT 0.74
+  clean) → provisional warn-only under 0.5 (`LEGIBILITY_BLOCK` 0.0), the
+  options for Kent in plan §5 (A warn-only / B 0.2+0.7 / C 0.5+0.75 / D
+  off) plus the gradient-lane yardstick. DOCTRINE entry written. Tests
+  restated: area-in-message (rewritten), enclosed-background and
+  better-spool (unfloored helpers), raw depth −62, bimodal pin (footprint
+  key — its edit still pending: the literal holds an expression). Docs:
+  MASTER_SCOPE in place (800) and scope-history carry two angle-bracket
+  placeholders (the recapture, the suite line) until the scorecard
+  recapture and the full suite — grep them out before committing those two. Scorecard `diff` running for the attribution.
+- **~22:00Z — commit `9f3d09c` pushed (item 11's code, tests, tools, plan,
+  renders, DOCTRINE, COOKBOOK).** Scorecard diff vs the 09-04 baseline: 46
+  of 52 pairs moved; attributed (this PR's floor on four fixtures exactly,
+  the flips since 09-04 for the rest) and two grade drops BISECTED on
+  main's first-parent history with a one-pair scorer in a scratch
+  worktree: grass_macro B 76 → D 40 at #432 (subpixel flip; D 52 since
+  #437) and Becker @ hat_front B 88 → 76 at #433 (junction clustering;
+  hat_front only). Both left as a follow-up (plan §4.4; the task-card tool
+  timed out twice, so the record is the plan + the recapture commit).
+  Recapture running (`capture`, stamps `9f3d09c`); full suite running;
+  commit 2 = baseline + MASTER_SCOPE + scope-history + plan §4.4 + memory,
+  then the PR (body drafted in the scratchpad), auto-merge, subscribe,
+  send_later, AskUserQuestion on plan §5 + item 1 next.
+
+## 2026-09-10 ~22:40Z — item 11 SHIPPED as PR #449 (ready-for-review; auto-merge armed after this push)
+
+- Commits `9f3d09c` (the floor ON, raw_score read, legibility into the
+  package + `cfg.legibility_check` DEFAULT OFF with provisional warn-only
+  0.5 / block 0.0, tests, tools, plan §0–§5, renders, DOCTRINE, COOKBOOK),
+  `42312c8` (the scorecard recaptured at `9f3d09c` with every one of the
+  46 movers attributed — the floor's exactly, the flips since 09-04, two
+  grade drops bisected to #432 / #433 and left as a follow-up),
+  `b000277` (scope-history). Full suite: 3 failed / 2,224 passed — the
+  three platform reds.
+- **Kent's two decisions (plan §5), asked at the end of this turn:** the
+  `LETTERING_ILLEGIBLE` severity rule and the flip (A warn-only under 0.5
+  as built / B block 0.2 + warn 0.7 / C block 0.5 + warn 0.75 / D keep
+  OFF), and whether the gradient lane is judged on excess (row 4). A flip
+  ON is a follow-up PR: `legibility_check: bool = True`, the thresholds
+  as ruled, a scorecard recapture (the legibility metrics enter the
+  baseline; `legibility_checked` True on the tesseract box), tests that
+  pin finding sets on text fixtures re-read on the flipped default, and
+  the ~3.5 s per cluster cost stated in the Studio's terms.
+- **Then item 1 (the real-logo lane)** — Kent's pick; plan
+  `docs/superpowers/plans/2026-09-08-real-logo-lane-and-thin-strokes.md`:
+  the instrument re-measures stage 0's boundary on the enlarged real
+  tonal set first (gate 2 — no recalibration without real tonal artwork),
+  then the route; ten fixtures change lane, every gradient golden moves
+  (a CI recapture like #448's). Do not push to the lane while #449 is
+  armed.
+- Follow-up not this PR's: `photo_grass_macro` B 76 → D 52 at #432 and
+  Becker @ hat_front B 88 → 76 at #433 (plan §4.4; the task-card tool
+  timed out twice).

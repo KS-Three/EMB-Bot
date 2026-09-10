@@ -12242,3 +12242,61 @@ tree: **9 failed, 2,207 passed, 3 skipped, 7 xfailed in 43 min** with `-n auto` 
 byte-identical to the #445 cache's `off` row on Bridge Bar at 12.
 
 *(2026-09-10 — `docs/superpowers/plans/2026-09-10-region-colour.md` §6)*
+
+## 2026-09-10 — item 11 BUILT: the thread-match floor ON, the un-clamped score read, `cfg.legibility_check` DEFAULT OFF
+
+Kent's pick after the region-colour flip ("Item 11 and 1", in that order):
+the three measured ways the grade cannot see what his eye sees, repaired
+before item 1 moves every gradient fixture.
+
+**The floor.** `THREAD_MATCH_POOR` judged a thread on its worst graded
+patch with no area floor, so a 0.58 mm² shard and a 1,648 mm² field both
+said "do not sew". `_THREAD_MATCH_MIN_PATCH_MM2` is the uncovered check's
+5.0 mm², ON: a patch under it cannot judge, sub-floor offenders ride flagged
+in `regions`, a thread with nothing above the floor emits nothing. Swept at
+0 / 2 / 5 / 10 over the scorecard matrix (52 pairs, 80 mm, 12 colours): 40
+blocking findings → 34 / 26 / 18; at the shipped 5, sixteen of the forty
+judged on patches under 5 mm² (gaulke's `4174` on 0.21, the screenshot's
+`1776` 0.92 and `0108` 1.03, drone's `3335` 1.92 and `0111` 2.52, Golden
+Tee's `0532` 2.41, …), gaulke D 46 → B 76 on both garments, drone raw −140
+→ −80, the screenshot −116 → −38, Golden Tee −92/−104 → −50/−62, Bridge
+Bar unmoved (its two blocks judge on 9.5 and 9.8 mm² — at 10 they would go
+and it would read C 64 / D 52, which is why 5 and not 10), no design leaves
+the 0 floor, warns 70 → 70.
+
+**The un-clamped score, read.** `raw_score` (carried since 09-06, inert)
+now rides on the flip sheet's rows and its grade-up/down verdicts and on
+the scorecard's score line; the baseline recaptured 2026-09-10 at `9f3d09c`: 46 of 52 pairs had moved since the 2026-09-04 capture, every mover attributed in the recapture commit — this PR's floor on drone, gaulke, Golden Tee and the screenshot (exact, from the sweep), the flips since 09-04 for the rest, and two grade drops bisected on main's first-parent history to #432 (grass_macro B 76 → D 52, the subpixel flip) and #433 (Becker at hat_front B 88 → 76, junction clustering; left_chest unmoved) and left flagged for a follow-up, not this PR's. On this
+engine 10 of 52 pairs sit on the clamped 0 with raw −140 .. −26 (09-06:
+12 pairs, −272 .. −38); three of them just gained 42–78 points under the
+floor and the printed grade shows none of it.
+
+**Legibility as a preflight check, DEFAULT OFF.** The 09-08 instrument
+moved into the package (`digitizer_core/legibility.py`; the tool is a CLI
+over it), grew a `sewn` flag per cluster (a cluster nothing sews is the
+unsewn warnings' business) and a three-letter floor on the ART truth
+(`ART_MIN_LETTERS` — Bridge Bar's wordmark read "X" at 77 and judged a
+cluster at 0.00). `LETTERING_ILLEGIBLE` aggregates like the lettering
+check: the worst sewn readable cluster judges, every cluster rides in
+`rows`, the message names the words; `legibility_checked` is False when the
+flag is off, the artwork absent or tesseract missing. Corpus on this engine
+at 6 and 12: ENTHUSIAST 0.96, Fremont 0.78 (HOTEL FREMONT 0.74 — banner
+noise on the art side, letters clean), the screenshot 0.48 (SPOTIFY 0.50
+blobs at 2 mm, the 9 mm GOLKE line 0.59 readable, two 3 mm rows 0.00),
+drone 0.22 / 0.36 (DRONE reads with its E lost — "the E on drone"), Bridge
+Bar 0.13 at 12 ("Resturant was dropped completely"), gaulke unsewn. The
+crops (`docs/renders/legibility-2026-09-10/`) put a readable 0.22 under an
+illegible 0.50, so no band separates lost from damaged: the provisional
+rule warns under 0.5 and never blocks (`LEGIBILITY_WARN` 0.5,
+`LEGIBILITY_BLOCK` 0.0), Kent's to rule with the two-band alternatives
+priced in the plan. The read costs about 3.5 s per text cluster.
+
+**Tests.** `tests/test_legibility_check.py` (7), the area-in-message file
+restated for the floor (gaulke's shard emits nothing, drone's field still
+blocks, the denominator test on Golden Tee), the spool-remedy and
+enclosed-background files hold the check unfloored where they document
+findings that rode sub-floor patches, the screenshot's raw depth re-pinned
+−272 → −62 on the pre-flip engine, the bimodal preflight pin allows the
+new `footprint_mm2`. Full digitizer suite on this tree: 3 failed, 2,224 passed, 3 skipped, 7 xfailed in 55 min with `-n auto` on this box under load — exactly CI's three platform reds (`test_flat_lane_byte_identical[enthusiast]`, `test_stage2_photo_segment[enthusiast]`, `test_pushcomp[whitebg-towel]`); no golden moved.
+
+*(2026-09-10 — `docs/superpowers/plans/2026-09-10-legibility-yardstick.md` §4)*

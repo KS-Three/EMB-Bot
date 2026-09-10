@@ -72,7 +72,7 @@ ADVISORY = sorted(
 MODULES = [
     "machine", "preflight", "stage2_photo_segment", "stage4_vectorize",
     "stage6_blend", "stage6_fill", "stage6_satin", "stage6_streamline",
-    "stage7_sequence", "stitches", "config",
+    "stage7_sequence", "stitches", "config", "legibility",
 ]
 
 _FLAG = re.compile(r"`(?:cfg|PipelineConfig)\.([a-z_0-9]+)`")

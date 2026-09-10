@@ -73,7 +73,21 @@ def _findings(fixture: str):
     # this file documents a fact of the engine before those flips
     # (conftest.PRE_FLIP says why).
     result, plan = digitize(art, cfg)
-    report = pf.run_preflight(result, plan, cfg, image=art)
+    # UNFLOORED on purpose. `_THREAD_MATCH_MIN_PATCH_MM2` (2026-09-10,
+    # quality review item 11) stops a patch under 5 mm2 from judging a
+    # thread, and the findings this file documents ride exactly such
+    # patches: gaulke's 3971 (the 63.6 dE00 on 0.21 mm2 that names a loaded
+    # 1375) and meadow's one excess-yardstick warn. Under the shipped floor
+    # they are gone — that change's own tests
+    # (`tests/test_thread_match_area_in_message.py`) pin it. What THIS file
+    # pins is the remedy mechanism, measured on those findings, so it reads
+    # the check unfloored and says so.
+    old_floor = pf._THREAD_MATCH_MIN_PATCH_MM2
+    pf._THREAD_MATCH_MIN_PATCH_MM2 = 0.0
+    try:
+        report = pf.run_preflight(result, plan, cfg, image=art)
+    finally:
+        pf._THREAD_MATCH_MIN_PATCH_MM2 = old_floor
     return [f for f in report["findings"]
             if f.get("code") == "THREAD_MATCH_POOR"]
 

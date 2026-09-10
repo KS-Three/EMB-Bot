@@ -261,8 +261,11 @@ def test_a_bimodal_thread_is_judged_by_its_worst_region_not_the_pool():
     assert "Sbad" in hit[0]["message"]
     assert hit[0]["extra"]["region_count"] == 1
     assert hit[0]["extra"]["regions_scored"] == 2
-    assert hit[0]["extra"]["regions"] == [
-        {"shape_id": "Sbad", "delta_e": hit[0]["extra"]["delta_e"]}]
+    # `regions` rows carry their graded footprint since 2026-09-10 (the
+    # thread-match floor reads it); the id and the distance are the pins.
+    assert [(r["shape_id"], r["delta_e"]) for r in hit[0]["extra"]["regions"]] == [
+        ("Sbad", hit[0]["extra"]["delta_e"])]
+    assert hit[0]["extra"]["regions"][0]["footprint_mm2"] >= 5.0
     # The worst-region number rides out as the metric to watch.
     assert report["metrics"]["thread_worst_delta_e"] == hit[0]["extra"]["delta_e"]
     json.dumps(report)
