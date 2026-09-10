@@ -1,6 +1,6 @@
 # A robust region colour for the palette (2026-09-10)
 
-**Status: PLANNED — Kent's pick 2026-09-10 12:57Z after item 9 (#443, #444).**
+**Status: BUILT (PR #445, DEFAULT OFF) and FLIPPED ON the same day (§6) — Kent's pick 2026-09-10 12:57Z after item 9 (#443, #444); his ruling on the flip ~17:20Z.**
 The loss the colour-bundle flip's own test run found (#442, decision sheet
 §2's bind entry): Bridge Bar's disc sews `6031` Limelight, 7.0 ΔE00 from
 the artwork's yellow, because stage 2 hands the palette a colour no pixel
@@ -52,9 +52,11 @@ escape (the re-snap) or a rule (the bind) arguing with it.
 
 ## 2. The design
 
-- **`cfg.robust_region_colour: bool = False`** — DEFAULT OFF and
-  byte-identical off. ON, the point handed to the palette for each SLIC+RAG
-  region is a robust centre of its Lab pixels instead of the mean. The
+- **`cfg.robust_region_colour: bool`** — built `False`, DEFAULT OFF and
+  byte-identical off (PR #445); `True` since the flip (§6), and False is
+  the pre-flip engine byte for byte. ON, the point handed to the palette
+  for each SLIC+RAG region is a robust centre of its Lab pixels instead of
+  the mean. The
   statistic is chosen by §3's instrument from two candidates, the same for
   every region:
   1. **the per-channel median** in Lab — cheap, and exact for a pure colour
@@ -272,6 +274,49 @@ choosing; §4.2's sheet carries both budgets.
 
 ## 5. Decisions — Kent's
 
-1. The statistic (median or modal mean), on §3's numbers.
+1. The statistic (median or modal mean), on §3's numbers — **the modal
+   mean**, by the census (§4.1): where the two differ it lands on the
+   artwork, and a per-channel median is a colour no pixel need carry.
 2. The flip, on the flip sheet's row and the Bridge Bar render — a
    recapture of the photo-lane snapshot on CI if any golden fixture moves.
+   **Ruled ON 2026-09-10 ~17:20Z**, as a separate PR after #445 merged; §6.
+
+## 6. The flip (2026-09-10) — `robust_region_colour` DEFAULT ON
+
+- **What changed:** one default (`config.py`), and False is the pre-flip
+  engine byte for byte (`test_off_is_the_pre_flip_expression_byte_for_byte`,
+  and the Bridge Bar pair: the default now digests as the ON arm and not
+  the OFF one). `conftest.PRE_FLIP` carries the flag False beside the
+  bundle's four, so every file that prices a colour flag alone still
+  measures on the engine its numbers were taken on. Fourteen tests went red under the flip beyond the six golden keys and the three platform reds, every one documenting the pre-flip engine: eight on `PRE_FLIP`, which now carries the flag False beside the bundle's four (the phantom-blend Bridge Bar pair, the spool-remedy findings, the photograph declaration, the small-shape re-snap); the four re-validation pins and the re-home split on the repro's Azalea Pink sliver, whose configs now hold the flag False and say why (under the modal mean the repro quantizes to three medoids and the sliver never drifts); and drone's duplicate-cone fold, whose "fewer stitches AND less flying" was measured on the mean-point palette — on the flipped engine the fold still removes both revisits and two stops but trades 21 stitches for 56 mm less needle-up (16,324 → 16,345 stitches; 1,568 → 1,512 mm), so that file holds the engine it measured and records the new numbers. No assertion was loosened.
+- **The goldens.** The photo-lane snapshot
+  (`testdata/photo_lane_segment_golden.json`) pins stage 2's output on seven
+  keys; the flip moves six of its seven keys — drone (12 of 21 medoids, the label map and its warnings), summit_badge (7 of 13, the label map), the repro white icon (six medoids become three; the label map), the subject stub (its one spool), and region_blobs with and without the bg-mask variant (one of six medoids, `293 → 276`: the base spool of a 656 mm² blob the tonal split sews as bands of its own, so its PLAN is byte-identical at both budgets, which is why the flip sheet read it as unmoved) — while fur_ramp does not move. Re-captured on ubuntu-latest — the runner
+  whose CI judges it, never a dev box — by `tools/recapture_photo_lane_key.py`
+  (new, the photo-lane twin of `recapture_flat_lane_key.py`, with a
+  `--dry-run` for reading a change's footprint where capturing is barred)
+  under `--pre-change-tree` at main `e0833d7` (#445's merge), which
+  reproduced every key byte for byte there first, so what moved is the
+  engine. The temporary `recapture-goldens.yml` workflow ran it from the
+  push that brought it and committed the result (run 34518855051, commit
+  `27a7739`; its `recapture-evidence` artifact holds the per-key log); the
+  commit after removed the workflow. On the runner, after the capture, the
+  photo-lane and flat-lane golden files pass together (13 passed, the
+  enthusiast platform red deselected as CI does). The flat-lane keys, the
+  gradient dispatch's and the pushcomp tuples do not move — the flat lane
+  never enters the seam.
+- **The sheet after the flip.** `off` is now the ON engine, so
+  `region_colour` is inert against it and `off_rc` (the pre-flip engine) is
+  the arm that prices this flip, sign reversed; the rows in
+  `build/flip_sheet_rc*` were measured on that engine and stay readable.
+  Smoked on Bridge Bar at 12: `off_rc` reproduces the #445 cache's `off`
+  row byte for byte (the same digest; 14,560 stitches / 127 trims / 12
+  cones / 13 blocks), and the shipped `off` is now 14,386 / 125 / 11 / 11.
+- **Accepted price, restated from §4.2:** at 12, net +2,498 stitches / +24
+  trims / +1 cone over 26 fixtures, the stitches all but entirely the
+  synthetic stub's and the extra cone Golden Tee's twelfth; at the Studio's
+  6, drone's 211 mm² orange one spool step (Pumpkin for Fox Fire), the one
+  large real shape that gets worse. Bought: Bridge Bar's disc on `0501` Sun
+  at both budgets, −28 trims and the repeated cone gone at 6,
+  `COLOR_STOPS_HEAVY` off Bridge Bar and the screenshot at 12.
+- **Suite on the flipped tree:** **9 failed, 2,207 passed, 3 skipped, 7 xfailed in 43 min** with `-n auto` on this box, started before the runner's golden landed — the three platform reds CI deselects (`test_flat_lane_byte_identical[enthusiast]`, `test_stage2_photo_segment[enthusiast]`, `test_pushcomp[whitebg-towel]`) and the six photo-lane keys against the pre-flip golden; with the runner's golden in place that file passes here as well (8 passed), so the tree fails exactly CI's three deselects.

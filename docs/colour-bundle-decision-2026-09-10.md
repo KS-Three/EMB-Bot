@@ -385,7 +385,9 @@ One line per flag, the catch beside it, at the Studio's shipped budget:
    because the bind closes an escape that was correcting a palette
    entry stage 2 had contaminated; the fix belongs in stage 2's
    region colour, and until it lands this is the bind's price on one
-   real logo.
+   real logo. *(It landed the same day: `cfg.robust_region_colour`,
+   PR #445, ON by default from the PR after on Kent's ruling — the disc
+   sews `0501` Sun; plan `superpowers/plans/2026-09-10-region-colour.md`.)*
 4. **`dissolve_phantom_blends` — Kent's ruling stands; the render it
    lacked is on file.** At 6 it is −3,082 stitches and −59 trims on
    Bridge Bar and −4,509 / −80 over the set; the sheet shows the phantom

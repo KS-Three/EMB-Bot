@@ -738,3 +738,42 @@ page-mask bug was fixed — re-present, do not re-open.
   item 11 (legibility yardstick + un-clamped grade), item 12 (fill travel
   under cover), item 13 (photo detection from EXIF/face), item 14 (the
   edge-finish flags).
+
+## 2026-09-10 ~18:15Z — #445 MERGED (auto-merge, 18:03Z); the flip PR in progress
+
+- Lane rebased onto e0833d7 (#445's merge), the two memory commits pushed,
+  the check-in trigger deleted.
+- The flip PR, built on the recipe above: default True + docstring;
+  `conftest.PRE_FLIP` carries `robust_region_colour: False` beside the
+  bundle's four (every file that prices one colour flag alone stays on the
+  engine its numbers were taken on — which is why the Lab-mean cut's
+  failure list is NOT this flip's: those files were on the pre-flip engine
+  already); `test_robust_region_colour` restated (default ON; the Bridge
+  Bar pair pins default == ON arm and != OFF); `tools/flip_sheet.py`
+  `off_rc` (the pre-flip engine; `region_colour` is inert against `off`
+  now); `tools/recapture_photo_lane_key.py` (new, the photo-lane twin of
+  the flat tool, with `--dry-run` for reading a footprint on a box that
+  must not capture); the temporary `recapture-goldens.yml` (push-triggered
+  by the push that brings it, commits the golden back, removed in the
+  commit after). Docs carry placeholders for the moved keys, the workflow
+  run, the restated tests and the suite line — filled from the suite and
+  the run before committing (grep the angle-bracket markers out first).
+- **19:11Z — commit `58a3255` pushed** (default True, PRE_FLIP, restated
+  pins, `off_rc`, the recapture tool, the temporary workflow). Suite on
+  the flipped default BEFORE the restatements: 25 failed / 2,191 passed —
+  3 platform reds + 6 golden keys + 16 pre-flip pins (8 on PRE_FLIP, fixed
+  by the conftest change alone; `test_thread_revalidate` ×4 and
+  `test_rehome_resnapped` hold the flag False in their CFGs; drone's
+  duplicate-cone fold holds it too and records the flipped numbers: +21
+  stitches for −56 mm needle-up and −2 stops). All restated files re-run
+  green. The recapture workflow is run **34518855051** (started 19:10:54Z);
+  it commits the golden back to the lane — `git pull` after it, verify the
+  photo-lane test locally, then commit 2: docs (MASTER_SCOPE / plan §6 /
+  scope-history already carry the run id; the suite line is the one
+  placeholder left), the test docstring note (applied), workflow removal,
+  memory; then the PR. Full suite on the final tree running locally.
+- **19:15Z — the golden landed: run 34518855051 succeeded in 4.5 min, every
+  key passed the pre-change machine check, six re-written exactly as the
+  local dry runs predicted, commit `27a7739` on the lane; the runner then
+  ran both golden files green (13 passed, enthusiast deselected). Lane
+  fast-forwarded; the workflow file removed for commit 2.
