@@ -702,3 +702,39 @@ page-mask bug was fixed — re-present, do not re-open.
   three platform reds; the photo-lane golden passes. The handoff section
   above is now history except the flip decision, which is Kent's
   (AskUserQuestion put at the end of this turn; he asked to clear after).
+
+## Kent's ruling 2026-09-10 ~17:20Z — flip `robust_region_colour` ON in a follow-up PR
+
+- **Ruled ON**, as a separate PR AFTER #445 merges (auto-merge armed; do
+  not push to the lane until then — a push lands in #445 and resets its
+  checks). He then cleared the context; this is the handoff.
+- **The flip PR, in order:** (1) `git fetch origin main` and fast-forward /
+  rebase the lane onto #445's merge; (2) `config.py`:
+  `robust_region_colour: bool = True` + docstring "DEFAULT ON since
+  2026-09-10 (Kent's ruling on the flip sheet and the Bridge Bar render;
+  False is the pre-flip engine byte for byte)"; (3) tests:
+  `test_default_off_and_the_radius…` → `_on_`; keep the OFF byte-identity
+  test (explicit `robust_region_colour=False`) and the Bridge Bar pair;
+  (4) **goldens move**: `testdata/photo_lane_segment_golden.json` on drone,
+  summit_badge, repro_gradient_white_icon, photo_subject_stub (the four the
+  Lab-mean cut failed on are the four whose stage-2 output the modal mean
+  changes) — recapture on ubuntu CI ONLY (`recapture-goldens.yml`, the way
+  the sub-pixel PR 4 did it, with the pre-change proof), never on this box;
+  check `test_stage2_photo_segment`'s gradient golden and
+  `test_flat_lane_byte_identical` too (flat lane should be untouched);
+  (5) tests that document the OFF palette on Bridge Bar and friends may
+  move (`test_thread_match_better_spool[bridge]`, `test_phantom_blend_photo`
+  Bridge Bar pair, `test_thread_revalidate` ×3 — the ones the Lab-mean cut
+  broke): restate on `robust_region_colour=False` where they document the
+  pre-flip fact, as the colour-bundle flip did with PRE_FLIP; (6)
+  `tools/flip_sheet.py`: the `region_colour` arm becomes inert against
+  `off` — add an `off_rc` arm (`robust_region_colour: False`, the pre-flip
+  engine) beside `off4`; (7) MASTER_SCOPE item-8/region-colour sentence,
+  plan §5/§6, scope-history entry, `docs/scope/*` if any line says DEFAULT
+  OFF for it (`tools/doc_claims.py` is STRICT on MASTER_SCOPE/DOCTRINE);
+  (8) full suite (expect the three platform reds + the moved goldens until
+  CI recaptures); PR ready-for-review, auto-merge, subscribe, send_later;
+  (9) the next-build question: candidates item 1 (the real-logo lane),
+  item 11 (legibility yardstick + un-clamped grade), item 12 (fill travel
+  under cover), item 13 (photo detection from EXIF/face), item 14 (the
+  edge-finish flags).
