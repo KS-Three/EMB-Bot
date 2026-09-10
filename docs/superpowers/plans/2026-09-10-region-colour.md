@@ -209,36 +209,38 @@ moved most under the correction.)
 
 **The blocking threads at 6, named** (`THREAD_MATCH_POOR`, preflight given the
 artwork path as the scorecard gives it — see DOCTRINE 2026-09-10 on what a
-hand-fed RGB array does to this number):
+hand-fed RGB array does to this number; measured on the exact OFF engine):
 
 - **Bridge Bar** OFF: 2 blocks — Black 18.8 on a 13 mm² olive shard,
-  Caribbean 14.7 on 5 mm² teal shards; the script warns at 6.5 under
-  Flamingo and the disc at 7.5 under Limelight. ON: 3 blocks — Herb Green
-  16.2 on the same olive shard (better than Black's 18.8), Marine Aqua 11.5
-  on the same teal shards (better than 14.7), Cobblestone 10.6 on a 15 mm²
-  grey shard (new, at the threshold); **the disc and the script leave the
-  list entirely** — 1,246 mm² of artwork, under Sun and Not Quite Red, now
-  inside the visible threshold. "One more block" is three shards of 5–15
-  mm², each nearer its thread than before or within a unit of the line.
-- **Golden Tee** OFF: 4 blocks — Black **40.4** on a 16 mm² red shard,
-  Sunset 11.3 on the 153 mm² yellow-orange, Sterling 16.1 and Apricot 22.1
-  on 2–3 mm² shards. ON: 3 blocks, all on shards of 3–6 mm² (Orange Peel
-  13.5, Poinsettia 16.9, Silver 15.3); the red shard and the 153 mm²
-  yellow-orange leave the list.
+  Caribbean 14.7 on 5 mm² teal shards; the disc warns at 7.5 under
+  Limelight (the script is within the threshold either way). ON: 3 blocks —
+  Herb Green 16.2 on the same olive shard (nearer than Black's 18.8),
+  Marine Aqua 11.5 on the same teal shards (nearer than 14.7), Cobblestone
+  10.6 on a 15 mm² grey shard (new, at the threshold); **the disc leaves the
+  list** — 1,023 mm² of artwork, under Sun, inside the visible threshold.
+  "One more block" is three shards of 5–15 mm², each nearer its thread
+  than before or within a unit of the line, for the design's biggest shape
+  going from a warning to nothing.
+- **Golden Tee** OFF: 4 blocks, all on shards — Sterling 20.3 (3 mm²),
+  Candlelight 15.8 (22 mm²), Sunset 13.8 (11 mm²), Burnt Orange 14.7
+  (3 mm²). ON: 3, all on shards of 3–6 mm² (Orange Peel 13.5, Poinsettia
+  16.9, Silver 15.3). The big shapes are inside the threshold either way.
 - **the screenshot** OFF: 5 blocks including Black 11.5 on the **470 mm²**
   dark ground; ON: 4, all on shards of 1–10 mm²; the ground leaves the
   list.
-- **drone** OFF: 4 blocks on shards of 3–17 mm². ON: 5 — the same Fox Fire
-  and Flag Blue shards, Blackberry 15.7 on 3 mm², Silver 33.1 on a 2 mm²
-  grey, and **Pumpkin 10.9 on the 211 mm² orange**, the one large shape
-  that gets worse: by colour that orange is 3.5 from Fox Fire and 6.0 from
-  Pumpkin, and at six cones the palette now spends one orange spool where
-  it spent two. The one real loss at the Studio's budget, and a budget
-  trade rather than a wrong point.
+- **drone** OFF: 5 blocks on shards of 3–17 mm² (Sterling, Spanish Gold,
+  Fox Fire, Black Chrome, Flag Blue). ON: 5 — the same Fox Fire and Flag
+  Blue shards, Blackberry 15.7 on 3 mm², Silver 33.1 on a 2 mm² grey, and
+  **Pumpkin 10.9 on the 211 mm² orange**, the one large shape that gets
+  worse: by colour that orange is 3.5 from Fox Fire and 6.0 from Pumpkin,
+  and at six cones the palette now spends one orange spool where it spent
+  two. The one real loss at the Studio's budget, and a budget trade rather
+  than a wrong point.
 
-So at 6 the flag moves the blocks OFF the big shapes and onto shards, on
-three of the four real logos, at the same block count over the corpus,
-and costs drone's orange one spool step.
+So at 6 the flag takes Bridge Bar's disc and the screenshot's ground off
+the blocking list, leaves Golden Tee's shards as shards (four to three),
+holds the corpus block count level, and costs drone's orange one spool
+step.
 
 ### 4.3 Looked at — `docs/renders/region-colour-2026-09-10/` (OFF left, ON right, 80 mm, the engine's 12)
 

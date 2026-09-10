@@ -657,3 +657,11 @@ page-mask bug was fixed — re-present, do not re-open.
   of 422 (was 155/169 under the Lab mean); Bridge Bar 56.9% of area, Golden
   Tee 33.8%, drone 65.2%, screenshot 65.0%; 33 bimodal (27 screenshot).
   Renders re-made on the exact engine; the change lists are the same.
+- **Exact-engine blocking census at 6 (15:25Z):** Bridge Bar 2 → 3 blocks,
+  all shards, its 1,023 mm² disc off the list (Limelight warn 7.5 → nothing
+  under Sun; the script was never a finding); Golden Tee 4 → 3, all shards
+  (the Lab-mean OFF's "Black 40.4 on a red shard" and "153 mm² yellow-orange"
+  were artefacts of the wrong OFF); screenshot 5 → 4, the 470 mm² ground
+  off the list; drone 5 → 5 with the 211 mm² orange entering at Pumpkin 10.9
+  (Fox Fire 3.5 by colour) — the one large shape that gets worse, a
+  six-cone budget trade. Corpus block count level at both budgets.

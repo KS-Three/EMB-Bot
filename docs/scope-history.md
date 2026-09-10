@@ -12211,10 +12211,10 @@ stitches / +29 trims at the same B 76; net +2,498 stitches / +24 trims / +1
 cone / 0 blocks. At the Studio's 6: net +2,244 stitches / +3 trims / 0
 blocks / 0 stops; Bridge Bar 13,820 / 96 / 6 / 6 against 14,588 / 124 / 6 /
 7 (−768 stitches, −28 trims) with one more blocking thread on a shard while
-its disc and script leave the blocking list, Golden Tee +249 stitches and
-one blocking thread fewer, the screenshot one fewer, drone one more (its
-211 mm² orange, the one large shape that gets worse); no grade letter
-moves. Renders: the disc goes from yellow-green to a clean yellow;
+its 1,023 mm² disc leaves the blocking list, Golden Tee +249 stitches and
+one blocking shard fewer, the screenshot's 470 mm² ground off the list,
+drone level at five with its 211 mm² orange entering (the one large shape
+that gets worse); no grade letter moves. Renders: the disc goes from yellow-green to a clean yellow;
 Golden Tee's letters and drone read the same. Flipping it is Kent's — a
 photo-lane snapshot recapture on CI. `tests/test_robust_region_colour.py`
 (10).
