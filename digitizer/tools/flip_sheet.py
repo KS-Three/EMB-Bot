@@ -93,7 +93,11 @@ ARMS: dict[str, dict] = {
     # region hands the palette: a robust centre of its pixels instead of
     # the plain mean that #442's test run caught handing Bridge Bar's
     # yellow disc to Limelight. Every gradient/photo palette can move under
-    # it, which is exactly what this sheet exists to price.
+    # it, which is exactly what this sheet exists to price. Flipped ON the
+    # same day (PR #445 built it OFF; the PR after flipped it on Kent's
+    # ruling over the rows at 12 and 6), so against `off` this arm is now
+    # byte-identical -- kept so the published rows in `build/flip_sheet_rc*`
+    # stay nameable; `off_rc` below is the engine they were measured on.
     "region_colour": {"robust_region_colour": True},
     # --- combinations -------------------------------------------------------
     # `all` answers "flip everything"; nobody flips everything. These are the
@@ -194,6 +198,12 @@ ARMS: dict[str, dict] = {
         "revalidate_small_shapes": False,
         "bind_resnap_all_classes": False,
     },
+    # 2026-09-10, later the same day: `robust_region_colour` flipped ON too
+    # (see `region_colour` above), so this arm is the engine before THAT
+    # flip -- the `off` every row in `build/flip_sheet_rc*` was measured
+    # against. `off` read against `off_rc` is the flip's price on the
+    # shipped engine, sign reversed.
+    "off_rc": {"robust_region_colour": False},
 }
 
 # An arm is a "single" if it flips exactly one flag. Derived, not listed, so

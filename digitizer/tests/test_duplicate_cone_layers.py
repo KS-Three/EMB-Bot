@@ -121,15 +121,28 @@ def test_three_declarations_of_one_cone_all_land_on_the_first():
 
 # --- the whole pipeline, on the fixture the defect was found on ---------------
 
+# The whole-pipeline claims below were measured on the mean-point palette
+# (the docstring's numbers). Since the 2026-09-10 flip of
+# `robust_region_colour` drone's palette moves (12 of its 21 medoids), and
+# on that engine the fold still removes both revisits and two stops but
+# trades 21 stitches for 56 mm less flying (16,324 -> 16,345 stitches,
+# needle-up 1,568 -> 1,512 mm, 112 lifts either way; measured 2026-09-10).
+# "Fewer stitches AND less needle-up" is a fact of the engine it was
+# measured on, so the fixtures hold that engine (False, byte for byte) and
+# say so here -- the posture `conftest.PRE_FLIP` documents.
+PRE_FLIP_RC = {"robust_region_colour": False}
+
+
 @pytest.fixture(scope="module")
 def drone_off():
     return digitize(DRONE, cfg(target_width_mm=80.0,
-                              merge_duplicate_cones=False))
+                              merge_duplicate_cones=False, **PRE_FLIP_RC))
 
 
 @pytest.fixture(scope="module")
 def drone_on():
-    return digitize(DRONE, cfg(target_width_mm=80.0, merge_duplicate_cones=True))
+    return digitize(DRONE, cfg(target_width_mm=80.0, merge_duplicate_cones=True,
+                              **PRE_FLIP_RC))
 
 
 def test_the_default_is_on():
@@ -205,7 +218,8 @@ def test_an_explicit_layer_override_still_beats_the_fold(drone_on):
     sid = next(r.shape_id for b in plan.blocks for r in b.runs if r.shape_id)
     _r2, pinned = digitize(DRONE, cfg(target_width_mm=80.0,
                                       merge_duplicate_cones=True,
-                                      shape_overrides={sid: {"layer": 0}}))
+                                      shape_overrides={sid: {"layer": 0}},
+                                      **PRE_FLIP_RC))
     first = next(r.shape_id for b in pinned.blocks for r in b.runs if r.shape_id)
     assert first == sid, "a shape pinned to layer 0 must open the design"
 
@@ -215,7 +229,8 @@ def test_off_leaves_the_design_exactly_as_it_was(drone_off):
     not exist. Same blocks, same threads, same coordinates."""
     _o, base = drone_off
     _e, explicit = digitize(DRONE, cfg(target_width_mm=80.0,
-                                       merge_duplicate_cones=False))
+                                       merge_duplicate_cones=False,
+                                       **PRE_FLIP_RC))
     assert len(base.blocks) == len(explicit.blocks)
     for a, b in zip(base.blocks, explicit.blocks):
         assert a.thread_index == b.thread_index

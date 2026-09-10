@@ -137,8 +137,15 @@ def test_flag_off_reproduces_the_split():
     and tested (the family posture `merge_adjacent_same_thread` documents):
     the repro's re-snap split comes back — one spool sewing more than one
     block — which is also the lever the sequencing A/B measured with."""
+    # `robust_region_colour=False`: the split is a re-snap on the mean-point
+    # palette (the repro's six medoids, one of them the drifted sliver's);
+    # since the 2026-09-10 flip the repro quantizes to three and nothing
+    # drifts, so the pre-flip engine (False, byte for byte) is the state
+    # this lever is measured on -- the same pin `test_thread_revalidate`
+    # holds on the same fixture.
     cfg = PipelineConfig(target_width_mm=80.0, rehome_resnapped=False,
-                         merge_adjacent_same_thread=False)
+                         merge_adjacent_same_thread=False,
+                         robust_region_colour=False)
     _result, plan = digitize(REPRO, cfg)
     threads = [b.thread_index for b in plan.blocks]
     assert len(threads) > len(set(threads)), (

@@ -37,9 +37,10 @@ def _run(fixture: str):
     Read-only; take an uncached run if one ever needs to mutate."""
     art = TESTDATA / fixture
     cfg = PipelineConfig(target_width_mm=80.0, garment_id="left_chest", **PRE_FLIP)
-    # PRE_FLIP: the four colour flags Kent flipped ON on 2026-09-10 are
-    # held OFF here because this file documents a fact of the engine
-    # before that flip (conftest.PRE_FLIP says why).
+    # PRE_FLIP: the colour flags Kent flipped ON on 2026-09-10 (the
+    # bundle's four and `robust_region_colour`) are held OFF here because
+    # this file documents a fact of the engine before those flips
+    # (conftest.PRE_FLIP says why).
     result, plan = digitize(art, cfg)
     report = pf.run_preflight(result, plan, cfg, image=art)
     hits = [f for f in report["findings"]

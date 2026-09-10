@@ -131,23 +131,26 @@ class PipelineConfig:
     # region set on every gradient-class design, so it waits on Kent's
     # look at a render, not on a green suite.
     dissolve_phantom_blends: bool = False
-    # The colour each SLIC+RAG region hands the palette. OFF: the plain mean
-    # of its pixels, which a big flat region full of drawn-on inclusions
+    # The colour each SLIC+RAG region hands the palette. False: the plain
+    # mean of its pixels, which a big flat region full of drawn-on inclusions
     # turns into a colour no pixel carries — Bridge Bar's yellow disc
     # reads (223, 220, 77) for pixels at (251, 235, 65), 12 ΔE00 towards
     # lime, because the black lettering, bird and rope inside it pull the
     # mean through their anti-aliased edges; the palette then rightly
     # picks Limelight for that point and the bound re-snap holds it
-    # (found by #442's test run; DOCTRINE 2026-09-10). ON: a robust centre
+    # (found by #442's test run; DOCTRINE 2026-09-10). True: a robust centre
     # of the region's Lab pixels (`stage2_photo_segment.ROBUST_REGION_STAT`
-    # names the statistic — the per-channel median, or the mean over the
-    # pixels within DELTA_E_VISIBLE of it — chosen by
+    # names the statistic — the modal mean, the mean over the pixels within
+    # DELTA_E_VISIBLE of the per-channel median, chosen over the median by
     # `tools/region_colour.py`'s census). Only that one point moves: the
-    # shade-demand buckets and the tonal split keep their means. DEFAULT OFF
-    # and byte-identical off; every gradient/photo palette can move under
-    # it, so the flip waits on the flip sheet and the render. Plan:
-    # `docs/superpowers/plans/2026-09-10-region-colour.md`.
-    robust_region_colour: bool = False
+    # shade-demand buckets and the tonal split keep their means. DEFAULT ON
+    # since 2026-09-10 — built OFF that day (PR #445) and flipped in the PR
+    # after on Kent's ruling over the flip sheet and the Bridge Bar render
+    # (the disc `6031` Limelight → `0501` Sun; the price a synthetic stub's
+    # +3,382 stitches / +29 trims at 12 and drone's 211 mm² orange one
+    # spool step at the Studio's 6). False is the pre-flip engine byte for
+    # byte. Plan: `docs/superpowers/plans/2026-09-10-region-colour.md`.
+    robust_region_colour: bool = True
 
     # Stage 1
     bg_tolerance_lab: float = 6.0      # Delta-E-ish flood tolerance

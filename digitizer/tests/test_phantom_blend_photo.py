@@ -257,8 +257,9 @@ def test_page_side_halo_is_returned_to_the_background():
 def bridge_pair():
     def run(on: bool):
         # PRE_FLIP: the dissolve flag alone, over the engine it was measured
-        # on (the four colour flags Kent flipped ON on 2026-09-10 held OFF;
-        # conftest.PRE_FLIP says why). Against the shipped engine the cap and
+        # on (the colour flags Kent flipped ON on 2026-09-10 -- the bundle's
+        # four and `robust_region_colour` -- held OFF; conftest.PRE_FLIP
+        # says why). Against the shipped engine the cap and
         # the bind already take most of these greys, which the decision sheet
         # prices as colour5 over colour4.
         return digitize(BRIDGE, PipelineConfig(
