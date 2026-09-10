@@ -514,3 +514,4 @@ page-mask bug was fixed — re-present, do not re-open.
   for the four in docs and docstrings must move with it (test_doc_claims).
 - **Then item 9**: enclosed letter bodies decided by garment colour, not a
   global unstitched default (review §9).
+- **Flip in progress (03:40Z, local, unpushed)**: the four defaults are True in config.py with docstrings; docs moved (MASTER_SCOPE defects 15/28/31, DOCTRINE 1443, scope/1, pending-flag-decisions, flip-sheet doc, decision sheet DECIDED, scope-history entry); flip_sheet.py has `off4`/`flat_off4` (the pre-flip engine). Pending: the pinned tests (`test_flag_defaults_off` ×2 → ON; the `_default_digest` vs explicit-False contracts in the bind/small/mask tests → default == explicit True), goldens only if the flat-lane/photo-lane/pushcomp runs move (the bundle left whitebg/alpha/ribbon untouched at 12, so probably none), full suite, then push after #441 merges (rebase the local commits onto origin/main first).

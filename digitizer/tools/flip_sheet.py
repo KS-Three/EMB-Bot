@@ -176,6 +176,18 @@ ARMS: dict[str, dict] = {
         "bind_resnap_all_classes": True,
         "dissolve_phantom_blends": True,
     },
+    # 2026-09-10: Kent flipped the four ON by default on the decision sheet,
+    # so `off` now IS `colour4` and the four colour singles above flip a flag
+    # that is already True -- byte-identical to `off`, and kept so the
+    # published rows stay nameable. This arm is the pre-flip engine, the
+    # baseline the decision was priced against; `halo` on top of `off` now
+    # prices the one flag still parked against the shipped engine.
+    "off4": {
+        "enforce_color_cap": False,
+        "resnap_mask_matches_grader": False,
+        "revalidate_small_shapes": False,
+        "bind_resnap_all_classes": False,
+    },
 }
 
 # An arm is a "single" if it flips exactly one flag. Derived, not listed, so
@@ -194,6 +206,7 @@ SINGLES = [a for a, kw in ARMS.items() if len(kw) == 1]
 PROXIES: dict[str, dict] = {
     "flat_off": {"forced_class": "flat"},
     "flat_colour5": {"forced_class": "flat", **ARMS["colour5"]},
+    "flat_off4": {"forced_class": "flat", **ARMS["off4"]},
     # The singles on the flat lane too (2026-09-10): `flat_colour5` took 28
     # cones off five forced-flat logos, which the lane story said could not
     # happen (the flat lane caps hard; every counted re-snap escape was on

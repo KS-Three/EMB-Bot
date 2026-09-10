@@ -1,5 +1,12 @@
 # Flags built, measured, and waiting on a decision
 
+> **2026-09-10 — four of these are DECIDED.** Kent's ruling on the colour
+> bundle (`docs/colour-bundle-decision-2026-09-10.md`, measured as one set):
+> `enforce_color_cap`, `resnap_mask_matches_grader`, `revalidate_small_shapes`
+> and `bind_resnap_all_classes` are **ON by default**; `dissolve_phantom_blends`
+> stays banked OFF on his 2026-09-04 ruling. Rows 3–5 below are the one-flag
+> evidence they were decided on and read as history now.
+
 Every one of these is **implemented, tested, byte-identical when off, and
 default OFF.** None is waiting on more work from me; each is waiting on a
 judgement that is Kent's. They are scattered across MASTER_SCOPE defects 5, 15,

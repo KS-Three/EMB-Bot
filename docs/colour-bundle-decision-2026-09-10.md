@@ -1,7 +1,8 @@
 # The colour bundle — one decision sheet for five flags (2026-09-10)
 
-**Status: MEASURED 2026-09-10, nothing flipped — Kent's to default from.**
-Quality review 2026-09-08 item 8, his pick after #440. Five built, default-OFF flags that each fix a piece of one problem —
+**Status: DECIDED 2026-09-10 — Kent flipped the four not ruled ON as one set
+(§5.1–3 and 5.5 accepted; the dissolve stays banked, §5.4).** Measured on
+tree `920ebcd`; quality review 2026-09-08 item 8, his pick after #440. Five built, default-OFF flags that each fix a piece of one problem —
 cones and colour stops the customer did not ask for — priced TOGETHER on
 one tree, with the render beside the number. Plan:
 `docs/superpowers/plans/2026-09-10-colour-bundle.md`. Every number is one

@@ -29,7 +29,7 @@ from digitizer_core import pipeline as pl
 from digitizer_core.config import PipelineConfig
 from digitizer_core.pipeline import plan_stitches, run_stages
 
-from .conftest import TESTDATA
+from .conftest import BUNDLE_ON, PRE_FLIP, TESTDATA
 
 # Two gradient fixtures with a measured escape (7 and 5 cones), one photo-class
 # fixture that already binds (must be byte-identical either way), and a flat
@@ -76,7 +76,7 @@ def _case(fixture: str, bind: bool) -> _Case:
         seen["palette"] = frozenset(kw.get("palette_indices") or ())
         return real(regions, p, cfg, **kw)
 
-    cfg = _cfg(bind_resnap_all_classes=bind)
+    cfg = _cfg(**{**PRE_FLIP, "bind_resnap_all_classes": bind})   # the flag alone, over the pre-flip engine
     pl.revalidate_threads = probe
     try:
         result = run_stages(TESTDATA / fixture, cfg)
@@ -96,12 +96,9 @@ def _case(fixture: str, bind: bool) -> _Case:
 
 
 @lru_cache(maxsize=None)
-def _default_digest(fixture: str) -> tuple:
-    """The shipped engine with NO flag mentioned, for the byte-identity
-    contract. Deliberately not `_case(fixture, False)`: that passes the flag
-    explicitly, and comparing the two is the whole point — they agree only
-    while the default is False."""
-    cfg = _cfg()
+def _digest(fixture: str, **kw) -> tuple:
+    """A pipeline run under exactly `kw`, for the shipped-engine contract."""
+    cfg = _cfg(**kw)
     result = run_stages(TESTDATA / fixture, cfg)
     plan = plan_stitches(result, cfg)
     coords = [(round(x, 4), round(y, 4), run.kind, run.jump, run.trim)
@@ -109,15 +106,17 @@ def _default_digest(fixture: str) -> tuple:
     return hashlib.sha256(repr(coords).encode()).hexdigest()[:20], len(coords)
 
 
-def test_flag_defaults_off():
-    assert PipelineConfig().bind_resnap_all_classes is False
+def test_flag_defaults_on():
+    """Kent's ruling 2026-09-10: ON, as one of the four colour flags."""
+    assert PipelineConfig().bind_resnap_all_classes is True
 
 
-@pytest.mark.parametrize("fixture", ESCAPERS + CONTROLS)
-def test_off_is_byte_identical_to_the_shipped_engine(fixture):
-    """Explicit False against the default, so a change to the default shows up
-    as a difference rather than silently agreeing with itself."""
-    assert _default_digest(fixture) == _case(fixture, False).digest
+@pytest.mark.parametrize("fixture", ["photo/drone_render.png", "logo_alpha.png"])
+def test_the_shipped_engine_is_the_four_flags_on(fixture):
+    """No keyword at all against the four spelled out True, so a change to
+    any of the four defaults shows up as a difference rather than silently
+    agreeing with itself. One escaper the bundle moves, one flat control."""
+    assert _digest(fixture) == _digest(fixture, **BUNDLE_ON)
 
 
 @pytest.mark.parametrize("fixture", ESCAPERS)
@@ -143,9 +142,10 @@ def test_the_escape_is_really_there_with_the_flag_off(fixture):
 @pytest.mark.parametrize("fixture", CONTROLS)
 def test_a_photo_class_fixture_is_unaffected(fixture):
     """`photo_dof_meadow` already binds, `logo_alpha` has nothing to escape
-    with — both must be byte-identical with the flag ON, which is what says
-    this change reaches only the lane it is aimed at."""
-    assert _default_digest(fixture) == _case(fixture, True).digest
+    with — both must be byte-identical with the flag ON and OFF (over the
+    pre-flip engine, as every `_case` is), which is what says this change
+    reaches only the lane it is aimed at."""
+    assert _case(fixture, False).digest == _case(fixture, True).digest
 
 
 @pytest.mark.parametrize("fixture", ESCAPERS)

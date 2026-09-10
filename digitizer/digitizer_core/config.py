@@ -108,9 +108,13 @@ class PipelineConfig:
     # 6. Every cone is a spool to buy and a manual re-thread on a
     # single-needle machine, so this is a pricing promise, not a preference.
     #
-    # Flipping it ON is Kent's: it merges colours a customer can see, and the
-    # A/B belongs beside a render.
-    enforce_color_cap: bool = False
+    # DEFAULT ON since 2026-09-10 (Kent's ruling on the colour bundle,
+    # `docs/colour-bundle-decision-2026-09-10.md`): at the Studio's 6 it takes
+    # 45 cones off five corpus designs and lands every real logo on exactly
+    # the promised number; the merges are visible (Golden Tee's GT letters
+    # lose their maroon edge at 6) and `COLOR_CAP_APPLIED` names them. False
+    # is the pre-flip engine byte for byte.
+    enforce_color_cap: bool = True
     seed: int = 0                      # k-means RNG seed — fixed for determinism
     # Cluster centers within this CIE76 distance are the SAME flat color that
     # k-means split; merged before spool snapping. Also the perpendicular
@@ -1499,12 +1503,15 @@ class PipelineConfig:
     # THREAD_MATCH_POOR grades F, refusals are 0/0/0/4/7 against
     # `logo_bridge_bar` 63 and `screenshot_phone_ui` 12.
     #
-    # DEFAULT OFF and byte-identical off. The estimator does not need the
-    # extra pixels (a median over 50 per-pixel dE00 is sound, and
-    # THREAD_REVALIDATE_MIN_IMPROVEMENT_DE00 is the real churn guard) — the
-    # 200 was protecting goldens, so moving it is a scorecard recapture, and
-    # that is Kent's call rather than a silent default change.
-    revalidate_small_shapes: bool = False
+    # DEFAULT ON since 2026-09-10 (Kent's ruling on the colour bundle), as
+    # one half of a pair with `resnap_mask_matches_grader`: the mask shrinks a
+    # footprint below the 200 px floor, so alone it declines the shape; the
+    # lowered floor lets it act, and together they move chrome and meadow
+    # D -> C where neither does alone. The estimator does not need the extra
+    # pixels (a median over 50 per-pixel dE00 is sound, and
+    # THREAD_REVALIDATE_MIN_IMPROVEMENT_DE00 is the real churn guard). False
+    # is the pre-flip engine byte for byte.
+    revalidate_small_shapes: bool = True
 
     # Score the thread re-validation on the SAME pixels the grader uses.
     # `stage4_vectorize.revalidate_threads` and
@@ -1554,10 +1561,10 @@ class PipelineConfig:
     # so it is deliberately left alone; `tests/test_resnap_mask_matches_grader
     # .py::test_the_flagged_mask_really_matches_the_graders` pins the gap.
     #
-    # DEFAULT OFF and byte-identical off. It moves the flat and gradient
-    # goldens the phase-4 spec pins, so the flip is a scorecard recapture and
-    # Kent's call.
-    resnap_mask_matches_grader: bool = False
+    # DEFAULT ON since 2026-09-10 (Kent's ruling on the colour bundle), the
+    # other half of the pair with `revalidate_small_shapes` above. False is
+    # the pre-flip engine byte for byte.
+    resnap_mask_matches_grader: bool = True
 
     # Bind stage 4's thread re-snap to the selected palette on EVERY class,
     # not only the photo ones. `revalidate_threads`' argmin runs over the whole
@@ -1571,11 +1578,13 @@ class PipelineConfig:
     # photo-class fixtures add none: the 2026-08-23 binding does its job, and
     # the lane real customer logo art routes to never got it.
     #
-    # DEFAULT OFF and byte-identical off. It is a flag rather than a default
-    # because the phase-4 spec pins the flat and gradient lanes byte-for-byte
-    # — which is an argument about golden churn, not one that the escape is
-    # wanted. Flipping it is Kent's: it is a scorecard recapture.
-    bind_resnap_all_classes: bool = False
+    # DEFAULT ON since 2026-09-10 (Kent's ruling on the colour bundle): the
+    # escape is on the FLAT lane too once real logos are forced there
+    # (Golden Tee sews 24 cones under a budget of 12; the bind takes 13 off),
+    # so "gradient only" was a count over routed fixtures. At the Studio's 6
+    # it takes 34 cones and 34 stops off six corpus designs. False is the
+    # pre-flip engine byte for byte.
+    bind_resnap_all_classes: bool = True
 
     # Split satin. A satin cross longer than the threshold carries
     # intermediate penetrations, staggered station to station so the holes

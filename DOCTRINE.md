@@ -1440,7 +1440,7 @@ its hedge as it is copied forward** — is why this file is split.
   `bind_resnap_all_classes` restricts WHERE the argmin may land; this is WHY
   it goes wrong, and they are not the same fix.
 
-  **FIXED behind `cfg.resnap_mask_matches_grader`, DEFAULT OFF**: 19 of 26
+  **FIXED behind `cfg.resnap_mask_matches_grader`** (DEFAULT ON since 2026-09-10 with the colour bundle; off when this was written): 19 of 26
   fixtures byte-identical, -1,715 stitches, -5 blocks, -4 cones, +2 trims,
   `logo_gaulke_roofing` F 4 -> D 46, nothing down anywhere. **And fixing the
   mask does not finish the shape** — worth expecting. `Se6eddd27` goes
