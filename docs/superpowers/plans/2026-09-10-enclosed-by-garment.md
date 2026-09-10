@@ -90,5 +90,56 @@ ground, for Becker, `logo_whitebg`, Golden Tee and gaulke (whose black
 frame makes stage 1 call its lettering enclosed — the case where the rule
 is a fix, not a look).
 
-## 4. Results — to be measured
+## 4. The census — measured 2026-09-10 (`tools/enclosed_census.py`, 26 fixtures at 80 mm)
+
+Ten of 26 fixtures carry enclosed regions. **Six have a colour** (stage 1's
+border flood) and **four are alpha** (colour unknown — the 2026-08-15
+verdict's case, left alone by the rule):
+
+| fixture | enclosed | area | share | source | background | hole sews on… (ΔE00 > 5) | (> 10) |
+|---|---:|---:|---:|---|---|---|---|
+| `logo_gaulke_roofing` | 46 | 438.5 mm² | 16.4% | flood | **black** (0,0,0), threads Black / Charcoal | every garment but Black | the same |
+| `logo_golden_tee` | 4 | 642.8 mm² | 42.6% | flood | white, thread White | every garment but White | every garment but White and Natural |
+| `logo_whitebg` | 1 | 159.6 mm² | 11.1% | flood | white | every garment but White (Natural at 6.4) | every garment but White and Natural |
+| `screenshot_phone_ui_golke` | 67 | 85.8 mm² | 8.3% | flood | near-white (251) | as whitebg | as whitebg |
+| `logo_script_tires` | 2 | 34.8 mm² | 4.5% | flood | near-white (252) | as whitebg | as whitebg |
+| `summit_badge` | 7 | 5.2 mm² | 0.1% | flood | dark (57,53,49), Charcoal | every garment but Black | the same |
+| `becker_marine_logo` | 7 | 919 mm² (1,328 at 95.7 mm) | **40.9%** | **alpha** | — | never (colour unknown) | never |
+| `drone_render` | 11 | 52.0 mm² | 1.7% | alpha | — | never | never |
+| `enthusiast_logo` | 4 | 2.7 mm² | 0.7% | alpha | — | never | never |
+| `logo_alpha` | 1 | 160.7 mm² | 11.1% | alpha | — | never | never |
+
+Three readings:
+
+1. **gaulke is the fix the review described.** Its black frame makes stage 1
+   flood black, so its 46 black lettering regions (16% of the design) are
+   "enclosed background" and unstitched; the rule sews them in the Black and
+   Charcoal cones they already carry on every garment but Black — where a
+   black hole IS the garment, and staying a hole is right.
+2. **The threshold is a decision, and 5 is too eager.** At
+   `DELTA_E_VISIBLE` (5.0) a white hole sews in White thread on the Studio's
+   DEFAULT garment, Natural (ΔE00 6.4) — Golden Tee's 643 mm² and whitebg's
+   160 mm² of white on natural cloth. At `DELTA_E_CLEARLY_DIFFERENT` (10.0)
+   Natural keeps the hole and Sand (16.0) sews it; the black and dark holes
+   sew on every light garment either way. Both numbers exist in preflight;
+   no new one.
+3. **The review's headline case is out of the rule's reach by construction.**
+   Becker's 41% is ALL alpha: the transparent bodies have no colour to
+   compare, and the verdict's §5.2 (the flattened pixels carry the ink's
+   colour) stands. Sewing them on a dark garment means CHOOSING a fill colour
+   — the pro chose Gray — which is a per-design decision the review screen
+   already supports (the shape's stitched toggle and a recolour), not a rule
+   the pipeline can derive. Four fixtures, 1,135 mm², are in that bucket.
+
 ## 5. Decisions — Kent's
+
+1. **The threshold**: `DELTA_E_CLEARLY_DIFFERENT` (10) — recommended, so the
+   default Natural garment does not sew white into white; or
+   `DELTA_E_VISIBLE` (5), the review's number, which does.
+2. **Alpha holes**: leave them to the review toggle (recommended; the
+   verdict's reason is unchanged), or a chosen fill colour for alpha holes on
+   dark garments — a taste constant the pro's Gray suggests and nothing here
+   derives.
+3. **The default**: built OFF (`cfg.enclosed_by_garment`), the Studio
+   sending `garment_rgb` from the project either way; flip on the renders —
+   gaulke and Golden Tee on Black and on White, OFF beside ON.
