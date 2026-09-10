@@ -12220,3 +12220,25 @@ photo-lane snapshot recapture on CI. `tests/test_robust_region_colour.py`
 (10).
 
 *(2026-09-10 — `docs/superpowers/plans/2026-09-10-region-colour.md` §4)*
+
+## 2026-09-10 — region colour FLIPPED ON: `cfg.robust_region_colour` defaults True
+
+Kent's ruling on the flip sheet's `off` / `region_colour` rows at 12 and 6
+and the Bridge Bar render, the same day the flag was built OFF (#445), as
+the PR after it: the disc sews `0501` Sun where the shipped engine sewed
+`6031` Limelight, 7.0 ΔE00 from the artwork, and the price is the sheet's
+— a synthetic stub's +3,382 stitches / +29 trims and Golden Tee's twelfth
+cone at 12, drone's 211 mm² orange one spool step at the Studio's 6. False
+is the pre-flip engine byte for byte, and `conftest.PRE_FLIP` now carries
+it False beside the bundle's four so every one-flag price is still read on
+the engine it was measured on. The photo-lane snapshot golden pins stage 2
+and moves on six of its seven keys — drone (12 of 21 medoids, the label map and its warnings), summit_badge (7 of 13, the label map), the repro white icon (six medoids become three; the label map), the subject stub (its one spool), and region_blobs with and without the bg-mask variant (one of six medoids, `293 → 276`: the base spool of a 656 mm² blob the tonal split sews as bands of its own, so its PLAN is byte-identical at both budgets, which is why the flip sheet read it as unmoved) — while fur_ramp does not move: re-captured on ubuntu-latest with the pre-change
+proof (`tools/recapture_photo_lane_key.py --pre-change-tree` at main
+`e0833d7`, every key reproduced byte for byte there first; workflow run
+34518855051, commit `27a7739`, the runner green on both golden files
+afterwards), never on a dev box; the flat-lane keys, the gradient dispatch's
+and the pushcomp tuples do not move. Fourteen tests went red under the flip beyond the six golden keys and the three platform reds, every one documenting the pre-flip engine: eight on `PRE_FLIP`, which now carries the flag False beside the bundle's four (the phantom-blend Bridge Bar pair, the spool-remedy findings, the photograph declaration, the small-shape re-snap); the four re-validation pins and the re-home split on the repro's Azalea Pink sliver, whose configs now hold the flag False and say why (under the modal mean the repro quantizes to three medoids and the sliver never drifts); and drone's duplicate-cone fold, whose "fewer stitches AND less flying" was measured on the mean-point palette — on the flipped engine the fold still removes both revisits and two stops but trades 21 stitches for 56 mm less needle-up (16,324 → 16,345 stitches; 1,568 → 1,512 mm), so that file holds the engine it measured and records the new numbers. No assertion was loosened. Full suite on the flipped
+tree: **9 failed, 2,207 passed, 3 skipped, 7 xfailed in 43 min** with `-n auto` on this box, started before the runner's golden landed — the three platform reds CI deselects (`test_flat_lane_byte_identical[enthusiast]`, `test_stage2_photo_segment[enthusiast]`, `test_pushcomp[whitebg-towel]`) and the six photo-lane keys against the pre-flip golden; with the runner's golden in place that file passes here as well (8 passed), so the tree fails exactly CI's three deselects. The flip sheet's `off_rc` arm is the pre-flip engine,
+byte-identical to the #445 cache's `off` row on Bridge Bar at 12.
+
+*(2026-09-10 — `docs/superpowers/plans/2026-09-10-region-colour.md` §6)*

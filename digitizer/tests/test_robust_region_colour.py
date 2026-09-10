@@ -1,8 +1,10 @@
 """`cfg.robust_region_colour` — the colour a SLIC+RAG region hands the
-palette: the plain mean (OFF, the shipped engine) or a robust centre of its
-Lab pixels (ON). Plan `docs/superpowers/plans/2026-09-10-region-colour.md`;
-the loss it repairs is Bridge Bar's disc sewing Limelight for a Sun-yellow
-artwork (#442's test run, DOCTRINE 2026-09-10).
+palette: the plain mean (False, the pre-flip engine) or a robust centre of
+its Lab pixels (True, the shipped engine since 2026-09-10 — built OFF in
+PR #445 and flipped in the PR after on Kent's ruling). Plan
+`docs/superpowers/plans/2026-09-10-region-colour.md`; the loss it repairs
+is Bridge Bar's disc sewing Limelight for a Sun-yellow artwork (#442's test
+run, DOCTRINE 2026-09-10).
 """
 from __future__ import annotations
 
@@ -26,13 +28,16 @@ YELLOW = (251, 235, 65)      # Bridge Bar's disc, measured
 BLACK = (0, 0, 0)
 
 
-def test_default_off_and_the_radius_is_preflights_visible_threshold():
-    assert PipelineConfig().robust_region_colour is False
+def test_default_on_and_the_radius_is_preflights_visible_threshold():
+    """DEFAULT ON since 2026-09-10 (Kent's ruling over the flip sheet and
+    the Bridge Bar render); False is the pre-flip engine byte for byte, and
+    the two tests after this one pin that."""
+    assert PipelineConfig().robust_region_colour is True
     assert s2.ROBUST_REGION_RADIUS_DE00 == preflight.DELTA_E_VISIBLE == 5.0
     assert s2.ROBUST_REGION_STAT in ("median", "modal_mean")
 
 
-def test_off_is_the_shipped_expression_byte_for_byte():
+def test_off_is_the_pre_flip_expression_byte_for_byte():
     """The RGB mean converted once — NOT the mean of the Lab pixels, which
     is a different number (Lab is not linear in RGB). The first cut of this
     seam averaged in Lab and the photo-lane golden caught it."""
@@ -127,15 +132,17 @@ def bridge_pair():
     return digitize(BRIDGE, _cfg(robust_region_colour=False)), digitize(BRIDGE, _cfg(robust_region_colour=True))
 
 
-def test_off_is_the_shipped_engine_on_bridge_bar(bridge_pair):
-    (_, off_plan), _ = bridge_pair
+def test_on_is_the_shipped_engine_on_bridge_bar(bridge_pair):
+    """The default is the ON arm, byte for byte — and OFF is not it."""
+    (_, off_plan), (_, on_plan) = bridge_pair
     _, default_plan = digitize(BRIDGE, _cfg())
-    assert _digest(off_plan) == _digest(default_plan)
+    assert _digest(on_plan) == _digest(default_plan)
+    assert _digest(off_plan) != _digest(default_plan)
 
 
-def test_the_shipped_engine_sews_the_disc_limelight_and_on_sews_the_artworks_yellow(bridge_pair):
+def test_the_pre_flip_engine_sews_the_disc_limelight_and_the_shipped_one_sews_the_artworks_yellow(bridge_pair):
     """The loss #442 found, and its repair: the disc is 1.0 dE00 from Sun
-    and sews Limelight because its mean is a colour no pixel carries."""
+    and sewed Limelight because its mean is a colour no pixel carries."""
     (off_r, _), (on_r, _) = bridge_pair
     assert _disc(off_r).thread_number == "6031"
     assert _disc(on_r).thread_number == DISC_SPOOL[s2.ROBUST_REGION_STAT]

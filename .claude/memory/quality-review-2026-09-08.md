@@ -696,3 +696,113 @@ page-mask bug was fixed — re-present, do not re-open.
   recapture on ubuntu CI) or keep OFF as a measured instrument until
   item 1's lane decides where real logos go.
 - Renders are in `docs/renders/region-colour-2026-09-10/` (committed).
+- **Shipped as PR #445 (15:45Z, ready-for-review, auto-merge armed at
+  `blocked`, subscribed, check-in ~60 min out).** Full suite on the pushed
+  tree: 3 failed / 2,213 passed / 3 skipped / 7 xfailed in 46 min — the
+  three platform reds; the photo-lane golden passes. The handoff section
+  above is now history except the flip decision, which is Kent's
+  (AskUserQuestion put at the end of this turn; he asked to clear after).
+
+## Kent's ruling 2026-09-10 ~17:20Z — flip `robust_region_colour` ON in a follow-up PR
+
+- **Ruled ON**, as a separate PR AFTER #445 merges (auto-merge armed; do
+  not push to the lane until then — a push lands in #445 and resets its
+  checks). He then cleared the context; this is the handoff.
+- **The flip PR, in order:** (1) `git fetch origin main` and fast-forward /
+  rebase the lane onto #445's merge; (2) `config.py`:
+  `robust_region_colour: bool = True` + docstring "DEFAULT ON since
+  2026-09-10 (Kent's ruling on the flip sheet and the Bridge Bar render;
+  False is the pre-flip engine byte for byte)"; (3) tests:
+  `test_default_off_and_the_radius…` → `_on_`; keep the OFF byte-identity
+  test (explicit `robust_region_colour=False`) and the Bridge Bar pair;
+  (4) **goldens move**: `testdata/photo_lane_segment_golden.json` on drone,
+  summit_badge, repro_gradient_white_icon, photo_subject_stub (the four the
+  Lab-mean cut failed on are the four whose stage-2 output the modal mean
+  changes) — recapture on ubuntu CI ONLY (`recapture-goldens.yml`, the way
+  the sub-pixel PR 4 did it, with the pre-change proof), never on this box;
+  check `test_stage2_photo_segment`'s gradient golden and
+  `test_flat_lane_byte_identical` too (flat lane should be untouched);
+  (5) tests that document the OFF palette on Bridge Bar and friends may
+  move (`test_thread_match_better_spool[bridge]`, `test_phantom_blend_photo`
+  Bridge Bar pair, `test_thread_revalidate` ×3 — the ones the Lab-mean cut
+  broke): restate on `robust_region_colour=False` where they document the
+  pre-flip fact, as the colour-bundle flip did with PRE_FLIP; (6)
+  `tools/flip_sheet.py`: the `region_colour` arm becomes inert against
+  `off` — add an `off_rc` arm (`robust_region_colour: False`, the pre-flip
+  engine) beside `off4`; (7) MASTER_SCOPE item-8/region-colour sentence,
+  plan §5/§6, scope-history entry, `docs/scope/*` if any line says DEFAULT
+  OFF for it (`tools/doc_claims.py` is STRICT on MASTER_SCOPE/DOCTRINE);
+  (8) full suite (expect the three platform reds + the moved goldens until
+  CI recaptures); PR ready-for-review, auto-merge, subscribe, send_later;
+  (9) the next-build question: candidates item 1 (the real-logo lane),
+  item 11 (legibility yardstick + un-clamped grade), item 12 (fill travel
+  under cover), item 13 (photo detection from EXIF/face), item 14 (the
+  edge-finish flags).
+
+## 2026-09-10 ~18:15Z — #445 MERGED (auto-merge, 18:03Z); the flip PR in progress
+
+- Lane rebased onto e0833d7 (#445's merge), the two memory commits pushed,
+  the check-in trigger deleted.
+- The flip PR, built on the recipe above: default True + docstring;
+  `conftest.PRE_FLIP` carries `robust_region_colour: False` beside the
+  bundle's four (every file that prices one colour flag alone stays on the
+  engine its numbers were taken on — which is why the Lab-mean cut's
+  failure list is NOT this flip's: those files were on the pre-flip engine
+  already); `test_robust_region_colour` restated (default ON; the Bridge
+  Bar pair pins default == ON arm and != OFF); `tools/flip_sheet.py`
+  `off_rc` (the pre-flip engine; `region_colour` is inert against `off`
+  now); `tools/recapture_photo_lane_key.py` (new, the photo-lane twin of
+  the flat tool, with `--dry-run` for reading a footprint on a box that
+  must not capture); the temporary `recapture-goldens.yml` (push-triggered
+  by the push that brings it, commits the golden back, removed in the
+  commit after). Docs carry placeholders for the moved keys, the workflow
+  run, the restated tests and the suite line — filled from the suite and
+  the run before committing (grep the angle-bracket markers out first).
+- **19:11Z — commit `58a3255` pushed** (default True, PRE_FLIP, restated
+  pins, `off_rc`, the recapture tool, the temporary workflow). Suite on
+  the flipped default BEFORE the restatements: 25 failed / 2,191 passed —
+  3 platform reds + 6 golden keys + 16 pre-flip pins (8 on PRE_FLIP, fixed
+  by the conftest change alone; `test_thread_revalidate` ×4 and
+  `test_rehome_resnapped` hold the flag False in their CFGs; drone's
+  duplicate-cone fold holds it too and records the flipped numbers: +21
+  stitches for −56 mm needle-up and −2 stops). All restated files re-run
+  green. The recapture workflow is run **34518855051** (started 19:10:54Z);
+  it commits the golden back to the lane — `git pull` after it, verify the
+  photo-lane test locally, then commit 2: docs (MASTER_SCOPE / plan §6 /
+  scope-history already carry the run id; the suite line is the one
+  placeholder left), the test docstring note (applied), workflow removal,
+  memory; then the PR. Full suite on the final tree running locally.
+- **19:15Z — the golden landed: run 34518855051 succeeded in 4.5 min, every
+  key passed the pre-change machine check, six re-written exactly as the
+  local dry runs predicted, commit `27a7739` on the lane; the runner then
+  ran both golden files green (13 passed, enthusiast deselected). Lane
+  fast-forwarded; the workflow file removed for commit 2.
+
+## 2026-09-10 ~20:05Z — the flip SHIPPED as PR #448 (ready-for-review; auto-merge armed after this push)
+
+- `robust_region_colour` DEFAULT ON: commits `58a3255` (the flip, PRE_FLIP,
+  the restated pins, `off_rc`, the recapture tool, the temporary workflow),
+  `27a7739` (the runner's golden: six of seven keys, every key
+  machine-checked on `e0833d7`, run 34518855051), `a28ef6a` (the docstring
+  note, the workflow removed, docs). Suite on the final tree: 9 failed /
+  2,207 passed — the three platform reds and the six keys against the OLD
+  golden (that run started before the runner's commit landed); with the
+  runner's golden the photo-lane file passes here (8 passed).
+- Facts the next session should not re-derive: region_blobs moves at
+  STAGE 2 (one medoid, 293 → 276, the base spool of a 656 mm² blob the
+  tonal split sews as bands of its own) while its plan is byte-identical —
+  a plan-level sheet cannot see a stage-2 move, the golden can; drone's
+  duplicate-cone fold on the flipped engine is +21 stitches / −56 mm
+  needle-up / −2 stops (the test holds the pre-flip engine and records
+  this); `off_rc` == the #445 cache's `off` row byte for byte on Bridge Bar
+  at 12; `tools/recapture_photo_lane_key.py --dry-run` reads a change's
+  golden footprint on a box that must not capture.
+- CI on #448: four jobs; `digitizer` expected green (its three deselects
+  plus the runner's golden). Check-in scheduled ~60 min out; delete it
+  once the PR merges, then `git fetch origin main` and fast-forward the
+  lane before anything else is pushed.
+- Next: Kent's next-build pick (AskUserQuestion at the end of this turn):
+  item 11 (the legibility yardstick + un-clamped grade) recommended, item 1
+  (the real-logo lane), item 12 (fill travel under cover), item 13 (photo
+  detection from EXIF/face); items 10 (JS wide columns) and 14 (the
+  edge-finish flags) named as the other live candidates.

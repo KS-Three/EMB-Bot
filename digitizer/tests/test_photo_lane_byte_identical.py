@@ -20,6 +20,27 @@ its own two deliberate re-captures.
 
 If this goes red during the extraction, the extraction is wrong — not this
 test.
+
+**First re-capture, TAKEN 2026-09-10 — `robust_region_colour` ON by default
+(plan 2026-09-10-region-colour.md §6, Kent's ruling on #445's flip sheet
+and the Bridge Bar render):** the point each SLIC+RAG region hands the
+palette is now the modal mean of its Lab pixels instead of the plain mean,
+and stage 2's own output moves on six of the seven keys. `drone_render`:
+the label map, 12 of 21 medoids and its warnings; `summit_badge`: the label
+map and 7 of 13; `repro_gradient_white_icon`: six medoids become three and
+the label map with them; `photo_subject_stub`: its one spool (8 -> 64);
+`region_blobs` and its `#bgmask` variant: one of six medoids (293 -> 276),
+the base spool of a 656 mm2 blob the tonal split sews as bands of its own,
+so that fixture's PLAN is byte-identical at both budgets and the flip sheet
+read it as unmoved — this file sees what the sheet cannot. `fur_ramp` does
+not move. Captured on an ubuntu-latest runner — the platform whose CI judges
+this golden, never a dev box — by `tools/recapture_photo_lane_key.py` (new,
+the twin of `tools/recapture_flat_lane_key.py`) with `--pre-change-tree` at
+main `e0833d7` (#445's merge), which reproduced all seven keys byte-for-byte
+there first, so what moved is the engine and not the machine. Evidence:
+workflow run 34518855051, `recapture-goldens (temporary)`, removed with the
+commit after the one that landed the golden; its `recapture-evidence`
+artifact holds the per-key log.
 """
 from __future__ import annotations
 

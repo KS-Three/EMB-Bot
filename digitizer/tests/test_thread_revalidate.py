@@ -46,6 +46,11 @@ CFG = dict(
     # before the merge and the sliver no longer exists on the default lane;
     # the pre-ruling lane is kept reachable for exactly this kind of pin.
     design_ramp=False,
+    # And since the 2026-09-10 flip of `robust_region_colour` the sliver's
+    # stage-2 colour is its modal pixels', not the pinkish-white MEAN blend
+    # Azalea Pink was matched to, so the drift never forms either; the
+    # mean-point engine (False, byte for byte) is the state this pin traces.
+    robust_region_colour=False,
 )
 
 
