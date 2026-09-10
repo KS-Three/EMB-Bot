@@ -1286,33 +1286,43 @@ ROBUST_REGION_STAT = "modal_mean"
 ROBUST_REGION_RADIUS_DE00 = 5.0     # preflight.DELTA_E_VISIBLE (config cannot import it)
 
 
-def _region_pixels_lab(p: Prep, r: RegionMask) -> np.ndarray:
-    """(N, 3) CIELAB of every pixel under a region's footprint — the ONE
-    place the palette's per-region colour is read from the raster."""
-    return rgb_to_lab(p.rgb[r.frame_slice()][r.crop].reshape(-1, 3))
+def _region_pixels_rgb(p: Prep, r: RegionMask) -> np.ndarray:
+    """(N, 3) RGB of every pixel under a region's footprint — the ONE place
+    the palette's per-region colour is read from the raster. RGB, not Lab:
+    the shipped engine averages in RGB and converts the ONE mean, and a mean
+    of Lab pixels is a different number (Lab is not linear in RGB), so the
+    OFF path must see the raw pixels to stay byte-identical — a lesson the
+    first cut of this seam paid for (`test_photo_lane_byte_identical`
+    caught it on the subject stub; DOCTRINE 2026-09-10)."""
+    return p.rgb[r.frame_slice()][r.crop].reshape(-1, 3)
 
 
-def region_colour_candidates(pixels_lab: np.ndarray) -> dict[str, np.ndarray]:
-    """The mean and both robust centres of one region's Lab pixels, keyed
-    by name — `_region_lab` picks one; `tools/region_colour.py` prints all
-    three so the pick is a measurement."""
-    px = np.asarray(pixels_lab, np.float64).reshape(-1, 3)
-    mean = px.mean(axis=0)
-    if len(px) == 0:
-        return {"mean": mean, "median": mean, "modal_mean": mean}
-    median = np.median(px, axis=0)
-    near = deltaE_ciede2000(px, np.broadcast_to(median, px.shape)) <= ROBUST_REGION_RADIUS_DE00
-    modal = px[near].mean(axis=0) if near.any() else median
+def region_colour_candidates(pixels_rgb: np.ndarray) -> dict[str, np.ndarray]:
+    """The mean and both robust centres of one region's pixels, as Lab
+    points keyed by name — `_region_lab` picks one; `tools/region_colour.py`
+    prints all three so the pick is a measurement. `mean` is exactly the
+    shipped engine's point (the RGB mean, converted); `median` is the
+    per-channel median of the pixels in Lab; `modal_mean` the mean of the
+    Lab pixels within `ROBUST_REGION_RADIUS_DE00` of that median."""
+    rgb = np.asarray(pixels_rgb, np.float64).reshape(-1, 3)
+    if len(rgb) == 0:
+        zero = np.zeros(3)
+        return {"mean": zero, "median": zero, "modal_mean": zero}
+    mean = rgb_to_lab(rgb.mean(axis=0, keepdims=True))[0]
+    lab = rgb_to_lab(rgb)
+    median = np.median(lab, axis=0)
+    near = deltaE_ciede2000(lab, np.broadcast_to(median, lab.shape)) <= ROBUST_REGION_RADIUS_DE00
+    modal = lab[near].mean(axis=0) if near.any() else median
     return {"mean": mean, "median": median, "modal_mean": modal}
 
 
-def _region_lab(pixels_lab: np.ndarray, cfg: PipelineConfig) -> np.ndarray:
+def _region_lab(pixels_rgb: np.ndarray, cfg: PipelineConfig) -> np.ndarray:
     """The colour a region hands `select_palette`. OFF (the shipped
-    engine): the plain mean, byte for byte what the list comprehension this
-    replaced computed. ON: `ROBUST_REGION_STAT` of `region_colour_candidates`."""
-    px = np.asarray(pixels_lab, np.float64).reshape(-1, 3)
+    engine): `rgb_to_lab(pixels.mean())`, the expression this seam replaced,
+    byte for byte. ON: `ROBUST_REGION_STAT` of `region_colour_candidates`."""
+    px = np.asarray(pixels_rgb)
     if not cfg.robust_region_colour:
-        return px.mean(axis=0)
+        return rgb_to_lab(px.reshape(-1, 3).mean(axis=0, keepdims=True))[0]
     return region_colour_candidates(px)[ROBUST_REGION_STAT]
 
 
@@ -1998,7 +2008,7 @@ def kept_masks_to_quant(
     # subject/background regions from a real rembg mask (everything else —
     # and every run with neither — stays None = plain area).
     chart = chart_for(cfg)
-    region_labs = [_region_lab(_region_pixels_lab(p, r), cfg) for r in kept]
+    region_labs = [_region_lab(_region_pixels_rgb(p, r), cfg) for r in kept]
     classes = _region_classes(kept, face_regions, bg_mask)
     weights = [
         region_weight(r.area, c) for r, c in zip(kept, classes)

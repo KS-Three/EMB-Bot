@@ -16,11 +16,10 @@ from digitizer_core.threads import rgb_to_lab
 
 
 def _pixels(pure_rgb, n_pure: int, contaminant_rgb, n_cont: int) -> np.ndarray:
-    """A region's Lab pixels: `n_pure` of one colour and `n_cont` of another —
+    """A region's RGB pixels: `n_pure` of one colour and `n_cont` of another —
     the artwork and the anti-aliased inclusion edges inside its mask."""
-    rgb = np.vstack([np.tile(np.asarray(pure_rgb, float), (n_pure, 1)),
-                     np.tile(np.asarray(contaminant_rgb, float), (n_cont, 1))])
-    return rgb_to_lab(rgb)
+    return np.vstack([np.tile(np.asarray(pure_rgb, float), (n_pure, 1)),
+                      np.tile(np.asarray(contaminant_rgb, float), (n_cont, 1))])
 
 
 YELLOW = (251, 235, 65)      # Bridge Bar's disc, measured
@@ -33,10 +32,17 @@ def test_default_off_and_the_radius_is_preflights_visible_threshold():
     assert s2.ROBUST_REGION_STAT in ("median", "modal_mean")
 
 
-def test_off_is_the_plain_mean_byte_for_byte():
+def test_off_is_the_shipped_expression_byte_for_byte():
+    """The RGB mean converted once — NOT the mean of the Lab pixels, which
+    is a different number (Lab is not linear in RGB). The first cut of this
+    seam averaged in Lab and the photo-lane golden caught it."""
     px = _pixels(YELLOW, 900, BLACK, 100)
     got = s2._region_lab(px, PipelineConfig(robust_region_colour=False))
-    assert np.array_equal(got, px.mean(axis=0))
+    old = rgb_to_lab(px.reshape(-1, 3).mean(axis=0, keepdims=True))[0]
+    assert np.array_equal(got, old)
+    lab_mean = rgb_to_lab(px).mean(axis=0)
+    assert not np.allclose(got, lab_mean, atol=1e-6), "the two means must differ for this test to mean anything"
+    assert np.array_equal(s2.region_colour_candidates(px)["mean"], old)
 
 
 def test_a_minority_of_edge_pixels_moves_the_mean_and_not_the_robust_centres():
@@ -61,9 +67,9 @@ def test_a_gradient_region_keeps_a_smooth_centre_under_the_modal_mean():
     the median and the mean, never outside the ramp."""
     ramp = np.linspace(120.0, 200.0, 401)
     rgb = np.stack([ramp, ramp * 0.9, np.full_like(ramp, 60.0)], axis=1)
-    px = rgb_to_lab(rgb)
-    c = s2.region_colour_candidates(px)
-    lo, hi = px[:, 0].min(), px[:, 0].max()
+    c = s2.region_colour_candidates(rgb)
+    lab = rgb_to_lab(rgb)
+    lo, hi = lab[:, 0].min(), lab[:, 0].max()
     for v in c.values():
         assert lo <= v[0] <= hi
 

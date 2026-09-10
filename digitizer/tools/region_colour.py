@@ -15,7 +15,9 @@ that lane: its area weight, its mean, its per-channel median, the "modal
 mean" (the mean over the pixels within DELTA_E_VISIBLE of the median), the
 ΔE00 from the mean to each, and the chart's nearest spool under each — so
 the choice of statistic behind `cfg.robust_region_colour` is a measurement
-and not a preference. It changes nothing.
+and not a preference. `mean` is the engine's own OFF point (the RGB mean,
+converted once), so "moves the spool" is against what the shipped engine
+actually hands the palette. It changes nothing.
 
     .venv/bin/python -m tools.region_colour                 # all corpus fixtures
     .venv/bin/python -m tools.region_colour --fixture photo/logo_bridge_bar.jpg
@@ -39,21 +41,21 @@ BIMODAL_DE00 = 10.0     # preflight.DELTA_E_CLEARLY_DIFFERENT: mean-to-median th
 
 
 def _spy_regions(art: Path, cfg: PipelineConfig):
-    """Run stages 0-4 with `_region_pixels_lab` wrapped, collecting every
-    region's Lab pixel array in the order the palette saw them."""
+    """Run stages 0-4 with `_region_pixels_rgb` wrapped, collecting every
+    region's RGB pixel array in the order the palette saw them."""
     captured: list[np.ndarray] = []
-    orig = s2._region_pixels_lab
+    orig = s2._region_pixels_rgb
 
     def spy(p, r):
         px = orig(p, r)
         captured.append(px)
         return px
 
-    s2._region_pixels_lab = spy
+    s2._region_pixels_rgb = spy
     try:
         result = run_stages(art, cfg)
     finally:
-        s2._region_pixels_lab = orig
+        s2._region_pixels_rgb = orig
     return result, captured
 
 

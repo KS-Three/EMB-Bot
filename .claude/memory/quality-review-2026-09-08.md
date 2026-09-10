@@ -642,3 +642,14 @@ page-mask bug was fixed — re-present, do not re-open.
   two self-kills again — `pkill -f 'x[.]py'` in a call whose text ALSO
   names x.py elsewhere (sed/nohup) kills the shell (exit 144). Kill by PID,
   in its own call.
+- **Full suite caught the seam (14:40Z): 12 failed** = 3 platform reds + 9
+  from the OFF path — I had averaged Lab pixels where the engine averages
+  RGB and converts once (`rgb_to_lab(mean)` ≠ `mean(rgb_to_lab)`). The
+  photo-lane byte-identity golden (`test_photo_lane_byte_identical.py`,
+  which I had NOT run — only the flat-lane and dispatch goldens) failed on
+  drone, summit, the white-icon repro and the subject stub; three
+  `test_thread_revalidate` facts, `test_bridge_bar_keeps_its_artwork` and
+  `better_spool[bridge]` moved. Fixed: the seam passes RGB pixels and OFF is
+  the old expression exactly; candidates' `mean` is that point. DOCTRINE
+  entry. Every `off` row of both flip-sheet caches, the census and the
+  renders' OFF panels were the wrong engine → recomputed before the PR.
