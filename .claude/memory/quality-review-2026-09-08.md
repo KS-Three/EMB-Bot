@@ -589,3 +589,8 @@ page-mask bug was fixed — re-present, do not re-open.
   `garment_rgb` appears in no other test and no golden names a garment, so
   nothing else moves. The e2e specs drive whitebg (6.4 from Natural, declines)
   and the alpha enthusiast logo (unknown colour, declines).
+- **Shipped as PR #444 (12:56Z, ready-for-review, auto-merge armed at
+  `blocked`, check-in scheduled ~60 min out).** The lane is restarted on
+  main (1ed05ae, #443's merge) with the flip commit on top; this memory
+  note is committed locally and pushes only after #444 merges (a push into
+  an armed PR resets its checks).
