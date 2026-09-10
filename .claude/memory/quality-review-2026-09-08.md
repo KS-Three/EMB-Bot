@@ -544,3 +544,28 @@ page-mask bug was fixed — re-present, do not re-open.
   symlinked node_modules outside the root: 13 files, "Cannot find module
   /@fs/…"); lib specs run fine; the full vitest runs on the main tree
   after the cherry-pick.
+- **Shipped as PR #442 (05:05Z, ready-for-review, auto-merge armed at
+  `blocked`, check-in at 06:06Z).** Full suite on the flipped tree: 3
+  failed / 2,183 passed / 3 skipped / 7 xfailed in 29 min, the three being
+  CI's platform reds. No golden moved. Nothing pushes to the lane until it
+  merges; item 9 waits in the worktree.
+
+## Item 9 — `cfg.enclosed_by_garment` BUILT, DEFAULT OFF (2026-09-10, Kent's pick after #441)
+
+- The rule: a border-flood hole (colour KNOWN, `Prep.bg_rgb`) sews by
+  default when ΔE00(hole, garment) > 10 (`DELTA_E_CLEARLY_DIFFERENT`,
+  pinned); one verdict per design (`stage4_vectorize.garment_sews_enclosed`),
+  read by the stitched seam AND the colour cap's ranking (a hole that will
+  sew is sewn area — without that the cap merged whitebg's White into a
+  kept cone because "holes buy no slot"). Alpha holes untouched. Override
+  wins; `meta["enclosed_by_garment"]` survives the override so the panel
+  can say why. Studio sends `project.fabricRgb` as `garment_rgb`.
+- Measured at 12 / 80 mm: whitebg and Golden Tee sew their white holes
+  white on Navy/Black (+571 st / 1 cone; +3,027 st / +7 tr / 1 cone) and
+  are byte-identical on White/Natural (6.4 from Natural, under 10);
+  gaulke's 46 black bodies sew on any light garment: +3,979 st and
+  **+43 trims** (23 → 66), and they are the FRAGMENTS the vectorizer kept
+  when they were holes — STEEL ROOFING & SUPPLY reads, GAULKE INDUSTRIES
+  does not; `keep_thin_strokes` is the other half. Black: byte-identical.
+- Threshold: at 5 Natural would sew white holes white on off-white (the
+  08-15 verdict's "wrong" case); at 10 it never does. §5.1 is Kent's.
