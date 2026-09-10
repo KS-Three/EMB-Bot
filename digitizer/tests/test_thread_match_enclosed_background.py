@@ -84,6 +84,28 @@ def _report(fixture: str):
     return run_preflight(result, plan, cfg, image=art)
 
 
+@lru_cache(maxsize=None)
+def _report_unfloored(fixture: str):
+    """The same report with the thread-match patch floor held at 0.
+
+    `_THREAD_MATCH_MIN_PATCH_MM2` (2026-09-10, quality review item 11) stops
+    a sub-floor patch from judging a thread, and gaulke's surviving `3971`
+    rides a 0.21 mm2 patch — under the shipped floor it emits nothing, which
+    is that change's point (`tests/test_thread_match_area_in_message.py`).
+    The two gaulke tests below are about the ENCLOSED rule and the jump
+    trap, both measured on the unfloored check, so they read it unfloored
+    and say so; every other test here reads the shipped report.
+    """
+    from digitizer_core import preflight as pf
+    art, cfg, result, plan = _digest(fixture)
+    old = pf._THREAD_MATCH_MIN_PATCH_MM2
+    pf._THREAD_MATCH_MIN_PATCH_MM2 = 0.0
+    try:
+        return run_preflight(result, plan, cfg, image=art)
+    finally:
+        pf._THREAD_MATCH_MIN_PATCH_MM2 = old
+
+
 def _sewn_stitches(result, plan) -> collections.Counter:
     """Emitted stitches per REGION.
 
@@ -143,7 +165,9 @@ def test_gaulke_drops_the_one_finding_this_change_removes():
     stitches) and MUST remain, because the point is a correct denominator, not
     a smaller number.
     """
-    report = _report(GAULKE)
+    # Unfloored on purpose: under the shipped patch floor 3971's 0.21 mm2
+    # patch no longer judges either, and this test is about 4174.
+    report = _report_unfloored(GAULKE)
     threads = sorted(f["extra"]["thread_number"] for f in report["findings"]
                      if f.get("code") == "THREAD_MATCH_POOR"
                      and f.get("severity") == "block")
@@ -190,7 +214,9 @@ def test_jump_runs_are_sewing_not_travel():
         rid = _owning_region_id(run.shape_id, ids)
         if rid is not None:
             without[rid] += len(run.points)
-    report = _report(GAULKE)
+    # Unfloored on purpose (see `_report_unfloored`): the jump-reached
+    # blocking shape this pins is gaulke's sub-floor shard.
+    report = _report_unfloored(GAULKE)
     worst = [_base(f["extra"]["worst_shape_id"]) for f in report["findings"]
              if f.get("code") == "THREAD_MATCH_POOR"
              and f.get("severity") == "block"]

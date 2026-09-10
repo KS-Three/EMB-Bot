@@ -427,7 +427,12 @@ hand-rolling it in JS.
   `THREAD_MATCH_POOR`, whether a spool the design ALREADY LOADS is
   meaningfully closer — 5 of the F-wall's 24 blocks name one) and
   `digitizer/tools/floor_depth.py` (how far BELOW zero the floored designs
-  sit, since the score clamps at 0 and hides a 234-point spread behind it).
+  sit, since the score clamps at 0 and hides a 234-point spread behind it),
+  and, 2026-09-10, `digitizer/tools/thread_match_floor.py` (every
+  `THREAD_MATCH_POOR` finding over the scorecard matrix with the graded
+  patch that judged it, then the same designs under a 0 / 2 / 5 / 10 mm²
+  patch floor — `run` caches per pair, `report` prints the movers, the floor
+  depth and the totals; the sweep behind `_THREAD_MATCH_MIN_PATCH_MM2`).
 
   Three more added 2026-09-08 for the quality review and the plans it opened
   (`docs/quality-review-2026-09-08.md`): `digitizer/tools/sewn_tiers.py` (the
@@ -446,7 +451,10 @@ hand-rolling it in JS.
   lettering loss, because tesseract's word model reads Fremont's sewn
   "T H C" as THE at confidence 95 — a per-cluster 1.00 certifies the word,
   not the glyphs, and the missing arm is `thin_strokes.py`'s to see; needs
-  the tesseract binary, which CI has). The first two run anywhere; the third
+  the tesseract binary, which CI has — and since 2026-09-10 the measurement
+  itself lives in `digitizer_core/legibility.py`, the tool being a CLI over
+  it, because preflight's `LETTERING_ILLEGIBLE` check (`cfg.legibility_check`)
+  reads the same code). The first two run anywhere; the third
   skips without tesseract the way the OCR tests do. A fourth, the same day,
   for the sub-pixel edges plan: `digitizer/tools/edge_truth_ladder.py` (stage
   4's polygons against the synthetic fixtures' VECTOR truth at 200–3200 px —

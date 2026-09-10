@@ -4245,3 +4245,25 @@ trusting a sweep whose option you cannot see in the output.
 *(found 2026-09-10 while pricing the region colour; fixed the same day —
 the budget is a job-tuple field. The published region-colour sheets are NOT
 affected: their OFF rows at 6 match a true-6 run fixture for fixture.)*
+
+## An OCR similarity is a yardstick at its ends and noise in the middle — set a threshold on the crops, never on the table (2026-09-10)
+
+`tools/legibility.py` reads what the thread SAYS per text cluster, and its
+design-level number ranks the corpus the way Kent's eye does — ENTHUSIAST
+0.96, Fremont 0.78, the screenshot 0.48, drone 0.22, Bridge Bar 0.13. A
+block/warn split read off that table (block under 0.5, warn under 0.75, the
+first provisional pair for preflight's `LETTERING_ILLEGIBLE`) would have
+BLOCKED drone, whose DRONE a person reads with one letter lost, and WARNED
+Fremont, whose HOTEL FREMONT sews with every letter whole — the ART side's
+reading carries the banner under it. The crops
+(`docs/renders/legibility-2026-09-10/`, the binarised input tesseract read)
+put 0.22 (readable) under 0.50 (SPOTIFY, blobs at 2 mm): the number is
+trustworthy at its ends and does not rank the middle. **The rule: a
+threshold on a similarity is set on the pictures the number was computed
+from, never on the number alone, and a finding built on one warns until a
+picture supports a block.** The same rule that settled the DST orientation —
+when a claim is about what a picture shows, render it. And a one-letter
+tesseract reading is not a truth however confident it is (Bridge Bar's 49 mm
+wordmark read "X" at 77 and judged a cluster at 0.00 until
+`legibility.ART_MIN_LETTERS`). *(2026-09-10; plan
+`docs/superpowers/plans/2026-09-10-legibility-yardstick.md` §4.2)*

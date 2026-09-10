@@ -1946,6 +1946,19 @@ class PipelineConfig:
     # their citations, deliberately not here: they are measurements, not
     # preferences.
     preflight: bool = True
+    # Legibility of the lettering on the RENDER, read back by OCR against the
+    # artwork (quality review 2026-09-08 item 11; `preflight.
+    # _legibility_findings`, `digitizer_core/legibility.py`): the one check
+    # that can see sewn-but-illegible — `dropped_elements` reads 0.2% on a
+    # design whose tagline Kent calls "completely lost". Needs the tesseract
+    # binary (the Studio's Convert-to-text pass already does; CI installs
+    # it) and the artwork, and costs one thread render plus a few tesseract
+    # reads per text cluster on every generate — priced in the plan
+    # (docs/superpowers/plans/2026-09-10-legibility-yardstick.md §4.2).
+    # DEFAULT OFF until Kent rules on LEGIBILITY_BLOCK / LEGIBILITY_WARN
+    # against his own eye; the report says `legibility_checked` either way,
+    # so off is never mistaken for clean.
+    legibility_check: bool = False
 
     # Stage 7 — chaining. Whether a needle-up move that would be trimmed may
     # instead be sewn as a needle-down link, when its path is buried under a

@@ -370,6 +370,12 @@ def measure(fixture: str, arm: str, max_colors: int | None = None) -> dict:
         "thread_m": round(st.thread_m_total, 2),
         "grade": report["grade"],
         "score": report["score"],
+        # The UNCLAMPED score (2026-09-10, quality review item 11): `score`
+        # saturates at 0 and twelve of the corpus's combos sit there, so a
+        # real improvement to a floored design moved no number on this
+        # sheet. `_net` reads its verdicts off this one; rows cached before
+        # the key fall back to `score`.
+        "raw_score": report["metrics"].get("raw_score", report["score"]),
         "findings": sorted(f"{f['code']}:{f['severity']}" for f in report["findings"]),
         "digest": _stitch_digest(plan),
         "head": _head(),
@@ -503,10 +509,13 @@ def report(out: Path) -> int:
             d_bl += a["blocks"] - b["blocks"]
             d_cn += a["cones"] - b["cones"]
             d_ch += a.get("changes", 0) - b.get("changes", 0)
-            if a["score"] > b["score"]:
-                up.append(f"{f} {b['grade']} {b['score']}->{a['grade']} {a['score']}")
-            elif a["score"] < b["score"]:
-                down.append(f"{f} {b['grade']} {b['score']}->{a['grade']} {a['score']}")
+            # Verdicts read off the UNCLAMPED score: on the floor the letter
+            # and the printed 0 cannot move, the raw number can (item 11).
+            ra, rb = a.get("raw_score", a["score"]), b.get("raw_score", b["score"])
+            if ra > rb:
+                up.append(f"{f} {b['grade']} {b['score']} (raw {rb})->{a['grade']} {a['score']} (raw {ra})")
+            elif ra < rb:
+                down.append(f"{f} {b['grade']} {b['score']} (raw {rb})->{a['grade']} {a['score']} (raw {ra})")
         print(heading)
         print(f"  moved {len(moved)} / identical {ident}"
               + (f" / errors {len(errs)}" if errs else ""))

@@ -217,6 +217,7 @@ def capture() -> dict:
                 print(f"{key}: ERROR {row['error']}")
             else:
                 print(f"{key}: grade={row['grade']} score={row['score']} "
+                      f"raw={row['metrics'].get('raw_score')} "
                       f"findings={len(row['findings'])}")
     # Stamp the capture commit/date so staleness is measured, not
     # remembered -- neither key collides with a `_run_key` string, and
@@ -300,9 +301,21 @@ def diff() -> int:
                 old = {"score": None, "grade": None, "findings": [], "metrics": {}}
 
             lines = []
+            # The clamped score and, beside it, the UNCLAMPED one (item 11,
+            # 2026-09-10): a floored design can move -272 -> -180 with the
+            # printed 0 unchanged, and that is the line row 1 of
+            # yardstick-disagreements asked for. `_metric_deltas` below also
+            # reports `raw_score` drift past the noise fraction once the
+            # baseline carries the key; this line says it in words.
+            raw_old = old.get("metrics", {}).get("raw_score")
+            raw_new = new.get("metrics", {}).get("raw_score")
             if old["score"] != new["score"]:
                 arrow = "worse" if new["score"] < old["score"] else "better"
-                lines.append(f"  score: {old['score']} -> {new['score']} ({arrow})")
+                lines.append(f"  score: {old['score']} -> {new['score']} ({arrow}; "
+                             f"raw {raw_old} -> {raw_new})")
+            elif raw_old is not None and raw_new is not None and raw_old != raw_new:
+                arrow = "worse" if raw_new < raw_old else "better"
+                lines.append(f"  score: {old['score']} unchanged, raw {raw_old} -> {raw_new} ({arrow})")
             if old["grade"] != new["grade"]:
                 lines.append(f"  grade: {old['grade']} -> {new['grade']}")
 
