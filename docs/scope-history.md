@@ -12171,3 +12171,17 @@ change — a second reason to re-read item 7's `cfg.design_angle` flip.
 (12), seven service tests, the Studio spec.
 
 *(2026-09-10 — `docs/superpowers/plans/2026-09-10-enclosed-by-garment.md` §6)*
+
+## 2026-09-10 — item 9 FLIPPED ON: `cfg.enclosed_by_garment` defaults True
+
+Kent's three rulings on the renders and PR #443, the same day the rule was
+built OFF: the threshold stays 10 (the Studio's default Natural never sews a
+white hole white), alpha holes stay with the review toggle (the 08-15
+verdict's §5.2 stands), and the default is ON with the catches accepted —
+gaulke's +43 trims and fragmentary letters, the Golden Tee slot at the
+Studio's 6, the 45° turn of gaulke's ground. False is the pre-flip engine
+byte for byte; with no `garment_rgb` the rule declines, so no golden moves.
+For a customer who never touches the swatch: a black-background logo's
+letter bodies now sew on Natural, a white one's do not.
+
+*(2026-09-10 — `docs/superpowers/plans/2026-09-10-enclosed-by-garment.md` §7)*

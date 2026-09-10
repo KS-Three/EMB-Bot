@@ -7,7 +7,10 @@ plan and census `docs/superpowers/plans/2026-09-10-enclosed-by-garment.md`.
 The 2026-08-15 verdict (`docs/enclosed-background-verdict-2026-08-15.md`)
 left these unstitched because sewing white into a white polo is wrong; it
 was made without knowing the garment. This flag is that missing input:
-DEFAULT OFF, byte-identical off, one verdict per design
+DEFAULT ON since 2026-09-10 (Kent's ruling over the renders, the same day it
+was built OFF; False is the pre-flip engine byte for byte, and with no
+garment colour the rule declines, so the goldens never see it), one verdict
+per design
 (`stage4_vectorize.garment_sews_enclosed`), a review override still wins,
 and an alpha hole — whose colour nobody knows — is left exactly as before.
 """
@@ -82,9 +85,9 @@ def gaulke_natural():
 
 # --- defaults and the byte-identity off ---------------------------------------
 
-def test_defaults_off_and_the_threshold_is_preflights_clearly_different():
+def test_defaults_on_and_the_threshold_is_preflights_clearly_different():
     cfg = PipelineConfig()
-    assert cfg.enclosed_by_garment is False
+    assert cfg.enclosed_by_garment is True      # Kent's flip, 2026-09-10
     assert cfg.garment_rgb is None
     # config.py cannot import preflight (preflight imports config), so the
     # equality is pinned here: the rule's "clearly different" IS the
@@ -93,11 +96,21 @@ def test_defaults_off_and_the_threshold_is_preflights_clearly_different():
 
 
 def test_off_is_byte_identical_with_a_garment_colour_given(whitebg_off):
-    """The Studio sends `garment_rgb` on every project from now on; with the
-    rule OFF that must change nothing — the one cache-key change re-digitizes
-    to the same bytes."""
-    _, plan = digitize(WHITEBG, _cfg(garment_rgb=NAVY))
+    """False is the pre-flip engine: a garment given and the rule OFF
+    re-digitizes to the same bytes as no garment at all."""
+    _, plan = digitize(WHITEBG, _cfg(enclosed_by_garment=False, garment_rgb=NAVY))
     assert _digest(plan) == _digest(whitebg_off[1])
+
+
+def test_the_default_engine_on_the_studios_default_garment(whitebg_off, gaulke_natural):
+    """What the flip changes for a customer who never touches the swatch:
+    Natural (235, 232, 223) is 6.4 from a white hole, under the threshold,
+    so whitebg is the pre-flip engine byte for byte — and 88.6 from a black
+    one, so gaulke's 46 letter bodies now sew by default."""
+    _, plan = digitize(WHITEBG, _cfg(garment_rgb=NATURAL))
+    assert _digest(plan) == _digest(whitebg_off[1])
+    _, plan_g = digitize(GAULKE, _cfg(garment_rgb=NATURAL))
+    assert _digest(plan_g) == _digest(gaulke_natural[1])
 
 
 def test_on_with_no_garment_colour_is_the_default_engine(whitebg_off):
@@ -122,8 +135,8 @@ def test_prep_carries_the_flood_colour_and_declines_where_it_cannot_know_it():
 
 def test_the_verdict_reads_the_threshold_on_de00():
     p = prep(WHITEBG, PipelineConfig(target_width_mm=80.0))
-    assert garment_sews_enclosed(p, _cfg()) == (False, None)                       # off
-    assert garment_sews_enclosed(p, _cfg(enclosed_by_garment=True)) == (False, None)  # no garment
+    assert garment_sews_enclosed(p, _cfg(enclosed_by_garment=False, garment_rgb=NAVY)) == (False, None)  # off
+    assert garment_sews_enclosed(p, _cfg()) == (False, None)                       # ON, no garment
     sews, de = garment_sews_enclosed(p, _cfg(enclosed_by_garment=True, garment_rgb=WHITE))
     assert (sews, de) == (False, 0.0)
     sews, de = garment_sews_enclosed(p, _cfg(enclosed_by_garment=True, garment_rgb=NATURAL))

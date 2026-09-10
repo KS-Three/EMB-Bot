@@ -569,3 +569,23 @@ page-mask bug was fixed — re-present, do not re-open.
   does not; `keep_thin_strokes` is the other half. Black: byte-identical.
 - Threshold: at 5 Natural would sew white holes white on off-white (the
   08-15 verdict's "wrong" case); at 10 it never does. §5.1 is Kent's.
+- **Shipped as PR #443 (05:58Z, ready-for-review, auto-merge armed).** Pushed
+  after the changed-package tests, the Studio suite (1,094) and the doc
+  checkers; the full digitizer suite was still running on the same tree
+  (the first run, in the worktree, died silently at 32% with no traceback,
+  no OOM and 15 GB free — cause unknown; restarted on the main tree). PR
+  body carries Kent's three decisions; the AskUserQuestion follows.
+  Full suite on the landed tree: 3 failed / 2,202 passed / 3 skipped / 7
+  xfailed in 24 min — the three platform reds; PR body updated with it.
+
+## Kent's rulings 2026-09-10 ~06:40Z — item 9 flipped ON; threshold 10; alpha holes stay toggled
+
+- Answered the three-way AskUserQuestion with every recommended option:
+  threshold 10, alpha holes to the review toggle, **flip ON now**. He said
+  "in this PR" but #443 had auto-merged at 06:34Z while the question was
+  open, so the flip is its own PR on the lane restarted from main (the
+  merged-PR rule: never stack on merged history).
+- The flip is one line + the pinned test + MASTER_SCOPE/plan §7/scope-history;
+  `garment_rgb` appears in no other test and no golden names a garment, so
+  nothing else moves. The e2e specs drive whitebg (6.4 from Natural, declines)
+  and the alpha enthusiast logo (unknown colour, declines).

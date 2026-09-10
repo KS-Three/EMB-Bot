@@ -661,11 +661,18 @@ class PipelineConfig:
     # alpha hole, whose colour nobody knows) sews by default when the garment
     # is a clearly different colour from it — white letter bodies on a navy
     # polo sew; on a white polo they stay fabric — in the thread it already
-    # carries. A review `stitched` override wins either way. DEFAULT OFF and
-    # byte-identical off; the Studio sends garment_rgb regardless, so the
-    # flip is one line here. Quality review 2026-09-08 item 9; plan and
-    # census `docs/superpowers/plans/2026-09-10-enclosed-by-garment.md`.
-    enclosed_by_garment: bool = False
+    # carries. A review `stitched` override wins either way. DEFAULT ON since
+    # 2026-09-10 — built OFF that morning and flipped the same day on Kent's
+    # ruling over the renders (whitebg, Golden Tee and gaulke on each Studio
+    # swatch: `docs/renders/enclosed-by-garment-2026-09-10/`), with the
+    # three catches stated: gaulke's 46 bodies cost +43 trims and sew as the
+    # fragments the vectorizer kept, a sewing hole's cone takes a slot at
+    # the Studio's 6 (Golden Tee's Burnt Orange edge goes Black on navy),
+    # and gaulke's ground turns its fill rows 45°. False is the pre-flip
+    # engine byte for byte; with no garment_rgb the rule declines and the
+    # engine is the 08-15 verdict's. Quality review 2026-09-08 item 9; plan
+    # and census `docs/superpowers/plans/2026-09-10-enclosed-by-garment.md`.
+    enclosed_by_garment: bool = True
     # The rule's threshold on ΔE00(background, garment). 10 is
     # `preflight.DELTA_E_CLEARLY_DIFFERENT` (pinned equal by test), so the
     # Studio's default Natural garment (235, 232, 223) does NOT sew a white
