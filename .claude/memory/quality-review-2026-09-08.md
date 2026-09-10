@@ -665,3 +665,34 @@ page-mask bug was fixed — re-present, do not re-open.
   off the list; drone 5 → 5 with the 211 mm² orange entering at Pumpkin 10.9
   (Fox Fire 3.5 by colour) — the one large shape that gets worse, a
   six-cone budget trade. Corpus block count level at both budgets.
+
+## HANDOFF — region colour, where things stand (2026-09-10 ~15:35Z)
+
+- **Lane `claude/emb-bot-quality-review-acwj61`: 11 local commits, UNPUSHED,
+  on top of main 698ce03 (#444's merge).** All the region-colour work:
+  seam + flag (DEFAULT OFF) + census tool + flip-sheet arm + 10 tests +
+  renders + plan §0–§5 + MASTER_SCOPE (800) + scope-history + DOCTRINE (two
+  entries) + memory. Working tree clean. Nothing is armed on the branch;
+  pushing is safe once the suite is green.
+- **Running:** the full digitizer suite on this tree —
+  `/tmp/claude-0/-home-user-EMB-Bot/3f5c00bb-5357-55fc-9cff-fc33fcf55405/scratchpad/rc/full_suite2.txt`
+  (started ~15:05Z; `EXIT` line when done). Green = exactly the three
+  platform reds (`test_flat_lane_byte_identical[enthusiast]`,
+  `test_stage2_photo_segment[enthusiast]`, `test_pushcomp[whitebg-towel]`).
+  If the container restarted and the log has no EXIT: re-run
+  `cd digitizer && .venv/bin/python -m pytest -q -n auto -p no:cacheprovider`.
+- **Then, in order:** (1) fill `<<COUNTS>>` in
+  `…/scratchpad/rc/pr_body.md` with the suite line (if the scratchpad is
+  gone, the PR body is reconstructible from the plan's §2–§5 and the
+  commit messages); (2) `git push -u origin claude/emb-bot-quality-review-acwj61`
+  (retry 2/4/8/16); (3) PR ready-for-review, title "Region colour: a
+  robust centre for the palette's per-region point, cfg.robust_region_colour
+  (DEFAULT OFF)", body from pr_body.md + the footer; (4)
+  `enable_pr_auto_merge` while `blocked`; (5) `subscribe_pr_activity`;
+  (6) `send_later` ~60 min; (7) memory note; (8) AskUserQuestion — Kent's
+  one decision: flip ON (recommended: the disc is the case it was built
+  for; price = a synthetic stub's +3,382 stitches / +29 trims and drone's
+  211 mm² orange one spool step at 6; catch = photo-lane snapshot golden
+  recapture on ubuntu CI) or keep OFF as a measured instrument until
+  item 1's lane decides where real logos go.
+- Renders are in `docs/renders/region-colour-2026-09-10/` (committed).
