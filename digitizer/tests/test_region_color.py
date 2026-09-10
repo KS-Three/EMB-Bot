@@ -181,3 +181,51 @@ def test_geometric_median_holds_against_a_minority(field_and_ink):
 def test_geometric_median_of_one_colour_is_that_colour():
     pts = np.repeat(np.array([[50.0, 10.0, -20.0]]), 100, 0)
     assert S2._geometric_median(pts) == pytest.approx(pts[0], abs=1e-6)
+
+
+# --- 4. The fixture the defect was found on -----------------------------------
+#
+# The colour flip's own test run found this: `0501` Sun, which
+# `test_phantom_blend_photo.test_bridge_bar_keeps_its_artwork` names as real
+# artwork, stopped sewing on the SHIPPED engine (that test runs on
+# `conftest.PRE_FLIP`, so it stayed green). These two runs are the shipped
+# engine — no flag overrides — and they are what says the estimator reaches
+# the customer's cone list, not just the Lab.
+
+BRIDGE_ARMS = ("mean", "modal")
+
+
+@pytest.fixture(scope="module")
+def bridge_by_arm():
+    from digitizer_core.pipeline import digitize
+    from tests.conftest import TESTDATA
+    bridge = str(TESTDATA / "photo" / "logo_bridge_bar.jpg")
+    return {arm: digitize(bridge, PipelineConfig(
+        target_width_mm=80.0, max_colors=6, satin=True,
+        garment_id="left_chest", region_color=arm)) for arm in BRIDGE_ARMS}
+
+
+def test_the_mean_sews_the_disc_in_the_wrong_green(bridge_by_arm):
+    """Characterization, not an aspiration: this is what ships today. The
+    disc's own pixels are 1.0 dE00 from `0501` Sun and it sews `6031`
+    Limelight, 7.0 away — the palette answering for a mean the disc does not
+    carry."""
+    cones = {c.get("number") for c in bridge_by_arm["mean"][1].palette}
+    assert "6031" in cones
+    assert "0501" not in cones
+
+
+def test_a_robust_region_colour_puts_the_logo_s_yellow_back(bridge_by_arm):
+    cones = {c.get("number") for c in bridge_by_arm["modal"][1].palette}
+    assert "0501" in cones, "the disc is not sewing the logo's own yellow"
+    assert "6031" not in cones
+
+
+def test_the_robust_arm_does_not_buy_the_yellow_with_thread(bridge_by_arm):
+    """A cone can always be fixed by spending stitches; this one is not.
+    Bounds with headroom around the measured 14,589 -> 13,821 stitches and
+    124 -> 96 trims, so a regression trips them and drift does not."""
+    (_mr, mean_p) = bridge_by_arm["mean"]
+    (_rr, robust_p) = bridge_by_arm["modal"]
+    assert robust_p.stats.stitch_count <= mean_p.stats.stitch_count
+    assert robust_p.stats.trims <= mean_p.stats.trims
