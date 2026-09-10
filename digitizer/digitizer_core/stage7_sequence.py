@@ -948,9 +948,17 @@ def _shade_blocks(ordered: list[StitchRun], base_thread: int, chart,
     return out
 
 
-# Hair-width: stage 5 makes two abutting shapes' visible edges the identical
-# curve (float noise aside), so this only has to bridge floating-point slop,
-# never a real gap. Same order as stage6_border's own `_SLACK_MM`.
+# Hair-width, and the DEFAULT only — diagnostics and hand-built fixtures whose
+# edges really are the identical curve. On real artwork they are NOT: two
+# abutting shapes' visible edges are each side's own Douglas-Peucker contour
+# of the same pixel boundary (the earlier shape's edge is the later ARTWORK's
+# outline, the later shape's is the earlier ARTWORK's — `stage5_overlap`
+# clips against `geom_by_layer`), and two curves simplified to
+# `simplify_tol_mm` can sit twice that apart. Measured on the Instagram icon
+# at 80 mm, 13 neighbours of one ring: p50 0.02-0.11 mm, p90 0.09-0.43 mm,
+# only 13-67% of each seam within 0.04 mm. A band this thin found half of
+# every seam and left the rest as 1.6-2.4 mm stubs of border (28 on one
+# ring). `sequence` passes `2 * cfg.simplify_tol_mm` for the real thing.
 _BORDER_SEAM_EPS_MM = 0.02
 
 
@@ -1053,100 +1061,144 @@ def _border_worthy(geom, total_area: float, share_min: float,
     return _raggedness(geom) < iso_max
 
 
-def _seam_band(a_geom, b_geom) -> tuple[object | None, float]:
+def _seam_band(a_geom, b_geom, eps_mm: float = _BORDER_SEAM_EPS_MM
+               ) -> tuple[object | None, float]:
     """-> (the coincident strip between two shapes' own edges, its length).
 
-    `stage6_border`'s KNOWN LIMITATION: two border-enabled shapes that abut
-    get the identical line for a visible edge (stage 5's overlap resolution),
-    so their outline circuits would ride it at full density each — a
-    double-thick bar in two threads. Buffering each shape's boundary by a
-    hair-width epsilon and intersecting turns "same curve" into an ordinary
-    polygon overlap; the strip is `2 * eps` wide everywhere but the end caps,
-    so its AREA divided by that width recovers the coincident length without
-    walking the curve. `(None, 0.0)` when the edges do not coincide at all.
+    Two border-enabled shapes that abut share a visible edge (stage 5's
+    overlap resolution), so their outline circuits would ride it at full
+    density each — a double-thick bar in two threads. Buffering each shape's
+    boundary by `eps_mm` and intersecting turns "same curve" into an ordinary
+    polygon overlap; the strip is up to `2 * eps_mm` wide everywhere but the
+    end caps, so its AREA divided by that width recovers the coincident
+    length (a lower bound where the two curves diverge) without walking the
+    curve. `(None, 0.0)` when the edges do not coincide at all. See
+    `_BORDER_SEAM_EPS_MM` for what `eps_mm` has to be on real artwork.
     """
     a_edge, b_edge = _polygonal_boundary(a_geom), _polygonal_boundary(b_geom)
     if a_edge is None or b_edge is None:
         return None, 0.0
-    shared = (a_edge.buffer(_BORDER_SEAM_EPS_MM)
-             .intersection(b_edge.buffer(_BORDER_SEAM_EPS_MM)))
+    shared = a_edge.buffer(eps_mm).intersection(b_edge.buffer(eps_mm))
     if shared.is_empty:
         return None, 0.0
-    return shared, shared.area / (2.0 * _BORDER_SEAM_EPS_MM)
+    return shared, shared.area / (2.0 * eps_mm)
 
 
-def _border_seam_pairs(geoms: dict[str, object], threshold_mm: float
+def _border_seam_pairs(geoms: dict[str, object], threshold_mm: float,
+                       eps_mm: float = _BORDER_SEAM_EPS_MM
                        ) -> list[tuple[str, str, float]]:
     """Shape-id pairs whose OWN edges run coincident for over `threshold_mm`.
 
     Pure geometry, order-independent — used by tests and diagnostics to find
-    every seam a design has, regardless of whether `_yield_frontage` (below)
-    already resolved it. Production code no longer calls this for the
-    `BORDER_SEAM_SHARED` warning: that is now driven by which seams the
-    sew-order fix actually could not resolve, tracked incrementally as shapes
-    sew (see `sequence`'s `border_seam_unresolved`), not recomputed here after
-    the fact.
+    every seam a design has, regardless of who owns it. Production code does
+    not call this for the `BORDER_SEAM_SHARED` note: that is driven by the
+    seams `_owned_by_later` (below) actually handed over, tracked as shapes
+    sew (see `sequence`'s `border_seams`), not recomputed here after the fact.
     """
     ids = sorted(geoms)
     out: list[tuple[str, str, float]] = []
     for i, a in enumerate(ids):
         for b in ids[i + 1:]:
-            _band, length = _seam_band(geoms[a], geoms[b])
+            _band, length = _seam_band(geoms[a], geoms[b], eps_mm)
             if length > threshold_mm:
                 out.append((a, b, length))
     return out
 
 
-def _yield_frontage(
-    visible_geom, committed: dict[str, object], width_mm: float,
-    threshold_mm: float,
-) -> tuple[object, list[tuple[str, float]]]:
-    """`visible_geom` pulled back off any seam it shares with an
-    ALREADY-COMMITTED border. -> (geometry to hand `border_runs`, unresolved
-    seams as `[(other_shape_id, shared_length_mm), ...]`).
+def _bounds_touch(a, b, eps: float) -> bool:
+    """Cheap reject for `_owned_by_later`: two shapes whose bounding boxes
+    sit apart by more than a hair cannot share an edge."""
+    try:
+        ax0, ay0, ax1, ay1 = a.bounds
+        bx0, by0, bx1, by1 = b.bounds
+    except Exception:
+        return True
+    return not (ax1 + eps < bx0 or bx1 + eps < ax0
+                or ay1 + eps < by0 or by1 + eps < ay0)
 
-    THE REAL FIX for `stage6_border`'s KNOWN LIMITATION. `committed` holds
-    only shapes whose border has already been traced — every shape that will
-    ever compete with this one for the same seam has, by the time this runs,
-    either already committed a real border (and is in here) or has not (and
-    there is nothing to yield to). That is what makes the tie-break SEW
-    ORDER: whichever shape's thread is already on the fabric keeps the seam;
-    whatever sews after it steps back. No lookahead, no second pass, and no
-    pair can end up with neither shape covering the seam or both riding it —
-    see the call site in `sequence` for why the causal ordering guarantees
-    that.
 
-    The retreat is `width_mm` (the full column) plus `BORDER_HOST_MARGIN_MM`
-    of slack for the corner relaxation's own inward bite — the same margin
-    `stage6_border`'s own `core` check adds around the column before it will
-    call a host "wide enough" — applied by DIFFERENCING a buffered band
-    around the coincident curve: "inset its border circuit locally", so a
-    ring stays a ring and `stage6_border` never has to know a seam was
-    involved. A shape whose entire frontage IS the seam — hemmed in by more
-    than one already-bordered neighbor, nothing left to retreat to — falls
-    back to the untouched geometry rather than erasing its border outright
-    (the same "better a sharp border than no border" call `round_inward`
-    already makes when its own relaxation eats a shape whole), and every
-    seam that produced it is reported back unresolved.
+def _owned_by_later(
+    visible_geom, later: dict[str, object], threshold_mm: float,
+    eps_mm: float = _BORDER_SEAM_EPS_MM,
+) -> tuple[object | None, list[tuple[str, float]]]:
+    """The stretches of `visible_geom`'s edge that a bordered shape STILL TO
+    SEW will cover with its own border. -> (geometry to hand `border_runs`
+    as `omit`, or None; the seams handed over as
+    `[(other_shape_id, shared_length_mm), ...]`).
+
+    Seam ownership, Kent's ruling 2026-09-09: where two bordered shapes share
+    an edge, the one sewn LATER owns it — it lies on top, so its column
+    covers both fills' edges, which is what a border is for — and the one
+    underneath skips that stretch of its own ring. `later` holds every shape
+    predicted to border that has not been picked to sew yet (`sequence`
+    removes a shape from it the moment it is picked), so at any shape's
+    border time it is exactly the set that will lie on top of it. No
+    lookahead beyond that, and the order is the one `sequence` already
+    commits to shape by shape: a pair can never end up with both circuits
+    on the seam, and never with neither — unless the later shape's border
+    then fails to sew at all, the reactive case the prediction's own comment
+    in `sequence` spells out.
+
+    The first version of this rule (2026-08-06, `_yield_frontage`) went the
+    other way — the EARLIER shape kept the seam and the later one retreated
+    its whole circuit a column width off it. Two things were wrong with it,
+    and the second is why it survived a month: a border a column inside its
+    own edge is not a border, and `cfg.border` was unreachable from the
+    Studio until 2026-09-02, so nothing rendered it. See `stage6_border`'s
+    module docstring for what it did to the Instagram icon.
+
+    `threshold_mm` separates a seam from a touch: under it (the same 2x
+    column width `_border_seam_pairs` always used) two shapes merely meet
+    at a corner or a short abutment and both keep their full rings.
+    `eps_mm` is how far apart two edges may sit and still be one seam — see
+    `_BORDER_SEAM_EPS_MM` for why the default is only for exact fixtures.
     """
-    if not committed:
-        return visible_geom, []
+    if not later:
+        return None, []
     bands: list[tuple[str, object, float]] = []
-    for other_id, other_geom in committed.items():
-        band, length = _seam_band(visible_geom, other_geom)
+    for other_id, other_geom in later.items():
+        if not _bounds_touch(visible_geom, other_geom, 2.0 * eps_mm):
+            continue
+        band, length = _seam_band(visible_geom, other_geom, eps_mm)
         if band is not None and length > threshold_mm:
             bands.append((other_id, band, length))
     if not bands:
-        return visible_geom, []
+        return None, []
     try:
-        zone = unary_union([b for _id, b, _len in bands]).buffer(
-            width_mm + machine.BORDER_HOST_MARGIN_MM)
-        trimmed = visible_geom.difference(zone)
+        omit = unary_union([b for _id, b, _len in bands])
     except Exception:
-        return visible_geom, []
-    if trimmed.is_empty or trimmed.area < 1e-6:
-        return visible_geom, [(oid, length) for oid, _b, length in bands]
-    return trimmed, []
+        return None, []
+    return omit, [(oid, length) for oid, _b, length in bands]
+
+
+def _border_wanted(region, border_style: str, total_area: float,
+                   share_min: float, iso_max: float) -> tuple[bool, str]:
+    """Does this shape get a border, and in which style? -> (want, style).
+
+    Per-shape intent from the review screen beats the mode in both
+    directions — a shape marked True is bordered with the mode off, one
+    marked False is left alone with the mode on. The contract's string form
+    ("off"|"auto"|"bean") carries its own style; the bool form predates it
+    and defers to the global mode for style, as it always has. "significant"
+    is "auto" with an earned-it gate in front (`_border_worthy`), and the
+    per-shape intent still beats it.
+
+    One function, read by BOTH the border block in `stitch_one` and the
+    seam-ownership prediction ahead of it, so the two cannot disagree about
+    which shapes are the bordered ones.
+    """
+    want = region.meta.get("border")
+    style = "bean" if border_style == "bean" else "auto"
+    if isinstance(want, str):
+        w = want.lower()
+        style = "bean" if w == "bean" else "auto"
+        want = w != "off"
+    if want is None:
+        if border_style == "significant":
+            want = _border_worthy(region.polygon, total_area, share_min, iso_max)
+        else:
+            want = border_style != "off"
+    return bool(want), style
 
 
 def _cap_thread(silhouette, sewn: list[PlannedRegion],
@@ -1190,27 +1242,24 @@ def _cap_thread(silhouette, sewn: list[PlannedRegion],
     return min(frontage, key=lambda ti: (-round(frontage[ti], 6), ti))
 
 
-def _border_seam_warning(unresolved: list[tuple[str, str, float]]) -> dict | None:
-    """`BORDER_SEAM_SHARED`, built from the seams `_yield_frontage` could not
-    resolve — or `None` when every shared seam this design had was.
+def _border_seam_warning(seams: list[tuple[str, str, float]]) -> dict | None:
+    """`BORDER_SEAM_SHARED`, built from the seams `_owned_by_later` handed to
+    a later-sewn shape — or `None` when no two bordered shapes shared one.
 
-    Split out from `sequence` so the wiring from "a shape's retreat erased
-    its own border" to "the operator hears about it" is one small function a
-    test can call directly with a synthetic list, without reconstructing a
-    whole design that hits the exact geometry `_yield_frontage`'s fallback
-    needs.
+    Information, not a defect: it tells the operator why a shape's own border
+    stops short of an edge (its neighbour's border owns it). Split out from
+    `sequence` so a test can call it with a synthetic list.
     """
-    if not unresolved:
+    if not seams:
         return None
-    n = len(unresolved)
+    n = len(seams)
     return warn(
         BORDER_SEAM_SHARED,
-        f"{n} pair{'s' if n != 1 else ''} of bordered shapes share an outline "
-        "seam too fully to separate automatically — both circuits still ride "
-        "the same line and will sew as one doubled bar. Turn border off on "
-        "one side of the seam.",
+        f"{n} pair{'s' if n != 1 else ''} of bordered shapes share an edge. "
+        "Each shared edge is bordered once, in the colour sewn on top; the "
+        "shape underneath skips that stretch of its own border.",
         count=n,
-        pairs=[[a, b] for a, b, _length in unresolved],
+        pairs=[[a, b] for a, b, _length in seams],
     )
 
 
@@ -1464,15 +1513,29 @@ def sequence(
     blend_best_r2 = 0.0
     blocks: list[StitchBlock] = []
     cursor: tuple[float, float] | None = None
-    # Every shape whose border tier actually put a circuit down, keyed by id,
-    # in the order they actually sewed — `_yield_frontage` reads this as "what
-    # is already on the fabric", and it only ever holds circuits that really
-    # sew, not shapes that merely asked for one and went `too_narrow`, so a
-    # later shape never yields to a seam nothing is going to cover.
-    border_geom_by_id: dict[str, object] = {}
-    # Seams `_yield_frontage` could not resolve without deleting the later
-    # shape's border outright — see `_border_seam_warning`.
-    border_seam_unresolved: list[tuple[str, str, float]] = []
+    # Seam ownership (`_owned_by_later`): every shape predicted to border,
+    # keyed by id, holding its stage-5 visible geometry. A shape LEAVES this
+    # dict the moment it is picked to sew (the pop beside `stitch_one`'s
+    # call), so at any shape's border time it holds exactly the bordered
+    # shapes still to come — the ones that will lie on top of any seam this
+    # shape shares with them, and therefore own it. Predicted with the same
+    # predicates `stitch_one` routes on (an outline run or a satin column
+    # never borders — `routes_to_run`, `_sews_satin`) and the same
+    # `_border_wanted` the border block reads, so the two cannot disagree.
+    # Three reactive outcomes it cannot see, all rare, all bounded: a
+    # predicted fill whose rows all degenerate (or a `photo_width_floor`
+    # reroute, or widened lettering the classifier reads differently on its
+    # column) sews no border, so a seam its earlier neighbour yielded goes
+    # unbordered on that stretch — one uncovered edge, never a stripe; and
+    # a gradient shape riding the design ramp is fill despite a satin
+    # verdict, so both sides border that seam — the pre-rule double bar,
+    # on one seam of one gradient design. Filled just before the colour loop,
+    # once the appliqué pass below has taken its pieces out of `planned` —
+    # a piece never enters that loop, so it could never be popped.
+    border_later: dict[str, object] = {}
+    # Every seam a shape handed to a later neighbour — the BORDER_SEAM_SHARED
+    # note's payload. See `_border_seam_warning`.
+    border_seams: list[tuple[str, str, float]] = []
 
     # --- The appliqué tier (stage6_applique, docs §2). Off unless asked for,
     # and when off this returns ([], [], planned, None) and changes nothing.
@@ -1534,6 +1597,17 @@ def sequence(
     cap_sewn: list[PlannedRegion] = []
     merge_same_thread = bool(cfg.merge_adjacent_same_thread)
     hoist_same_thread = max(0.0, float(cfg.hoist_same_thread_margin_mm))
+    # Seam ownership's "still to sew" set — see `border_later`'s declaration
+    # above for the predicate and its blind spots.
+    for _p in planned:
+        _p_tier = str(_p.region.meta.get("tier", "auto")).lower()
+        if routes_to_run(_p, _p_tier):
+            continue
+        if _sews_satin(_p.region, cfg, satin_max, design_class):
+            continue
+        if _border_wanted(_p.region, border_style, border_total_area,
+                          border_share_min, border_iso_max)[0]:
+            border_later[_p.shape_id] = _p.visible_geom
     for _group_key in sorted({nn_group_key(p) for p in planned}):
         group = [p for p in planned if nn_group_key(p) == _group_key]
 
@@ -2027,59 +2101,40 @@ def sequence(
             # the review screen beats the mode in both directions — a shape
             # marked True is bordered with the mode off, and one marked False
             # is left alone with the mode on.
-            want = p.region.meta.get("border")
-            style = "bean" if border_style == "bean" else "auto"
-            if isinstance(want, str):
-                # The contract's per-shape border mode ("off"|"auto"|"bean")
-                # carries its own style; the bool form predates it and defers
-                # to the global mode for style, as it always has.
-                w = want.lower()
-                style = "bean" if w == "bean" else "auto"
-                want = w != "off"
-            if want is None:
-                # "significant" is "auto" with an earned-it gate in front:
-                # per-shape intent above still beats it in both directions,
-                # exactly as it beats every other mode.
-                if border_style == "significant":
-                    want = _border_worthy(p.region.polygon, border_total_area,
-                                          border_share_min, border_iso_max)
-                else:
-                    want = border_style != "off"
+            want, style = _border_wanted(p.region, border_style,
+                                         border_total_area, border_share_min,
+                                         border_iso_max)
             if want and runs:
-                # THE REAL FIX for stage6_border's KNOWN LIMITATION (was
-                # detect-only, PR #67): pull this shape's border input back
-                # off any seam it shares with a border ALREADY sewn, so the
-                # two circuits stop riding the identical line. `border_width`
-                # is also the seam-sharing threshold's unit — same 2x column
-                # width `_border_seam_pairs` always used, so suppression
-                # engages under exactly the condition that used to just warn.
+                # Seam ownership (`_owned_by_later`): a seam this shape
+                # shares with a bordered shape still to sew belongs to that
+                # shape — it lies on top, its column covers both edges — so
+                # this ring skips the stretch and sews as open arcs on the
+                # rest of its edge. `border_width` is also the seam
+                # threshold's unit: the same 2x column width
+                # `_border_seam_pairs` always used to call a shared length a
+                # seam rather than a touch. The seam tolerance is twice the
+                # contour simplification: each side of a seam is its own DP
+                # contour of the same pixel boundary (`_BORDER_SEAM_EPS_MM`).
                 border_width = cfg.border_width_mm or machine.BORDER_WIDTH_MM
-                border_geom, unresolved = _yield_frontage(
-                    p.visible_geom, border_geom_by_id, border_width,
-                    2.0 * border_width)
-                border_seam_unresolved.extend(
-                    (p.shape_id, other_id, length)
-                    for other_id, length in unresolved
-                )
+                omit, pairs = _owned_by_later(p.visible_geom, border_later,
+                                              2.0 * border_width,
+                                              eps_mm=2.0 * cfg.simplify_tol_mm)
+                border_seams.extend((p.shape_id, other_id, length)
+                                    for other_id, length in pairs)
                 b_runs, b_report = border_runs(
-                    border_geom,
+                    p.visible_geom,
                     p.shape_id,
                     entry=runs[-1].points[-1],
                     trim_at_mm=trim_at,
                     style=style,
                     width_mm=cfg.border_width_mm,
+                    omit=omit,
                 )
                 report["jumps"] += b_report["jumps"]
-                report["bordered"] = b_report["loops"]
-                report["lightened"] = b_report["bean_loops"]
+                report["bordered"] = b_report["loops"] + b_report["arcs"]
+                report["lightened"] = (b_report["bean_loops"]
+                                       + b_report["bean_arcs"])
                 report["border_narrow"] = b_report["too_narrow"]
-                if b_runs:
-                    # The TRUE visible geometry, not the (possibly locally
-                    # inset) `border_geom` this shape sewed from — a later
-                    # shape must be able to detect the real seam it shares
-                    # with THIS one even where this one yielded to someone
-                    # else, so `_yield_frontage` always compares true edges.
-                    report["border_geom"] = p.visible_geom
                 runs.extend(b_runs)
             return runs, report, True
 
@@ -2165,6 +2220,10 @@ def sequence(
                     round(group[i].polygon.distance(here), 6), rank[i]))
             p = group[pick]
             remaining.remove(pick)
+            # Picked to sew: from here on this shape is "already down" to
+            # every seam it shares — its own border block must not yield to
+            # itself, and nothing sewn after it may yield to it either.
+            border_later.pop(p.shape_id, None)
             runs, report, filled = stitch_one(p, cursor)
             thin += int(filled and report["too_thin"])
             jumps += report["jumps"]
@@ -2175,9 +2234,6 @@ def sequence(
             bordered += report.get("bordered", 0)
             lightened += report.get("lightened", 0)
             border_narrow += report.get("border_narrow", 0)
-            bgeom = report.get("border_geom")
-            if bgeom is not None:
-                border_geom_by_id[p.shape_id] = bgeom
             if report.get("starved"):
                 starved += 1
                 rings_skipped += report.get("skipped_rings", 0)
@@ -2523,13 +2579,12 @@ def sequence(
                 count=cap_lightened,
             )
         )
-    # `_yield_frontage` (above, called from `stitch_one`) is the real fix for
-    # stage6_border's KNOWN LIMITATION now, not a mitigation: two abutting
-    # bordered shapes no longer both ride the shared seam at full density —
-    # the one that sews later insets its circuit off it first. This warning
-    # is what is left: the seams that fix genuinely could not resolve without
-    # deleting a shape's border outright, collected as `stitch_one` ran.
-    seam_warning = _border_seam_warning(border_seam_unresolved)
+    # Seam ownership (`_owned_by_later`, called from `stitch_one`): two
+    # abutting bordered shapes never both ride the shared seam — the one
+    # sewn on top borders it, the one underneath skips that stretch. This
+    # note lists the pairs it happened to, collected as `stitch_one` ran, so
+    # the operator can see why a shape's own border stops short of an edge.
+    seam_warning = _border_seam_warning(border_seams)
     if seam_warning is not None:
         warnings.append(seam_warning)
     return blocks, warnings

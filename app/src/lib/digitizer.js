@@ -1497,8 +1497,8 @@ const WARNING_TEXT = {
       "{n} color layers asked for threads other layers already use, so they sew together — fewer trips to the thread rack."),
   BORDER_SEAM_SHARED: (w) =>
     plural(w.count || 0,
-      "Two bordered shapes share an outline, so that line sews twice — expect a heavier edge there.",
-      "{n} pairs of bordered shapes share an outline, so those lines sew twice — expect heavier edges there."),
+      "Two bordered shapes share an edge. It is outlined once, in the colour sewn on top; the shape underneath skips that stretch of its own border.",
+      "{n} pairs of bordered shapes share an edge. Each is outlined once, in the colour sewn on top; the shape underneath skips that stretch of its own border."),
   // The two "this machine cannot run it" seams a customer can act on. Their
   // engine messages used to interpolate a diagnostic — an absolute venv path,
   // a model path, a line of a worker's STDERR — which the panel rendered

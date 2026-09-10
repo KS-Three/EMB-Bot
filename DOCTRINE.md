@@ -512,6 +512,29 @@ Moved verbatim 2026-08-28 — no section was rewritten in the move.
   it. *(Kent's approval 2026-09-09 — scope-history's flip entry has the
   ladder, the tier diff and the golden deltas)*
 
+- **A shared seam is bordered ONCE, by the colour sewn on top; the shape
+  underneath skips that stretch of its own border.** Kent's ruling
+  2026-09-09, after the first rule (2026-08-06, `_yield_frontage`: the
+  earlier shape keeps the seam and the later one retreats its whole circuit
+  1.9 mm off it) was finally RENDERED — on the Instagram icon 14 of 17
+  bordered shapes carried a satin stripe a column inside their own fill and
+  no border on their edge, one lost its border outright, and the test had
+  pinned that as the wanted outcome. It survived a month only because the
+  Studio could not reach `cfg.border` until #318. The two options not taken,
+  so nobody rebuilds them: first-colour-owns-with-omit (the owner is whatever
+  stage 5's layer order says) and let-both-stack (a 1.7 mm doubled ridge on
+  every seam, the pre-#67 state). Mechanism: `stage7_sequence._owned_by_later`
+  hands each seam to the bordered shape still to sew over it,
+  `stage6_border.border_runs(omit=…)` sews the shape underneath as open arcs
+  on the rest of its edge; a fully enclosed EARLY shape therefore gets no
+  border of its own, by design. The corollary that cost the afternoon: two
+  abutting visible edges are NOT the identical curve — each is its own DP
+  contour of the same pixel boundary, p90 up to 0.43 mm apart on the icon —
+  so seam detection runs at `2 * simplify_tol_mm`, never a hair-width; the
+  0.02 mm band found half of every seam and sewed the rest as 1.6–2.4 mm
+  stubs. *(ruled 2026-09-09 — `tests/test_border.py` seam section; memory
+  `border-seam-ownership-2026-09-09`)*
+
 ---
 
 ## Measured negatives — built or proposed, then rejected. Do not rebuild.

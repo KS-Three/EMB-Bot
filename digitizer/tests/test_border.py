@@ -359,22 +359,34 @@ def test_corner_rounding_never_bites_deeper_than_half_a_column():
                 f"{size} mm star tip bitten {bite:.2f} mm"
 
 
-# --- The seam-sharing fix (was detect-and-warn only, PR #67; now the real ----
-# --- fix — stage7_sequence._yield_frontage, sew-order tie-break)          ---
+# --- Seam ownership: the colour sewn ON TOP borders a shared edge --------
+# --- (stage7_sequence._owned_by_later + stage6_border's `omit`)         ---
+#
+# The first fix (2026-08-06, `_yield_frontage`) resolved the double bar by
+# insetting the LATER shape's whole circuit 1.9 mm off the seam. On artwork
+# where every colour abuts — every flat logo — that put a satin stripe in
+# the middle of nearly every fill and no border on its edge at all (Kent,
+# 2026-09-09: "the satin border is not following the outline of each
+# color"). Measured on the Instagram icon: 14 of 17 bordered shapes trimmed,
+# median 1.4-1.9 mm off their own edge, one border lost outright.
+#
+# The rule now: a seam is bordered ONCE, by the shape sewn later (it lies on
+# top, so its column covers both fills' edges), and the earlier shape's
+# ring simply skips that stretch — open arcs, still on its own edge.
 
 _SEAM_FABRIC = fabric_for_garment("left_chest")  # pique knit, 0.3 mm pull comp
 _SEAM_TOL_MM = 0.05  # well inside a hair-width of the true seam line
 
 
 def _seam_bar(x0: float, x1: float, layer: int, thread: int, name: str,
-             border) -> Region:
+             border, tier: str = "fill") -> Region:
     # Forced to "fill", same reasoning as test_chaining's fixtures: "auto"
     # would let the classifier decide satin vs fill per rectangle aspect
     # ratio, which has nothing to do with what this test measures.
     poly = Polygon([(x0, 0), (x1, 0), (x1, 10), (x0, 10)])
     return Region(shape_id=name, polygon=poly, thread_index=thread,
                   thread_number=f"{1000 + thread}", area_mm2=poly.area,
-                  meta={"layer": layer, "tier": "fill", "border": border})
+                  meta={"layer": layer, "tier": tier, "border": border})
 
 
 def _seam_plan(regions):
@@ -388,69 +400,98 @@ def _border_points(blocks, shape_id, kinds=("border",)):
             if r.kind in kinds and r.shape_id == shape_id for p in r.points]
 
 
-def test_seam_sharing_is_resolved_automatically_not_just_warned():
-    """Two different-colour rectangles sharing the edge x=10, both bordered —
-    the exact coincidence `stage6_border`'s KNOWN LIMITATION describes, and
-    the fixture PR #67's detect-only warning shipped with. This is the real
-    fix: measured on the actual stitch penetrations, not on whether a warning
-    stopped firing.
+def _on(points, *, x=None, y=None, tol=_SEAM_TOL_MM):
+    """Points within `tol` of the line x=… or y=…."""
+    if x is not None:
+        return [p for p in points if abs(p[0] - x) < tol]
+    return [p for p in points if abs(p[1] - y) < tol]
 
-    Sew order is layer 0 (Sleft) then layer 1 (Sright), so Sleft's border
-    commits to the seam first and `_yield_frontage` makes Sright retreat off
-    it before tracing its own circuit.
-    """
+
+def test_the_later_colour_owns_the_shared_seam():
+    """Two different-colour rectangles sharing the edge x=10, both bordered.
+    Sew order is layer 0 (Sleft) then layer 1 (Sright), so Sright lies on
+    top: ITS border rides the seam at full density, Sleft's has no
+    penetration on it — and Sleft's border still rides its other three
+    edges exactly, not a stripe inset into its own fill."""
     regions = [_seam_bar(0, 10, 0, 0, "Sleft", True),
               _seam_bar(10, 20, 1, 1, "Sright", True)]
 
-    # BEFORE: what `border_runs` used to receive with no seam awareness at
-    # all — both shapes' own, un-suppressed visible geometry. Measured: 13
-    # penetrations apiece sit on the x=10 line (the outer rail's stations
-    # over the 10 mm shared run) — the double-thick bar, present on both
-    # sides, is real on this fixture before anything downstream touches it.
+    # Reference: what an unsuppressed circuit puts on the seam line.
     conf = PipelineConfig()
     planned, _ = resolve_overlaps(regions, _SEAM_FABRIC, conf)
     raw_by_id = {p.shape_id: p.visible_geom for p in planned}
-    raw_left, _ = border_runs(raw_by_id["Sleft"], "Sleft", entry=None, trim_at_mm=3.0)
     raw_right, _ = border_runs(raw_by_id["Sright"], "Sright", entry=None, trim_at_mm=3.0)
-    raw_left_seam = [pt for r in raw_left if r.kind == "border"
-                     for pt in r.points if abs(pt[0] - 10.0) < _SEAM_TOL_MM]
     raw_right_seam = [pt for r in raw_right if r.kind == "border"
                       for pt in r.points if abs(pt[0] - 10.0) < _SEAM_TOL_MM]
-    assert len(raw_left_seam) >= 10 and len(raw_right_seam) >= 10, \
-        "fixture sanity: both raw circuits really do ride the seam"
+    assert len(raw_right_seam) >= 10, "fixture sanity: a raw circuit rides the seam"
 
-    # AFTER: run the real pipeline. The warning is gone — the pair resolved,
-    # it was not just silenced — and Sright's actual points have moved off
-    # the line while Sleft's have not.
     blocks, warnings = sequence(planned, _SEAM_FABRIC, conf)
-    assert not [w for w in warnings if w["code"] == BORDER_SEAM_SHARED], \
-        "a resolvable pair must not still be reported as a manual-fix case"
-
     left_pts = _border_points(blocks, "Sleft")
     right_pts = _border_points(blocks, "Sright")
     assert left_pts and right_pts, "both shapes must still get a real border"
 
-    left_seam = [p for p in left_pts if abs(p[0] - 10.0) < _SEAM_TOL_MM]
-    right_seam = [p for p in right_pts if abs(p[0] - 10.0) < _SEAM_TOL_MM]
-    assert len(left_seam) >= len(raw_left_seam), \
-        "Sleft sewed first and must keep full density on the seam it owns"
-    assert len(right_seam) == 0, \
-        (f"Sright (sewed second) still has {len(right_seam)} penetrations "
-         "on the shared seam — the double bar was not actually removed")
+    # The seam belongs to the shape on top, at full density...
+    assert len(_on(right_pts, x=10.0)) >= len(raw_right_seam)
+    # ...and the shape underneath has nothing on it.
+    assert _on(left_pts, x=10.0) == [], \
+        f"Sleft (sewn first) still has {len(_on(left_pts, x=10.0))} penetrations on the seam"
 
-    # And Sright's circuit is still a REAL border a few mm off the line, not
-    # a shape that quietly lost its outline to get here.
-    assert min(p[0] for p in right_pts) > 10.0 + machine.BORDER_WIDTH_MM
+    # Sleft's border is ON its own remaining edges — not inset. Each of the
+    # three free edges carries outer-rail penetrations at the edge itself,
+    # which for an edge facing bare fabric is the pull-compensated one.
+    pull = _SEAM_FABRIC.pull_comp_mm
+    assert len(_on(left_pts, x=-pull)) >= 10
+    assert len(_on(left_pts, y=-pull)) >= 10
+    assert len(_on(left_pts, y=10.0 + pull)) >= 10
+    # And nothing of Sleft's border sits a column inside the seam, which is
+    # where the old inset put it.
+    stripe = [p for p in left_pts if 10.0 - machine.BORDER_WIDTH_MM - 0.3 < p[0] < 10.0 - 0.3
+              and 2.0 < p[1] < 8.0]
+    assert stripe == [], f"{len(stripe)} Sleft points ride an inset stripe beside the seam"
+
+    # Sright traces its own full outline, seam included.
+    assert min(p[0] for p in right_pts) == pytest.approx(10.0, abs=_SEAM_TOL_MM)
+
+    # The pair is reported — as information, not as a defect left behind.
+    hits = [w for w in warnings if w["code"] == BORDER_SEAM_SHARED]
+    assert len(hits) == 1 and {tuple(sorted(p)) for p in hits[0]["pairs"]} == {("Sleft", "Sright")}
+
+
+def test_a_later_shape_that_will_not_border_leaves_the_seam_to_the_earlier_one():
+    """The lookahead predicts whether the later shape BORDERS, not just
+    whether it exists: a satin-tier neighbour never gets a border (a column
+    already is an outline), so the earlier fill keeps the seam it would
+    otherwise have yielded to nothing."""
+    regions = [_seam_bar(0, 10, 0, 0, "Sleft", True),
+              _seam_bar(10, 20, 1, 1, "Sright", True, tier="satin")]
+    blocks, warnings = _seam_plan(regions)
+    left_pts = _border_points(blocks, "Sleft")
+    assert len(_on(left_pts, x=10.0)) >= 10, "Sleft must keep the seam nobody else borders"
+    assert _border_points(blocks, "Sright") == []
+    assert not [w for w in warnings if w["code"] == BORDER_SEAM_SHARED]
+
+    # Same with the neighbour's border switched off per shape.
+    regions = [_seam_bar(0, 10, 0, 0, "Sleft", True),
+              _seam_bar(10, 20, 1, 1, "Sright", False)]
+    blocks, warnings = _seam_plan(regions)
+    assert len(_on(_border_points(blocks, "Sleft"), x=10.0)) >= 10
+    assert not [w for w in warnings if w["code"] == BORDER_SEAM_SHARED]
 
 
 def test_border_seam_shared_does_not_fire_without_abutment_or_border():
     """Negative case, two ways: a real gap between the shapes, and the seam
-    intact but border turned off. Neither is the defect the fix (or its
-    warning) exists for, so neither may fire it or change anything."""
+    intact but border turned off. Neither is a shared seam, so neither may
+    fire the note or change anything."""
     gap = [_seam_bar(0, 10, 0, 0, "Sleft", True),
           _seam_bar(16, 26, 1, 1, "Sright", True)]   # 6 mm gap, not abutting
-    _blocks, gap_warnings = _seam_plan(gap)
+    blocks, gap_warnings = _seam_plan(gap)
     assert not [w for w in gap_warnings if w["code"] == BORDER_SEAM_SHARED]
+    # With nothing abutting, Sleft's right edge is its own pull-compensated
+    # one (10 + pull comp), and its border rides all of it.
+    left_pts = _border_points(blocks, "Sleft")
+    edge = max(p[0] for p in left_pts)
+    assert edge == pytest.approx(10.0 + _SEAM_FABRIC.pull_comp_mm, abs=_SEAM_TOL_MM)
+    assert len(_on(left_pts, x=edge)) >= 10
 
     off = [_seam_bar(0, 10, 0, 0, "Sleft", False),
           _seam_bar(10, 20, 1, 1, "Sright", False)]  # abutting, border off
@@ -458,17 +499,12 @@ def test_border_seam_shared_does_not_fire_without_abutment_or_border():
     assert not [w for w in off_warnings if w["code"] == BORDER_SEAM_SHARED]
 
 
-def test_border_seam_shared_still_fires_when_a_shape_is_hemmed_in_on_every_side():
-    """The residual case the automatic fix cannot resolve: a shape whose
-    ENTIRE frontage is seam, with nowhere to retreat to.
-
-    A 2 x 15 mm slot cut clean through a much bigger already-bordered shape,
-    later-sewn, so `_yield_frontage` has to pull its border in from all four
-    sides at once — and a slot only 2 mm wide cannot survive retreating
-    ~1.6 mm from both long edges simultaneously. It falls back to its own
-    unsuppressed geometry (a real border beats none) and the pair is named
-    here instead, exactly like PR #67's original warning did for every case.
-    """
+def test_a_slot_cut_through_an_earlier_shape_borders_its_whole_outline():
+    """The case the inset fix could not resolve at all: a 2 x 15 mm slot cut
+    clean through a much bigger earlier-sewn bordered shape. The slot lies
+    on top, so it owns all four of its edges and traces its full outline;
+    the big shape's hole ring — every stretch of which is that seam — sews
+    no border at all, while its exterior still does."""
     W, L = 2.0, 15.0
     cx, cy = 20.0, 20.0
     hole = [(cx - W / 2, cy - L / 2), (cx + W / 2, cy - L / 2),
@@ -476,68 +512,128 @@ def test_border_seam_shared_still_fires_when_a_shape_is_hemmed_in_on_every_side(
     big_poly = Polygon([(0, 0), (40, 0), (40, 40), (0, 40)], [hole])
     slot_poly = Polygon(hole)
 
-    # Sanity: the slot really does hold a real border on its own, unsuppressed.
-    _runs, raw_report = border_runs(slot_poly, "Slot", entry=None, trim_at_mm=3.0)
-    assert not raw_report["empty"], "fixture sanity: the slot must sew something raw"
-
     big = Region(shape_id="Big", polygon=big_poly, thread_index=0, thread_number="1000",
                 area_mm2=big_poly.area, meta={"layer": 0, "tier": "fill", "border": True})
     slot = Region(shape_id="Slot", polygon=slot_poly, thread_index=1, thread_number="1001",
                  area_mm2=slot_poly.area, meta={"layer": 1, "tier": "fill", "border": True})
 
-    _blocks, warnings = _seam_plan([big, slot])
+    blocks, warnings = _seam_plan([big, slot])
+    slot_pts = _border_points(blocks, "Slot", kinds=("border", "bean"))
+    big_pts = _border_points(blocks, "Big", kinds=("border", "bean"))
+    assert slot_pts and big_pts
+
+    # The slot outlines itself (a 2 mm slot cannot host a column, so this is
+    # its bean run on the inset spine — inside the slot, and spanning most of
+    # it; the corner relaxation shortens the spine at both ends).
+    assert len(slot_pts) >= 20
+    assert all(slot_poly.buffer(_SEAM_TOL_MM).covers(Point(p)) for p in slot_pts)
+    ys = [p[1] for p in slot_pts]
+    assert max(ys) - min(ys) > L / 2
+    # Big's hole ring is entirely the slot's seam: nothing of Big's border
+    # touches it...
+    near_slot = [p for p in big_pts if slot_poly.buffer(0.3).covers(Point(p))]
+    assert near_slot == [], f"{len(near_slot)} Big border points ride the slot's edge"
+    # ...and Big's exterior — its pull-compensated edge, facing bare fabric —
+    # is still bordered on all four sides.
+    pull = _SEAM_FABRIC.pull_comp_mm
+    for edge in ({"x": -pull}, {"x": 40.0 + pull}, {"y": -pull}, {"y": 40.0 + pull}):
+        assert len(_on(big_pts, **edge)) >= 10, f"Big lost its exterior border at {edge}"
+
     hits = [w for w in warnings if w["code"] == BORDER_SEAM_SHARED]
-    assert len(hits) == 1, f"expected one BORDER_SEAM_SHARED finding, got {warnings}"
-    pair = {tuple(sorted(p)) for p in hits[0]["pairs"]}
-    assert pair == {("Big", "Slot")}
-
-    # And the slot still sewed something (the fallback, not a dropped shape).
-    slot_pts = _border_points(_blocks, "Slot", kinds=("border", "bean"))
-    assert slot_pts, "the fallback must still sew a real outline, not nothing"
+    assert len(hits) == 1
+    assert {tuple(sorted(p)) for p in hits[0]["pairs"]} == {("Big", "Slot")}
 
 
-# --- _yield_frontage and _border_seam_warning, in isolation --------------
+# --- border_runs(omit=...) in isolation ----------------------------------
 
-def test_yield_frontage_insets_the_later_shapes_circuit_off_the_seam():
-    from digitizer_core.stage7_sequence import _yield_frontage
+def _band(a, b, eps=0.02):
+    from shapely.geometry import LineString
+    return LineString([a, b]).buffer(eps)
+
+
+def test_omit_turns_a_ring_into_open_arcs_on_the_remaining_edges():
+    """Square, the x=20 edge owned by someone else: the other three edges
+    still carry outer-rail penetrations exactly on the edge, the omitted
+    edge carries none away from its corners, and the run is still satin."""
+    runs, report = _runs(SQUARE, omit=_band((20, 0), (20, 20)))
+    assert runs and all(r.kind == "border" for r in runs)
+    pts = [p for r in runs for p in r.points]
+    assert len(_on(pts, x=0.0)) >= 10
+    assert len(_on(pts, y=0.0)) >= 10
+    assert len(_on(pts, y=20.0)) >= 10
+    mid = [p for p in _on(pts, x=20.0) if 3.0 < p[1] < 17.0]
+    assert mid == [], f"{len(mid)} penetrations on the omitted edge"
+    assert report["loops"] == 0 and report["arcs"] >= 1 and report["yielded"] == 1
+    # Every cross still lies inside the shape — the arc is the same column.
+    assert all(SQUARE.buffer(1e-3).covers(Point(p)) for p in pts)
+
+
+def test_omit_none_or_far_away_is_byte_identical():
+    base, _ = _runs(SQUARE)
+    none, _ = _runs(SQUARE, omit=None)
+    far, r_far = _runs(SQUARE, omit=_band((100, 0), (100, 20)))
+    for other in (none, far):
+        assert [r.points for r in other] == [r.points for r in base]
+        assert [r.kind for r in other] == [r.kind for r in base]
+    assert r_far["yielded"] == 0 and r_far["arcs"] == 0
+
+
+def test_omit_covering_a_whole_ring_sews_nothing_for_that_ring():
+    """Donut with its exterior owned by a later shape: only the counter's
+    circuit sews, and the yield is reported, not silent."""
+    from shapely.geometry import LinearRing
+    outer = LinearRing(DONUT.exterior.coords).buffer(0.02)
+    runs, report = _runs(DONUT, omit=outer)
+    assert report["loops"] == 1 and report["yielded"] == 1 and report["arcs"] == 0
+    pts = [p for r in runs for p in r.points]
+    # Everything that sewed is the counter's column (radius 6 ring, column outward).
+    assert all(5.9 < math.hypot(*p) < 6.0 + machine.BORDER_WIDTH_MM + 0.1 for p in pts)
+
+
+def test_omit_lightens_to_a_bean_arc_where_a_column_does_not_fit():
+    """The bean tier yields the same way the column does: THIN_BAR's y=0
+    edge owned elsewhere leaves a bean run on the other three edges."""
+    runs, report = _runs(THIN_BAR, omit=_band((0, 0), (24, 0)))
+    assert runs and all(r.kind == "bean" for r in runs)
+    assert report["bean_loops"] == 0 and report["arcs"] == 0
+    assert report["bean_arcs"] >= 1 and report["yielded"] == 1
+    pts = [p for r in runs for p in r.points]
+    inset = machine.BORDER_WIDTH_MM / 2.0 + machine.BORDER_SEAM_OFFSET_MM
+    # The bean rides the inset spine, so its far edge sits at 2 - inset.
+    assert len(_on(pts, y=2.0 - inset, tol=0.1)) >= 5
+    low = [p for p in pts if p[1] < inset + 0.25 and 3.0 < p[0] < 21.0]
+    assert low == [], f"{len(low)} bean points along the omitted edge"
+
+
+# --- _owned_by_later and _border_seam_warning, in isolation --------------
+
+def test_owned_by_later_returns_the_shared_stretch_and_nothing_else():
+    from digitizer_core.stage7_sequence import _owned_by_later
 
     a = Polygon([(0, 0), (10, 0), (10, 10), (0, 10)])
     b = Polygon([(10, 0), (20, 0), (20, 10), (10, 10)])
     width = machine.BORDER_WIDTH_MM
-    out, unresolved = _yield_frontage(b, {"A": a}, width, 2.0 * width)
-
-    assert unresolved == []
-    # Retreated well clear of the shared edge...
-    assert out.bounds[0] > 10.0 + width
-    # ...but the far edge, which shares no seam with anything, is untouched.
-    assert out.bounds[2] == pytest.approx(20.0)
-
-
-def test_yield_frontage_ignores_shapes_with_no_shared_edge():
-    from digitizer_core.stage7_sequence import _yield_frontage
-
-    a = Polygon([(0, 0), (10, 0), (10, 10), (0, 10)])
-    b = Polygon([(16, 0), (26, 0), (26, 10), (16, 10)])  # 6 mm gap
-    width = machine.BORDER_WIDTH_MM
-    out, unresolved = _yield_frontage(b, {"A": a}, width, 2.0 * width)
-    assert unresolved == []
-    assert out.equals(b)
+    omit, pairs = _owned_by_later(a, {"B": b}, 2.0 * width)
+    assert pairs == [("B", pytest.approx(10.0, abs=0.1))]
+    assert omit is not None
+    assert omit.distance(Point(10.0, 5.0)) < 0.05
+    assert omit.distance(Point(0.0, 5.0)) > 9.0
+    assert omit.distance(Point(5.0, 0.0)) > 4.0
 
 
-def test_yield_frontage_falls_back_when_nothing_survives_the_retreat():
-    from digitizer_core.stage7_sequence import _yield_frontage
+def test_owned_by_later_ignores_shapes_with_no_shared_edge_or_a_mere_touch():
+    from digitizer_core.stage7_sequence import _owned_by_later
 
     a = Polygon([(0, 0), (10, 0), (10, 10), (0, 10)])
-    # A sliver whose entire width is inside the retreat distance.
-    b = Polygon([(10, 0), (10.3, 0), (10.3, 10), (10, 10)])
+    gap = Polygon([(16, 0), (26, 0), (26, 10), (16, 10)])       # 6 mm gap
+    touch = Polygon([(10, 4), (20, 4), (20, 6), (10, 6)])       # 2 mm shared: a touch
     width = machine.BORDER_WIDTH_MM
-    out, unresolved = _yield_frontage(b, {"A": a}, width, 2.0 * width)
+    assert _owned_by_later(a, {}, 2.0 * width) == (None, [])
+    assert _owned_by_later(a, {"G": gap}, 2.0 * width) == (None, [])
+    assert _owned_by_later(a, {"T": touch}, 2.0 * width) == (None, [])
 
-    assert out.equals(b), "must fall back to the untouched geometry, not vanish"
-    assert unresolved == [("A", pytest.approx(10.0, abs=0.1))]
 
-
-def test_border_seam_warning_names_only_unresolved_pairs():
+def test_border_seam_warning_names_the_pairs():
     from digitizer_core.stage7_sequence import _border_seam_warning
 
     assert _border_seam_warning([]) is None
@@ -546,6 +642,7 @@ def test_border_seam_warning_names_only_unresolved_pairs():
     assert w["code"] == BORDER_SEAM_SHARED
     assert w["count"] == 2
     assert {tuple(p) for p in w["pairs"]} == {("Sa", "Sb"), ("Sc", "Sd")}
+
 
 
 def test_the_area_share_floor_is_off_and_stays_off():
