@@ -444,6 +444,20 @@ def _validate_config_dict(data: dict, allowed_fields: set[str]) -> dict:
     # path. Checked here so a client typo is a 400 naming the valid values,
     # rather than the ValueError `stage0_classify.classify` raises — which
     # would reach the caller as a 500.
+    # `garment_rgb` reaches `PipelineConfig` as whatever JSON carried, so a
+    # malformed one (a hex string, four channels, 300) would surface as a
+    # TypeError deep in `stage4_vectorize.garment_sews_enclosed` — a 500.
+    # Checked here as a 400 naming the shape, like forced_class above.
+    rgb = data.get("garment_rgb")
+    if rgb is not None and not (
+        isinstance(rgb, (list, tuple)) and len(rgb) == 3
+        and all(isinstance(v, int) and not isinstance(v, bool) and 0 <= v <= 255
+                for v in rgb)
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="garment_rgb must be three integers 0-255, e.g. [235, 232, 223].",
+        )
     forced = data.get("forced_class")
     if forced is not None and forced not in CLASSES:
         raise HTTPException(
@@ -610,6 +624,15 @@ def _review_payload(result, plan=None) -> dict:
                 # colour-KNOWN enclosed region and for everything untagged.
                 "enclosed_colour_unknown": r.meta.get(
                     "enclosed_colour_unknown", False),
+                # Why an enclosed region is stitched when it is (server-
+                # computed, read-only, same category): True when the
+                # garment rule (`cfg.enclosed_by_garment` + `garment_rgb`)
+                # made it sew by default — the garment is a clearly different
+                # colour from the hole. Stays True under a review override
+                # that turns the shape back off, so the panel can say "the
+                # garment would sew this; you turned it off". False for an
+                # ordinary hole, an alpha hole, and everything untagged.
+                "enclosed_by_garment": bool(r.meta.get("enclosed_by_garment", False)),
                 # Text-cluster detection (server-computed, read-only — no
                 # `_OVERRIDE_KEYS` entry, same category as `layer` and
                 # `enclosed_background`): whether this shape was tagged as a

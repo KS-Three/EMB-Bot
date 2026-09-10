@@ -12131,3 +12131,43 @@ place; the fix is upstream, a robust region colour in stage 2.
 
 *(2026-09-10 — `docs/colour-bundle-decision-2026-09-10.md` §5; the ruling
 in `.claude/memory/quality-review-2026-09-08.md`)*
+
+## 2026-09-10 — item 9 BUILT: `cfg.enclosed_by_garment`, DEFAULT OFF
+
+Kent's pick after #441: enclosed letter bodies decided by the garment
+colour, not a global unstitched default. The 2026-08-15 verdict left every
+enclosed background-coloured region (letter bodies, counters, donut holes)
+unstitched because white into a white polo is wrong — and it was made
+without knowing the garment. Now the Studio sends `project.fabricRgb` as
+`cfg.garment_rgb`, stage 1 carries the border flood's colour as
+`Prep.bg_rgb`, and one verdict per design
+(`stage4_vectorize.garment_sews_enclosed`) sews a flood hole by default when
+the two are more than 10 ΔE00 apart (`DELTA_E_CLEARLY_DIFFERENT`, pinned
+equal by test); the colour cap reads the same verdict so a hole that will
+sew keeps its cone; a review override wins; alpha holes, whose colour nobody
+knows, are untouched; `BACKGROUND_ENCLOSED` says what was decided and why.
+Measured at the engine's 12 / 80 mm on a fabric-coloured ground
+(`docs/renders/enclosed-by-garment-2026-09-10/`): whitebg and Golden Tee sew
+their white holes white on Navy and Black (+571 stitches / +1 cone; +3,027 /
++7 trims / +1 cone) and are byte-identical on White and Natural (6.4 from
+Natural, under the threshold); gaulke's 46 black bodies sew on any light
+garment for +3,979 stitches and **+43 trims** (23 → 66), and what sews is
+the fragments the vectorizer kept when they were holes — STEEL ROOFING &
+SUPPLY reads, GAULKE INDUSTRIES does not, the thin-stroke plan's own gaulke
+finding from the other side; on Black they are the fabric and the engine is
+byte-identical. OFF is byte-identical with a garment colour given. The
+threshold (10 or the review's 5, which would sew white on off-white), the
+alpha holes and the flip are Kent's (plan §5). At the Studio's budget of 6
+a sewing hole's cone takes a slot from a logo already at six: Golden Tee
+ON Navy keeps White for its four holes and the cap merges `1312` Burnt
+Orange — the GT letters' red edge — into Black (35 ΔE00), the slider's
+price named by `COLOR_CAP_APPLIED`; whitebg lands on exactly 6 and gaulke
+on 3. And gaulke's white ground turns its fill rows from 0° to 45° once
+the bodies inside it sew (6,585 of 6,645 row segments horizontal OFF,
+7,097 of 7,175 diagonal ON Navy): `best_fill_angle_deg`'s fewest-columns
+argmin on the polygon the ground is sewn as, which the stitched bodies
+change — a second reason to re-read item 7's `cfg.design_angle` flip.
+`tests/test_enclosed_by_garment.py`
+(12), seven service tests, the Studio spec.
+
+*(2026-09-10 — `docs/superpowers/plans/2026-09-10-enclosed-by-garment.md` §6)*

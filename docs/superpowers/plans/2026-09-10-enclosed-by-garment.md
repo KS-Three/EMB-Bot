@@ -62,15 +62,29 @@ garment; the pipeline does not.
   colour, sent by the Studio from `project.fabricRgb`. None = today.
 - **`cfg.enclosed_by_garment: bool = False`** — the rule, DEFAULT OFF and
   byte-identical off. ON, in the stitched seam: an enclosed region whose
-  colour is KNOWN (`Prep.bg_from_alpha` False, the flood's `bg_rgb` carried
-  onto `Prep`) is stitched when `ΔE00(bg_rgb, garment_rgb) >
-  DELTA_E_VISIBLE`, in the thread it already carries (stage 2 quantized it
-  from the background colour, so the region's own thread is the right one;
-  `revalidate_threads` keeps skipping enclosed regions). A review override
-  still wins either way. An alpha hole (`enclosed_colour_unknown`) is left
-  exactly as it is: there is no colour to compare, and the 08-15 verdict's
-  §5.2 stands until Kent chooses a fill colour for that case — a separate
-  decision the census below sizes.
+  colour is KNOWN (`Prep.bg_from_alpha` False, the flood's colour carried
+  onto `Prep.bg_rgb`) is stitched when `ΔE00(bg_rgb, garment_rgb) >
+  cfg.enclosed_by_garment_de00` — **10.0, `DELTA_E_CLEARLY_DIFFERENT`,
+  pinned equal by test** (this section first said `DELTA_E_VISIBLE`, 5;
+  §4's census moved it: at 5 the Studio's default Natural garment sews a
+  white hole white at 6.4, at 10 it does not — §5.1 puts the number to
+  Kent) — in the thread it already carries (stage 2 quantized it from the
+  background colour, so the region's own thread is the right one;
+  `revalidate_threads` keeps skipping enclosed regions). One verdict per
+  design (`stage4_vectorize.garment_sews_enclosed`), because every flood
+  hole is the same colour. A review override still wins either way. An
+  alpha hole (`enclosed_colour_unknown`) is left exactly as it is: there
+  is no colour to compare, and the 08-15 verdict's §5.2 stands until Kent
+  chooses a fill colour for that case — a separate decision the census
+  below sizes.
+- **The colour cap reads the same verdict.** `enforce_color_cap` (ON since
+  2026-09-10) ranks threads by SEWN area and lets a thread carried only by
+  holes buy no slot — right while holes never sew, wrong the moment they
+  do (a navy polo's white letter bodies would be merged into the nearest
+  kept cone and sew cream). So the cap takes `count_enclosed=` from the
+  same helper: a hole that will sew is sewn area and its cone competes.
+  Alpha holes never count. False is the cap's shipped ranking byte for
+  byte.
 - **A warning says what happened**: the existing `BACKGROUND_ENCLOSED`
   text gains the garment reading ("N enclosed shapes sew because the
   garment is Navy; on a white garment they would not").
@@ -143,3 +157,101 @@ Three readings:
 3. **The default**: built OFF (`cfg.enclosed_by_garment`), the Studio
    sending `garment_rgb` from the project either way; flip on the renders —
    gaulke and Golden Tee on Black and on White, OFF beside ON.
+
+## 6. Built (2026-09-10) — `cfg.enclosed_by_garment`, DEFAULT OFF
+
+Everything in §2, on the flipped tree (#442's engine):
+
+- **`Prep.bg_rgb`** — the border flood's colour as `(R, G, B)`; None on
+  the alpha path and wherever no flood ran. whitebg (255, 255, 255),
+  gaulke (0, 0, 0), logo_alpha None.
+- **`cfg.garment_rgb`**, **`cfg.enclosed_by_garment`** (False),
+  **`cfg.enclosed_by_garment_de00`** (10.0, pinned equal to
+  `preflight.DELTA_E_CLEARLY_DIFFERENT` by test). The service refuses a
+  malformed `garment_rgb` with a 400 naming the shape; `null` means not
+  known.
+- **`stage4_vectorize.garment_sews_enclosed(p, cfg)`** — the one verdict
+  per design, `(sews, ΔE00)`; `(False, None)` when the rule cannot speak.
+  Read by the stitched default in `finish_generation` and by the colour
+  cap's ranking (`enforce_color_cap(count_enclosed=)`), so the two agree.
+- **The stitched seam**: a flood hole sews by default when the verdict
+  says so, `meta["enclosed_by_garment"] = True` (kept under a review
+  override that turns it back off, so the panel can say "the garment
+  would sew this; you turned it off"); the review payload echoes it,
+  read-only, beside `enclosed_colour_unknown`. `BACKGROUND_ENCLOSED`'s
+  sentence now says what the rule decided and why, with `garment_rgb`,
+  `bg_rgb`, `delta_e00`, `sews_by_garment`, `sewn_by_garment` beside it —
+  on a copy, since the Prep is shared across forks.
+- **The Studio** sends `project.fabricRgb` as `garment_rgb` beside
+  `garment_id` (three rounded channels; nothing when a pre-fabricRgb save
+  has none). One cache-key change on existing designs, which re-digitize
+  to the same bytes because the rule is off.
+- **The generation cache** keys on `garment_rgb` like any other
+  non-edit field, so changing the garment re-runs stages 0–4 rather
+  than only `finish_generation`. Deliberate: the cap's ranking (stage 4)
+  reads the verdict, so the generation genuinely depends on the garment;
+  a finish-only shortcut would let a cached generation carry the wrong
+  ranking. `garment_id` has always worked this way.
+- Tests: `tests/test_enclosed_by_garment.py` (12), seven in
+  `test_service.py`, the Studio spec pinned (`garment_rgb` in the field
+  list). OFF is byte-identical with a garment colour given, on whitebg,
+  gaulke and logo_alpha.
+
+**Measured, 80 mm / `left_chest` / the engine's `max_colors` 12**
+(`docs/renders/enclosed-by-garment-2026-09-10/`, OFF left, ON right, one
+row per Studio swatch, the thread drawn on a ground the colour of the
+fabric):
+
+| fixture | OFF | ON White | ON Natural | ON Navy | ON Black |
+|---|---|---|---|---|---|
+| whitebg (1 hole, white) | 4,550 st / 6 tr / 5 cones | = (0.0) | = (6.4) | 5,121 / 7 / 6, the hole sews `0015` (75.2) | same as Navy (100) |
+| golden tee (4 holes, white: the GT bodies and the arc) | 6,677 / 59 / 11 | = (0.0) | = (6.4) | 9,704 / 66 / 12, 4 of 4 sew (75.2) | same as Navy (100) |
+| gaulke (46 holes, black: the roof and every letter) | 9,078 / 23 / 2 | 13,057 / 66 / 3, 46 of 46 sew (100) | same (88.6) | same (21.3) | = (0.0) |
+
+Read off the sheets:
+
+- **whitebg and Golden Tee are the case the review made.** On navy and
+  black the ring's hole and the GT letter bodies sew white — the logo as
+  drawn; on white and natural they stay fabric, and nothing changes.
+  Golden Tee pays +3,027 stitches and +7 trims for four shapes and one
+  cone.
+- **gaulke is the case the review did not make, and it is the honest
+  one.** On any light garment its 46 black bodies sew, +3,979 stitches and
+  **+43 trims** (23 → 66: forty-six small shapes, each its own trim), and
+  what sews is what the vectorizer kept when these were holes: the roof
+  outline and STEEL ROOFING & SUPPLY read, GAULKE INDUSTRIES is fragments.
+  That is the thin-stroke plan's own gaulke finding (16 of 18 thin strokes
+  lost because they were enclosed background) from the other side: this
+  flag makes them sew, `keep_thin_strokes` would make them whole, and
+  neither alone gives the customer the lettering. On black the bodies ARE
+  the fabric and the engine is byte-identical.
+- **Natural never sews a white hole at 10** (6.4 both times) and always
+  sews gaulke's black ones (88.6). At `DELTA_E_VISIBLE` (5) the Studio's
+  default garment would sew whitebg's and Golden Tee's white holes white
+  on natural — visible white on off-white, which the 08-15 verdict called
+  wrong. That is §5.1, unchanged.
+
+**At the Studio's budget of 6** (the same three, ON Navy against OFF at
+`max_colors` 6): the cap now counts a sewing hole as sewn area, and on a
+logo that already fills its six cones that is a slot taken from the
+artwork. Golden Tee OFF at 6 merges the holes' White into Sterling (they
+do not sew, so nothing shows); ON Navy the holes keep `0015` White, sew
+all four, and the cap evicts the smallest sewn cone instead — **`1312`
+Burnt Orange, the GT letters' red edge, into Black (35 ΔE00, the nearest
+kept)** — 9,869 stitches / 60 trims / 6 cones against 6,546 / 62 / 6.
+whitebg lands on exactly 6 (5 + White) and gaulke on 3, so neither pays.
+The price is the slider's, not the rule's: a seventh cone is the customer's
+call, and `COLOR_CAP_APPLIED` names the merge either way — but it is the
+case to put beside the flip decision (§5.3), since the Studio ships 6.
+
+**One more thing the gaulke sheet shows, measured rather than read:** the
+white ground's fill rows turn from 0° (OFF: 6,585 of 6,645 row segments
+horizontal) to 45° (ON Navy: 7,097 of 7,175 diagonal) when the 46 bodies
+inside it sew. Nothing in this flag touches angles; `best_fill_angle_deg`
+(the fewest-monotone-columns objective) runs on the polygon the ground is
+SEWN as, and that polygon is different once the bodies are stitched shapes
+the ground extends `overlap_mm` under, so the objective's argmin moved. A
+customer who switches the garment from white to navy would see the card's
+stitch direction turn — item 7's design angle (`cfg.design_angle`, DEFAULT
+OFF) is the control that would hold it, which is a second reason that
+flag's flip is worth re-reading beside this one.

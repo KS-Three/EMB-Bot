@@ -56,7 +56,7 @@ const PIPELINE_CONFIG_FIELDS = [
   "underlay_style", "underlay", "satin", "satin_max_width_mm", "border",
   "border_width_mm", "deleted_shape_ids", "shape_overrides",
   "merge_shape_ids", "split_shapes", "photo_segment_sam2", "detail_layer",
-  "forced_class", "edge_cap", "is_photographic",
+  "forced_class", "edge_cap", "is_photographic", "garment_rgb",
 ];
 
 test("buildDigitizeConfig sends the stored thread-brand preference and the project garment, in service field names", async () => {
@@ -75,6 +75,23 @@ test("buildDigitizeConfig sends the stored thread-brand preference and the proje
     garment_id: "left_chest",
   });
   for (const k of Object.keys(cfg)) expect(PIPELINE_CONFIG_FIELDS).toContain(k);
+});
+
+test("buildDigitizeConfig sends the project's fabric colour as garment_rgb, and nothing when the project has none", async () => {
+  stubStorage({});
+  const { buildDigitizeConfig } = await import("./digitizer.js");
+  // The garment step's Navy swatch; the engine's enclosed_by_garment rule
+  // reads it (digitizer_core/config.py) — the Studio only carries it.
+  const navy = buildDigitizeConfig(digitizedElement(), { ...PROJECT, fabricRgb: [31, 41, 84] });
+  expect(navy.garment_rgb).toEqual([31, 41, 84]);
+  expect(navy.garment_id).toBe("left_chest");
+  for (const k of Object.keys(navy)) expect(PIPELINE_CONFIG_FIELDS).toContain(k);
+  // A pre-fabricRgb save (project.js migrates additively) sends no colour,
+  // so the service's rule declines rather than guessing a garment.
+  expect(buildDigitizeConfig(digitizedElement(), PROJECT)).not.toHaveProperty("garment_rgb");
+  // Exactly three channels, whatever a custom hex round-trip stored.
+  const custom = buildDigitizeConfig(digitizedElement(), { ...PROJECT, fabricRgb: [12.4, 200, 7, 255] });
+  expect(custom.garment_rgb).toEqual([12, 200, 7]);
 });
 
 test("border is OMITTED when unset, so the service picks per artwork class", async () => {

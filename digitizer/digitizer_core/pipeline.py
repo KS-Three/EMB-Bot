@@ -57,7 +57,7 @@ from .stage3_segment import (
     merge_duplicate_cone_layers,
     resolve_small_regions,
 )
-from .stage4_vectorize import (enforce_color_cap,
+from .stage4_vectorize import (enforce_color_cap, garment_sews_enclosed,
                                rehome_resnapped_regions, revalidate_threads,
                                tag_enclosed_background, vectorize)
 from .designangle import set_design_angle
@@ -73,6 +73,7 @@ from .stage7_sequence import (PHOTO_CLASSES, borders_last_layers,
 from .stitches import StitchPlan
 from .threads import chart_for, rgb_to_lab
 from .warnings_codes import (
+    BACKGROUND_ENCLOSED,
     DROPPED_SMALL_SHAPES,
     PALETTE_THREAD_MISMATCH,
     PHOTO_AUTO_TIER,
@@ -663,8 +664,13 @@ def build_generation(
     # to the dataclass, its copy, and every construction site for no
     # behavioural difference.
     if cfg.enforce_color_cap:
+        # A flood hole the garment rule will stitch is sewn area, so its cone
+        # competes for a slot (`garment_sews_enclosed`, the same verdict the
+        # stitched default reads in `finish_generation`). Off / no garment /
+        # alpha: False, the ranking the cap shipped with.
         resnap_warnings = list(resnap_warnings) + enforce_color_cap(
-            regions, chart_for(cfg), cfg.max_colors)
+            regions, chart_for(cfg), cfg.max_colors,
+            count_enclosed=garment_sews_enclosed(p, cfg)[0])
 
     # Same ordering rationale as `tag_enclosed_background` immediately above:
     # a computed FACT re-derived every generation, so it belongs before shape
@@ -768,6 +774,43 @@ def build_generation(
     )
 
 
+def _with_garment_reading(prep_warnings: list[dict], cfg: PipelineConfig,
+                          bg_rgb: tuple[int, int, int] | None, sews: bool,
+                          de00: float | None, n_sewn: int) -> list[dict]:
+    """Stage 1's `BACKGROUND_ENCLOSED` entry with the garment rule's
+    reading appended — a new list, the input untouched. Unchanged when the
+    rule did not look (`de00` None: off, no garment, alpha holes)."""
+    if de00 is None:
+        return prep_warnings
+    out: list[dict] = []
+    garment = tuple(int(v) for v in list(cfg.garment_rgb or ())[:3])
+    for w in prep_warnings:
+        if w.get("code") != BACKGROUND_ENCLOSED:
+            out.append(w)
+            continue
+        w = dict(w)
+        area = w.get("area_frac")
+        share = f"{float(area):.0%} of this design" if area is not None else "part of this design"
+        if sews:
+            w["message"] = (
+                f"Enclosed background-colored areas are {share} and SEW, because "
+                f"the garment colour {garment} is clearly different from the "
+                f"background they were cut from (ΔE00 {de00:.1f}) — toggle any off "
+                "in review if it should stay a hole.")
+        else:
+            w["message"] = (
+                w["message"] + f" Against the garment colour {garment} they read "
+                f"as the fabric (ΔE00 {de00:.1f}), so they stay holes.")
+        w["garment_rgb"] = list(garment)
+        w["bg_rgb"] = list(bg_rgb) if bg_rgb is not None else None
+        w["delta_e00"] = round(float(de00), 2)
+        w["sews_by_garment"] = bool(sews)
+        w["threshold_de00"] = float(cfg.enclosed_by_garment_de00)
+        w["sewn_by_garment"] = int(n_sewn)
+        out.append(w)
+    return out
+
+
 def finish_generation(gen: Generation, cfg: PipelineConfig | None = None) -> PipelineResult:
     """Review edits + palette settlement: the cheap, edit-dependent tail of
     `run_stages`. Mutates `gen`'s regions and warning lists in place — hand
@@ -807,11 +850,32 @@ def finish_generation(gen: Generation, cfg: PipelineConfig | None = None) -> Pip
     # `enclosed_background`, a fact re-tagged THIS generation, so override
     # and default belong in one expression after tagging — not split between
     # an edit pass and a fallback pass.
+    # The garment rule (`cfg.enclosed_by_garment`, DEFAULT OFF): a
+    # border-flood hole sews by default when the garment is a clearly
+    # different colour from the background it was cut from — one verdict per
+    # design (`garment_sews_enclosed`), applied to every enclosed region whose
+    # colour is known; an alpha hole (`enclosed_colour_unknown`) keeps the
+    # verdict's default. Sits INSIDE the same expression as the override so
+    # a review `stitched` still wins over it, exactly as over the default.
+    sews_by_garment, garment_de00 = garment_sews_enclosed(p, cfg)
     shape_overrides = cfg.shape_overrides or {}
+    n_by_garment = 0
     for r in regions:
+        default_stitched = not r.meta.get("enclosed_background", False)
+        if (sews_by_garment and not default_stitched
+                and not r.meta.get("enclosed_colour_unknown", False)):
+            default_stitched = True
+            r.meta["enclosed_by_garment"] = True
+            n_by_garment += 1
         r.meta["stitched"] = (shape_overrides.get(r.shape_id) or {}).get(
-            "stitched", not r.meta.get("enclosed_background", False)
+            "stitched", default_stitched
         )
+    # Stage 1's BACKGROUND_ENCLOSED sentence promised holes "left unstitched";
+    # when the rule looked at a garment, say what it decided. On a COPY —
+    # `p` is shared across forks (`Generation.fork`), its warnings are not
+    # this request's to rewrite.
+    prep_own_warnings = _with_garment_reading(
+        p.warnings, cfg, p.bg_rgb, sews_by_garment, garment_de00, n_by_garment)
 
     thread_indices, layer_warnings = compact_layers(regions, quant_indices)
     # One cone, one layer (cfg.merge_duplicate_cones, default OFF — defect
@@ -1108,7 +1172,7 @@ def finish_generation(gen: Generation, cfg: PipelineConfig | None = None) -> Pip
         px_per_mm=p.px_per_mm,
         design_size_mm=design,
         warnings=merge_warnings(
-            [*gen.classification_warnings, *p.warnings, *prep_warnings,
+            [*gen.classification_warnings, *prep_own_warnings, *prep_warnings,
              *gen.quant_warnings, *gen.small_warnings, *vec_warnings,
              *gen.resnap_warnings, *merge_edit_warnings, *split_edit_warnings,
              *edit_warnings, *layer_warnings, *palette_warnings]

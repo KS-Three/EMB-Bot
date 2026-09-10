@@ -96,6 +96,13 @@ export async function fetchHealth(fetchFn = globalThis.fetch) {
 //   garment_id — the project's garment, which picks the fabric preset (pull
 //     compensation, underlay, density) service-side. Ids match by construction
 //     (digitizer_core/fabrics.py mirrors the engine's GARMENT_FABRIC).
+//   garment_rgb — the project's fabric colour (project.fabricRgb, the swatch
+//     the garment step picks), so the service can decide whether enclosed
+//     background-coloured holes (letter bodies, counters) sew on THIS garment
+//     (cfg.enclosed_by_garment, the engine's default — not a Studio control).
+//     Sent whenever the project carries one, like garment_id; the service's
+//     rule is off by default, so existing designs re-digitize identically
+//     after the one cache-key change.
 // fill_angle_deg is omitted when null: null means "per-shape auto" and the
 // service treats an absent key the same way — omitting keeps the config (and
 // the job cache key) minimal. forced_class (the flat-art override the panel
@@ -188,6 +195,9 @@ export function buildDigitizeConfig(element, project) {
   const brand = loadPreferredPaletteId();
   if (brand && brand !== "studio") cfg.thread_brand = brand;
   if (project && project.garmentId) cfg.garment_id = project.garmentId;
+  if (project && Array.isArray(project.fabricRgb) && project.fabricRgb.length >= 3) {
+    cfg.garment_rgb = project.fabricRgb.slice(0, 3).map((v) => Math.round(Number(v)));
+  }
   // Shape-layers edits (contract v1) ride the same config — already in the
   // service's canonical spelling (canonicalShapeEdits below), so the job
   // cache key changes exactly when an edit changes and a no-op edit stays a
