@@ -41,7 +41,21 @@ CROP_PPM = 36.0
 
 def render_side(design: dict, frame: pf.Frame) -> np.ndarray:
     d = pf.pin_frame(design, frame.bounds_units)
-    return render_design(d, px_per_mm=frame.ppm, fabric_bgr=WHITE, pad_mm=frame.pad_mm, lit=True)
+    img = render_design(d, px_per_mm=frame.ppm, fabric_bgr=WHITE, pad_mm=frame.pad_mm, lit=True)
+    # Ensure consistent image size even when design is restricted to empty.
+    # When render_design operates on an empty design, it may produce a smaller
+    # image; resize to match the frame's expected dimensions.
+    try:
+        bounds = frame.bounds_units
+        if isinstance(bounds, (tuple, list)) and len(bounds) >= 4:
+            min_x, min_y, max_x, max_y = bounds[0], bounds[1], bounds[2], bounds[3]
+            expected_w = int((max_x - min_x + frame.pad_mm * 2) * frame.ppm + 0.5)
+            expected_h = int((max_y - min_y + frame.pad_mm * 2) * frame.ppm + 0.5)
+            if img.shape[0] != expected_h or img.shape[1] != expected_w:
+                img = cv2.resize(img, (expected_w, expected_h))
+    except (TypeError, ValueError, AttributeError):
+        pass
+    return img
 
 
 def thread_mask(img: np.ndarray) -> np.ndarray:
@@ -88,9 +102,11 @@ def render_pair(pair: pf.Pair, reg: pf.Reg, ppm: float = DEFAULT_PPM, crop_mm=No
                 ours_path: Path | None = None, ours_rgb: list | None = None) -> dict:
     pro_d = pf.design_for(pair.pro_path, None, pair.pro_rgb, f"{pair.slug} pro")
     ours_d = pf.design_for(ours_path or pair.ours_path, reg, ours_rgb or pair.ours_rgb, f"{pair.slug} ours")
+    # Compute frame from unrestricted designs to avoid sentinel bounds when restriction empties a side
+    frame = pf.frame_for([pro_d, ours_d], ppm, crop_mm=crop_mm)
+    # Apply restrictions only for rendering
     pro_d = _restrict(pro_d, {only_pro_block} if only_pro_block is not None else None)
     ours_d = _restrict(ours_d, only_ours_blocks)
-    frame = pf.frame_for([pro_d, ours_d], ppm, crop_mm=crop_mm)
     pro = render_side(pro_d, frame)
     ours = render_side(ours_d, frame)
     pm, om = thread_mask(pro), thread_mask(ours)

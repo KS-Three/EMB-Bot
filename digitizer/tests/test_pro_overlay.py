@@ -130,3 +130,15 @@ def test_write_overlay_set_writes_five_files(tmp_path):
     a = cv2.imread(str(d / "overlay" / "flicker_pro.png"))
     b = cv2.imread(str(d / "overlay" / "flicker_ours.png"))
     assert a.shape == b.shape
+
+
+def test_restricting_one_side_to_nothing_keeps_the_shared_frame(tmp_path):
+    ours = _design_blocks(offset=(40.0, 25.0))          # away from the origin, so a sentinel would show
+    d = synth.make_prep_dir(tmp_path, "fr", ours, ours, [], [(40, 25, 60, 37)], 20.0)
+    pair = pairframe.load_pair(d)
+    reg = pairframe.register_pair(pair.pro_path, pair.ours_path)
+    full = overlay.render_pair(pair, reg)
+    empty = overlay.render_pair(pair, reg, only_ours_blocks=set())
+    assert empty["frame"].bounds_units == full["frame"].bounds_units
+    assert empty["ours"].shape == full["ours"].shape
+    assert not empty["ours_mask"].any() and empty["pro_mask"].any()
