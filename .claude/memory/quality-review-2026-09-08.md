@@ -569,3 +569,11 @@ page-mask bug was fixed — re-present, do not re-open.
   does not; `keep_thin_strokes` is the other half. Black: byte-identical.
 - Threshold: at 5 Natural would sew white holes white on off-white (the
   08-15 verdict's "wrong" case); at 10 it never does. §5.1 is Kent's.
+- **Shipped as PR #443 (05:58Z, ready-for-review, auto-merge armed).** Pushed
+  after the changed-package tests, the Studio suite (1,094) and the doc
+  checkers; the full digitizer suite was still running on the same tree
+  (the first run, in the worktree, died silently at 32% with no traceback,
+  no OOM and 15 GB free — cause unknown; restarted on the main tree). PR
+  body carries Kent's three decisions; the AskUserQuestion follows.
+  Full suite on the landed tree: 3 failed / 2,202 passed / 3 skipped / 7
+  xfailed in 24 min — the three platform reds; PR body updated with it.
