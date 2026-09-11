@@ -979,3 +979,11 @@ page-mask bug was fixed — re-present, do not re-open.
   BEFORE the lane changes. If not, ask him what to build while it waits
   (items 12 fill travel under cover, 13 photo detection from EXIF/face,
   14 the edge-finish flags).
+- **01:45Z 2026-09-11 — #451 MERGED** (main 0b0cbbb). Lane fast-forwarded;
+  trigger deleted; tree clean. Four PRs this session: #445/#448 region
+  colour, #449 item 11, #450 the legibility flip + row 4 ruled, #451 item
+  1's PR 5.
+- **Item 1 cannot be unblocked from a CLOUD session**: the acceptance
+  directory is gitignored and its contents never leave Kent's machine, so
+  the tonal artwork arrives in a LOCAL session (claude-personal.cmd) and
+  the boundary gets sited there. Still README-only here.
