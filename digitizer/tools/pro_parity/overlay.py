@@ -215,14 +215,18 @@ def title_for(pair: pf.Pair, reg: pf.Reg, extra: str = "") -> str:
 
 
 def crop_set(pair: pf.Pair, reg: pf.Reg, out_dir: Path, crop_mm: tuple, name: str,
-             ppm: float = CROP_PPM, **kw) -> list:
+             ppm: float = CROP_PPM, suffix: str = "", **kw) -> list:
     """Render a crop window at CROP_PPM (36.0) and write the same five files
-    with suffix `_crop_<name>` (`name` passed through `_safe`, so a name with
-    a path separator or other filesystem-illegal character still writes)."""
+    with suffix `_crop_<name><suffix>` (`name` passed through `_safe`, so a
+    name with a path separator or other filesystem-illegal character still
+    writes; `suffix` is the caller's own disambiguator — e.g. `main`'s
+    `--flag`/`--against` suffix — appended AFTER `_crop_<name>` so a crop
+    run and a plain run, or two different `--against` arms of the same
+    crop, never collide on the same filename)."""
     r = render_pair(pair, reg, ppm=ppm, crop_mm=crop_mm, **kw)
     x0, y0, x1, y1 = crop_mm
     return write_overlay_set(out_dir, r, title_for(pair, reg, f"crop {x0:g},{y0:g}..{x1:g},{y1:g} mm"),
-                             suffix=f"_crop_{_safe(name)}")
+                             suffix=f"_crop_{_safe(name)}{suffix}")
 
 
 def match_blocks(pro_rgb: list, ours_rgb: list, max_de: float = 12.0) -> dict:
@@ -331,7 +335,7 @@ def main(argv=None) -> int:
     print(title)
     written = []
     if a.crop:
-        written += crop_set(pair, reg, out, tuple(a.crop), a.crop_name, ppm=CROP_PPM, **kw)
+        written += crop_set(pair, reg, out, tuple(a.crop), a.crop_name, ppm=CROP_PPM, suffix=suffix, **kw)
     else:
         r = render_pair(pair, reg, ppm=a.ppm, **kw)
         written += write_overlay_set(out, r, title, suffix=suffix)

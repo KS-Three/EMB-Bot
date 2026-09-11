@@ -319,3 +319,13 @@ def test_against_a_missing_arm_names_the_arms_that_exist(tmp_path):
     d = synth.make_prep_dir(tmp_path, "ma", ours, ours, [], [(0, 0, 20, 12)], 20.0)
     with pytest.raises(SystemExit, match="deadbeef"):
         overlay.main(["--dir", str(d), "--against", "deadbeef"])
+
+
+def test_against_crop_writes_its_own_files(tmp_path):
+    ours = _design_blocks()
+    d = synth.make_prep_dir(tmp_path, "ac", ours, ours, [], [(0, 0, 20, 12)], 20.0)
+    args = ["--dir", str(d), "--crop", "0", "-2", "10", "3", "--crop-name", "arm"]
+    assert overlay.main(args) == 0
+    assert overlay.main(args + ["--against", "baseline"]) == 0
+    assert (d / "overlay" / "overlay_crop_arm.png").exists()
+    assert (d / "overlay" / "overlay_crop_arm_vs-baseline.png").exists()
