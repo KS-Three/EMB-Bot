@@ -32,7 +32,9 @@ sys.path.insert(0, str(HERE.parent))
 sys.path.insert(0, str(HERE.parents[1]))
 
 import scorecard as sc                                              # noqa: E402
-from prep_all import GREYS                                          # noqa: E402
+import prep_all                                                     # noqa: E402
+from digitizer_core import digitize                                 # noqa: E402
+from digitizer_core.export import write_dst                         # noqa: E402
 from digitizer_core.adapter import (design_bbox_units, pattern_to_design,  # noqa: E402
                                     UNITS_PER_MM)
 
@@ -259,7 +261,7 @@ class Frame:
 def design_for(path: Path, reg: Reg | None, colors: list | None, name: str) -> dict:
     """A machine file as a Design dict, `reg` applied (ours) or not (pro)."""
     pat = _read_pattern(Path(path))
-    fb = colors or list(GREYS)
+    fb = colors or list(prep_all.GREYS)
     t = (lambda x, y: reg.apply_xy(x, y)) if reg is not None else None
     return pattern_to_design(pat, name=name, transform_mm=t, fallback_colors=fb)
 
@@ -299,3 +301,21 @@ def flags_hash(flags: dict) -> str:
 def flags_dir(pair: Pair, flags: dict) -> Path:
     base = pair.dir if pair.dir.parent.name != "flags" else pair.dir.parents[1]
     return base / "flags" / flags_hash(flags)
+
+
+def redigitize(pair: Pair, flags: dict) -> Path:
+    """Ours again, under `flags`, into `flags/<hash>/` beside the prep dir.
+    Cached: an arm that already has `ours.dst` is not re-run — delete the
+    directory to force it."""
+    arm = flags_dir(pair, flags)
+    if (arm / "ours.dst").exists():
+        return arm
+    arm.mkdir(parents=True, exist_ok=True)
+    cfg = prep_all.parity_config(pair.width_mm, pair.garment_id, **flags)
+    res, plan = digitize(pair.art, cfg)
+    write_dst(plan, arm / "ours.dst")
+    prep_all.write_regions(res, arm)
+    (arm / "ours_blocks.json").write_text(json.dumps(
+        [{"block": i, "rgb": list(b.rgb)} for i, b in enumerate(plan.blocks)], indent=1))
+    (arm / "flags.json").write_text(json.dumps(flags, indent=1, default=str))
+    return arm

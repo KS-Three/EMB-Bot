@@ -236,3 +236,44 @@ def test_by_thread_writes_one_sheet_per_pro_block(tmp_path):
     reg = pairframe.register_pair(pair.pro_path, pair.ours_path)
     files = overlay.by_thread(pair, reg, d / "overlay")
     assert [p.name for p in files] == ["0_c81e1e.png", "1_1e1ec8.png"]
+
+
+def test_redigitize_writes_a_cached_arm(tmp_path, monkeypatch):
+    """Uses a REAL fixture through the engine once (~5 s on the 400 px bar):
+    the arm dir carries ours.dst + regions + flags.json and a second call
+    does not re-run."""
+    import shutil
+    from digitizer_core import PipelineConfig, digitize
+    from digitizer_core.export import write_dst
+    art = HERE.parent / "testdata" / "logo_whitebg.png"
+    d = tmp_path / "real" / "wb"
+    d.mkdir(parents=True)
+    _res, plan = digitize(art, PipelineConfig(target_width_mm=40.0))
+    write_dst(plan, d / "ours.dst")
+    shutil.copy(d / "ours.dst", d / "pro.dst")          # the pro is ours; only the arm matters here
+    (d / "ours_regions.json").write_text("[]")
+    (d / "ours_blocks.json").write_text("[]")
+    (d / "pro_blocks.json").write_text("[]")
+    shutil.copy(art, d / "art.png")
+    (tmp_path / "real" / "manifest.json").write_text(json.dumps(
+        [{"slug": "wb", "file": str(d / "pro.dst"), "garment_id": "left_chest"}]))
+    pair = pairframe.load_pair(d)
+    calls = []
+    real = pairframe.digitize
+    monkeypatch.setattr(pairframe, "digitize", lambda *a, **k: (calls.append(1), real(*a, **k))[1])
+    arm = pairframe.redigitize(pair, {"curve_turn_deg": 0})
+    assert (arm / "ours.dst").exists() and (arm / "ours_regions.json").exists()
+    assert json.loads((arm / "flags.json").read_text()) == {"curve_turn_deg": 0}
+    pairframe.redigitize(pair, {"curve_turn_deg": 0})
+    assert len(calls) == 1
+    arm_pair = pairframe.load_pair(arm)
+    assert arm_pair.pro_path == pair.pro_path and arm_pair.ours_path == arm / "ours.dst"
+
+
+def test_cli_writes_the_overlay_dir(tmp_path):
+    ours = _design_blocks()
+    d = synth.make_prep_dir(tmp_path, "cli", ours, ours, [], [(0, 0, 20, 12)], 20.0)
+    assert overlay.main(["--dir", str(d)]) == 0
+    assert (d / "overlay" / "overlay.png").exists()
+    assert overlay.main(["--dir", str(d), "--crop", "0", "-2", "10", "3", "--crop-name", "arm"]) == 0
+    assert (d / "overlay" / "overlay_crop_arm.png").exists()

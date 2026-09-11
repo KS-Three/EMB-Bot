@@ -17,6 +17,9 @@ construction. Spec §4.
 """
 from __future__ import annotations
 
+import argparse
+import dataclasses
+import json
 import sys
 from pathlib import Path
 
@@ -32,6 +35,7 @@ import pairframe as pf                                        # noqa: E402
 from digitizer_core.stitchviz import render_design             # noqa: E402
 from skimage.color import deltaE_ciede2000                    # noqa: E402
 from digitizer_core.threads import rgb_to_lab                 # noqa: E402
+from thin_strokes import parse_flags                           # noqa: E402
 
 WHITE = (255, 255, 255)
 PRO_TINT = (255, 0, 255)      # RGB magenta
@@ -251,3 +255,65 @@ def by_thread(pair: pf.Pair, reg: pf.Reg, out_dir: Path, ppm: float = DEFAULT_PP
         cv2.imwrite(str(p), _titled(r["overlay"], title_for(pair, reg, extra)))
         written.append(p)
     return written
+
+
+# --------------------------------------------------------------------- CLI
+def _resolve_dir(a) -> Path:
+    if a.dir:
+        return Path(a.dir)
+    import os
+    out = os.environ.get("PRO_PARITY_OUT")
+    if not (a.slug and out):
+        raise SystemExit("--dir <out>/real/<slug>, or --slug with PRO_PARITY_OUT set")
+    return Path(out) / "real" / a.slug
+
+
+def main(argv=None) -> int:
+    ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
+    ap.add_argument("--dir")
+    ap.add_argument("--slug")
+    ap.add_argument("--flag", action="append", default=[])
+    ap.add_argument("--against", default=None,
+                    help="overlay two of OUR arms: 'baseline' or a flags hash, against the --flag arm")
+    ap.add_argument("--crop", type=float, nargs=4, default=None, metavar=("X0", "Y0", "X1", "Y1"))
+    ap.add_argument("--crop-name", default="crop")
+    ap.add_argument("--by-thread", action="store_true")
+    ap.add_argument("--ppm", type=float, default=DEFAULT_PPM)
+    a = ap.parse_args(argv)
+
+    pair = pf.load_pair(_resolve_dir(a))
+    flags = parse_flags(a.flag)
+    suffix = ""
+    if flags:
+        arm = pf.redigitize(pair, flags)
+        pair = pf.load_pair(arm)
+        suffix = "_" + "_".join(f"{k}-{v}" for k, v in sorted(flags.items()))
+    reg = pf.register_pair(pair.pro_path, pair.ours_path)
+    out = pair.dir / "overlay"
+    extra = ""
+    kw = {}
+    if a.against:
+        base = pf.load_pair(pf._lane_root(pair.dir) / pair.slug) if a.against == "baseline" \
+            else pf.load_pair(pf._lane_root(pair.dir) / pair.slug / "flags" / a.against)
+        # the "pro" side becomes the other arm: register against it instead
+        reg = pf.register_pair(base.ours_path, pair.ours_path)
+        pair = dataclasses.replace(pair, pro_path=base.ours_path, pro_rgb=base.ours_rgb)
+        extra = f"OURS {a.against} (magenta) vs OURS {suffix.strip('_') or 'baseline'} (cyan)"
+    title = title_for(pair, reg, extra)
+    print(title)
+    written = []
+    if a.crop:
+        written += crop_set(pair, reg, out, tuple(a.crop), a.crop_name, ppm=CROP_PPM, **kw)
+    else:
+        r = render_pair(pair, reg, ppm=a.ppm, **kw)
+        written += write_overlay_set(out, r, title, suffix=suffix)
+        if a.by_thread:
+            written += by_thread(pair, reg, out, ppm=a.ppm)
+    (out / f"registration{suffix}.json").write_text(json.dumps(reg.as_dict(), indent=1))
+    for p in written:
+        print(f"  wrote {p}")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main(sys.argv[1:]))
