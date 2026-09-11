@@ -1076,3 +1076,36 @@ instrument/plan, build, measure, renders, docs, PR, auto-merge, next):
   measurement bug, never a finding.
 - Engine reverted to main's behaviour; only the instrument, its test and the
   record ship. Next: item 14 (edge-finish flags, gate-1 held), then item 10.
+
+## Item 14 — 2026-09-11: measured, CORRECTED TWICE, and edge_cap gated
+
+**The entry below replaces an earlier one that published version 2's numbers.
+Read the correction, not the headline it had.**
+
+- **Two wrong readings, both with clean tables.** `tools/pro_silhouette.py`
+  v1 built cover from whole runs and skipped fill runs → pro **76.7–100%
+  uncovered**. v2 added every column phase back, a tatami's own row turns
+  included → pro **0.5–2.2% uncovered**, and on OUR side it called Fremont
+  0.0% uncovered.
+- **What caught it: the edge-cap GATE, which reads real run kinds.** It saved
+  Fremont nothing while the tool said Fremont needed nothing. The engine puts
+  **0.0 mm of linear stitch on Fremont's 203.7 mm outer boundary**. *Two
+  instruments disagreeing is the finding — publish neither until they are one
+  measurement or two clearly labelled ones.*
+- **Defensible now.** OURS is exact (the instrument calls the engine's own
+  `_sewn_linear_cover`): **5.9–100.0% of the sewn silhouette has no linear
+  stitching** — enthusiast 5.9, drone 20.2, Becker 24.5, gaulke 76.7, whitebg
+  82.6, Fremont 100.0; 3,266 mm, median 76.7%. HIS is a **lower bound** via
+  `border_pro`'s certified fill-edge test: **at least 19.1–26.1% of 7,063 mm
+  of fill edge bordered**, none in the fill's own colour block. A
+  silhouette-coverage % for him is NOT knowable from a stitch file.
+- **The gate** (`silhouette_cap(omit=…)`, Kent's "gate it, then flip"): hand
+  both emitters everything linear already sewn; `run_outline` gained
+  `border_runs`' arc machinery. No new constant. **Bill +8.6–100.4% →
+  +5.9–26.3%** (median +13.4%), uncovered → **0.1–6.2%**. Fremont unchanged,
+  correctly.
+- **Style is NOT settled** — bean cheaper in stitches on 5/6, satin cheaper in
+  trims on 3. Gate 1's sew-out owns it. The flip picks bean, one config away.
+- **`satin_rails_follow_edge`**: not answerable from stitch files. Circular.
+- Next: the flip PR (goldens recaptured on ubuntu CI), then item 10.
+
