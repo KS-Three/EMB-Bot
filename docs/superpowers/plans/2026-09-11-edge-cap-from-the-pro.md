@@ -1,4 +1,4 @@
-# Does anyone cap a silhouette? The pro's files say yes — and the bill is twice what our docs say (2026-09-11)
+# How much of an edge has thread laid along it — his and ours — and the gate that makes a cap affordable (2026-09-11)
 
 **Status: MEASURED. `edge_cap` is Kent's call and §5 puts it to him.
 `satin_rails_follow_edge` is NOT answerable from these files and that is the
@@ -20,71 +20,102 @@ finding for it.** Quality review 2026-09-08 item 14.
 - **`tools/border_pro.py`** already recovers area fills from penetration
   geometry and satin columns as phases inside a run. This reuses both.
 
-## 1. The instrument
+## 1. Two instruments, deliberately — and the two that pretended to be one
 
-`digitizer/tools/pro_silhouette.py`, pinned by `tests/test_pro_silhouette.py`
-(3). One statistic, defined once and applied to both sides:
+**`digitizer/tools/pro_silhouette.py` reads the two sides differently, because
+they are knowable to different depths.** Two earlier versions of this tool
+denied that and both were wrong.
 
-- the design's outline = the outer boundary of (area fills ∪ satin columns ∪
-  non-fill runs);
-- the cover = **linear elements only** — satin columns at their own width and
-  non-fill runs at thread width. **A fill's own rows are never cover**, because
-  a row ending on the boundary is the defect rather than a cap;
-- the answer = the share of outline length with no cover within 1.0 mm, which
-  is defect 19's own tolerance.
+- **Ours is EXACT.** We own the plan, so every run carries the kind that made
+  it. The reading unions every satin, border, bean and run-tier polyline at one
+  thread width through `stage7_sequence._sewn_linear_cover` — *the same
+  function the edge cap's own gate uses*, so instrument and engine cannot
+  drift — and measures how much of the sewn regions' outer boundary it covers.
+  A fill's rows are never cover: a row ENDING on the boundary is the defect.
+- **His is a LOWER BOUND.** A stitch file has no kinds, and separating a
+  border from a big tatami's row-turn phases is exactly the ambiguity
+  `border_pro`'s B1 and B4 warnings are about. So this counts only the columns
+  `border_pro` already certifies as fill-edge borders — a spine tracking a
+  fill's boundary for ≥`EDGE_FRAC` of its samples within `EDGE_NEAR_MM` — and
+  credits each with the length it actually tracks. Border satin the test misses
+  reads as absent, so the figure can only understate him.
 
-`--ours FIXTURE` digitizes one of our fixtures, exports it to DST and reads it
-back through the same function, so our number and the pro's are never two
-different instruments.
+### The two wrong versions, kept because the failure mode repeats
 
-## 2. The answer: he caps, comprehensively
+**Version 1** built cover from whole runs and skipped any run that was an area
+fill. In this corpus a run is routinely both a fill and the host of the columns
+bordering it (`border_pro`: run#6 of the chest file, a 542.7 mm² fill with
+eleven columns, three tracking a fill edge). It read the pro **76.7–100%
+uncovered** — that he does not cap at all.
 
-| | silhouette | uncovered @1.0 mm |
+**Version 2** added every column phase back, including a tatami's own row
+turns, and read him **0.5–2.2% uncovered** — that he caps almost everything.
+Applied to OUR side it called Hotel Fremont **0.0% uncovered**; the engine says
+0.0 mm of Fremont's 203.7 mm outer boundary carries any linear stitch at all.
+
+**What caught it was not a review — it was the gate disagreeing.** The gate
+reads real run kinds, and it saved Fremont exactly nothing while the tool
+claimed Fremont needed nothing. **Two instruments disagreeing is the finding.**
+Neither number should have been published, and one of them was, in an earlier
+commit on this branch.
+
+## 2. What each side actually says
+
+**Ours, exact, `edge_cap="none"`, 80 mm** — the share of the sewn silhouette
+with no linear stitching on it:
+
+| fixture | silhouette | uncovered |
 |---|---|---|
-| **Pro** — 5 Becker files | 3,488 mm | **0.5 – 2.2%** (median 1.6%) |
-| **Us, `edge_cap="none"`** — 5 fixtures | 2,954 mm | **0.0 – 79.2%** (median 15.2%) |
-| Us, `"bean"` | 2,339 mm | 0.0% on every fixture |
-| Us, `"satin"` | 2,810 mm | 0.0% on every fixture |
+| enthusiast | 556.4 mm | 5.9% |
+| drone | 1,205.2 mm | 20.2% |
+| becker | 659.4 mm | 24.5% |
+| gaulke | 333.9 mm | 76.7% |
+| whitebg | 308.0 mm | 82.6% |
+| **fremont** | 203.7 mm | **100.0%** |
 
-Ours, per fixture, OFF: Hotel Fremont **0.0%** (its own satin border already
-closes it), drone 7.3%, Becker 15.2%, `logo_whitebg` 76.3%, gaulke **79.2%**.
+3,266 mm of silhouette, median **76.7%** open. Fremont is the clean case: a
+badge whose satin is all interior lettering, so its outer edge is entirely
+tatami row-ends.
 
-So the defect is real, it is wildly uneven, and **both cap styles close it
-completely.**
+**His, a floor:** across the five Becker files, 7,063 mm of fill edge, **at
+least 19.1–26.1% of it carries a certified fill-edge border** (median 23.8%),
+none of them in the same colour block as the fill they border. He does lay
+thread along fill edges as a matter of course. Whether that adds up to capping
+a whole design silhouette is **not knowable from a stitch file** — say the
+floor, not a coverage figure.
 
-## 3. The bill is much larger than defect 19 records
+## 3. The gate, and what it is worth
 
-Defect 19 quotes **bean +12.6%, satin +15.3%** — true for Kent's icon, and not
-representative. Across six fixtures at 80 mm:
+Capping the WHOLE outline whether or not anything already covers it is what
+made `edge_cap` expensive. `silhouette_cap` now takes `omit` — everything
+linear this design has already sewn — and both emitters drop the samples
+standing on it, sewing only the stretches genuinely ending in open air. No new
+constant: the arc floor is `_ARC_MIN_MM` (the column's own width) and the
+tolerance `_OMIT_TOL_MM`, both already there. `run_outline` gained the arc
+machinery `border_runs` already had.
 
-| fixture | none | bean | satin |
-|---|---|---|---|
-| becker | 5,592 st / 36 trims | 10,663 / 51 (**+90.7%**) | 11,127 / 48 (**+99.0%**) |
-| enthusiast | 2,353 / 24 | 4,716 / 35 (**+100.4%**) | 3,733 / 33 (+58.6%) |
-| whitebg | 4,550 / 6 | 6,000 / 11 (+31.9%) | 6,182 / 10 (+35.9%) |
-| drone | 16,337 / 87 | 21,593 / 119 (+32.2%) | 19,724 / 104 (+20.7%) |
-| gaulke | 9,078 / 23 | 11,653 / 39 (+28.4%) | 11,481 / 31 (+26.5%) |
-| fremont | 9,893 / 46 | 10,745 / 47 (+8.6%) | 10,930 / 47 (+10.5%) |
+| fixture | OFF | bean UNGATED | **bean GATED** | satin GATED |
+|---|---|---|---|---|
+| becker | 5,592 st | 10,663 (+90.7%) | **6,603 (+18.1%)** | 6,664 (+19.2%) |
+| enthusiast | 2,353 | 4,716 (+100.4%) | **2,492 (+5.9%)** | 2,413 (+2.6%) |
+| drone | 16,337 | 21,593 (+32.2%) | **17,376 (+6.4%)** | 17,472 (+6.9%) |
+| gaulke | 9,078 | 11,653 (+28.4%) | **11,131 (+22.6%)** | 11,294 (+24.4%) |
+| whitebg | 4,550 | 6,000 (+31.9%) | **5,745 (+26.3%)** | 6,002 (+31.9%) |
+| fremont | 9,893 | 10,745 (+8.6%) | **10,745 (+8.6%)** | 10,930 (+10.5%) |
 
-**Two fixtures pay for nothing.** Fremont is already 0.0% uncovered and still
-buys +8.6%/+10.5%. `enthusiast_logo` has no recoverable area fill at all — it
-is satin lettering — so the instrument cannot even say it has a silhouette
-defect, and it pays **+100.4%/+58.6%**, the largest bill on the sheet.
+The gate turns a +8.6–100.4% bill into **+5.9–26.3%** (median +13.4%), and the
+edge still closes: uncovered falls to **0.1–6.2%** (bean) and 0.0–6.4% (satin).
+Fremont does not move, and that is the gate being right rather than failing —
+its outer edge has nothing on it, so there was nothing to skip.
 
-## 4. The measurement reversed itself once — and the reason is worth keeping
+## 4. Which style is NOT settled here
 
-The first version read the pro as **76.7–100% uncovered**, i.e. exactly the
-opposite. It built the cover from whole runs and skipped any run that was an
-area fill. In this corpus a run is routinely BOTH: `border_pro`'s own report
-shows run#6 of the chest file as a 542.7 mm² fill hosting eleven columns, three
-of them tracking a fill edge. Skipping those runs deleted precisely the caps
-being looked for.
-
-**A measurement that agrees with the conclusion you were already heading toward
-is the one to re-derive.** The first reading would have argued against a flag
-the pro's own work supports, and it printed a clean table while doing it.
-`tests/test_pro_silhouette.py` pins all three halves: the pro reads capped, a
-fill's rows never count as cover, and columns inside fill runs do.
+Bean is cheaper in stitches on five of six (median +13.4% against +14.9%) and
+closes the two worst fixtures better (gaulke 0.1% against 6.4%, fremont 0.9%
+against 0.0% — a wash). Satin costs fewer trims (becker 50 against 54, gaulke
+32 against 40, drone 88 against 92). **Neither dominates, which is exactly the
+question ROADMAP gate 1 reserves for a sew-out.** The flip that follows this
+picks bean and says why; one config value changes it.
 
 ## 5. `satin_rails_follow_edge` — the pro's files CANNOT settle it
 
@@ -96,8 +127,9 @@ sub-millimetre precision is its own project and it would still measure the
 scan, not the intent. **Either artwork registration or a sew-out settles this
 one; item 14's cheap route reaches `edge_cap` only.**
 
-## 6. What is Kent's
+## 6. Kent's ruling, 2026-09-11
 
-`edge_cap` has a precedent now — the trade's own practice — and a bill that is
-2–8× what the docs said on four of six designs. The options, with what each
-costs, are in the session's question. Nothing here flips a default.
+Asked with the (then uncorrected) table, he picked **"gate it, then flip"**.
+The gate is this PR and changes nothing by default — `edge_cap` is still
+`"none"`, so no golden moves. The flip is its own PR, because it moves goldens
+across the corpus and those are recaptured on ubuntu CI.

@@ -556,34 +556,38 @@ Moved verbatim 2026-08-28 — no section was rewritten in the move.
 
 ## Measured negatives — built or proposed, then rejected. Do not rebuild.
 
-- **The professional CAPS his silhouette, and a stitch file can say so.**
-  Measured 2026-09-11 on the five commissioned Becker files by the same
-  statistic applied to our own output (`tools/pro_silhouette.py`): 3,488 mm of
-  outer silhouette, **0.5-2.2% uncovered at 1.0 mm**, median 1.6%. Ours reads
-  **0.0-79.2%** with `edge_cap` off and **0.0% everywhere** with either style.
-  So `edge_cap` has a precedent in the trade and is not a preference — but a
-  sew-out still owns WHICH style, and **the cost recorded in MASTER_SCOPE
-  defect 19 (bean +12.6%, satin +15.3%) is Kent's icon only**: across six
-  fixtures it runs **+8.6% to +100.4%**, and two designs pay for an edge that
-  is already closed or that the instrument cannot find at all.
-  **`satin_rails_follow_edge` cannot be settled this way** and no future
-  session should try: a stitch file holds the rails and not the artwork, so
-  asking whether a rail reaches the edge of a shape the rails themselves define
-  is circular. Artwork registration or a sew-out, nothing cheaper.
-  *(measured 2026-09-11 — `docs/superpowers/plans/2026-09-11-edge-cap-from-the-pro.md`)*
-
-- **A cover built from whole RUNS hides the very borders it looks for, and it
-  reverses the answer.** In the pro corpus one run is routinely both a large
-  area fill and the host of the satin columns bordering it (`border_pro`: run#6
-  of the chest file, a 542.7 mm² fill with eleven columns, three tracking a fill
-  edge). A silhouette reading that skipped fill runs wholesale read the pro as
-  **76.7-100% uncovered** — the exact opposite of the truth — and printed a
-  clean table doing it. **The unit is the COLUMN, not the run**, which is
-  `border_pro`'s own B4 lesson arriving a second time in a different disguise.
-  And the general rule: **a measurement that lands where you were already
-  heading is the one to re-derive**, because this one would have argued against
-  a flag the pro's own work supports.
-  *(found 2026-09-11 — `tests/test_pro_silhouette.py` pins all three halves)*
+- **A stitch file cannot tell a CAP from a tatami's row turns, and pretending
+  otherwise reversed the same answer twice in one session.** The question was
+  whether the professional caps his design silhouette (`cfg.edge_cap`,
+  MASTER_SCOPE defect 19). Version 1 of `tools/pro_silhouette.py` built the
+  "cover" from whole runs and skipped any run that was an area fill — but in
+  this corpus a run is routinely BOTH a fill and the host of the columns
+  bordering it (`border_pro`: run#6 of the chest file, a 542.7 mm² fill with
+  eleven columns, three tracking a fill edge) — and read him **76.7-100%
+  uncovered**. Version 2 added every column phase back, including a big
+  tatami's own row turns, and read him **0.5-2.2% uncovered**. Both printed
+  clean tables.
+  **What caught it was two instruments disagreeing, not a review.** The edge
+  cap's gate reads real run KINDS, and it saved Hotel Fremont nothing while the
+  tool said Fremont needed nothing — the engine puts 0.0 mm of linear stitch on
+  Fremont's 203.7 mm outer boundary. **When a tool and the engine disagree
+  about the same design, publish neither number until they are one measurement
+  or two clearly labelled ones.**
+  **What is defensible, and all that should be quoted:** ours EXACTLY, from the
+  plan's own run kinds — **5.9-100.0% of the sewn silhouette carries no linear
+  stitching** (median 76.7% across six fixtures) — and his as a LOWER BOUND
+  through `border_pro`'s certified fill-edge test: **at least 19.1-26.1% of
+  7,063 mm of fill edge is bordered**, none of it in the fill's own colour
+  block. He borders fill edges as a matter of course; a silhouette-coverage
+  percentage for him is not knowable and must not be invented.
+  **And the cost recorded in defect 19 (bean +12.6%, satin +15.3%) was Kent's
+  icon only** — ungated it runs +8.6% to +100.4% across six fixtures.
+  **`satin_rails_follow_edge` cannot be settled from these files either**, and
+  no future session should try: a stitch file holds the rails and not the
+  artwork, so asking whether a rail reaches the edge of a shape the rails
+  themselves define is circular. Artwork registration or a sew-out.
+  *(measured 2026-09-11 — `docs/superpowers/plans/2026-09-11-edge-cap-from-the-pro.md`;
+  `tests/test_pro_silhouette.py`, 4)*
 
 - **The last third of exposed fill travel is made by the column ORDER, and
   none of the three routing fixes reaches it. Two were BUILT and reverted.**

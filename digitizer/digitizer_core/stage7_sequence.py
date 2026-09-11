@@ -1201,6 +1201,35 @@ def _border_wanted(region, border_style: str, total_area: float,
     return bool(want), style
 
 
+# The run kinds that FINISH an edge. A satin column, a border circuit, a bean
+# outline and the run tier all lay thread ALONG a boundary, which is what a cap
+# does; a fill row crosses one and stops. Named here rather than derived so the
+# gate's reasoning is readable at the seam that uses it.
+_LINEAR_KINDS = (stitches.SATIN, stitches.BORDER, stitches.BEAN, stitches.RUN)
+
+
+def _sewn_linear_cover(blocks: list[StitchBlock]):
+    """What this design has already sewn ALONG an edge, as one geometry.
+
+    The silhouette cap's gate (`cfg.edge_cap`, Kent 2026-09-11). Every linear
+    run's polyline at one thread width — `machine.COVERAGE_THREAD_W_MM`, the
+    existing "width of the ribbon a single stitch lays" constant, so nothing
+    new is invented here and ROADMAP gate 1 is not touched.
+
+    None when nothing linear has sewn, which is the honest answer for a
+    design that is all fill: there the whole outline ends in open air and the
+    cap should close all of it, exactly as it did before the gate existed.
+    """
+    lines = []
+    for b in blocks:
+        for r in b.runs:
+            if r.kind in _LINEAR_KINDS and len(r.points) > 1:
+                lines.append(LineString(r.points))
+    if not lines:
+        return None
+    return unary_union(lines).buffer(machine.COVERAGE_THREAD_W_MM / 2.0)
+
+
 def _cap_thread(silhouette, sewn: list[PlannedRegion],
                 default_thread: int) -> int:
     """Which cone the design-silhouette cap sews in (cfg.edge_cap).
@@ -2341,6 +2370,28 @@ def sequence(
     cap_cost: dict | None = None
     if cap_style in ("bean", "satin") and cap_sewn:
         silhouette = unary_union([p.polygon for p in cap_sewn])
+        # THE GATE (Kent's call 2026-09-11, item 14). Cap only the stretches
+        # that genuinely end in open air. Everything LINEAR this design has
+        # already sewn — every satin column, border, bean and run tier — is
+        # handed over as `omit`, and the emitters drop the outline samples
+        # standing on it.
+        #
+        # Why it is needed and why it is not a taste call: measured across six
+        # fixtures (`tools/pro_silhouette.py`), capping the whole outline
+        # bills +8.6% to +100.4% stitches, and two of the six were paying for
+        # an edge already closed — Hotel Fremont reads 0.0% uncovered because
+        # its own satin border closes it, and `enthusiast_logo` is satin
+        # lettering with no area fill at all yet paid the largest bill on the
+        # sheet. The professional's own files cap 97.8-99.5% of their
+        # silhouette, so the CAP has a precedent; paying for one twice does
+        # not.
+        #
+        # Fills are deliberately not cover: a tatami row ENDING on the
+        # boundary is the defect this pass exists to close, so counting it
+        # would make the gate circular and close nothing. Travel, underlay and
+        # ties are not cover either — travel is hidden or exposed but never a
+        # finish, and underlay is under the very rows that end short.
+        cap_omit = _sewn_linear_cover(blocks)
         c_runs, c_report = silhouette_cap(
             silhouette,
             "__edge_cap__",
@@ -2348,6 +2399,7 @@ def sequence(
             entry=cursor,
             trim_at_mm=trim_at,
             width_mm=cfg.border_width_mm,
+            omit=cap_omit,
         )
         if c_runs:
             jumps += c_report["jumps"]

@@ -878,7 +878,8 @@ def _fill_cracks(geom, width: float) -> tuple[object, int]:
 def silhouette_cap(silhouette, shape_id: str, *, style: str,
                    entry: tuple[float, float] | None,
                    trim_at_mm: float,
-                   width_mm: float | None = None) -> tuple[list[StitchRun], dict]:
+                   width_mm: float | None = None,
+                   omit=None) -> tuple[list[StitchRun], dict]:
     """Close the DESIGN's outer edge — one cap on the whole silhouette.
 
     The two tiers below already outline a SHAPE. This outlines the union of
@@ -919,13 +920,25 @@ def silhouette_cap(silhouette, shape_id: str, *, style: str,
     column cannot stand in: the ruler is the column width itself, no new
     constant. A real hole — a counter, a donut's inside — survives untouched.
 
+    `omit` IS THE GATE, and it is the difference between a cap and a tax
+    (Kent's call 2026-09-11, on item 14's measurement). Without it this pass
+    caps the whole outline whether or not anything already covers it, and the
+    bill measured across six fixtures was **+8.6% to +100.4% stitches** — with
+    Hotel Fremont, already 0.0% uncovered because its own satin border closes
+    it, paying +8.6% for nothing, and `enthusiast_logo`, which is satin
+    lettering with no area fill at all, paying the most on the sheet. Handed
+    the linear stitching this design has ALREADY laid, both emitters drop the
+    samples standing on it and sew only the stretches genuinely ending in open
+    air. No new constant: the arc floor is `_ARC_MIN_MM` (the column's own
+    width) and the tolerance is `_OMIT_TOL_MM`, both already here.
+
     -> (runs, report). Report keys are the union of both tiers' own, so a
     caller reads one shape regardless of style: `loops`, `bean_loops`,
-    `jumps`, `empty`, plus `style` (what actually ran) and `holes_skipped`
-    (cracks filled before capping).
+    `jumps`, `empty`, plus `style` (what actually ran), `holes_skipped`
+    (cracks filled before capping) and `arcs`/`yielded` (what the gate cut).
     """
     report = {"loops": 0, "bean_loops": 0, "jumps": 0, "empty": True,
-              "style": "none", "holes_skipped": 0}
+              "style": "none", "holes_skipped": 0, "arcs": 0, "yielded": 0}
     if silhouette is None or style not in ("bean", "satin"):
         return [], report
     if getattr(silhouette, "is_empty", True):
@@ -936,14 +949,19 @@ def silhouette_cap(silhouette, shape_id: str, *, style: str,
 
     if style == "bean":
         runs, r = run_outline(silhouette, shape_id, entry=entry,
-                              trim_at_mm=trim_at_mm)
+                              trim_at_mm=trim_at_mm, omit=omit)
         report["loops"] = r["loops"]
     else:
         runs, r = border_runs(silhouette, shape_id, entry=entry,
                               trim_at_mm=trim_at_mm, style="auto",
-                              width_mm=width_mm)
+                              width_mm=width_mm, omit=omit)
         report["loops"] = r["loops"]
         report["bean_loops"] = r["bean_loops"]
+    # `border_runs` splits its count by tier (`arcs` / `bean_arcs`); the cap
+    # reports one number, because a caller asking "how much of the outline
+    # was already covered" does not care which emitter drew the rest.
+    report["arcs"] = r.get("arcs", 0) + r.get("bean_arcs", 0)
+    report["yielded"] = r.get("yielded", 0)
     report["jumps"] = r["jumps"]
     report["empty"] = not runs
     report["style"] = style
@@ -951,7 +969,7 @@ def silhouette_cap(silhouette, shape_id: str, *, style: str,
 
 
 def run_outline(poly, shape_id: str, *, entry: tuple[float, float] | None,
-                trim_at_mm: float) -> tuple[list[StitchRun], dict]:
+                trim_at_mm: float, omit=None) -> tuple[list[StitchRun], dict]:
     """The run tier: a shape too small to fill or satin, sewn as bean runs on
     its own outline instead of being dropped.
 
@@ -971,12 +989,25 @@ def run_outline(poly, shape_id: str, *, entry: tuple[float, float] | None,
     A ring shorter than `RUN_MIN_LOOP_MM` is skipped — under three bean
     stations the needle is re-entering its own holes.
 
+    `omit`, when given, is the part of this outline something already sewn
+    covers — `border_runs`' own parameter, on this tier. A ring that loses a
+    stretch to it sews as open arcs instead of a circuit, each its own run,
+    and a ring covered end to end sews nothing. The silhouette cap is its
+    caller: measured 2026-09-11, capping a design's WHOLE outline bills
+    +8.6% to +100.4% stitches, and two of six fixtures were paying for an
+    edge already closed by their own satin (`tools/pro_silhouette.py`).
+
     Report keys: `loops`, `jumps`, `empty` (plus `too_thin`, always False,
-    so stage 7 can treat every tier's report identically).
+    so stage 7 can treat every tier's report identically), and `arcs` /
+    `yielded` when `omit` split a ring.
     """
-    report = {"loops": 0, "jumps": 0, "empty": True, "too_thin": False}
+    report = {"loops": 0, "jumps": 0, "empty": True, "too_thin": False,
+              "arcs": 0, "yielded": 0}
     runs: list[StitchRun] = []
     cursor = entry
+    omit_prep = None
+    if omit is not None and not getattr(omit, "is_empty", True):
+        omit_prep = prep(omit.buffer(_OMIT_TOL_MM))
     for part in _parts(poly):
         for ring in [part.exterior, *part.interiors]:
             coords = list(ring.coords)
@@ -987,10 +1018,26 @@ def run_outline(poly, shape_id: str, *, entry: tuple[float, float] | None,
             ring_pts, _total = _ring_arc_samples(coords, n)
             if not ring_pts:
                 continue
-            pts = _bean_loop(ring_pts, cursor, machine.BEAN_STITCH_MM,
-                             machine.BEAN_PASSES)
-            if len(pts) < 2:
-                continue
+            if omit_prep is None:
+                arcs, whole = [ring_pts], True
+            else:
+                # This tier's samples ARE the edge (the outline is the
+                # artwork, see above), so no `edge` argument — unlike the
+                # border's bean, which rides an inset spine.
+                arcs, whole = _ring_arcs(ring_pts, omit_prep, None)
+                if not whole:
+                    report["yielded"] += 1
+            for arc in arcs:
+                if whole:
+                    pts = _bean_loop(ring_pts, cursor, machine.BEAN_STITCH_MM,
+                                     machine.BEAN_PASSES)
+                else:
+                    if len(arc) < 2 or LineString(arc).length < _ARC_MIN_MM:
+                        continue       # a blob, not an edge
+                    pts = _bean_arc(arc, cursor, machine.BEAN_PASSES)
+                    report["arcs"] += 1
+                if len(pts) < 2:
+                    continue
             # A rescued shape is thread-width scaled: there is no interior for
             # a travel run to hide in, so a hop between its rings gets the
             # plain jump-or-trim call, no bridging. Only BETWEEN rings: the
@@ -998,20 +1045,21 @@ def run_outline(poly, shape_id: str, *, entry: tuple[float, float] | None,
             # loop's decision, exactly as it is for a fill — booking it here
             # too double-counted every rescued shape's entry as a lifted
             # thread (measured on the benchmark: 13 phantom jumps warned).
-            jump = trim = False
-            if runs and cursor is not None:
-                d = math.dist(cursor, pts[0])
-                if d >= machine.TINY_STITCH_MM:
-                    jump = True
-                    trim = d > trim_at_mm
-                    report["jumps"] += 1
-            # `stitches.RUN`, not BEAN: same technique, different tier. The
-            # kind records WHY the run exists, and "border off changes
-            # nothing" must stay checkable with the rescue active.
-            runs.append(StitchRun(points=stitches.split_long_moves(pts),
-                                  kind=stitches.RUN, jump=jump, trim=trim,
-                                  shape_id=shape_id))
-            cursor = pts[-1]
-            report["loops"] += 1
+                jump = trim = False
+                if runs and cursor is not None:
+                    d = math.dist(cursor, pts[0])
+                    if d >= machine.TINY_STITCH_MM:
+                        jump = True
+                        trim = d > trim_at_mm
+                        report["jumps"] += 1
+                # `stitches.RUN`, not BEAN: same technique, different tier.
+                # The kind records WHY the run exists, and "border off
+                # changes nothing" must stay checkable with the rescue
+                # active.
+                runs.append(StitchRun(points=stitches.split_long_moves(pts),
+                                      kind=stitches.RUN, jump=jump, trim=trim,
+                                      shape_id=shape_id))
+                cursor = pts[-1]
+                report["loops"] += 1
     report["empty"] = not runs
     return runs, report

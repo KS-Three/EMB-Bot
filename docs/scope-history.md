@@ -25,35 +25,48 @@ that is the whole point of the file. Corrections go in `MASTER_SCOPE.md`.
 
 ---
 
-**Last updated:** 2026-09-11 (later still) — **item 14: the pro caps his
-silhouette, and `edge_cap`'s recorded bill was one fixture's.**
+**Last updated:** 2026-09-11 (later still) — **item 14 measured, corrected
+twice, and `edge_cap` GATED. The gate is what makes a cap affordable.**
 
-- **`tools/pro_silhouette.py`** reads one statistic on both sides: the share of
-  a design's outer silhouette with no LINEAR stitching (satin column or traced
-  run) within 1.0 mm. A fill's own rows are never cover — a row ending on the
-  boundary is the defect. `--ours` digitizes one of our fixtures, exports DST
-  and reads it back through the same function, so the two numbers are never two
-  instruments.
+- **The reading reversed itself twice before it was right, and the correction
+  is the entry.** Version 1 of `tools/pro_silhouette.py` built its "cover" from
+  whole runs and skipped any run that was an area fill — but in this corpus a
+  run is routinely both a fill and the host of the columns bordering it — and
+  read the pro **76.7-100% uncovered**. Version 2 added every column phase
+  back, a big tatami's own row turns included, and read him **0.5-2.2%**.
+  **The edge cap's own gate, which reads real run KINDS, is what exposed it:**
+  it saved Hotel Fremont nothing while the tool claimed Fremont needed nothing,
+  and the engine puts 0.0 mm of linear stitch on Fremont's 203.7 mm outer
+  boundary. Version 2's numbers reached a commit on this branch before the
+  disagreement surfaced; they are withdrawn here.
 
-- **Pro: 5 files, 3,488 mm, 0.5-2.2% uncovered (median 1.6%).** Ours with
-  `edge_cap` off: **0.0-79.2%** (Fremont 0.0, drone 7.3, Becker 15.2, whitebg
-  76.3, gaulke 79.2). Either cap style: **0.0% on every fixture.**
+- **What is defensible.** Ours EXACTLY, from the plan's own run kinds (the
+  instrument now calls `stage7_sequence._sewn_linear_cover`, the same function
+  the gate uses, so the two cannot drift): **5.9-100.0% of the sewn silhouette
+  carries no linear stitching** — enthusiast 5.9, drone 20.2, Becker 24.5,
+  gaulke 76.7, whitebg 82.6, **Fremont 100.0**, 3,266 mm in total, median 76.7%.
+  His as a LOWER BOUND through `border_pro`'s certified fill-edge test: **at
+  least 19.1-26.1% of 7,063 mm of fill edge bordered** (median 23.8%), none in
+  the fill's own colour block. A silhouette-coverage percentage for him is not
+  knowable from a stitch file.
 
-- **The bill, six fixtures at 80 mm**: bean +8.6% (fremont) to +100.4%
-  (enthusiast); satin +10.5% to +99.0% (becker). MASTER_SCOPE's +12.6%/+15.3%
-  was Kent's icon and is not representative. Two fixtures pay for nothing:
-  Fremont is already 0.0% uncovered, and `enthusiast_logo` has no recoverable
-  area fill at all yet pays the largest bill on the sheet.
+- **THE GATE** (`silhouette_cap(omit=...)`, Kent's ruling "gate it, then
+  flip"): everything linear already sewn is handed to both emitters, which drop
+  the outline samples standing on it and cap only what genuinely ends in open
+  air. `run_outline` gained the arc machinery `border_runs` already had. No new
+  constant — the arc floor is `_ARC_MIN_MM` and the tolerance `_OMIT_TOL_MM`.
+  **The bill falls from +8.6-100.4% to +5.9-26.3%** (median +13.4%) and the edge
+  still closes to **0.1-6.2%**: becker 10,663 -> 6,603 st, enthusiast 4,716 ->
+  2,492, drone 21,593 -> 17,376. Fremont does not move, which is the gate being
+  right — its outer edge has nothing on it, so there was nothing to skip.
 
-- **The reading reversed itself once.** Built from whole runs — skipping any
-  run that was an area fill — it read the pro as 76.7-100% uncovered. In this
-  corpus a run is routinely both a fill and the host of the columns bordering
-  it, so that skipped exactly the caps being looked for. The unit is the
-  COLUMN, not the run; `tests/test_pro_silhouette.py` (3) pins it.
+- **Style not settled.** Bean is cheaper in stitches on five of six (median
+  +13.4% against satin's +14.9%) and closes gaulke better (0.1% against 6.4%);
+  satin costs fewer trims (becker 50/54, gaulke 32/40, drone 88/92). Neither
+  dominates — gate 1's sew-out owns it. The flip is its own PR.
 
-- **`satin_rails_follow_edge` is not answerable from stitch files** and the
-  attempt should not be repeated: the rails define the shape, so asking whether
-  they reach its edge is circular. Artwork registration or a sew-out.
+- **`satin_rails_follow_edge` is not answerable from stitch files.** The rails
+  define the shape; asking whether they reach its edge is circular.
 
 ---
 
