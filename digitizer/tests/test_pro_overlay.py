@@ -338,3 +338,38 @@ def test_against_by_thread_writes_its_own_sheets(tmp_path):
     assert overlay.main(["--dir", str(d), "--by-thread", "--against", "baseline"]) == 0
     names = sorted(p.name for p in (d / "overlay" / "by_thread").iterdir())
     assert "0_c81e1e.png" in names and "0_c81e1e_vs-baseline.png" in names
+
+
+@pytest.fixture(scope="session")
+def becker_pair(tmp_path_factory):
+    """The committed Becker pair, prepped once for the session (one engine
+    run, ~45 s on Kent's machine on 2026-09-09). CI-runnable: no corpus."""
+    import time
+    import prep_all
+    root = tmp_path_factory.mktemp("proloop") / "real"
+    d = root / "becker_smoke"
+    d.mkdir(parents=True)
+    pro = HERE.parent / "testdata" / "reference" / "becker_hat_polo_large_beckers_logolc.dst"
+    art = HERE.parent / "testdata" / "becker_marine_logo.png"
+    blocks, breaks, threads, bounds, jumps, trims = prep_all.decode(pro)
+    width = bounds[2] - bounds[0]
+    (d / "pro_blocks.json").write_text(json.dumps(
+        [{"block": i, "rgb": list(threads[i % len(threads)])} for i in range(len(blocks))]))
+    import shutil
+    shutil.copy(art, d / "art.png")
+    t0 = time.time()
+    prep_all.run_ours(d / "art.png", width, d, garment_id="left_chest")
+    (root / "manifest.json").write_text(json.dumps(
+        [{"slug": "becker_smoke", "file": str(pro), "garment_id": "left_chest",
+          "pro": {"width_mm": width}, "ok": True, "seconds": round(time.time() - t0, 1)}]))
+    return pairframe.load_pair(d)
+
+
+def test_smoke_becker_overlay(becker_pair):
+    reg = pairframe.register_pair(becker_pair.pro_path, becker_pair.ours_path)
+    assert reg.iou > 0.5, reg
+    assert 0.9 < reg.scale < 1.1
+    files = overlay.write_overlay_set(becker_pair.dir / "overlay",
+                                      overlay.render_pair(becker_pair, reg),
+                                      overlay.title_for(becker_pair, reg))
+    assert len(files) == 5 and all(p.stat().st_size > 1000 for p in files)
