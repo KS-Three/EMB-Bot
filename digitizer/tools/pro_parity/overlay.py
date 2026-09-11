@@ -30,6 +30,8 @@ sys.path.insert(0, str(HERE.parents[1]))
 
 import pairframe as pf                                        # noqa: E402
 from digitizer_core.stitchviz import render_design             # noqa: E402
+from skimage.color import deltaE_ciede2000                    # noqa: E402
+from digitizer_core.threads import rgb_to_lab                 # noqa: E402
 
 WHITE = (255, 255, 255)
 PRO_TINT = (255, 0, 255)      # RGB magenta
@@ -204,3 +206,48 @@ def write_overlay_set(out_dir: Path, r: dict, title: str, suffix: str = "") -> l
 def title_for(pair: pf.Pair, reg: pf.Reg, extra: str = "") -> str:
     return (f"{pair.slug} {pair.width_mm:.1f} mm  iou {reg.iou:.2f}  scale {reg.scale:.3f}"
             f"{'  flipY' if reg.flip_y else ''}{('  ' + extra) if extra else ''}")
+
+
+def crop_set(pair: pf.Pair, reg: pf.Reg, out_dir: Path, crop_mm: tuple, name: str,
+             ppm: float = CROP_PPM, **kw) -> list:
+    """Render a crop window at CROP_PPM (36.0) and write the same five files
+    with suffix `_crop_<name>`."""
+    r = render_pair(pair, reg, ppm=ppm, crop_mm=crop_mm, **kw)
+    x0, y0, x1, y1 = crop_mm
+    return write_overlay_set(out_dir, r, title_for(pair, reg, f"crop {x0:g},{y0:g}..{x1:g},{y1:g} mm"),
+                             suffix=f"_crop_{name}")
+
+
+def match_blocks(pro_rgb: list, ours_rgb: list, max_de: float = 12.0) -> dict:
+    """Pro block index -> our block indices within `max_de` CIEDE2000,
+    nearest first. Chart-free: two RGBs straight to CIELAB, the module
+    `threads.py` keeps as the one colour space."""
+    if not pro_rgb or not ours_rgb:
+        return {i: [] for i in range(len(pro_rgb))}
+    pl = rgb_to_lab(np.array(pro_rgb, dtype=np.float64))
+    ol = rgb_to_lab(np.array(ours_rgb, dtype=np.float64))
+    out = {}
+    for i in range(len(pro_rgb)):
+        de = deltaE_ciede2000(np.repeat(pl[i:i + 1], len(ol), axis=0), ol)
+        order = [int(j) for j in np.argsort(de) if de[j] <= max_de]
+        out[i] = order
+    return out
+
+
+def by_thread(pair: pf.Pair, reg: pf.Reg, out_dir: Path, ppm: float = DEFAULT_PPM) -> list:
+    """Write one overlay sheet per pro block, each named `<block_index>_<rrggbb>.png`,
+    rendering pro block k against its matched our blocks. Title names unmatched blocks."""
+    out_dir = Path(out_dir) / "by_thread"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    matches = match_blocks(pair.pro_rgb, pair.ours_rgb)
+    written = []
+    for k, rgb in enumerate(pair.pro_rgb):
+        ours_blocks = set(matches.get(k, []))
+        r = render_pair(pair, reg, ppm=ppm, only_pro_block=k,
+                        only_ours_blocks=ours_blocks if ours_blocks else set())
+        hexname = "%02x%02x%02x" % tuple(int(v) for v in rgb)
+        extra = f"pro block {k} #{hexname} vs ours {sorted(ours_blocks) or 'NONE within 12 dE'}"
+        p = out_dir / f"{k}_{hexname}.png"
+        cv2.imwrite(str(p), _titled(r["overlay"], title_for(pair, reg, extra)))
+        written.append(p)
+    return written

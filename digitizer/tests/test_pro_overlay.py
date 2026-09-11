@@ -208,3 +208,31 @@ def test_a_crop_window_renders_at_exactly_its_own_size(tmp_path):
     r = overlay.render_pair(pair, reg, ppm=36.0, crop_mm=(40.0, 24.0, 50.0, 30.0))
     assert r["pro"].shape[:2] == r["ours"].shape[:2] == (6 * 36, 10 * 36)
     assert r["pro_mask"].any() and r["ours_mask"].any()
+
+
+def test_crop_set_renders_the_window_at_36_ppm(tmp_path):
+    ours = _design_blocks()
+    d = synth.make_prep_dir(tmp_path, "cr", ours, ours, [], [(0, 0, 20, 12)], 20.0)
+    pair = pairframe.load_pair(d)
+    reg = pairframe.register_pair(pair.pro_path, pair.ours_path)
+    files = overlay.crop_set(pair, reg, d / "overlay", (0.0, -2.0, 10.0, 3.0), "arm")
+    assert {p.name for p in files} == {"overlay_crop_arm.png", "pro_only_crop_arm.png",
+                                       "ours_only_crop_arm.png", "flicker_pro_crop_arm.png",
+                                       "flicker_ours_crop_arm.png"}
+    img = cv2.imread(str(d / "overlay" / "flicker_pro_crop_arm.png"))
+    assert abs(img.shape[1] - 10.0 * 36) <= 2 and abs(img.shape[0] - 5.0 * 36) <= 2
+
+
+def test_match_blocks_by_ciede2000():
+    m = overlay.match_blocks([(200, 30, 30), (30, 30, 200)], [(205, 28, 35), (20, 200, 20), (25, 35, 190)])
+    assert m == {0: [0], 1: [2]}
+    assert overlay.match_blocks([(0, 0, 0)], [(255, 255, 255)]) == {0: []}
+
+
+def test_by_thread_writes_one_sheet_per_pro_block(tmp_path):
+    ours = _design_blocks()
+    d = synth.make_prep_dir(tmp_path, "bt", ours, ours, [], [(0, 0, 20, 12)], 20.0)
+    pair = pairframe.load_pair(d)
+    reg = pairframe.register_pair(pair.pro_path, pair.ours_path)
+    files = overlay.by_thread(pair, reg, d / "overlay")
+    assert [p.name for p in files] == ["0_c81e1e.png", "1_1e1ec8.png"]
