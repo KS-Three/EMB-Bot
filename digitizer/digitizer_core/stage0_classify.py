@@ -67,6 +67,7 @@ import cv2
 import numpy as np
 
 from .config import PipelineConfig
+from .letterbox import strip_letterbox
 from .threads import rgb_to_lab
 from .warnings_codes import (
     CLASSIFICATION_UNCERTAIN,
@@ -171,11 +172,16 @@ def _load(image: str | Path | bytes | np.ndarray) -> tuple[np.ndarray, np.ndarra
     if raw is None:
         raise ValueError("could not decode image")
     if raw.ndim == 2:
-        return cv2.cvtColor(raw, cv2.COLOR_GRAY2RGB), None
-    if raw.shape[2] == 4:
-        rgb = cv2.cvtColor(raw[:, :, :3], cv2.COLOR_BGR2RGB)
-        return rgb, raw[:, :, 3]
-    return cv2.cvtColor(raw, cv2.COLOR_BGR2RGB), None
+        rgb, alpha = cv2.cvtColor(raw, cv2.COLOR_GRAY2RGB), None
+    elif raw.shape[2] == 4:
+        rgb, alpha = cv2.cvtColor(raw[:, :, :3], cv2.COLOR_BGR2RGB), raw[:, :, 3]
+    else:
+        rgb, alpha = cv2.cvtColor(raw, cv2.COLOR_BGR2RGB), None
+    # Same strip as `stage1_prep._load`, and it MUST stay the same: this
+    # module deliberately owns its own decode, so if only one of the two
+    # stripped, stage 0 would classify a different picture than stage 1
+    # digitizes. No-op on anything that is not a screenshot.
+    return strip_letterbox(rgb, alpha)
 
 
 def _fg_mask(rgb: np.ndarray, alpha: np.ndarray | None) -> np.ndarray:

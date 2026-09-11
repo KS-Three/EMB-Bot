@@ -189,6 +189,60 @@ wider fixture set.** Section 1 is the only confirmatory test, and it is null.
   comparability (§3), the `colour` component's 11/14 saturation (§4), and
   the `logo_script_tires` misroute (§4).
 
+## 8. Follow-up, same day: the letterbox fix, and what it proved
+
+Kent picked the worst finding in §4 to act on — `logo_gaulke_roofing`, the
+phone screenshot whose black bars read as ink and inverted the whole design.
+`digitizer_core/letterbox.py` now strips letterbox bars in both
+`stage0_classify._load` and `stage1_prep._load` (both, deliberately: stage 0
+owns its own decode, and if only one stripped, classification and prep would
+see different pictures).
+
+**The fix works, and only a render could show it.** Before: white thread on
+white cloth, the logo as negative space, unusable. After: both text lines
+fully legible in black, the mark solid and correctly polarised. Blast radius
+is one fixture — 13 of 14 come back byte-identical on route and stitch count,
+and black letterboxing round-trips byte-for-byte on both axes across five
+fixtures and three bar sizes.
+
+### The number that matters
+
+| | before | after |
+|---|---|---|
+| the actual file | **unusable** (invisible on cloth) | **legible** |
+| ARTFID | 32.2 | **32.7** |
+| coverage | .065 | .070 |
+| structure | .132 | .138 |
+| preflight grade | B | **C** (worse) |
+
+**ARTFID moved +0.5 points for a fix that turned an unusable file into a
+usable one — and preflight grade moved the wrong way.** Neither instrument in
+this repo could see the single largest quality improvement measured all day.
+
+The cause is not subtle and was predicted before the fix was written:
+`art_ink_field` reads the **original file**, so the bars are still counted as
+ink (`ink_saturation` 0.847). The engine now correctly sews only the logo
+band, which *shrinks* its overlap with that bogus ink field, so coverage stays
+at ~0.07 and the `subject mismatch` refusal persists at 4.2×. **The metric
+punishes the fix, very slightly, for being right.**
+
+That asymmetry is left in place on purpose. Changing `art_ink_field` in the
+same commit would have hidden the cleanest evidence this repo has that a
+metric can be confidently, quietly wrong — and it is the same failure §3
+describes, caught in the act rather than inferred from a rank correlation.
+Fix the metric deliberately, on its own evidence, in its own change.
+
+**The operational lesson is DOCTRINE's, re-earned:** the only instrument that
+caught this was rendering it and looking. A claim about polarity needs a
+picture, and a green metric is not one.
+
+### Still open on that fixture
+
+The band's white background is **still being sewn** — visible as pale fill
+texture across the whole rectangle. That is the gradient-route ground-sewing
+defect from §4, untouched here: it runs at ROADMAP **gate 2** (no stage-0
+recalibration without real tonal artwork) and is not this change's business.
+
 ## Reproducing
 
 ```bash

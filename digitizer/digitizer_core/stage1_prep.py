@@ -41,6 +41,7 @@ import cv2
 import numpy as np
 
 from .config import PipelineConfig
+from .letterbox import strip_letterbox
 from .threads import rgb_to_lab
 from .warnings_codes import (
     BACKGROUND_ABSENT,
@@ -115,11 +116,18 @@ def _load(image: str | Path | bytes | np.ndarray) -> tuple[np.ndarray, np.ndarra
     if raw is None:
         raise ValueError("could not decode image")
     if raw.ndim == 2:
-        return cv2.cvtColor(raw, cv2.COLOR_GRAY2RGB), None
-    if raw.shape[2] == 4:
-        rgb = cv2.cvtColor(raw[:, :, :3], cv2.COLOR_BGR2RGB)
-        return rgb, raw[:, :, 3]
-    return cv2.cvtColor(raw, cv2.COLOR_BGR2RGB), None
+        rgb, alpha = cv2.cvtColor(raw, cv2.COLOR_GRAY2RGB), None
+    elif raw.shape[2] == 4:
+        rgb, alpha = cv2.cvtColor(raw[:, :, :3], cv2.COLOR_BGR2RGB), raw[:, :, 3]
+    else:
+        rgb, alpha = cv2.cvtColor(raw, cv2.COLOR_BGR2RGB), None
+    # Letterbox bars are not artwork, and every ink rule below reads darkness
+    # as ink -- so black bars invert the whole design rather than merely
+    # degrading it. Strip before anything reads the pixels. This is a no-op on
+    # everything that is not a screenshot: 13 of the 14 tracked fixtures come
+    # back byte-identical (measured 2026-09-11). `stage0_classify._load` does
+    # the same, so classification and prep always see the same picture.
+    return strip_letterbox(rgb, alpha)
 
 
 def _border_ring(shape: tuple[int, int], width: int = 2) -> np.ndarray:
