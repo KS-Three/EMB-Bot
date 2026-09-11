@@ -102,6 +102,41 @@ DESIGNS = [
 # passed, so every design digitizes as pique_knit).
 USE_GARMENT = os.environ.get("PRO_PARITY_GARMENT", "1") != "0"
 
+# The customer artwork Kent supplied on 2026-08-15 lives on the Drive under
+# these names; the same files are committed as fixtures. When the Drive is not
+# mounted (`G:/` absent on Kent's machine, 2026-09-09) the committed copy is
+# used and the manifest's `art_prep.art_source` says so. MFab has no committed
+# art and stays Drive-only.
+_TESTDATA = Path(__file__).resolve().parents[2] / "testdata"
+ART_FALLBACK = {
+    "becker_hat_large": _TESTDATA / "becker_marine_logo.png",
+    "becker_lc_large": _TESTDATA / "becker_marine_logo.png",
+    "becker_hat_small": _TESTDATA / "becker_marine_logo.png",
+    "becker_chest_small": _TESTDATA / "becker_marine_logo.png",
+    "becker_beanie": _TESTDATA / "becker_marine_logo.png",
+    "gaulke_roofing_hat": _TESTDATA / "photo" / "logo_gaulke_roofing.png",
+    "gaulke_roofing_lc": _TESTDATA / "photo" / "logo_gaulke_roofing.png",
+    "hotel_fremont_hat": _TESTDATA / "photo" / "logo_hotel_fremont.webp",
+    "hotel_fremont_patch": _TESTDATA / "photo" / "logo_hotel_fremont.webp",
+    "precision_drone": _TESTDATA / "photo" / "drone_render.png",
+    "tires_hat_3d": _TESTDATA / "logo_script_tires.png",
+    "bridge_hat": _TESTDATA / "photo" / "logo_bridge_bar.jpg",
+    "bridge_lc": _TESTDATA / "photo" / "logo_bridge_bar.jpg",
+}
+
+
+def resolve_art(slug: str, art_rel: str) -> Path:
+    """The customer's artwork: the Drive file if it is there, else the
+    committed fixture for this slug, else FileNotFoundError(art_rel)."""
+    p = prep_all.find_file(art_rel)
+    if p is not None:
+        return Path(p)
+    fb = ART_FALLBACK.get(slug)
+    if fb is not None and fb.exists():
+        return fb
+    raise FileNotFoundError(art_rel)
+
+
 PRO_FILES = ("pro_stitches.csv", "pro_blocks.json", "pro_render.png")
 
 
@@ -149,9 +184,7 @@ def prep_one(slug, stitch_rel, art_rel, garment_id):
                                      trims=trims, meas=meas)
 
     # --- real artwork ------------------------------------------------------
-    art_src = prep_all.find_file(art_rel)
-    if art_src is None:
-        raise FileNotFoundError(art_rel)
+    art_src = resolve_art(slug, art_rel)
     info = real_art.prepare(art_src, real / "art.png")
     info["dpi_vs_design"] = real_art.dpi(info["ink_bbox_px"][0], width_mm)
     entry["art_prep"] = info
