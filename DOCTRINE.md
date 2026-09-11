@@ -4521,3 +4521,76 @@ wordmark read "X" at 77 and judged a cluster at 0.00 until
   it is protecting tells you which way to fix it** — here, that "colors" means
   spools, so the display moved and the assertion stayed. *(2026-09-11;
   `digitizer.spoolCount`, `QualityReport.cones`)*
+
+## A signal's number is not a claim about the artwork until you know WHICH PIXELS made it (2026-09-11)
+
+`logo_script_tires.png` — flat black script on white, Kent's own ground truth
+says `flat` — classifies `photo_scene` at confidence 1.000. The obvious
+suspects were the thick brush strokes and the anti-aliased curves. Both are
+wrong, and the ablation that says so is one line: **flatten the white
+BACKGROUND and `unique_color_mass` falls 0.361 → 0.011; harden the
+anti-aliasing instead and it RISES to 0.423.** 97.1% of the statistic comes
+from a ground reading grey 253.00 ± 0.75.
+
+**The mechanism is a quantize with no perceptual floor.** `unique_color_mass`
+runs k-means at a FIXED k=16 and counts pixels whose label differs from their
+3×3 mode. Two-colour art gives fourteen centres nothing to describe, so five
+land inside the white ground, **0.20–1.02 dE00 apart** — against this repo's
+own `preflight.DELTA_E_VISIBLE = 5.0`. It splits one colour into five and
+reports the neighbours disagreeing as photographic texture. A hard two-colour
+render plus ±1 grey level of noise on the ground reproduces `photo_scene` on
+every seed.
+
+**So the habit: before believing what a signal says about artwork, attribute
+it to pixels.** `tools/stage0_signal_origin.py` does it for stage 0 —
+per-zone share, which centres went where, how far apart they are
+perceptually, the seed spread and one-variable ablations.
+
+Three consequences that change what someone does:
+
+- **A printed confidence from a randomised statistic is one draw.** This
+  reading is 0.196–0.361 across k-means seeds 0–11 — 5 of 12 cross the gate,
+  and the default seed 0 is the maximum of the twelve. `_gate_confidence`
+  measures the distance of ONE draw from the threshold, so 1.000 says "far
+  from the gate", never "reproducible". Sweep the seed before quoting a
+  stage-0 verdict as stable.
+- **It exits at the PHOTO gate, so the flat/gradient replacement alone cannot
+  fix it.** Remove the grain and it lands in `gradient`, not `flat`, because a
+  clean anti-aliased edge over perfectly flat interiors still reads
+  `gradient_smoothness` 0.72 — 480× the 0.0015 gate. Plan §5a's "the photo
+  gate follows the same construction" is load-bearing for this fixture, not a
+  nicety.
+- **No threshold move fixes it, in either gate.** At 0.3608 it is the only
+  real artwork in the corpus over `UCM_PHOTO_MIN`, **3.3× the real photograph**
+  (`owl_kent.jpg` 0.1107) and 2.3× `drone_render`. A gate high enough to
+  exclude it excludes every real photograph too. That is the same inverted
+  ordering the 08-15 spec measured for `gradient_smoothness` (§5b) — and it
+  **corrects that spec's "`unique_color_mass` is not implicated … should not
+  be replaced."** It is implicated, for a different reason.
+
+Benign today: forcing `photo_scene` / `gradient` / `flat` gives ARTFID 85.7 on
+all three and identical satin. Not free, though — the Studio tells that
+customer *"The art reads as a photographic scene"*. *(measured 2026-09-11 —
+`docs/stage0-tires-photo-scene-2026-09-11.md`, `tools/stage0_signal_origin.py`,
+`tests/test_stage0_signal_origin.py`)*
+
+## A throwaway probe's numbers expire with the probe (2026-09-11)
+
+The 2026-08-15 classification census
+(`docs/classifier-misroutes-real-logos-2026-08-15.md` §2) recorded
+`tires_hat_3d` at `unique_color_mass` 0.048, `gradient_smoothness` 0.205. Today
+the same artwork reads 0.361 and 0.080 — and the file is **md5-identical** to
+the one that census read (`6f7bbf87cc86b4385693e23423ede788`, Drive original
+against the committed fixture). `gradient_smoothness` contains no RNG, and no
+export width from 146 to 2000 px reproduces 0.205, so that probe fed a raster
+that cannot now be identified. Its §6 says so in its own words: *"both were
+throwaway probes rather than committed tools"*.
+
+**The cost is not the wrong row — it is that the row cannot be retracted or
+confirmed**, only doubted, which is the weakest thing a measurement can
+become. The rest of that census still reproduces exactly (`precision_drone`
+0.159 = `drone_render` today), so the doc is sound and one row is orphaned.
+
+**Commit the probe, even an ugly one.** A tool that prints its own definition
+costs one file; a number whose definition is gone costs a re-derivation and
+leaves the original unciteable. *(measured 2026-09-11 — same doc §7)*
