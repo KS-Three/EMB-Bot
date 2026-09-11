@@ -127,9 +127,69 @@ sub-millimetre precision is its own project and it would still measure the
 scan, not the intent. **Either artwork registration or a sew-out settles this
 one; item 14's cheap route reaches `edge_cap` only.**
 
-## 6. Kent's ruling, 2026-09-11
+## 6. Kent's ruling, 2026-09-11 — and the flip
 
 Asked with the (then uncorrected) table, he picked **"gate it, then flip"**.
-The gate is this PR and changes nothing by default — `edge_cap` is still
-`"none"`, so no golden moves. The flip is its own PR, because it moves goldens
-across the corpus and those are recaptured on ubuntu CI.
+The gate shipped first and changed nothing by default; this section is the
+flip.
+
+### The default is `"bean"`
+
+Bean rather than satin because it is cheaper in stitches on five of six
+fixtures (median +13.4% against +14.9%) and closes the two worst-open designs
+at least as well (gaulke 0.1% uncovered against satin's 6.4%). **It is not a
+dominant win and the style stays a sew-out's** (gate 1): satin costs FEWER
+TRIMS on five of six — becker 50 against 54, gaulke 32 against 40, drone 88
+against 92 — and priced at Kent's own `_TRIM_STITCH_EQUIVALENT` of 25 the two
+are within 4% of each other overall, with satin ahead on four fixtures and
+bean ahead by more on the other two. One config value changes it.
+
+### What it costs, honestly
+
+Trims go up, and the trim RATE moves both ways because stitches go up too
+(per 1,000 stitches, at 80 mm, cap off → bean → satin):
+
+| fixture | off | bean | satin |
+|---|---|---|---|
+| becker | 6.26 | **8.03** | 7.35 |
+| whitebg | 1.10 | 1.39 | 1.33 |
+| fremont | 4.55 | **4.28** | 4.21 |
+| drone | 5.26 | 5.24 | **4.98** |
+| gaulke | 2.42 | **3.50** | 2.74 |
+| enthusiast | 9.77 | 9.63 | 9.95 |
+
+Worse on becker and gaulke, better on fremont and drone, flat elsewhere.
+**Four of the six are already over the 4.1 professional ceiling with the cap
+OFF**, so this is not the flip breaking a band it was inside. The one place it
+does cross is `test_chaining`'s 93 mm fixture (2.43 → 5.1), and that test now
+pins `edge_cap="none"` on both arms rather than re-base a professional
+benchmark to admit our own cost.
+
+### The cone re-load, and Kent's second ruling
+
+The cap sews as its own block in whichever cone owns most of the silhouette —
+so on **all six fixtures** it re-loads a cone the job already ran, a stop the
+`merge_duplicate_cone_layers` fold exists to remove. Measured alternative:
+always reusing the last-loaded cone removes the stop and puts a badly matched
+colour on the edge — on gaulke the best-match cone owns **95.0%** of the
+silhouette against the last-sewn cone's **5.4%**, on enthusiast 77.8% against
+22.2%. **Kent's call: keep the best match, accept the stop.**
+`test_duplicate_cone_layers` and `test_rehome_resnapped` carry the carve-out by
+name; every artwork revisit still fails them.
+
+### What moved, and what deliberately did not
+
+45 tests moved. Most are synthetic-fixture tests whose subject is artwork
+sequencing, and those now pass `edge_cap="none"` explicitly — the cap is a
+design-level pass with nothing to say about depth sorting or layer overrides,
+and `tests/test_edge_cap.py` owns it. The byte-identity goldens
+(`test_flat_lane_byte_identical`, `test_stage2_photo_segment`,
+`test_pushcomp`'s isotropic hash) pin `"none"` for a stronger reason: their job
+is "this OTHER change did not move the lane", and recapturing them would retire
+a pre-change baseline to record a change they were never about — the posture
+`conftest.PRE_FLIP` already documents. **No golden was recaptured.**
+
+The service now flags the cap's block `design_edge: true`: it is the one block
+with no review shape behind it (it outlines the union of several), so without
+the flag the Sequencer would show a nameless row the user cannot map to
+anything on the canvas.

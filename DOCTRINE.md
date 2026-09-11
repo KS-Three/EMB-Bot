@@ -34,6 +34,27 @@ Moved verbatim 2026-08-28 — no section was rewritten in the move.
 
 ## Standing rulings — decided, do not re-litigate
 
+- **The design-silhouette cap sews in the cone that owns the EDGE, not the
+  cone already threaded — and the extra stop is the accepted price.**
+  `cfg.edge_cap` went default `"bean"` on 2026-09-11 (Kent: "gate it, then
+  flip"), and with it on the cap re-loads a cone the job already ran on **all
+  six** measured fixtures: it is its own block, sewing after all artwork, in
+  whichever region's thread owns most of the silhouette. That is a stop the
+  `merge_duplicate_cone_layers` fold exists to remove, so the two rules
+  collide by construction and the collision was put to Kent with both numbers.
+  **Always reusing the last-loaded cone removes the stop and puts the wrong
+  colour on the edge** — on `logo_gaulke_roofing` the best-match cone owns
+  95.0% of the silhouette against the last-sewn cone's 5.4%, on
+  `enthusiast_logo` 77.8% against 22.2%. **His call: keep the best match,
+  accept the stop.** Do not re-open it as an optimisation; the fold's rule is
+  unchanged for every ARTWORK block and the cap is carved out by name in
+  `test_duplicate_cone_layers` and `test_rehome_resnapped`.
+  **And do not re-base a professional benchmark to admit the cap's cost.**
+  `test_chaining`'s ceiling is the pro corpus's trim band; the cap pushes that
+  fixture from 2.43 to 5.1 trims/1k, so the test pins `edge_cap="none"` on both
+  arms rather than move the ruler that measures us.
+  *(ruled 2026-09-11 — `docs/superpowers/plans/2026-09-11-edge-cap-from-the-pro.md` §6)*
+
 - **Ink/Stitch is GPL-3.0 — concept-level clean-room reimplementation only.**
   No literal copying and no near-verbatim translation, however convenient.
   The one exception is `pystitch`, its MIT-licensed pyembroidery fork, which is

@@ -107,9 +107,15 @@ export const DEFAULT_DIGITIZE_PARAMS = {
   // SHAPE, this closes the outer edge of the whole design, which belongs to
   // no single shape and which no per-shape border can reach. From Kent's
   // first sew-out, where every tatami row in the background ended in open
-  // air. "none" matches the service default; bean costs about +12.6% of the
-  // design's stitches and satin about +15.3% (measured on that icon).
-  edge_cap: "none",
+  // air. **"bean" since 2026-09-11** (Kent's ruling after item 14), matching
+  // the service default, which moved the same day. The "+12.6% bean / +15.3%
+  // satin" this comment used to quote was that one icon: gated, the bill is
+  // +5.9% to +26.3% across six fixtures, and ungated it ran as high as
+  // +100.4%. `digitizer/digitizer_core/config.py` carries the measurement
+  // and why bean rather than satin. A project saved before today keeps
+  // whatever it stored, "none" included -- the back-fill only fills an
+  // ABSENT field.
+  edge_cap: "bean",
   // Off by default, matching the service's own `detail_layer` default — it
   // costs real stitches (+39% on the owl photo below) and buys nothing on
   // flat logo art, which is the common case. Measured 2026-08-12 on a snowy

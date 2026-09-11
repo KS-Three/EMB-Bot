@@ -192,7 +192,15 @@ GOLDEN = json.loads((TESTDATA / "flat_lane_golden.json").read_text(encoding="utf
 
 
 def _snapshot(name: str) -> dict:
-    result, plan = digitize(TESTDATA / name, PipelineConfig(target_width_mm=80.0))
+    # `edge_cap="none"`, 2026-09-11. This golden's job is "the flat lane's
+    # GEOMETRY has not moved" — shape ids, areas, warnings, the stitch
+    # stream. The design-silhouette cap flipped ON that day (Kent's ruling)
+    # and adds a BLOCK on top of that geometry without touching any of it, so
+    # recapturing here would retire a pre-change baseline to record a change
+    # it was never about. The cap's own arithmetic is pinned in
+    # `tests/test_edge_cap.py`; the posture is `conftest.PRE_FLIP`'s.
+    result, plan = digitize(TESTDATA / name,
+                            PipelineConfig(target_width_mm=80.0, edge_cap="none"))
     return {
         "shape_ids": sorted(r.shape_id for r in result.regions),
         "areas_mm2": sorted(round(r.area_mm2, 4) for r in result.regions),

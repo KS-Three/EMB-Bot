@@ -1373,7 +1373,10 @@ def test_a_radial_ramp_design_is_one_region_sewn_as_the_designs_rings_end_to_end
     from shapely.ops import unary_union
     from digitizer_core.pipeline import plan_stitches, run_stages
 
-    cfg = PipelineConfig(target_width_mm=80.0, garment_id="left_chest")
+    # `edge_cap="none"`: this counts the design's RINGS as blocks (five
+    # shades), and the cap would add a sixth that is not a ring.
+    cfg = PipelineConfig(target_width_mm=80.0, garment_id="left_chest",
+                         edge_cap="none")
     result = run_stages(str(PHOTO_DIR / "gradient_ramp_radial.png"), cfg)
     sp = result.source_pixels
     assert sp is not None and sp.design_ramp is not None

@@ -70,7 +70,9 @@ test("buildDigitizeConfig sends the stored thread-brand preference and the proje
     satin: true,
     border: "off",
     detail_layer: false,
-    edge_cap: "none",
+    // "bean" since Kent's flip 2026-09-11 — the service's own default moved
+    // the same day, and this must keep matching it.
+    edge_cap: "bean",
     thread_brand: "madeira-rayon",
     garment_id: "left_chest",
   });
@@ -193,14 +195,24 @@ test("detail_layer rides buildDigitizeConfig both ways, and back-fills false for
   expect(buildDigitizeConfig(on, PROJECT).detail_layer).toBe(true);
 });
 
-test("edge_cap rides buildDigitizeConfig, and back-fills \"none\" for projects saved before the field existed", async () => {
+test("edge_cap rides buildDigitizeConfig, and back-fills today's default for projects saved before the field existed", async () => {
   stubStorage({});
   const { buildDigitizeConfig } = await import("./digitizer.js");
 
-  // Same additive-default contract detail_layer relies on above: a project
-  // saved before the design-edge cap existed must send "none" — the service's
-  // own default, whose off-path is byte-identity tested — not undefined.
-  expect(buildDigitizeConfig(digitizedElement(), PROJECT).edge_cap).toBe("none");
+  // Same additive-default contract detail_layer relies on above: the field is
+  // always sent, never undefined. A project saved before the design-edge cap
+  // existed stored nothing, so it takes TODAY's default — "bean" since Kent's
+  // flip 2026-09-11 — exactly as a pre-colour-bundle project takes today's
+  // colour defaults when it is re-digitized. A project that stored "none"
+  // explicitly still sends "none": the back-fill only fills an ABSENT field.
+  expect(buildDigitizeConfig(digitizedElement(), PROJECT).edge_cap).toBe("bean");
+  const off = digitizedElement({
+    params: {
+      target_width_mm: 80, max_colors: 6, satin: true,
+      fill_angle_deg: null, border: "off", edge_cap: "none",
+    },
+  });
+  expect(buildDigitizeConfig(off, PROJECT).edge_cap).toBe("none");
 
   for (const style of ["bean", "satin"]) {
     const el = digitizedElement({

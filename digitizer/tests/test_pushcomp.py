@@ -278,8 +278,13 @@ def test_flag_off_is_byte_identical_to_the_shipped_engine(fixture, garment, requ
     from digitizer_core import run_stages
     from .conftest import TESTDATA
 
-    base = run_stages(TESTDATA / fixture, cfg())
-    plan = plan_stitches(base, cfg(garment_id=garment))
+    # `edge_cap="none"`, 2026-09-11: this hash is the ISOTROPIC baseline the
+    # whole directional-comp lane rides on, and the design-silhouette cap
+    # (flipped ON that day) adds a block without touching the compensation
+    # this measures. Re-pinning the hash would retire the baseline to record
+    # a change it was never about — `conftest.PRE_FLIP`'s posture.
+    base = run_stages(TESTDATA / fixture, cfg(edge_cap="none"))
+    plan = plan_stitches(base, cfg(garment_id=garment, edge_cap="none"))
     blob = export_dst(plan)
     want_hash, want_n, want_bytes = GOLDEN_FLAG_OFF[(fixture, garment)]
     got_n = sum(len(r.points) for b in plan.blocks for r in b.runs)

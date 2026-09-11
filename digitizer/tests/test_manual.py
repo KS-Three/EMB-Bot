@@ -59,7 +59,10 @@ def _two_shapes(**overrides) -> list[dict]:
 
 def test_fill_and_satin_shapes_produce_a_real_plan():
     shapes = _two_shapes()
-    c = cfg(garment_id="left_chest")
+    # `edge_cap="none"`: these are two synthetic shapes and the subject is
+    # that two threads make two blocks. The design-silhouette cap (ON by
+    # default since 2026-09-11) would add a third, testing nothing here.
+    c = cfg(garment_id="left_chest", edge_cap="none")
     result = build_manual_result(shapes, c)
 
     assert len(result.regions) == 2
@@ -162,7 +165,9 @@ def test_shapes_sharing_a_thread_sew_as_one_color_block():
     result = build_manual_result(shapes, cfg())
     assert len({r.meta["layer"] for r in result.regions}) == 1
 
-    plan = plan_stitches(result, cfg())
+    # Cap off for the same reason as above: "one thread, one block" is the
+    # claim, and the cap is a second block by construction.
+    plan = plan_stitches(result, cfg(edge_cap="none"))
     assert len(plan.blocks) == 1
     assert plan.blocks[0].stitch_count > 0
 

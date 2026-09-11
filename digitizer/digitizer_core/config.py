@@ -1397,7 +1397,35 @@ class PipelineConfig:
     # RUN_MIN_LOOP_MM (2.2), so satin simply declines the crumbs.
     # tests/test_edge_cap.py pins the default, both styles, the cost
     # report, and the off-path byte-identity.
-    edge_cap: str = "none"
+    #
+    # DEFAULT "bean" SINCE 2026-09-11 — Kent's ruling "gate it, then flip",
+    # after item 14 measured what our edges actually look like. Two things
+    # changed between the paragraphs above and this line:
+    #
+    #  1. **The defect is real and uneven.** Measured exactly from the plan's
+    #     own run kinds (`tools/pro_silhouette.py --ours`), the share of the
+    #     sewn silhouette with NO linear stitching on it runs 5.9% to 100.0%
+    #     across six fixtures, median 76.7% — Hotel Fremont, a badge whose
+    #     satin is all interior lettering, has literally nothing on its
+    #     203.7 mm outer edge. And the professional borders his fill edges as
+    #     a matter of course (at least 19-26% of 7,063 mm, certified by
+    #     `border_pro`, none in the fill's own colour block).
+    #  2. **The gate made it affordable.** `silhouette_cap` now caps only what
+    #     genuinely ends in open air, and the bill fell from +8.6-100.4% to
+    #     **+5.9-26.3%** (median +13.4%) while uncovered fell to 0.1-6.2%.
+    #
+    # WHY BEAN and not satin: cheaper in stitches on five of six fixtures
+    # (median +13.4% against +14.9%), it closes the two worst-open designs at
+    # least as well (gaulke 0.1% against satin's 6.4%), and it is the lighter
+    # mark — a drawn line rather than a column's visual weight, which is the
+    # conservative direction for a pass that now runs on every design.
+    # **The style is still a sew-out's call** (ROADMAP gate 1); satin is one
+    # config value away and this comment is where to revisit it.
+    #
+    # The fragmentation inversion recorded above is GONE with the gate:
+    # `drone_render` reads bean +6.4% against satin +6.9%, because the gate
+    # removes the crumbs before either emitter's loop floor has to.
+    edge_cap: str = "bean"
     # EXPERIMENT, default OFF — option (b) of the same plan doc, the other
     # half of Kent's 2026-08-23 (a)+(b) decision: `shade_palette_bind` above
     # masks the shade snap to the palette; THIS flag makes the palette worth

@@ -25,6 +25,51 @@ that is the whole point of the file. Corrections go in `MASTER_SCOPE.md`.
 
 ---
 
+**Last updated:** 2026-09-11 (last) — **`edge_cap` FLIPPED ON, default
+`"bean"`. 45 tests moved and no golden was recaptured.**
+
+- **Kent's ruling was "gate it, then flip".** The gate shipped in #454; this is
+  the flip. `PipelineConfig.edge_cap` and the Studio's project default both
+  move to `"bean"`, and `conftest.PRE_FLIP` carries `edge_cap="none"` so a test
+  pricing one flag still stands on the engine its measurement was made on.
+
+- **Why bean, and why the style is still open.** Bean is cheaper in stitches on
+  five of six fixtures (median +13.4% against satin's +14.9%) and closes the
+  two worst-open designs at least as well. **Satin is cheaper in TRIMS on five
+  of six** (becker 50/54, gaulke 32/40, drone 88/92), and priced at Kent's own
+  25-stitch trim the two are within 4% overall. Gate 1's sew-out owns it; one
+  config value changes it.
+
+- **The trim rate moves BOTH ways**, because the cap adds stitches as well as
+  trims (per 1,000, off → bean): becker 6.26 → 8.03, gaulke 2.42 → 3.50, but
+  fremont 4.55 → 4.28 and drone 5.26 → 5.24, enthusiast 9.77 → 9.63. **Four of
+  the six are already over the 4.1 professional ceiling with the cap OFF.**
+  `test_chaining`'s 93 mm fixture does cross it (2.43 → 5.1) and now pins
+  `edge_cap="none"` on both arms — re-basing a professional band to admit our
+  own cost would be excusing it by moving the ruler.
+
+- **The cone re-load, and the second ruling.** The cap is its own block in the
+  cone that owns most of the silhouette, so on all six fixtures it re-loads a
+  cone already run — colliding with `merge_duplicate_cone_layers`' invariant.
+  Reusing the last-loaded cone instead would cost gaulke a 5.4%-frontage colour
+  where the best match owns 95.0%. **Kent: keep the best match, accept the
+  stop.** Carved out by name in `test_duplicate_cone_layers` and
+  `test_rehome_resnapped`; every artwork revisit still fails them.
+
+- **No golden was recaptured.** The byte-identity guards
+  (`test_flat_lane_byte_identical`, `test_stage2_photo_segment`,
+  `test_pushcomp`'s isotropic hash, and the no-op shape-override hash that
+  shares it) pin `edge_cap="none"`: their job is "this OTHER change did not
+  move the lane", and recapturing them would retire a pre-change baseline to
+  record a change they were never about. Most other movers are synthetic
+  sequencing fixtures, which now say `edge_cap="none"` explicitly.
+
+- **One product seam.** The cap's block is the only one with no review shape
+  behind it, so the service flags it `design_edge: true`; without that the
+  Sequencer would show a nameless row nothing on the canvas maps to.
+
+---
+
 **Last updated:** 2026-09-11 (later still) — **item 14 measured, corrected
 twice, and `edge_cap` GATED. The gate is what makes a cap affordable.**
 

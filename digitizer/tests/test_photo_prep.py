@@ -99,7 +99,12 @@ def _snapshot_with_prep_on(name: str) -> dict:
     from digitizer_core.pipeline import digitize
 
     result, plan = digitize(
-        TESTDATA / name, PipelineConfig(target_width_mm=80.0, photo_prep=True)
+        TESTDATA / name,
+        # `edge_cap="none"` matches `_golden_snapshot`'s own config
+        # (2026-09-11): both sides of a byte-identity comparison must stand on
+        # the same engine, and the cap is not what photo_prep is measured
+        # against.
+        PipelineConfig(target_width_mm=80.0, photo_prep=True, edge_cap="none"),
     )
     return {
         "shape_ids": sorted(r.shape_id for r in result.regions),

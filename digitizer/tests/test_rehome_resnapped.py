@@ -114,7 +114,14 @@ def test_repro_sews_one_block_per_spool_end_to_end():
     cfg = PipelineConfig(target_width_mm=80.0)
     result, plan = digitize(REPRO, cfg)
 
-    threads = [b.thread_index for b in plan.blocks]
+    # ARTWORK blocks only. The design-silhouette cap (ON by default since
+    # 2026-09-11) sews last in whichever cone owns most of the silhouette, so
+    # it re-loads a cone the job already ran — Kent ruled that price
+    # acceptable rather than put a badly matched colour on the edge (the
+    # reasoning is in `test_duplicate_cone_layers`' own carve-out). The
+    # rehome's claim is about the artwork, and it is unchanged.
+    threads = [b.thread_index for b in plan.blocks
+               if not any(r.shape_id == "__edge_cap__" for r in b.runs)]
     assert len(threads) == len(set(threads)), (
         f"a spool is revisited across colour changes: {threads}"
     )

@@ -148,7 +148,11 @@ def test_a_clean_real_plan_earns_a_clean_report(whitebg, plan):
     assert m["input_px_per_mm"] == pytest.approx(8.39, abs=0.05)
     assert m["input_px_per_mm"] < PHOTO_MIN_PX_PER_MM
     assert m["subject_bg_delta_l"] == pytest.approx(59.2, abs=0.5)
-    assert m["color_changes"] == 4
+    # 5, not 4, since 2026-09-11: the design-silhouette cap sews as its own
+    # block in a cone the design already loads, so the operator really does
+    # get one more stop. Kent ruled that price acceptable (the alternative
+    # put a 5.4%-frontage cone on gaulke's edge instead of a 95.0% one).
+    assert m["color_changes"] == 5
 
 
 # --- Thread color fidelity ---------------------------------------------------
@@ -1696,9 +1700,12 @@ def test_color_stops_past_the_single_needle_wall_warn():
     hit = [f for f in report["findings"] if f["code"] == COLOR_STOPS_HEAVY]
     assert len(hit) == 1
     assert hit[0]["severity"] == "warn"
-    assert hit[0]["extra"]["color_changes"] == 11
+    # 12 since the edge cap flipped on (2026-09-11): eleven artwork stops
+    # plus the cap's own block. The WALL is still 11, so this fixture is
+    # still over it — which is what the test is about.
+    assert hit[0]["extra"]["color_changes"] == 12
     assert hit[0]["extra"]["max_stops"] == COLOR_STOPS_MAX
-    assert report["metrics"]["color_changes"] == 11
+    assert report["metrics"]["color_changes"] == 12
     json.dumps(report)
 
 
@@ -1710,7 +1717,7 @@ def test_a_design_at_the_stop_cap_is_not_warned(plan):
     report = run_preflight(None, stitch_plan, cfg(**PLAN_CFG_KW))
 
     assert COLOR_STOPS_HEAVY not in _codes(report)
-    assert report["metrics"]["color_changes"] == 4
+    assert report["metrics"]["color_changes"] == 5   # +1: the edge cap's block
 
 
 # --- Scoring -----------------------------------------------------------------

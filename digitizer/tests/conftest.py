@@ -194,4 +194,11 @@ def segments(stitch_plan):
 COLOUR_BUNDLE = ("enforce_color_cap", "resnap_mask_matches_grader",
                  "revalidate_small_shapes", "bind_resnap_all_classes")
 PRE_FLIP = {name: False for name in COLOUR_BUNDLE + ("robust_region_colour",)}
+# `edge_cap` joined the flipped set 2026-09-11 ("bean", Kent's ruling after
+# item 14). It is a STRING, not a bool, so it cannot ride the dict
+# comprehension above -- and it is in PRE_FLIP for the same reason the five
+# are: a test pricing one flag alone must measure against the engine its
+# measurement was made on, and every cap arm before today was made with the
+# cap off.
+PRE_FLIP["edge_cap"] = "none"
 BUNDLE_ON = {name: True for name in COLOUR_BUNDLE}
