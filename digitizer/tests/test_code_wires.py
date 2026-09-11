@@ -172,7 +172,12 @@ def test_the_parsers_are_not_vacuous(live):
     assert "photo_auto_tier" in translated, "the lowercase key must survive the parse"
 
     fixes = _map_keys(PANEL.read_text(encoding="utf-8"), "FIX_FOR")
-    assert fixes == {"COLOR_STOPS_HEAVY", "LETTERING_TOO_SMALL", "STITCHES_TOO_SHORT"}
+    # The exact set, so a button added or lost is a deliberate act. Grew to
+    # four on 2026-09-10 when the legibility check landed ON by default
+    # (quality review item 11): `LETTERING_ILLEGIBLE` shares the size cure
+    # and the panel dedupes the three into one button.
+    assert fixes == {"COLOR_STOPS_HEAVY", "LETTERING_TOO_SMALL",
+                     "STITCHES_TOO_SHORT", "LETTERING_ILLEGIBLE"}
 
     compared = _compared_codes()
     assert sum(len(v) for v in compared.values()) >= 8, compared

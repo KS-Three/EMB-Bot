@@ -1,6 +1,6 @@
 # A yardstick that can see what Kent sees: legibility on the render, the un-clamped score, and the thread-match floor (2026-09-10)
 
-**Status: PLANNED — Kent's pick 2026-09-10 ~20:00Z ("Item 11 and 1", in that
+**Status: BUILT (PR #449) and the legibility check FLIPPED ON (§6) — Kent's pick 2026-09-10 ~20:00Z ("Item 11 and 1", in that
 order), after the region-colour flip (#448).** Quality review 2026-09-08
 item 11. Phase 1's exit is that the metric's ranking agrees with Kent's eye;
 this plan closes the three measured ways it cannot, before item 1 (the
@@ -303,3 +303,32 @@ a follow-up. Captured 2026-09-10 at `9f3d09c`.
    yardstick, and four of the seven F fixtures cleared every block under
    excess on 2026-09-06. A logo's palette can be changed, a photograph's
    cannot — which is why this stayed a product call. Not taken here.
+
+## 6. The flip (2026-09-10) — Kent's rulings on §5
+
+**Ruling 1: option A, and ON.** `LETTERING_ILLEGIBLE` warns under
+`LEGIBILITY_WARN` = 0.5 and never blocks (`LEGIBILITY_BLOCK` = 0.0), and
+`cfg.legibility_check` is **DEFAULT ON since 2026-09-10** — built OFF in
+PR #449, flipped in the PR after. What that buys, from §4.2's table: every
+preflight now says which words the thread does not say on Bridge Bar
+(0.13), drone (0.22 / 0.36) and the screenshot's 3 mm rows (0.00), and is
+silent on ENTHUSIAST, Fremont's HOTEL FREMONT (0.74, banner noise) and the
+9 mm GOLKE line (0.59). The two accepted costs, stated: the check never
+says "do not sew" even when the lettering is entirely gone, and SPOTIFY at
+exactly 0.50 is missed (2 mm lettering `LETTERING_TOO_SMALL` names). The
+read costs about 3.5 s per text cluster on every generate; `False` is the
+pre-flip report byte for byte, and `legibility_checked` says which ran.
+
+**Ruling 2: the gradient lane stays on RAW distance.** Row 4 of
+`docs/yardstick-disagreements-2026-09-06.md` is closed there, not deferred
+again — a logo's palette can be changed and a photograph's cannot, so the
+closest loaded cone is one to buy and the finding has named it on every
+route since 2026-09-06. No code moves.
+
+**What the flip touches.** `config.py` (the default and its docstring),
+`preflight.py`'s threshold and check comments (ruled, no longer
+provisional), the two default tests in `tests/test_legibility_check.py`,
+the Studio's `FIX_FOR` (the same "Make it bigger" as the size checks,
+deduped, its reason on the button's tooltip; two panel specs), the
+scorecard baseline (the `legibility_*` metrics go live and the fixtures
+with text clusters gain the warn), and the docs. <<FLIPTESTS>>

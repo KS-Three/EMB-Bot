@@ -1952,13 +1952,16 @@ class PipelineConfig:
     # that can see sewn-but-illegible — `dropped_elements` reads 0.2% on a
     # design whose tagline Kent calls "completely lost". Needs the tesseract
     # binary (the Studio's Convert-to-text pass already does; CI installs
-    # it) and the artwork, and costs one thread render plus a few tesseract
-    # reads per text cluster on every generate — priced in the plan
-    # (docs/superpowers/plans/2026-09-10-legibility-yardstick.md §4.2).
-    # DEFAULT OFF until Kent rules on LEGIBILITY_BLOCK / LEGIBILITY_WARN
-    # against his own eye; the report says `legibility_checked` either way,
-    # so off is never mistaken for clean.
-    legibility_check: bool = False
+    # it) and the artwork, and costs one thread render plus about 24
+    # tesseract reads (~3.5 s) per text cluster on every generate — priced in
+    # docs/superpowers/plans/2026-09-10-legibility-yardstick.md §4.2. DEFAULT
+    # ON since 2026-09-10 — built OFF in PR #449 and flipped in the PR after
+    # on Kent's ruling over the OCR crops (option A: `LETTERING_ILLEGIBLE`
+    # warns under `preflight.LEGIBILITY_WARN` and never blocks). The report
+    # says `legibility_checked` either way — False here, without the artwork
+    # or without tesseract — so off is never mistaken for clean. False is the
+    # pre-flip report byte for byte.
+    legibility_check: bool = True
 
     # Stage 7 — chaining. Whether a needle-up move that would be trimmed may
     # instead be sewn as a needle-down link, when its path is buried under a

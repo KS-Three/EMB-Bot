@@ -907,3 +907,32 @@ page-mask bug was fixed — re-present, do not re-open.
 - Follow-up not this PR's: `photo_grass_macro` B 76 → D 52 at #432 and
   Becker @ hat_front B 88 → 76 at #433 (plan §4.4; the task-card tool
   timed out twice).
+
+## Kent's rulings 2026-09-10 ~22:45Z on plan §5
+
+- **Legibility: option A** — `LETTERING_ILLEGIBLE` warns under 0.5 and
+  never blocks (as built), and `cfg.legibility_check` flips ON, as a
+  follow-up PR after #449 merges (auto-merge armed; no push to the lane
+  until then). The flip PR: the default, the docstrings/comments no longer
+  "provisional", the two default tests, every test that pins a finding set
+  or score on a text fixture with the artwork re-read on the flipped
+  default (drone, Bridge Bar at 12, the screenshot gain a warn; gaulke,
+  ENTHUSIAST, Fremont, Becker do not), a Studio FIX_FOR entry (the same
+  "Make it bigger" as LETTERING_TOO_SMALL), the scorecard recaptured with
+  the legibility metrics live, MASTER_SCOPE in place, scope-history, plan
+  §6. The cost (~3.5 s per text cluster per generate) stated in the PR.
+- **Yardstick: keep raw distance on the gradient lane** — row 4 of
+  yardstick-disagreements is RULED, not open: a logo's palette can be
+  changed and the finding names the closer loaded spool. Record in the
+  doc (append), preflight's comment, MASTER_SCOPE's row-4 sentence, plan §5.
+- Then item 1 (the real-logo lane).
+- **23:28Z — #449 MERGED** (auto-merge; `digitizer` green). Trigger deleted,
+  lane fast-forwarded to `15bf978`. The push hold is lifted; the flip work
+  (uncommitted) can go up once its suite reports.
+- **2026-09-11 ~00:00Z — the flip's recapture read.** 7 of 52 pairs gain
+  LETTERING_ILLEGIBLE (Bridge Bar ×2, screenshot ×2, summit ×2, drone
+  left_chest only — hat_front reads 0.545, the cap's density changes the
+  RENDER); only Bridge Bar's clamped score moves; gaulke is silent because
+  its clusters are unsewn (the `sewn` rule working). `legibility_checked`
+  True on all 52. Preflight 2.0 → 12.9 s on drone. Commits `28e3fc7`
+  (code/tests/Studio/docs) + the baseline.

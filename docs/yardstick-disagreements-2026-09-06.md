@@ -102,6 +102,22 @@ gradient lane should be JUDGED on excess** — which is the part that would
 re-base the scorecard, and is Kent's.
 `digitizer/tools/spool_remedy.py`. *(measured 2026-09-06)*
 
+**RULED 2026-09-10, and this row closes: the gradient lane stays on RAW
+distance.** Kent's call, put to him with the numbers under the new patch
+floor (quality review item 11): `THREAD_MATCH_POOR` still blocks 26 times
+over the 52-pair scorecard matrix, every one on the gradient lane's raw
+yardstick, and on 2026-09-06 four of the seven F fixtures cleared every
+block under excess. His reason is the one this row's own text names as the
+product question — **a logo's palette can be changed and a photograph's
+cannot**, so on a logo "already the closest cone this design loads" is not
+a pass, it is a cone to buy, and the finding has named that closer loaded
+spool on every route since 2026-09-06. Nothing in the code moves: the
+gradient lane was never rescored, so the ruling is a decision recorded, not
+a change. What the item-11 floor DID take off this lane is the shard: 16 of
+the 40 blocking findings judged on patches under 5 mm², and they no longer
+judge at all (`digitizer/tools/thread_match_floor.py`).
+*(ruled 2026-09-10 — `docs/superpowers/plans/2026-09-10-legibility-yardstick.md` §5)*
+
 ## 5. It scored the colour of regions that never sew
 
 Until 2026-09-06 `_region_color_errors` built a row for every region including

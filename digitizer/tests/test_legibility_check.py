@@ -6,7 +6,8 @@ check that can see sewn-but-illegible (`dropped_elements` reads 0.2% on a
 design whose tagline Kent calls "completely lost"). DEFAULT OFF until Kent
 rules on `LEGIBILITY_BLOCK` / `LEGIBILITY_WARN`; the report says
 `legibility_checked` either way, so off, no artwork and no tesseract are all
-distinguishable from clean.
+distinguishable from clean. DEFAULT ON since 2026-09-10 (Kent's ruling A:
+warn under 0.5, never block); built OFF in PR #449.
 
 The fixture is `enthusiast_logo.png`: two text clusters that read at 96 on
 the artwork and 94 / 88 on the render (scope-history 2026-09-08), so the
@@ -38,6 +39,8 @@ def _enthusiast():
 
 
 def _on(**kw) -> PipelineConfig:
+    """The shipped default, spelled out so the tests read the same before
+    and after the flip."""
     return PipelineConfig(target_width_mm=80.0, garment_id="left_chest",
                           legibility_check=True, **kw)
 
@@ -50,18 +53,21 @@ def _hits(report) -> list[dict]:
     return [f for f in report["findings"] if f["code"] == pf.LETTERING_ILLEGIBLE]
 
 
-def test_default_off_and_the_thresholds_are_ordered():
-    """Warn-only for now: the OCR crops showed no similarity band that
-    separates lost lettering from damaged lettering (plan §4.2), so the
-    block threshold sits at 0.0 — never — until Kent rules otherwise."""
-    assert PipelineConfig().legibility_check is False
+def test_default_on_and_the_thresholds_are_ordered():
+    """DEFAULT ON since 2026-09-10 (Kent's ruling A over the OCR crops):
+    a warn under 0.5 and never a block — the crops showed no similarity
+    band that separates lost lettering from damaged lettering (plan §4.2),
+    so the block threshold sits at 0.0. False is the pre-flip report."""
+    assert PipelineConfig().legibility_check is True
+    assert pf.LEGIBILITY_BLOCK == 0.0
     assert 0.0 <= pf.LEGIBILITY_BLOCK < pf.LEGIBILITY_WARN < 1.0
 
 
 def test_off_says_unchecked_and_emits_nothing():
     result, plan = _enthusiast()
     report = pf.run_preflight(result, plan, PipelineConfig(
-        target_width_mm=80.0, garment_id="left_chest"), image=ART)
+        target_width_mm=80.0, garment_id="left_chest", legibility_check=False),
+        image=ART)
     m = report["metrics"]
     assert m["legibility_checked"] is False
     assert m["legibility"] is None and m["legibility_worst"] is None
