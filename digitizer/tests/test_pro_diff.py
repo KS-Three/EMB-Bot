@@ -86,3 +86,57 @@ def test_readers_agree_between_plan_and_file(becker_pair):
     b = measure(passes_from_file(becker_pair.ours_path))
     assert abs(a["median_mm"] - b["median_mm"]) < 0.05
     assert abs(a["share"] - b["share"]) < 0.02
+
+
+def test_a_pass_that_crosses_two_regions_is_split_between_them(tmp_path):
+    """A professional file travels with the needle down, so one pass can cross
+    several of our regions. Each region must get the thread that lies in it."""
+    from shapely.geometry import box
+    long_satin = synth.satin_pass(0, 0, 40, 2.0)          # spans both boxes below
+    blocks = [((0, 0, 0), [long_satin])]
+    regions = [("L", "satin", box(-0.5, -1.5, 18.0, 1.5)),
+               ("R", "satin", box(22.0, -1.5, 40.5, 1.5))]
+    d = synth.make_prep_dir(tmp_path, "cross", blocks, blocks, regions, [(0, -1, 40, 1)], 40.0)
+    pair = pairframe.load_pair(d)
+    reg = pairframe.register_pair(pair.pro_path, pair.ours_path)
+    rows, residual = pdiff.region_rows(pair, reg)
+    by = {r["shape_id"]: r for r in rows}
+    assert by["L"]["pro"]["tier"] == "satin" and by["R"]["pro"]["tier"] == "satin"
+    assert by["L"]["pro"]["stitches"] > 20 and by["R"]["pro"]["stitches"] > 20
+    assert by["L"]["pro"]["trims"] == 1 and by["R"]["pro"]["trims"] == 1   # one lift, two regions
+
+
+def test_every_assigned_chunk_lies_in_its_own_region(becker_pair):
+    """Chunked assignment credits a region only with thread that is really in
+    it. Whole-pass assignment credited a region with a pass's whole length
+    once 60% of its points fell inside, which on this pro file meant 54% of
+    33.3 m "assigned" with much of it lying elsewhere."""
+    import shapely
+    reg = pairframe.register_pair(becker_pair.pro_path, becker_pair.ours_path)
+    polys = dict(pdiff.region_polys(becker_pair, reg))
+    passes = pdiff.passes_of(becker_pair.pro_path)
+    per, _residual, _lifts = pdiff.assign_passes(passes, list(polys.items()))
+    for sid, chunks in per.items():
+        buffered = polys[sid].buffer(pdiff.ASSIGN_BUFFER_MM + 1e-6)
+        for pts in chunks:
+            xs = [p[0] for p in pts]
+            ys = [p[1] for p in pts]
+            assert shapely.contains_xy(buffered, xs, ys).all(), sid
+
+
+def test_our_own_thread_mostly_lands_in_our_own_regions(becker_pair):
+    """Our regions come from our own artwork, so our thread should sit in
+    them. The pro's does not have to: it sews BECKER's letter bodies solid
+    where we have no region, and travels needle-down between elements, which
+    is exactly what the catalogue's residual line is for."""
+    reg = pairframe.register_pair(becker_pair.pro_path, becker_pair.ours_path)
+    polys = pdiff.region_polys(becker_pair, reg)
+    passes = pdiff.passes_of(becker_pair.ours_path, reg.apply_xy)
+    per, _residual, _lifts = pdiff.assign_passes(passes, polys)
+    assigned = sum(pdiff.length_mm(v) for v in per.values())
+    assert assigned / pdiff.length_mm(passes) > 0.85
+
+
+def test_the_planned_tier_reaches_the_regions_file(becker_pair):
+    tiers = {r.get("tier") for r in becker_pair.regions}
+    assert tiers - {None}, becker_pair.regions[:2]

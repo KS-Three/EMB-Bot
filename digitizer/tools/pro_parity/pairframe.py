@@ -316,7 +316,7 @@ def redigitize(pair: Pair, flags: dict) -> Path:
     cfg = prep_all.parity_config(pair.width_mm, pair.garment_id, **flags)
     res, plan = digitize(pair.art, cfg)
     write_dst(plan, arm / "ours.dst")
-    prep_all.write_regions(res, arm)
+    prep_all.write_regions(res, arm, plan=plan)
     (arm / "ours_blocks.json").write_text(json.dumps(
         [{"block": i, "rgb": list(b.rgb)} for i, b in enumerate(plan.blocks)], indent=1))
     (arm / "flags.json").write_text(json.dumps(flags, indent=1, default=str))

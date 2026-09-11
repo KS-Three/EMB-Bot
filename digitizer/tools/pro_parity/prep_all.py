@@ -65,6 +65,7 @@ from digitizer_core.pipeline import run_stages, plan_stitches
 from digitizer_core.config import PipelineConfig
 from digitizer_core.stage0_classify import CLASSES
 from digitizer_core.export import write_dst
+from digitizer_core import stitches
 
 # Corrected 2026-08-18, then corrected again the same day — read both halves.
 #
@@ -713,16 +714,53 @@ def parity_config(width_mm, garment_id=None, **extra):
     return cfg
 
 
-def write_regions(res, outdir):
+def _tiers_from_plan(plan) -> dict:
+    """shape_id -> 'satin' | 'fill' | 'run', read off the SEWN runs (R15).
+
+    `Region.meta` never carries a tier (only `layer`, `stitched` and
+    `subpixel_accepted` are set there), so `write_regions` used to write
+    `tier: None` for every region regardless of what actually got sewn. The
+    plan knows: every run carries a `kind` and a `shape_id`. `underlay` and
+    `travel` runs are ignored -- they say nothing about the shape's own
+    technique -- and `satin` beats `fill` beats any other sewing kind
+    (`run`, `border`, `bean`, `tie`), because a shape can carry more than
+    one run kind (e.g. a satin column over its own zigzag underlay) and the
+    higher tier is the one Kent would call it. A shape_id absent from this
+    map (only underlay/travel runs, or none at all) is not in the returned
+    dict; `write_regions` reads it back with `.get(shape_id)`, so it falls
+    through to `None` exactly as before."""
+    kinds: dict = {}
+    for _block, run in plan.iter_runs():
+        if run.kind in (stitches.UNDERLAY, stitches.TRAVEL):
+            continue
+        kinds.setdefault(run.shape_id, set()).add(run.kind)
+    tiers = {}
+    for shape_id, ks in kinds.items():
+        if stitches.SATIN in ks:
+            tiers[shape_id] = "satin"
+        elif stitches.FILL in ks:
+            tiers[shape_id] = "fill"
+        else:
+            tiers[shape_id] = "run"
+    return tiers
+
+
+def write_regions(res, outdir, plan=None):
     """`ours_regions.json`: the ARTWORK polygon stage 7 classifies satin-vs-fill
     on — the same object `is_satin_candidate` is handed — so a probe can
     re-ask the classifier's question about a prepped design without
     re-running stages 0-4 and risking a different config than the one that
     produced these stitches. Rounded to 3 dp: sub-micron precision on a
     polygon measured in millimetres is noise, and the full float repr triples
-    the file size."""
+    the file size.
+
+    `plan`, when given, is read for each region's actually-sewn tier via
+    `_tiers_from_plan` (R15) — `Region.meta` never carries one. Omitting
+    `plan` reproduces the old (always-`None`-tier) behaviour exactly, so a
+    caller that has not been updated keeps working."""
+    tiers = _tiers_from_plan(plan) if plan is not None else {}
     regions = [{"shape_id": r.shape_id, "area_mm2": round(r.area_mm2, 1),
-                "thread": r.thread_number, "tier": r.meta.get("tier"),
+                "thread": r.thread_number, "tier": tiers.get(r.shape_id, r.meta.get("tier")),
                 "bounds": [round(v, 1) for v in r.polygon.bounds],
                 "wkt": shapely.wkt.dumps(r.polygon, rounding_precision=3)}
                for r in res.regions]
@@ -797,7 +835,7 @@ def run_ours(art_path, width_mm, outdir, garment_id=None):
             "len_p90": round(lens[9 * n // 10], 2) if n else 0,
         })
     (outdir / "ours_blocks.json").write_text(json.dumps(summary, indent=1))
-    write_regions(res, outdir)
+    write_regions(res, outdir, plan=plan)
     return res, plan, ours_blocks, [tuple(b.rgb) for b in plan.blocks]
 
 

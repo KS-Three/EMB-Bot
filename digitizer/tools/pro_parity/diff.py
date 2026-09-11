@@ -45,7 +45,6 @@ from satin_columns import measure as satin_measure, passes_from_file    # noqa: 
 from digitizer_core.preflight import _coverage_map                      # noqa: E402
 from digitizer_core.stitches import StitchRun                           # noqa: E402
 
-ASSIGN_SHARE = 0.6      # a pass belongs to the region holding this share of its points
 ASSIGN_BUFFER_MM = 0.3  # pull comp + half a thread
 LAYER_CELL_MM = 0.25
 # Display thresholds — NOT a score. A row whose two sides differ by more than
@@ -81,28 +80,68 @@ def region_polys(pair: pf.Pair, reg: pf.Reg) -> list[tuple[str, Polygon]]:
     return out
 
 
-def assign_passes(passes, polys: list[tuple[str, Polygon]],
-                  share: float = ASSIGN_SHARE, buffer_mm: float = ASSIGN_BUFFER_MM):
+def assign_passes(passes, polys: list[tuple[str, Polygon]], buffer_mm: float = ASSIGN_BUFFER_MM):
+    """Chunk each pass into the region it actually lies in (R14).
+
+    A professional file travels with the needle down between elements — on
+    the Becker corpus file, 15 passes run to 33,330 mm total, median
+    1,405 mm, longest 7,394 mm — so a single needle-down PASS routinely
+    visits several of our regions, or none. Giving the WHOLE pass to
+    whichever region holds the biggest share of it (the old rule) throws
+    away most of a long pass's thread: measured 54% of the pro's thread
+    landing in any region, the rest becoming residual.
+
+    Each point is labelled with the first buffered region polygon — in the
+    order `polys` is given — that contains it, or left unlabelled if none
+    does (`shapely.contains_xy`, vectorised the same way `direction_in`'s
+    grid lookup is). The pass is then cut into maximal runs of consecutive
+    same-label points: a run of at least 3 points is a genuine needle-down
+    chunk (what `satin_columns.measure` and `union_pitch` need — an actual
+    run, not an arbitrary slice) and goes to that region's chunk list; a
+    shorter run, or one with no region, goes to residual.
+
+    -> (per_region: dict[shape_id, list[chunk]], residual: list[chunk],
+        lifts: dict[shape_id, int]) — `lifts[sid]` is the number of
+        DISTINCT SOURCE PASSES that contributed any chunk to that region
+        (how many times the machine arrived there after a lift), which is
+        NOT the same as the region's chunk count: one long pro pass can
+        hand one region several chunks without the machine ever having
+        lifted the needle over it more than once.
+    """
     buffered = [(sid, poly.buffer(buffer_mm)) for sid, poly in polys]
-    per = {sid: [] for sid, _ in polys}
+    per: dict = {sid: [] for sid, _ in polys}
+    lift_sources: dict = {sid: set() for sid, _ in polys}
     residual = []
-    for i, pts in enumerate(passes):
-        if not pts:
+    for pi, pts in enumerate(passes):
+        n = len(pts)
+        if n == 0:
             continue
         xs = np.array([p[0] for p in pts]); ys = np.array([p[1] for p in pts])
-        best, best_share = None, 0.0
+        labels: list = [None] * n
+        claimed = np.zeros(n, bool)
         for sid, poly in buffered:
-            bx0, by0, bx1, by1 = poly.bounds
-            if xs.max() < bx0 or xs.min() > bx1 or ys.max() < by0 or ys.min() > by1:
-                continue
-            inside = shapely.contains_xy(poly, xs, ys).mean()
-            if inside > best_share:
-                best, best_share = sid, float(inside)
-        if best is not None and best_share >= share:
-            per[best].append(i)
-        else:
-            residual.append(i)
-    return per, residual
+            idx = np.flatnonzero(~claimed)
+            if not len(idx):
+                break
+            inside = shapely.contains_xy(poly, xs[idx], ys[idx])
+            for k in idx[inside]:
+                labels[k] = sid
+            claimed[idx[inside]] = True
+        i = 0
+        while i < n:
+            j = i + 1
+            while j < n and labels[j] == labels[i]:
+                j += 1
+            chunk = pts[i:j]
+            sid = labels[i]
+            if sid is not None and (j - i) >= 3:
+                per[sid].append(chunk)
+                lift_sources[sid].add(pi)
+            else:
+                residual.append(chunk)
+            i = j
+    lifts = {sid: len(sources) for sid, sources in lift_sources.items()}
+    return per, residual, lifts
 
 
 # ----------------------------------------------------------------- readers
@@ -178,12 +217,19 @@ def density_of(passes, area_mm2: float) -> float:
     return round(length_mm(passes) / area, 2)
 
 
-def trims_in(passes) -> int:
-    """Number of passes = number of lifts (jump/trim) landing inside the region."""
-    return len(passes)
+def trims_in(lifts: int) -> int:
+    """The number of distinct source passes (lifts) that landed a chunk in
+    this region — how many times the machine arrived here after a lift.
+
+    Not the region's own chunk count (R14): chunking a long professional
+    pass at region boundaries can hand one region several chunks from a
+    single pass, and counting those as separate trims would overstate how
+    often the machine actually cut here. `assign_passes` computes the real
+    count; this reader just names it."""
+    return lifts
 
 
-def side_stats(passes, poly: Polygon, ang_map, bb, cov):
+def side_stats(passes, poly: Polygon, ang_map, bb, cov, lifts: int):
     p50, p90 = width_of(passes)
     deg, r = direction_in(ang_map, bb, poly)
     l50, l95 = layers_in(cov, poly)
@@ -197,7 +243,7 @@ def side_stats(passes, poly: Polygon, ang_map, bb, cov):
         "layers_p50": l50, "layers_p95": l95,
         "density": density_of(passes, poly.area),
         "stitches": sum(len(p) for p in passes),
-        "trims": trims_in(passes),
+        "trims": trims_in(lifts),
     }
 
 
@@ -205,8 +251,8 @@ def region_rows(pair: pf.Pair, reg: pf.Reg):
     pro = passes_of(pair.pro_path)
     ours = passes_of(pair.ours_path, reg.apply_xy)
     polys = region_polys(pair, reg)
-    pro_by, pro_res = assign_passes(pro, polys)
-    our_by, our_res = assign_passes(ours, polys)
+    pro_by, pro_res, pro_lifts = assign_passes(pro, polys)
+    our_by, our_res, our_lifts = assign_passes(ours, polys)
     allsegs = [(a[0], a[1], b[0], b[1], math.dist(a, b), 0, False) for a, b in segments(pro + ours)]
     bb = sc.bounds(allsegs)
     pro_ang = direction_map(pro, bb)
@@ -216,13 +262,13 @@ def region_rows(pair: pf.Pair, reg: pf.Reg):
     planned = {r["shape_id"]: r.get("tier") for r in pair.regions}
     rows = []
     for sid, poly in polys:
-        pp = [pro[i] for i in pro_by[sid]]
-        op = [ours[i] for i in our_by[sid]]
+        pp = pro_by[sid]
+        op = our_by[sid]
         rows.append({
             "shape_id": sid, "area_mm2": round(poly.area, 1), "tier_planned": planned.get(sid),
-            "pro": side_stats(pp, poly, pro_ang, bb, pro_cov),
-            "ours": side_stats(op, poly, our_ang, bb, our_cov),
+            "pro": side_stats(pp, poly, pro_ang, bb, pro_cov, pro_lifts[sid]),
+            "ours": side_stats(op, poly, our_ang, bb, our_cov, our_lifts[sid]),
         })
-    residual = {"pro_passes": len(pro_res), "pro_mm": round(length_mm([pro[i] for i in pro_res]), 1),
-                "ours_passes": len(our_res), "ours_mm": round(length_mm([ours[i] for i in our_res]), 1)}
+    residual = {"pro_passes": len(pro_res), "pro_mm": round(length_mm(pro_res), 1),
+                "ours_passes": len(our_res), "ours_mm": round(length_mm(our_res), 1)}
     return rows, residual
