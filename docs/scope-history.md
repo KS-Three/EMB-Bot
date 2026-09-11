@@ -25,6 +25,56 @@ that is the whole point of the file. Corrections go in `MASTER_SCOPE.md`.
 
 ---
 
+**Last updated:** 2026-09-11 (later) — **item 12's cause is established, and it
+disqualifies every fix the review proposed. Two arms built, measured, reverted.**
+
+- **The instrument is the deliverable.** `digitizer/tools/fill_bridges.py`
+  itemises what `fill_exposure.py` totals: for each bridge still lying over
+  finished fill, which relaxation of `travel_path`'s caps would produce a clean
+  route, how much of it a later colour buries, what a jump would cost against
+  `trim_at`, and — the question the review did not ask — whether ANY unsewn
+  ground connects the two ends.
+
+- **9 fixtures, 92 bridges, 912.6 mm: 88% (801 mm) have no corridor.** 6%
+  (55 mm) have one the router cannot use, 4% (36 mm) are the detour cap, 2%
+  (20 mm) are already buried. Becker and Hotel Fremont are 100% no-corridor.
+
+- **The review's own figures were stale.** It quotes Becker 55.8 of 148 mm;
+  today's engine reads **29.6 of 76.7**. Bridge Bar 75.8 of 194 reads 114.2 of
+  275.4, Fremont 59.6 of 185 reads 23.9 of 123.5.
+
+- **Arm 1 — raise the detour cap when the alternative is exposed travel rather
+  than a lift.** Built (`cfg.fill_travel_detour`), measured, **a perfect no-op
+  on all nine fixtures**, reverted.
+
+- **Arm 2 — prefer a next column that still shares unsewn ground** (a second
+  greedy tier in `_reorder_for_cover`). Built, measured **WORSE on six of nine**
+  — gaulke 3.1 -> 84.0 mm exposed at 23 -> 17 trims, Fremont 23.9 -> 99.9,
+  sunset 325.5 -> 552.1, meadow 255.8 -> 403.7 — because it succeeds at finding
+  orders with fewer CUTS and `_score` buys those at 25 stitches a trim against
+  2 an exposed stitch. A per-shape exposure ratchet moved only meadow and
+  sunset and left gaulke at 84.0, exposing a second fact: `_order_cost` and
+  `emit` can disagree, because the emitter keeps a `route_cache` across a
+  shape's bridges and the scorer builds a fresh one. Reverted.
+
+- **The probe that lied, and how it was caught.** The first census reported the
+  detour cap blocking 26 bridges / 110 mm. `travel_path` returns its route with
+  the START EXCLUDED (`_densify` is a-exclusive) and that first step is exactly
+  the part inside the column just finished, so scoring the bare route read every
+  short bridge as clean. The tell was a detour ratio of **0.5x** — impossible
+  between two fixed points. Corrected: 8 bridges / 36 mm, whose clean route is
+  1.0-1.4x the straight gap and was inside the 4x cap all along, which is why
+  arm 1 could only ever be a no-op. `tests/test_fill_bridges.py` (4) pins the
+  start point so it cannot come back.
+
+- **What is left is Kent's, then a prerequisite, then real work:** the
+  exposed-vs-trim exchange rate (ratified 2026-09-03, before this measurement
+  existed); making the scorer and the emitter agree; and replacing the greedy
+  with a route over the columns' connectivity graph so an island is never
+  stranded in the first place.
+
+---
+
 **Last updated:** 2026-09-11 — **the engine can tell a photograph from a logo
 without looking at colour. Default OFF, and a no-op on everything committed.**
 

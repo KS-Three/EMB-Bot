@@ -1050,3 +1050,29 @@ instrument/plan, build, measure, renders, docs, PR, auto-merge, next):
   would change nothing measurable here, so there is no measurement to flip on.
   It becomes answerable the moment real photographs land (the same artwork
   item 1 waits for), which is the one thing that would show both halves.
+
+## Item 12 — 2026-09-11: cause established, BOTH fixes measured negative
+
+- **PR #452 (item 13) merged** at ~03:10Z; main 952c09f0, lane fast-forwarded,
+  check-in trigger deleted. CI all four green.
+- **Item 12's answer: 88% of exposed fill travel has NO unsewn corridor.** The
+  needle finishes a column standing inside finished fill with the next column
+  behind more of it. `digitizer/tools/fill_bridges.py` is the census; 9
+  fixtures, 92 bridges, 912.6 mm. Becker and Fremont are 100% no-corridor.
+- **All three review remedies priced and disqualified**: cover-colour routing
+  2%, jump-under-`trim_at` 8 bridges / 26 mm (none on the four review designs),
+  and a bigger detour cap BUILT and a perfect no-op on all nine.
+- **My own fourth arm was worse, and the reason matters**: a corridor-preferring
+  greedy tier finds orders with fewer CUTS, and `_score` buys those at 25
+  stitches a trim against 2 an exposed stitch (gaulke 3.1 -> 84.0 mm at 23 -> 17
+  trims). **Do not attempt ordering work until Kent moves that exchange rate.**
+- **Second standing fact, found by the failed ratchet**: `_order_cost` and
+  `emit` can disagree about what an order sews — the emitter keeps a
+  `route_cache` across a shape's bridges, the scorer builds a fresh one.
+- **The self-catch worth remembering**: the first census reported a
+  detour-budget fix for 26 bridges. `travel_path` returns its route WITHOUT the
+  start point, and that first step is the exposed part; the tell was a 0.5x
+  detour ratio, impossible between two fixed points. An impossible number is a
+  measurement bug, never a finding.
+- Engine reverted to main's behaviour; only the instrument, its test and the
+  record ship. Next: item 14 (edge-finish flags, gate-1 held), then item 10.
