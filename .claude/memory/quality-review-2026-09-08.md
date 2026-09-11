@@ -987,3 +987,23 @@ page-mask bug was fixed — re-present, do not re-open.
   directory is gitignored and its contents never leave Kent's machine, so
   the tonal artwork arrives in a LOCAL session (claude-personal.cmd) and
   the boundary gets sited there. Still README-only here.
+
+## Kent's pick 2026-09-11 ~01:50Z — "Lets do all of them" (items 13, 12, 14, 10)
+
+Order chosen (dependency and cost, one PR each, same discipline —
+instrument/plan, build, measure, renders, docs, PR, auto-merge, next):
+
+1. **Item 13 — detect photographs from EXIF/face.** Small-to-medium, gate 2
+   does not apply (no colour gate moves), and it FEEDS item 1: stage 0 then
+   only has to separate flat from gradient among LOGOS. DOCTRINE names the
+   route: EXIF or face, declaration as the fallback.
+2. **Item 12 — finish fill travel under cover.** Instrument FIRST (the cause
+   is not established): name each exposed bridge and why it was laid, then
+   the rule. No gate.
+3. **Item 14 — settle the two edge-finish flags** (`edge_cap`,
+   `satin_rails_follow_edge`), gate-1 held: read the pro's files for
+   whether he caps a silhouette and how far a rail reaches, render, then
+   Kent's call.
+4. **Item 10 — wide columns in the JS lettering engine.** Port the Python
+   split-satin + fill fallback and its constants; stops where the
+   look-and-fabric call starts (MASTER_SCOPE holds that as Kent's).
