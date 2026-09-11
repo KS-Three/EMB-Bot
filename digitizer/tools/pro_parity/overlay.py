@@ -20,6 +20,7 @@ from __future__ import annotations
 import argparse
 import dataclasses
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -202,7 +203,8 @@ def write_overlay_set(out_dir: Path, r: dict, title: str, suffix: str = "") -> l
     written = []
     for name, img in files.items():
         p = out_dir / name
-        cv2.imwrite(str(p), img)
+        if not cv2.imwrite(str(p), img):
+            raise RuntimeError(f"could not write {p}")
         written.append(p)
     return written
 
@@ -215,11 +217,12 @@ def title_for(pair: pf.Pair, reg: pf.Reg, extra: str = "") -> str:
 def crop_set(pair: pf.Pair, reg: pf.Reg, out_dir: Path, crop_mm: tuple, name: str,
              ppm: float = CROP_PPM, **kw) -> list:
     """Render a crop window at CROP_PPM (36.0) and write the same five files
-    with suffix `_crop_<name>`."""
+    with suffix `_crop_<name>` (`name` passed through `_safe`, so a name with
+    a path separator or other filesystem-illegal character still writes)."""
     r = render_pair(pair, reg, ppm=ppm, crop_mm=crop_mm, **kw)
     x0, y0, x1, y1 = crop_mm
     return write_overlay_set(out_dir, r, title_for(pair, reg, f"crop {x0:g},{y0:g}..{x1:g},{y1:g} mm"),
-                             suffix=f"_crop_{name}")
+                             suffix=f"_crop_{_safe(name)}")
 
 
 def match_blocks(pro_rgb: list, ours_rgb: list, max_de: float = 12.0) -> dict:
@@ -252,12 +255,31 @@ def by_thread(pair: pf.Pair, reg: pf.Reg, out_dir: Path, ppm: float = DEFAULT_PP
         hexname = "%02x%02x%02x" % tuple(int(v) for v in rgb)
         extra = f"pro block {k} #{hexname} vs ours {sorted(ours_blocks) or 'NONE within 12 dE'}"
         p = out_dir / f"{k}_{hexname}.png"
-        cv2.imwrite(str(p), _titled(r["overlay"], title_for(pair, reg, extra)))
+        if not cv2.imwrite(str(p), _titled(r["overlay"], title_for(pair, reg, extra))):
+            raise RuntimeError(f"could not write {p}")
         written.append(p)
     return written
 
 
 # --------------------------------------------------------------------- CLI
+def _safe(s) -> str:
+    """A filename-safe token: any run of characters outside
+    `[A-Za-z0-9._-]` becomes one `-`, leading/trailing `-` trimmed, and an
+    all-illegal input falls back to `x` rather than an empty string."""
+    return re.sub(r"[^A-Za-z0-9._-]+", "-", str(s)).strip("-") or "x"
+
+
+def _suffix_for(flags: dict) -> str:
+    """The `--flag` filename suffix, e.g. `{"curve_turn_deg": 0}` ->
+    `_curve_turn_deg-0`. Empty for no flags. Both the key and the value go
+    through `_safe`: `parse_flags` can hand back an arbitrary string for a
+    str-typed `PipelineConfig` field (a forced_class, say), and that string
+    lands straight in a filename otherwise."""
+    if not flags:
+        return ""
+    return "_" + "_".join(f"{_safe(k)}-{_safe(v)}" for k, v in sorted(flags.items()))
+
+
 def _resolve_dir(a) -> Path:
     if a.dir:
         return Path(a.dir)
@@ -283,22 +305,28 @@ def main(argv=None) -> int:
 
     pair = pf.load_pair(_resolve_dir(a))
     flags = parse_flags(a.flag)
-    suffix = ""
+    suffix = _suffix_for(flags)
     if flags:
         arm = pf.redigitize(pair, flags)
         pair = pf.load_pair(arm)
-        suffix = "_" + "_".join(f"{k}-{v}" for k, v in sorted(flags.items()))
     reg = pf.register_pair(pair.pro_path, pair.ours_path)
     out = pair.dir / "overlay"
     extra = ""
     kw = {}
     if a.against:
-        base = pf.load_pair(pf._lane_root(pair.dir) / pair.slug) if a.against == "baseline" \
-            else pf.load_pair(pf._lane_root(pair.dir) / pair.slug / "flags" / a.against)
+        base_dir = pf._lane_root(pair.dir) / pair.slug
+        arm_dir = base_dir if a.against == "baseline" else base_dir / "flags" / a.against
+        if not (arm_dir / "ours.dst").exists():
+            flags_root = base_dir / "flags"
+            existing = sorted(p.name for p in flags_root.iterdir() if p.is_dir()) if flags_root.exists() else []
+            raise SystemExit(f"--against {a.against!r}: no such arm under {flags_root}. "
+                             f"Existing: {', '.join(existing) if existing else 'none'}")
+        base = pf.load_pair(arm_dir)
         # the "pro" side becomes the other arm: register against it instead
         reg = pf.register_pair(base.ours_path, pair.ours_path)
         pair = dataclasses.replace(pair, pro_path=base.ours_path, pro_rgb=base.ours_rgb)
         extra = f"OURS {a.against} (magenta) vs OURS {suffix.strip('_') or 'baseline'} (cyan)"
+        suffix += "_vs-" + _safe(a.against)
     title = title_for(pair, reg, extra)
     print(title)
     written = []

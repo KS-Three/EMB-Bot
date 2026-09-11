@@ -277,3 +277,45 @@ def test_cli_writes_the_overlay_dir(tmp_path):
     assert (d / "overlay" / "overlay.png").exists()
     assert overlay.main(["--dir", str(d), "--crop", "0", "-2", "10", "3", "--crop-name", "arm"]) == 0
     assert (d / "overlay" / "overlay_crop_arm.png").exists()
+
+
+def test_flag_suffix_is_filename_safe():
+    s = overlay._suffix_for({"forced_class": "a/b:c", "satin_angle_deg": 45.0, "x": None})
+    assert s.startswith("_") and all(ch.isalnum() or ch in "._-" for ch in s)
+
+
+def test_crop_name_with_a_slash_still_writes_its_files(tmp_path):
+    ours = _design_blocks()
+    d = synth.make_prep_dir(tmp_path, "sl", ours, ours, [], [(0, 0, 20, 12)], 20.0)
+    pair = pairframe.load_pair(d)
+    reg = pairframe.register_pair(pair.pro_path, pair.ours_path)
+    files = overlay.crop_set(pair, reg, d / "overlay", (0.0, -2.0, 10.0, 3.0), "sleeve/cuff")
+    assert files and all(p.exists() for p in files)
+
+
+def test_an_unwritable_image_raises(tmp_path, monkeypatch):
+    ours = _design_blocks()
+    d = synth.make_prep_dir(tmp_path, "uw", ours, ours, [], [(0, 0, 20, 12)], 20.0)
+    pair = pairframe.load_pair(d)
+    reg = pairframe.register_pair(pair.pro_path, pair.ours_path)
+    r = overlay.render_pair(pair, reg)
+    monkeypatch.setattr(overlay.cv2, "imwrite", lambda *a, **k: False)
+    with pytest.raises(RuntimeError, match="could not write"):
+        overlay.write_overlay_set(d / "overlay", r, title="uw")
+
+
+def test_against_baseline_writes_its_own_files(tmp_path):
+    ours = _design_blocks()
+    d = synth.make_prep_dir(tmp_path, "ag", ours, ours, [], [(0, 0, 20, 12)], 20.0)
+    assert overlay.main(["--dir", str(d)]) == 0
+    assert overlay.main(["--dir", str(d), "--against", "baseline"]) == 0
+    assert (d / "overlay" / "overlay.png").exists()
+    assert (d / "overlay" / "overlay_vs-baseline.png").exists()
+    assert (d / "overlay" / "registration_vs-baseline.json").exists()
+
+
+def test_against_a_missing_arm_names_the_arms_that_exist(tmp_path):
+    ours = _design_blocks()
+    d = synth.make_prep_dir(tmp_path, "ma", ours, ours, [], [(0, 0, 20, 12)], 20.0)
+    with pytest.raises(SystemExit, match="deadbeef"):
+        overlay.main(["--dir", str(d), "--against", "deadbeef"])

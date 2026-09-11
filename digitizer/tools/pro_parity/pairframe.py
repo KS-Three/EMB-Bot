@@ -306,7 +306,9 @@ def flags_dir(pair: Pair, flags: dict) -> Path:
 def redigitize(pair: Pair, flags: dict) -> Path:
     """Ours again, under `flags`, into `flags/<hash>/` beside the prep dir.
     Cached: an arm that already has `ours.dst` is not re-run — delete the
-    directory to force it."""
+    directory to force it. The cache key is `flags` alone, so an engine code
+    change (as opposed to a flag value) is NOT detected — delete the arm
+    directory by hand to re-run after one."""
     arm = flags_dir(pair, flags)
     if (arm / "ours.dst").exists():
         return arm
