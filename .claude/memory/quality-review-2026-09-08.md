@@ -929,3 +929,10 @@ page-mask bug was fixed — re-present, do not re-open.
 - **23:28Z — #449 MERGED** (auto-merge; `digitizer` green). Trigger deleted,
   lane fast-forwarded to `15bf978`. The push hold is lifted; the flip work
   (uncommitted) can go up once its suite reports.
+- **2026-09-11 ~00:00Z — the flip's recapture read.** 7 of 52 pairs gain
+  LETTERING_ILLEGIBLE (Bridge Bar ×2, screenshot ×2, summit ×2, drone
+  left_chest only — hat_front reads 0.545, the cap's density changes the
+  RENDER); only Bridge Bar's clamped score moves; gaulke is silent because
+  its clusters are unsewn (the `sewn` rule working). `legibility_checked`
+  True on all 52. Preflight 2.0 → 12.9 s on drone. Commits `28e3fc7`
+  (code/tests/Studio/docs) + the baseline.

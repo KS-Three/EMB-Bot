@@ -12300,3 +12300,47 @@ findings that rode sub-floor patches, the screenshot's raw depth re-pinned
 new `footprint_mm2`. Full digitizer suite on this tree: 3 failed, 2,224 passed, 3 skipped, 7 xfailed in 55 min with `-n auto` on this box under load — exactly CI's three platform reds (`test_flat_lane_byte_identical[enthusiast]`, `test_stage2_photo_segment[enthusiast]`, `test_pushcomp[whitebg-towel]`); no golden moved.
 
 *(2026-09-10 — `docs/superpowers/plans/2026-09-10-legibility-yardstick.md` §4)*
+
+## 2026-09-10 — item 11's flip: `cfg.legibility_check` ON (warn-only under 0.5), and yardstick row 4 closed on raw distance
+
+Kent's two rulings on the plan's §5, taken the day #449 shipped.
+
+**Option A, and ON.** `LETTERING_ILLEGIBLE` warns under `LEGIBILITY_WARN`
+0.5 and never blocks (`LEGIBILITY_BLOCK` 0.0) — the OCR crops showed the
+similarity trustworthy at its ends and noisy between, so one band is what
+the number carries honestly. `cfg.legibility_check` defaults True; False is
+the pre-flip report byte for byte. **On the scorecard corpus the flip adds
+the warn to 7 of 52 pairs**: Bridge Bar both garments (0.13 — "Resturant
+was dropped completely"), the screenshot both (worst 0.00 on its 3 mm UI
+rows), summit_badge both (worst 0.00 — "Text on the bottom was dropped
+out", his 08-27 note, a true positive the plan's own corpus table had not
+covered) and drone at left_chest (0.36 — "the E on drone") but NOT at
+hat_front (0.545: the cap's density changes the render the check reads, so
+the same design crosses the line on one garment and not the other — worth
+knowing about a check that reads the RENDER). Only Bridge Bar's CLAMPED
+score moves (16 → 4 and 4 → 0); the other five pairs sit on the 0 floor and
+move in `raw_score` alone — disagreement row 6's mechanism, visible for the
+first time because the same PR made the raw score readable. Silent where it
+should be: gaulke reads 0.21–0.29 and does not warn (its clusters are the
+unsewn enclosed holes — the `sewn` rule), Becker and Golden Tee have no
+readable art-side truth, Fremont at 80 mm reads 0.96–1.00, ENTHUSIAST 0.92–0.96.
+The costs: preflight 2.0 → 12.9 s on drone (3 clusters) and 0.8 → 7.7 s on
+ENTHUSIAST (2), about 3.5 s per cluster on every generate; it never blocks;
+and SPOTIFY at exactly 0.50 is missed (`LETTERING_TOO_SMALL` names it).
+In the Studio the finding joins the "Make it bigger" button, deduped with
+the two size checks. The customer-facing message attributes BOTH sides to
+the OCR — the first draft read "the artwork says 'DROM'", which tells a
+customer their own art says something it does not.
+
+**Row 4 closes: the gradient lane stays on RAW distance.** A logo's palette
+can be changed and a photograph's cannot, so "already the closest cone this
+design loads" is a cone to buy, not a pass — and the finding has named that
+spool on every route since 2026-09-06. No code moves; the row is appended
+to, preflight's comment says ruled rather than deferred.
+
+Full digitizer suite on the flipped tree: 3 failed, 2,224 passed, 3 skipped,
+7 xfailed in 41 min — the same three platform reds and the same pass count
+as with the flag off, so no test moved under the flip. Studio panel suite 65
+passed. Baseline recaptured on the flipped engine.
+
+*(2026-09-10 — `docs/superpowers/plans/2026-09-10-legibility-yardstick.md` §6)*
