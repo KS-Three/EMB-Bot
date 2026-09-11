@@ -556,6 +556,52 @@ Moved verbatim 2026-08-28 — no section was rewritten in the move.
 
 ## Measured negatives — built or proposed, then rejected. Do not rebuild.
 
+- **The last third of exposed fill travel is made by the column ORDER, and
+  none of the three routing fixes reaches it. Two were BUILT and reverted.**
+  Review item 12 said *"the cause is not established"*; it is now
+  (`digitizer/tools/fill_bridges.py`, 2026-09-11, 9 fixtures / 92 bridges /
+  912.6 mm). **88% — 801 mm — have NO unsewn corridor touching both ends:** the
+  needle finishes a column standing inside finished fill with the next column
+  behind more of it. There is nowhere to route through, so no rule about WHERE
+  to route can help. On Becker and Hotel Fremont, the two designs Kent pointed
+  at, it is 100%.
+  **Priced, so nobody re-proposes them:** routing under the covering colour
+  reaches 2% (`covered_by` does not overlap these bridges); lifting a bridge
+  shorter than `trim_at` reaches 8 bridges / 26 mm corpus-wide at pique knit's
+  3.0 mm and NONE on Becker, Fremont, Bridge Bar or drone; raising the ring
+  route's detour cap when the alternative is exposed rather than a lift was
+  built and is **a perfect no-op on all nine fixtures**.
+  **A fourth arm, mine, is WORSE and this is the interesting part.** Giving
+  `_reorder_for_cover`'s greedy a second tier — prefer a next column that still
+  shares unsewn ground — raises exposure on six of nine (gaulke 3.1 -> 84.0 mm,
+  Fremont 23.9 -> 99.9, sunset 325 -> 552) precisely BECAUSE it works: it finds
+  orders with fewer cuts, and `_score` buys those at `_TRIM_STITCH_EQUIVALENT`
+  25 against `_EXPOSED_STITCH_WEIGHT` 2, so six trims pay for eighty
+  millimetres of visible thread. **Any future ordering work moves that exchange
+  rate first, and the rate is Kent's** (ratified 2026-09-03, before this
+  measurement existed).
+  **And a per-shape ratchet did not stop it** — which is a second standing
+  fact: `_order_cost` and `emit` can disagree about what an order will sew,
+  because `emit` keeps a `route_cache` across a shape's bridges and the scorer
+  builds a fresh one, and `travel_path` tries cached rings first. Make those
+  agree before trusting any order-level guard.
+  *(measured 2026-09-11 — `docs/superpowers/plans/2026-09-11-fill-travel-bridges.md`;
+  `tests/test_fill_bridges.py`, 4)*
+
+- **A route returned by `travel_path` does NOT include its start point, and
+  measuring its exposure without one invents fixes that do not exist.**
+  `_densify` is a-exclusive, and that first step is exactly the part lying
+  inside the column just finished — so a probe that scores `LineString(route)`
+  reads every short bridge as clean. That reported a detour-budget fix for 26
+  bridges / 110 mm on 2026-09-11; the engine change built on it was a no-op on
+  every fixture, and the corrected figure is 8 bridges / 36 mm whose route is
+  1.0-1.4x the straight gap, inside the cap all along. **The tell was a detour
+  ratio of 0.5x — a route between two fixed points cannot be shorter than the
+  line between them, so an impossible ratio is a measurement bug, never a
+  finding.** `travel_path` scores `[a] + pts + [b]` internally and anything
+  reading its output must do the same; `tests/test_fill_bridges.py` pins it.
+  *(found 2026-09-11 — the same plan doc)*
+
 - **Binding the thread re-snap to the palette on every class is a REAL trade,
   not a free win — and it is not a yardstick artefact.**
   `cfg.bind_resnap_all_classes` closes defect 15's escape exactly (19 colour
