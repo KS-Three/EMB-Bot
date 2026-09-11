@@ -936,3 +936,26 @@ page-mask bug was fixed — re-present, do not re-open.
   its clusters are unsewn (the `sewn` rule working). `legibility_checked`
   True on all 52. Preflight 2.0 → 12.9 s on drone. Commits `28e3fc7`
   (code/tests/Studio/docs) + the baseline.
+
+## Item 1 (Kent's second pick) — PR 5 MEASURED 2026-09-11, gate-2 clean
+
+- `tools/color_diversity.py` + `tests/test_color_diversity.py` (18) +
+  `docs/stage0-signal-decision-2026-09-11.md`. Changes nothing.
+- **The foreground definition was never written down and it decides the
+  answer.** bbox (whole art bbox) reproduces the 08-15 table — bridge
+  16–17 vs its 17, drone 19–20 vs its 19, tires/gaulke/fremont 2 — and the
+  classes separate by 4. engine (what stage 1 digitizes) puts bridge at 39
+  above drone's 24 and they do not order: a JPEG's compression noise
+  counted without its flat ground. ALWAYS name the mode.
+- **The two real flat logos added since August widened the gap 2 → 4**
+  (golden_tee 4, screenshot 1, both far below drone 20).
+- **Blocker unchanged: ONE real tonal artwork vs the spec's four.** The
+  acceptance dir is gitignored (README only in any clone); scratch_* absent
+  in a cloud checkout; the owl and its four siblings are SYNTHETIC
+  (make_photo_fixtures.py) and barred, as is the repro icon. The tool
+  refuses below four and prints the unblocking act: drop 3–5 real tonal
+  artworks in `digitizer/testdata/photo/acceptance/` and re-run.
+- So PR 6a is supported-not-authorised; PR 6b (route by the ramp gate's own
+  refusal) needs no boundary and is Kent's ruling on gate 2's letter.
+- **Uncommitted and unpushed while #450 is armed** (a push lands in it).
+  Commit locally, push after #450 merges, then the PR and the question.

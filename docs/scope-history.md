@@ -12344,3 +12344,49 @@ as with the flag off, so no test moved under the flip. Studio panel suite 65
 passed. Baseline recaptured on the flipped engine.
 
 *(2026-09-10 — `docs/superpowers/plans/2026-09-10-legibility-yardstick.md` §6)*
+
+## 2026-09-11 — item 1, PR 5: the 08-15 stage-0 signal re-measured, and the definition nobody had written down
+
+Kent's second pick ("Item 11 and 1"). Gate 2 says the instrument re-measures
+the boundary on real tonal artwork before any recalibration, so this is that
+measurement and it changes nothing: `tools/color_diversity.py`,
+`tests/test_color_diversity.py` (18), decision doc
+`docs/stage0-signal-decision-2026-09-11.md`.
+
+**The foreground definition moves the statistic by an order of magnitude,
+and the spec never defined it.** "Distinct 3-bit-per-channel colours needed
+to cover 90% of FOREGROUND pixels" — counting the whole art bbox reproduces
+the 08-15 table closely (`bridge` 16–17 against its 17, `drone` 19–20
+against its 19, `tires` 2, `gaulke` 2, `fremont` 2), so that is what the
+table measured; counting only the pixels stage 1 would DIGITIZE puts
+`bridge` at 39, above `drone`'s 24, and the classes stop ordering entirely.
+Excluding the background removes the flat ground that dominates the 90% and
+leaves a JPEG's compression noise to be counted alone. The tool implements
+both, names the one that produced a number, and the doc says quote the bbox
+reading.
+
+**Under the spec's own definition the signal still orders the classes, and
+the new evidence widened the gap.** Eight real flat artworks (the spec's six
+plus `logo_golden_tee` and `screenshot_phone_ui_golke`, both arrived since)
+against one real tonal (`drone_render`), at native resolution: flat max 16
+(`bridge`) against tonal min 20 (`drone`), **gap 4** where August's was 2.
+The two new logos read 4 and 1 — far below drone — so enrolling them helped
+rather than hurt.
+
+**The blocker is unchanged: one real tonal artwork against the spec's four.**
+`testdata/photo/acceptance/` is gitignored by design and holds only its
+README in any clone, `scratch_*` is absent from a cloud checkout, and every
+synthetic row (the five `make_photo_fixtures.py` photographs — the owl
+included — the repro of Kent's icon, `summit_badge`, both ramps) is
+measured, printed and EXCLUDED from the margin, which is gate 2 in code. The
+tool refuses below four real positives rather than siting a boundary on one.
+The unblocking act is one drag (3–5 real tonal artworks into the acceptance
+directory, never committed, never leaving the machine) and one command.
+
+So PR 6a (implement the spec's §4/§6 signal) is supported but not
+authorised, and PR 6b (route by consequence — the ramp gate's own refusal,
+which needs no boundary) is the live alternative and Kent's ruling on gate
+2's letter.
+
+*(measured 2026-09-11 — `docs/stage0-signal-decision-2026-09-11.md`;
+plan `docs/superpowers/plans/2026-09-08-real-logo-lane-and-thin-strokes.md` §5a)*

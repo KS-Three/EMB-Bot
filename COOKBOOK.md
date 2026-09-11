@@ -432,7 +432,14 @@ hand-rolling it in JS.
   `THREAD_MATCH_POOR` finding over the scorecard matrix with the graded
   patch that judged it, then the same designs under a 0 / 2 / 5 / 10 mm²
   patch floor — `run` caches per pair, `report` prints the movers, the floor
-  depth and the totals; the sweep behind `_THREAD_MATCH_MIN_PATCH_MM2`).
+  depth and the totals; the sweep behind `_THREAD_MATCH_MIN_PATCH_MM2`), and,
+  2026-09-11, `digitizer/tools/color_diversity.py` (the 08-15 spec's
+  candidate stage-0 signal — 3-bit colours needed to cover 90% of foreground
+  — swept over resolution on a corpus labelled real/synthetic, the margin
+  read at NATIVE resolution, and a refusal below four real tonal artworks.
+  `--foreground bbox` is the definition that reproduces the spec's own table;
+  `engine` is the pixels stage 1 digitizes. They disagree by an order of
+  magnitude on a JPEG, so a number from this tool always names its mode).
 
   Three more added 2026-09-08 for the quality review and the plans it opened
   (`docs/quality-review-2026-09-08.md`): `digitizer/tools/sewn_tiers.py` (the
