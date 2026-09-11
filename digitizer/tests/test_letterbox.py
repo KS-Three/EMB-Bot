@@ -182,3 +182,54 @@ def test_tracked_fixtures_are_untouched_except_the_screenshot():
                if any(detect_letterbox(_load_rgb(n)))]
     assert cropped == [SCREENSHOT], (
         f"letterbox detection changed its blast radius: {cropped}")
+
+
+# --- the config flag --------------------------------------------------------
+#
+# `cfg.strip_letterbox` is DEFAULT OFF, and not out of caution about the fix:
+# turning it on changes `photo/logo_gaulke_roofing.png`, whose letterboxed
+# PATHOLOGY is load-bearing for 11 existing tests. It is the corpus's only
+# full-bleed design precisely because the bars make the artwork touch the
+# frame edge, so `test_preflight.test_a_full_bleed_design_does_not_report_its_
+# own_border` -- a regression guard for a real cv2.erode borderValue bug --
+# loses its only fixture. These pin both halves so neither can drift.
+
+def test_flag_defaults_off():
+    from digitizer_core.config import PipelineConfig
+    assert PipelineConfig().strip_letterbox is False
+
+
+def test_load_is_byte_identical_when_the_flag_is_off():
+    """OFF must not merely 'mostly' match -- it must be the same pixels."""
+    from digitizer_core.stage0_classify import _load as classify_load
+    from digitizer_core.stage1_prep import _load as prep_load
+    path = TESTDATA / SCREENSHOT
+    raw = _load_rgb(SCREENSHOT)
+    for loader in (classify_load, prep_load):
+        rgb, _ = loader(path, False)
+        assert rgb.shape == raw.shape
+        assert np.array_equal(rgb, raw)
+
+
+def test_load_strips_when_the_flag_is_on():
+    from digitizer_core.stage0_classify import _load as classify_load
+    from digitizer_core.stage1_prep import _load as prep_load
+    path = TESTDATA / SCREENSHOT
+    raw = _load_rgb(SCREENSHOT)
+    for loader in (classify_load, prep_load):
+        rgb, _ = loader(path, True)
+        assert rgb.shape[0] < raw.shape[0]
+        assert rgb.shape[1] == raw.shape[1]
+
+
+def test_both_loaders_agree_in_both_states():
+    """Stage 0 owns its own decode. If the two ever disagreed, stage 0 would
+    classify a different picture than stage 1 digitizes -- the single worst
+    way this could go wrong, and silent."""
+    from digitizer_core.stage0_classify import _load as classify_load
+    from digitizer_core.stage1_prep import _load as prep_load
+    path = TESTDATA / SCREENSHOT
+    for flag in (False, True):
+        a, _ = classify_load(path, flag)
+        b, _ = prep_load(path, flag)
+        assert np.array_equal(a, b), f"loaders disagree with flag={flag}"

@@ -193,7 +193,7 @@ wider fixture set.** Section 1 is the only confirmatory test, and it is null.
 
 Kent picked the worst finding in §4 to act on — `logo_gaulke_roofing`, the
 phone screenshot whose black bars read as ink and inverted the whole design.
-`digitizer_core/letterbox.py` now strips letterbox bars in both
+`digitizer_core/letterbox.py` strips letterbox bars in both
 `stage0_classify._load` and `stage1_prep._load` (both, deliberately: stage 0
 owns its own decode, and if only one stripped, classification and prep would
 see different pictures).
@@ -204,6 +204,43 @@ fully legible in black, the mark solid and correctly polarised. Blast radius
 is one fixture — 13 of 14 come back byte-identical on route and stitch count,
 and black letterboxing round-trips byte-for-byte on both axes across five
 fixtures and three bar sizes.
+
+### It ships behind `cfg.strip_letterbox`, DEFAULT OFF
+
+Not caution about the fix — **the fixture's pathology is load-bearing.**
+Turning the strip on broke 11 existing tests, every one of them naming
+`gaulke_roofing`, and the most important of them says why this cannot be
+resolved by editing expectations:
+
+> `test_preflight.test_a_full_bleed_design_does_not_report_its_own_border`
+> is a regression guard for a real `cv2.erode` `borderValue` bug measured
+> 2026-08-20. It uses this fixture **because the black bars make the artwork
+> touch the frame edge** — it is the corpus's only full-bleed design, and only
+> by accident of the letterboxing. Cropping the bars removes its fixture.
+> Re-pointing it at the new number would silently retire a guard for a
+> genuine defect.
+
+Seven more (`test_resnap_mask_matches_grader`, `test_thread_match_*`) pin
+spool IDs that legitimately move once the design changes, and two
+(`test_enclosed_by_garment`) need a fixture that still *has* enclosed
+background regions — this one's went to zero.
+
+So the flag is the honest state: mechanism landed, reviewed, tested, and
+**byte-identical off — verified exactly, 11,131 stitches off against the
+pre-change baseline, 12,811 on.** Flipping it on is a separate change whose
+real work is re-pointing those 11 tests at fixtures that still carry the
+property each is testing — never at whatever the engine now happens to emit.
+
+### Known, and NOT fixed by this
+
+With the bars gone, the band's own **soft shadow edges** — a ~12 px gradient
+running 235 → 216 → 255 down each side, measured — drop border agreement to
+**0.693**, so `stage1_prep` reports `BACKGROUND_ABSENT` and the white ground
+is still sewn. That is the border flood's business, not letterboxing, and it
+is why the "after" render still shows a stitched background. The bar/band
+boundary itself is clean (row 1115 pure black, row 1116 at 254.6), so the
+crop is exact; this is a separate defect that happened to be hidden behind a
+worse one.
 
 ### The number that matters
 
