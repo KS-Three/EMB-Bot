@@ -30,7 +30,7 @@ sys.path.insert(0, str(HERE.parent / "tools"))
 
 from digitizer_core import stage0_classify as s0            # noqa: E402
 from digitizer_core.config import PipelineConfig            # noqa: E402
-from stage0_signal_origin import ucm_parts, zones           # noqa: E402
+from stage0_signal_origin import _bgr, ucm_parts, zones     # noqa: E402
 
 from .conftest import TESTDATA                              # noqa: E402
 
@@ -72,6 +72,28 @@ def test_opened_up_ucm_equals_the_shipped_signal():
     # the two see identical pixels rather than nearly identical ones.
     theirs = s0.classify(img[:, :, ::-1], cfg).signals["unique_color_mass"]
     assert mine == pytest.approx(theirs, abs=1e-9)
+
+
+def test_an_arm_of_an_ALPHA_fixture_reads_the_same_image_the_file_does():
+    """The bug this caught, on the fixture that caught it.
+
+    `_fg_mask` calls alpha<=127 background, so an arm rebuilt without the alpha
+    channel silently promotes every transparent pixel to foreground and then
+    measures a different image than the shipped classifier. It is not subtle
+    where it bites: `photo/enthusiast_logo.png` reads `flat` (GS 0.0000)
+    through the file and `gradient` (GS 0.0434) through the same pixels with
+    alpha dropped. Four of this repo's real-artwork fixtures carry alpha, so an
+    attribution tool that drops it reports on artwork nobody digitizes.
+    """
+    path = TESTDATA / "becker_marine_logo.png"       # 146x91, has alpha
+    cfg = PipelineConfig()
+    rgb, alpha = s0._load(str(path))
+    assert alpha is not None, "fixture is expected to carry alpha"
+    from_file = s0.classify(str(path), cfg)
+    from_array = s0.classify(_bgr(rgb, alpha), cfg)
+    assert from_array.class_ == from_file.class_
+    for k, v in from_file.signals.items():
+        assert from_array.signals[k] == pytest.approx(v, abs=1e-9), k
 
 
 def test_a_clean_two_colour_wordmark_reads_flat():
