@@ -34,6 +34,29 @@ Moved verbatim 2026-08-28 — no section was rewritten in the move.
 
 ## Standing rulings — decided, do not re-litigate
 
+- **A satin cross too long to sew is SPLIT, not routed to fill.** Kent's call
+  2026-09-11 on quality review item 10, with both answers built and measured
+  in front of him. `splitSatin` is the browser lettering engine's default;
+  `wideColumnFill` stays off, one config value away.
+
+  Both reach the same sewability — 80 of 85 shipped fonts throwing a stitch no
+  machine can make, worst 98.7 mm, down to 9 of 85 and 23.6 mm. **The split
+  costs 2.47x the stitches and NOT ONE extra trim; the fill costs 5.22x the
+  stitches and 68.8x the trims**, because a curved column's scanline leaving
+  the ink is a needle-up move every time. The split is also the smaller look
+  change: a 20 mm stroke stays a satin ribbon with penetrations in it, where
+  the fill turns every letter wider than 3.0 mm into a tatami.
+
+  **They are near-SUBSTITUTES, not complements** — with both on the split fires
+  zero times, because every stretch it would have split has already gone to
+  fill. Turning both on is not a stronger fix; it is the fill.
+
+  **The 3.0 mm ceiling the fill would use is the BROWSER's own, not Python's
+  5.0.** `machine.py` says that divergence is "deliberate, corpus-driven, and
+  Python-side only until its own sew-out", so merging the two is the sew-out's
+  and not a port's. *(2026-09-11; plan
+  `docs/superpowers/plans/2026-09-11-wide-columns-in-lettering.md` §7)*
+
 - **The design-silhouette cap sews in the cone that owns the EDGE, not the
   cone already threaded — and the extra stop is the accepted price.**
   `cfg.edge_cap` went default `"bean"` on 2026-09-11 (Kent: "gate it, then
@@ -4384,6 +4407,77 @@ tesseract reading is not a truth however confident it is (Bridge Bar's 49 mm
 wordmark read "X" at 77 and judged a cluster at 0.00 until
 `legibility.ART_MIN_LETTERS`). *(2026-09-10; plan
 `docs/superpowers/plans/2026-09-10-legibility-yardstick.md` §4.2)*
+
+- **A ported constant is half a port. The FRAME it is measured in is the other
+  half, and the frame fails silently in both directions.** Item 10 moved the
+  Python engine's split-satin mechanism into the browser lettering engine. Every
+  number mirrored `machine.py` correctly and the port still did nothing useful
+  until three separate frame errors were found — all of them the same mistake,
+  none of them visible in a diff.
+
+  **1. The stagger cancelled itself exactly.** The Python emitter keeps a
+  constant rail order (A, B, A, B …), so flipping the stagger wave's sign walks
+  the penetration comb across the column. `satinplay.emitZigzag` alternates the
+  leading rail per station — that is what makes its connector a short bounce
+  instead of a full traverse — so splitting each cross in TRAVERSAL order made
+  the direction flip undo the sign flip. Measured on a straight 7.5 mm column:
+  stations 0 and 1 both put their penetrations at 24.6 and 44.6 px. A perfectly
+  trenched line of holes, which is the one defect the stagger exists to
+  prevent, produced by code that reads as a faithful port. The cross is split in
+  the column's own A→B frame and the list reversed for traversal; the same two
+  stations then land at 0.410/0.743 and 0.257/0.590.
+
+  **2. The split SEGMENT was not fit-scaled while its threshold was.** `k =
+  ceil(cross / 3.0)` with the 3.0 in layout mm on a design scaled 8× is
+  `ceil(cross / 24 final mm)` — one penetration on a 45 mm cross instead of
+  fourteen. **The tell was a result that moved in the wrong direction**: the
+  worst sewn segment fell only 44.9 → 28.4 mm and the over-record COUNT went
+  UP, because splitting adds segments without shortening them enough. A fix
+  that makes its own headline metric worse is not a partial fix.
+
+  **3. Two pre-existing bugs of the same shape, in code nobody was editing.**
+  `routeGlyph` stepped its Euler-walk underpath at a bare `2` in the layout
+  frame, and `routeRuns` measured the font's authored `lenMm` there too. Both
+  were found only because the split fixed everything else and left a residue:
+  three underpath steps of 22.1, 19.0 and 22.3 mm in a design whose longest
+  satin leg was 5.0. `western_light`'s "A" at left chest sewed **92 stitches, 66
+  of them past a DST record** — about a sixth of the stitches it needed, at
+  seven times the pitch its own font asked for.
+
+  **The tell that identifies a frame bug, in all three cases: a sibling line
+  doing the same conversion correctly a few lines away.** `UNDERLAY_STEP_MM /
+  fitScale` sits three lines from the underpath's bare `2`; `minCrossMm` and
+  `spacingMm` are both pre-divided beside `lenMm`, which was not. When a value
+  is wrong in BOTH directions — unsewable when grown, under Law 51's needle
+  floor when shrunk — it is a units bug and not a look decision, and it does not
+  need a flag.
+
+  **And the review item's own headline was low by four times.** Item 10 said
+  "eighteen of the 85 shipped fonts"; measured, it is **80 of 85, worst 98.7 mm**,
+  and one letter at LEFT CHEST breaks 63 of 85 on its own. The 2026-09-07
+  measurement behind "eighteen" was real; it just swept three texts at sizes
+  where the defect barely starts. **A defect measured on the quiet path and
+  carried forward as a headline understates itself forever** — the same lesson
+  the DST sentinel entry records, hit again four days later by the same file.
+  **And the flip exposed three tests measuring the wrong quantity.** Each
+  compared a raw stitch count or an average stitch length to stand for
+  "wider" or "the same stations". A split cross is *the same thread in more,
+  shorter segments*, so a BOLD column read as a SHORTER average stitch than a
+  thin one (24.537 against 24.678 — inverted), and a sub-millimetre fit nudge
+  on a slant arm moved 594 penetrations where it used to move one. All three
+  now measure TOTAL SEWN PATH, which is exactly invariant under splitting
+  because every split point lies ON the segment it divides — and the slant
+  claim got TIGHTER in the move: a 15° lean stretches a cross by at most
+  1/cos 15° = 1.0353, measured 1.0300 in both arms. **A proxy survives only
+  as long as the mechanism it proxies for; when a change adds penetrations
+  without adding thread, every count-based proxy for width or density
+  silently inverts.** (`stripSplits` is not the way out either: on a design's
+  DST-rounded integer coordinates ordinary rail penetrations are routinely
+  collinear and it removes 2,950 of them. It is exact only on the engine's
+  own float geometry.) *(measured 2026-09-11 —
+  `tools/long-stitch-census.mjs`; plan
+  `docs/superpowers/plans/2026-09-11-wide-columns-in-lettering.md`;
+  `test/wide-columns.test.js`)*
 
 - **A ruling that changes what the ENGINE DOES changes what every existing
   display of it MEANS — and the displays do not throw.** `cfg.edge_cap` going

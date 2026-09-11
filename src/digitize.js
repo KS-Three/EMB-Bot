@@ -99,16 +99,10 @@
   function signedArea(p) { let a = 0; for (let i = 0, j = p.length - 1; i < p.length; j = i++) a += (p[j].x * p[i].y - p[i].x * p[j].y); return a / 2; }
   function polyPerim(p) { let L = 0; for (let i = 0; i < p.length; i++) { const q = p[(i + 1) % p.length]; L += Math.hypot(q.x - p[i].x, q.y - p[i].y); } return L; }
   function centroid(p) { let x = 0, y = 0; for (const q of p) { x += q.x; y += q.y; } return { x: x / p.length, y: y / p.length }; }
-  // principal-axis angle (degrees) of a set of polygons
-  function pcaAngleDeg(polys) {
-    let n = 0, mx = 0, my = 0;
-    for (const p of polys) for (const q of p) { mx += q.x; my += q.y; n++; }
-    if (!n) return 45;
-    mx /= n; my /= n;
-    let sxx = 0, syy = 0, sxy = 0;
-    for (const p of polys) for (const q of p) { const dx = q.x - mx, dy = q.y - my; sxx += dx * dx; syy += dy * dy; sxy += dx * dy; }
-    return 0.5 * Math.atan2(2 * sxy, sxx - syy) * 180 / Math.PI;
-  }
+  // principal-axis angle (degrees) of a set of polygons. Moved into fill.js
+  // 2026-09-11 so the lettering lane's wide-column fill runs its rows at the
+  // same angle this lane's fills already do, from one definition.
+  const pcaAngleDeg = fillmod.pcaAngleDeg;
   // inset a ring toward its centroid by `d` px (crude but fine for underlay)
   function insetRing(ring, d) {
     const c = centroid(ring);
@@ -252,6 +246,9 @@
 
   // colorRegions: [{rgb:[r,g,b], polygons:[[{x,y}...]...]}] in PIXEL coords.
   // opts: { garment, pxPerMm, fillRowMm, satinSpacingMm, maxStitchMm, satinMaxWidthMm, underlay, pullCompMm, perRegionAngle, darkOnTop, angleOverrides }
+  // (buildLetteringDesign additionally takes `splitSatin` and
+  // `wideColumnFill` — the two wide-column answers, both default off; see
+  // satinfont.js's constant block.)
   //   `densityMm` (legacy, pre-2026-09-04) is one number for BOTH fillRowMm
   //   and satinSpacingMm and is still honoured exactly as it was — see the
   //   two spacings just below for the split and the defaults.
@@ -694,6 +691,16 @@
     // SATIN_MIN_CROSS_MM. `o.counterGuard === false` is measurement only.
     const pullCompMm = (fabric && fabric.pullCompMm != null) ? fabric.pullCompMm : (o.pullCompMm == null ? 0.2 : o.pullCompMm);
     const weightMm = WEIGHT_OFFSET_MM[weightPreset];
+    // Tatami row pitch for the wide-column fill fallback (item 10). Only
+    // reached when `wideColumnFill` is asked for; the fabric preset scales it
+    // exactly the way it scales the image lane's fill row, so a pile fabric
+    // sews a wide letter at the same density as a pile fill.
+    // Written as the image lane writes it — `(explicit || default) * adjust`,
+    // not `explicit && adjust` — because scaling only an explicit value would
+    // leave the DEFAULT unscaled, which is the common case and the one a pile
+    // fabric actually needs.
+    const letterFillRowMm = (o.fillRowMm || FILL_ROW_MM) *
+      ((fabric && fabric.densityAdjust) ? fabric.densityAdjust : 1);
     // `unsupported` matters MOST on this path: an empty design is exactly the
     // case a user needs explained, and returning a bare `empty` here is what
     // made "pick a Hebrew font, type Emb" fail silently. Built as a function so
@@ -773,7 +780,7 @@
     // `crossFloor` passes straight through (default on — see satinfont's
     // width guards); `false` is the pre-2026-09-03 stitch stream, kept
     // reachable for the byte-identity pins in test/run-fonts.test.js.
-    const lay = satinfontmod.layoutText(fontData, text, { emMm, pxPerMm, spacingMm: satinSpacingMm / sc, pullCompMm: pullCompMm / sc, weightMm: weightMm / sc, counterGuard: o.counterGuard !== false, shortStitch: o.shortStitch !== false, letterSpacingMm: ls, underlay: o.underlay !== false, crossFloor: o.crossFloor !== false, fitScale: sc, arcDeg: o.arcDeg || 0, slantDeg: o.slantDeg || 0, align: o.align, circleLayout: o.circleLayout });
+    const lay = satinfontmod.layoutText(fontData, text, { emMm, pxPerMm, spacingMm: satinSpacingMm / sc, pullCompMm: pullCompMm / sc, weightMm: weightMm / sc, counterGuard: o.counterGuard !== false, shortStitch: o.shortStitch !== false, letterSpacingMm: ls, underlay: o.underlay !== false, crossFloor: o.crossFloor !== false, fitScale: sc, arcDeg: o.arcDeg || 0, slantDeg: o.slantDeg || 0, align: o.align, circleLayout: o.circleLayout, splitSatin: o.splitSatin, wideColumnFill: o.wideColumnFill, fillRowMm: letterFillRowMm, fillStitchMm: o.fillStitchMm });
     if (!lay.runs.length) return emptyWith(lay.unsupported, lay.lettering);
     const cx = (bb.x0 + bb.x1) / 2, cy = (bb.y0 + bb.y1) / 2;
     // Explicit placement offset (Slice 3): applied AFTER the center transform, in

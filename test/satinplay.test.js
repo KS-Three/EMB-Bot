@@ -217,8 +217,11 @@ test("emitZigzag: minCrossMm 0.5 drops every cross under the floor and keeps eve
 test("splitByCrossFloor: with no floor a span is one satin segment", () => {
   const { railA, railB } = taperedColumn(400, 30, 0, 40);
   const geom = columnGeom(railA, railB, [], 12);
-  assert.deepStrictEqual(satinplay.splitByCrossFloor(geom, 0, 1, { spacingMm: 0.4, pxPerMm: 10 }), [{ f0: 0, f1: 1, thin: false }]);
-  assert.deepStrictEqual(satinplay.splitByCrossFloor(geom, 0.2, 0.7, { spacingMm: 0.4, pxPerMm: 10, minCrossMm: 0 }), [{ f0: 0.2, f1: 0.7, thin: false }]);
+  // `wide: false` joined the shape 2026-09-11 (quality review item 10): the
+  // classifier has three classes now, and a span in neither of the new ones
+  // says so rather than being silent about it.
+  assert.deepStrictEqual(satinplay.splitByCrossFloor(geom, 0, 1, { spacingMm: 0.4, pxPerMm: 10 }), [{ f0: 0, f1: 1, thin: false, wide: false }]);
+  assert.deepStrictEqual(satinplay.splitByCrossFloor(geom, 0.2, 0.7, { spacingMm: 0.4, pxPerMm: 10, minCrossMm: 0 }), [{ f0: 0.2, f1: 0.7, thin: false, wide: false }]);
 });
 
 test("splitByCrossFloor: a column that narrows from 2 mm to 0.3 mm halfway splits into satin then hairline at the step", () => {
@@ -245,8 +248,8 @@ test("splitByCrossFloor: pull compensation counts — a 0.3 mm column under 0.3 
   const geom = columnGeom(railA, railB, [], 12);
   const bare = satinplay.splitByCrossFloor(geom, 0, 1, { spacingMm: 0.4, pxPerMm: 10, minCrossMm: 0.5 });
   const comped = satinplay.splitByCrossFloor(geom, 0, 1, { spacingMm: 0.4, pxPerMm: 10, minCrossMm: 0.5, pullCompMm: 0.3 });
-  assert.deepStrictEqual(bare, [{ f0: 0, f1: 1, thin: true }]);
-  assert.deepStrictEqual(comped, [{ f0: 0, f1: 1, thin: false }]);
+  assert.deepStrictEqual(bare, [{ f0: 0, f1: 1, thin: true, wide: false }]);
+  assert.deepStrictEqual(comped, [{ f0: 0, f1: 1, thin: false, wide: false }]);
 });
 
 test("splitByCrossFloor: a one-station wobble under the floor stays satin, and a lone wide station inside a hairline stays a run", () => {
@@ -260,8 +263,8 @@ test("splitByCrossFloor: a one-station wobble under the floor stays satin, and a
   const g1 = columnGeom(dip.map((p) => p[0]), dip.map((p) => p[1]), [], 12);
   const g2 = columnGeom(bump.map((p) => p[0]), bump.map((p) => p[1]), [], 12);
   const opts = { spacingMm: 0.4, pxPerMm: 10, minCrossMm: 0.5 };
-  assert.deepStrictEqual(satinplay.splitByCrossFloor(g1, 0, 1, opts), [{ f0: 0, f1: 1, thin: false }]);
-  assert.deepStrictEqual(satinplay.splitByCrossFloor(g2, 0, 1, opts), [{ f0: 0, f1: 1, thin: true }]);
+  assert.deepStrictEqual(satinplay.splitByCrossFloor(g1, 0, 1, opts), [{ f0: 0, f1: 1, thin: false, wide: false }]);
+  assert.deepStrictEqual(satinplay.splitByCrossFloor(g2, 0, 1, opts), [{ f0: 0, f1: 1, thin: true, wide: false }]);
 });
 
 test("beanFromGeom: three passes over the span, ending at f1, every stitch at or over the minimum", () => {

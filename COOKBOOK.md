@@ -407,6 +407,12 @@ hand-rolling it in JS.
   instrument), `digitizer/tools/thread_color_render.py` (a design drawn in
   the cones it will actually sew, each changed shape tiled OFF beside ON at
   90 px/mm — a 0.9 mm2 shard is four pixels at whole-design scale),
+  `tools/long-stitch-census.mjs` (the BROWSER lettering lane: every sewn
+  segment of the 85 shipped fonts at three texts, counted past one DST
+  record **per axis** — `--doctrine` reproduces DOCTRINE 2026-09-07's own
+  Full Back row to the stitch, which is what makes the rest of its output
+  quotable, `--big` sweeps the regime the defect lives in, and `--arm
+  off|split|fill|both` prices item 10's two answers side by side),
   `digitizer/tools/junction_nodes.py` (every node-to-node edge of the satin
   skeleton per shape with its length, the DT at both ends and the shape's
   half-width — the histogram `_cluster_junctions`' threshold was read from;
