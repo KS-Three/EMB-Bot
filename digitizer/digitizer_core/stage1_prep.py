@@ -41,6 +41,7 @@ import cv2
 import numpy as np
 
 from .config import PipelineConfig
+from .letterbox import strip_letterbox
 from .threads import rgb_to_lab
 from .warnings_codes import (
     BACKGROUND_ABSENT,
@@ -104,7 +105,8 @@ class Prep:
     warnings: list[dict] = field(default_factory=list)
 
 
-def _load(image: str | Path | bytes | np.ndarray) -> tuple[np.ndarray, np.ndarray | None]:
+def _load(image: str | Path | bytes | np.ndarray,
+          strip_bars: bool = False) -> tuple[np.ndarray, np.ndarray | None]:
     """-> (rgb uint8, alpha uint8 or None)."""
     if isinstance(image, np.ndarray):
         raw = image
@@ -115,11 +117,24 @@ def _load(image: str | Path | bytes | np.ndarray) -> tuple[np.ndarray, np.ndarra
     if raw is None:
         raise ValueError("could not decode image")
     if raw.ndim == 2:
-        return cv2.cvtColor(raw, cv2.COLOR_GRAY2RGB), None
-    if raw.shape[2] == 4:
-        rgb = cv2.cvtColor(raw[:, :, :3], cv2.COLOR_BGR2RGB)
-        return rgb, raw[:, :, 3]
-    return cv2.cvtColor(raw, cv2.COLOR_BGR2RGB), None
+        rgb, alpha = cv2.cvtColor(raw, cv2.COLOR_GRAY2RGB), None
+    elif raw.shape[2] == 4:
+        rgb, alpha = cv2.cvtColor(raw[:, :, :3], cv2.COLOR_BGR2RGB), raw[:, :, 3]
+    else:
+        rgb, alpha = cv2.cvtColor(raw, cv2.COLOR_BGR2RGB), None
+    # Letterbox bars are not artwork, and every ink rule below reads darkness
+    # as ink -- so black bars invert the whole design rather than merely
+    # degrading it. Strip before anything reads the pixels.
+    #
+    # Behind `cfg.strip_letterbox`, DEFAULT OFF -- see that flag's comment for
+    # why (11 tests depend on one fixture's letterboxed pathology, including a
+    # cv2.erode regression guard whose only full-bleed fixture this removes).
+    # `stage0_classify._load` is gated by the same flag, and they must stay in
+    # step: if only one stripped, stage 0 would classify a different picture
+    # than stage 1 digitizes.
+    if strip_bars:
+        return strip_letterbox(rgb, alpha)
+    return rgb, alpha
 
 
 def _border_ring(shape: tuple[int, int], width: int = 2) -> np.ndarray:
@@ -221,7 +236,7 @@ def _border_connected(mask: np.ndarray) -> np.ndarray:
 
 
 def prep(image: str | Path | bytes | np.ndarray, cfg: PipelineConfig) -> Prep:
-    rgb, alpha = _load(image)
+    rgb, alpha = _load(image, cfg.strip_letterbox)
     warnings: list[dict] = []
 
     if cfg.denoise:

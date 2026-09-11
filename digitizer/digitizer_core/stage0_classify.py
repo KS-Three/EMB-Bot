@@ -67,6 +67,7 @@ import cv2
 import numpy as np
 
 from .config import PipelineConfig
+from .letterbox import strip_letterbox
 from .threads import rgb_to_lab
 from .warnings_codes import (
     CLASSIFICATION_UNCERTAIN,
@@ -160,7 +161,8 @@ CONFIDENCE_FLOOR = 0.55
 
 # --- Image loading (standalone -- see module docstring) ---------------------
 
-def _load(image: str | Path | bytes | np.ndarray) -> tuple[np.ndarray, np.ndarray | None]:
+def _load(image: str | Path | bytes | np.ndarray,
+          strip_bars: bool = False) -> tuple[np.ndarray, np.ndarray | None]:
     """-> (rgb uint8, alpha uint8 or None)."""
     if isinstance(image, np.ndarray):
         raw = image
@@ -171,11 +173,18 @@ def _load(image: str | Path | bytes | np.ndarray) -> tuple[np.ndarray, np.ndarra
     if raw is None:
         raise ValueError("could not decode image")
     if raw.ndim == 2:
-        return cv2.cvtColor(raw, cv2.COLOR_GRAY2RGB), None
-    if raw.shape[2] == 4:
-        rgb = cv2.cvtColor(raw[:, :, :3], cv2.COLOR_BGR2RGB)
-        return rgb, raw[:, :, 3]
-    return cv2.cvtColor(raw, cv2.COLOR_BGR2RGB), None
+        rgb, alpha = cv2.cvtColor(raw, cv2.COLOR_GRAY2RGB), None
+    elif raw.shape[2] == 4:
+        rgb, alpha = cv2.cvtColor(raw[:, :, :3], cv2.COLOR_BGR2RGB), raw[:, :, 3]
+    else:
+        rgb, alpha = cv2.cvtColor(raw, cv2.COLOR_BGR2RGB), None
+    # Same strip as `stage1_prep._load`, behind the same `cfg.strip_letterbox`
+    # flag, and the two MUST stay in step: this module deliberately owns its
+    # own decode, so if only one stripped, stage 0 would classify a different
+    # picture than stage 1 digitizes.
+    if strip_bars:
+        return strip_letterbox(rgb, alpha)
+    return rgb, alpha
 
 
 def _fg_mask(rgb: np.ndarray, alpha: np.ndarray | None) -> np.ndarray:
@@ -377,7 +386,7 @@ def classify(image: str | Path | bytes | np.ndarray, cfg: PipelineConfig,
         _write_debug(cfg, result)
         return result
 
-    rgb, alpha = _load(image)
+    rgb, alpha = _load(image, cfg.strip_letterbox)
     fg = _fg_mask(rgb, alpha)
 
     ucm = _unique_color_mass(rgb, fg, cfg.seed)

@@ -1566,6 +1566,45 @@ class PipelineConfig:
     # docs/renders/satin-per-stroke-2026-09-06/.
     satin_per_stroke: bool = False
 
+    # Strip letterbox/pillarbox bars from the upload before any ink rule
+    # reads them. See digitizer_core/letterbox.py for the defect: a PHONE
+    # SCREENSHOT of a logo arrives with pure-black bars filling most of the
+    # frame, every ink rule here reads darkness as ink, and the result is a
+    # POLARITY INVERSION -- the engine sews the GROUND in near-white thread
+    # and leaves the logo as negative space. White thread on white cloth, an
+    # unusable file. `photo/logo_gaulke_roofing.png` is exactly that input and
+    # was ranked worst of fourteen by eye
+    # (docs/artfid-eye-agreement-2026-09-11.md).
+    #
+    # ON, verified by render 2026-09-11: both text lines legible in black,
+    # mark solid and correctly polarised. Blast radius is one fixture -- the
+    # other 13 tracked fixtures are byte-identical on (route, stitch count).
+    #
+    # **DEFAULT OFF, and the reason is not caution about the fix.** Turning it
+    # on changes `photo/logo_gaulke_roofing.png`, and that fixture's PATHOLOGY
+    # IS LOAD-BEARING for 11 existing tests -- it is the corpus's only
+    # full-bleed design precisely BECAUSE the bars make the artwork touch the
+    # frame edge. `test_preflight.test_a_full_bleed_design_does_not_report_
+    # its_own_border` is a regression guard for a real cv2.erode borderValue
+    # bug (measured 2026-08-20); cropping the bars removes its only fixture,
+    # and "updating" it to accept the new number would silently retire a guard
+    # for a genuine defect. Seven more (test_resnap_mask_matches_grader,
+    # test_thread_match_*) pin spool IDs that legitimately move, and two
+    # (test_enclosed_by_garment) need a fixture that still HAS enclosed
+    # background regions.
+    #
+    # So the flag is the honest state: the mechanism is landed, reviewed and
+    # tested, and byte-identical off. Flipping it on is a separate change that
+    # must re-point those 11 tests at fixtures which still carry the property
+    # each one is testing -- never at whatever the engine now happens to emit.
+    #
+    # KNOWN, and NOT fixed by this flag: with the bars gone the band's own
+    # soft shadow edges (a ~12 px 235->216 gradient down each side, measured)
+    # drop border agreement to 0.693, so background detection reports
+    # BACKGROUND_ABSENT and the white ground is still sewn. That is stage 1's
+    # border flood, not letterboxing.
+    strip_letterbox: bool = False
+
     # Sew what the satin tier missed. Crosses are placed along a spine,
     # perpendicular to one arm, sized by a ray that measures THAT arm's width
     # — so where several arms meet, the junction's interior is covered only by
