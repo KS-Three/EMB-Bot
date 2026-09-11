@@ -47,3 +47,9 @@ digitizer/tools/letterform_fidelity/out/
 # artifact, not a file someone happened to leave in their checkout.
 digitizer/artfid-baseline.csv
 digitizer/artfid-baseline.txt
+
+# Regenerable output of tools/artfid_eye_rank.py — renders, sealed scores, and
+# the shuffled label mapping. All three rebuild from a fixed seed, and the
+# renders are large. The RESULT of a run is written up under docs/ instead
+# (docs/artfid-eye-agreement-*.md), which is the part worth reading later.
+digitizer/artfid_eye_out/
