@@ -1153,6 +1153,37 @@ export function decodedFromDesign(design) {
 // object itself: a re-digitize patches a NEW result object onto the element,
 // and a WeakMap lets an abandoned result's decoded copy be collected.
 const decodedCache = new WeakMap();
+// How many SPOOLS a digitized design asks the customer to buy — which is not
+// `design.colorCount`, and stopped being it on 2026-09-11.
+//
+// `colorCount` is `colors.length`, one entry per sew BLOCK (adapter.py builds
+// it that way, and the encoders need it that way). A block is a machine STOP.
+// Since the design-silhouette cap went default on, the cap sews last in
+// whichever cone owns most of the edge and so re-loads a cone the job already
+// ran on essentially every design — Kent's ruling, taken deliberately rather
+// than put a 5.4%-frontage cone on an edge a 95.0% one owns. So stops and
+// spools now differ by one on most designs, and the word "colors" on a
+// customer-facing line has always meant spools here: "a colour is a cone to
+// buy and a re-thread on a single-needle machine" (MASTER_SCOPE defect 42e,
+// Kent 2026-09-08, where the same two quantities were shown side by side
+// disagreeing).
+//
+// Keyed on the cone's NAME, which adapter.py writes as "<number> <name>" —
+// the spool id. Falls back to rgb for a design whose colors carry no name
+// (the browser lettering lane names them "Color 1", "Color 2", …, which are
+// already distinct per block, so that lane is unaffected either way).
+export function spoolCount(design) {
+  const colors = (design && design.colors) || null;
+  if (!Array.isArray(colors) || !colors.length) {
+    return (design && design.colorCount) || 0;
+  }
+  const seen = new Set();
+  for (const c of colors) {
+    seen.add(c && c.name ? String(c.name) : `${c && c.r},${c && c.g},${c && c.b}`);
+  }
+  return seen.size;
+}
+
 export function decodedFromDesignCached(design) {
   if (!design || typeof design !== "object") return null;
   let hit = decodedCache.get(design);

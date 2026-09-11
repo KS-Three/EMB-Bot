@@ -4384,3 +4384,46 @@ tesseract reading is not a truth however confident it is (Bridge Bar's 49 mm
 wordmark read "X" at 77 and judged a cluster at 0.00 until
 `legibility.ART_MIN_LETTERS`). *(2026-09-10; plan
 `docs/superpowers/plans/2026-09-10-legibility-yardstick.md` §4.2)*
+
+- **A ruling that changes what the ENGINE DOES changes what every existing
+  display of it MEANS — and the displays do not throw.** `cfg.edge_cap` going
+  default `"bean"` was a deliberate, measured, Kent-ruled change with an
+  accepted cost: the cap sews last in whichever cone owns most of the
+  silhouette, so it re-loads a cone the job already ran. The engine is correct
+  and the ruling stands. What nobody checked was that **sew BLOCKS and SPOOLS
+  TO BUY had until that moment been the same number**, so two customer-facing
+  screens were reading one and printing the other:
+
+  - the Digitize panel's summary said **"3 colors"** for a two-spool vector
+    logo — caught by `e2e/digitize-auto-start.spec.js`, whose own comment says
+    it asserts the colour count precisely because *"the colour count is the
+    thing the customer pays for"*;
+  - the review's **"Threads to load"** list — a shopping list — named one spool
+    twice and split its metres across the two rows, so a customer buying from
+    it buys a spool they already have and under-orders the one they need. No
+    test caught that one; it was found by asking what ELSE reads a block list.
+
+  **This is the second time this exact confusion has shipped** (MASTER_SCOPE
+  defect 42e, 2026-09-08: `Colors 4 · background removed` beside `Thread
+  changes 1`). The first time the cause was a display reading the slider
+  instead of the design. This time both displays read the design correctly —
+  the DESIGN changed underneath them. **So the habit is not "measure, don't
+  assert": it is that when an engine ruling makes two quantities diverge that
+  used to coincide, every screen showing either one is now showing a claim
+  nobody re-checked.** Grep for the quantity, not for the bug.
+
+  **The boundary is not "fold everywhere", and getting it wrong would be the
+  same mistake mirrored.** Three other places read the same block list and all
+  three are RIGHT per block: the Sequencer's `machineBlocks` is explicitly
+  "what the operator LOADS", in sew order, and the operator genuinely does
+  re-load that cone; `reviewFromJob` maps shapes to blocks to resolve a
+  colour; `DesignPanel` decodes an IMPORTED file, where colour records are all
+  there is and a re-loaded cone is not knowable. **Per block is right for what
+  the machine DOES; per spool is right for what the customer BUYS.** Both
+  lists are legitimate and they are now different lengths.
+
+  And the tell that it was buyer-facing rather than cosmetic was already
+  written down in the failing test's own comment. **A test that explains what
+  it is protecting tells you which way to fix it** — here, that "colors" means
+  spools, so the display moved and the assertion stayed. *(2026-09-11;
+  `digitizer.spoolCount`, `QualityReport.cones`)*

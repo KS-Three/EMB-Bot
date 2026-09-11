@@ -2127,3 +2127,37 @@ test("an unlisted code is a NOTE, deliberately, and is still shown", async () =>
   expect(line.text).toContain("2 small openings were held open");
   expect(line.text).not.toContain("ENGINE PROSE");
 });
+
+// ---- spoolCount: what the customer BUYS, not what the machine stops for ----
+test("spoolCount folds a cone the design re-loads, and colorCount does not", async () => {
+  const { spoolCount } = await import("./digitizer.js");
+  // Three blocks, two spools — the shape the design-silhouette cap produces on
+  // essentially every design since it went default on (it sews last in the
+  // cone that owns most of the edge, so it re-loads one already run).
+  const design = {
+    colorCount: 3,
+    colors: [
+      { r: 226, g: 60, b: 115, name: "2521 Fuchsia" },
+      { r: 255, g: 255, b: 255, name: "0015 White" },
+      { r: 226, g: 60, b: 115, name: "2521 Fuchsia" },
+    ],
+  };
+  expect(spoolCount(design)).toBe(2);
+  expect(design.colorCount).toBe(3);   // the stop count is still true, and still there
+});
+
+test("spoolCount counts every distinct cone when none repeats", async () => {
+  const { spoolCount } = await import("./digitizer.js");
+  expect(spoolCount({ colorCount: 2, colors: [{ name: "2521 Fuchsia" }, { name: "0015 White" }] })).toBe(2);
+});
+
+test("spoolCount falls back to rgb when the cones carry no name, and to colorCount with no colors", async () => {
+  const { spoolCount } = await import("./digitizer.js");
+  // The browser lettering lane names its colours "Color 1", "Color 2", … which
+  // are already distinct per block, so it is unaffected either way; a design
+  // with no names at all is folded on the colour itself.
+  expect(spoolCount({ colors: [{ r: 1, g: 2, b: 3 }, { r: 1, g: 2, b: 3 }, { r: 9, g: 9, b: 9 }] })).toBe(2);
+  expect(spoolCount({ colorCount: 4, colors: [] })).toBe(4);
+  expect(spoolCount({ colorCount: 4 })).toBe(4);
+  expect(spoolCount(null)).toBe(0);
+});

@@ -28,7 +28,7 @@
     textClusterMembers,
     textClusterSeed,
     remapBlockColors,
-  } from "../lib/digitizer.js";
+    spoolCount } from "../lib/digitizer.js";
   import { loadPalette, nearestInList } from "../lib/threads.js";
   import { loadImage, rasterSize, isVectorFile } from "../lib/rasterize.js";
 
@@ -1694,7 +1694,7 @@
       <p class="dgp-stats">
         {element.result.stitchCount.toLocaleString()} stitches ·
         {element.result.widthMM.toFixed(0)}×{element.result.heightMM.toFixed(0)} mm ·
-        {element.result.colorCount} color{element.result.colorCount === 1 ? "" : "s"}
+        {spoolCount(element.result)} color{spoolCount(element.result) === 1 ? "" : "s"}
       </p>
 
       <!-- Item 10: a re-digitize used to replace the design in place with
