@@ -92,6 +92,15 @@ cd digitizer && .venv/Scripts/python tools/color_diversity.py --foreground bbox
 They are picked up automatically, labelled real/tonal, and the tool prints
 the margin and then either sites the boundary or says what it still lacks.
 
+## 3a. Kent's ruling, 2026-09-11
+
+**He is supplying the artwork: 3–5 real tonal pieces, then the boundary gets
+sited.** PR 6a is therefore the path, and PR 6b (route by consequence) is not
+taken. The instructions are repeated where he will look for them — the
+acceptance directory's own README — and the one command is above. Until the
+artwork lands, item 1 is blocked on it by his choice, and the tool's refusal
+is doing exactly what gate 2 asks.
+
 ## 4. What this means for the lane (plan §5a)
 
 - **PR 6a — implement the spec's signal** — is *supported but not yet

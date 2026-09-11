@@ -959,3 +959,11 @@ page-mask bug was fixed — re-present, do not re-open.
   refusal) needs no boundary and is Kent's ruling on gate 2's letter.
 - **Uncommitted and unpushed while #450 is armed** (a push lands in it).
   Commit locally, push after #450 merges, then the PR and the question.
+- **Kent's ruling 2026-09-11 on the item-1 fork: he supplies 3–5 real tonal
+  artworks, then the boundary gets sited (PR 6a).** PR 6b (route by the ramp
+  gate's refusal) is NOT taken. The hand-off is in
+  `digitizer/testdata/photo/acceptance/README.md` (what counts, what is
+  barred, the one command with `--foreground bbox`) and in the decision doc
+  §3a. **Item 1 is blocked on that artwork by his choice** — when it lands,
+  re-run the tool, site the boundary, then plan §5b's three-arm measurement
+  (all seven real logos + drone, on the stitches) before the lane moves.
