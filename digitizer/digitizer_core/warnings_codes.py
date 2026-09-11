@@ -17,6 +17,16 @@ INPUT_LOW_RESOLUTION = "INPUT_LOW_RESOLUTION"      # px_per_mm below floor even 
 BACKGROUND_ENCLOSED = "BACKGROUND_ENCLOSED"        # enclosed bg-colored region treated as hole (review-toggleable)
 BACKGROUND_ABSENT = "BACKGROUND_ABSENT"            # full-bleed art: no background found, whole canvas stitched. extra: {"agreement": float}
 
+# Stage 1.25 (photograph detection — quality review 2026-09-08 item 13).
+# Rides cfg.detect_photographic (default OFF) and fires ONLY when a signal
+# actually said photograph; silence emits nothing, because no signal firing is
+# "no opinion", not "not a photograph" (see photo_signals' module docstring).
+# Info, not a problem: it names which signal fired, because the consequence —
+# the palette resnap bind, the shade bind, preflight's photo yardstick — is
+# something the caller may want to override with an explicit declaration.
+# extra: {"signal": "exif" | "face", "detail": str}
+PHOTO_DETECTED = "PHOTO_DETECTED"
+
 # Stage 1.5 (photo prep — photo plan §2 rows 3-4, build step 3 first slice)
 # Info, not a problem: tone prep + texture kill ran on this photo-classified
 # design. extra: {"technique": str, "fallback": bool (rolling_guidance

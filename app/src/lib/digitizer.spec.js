@@ -1362,6 +1362,23 @@ test("describeWarnings translates pipeline codes to customer language, with coun
   expect(out[2].text).toBe("The thread gets cut 2 times where it has to travel a long way.");
 });
 
+test("describeWarnings names WHICH signal called the art a photograph", async () => {
+  // Stage 1.25 (cfg.detect_photographic). The engine sentence this replaces
+  // names the palette bind and the shade bind, which are internal machinery
+  // nobody uploading a picture has heard of — and a customer who disagrees
+  // with the verdict needs to know what the engine saw to disagree with it.
+  stubStorage({});
+  const { describeWarnings } = await import("./digitizer.js");
+  const out = describeWarnings([
+    { code: "PHOTO_DETECTED", message: "engine prose", signal: "exif", detail: "EXIF camera 'Canon EOS R6'" },
+    { code: "PHOTO_DETECTED", message: "engine prose", signal: "face", detail: "1 face(s) detected" },
+  ]);
+  expect(out[0].text).toContain("camera that took it");
+  expect(out[1].text).toContain("A face was detected");
+  expect(out[0].text).not.toContain("engine prose");
+  expect(out[1].text).not.toContain("palette bind");
+});
+
 test("describeWarnings explains a hairline stroke sewn as a run as what happened, not a fault", async () => {
   stubStorage({});
   const { describeWarnings } = await import("./digitizer.js");

@@ -170,6 +170,14 @@ _CONTOUR_RING_UNREACHABLE = "CONTOUR_RING_UNREACHABLE"
 # first.
 _CLASSIFIED_PHOTO = ("CLASSIFIED_PHOTO_SUBJECT", "CLASSIFIED_PHOTO_SCENE")
 
+# Stage 1.25's detection verdict (cfg.detect_photographic), re-read the same
+# way. Not a classification — detection never moves the class, it answers the
+# separate "is this photographic CONTENT" question — but it reaches preflight
+# by exactly the same route the classifier's verdict does, and for the same
+# reason: the pipeline said what it decided, preflight carries that rather
+# than re-running two detectors of its own.
+_PHOTO_DETECTED = "PHOTO_DETECTED"
+
 # The photo auto-route's announcement (warnings_codes.PHOTO_AUTO_TIER, emitted
 # by pipeline.run_stages), re-read by the density check under the same
 # by-string convention as the codes above. It has to be the warning: on the
@@ -1119,12 +1127,19 @@ def _is_photo_class(plan: StitchPlan, cfg: PipelineConfig) -> bool:
     classifier's own published verdict is re-read from plan.warnings, the
     `_contour_findings` pattern. CLASSIFICATION_UNCERTAIN designs fell back
     to flat and correctly read False here.
+
+    Stage 1.25's PHOTO_DETECTED counts too (2026-09-11): a photograph EXIF or
+    a face identified is photographic content whatever tier stage 0 routed it
+    to, which is the whole point of the split. It sits BELOW the declaration
+    check, so an explicit False still suppresses everything — the caller
+    outranks a detector, in both directions.
     """
     if cfg.is_photographic is not None:
         return bool(cfg.is_photographic)
     if cfg.forced_class in PHOTO_CLASSES:
         return True
-    return any(w.get("code") in _CLASSIFIED_PHOTO for w in plan.warnings)
+    return any(w.get("code") in _CLASSIFIED_PHOTO or w.get("code") == _PHOTO_DETECTED
+               for w in plan.warnings)
 
 
 def _photo_resolution_findings(p, plan: StitchPlan,

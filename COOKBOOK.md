@@ -270,6 +270,24 @@ hand-rolling it in JS.
   gate, not `gradient_smoothness`** — `drone_render.png` reads rough on
   smoothness because of glow halos and an inset scene. The threshold order
   is documented in the module; read the why before "fixing" it.
+- **Stage 1.25 — "is this a PHOTOGRAPH?" (`photo_signals.py`, 2026-09-11)** is
+  a separate question from the classifier above and answered by separate
+  signals, because the colour ones cannot: a real photograph reads LESS
+  photographic than two gradient logos on `unique_color_mass`. EXIF camera
+  Make/Model, then the YuNet detector, behind `cfg.detect_photographic`
+  (DEFAULT OFF). It answers **True or None, never False**, so it can only ADD
+  photographs and an explicit `is_photographic` still wins. Detection runs in
+  `build_generation`, but `finish_generation`, `plan_stitches` and preflight
+  each arrive holding the CALLER's config — the verdict therefore rides the
+  `Generation` and the `PipelineResult` (like `design_class`), and the first
+  two fold it back in with one line, `photo_signals.apply_detection`. Preflight
+  instead re-reads the `PHOTO_DETECTED` warning — the pattern it already uses
+  for the classifier's verdict, and the one that still works when it is handed
+  a bare plan with no result. **If you add another entry point that reads
+  `is_photographic`, add the fold to it**, or a detected photograph silently
+  loses the machinery there. Nothing
+  committed here trips either signal, so the corpus cannot show you it works —
+  see DOCTRINE before concluding it is broken.
 - **`stage2_photo_segment.py`** is a drop-in alternative to
   `stage2_quantize.quantize()` with the same `Quant` output contract, so
   stages 3–4 run unchanged. It exists because global k-means clusters color

@@ -1327,6 +1327,18 @@ const WARNING_TEXT = {
   // naming the tier (w.tier) — "thread-paint" is the customer word for the
   // streamline tier this route picks; a second tier landing here can revisit.
   photo_auto_tier: () => "Rendered as a photo (thread-paint).",
+  // Stage 1.25 (2026-09-11): the engine decided this art is a PHOTOGRAPH from
+  // the camera in its file, or from a face in it — not from colour, which
+  // demonstrably cannot tell a photo from a shaded logo here. Named because
+  // the consequence is visible (photos sew rougher, and the palette binds
+  // tighter), and because a customer who disagrees can say so. The engine
+  // sentence it replaces names the palette bind and the shade bind, which are
+  // internal machinery nobody uploading a picture has heard of.
+  PHOTO_DETECTED: (w) =>
+    (w && w.signal === "face"
+      ? "A face was detected in this art, so it was digitized as a photograph. "
+      : "This file still carries the camera that took it, so it was digitized as a photograph. ")
+    + "Photos sew rougher than flat artwork — check the preview closely before stitching this one out.",
   BACKGROUND_UNCERTAIN: () =>
     "The background was hard to separate from the art. Check the stitch preview for missing or extra areas.",
   // The NUMBER is the actionable part and this sentence used to omit it.

@@ -18,12 +18,12 @@ is live**. None was guarded before this file.
 
 | site | codes | owner | what a rename deletes |
 |---|---|---|---|
-| `digitizer.js` `WARNING_TEXT` | 28 | `warnings_codes` | the translation. The panel falls back to the engine's own build-status prose -- the exact thing Kent's 2026-08-30 note ("IDK what ANY of that even means") was about |
+| `digitizer.js` `WARNING_TEXT` | 38 | `warnings_codes` | the translation. The panel falls back to the engine's own build-status prose -- the exact thing Kent's 2026-08-30 note ("IDK what ANY of that even means") was about |
 | `DigitizePanel` flat-art nudge | 4 `CLASSIFIED_*` | `warnings_codes` | the nudge never appears again |
 | `DigitizePanel` `otherWarningLines` | `BACKGROUND_ENCLOSED` | `warnings_codes` | its dedicated banner duplicates into the plain list |
 | `DigitizePanel` merge/split notes | 2 `*_BY_USER` | `warnings_codes` | the review-screen note vanishes |
 | `DigitizePanel` `FIX_FOR` + trim panel | 4 | `preflight` | the one-press fix button stops being offered |
-| `preflight.py` 4 mirrored constants | 5 | `warnings_codes` | `_tonal_fill_technique` reads "tatami" for a tonal plan, so `_density_findings` scores a BAND-intending design against a single number; the face and contour guards just go quiet |
+| `preflight.py` 5 mirrored constants | 6 | `warnings_codes` | `_tonal_fill_technique` reads "tatami" for a tonal plan, so `_density_findings` scores a BAND-intending design against a single number; the face and contour guards just go quiet |
 
 **The contrast that makes the case is one module over.**
 `stage7_sequence.py` consumes the same codes by IMPORT, and deleting one from
@@ -266,8 +266,11 @@ def test_preflight_mirrors_live_pipeline_codes():
         "_CLASSIFIED_PHOTO": tuple(preflight._CLASSIFIED_PHOTO),
         "_PHOTO_AUTO_TIER": (preflight._PHOTO_AUTO_TIER,),
         "_PHOTO_FACES_DETECTED": (preflight._PHOTO_FACES_DETECTED,),
+        "_PHOTO_DETECTED": (preflight._PHOTO_DETECTED,),
     }
-    assert sum(len(v) for v in mirrored.values()) == 5     # not vacuous
+    # Six on 2026-09-11: `_PHOTO_DETECTED` joined when stage 1.25's
+    # detection landed and `_is_photo_class` started re-reading its warning.
+    assert sum(len(v) for v in mirrored.values()) == 6     # not vacuous
 
     stale = {name: [c for c in codes if c not in published]
              for name, codes in mirrored.items()}
