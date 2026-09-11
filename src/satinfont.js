@@ -20,6 +20,7 @@
   const centerUnderlayFromGeom = satinplay.centerUnderlayFromGeom;
   const edgeUnderlayFromGeom = satinplay.edgeUnderlayFromGeom;
   const beanFromGeom = satinplay.beanFromGeom;
+  const fillFromGeom = satinplay.fillFromGeom;
   const splitByCrossFloor = satinplay.splitByCrossFloor;
   const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 
@@ -89,6 +90,46 @@
   const SHORT_STITCH_AT_MM = 0.3;
   const SHORT_STITCH_PULL = 0.35;
   const SHORT_STITCH_MAX_MM = 0.6;
+
+  // Wide columns (quality review item 10, 2026-09-11). The note at the top of
+  // this file used to say the ">4 mm column-width zigzag cross-cut" would
+  // "ship untested on real work" because our corpus is sub-3 mm columns. That
+  // was true when it was written and is not any more: the Python engine now
+  // splits at a threshold measured over 27,256 professional split crosses,
+  // and the same rule applies here. Both numbers MIRROR machine.py — move
+  // both or neither — so neither is a new physical constant (gate 1).
+  //
+  //   SPLIT_SATIN_ABOVE_MM  machine.SPLIT_SATIN_ABOVE_MM — past this a cross
+  //                         carries intermediate penetrations instead of
+  //                         being thrown whole. Corpus split fraction by
+  //                         cross length: 14% at 3.0 mm, 53% at 5.0, 92% at
+  //                         7.0, ~100% from 7.5; 5.0 is the corpus-wide
+  //                         median vote. House styles disagree either side of
+  //                         it, which is why it is a knob and not a law.
+  //   SATIN_MAX_WIDTH_MM    THE BROWSER'S OWN satin ceiling — the default
+  //                         `satinMaxWidthMm` digitize.js has classified the
+  //                         image lane at since before any of this. Python's
+  //                         is 5.0 and machine.py says in as many words that
+  //                         the divergence is "deliberate, corpus-driven, and
+  //                         Python-side only until its own sew-out", so this
+  //                         lane keeps 3.0 and the sew-out owns the merge.
+  //   FILL_ROW_MM /         machine.FILL_ROW_MM / FILL_STITCH_MM, the pitch
+  //   FILL_STITCH_MM        the image lane's own fills already sew at.
+  const SPLIT_SATIN_ABOVE_MM = 5.0;
+  const SATIN_MAX_WIDTH_MM = 3.0;
+  const FILL_ROW_MM = 0.15;
+  const FILL_STITCH_MM = 3.0;
+
+  // Euler-walk underpath pitch. This was a bare `2` inside routeGlyph and is
+  // named here because it was NOT being divided by the fit scale while the
+  // underlay pitch three lines away was — so on text scaled up to fit a
+  // garment the needle-down travel between columns sewed 2 mm x the scale.
+  // Found 2026-09-11 while measuring item 10: after the satin split, the ONLY
+  // sewn segments left over one DST record on an "AB" Full Back were three
+  // underpath steps of 22.1, 19.0 and 22.3 mm, in a design whose longest
+  // satin leg was 5.0. The value is unchanged; only the frame it is measured
+  // in is fixed.
+  const UNDERPATH_STEP_MM = 2;
 
   // Width profile of a corresponded column, accumulated into `report` as
   // centerline LENGTH (px) — total, under the thin floor, under the hairline
@@ -360,14 +401,31 @@
   // authored length and, when the font asks for bean repeats, each stitch is
   // backtracked r times (r=1 => the classic triple stitch), matching
   // Ink/Stitch's own per-stitch bean semantics rather than per-path passes.
+  // `opts.fitScale` (2026-09-11): the authored `lenMm` is a length ON THE
+  // FABRIC, so it has to be divided by the fit scale before it is measured in
+  // the layout frame — the same conversion `spacingMm` and every width guard
+  // on this path already ride, and the same bug UNDERPATH_STEP_MM documents
+  // one function down. Without it a run font scaled to fit a garment sewed
+  // its authored pitch TIMES the scale.
+  //
+  // It is wrong in both directions, which is what settles it as a units bug
+  // rather than a look question. Grown: measured across the 85 shipped fonts,
+  // 18 of them still produced sewn segments over one DST record after the
+  // satin split fixed everything else — western_light's "A" at left chest
+  // threw 66 of its 91 segments past the ceiling, worst 22.5 mm, and
+  // fold_inkstitch reached 65.3. Shrunk: the same line takes an authored
+  // 1.0 mm run to 0.2 mm at a 0.2 fit, straight through Law 51's min-stitch
+  // floor and into the needle chewing its own hole. A run's pitch is a
+  // property of needle and thread, not of how big the letter is.
   function routeRuns(runs, opts) {
     const pxPerMm = opts.pxPerMm;
+    const fitScale = opts.fitScale > 0 ? opts.fitScale : 1;
     const out = [];
     let first = opts.firstIsJump !== false;
     for (const r of runs || []) {
       const pts = r && r.pts;
       if (!pts || pts.length < 2) continue;
-      const stepPx = r.lenMm * pxPerMm;
+      const stepPx = (r.lenMm / fitScale) * pxPerMm;
       if (!(stepPx > 0)) continue;
       // Walk the polyline emitting a point every stepPx of arc length. The
       // final vertex is always kept so the stroke reaches its authored end.
@@ -421,6 +479,19 @@
     // Short stitches on the inside of bends (Law 53) — resolved by layoutText,
     // null when off or on the legacy stream.
     const shortStitch = opts.shortStitch && opts.shortStitch.atMm > 0 ? opts.shortStitch : null;
+    // Wide columns (item 10). `splitAboveMm` sends an over-length cross to
+    // satinplay's splitter; `maxCrossMm` is the ceiling past which a STRETCH
+    // of the column stops being a ribbon and sews as a fill. Both absent or 0
+    // is byte-identical to before they existed — and both are resolved by
+    // layoutText from the mirrored constants above, pre-divided by the fit
+    // scale exactly like every other mm guard on this path.
+    const splitAboveMm = opts.splitAboveMm > 0 ? opts.splitAboveMm : 0;
+    const maxCrossMm = opts.maxCrossMm > 0 ? opts.maxCrossMm : 0;
+    const fillOpts = maxCrossMm > 0 ? {
+      pxPerMm,
+      fillRowMm: opts.fillRowMm == null ? FILL_ROW_MM : opts.fillRowMm,
+      fillStitchMm: opts.fillStitchMm == null ? FILL_STITCH_MM : opts.fillStitchMm,
+    } : null;
     const beanOpts = minCrossMm > 0 ? {
       pxPerMm,
       stepMm: opts.beanStepMm == null ? BEAN_STITCH_MM : opts.beanStepMm,
@@ -459,7 +530,9 @@
       windowPx: 1.5 * spacingMm * pxPerMm,
       stats: report,
     } : null;
-    const satinOpts = { spacingMm, pxPerMm, pullCompMm, weightMm, slantDeg, minCrossMm, counterGuard, shortStitch };
+    const splitSegmentMm = opts.splitSegmentMm > 0 ? opts.splitSegmentMm : undefined;
+    const underpathStepMm = opts.underpathStepMm > 0 ? opts.underpathStepMm : UNDERPATH_STEP_MM;
+    const satinOpts = { spacingMm, pxPerMm, pullCompMm, weightMm, slantDeg, minCrossMm, counterGuard, shortStitch, splitAboveMm, splitSegmentMm, splitStats: splitAboveMm > 0 ? report : null };
     const ws = G.map((g) => g.w).sort((a, b) => a - b);
     const medW = ws[ws.length >> 1] || 4;
     const mergeR = Math.max(2, 1.3 * medW);
@@ -547,7 +620,7 @@
         if (prev && prev.gi === e.gi && prev.sat === sat && Math.abs(prev.f1 - f0) < 1e-6) prev.f1 = f1;
         else spans.push({ gi: e.gi, sat, f0, f1 });
       }
-      let first = true;
+      let first = true, grp = 0, lastGrp = null;
       for (const sp of spans) {
         const geom = G[sp.gi].geom; const lo = Math.min(sp.f0, sp.f1), hi = Math.max(sp.f0, sp.f1);
         // Each span becomes one or more PARTS in lo -> hi order. A travel
@@ -562,13 +635,30 @@
         // Each part carries its fraction span in TRAVERSAL order (fa -> fb).
         const parts = [];
         if (sp.sat) {
-          const segs = beanOpts
-            ? splitByCrossFloor(geom, lo, hi, Object.assign({ beanStepMm: beanOpts.stepMm }, satinOpts))
-            : [{ f0: lo, f1: hi, thin: false }];
+          const segs = (beanOpts || fillOpts)
+            ? splitByCrossFloor(geom, lo, hi, Object.assign({ beanStepMm: beanOpts ? beanOpts.stepMm : undefined, maxCrossMm }, satinOpts))
+            : [{ f0: lo, f1: hi, thin: false, wide: false }];
           for (const sg of segs) {
             if (sg.thin) {
               const b = beanFromGeom(geom, sg.f0, sg.f1, beanOpts);
               if (b && b.length >= 2) { parts.push({ pts: b, kind: "run", fa: sg.f0, fb: sg.f1 }); if (report) report.hairlineSpans += 1; continue; }
+            }
+            if (sg.wide && fillOpts) {
+              // Past the ceiling the cross is a float, not a ribbon. Sew the
+              // stretch as a tatami over its own rails instead — and fall
+              // THROUGH to satin if the fill came back empty (a stretch too
+              // short to hold one row), rather than dropping the artwork.
+              // The fill arrives as one or more pieces (see fillFromGeom);
+              // pieces after the first are reached needle-up, and they share
+              // one `grp` so the stretch gets ONE underlay, not one each.
+              const fl = fillFromGeom(geom, sg.f0, sg.f1, fillOpts);
+              const keep = (fl || []).filter((x) => x.length >= 2);
+              if (keep.length) {
+                grp += 1;
+                for (const x of keep) parts.push({ pts: x, kind: "fill", fa: sg.f0, fb: sg.f1, grp });
+                if (report) report.wideSpans += 1;
+                continue;
+              }
             }
             const s = satinFromGeom(geom, sg.f0, sg.f1, satinOpts);
             if (s && s.length >= 2) { parts.push({ pts: s, kind: "satin", fa: sg.f0, fb: sg.f1 }); continue; }
@@ -580,11 +670,11 @@
             // expects it. Only with the floor on — the legacy path skipped
             // such a span, and stays byte-identical.
             if (!beanOpts) continue;
-            const u = centerFromGeom(geom, sg.f0, sg.f1, 2, pxPerMm);
+            const u = centerFromGeom(geom, sg.f0, sg.f1, underpathStepMm, pxPerMm);
             if (u && u.length >= 2) parts.push({ pts: u, kind: "underpath", fa: sg.f0, fb: sg.f1 });
           }
         } else {
-          const u = centerFromGeom(geom, lo, hi, 2, pxPerMm);
+          const u = centerFromGeom(geom, lo, hi, underpathStepMm, pxPerMm);
           if (u && u.length >= 2) parts.push({ pts: u, kind: "underpath", fa: lo, fb: hi });
         }
         if (!parts.length) continue;
@@ -594,6 +684,20 @@
           parts.reverse();
           for (const p of parts) { p.pts = p.pts.slice().reverse(); const t = p.fa; p.fa = p.fb; p.fb = t; }
         }
+        // Needle-up flags are decided HERE, after the reversal, not where the
+        // pieces were made. A wide stretch's fill pieces are disconnected by
+        // construction — the gap between them is exactly the travel
+        // `tatamiFill` refused to sew — so every piece except the first IN
+        // TRAVERSAL ORDER has to be reached with the needle up. Flagging them
+        // at creation and then reversing puts the flags on the wrong pieces:
+        // for three pieces walked backward it marks the new first (which
+        // needs no flag of its own) and leaves the new last unflagged, so the
+        // walk sews a needle-down connector straight across the gap.
+        let prevGrp = null;
+        for (const p of parts) {
+          p.jump = p.grp != null && p.grp === prevGrp;
+          prevGrp = p.grp == null ? null : p.grp;
+        }
         for (const p of parts) {
           // Underlay first, then the satin that covers it. The generators
           // take the part in TRAVERSAL order (fa, fb — not lo, hi), so the
@@ -601,13 +705,16 @@
           // one stitch at the minimum length returns [] and simply gets no
           // underlay. A hairline run gets none either — Law 50's ladder puts
           // nothing under a stroke this size, and the run IS the light tier.
-          if (p.kind === "satin" && underlayOpts) {
+          const wantUnder = (p.kind === "satin" || p.kind === "fill") &&
+            (p.grp == null || p.grp !== lastGrp);
+          if (wantUnder && underlayOpts) {
             const upts = underlayMode === "edge"
               ? edgeUnderlayFromGeom(geom, p.fa, p.fb, underlayOpts)
               : centerUnderlayFromGeom(geom, p.fa, p.fb, underlayOpts);
             if (upts && upts.length >= 2) { runs.push({ pts: upts, kind: "underlay", jump: first }); first = false; }
           }
-          runs.push({ pts: p.pts, kind: p.kind, jump: first });
+          if (p.grp != null) lastGrp = p.grp;
+          runs.push({ pts: p.pts, kind: p.kind, jump: first || !!p.jump });
           first = false;
         }
       }
@@ -714,6 +821,12 @@
       counterHeld: 0,
       // Penetrations the short-stitch guard pulled back off a crowded rail.
       shortStitches: 0,
+      // Wide columns (item 10). `splitPenetrations` is the intermediate
+      // needle penetrations the splitter added to over-length crosses;
+      // `wideSpans` is the stretches that went past the ceiling entirely and
+      // sewed as a fill. Both 0 unless the caller asked for them.
+      splitPenetrations: 0,
+      wideSpans: 0,
       // The floors in THIS layout's px: final mm -> caller mm (/ fitScale)
       // -> px (* pxPerMm), the same conversion spacingMm rides.
       floorsPx: [(SATIN_MIN_CROSS_MM / fitScale) * pxPerMm, (COLUMN_FLOOR_MM / fitScale) * pxPerMm],
@@ -740,6 +853,47 @@
       maxMm: SHORT_STITCH_MAX_MM / fitScale,
       stats: report,
     } : null;
+    // ---- Wide columns (item 10) — SPLIT ON, FILL OFF ---------------------
+    // Two independent answers to one defect — a satin cross the machine
+    // cannot sew. `splitSatin` keeps the column a column and penetrates
+    // mid-cross; `wideColumnFill` stops calling it a column at all past the
+    // ceiling and sews a fill. They do NOT compose the way that sounds: with
+    // both on the split fires zero times, because every stretch it would have
+    // split has already gone to fill.
+    //
+    // **Kent's ruling 2026-09-11: split ON, fill off.** Both were built and
+    // measured OFF first, because WHICH answer a wide letter should get is a
+    // look-and-fabric call with a sew-out behind it (DOCTRINE 2026-09-07 names
+    // all three candidates and says so). The measurement he ruled on, over 85
+    // fonts x three texts: without either, **80 of 85 fonts throw a stitch no
+    // machine can sew, worst 98.7 mm**; split takes that to 9 of 85 and 23.6
+    // for 2.47x the stitches and NOT ONE extra trim; fill reaches the same 9
+    // for 5.22x the stitches and 68.8x the trims. Split is the smaller look
+    // change — a 20 mm stroke stays a satin ribbon with penetrations in it —
+    // and the fill route stays one config value away for when a sew-out
+    // settles the ceiling.
+    //
+    // `false` or `0` turns either off; a NUMBER overrides the threshold in
+    // caller mm, which is what the census tool sweeps with.
+    const splitOn = o.splitSatin === false || o.splitSatin === 0 ? 0
+      : (typeof o.splitSatin === "number" && o.splitSatin > 0 ? o.splitSatin : SPLIT_SATIN_ABOVE_MM);
+    const fillOn = o.wideColumnFill === true ? SATIN_MAX_WIDTH_MM
+      : (typeof o.wideColumnFill === "number" && o.wideColumnFill > 0 ? o.wideColumnFill : 0);
+    guardOpts.splitAboveMm = splitOn ? splitOn / fitScale : 0;
+    // The SEGMENT rides the fit scale too, and forgetting that is the whole
+    // bug: leaving it at 3.0 while the threshold is pre-divided makes k come
+    // out of ceil(cross / 3.0 LAYOUT mm), which on a design scaled 8x is
+    // ceil(cross / 24 final mm) — one penetration on a 45 mm cross instead of
+    // fourteen. Measured before the fix: the worst sewn segment on an "AB"
+    // Full Back fell only 44.9 -> 28.4 mm and the over-record COUNT went UP.
+    guardOpts.splitSegmentMm = satinplay.SPLIT_SEGMENT_MM / fitScale;
+    // Always, not behind either knob: the underpath pitch is a units bug, not
+    // a policy choice (see UNDERPATH_STEP_MM). Designs at fitScale 1 do not
+    // move at all; scaled ones sew the 2 mm this always meant.
+    guardOpts.underpathStepMm = UNDERPATH_STEP_MM / fitScale;
+    guardOpts.maxCrossMm = fillOn ? fillOn / fitScale : 0;
+    guardOpts.fillRowMm = (o.fillRowMm == null ? FILL_ROW_MM : o.fillRowMm) / fitScale;
+    guardOpts.fillStitchMm = (o.fillStitchMm == null ? FILL_STITCH_MM : o.fillStitchMm) / fitScale;
     // Two-line circular badge layout (Lettering parity round). Falsy (absent/
     // false/null) = today's behavior byte-identical (snapshot-pinned). Truthy:
     //   - The FIRST line arcs along the TOP of a circle (arch up, exactly the
@@ -978,7 +1132,7 @@
                 lenMm: r.lenMm,
                 repeats: r.repeats,
               })),
-              { pxPerMm, firstIsJump: gCols.length === 0 }))
+              { pxPerMm, fitScale, firstIsJump: gCols.length === 0 }))
           : gCols;
 
         // Cross-stitch regions. The lattice was measured from the whole font at
@@ -1108,6 +1262,10 @@
       weightMm: weightMm * fitScale,
       counterHeld: report.counterHeld,
       shortStitches: report.shortStitches,
+      // Wide columns (item 10): what the two knobs actually did to this
+      // design. Both 0 when neither is asked for, which is the default.
+      splitPenetrations: report.splitPenetrations,
+      wideSpans: report.wideSpans,
       columnFloorMm: COLUMN_FLOOR_MM,
       crossFloorMm: SATIN_MIN_CROSS_MM,
     };

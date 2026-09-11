@@ -12579,3 +12579,65 @@ which needs no boundary) is the live alternative and Kent's ruling on gate
 
 *(measured 2026-09-11 — `docs/stage0-signal-decision-2026-09-11.md`;
 plan `docs/superpowers/plans/2026-09-08-real-logo-lane-and-thin-strokes.md` §5a)*
+
+---
+
+## 2026-09-11 — the browser lettering engine's unsewable stitches (review item 10)
+
+Snapshot. Do not quote as live status.
+
+`tools/long-stitch-census.mjs`, 85 shipped `.embf` fonts × three texts (`AB`
+@ Full Back, `Yours` @ Full Back, `A` @ Left Chest) = 255 designs, at the
+Studio's own defaults. A sewn segment is counted past one DST record when
+`max(|dx|,|dy|) > 12.1 mm` — per axis, because that is what a record carries,
+and the rule that reproduces DOCTRINE 2026-09-07's own Full Back row
+(1,933 of 5,828, worst 44.9 mm, on a design measuring 304.9 × 146.2 mm).
+
+| | fonts with an unsewable stitch | segments over a record | worst axis | stitches | trims |
+|---|---:|---:|---:|---:|---:|
+| before any of this | 80 / 85 | 187,174 of 1,061,115 | 98.7 mm | 1,063,183 | not measured |
+| two units fixes only | 66 / 85 | 180,900 of 1,147,744 | 98.7 mm | 1,149,812 | 1,817 |
+| + `splitSatin` | 9 / 85 | 1,832 of 2,838,506 | 23.6 mm | 2,840,574 | 1,817 |
+| + `wideColumnFill` | 9 / 85 | 1,832 of 5,880,370 | 23.6 mm | 6,005,760 | 125,014 |
+
+Pre-change, per text: `AB` @ Full Back 80/85 fonts (130,651 of 512,449
+segments), `Yours` @ Full Back 61/85 (39,258 of 412,617), `A` @ Left Chest
+63/85 (17,265 of 136,049).
+
+The eight worst designs, `off` → `split` → `fill`:
+
+| font | text / garment | over a record | worst axis | off st | split st | fill st | fill trims |
+|---|---|---:|---:|---:|---:|---:|---:|
+| `roaring_twenties_KOR` | AB / Full Back | 1,395 / 3,408 | 98.7 | 3,410 | 44,528 | 109,613 | 5 |
+| `alchemy` | AB / Full Back | 1,454 / 3,569 | 89.4 | 3,571 | 21,096 | 50,174 | 940 |
+| `excalibur_KOR` | AB / Full Back | 2,861 / 6,806 | 61.8 | 6,808 | 41,866 | 100,753 | 1,499 |
+| `inkstitch_masego` | AB / Full Back | 1,879 / 4,566 | 53.2 | 4,570 | 34,218 | 85,445 | 212 |
+| `alchemy` | A / Left Chest | 450 / 1,184 | 50.2 | 1,185 | 4,593 | 10,920 | 223 |
+| `manga_impact` | AB / Full Back | 1,930 / 5,861 | 44.9 | 5,863 | 27,074 | 63,352 | 109 |
+
+The nine fonts left over a record under both knobs are all cross-stitch
+fonts — `egyptian`, `eloquent`, `heavenly` and their `_small` twins,
+`jaquarda_bastarda_9`, `jersey_15`, `noble` — routed through `crossfill.js`,
+whose lattice is in glyph units by design. The long segment is an X's arm.
+
+`SATIN_BASELINE`'s five pinned fonts under the units fixes: montecarlo
+1157 → 1166, alchemy 751 → 751, venezia 996 → 997, cats 1238 → 1243,
+apesplit 2470 → 2475. `satinfont.test.js`'s 40 mm AB 701 → 703 and its 8 mm
+AB 189 → 188.
+
+Underpath pitch on the fabric at fitScale 0.5 / 1 / 8.47, before and after:
+1.02, 2.05, 17.35 mm → 2.05, 2.05, 2.04 mm.
+
+Kent ruled the same day: **`splitSatin` ON, `wideColumnFill` off** — the
+`+ splitSatin` row is the shipped default from here. The flip moved four
+tests. `SATIN_BASELINE`: only `alchemy`, 751 → 786. The other three
+(`digitize.test.js`'s slant arm, `generate.spec.js`'s slant and bold/thin
+arms) were comparing raw stitch counts or average stitch length, which a
+split cross breaks by construction — bold read 24.537 against thin's 24.678,
+inverted — and now compare total sewn path, which is exactly invariant under
+splitting. Slant thread ratio, split off → on: 1.0299 → 1.0300 on the Studio
+arm and 1.0312 → 1.0313 on the engine arm, against the geometric bound
+1/cos 15° = 1.0353.
+
+*(measured 2026-09-11 — plan
+`docs/superpowers/plans/2026-09-11-wide-columns-in-lettering.md`)*
