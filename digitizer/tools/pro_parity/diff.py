@@ -81,7 +81,7 @@ def region_polys(pair: pf.Pair, reg: pf.Reg) -> list[tuple[str, Polygon]]:
 
 
 def assign_passes(passes, polys: list[tuple[str, Polygon]], buffer_mm: float = ASSIGN_BUFFER_MM):
-    """Chunk each pass into the region it actually lies in (R14).
+    """Chunk each pass into the region it actually lies in (R14, amended R16).
 
     A professional file travels with the needle down between elements — on
     the Becker corpus file, 15 passes run to 33,330 mm total, median
@@ -91,14 +91,29 @@ def assign_passes(passes, polys: list[tuple[str, Polygon]], buffer_mm: float = A
     away most of a long pass's thread: measured 54% of the pro's thread
     landing in any region, the rest becoming residual.
 
-    Each point is labelled with the first buffered region polygon — in the
-    order `polys` is given — that contains it, or left unlabelled if none
-    does (`shapely.contains_xy`, vectorised the same way `direction_in`'s
-    grid lookup is). The pass is then cut into maximal runs of consecutive
-    same-label points: a run of at least 3 points is a genuine needle-down
-    chunk (what `satin_columns.measure` and `union_pitch` need — an actual
-    run, not an arbitrary slice) and goes to that region's chunk list; a
-    shorter run, or one with no region, goes to residual.
+    R16: label SEGMENTS by their midpoint, not points. Labelling points (R14)
+    left the segment BETWEEN the last point of one chunk and the first point
+    of the next belonging to no chunk at all — its length vanished from both
+    `per_region` and `residual` — and on a heavily-fragmented file (our own
+    thread, grown past the artwork polygon by pull compensation, shreds into
+    thousands of short runs near every edge) that was most of the file:
+    measured 18.6 m of the pro's 33.3 m and 12.1 m of ours' 33.6 m went
+    unaccounted before this fix.
+
+    Each SEGMENT (a pass's consecutive point pair) is labelled with the
+    first buffered region polygon — in the order `polys` is given — whose
+    buffer contains that segment's MIDPOINT, or left unlabelled if none does
+    (`shapely.contains_xy`, vectorised over all of a pass's segment
+    midpoints at once, same style `direction_in`'s grid lookup and the old
+    point-labelling used). The pass is then cut into maximal runs of
+    consecutive same-label segments; a run's chunk is that run's endpoints
+    in order (so a chunk of `k` segments has `k + 1` points — still
+    consecutive needle-down points, which is what `satin_columns.measure`
+    and `union_pitch` need) and goes to that region's chunk list, or to
+    residual when the run's label is no region. Every segment lands in
+    exactly one chunk, so `length_mm` over `per_region`'s chunks plus
+    `length_mm` over `residual` now equals `length_mm` over `passes` (up to
+    float rounding) — nothing vanishes at a chunk boundary any more.
 
     -> (per_region: dict[shape_id, list[chunk]], residual: list[chunk],
         lifts: dict[shape_id, int]) — `lifts[sid]` is the number of
@@ -113,28 +128,30 @@ def assign_passes(passes, polys: list[tuple[str, Polygon]], buffer_mm: float = A
     lift_sources: dict = {sid: set() for sid, _ in polys}
     residual = []
     for pi, pts in enumerate(passes):
-        n = len(pts)
-        if n == 0:
+        m = len(pts) - 1     # number of segments
+        if m < 1:
             continue
-        xs = np.array([p[0] for p in pts]); ys = np.array([p[1] for p in pts])
-        labels: list = [None] * n
-        claimed = np.zeros(n, bool)
+        p0 = np.array(pts[:-1]); p1 = np.array(pts[1:])
+        mx = (p0[:, 0] + p1[:, 0]) / 2.0
+        my = (p0[:, 1] + p1[:, 1]) / 2.0
+        labels: list = [None] * m
+        claimed = np.zeros(m, bool)
         for sid, poly in buffered:
             idx = np.flatnonzero(~claimed)
             if not len(idx):
                 break
-            inside = shapely.contains_xy(poly, xs[idx], ys[idx])
+            inside = shapely.contains_xy(poly, mx[idx], my[idx])
             for k in idx[inside]:
                 labels[k] = sid
             claimed[idx[inside]] = True
         i = 0
-        while i < n:
+        while i < m:
             j = i + 1
-            while j < n and labels[j] == labels[i]:
+            while j < m and labels[j] == labels[i]:
                 j += 1
-            chunk = pts[i:j]
+            chunk = pts[i:j + 1]    # the run's j-i segments' endpoints, in order
             sid = labels[i]
-            if sid is not None and (j - i) >= 3:
+            if sid is not None:
                 per[sid].append(chunk)
                 lift_sources[sid].add(pi)
             else:

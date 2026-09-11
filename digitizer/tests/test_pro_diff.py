@@ -110,7 +110,12 @@ def test_every_assigned_chunk_lies_in_its_own_region(becker_pair):
     """Chunked assignment credits a region only with thread that is really in
     it. Whole-pass assignment credited a region with a pass's whole length
     once 60% of its points fell inside, which on this pro file meant 54% of
-    33.3 m "assigned" with much of it lying elsewhere."""
+    33.3 m "assigned" with much of it lying elsewhere.
+
+    R16: assignment labels a SEGMENT by its midpoint, not its endpoints, so a
+    chunk's own endpoint can sit a little outside the buffer (the next
+    segment past it belongs to a different label). Check the MIDPOINTS —
+    what `assign_passes` actually tested — not every endpoint."""
     import shapely
     reg = pairframe.register_pair(becker_pair.pro_path, becker_pair.ours_path)
     polys = dict(pdiff.region_polys(becker_pair, reg))
@@ -119,22 +124,23 @@ def test_every_assigned_chunk_lies_in_its_own_region(becker_pair):
     for sid, chunks in per.items():
         buffered = polys[sid].buffer(pdiff.ASSIGN_BUFFER_MM + 1e-6)
         for pts in chunks:
-            xs = [p[0] for p in pts]
-            ys = [p[1] for p in pts]
-            assert shapely.contains_xy(buffered, xs, ys).all(), sid
+            mx = [(pts[i][0] + pts[i + 1][0]) / 2.0 for i in range(len(pts) - 1)]
+            my = [(pts[i][1] + pts[i + 1][1]) / 2.0 for i in range(len(pts) - 1)]
+            assert shapely.contains_xy(buffered, mx, my).all(), sid
 
 
-def test_our_own_thread_mostly_lands_in_our_own_regions(becker_pair):
-    """Our regions come from our own artwork, so our thread should sit in
-    them. The pro's does not have to: it sews BECKER's letter bodies solid
-    where we have no region, and travels needle-down between elements, which
-    is exactly what the catalogue's residual line is for."""
+def test_assignment_accounts_for_every_millimetre(becker_pair):
+    """Nothing may vanish between a region and the residual. Labelling points
+    instead of segments lost the thread that crosses a region boundary: 18.6 m
+    of the pro's 33.3 m and 12.1 m of our 33.6 m went uncounted."""
     reg = pairframe.register_pair(becker_pair.pro_path, becker_pair.ours_path)
     polys = pdiff.region_polys(becker_pair, reg)
-    passes = pdiff.passes_of(becker_pair.ours_path, reg.apply_xy)
-    per, _residual, _lifts = pdiff.assign_passes(passes, polys)
-    assigned = sum(pdiff.length_mm(v) for v in per.values())
-    assert assigned / pdiff.length_mm(passes) > 0.85
+    for path, transform in ((becker_pair.pro_path, None),
+                            (becker_pair.ours_path, reg.apply_xy)):
+        passes = pdiff.passes_of(path, transform)
+        per, residual, _lifts = pdiff.assign_passes(passes, polys)
+        assigned = sum(pdiff.length_mm(v) for v in per.values())
+        assert abs(assigned + pdiff.length_mm(residual) - pdiff.length_mm(passes)) < 1.0
 
 
 def test_the_planned_tier_reaches_the_regions_file(becker_pair):
