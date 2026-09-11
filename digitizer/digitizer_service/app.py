@@ -776,7 +776,13 @@ async def start_digitize(
         gen = generations.get(gen_key)
         gen_hit = gen is not None
         if gen is None:
-            gen = build_generation(pixels, cfg)
+            # `data`, not `pixels`, for the EXIF half of photograph
+            # detection (cfg.detect_photographic, default OFF): `_decode`
+            # above hands the pipeline an ndarray, and an ndarray has no
+            # header left to read the camera out of. Costs nothing when the
+            # flag is off — `photo_signals.resolve` returns before touching
+            # it — and the bytes are already in hand for the cache key.
+            gen = build_generation(pixels, cfg, exif_source=data)
             generations.put(gen_key, gen)
         result = finish_generation(gen.fork(), cfg)
         plan = plan_stitches(result, cfg)

@@ -32,6 +32,7 @@ from . import debugviz
 from .config import PipelineConfig
 from .fabrics import Fabric, fabric_for_garment, get_fabric
 from .machine import FILL_ROW_MM
+from .photo_signals import apply_detection, resolve as resolve_photo_signals
 from .regions import (
     Region,
     apply_layer_overrides,
@@ -79,6 +80,7 @@ from .warnings_codes import (
     PHOTO_AUTO_TIER,
     PHOTO_BACKGROUND_REMOVAL_UNAVAILABLE,
     PHOTO_BACKGROUND_REMOVED,
+    PHOTO_DETECTED,
     PHOTO_FACE_PRIORS_UNAVAILABLE,
     PHOTO_FACES_DETECTED,
     PHOTO_SAM2_SEGMENTATION_UNAVAILABLE,
@@ -193,6 +195,13 @@ class PipelineResult:
     # Defaults None — a hand-built PipelineResult and every non-demand run
     # read exactly as before the field existed.
     palette_spools: list[int] | None = None
+    # Stage 1.25's verdict, carried one hop further for the SAME reason
+    # `design_class` and `faces_present` above are: `plan_stitches` and
+    # `run_preflight` are separate entry points holding the CALLER's config,
+    # and detection happened inside `build_generation` where they cannot see
+    # it. Defaults False — a hand-built PipelineResult, and every caller that
+    # never turned detection on, reads exactly as before the field existed.
+    detected_photographic: bool = False
 
     @property
     def shape_ids(self) -> list[str]:
@@ -237,6 +246,15 @@ class Generation:
     # Defaulted so a hand-built Generation (tests) reads exactly as before
     # the field existed.
     quant_palette_spools: list[int] | None = None
+    # Stage 1.25's verdict (`cfg.detect_photographic`): did a signal say
+    # PHOTOGRAPH? Carried for the same reason `faces_present` is — a runtime
+    # fact only that pass can answer, and `finish_generation` arrives
+    # holding the CALLER's config, which knows nothing about it. False
+    # whenever detection was off, was pre-empted by a declaration, or simply
+    # found nothing, so a hand-built Generation reads exactly as it did
+    # before the field existed; `photo_signals.apply_detection` is the only
+    # thing that reads it.
+    detected_photographic: bool = False
     # The rembg subject cutout, (H, W) bool with True = SUBJECT, or None
     # (every job that did not opt into `cfg.photo_prep_background_removal`,
     # and every job where the isolated venv was missing or the worker
@@ -279,6 +297,7 @@ class Generation:
             resnap_warnings=list(self.resnap_warnings),
             faces_present=self.faces_present,
             seg_name=self.seg_name,
+            detected_photographic=self.detected_photographic,
             design_row_angle_deg=self.design_row_angle_deg,
             design_ramp=self.design_ramp,
             quant_palette_spools=(
@@ -343,10 +362,17 @@ def build_generation(
     image: str | Path | bytes | np.ndarray,
     cfg: PipelineConfig | None = None,
     segmenter: Segmenter | None = None,
+    exif_source: str | Path | bytes | None = None,
 ) -> Generation:
     """Stages 0-4: artwork in, a `Generation` out — ids assigned, computed
     facts tagged, review edits NOT yet applied. `run_stages` composes this
-    with `finish_generation`; the service caches the result across edits."""
+    with `finish_generation`; the service caches the result across edits.
+
+    `exif_source` is the UNDECODED upload, for a caller that decoded the
+    artwork itself and hands an ndarray here — the service does, and an
+    ndarray has no EXIF header left to read. Only `cfg.detect_photographic`
+    consults it, and only for the camera tags; everything else reads `image`.
+    """
     cfg = cfg or PipelineConfig()
     seg = segmenter or ClassicalSegmenter()
     dbg = Path(cfg.debug_dir) if cfg.debug_dir else None
@@ -366,6 +392,44 @@ def build_generation(
     if dbg:
         debugviz.stage1(dbg, p.rgb, p.bg_mask)
 
+    # Everything stages 1 and 1.5 have to say, in one list. Declared here
+    # rather than beside the photo-prep block below because stage 1.25 now
+    # writes into it first.
+    prep_warnings: list[dict] = []
+
+    # Stage 1.25 — IS THIS A PHOTOGRAPH? (quality review 2026-09-08 item 13)
+    # Off by default and free when off. On, it answers with two signals that
+    # are not colour statistics, because stage 0's colour statistics
+    # demonstrably cannot (`config.is_photographic` carries the measurement:
+    # a real photograph reads LESS photographic than two gradient logos on
+    # stage 0's own primary gate). EXIF first, then the YuNet detector the
+    # photo-prep block below already ships — `p.rgb` is the raster it wants,
+    # RGB per stage 1's contract, and it is in hand right here, so detection
+    # costs no second decode.
+    #
+    # It rewrites `cfg` for THIS function only. The verdict rides the
+    # Generation from here, because `finish_generation` and `plan_stitches`
+    # arrive later holding the CALLER's config and fold it back in with one
+    # line each (`photo_signals.apply_detection` — see it for why that beats
+    # teaching nine call sites about detection). Preflight takes the third
+    # route it already uses for the classifier's verdict: it re-reads the
+    # warning below.
+    cfg, signals = resolve_photo_signals(
+        cfg, image=image if exif_source is None else exif_source, rgb=p.rgb)
+    detected_photographic = bool(signals and signals.is_photograph)
+    if detected_photographic:
+        prep_warnings.append(
+            warn(
+                PHOTO_DETECTED,
+                f"Detected as a photograph — {signals.why}. The photographic "
+                "machinery applies: the palette bind, the shade bind and "
+                "preflight's photo yardstick. Declaring this design "
+                "non-photographic overrides it.",
+                signal=signals.signal,
+                detail=signals.why,
+            )
+        )
+
     # Stage 1.5 — photo prep (plan §2 rows 3-4; build step 3 first slice).
     # DOUBLE-gated: the opt-in flag AND a photo classification, so neither
     # the default config nor a photo-classified design under default config
@@ -376,7 +440,6 @@ def build_generation(
     # former AND `source_pixels` for the tonal tiers — sees the prepped
     # image; that is the point (texture below the sewable floor should not
     # reach any consumer).
-    prep_warnings: list[dict] = []
     face_regions = None
     # The REAL rembg-derived subject/background mask, distinct from
     # `p.bg_mask` (which, by the time `photo_segment` runs, may just be
@@ -754,6 +817,7 @@ def build_generation(
         # `face_regions` is set only when stage 1.5 both ran (photo_prep's
         # double gate) AND found at least one face — see that block above.
         faces_present=bool(face_regions),
+        detected_photographic=detected_photographic,
         # `region_former` (the stage-2 dispatch fact, see its comment) wins
         # over the stage-3 mask deriver's name, so review.segmenter finally
         # answers "which segmenter ran" instead of always "classical".
@@ -816,6 +880,12 @@ def finish_generation(gen: Generation, cfg: PipelineConfig | None = None) -> Pip
     `run_stages`. Mutates `gen`'s regions and warning lists in place — hand
     it a `Generation.fork()`, never a cached original."""
     cfg = cfg or PipelineConfig()
+    # Stage 1.25's verdict, folded into the caller's config. Detection ran in
+    # `build_generation`, which rewrote only its own local cfg; this entry
+    # point takes a fresh one, so without this line a detected photograph
+    # would lose the palette bind the moment the service re-finished it from
+    # its cache. A no-op unless detection actually fired.
+    cfg = apply_detection(cfg, gen.detected_photographic)
     dbg = Path(cfg.debug_dir) if cfg.debug_dir else None
     p = gen.p
     regions = gen.regions
@@ -1182,6 +1252,7 @@ def finish_generation(gen: Generation, cfg: PipelineConfig | None = None) -> Pip
         source_pixels=source_pixels,
         design_class=gen.classification_class,
         faces_present=faces_present,
+        detected_photographic=gen.detected_photographic,
         palette_spools=(
             list(gen.quant_palette_spools)
             if gen.quant_palette_spools is not None else None
@@ -1208,6 +1279,10 @@ def fabric_for(cfg: PipelineConfig) -> Fabric:
 def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> StitchPlan:
     """Stages 5-7: regions -> stitches. Safe to re-run on one PipelineResult."""
     cfg = cfg or PipelineConfig()
+    # Same fold as `finish_generation`'s, one hop further out: stage 7's
+    # photo sequencing and the shade bind read `is_photographic`, and this
+    # entry point is routinely called with a config built from scratch.
+    cfg = apply_detection(cfg, result.detected_photographic)
     fabric = fabric_for(cfg)
     dbg = Path(cfg.debug_dir) if cfg.debug_dir else None
 

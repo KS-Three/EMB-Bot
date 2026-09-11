@@ -89,9 +89,8 @@ icon. Cloth pointers added to defects 3, 6 and 16 below.
     forcing the FILL TIER rather than declaring content — and measurably
     hurt: owl_kent @ 80 mm goes 13 stops → **17** forced, vs **11 on 12
     cones** (from 14) declared, for ~6% more stitches. The flat-art override
-    is untouched; only the photo direction moved. **Still open:** detection
-    itself — gate 2 bars inferring it, so an undeclared photo is still
-    undeclared until a human says so. *(measured 2026-09-02; the earlier
+    is untouched; only the photo direction moved. **DETECTION BUILT 2026-09-11, DEFAULT OFF** (`cfg.detect_photographic`, stage 1.25): EXIF camera then the shipped YuNet detector; a hit fills `is_photographic` in as True — never False, never over a declaration — so it can only ADD photographs. Gate 2 untouched: no colour gate moves. **It changes nothing on this repo's artwork** — all 22 committed fixtures read identically on and off, because not one carries a camera header or a face (0 false positives across 14 logos; `owl_kent` is the real photograph BOTH signals miss, which is why the declaration stays the fallback). The value is on real uploads, which is
+    also why it is unproven here. *(measured 2026-09-11 — `digitizer/tools/photo_signals.py`; `tests/test_photo_detection.py`, 28)* *(measured 2026-09-02; the earlier
     26-stop figure for the forced route predates the rehome, borders-last
     and the cone fold — 17 is current, the ordering it was cited for is not)*
 

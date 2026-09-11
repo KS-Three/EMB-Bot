@@ -25,6 +25,55 @@ that is the whole point of the file. Corrections go in `MASTER_SCOPE.md`.
 
 ---
 
+**Last updated:** 2026-09-11 — **the engine can tell a photograph from a logo
+without looking at colour. Default OFF, and a no-op on everything committed.**
+
+- **Stage 1.25 (`cfg.detect_photographic`, quality review item 13).** EXIF
+  camera Make/Model, then the YuNet detector already shipped at
+  `stage1_photo_prep.detect_faces_seam`, run once per generation on the prep
+  raster that is already in hand. A hit fills `config.is_photographic` in as
+  True. The two signals were measured 4/4 photos and 4/4 portraits against 0/9
+  logos on 2026-08-25 (PR #245) and DOCTRINE has named the route ever since;
+  this is the wiring.
+
+- **It answers True or None. Never False** — silence is "no opinion", not "not
+  a photograph", because `owl_kent.jpg` is a real photograph BOTH signals miss
+  (re-saved, so no EXIF; an owl, so no face). So detection can only ever ADD
+  photographs, an explicit declaration still beats it in both directions, and
+  the checkbox stays the fallback rather than becoming a vestige.
+
+- **Measured on the committed corpus, 2026-09-11** (`tools/photo_signals.py`,
+  22 fixtures): **0 false positives** — no logo trips either signal — and **0
+  true positives**, because nothing committed here carries a camera header or a
+  face. Every fixture reads identically with detection on and off. That is the
+  honest headline: the value lands on real uploads (a phone photo carries EXIF),
+  and this repo's artwork cannot demonstrate it. `logo_script_tires.png` reads
+  `photo_scene` from stage 0 both ways — a pre-existing class-route false
+  positive, not detection's.
+
+- **Cost when on:** EXIF 0.4–50.8 ms; EXIF plus the face pass 0.03–0.14 s,
+  against preps of 0.04–1.10 s. EXIF short-circuits, so a photo that kept its
+  header never pays for the detector. Off, `photo_signals.resolve` returns
+  before reading a byte.
+
+- **The plumbing, because it is the part that could rot.** Detection happens
+  inside `build_generation`, which rewrites only its own config —
+  `finish_generation`, `plan_stitches` and preflight are separate entry points
+  holding the CALLER's config, and the service re-finishes from a cached
+  generation on every review edit. So the verdict rides the `Generation` and
+  then the `PipelineResult` the way stage 0's class and stage 1.5's
+  `faces_present` already do, and each entry point folds it back in with
+  `photo_signals.apply_detection`. None of the nine `is_photographic()` call
+  sites learned that detection exists. The service passes its upload BYTES down
+  past its own decode (`exif_source=`), because an ndarray has no header left.
+
+- `tests/test_photo_detection.py` (28), `tests/test_code_wires.py` (the
+  preflight mirror grew to five constants / six codes),
+  `src/lib/digitizer.spec.js` (the panel names which signal fired instead of
+  reciting the engine's palette-bind prose).
+
+---
+
 **Last updated:** 2026-09-08 — **five PRs, and the app now agrees with itself
 about what it will sew.**
 

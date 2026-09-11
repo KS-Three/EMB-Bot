@@ -1007,3 +1007,46 @@ instrument/plan, build, measure, renders, docs, PR, auto-merge, next):
 4. **Item 10 — wide columns in the JS lettering engine.** Port the Python
    split-satin + fill fallback and its constants; stops where the
    look-and-fabric call starts (MASTER_SCOPE holds that as Kent's).
+
+## Item 13 BUILT 2026-09-11 — stage 1.25, photograph detection, DEFAULT OFF
+
+- **What landed.** `cfg.detect_photographic` (default False) →
+  `digitizer_core/photo_signals.py`: EXIF camera Make/Model, then the YuNet
+  detector already shipped at `stage1_photo_prep.detect_faces_seam`, run once
+  per generation on `p.rgb` (already in hand — no second decode). A hit fills
+  `config.is_photographic` in as True.
+- **The contract that matters: True or None. NEVER False.** Silence is "no
+  opinion", because `owl_kent.jpg` is a real photograph both signals miss
+  (re-saved → no EXIF; an owl → no face). False there would suppress the
+  machinery on exactly the designs that need it. So detection can only ADD,
+  the declaration still wins in both directions, and the checkbox stays a
+  fallback rather than becoming a vestige. **Do not "improve" this to False.**
+- **The plumbing trap, solved once.** `is_photographic` has NINE call sites
+  across four modules, and detection happens inside `build_generation` —
+  which rewrites only its own local cfg. `finish_generation`, `plan_stitches`
+  and `run_preflight` are separate entry points holding the CALLER's config
+  (the service re-finishes from a cached generation on every review edit). So
+  the verdict rides `Generation.detected_photographic` and then
+  `PipelineResult.detected_photographic`, exactly like `design_class` and
+  `faces_present`, and each entry point folds it in with one line,
+  `photo_signals.apply_detection`. Preflight uses its existing
+  re-read-the-warning pattern (`_PHOTO_DETECTED`). **Add an entry point that
+  reads `is_photographic` and you must add that line**, or the verdict is
+  silently lost there.
+- **The service passes `exif_source=data`** — its own `_decode` hands the
+  pipeline an ndarray, and an ndarray has no header left to read a camera out
+  of. Without it the EXIF half is dead in the only path a customer uses.
+- **Measured 2026-09-11, `tools/photo_signals.py`, 22 committed fixtures: 0
+  false positives and 0 true positives.** Nothing committed here carries a
+  camera header or a face, so every fixture reads identically on and off.
+  That is the honest result, not a bug: the value is on real uploads. The
+  suite reaches the true-positive side through a JPEG header the test writes
+  and a monkeypatched face seam — which prove the READER and claim nothing
+  about artwork. `logo_script_tires.png` reads `photo_scene` from stage 0
+  both ways: a pre-existing class-route false positive, not detection's.
+- Cost: EXIF 0.4–50.8 ms; EXIF+face 0.03–0.14 s against preps of 0.04–1.10 s.
+  EXIF short-circuits. Off, `resolve` returns before reading a byte.
+- **The flip is Kent's and is NOT proposed on this evidence** — turning it on
+  would change nothing measurable here, so there is no measurement to flip on.
+  It becomes answerable the moment real photographs land (the same artwork
+  item 1 waits for), which is the one thing that would show both halves.

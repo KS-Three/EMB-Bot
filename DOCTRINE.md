@@ -161,7 +161,24 @@ Moved verbatim 2026-08-28 — no section was rewritten in the move.
   detector at `stage1_photo_prep.detect_faces_seam` (4/4 portraits, 0/9 logos).
   Each has a blind spot — EXIF dies on re-save (`owl_kent` has none), faces miss
   pets and landscapes — so the route is EXIF-or-face with the declaration as
-  FALLBACK, never a checkbox as the primary mechanism. Not built.
+  FALLBACK, never a checkbox as the primary mechanism.
+  **BUILT 2026-09-11, DEFAULT OFF** — `cfg.detect_photographic`, stage 1.25 in
+  `build_generation`, EXIF short-circuiting the detector. It answers **True or
+  None, never False**: a signal firing says photograph, silence says nothing at
+  all, so detection can only ever ADD and an explicit declaration still wins in
+  both directions. **Do not make it answer False** — the owl is a real
+  photograph both signals miss, and False there would suppress the machinery on
+  exactly the designs that need it.
+  **AND DO NOT TRY TO VALIDATE IT ON THIS REPO'S CORPUS.** All 22 committed
+  fixtures read identically with it on and off: not one carries a camera header
+  (every photo here was re-saved or generated) and not one contains a face. The
+  false-positive half IS measurable and is pinned (0 of 14 logos); the
+  true-positive half is the 2026-08-25 measurement plus real uploads, and the
+  suite reaches it through a header the test writes and a monkeypatched seam,
+  which prove the READER and claim nothing about artwork. A session that "sees
+  no effect" on the corpus has confirmed the design, not found a bug.
+  *(built 2026-09-11 — `tests/test_photo_detection.py`, 28;
+  `digitizer/tools/photo_signals.py`)*
   The gate was written in 15 places across 5 modules with `PHOTO_CLASSES`
   defined 3 times; that is how a photograph in the `gradient` lane missed the
   palette bind and was graded on the tatami yardstick. **NOT wired:**

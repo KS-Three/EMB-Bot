@@ -42,6 +42,18 @@ def is_photographic(cfg: "PipelineConfig", class_: str | None) -> bool:
     So the caller declares it. The person uploading a photograph knows it is
     one; the classifier demonstrably does not.
 
+    DETECTION SITS IN FRONT OF THE DECLARATION, NOT INSTEAD OF IT (2026-09-11,
+    quality review item 13). What stage 0's colour statistics cannot separate,
+    two signals that are not colour statistics can: EXIF camera Make/Model and
+    the shipped YuNet face detector, each 4/4 on photos and 0/9 on logos when
+    measured 2026-08-25, and 0 false positives across 14 logos re-measured
+    2026-09-11. `cfg.detect_photographic` (default OFF) runs them once per
+    generation and fills this field in as True on a hit — never as False, and
+    never over a declaration the caller already made. The owl is why: a real
+    photograph BOTH signals miss, which makes silence "no opinion" rather than
+    "not a photograph", and keeps the declaration the fallback rather than the
+    vestige. `photo_signals` carries the whole contract.
+
     None means "no declaration — fall back to the class", which is exactly
     today's behaviour and keeps every existing lane byte-identical. An
     explicit False suppresses the machinery even on a photo class, because
@@ -80,6 +92,22 @@ class PipelineConfig:
     # filled, which routes real photographs through the gradient lane where
     # every one of those was gated off by class name.
     is_photographic: bool | None = None
+
+    # ...unless detection answers it first. DEFAULT OFF, and off it costs
+    # nothing: `photo_signals.resolve` returns immediately without reading a
+    # byte. ON, two signals that are NOT colour statistics run at the top of
+    # a generation — EXIF camera Make/Model, then the YuNet detector already
+    # shipped at `stage1_photo_prep.detect_faces_seam` — and a hit fills
+    # `is_photographic` in as True.
+    #
+    # It can only ever ADD photographs. A signal that fires says photograph;
+    # silence says nothing at all, because the corpus holds a real photograph
+    # neither signal catches (`owl_kent.jpg`: re-saved, so no EXIF, and an
+    # owl, so no face). So an explicit declaration still wins in BOTH
+    # directions, and a design no signal fires on is byte-identical to the
+    # same design with this off. See `photo_signals`' module docstring for
+    # the corpus behind both signals and both blind spots.
+    detect_photographic: bool = False
 
     # Stage 2
     # Which manufacturer's chart the design is snapped to. Ids match the
