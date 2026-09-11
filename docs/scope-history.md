@@ -25,6 +25,38 @@ that is the whole point of the file. Corrections go in `MASTER_SCOPE.md`.
 
 ---
 
+**Last updated:** 2026-09-11 (later still) — **item 14: the pro caps his
+silhouette, and `edge_cap`'s recorded bill was one fixture's.**
+
+- **`tools/pro_silhouette.py`** reads one statistic on both sides: the share of
+  a design's outer silhouette with no LINEAR stitching (satin column or traced
+  run) within 1.0 mm. A fill's own rows are never cover — a row ending on the
+  boundary is the defect. `--ours` digitizes one of our fixtures, exports DST
+  and reads it back through the same function, so the two numbers are never two
+  instruments.
+
+- **Pro: 5 files, 3,488 mm, 0.5-2.2% uncovered (median 1.6%).** Ours with
+  `edge_cap` off: **0.0-79.2%** (Fremont 0.0, drone 7.3, Becker 15.2, whitebg
+  76.3, gaulke 79.2). Either cap style: **0.0% on every fixture.**
+
+- **The bill, six fixtures at 80 mm**: bean +8.6% (fremont) to +100.4%
+  (enthusiast); satin +10.5% to +99.0% (becker). MASTER_SCOPE's +12.6%/+15.3%
+  was Kent's icon and is not representative. Two fixtures pay for nothing:
+  Fremont is already 0.0% uncovered, and `enthusiast_logo` has no recoverable
+  area fill at all yet pays the largest bill on the sheet.
+
+- **The reading reversed itself once.** Built from whole runs — skipping any
+  run that was an area fill — it read the pro as 76.7-100% uncovered. In this
+  corpus a run is routinely both a fill and the host of the columns bordering
+  it, so that skipped exactly the caps being looked for. The unit is the
+  COLUMN, not the run; `tests/test_pro_silhouette.py` (3) pins it.
+
+- **`satin_rails_follow_edge` is not answerable from stitch files** and the
+  attempt should not be repeated: the rails define the shape, so asking whether
+  they reach its edge is circular. Artwork registration or a sew-out.
+
+---
+
 **Last updated:** 2026-09-11 (later) — **item 12's cause is established, and it
 disqualifies every fix the review proposed. Two arms built, measured, reverted.**
 

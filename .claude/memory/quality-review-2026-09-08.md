@@ -1076,3 +1076,27 @@ instrument/plan, build, measure, renders, docs, PR, auto-merge, next):
   measurement bug, never a finding.
 - Engine reverted to main's behaviour; only the instrument, its test and the
   record ship. Next: item 14 (edge-finish flags, gate-1 held), then item 10.
+
+## Item 14 — 2026-09-11: the pro caps his silhouette; the bill was one fixture's
+
+- **`tools/pro_silhouette.py`** (+ `tests/test_pro_silhouette.py`, 3): the
+  share of a design's outer silhouette with no LINEAR stitching within 1.0 mm,
+  computed identically on his DSTs and on ours (`--ours` digitizes, exports
+  DST, reads it back through the same function).
+- **Pro 0.5–2.2% uncovered** (5 files, 3,488 mm, median 1.6%). **Ours OFF
+  0.0–79.2%** — Fremont 0.0, drone 7.3, Becker 15.2, whitebg 76.3, gaulke 79.2.
+  **Either cap style: 0.0% everywhere.** So `edge_cap` has a trade precedent.
+- **MASTER_SCOPE's "bean +12.6%, satin +15.3%" was Kent's icon only.** Six
+  fixtures: bean +8.6% (fremont) to +100.4% (enthusiast), satin +10.5% to
+  +99.0% (becker). Fremont pays +8.6% for an edge already at 0.0%;
+  `enthusiast_logo` has no recoverable area fill and pays the most.
+- **The reading REVERSED once.** Cover built from whole runs, skipping fill
+  runs, read the pro as 76.7–100% uncovered. A pro run is routinely both a big
+  fill AND the host of the columns bordering it (border_pro's run#6: 542.7 mm²
+  fill, eleven columns, three tracking a fill edge). **The unit is the COLUMN,
+  not the run** — border_pro's own B4 lesson in a new disguise. And: a result
+  that lands where you were already heading is the one to re-derive.
+- **`satin_rails_follow_edge` is NOT answerable from stitch files** — the rails
+  define the shape, so asking whether they reach its edge is circular. Do not
+  retry; artwork registration or a sew-out.
+- Nothing flipped. `edge_cap` goes to Kent with the table.
