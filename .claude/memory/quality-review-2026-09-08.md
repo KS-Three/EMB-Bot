@@ -967,3 +967,15 @@ page-mask bug was fixed — re-present, do not re-open.
   §3a. **Item 1 is blocked on that artwork by his choice** — when it lands,
   re-run the tool, site the boundary, then plan §5b's three-arm measurement
   (all seven real logos + drone, on the stitches) before the lane moves.
+- **00:55Z 2026-09-11 — #450 MERGED** (main 96c7b3d) and item 1's PR 5
+  shipped as **#451** (ready-for-review, auto-merge armed, subscribed,
+  check-in 01:56Z). The branch no longer fast-forwards onto main — main
+  carries the merge commit and the lane carries two commits on top of
+  829eae2 — which is the normal post-merge divergence, not a conflict.
+- **Item 1 is now BLOCKED on Kent's tonal artwork by his own ruling.** Next
+  session: if `digitizer/testdata/photo/acceptance/` has real artwork in it,
+  run `tools/color_diversity.py --foreground bbox`; four or more real tonal
+  positives sites the boundary, then plan §5b's three-arm measurement
+  BEFORE the lane changes. If not, ask him what to build while it waits
+  (items 12 fill travel under cover, 13 photo detection from EXIF/face,
+  14 the edge-finish flags).
