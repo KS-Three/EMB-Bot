@@ -39,23 +39,82 @@ DEFAULT_PPM = 12.0
 CROP_PPM = 36.0
 
 
+def _fit_to_frame(design: dict, frame: pf.Frame) -> dict:
+    """The design with nothing outside the frame, so `render_design`'s canvas
+    is exactly the frame and pro and ours land on the same pixels.
+
+    `render_design` sizes its canvas from every stitch AND jump record, and a
+    machine file carries travel far outside what it sews: pystitch's DST
+    writer splits the lead-in from the hoop origin into 12 mm jumps. A jump
+    lays no thread (the renderer only breaks the path at it), so its position
+    is clamped into the frame. Stitches fall outside the frame only for a
+    crop window: each segment is clipped to the window (Liang-Barsky), a
+    segment wholly outside becomes a break, and a segment that enters the
+    window is redrawn from its entry point after a jump. A design already
+    inside the frame comes back record for record, jumps clamped.
+    """
+    x0, x1, y0, y1 = frame.bounds_units
+
+    def clamp(x, y):
+        return min(max(x, x0), x1), min(max(y, y0), y1)
+
+    def clip(a, b):
+        dx, dy = b[0] - a[0], b[1] - a[1]
+        t0, t1 = 0.0, 1.0
+        for p, q in ((-dx, a[0] - x0), (dx, x1 - a[0]), (-dy, a[1] - y0), (dy, y1 - a[1])):
+            if p == 0:
+                if q < 0:
+                    return None
+                continue
+            t = q / p
+            if p < 0:
+                if t > t1:
+                    return None
+                t0 = max(t0, t)
+            else:
+                if t < t0:
+                    return None
+                t1 = min(t1, t)
+        return ((round(a[0] + t0 * dx), round(a[1] + t0 * dy)),
+                (round(a[0] + t1 * dx), round(a[1] + t1 * dy)))
+
+    out = []
+    prev = None      # last stitch position in the source, None after a break
+    pen = None       # last point drawn in the output, None after a break
+    for s in design["stitches"]:
+        kind = s["type"]
+        if kind != "stitch":
+            if kind == "jump":
+                cx, cy = clamp(s["x"], s["y"])
+                out.append(dict(s, x=cx, y=cy))
+            else:
+                out.append(s)
+            prev = pen = None
+            continue
+        p = (s["x"], s["y"])
+        if prev is None:
+            if x0 <= p[0] <= x1 and y0 <= p[1] <= y1:
+                out.append(s)
+                pen = p
+            prev = p
+            continue
+        seg = clip(prev, p)
+        prev = p
+        if seg is None:
+            pen = None
+            continue
+        a, b = seg
+        if pen != a:
+            out.append({"x": a[0], "y": a[1], "type": "jump"})
+            out.append({"x": a[0], "y": a[1], "type": "stitch"})
+        out.append(s if b == p else {"x": b[0], "y": b[1], "type": "stitch"})
+        pen = b
+    return dict(design, stitches=out)
+
+
 def render_side(design: dict, frame: pf.Frame) -> np.ndarray:
-    d = pf.pin_frame(design, frame.bounds_units)
-    img = render_design(d, px_per_mm=frame.ppm, fabric_bgr=WHITE, pad_mm=frame.pad_mm, lit=True)
-    # Ensure consistent image size even when design is restricted to empty.
-    # When render_design operates on an empty design, it may produce a smaller
-    # image; resize to match the frame's expected dimensions.
-    try:
-        bounds = frame.bounds_units
-        if isinstance(bounds, (tuple, list)) and len(bounds) >= 4:
-            min_x, min_y, max_x, max_y = bounds[0], bounds[1], bounds[2], bounds[3]
-            expected_w = int((max_x - min_x + frame.pad_mm * 2) * frame.ppm + 0.5)
-            expected_h = int((max_y - min_y + frame.pad_mm * 2) * frame.ppm + 0.5)
-            if img.shape[0] != expected_h or img.shape[1] != expected_w:
-                img = cv2.resize(img, (expected_w, expected_h))
-    except (TypeError, ValueError, AttributeError):
-        pass
-    return img
+    d = pf.pin_frame(_fit_to_frame(design, frame), frame.bounds_units)
+    return render_design(d, px_per_mm=frame.ppm, fabric_bgr=WHITE, pad_mm=frame.pad_mm, lit=True)
 
 
 def thread_mask(img: np.ndarray) -> np.ndarray:

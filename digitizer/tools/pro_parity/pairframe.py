@@ -286,8 +286,8 @@ def frame_for(designs: list, ppm: float, pad_mm: float = 2.0,
         return Frame(int(round(cx0 * UNITS_PER_MM)), int(round(cx1 * UNITS_PER_MM)),
                      int(round(-cy1 * UNITS_PER_MM)), int(round(-cy0 * UNITS_PER_MM)), 0.0, ppm)
     boxes = [design_bbox_units(d) for d in designs]
-    return Frame(min(b[0] for b in boxes), max(b[1] for b in boxes),
-                 min(b[2] for b in boxes), max(b[3] for b in boxes), pad_mm, ppm)
+    return Frame(min(b[0] for b in boxes), max(b[2] for b in boxes),
+                 min(b[1] for b in boxes), max(b[3] for b in boxes), pad_mm, ppm)
 
 
 # -------------------------------------------------------------- flag arms

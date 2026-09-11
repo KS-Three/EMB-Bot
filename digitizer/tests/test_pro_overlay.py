@@ -142,3 +142,69 @@ def test_restricting_one_side_to_nothing_keeps_the_shared_frame(tmp_path):
     assert empty["frame"].bounds_units == full["frame"].bounds_units
     assert empty["ours"].shape == full["ours"].shape
     assert not empty["ours_mask"].any() and empty["pro_mask"].any()
+
+
+def test_frame_for_matches_the_renderers_own_bounds(tmp_path):
+    """The frame is `stitchviz._bounds` of the pinned design, in the same
+    field order, so the pins land on the corners and the canvas is the
+    renderer's own size — no resize anywhere."""
+    from digitizer_core.stitchviz import _bounds
+    ours = _design_blocks(offset=(40.0, 25.0))
+    d = synth.make_prep_dir(tmp_path, "fb", ours, ours, [], [(40, 25, 60, 37)], 20.0)
+    pair = pairframe.load_pair(d)
+    design = pairframe.design_for(pair.pro_path, None, pair.pro_rgb, "p")
+    frame = pairframe.frame_for([design], 12.0)
+    assert frame.bounds_units == _bounds(design["stitches"])
+    x0, x1, y0, y1 = frame.bounds_units
+    assert x0 < x1 and y0 < y1
+    img = overlay.render_side(design, frame)
+    w, h = frame.size
+    assert img.shape[:2] == (h, w)
+    # to_px of the design's own min-x/max-y file-frame point lands `pad` inside the canvas
+    px, py = frame.to_px(x0 / 10.0, -y1 / 10.0)
+    assert abs(px - frame.pad_mm * frame.ppm) < 1.0 and abs(py - frame.pad_mm * frame.ppm) < 1.0
+
+
+def test_fit_to_frame_clips_a_crossing_segment_and_clamps_travel():
+    design = {"stitches": [
+        {"x": -500, "y": -500, "type": "jump"},
+        {"x": 0, "y": 0, "type": "stitch"},
+        {"x": 100, "y": 0, "type": "stitch"},
+        {"x": 0, "y": 0, "type": "end"},
+    ], "colors": [{"r": 0, "g": 0, "b": 0}]}
+    frame = pairframe.Frame(20, 60, -10, 10, 0.0, 12.0)
+    got = [(s["x"], s["y"], s["type"]) for s in overlay._fit_to_frame(design, frame)["stitches"]]
+    assert got == [(20, -10, "jump"), (20, 0, "jump"), (20, 0, "stitch"), (60, 0, "stitch"), (0, 0, "end")]
+
+
+def test_fit_to_frame_leaves_an_inside_design_alone():
+    design = {"stitches": [
+        {"x": 25, "y": 0, "type": "stitch"},
+        {"x": 30, "y": 5, "type": "stitch"},
+        {"x": 40, "y": 5, "type": "trim"},
+        {"x": 45, "y": -5, "type": "stitch"},
+    ], "colors": [{"r": 0, "g": 0, "b": 0}]}
+    frame = pairframe.Frame(20, 60, -10, 10, 0.0, 12.0)
+    assert overlay._fit_to_frame(design, frame)["stitches"] == design["stitches"]
+
+
+def test_travel_outside_the_sewn_area_does_not_grow_the_canvas(tmp_path):
+    ours = _design_blocks(offset=(40.0, 25.0))      # the DST lead-in brings jumps back toward the origin
+    d = synth.make_prep_dir(tmp_path, "tr", ours, ours, [], [(40, 25, 60, 37)], 20.0)
+    pair = pairframe.load_pair(d)
+    reg = pairframe.register_pair(pair.pro_path, pair.ours_path)
+    r = overlay.render_pair(pair, reg)
+    w, h = r["frame"].size
+    assert r["pro"].shape[:2] == r["ours"].shape[:2] == (h, w)
+    both = r["pro_mask"] & r["ours_mask"]
+    assert both.sum() > 0.8 * r["pro_mask"].sum()
+
+
+def test_a_crop_window_renders_at_exactly_its_own_size(tmp_path):
+    ours = _design_blocks(offset=(40.0, 25.0))
+    d = synth.make_prep_dir(tmp_path, "cw", ours, ours, [], [(40, 25, 60, 37)], 20.0)
+    pair = pairframe.load_pair(d)
+    reg = pairframe.register_pair(pair.pro_path, pair.ours_path)
+    r = overlay.render_pair(pair, reg, ppm=36.0, crop_mm=(40.0, 24.0, 50.0, 30.0))
+    assert r["pro"].shape[:2] == r["ours"].shape[:2] == (6 * 36, 10 * 36)
+    assert r["pro_mask"].any() and r["ours_mask"].any()
