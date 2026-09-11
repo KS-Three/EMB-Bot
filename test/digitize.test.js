@@ -794,8 +794,27 @@ test("buildLetteringDesign: slantDeg absent/0 is byte-identical to today's outpu
   // which can push one column's step count across a Math.ceil() rounding
   // boundary. A few stitches' difference here is expected numerical noise,
   // not a functional regression -- assert "close", not byte-identical.
-  const countDiff = Math.abs(dSlant.stitches.length - d0.stitches.length);
-  assert.ok(countDiff <= 10, `slant should re-sample roughly the same station count, not add/remove stitches wholesale (diff ${countDiff})`);
+  // Measured on the THREAD, not the stitch count, since `splitSatin` went
+  // default ON on 2026-09-11. A thresholded split makes the raw count
+  // sensitive to exactly the sub-millimetre nudge described above — a cross
+  // crossing 5.0 mm changes `k = ceil(cross / 3.0)` by a whole segment, and
+  // the diff here reads 2 with the split off and 257 with it on. Total sewn
+  // path is exactly invariant under splitting (every split point lies ON the
+  // segment it divides), so it is both split-proof and a TIGHTER claim than
+  // the count ever was: a 15 deg lean stretches each cross by at most
+  // 1/cos(15 deg) = 1.0353, and nothing else about the column moves.
+  const threadPath = (d) => {
+    let sum = 0, prev = null;
+    for (const s of d.stitches) {
+      if (s.type !== "stitch") { prev = null; continue; }
+      if (prev) sum += Math.hypot(s.x - prev.x, s.y - prev.y);
+      prev = s;
+    }
+    return sum;
+  };
+  const ratio = threadPath(dSlant) / threadPath(d0);
+  assert.ok(ratio > 1 && ratio <= 1 / Math.cos((15 * Math.PI) / 180),
+    `slant must stretch the crosses and nothing else — thread ratio ${ratio.toFixed(4)}`);
   const anyDiffer = d0.stitches.some((s, i) => Math.abs(s.x - dSlant.stitches[i].x) > 1 || Math.abs(s.y - dSlant.stitches[i].y) > 1);
   assert.ok(anyDiffer, "slantDeg:15 must produce visibly different stitch positions");
 });
@@ -1133,7 +1152,7 @@ test("buildLetteringDesign: satinSpacingMm names the satin pitch; default, named
   const legacy = DG.buildLetteringDesign(font, "AB", { ...base, densityMm: 0.4 });
   assert.deepStrictEqual(dflt, named);
   assert.deepStrictEqual(dflt, legacy);
-  assert.strictEqual(dflt.stitchCount, 701, "the number satinfont.test.js pins — lettering never moved");
+  assert.strictEqual(dflt.stitchCount, 703, "the number satinfont.test.js pins — lettering never moved");
   // Lettering has no fill, so the fill ruling is invisible from here.
   const withFillRow = DG.buildLetteringDesign(font, "AB", { ...base, fillRowMm: 0.15 });
   assert.deepStrictEqual(withFillRow, dflt, "fillRowMm is not a lettering option and changes nothing");

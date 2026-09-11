@@ -151,22 +151,29 @@ test("generateElement: rotationDeg 180 flips the reported bbox — heightMM stay
   expect(Math.abs(rotated.heightMM - flat.heightMM)).toBeLessThan(0.5);
 });
 
-test("generateElement: weightPreset 'bold' produces a wider average stitch spacing than 'thin' for the same text", async () => {
+test("generateElement: weightPreset 'bold' lays more thread than 'thin' for the same text", async () => {
   const { generateElement } = await import("./generate.js");
   const { EMB } = await import("./emb.js");
   const garment = EMB.getGarment("left_chest");
-  function avgSpacing(d) {
-    let sum = 0, n = 0, prev = null;
+  // TOTAL sewn path, not the AVERAGE per stitch. This test used to compare
+  // averages, which stopped meaning "wider" when `splitSatin` went default ON
+  // on 2026-09-11: a split cross is the same thread laid in more, shorter
+  // segments, so a WIDER column can read as a SHORTER average (measured on
+  // this exact pair — bold 24.537 against thin 24.678, inverted). Total path
+  // is exactly invariant under splitting, because every split point lies ON
+  // the segment it divides, so it measures the width claim and nothing else.
+  function threadPath(d) {
+    let sum = 0, prev = null;
     for (const s of d.stitches) {
       if (s.type !== "stitch") { prev = null; continue; }
-      if (prev) { sum += Math.hypot(s.x - prev.x, s.y - prev.y); n++; }
+      if (prev) sum += Math.hypot(s.x - prev.x, s.y - prev.y);
       prev = s;
     }
-    return n ? sum / n : 0;
+    return sum;
   }
   const thin = generateElement(textElement({ text: "H", weightPreset: "thin" }), garment, {});
   const bold = generateElement(textElement({ text: "H", weightPreset: "bold" }), garment, {});
-  expect(avgSpacing(bold)).toBeGreaterThan(avgSpacing(thin));
+  expect(threadPath(bold)).toBeGreaterThan(threadPath(thin));
 });
 
 test("generateElement: slantDeg 15 produces different stitch geometry than slantDeg 0 for the same text", async () => {
@@ -181,7 +188,29 @@ test("generateElement: slantDeg 15 produces different stitch geometry than slant
   // step count across a Math.ceil() rounding boundary — see the equivalent,
   // more detailed note in test/digitize.test.js. A stitch or two of
   // difference here is expected noise, not a regression.
-  expect(Math.abs(slanted.stitches.length - straight.stitches.length)).toBeLessThanOrEqual(10);
+  //
+  // Measured on the THREAD, not the stitch count, since `splitSatin` went
+  // default ON (2026-09-11): the same sub-millimetre nudge moves crosses
+  // across the 5.0 mm split threshold and `k = ceil(cross / 3.0)` changes by
+  // a whole segment, so the raw difference here reads 1 with the split off
+  // and 594 with it on. Total sewn path is exactly invariant under splitting
+  // — every split point lies ON the segment it divides — and it measures 1.0300
+  // in BOTH arms, which is the same claim stated in a quantity the engine's
+  // own default does not move. (`EMB.stripSplits` looks like the right tool
+  // and is not: on a design's DST-rounded integer coordinates, ordinary rail
+  // penetrations are routinely collinear and it removes 2,950 of them.)
+  const threadPath = (d) => {
+    let sum = 0, prev = null;
+    for (const s of d.stitches) {
+      if (s.type !== "stitch") { prev = null; continue; }
+      if (prev) sum += Math.hypot(s.x - prev.x, s.y - prev.y);
+      prev = s;
+    }
+    return sum;
+  };
+  const ratio = threadPath(slanted) / threadPath(straight);
+  expect(ratio).toBeGreaterThan(1);
+  expect(ratio).toBeLessThanOrEqual(1 / Math.cos((15 * Math.PI) / 180));
   const anyDiffer = straight.stitches.some((s, i) => Math.abs(s.x - slanted.stitches[i].x) > 1 || Math.abs(s.y - slanted.stitches[i].y) > 1);
   expect(anyDiffer).toBe(true);
 });

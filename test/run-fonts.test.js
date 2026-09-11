@@ -90,7 +90,35 @@ test("bean repeats backtrack each stitch (repeats:1 => triple stitch)", () => {
 // uniform letters, where before the A was a tiny mark beside four oversized
 // overlapping ones. Library-wide: 25 of 80 byte-identical, and of the 55 that
 // changed the great majority moved 0.00% in stitch count.
-const SATIN_BASELINE = { montecarlo: 1157, alchemy: 751, venezia: 996, cats: 1238, apesplit: 2470 };
+//
+// 2026-09-11 (c): the Euler-walk UNDERPATH pitch was not fit-scaled. The
+// underlay pitch three lines away in the same function was
+// (`UNDERLAY_STEP_MM / fitScale`), which is what identifies this as a units
+// bug rather than a choice: text scaled up to fit a garment sewed its
+// needle-down travel at 2 mm TIMES the scale. Found while measuring quality
+// review item 10 — after the satin split, the only sewn segments left over
+// one DST record on an "AB" Full Back were three underpath steps of 22.1,
+// 19.0 and 22.3 mm in a design whose longest satin leg was 5.0 mm.
+//
+// UP is the correct direction for these five, all of which scale UP to reach
+// 40 mm: the same travel, at the pitch it always meant. Text scaled DOWN
+// moves the other way and that is equally right — satinfont.test.js's 8 mm
+// arm loses one stitch, because there the unscaled pitch was too SHORT on
+// the fabric. montecarlo 1157 -> 1166, alchemy 751 -> 751 (unmoved), venezia
+// 996 -> 997, cats 1238 -> 1243, apesplit 2470 -> 2475; +0.00% to +0.78%.
+// Isolated rather than assumed: applying ONLY the units fix to the
+// pre-change tree reproduces all five new numbers, and the whole stitch
+// array with them, byte for byte — so nothing else landing that day moved
+// this stream. (Both wide-column knobs default off, and off is unchanged.)
+//
+// 2026-09-11 (d): `splitSatin` went default ON (Kent's ruling — see
+// satinfont.js). Only ONE of the five moves, and it is the one the census
+// already singled out: `alchemy` is the sole font of 85 that threw a stitch
+// past a DST record on the small-text sweep, so it is the only one here with
+// crosses past the 5.0 mm split threshold at 40 mm. 751 -> 786, +4.7%, all of
+// it intermediate penetrations on crosses that were already too long to lie
+// flat. The other four are untouched, which is the threshold doing its job.
+const SATIN_BASELINE = { montecarlo: 1166, alchemy: 786, venezia: 997, cats: 1243, apesplit: 2475 };
 
 // These five are committed, so the guard below should never fire. It throws on
 // CI regardless: a pinned baseline whose font has vanished is not "nothing to
