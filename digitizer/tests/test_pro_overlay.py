@@ -329,3 +329,12 @@ def test_against_crop_writes_its_own_files(tmp_path):
     assert overlay.main(args + ["--against", "baseline"]) == 0
     assert (d / "overlay" / "overlay_crop_arm.png").exists()
     assert (d / "overlay" / "overlay_crop_arm_vs-baseline.png").exists()
+
+
+def test_against_by_thread_writes_its_own_sheets(tmp_path):
+    ours = _design_blocks()
+    d = synth.make_prep_dir(tmp_path, "bt2", ours, ours, [], [(0, 0, 20, 12)], 20.0)
+    assert overlay.main(["--dir", str(d), "--by-thread"]) == 0
+    assert overlay.main(["--dir", str(d), "--by-thread", "--against", "baseline"]) == 0
+    names = sorted(p.name for p in (d / "overlay" / "by_thread").iterdir())
+    assert "0_c81e1e.png" in names and "0_c81e1e_vs-baseline.png" in names

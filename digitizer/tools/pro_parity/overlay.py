@@ -245,9 +245,13 @@ def match_blocks(pro_rgb: list, ours_rgb: list, max_de: float = 12.0) -> dict:
     return out
 
 
-def by_thread(pair: pf.Pair, reg: pf.Reg, out_dir: Path, ppm: float = DEFAULT_PPM) -> list:
-    """Write one overlay sheet per pro block, each named `<block_index>_<rrggbb>.png`,
-    rendering pro block k against its matched our blocks. Title names unmatched blocks."""
+def by_thread(pair: pf.Pair, reg: pf.Reg, out_dir: Path, ppm: float = DEFAULT_PPM,
+              suffix: str = "") -> list:
+    """Write one overlay sheet per pro block, each named
+    `<block_index>_<rrggbb><suffix>.png`, rendering pro block k against its
+    matched our blocks. Title names unmatched blocks. `suffix` is the
+    caller's own disambiguator (`main`'s `--flag`/`--against` suffix) so two
+    different arms' by-thread sheets don't collide in the same directory."""
     out_dir = Path(out_dir) / "by_thread"
     out_dir.mkdir(parents=True, exist_ok=True)
     matches = match_blocks(pair.pro_rgb, pair.ours_rgb)
@@ -258,7 +262,7 @@ def by_thread(pair: pf.Pair, reg: pf.Reg, out_dir: Path, ppm: float = DEFAULT_PP
                         only_ours_blocks=ours_blocks if ours_blocks else set())
         hexname = "%02x%02x%02x" % tuple(int(v) for v in rgb)
         extra = f"pro block {k} #{hexname} vs ours {sorted(ours_blocks) or 'NONE within 12 dE'}"
-        p = out_dir / f"{k}_{hexname}.png"
+        p = out_dir / f"{k}_{hexname}{suffix}.png"
         if not cv2.imwrite(str(p), _titled(r["overlay"], title_for(pair, reg, extra))):
             raise RuntimeError(f"could not write {p}")
         written.append(p)
@@ -340,7 +344,7 @@ def main(argv=None) -> int:
         r = render_pair(pair, reg, ppm=a.ppm, **kw)
         written += write_overlay_set(out, r, title, suffix=suffix)
         if a.by_thread:
-            written += by_thread(pair, reg, out, ppm=a.ppm)
+            written += by_thread(pair, reg, out, ppm=a.ppm, suffix=suffix)
     (out / f"registration{suffix}.json").write_text(json.dumps(reg.as_dict(), indent=1))
     for p in written:
         print(f"  wrote {p}")
