@@ -186,7 +186,10 @@ def test_a_shape_is_entered_at_its_nearest_point_not_at_its_own_top_left_corner(
     about 4 mm is the whole hop there is to make.
     """
     fabric = get_fabric("canvas_tote")
-    conf = PipelineConfig()
+    # `edge_cap="none"`: eight synthetic bars, and the subject is the hop
+    # between each PAIR of them. The cap sews a ninth run around their union
+    # and its entry hop is not one of the seven this counts.
+    conf = PipelineConfig(edge_cap="none")
     regions = [
         Region(shape_id=f"S{i}",
                polygon=Polygon([(x, 0), (x + 8, 0), (x + 8, 40), (x, 40)]),

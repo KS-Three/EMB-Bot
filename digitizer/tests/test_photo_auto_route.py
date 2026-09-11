@@ -344,10 +344,14 @@ def test_the_bind_collapses_tone_when_a_design_realizes_a_single_spool():
     # whole design — earns a border under both of its gates. That is the mode
     # working, not a regression, but it is orthogonal noise here. The explicit
     # "off" is exactly the escape hatch the None default exists to preserve.
+    # `edge_cap="none"` alongside `border="off"` and for the same stated
+    # reason: the cap is orthogonal noise to what the shade bind does to the
+    # spool count, and ON by default since 2026-09-11 it would add a block to
+    # both arms.
     unbound = plan_stitches(result, PipelineConfig(shade_palette_bind=False,
-                                                   border="off"))
+                                                   border="off", edge_cap="none"))
     bound = plan_stitches(result, PipelineConfig(shade_palette_bind=True,
-                                                 border="off"))
+                                                 border="off", edge_cap="none"))
 
     assert len({b.thread_index for b in unbound.blocks}) == 5
     assert len({b.thread_index for b in bound.blocks}) == 1
@@ -370,8 +374,9 @@ def test_a_border_on_a_shade_decomposed_region_costs_one_extra_spool():
     result = _photo_subject_result(poly, _ramp_source_pixels())
 
     off = plan_stitches(result, PipelineConfig(shade_palette_bind=False,
-                                               border="off"))
-    auto = plan_stitches(result, PipelineConfig(shade_palette_bind=False))
+                                               border="off", edge_cap="none"))
+    auto = plan_stitches(result, PipelineConfig(shade_palette_bind=False,
+                                                edge_cap="none"))
 
     off_spools = {b.thread_index for b in off.blocks}
     auto_spools = {b.thread_index for b in auto.blocks}

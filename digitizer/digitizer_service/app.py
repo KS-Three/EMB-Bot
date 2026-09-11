@@ -700,10 +700,29 @@ def _stats_payload(plan, design: dict, region_ids: set[str] | None = None) -> di
         # gradient's spools — the download's thread list (`design.colors`) was
         # right the whole time.
         "blocks": [
-            {**cone, "shape_ids": _block_shape_ids(block, region_ids)}
+            {**cone, "shape_ids": _block_shape_ids(block, region_ids),
+             **({"design_edge": True} if _is_edge_cap(block) else {})}
             for cone, block in zip(plan.palette, plan.blocks)
         ],
     }
+
+
+# The shape id `stage7_sequence` stamps on the design-silhouette cap's runs.
+# By string, the `preflight._CLASSIFIED_PHOTO` convention: the service neither
+# owns the constant nor should break in a tree where the cap has not landed.
+_EDGE_CAP_SHAPE_ID = "__edge_cap__"
+
+
+def _is_edge_cap(block) -> bool:
+    """The one block with no review shape behind it.
+
+    `cfg.edge_cap` is ON by default since 2026-09-11, so every design now ends
+    with a block that outlines the union of several regions rather than any one
+    of them — `_block_shape_ids` correctly returns [] for it. Without a flag
+    saying so, the Sequencer would show a nameless row the user cannot map to
+    anything on the canvas.
+    """
+    return any(r.shape_id == _EDGE_CAP_SHAPE_ID for r in block.runs)
 
 
 def _block_shape_ids(block, region_ids: set[str] | None = None) -> list[str]:

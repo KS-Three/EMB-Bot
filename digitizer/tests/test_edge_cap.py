@@ -91,21 +91,37 @@ def cap_block(plan):
 
 # --- the default: nothing happens -------------------------------------------
 
-def test_the_default_is_none():
-    assert PipelineConfig().edge_cap == "none"
-    assert "none" in EDGE_CAP_STYLES
+def test_the_default_is_bean():
+    """Kent's flip, 2026-09-11 — "gate it, then flip", after item 14 measured
+    5.9-100.0% of the sewn silhouette carrying no linear stitching at all
+    (median 76.7%) and the gate brought the bill down to +5.9-26.3%.
+
+    Bean rather than satin because it is cheaper in stitches on five of six
+    fixtures and closes the two worst-open designs at least as well; the STYLE
+    is still a sew-out's call (gate 1), and this line is where to change it.
+    `config.py`'s own comment carries the table.
+    """
+    assert PipelineConfig().edge_cap == "bean"
+    assert "none" in EDGE_CAP_STYLES, "turning it off must stay reachable"
 
 
-def test_off_by_default_is_byte_identical_to_the_flag_not_existing():
-    """Gate 3's pin. `edge_cap` defaulting to "none" must leave every
-    existing plan exactly as it was — same blocks, same stitches, same
-    coordinates — or the option is a silent default change wearing an
-    opt-in's clothes."""
-    base = plan_for(BOTH)
-    explicit_off = plan_for(BOTH, edge_cap="none")
-    assert cap_block(base) is None
-    assert len(base.blocks) == len(explicit_off.blocks)
-    for a, b in zip(base.blocks, explicit_off.blocks):
+def test_turning_it_off_is_byte_identical_to_the_flag_not_existing():
+    """The off-path pin. It used to be the DEFAULT path and is now the
+    explicit one (Kent's flip 2026-09-11), which changes which config the
+    test has to build and nothing about what it proves: `edge_cap="none"`
+    must leave a plan exactly as it was before this pass existed — same
+    blocks, same stitches, same coordinates.
+
+    This is what keeps every pre-flip golden meaningful, and what
+    `conftest.PRE_FLIP` relies on.
+    """
+    off = plan_for(BOTH, edge_cap="none")
+    assert cap_block(off) is None
+    capped = plan_for(BOTH)
+    assert cap_block(capped) is not None, "the default should now cap"
+    art = [b for b in capped.blocks if b is not cap_block(capped)]
+    assert len(art) == len(off.blocks)
+    for a, b in zip(art, off.blocks):
         assert a.thread_index == b.thread_index
         assert [r.points for r in a.runs] == [r.points for r in b.runs]
 
@@ -115,7 +131,8 @@ def test_an_unknown_style_is_inert_rather_than_an_error():
     nothing, exactly as "none" does."""
     typo = plan_for(BOTH, edge_cap="stain")
     assert cap_block(typo) is None
-    assert stitch_count(typo) == stitch_count(plan_for(BOTH))
+    # Against the OFF plan, not the default one: the default caps now.
+    assert stitch_count(typo) == stitch_count(plan_for(BOTH, edge_cap="none"))
 
 
 # --- both styles emit --------------------------------------------------------
@@ -146,7 +163,7 @@ def test_satin_costs_more_thread_than_bean():
 def test_a_cap_only_adds_stitches():
     """Whatever the cap costs, it must not disturb the artwork underneath —
     the design's own stitches are unchanged and the cap is purely additive."""
-    base = plan_for(BOTH)
+    base = plan_for(BOTH, edge_cap="none")
     for style in ("bean", "satin"):
         plan = plan_for(BOTH, edge_cap=style)
         cap = cap_block(plan)
@@ -247,15 +264,18 @@ def test_the_cap_always_reports_what_it_cost():
 
 
 def test_no_cost_report_when_the_cap_is_off():
-    assert _cap_warning(plan_for(BOTH)) is None
     assert _cap_warning(plan_for(BOTH, edge_cap="none")) is None
+    assert _cap_warning(plan_for(BOTH, edge_cap="stain")) is None
+    # ...and one WITH the cap, so the assertions above cannot pass vacuously
+    # on a plan that stopped capping for some unrelated reason.
+    assert _cap_warning(plan_for(BOTH)) is not None
 
 
 def test_the_reported_percent_is_against_the_artwork_not_the_total():
     """+13.2% must mean "the design grew by an eighth", not "the cap is an
     eighth of what you now have" — the two differ by enough to matter at the
     sizes this feature costs."""
-    base = stitch_count(plan_for(BOTH))
+    base = stitch_count(plan_for(BOTH, edge_cap="none"))
     plan = plan_for(BOTH, edge_cap="satin")
     w = _cap_warning(plan)
     assert w["percent"] == round(100.0 * w["stitches"] / base, 1)

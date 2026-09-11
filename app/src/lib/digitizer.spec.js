@@ -70,7 +70,9 @@ test("buildDigitizeConfig sends the stored thread-brand preference and the proje
     satin: true,
     border: "off",
     detail_layer: false,
-    edge_cap: "none",
+    // "bean" since Kent's flip 2026-09-11 — the service's own default moved
+    // the same day, and this must keep matching it.
+    edge_cap: "bean",
     thread_brand: "madeira-rayon",
     garment_id: "left_chest",
   });
@@ -193,14 +195,24 @@ test("detail_layer rides buildDigitizeConfig both ways, and back-fills false for
   expect(buildDigitizeConfig(on, PROJECT).detail_layer).toBe(true);
 });
 
-test("edge_cap rides buildDigitizeConfig, and back-fills \"none\" for projects saved before the field existed", async () => {
+test("edge_cap rides buildDigitizeConfig, and back-fills today's default for projects saved before the field existed", async () => {
   stubStorage({});
   const { buildDigitizeConfig } = await import("./digitizer.js");
 
-  // Same additive-default contract detail_layer relies on above: a project
-  // saved before the design-edge cap existed must send "none" — the service's
-  // own default, whose off-path is byte-identity tested — not undefined.
-  expect(buildDigitizeConfig(digitizedElement(), PROJECT).edge_cap).toBe("none");
+  // Same additive-default contract detail_layer relies on above: the field is
+  // always sent, never undefined. A project saved before the design-edge cap
+  // existed stored nothing, so it takes TODAY's default — "bean" since Kent's
+  // flip 2026-09-11 — exactly as a pre-colour-bundle project takes today's
+  // colour defaults when it is re-digitized. A project that stored "none"
+  // explicitly still sends "none": the back-fill only fills an ABSENT field.
+  expect(buildDigitizeConfig(digitizedElement(), PROJECT).edge_cap).toBe("bean");
+  const off = digitizedElement({
+    params: {
+      target_width_mm: 80, max_colors: 6, satin: true,
+      fill_angle_deg: null, border: "off", edge_cap: "none",
+    },
+  });
+  expect(buildDigitizeConfig(off, PROJECT).edge_cap).toBe("none");
 
   for (const style of ["bean", "satin"]) {
     const el = digitizedElement({
@@ -2114,4 +2126,38 @@ test("an unlisted code is a NOTE, deliberately, and is still shown", async () =>
   ]);
   expect(line.text).toContain("2 small openings were held open");
   expect(line.text).not.toContain("ENGINE PROSE");
+});
+
+// ---- spoolCount: what the customer BUYS, not what the machine stops for ----
+test("spoolCount folds a cone the design re-loads, and colorCount does not", async () => {
+  const { spoolCount } = await import("./digitizer.js");
+  // Three blocks, two spools — the shape the design-silhouette cap produces on
+  // essentially every design since it went default on (it sews last in the
+  // cone that owns most of the edge, so it re-loads one already run).
+  const design = {
+    colorCount: 3,
+    colors: [
+      { r: 226, g: 60, b: 115, name: "2521 Fuchsia" },
+      { r: 255, g: 255, b: 255, name: "0015 White" },
+      { r: 226, g: 60, b: 115, name: "2521 Fuchsia" },
+    ],
+  };
+  expect(spoolCount(design)).toBe(2);
+  expect(design.colorCount).toBe(3);   // the stop count is still true, and still there
+});
+
+test("spoolCount counts every distinct cone when none repeats", async () => {
+  const { spoolCount } = await import("./digitizer.js");
+  expect(spoolCount({ colorCount: 2, colors: [{ name: "2521 Fuchsia" }, { name: "0015 White" }] })).toBe(2);
+});
+
+test("spoolCount falls back to rgb when the cones carry no name, and to colorCount with no colors", async () => {
+  const { spoolCount } = await import("./digitizer.js");
+  // The browser lettering lane names its colours "Color 1", "Color 2", … which
+  // are already distinct per block, so it is unaffected either way; a design
+  // with no names at all is folded on the colour itself.
+  expect(spoolCount({ colors: [{ r: 1, g: 2, b: 3 }, { r: 1, g: 2, b: 3 }, { r: 9, g: 9, b: 9 }] })).toBe(2);
+  expect(spoolCount({ colorCount: 4, colors: [] })).toBe(4);
+  expect(spoolCount({ colorCount: 4 })).toBe(4);
+  expect(spoolCount(null)).toBe(0);
 });

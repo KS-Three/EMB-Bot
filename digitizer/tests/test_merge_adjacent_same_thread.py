@@ -151,8 +151,13 @@ def test_ties_are_applied_exactly_once_across_the_merge():
         # variants and only a DOUBLED tie could move the stitch count).
         regions = [region(0, 0, "Sa", 7), region(30, 1, "Sb", 9),
                    region(60, 2, "Sc", 7)]
+        # `edge_cap="none"`: three synthetic bars, and the claim is about the
+        # block SEQUENCE [7, 9, 7] the merge collapses. The design-silhouette
+        # cap (ON by default since 2026-09-11) appends a fourth block that the
+        # merge has nothing to say about.
         conf = PipelineConfig(garment_id="left_chest",
-                              merge_adjacent_same_thread=merge)
+                              merge_adjacent_same_thread=merge,
+                              edge_cap="none")
         planned, _ = resolve_overlaps(regions, fabric, conf)
         blocks, _ = sequence(planned, fabric, conf)
         return blocks

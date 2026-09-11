@@ -48,6 +48,11 @@ FIXTURE = PHOTO_DIR / "region_blobs.png"
 
 def _cfg(**kw) -> PipelineConfig:
     kw.setdefault("target_width_mm", 80.0)
+    # `edge_cap="none"` by default here for the same reason the flat-lane
+    # golden pins it (2026-09-11): these goldens exist to show the PHOTO
+    # dispatch left the flat and gradient lanes alone, and the design edge
+    # cap is a block added on top of whatever those lanes produce.
+    kw.setdefault("edge_cap", "none")
     return PipelineConfig(**kw)
 
 

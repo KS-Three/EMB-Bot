@@ -1109,3 +1109,35 @@ Read the correction, not the headline it had.**
 - **`satin_rails_follow_edge`**: not answerable from stitch files. Circular.
 - Next: the flip PR (goldens recaptured on ubuntu CI), then item 10.
 
+
+## edge_cap FLIPPED ON 2026-09-11 — default "bean", 45 tests moved, no golden recaptured
+
+- **Kent's two rulings this round**: (1) "gate it, then flip" — the gate went
+  in #454, this is the flip; (2) on the cone re-load the flip exposed, "keep
+  the best match, accept the stop".
+- **Why bean**: cheaper in stitches on 5/6 (median +13.4% vs satin's +14.9%),
+  closes gaulke best (0.1% vs 6.4%). **But satin is cheaper in TRIMS on 5/6**
+  and at Kent's own 25-stitch trim price the two are within 4%. **Style is
+  still the sew-out's** — one config value changes it. Do not read the bean
+  choice as settled craft.
+- **The cone re-load** (the finding neither of us could see when he ordered
+  the flip): the cap is its own block in the cone owning most of the
+  silhouette, so ALL SIX fixtures re-load a cone already run — colliding with
+  `merge_duplicate_cone_layers`' invariant. Reusing the last cone instead:
+  gaulke would get a 5.4%-frontage colour where the best match owns 95.0%;
+  enthusiast 22.2% vs 77.8%. Carved out by name in
+  `test_duplicate_cone_layers` + `test_rehome_resnapped`.
+- **Trim rate moves BOTH ways** (off→bean /1k): becker 6.26→8.03, gaulke
+  2.42→3.50, but fremont 4.55→4.28, drone 5.26→5.24. **Four of six were
+  already over the 4.1 professional ceiling with the cap OFF** — my first
+  read ("the flip blows out the trim band") was over-general and is corrected
+  in the test comment. `test_chaining`'s 93 mm fixture does cross (2.43→5.1)
+  and pins `edge_cap="none"` on both arms: never re-base a professional band
+  to admit our own cost.
+- **No golden recaptured, deliberately.** Byte-identity guards pin
+  `edge_cap="none"` — their job is "this OTHER change did not move the lane".
+  Synthetic sequencing fixtures say `edge_cap="none"` explicitly; the cap is
+  owned by `tests/test_edge_cap.py`.
+- **One product seam**: the cap's block has no review shape, so the service
+  flags it `design_edge: true` or the Sequencer shows a nameless row.
+- Suite lands on the three documented platform reds and nothing else.

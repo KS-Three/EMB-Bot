@@ -117,16 +117,43 @@
   // shades under two layer entries). Rendered only when the two arrays are
   // the same length, which a job from before the field cannot satisfy; the
   // bare unlabelled numbers were tried before this and cut.
+  //
+  // FOLDED BY SPOOL, not listed per block (2026-09-11). A block is a machine
+  // STOP; a row in this list is a CONE TO BUY, and since the design-silhouette
+  // cap went default on the two stopped being the same number: the cap sews
+  // last in whichever cone owns most of the edge, so it re-loads a cone the
+  // job already ran on essentially every design (Kent ruled that stop
+  // acceptable rather than put the wrong colour on the edge). Listed per
+  // block, the shopping list names one spool twice and splits its metres
+  // between the two rows — a customer buying from it would buy a spool they
+  // already have and under-order the one they need.
+  //
+  // `number` is the spool id, so it is the key. Metres SUM (that is the whole
+  // point of folding them), first-seen order is kept, and `facts()`'s thread
+  // total is unchanged because a sum of sums is the same sum.
   function cones(stats) {
     const blocks = stats && stats.blocks;
     const metres = stats && stats.thread_m_by_color;
     if (!Array.isArray(blocks) || !Array.isArray(metres) || blocks.length !== metres.length) return [];
-    return blocks.map((b, i) => ({
-      number: b.number,
-      name: b.name,
-      rgb: Array.isArray(b.rgb) ? b.rgb : [0, 0, 0],
-      metres: metres[i],
-    }));
+    const out = [];
+    const at = new Map();
+    blocks.forEach((b, i) => {
+      const key = String(b.number);
+      const hit = at.get(key);
+      if (hit) {
+        if (typeof hit.metres === "number" && typeof metres[i] === "number") hit.metres += metres[i];
+        return;
+      }
+      const row = {
+        number: b.number,
+        name: b.name,
+        rgb: Array.isArray(b.rgb) ? b.rgb : [0, 0, 0],
+        metres: metres[i],
+      };
+      at.set(key, row);
+      out.push(row);
+    });
+    return out;
   }
 </script>
 

@@ -160,11 +160,32 @@ def test_the_fixture_still_declares_duplicate_cones(drone_off):
         "no cone revisit left on the fixture — re-pick it or retire this file"
 
 
-def test_the_fold_removes_every_cone_revisit(drone_on):
+def test_the_fold_removes_every_cone_revisit_EXCEPT_THE_CAP(drone_on):
+    """The fold's invariant, with the one exemption Kent ruled on 2026-09-11.
+
+    The design-silhouette cap (`cfg.edge_cap`, default "bean" since that
+    ruling) is a design-level pass that sews AFTER all artwork, in the thread
+    of whichever region owns most of the silhouette — so on essentially every
+    design it re-loads a cone the job already ran. Measured that day across
+    six fixtures: **all six**, and the alternative was measured too. Always
+    reusing the last-loaded cone would remove the stop and put the wrong
+    colour on the edge — on `logo_gaulke_roofing` the best-match cone owns
+    **95.0%** of the silhouette against the last-sewn cone's **5.4%**, and on
+    `enthusiast_logo` 77.8% against 22.2%.
+
+    **Kent's call: keep the best match and accept the stop.** So the fold's
+    rule is unchanged for every ARTWORK block — which is what it was written
+    about, and what this test still pins — and the cap is excluded by name.
+    A second cap block, or an artwork revisit, still fails here.
+    """
     _res, plan = drone_on
-    cones = [b.thread_index for b in plan.blocks]
+    art = [b for b in plan.blocks
+           if not any(r.shape_id == "__edge_cap__" for r in b.runs)]
+    caps = len(plan.blocks) - len(art)
+    assert caps <= 1, f"more than one cap block: {caps}"
+    cones = [b.thread_index for b in art]
     assert len(cones) == len(set(cones)), \
-        f"a cone still sews twice: {cones}"
+        f"an artwork cone still sews twice: {cones}"
 
 
 def test_the_fold_costs_the_operator_fewer_stops(drone_off, drone_on):

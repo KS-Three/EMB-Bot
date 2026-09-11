@@ -288,6 +288,17 @@ hand-rolling it in JS.
   loses the machinery there. Nothing
   committed here trips either signal, so the corpus cannot show you it works —
   see DOCTRINE before concluding it is broken.
+- **The design-silhouette cap (`cfg.edge_cap`, DEFAULT `"bean"` since
+  2026-09-11)** closes the design/fabric boundary where every tatami row ends
+  in open air — the union of several shapes' edges, which no per-shape border
+  can reach. Two consequences to know before reading a plan: **every design now
+  ends with one extra BLOCK**, and that block sews in a cone the job already
+  ran, so the operator re-loads it (Kent ruled that stop acceptable rather than
+  cap the edge in a badly matched colour — DOCTRINE carries the numbers). It is
+  gated: `silhouette_cap(omit=…)` skips whatever linear stitching already
+  covers the outline, which is what took the bill from +8.6-100.4% down to
+  +5.9-26.3%. Turning it off is `edge_cap="none"`, and most tests whose subject
+  is artwork sequencing say exactly that.
 - **`stage2_photo_segment.py`** is a drop-in alternative to
   `stage2_quantize.quantize()` with the same `Quant` output contract, so
   stages 3–4 run unchanged. It exists because global k-means clusters color

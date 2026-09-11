@@ -1081,7 +1081,9 @@ def test_digitize_manual_returns_a_design_a_review_and_stats(client):
 
     design = state["design"]
     assert design["stitchCount"] > 100
-    assert design["colorCount"] == 2
+    # Two manual shapes plus the design-silhouette cap's own block, which is
+    # ON by default since 2026-09-11 and sews in a cone already loaded.
+    assert design["colorCount"] == 3
     assert design["stitches"][-1]["type"] == "end"
     assert {s["type"] for s in design["stitches"]} <= {"stitch", "jump", "trim", "color", "end"}
 
@@ -1375,6 +1377,14 @@ def test_stats_blocks_are_the_machines_cones_aligned_with_the_design_colours(cli
         assert cone["brand_id"] == review["palette"][0]["brand_id"]
     shape_ids = {s["shape_id"] for s in review["shapes"]}
     for cone in blocks:
+        if cone.get("design_edge"):
+            # The design-silhouette cap is the one block with no review shape
+            # behind it — it outlines the union of several, so there is no
+            # single id to name. It carries `design_edge: true` instead, which
+            # is what the Sequencer labels it by; an EMPTY `shape_ids` with no
+            # flag would be an unnamed row the user cannot map to anything.
+            assert cone["shape_ids"] == []
+            continue
         assert cone["shape_ids"], "every block sews at least one review shape"
         assert set(cone["shape_ids"]) <= shape_ids
 
