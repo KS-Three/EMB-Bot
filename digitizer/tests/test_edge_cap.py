@@ -28,17 +28,20 @@ test below is what pins that claim.
 """
 from __future__ import annotations
 
+import math
+import time
 from types import SimpleNamespace
 
 from shapely import affinity
-from shapely.geometry import Polygon
+from shapely.geometry import LineString, Polygon
 from shapely.ops import unary_union
 
-from digitizer_core import PipelineConfig, get_fabric
+from digitizer_core import PipelineConfig, get_fabric, machine
 from digitizer_core.regions import Region
 from digitizer_core.stage5_overlap import resolve_overlaps
 from digitizer_core.stage6_border import EDGE_CAP_STYLES, silhouette_cap
-from digitizer_core.stage7_sequence import _cap_thread, sequence
+from digitizer_core.stage7_sequence import (_cap_thread, _sewn_linear_cover,
+                                            sequence)
 from digitizer_core.threads import CHART
 from digitizer_core.warnings_codes import EDGE_CAP_APPLIED, EDGE_CAP_EMPTY
 
@@ -365,3 +368,69 @@ def test_a_crack_is_judged_by_width_not_perimeter():
     _, thin_narrow = silhouette_cap(thin, "S", style="bean", entry=None,
                                     trim_at_mm=6.0, width_mm=1.0)
     assert thin_narrow["holes_skipped"] == 0 and thin_narrow["loops"] == 2
+
+
+# --- the gate's own cost ------------------------------------------------------
+
+def _fan_column(cx, n):
+    """A satin column turning a corner, as slab-serif lettering makes one.
+
+    The outer rail travels further than the inner one, so consecutive crosses
+    overlap and the polyline crosses ITSELF. That is not a pathological
+    invention: 106 of Hotel Fremont's 138 linear runs are non-simple for
+    exactly this reason, and its satin alone nodes 9,404 points into 49,425
+    segments.
+    """
+    pts = []
+    for i in range(n):
+        t = i / (n - 1)
+        a = -0.5 + 2.9 * t
+        ai = -0.5 + 2.9 * min(1.0, t * 1.35)            # the inner rail lags
+        pts.append((cx + 2.6 * math.cos(a), 2.6 * math.sin(a)) if i % 2
+                   else (cx + 0.8 * math.cos(ai), 0.8 * math.sin(ai)))
+    return pts
+
+
+def _satin_blocks(cols: int, n: int):
+    """`_sewn_linear_cover` reads only `b.runs`, `r.kind` and `r.points`."""
+    runs = [SimpleNamespace(kind="satin", points=_fan_column(c * 3.0, n))
+            for c in range(cols)]
+    return [SimpleNamespace(runs=runs)]
+
+
+def test_the_cover_is_the_union_of_each_runs_own_ribbon():
+    """The identity the gate is allowed to lean on.
+
+    `buffer(A u B, r) == buffer(A, r) u buffer(B, r)` for positive r — a
+    Minkowski sum distributes over a union — so the cover may be assembled
+    either way. It must NOT be assembled by noding the raw polylines first:
+    see the cost test below for what that costs on real lettering.
+    """
+    blocks = _satin_blocks(6, 28)
+    cover = _sewn_linear_cover(blocks)
+    ribbons = unary_union([LineString(r.points).buffer(
+        machine.COVERAGE_THREAD_W_MM / 2.0)
+        for b in blocks for r in b.runs])
+    assert cover.symmetric_difference(ribbons).area < 1e-9
+
+
+def test_the_cover_does_not_pay_for_noding_the_stitch_path():
+    """Hotel Fremont's 86.7-minute prep, 2026-09-12.
+
+    The gate used to hand `unary_union(lines)` — every satin zigzag noded at
+    every self- and mutual-crossing — to a single `buffer()`. On Fremont that
+    is a 49,535-part MultiLineString, and buffering it ran 86 minutes and
+    tens of GB of commit for a cover the design's own 138 ribbons give in
+    1.5 seconds.
+
+    This is a budget, not a stopwatch race: on this fixture the shipped
+    spelling measures 0.26 s and the noded one 32.2 s, so 4.0 s sits 15x
+    above the first and 8x below the second. A box slow enough to fail this
+    green could not run the suite at all.
+    """
+    blocks = _satin_blocks(18, 52)
+    t0 = time.time()
+    cover = _sewn_linear_cover(blocks)
+    elapsed = time.time() - t0
+    assert cover is not None and cover.area > 0.0
+    assert elapsed < 4.0, f"_sewn_linear_cover took {elapsed:.1f}s"

@@ -1219,6 +1219,18 @@ def _sewn_linear_cover(blocks: list[StitchBlock]):
     None when nothing linear has sewn, which is the honest answer for a
     design that is all fill: there the whole outline ends in open air and the
     cap should close all of it, exactly as it did before the gate existed.
+
+    Each run is buffered into its own ribbon and the RIBBONS are unioned —
+    never `unary_union(lines).buffer(...)`, which is the same set by
+    `buffer(A u B, r) == buffer(A, r) u buffer(B, r)` (a Minkowski sum
+    distributes over a union) and a catastrophically more expensive way to
+    reach it. Unioning the polylines first NODES them at every crossing, and
+    a satin zigzag crosses itself: on Hotel Fremont's hat, 106 of 138 linear
+    runs are non-simple and 9,677 points node into a 49,535-part
+    MultiLineString. Buffering that soup ran 86.5 of the design's 86.7-minute
+    prep and exhausted a 39 GB box (GEOS `bad allocation`); the ribbons give
+    the identical polygon in 1.5 s. *(measured 2026-09-12,
+    `tests/test_edge_cap.py` pins the cost)*
     """
     lines = []
     for b in blocks:
@@ -1227,7 +1239,8 @@ def _sewn_linear_cover(blocks: list[StitchBlock]):
                 lines.append(LineString(r.points))
     if not lines:
         return None
-    return unary_union(lines).buffer(machine.COVERAGE_THREAD_W_MM / 2.0)
+    half_w = machine.COVERAGE_THREAD_W_MM / 2.0
+    return unary_union([ln.buffer(half_w) for ln in lines])
 
 
 def _cap_thread(silhouette, sewn: list[PlannedRegion],
