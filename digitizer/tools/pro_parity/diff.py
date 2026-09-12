@@ -45,6 +45,7 @@ from junction_blobs import _Runs, coverage_in                           # noqa: 
 from row_pitch_union import union_pitch                                 # noqa: E402
 from satin_columns import measure as satin_measure, passes_from_file    # noqa: E402
 from digitizer_core.adapter import UNITS_PER_MM                         # noqa: E402
+from digitizer_core.machine import FILL_ROW_MM                          # noqa: E402
 from digitizer_core.preflight import _coverage_map                      # noqa: E402
 from digitizer_core.stitches import StitchRun                           # noqa: E402
 
@@ -453,9 +454,13 @@ def _components(mask: np.ndarray, frame: pf.Frame, dust_mm2: float):
                       stats[k, cv2.CC_STAT_WIDTH], stats[k, cv2.CC_STAT_HEIGHT])
         bx0 = x / frame.ppm + frame.x0_units / UNITS_PER_MM - frame.pad_mm
         by0 = y / frame.ppm - frame.y1_units / UNITS_PER_MM - frame.pad_mm
-        big.append({"area_mm2": round(area, 1), "centre_mm": [round(X, 1), round(Y, 1)],
-                    "bbox_mm": [round(bx0, 1), round(by0, 1),
-                                round(bx0 + w / frame.ppm, 1), round(by0 + h / frame.ppm, 1)]})
+        # float(...) before round(): cv2's stats/centroids are numpy float64,
+        # and numpy >= 2's repr renders that as "np.float64(35.9)" inside a
+        # list -- exactly the value `write_catalogue`'s shape tables print.
+        # Plain Python floats keep the catalogue's "centre" column readable.
+        big.append({"area_mm2": round(float(area), 1), "centre_mm": [round(float(X), 1), round(float(Y), 1)],
+                    "bbox_mm": [round(float(bx0), 1), round(float(by0), 1),
+                                round(float(bx0 + w / frame.ppm), 1), round(float(by0 + h / frame.ppm), 1)]})
     return big, dust_area, dust_n
 
 
@@ -511,3 +516,251 @@ def shape_rows(pair: pf.Pair, reg: pf.Reg, r: dict, dust_mm2: float = 2.0) -> li
                      "count": acc["count"], "sewn_by": sewn_by})
     rows.sort(key=lambda x: (x.get("dust", False), -x["area_mm2"]))
     return rows
+
+
+# --------------------------------------------------------------------- flags
+def _ang_dist(a, b):
+    d = abs(a - b) % 180.0
+    return min(d, 180.0 - d)
+
+
+def flag_row(row: dict) -> list:
+    """The columns on which pro and ours differ past a DISPLAY threshold
+    (Spec §5; controller ruling: no score, no ranking anywhere — these
+    thresholds decide sort order only, nothing is summed or weighted).
+
+    `density` is never checked here: row/fill pitch is a RULED CONSTANT
+    (`machine.FILL_ROW_MM`), not a target either side is being graded
+    against, so a density difference is reported in the table and never
+    flagged."""
+    p, o = row["pro"], row["ours"]
+    flags = []
+    if p["tier"] != o["tier"] and "none" not in (p["tier"], o["tier"]):
+        flags.append("tier")
+    if p.get("width_p50") is not None and o.get("width_p50") is not None:
+        d = abs(p["width_p50"] - o["width_p50"])
+        # Spec §5: "differs by more than a stated tolerance (width ±0.3 mm
+        # or 25%)" -- an OR of an absolute floor and a relative one, so a
+        # coarse 2.0mm-vs-2.6mm column (0.6mm, over the floor alone) still
+        # flags even though it is under 25% of the pro's 2.6mm width.
+        if d > TOL_WIDTH_MM or d > TOL_WIDTH_FRAC * p["width_p50"]:
+            flags.append("width")
+    if (p.get("direction_deg") is not None and o.get("direction_deg") is not None
+            and p.get("direction_R", 0) >= 0.5 and o.get("direction_R", 0) >= 0.5
+            and _ang_dist(p["direction_deg"], o["direction_deg"]) > TOL_DIRECTION_DEG):
+        flags.append("direction")
+    if p.get("pitch_mm") is not None and o.get("pitch_mm") is not None:
+        if abs(p["pitch_mm"] - o["pitch_mm"]) > TOL_PITCH_FRAC * p["pitch_mm"]:
+            flags.append("pitch")
+    if abs(p.get("layers_p50", 0) - o.get("layers_p50", 0)) > TOL_LAYERS:
+        flags.append("layers")
+    return flags
+
+
+def _blocks_of(path: Path, transform=None):
+    """Passes per colour block of a machine file, same split rule as passes_of."""
+    import pystitch
+    pat = pystitch.read(str(path))
+    blocks, cur, bi = {}, [], 0
+    rgb = [(t.get_red(), t.get_green(), t.get_blue()) for t in pat.threadlist]
+    for x, y, c in pat.stitches:
+        cmd = c & pystitch.COMMAND_MASK
+        if cmd == pystitch.STITCH:
+            p = (x / 10.0, y / 10.0)
+            cur.append(transform(*p) if transform else p)
+            continue
+        if len(cur) >= 3:
+            blocks.setdefault(bi, []).append(cur)
+        cur = []
+        if cmd in (pystitch.COLOR_CHANGE, pystitch.STOP):
+            bi += 1
+    if len(cur) >= 3:
+        blocks.setdefault(bi, []).append(cur)
+    return blocks, rgb
+
+
+def _extent_of(passes) -> list:
+    """[width, height] mm spanned by a side's own stitch points, in whatever
+    frame `passes` is already in. `design_rows` calls this AFTER each side's
+    own transform (`reg.apply_xy` for ours, none for pro), so both numbers
+    land in the one registered frame (R12, controller ruling)."""
+    xs = [x for p in passes for x, _y in p]
+    ys = [y for p in passes for _x, y in p]
+    if not xs:
+        return [0.0, 0.0]
+    return [round(max(xs) - min(xs), 1), round(max(ys) - min(ys), 1)]
+
+
+def design_rows(pair: pf.Pair, reg: pf.Reg) -> dict:
+    """Design-level counts per side: stitches, trims (= passes), blocks,
+    cones (distinct rgb), the sew order, and each side's own stitch
+    `extent_mm` (R12, controller ruling) — width/height in the registered
+    frame. The first real overlay showed our Becker about 3% taller than
+    the pro's at the same width; an aspect mismatch is a finding the craft
+    rows (all per-region) cannot show on their own."""
+    polys = region_polys(pair, reg)
+    out = {}
+    for side, path, tr, rgbs in (("pro", pair.pro_path, None, pair.pro_rgb),
+                                 ("ours", pair.ours_path, reg.apply_xy, pair.ours_rgb)):
+        blocks, file_rgb = _blocks_of(path, tr)
+        rgb = rgbs or file_rgb
+        order = []
+        for bi in sorted(blocks):
+            per, _res, _lifts = assign_passes(blocks[bi], polys)
+            top = max(per.items(), key=lambda kv: length_mm(kv[1]), default=(None, []))
+            order.append({"block": bi, "rgb": list(rgb[bi]) if bi < len(rgb) else None,
+                          "mm": round(length_mm(blocks[bi]), 1), "mostly": top[0]})
+        passes = [p for b in blocks.values() for p in b]
+        out[side] = {"stitches": sum(len(p) for p in passes), "trims": len(passes),
+                     "blocks": len(blocks), "cones": len({tuple(r) for r in rgb[:max(len(blocks), 1)]}),
+                     "sew_order": order, "extent_mm": _extent_of(passes)}
+    return out
+
+
+def _fmt(v):
+    if v is None:
+        return "—"
+    if isinstance(v, float):
+        return f"{v:.2f}"
+    return str(v)
+
+
+def _row_line(row, flags):
+    p, o = row["pro"], row["ours"]
+    cells = [row["shape_id"], _fmt(row["area_mm2"]), ",".join(flags) or "",
+             f"{o['tier']} / {p['tier']}" + (f" (planned {row['tier_planned']})" if row.get("tier_planned") else ""),
+             f"{_fmt(o['width_p50'])} / {_fmt(p['width_p50'])}",
+             f"{_fmt(o['direction_deg'])} / {_fmt(p['direction_deg'])}",
+             f"{_fmt(o['pitch_mm'])} / {_fmt(p['pitch_mm'])}",
+             f"{_fmt(o['layers_p50'])} / {_fmt(p['layers_p50'])}",
+             f"{_fmt(o['density'])} / {_fmt(p['density'])}",
+             f"{o['trims']} / {p['trims']}",
+             f"`{o['recipe'][:40]}` / `{p['recipe'][:40]}`"]
+    return "| " + " | ".join(cells) + " |"
+
+
+_HEAD = ("| region | mm² | flags | tier ours / pro | width p50 | direction | pitch | layers | "
+         "density (reported, not flagged) | trims (distinct passes, not lifts) | recipe |\n"
+         "|---|---:|---|---|---|---|---|---|---|---|---|")
+
+# Controller ruling: density and trims get their caveat said in the catalogue
+# text itself, beside the table they head — not only in a source comment.
+_CRAFT_NOTE = (
+    "`density` is reported here and never flagged: row/fill pitch is a ruled constant "
+    f"(`machine.FILL_ROW_MM` = {FILL_ROW_MM} mm), not a target either side is graded against. "
+    "`trims` counts distinct SOURCE PASSES that contributed thread to a region (a lift count), "
+    "not the region's own chunk count — chunking a long pro pass at a region boundary can hand "
+    "one region several chunks from a single lift.")
+
+
+def write_catalogue(pair, reg, rows, residual, design, shapes, out_dir):
+    out_dir = Path(out_dir)
+    flagged = [(r, flag_row(r)) for r in rows]
+    flagged = [(r, f) for r, f in flagged if f]
+    flagged.sort(key=lambda rf: (-len(rf[1]), -rf[0]["area_mm2"]))
+    lines = [f"# {pair.slug} — ours vs pro, {pair.width_mm:.1f} mm",
+             f"registration iou {reg.iou:.3f}, scale {reg.scale:.3f}, flip_y {reg.flip_y}, "
+             f"shift ({reg.dx:.1f}, {reg.dy:.1f}) mm. Tolerances are display thresholds, not a score.", ""]
+    if reg.iou < 0.5:
+        lines += ["**Registration is unreliable (iou < 0.5): read the shape rows as indicative only.**", ""]
+    # Craft table (Spec §5): one row per region, never truncated (controller ruling —
+    # only the shape tables below get a per-tag display cap).
+    lines += ["## Flagged", "", _CRAFT_NOTE, "", _HEAD] + [_row_line(r, f) for r, f in flagged] + [""]
+    lines += ["## All regions", "", _CRAFT_NOTE, "", _HEAD] + [_row_line(r, flag_row(r)) for r in rows] + [""]
+    lines += ["## Design", "", "| | ours | pro |", "|---|---:|---:|"]
+    for k in ("stitches", "trims", "blocks", "cones"):
+        lines.append(f"| {k} | {design['ours'][k]} | {design['pro'][k]} |")
+    ow, oh = design["ours"]["extent_mm"]
+    pw, ph = design["pro"]["extent_mm"]
+    lines.append(f"| width mm | {ow:.1f} | {pw:.1f} |")
+    lines.append(f"| height mm | {oh:.1f} | {ph:.1f} |")
+    lines.append(f"| aspect h/w | {(oh / ow if ow else 0.0):.3f} | {(ph / pw if pw else 0.0):.3f} |")
+    lines += ["", "sew order ours: " + " → ".join(f"{b['block']}({b['mostly']})" for b in design["ours"]["sew_order"]),
+              "sew order pro: " + " → ".join(f"{b['block']}({b['mostly']})" for b in design["pro"]["sew_order"]), ""]
+    lines += ["## Residual (passes assigned to no region)", "",
+              f"pro {residual['pro_passes']} passes / {residual['pro_mm']} mm; "
+              f"ours {residual['ours_passes']} passes / {residual['ours_mm']} mm", ""]
+    kent = [s for s in shapes if s["tag"] == "redesign"]
+    ours_rows = [s for s in shapes if s["tag"] in ("dropped", "background")]
+
+    def shape_table(items, limit=15):
+        """15 largest (by area) rows per TAG, most-severe first (R19,
+        controller ruling: Becker alone produces 373 shape rows over the
+        dust floor — unreadable in full). Every row still reaches
+        `diff.json` through the caller's own `shapes` list; only this
+        markdown table is capped. A tag with more than `limit` big rows
+        gets one trailing line reading `and N more, X mm² total`."""
+        order, groups = [], {}
+        for s in items:
+            g = groups.setdefault(s["tag"], {"big": [], "dust": None})
+            if s["tag"] not in order:
+                order.append(s["tag"])
+            if s.get("dust"):
+                g["dust"] = s
+            else:
+                g["big"].append(s)
+        t = ["| tag | sewn_by | mm² | centre | nearest region | crop |", "|---|---|---:|---|---|---|"]
+        notes = []
+        for tag in order:
+            g = groups[tag]
+            big = sorted(g["big"], key=lambda s: -s["area_mm2"])
+            shown, rest = big[:limit], big[limit:]
+            for s in shown:
+                t.append(f"| {s['tag']} | {s['sewn_by']} | {s['area_mm2']} | {s['centre_mm']} | "
+                        f"{s['nearest_region']} | `{s['crop']}` |")
+            if rest:
+                notes.append(f"*{tag}: and {len(rest)} more, "
+                             f"{round(sum(r['area_mm2'] for r in rest), 1)} mm² total*")
+            if g["dust"] is not None:
+                d = g["dust"]
+                t.append(f"| {d['tag']} (dust) | {d['sewn_by']} | {d['area_mm2']} | {d['count']} pieces | | |")
+        return t, notes
+
+    kent_t, kent_notes = shape_table(kent)
+    ours_t, ours_notes = shape_table(ours_rows)
+    lines += ["## Shape rows — Kent's call (the pro departed from the artwork)", ""] + kent_t + kent_notes + [""]
+    lines += ["## Shape rows — ours (dropped elements, sewn background)", ""] + ours_t + ours_notes + [""]
+    md = out_dir / "catalogue.md"
+    md.write_text("\n".join(lines), encoding="utf-8")
+    js = out_dir / "diff.json"
+    js.write_text(json.dumps({"slug": pair.slug, "width_mm": pair.width_mm, "registration": reg.as_dict(),
+                              "flagged": [dict(r, flags=f) for r, f in flagged], "regions": rows,
+                              "residual": residual, "design": design, "shapes": shapes}, indent=1, default=str))
+    return md, js
+
+
+def main(argv=None) -> int:
+    import overlay
+    from thin_strokes import parse_flags
+    ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
+    ap.add_argument("--dir")
+    ap.add_argument("--slug")
+    ap.add_argument("--flag", action="append", default=[])
+    ap.add_argument("--ppm", type=float, default=overlay.DEFAULT_PPM)
+    a = ap.parse_args(argv)
+    pair = pf.load_pair(overlay._resolve_dir(a))
+    flags = parse_flags(a.flag)
+    if flags:
+        pair = pf.load_pair(pf.redigitize(pair, flags))
+    reg = pf.register_pair(pair.pro_path, pair.ours_path)
+    rows, residual = region_rows(pair, reg)
+    r = overlay.render_pair(pair, reg, ppm=a.ppm)
+    shapes = shape_rows(pair, reg, r)
+    md, js = write_catalogue(pair, reg, rows, residual, design_rows(pair, reg), shapes, pair.dir)
+    print(f"{pair.slug}  iou {reg.iou:.2f}  scale {reg.scale:.3f}  → {md}")
+    for row in rows:
+        f = flag_row(row)
+        if f:
+            p, o = row["pro"], row["ours"]
+            bits = []
+            if "tier" in f: bits.append(f"tier: ours {o['tier']} / pro {p['tier']}")
+            if "width" in f: bits.append(f"width: {_fmt(o['width_p50'])} / {_fmt(p['width_p50'])}")
+            if "direction" in f: bits.append(f"direction: {_fmt(o['direction_deg'])} / {_fmt(p['direction_deg'])}")
+            if "pitch" in f: bits.append(f"pitch: {_fmt(o['pitch_mm'])} / {_fmt(p['pitch_mm'])}")
+            if "layers" in f: bits.append(f"layers: {_fmt(o['layers_p50'])} / {_fmt(p['layers_p50'])}")
+            print(f"  {row['shape_id']:>12}  " + "   ".join(bits))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main(sys.argv[1:]))

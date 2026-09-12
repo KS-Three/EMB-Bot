@@ -254,3 +254,76 @@ def test_shape_rows_finds_a_real_redesign_on_becker(becker_pair):
     # fix round 1, finding 1: one dust row per tag, never two for the same tag.
     dust_tags = [x["tag"] for x in rows if x.get("dust")]
     assert len(dust_tags) == len(set(dust_tags)), rows
+
+
+def test_flag_row_rules():
+    row = {"shape_id": "X", "pro": {"tier": "satin", "width_p50": 2.6, "direction_deg": 20.0, "direction_R": 0.9,
+                                    "pitch_mm": None, "layers_p50": 1.1},
+           "ours": {"tier": "satin", "width_p50": 2.0, "direction_deg": 22.0, "direction_R": 0.9,
+                    "pitch_mm": None, "layers_p50": 1.0}}
+    assert pdiff.flag_row(row) == ["width"]
+    row["ours"]["tier"] = "fill"
+    row["ours"]["direction_deg"] = 80.0
+    assert pdiff.flag_row(row) == ["tier", "width", "direction"]
+    row["pro"]["tier"] = "none"
+    assert "tier" not in pdiff.flag_row(row)
+
+
+def test_catalogue_and_json_written(tmp_path):
+    pro, ours, regions = _two_regions(pro_tier_b="fill")
+    d = synth.make_prep_dir(tmp_path, "cat", pro, ours, regions, [(0, -1, 20, 1), (0, 9, 20, 11)], 20.0)
+    assert pdiff.main(["--dir", str(d)]) == 0
+    md = (d / "catalogue.md").read_text(encoding="utf-8")
+    js = json.loads((d / "diff.json").read_text())
+    assert "## Flagged" in md and "| B |" in md and "Kent's call" in md
+    # Measured, not assumed (digitizer/.venv, this exact fixture): B's pro
+    # side is a tatami fill (rows run at 180 deg, pitch 0.4mm) and its ours
+    # side a satin column (crosses at 90 deg, pitch 0.78mm) on the SAME
+    # polygon -- a real tier disagreement, so the whole-file registration
+    # (driven by A's identical geometry plus B's mismatched footprint) lands
+    # at iou 0.4886, and B's OTHER craft readers (direction, pitch) disagree
+    # too, for the same underlying reason tier does. Pinned to what actually
+    # runs rather than the higher/narrower numbers a quick guess would pick.
+    assert js["registration"]["iou"] == pytest.approx(0.4886, abs=0.005)
+    assert [r["shape_id"] for r in js["flagged"]] == ["B"]
+    assert js["flagged"][0]["flags"] == ["tier", "direction", "pitch"]
+
+    # R12 (controller ruling): the Design table carries both sides' own
+    # extent_mm (width, height, aspect) -- an aspect mismatch is a finding
+    # the per-region craft rows can't show on their own.
+    assert "width mm" in md and "height mm" in md and "aspect" in md
+    assert js["design"]["ours"]["extent_mm"][0] > 0.0
+    assert js["design"]["pro"]["extent_mm"][0] > 0.0
+
+    # R19 (controller ruling): a shape tag with more than 15 big rows is
+    # capped at the 15 largest in catalogue.md, with a trailing summary line
+    # for the rest -- but diff.json still keeps every row. This tiny fixture
+    # has nowhere near 15 real shape components, so exercise write_catalogue
+    # directly with a hand-built `shapes` list, reusing the pair/rows/design
+    # main() already computed above.
+    pair = pairframe.load_pair(d)
+    reg = pairframe.register_pair(pair.pro_path, pair.ours_path)
+    rows, residual = pdiff.region_rows(pair, reg)
+    design = pdiff.design_rows(pair, reg)
+    many = [{"tag": "redesign", "sewn_by": "pro", "area_mm2": float(20 - i),
+             "centre_mm": [0.0, float(i)], "nearest_region": "A", "crop": "--crop 0 0 1 1"}
+            for i in range(20)]
+    out2 = d / "many"
+    out2.mkdir(parents=True, exist_ok=True)
+    md2, js2 = pdiff.write_catalogue(pair, reg, rows, residual, design, many, out2)
+    text2 = md2.read_text(encoding="utf-8")
+    assert "and 5 more" in text2 and "mm² total" in text2
+    assert len(json.loads(js2.read_text())["shapes"]) == 20
+
+
+def test_smoke_becker_diff(becker_pair):
+    reg = pairframe.register_pair(becker_pair.pro_path, becker_pair.ours_path)
+    rows, residual = pdiff.region_rows(becker_pair, reg)
+    assert len(rows) == len(becker_pair.regions) > 5
+    r = overlay.render_pair(becker_pair, reg)
+    shapes = pdiff.shape_rows(becker_pair, reg, r)
+    md, js = pdiff.write_catalogue(becker_pair, reg, rows, residual,
+                                   pdiff.design_rows(becker_pair, reg), shapes, becker_pair.dir)
+    assert md.exists() and js.exists()
+    tags = {s["tag"] for s in shapes}
+    assert "redesign" in tags        # BECKER's filled bodies (spec §8)
