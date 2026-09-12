@@ -55,6 +55,18 @@ for every other design — `gaulke_jb` is twice the stitch count and finishes
 in 155 s — so the patch was still prepping when this closed. All five gaulke
 designs ARE included, which is the family that matters here.*
 
+*__The 86.7 minutes was a defect, found and fixed 2026-09-12 (PR #464), and
+the corpus is no longer gated on it.__ `_sewn_linear_cover` — the silhouette
+cap's gate, one day old at the time — buffered `unary_union(lines)`, which
+NODES every satin zigzag at every crossing (Fremont: 138 runs / 9,677 points
+→ a 49,535-part MultiLineString); buffering the ribbons instead is the same
+set and byte-identical output. `hotel_fremont_hat` preps in **13.4 s**,
+`hotel_fremont_patch` in **24.1 s**, and the **whole 23-design corpus in
+12.1 minutes** (23/23 `ok=True`, 2026-09-12). The nine designs with a
+recorded time before the fix: 8,288 s → 274 s. **Re-running this study at
+23 of 23 is now cheap and has NOT been done** — the numbers below are still
+the 22-design ones.*
+
 - **Every real pair as prepped**: the greedy search already sat exactly on the
   exhaustive optimum of its own objective (gap `+0.0000` on every one). Seed
   error under 0.5 mm everywhere except `gaulke_plowing_hat` (3.4 mm) and
@@ -177,5 +189,8 @@ it survives a cp1252 Windows console.
 
 ## Still open
 
-`hotel_fremont_patch` is the one design never measured — see the coverage note
-above, and the separately-filed 87-minute engine run on its sibling.
+`hotel_fremont_patch` is the one design never measured **by this study** — see
+the coverage note above. The 87-minute engine run that blocked it is fixed
+(PR #464, 2026-09-12): the design now preps in 24.1 s and the whole corpus in
+12.1 minutes, so the remaining work is to re-run this study at 23 of 23, not
+to wait for the machine.
