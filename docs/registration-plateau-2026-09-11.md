@@ -2,8 +2,17 @@
 
 `scorecard.register` could return a wrong alignment with `iou=0.0` and say
 nothing. Reported from a synthetic fixture; investigated against the real
-corpus; fixed; **no real pair hits it, and that is a measurement, not a
-guess.**
+corpus; fixed.
+
+**Every real pair registers correctly as prepped — but the defect is NOT
+fixture-only.** Under the drop-an-element stress the report asked about, one
+real arm picks an alignment 17.79 mm wrong, and it is `gaulke_roofing_hat`,
+the family `pairframe.py` singles out. What bounds it is sparsity, and that
+boundary is measured, not argued.
+
+*(An earlier draft of this file opened "no real pair hits it, and that is a
+measurement, not a guess." That was written after 13 designs and before the
+gaulke family was prepped. It was wrong; this is what replaced it.)*
 
 ## What was broken
 
@@ -137,9 +146,36 @@ next thing to check is whether its objective deserves the sharpening.
 (4.7 s → 7.7 s). The FFT itself is 0.3 s of that; the rest is the extra seed
 earning its own hill-climb.
 
+## The silence, closed
+
+Finding the optimum is not the same as the optimum meaning anything. Two files
+sharing almost no thread still have a best translation, and `overlay.py` /
+`diff.py` took the `Reg` unchecked — which is how the original defect stayed
+invisible in the first place. The failure mode is silence.
+
+Kent's call: warn, don't raise. `register_pair` now emits a
+`RegistrationWarning` when the winning IoU is under `REG_IOU_FLOOR = 0.05`. A
+warning rather than a refusal because near-zero overlap is a legitimate
+*reading* of two files that genuinely share nothing, and the probes in this
+very investigation deliberately produce it.
+
+The floor comes off the measured spread rather than from feel — an order of
+magnitude clear on both sides:
+
+| | IoU |
+|---|---|
+| real corpus, as prepped | 0.64 – 0.99 |
+| the plateau fixture's TRUE optimum | 0.404 |
+| **`REG_IOU_FLOOR`** | **0.05** |
+| the degenerate arms that motivated it | 0.001 – 0.007 |
+
+Verified on real data, not only the fixture: rebuilding `gaulke_roofing_hat`'s
+`ours.dst` without block 0 and passing it through `register_pair` fires the
+warning at `iou=0.0068`, while `gaulke_roofing_hat`, `gaulke_jb`,
+`becker_lc_large` and `proseal_beanie` all stay quiet. The message is ASCII, so
+it survives a cp1252 Windows console.
+
 ## Still open
 
-`register` returns `iou=0.0` **without complaining**. The smoke test asserts
-`reg.iou > 0.5`, but `overlay.py` / `diff.py` consume the `Reg` unchecked, so a
-future sparse pair would again be scored off a wrong alignment silently. A
-floor-with-a-warning in `register_pair` is not written.
+`hotel_fremont_patch` is the one design never measured — see the coverage note
+above, and the separately-filed 87-minute engine run on its sibling.
