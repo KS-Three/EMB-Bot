@@ -34,6 +34,19 @@ Moved verbatim 2026-08-28 — no section was rewritten in the move.
 
 ## Standing rulings — decided, do not re-litigate
 
+- **A real PHOTOGRAPH counts as a tonal positive for the flat/gradient
+  boundary.** Kent's ruling 2026-09-11, taken with the cost in front of him.
+  The reason it is not a free label: stage 0's PHOTO gate already fails on
+  real photographs — `owl_kent.jpg` reads `unique_color_mass` 0.1107 against
+  `UCM_PHOTO_MIN` 0.28 — so a photograph falls THROUGH to the flat/gradient
+  gate, and that is the gate which has to separate it. Enrolling it takes
+  `color_diversity`'s margin from *flat max 16 / tonal min 20 / gap +4* to
+  **16 against 16, gap 0, separating at no rung**. So **the +4 gap is retired
+  and must not be quoted**: PR 6a needs a boundary that clears a real
+  photograph, or both gates replaced together. `owl_kent` is enrolled in the
+  tool's corpus as of that ruling (`tools/color_diversity.py`,
+  `tests/test_color_diversity.py`). *(ruled 2026-09-11 —
+  `docs/stage0-tires-photo-scene-2026-09-11.md` §9a-bis)*
 - **A satin cross too long to sew is SPLIT, not routed to fill.** Kent's call
   2026-09-11 on quality review item 10, with both answers built and measured
   in front of him. `splitSatin` is the browser lettering engine's default;
@@ -4641,3 +4654,92 @@ only visible because the tool prints the file's verdict beside the arms'.
 that with a test on a fixture that exercises the channel
 (`test_an_arm_of_an_ALPHA_fixture_reads_the_same_image_the_file_does`).
 *(fixed 2026-09-11 — same doc §9b)*
+
+## The candidate stage-0 signal survives geometry — and its margin is ZERO if a photograph counts as tonal (2026-09-11)
+
+Kent asked for the 08-15 spec's replacement signal (`tools/color_diversity.py`)
+to be stressed on the two populations that break the shipped one. Both answers
+matter to PR 6a, and they point opposite ways.
+
+**Geometry: it passes.** The shipped `gradient_smoothness` is crossed by
+artwork GEOMETRY alone — four real logos still read `gradient` after
+binarization, 6× to 164× over the gate (entry above). On those same binarized
+twins the candidate reads **1 or 2, every one**. The failure mode does not
+transfer, and that is real de-risking available before any new artwork lands.
+
+**Photographs: the classes stop ordering.** The 09-11 measurement is flat max
+**16** (`bridge`) against tonal min **20** (`drone`), gap +4. Enrol
+`photo/owl_kent.jpg` — the repo's only REAL photograph, and the artwork this
+project cites whenever it needs one — as a real tonal positive, and the tool's
+own verdict becomes **flat max 16 / tonal min 16 (`owl_kent`) / gap 0,
+separating at NO rung of the sweep**. The plan's §5a leaves *"whether
+photographs may serve as positives"* open as a question for Kent; **this is
+the number that question is worth.** Do not quote the +4 gap as though
+photographs were in the tonal set.
+
+Two limits, both real: `owl_kent.jpg` is a 554 px re-save (no EXIF, same
+reason), and n=2 tonal rows is still under the spec's four-row floor — so this
+is a caution against a premature siting, not a refutation of the signal. Worth
+knowing either way: **`color_diversity`'s corpus enrols the SYNTHETIC owl
+(`photo/photo_owl_pale.png`) and not the real one**, which sits two
+directories away. *(measured 2026-09-11 — `tools/color_diversity.py
+--foreground bbox [--art testdata/photo/owl_kent.jpg --label tonal
+--provenance real]`; `docs/stage0-tires-photo-scene-2026-09-11.md` §9a-bis)*
+
+## Warning text says what the engine DECIDED; the read-row owns the correction (2026-09-11)
+
+Kent's call to fix the Studio sentence a misrouted flat logo shows its owner:
+*"The art reads as a photographic scene. Photos sew rougher than flat artwork
+— check the preview closely."* Two things were wrong with it and only one was
+obvious. It asserts a CONSEQUENCE that holds only if the reading is right, and
+stage 0 misroutes most real customer logos — so it reached a large share of
+its readers as a warning about a photograph they never uploaded and a rough
+result they were not going to get (`logo_script_tires` scores the same down
+either lane). Fixed by making the consequence conditional — *"If that reading
+is right, photos sew rougher…"* — which costs the real photographs nothing.
+
+**The instructive half was the fix that did NOT ship.** The first attempt also
+added the correction ("mark it as flat art") to the warning line. Three
+DigitizePanel tests went red by finding **two** matches where they expect one:
+the read-row already offers that correction, with a button, on exactly these
+codes. **A duplicate-match failure in a component test is a UI review, not a
+broken assertion** — the panel would have printed the same guidance twice on
+one screen. Keep the two surfaces split: the warning names the decision, the
+read-row changes it. *(2026-09-11 — `app/src/lib/digitizer.js` WARNING_TEXT;
+`digitizer.spec.js` "the photo readings make their rough-result warning
+conditional", verified red before green)*
+
+## The product never sends stage 0 the file — so a fixture's lane is not the customer's lane (2026-09-11)
+
+Found by driving the shipped Studio at the end of an investigation that had
+already settled everything from the file, which is the wrong order and is why
+this entry exists.
+
+**`DigitizePanel` downsamples every upload to `PROCESS_MAX_PX = 1200` on its
+long edge with a canvas `drawImage`, re-encodes it via
+`toDataURL("image/png")`, and posts that.** The service never sees the
+customer's original bytes. So every routing number this repo owns — the
+scorecard, the ARTFID harness, `color_diversity`, the scale-invariance test,
+`tools/stage0_signal_origin.py` — is a reading of a file at native
+resolution, taken on a path no customer travels.
+
+**It changes verdicts, measured, not reasoned.** `logo_script_tires.png`
+reads `photo_scene` from the file at 1585 px and **`CLASSIFIED_GRADIENT`
+through the app** — read out of the job the page itself created, with 4,503
+stitches and 12 trims against the 2,287–2,345 every in-process arm reports.
+
+**And the size alone does not explain it — the RESAMPLER does.** The same file
+at the same 1200 × 751 gives `photo_scene` at seed 0 under `INTER_AREA`
+(0.336), `INTER_LINEAR` (0.332) and `INTER_CUBIC` (0.424); Chrome's canvas
+downscale lands the other side of the gate. That is the 08-15 spec §7 result
+— *"two images a human could not tell apart get different lanes"* — now
+reproduced with the product's own filter, on real customer artwork.
+
+**So: say which raster a routing claim is about.** A claim about a fixture is
+about the file; a claim about what a CUSTOMER gets has to be driven through
+the app, and the two can disagree by a whole class. The misroute itself
+survives either way — this artwork is `flat` and reaches a non-flat lane down
+both paths. *(measured 2026-09-11 —
+`docs/stage0-tires-photo-scene-2026-09-11.md` §6b;
+`.claude/skills/run-emb-bot/driver.mjs` against :5173 with the service on
+:8721)*

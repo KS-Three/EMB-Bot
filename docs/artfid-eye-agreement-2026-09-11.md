@@ -144,6 +144,24 @@ fourteen, so the metric can only speak to half its own fixture set.
 on fire, but a flat two-colour wordmark taking the photo lane is worth a
 look on its own.
 
+**Chased down the same day — and it reaches back into §3.**
+`docs/stage0-tires-photo-scene-2026-09-11.md` has the cause: 97% of the signal
+that crosses the photo gate comes from the white BACKGROUND's ±1 grey-level
+grain, and the verdict is seed-dependent (5 of 12 k-means seeds cross) despite
+printing confidence 1.000. Two corrections to the tables above:
+
+- **Row G's 85.8 is NOT route-inflated.** Forcing `photo_scene`, `gradient`
+  and `flat` on that artwork gives ARTFID 85.7 on all three, with identical
+  satin — and 86.2 with the full photo lane including the rembg cutout. So the
+  §3 worry about cross-route comparability does not apply to this row.
+- **But §3's stratification files it in the wrong stratum.** Its stitches are
+  flat-lane equivalent while its label says `photo_scene`. Relabelled, the
+  route finding gets STRONGER, not weaker: `route == flat` vs the eye goes
+  **tau +0.575 (p=0.014) → +0.704 (p=0.003)**, and ARTFID still beats
+  preflight grade within both strata (+0.333 vs +0.126 flat; +0.524 vs −0.066
+  non-flat). §3's conclusion stands; its numbers move. Every caveat in §6
+  still applies — exploratory, n=14, the eye is Claude's.
+
 ## 5. Scoring my own pre-registered predictions
 
 Recorded in `18aa55b` before unblinding. Two right, one wrong, one half.

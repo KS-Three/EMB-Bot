@@ -156,12 +156,12 @@ was the one design that barely moved (+0.1).
 
 Two things it is not free of:
 
-- **The Studio tells the customer the wrong thing.** `CLASSIFIED_PHOTO_SCENE`
-  renders as *"The art reads as a photographic scene. Photos sew rougher than
-  flat artwork — check the preview closely before stitching this one out."*
-  for a two-colour script wordmark. The panel does offer the flat-art nudge
-  (`offerFlat`), so the customer can override — the copy is wrong, the escape
-  hatch works.
+- **The Studio tells the customer something wrong — but NOT the sentence this
+  section first claimed.** See §6b: driven in a browser, this artwork reads
+  `gradient` in the product, so the customer gets the shading sentence, not
+  the photographic-scene one. Either way the panel offers the flat-art nudge
+  (`offerFlat`) and the escape hatch works. *(The photo copy was still worth
+  fixing on its own merits, and was — see §6b's last paragraph.)*
 - **The table above is the lane WITHOUT the cutout.** This box had no
   `rembg_isolated/venv`, so that run logged `PHOTO_BACKGROUND_REMOVAL_UNAVAILABLE`
   and, per the 2026-08-24 ruling, skipped the whole photo-prep block —
@@ -193,6 +193,53 @@ reason this stays an investigation rather than a bug report.
 
 Read the +0.5 as a wash, not a win: it is one design, and this document's own
 §7 records that ARTFID is not a route-neutral instrument.
+
+### 6b. The product never sends stage 0 this file — and that changes the verdict
+
+Found by driving the shipped Studio, after everything above had been settled
+from the file. **`DigitizePanel` downsamples every upload to
+`PROCESS_MAX_PX = 1200` on its long edge with a canvas `drawImage`, re-encodes
+it with `toDataURL("image/png")`, and posts THAT.** The service never sees the
+customer's original bytes, and this document's 1585 px readings are readings
+of a file nobody digitizes through the app.
+
+**Measured live, not inferred.** Uploading `logo_script_tires.png` to the
+running Studio and reading the job the page created
+(`GET /jobs/506dff40c55c4b10b5dfeee20a0af10c`): warnings contain
+**`CLASSIFIED_GRADIENT`**, not `CLASSIFIED_PHOTO_SCENE`. Stats 4,503 stitches,
+12 trims, 1 colour, 80.2 × 29.9 mm — against the 2,287–2,345 stitches every
+in-process arm above reports. The panel's reading row says *"Read as shaded
+artwork"*, and offers *"It's flat art"*.
+
+**And the size alone does not explain it — the RESAMPLER does.** Resizing the
+same file to the same 1200 × 751 with OpenCV gives `photo_scene` at seed 0
+under all three filters (`INTER_AREA` UCM 0.336, `INTER_LINEAR` 0.332,
+`INTER_CUBIC` 0.424). Chrome's canvas downscale lands the other side. That is
+the 08-15 spec §7 finding — *"the class also depends on WHICH filter was
+used… two images a human could not tell apart get different lanes"* — now
+reproduced with the product's own filter in the loop, on real customer art.
+
+Three consequences, and the first one is about this whole document:
+
+- **The customer-facing misroute here is `gradient`, not `photo_scene`.** The
+  defect this document explains is real and its mechanism is unchanged — the
+  ground's invisible grain drives `unique_color_mass` at every size measured
+  (§5) — but a claim about what a CUSTOMER gets has to be measured through the
+  app, and a claim about the fixture is a claim about the file.
+- **Every fixture-based routing number in this repo is a file number.** The
+  scorecard, the ARTFID harness, `color_diversity`, the scale-invariance test
+  and this document all read files off disk at native resolution. None of them
+  passes through the 1200 px canvas re-encode that stands between a customer
+  and stage 0.
+- **The copy fix still stands, and is still worth having.** Whoever DOES land
+  in `photo_scene`/`photo_subject` reads a consequence that only holds if the
+  reading is right, and stage 0 misroutes most real logos either way — this
+  artwork reaches `gradient` through the app and `photo_scene` through the
+  file, and neither is `flat`, which is what it is.
+
+*(measured 2026-09-11 — `.claude/skills/run-emb-bot/driver.mjs` against the
+Studio on :5173 with the service on :8721; the job payload is the evidence,
+not the screenshot)*
 
 ## 7. What it costs the measurements
 
@@ -315,6 +362,67 @@ Three things fall out, and two of them are new:
   to the artwork.
 
 *(measured 2026-09-11 — `tools/stage0_signal_origin.py --ablations`, 4 seeds)*
+
+### 9a-bis. The candidate signal, stressed on the same two populations
+
+§9a says a replacement has to survive GEOMETRY, not merely tolerate noise. So
+the 08-15 spec's candidate (`tools/color_diversity.py`) was put through both
+tests. Kent's call, 2026-09-11.
+
+**Geometry: it passes, cleanly.** Run on each logo's binarized twin — pure
+geometry, no soft pixel and no noisy one — every real logo reads **1 or 2**,
+including the four whose shipped `gradient_smoothness` stays 6–164× over its
+gate after the same binarization. The failure mode that breaks the shipped
+signal does not transfer to the candidate. That is real de-risking for PR 6a,
+available before any new artwork lands.
+
+**Photographs: the margin collapses to zero, and this one needs Kent.** The
+09-11 measurement reports flat max **16** (`bridge`) against tonal min **20**
+(`drone`), gap +4. Enrol `photo/owl_kent.jpg` — the repo's only REAL
+photograph — as a real tonal positive and the tool's own verdict becomes:
+
+```
+  flat max    16  (bridge)
+  tonal min   16  (owl_kent)
+  gap          0  — the classes OVERLAP
+  across the sweep: the classes separate at NO of the rungs every artwork reaches
+```
+
+The plan's §5a left *"whether photographs may serve as positives for a
+flat/gradient boundary"* open as a question for Kent. **He ruled the same day,
+with this number in front of him: they count.** The reason it is not a free
+label is the one above — stage 0's photo gate already fails on a real
+photograph (`owl_kent` 0.1107 against `UCM_PHOTO_MIN` 0.28), so a photograph
+falls THROUGH to the flat/gradient gate and that is the gate which has to
+separate it.
+
+**Consequences, and they are the operative output of this whole document:**
+`owl_kent` is now enrolled in `color_diversity`'s corpus, so the tool prints
+**gap 0** by default; **the +4 gap is retired and must not be quoted**; and PR
+6a needs a boundary that clears a real photograph, or both gates replaced
+together.
+
+Two honest limits on that. `owl_kent.jpg` is a 554 px re-save (it carries no
+EXIF for the same reason), and a downscaled re-encode is not a
+full-resolution photograph, so this is a caution rather than a refutation.
+And it is one positive: n=2 tonal rows still fails the spec's own four-row
+floor, which the tool says itself.
+
+Worth noting either way: **`color_diversity`'s corpus enrols the SYNTHETIC
+owl (`photo/photo_owl_pale.png`, excluded from the margin as gate 2 requires)
+and not the real one**, which is committed two directories away and is the
+artwork this repo cites whenever it needs a real photograph.
+
+One instrument note, since §9b is about exactly this: `sweep()` reads with
+`cv2.IMREAD_COLOR`, which drops alpha, while its own `foreground()` honours
+alpha through `prep`. For the four alpha fixtures the two entry points
+therefore disagree — `drone_render` reads 20 through the tool and 25 when its
+alpha survives. Every number quoted here is the tool's own (no alpha), which
+is also what the 08-15 table measured; the disagreement is flagged rather than
+fixed, because changing it would move the numbers PR 6a will be sited on.
+
+*(measured 2026-09-11 — `tools/color_diversity.py --foreground bbox`, plus
+`--art testdata/photo/owl_kent.jpg --label tonal --provenance real`)*
 
 ### 9b. A defect in this document's own instrument, found by its own output
 

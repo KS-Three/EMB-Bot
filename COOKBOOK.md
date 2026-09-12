@@ -476,6 +476,22 @@ hand-rolling it in JS.
   `engine` is the pixels stage 1 digitizes. They disagree by an order of
   magnitude on a JPEG, so a number from this tool always names its mode).
 
+  And, same day, `digitizer/tools/stage0_signal_origin.py` — the one that
+  answers WHERE a stage-0 verdict came from rather than what it was: the share
+  of `unique_color_mass` contributed by the background interior, the ink
+  interior and the anti-aliased band; which k-means centres landed in each and
+  how far apart they are in CIEDE2000; the spread of the verdict across seeds
+  (`classify`'s own confidence is one draw, so it cannot show this); and
+  `--ablations` / `--sweep` for the one-variable arms and the export-resolution
+  sweep. It is what showed `logo_script_tires.png`'s photo-lane misroute to be
+  97% the white ground's ±1 grey-level grain and not the lettering at all
+  (`docs/stage0-tires-photo-scene-2026-09-11.md`). **Hand it a file, not an
+  array you rebuilt** — its own arms had to learn that: four real fixtures
+  carry alpha, `_fg_mask` calls alpha ≤ 127 background, and a three-channel
+  rebuild silently promotes every transparent pixel to foreground
+  (`enthusiast_logo` read `flat` through the file and `gradient` through the
+  same pixels without alpha).
+
   Three more added 2026-09-08 for the quality review and the plans it opened
   (`docs/quality-review-2026-09-08.md`): `digitizer/tools/sewn_tiers.py` (the
   tier each shape actually SEWS, read off the emitted plan's run kinds, flag

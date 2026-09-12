@@ -101,6 +101,19 @@ CORPUS: dict[str, tuple[str, str, str]] = {
     "gaulke":      ("photo/logo_gaulke_roofing.png",       "flat",  "real"),
     "golden_tee":  ("photo/logo_golden_tee.jpg",           "flat",  "real"),
     "screenshot":  ("photo/screenshot_phone_ui_golke.jpg", "flat",  "real"),
+    # A REAL PHOTOGRAPH, enrolled as a real tonal positive — Kent's ruling,
+    # 2026-09-11. It counts because stage 0's photo gate already fails on it:
+    # `owl_kent.jpg` reads `unique_color_mass` 0.1107 against `UCM_PHOTO_MIN`
+    # 0.28, so a real photograph falls THROUGH to the flat/gradient gate and
+    # that is the gate which has to separate it. Enrolling it is not free and
+    # is not meant to be: it takes the margin from flat max 16 / tonal min 20
+    # (+4) to 16 against its own 16 — gap 0, separating at no rung of the
+    # sweep. That is the honest state of the signal under his ruling, and the
+    # number PR 6a has to clear. See docs/stage0-tires-photo-scene-2026-09-11
+    # §9a-bis. Note it is a 554 px re-save (no EXIF, same reason), so its
+    # diversity may be deflated by the re-encode — a caution on the number,
+    # not on the labelling.
+    "owl_kent":    ("photo/owl_kent.jpg",                  "tonal", "real"),
     # Real tonal artwork. `drone_render` is the spec's one positive;
     # `logo_drone_thermal_badge` is byte-identical to it (thin_strokes'
     # `corpus_cases` records the same) and is not enrolled twice.
@@ -279,13 +292,22 @@ def report(results: list[dict], mode: str = "engine") -> int:
                   f"({rungs_common})")
     print()
     if gap is not None and gap <= 0:
-        print(f"**The classes do not order under `foreground = {mode}`.** They DO "
-              f"under `bbox`, the definition that reproduces the 08-15 table "
-              f"(bridge 16-17 against its 17, drone 19-20 against its 19) — so this "
-              f"is a fact about which pixels are counted, not about the artwork: "
-              f"excluding the background removes the flat ground that dominates the "
-              f"90% and leaves a JPEG's compression noise to be counted on its own. "
-              f"Run both before quoting either.\n")
+        # This used to end "They DO under `bbox`" unconditionally, which was
+        # true only while `bbox` ordered them — and on 2026-09-11, when Kent
+        # ruled a real photograph counts as a tonal positive, `bbox` stopped
+        # doing so. The sentence then fired ON bbox and contradicted the line
+        # above it. Say what THIS run measured and name the other definition
+        # as something to check, never as something that works.
+        other = "engine" if mode == "bbox" else "bbox"
+        print(f"**The classes do not order under `foreground = {mode}`.** Try "
+              f"`--foreground {other}` before concluding anything about the "
+              f"signal — the two count different pixels and disagree by an order "
+              f"of magnitude on a compressed file (excluding the background "
+              f"removes the flat ground that dominates the 90% and leaves a "
+              f"JPEG's compression noise to be counted on its own), and `bbox` "
+              f"is the definition that reproduces the 08-15 table (bridge 16-17 "
+              f"against its 17, drone 19-20 against its 19). Neither is evidence "
+              f"about the other's ordering; run both and quote the mode.\n")
     if len(tonal) < MIN_TONAL:
         print(f"**NOT SITABLE — {len(tonal)} real tonal artwork(s), the spec asks for "
               f"{MIN_TONAL}.** Gate 2: no stage-0 recalibration without real tonal "
