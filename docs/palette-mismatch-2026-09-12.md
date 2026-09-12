@@ -7,6 +7,14 @@ test). Python 3.12.3, `digitizer/.venv/bin/python`.
 **Read-only session.** Nothing in `digitizer_core/`, `digitizer/tools/` or
 `app/` was edited. The fix in §6 is a proposal, not a change.
 
+> **STATUS 2026-09-12, added after the fact: §6 IS BUILT.** Kent ruled the
+> same day, and it shipped on this branch as `cfg.layer_palette_from_regions`
+> — `stage3_segment.layer_palette_threads`, DEFAULT OFF, plus the phantom
+> column §4 asks for on `tools/palette_mismatch.py`. **The measurement above
+> still stands as written** (every number taken on tree `ee41697` with the
+> engine unmodified), but §6 is no longer open work. Read it as the rationale
+> for what is now in the tree, not as a proposal waiting for someone.
+
 ## 0. The short version
 
 | claim in MASTER_SCOPE defect 30 (measured 2026-09-07) | today |

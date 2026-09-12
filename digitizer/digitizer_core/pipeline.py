@@ -55,6 +55,7 @@ from .stage3_segment import (
     ClassicalSegmenter,
     Segmenter,
     compact_layers,
+    layer_palette_threads,
     merge_duplicate_cone_layers,
     resolve_small_regions,
 )
@@ -1185,19 +1186,41 @@ def finish_generation(gen: Generation, cfg: PipelineConfig | None = None) -> Pip
         return out
 
     chart = chart_for(cfg)
-    palette = [_cone(chart, t) for t in thread_indices]
+    # `thread_indices` is stage 2's memory of what each layer WAS. With
+    # `cfg.layer_palette_from_regions` ON each layer's cone is elected from
+    # its own regions instead, which is the only way `palette[i]` can be
+    # true about layer i after a pass moves a region's thread without
+    # moving the region — see `stage3_segment.layer_palette_threads`.
+    # OFF is stage 2's list, byte for byte, and the election never runs.
+    palette_threads = (
+        layer_palette_threads(regions, thread_indices, shape_overrides)
+        if cfg.layer_palette_from_regions else thread_indices
+    )
+    palette = [_cone(chart, t) for t in palette_threads]
 
     # The palette is per LAYER; a region's thread is per REGION, and
     # `revalidate_threads` above can move one without the other. Since
     # 2026-08-31 `rehome_resnapped_regions` moves the region to the layer
-    # DECLARING its new cone, so the surviving population here is the
-    # re-snap whose target no layer declares (it stays put, its layer's
-    # palette entry names a cone it no longer carries — drone_render's L1
-    # carries re-snapped t0/t17 in t16's layer, live proof) plus whatever a
-    # future mechanism invents. The operator loads a cone that sews nothing
-    # while the thread that IS sewn is missing from the list; only this
-    # human-facing color list is wrong, which is exactly why it could stay
-    # invisible. Measured on the pro corpus, 2026-08-14: 5 of 23 designs.
+    # DECLARING its new cone — but it keys on the re-snap stamp alone, and
+    # `enforce_color_cap` both runs AFTER it and leaves a different stamp
+    # (`color_cap_merged_from`), so a capped region is never rehomed. Since
+    # the colour bundle flipped on 2026-09-10 the cap is the producer of
+    # EVERY diverged region on the corpus: 24 shapes on 3 of 26 fixtures at
+    # `max_colors=12`, 76 on two real-customer fixtures at the Studio's
+    # shipped 6, and not one of them a bare re-snap
+    # (`docs/palette-mismatch-2026-09-12.md` §1, re-measured 2026-09-12;
+    # the earlier reading here — "the re-snap whose target no layer
+    # declares", "drone_render's L1 … live proof" — named a population that
+    # no longer exists, and `repro_gradient_white_icon` now diverges on
+    # nothing at all).
+    #
+    # THE OPERATOR IS NOT AFFECTED, and the previous sentence here said he
+    # was. He threads from `plan.palette`, which is per BLOCK and checked
+    # consistent on 26 of 26 fixtures; what is wrong is the REVIEW SCREEN's
+    # per-layer list, the thing a user reorders and recolours by. It stays
+    # harmless only because every customer-facing cone list reads
+    # `stats.blocks` or `design.colors` and `review.palette` has exactly two
+    # readers, neither positional — one `.length` ends that.
     #
     # An explicit `layer` override is exempt, and only that: putting a shape
     # into another thread's layer is precisely what that override MEANS (see

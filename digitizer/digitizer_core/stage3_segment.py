@@ -620,3 +620,73 @@ def compact_layers(regions, thread_indices: list[int]) -> tuple[list[int], list[
     for r in regions:
         set_layer(r, remap[get_layer(r)])
     return [thread_indices[i] for i in used], warnings
+
+
+def layer_palette_threads(regions, thread_indices: list[int],
+                          shape_overrides: dict | None = None) -> list[int]:
+    """The cone each layer actually carries -> a thread index per layer.
+
+    `thread_indices` is stage 2's memory of what a layer WAS, and
+    `compact_layers` above only ever DROPS a slot — it never re-reads a
+    surviving region's thread. Three passes move a region's thread without
+    moving the region (`revalidate_threads`, `enforce_color_cap`, and any
+    future one) and `rehome_resnapped_regions` repairs only the first: it
+    keys on the re-snap stamp, and the colour cap both runs after it and
+    leaves a different stamp. So `palette[i]` answers "what colour did
+    stage 2 call layer i", not "what cone do the shapes in layer i sew" —
+    defect 30, measured in `docs/palette-mismatch-2026-09-12.md`.
+
+    Elect a representative from the layer's own regions instead:
+
+      * the largest STITCHED region in the layer wins; a layer that sews
+        nothing falls back to its largest region, stitched or not;
+      * a shape carrying an explicit `layer` override is NOT eligible — the
+        user put it there, it does not get to rename the layer (the same
+        exemption `PALETTE_THREAD_MISMATCH` already makes, and the same
+        reason `apply_layer_overrides` moves sew position and never the
+        cone);
+      * a layer with no eligible region keeps `thread_indices[i]`, which is
+        today's answer, so nothing regresses.
+
+    Tie-break `(stitched, area_mm2, -thread_index)`, largest first and the
+    lowest chart index on a tie — the earliest-wins convention
+    `rehome_resnapped_regions` and `merge_duplicate_cone_layers` both use.
+
+    **The invariant this buys is `palette[i]["number"] in {r.thread_number
+    for r in layer i}` — never `palette ⊆ block cones`.** A blend/tonal
+    layer keeps its regions' base cone while the blocks it produces are
+    `shade_thread_index` shades, so the cone it names is legitimately never
+    loaded (`region_blobs.png`); and a layer whose every region is unstitched
+    (`SHAPES_LEFT_UNSEWN`, the enclosed-background default) is a real review
+    row that must keep a real colour. This makes the list TRUE about its
+    layers; it does not delete rows.
+
+    Read-only on `regions` — unlike every other pass in this file, it moves
+    nothing. Call it last, after `apply_layer_overrides`, and gate it on
+    `cfg.layer_palette_from_regions`.
+
+    **One consequence left deliberately unhandled**:
+    `merge_duplicate_cone_layers` above folds on the DECLARED cone, so after
+    this election two layers can carry the same DERIVED cone and still not
+    fold. Folding on the derived cone would change sew order and move
+    goldens — a separate decision, to be measured rather than slipped in
+    here (`docs/palette-mismatch-2026-09-12.md` §6, "Not in scope").
+    """
+    overrides = shape_overrides or {}
+    best: dict[int, tuple[tuple[bool, float, int], int]] = {}
+    for r in regions:
+        layer = r.meta.get("layer")
+        if layer is None or not 0 <= layer < len(thread_indices):
+            # `apply_layer_overrides` can park a shape on a layer index past
+            # the end of the list; it is not a palette row, so it elects
+            # nothing. Same guard `PALETTE_THREAD_MISMATCH` makes.
+            continue
+        if (overrides.get(r.shape_id) or {}).get("layer") is not None:
+            continue
+        key = (bool(r.meta.get("stitched", True)),
+               float(r.area_mm2 or 0.0),
+               -int(r.thread_index))
+        if layer not in best or key > best[layer][0]:
+            best[layer] = (key, int(r.thread_index))
+    return [best[i][1] if i in best else t
+            for i, t in enumerate(thread_indices)]

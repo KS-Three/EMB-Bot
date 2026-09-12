@@ -1348,6 +1348,32 @@ class PipelineConfig:
     # rather than dead-by-default.
     # tests/test_duplicate_cone_layers.py pins the default and both paths.
     merge_duplicate_cones: bool = True
+    # The review screen's per-layer cone list, derived from the regions
+    # instead of from stage 2's memory (defect 30 — the third layer-repair
+    # flag, beside `rehome_resnapped` and `merge_duplicate_cones` above).
+    # `PipelineResult.palette[i]` is `thread_indices[i]`, i.e. what stage 2
+    # CALLED layer i; three passes move a region's thread without moving the
+    # region and the rehome repairs only one of them, so the list can name a
+    # cone its layer does not sew. ON elects each layer's cone from its own
+    # regions (`stage3_segment.layer_palette_threads`), which pins
+    # `palette[i]["number"] in {r.thread_number for r in layer i}`.
+    #
+    # REVIEW-ONLY, and that is checked rather than asserted: `result.palette`
+    # feeds exactly one consumer, `_review_payload["palette"]`
+    # (`digitizer_service/app.py:587`). `plan.palette`, `design.colors`,
+    # `thread_m_by_color`, every export and every preflight number are built
+    # from `plan.blocks` and cannot move; `reviewFromJob` keeps only
+    # `brandId` and per-shape fields, so no `.embproj` migration.
+    #
+    # Default OFF: False is the pre-flip engine byte for byte, proved by
+    # execution rather than by output comparison
+    # (`tests/test_layer_palette.py::test_off_the_election_never_runs`).
+    # Flip after one corpus pass, the same shape as the colour bundle. No
+    # ROADMAP gate applies — gate 1 is physical constants (nothing here
+    # touches cloth) and gate 3 is default-OFF tiers; this is a label list.
+    # Measured population and the whole consumer inventory:
+    # `docs/palette-mismatch-2026-09-12.md`.
+    layer_palette_from_regions: bool = False
     # Design-silhouette edge cap (2026-09-01, the sew-out's OTHER edge
     # finding). `borders_last` above fixed the ORDER the design's borders
     # sew in; this is about the edge that has no border at all. On Kent's
