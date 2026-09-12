@@ -113,6 +113,24 @@ Moved verbatim 2026-08-28 — no section was rewritten in the move.
   numbers — calls the same function.
   *(measured 2026-09-12 — PR #464; `tests/test_edge_cap.py` pins the cost)*
 
+- **A dense design pair is protected by the FLIP ELECTION, not by the
+  registration search — so never consume one flip's `Reg` on its own.**
+  `register_pair` registers both y-flip hypotheses and returns the higher IoU.
+  Re-run over all 23 designs and both flips (228 arms, `tools/pro_parity/
+  regsweep.py`), the pre-#463 search picks a materially different alignment on
+  **35** arms, **25 of them at fill ratio ≥ 0.30** and up to **32.37 mm** —
+  the density band `docs/registration-plateau-2026-09-11.md` called exact.
+  Every one is the losing flip, so **only 2 of the 114 caller-visible
+  alignments move at all**. The file's "bounded by sparsity" reading counted
+  one arm per drop where there are two, and sparsity is not the mechanism:
+  the error lands on the flip that loses. Sparsity matters only because near
+  zero the election stops being decided by geometry — `gaulke_roofing_hat`
+  minus block 0 elected 0.0041 over 0.0036, noise, and is the single arm that
+  reached a caller. **That case already warns** (`REG_IOU_FLOOR` 0.05; it
+  scored 0.0068), which is why nothing further is owed here — but a future
+  caller that takes one flip without electing has neither protection.
+  *(measured 2026-09-12 — PR #467; `tests/test_regsweep.py`, 6)*
+
 - **Ink/Stitch is GPL-3.0 — concept-level clean-room reimplementation only.**
   No literal copying and no near-verbatim translation, however convenient.
   The one exception is `pystitch`, its MIT-licensed pyembroidery fork, which is
