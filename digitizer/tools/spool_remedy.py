@@ -176,9 +176,26 @@ def masks(fixture: str, spool: str, testdata) -> None:
     Whether that gap is what is BLOCKING a given fixture is a measurement,
     not a story — run it before saying so. Measured 2026-09-07 on the three
     fixtures that still block under excess scoring, it explains exactly one.
+
+    **This is now a REPRODUCTION, not a description of the shipped engine.**
+    `cfg.resnap_mask_matches_grader` closed the gap and shipped ON 2026-09-10,
+    so stage 4 already applies the two operations below. The config this
+    builds is therefore pinned to `conftest.PRE_FLIP` — run it to see the
+    defect the flag exists for, not to learn what the engine does today. The
+    numbers it prints on `logo_gaulke_roofing` re-measured clean 2026-09-12:
+    247 px raw against 54 grader, `3971` at 11.35 there and 63.56 here.
     """
     art = testdata / fixture
-    cfg = PipelineConfig(target_width_mm=80.0, garment_id="left_chest")
+    # PIN THE PRE-FLIP ENGINE. `cfg.resnap_mask_matches_grader` shipped ON
+    # 2026-09-10, so on today's defaults stage 4 ALREADY applies the grader's
+    # mask, and the "stage 4 raw" arm below would be comparing a hypothetical
+    # raw footprint against regions the FIXED engine produced — a diagnosis of
+    # a defect that is no longer in the engine, printed as though it were.
+    # The whole colour bundle is pinned off, not just this flag, because the
+    # other three move the regions and the cone list this function reads.
+    from tests.conftest import PRE_FLIP
+    cfg = PipelineConfig(target_width_mm=80.0, garment_id="left_chest",
+                         **PRE_FLIP)
     result, plan = digitize(art, cfg)
     p = pf.prep(art, cfg)
     chart = chart_for(cfg)
@@ -225,7 +242,7 @@ def masks(fixture: str, spool: str, testdata) -> None:
           f"near-white in the raw set)")
 
     verdicts = {}
-    for label, sel in (("stage 4 today", raw), ("grader mask ", grader)):
+    for label, sel in (("stage 4 raw  ", raw), ("grader mask ", grader)):
         ps = scores(sel)
         assigned = float(ps[reg.thread_index])
         best_i = int(loaded[np.argmin(ps[loaded])])
@@ -244,7 +261,7 @@ def masks(fixture: str, spool: str, testdata) -> None:
               f"gain {gain:5.1f} | floor {'ok ' if n >= THREAD_REVALIDATE_MIN_PX else 'FAIL'} "
               f"| would re-snap: {'YES' if acts else 'no'}")
 
-    a_raw, n_raw, g_raw = verdicts["stage 4 today"]
+    a_raw, n_raw, g_raw = verdicts["stage 4 raw"]
     a_gr, n_gr, g_gr = verdicts["grader mask"]
     if a_raw != a_gr or abs(g_raw - g_gr) >= THREAD_REVALIDATE_MIN_IMPROVEMENT_DE00:
         print(f"  -> MASK IS IMPLICATED: the improvement over the best loaded "

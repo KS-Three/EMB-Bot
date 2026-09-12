@@ -1,5 +1,9 @@
 """`cfg.resnap_mask_matches_grader` — the re-snap and the grader score the same
-pixels. DEFAULT OFF.
+pixels. DEFAULT ON since 2026-09-10 (Kent's colour-bundle ruling; this line
+said OFF until 2026-09-12, which `test_flag_defaults_on` had already
+contradicted). Every arm below still prices the flag ALONE over the pre-flip
+engine — `conftest.PRE_FLIP` — because that is the engine the numbers in this
+docstring were measured on.
 
 `stage4_vectorize.revalidate_threads` and `preflight._region_color_errors`
 claim the same estimator and have it: both take the median of the per-pixel
@@ -82,6 +86,62 @@ def test_flag_defaults_on():
     assert PipelineConfig().resnap_mask_matches_grader is True
 
 
+class _CountingCv2:
+    """`stage4_vectorize`'s `cv2` global, with `erode` counted.
+
+    Swapped in with `monkeypatch.setattr(V, "cv2", ...)`, so it scopes to that
+    module alone — patching `cv2.erode` on the shared module would also count
+    preflight's and stage 1's erosions and prove nothing about this guard.
+    """
+
+    def __init__(self, real):
+        self._real = real
+        self.erodes = 0
+
+    def __getattr__(self, name):          # fillPoly, connectedComponents, ...
+        return getattr(self._real, name)
+
+    def erode(self, *a, **kw):
+        self.erodes += 1
+        return self._real.erode(*a, **kw)
+
+
+@pytest.mark.parametrize("fixture", [GAULKE, "logo_alpha.png"])
+def test_off_the_masking_code_never_executes(fixture, monkeypatch):
+    """The off-path claim as an EXECUTION fact, not an output comparison.
+
+    Every other test here prices what the flag DOES. This one prices what it
+    does not do, and it is the assertion the "byte-identical when off"
+    convention actually rests on: two runs that happen to produce the same
+    stitches are weak evidence (a fixture can simply have no shape the mask
+    would move), while zero executions of the new code is proof, on any
+    fixture, that the off path runs the pre-flag instruction stream.
+
+    It works because `cv2.erode` is called in exactly ONE place in
+    `stage4_vectorize` — inside `if grader_mask:` — so the count IS the
+    guard. If someone later adds an unguarded erosion to that module this
+    test fails, which is the right answer: the off path would no longer be
+    the engine every `_run(fixture, False)` baseline in this file assumes.
+    """
+    import digitizer_core.stage4_vectorize as V
+
+    seen = {}
+    for on in (False, True):
+        shim = _CountingCv2(cv2)
+        monkeypatch.setattr(V, "cv2", shim)
+        digitize(TESTDATA / fixture,
+                 _cfg(**{**PRE_FLIP, "resnap_mask_matches_grader": on}))
+        monkeypatch.undo()
+        seen[on] = shim.erodes
+
+    assert seen[False] == 0, (
+        f"{fixture}: stage 4 eroded {seen[False]}x with the flag OFF — the "
+        "guard leaks, so 'off is the pre-flip engine' is no longer true")
+    assert seen[True] > 0, (
+        f"{fixture}: the flag is ON and stage 4 never eroded, so this test "
+        "is not actually watching the guarded call site")
+
+
 @pytest.mark.parametrize("fixture", [GAULKE, "logo_alpha.png"])
 def test_the_shipped_engine_is_the_four_flags_on(fixture):
     """No keyword at all against the four colour flags spelled out True, so a
@@ -132,6 +192,14 @@ def test_the_flagged_mask_really_matches_the_graders(fixture):
     footprint: 97.5% on alpha, 98.8% on gaulke. So `_region_color_errors`
     now rounds the same way, and this replica of it rounds too; the
     alignment touches preflight only, never `tag_enclosed_background`.
+
+    **Re-measured 2026-09-12: the residual is now ZERO on gaulke** —
+    553,014 / 553,014 px, exactly 100% IoU, not one pixel disagreeing. The
+    threshold below stays `> 0.999` rather than becoming equality on
+    purpose: 100% was measured on gaulke ONLY — `logo_alpha` was not
+    re-measured exactly, it merely passes the threshold — so equality is not
+    a proved property of every raster, and pinning a rasteriser tie-break
+    would make this test fail for a reason that is not what it watches.
     """
     _, _, result, _ = _run(fixture, False)
     p = pf.prep(TESTDATA / fixture, _cfg())

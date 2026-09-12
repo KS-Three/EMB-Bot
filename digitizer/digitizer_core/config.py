@@ -1700,14 +1700,27 @@ class PipelineConfig:
     # this flag alone, because the palette has collapsed and `1375` is no
     # longer loaded for the small-shape rule to offer.
     #
-    # "MATCHES" is a claim, so it carries its residual: it is not bit-for-bit.
-    # `_region_footprint` rounds mm->px and `_region_color_errors` truncates,
-    # so the two rasters differ by up to a pixel at a vertex before either
-    # mask is applied — measured 2026-09-07, 80 px out of 557,046 on gaulke
-    # (99.99% IoU) and zero on `logo_alpha`. Aligning the rasteriser itself
-    # would touch `tag_enclosed_background`, which shares `_region_footprint`,
-    # so it is deliberately left alone; `tests/test_resnap_mask_matches_grader
-    # .py::test_the_flagged_mask_really_matches_the_graders` pins the gap.
+    # "MATCHES" is a claim, so it carries its residual — and as of 2026-09-12
+    # the residual is ZERO on the fixture it was named for. The gap used to be
+    # real: `_region_footprint` rounds mm->px and `_region_color_errors`
+    # TRUNCATED, so the two rasters differed by up to a pixel at a vertex
+    # before either mask was applied (measured 2026-09-07: 80 px out of
+    # 557,046 on gaulke, 99.99% IoU; zero on `logo_alpha`, where every vertex
+    # happened to sit on a pixel centre). `subpixel_edges` made the vertices
+    # fractional and blew that up to 98.8% / 97.5%, so preflight was changed
+    # to ROUND the same way on 2026-09-09 — see `_region_color_errors`' own
+    # `to_px`. Re-measured 2026-09-12 over every non-enclosed region on
+    # gaulke: **553,014 / 553,014 px, exactly 100% IoU, 0 px disagreeing.**
+    #
+    # Two corrections to what this comment used to say, both worth keeping so
+    # nobody re-derives them: the alignment did NOT have to touch
+    # `tag_enclosed_background` (that pass does not share `_region_footprint`
+    # — it carries its own inline `_mm_ring_to_px`, which already rounded), and
+    # it was done on preflight's side, not stage 4's, so `_region_footprint`
+    # is untouched. `tests/test_resnap_mask_matches_grader.py::
+    # test_the_flagged_mask_really_matches_the_graders` still asserts only
+    # `> 0.999` rather than equality: 100% is measured on gaulke, not proved
+    # for every fixture, and a rasteriser tie-break is not worth a brittle pin.
     #
     # DEFAULT ON since 2026-09-10 (Kent's ruling on the colour bundle), the
     # other half of the pair with `revalidate_small_shapes` above. False is
