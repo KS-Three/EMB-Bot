@@ -103,3 +103,19 @@ def test_the_generated_fixtures_are_labelled_synthetic(name):
 def test_the_customer_artwork_is_labelled_real():
     for name in ("becker", "tires", "bridge", "drone", "golden_tee"):
         assert CORPUS[name][2] == "real"
+
+
+def test_a_real_photograph_is_a_real_tonal_positive():
+    """Kent's ruling, 2026-09-11, and it has teeth: enrolling `owl_kent.jpg`
+    takes the margin from +4 to 0.
+
+    It counts because stage 0's PHOTO gate already fails on it — 0.1107
+    against `UCM_PHOTO_MIN` 0.28 — so a real photograph falls through to the
+    flat/gradient gate, and that is the gate this signal would replace. The
+    synthetic owl (`photo_owl_pale.png`) stays synthetic and stays out of the
+    margin; these are two different files and only one of them is a
+    photograph.
+    """
+    assert CORPUS["owl_kent"] == ("photo/owl_kent.jpg", "tonal", "real")
+    assert CORPUS["owl"][2] == "synthetic"
+    assert CORPUS["owl"][0] != CORPUS["owl_kent"][0]

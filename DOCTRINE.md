@@ -34,6 +34,19 @@ Moved verbatim 2026-08-28 — no section was rewritten in the move.
 
 ## Standing rulings — decided, do not re-litigate
 
+- **A real PHOTOGRAPH counts as a tonal positive for the flat/gradient
+  boundary.** Kent's ruling 2026-09-11, taken with the cost in front of him.
+  The reason it is not a free label: stage 0's PHOTO gate already fails on
+  real photographs — `owl_kent.jpg` reads `unique_color_mass` 0.1107 against
+  `UCM_PHOTO_MIN` 0.28 — so a photograph falls THROUGH to the flat/gradient
+  gate, and that is the gate which has to separate it. Enrolling it takes
+  `color_diversity`'s margin from *flat max 16 / tonal min 20 / gap +4* to
+  **16 against 16, gap 0, separating at no rung**. So **the +4 gap is retired
+  and must not be quoted**: PR 6a needs a boundary that clears a real
+  photograph, or both gates replaced together. `owl_kent` is enrolled in the
+  tool's corpus as of that ruling (`tools/color_diversity.py`,
+  `tests/test_color_diversity.py`). *(ruled 2026-09-11 —
+  `docs/stage0-tires-photo-scene-2026-09-11.md` §9a-bis)*
 - **A satin cross too long to sew is SPLIT, not routed to fill.** Kent's call
   2026-09-11 on quality review item 10, with both answers built and measured
   in front of him. `splitSatin` is the browser lettering engine's default;

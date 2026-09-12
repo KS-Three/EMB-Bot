@@ -399,8 +399,14 @@ results, one reassuring and one that lands on §8's open question:
   logos still read `gradient` after binarization, at 6–164× the gate. The
   candidate, on the same binarized twins, reads **1 or 2 everywhere**. The
   failure mode does not transfer.
-- **Photographs: the margin goes to ZERO.** This section's own question —
-  *"whether photographs may serve as positives"* — now has a number. Enrol
+- **Photographs: the margin goes to ZERO — and Kent has now ruled they
+  count.** This section's own open question is ANSWERED (2026-09-11, with the
+  number below in front of him): a real photograph is a tonal positive,
+  because stage 0's photo gate already fails on one (`owl_kent` 0.1107 against
+  a 0.28 gate) and it therefore lands in the flat/gradient gate. `owl_kent` is
+  enrolled in `color_diversity`'s corpus as of that ruling, so the tool now
+  prints gap 0 by default. **PR 6a needs a boundary that clears a real
+  photograph, or both gates replaced together; the +4 gap is retired.** Enrol
   `photo/owl_kent.jpg`, the repo's only real photograph, as a real tonal
   positive and `color_diversity`'s verdict flips from *flat max 16 / tonal min
   20 / gap +4* to **flat max 16 (`bridge`) / tonal min 16 (`owl_kent`) / gap

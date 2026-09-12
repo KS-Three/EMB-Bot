@@ -341,11 +341,19 @@ photograph — as a real tonal positive and the tool's own verdict becomes:
   across the sweep: the classes separate at NO of the rungs every artwork reaches
 ```
 
-The plan's §5a leaves *"whether photographs may serve as positives for a
-flat/gradient boundary"* open as a question for Kent. **This is the number
-that question is worth: if they count, the candidate does not order the
-classes on today's corpus either** — so the +4 gap must not be quoted as
-though photographs were in the tonal set.
+The plan's §5a left *"whether photographs may serve as positives for a
+flat/gradient boundary"* open as a question for Kent. **He ruled the same day,
+with this number in front of him: they count.** The reason it is not a free
+label is the one above — stage 0's photo gate already fails on a real
+photograph (`owl_kent` 0.1107 against `UCM_PHOTO_MIN` 0.28), so a photograph
+falls THROUGH to the flat/gradient gate and that is the gate which has to
+separate it.
+
+**Consequences, and they are the operative output of this whole document:**
+`owl_kent` is now enrolled in `color_diversity`'s corpus, so the tool prints
+**gap 0** by default; **the +4 gap is retired and must not be quoted**; and PR
+6a needs a boundary that clears a real photograph, or both gates replaced
+together.
 
 Two honest limits on that. `owl_kent.jpg` is a 554 px re-save (it carries no
 EXIF for the same reason), and a downscaled re-encode is not a
