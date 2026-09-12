@@ -353,15 +353,22 @@ def _corr_seeds(pc, oc, res=REG_RES, limit=REG_MAX, k=2, sep_mm=6.0):
     move one arm of the plateau fixture (0.494 -> 0.397, correctly — see
     there).
 
-    Measured against the pre-change code over 44 registrations of the real
-    corpus (each prepped pair as-prepped, plus one arm per colour block with
-    that block deleted from one side — the brief's "a whole element the other
-    file never sews"): no pair moved by more than 0.011 IoU, none by more
-    than 0.02 in either direction, and the chosen offset was identical in
-    41 of 44 — the three that moved (max 1.58 mm) sit on flat optima whose
-    IoU agrees to 4 dp. NOT ONE real pair collapsed the way the fixture does;
-    a real logo is dense enough that a few mm of seed error still overlaps
-    itself, so this defect needs sparse geometry to bite.
+    Measured against the pre-change code over the real corpus — each prepped
+    pair as-prepped, plus one arm per colour block with that block deleted
+    from one side (the brief's "a whole element the other file never sews").
+    Every pair AS PREPPED was already at the exhaustive optimum, so on the
+    corpus's own working range this changes nothing but the ~0.002 of border
+    inflation the wider frame removes. Under the drop-an-element stress it
+    changes one arm and changes it a lot: `gaulke_roofing_hat` minus our
+    block 0 went from `0.0036 @ (+2.00, -0.50)` to the true optimum
+    `0.0068 @ (-15.00, +4.75)` — 17.79 mm of wrong alignment on real thread.
+
+    That arm's fill ratio (solid area / bbox area of the thinner side) is
+    0.003. Sorted by it, the 45 arms at 0.222 and above all pick an IDENTICAL
+    alignment old and new; the corpus has nothing between 0.003 and 0.222.
+    So the defect is real on real geometry but lives only where what is left
+    is scraps — 0.99 m of thread against the pro's 13.02 m.
+    Full write-up: `docs/registration-plateau-2026-09-11.md`.
     """
     pad = int(limit / res) + 4
     A = np.pad(pc, pad).astype(np.float32)
