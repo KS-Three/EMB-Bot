@@ -218,14 +218,27 @@ cd digitizer && .venv/Scripts/python -m digitizer_service   # service on 127.0.0
 7. **Three green checks is NOT a green PR — the fourth is the slow one.** CI runs
    four jobs on a PR. `engine` and `studio` finish in well under a minute
    (p50 0.5 and 0.8) and `studio-e2e` in about three (p50 2.7).
-   **`digitizer` runs 10 to 42 minutes** — measured 2026-09-06 over the last
-   220 completed jobs, not estimated. This line said "12–18" until then, which
-   was TRUE WHEN WRITTEN (medians 15.0–15.2 on 2026-08-27/28) and now holds
-   for **half** of them: the daily median walked 15.0 → 16.5 → 17.6 → 18.7 →
-   20.7 and then jumped to **29.6 on 2026-09-06**, max 41.8. Budget half an
-   hour, and read a 35-minute job as normal rather than stuck. (A fifth job,
+   **`digitizer` runs 33 to 55 minutes** — re-measured 2026-09-12 over the
+   last 36 successful jobs: min **32.7**, p50 **49.7**, p90 54.6, max 55.4,
+   with daily medians 48.6 (09-11) and 50.6 (09-12). **Budget an hour, and
+   read a 50-minute job as normal rather than stuck.** (A fifth job,
    `art-fidelity-baseline`, is push-to-`main`-only and `continue-on-error` — it
-   never appears on a PR and gates nothing.) So a PR shows 3/4 green long
+   never appears on a PR and gates nothing.)
+
+   This line keeps going stale in one direction, so read the trend rather
+   than the number: "12–18" (medians 15.0–15.2, 2026-08-27/28) → "10 to 42"
+   (220 jobs, 2026-09-06, after the daily median walked 15.0 → 16.5 → 17.6 →
+   18.7 → 20.7 → **29.6**, max 41.8) → this. Every revision was TRUE WHEN
+   WRITTEN. **The 09-06 text is what makes this worth re-measuring rather
+   than nudging:** it said budget half an hour and read 35 minutes as normal,
+   and half an hour is now BELOW the fastest job on record — so a session
+   trusting it reads a perfectly healthy run as hung and goes looking for a
+   failure that is not there. That nearly happened on PR #469, whose
+   `digitizer` job took **53m 59s** and went green. If you are reading this
+   after 2026-09-12, assume it has drifted again and spend one `curl` on
+   `/actions/runs/<id>/jobs` before concluding anything about a long job.
+
+   So a PR shows 3/4 green long
    before it is green, and merging there is how `main` has gone red — run 994
    (PR #249) and run 1006 (PR #253) both merged to a failing conclusion, and
    `preview.js` has arrived unparseable on `main` **four** times, each one caught
