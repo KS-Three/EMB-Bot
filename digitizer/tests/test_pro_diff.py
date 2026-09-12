@@ -21,6 +21,7 @@ sys.path.insert(0, str(HERE.parent / "tools" / "pro_parity"))
 
 import proloop_synth as synth                        # noqa: E402
 import pairframe                                     # noqa: E402
+import overlay                                       # noqa: E402
 import diff as pdiff                                 # noqa: E402
 from test_pro_overlay import becker_pair             # noqa: E402,F401  (session fixture)
 
@@ -165,3 +166,70 @@ def test_the_pros_largest_region_reads_satin(becker_pair):
     rows, _residual = pdiff.region_rows(becker_pair, reg)
     biggest = max(rows, key=lambda r: r["area_mm2"])
     assert biggest["pro"]["tier"] == "satin", biggest["pro"]
+
+
+def test_shape_tags_split_by_ink(tmp_path):
+    """A pro-only bar over ink -> dropped; a pro-only bar over bare art ->
+    redesign; an ours-only bar over bare art -> background.
+
+    `anchor`, identical in both files at a distant y, is NOT part of the
+    brief's fixture -- added because the brief's bare pro/ours geometry
+    (measured) sends `pairframe.register_pair` to `dy=-4.0, iou=0.0`: pro's
+    own extra bars (max y 17) and ours' single extra bar (max y 25) pull the
+    two files' bbox centroids 4 mm apart, `register_pair`'s crude
+    centroid-then-local-hillclimb search only explores a small neighbourhood
+    of that centroid guess (`scorecard.register`, step 1.0mm down to 0.25mm,
+    no restart), and the true zero-shift optimum is far enough outside that
+    neighbourhood (probed: IOU is a flat 0 from -2 to +2mm of extra shift,
+    first non-zero at +3) that the search never finds it -- so the shared
+    `common` pass itself never lands where it should and every tag comes out
+    on the wrong side. `anchor`, present verbatim in both files, dominates
+    both bounding boxes identically and pulls both centroids to the SAME
+    point, which is what lets the real `register_pair` converge on the true
+    `dy=0.0` here (measured: `iou=0.45`) without touching pairframe.py's own,
+    separately-tested, registration search."""
+    common = synth.satin_pass(0, 0, 20, 2.0)
+    anchor = synth.satin_pass(0, 100, 5, 2.0)             # registration ballast -- see docstring
+    pro = [((0, 0, 0), [common,
+                        synth.satin_pass(0, 8, 10, 2.0),      # over ink: we dropped it
+                        synth.satin_pass(0, 16, 10, 2.0),     # no ink: the pro added it
+                        anchor])]
+    ours = [((0, 0, 0), [common,
+                         synth.satin_pass(0, 24, 10, 2.0),    # no ink: we sewed ground
+                         anchor])]
+    regions = [("A", "satin", box(-0.5, -1.5, 20.5, 1.5))]
+    ink = [(0, -1, 20, 1), (0, 7, 10, 9)]
+    d = synth.make_prep_dir(tmp_path, "tags", pro, ours, regions, ink, 20.0)
+    pair = pairframe.load_pair(d)
+    reg = pairframe.register_pair(pair.pro_path, pair.ours_path)
+    r = overlay.render_pair(pair, reg)
+    rows = pdiff.shape_rows(pair, reg, r)
+    tags = sorted((x["tag"], round(x["centre_mm"][1])) for x in rows if not x.get("dust"))
+    assert tags == [("background", 24), ("dropped", 8), ("redesign", 16)]
+    for x in rows:
+        if not x.get("dust"):
+            assert 15 < x["area_mm2"] < 30 and x["nearest_region"] == "A" and x["crop"].startswith("--crop ")
+
+
+def test_shape_rows_finds_a_real_redesign_on_becker(becker_pair):
+    """Real-data check (no synthetic geometry): the pro fills BECKER's
+    letter bodies solid where we sew them as a hollow satin outline, so
+    `shape_rows` must surface at least one substantial `redesign` row --
+    not just dust -- on the actual Becker pair. R2's branch 2 (no
+    `art_meta.json` sidecar on a real prep dir) is what maps the art here;
+    see the report for the measured ink-bbox-vs-regions-bbox residual and
+    the full tag totals."""
+    reg = pairframe.register_pair(becker_pair.pro_path, becker_pair.ours_path)
+    r = overlay.render_pair(becker_pair, reg)
+    rows = pdiff.shape_rows(becker_pair, reg, r)
+    totals: dict = {}
+    for x in rows:
+        t = totals.setdefault(x["tag"], {"count": 0, "area_mm2": 0.0})
+        t["count"] += x.get("count", 1)
+        t["area_mm2"] += x["area_mm2"]
+    print("Becker shape_rows tag totals:", totals)
+    redesign = [x for x in rows if x["tag"] == "redesign" and not x.get("dust")]
+    assert redesign, rows
+    biggest = max(redesign, key=lambda x: x["area_mm2"])
+    print("Becker largest redesign row:", biggest)
+    assert biggest["area_mm2"] > 20.0, biggest

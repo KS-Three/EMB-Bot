@@ -24,8 +24,10 @@ import math
 import sys
 from pathlib import Path
 
+import cv2
 import numpy as np
 import shapely
+from PIL import Image
 from shapely.affinity import affine_transform
 from shapely.geometry import Point, Polygon
 import shapely.wkt
@@ -42,6 +44,7 @@ from design_direction import doubled_mean                               # noqa: 
 from junction_blobs import _Runs, coverage_in                           # noqa: E402
 from row_pitch_union import union_pitch                                 # noqa: E402
 from satin_columns import measure as satin_measure, passes_from_file    # noqa: E402
+from digitizer_core.adapter import UNITS_PER_MM                         # noqa: E402
 from digitizer_core.preflight import _coverage_map                      # noqa: E402
 from digitizer_core.stitches import StitchRun                           # noqa: E402
 
@@ -314,3 +317,177 @@ def region_rows(pair: pf.Pair, reg: pf.Reg):
     residual = {"pro_passes": len(pro_res), "pro_mm": round(length_mm(pro_res), 1),
                 "ours_passes": len(our_res), "ours_mm": round(length_mm(our_res), 1)}
     return rows, residual
+
+
+# --------------------------------------------------------------- shape rows
+def _art_ink(pair: pf.Pair):
+    """The art's ink mask (`real_art.prepare`'s own rule: alpha > 16 where
+    the image carries alpha, else RGB sum < 720) and its tight pixel bbox,
+    (x0, y0, x1, y1) exclusive on the high end."""
+    im = Image.open(pair.art).convert("RGBA")
+    a = np.asarray(im)
+    alpha = a[..., 3]
+    if alpha.min() < 255:
+        ink = alpha > 16
+    else:
+        ink = a[..., :3].astype(np.int32).sum(axis=2) < 720
+    ys, xs = np.nonzero(ink)
+    if not len(xs):
+        return ink, (0, 0, ink.shape[1], ink.shape[0])
+    return ink, (int(xs.min()), int(ys.min()), int(xs.max()) + 1, int(ys.max()) + 1)
+
+
+def _art_meta_scale_origin(pair: pf.Pair):
+    """`(px_per_mm, origin_mm)` from a synthetic fixture's `art_meta.json`
+    sidecar, or `None` when there is no such file or it does not carry
+    those two keys.
+
+    R2 (controller ruling): `proloop_synth.make_prep_dir` writes this exact
+    sidecar, in OURS mm (the frame `art_ink_boxes_mm` was drawn in), so
+    reading it is exact -- no bbox-matching approximation needed. A REAL
+    prep dir has no sidecar at all (`prep_all.run_ours` never writes one);
+    `prep_all.main()`'s own corpus-reconstruction pipeline writes a
+    DIFFERENTLY SHAPED `art_meta.json` (scale/palette/per-block
+    measurements, no `px_per_mm`/`origin_mm`) for a different purpose, so
+    checking for the two keys -- not just the file's existence -- is what
+    keeps this branch from misreading that file."""
+    p = pair.art.parent / "art_meta.json"
+    if not p.exists():
+        return None
+    try:
+        meta = json.loads(p.read_text())
+    except (json.JSONDecodeError, OSError):
+        return None
+    if "px_per_mm" not in meta or "origin_mm" not in meta:
+        return None
+    ox, oy = meta["origin_mm"]
+    return float(meta["px_per_mm"]), (float(ox), float(oy))
+
+
+def _our_regions_bbox_mm(pair: pf.Pair):
+    """Union bbox of our OWN region polygons, in OURS mm (pre-`reg`) --
+    `None` when there are no regions to bound."""
+    if not pair.regions:
+        return None
+    bounds = [shapely.wkt.loads(r["wkt"]).bounds for r in pair.regions]
+    return (min(b[0] for b in bounds), min(b[1] for b in bounds),
+            max(b[2] for b in bounds), max(b[3] for b in bounds))
+
+
+def _art_to_ours_affine(pair: pf.Pair, ink_bbox_px) -> np.ndarray:
+    """Art-pixel -> OURS-mm 2x3 affine.
+
+    R2 (controller ruling): the brief's original approach stretched the
+    art's ink bbox onto OUR STITCH EXTENTS, per axis -- wrong whenever the
+    two differ, which is exactly when there is something to find (an
+    ours-only bar sewn outside the art grows our stitch extent without
+    moving the ink at all, so that mapping silently rescales the ink to
+    fit around our own defect). Mapped here instead:
+
+      1. A synthetic fixture's own `art_meta.json` (px_per_mm + origin_mm)
+         is exact -- used directly, no approximation.
+      2. A real prep dir has no such sidecar. One uniform scale (not
+         per-axis) is derived from OUR REGIONS' union bbox against the
+         ink's pixel bbox, centred on each other. Regions are themselves
+         derived from the artwork (`write_regions`'s `res.regions`), so
+         they track the ink even where we drop or add an element; our
+         stitch extents do not.
+    """
+    ix0, iy0, ix1, iy1 = ink_bbox_px
+    meta = _art_meta_scale_origin(pair)
+    if meta is not None:
+        ppm, (ox, oy) = meta
+        s = 1.0 / ppm
+        return np.array([[s, 0.0, ox], [0.0, s, oy]])
+    bbox = _our_regions_bbox_mm(pair)
+    if bbox is None:
+        raise ValueError(f"{pair.slug}: no art_meta.json sidecar and no regions to place the art by")
+    rx0, ry0, rx1, ry1 = bbox
+    icx, icy = (ix0 + ix1) / 2.0, (iy0 + iy1) / 2.0
+    rcx, rcy = (rx0 + rx1) / 2.0, (ry0 + ry1) / 2.0
+    s = (rx1 - rx0) / max(ix1 - ix0, 1)
+    return np.array([[s, 0.0, rcx - icx * s], [0.0, s, rcy - icy * s]])
+
+
+def _compose(*mats):
+    """2x3 affines, applied left to right, composed into one 2x3."""
+    M = np.eye(3)
+    for m in mats:
+        m3 = np.vstack([np.asarray(m, dtype=np.float64), [0, 0, 1]])
+        M = m3 @ M
+    return M[:2]
+
+
+def ink_mask_in_frame(pair: pf.Pair, reg: pf.Reg, frame: pf.Frame) -> np.ndarray:
+    """The art's ink, warped into the overlay `frame`: art px -> ours mm
+    (`_art_to_ours_affine`, R2) -> pro mm (`reg.matrix()`) -> frame px
+    (`frame.mm_to_px_affine()`), composed into one affine for a single
+    `cv2.warpAffine` (nearest, so the mask stays boolean)."""
+    ink, ink_bbox_px = _art_ink(pair)
+    art_to_ours = _art_to_ours_affine(pair, ink_bbox_px)
+    a, b, d, e, xoff, yoff = reg.matrix()
+    ours_to_pro = np.array([[a, b, xoff], [d, e, yoff]])
+    M = _compose(art_to_ours, ours_to_pro, frame.mm_to_px_affine())
+    W, H = frame.size
+    warped = cv2.warpAffine(ink.astype(np.uint8), M, (W, H), flags=cv2.INTER_NEAREST, borderValue=0)
+    return warped > 0
+
+
+def _components(mask: np.ndarray, frame: pf.Frame, dust_mm2: float):
+    """Connected components of `mask` (8-connectivity) in frame pixels,
+    split into `big` (each `{area_mm2, centre_mm, bbox_mm}`) and everything
+    under `dust_mm2` summed into `(dust_area_mm2, dust_count)`."""
+    n, _lab, stats, cents = cv2.connectedComponentsWithStats(mask.astype(np.uint8), connectivity=8)
+    px_area = 1.0 / (frame.ppm ** 2)
+    big, dust_area, dust_n = [], 0.0, 0
+    for k in range(1, n):
+        area = stats[k, cv2.CC_STAT_AREA] * px_area
+        if area < dust_mm2:
+            dust_area += area
+            dust_n += 1
+            continue
+        cx, cy = cents[k]
+        X = cx / frame.ppm + frame.x0_units / UNITS_PER_MM - frame.pad_mm
+        Y = cy / frame.ppm - frame.y1_units / UNITS_PER_MM - frame.pad_mm
+        x, y, w, h = (stats[k, cv2.CC_STAT_LEFT], stats[k, cv2.CC_STAT_TOP],
+                      stats[k, cv2.CC_STAT_WIDTH], stats[k, cv2.CC_STAT_HEIGHT])
+        bx0 = x / frame.ppm + frame.x0_units / UNITS_PER_MM - frame.pad_mm
+        by0 = y / frame.ppm - frame.y1_units / UNITS_PER_MM - frame.pad_mm
+        big.append({"area_mm2": round(area, 1), "centre_mm": [round(X, 1), round(Y, 1)],
+                    "bbox_mm": [round(bx0, 1), round(by0, 1),
+                                round(bx0 + w / frame.ppm, 1), round(by0 + h / frame.ppm, 1)]})
+    return big, dust_area, dust_n
+
+
+def shape_rows(pair: pf.Pair, reg: pf.Reg, r: dict, dust_mm2: float = 2.0) -> list:
+    """The shape half of the catalogue (Task 11): components of the
+    overlay's `pro_only`/`ours_only` masks, tagged by Kent's ruling --
+
+      pro_only & ink   -> dropped     (our defect: we left art unsewn)
+      pro_only & ~ink  -> redesign    (the pro added thread the art lacks)
+      ours_only & ~ink -> background  (our defect: we sewed ground)
+      ours_only & ink  -> redesign    (the pro left art unsewn, or merged it)
+
+    Each row is `{tag, area_mm2, centre_mm, nearest_region, crop}`;
+    components under `dust_mm2` are summed into one
+    `{tag, dust: True, area_mm2, count}` row per tag. Sorted biggest-first,
+    dust rows last."""
+    frame = r["frame"]
+    ink = ink_mask_in_frame(pair, reg, frame)
+    polys = region_polys(pair, reg)
+    buckets = [("dropped", r["pro_only"] & ink), ("redesign", r["pro_only"] & ~ink),
+               ("background", r["ours_only"] & ~ink), ("redesign", r["ours_only"] & ink)]
+    rows = []
+    for tag, mask in buckets:
+        big, dust_area, dust_n = _components(mask, frame, dust_mm2)
+        for c in big:
+            pt = Point(c["centre_mm"])
+            nearest = min(polys, key=lambda sp: sp[1].distance(pt))[0] if polys else None
+            x0, y0, x1, y1 = c["bbox_mm"]
+            m = 1.0
+            rows.append({"tag": tag, **c, "nearest_region": nearest,
+                         "crop": f"--crop {x0 - m:.1f} {y0 - m:.1f} {x1 + m:.1f} {y1 + m:.1f}"})
+        if dust_n:
+            rows.append({"tag": tag, "dust": True, "area_mm2": round(dust_area, 1), "count": dust_n})
+    rows.sort(key=lambda x: (x.get("dust", False), -x["area_mm2"]))
+    return rows
