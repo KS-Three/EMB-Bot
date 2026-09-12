@@ -468,26 +468,46 @@ def shape_rows(pair: pf.Pair, reg: pf.Reg, r: dict, dust_mm2: float = 2.0) -> li
       ours_only & ~ink -> background  (our defect: we sewed ground)
       ours_only & ink  -> redesign    (the pro left art unsewn, or merged it)
 
-    Each row is `{tag, area_mm2, centre_mm, nearest_region, crop}`;
-    components under `dust_mm2` are summed into one
-    `{tag, dust: True, area_mm2, count}` row per tag. Sorted biggest-first,
+    Every row also carries `sewn_by`, `"pro"` or `"ours"` -- the side whose
+    thread the row IS (R18, controller ruling, fix round 1: `redesign`
+    covers two opposite situations -- the pro adding thread, or the pro
+    leaving/merging art we sewed -- and Kent needs to tell them apart
+    without the tags themselves splitting).
+
+    Each big row is `{tag, sewn_by, area_mm2, centre_mm, nearest_region,
+    crop}`; components under `dust_mm2` are summed into ONE dust row PER
+    TAG (fix round 1, finding 1: `redesign` is TWO buckets below --
+    `pro_only & ~ink` and `ours_only & ink` -- and dust from both must
+    land in the same row, not one each), `{tag, dust: True, area_mm2,
+    count, sewn_by}` where `sewn_by` is `"pro"`/`"ours"` when only that
+    tag's dust came from one side, else `"mixed"`. Sorted biggest-first,
     dust rows last."""
     frame = r["frame"]
     ink = ink_mask_in_frame(pair, reg, frame)
     polys = region_polys(pair, reg)
-    buckets = [("dropped", r["pro_only"] & ink), ("redesign", r["pro_only"] & ~ink),
-               ("background", r["ours_only"] & ~ink), ("redesign", r["ours_only"] & ink)]
+    buckets = [("dropped", "pro", r["pro_only"] & ink),
+               ("redesign", "pro", r["pro_only"] & ~ink),
+               ("background", "ours", r["ours_only"] & ~ink),
+               ("redesign", "ours", r["ours_only"] & ink)]
     rows = []
-    for tag, mask in buckets:
+    dust: dict = {}    # tag -> {"area_mm2", "count", "sides"} -- accumulated across buckets
+    for tag, sewn_by, mask in buckets:
         big, dust_area, dust_n = _components(mask, frame, dust_mm2)
         for c in big:
             pt = Point(c["centre_mm"])
             nearest = min(polys, key=lambda sp: sp[1].distance(pt))[0] if polys else None
             x0, y0, x1, y1 = c["bbox_mm"]
             m = 1.0
-            rows.append({"tag": tag, **c, "nearest_region": nearest,
+            rows.append({"tag": tag, "sewn_by": sewn_by, **c, "nearest_region": nearest,
                          "crop": f"--crop {x0 - m:.1f} {y0 - m:.1f} {x1 + m:.1f} {y1 + m:.1f}"})
         if dust_n:
-            rows.append({"tag": tag, "dust": True, "area_mm2": round(dust_area, 1), "count": dust_n})
+            acc = dust.setdefault(tag, {"area_mm2": 0.0, "count": 0, "sides": set()})
+            acc["area_mm2"] += dust_area
+            acc["count"] += dust_n
+            acc["sides"].add(sewn_by)
+    for tag, acc in dust.items():
+        sewn_by = next(iter(acc["sides"])) if len(acc["sides"]) == 1 else "mixed"
+        rows.append({"tag": tag, "dust": True, "area_mm2": round(acc["area_mm2"], 1),
+                     "count": acc["count"], "sewn_by": sewn_by})
     rows.sort(key=lambda x: (x.get("dust", False), -x["area_mm2"]))
     return rows

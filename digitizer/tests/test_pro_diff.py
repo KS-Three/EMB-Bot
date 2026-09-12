@@ -170,45 +170,59 @@ def test_the_pros_largest_region_reads_satin(becker_pair):
 
 def test_shape_tags_split_by_ink(tmp_path):
     """A pro-only bar over ink -> dropped; a pro-only bar over bare art ->
-    redesign; an ours-only bar over bare art -> background.
+    redesign (`sewn_by` "pro"); an ours-only bar over bare art -> background;
+    an ours-only bar over ink -> redesign too (`sewn_by` "ours", R18) --
+    the untested branch (fix round 1, finding 3).
 
-    `anchor`, identical in both files at a distant y, is NOT part of the
-    brief's fixture -- added because the brief's bare pro/ours geometry
-    (measured) sends `pairframe.register_pair` to `dy=-4.0, iou=0.0`: pro's
-    own extra bars (max y 17) and ours' single extra bar (max y 25) pull the
-    two files' bbox centroids 4 mm apart, `register_pair`'s crude
+    `anchor_hi`/`anchor_lo`, identical in both files at distant y, are NOT
+    part of the brief's fixture -- added because the brief's bare pro/ours
+    geometry (measured) sends `pairframe.register_pair` to `dy=-4.0,
+    iou=0.0`: pro's own extra bars and ours' extra bar(s) pull the two
+    files' bbox centroids apart (originally 4mm with one ours-only bar; 8mm
+    once the fix-round-1 ours-only-over-ink bar below is added, since that
+    bar pulls ours' MIN down while the original single high anchor only
+    ever equalised the MAX), `register_pair`'s crude
     centroid-then-local-hillclimb search only explores a small neighbourhood
     of that centroid guess (`scorecard.register`, step 1.0mm down to 0.25mm,
     no restart), and the true zero-shift optimum is far enough outside that
-    neighbourhood (probed: IOU is a flat 0 from -2 to +2mm of extra shift,
-    first non-zero at +3) that the search never finds it -- so the shared
-    `common` pass itself never lands where it should and every tag comes out
-    on the wrong side. `anchor`, present verbatim in both files, dominates
-    both bounding boxes identically and pulls both centroids to the SAME
-    point, which is what lets the real `register_pair` converge on the true
-    `dy=0.0` here (measured: `iou=0.45`) without touching pairframe.py's own,
-    separately-tested, registration search."""
+    neighbourhood (probed: IOU is a flat 0 within a few mm of a bad seed)
+    that the search never finds it -- so the shared `common` pass itself
+    never lands where it should and every tag comes out on the wrong side.
+    Two anchors, present verbatim in both files on the high and low side,
+    each pin one extreme of both bounding boxes to the SAME value regardless
+    of whatever asymmetric content sits between them, which is what lets the
+    real `register_pair` converge on the true `dy=0.0` here (measured:
+    `iou=0.43`) without touching pairframe.py's own, separately-tested,
+    registration search."""
     common = synth.satin_pass(0, 0, 20, 2.0)
-    anchor = synth.satin_pass(0, 100, 5, 2.0)             # registration ballast -- see docstring
+    anchor_hi = synth.satin_pass(0, 60, 5, 2.0)            # registration ballast -- see docstring
+    anchor_lo = synth.satin_pass(0, -40, 5, 2.0)           # registration ballast -- see docstring
     pro = [((0, 0, 0), [common,
                         synth.satin_pass(0, 8, 10, 2.0),      # over ink: we dropped it
                         synth.satin_pass(0, 16, 10, 2.0),     # no ink: the pro added it
-                        anchor])]
+                        anchor_hi, anchor_lo])]
     ours = [((0, 0, 0), [common,
                          synth.satin_pass(0, 24, 10, 2.0),    # no ink: we sewed ground
-                         anchor])]
+                         synth.satin_pass(0, -16, 10, 2.0),   # over ink: the pro left it unsewn
+                         anchor_hi, anchor_lo])]
     regions = [("A", "satin", box(-0.5, -1.5, 20.5, 1.5))]
-    ink = [(0, -1, 20, 1), (0, 7, 10, 9)]
+    ink = [(0, -1, 20, 1), (0, 7, 10, 9), (0, -17, 10, -15)]
     d = synth.make_prep_dir(tmp_path, "tags", pro, ours, regions, ink, 20.0)
     pair = pairframe.load_pair(d)
     reg = pairframe.register_pair(pair.pro_path, pair.ours_path)
     r = overlay.render_pair(pair, reg)
     rows = pdiff.shape_rows(pair, reg, r)
-    tags = sorted((x["tag"], round(x["centre_mm"][1])) for x in rows if not x.get("dust"))
-    assert tags == [("background", 24), ("dropped", 8), ("redesign", 16)]
+    tags = sorted((x["tag"], round(x["centre_mm"][1]), x["sewn_by"]) for x in rows if not x.get("dust"))
+    assert tags == [("background", 24, "ours"), ("dropped", 8, "pro"),
+                    ("redesign", -16, "ours"), ("redesign", 16, "pro")]
     for x in rows:
         if not x.get("dust"):
             assert 15 < x["area_mm2"] < 30 and x["nearest_region"] == "A" and x["crop"].startswith("--crop ")
+    dust_tags = [x["tag"] for x in rows if x.get("dust")]
+    assert len(dust_tags) == len(set(dust_tags)), rows          # one dust row per tag (finding 1)
+    for x in rows:
+        if x.get("dust"):
+            assert x["sewn_by"] in ("pro", "ours", "mixed")
 
 
 def test_shape_rows_finds_a_real_redesign_on_becker(becker_pair):
@@ -233,3 +247,10 @@ def test_shape_rows_finds_a_real_redesign_on_becker(becker_pair):
     biggest = max(redesign, key=lambda x: x["area_mm2"])
     print("Becker largest redesign row:", biggest)
     assert biggest["area_mm2"] > 20.0, biggest
+    # R18 / fix round 1, finding 2: `redesign` covers both directions on real
+    # data -- the pro adding thread (sewn_by "pro") and the pro leaving art
+    # unsewn or merged (sewn_by "ours") -- and a row must say which.
+    assert {x["sewn_by"] for x in redesign} == {"pro", "ours"}
+    # fix round 1, finding 1: one dust row per tag, never two for the same tag.
+    dust_tags = [x["tag"] for x in rows if x.get("dust")]
+    assert len(dust_tags) == len(set(dust_tags)), rows
