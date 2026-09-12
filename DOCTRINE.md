@@ -3307,11 +3307,12 @@ its hedge as it is copied forward** — is why this file is split.
   with a sew-out behind it, not an encoder one. *(2026-09-07)*
 
 - **A deferred decision priced on the wrong lane stays deferred for the wrong
-  reason.** `encodeDST` does not stop at the terminal `{type:"end"}` sentinel
-  the way `exp.js` and `pes.js` both do — one line, `if (st.type === "end")
-  break;` — so it writes the sentinel as a real stitch. The 2026-08-04 verdict
-  looked at it, called it *"one extra phantom stitch"*, and parked it with the
-  axis bug.
+  reason.** **FIXED 2026-09-07 in `5cb234a`; the lesson is why it sat unfixed
+  for five weeks, not the bug.** `encodeDST` did not stop at the terminal
+  `{type:"end"}` sentinel the way `exp.js` and `pes.js` both do — one line,
+  `if (st.type === "end") break;` — so it wrote the sentinel as a real stitch.
+  The 2026-08-04 verdict looked at it, called it *"one extra phantom stitch"*,
+  and parked it with the axis bug.
 
   That price is right for LETTERING, where the sentinel sits on the last stitch
   and the extra record is zero-delta — and where `buildLetteringDesign` appends
