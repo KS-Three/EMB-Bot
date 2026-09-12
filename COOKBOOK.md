@@ -1307,6 +1307,27 @@ either. `tools/bundle.mjs` (the standalone's rebuild step) was doubly dead
 2026-08-11**. The Studio has no CDN runtime dependencies (jsPDF is
 npm-bundled, Inter via fontsource, fonts ship locally as `.embf`).
 
+### Prepping the pro-parity corpus — budget for Hotel Fremont
+
+`prep_all.py` re-digitizes all 23 customer designs and needs
+`PRO_PARITY_ROOT` pointing at Kent's `Embroidery Files` and `PRO_PARITY_OUT`
+at a scratch dir OUTSIDE the tree (the loose files are customer work and this
+repo is public). Most designs take 2–20 minutes each.
+
+**`hotel_fremont_hat` takes ~87 minutes on its own** — 5203.9 s measured
+2026-09-12, all of it inside `run_ours`, and it completes successfully. It is
+NOT hung, and a session that kills it will simply pay the cost again: this
+happened twice before the run was left alone long enough to finish. Size does
+not explain it — `gaulke_jb` is 32,665 pro / 43,780 ours stitches against
+Fremont's 17,067 / 12,075 and finishes in **155 s**. For contrast on the same
+run: `precision_drone` 239 s, `gaulke_roofing_lc` 347 s, `gaulke_plowing_lc`
+641 s, `gaulke_plowing_hat` 1200 s.
+
+So a whole-corpus prep is roughly 1.5 hours of ordinary work plus 1.5 hours of
+Fremont. Prep the slugs you actually need (`prep_all.py <slug> ...`), and if
+you need the whole thing, start it and go do something else. The cause is
+unprofiled and filed separately.
+
 ### Recapturing `corpus_scorecard_baseline.json`
 
 The baseline once sat unrefreshed through ~15 digitizer commits; the next
