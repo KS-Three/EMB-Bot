@@ -9,7 +9,9 @@ test). Python 3.12.3, `digitizer/.venv/bin/python`.
 
 > **STATUS 2026-09-12, added after the fact: §6 IS BUILT.** Kent ruled the
 > same day, and it shipped on this branch as `cfg.layer_palette_from_regions`
-> — `stage3_segment.layer_palette_threads`, DEFAULT OFF, plus the phantom
+> — `stage3_segment.layer_palette_threads`, **now DEFAULT ON** (Kent flipped
+> it 2026-09-12 on the corpus pass he asked for first:
+> `docs/palette-flip-corpus-2026-09-12.md`), plus the phantom
 > column §4 asks for on `tools/palette_mismatch.py`. **The measurement above
 > still stands as written** (every number taken on tree `ee41697` with the
 > engine unmodified), but §6 is no longer open work. Read it as the rationale

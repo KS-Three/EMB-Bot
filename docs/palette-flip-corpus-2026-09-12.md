@@ -7,6 +7,16 @@ ruled **corpus pass first**. This is that pass, and nothing else: the flag is
 still OFF in the tree, no engine file was edited, and the recommendation at the
 end is a recommendation.
 
+> **OUTCOME, added after the fact: Kent flipped it 2026-09-12.** He was shown
+> §3's duplicate-row cost alongside the recommendation and took it knowingly —
+> the duplicates are the truth the colour cap produced and there is no
+> half-flip. `cfg.layer_palette_from_regions` now defaults True. Everything
+> below was measured with the flag OFF in the tree and is unchanged by the
+> flip; read it as the evidence behind the decision, not as an open question.
+> The one thing still open is folding the duplicate rows, which means
+> `merge_duplicate_cone_layers` on the DERIVED cone — it moves sew order and
+> goldens, and stays out of scope.
+
 **Measured on the tree at `352240b`.** HEAD moved to `bf64a05` while the arms
 ran (a `CLAUDE.md` prose commit and the #469 merge), and
 `git diff 352240b..bf64a05 -- digitizer/digitizer_core digitizer/tools` is
