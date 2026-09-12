@@ -39,11 +39,11 @@ The prepped customer corpus, and then the scenario the report named ("the pro
 sews a large extra element the digitizer completely missed, or vice versa"),
 built out of **real** stitch geometry rather than fixtures.
 
-*Coverage: 17 of the 23 `prep_all.DESIGNS`, ~130 registrations. Not yet
-measured: `gaulke_plowing_lc`, `gaulke_jb`, `proseal_hat`, `proseal_beanie`,
-`hotel_fremont_hat`, `hotel_fremont_patch` — each needs a 3–20 min engine run
-and none had finished when this was written. Both gaulke roofing designs and
-`gaulke_plowing_hat` ARE included, which is the family that matters here.*
+*Coverage: **21 of the 23** `prep_all.DESIGNS` — all 21 as-prepped, plus 83
+element-drop arms. Not measured: `hotel_fremont_hat` and
+`hotel_fremont_patch`, whose engine run passed 50 minutes on a single design
+and was still going; every other design took 2–20. All five gaulke designs
+ARE included, which is the family that matters here.*
 
 - **Every real pair as prepped**: the greedy search already sat exactly on the
   exhaustive optimum of its own objective (gap `+0.0000` on every one). Seed
@@ -68,7 +68,7 @@ deciding whether a few mm of seed error still overlaps anything):
 | fill ratio | arms | old vs new |
 |---|---|---|
 | 0.000 – 0.003 | 3 | **1 miss** (`gaulke_roofing_hat` blk 0, 17.79 mm apart) |
-| 0.222 – 0.916 | 45 | 45/45 identical alignment |
+| 0.222 – 0.916 | 80 | 80/80 same alignment (max 1.58 mm, on flat optima) |
 
 Nothing in between: the corpus jumps from 0.003 to 0.222. So the old search is
 exact wherever thread actually fills its frame, and fails only where what is

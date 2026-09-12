@@ -364,7 +364,7 @@ def _corr_seeds(pc, oc, res=REG_RES, limit=REG_MAX, k=2, sep_mm=6.0):
     `0.0068 @ (-15.00, +4.75)` — 17.79 mm of wrong alignment on real thread.
 
     That arm's fill ratio (solid area / bbox area of the thinner side) is
-    0.003. Sorted by it, the 45 arms at 0.222 and above all pick an IDENTICAL
+    0.003. Sorted by it, the 80 arms at 0.222 and above all pick the SAME
     alignment old and new; the corpus has nothing between 0.003 and 0.222.
     So the defect is real on real geometry but lives only where what is left
     is scraps — 0.99 m of thread against the pro's 13.02 m.
