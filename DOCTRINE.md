@@ -91,6 +91,28 @@ Moved verbatim 2026-08-28 — no section was rewritten in the move.
   arms rather than move the ruler that measures us.
   *(ruled 2026-09-11 — `docs/superpowers/plans/2026-09-11-edge-cap-from-the-pro.md` §6)*
 
+- **Never `unary_union` a stitch path before buffering it — buffer the runs,
+  then union the ribbons.** `buffer(A ∪ B, r) == buffer(A, r) ∪ buffer(B, r)`
+  for positive r, so the two spellings are the same SET and only one of them
+  is affordable: unioning polylines NODES them at every crossing, and a satin
+  zigzag crosses itself. `_sewn_linear_cover` did it the noded way for one
+  day and cost Hotel Fremont's hat **5,189 of its 5,204-second prep** — 138
+  runs and 9,677 points became a **49,535-part** MultiLineString, and
+  buffering that exhausted a 39 GB box (GEOS `bad allocation`). Unioning the
+  ribbons gives the byte-identical design in 1.5 s.
+  **The tell is that stitch count does not predict the time**: `gaulke_jb` is
+  the largest design in the corpus and the cheapest cap (fill-dominated, and
+  fills are deliberately not cover), Fremont the smallest raster and the
+  dearest (its satin IS the design). Any measurement that ranks designs by
+  size and finds a satin-heavy one anomalous should suspect a geometry op
+  scaling on CROSSINGS, not on stitches.
+  **And a flag's flip is not measured until its RUNTIME is measured.** The
+  cap's stitch bill (+5.9–26.3%) was measured at the flip and its clock was
+  not; every design in the corpus paid for it from 2026-09-11 to 2026-09-12,
+  and `tools/pro_silhouette.py` — the instrument that produced the flip's own
+  numbers — calls the same function.
+  *(measured 2026-09-12 — PR #464; `tests/test_edge_cap.py` pins the cost)*
+
 - **Ink/Stitch is GPL-3.0 — concept-level clean-room reimplementation only.**
   No literal copying and no near-verbatim translation, however convenient.
   The one exception is `pystitch`, its MIT-licensed pyembroidery fork, which is
