@@ -110,11 +110,62 @@ shapely booleans against a polygon that now has 5× the vertices:
   fill into more pieces to route between.
 
 The shipped and both-off plans differ by **155 stitches of 33,898 (0.46%)**.
-Tatami rows are laid at a 0.4 mm pitch, so vertex detail finer than a row can
-only move where a row ends — and the angle search, which only has to RANK 17
-angles, probably does not need it at all. That is a candidate optimisation,
-**not made here**: whether a coarser polygon picks the identical angle on every
-design is a measurement, and the answer changes shipped output if it is wrong.
+
+## The obvious speed-up, tried and disproved
+
+Tatami rows sit 0.4 mm apart, and the angle search only has to RANK 17
+angles, so it looked safe to run that ranking on a simplified polygon and keep
+the full one for laying the rows. **It is not safe at any tolerance that buys
+anything.**
+
+Method: `best_fill_angle_deg` wrapped so that every real call — all 122 angle
+searches the shipped pipeline makes across the 23 designs — also runs the same
+search on `poly.simplify(tol, preserve_topology=True)`, while RETURNING the
+shipped angle, so the shapes asked about are exactly the shipped ones. PCA stays
+on the original polygon. A **control arm** runs the copied search on the
+unsimplified polygon; it must read zero, or every other row is measuring the
+harness.
+
+| tolerance | angle changed | search speed-up | mean vertices |
+|---|---|---|---|
+| **control (none)** | **0 / 122** | 1.0× | 440 |
+| row/32 (0.0125 mm) | **1 / 122** | 1.3× | 244 |
+| row/16 | 5 / 122 | 1.4× | 192 |
+| row/8 | 8 / 122 | 1.6× | 145 |
+| row/4 | 23 / 122 | 1.9× | 105 |
+| row/2 | 43 / 122 | 2.2× | 73 |
+| row/1 | 69 / 122 | 2.5× | 50 |
+
+*(Two runs of the same deterministic harness: control, row/32, row/16 and
+row/8 in the second; row/4, row/2 and row/1 in the first, which had no control.
+They share row/8 and agree on it exactly — 8 / 122 both times — and the
+search code the control validated is identical in both.)*
+
+The control is clean, so the changes are real. At **0.0125 mm** — a thirtieth
+of a row, far below a thread — `becker_hat_large` already flips from **90° to
+−83°**, and that tolerance saves only a quarter of the search. Other flips
+are just as large: `becker_beanie` 157.5° → 146.25° on a 1,574 mm² shape,
+`gaulke_plowing_hat` 45° → 78.75°.
+
+**Why: the ranking is a discrete COUNT with a strict tiebreak.** The key is
+`(columns, distance to PCA, angle)`, and many candidate angles tie or come
+within one column of each other. Scanlines sample the polygon at fixed rows,
+so moving a single vertex a hundredth of a millimetre can change whether one
+row's span splits — one column more or fewer — and that flips the winner
+between two near-equivalent directions. **The auto fill angle is not a stable
+property of the artwork at sub-thread scale.** That is the same family as the
+satin/fill classifier flipping under boundary detail
+(`classifier-stability-2026-09-03`), and it implies — NOT measured here —
+that `subpixel_edges` and `curve_turn_deg` may be moving fill angles as well
+as costing time.
+
+Search time also turned out to depend less on vertices than the profile made
+it look: cutting mean vertices from 440 to 244 bought 1.3×, not 1.8×. Rows and
+per-call overhead are a large fixed share, so even a correct speed-up here
+would have recovered less than the ~14 s the angle search costs.
+
+**No engine change.** Do not retry this with a different simplifier without
+the control arm and a zero-mismatch bar; the result above is why.
 
 ## The gap
 
