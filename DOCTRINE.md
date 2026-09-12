@@ -114,15 +114,22 @@ Moved verbatim 2026-08-28 — no section was rewritten in the move.
   *(measured 2026-09-12 — PR #464; `tests/test_edge_cap.py` pins the cost)*
   **The follow-up sweep found no second edge cap, but two unwritten bills.**
   Over the ten default-ON flags since 2026-09-01, nothing is an outlier of
-  that kind — but `subpixel_edges` is **+48.4%** and `curve_turn_deg`
-  **+32.1%** of `machine_hat`'s digitize time and neither had ever recorded a
-  clock, and `fill_travel_under_cover`'s documented "+7–11% on logos" reads
-  **+26.0% and +59.8% on two logos** (the split is run count, not artwork
-  kind). **Run `tools/pro_parity/flagcost.py` before flipping a flag on.**
-  And trust its noise floor, because the harness needed one: timed naively,
-  three flags that returned a byte-identical plan each "cost" 13% of a design
-  — the first `run_stages` in a process pays a warm-up nothing after it does,
-  and **an inert arm is a free error bar** for exactly that.
+  that kind — but `subpixel_edges` + `curve_turn_deg` cost `machine_hat`
+  **42.1 s of 84.8 s** of plan time and neither had ever recorded a clock,
+  and `fill_travel_under_cover`'s documented "+7–11% on logos" reads **+26.0%
+  and +59.8% on two logos** (the split is run count, not artwork kind). The
+  time is stage 6's FILL redoing shapely booleans on 5× denser polygons: the
+  17-angle search and the cover-aware routing.
+  **Run `tools/pro_parity/flagcost.py` before flipping a flag on — and know
+  its two failure modes, because it had both.** (1) Timed naively, three
+  flags that returned a byte-identical plan each "cost" 13% of a design: the
+  first `run_stages` in a process pays a warm-up nothing after it does, and
+  **an inert arm is a free error bar** for exactly that. (2) One flag off at
+  a time measures a flag's cost GIVEN the others, not alone: `curve_turn_deg`
+  is inert without `subpixel_edges`, so the one-at-a-time numbers credited
+  `subpixel_edges` with 44 s that is mostly `curve_turn_deg`'s 28.8 s, and
+  the two rows summed to 73 s against a joint 42. **When two flags touch the
+  same geometry, measure them off together too.**
   *(measured 2026-09-12 — `docs/flag-runtime-bills-2026-09-12.md`)*
 
 - **A dense design pair is protected by the FLIP ELECTION, not by the

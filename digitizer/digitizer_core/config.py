@@ -642,17 +642,25 @@ class PipelineConfig:
     # px at <= 100 mm -- a cliff a 1 mm width nudge can cross, changing
     # every curve's polygon (review of PR #330; Kent's to accept).
     #
-    # **Runtime, measured 2026-09-12 and previously unwritten:** **+32.1%**
-    # of `machine_hat`'s digitize time (29.3 s of 92.2 s), +5.8% on
-    # `precision_drone`, inert on `gaulke_roofing_lc` and inside the noise on
-    # Fremont. Like `subpixel_edges` the bill is paid in `plan_stitches`
-    # (88.5 -> 58.2 s off) and not where the refinement runs (`run_stages`
-    # unchanged at 3.7 s): the refinement itself is cheap and what it hands
-    # the stitch planner is not. Which planner stage pays is not isolated —
-    # and the "+40-80% vertices" above is NOT the explanation, since it
-    # describes the low-resolution regime this flag declines. Quality case
-    # unaffected; the clock is now on the record.
-    # *(tools/pro_parity/flagcost.py; docs/flag-runtime-bills-2026-09-12.md)*
+    # **Runtime, measured 2026-09-12 and previously unwritten.** This flag
+    # only does anything ON TOP OF `subpixel_edges`: with that off it is
+    # byte-for-byte inert on `machine_hat`. With it on, this pass takes the
+    # design's region polygons from **999 to 5,213 vertices** and costs
+    # **+28.8 s** of plan time (56.0 -> 84.8 s) — the dearest part of what the
+    # two flags cost together (42.1 s), for 127 stitches out of 33,898.
+    # The refinement itself is cheap (`run_stages` ~3.5 s either way). The
+    # bill lands in stage 6's FILL, on the 5 fill shapes, in two loops that
+    # redo shapely booleans against the now 5x-denser polygon:
+    #   - `best_fill_angle_deg` tries 17 candidate row angles (16 + PCA) and
+    #     runs `_row_spans` for each, which intersects every scan row with the
+    #     polygon — ~14 s, and +16.4 s of shapely `intersection` self-time
+    #     across the whole plan;
+    #   - `fill_travel_under_cover`'s reorder and routing
+    #     (`_reorder_for_cover`, `travel_path`, the `sewn` union/buffer) —
+    #     ~10 s, with `travel_path` called 2,720 -> 4,190 times.
+    # The "+40-80% vertices" above is NOT this: it describes the
+    # low-resolution regime the flag declines. Quality case unaffected; the
+    # clock is now on the record. *(docs/flag-runtime-bills-2026-09-12.md)*
     curve_turn_deg: float | None = 15.0
     # Sub-pixel, anti-alias-aware contour vertices (`digitizer_core/
     # subpixel.py`; plan `docs/superpowers/plans/2026-09-08-subpixel-edges.md`
@@ -698,17 +706,19 @@ class PipelineConfig:
     # floor under the ring and ribbon; 10 would meet the ladder's criterion
     # on the ring) and the upscaled regime (declined, above).
     #
-    # **Runtime, measured 2026-09-12 and previously unwritten:** this is the
-    # second-dearest flag on the default-ON list — **+48.4%** of
-    # `machine_hat`'s digitize time (44.2 s of 92.2 s), +10.6% on
-    # `precision_drone`, and inside the noise on the two small flat logos. The
-    # cost lands in `plan_stitches` (88.5 -> 43.9 s with the flag off), NOT in
-    # `run_stages` (3.7 -> 3.3 s) — so it is not the sub-pixel pass itself but
-    # what the finer edges it produces cost everything downstream. Which
-    # downstream stage pays is not yet isolated. Nothing here argues for
-    # turning it off — it changes the output and its quality case stands — but
-    # the clock was never part of that case and now it is on the record.
-    # *(tools/pro_parity/flagcost.py; docs/flag-runtime-bills-2026-09-12.md)*
+    # **Runtime, measured 2026-09-12 and previously unwritten.** On
+    # `machine_hat` (the corpus's largest fill) its OWN cost is **+13.3 s**
+    # of plan time (42.7 -> 56.0 s, `curve_turn_deg` held off). Turning THIS
+    # flag off saves far more — 42.2 s — but only because it also switches
+    # `curve_turn_deg` off: with sub-pixel edges gone the curve pass has
+    # nothing to refine and is byte-for-byte inert (943 vertices, 33,743
+    # stitches, both with and without it). **Do not add this flag's number
+    # to `curve_turn_deg`'s**: the two overlap, and the sum (73 s) is more than
+    # the 42 s they cost together.
+    # The time is paid in `plan_stitches`, not here in `run_stages`: finer
+    # polygons make stage 6's fill do more geometry — see `curve_turn_deg`
+    # for which step. Quality case unaffected; the clock is now on the
+    # record. *(docs/flag-runtime-bills-2026-09-12.md)*
     subpixel_edges: bool = True
 
     # Stage 5 — sew order, underlap, pull compensation

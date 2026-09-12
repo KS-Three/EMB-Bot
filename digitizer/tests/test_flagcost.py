@@ -9,6 +9,10 @@ run-to-run drift.
 """
 from __future__ import annotations
 
+from pathlib import Path
+
+import pytest
+
 from digitizer_core import PipelineConfig
 from tools.pro_parity import flagcost as fc
 
@@ -56,6 +60,17 @@ def test_a_difference_under_the_drift_is_not_reported_as_a_cost():
     assert fc.verdict(1.44, 1.85, same=False) == "under the noise floor"
     assert fc.verdict(54.60, 1.85, same=False) == "changes output"
     assert fc.verdict(-2.98, 1.85, same=False) == "changes output"
+
+
+def test_an_unknown_flag_refuses_before_any_digitizing():
+    """Both refusals fire before `run_stages` touches the art, so a typo in
+    `--flags` or `--together` dies in a second instead of after a warm-up
+    and a baseline on the corpus's slowest design."""
+    missing = Path("does-not-exist.png")
+    with pytest.raises(SystemExit, match="not a PipelineConfig field"):
+        fc.one(missing, 90.0, ("not_a_real_flag",))
+    with pytest.raises(SystemExit, match="no off value"):
+        fc.one(missing, 90.0, ("max_colors",))       # a field, but not a flag
 
 
 def test_the_noise_floor_outranks_the_inert_reading():

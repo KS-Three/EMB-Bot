@@ -66,12 +66,65 @@ Five of the ten are under the noise floor or inert on every design measured.
 `edge_cap`'s remaining 14.3% is what the cap legitimately costs now that
 PR #464 removed the pathological part.
 
+**Correction before this merged: the `subpixel_edges` and `curve_turn_deg`
+rows are not independent, and their two numbers must not be added.** This
+harness turns ONE flag off at a time, which cannot see an interaction, and
+these two interact. A fourth arm with both off, on `machine_hat`:
+
+| arm | region vertices | plan | stitches |
+|---|---|---|---|
+| both on (shipped) | 5,213 | 84.8 s | 33,898 |
+| `curve_turn_deg` off | 999 | 56.0 s | 33,771 |
+| `subpixel_edges` off | 943 | 42.6 s | 33,743 |
+| **both off** | **943** | **42.7 s** | **33,743** |
+
+"`subpixel_edges` off" and "both off" are the same run: **without sub-pixel
+edges, `curve_turn_deg` is byte-for-byte inert** — it has nothing to refine.
+So the one-at-a-time table above credits `subpixel_edges` with 44.2 s that is
+mostly `curve_turn_deg`'s, and the two rows sum to 73 s against a real joint
+cost of 42.1 s. The honest split:
+
+- `subpixel_edges` on its own: **+13.3 s** (42.7 → 56.0 s)
+- `curve_turn_deg` on top of it: **+28.8 s** (56.0 → 84.8 s), for **127
+  stitches** of 33,898 — it is the pass that takes 999 vertices to 5,213.
+
+**`flagcost.py` now says in its docstring that a one-flag-off arm measures a
+flag's cost GIVEN every other flag, not its cost alone.**
+
+## Which step pays
+
+cProfile of `plan_stitches` on `machine_hat`, each arm diffed against the
+shipped run. **All of it is stage 6's fill, on the design's 5 fill shapes**
+(`stage7_sequence.stitch_one` → `stage6_fill.stitch_shape`), and none of it
+is the refinement itself (`run_stages` is ~3.5 s in every arm). Two loops redo
+shapely booleans against a polygon that now has 5× the vertices:
+
+- **The fill angle search.** `best_fill_angle_deg` tries 17 candidate row
+  angles (16 plus the PCA angle) and runs `_row_spans` for every one, which
+  intersects each scan row with the polygon: **~14 s**, and +16–17 s of
+  shapely `intersection` self-time over 24,350 calls.
+- **The cover-aware reorder and routing** — `fill_travel_under_cover`'s own
+  machinery (`_reorder_for_cover`, `_order_cost`, `travel_path`, and the
+  `sewn` footprint's `union` / `buffer`): **~10–19 s**, with `travel_path`
+  called 2,720–2,810 → 4,190 times because the denser polygon fragments the
+  fill into more pieces to route between.
+
+The shipped and both-off plans differ by **155 stitches of 33,898 (0.46%)**.
+Tatami rows are laid at a 0.4 mm pitch, so vertex detail finer than a row can
+only move where a row ends — and the angle search, which only has to RANK 17
+angles, probably does not need it at all. That is a candidate optimisation,
+**not made here**: whether a coarser polygon picks the identical angle on every
+design is a measurement, and the answer changes shipped output if it is wrong.
+
 ## The gap
 
-- **`subpixel_edges` (+48.4%) and `curve_turn_deg` (+32.1%) document no
-  runtime cost at all.** Their `config.py` blocks are long and careful about
-  quality trade-offs; neither mentions the clock. Both now carry the measured
-  number.
+- **`subpixel_edges` and `curve_turn_deg` document no runtime cost at all.**
+  Their `config.py` blocks are long and careful about quality trade-offs;
+  neither mentions the clock. Together they cost `machine_hat` **42.1 s of
+  84.8 s** of plan time — `subpixel_edges` 13.3 s of it and `curve_turn_deg`
+  28.8 s on top, which only exists because sub-pixel edges are on. (The
+  +48.4% / +32.1% in the table above are one-at-a-time numbers that overlap;
+  see the correction under it.) Both now carry the split.
 - **`fill_travel_under_cover`'s documented band understates on logos.** The
   config says *"+7–11% digitize time on logos, +49–67% on sunset's 263-run
   fill"*. Measured: `precision_drone`, a logo, reads **+26.0%**, and

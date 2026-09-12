@@ -13,7 +13,9 @@ it — the pro side is not repeated, because none of these flags touch it.
     cd digitizer
     PRO_PARITY_OUT=<prepped corpus> .venv/Scripts/python -m tools.pro_parity.flagcost
 
-Named slugs limit the designs; `--flags a,b` limits the flags.
+Named slugs limit the designs; `--flags a,b` limits the flags (each still
+turned off ONE at a time); `--together a,b` adds one arm with all of those
+flags off at once.
 
 **A flag that is inert on a design still costs what it costs.** The `same`
 column says whether turning it off changed the stitches at all; a flag that
@@ -31,6 +33,15 @@ this now discards a warm-up pass before timing anything, re-measures the
 baseline AFTER the arms, and prints the drift between the two baselines as
 `+/-` next to every number. **A cost smaller than that drift is not a
 measurement** — the report says so rather than ranking it.
+
+**One flag off at a time measures a flag's cost GIVEN every other flag, not
+its cost alone, and it cannot see an interaction.** It hit one on its first
+real run: `curve_turn_deg` is byte-for-byte inert without `subpixel_edges`,
+so turning `subpixel_edges` off also removed `curve_turn_deg`'s 28.8 s and
+the report credited `subpixel_edges` with 44 s whose own share is 13.3 s. The
+two rows summed to 73 s against a joint cost of 42 s. Never add rows. When two
+flags touch the same geometry, add `--together a,b`: one extra arm with all
+of them off at once (see docs/flag-runtime-bills-2026-09-12.md).
 """
 from __future__ import annotations
 
@@ -100,11 +111,14 @@ def _digest(plan) -> str:
     return h.hexdigest()[:12]
 
 
-def one(art: Path, width_mm: float, flag: str | None):
+def one(art: Path, width_mm: float, off: tuple[str, ...] = ()):
+    """One timed digitize with every flag in `off` set to its FLAGS value."""
     cfg = parity_config(width_mm, None)
-    if flag is not None:
+    for flag in off:
         if flag not in type(cfg).__dataclass_fields__:
             raise SystemExit(f"{flag} is not a PipelineConfig field on this tree")
+        if flag not in FLAGS:
+            raise SystemExit(f"{flag} has no off value in FLAGS")
         setattr(cfg, flag, FLAGS[flag])
     t0 = time.time()
     res = run_stages(str(art), cfg)
@@ -127,6 +141,11 @@ def main():
         i = args.index("--flags")
         flags = [f for f in args[i + 1].split(",") if f]
         del args[i:i + 2]
+    together: tuple[str, ...] = ()
+    if "--together" in args:
+        i = args.index("--together")
+        together = tuple(f for f in args[i + 1].split(",") if f)
+        del args[i:i + 2]
     slugs = [a for a in args if not a.startswith("-")] or DESIGNS
 
     rows = []
@@ -137,13 +156,15 @@ def main():
             print(f"[{slug}] SKIP - no art.png in {d}", flush=True)
             continue
         width = _width_mm(json.loads(meta_p.read_text()))
-        one(art, width, None)                       # warm-up, discarded
-        base = one(art, width, None)
+        one(art, width)                             # warm-up, discarded
+        base = one(art, width)
         print(f"\n[{slug}] baseline {base['total_s']}s "
               f"(stages {base['stages_s']} + plan {base['plan_s']}), "
               f"{base['stitches']} st", flush=True)
-        arms = [(f, one(art, width, f)) for f in flags]
-        base2 = one(art, width, None)               # the drift this run saw
+        arms = [(f, one(art, width, (f,))) for f in flags]
+        if together:
+            arms.append(("+".join(together), one(art, width, together)))
+        base2 = one(art, width)                     # the drift this run saw
         drift = abs(base2["total_s"] - base["total_s"])
         mid = (base["total_s"] + base2["total_s"]) / 2.0
         print(f"[{slug}] baseline again {base2['total_s']}s "
