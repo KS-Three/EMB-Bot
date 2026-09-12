@@ -63,9 +63,11 @@ NODES every satin zigzag at every crossing (Fremont: 138 runs / 9,677 points
 set and byte-identical output. `hotel_fremont_hat` preps in **13.4 s**,
 `hotel_fremont_patch` in **24.1 s**, and the **whole 23-design corpus in
 12.1 minutes** (23/23 `ok=True`, 2026-09-12). The nine designs with a
-recorded time before the fix: 8,288 s → 274 s. **Re-running this study at
-23 of 23 is now cheap and has NOT been done** — the numbers below are still
-the 22-design ones.*
+recorded time before the fix: 8,288 s → 274 s. **The study WAS then re-run at
+23 of 23 the same day — see "Re-run at 23 of 23" below.** The bullets and the
+fill-ratio table immediately following are the ORIGINAL 22-design numbers,
+left as written; the re-run section says which of them survived and which did
+not.*
 
 - **Every real pair as prepped**: the greedy search already sat exactly on the
   exhaustive optimum of its own objective (gap `+0.0000` on every one). Seed
@@ -97,6 +99,51 @@ exact wherever thread actually fills its frame, and fails only where what is
 left is **scraps** — 0.99 m of our thread against the pro's 13.02 m. You do not
 reach that regime by digitizing badly; you reach it by deleting most of one
 side. No as-prepped pair is close to it.
+
+### Re-run at 23 of 23 — the conclusion holds, the sparsity bound does not
+
+*2026-09-12, `tools/pro_parity/regsweep.py` (this study's harness, committed
+this time — the original was a session script and was gone). 228 arms over all
+23 designs, both flips, 901 s.*
+
+**The conclusion that matters survives, twice over.** On all 228 arms the
+shipped search is at the 0.5 mm lattice optimum — **0 arms** where an
+exhaustive scan beats it. And of the 114 `register_pair` outcomes — the
+alignment a CALLER actually receives, best flip winning — **only 2 move**
+against the pre-#463 search, and both are the ones already recorded here:
+`gaulke_roofing_hat` blk 0 at 17.10 mm (the flip changes), and
+`becker_hat_large` blk 0 at **1.58 mm**, the flat optimum the table above
+already names. Hotel Fremont's hat and patch, measured here for the first
+time, move nothing.
+
+**The sparsity bound is wrong as stated, though, and the table above is the
+reason it looked right.** It ranks arms by fill ratio and finds the misses only
+below 0.003 — but it counts one arm per drop, and each drop has TWO, one per
+y-flip. Counting both, **35 arms move, and 25 of them sit at fill ≥ 0.30** —
+the band this file calls exact:
+
+| arm | fill | old → new | apart |
+|---|---|---|---|
+| `proseal_hat` blk 2, flipped | 0.3495 | 0.2098 → 0.2872 | **32.37 mm** |
+| `becker_hat_large` blk 0, flipped | 0.2451 | 0.2233 → 0.2648 | 32.76 mm |
+| `becker_lc_large` blk 1, flipped | 0.3006 | 0.2587 → 0.3087 | 29.02 mm |
+| `gaulke_roofing_lc` as-prepped, flipped | 0.3865 | 0.2931 → 0.2972 | 18.00 mm |
+
+Every one of them is the **y-flipped** hypothesis, which for these designs is
+the wrong one and loses the flip election to its unflipped twin — which is
+exactly why none of it reaches a caller. So sparsity is not what bounds the
+defect. **What bounds it is that the error lands on the losing flip**, and
+sparsity only matters because when both flips score near zero the election
+stops being decided by geometry: `gaulke_roofing_hat` blk 0 is the one arm
+where the old search's error actually flipped the winner (0.0041 flipped
+against 0.0036 unflipped — noise), and it is the one arm that reached a
+caller.
+
+That is a narrower claim than "exact wherever thread fills its frame", and a
+more useful one: **a dense pair is protected by the election, not by the
+search.** Anything that consumes a single flip's `Reg` without electing
+between them does not have that protection, and the correlation seeds are what
+make it safe to do so.
 
 **Why normal real data is immune:** a real logo is a dense blob. Slide it 30 mm
 and it still overlaps itself — on `becker`, IoU is non-zero across the entire
@@ -189,8 +236,13 @@ it survives a cp1252 Windows console.
 
 ## Still open
 
-`hotel_fremont_patch` is the one design never measured **by this study** — see
-the coverage note above. The 87-minute engine run that blocked it is fixed
-(PR #464, 2026-09-12): the design now preps in 24.1 s and the whole corpus in
-12.1 minutes, so the remaining work is to re-run this study at 23 of 23, not
-to wait for the machine.
+**Closed 2026-09-12.** `hotel_fremont_patch` was the one design this study
+never measured, because the 87-minute engine run on its sibling (PR #464) left
+it still prepping. Both are measured now and neither moves anything: see
+"Re-run at 23 of 23" above, which also corrects this file's sparsity bound.
+
+Still open from that re-run: nothing blocks a caller, but **a consumer that
+takes one flip's `Reg` without electing between the two flips is not protected
+by anything measured here.** No such caller exists today — `register_pair` is
+the only exposed entry point and it always elects — so this is a constraint on
+future callers, not a defect.
