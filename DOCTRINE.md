@@ -112,6 +112,36 @@ Moved verbatim 2026-08-28 — no section was rewritten in the move.
   and `tools/pro_silhouette.py` — the instrument that produced the flip's own
   numbers — calls the same function.
   *(measured 2026-09-12 — PR #464; `tests/test_edge_cap.py` pins the cost)*
+  **The follow-up sweep found no second edge cap, but two unwritten bills.**
+  Over the ten default-ON flags since 2026-09-01, nothing is an outlier of
+  that kind — but `subpixel_edges` + `curve_turn_deg` cost `machine_hat`
+  **42.1 s of 84.8 s** of plan time and neither had ever recorded a clock,
+  and `fill_travel_under_cover`'s documented "+7–11% on logos" reads **+26.0%
+  and +59.8% on two logos** (the split is run count, not artwork kind). The
+  time is stage 6's FILL redoing shapely booleans on 5× denser polygons: the
+  17-angle search and the cover-aware routing.
+  **Run `tools/pro_parity/flagcost.py` before flipping a flag on — and know
+  its two failure modes, because it had both.** (1) Timed naively, three
+  flags that returned a byte-identical plan each "cost" 13% of a design: the
+  first `run_stages` in a process pays a warm-up nothing after it does, and
+  **an inert arm is a free error bar** for exactly that. (2) One flag off at
+  a time measures a flag's cost GIVEN the others, not alone: `curve_turn_deg`
+  is inert without `subpixel_edges`, so the one-at-a-time numbers credited
+  `subpixel_edges` with 44 s that is mostly `curve_turn_deg`'s 28.8 s, and
+  the two rows summed to 73 s against a joint 42. **When two flags touch the
+  same geometry, measure them off together too.**
+  *(measured 2026-09-12 — `docs/flag-runtime-bills-2026-09-12.md`)*
+  **MEASURED NEGATIVE — do not run the fill angle search on a simplified
+  polygon.** It looks free: rows sit 0.4 mm apart and the search only RANKS 17
+  angles. Over all 122 real searches in the corpus, with a control arm reading
+  0/122, simplifying at **row/32 (0.0125 mm)** already flips one shape's angle
+  **90° → −83°** (`becker_hat_large`) for a 1.3× faster search; row/8 flips 8,
+  row/2 flips 43. The ranking is a column COUNT with a strict tiebreak, and
+  scanlines sample at fixed rows, so a hundredth of a millimetre can change one
+  row's split and swap two near-equal directions. **The auto fill angle is not
+  stable at sub-thread scale** — the same family as
+  `classifier-stability-2026-09-03`. A retry needs that control and a
+  zero-mismatch bar. *(measured 2026-09-12, same doc)*
 
 - **A dense design pair is protected by the FLIP ELECTION, not by the
   registration search — so never consume one flip's `Reg` on its own.**

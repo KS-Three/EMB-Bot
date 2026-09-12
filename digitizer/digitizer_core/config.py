@@ -641,6 +641,26 @@ class PipelineConfig:
     # falls in the app: 1200 px art refines at <= 60 mm and not at 61, 2000
     # px at <= 100 mm -- a cliff a 1 mm width nudge can cross, changing
     # every curve's polygon (review of PR #330; Kent's to accept).
+    #
+    # **Runtime, measured 2026-09-12 and previously unwritten.** This flag
+    # only does anything ON TOP OF `subpixel_edges`: with that off it is
+    # byte-for-byte inert on `machine_hat`. With it on, this pass takes the
+    # design's region polygons from **999 to 5,213 vertices** and costs
+    # **+28.8 s** of plan time (56.0 -> 84.8 s) — the dearest part of what the
+    # two flags cost together (42.1 s), for 127 stitches out of 33,898.
+    # The refinement itself is cheap (`run_stages` ~3.5 s either way). The
+    # bill lands in stage 6's FILL, on the 5 fill shapes, in two loops that
+    # redo shapely booleans against the now 5x-denser polygon:
+    #   - `best_fill_angle_deg` tries 17 candidate row angles (16 + PCA) and
+    #     runs `_row_spans` for each, which intersects every scan row with the
+    #     polygon — ~14 s, and +16.4 s of shapely `intersection` self-time
+    #     across the whole plan;
+    #   - `fill_travel_under_cover`'s reorder and routing
+    #     (`_reorder_for_cover`, `travel_path`, the `sewn` union/buffer) —
+    #     ~10 s, with `travel_path` called 2,720 -> 4,190 times.
+    # The "+40-80% vertices" above is NOT this: it describes the
+    # low-resolution regime the flag declines. Quality case unaffected; the
+    # clock is now on the record. *(docs/flag-runtime-bills-2026-09-12.md)*
     curve_turn_deg: float | None = 15.0
     # Sub-pixel, anti-alias-aware contour vertices (`digitizer_core/
     # subpixel.py`; plan `docs/superpowers/plans/2026-09-08-subpixel-edges.md`
@@ -685,6 +705,20 @@ class PipelineConfig:
     # travel with the flip as Kent's: `curve_turn_deg` (15 deg is now the
     # floor under the ring and ribbon; 10 would meet the ladder's criterion
     # on the ring) and the upscaled regime (declined, above).
+    #
+    # **Runtime, measured 2026-09-12 and previously unwritten.** On
+    # `machine_hat` (the corpus's largest fill) its OWN cost is **+13.3 s**
+    # of plan time (42.7 -> 56.0 s, `curve_turn_deg` held off). Turning THIS
+    # flag off saves far more — 42.2 s — but only because it also switches
+    # `curve_turn_deg` off: with sub-pixel edges gone the curve pass has
+    # nothing to refine and is byte-for-byte inert (943 vertices, 33,743
+    # stitches, both with and without it). **Do not add this flag's number
+    # to `curve_turn_deg`'s**: the two overlap, and the sum (73 s) is more than
+    # the 42 s they cost together.
+    # The time is paid in `plan_stitches`, not here in `run_stages`: finer
+    # polygons make stage 6's fill do more geometry — see `curve_turn_deg`
+    # for which step. Quality case unaffected; the clock is now on the
+    # record. *(docs/flag-runtime-bills-2026-09-12.md)*
     subpixel_edges: bool = True
 
     # Stage 5 — sew order, underlap, pull compensation
@@ -1071,6 +1105,18 @@ class PipelineConfig:
     # logos, +49-67% on sunset's 263-run fill. The `logo_whitebg` goldens
     # moved by their travel (2166 -> 2162 penetrations) and were re-pinned
     # per the recapture doctrine.
+    #
+    # **THE "+7-11% ON LOGOS" HALF IS TOO LOW, re-measured 2026-09-12**
+    # (`tools/pro_parity/flagcost.py`, warm-up discarded and a noise floor
+    # from a repeated baseline). `precision_drone` — a logo — reads
+    # **+26.0%**, and `machine_hat` — also a logo, and the corpus's largest
+    # fill at 33,898 stitches — reads **+59.8%** (54.6 s of 92.2 s), which is
+    # inside the band this comment reserved for a photo. The split is not
+    # logo-versus-photo, it is FEW-RUN versus MANY-RUN, and a logo sits in
+    # either: `gaulke_roofing_lc` really is +7.3%. This is the largest single
+    # runtime bill of any flag on this list and it is worth what it buys;
+    # budget it by the fill's run count, not by the artwork's kind.
+    # *(docs/flag-runtime-bills-2026-09-12.md)*
     fill_travel_under_cover: bool = True
 
     # Task A2 (2026-08-14, tools/pro_parity): the corpus's professional
