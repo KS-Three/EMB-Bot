@@ -4594,3 +4594,50 @@ become. The rest of that census still reproduces exactly (`precision_drone`
 **Commit the probe, even an ugly one.** A tool that prints its own definition
 costs one file; a number whose definition is gone costs a re-derivation and
 leaves the original unciteable. *(measured 2026-09-11 — same doc §7)*
+
+## Strip the anti-aliasing and four of five real logos are STILL "gradient" — the gate is crossed by geometry, not just softness (2026-09-11)
+
+Follow-up to the entry above, measured over every real artwork in the repo
+with `tools/stage0_signal_origin.py --ablations`. The 08-15 finding —
+*"ordinary anti-aliased edges are enough to send a flat logo down the photo
+lane"* — is true and **incomplete**, and the difference decides what a
+replacement signal has to do.
+
+**Binarize each logo — no anti-aliasing, no grain, the cleanest two-colour
+version of that artwork that exists — and they do not come back:**
+`logo_gaulke_roofing` 0.0091, `logo_hotel_fremont` 0.0337, `logo_bridge_bar`
+0.0850, `logo_golden_tee` 0.2455, against `GRAD_VAR_GRADIENT_MIN` 0.0015 —
+6× to 164× over. Only `logo_script_tires` binarizes to a true 0.0000, because
+it is a large smooth script with few edges for its area. **So for most real
+logos the gate is crossed by the artwork's GEOMETRY** — many fine strokes,
+hence many edges the 3-px Canny dilation cannot fully exclude. A replacement
+signal that is merely noise-tolerant does not fix them.
+
+**And the two real logos that DO route `flat` are flat by file format.** Both
+are alpha PNGs, and `_gradient_smoothness` Sobels the RGB grey — it never
+reads alpha. `becker_marine_logo` carries `alpha_softness` 0.174 and 2 RGB
+colours; `enthusiast_logo` 0.019 and 3. Their softness is in the channel the
+signal ignores, so both read exactly 0.0000 on both signals. **Do not cite
+either as evidence that the gate works** — it is the same accident that puts
+`enthusiast_logo` in the scale test's `DEPARTS_FROM_NATIVE` set, since
+downsampling blends alpha softness into RGB where the signal can finally see
+it. *(measured 2026-09-11 — `docs/stage0-tires-photo-scene-2026-09-11.md` §9a)*
+
+## An arm that rebuilds the image drops what the file carried — alpha included (2026-09-11)
+
+`tools/stage0_signal_origin.py` reported `photo/enthusiast_logo.png` as `flat`
+in one line and `gradient` in the next, from the same pixels. The probe
+rebuilt each ablation arm as a THREE-channel array, and `_fg_mask` calls
+alpha ≤ 127 background — so every transparent pixel was promoted to
+foreground and the arms measured an image nobody digitizes. Four of the nine
+real fixtures carry alpha (`hotel_fremont`, `enthusiast`, `becker`,
+`drone_render`), so four rows of that run were wrong.
+
+**The general shape: when a probe reconstructs its input instead of handing
+over the file, every channel the file carried is a thing it can silently
+drop.** The tell here was two lines of my own output disagreeing — which is
+only visible because the tool prints the file's verdict beside the arms'.
+**Make an instrument restate the shipped answer next to its own**, and pin
+that with a test on a fixture that exercises the channel
+(`test_an_arm_of_an_ALPHA_fixture_reads_the_same_image_the_file_does`).
+*(fixed 2026-09-11 — same doc §9b)*

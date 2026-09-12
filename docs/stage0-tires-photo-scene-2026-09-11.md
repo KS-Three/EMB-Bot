@@ -162,13 +162,37 @@ Two things it is not free of:
   for a two-colour script wordmark. The panel does offer the flat-art nudge
   (`offerFlat`), so the customer can override — the copy is wrong, the escape
   hatch works.
-- **One arm of the photo lane was not exercised here.** This box has no
-  `rembg_isolated/venv`, so the run logged `PHOTO_BACKGROUND_REMOVAL_UNAVAILABLE`
+- **The table above is the lane WITHOUT the cutout.** This box had no
+  `rembg_isolated/venv`, so that run logged `PHOTO_BACKGROUND_REMOVAL_UNAVAILABLE`
   and, per the 2026-08-24 ruling, skipped the whole photo-prep block —
-  byte-identical to `photo_prep=False`. **On a machine where the cutout IS
-  available, `photo_scene` additionally runs rembg plus tone/texture prep on
-  this artwork, and that arm is untested.** It is the arm a customer on a
-  fully-provisioned service would get.
+  byte-identical to `photo_prep=False`. A customer on a provisioned service
+  gets the other arm, so it was built and measured (§6a).
+
+### 6a. The cutout arm, measured — also benign
+
+Built `rembg_isolated/venv` (python3.12, `rembg==2.0.77`, `onnxruntime==1.28.0`;
+pip resolved numpy 2.5.3 with numba 0.67.0, so **the README's numba-vs-numpy-2.5
+conflict has aged out** — worth knowing before anyone re-probes it). Model
+`isnet-general-use.onnx` cached, 6.0 s on this artwork.
+
+With the cutout available the run reports `PHOTO_BACKGROUND_REMOVED`,
+`PHOTO_PREP_APPLIED` and `TONAL_REGIONS_SPLIT` — the full photo machinery,
+including the tonal split:
+
+| arm | ARTFID | coverage | structure | stitches | trims | thread |
+|---|---:|---:|---:|---:|---:|---:|
+| `photo_scene` + rembg + tone/texture prep | **86.2** | 0.801 | 0.834 | 2,287 | 12 | 8.15 m |
+| `flat` | 85.7 | 0.794 | 0.827 | 2,332 | 13 | 8.37 m |
+
+**Still no damage — if anything marginally better** (+0.5 ARTFID, 45 fewer
+stitches, 0.22 m less thread), and the renders of the two arms are the same
+design: one black cone, script fully legible, letterforms intact. The tonal
+split fires but produces no second cone. So the misroute is benign in BOTH
+provisioning states, which is the stronger version of the claim — and the
+reason this stays an investigation rather than a bug report.
+
+Read the +0.5 as a wash, not a win: it is one design, and this document's own
+§7 records that ARTFID is not a route-neutral instrument.
 
 ## 7. What it costs the measurements
 
@@ -245,6 +269,73 @@ and with the extra defect that its reading is not reproducible across seeds.
   precisely because it is the bug's fixture (`docs/scope/1-auto-digitizing-
   quality.md`); it now has a tripwire asserting the property the fix must
   deliver, xfail(strict) so it reports the day it passes.
+
+## 9a. Is the grain mechanism general? No — and what IS general is worse
+
+Same probe over every real artwork in the repo, 4 seeds per arm. "UCM share"
+is where the disagreeing pixels sit; "binarized" is the arm with all
+anti-aliasing AND all grain removed — the cleanest two-colour version of the
+same artwork that exists.
+
+| fixture | class | UCM | GS | UCM share bg/ink/edge | binarized → |
+|---|---|---:|---:|---|---|
+| **`logo_script_tires`** | **photo_scene** | **0.361** | 0.080 | **97 / 0 / 3** | **flat** (0.0000) |
+| `logo_hotel_fremont` | gradient | 0.032 | 0.311 | 33 / 0 / 67 | gradient (0.0337) |
+| `logo_gaulke_roofing` | gradient | 0.010 | 0.615 | 3 / 0 / 97 | gradient (0.0091) |
+| `logo_golden_tee` | gradient | 0.008 | 0.082 | 20 / 6 / 74 | gradient (0.2455) |
+| `logo_bridge_bar` | gradient | 0.035 | 2.539 | 1 / 0 / 99 | gradient (0.0850) |
+| `enthusiast_logo` (α) | flat | 0.000 | 0.000 | — | flat (0.0000) |
+| `becker_marine_logo` (α) | flat | 0.000 | 0.000 | — | flat (0.0000) |
+| `owl_kent` (real photo) | gradient | 0.111 | 1.288 | 33 / 9 / 58 | gradient (1.8855) |
+| `drone_render` (real tonal, α) | gradient | 0.159 | 4.463 | 10 / 21 / 70 | gradient (18.4) |
+
+Three things fall out, and two of them are new:
+
+- **The grain mechanism is `logo_script_tires`'s alone.** It is the only
+  fixture whose disagreement mass sits in the ground (97% against 1–33%
+  elsewhere) and the only one that crosses the photo gate at all. Everywhere
+  else the mass is in the EDGE BAND and the misroute is the flat/gradient
+  gate. So §2 explains one fixture; it does not restate the corpus.
+- **Binarizing rescues only `tires`.** Strip every soft pixel and every noisy
+  one from the other four real logos and they STILL read `gradient` — at 6×,
+  22×, 57× and 164× the gate. **That revises the 08-15 reading.** *"Ordinary
+  anti-aliased edges are enough to send a flat logo down the photo lane"* is
+  true and incomplete: for four of five real logos, the artwork's GEOMETRY
+  alone — many fine strokes, hence many edges Canny's dilation cannot fully
+  exclude — clears the gate with no anti-aliasing present at all. A
+  replacement signal has to survive that, not merely be noise-tolerant.
+- **The two real logos that DO route `flat` are flat by file format, not by
+  artwork.** Both are alpha PNGs, and `_gradient_smoothness` Sobels the RGB
+  grey only — it never reads alpha. Their edge softness is in the channel the
+  signal ignores (`becker` `alpha_softness` 0.174, `enthusiast` 0.019, RGB
+  down to 2 and 3 colours respectively), so they read exactly 0.0000 on both
+  signals. That also explains why `enthusiast_logo` sits in the scale test's
+  `DEPARTS_FROM_NATIVE` set: downsampling blends that alpha softness into RGB,
+  where the signal can suddenly see it, and the class changes with no change
+  to the artwork.
+
+*(measured 2026-09-11 — `tools/stage0_signal_origin.py --ablations`, 4 seeds)*
+
+### 9b. A defect in this document's own instrument, found by its own output
+
+The first corpus run reported `enthusiast_logo` as `flat` in its header and
+`gradient` in its very next line — the same pixels, two answers. Cause: the
+probe rebuilt each ablation arm as a THREE-channel array, and `_fg_mask` calls
+alpha ≤ 127 background, so every transparent pixel was silently promoted to
+foreground and the arms measured an image nobody digitizes. Four of the nine
+fixtures carry alpha, so four rows of that run were wrong.
+
+Fixed (`_bgr` carries alpha; `zones` takes the real foreground; the sweep
+keeps RGBA), pinned by
+`test_an_arm_of_an_ALPHA_fixture_reads_the_same_image_the_file_does`, and the
+table above is the re-run. **`logo_script_tires.png` has no alpha channel, so
+every number in §1–§8 is unaffected** — I checked that before trusting them
+rather than after.
+
+The tell was a disagreement between two lines of my own output. It is the same
+shape as §7's orphaned census row: an instrument that is not pinned against
+the thing it claims to reproduce will drift, and the drift is only visible
+when something forces the two readings side by side.
 
 ## 10. Kent's note: the pro digitized this as 3D puff
 

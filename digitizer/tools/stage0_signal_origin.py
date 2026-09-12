@@ -52,11 +52,17 @@ from digitizer_core.threads import rgb_to_lab               # noqa: E402
 BAND_PX = 3
 
 
-def zones(rgb: np.ndarray, band_px: int = BAND_PX) -> dict[str, np.ndarray]:
+def zones(rgb: np.ndarray, band_px: int = BAND_PX,
+          fg: np.ndarray | None = None) -> dict[str, np.ndarray]:
     """Split an image into background interior / ink interior / edge band.
 
     Otsu on grey, then a distance transform either side of that boundary. This
     is a READING aid, not a segmentation the engine uses — stage 1 owns that.
+
+    `fg` is stage 0's own foreground (`_fg_mask`): pass it for artwork with an
+    alpha channel, where the transparent region is not background-coloured ink
+    but pixels the statistic never sees. Every zone is intersected with it, so
+    the shares printed are shares of what was actually measured.
     """
     grey = cv2.cvtColor(rgb, cv2.COLOR_RGB2GRAY)
     _, inkm = cv2.threshold(grey, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
@@ -64,7 +70,10 @@ def zones(rgb: np.ndarray, band_px: int = BAND_PX) -> dict[str, np.ndarray]:
     d_in = cv2.distanceTransform(ink.astype(np.uint8), cv2.DIST_L2, 3)
     d_out = cv2.distanceTransform((~ink).astype(np.uint8), cv2.DIST_L2, 3)
     band = (ink & (d_in <= band_px)) | (~ink & (d_out <= band_px))
-    return {"bg_interior": ~ink & ~band, "ink_interior": ink & ~band, "edge_band": band}
+    out = {"bg_interior": ~ink & ~band, "ink_interior": ink & ~band, "edge_band": band}
+    if fg is not None:
+        out = {k: v & fg for k, v in out.items()}
+    return out
 
 
 def ucm_parts(rgb: np.ndarray, fg: np.ndarray, seed: int):
@@ -91,9 +100,21 @@ def ucm_parts(rgb: np.ndarray, fg: np.ndarray, seed: int):
     return float(diff.sum()) / float(fg.sum()), diff, labels, centres
 
 
-def _bgr(img: np.ndarray) -> np.ndarray:
-    """RGB -> the BGR ndarray `classify` expects to be handed."""
-    return cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+def _bgr(img: np.ndarray, alpha: np.ndarray | None = None) -> np.ndarray:
+    """RGB -> the ndarray `classify` expects to be handed, alpha included.
+
+    **Carrying alpha is not optional.** `_fg_mask` treats alpha<=127 as
+    background, so handing back three channels silently re-declares every
+    transparent pixel as foreground and the arms then measure a different
+    image than the shipped classifier reads. Measured on
+    `photo/enthusiast_logo.png`: `flat` (GS 0.0000) through the file, and
+    `gradient` (GS 0.0434) through the same pixels with alpha dropped. Four of
+    the repo's real-artwork fixtures carry alpha.
+    """
+    out = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+    if alpha is None:
+        return out
+    return np.dstack([out, alpha])
 
 
 def seed_spread(img_bgr: np.ndarray, seeds: int) -> tuple[list[float], dict[str, int]]:
@@ -154,11 +175,17 @@ def report(path: Path, seeds: int, do_ablations: bool, do_sweep: bool) -> int:
           f"(flat/gradient gate {s0.GRAD_VAR_GRADIENT_MIN}, "
           f"scene/subject gate {s0.GRAD_VAR_SUBJECT_MIN})")
 
-    z = zones(rgb)
+    z = zones(rgb, fg=fg)
     ucm, diff, labels, centres = ucm_parts(rgb, fg, cfg.seed)
     total = max(1.0, float(diff.sum()))
     print(f"\n  unique_color_mass = {ucm:.4f}, by zone:")
     for name, m in z.items():
+        if not m.any():
+            # Legitimately empty — e.g. `becker_marine_logo.png`, whose whole
+            # ground is transparent, so alpha leaves no background pixel to
+            # measure. Say so rather than printing nan.
+            print(f"    {name:13s}   0.0% of image  (empty — nothing measured here)")
+            continue
         grey = cv2.cvtColor(rgb, cv2.COLOR_RGB2GRAY)[m]
         print(f"    {name:13s} {m.mean():6.1%} of image  disagree {diff[m].mean():6.1%}  "
               f"share of disagreement {diff[m].sum() / total:6.1%}  "
@@ -176,7 +203,7 @@ def report(path: Path, seeds: int, do_ablations: bool, do_sweep: bool) -> int:
               f"{n / labels.size:6.2%} of image  {where}")
     _print_centre_distances(centres, labels, z["bg_interior"])
 
-    ucms, tally = seed_spread(_bgr(rgb), seeds)
+    ucms, tally = seed_spread(_bgr(rgb, alpha), seeds)
     print(f"\n  across {seeds} k-means seeds: UCM {min(ucms):.3f}..{max(ucms):.3f} "
           f"(gate {s0.UCM_PHOTO_MIN}), classes {tally}")
     if max(ucms) - min(ucms) > s0.UCM_MARGIN:
@@ -186,8 +213,8 @@ def report(path: Path, seeds: int, do_ablations: bool, do_sweep: bool) -> int:
     if do_ablations:
         print("\n  one-variable ablations (class per seed):")
         for name, arm in ablations(rgb, z):
-            a_ucms, a_tally = seed_spread(_bgr(arm), seeds)
-            gs = s0.classify(_bgr(arm), cfg).signals["gradient_smoothness"]
+            a_ucms, a_tally = seed_spread(_bgr(arm, alpha), seeds)
+            gs = s0.classify(_bgr(arm, alpha), cfg).signals["gradient_smoothness"]
             print(f"    {name:42s} UCM {min(a_ucms):.3f}..{max(a_ucms):.3f}  "
                   f"GS {gs:.5f}  {a_tally}")
 
@@ -224,14 +251,18 @@ def _print_sweep(path: Path, seeds: int) -> None:
     invariance.py does (PIL LANCZOS), so the two agree on method."""
     from PIL import Image
 
-    im = Image.open(path).convert("RGB")
+    src = Image.open(path)
+    # RGBA when the file has alpha, for the reason `_bgr` documents: resampling
+    # to RGB would hand every arm a foreground the classifier never uses.
+    im = src.convert("RGBA" if src.mode in ("RGBA", "LA", "P") else "RGB")
     print("\n  export-resolution sweep (PIL LANCZOS):")
     for w in (146, 250, 400, 640, 900, im.width, 2000):
         h = max(1, round(im.height / im.width * w))
         arr = np.array(im if w == im.width else im.resize((w, h), Image.LANCZOS))
-        ucms, tally = seed_spread(_bgr(arr), seeds)
+        rgb, a = (arr[:, :, :3], arr[:, :, 3]) if arr.shape[2] == 4 else (arr, None)
+        ucms, tally = seed_spread(_bgr(rgb, a), seeds)
         cfg = PipelineConfig()
-        gs = s0.classify(_bgr(arr), cfg).signals["gradient_smoothness"]
+        gs = s0.classify(_bgr(rgb, a), cfg).signals["gradient_smoothness"]
         tag = "native" if w == im.width else ("up" if w > im.width else "down")
         print(f"    {w:5d}px ({tag:6s}) UCM {min(ucms):.3f}..{max(ucms):.3f}  "
               f"GS {gs:.4f}  {tally}")
