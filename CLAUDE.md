@@ -189,6 +189,32 @@ cd digitizer && .venv/Scripts/python -m digitizer_service   # service on 127.0.0
 
 6. **Playwright MCP needs an explicit browser path in this class of sandbox.** `@playwright/mcp`'s bundled `playwright-core` expects a newer browser revision than what's pre-cached at `/opt/pw-browsers/`, and outbound access to Playwright's browser-download CDN is blocked (403) in this environment class — so the plain `npx @playwright/mcp@latest` config fails outright, with no download fallback. `.mcp.json` launches it through `tools/mcp-playwright.mjs` instead, which passes `--executable-path /opt/pw-browsers/chromium` only when that path exists (so a machine without it, e.g. Kent's local setup, still gets normal auto-download behavior). Don't simplify `.mcp.json` back to a bare `npx @playwright/mcp@latest` command. Confirmed 2026-08-03.
 
+   **`.mcp.json` carries a SECOND server since 2026-09-12 — `huggingface`, and it
+   deliberately sends NO token.** A remote HTTP server at
+   `https://huggingface.co/mcp`, added so a session can check a candidate model's
+   **license and maintenance status against the Hub** instead of against its own
+   README — which matters here specifically because this is a commercial product
+   in a public repo and the embroidery-adjacent prior art is largely GPL-3.0
+   (Ink/Stitch). Search results carry the licence in their tags, e.g. BiRefNet
+   reads `license:mit` at 985.4K downloads. **Anonymous access is real, measured
+   2026-09-12:** `initialize` returns HTTP 200 with no credential and
+   `tools/list` gives four tools — `hf_whoami`, `hub_repo_search`,
+   `hub_repo_details`, `hf_fs` (which reads files out of a Hub repo, so a
+   `LICENSE` can be read directly rather than inferred from a tag). A token
+   would add more (paper/space/doc search), but there is **no
+   `Authorization` header on purpose**: an unset `${HF_TOKEN}` expands to a bare
+   `Bearer `, and sending an empty credential is worse than sending none — it
+   turns a working anonymous server into a 401. Add the header only alongside a
+   real token, never speculatively.
+   **The trap is `hub_repo_search`'s parameter name.** It takes **`repo_types`, an
+   ARRAY** (`["model"]`), not `repo_type`. Pass the singular and the call
+   SUCCEEDS and returns *"No repositories found for the given criteria"* — a wrong
+   argument reads exactly like a true negative, so a session concludes the model
+   does not exist on the Hub. Hit while adding this, on a model with 985K
+   downloads. **This is NOT a runtime dependency** — nothing in `digitizer/`,
+   `src/`, or `app/` calls it, and it moves no defect on its own; it is a
+   research-loop tool for license and maintenance questions.
+
 7. **Three green checks is NOT a green PR — the fourth is the slow one.** CI runs
    four jobs on a PR. `engine` and `studio` finish in well under a minute
    (p50 0.5 and 0.8) and `studio-e2e` in about three (p50 2.7).
