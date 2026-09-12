@@ -1341,12 +1341,32 @@ const WARNING_TEXT = {
   // THEIR artwork, because that is the sentence they read before deciding
   // whether to override it (DigitizePanel's flat-art nudge fires on the first
   // three of them).
+  //
+  // The photo lines state their CONSEQUENCE conditionally, and that is the
+  // measured error rate talking, not hedging. Stage 0 misroutes most real
+  // customer logos — six of seven reach `gradient`, and
+  // `logo_script_tires.png`, flat black script on a white ground, reaches
+  // `photo_scene` on the ground's ±1 grey-level grain
+  // (docs/stage0-tires-photo-scene-2026-09-11.md). "Photos sew rougher —
+  // check the preview closely" therefore reached a large share of its readers
+  // as a warning about a photograph they had not uploaded, and about a rough
+  // result they were not going to get: that fixture's photo-lane output scores
+  // the same as its flat-lane output and sews the same design. Saying "if
+  // that reading is right" costs the real photographs nothing and stops the
+  // misread ones asserting something false about someone's artwork.
+  //
+  // The CORRECTION deliberately stays out of these sentences. DigitizePanel's
+  // read-row already offers it with a button, on exactly these three codes,
+  // and putting it here too printed the same guidance twice on one screen —
+  // which three panel tests caught by finding two matches where they expect
+  // one. Warning text says what the engine decided; the read-row is where the
+  // customer changes it. Kent's call to fix the copy, 2026-09-11.
   CLASSIFIED_GRADIENT: () =>
     "The art reads as smooth shading rather than flat color. Areas that shade smoothly enough sew in a few blended thread shades; the rest sew in one flat color.",
   CLASSIFIED_PHOTO_SUBJECT: () =>
-    "The art reads as a photo of a person, pet or product. Photos sew rougher than flat artwork — check the preview closely before stitching this one out.",
+    "The art reads as a photo of a person, pet or product. If that reading is right, photos sew rougher than flat artwork — check the preview closely before stitching this one out.",
   CLASSIFIED_PHOTO_SCENE: () =>
-    "The art reads as a photographic scene. Photos sew rougher than flat artwork — check the preview closely before stitching this one out.",
+    "The art reads as a photographic scene. If that reading is right, photos sew rougher than flat artwork — check the preview closely before stitching this one out.",
   CLASSIFICATION_UNCERTAIN: () =>
     "The art didn't clearly read as flat, shaded or photographic, so it was digitized as flat art. If it's really a photo, expect a rougher result than usual.",
   // Stage 7's own routing note (digitizer_core/warnings_codes.py) for the

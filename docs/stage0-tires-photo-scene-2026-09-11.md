@@ -316,6 +316,59 @@ Three things fall out, and two of them are new:
 
 *(measured 2026-09-11 — `tools/stage0_signal_origin.py --ablations`, 4 seeds)*
 
+### 9a-bis. The candidate signal, stressed on the same two populations
+
+§9a says a replacement has to survive GEOMETRY, not merely tolerate noise. So
+the 08-15 spec's candidate (`tools/color_diversity.py`) was put through both
+tests. Kent's call, 2026-09-11.
+
+**Geometry: it passes, cleanly.** Run on each logo's binarized twin — pure
+geometry, no soft pixel and no noisy one — every real logo reads **1 or 2**,
+including the four whose shipped `gradient_smoothness` stays 6–164× over its
+gate after the same binarization. The failure mode that breaks the shipped
+signal does not transfer to the candidate. That is real de-risking for PR 6a,
+available before any new artwork lands.
+
+**Photographs: the margin collapses to zero, and this one needs Kent.** The
+09-11 measurement reports flat max **16** (`bridge`) against tonal min **20**
+(`drone`), gap +4. Enrol `photo/owl_kent.jpg` — the repo's only REAL
+photograph — as a real tonal positive and the tool's own verdict becomes:
+
+```
+  flat max    16  (bridge)
+  tonal min   16  (owl_kent)
+  gap          0  — the classes OVERLAP
+  across the sweep: the classes separate at NO of the rungs every artwork reaches
+```
+
+The plan's §5a leaves *"whether photographs may serve as positives for a
+flat/gradient boundary"* open as a question for Kent. **This is the number
+that question is worth: if they count, the candidate does not order the
+classes on today's corpus either** — so the +4 gap must not be quoted as
+though photographs were in the tonal set.
+
+Two honest limits on that. `owl_kent.jpg` is a 554 px re-save (it carries no
+EXIF for the same reason), and a downscaled re-encode is not a
+full-resolution photograph, so this is a caution rather than a refutation.
+And it is one positive: n=2 tonal rows still fails the spec's own four-row
+floor, which the tool says itself.
+
+Worth noting either way: **`color_diversity`'s corpus enrols the SYNTHETIC
+owl (`photo/photo_owl_pale.png`, excluded from the margin as gate 2 requires)
+and not the real one**, which is committed two directories away and is the
+artwork this repo cites whenever it needs a real photograph.
+
+One instrument note, since §9b is about exactly this: `sweep()` reads with
+`cv2.IMREAD_COLOR`, which drops alpha, while its own `foreground()` honours
+alpha through `prep`. For the four alpha fixtures the two entry points
+therefore disagree — `drone_render` reads 20 through the tool and 25 when its
+alpha survives. Every number quoted here is the tool's own (no alpha), which
+is also what the 08-15 table measured; the disagreement is flagged rather than
+fixed, because changing it would move the numbers PR 6a will be sited on.
+
+*(measured 2026-09-11 — `tools/color_diversity.py --foreground bbox`, plus
+`--art testdata/photo/owl_kent.jpg --label tonal --provenance real`)*
+
 ### 9b. A defect in this document's own instrument, found by its own output
 
 The first corpus run reported `enthusiast_logo` as `flat` in its header and

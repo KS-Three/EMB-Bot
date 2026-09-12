@@ -391,6 +391,25 @@ Evidence and the probe: `docs/stage0-tires-photo-scene-2026-09-11.md`,
 expect to turn green is
 `tests/test_stage0_signal_origin.py::test_a_flat_script_wordmark_classifies_flat_at_every_seed`.
 
+**The candidate signal, stressed against both populations (2026-09-11).** Two
+results, one reassuring and one that lands on §8's open question:
+
+- **Geometry: it passes.** §9a of that doc measures the shipped
+  `gradient_smoothness` being crossed by artwork GEOMETRY alone — four real
+  logos still read `gradient` after binarization, at 6–164× the gate. The
+  candidate, on the same binarized twins, reads **1 or 2 everywhere**. The
+  failure mode does not transfer.
+- **Photographs: the margin goes to ZERO.** This section's own question —
+  *"whether photographs may serve as positives"* — now has a number. Enrol
+  `photo/owl_kent.jpg`, the repo's only real photograph, as a real tonal
+  positive and `color_diversity`'s verdict flips from *flat max 16 / tonal min
+  20 / gap +4* to **flat max 16 (`bridge`) / tonal min 16 (`owl_kent`) / gap
+  0, separating at NO rung**. So **do not quote the +4 gap as if photographs
+  were in the tonal set** — under that reading the candidate does not order
+  the classes either. Caveats, both real: `owl_kent.jpg` is a 554 px re-save,
+  and n=2 tonal rows is still under the spec's four-row floor. Note also that
+  `color_diversity`'s corpus enrols the SYNTHETIC owl and not the real one.
+
 ### 5b. What the lane change is measured on
 
 All seven real logos plus drone, at the Studio's defaults, three arms
