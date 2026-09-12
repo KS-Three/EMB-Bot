@@ -1267,6 +1267,12 @@ line per flagged region. Artwork resolves through `prep_both.py`'s
 isn't mounted, so the Drive is not required to run the loop — first real
 run: `docs/pro-overlay-first-run-2026-09-11.md`.
 
+On a plain Windows console (cp1252), `diff.py`'s stdout summary line crashes
+with `UnicodeEncodeError` on its own arrow character — set `PYTHONUTF8=1`
+before running `overlay.py`/`diff.py` there. `catalogue.md`/`diff.json` are
+written before that print, so a crash there does not lose the run's output,
+but the per-row stdout lines never print without it.
+
 ### Recapturing `corpus_scorecard_baseline.json`
 
 The baseline once sat unrefreshed through ~15 digitizer commits; the next

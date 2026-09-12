@@ -4159,3 +4159,28 @@ its geometry, not with a defect, so putting it behind a flag would manufacture
 findings out of ordinary shape variation. The catalogue prints it for context
 only; see `docs/pro-overlay-first-run-2026-09-11.md` for the first run it
 appeared in. *(2026-09-11 — Task 13, `tools/pro_parity/diff.py`)*
+
+## A median stitch length is a column-width PROXY, not a column width — correct by the pitch term (2026-09-11)
+
+`docs/kent-review-2026-09-03.md:143`'s "satin columns of roughly 0.8-0.9 mm"
+comes from `len_p50` (a median point-to-point stitch length) on two of the
+pro's blocks — the gold lettering block (1,090 stitches, `len_p50` 0.82 mm,
+`row_spacing_mm` 0.4, reproduced exactly in `hotel_fremont_patch`'s own
+`pro_blocks.json` this run) and THE's black block (quoted at 0.90 mm in the
+same source). That is a DIFFERENT quantity from `width p50` in
+`tools/pro_parity/diff.py`'s catalogues, which comes from
+`satin_columns.measure` — the apex-to-chord offset of the column itself.
+
+The two are related, not interchangeable: on a satin column, consecutive
+needle points alternate rails, so a stitch length is approximately
+`sqrt(width² + pitch²)` — a median-stitch figure over-reads the true column
+width by the pitch term. Backing the pitch out of block 8's own 0.4 mm row
+spacing: `sqrt(0.82² - 0.4²) ≈ 0.72 mm`, and the same correction on THE's
+0.90 mm gives `≈ 0.81 mm`. So the record's figure is a reasonable width
+PROXY, not a category error, and not wrong — but it is not the number this
+loop's `width p50` column measures, and quoting one for the other without
+the pitch correction overstates the pro's column width by roughly 10-15%.
+**Quote a `len_p50` figure as a proxy with the pitch correction stated, and
+read a true column width off `satin_columns` (or this loop's `width p50`)
+directly wherever that is available — never substitute one for the other
+silently.** *(2026-09-11 — Task 13 fix round 1, `docs/pro-overlay-first-run-2026-09-11.md` expectation 4)*
