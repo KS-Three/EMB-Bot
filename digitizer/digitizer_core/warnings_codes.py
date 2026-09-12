@@ -274,8 +274,33 @@ EDGE_CAP_EMPTY = "EDGE_CAP_EMPTY"
 # On that design "the design silhouette" is not one edge and the feature's
 # premise does not hold, so the honest move is to report the bill rather than
 # to guess a fragmentation threshold nobody has sewn.
-# extra: {"style": str, "stitches": int, "percent": float, "edges": int}
+# extra: {"style": str, "stitches": int, "percent": float, "edges": int,
+#         "whole_loops": int, "arcs": int, "yielded": int,
+#         "cracks_filled": int, "gate_saved_pct": float,
+#         "omit_cover_mm2": float, "over_budget": bool, "budget_pct": float,
+#         "dropped": bool}
+# `edges` is the number of silhouette RINGS the cap went around; `whole_loops`
+# and `arcs` split the runs it emitted (a ring the gate cut sews as arcs, and
+# an operator reading fragmentation needs the ring count, not the run count —
+# see stage6_border.silhouette_cap). `gate_saved_pct` is 1 - gated/ungated on
+# the same geometry: the single number that says whether the gate is working
+# on THIS design, and the one whose absence let a +58.7% bill pass for a month.
 EDGE_CAP_APPLIED = "EDGE_CAP_APPLIED"
+# The cap's bill cleared `stage6_border.EDGE_CAP_BUDGET_PCT` (40% of the
+# artwork's own stitches). Loud because the cap is DEFAULT ON: the bill was
+# always reported honestly, and that was not enough — `EDGE_CAP_APPLIED` fires
+# on every run, so the one run where the cap costs two-fifths of the design or
+# more read exactly like the ninety that cost a tenth. Measured cause on
+# `becker_marine_logo` (docs/edge-cap-cliff-2026-09-12.md): one shape carries
+# ~94% of the design's linear cover, that shape's satin/fill verdict is not
+# monotone in design size, and when it tiers to fill the gate's input — and
+# with it the gate's saving — collapses from 72% to 3%, or to nothing at all.
+# The warning carries the diagnosis, not just the number: `gate_saved_pct` and
+# `omit_cover_mm2` say whether the gate had anything to work with.
+# extra: {"style": str, "stitches": int, "percent": float, "budget_pct":
+#         float, "gate_saved_pct": float, "omit_cover_mm2": float,
+#         "dropped": bool}
+EDGE_CAP_OVER_BUDGET = "EDGE_CAP_OVER_BUDGET"
 # The satin cap fell back to its own bean lightening on part of the
 # silhouette — `border_runs`' documented contract, surfaced rather than
 # absorbed so a cap that reads lighter than expected has a reason on screen.

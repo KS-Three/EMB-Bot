@@ -62,7 +62,9 @@ from .machine import FILL_ROW_MM, FILL_STITCH_MM, SATIN_MAX_WIDTH_MM, TINY_STITC
 from .stage5_overlap import PlannedRegion, widened_lettering
 from .stage6_applique import applique_pass, nn_group_key
 from .stage6_blend import SourcePixels, blend_fill, region_rides_design_ramp
-from .stage6_border import border_runs, run_outline, silhouette_cap
+from .stage6_border import (EDGE_CAP_BUDGET_PCT,
+                            EDGE_CAP_OVER_BUDGET_ACTIONS, border_runs,
+                            run_outline, silhouette_cap)
 from .stage6_contour import contour_fill
 from .stage6_detail import detail_runs
 from .stage6_fill import stitch_shape
@@ -79,7 +81,8 @@ from .warnings_codes import (BLEND_NO_REGIONS_DECOMPOSED, BORDER_LIGHTENED,
                              CONTOUR_DIRECTIONAL_COMP_UNSEWN,
                              CONTOUR_RING_UNREACHABLE, EDGE_CAP_APPLIED,
                              EDGE_CAP_EMPTY,
-                             EDGE_CAP_LIGHTENED, HAIRLINE_STROKES_AS_RUN,
+                             EDGE_CAP_LIGHTENED, EDGE_CAP_OVER_BUDGET,
+                             HAIRLINE_STROKES_AS_RUN,
                              LONG_JUMPS_TRIMMED,
                              SHAPE_NOT_STITCHED, SHAPE_TOO_THIN_TO_FILL,
                              SMALL_SHAPES_AS_RUN, warn)
@@ -1220,6 +1223,14 @@ def _sewn_linear_cover(blocks: list[StitchBlock]):
     design that is all fill: there the whole outline ends in open air and the
     cap should close all of it, exactly as it did before the gate existed.
 
+    **That `None` is also how the cap's bill goes back to the pre-gate
+    +8.6-100.4% regime, and it used to do so in silence** — `becker_marine_logo`
+    at 110 mm has zero linear runs and pays +53.4% (2026-09-12). It is not a
+    bug here: an all-fill design genuinely has no covered edge. What was
+    missing was anyone pricing it, so since 2026-09-12 the caller publishes
+    `omit_cover_mm2` and `gate_saved_pct` on every bill (`_gate_saving`) and
+    says so out loud past `EDGE_CAP_BUDGET_PCT`.
+
     Each run is buffered into its own ribbon and the RIBBONS are unioned —
     never `unary_union(lines).buffer(...)`, which is the same set by
     `buffer(A u B, r) == buffer(A, r) u buffer(B, r)` (a Minkowski sum
@@ -1241,6 +1252,69 @@ def _sewn_linear_cover(blocks: list[StitchBlock]):
         return None
     half_w = machine.COVERAGE_THREAD_W_MM / 2.0
     return unary_union([ln.buffer(half_w) for ln in lines])
+
+
+def _gate_saving(silhouette, omit, gated_runs, *, style: str,
+                 entry, trim_at_mm: float,
+                 width_mm: float | None) -> tuple[float, float]:
+    """-> (what the cap's gate saved, in %, how much cover it had, in mm²).
+
+    `1 - gated/ungated` over the SAME geometry: the same cap emitted twice,
+    once with the `omit` the design earned and once with none. The cliff doc
+    calls this "the one number that would have made this visible at a
+    glance", and it is right — on `becker_marine_logo` the gate saves 82.5%
+    at 80 mm and 2.9% at 95.7 mm while the UNGATED cost only tracks the
+    growing ring (4,951 -> 6,026 raw stitches over the same +20% of size).
+    The whole jump in the bill is the gate's saving collapsing, and nothing
+    in the old bill said so. Both counts are raw run points, before ties.
+
+    **It is a second emission on a default-ON path, and that is deliberate.**
+    Every cheaper proxy measures something else: the share of the outline's
+    LENGTH that `omit` covers reads 56.5% where the stitches say 82.5%
+    (becker at 80 mm) and 51.7% against 94.2% (`enthusiast_logo`). They
+    diverge because a remnant arc under `_ARC_MIN_MM` is dropped outright —
+    its stitches vanish although its length was never covered — so the
+    cheaper number understates the saving by up to 40 points, design by
+    design. Measured cost, six fixtures, 2026-09-12:
+    bean — the shipped style — 0.01-0.08 s, under half a percent of a 5-85 s
+    digitize; satin 0.4-3.8 s, from +2% of a digitize (`logo_gaulke_roofing`)
+    to +19% (`enthusiast_logo`, a 12.7 s design whose satin cap is already a
+    fifth of it). If that ever has to go, take the length proxy and RENAME
+    the field — do not quietly publish one number under the other's name.
+
+    Skipped where the gate had no input at all: the saving is 0.0 by
+    definition, the probe would re-emit the identical runs, and that is
+    precisely the becker-at-110 mm case this exists for.
+    """
+    cover_mm2 = 0.0 if omit is None else round(float(omit.area), 1)
+    if omit is None or getattr(omit, "is_empty", False):
+        return 0.0, cover_mm2
+    ungated, _report = silhouette_cap(silhouette, "__edge_cap__", style=style,
+                                      entry=entry, trim_at_mm=trim_at_mm,
+                                      width_mm=width_mm, omit=None)
+    ungated_st = sum(len(r.points) for r in ungated)
+    if not ungated_st:
+        return 0.0, cover_mm2
+    gated_st = sum(len(r.points) for r in gated_runs)
+    return round(100.0 * (1.0 - gated_st / ungated_st), 1), cover_mm2
+
+
+def _over_budget_action(cfg) -> str:
+    """What a cap bill over `EDGE_CAP_BUDGET_PCT` does — `"warn"` or `"drop"`.
+
+    The whole behavioural difference of `cfg.edge_cap_over_budget`, in one
+    named function on purpose: "default off is byte-identical" is a claim a
+    test can then price by EXECUTION (does this ever return `"drop"`?) rather
+    than by comparing two outputs that might happen to agree —
+    `tests/test_edge_cap_budget.py`, on the model
+    `test_resnap_mask_matches_grader.py` set on 2026-09-12.
+
+    Anything unrecognised reads as `"warn"`, the shipped behaviour, for the
+    same reason `cfg.edge_cap`'s own reader treats a typo as "no cap": a
+    misspelled knob must never silently DELETE a pass the design asked for.
+    """
+    action = str(getattr(cfg, "edge_cap_over_budget", "warn") or "warn").lower()
+    return action if action in EDGE_CAP_OVER_BUDGET_ACTIONS else "warn"
 
 
 def _cap_thread(silhouette, sewn: list[PlannedRegion],
@@ -2414,43 +2488,81 @@ def sequence(
             width_mm=cfg.border_width_mm,
             omit=cap_omit,
         )
+        # What the gate actually saved on THIS design, measured — the number
+        # whose absence let a +58.7% bill read like a +13% one. Computed only
+        # where there is a bill to put it in, and BEFORE `_apply_ties` adds
+        # tie stitches to the runs that will be sewn (the probe's runs never
+        # are, so tying one side would price the two differently).
+        cap_gate_saved, cap_omit_mm2 = (
+            _gate_saving(silhouette, cap_omit, c_runs, style=cap_style,
+                         entry=cursor, trim_at_mm=trim_at,
+                         width_mm=cfg.border_width_mm)
+            if c_runs else (0.0, 0.0))
         if c_runs:
-            jumps += c_report["jumps"]
-            cap_lightened = c_report["bean_loops"]
             # The needle always lifts into a new block and the thread is
             # always cut coming out of the previous one — the same forcing
             # the detail layer below and every artwork block above get.
             c_runs[0].jump = True
             c_runs[0].trim = True
             _apply_ties(c_runs)
-            c_index = _cap_thread(silhouette, cap_sewn,
-                                  cap_sewn[0].region.thread_index)
-            c_thread = chart_for(cfg)[c_index]
-            blocks.append(
-                StitchBlock(
-                    thread_index=c_index,
-                    thread_number=c_thread.number,
-                    rgb=tuple(c_thread.rgb),
-                    runs=c_runs,
-                )
-            )
-            cursor = c_runs[-1].points[-1]
             # The bill, always. See EDGE_CAP_APPLIED: the cost is not
             # predictable from the design's size, it scales with how
             # fragmented the silhouette is, so the only honest thing is to
             # measure it on THIS design and say so.
             _cap_st = sum(len(r.points) for r in c_runs)
-            _art_st = sum(b.stitch_count for b in blocks) - _cap_st
+            # The artwork's own stitches: every block so far, the cap not yet
+            # among them. (Identical to the post-append
+            # `sum(...) - _cap_st` this replaced — `StitchBlock.stitch_count`
+            # IS `sum(len(r.points) for r in runs)` — and computed here
+            # because the budget decision below has to happen before the
+            # append, not after it.)
+            _art_st = sum(b.stitch_count for b in blocks)
+            _percent = round(100.0 * _cap_st / _art_st, 1) if _art_st else 0.0
+            cap_over_budget = _art_st > 0 and _percent > EDGE_CAP_BUDGET_PCT
+            cap_dropped = cap_over_budget and _over_budget_action(cfg) == "drop"
+            if not cap_dropped:
+                jumps += c_report["jumps"]
+                cap_lightened = c_report["bean_loops"]
+                c_index = _cap_thread(silhouette, cap_sewn,
+                                      cap_sewn[0].region.thread_index)
+                c_thread = chart_for(cfg)[c_index]
+                blocks.append(
+                    StitchBlock(
+                        thread_index=c_index,
+                        thread_number=c_thread.number,
+                        rgb=tuple(c_thread.rgb),
+                        runs=c_runs,
+                    )
+                )
+                cursor = c_runs[-1].points[-1]
             cap_cost = {
                 "style": cap_style,
                 "stitches": _cap_st,
-                "percent": round(100.0 * _cap_st / _art_st, 1) if _art_st else 0.0,
-                "edges": c_report["loops"] + c_report["bean_loops"],
+                "percent": _percent,
+                # How many RINGS the cap went around — the fragmentation
+                # number this field has always CLAIMED to be and, until
+                # 2026-09-12, was not: it read `loops + bean_loops`, and
+                # `run_outline` counts one `loops` per emitted RUN, so it
+                # went 18 -> 25 -> 16 on becker as the bill went +18% ->
+                # +26% -> +57%, falling precisely because the cap got more
+                # expensive. `whole_loops + arcs` is the run count and is
+                # published beside it; `whole_loops + yielded` is the ring
+                # count (see stage6_border.silhouette_cap for why those add
+                # up). Unchanged on any design the gate does not split.
+                "edges": c_report["whole_loops"] + c_report["yielded"],
+                "whole_loops": c_report["whole_loops"],
+                "arcs": c_report["arcs"],
+                "yielded": c_report["yielded"],
                 # Hairline cracks in the union that were filled rather than
                 # ringed — see stage6_border._fill_cracks. Part of the bill
                 # because "1 edge, 20 cracks ignored" is the number that
                 # says the silhouette was one shape after all.
                 "cracks_filled": c_report["holes_skipped"],
+                "gate_saved_pct": cap_gate_saved,
+                "omit_cover_mm2": cap_omit_mm2,
+                "over_budget": cap_over_budget,
+                "budget_pct": EDGE_CAP_BUDGET_PCT,
+                "dropped": cap_dropped,
             }
         else:
             cap_empty_style = cap_style
@@ -2626,6 +2738,55 @@ def sequence(
                 "shapes do not join into one silhouette is being outlined "
                 "many times over, which is where a cap stops being cheap.",
                 **cap_cost,
+            )
+        )
+    # The cap defending its own bill (Kent's ruling 2026-09-12, on
+    # docs/edge-cap-cliff-2026-09-12.md §8 item 2). `EDGE_CAP_APPLIED` above
+    # fires on EVERY run, which is what let +58.7% read like +13%; this fires
+    # only when the bill clears the ceiling, and it carries the diagnosis —
+    # what the gate saved, and how much cover it had to work with.
+    #
+    # The TRIGGER is the bill alone, not "the gate lost its input AND the
+    # bill is high". A design that genuinely sews no linear stitch (an
+    # all-fill logo) is the case `_sewn_linear_cover`'s `None` was written
+    # for: capping its whole outline is correct, and when that is also cheap
+    # there is nothing to say. What is never acceptable is the COST, however
+    # the design arrived at it — so the cover and the saving ride along as
+    # fields, to tell a collapsed gate (becker: 0.0 mm², 0.0% saved) apart
+    # from a fragmented silhouette (`drone_render`: 1,091 mm², 80% saved, and
+    # still expensive).
+    if cap_cost is not None and cap_cost["over_budget"]:
+        # Two sentences, and the middle one is the diagnosis. "No thread on
+        # its own edge" is a different design from "plenty of thread and
+        # still expensive", and the operator's next move differs: the first
+        # is a size or a tiering away from being cheap, the second is a
+        # silhouette that was never one edge.
+        _why = (" This design lays no thread along its own edge at all, so "
+                "there was nothing to skip and the whole outline was traced "
+                "end to end." if cap_cost["omit_cover_mm2"] <= 0.0 else
+                f" The thread this design already lays along its own edge "
+                f"({cap_cost['omit_cover_mm2']:,} mm² of it) saved "
+                f"{cap_cost['gate_saved_pct']}% of the cap; the rest was "
+                f"drawn from scratch.")
+        _tail = (" The cap was dropped, so this design has no edge cap at "
+                 "all." if cap_cost["dropped"] else
+                 " It was sewn anyway: re-size the design, switch the design "
+                 "edge off, or accept the cost — the same artwork can bill "
+                 "+18% at one size and +59% eight millimetres up.")
+        warnings.append(
+            warn(
+                EDGE_CAP_OVER_BUDGET,
+                f"The design edge added {cap_cost['stitches']:,} stitches — "
+                f"+{cap_cost['percent']}% of the design, past the "
+                f"+{cap_cost['budget_pct']}% mark where capping an edge stops "
+                f"paying for itself." + _why + _tail,
+                style=cap_cost["style"],
+                stitches=cap_cost["stitches"],
+                percent=cap_cost["percent"],
+                budget_pct=cap_cost["budget_pct"],
+                gate_saved_pct=cap_cost["gate_saved_pct"],
+                omit_cover_mm2=cap_cost["omit_cover_mm2"],
+                dropped=cap_cost["dropped"],
             )
         )
     if cap_empty_style:
