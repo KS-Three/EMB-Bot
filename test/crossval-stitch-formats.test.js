@@ -67,7 +67,7 @@ function skipOrGet(t, key) {
   return r;
 }
 
-test("crossval control: DST shows the documented axis transposition", async (t) => {
+test("crossval control: DST is standard-conformant (FIXED 2026-09-08)", async (t) => {
   await ensureRun();
   const r = skipOrGet(t, "dst.notrim");
   if (!r) return;
@@ -87,32 +87,31 @@ test("crossval control: DST shows the documented axis transposition", async (t) 
   // thread change, the whole design in one colour.
   //
   // This is the colour half of docs/dst-axis-verdict-2026-07-31.md's finding.
-  // The AXIS half above is still open and still Kent's (CLAUDE.md footgun 1);
-  // the two were filed together but are independent — this one changes no
-  // geometry.
+  // The AXIS half is fixed too, the same day — the identity assertion at the
+  // top of this test IS it. The two were filed together but are independent;
+  // both are closed now, and neither is Kent's open call any more.
   assert.strictEqual(r.decodedColorChanges, 1, "the colour stop is visible to a standard reader");
   assert.strictEqual(r.decodedSequinToggles, 0, "and is no longer read as a sequin toggle");
-  // DOCUMENTS KNOWN DEFECT, and the harness has shown it since the day it was
-  // written without anyone asserting it: DST decodes ONE MORE stitch than the
-  // design has. encodeDST does not stop at the terminal {type:"end"} sentinel
-  // the way exp.js and pes.js both do (one line, `if (st.type === "end")
-  // break;`), so it writes it as a real stitch record.
+  // REGRESSION GUARD (read "DOCUMENTS KNOWN DEFECT" until 2026-09-07). The
+  // harness showed this for weeks before anyone asserted it: DST decoded ONE
+  // MORE stitch than the design has, because encodeDST fell THROUGH the
+  // terminal {type:"end"} sentinel and wrote it as a real stitch record
+  // instead of stopping the way exp.js and pes.js both do.
   //
-  // The 2026-08-04 verdict deferred this as "one extra phantom stitch",
-  // priced on the LETTERING lane where the sentinel sits on the last stitch
-  // and the extra record is zero-delta. Measured on the imported/digitized
-  // lane 2026-09-07, that price is wrong: buildImportedDesign puts the
-  // sentinel at the ELEMENT'S OFFSET, so on a real 95.7 x 58.3 mm logo the DST
-  // ends with a stitch **0.07 mm from the design's centre, 46.4 mm from the
-  // previous one** — a stray needle penetration in the middle of the design,
-  // with 46 mm of travel to reach it. PES and EXP of the same design end where
-  // the design ends. Every single-element imported, digitized, shape or manual
-  // project carries it; pure lettering does not (buildLetteringDesign appends
-  // no sentinel at all).
+  // The 2026-08-04 verdict deferred it as "one extra phantom stitch", priced
+  // on the LETTERING lane where the sentinel sits on the last stitch and the
+  // extra record is zero-delta. That price was wrong on every other lane:
+  // buildImportedDesign puts the sentinel at the ELEMENT'S OFFSET, so a real
+  // 95.7 x 58.3 mm logo ended with a stitch 0.07 mm from the design's centre,
+  // 46.4 mm from the previous one — a stray needle penetration mid-design
+  // with 46 mm of travel to reach it, on every imported, digitized, shape or
+  // manual project. Pure lettering never carried it (buildLetteringDesign
+  // appends no sentinel at all).
   //
-  // Left in place because the DST codec is Kent's (CLAUDE.md footgun 1). If
-  // this starts failing, that call was made — drop this assertion and the
-  // MASTER_SCOPE note with it.
+  // FIXED in 5cb234a (2026-09-07): `if (st.type === "end") break;` in
+  // src/dst.js, placed BEFORE the extents update so the sentinel also stopped
+  // widening the header's declared bounding box. If this assertion fails the
+  // phantom stitch is BACK — fix the codec, do not drop the assertion.
   assert.strictEqual(r.decodedStitches, r.expectedStitches,
     "the design ends where the design ends");
 });
