@@ -162,7 +162,31 @@ def assign_passes(passes, polys: list[tuple[str, Polygon]], buffer_mm: float = A
 
 
 # ----------------------------------------------------------------- readers
+def _measurable(passes):
+    """Chunks of at least 3 points — the floor `satin_columns._crosses` needs
+    before it can report any crossings at all (R17).
+
+    A shorter chunk carries no crossing information in EITHER direction:
+    `satin_columns.measure` still adds its penetrations to `total` while its
+    own `crossing` can only ever read 0, so a 2-point fragment can only push
+    `share` DOWN, never up — it cannot vote "satin", only dilute toward
+    "not satin". Dropping the old point-level 3-point floor was required for
+    `assign_passes`'s millimetre accounting to close (R16), but that let
+    these un-evaluable fragments into the tier ratio: on the Becker pro
+    file, 1,136 of 2,541 chunks are under 3 points, and the design's
+    largest region — the BECKER outline, sewn as a satin keyline — read
+    share 0.444 ("fill") with every chunk voting and 0.520 ("satin", the
+    correct read) with only measurable chunks voting.
+
+    Used by `tier_of` and `width_of` only. Density, stitches, trims,
+    length, layers, direction and pitch all keep reading every chunk
+    (unfiltered), so the millimetre accounting `assign_passes` closes to
+    (Fix round 2) is untouched by this filter."""
+    return [c for c in passes if len(c) >= 3]
+
+
 def tier_of(passes) -> str:
+    passes = _measurable(passes)
     if not passes:
         return "none"
     m = satin_measure(passes)
@@ -175,6 +199,7 @@ def tier_of(passes) -> str:
 
 
 def width_of(passes):
+    passes = _measurable(passes)
     m = satin_measure(passes) if passes else {"median_mm": None, "p90_mm": None}
     return m["median_mm"], m["p90_mm"]
 

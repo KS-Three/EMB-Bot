@@ -146,3 +146,22 @@ def test_assignment_accounts_for_every_millimetre(becker_pair):
 def test_the_planned_tier_reaches_the_regions_file(becker_pair):
     tiers = {r.get("tier") for r in becker_pair.regions}
     assert tiers - {None}, becker_pair.regions[:2]
+
+
+def test_fragments_do_not_dilute_the_tier_ratio():
+    """A chunk under 3 points has no crossing information, so it may not vote
+    on the satin share. On the Becker pro file 1,136 of 2,541 chunks are that
+    short, and they pulled the largest region from 0.520 to 0.444."""
+    column = synth.satin_pass(0, 0, 20, 2.0)
+    fragments = [[(float(i), 0.0), (float(i) + 0.4, 0.0)] for i in range(60)]
+    assert pdiff.tier_of([column] + fragments) == "satin"
+    assert pdiff.tier_of([column]) == "satin"
+
+
+def test_the_pros_largest_region_reads_satin(becker_pair):
+    """The pro sews BECKER's outline as a satin keyline. Read with every
+    fragment voting, it read fill."""
+    reg = pairframe.register_pair(becker_pair.pro_path, becker_pair.ours_path)
+    rows, _residual = pdiff.region_rows(becker_pair, reg)
+    biggest = max(rows, key=lambda r: r["area_mm2"])
+    assert biggest["pro"]["tier"] == "satin", biggest["pro"]
