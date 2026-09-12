@@ -1786,6 +1786,34 @@ test("describeWarnings speaks all four stage-0 classification codes instead of f
   }
 });
 
+test("the photo readings make their rough-result warning conditional, because most of them are misreads", async () => {
+  // The measured error rate, not hedging. Stage 0 misroutes six of seven real
+  // customer logos to `gradient`, and `logo_script_tires.png` — flat black
+  // script on white — to `photo_scene` on its background's ±1 grey-level
+  // grain (docs/stage0-tires-photo-scene-2026-09-11.md). Told flatly, "photos
+  // sew rougher — check the preview closely" reached those customers as a
+  // warning about a photograph they never uploaded AND about a rough result
+  // they were not going to get: that fixture scores the same down either lane.
+  //
+  // The CORRECTION is deliberately not asserted here — DigitizePanel's
+  // read-row owns it, with a button, and duplicating it printed the same
+  // guidance twice on one screen (DigitizePanel.spec's three reading-row tests
+  // found two matches where they expect one, which is how that was caught).
+  stubStorage({});
+  const { describeWarnings } = await import("./digitizer.js");
+  const out = describeWarnings(
+    ["CLASSIFIED_PHOTO_SUBJECT", "CLASSIFIED_PHOTO_SCENE"].map((code) => ({ code }))
+  );
+  for (const line of out) {
+    expect(line.text).toContain("If that reading is right");
+    // The consequence still has to be THERE for the photographs this is right
+    // about — the fix is its conditionality, not its removal.
+    expect(line.text).toContain("check the preview closely");
+    // And it stays out of the read-row's job.
+    expect(line.text).not.toContain("no shading or photo texture");
+  }
+});
+
 // ---- INPUT_LOW_RESOLUTION carries the number ------------------------------
 //
 // The engine has always known the figure; the panel threw it away and said

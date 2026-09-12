@@ -34,6 +34,19 @@ Moved verbatim 2026-08-28 — no section was rewritten in the move.
 
 ## Standing rulings — decided, do not re-litigate
 
+- **A real PHOTOGRAPH counts as a tonal positive for the flat/gradient
+  boundary.** Kent's ruling 2026-09-11, taken with the cost in front of him.
+  The reason it is not a free label: stage 0's PHOTO gate already fails on
+  real photographs — `owl_kent.jpg` reads `unique_color_mass` 0.1107 against
+  `UCM_PHOTO_MIN` 0.28 — so a photograph falls THROUGH to the flat/gradient
+  gate, and that is the gate which has to separate it. Enrolling it takes
+  `color_diversity`'s margin from *flat max 16 / tonal min 20 / gap +4* to
+  **16 against 16, gap 0, separating at no rung**. So **the +4 gap is retired
+  and must not be quoted**: PR 6a needs a boundary that clears a real
+  photograph, or both gates replaced together. `owl_kent` is enrolled in the
+  tool's corpus as of that ruling (`tools/color_diversity.py`,
+  `tests/test_color_diversity.py`). *(ruled 2026-09-11 —
+  `docs/stage0-tires-photo-scene-2026-09-11.md` §9a-bis)*
 - **A satin cross too long to sew is SPLIT, not routed to fill.** Kent's call
   2026-09-11 on quality review item 10, with both answers built and measured
   in front of him. `splitSatin` is the browser lettering engine's default;
@@ -4641,6 +4654,245 @@ only visible because the tool prints the file's verdict beside the arms'.
 that with a test on a fixture that exercises the channel
 (`test_an_arm_of_an_ALPHA_fixture_reads_the_same_image_the_file_does`).
 *(fixed 2026-09-11 — same doc §9b)*
+
+## The candidate stage-0 signal survives geometry — and its margin is ZERO if a photograph counts as tonal (2026-09-11)
+
+Kent asked for the 08-15 spec's replacement signal (`tools/color_diversity.py`)
+to be stressed on the two populations that break the shipped one. Both answers
+matter to PR 6a, and they point opposite ways.
+
+**Geometry: it passes.** The shipped `gradient_smoothness` is crossed by
+artwork GEOMETRY alone — four real logos still read `gradient` after
+binarization, 6× to 164× over the gate (entry above). On those same binarized
+twins the candidate reads **1 or 2, every one**. The failure mode does not
+transfer, and that is real de-risking available before any new artwork lands.
+
+**Photographs: the classes stop ordering.** The 09-11 measurement is flat max
+**16** (`bridge`) against tonal min **20** (`drone`), gap +4. Enrol
+`photo/owl_kent.jpg` — the repo's only REAL photograph, and the artwork this
+project cites whenever it needs one — as a real tonal positive, and the tool's
+own verdict becomes **flat max 16 / tonal min 16 (`owl_kent`) / gap 0,
+separating at NO rung of the sweep**. The plan's §5a leaves *"whether
+photographs may serve as positives"* open as a question for Kent; **this is
+the number that question is worth.** Do not quote the +4 gap as though
+photographs were in the tonal set.
+
+Two limits, both real: `owl_kent.jpg` is a 554 px re-save (no EXIF, same
+reason), and n=2 tonal rows is still under the spec's four-row floor — so this
+is a caution against a premature siting, not a refutation of the signal. Worth
+knowing either way: **`color_diversity`'s corpus enrols the SYNTHETIC owl
+(`photo/photo_owl_pale.png`) and not the real one**, which sits two
+directories away. *(measured 2026-09-11 — `tools/color_diversity.py
+--foreground bbox [--art testdata/photo/owl_kent.jpg --label tonal
+--provenance real]`; `docs/stage0-tires-photo-scene-2026-09-11.md` §9a-bis)*
+
+## Warning text says what the engine DECIDED; the read-row owns the correction (2026-09-11)
+
+Kent's call to fix the Studio sentence a misrouted flat logo shows its owner:
+*"The art reads as a photographic scene. Photos sew rougher than flat artwork
+— check the preview closely."* Two things were wrong with it and only one was
+obvious. It asserts a CONSEQUENCE that holds only if the reading is right, and
+stage 0 misroutes most real customer logos — so it reached a large share of
+its readers as a warning about a photograph they never uploaded and a rough
+result they were not going to get (`logo_script_tires` scores the same down
+either lane). Fixed by making the consequence conditional — *"If that reading
+is right, photos sew rougher…"* — which costs the real photographs nothing.
+
+**The instructive half was the fix that did NOT ship.** The first attempt also
+added the correction ("mark it as flat art") to the warning line. Three
+DigitizePanel tests went red by finding **two** matches where they expect one:
+the read-row already offers that correction, with a button, on exactly these
+codes. **A duplicate-match failure in a component test is a UI review, not a
+broken assertion** — the panel would have printed the same guidance twice on
+one screen. Keep the two surfaces split: the warning names the decision, the
+read-row changes it. *(2026-09-11 — `app/src/lib/digitizer.js` WARNING_TEXT;
+`digitizer.spec.js` "the photo readings make their rough-result warning
+conditional", verified red before green)*
+
+## The product never sends stage 0 the file — so a fixture's lane is not the customer's lane (2026-09-11)
+
+Found by driving the shipped Studio at the end of an investigation that had
+already settled everything from the file, which is the wrong order and is why
+this entry exists.
+
+**`DigitizePanel` downsamples every upload to `PROCESS_MAX_PX = 1200` on its
+long edge with a canvas `drawImage`, re-encodes it via
+`toDataURL("image/png")`, and posts that.** The service never sees the
+customer's original bytes. So every routing number this repo owns — the
+scorecard, the ARTFID harness, `color_diversity`, the scale-invariance test,
+`tools/stage0_signal_origin.py` — is a reading of a file at native
+resolution, taken on a path no customer travels.
+
+**It changes verdicts, measured, not reasoned.** `logo_script_tires.png`
+reads `photo_scene` from the file at 1585 px and **`CLASSIFIED_GRADIENT`
+through the app** — read out of the job the page itself created, with 4,503
+stitches and 12 trims against the 2,287–2,345 every in-process arm reports.
+
+**And the size alone does not explain it — the RESAMPLER does.** The same file
+at the same 1200 × 751 gives `photo_scene` at seed 0 under `INTER_AREA`
+(0.336), `INTER_LINEAR` (0.332) and `INTER_CUBIC` (0.424); Chrome's canvas
+downscale lands the other side of the gate. That is the 08-15 spec §7 result
+— *"two images a human could not tell apart get different lanes"* — now
+reproduced with the product's own filter, on real customer artwork.
+
+**So: say which raster a routing claim is about.** A claim about a fixture is
+about the file; a claim about what a CUSTOMER gets has to be driven through
+the app, and the two can disagree by a whole class. The misroute itself
+survives either way — this artwork is `flat` and reaches a non-flat lane down
+both paths. *(measured 2026-09-11 —
+`docs/stage0-tires-photo-scene-2026-09-11.md` §6b;
+`.claude/skills/run-emb-bot/driver.mjs` against :5173 with the service on
+:8721)*
+
+## ARTFID is not comparable ACROSS routes — and "preflight beats it" is a confound (2026-09-11)
+
+A blind rank-correlation run put ARTFID's ordering of the fourteen tracked
+fixtures against a viewer's, with the ranking committed to git BEFORE the
+scores were read (`docs/artfid-eye-ranking-2026-09-11.json`, commit
+`18aa55b`; instrument `digitizer/tools/artfid_eye_rank.py`, whose `--reveal`
+refuses to run until that file exists).
+
+**The pre-registered primary came back null — tau-b +0.048 (p = 1.000) — and
+was UNDERPOWERED BY CONSTRUCTION.** Six of fourteen fixtures carry a
+`score_image` refusal and one more was the contaminated control, leaving
+n = 7. Read it as *no evidence of agreement*, never as *proven independent*,
+and widen the fixture set before re-running.
+
+**The trap is the next step, not that one.** Preflight grade appears to beat
+ARTFID badly at matching the eye — **+0.559 against +0.275**. It does not.
+`route == flat` **alone** predicts the eye at **+0.575**, better than
+preflight grade does, and grade F is nearly exactly the gradient-route set:
+preflight was proxying the ROUTE. Hold route constant and ARTFID is the
+better of the two **in both strata** — +0.429 vs +0.229 on the eight
+non-flat rows, +0.467 vs +0.258 on the six flat ones.
+
+So the shape of the problem is not "ARTFID is a poor metric". It is that
+**ARTFID scores are not comparable across routes** — gradient-route designs
+score systematically higher than they look, which is a Simpson's-paradox
+pattern. **It changes the fix**: stratify or normalise per route, rather than
+re-weighting components. Do not pool ARTFID over a mixed-route fixture set
+and read the ordering as quality.
+
+**Not excluded, and it bounds all of the above:** the flat fixtures are also
+the EASIER artwork (a slotted rectangle, a single curve, synthetic shape
+sheets). "Flat routes look better" may be "flat fixtures are easier". This
+fixture set confounds route with difficulty and cannot separate them; doing
+so needs hard artwork digitized down both lanes.
+
+**Two corrections from the same run, recorded because both were mine and both
+were wrong.** (1) *"The metric just rewards more thread"* — **false**: ARTFID
+against stitch count is +0.121 (p = 0.591). What is true is narrower and more
+useful — the EYE penalises stitch count at **−0.560 (p = 0.005)**, the most
+robust relationship in the run, and the metric is blind to a cheap signal
+already computed on every design. (2) A pre-registered prediction that the
+drone badge would be the largest eye/metric disagreement was flatly wrong
+(+3; the largest were +7).
+
+**Statistical honesty, which limits every number above:** about twenty
+correlations were computed and only the first two were pre-registered. A
+Bonferroni threshold for twenty tests is p ≈ 0.0025 and **nothing here
+survives it**, the route finding included. These are leads that need
+replication on a wider set, not settled facts. ROADMAP gate 4 is satisfied by
+the statistic rather than by a caveat: tau-b is chance-corrected by
+construction, and no "% agreement" appears anywhere in the record.
+*(measured 2026-09-11 — `docs/artfid-eye-agreement-2026-09-11.md` §1, §3, §6)*
+
+## Neither ARTFID nor preflight could see an unusable file become a legible one (2026-09-11)
+
+`testdata/photo/logo_gaulke_roofing.png` is a phone SCREENSHOT of a logo, with
+pure-black bars filling ~80% of the frame. Every ink rule here reads darkness
+as ink, so the bars read as ink, and the result was not a degraded design — it
+was a **polarity inversion**: the engine sewed the GROUND in near-white thread
+and left the logo as negative space. White thread on white cloth.
+
+Stripping the bars fixes it. Both text lines sew legibly in black.
+
+**What the instruments said about that fix:**
+
+| | before | after |
+|---|---|---|
+| the actual file | **unusable** | **legible** |
+| ARTFID | 32.2 | **32.7** |
+| preflight grade | B | **C** (worse) |
+
+**ARTFID moved +0.5 points, and preflight moved the WRONG WAY.** The cause is
+not subtle and was predicted before the fix was written: `art_ink_field` reads
+the ORIGINAL file, so the bars still count as ink (`ink_saturation` 0.847);
+the engine now correctly sews only the logo band, which SHRINKS its overlap
+with that bogus ink field. **The metric mildly punishes the fix for being
+right.**
+
+The asymmetry was deliberately left in place rather than patched in the same
+change, because it is the cleanest evidence this repo has that a metric can be
+confidently, quietly wrong — the cross-route failure above, caught in the act
+rather than inferred from a correlation. Fix the metric deliberately, on its
+own evidence.
+
+**The operational rule, which is DOCTRINE's own and was re-earned here on a
+completely different defect from the DST one that produced it: a claim about
+POLARITY or ORIENTATION needs a picture. A green metric is not one.** The only
+instrument that caught this was rendering it and looking.
+*(measured 2026-09-11 — `docs/artfid-eye-agreement-2026-09-11.md` §8;
+`digitizer_core/letterbox.py`)*
+
+## A fixture's PATHOLOGY can be load-bearing — check what depends on the brokenness before fixing it (2026-09-11)
+
+Turning the letterbox strip on turned CI red: **11 failed, 2307 passed**, and
+every single failure named `photo/logo_gaulke_roofing.png` — the one fixture
+the strip changes. The tests were not wrong and the fix was not wrong. The
+fixture's BROKENNESS was doing work.
+
+The case that settles it:
+
+> `test_preflight.test_a_full_bleed_design_does_not_report_its_own_border` is
+> a regression guard for a real `cv2.erode` `borderValue` bug measured
+> 2026-08-20 (a full-bleed design read a permanent 37.5 mm² uncovered strip
+> down its rim). It uses this fixture **because the black bars make the
+> artwork touch the frame edge.** It is the corpus's only full-bleed design,
+> and only by accident of the letterboxing.
+
+Cropping the bars removes that test's only fixture. Re-pointing the assertion
+at whatever the engine then emits would have made CI green by **silently
+retiring a guard for a genuine defect** — the one outcome that must not
+happen. Seven more (`test_resnap_mask_matches_grader`, `test_thread_match_*`)
+pin spool IDs that legitimately move; two (`test_enclosed_by_garment`) need a
+fixture that still HAS enclosed background regions, and this one's went to
+zero.
+
+**So: before changing preprocessing, ask what tests depend on the input's
+defects, not just on its content.** A preprocessing fix has a blast radius
+that ordinary `git grep` of the changed symbol will not show you — the
+coupling runs through a fixture filename, not through code.
+
+**The resolution, and the pattern to reuse:** the strip landed behind
+`cfg.strip_letterbox`, **DEFAULT OFF**, byte-identical off (verified exactly —
+11,131 stitches off, the pre-change baseline; 12,811 on). That is this repo's
+own build-inert-then-wire pattern (`cfg.satin_per_stroke`, 2026-09-05/06).
+Flipping it on is a separate change whose real work is re-pointing those 11
+tests at fixtures that still carry the property each one is testing — **never
+at whatever the engine happens to emit.**
+
+**Two detector traps from building it, both caught before shipping and both
+worth more than the feature.** (1) A contrast guard alone ("the bars must look
+different from the interior") ACCEPTS `bg_uncertain.png` — a navy block in a
+white margin — and crops it 800×500 → 601×341, removing the background
+`stage1_prep`'s border flood needs. That fixture scores ARTFID 95.6 and ranked
+best of fourteen by eye: a repo-wide regression to fix one screenshot. The
+rule that saves it is semantic, not tuned — **letterboxing is
+ONE-DIMENSIONAL, so uniform bars on both axes are a margin.** (2) A ramp's
+consecutive rows are genuinely near-identical, so a gradient grew a spurious
+5-row bar until the detector required a bar to **end at a hard edge**.
+
+**Known and NOT fixed by any of this:** with the bars gone, the band's own
+soft shadow edges (a ~12 px gradient running 235 → 216 → 255 down each side)
+drop border agreement to 0.693, so stage 1 reports `BACKGROUND_ABSENT` and the
+white ground is still sewn. The bar/band boundary itself is clean (row 1115
+pure black, row 1116 at 254.6), so the crop is exact. That residue is the
+border flood's business, not letterboxing — and it was hidden behind the worse
+defect until the worse one was fixed.
+*(measured 2026-09-11 — CI run 34652226995 job `digitizer`;
+`digitizer/tests/test_letterbox.py`; `digitizer_core/config.py`
+`strip_letterbox`)*
 
 
 ## Sharpening a search finds the flaw in its objective (2026-09-12)
