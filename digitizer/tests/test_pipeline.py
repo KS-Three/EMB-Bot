@@ -40,10 +40,11 @@ def test_palette_has_one_entry_per_layer(whitebg, alpha, uncertain):
     #
     # What the palette DOES owe is the second assert: every entry names a
     # cone some region in its own layer carries. The general guarantee is
-    # `cfg.layer_palette_from_regions` (default OFF, defect 30) and lives in
-    # tests/test_layer_palette.py; here it is pinned on the three contract
-    # fixtures, where it holds on the shipped default too — measured
-    # 2026-09-12, so a regression on THEM shows up in this file.
+    # `cfg.layer_palette_from_regions` (DEFAULT ON since Kent's 2026-09-12
+    # flip, defect 30) and lives in tests/test_layer_palette.py; here it is
+    # pinned on the three contract fixtures, where it held on the shipped
+    # default even BEFORE the flip — measured 2026-09-12, so a regression on
+    # THEM shows up in this file either way.
     #
     # Regression the count half guards: a mask survived segmentation, was
     # dropped during simplification, and left its thread in the palette —

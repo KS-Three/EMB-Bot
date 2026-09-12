@@ -110,10 +110,20 @@ def _region(sid: str, thread: int, area: float, layer: int,
                   area_mm2=area, meta={"layer": layer, "stitched": stitched})
 
 
-def test_flag_defaults_off():
-    """False is the pre-flip engine byte for byte. Flip after one corpus
-    pass, the same shape as the colour bundle."""
-    assert PipelineConfig().layer_palette_from_regions is False
+def test_flag_defaults_on():
+    """FLIPPED 2026-09-12 (Kent's ruling, on the corpus pass he asked for
+    first). This asserted False until then.
+
+    False is still the pre-flip engine byte for byte and stays reachable and
+    tested rather than dead-by-default — `test_off_the_election_never_runs`
+    proves the off path by call count, not by output comparison. What the
+    pass bought: mislabelled layers 7 -> 0 at `max_colors=12` and 13 -> 0 at
+    the Studio's shipped 6, with the plan digest identical off vs on across
+    26/26 at both settings. What it cost, and Kent took it knowingly:
+    duplicate review rows, because `merge_duplicate_cone_layers` folds on the
+    DECLARED cone upstream of this election
+    (`docs/palette-flip-corpus-2026-09-12.md`)."""
+    assert PipelineConfig().layer_palette_from_regions is True
 
 
 def test_a_capped_region_does_not_leave_its_layer_naming_a_dropped_cone():

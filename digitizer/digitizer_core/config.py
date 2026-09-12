@@ -1411,15 +1411,42 @@ class PipelineConfig:
     # from `plan.blocks` and cannot move; `reviewFromJob` keeps only
     # `brandId` and per-shape fields, so no `.embproj` migration.
     #
-    # Default OFF: False is the pre-flip engine byte for byte, proved by
-    # execution rather than by output comparison
-    # (`tests/test_layer_palette.py::test_off_the_election_never_runs`).
-    # Flip after one corpus pass, the same shape as the colour bundle. No
-    # ROADMAP gate applies — gate 1 is physical constants (nothing here
+    # DEFAULT ON since 2026-09-12 — Kent's ruling, taken with the corpus pass
+    # in hand exactly as he asked for it ("corpus pass first, then flip", the
+    # same posture as the colour bundle). False is the pre-flip engine byte
+    # for byte, proved by execution rather than by output comparison
+    # (`tests/test_layer_palette.py::test_off_the_election_never_runs`), and
+    # is kept reachable and tested rather than dead-by-default.
+    #
+    # What the pass measured, four full-corpus arms at BOTH `max_colors=12`
+    # and the Studio's shipped 6 (`docs/palette-flip-corpus-2026-09-12.md`):
+    # the invariant holds 0-violations on 26/26 at both settings (OFF it is
+    # violated on 7 layers at 12 and 13 at 6); mislabelled layers 7 -> 0 and
+    # 13 -> 0; rows 132 -> 132 and 109 -> 109 with zero cones dropped that
+    # any block sews; and the plan digest, every stitch coordinate,
+    # `design.colors`, `thread_mm_by_color` and every stitch/trim/stop count
+    # IDENTICAL off vs on across all 26 at both settings. "Review-only" was
+    # an argument from the call graph and is now a corpus measurement.
+    #
+    # THE PRICE KENT ACCEPTED, so nobody re-opens it as a bug: duplicate
+    # review ROWS, 0 -> 7 at 12 and 0 -> 13 at 6, worst `drone_render` at 6
+    # with 15 rows naming 6 distinct cones. `merge_duplicate_cone_layers`
+    # folds on the DECLARED cone, upstream of this election, so two layers
+    # can now carry the same DERIVED cone and not fold. The rows are honest —
+    # each layer really does carry the cone it names — and there is no
+    # half-flip, because the duplicates ARE the truth the colour cap
+    # produced. Folding them means folding on the derived cone, which moves
+    # sew order and goldens: a separate decision, to be measured, not slipped
+    # in here.
+    #
+    # ON, `PALETTE_THREAD_MISMATCH` is not structurally dead — it becomes the
+    # detector for a layer holding TWO cones, a population that is 0 today.
+    #
+    # No ROADMAP gate applies — gate 1 is physical constants (nothing here
     # touches cloth) and gate 3 is default-OFF tiers; this is a label list.
     # Measured population and the whole consumer inventory:
     # `docs/palette-mismatch-2026-09-12.md`.
-    layer_palette_from_regions: bool = False
+    layer_palette_from_regions: bool = True
     # Design-silhouette edge cap (2026-09-01, the sew-out's OTHER edge
     # finding). `borders_last` above fixed the ORDER the design's borders
     # sew in; this is about the edge that has no border at all. On Kent's
