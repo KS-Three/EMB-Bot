@@ -839,6 +839,44 @@ def border_runs(visible, shape_id: str, *, entry: tuple[float, float] | None,
 
 EDGE_CAP_STYLES = ("none", "bean", "satin")
 
+# What the cap may bill before the plan says so OUT LOUD, as a percentage of
+# the artwork's own stitches (`EDGE_CAP_OVER_BUDGET`, stage 7). Not a physical
+# constant and not a taste call — a line drawn in an EMPTY GAP between two
+# regimes both already measured in this repo:
+#
+#   * **Gate working, every fixture and every width measured: 4.4% to 26.6%.**
+#     The flip's own sheet reads +5.9-26.3% median +13.4% over six fixtures at
+#     80 mm (MASTER_SCOPE defect 19); the size sweep in
+#     `docs/edge-cap-cliff-2026-09-12.md` reads `enthusiast_logo` 4.4-6.9%,
+#     `logo_hotel_fremont` 5.5-8.6%, `logo_whitebg` 21.2-26.3% across 80-110
+#     mm, and becker's own cheap widths 18.1% (80 mm) and 26.6% (96 mm).
+#     `logo_whitebg` is the one that matters: it is a legitimate `width_cap`
+#     fill design that never was a ribbon candidate, it sits in the low 20s at
+#     EVERY width, and a ceiling that fires on it would be wrong.
+#   * **Gate collapsed or absent: 53.4% and up.** becker at 88/91/95.7/100/110
+#     mm bills 58.7 / 56.7 / 56.6 / 55.6 / 53.4% — at 110 mm with no gate input
+#     at all. The pre-gate regime the gate was built to kill was +8.6-100.4%,
+#     and `drone_render` capped at +56.9% there, which defect 19 calls "a
+#     whisker off DOCTRINE's blanket-border negative" (+60% of stitches to
+#     WORSEN a silhouette).
+#
+# No measurement anywhere in the repo falls between 26.6% and 53.4%. The
+# ceiling is the midpoint of that gap: 1.5x above every bill the gate has been
+# seen to produce working, 1.34x below every bill it has been seen to produce
+# collapsed, and below both the +56.9% and the +60% already on record as bad.
+# Round because the gap is 27 points wide and no third digit is earned.
+# *(justified 2026-09-12 from figures already in the repo — nothing new sewn,
+# nothing new measured for the number itself)*
+EDGE_CAP_BUDGET_PCT = 40.0
+
+# What a bill over that ceiling DOES. "warn" is the shipped behaviour and
+# moves no stitch — the plan is exactly the plan it was, plus one loud
+# warning. "drop" refuses the cap outright on that design. The refusal is
+# opt-in because `cfg.edge_cap` is default ON in front of customers and a
+# ceiling that silently deletes a pass is a second silent behaviour to debug,
+# not a fix for the first. Anything unrecognised reads as "warn".
+EDGE_CAP_OVER_BUDGET_ACTIONS = ("warn", "drop")
+
 
 def _fill_cracks(geom, width: float) -> tuple[object, int]:
     """`geom` with every interior the column cannot stand in filled.
@@ -935,10 +973,12 @@ def silhouette_cap(silhouette, shape_id: str, *, style: str,
     -> (runs, report). Report keys are the union of both tiers' own, so a
     caller reads one shape regardless of style: `loops`, `bean_loops`,
     `jumps`, `empty`, plus `style` (what actually ran), `holes_skipped`
-    (cracks filled before capping) and `arcs`/`yielded` (what the gate cut).
+    (cracks filled before capping), `arcs`/`yielded` (what the gate cut) and
+    `whole_loops` (rings capped as a complete circuit — see below).
     """
     report = {"loops": 0, "bean_loops": 0, "jumps": 0, "empty": True,
-              "style": "none", "holes_skipped": 0, "arcs": 0, "yielded": 0}
+              "style": "none", "holes_skipped": 0, "arcs": 0, "yielded": 0,
+              "whole_loops": 0}
     if silhouette is None or style not in ("bean", "satin"):
         return [], report
     if getattr(silhouette, "is_empty", True):
@@ -962,6 +1002,25 @@ def silhouette_cap(silhouette, shape_id: str, *, style: str,
     # was already covered" does not care which emitter drew the rest.
     report["arcs"] = r.get("arcs", 0) + r.get("bean_arcs", 0)
     report["yielded"] = r.get("yielded", 0)
+    # How many RINGS the cap went around, which is not what either tier's
+    # own `loops` counts. `run_outline` increments `loops` once per emitted
+    # RUN — one per whole ring when the gate leaves it alone, one per ARC
+    # when the gate splits it — so its `loops` FALLS as the gate cuts less
+    # and rises as it cuts more (becker 18 -> 25 -> 16 across 80/90/95.7 mm
+    # while the bill went +18% -> +26% -> +57%). `border_runs` counts whole
+    # circuits only and puts arcs in `arcs`/`bean_arcs`, so an all-arc satin
+    # cap reports zero. Neither is "how fragmented is this silhouette",
+    # which is the question stage 7's `edges` field claims to answer.
+    #
+    # Identity this rests on: a ring either survives whole or is counted
+    # once in `yielded`, and a ring under the tier's own length floor is
+    # skipped before `omit` is consulted at all — so
+    # `whole_loops + yielded` equals the loop count the SAME geometry emits
+    # with no `omit` whatsoever. Verified on becker across 80/88/95.7/100/110
+    # mm (16/16/17/17/17 both ways) and on drone/fremont/whitebg/gaulke/
+    # enthusiast in both styles at 80 mm. *(measured 2026-09-12)*
+    report["whole_loops"] = (report["loops"] - report["arcs"] if style == "bean"
+                             else report["loops"] + report["bean_loops"])
     report["jumps"] = r["jumps"]
     report["empty"] = not runs
     report["style"] = style

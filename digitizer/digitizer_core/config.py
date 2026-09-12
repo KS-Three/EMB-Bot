@@ -1452,6 +1452,28 @@ class PipelineConfig:
     # `drone_render` reads bean +6.4% against satin +6.9%, because the gate
     # removes the crumbs before either emitter's loop floor has to.
     edge_cap: str = "bean"
+    # What a cap whose bill clears `stage6_border.EDGE_CAP_BUDGET_PCT` (40%
+    # of the artwork's own stitches) does about it. "warn" — the default and
+    # the shipped behaviour — moves NO stitch: the plan is exactly the plan
+    # it was, plus one loud `EDGE_CAP_OVER_BUDGET`. "drop" refuses the cap on
+    # that design instead, which makes the plan byte-identical to
+    # `edge_cap="none"`. Anything unrecognised reads as "warn".
+    #
+    # Why the refusal is opt-in and the warning is not (Kent's ruling
+    # 2026-09-12, on docs/edge-cap-cliff-2026-09-12.md): `edge_cap` is
+    # default ON in front of customers, and the measured failure is that a
+    # 0.3 mm size change swings the bill from +26.6% to +56.6% with nothing
+    # said. A ceiling that silently deletes the cap fixes the cost and adds a
+    # second silent behaviour — the same class of defect one layer along. So
+    # the default changes what the operator KNOWS, not what they get.
+    #
+    # THE CAUSE IS NOT FIXED HERE AND THIS IS NOT A FIX FOR IT. The bill
+    # oscillates because one shape carrying ~94% of becker's linear cover
+    # flips satin/fill on `stage6_satin._PROMOTE_EXPLAINED_MIN` (0.80) from a
+    # scalar that is not monotone in design size. Kent's call the same day
+    # was to cap the COST and leave `classify_ribbon` alone — a deliberate
+    # symptom fix, taken knowing the artwork still flips.
+    edge_cap_over_budget: str = "warn"
     # EXPERIMENT, default OFF — option (b) of the same plan doc, the other
     # half of Kent's 2026-08-23 (a)+(b) decision: `shade_palette_bind` above
     # masks the shade snap to the palette; THIS flag makes the palette worth
