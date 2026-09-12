@@ -48,6 +48,70 @@ def test_register_identity_under_shift_scale_and_flip(tmp_path):
     assert reg.flip_y is True
 
 
+def test_register_pair_crosses_a_zero_overlap_plateau(tmp_path):
+    """Two files sharing one bar, each with extra bars the other lacks.
+
+    `register_pair` pre-shifts ours by the bbox-centre delta and THEN calls
+    `scorecard.register`, which seeds at (0,0) and at the bbox-centre delta of
+    what it was handed — by then already centred, so both of its seeds are the
+    same point. Here that point is 4 mm off, the 2 mm bars therefore touch
+    nowhere, and the local hill-climb reads zero in all eight directions:
+    before `scorecard._corr_seeds` this returned dy=-4.0 with iou=0.0, silently,
+    and every downstream row was tagged off the wrong alignment. The truth is
+    the pre-shift undone — the shared bars on each other, iou 0.404.
+
+    Sibling unit test, with the mechanism drawn out on `register` itself:
+    `test_pro_parity_scorecard.py::test_registration_crosses_a_flat_zero_overlap_plateau`.
+    """
+    common = synth.satin_pass(0, 0, 20, 2.0)
+    pro = [((0, 0, 0), [common, synth.satin_pass(0, 8, 10, 2.0),
+                        synth.satin_pass(0, 16, 10, 2.0)])]
+    ours = [((0, 0, 0), [common, synth.satin_pass(0, 24, 10, 2.0)])]
+    d = synth.make_prep_dir(tmp_path, "plateau", pro, ours, [], [(0, -1, 20, 1)], 20.0)
+    pair = pairframe.load_pair(d)
+
+    reg = pairframe.register_pair(pair.pro_path, pair.ours_path)
+
+    assert reg.flip_y is False
+    assert abs(reg.dx) < 0.3 and abs(reg.dy) < 0.3, f"the shared bars must land on each other: {reg}"
+    assert reg.iou > 0.35, f"optimum here is 0.404, got {reg.iou}"
+
+
+def test_a_registration_nothing_can_trust_says_so(tmp_path):
+    """The search finding the optimum is not the same as the optimum meaning
+    anything. Two files that share almost no thread have a best alignment, and
+    it is worth ~0.005 IoU — on the real corpus that is `gaulke_roofing_hat`
+    minus our largest block, 0.99 m of thread against the pro's 13.02 m.
+    `overlay.py` and `diff.py` take the `Reg` unchecked, so without this the
+    whole downstream read is built on a number nobody looked at.
+
+    The floor sits well under a legitimately-low registration: the plateau
+    fixture above is a true 0.404 with most of both files unshared, and the
+    real corpus registers 0.64-0.99.
+    """
+    big = [((0, 0, 0), [*synth.fill_passes(0, 0, 30, 20, row=0.4, stitch=2.5)])]
+    sliver = [((0, 0, 0), [synth.satin_pass(100, 100, 6, 1.0)])]
+    d = synth.make_prep_dir(tmp_path, "untrust", big, sliver, [], [(0, 0, 6, 1)], 30.0)
+    pair = pairframe.load_pair(d)
+
+    with pytest.warns(pairframe.RegistrationWarning, match="nothing can be trusted"):
+        reg = pairframe.register_pair(pair.pro_path, pair.ours_path)
+    assert reg.iou < pairframe.REG_IOU_FLOOR
+
+
+def test_a_good_registration_is_quiet(tmp_path):
+    """The floor must not cry wolf on the ordinary case."""
+    import warnings
+    ours = _design_blocks()
+    pro = [(rgb, synth.transform_passes(p, dx=3.0, dy=2.0)) for rgb, p in ours]
+    d = synth.make_prep_dir(tmp_path, "quiet", pro, ours, [], [(0, 0, 20, 12)], 20.0)
+    pair = pairframe.load_pair(d)
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", pairframe.RegistrationWarning)
+        reg = pairframe.register_pair(pair.pro_path, pair.ours_path)
+    assert reg.iou >= 0.95
+
+
 def test_register_reports_no_flip_when_none_is_needed(tmp_path):
     ours = _design_blocks()
     pro = [(rgb, synth.transform_passes(p, dx=3.0, dy=2.0)) for rgb, p in ours]

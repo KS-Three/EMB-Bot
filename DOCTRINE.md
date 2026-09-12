@@ -4893,3 +4893,38 @@ defect until the worse one was fixed.
 *(measured 2026-09-11 — CI run 34652226995 job `digitizer`;
 `digitizer/tests/test_letterbox.py`; `digitizer_core/config.py`
 `strip_letterbox`)*
+
+
+## Sharpening a search finds the flaw in its objective (2026-09-12)
+
+`scorecard.register`'s shift search was a local hill-climb that, in the one
+caller that matters, had exactly ONE seed — `pairframe.register_pair` applies
+the bbox-centre delta itself before calling in, so `register`'s own centroid
+seed recomputes to (0, 0). Giving it cross-correlation seeds made it actually
+explore, and it immediately started returning a WORSE answer on the very
+fixture that motivated the work: the y-flipped arm won at 0.494 over the
+correct 0.404.
+
+The new search was not wrong. **The objective was, and had been all along.**
+`bounds()` pads 8 mm while the search may move 40, so any shift that carried
+thread off the raster had it dropped from the union — which RAISES IoU. The
+search was being paid to slide ours out of frame; 15 of that arm's 44 mm² had
+simply left. The old climb was too weak to reach far enough to collect the
+bonus, which is the only reason nobody ever saw it.
+
+**Anywhere an optimiser is sharpened, audit its objective in the same change.**
+A weak search is a de facto constraint, and removing it releases every reward
+the objective was quietly offering. The fix here was to pad the search frame by
+`REG_MAX` — which also made `|ours|` translation-invariant, the assumption the
+correlation seeding rests on, so the objective had to be repaired for the
+sharpening to be correct at all.
+
+Corollary, same session: the defect was reported from a synthetic fixture and
+the first instinct was to write it off as fixture-only. It was not. On the real
+corpus every pair registers correctly AS PREPPED, but under a
+drop-a-whole-element stress `gaulke_roofing_hat` picks an alignment **17.79 mm**
+wrong. What bounds it is sparsity and the boundary is sharp — 84 element-drop
+arms at fill ratio ≥ 0.222 all agree, the one miss sits at 0.003, and the
+corpus holds nothing in between. **"Only a fixture can do that" is a
+measurement, not an intuition.**
+*(`docs/registration-plateau-2026-09-11.md`, PR #463)*

@@ -20,6 +20,7 @@ from __future__ import annotations
 import hashlib
 import json
 import sys
+import warnings
 from dataclasses import dataclass, asdict
 from pathlib import Path
 
@@ -201,6 +202,21 @@ def scale_segs(segs, s: float):
     return [(x0 * s, y0 * s, x1 * s, y1 * s, d * s, b, t) for (x0, y0, x1, y1, d, b, t) in segs]
 
 
+class RegistrationWarning(UserWarning):
+    """The best alignment found is not an alignment worth using."""
+
+
+# Below this IoU the two files share so little thread that no translation is
+# meaningfully better than another, and the `Reg` should not be built on
+# silently. Chosen from the measured spread, not by feel: the real corpus
+# registers 0.64-0.99 as prepped, the plateau fixture's TRUE optimum is 0.404
+# with most of both files unshared, and the degenerate arms that motivated
+# this sit at 0.001-0.007 (`gaulke_roofing_hat` minus our largest block is
+# 0.99 m of thread against the pro's 13.02 m). 0.05 is an order of magnitude
+# clear of both sides.
+REG_IOU_FLOOR = 0.05
+
+
 def register_pair(pro_path: Path, ours_path: Path) -> Reg:
     pro = file_segs(Path(pro_path), False)
     if not pro:
@@ -221,6 +237,18 @@ def register_pair(pro_path: Path, ours_path: Path) -> Reg:
         cand = Reg(scale=s, flip_y=flip, dx=dx + rdx, dy=dy + rdy, iou=float(iou))
         if best is None or cand.iou > best.iou:
             best = cand
+    if best.iou < REG_IOU_FLOOR:
+        # A warning, not a raise: near-zero overlap is a legitimate READING of
+        # two files that genuinely share almost nothing, and the pro-parity
+        # probes deliberately produce it. What must not happen is a caller
+        # drawing an overlay or tagging shapes off it without knowing.
+        warnings.warn(
+            f"{Path(pro_path).name} vs {Path(ours_path).name}: best registration is "
+            f"iou={best.iou:.4f} at dx={best.dx:.2f} dy={best.dy:.2f} "
+            f"(flip_y={best.flip_y}); below REG_IOU_FLOOR={REG_IOU_FLOOR}, so the "
+            f"two files share almost no thread and nothing can be trusted that is "
+            f"measured against this alignment.",
+            RegistrationWarning, stacklevel=2)
     return best
 
 
