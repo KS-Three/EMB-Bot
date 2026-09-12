@@ -156,12 +156,12 @@ was the one design that barely moved (+0.1).
 
 Two things it is not free of:
 
-- **The Studio tells the customer the wrong thing.** `CLASSIFIED_PHOTO_SCENE`
-  renders as *"The art reads as a photographic scene. Photos sew rougher than
-  flat artwork — check the preview closely before stitching this one out."*
-  for a two-colour script wordmark. The panel does offer the flat-art nudge
-  (`offerFlat`), so the customer can override — the copy is wrong, the escape
-  hatch works.
+- **The Studio tells the customer something wrong — but NOT the sentence this
+  section first claimed.** See §6b: driven in a browser, this artwork reads
+  `gradient` in the product, so the customer gets the shading sentence, not
+  the photographic-scene one. Either way the panel offers the flat-art nudge
+  (`offerFlat`) and the escape hatch works. *(The photo copy was still worth
+  fixing on its own merits, and was — see §6b's last paragraph.)*
 - **The table above is the lane WITHOUT the cutout.** This box had no
   `rembg_isolated/venv`, so that run logged `PHOTO_BACKGROUND_REMOVAL_UNAVAILABLE`
   and, per the 2026-08-24 ruling, skipped the whole photo-prep block —
@@ -193,6 +193,53 @@ reason this stays an investigation rather than a bug report.
 
 Read the +0.5 as a wash, not a win: it is one design, and this document's own
 §7 records that ARTFID is not a route-neutral instrument.
+
+### 6b. The product never sends stage 0 this file — and that changes the verdict
+
+Found by driving the shipped Studio, after everything above had been settled
+from the file. **`DigitizePanel` downsamples every upload to
+`PROCESS_MAX_PX = 1200` on its long edge with a canvas `drawImage`, re-encodes
+it with `toDataURL("image/png")`, and posts THAT.** The service never sees the
+customer's original bytes, and this document's 1585 px readings are readings
+of a file nobody digitizes through the app.
+
+**Measured live, not inferred.** Uploading `logo_script_tires.png` to the
+running Studio and reading the job the page created
+(`GET /jobs/506dff40c55c4b10b5dfeee20a0af10c`): warnings contain
+**`CLASSIFIED_GRADIENT`**, not `CLASSIFIED_PHOTO_SCENE`. Stats 4,503 stitches,
+12 trims, 1 colour, 80.2 × 29.9 mm — against the 2,287–2,345 stitches every
+in-process arm above reports. The panel's reading row says *"Read as shaded
+artwork"*, and offers *"It's flat art"*.
+
+**And the size alone does not explain it — the RESAMPLER does.** Resizing the
+same file to the same 1200 × 751 with OpenCV gives `photo_scene` at seed 0
+under all three filters (`INTER_AREA` UCM 0.336, `INTER_LINEAR` 0.332,
+`INTER_CUBIC` 0.424). Chrome's canvas downscale lands the other side. That is
+the 08-15 spec §7 finding — *"the class also depends on WHICH filter was
+used… two images a human could not tell apart get different lanes"* — now
+reproduced with the product's own filter in the loop, on real customer art.
+
+Three consequences, and the first one is about this whole document:
+
+- **The customer-facing misroute here is `gradient`, not `photo_scene`.** The
+  defect this document explains is real and its mechanism is unchanged — the
+  ground's invisible grain drives `unique_color_mass` at every size measured
+  (§5) — but a claim about what a CUSTOMER gets has to be measured through the
+  app, and a claim about the fixture is a claim about the file.
+- **Every fixture-based routing number in this repo is a file number.** The
+  scorecard, the ARTFID harness, `color_diversity`, the scale-invariance test
+  and this document all read files off disk at native resolution. None of them
+  passes through the 1200 px canvas re-encode that stands between a customer
+  and stage 0.
+- **The copy fix still stands, and is still worth having.** Whoever DOES land
+  in `photo_scene`/`photo_subject` reads a consequence that only holds if the
+  reading is right, and stage 0 misroutes most real logos either way — this
+  artwork reaches `gradient` through the app and `photo_scene` through the
+  file, and neither is `flat`, which is what it is.
+
+*(measured 2026-09-11 — `.claude/skills/run-emb-bot/driver.mjs` against the
+Studio on :5173 with the service on :8721; the job payload is the evidence,
+not the screenshot)*
 
 ## 7. What it costs the measurements
 

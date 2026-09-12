@@ -4708,3 +4708,38 @@ one screen. Keep the two surfaces split: the warning names the decision, the
 read-row changes it. *(2026-09-11 — `app/src/lib/digitizer.js` WARNING_TEXT;
 `digitizer.spec.js` "the photo readings make their rough-result warning
 conditional", verified red before green)*
+
+## The product never sends stage 0 the file — so a fixture's lane is not the customer's lane (2026-09-11)
+
+Found by driving the shipped Studio at the end of an investigation that had
+already settled everything from the file, which is the wrong order and is why
+this entry exists.
+
+**`DigitizePanel` downsamples every upload to `PROCESS_MAX_PX = 1200` on its
+long edge with a canvas `drawImage`, re-encodes it via
+`toDataURL("image/png")`, and posts that.** The service never sees the
+customer's original bytes. So every routing number this repo owns — the
+scorecard, the ARTFID harness, `color_diversity`, the scale-invariance test,
+`tools/stage0_signal_origin.py` — is a reading of a file at native
+resolution, taken on a path no customer travels.
+
+**It changes verdicts, measured, not reasoned.** `logo_script_tires.png`
+reads `photo_scene` from the file at 1585 px and **`CLASSIFIED_GRADIENT`
+through the app** — read out of the job the page itself created, with 4,503
+stitches and 12 trims against the 2,287–2,345 every in-process arm reports.
+
+**And the size alone does not explain it — the RESAMPLER does.** The same file
+at the same 1200 × 751 gives `photo_scene` at seed 0 under `INTER_AREA`
+(0.336), `INTER_LINEAR` (0.332) and `INTER_CUBIC` (0.424); Chrome's canvas
+downscale lands the other side of the gate. That is the 08-15 spec §7 result
+— *"two images a human could not tell apart get different lanes"* — now
+reproduced with the product's own filter, on real customer artwork.
+
+**So: say which raster a routing claim is about.** A claim about a fixture is
+about the file; a claim about what a CUSTOMER gets has to be driven through
+the app, and the two can disagree by a whole class. The misroute itself
+survives either way — this artwork is `flat` and reaches a non-flat lane down
+both paths. *(measured 2026-09-11 —
+`docs/stage0-tires-photo-scene-2026-09-11.md` §6b;
+`.claude/skills/run-emb-bot/driver.mjs` against :5173 with the service on
+:8721)*

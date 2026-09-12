@@ -1344,10 +1344,12 @@ const WARNING_TEXT = {
   //
   // The photo lines state their CONSEQUENCE conditionally, and that is the
   // measured error rate talking, not hedging. Stage 0 misroutes most real
-  // customer logos — six of seven reach `gradient`, and
-  // `logo_script_tires.png`, flat black script on a white ground, reaches
-  // `photo_scene` on the ground's ±1 grey-level grain
-  // (docs/stage0-tires-photo-scene-2026-09-11.md). "Photos sew rougher —
+  // customer logos — six of seven reach `gradient` — and `logo_script_tires
+  // .png`, flat black script on a white ground, reaches a non-flat lane on
+  // the ground's ±1 grey-level grain whichever way it arrives: `photo_scene`
+  // from the file, `gradient` through THIS panel, which downsamples to
+  // PROCESS_MAX_PX first and hands stage 0 a different raster
+  // (docs/stage0-tires-photo-scene-2026-09-11.md §6b). "Photos sew rougher —
   // check the preview closely" therefore reached a large share of its readers
   // as a warning about a photograph they had not uploaded, and about a rough
   // result they were not going to get: that fixture's photo-lane output scores
