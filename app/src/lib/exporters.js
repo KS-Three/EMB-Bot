@@ -45,9 +45,9 @@ const SERVICE_EXPORT_FORMATS = new Set(["dst", "exp", "pes"]);
 
 // Formats ONLY the service can write. `preferService` above is a choice
 // between two encoders that can both write the same format; this set is a
-// different thing entirely — there is no browser JEF encoder, so for these the
-// service is the path or there is no path, and falling through to
-// exportDesign() would raise "Unknown format: jef" at a customer.
+// different thing entirely — no browser encoder exists for any of these, so
+// for them the service is the path or there is no path, and falling through
+// to exportDesign() would raise "Unknown format: jef" at a customer.
 //
 // JEF is Janome, and it is on PRODUCT.md's launch checklist ("PES hardened to
 // byte-verified + JEF export", item 1, marked done because
@@ -62,9 +62,34 @@ const SERVICE_EXPORT_FORMATS = new Set(["dst", "exp", "pes"]);
 // reads back from JEF as 2459 sewn stitches, 80.5 x 16.6 mm, 1 colour change,
 // 2 threads in the threadlist. Not an inference from the writer existing.
 //
+// XXX (Singer) and VP3 (Husqvarna Viking / Pfaff) joined on 2026-09-12 —
+// Kent's scope call, which closes MASTER_SCOPE open item 14 for those two and
+// leaves PEC and U01 exactly where they were. Same shape as JEF: pyembroidery
+// writes them, nothing in the browser does, so for these the service is the
+// path or there is no path.
+//
+// The evidence is `digitizer/tools/format_roundtrip.py --detail` — run it
+// rather than re-deriving it. Both read back `identity` through pystitch, the
+// same third-party reader CI cross-validates against: 70/70 stitches, 1/1
+// colour change, 1725 x 200 units in and out. Both also hand back the
+// design's OWN thread RGB (#dc1e28 / #143cc8) where PES, PEC and JEF snap to
+// their chart instead, so on colour fidelity these two beat three of the four
+// formats that were already shipping.
+//
+// VP3 has one measured difference, and it is deliberately NOT said to the
+// customer (Kent's call, same day). At the THIRD and later colour block the
+// read-back is 1 unit narrower: an inserted jump lands one unit short of
+// where the design put it and shifts the tail -1 in x. That unit is 0.1 mm —
+// one step of the integer 0.1 mm grid the Design contract is already
+// quantised to (digitizer_core/adapter.py's `_u`) — and the tool's own
+// 1..4-colour sweep shows it pinned there rather than accumulating (0, 0, 1u,
+// 1u), as did a 16-block sweep when the call was made. So do not grow a
+// button asterisk, a note, or a caveat paragraph out of it. If it ever moves,
+// re-run the tool and write about what you measured.
+//
 // `isServiceOnlyFormat` is exported so the UI can disable the control with a
 // reason instead of offering a button that throws.
-const SERVICE_ONLY_FORMATS = new Set(["jef"]);
+const SERVICE_ONLY_FORMATS = new Set(["jef", "xxx", "vp3"]);
 
 export function isServiceOnlyFormat(format) {
   return SERVICE_ONLY_FORMATS.has(format);

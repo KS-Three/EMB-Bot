@@ -27,14 +27,39 @@ def test_bytes_and_path_inputs_agree():
     assert fingerprint(from_path) == fingerprint(from_bytes)
 
 
-def test_palette_never_lists_a_thread_with_nothing_to_sew(whitebg, alpha, uncertain):
-    # Regression: a mask survived segmentation, was dropped during
-    # simplification, and left its thread in the palette — sending the
-    # operator to the rack for a cone the design never uses.
+def test_palette_has_one_entry_per_layer(whitebg, alpha, uncertain):
+    # Renamed 2026-09-12. It used to be called
+    # `test_palette_never_lists_a_thread_with_nothing_to_sew`, which its body
+    # has never checked: it counts layers, and it passes on `logo_whitebg`,
+    # whose palette lists `0015 White` for an enclosed ring hole with
+    # `stitched=False`, 159.6 mm², against five spools the machine loads
+    # (`docs/palette-mismatch-2026-09-12.md` §3 and §5). That is not even a
+    # defect — an unstitched layer is a real review row and keeps a real
+    # colour — so the old name was wrong twice over: about the body, and
+    # about what the palette owes anyone.
+    #
+    # What the palette DOES owe is the second assert: every entry names a
+    # cone some region in its own layer carries. The general guarantee is
+    # `cfg.layer_palette_from_regions` (default OFF, defect 30) and lives in
+    # tests/test_layer_palette.py; here it is pinned on the three contract
+    # fixtures, where it holds on the shipped default too — measured
+    # 2026-09-12, so a regression on THEM shows up in this file.
+    #
+    # Regression the count half guards: a mask survived segmentation, was
+    # dropped during simplification, and left its thread in the palette —
+    # sending the operator to the rack for a cone the design never uses.
     for result in (whitebg, alpha, uncertain):
         layers = {r.meta["layer"] for r in result.regions}
         assert len(result.palette) == len(layers)
         assert layers == set(range(len(result.palette)))
+
+        carried: dict[int, set[str]] = {}
+        for r in result.regions:
+            carried.setdefault(r.meta["layer"], set()).add(r.thread_number)
+        for i, cone in enumerate(result.palette):
+            assert cone["number"] in carried[i], (
+                f"layer {i} lists {cone['number']} and its regions sew "
+                f"{sorted(carried[i])}")
 
 
 def test_every_region_thread_matches_its_palette_entry(whitebg):

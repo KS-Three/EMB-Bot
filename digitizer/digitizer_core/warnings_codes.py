@@ -153,15 +153,29 @@ SHAPES_LEFT_UNSEWN = "SHAPES_LEFT_UNSEWN"
 
 # Stage 4/5 seam (pipeline.run_stages, after compact_layers)
 # The sew-order palette is per LAYER — `compact_layers` reads each layer's
-# thread out of stage 2's quantized palette. `revalidate_threads` (fix #6.3)
-# runs BEFORE it and re-snaps individual shapes to a different spool, without
-# moving them to another layer, so a layer can end up holding two threads and
-# its palette entry naming a spool no shape in it carries. Stage 7 partitions
-# blocks by (sew_index, step_key, thread) and is therefore right regardless —
-# it is the palette, i.e. the cone list a human loads and the review screen
-# shows, that is wrong. Measured on the pro corpus 2026-08-14: 5 of 23
-# designs, worst `hotel_fremont_patch` (layer 0 lists 1755 Hyacinth while
-# 1,813 of its 1,815 mm² sew in 4071).
+# thread out of stage 2's quantized palette. Passes that re-snap individual
+# shapes to a different spool without moving them to another layer leave a
+# layer holding two threads and its palette entry naming a spool no shape in
+# it carries. `revalidate_threads` (fix #6.3) was the original producer; since
+# the colour bundle flipped on 2026-09-10 it is `enforce_color_cap`, which
+# `rehome_resnapped_regions` structurally cannot repair (wrong stamp, and it
+# runs first) — 24 shapes on 3 of 26 fixtures at `max_colors=12`, 76 on two
+# real-customer fixtures at the Studio's shipped 6.
+#
+# Stage 7 partitions blocks by (sew_index, step_key, thread) and is therefore
+# right regardless — and so is the OPERATOR's list. This comment used to say
+# "the cone list a human loads … is wrong"; that is false, and DOCTRINE
+# recorded it so on 2026-09-07. A human loads `plan.palette`, per BLOCK,
+# consistent on 26 of 26 fixtures. What is wrong is the REVIEW SCREEN's
+# per-layer list — the labels a user reorders and recolours by.
+#
+# `cfg.layer_palette_from_regions` (default OFF) elects each layer's cone
+# from its own regions and closes it; this warning is the detector for the
+# OFF path. Note it is blind to the LARGER direction — a layer naming a cone
+# no block sews at all, on 9 of 26 fixtures, 6 of them silent here. That one
+# is reported by `tools/palette_mismatch.py`'s phantom column, never by this
+# code: a layer nobody is left in produces no mismatched region.
+# Full measurement: `docs/palette-mismatch-2026-09-12.md`.
 # extra: {"count": int, "layers": list[int], "ids": list[str],
 #         "listed": list[str], "actual": list[str]}
 PALETTE_THREAD_MISMATCH = "PALETTE_THREAD_MISMATCH"

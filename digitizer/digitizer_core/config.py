@@ -1348,6 +1348,32 @@ class PipelineConfig:
     # rather than dead-by-default.
     # tests/test_duplicate_cone_layers.py pins the default and both paths.
     merge_duplicate_cones: bool = True
+    # The review screen's per-layer cone list, derived from the regions
+    # instead of from stage 2's memory (defect 30 — the third layer-repair
+    # flag, beside `rehome_resnapped` and `merge_duplicate_cones` above).
+    # `PipelineResult.palette[i]` is `thread_indices[i]`, i.e. what stage 2
+    # CALLED layer i; three passes move a region's thread without moving the
+    # region and the rehome repairs only one of them, so the list can name a
+    # cone its layer does not sew. ON elects each layer's cone from its own
+    # regions (`stage3_segment.layer_palette_threads`), which pins
+    # `palette[i]["number"] in {r.thread_number for r in layer i}`.
+    #
+    # REVIEW-ONLY, and that is checked rather than asserted: `result.palette`
+    # feeds exactly one consumer, `_review_payload["palette"]`
+    # (`digitizer_service/app.py:587`). `plan.palette`, `design.colors`,
+    # `thread_m_by_color`, every export and every preflight number are built
+    # from `plan.blocks` and cannot move; `reviewFromJob` keeps only
+    # `brandId` and per-shape fields, so no `.embproj` migration.
+    #
+    # Default OFF: False is the pre-flip engine byte for byte, proved by
+    # execution rather than by output comparison
+    # (`tests/test_layer_palette.py::test_off_the_election_never_runs`).
+    # Flip after one corpus pass, the same shape as the colour bundle. No
+    # ROADMAP gate applies — gate 1 is physical constants (nothing here
+    # touches cloth) and gate 3 is default-OFF tiers; this is a label list.
+    # Measured population and the whole consumer inventory:
+    # `docs/palette-mismatch-2026-09-12.md`.
+    layer_palette_from_regions: bool = False
     # Design-silhouette edge cap (2026-09-01, the sew-out's OTHER edge
     # finding). `borders_last` above fixed the ORDER the design's borders
     # sew in; this is about the edge that has no border at all. On Kent's
@@ -1700,14 +1726,27 @@ class PipelineConfig:
     # this flag alone, because the palette has collapsed and `1375` is no
     # longer loaded for the small-shape rule to offer.
     #
-    # "MATCHES" is a claim, so it carries its residual: it is not bit-for-bit.
-    # `_region_footprint` rounds mm->px and `_region_color_errors` truncates,
-    # so the two rasters differ by up to a pixel at a vertex before either
-    # mask is applied — measured 2026-09-07, 80 px out of 557,046 on gaulke
-    # (99.99% IoU) and zero on `logo_alpha`. Aligning the rasteriser itself
-    # would touch `tag_enclosed_background`, which shares `_region_footprint`,
-    # so it is deliberately left alone; `tests/test_resnap_mask_matches_grader
-    # .py::test_the_flagged_mask_really_matches_the_graders` pins the gap.
+    # "MATCHES" is a claim, so it carries its residual — and as of 2026-09-12
+    # the residual is ZERO on the fixture it was named for. The gap used to be
+    # real: `_region_footprint` rounds mm->px and `_region_color_errors`
+    # TRUNCATED, so the two rasters differed by up to a pixel at a vertex
+    # before either mask was applied (measured 2026-09-07: 80 px out of
+    # 557,046 on gaulke, 99.99% IoU; zero on `logo_alpha`, where every vertex
+    # happened to sit on a pixel centre). `subpixel_edges` made the vertices
+    # fractional and blew that up to 98.8% / 97.5%, so preflight was changed
+    # to ROUND the same way on 2026-09-09 — see `_region_color_errors`' own
+    # `to_px`. Re-measured 2026-09-12 over every non-enclosed region on
+    # gaulke: **553,014 / 553,014 px, exactly 100% IoU, 0 px disagreeing.**
+    #
+    # Two corrections to what this comment used to say, both worth keeping so
+    # nobody re-derives them: the alignment did NOT have to touch
+    # `tag_enclosed_background` (that pass does not share `_region_footprint`
+    # — it carries its own inline `_mm_ring_to_px`, which already rounded), and
+    # it was done on preflight's side, not stage 4's, so `_region_footprint`
+    # is untouched. `tests/test_resnap_mask_matches_grader.py::
+    # test_the_flagged_mask_really_matches_the_graders` still asserts only
+    # `> 0.999` rather than equality: 100% is measured on gaulke, not proved
+    # for every fixture, and a rasteriser tie-break is not worth a brittle pin.
     #
     # DEFAULT ON since 2026-09-10 (Kent's ruling on the colour bundle), the
     # other half of the pair with `revalidate_small_shapes` above. False is

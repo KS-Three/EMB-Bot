@@ -67,7 +67,7 @@ function skipOrGet(t, key) {
   return r;
 }
 
-test("crossval control: DST shows the documented axis transposition", async (t) => {
+test("crossval control: DST is standard-conformant (FIXED 2026-09-08)", async (t) => {
   await ensureRun();
   const r = skipOrGet(t, "dst.notrim");
   if (!r) return;
@@ -87,32 +87,31 @@ test("crossval control: DST shows the documented axis transposition", async (t) 
   // thread change, the whole design in one colour.
   //
   // This is the colour half of docs/dst-axis-verdict-2026-07-31.md's finding.
-  // The AXIS half above is still open and still Kent's (CLAUDE.md footgun 1);
-  // the two were filed together but are independent — this one changes no
-  // geometry.
+  // The AXIS half is fixed too, the same day — the identity assertion at the
+  // top of this test IS it. The two were filed together but are independent;
+  // both are closed now, and neither is Kent's open call any more.
   assert.strictEqual(r.decodedColorChanges, 1, "the colour stop is visible to a standard reader");
   assert.strictEqual(r.decodedSequinToggles, 0, "and is no longer read as a sequin toggle");
-  // DOCUMENTS KNOWN DEFECT, and the harness has shown it since the day it was
-  // written without anyone asserting it: DST decodes ONE MORE stitch than the
-  // design has. encodeDST does not stop at the terminal {type:"end"} sentinel
-  // the way exp.js and pes.js both do (one line, `if (st.type === "end")
-  // break;`), so it writes it as a real stitch record.
+  // REGRESSION GUARD (read "DOCUMENTS KNOWN DEFECT" until 2026-09-07). The
+  // harness showed this for weeks before anyone asserted it: DST decoded ONE
+  // MORE stitch than the design has, because encodeDST fell THROUGH the
+  // terminal {type:"end"} sentinel and wrote it as a real stitch record
+  // instead of stopping the way exp.js and pes.js both do.
   //
-  // The 2026-08-04 verdict deferred this as "one extra phantom stitch",
-  // priced on the LETTERING lane where the sentinel sits on the last stitch
-  // and the extra record is zero-delta. Measured on the imported/digitized
-  // lane 2026-09-07, that price is wrong: buildImportedDesign puts the
-  // sentinel at the ELEMENT'S OFFSET, so on a real 95.7 x 58.3 mm logo the DST
-  // ends with a stitch **0.07 mm from the design's centre, 46.4 mm from the
-  // previous one** — a stray needle penetration in the middle of the design,
-  // with 46 mm of travel to reach it. PES and EXP of the same design end where
-  // the design ends. Every single-element imported, digitized, shape or manual
-  // project carries it; pure lettering does not (buildLetteringDesign appends
-  // no sentinel at all).
+  // The 2026-08-04 verdict deferred it as "one extra phantom stitch", priced
+  // on the LETTERING lane where the sentinel sits on the last stitch and the
+  // extra record is zero-delta. That price was wrong on every other lane:
+  // buildImportedDesign puts the sentinel at the ELEMENT'S OFFSET, so a real
+  // 95.7 x 58.3 mm logo ended with a stitch 0.07 mm from the design's centre,
+  // 46.4 mm from the previous one — a stray needle penetration mid-design
+  // with 46 mm of travel to reach it, on every imported, digitized, shape or
+  // manual project. Pure lettering never carried it (buildLetteringDesign
+  // appends no sentinel at all).
   //
-  // Left in place because the DST codec is Kent's (CLAUDE.md footgun 1). If
-  // this starts failing, that call was made — drop this assertion and the
-  // MASTER_SCOPE note with it.
+  // FIXED in 5cb234a (2026-09-07): `if (st.type === "end") break;` in
+  // src/dst.js, placed BEFORE the extents update so the sentinel also stopped
+  // widening the header's declared bounding box. If this assertion fails the
+  // phantom stitch is BACK — fix the codec, do not drop the assertion.
   assert.strictEqual(r.decodedStitches, r.expectedStitches,
     "the design ends where the design ends");
 });
@@ -190,16 +189,21 @@ test("crossval: PES thread palette maps design colors to nearest Brother chart e
   assert.deepStrictEqual(r.threads, ["#ed171f", "#0a55a3"]);
 });
 
-// ---- a stitch too long for one record ------------------------------------
+// ---- a stitch too long to SEW --------------------------------------------
 //
 // The `long` fixture puts a 300-unit (30 mm) segment BETWEEN two stitches. A
-// PEC record reaches +/-2047 units and carries it whole; a DST record reaches
-// +/-121 and an EXP record +/-127, so both must split it — and WHAT the
-// intermediate records are decides whether the design is sewn or travelled
-// over. Until 2026-09-07 dst.js emitted JUMPS for them (thread silently turned
-// into travel: 3,769 of them on a real Full Back monogram) while exp.js
-// emitted stitches. One design, two sew-outs, and nothing compared them. These
-// three pins are what compares them.
+// DST record reaches +/-121 and an EXP record +/-127, so the FORMAT makes
+// both split it — and WHAT the intermediate records are decides whether the
+// design is sewn or travelled over. Until 2026-09-07 dst.js emitted JUMPS for
+// them (thread silently turned into travel: 3,769 of them on a real Full Back
+// monogram) while exp.js emitted stitches. One design, two sew-outs, and
+// nothing compared them. These three pins are what compares them.
+//
+// A PEC record reaches +/-2047 and carried the 30 mm whole until 2026-09-12,
+// so PES was the one encoder emitting a move no machine can make. Kent ruled
+// that day: split it at 121 — the repo's sewability bar rather than the
+// format's reach. All three now agree in kind, and PES and DST agree to the
+// unit.
 
 test("crossval: a long stitch is SPLIT into stitches by DST", async (t) => {
   await ensureRun();
@@ -227,16 +231,38 @@ test("crossval: EXP splits it the same way, at its own 127", async (t) => {
   assert.ok(r.decodedStitches >= 6);
 });
 
-test("crossval: PES carries a 30 mm stitch whole (DOCUMENTS KNOWN DEFECT)", async (t) => {
+test("crossval: PES splits it too, at the imported 121 (FIXED 2026-09-12)", async (t) => {
   await ensureRun();
   const r = skipOrGet(t, "pes.long");
   if (!r) return;
-  // PEC's long form reaches +/-2047 units, so nothing in the FORMAT forces a
-  // split — and pes.js does not impose one. No machine sews a 30 mm stitch.
-  // Whether to split it anyway means importing a limit from another format,
-  // which is a machine-behaviour call rather than a spec one; measured and
-  // left to Kent. If this assertion starts failing, that call was made:
-  // update it and the DOCTRINE entry with it.
-  assert.strictEqual(r.decodedStitches, r.expectedStitches, "no split");
-  assert.strictEqual(r.longestSewnUnits, 300, "30 mm, in one record");
+  // FIXED 2026-09-12 (was "PES carries a 30 mm stitch whole (DOCUMENTS KNOWN
+  // DEFECT)", asserting decodedStitches === expectedStitches and
+  // longestSewnUnits === 300). That test's own comment said: "Whether to
+  // split it anyway means importing a limit from another format, which is a
+  // machine-behaviour call rather than a spec one; measured and left to
+  // Kent. If this assertion starts failing, that call was made." Kent made
+  // it: split, at 121 units.
+  //
+  // PEC's long form still reaches +/-2047, so this split is NOT the format
+  // talking — it is the repo's sewability bar, one DST record, the same
+  // `max(|dx|,|dy|) > 12.1 mm` test tools/long-stitch-census.mjs counts with
+  // and the 2026-09-11 split-satin ruling is stated in. 121 rather than EXP's
+  // 127 so that a PES file never carries a sewn move DST would have split.
+  assert.ok(r.decodedStitches > r.expectedStitches, "the 300-unit segment must become several records");
+  assert.strictEqual(r.longestSewnUnits, 121);
+  // And PES now reads EXACTLY like the DST control on this fixture: same
+  // count, same longest sewn segment. Three encoders, one sew-out. (EXP
+  // differs only by the 6 units of slack its record has — see the test
+  // above.) That equality is the whole point of the ruling, so it is
+  // asserted rather than left to be noticed.
+  const dst = run.results["dst.long"];
+  assert.strictEqual(r.decodedStitches, dst.decodedStitches);
+  assert.strictEqual(r.longestSewnUnits, dst.longestSewnUnits);
+  // The split must lay THREAD, not travel: the 300-unit move happens between
+  // two stitches, so the only jump a reader may see is the fixture's own
+  // leading travel-in. This is the assertion that would have caught dst.js's
+  // pre-2026-09-07 "split everything as jumps" (3,769 of them on a real Full
+  // Back monogram).
+  assert.strictEqual(r.decodedJumps, 1, "one leading travel-in jump, and no thread turned into travel");
+  assert.strictEqual(r.decodedTrims, 0);
 });

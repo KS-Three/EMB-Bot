@@ -15,9 +15,16 @@
 //   - color count / color-change count, trims, jumps
 //   - design extents
 //
-// DST runs through the same harness as a CONTROL: it must show the known,
-// documented axis transposition (docs/dst-axis-verdict-2026-07-31.md). If it
-// doesn't, the harness is broken — not the codec vindicated.
+// DST runs through the same harness as a CONTROL, and since 2026-09-08 it must
+// read "identity" alongside PES and EXP. It showed the documented axis
+// transposition (docs/dst-axis-verdict-2026-07-31.md) until that day, when both
+// weight tables were swapped to match `pystitch.DstWriter.encode_record`
+// bit-for-bit. So if DST reads anything but identity now, the CODEC has
+// regressed — not the harness.
+//
+// This paragraph said the exact opposite until 2026-09-12 ("if it doesn't show
+// the transposition, the harness is broken — not the codec vindicated"), which
+// is how a fixed codec gets "fixed" back to the dialect no other reader speaks.
 //
 // Usage:
 //   node tools/crossval-stitch-formats.mjs            # human-readable report

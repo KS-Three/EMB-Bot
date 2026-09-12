@@ -54,9 +54,10 @@ vi.mock("../lib/exporters.js", () => ({
   exportWorksheetPDF: async () => {},
   exportPNG: async () => ({ blob: new Blob(), filename: "design.png", mime: "image/png" }),
   // Kept faithful to the real module rather than stubbed to a constant: the
-  // JEF button's disabled state is derived from this, so a mock that always
-  // said false would test a gate that never closes.
-  isServiceOnlyFormat: (fmt) => fmt === "jef",
+  // service-only buttons' disabled state is derived from this, so a mock that
+  // always said false would test a gate that never closes. Three formats
+  // since Kent's 2026-09-12 scope call, not one.
+  isServiceOnlyFormat: (fmt) => ["jef", "xxx", "vp3"].includes(fmt),
 }));
 vi.mock("../lib/download.js", () => ({ triggerDownload: () => {} }));
 vi.mock("../lib/fontLoader.js", () => ({ ensureFonts: async () => {} }));
@@ -173,7 +174,7 @@ test("every format is still reachable in both encoder states", () => {
     });
     const labels = [...container.querySelectorAll(".formats button")]
       .map((b) => b.textContent.trim().replace(/\*.*$/s, "").trim());
-    for (const want of ["DST", "PES", "EXP", "JEF", "SVG", "PNG", "PDF worksheet"]) {
+    for (const want of ["DST", "PES", "EXP", "JEF", "XXX", "VP3", "SVG", "PNG", "PDF worksheet"]) {
       expect(labels).toContain(want);
     }
     unmount();
@@ -539,4 +540,103 @@ test("only the formats verified to carry no hoop header are named", () => {
   const note = view.getByTestId("jef-hoop-header-note");
   expect(note.textContent).toMatch(/DST and\s+EXP carry no hoop header at all/);
   expect(note.textContent).not.toMatch(/PES/);
+});
+
+// ---- XXX (Singer) and VP3 (Husqvarna Viking / Pfaff) ----------------------
+//
+// Kent's scope call 2026-09-12, closing MASTER_SCOPE open item 14 for these
+// two: both round-trip `identity` through pystitch
+// (`digitizer/tools/format_roundtrip.py`) and both return the design's own
+// thread RGB, which PES, PEC and JEF do not. PEC and U01 were left exactly
+// where they were.
+//
+// They inherit JEF's contract, so they inherit its tests: service-only, hence
+// disabled with a reason when the service is down, and gated by the
+// hoop-exceeds confirm like every other machine format.
+
+test("XXX and VP3 are offered, and are disabled with a reason naming their brands", () => {
+  const down = render(DownloadStep, {
+    props: { project: project(LETTERING), runtime: {}, digitizerHealth: null },
+  });
+  for (const [id, brand] of [["xxx-button", /Singer/], ["vp3-button", /Husqvarna Viking \/ Pfaff/]]) {
+    const btn = ui(down).getByTestId(id);
+    expect(btn).toBeDisabled();
+    // The reason names the fix, and the title names the machines — "XXX" on
+    // the face of the button is not something a Singer owner recognises.
+    expect(btn.getAttribute("title")).toMatch(/digitizer service running/i);
+    expect(btn.getAttribute("title")).toMatch(brand);
+  }
+  down.unmount();
+
+  const up = render(DownloadStep, {
+    props: { project: project(LETTERING), runtime: {}, digitizerHealth: { status: "ok" } },
+  });
+  for (const [id, brand] of [["xxx-button", /Singer/], ["vp3-button", /Husqvarna Viking \/ Pfaff/]]) {
+    const btn = ui(up).getByTestId(id);
+    expect(btn).toBeEnabled();
+    expect(btn.getAttribute("title")).toMatch(brand);
+  }
+});
+
+test("XXX and VP3 download through the service on a lettering project too", async () => {
+  // Same point the JEF test above makes: `preferService` is false here, and
+  // these formats have no second encoder to prefer, so the panel must still
+  // ask for them rather than quietly skipping the button's format.
+  for (const fmt of ["xxx", "vp3"]) {
+    exportCalls.length = 0;
+    nextVia = "service";
+    const view = render(DownloadStep, {
+      props: { project: project(LETTERING), runtime: {}, digitizerHealth: { status: "ok" } },
+    });
+    await fireEvent.click(ui(view).getByTestId(`${fmt}-button`));
+    await waitFor(() =>
+      expect(ui(view).getByText(new RegExp(`Downloaded ${fmt.toUpperCase()}`))).toBeInTheDocument());
+    expect(exportCalls).toEqual([{ format: fmt, preferService: false }]);
+    view.unmount();
+  }
+});
+
+test("an oversize design still has to be confirmed before an XXX or a VP3 leaves", async () => {
+  fitNote = "Exceeds your 4×4 in hoop";
+  for (const fmt of ["xxx", "vp3"]) {
+    exportCalls.length = 0;
+    const view = render(DownloadStep, {
+      props: { project: project(LETTERING), runtime: {}, digitizerHealth: { status: "ok" } },
+    });
+    await fireEvent.click(ui(view).getByTestId(`${fmt}-button`));
+    expect(exportCalls).toEqual([]);
+    const dialog = ui(view).getByRole("dialog");
+    await fireEvent.click(
+      within(dialog).getByRole("button", { name: `Download ${fmt.toUpperCase()} anyway` }));
+    await waitFor(() => expect(exportCalls).toEqual([{ format: fmt, preferService: false }]));
+    view.unmount();
+  }
+});
+
+test("VP3's 0.1 mm is not put in front of the customer", () => {
+  // The measured difference: from the THIRD colour block on, VP3 reads back 1
+  // unit — 0.1 mm — narrower, pinned there and not accumulating. Kent's call
+  // 2026-09-12 is that it belongs in the PR body and in exporters.js, not in
+  // the UI. This is the tripwire against a future session helpfully adding an
+  // asterisk to a tenth of a millimetre.
+  //
+  // Rendered at 240 mm on purpose: that is the size that DOES earn JEF its
+  // asterisk, so a caveat appearing on VP3 here could not be waved off as the
+  // note simply not being reachable.
+  designSize = { widthMM: 240, heightMM: 60 };
+  const view = render(DownloadStep, {
+    props: { project: project(DIGITIZED), runtime: {}, digitizerHealth: { status: "ok" } },
+  });
+  for (const [id, name] of [["vp3-button", "VP3"], ["xxx-button", "XXX"]]) {
+    const btn = ui(view).getByTestId(id);
+    expect(btn).toHaveAccessibleName(name);
+    expect(btn.classList.contains("caveat")).toBe(false);
+    expect(btn.getAttribute("aria-describedby")).toBeNull();
+  }
+  // The words, not just the markers — a caveat under any other id would be
+  // the same paragraph in front of the same customer.
+  expect(view.container.textContent).not.toMatch(/0\.1\s?mm/i);
+  expect(view.container.textContent).not.toMatch(/narrower/i);
+  // Not vacuous: the JEF caveat IS on the page at this size.
+  expect(ui(view).getByTestId("jef-hoop-header-note")).toBeInTheDocument();
 });

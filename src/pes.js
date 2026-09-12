@@ -63,13 +63,41 @@
   // Colour change: 0xFE 0xB0 <needle>. End: 0xFF.
   // Long-form field is a signed 12-bit two's complement value, so a single
   // record can only carry a delta in [-PEC_MAX_DELTA, PEC_MAX_DELTA]. Larger
-  // moves (e.g. jumps across a full-back panel) are split into intermediate
-  // jump hops, mirroring the analogous split in dst.js's encodeDST.
+  // TRAVEL moves (e.g. a jump across a full-back panel) are split into
+  // intermediate jump hops. Sewn moves are split far earlier, at
+  // PEC_MAX_SEWN_DELTA below.
   const PEC_MAX_DELTA = 2047;
 
-  function pecClampStep(delta) {
-    if (delta > PEC_MAX_DELTA) return PEC_MAX_DELTA;
-    if (delta < -PEC_MAX_DELTA) return -PEC_MAX_DELTA;
+  // The SEWABILITY ceiling, and the reason this file needed a ruling.
+  //
+  // Nothing in the PEC format forces a split below 2047 units (204.7 mm), so
+  // until 2026-09-12 pes.js carried whatever the design asked for: the
+  // crossval `long` fixture's 300-unit segment came out as ONE record, and a
+  // real `manga_impact` "AB" monogram at Full Back emitted a 51.1 mm stitch
+  // (DOCTRINE 2026-09-07's three-encoder table) — a move no machine can sew.
+  // DST split the same design at its record's own ±121 and EXP at ±127, so
+  // one design produced three different sew-outs and only PES's was
+  // unsewable.
+  //
+  // Kent's ruling 2026-09-12: split it. 121 units is not PEC's limit — it is
+  // THE REPO'S sewability bar, `max(|dx|,|dy|) > 12.1 mm`, one DST record.
+  // That is the same test `tools/long-stitch-census.mjs` counts with and the
+  // same one DOCTRINE's "18 fonts produce stitches over one DST record" and
+  // the 2026-09-11 split-satin ruling are stated in. Picking DST's 121 over
+  // EXP's 127 means a PES file never contains a sewn move that DST would have
+  // had to split: the three encoders agree on what is sewable, and differ
+  // only in the 6 units of slack EXP's record happens to have.
+  //
+  // Travel is NOT subject to this — a jump, a trim, and the move into the
+  // first stitch of a run all keep the format's full 2047 reach, because
+  // splitting travel finer only writes more records for the same needle-up
+  // move. See the chain rule in pecEncodeStitches.
+  const PEC_MAX_SEWN_DELTA = 121;
+
+  function pecClampStep(delta, limit) {
+    const lim = limit || PEC_MAX_DELTA;
+    if (delta > lim) return lim;
+    if (delta < -lim) return -lim;
     return delta;
   }
 
@@ -100,29 +128,47 @@
   function pecEncodeStitches(w, stitches) {
     let px = 0, py = 0; // previous position in PEC screen space (0.1mm, +Y down)
     let needleToggle = 2;
-    let emitted = false;
+    // Whether the previous EMITTED record laid thread — the chain rule the
+    // oversized-move split below needs, identical to encodeDST's. Starts
+    // false: the file's first move is travel to wherever the design begins.
+    let lastWasStitch = false;
     for (const st of stitches) {
       const type = st.type || "stitch";
       if (type === "end") break;
       if (type === "color") {
         w.u8(0xfe).u8(0xb0).u8(needleToggle);
         needleToggle = needleToggle === 2 ? 1 : 2;
+        lastWasStitch = false; // a colour change cuts the chain
         continue;
       }
       const sx = st.x | 0;
       const sy = -(st.y | 0); // flip Y to PEC screen convention
       const flag = type === "trim" ? PEC_FLAG_TRIM : type === "jump" ? PEC_FLAG_JUMP : 0;
+      const isStitch = flag === 0;
+
+      // THE CHAIN RULE (dst.js's encodeDST, same words, same reason). A move
+      // splits into STITCHES only when it CONTINUES a sewn run: this record
+      // is a stitch AND the last emitted one was. The move to the FIRST
+      // stitch after a jump, a trim, a colour change or the start of the file
+      // is TRAVEL — there is nothing to sew between where the needle was and
+      // where the design begins, and splitting it into stitches would draw a
+      // line from the origin across the garment.
+      //
+      // So a chained stitch is split at the sewability bar, as stitches; a
+      // jump, a trim and travel into a run are split at the format's own
+      // reach, as jumps. `test/dstimport.test.js`'s off-origin-centering
+      // fixture is exactly the case that punishes getting this wrong.
+      const chained = isStitch && lastWasStitch;
+      const limit = chained ? PEC_MAX_SEWN_DELTA : PEC_MAX_DELTA;
+      const splitFlag = chained ? 0 : PEC_FLAG_JUMP;
 
       let dx = sx - px;
       let dy = sy - py;
 
-      // Emit intermediate jump hops for deltas outside the 12-bit long-form
-      // range. These are pure travel moves, so they always carry the jump
-      // flag regardless of what the final record's flag will be.
-      while (Math.abs(dx) > PEC_MAX_DELTA || Math.abs(dy) > PEC_MAX_DELTA) {
-        const stepX = pecClampStep(dx);
-        const stepY = pecClampStep(dy);
-        pecWriteRecord(w, stepX, stepY, PEC_FLAG_JUMP);
+      while (Math.abs(dx) > limit || Math.abs(dy) > limit) {
+        const stepX = pecClampStep(dx, limit);
+        const stepY = pecClampStep(dy, limit);
+        pecWriteRecord(w, stepX, stepY, splitFlag);
         px += stepX;
         py += stepY;
         dx = sx - px;
@@ -132,9 +178,8 @@
       pecWriteRecord(w, dx, dy, flag);
       px = sx;
       py = sy;
-      emitted = true;
+      lastWasStitch = isStitch;
     }
-    void emitted;
     w.u8(0xff); // end of stitch data
   }
 
@@ -307,6 +352,17 @@
     for (let i = 0; i < 8; i++) w.i16le(0);
 
     // --- CSewSeg section (stitch/colour block list) ---
+    //
+    // This carries the design's OWN points, unsplit — the sewability split
+    // added 2026-09-12 lives in the PEC block only, deliberately. PEC is the
+    // stream a machine sews and the one every standard reader decodes
+    // (pystitch's PesReader ignores the PES header entirely and jumps to the
+    // PEC block; so does pyembroidery's), which is why "longest sewn" is
+    // measurable there and not here. Splitting CSewSeg as well would be an
+    // unmeasurable change to a section nothing in this repo — or in the
+    // cross-validation harness — reads back. It is not an oversight: if a
+    // PE-Design-class editor that DOES read CSewSeg ever becomes part of the
+    // evidence, split it there too and measure it.
     w.u16le(0xffff);
     w.u16le(0x0000);
     w.lenStr("CSewSeg");

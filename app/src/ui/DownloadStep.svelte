@@ -17,9 +17,10 @@
   export let runtime;
   // The digitizer service's /health answer, or null when it isn't reachable
   // (App owns the probe; see its `digitizerHealth`). Needed HERE and not only
-  // on the content step because JEF has no browser encoder — the service is
-  // the only thing that can write it, so the button has to be able to say why
-  // it is unavailable instead of throwing when pressed.
+  // on the content step because JEF, XXX and VP3 have no browser encoder —
+  // the service is the only thing that can write them, so those buttons have
+  // to be able to say why they are unavailable instead of throwing when
+  // pressed.
   export let digitizerHealth = null;
   const d = createEventDispatcher();
   let msg = "";
@@ -104,13 +105,20 @@
   // service being up — hence a disabled state with a reason rather than a
   // button that throws.
   //
-  // Deliberately NOT extended to the other five formats pyembroidery can
-  // write (VP3, XXX, U01, PEC, plus PES's PEC variant). All were decoded and
-  // measured on 2026-09-07 and VP3/XXX/PEC come back correct — but which
-  // machines this product supports is a scope call, and PRODUCT.md's is
-  // DST/PES/JEF (+EXP). Adding one is one line in exporters.js's
-  // SERVICE_ONLY_FORMATS and one button here. U01 is the one that would need
-  // work first: it came back with ZERO colour changes on a two-colour design.
+  // Which machines this product supports is a scope call — that has not
+  // changed, and Kent has now MADE it (2026-09-12): XXX (Singer) and VP3
+  // (Husqvarna Viking / Pfaff) ship, PEC and U01 do not. So this is no longer
+  // the only service-only button; the two below are the same shape.
+  //
+  // The evidence is `digitizer/tools/format_roundtrip.py --detail`, which
+  // reads every format back with pystitch: XXX and VP3 both come back
+  // `identity` (70/70 stitches, 1/1 colour change, 1725 x 200 units) and both
+  // carry the design's own thread RGB, which PES, PEC and JEF do not — they
+  // snap to their chart. U01 is still the one that would need work first: its
+  // colour change does not survive the round trip (1 -> 0; the stop is
+  // re-encoded as two NEEDLE_SET records). Adding another is still one entry
+  // in exporters.js's SERVICE_ONLY_FORMATS and one button here.
+  //
   // Asked of exporters.js rather than hardcoded here, so that the day a
   // browser JEF encoder exists, removing "jef" from SERVICE_ONLY_FORMATS is
   // the whole change and this gate disappears with it.
@@ -126,6 +134,32 @@
   $: jefTitle = jefAvailable
     ? "Janome JEF, written by the digitizer service"
     : "Janome JEF needs the digitizer service running — it has no in-browser encoder";
+
+  // ---- XXX (Singer) and VP3 (Husqvarna Viking / Pfaff) -----------------
+  //
+  // Kent's scope call 2026-09-12, recorded in the JEF block above. Same two
+  // lines per format as JEF, spelled out rather than looped: each names its
+  // own brands, and a list rendered with {#each} would bury the ordering the
+  // markup below is deliberately choosing.
+  //
+  // Named by brand in the title and by extension on the face, exactly as JEF
+  // is: the button text is what voice control and a customer's own search
+  // reach for, and the brand is what an owner recognises.
+  //
+  // VP3 gets NO asterisk and no note. Its one measured difference (a 0.1 mm
+  // narrower read-back from the third colour block on, pinned there and not
+  // accumulating) is documented in exporters.js and belongs in a PR body, not
+  // in front of a customer — Kent's call the same day. The asterisk
+  // convention on the JEF button above is for a defect that can make a
+  // machine refuse the file; this is a tenth of a millimetre.
+  $: xxxAvailable = !isServiceOnlyFormat("xxx") || !!digitizerHealth;
+  $: xxxTitle = xxxAvailable
+    ? "Singer XXX, written by the digitizer service"
+    : "Singer XXX needs the digitizer service running — it has no in-browser encoder";
+  $: vp3Available = !isServiceOnlyFormat("vp3") || !!digitizerHealth;
+  $: vp3Title = vp3Available
+    ? "Husqvarna Viking / Pfaff VP3, written by the digitizer service"
+    : "Husqvarna Viking / Pfaff VP3 needs the digitizer service running — it has no in-browser encoder";
 
   // fontsReady gates the (necessarily synchronous, template-bound)
   // `combined` derivation below -- it starts false so the very first render
@@ -481,6 +515,24 @@
     title={jefTitle}
     on:click={() => askThenDl("jef")}
   >JEF{#if jefHoopNote}<span class="caveat-mark" aria-hidden="true">*</span>{/if}</button>
+  <!-- Singer and Husqvarna Viking / Pfaff, shipped on Kent's 2026-09-12 scope
+       call. Service-only like JEF, so the same disabled-with-a-reason
+       treatment; they sit after the four that were already here and before
+       SVG, because the machine formats lead and the proof formats follow. No
+       asterisk on VP3 — see the script block for why its 0.1 mm is not a
+       caveat. -->
+  <button
+    data-testid="xxx-button"
+    disabled={!xxxAvailable}
+    title={xxxTitle}
+    on:click={() => askThenDl("xxx")}
+  >XXX</button>
+  <button
+    data-testid="vp3-button"
+    disabled={!vp3Available}
+    title={vp3Title}
+    on:click={() => askThenDl("vp3")}
+  >VP3</button>
   <button on:click={() => askThenDl("svg")}>SVG</button>
   <button on:click={dlPNG}>PNG</button>
   <button on:click={dlWorksheet} disabled={worksheetBusy}>PDF worksheet</button>

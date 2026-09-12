@@ -157,7 +157,9 @@ test("JEF surfaces a customer-readable error when the service is down, and never
 
 test("isServiceOnlyFormat names exactly the formats with no browser encoder", async () => {
   const { isServiceOnlyFormat, exportDesign } = await import("./exporters.js");
-  expect(isServiceOnlyFormat("jef")).toBe(true);
+  for (const fmt of ["jef", "xxx", "vp3"]) {
+    expect(isServiceOnlyFormat(fmt), `${fmt} has no browser encoder`).toBe(true);
+  }
   // Every format that is NOT service-only must actually have a browser
   // encoder — that is the whole claim the flag makes, and it is checkable.
   for (const fmt of ["dst", "exp", "pes", "svg"]) {
@@ -165,6 +167,48 @@ test("isServiceOnlyFormat names exactly the formats with no browser encoder", as
     expect(() => exportDesign(design, fmt)).not.toThrow();
   }
 });
+
+// ---- XXX (Singer) and VP3 (Husqvarna Viking / Pfaff) ----------------------
+//
+// Kent's scope call 2026-09-12, on the evidence of
+// `digitizer/tools/format_roundtrip.py`: both round-trip `identity` through
+// pystitch and both carry the design's own thread RGB, which PES, PEC and JEF
+// do not. They take JEF's contract exactly — no browser encoder exists, so
+// the service is the only path and exportDesign() must never be reached with
+// them.
+//
+// Asserted per format and not only through `isServiceOnlyFormat`, because
+// routing is the part a customer feels: a format that quietly fell out of the
+// set would reach the browser encoder and come back "Unknown format: vp3".
+
+for (const [fmt, brand] of [["xxx", "Singer"], ["vp3", "Husqvarna Viking / Pfaff"]]) {
+  const FMT = fmt.toUpperCase();
+
+  test(`${FMT} (${brand}) goes through the service even when preferService is false`, async () => {
+    const { exportDesignPreferService } = await import("./exporters.js");
+    const serviceOut = { bytes: new Blob(["x"]), filename: `design.${fmt}`, mime: "application/octet-stream" };
+    let seen = null;
+    const exportViaServiceFn = async (d, f, label) => { seen = { fmt: f, label }; return serviceOut; };
+    const out = await exportDesignPreferService(design, fmt, { label: "Hat", exportViaServiceFn });
+    expect(seen).toEqual({ fmt, label: "Hat" });
+    expect(out.via).toBe("service");
+    expect(out.filename).toBe(`design.${fmt}`);
+  });
+
+  test(`${FMT} names itself when the service is down, and never falls through to the browser`, async () => {
+    const { exportDesignPreferService, exportDesign } = await import("./exporters.js");
+    const exportViaServiceFn = async () => { throw new Error("fetch failed"); };
+    // The message has to name the format the customer pressed — one shared
+    // wrapper serves three of them now, and "the digitizer service isn't
+    // answering" alone does not say which download failed.
+    await expect(exportDesignPreferService(design, fmt, { preferService: true, exportViaServiceFn }))
+      .rejects.toThrow(new RegExp(`${FMT} is written by the digitizer service`));
+    await expect(exportDesignPreferService(design, fmt, { exportViaServiceFn }))
+      .rejects.toThrow(/fetch failed/);
+    // And what the fallback WOULD have said, which is why it must not run.
+    expect(() => exportDesign(design, fmt)).toThrow(new RegExp(`Unknown format: ${fmt}`));
+  });
+}
 
 test("exportWorksheetPDF wires window.jspdf and forwards garment box (mm) to EMB.buildWorksheetPDF", async () => {
   const { exportWorksheetPDF } = await import("./exporters.js");
