@@ -458,6 +458,8 @@ by evidence CI cannot see.** *(confirmed 2026-08-25)*
 **Area 1 is deliberately NOT split into "image analysis" + "stitch planning"**, and
 the four gaps an external review named have owners in code — [area 1](docs/scope/1-auto-digitizing-quality.md). *(moved 2026-08-21 — rule 5)*
 
+**The pro overlay loop exists and ran its first three real designs.** `prep_both.py <slug> [<slug> ...]` (real lane) into `<out>/real/<slug>/`, then `overlay.py --dir <dir> --by-thread` (registered magenta/cyan multiply sheets, per-thread breakdowns, named crops via `--crop x0 y0 x1 y1 --crop-name`) and `diff.py --dir <dir>` (per-region tier/width/direction/pitch/layers comparison plus three-tag shape rows — `dropped`/`background`/`redesign` — into `catalogue.md`/`diff.json`, one stdout line per flagged row). Registration iou: `becker_lc_large` 0.643, `becker_hat_large` 0.650, `hotel_fremont_patch` 0.983 (all above the 0.5 warning floor). The loop emits no score and ranks nothing — every number is a measurement Kent reads himself, not a grade. *(measured 2026-09-11 — docs/pro-overlay-first-run-2026-09-11.md)*
+
 ### Research backlog — competitive and open-source leads
 
 Two capability sweeps (Ember Design, Ink/Stitch), the closed `simplify_tol_mm`
@@ -627,21 +629,7 @@ thumbnail. Pinned on the literal 0.4 and both ratios. *(2026-09-04 — `preview.
 
 **Typographic punctuation folds to its ASCII twin where a font lacks it.** A customer's phone substitutes U+2019 for an apostrophe silently and 26 of the 85 fonts have no glyph for it, so "Fritsch's Stitches" sewed as "Fritschs Stitches" (1,326 stitches against 1,354) under a note naming a character that looks identical to the one they typed. `satinfont.js TYPOGRAPHIC_FOLD` stitches the twin ONLY where the fancy form is missing — 367 font x character combinations rescued, and all 85 fonts hash identically on text that never needed it. Not NFKD: accented letters are different letters and stay unfolded (33–73 fonts cover the common ones, and the "these fonts can" message is good advice there). *(fixed 2026-09-07 — DOCTRINE; scope-history 09-07)*
 
-**A design is named after what is in it, and the registry stops swallowing
-failed writes.** Every project was "Untitled design", so "My designs" listed
-rows a customer could only tell apart by opening each, and every backup
-downloaded as `untitled-design.embproj`. A still-unnamed design now takes its
-name from its content; a name typed by hand is sticky. Separately,
-`renameProject` and `deleteProject` reported success for an index write that
-never landed — a name and a project's membership of the registry live ONLY in
-that index — and `deleteProject` removed the record before writing it. Both
-propagate now, index first. *(fixed 2026-09-07 — area 3; DOCTRINE)*
-
-**The built bundle works wherever it is served.** `vite.config.js` sets
-`base: "./"` and five hand-written `/fonts/…` paths ignored it, so below the
-domain root the lettering lane produced nothing; font LICENCE links were among
-the five. Document-relative now, identical at the root. *(fixed 2026-09-07 —
-`assetPaths.spec.js`)*
+**Project naming/registry-write-propagation and the built bundle's asset paths are both fixed** — a design now names itself from its content and a rename/delete always propagates to the registry; `base: "./"` asset paths work below the domain root. Detail moved to [area 3](docs/scope/3-studio-app-wizard.md). *(fixed 2026-09-07 — area 3; DOCTRINE)*
 
 **Lettering under the cap floor now names a way out.** The one verdict meaning "cannot be sewn" was the only one with no fix while the milder branch named two — 74 characters at the default left chest reads 1.3 mm against a 4 mm floor. Levers measured before being named: 3 lines 4.8 mm, 6 lines 6.3 mm, 18 characters 6.7 mm, full back 4.0 mm; 40 characters is still 3.1 mm, so line breaks lead and "fewer characters" is second. "Size up" is withheld at the width cap, the rule the hairline branch already followed. *(fixed 2026-09-07 — scope-history 09-07)*
 

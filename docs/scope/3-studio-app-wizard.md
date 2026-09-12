@@ -536,3 +536,21 @@ Two things fell out of that run, one fixed and one recorded:
   `(any-pointer: fine)` the way `emptyFieldHint` already does; not worth
   inventing a phone story PRODUCT.md has not decided on (launch posture is
   still "Desktop-only, stated on the site", still stated nowhere).
+
+## Naming and asset-path fixes (moved from MASTER_SCOPE.md 2026-09-11, reclaim for the pro-overlay-loop entry)
+
+**A design is named after what is in it, and the registry stops swallowing
+failed writes.** Every project was "Untitled design", so "My designs" listed
+rows a customer could only tell apart by opening each, and every backup
+downloaded as `untitled-design.embproj`. A still-unnamed design now takes its
+name from its content; a name typed by hand is sticky. Separately,
+`renameProject` and `deleteProject` reported success for an index write that
+never landed — a name and a project's membership of the registry live ONLY in
+that index — and `deleteProject` removed the record before writing it. Both
+propagate now, index first. *(fixed 2026-09-07 — area 3; DOCTRINE)*
+
+**The built bundle works wherever it is served.** `vite.config.js` sets
+`base: "./"` and five hand-written `/fonts/…` paths ignored it, so below the
+domain root the lettering lane produced nothing; font LICENCE links were among
+the five. Document-relative now, identical at the root. *(fixed 2026-09-07 —
+`assetPaths.spec.js`)*

@@ -1249,6 +1249,24 @@ either. `tools/bundle.mjs` (the standalone's rebuild step) was doubly dead
 2026-08-11**. The Studio has no CDN runtime dependencies (jsPDF is
 npm-bundled, Inter via fontsource, fonts ship locally as `.embf`).
 
+**The pro overlay loop** (`digitizer/tools/pro_parity/`) preps a real pro
+file and our own digitize of the same customer artwork into a shared frame,
+registers them, and turns the difference into a catalogue Kent reads:
+
+```bash
+cd digitizer
+PRO_PARITY_ROOT="<Embroidery Files root>" PRO_PARITY_OUT="<out dir>" \
+  .venv/Scripts/python tools/pro_parity/prep_both.py <slug> [<slug> ...]
+.venv/Scripts/python tools/pro_parity/overlay.py --dir "<out>/real/<slug>" --by-thread
+.venv/Scripts/python tools/pro_parity/diff.py --dir "<out>/real/<slug>"
+```
+
+`diff.py` writes `catalogue.md`/`diff.json` into the prep dir and prints one
+line per flagged region. Artwork resolves through `prep_both.py`'s
+`ART_FALLBACK` map (`digitizer/testdata/`) when the customer's Drive file
+isn't mounted, so the Drive is not required to run the loop — first real
+run: `docs/pro-overlay-first-run-2026-09-11.md`.
+
 ### Recapturing `corpus_scorecard_baseline.json`
 
 The baseline once sat unrefreshed through ~15 digitizer commits; the next

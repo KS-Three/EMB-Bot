@@ -4132,3 +4132,30 @@ Bridge Bar routed at 80 mm has 29 satin strokes and NO tatami fill, so the
 review's "fill angles spread across the half-circle" cannot have been read
 off that lane — measure the flag under `forced_class=flat`, where the
 real logos become tatami fills, to see it. *(2026-09-09 — plan doc §4)*
+
+## The pro overlay loop's shape rows carry three tags, and only one is ours to fix (2026-09-11)
+
+`diff.py`'s shape rows (the parts of `pro_only`/`ours_only` that are big enough
+to name) split the overlay's disagreement into three tags by whose thread it
+is and whether the artwork's own ink is under it: `dropped` (pro thread over
+ink we left unsewn — ours, a defect) and `background` (our thread over ground
+the art has no ink for — ours, a defect) are both engine failures we own.
+`redesign` (either side's thread where the OTHER side's reading of the same
+ink disagrees — the pro adding thread the flat art lacks, or the pro leaving/
+merging art we sewed) is Kent's call, not a defect to chase: it is the
+professional exercising judgement the artwork itself does not settle. Every
+shape row also carries `sewn_by` (`"pro"` or `"ours"`) so the two `redesign`
+buckets — the pro adding, the pro omitting — read apart without the tag
+itself splitting (controller ruling, fix round 1, R18). On the first three
+real designs (2026-09-11) every non-dust `redesign` row landed on the
+Becker/Marine lettering, where the pro's arch-banner curvature and letter
+terminals depart from the flat logo's ink — exactly the class this tag exists
+to catch, and exactly the class no amount of engine work should chase.
+
+**Density is reported on every region row and never flagged.** Row/fill
+pitch is a ruled constant (`machine.FILL_ROW_MM` = 0.15 mm, Law 19), not a
+target either side is graded against — a region's density number moves with
+its geometry, not with a defect, so putting it behind a flag would manufacture
+findings out of ordinary shape variation. The catalogue prints it for context
+only; see `docs/pro-overlay-first-run-2026-09-11.md` for the first run it
+appeared in. *(2026-09-11 — Task 13, `tools/pro_parity/diff.py`)*
