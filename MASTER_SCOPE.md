@@ -232,6 +232,7 @@ one concealed it; entry 2 is a flag that LEFT this list unnoticed for two weeks.
    `config.py`" read the FIELD, which stopped deciding two days later: **a
    per-class default cannot be confirmed from a dataclass line.** Ratified
    2026-09-02, left gate 3; cost is defect 20. *(`pipeline.effective_split_tonal`)*
+3. **`strip_letterbox` — held OFF by BLAST RADIUS, not doubt.** A phone screenshot's black bars read as ink and invert the design (ground sewn in white thread, logo left as negative space — unusable); ON fixes it, render-verified, byte-identical OFF. **The block: the fixture's pathology is load-bearing for 11 tests** — it is the corpus's only full-bleed design *because* of those bars, so a `cv2.erode` guard loses its only fixture. Flipping means re-pointing those 11 at fixtures that still carry the property each tests, never at whatever the engine then emits. *(measured 2026-09-11 — DOCTRINE "A fixture's PATHOLOGY can be load-bearing")*
 
 *(added 2026-08-17 — `docs/project-review-2026-08-16.md` §1.6: chaining was absent
 here, so a good-faith flip would have shipped bare-fabric thread unwarned.)*
@@ -352,20 +353,17 @@ area they drag down, documented once here.
 
 ### DST codec — FIXED, both directions (2026-09-08)
 
-`src/dst.js` / `src/dstimport.js` had X in the HIGH nibble of every record byte
-and Y in the LOW one; the standard is the reverse. It round-tripped against
-itself, so the pair's own tests never saw it. **The word was wrong until
-2026-09-07 too: it is a MIRROR, not a quarter turn** — a bbox swap fits both
-equally, and the Studio told customers to "use Rotate to stand it up", which no
-rotation can do. Fixed by swapping the two weight tables in the writer and in
-`decodeDelta`: both now match `pystitch.DstWriter.encode_record` bit-for-bit,
-the crossval DST control reads `identity` beside PES and EXP, and a "FRITSCH"
-export draws upright at its own 127.2 × 22.6 mm. Two independent DST defects
-closed the same week — the colour-change byte (`0x43` where the standard wants
-`0xC3`, so a standard reader saw a sequin toggle and ZERO stops) and the
-terminal `{type:"end"}` sentinel written as a real stitch, which also widened
-the header's declared hoop-fit box. *(fixed 2026-09-08 — `test/dst.test.js`
-byte pins from pystitch; crossval DST control)*
+X and Y were in the wrong nibbles of every record byte, and it round-tripped
+against itself so the pair's own tests never saw it. **It was a MIRROR, not a
+quarter turn** — a bbox swap fits both, and the Studio told customers to
+rotate, which cannot fix one. Both encoders now match
+`pystitch.DstWriter.encode_record` bit-for-bit and the crossval DST control
+reads `identity`. Two sibling defects closed the same week: the colour-change
+byte (a standard reader saw ZERO stops) and the terminal `end` sentinel
+written as a real stitch. Narrative and numbers compacted here 2026-09-12 per
+rules 1/5 — they are unchanged in the five places the pointer list below
+already names. *(fixed 2026-09-08 — `test/dst.test.js` byte pins from
+pystitch; crossval DST control)*
 
 **Still true, and the only live part:** a `.dst` written BEFORE the fix is in
 the old dialect and re-imports mirrored. Old files are not repaired, so
@@ -427,6 +425,8 @@ labelled corpus plus a scoring harness would let a classifier change be judged
 against *something* before either arrives.
 
 **Seven measured cases where the harness disagrees with the sewn result — one of them since retracted:** [`docs/yardstick-disagreements-2026-09-06.md`](docs/yardstick-disagreements-2026-09-06.md) — phase 1's exit condition is a claim about disagreements and nothing was gathering them. Two are load-bearing: a 32.7 → 1.4 ΔE00 thread fix that moves no grade or block (the metric moves; the verdict does not), and four photo fixtures that score HIGHER with a ratified quality tier off. Append; do not curate — **row 7 held for one day and is kept, marked, because the retraction is the finding**: it was measured on a tree with the `~base_valid` bug in it, and fixing that bug reversed its direction (2026-09-07). *(assembled 2026-09-06)*
+
+**Phase 1's exit condition now HAS an instrument — `digitizer/tools/artfid_eye_rank.py`.** A blind two-command harness (`--reveal` refuses to run until the ranking is on disk) that correlates ARTFID's ordering with a viewer's. First run: the pre-registered primary is **null and underpowered by construction** (tau-b +0.048, n=7 after refusals). The load-bearing result is the one behind it — **ARTFID scores are NOT comparable across routes**, and "preflight grade beats ARTFID" is a confound for `route == flat`. Do not pool ARTFID over a mixed-route set and read the ordering as quality. Also live: `colour` reads exactly 1.000 on 11 of 14 fixtures while carrying 25% of the composite. Full result, the statistical limits, and two of my own hypotheses recorded as disproved: DOCTRINE "ARTFID is not comparable ACROSS routes". *(measured 2026-09-11 — [`docs/artfid-eye-agreement-2026-09-11.md`](docs/artfid-eye-agreement-2026-09-11.md))*
 
 **Harness half: BUILT — `digitizer/tools/corpus_scorecard.py`.** `capture`/`diff`
 over 26 fixtures x 2, aggregating preflight's score. REPORTING, not a CI gate;
