@@ -641,6 +641,18 @@ class PipelineConfig:
     # falls in the app: 1200 px art refines at <= 60 mm and not at 61, 2000
     # px at <= 100 mm -- a cliff a 1 mm width nudge can cross, changing
     # every curve's polygon (review of PR #330; Kent's to accept).
+    #
+    # **Runtime, measured 2026-09-12 and previously unwritten:** **+32.1%**
+    # of `machine_hat`'s digitize time (29.3 s of 92.2 s), +5.8% on
+    # `precision_drone`, inert on `gaulke_roofing_lc` and inside the noise on
+    # Fremont. Like `subpixel_edges` the bill is paid in `plan_stitches`
+    # (88.5 -> 58.2 s off) and not where the refinement runs (`run_stages`
+    # unchanged at 3.7 s): the refinement itself is cheap and what it hands
+    # the stitch planner is not. Which planner stage pays is not isolated —
+    # and the "+40-80% vertices" above is NOT the explanation, since it
+    # describes the low-resolution regime this flag declines. Quality case
+    # unaffected; the clock is now on the record.
+    # *(tools/pro_parity/flagcost.py; docs/flag-runtime-bills-2026-09-12.md)*
     curve_turn_deg: float | None = 15.0
     # Sub-pixel, anti-alias-aware contour vertices (`digitizer_core/
     # subpixel.py`; plan `docs/superpowers/plans/2026-09-08-subpixel-edges.md`
@@ -685,6 +697,18 @@ class PipelineConfig:
     # travel with the flip as Kent's: `curve_turn_deg` (15 deg is now the
     # floor under the ring and ribbon; 10 would meet the ladder's criterion
     # on the ring) and the upscaled regime (declined, above).
+    #
+    # **Runtime, measured 2026-09-12 and previously unwritten:** this is the
+    # second-dearest flag on the default-ON list — **+48.4%** of
+    # `machine_hat`'s digitize time (44.2 s of 92.2 s), +10.6% on
+    # `precision_drone`, and inside the noise on the two small flat logos. The
+    # cost lands in `plan_stitches` (88.5 -> 43.9 s with the flag off), NOT in
+    # `run_stages` (3.7 -> 3.3 s) — so it is not the sub-pixel pass itself but
+    # what the finer edges it produces cost everything downstream. Which
+    # downstream stage pays is not yet isolated. Nothing here argues for
+    # turning it off — it changes the output and its quality case stands — but
+    # the clock was never part of that case and now it is on the record.
+    # *(tools/pro_parity/flagcost.py; docs/flag-runtime-bills-2026-09-12.md)*
     subpixel_edges: bool = True
 
     # Stage 5 — sew order, underlap, pull compensation
@@ -1071,6 +1095,18 @@ class PipelineConfig:
     # logos, +49-67% on sunset's 263-run fill. The `logo_whitebg` goldens
     # moved by their travel (2166 -> 2162 penetrations) and were re-pinned
     # per the recapture doctrine.
+    #
+    # **THE "+7-11% ON LOGOS" HALF IS TOO LOW, re-measured 2026-09-12**
+    # (`tools/pro_parity/flagcost.py`, warm-up discarded and a noise floor
+    # from a repeated baseline). `precision_drone` — a logo — reads
+    # **+26.0%**, and `machine_hat` — also a logo, and the corpus's largest
+    # fill at 33,898 stitches — reads **+59.8%** (54.6 s of 92.2 s), which is
+    # inside the band this comment reserved for a photo. The split is not
+    # logo-versus-photo, it is FEW-RUN versus MANY-RUN, and a logo sits in
+    # either: `gaulke_roofing_lc` really is +7.3%. This is the largest single
+    # runtime bill of any flag on this list and it is worth what it buys;
+    # budget it by the fill's run count, not by the artwork's kind.
+    # *(docs/flag-runtime-bills-2026-09-12.md)*
     fill_travel_under_cover: bool = True
 
     # Task A2 (2026-08-14, tools/pro_parity): the corpus's professional
