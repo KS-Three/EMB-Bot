@@ -189,16 +189,21 @@ test("crossval: PES thread palette maps design colors to nearest Brother chart e
   assert.deepStrictEqual(r.threads, ["#ed171f", "#0a55a3"]);
 });
 
-// ---- a stitch too long for one record ------------------------------------
+// ---- a stitch too long to SEW --------------------------------------------
 //
 // The `long` fixture puts a 300-unit (30 mm) segment BETWEEN two stitches. A
-// PEC record reaches +/-2047 units and carries it whole; a DST record reaches
-// +/-121 and an EXP record +/-127, so both must split it — and WHAT the
-// intermediate records are decides whether the design is sewn or travelled
-// over. Until 2026-09-07 dst.js emitted JUMPS for them (thread silently turned
-// into travel: 3,769 of them on a real Full Back monogram) while exp.js
-// emitted stitches. One design, two sew-outs, and nothing compared them. These
-// three pins are what compares them.
+// DST record reaches +/-121 and an EXP record +/-127, so the FORMAT makes
+// both split it — and WHAT the intermediate records are decides whether the
+// design is sewn or travelled over. Until 2026-09-07 dst.js emitted JUMPS for
+// them (thread silently turned into travel: 3,769 of them on a real Full Back
+// monogram) while exp.js emitted stitches. One design, two sew-outs, and
+// nothing compared them. These three pins are what compares them.
+//
+// A PEC record reaches +/-2047 and carried the 30 mm whole until 2026-09-12,
+// so PES was the one encoder emitting a move no machine can make. Kent ruled
+// that day: split it at 121 — the repo's sewability bar rather than the
+// format's reach. All three now agree in kind, and PES and DST agree to the
+// unit.
 
 test("crossval: a long stitch is SPLIT into stitches by DST", async (t) => {
   await ensureRun();
@@ -226,16 +231,38 @@ test("crossval: EXP splits it the same way, at its own 127", async (t) => {
   assert.ok(r.decodedStitches >= 6);
 });
 
-test("crossval: PES carries a 30 mm stitch whole (DOCUMENTS KNOWN DEFECT)", async (t) => {
+test("crossval: PES splits it too, at the imported 121 (FIXED 2026-09-12)", async (t) => {
   await ensureRun();
   const r = skipOrGet(t, "pes.long");
   if (!r) return;
-  // PEC's long form reaches +/-2047 units, so nothing in the FORMAT forces a
-  // split — and pes.js does not impose one. No machine sews a 30 mm stitch.
-  // Whether to split it anyway means importing a limit from another format,
-  // which is a machine-behaviour call rather than a spec one; measured and
-  // left to Kent. If this assertion starts failing, that call was made:
-  // update it and the DOCTRINE entry with it.
-  assert.strictEqual(r.decodedStitches, r.expectedStitches, "no split");
-  assert.strictEqual(r.longestSewnUnits, 300, "30 mm, in one record");
+  // FIXED 2026-09-12 (was "PES carries a 30 mm stitch whole (DOCUMENTS KNOWN
+  // DEFECT)", asserting decodedStitches === expectedStitches and
+  // longestSewnUnits === 300). That test's own comment said: "Whether to
+  // split it anyway means importing a limit from another format, which is a
+  // machine-behaviour call rather than a spec one; measured and left to
+  // Kent. If this assertion starts failing, that call was made." Kent made
+  // it: split, at 121 units.
+  //
+  // PEC's long form still reaches +/-2047, so this split is NOT the format
+  // talking — it is the repo's sewability bar, one DST record, the same
+  // `max(|dx|,|dy|) > 12.1 mm` test tools/long-stitch-census.mjs counts with
+  // and the 2026-09-11 split-satin ruling is stated in. 121 rather than EXP's
+  // 127 so that a PES file never carries a sewn move DST would have split.
+  assert.ok(r.decodedStitches > r.expectedStitches, "the 300-unit segment must become several records");
+  assert.strictEqual(r.longestSewnUnits, 121);
+  // And PES now reads EXACTLY like the DST control on this fixture: same
+  // count, same longest sewn segment. Three encoders, one sew-out. (EXP
+  // differs only by the 6 units of slack its record has — see the test
+  // above.) That equality is the whole point of the ruling, so it is
+  // asserted rather than left to be noticed.
+  const dst = run.results["dst.long"];
+  assert.strictEqual(r.decodedStitches, dst.decodedStitches);
+  assert.strictEqual(r.longestSewnUnits, dst.longestSewnUnits);
+  // The split must lay THREAD, not travel: the 300-unit move happens between
+  // two stitches, so the only jump a reader may see is the fixture's own
+  // leading travel-in. This is the assertion that would have caught dst.js's
+  // pre-2026-09-07 "split everything as jumps" (3,769 of them on a real Full
+  // Back monogram).
+  assert.strictEqual(r.decodedJumps, 1, "one leading travel-in jump, and no thread turned into travel");
+  assert.strictEqual(r.decodedTrims, 0);
 });

@@ -3258,10 +3258,12 @@ its hedge as it is copied forward** — is why this file is split.
   disambiguate before it can be shown to anyone.** *(2026-09-07)*
 
 - **One design, three encoders, three different sew-outs — because each
-  invented its own answer to "this stitch is too long".** A DST record carries
-  ±121 units per axis, an EXP record ±127, a PEC record ±2047. All three
-  encoders split an oversized move into intermediate records; only the choice
-  of WHAT those intermediates are differed, and nobody had compared them.
+  invented its own answer to "this stitch is too long".** **CLOSED 2026-09-12,
+  when PES joined the other two. The chain rule below is the part worth
+  keeping.** A DST record carries ±121 units per axis, an EXP record ±127, a
+  PEC record ±2047. All three encoders split an oversized move into
+  intermediate records; only the choice of WHAT those intermediates are
+  differed, and nobody had compared them.
 
   Measured 2026-09-07 on a real `manga_impact` "AB" monogram at Full Back
   (304.9 × 146.2 mm, 5,830 stitches), each file decoded with pystitch:
@@ -3276,6 +3278,39 @@ its hedge as it is copied forward** — is why this file is split.
   design said to sew. EXP split into stitches. PES emitted a 51 mm stitch no
   machine can make. `dst.js` now matches `exp.js`: 9,591 stitches, 8 jumps.
 
+  **PES was left to Kent that day and he ruled on 2026-09-12: split it too.**
+  It was the only one of the three emitting a move no machine can sew, and
+  PES is launch scope (`PRODUCT.md` item 1). The reason it needed a ruling
+  rather than a fix is that **nothing in the FORMAT forces it** — a PEC record
+  reaches ±2047 units (204.7 mm), so splitting below that is deliberately
+  importing a sewability limit, a machine-behaviour call and not a spec one.
+
+  **The bar is 121 units, and it is the repo's, not PEC's.** `max(|dx|,|dy|) >
+  12.1 mm` — one DST record — is already the test `tools/long-stitch-census.mjs`
+  counts with, the one "18 fonts produce stitches over one DST record" is
+  stated in, and the one the 2026-09-11 split-satin ruling is measured against.
+  Choosing DST's 121 over EXP's 127 means **a PES file never carries a sewn
+  move DST would have had to split**: the three encoders now agree on what is
+  sewable and differ only by the 6 units of slack EXP's record happens to
+  have. On the crossval `long` fixture PES went from 4 stitches / longest sewn
+  **300 units** to 6 / **121** — reading identically to the DST control (6 /
+  121), beside EXP's 6 / 127.
+
+  **The split is per-axis clamped, exactly as `dst.js` and `exp.js` do it**, so
+  the intermediate penetrations of a DIAGONAL over-length move are not
+  collinear with its endpoints: each step takes up to the bar on both axes
+  until one axis runs out. That is inherited on purpose — a proportional split
+  would have been a fourth convention — and it changes no design's extents,
+  since every intermediate stays inside the two endpoints' bounding box.
+
+  **The split lives in the PEC block only.** That is the stream a machine sews
+  and the one every standard reader decodes (pystitch's `PesReader` ignores the
+  PES header and jumps straight to PEC, as does pyembroidery's), which is what
+  makes "longest sewn" measurable at all. `CSewSeg` still carries the design's
+  own unsplit points — a PE-Design-class editor reads that section, but nothing
+  in this repo or in the crossval harness does, so splitting it would have been
+  an unmeasurable change. Named in `src/pes.js` rather than left implicit.
+
   **The chain rule is the part that is easy to get wrong, and I did first.**
   "A stitch splits into stitches" draws a line from the origin across the
   garment, because the move to the FIRST stitch of a run is travel — there is
@@ -3285,7 +3320,12 @@ its hedge as it is copied forward** — is why this file is split.
   the file all cut the chain. `test/dstimport.test.js`'s off-origin-centering
   fixture caught the naive version on the first run — **the old unconditional
   "jump" was right for that one case by accident**, which is why nothing had
-  ever failed.
+  ever failed. `pes.js` took the rule verbatim on 2026-09-12 and
+  `test/pes.test.js` took DST's four chain tests with it, re-aimed at the PEC
+  decoder **on purpose: a future change must not be able to satisfy one
+  encoder's idea of the rule and not the other's.** Both halves are
+  mutation-checked — forcing `chained` true fails the travel tests, and
+  raising the bar back to 2047 fails the split tests.
 
   **The safety property is a measurement, not an argument.** The DST of all 85
   shipped fonts at left-chest size hashes
@@ -3295,7 +3335,58 @@ its hedge as it is copied forward** — is why this file is split.
   touches an encoder, hash the corpus rather than reasoning about blast
   radius.**
 
-  **What is NOT fixed, and is Kent's.** The engine emits those segments in the
+  **PES was hashed the same way on 2026-09-12, and the number that matters is
+  the one that MOVED.** All 85 shipped fonts, `buildLetteringDesign` at the
+  Studio's own defaults, `pxPerMm` 8 / `emMm` 18 / `pullCompMm` 0.2, each
+  font's PES rolled into one SHA-256:
+
+  | corpus | before | after | sewn segments over 121 |
+  |---|---|---|---|
+  | `"Your Name"` @ left chest | `47d101eb…144b2882` | **identical** | 0 of 184,020, in 0/85 fonts |
+  | `"AB"` @ full back | `2e9cea44…b092bbfd` | `5f240d56…b42f15b4` | 1,688 of 1,743,631, in 9/85 fonts, worst axis 23.6 mm |
+
+  **Exactly 9 of the 85 files changed on the Full Back corpus, and they are
+  the same 9 fonts the census flags** — `egyptian`, `egyptian_small`,
+  `eloquent`, `eloquent_small`, `heavenly`, `heavenly_small`,
+  `jaquarda_bastarda_9`, `jersey_15`, `noble` — growing by 204 to 1,784 bytes.
+  That agreement between two independent instruments is the check; an
+  unchanged hash on its own only proves the encoder was not reached.
+  **A corpus hash that cannot change proves nothing, so hash one that can.**
+
+  **Two of those nine, decoded with pystitch rather than counted** — "AB" at
+  Full Back, the same lane the 2026-09-07 table used:
+
+  | | PES before | PES after | DST control |
+  |---|---|---|---|
+  | `egyptian` | 591 stitches, longest sewn **31.0 mm** | 673, **17.1 mm** | 673, 17.1 mm |
+  | `jersey_15` | 4,816, **19.7 mm** | 5,708, **17.1 mm** | 5,708, 17.1 mm |
+
+  PES's stitch count and longest sewn segment are now DST's exactly, on real
+  designs and not only on the fixture. **17.1 mm is not a miss: the bar is
+  ±121 PER AXIS, so a diagonal step at the bar is 121·√2 = 171 units.** DST
+  and EXP have always read the same way — the number to compare is the
+  control's, not 12.1.
+
+  **`manga_impact` "AB" at Full Back no longer reproduces DOCTRINE's 51.1 mm —
+  it reads 5.0 mm, on all three formats, unchanged by this.** The ENGINE fixed
+  that design when `splitSatin` went default-on 2026-09-11; the encoder gap was
+  still real, and `egyptian` above is what it looks like today. A session
+  re-running the headline row to reproduce the defect will find nothing and
+  should not conclude from that that there was nothing.
+
+  **Do not expect `e24e181f…` to reproduce.** The same DST corpus re-measured
+  2026-09-12 hashes `3b4ba358…f2eb6ec5`, because the ENGINE moved underneath
+  it (`splitSatin` went default-on 2026-09-11, among others) — the encoder did
+  not. A corpus hash is only ever a before/after pair taken in one session.
+
+  **What is NOT fixed, and is Kent's.** *(Answered 2026-09-11 — he chose
+  SPLIT SATIN over routing wide columns to fill; see the standing ruling. The
+  numbers in this paragraph are the 2026-09-07 ones and were re-measured
+  low: `tools/long-stitch-census.mjs` found **80** of 85 fonts throwing an
+  unsewable stitch, worst **98.7 mm**, not 18 and 32.8. With the split
+  shipped it is 9 of 85 and 23.6 mm — the same 9 fonts whose PES bytes the
+  2026-09-12 encoder split moved. Kept as written because the question it
+  asked was the right one.)* The engine emits those segments in the
   first place. Measured across the 85 shipped fonts at three texts: **18 fonts**
   produce stitches over one DST record, worst **32.8 mm**. The quick starts are
   clean (`YOUR NAME` on a hat: 0 of 2,346; `Your Name`: 0 of 958; `Yours`: 0 of
@@ -3304,7 +3395,10 @@ its hedge as it is copied forward** — is why this file is split.
   Back gives **1,933 of 5,828, worst 44.9 mm**. A 17.9 mm satin crossing is
   unsewable however it is encoded, and what to do about it — split satin,
   route wide columns to fill, cap the width — is a look-and-fabric decision
-  with a sew-out behind it, not an encoder one. *(2026-09-07)*
+  with a sew-out behind it, not an encoder one.
+  *(2026-09-07; PES half ruled and landed 2026-09-12 — `src/pes.js`,
+  `test/pes.test.js`, `test/crossval-stitch-formats.test.js`'s
+  "PES splits it too, at the imported 121")*
 
 - **A deferred decision priced on the wrong lane stays deferred for the wrong
   reason.** **FIXED 2026-09-07 in `5cb234a`; the lesson is why it sat unfixed
