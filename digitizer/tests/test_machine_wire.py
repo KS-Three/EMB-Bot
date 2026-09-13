@@ -57,9 +57,10 @@ DELIBERATE_DIVERGENCE = {
     "MAX_DELTA": (
         "dst.js 121 vs exp.js 127 — each format's real per-axis RECORD limit, so the "
         "name is a collision and reconciling the record limits would corrupt an "
-        "encoder. But see test_the_three_encoders_agree_on_the_sewability_ceiling "
-        "below: exp.js uses this one constant for the record limit AND the sewability "
-        "split, which is a separate question and is pinned there."
+        "encoder — EXP genuinely jumps at 127 and DST genuinely cannot. The separate "
+        "question, which of them gets used as the SEWN split, was settled 2026-09-13: "
+        "see test_the_three_encoders_agree_on_the_sewability_ceiling below, where all "
+        "three now read 121."
     ),
     "SATIN_MAX_WIDTH_MM": (
         "browser 3.0 vs Python 5.0. machine.py: 'divergence is deliberate, "
@@ -213,18 +214,15 @@ SEWABILITY_CEILING_UNITS = 121  # machine.MAX_STITCH_MM 12.1 * 10
 ENCODER_SEWN_SPLIT = {
     "src/dst.js": ("MAX_DELTA", 121),
     "src/pes.js": ("PEC_MAX_SEWN_DELTA", 121),
-    "src/exp.js": ("MAX_DELTA", 127),  # pinned divergence — Kent's call
+    "src/exp.js": ("EXP_MAX_SEWN_DELTA", 121),  # brought into line 2026-09-13 (Kent)
 }
 
-SEWN_SPLIT_DIVERGENCE = {
-    "src/exp.js": (
-        "exp.js splits SEWN moves at its record limit (127 = 12.7 mm) rather than at "
-        "the sewability ceiling (121 = 12.1 mm) that dst.js and pes.js both use. "
-        "Measured 2026-09-13: a 12.5 mm sewn chain comes back 12.1 mm from DST and "
-        "PES and 12.5 mm from EXP. Awaiting the same ruling Kent made for PES on "
-        "2026-09-12."
-    ),
-}
+# Empty, and that is the finished state: all three browser encoders now split a
+# SEWN move at the same ceiling. EXP was the last one out — it used its record
+# limit (127) as its sewn split until Kent's 2026-09-13 ruling, the same call he
+# made for PES the day before. An entry reappearing here means an encoder drifted
+# back out, and the test below will say which.
+SEWN_SPLIT_DIVERGENCE: dict[str, str] = {}
 
 
 def test_machine_max_stitch_mm_is_the_ceiling_these_units_encode():
