@@ -78,7 +78,33 @@ function sews(font, g) {
 // the narrow fix revives the 20 — Kent's call, since inking those glyphs
 // changes the bbox auto-scaling of any text containing + - / < = > \\ _ ¯ °.
 // 0 -> all 26 are the same gate-1 case and this closes permanently." It is
-// >0, on 20 of 20, at a single authored value per font. The call is Kent's.
+// >0, on 20 of 20, at a single authored value per font.
+//
+// KENT RULED 2026-09-13: revive the 20. `tools/build-font.mjs`'s
+// `stripRunParamsIfSatin` is now scoped per glyph — it strips only glyphs that
+// themselves carry satin columns, so a runs-only glyph keeps what it authored.
+// Verified by building all four fonts from the upstream SVGs, before and after:
+//
+//   roaring_twenties_KOR        10 dead glyphs, runs-with-a-length  0 -> 28
+//   roaring_twenties_KOR_small  10 dead glyphs,                     0 -> 28
+//   western_light / ondulamarif  6 dead glyphs,                     0 ->  0
+//   the same font's 146 SATIN glyphs                                0 ->  0
+//
+// The last row is the safety check: the strip still applies where its reason
+// applies, so no construction stitches are added to designs customers have.
+//
+// **THE 20 ARE STILL LISTED BELOW ON PURPOSE.** This file reads the SHIPPED
+// `.embf` binaries, and those are built from `scratch_ink/` — which needs
+// `_tiers.json`, Kent-approved and on his machine only, so the library could
+// not be rebuilt here. The binaries still carry the dead glyphs until that
+// rebuild happens.
+//
+// WHEN IT DOES, this test and the "A-B" case below will fail, and the failure
+// message one screen down will blame drift between the three copies of "does
+// this glyph sew". That is NOT what happened — it is the revival landing.
+// Delete the two roaring_twenties entries from KNOWN_DEAD, change the "A-B"
+// case to expect `[]`, and check the bbox shift on text containing
+// + - / < = > \\ _ ¯ ° before shipping the rebuilt library.
 const KNOWN_DEAD = {
   ondulamarif_Medium: ["'"],
   ondulamarif_S: ["'"],

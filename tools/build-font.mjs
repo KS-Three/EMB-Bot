@@ -401,6 +401,30 @@ for (const file of svgFiles) {
   if (!hasSatin) return;
   for (const g of Object.values(glyphs)) {
     if (!g.runs) continue;
+    // SCOPED PER GLYPH 2026-09-13 (Kent's call). This used to strip every
+    // glyph in the font as soon as ANY glyph had a satin column, which killed
+    // 20 glyphs whose runs are not construction — they ARE the glyph.
+    //
+    // The strip's reason only applies where a run accompanies a column: on a
+    // satin glyph the authored run is underlay/travel, and honouring it would
+    // add construction stitches to designs customers already have (the
+    // deferred call this function exists for). A glyph with NO columns has no
+    // such run to confuse — whatever it authored is the only thing it sews.
+    //
+    // Measured upstream before the change (inkstitch/embroidery-fonts,
+    // src/<font>/ltr.svg, public and readable over plain HTTPS):
+    //   roaring_twenties_KOR        10/10 dead glyphs author 2.5 mm, 0 columns
+    //   roaring_twenties_KOR_small  10/10 author 1.5 mm, 0 columns
+    //   ondulamarif_{Medium,S,XL}    0/4  author any length
+    //   western_light                0/2  author any length
+    // So this revives exactly the 20 and leaves the other 6 dead, which is
+    // right: they never had a length, and inventing one is ROADMAP gate 1.
+    //
+    // Closes "Waiting on Kent" item 7, whose own text set the test (">0 ->
+    // the narrow fix revives the 20 — Kent's call"). Kent ruled 2026-09-13.
+    // It changes the bbox auto-scaling of any text containing + - / < = > \
+    // _ ¯ °, because those glyphs currently contribute nothing to the box.
+    if (!(g.cols || []).length) continue;
     g.runs = g.runs.map((r) => (r && r.pts ? r.pts : r));
   }
 })();
