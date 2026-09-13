@@ -327,3 +327,16 @@ turn `subpixel_edges` off. On this 10 px/mm corpus that is identical to both
 flags off, because `curve_turn_deg` is gated off without it below 20 px/mm
 (`stage4_vectorize.py`). It gives up the edge fidelity both flags were switched
 on for.
+
+**Ruled 2026-09-13 — Kent: keep `subpixel_edges` on, and fix the rows by
+hand.** The deciding picture was edge close-ups on clean art (the fixtures,
+at customer defaults), not the corpus. On clean art the flag off gives
+faceted curves: a visible kink on `logo_script_tires`'s satin bend, and a
+cornered concave edge with a seam sliver against its neighbour on
+`logo_whitebg`. `becker_marine_logo` is identical either way, because its
+source is upscaled and the flag already declines upscaled art. The corpus
+close-ups made the flag look worse than it is, because this corpus's art is
+rebuilt from the professional's stitches and the flag faithfully traces that
+serration as wobble. Rows are set per shape in the Studio (Digitize panel,
+each fill shape's **Fill angle** dropdown: Auto, 0°, 30°, 45°, 60°, 90°,
+135°).

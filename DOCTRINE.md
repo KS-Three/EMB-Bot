@@ -163,6 +163,27 @@ Moved verbatim 2026-08-28 — no section was rewritten in the move.
   rule is Kent's call and needs a look, not a column count.
   *(measured 2026-09-13 — `docs/flag-runtime-bills-2026-09-12.md`, "The two
   flags turn fill rows")*
+- **`subpixel_edges` stays ON; fill rows it turns are fixed per shape, by hand.**
+  Kent looked at renders of the six turned fills and preferred the flags-off
+  rows. Then he looked at 10 mm close-ups of what turning the flag off costs on
+  CLEAN art: curves go faceted, with 0.1–0.2 mm kinks on `logo_script_tires`'s
+  satin bend and a cornered concave edge plus a seam sliver on `logo_whitebg`.
+  **He kept the edges.** Rows that bother him on a design are set in the
+  Studio's Digitize panel, where every fill shape carries a **Fill angle**
+  dropdown (Auto, 0°, 30°, 45°, 60°, 90°, 135° — `DigitizePanel.svelte`,
+  `SHAPE_ANGLES`), which reaches `meta["fill_angle_deg"]` through
+  `shape_overrides`. Only six angles are offered, so not every flags-off
+  angle is reachable exactly: the To-a-T badges (−2.8° → 0°) and
+  `precision_drone` (0°) are, `gaulke_plowing_hat` (78.75°) and `proseal_hat`
+  (157.5°) only approximately.
+  **Do not re-open this as an engine change without something new.** Keeping
+  the flags while sewing the flags-off angle is measured and ruled out both
+  cheap ways: a keep-PCA-unless-beaten-by-k rule fixes at most 2 of 7 big
+  fills, and choosing on the stage-4 outline matches the sewn angle on 23% of
+  fill area. The faithful route is a second flags-off pass through stage 5,
+  pairing ~81% and untimed. Corpus renders exaggerate the flag's wobble
+  because that art is rebuilt from pro stitches; judge edges on clean art.
+  *(ruled 2026-09-13 — Kent; renders and numbers in the doc above)*
 
 - **A dense design pair is protected by the FLIP ELECTION, not by the
   registration search — so never consume one flip's `Reg` on its own.**
