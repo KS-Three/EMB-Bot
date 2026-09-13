@@ -231,12 +231,33 @@ the exact geometry chaining creates.
   riding on work its own colour already laid) and it has never been tested on
   fabric at all. The thread here is not hidden; the claim is that same-colour
   thread on same-colour thread does not read as a line.
+- **F: INSET DEPTH — added 2026-09-13, and it is the case a vendor already
+  has an opinion about.** Two more pairs, where the float is BURIED under a
+  later-sewing patch rather than crossing a gap, routed **0.75 mm** inside
+  that patch's edge in the first pair and **2.0 mm** inside in the second.
+  0.75 is our shipped `LINK_COVER_INSET_MM`; 2.0 is the floor of the only
+  published figure anyone states — Embird's *"place connection at least 2~3 mm
+  inside of the upper object"*, which it sizes explicitly against *"little
+  displacement of yellow stitches, which often happens as result of loose
+  hooping of fabric or pull effect of the thread"*
+  (`docs/trade-knowledge-2026-09-13.md` §2a). **Our 0.75 mm budgets nothing
+  for that failure mode** — its derivation is pure thread-reach (fill 0.223,
+  satin 0.501, run inradius 0.539, + 0.2 tolerance) and asks only where thread
+  stops relative to a polygon, never whether the cloth moves afterwards.
 
 **Hold the block up to the light at arm's length first and just look: does
 any float read as a stray line? Then close up under good light, gap by gap.
 Then drag a fingernail across each gap the way block 3 tests floating
 crosses — a float that catches is one that will snag in wear even if it
 hides.** For E, look across the patch at a low angle for a ridge.
+
+**THEN STRETCH IT, and look again — this step is the point of F and was
+missing from the 2026-09-12 draft.** Pull the fabric gently in both
+directions across each buried float, the way block 6 stretches a seam, and
+release. Displacement is the whole justification for the published 2–3 mm
+number, so a float judged only at rest is judged on the easy case: the
+question is not whether cover hides it on a flat hooped panel, it is whether
+cover still hides it after the garment has moved.
 
 > **Decision: the smallest gap that shows a line is the exposure
 > `LINK_COVER_TOL_MM` must stay under. If A (0.2 mm) shows, the shipped
@@ -249,7 +270,16 @@ hides.** For E, look across the patch at a low angle for a ridge.
 > `_link_cover` needs a width or count floor on the already-laid cover
 > rather than crediting any centreline. `tools/chain_probe.py` and
 > `preflight._link_coverage` read what any design actually carries against
-> whatever number this settles.**
+> whatever number this settles. AND ON F, THE ONE WITH A PUBLISHED RIVAL: if
+> the 0.75 mm pair shows after stretching where the 2.0 mm pair does not,
+> `LINK_COVER_INSET_MM` is undersized against a failure mode it never
+> modelled, and the honest fix is to raise it — our own derivation comment
+> says "erring big turns a buriable link into a jump (a needle-up move,
+> invisible); erring small sews a float on bare fabric. Round up, never
+> down." If BOTH survive the stretch, 0.75 stands with cloth behind it for
+> the first time and the published 2–3 mm is simply a more conservative shop
+> rule. If both fail, the inset is not the lever and chaining needs a
+> different cover test.**
 
 **Build note for whoever adds it:** the float must be a genuine needle-down
 transport segment, not a run-tier stitch path — `preflight._transport_and_content`
