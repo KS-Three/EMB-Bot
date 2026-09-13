@@ -14,6 +14,18 @@ design class it names.
 
 Harness: `tools/pro_parity/flagcost.py`, run over the prepped corpus.
 
+> **Caveat added 2026-09-13: every clock number in this file was measured in
+> the parity harness's configuration, not the customer's.**
+> `prep_all.parity_config` deliberately switches ON `fill_density_boost`,
+> which is OFF by default. It sews solid fills as two crossing passes instead
+> of one, and the fill's routing is where most of these bills land, so both
+> the **ranking** and the **percentages** are unverified for customer
+> defaults. Nothing has been timed with the boost off. Do not quote these as
+> customer digitize time until someone re-runs `flagcost.py` that way. The fill-ANGLE findings further down are
+> unaffected: the angle is chosen before the boost branch, from the same row
+> spacing, and a re-run of the six turned designs with the boost off gave
+> identical angle choices on all 18 design-by-arm sets.
+
 ## The instrument had to be fixed first, and the inert flags are why
 
 The first version timed the baseline, then one arm per flag. On
@@ -113,7 +125,10 @@ The shipped and both-off plans differ by **155 stitches of 33,898 (0.46%)**.
 
 ## The obvious speed-up, tried and disproved
 
-Tatami rows sit 0.4 mm apart, and the angle search only has to RANK 17
+Tatami rows sit 0.15 mm apart in this config (`machine.FILL_ROW_MM`, 0.15 since
+2026-09-03, × the fabric's `density_adjust`, 1.0 for the default pique; *this
+line said 0.4 mm, the pre-2026-09-03 value, until corrected 2026-09-13*), and
+the angle search only has to RANK 17
 angles, so it looked safe to run that ranking on a simplified polygon and keep
 the full one for laying the rows. **It is not safe at any tolerance that buys
 anything.**
@@ -129,7 +144,7 @@ harness.
 | tolerance | angle changed | search speed-up | mean vertices |
 |---|---|---|---|
 | **control (none)** | **0 / 122** | 1.0× | 440 |
-| row/32 (0.0125 mm) | **1 / 122** | 1.3× | 244 |
+| row/32 (0.0047 mm) | **1 / 122** | 1.3× | 244 |
 | row/16 | 5 / 122 | 1.4× | 192 |
 | row/8 | 8 / 122 | 1.6× | 145 |
 | row/4 | 23 / 122 | 1.9× | 105 |
@@ -141,7 +156,7 @@ row/8 in the second; row/4, row/2 and row/1 in the first, which had no control.
 They share row/8 and agree on it exactly — 8 / 122 both times — and the
 search code the control validated is identical in both.)*
 
-The control is clean, so the changes are real. At **0.0125 mm** — a thirtieth
+The control is clean, so the changes are real. At **0.0047 mm** — a thirty-second
 of a row, far below a thread — `becker_hat_large` already flips from **90° to
 −83°**, and that tolerance saves only a quarter of the search. Other flips
 are just as large: `becker_beanie` 157.5° → 146.25° on a 1,574 mm² shape,
@@ -198,7 +213,7 @@ design, not proven free.
 
 ## The two flags turn fill rows — measured 2026-09-13
 
-The disproof above showed the fill angle can flip on 0.0125 mm of geometry.
+The disproof above showed the fill angle can flip on 0.0047 mm of geometry.
 `subpixel_edges` and `curve_turn_deg` move outlines by far more than that, so
 the question was whether they already change what ships.
 
@@ -245,8 +260,83 @@ not read as a defect here.** The renderer draws 1 px lines at 10 px/mm, so its
 white gaps are not fabric coverage, and this repo has misread render coverage
 before.
 
+**Superseded 2026-09-13 by better renders, all six designs.** Two things made
+the first renders misleading, and both are worth knowing before drawing any
+fill:
+- **They drew the underlay**, which is laid across the top rows and made every
+  background read as a crosshatch whichever way the top rows ran.
+- **They used the parity config**, whose `fill_density_boost` sews solid fills
+  as two crossing passes that customers never get. That second pass was the
+  "dotted blocks" texture.
+
+Redrawn in the customer configuration (single-pass fill, top stitching only,
+light threads darkened, a 15 mm close-up at 30 px/mm on the densest patch of
+the turned fill), the rows are unambiguous. `machine_hat`, `toat_beanie` and
+`machine_beanie` sew vertical rows across the whole badge background as
+shipped, and horizontal with the flags off. On those three the background sits
+around three thin horizontal satin bars, so vertical rows are cut into short
+lengths between the bars while horizontal rows run alongside them.
+`precision_drone`'s main fill is 45° diagonal against horizontal.
+`gaulke_plowing_hat`'s fill is 45° against about 79°. `proseal_hat`'s 11° turn
+is barely visible. `toat_beanie` is now confirmed by eye.
+
 **What this does not settle: which rows sew better.** Both flags went on for
 edge fidelity (2026-09-03, 2026-09-09), and rotating the main fill was never
 part of their case. It is now on the record. Changing either flag or the angle
 rule changes shipped output on at least six designs, so it needs a look or a
 sew-out, and it is Kent's call.
+
+## Keeping the edge flags but sewing the flags-off rows: two cheap routes, both ruled out — 2026-09-13
+
+Kent looked at renders of the six turned fills and preferred the flags-off
+rows. The obvious ask is to keep the flags' smoother edges and choose the fill
+angle as if they were off. Both cheap ways to do that fail.
+
+**1. "Keep the principal (PCA) direction unless another angle wins by k
+columns."** On the three To-a-T badge backgrounds, the flags-off angle
+(≈ −2.8°) is the principal direction and 90° only beats it narrowly, so this
+looked promising. It was simulated offline from every candidate's column count
+on the shipped outline, across all 23 designs. A control checked the simulation
+first: k = 1, today's rule, reproduces the shipped angle on 122 / 122 calls.
+
+| k | big turned fills (≥200 mm², turned >10°) given flags-off rows | shapes changed vs shipped |
+|---|---|---|
+| 3 | 1 / 7 | 22 / 117 |
+| 5–6 | **2 / 7** | 38–42 / 117 (≈7,400 mm²) |
+
+Only the To-a-T badges' flags-off angle is their principal direction.
+`machine_beanie` keeps 90° even at k = 6, and the flags-off rows on
+`precision_drone` (0°) and `gaulke_plowing_hat` (78.75°) are not principal at
+all. The rule fixes 2 of 7 and churns about 40 other shapes.
+
+**2. Choose the angle on the stage-4 outline, before stage 5 reshapes it.**
+Measured inside a flags-off run, so shapes pair exactly by `shape_id`, 111 / 111:
+the stage-4 outline gives the angle actually sewn on only **58 / 111 shapes, 23%
+of fill area**, and on **none of the big fills** (`machine_hat` 78.75° against
+−2.82° sewn, `precision_drone` 168.75° against 0°). Stage 5's pull compensation
+and overlap clipping move the column counts enough to change the winner. A
+faithful flags-off angle therefore needs flags-off stage-5 geometry, and stage 5
+reshapes each fill against all its neighbours.
+
+**What is left.** A faithful route has to run a second, flags-off stage 4, the
+polygon-dependent passes after it (enclosed-background tagging, thread
+revalidation, colour cap, lettering clusters, border layering) and stage 5,
+purely to pick angles. Even then coarse and refined shapes pair on only about
+81% (95 / 117), and none of it has been timed. The other faithful route is to
+turn `subpixel_edges` off. On this 10 px/mm corpus that is identical to both
+flags off, because `curve_turn_deg` is gated off without it below 20 px/mm
+(`stage4_vectorize.py`). It gives up the edge fidelity both flags were switched
+on for.
+
+**Ruled 2026-09-13 — Kent: keep `subpixel_edges` on, and fix the rows by
+hand.** The deciding picture was edge close-ups on clean art (the fixtures,
+at customer defaults), not the corpus. On clean art the flag off gives
+faceted curves: a visible kink on `logo_script_tires`'s satin bend, and a
+cornered concave edge with a seam sliver against its neighbour on
+`logo_whitebg`. `becker_marine_logo` is identical either way, because its
+source is upscaled and the flag already declines upscaled art. The corpus
+close-ups made the flag look worse than it is, because this corpus's art is
+rebuilt from the professional's stitches and the flag faithfully traces that
+serration as wobble. Rows are set per shape in the Studio (Digitize panel,
+each fill shape's **Fill angle** dropdown: Auto, 0°, 30°, 45°, 60°, 90°,
+135°).
