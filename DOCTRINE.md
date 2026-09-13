@@ -135,12 +135,14 @@ Moved verbatim 2026-08-28 — no section was rewritten in the move.
   same geometry, measure them off together too.**
   *(measured 2026-09-12 — `docs/flag-runtime-bills-2026-09-12.md`)*
   **MEASURED NEGATIVE — do not run the fill angle search on a simplified
-  polygon.** It looks free: rows sit 0.4 mm apart and the search only RANKS 17
-  angles. Over all 122 real searches in the corpus, with a control arm reading
-  0/122, simplifying at **row/32 (0.0125 mm)** already flips one shape's angle
+  polygon.** It looks free: rows sit 0.15 mm apart (`FILL_ROW_MM` since
+  2026-09-03; this entry said 0.4 mm until corrected 2026-09-13) and the search
+  only RANKS 17 angles. Over all 122 real searches in the corpus, with a
+  control arm reading 0/122, simplifying at **row/32 (0.0047 mm)** already
+  flips one shape's angle
   **90° → −83°** (`becker_hat_large`) for a 1.3× faster search; row/8 flips 8,
   row/2 flips 43. The ranking is a column COUNT with a strict tiebreak, and
-  scanlines sample at fixed rows, so a hundredth of a millimetre can change one
+  scanlines sample at fixed rows, so a few thousandths of a millimetre can change one
   row's split and swap two near-equal directions. **The auto fill angle is not
   stable at sub-thread scale** — the same family as
   `classifier-stability-2026-09-03`. A retry needs that control and a
