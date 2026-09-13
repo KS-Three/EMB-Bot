@@ -113,6 +113,9 @@ Moved verbatim 2026-08-28 — no section was rewritten in the move.
   numbers — calls the same function.
   *(measured 2026-09-12 — PR #464; `tests/test_edge_cap.py` pins the cost)*
   **The follow-up sweep found no second edge cap, but two unwritten bills.**
+  *(Every second and percentage in this entry is the PARITY config, which
+  switches `fill_density_boost` ON — a second fill pass customers do not get.
+  Unverified at customer defaults; the angle findings below are verified.)*
   Over the ten default-ON flags since 2026-09-01, nothing is an outlier of
   that kind — but `subpixel_edges` + `curve_turn_deg` cost `machine_hat`
   **42.1 s of 84.8 s** of plan time and neither had ever recorded a clock,

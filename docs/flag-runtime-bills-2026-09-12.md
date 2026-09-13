@@ -14,6 +14,18 @@ design class it names.
 
 Harness: `tools/pro_parity/flagcost.py`, run over the prepped corpus.
 
+> **Caveat added 2026-09-13: every clock number in this file was measured in
+> the parity harness's configuration, not the customer's.**
+> `prep_all.parity_config` deliberately switches ON `fill_density_boost`,
+> which is OFF by default. It sews solid fills as two crossing passes instead
+> of one, and the fill's routing is where most of these bills land, so both
+> the **ranking** and the **percentages** are unverified for customer
+> defaults. Nothing has been timed with the boost off. Do not quote these as
+> customer digitize time until someone re-runs `flagcost.py` that way. The fill-ANGLE findings further down are
+> unaffected: the angle is chosen before the boost branch, from the same row
+> spacing, and a re-run of the six turned designs with the boost off gave
+> identical angle choices on all 18 design-by-arm sets.
+
 ## The instrument had to be fixed first, and the inert flags are why
 
 The first version timed the baseline, then one arm per flag. On
@@ -244,6 +256,26 @@ dotted gaps as shipped against horizontal streaks with the flags off. **That is
 not read as a defect here.** The renderer draws 1 px lines at 10 px/mm, so its
 white gaps are not fabric coverage, and this repo has misread render coverage
 before.
+
+**Superseded 2026-09-13 by better renders, all six designs.** Two things made
+the first renders misleading, and both are worth knowing before drawing any
+fill:
+- **They drew the underlay**, which is laid across the top rows and made every
+  background read as a crosshatch whichever way the top rows ran.
+- **They used the parity config**, whose `fill_density_boost` sews solid fills
+  as two crossing passes that customers never get. That second pass was the
+  "dotted blocks" texture.
+
+Redrawn in the customer configuration (single-pass fill, top stitching only,
+light threads darkened, a 15 mm close-up at 30 px/mm on the densest patch of
+the turned fill), the rows are unambiguous. `machine_hat`, `toat_beanie` and
+`machine_beanie` sew vertical rows across the whole badge background as
+shipped, and horizontal with the flags off. On those three the background sits
+around three thin horizontal satin bars, so vertical rows are cut into short
+lengths between the bars while horizontal rows run alongside them.
+`precision_drone`'s main fill is 45° diagonal against horizontal.
+`gaulke_plowing_hat`'s fill is 45° against about 79°. `proseal_hat`'s 11° turn
+is barely visible. `toat_beanie` is now confirmed by eye.
 
 **What this does not settle: which rows sew better.** Both flags went on for
 edge fidelity (2026-09-03, 2026-09-09), and rotating the main fill was never
