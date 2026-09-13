@@ -687,7 +687,10 @@ class PipelineConfig:
     # px at <= 100 mm -- a cliff a 1 mm width nudge can cross, changing
     # every curve's polygon (review of PR #330; Kent's to accept).
     #
-    # **Runtime, measured 2026-09-12 and previously unwritten.** This flag
+    # **Runtime, measured 2026-09-12 and previously unwritten** — in the
+    # parity harness's config, which has `fill_density_boost` ON (customers:
+    # OFF, one fill pass); the seconds below are not verified for customer
+    # defaults, the angle findings are. This flag
     # only does anything ON TOP OF `subpixel_edges`: with that off it is
     # byte-for-byte inert on `machine_hat`. With it on, this pass takes the
     # design's region polygons from **999 to 5,213 vertices** and costs
@@ -751,7 +754,9 @@ class PipelineConfig:
     # floor under the ring and ribbon; 10 would meet the ladder's criterion
     # on the ring) and the upscaled regime (declined, above).
     #
-    # **Runtime, measured 2026-09-12 and previously unwritten.** On
+    # **Runtime, measured 2026-09-12 and previously unwritten** — in the
+    # parity harness's config (`fill_density_boost` ON; customers get one
+    # fill pass, so these seconds are not verified for them). On
     # `machine_hat` (the corpus's largest fill) its OWN cost is **+13.3 s**
     # of plan time (42.7 -> 56.0 s, `curve_turn_deg` held off). Turning THIS
     # flag off saves far more — 42.2 s — but only because it also switches
@@ -1153,7 +1158,10 @@ class PipelineConfig:
     #
     # **THE "+7-11% ON LOGOS" HALF IS TOO LOW, re-measured 2026-09-12**
     # (`tools/pro_parity/flagcost.py`, warm-up discarded and a noise floor
-    # from a repeated baseline). `precision_drone` — a logo — reads
+    # from a repeated baseline — and with the parity config's
+    # `fill_density_boost` ON, which adds a second fill pass customers do not
+    # get, so the percentages below are not verified for customer defaults
+    # until re-measured there). `precision_drone` — a logo — reads
     # **+26.0%**, and `machine_hat` — also a logo, and the corpus's largest
     # fill at 33,898 stitches — reads **+59.8%** (54.6 s of 92.2 s), which is
     # inside the band this comment reserved for a photo. The split is not

@@ -3,14 +3,45 @@
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   root.EMB = Object.assign(root.EMB || {}, api);
 })(typeof globalThis !== "undefined" ? globalThis : this, function () {
+  // The RECORD limit: an EXP delta is one signed byte per axis, so a single
+  // record cannot carry more than ±127 units. This bounds TRAVEL, and only
+  // travel.
   const MAX_DELTA = 127;
+
+  // The SEWABILITY ceiling, and the last encoder to get one.
+  //
+  // Nothing in the EXP format forces a split below its own ±127 (12.7 mm), so
+  // until 2026-09-13 this file used MAX_DELTA for both jobs and emitted sewn
+  // moves up to 12.7 mm — past `machine.MAX_STITCH_MM` (12.1), which is what
+  // the machine can actually pull. `dst.js` has always split sewn moves at its
+  // record's own ±121, and `pes.js` got `PEC_MAX_SEWN_DELTA = 121` on
+  // 2026-09-12 (#465) for exactly this reason. EXP was the odd one out, and
+  // that fix's own comment named it: *"121 rather than EXP's 127 so that a PES
+  // file never carries a sewn move DST would have split."*
+  //
+  // Measured 2026-09-13 — one design, a 6-step sewn chain of 12.5 mm axis
+  // moves, encoded in all three and decoded with pystitch:
+  //   dst  12 sewn, worst axis 12.1 mm
+  //   pes  12 sewn, worst axis 12.1 mm
+  //   exp   6 sewn, worst axis 12.5 mm   <- over the ceiling
+  // One design, three sew-outs, and only EXP's carried a move no machine can
+  // pull — the same sentence pes.js records about PES before it was fixed.
+  //
+  // Kent's ruling 2026-09-13, the same call he made for PES the day before:
+  // split at 121. Not a new physical constant (ROADMAP gate 1): 121 units is
+  // `machine.MAX_STITCH_MM` 12.1, already shipped, and already what the other
+  // two encoders enforce — this makes EXP agree with them rather than
+  // inventing a number. `digitizer/tests/test_machine_wire.py` asserts all
+  // three, and `test/crossval-stitch-formats.test.js` pins the behaviour.
+  const EXP_MAX_SEWN_DELTA = 121;
 
   // Two's-complement signed byte.
   const sb = (v) => (v < 0 ? v + 256 : v);
 
-  function clampStep(delta) {
-    if (delta > MAX_DELTA) return MAX_DELTA;
-    if (delta < -MAX_DELTA) return -MAX_DELTA;
+  function clampStep(delta, limit) {
+    const lim = limit || MAX_DELTA;
+    if (delta > lim) return lim;
+    if (delta < -lim) return -lim;
     return delta;
   }
 
@@ -94,10 +125,13 @@
       let dx = targetX - lastX;
       let dy = targetY - lastY;
 
-      // Split any move with |delta|>127 into multiple records stepping toward the target.
-      while (Math.abs(dx) > MAX_DELTA || Math.abs(dy) > MAX_DELTA) {
-        const stepX = clampStep(dx);
-        const stepY = clampStep(dy);
+      // Travel splits at the RECORD limit; a sewn move splits at the
+      // SEWABILITY ceiling, which is lower. Same shape as pes.js's
+      // `chained ? PEC_MAX_SEWN_DELTA : PEC_MAX_DELTA`.
+      const limit = isJump ? MAX_DELTA : EXP_MAX_SEWN_DELTA;
+      while (Math.abs(dx) > limit || Math.abs(dy) > limit) {
+        const stepX = clampStep(dx, limit);
+        const stepY = clampStep(dy, limit);
         records.push(isJump ? jumpRecord(stepX, stepY) : stitchRecord(stepX, stepY));
         lastX += stepX;
         lastY += stepY;
