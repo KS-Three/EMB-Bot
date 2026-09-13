@@ -142,6 +142,22 @@ Moved verbatim 2026-08-28 — no section was rewritten in the move.
   stable at sub-thread scale** — the same family as
   `classifier-stability-2026-09-03`. A retry needs that control and a
   zero-mismatch bar. *(measured 2026-09-12, same doc)*
+  **And the edge flags DO turn shipped fill rows — on the biggest fills, and
+  decisively.** With `subpixel_edges` + `curve_turn_deg` on vs both off, over
+  all 23 designs (`tools/pro_parity/angleflags.py`, `machine_lc` dropped as a
+  duplicate): rows turn more than 10° on **65% of the matched fill area**, and
+  on the largest fill of **6 designs**. `machine_hat` (2,791 mm²),
+  `toat_beanie` (2,197) and `machine_beanie` (2,177) all sew **90°** shipped
+  against **≈ −2.8°** with the flags off; the render of `machine_hat` shows
+  vertical against horizontal rows across the whole black background. These are
+  NOT tie-breaks — shipped, 90° wins by 2–3 columns. The ties are real too but
+  small: 80 of 117 shipped choices are exact column ties, only 5,512 mm² of
+  them. **Nobody has judged which rows sew better.** When the flags went on
+  (2026-09-03 and 09-09) their case was edge fidelity; that they also rotate
+  the main fill was not part of it. A change to either flag or to the angle
+  rule is Kent's call and needs a look, not a column count.
+  *(measured 2026-09-13 — `docs/flag-runtime-bills-2026-09-12.md`, "The two
+  flags turn fill rows")*
 
 - **A dense design pair is protected by the FLIP ELECTION, not by the
   registration search — so never consume one flip's `Reg` on its own.**

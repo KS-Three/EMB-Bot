@@ -195,3 +195,58 @@ Limits, stated: four designs, not 23; one machine; wall clock, not CPU;
 size, 33,898 against 33,921 stitches), so the "largest fill" column is one
 design's evidence, not two. A flag reading *noise* here is unmeasured on that
 design, not proven free.
+
+## The two flags turn fill rows — measured 2026-09-13
+
+The disproof above showed the fill angle can flip on 0.0125 mm of geometry.
+`subpixel_edges` and `curve_turn_deg` move outlines by far more than that, so
+the question was whether they already change what ships.
+
+**Method** (`tools/pro_parity/angleflags.py`): every automatic fill-angle
+choice across all 23 designs, in three arms — shipped (both on),
+`curve_turn_deg` off, both off. Shapes are paired by `shape_id`, falling back
+to the nearest centroid within 1 mm and 10% area, because a `shape_id` hashes
+the rounded centroid and the flags can rename a shape. Unpaired shapes are
+reported and **not counted as turned**, so every count below is a floor.
+`machine_lc` is dropped as a duplicate of `machine_hat`.
+
+| shipped vs | shapes | paired | rows turn >10° | share of paired fill area | designs whose ≥200 mm² fill turns |
+|---|---|---|---|---|---|
+| `curve_turn_deg` off | 117 | 97 | 31 | **41%** | 4 |
+| both off | 117 | 95 | 39 | **65%** | **6** |
+
+The six: `gaulke_plowing_hat`, `machine_beanie`, `machine_hat`,
+`precision_drone`, `proseal_hat`, `toat_beanie`. The largest turns:
+
+| design | fill | shipped | both off | shipped margin |
+|---|---|---|---|---|
+| `machine_hat` | 2,790.7 mm² | 90.00° | −2.82° | 3 columns |
+| `toat_beanie` | 2,197.2 mm² | 90.00° | −2.90° | 2 |
+| `machine_beanie` | 2,176.8 mm² | 90.00° | −2.68° | 3 |
+| `precision_drone` | 1,227.4 mm² | 45.00° | 0.00° | 3 |
+
+**These are not near-ties being knocked over.** On each of the four, the
+shipped angle beats its runner-up by 2–3 columns. The flags change the
+shape's column structure enough to change the winner outright: three badge
+backgrounds go from rows just off horizontal (the PCA angle) to exactly
+vertical.
+
+**The near-ties are real, but they are mostly small shapes.** Of the 117
+shipped choices, 80 are exact column ties decided only by closeness to PCA,
+covering 5,512 mm². The 24 choices won by two or more columns cover 11,099 mm²,
+which is most of the fill.
+
+**Rendered** (`machine_hat`, flags on vs off): the whole black background runs
+vertical as shipped and horizontal with the flags off. `toat_beanie`'s turned
+fill is near-white thread, so the line renderer cannot show it; that design is
+unconfirmed by eye. The renders also differ in texture, with vertical blocks of
+dotted gaps as shipped against horizontal streaks with the flags off. **That is
+not read as a defect here.** The renderer draws 1 px lines at 10 px/mm, so its
+white gaps are not fabric coverage, and this repo has misread render coverage
+before.
+
+**What this does not settle: which rows sew better.** Both flags went on for
+edge fidelity (2026-09-03, 2026-09-09), and rotating the main fill was never
+part of their case. It is now on the record. Changing either flag or the angle
+rule changes shipped output on at least six designs, so it needs a look or a
+sew-out, and it is Kent's call.
