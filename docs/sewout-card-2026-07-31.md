@@ -2,6 +2,11 @@
 
 **One hooping. Six questions. Print this page and take it to the machine.**
 
+*(A seventh — block 7, FLOAT CLEARANCE — is drafted at the bottom but is
+NOT in the built file. It is the one measurement `chain_links` waits on.
+Read it before the next machine session; do not expect to sew it from the
+current `.dst`.)*
+
 File: `EMBBOT_SEWOUT_CARD.dst` (built by `digitizer/tools/sewout_card.py` +
 `tools/sewout_bridge.mjs`, written by the browser encoder — the codec with sew
 evidence on this machine). Design **66.0 mm wide x 96.0 mm tall**, **5,048
@@ -180,6 +185,77 @@ the tongue sits under the blue.**
 > ridge, the answer is between pairs 3 and 4 and a second card narrows it.
 > `tools/seam_underlap.py` reads what any design actually carries against
 > the number chosen.**
+
+## 7 — FLOAT CLEARANCE / CHAINING (yellow, sews last) — **PROPOSED, NOT YET IN THE BUILT FILE**
+
+**Status: a spec, not geometry.** `sewout_card.py` does not emit this block
+yet, so the current `EMBBOT_SEWOUT_CARD.dst` has six. Adding it changes the
+card's stitch count, extents and block count — the header figures above stay
+correct only until it is built. Drafted 2026-09-13; clearances below are
+proposed and want Kent's eye before anyone cuts thread.
+
+**The question, and why it is the only one left.** `chain_links` routes a
+needle-down connection between shapes instead of cutting it, and all three of
+its structural preconditions closed in August (`c8ab7ad` 08-03, `11ceecc`
+08-04, `f8e8968` 08-11 — the `PipelineConfig.chain_links` docstring carries
+the full trail). Re-measured with chaining ON over four acceptance fixtures:
+**chaining-added bare thread 0.00 mm on every one**, while the benchmark goes
+**9.82 -> 4.06 trims/1k** and full_back **7.35 -> 4.73**. Against defect 4 —
+we trim 3.1x the professional — that is the largest measured lever in the
+codebase, and it is parked behind one line in that docstring:
+
+> A sew-out that says at what clearance a needle-down float actually shows —
+> `LINK_COVER_TOL_MM` is still a thread spec, not a measurement.
+
+`LINK_COVER_TOL_MM = 0.2` is simply half of `COVERAGE_THREAD_W_MM` (0.40). It
+asserts that a float within 0.2 mm of thread is invisible. Nothing has ever
+checked that on fabric. The measured hairline gaps between fanned satin
+crosses run to **0.127 mm inscribed radius / 0.121 mm beyond the thread
+edge** and persist at any inset — so the tolerance sits barely above a gap the
+geometry cannot avoid. Whether that is comfortable or reckless is a cloth
+question, and only a cloth question: no reference implementation, format spec
+or corpus can answer where a human eye catches a float.
+
+Five cases, one colour throughout, no trims inside the block. Each is a pair
+of 8 x 6 mm tatami patches with a needle-down float crossing between them —
+the exact geometry chaining creates.
+
+- **A: 0.2 mm gap** — `LINK_COVER_TOL_MM` itself. The case the constant
+  claims is invisible.
+- **B: 0.5 mm gap.**
+- **C: 1.0 mm gap.**
+- **D: 2.0 mm gap** — below every fabric's `trim_at_mm`, so today's preflight
+  would pass it silently.
+- **E: ride-on-top** — the float crosses the middle of one solid 10 x 6 mm
+  patch instead of a gap. This is law 60's OTHER cover mechanism (a link
+  riding on work its own colour already laid) and it has never been tested on
+  fabric at all. The thread here is not hidden; the claim is that same-colour
+  thread on same-colour thread does not read as a line.
+
+**Hold the block up to the light at arm's length first and just look: does
+any float read as a stray line? Then close up under good light, gap by gap.
+Then drag a fingernail across each gap the way block 3 tests floating
+crosses — a float that catches is one that will snag in wear even if it
+hides.** For E, look across the patch at a low angle for a ridge.
+
+> **Decision: the smallest gap that shows a line is the exposure
+> `LINK_COVER_TOL_MM` must stay under. If A (0.2 mm) shows, the shipped
+> tolerance is too generous — chaining stays OFF until the cover is
+> tightened, and this card has earned its keep. If A and B are both clean,
+> the tolerance has real headroom and `chain_links` can flip ON with the
+> measurement behind it. If D is the first to show, set the tolerance
+> between C and D and a second card narrows it. Independently: if E shows a
+> ridge or a colour step, law 60's own-thread half is NOT free, and
+> `_link_cover` needs a width or count floor on the already-laid cover
+> rather than crediting any centreline. `tools/chain_probe.py` and
+> `preflight._link_coverage` read what any design actually carries against
+> whatever number this settles.**
+
+**Build note for whoever adds it:** the float must be a genuine needle-down
+transport segment, not a run-tier stitch path — `preflight._transport_and_content`
+only counts a connection as transport when it crosses a shape boundary with
+`jump` False, and its raster cell is `_LINK_CELL_MM = 0.1`, so a gap under
+0.1 mm cannot be resolved by the software instrument either way.
 
 ## File verification (done in software, for the record)
 
