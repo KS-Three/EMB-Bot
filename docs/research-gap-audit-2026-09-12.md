@@ -86,6 +86,42 @@ reasons, and fails when a pinned one silently comes true.
 changed nothing it could see — a mutation test walked straight through it. That is
 why it now counts every copy.
 
+### The logic half of the same census *(measured 2026-09-13)*
+
+Constants were the easy half. The three duplicated *behaviours* this entry named:
+
+- **The long-stitch split across the three browser encoders — one already fixed,
+  one still open.** PES was closed by #465 on 2026-09-12 (`PEC_MAX_SEWN_DELTA =
+  121`), on the same day the census ran and against the checkout it ran on, so that
+  recommendation is spent. **EXP is the last one out of line.** It uses a single
+  `MAX_DELTA = 127` for both its record limit and its sewability split, where
+  `machine.MAX_STITCH_MM` is 12.1 and both other encoders split at 121. Measured on
+  one design — a 6-step sewn chain of 12.5 mm axis moves, encoded by all three and
+  decoded with `pystitch`: **DST 12 sewn / worst axis 12.1 mm; PES 12 / 12.1; EXP
+  6 / 12.5.** One design, three sew-outs, and only EXP's carries a move past the
+  ceiling — which is the sentence `pes.js`'s own comment records about PES *before*
+  it was fixed, and that comment even names the outlier: *"121 rather than EXP's 127
+  so that a PES file never carries a sewn move DST would have split."*
+  **Deliberately not fixed here:** Kent ruled the PES split; this is the same kind of
+  call and changes every `.exp` a customer exports. Pinned in
+  `test_machine_wire.py`'s `SEWN_SPLIT_DIVERGENCE` with the measurement, so the
+  flip is a one-line deletion plus the `crossval` pin — exactly the shape the PES
+  flip took.
+- **Lock stitches and `MAX_STITCH_MM` are ABSENT from the browser lane, not
+  divergent.** Confirmed: zero hits for `MAX_STITCH_MM` in `src/`, and the only
+  `lock`/`tie` match anywhere in `src/` or `app/src/lib/` is the brand name "Baby
+  Lock" in a `garments.js` comment. Python has `stitches.apply_ties` used from
+  `stage7_sequence` and `stage6_applique`. That is a feature gap rather than a
+  drift, so a wire test is the wrong instrument for it; the dossier already priced
+  the port at **+2.93% stitches and zero added trims**.
+- **`REG_IOU_FLOOR` guards 1 of 8 call sites.** Confirmed: it is declared and used
+  only in `pro_parity/pairframe.py`, while `scorecard.register(...)` is called from
+  `blockcensus.py` (×2), `gateprobe.py`, `pairframe.py`, `regsweep.py` (×2),
+  `scorecard.py` itself and `splitprobe.py`. Seven of the eight take an alignment
+  with no floor check — the failure mode #463/#466/#467 spent three PRs on. This is
+  research tooling rather than product, which is why it is recorded and not fixed
+  in the same pass.
+
 **2. A number measured at one operating point becomes a standing claim.** Stage 0's
 lane census at one k-means seed, one resolution, one pre-denoise decode. The edge
 cap's cost at one width, which #469 showed reaches +58.7% eight millimetres away.

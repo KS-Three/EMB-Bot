@@ -55,11 +55,11 @@ PY_DIR = REPO / "digitizer" / "digitizer_core"
 # pair stops diverging, which is the signal to delete the entry.
 DELIBERATE_DIVERGENCE = {
     "MAX_DELTA": (
-        "dst.js 121 vs exp.js 127. NOT drift and not the same quantity: these are "
-        "two formats' real per-axis record limits (DST carries +/-121 units, EXP "
-        "+/-127). A name collision between file-format constants, which is why it is "
-        "recorded here rather than reconciled — reconciling them would corrupt one "
-        "encoder."
+        "dst.js 121 vs exp.js 127 — each format's real per-axis RECORD limit, so the "
+        "name is a collision and reconciling the record limits would corrupt an "
+        "encoder. But see test_the_three_encoders_agree_on_the_sewability_ceiling "
+        "below: exp.js uses this one constant for the record limit AND the sewability "
+        "split, which is a separate question and is pinned there."
     ),
     "SATIN_MAX_WIDTH_MM": (
         "browser 3.0 vs Python 5.0. machine.py: 'divergence is deliberate, "
@@ -180,3 +180,91 @@ def test_each_recorded_divergence_is_still_divergent():
             f"records it as split: {why}\n\nIf the sew-out settled it, delete the entry — "
             f"the constant is then covered by the agreement test like every other."
         )
+
+
+# --------------------------------------------------------------------------
+# The SEWABILITY ceiling: a different question from the record limit, and the
+# one the browser encoders have answered three different ways.
+#
+# A format's record limit is how far one record can reach. The sewability
+# ceiling is how far the MACHINE can pull in one stitch — `machine.MAX_STITCH_MM`
+# = 12.1, i.e. 121 units. They are not the same number and only coincide for DST.
+#
+# Measured 2026-09-13 — one design, a 6-step sewn chain of 12.5 mm axis moves,
+# encoded by all three browser encoders and decoded with pystitch:
+#
+#     dst  12 sewn, worst axis 12.1 mm   splits at its record's own 121
+#     pes  12 sewn, worst axis 12.1 mm   splits at PEC_MAX_SEWN_DELTA = 121
+#     exp   6 sewn, worst axis 12.5 mm   splits at MAX_DELTA = 127  <- over
+#
+# So one design still produces three sew-outs and only EXP's carries a move
+# past the ceiling — which is the same sentence `pes.js`'s own comment records
+# about PES before #465 fixed it on 2026-09-12. That fix's comment even names
+# the outlier: *"121 rather than EXP's 127 so that a PES file never carries a
+# sewn move DST would have split."*
+#
+# NOT FIXED HERE ON PURPOSE. Kent ruled the PES split on 2026-09-12; the EXP
+# one is the same kind of call and changes every .exp a customer exports, so it
+# is his. `test/crossval-stitch-formats.test.js` pins today's behaviour
+# ("crossval: EXP splits it the same way, at its own 127") and flipping it is
+# a one-line change plus that pin, exactly as the PES flip was.
+SEWABILITY_CEILING_UNITS = 121  # machine.MAX_STITCH_MM 12.1 * 10
+
+ENCODER_SEWN_SPLIT = {
+    "src/dst.js": ("MAX_DELTA", 121),
+    "src/pes.js": ("PEC_MAX_SEWN_DELTA", 121),
+    "src/exp.js": ("MAX_DELTA", 127),  # pinned divergence — Kent's call
+}
+
+SEWN_SPLIT_DIVERGENCE = {
+    "src/exp.js": (
+        "exp.js splits SEWN moves at its record limit (127 = 12.7 mm) rather than at "
+        "the sewability ceiling (121 = 12.1 mm) that dst.js and pes.js both use. "
+        "Measured 2026-09-13: a 12.5 mm sewn chain comes back 12.1 mm from DST and "
+        "PES and 12.5 mm from EXP. Awaiting the same ruling Kent made for PES on "
+        "2026-09-12."
+    ),
+}
+
+
+def test_machine_max_stitch_mm_is_the_ceiling_these_units_encode():
+    """The units in ENCODER_SEWN_SPLIT are machine.MAX_STITCH_MM, not a new number."""
+    machine = (PY_DIR / "machine.py").read_text(encoding="utf-8")
+    match = re.search(r"^MAX_STITCH_MM\s*=\s*([\d.]+)\s*$", machine, re.M)
+    assert match, "machine.py no longer declares MAX_STITCH_MM at module level"
+    assert abs(float(match.group(1)) * 10 - SEWABILITY_CEILING_UNITS) < 1e-9, (
+        f"machine.MAX_STITCH_MM is {match.group(1)} mm, but this file encodes the "
+        f"ceiling as {SEWABILITY_CEILING_UNITS} units. Move both or neither."
+    )
+
+
+def test_the_three_encoders_agree_on_the_sewability_ceiling():
+    """Each encoder still splits sewn moves where this file records it does.
+
+    This reads the declared constant rather than re-encoding a design: the
+    behavioural proof lives in `test/crossval-stitch-formats.test.js`, and this
+    is the census half — it exists so a fourth encoder, or a changed constant,
+    cannot join the set unnoticed.
+    """
+    wrong = []
+    for rel, (name, expected) in ENCODER_SEWN_SPLIT.items():
+        text = (REPO / rel).read_text(encoding="utf-8")
+        match = re.search(rf"const {name} = (\d+)", text)
+        assert match, f"{rel} no longer declares {name} — the encoder was restructured"
+        actual = int(match.group(1))
+        if actual != expected:
+            wrong.append(f"{rel} {name}: recorded {expected}, found {actual}")
+    assert not wrong, (
+        "an encoder's sewn-split constant moved without this census moving with it:\n  "
+        + "\n  ".join(wrong)
+    )
+
+    agreeing = {rel for rel, (_, v) in ENCODER_SEWN_SPLIT.items() if v == SEWABILITY_CEILING_UNITS}
+    diverging = set(ENCODER_SEWN_SPLIT) - agreeing
+    assert diverging == set(SEWN_SPLIT_DIVERGENCE), (
+        f"the set of encoders splitting sewn moves somewhere other than the "
+        f"{SEWABILITY_CEILING_UNITS}-unit ceiling is {sorted(diverging)}, but "
+        f"SEWN_SPLIT_DIVERGENCE records {sorted(SEWN_SPLIT_DIVERGENCE)}.\n\n"
+        f"If an encoder was brought into line, delete its entry. If one drifted OUT "
+        f"of line, that is the defect this test exists for."
+    )
