@@ -370,3 +370,110 @@ test("every DST in the repo still decodes", () => {
   assert.ok(decodeDST(standardBytes()).stitchCount > 0, "pystitch fixture");
   assert.ok(decodeDST(dst.encodeDST(fixtureDesign())).stitchCount > 0, "EMB-Bot's own encoder");
 });
+
+// The delta table has ONE home, and a third-party file's own header proves it.
+//
+// Every test above this line compares our decoder against our own encoder, so
+// they all pass just as happily when both halves are wrong the same way — which
+// is exactly how the axis bug survived until 2026-09-08. These two tests use an
+// EXTERNAL oracle instead: the five professionally digitized Becker files in
+// digitizer/testdata/reference/ were written by somebody else's software, and a
+// Tajima header declares its own extents in `+X/-X/+Y/-Y` (0.1 mm units). If our
+// read direction is wrong, the decoded extents come back transposed against a
+// number we did not produce.
+//
+// This exists because tools/render-dst.mjs kept a PRIVATE copy of the delta
+// table, never received the 2026-09-08 fix, and drew every design transposed for
+// five days — while being the repo's only renderer, and therefore the instrument
+// DOCTRINE's "when a claim is about ORIENTATION, render it" rule sends you to.
+// Measured 2026-09-13 on these five files: the private table read all five
+// transposed (46.8x76.5 against a header saying 76.5x46.8); the shared one reads
+// all five correctly.
+const REFERENCE_DIR = path.join(__dirname, "..", "digitizer", "testdata", "reference");
+
+function headerExtentsMM(buf) {
+  const hdr = buf.slice(0, 512).toString("latin1");
+  const m = hdr.match(/\+X:\s*(\d+).*?-X:\s*(\d+).*?\+Y:\s*(\d+).*?-Y:\s*(\d+)/s);
+  if (!m) return null;
+  return { w: (Number(m[1]) + Number(m[2])) / 10, h: (Number(m[3]) + Number(m[4])) / 10 };
+}
+
+test("decodeDST's extents match each third-party file's OWN declared header", () => {
+  const files = fs.existsSync(REFERENCE_DIR)
+    ? fs.readdirSync(REFERENCE_DIR).filter((n) => n.endsWith(".dst"))
+    : [];
+  // Anti-vacuous: this directory is committed and holds five files. Zero means
+  // the corpus moved, not that the check came back clean.
+  assert.ok(files.length >= 5, `expected >=5 reference .dst files, found ${files.length}`);
+
+  let checked = 0;
+  for (const name of files) {
+    const buf = fs.readFileSync(path.join(REFERENCE_DIR, name));
+    const hdr = headerExtentsMM(buf);
+    if (!hdr) continue;
+    checked++;
+    const dec = decodeDST(new Uint8Array(buf));
+    // 0.3 mm tolerance: the header is written to 0.1 mm and a writer may round
+    // the last record differently. A TRANSPOSE is 20-40 mm on these files, so
+    // this tolerance cannot hide one.
+    assert.ok(Math.abs(dec.widthMM - hdr.w) < 0.3 && Math.abs(dec.heightMM - hdr.h) < 0.3,
+      `${name}: header says ${hdr.w}x${hdr.h} mm, decodeDST says ` +
+      `${dec.widthMM.toFixed(1)}x${dec.heightMM.toFixed(1)} mm. If those are swapped, ` +
+      `the delta table's X/Y nibbles are the wrong way round again.`);
+  }
+  assert.ok(checked >= 5, `only ${checked} reference files carried parseable +X/-X/+Y/-Y header extents`);
+});
+
+test("a transposed delta table FAILS that header check — the oracle has teeth", () => {
+  // The pre-2026-09-08 table, kept here as the negative control so the test
+  // above cannot pass on a decoder that does nothing.
+  function transposedDelta(b0, b1, b2) {
+    let x = 0, y = 0;
+    if (b0 & 0x80) x += 1;  if (b0 & 0x40) x -= 1;
+    if (b0 & 0x20) x += 9;  if (b0 & 0x10) x -= 9;
+    if (b0 & 0x08) y -= 9;  if (b0 & 0x04) y += 9;
+    if (b0 & 0x02) y -= 1;  if (b0 & 0x01) y += 1;
+    if (b1 & 0x80) x += 3;  if (b1 & 0x40) x -= 3;
+    if (b1 & 0x20) x += 27; if (b1 & 0x10) x -= 27;
+    if (b1 & 0x08) y -= 27; if (b1 & 0x04) y += 27;
+    if (b1 & 0x02) y -= 3;  if (b1 & 0x01) y += 3;
+    if (b2 & 0x20) x += 81; if (b2 & 0x10) x -= 81;
+    if (b2 & 0x08) y -= 81; if (b2 & 0x04) y += 81;
+    return [x, y];
+  }
+  const name = fs.readdirSync(REFERENCE_DIR).filter((n) => n.endsWith(".dst"))[0];
+  const buf = fs.readFileSync(path.join(REFERENCE_DIR, name));
+  const hdr = headerExtentsMM(buf);
+  assert.ok(hdr, `${name} has no parseable header extents`);
+
+  const body = buf.slice(512);
+  let x = 0, y = 0, mnx = Infinity, mxx = -Infinity, mny = Infinity, mxy = -Infinity;
+  for (let i = 0; i + 2 < body.length; i += 3) {
+    const b0 = body[i], b1 = body[i + 1], b2 = body[i + 2];
+    if (b0 === 0 && b1 === 0 && b2 === 0xf3) break;
+    const d = transposedDelta(b0, b1, b2);
+    x += d[0]; y += d[1];
+    if (b2 & 0x40) continue;
+    mnx = Math.min(mnx, x); mxx = Math.max(mxx, x);
+    mny = Math.min(mny, y); mxy = Math.max(mxy, y);
+  }
+  const w = (mxx - mnx) / 10, h = (mxy - mny) / 10;
+  assert.ok(Math.abs(w - hdr.w) >= 0.3 || Math.abs(h - hdr.h) >= 0.3,
+    `the transposed table agreed with ${name}'s header (${hdr.w}x${hdr.h}), so the ` +
+    `check above proves nothing — pick a fixture that is not square`);
+  // And it is specifically a SWAP, not noise.
+  assert.ok(Math.abs(w - hdr.h) < 0.3 && Math.abs(h - hdr.w) < 0.3,
+    `expected an exact transpose, got ${w.toFixed(1)}x${h.toFixed(1)} against header ${hdr.w}x${hdr.h}`);
+});
+
+test("tools/render-dst.mjs does not define its own delta table", () => {
+  // The structural half of the same lesson: the bug was not a wrong constant,
+  // it was a SECOND COPY of a right one that then went stale. Keep there being
+  // one.
+  const src = fs.readFileSync(path.join(__dirname, "..", "tools", "render-dst.mjs"), "utf8");
+  assert.ok(/require\(["'][^"']*dstimport\.js["']\)/.test(src),
+    "render-dst.mjs must import the delta table from src/dstimport.js");
+  assert.ok(!/function\s+decodeDelta\s*\(/.test(src),
+    "render-dst.mjs defines its own decodeDelta again — that is the exact defect " +
+    "this test exists for. Import it from src/dstimport.js instead.");
+});

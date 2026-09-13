@@ -57,9 +57,34 @@ file in a single JSON output — `[96,66]` from the renderer and `[66,96]` from 
 round-trip — and nothing compares them, so **the preview a human checks before
 committing thread to the gate-1 sew-out is a quarter turn from the card it would
 sew.** Lock stitches and `MAX_STITCH_MM` exist in Python and nowhere in `src/`.
-Eleven physical constants are hand-mirrored JS↔Python with two guarded.
 `test_fabric_wire.py` was the lesson from law 26's month of silent underlay drift;
-it was applied to two constants and stopped.
+it was applied to the fabric table and stopped.
+
+**CORRECTED 2026-09-13, by censusing it instead of restating it.** This entry said
+"eleven physical constants are hand-mirrored JS↔Python with two guarded", and both
+halves were wrong. *(measured 2026-09-13 — `digitizer/tests/test_machine_wire.py`)*
+
+- **19 constant names carry more than one declaration, not eleven. 17 agree.**
+- **The duplication is not only across the language boundary.** `FILL_ROW_MM` has
+  **three** copies (`src/digitize.js`, `src/satinfont.js`, `machine.py`);
+  `UNITS_PER_MM` has four; `THREAD_WIDTH_MM`, `MM_PER_INCH`, `DST_UNITS_PER_MM` and
+  `TRANSPARENT_INDEX` are JS↔JS pairs with no Python side at all.
+- **Both disagreements are deliberate and documented on both sides**, not drift:
+  `SATIN_MAX_WIDTH_MM` (3.0 browser / 5.0 Python, the merge owned by a sew-out) and
+  `MAX_DELTA` (121 in `dst.js` / 127 in `exp.js` — two formats' real per-axis record
+  limits, a name collision rather than a copy).
+- **Three wire tests already existed, not two** — `test_fabric_wire.py`,
+  `test_code_wires.py` (warning codes) and `test_charts.py` (thread charts).
+
+So the constants were in better shape than this document claimed. What was missing
+was anything *checking* them: the agreement was held by hand and by comment.
+`test_machine_wire.py` now asserts all 19, pins the two divergences with their
+reasons, and fails when a pinned one silently comes true.
+
+**The first cut of that test was itself the bug it was written for.** It took
+"first declaration wins", so drifting `satinfont.js`'s copy of `FILL_ROW_MM`
+changed nothing it could see — a mutation test walked straight through it. That is
+why it now counts every copy.
 
 **2. A number measured at one operating point becomes a standing claim.** Stage 0's
 lane census at one k-means seed, one resolution, one pre-denoise decode. The edge

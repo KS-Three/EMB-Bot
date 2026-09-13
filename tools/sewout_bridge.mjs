@@ -2,9 +2,21 @@
 // the Python adapter) -> EMBBOT_SEWOUT_CARD.dst written by the BROWSER encoder.
 //
 // The export path is load-bearing: src/dst.js is the codec with sew evidence
-// on Kent's machine, and it disagrees with pyembroidery on axis convention
-// (docs/dst-axis-verdict-2026-07-31.md) — so the machine file for this card
-// must come from HERE, not from the service's pyembroidery exporter.
+// on Kent's machine, so the machine file for this card comes from HERE.
+//
+// It no longer "disagrees with pyembroidery on axis convention" — that clause
+// stood here until 2026-09-13 and had been false since 2026-09-08, when both
+// halves of the codec were fixed to match `pystitch.DstWriter.encode_record`
+// bit-for-bit. Keeping the browser encoder is now a ROUTING choice (sew
+// evidence on this path), not a correctness one.
+//
+// What WAS still broken until 2026-09-13 is the pair below: this file prints
+// `decodeDST`'s extents beside a preview drawn by tools/render-dst.mjs, which
+// kept its own delta table, missed the axis fix, and drew every card
+// transposed — so the two lines of one JSON output disagreed (96 x 66 against
+// 66 x 96) with nothing comparing them. The picture a human checks before
+// committing thread to the gate-1 sew-out was a quarter turn from the card it
+// would sew. render-dst.mjs now imports the one table from src/dstimport.js.
 //
 // Steps: read design JSON -> strip "end" records (encodeDST would sew a stray
 // one as a real stitch back at the origin; see app/src/lib/combine.js) ->
