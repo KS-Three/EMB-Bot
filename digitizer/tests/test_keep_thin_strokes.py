@@ -1,19 +1,27 @@
 """`cfg.keep_thin_strokes` — absorb by colour, not by adjacency (flat lane).
 
-The contract, in four parts. OFF is byte-identical: the flat goldens pin the
-pipeline, and the unit tests here pin `resolve_small_regions`'s own
-behaviour with and without the flag on the same masks. ON, a sub-floor
-region touching a neighbour of ANOTHER colour that clears the run tier's
-floors is kept for the run tier; a same-colour sliver is absorbed as before;
-a contrasting speck under the floors is absorbed as before; and without
-layer colours (how the photo segmenters call it) the flag is inert. On the
-primary golden the plan PREDICTED no change — the teal patch "fails the loop
-proxy (2 mm against 2.2)" — and the measurement says otherwise: the patch is
-10 px = 1.19 mm at 80 mm, its proxy 2.38 mm clears the 2.2 mm floor, and ON
-it is kept as its own teal run (one more cone, +3 stitches, +1 trim). OFF the
-golden holds; that pair is pinned here as measured. And on a fixture built
-for it, the strokes the flag keeps are SEWN in their own colour, read by
-`tools/thin_strokes.py` on the stitches.
+**DEFAULT ON since 2026-09-13** (Kent's ruling on
+`docs/thin-strokes-flip-2026-09-13.md`). `test_flag_defaults_on` pins that;
+every OFF arm below now names `keep_thin_strokes=False` explicitly rather
+than leaning on the default, so the two arms stay two arms and the pre-flip
+engine stays reachable and tested instead of dead-by-default.
+
+The contract, in four parts. OFF is the pre-flip engine: the unit tests here
+pin `resolve_small_regions`'s own behaviour with and without the flag on the
+same masks. ON, a sub-floor region touching a neighbour of ANOTHER colour
+that clears the run tier's floors is kept for the run tier; a same-colour
+sliver is absorbed as before; a contrasting speck under the floors is
+absorbed as before; and without layer colours (how the photo segmenters call
+it) the flag is inert. On the primary golden the plan PREDICTED no change —
+the teal patch "fails the loop proxy (2 mm against 2.2)" — and the
+measurement says otherwise: the patch is 10 px = 1.19 mm at 80 mm, its proxy
+2.38 mm clears the 2.2 mm floor, and ON it is kept as its own teal run (one
+more cone, +3 stitches, +1 trim). That pair is pinned here as measured, and
+since the flip it is the ON arm that `testdata/flat_lane_golden.json` holds
+(re-captured 2026-09-13 — see `tests/test_flat_lane_byte_identical.py`'s
+sixth exception). And on a fixture built for it, the strokes the flag keeps
+are SEWN in their own colour, read by `tools/thin_strokes.py` on the
+stitches.
 """
 from __future__ import annotations
 
@@ -77,9 +85,25 @@ def test_the_scene_is_what_its_docstring_says():
     assert np.linalg.norm(lab[1] - lab[0]) > PipelineConfig().merge_delta_e
 
 
+def test_flag_defaults_on():
+    """FLIPPED 2026-09-13 — Kent's ruling on the flip sheet
+    `docs/thin-strokes-flip-2026-09-13.md` and its renders: "Flip it — take
+    gaulke and becker as the price". This asserted False until then.
+
+    What it buys, from that sheet: Fremont 18 -> 3 lost thin strokes (85.2% ->
+    92.5%, the sub-0.5 mm band 52.2% -> 92.0%) and C 64 -> B 76 as TRIM_HEAVY
+    clears; drone's `AND DRONE` subline goes from not sewn at all to sewn. The
+    price Kent took knowingly, on designs the flag cannot help: gaulke 2 -> 4
+    cones for zero recall change, becker a second cone on a one-cone design,
+    Golden Tee raw -32 -> -50, bridge_bar +29 regions / +28 trims. False
+    remains the pre-flip engine, reachable and tested — every OFF arm in this
+    module names it."""
+    assert PipelineConfig().keep_thin_strokes is True
+
+
 def test_flag_off_every_small_region_is_absorbed_into_the_panel():
-    kept, warnings = resolve_small_regions(_scene(), PipelineConfig(), PX_PER_MM,
-                                           layer_lab=rgb_to_lab(RGB))
+    kept, warnings = resolve_small_regions(_scene(), PipelineConfig(keep_thin_strokes=False),
+                                           PX_PER_MM, layer_lab=rgb_to_lab(RGB))
     assert len(kept) == 1
     assert kept[0].layer == 0 and kept[0].area == 160 * 160 + 120
     assert ABSORBED_SMALL_SHAPES in {w["code"] for w in warnings}
@@ -99,7 +123,8 @@ def test_flag_on_keeps_the_contrasting_stroke_and_still_absorbs_the_sliver_and_t
 def test_without_layer_colours_the_flag_is_inert_which_is_the_photo_lanes_contract():
     cfg = PipelineConfig(keep_thin_strokes=True)
     on, w_on = resolve_small_regions(_scene(), cfg, PX_PER_MM, layer_lab=None)
-    off, w_off = resolve_small_regions(_scene(), PipelineConfig(), PX_PER_MM, layer_lab=None)
+    off, w_off = resolve_small_regions(_scene(), PipelineConfig(keep_thin_strokes=False),
+                                       PX_PER_MM, layer_lab=None)
     assert [(k.layer, k.area, k.origin) for k in on] == [(k.layer, k.area, k.origin) for k in off]
     assert w_on == w_off
 
@@ -128,9 +153,11 @@ def test_on_the_primary_golden_off_absorbs_the_teal_patch_and_on_keeps_it_as_a_r
     2026-09-08, it does not fail it — the patch is 10 px = 1.19 mm at 80 mm,
     2 * max(w, h) = 2.38 mm — so ON it is what the rule says a contrasting
     small element that clears the floors is: kept, tagged rescued, sewn as a
-    run in its own thread. OFF is today's answer (the flat golden pins it).
-    The orange dot is isolated and drops either way."""
-    off, off_plan = digitize(TESTDATA / "logo_whitebg.png", PipelineConfig(target_width_mm=80.0))
+    run in its own thread. Since the 2026-09-13 flip ON is the shipped answer
+    and the flat golden pins it; OFF is named explicitly here so the pre-flip
+    arm stays tested. The orange dot is isolated and drops either way."""
+    off, off_plan = digitize(TESTDATA / "logo_whitebg.png",
+                             PipelineConfig(target_width_mm=80.0, keep_thin_strokes=False))
     on, on_plan = digitize(TESTDATA / "logo_whitebg.png",
                            PipelineConfig(target_width_mm=80.0, keep_thin_strokes=True))
     assert ABSORBED_SMALL_SHAPES in codes(off) and DROPPED_SMALL_SHAPES in codes(off)
@@ -167,7 +194,8 @@ def test_on_a_fixture_built_for_it_the_kept_marks_are_sewn_in_their_own_colour(t
 
     art = tmp_path / "strokes_on_panel.png"
     _strokes_on_a_panel(art)
-    off = ts.run(art, 50.0, "left_chest", forced_class="flat")
+    off = ts.run(art, 50.0, "left_chest", forced_class="flat",
+                 flag="keep_thin_strokes=false")
     on = ts.run(art, 50.0, "left_chest", forced_class="flat", flag="keep_thin_strokes")
     # The instrument sees six thin strokes either way (it reads the artwork);
     # OFF they are panel-coloured thread, so every one is lost.

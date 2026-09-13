@@ -111,14 +111,24 @@ def test_the_shard_no_longer_condemns_and_the_field_still_does():
     """The point of the floor, asserted as the contrast that motivated it:
     gaulke's 63.6 dE00 rode a 0.58 mm² shard and emits NOTHING now (no warn
     either — the shard was that thread's only offender), while drone's
-    1,648 mm² field blocks exactly as before, with its size stated."""
+    big field blocks exactly as before, with its size stated.
+
+    RE-MEASURED 2026-09-13, `cfg.keep_thin_strokes` ON by default (Kent's
+    ruling): drone's worst blocking field is 1,456 mm² / 48.5% of the
+    scored area, where the pre-flip engine read 1,664.6 mm² / 54.6%. The
+    contrast this test is about is unchanged — a sub-floor shard says
+    nothing, a field that is half the design blocks — so the bound moves to
+    where it still separates the two by a factor of eighty. The field
+    shrinking is the flip re-coning drone, which is the cost the flip sheet
+    records and Kent accepted (three spools swapped, the canopy's blue panel
+    going grey)."""
     tiny, _ = _blocks(TINY)
     assert tiny == []
     assert _thread_match(TINY) == []
     huge, _ = _blocks(HUGE)
     assert huge
     huge_worst = max(f["extra"]["worst_shape_area_frac"] for f in huge)
-    assert huge_worst > 0.5, huge_worst            # 1,648 mm², ~54%
+    assert huge_worst > 0.45, huge_worst           # 1,456 mm², ~48.5%
     for f in huge:
         assert f["extra"]["worst_patch_mm2"] >= pf._THREAD_MATCH_MIN_PATCH_MM2
 
@@ -154,7 +164,7 @@ def test_the_fraction_is_over_the_scored_regions_not_all_of_them():
     assert f["extra"]["worst_shape_area_frac"] > over_all * 1.05
 
 
-@pytest.mark.parametrize("fixture,expected", [(TINY, 0), (HUGE, 2), (HOLES, 1)])
+@pytest.mark.parametrize("fixture,expected", [(TINY, 0), (HUGE, 5), (HOLES, 2)])
 def test_no_severity_moved(fixture, expected):
     """These counts are the ones on record under the floor (2026-09-10, the
     sweep in docs/superpowers/plans/2026-09-10-legibility-yardstick.md §4.1:
@@ -162,6 +172,16 @@ def test_no_severity_moved(fixture, expected):
     so a severity shift shows up here rather than as a silent scorecard
     drift. Before the floor TINY read 1 (re-pinned 2 -> 1 on 2026-09-09 with
     `subpixel_edges`; `test_thread_match_better_spool.py`'s SEVERITY note has
-    that bisect) and HUGE 4."""
+    that bisect) and HUGE 4.
+
+    RE-PINNED 2026-09-13 for `cfg.keep_thin_strokes` ON by default (Kent's
+    ruling), the same way this file re-pinned for `subpixel_edges`: HUGE
+    2 -> 5 and HOLES 1 -> 2; TINY stays 0. Read the HUGE move as a real
+    cost, not bookkeeping — drone gains three BLOCKING thread findings while
+    its total THREAD_MATCH_POOR findings fall 9 -> 7, i.e. the flip's extra
+    regions re-cone the design and push three of its warns over the block
+    line. That is the drone half of the price on the flip sheet (three
+    spools swapped, the canopy's blue panel grey), measured here rather than
+    absorbed."""
     blocks, _result = _blocks(fixture)
     assert len(blocks) == expected

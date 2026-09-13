@@ -489,9 +489,54 @@ class PipelineConfig:
     # lane's `resolve_small_regions` still runs without layer colours: the
     # absorb rule above is the flat lane's, the population is this lane's.
     #
-    # DEFAULT OFF and byte-identical off. Flipping it is Kent's: it adds
-    # regions to real logos, and the flat AND photo goldens move with them.
-    keep_thin_strokes: bool = False
+    # DEFAULT ON since 2026-09-13 — Kent's ruling, on the flip sheet
+    # `docs/thin-strokes-flip-2026-09-13.md` and its renders: *"Flip it — take
+    # gaulke and becker as the price."* So the costs below are ACCEPTED, not
+    # open defects, and they are written here in the terms he accepted them
+    # in — they land on designs this flag cannot help, and nothing should be
+    # spent trying to avoid them:
+    #
+    #   - `logo_gaulke_roofing`: 2 → 4 cones (`0015, 4174, 0015` →
+    #     `0015, 2564, 0111, 0145, 0015`) for ZERO recall change — 15 of 18
+    #     thin strokes lost on either arm, on either garment.
+    #   - `becker_marine_logo`: a second cone on a ONE-cone design
+    #     (`1776, 1776` → `1776, 0020, 1776`) for one rescued region,
+    #     +2 stitches, +1 trim.
+    #   - `logo_golden_tee`: an extra colour stop and raw preflight −32 → −50
+    #     (clamped F 0 both ways).
+    #   - `logo_bridge_bar`: +29 regions and +28 trims (49 → 78 regions,
+    #     96 → 124 trims) — its "thin strokes" are 400px-JPEG ringing, not
+    #     artwork. With the BANKED `cfg.dissolve_phantom_blends` also on that
+    #     bill collapses to +1 region and +1 trim (33 regions, 65 trims).
+    #     Recorded as an OPEN LEAD, not a recommendation: that flag was ruled
+    #     OFF and banked 2026-09-04 and the ruling stands; Kent did not rule
+    #     on it here, and nothing should flip it on this evidence.
+    #
+    # What it buys, same sheet: Fremont 18 → 3 lost thin strokes (85.2% →
+    # 92.5%, the sub-0.5 mm band 52.2% → 92.0%) and C 64 → B 76 as TRIM_HEAVY
+    # clears; drone's `AND DRONE` subline goes from not sewn at all to sewn;
+    # the phone screenshot gets strictly cheaper (−153 stitches, −4 trims).
+    # The added thread is the missing elements themselves — Fremont's tan cone
+    # (`EST 1895`, `EAT | STAY | PLAY`) 1,478 → 3,428 while its white ground
+    # gives back 444 — not spread cost.
+    #
+    # THE HAIRLINE RESIDUAL, recorded honestly. ON, Fremont's
+    # `STITCHES_TOO_SHORT` share goes 66% → 72% of satin stitches under the
+    # 1 mm needle minimum: the rescued strokes are 0.3–0.5 mm of ink and sew
+    # as three-pass hairline beans. The flip ENLARGES that question rather
+    # than creating it — `cfg.small_shape_rescue` (ON by default) already sews
+    # sub-floor shapes this way today — and it is a ROADMAP **gate-1**
+    # question: only a sew-out can say whether a 0.3–0.5 mm bean stroke marks
+    # a knit or breaks thread. `cfg.lettering_min_column_mm` is the flag that
+    # would widen them; it is itself a gate-1 number, still OFF, and measured
+    # as not moving the tier (2026-09-09).
+    #
+    # `False` remains the pre-flip engine exactly as it was, is reachable, and
+    # stays tested: `tests/test_keep_thin_strokes.py` pins both arms of
+    # `resolve_small_regions` on the same masks and pins the primary golden
+    # holding OFF beside the teal patch being kept ON, and
+    # `test_flag_defaults_on` there pins this default itself.
+    keep_thin_strokes: bool = True
     # Widen rescued lettering to a sewable column
     # (`textcluster.regularize_text_clusters`, plan §4d, PR 4). The strokes
     # `keep_thin_strokes` keeps are 0.3-0.5 mm of ink: under

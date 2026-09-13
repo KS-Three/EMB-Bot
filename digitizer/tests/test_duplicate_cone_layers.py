@@ -130,7 +130,12 @@ def test_three_declarations_of_one_cone_all_land_on_the_first():
 # "Fewer stitches AND less needle-up" is a fact of the engine it was
 # measured on, so the fixtures hold that engine (False, byte for byte) and
 # say so here -- the posture `conftest.PRE_FLIP` documents.
-PRE_FLIP_RC = {"robust_region_colour": False}
+# `keep_thin_strokes` joined that posture 2026-09-13 (flipped ON by Kent's
+# ruling) for the same reason: ON, drone keeps 33 more sub-floor regions, an
+# artwork cone sews twice again (`[..., 259, ..., 259, ...]`) and the fold
+# stops paying for itself in thread (18,140 against 18,049). Those are the
+# flip's numbers, not this fold's, and the claims here are the fold's.
+PRE_FLIP_RC = {"robust_region_colour": False, "keep_thin_strokes": False}
 
 
 @pytest.fixture(scope="module")

@@ -71,9 +71,19 @@ def _cfg(**kw) -> PipelineConfig:
 def _run(fixture: str, on: bool):
     """One pipeline run per (fixture, flag). Cached for the reason
     `test_resnap_mask_matches_grader` records: CI runners are 2-core and
-    `summit_badge` costs ~54 s a digitize on this container."""
+    `summit_badge` costs ~54 s a digitize on this container.
+
+    `keep_thin_strokes` is held at its PRE-FLIP `False` (flipped ON by
+    default 2026-09-13, Kent's ruling) — the posture `conftest.PRE_FLIP`
+    documents, and load-bearing here: ON, the flag keeps enough contrasting
+    sub-floor regions on `summit_badge` that layer 12 no longer diverges at
+    all, and `test_the_election_closes_the_divergence_on_the_fixture_that_
+    fires_it` fails on its own premise guard rather than on its claim. The
+    divergence this file prices is the CAP's, measured on the engine
+    `docs/palette-mismatch-2026-09-12.md` §1 measured it on."""
     result, plan = digitize(TESTDATA / fixture,
-                            _cfg(layer_palette_from_regions=on))
+                            _cfg(layer_palette_from_regions=on,
+                                 keep_thin_strokes=False))
     return result, plan
 
 
@@ -293,10 +303,16 @@ def test_a_layer_that_sews_nothing_names_its_own_shapes_cone():
     `palette ⊆ block cones` is NOT the invariant.
     """
     # `cfg()` is `PipelineConfig(target_width_mm=80.0)`, the config §3 of the
-    # doc walked through, so these are the numbers it published.
-    off, off_plan = digitize(TESTDATA / "logo_whitebg.png", cfg())
+    # doc walked through, so these are the numbers it published — plus
+    # `keep_thin_strokes=False`, its value on that day (flipped ON by default
+    # 2026-09-13, Kent's ruling). ON, whitebg keeps its teal patch as a
+    # seventh region, so layer 4 names `4531` and the machine loads six
+    # spools, not the five the doc's §3 walked through; that is the flip's
+    # arithmetic, pinned in `tests/test_keep_thin_strokes.py`, not this
+    # election's.
+    off, off_plan = digitize(TESTDATA / "logo_whitebg.png", cfg(keep_thin_strokes=False))
     on, on_plan = digitize(TESTDATA / "logo_whitebg.png",
-                           cfg(layer_palette_from_regions=True))
+                           cfg(layer_palette_from_regions=True, keep_thin_strokes=False))
 
     assert _layer_cones(off) == _layer_cones(on), (
         "an unstitched layer's cone was already its own regions' cone; the "
