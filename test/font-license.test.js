@@ -150,3 +150,132 @@ test("a font deriving from another licence FAMILY names that base in its attribu
     `the cross-family check asserted on [${asserted.join(", ") || "nothing"}], and ` +
     `roman_ags is the case it exists for — it is not being checked any more`);
 });
+
+// OFL-1.1 clause 3 — Reserved Font Names. The clause reads: "No Modified
+// Version of the Font Software may use the Reserved Font Name(s) unless
+// explicit written permission is granted by the corresponding Copyright
+// Holder. This restriction only applies to the primary font name as presented
+// to the users." Every font here IS a Modified Version by the licence's own
+// definition — "changing formats" is named in it, and .embf is a format
+// change over the adapter's SVG — so the manifest `name`, which is the string
+// the font browser shows, is exactly the "primary font name as presented to
+// the users" the clause governs.
+//
+// This matters more than most licence checks because it is the one OFL
+// condition that survives commercial bundling. OFL lets you sell the font
+// inside a larger product; it does not let you keep the reserved name while
+// doing it. PRODUCT.md calls font-licence compliance "a hard gate before the
+// first dollar".
+//
+// Measured 2026-09-12, on this commit and against the live upstream:
+//   - 82 of the 85 shipped fonts carry OFL sidecars. 80 contain the phrase
+//     "Reserved Font Name" but only 46 DECLARE one — the other 34 are matching
+//     OFL's own DEFINITIONS boilerplate, which uses the phrase to define it.
+//     Counting the phrase instead of the declaration is a 46-vs-80 error, and
+//     the assertion below pins the right one.
+//   - Of those 46, ONE ships a display name that uses its own reserved name:
+//     fold_inkstitch, "Fold Ink/Stitch" over Reserved Font Name "Fold".
+//   - The other 45 are correctly renamed derivatives, which is the compliant
+//     pattern this clause is designed to produce — Lobster -> Stebor, Abril ->
+//     Mai en Fleur, Espresso Dolce -> Caffeine, Limelight -> Roaring Twenties.
+//   - It is NOT an EMB-Bot packaging error. The same scan over upstream
+//     inkstitch/embroidery-fonts (clone at c7e3a05) finds 1 hit in 102 OFL
+//     fonts — the same font. Our sidecar is byte-identical to upstream's
+//     src/fold_inkstitch/license but for a trailing newline, and upstream's
+//     own font.json carries "name": "Fold Ink/Stitch", "original_font":
+//     "Fold". We inherited the name; we did not coin it.
+//   - No permission is on record anywhere. The only files naming Kilfiger in
+//     the upstream repo are fold_inkstitch's own three, i.e. the attribution
+//     itself. And upstream demonstrably DOES record permission when it has
+//     it: bluenesia_satin's LICENSE cites the PR carrying the copy, and
+//     emilio_20's reads "used and distributed with permission from the
+//     author". Fold's says nothing of the kind.
+//
+// KNOWN_UNRESOLVED is a record of a live exposure, NOT a grant. An entry here
+// says "we found this, we measured it, and the call is pending" — it does not
+// say the use is licensed. Resolving it is deleting its line (and renaming the
+// font). Growing it requires the same deliberate act, which is the point.
+const RESERVED_NAME_KNOWN_UNRESOLVED = new Map([
+  ["fold_inkstitch", "ships as \"Fold Ink/Stitch\" over Reserved Font Name \"Fold\" " +
+    "(James Kilfiger). Inherited verbatim from upstream; no permission on record " +
+    "there or here. Awaiting Kent's rename decision — found 2026-09-12."],
+]);
+
+test("no shipped font's display name uses its own OFL Reserved Font Name", () => {
+  const fs = require("node:fs");
+  const path = require("node:path");
+  const FONT_DIR = path.join(__dirname, "..", "src", "fonts");
+  const man = JSON.parse(fs.readFileSync(path.join(FONT_DIR, "manifest.json"), "utf8"));
+  assert.ok(man.fonts.length > 50, `only ${man.fonts.length} fonts in the manifest`);
+
+  // Upstream writes the declaration five ways across the 80 sidecars that
+  // carry one: bare ("...Name Fold."), double-quoted, single-quoted, curly
+  // -quoted, HTML-escaped (&quot;), and plural with "and" ("Names Namskout
+  // and NamskoutIn"). A parser that handles only the quoted form misses
+  // fold_inkstitch, which is the one that matters — it is the bare form.
+  const decode = (s) => s.replace(/&quot;/g, '"').replace(/&amp;/g, "&");
+  const reservedNames = (text) => {
+    const out = new Set();
+    const re = /with\s+Reserved\s+Font\s+Names?\s+([^\n]*)/gi;
+    let m;
+    while ((m = re.exec(decode(text)))) {
+      // Cut at whatever ends the name list: a following clause, a sentence
+      // break, or a second "with Reserved" on the same line (neon does this).
+      const tail = m[1].split(/,\s*licensed|\.\s|\swith\s+Reserved/i)[0];
+      const quoted = [...tail.matchAll(/["'“‘]([^"'”’]+)["'”’]/g)].map((q) => q[1]);
+      if (quoted.length) { quoted.forEach((q) => out.add(q.trim())); continue; }
+      for (const part of tail.split(/\s+and\s+/i)) {
+        const v = part.trim().replace(/[.,]+$/, "");
+        if (v.length > 1) out.add(v);
+      }
+    }
+    return [...out];
+  };
+  // Letter boundaries, not \b: "Fold Ink/Stitch" must hit on "Fold", while
+  // "Glacial Tiny" must NOT hit on the reserved "glacial-indifference", and
+  // "Marifenda" must not hit on "Merienda".
+  const usesName = (displayName, reserved) =>
+    new RegExp(`(^|[^\\p{L}])${reserved.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}([^\\p{L}]|$)`, "iu")
+      .test(displayName);
+
+  const hits = [];
+  let scanned = 0;
+  let declaring = 0;
+  for (const f of man.fonts) {
+    const p = path.join(FONT_DIR, f.key + ".LICENSE.txt");
+    if (!fs.existsSync(p)) continue;
+    const text = fs.readFileSync(p, "utf8");
+    if (!/SIL Open Font License|\bOFL\b/i.test(text)) continue;
+    scanned++;
+    const names = reservedNames(text);
+    if (names.length) declaring++;
+    for (const rn of names) {
+      if (usesName(f.name, rn)) hits.push({ key: f.key, name: f.name, reserved: rn });
+    }
+  }
+
+  // Vacuous-pass guard, the roman_ags lesson one test up: every branch above
+  // is a `continue`, so a broken regex reports green on an empty sweep. Pin
+  // the population this was measured on.
+  assert.ok(scanned > 50, `only ${scanned} OFL sidecars scanned — the sweep broke, it did not come back clean`);
+  assert.ok(declaring > 30, `only ${declaring} sidecars DECLARED a Reserved Font Name (measured 2026-09-12: 46 of the 80 that merely contain the phrase) — the parser broke`);
+
+  const unexpected = hits.filter((h) => !RESERVED_NAME_KNOWN_UNRESOLVED.has(h.key));
+  assert.deepStrictEqual(unexpected, [],
+    "a shipped font's display name uses a Reserved Font Name from its own licence, " +
+    "which OFL-1.1 clause 3 forbids without written permission from the copyright " +
+    "holder: " + unexpected.map((h) => `${h.key} ships as "${h.name}" over reserved "${h.reserved}"`).join("; ") +
+    ". Rename the font in src/fonts/manifest.json (and rebuild, so the name embedded " +
+    "in the .embf moves with it), or add a KNOWN_UNRESOLVED entry citing where the " +
+    "permission is filed.");
+
+  // The same anti-quiet rule the cross-family test uses: an entry that stops
+  // being DETECTED is either a fixed font (delete the line) or a broken
+  // detector (fix it). It must not pass silently either way.
+  for (const key of RESERVED_NAME_KNOWN_UNRESOLVED.keys()) {
+    assert.ok(hits.some((h) => h.key === key),
+      `${key} is recorded as an unresolved Reserved Font Name case but the check no ` +
+      `longer detects it — if it was renamed, delete its KNOWN_UNRESOLVED entry; if ` +
+      `the parser regressed, fix that. Do not leave this passing quietly.`);
+  }
+});
