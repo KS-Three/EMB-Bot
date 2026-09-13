@@ -236,9 +236,19 @@ def test_near_floor_lettering_keeps_the_pixel_centre_polygon_per_ring(tmp_path):
 
 @pytest.fixture(scope="module")
 def rung_400(tmp_path_factory):
+    # Both arms also hold `keep_thin_strokes` at its PRE-FLIP `False` (it
+    # went ON by default 2026-09-13, Kent's ruling). The ladder is the
+    # INSTRUMENT the sub-pixel acceptance criterion was set with, and that
+    # flag changes which regions the ladder's own synthetic shapes resolve
+    # into: with it on, the 400 px circle reads 0.179 mm of vertex spread
+    # OFF and 0.188 ON — both an order of magnitude off the 0.048 -> 0.013
+    # this rung was measured at, in BOTH arms, so the reading stops being
+    # about sub-pixel edges at all.
     work = tmp_path_factory.mktemp("subpixel_ladder")
-    return {"off": el.measure_rung("whitebg", 400, "flat", work, flag="subpixel_edges=false"),
-            "on": el.measure_rung("whitebg", 400, "flat", work, flag="subpixel_edges")}
+    return {"off": el.measure_rung("whitebg", 400, "flat", work,
+                                   flag=["subpixel_edges=false", "keep_thin_strokes=false"]),
+            "on": el.measure_rung("whitebg", 400, "flat", work,
+                                  flag=["subpixel_edges", "keep_thin_strokes=false"])}
 
 
 def _dp(points: np.ndarray, eps: float) -> np.ndarray:

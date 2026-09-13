@@ -84,6 +84,30 @@ def whitebg():
 
 
 @pytest.fixture(scope="session")
+def whitebg_pre_flip():
+    """The same fixture on the engine BEFORE `cfg.keep_thin_strokes` was
+    flipped ON by default (2026-09-13, Kent's ruling on
+    `docs/thin-strokes-flip-2026-09-13.md`).
+
+    ON, whitebg's ~1.2 mm² teal patch is contrasting, clears the run tier's
+    floors and is KEPT as its own teal run instead of being absorbed into
+    the white ground it touches; a second former absorbee (~0.42 mm²) fails
+    those floors and drops instead. So the fixture gains a region, a block
+    and a cone, `ABSORBED_SMALL_SHAPES` stops being emitted, and two
+    neighbours' polygons shrink by the pieces they no longer swallow. That
+    is the shipped engine now, pinned in `tests/test_keep_thin_strokes.py`
+    and in the flat-lane golden — use the plain `whitebg` fixture for
+    anything asking what the engine DOES.
+
+    This one exists for the handful of claims that were MEASURED on the old
+    polygons and are about something else entirely (stage 3's absorb
+    reporting, the bare-core gate's false-alarm analysis): the posture
+    `PRE_FLIP` below documents, as a fixture because three tests in two
+    files need the same run."""
+    return run_stages(TESTDATA / "logo_whitebg.png", cfg(keep_thin_strokes=False))
+
+
+@pytest.fixture(scope="session")
 def alpha():
     return run_stages(TESTDATA / "logo_alpha.png", cfg())
 
@@ -201,4 +225,13 @@ PRE_FLIP = {name: False for name in COLOUR_BUNDLE + ("robust_region_colour",)}
 # measurement was made on, and every cap arm before today was made with the
 # cap off.
 PRE_FLIP["edge_cap"] = "none"
+# `keep_thin_strokes` joined the flipped set 2026-09-13 (Kent's ruling on
+# `docs/thin-strokes-flip-2026-09-13.md`), and is in PRE_FLIP for the same
+# reason as the six above: ON it keeps a contrasting sub-floor region for the
+# run tier instead of absorbing it, which adds regions, blocks and cones to
+# real logos -- so an arm measured before today was measured without it, and
+# a test pricing one OTHER flag must not silently pick it up. Measured: with
+# it left ON, twelve such arms across seven files moved (the owl, Bridge Bar,
+# gaulke, the screenshot, drone).
+PRE_FLIP["keep_thin_strokes"] = False
 BUNDLE_ON = {name: True for name in COLOUR_BUNDLE}

@@ -129,7 +129,16 @@ def _disc(result):
 
 @pytest.fixture(scope="module")
 def bridge_pair():
-    return digitize(BRIDGE, _cfg(robust_region_colour=False)), digitize(BRIDGE, _cfg(robust_region_colour=True))
+    # The OFF arm is the PRE-FLIP ENGINE, which is what the test below reads
+    # it as and what #442's measurement was made on — so it also holds
+    # `keep_thin_strokes` OFF (flipped ON by default 2026-09-13, Kent's
+    # ruling). With it on, Bridge Bar's JPEG ringing is kept as ~29 extra
+    # sub-floor regions, the disc's own region changes and the OFF arm sews
+    # `0713`, not the `6031` the loss was found as. `conftest.PRE_FLIP`'s
+    # posture; not spelled as PRE_FLIP because `robust_region_colour` is
+    # itself in that dict and this fixture is what prices it.
+    return (digitize(BRIDGE, _cfg(robust_region_colour=False, keep_thin_strokes=False)),
+            digitize(BRIDGE, _cfg(robust_region_colour=True)))
 
 
 def test_on_is_the_shipped_engine_on_bridge_bar(bridge_pair):

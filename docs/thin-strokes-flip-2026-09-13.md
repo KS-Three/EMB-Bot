@@ -1,5 +1,28 @@
 # `cfg.keep_thin_strokes` — the flip sheet, re-measured 2026-09-13
 
+> **OUTCOME — Kent flipped it, 2026-09-13.** Shown this sheet and the renders,
+> including the costs, he ruled: *"Flip it — take gaulke and becker as the
+> price."* `cfg.keep_thin_strokes` is now **default ON**; gaulke's two extra
+> cones and becker's second cone are an **accepted price**, not open defects.
+> `cfg.dissolve_phantom_blends` stays `False` — he did not rule on it, and §4's
+> pairing remains an open lead, not a recommendation. The flip landed with two
+> flat-golden re-captures (`logo_whitebg.png`, `logo_alpha.png`) and one
+> pushcomp re-pin (`logo_whitebg.png`/`left_chest`); §7's prediction that a
+> flip costs exactly those two flat keys held, and the photo-lane segment
+> golden was measured and does not move. **§7 was right about the goldens and
+> low about the work**: the flip also moved **30 unit tests across 18 files**
+> that had priced other flags, or pinned this fixture set, on the pre-flip
+> engine (plus the flag's own file, `test_pushcomp`'s `left_chest` pin and
+> `test_thin_population`, each of which measures the flag directly) — most of
+> them by one line (`keep_thin_strokes` joining
+> `conftest.PRE_FLIP`), and three of them carrying real findings rather than
+> bookkeeping: drone's blocking `THREAD_MATCH_POOR` findings go 2 → 5 (its
+> total falls 9 → 7) as the extra regions re-cone it, `summit_badge`'s layer-12
+> divergence disappears, and manual mode stops reproducing auto's sew order
+> once a tiny region exists in an early layer (auto orders blocks by palette
+> layer, manual by area — a difference the flip exposed, did not create, and
+> does not fix). Everything below is the pre-flip evidence, unedited.
+
 **Status: evidence, not a change.** Nothing was flipped on this branch.
 `cfg.keep_thin_strokes` is still `False` and `cfg.dissolve_phantom_blends` is
 still `False`. The flip is Kent's.

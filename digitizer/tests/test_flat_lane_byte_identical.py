@@ -175,6 +175,46 @@ after the one that landed the goldens; its `recapture-evidence` artifact
 holds the log). `photo/enthusiast_logo.png` was REFUSED by that guard — the
 runner does not reproduce its pre-change entry, the platform red CI
 deselects — and stays exactly as it was.
+
+**Sixth exception, TAKEN 2026-09-13 — `cfg.keep_thin_strokes` ON by default
+(Kent's ruling on `docs/thin-strokes-flip-2026-09-13.md`: "Flip it — take
+gaulke and becker as the price"):** the `logo_whitebg.png` and
+`logo_alpha.png` entries were re-captured. Both move for the ONE mechanism
+`tests/test_keep_thin_strokes.py::test_on_the_primary_golden_off_absorbs_
+the_teal_patch_and_on_keeps_it_as_a_run` already documents: the ~1.2 mm² teal
+patch is contrasting, clears the run tier's floors, and is now kept as its own
+teal run (`S35cd33b4`, thread 4531, rescued) instead of being absorbed into
+the white ground it touches. Per fixture, at this snapshot's own
+`edge_cap="none"` and 80 mm:
+
+- `logo_whitebg.png` 4550 -> 4575 stitches, 7 -> 8 regions, 5 -> 6 blocks and
+  cones. `shape_ids` gains the teal and the ground re-hashes
+  (`S8135946b` -> `Sade40d86`, 640.651 -> 638.900 mm²): the id buckets the
+  centroid (`regions.assign_shape_ids`), and carving the patch out moved it
+  across a bucket. `warnings` go `ABSORBED_SMALL_SHAPES:2, DROPPED_SMALL_
+  SHAPES:1, EMPTY_THREAD_LAYER:1` -> `DROPPED_SMALL_SHAPES:2` — the teal is
+  kept (so its thread layer is no longer empty) and the second former absorbee
+  (~0.42 mm²) fails the run tier's floors and now DROPS rather than being
+  silently unioned into the ground.
+- `logo_alpha.png` 4576 -> 4595 stitches, same 7 -> 8 regions / 5 -> 6 blocks
+  and cones, same teal region. Its ground keeps its id (its centroid stayed in
+  bucket) and loses 643.003 -> 641.100 mm²; `warnings` go
+  `ABSORBED_SMALL_SHAPES:1, EMPTY_THREAD_LAYER:2` -> `EMPTY_THREAD_LAYER:1`.
+
+`ribbon_curve.png` is byte-identical and was the control (it reproduced before
+and after). `photo/enthusiast_logo.png` was NOT re-captured and needed no
+sanction this time: measured on this container, the flag is byte-identical on
+it — the post-flip snapshot equals the pre-change snapshot field for field —
+so its standing mismatch with this golden (2351 -> 2353 coords) is entirely
+the platform red CI deselects, unchanged by the flip. The capture ran in the
+Linux dev container with `tools/recapture_flat_lane_key.py --pre-change-tree`
+at a worktree of `5d7277c` (the commit before the flip), which reproduced BOTH
+old entries byte-for-byte there first, plus `--control ribbon_curve.png`.
+`testdata/photo_lane_segment_golden.json` does not move at all: its
+`_snapshot` calls `stage2_photo_segment.segment` directly and the thin-ink
+population is the CALLER's gate (`pipeline.build_generation` passes
+`keep_thin_strokes and class_ == "gradient"`), so all seven keys were verified
+identical rather than assumed so.
 """
 
 from __future__ import annotations

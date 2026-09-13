@@ -152,7 +152,12 @@ def test_a_clean_real_plan_earns_a_clean_report(whitebg, plan):
     # block in a cone the design already loads, so the operator really does
     # get one more stop. Kent ruled that price acceptable (the alternative
     # put a 5.4%-frontage cone on gaulke's edge instead of a 95.0% one).
-    assert m["color_changes"] == 5
+    # 6, not 5, since 2026-09-13: `cfg.keep_thin_strokes` ON by default
+    # (Kent's ruling) keeps this fixture's ~1.2 mm teal patch as its own run
+    # in its own thread, which is a sixth colour block and a sixth cone. The
+    # whole arithmetic is pinned in `tests/test_keep_thin_strokes.py`; this
+    # number is the report reading it.
+    assert m["color_changes"] == 6
 
 
 # --- Thread color fidelity ---------------------------------------------------
@@ -1717,7 +1722,11 @@ def test_a_design_at_the_stop_cap_is_not_warned(plan):
     report = run_preflight(None, stitch_plan, cfg(**PLAN_CFG_KW))
 
     assert COLOR_STOPS_HEAVY not in _codes(report)
-    assert report["metrics"]["color_changes"] == 5   # +1: the edge cap's block
+    # +1 the edge cap's block (2026-09-11), +1 the teal run `keep_thin_
+    # strokes` keeps (2026-09-13, Kent's ruling) — both pinned in the
+    # clean-report test above. Six is still well inside the 10-stop wall
+    # this test is about.
+    assert report["metrics"]["color_changes"] == 6
 
 
 # --- Scoring -----------------------------------------------------------------
@@ -1974,7 +1983,15 @@ def test_a_full_bleed_design_does_not_report_its_own_border():
     report = run_preflight(result, plan_, c, image=art)
 
     assert _uncovered(report) is None
-    assert report["metrics"]["uncovered_worst_mm2"] == 0.0
+    # Was `== 0.0` until 2026-09-13, when `cfg.keep_thin_strokes` went ON by
+    # default (Kent's ruling) and gaulke — one of the two designs he took the
+    # price on — gained sub-floor regions: the worst patch now measures
+    # 0.2 mm², real uncovered artwork rather than the rim artefact. The
+    # defect this guards is 37.5 mm² of permanent border strip at every
+    # erosion width, so the bound is set where it still catches that by two
+    # orders of magnitude while not firing on a fifth of a square millimetre.
+    assert report["metrics"]["uncovered_worst_mm2"] < 1.0, \
+        report["metrics"]["uncovered_worst_mm2"]
 
 
 def test_without_the_artwork_the_uncovered_check_is_skipped_and_says_so(whitebg, plan):
