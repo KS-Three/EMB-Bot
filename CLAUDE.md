@@ -195,8 +195,18 @@ cd digitizer && .venv/Scripts/python -m digitizer_service   # service on 127.0.0
    **license and maintenance status against the Hub** instead of against its own
    README — which matters here specifically because this is a commercial product
    in a public repo and the embroidery-adjacent prior art is largely GPL-3.0
-   (Ink/Stitch). Search results carry the licence in their tags, e.g. BiRefNet
-   reads `license:mit` at 985.4K downloads. **Anonymous access is real, measured
+   (Ink/Stitch). **But a Hub licence TAG is a publisher declaration, not a licence
+   GRANT — never stop at the tag.** `ZhengPeng7/BiRefNet` reads `license:mit` in
+   search results AND in its model card's YAML front matter, yet the weights repo
+   ships **no LICENSE file at all** — 9 files, none a licence (`hf_fs find --name
+   *LICENSE*` returns zero entries, checked 2026-09-12) — and a 3-vote
+   adversarial review REFUTED *"BiRefNet is MIT for BOTH code and published
+   weights"* **0-3**. Read the actual file with `hf_fs` before calling any licence
+   settled; `docs/tooling-research-2026-09-12.md` §3 carries the full trail.
+   **The two endpoints also disagree on DOWNLOAD counts** — `hub_repo_search`
+   reported 42.9K for `BiRefNet_HR-matting` where `hub_repo_details` says 2.5M,
+   and 1.9M vs 20.0M for `facebook/sam3` — so treat a count as order-of-magnitude
+   and never quote one as a measured figure. **Anonymous access is real, measured
    2026-09-12:** `initialize` returns HTTP 200 with no credential and
    `tools/list` gives four tools — `hf_whoami`, `hub_repo_search`,
    `hub_repo_details`, `hf_fs` (which reads files out of a Hub repo, so a
