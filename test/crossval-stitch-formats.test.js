@@ -216,18 +216,31 @@ test("crossval: a long stitch is SPLIT into stitches by DST", async (t) => {
   assert.strictEqual(r.longestSewnUnits, 121);
 });
 
-test("crossval: EXP splits it the same way, at its own 127", async (t) => {
+test("crossval: EXP splits it at the sewability ceiling too (FIXED 2026-09-13)", async (t) => {
   await ensureRun();
   const r = skipOrGet(t, "exp.long");
   if (!r) return;
   assert.ok(r.decodedStitches > r.expectedStitches);
-  assert.strictEqual(r.longestSewnUnits, 127);
-  // The two encoders now agree in kind. They differ only by their formats'
-  // reach, which is why the counts are not equal: DST needs three records for
-  // 300 units and EXP needs three as well, but the design's own leading
-  // zero-delta jump reads differently between the two readers (pystitch
-  // reports JUMP 1 for EXP and 0 for DST on an identical zero-length move —
-  // observed, not explained, and a no-op either way).
+  // FIXED 2026-09-13 (was "crossval: EXP splits it the same way, at its own
+  // 127", asserting longestSewnUnits === 127). EXP was the last encoder using
+  // its RECORD limit as its SEWN split: an EXP byte reaches ±127, so a sewn
+  // move could come out at 12.7 mm, past machine.MAX_STITCH_MM's 12.1.
+  //
+  // Measured 2026-09-13 on a 6-step sewn chain of 12.5 mm axis moves, decoded
+  // with pystitch: dst 12 sewn / worst axis 12.1 mm, pes 12 / 12.1, exp 6 /
+  // 12.5. One design, three sew-outs, only EXP's unsewable — which is the
+  // sentence pes.js records about PES before #465 fixed it the day before.
+  // That fix's comment even named the outlier: "121 rather than EXP's 127 so
+  // that a PES file never carries a sewn move DST would have split."
+  //
+  // Kent ruled 2026-09-13, the same call as the PES one: split at 121. All
+  // three encoders now agree to the unit on what a sewn move may be, while
+  // each keeps its own record reach for TRAVEL (EXP still jumps at ±127).
+  assert.strictEqual(r.longestSewnUnits, 121);
+  // Count is still not equal to DST's: the design's own leading zero-delta
+  // jump reads differently between the two readers (pystitch reports JUMP 1
+  // for EXP and 0 for DST on an identical zero-length move — observed, not
+  // explained, and a no-op either way).
   assert.ok(r.decodedStitches >= 6);
 });
 

@@ -348,5 +348,10 @@
     };
   }
 
-  return { decodeDST, decodeDSTStandard, buildImportedDesign, IMPORT_BLOCK_COLORS };
+  // `decodeDelta` is exported for TOOLS, not for the product: it is the single
+  // authoritative read-direction bit table, and anything that walks raw DST
+  // records must borrow it rather than keep its own copy. `tools/render-dst.mjs`
+  // kept a private copy, missed the 2026-09-08 axis fix, and went on drawing
+  // every design transposed — see that file's header for what that cost.
+  return { decodeDST, decodeDSTStandard, decodeDelta, buildImportedDesign, IMPORT_BLOCK_COLORS };
 });

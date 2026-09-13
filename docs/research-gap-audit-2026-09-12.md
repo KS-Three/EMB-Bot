@@ -57,9 +57,70 @@ file in a single JSON output — `[96,66]` from the renderer and `[66,96]` from 
 round-trip — and nothing compares them, so **the preview a human checks before
 committing thread to the gate-1 sew-out is a quarter turn from the card it would
 sew.** Lock stitches and `MAX_STITCH_MM` exist in Python and nowhere in `src/`.
-Eleven physical constants are hand-mirrored JS↔Python with two guarded.
 `test_fabric_wire.py` was the lesson from law 26's month of silent underlay drift;
-it was applied to two constants and stopped.
+it was applied to the fabric table and stopped.
+
+**CORRECTED 2026-09-13, by censusing it instead of restating it.** This entry said
+"eleven physical constants are hand-mirrored JS↔Python with two guarded", and both
+halves were wrong. *(measured 2026-09-13 — `digitizer/tests/test_machine_wire.py`)*
+
+- **19 constant names carry more than one declaration, not eleven. 17 agree.**
+- **The duplication is not only across the language boundary.** `FILL_ROW_MM` has
+  **three** copies (`src/digitize.js`, `src/satinfont.js`, `machine.py`);
+  `UNITS_PER_MM` has four; `THREAD_WIDTH_MM`, `MM_PER_INCH`, `DST_UNITS_PER_MM` and
+  `TRANSPARENT_INDEX` are JS↔JS pairs with no Python side at all.
+- **Both disagreements are deliberate and documented on both sides**, not drift:
+  `SATIN_MAX_WIDTH_MM` (3.0 browser / 5.0 Python, the merge owned by a sew-out) and
+  `MAX_DELTA` (121 in `dst.js` / 127 in `exp.js` — two formats' real per-axis record
+  limits, a name collision rather than a copy).
+- **Three wire tests already existed, not two** — `test_fabric_wire.py`,
+  `test_code_wires.py` (warning codes) and `test_charts.py` (thread charts).
+
+So the constants were in better shape than this document claimed. What was missing
+was anything *checking* them: the agreement was held by hand and by comment.
+`test_machine_wire.py` now asserts all 19, pins the two divergences with their
+reasons, and fails when a pinned one silently comes true.
+
+**The first cut of that test was itself the bug it was written for.** It took
+"first declaration wins", so drifting `satinfont.js`'s copy of `FILL_ROW_MM`
+changed nothing it could see — a mutation test walked straight through it. That is
+why it now counts every copy.
+
+### The logic half of the same census *(measured 2026-09-13)*
+
+Constants were the easy half. The three duplicated *behaviours* this entry named:
+
+- **The long-stitch split across the three browser encoders — one already fixed,
+  one still open.** PES was closed by #465 on 2026-09-12 (`PEC_MAX_SEWN_DELTA =
+  121`), on the same day the census ran and against the checkout it ran on, so that
+  recommendation is spent. **EXP is the last one out of line.** It uses a single
+  `MAX_DELTA = 127` for both its record limit and its sewability split, where
+  `machine.MAX_STITCH_MM` is 12.1 and both other encoders split at 121. Measured on
+  one design — a 6-step sewn chain of 12.5 mm axis moves, encoded by all three and
+  decoded with `pystitch`: **DST 12 sewn / worst axis 12.1 mm; PES 12 / 12.1; EXP
+  6 / 12.5.** One design, three sew-outs, and only EXP's carries a move past the
+  ceiling — which is the sentence `pes.js`'s own comment records about PES *before*
+  it was fixed, and that comment even names the outlier: *"121 rather than EXP's 127
+  so that a PES file never carries a sewn move DST would have split."*
+  **Deliberately not fixed here:** Kent ruled the PES split; this is the same kind of
+  call and changes every `.exp` a customer exports. Pinned in
+  `test_machine_wire.py`'s `SEWN_SPLIT_DIVERGENCE` with the measurement, so the
+  flip is a one-line deletion plus the `crossval` pin — exactly the shape the PES
+  flip took.
+- **Lock stitches and `MAX_STITCH_MM` are ABSENT from the browser lane, not
+  divergent.** Confirmed: zero hits for `MAX_STITCH_MM` in `src/`, and the only
+  `lock`/`tie` match anywhere in `src/` or `app/src/lib/` is the brand name "Baby
+  Lock" in a `garments.js` comment. Python has `stitches.apply_ties` used from
+  `stage7_sequence` and `stage6_applique`. That is a feature gap rather than a
+  drift, so a wire test is the wrong instrument for it; the dossier already priced
+  the port at **+2.93% stitches and zero added trims**.
+- **`REG_IOU_FLOOR` guards 1 of 8 call sites.** Confirmed: it is declared and used
+  only in `pro_parity/pairframe.py`, while `scorecard.register(...)` is called from
+  `blockcensus.py` (×2), `gateprobe.py`, `pairframe.py`, `regsweep.py` (×2),
+  `scorecard.py` itself and `splitprobe.py`. Seven of the eight take an alignment
+  with no floor check — the failure mode #463/#466/#467 spent three PRs on. This is
+  research tooling rather than product, which is why it is recorded and not fixed
+  in the same pass.
 
 **2. A number measured at one operating point becomes a standing claim.** Stage 0's
 lane census at one k-means seed, one resolution, one pre-denoise decode. The edge
@@ -89,7 +150,7 @@ read-first file. See §3 — this is the one with money attached.
 | `src/dst.js` "uses the transposed table"; the two encoders are "a quarter turn apart"; "unresolved by design — it needs a sew-out on the shop's Tajima" | `digitizer_service/formats.py:9-15` | All 26 stitch+jump records are byte-identical to `pystitch.DstWriter.encode_record`. A rendered "FRITSCH" export draws upright and unreversed. **False for five days, across 50+ merges, and it invokes gate 1 for a question settled 2026-09-08.** |
 | The same claim, in **present tense**, as the stated justification for the `preferService` gate | `app/src/lib/exporters.js:21-27` | Same refutation. Not in DOCTRINE, not in the assignment's list — found by sweep. |
 | The 20 stripped glyphs "need the Ink/Stitch SVG sources in `scratch_ink/`, which exist on Kent's machine" | `test/font-dead-glyphs.test.js:58`, `tools/build-font.mjs:257` | 6 of 6 fetched over plain HTTPS, 862 KB–1.17 MB, no auth. **20 of 20 roaring glyphs carry an authored run length.** The question that "needed a local session" is answered. |
-| "U01 loses the colour change entirely" | `MASTER_SCOPE.md:340` and `:681` | U01 preserves every colour block: N colours → N `NEEDLE_SET` records, for N = 1, 2, 3, 5, all 60 coordinates round-tripping at max delta 0. #465 already recorded this correction on 2026-09-12; the status doc still carries the old claim. |
+| "U01 loses the colour change entirely" | `MASTER_SCOPE.md:340` | **Half true, and this row overstated the correction — sharpened 2026-09-13.** U01 writes zero `COLOR_CHANGE` *records* (what `test_service.py` counts, so that pin is right) but **3 `NEEDLE_SET` records** on a 3-colour design, which `get_as_colorblocks()` resolves to 3 blocks; DST writes 2 and 0 for the same design. The stop is not dropped, it is a different record. Whether a machine honours it is a machine question — gate 1, honestly. Both the status doc and this row said "loses the colour change" while describing different things. |
 | `split_satin` wiring "has not landed" | `digitizer_core/config.py` | Wired at two call sites — `stage7_sequence.py:1464` and `stage6_applique.py:1117` — verbatim as the comment describes. |
 | Appliqué is an explicit non-goal | `PRODUCT.md:67` | `stage6_applique.py` is 1 373 lines with 66 tests and eight config fields. *(confirmed by me, 2026-09-13)* |
 | `digitizer` CI job runs "10 to 42 minutes" | `CLAUDE.md`, `MASTER_SCOPE.md`, `DOCTRINE.md` | Re-measured twice: agent n=114 → p50 37.1 / max 72.1; my own n=88 → **min 22.4, p50 40.8, p90 53.8, max 72.1, and 48% of runs exceed the documented ceiling.** "Budget half an hour, read a 35-minute job as normal" now inverts. *(measured 2026-09-13 — public Actions API)* |
