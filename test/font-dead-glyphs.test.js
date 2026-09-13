@@ -52,11 +52,33 @@ function sews(font, g) {
 // font — Kent's call, deliberately deferred), but its blast radius includes
 // glyphs where the run is not construction, it is the glyph.
 //
-// NOT confirmed for these fonts, and do not write it up as confirmed: whether
-// upstream authored a stitch length that was stripped, or never authored one,
-// is indistinguishable from the built JSON — both produce a bare point array.
-// It needs the Ink/Stitch SVG sources in scratch_ink/, which exist on Kent's
-// machine and not in a cloud checkout.
+// MEASURED 2026-09-13, and it splits these fonts into two different defects.
+//
+// This said the question was "indistinguishable from the built JSON" and
+// "needs the Ink/Stitch SVG sources in scratch_ink/, which exist on Kent's
+// machine and not in a cloud checkout". The second half was wrong: upstream
+// `inkstitch/embroidery-fonts` is PUBLIC, and `src/<font>/ltr.svg` answers an
+// unauthenticated `raw.githubusercontent.com` request with HTTP 200. No local
+// directory is needed, and none was used to produce the numbers below.
+//
+// Reading each dead glyph's own `GlyphLayer-<char>` group upstream:
+//
+//   roaring_twenties_KOR        10/10 carry running_stitch_length_mm="2.5"
+//   roaring_twenties_KOR_small  10/10 carry running_stitch_length_mm="1.5"
+//   ondulamarif_{Medium,S,XL}    0/4  carry one
+//   western_light                0/2  carry one
+//
+// So the 26 are TWO defects, not one. The 20 roaring glyphs were AUTHORED and
+// then stripped by `stripRunParamsIfSatin` — recoverable in this repo, by
+// scoping the strip to glyphs that actually have satin columns (these have
+// zero). The other 6 never had a length upstream, so reviving them means
+// inventing a stitch length, which ROADMAP gate 1 refuses; they stay dead.
+//
+// This answers "Waiting on Kent" item 7, whose own text set the test: ">0 ->
+// the narrow fix revives the 20 — Kent's call, since inking those glyphs
+// changes the bbox auto-scaling of any text containing + - / < = > \\ _ ¯ °.
+// 0 -> all 26 are the same gate-1 case and this closes permanently." It is
+// >0, on 20 of 20, at a single authored value per font. The call is Kent's.
 const KNOWN_DEAD = {
   ondulamarif_Medium: ["'"],
   ondulamarif_S: ["'"],

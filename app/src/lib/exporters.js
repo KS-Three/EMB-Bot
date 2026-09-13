@@ -18,14 +18,19 @@ export function exportDesign(design, format) {
   }
 }
 
-// dst/exp/pes CAN prefer the Python digitizer service's pyembroidery-
-// convention encoder (the trustworthy path for third-party software — see
-// MASTER_SCOPE.md's DST codec axis bug section: the browser's own DST
-// encoder disagrees with the Tajima standard, and rendered 2026-09-07 a
-// standard reader sees its output a quarter turn round AND MIRRORED, which
-// is why "transposed" and "a quarter turn" were both understatements —
-// rotating the file back elsewhere cannot repair it) — but only when the
-// caller opts in via `preferService`. That
+// dst/exp/pes CAN prefer the Python digitizer service's pystitch-convention
+// encoder — but only when the caller opts in via `preferService`.
+//
+// This block used to justify that preference by saying the browser's own DST
+// encoder "disagrees with the Tajima standard" and that a standard reader sees
+// its output "a quarter turn round AND MIRRORED". That was true when written
+// (2026-09-07) and FALSE from 2026-09-08, when both halves of the codec were
+// fixed to match `pystitch.DstWriter.encode_record` bit-for-bit — yet it stood
+// here in the PRESENT TENSE until 2026-09-13, as the stated reason for a
+// routing gate. Corrected rather than deleted, because the gate itself is
+// still right for a different reason.
+//
+// The preference is a ROUTING choice now, not a correctness one. That
 // gate exists because MASTER_SCOPE.md scopes the service-preference to
 // purely-digitized designs only: lettering/manual designs stay on the
 // browser's own encoder, the one with actual sew evidence behind it (the

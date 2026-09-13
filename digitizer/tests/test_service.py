@@ -1441,11 +1441,23 @@ def test_every_stitch_format_health_advertises_decodes_to_the_same_design(client
     colour stops the design needs.
 
     U01 is the measured exception and is pinned as such rather than skipped
-    (2026-09-07): it decodes at the right size but with ZERO colour changes on
-    a two-colour design, so a machine would sew both blocks in one thread. It
-    is not offered in the Studio. If this assertion starts failing because U01
-    grew its colour changes, that is good news — ship it and delete the
-    exception.
+    (2026-09-07). SHARPENED 2026-09-13, because the pin and the status doc were
+    describing different things and both called it "loses the colour change":
+    what U01 writes zero of is `COLOR_CHANGE` RECORDS, which is what the
+    assertion below counts. It is not stopless. On a 3-colour design it writes
+    **3 `NEEDLE_SET` records**, and `get_as_colorblocks()` resolves 3 blocks;
+    DST writes 2 `COLOR_CHANGE` and 0 `NEEDLE_SET` for the same design.
+
+    So the assertion stays exactly as it is — it is the honest statement of a
+    real difference — but "a machine would sew both blocks in one thread" is
+    NOT established by it. A `NEEDLE_SET` tells a multi-needle machine which
+    needle to take, which is that machine's colour stop. Whether U01's stop
+    survives in practice is a machine question nobody here can answer without
+    one; that, and its 100-unit size discrepancy, are what hold it.
+
+    If this assertion starts failing because U01 grew `COLOR_CHANGE` records,
+    that is still good news — but shipping it wants the machine answer too,
+    not just a green assertion.
     """
     readers = {
         "dst": pystitch.read_dst, "pes": pystitch.read_pes, "exp": pystitch.read_exp,
