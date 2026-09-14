@@ -194,24 +194,22 @@ icon. Cloth pointers added to defects 3, 6 and 16 below.
 
 ### Closed — kept numbered, because ten other docs cite them by number
 
-Full text moved to [`docs/scope-history.md`](docs/scope-history.md) 2026-08-27;
-these are pointers, not status. Compacted 2026-09-14 — the three entries that had
-grown live caveats (3, 16, 17) kept them by moving them to DOCTRINE, "Three
-caveats rescued from closed defects", rather than by staying long here.
+Full text in [`docs/scope-history.md`](docs/scope-history.md); these are
+pointers, not status. Compacted 2026-09-14 — entries 3, 16 and 17 had grown live
+caveats, which moved to DOCTRINE ("Three caveats rescued from closed defects")
+rather than being cut.
 
 **RESOLVED:** 1 shade-thread collapse (08-19) · 7 satin dropped a bracket tab
-(08-21) · 8 build-font dropped SVG transforms on four fonts (08-22) · 9 the photo
-route escaped its own palette, both halves (08-24, PR #217 + the
-`shade_palette_bind` flip) · 10 three photo-route robustness defects (08-23) ·
-11 the memory ceiling was per-region full-frame masks (08-24, PR #230) ·
-12 preflight graded every photo job F (08-24, PR #229) · 13 the detail layer
-sewed a background the cutout had removed (08-24 — its lesson stands: no
-acceptance arm had EVER set that flag) · 16 one spool revisited across colours,
-the re-snap mechanism (08-31) · 17 sew order had no craft layering (09-01,
-Kent's flip, PR #302).
+(08-21) · 8 build-font dropped SVG transforms, four fonts (08-22) · 9 the photo
+route escaped its own palette (08-24, #217 + the `shade_palette_bind` flip) ·
+10 three photo-route robustness defects (08-23) · 11 per-region full-frame masks
+were the memory ceiling (08-24, #230) · 12 preflight graded every photo F
+(08-24, #229) · 13 the detail layer sewed a background the cutout had removed
+(08-24 — lesson stands: no acceptance arm had EVER set that flag) · 16 the
+re-snap mechanism (08-31) · 17 sew order had no craft layering (09-01, #302).
 
-**RETIRED:** 3 "14 jump-trims on an 80 mm design" (09-01, Kent) as
-unreproducible. **ANSWERED:** 14 half the cloth bare inside each shape is the
+**RETIRED:** 3, "14 jump-trims on an 80 mm design" (09-01, Kent),
+unreproducible. **ANSWERED:** 14, bare cloth inside each shape is the
 thread-paint tier, not a density bug (08-25).
 
 ---
@@ -360,31 +358,28 @@ area they drag down, documented once here.
 
 X and Y were in the wrong nibbles of every record byte, and it round-tripped
 against itself so the pair's own tests never saw it. **It was a MIRROR, not a
-quarter turn** — a bbox swap fits both, and the Studio told customers to
-rotate, which cannot fix one. Both encoders now match
+quarter turn** — a bbox swap fits both, and the Studio told customers to rotate,
+which cannot fix one. Both encoders now match
 `pystitch.DstWriter.encode_record` bit-for-bit and the crossval DST control
-reads `identity`. Two sibling defects closed the same week: the colour-change
-byte (a standard reader saw ZERO stops) and the terminal `end` sentinel written
-as a real stitch. *(fixed 2026-09-08 — `test/dst.test.js` byte pins from
-pystitch; crossval DST control)*
+reads `identity`. Two siblings closed the same week: the colour-change byte (a
+standard reader saw ZERO stops) and the terminal `end` sentinel written as a
+stitch. *(fixed 2026-09-08 — `test/dst.test.js` byte pins from pystitch)*
 
 **Still true, and the only live part:** a `.dst` written BEFORE the fix is in
 the old dialect and re-imports mirrored. Old files are not repaired, so
-DesignPanel's note stays — scoped to pre-fix files, and the scoping asserted.
-The Download step's DST caveats, asterisk and demotion behind PES are gone,
-their absence asserted in `DownloadStep.spec.js` and `design-import.spec.js`.
+DesignPanel's note stays, scoped to pre-fix files and the scoping asserted. The
+Download step's DST caveats, asterisk and demotion behind PES are gone, their
+absence asserted in `DownloadStep.spec.js` and `design-import.spec.js`.
 
 **The cross-validation harness is ALIVE** — it reproduced the transposition
-exactly (rms 0.0) and caught the broken browser PES/EXP encoders. CI fails loud
+exactly (rms 0.0) and caught the broken browser PES/EXP encoders; CI fails loud
 when the pins cannot run. *(confirmed 2026-08-22 — engine green, 0 skips)*
 
-Superseded by the fix and archived, not deleted — the 2026-09-07
-lettering-routing measurement framed routing to the service as a CORRECTNESS
-call; both encoders are spec-correct now, so it is a routing question only.
-Full teardown, superseded numbers and every prior narrative: DOCTRINE
-2026-09-07/08, `docs/dst-axis-verdict-2026-07-31.md`,
-`docs/scope/4-export-formats.md`, scope-history 09-08, and
-`dst-codec-axis-discrepancy` in memory.
+The 2026-09-07 lettering-routing measurement is superseded: both encoders are
+spec-correct, so which one lettering uses is a routing question, not a
+correctness one. Teardown and superseded numbers: DOCTRINE 09-07/08,
+`docs/dst-axis-verdict-2026-07-31.md`, `docs/scope/4-export-formats.md`,
+scope-history 09-08, `dst-codec-axis-discrepancy` in memory.
 
 ### Font license compliance — RESOLVED, and kept resolved by construction
 
@@ -401,51 +396,45 @@ permission screenshots (audit §8).
 ### CI feedback speed
 
 **Four required jobs; one dominates.** Re-measured 2026-09-14, last 70 runs,
-successful jobs only: `digitizer` **min 31.2 / p50 51.0 / p90 55.1 / max 59.0**;
-`studio-e2e` p50 5.5; `studio` p50 0.9; `engine` p50 0.5. A fifth job,
-`art-fidelity-baseline` (p50 8.6), is push-to-`main`-only, `continue-on-error`,
-and gates nothing.
+successful only: `digitizer` **min 31.2 / p50 51.0 / p90 55.1 / max 59.0**;
+`studio-e2e` p50 5.5; `studio` 0.9; `engine` 0.5. A fifth,
+`art-fidelity-baseline` (8.6), is push-to-`main`-only, `continue-on-error`, and
+gates nothing.
 
-**Budget an hour for a PR; read a 50-minute `digitizer` job as normal.** The
+**Budget an hour per PR; read a 50-minute `digitizer` job as normal.** The
 "10 to 42 minutes" carried here until today is refuted — **32 of 42 (76%)
-exceed 42 minutes** and the floor is 31.2, above the old range's midpoint.
-Daily medians are still climbing (50.6 → 51.7 → 53.8 across 09-12/13/14), so
-treat any number here as drifting and spend one `curl` on
-`/actions/runs/<id>/jobs` before calling a long job stuck. `studio-e2e` has
-also roughly doubled against CLAUDE.md's p50 2.7, which nothing was watching.
+exceed 42 minutes** and the floor is 31.2. Daily medians are still climbing
+(50.6 → 51.7 → 53.8 across 09-12/13/14), so treat any number here as drifting
+and spend one `curl` on `/actions/runs/<id>/jobs` before calling a job stuck.
+`studio-e2e` has also quietly doubled against CLAUDE.md's p50 2.7.
 
-**Tuning levers are spent — do not re-run this search.** `-n auto` is pinned
-and must not be re-tuned; suite caching won 18m38s → 14m00s (#369);
-`--dist loadfile` measures 5.8% but floors at the slowest single file. Four
-causes for the drift were proposed and all four eliminated (concurrency, suite
-growth, runner core count, install time). Full trail and the eliminated
-hypotheses: scope-history 09-06, 09-07, 09-14.
+**Tuning levers are spent — do not re-run this search.** `-n auto` is pinned;
+caching won 18m38s → 14m00s (#369); `--dist loadfile` buys 5.8% but floors at
+the slowest single file. Four causes for the drift were proposed and all four
+eliminated. Trail: scope-history 09-06, 09-07, 09-14.
 *(measured 2026-08-14, 2026-09-06/07, 2026-09-14)*
 
 ### No CONTROLLED sew-out card has been sewn — one uncontrolled icon has
 
-**Corrected 2026-09-14.** This section read "No physical sew-out testing has
-occurred yet / Zero sew-out testing" while line 35 of this same file recorded
-the 2026-09-01 stitch-out — one current-state document contradicting itself
-about the event ROADMAP phase 5 exits on. The heading was the stale half: its
-pointer was **2026-08-21**, eleven days before the sew-out. *(gap audit §3)*
+**Corrected 2026-09-14.** This section read "Zero sew-out testing" while line 35
+recorded the 2026-09-01 stitch-out — one current-state document contradicting
+itself about the event phase 5 exits on. The heading was the stale half:
+its pointer was **2026-08-21**, eleven days earlier. *(gap audit §3)*
 
 **True:** thread has met cloth once — Kent's icon, 2026-09-01, 6/10, 80.5 mm,
-8 cones, 18,959 stitches, via the Python service. *(scope-history 2026-09-01;
-memory `first-physical-sewout-2026-09-01`)*
+8 cones, 18,959 stitches, via the Python service. *(scope-history 09-01; memory
+`first-physical-sewout-2026-09-01`)*
 
-**What it does not settle, so the ruling survives it:** one uncontrolled out,
-random operator threading (never grade colour from it), one fabric, one size,
-no controlled blocks. The sew-out CARD (`docs/sewout-card-2026-07-31.md`,
-block 7 drafted 09-11) is the instrument, and it has not been sewn;
-`docs/hardening-closeout-2026-08-02.md` specifies four hoopings settling nine
-questions at once. **ROADMAP gate 1 stands** and scores under it stay
-`pending sew-out` — constants wait on the card's blocks, not this icon.
+**What it does not settle, so the ruling survives it:** one uncontrolled out —
+random operator threading (never grade colour from it), one fabric, one size, no
+controlled blocks. The sew-out CARD (`docs/sewout-card-2026-07-31.md`, block 7
+drafted 09-11) is the instrument and has not been sewn.
+**ROADMAP gate 1 stands** and scores under it stay `pending sew-out`.
 
 **Kent's 2026-08-21 ruling is unchanged by the icon:** accepted as-is, not a
 queued action, not to be re-raised as the highest-leverage next action. One
-question is queued behind it, measured both ways — DOCTRINE,
-"Raising `SATIN_MAX_WIDTH_MM`". *(ruling 08-21; sew-out 09-01; corrected 09-14)*
+question waits behind it, measured both ways — DOCTRINE,
+"Raising `SATIN_MAX_WIDTH_MM`". *(ruling 08-21; sew-out 09-01; fixed 09-14)*
 
 ### Evaluation corpus & harness — real gap, newly tracked here
 
@@ -810,16 +799,16 @@ measurement read as a current claim.
    were copied forward, and both were later disproved by measurement; see
    Corrections in [`DOCTRINE.md`](DOCTRINE.md), kept precisely so that pattern
    stays visible.
-4. **Budget: 800 lines.** Over it, compact before adding. The number has teeth
-   on purpose — a skill already told agents to keep this file current, and it
-   reached 5,400 lines anyway, one reasonable paragraph at a time.
-   *(ruled 2026-08-14 — Kent, after the split measured 655 actual; the ~145
-   lines of slack are deliberate, so a normal week of legitimate additions
-   lands without forcing a compaction pass every time)*
-   **The 2026-08-28 doctrine split landed at 657 — within two lines of that
-   original 655.** The budget was never wrong; what it could not absorb was
-   standing content, which does not go stale and so only ever grows. That is
-   now `DOCTRINE.md`'s problem, and it has no budget by design.
+4. **Budget: 27,000 WORDS** — measured with
+   `awk '{n+=NF} END{print n}' MASTER_SCOPE.md`, never `wc -w`, which is
+   locale-dependent here and answers 908 words lower where `LANG` is unset.
+   Over it, compact before adding. The number has teeth on purpose: a skill
+   already told agents to keep this file current and it reached 5,400 lines
+   anyway, one paragraph at a time.
+   *(ruled 2026-09-14 by Kent, replacing the 800-LINE budget of 2026-08-14,
+   which could not see this file's content in either direction — reasoning and
+   the locale trap: DOCTRINE, "A budget that cannot see its own file")*
+
 5. **Overflow goes somewhere, never to the bin.** Three destinations, in order
    of preference: anything "was true then" to
    [`docs/scope-history.md`](docs/scope-history.md); anything still in force but

@@ -5212,3 +5212,44 @@ next compaction. Standing content belongs here; the list keeps the pointer.
   **Standing follow-up:** of eight golden keys one moves — the one already
   deselected in CI for platform numerics — and its ubuntu re-capture is still
   owed. Found on cloth by the first sew-out.
+
+## A budget that cannot see its own file — and the metric that nearly replaced it (2026-09-14)
+
+`MASTER_SCOPE.md` was capped at **800 lines** from 2026-08-14. Kent replaced it
+with **27,000 words** on 2026-09-14. Both halves of that are worth keeping,
+because the second one is a trap that almost shipped inside the fix for the
+first.
+
+**The line budget could not see content, in either direction.** The 2026-09-14
+correction pass — which fixed five false sew-out claims — **removed 181 words
+and 1,208 characters while ADDING 45 lines** (801 → 846), because the text it
+replaced sat on very long lines and the replacement wrapped at the file's own
+median width of 76. Meanwhile the file holds a single **23,638-character**
+line: 13.5% of its characters, counted as 1 of 801, with nine more over 3,000.
+So a section could be genuinely compacted and still blow the budget, while 23 KB
+of prose hid behind one line.
+
+**The incentive ran the wrong way, which is the part that matters.** The
+cheapest way to obey a line budget is to join paragraphs onto single long lines:
+no content saved, every future diff becomes a whole-paragraph rewrite, and
+growth is hidden from the very number meant to catch it. A metric you satisfy by
+reformatting is not measuring the thing it names — the gap audit's own pattern 3
+(*the counter and the sentence measure different quantities*) landing on the
+status file that reported that pattern.
+
+**Then the replacement nearly repeated it.** The new rule was first written as
+`wc -w MASTER_SCOPE.md`, and **`wc -w` is locale-dependent on this file**:
+26,381 words under `C`/`POSIX`/an uninstalled `en_US.UTF-8`, against **27,289**
+under `C.UTF-8` — a 908-word, 3.4% gap, because the C locale mis-splits the
+em-dashes, arrows and `×` this document is full of. Cloud containers here run
+with `LANG` unset, so a session would have read 26,381 where Kent's box read
+27,289. **A budget that answers differently depending on who asks is not a
+budget.** `awk '{n+=NF} END{print n}'` returns the same 27,289 under all four
+locales and is what the rule now specifies; `wc -m` drifts the same way and is
+out for the same reason.
+
+**The general rule: before adopting a measurement, run it under a different
+environment than the one you wrote it in.** Both failures here are the same
+shape one level apart — a number that looks authoritative and is actually
+reporting a property of its formatting or its locale rather than of the thing
+being measured.
