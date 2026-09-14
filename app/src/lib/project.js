@@ -588,17 +588,55 @@ function migrateV1(input) {
   return { version: 2, garmentId, selectedId: "e1", elements: [el] };
 }
 
+// One recognizer, shared by migrateProject below and by projectFile.js's
+// .embproj import gate. Those two used to key on DIFFERENT tests, and the
+// disagreement was silent data loss: the gate let an envelope through at
+// "any version -- the inner project's own migration handles forward compat",
+// but the migrator matched `version === 2` EXACTLY and turned everything else
+// into a blank defaultProject(). A v3 save, a version stamped as the string
+// "2", and a record whose version key never reached disk all imported as an
+// empty design wearing the customer's own file name, with no error.
+// (measured 2026-09-14 -- reproduced on 3 of 4 envelope shapes; the gap
+// audit's finding 4, docs/research-gap-audit-2026-09-12.md)
+//
+// Structural rather than literal on purpose: a project IS its elements array,
+// so anything carrying one is a project to normalize rather than discard. The
+// v2 branch below is already fully defensive -- it spread-merges over factory
+// defaults at the top level AND per element type -- so running a FORWARD
+// version through it recovers everything that version shares with v2 and
+// carries its unknown fields through untouched. Strictly better than a blank.
+function isV2Shaped(input) {
+  return Number(input.version) >= 2 || Array.isArray(input.elements);
+}
+
+// v1 predates `elements` entirely -- it stored one design's fields flat.
+function isV1Shaped(input) {
+  return "mode" in input || "text" in input || "fontKey" in input;
+}
+
+// True for anything migrateProject can recover a real design from. Callers
+// that have somewhere to report an error (the file-import path) reject on
+// false instead of accepting the blank migrateProject would hand back.
+export function looksLikeProject(input) {
+  if (!input || typeof input !== "object" || Array.isArray(input)) return false;
+  return isV2Shaped(input) || isV1Shaped(input);
+}
+
 // Normalizes any input (a v2 project, a v1 project, or garbage) into a valid
 // v2 project.
 export function migrateProject(input) {
   if (!input || typeof input !== "object") return defaultProject();
 
-  if (input.version === 2) {
+  if (isV2Shaped(input)) {
     // Already v2 — spread-merge over defaults so any missing top-level
     // field (garmentId, selectedId) falls back safely, and guard against a
     // corrupt/empty elements array (a project must have >= 1 element).
     const base = defaultProject();
     const merged = { ...base, ...input };
+    // A forward version stays forward -- never restamp a v3 save as v2, or
+    // the very next auto-save writes it back as v2 and the downgrade becomes
+    // permanent. A string stamp ("2") or a missing one becomes the number 2.
+    merged.version = Math.max(2, Number(input.version) || 2);
     if (!Array.isArray(merged.elements) || merged.elements.length === 0) {
       merged.elements = base.elements;
     }
@@ -659,8 +697,7 @@ export function migrateProject(input) {
   // defaultProject() just like the v2 branch above does, so a v1 blob
   // migrates into a project that ALSO gets fabricRgb (and any future
   // project-level default) rather than being missing it forever.
-  const looksLikeV1 = "mode" in input || "text" in input || "fontKey" in input;
-  if (looksLikeV1) return { ...defaultProject(), ...migrateV1(input) };
+  if (isV1Shaped(input)) return { ...defaultProject(), ...migrateV1(input) };
 
   return defaultProject();
 }
