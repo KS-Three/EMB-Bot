@@ -317,6 +317,79 @@ test("PNG is NOT gated — it is not a file a machine stitches", async () => {
   expect(view.queryByRole("dialog")).toBeNull();
 });
 
+// --- preflight's block findings reach the download gate ---------------------
+//
+// Until 2026-09-14 nothing in the Studio read `el.preflight` on the way out:
+// a design could score 0 / F with a block-severity finding and the Download
+// buttons handed the file over in one click, silently. Preflight's own
+// definition of `block` is "will visibly go wrong; resolve it or get sign-off
+// first" — sign-off is exactly what this dialog is.
+//
+// CONFIRM, never refuse (Kent's call 2026-09-14): block severity is not yet
+// calibrated for a hard gate — on `photo/summit_badge.png` the only
+// block-severity finding of a three-logo run fired on a shape covering 0.38%
+// of the design. These tests pin the confirm, and pin just as hard that a
+// clean report still costs nothing.
+
+const blocked = (findings) => [
+  { id: "e1", type: "digitized", result: { design: {} },
+    name: "Logo", preflight: { score: 0, grade: "F", findings } },
+];
+const BLOCK_FINDING = {
+  code: "THREAD_MATCH_POOR", severity: "block",
+  message: "Isacord 2762 is clearly a different color than the shape it sews.",
+};
+
+test("a block-severity preflight finding must be confirmed before it exports", async () => {
+  const view = render(DownloadStep, {
+    props: { project: project(blocked([BLOCK_FINDING])), runtime: {} },
+  });
+  const before = exportCalls.length;
+  await fireEvent.click(fmtButton(view, "DST"));
+
+  expect(exportCalls.length).toBe(before);
+  const dialog = view.getByRole("dialog");
+  // It repeats preflight's own sentence rather than inventing a summary —
+  // that copy is written for the person at the machine already.
+  expect(dialog.textContent).toMatch(/clearly a different color/);
+
+  await fireEvent.click(view.getByText(/Download DST anyway/));
+  expect(exportCalls.map((c) => c.format)).toContain("dst");
+});
+
+test("warn and info findings do NOT gate — only block does", async () => {
+  const view = render(DownloadStep, {
+    props: {
+      project: project(blocked([
+        { code: "TRIM_HEAVY", severity: "warn", message: "4.7 trims per 1,000 stitches." },
+        { code: "STABILIZER_CUTAWAY", severity: "info", message: "Use a cutaway stabilizer." },
+      ])),
+      runtime: {},
+    },
+  });
+  await fireEvent.click(fmtButton(view, "DST"));
+  expect(view.queryByRole("dialog")).toBeNull();
+  expect(exportCalls.map((c) => c.format)).toContain("dst");
+});
+
+test("a design with no preflight at all downloads in one click", async () => {
+  const view = render(DownloadStep, P);
+  await fireEvent.click(fmtButton(view, "DST"));
+  expect(view.queryByRole("dialog")).toBeNull();
+});
+
+test("hoop and preflight share ONE dialog, and it states both reasons", async () => {
+  fitNote = "Exceeds your 4×4 in hoop";
+  const view = render(DownloadStep, {
+    props: { project: project(blocked([BLOCK_FINDING])), runtime: {} },
+  });
+  await fireEvent.click(fmtButton(view, "DST"));
+  const dialogs = view.getAllByRole("dialog");
+  expect(dialogs.length).toBe(1);
+  expect(dialogs[0].textContent).toMatch(/Exceeds your 4×4 in hoop/);
+  expect(dialogs[0].textContent).toMatch(/clearly a different color/);
+});
+
 // --- the placeholder that made the service export path unreachable ---------
 //
 // Measured 2026-09-07 by downloading from the shipped UI and decoding with

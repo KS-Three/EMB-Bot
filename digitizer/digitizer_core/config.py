@@ -144,6 +144,22 @@ class PipelineConfig:
     # is the pre-flip engine byte for byte.
     enforce_color_cap: bool = True
     seed: int = 0                      # k-means RNG seed — fixed for determinism
+    # How many k-means seeds stage 0 should sweep before reporting
+    # `unique_color_mass`. 0 or 1 = today's single draw, and the classifier
+    # is byte-identical there. N > 1 adds seed min/max/gate-crossing signals
+    # and a CLASSIFICATION_SEED_UNSTABLE warning when the seeds disagree
+    # across the photo gate — REPORTING ONLY: the class and the confidence
+    # are still computed from `seed` alone, because confidence drives the
+    # sub-floor demotion to `flat` and moving artwork between lanes is
+    # stage-0 recalibration (ROADMAP gate 2). Kent's call 2026-09-14.
+    #
+    # Default OFF because it is expensive, not because it is doubted: one
+    # full `_unique_color_mass` per extra seed, measured 2026-09-14 at
+    # 9.36 s (logo_script_tires), 6.03 s (summit_badge), 5.08 s
+    # (logo_gaulke_roofing) — a 12-seed sweep is 112 s on the first.
+    # `digitizer_core.stage0_classify._seed_sweep_signals` carries the
+    # derivation and the Tires spread that motivated it.
+    stage0_seed_sweep: int = 0
     # Cluster centers within this CIE76 distance are the SAME flat color that
     # k-means split; merged before spool snapping. Also the perpendicular
     # tolerance for the phantom-blend collinearity test.
