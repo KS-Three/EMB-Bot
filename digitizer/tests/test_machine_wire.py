@@ -62,6 +62,19 @@ DELIBERATE_DIVERGENCE = {
         "see test_the_three_encoders_agree_on_the_sewability_ceiling below, where all "
         "three now read 121."
     ),
+    "UNDERLAY_INSET_MM": (
+        "satinfont.js 0.4 vs machine.py 1.0 — a NAME COLLISION, not drift, and the two "
+        "sides say so themselves. The browser value is a satin column's contour-underlay "
+        "inset PER SIDE (its own comment: 'Ink/Stitch contour default, per side'); the "
+        "Python value is a region's edge-walk inset ('edge walk sits inside the finished "
+        "edge'). Different lanes, different geometry, one name. Invisible to this file "
+        "until 2026-09-14, when the comment-tolerant patterns above first let it be seen. "
+        "NOT to be reconciled by picking a number: docs/trade-knowledge-2026-09-13.md §3 "
+        "measured that Wilcom publishes NO underlay inset at all — two extraction passes, "
+        "explicit negatives — so neither value has vendor backing and merging them would "
+        "be inventing a physical constant, which is ROADMAP gate 1's business. Renaming "
+        "one side would be the honest fix and is a separate change."
+    ),
     "SATIN_MAX_WIDTH_MM": (
         "browser 3.0 vs Python 5.0. machine.py: 'divergence is deliberate, "
         "corpus-driven, and Python-side only until its own sew-out'; "
@@ -73,10 +86,25 @@ DELIBERATE_DIVERGENCE = {
 
 # `const NAME = 1.23;` / `const NAME = 3,` at any indent. Numeric literals only:
 # a string or an object is not a physical constant and its own module owns it.
-_JS_CONST = re.compile(r"\b(?:const|let|var)\s+([A-Z][A-Z0-9_]{3,})\s*=\s*(-?\d+(?:\.\d+)?)\s*[;,\n]")
+#
+# BOTH patterns tolerate a TRAILING INLINE COMMENT, and that is not cosmetic —
+# without it this file had a blind spot exactly the shape of the "first
+# declaration wins" bug its own docstring describes. Measured 2026-09-14: the
+# Python pattern anchored `\s*$` immediately after the number, so **36 of
+# machine.py's constants were invisible to it** for carrying the trailing
+# comment that is this codebase's house style — `TIE_STITCH_MM = 0.8   # one leg
+# of a lock stitch` and the entire APPLIQUE_* block among them. A JS/Python pair
+# could therefore be added, drift, and never be seen. Found when the 2026-09-14
+# tie port added `TIE_STITCH_MM`/`TIE_STITCHES` to `src/digitize.js`, asserted
+# they were now guarded, and a mutation test walked straight through — the same
+# way the first cut of this file was caught.
+#
+# Fixing it took the shared count from 18 to 21 and surfaced one real
+# divergence nobody could see: `UNDERLAY_INSET_MM`, pinned below.
+_JS_CONST = re.compile(r"\b(?:const|let|var)\s+([A-Z][A-Z0-9_]{3,})\s*=\s*(-?\d+(?:\.\d+)?)\s*(?:[;,\n]|//)")
 # Module-level `NAME = 1.23` or `NAME: float = 1.23`. Anchored to column 0 so a
 # local inside a function never counts.
-_PY_CONST = re.compile(r"^([A-Z][A-Z0-9_]{3,})\s*(?::[^=\n]+)?=\s*(-?\d+(?:\.\d+)?)\s*$", re.M)
+_PY_CONST = re.compile(r"^([A-Z][A-Z0-9_]{3,})\s*(?::[^=\n]+)?=\s*(-?\d+(?:\.\d+)?)\s*(?:#.*)?$", re.M)
 
 
 def _scan(directory: pathlib.Path, suffixes: tuple[str, ...], pattern: re.Pattern) -> dict[str, list[tuple[float, str]]]:
@@ -124,15 +152,18 @@ def test_the_scanners_are_not_vacuous():
     js = _scan(JS_DIR, (".js", ".mjs"), _JS_CONST)
     py = _scan(PY_DIR, (".py",), _PY_CONST)
     assert len(js) >= 20, f"only {len(js)} JS constants found — the JS scanner broke"
-    assert len(py) >= 50, f"only {len(py)} Python constants found — the Python scanner broke"
+    # 302 with the comment-tolerant pattern (2026-09-14); 266 before it.
+    assert len(py) >= 290, f"only {len(py)} Python constants found — the Python scanner broke"
     shared = _shared()
-    assert len(shared) >= 18, (
-        f"only {len(shared)} constants are declared in more than one file (measured 19 on "
-        f"2026-09-13) — a scanner broke, or a shared constant was renamed on one side "
-        f"only, which is itself the drift this file exists to catch"
+    assert len(shared) >= 21, (
+        f"only {len(shared)} constants are declared in more than one file (measured 21 on "
+        f"2026-09-14, up from 19 on 2026-09-13 when the patterns could not see a constant "
+        f"with a trailing comment) — a scanner broke, or a shared constant was renamed on "
+        f"one side only, which is itself the drift this file exists to catch"
     )
     # The named pairs this was built on must still be among them.
-    for expected in ("SATIN_SPACING_MM", "FILL_ROW_MM", "BEAN_STITCH_MM", "SATIN_MAX_WIDTH_MM", "MAX_DELTA"):
+    for expected in ("SATIN_SPACING_MM", "FILL_ROW_MM", "BEAN_STITCH_MM", "SATIN_MAX_WIDTH_MM",
+                     "MAX_DELTA", "TIE_STITCH_MM", "TIE_STITCHES", "UNDERLAY_INSET_MM"):
         assert expected in shared, f"{expected} is no longer seen in more than one file — renamed, or the scanner missed it"
     # FILL_ROW_MM is the one that caught the first cut of this test out. If it
     # ever reads as fewer than three copies, the scan has narrowed again.

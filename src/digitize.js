@@ -47,6 +47,57 @@
   // test/digitize.test.js reads machine.py and fails if they drift.
   const THREAD_LENGTH_FACTOR = 1.35;
 
+  // Lock stitches — `machine.TIE_STITCH_MM` / `machine.TIE_STITCHES`, ported
+  // 2026-09-14. Until then ZERO tie/lock records existed anywhere in `src/`:
+  // the only `lock`/`tie` match in the whole browser lane was the brand name
+  // "Baby Lock" in a `garments.js` comment. The Python lane has always tied
+  // every block unconditionally (`stitches.apply_ties`, no config flag), so
+  // this was a straight parity gap, not a technique the two lanes disagreed
+  // about — a lettering file exported from the Studio could start or end its
+  // thread with nothing holding it, and unravel from the first wash.
+  //
+  // These are hand-ported across the language boundary for exactly the reason
+  // `fabrics.js` and THREAD_LENGTH_FACTOR are, and carry the same risk law 26
+  // proved real. `digitizer/tests/test_machine_wire.py` scans BOTH trees for
+  // every `const NAME = <number>` and fails when a name declared in more than
+  // one file stops agreeing, so these two are covered the moment they exist —
+  // no registration step, and no way to drift quietly.
+  const TIE_STITCH_MM = 0.8;
+  const TIE_STITCHES = 3;
+
+  // A lock stitch at `at`, laid along the path toward `toward` — the exact
+  // shape of `stitches.tie_run`, including the two rules its docstring earns:
+  //
+  //  1. The legs NEVER reach past `toward` (`leg = min(TIE_STITCH_MM, d)`). A
+  //     tie that overshoots leaves a whisker of thread outside the shape's
+  //     edge, which on a finished garment reads as a stray stitch someone has
+  //     to trim off. Python measured this on its first smoke run, where
+  //     tie-offs pushed the design's bounding box 0.8 mm outside its own
+  //     artwork — so the browser must not re-learn it.
+  //  2. The run both STARTS and ENDS at `at`, so splicing it in front of a run
+  //     (or behind one) leaves the sewn path continuous and moves no
+  //     penetration that was already there.
+  //
+  // Returns the bounce points including both endpoints, in the caller's own
+  // coordinate space — px here, same as `run.pts`, so `T()` maps them like any
+  // other point and no tie is ever computed in DST units.
+  function tieRun(at, toward) {
+    const dx = toward.x - at.x, dy = toward.y - at.y;
+    const d = Math.hypot(dx, dy);
+    if (d < 1e-9) return [at];
+    const leg = Math.min(TIE_STITCH_MM, d);
+    const inner = { x: at.x + (dx / d) * leg, y: at.y + (dy / d) * leg };
+    const pts = [at];
+    for (let i = 0; i < TIE_STITCHES; i++) pts.push(i % 2 === 0 ? inner : at);
+    // Value comparison, not `!== at`: Python compares tuples, and an identity
+    // check here would happen to agree only because the same object is pushed
+    // each time. It would then diverge silently the moment anyone rebuilt the
+    // point — which is the whole failure mode this port is guarding against.
+    const tail = pts[pts.length - 1];
+    if (tail.x !== at.x || tail.y !== at.y) pts.push(at);
+    return pts;
+  }
+
   // The size of a design is the size of its THREAD — measured from the records
   // that actually carry geometry, never from the shape the design was fit to.
   //
@@ -919,7 +970,39 @@
     }
     const maxStitchMm = o.maxStitchMm || 4;
     const maxStepPx = maxStitchMm / finalMmPerPx;   // longest single stitch (px)
-    let nTrims = 0, nSatin = 0, lastPt = null, forceJumpNext = false;
+    let nTrims = 0, nSatin = 0, nTies = 0, lastPt = null, lastPrevPt = null, forceJumpNext = false;
+
+    // Lock stitches, OFF by default (2026-09-14). The Python lane ties every
+    // block unconditionally and this lane tied nothing at all; `ties: true`
+    // closes that gap. It ships default-OFF for the reason every other flag in
+    // this repo did — it changes EVERY .dst/.pes a customer exports from
+    // lettering, and this house makes Kent rule a flip like that with the
+    // measurement in front of him. With the flag off, `tieIn`/`tieOff` are
+    // no-ops and output is byte-identical to before the port, which is what
+    // the snapshot pins assert.
+    //
+    // Ties are emitted as ordinary `stitch` records spliced into the sewn
+    // stream, exactly where Python folds them into the run they protect,
+    // rather than as runs of their own — so nothing downstream has to
+    // special-case a two-millimetre run that is not really stitching.
+    const ties = !!o.ties;
+    const pushPts = (arr) => { for (const q of arr) { const d = T(q); stitches.push({ x: d.x, y: d.y, type: "stitch" }); } };
+    // Lock the thread where it STARTS: bounce at pts[0] toward pts[1]. The
+    // leading `at` is dropped because the jump already put the needle there,
+    // so re-emitting it would be a zero-length stitch.
+    const tieIn = (pts) => {
+      if (!ties || !pts || pts.length < 2) return;
+      pushPts(tieRun(pts[0], pts[1]).slice(1));
+      nTies++;
+    };
+    // Lock the thread where it gets CUT: bounce at the last sewn point, back
+    // toward the one before it. Same drop, same reason — the needle is already
+    // standing on `lastPt`.
+    const tieOff = () => {
+      if (!ties || !lastPt || !lastPrevPt) return;
+      pushPts(tieRun(lastPt, lastPrevPt).slice(1));
+      nTies++;
+    };
     // The router (satinfont) decides jump vs. underpath per run: jump=false means
     // travel as a needle-DOWN running connector (tucked at a junction, covered);
     // jump=true means lift the needle (and trim if the hop is long).
@@ -935,17 +1018,22 @@
         // Color-range boundary: trim (needle up) + color-change marker at the
         // last sewn point, same pattern app/src/lib/combine.js already uses
         // to splice separate elements together.
-        if (lastPt) { const tp = T(lastPt); stitches.push({ x: tp.x, y: tp.y, type: "trim" }); stitches.push({ x: tp.x, y: tp.y, type: "color" }); nTrims++; }
+        if (lastPt) { const tp = T(lastPt); tieOff(); stitches.push({ x: tp.x, y: tp.y, type: "trim" }); stitches.push({ x: tp.x, y: tp.y, type: "color" }); nTrims++; }
         ensureColor(runRgb);
         forceJumpNext = true;
       }
       const start = pts[0];
       if (!lastPt) {
         const f = T(start); stitches.push({ x: f.x, y: f.y, type: "jump" });
+        tieIn(pts);
       } else if (run.jump || forceJumpNext) {
         const gapMm = Math.hypot(start.x - lastPt.x, start.y - lastPt.y) * finalMmPerPx;
-        if (gapMm > trimAtMm && !forceJumpNext) { const tp = T(lastPt); stitches.push({ x: tp.x, y: tp.y, type: "trim" }); nTrims++; }
+        if (gapMm > trimAtMm && !forceJumpNext) { const tp = T(lastPt); tieOff(); stitches.push({ x: tp.x, y: tp.y, type: "trim" }); nTrims++; }
         const f = T(start); stitches.push({ x: f.x, y: f.y, type: "jump" });
+        // A jump that was NOT trimmed leaves the thread continuous, so it
+        // needs no lock — same question `apply_ties` asks (`i == 0 or
+        // run.trim`), not "did the needle lift".
+        if (gapMm > trimAtMm || forceJumpNext) tieIn(pts);
         forceJumpNext = false;
       } else {
         const gap = Math.hypot(start.x - lastPt.x, start.y - lastPt.y);
@@ -954,7 +1042,11 @@
       }
       for (const q of pts) { const d = T(q); stitches.push({ x: d.x, y: d.y, type: "stitch" }); }
       lastPt = pts[pts.length - 1];
+      lastPrevPt = pts[pts.length - 2];
     }
+    // The thread ends here, so it is cut here — `apply_ties` ties the last
+    // run for the same reason it ties a trimmed one.
+    tieOff();
     const stitchCount = stitches.filter((s) => s.type === "stitch").length;
     // widthMM/heightMM must reflect the ACTUAL sewn footprint — the field's
     // stats line, SizePanel, the hoop ceiling check and the printed worksheet
@@ -979,8 +1071,14 @@
     // `lettering`: the width-guard report (final sewn cap height, columns
     // under the needle floors, hairline spans sewn as run) — see
     // satinfont.layoutText. Null only on the empty paths above.
-    return { stitches, colors, widthMM: outWmm, heightMM: outHmm, stitchCount, colorCount: colors.length, unsupported: lay.unsupported || [], lettering: lay.lettering || null, _debug: { nSatin, nFill: 0, nTrims } };
+    return { stitches, colors, widthMM: outWmm, heightMM: outHmm, stitchCount, colorCount: colors.length, unsupported: lay.unsupported || [], lettering: lay.lettering || null, _debug: { nSatin, nFill: 0, nTrims, nTies } };
   }
 
-  return { buildQualityDesign, buildLetteringDesign, groupRingsIntoShapes, offsetRing, signedArea, underlayRuns, FILL_ROW_MM, SATIN_SPACING_MM, THREAD_LENGTH_FACTOR };
+  // `tieRun` is exported for its own sake: its overshoot rule only fires when
+  // the path is SHORTER than one leg, which no ordinary lettering fixture
+  // produces — a mutation deleting `Math.min` passed the whole suite until
+  // this was reachable directly. The rule is the expensive half of the port
+  // (Python learned it from a smoke run that pushed the design's box 0.8 mm
+  // outside its artwork), so it gets a test that can actually reach it.
+  return { buildQualityDesign, buildLetteringDesign, groupRingsIntoShapes, offsetRing, signedArea, underlayRuns, tieRun, FILL_ROW_MM, SATIN_SPACING_MM, THREAD_LENGTH_FACTOR, TIE_STITCH_MM, TIE_STITCHES };
 });

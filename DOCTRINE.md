@@ -5253,3 +5253,60 @@ environment than the one you wrote it in.** Both failures here are the same
 shape one level apart — a number that looks authoritative and is actually
 reporting a property of its formatting or its locale rather than of the thing
 being measured.
+
+## The browser lettering lane tied nothing at all, and the dossier mispriced it 2.7× (2026-09-14)
+
+**Zero tie/lock records existed anywhere in `src/`** until this date — the only
+`lock`/`tie` match in the whole browser lane was the brand name "Baby Lock" in a
+`garments.js` comment — while `digitizer_core` has always tied every block
+**unconditionally** (`stitches.apply_ties`, no config flag on any path to it).
+Not a technique the lanes disagreed about: a parity gap, where a lettering file
+exported from the Studio could start or end its thread with nothing holding it.
+Ported 2026-09-14 as `ties: true`, **default OFF**, byte-identical to
+`origin/main` on 85/85 fonts with the flag off.
+*(measured 2026-09-14 — `docs/lettering-ties-2026-09-14.md`)*
+
+**The gap audit's "+2.93% stitches" does not survive, and a flip would have been
+decided on it.** Measured across all 85 shipped fonts: **+3.31%** on a
+4-character string, **+8.00%** at 18 characters, **+7.65%/+7.66%** on two and
+three lines. The dossier figure is reproducible only on a very short word, and
+realistic customer text costs ~2.7× it. **A tie is a fixed 4 stitches and ties
+number `2 + 2×trims`, so the percentage is a statement about the design's
+FRAGMENTATION, not about ties** — `noble` pays +47.98% because it sews 79 trims
+on 18 characters, which is the phase-3 fragmentation defect becoming visible
+rather than a tie problem. Quote the per-text numbers, never a single percentage.
+
+**"Zero added trims" reproduced exactly at every length, and it is structural
+rather than lucky:** a tie bounces between a point the needle already occupies
+and a point one leg into the shape, so it can introduce no travel long enough to
+cut. That is the half of a dossier claim worth trusting — the one with a
+mechanism behind it.
+
+**A constant is not guarded just because a wire test exists.**
+`test_machine_wire.py` was written 2026-09-13 to catch exactly this port's kind
+of risk, and it could not see either new constant: its Python pattern anchored
+end-of-line immediately after the number, so **36 of `machine.py`'s constants
+were invisible for carrying the trailing inline comment that is this codebase's
+house style** — both tie constants and the entire `APPLIQUE_*` block. The claim
+"the wire test covers this automatically" was made, then mutation-tested, and
+was false. Fixed; shared count 18 → 21.
+
+**What that blind spot was hiding: `UNDERLAY_INSET_MM` is 0.4 in
+`src/satinfont.js` and 1.0 in `machine.py`.** A **name collision**, not drift —
+the browser value is a satin column's contour-underlay inset *per side*, the
+Python one a region's edge-walk inset — so it is pinned in
+`DELIBERATE_DIVERGENCE`, not reconciled. **Reconciling it would be inventing a
+physical constant:** `docs/trade-knowledge-2026-09-13.md` §3 measured that
+Wilcom publishes no underlay inset anywhere on the page, two extraction passes
+with explicit negatives, so neither value has vendor backing. Renaming one side
+is the honest fix and is a separate change. Gate 1 owns the number.
+
+**And the expensive rule needed an export to be testable at all.** `tieRun`'s
+overshoot guard (`leg = min(TIE_STITCH_MM, d)`) only fires on a path shorter
+than one leg, which no ordinary lettering fixture produces — deleting it passed
+the entire 82-test suite. It is the rule Python paid for with a smoke run that
+pushed a design's bounding box 0.8 mm outside its own artwork, so it was made
+reachable directly rather than left to a fixture wandering into it.
+**Third time in one session that a guard's first draft could not see the thing
+it was written for.** When a rule only triggers at a boundary, test the boundary
+directly; a corpus does not owe you an edge case.
