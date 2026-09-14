@@ -64,7 +64,7 @@ row 7's sidecar count grew from 55 to 85 while staying one-per-font. Rows 2, 4,
 
 ## Explicit non-goals (parking list — not the Ember bar)
 
-Team names, monogram frames, appliqué, envelopes beyond arc, 3D puff,
+Team names, monogram frames, envelopes beyond arc, 3D puff,
 stitch-level editing, decorative fills, imported-design re-density
 (Wilcom-style stitch processor), a sharing gallery. No user-upload gallery
 is a deliberate choice for the starter design pack (item 3) too —
@@ -75,6 +75,28 @@ has since shipped (`app/src/lib/manualShapes.js` — the Studio's third
 content type: hand-drawn outlines with curved edges and point editing), so
 it is no longer a non-goal. (The separate item 4 preset shapes tool also
 shipped — verified live 2026-08-11; see the checklist above.)
+
+**"Appliqué" left this list on 2026-09-14 (Kent's call), for the same reason
+and with a sharper lesson.** It was still listed as a non-goal while
+`digitizer/digitizer_core/stage6_applique.py` had grown to **1,373 lines,
+58 tests** in `tests/test_applique.py` and **eight** `PipelineConfig` fields
+(`applique`, `_mode`, `_trim_discipline`, `_placement`, `_material`,
+`_tackdown`, `_cover`, `_cover_width_mm`), imported and run by
+`stage7_sequence.py`. Unlike freehand draw, nobody struck this line when it
+landed, so for months the scope doc said the product would not do something it
+could already do. Found by the 2026-09-12 gap-audit sweep, not by anyone
+reading either file. *(all four counts verified against the code 2026-09-14 —
+the audit's "66 tests" is 58.)*
+
+**One thing the audit did not say, and it is the reason this is a scope call
+rather than a bug: `applique` defaults to FALSE, and that default is
+load-bearing.** With it off, nothing in the block is read, no step metadata is
+attached, and a design sews byte-for-byte what it sewed before the tier
+existed — pinned by `test_applique_off_is_byte_identical`. So no customer has
+ever been given appliqué by accident. It is a capability that exists and must
+be asked for. In scope as of today; its status belongs in `MASTER_SCOPE.md`
+and `docs/scope/` like any other capability, and turning the default on would
+be a separate ruling.
 
 ## Open — not yet decided
 

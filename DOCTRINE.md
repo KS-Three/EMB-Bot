@@ -5186,3 +5186,29 @@ Only a test driving the real `diff()` and asserting its **exit code** (with
 first draft tends to reproduce the bug it was written for, so mutate the fix and
 watch the test go red before believing it.
 *(`digitizer/tests/test_corpus_scorecard.py`, `app/src/lib/project.spec.js`)*
+
+## Three caveats rescued from closed defects, so compaction cannot drop them (2026-09-14)
+
+`MASTER_SCOPE.md`'s "Closed — kept numbered" list is by its own header *"pointers,
+not status"*, but three entries had grown live caveats that would have died in the
+next compaction. Standing content belongs here; the list keeps the pointer.
+
+- **Closed defect 3 — "14 jump-trims on an 80 mm design", RETIRED 2026-09-01
+  (Kent) as UNREPRODUCIBLE.** The entry never named the design and its pointer
+  carried none, so the number was never checkable. A 2026-08-31 repro (two
+  fixtures × three fill variants, three trim readings each) found nothing near 14
+  and nothing variant-invariant. **Do NOT read those repro readings as a
+  regression** — without the original design or metric they are not comparable to
+  14, and making that comparison is the specific mistake the retired entry existed
+  to prevent. The live concern moved to **defect 4**, which supports it
+  independently and carries a real 80 mm datum.
+- **Closed defect 16 — the re-snap mechanism, RESOLVED 2026-08-31.**
+  `rehome_resnapped_regions` fixed one source, and on the corpus every spool now
+  sews exactly once on both routes (17 → 14 blocks). **The SYMPTOM is not fully
+  gone: defect 18 is a second, independent mechanism.** Closing 16 does not close
+  the symptom, and reading it that way would retire a live defect.
+- **Closed defect 17 — `borders_last`, FIXED and DEFAULT ON 2026-09-01 (Kent's
+  flip ruling, PR #302).** Repro ring 0.0% → 54.5% with stitch count unchanged.
+  **Standing follow-up:** of eight golden keys one moves — the one already
+  deselected in CI for platform numerics — and its ubuntu re-capture is still
+  owed. Found on cloth by the first sew-out.

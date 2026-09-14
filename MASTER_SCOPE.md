@@ -194,20 +194,25 @@ icon. Cloth pointers added to defects 3, 6 and 16 below.
 
 ### Closed — kept numbered, because ten other docs cite them by number
 
-Full text moved to [`docs/scope-history.md`](docs/scope-history.md) 2026-08-27; these are pointers, not status.
+Full text moved to [`docs/scope-history.md`](docs/scope-history.md) 2026-08-27;
+these are pointers, not status. Compacted 2026-09-14 — the three entries that had
+grown live caveats (3, 16, 17) kept them by moving them to DOCTRINE, "Three
+caveats rescued from closed defects", rather than by staying long here.
 
-1. shade-thread collapse (`_shade_blocks`) — RESOLVED 2026-08-19.
-3. 14 jump-trims on an 80mm design — RETIRED 2026-09-01 (Kent's call) as UNREPRODUCIBLE: the entry never named the design and its pointer carried none, so the number was never checkable. A 2026-08-31 repro (two fixtures x three fill variants, three trim readings each) found nothing near 14 and nothing variant-invariant. Do NOT read those readings as a regression — without the design or the metric they are not comparable to 14, which is the mistake this line exists to prevent. The live concern moved to defect 4, which supports it independently and now carries a real 80 mm datum.
-7. satin dropped a bracket's tab on `enthusiast_logo` (`_prune_spurs`) — RESOLVED 2026-08-21.
-8. build-font dropped SVG transforms on four fonts — RESOLVED 2026-08-22.
-9. the photo route escaped its own palette, both halves — RESOLVED 2026-08-24 (PR #217 + the 08-24 `shade_palette_bind` flip, default ON per Kent's 32-job-sheet ruling).
-10. three photo-route robustness defects the first real photos found — RESOLVED 2026-08-23 (#214 OOM, #218 `select_palette` loop, #216 preflight).
-11. the memory ceiling was per-region full-frame masks — RESOLVED 2026-08-24 (PR #230).
-12. preflight graded every photo job F — RESOLVED 2026-08-24 (PR #229).
-13. the detail layer sewed the background a cutout had just removed — RESOLVED 2026-08-24. **Its lesson stands: no acceptance arm had EVER set that flag**, which is the blind spot the evaluation-harness section exists to close.
-14. half the cloth bare inside each shape is the THREAD-PAINT TIER, not a density bug — ANSWERED 2026-08-25 (streamline covers 0.55-0.59 of its footprint vs the filled tier's 0.99; Kent's filled-for-high-contrast ruling, and the face exception, are in Standing rulings).
-16. one spool revisited across other colours, THE RE-SNAP MECHANISM — RESOLVED 2026-08-31 (`rehome_resnapped_regions`: a pipeline re-snap joins its cone's layer upstream of stage 5, so the coverage plan sees the order actually sewn; a review recolor was never a source, `apply_shape_edits` already moves the layer. Owl: every spool exactly once on BOTH routes, 17 → 14 blocks default; #291/#293 merge/hoist stay as the net for other sources. On cloth 2026-09-01: a 229-st cone re-entered the lens interior at 76%, a 104-st cone at 99.4% — the pattern this removes from the repro. Sweep: scope-history 08-31. **The SYMPTOM is not fully gone — defect 18 is a second mechanism.**)
-17. sew order had no craft layering, BORDER SATIN OPENED THE DESIGN — FIXED, DEFAULT ON 2026-09-01 (Kent's flip ruling, PR #302). `cfg.borders_last`: satin-dominated layers sew after fill-dominated ones (`borders_last_layers`, upstream of stage 5 so coverage/underlap/ties derive from the sewn order) and satin-tier shapes wait for their group's fills; review-screen pins still win. Repro ring 0.0% → 54.5%, stitch count unchanged. Found on cloth by the first sew-out. Of eight golden keys one moves — the one already deselected in CI for platform numerics; its ubuntu re-capture is the standing follow-up. `tests/test_borders_last.py`.
+**RESOLVED:** 1 shade-thread collapse (08-19) · 7 satin dropped a bracket tab
+(08-21) · 8 build-font dropped SVG transforms on four fonts (08-22) · 9 the photo
+route escaped its own palette, both halves (08-24, PR #217 + the
+`shade_palette_bind` flip) · 10 three photo-route robustness defects (08-23) ·
+11 the memory ceiling was per-region full-frame masks (08-24, PR #230) ·
+12 preflight graded every photo job F (08-24, PR #229) · 13 the detail layer
+sewed a background the cutout had removed (08-24 — its lesson stands: no
+acceptance arm had EVER set that flag) · 16 one spool revisited across colours,
+the re-snap mechanism (08-31) · 17 sew order had no craft layering (09-01,
+Kent's flip, PR #302).
+
+**RETIRED:** 3 "14 jump-trims on an 80 mm design" (09-01, Kent) as
+unreproducible. **ANSWERED:** 14 half the cloth bare inside each shape is the
+thread-paint tier, not a density bug (08-25).
 
 ---
 
@@ -251,7 +256,7 @@ here, so a good-faith flip would have shipped bare-fabric thread unwarned.)*
 |---|---|---|
 | 1. Auto-digitizing quality (image → stitches) | In progress | **Low** beyond flat spot-color art; human faces TABLED pending a more capable tier *(Kent, 2026-08-25)* |
 | 2. Font library & lettering | Implemented — 85 fonts, satin + bean/running + cross-stitch, LTR + Hebrew RTL | High (tech) / High (compliance). Zero stunted glyphs since the 2026-08-22 transform fix; the guards now assert their own coverage |
-| 3. Studio app / guided wizard | Implemented | Medium (fabric-preset accuracy: **pending sew-out** — unchanged, no sew-out has happened). Held at Medium by that gate alone; the display layer had a defect class that shipped unseen for want of UI-behaviour coverage, and hand-driving sweeps on 2026-08-25, 2026-09-07 and 2026-09-08 closed the known ones — the 09-07 pass added the project lifecycle, the built bundle and the printed worksheet, and the 09-08 pass found four more on screens nobody had driven in combination (defect 42), including the review summarising a mixed design as one of its elements. **The pattern is worth the row:** every one came from driving the app, none from reading it *(confirmed — area doc, defect 42)*. The preview now renders thread as a lit cylinder at physical width; its lighting is eye-tuned, not sew-verified |
+| 3. Studio app / guided wizard | Implemented | Medium (fabric-preset accuracy: **pending sew-out** — the 2026-09-01 icon was uncontrolled, so the card still gates this). Held at Medium by that gate alone; the display layer had a defect class that shipped unseen for want of UI-behaviour coverage, and hand-driving sweeps on 2026-08-25, 2026-09-07 and 2026-09-08 closed the known ones — the 09-07 pass added the project lifecycle, the built bundle and the printed worksheet, and the 09-08 pass found four more on screens nobody had driven in combination (defect 42), including the review summarising a mixed design as one of its elements. **The pattern is worth the row:** every one came from driving the app, none from reading it *(confirmed — area doc, defect 42)*. The preview now renders thread as a lit cylinder at physical width; its lighting is eye-tuned, not sew-verified |
 | 4. Export formats | Implemented | Varies by format — see below |
 | 5. Stitch-out review & manual editing tools | Implemented — Kent's direct-manipulation request is **complete** (2026-08-13) | High. Every surviving requirement of the 2026-08-12 request ships: outlines+nodes on the canvas, the pulse cue, select-then-edit, node drag, line drag, add node, delete. Requirement 5 (whole-shape drag) was withdrawn by Kent. Geometry is unit-tested and every interaction was driven in a real browser against a live service. Manual draw mode now traces over the uploaded artwork, and right-click places a curved node |
 
@@ -359,32 +364,27 @@ quarter turn** — a bbox swap fits both, and the Studio told customers to
 rotate, which cannot fix one. Both encoders now match
 `pystitch.DstWriter.encode_record` bit-for-bit and the crossval DST control
 reads `identity`. Two sibling defects closed the same week: the colour-change
-byte (a standard reader saw ZERO stops) and the terminal `end` sentinel
-written as a real stitch. Narrative and numbers compacted here 2026-09-12 per
-rules 1/5 — they are unchanged in the five places the pointer list below
-already names. *(fixed 2026-09-08 — `test/dst.test.js` byte pins from
+byte (a standard reader saw ZERO stops) and the terminal `end` sentinel written
+as a real stitch. *(fixed 2026-09-08 — `test/dst.test.js` byte pins from
 pystitch; crossval DST control)*
 
 **Still true, and the only live part:** a `.dst` written BEFORE the fix is in
 the old dialect and re-imports mirrored. Old files are not repaired, so
-DesignPanel's note stays — scoped to files written before the fix, and the
-scoping asserted. The Download step's DST caveats, asterisk and demotion behind
-PES are gone, their absence asserted in `DownloadStep.spec.js` and end to end
-in `design-import.spec.js`.
+DesignPanel's note stays — scoped to pre-fix files, and the scoping asserted.
+The Download step's DST caveats, asterisk and demotion behind PES are gone,
+their absence asserted in `DownloadStep.spec.js` and `design-import.spec.js`.
 
-**Superseded 2026-09-08:** the 2026-09-07 lettering-routing measurement (browser
-"Lp" at 31.7×61.7 against the service's 61.7×31.7) framed routing lettering to
-the service as Kent's open call *on correctness grounds*. The axis fix removed
-its premise — both encoders are spec-correct now. Which encoder lettering uses
-is still a routing question; it is no longer a correctness one. Full teardown
-and the superseded numbers: DOCTRINE 2026-09-07/08,
-`docs/dst-axis-verdict-2026-07-31.md`, `docs/scope/4-export-formats.md`,
-scope-history 09-08, `dst-codec-axis-discrepancy` in memory.
+**The cross-validation harness is ALIVE** — it reproduced the transposition
+exactly (rms 0.0) and caught the broken browser PES/EXP encoders. CI fails loud
+when the pins cannot run. *(confirmed 2026-08-22 — engine green, 0 skips)*
 
-**The cross-validation harness is ALIVE** — revived 2026-08-21; it reproduced
-the transposition exactly (rms 0.0) and caught the broken browser PES/EXP
-encoders. CI fails loud when the pins cannot run.
-*(confirmed 2026-08-22 — engine green, 0 skips)*
+Superseded by the fix and archived, not deleted — the 2026-09-07
+lettering-routing measurement framed routing to the service as a CORRECTNESS
+call; both encoders are spec-correct now, so it is a routing question only.
+Full teardown, superseded numbers and every prior narrative: DOCTRINE
+2026-09-07/08, `docs/dst-axis-verdict-2026-07-31.md`,
+`docs/scope/4-export-formats.md`, scope-history 09-08, and
+`dst-codec-axis-discrepancy` in memory.
 
 ### Font license compliance — RESOLVED, and kept resolved by construction
 
@@ -400,22 +400,52 @@ permission screenshots (audit §8).
 
 ### CI feedback speed
 
-`-n auto` (pytest-xdist, pinned) roughly halved the digitizer suite. **Do not
-re-tune hoping for the 2.5-3x seen locally:** GitHub's standard runners are
-2-core, so `-n auto` gets two workers and OpenCV's threading competes with them. Parallel-safety is verified, not assumed.
-**`--durations` has now been run (2026-09-06), and the lever it named was a mirage:** its top five entries were one `lru_cache` bill split across workers — the suite does **20 real pipeline runs for 8 distinct cases**, because the cache is per-process and xdist is not — so deleting them saved **13s of a predicted 380**. The real win was caching the suites themselves, **18m38s → 14m00s** (#369). `--dist loadfile` measures **5.8%** at CI's own two workers (23m53s → 22m27s, 1889 passed both ways) but floors wall-clock at the slowest single FILE: an option with its trade named, not taken. **And the job's own duration is not what anything here documented** — measured 2026-09-06 over the last 220 completed `digitizer` jobs from the Actions API: **10 to 42 minutes**, daily median walking 15.0 → 16.5 → 17.6 → 18.7 → 20.7 and then jumping to **29.6 on 2026-09-06** (max 41.8). CLAUDE.md's "12–18" was true when written and now holds for half. **Cause not settled, but bounded:** it is entirely in the test step (`Install` is 0.27 min on fast and slow runs alike), it is NOT concurrency (the 41.8-minute worst case ran with ZERO other digitizer jobs, and the most-contended jobs are the fastest — hypothesis refuted), and suite growth alone cannot carry it: the SAME test count lands 19.6–34.5 min (1,851 tests) and 17.9–33.7 (1,968), a **1.9× spread on identical work**, with seconds-per-test running 0.54–1.32. **The runner's CORE COUNT is refuted too, by the diagnostic on its first run** (2026-09-07): `nproc: 4`, 16 GB, on a **27m59s** job of 1,984 tests — `-n auto` had four workers, and this box does the same suite in ~15 min on four. Four hypotheses, four eliminated; what remains is per-core throughput or hypervisor contention, which one reading cannot separate. Every run now records its own `nproc`. *(measured 2026-08-14, 2026-09-06/07 — DOCTRINE, scope-history 09-06, 09-07)*
+**Four required jobs; one dominates.** Re-measured 2026-09-14, last 70 runs,
+successful jobs only: `digitizer` **min 31.2 / p50 51.0 / p90 55.1 / max 59.0**;
+`studio-e2e` p50 5.5; `studio` p50 0.9; `engine` p50 0.5. A fifth job,
+`art-fidelity-baseline` (p50 8.6), is push-to-`main`-only, `continue-on-error`,
+and gates nothing.
 
-### No physical sew-out testing has occurred yet
+**Budget an hour for a PR; read a 50-minute `digitizer` job as normal.** The
+"10 to 42 minutes" carried here until today is refuted — **32 of 42 (76%)
+exceed 42 minutes** and the floor is 31.2, above the old range's midpoint.
+Daily medians are still climbing (50.6 → 51.7 → 53.8 across 09-12/13/14), so
+treat any number here as drifting and spend one `curl` on
+`/actions/runs/<id>/jobs` before calling a long job stuck. `studio-e2e` has
+also roughly doubled against CLAUDE.md's p50 2.7, which nothing was watching.
 
-Zero sew-out testing, confirmed across three independent research passes;
-`docs/hardening-closeout-2026-08-02.md` specifies four hoopings that would
-settle nine open geometric questions at once. The single biggest confidence
-ceiling here — fabric presets, real stitch quality, the DST axis question all
-wait on it. **Kent accepted this as-is 2026-08-21:** not a queued action, scores
-under it read `pending sew-out` permanently, and it is not to be re-raised as
-the highest-leverage next action. One question is queued behind it with the code
-already measured both ways — DOCTRINE, "Raising `SATIN_MAX_WIDTH_MM`".
-*(2026-08-21; 2026-09-02 — reverted branch)*
+**Tuning levers are spent — do not re-run this search.** `-n auto` is pinned
+and must not be re-tuned; suite caching won 18m38s → 14m00s (#369);
+`--dist loadfile` measures 5.8% but floors at the slowest single file. Four
+causes for the drift were proposed and all four eliminated (concurrency, suite
+growth, runner core count, install time). Full trail and the eliminated
+hypotheses: scope-history 09-06, 09-07, 09-14.
+*(measured 2026-08-14, 2026-09-06/07, 2026-09-14)*
+
+### No CONTROLLED sew-out card has been sewn — one uncontrolled icon has
+
+**Corrected 2026-09-14.** This section read "No physical sew-out testing has
+occurred yet / Zero sew-out testing" while line 35 of this same file recorded
+the 2026-09-01 stitch-out — one current-state document contradicting itself
+about the event ROADMAP phase 5 exits on. The heading was the stale half: its
+pointer was **2026-08-21**, eleven days before the sew-out. *(gap audit §3)*
+
+**True:** thread has met cloth once — Kent's icon, 2026-09-01, 6/10, 80.5 mm,
+8 cones, 18,959 stitches, via the Python service. *(scope-history 2026-09-01;
+memory `first-physical-sewout-2026-09-01`)*
+
+**What it does not settle, so the ruling survives it:** one uncontrolled out,
+random operator threading (never grade colour from it), one fabric, one size,
+no controlled blocks. The sew-out CARD (`docs/sewout-card-2026-07-31.md`,
+block 7 drafted 09-11) is the instrument, and it has not been sewn;
+`docs/hardening-closeout-2026-08-02.md` specifies four hoopings settling nine
+questions at once. **ROADMAP gate 1 stands** and scores under it stay
+`pending sew-out` — constants wait on the card's blocks, not this icon.
+
+**Kent's 2026-08-21 ruling is unchanged by the icon:** accepted as-is, not a
+queued action, not to be re-raised as the highest-leverage next action. One
+question is queued behind it, measured both ways — DOCTRINE,
+"Raising `SATIN_MAX_WIDTH_MM`". *(ruling 08-21; sew-out 09-01; corrected 09-14)*
 
 ### Evaluation corpus & harness — real gap, newly tracked here
 
@@ -567,8 +597,9 @@ the Layers panel, and fabric/garment presets. Logic coverage is broad —
 nearly every `app/src/lib/*.js` module has a paired spec — with UI-behaviour
 coverage riding on live-browser e2e specs across several garments, the image
 content path, four export formats, and the embroidery field's own chrome.
-**What holds it at Medium:** fabric-preset accuracy is sew-out-gated, and no
-sew-out has happened. See Cross-cutting issues.
+**What holds it at Medium:** fabric-preset accuracy is gated on the controlled
+sew-out CARD, which has not been sewn — the one physical out so far (2026-09-01)
+was a single uncontrolled icon. See Cross-cutting issues.
 
 **The two engines' fabric tables agree again, and a test keeps them so (2026-09-07).**
 Corpus law 26 (`edge_lattice` → `edge_run` under a knit fill) landed in Python only, so the
@@ -623,7 +654,7 @@ PDF sheet (`src/render.js`) and the SVG export draw the same width since
 1.2 px floor (1 px on the sheet), so the property holds zoomed in, not on a
 thumbnail. Pinned on the literal 0.4 and both ratios. *(2026-09-04 — `preview.spec.js`)*
 
-**Thread lighting is unverified against real thread** — eye-tuned, no sew-out to compare against. Treat the look as a preference, not a calibration. *(suspected 2026-08-25)*
+**Thread lighting is unverified against real thread** — eye-tuned, and the one physical out (2026-09-01) cannot settle it: its colours were random operator threading, so DOCTRINE bars grading colour from it at all. Treat the look as a preference, not a calibration. *(suspected 2026-08-25; sharpened 2026-09-14)*
 
 **Typographic punctuation folds to its ASCII twin where a font lacks it.** A customer's phone substitutes U+2019 for an apostrophe silently and 26 of the 85 fonts have no glyph for it, so "Fritsch's Stitches" sewed as "Fritschs Stitches" (1,326 stitches against 1,354) under a note naming a character that looks identical to the one they typed. `satinfont.js TYPOGRAPHIC_FOLD` stitches the twin ONLY where the fancy form is missing — 367 font x character combinations rescued, and all 85 fonts hash identically on text that never needed it. Not NFKD: accented letters are different letters and stay unfolded (33–73 fonts cover the common ones, and the "these fonts can" message is good advice there). *(fixed 2026-09-07 — DOCTRINE; scope-history 09-07)*
 
@@ -738,8 +769,9 @@ applied to its siblings. *(fixed 2026-08-26 — PR #269, mutation-checked;
   evidence (tests, docs, known defects); Kent has override authority.
   Anything whose real confidence depends on physical machine verification —
   fabric presets, real stitch quality, the DST orientation question — gets
-  an explicit **pending sew-out** flag instead of a guessed score, because
-  no sew-out testing has happened on this project yet.
+  an explicit **pending sew-out** flag instead of a guessed score, because the
+  controlled sew-out card that would settle them has not been sewn (the one
+  physical out, 2026-09-01, was an uncontrolled icon).
 - **This document is the source of truth for current status.**
   COOKBOOK.md's former "Known limitations" section pointed here instead of
   maintaining a parallel list, to avoid the two drifting out of sync.
