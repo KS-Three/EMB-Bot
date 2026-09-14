@@ -5310,3 +5310,34 @@ reachable directly rather than left to a fixture wandering into it.
 **Third time in one session that a guard's first draft could not see the thing
 it was written for.** When a rule only triggers at a boundary, test the boundary
 directly; a corpus does not owe you an edge case.
+
+## When a fix lands, sweep the INSTRUMENTS built to test it (2026-09-14)
+
+The DST axis and colour-change fixes landed 2026-09-08 and the code was swept
+for stale claims twice (#477's four false blockers; this session's §3 pass). Both
+sweeps looked at source and status docs. **Neither looked at the sew-out card**,
+which is not documentation — it is the physical instrument gate 1 waits on.
+
+Its pre-flight panel table still told the reader that a sideways ~88 x 66 mm
+preview was *expected*, that an upright one was *"surprising"*, and to **"hoop
+sideways or rotate 90 on the panel"**. After 09-08 those readings are backwards,
+and acting on that row would have sewn the entire card a quarter turn out —
+spending the one hooping the whole gate is waiting for, to test a format
+question already settled in software. Its verification section likewise still
+named `pyembroidery` (replaced by `pystitch` 2026-08-11) and declared the card
+"the hardware test of that dispute". Corrected 2026-09-14.
+
+**The general rule: a fix invalidates the tests written against the broken
+behaviour, and a test that runs on hardware cannot fail loudly.** A stale unit
+test goes red on the next CI run; a stale instruction on a printed card is
+executed by a person, once, and the cost is the session. So when a defect is
+closed, sweep for the instruments built to observe it — cards, harnesses,
+manual checklists, anything whose expected reading was derived from the bug —
+before the sweep for stale prose.
+
+Corollary that made this safe to correct outright: `EMBBOT_SEWOUT_CARD.dst`
+lives under gitignored `debug_out/`, so no old build survives in a clone and the
+card can only be one that is rebuilt with today's codec. Where an instrument's
+artefact is generated rather than committed, the old behaviour is genuinely
+unreachable and the instructions should simply be inverted — no compatibility
+branch to maintain.
