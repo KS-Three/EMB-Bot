@@ -147,7 +147,14 @@ def test_debug_artifact_written_when_debug_dir_set(tmp_path):
     assert f"{result.confidence:.4f}" in text
     for key, value in result.signals.items():
         assert key in text
-        assert f"{value:.6f}"[:10] in text
+        # Mirror `_write_debug`'s OWN rule rather than assuming every signal
+        # is a float. That isinstance branch has always been there; until
+        # `unique_color_mass_seed` (2026-09-14) no signal ever exercised it,
+        # so this loop's `f"{value:.6f}"` passed by coincidence. An int seed
+        # writes as `0`, not `0.000000`, and the dump is correct — the
+        # assertion was the thing that only knew about one kind of signal.
+        expected = f"{value:.6f}"[:10] if isinstance(value, float) else repr(value)
+        assert expected in text, f"{key}={value!r} not rendered as {expected!r}"
 
 
 def test_no_debug_artifact_without_debug_dir(tmp_path):
