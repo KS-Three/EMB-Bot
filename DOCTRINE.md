@@ -553,13 +553,15 @@ Moved verbatim 2026-08-28 — no section was rewritten in the move.
 
 - **A budget nothing checks is a preference — and when MASTER_SCOPE's hit,
   the reclaim is NOT a defect.** `MASTER_SCOPE.md` has stated *"Current state
-  ONLY, under an 800-line budget"* since it was split from DOCTRINE, with
-  `docs/scope/` and `docs/scope-history.md` as the two places overflow goes.
-  Nothing enforced it, and on 2026-09-07 it reached **799** — noticed only
-  because the next entry did not fit. `tests/test_scope_budget.py` (6) now
+  ONLY"* since it was split from DOCTRINE, with `docs/scope/` and
+  `docs/scope-history.md` as the two places overflow goes. Nothing enforced it,
+  and on 2026-09-07 it reached **799** of its then-800-LINE budget — noticed
+  only because the next entry did not fit. `tests/test_scope_budget.py` (7) now
   enforces it, and its failure message names the reclaim rather than just
   saying "too long", because a bare limit gets the next line squeezed in
-  somewhere else.
+  somewhere else. **The unit became WORDS on 2026-09-14** (Kent) — see "A
+  budget that cannot see its own file" below for why lines could not, and why
+  `wc -w` could not replace them either.
 
   **Where the lines actually are** (`tools/scope_budget.py`, measured
   2026-09-07): capability areas **255**, cross-cutting **141**, live defects
@@ -5135,3 +5137,210 @@ arms at fill ratio ≥ 0.222 all agree, the one miss sits at 0.003, and the
 corpus holds nothing in between. **"Only a fixture can do that" is a
 measurement, not an intuition.**
 *(`docs/registration-plateau-2026-09-11.md`, PR #463)*
+
+## The verdict was already computed — and then discarded at the last line (2026-09-14)
+
+Two silent-accept defects, both from the 2026-09-12 gap audit's §4, fixed in one
+pass. Neither needed a new measurement or a new instrument: in both, the right
+answer was already sitting in the process and was thrown away one line before it
+could act.
+
+- **`corpus_scorecard diff` PRINTED `grade: A -> B` and then returned 0.** Its
+  `hard_fail` was set only by a new block-severity finding, so the strongest
+  single-number signal the scorecard produces could not fail anything. The
+  2026-09-11 edge-cap flip took `logo_script_tires` **A 100 → B 88** with corpus
+  thread **+9.10%** and 11 of 14 fixtures moving; the tool said so, exited clean,
+  and every check stayed green. Fixed by acting on the letter `run_preflight`
+  already publishes — which is why this does not contradict the module's own
+  "don't invent pass/fail numbers today" caution. **The four cut points, the
+  letter, and the printed line all already existed; only the exit code was
+  missing.** *(measured 2026-09-12 — `docs/research-gap-audit-2026-09-12.md` §4.1)*
+- **The `.embproj` gate delegated to a promise the migrator did not keep.**
+  `parseProjectFile` waved any inner payload through on the strength of its own
+  comment — *"any version — the inner project's own migration handles forward
+  compat"* — while `migrateProject` matched `version === 2` **exactly** and turned
+  everything else into a blank `defaultProject()`. Reproduced on **3 of 4**
+  envelope shapes: a forward version, a `"2"` string stamp, and a record whose
+  version key never reached disk each imported as an EMPTY design **wearing the
+  customer's own file name**, reported as a successful load.
+  *(measured 2026-09-14 — `app/src/lib/projectFile.spec.js`)*
+
+**A gate and the function it delegates to must share ONE recognizer.** Two
+separate tests of the same question drift, and the drift is invisible from inside
+either file — each looks correct on its own. Here the gate was the more permissive
+of the two, so the disagreement did not reject anything; it manufactured blanks.
+The fix is a single exported `looksLikeProject` both branch on, not a second
+condition kept in sync by comment.
+
+**Of the three possible outcomes, the middle one is the worst.** Rejecting the
+file tells the customer to go find another copy. Loading it keeps their work.
+Accepting it *blank* tells them their design is gone **and** their file is fine —
+it destroys the information needed to recover. A gate with somewhere to report an
+error must never fall back to the recoverable-looking empty value.
+
+**Method, and the trap inside the fix: mutation-test the ACTION, not just the
+predicate.** The first cut of the grade tests exercised `_grade_fell` alone. All
+four passed with `hard_fail = True` deleted — the guard computed the fall
+perfectly and changed nothing, which is the original defect moved up one layer.
+Only a test driving the real `diff()` and asserting its **exit code** (with
+`_score_one` stubbed, so no pipeline runs) catches that. Same shape as the
+`test_machine_wire.py` "first declaration wins" miss on 2026-09-13: a guard's
+first draft tends to reproduce the bug it was written for, so mutate the fix and
+watch the test go red before believing it.
+*(`digitizer/tests/test_corpus_scorecard.py`, `app/src/lib/project.spec.js`)*
+
+## Three caveats rescued from closed defects, so compaction cannot drop them (2026-09-14)
+
+`MASTER_SCOPE.md`'s "Closed — kept numbered" list is by its own header *"pointers,
+not status"*, but three entries had grown live caveats that would have died in the
+next compaction. Standing content belongs here; the list keeps the pointer.
+
+- **Closed defect 3 — "14 jump-trims on an 80 mm design", RETIRED 2026-09-01
+  (Kent) as UNREPRODUCIBLE.** The entry never named the design and its pointer
+  carried none, so the number was never checkable. A 2026-08-31 repro (two
+  fixtures × three fill variants, three trim readings each) found nothing near 14
+  and nothing variant-invariant. **Do NOT read those repro readings as a
+  regression** — without the original design or metric they are not comparable to
+  14, and making that comparison is the specific mistake the retired entry existed
+  to prevent. The live concern moved to **defect 4**, which supports it
+  independently and carries a real 80 mm datum.
+- **Closed defect 16 — the re-snap mechanism, RESOLVED 2026-08-31.**
+  `rehome_resnapped_regions` fixed one source, and on the corpus every spool now
+  sews exactly once on both routes (17 → 14 blocks). **The SYMPTOM is not fully
+  gone: defect 18 is a second, independent mechanism.** Closing 16 does not close
+  the symptom, and reading it that way would retire a live defect.
+- **Closed defect 17 — `borders_last`, FIXED and DEFAULT ON 2026-09-01 (Kent's
+  flip ruling, PR #302).** Repro ring 0.0% → 54.5% with stitch count unchanged.
+  **Standing follow-up:** of eight golden keys one moves — the one already
+  deselected in CI for platform numerics — and its ubuntu re-capture is still
+  owed. Found on cloth by the first sew-out.
+
+## A budget that cannot see its own file — and the metric that nearly replaced it (2026-09-14)
+
+`MASTER_SCOPE.md` was capped at **800 lines** from 2026-08-14. Kent replaced it
+with **27,000 words** on 2026-09-14. Both halves of that are worth keeping,
+because the second one is a trap that almost shipped inside the fix for the
+first.
+
+**The line budget could not see content, in either direction.** The 2026-09-14
+correction pass — which fixed five false sew-out claims — **removed 181 words
+and 1,208 characters while ADDING 45 lines** (801 → 846), because the text it
+replaced sat on very long lines and the replacement wrapped at the file's own
+median width of 76. Meanwhile the file holds a single **23,638-character**
+line: 13.5% of its characters, counted as 1 of 801, with nine more over 3,000.
+So a section could be genuinely compacted and still blow the budget, while 23 KB
+of prose hid behind one line.
+
+**The incentive ran the wrong way, which is the part that matters.** The
+cheapest way to obey a line budget is to join paragraphs onto single long lines:
+no content saved, every future diff becomes a whole-paragraph rewrite, and
+growth is hidden from the very number meant to catch it. A metric you satisfy by
+reformatting is not measuring the thing it names — the gap audit's own pattern 3
+(*the counter and the sentence measure different quantities*) landing on the
+status file that reported that pattern.
+
+**Then the replacement nearly repeated it.** The new rule was first written as
+`wc -w MASTER_SCOPE.md`, and **`wc -w` is locale-dependent on this file**:
+26,381 words under `C`/`POSIX`/an uninstalled `en_US.UTF-8`, against **27,289**
+under `C.UTF-8` — a 908-word, 3.4% gap, because the C locale mis-splits the
+em-dashes, arrows and `×` this document is full of. Cloud containers here run
+with `LANG` unset, so a session would have read 26,381 where Kent's box read
+27,289. **A budget that answers differently depending on who asks is not a
+budget.** `awk '{n+=NF} END{print n}'` returns the same 27,289 under all four
+locales and is what the rule now specifies; `wc -m` drifts the same way and is
+out for the same reason.
+
+**The general rule: before adopting a measurement, run it under a different
+environment than the one you wrote it in.** Both failures here are the same
+shape one level apart — a number that looks authoritative and is actually
+reporting a property of its formatting or its locale rather than of the thing
+being measured.
+
+## The browser lettering lane tied nothing at all, and the dossier mispriced it 2.7× (2026-09-14)
+
+**Zero tie/lock records existed anywhere in `src/`** until this date — the only
+`lock`/`tie` match in the whole browser lane was the brand name "Baby Lock" in a
+`garments.js` comment — while `digitizer_core` has always tied every block
+**unconditionally** (`stitches.apply_ties`, no config flag on any path to it).
+Not a technique the lanes disagreed about: a parity gap, where a lettering file
+exported from the Studio could start or end its thread with nothing holding it.
+Ported 2026-09-14 as `ties: true`, **default OFF**, byte-identical to
+`origin/main` on 85/85 fonts with the flag off.
+*(measured 2026-09-14 — `docs/lettering-ties-2026-09-14.md`)*
+
+**The gap audit's "+2.93% stitches" does not survive, and a flip would have been
+decided on it.** Measured across all 85 shipped fonts: **+3.31%** on a
+4-character string, **+8.00%** at 18 characters, **+7.65%/+7.66%** on two and
+three lines. The dossier figure is reproducible only on a very short word, and
+realistic customer text costs ~2.7× it. **A tie is a fixed 4 stitches and ties
+number `2 + 2×trims`, so the percentage is a statement about the design's
+FRAGMENTATION, not about ties** — `noble` pays +47.98% because it sews 79 trims
+on 18 characters, which is the phase-3 fragmentation defect becoming visible
+rather than a tie problem. Quote the per-text numbers, never a single percentage.
+
+**"Zero added trims" reproduced exactly at every length, and it is structural
+rather than lucky:** a tie bounces between a point the needle already occupies
+and a point one leg into the shape, so it can introduce no travel long enough to
+cut. That is the half of a dossier claim worth trusting — the one with a
+mechanism behind it.
+
+**A constant is not guarded just because a wire test exists.**
+`test_machine_wire.py` was written 2026-09-13 to catch exactly this port's kind
+of risk, and it could not see either new constant: its Python pattern anchored
+end-of-line immediately after the number, so **36 of `machine.py`'s constants
+were invisible for carrying the trailing inline comment that is this codebase's
+house style** — both tie constants and the entire `APPLIQUE_*` block. The claim
+"the wire test covers this automatically" was made, then mutation-tested, and
+was false. Fixed; shared count 18 → 21.
+
+**What that blind spot was hiding: the two `UNDERLAY_INSET_MM` declarations hold
+different numbers** — `src/satinfont.js` 0.4, `machine.py` 1.0. A **name
+collision**, not drift —
+the browser value is a satin column's contour-underlay inset *per side*, the
+Python one a region's edge-walk inset — so it is pinned in
+`DELIBERATE_DIVERGENCE`, not reconciled. **Reconciling it would be inventing a
+physical constant:** `docs/trade-knowledge-2026-09-13.md` §3 measured that
+Wilcom publishes no underlay inset anywhere on the page, two extraction passes
+with explicit negatives, so neither value has vendor backing. Renaming one side
+is the honest fix and is a separate change. Gate 1 owns the number.
+
+**And the expensive rule needed an export to be testable at all.** `tieRun`'s
+overshoot guard (`leg = min(TIE_STITCH_MM, d)`) only fires on a path shorter
+than one leg, which no ordinary lettering fixture produces — deleting it passed
+the entire 82-test suite. It is the rule Python paid for with a smoke run that
+pushed a design's bounding box 0.8 mm outside its own artwork, so it was made
+reachable directly rather than left to a fixture wandering into it.
+**Third time in one session that a guard's first draft could not see the thing
+it was written for.** When a rule only triggers at a boundary, test the boundary
+directly; a corpus does not owe you an edge case.
+
+## When a fix lands, sweep the INSTRUMENTS built to test it (2026-09-14)
+
+The DST axis and colour-change fixes landed 2026-09-08 and the code was swept
+for stale claims twice (#477's four false blockers; this session's §3 pass). Both
+sweeps looked at source and status docs. **Neither looked at the sew-out card**,
+which is not documentation — it is the physical instrument gate 1 waits on.
+
+Its pre-flight panel table still told the reader that a sideways ~88 x 66 mm
+preview was *expected*, that an upright one was *"surprising"*, and to **"hoop
+sideways or rotate 90 on the panel"**. After 09-08 those readings are backwards,
+and acting on that row would have sewn the entire card a quarter turn out —
+spending the one hooping the whole gate is waiting for, to test a format
+question already settled in software. Its verification section likewise still
+named `pyembroidery` (replaced by `pystitch` 2026-08-11) and declared the card
+"the hardware test of that dispute". Corrected 2026-09-14.
+
+**The general rule: a fix invalidates the tests written against the broken
+behaviour, and a test that runs on hardware cannot fail loudly.** A stale unit
+test goes red on the next CI run; a stale instruction on a printed card is
+executed by a person, once, and the cost is the session. So when a defect is
+closed, sweep for the instruments built to observe it — cards, harnesses,
+manual checklists, anything whose expected reading was derived from the bug —
+before the sweep for stale prose.
+
+Corollary that made this safe to correct outright: `EMBBOT_SEWOUT_CARD.dst`
+lives under gitignored `debug_out/`, so no old build survives in a clone and the
+card can only be one that is rebuilt with today's codec. Where an instrument's
+artefact is generated rather than committed, the old behaviour is genuinely
+unreachable and the instructions should simply be inverted — no compatibility
+branch to maintain.

@@ -1271,3 +1271,130 @@ test("engine parity: travel records never widen a design, so the JS and Python s
   const lt = DG.buildLetteringDesign(font, "A B", { garment: { widthIn: 5, heightIn: 2.25 }, pxPerMm: 8, targetWidthMm: 40 });
   assert.deepStrictEqual(span(lt.stitches, withTravel), span(lt.stitches, sewnOnly));
 });
+
+// ---- Lock stitches on the lettering lane (ported 2026-09-14) ----------------
+// Until this port ZERO tie/lock records existed anywhere in src/ — the only
+// lock/tie match in the whole browser lane was the brand name "Baby Lock" in a
+// garments.js comment — while the Python lane has always tied every block
+// unconditionally (stitches.apply_ties, no config flag). A lettering file
+// exported from the Studio could start or end its thread with nothing holding
+// it. Default OFF: it changes every .dst/.pes a customer exports, so the flip
+// is Kent's, and with the flag off output must be byte-identical to before.
+
+const _tieFont = () => JSON.parse(fs.readFileSync(__dirname + "/../test/fixtures/fonts/geneva_simple.json", "utf8"));
+const _tieBase = { garment: { widthIn: 5, heightIn: 2.25 }, pxPerMm: 8 };
+const _fingerprint = (d) => d.stitches.map((s) => `${s.x},${s.y},${s.type}`).join(";");
+const _count = (d, k) => d.stitches.filter((s) => s.type === k).length;
+
+test("ties: OFF by default, and the flag off is byte-identical to omitting it", () => {
+  const font = _tieFont();
+  const omitted = DG.buildLetteringDesign(font, "Fritsch's", { ..._tieBase });
+  const explicitOff = DG.buildLetteringDesign(font, "Fritsch's", { ..._tieBase, ties: false });
+  assert.strictEqual(_fingerprint(omitted), _fingerprint(explicitOff));
+  assert.strictEqual((omitted._debug || {}).nTies || 0, 0, "no ties emitted with the flag off");
+});
+
+test("ties: ON adds lock stitches and NOT ONE trim", () => {
+  // The half of the dossier's estimate that reproduced exactly. A tie is sewn
+  // thread at a point the needle already occupies, so it can never create a
+  // travel long enough to cut — if this ever fails, ties are being emitted
+  // somewhere other than on top of an existing penetration.
+  const font = _tieFont();
+  const off = DG.buildLetteringDesign(font, "Fritsch's Stitches", { ..._tieBase, ties: false });
+  const on = DG.buildLetteringDesign(font, "Fritsch's Stitches", { ..._tieBase, ties: true });
+  assert.ok(_count(on, "stitch") > _count(off, "stitch"), "ties add stitches");
+  assert.strictEqual(_count(on, "trim"), _count(off, "trim"), "ties must add no trims");
+  assert.strictEqual(_count(on, "jump"), _count(off, "jump"), "ties must add no jumps");
+  assert.strictEqual(_count(on, "color"), _count(off, "color"), "ties must add no colour changes");
+});
+
+test("ties: the count follows apply_ties' own rule — one in at the start, one either side of every cut", () => {
+  // Python ties the first run, both sides of every trim, and the last run:
+  // 2 + 2*trims. Pinning the RULE rather than a number, so a font whose
+  // fragmentation changes does not silently rewrite the expectation.
+  const font = _tieFont();
+  for (const text of ["A", "AB", "Fritsch's Stitches"]) {
+    const on = DG.buildLetteringDesign(font, text, { ..._tieBase, ties: true });
+    const trims = _count(on, "trim");
+    assert.strictEqual(on._debug.nTies, 2 + 2 * trims, `"${text}": ${on._debug.nTies} ties against ${trims} trims`);
+  }
+});
+
+test("ties: each lock costs exactly TIE_STITCHES+1 stitches, so the bill is arithmetic", () => {
+  const font = _tieFont();
+  const off = DG.buildLetteringDesign(font, "Fritsch's Stitches", { ..._tieBase, ties: false });
+  const on = DG.buildLetteringDesign(font, "Fritsch's Stitches", { ..._tieBase, ties: true });
+  // tieRun returns [at, inner, at, inner, at] for TIE_STITCHES=3 and the
+  // leading `at` is dropped (the needle is already standing there), so 4.
+  assert.strictEqual(_count(on, "stitch") - _count(off, "stitch"), on._debug.nTies * 4);
+});
+
+test("ties: a lock never reaches PAST the point it is laid toward", () => {
+  // Python's tie_run earns this the hard way — its first smoke run put the
+  // design's bounding box 0.8 mm outside its own artwork, and on a garment an
+  // overshooting tie reads as a stray stitch someone has to trim off. So the
+  // tied design's extents must not grow beyond the untied one's.
+  const font = _tieFont();
+  const box = (d) => {
+    const pts = d.stitches.filter((s) => s.type === "stitch");
+    return { x0: Math.min(...pts.map((p) => p.x)), x1: Math.max(...pts.map((p) => p.x)),
+             y0: Math.min(...pts.map((p) => p.y)), y1: Math.max(...pts.map((p) => p.y)) };
+  };
+  for (const text of ["A", "Fritsch's Stitches"]) {
+    const a = box(DG.buildLetteringDesign(font, text, { ..._tieBase, ties: false }));
+    const b = box(DG.buildLetteringDesign(font, text, { ..._tieBase, ties: true }));
+    assert.ok(b.x0 >= a.x0 && b.y0 >= a.y0 && b.x1 <= a.x1 && b.y1 <= a.y1,
+      `"${text}": tied box ${JSON.stringify(b)} escaped untied box ${JSON.stringify(a)}`);
+  }
+});
+
+test("ties: every lock lands on a penetration that was already there", () => {
+  // The structural claim behind "no added trims": a tie bounces between an
+  // existing point and a point INTO the shape, so it introduces no new travel.
+  // Every tie stitch must therefore sit within one leg (0.8mm, ~8 DST units at
+  // this scale) of its anchor — checked as "no tie stitch is a long move".
+  const font = _tieFont();
+  const on = DG.buildLetteringDesign(font, "Fritsch's Stitches", { ..._tieBase, ties: true });
+  const off = DG.buildLetteringDesign(font, "Fritsch's Stitches", { ..._tieBase, ties: false });
+  const longest = (d) => {
+    let m = 0, prev = null;
+    for (const s of d.stitches) {
+      if (s.type === "stitch" && prev) m = Math.max(m, Math.hypot(s.x - prev.x, s.y - prev.y));
+      prev = (s.type === "stitch" || s.type === "jump") ? s : prev;
+    }
+    return m;
+  };
+  assert.ok(longest(on) <= longest(off) + 1e-9,
+    `ties introduced a longer sewn move (${longest(on)}) than the untied design had (${longest(off)})`);
+});
+
+test("tieRun: on a path SHORTER than one leg, the lock stops at the far point", () => {
+  // The guard `leg = min(TIE_STITCH_MM, d)`. Unreachable through
+  // buildLetteringDesign on ordinary text — every run there opens with a cross
+  // wider than 0.8 mm — so a mutation deleting the min() passed the entire
+  // suite. Tested directly instead of hoping a fixture wanders into it.
+  const at = { x: 0, y: 0 };
+  const near = { x: 0.3, y: 0 };            // 0.3 mm: shorter than the 0.8 leg
+  const pts = DG.tieRun(at, near);
+  for (const p of pts) {
+    assert.ok(p.x <= near.x + 1e-9, `tie reached x=${p.x}, past the point it was laid toward (${near.x})`);
+  }
+  assert.ok(pts.some((p) => Math.abs(p.x - near.x) < 1e-9), "the lock should reach the far point exactly");
+});
+
+test("tieRun: on a long path the leg is exactly TIE_STITCH_MM, and it starts and ends at the anchor", () => {
+  const at = { x: 0, y: 0 };
+  const pts = DG.tieRun(at, { x: 100, y: 0 });
+  assert.strictEqual(pts.length, DG.TIE_STITCHES + 2, "3 legs bouncing between two points, closing back at the anchor");
+  assert.deepStrictEqual(pts[0], at);
+  assert.deepStrictEqual(pts[pts.length - 1], at);
+  const inner = pts[1];
+  assert.ok(Math.abs(inner.x - DG.TIE_STITCH_MM) < 1e-9, `leg is ${inner.x}, expected ${DG.TIE_STITCH_MM}`);
+  // it really bounces: odd indices are the inner point, even ones the anchor
+  pts.forEach((p, i) => assert.deepStrictEqual(p, i % 2 === 0 ? at : inner, `point ${i}`));
+});
+
+test("tieRun: a zero-length path yields no bounce rather than a NaN direction", () => {
+  const at = { x: 5, y: 5 };
+  assert.deepStrictEqual(DG.tieRun(at, { x: 5, y: 5 }), [at]);
+});

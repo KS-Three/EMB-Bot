@@ -8,7 +8,7 @@
 // Pure string-in/string-out on purpose: the file-picker/download plumbing
 // lives in App.svelte + download.js, so everything here is unit-testable.
 
-import { migrateProject } from "./project.js";
+import { migrateProject, looksLikeProject } from "./project.js";
 
 export const PROJECT_FILE_FORMAT = "embproj";
 export const PROJECT_FILE_VERSION = 1;
@@ -50,8 +50,19 @@ export function projectFileName(name) {
 //   1. the .embproj envelope written by buildProjectFile (any version —
 //      the inner project's own migration handles forward compat), and
 //   2. a bare project record (a raw embstudio:p:<id> value hand-rescued
-//      from localStorage), recognized by the same markers migrateProject
-//      keys on: v2's version/elements, or v1's mode/text/fontKey.
+//      from localStorage).
+//
+// BOTH shapes gate on the same `looksLikeProject` the migrator itself
+// branches on, and that is the whole point (2026-09-14). Until then the two
+// disagreed: the envelope branch waved through any inner payload on the
+// strength of the "handles forward compat" promise in the line above, which
+// migrateProject did not keep — it matched `version === 2` exactly and blanked
+// the rest. So an envelope wrapping a v3 save, a `"2"` string stamp, or a
+// record that lost its version key imported as an EMPTY design carrying the
+// customer's own file name, reported as success. Sharing the recognizer is
+// what stops the gate and the migrator drifting apart again; the migrator now
+// also recovers those three instead of discarding them, so this rejection path
+// is reached only by input with no design in it at all.
 export function parseProjectFile(text) {
   let parsed;
   try {
@@ -62,19 +73,13 @@ export function parseProjectFile(text) {
   if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return null;
 
   if (parsed.format === PROJECT_FILE_FORMAT) {
-    if (!parsed.project || typeof parsed.project !== "object" || Array.isArray(parsed.project)) return null;
+    if (!looksLikeProject(parsed.project)) return null;
     const name =
       typeof parsed.name === "string" && parsed.name.trim() ? parsed.name.trim() : "Imported design";
     return { name, project: migrateProject(parsed.project) };
   }
 
-  const looksLikeBareProject =
-    parsed.version === 2 ||
-    Array.isArray(parsed.elements) ||
-    "mode" in parsed ||
-    "text" in parsed ||
-    "fontKey" in parsed;
-  if (looksLikeBareProject) {
+  if (looksLikeProject(parsed)) {
     return { name: "Imported design", project: migrateProject(parsed) };
   }
 

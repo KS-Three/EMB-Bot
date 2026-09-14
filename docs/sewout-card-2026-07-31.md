@@ -2,6 +2,9 @@
 
 **One hooping. Six questions. Print this page and take it to the machine.**
 
+*(Block 1 answers two of them since 2026-09-14: the lock leg, and whether the
+browser lettering lane should tie by default. Same two bars, same tug.)*
+
 *(A seventh — block 7, FLOAT CLEARANCE — is drafted at the bottom but is
 NOT in the built file. It is the one measurement `chain_links` waits on.
 Read it before the next machine session; do not expect to sew it from the
@@ -23,16 +26,32 @@ Fabric: the constants under test are tuned for the default preset
 Load the file, cap driver OFF, rotation untouched, and read the panel
 **before sewing**:
 
+**INVERTED 2026-09-14 — the old table would have cost you the hooping.** Until
+today this read *"~88 x 66 mm, preview sideways → transposition confirmed
+(expected). **Hoop sideways or rotate 90 on the panel**"*, and called an upright
+preview *"surprising"*. Both halves of the codec were fixed on **2026-09-08**
+(X/Y nibbles now match `pystitch.DstWriter.encode_record` bit-for-bit; the
+colour-change byte and terminal `end` sentinel corrected the same week), so
+those readings are backwards — and acting on the old row by rotating on the
+panel would sew the entire card a quarter turn out.
+
+**There is no old file to be careful about.** `EMBBOT_SEWOUT_CARD.dst` lives in
+`digitizer/debug_out/`, which is gitignored and absent from a fresh clone, so
+the card you sew can only be one you rebuild (commands at the bottom) — and a
+rebuild today runs the fixed codec. Rebuild first; do not hunt for an old copy.
+
 | Panel reading | Meaning |
 |---|---|
-| ~**66 x 88 mm**, preview upright like the diagram below | Machine reads EMB-Bot's convention — *surprising, report back* |
-| ~**88 x 66 mm**, preview sideways | Transposition confirmed on hardware (expected). Hoop sideways or rotate 90 on the panel and note which way |
-| Color count **6** | Machine honors EMB-Bot's color-change byte (0x43) |
-| Color count **0** | Standard reading confirmed — the card will sew straight through with **no color stops**. Fine: run it all in one dark thread, blocks identified by position |
+| ~**66 x 96 mm**, preview upright like the diagram below | **Expected.** The machine and EMB-Bot agree, as the software cross-read says they should |
+| ~**96 x 66 mm**, preview sideways | **Report back before sewing** — a rebuilt card should not do this. Either the file predates 2026-09-08 (rebuild it) or the fix does not hold on real hardware, which is a finding worth more than the card |
+| Color count **6** | **Expected** — six colour changes across seven blocks |
+| Color count **0** | Report back. The 0x43-vs-0xC3 colour byte was corrected 2026-09-08; a rebuilt card showing no stops means that fix does not hold on this machine. Sewable anyway: run it in one dark thread, blocks identified by position |
 
-(Cross-check already done in software: pyembroidery, a standards reader,
-decodes this exact file as 87.8 x 66.0 with 0 color changes — the known axis
-dispute, `docs/dst-axis-verdict-2026-07-31.md`. Not a defect in the card.)
+(Cross-check in software: `pystitch` — a standards reader, and `pyembroidery`'s
+replacement here since 2026-08-11 — decodes a rebuilt card upright with its
+colour changes intact. The 2026-07-31 axis dispute
+(`docs/dst-axis-verdict-2026-07-31.md`) is **settled in software** and is no
+longer something this card is spending a hooping to test.)
 
 ## The card, as EMB-Bot previews it (sew order top to bottom)
 
@@ -79,8 +98,27 @@ holds under a firm tug and does not read as a lump or a dark knot at the end
 of the column.
 
 > **Decision: if B holds without a visible lump -> change `TIE_STITCH_MM` to
-> 0.45 in `digitizer/digitizer_core/machine.py`. If B pulls out, 0.8 stands.
-> If both hold and neither lumps, take 0.45 (less thread in the lock).**
+> 0.45 in BOTH `digitizer/digitizer_core/machine.py` AND `src/digitize.js`.
+> If B pulls out, 0.8 stands. If both hold and neither lumps, take 0.45 (less
+> thread in the lock).**
+
+**Two files since 2026-09-14, not one.** This decision line named only
+`machine.py` because the browser lane had no lock stitches at all — zero
+tie/lock records existed anywhere in `src/`. The lettering port gave it a
+second copy of `TIE_STITCH_MM`, so changing one file and not the other is now
+exactly the cross-language drift corpus law 26 cost a month to. Guarded:
+`digitizer/tests/test_machine_wire.py` fails if the two stop agreeing, so a
+half-applied decision here is caught by the `digitizer` CI job rather than by
+someone noticing.
+
+**This block now also decides a SECOND question — the browser default.** Ties
+ship OFF in the lettering lane (`ties: true` opts in) precisely because the leg
+under test here has never met cloth on either lane. Measured cost of turning
+them on, all 85 shipped fonts: **+3.31%** stitches on a 4-character word,
+**+8.00%** on `Fritsch's Stitches`, **+7.7%** on two and three lines, and
+**zero added trims** at every length. So the tug test answers both "is 0.8 the
+right leg" and "is a lock worth ~8% of the thread on a lettering job."
+*(`docs/lettering-ties-2026-09-14.md`)*
 
 ## 2 — FILL DENSITY / INTERLEAVE (blue)
 
@@ -292,9 +330,23 @@ only counts a connection as transport when it crosses a shape boundary with
 - Browser round-trip (`tools/sewout_bridge.mjs`): 3,326 stitches encoded =
   3,326 decoded; 4 color changes; 66.0 x 87.8 mm extents both directions;
   preview rendered from the actual DST bytes and inspected.
-- pyembroidery cross-read: 87.8 x 66.0 (axes swapped) and 0 color changes —
-  expected transposition + 0x43 color byte, per the DST verdict memo. Left
-  as-is deliberately; this card is also the hardware test of that dispute.
+  *(These are the 2026-07-31 build's numbers; the header records a 2026-09-03
+  rebuild at 5,048 stitches / 66.0 x 96.0 mm which was never re-verified here.
+  Re-run the two commands below before the machine session and replace this
+  line — do not carry an old count to the machine.)*
+- **THE DST AXIS DISPUTE IS SETTLED AND IS NO LONGER THIS CARD'S JOB
+  (corrected 2026-09-14).** This section used to read *"pyembroidery
+  cross-read: 87.8 x 66.0 (axes swapped) and 0 color changes — expected
+  transposition + 0x43 color byte … this card is also the hardware test of
+  that dispute."* Both halves were fixed in software on **2026-09-08**: the
+  codec's X/Y nibbles now match `pystitch.DstWriter.encode_record`
+  bit-for-bit, the crossval DST control reads `identity`, and the colour-change
+  byte and terminal `end` sentinel were corrected the same week. `pyembroidery`
+  is not a dependency any more either — `pystitch` replaced it 2026-08-11.
+  **Spending a hooping to re-test a settled format question would waste the
+  session**, which is the specific cost this correction exists to avoid; a
+  rebuilt card should cross-read with matching extents and its real colour
+  changes.
 - Lock-bar tie legs measured in the emitted points: 0.800 / 0.450 mm.
 - Interleave offset measured between square C's passes: 0.20 mm.
 

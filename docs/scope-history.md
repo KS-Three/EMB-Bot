@@ -12641,3 +12641,79 @@ arm and 1.0312 → 1.0313 on the engine arm, against the geometric bound
 
 *(measured 2026-09-11 — plan
 `docs/superpowers/plans/2026-09-11-wide-columns-in-lettering.md`)*
+
+
+## 2026-09-14 — CI job durations re-measured; the "10 to 42 minutes" line is refuted
+
+Measured from the public Actions API (unauthenticated, HTTP 200 — the repo is
+public), last 70 completed workflow runs, **successful jobs only** so a job that
+died early cannot flatter the floor.
+
+| job | n | min | p50 | p90 | max |
+|---|---|---|---|---|---|
+| `digitizer` | 42 | 31.2 | 51.0 | 55.1 | 59.0 |
+| `art-fidelity-baseline` | 20 | 6.3 | 8.6 | 11.2 | 11.5 |
+| `studio-e2e` | 63 | 4.1 | 5.5 | 5.7 | 6.0 |
+| `studio` | 66 | 0.6 | 0.9 | 0.9 | 2.0 |
+| `engine` | 66 | 0.4 | 0.5 | 0.6 | 0.7 |
+
+`digitizer` daily medians: **50.6** (09-12, n=23), **51.7** (09-13, n=18),
+**53.8** (09-14, n=1). Still climbing.
+
+**32 of 42 (76%) exceed the 42-minute ceiling MASTER_SCOPE documented**, and the
+minimum observed is 31.2 — above the old range's midpoint. That line is now
+corrected in place.
+
+**Where this sits against the two prior readings, which disagree with each
+other.** CLAUDE.md's 2026-09-12 figures (n=36 successful: min 32.7, p50 49.7,
+p90 54.6, max 55.4) agree closely with this one. The 2026-09-12 gap audit's
+§3 figures (n=88: min 22.4, p50 40.8, p90 53.8, max 72.1) do not — most likely
+a wider date window pulling in older, faster runs at the bottom. **This
+measurement corroborates CLAUDE.md's and does not reproduce the audit's**, so
+the audit's row should not be quoted as the live number.
+
+Second finding, not previously tracked: **`studio-e2e` has roughly doubled**,
+p50 5.5 against the p50 2.7 CLAUDE.md documents. Small in absolute terms, but it
+is drifting in the same direction as `digitizer` and nothing was watching it.
+
+*(measured 2026-09-14 — `/repos/KS-Three/EMB-Bot/actions/runs/<id>/jobs`)*
+
+## 2026-09-14 — MASTER_SCOPE's 800-line budget does not measure its content
+
+Found while acting on Kent's "fix the books" call, trying to bring the file back
+under budget after correcting five false sew-out claims.
+
+**The measurement.** `MASTER_SCOPE.md` before and after that correction pass:
+
+| | lines | non-blank | words | chars | longest line |
+|---|---|---|---|---|---|
+| `origin/main` (038d424) | 801 | 662 | 27,470 | 174,851 | 23,638 |
+| after the corrections | 833 | 688 | **27,145** | **172,762** | 23,638 |
+
+**The pass REMOVED 325 words and 2,089 characters and ADDED 32 lines.** Both
+directions at once, because the text replaced sat on very long lines and the
+replacement is wrapped at the file's own median width of 76 characters.
+
+**The file contains a single 23,638-character line** (L576, the 2026-09-08
+quality review) — 13.5% of the whole document's characters, counted as 1 of 801
+lines. Nine lines exceed 3,000 characters; 77 exceed 120.
+
+**So the budget is unenforceable in both directions.** A section can be genuinely
+compacted and still blow it, while 23 KB of prose hides behind one line. Worse,
+the rule's incentive is backwards: the cheapest way to obey it is to join
+paragraphs onto single long lines, which costs nothing in content, makes every
+future diff a whole-paragraph rewrite, and hides growth from the very number
+meant to catch it.
+
+This is the audit's own pattern 3 — *the counter and the sentence measure
+different quantities* — applied to the status file that reported that pattern.
+
+**Not fixed here: the budget rule is Kent's** (`MASTER_SCOPE.md`, "The rules that
+keep this file current", rule 4: *"Budget: 800 lines. Over it, compact before
+adding. The number has teeth"*). Recommendation put to him 2026-09-14: measure
+the budget in **words** (~27,000, which is where it sits today) or characters,
+not lines, and leave wrapping alone. Either is countable in one command and
+neither can be gamed by reflowing.
+
+*(measured 2026-09-14 — `git show origin/main:MASTER_SCOPE.md` against the
+working tree)*

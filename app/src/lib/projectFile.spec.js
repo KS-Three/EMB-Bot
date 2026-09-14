@@ -90,6 +90,47 @@ test("parseProjectFile rejects an embproj envelope whose project payload is miss
   expect(parseProjectFile(JSON.stringify({ format: "embproj", version: 1, project: [1] }))).toBeNull();
 });
 
+// --- the silent-blank class: an accepted import that lost the design ------
+// Found 2026-09-14 (the gap audit's finding 4), reproduced on 3 of 4 envelope
+// shapes before the fix. The envelope gate accepted ANY inner payload on the
+// promise that "the inner project's own migration handles forward compat";
+// migrateProject matched `version === 2` exactly and blanked everything else.
+// The result was the worst of the three possible outcomes -- not an error, not
+// the design, but an empty design wearing the customer's own file name.
+// Both halves now key on the same recognizer, so they cannot drift apart.
+
+const realProject = (version) => {
+  const p = defaultProject();
+  const el = p.elements[0];
+  const withText = updateElement(p, el.id, { text: "FRITSCH'S STITCHES" });
+  return version === undefined ? (({ version: _v, ...rest }) => rest)(withText) : { ...withText, version };
+};
+
+test("an .embproj carrying a FORWARD-version project imports its design, not a blank", () => {
+  const parsed = parseProjectFile(buildProjectFile(realProject(3), "Kent's Hat #2"));
+  expect(parsed).not.toBeNull();
+  expect(parsed.name).toBe("Kent's Hat #2");
+  expect(parsed.project.elements[0].text).toBe("FRITSCH'S STITCHES");
+});
+
+test("an .embproj whose version stamp is the string \"2\" imports its design", () => {
+  const parsed = parseProjectFile(buildProjectFile(realProject("2"), "Kent's Hat #2"));
+  expect(parsed.project.elements[0].text).toBe("FRITSCH'S STITCHES");
+});
+
+test("an .embproj whose project lost its version key imports its design", () => {
+  const parsed = parseProjectFile(buildProjectFile(realProject(undefined), "Kent's Hat #2"));
+  expect(parsed.project.elements[0].text).toBe("FRITSCH'S STITCHES");
+});
+
+test("an .embproj envelope wrapping a payload with no design in it is REJECTED, not blanked", () => {
+  // The remaining half of the same fix: when there is genuinely nothing to
+  // recover, the import path has somewhere to report an error, so it must
+  // reject rather than hand back the blank migrateProject would produce.
+  expect(parseProjectFile(JSON.stringify({ format: "embproj", version: 1, project: { foo: 1 } }))).toBeNull();
+  expect(parseProjectFile(JSON.stringify({ format: "embproj", version: 1, project: {} }))).toBeNull();
+});
+
 // --- bare-record leniency ------------------------------------------------
 
 test("parseProjectFile accepts a bare v2 project record (hand-rescued from localStorage)", () => {

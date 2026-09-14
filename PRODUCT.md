@@ -41,7 +41,7 @@ row 7's sidecar count grew from 55 to 85 while staying one-per-font. Rows 2, 4,
 | 4 | Basic shapes tool (circle / rect / heart / star) | ✅ Done | `app/src/lib/shapePresets.js` generators + `ShapePanel.svelte`, new `"shape"` element type riding the manual-draw lane (`shapesToRegions → buildQualityDesign`); all four kinds verified digitizing live 2026-08-11 (star-tip coverage pinned in vitest); recipe (`kind`+`params`) persists in `.embproj` |
 | 5 | Thread palette sweep (remaining Ink/Stitch `.gpl` brands) | ✅ Done | 68 brand charts in `tools/palettes/`, matching the policy-filtered count (brands from companies that sell embroidery machines/software are excluded on purpose) |
 | 6 | `.embproj` project file save/load | ✅ Done | `app/src/lib/projectFile.js` |
-| 7 | Font-license compliance (hard gate before first dollar) | ✅ Done (shipping posture) | Per-font research was done on every flagged case, and **every one of them was pulled** — `milli_marif_bold`, `tt_directors`, `tt_masters`, `dejavufont` by name, each with its reasoning, in the `PULLED` set in `tools/build-embf.mjs` (enforced in the build, not a note), plus all 13 ShareAlike fonts on Kent's 2026-08-04 call. **`milli_marif_bold` is the case to read:** it *had* an adapter's permission email and full OFL-1.1 text, and that was still not enough — nothing on file confirmed the grant covered commercial embroidery distribution, so it went. (Until 2026-09-08 this row cited that font's `src/fonts/milli_marif_bold.LICENSE.txt` as the evidence that research had been done. The research is what deleted that file, on 2026-08-04 — so the row gating the first dollar was offering a pulled font's removed sidecar as proof of compliance.) The "zero sidecars ship" gap is closed, and is now closed BY CONSTRUCTION rather than by a count: **85 fonts ship in `app/public/fonts/bin/` and 85 `.LICENSE.txt` sidecars ship beside them** (re-counted 2026-09-08; it was 55 when this row was written, so the invariant has held across a 30-font expansion). It is not a manual count any more — `test/font-license.test.js` asserts that *every shipped font's sidecar still resolves to its manifest `licenseId`*, and pins the two mislabels this project has actually hit (an NC/ND variant resolving to a permissive id, and the ALLOWED set widening silently); `test/embf-guard.test.js` guards the binary library. Both run in the `engine` CI job, which is required on `main`, so a font added without a sidecar or with a non-allowed licence fails the build rather than shipping. All license-flagged fonts were pulled from the build in the 2026-08-04 audit pass rather than kept; the remaining legal question only gates *restoring* pulled fonts (see "Known compliance risk"). |
+| 7 | Font-license compliance (hard gate before first dollar) | ✅ Done (shipping posture) | Per-font research was done on every flagged case, and **every one of them was pulled** — `milli_marif_bold`, `tt_directors`, `tt_masters`, `dejavufont` by name, each with its reasoning, in the `PULLED` set in `tools/build-embf.mjs` (enforced in the build, not a note), plus all 13 ShareAlike fonts on Kent's 2026-08-04 call. **`milli_marif_bold` is the case to read:** it *had* an adapter's permission email and full OFL-1.1 text, and that was still not enough — nothing on file confirmed the grant covered commercial embroidery distribution, so it went. (Until 2026-09-08 this row cited that font's `src/fonts/milli_marif_bold.LICENSE.txt` as the evidence that research had been done. The research is what deleted that file, on 2026-08-04 — so the row gating the first dollar was offering a pulled font's removed sidecar as proof of compliance.) The "zero sidecars ship" gap is closed, and is now closed BY CONSTRUCTION rather than by a count: **85 fonts ship as `.embf` in `bin/` and 85 `.LICENSE.txt` sidecars ship one directory UP, not beside them** — the binaries land in `src/fonts/bin/` (`BIN_DIR`, `tools/build-embf.mjs`) and the sidecars in `src/fonts/`, both served under `/fonts/` from `app/public/fonts/`, which is a generated, gitignored copy. (Re-counted 2026-09-08 and re-verified from the build script and `git ls-files` 2026-09-14; it was 55 when this row was written, so the 1:1 invariant has held across a 30-font expansion. This row said "beside them" until 2026-09-14 — the count was always right and the path never was, which is the kind of line that sends someone looking in an empty directory.) It is not a manual count any more — `test/font-license.test.js` asserts that *every shipped font's sidecar still resolves to its manifest `licenseId`*, and pins the two mislabels this project has actually hit (an NC/ND variant resolving to a permissive id, and the ALLOWED set widening silently); `test/embf-guard.test.js` guards the binary library. Both run in the `engine` CI job, which is required on `main`, so a font added without a sidecar or with a non-allowed licence fails the build rather than shipping. All license-flagged fonts were pulled from the build in the 2026-08-04 audit pass rather than kept; the remaining legal question only gates *restoring* pulled fonts (see "Known compliance risk"). |
 
 ## Launch posture (decided)
 
@@ -54,7 +54,7 @@ row 7's sidecar count grew from 55 to 85 while staying one-per-font. Rows 2, 4,
   rejected — breaks the local-first, no-account promise. Full analysis:
   `docs/sam2-ship-path-brief-2026-08-11.md`.
 - ~70 fonts is enough — launch does not wait on font expansion.
-- Fast-follow order after launch: ~~`ltr/` importer (mai_en_fleur)~~ **done** (mai_en_fleur ships in the 55-font manifest) → tablet audit → cloud sync (post-revenue).
+- Fast-follow order after launch: ~~`ltr/` importer (mai_en_fleur)~~ **done** (mai_en_fleur ships in the manifest, 85 fonts as of 2026-09-14 — this said 55 until then) → tablet audit → cloud sync (post-revenue).
 - **The border decision lives on the canvas too (Kent's call 2026-09-09):**
   right-click a recognised shape on the field for Add border / Remove border
   (and Use design setting once a shape has its own). It writes the same
@@ -64,7 +64,7 @@ row 7's sidecar count grew from 55 to 85 while staying one-per-font. Rows 2, 4,
 
 ## Explicit non-goals (parking list — not the Ember bar)
 
-Team names, monogram frames, appliqué, envelopes beyond arc, 3D puff,
+Team names, monogram frames, envelopes beyond arc, 3D puff,
 stitch-level editing, decorative fills, imported-design re-density
 (Wilcom-style stitch processor), a sharing gallery. No user-upload gallery
 is a deliberate choice for the starter design pack (item 3) too —
@@ -75,6 +75,28 @@ has since shipped (`app/src/lib/manualShapes.js` — the Studio's third
 content type: hand-drawn outlines with curved edges and point editing), so
 it is no longer a non-goal. (The separate item 4 preset shapes tool also
 shipped — verified live 2026-08-11; see the checklist above.)
+
+**"Appliqué" left this list on 2026-09-14 (Kent's call), for the same reason
+and with a sharper lesson.** It was still listed as a non-goal while
+`digitizer/digitizer_core/stage6_applique.py` had grown to **1,373 lines,
+58 tests** in `tests/test_applique.py` and **eight** `PipelineConfig` fields
+(`applique`, `_mode`, `_trim_discipline`, `_placement`, `_material`,
+`_tackdown`, `_cover`, `_cover_width_mm`), imported and run by
+`stage7_sequence.py`. Unlike freehand draw, nobody struck this line when it
+landed, so for months the scope doc said the product would not do something it
+could already do. Found by the 2026-09-12 gap-audit sweep, not by anyone
+reading either file. *(all four counts verified against the code 2026-09-14 —
+the audit's "66 tests" is 58.)*
+
+**One thing the audit did not say, and it is the reason this is a scope call
+rather than a bug: `applique` defaults to FALSE, and that default is
+load-bearing.** With it off, nothing in the block is read, no step metadata is
+attached, and a design sews byte-for-byte what it sewed before the tier
+existed — pinned by `test_applique_off_is_byte_identical`. So no customer has
+ever been given appliqué by accident. It is a capability that exists and must
+be asked for. In scope as of today; its status belongs in `MASTER_SCOPE.md`
+and `docs/scope/` like any other capability, and turning the default on would
+be a separate ruling.
 
 ## Open — not yet decided
 
