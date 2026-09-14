@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Where MASTER_SCOPE's 800 lines actually go, and what is left.
+"""Where MASTER_SCOPE's 27,000 words actually go, and what is left.
 
 `MASTER_SCOPE.md` states its own rule: *"Current state ONLY, under an
 800-line budget"*, with per-area detail in `docs/scope/` and dated snapshots
@@ -38,7 +38,34 @@ import sys
 
 REPO = pathlib.Path(__file__).resolve().parents[2]
 SCOPE = REPO / "MASTER_SCOPE.md"
-BUDGET = 800
+BUDGET = 27_000
+
+
+def word_count(text: str) -> int:
+    """The budget's unit since 2026-09-14 (Kent's ruling). Whitespace-split.
+
+    **Not `wc -w`, and not lines.**
+
+    Lines went first: they could not see this file's content in either
+    direction. The 2026-09-14 correction pass REMOVED 181 words and 1,208
+    characters while ADDING 45 lines, because the text it replaced sat on very
+    long lines and the replacement wrapped at the file's median 76 — and the
+    file holds a single 23,638-character line, 13.5% of its characters counted
+    as 1 of 801. Worse, the cheapest way to obey a line budget is to join
+    paragraphs onto long lines: no content saved, every future diff a
+    whole-paragraph rewrite, growth hidden from the number meant to catch it.
+
+    `wc -w` was rejected on measurement, not taste: it is LOCALE-DEPENDENT on
+    this file — 26,381 under `C`/`POSIX`, 27,289 under `C.UTF-8`, a 908-word
+    (3.4%) gap, because the C locale mis-splits the em-dashes, arrows and `×`
+    this document is full of. Cloud containers here run with `LANG` unset, so a
+    session would have read 908 fewer words than Kent's box. A budget that
+    answers differently depending on who asks is not a budget.
+
+    `str.split()` agrees with `awk '{n+=NF}'` — the command the document's own
+    rule 4 names — under every locale tested. `wc -m` drifts like `wc -w`.
+    """
+    return len(text.split())
 
 
 def line_count(text: str) -> int:
@@ -133,8 +160,9 @@ def live_and_closed(text: str) -> tuple[list[tuple[str, int, str]],
 def main(argv: list[str]) -> int:
     text = SCOPE.read_text(encoding="utf-8")
     total = line_count(text)
-    print(f"MASTER_SCOPE.md — {total} lines against a {BUDGET}-line budget "
-          f"({BUDGET - total} left)\n")
+    words = word_count(text)
+    print(f"MASTER_SCOPE.md — {words:,} words against a {BUDGET:,}-word budget "
+          f"({BUDGET - words:,} left); {total} lines, which is NOT the budget\n")
 
     print(f"{'section':46} {'lines':>6} {'share':>7}")
     print("-" * 61)

@@ -553,13 +553,15 @@ Moved verbatim 2026-08-28 — no section was rewritten in the move.
 
 - **A budget nothing checks is a preference — and when MASTER_SCOPE's hit,
   the reclaim is NOT a defect.** `MASTER_SCOPE.md` has stated *"Current state
-  ONLY, under an 800-line budget"* since it was split from DOCTRINE, with
-  `docs/scope/` and `docs/scope-history.md` as the two places overflow goes.
-  Nothing enforced it, and on 2026-09-07 it reached **799** — noticed only
-  because the next entry did not fit. `tests/test_scope_budget.py` (6) now
+  ONLY"* since it was split from DOCTRINE, with `docs/scope/` and
+  `docs/scope-history.md` as the two places overflow goes. Nothing enforced it,
+  and on 2026-09-07 it reached **799** of its then-800-LINE budget — noticed
+  only because the next entry did not fit. `tests/test_scope_budget.py` (7) now
   enforces it, and its failure message names the reclaim rather than just
   saying "too long", because a bare limit gets the next line squeezed in
-  somewhere else.
+  somewhere else. **The unit became WORDS on 2026-09-14** (Kent) — see "A
+  budget that cannot see its own file" below for why lines could not, and why
+  `wc -w` could not replace them either.
 
   **Where the lines actually are** (`tools/scope_budget.py`, measured
   2026-09-07): capability areas **255**, cross-cutting **141**, live defects
@@ -5291,8 +5293,9 @@ house style** — both tie constants and the entire `APPLIQUE_*` block. The clai
 "the wire test covers this automatically" was made, then mutation-tested, and
 was false. Fixed; shared count 18 → 21.
 
-**What that blind spot was hiding: `UNDERLAY_INSET_MM` is 0.4 in
-`src/satinfont.js` and 1.0 in `machine.py`.** A **name collision**, not drift —
+**What that blind spot was hiding: the two `UNDERLAY_INSET_MM` declarations hold
+different numbers** — `src/satinfont.js` 0.4, `machine.py` 1.0. A **name
+collision**, not drift —
 the browser value is a satin column's contour-underlay inset *per side*, the
 Python one a region's edge-walk inset — so it is pinned in
 `DELIBERATE_DIVERGENCE`, not reconciled. **Reconciling it would be inventing a

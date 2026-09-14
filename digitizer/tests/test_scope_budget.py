@@ -1,10 +1,15 @@
-"""MASTER_SCOPE.md states an 800-line budget. Nothing enforced it.
+"""MASTER_SCOPE.md states a 27,000-WORD budget. This enforces it.
 
-The rule is the document's own, in its own words — *"Current state ONLY,
-under an 800-line budget"* — with per-area detail in `docs/scope/` and dated
-snapshots in `docs/scope-history.md` as the two places overflow is supposed
-to go. On 2026-09-07 the file reached **799**, one line of headroom, and the
-only reason anybody noticed is that the next entry did not fit.
+The rule is the document's own, with per-area detail in `docs/scope/` and dated
+snapshots in `docs/scope-history.md` as the two places overflow is supposed to
+go. It was an 800-LINE budget until 2026-09-14, when Kent ruled it over to words
+because lines could not see the file's content: a correction pass that REMOVED
+181 words and 1,208 characters ADDED 45 lines, and the file holds one
+23,638-character line counted as 1 of 801. The unit is `str.split()`, which
+matches the `awk '{n+=NF}'` the document's rule 4 names — deliberately NOT
+`wc -w`, which is locale-dependent here and reads 908 words lower where `LANG`
+is unset. See `word_count`'s docstring and DOCTRINE, "A budget that cannot see
+its own file".
 
 **A budget nothing checks is a preference.** This is the check, and its
 failure message names where the reclaim is, because a test that says "too
@@ -24,7 +29,7 @@ import re
 import pytest
 
 from tools.scope_budget import (BUDGET, SCOPE, areas, line_count,
-                                live_and_closed, sections)
+                                live_and_closed, sections, word_count)
 
 
 @pytest.fixture(scope="module")
@@ -46,15 +51,30 @@ def test_the_counter_agrees_with_wc_l(text):
     assert line_count(text) == text.count("\n") + (0 if text.endswith("\n") else 1)
 
 
+def test_the_word_counter_is_locale_stable_and_is_not_wc_w(text):
+    """The replacement metric nearly repeated the bug it replaced.
+
+    `wc -w` answers 26,381 on this file under `C`/`POSIX` and 27,289 under
+    `C.UTF-8` — it mis-splits em-dashes, arrows and `×` outside a UTF-8 locale,
+    and cloud containers here run with `LANG` unset. `str.split()` does not
+    depend on the locale at all, which is why the budget is measured with it.
+    """
+    assert word_count("a b  c\n d\t e") == 5
+    assert word_count("") == 0
+    assert word_count("em—dash arrow→here 2×3") == 3, (
+        "the counter split on a non-ASCII character, which is exactly how wc -w "
+        "reads this file 908 words short outside a UTF-8 locale")
+
+
 def test_master_scope_is_within_its_own_budget(text):
-    n = line_count(text)
+    n = word_count(text)
     if n <= BUDGET:
         return
     biggest = sorted(sections(text), key=lambda r: -r[1])[:3]
     worst = max(areas(text), key=lambda r: r[1], default=("", 0, 0))
     pytest.fail(
-        f"MASTER_SCOPE.md is {n} lines against its own {BUDGET}-line budget.\n"
-        f"Biggest sections: "
+        f"MASTER_SCOPE.md is {n:,} words against its own {BUDGET:,}-word budget.\n"
+        f"Biggest sections (lines, as a locator — the budget is words): "
         + ", ".join(f"{name} {ln}" for name, ln in biggest) + ".\n"
         f"The reclaim is capability area '{worst[0]}' — {worst[1]} lines here "
         f"against {worst[2]} in its own docs/scope/ detail file, which is the "
