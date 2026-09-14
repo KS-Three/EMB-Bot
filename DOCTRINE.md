@@ -5135,3 +5135,54 @@ arms at fill ratio ≥ 0.222 all agree, the one miss sits at 0.003, and the
 corpus holds nothing in between. **"Only a fixture can do that" is a
 measurement, not an intuition.**
 *(`docs/registration-plateau-2026-09-11.md`, PR #463)*
+
+## The verdict was already computed — and then discarded at the last line (2026-09-14)
+
+Two silent-accept defects, both from the 2026-09-12 gap audit's §4, fixed in one
+pass. Neither needed a new measurement or a new instrument: in both, the right
+answer was already sitting in the process and was thrown away one line before it
+could act.
+
+- **`corpus_scorecard diff` PRINTED `grade: A -> B` and then returned 0.** Its
+  `hard_fail` was set only by a new block-severity finding, so the strongest
+  single-number signal the scorecard produces could not fail anything. The
+  2026-09-11 edge-cap flip took `logo_script_tires` **A 100 → B 88** with corpus
+  thread **+9.10%** and 11 of 14 fixtures moving; the tool said so, exited clean,
+  and every check stayed green. Fixed by acting on the letter `run_preflight`
+  already publishes — which is why this does not contradict the module's own
+  "don't invent pass/fail numbers today" caution. **The four cut points, the
+  letter, and the printed line all already existed; only the exit code was
+  missing.** *(measured 2026-09-12 — `docs/research-gap-audit-2026-09-12.md` §4.1)*
+- **The `.embproj` gate delegated to a promise the migrator did not keep.**
+  `parseProjectFile` waved any inner payload through on the strength of its own
+  comment — *"any version — the inner project's own migration handles forward
+  compat"* — while `migrateProject` matched `version === 2` **exactly** and turned
+  everything else into a blank `defaultProject()`. Reproduced on **3 of 4**
+  envelope shapes: a forward version, a `"2"` string stamp, and a record whose
+  version key never reached disk each imported as an EMPTY design **wearing the
+  customer's own file name**, reported as a successful load.
+  *(measured 2026-09-14 — `app/src/lib/projectFile.spec.js`)*
+
+**A gate and the function it delegates to must share ONE recognizer.** Two
+separate tests of the same question drift, and the drift is invisible from inside
+either file — each looks correct on its own. Here the gate was the more permissive
+of the two, so the disagreement did not reject anything; it manufactured blanks.
+The fix is a single exported `looksLikeProject` both branch on, not a second
+condition kept in sync by comment.
+
+**Of the three possible outcomes, the middle one is the worst.** Rejecting the
+file tells the customer to go find another copy. Loading it keeps their work.
+Accepting it *blank* tells them their design is gone **and** their file is fine —
+it destroys the information needed to recover. A gate with somewhere to report an
+error must never fall back to the recoverable-looking empty value.
+
+**Method, and the trap inside the fix: mutation-test the ACTION, not just the
+predicate.** The first cut of the grade tests exercised `_grade_fell` alone. All
+four passed with `hard_fail = True` deleted — the guard computed the fall
+perfectly and changed nothing, which is the original defect moved up one layer.
+Only a test driving the real `diff()` and asserting its **exit code** (with
+`_score_one` stubbed, so no pipeline runs) catches that. Same shape as the
+`test_machine_wire.py` "first declaration wins" miss on 2026-09-13: a guard's
+first draft tends to reproduce the bug it was written for, so mutate the fix and
+watch the test go red before believing it.
+*(`digitizer/tests/test_corpus_scorecard.py`, `app/src/lib/project.spec.js`)*
