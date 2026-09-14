@@ -1977,21 +1977,50 @@ def test_a_full_bleed_design_does_not_report_its_own_border():
     `borderValue=0`. A check that fires on every full-bleed logo is a check
     operators learn to ignore.
     """
+    from digitizer_core.stage1_prep import prep
+
     art = TESTDATA / "photo/logo_gaulke_roofing.png"
     c = cfg(target_width_mm=90.0, max_colors=6)
+
+    # This fixture is STILL the corpus's full-bleed design after
+    # `strip_letterbox` went default-ON (2026-09-14), and now for a better
+    # reason than before. It used to qualify BY ACCIDENT: the black bars were
+    # read as ink, so the artwork touched the frame edge. With the bars
+    # cropped, the white band runs edge to edge in the cropped frame on its
+    # own — stage 1 reports BACKGROUND_ABSENT and `bg_mask` covers 0.000% of
+    # pixels, so the whole canvas is artwork.
+    #
+    # Asserted rather than assumed, because the property is the entire reason
+    # this test uses this file: if a future change gives the design a
+    # background, this guard has silently stopped testing full bleed and must
+    # be re-pointed, not re-tuned.
+    p = prep(art, c)
+    assert p.bg_mask.mean() == 0.0, "fixture is no longer full-bleed"
+    assert p.art_bbox == (0, 0, p.rgb.shape[1], p.rgb.shape[0])
+
     result, plan_ = digitize(art, c)
     report = run_preflight(result, plan_, c, image=art)
 
     assert _uncovered(report) is None
-    # Was `== 0.0` until 2026-09-13, when `cfg.keep_thin_strokes` went ON by
-    # default (Kent's ruling) and gaulke — one of the two designs he took the
-    # price on — gained sub-floor regions: the worst patch now measures
-    # 0.2 mm², real uncovered artwork rather than the rim artefact. The
-    # defect this guards is 37.5 mm² of permanent border strip at every
-    # erosion width, so the bound is set where it still catches that by two
-    # orders of magnitude while not firing on a fifth of a square millimetre.
-    assert report["metrics"]["uncovered_worst_mm2"] < 1.0, \
+    # The defect's own signature is a PERMANENT STRIP down the rim — present
+    # at every erosion width, 37.5 mm² when it was measured. A strip cannot
+    # be a rounding artefact, so the quantity that separates it from healthy
+    # noise is the TOTAL qualifying uncovered area, and that reads 0.0 here.
+    #
+    # This used to assert only `uncovered_worst_mm2 < 1.0`, a single number
+    # that drifted with unrelated work: `== 0.0` until 2026-09-13
+    # (`cfg.keep_thin_strokes` ON by default gained gaulke sub-floor
+    # regions), then `< 1.0`, and the letterbox crop put the worst patch at
+    # exactly 1.0 — failing a guard whose defect is two orders of magnitude
+    # away. Asserting the total pins what the bug actually moved; the
+    # worst-patch bound stays as a second, deliberately loose net that still
+    # catches 37.5 mm² by 7.5x.
+    assert report["metrics"]["uncovered_total_mm2"] == 0.0, \
+        report["metrics"]["uncovered_total_mm2"]
+    assert report["metrics"]["uncovered_worst_mm2"] < 5.0, \
         report["metrics"]["uncovered_worst_mm2"]
+    # It really did measure something, rather than passing on an empty design.
+    assert report["metrics"]["uncovered_wanted_mm2"] > 0.0
 
 
 def test_without_the_artwork_the_uncovered_check_is_skipped_and_says_so(whitebg, plan):

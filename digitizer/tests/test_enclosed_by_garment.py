@@ -31,7 +31,22 @@ from digitizer_core.threads import chart_for
 from tests.conftest import TESTDATA
 
 WHITEBG = TESTDATA / "logo_whitebg.png"            # white bg, one white hole
-GAULKE = TESTDATA / "photo" / "logo_gaulke_roofing.png"  # black frame -> black bg, 46 holes
+# BLACK bg, 40 black letter bodies. This was `photo/logo_gaulke_roofing.png`
+# until 2026-09-14, which had a black background only BY ACCIDENT of its
+# letterbox bars being read as ink — `strip_letterbox` going default-ON
+# cropped them, and the design went BACKGROUND_ABSENT with zero enclosed
+# regions. The fixture, not the assertion, was what had to move (DOCTRINE:
+# re-point at something that still carries the property, never at whatever
+# the engine now emits).
+#
+# `black_ground_holes.png` carries it permanently rather than by accident:
+# its ground is black on ALL FOUR sides, and `letterbox.detect_letterbox`'s
+# governing rule is that letterboxing is ONE-DIMENSIONAL, so a uniform
+# border on both axes is a margin and is never stripped. Verified both ways
+# in `tools/make_black_ground_fixture.py`, which generates it: bars detected
+# (0, 0, 0, 0), and `bg_rgb` / enclosed pixels identical with the flag on
+# and off.
+BLACK_GROUND = TESTDATA / "black_ground_holes.png"
 ALPHA = TESTDATA / "logo_alpha.png"                # alpha cutout: hole colour unknown
 UNCERTAIN = TESTDATA / "bg_uncertain.png"
 
@@ -74,13 +89,13 @@ def whitebg_navy():
 
 
 @pytest.fixture(scope="module")
-def gaulke_off():
-    return digitize(GAULKE, _cfg())
+def black_ground_off():
+    return digitize(BLACK_GROUND, _cfg())
 
 
 @pytest.fixture(scope="module")
-def gaulke_natural():
-    return digitize(GAULKE, _cfg(enclosed_by_garment=True, garment_rgb=NATURAL))
+def black_ground_natural():
+    return digitize(BLACK_GROUND, _cfg(enclosed_by_garment=True, garment_rgb=NATURAL))
 
 
 # --- defaults and the byte-identity off ---------------------------------------
@@ -102,15 +117,15 @@ def test_off_is_byte_identical_with_a_garment_colour_given(whitebg_off):
     assert _digest(plan) == _digest(whitebg_off[1])
 
 
-def test_the_default_engine_on_the_studios_default_garment(whitebg_off, gaulke_natural):
+def test_the_default_engine_on_the_studios_default_garment(whitebg_off, black_ground_natural):
     """What the flip changes for a customer who never touches the swatch:
     Natural (235, 232, 223) is 6.4 from a white hole, under the threshold,
-    so whitebg is the pre-flip engine byte for byte — and 88.6 from a black
-    one, so gaulke's 46 letter bodies now sew by default."""
+    so whitebg is the pre-flip engine byte for byte — and far past it from a
+    black one, so the black-ground letter bodies now sew by default."""
     _, plan = digitize(WHITEBG, _cfg(garment_rgb=NATURAL))
     assert _digest(plan) == _digest(whitebg_off[1])
-    _, plan_g = digitize(GAULKE, _cfg(garment_rgb=NATURAL))
-    assert _digest(plan_g) == _digest(gaulke_natural[1])
+    _, plan_g = digitize(BLACK_GROUND, _cfg(garment_rgb=NATURAL))
+    assert _digest(plan_g) == _digest(black_ground_natural[1])
 
 
 def test_on_with_no_garment_colour_is_the_default_engine(whitebg_off):
@@ -122,7 +137,7 @@ def test_on_with_no_garment_colour_is_the_default_engine(whitebg_off):
 
 def test_prep_carries_the_flood_colour_and_declines_where_it_cannot_know_it():
     assert prep(WHITEBG, PipelineConfig(target_width_mm=80.0)).bg_rgb == WHITE
-    assert prep(GAULKE, PipelineConfig(target_width_mm=80.0)).bg_rgb == BLACK
+    assert prep(BLACK_GROUND, PipelineConfig(target_width_mm=80.0)).bg_rgb == BLACK
     alpha = prep(ALPHA, PipelineConfig(target_width_mm=80.0))
     assert alpha.bg_from_alpha and alpha.bg_rgb is None
     # No enclosed pixels at all: the colour is known but there is nothing for
@@ -206,18 +221,19 @@ def test_a_review_override_still_wins_over_the_garment(whitebg_navy):
     assert "0015" not in {b.thread_number for b in plan2.blocks}
 
 
-# --- gaulke: black frame, black background, 46 black letter bodies ------------
+# --- black ground, 40 black letter bodies ------------------------------------
 
-def test_gaulke_letter_bodies_sew_on_natural_and_stay_holes_on_black(gaulke_off, gaulke_natural):
-    r_off, plan_off = gaulke_off
-    r_nat, plan_nat = gaulke_natural
+def test_letter_bodies_sew_on_natural_and_stay_holes_on_black(black_ground_off,
+                                                              black_ground_natural):
+    r_off, plan_off = black_ground_off
+    r_nat, plan_nat = black_ground_natural
     assert len(_enclosed(r_off)) == len(_enclosed(r_nat)) >= 40
     assert all(x.meta["stitched"] is False for x in _enclosed(r_off))
     assert all(x.meta["stitched"] is True and x.meta["enclosed_by_garment"] for x in _enclosed(r_nat))
     assert plan_nat.stats.stitch_count > plan_off.stats.stitch_count * 1.2
     assert _enclosed_warning(r_nat)["sewn_by_garment"] == len(_enclosed(r_nat))
     # On a black garment the black bodies ARE the fabric: the default engine.
-    _, plan_black = digitize(GAULKE, _cfg(enclosed_by_garment=True, garment_rgb=BLACK))
+    _, plan_black = digitize(BLACK_GROUND, _cfg(enclosed_by_garment=True, garment_rgb=BLACK))
     assert _digest(plan_black) == _digest(plan_off)
 
 

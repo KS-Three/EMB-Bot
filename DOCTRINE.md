@@ -5074,12 +5074,62 @@ that ordinary `git grep` of the changed symbol will not show you — the
 coupling runs through a fixture filename, not through code.
 
 **The resolution, and the pattern to reuse:** the strip landed behind
-`cfg.strip_letterbox`, **DEFAULT OFF**, byte-identical off (verified exactly —
-11,131 stitches off, the pre-change baseline; 12,811 on). That is this repo's
-own build-inert-then-wire pattern (`cfg.satin_per_stroke`, 2026-09-05/06).
-Flipping it on is a separate change whose real work is re-pointing those 11
+`cfg.strip_letterbox`, shipped inert — off at the time, and byte-identical
+there (verified exactly — 11,131 stitches off, the pre-change baseline;
+12,811 on). That is this repo's own build-inert-then-wire pattern
+(`cfg.satin_per_stroke`, 2026-09-05/06). It was wired on 2026-09-14; see
+below.
+Flipping it on is a separate change whose real work is re-pointing those
 tests at fixtures that still carry the property each one is testing — **never
 at whatever the engine happens to emit.**
+
+**FLIPPED ON 2026-09-14, and the re-point is the whole change.** It was 13
+tests, not 11 — the suite had grown. Three outcomes, and the third is the
+one worth carrying forward:
+
+- **The full-bleed guard KEPT its fixture, and got a better reason for it.**
+  Cropped, `logo_gaulke_roofing` still runs edge to edge on its own
+  (`bg_mask` 0.000%, `BACKGROUND_ABSENT`, art bbox = the whole frame), so it
+  is still the corpus's full-bleed design — by property now rather than by
+  accident of the bars. The test asserts that property directly, so a future
+  change that gives the design a background fails loudly instead of silently
+  testing nothing. Its bound also moved off a single number that had drifted
+  three times (`== 0.0` → `< 1.0` → the crop landing on exactly 1.0) and onto
+  the defect's own signature: a permanent rim strip means non-zero TOTAL
+  uncovered area, which reads 0.0.
+- **`test_enclosed_by_garment` moved to a fixture that cannot lose the
+  property again.** `testdata/black_ground_holes.png`
+  (`tools/make_black_ground_fixture.py`) is black on all four sides, and this
+  module's own semantic rule — letterboxing is ONE-DIMENSIONAL — means a
+  uniform border on both axes is a margin and is never stripped. Verified
+  both ways: bars detected `(0, 0, 0, 0)`, `bg_rgb` and enclosed pixels
+  identical with the flag on and off.
+- **A SPOOL-ID RE-PIN WOULD HAVE ASSERTED THE OPPOSITE OF THE GUARD.** The
+  entry above called the resnap/thread-match group "spool IDs that
+  legitimately move", and that was too generous. On the cropped fixture the
+  phenomenon does not move, it **inverts**: before the crop the shipped
+  engine picked `3971 Silver` on `Se6eddd27` and the flag DECLINED it; after,
+  no shape picks Silver with the flag off and the flag *causes* a Silver pick
+  (`S37b15658`, `0142 → 3971`). Renaming the constant would have made CI
+  green while pinning the reverse of what the flag exists to do.
+  **So: when a pinned id goes stale, re-derive the PHENOMENON before
+  believing it merely moved.** The resolution was `conftest.PRE_FLIP`, which
+  already exists for exactly this — those tests price the COLOUR flags, the
+  crop is orthogonal, and PRE_FLIP's own rule is that a test pricing one flag
+  measures against the engine its measurement was made on. Measured before
+  choosing it: **no fixture in the corpus reproduces gaulke's uncropped
+  severity on both axes** — `logo_bridge_bar` has the footprint inflation
+  (229 vs 39 px, ratio 5.87) but not the bimodality (26 dark against `> 50`,
+  at 4.0 px/mm); `screenshot_phone_ui_golke` has the bimodality (92/102 at
+  12.75 px/mm) but not the ratio (2.20).
+
+**Still not fixed by the flip**, as the original entry predicted: the band's
+soft shadow edges drop border agreement to 0.693, so `BACKGROUND_ABSENT`
+stands and the white ground is still sewn — 79.9% of the stitched area.
+`preflight.GROUND_SEWN` now reports that at block severity, which is what
+stops the file at the Studio's download confirm.
+*(2026-09-14 — `digitizer/tests/conftest.py` `PRE_FLIP`;
+`tools/resnap_shape_relocate.py`)*
 
 **Two detector traps from building it, both caught before shipping and both
 worth more than the feature.** (1) A contrast guard alone ("the bars must look
