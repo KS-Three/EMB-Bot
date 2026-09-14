@@ -10,6 +10,7 @@ CLASSIFIED_GRADIENT = "CLASSIFIED_GRADIENT"            # routed to the blend fil
 CLASSIFIED_PHOTO_SUBJECT = "CLASSIFIED_PHOTO_SUBJECT"  # portrait/pet/product; no dedicated handling yet (step 3+)
 CLASSIFIED_PHOTO_SCENE = "CLASSIFIED_PHOTO_SCENE"      # scenery/landscape; no dedicated handling yet (step 6+)
 CLASSIFICATION_UNCERTAIN = "CLASSIFICATION_UNCERTAIN"  # below the confidence floor; treated as flat rather than guessed
+CLASSIFICATION_SEED_UNSTABLE = "CLASSIFICATION_SEED_UNSTABLE"  # seed sweep ran and the seeds disagree across a gate; the verdict is one draw
 
 # Stage 1
 BACKGROUND_UNCERTAIN = "BACKGROUND_UNCERTAIN"      # border flood intruded deep past the artwork margin

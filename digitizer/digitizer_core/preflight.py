@@ -126,7 +126,7 @@ from . import machine, stitches
 from .config import PHOTO_CLASSES, PipelineConfig
 from .pipeline import PipelineResult, fabric_for
 from .stage0_classify import classify
-from .stage1_prep import prep
+from .stage1_prep import _dominant_border_color, prep
 from .stage6_meander import MEANDER_CELL_MM, MEANDER_COARSE_LEVELS
 from .stage6_satin import strip_splits
 from .stage6_scanline import SCANLINE_LEVEL_STRIDES, SCANLINE_ROW_MM
@@ -156,6 +156,7 @@ STABILIZER_CUTAWAY = "STABILIZER_CUTAWAY"      # extra: {stitch_count, threshold
 COLOR_STOPS_HEAVY = "COLOR_STOPS_HEAVY"        # extra: {color_changes, max_stops, distinct_cones, closest_pair, closest_pair_delta_e, repeated_cones} — closest_pair is the two cones a CIEDE2000 over the deduped palette says are nearest (None under two distinct cones); repeated_cones names any cone already sewn in more than one block, which is a free merge
 FACE_TOO_SMALL = "FACE_TOO_SMALL"              # extra: {count, design_mm, fits_hoop_mm, min_hoop_mm}
 CLASS_OVERRIDE_TECHNIQUE_MISMATCH = "CLASS_OVERRIDE_TECHNIQUE_MISMATCH"  # extra: {forced_class, detected_class, fill_technique}
+GROUND_SEWN = "GROUND_SEWN"                    # extra: {shape_id, area_frac, area_mm2, span_frac, delta_e, thread_number, thread_name, thread_rgb, border_rgb, thread_mm} — the design-spanning shape that sews the artwork's OWN background colour, i.e. the page behind the logo sewn as if it were the logo
 
 # The stage-6 warning this module re-reads. Owned by the contour-fill lane
 # (warnings_codes.CONTOUR_RING_UNREACHABLE); named by string so preflight
@@ -1245,6 +1246,119 @@ def _face_size_findings(plan: StitchPlan) -> tuple[list[dict], dict]:
         design_mm=[round(float(v), 1) for v in plan.design_size_mm],
         fits_hoop_mm=FACE_BLOCK_HOOP_MM,
         min_hoop_mm=list(FACE_MIN_HOOP_MM),
+    )], metrics
+
+
+# --- The ground sewn as artwork ----------------------------------------------
+#
+# The failure this exists for is the one `letterbox.py` names one level up:
+# POLARITY. When stage 1's border flood cannot find the ground, the ground
+# does not stop existing — it becomes the largest shape in the design and
+# sews, in a thread chosen to match it. Nothing downstream can tell that from
+# a legitimate design that happens to fill its frame, and nothing upstream
+# raises anything: `BACKGROUND_ABSENT` says "no background found", which is a
+# statement about the SEARCH, not about the file that came out of it.
+#
+# Measured 2026-09-14 across twelve fixtures, every one digitized at 80 mm /
+# left_chest. The two designs whose ground is genuinely sewn, and the ten
+# whose largest shape is real artwork:
+#
+#   case           span%   area%   dE(thread, border)   ground?
+#   golke           98.3    79.9                 0.20   YES  (post letterbox crop)
+#   summit          96.8    60.1                10.99   YES  (vignette ground)
+#   ribbon_curve    99.9   100.0                47.48   no
+#   bg_uncertain    99.7   100.0                72.66   no
+#   becker          66.5    28.4                 4.73   no
+#   golden_tee      12.1    20.2                11.14   no
+#   drone           47.8    47.4                16.17   no
+#   tires           47.5    58.1                98.88   no
+#   logo_whitebg    32.7    44.5                47.48   no
+#   logo_alpha      32.9    44.5                46.30   no
+#   bridge_bar      32.9    45.9                29.28   no
+#   enthusiast       8.2    12.8                47.83   no
+#
+# **NEITHER TEST WORKS ALONE, and that is the whole design.** Colour alone
+# accepts `becker` (4.73) and `golden_tee` (11.14) — both CLOSER to their
+# border than summit's real ground is — because a logo may legitimately be
+# painted in its page's own colour. Span alone accepts `ribbon_curve` and
+# `bg_uncertain`, which fill their frames on purpose. Requiring both leaves
+# four fixtures at span >= 0.90, and their distances are 0.20, 10.99, 47.48,
+# 72.66: any threshold between 11 and 47 separates them exactly.
+#
+# The margin is asymmetric and the tight side is the MISS side: 1.0 below the
+# gate to summit, 35.5 above it to the nearest clean fixture. So this check
+# fails toward silence, which is the right direction for something wired to a
+# download confirm.
+_GROUND_SPAN_MIN = 0.90     # the shape covers this fraction of the design's own bbox, both axes
+_GROUND_DELTA_E = 12.0      # CIEDE2000 from the sewn thread to the artwork's dominant border colour
+_GROUND_AREA_MIN = 0.25     # of the design's total stitched area — below this it is trim, not ground
+_GROUND_AREA_BLOCK = 0.40   # at or above this, the ground IS the design (golke 0.799, summit 0.601)
+
+
+def _ground_sewn_findings(p, result: PipelineResult,
+                          cfg: PipelineConfig) -> tuple[list[dict], dict]:
+    """The design-spanning shape that sews the artwork's own background colour.
+
+    Judged on the THREAD rather than on the artwork pixels under the shape,
+    for two reasons. The operator's question is about what comes off the
+    machine — a cone the width of the whole design, in the colour of the page
+    — and the thread is that answer directly. And it needs no second
+    rasterization pass: `_region_color_errors` already re-reads the artwork
+    for the thread-match check, and duplicating that cost to reach a number
+    that measured WORSE is not a trade worth making (artwork-median distance
+    reads 0.00 on both `becker` and `golden_tee`, which are clean).
+    """
+    metrics = {"ground_span_frac": None, "ground_delta_e": None,
+               "ground_area_frac": None}
+    regions = getattr(result, "regions", None) or []
+    dw, dh = getattr(result, "design_size_mm", (0.0, 0.0))
+    if not regions or not dw or not dh or p is None:
+        return [], metrics
+
+    total_area = sum(r.area_mm2 for r in regions)
+    if total_area <= 0:
+        return [], metrics
+
+    biggest = max(regions, key=lambda r: r.area_mm2)
+    x0, y0, x1, y1 = biggest.polygon.bounds
+    span = (min(1.0, (x1 - x0) / dw)) * (min(1.0, (y1 - y0) / dh))
+    area_frac = biggest.area_mm2 / total_area
+
+    thread = chart_for(cfg)[biggest.thread_index]
+    border_rgb = _dominant_border_color(p.rgb)
+    # Same CIEDE2000-on-skimage-rgb2lab convention as every other colour
+    # distance in this module (`threads.rgb_to_lab`, never cv2's 8-bit Lab).
+    delta_e = float(deltaE_ciede2000(
+        rgb_to_lab(np.asarray(thread.rgb, np.uint8).reshape(1, 3)),
+        rgb_to_lab(np.asarray(border_rgb, np.uint8).reshape(1, 3)),
+    )[0])
+
+    metrics.update({"ground_span_frac": round(float(span), 3),
+                    "ground_delta_e": round(float(delta_e), 2),
+                    "ground_area_frac": round(float(area_frac), 3)})
+
+    if (span < _GROUND_SPAN_MIN or delta_e >= _GROUND_DELTA_E
+            or area_frac < _GROUND_AREA_MIN):
+        return [], metrics
+
+    severity = "block" if area_frac >= _GROUND_AREA_BLOCK else "warn"
+    return [finding(
+        GROUND_SEWN, severity,
+        f"The biggest shape in this design is {thread.number} "
+        f"{thread.name} — the same color as the artwork's own background — "
+        f"and it spans the whole design, {area_frac * 100:.0f}% of the "
+        "stitching. That is usually the page behind the logo rather than "
+        "part of it. Sewn, it fills the garment with thread the color of "
+        "the cloth and leaves the logo as bare fabric. Delete that shape in "
+        "review, or confirm the background really is meant to sew.",
+        shape_id=biggest.shape_id,
+        area_frac=round(float(area_frac), 3),
+        area_mm2=round(float(biggest.area_mm2), 1),
+        span_frac=round(float(span), 3),
+        delta_e=round(float(delta_e), 2),
+        thread_number=thread.number, thread_name=thread.name,
+        thread_rgb=[int(v) for v in thread.rgb],
+        border_rgb=[int(v) for v in border_rgb],
     )], metrics
 
 
@@ -2991,6 +3105,17 @@ def run_preflight(result: PipelineResult, plan: StitchPlan,
         metrics.update({"legibility_checked": False, "legibility": None,
                         "legibility_clusters": None, "legibility_readable": None,
                         "legibility_worst": None})
+
+    # The ground sewn as artwork. Needs the artwork (for its border colour)
+    # AND the regions (for the shape that spans the design), so it sits with
+    # the other checks that re-read `p` rather than with the plan-only ones.
+    if p is not None and result is not None:
+        ground_findings, ground_metrics = _ground_sewn_findings(p, result, cfg)
+        findings.extend(ground_findings)
+        metrics.update(ground_metrics)
+    else:
+        metrics.update({"ground_span_frac": None, "ground_delta_e": None,
+                        "ground_area_frac": None})
 
     if p is not None:
         res_findings, res_metrics = _photo_resolution_findings(p, plan, cfg)

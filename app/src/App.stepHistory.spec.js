@@ -18,7 +18,15 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
-const SRC = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "App.svelte"), "utf8");
+// Line endings NORMALIZED on the way in. Every regex below anchors with `$`,
+// and the repo sets `core.autocrlf=true` with no `.gitattributes` rule for
+// `.svelte` — so a Windows checkout hands this file `...;\r` and `$` cannot
+// match, which failed BOTH tests here on Kent's box while CI (Linux, LF) ran
+// green. The guard is about what App.svelte says, never about how the
+// checkout spells a newline. *(found 2026-09-14)*
+const SRC = readFileSync(
+  join(dirname(fileURLToPath(import.meta.url)), "App.svelte"), "utf8",
+).replace(/\r\n/g, "\n");
 
 // `step`, not `targetStep`/`nextStep`/anything ending in one: a preceding
 // word character or dot means a different identifier.

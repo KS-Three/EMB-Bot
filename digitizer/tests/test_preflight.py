@@ -36,6 +36,7 @@ from digitizer_core.preflight import (
     DELTA_E_VISIBLE,
     DENSITY_EXTREME,
     DENSITY_STACKED,
+    GROUND_SEWN,
     LETTERING_TOO_SMALL,
     LINK_UNCOVERED,
     PHOTO_MIN_PX_PER_MM,
@@ -2346,3 +2347,100 @@ def test_a_one_cone_photo_design_is_not_silenced_by_the_rescoring():
     assert hit, "a single-cone photo design must still report an unreachable colour"
     assert hit[0]["extra"]["excess_delta_e"] is None
     assert hit[0]["extra"]["delta_e"] > DELTA_E_CLEARLY_DIFFERENT
+
+
+# --- GROUND_SEWN: the page behind the logo, sewn as if it were the logo ------
+#
+# Both halves of the check are load-bearing and neither works alone — the
+# twelve-fixture measurement is tabulated beside the thresholds in
+# `preflight._ground_sewn_findings`. These tests pin that pairing: a shape
+# that matches the ground colour but does NOT span stays silent (a logo may
+# legitimately be painted in its page's own colour — `becker` reads 4.73 dE
+# and is clean), and a shape that spans but does NOT match stays silent too
+# (`ribbon_curve` and `bg_uncertain` fill their frames on purpose).
+
+def _ground_scene(span: bool, ground_coloured: bool):
+    """A white page with one big shape on it. `span` decides whether that
+    shape covers the frame; `ground_coloured` whether it sews white."""
+    from types import SimpleNamespace
+
+    from shapely.geometry import Polygon
+
+    from digitizer_core.regions import Region
+    from digitizer_core.stage1_prep import prep
+    from digitizer_core.threads import chart_for, rgb_to_lab
+
+    c = cfg()
+    chart = chart_for(c)
+    white_i = chart.nearest_index(rgb_to_lab(np.array([[255, 255, 255]], np.uint8))[0])
+    black_i = chart.nearest_index(rgb_to_lab(np.array([[0, 0, 0]], np.uint8))[0])
+
+    # A white page with a black mark on it, so stage 1 reads a white border.
+    img = np.full((400, 500, 3), 255, np.uint8)
+    img[60:340, 80:420] = (20, 20, 20)
+    p = prep(img, c)
+
+    dw_mm, dh_mm = 100.0, 80.0
+    frac = 1.0 if span else 0.4
+    w, h = dw_mm * frac, dh_mm * frac
+    poly = Polygon([(-w / 2, -h / 2), (w / 2, -h / 2), (w / 2, h / 2), (-w / 2, h / 2)])
+    spool = white_i if ground_coloured else black_i
+
+    big = Region(shape_id="Sbig", polygon=poly, thread_index=spool,
+                 thread_number=chart[spool].number, area_mm2=float(poly.area))
+    # A second, small shape so the big one is not trivially 100% of the area
+    # in the non-spanning arm — `_GROUND_AREA_MIN` must be cleared on merit.
+    small = Polygon([(-5, -5), (5, -5), (5, 5), (-5, 5)])
+    tiny = Region(shape_id="Stiny", polygon=small, thread_index=black_i,
+                  thread_number=chart[black_i].number, area_mm2=float(small.area))
+
+    result = SimpleNamespace(regions=[big, tiny], design_size_mm=(dw_mm, dh_mm))
+    return result, img, c
+
+
+def _ground_codes(span: bool, ground_coloured: bool):
+    result, img, c = _ground_scene(span, ground_coloured)
+    empty = StitchPlan(blocks=[], palette=[])
+    return _codes(run_preflight(result, empty, c, image=img))
+
+
+def test_a_design_spanning_shape_in_the_grounds_own_colour_blocks():
+    assert GROUND_SEWN in _ground_codes(span=True, ground_coloured=True)
+
+
+def test_the_grounds_colour_alone_is_not_enough_it_must_also_span():
+    """`becker` is the real case: its largest shape sits 4.73 dE00 from its
+    own border and is perfectly good artwork. Colour without span is a logo
+    painted in its page's colour, which is not a defect."""
+    assert GROUND_SEWN not in _ground_codes(span=False, ground_coloured=True)
+
+
+def test_spanning_alone_is_not_enough_it_must_also_match_the_ground():
+    """`ribbon_curve` and `bg_uncertain` both cover 99%+ of their frames on
+    purpose, at 47.48 and 72.66 dE00 from the border. Filling the frame is a
+    design choice, not a polarity failure."""
+    assert GROUND_SEWN not in _ground_codes(span=True, ground_coloured=False)
+
+
+def test_ground_sewn_is_silent_without_the_artwork_and_says_so():
+    """`image=None` is a legitimate caller (re-scoring a stored plan), and the
+    border colour is unknowable there — the metrics must read None rather
+    than the check guessing."""
+    result, _img, c = _ground_scene(span=True, ground_coloured=True)
+    report = run_preflight(result, StitchPlan(blocks=[], palette=[]), c, image=None)
+    assert GROUND_SEWN not in _codes(report)
+    assert report["metrics"]["ground_span_frac"] is None
+    assert report["metrics"]["ground_delta_e"] is None
+
+
+def test_a_clean_fixture_reports_no_ground_and_still_measures_one():
+    """The promise every metric in this module was validated against: clean
+    work earns a clean report. `logo_whitebg` is a logo on a white field —
+    its largest shape must not be called the ground — and the metrics ride
+    out anyway so the number is auditable rather than merely absent."""
+    c = cfg()
+    report = run_preflight(run_stages(ART, c), StitchPlan(blocks=[], palette=[]),
+                           c, image=ART)
+    assert GROUND_SEWN not in _codes(report)
+    assert report["metrics"]["ground_span_frac"] is not None
+    assert report["metrics"]["ground_delta_e"] is not None

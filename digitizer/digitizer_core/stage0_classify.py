@@ -70,6 +70,7 @@ from .config import PipelineConfig
 from .letterbox import strip_letterbox
 from .threads import rgb_to_lab
 from .warnings_codes import (
+    CLASSIFICATION_SEED_UNSTABLE,
     CLASSIFICATION_UNCERTAIN,
     CLASSIFIED_GRADIENT,
     CLASSIFIED_PHOTO_SCENE,
@@ -103,6 +104,11 @@ _CEILING_COPY = {
         "Couldn't confidently classify this artwork, so it's being treated "
         "as flat art. If it's actually a photo or gradient, expect lower "
         "quality than usual until you override the class."
+    ),
+    CLASSIFICATION_SEED_UNSTABLE: (
+        "This artwork sits close enough to the line that the classifier's "
+        "own random seed decides the answer. The class above is one draw of "
+        "several that disagree — check it in review before trusting it."
     ),
 }
 
@@ -336,6 +342,79 @@ def _gate_confidence(value: float, threshold: float, margin: float) -> float:
     return float(min(1.0, 0.5 + 0.5 * abs(value - threshold) / margin))
 
 
+def _seed_sweep_signals(rgb: np.ndarray, fg: np.ndarray, cfg: PipelineConfig,
+                        ucm: float) -> tuple[dict, list[dict]]:
+    """Report what `unique_color_mass` does across OTHER k-means seeds.
+
+    ## What this fixes, and what it deliberately does NOT
+
+    `unique_color_mass` is a randomised statistic — `_kmeans_lab` seeds
+    k-means++ from `cfg.seed` — and `_gate_confidence` measures how far ONE
+    draw sits from the gate. So the printed confidence says "far from the
+    line", never "reproducible", and the two are not the same claim. On
+    `logo_script_tires.png` they come apart completely: the reading is
+    0.1962-0.3608 across seeds 0-11, **5 of 12 cross `UCM_PHOTO_MIN` and the
+    default seed 0 is the MAXIMUM of the twelve**, yet the verdict prints
+    `photo_scene` at confidence 1.0000 (measured 2026-09-14; DOCTRINE
+    "A signal's number is not a claim about the artwork until you know WHICH
+    PIXELS made it" recorded the same spread on 2026-09-11).
+
+    **This function only ever ADDS signals and a warning. It does not touch
+    `confidence`, and must not.** Confidence is load-bearing for routing —
+    `classify` demotes a non-flat verdict to `flat` below `CONFIDENCE_FLOOR`
+    — so folding seed disagreement into it would move artwork between lanes,
+    which is stage-0 recalibration and refused by ROADMAP hard gate 2
+    without real tonal artwork. The demotion is one line away on purpose:
+    Kent's call 2026-09-14 was reporting only.
+
+    ## Why it is OFF by default
+
+    A sweep costs one full `_unique_color_mass` per extra seed, and that is
+    not cheap: 9.36 s per seed on `logo_script_tires.png`, 6.03 s on
+    `summit_badge.png`, 5.08 s on `logo_gaulke_roofing.png` (measured
+    2026-09-14). Twelve seeds is 112 s on the first of those — an order of
+    magnitude past the whole rest of stage 0. `cfg.stage0_seed_sweep = 0`
+    (the default) takes exactly the pre-existing single-draw path and adds
+    nothing but the `unique_color_mass_seed` field, so every existing
+    verdict, warning list and debug dump is unchanged.
+
+    Set it to N > 1 to pay for the answer when someone is asking the
+    question — a review screen, a corpus probe, or a session deciding
+    whether a surprising verdict is real. `tools/stage0_signal_origin.py`
+    remains the offline instrument with the per-zone attribution; this is
+    the same reading from inside the pipeline, where the verdict is made.
+    """
+    n = int(getattr(cfg, "stage0_seed_sweep", 0) or 0)
+    if n <= 1:
+        return {}, []
+
+    seeds = [s for s in range(cfg.seed, cfg.seed + n)]
+    values = [ucm if s == cfg.seed else _unique_color_mass(rgb, fg, s)
+              for s in seeds]
+    crossings = sum(1 for v in values if v >= UCM_PHOTO_MIN)
+
+    out = {
+        "unique_color_mass_seed_min": float(min(values)),
+        "unique_color_mass_seed_max": float(max(values)),
+        "unique_color_mass_seed_n": len(values),
+        # How many of the swept seeds land on the PHOTO side of the gate.
+        # 0 or n means every draw agrees; anything between is the verdict
+        # being decided by the RNG rather than by the artwork.
+        "unique_color_mass_gate_crossings": crossings,
+    }
+    warnings: list[dict] = []
+    if 0 < crossings < len(values):
+        warnings.append(warn(
+            CLASSIFICATION_SEED_UNSTABLE,
+            _CEILING_COPY[CLASSIFICATION_SEED_UNSTABLE],
+            seeds=len(values), crossings=crossings,
+            value_min=round(float(min(values)), 4),
+            value_max=round(float(max(values)), 4),
+            gate=UCM_PHOTO_MIN, seed_used=cfg.seed,
+        ))
+    return out, warnings
+
+
 def _write_debug(cfg: PipelineConfig, result: Classification) -> None:
     if not cfg.debug_dir:
         return
@@ -396,7 +475,13 @@ def classify(image: str | Path | bytes | np.ndarray, cfg: PipelineConfig,
         "unique_color_mass": ucm,
         "gradient_smoothness": grad_var,
         "alpha_softness": alpha_soft,
+        # WHICH draw produced `unique_color_mass` above. Recorded always,
+        # because the statistic is randomised and the number alone does not
+        # say so -- see `_seed_sweep_signals`.
+        "unique_color_mass_seed": cfg.seed,
     }
+    sweep_signals, sweep_warnings = _seed_sweep_signals(rgb, fg, cfg, ucm)
+    signals.update(sweep_signals)
 
     is_photo = ucm >= UCM_PHOTO_MIN
     photo_gate_conf = _gate_confidence(ucm, UCM_PHOTO_MIN, UCM_MARGIN)
@@ -412,7 +497,7 @@ def classify(image: str | Path | bytes | np.ndarray, cfg: PipelineConfig,
         confidence = min(photo_gate_conf, grad_gate_conf)
         class_ = "gradient" if is_gradient else "flat"
 
-    warnings: list[dict] = []
+    warnings: list[dict] = list(sweep_warnings)
     if class_ != "flat" and confidence < CONFIDENCE_FLOOR:
         class_ = "flat"
         warnings.append(warn(CLASSIFICATION_UNCERTAIN, _CEILING_COPY[CLASSIFICATION_UNCERTAIN]))

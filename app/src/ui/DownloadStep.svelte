@@ -345,6 +345,36 @@
   }
   $: jefHoopNote = jefHoopHeaderNote(combined);
 
+  // Preflight's `block`-severity findings, across every digitized element in
+  // the project — the ones whose own definition is "will visibly go wrong;
+  // resolve it or get sign-off first" (digitizer_core/preflight.py). Until
+  // 2026-09-14 nothing in the Studio read them: a design could score 0 / F
+  // and the Download buttons handed over the file without a word, so the
+  // most finished instrument in the pipeline was also the least connected to
+  // anything.
+  //
+  // Scoped to the WHOLE project for the same reason App.svelte's
+  // `qualityEntries` is: the question is "should I sew this file", and the
+  // file is every element, not the selected one.
+  //
+  // Deliberately CONFIRM, never refuse — Kent's call 2026-09-14. `block`
+  // severity has never had to be right before, and it is not yet calibrated
+  // for a refusal: on `photo/summit_badge.png` the only block-severity
+  // finding in a three-logo run fired on a 17.60 mm² shape, 0.38% of the
+  // design's area (measured 2026-09-14). A gate that hard-refuses on that
+  // stops work over a speck. The engine and the service are untouched, so
+  // /export and every script still behave exactly as before.
+  function blockFindingsOf(proj) {
+    return (proj.elements || [])
+      .filter((el) => el.type === "digitized" && el.preflight)
+      .flatMap((el) =>
+        (el.preflight.findings || [])
+          .filter((f) => f && f.severity === "block")
+          .map((f) => ({ label: el.name || "Artwork", message: f.message, code: f.code })),
+      );
+  }
+  $: preflightBlocks = blockFindingsOf(project);
+
   // The format the confirm is holding, or null when it is closed. Holding the
   // FORMAT rather than a boolean is what lets one dialog serve every button
   // without a second piece of state to keep in step.
@@ -355,8 +385,12 @@
   function askThenDl(fmt) {
     // `hoopFitNote` is silent when the design fits, when no hoop is known, and
     // when it only needs rotating — so the dialog appears on exactly the case
-    // it is for, and every other download is one click as before.
-    if (!hoopExceeds) return dl(fmt);
+    // it is for, and every other download is one click as before. Preflight's
+    // block findings join it on the SAME gate rather than getting a second
+    // dialog: both answer "is there a reason not to sew this", the operator
+    // should see every such reason at once, and one confirm means one piece
+    // of state to keep in step.
+    if (!hoopExceeds && !preflightBlocks.length) return dl(fmt);
     confirmOpener = typeof document !== "undefined" ? document.activeElement : null;
     pendingFmt = fmt;
     return undefined;
@@ -555,13 +589,37 @@
       bind:this={confirmEl}
       on:keydown={onConfirmKeydown}
     >
-      <h3 id="hg-title">This design is bigger than your hoop</h3>
-      <p class="hg-note">{hoopExceeds}</p>
-      <p class="hg-body">
-        The machine cannot stitch past the edge of the hoop — the needle would
-        hit the frame. Make the design smaller, or choose a larger hoop back on
-        the first step.
-      </p>
+      <h3 id="hg-title">
+        {#if hoopExceeds && preflightBlocks.length}
+          Check this before you sew it
+        {:else if hoopExceeds}
+          This design is bigger than your hoop
+        {:else}
+          This design has {preflightBlocks.length === 1 ? "a problem" : "problems"} that will show
+        {/if}
+      </h3>
+      {#if hoopExceeds}
+        <p class="hg-note">{hoopExceeds}</p>
+        <p class="hg-body">
+          The machine cannot stitch past the edge of the hoop — the needle would
+          hit the frame. Make the design smaller, or choose a larger hoop back on
+          the first step.
+        </p>
+      {/if}
+      {#if preflightBlocks.length}
+        <ul class="hg-blocks">
+          {#each preflightBlocks as b}
+            <li>
+              {#if preflightBlocks.length > 1}<b>{b.label}:</b> {/if}{b.message}
+            </li>
+          {/each}
+        </ul>
+        <p class="hg-body">
+          These are the quality report's most serious findings. Fixing them in
+          review costs less than a ruined garment — but the file is yours, and
+          you can take it as it is.
+        </p>
+      {/if}
       <div class="hg-btns">
         <button class="primary" on:click={closeConfirm}>Go back</button>
         <button on:click={confirmDl}>Download {pendingFmt.toUpperCase()} anyway</button>
@@ -623,4 +681,12 @@
   .hg-note { margin: 0 0 var(--space-3); font-weight: 600; }
   .hg-body { margin: 0 0 var(--space-4); line-height: 1.5; }
   .hg-btns { display: flex; gap: var(--space-3); flex-wrap: wrap; }
+  .hg-blocks {
+    margin: 0 0 var(--space-3);
+    padding-left: 1.2em;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    line-height: 1.5;
+  }
 </style>
