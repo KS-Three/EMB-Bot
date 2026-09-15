@@ -53,3 +53,14 @@ digitizer/artfid-baseline.txt
 # renders are large. The RESULT of a run is written up under docs/ instead
 # (docs/artfid-eye-agreement-*.md), which is the part worth reading later.
 digitizer/artfid_eye_out/
+
+# Codex CLI's mirror of the Claude config (.codex/ hooks+agents, .agents/ skills,
+# AGENTS.md). Local-only on purpose: AGENTS.md is a stale sed-substituted copy of
+# CLAUDE.md whose "Codex" paths do not exist, and .codex/hooks.json hardcodes
+# absolute paths to one machine — neither is fit to publish from a PUBLIC repo.
+# The hook SCRIPTS under .codex/hooks/ are byte-identical to .claude/hooks/ and
+# work; it is only the docs and the launcher paths that are wrong.
+# Kent's call 2026-09-15: keep the files, keep them out of the repo.
+.codex/
+.agents/
+AGENTS.md

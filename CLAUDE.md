@@ -216,6 +216,17 @@ cd digitizer && .venv/Scripts/python -m digitizer_service   # service on 127.0.0
    `Bearer `, and sending an empty credential is worse than sending none — it
    turns a working anonymous server into a 401. Add the header only alongside a
    real token, never speculatively.
+   **That 200 is no longer the common case — re-measured 2026-09-15: 4 of 11.**
+   The other seven were `500` or, mostly, `504` after a THIRTY-SECOND hang, on a
+   machine where `https://huggingface.co/` itself answers 200 in 0.15 s. So a
+   hang or a 5xx here is the MCP endpoint, not your config and not a missing
+   token — do not go add `${HF_TOKEN}` to `.mcp.json` over it (see the paragraph
+   above for why that makes it worse). Retry two or three times: the runs that
+   did connect completed the handshake and returned the same four tools,
+   unchanged. **This is also why a session can see the server's instructions and
+   still have NO `mcp__huggingface__*` tools** — `initialize` succeeded and
+   `tools/list` did not, which looks like the server is tool-less rather than
+   flaky. Hit exactly that way on 2026-09-15.
    **The trap is `hub_repo_search`'s parameter name.** It takes **`repo_types`, an
    ARRAY** (`["model"]`), not `repo_type`. Pass the singular and the call
    SUCCEEDS and returns *"No repositories found for the given criteria"* — a wrong
