@@ -9,8 +9,9 @@
     },
     {
       "name": "digitizer",
-      "runtimeExecutable": "digitizer/.venv/Scripts/python.exe",
+      "runtimeExecutable": ".venv/Scripts/python.exe",
       "runtimeArgs": ["-m", "digitizer_service", "--port", "8721"],
+      "cwd": "digitizer",
       "port": 8721,
       "url": "http://127.0.0.1:8721",
       "autoPort": false
