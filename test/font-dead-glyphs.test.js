@@ -93,24 +93,39 @@ function sews(font, g) {
 // The last row is the safety check: the strip still applies where its reason
 // applies, so no construction stitches are added to designs customers have.
 //
-// **THE 20 ARE STILL LISTED BELOW ON PURPOSE.** This file reads the SHIPPED
-// `.embf` binaries, and those are built from `scratch_ink/` — which needs
-// `_tiers.json`, Kent-approved and on his machine only, so the library could
-// not be rebuilt here. The binaries still carry the dead glyphs until that
-// rebuild happens.
+// THE REBUILD LANDED 2026-09-15, so the 20 are GONE from the list below and
+// the "A-B" case now expects `[]`. This paragraph used to say they were still
+// listed on purpose, because the binaries are built from `scratch_ink/`, which
+// needs `_tiers.json` and lives only on Kent's machine. That is still true —
+// what unblocked it is `tools/build-embf.mjs --only <keys>`, which re-emits
+// named fonts without the full build's orphan clean (a full rebuild here emits
+// 55 of the 85 shipped fonts and deletes the other 30, `cyrillic` and both
+// Hebrew fonts among them).
 //
-// WHEN IT DOES, this test and the "A-B" case below will fail, and the failure
-// message one screen down will blame drift between the three copies of "does
-// this glyph sew". That is NOT what happened — it is the revival landing.
-// Delete the two roaring_twenties entries from KNOWN_DEAD, change the "A-B"
-// case to expect `[]`, and check the bbox shift on text containing
-// + - / < = > \\ _ ¯ ° before shipping the rebuilt library.
+// The bbox shift this paragraph asked to check BEFORE shipping, measured on
+// the rebuilt binaries via `layoutText` at emMm 20:
+//
+//   HAMBURG        0.0% wide   0.0% tall   <- no revived glyph, untouched
+//   A-B / A+B      0.0%        0.0%
+//   3/4            0.0%       +0.5%
+//   50% > 40%      0.0%       +0.4%
+//   UNDER_SCORE    0.0%       +7.8%
+//   <TAG>        +96.2%        0.0%
+//
+// `<TAG>` is the shape of the cost: `<` and `>` contributed no ink, so they
+// contributed no bbox, and now they do. Text WITHOUT these ten characters does
+// not move at all, which is the property that makes this safe for shipped
+// designs. Kent ruled to ship on 2026-09-13 and re-confirmed on 2026-09-15
+// with these numbers in front of him.
 const KNOWN_DEAD = {
   ondulamarif_Medium: ["'"],
   ondulamarif_S: ["'"],
   ondulamarif_XL: [":", "º"],
-  roaring_twenties_KOR: ["+", "-", "/", "<", "=", ">", "\\", "_", "¯", "°"],
-  roaring_twenties_KOR_small: ["+", "-", "/", "<", "=", ">", "\\", "_", "¯", "°"],
+  // roaring_twenties_KOR / _small held ten each here until 2026-09-15. They
+  // were authored with a stitch length upstream and lost it to a font-wide
+  // strip; the per-glyph strip plus the rebuild gave it back. The remaining
+  // six never had a length to lose, so they stay — reviving one means
+  // inventing a stitch length, which ROADMAP gate 1 refuses.
   western_light: ["4", "ç"],
 };
 
@@ -238,7 +253,10 @@ test("typing them produces a report, which is the half the user actually sees", 
   for (const [key, text, want] of [
     ["western_light", "2024", ["4"]],
     ["western_light", "fa\u00e7ade", ["\u00e7"]],
-    ["roaring_twenties_KOR", "A-B", ["-"]],
+    // Revived 2026-09-15: "-" sews, so nothing is reported. Kept as a case
+    // rather than deleted, because it is the one that proves the revival
+    // reaches the half of the system the user actually sees.
+    ["roaring_twenties_KOR", "A-B", []],
   ]) {
     const font = byKey.get(key);
     if (!font) continue;

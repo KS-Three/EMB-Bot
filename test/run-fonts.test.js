@@ -155,15 +155,22 @@ test("no shipped font carries stitchable run params (they are stripped at import
   const bins = fs.readdirSync(BIN).filter((f) => f.endsWith(".embf"));
   // Iterating an empty list is the same vacuous pass one level down.
   assert.ok(bins.length > 50, `only ${bins.length} .embf files — the library did not build`);
+  // Scoped per GLYPH since 2026-09-15, matching build-font's strip. The rule
+  // this protects is "no glyph gains construction stitches over its shipped
+  // design", and construction is what a run is only when the glyph ALSO has
+  // satin columns. In a runs-only glyph the run is not construction, it IS the
+  // glyph — which is why roaring_twenties_KOR's ten symbols sewed nothing for
+  // as long as this was judged font-wide. Checked against the whole library
+  // the day it changed: 0 glyphs with satin carry stitchable run params, and
+  // exactly 20 runs-only glyphs do (the ten in each roaring_twenties_KOR).
   for (const f of bins) {
     const font = fb.decodeFontBin(fs.readFileSync(path.join(BIN, f)));
-    let satin = 0;
-    for (const g of Object.values(font.glyphs)) satin += (g.cols || []).length;
-    if (!satin) continue; // a runs-only font legitimately keeps its params
-    for (const g of Object.values(font.glyphs))
+    for (const [ch, g] of Object.entries(font.glyphs)) {
+      if (!(g.cols || []).length) continue; // the run IS the glyph here
       for (const r of g.runs || [])
         assert.ok(!(r && r.pts && r.lenMm > 0),
-          `${f} is a satin font but carries stitchable run params — it would gain stitches vs. its shipped design`);
+          `${f} glyph ${JSON.stringify(ch)} has satin columns AND stitchable run params — it would gain construction stitches vs. its shipped design`);
+    }
   }
 });
 
