@@ -214,6 +214,39 @@ list is.** It is what caught the bug above.
 `digitizer/tools/flip_sheet.py`, `docs/flip-sheet-2026-09-06.md`.
 *(measured 2026-09-06, retracted on re-measurement 2026-09-07)*
 
+## 8. B 76 for a design that sewed a white rectangle, F 34 once the logo came back
+
+`logo_gaulke_roofing` is a phone screenshot: a white card between two black
+letterbox bars. Before `strip_letterbox` (#485) the bars read as ink, so the
+black logo read as enclosed background and went unsewn — **the file sewed a
+white rectangle with the logo as bare fabric**, one stray black stroke on it.
+**The scorecard graded that B 76.**
+
+With the strip ON the logo sews — sun, roof, window, both lines of lettering —
+and **the grade fell B 76 → F 34 on both garments** (Linux, the #486
+recapture): `GROUND_SEWN:block`, because the card was still sewing, 79.9% of
+the stitches, round a now-visible logo. So the check was right about the
+thread and the letter was wrong about the design: the change Kent would judge
+far better scored 42 points worse, while the design that could not be sewn at
+all had scored a B.
+
+**Why the old B:** nothing in preflight reads whether the ARTWORK sewed. The
+white card matched its thread exactly, the bars were background, and every
+check that exists passed a design with no logo in it.
+
+**Closed on the engine side 2026-09-15** (`letterbox.detect_edge_strips`):
+the card's two 9-px shadow strips held stage 1's border agreement at 0.693
+under the 0.75 floor; trimmed, it reads 1.000, the card is ground, and the
+logo sews on bare garment — **C 64, `GROUND_SEWN` gone, 13,378 → 4,531
+stitches** (measured on Windows, so read the grade as advisory — DOCTRINE
+2026-09-15; the stitch drop is the card leaving). The row stays for what it
+shows: **a grade on a design whose subject never sewed is not evidence**, and
+row 7's rule generalises — where a change alters WHAT sews, look at the render
+before the letter. Renders: `stage6_stitches.png` for the three states, by
+`digitizer_core` debug_dir on `photo/logo_gaulke_roofing.png` at 80 mm /
+left_chest with `strip_letterbox` False, and True before and after the strip
+trim. *(measured 2026-09-15)*
+
 ---
 
 ## What this list is not

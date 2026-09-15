@@ -1980,16 +1980,24 @@ def test_a_full_bleed_design_does_not_report_its_own_border():
     """
     from digitizer_core.stage1_prep import prep
 
-    art = TESTDATA / "photo/logo_gaulke_roofing.png"
+    art = TESTDATA / "photo/photo_chrome_specular.png"
     c = cfg(target_width_mm=90.0, max_colors=6)
 
-    # This fixture is STILL the corpus's full-bleed design after
-    # `strip_letterbox` went default-ON (2026-09-14), and now for a better
-    # reason than before. It used to qualify BY ACCIDENT: the black bars were
-    # read as ink, so the artwork touched the frame edge. With the bars
-    # cropped, the white band runs edge to edge in the cropped frame on its
-    # own — stage 1 reports BACKGROUND_ABSENT and `bg_mask` covers 0.000% of
-    # pixels, so the whole canvas is artwork.
+    # RE-POINTED 2026-09-15 from `photo/logo_gaulke_roofing.png`, exactly as
+    # the note that stood here asked: the 2026-09-15 edge-strip trim
+    # (`letterbox.detect_edge_strips`) gave gaulke a background — its white
+    # card is ground now, which was the fix — so the full-bleed assertion
+    # below fired (bg_mask 0.787) and that file stopped testing full bleed.
+    # (A comment in `test_letterbox.py` named a `testdata/full_bleed_bars.png`
+    # as this guard's home; no such file was ever committed.)
+    #
+    # `photo_chrome_specular.png` is full bleed on its own pixels — stage 1
+    # reports BACKGROUND_ABSENT, `bg_mask` 0.000%, art bbox the whole frame —
+    # and it CATCHES the bug, measured by putting it back: with `cv2.erode`'s
+    # default border this design reads **147.5 mm²** uncovered (the rim
+    # strip), and 0.0 with `borderValue=0`. That second number is why it was
+    # chosen over the other seven full-bleed fixtures: a guard is only a guard
+    # if the defect is visible on it.
     #
     # Asserted rather than assumed, because the property is the entire reason
     # this test uses this file: if a future change gives the design a
@@ -2014,8 +2022,8 @@ def test_a_full_bleed_design_does_not_report_its_own_border():
     # regions), then `< 1.0`, and the letterbox crop put the worst patch at
     # exactly 1.0 — failing a guard whose defect is two orders of magnitude
     # away. Asserting the total pins what the bug actually moved; the
-    # worst-patch bound stays as a second, deliberately loose net that still
-    # catches 37.5 mm² by 7.5x.
+    # worst-patch bound stays as a second, deliberately loose net (37.5 mm² on
+    # gaulke when first measured; 147.5 on this fixture, measured 2026-09-15).
     assert report["metrics"]["uncovered_total_mm2"] == 0.0, \
         report["metrics"]["uncovered_total_mm2"]
     assert report["metrics"]["uncovered_worst_mm2"] < 5.0, \

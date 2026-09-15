@@ -88,6 +88,10 @@ LINE_TOL = 6.0
 # The bar's colour must differ from the interior's dominant colour by more
 # than this (Euclidean RGB, 0-255) or it is a margin, not a bar.
 MIN_INTERIOR_DELTA = 40.0
+# A chrome strip left on the band's other edges must sit further than this
+# (Lab dE76) from the band's ground. Equal to stage 1's own flood tolerance,
+# `PipelineConfig.bg_tolerance_lab`, on purpose — see `detect_edge_strips`.
+EDGE_STRIP_DELTA_E = 6.0
 
 
 def _run_length(lines: np.ndarray, tol: float,
@@ -209,6 +213,95 @@ def detect_letterbox(rgb: np.ndarray,
     return top, bottom, left, right
 
 
+def detect_edge_strips(band: np.ndarray, axis: int,
+                       max_frac: float = MIN_FRAC,
+                       line_tol: float = LINE_TOL,
+                       delta_e: float = EDGE_STRIP_DELTA_E,
+                       ) -> tuple[int, int]:
+    """-> thicknesses of the thin chrome strips on the two edges of `band`
+    that lie ACROSS `axis` (axis=1: left, right; axis=0: top, bottom).
+
+    ## Why the bars alone were not enough
+
+    Cropping `logo_gaulke_roofing.png`'s bars leaves a white band whose left
+    and right edges are each a 9-px shadow strip — the phone app's card edge,
+    RGB 234 fading to 219, Lab dE76 8.1-14.4 from the white band. The bars are
+    gone, but stage 1's border ring is 2 px on every side, so those strips
+    are 30% of it: agreement read 0.693 against `bg_border_agreement_min`
+    0.75, stage 1 reported BACKGROUND_ABSENT, and the white card sewed as the
+    design's largest shape — 79.9% of the stitching, `GROUND_SEWN` at block —
+    with a grey satin column down each side. Measured 2026-09-15.
+
+    ## Why this cannot reach an ordinary upload
+
+    It is only asked after `detect_letterbox` found bars, i.e. on a
+    screenshot, and it trims a strip only when every guard holds:
+
+      * each line is UNIFORM along its length (`line_tol`) — artwork touching
+        the edge is not a uniform line;
+      * each line's mean colour is further than `delta_e` from the band's own
+        ground, read off the band's edges on the bar axis (the edges the bars
+        were cut from, which ARE the ground stage 1 will flood);
+      * the strip ends at a line INSIDE `delta_e` of that ground — a step
+        into the ground, not a wide frame or border running inward;
+      * it is no wider than `max_frac` of the dimension (`MIN_FRAC`, the
+        size below which `detect_letterbox` calls a run edge noise) — a thin
+        strip, never a margin;
+      * both edges carry one, at least 2 px each and within 1 px of each
+        other — chrome round a centred card is mirrored (see the end).
+
+    `delta_e` defaults to stage 1's own flood tolerance
+    (`PipelineConfig.bg_tolerance_lab` = 6.0), so a trimmed line is exactly a
+    line stage 1 would have refused to call ground: no new threshold.
+    """
+    from .threads import rgb_to_lab  # local: keep this module import-light
+
+    h, w = band.shape[:2]
+    if min(h, w) < 8:
+        return 0, 0
+    # Ground reference: the band's two edges ALONG the bar axis.
+    if axis == 1:
+        ground_px = np.concatenate([band[:2].reshape(-1, 3), band[-2:].reshape(-1, 3)])
+        lines, span = np.swapaxes(band, 0, 1), w
+    else:
+        ground_px = np.concatenate([band[:, :2].reshape(-1, 3), band[:, -2:].reshape(-1, 3)])
+        lines, span = band, h
+    ground = rgb_to_lab(_dominant(ground_px).round().astype(np.uint8).reshape(1, 3))[0]
+    limit = max(1, int(max_frac * span))
+
+    def far(line: np.ndarray) -> bool | None:
+        px = line.reshape(-1, 3).astype(np.float64)
+        mean = rgb_to_lab(px.mean(axis=0).round().astype(np.uint8).reshape(1, 3))[0]
+        d = float(np.linalg.norm(mean - ground))
+        if d <= delta_e:
+            return False          # ground: the strip (if any) ends here
+        if px.std(axis=0).max() > line_tol:
+            return None           # not uniform: artwork or noise, refuse
+        return True
+
+    def run(seq: np.ndarray) -> int:
+        n = 0
+        for line in seq[:limit + 1]:
+            verdict = far(line)
+            if verdict is False:
+                return n
+            if verdict is None:
+                return 0
+            n += 1
+        return 0                  # ran past `limit` without reaching ground
+
+    a, b = run(lines), run(lines[::-1])
+    # MIRRORED, or nothing. A screenshot's band is a card centred on the
+    # screen, so its chrome is the same on both edges (gaulke: 9 and 9). A
+    # one-sided line is something else, and `becker_marine_logo.png` is the
+    # case that proved it: a 1-px uniform white column at its left edge only
+    # (exporter residue under transparency) passed every guard above, and
+    # trimming it broke the exact round trip `test_letterbox.py` pins.
+    if min(a, b) < 2 or abs(a - b) > 1:
+        return 0, 0
+    return a, b
+
+
 def strip_letterbox(rgb: np.ndarray, alpha: np.ndarray | None = None,
                     ) -> tuple[np.ndarray, np.ndarray | None]:
     """Crop detected letterbox bars off `rgb`, and off `alpha` identically.
@@ -221,6 +314,16 @@ def strip_letterbox(rgb: np.ndarray, alpha: np.ndarray | None = None,
     if not (t or b or l or r):
         return rgb, alpha
     h, w = rgb.shape[:2]
+    # The band the bars leave behind can still carry the host app's CHROME on
+    # its other two edges — see `detect_edge_strips`. Only ever asked once
+    # bars were found, so a file that is not a screenshot never reaches it.
+    band = rgb[t:h - b, l:w - r]
+    if t or b:
+        sl, sr = detect_edge_strips(band, axis=1)
+        l, r = l + sl, r + sr
+    else:
+        st, sb = detect_edge_strips(band, axis=0)
+        t, b = t + st, b + sb
     # `ascontiguousarray`, not a bare slice. A top/bottom-only crop stays
     # contiguous, but a PILLARbox crop (left/right bars) does not, and several
     # cv2 entry points downstream reject a non-contiguous buffer. The
