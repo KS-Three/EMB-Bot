@@ -5394,3 +5394,45 @@ card can only be one that is rebuilt with today's codec. Where an instrument's
 artefact is generated rather than committed, the old behaviour is genuinely
 unreachable and the instructions should simply be inverted — no compatibility
 branch to maintain.
+
+## The scorecard baseline is platform-bound — capture it on Linux only (2026-09-15)
+
+`corpus_scorecard_baseline.json` joins the goldens and ARTFID on the list of
+instruments whose numbers are a property of the machine as much as of the
+engine. **Measured both ways on the same commit, so this is a control result
+and not an inference.**
+
+**Windows does not reproduce it.** Kent scored `28e3fc7` against its own
+baseline on his box (Python 3.12, pinned `requirements.txt` minus uvloop,
+tesseract 5 from Program Files) and **seven designs moved with zero engine
+change**. Legibility/OCR carried most of it: `drone_render` hat_front gained
+`LETTERING_ILLEGIBLE:warn` (legibility 0.545 → 0.407, raw −80 → −92),
+`logo_bridge_bar` LOST that warn on both garments (score 0 → 4 left_chest,
+4 → 16 hat_front), `summit_badge` hat_front legibility 0.0 → 0.29, `gaulke`
+hat_front 0.292 → 0.211, `hotel_fremont` 1.0/0.963 → 0.865. Geometry moved
+too: `photo_grass_macro` uncovered_total_mm2 407.8 → 367.2 (left_chest) and
+460.2 → 336.0 (hat_front), trims_per_1000 4.1 → 3.5, link_thread_mm 0.6 → 1.7.
+No letter grade moved, which is exactly what makes it dangerous — a recapture
+on Windows would have folded all of that into the ruler under a clean grade
+column.
+
+**Linux reproduces it exactly.** The same seven designs, both garments, scored
+at `28e3fc7` in a detached worktree on a cloud container (Ubuntu, `python3.12`,
+same pinned `requirements.txt`, `tesseract-ocr` 5.3.4 from apt, no
+`rembg_isolated/venv`) against the baseline `origin/main` carries: **`no drift
+against the baseline`, exit 0**, all 14 rows. That is the CI `digitizer` job's
+environment, and it is the one the baseline was captured in.
+
+**So: capture this baseline on Linux, and read a Windows scorecard run as
+advisory only.** A drift report from Kent's box cannot distinguish an engine
+regression from the platform, and the OCR half of the grader is where the two
+disagree — which is precisely the half `legibility_check` made load-bearing at
+`28e3fc7`. The control is cheap (seven fixtures, ~7 minutes on four workers)
+and it is the thing that tells you whether the ruler or the engine moved; run
+it before trusting any recapture.
+
+Corollary, and the reason the control is worth its own run rather than being
+folded into the recapture: **scoring in a 4-worker `ProcessPoolExecutor`
+changes nothing.** The control above was run in parallel and still matched
+byte-for-byte, so the pipeline may be fanned out to make a 52-row sweep
+affordable without putting the numbers in question.
