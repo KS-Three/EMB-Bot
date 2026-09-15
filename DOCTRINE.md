@@ -5436,3 +5436,105 @@ folded into the recapture: **scoring in a 4-worker `ProcessPoolExecutor`
 changes nothing.** The control above was run in parallel and still matched
 byte-for-byte, so the pipeline may be fanned out to make a 52-row sweep
 affordable without putting the numbers in question.
+
+## A cost measured at one width is not a cost (2026-09-12)
+
+`cfg.edge_cap="bean"` was flipped ON 2026-09-11 on `+5.9–26.3%, median +13.4%`
+over six fixtures. `tools/pro_silhouette.py` defaults to `width = 80.0`, so
+that band is **one reading, not a curve**. Swept, Becker bills **+58.7% at
+88 mm** — eight millimetres above the only width anyone had measured, and
+worse than the `drone_render` figure this repo already calls a whisker off the
+blanket-border negative. A **0.3 mm larger design is 34% cheaper**.
+
+**Sweep size before quoting a bill.** The tool already takes `--width`; the
+evidence for a flip needs to be a curve, not a point.
+
+## A fixed threshold a derived scalar wanders across is not stable across size (2026-09-12)
+
+The oscillation above is not the cap's fault and not the silhouette's. The
+silhouette is topologically IDENTICAL at every width (`sil_parts` 10,
+`interiors_pre` 7, from 80 to 110 mm) and the hairline cracks are worth 49
+stitches, 0.8% of the bill. **Both first guesses were wrong, and only the
+render separated them** — the same discipline that settled the DST axis.
+
+What actually moves is the `omit` gate's INPUT. One shape carries ~94% of
+Becker's linear cover, and its `explained` oscillates in a ±0.03 band
+straddling `stage6_satin._PROMOTE_EXPLAINED_MIN` (0.80) **non-monotonically in
+design size**: satin at 86, fill at 88, satin at 90, fill at 91, satin at 92,
+fill at 95.7, satin at 96. Above the line the shape lays ~1,400 mm² of linear
+cover; below it, none. The ungated cap cost is flat with size (+7%); the entire
+3.4× jump is the gate's saving collapsing 72.2% → 2.9%.
+
+**`_PROMOTE_EXPLAINED_MIN`'s own comment says 0.80 was "measured best of a
+0.5–0.85 sweep … on a plateau rather than a knife edge". That plateau is about
+CORPUS CELL COUNTS, not about stability PER SHAPE ACROSS SIZE**, and Becker
+refutes the latter. Before trusting any threshold of this shape, sweep the
+scalar against size on the fixtures whose verdict it decides, and treat
+non-monotonicity as the acceptance criterion.
+
+## A rate metric cannot police a change that grows its denominator (2026-09-12)
+
+Preflight caught the CHEAP edge-cap case (Becker 90 mm, B 88 → B 76) and missed
+both expensive ones (95.7 and 100 mm, B 88 → B 88, nothing above `warn`).
+`TRIM_HEAVY` is trims per 1,000 stitches: at 90 mm the cap takes 26 → 50 trims
+on 8,550 stitches = 5.85/1k and fires; at 100 mm it takes 23 → 40 on 17,697 =
+2.26/1k and does not. **The cap's own stitch cost inflated the denominator that
+would have flagged its trim cost.**
+
+When a change adds stitches, every per-1,000 gate covering it gets quieter as
+it gets worse. Read the absolute count beside the rate, or the metric will
+report the expensive case as the clean one.
+
+## A test that never calls `digitize` cannot see a bill that depends on tiering (2026-09-12)
+
+`tests/test_edge_cap.py` is green and was green through a +58.7% bill on a
+DEFAULT-ON flag. It builds its geometry from synthetic `bar(15, 30)` polygons
+fed straight into `resolve_overlaps`/`sequence` — it never calls `digitize`,
+never touches real artwork, and never sweeps size, so it is structurally unable
+to see a cost whose value depends on how the artwork TIERED.
+
+Its companion `tests/test_edge_cap_budget.py` is the missing half and costs
+~100 s for one real fixture at three widths. **That is the price of testing a
+size-dependent bill at all**; a synthetic suite is fast precisely because it
+measures nothing about artwork.
+
+## Attribute a flip's test fallout against the pre-change tree, don't triage it (2026-09-13)
+
+The first full suite on the flipped `keep_thin_strokes` engine was **33 failed**
+against an expected three. Rather than triaging 33 tests one at a time, the same
+33 node IDs were run against a worktree at the pre-change commit: **3 failed, 30
+passed**. That single run proved all 30 extras belonged to the flip and none
+were pre-existing, and turned an open-ended debugging session into a list.
+
+Keep a pre-change worktree for any flip that moves defaults. It is the same
+artefact `tools/recapture_flat_lane_key.py` demands for a golden, and it
+answers "is this mine?" for the whole suite at once.
+
+## A golden recapture this machine cannot prove, it may not write (2026-09-13)
+
+`recapture_flat_lane_key.py` refuses to write unless the machine first
+reproduces the golden with the PRE-CHANGE engine, and that refusal is a
+FEATURE. On the `keep_thin_strokes` flip it let `logo_whitebg.png` and
+`logo_alpha.png` through (`machine OK: pre-change engine reproduces <key>
+byte-for-byte`) and **correctly blocked `test_pushcomp`'s `towel` tuple**,
+which this container does not reproduce. The new value was recorded in the test
+for whoever can write it, and the pin was left alone.
+
+**Never `--force` past that, and never take `--control` alone** — a control
+only vouches for a target it shares a code path with. CI deselects exactly
+three node IDs; every other golden runs there, so a forced recapture does not
+fail locally, it fails for everyone else.
+
+## Read the picture before repeating the claim the flag is sold on (2026-09-13)
+
+`keep_thin_strokes` is sold on Kent's "whole elements missing". The render
+narrows that to ONE fixture: on `drone_render`, `AND DRONE` goes from a bare
+ghost with essentially no thread on it to every letter sewn. **On Fremont and
+gaulke the taglines already read with the flag OFF** — ON they get denser and
+Fremont drops a stray thread. Fremont's real win is the trim count
+(103 → 76), not legibility.
+
+So show the drone panel, not the Fremont one. And note what the scorecard says
+about the fixture that actually improved: **drone is F 0 / raw −68 both ways.**
+The yardstick cannot see a rescue the eye can, which is the whole reason the
+render is a required step and not a courtesy.

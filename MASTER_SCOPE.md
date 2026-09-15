@@ -118,15 +118,34 @@ icon. Cloth pointers added to defects 3, 6 and 16 below.
     satin (+34.9%) is cheaper. Bills every run as `EDGE_CAP_APPLIED`.
     **MEASURED 2026-09-11, and GATED** (`tools/pro_silhouette.py`; the two sides are read differently ON PURPOSE — ours exactly from the plan's run kinds, his as a LOWER BOUND through `border_pro`'s certified fill-edge test, because a stitch file has no kinds). **Ours, `edge_cap` off: 5.9–100.0% of the sewn silhouette has no linear stitch on it** (3,266 mm; enthusiast 5.9, drone 20.2, Becker 24.5, gaulke 76.7, whitebg 82.6, **Fremont 100.0** — a badge whose satin is all interior lettering). **His: at least 19.1–26.1% of 7,063 mm of fill edge carries a certified border**, none in the fill's own colour block — he lays thread along fill edges as a matter of course; whether it adds to a whole silhouette is not knowable from a stitch file. **GATED AND FLIPPED ON, DEFAULT `"bean"` 2026-09-11** (Kent: "gate it, then flip"). The gate (`silhouette_cap(omit=…)`) caps only what is genuinely open: the bill falls from +8.6–100.4% to **+5.9–26.3%** (median +13.4%) and uncovered falls to **0.1–6.2%**. **Style NOT settled and still the sew-out's** — bean is cheaper in stitches on five of six, satin cheaper in TRIMS on five of six, and at Kent's own 25-stitch trim price the two are within 4%. **Two costs, stated:** the trim rate moves both ways (becker 6.26→8.03, gaulke 2.42→3.50, but fremont 4.55→4.28 and drone 5.26→5.24; four of six were already over the 4.1 professional ceiling with the cap off), and the cap re-loads a cone on **all six** fixtures — Kent ruled that stop acceptable rather than put a 5.4%-frontage cone on gaulke's edge instead of a 95.0% one (`test_duplicate_cone_layers` carries the carve-out). 45 tests moved; **no golden was recaptured** — the byte-identity guards pin `edge_cap="none"`, `conftest.PRE_FLIP`'s posture. **The accepted stop then broke TWO buyer-facing displays, caught by CI's e2e and fixed the same day (2026-09-11).** Since the cap re-loads a cone, sew BLOCKS and SPOOLS TO BUY stopped being the same number — and both screens were showing blocks: the Digitize panel's summary read *"3 colors"* for a two-spool vector logo (`e2e/digitize-auto-start.spec.js`, whose own comment says it asserts the colour count because *"the colour count is the thing the customer pays for"*), and the review's **"Threads to load"** list — a shopping list — named one spool twice with its metres split across the two rows, so a customer buying from it buys a spool they have and under-orders the one they need. `digitizer.spoolCount` folds by cone id for the panel and `QualityReport.cones` folds and SUMS for the list (the thread total is unchanged: a sum of sums is the same sum). **This is MASTER_SCOPE defect 42(e)'s rule hitting a second time** — "a colour is a cone to buy and a re-thread on a single-needle machine" — and the lesson is that a ruling which changes what the ENGINE DOES changes what every existing display of it MEANS. *(fixed 2026-09-11 — `QualityReport.spec.js` +1, `digitizer.spec.js` +3, both mutation-proved)* **`satin_rails_follow_edge` is NOT answerable this way** — a stitch file holds the rails and not the artwork, so asking whether they reach its edge is circular. *(measured 2026-09-11 — `docs/superpowers/plans/2026-09-11-edge-cap-from-the-pro.md`; `tests/test_pro_silhouette.py`, 4)* **The flip's CLOCK was not measured and cost 86 minutes a design for one day.** The gate built its cover as `unary_union(lines).buffer(...)`, which NODES every satin zigzag at every crossing — Fremont's 138 runs / 9,677 points become a 49,535-part MultiLineString — and buffering that soup was **5,189 of `hotel_fremont_hat`'s 5,203.9-second prep**, exhausting a 39 GB box (GEOS `bad allocation`). Buffering each run and unioning the RIBBONS is the same set (`buffer(A ∪ B, r) == buffer(A, r) ∪ buffer(B, r)`) and gives a **byte-identical `ours.dst` in 14.5 s** (md5 `57c1abf9…`, compared against the 86.7-minute run itself); `hotel_fremont_patch` — the corpus's missing 23rd design — preps in 26.7 s. Cap-only speedups, output identical stitch-for-stitch: roofing_lc 60.5×, drone 14.0×, gaulke_jb 1.2×. *(fixed 2026-09-12 — PR #464; `tests/test_edge_cap.py` +2, both watched red; DOCTRINE "Never `unary_union` a stitch path before buffering it")*
     *(built 2026-09-01 — `tests/test_edge_cap.py`, 18 passing)*
-    **Rang hairline CRACKS as edges — FIXED 2026-09-08.** `"satin"` on the
-    icon sewed a 3.4 mm satin bar mid-design: the silhouette union carries
-    20 cracks where fills' edges nearly coincide (0.0–0.1 mm wide, ≤7.7 mm
-    long, owned by no region); the loop gate is a PERIMETER floor a long
-    crack clears. `stage6_border._fill_cracks` now fills any interior the
-    column cannot stand in (`BORDER_WIDTH_MM`, no new constant); real holes
-    still cap. Icon: 2 edges → **1**, 1,547 → 1,462 cap stitches, outer
-    ring unchanged; bill carries `cracks_filled`. *(measured 2026-09-08 —
-    `tests/test_edge_cap.py`, 20 passing)*
+    **Rang hairline CRACKS as edges — FIXED 2026-09-08.** The silhouette union
+    carries 20 sub-0.1 mm cracks owned by no region, which the loop gate's
+    PERIMETER floor let through as edges; `stage6_border._fill_cracks` fills
+    any interior the column cannot stand in. Note the ruler is ABSOLUTE
+    (`BORDER_WIDTH_MM / 2`) while the feature scales with `target_width_mm`,
+    so the same hole gets opposite verdicts at different sizes — worth 49
+    stitches, unrelated to the oscillation below. *(2026-09-08 —
+    `tests/test_edge_cap.py`)*
+    **THE BILL OSCILLATES WITH SIZE, and the flip's `+5.9–26.3%, median
+    +13.4%` was a ONE-WIDTH reading** (`pro_silhouette.py` defaults to 80 mm).
+    Becker bills **+58.7% at 88 mm** — worse than `drone_render`'s +56.9%
+    above — and a **0.3 mm larger design is 34% cheaper**, verified at the
+    .dst byte level. Not the silhouette (topologically identical 80→110) and
+    not the cracks (0.8% of the bill): the `omit` gate loses its input,
+    because one shape carrying ~94% of the design's linear cover flips
+    satin/fill on `stage6_satin._PROMOTE_EXPLAINED_MIN` (0.80) from a scalar
+    **not monotone in design size**. **COST CAPPED 2026-09-12** (Kent: cap the
+    cost, leave `classify_ribbon` alone) — `EDGE_CAP_BUDGET_PCT` = 40.0, the
+    midpoint of an empty gap between every gate-working bill on record
+    (4.4–26.6%) and every collapsed one (53.4%+); `cfg.edge_cap_over_budget`
+    defaults `"warn"`, so no stitch moves, and `"drop"` is opt-in. `edges` was
+    counting arcs-or-rings and FELL as the bill rose (18 → 25 → 16 against
+    +18% → +26% → +57%); it is silhouette rings now, with
+    `whole_loops`/`arcs`/`yielded` and the gate's effectiveness beside it.
+    **The cause is NOT fixed** — the banner still flips — and
+    `classify_ribbon`'s stability is the open project. *(measured 2026-09-12 —
+    `docs/edge-cap-cliff-2026-09-12.md`, renders alongside;
+    `tests/test_edge_cap_budget.py`)*
 
 20. **Photo tonal splitting stacks thread past the pucker ceiling.** The bill
     for the ratified spec-decision-2 flip (`d3f3c547`), found only because the
@@ -162,7 +181,9 @@ icon. Cloth pointers added to defects 3, 6 and 16 below.
 
 29. **The panel printed the SERVER's filesystem path to the customer — FIXED 2026-09-07, and it was a FAMILY of three.** `PHOTO_BACKGROUND_REMOVAL_UNAVAILABLE` (9 of 26 fixtures, and not a corpus artefact — `cfg.photo_prep_background_removal` defaults True), `PHOTO_FACE_PRIORS_UNAVAILABLE` and `PHOTO_SAM2_SEGMENTATION_UNAVAILABLE` each interpolated a diagnostic — an absolute venv path, a YuNet model path, the last line of a worker's STDERR — into an untranslated message the panel renders verbatim. All three route through `pipeline._environment_warning` now; the diagnostic goes to `reason=` alone, which already carried it. Fixing only the measured site would have left two siblings — the missing-port shape defect 27 is made of. `tests/test_environment_warnings.py` (7) carries an AST tripwire rejecting any `warn()` message f-string that interpolates a `*_reason` name. **And the other ten are CLOSED too, 2026-09-07** — Kent's saleability call resolved the product question the measurement deferred. Eight are now translated in `WARNING_TEXT`; the two engine-telemetry codes (20 of 26 fixtures each: *"982 superpixels, 32 after merging"*, *"chart-restricted weighted k-medoids"*) plus the internal `PALETTE_THREAD_MISMATCH` and the dev-only SAM2 note go in `SILENT_WARNINGS` and never reach the rendered list, while `warningLines` keeps every code so the flat-art nudge and classification readout still branch on them; `SHAPES_LEFT_UNSEWN` returns "" when every unsewn shape is enclosed background, which is all 10 of the 10 fixtures that emit it. Guarded by a jargon blocklist over every translation (`digitizer.spec.js`, mutation-proved) and by two new `test_code_wires.py` cases: a silenced code must be a live wire value, and nothing silenced may also be branched on. **And the same defect lived on the FAILURE path — FIXED 2026-09-07.** `jobs.py` set `job.error` to `f"{type(exc).__name__}: {exc}"` and `digitizer.js` throws it at the user, so a 1×1 upload (and any artwork whose subject the background detector eats) read *"ValueError: no foreground pixels — the whole image reads as background"* three lines after the upload gate's own well-written rejections. `digitizer_service/errors.py` maps the artwork-caused failures to sentences and puts the raw form in `job.detail` beside the traceback. **The first cut replaced EVERY unmatched exception with a generic and three service tests caught it**: a bad `boundary_override` and a non-adjacent `merge_shape_ids` fail with messages naming the caller's own edit, which is the only thing that lets it be undone — so the map is an ALLOWLIST and anything unmatched passes through unchanged. `tests/test_job_errors.py` (9). *(measured and fixed 2026-09-07 — `digitizer/tools/warning_coverage.py`; DOCTRINE; scope-history 09-07)*
 
-30. **The review screen's per-layer cone list names threads its layer does not sew — REAL, TRACKED, and currently HARMLESS.** `PALETTE_THREAD_MISMATCH` fires on **6 of 26** fixtures (34 shapes; `tools/palette_mismatch.py`) and appeared in NO document until now, though the code has described it since 2026-08-14. `result.palette` is per LAYER and `revalidate_threads` re-snaps individual shapes; `rehome_resnapped_regions` (2026-08-31) moves a re-snapped region to the layer declaring its new cone, so what survives is the re-snap whose target NO layer declares — and on **all six** fixtures the thread those shapes sew is on no review layer at all. **Three things bound it, each read off a contract rather than measured** (DOCTRINE): the OPERATOR's list is `plan.palette`, per BLOCK, verified consistent **26 of 26**; a layer legitimately sewing several shades is the blend tier, not this; and every Studio consumer is already hardened — `reviewFromJob` resolves a shape's colour with a `stats.blocks` fallback keyed by its own `sew_block`, and `QualityReport.svelte` refuses the layer palette outright. **Nothing renders the layer list as a cone list, so the customer-visible impact today is nil.** Kept as a regression detector for the day a consumer reads `review.palette` positionally; do not spend a session on it before then. *(measured 2026-09-07 — `digitizer/tools/palette_mismatch.py`; scope-history 09-07)*
+30. **The review screen's per-layer cone list named threads its layer does not sew — FIXED, DEFAULT ON since 2026-09-13** (`cfg.layer_palette_from_regions`, `stage3_segment.layer_palette_threads`; Kent's ruling on the corpus pass he asked for first). `palette[i]` answered *what stage 2 CALLED layer i*, not *what its shapes sew*: `compact_layers` only drops slots and never re-reads a survivor's thread. ON, each layer's cone is elected from its own regions, pinning `palette[i].number in {r.thread_number for r in layer i}` — **not** `palette ⊆ block cones`, which the blend tier breaks by design.
+    **Every number this entry used to carry was wrong**, corrected here because they were cited elsewhere: *6 of 26 / 34 shapes* → **3 of 26 / 24**; *on all six the sewn thread is on no review layer* → **0 of 3**; and the mechanism was not a re-snap at all — all 24 diverged regions carry `color_cap_merged_from`, so `enforce_color_cap` is the producer, running AFTER `rehome_resnapped_regions`. Stale since `26627a2` (09-10), which updated defects 15, 28 and 31 and left this one. Two things the old text could not see: the warning was **blind to a layer naming a cone NO block sews** (9 of 26 fixtures, 14 cones, 6 silent — `palette_mismatch.py` reports phantoms now), and at the Studio's shipped `max_colors=6` the defect was **5× its published size** (122 diverged regions on 5 fixtures vs 24 on 3 at the engine's 12) because every published figure had been taken at a setting no customer gets.
+    **Flip cost:** mislabelled layers 7 → 0 at 12 and 13 → 0 at 6, rows unchanged, zero real cones dropped, and the plan digest / every stitch coordinate / `design.colors` / `thread_mm_by_color` **identical off vs on, 26/26, both settings** — *review-only* is a measurement now, not a call-graph argument. **Accepted price** (Kent's, knowingly): duplicate review ROWS, 0 → 13 at 6, worst `drone_render` 15 rows naming 6 cones, because `merge_duplicate_cone_layers` folds on the DECLARED cone upstream of the election. No half-flip exists; folding them moves sew order and goldens and is the open follow-up. ON, `PALETTE_THREAD_MISMATCH` becomes the detector for a layer holding TWO cones — population 0 today. *(measured 2026-09-12 — `docs/palette-mismatch-2026-09-12.md`, `docs/palette-flip-corpus-2026-09-12.md`; `tests/test_layer_palette.py`)*
 
 31. **"Colors (max 6)" is not enforced on the lane real customer logos take — FIXED BEHIND A FLAG 2026-09-07.** Thread count is the cost driver: every distinct cone is a spool to buy and, on a single-needle machine, a manual re-thread mid-job, so the slider is a pricing promise. `stage2_quantize` caps the FLAT lane hard (largest populations kept, the rest merged into their closest match, `COLOR_CAP_APPLIED` emitted); the SLIC+RAG lane passes `max_k=cfg.max_colors` into k-medoids, which is a clustering parameter and **not a cap**, and the re-snap can add spools on top. **Stage 0 routes six of seven real customer logos to GRADIENT**, so the control was enforced on the artwork type customers do not have. Measured at the Studio's shipped default of 6 (`tools/color_cap.py`): **6 of 26 designs sew more cones than the slider promises and all six are gradient** — flat 0/6, photo_scene 0/7, photo_subject 0/2 — worst `drone_render` at **22 cones and 21 colour stops** against a promised 6, with `COLOR_CAP_APPLIED` never firing. Found by driving the shipped app, not by a test. **FIXED, DEFAULT ON since 2026-09-10** (`cfg.enforce_color_cap`, `stage4_vectorize.enforce_color_cap`, Kent's ruling on the colour bundle): ranks threads by SEWN area (enclosed-background regions buy no slot but are still remapped), keeps `max_colors`, merges the rest into their nearest kept cone by CIEDE2000, and emits the flat lane's own `COLOR_CAP_APPLIED` sentence so no new customer copy is needed. ON: **6 of 26 over → 1 of 26**; `drone_render` 22 → 6 cones and 21 → 9 stops, `screenshot_phone_ui` 15 → 6 and 14 → 6, `logo_golden_tee` 14 → 6, `logo_bridge_bar` 13 → 6 and 12 → 5, `summit_badge` 12 → 6; the 20 designs already inside their budget are untouched; +1.1% stitches on drone. **The residual is a different mechanism and is named, not hidden**: `region_blobs` has only 4 REGION threads (so the cap correctly does nothing) and **12 of its 15 sewn cones are built after it, in stage 6 blend bands** — defect 16's open half, on a GENERATED fixture no client artwork produces. A shade-band cap would have to run in stage 6/7. Byte-identical off. Render: `docs/renders/color-cap-2026-09-07/` — 24 shapes move on bridge_bar, all 0.38–7.21 mm², and the design reads the same. Flipping it ON is Kent's. `tests/test_color_cap.py` (11). *(found and fixed 2026-09-07 — `digitizer/tools/color_cap.py`; scope-history 09-07)*
 
@@ -334,20 +355,44 @@ about the facts.
 13. **RESOLVED 2026-09-03 — the stitch-angle rule is ADOPTED (cap 30°)**, both
    passes built and flipped ON by Kent. *(2026-09-03 — area 1)*
 
-14. **Four working machine formats have no button.** `/health` advertises
-   `pec`, `vp3`, `xxx`, `u01`; all decode correctly with pystitch (u01 excepted
-   — zero colour changes). **VP3 is Husqvarna Viking / Pfaff, XXX is Singer** —
-   two major consumer brands whose owners cannot use the product today. Adding
-   one is a line in `exporters.js`'s `SERVICE_ONLY_FORMATS` plus a button, so
-   this is scope, not effort: PRODUCT.md item 1 names PES and JEF and is silent
-   on these four. See area 4. *(measured 2026-09-07)* **Re-measured 2026-09-08 with a colour change in the pattern, and the verdict holds with numbers behind it:** PEC and XXX read back exactly as well as the four shipping (70 stitches, 1 colour change, 1725 × 200 units), VP3 is off by one unit — 0.1 mm, quantisation — and **U01 writes the stop as a different RECORD, it does not drop it — sharpened 2026-09-13.** Re-measured: on a 3-colour design U01 writes **0 `COLOR_CHANGE` records but 3 `NEEDLE_SET` records**, and `get_as_colorblocks()` resolves 3 blocks; DST writes 2 and 0 for the same design. So "loses the colour change entirely" is true only of the record type `test_service.py` counts, and false of the stop itself. Whether a machine honours a `NEEDLE_SET` as a stop is a MACHINE question and untested — gate 1, honestly this time. It also reads 100 units larger on both axes. Held, but for a narrower reason than this line used to give. `DownloadStep.svelte` states the constraint in its own words: *"which machines this product supports is a scope call"*. Per-format round-trip table in area 4.
+14. **RESOLVED 2026-09-12 for XXX and VP3 — Kent's scope call.** `SERVICE_ONLY_FORMATS`
+   is `{jef, xxx, vp3}` and both have buttons; PEC and U01 stay OUT of scope.
+   Evidence is a committed harness now rather than an uncommitted probe:
+   `digitizer/tools/format_roundtrip.py` — run it, do not re-derive it. Both
+   read back `identity` (70/70 stitches, 1/1 colour change, 1725x200 units)
+   and **return the design's own thread RGB where PES, PEC and JEF snap to
+   their chart**, so on colour fidelity the two newcomers beat three of the
+   four that shipped first. Two of the old hold-reasons for **U01 were wrong**:
+   its colour change is not lost (it survives as `NEEDLE_SET`, pystitch's
+   `U01Writer` convention, which is what a Barudan wants) and "+100 units on
+   both axes" does not reproduce under any probe tried — U01 is held because no
+   thread palette survives and no real Barudan reader has seen one, not for the
+   recorded reasons. VP3 carries an undisclosed 0.1 mm: at the THIRD and later
+   colour block an inserted jump lands one unit short and shifts the tail −1 in
+   x, pinned there to 16 blocks. **Deliberately not surfaced to the customer**
+   (Kent, same day); a tripwire test asserts no caveat text reaches the panel.
+   *(measured 2026-09-12 — `tools/format_roundtrip.py`; PRODUCT.md item 1)*
 
-15. **The wizard pushes no history entries, so browser Back exits the Studio**
-   rather than stepping back (`history.length` 2 after three steps). Work is
-   not lost — Forward restores the design — but Back is the primary gesture on
-   a phone, and the lettering and artwork lanes both work on a phone. Adding
-   history routing changes navigation app-wide and traps Back if done wrong.
-   *(measured 2026-09-07 — area 3)*
+15. **RESOLVED 2026-09-12 — the wizard's steps are browser history entries.**
+   `lib/stepHistory.js`. The anti-trap rule is the whole design: **the first
+   step REPLACES the entry the browser already has and only a step after it
+   pushes**, so n steps cost n−1 entries and Back from step 1 still leaves the
+   Studio. It is NOT routing — no URL reaches `pushState`, the address bar
+   never moves, a reload still boots at step 1 — and restoring the step across
+   a reload is deliberately out (it would land on a step whose `canAdvance()`
+   may no longer pass). Verified in a real Chromium at 390x844 with touch.
+   *(2026-09-12 — `app/src/App.stepHistory.spec.js`, a source guard that no
+   bare `step = ...` bypasses the helper)*
+
+16. **Manual mode does not reproduce auto's sew order once a tiny region exists
+   in an early layer.** Auto orders blocks by PALETTE LAYER; manual orders them
+   by AREA. Surfaced 2026-09-13 by the `keep_thin_strokes` flip, which adds
+   exactly such regions — **the flip exposed this, did not create it and does
+   not fix it**, and it was invisible before only because nothing put a small
+   region that early. Recorded in `digitizer/tests/test_manual.py`. Untriaged:
+   nobody has established which order is right, or whether a customer who
+   edits in manual mode gets a different file from the one the review screen
+   showed them. *(found 2026-09-13 — thin-strokes flip fallout)*
 
 ## Cross-cutting issues
 

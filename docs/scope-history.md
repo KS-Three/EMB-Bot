@@ -12643,6 +12643,50 @@ arm and 1.0312 → 1.0313 on the engine arm, against the geometric bound
 `docs/superpowers/plans/2026-09-11-wide-columns-in-lettering.md`)*
 
 
+## 2026-09-12/13 — four stale diagnostics corrected, two flags flipped, and the edge cap's bill found oscillating
+
+A parallel session (nine agents). Six PRs merged: `c37c4c6`, `d8b9973`,
+`624deed`, `339de3a`, `82e1ae1`, `9c26222`.
+
+**The theme was documentation that had stopped being true**, and the worst of it
+was executable advice. `tools/crossval-stitch-formats.mjs` told its reader that
+if the DST control shows `identity`, *"the harness is broken — not the codec
+vindicated"* — backwards since the 2026-09-08 axis fix, and the repair it points
+at is putting X back in the high nibble. `tools/spool_remedy.py --masks` built
+its config on today's defaults, where the fix it diagnoses is already ON, and
+printed the result as "stage 4 today". Defect 30's numbers and named mechanism
+were both wrong (6 of 26 / 34 shapes → 3 of 26 / 24; "all six" → 0 of 3; the
+producer is `enforce_color_cap`, not a re-snap). CLAUDE.md's `digitizer` CI band
+said 10–42 min when the floor had moved to 32.7.
+
+**Two flags flipped, both on Kent's ruling after a corpus pass he asked for:**
+`cfg.layer_palette_from_regions` (mislabelled layers 7 → 0 at `max_colors=12`
+and 13 → 0 at the shipped 6; plans byte-identical 26/26 at both settings; the
+accepted price is duplicate review rows) and `cfg.keep_thin_strokes` (drone's
+`AND DRONE` unsewn → sewn; Fremont 103 → 76 trims at +8.5% stitches, C 64 → B
+76; the accepted price is gaulke's 2 → 4 cones for zero recall change and
+becker's second cone on a one-cone design).
+
+**Two shipped behind flags:** `cfg.edge_cap_over_budget` (default `"warn"`, no
+stitch moves) and the `edges` field corrected to silhouette rings.
+
+**Numbers worth not re-deriving.** Becker's edge-cap bill: +18.1% at 80 mm,
+**+58.7% at 88**, +56.6% at 95.7, +53.4% at 110 — a 0.3 mm size change is worth
+34%. Format round-trips: XXX and VP3 both `identity` and both return the
+design's own thread RGB, which PES, PEC and JEF do not. PES's long-stitch split
+moved exactly 9 of 85 fonts at Full Back and left the left-chest corpus hash
+untouched. `keep_thin_strokes`' flip moved 30 tests across 18 files, and the
+33-failure first run attributed to 3 + 30 against a pre-change worktree.
+
+**Everything durable from this went to DOCTRINE** (seven entries: one-width
+bills, thresholds non-monotone in size, rate metrics that cannot police their
+own denominator, synthetic suites blind to tiering, pre-change-tree attribution,
+golden-recapture refusals, and reading the render before repeating the claim).
+
+*(2026-09-12/13 — `docs/edge-cap-cliff-2026-09-12.md`,
+`docs/palette-mismatch-2026-09-12.md`, `docs/palette-flip-corpus-2026-09-12.md`,
+`docs/thin-strokes-flip-2026-09-13.md`, renders alongside each)*
+
 ## 2026-09-14 — CI job durations re-measured; the "10 to 42 minutes" line is refuted
 
 Measured from the public Actions API (unauthenticated, HTTP 200 — the repo is
