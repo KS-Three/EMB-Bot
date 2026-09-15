@@ -24,6 +24,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from digitizer_core.letterbox import (  # noqa: E402
+    detect_edge_strips,
     detect_letterbox,
     strip_letterbox,
 )
@@ -88,9 +89,59 @@ def test_screenshot_bars_are_detected():
     assert left == 0 and right == 0, "there are no side bars in this fixture"
     out, _ = strip_letterbox(rgb)
     assert out.shape[0] < rgb.shape[0]
-    assert out.shape[1] == rgb.shape[1], "width must not change"
+    # Width loses exactly the card's two 9-px shadow strips (2026-09-15) —
+    # see `test_screenshot_chrome_strips_are_trimmed`.
+    assert out.shape[1] == rgb.shape[1] - 18
     # What survives must be the logo band: bright, not the black bars.
     assert out.mean() > rgb.mean() + 40
+
+
+def test_screenshot_chrome_strips_are_trimmed():
+    """The band's side edges are 9-px card shadows, not ground, and they are
+    what kept stage 1 from finding the white card as background: border
+    agreement 0.693 against a 0.75 floor, so the card sewed as 79.9% of the
+    design (`GROUND_SEWN` at block). Trimmed, the ring agrees fully."""
+    from digitizer_core.config import PipelineConfig
+    from digitizer_core.stage1_prep import (
+        _border_agreement, _color_close_mask, _dominant_border_color)
+    out, _ = strip_letterbox(_load_rgb(SCREENSHOT))
+    band = cv2.bilateralFilter(out, d=5, sigmaColor=30, sigmaSpace=5)
+    colour = _dominant_border_color(band)
+    close = _color_close_mask(band, colour, PipelineConfig().bg_tolerance_lab)
+    assert _border_agreement(close) >= PipelineConfig().bg_border_agreement_min
+    assert colour.min() > 240, "the ground stage 1 finds must be the white card"
+
+
+def test_chrome_strips_must_be_mirrored():
+    """A strip on ONE edge is not chrome. `becker_marine_logo.png` carries a
+    1-px uniform white column at its left edge only, and trimming it broke
+    the exact round trip below — so a lone or lopsided strip is refused."""
+    band = np.full((120, 400, 3), 255, np.uint8)
+    band[50:70, 150:250] = 0
+    one_side = band.copy()
+    one_side[:, :6] = 225                    # MIN_FRAC of 400 px is 8
+    assert detect_edge_strips(one_side, axis=1) == (0, 0)
+    lopsided = one_side.copy()
+    lopsided[:, -3:] = 225
+    assert detect_edge_strips(lopsided, axis=1) == (0, 0)
+    mirrored = one_side.copy()
+    mirrored[:, -6:] = 225
+    assert detect_edge_strips(mirrored, axis=1) == (6, 6)
+
+
+def test_chrome_strip_wider_than_min_frac_is_a_frame_not_chrome():
+    """Past MIN_FRAC of the dimension a side border is design, not chrome."""
+    band = np.full((120, 400, 3), 255, np.uint8)
+    band[:, :20] = band[:, -20:] = 225       # 20 px of 400 = 5%
+    assert detect_edge_strips(band, axis=1) == (0, 0)
+
+
+def test_artwork_touching_the_edge_is_not_chrome():
+    """A non-uniform line is artwork, and refuses the whole strip."""
+    band = np.full((120, 400, 3), 255, np.uint8)
+    band[:, :6] = band[:, -6:] = 225
+    band[40:80, :6] = 0                      # ink crossing the left strip
+    assert detect_edge_strips(band, axis=1) == (0, 0)
 
 
 @pytest.mark.parametrize("name", [
@@ -196,13 +247,13 @@ def test_tracked_fixtures_are_untouched_except_the_screenshot():
 #
 # The flip's real work was re-pointing those tests at fixtures that still
 # carry the property each one is testing -- never at whatever the engine then
-# emits. `testdata/full_bleed_bars.png` is the new home of the full-bleed
-# property (`test_preflight.test_a_full_bleed_design_does_not_report_its_own_
-# border`, a regression guard for a real cv2.erode borderValue bug measured
-# 2026-08-20), and it is letterbox-PROOF by construction: its bars are on
-# both axes, which this module's own one-dimensionality rule refuses to
-# strip. That is what makes it a permanent fixture for that guard rather than
-# another accident waiting to be cleaned up.
+# emits. **CORRECTED 2026-09-15:** this said `testdata/full_bleed_bars.png`
+# became the home of the full-bleed property; that file was never committed,
+# and the guard kept using gaulke until the edge-strip trim gave gaulke a
+# background. `test_preflight.test_a_full_bleed_design_does_not_report_its_own_
+# border` (the cv2.erode borderValue guard, measured 2026-08-20) now runs on
+# `photo/photo_chrome_specular.png`, which is full bleed on its own pixels and
+# reads 147.5 mm² uncovered with the bug put back.
 #
 # These pin both halves so neither can drift.
 
@@ -238,7 +289,7 @@ def test_load_strips_when_the_flag_is_on():
     for loader in (classify_load, prep_load):
         rgb, _ = loader(path, True)
         assert rgb.shape[0] < raw.shape[0]
-        assert rgb.shape[1] == raw.shape[1]
+        assert rgb.shape[1] == raw.shape[1] - 18   # the two chrome strips
 
 
 def test_both_loaders_agree_in_both_states():

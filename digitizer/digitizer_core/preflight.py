@@ -1264,7 +1264,12 @@ def _face_size_findings(plan: StitchPlan) -> tuple[list[dict], dict]:
 # whose largest shape is real artwork:
 #
 #   case           span%   area%   dE(thread, border)   ground?
-#   golke           98.3    79.9                 0.20   YES  (post letterbox crop)
+#   golke           98.3    79.9                 0.20   YES  (post letterbox crop;
+#                                                            the card no longer sews
+#                                                            since the 2026-09-15 strip
+#                                                            trim — the thresholds were
+#                                                            NOT re-sited, and summit
+#                                                            remains the tight side)
 #   summit          96.8    60.1                10.99   YES  (vignette ground)
 #   ribbon_curve    99.9   100.0                47.48   no
 #   bg_uncertain    99.7   100.0                72.66   no
