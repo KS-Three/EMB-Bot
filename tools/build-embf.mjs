@@ -34,6 +34,36 @@ const fb = require("../src/fontbin.js");
 //      clean BY CONSTRUCTION, not by remembering to rebuild.
 const PERSONAL = process.argv.includes("--personal");
 
+// --only <key>[,<key>...]: rebuild JUST the named fonts, leaving every other
+// .embf and every other manifest entry exactly as committed.
+//
+// This exists because a FULL rebuild on Kent's machine does not reproduce the
+// shipped library. Measured 2026-09-14: `node tools/build-embf.mjs` builds 55
+// fonts against the 85 committed, then orphan-cleans the other 30 away —
+// among them `cyrillic` (the only font covering Cyrillic), both Hebrew fonts,
+// and `western_light`/`ondulamarif_*`. The cause is not missing source: it is
+// that `scratch_ink/_tiers.json` (2026-07-27) marks 29 of the shipped fonts
+// `unverified` and does not list `art_nouveau` at all, while the library was
+// last built 2026-08-26. Whether that list is stale or the library is
+// over-broad is Kent's call and a separate question — see MASTER_SCOPE.
+//
+// So a session that needs to re-emit ONE font (the roaring_twenties_KOR glyph
+// revival is the case this was written for) had a choice between shipping a
+// 55-font library and not rebuilding at all. This is the third option, and it
+// is deliberately narrow: it changes membership for nobody. Orphan cleaning is
+// SKIPPED under --only for exactly that reason — with a partial build the
+// "orphans" are every font that was not asked for.
+const ONLY = (() => {
+  const i = process.argv.indexOf("--only");
+  if (i < 0) return null;
+  const arg = process.argv[i + 1];
+  if (!arg || arg.startsWith("--")) {
+    console.error("ERROR: --only needs a comma-separated list of font keys.");
+    process.exit(1);
+  }
+  return new Set(arg.split(",").map((s) => s.trim()).filter(Boolean));
+})();
+
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const FONT_DIR = join(root, "src", "fonts");
 const BIN_DIR = join(FONT_DIR, PERSONAL ? "bin-personal" : "bin");
@@ -176,6 +206,24 @@ if (existsSync(tiersPath)) {
   console.error("ERROR: scratch_ink/_tiers.json absent. Refusing to build an " +
     "inconsistent library. Recreate scratch_ink/ (see COOKBOOK.md) or pass --shipped-only.");
   process.exit(1);
+}
+
+// --only: narrow to the named keys, and refuse a key that resolved to no
+// source rather than silently building fewer fonts than asked for — a silent
+// partial is how this tool loses fonts in the first place.
+if (ONLY) {
+  const kept = sources.filter((s) => ONLY.has(s.key));
+  const found = new Set(kept.map((s) => s.key));
+  const missing = [...ONLY].filter((k) => !found.has(k));
+  if (missing.length) {
+    console.error("ERROR: --only names font(s) with no resolvable source: " +
+      missing.join(", "));
+    process.exit(1);
+  }
+  sources.length = 0;
+  sources.push(...kept);
+  console.log("--only: building", sources.length, "font(s):",
+    [...found].sort().join(", "));
 }
 
 // Would this font sew anything at all? Same predicate qc-font.mjs uses: a
@@ -321,8 +369,19 @@ for (const s of sources.sort((a, b) => a.key.localeCompare(b.key))) {
     source: font.source || "Ink/Stitch embroidery-fonts",
   });
 }
+// Under --only the manifest is MERGED, not replaced: the rebuilt fonts take
+// their new entries, every other entry keeps the bytes it was committed with,
+// and the original ordering is preserved so the diff shows only what moved.
+let manifestOut = manifest;
+if (ONLY) {
+  const rebuilt = new Map(manifest.map((f) => [f.key, f]));
+  const prior = JSON.parse(readFileSync(MANIFEST_PATH, "utf8")).fonts || [];
+  manifestOut = prior.map((f) => rebuilt.get(f.key) || f);
+  const added = manifest.filter((f) => !prior.some((p) => p.key === f.key));
+  if (added.length) manifestOut.push(...added);
+}
 writeFileSync(MANIFEST_PATH,
-  JSON.stringify({ version: 1, personal: PERSONAL || undefined, fonts: manifest }, null, 1));
+  JSON.stringify({ version: 1, personal: PERSONAL || undefined, fonts: manifestOut }, null, 1));
 
 // Orphan-clean the binary directory (2026-08-22). A font dropped from the
 // build — demoted, pulled, or removed from _tiers.json — left its .embf behind
@@ -334,7 +393,9 @@ writeFileSync(MANIFEST_PATH,
 // loudly and was fixed by hand; the personal side has no test at all, so it
 // failed silently. Cleaning at the source fixes both, and the test stays as
 // the backstop.
-{
+// SKIPPED under --only: with a partial build every font that was not asked for
+// looks like an orphan, so cleaning here would delete the library.
+if (!ONLY) {
   const want = new Set(manifest.map((f) => f.key + ".embf"));
   let removed = 0;
   for (const f of readdirSync(BIN_DIR))
