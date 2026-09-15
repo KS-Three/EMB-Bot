@@ -234,4 +234,29 @@ PRE_FLIP["edge_cap"] = "none"
 # it left ON, twelve such arms across seven files moved (the owl, Bridge Bar,
 # gaulke, the screenshot, drone).
 PRE_FLIP["keep_thin_strokes"] = False
+# `strip_letterbox` joined the flipped set 2026-09-14, and is in PRE_FLIP for
+# exactly the reason stated above: a test pricing one flag alone must measure
+# against the engine its measurement was made on. Every arm in the resnap and
+# thread-match files was measured on `photo/logo_gaulke_roofing.png` WITH its
+# letterbox bars — 16.1 px/mm, the 247-vs-54 px footprint, the 63.6 dE00
+# Silver — and cropping the bars changes the raster those numbers describe.
+#
+# This is NOT a way of dodging the re-point work. The distinction that
+# settles it: those tests are about the COLOUR flags, and `strip_letterbox`
+# is orthogonal to every one of them, so pinning it here keeps each test
+# measuring the thing it is named for, on the pixels it measured. The tests
+# that are genuinely ABOUT the crop (`test_letterbox`, the full-bleed guard,
+# `test_enclosed_by_garment`) do not use PRE_FLIP and were re-pointed
+# properly instead.
+#
+# Measured before choosing this: no single fixture in the corpus reproduces
+# gaulke's uncropped severity on BOTH axes the resnap premise asserts.
+# `photo/logo_bridge_bar.jpg` has the footprint inflation (raw 229 px vs
+# grader 39, ratio 5.87 against the test's `> 3`) but not the bimodality
+# (26 dark pixels against `> 50`, because it decodes at 4.0 px/mm);
+# `photo/screenshot_phone_ui_golke.jpg` has the bimodality (92 dark / 102
+# light at 12.75 px/mm) but not the ratio (2.20). Splitting one premise
+# across two fixtures to keep a number green would have been the
+# fit-to-output move this repo's doctrine warns about.
+PRE_FLIP["strip_letterbox"] = False
 BUNDLE_ON = {name: True for name in COLOUR_BUNDLE}

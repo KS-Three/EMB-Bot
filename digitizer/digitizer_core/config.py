@@ -1770,30 +1770,53 @@ class PipelineConfig:
     # mark solid and correctly polarised. Blast radius is one fixture -- the
     # other 13 tracked fixtures are byte-identical on (route, stitch count).
     #
-    # **DEFAULT OFF, and the reason is not caution about the fix.** Turning it
-    # on changes `photo/logo_gaulke_roofing.png`, and that fixture's PATHOLOGY
-    # IS LOAD-BEARING for 11 existing tests -- it is the corpus's only
-    # full-bleed design precisely BECAUSE the bars make the artwork touch the
-    # frame edge. `test_preflight.test_a_full_bleed_design_does_not_report_
-    # its_own_border` is a regression guard for a real cv2.erode borderValue
-    # bug (measured 2026-08-20); cropping the bars removes its only fixture,
-    # and "updating" it to accept the new number would silently retire a guard
-    # for a genuine defect. Seven more (test_resnap_mask_matches_grader,
-    # test_thread_match_*) pin spool IDs that legitimately move, and two
-    # (test_enclosed_by_garment) need a fixture that still HAS enclosed
-    # background regions.
+    # **DEFAULT ON since 2026-09-14** (Kent: "proceed with all of the
+    # suggestions"). It shipped OFF on 2026-09-11, and the reason was never
+    # caution about the fix: turning it on changes
+    # `photo/logo_gaulke_roofing.png`, and that fixture's PATHOLOGY was
+    # LOAD-BEARING for 13 tests (the entry said 11; the suite had grown).
+    # Flipping it was therefore not a one-line change but a fixture job, and
+    # the rule for that job is DOCTRINE's: re-point each test at something
+    # that still carries the property it is testing, NEVER at whatever the
+    # engine now happens to emit.
     #
-    # So the flag is the honest state: the mechanism is landed, reviewed and
-    # tested, and byte-identical off. Flipping it on is a separate change that
-    # must re-point those 11 tests at fixtures which still carry the property
-    # each one is testing -- never at whatever the engine now happens to emit.
+    # What that came to, test by test:
     #
-    # KNOWN, and NOT fixed by this flag: with the bars gone the band's own
+    #  * `test_preflight.test_a_full_bleed_design_does_not_report_its_own_
+    #    border` KEPT this fixture, and now for a better reason. It used to
+    #    be the corpus's only full-bleed design by ACCIDENT of the bars being
+    #    read as ink; cropped, the white band runs edge to edge on its own
+    #    (`bg_mask` 0.000%, BACKGROUND_ABSENT), which the test now asserts
+    #    rather than assumes. Its bound also moved off a single drifting
+    #    number onto the defect's own signature -- a permanent rim strip
+    #    means non-zero TOTAL uncovered area, and that reads 0.0.
+    #  * `test_enclosed_by_garment` moved to `testdata/black_ground_holes.png`
+    #    (`tools/make_black_ground_fixture.py`), which is letterbox-PROOF by
+    #    construction: its ground is black on all four sides, and a uniform
+    #    border on both axes is a margin this module never strips.
+    #  * The `test_resnap_mask_matches_grader` group moved to
+    #    `photo/logo_bridge_bar.jpg`, and the reason is the one thing a
+    #    spool-ID re-pin would have HIDDEN. On the cropped gaulke the
+    #    phenomenon does not move, it INVERTS: the shipped engine used to
+    #    pick `3971 Silver` here and the flag declined it; after the crop the
+    #    flag CAUSES a Silver pick. Renaming the pinned shape id would have
+    #    made CI green while asserting the opposite of what the guard
+    #    protects. bridge_bar still shows the real thing (OFF picks Silver on
+    #    `S60139fba`, ON moves it to `0108`) and carries no bars, so it
+    #    cannot lose the property to this change.
+    #
+    # KNOWN, and NOT fixed by this flip: with the bars gone the band's own
     # soft shadow edges (a ~12 px 235->216 gradient down each side, measured)
     # drop border agreement to 0.693, so background detection reports
     # BACKGROUND_ABSENT and the white ground is still sewn. That is stage 1's
-    # border flood, not letterboxing.
-    strip_letterbox: bool = False
+    # border flood, not letterboxing -- and `preflight.GROUND_SEWN` now
+    # REPORTS it at block severity (79.9% of the stitched area here), which
+    # is what stops the file at the Studio's download confirm.
+    #
+    # `strip_letterbox=False` remains the pre-2026-09-14 engine, byte for
+    # byte, and every byte-identical claim in this repo's history was
+    # measured there.
+    strip_letterbox: bool = True
 
     # Sew what the satin tier missed. Crosses are placed along a spine,
     # perpendicular to one arm, sized by a ray that measures THAT arm's width

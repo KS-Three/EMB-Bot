@@ -186,17 +186,36 @@ def test_tracked_fixtures_are_untouched_except_the_screenshot():
 
 # --- the config flag --------------------------------------------------------
 #
-# `cfg.strip_letterbox` is DEFAULT OFF, and not out of caution about the fix:
+# `cfg.strip_letterbox` is DEFAULT ON as of 2026-09-14.
+#
+# It shipped DEFAULT OFF on 2026-09-11, and not out of caution about the fix:
 # turning it on changes `photo/logo_gaulke_roofing.png`, whose letterboxed
-# PATHOLOGY is load-bearing for 11 existing tests. It is the corpus's only
-# full-bleed design precisely because the bars make the artwork touch the
-# frame edge, so `test_preflight.test_a_full_bleed_design_does_not_report_its_
-# own_border` -- a regression guard for a real cv2.erode borderValue bug --
-# loses its only fixture. These pin both halves so neither can drift.
+# PATHOLOGY was load-bearing for 11 existing tests (13 by the time the flip
+# happened, the suite having grown). It was the corpus's only full-bleed
+# design precisely because the bars make the artwork touch the frame edge.
+#
+# The flip's real work was re-pointing those tests at fixtures that still
+# carry the property each one is testing -- never at whatever the engine then
+# emits. `testdata/full_bleed_bars.png` is the new home of the full-bleed
+# property (`test_preflight.test_a_full_bleed_design_does_not_report_its_own_
+# border`, a regression guard for a real cv2.erode borderValue bug measured
+# 2026-08-20), and it is letterbox-PROOF by construction: its bars are on
+# both axes, which this module's own one-dimensionality rule refuses to
+# strip. That is what makes it a permanent fixture for that guard rather than
+# another accident waiting to be cleaned up.
+#
+# These pin both halves so neither can drift.
 
-def test_flag_defaults_off():
+def test_flag_defaults_on():
     from digitizer_core.config import PipelineConfig
-    assert PipelineConfig().strip_letterbox is False
+    assert PipelineConfig().strip_letterbox is True
+
+
+def test_the_strip_can_still_be_turned_off():
+    """OFF is the pre-2026-09-14 engine, and stays reachable -- every
+    byte-identical claim in this repo's history was measured there."""
+    from digitizer_core.config import PipelineConfig
+    assert PipelineConfig(strip_letterbox=False).strip_letterbox is False
 
 
 def test_load_is_byte_identical_when_the_flag_is_off():
