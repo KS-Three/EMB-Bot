@@ -446,6 +446,27 @@
       }
       lastPx = pts[pts.length - 1];
     }
+    // RUN SPANS (`design.runs`) — what each stitch IS, for the renderer.
+    //
+    // The design model downstream is a flat {x,y,type} stream in which satin,
+    // tatami, underlay and a finishing outline are indistinguishable, so the
+    // browser canvas drew them all the same way (Kent, 2026-09-15). A span is
+    // recorded per RUN, at the moment it is emitted, from the classification
+    // this function has already made — `thin` is the satin-vs-fill decision,
+    // and the underlay/outline runs are named where they are built. It is
+    // bookkeeping ONLY: no stitch, order or count changes with it, which is
+    // what keeps every snapshot in the engine suite byte-identical.
+    //
+    // `role` is always "" here. This lane has no border concept — the borders
+    // Kent cannot see come off the Python digitizer — and an outline run is
+    // tagged for what it is, a running stitch, rather than promoted to a
+    // border it was never asked to be.
+    const spans = [];
+    function pushSpan(i0, kind, shapeId) {
+      if (!kind || stitches.length <= i0) return;
+      spans.push({ i0, i1: stitches.length - 1, kind, shape: shapeId == null ? "" : String(shapeId),
+                   role: "", block: Math.max(0, colors.length - 1) });
+    }
     // Emit a trim command at the current (last) position — zero-travel; the
     // following jump carries the machine to the next shape.
     function emitTrimAtLast() {
@@ -614,21 +635,30 @@
 
         // Build this shape's runs in sew order; trim (if needed) is decided once
         // per shape so we never trim between a shape's own underlay and top.
+        //
+        // `runKinds` rides alongside `runs`, one entry per entry, pushed on the
+        // same line so a throw inside any of the best-effort try blocks can
+        // never leave the two out of step. It exists so the emitted spans
+        // (`design.runs`, see pushSpan) say what each stitch IS — this lane
+        // already KNOWS, since `thin` is the satin-vs-fill decision it just
+        // made and the underlay/outline runs are named where they are built.
+        // Nothing here is re-derived or guessed.
         const runs = [];
+        const runKinds = [];
         if (useUnderlay) {
           if (fabric) {
             // Fabric mode: named underlay style per shape type.
             try {
               const style = thin ? (fabric.satinUnderlay || "center_run") : (fabric.fillUnderlay || "edge_lattice");
               const uctx = Object.assign({ fillAngle: angle }, underlayCtxBase);
-              for (const run of underlayRuns(shape, style, uctx)) if (run && run.length) runs.push(run);
+              for (const run of underlayRuns(shape, style, uctx)) if (run && run.length) { runs.push(run); runKinds.push("underlay"); }
             } catch (e) { /* underlay best-effort */ }
           } else {
             // No-fabric path: byte-identical to pre-Phase-2 behavior.
             try {
               const inset = insetRing(poly, Math.min(2, 0.6 * pxPerFinalMm));
-              runs.push(fillmod.runningOutline(inset, { stitchLen: underlayStitchPx }));
-              if (!thin) runs.push(fillmod.tatamiFill(rings, { rowSpacing: underlayRowPx, angleDeg: angle + 90, maxStitch: maxPx, markConnectors: true }));
+              runs.push(fillmod.runningOutline(inset, { stitchLen: underlayStitchPx })); runKinds.push("underlay");
+              if (!thin) { runs.push(fillmod.tatamiFill(rings, { rowSpacing: underlayRowPx, angleDeg: angle + 90, maxStitch: maxPx, markConnectors: true })); runKinds.push("underlay"); }
             } catch (e) { /* underlay best-effort */ }
           }
         }
@@ -672,16 +702,19 @@
             if (largeFill) nCenterOut++;
           }
         } catch (e) { pts = []; }
-        runs.push(pts);
+        runs.push(pts); runKinds.push(thin ? "satin" : "fill");
         // finishing outline: running stitch along the outer edge (and holes)
         if (o.outline) {
           try {
             const edgeLen = Math.max(0.02, 1.8 * pxPerFinalMm); // loop-safety floor only, see PX_LOOP_EPS note above
-            for (const ring of rings) runs.push(fillmod.runningOutline(ring, { stitchLen: edgeLen }));
+            for (const ring of rings) { runs.push(fillmod.runningOutline(ring, { stitchLen: edgeLen })); runKinds.push("run"); }
           } catch (e) { /* best-effort */ }
         }
 
-        const nonEmpty = runs.filter((rn) => rn && rn.length);
+        const nonEmpty = [], nonEmptyKinds = [];
+        for (let ri = 0; ri < runs.length; ri++) {
+          if (runs[ri] && runs[ri].length) { nonEmpty.push(runs[ri]); nonEmptyKinds.push(runKinds[ri]); }
+        }
         if (!nonEmpty.length) continue;
         const entry = nonEmpty[0][0]; // first sewn point of this shape (px)
         if (started && !justChangedColor) {
@@ -689,7 +722,11 @@
           if (d > trimAtPx) emitTrimAtLast(); // long travel → trim at last pos before jump
         }
         justChangedColor = false; // only the first shape after a color change is exempt
-        for (const rn of nonEmpty) pushRun(rn);
+        for (let ri = 0; ri < nonEmpty.length; ri++) {
+          const spanI0 = stitches.length;
+          pushRun(nonEmpty[ri]);
+          pushSpan(spanI0, nonEmptyKinds[ri], shape.id);
+        }
         started = true;
       }
     }
@@ -698,7 +735,7 @@
     // designWmm/designHmm is the traced-polygon box this was fit to; the sewn
     // extent is what the customer gets. See designExtentMm.
     const extent = designExtentMm(stitches, designWmm, designHmm);
-    return { stitches, colors, widthMM: extent.widthMM, heightMM: extent.heightMM, stitchCount, colorCount: colors.length, _debug: { nSatin, nFill, nTrims, nCenterOut } };
+    return { stitches, colors, widthMM: extent.widthMM, heightMM: extent.heightMM, stitchCount, colorCount: colors.length, runs: spans, _debug: { nSatin, nFill, nTrims, nCenterOut } };
   }
 
   // Build a Design from a PRE-DIGITIZED satin font (src/satinfont.js) instead of
@@ -1003,6 +1040,28 @@
       pushPts(tieRun(lastPt, lastPrevPt).slice(1));
       nTies++;
     };
+    // RUN SPANS (`design.runs`) — what each stitch IS, for the renderer.
+    //
+    // The design model downstream is a flat {x,y,type} stream in which satin,
+    // tatami, a bean run, underlay and needle-down travel are indistinguishable,
+    // so the browser canvas drew them all the same way and a satin border
+    // vanished into the fill beside it (Kent, 2026-09-15). This lane does not
+    // have to GUESS any of that: satinfont's router already tags every run it
+    // emits, and has since the kind rename that split real underlay from travel
+    // (satinfont.js, "KIND RENAME"). So the spans below are a relabelling of
+    // tags that already exist, not a second classification that could drift
+    // from the first.
+    //
+    // Only the mapped kinds get a span. An unrecognised tag is left OUT rather
+    // than guessed at: a strand inside no span renders exactly as it did before
+    // spans existed, which is the right answer for "we do not know".
+    const SPAN_KIND = { satin: "satin", fill: "fill", run: "run", underlay: "underlay", underpath: "travel" };
+    const spans = [];
+    function pushSpan(i0, kind, charIdx) {
+      if (!kind || stitches.length <= i0) return;
+      spans.push({ i0, i1: stitches.length - 1, kind, shape: charIdx == null ? "" : "c" + charIdx,
+                   role: "", block: Math.max(0, colors.length - 1) });
+    }
     // The router (satinfont) decides jump vs. underpath per run: jump=false means
     // travel as a needle-DOWN running connector (tucked at a junction, covered);
     // jump=true means lift the needle (and trim if the hop is long).
@@ -1038,9 +1097,15 @@
       } else {
         const gap = Math.hypot(start.x - lastPt.x, start.y - lastPt.y);
         const steps = Math.max(1, Math.ceil(gap / maxStepPx));
+        const ti0 = stitches.length;
         for (let s = 1; s <= steps; s++) { const t = s / steps; const d = T({ x: lastPt.x + (start.x - lastPt.x) * t, y: lastPt.y + (start.y - lastPt.y) * t }); stitches.push({ x: d.x, y: d.y, type: "stitch" }); }
+        // These connector stitches are needle-DOWN travel, not stitching — the
+        // renderer de-emphasises them so they stop reading as part of a glyph.
+        pushSpan(ti0, "travel", run.charIdx);
       }
+      const ri0 = stitches.length;
       for (const q of pts) { const d = T(q); stitches.push({ x: d.x, y: d.y, type: "stitch" }); }
+      pushSpan(ri0, SPAN_KIND[run.kind], run.charIdx);
       lastPt = pts[pts.length - 1];
       lastPrevPt = pts[pts.length - 2];
     }
@@ -1071,7 +1136,7 @@
     // `lettering`: the width-guard report (final sewn cap height, columns
     // under the needle floors, hairline spans sewn as run) — see
     // satinfont.layoutText. Null only on the empty paths above.
-    return { stitches, colors, widthMM: outWmm, heightMM: outHmm, stitchCount, colorCount: colors.length, unsupported: lay.unsupported || [], lettering: lay.lettering || null, _debug: { nSatin, nFill: 0, nTrims, nTies } };
+    return { stitches, colors, widthMM: outWmm, heightMM: outHmm, stitchCount, colorCount: colors.length, runs: spans, unsupported: lay.unsupported || [], lettering: lay.lettering || null, _debug: { nSatin, nFill: 0, nTrims, nTies } };
   }
 
   // `tieRun` is exported for its own sake: its overshoot rule only fires when

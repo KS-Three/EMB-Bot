@@ -624,7 +624,8 @@ def meander_fill(region: Region, source_pixels: SourcePixels, cfg
 
     def _reversed_piece(piece: list[StitchRun]) -> list[StitchRun]:
         return [StitchRun(points=list(reversed(r.points)), kind=r.kind,
-                          shape_id=r.shape_id) for r in reversed(piece)]
+                          shape_id=r.shape_id, role=r.role)
+                for r in reversed(piece)]
 
     seg_hash = _SegmentHash()
     for piece in pieces:
