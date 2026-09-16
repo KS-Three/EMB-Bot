@@ -337,7 +337,7 @@
       colors.push({ r: rgb[0], g: rgb[1], b: rgb[2] });
     }
 
-    return {
+    const built = {
       stitches,
       colors,
       widthMM: nativeWmm * sc,
@@ -346,6 +346,19 @@
       colorCount: colors.length,
       _debug: { scale: sc, jumpCount: decoded.jumpCount, trimCount: decoded.trimCount, label: decoded.label },
     };
+    // The run-span index rides through when the source carries one. This loop
+    // writes `stitches[i]` from `srcPoints[i]` one for one — rotation maps a
+    // point to a point, scale and offset move it, none of them adds, drops or
+    // reorders a record — and the single `end` is APPENDED past the last of
+    // them, so no span's `i0`/`i1` moves. A DST never carries spans (the file
+    // format has no run structure to recover, which is why decodeDST does not
+    // invent one), so this is dead weight for an imported machine file and
+    // live for anything handed to this builder that was planned rather than
+    // decoded. Absent stays absent: a missing `runs` means "no run
+    // information", and `[]` would mean "no runs", which would make a
+    // renderer keying off the index draw nothing at all.
+    if (Array.isArray(decoded.runs)) built.runs = decoded.runs;
+    return built;
   }
 
   // `decodeDelta` is exported for TOOLS, not for the product: it is the single

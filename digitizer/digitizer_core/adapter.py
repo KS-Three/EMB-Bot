@@ -62,9 +62,57 @@ def plan_to_design(plan: StitchPlan, name: str = "Digitized design") -> dict:
     point; a run that is cut away from emits a zero-travel `trim` at the
     PREVIOUS position first; a color change is a trim then a `color`, both at
     the last sewn position.
+
+    **`design["runs"]` — the run-span index (2026-09-15).** The plan knows
+    what each stretch of thread IS; this function used to flatten that away
+    into an undifferentiated `{x, y, type}` stream, so the browser could not
+    draw a satin column differently from a tatami fill and the Studio could
+    only report the border it had REQUESTED, never the one that was
+    generated. The index carries it across, per RUN and not per stitch:
+    measured on this tree, Hotel Fremont at 92.5 mm is 16,480 stitches in 389
+    runs and Becker at 80 mm is 6,833 in 131 — 42:1 and 52:1 — against a
+    design JSON already over half a megabyte, so a per-stitch tag would cost
+    tens of percent to say the same thing.
+
+        design["runs"] = [
+          {"i0": int,      # index into design["stitches"], FIRST stitch
+           "i1": int,      # index, LAST stitch, INCLUSIVE
+           "kind": str,    # StitchRun.kind, verbatim
+           "shape": str,   # StitchRun.shape_id, "" when none
+           "role": str,    # "" | "border" | "edge_cap"
+           "block": int},  # index into design["colors"]
+          ...
+        ]
+
+    Three properties a reader may rely on, all pinned by
+    `tests/test_run_spans.py` on two real fixtures:
+
+      * **The indices are into the FINAL array**, counting the interleaved
+        `jump`/`trim`/`color` records. They are computed as the records are
+        appended, never reconstructed afterwards, because a reconstruction
+        would have to re-derive the interleaving rules above and would drift
+        the first time one of them changed.
+      * **Every record in `stitches[i0..i1]` is a `stitch` of that run**, in
+        run-point order — the spans are contiguous and hold nothing else.
+      * **The spans partition the `stitch` records exactly** — every one is
+        covered, none twice. A run whose points emitted no `stitch` record
+        emits no span rather than an empty or inverted one.
+
+    `kind` is whatever the planner set and the list is NOT closed: `satin`,
+    `fill`, `run`, `underlay`, `travel` are what the corpus shows today, and
+    `border`, `bean` and `tie` are equally legal (see `stitches.py`). Treat an
+    unknown kind as ordinary stitching rather than dropping it.
+
+    `shape` is the run's `shape_id` VERBATIM, which is not always a review
+    shape's id: the blend tier stamps `<shape_id>-blend<i>`, the streamline
+    tier `-shade<i>`, and the design-silhouette cap the sentinel
+    `"__edge_cap__"`. `preflight._owning_region_id` is the one rule for
+    mapping one back onto a review shape; the raw value is emitted here
+    because it is lossless and the mapping is not.
     """
     stitches: list[dict] = []
     colors: list[dict] = []
+    runs: list[dict] = []
     last: tuple[int, int] | None = None
 
     for bi, block in enumerate(plan.blocks):
@@ -104,10 +152,25 @@ def plan_to_design(plan: StitchPlan, name: str = "Digitized design") -> dict:
             if (run.jump or run.trim or last is None) and first != last:
                 stitches.append({"x": first[0], "y": first[1], "type": JUMP})
 
+            # The span opens HERE — after the trim/jump records above, so i0
+            # is the first `stitch` and not the travel that preceded it.
+            i0 = len(stitches)
             for pt in run.points:
                 x, y = _u(*pt)
                 stitches.append({"x": x, "y": y, "type": STITCH})
                 last = (x, y)
+            if len(stitches) > i0:
+                # Guarded rather than assumed: a run that emitted nothing has
+                # no span to describe, and `i1 = i0 - 1` would be an inverted
+                # range a reader would have to special-case.
+                runs.append({
+                    "i0": i0,
+                    "i1": len(stitches) - 1,
+                    "kind": run.kind,
+                    "shape": run.shape_id,
+                    "role": run.role,
+                    "block": bi,
+                })
 
     stitches.append({"x": 0, "y": 0, "type": END})
 
@@ -118,6 +181,7 @@ def plan_to_design(plan: StitchPlan, name: str = "Digitized design") -> dict:
     design = {
         "stitches": stitches,
         "colors": colors,
+        "runs": runs,
         "stitchCount": sum(1 for s in stitches if s["type"] == STITCH),
         "colorCount": len(colors),
         "name": name,
@@ -231,6 +295,15 @@ def pattern_to_design(pattern: pystitch.EmbPattern, name: str = "Reference",
     Colours come from the file's thread list. A DST carries none (every
     thread reads black), so `fallback_colors` — one per block, cycled — fills
     the list; blocks are counted from the colour-change records.
+
+    **No `runs` key, deliberately.** `plan_to_design` emits one because a
+    `StitchPlan` knows what each stretch of thread is; a machine file does
+    not — the run structure was flattened out of it by whoever wrote it, and
+    the tier boundaries are not recoverable from x/y/command alone. ABSENT
+    means "no run information", which is the truth here; `[]` would mean
+    "this design contains no runs" and a renderer keying off the index would
+    draw an empty canvas over a design full of stitches. A reader must handle
+    a missing `runs` anyway — every design written before 2026-09-15 has none.
     """
     stitches: list[dict] = []
     for x, y, cmd in pattern.stitches:

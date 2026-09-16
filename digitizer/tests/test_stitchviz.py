@@ -254,6 +254,60 @@ def _js_function_body(js: str, name: str) -> str:
     raise AssertionError(f"{name} in preview.js has unbalanced braces")
 
 
+def _js_any_function_body(js: str, name: str) -> str:
+    """Like `_js_function_body`, but also finds a NON-exported `function NAME`.
+
+    The chain below crosses one: `strokeShadow` is module-private. The exported
+    -only helper would raise `ValueError` on it, which reads as a broken test
+    rather than as the thing the test is for.
+    """
+    for sig in (f"export function {name}(", f"function {name}("):
+        start = js.find(sig)
+        if start != -1:
+            break
+    else:
+        raise AssertionError(f"preview.js defines no function {name}")
+    depth = 0
+    for i in range(js.index("{", start), len(js)):
+        if js[i] == "{":
+            depth += 1
+        elif js[i] == "}":
+            depth -= 1
+            if depth == 0:
+                return js[start:i + 1]
+    raise AssertionError(f"{name} in preview.js has unbalanced braces")
+
+
+def _js_reachable_source(js: str, root: str) -> str:
+    """Every function body reachable from `root` by direct call, concatenated.
+
+    Why this is not just `_js_function_body(js, root)`: on 2026-09-16 the
+    per-kind thread styling moved the lighting one level down, out of
+    `drawThreads` and into `threadLayers` and `strokeShadow`, which it calls.
+    The model stayed shared and live -- the chain got longer. A check pinned to
+    one frame reports that as the constants being dead.
+
+    It still cannot pass on a dead constant: a name that nothing on the path
+    from `root` reads is not in this closure. Widening the frame is not the
+    same as dropping the assertion, which is what the comment above forbids.
+    """
+    defined = set(re.findall(r"(?:export\s+)?function\s+(\w+)\s*\(", js))
+    seen: set[str] = set()
+    todo = [root]
+    out = []
+    while todo:
+        name = todo.pop()
+        if name in seen or name not in defined:
+            continue
+        seen.add(name)
+        body = _js_any_function_body(js, name)
+        out.append(body)
+        for callee in re.findall(r"\b(\w+)\s*\(", body):
+            if callee in defined and callee not in seen:
+                todo.append(callee)
+    return "\n".join(out)
+
+
 def _js_top_level_locals(body: str) -> list[str]:
     """Every name a JS function body binds with `const`/`let` at ONE indent
     level, in source order. Nested-block locals legitimately shadow and are
@@ -332,14 +386,15 @@ def test_the_two_renderers_agree_on_the_light():
     # Assert every link. A dead constant breaks the last one, and a merge that
     # bolts a second renderer into renderRealistic breaks the middle one.
     render = _js_function_body(js, "renderRealistic")
-    threads = _js_function_body(js, "drawThreads")
+    threads = _js_reachable_source(js, "drawThreads")
     assert "drawThreads(" in render, (
         "renderRealistic no longer routes through drawThreads -- the shared "
         "lighting model is bypassed, so these constants prove nothing")
     for const in ("LIGHT_X", "LIGHT_Y"):
         assert const in threads, (
-            f"drawThreads does not read {const} -- the light constants are "
-            "dead again, and this test would pass while the canvas disagrees")
+            f"nothing drawThreads calls reads {const} -- the light constants "
+            "are dead again, and this test would pass while the canvas "
+            "disagrees")
     assert "THREAD_WIDTH_MM" in render, (
         "renderRealistic does not read THREAD_WIDTH_MM -- filament width is "
         "dead code and coverage in the preview no longer means anything")

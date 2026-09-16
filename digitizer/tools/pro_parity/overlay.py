@@ -116,7 +116,14 @@ def _fit_to_frame(design: dict, frame: pf.Frame) -> dict:
             out.append({"x": a[0], "y": a[1], "type": "stitch"})
         out.append(s if b == p else {"x": b[0], "y": b[1], "type": "stitch"})
         pen = b
-    return dict(design, stitches=out)
+    # `design["runs"]` (adapter's run-span index) indexes the ORIGINAL record
+    # array, and this pass inserts and drops records — so the spans no longer
+    # describe `out`. Dropped rather than remapped: nothing here renders by
+    # run, and a silently stale index is worse than an absent one, which the
+    # contract already requires every reader to handle.
+    fitted = dict(design, stitches=out)
+    fitted.pop("runs", None)
+    return fitted
 
 
 def render_side(design: dict, frame: pf.Frame) -> np.ndarray:
@@ -160,7 +167,11 @@ def _restrict(design: dict, blocks: set | None) -> dict:
             keep.append(s)
         elif s["type"] in ("jump", "trim", "end") or bi in blocks:
             keep.append(s)
-    return dict(design, stitches=keep)
+    # Same reason as `_fit_to_frame`: dropping records invalidates the
+    # run-span index, so it comes off rather than lying about the new array.
+    restricted = dict(design, stitches=keep)
+    restricted.pop("runs", None)
+    return restricted
 
 
 def render_pair(pair: pf.Pair, reg: pf.Reg, ppm: float = DEFAULT_PPM, crop_mm=None,

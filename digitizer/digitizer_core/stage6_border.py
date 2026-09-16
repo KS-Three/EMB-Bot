@@ -683,7 +683,8 @@ def border_runs(visible, shape_id: str, *, entry: tuple[float, float] | None,
                 trim_at_mm: float, style: str = "auto",
                 width_mm: float | None = None,
                 density_mm: float | None = None,
-                omit=None) -> tuple[list[StitchRun], dict]:
+                omit=None,
+                role: str = stitches.ROLE_BORDER) -> tuple[list[StitchRun], dict]:
     """Outline the VISIBLE part of one shape. -> (runs, report).
 
     `visible` is stage 5's grown polygon with everything that sews after it
@@ -700,6 +701,17 @@ def border_runs(visible, shape_id: str, *, entry: tuple[float, float] | None,
     the ring sews as open arcs — one `StitchRun` each, the same column, on
     the same edge. `None` (or a geometry the ring never meets) is the closed
     circuit, byte for byte.
+
+    `role` is stamped on every run this emits — the bridge travels included,
+    since they exist only to reach the ring. It defaults to
+    `stitches.ROLE_BORDER` because this function IS the border tier, and the
+    default is what makes a generated border tellable from a requested one:
+    the ring's `kind` flips BORDER -> BEAN wherever the shape is too narrow to
+    host a column, and its `shape_id` is the host shape's either way, so
+    neither field answers "did a border actually go on here". The one caller
+    that overrides it is `silhouette_cap`, which borrows this emitter for the
+    DESIGN's outline and stamps `ROLE_EDGE_CAP` — a different tier answering a
+    different question, and the browser must not read it as a shape's border.
 
     Report keys: `loops`, `bean_loops`, `arcs`, `bean_arcs`, `yielded`
     (rings that lost a stretch or all of themselves to `omit`), `crosses`,
@@ -820,10 +832,11 @@ def border_runs(visible, shape_id: str, *, entry: tuple[float, float] | None,
                         elif len(bridge) > 1:
                             runs.append(StitchRun(points=bridge[:-1],
                                                   kind=stitches.TRAVEL,
-                                                  shape_id=shape_id))
+                                                  shape_id=shape_id,
+                                                  role=role))
                     runs.append(StitchRun(points=stitches.split_long_moves(pts),
                                           kind=kind, jump=jump, trim=trim,
-                                          shape_id=shape_id))
+                                          shape_id=shape_id, role=role))
                     cursor = pts[-1]
                     report["crosses"] += crosses
                     if not whole:
@@ -987,14 +1000,22 @@ def silhouette_cap(silhouette, shape_id: str, *, style: str,
     width = machine.BORDER_WIDTH_MM if width_mm is None else float(width_mm)
     silhouette, report["holes_skipped"] = _fill_cracks(silhouette, width)
 
+    # Both branches stamp ROLE_EDGE_CAP, whichever emitter draws it. The cap
+    # is one tier with two techniques; a client asking "is the design's edge
+    # closed" must get the same answer either way, and must never read the
+    # satin branch as a per-shape border (it borrows `border_runs`, whose own
+    # default role is ROLE_BORDER). The `"__edge_cap__"` shape id stays as it
+    # was — the service's `_is_edge_cap` reads it and nothing here moves it.
     if style == "bean":
         runs, r = run_outline(silhouette, shape_id, entry=entry,
-                              trim_at_mm=trim_at_mm, omit=omit)
+                              trim_at_mm=trim_at_mm, omit=omit,
+                              role=stitches.ROLE_EDGE_CAP)
         report["loops"] = r["loops"]
     else:
         runs, r = border_runs(silhouette, shape_id, entry=entry,
                               trim_at_mm=trim_at_mm, style="auto",
-                              width_mm=width_mm, omit=omit)
+                              width_mm=width_mm, omit=omit,
+                              role=stitches.ROLE_EDGE_CAP)
         report["loops"] = r["loops"]
         report["bean_loops"] = r["bean_loops"]
     # `border_runs` splits its count by tier (`arcs` / `bean_arcs`); the cap
@@ -1028,7 +1049,8 @@ def silhouette_cap(silhouette, shape_id: str, *, style: str,
 
 
 def run_outline(poly, shape_id: str, *, entry: tuple[float, float] | None,
-                trim_at_mm: float, omit=None) -> tuple[list[StitchRun], dict]:
+                trim_at_mm: float, omit=None,
+                role: str = "") -> tuple[list[StitchRun], dict]:
     """The run tier: a shape too small to fill or satin, sewn as bean runs on
     its own outline instead of being dropped.
 
@@ -1055,6 +1077,15 @@ def run_outline(poly, shape_id: str, *, entry: tuple[float, float] | None,
     caller: measured 2026-09-11, capping a design's WHOLE outline bills
     +8.6% to +100.4% stitches, and two of six fixtures were paying for an
     edge already closed by their own satin (`tools/pro_silhouette.py`).
+
+    `role` defaults to `""` — the empty role — and that default is the point.
+    This tier sews ARTWORK: stage 7 reaches for it when a shape is under the
+    sewable-detail floor, when Law 31's photo width floor reroutes a satin,
+    and as the reactive rescue when both real tiers come back empty. None of
+    those is a border, and stamping one `ROLE_BORDER` would tell the browser a
+    border was generated on a design that has none. The one caller that DOES
+    pass a role is `silhouette_cap` (`ROLE_EDGE_CAP`), which borrows this
+    emitter for the design's own outline.
 
     Report keys: `loops`, `jumps`, `empty` (plus `too_thin`, always False,
     so stage 7 can treat every tier's report identically), and `arcs` /
@@ -1117,7 +1148,7 @@ def run_outline(poly, shape_id: str, *, entry: tuple[float, float] | None,
                 # active.
                 runs.append(StitchRun(points=stitches.split_long_moves(pts),
                                       kind=stitches.RUN, jump=jump, trim=trim,
-                                      shape_id=shape_id))
+                                      shape_id=shape_id, role=role))
                 cursor = pts[-1]
                 report["loops"] += 1
     report["empty"] = not runs

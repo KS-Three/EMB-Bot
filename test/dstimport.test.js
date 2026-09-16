@@ -477,3 +477,81 @@ test("tools/render-dst.mjs does not define its own delta table", () => {
     "render-dst.mjs defines its own decodeDelta again — that is the exact defect " +
     "this test exists for. Import it from src/dstimport.js instead.");
 });
+
+// ---- the run-span index rides through buildImportedDesign ---------------
+//
+// A DST file has no run structure to recover, so `decodeDST` never produces
+// spans and the import lane is normally indexless. But `buildImportedDesign`
+// is a placement/scale/rotate pass over a decoded-shaped object, and anything
+// handed to it that WAS planned (a digitized design, whose spans come from
+// digitizer_core/adapter.py) must not lose them on the way through — the
+// browser canvas draws satin differently from fill off exactly this field.
+//
+// The reason the passthrough is safe and not a guess: this builder writes
+// `stitches[i]` from `srcPoints[i]` one for one — rotation maps a point to a
+// point, scale and offset move it, none of them adds, drops or reorders a
+// record — and the single `end` is appended PAST the last of them.
+
+function spanFixture() {
+  const decoded = {
+    stitches: [
+      { x: -50, y: -20, type: "jump" },
+      { x: -50, y: -20, type: "stitch" },
+      { x: 0, y: -20, type: "stitch" },
+      { x: 50, y: -20, type: "stitch" },
+      { x: 50, y: 20, type: "stitch" },
+    ],
+    colorCount: 1,
+    stitchCount: 4,
+    widthMM: 10,
+    heightMM: 4,
+    jumpCount: 1,
+    trimCount: 0,
+    label: "SPANS",
+  };
+  decoded.runs = [
+    { i0: 1, i1: 2, kind: "satin", shape: "S1", role: "border", block: 0 },
+    { i0: 3, i1: 4, kind: "fill", shape: "S1", role: "", block: 0 },
+  ];
+  return decoded;
+}
+
+test("buildImportedDesign carries a run-span index through untouched", () => {
+  const decoded = spanFixture();
+  const out = buildImportedDesign(decoded, { garment: GARMENT });
+  assert.deepStrictEqual(out.runs, decoded.runs);
+  // The spans still describe the array they are handed back with: each one
+  // covers records that exist, and the appended `end` is outside all of them.
+  for (const s of out.runs) {
+    assert.ok(out.stitches[s.i0] && out.stitches[s.i1], "span inside the array");
+    for (let i = s.i0; i <= s.i1; i++) {
+      assert.notStrictEqual(out.stitches[i].type, "end");
+    }
+  }
+  assert.strictEqual(out.stitches[out.stitches.length - 1].type, "end");
+});
+
+test("rotation, scale and offset move the stitches without moving the spans", () => {
+  const decoded = spanFixture();
+  const out = buildImportedDesign(decoded, {
+    garment: GARMENT, rotationDeg: 90, targetWidthMm: 40, offsetXMm: 5, offsetYMm: -3,
+  });
+  assert.deepStrictEqual(out.runs, decoded.runs);
+  assert.strictEqual(out.stitches.length, decoded.stitches.length + 1);
+  // Record TYPES are preserved position for position — which is what makes
+  // an unchanged span index still true.
+  for (let i = 0; i < decoded.stitches.length; i++) {
+    assert.strictEqual(out.stitches[i].type, decoded.stitches[i].type);
+  }
+});
+
+test("a decoded DST carries no index, and the import invents none", () => {
+  // Absent means "no run information", which is the truth for a machine file.
+  // An empty array would mean "no runs" and a renderer keying off the index
+  // would draw nothing at all over a design full of stitches.
+  const bytes = dst.encodeDST(fixtureDesign());
+  const decoded = decodeDST(bytes);
+  assert.ok(!("runs" in decoded), "decodeDST must not invent spans");
+  const out = buildImportedDesign(decoded, { garment: GARMENT });
+  assert.ok(!("runs" in out), "the import must not invent them either");
+});

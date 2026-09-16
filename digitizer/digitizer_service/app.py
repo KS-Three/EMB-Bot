@@ -40,7 +40,26 @@ from digitizer_core.threads import DEFAULT_BRAND, brand_index, load_chart
 from . import formats
 from .jobs import DONE, GenerationCache, JobRegistry, content_key, generation_key
 
-VERSION = "0.5.0"
+# 0.5.0 -> 0.6.0, 2026-09-15: `design.runs`, the run-span index, is now on
+# every `/digitize` and `/digitize-manual` response.
+#
+# Read this before looking for a response-contract version to bump instead:
+# THE "contract v1.x" NUMBERS IN THIS FILE ARE A DIFFERENT CONTRACT. They
+# version the shape-LAYERS contract — what a `shape_overrides` entry may hold
+# on the way IN, plus the handful of server-computed read-only fields echoed
+# back inside `review.shapes` (v1.2 `sew_order`, v1.5 `merge_shape_ids` /
+# `split_shapes`, v1.7 `enclosed_colour_unknown`). `design` is not part of it:
+# it is the EMB-Bot `Design` dict, owned by `digitizer_core.adapter
+# .plan_to_design` and mirrored by `src/digitize.js` in the browser, and it
+# carries no version of its own. So the honest place to record an additive
+# change to it is here and in the adapter's docstring, and bumping a
+# shape-layers number for it would have been a lie in the other direction.
+#
+# The change is additive and a client that ignores `runs` behaves exactly as
+# it did. Feature detection does not need this number either — the presence of
+# `design.runs` is the signal, and it has to be, because a design loaded from
+# a saved project never came through /health at all.
+VERSION = "0.6.0"
 
 # An upload this large is a photograph someone dragged in by mistake, and the
 # pipeline would spend minutes on it before saying so.
@@ -807,6 +826,12 @@ async def start_digitize(
         plan = plan_stitches(result, cfg)
         design = plan_to_design(plan, name="Digitized design")
         return {
+            # `design.runs` rides along (service 0.6.0): a run-span index
+            # over `design.stitches`, so a renderer can draw a satin column
+            # differently from a tatami fill and a client can say whether a
+            # border was GENERATED rather than merely requested. Contract and
+            # its three invariants: `adapter.plan_to_design`. Additive — a
+            # client that ignores it behaves exactly as it did.
             "design": design,
             "review": _review_payload(result, plan),
             "stats": _stats_payload(plan, design,
@@ -903,6 +928,12 @@ async def start_digitize_manual(
         plan = plan_stitches(result, cfg)
         design = plan_to_design(plan, name="Manual design")
         return {
+            # `design.runs` rides along (service 0.6.0): a run-span index
+            # over `design.stitches`, so a renderer can draw a satin column
+            # differently from a tatami fill and a client can say whether a
+            # border was GENERATED rather than merely requested. Contract and
+            # its three invariants: `adapter.plan_to_design`. Additive — a
+            # client that ignores it behaves exactly as it did.
             "design": design,
             "review": _review_payload(result, plan),
             "stats": _stats_payload(plan, design,

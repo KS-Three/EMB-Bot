@@ -1001,3 +1001,153 @@ describe("a file that cannot be decoded", () => {
     expect(await findByRole("alert")).toHaveTextContent(/Couldn’t read that file as an image/);
   });
 });
+
+// ---- the border readout ----------------------------------------------------
+//
+// Kent, 2026-09-15: "easier to identify when a satin border is or isn't
+// generated and what it looks like going back and forth between satin border
+// on/off". The panel used to read `params.border` / `shapeOverrides[sid]
+// .border` straight back and call that the answer; the engine declines in
+// three different ways and none of them were visible. These tests are about
+// the gap: the request is the input, `design.runs` is the truth, and the panel
+// must never print the first as if it were the second.
+//
+// The decision table itself is tested browser-free in lib/borderMenu.spec.js;
+// what is checked here is that the panel feeds it the right things (the
+// EMITTED tier, not a forced one; the per-shape override; the design param)
+// and renders both halves.
+describe("border readout — what sewed, not what was asked for", () => {
+  function resultWith(runs) {
+    const base = {
+      stitchCount: 100, widthMM: 50, heightMM: 50, colorCount: 1,
+      colors: [], stitches: [],
+    };
+    return runs === null ? base : { ...base, runs };
+  }
+  const run = (shape, kind, role = "") => ({ i0: 0, i1: 0, kind, shape, role, block: 0 });
+
+  // Three shapes, one of each interesting outcome, with the design-wide
+  // Border select on: s1 gets its satin column, s2 is too narrow and gets a
+  // bean run, s3 is asked for one and the engine adds none.
+  const SHAPES = [shapeRow("s1"), shapeRow("s2"), shapeRow("s3")];
+  const RUNS = [
+    run("s1", "fill"), run("s1", "satin", "border"),
+    run("s2", "fill"), run("s2", "run", "border"),
+    run("s3", "fill"),
+  ];
+
+  function panelWithRuns(runs = RUNS, extra = {}) {
+    return renderPanel(SHAPES, {
+      params: { ...DEFAULT_DIGITIZE_PARAMS, border: "auto" },
+      result: resultWith(runs),
+      ...extra,
+    });
+  }
+
+  test("counts what is on the cloth, and names the declines", () => {
+    const { getByText } = panelWithRuns();
+    expect(getByText("2 of 3 borders sewn (1 satin, 1 bean) · 1 not generated.")).toBeTruthy();
+  });
+
+  test("with NO runs in the payload it says requested, and never says sewn", () => {
+    const { getByText, queryByText } = panelWithRuns(null);
+    expect(getByText(/3 shapes asking for a border/)).toBeTruthy();
+    expect(getByText(/the request, not the cloth/)).toBeTruthy();
+    expect(queryByText(/sewn \(/)).toBeNull();
+  });
+
+  test("toggling the design Border select moves the numbers — the whole ask", async () => {
+    const { getByText, getByLabelText, queryByText } = panelWithRuns();
+    expect(getByText(/2 of 3 borders sewn/)).toBeTruthy();
+    await fireEvent.change(getByLabelText("Border"), { target: { value: "off" } });
+    expect(queryByText(/2 of 3 borders sewn/)).toBeNull();
+    expect(getByText(/^No shape borders/)).toBeTruthy();
+    // ...and back again, off the same evidence
+    await fireEvent.change(getByLabelText("Border"), { target: { value: "auto" } });
+    expect(getByText(/2 of 3 borders sewn/)).toBeTruthy();
+  });
+
+  test("a per-shape override is counted the way the engine reads it", async () => {
+    const { getByText, getByLabelText } = panelWithRuns();
+    const sel = getByLabelText(/^Border — shape 1 of 3/);   // s1's own row
+    await fireEvent.change(sel, { target: { value: "off" } });
+    expect(getByText(/1 of 2 borders sewn \(1 bean\)/)).toBeTruthy();
+  });
+
+  test("each row is badged with the border it actually has", () => {
+    const { container } = panelWithRuns();
+    const badges = [...container.querySelectorAll(".dgp-lborder")].map((b) => b.textContent.trim());
+    expect(badges).toEqual(["satin border", "bean border", "no border sewn"]);
+  });
+
+  test("the declined badge explains itself without inventing a cause", () => {
+    const { container } = panelWithRuns();
+    const declined = container.querySelector(".dgp-lborder-warn");
+    expect(declined.getAttribute("title")).toMatch(/did not add one/);
+    expect(declined.getAttribute("title")).toMatch(/too narrow to hold one/);
+    expect(declined.getAttribute("title")).toMatch(/would be a guess/);
+  });
+
+  test("an expected decline is NOT painted as a fault", () => {
+    // The engine declining a satin-tiered shape is it working as documented.
+    // Toning that off `state` alone turned three of four rows red on the first
+    // real design this was driven on, which is how a healthy design comes to
+    // look broken.
+    const { container } = renderPanel([shapeRow("sat", { tier: "satin" })], {
+      params: { ...DEFAULT_DIGITIZE_PARAMS, border: "auto" },
+      result: resultWith(RUNS),
+    });
+    expect(container.querySelector(".dgp-lborder-warn")).toBeNull();
+    expect(container.querySelector(".dgp-lborder-quiet")).toBeTruthy();
+  });
+
+  test("a satin-tiered shape says WHY, and says it with no runs to check", () => {
+    for (const runs of [RUNS, null]) {
+      const { container } = renderPanel([shapeRow("sat", { tier: "satin" })], {
+        params: { ...DEFAULT_DIGITIZE_PARAMS, border: "auto" },
+        result: resultWith(runs),
+      });
+      const badge = container.querySelector(".dgp-lborder");
+      expect(badge.textContent.trim()).toBe("no border — sews as satin");
+      expect(badge.getAttribute("title")).toMatch(/already an outline/);
+    }
+  });
+
+  test("a row nobody asked to border carries no badge — the list stays readable", () => {
+    const { container } = renderPanel(SHAPES, { result: resultWith(RUNS) });
+    expect(container.querySelectorAll(".dgp-lborder")).toHaveLength(0);
+  });
+
+  test("a just-toggled row reads PENDING, and only that row does", async () => {
+    const { container, getByLabelText } = panelWithRuns(RUNS, {
+      // as if the current stitches were made with s1 bordered and nothing else set
+      appliedEdits: JSON.stringify([[], { s1: { border: "auto" } }, [], {}]),
+    });
+    await fireEvent.change(getByLabelText(/^Border — shape 1 of 3/), { target: { value: "bean" } });
+    const badges = [...container.querySelectorAll(".dgp-lborder")].map((b) => b.textContent.trim());
+    expect(badges[0]).toBe("border pending");
+    expect(badges.slice(1)).toEqual(["bean border", "no border sewn"]);
+  });
+
+  test("the design edge reports the engine's own bill", () => {
+    const { getByText } = renderPanel(SHAPES, {
+      result: resultWith(RUNS),
+      warnings: [{ code: "EDGE_CAP_APPLIED", stitches: 1204, percent: 21.3, edges: 1 }],
+    });
+    expect(getByText("Bean edge sewn — 1,204 stitches (+21.3% of the design).")).toBeTruthy();
+  });
+
+  test("the design edge says when it found nothing to sew", () => {
+    const { getByText } = renderPanel(SHAPES, {
+      result: resultWith(RUNS),        // runs present, none of them edge_cap
+      warnings: [],
+    });
+    expect(getByText("Design edge found nothing to sew.")).toBeTruthy();
+  });
+
+  test("switching the design edge off says so rather than staying silent", async () => {
+    const { getByText, getByLabelText } = renderPanel(SHAPES, { result: resultWith(RUNS) });
+    await fireEvent.change(getByLabelText("Design edge"), { target: { value: "none" } });
+    expect(getByText("Design edge off.")).toBeTruthy();
+  });
+});

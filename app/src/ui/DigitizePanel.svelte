@@ -29,6 +29,15 @@
     textClusterSeed,
     remapBlockColors,
     spoolCount } from "../lib/digitizer.js";
+  import {
+    appliedBorders,
+    borderRequestPending,
+    borderSummaryText,
+    borderTally,
+    edgeCapState,
+    edgeCapSummaryText,
+    indexRuns,
+    shapeBorderState } from "../lib/borderMenu.js";
   import { loadPalette, nearestInList } from "../lib/threads.js";
   import { loadImage, rasterSize, isVectorFile } from "../lib/rasterize.js";
 
@@ -748,6 +757,50 @@
   $: sewableShapes = orderedShapes.filter(
     (r) => !deletedIds.includes(r.id) && effStitched(r, overrides)
   );
+
+  // ---- borders, as SEWN rather than as asked for ---------------------------
+  //
+  // Everything else in this panel about borders is the REQUEST — the two
+  // selects and the per-row one write `params.border` / `shapeOverrides[sid]
+  // .border`, and until now the panel read those straight back and called it
+  // the answer. The engine declines: a satin-tiered shape never gets a border,
+  // a shape too narrow for a column gets a bean run, a narrower one gets
+  // nothing. `design.runs` (contract 2026-09-15) is the read-back; lib/
+  // borderMenu.js turns it into states, and NULL when the payload has no runs,
+  // which every line below renders as "requested" rather than "sewn".
+  //
+  // Recomputed only when the result, the review or the overrides change — the
+  // walk is over runs (hundreds), not stitches (tens of thousands), and the
+  // stitch records it does touch are only the edge cap's own span.
+  $: runIndex = indexRuns(element.result, knownIds);
+  $: appliedBorderSet = appliedBorders(element.appliedEdits);
+  $: borderCounts = borderTally({
+    rows: sewableShapes,
+    overrides,
+    designBorder: element.params.border,
+    index: runIndex,
+  });
+  $: borderLine = borderSummaryText(borderCounts, element.params.border);
+  $: edgeCap = edgeCapState({
+    mode: element.params.edge_cap,
+    warnings: element.warnings,
+    index: runIndex,
+  });
+  $: edgeCapLine = edgeCapSummaryText(edgeCap);
+
+  // One row's border state. `row.tier` deliberately, not `effTier` — this is
+  // about what the CURRENT stitches did, and effTier folds in a forced tier
+  // that has not been stitched yet.
+  function borderStateFor(row) {
+    return shapeBorderState({
+      shapeId: row.id,
+      entry: overrides[row.id],
+      designBorder: element.params.border,
+      index: runIndex,
+      tier: row.tier,
+      pending: borderRequestPending(appliedBorderSet, row.id, overrides[row.id]),
+    });
+  }
 
   // The Sequencer view's color blocks: `sewableShapes` grouped by effLayer,
   // in sew order (the same list moveShape's up/down buttons walk, just
@@ -1617,6 +1670,40 @@
           <option value="satin">Satin cap (full column)</option>
         </select>
       </label>
+
+      <!-- What the two selects above ACTUALLY produced, read off the stitch
+           plan (design.runs) rather than off the request. Kent, 2026-09-15:
+           "easier to identify when a satin border is or isn't generated and
+           what it looks like going back and forth between satin border
+           on/off". Both selects can be declined by the engine — a satin-tiered
+           shape never takes a border, a narrow one takes a bean run or
+           nothing, and the design edge finds nothing to sew on a small design
+           — and none of that was visible anywhere before this block.
+
+           It sits directly under the two controls that cause it, not in the
+           warnings list, for the same reason the artwork-reading row does:
+           this is the sentence you read while deciding, and the counts are
+           what MOVE when the toggle does. On a payload with no `runs` the
+           wording says "requested" and never "sewn" (borderMenu.js). -->
+      {#if element.result}
+        <div class="dgp-borders" class:dgp-borders-stale={pending}>
+          <p class="dgp-bline">
+            <span class="dgp-bkey">Borders</span>
+            <span
+              title={borderCounts.verified
+                ? "Read off the stitch plan: which shapes actually have a border on them, and how it sewed. “Not generated” means you asked for one and the engine added none — usually a shape too narrow to hold an outline. Open Edit shapes to see which."
+                : "This design was stitched before the Studio could read back which runs sewed, so this is the request, not the cloth."}
+            >{borderLine}</span>
+          </p>
+          <p class="dgp-bline">
+            <span class="dgp-bkey">Design edge</span>
+            <span title={edgeCap.title}>{edgeCapLine}</span>
+          </p>
+          {#if pending}
+            <p class="dgp-bnote">Restitching — these read the previous stitch plan.</p>
+          {/if}
+        </div>
+      {/if}
     </div>
 
     <!-- What the art was read as, in plain words, plus the one correction that
@@ -2167,6 +2254,19 @@
                       <span class="dgp-lname">{rowName(row)}</span>
                       <span class="dgp-larea">{fmtArea(row.areaMm2)}</span>
                       <span class="dgp-ltier tier-{tier || 'none'}">{tier || "not sewn"}</span>
+                      <!-- The border this row actually has on it (borderMenu
+                           .js's shapeBorderState), beside the tier badge
+                           because the two answer the same question about the
+                           same shape: what is on the cloth. Silent when
+                           nothing asked for a border — the select right below
+                           already says that, and a badge per row saying "no"
+                           is how a list becomes unreadable. -->
+                      {@const bst = borderStateFor(row)}
+                      {#if bst.label}
+                        <span class="dgp-lbadge dgp-lborder dgp-lborder-{bst.tone}" title={bst.title}>
+                          {bst.label}
+                        </span>
+                      {/if}
                       {#if needsColour}
                         <span
                           class="dgp-lbadge dgp-lbadge-needscolor"
@@ -2799,6 +2899,73 @@
     border: 1px solid var(--tint-border, #ccd6fb);
     border-radius: 8px;
     padding: 1px 5px;
+  }
+
+  /* The border badges. Three weights, and the ONE that has to stand out is
+     "the engine declined" -- that is the state Kent cannot see today and the
+     only one that wants a decision. A sewn border is reassurance and stays
+     quiet; a bean border is a downgrade worth noticing but not an alarm.
+     Colour here is chrome, never thread: the canvas is where thread colour is
+     judged, and recolouring a stitch to signal structure would break that.
+
+     Every colour is an EXISTING theme.css token. There is no success/ok token
+     in the palette and this is not the place to invent one: theme.css's own
+     header records what happened last time this file asked for names that were
+     never defined (--warn-text/--warn-bg x23, silently taking a hardcoded
+     olive fallback while the rest of the app used --warn). So "sewn" reads in
+     the accent family, which the app already spends on affirmative state. */
+  .dgp-lborder { white-space: nowrap; }
+  .dgp-lborder-ok {
+    color: var(--accent);
+    border-color: var(--tint-border);
+    background: var(--tint);
+  }
+  .dgp-lborder-note {
+    color: var(--warn-text);
+    border-color: var(--warn-text);
+    background: var(--warn-bg);
+  }
+  .dgp-lborder-quiet {
+    color: var(--muted);
+    border-color: var(--border);
+    background: var(--bg);
+  }
+  .dgp-lborder-warn {
+    color: var(--danger);
+    border-color: var(--danger);
+    background: var(--surface);
+  }
+
+  /* The design-level readout under the two border selects. Deliberately plain
+     -- it is a status line, not a warning: on a healthy design every border
+     asked for is on the cloth and this should read as calmly as the stitch
+     count does. */
+  .dgp-borders {
+    margin-top: 2px;
+    padding: 6px 8px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-s, 6px);
+    background: var(--bg);
+  }
+  .dgp-borders-stale { opacity: 0.6; }
+  .dgp-bline {
+    margin: 0;
+    font-size: var(--fs-2xs);
+    line-height: var(--lh-snug, 1.4);
+    color: var(--ink);
+  }
+  .dgp-bline + .dgp-bline { margin-top: 3px; }
+  .dgp-bkey {
+    display: inline-block;
+    min-width: 76px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: var(--tracking-wide);
+  }
+  .dgp-bnote {
+    margin: 4px 0 0;
+    font-size: var(--fs-2xs);
+    color: var(--muted);
   }
   /* The needs-colour marker (contract v1.7): warning-tinted like the
      enclosed-areas banner, since it flags the same class of silent wrong
