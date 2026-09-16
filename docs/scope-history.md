@@ -25,6 +25,31 @@ that is the whole point of the file. Corrections go in `MASTER_SCOPE.md`.
 
 ---
 
+**Last updated:** 2026-09-16 (late) — **what `classify_area_weighted`
+actually promotes, rendered: two of three are worse, and ELONGATION separates
+them.**
+
+The flag (#496, DEFAULT OFF) promotes 10 shapes fill -> satin across
+enthusiast, Fremont and drone, for a corpus −5,027 stitches and two grades up.
+Nobody had looked at the shapes. Rendered against the fill they replace
+(`docs/renders/area-weighted-promotions-2026-09-16/`):
+
+| shape | shipped | area-weighted | by eye |
+|---|---|---|---|
+| Fremont 33.1 mm2 blob | tidy fill rows | criss-cross satin over a shape that is not a stroke | **worse** |
+| enthusiast 19.9 mm2 star | clean fill | overlapping crosses through the centre | **worse** |
+| drone 14.7 mm2 edge strip | fill | a proper satin column along the strip | **right** |
+
+**`elongation` separates the good promotion from the bad ones** — drone's
+strip 16.8 and its sibling 14.1, against the star at 8.1 and the blob at 7.0
+(all 10: p10 4.8, p50 8.4, p90 14.4). The engine already carries the constant
+this wants: `_PROMOTE_ELONGATION_MIN` = 10.0, used by the promote path today.
+
+**So the flag as merged is not the thing to flip.** The scoped version —
+require elongation when the WEIGHTED reading is what flips the verdict — is
+the next build, and it will buy less than −5,027 stitches by construction.
+Not built; no measurement of the scoped version exists yet.
+
 **Last updated:** 2026-09-16 (night) — **a claim made and RETRACTED the
 same session: gaulke's lettering is NOT unsewn. `StitchRun.jump` means the
 needle lifts to REACH a run, not that the run is needle-up.**
