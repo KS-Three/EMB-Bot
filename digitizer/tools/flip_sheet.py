@@ -78,6 +78,10 @@ ARMS: dict[str, dict] = {
     # five designs -- this reads all 26. The open price is density, so read
     # `coverage_max` beside the bare-area win.
     "polygon_axis": {"satin_polygon_axis": True},
+    # the axis source modes (2026-09-16): Kent ruled the grown-polygon axis
+    # over-stitched on drone's M, and the artwork axis costs becker bare satin
+    "polygon_axis_art": {"satin_polygon_axis": "artwork"},
+    "polygon_axis_simp": {"satin_polygon_axis": "simplified"},
     # Added 2026-09-16. The satin/fill gates pooled over the distance
     # transform weighted by RADIUS rather than by pixel count -- the cure for
     # the size cliff the gap audit measured (§4.2), and the only one of that

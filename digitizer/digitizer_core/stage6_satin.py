@@ -77,6 +77,10 @@ from .stitches import StitchRun
 # Raster resolution for the medial axis. Enough that a 0.8 mm stroke is ~5 px
 # wide (thinning needs a few pixels of meat to find the middle); capped so a
 # huge shape cannot allocate an absurd grid.
+# `satin_polygon_axis="simplified"` drops boundary detail below this before
+# reading the axis: stage 5's round-join growth turns a corner into an arc,
+# and a true medial axis reads every vertex of it.
+_AXIS_SIMPLIFY_MM = 0.25
 _RASTER_PX_PER_MM = 6.0
 _RASTER_MAX_PX = 900
 # A stroke shorter than this many half-widths is skeleton noise, not artwork.
@@ -4325,6 +4329,37 @@ def _junction_cover_runs(poly: Polygon, runs: list[StitchRun], shape_id: str,
     return out
 
 
+def _axis_polygon(poly: Polygon, art_poly: Polygon | None, mode):
+    """Which polygon `polygon_axis` reads its skeleton from.
+
+    Stage 5 grows the shape by the fabric's pull with a ROUND join, so every
+    corner arrives here as an arc: drone's M is 149 vertices against the
+    artwork's 15, and a true medial axis reads all of them -- 158 satin
+    penetrations and 381 mm of thread where the artwork polygon gives 100 and
+    161. Kent looked at that M and ruled it over stitched (2026-09-16). The
+    raster skeleton never had the problem: 6 px/mm quantises a 0.3 mm arc away.
+
+    But the growth's smoothing EARNS its place on blocky low-resolution art --
+    becker at 1.8 px/mm sews 12.2 mm2 of bare satin off the grown polygon and
+    **34.5 mm2** off its own artwork -- so there is no single right source and
+    no rule that separates the two cases (the grown/artwork vertex RATIO does
+    not: becker p50 8.3 against drone 5.9 and enthusiast 6.1). Hence a mode,
+    measured on four designs in the flag's PR, and Kent's to set:
+
+      True / "grown"  the polygon as stage 5 grew it (the 2026-09-15 default)
+      "artwork"       the artwork polygon, rails still sewn on the grown one
+      "simplified"    the grown polygon with detail under `_AXIS_SIMPLIFY_MM`
+                      dropped -- between the two on every number measured
+    """
+    if not mode:
+        return poly
+    if mode == "artwork" and art_poly is not None:
+        return art_poly
+    if mode == "simplified":
+        return poly.simplify(_AXIS_SIMPLIFY_MM)
+    return poly
+
+
 def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
                 trim_at_mm: float,
                 start_near: tuple[float, float] | None = None,
@@ -4341,7 +4376,7 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
                 fold_guard: bool = False,
                 rail_comp_mm: float = 0.0,
                 rail_comp_floor_mm: float = 0.0,
-                polygon_axis: bool = False,
+                polygon_axis: bool | str = False,
                 ) -> tuple[list[StitchRun], dict]:
     """One satin-classified shape -> runs in sew order, plus the same report
     contract `stitch_shape` uses, so stage 7 can treat the two identically.
@@ -4402,7 +4437,16 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
     # skeleton is the item as specified, and it won the IoU on three of the
     # four fixtures and the trims on three; the grown one is the safer
     # decomposition. Kent's call which to keep; both are one line here.
-    strokes, half_mm, field = extract_strokes(poly, use_shapefield=use_shapefield,
+    # Under `polygon_axis` the skeleton comes off the ARTWORK when we have it.
+    # Stage 5 grows the polygon by the fabric's pull with a ROUND join, which
+    # turns becker-scale corners into arcs: drone's M arrives here with 149
+    # vertices against the artwork's 15, and a true medial axis reads every
+    # one of those arcs -- 158 satin penetrations and 381 mm of thread where
+    # the artwork polygon gives 100 and 161 (2026-09-16, Kent's "the M is over
+    # stitched"). The raster skeleton never saw them: 6 px/mm quantises an
+    # 0.3 mm arc away. Rails still come from `poly`, so the pull is sewn.
+    axis_poly = _axis_polygon(poly, art_poly, polygon_axis)
+    strokes, half_mm, field = extract_strokes(axis_poly, use_shapefield=use_shapefield,
                                               polygon_axis=polygon_axis,
                                               half_extra_mm=rail_comp_mm)
     if not strokes:

@@ -5605,3 +5605,34 @@ knob.
 *(measured 2026-09-16 — `preflight._coverage_map` over a 12 mm window at the
 M's own 78.6 deg fold, the one `tools/decomposition_census.py` flagged;
 renders `docs/renders/polygon-axis-2026-09-16/drone_fold0_78.jpg`)*
+
+## The polygon axis must not read stage 5's grown polygon (2026-09-16)
+
+Kent ruled drone's M over-stitched under `cfg.satin_polygon_axis`. Root cause,
+and it is not the axis construction: **stage 5 grows every shape by the
+fabric's pull with a ROUND join**, so each corner arrives at `satin_shape` as
+an arc. Drone's M is **149 vertices against the artwork's 15**, and a true
+medial axis reads all of them -- 158 satin penetrations and 381 mm of thread
+where the same shape's ARTWORK polygon gives 100 and 161. The raster skeleton
+was immune by accident: 6 px/mm quantises a 0.3 mm arc away.
+
+Three hypotheses were refuted first, each with a measurement: the Goldman join
+(emitting the members unjoined is byte-identical), the corner cuts (removing
+them is WORSE -- window coverage p95 3.46 -> 4.07), and spine sharpness (the
+polyaxis spine is marginally SMOOTHER than the raster's). The tell was that
+calling `satin_shape` by hand on the artwork polygon reproduced shipped
+exactly while the pipeline did not -- **the pipeline passes a different
+polygon than `region.polygon`**, which is the thing to check first when a
+hand-run and a pipeline run disagree on one shape.
+
+**There is no single right source, and no rule picks one.** The growth's
+smoothing EARNS its place on blocky low-resolution art: becker at 1.8 px/mm
+sews 12.2 mm2 of bare satin off the grown polygon and **34.5 mm2** off its own
+artwork. The obvious discriminator does not separate them -- grown/artwork
+vertex ratio p50 is 8.3 on becker against 5.9 on drone and 6.1 on enthusiast.
+So the flag carries a MODE (`True`/`"grown"`, `"artwork"`, `"simplified"`),
+measured on four designs in its PR, and which one ships is Kent's.
+
+*(measured 2026-09-16 -- `digitizer_core/stage6_satin._axis_polygon`;
+`tools/decomposition_census.py --arms shipped polyaxis polyaxis_art
+polyaxis_simp`)*

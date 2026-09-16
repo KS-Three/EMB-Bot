@@ -138,3 +138,31 @@ def test_draw_axis_lands_on_the_rasterizer_grid():
     mm_y = oy + (ys + 0.5) / scale
     assert np.abs(mm_y - 1.0).max() <= 1.0 / scale
     assert (mask[ys, xs] > 0).all()
+
+
+def test_the_axis_source_modes_pick_the_right_polygon():
+    """`satin_polygon_axis` is a MODE, because no rule separates the two cases
+    it has to serve: stage 5's round-join growth is what over-stitched drone's
+    M (149 vertices against the artwork's 15), and the same smoothing is what
+    keeps becker's blocky 1.8 px/mm artwork off bare cloth (12.2 mm2 from the
+    grown polygon, 34.5 from its own artwork)."""
+    from digitizer_core.stage6_satin import _AXIS_SIMPLIFY_MM, _axis_polygon
+
+    grown = box(0, 0, 12, 3).buffer(0.3, join_style=1)      # round join, many vertices
+    art = box(0, 0, 12, 3)
+    assert _axis_polygon(grown, art, False) is grown
+    assert _axis_polygon(grown, art, True) is grown          # True == "grown"
+    assert _axis_polygon(grown, art, "grown") is grown
+    assert _axis_polygon(grown, art, "artwork") is art
+    assert _axis_polygon(grown, None, "artwork") is grown    # no artwork, no swap
+    simplified = _axis_polygon(grown, art, "simplified")
+    assert len(simplified.exterior.coords) < len(grown.exterior.coords)
+    assert simplified.equals(grown.simplify(_AXIS_SIMPLIFY_MM))
+
+
+def test_an_unknown_axis_mode_falls_back_to_the_grown_polygon():
+    """A typo must not silently change which polygon is read."""
+    from digitizer_core.stage6_satin import _axis_polygon
+
+    grown, art = box(0, 0, 10, 2), box(0, 0, 10, 2).buffer(-0.1)
+    assert _axis_polygon(grown, art, "artwrok") is grown
