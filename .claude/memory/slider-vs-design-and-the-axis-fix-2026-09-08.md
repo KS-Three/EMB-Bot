@@ -47,7 +47,7 @@ and then condemned it. Two constraints decide the replacement and **finding the
 second is the point**: the lettering check alone argues for the placement's full
 width (101.6, where cap height saturates), and `field-chrome.spec.js` failed
 that correctly — `nudgeSelected` and pointer drags clamp against the **garment
-placement box**, so a design sewing 101.8 mm has zero slack and cannot be moved
+placement box** (`hoopSizeMm()` returns that box, not the hoop), so a design sewing 101.8 mm has zero slack and cannot be moved
 at all. 92 mm is the first width with no thin lettering AND 4.7 mm of slack.
 
 **The review summarised a mixed design as its digitized element alone** (#417):
