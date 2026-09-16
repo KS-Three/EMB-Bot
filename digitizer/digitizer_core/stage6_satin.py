@@ -248,7 +248,8 @@ def ribbon_width_mm(poly: Polygon) -> float:
 
 def is_satin_candidate(poly: Polygon, max_width_mm: float, *,
                         design_class: str = "flat",
-                        per_stroke: bool = False) -> bool:
+                        per_stroke: bool = False,
+                        area_weighted: bool = False) -> bool:
     """Should this shape be satin rather than fill?
 
     Two conditions, both about how the result reads on fabric: the ribbon must
@@ -298,7 +299,8 @@ def is_satin_candidate(poly: Polygon, max_width_mm: float, *,
     absorbed both of its checks.)
     """
     return classify_ribbon(poly, max_width_mm, design_class=design_class,
-                           per_stroke=per_stroke).satin
+                           per_stroke=per_stroke,
+                           area_weighted=area_weighted).satin
 
 
 # Law 31's satin minimum width, adopted VERBATIM from the printed rule
@@ -346,7 +348,8 @@ def classify_ribbon(poly: Polygon, max_width_mm: float, *,
                     design_class: str = "flat",
                     full_metrics: bool = False,
                     per_stroke: bool = False,
-                    polygon_axis: bool = False) -> RibbonVerdict:
+                    polygon_axis: bool = False,
+                    area_weighted: bool = False) -> RibbonVerdict:
     """`is_satin_candidate`'s implementation. Same verdict, with attribution.
 
     `full_metrics` runs the distance transform even for a shape an earlier
@@ -375,7 +378,7 @@ def classify_ribbon(poly: Polygon, max_width_mm: float, *,
     }
 
     def _with_dt() -> _DtStats | None:
-        stats = _dt_stats(poly)
+        stats = _dt_stats(poly, area_weighted=area_weighted)
         if stats is None:
             return None
         metrics["dt_mean"] = stats.mean
@@ -548,7 +551,21 @@ class _DtStats:
     elongation: float
 
 
-def _dt_stats(poly: Polygon) -> _DtStats | None:
+def _weighted_percentile(values: np.ndarray, weights: np.ndarray,
+                        q: float) -> float:
+    """The `q`-th percentile of `values` weighted by `weights`.
+
+    Linear interpolation on the weighted CDF; with equal weights it is
+    `np.percentile`, which is what keeps `area_weighted=False` byte-identical.
+    """
+    order = np.argsort(values)
+    v, w = values[order], weights[order]
+    cdf = np.cumsum(w) - 0.5 * w
+    cdf /= w.sum()
+    return float(np.interp(q / 100.0, cdf, v))
+
+
+def _dt_stats(poly: Polygon, *, area_weighted: bool = False) -> _DtStats | None:
     """None on a degenerate raster — a shape too small or thin to skeletonize
     — which every caller reads as "the DT has no opinion here", not as a
     rejection. Split out of `_dt_regular_and_within_cap` so `classify_ribbon`
@@ -561,6 +578,31 @@ def _dt_stats(poly: Polygon) -> _DtStats | None:
     r = field.dist[field.skel]
     if r.size == 0 or r.mean() <= 0:
         return None
+    # `cfg.classify_area_weighted` (2026-09-16), DEFAULT OFF. The gates pool
+    # the DT over skeleton pixels EQUALLY, so a long thin tail outvotes a wide
+    # body of few pixels and the verdict turns on a pixel of drift: becker at
+    # 87 -> 88 mm swings sewn satin 42.5% -> 12.8% and +73% stitches, and at
+    # 85 mm `explained` sits 0.79 of ONE skeleton pixel under the promote
+    # threshold while deciding +4,923 penetrations (gap audit 2026-09-12 §4.2,
+    # inv. 3). A pixel of spine at radius r stands for 2r of area, so ON it is
+    # weighted by r. Measured with `tools/ribbon_stability.py --variant area`:
+    # boundary-detail flips 3 -> 0, and all 16 changed verdicts are
+    # `dt_irregular` -> satin, never a demotion.
+    #
+    # **The WIDTH CAP is deliberately NOT weighted, and that is measured, not
+    # tidy.** Weighting `p90` too asks the widest part of a shape about
+    # itself twice, and it demoted real satin on the fixture this exists for:
+    # becker's `S579cb1c2` went satin -> `dt_p90_cap` and its rope border
+    # `Sead76620` promoted_ribbon -> dt_irregular, taking the design's sewn
+    # satin share 0.468 -> 0.193 at 80 mm. The cap is a question about the
+    # MAXIMUM ("will a cross float here?"); only the regularity gate is a
+    # question about the shape's typical width, and only it is weighted.
+    if area_weighted:
+        w = r.astype(np.float64)
+        mean = float(np.average(r, weights=w))
+        std = float(np.sqrt(np.average((r - mean) ** 2, weights=w)))
+    else:
+        mean, std = float(r.mean()), float(r.std())
     p90_mm = 2.0 * float(np.percentile(r, _DT_TIGHTEN_PERCENTILE)) / field.scale
     # Spine length from the skeleton's pixel count: a 1-px thinning lays one
     # pixel per unit of spine. Diagonal runs cost up to sqrt(2) more pixels
@@ -568,11 +610,16 @@ def _dt_stats(poly: Polygon) -> _DtStats | None:
     # asked to discriminate across (0.13 for a blob against 0.85+ for a
     # ribbon).
     spine_len_mm = float(r.size) / field.scale
+    # `width_mm` (and so `explained` and `elongation`) stays UNWEIGHTED even
+    # when the gates are weighted: `explained` is the shape's area over what
+    # its spine SWEEPS, and weighting the sweep's width by width would compare
+    # the shape against a stroke it never makes. The blob-vs-ribbon
+    # separation (0.13 against 0.85+) is the one reading no variant may move.
     width_mm = 2.0 * float(r.mean()) / field.scale
     swept = spine_len_mm * width_mm
     return _DtStats(
-        mean=float(r.mean()),
-        std=float(r.std()),
+        mean=mean,
+        std=std,
         p90_mm=p90_mm,
         spine_len_mm=spine_len_mm,
         explained=(float(poly.area) / swept) if swept > 0 else 0.0,

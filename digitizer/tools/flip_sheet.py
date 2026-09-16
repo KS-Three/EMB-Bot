@@ -78,6 +78,12 @@ ARMS: dict[str, dict] = {
     # five designs -- this reads all 26. The open price is density, so read
     # `coverage_max` beside the bare-area win.
     "polygon_axis": {"satin_polygon_axis": True},
+    # Added 2026-09-16. The satin/fill gates pooled over the distance
+    # transform weighted by RADIUS rather than by pixel count -- the cure for
+    # the size cliff the gap audit measured (§4.2), and the only one of that
+    # audit's candidates that survived `ribbon_stability`. Priced here because
+    # it is a ROUTING change: it moves which shapes sew satin at all.
+    "area_weighted": {"classify_area_weighted": True},
     # Added 2026-09-09 (item 7). One stitch direction for the design's
     # shapes that have no house of their own: the lettering house angle
     # where its lines agree, else the row direction that cuts the fills
