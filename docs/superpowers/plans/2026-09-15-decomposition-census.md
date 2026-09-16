@@ -117,12 +117,21 @@ a ring and the grid mapping, plus the fold metric.
    UPGRADES the top bar from a thin bean run to a real satin column, which
    is why its count rose. `docs/renders/polygon-axis-2026-09-16/`.
 
-   **The density price is the opposite of what the render suggested.** Drone's
-   M gains crossing columns by eye, so `coverage_max` was measured beside the
-   bare-area win: **drone 10.70 → 6.73** — from over the 9.33 block ceiling to
-   under the 6.67 warn line — enthusiast 4.70 → 6.28, becker 80 4.57 → 5.38,
-   Fremont unchanged at 6.69, no grade moving. The eye read a busier picture
-   as more thread; the instrument says drone sheds its worst stack.
+   **The density price — CORRECTED 2026-09-16 by Kent's ruling, and the
+   correction is the finding.** This section read: *"the eye read a busier
+   picture as more thread; the instrument says drone sheds its worst stack"*,
+   on `coverage_max` **10.70 → 6.73** (over the block ceiling to under the
+   warn line), with enthusiast 4.70 → 6.28, becker 4.57 → 5.38 and Fremont
+   unchanged. Kent looked and ruled **"the M is over stitched"**.
+
+   He is right and that number was answering a different question:
+   `coverage_max` is a per-DESIGN maximum and drone's worst stack is elsewhere
+   in the badge. In a 12 mm window on the M itself, shipped → flag reads
+   max **2.78 → 4.61**, p95 **2.13 → 3.46**, p50 0.73 → 0.98 — **+66% at the
+   peak** — with both arms under the 6.67 warn level, so no threshold on that
+   check catches it. **The flag is HELD** until the crossing columns (one stem
+   read as two overlapping strokes) are fixed. DOCTRINE "A design-wide MAX
+   hides a local stack"; yardstick-disagreements row 9.
 
    **Corpus A/B, 26 fixtures at 80 mm / left_chest** (`tools/flip_sheet.py`,
    arm `polygon_axis`): **20 move, 6 byte-identical; net −276 stitches, +15
