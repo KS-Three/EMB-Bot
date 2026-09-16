@@ -1773,9 +1773,17 @@ class PipelineConfig:
     # rather than walking a skeleton, and moving it would re-tier the corpus
     # on a change this flag is not about.
     #
-    # **Flipping it ON is Kent's call**, and the open price is density: on
-    # `drone_render` the M of AND DRONE gains crossing columns (render in the
-    # flag's PR), so read `coverage_max` beside the bare-area win.
+    # **HELD OFF by Kent, 2026-09-16: "the M is over stitched."** On
+    # `drone_render` the M of AND DRONE gains crossing columns — one stem read
+    # as two overlapping strokes — and that is a decomposition defect to fix
+    # before this flips, not a density knob to tune.
+    #
+    # This comment used to price that M with `coverage_max` and call it a WIN
+    # (10.70 -> 6.73, under the block ceiling). That number is a per-DESIGN
+    # maximum and drone's worst stack is elsewhere: in a 12 mm window on the M
+    # the flag takes **+66% at the peak and +62% at p95**, under the warn
+    # level in both arms, so no threshold on that check would ever have said
+    # so. DOCTRINE "A design-wide MAX hides a local stack".
     satin_polygon_axis: bool = False
     # Weight the satin/fill classifier's distance transform by RADIUS instead
     # of counting every skeleton pixel equally, DEFAULT OFF and byte-identical

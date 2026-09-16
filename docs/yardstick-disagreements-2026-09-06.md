@@ -247,6 +247,32 @@ before the letter. Renders: `stage6_stitches.png` for the three states, by
 left_chest with `strip_letterbox` False, and True before and after the strip
 trim. *(measured 2026-09-15)*
 
+## 9. The density check looked at the whole design and missed the one letter
+
+`cfg.satin_polygon_axis`'s render (2026-09-16) showed drone's M of AND DRONE
+gaining crossing columns. Priced on `coverage_max` the flag reads as a
+density WIN — **10.70 → 6.73**, from over the 9.33 block ceiling to under the
+6.67 warn line — and that number was published as "it is less thread, not
+more". **Kent looked and ruled *"the M is over stitched"*.**
+
+Measured in a 12 mm window on the M itself rather than over the design:
+
+| | design max | M window max | M p95 | M p50 |
+|---|---:|---:|---:|---:|
+| shipped | 10.70 | 2.78 | 2.13 | 0.73 |
+| polygon axis | 6.73 | **4.61** | **3.46** | 0.98 |
+
+**+66% at the peak, +62% at p95, on the feature the eye picked out.** Both
+arms are under the warn level there, so no threshold on this check would have
+caught it: `coverage_max` is a per-DESIGN extremum, and drone's worst stack is
+somewhere else entirely, so the flag's own headline number moved in the
+opposite direction to the thing being judged.
+
+Unlike rows 1–6 this is not the metric lacking a term for the change — the
+instrument exists and has the right units. It was pointed at the whole design
+when the question was about one letter. *(measured 2026-09-16; DOCTRINE "A
+design-wide MAX hides a local stack")*
+
 ---
 
 ## What this list is not

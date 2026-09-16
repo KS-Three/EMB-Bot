@@ -25,6 +25,30 @@ that is the whole point of the file. Corrections go in `MASTER_SCOPE.md`.
 
 ---
 
+**Last updated:** 2026-09-16 (latest) — **Kent's renders review: three
+rulings, and the M ruling HOLDS `satin_polygon_axis`.**
+
+- **"The M is over stitched"** — drone's M of AND DRONE under
+  `cfg.satin_polygon_axis`. **The flag is HELD until the crossing columns are
+  fixed.** My own report had priced it the other way on `coverage_max`
+  (10.70 -> 6.73, a design-wide max) and said it sheds thread; read in a 12 mm
+  window on the M it takes **+66% at its peak and +62% at p95** (2.78 -> 4.61,
+  2.13 -> 3.46), under the warn level in both arms so no threshold catches it.
+  DOCTRINE "A design-wide MAX hides a local stack"; yardstick-disagreements
+  row 9.
+- **"Hotel Fremont the T still needs a lot of work, but it improved"** — the
+  flag upgrades the T's top bar from a bean run to a satin column, and that
+  is an improvement, not a finish. The T stays an open letterform case.
+- **"Golke letters that are straight characters are better in [render 2],
+  curved letters are better in [render 3]"** — on the gaulke card, the two
+  states differ in SCALE as well as in the card: before the edge-strip trim
+  the card is the artwork so 80 mm spans the card, after it only the logo is,
+  and the same letters sew **16% larger — median letter height 3.77 mm ->
+  4.39 mm** (42 dark shapes either way, 40 satin -> 39). So the split he saw
+  is a size effect: curved letterforms improve with size, straight ones do
+  not, on the same artwork through the same engine. Not yet explained; no
+  flag rides on it.
+
 **Last updated:** 2026-09-16 (later) — **`cfg.classify_area_weighted` built,
 DEFAULT OFF; the gap audit's cliff cure is REFUTED and the cliff's real cause
 is named.** Full doc: `docs/classifier-area-weighting-2026-09-16.md`.

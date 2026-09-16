@@ -5569,3 +5569,39 @@ So show the drone panel, not the Fremont one. And note what the scorecard says
 about the fixture that actually improved: **drone is F 0 / raw −68 both ways.**
 The yardstick cannot see a rescue the eye can, which is the whole reason the
 render is a required step and not a courtesy.
+
+## A design-wide MAX hides a local stack, and Kent's eye found the one the check could not (2026-09-16)
+
+`cfg.satin_polygon_axis`'s render showed drone's M of AND DRONE gaining
+crossing columns. I priced it with `coverage_max` and reported the opposite of
+what the picture showed: **10.70 → 6.73**, from over the block ceiling to under
+the warn line, and wrote that the flag SHEDS thread there. Kent looked and
+ruled *"the M is over stitched"*.
+
+**He was right, and the number was answering a different question.**
+`coverage_max` is the maximum over the WHOLE design, and drone's worst stack
+lives elsewhere in the badge. Read in a 12 mm window on the M itself:
+
+| | design max | M window max | M p95 | M p50 |
+|---|---:|---:|---:|---:|
+| shipped | 10.70 | 2.78 | 2.13 | 0.73 |
+| `satin_polygon_axis` | 6.73 | **4.61** | **3.46** | 0.98 |
+
+The M takes **+66% at its peak and +62% at p95**. Both arms sit under the
+6.67 warn level locally, so `DENSITY_*` never fires either way — the check
+cannot see it, at any threshold, because a local pile-up under the ceiling is
+invisible to a per-design maximum and to a `_COVERAGE_MIN_PATCH_MM2` floor
+that was written for broad areas.
+
+**Two rules out of it.** When a render shows thread piling up in ONE feature,
+measure that feature's own window — a design-wide extremum can fall while the
+thing you are looking at doubles. And when a flag's render and its headline
+number disagree, the render is the one making a claim about the garment: say
+so, instead of letting the number retire the question. `cfg.satin_polygon_axis`
+is HELD on Kent's ruling until the crossing columns are fixed, which is a
+decomposition defect (one stem read as two overlapping strokes), not a density
+knob.
+
+*(measured 2026-09-16 — `preflight._coverage_map` over a 12 mm window at the
+M's own 78.6 deg fold, the one `tools/decomposition_census.py` flagged;
+renders `docs/renders/polygon-axis-2026-09-16/drone_fold0_78.jpg`)*
