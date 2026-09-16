@@ -233,12 +233,19 @@ def test_a_cap_over_the_ceiling_says_so_out_loud(width):
     assert loud["gate_saved_pct"] == bill["gate_saved_pct"]
     assert loud["omit_cover_mm2"] == bill["omit_cover_mm2"]
     assert loud["dropped"] is False        # warn is the default: nothing moved
-    # The Studio has no translation for this code yet (`app/` is another
-    # lane's file), so the panel ships this sentence verbatim to a customer.
-    # It has to read like one.
+    # The engine's own sentence still reaches a CLI or a log unmediated (the
+    # Studio translates both codes since 2026-09-16 —
+    # `app/src/lib/digitizer.js`), so it has to read like one.
     assert "stitches" in loud["message"] and "%" in loud["message"]
     for jargon in ("silhouette", "omit", "gate", "polygon", "tatami"):
         assert jargon not in loud["message"].lower(), jargon
+    # The cap WAS sewn here, so both sentences bill it in the plain past
+    # tense and print the count. This is the other half of the drop arm in
+    # `test_a_dropped_cap_is_exactly_the_cap_off_engine`: between them, the
+    # branch cannot be inverted without one of the two going red.
+    assert f"{bill['stitches']:,} stitches" in bill["message"]
+    assert "added" in bill["message"] and "would have" not in bill["message"]
+    assert "would have" not in loud["message"]
 
 
 def test_the_cheap_width_stays_quiet():
@@ -349,3 +356,20 @@ def test_a_dropped_cap_is_exactly_the_cap_off_engine():
     assert (dropped.stats.stitch_count + bill["stitches"]
             == _run(BECKER, CLIFF).stats.stitch_count), (
         "the refusal did not remove exactly the stitches it billed for")
+
+    # ...and it is rendered as a REFUSAL, not as a bill. The plan above is
+    # byte-identical to cap-off: nothing was added, so `EDGE_CAP_APPLIED`
+    # must not print a stitch count at all (in any tense — the count lives
+    # in the fields and in the over-budget sentence, which is the one whose
+    # subject is the price). The defect this pins shipped the sewn wording
+    # on this exact path: "The design-edge cap added 4,949 stitches
+    # (+58.7% of the design)" over a plan that gained none of them.
+    for token in (f"{bill['stitches']:,}", str(bill["stitches"]),
+                  f"{bill['percent']}", "added", "adds"):
+        assert token not in bill["message"], (
+            f"a dropped cap's bill prints {token!r}: {bill['message']}")
+    assert "priced" in bill["message"] and "dropped" in bill["message"]
+    # The over-budget sentence DOES carry the price, and the tense is what
+    # keeps it honest.
+    assert f"would have added {bill['stitches']:,} stitches" in loud["message"]
+    assert "The cap was dropped" in loud["message"]

@@ -899,3 +899,24 @@ looked at at 1440 × 900 and 1024 × 768.
 
 Open: whether Add should also offer the bean variant as a second item. Built as
 one gesture; the panel's select keeps the finer choice.
+
+## Detail moved from MASTER_SCOPE (2026-09-16)
+
+Moved under the 27,000-word budget rule (`digitizer/tests/test_scope_budget.py`);
+MASTER_SCOPE keeps the current state and a pointer. Nothing below was edited in
+the move.
+
+**Manual draw mode can now trace over the artwork.** An uploaded image paints
+under the drawing canvas (fadeable, removable) as soon as it decodes, before
+any question of auto-tracing — so hand-digitizing a logo by eye is reachable,
+which it was not while the canvas was blank. **The backdrop and any shapes
+traced from it must share one fit:** `manualTrace.js`'s `traceFitRect()` is
+called by both, and a second implementation would drift into outlines sitting
+slightly off the artwork — a bug that reads as an inaccurate *tracer*.
+*(confirmed 2026-08-25 — `traceFitRect` test + browser)*
+
+**Right-click places a curved node, left-click a straight one**, coloured green
+and indigo respectively. Ember's gesture and colour vocabulary, matched
+deliberately. The default bow takes its side from the turn the path is making,
+so a run of curved nodes arcs instead of scalloping. Backspace mid-draft takes
+back the last node. *(confirmed 2026-08-25 — `curvedNodeThrough` tests + browser)* **The border decision is on the canvas too (2026-09-09, Kent's pick after item 6):** right-click a recognised shape — on its outline, or anywhere inside it — and the field's tool menu grows a shape section: the shape's name, then **Add border** (writes the engine's `auto`: satin where a column fits, bean where not) or **Remove border** (`off`), and **Use design setting** once the shape has its own. It writes `shapeOverrides[sid].border`, the field the panel's Border select already edits, through the same `elupdate` path as a boundary drag, so undo, carry-forward across a re-digitize and the two-second idle restitch all come for free; a shape sewn as satin gets no border from either way in (stage 7's rule, on the item's tooltip). Interior picking is `shapeOverlay.hitShapeInterior` (smallest containing ring, so a mark inside a counter wins over its surround); the decision table is `borderMenu.js`. *(confirmed 2026-09-09 — `borderMenu.spec.js`, `shapeOverlay.spec.js`, `e2e/field-border-menu.spec.js` against the live service, and the open menu looked at at 1440 and 1024 px)*

@@ -2728,18 +2728,41 @@ def sequence(
             )
         )
     if cap_cost is not None:
-        warnings.append(
-            warn(
-                EDGE_CAP_APPLIED,
+        # `cap_cost` is assigned on BOTH sides of `if not cap_dropped` above —
+        # deliberately, because the bill is the only record that a cap ran at
+        # all, and the Studio's design-edge readout reads `dropped` off THIS
+        # warning ("Design edge priced, then dropped", borderMenu.js
+        # `edgeCapState`). So a dropped cap still bills; what it must never do
+        # is say it ADDED stitches, because it added none — the plan is
+        # byte-identical to `edge_cap="none"` (test_edge_cap_budget.py
+        # `test_a_dropped_cap_is_exactly_the_cap_off_engine`), and a warning
+        # that reads "+58.7% of the design" over a plan that gained nothing is
+        # an instrument lying about the thing it exists to measure.
+        #
+        # The refused price is NOT reprinted here in any tense: the fields
+        # still carry it (`stitches`, `percent`, `dropped`) for anything that
+        # wants to render it, and `EDGE_CAP_OVER_BUDGET` below states it in
+        # full — it fires on every dropped run by construction, since
+        # `cap_dropped` is `cap_over_budget and action == "drop"`. One number,
+        # one sentence, and that sentence is the one whose whole subject is
+        # the cost.
+        if cap_cost["dropped"]:
+            _cap_message = (
+                "The design-edge cap was priced and then dropped for clearing "
+                "the stitch budget: no edge was sewn, and this design carries "
+                "none of its stitches. The over-budget warning beside this one "
+                "carries the price it was refused at."
+            )
+        else:
+            _cap_message = (
                 f"The design-edge cap added {cap_cost['stitches']:,} stitches "
                 f"(+{cap_cost['percent']}% of the design) across "
                 f"{cap_cost['edges']} separate edge"
                 f"{'s' if cap_cost['edges'] != 1 else ''}. A design whose "
                 "shapes do not join into one silhouette is being outlined "
-                "many times over, which is where a cap stops being cheap.",
-                **cap_cost,
+                "many times over, which is where a cap stops being cheap."
             )
-        )
+        warnings.append(warn(EDGE_CAP_APPLIED, _cap_message, **cap_cost))
     # The cap defending its own bill (Kent's ruling 2026-09-12, on
     # docs/edge-cap-cliff-2026-09-12.md §8 item 2). `EDGE_CAP_APPLIED` above
     # fires on EVERY run, which is what let +58.7% read like +13%; this fires
@@ -2773,10 +2796,20 @@ def sequence(
                  " It was sewn anyway: re-size the design, switch the design "
                  "edge off, or accept the cost — the same artwork can bill "
                  "+18% at one size and +59% eight millimetres up.")
+        # THIS is the sentence that carries the price, in both outcomes — and
+        # the tense is what separates them. A dropped cap's stitches are not
+        # in the plan, so "added" would be the same lie EDGE_CAP_APPLIED just
+        # stopped telling, one warning along; "would have added" is the
+        # refusal's own justification and cannot be read as a bill.
+        _cost = (
+            f"The design edge would have added {cap_cost['stitches']:,} "
+            if cap_cost["dropped"] else
+            f"The design edge added {cap_cost['stitches']:,} "
+        )
         warnings.append(
             warn(
                 EDGE_CAP_OVER_BUDGET,
-                f"The design edge added {cap_cost['stitches']:,} stitches — "
+                _cost + "stitches — "
                 f"+{cap_cost['percent']}% of the design, past the "
                 f"+{cap_cost['budget_pct']}% mark where capping an edge stops "
                 f"paying for itself." + _why + _tail,

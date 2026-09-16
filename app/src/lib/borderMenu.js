@@ -27,6 +27,30 @@ export function effectiveBorder(entry, designBorder) {
   return { bordered: !!design && BORDERED.has(design), source: "design" };
 }
 
+// WHICH border was asked for, not merely whether one was — the shape's own
+// override if it has one, else the design-wide setting. "bean" is a REQUEST
+// the engine honours, not only a verdict it reaches, and that is the whole
+// reason this function exists.
+//
+// `_border_wanted` (stage7_sequence.py) reads the same two fields in the same
+// order and hands `border_runs` a style; `border_runs` then lightens the ring
+// on `lighten = style == "bean" or core.is_empty`. So a bean run means EITHER
+// "you asked for the light tier" OR "no column fits here", and nothing in
+// `design.runs` separates them — the run's `kind` is BEAN either way. The
+// request is the only thing that can, which is why shapeBorderState takes it
+// into account before naming a cause. MEASURED, becker_marine_logo.png at
+// 80 mm: shapes Sf795e8d1 and Saee8fbe5 sew ('border','border') under
+// border="auto" and ('bean','border') under border="bean" — same artwork,
+// same size, same two shapes, so "too narrow for a column" is provably false
+// for the second run.
+export function requestedBorderStyle(entry, designBorder) {
+  const own = entry && typeof entry.border === "string" ? entry.border.toLowerCase() : null;
+  if (own === "off") return "off";
+  if (own && BORDERED.has(own)) return own;
+  const design = typeof designBorder === "string" ? designBorder.toLowerCase() : null;
+  return design && BORDERED.has(design) ? design : null;
+}
+
 export const ADD_TITLE =
   "Satin border where the shape is wide enough for a column, a bean run where it is not. " +
   "A shape sewn as satin gets no border.";
@@ -216,9 +240,15 @@ export function indexRuns(design, knownIds) {
 //
 //   "none"        not asked for. No badge; there is nothing to report.
 //   "satin"       a border run of kind satin carries this shape's id.
-//   "bean"        a border run, but a light one — which IS the engine saying
-//                 the shape had no room for a column (stage7's BORDER_LIGHTENED
-//                 counts exactly these), so the reason is named, not guessed.
+//   "bean"        a border run, but a light one. TWO causes, and the run does
+//                 not say which: the shape had no room for a column, or the
+//                 light tier is what was asked for ("bean" on the shape or
+//                 design-wide). `requestedBorderStyle` separates them and only
+//                 the first gets a named cause. Do NOT read stage7's
+//                 BORDER_LIGHTENED as the arbiter — it sums `bean_loops +
+//                 bean_arcs` off `border_runs`'s report, which counts both
+//                 causes too, and it fires on every shape of a border="bean"
+//                 design (measured, becker_marine_logo.png at 80 mm).
 //   "declined"    asked for, the shape sewed, and NO border run carries its id.
 //                 The case Kent cannot currently see at all.
 //   "unsewn"      asked for and the shape produced no thread of its own, so the
@@ -287,6 +317,18 @@ export function shapeBorderState(opts) {
       title: "A satin column sews around this shape." };
   }
   if (ev && ev.light) {
+    // A bean run has TWO causes and the run does not say which (see
+    // `requestedBorderStyle`). Asked-for is the honoured request and reads
+    // like a satin border does; only the unasked-for one is the engine
+    // lightening a shape that had no room, and only there may a cause be
+    // named. Saying "no room for a column" about a border the user CHOSE to
+    // be light is a false reason on a shape that would have taken a column
+    // happily — measured on becker_marine_logo.png at 80 mm.
+    if (requestedBorderStyle(o.entry, o.designBorder) === "bean") {
+      return { ...base, verified: true, state: "bean", reason: "requested-bean", tone: "ok",
+        label: "bean border",
+        title: "A bean run — the light outline this shape was set to — sews around it." };
+    }
     return { ...base, verified: true, state: "bean", reason: "too-narrow-column", tone: "note",
       label: "bean border",
       title: "This shape had no room for a satin column, so its border sews as a bean run — a light outline, not a solid one." };

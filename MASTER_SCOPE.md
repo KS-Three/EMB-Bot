@@ -540,42 +540,36 @@ artwork's side — 99.1% lost on the logo Kent called "5% completed at most".
 **Both halves of the smoothness complaint now have instruments, and they are not the same measurement** (Spearman 0.028, n = 12 — rules out redundancy, not dependence). `tools/edge_smoothness.py` owns edge noise; `tools/curve_fidelity.py` owns the curve half, read from `plan.iter_runs()` because **curve fidelity is not readable from a raster**. Read **`roughness_deg`** per design; `turn_gini` is substantially a COMPLEXITY statistic (Pearson −0.763 vs log trace count), valid only on the ladder or a paired arm; the floor is **stitch length**. On Kent's four Becker artworks the two SPARSE ones measure roughest — complexity, not size (an earlier "small placements sew rougher" reading is withdrawn). *(measured 2026-08-27/28 — PR #281; `docs/curve-fidelity-from-the-stitch-path-2026-08-27.md`)*
 **Two engine defects open, unfixed:** `summit_badge`'s half-removed background, and `stage1_prep.py:254-266` answering a structural question (`BACKGROUND_ABSENT`) through a colour threshold (`bg_tolerance_lab`). *(measured 2026-08-27 — `docs/kent-review-2026-08-27.md`; memory `kent-eye-vs-instruments-2026-08-27`. PR #276's body claims the engine is correct on `summit_badge` — that sentence is wrong, its instrument fix stands.)* **Satin extremity drop — FIXED 2026-08-21.** `_prune_spurs` re-measured a stem its OWN first pass had un-branched, one raster pixel deciding a 3.3 mm tab. **The blind spot that hid it stays fixed:** `preflight`'s `ARTWORK_UNCOVERED`, 5.0 mm² threshold still provisional. *(fixed 2026-08-21 — PR #186)* **Lettering quality — the STITCH-ANGLE mechanism is FIXED 2026-08-27. Three others remain open.** Kent on two sewn logos: *"lettering should be smooth"*, *"ROOKIE MISTAKE"*, and *"Why is the 'N' running Vertically?"*
 
-**Fixed: a word's letters now share one house angle.** `stage6_satin` grew
-`satin_shape(angle_deg=...)` on 2026-08-26 — held loosely by `_clamp_to_span`,
-which rotates the house angle only where a stroke cannot span it — but nothing
-ever SET it, so the sewn output did not change. PR #282 added the derivation
-(length-weighted, aggregated in `directionfield`'s doubled-angle space) and PR
-#283 made it fire. Measured on the Becker Marine logo: satin and fill strokes
-within ±20° of the modal direction go **29% → 51%** against a 22% chance
-baseline, with **total thread −2.4%**, trims and jumps unchanged.
+**Fixed: a word's letters now share one house angle.** `stage6_satin`'s
+`satin_shape(angle_deg=...)` shipped 2026-08-26 with nothing SETTING it; PRs
+#282/#283 added the derivation (length-weighted, in `directionfield`'s
+doubled-angle space) and made it fire. Becker Marine: strokes within ±20° of the
+modal direction **29% → 51%** against a 22% chance baseline, **total thread
+−2.4%**, trims and jumps unchanged.
+*(fixed 2026-08-27 — PRs #282/#283, mutation-checked; renders in the #283 body)*
 
 Three thresholds had to be corrected to get there, each applied to a population
-it was not calibrated on — **gate 4 in miniature** (the confidence gate became
-Rayleigh's test, chance-corrected; the ring half of its 10x-vs-1.2x figure is a
-degenerate fixture, 2026-09-02). All three: [area 1](docs/scope/1-auto-digitizing-quality.md), moved verbatim.
-*(fixed 2026-08-27 — PRs #282/#283, mutation-checked; renders in the #283 body)*
-**And it was NOT FIRING on slab-serif lettering — a FOURTH miscalibrated threshold; fix BUILT
-(PR #321), the angle rule's pass 1 and the Goldman join on top (2026-09-03).** Fremont's capitals
-cancel in doubled-angle space (nR² 4.7 vs 6.9). `satin_house_fourfold` (DEFAULT ON, Kent's flip)
-admits two orthogonal families and sets the STEMS' perpendicular (the family square to the line of
-text; bisector deleted); a bar takes its own perpendicular with the lean fading to zero, a diagonal
-leans ≤ 30°, stations spread by cos(lean); ≥ 45° corners butt-join inside one stroke. Thread pitch
-Fremont **0.152 → 0.198 mm**, ENTHUSIAST 0.152 → 0.200; benchmark **4.62 → 3.81/1k**; bare fabric
-drone 2.8 → 2.2%, Becker 6.0 → 5.5%; crosses past 45° off perpendicular drone 26 → 17%. Capitals
-measured, lowercase not. *(measured 2026-09-03 — area 1)*
+it was not calibrated on — **gate 4 in miniature**; all three, verbatim:
+[area 1](docs/scope/1-auto-digitizing-quality.md). **A FOURTH was why it did not
+fire on slab-serif lettering — fixed 2026-09-03 (PR #321):**
+`satin_house_fourfold` (DEFAULT ON, Kent's flip) admits two orthogonal families
+and sets the STEMS' perpendicular, with the angle rule's pass 1 and the Goldman
+corner join on top. Thread pitch Fremont **0.152 → 0.198 mm**, benchmark
+**4.62 → 3.81/1k**, bare fabric Becker 6.0 → 5.5%. Capitals measured, lowercase
+not. *(measured 2026-09-03 — area 1 detail)*
 
 **Mechanisms 2 and 4 — prototyped/costed and half-closed respectively — moved to [area 1 detail](docs/scope/1-auto-digitizing-quality.md) 2026-09-07 to keep this file inside its own 800-line budget.** Kent held the exterior-notch guard 2026-08-28 (reds the chaining benchmark 3.8 → 6.4 trims/1k); the letterform instrument reports the WORST medial-axis stroke and is **still blind to TILT**. *(moved 2026-09-07 — no content changed)*
 
-**Still open and unfixed:** `_prune_spurs` drops a 3-way node to 2-way so
-the walker welds the N's diagonal to its stem through a 108° fold — the same
-function PR #186 fixed, one consequence on. Prototyped twice, NOT shippable
-as written (propagates the H defect to every square-capped bar; two
-prototypes measured −18.3% and +20.5% off one baseline); needs a cap-arm
-classifier. *(measured 2026-08-26 — `.claude/memory/letterform-fidelity-2026-08-26.md`)*
+**Still open and unfixed:** `_prune_spurs` drops a 3-way node to 2-way, so the
+walker welds the N's diagonal to its stem through a 108° fold — the same function
+PR #186 fixed, one consequence on. Prototyped twice, NOT shippable as written;
+needs a cap-arm classifier. Mechanism, ablation and both prototypes: area 1
+detail. *(measured 2026-08-26 —
+`.claude/memory/letterform-fidelity-2026-08-26.md`)*
 
 **Confidence limit on the fix:** two real lettering groups from ONE logo; real-artwork validation needs Kent's box.
 
-**Text clusters see ordinary lettering (third attempt, 2026-09-03).** Two doors clustered in two ROUNDS — rescued first with unchanged code, so every cluster that regularizes is computed as before — then ordinary glyphs at the house-angle height ratio with a one-ink CIEDE2000 link (ΔE ≤ 20; the shield star is 34.2 from ENTHUSIAST, within-word quantization needs ≤ 16.4). Becker 0 → 11 tagged, drone 0 → 21, enthusiast keeps its subline cluster id. Cost measured quiet: enthusiast +0.9 s; the 60 s service test at 12.4 s idle and 12.1 s under three CPU hogs once the tesseract child is pinned to one OpenMP thread (32.7 s before — the likeliest root cause of `10ae9cc`'s CI timeout). No satin underlay under a 5 mm shape (`SATIN_UNDERLAY_MIN_EXTENT_MM`, the JS rung; Kent's call). *(measured 2026-09-03 — same doc)*
+**Text clusters see ordinary lettering (third attempt, 2026-09-03).** Two rounds — clusters that regularize are rescued first with unchanged code — then ordinary glyphs at the house-angle height ratio with a one-ink CIEDE2000 link (ΔE ≤ 20). Becker 0 → 11 tagged, drone 0 → 21, enthusiast keeps its subline cluster id. Cost measured quiet: enthusiast +0.9 s, and the 60 s service test runs 12.4 s idle once the tesseract child is pinned to one OpenMP thread (32.7 s before — the likeliest root cause of `10ae9cc`'s CI timeout). No satin underlay under a 5 mm shape (Kent's call). *(measured 2026-09-03 — area 1 detail)*
 
 **Next:** NEEDS KENT. Fragmentation work measures **0% on real client logos**
 (they are satin-dominated, 1–3 fill shapes, no cutting fills). The one large
@@ -602,13 +596,12 @@ assumed (area doc, "Supply"). Terminus closed. Growth means commissioning.
 
 **Implemented · Medium.**
 The Svelte guided flow (garment → content → review → download), saved projects,
-the Layers panel, and fabric/garment presets. Logic coverage is broad —
-nearly every `app/src/lib/*.js` module has a paired spec — with UI-behaviour
-coverage riding on live-browser e2e specs across several garments, the image
-content path, four export formats, and the embroidery field's own chrome.
-**What holds it at Medium:** fabric-preset accuracy is gated on the controlled
-sew-out CARD, which has not been sewn — the one physical out so far (2026-09-01)
-was a single uncontrolled icon. See Cross-cutting issues.
+the Layers panel, and fabric/garment presets. Logic coverage is broad — nearly
+every `app/src/lib/*.js` module has a paired spec — with UI-behaviour coverage
+riding on live-browser e2e specs. **What holds it at Medium:** fabric-preset
+accuracy is gated on the controlled sew-out CARD, which has not been sewn (the
+one physical out, 2026-09-01, was a single uncontrolled icon). See Cross-cutting
+issues.
 
 **The two engines' fabric tables agree, and `test_fabric_wire.py` keeps them so**
 — field-for-field, asserting AGREEMENT only; the numbers stay gate 1. Its sibling
@@ -620,32 +613,30 @@ was a single uncontrolled icon. See Cross-cutting issues.
 Six buyer-visible defects across the 2026-08-25 and 09-07 sweeps, none seen by a
 green suite. The list: DOCTRINE "Gotchas".
 
-**Uploading artwork is the whole interaction — the panel no longer asks the
-user to classify it first.** The run starts on upload and the panel STATES what
-the art was read as ("Read as flat art" / "as a photo" / "as shaded artwork" /
-"couldn't tell"), with the override recast as a one-click correction to that
-sentence. `detail_layer` sits on that row too (Kent 2026-08-30) and appears only
-where the art is actually on a tonal lane, by reading or by override. Nothing
-changed in what gets sent, so area 1's photo-control numbers are untouched, and
-the engine's routing is unchanged — ROADMAP gate 2 bars recalibrating stage 0,
-and phase-4 v1 works around it with exactly this override.
-*(confirmed 2026-08-30 — driven in a real browser against the real service, every state of the row clicked through and looked at; pinned by e2e `digitize-auto-start.spec.js`; numbers in scope-history 08-30)*
+**Uploading artwork is the whole interaction** — the run starts on upload and the
+panel STATES what the art was read as, with the override recast as a one-click
+correction to that sentence; `detail_layer` sits on that row and appears only
+where the art is on a tonal lane. Nothing changed in what gets sent, so area 1's
+photo-control numbers and the engine's routing are untouched.
+*(confirmed 2026-08-30 — driven in a real browser; e2e `digitize-auto-start.spec.js`; detail)*
 
 **The hoop you picked is DRAWN, and the export gate uses it.** `hoopTransform`
-returns the hoop and the placement box and fits to the larger (before 2026-09-04
-`preview.js` had only the placement box and called it the hoop, so picking one
-changed nothing on screen); `DownloadStep` warns before a stitch export that will not fit (confirm,
-not block; PNG and PDF worksheet ungated — not machine files). **Live: the stock
-Tote / Full Back preset is 203.2 mm against a 200 mm max hoop**, so it fires on a
-shipped preset — whether auto-fit should CAP is open, and it is now measured: **four of ten garments (full_back, jacket_back, blanket, tote) have placement boxes larger than the 200 mm biggest hoop**, so 40% of the picker is oversize on every design (defect 39). *(2026-09-02 — PR #317;
-`preview.spec.js`, `DownloadStep.spec.js`, e2e)* **What that gate is fed changed 2026-09-07**: it used the box the design was fit to, which 65.6% of designs sew outside of (defect 34), so it now reads the thread's own extent.
+returns the hoop and the placement box and fits to the larger; `DownloadStep`
+warns before a stitch export that will not fit (confirm, not block; PNG and PDF
+ungated), reading the thread's own extent since 2026-09-07. **Live: four of ten
+garments (full_back, jacket_back, blanket, tote) have placement boxes larger
+than the 200 mm biggest hoop**, so 40% of the picker is oversize on every design
+(defect 39); whether auto-fit should CAP is open. *(2026-09-02 / 09-07 — PR #317;
+`preview.spec.js`, `DownloadStep.spec.js`, e2e; detail)*
 
-**The digitize panel states what CHANGED and offers the fix.** Shape list behind
-an "Edit shapes (N)" disclosure, closed by default; a re-digitize reads as a
-delta against `priorRun`; `COLOR_STOPS_HEAVY`, `LETTERING_TOO_SMALL` and
-`STITCHES_TOO_SHORT` render as one-click adjustment chips offered AFTER the run
-(Kent's call — an adjustment, not a pre-run form). `QualityReport` surfaces
-trims. *(2026-09-02 — PRs #317/#318)* **Both "Make it bigger" chips offer a PARTIAL remedy, and the comment justifying them misquoted the finding it cited** — it read `LETTERING_TOO_SMALL`'s message as ending *"Enlarging helps"* when on that same commit it already ended *"...but does not fully clear it ... Remove or simplify the smallest lettering"*. Corrected in place with the history; the buttons are LEFT for Kent, since whether a partial remedy earns one is his call. `STITCHES_TOO_SHORT` no longer recommends enlarging at all and now names the shapes carrying the short steps — it and `LETTERING_TOO_SMALL` measure the same quantity at the same threshold (`MIN_COLUMN_MM` **is** `machine.MIN_STITCH_MM`) and it never fired alone over the corpus at 80 mm (the only width swept), but only **66%** of its short steps sit in a shape lettering named: the rest are sewable columns (1.1–3.2 mm median) with a narrow waist. **And the button itself is now measured: ONE PRESS CLEARS THE FINDING ON 1 OF 10** corpus fixtures (two presses on 4 of 10) and makes it **worse on 3** — `photo_dof_meadow` 0.36 → 0.58 → 0.71 — while the satin shape count rises on every fixture (2 → 9, 42 → 71), which is "the smallest shapes regenerate at any size" from the other side. No grade claim is drawn from that sweep: several checks move with size and 5 of the 10 are on the clamped floor. *(measured 2026-09-06 — `tools/short_satin_overlap.py`, `tools/enlarge_cure.py`, `tests/test_short_satin_shapes.py` (14); DOCTRINE)*
+**The digitize panel states what CHANGED and offers the fix** — a re-digitize
+reads as a delta against `priorRun`, and `COLOR_STOPS_HEAVY`,
+`LETTERING_TOO_SMALL` and `STITCHES_TOO_SHORT` render as one-click adjustment
+chips offered AFTER the run, not as a pre-run form. **Both "Make it bigger"
+chips are a PARTIAL remedy and are LEFT for Kent to rule on:** one press clears
+the finding on 1 of 10 corpus fixtures, makes it WORSE on 3, and raises the
+satin shape count on every one. *(measured 2026-09-06 — `tools/enlarge_cure.py`,
+`tools/short_satin_overlap.py`, `tests/test_short_satin_shapes.py`; detail; DOCTRINE)*
 
 **`cfg.border` reaches its own default now** — `null` = unset, key omitted when
 unset, panel says "automatic", `fill_angle_deg`'s sentinel shape. Until
@@ -654,34 +645,63 @@ default was unreachable. *(PR #318)*
 
 **Preview thread width is PHYSICAL — neither widened nor narrowed.**
 `preview.js`'s `THREAD_WIDTH_MM` (0.4, nominal 40wt) is coverage 2.67 against the
-ruled 0.15 mm fill row (rows overlap, as the professional's do) and 1.0 against
-the 0.4 mm satin spacing; a fill at the ruled row looks solid because it IS. The
-PDF sheet (`src/render.js`) and the SVG export draw the same width since
-2026-09-04 — the sheet had drawn 1 px hairlines at any scale. Caveat: `lw` has a
-1.2 px floor (1 px on the sheet), so the property holds zoomed in, not on a
-thumbnail. Pinned on the literal 0.4 and both ratios. *(2026-09-04 — `preview.spec.js`)*
+ruled 0.15 mm fill row and 1.0 against the 0.4 mm satin spacing; the PDF sheet
+(`src/render.js`) and the SVG export draw the same width since 2026-09-04. The
+property holds zoomed in, not on a thumbnail (`lw` has a px floor).
+*(2026-09-04 — `preview.spec.js`; detail)*
 
-**Thread lighting is unverified against real thread** — eye-tuned, and the one physical out (2026-09-01) cannot settle it: its colours were random operator threading, so DOCTRINE bars grading colour from it at all. Treat the look as a preference, not a calibration. *(suspected 2026-08-25; sharpened 2026-09-14)*
+**Thread lighting is unverified against real thread** — eye-tuned, and the one
+physical out (2026-09-01) cannot settle it: its colours were random operator
+threading, so DOCTRINE bars grading colour from it at all. Treat the look as a
+preference, not a calibration. *(suspected 2026-08-25; sharpened 2026-09-14)*
 
-**Typographic punctuation folds to its ASCII twin where a font lacks it.** `satinfont.js TYPOGRAPHIC_FOLD` stitches the twin ONLY where the fancy form is missing — 367 font x character combinations rescued, and all 85 fonts hash identically on text that never needed it. Not NFKD: accented letters are different letters and stay unfolded. What it cost before the fix (a phone's U+2019 sewing "Fritschs Stitches", under a note naming a character that looks identical to the one typed): DOCTRINE; scope-history 09-07. *(fixed 2026-09-07)*
+**Typographic punctuation folds to its ASCII twin where a font lacks it**
+(`satinfont.js TYPOGRAPHIC_FOLD`) — 367 font × character combinations rescued,
+all 85 fonts hash identically on text that never needed it; not NFKD, so
+accented letters stay unfolded. *(fixed 2026-09-07 — detail; DOCTRINE)*
 
 **A design is named after what is in it, and the registry stops swallowing
-failed writes.** Every project was "Untitled design", so "My designs" listed
-rows a customer could only tell apart by opening each, and every backup
-downloaded as `untitled-design.embproj`. A still-unnamed design now takes its
-name from its content; a name typed by hand is sticky. Separately,
-`renameProject` and `deleteProject` reported success for an index write that
-never landed — a name and a project's membership of the registry live ONLY in
-that index — and `deleteProject` removed the record before writing it. Both
-propagate now, index first. *(fixed 2026-09-07 — area 3; DOCTRINE)*
+failed writes** — a still-unnamed design takes its name from its content, a name
+typed by hand is sticky, and `renameProject`/`deleteProject` now propagate an
+index-write failure (index first) instead of reporting success.
+*(fixed 2026-09-07 — detail; DOCTRINE)*
 
-**The built bundle works wherever it is served.** `vite.config.js` sets
-`base: "./"` and five hand-written `/fonts/…` paths ignored it, so below the
-domain root the lettering lane produced nothing; font LICENCE links were among
-the five. Document-relative now, identical at the root. *(fixed 2026-09-07 —
-`assetPaths.spec.js`)*
+**The built bundle works wherever it is served** — five hand-written `/fonts/…`
+paths ignored `vite.config.js`'s `base: "./"`, so below the domain root the
+lettering lane produced nothing (font LICENCE links among them).
+Document-relative now, identical at the root.
+*(fixed 2026-09-07 — `assetPaths.spec.js`; detail)*
 
-**Lettering under the cap floor now names a way out.** The "cannot be sewn" verdict was the only one with no fix while the milder branch named two. Levers were measured before being named, so line breaks lead and "fewer characters" is second; "Size up" is withheld at the width cap, the rule the hairline branch already followed. The measured ladder (74 chars at default left chest = 1.3 mm against a 4 mm floor, and what each lever buys): scope-history 09-07. *(fixed 2026-09-07)*
+**Lettering under the cap floor now names a way out** — line breaks lead, "fewer
+characters" second, and "Size up" is withheld at the width cap. The measured
+ladder: scope-history 09-07. *(fixed 2026-09-07 — detail)*
+
+**The plan's run structure reaches the canvas, and the border readout reports
+what was SEWN.** `StitchRun.role` (`"" | "border" | "edge_cap"`, declared last so
+positional construction does not shift) separates how a run sews (`kind`) from
+which tier asked for it (`role`) — a run-tier rescue sews the same bean technique
+as a lightened border. `adapter.plan_to_design` emits `design["runs"]`: per-run
+spans `{i0,i1,kind,shape,role,block}` indexing the final stitches array, which
+partition the records exactly (becker digitize at 80 mm, border="auto": 0
+uncovered, 0 claimed twice) for +4.3% (becker) / +5.3% (Fremont) payload at 52:1
+and 42:1 runs-to-stitches. The stitches themselves are untouched — SHA-256 over
+the array is identical either side on both fixtures, no golden recaptured.
+`pattern_to_design` emits NO `runs` key on purpose (absent = no information;
+`[]` would mean "no runs"), and `combineDesigns` / `buildImportedDesign` carry
+the index through or abandon it wholesale rather than ship a partial one.
+**`kind` is an OPEN set** — `stitches.py` defines eight (`underlay fill satin
+border bean run travel tie`), not the five the corpus usually shows; a five-kind
+assumption renders a satin border as ordinary stitching with a green suite.
+Studio draws per-kind thread under two invariants (no kind wider than physical
+thread, no style carries a colour), byte-identical on the no-runs path across 12
+render configurations (379,795 bytes of recorded canvas calls), and the
+per-shape border readout reports what was sewn
+(`satin|bean|declined|unsewn|pending|unverified`) rather than what was requested.
+Service `VERSION` 0.5.0 → 0.6.0. **Still open:** `EDGE_CAP_APPLIED` bills a
+dropped cap (fix in flight in a parallel lane); turning shape borders off makes
+the edge cap ~4.7x dearer (18 → 84 stitches, `logo_script_tires` at 80 mm); and
+border states `bean` / `unsewn` / `pending` are unit-tested only.
+*(merged 2026-09-16 — PR #492, `129ba4a`)*
 
 ### 4. Export formats — [detail](docs/scope/4-export-formats.md)
 
@@ -736,21 +756,27 @@ and every interaction was driven in a real browser against a live service.
 verbatim there because the sub-requirements *are* the spec.
 
 **Manual draw mode can now trace over the artwork.** An uploaded image paints
-under the drawing canvas (fadeable, removable) as soon as it decodes, before
-any question of auto-tracing — so hand-digitizing a logo by eye is reachable,
-which it was not while the canvas was blank. **The backdrop and any shapes
-traced from it must share one fit:** `manualTrace.js`'s `traceFitRect()` is
-called by both, and a second implementation would drift into outlines sitting
-slightly off the artwork — a bug that reads as an inaccurate *tracer*.
-*(confirmed 2026-08-25 — `traceFitRect` test + browser)*
+under the drawing canvas (fadeable, removable) as soon as it decodes, so
+hand-digitizing a logo by eye is reachable, which it was not while the canvas
+was blank. **The backdrop and any shapes traced from it share one fit** —
+`manualTrace.js`'s `traceFitRect()`, called by both; a second implementation
+would drift into outlines sitting off the artwork, a bug that reads as an
+inaccurate *tracer*. *(confirmed 2026-08-25 — `traceFitRect` test + browser)*
 
 **Convert-to-text reaches ordinary lettering (2026-09-03)** — the badge and the per-cluster bar now appear on real wordmarks, one cluster per line in one ink; the e2e contract asserts per cluster instead of page-wide, the reason the first widening was reverted. *(fixed 2026-09-03 — area 1, area doc)*
 
 **Right-click places a curved node, left-click a straight one**, coloured green
-and indigo respectively. Ember's gesture and colour vocabulary, matched
-deliberately. The default bow takes its side from the turn the path is making,
-so a run of curved nodes arcs instead of scalloping. Backspace mid-draft takes
-back the last node. *(confirmed 2026-08-25 — `curvedNodeThrough` tests + browser)* **The border decision is on the canvas too (2026-09-09, Kent's pick after item 6):** right-click a recognised shape — on its outline, or anywhere inside it — and the field's tool menu grows a shape section: the shape's name, then **Add border** (writes the engine's `auto`: satin where a column fits, bean where not) or **Remove border** (`off`), and **Use design setting** once the shape has its own. It writes `shapeOverrides[sid].border`, the field the panel's Border select already edits, through the same `elupdate` path as a boundary drag, so undo, carry-forward across a re-digitize and the two-second idle restitch all come for free; a shape sewn as satin gets no border from either way in (stage 7's rule, on the item's tooltip). Interior picking is `shapeOverlay.hitShapeInterior` (smallest containing ring, so a mark inside a counter wins over its surround); the decision table is `borderMenu.js`. *(confirmed 2026-09-09 — `borderMenu.spec.js`, `shapeOverlay.spec.js`, `e2e/field-border-menu.spec.js` against the live service, and the open menu looked at at 1440 and 1024 px)*
+and indigo respectively — Ember's vocabulary, matched deliberately; the default
+bow takes its side from the turn the path is making, and Backspace mid-draft
+takes back the last node. *(confirmed 2026-08-25 — `curvedNodeThrough` tests +
+browser)* **The border decision is on the canvas too (2026-09-09, Kent's pick
+after item 6):** right-click a recognised shape, on its outline or anywhere
+inside it, and the field's tool menu grows **Add border** (the engine's `auto`),
+**Remove border** (`off`) and **Use design setting**, writing
+`shapeOverrides[sid].border` through the same `elupdate` path as a boundary
+drag, so undo, carry-forward across a re-digitize and the idle restitch all come
+for free. *(confirmed 2026-09-09 — `borderMenu.spec.js`, `shapeOverlay.spec.js`,
+`e2e/field-border-menu.spec.js` against the live service; detail)*
 
 **Detail moved to the area doc (2026-08-27, rule 5):** the copy/paste, Duplicate
 and Dim-slider defects; the 2026-08-26 browser session (a canvas opening below

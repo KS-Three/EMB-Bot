@@ -1426,6 +1426,56 @@ test("describeWarnings puts the design-edge cap's bill in the user's language", 
   for (const w of out) expect(w.text).not.toBe("engine prose");
 });
 
+// EDGE_CAP_APPLIED fires on every run where a cap was PRICED — including one
+// the engine's own ceiling then threw away (`dropped`), where the plan is
+// byte-identical to the cap being off. A bill for stitches nobody sewed is
+// the failure mode this panel exists to prevent, and the border readout
+// already gets it right ("Design edge priced, then dropped", borderMenu.js),
+// so the two would have contradicted each other on the same screen.
+test("a design edge that was priced and then dropped bills nobody for it", async () => {
+  stubStorage({});
+  const { describeWarnings } = await import("./digitizer.js");
+  const [applied, over] = describeWarnings([
+    { code: "EDGE_CAP_APPLIED", message: "engine prose", style: "bean",
+      stitches: 4949, percent: 58.7, edges: 16, over_budget: true, dropped: true },
+    { code: "EDGE_CAP_OVER_BUDGET", message: "engine prose", style: "bean",
+      stitches: 4949, percent: 58.7, budget_pct: 40.0, gate_saved_pct: 12.0,
+      omit_cover_mm2: 394.7, dropped: true },
+  ]);
+  // No count, in any tense: this line's whole job is to say the pass is not
+  // in the design. The price is the over-budget line's subject, below.
+  expect(applied.text).not.toMatch(/4,?949|58\.7|adds|added/);
+  expect(applied.text).toContain("priced");
+  expect(applied.text).toContain("no outline around the outside");
+  // The over-budget line names the cost that caused the refusal, and the
+  // tense is what stops it reading as a bill.
+  expect(over.text).toContain("would have added 4,949 stitches (+58.7%)");
+  expect(over.text).toContain("left off");
+  expect(over.text).not.toMatch(/\bmm²|gate|12%/);
+  for (const w of [applied, over]) expect(w.text).not.toBe("engine prose");
+});
+
+test("a design edge over budget that was SEWN anyway says so, and names the lever", async () => {
+  stubStorage({});
+  const { describeWarnings, ATTENTION_WARNINGS } = await import("./digitizer.js");
+  const [over] = describeWarnings([
+    { code: "EDGE_CAP_OVER_BUDGET", message: "engine prose", style: "bean",
+      stitches: 4949, percent: 58.7, budget_pct: 40.0, gate_saved_pct: 12.0,
+      omit_cover_mm2: 394.7, dropped: false },
+  ]);
+  // "warn" is the shipped default and it moves NO stitch — the cap IS on the
+  // cloth, so this reads in the present tense, exactly like EDGE_CAP_APPLIED.
+  expect(over.text).toContain("adds 4,949 stitches (+58.7%)");
+  expect(over.text).toContain("+40%");
+  expect(over.text).not.toContain("would have");
+  expect(over.text).toContain("turn the design edge off");
+  expect(over.text).not.toBe("engine prose");
+  // It fires only over the ceiling, so unlike the every-run bill it is a
+  // decision to make, not a note to read.
+  expect(ATTENTION_WARNINGS.has("EDGE_CAP_OVER_BUDGET")).toBe(true);
+  expect(ATTENTION_WARNINGS.has("EDGE_CAP_APPLIED")).toBe(false);
+});
+
 // A shape the engine could not sew is not automatically a speck. On
 // 2026-08-13 this warning was the only thing the panel said while the engine
 // silently lost a 2,787 mm² region (the whole body of summit_badge.png) to a
@@ -2086,6 +2136,7 @@ test("no translated warning speaks engine, and this is the tripwire that keeps i
     "LONG_JUMPS_TRIMMED", "BORDER_SKIPPED_TOO_NARROW", "BORDER_LIGHTENED",
     "SHAPES_DELETED_BY_USER", "SHAPE_EDIT_UNKNOWN_ID", "SHAPES_MERGED_BY_USER",
     "SHAPE_SPLIT_BY_USER", "EDGE_CAP_APPLIED", "EDGE_CAP_EMPTY",
+    "EDGE_CAP_OVER_BUDGET",
     "EDGE_CAP_LIGHTENED", "SMALL_SHAPES_AS_RUN", "THREAD_RESNAPPED_AFTER_DRIFT",
     "SHAPES_LEFT_UNSEWN", "BACKGROUND_ABSENT", "TONAL_REGIONS_SPLIT",
     "DUPLICATE_CONE_LAYERS_MERGED", "BORDER_SEAM_SHARED",

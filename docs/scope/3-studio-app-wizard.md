@@ -536,3 +536,71 @@ Two things fell out of that run, one fixed and one recorded:
   `(any-pointer: fine)` the way `emptyFieldHint` already does; not worth
   inventing a phone story PRODUCT.md has not decided on (launch posture is
   still "Desktop-only, stated on the site", still stated nowhere).
+
+## Detail moved from MASTER_SCOPE (2026-09-16)
+
+Moved under the 27,000-word budget rule, whose test
+(`digitizer/tests/test_scope_budget.py`) names this file as area 3's reclaim.
+MASTER_SCOPE keeps the current state and a pointer; nothing below was edited in
+the move. Where a paragraph here restates an older one further up, **the DATE
+decides** — the thread-width (2026-09-04) and thread-lighting (2026-09-14)
+entries supersede their 2026-08-25 forms in "Display-layer detail moved from
+MASTER_SCOPE (2026-08-27)".
+
+**Uploading artwork is the whole interaction — the panel no longer asks the
+user to classify it first.** The run starts on upload and the panel STATES what
+the art was read as ("Read as flat art" / "as a photo" / "as shaded artwork" /
+"couldn't tell"), with the override recast as a one-click correction to that
+sentence. `detail_layer` sits on that row too (Kent 2026-08-30) and appears only
+where the art is actually on a tonal lane, by reading or by override. Nothing
+changed in what gets sent, so area 1's photo-control numbers are untouched, and
+the engine's routing is unchanged — ROADMAP gate 2 bars recalibrating stage 0,
+and phase-4 v1 works around it with exactly this override.
+*(confirmed 2026-08-30 — driven in a real browser against the real service, every state of the row clicked through and looked at; pinned by e2e `digitize-auto-start.spec.js`; numbers in scope-history 08-30)*
+
+**The hoop you picked is DRAWN, and the export gate uses it.** `hoopTransform`
+returns the hoop and the placement box and fits to the larger (before 2026-09-04
+`preview.js` had only the placement box and called it the hoop, so picking one
+changed nothing on screen); `DownloadStep` warns before a stitch export that will not fit (confirm,
+not block; PNG and PDF worksheet ungated — not machine files). **Live: the stock
+Tote / Full Back preset is 203.2 mm against a 200 mm max hoop**, so it fires on a
+shipped preset — whether auto-fit should CAP is open, and it is now measured: **four of ten garments (full_back, jacket_back, blanket, tote) have placement boxes larger than the 200 mm biggest hoop**, so 40% of the picker is oversize on every design (defect 39). *(2026-09-02 — PR #317;
+`preview.spec.js`, `DownloadStep.spec.js`, e2e)* **What that gate is fed changed 2026-09-07**: it used the box the design was fit to, which 65.6% of designs sew outside of (defect 34), so it now reads the thread's own extent.
+
+**The digitize panel states what CHANGED and offers the fix.** Shape list behind
+an "Edit shapes (N)" disclosure, closed by default; a re-digitize reads as a
+delta against `priorRun`; `COLOR_STOPS_HEAVY`, `LETTERING_TOO_SMALL` and
+`STITCHES_TOO_SHORT` render as one-click adjustment chips offered AFTER the run
+(Kent's call — an adjustment, not a pre-run form). `QualityReport` surfaces
+trims. *(2026-09-02 — PRs #317/#318)* **Both "Make it bigger" chips offer a PARTIAL remedy, and the comment justifying them misquoted the finding it cited** — it read `LETTERING_TOO_SMALL`'s message as ending *"Enlarging helps"* when on that same commit it already ended *"...but does not fully clear it ... Remove or simplify the smallest lettering"*. Corrected in place with the history; the buttons are LEFT for Kent, since whether a partial remedy earns one is his call. `STITCHES_TOO_SHORT` no longer recommends enlarging at all and now names the shapes carrying the short steps — it and `LETTERING_TOO_SMALL` measure the same quantity at the same threshold (`MIN_COLUMN_MM` **is** `machine.MIN_STITCH_MM`) and it never fired alone over the corpus at 80 mm (the only width swept), but only **66%** of its short steps sit in a shape lettering named: the rest are sewable columns (1.1–3.2 mm median) with a narrow waist. **And the button itself is now measured: ONE PRESS CLEARS THE FINDING ON 1 OF 10** corpus fixtures (two presses on 4 of 10) and makes it **worse on 3** — `photo_dof_meadow` 0.36 → 0.58 → 0.71 — while the satin shape count rises on every fixture (2 → 9, 42 → 71), which is "the smallest shapes regenerate at any size" from the other side. No grade claim is drawn from that sweep: several checks move with size and 5 of the 10 are on the clamped floor. *(measured 2026-09-06 — `tools/short_satin_overlap.py`, `tools/enlarge_cure.py`, `tests/test_short_satin_shapes.py` (14); DOCTRINE)*
+
+**Preview thread width is PHYSICAL — neither widened nor narrowed.**
+`preview.js`'s `THREAD_WIDTH_MM` (0.4, nominal 40wt) is coverage 2.67 against the
+ruled 0.15 mm fill row (rows overlap, as the professional's do) and 1.0 against
+the 0.4 mm satin spacing; a fill at the ruled row looks solid because it IS. The
+PDF sheet (`src/render.js`) and the SVG export draw the same width since
+2026-09-04 — the sheet had drawn 1 px hairlines at any scale. Caveat: `lw` has a
+1.2 px floor (1 px on the sheet), so the property holds zoomed in, not on a
+thumbnail. Pinned on the literal 0.4 and both ratios. *(2026-09-04 — `preview.spec.js`)*
+
+**Thread lighting is unverified against real thread** — eye-tuned, and the one physical out (2026-09-01) cannot settle it: its colours were random operator threading, so DOCTRINE bars grading colour from it at all. Treat the look as a preference, not a calibration. *(suspected 2026-08-25; sharpened 2026-09-14)*
+
+**Typographic punctuation folds to its ASCII twin where a font lacks it.** `satinfont.js TYPOGRAPHIC_FOLD` stitches the twin ONLY where the fancy form is missing — 367 font x character combinations rescued, and all 85 fonts hash identically on text that never needed it. Not NFKD: accented letters are different letters and stay unfolded. What it cost before the fix (a phone's U+2019 sewing "Fritschs Stitches", under a note naming a character that looks identical to the one typed): DOCTRINE; scope-history 09-07. *(fixed 2026-09-07)*
+
+**A design is named after what is in it, and the registry stops swallowing
+failed writes.** Every project was "Untitled design", so "My designs" listed
+rows a customer could only tell apart by opening each, and every backup
+downloaded as `untitled-design.embproj`. A still-unnamed design now takes its
+name from its content; a name typed by hand is sticky. Separately,
+`renameProject` and `deleteProject` reported success for an index write that
+never landed — a name and a project's membership of the registry live ONLY in
+that index — and `deleteProject` removed the record before writing it. Both
+propagate now, index first. *(fixed 2026-09-07 — area 3; DOCTRINE)*
+
+**The built bundle works wherever it is served.** `vite.config.js` sets
+`base: "./"` and five hand-written `/fonts/…` paths ignored it, so below the
+domain root the lettering lane produced nothing; font LICENCE links were among
+the five. Document-relative now, identical at the root. *(fixed 2026-09-07 —
+`assetPaths.spec.js`)*
+
+**Lettering under the cap floor now names a way out.** The "cannot be sewn" verdict was the only one with no fix while the milder branch named two. Levers were measured before being named, so line breaks lead and "fewer characters" is second; "Size up" is withheld at the width cap, the rule the hairline branch already followed. The measured ladder (74 chars at default left chest = 1.3 mm against a 4 mm floor, and what each lever buys): scope-history 09-07. *(fixed 2026-09-07)*

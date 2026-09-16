@@ -2,7 +2,8 @@ import { describe, expect, test } from "vitest";
 import {
   ADD_TITLE, appliedBorders, borderMenuItems, borderRequestPending,
   borderSummaryText, borderTally, edgeCapState,
-  edgeCapSummaryText, effectiveBorder, indexRuns, shapeBorderState,
+  edgeCapSummaryText, effectiveBorder, indexRuns, requestedBorderStyle,
+  shapeBorderState,
 } from "./borderMenu.js";
 
 describe("effectiveBorder", () => {
@@ -355,6 +356,45 @@ describe("the kinds the engine really emits", () => {
     const ix = indexRuns({ runs: [run("s1", "fill"), run("s1", "bean", "border")] });
     expect(shapeBorderState({ shapeId: "s1", designBorder: "auto", index: ix, tier: "fill" }))
       .toMatchObject({ state: "bean", reason: "too-narrow-column" });
+  });
+
+  // MEASURED, not reasoned: becker_marine_logo.png at target_width_mm 80,
+  // driven through digitizer_core.pipeline.digitize twice with nothing else
+  // changed. Under cfg.border="auto" shapes Sf795e8d1 and Saee8fbe5 each sew
+  // one ('border', 'border') run — a satin column. Under cfg.border="bean"
+  // the SAME two shapes at the SAME size each sew one ('bean', 'border')
+  // run, and the plan additionally raises BORDER_LIGHTENED. So "this shape
+  // had no room for a satin column" is provably false for the second run:
+  // the column fitted one config earlier. `border_runs` lightens on
+  // `style == "bean" or core.is_empty`, and only the request tells the two
+  // apart.
+  test("a bean run on a shape that ASKED for bean names no narrowness", () => {
+    const ix = indexRuns({ runs: [run("s1", "fill"), run("s1", "bean", "border")] });
+    const design = shapeBorderState({ shapeId: "s1", designBorder: "bean", index: ix, tier: "fill" });
+    expect(design).toMatchObject({ state: "bean", verified: true, reason: "requested-bean", tone: "ok" });
+    expect(design.title).not.toMatch(/no room|too narrow/i);
+
+    // Same through the per-shape override, which beats the design-wide word
+    // in the engine (`_border_wanted`) and must here too.
+    const shape = shapeBorderState({
+      shapeId: "s1", entry: { border: "bean" }, designBorder: "auto", index: ix, tier: "fill",
+    });
+    expect(shape).toMatchObject({ state: "bean", reason: "requested-bean", source: "shape" });
+
+    // ... and the mirror: an "auto" override on a bean-wide design is a
+    // request for a column, so a bean run there IS the engine lightening.
+    expect(shapeBorderState({
+      shapeId: "s1", entry: { border: "auto" }, designBorder: "bean", index: ix, tier: "fill",
+    })).toMatchObject({ state: "bean", reason: "too-narrow-column", tone: "note" });
+  });
+
+  test("requestedBorderStyle reads the shape's word first, the design's second", () => {
+    expect(requestedBorderStyle({ border: "bean" }, "auto")).toBe("bean");
+    expect(requestedBorderStyle({ border: "auto" }, "bean")).toBe("auto");
+    expect(requestedBorderStyle(null, "bean")).toBe("bean");
+    expect(requestedBorderStyle({ border: "off" }, "bean")).toBe("off");
+    expect(requestedBorderStyle(undefined, "off")).toBe(null);
+    expect(requestedBorderStyle({ tier: "fill" }, "significant")).toBe("significant");
   });
 
   test("the border's TRAVEL bridge is not a border", () => {

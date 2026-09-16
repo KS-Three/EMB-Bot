@@ -75,7 +75,7 @@ export function combineDesigns(designs) {
   let runs = list.some((d) => Array.isArray(d.runs)) ? [] : null;
   let nSatin = 0, nFill = 0, nTrims = 0, haveDebug = false;
 
-  list.forEach((d, i) => {
+  list.forEach((d) => {
     // ---- Two elements in the same thread are ONE block ------------------
     //
     // A colour change is a machine stop. On a single-needle home machine it
@@ -98,20 +98,62 @@ export function combineDesigns(designs) {
     // elements without dragging thread across the garment.
     const first = (d.colors || [])[0];
     const prev = colors[colors.length - 1];
-    const mergesWithPrevious = i > 0 && !!first && !!prev && sameThread(prev, first);
+    const mergesWithPrevious = !!first && !!prev && sameThread(prev, first);
     // Where this design's colours will land. Read BEFORE the push below, and
     // shifted by one when the splice merged its first block into the previous
     // design's last — the same shift the colours themselves take.
     const colorBase = colors.length - (mergesWithPrevious ? 1 : 0);
-    if (i > 0) {
-      const last = stitches[stitches.length - 1] || { x: 0, y: 0 };
-      stitches.push({ x: last.x, y: last.y, type: "trim" });
-      if (!mergesWithPrevious) stitches.push({ x: last.x, y: last.y, type: "color" });
-    }
+    const srcStitches = d.stitches || [];
+    // ---- An element that contributes NOTHING splices nothing ------------
+    //
+    // Both splice records are conditional on the element having something to
+    // splice them in front of, because each one is a claim about the stream.
+    //
+    // A `color` record is a BLOCK DELIMITER: `colors[k]` names the records
+    // after the k-th one. So it is spliced only when this element OPENS a
+    // block — it has a colour of its own (`first`), there is already a block
+    // in front of it to delimit (`prev`), and that block is a different
+    // thread. The old test was `i > 0 && !mergesWithPrevious`, which splices
+    // one in front of an element with NO colours at all, and in front of the
+    // first element that sews when everything before it was empty. Either way
+    // the count of `color` records runs ahead of `colors`, and every block
+    // after the stray one is named by the wrong entry — or by nothing.
+    //
+    // `buildLetteringDesign`'s `emptyWith` (digitize.js) is exactly that
+    // element and it is reachable from the shipped UI, not just from tests:
+    // a text element whose font has no glyph for any of its characters
+    // (`hebrew_font_large` + "Emb") comes back with `colors: []` and a lone
+    // `end` record, and `generateAll` passes it straight to this function.
+    // Measured 2026-09-16 on a four-text project (red / unsupported / green /
+    // blue) — with the empty element in the middle, against the same project
+    // without it:
+    //   colour records   2 -> 3      (`colors` stayed 3 either way)
+    //   DST colour stops 3 -> 4      PEC 0xfe 0xb0 stops   2 -> 3
+    //   EXP 0x80 0x01    2 -> 3      sewFacts.threadChanges 2 -> 3
+    //   SVG strokes      #ff0000, #00ff00, #0000ff
+    //                 -> #ff0000, #0000ff, #ff0000
+    //   preview strands  red/green/blue -> red, then blue for BOTH the green
+    //                    and the blue element
+    // So it is a phantom rethread prompt on the machine in all three binary
+    // formats AND the wrong thread on screen and in the SVG: the green
+    // element is drawn in blue, and the blue one falls back to `colors[0]`
+    // (svgexport.js's `colors[p.colorIndex] || colors[0]`) and exports red.
+    //
+    // The TRIM is a travel cut, so it needs the needle to actually travel:
+    // something already emitted to travel FROM, and a record of this
+    // element's own to travel TO. An element with neither costs a cut, a
+    // `trims` count on the review card, and a stop on machines that pause
+    // there — for a journey of zero length.
+    //
+    // For any element with a colour and a predecessor that sewed, both tests
+    // reduce to the old ones, so nothing about a normal project moves.
+    const contributes = srcStitches.some((s) => s.type !== "end");
+    const last = stitches[stitches.length - 1] || { x: 0, y: 0 };
+    if (stitches.length > 0 && contributes) stitches.push({ x: last.x, y: last.y, type: "trim" });
+    if (!!first && !!prev && !mergesWithPrevious) stitches.push({ x: last.x, y: last.y, type: "color" });
     // The splice records are in; everything this design contributes starts
     // here. `dropped` is the running delta the `end` strip opens up.
     const base = stitches.length;
-    const srcStitches = d.stitches || [];
     // src index -> combined index, or -1 for a record that was dropped. Built
     // only when there is an index to remap, since it costs one entry per
     // stitch of every element.

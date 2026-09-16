@@ -1326,6 +1326,11 @@ export const ATTENTION_WARNINGS = new Set([
   "SHAPES_LEFT_UNSEWN", "SHAPE_TOO_THIN_TO_FILL",
   // a setting of theirs is the lever
   "INPUT_LOW_RESOLUTION", "COLOR_CAP_APPLIED", "EDGE_CAP_EMPTY",
+  // ...and the design edge costing two-fifths of the design again is the
+  // loudest of those levers: the engine fires this ONLY over its ceiling, so
+  // unlike EDGE_CAP_APPLIED (a note, on every capped run) it is by
+  // construction the run where the size/off decision is worth making.
+  "EDGE_CAP_OVER_BUDGET",
   // their own edit did not survive, which they cannot see any other way
   "SHAPE_EDIT_UNKNOWN_ID",
   // this machine could not run a step, and cropping the art is the workaround
@@ -1515,13 +1520,40 @@ const WARNING_TEXT = {
   // between Bean and Satin actually turns on. Written to be read while
   // deciding, so it leads with the stitch cost and names the fragmentation
   // case in the user's terms rather than the engine's.
+  // `dropped` is the engine saying it priced this pass and then threw it
+  // away for costing too much (EDGE_CAP_OVER_BUDGET carries the price, and
+  // always fires alongside). The pass added nothing, so this line cannot say
+  // it adds anything — the same correction the engine's own sentence got.
+  // The border readout already tells this story the same way: "Design edge
+  // priced, then dropped", with no stitch count (borderMenu.js).
   EDGE_CAP_APPLIED: (w) => {
+    if (w.dropped === true) {
+      return "The design edge was priced and then left off for costing too much, so there's no outline around the outside of your design and none of those stitches are in it.";
+    }
     const st = (w.stitches || 0).toLocaleString();
     const edges = w.edges || 0;
     const head = `The design edge adds ${st} stitches (+${w.percent || 0}%)`;
     return edges > 1
       ? `${head}, going around ${edges} separate edges. Shapes that don't join into one outline get capped one by one, which is where this stops being cheap.`
       : `${head} around the outside of the design.`;
+  },
+  // The cap's bill cleared the engine's ceiling (EDGE_CAP_BUDGET_PCT, 40% of
+  // the artwork's own stitches). Untranslated until now, so the panel shipped
+  // the engine's three-sentence diagnosis — gate savings, mm² of cover — to
+  // whoever uploaded a logo. What a customer can act on is smaller than that:
+  // the outline costs this much, here is the lever. The `dropped` split is
+  // the same one above, and the tense carries it: a refused cap's stitches
+  // are not in the design, so they are only ever named as what it WOULD have
+  // cost.
+  EDGE_CAP_OVER_BUDGET: (w) => {
+    const st = (w.stitches || 0).toLocaleString();
+    const pct = w.percent || 0;
+    const ceiling = w.budget_pct || 0;
+    const over = `more than the +${ceiling}% where outlining the whole design stops being worth what it costs`;
+    if (w.dropped === true) {
+      return `The design edge would have added ${st} stitches (+${pct}%) — ${over} — so it was left off. Your design has no outline around the outside.`;
+    }
+    return `The design edge adds ${st} stitches (+${pct}%) — ${over}. It was sewn anyway: turn the design edge off, or try the design at a slightly different size, if that's more than you want to spend on an outline.`;
   },
   EDGE_CAP_EMPTY: () =>
     "The design edge was switched on, but there's no edge long enough to sew around — the design is too small or too narrow for it.",
