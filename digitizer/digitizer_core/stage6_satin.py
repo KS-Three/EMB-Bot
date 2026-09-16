@@ -345,7 +345,8 @@ class RibbonVerdict:
 def classify_ribbon(poly: Polygon, max_width_mm: float, *,
                     design_class: str = "flat",
                     full_metrics: bool = False,
-                    per_stroke: bool = False) -> RibbonVerdict:
+                    per_stroke: bool = False,
+                    polygon_axis: bool = False) -> RibbonVerdict:
     """`is_satin_candidate`'s implementation. Same verdict, with attribution.
 
     `full_metrics` runs the distance transform even for a shape an earlier
@@ -417,7 +418,8 @@ def classify_ribbon(poly: Polygon, max_width_mm: float, *,
                 and stats.elongation >= _PROMOTE_ELONGATION_MIN):
             return _floor_or(RibbonVerdict(True, "promoted_ribbon", metrics),
                              stats, design_class, metrics)
-        if per_stroke and _stroke_rung_takes(poly, max_width_mm, design_class):
+        if per_stroke and _stroke_rung_takes(poly, max_width_mm, design_class,
+                                            polygon_axis=polygon_axis):
             # `cfg.satin_per_stroke`, default OFF. The pooled radii above are
             # one number for a whole region, so a branchy letterform — wide at
             # its junctions, thin along its arms — fails `2s < m` as a unit
@@ -763,7 +765,8 @@ def _partition_area_mm2(strokes: list[Stroke], field: _WidthField,
 
 
 def classify_strokes(poly: Polygon, max_width_mm: float, *,
-                     design_class: str = "flat") -> StrokesVerdict:
+                     design_class: str = "flat",
+                     polygon_axis: bool = False) -> StrokesVerdict:
     """Per-stroke DT verdicts for one region, beside the region's own.
 
     The two gates are `classify_ribbon`'s, applied to per-stroke numbers:
@@ -785,7 +788,8 @@ def classify_strokes(poly: Polygon, max_width_mm: float, *,
     """
     region = classify_ribbon(poly, max_width_mm, design_class=design_class,
                              full_metrics=True)
-    rows, total = _stroke_rows(poly, max_width_mm, design_class)
+    rows, total = _stroke_rows(poly, max_width_mm, design_class,
+                               polygon_axis=polygon_axis)
     if not rows:
         return StrokesVerdict([], region, 0.0, 0.0, 0.0)
     passing = float(sum(r.area_mm2 for r in rows if r.satin))
@@ -794,7 +798,8 @@ def classify_strokes(poly: Polygon, max_width_mm: float, *,
 
 
 def _stroke_rows(poly: Polygon, max_width_mm: float,
-                 design_class: str) -> tuple[list[StrokeVerdict], float]:
+                 design_class: str, *,
+                 polygon_axis: bool = False) -> tuple[list[StrokeVerdict], float]:
     """-> (one verdict per stroke, total partitioned area mm2).
 
     Split out of `classify_strokes` so `classify_ribbon` can consult the
@@ -803,7 +808,7 @@ def _stroke_rows(poly: Polygon, max_width_mm: float,
     `classify_strokes` back. Everything the two gates need lives here; the
     region verdict does not.
     """
-    strokes, _half_mm, field = extract_strokes(poly)
+    strokes, _half_mm, field = extract_strokes(poly, polygon_axis=polygon_axis)
     if field is None or not strokes:
         return [], 0.0
 
@@ -835,14 +840,16 @@ def _stroke_rows(poly: Polygon, max_width_mm: float,
 
 
 def _stroke_rung_takes(poly: Polygon, max_width_mm: float,
-                       design_class: str) -> bool:
+                       design_class: str, *,
+                       polygon_axis: bool = False) -> bool:
     """Would the per-stroke rung take a region the pooled DT refused?
 
     `>= _STROKE_AREA_FRAC_MIN` of the region's stroke-partitioned area passing
     BOTH per-stroke gates. A region with no strokes answers False: no strokes
     is no evidence, and the rung may only ever ADD to the shipped verdict.
     """
-    rows, total = _stroke_rows(poly, max_width_mm, design_class)
+    rows, total = _stroke_rows(poly, max_width_mm, design_class,
+                               polygon_axis=polygon_axis)
     if not rows or total <= 0:
         return False
     # The machine cap is a VETO, not a vote. Scoring it per stroke and then
@@ -1892,6 +1899,7 @@ def _split_sharp_corners(strokes: list[Stroke], half_mm: float,
 def extract_strokes(poly: Polygon, *,
                      use_shapefield: bool = False,
                      half_extra_mm: float = 0.0,
+                     polygon_axis: bool = False,
                      ) -> tuple[list[Stroke], float, _WidthField | None]:
     """-> (strokes in mm, mean half-width in mm, local width field).
 
@@ -1924,7 +1932,18 @@ def extract_strokes(poly: Polygon, *,
     `tests/test_shapefield_byte_identical.py`. Off (the default) never
     imports or executes any of `shapefield.py`'s work.
     """
-    if use_shapefield:
+    if polygon_axis:
+        # `cfg.satin_polygon_axis` (2026-09-16), DEFAULT OFF. The axis is read
+        # from the polygon and drawn onto this same grid, so everything below
+        # is unchanged; `_prune_spurs` is skipped because the pruning already
+        # happened on the geometry, against the LOCAL radius rather than the
+        # shape's mean half-width. See `polygon_axis.py`.
+        from .polygon_axis import skeleton_for
+        mask, scale, ox, oy = _rasterize(poly)
+        if not mask.any():
+            return [], 0.0, None
+        skel, dist = skeleton_for(poly, mask, scale, ox, oy)
+    elif use_shapefield:
         sf = build_shape_field(poly)
         if sf is None:
             return [], 0.0, None
@@ -1950,7 +1969,8 @@ def extract_strokes(poly: Polygon, *,
     # one under rail-side comp (see `half_extra_mm`), the skeleton's own
     # otherwise -- identical arithmetic at 0.0.
     len_px = half_px + max(0.0, half_extra_mm) * scale
-    _prune_spurs(skel_mask, max(3.0, len_px * 1.6))
+    if not polygon_axis:
+        _prune_spurs(skel_mask, max(3.0, len_px * 1.6))
     if not skel_mask.any():
         return [], half_px / scale, field
 
@@ -4274,6 +4294,7 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
                 fold_guard: bool = False,
                 rail_comp_mm: float = 0.0,
                 rail_comp_floor_mm: float = 0.0,
+                polygon_axis: bool = False,
                 ) -> tuple[list[StitchRun], dict]:
     """One satin-classified shape -> runs in sew order, plus the same report
     contract `stitch_shape` uses, so stage 7 can treat the two identically.
@@ -4335,6 +4356,7 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
     # four fixtures and the trims on three; the grown one is the safer
     # decomposition. Kent's call which to keep; both are one line here.
     strokes, half_mm, field = extract_strokes(poly, use_shapefield=use_shapefield,
+                                              polygon_axis=polygon_axis,
                                               half_extra_mm=rail_comp_mm)
     if not strokes:
         report["empty"] = True
