@@ -1,6 +1,11 @@
 #!/usr/bin/env python
 """Does the satin/fill verdict hold still as the design is resized?
 
+ANSWERED 2026-09-16, and the answer is not in the classifier: the cliff is an
+artefact of stage 1's resolution-floor upscale on very low-resolution art.
+See `docs/classifier-cliff-is-input-resolution-2026-09-16.md`. The arms below
+are the four candidate cures, three of them measured negatives.
+
 The acceptance instrument for `cfg.classify_area_weighted`. The 2026-09-12 gap
 audit (§4.2, inv. 3) measured the defect as a CLIFF in size: nine 1 mm steps
 between 60 and 108 mm swing becker's sewn satin share by >= 17 points, and
@@ -34,7 +39,16 @@ ROOT = HERE.parent
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(HERE))
 
-ARMS = {"shipped": {}, "area": {"classify_area_weighted": True}}
+# An arm is PipelineConfig keywords, or a callable of the width returning them
+# (the tolerance arm has to move with the design, which is the whole point).
+ARMS = {"shipped": {}, "area": {"classify_area_weighted": True},
+        # the fixed 0.2 mm simplification re-cuts the polygon at every size;
+        # scaled to the design it is the same shape at every width
+        "tol_scaled": lambda w: {"simplify_tol_mm": 0.2 * w / 80.0},
+        # stage 1 upscales a source under `min_px_per_mm` by a factor that
+        # changes with the target size, so a 1.8 px/mm source is re-invented
+        # at every width; pin the floor high and the upscale stops moving
+        "upscale_8": {"min_px_per_mm": 8.0, "upscale_cap": 8.0}}
 
 
 def _one(args) -> dict:
@@ -42,7 +56,9 @@ def _one(args) -> dict:
     from digitizer_core import PipelineConfig, digitize
     from satin_columns import measure, passes_from_plan
 
-    cfg = PipelineConfig(target_width_mm=width, garment_id="left_chest", **ARMS[arm])
+    kw = ARMS[arm]
+    kw = kw(width) if callable(kw) else kw
+    cfg = PipelineConfig(target_width_mm=width, garment_id="left_chest", **kw)
     result, plan = digitize(ROOT / "testdata" / rel, cfg)
     col = measure(passes_from_plan(plan))
     satin = sum(1 for r in result.regions
