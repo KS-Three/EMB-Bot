@@ -5644,3 +5644,27 @@ lands back on the cap -- frozen behind gate 1 until a sew-out -- and no
 classifier change routes around it.
 
 *(measured 2026-09-16 -- `docs/classifier-cliff-is-input-resolution-2026-09-16.md`)*
+
+## `StitchRun.jump` means the needle lifts to REACH the run, not that the run is needle-up (2026-09-16)
+
+A filter written as `if run.jump: continue` — intending "skip travel" —
+drops every run the machine JUMPS TO, which is most first runs of a shape. It
+read gaulke as sewing 8 of 39 letters at 80 mm and produced a headline claim
+that **~78% of a real customer's lettering was unsewn**, with a clean ramp
+(20% at 80 mm, 85% at 92 mm) that looked exactly like a size threshold worth
+acting on. Every one of those letters was sewn: re-counted on the run KIND,
+**100% carry thread at 60, 80, 92 and 100 mm**, and the first letter opened
+by hand had a 96-point satin run.
+
+The dataclass says so in two lines that were there the whole time:
+`StitchRun` is *"One needle-down path"*, and `jump` is *"True when the machine
+must lift the needle to reach points[0]"*. **Thread-vs-travel is
+`run.kind`**, never `run.jump`; `jump` and `trim` describe how the needle
+ARRIVED.
+
+The same bug read every letter's thread coverage as 0.000 IoU and was caught
+only because a hand-check of one shape disagreed with the batch — which is
+the practical rule: when an instrument reports a catastrophe on a design
+whose render looks fine, open one row by hand before writing it down.
+
+*(2026-09-16 — claim made and retracted the same session; scope-history)*
