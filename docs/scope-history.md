@@ -25,6 +25,41 @@ that is the whole point of the file. Corrections go in `MASTER_SCOPE.md`.
 
 ---
 
+**Last updated:** 2026-09-16 (night) — **gaulke's lettering does not sew
+below ~5 mm letter height, and that is what Kent's straight-vs-curved read
+sits on.**
+
+Chasing his *"straight characters better in render 2, curved letters better
+in render 3"*: the two renders differ in SIZE (median letter height 3.77 vs
+4.39 mm), and letter height turns out to gate whether a letter sews AT ALL.
+Counting dark letter-sized shapes that emit any non-jump stitch run:
+
+| width | letters sewing | median letter h |
+|---|---|---|
+| 60 mm | 8/40 (20.0%) | 3.3 mm |
+| 80 mm | 8/39 (20.5%) | 4.39 |
+| 85 mm | 12/39 (30.8%) | 4.67 |
+| 88 mm | 19/39 (48.7%) | 4.83 |
+| 90 mm | 20/39 (51.3%) | 4.94 |
+| **92 mm** | **33/39 (84.6%)** | **5.05** |
+| 95 mm | 35/39 (89.7%) | 5.22 |
+| 100 mm | 34/39 (87.2%) | 5.49 |
+
+**At a left-chest 80 mm this customer's lettering is ~78% unsewn** (22.5% of
+its letter AREA carries thread), and it comes good over 90-92 mm, where the
+letters clear ~5 mm and their strokes clear roughly Law 31's 1.0 mm floor.
+That is the "whole elements missing" theme measured on real customer art at
+the size it would actually be ordered.
+
+**`cfg.lettering_min_column_mm` is NOT the lever here**: at 0.9 and at 1.0 it
+is byte-identical on gaulke at 80 mm (4,531 stitches, 41 trims either way),
+because it acts on detected text CLUSTERS and gaulke's letters are not
+detected as one. Whatever fixes this is upstream of that flag.
+
+*(measured 2026-09-16; the per-letter fidelity split Kent's wording suggests —
+curved vs straight — is NOT yet measured: the instrument written for it found
+this instead, and 31 of 39 "letters" at 80 mm have no thread to measure.)*
+
 **Last updated:** 2026-09-16 (evening) — **the size cliff is INPUT
 RESOLUTION; the M's over-stitching is diagnosed to the corner crosses.**
 
