@@ -25,6 +25,34 @@ that is the whole point of the file. Corrections go in `MASTER_SCOPE.md`.
 
 ---
 
+**Last updated:** 2026-09-16 (later) — **`cfg.classify_area_weighted` built,
+DEFAULT OFF; the gap audit's cliff cure is REFUTED and the cliff's real cause
+is named.** Full doc: `docs/classifier-area-weighting-2026-09-16.md`.
+
+- **What it fixes:** boundary-detail verdict flips **3 -> 0**
+  (`tools/ribbon_stability.py --variant area`), with 14 shipped verdicts
+  changing and **every one `dt_irregular` -> satin** (enthusiast 1, Fremont 2,
+  drone 11, becker 0); archetypes keep satin, serrated discs stay refused.
+- **What it does NOT fix, against the audit's §4.2 claim that "only
+  area-weighting survives":** the SIZE cliff is untouched. becker every mm
+  from 80 to 100 (`tools/classifier_cliff.py`): worst 1 mm step **0.288 at
+  87 -> 88 mm in BOTH arms**, span 0.402 shipped against 0.385 weighted.
+- **The cliff's cause, measured by diffing every verdict at 87 and 88 mm:**
+  three thresholds crossed by under 1% in one millimetre -- the 756 mm2 rope
+  border's `explained` **0.806 -> 0.794** against the 0.80 promote floor, a
+  266.7 mm2 shape's p90 **4.96 -> 5.01** against the 5.0 mm cap, and a
+  157.8 mm2 shape's cv 0.523 -> 0.488 against 0.5. becker goes 12 satin
+  shapes of 18 to 10, 7,567 stitches to 13,402. **A cure is a MARGIN rule,
+  not a better statistic** -- and Kent's, since the 5.0 is frozen.
+- **The cap must not be weighted, measured:** the first cut weighted `p90`
+  too and demoted becker's rope border and `S579cb1c2`, taking sewn satin
+  **0.468 -> 0.193** at 80 mm. Only the regularity gate is weighted;
+  `explained`/`elongation` stay on the swept width.
+- **Corpus A/B, 26 fixtures:** 9 move, 17 identical, net **-5,027 stitches,
+  +41 trims**, blocks/cones/stops unchanged; chrome_specular and meadow
+  C 64 -> B 76, drone raw -122 -> -134 (stays F). **Every mover is photo- or
+  gradient-lane; no flat logo moves.**
+
 **Last updated:** 2026-09-16 — **item 5: the satin skeleton read from the
 POLYGON, built behind `cfg.satin_polygon_axis`, DEFAULT OFF.**
 

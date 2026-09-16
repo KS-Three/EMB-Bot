@@ -1777,6 +1777,31 @@ class PipelineConfig:
     # `drone_render` the M of AND DRONE gains crossing columns (render in the
     # flag's PR), so read `coverage_max` beside the bare-area win.
     satin_polygon_axis: bool = False
+    # Weight the satin/fill classifier's distance transform by RADIUS instead
+    # of counting every skeleton pixel equally, DEFAULT OFF and byte-identical
+    # off (equal weights reduce to the shipped arithmetic).
+    #
+    # The defect it addresses is the cliff the 2026-09-12 gap audit measured
+    # (§4.2, inv. 3): nine 1 mm steps between 60 and 108 mm swing becker's
+    # sewn satin share by >= 17 points, 87 -> 88 mm crosses 42.5% -> 12.8% at
+    # +73% stitches, and at 85 mm the banner sits 0.79 of ONE skeleton pixel
+    # under the promote threshold while deciding +4,923 penetrations. Five
+    # reparameterisations were tried there and every one was as unstable or
+    # worse; area-weighting was the survivor, and this is it built.
+    #
+    # `tools/ribbon_stability.py --variant area`, 7 fixtures: boundary-detail
+    # verdict flips **3 -> 0**, 16 shipped verdicts change and **every one is
+    # `dt_irregular` -> satin** (promotion-only, the direction DOCTRINE
+    # requires of any rung), the bar/ring/C/T archetypes keep satin and the
+    # serrated discs stay refused.
+    #
+    # Scope: the POOLED region gate only. The per-stroke rung has its own
+    # statistic (`_stroke_dt_stats`) and is untouched, and `explained` /
+    # `elongation` stay unweighted -- see `_dt_stats`.
+    #
+    # **Flipping it ON is Kent's call**: it is a routing change, so goldens
+    # move with it.
+    classify_area_weighted: bool = False
 
     # Strip letterbox/pillarbox bars from the upload before any ink rule
     # reads them. See digitizer_core/letterbox.py for the defect: a PHONE

@@ -1807,7 +1807,8 @@ def sequence(
             ribbon = (classify_ribbon(classify_poly, satin_max,
                                       design_class=design_class,
                                       per_stroke=cfg.satin_per_stroke,
-                                      polygon_axis=cfg.satin_polygon_axis)
+                                      polygon_axis=cfg.satin_polygon_axis,
+                                      area_weighted=cfg.classify_area_weighted)
                       if tier == "auto" and cfg.satin else None)
             # Kent's gradient ruling (2026-09-04): a shape that RIDES the
             # design's ramp is part of the sweep and sews the sweep's bands,
