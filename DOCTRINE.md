@@ -1938,6 +1938,36 @@ its hedge as it is copied forward** — is why this file is split.
 - **Six phase-numbering schemes exist; only ROADMAP.md's five engine phases
   are live.** Historical: the 4-phase pro-stitch roadmap, 11 digitizer steps,
   7 launch items, 8 Studio slices, 16 rows (0–15). *(confirmed 2026-08-18 — docs/scope/1-auto-digitizing-quality.md:1506 and photo plan §2)*
+- **The venv's install of `digitizer_core` is EDITABLE, and the 2026-08-17
+  warning below it no longer describes this container.** That entry said the
+  venv holds a *stale non-editable* copy, so an import from any cwd other than
+  `digitizer/` would silently run `site-packages/digitizer_core/` — files
+  differing from both the working tree and `HEAD`. **Re-measured 2026-09-16:
+  there is no `site-packages/digitizer_core/` directory at all.** The install
+  is `__editable__.digitizer_core-0.5.0.pth` plus an `_EditableFinder`, whose
+  MAPPING points at `/home/user/EMB-Bot/digitizer/digitizer_core` — the real
+  source. An import run from `/tmp` resolves to the working tree. So a script
+  launched from elsewhere runs repo code, and the reinstall that entry
+  prescribes fixes nothing. Kept rather than deleted because the CLASS is real
+  and a rebuilt venv can land either way: **check which kind you have before
+  trusting or distrusting an out-of-tree run.** *(re-measured 2026-09-16;
+  supersedes the line below for an editable venv)*
+- **A git worktree that SHARES the main checkout's venv still tests its own
+  code — verified, because the obvious reasoning says it should not.**
+  Symlinking `digitizer/.venv` into a worktree is the cheap way to run six
+  parallel lanes without six 3.12 venv builds, and the apparent hazard is that
+  the editable install's finder maps `digitizer_core` at the MAIN checkout, so
+  every lane would silently test `main`. `sys.meta_path` finders are consulted
+  before `sys.path`, which is what makes that plausible. **It does not happen,
+  and the reason is placement:** setuptools APPENDS its finder, giving
+  `['BuiltinImporter', 'FrozenImporter', 'PathFinder', '_EditableFinder']` —
+  `PathFinder` (and so cwd, which `python -m` puts first) is reached first.
+  Measured by copying `digitizer_core` to a scratch tree, appending a marker
+  constant, and running `python -m pytest` there: it resolved to the scratch
+  copy. **Verify this the same way after any venv rebuild rather than assuming
+  it**, because a finder INSERTED at position 0 would invert the answer and
+  the failure is silent — every lane green, every lane testing the wrong tree.
+  *(measured 2026-09-16 — six-lane worktree fan-out)*
 - **The venv holds a STALE non-editable install of `digitizer_core`, and cwd
   decides which one you get.** `pytest` from `digitizer/` imports the working
   tree, so tests are honest — but from any other cwd the same interpreter
@@ -1945,7 +1975,8 @@ its hedge as it is copied forward** — is why this file is split.
   both the working tree and `HEAD`. A service or script launched from
   elsewhere can run code that is not in the repo. Reinstall
   (`pip install -e digitizer`) before trusting any out-of-tree run.
-  *(confirmed 2026-08-17)*
+  *(confirmed 2026-08-17 — TRUE THEN, and false on an editable venv; see the
+  two entries above)*
 
 - **Stage 0's `photo_subject` gate is bimodal** — textured subjects on smooth
   backdrops can't reach `photo_subject`. Pinned in the routing test's docstring.
