@@ -104,13 +104,45 @@ a ring and the grid mapping, plus the fold metric.
 
 ## 5. Next PRs, in order (each Kent's to start)
 
-1. **`cfg.satin_polygon_axis`, DEFAULT OFF, byte-identical off.** Move the
-   arm's axis into `stage6_satin` behind the flag (and into
-   `shapefield`/`_stroke_rows` consistently, or deliberately not — the
-   census kept the classifier on the raster everywhere but `_stroke_rows`).
-   Acceptance: the census's polyaxis row reproduces; renders of every
-   folds>60 member on Fremont and drone, judged before any flip; corpus A/B
-   over 26 fixtures; runtime priced (the Voronoi is ~1 s on an 80 mm ring).
+1. **`cfg.satin_polygon_axis`, DEFAULT OFF, byte-identical off — BUILT
+   2026-09-16**, `digitizer_core/polygon_axis.py`, wired to BOTH readers
+   (`satin_shape` and the per-stroke rung `_stroke_rows`; the pooled DT
+   classifier stays on the raster, deliberately — it measures widths rather
+   than walking a skeleton). The census now sets that flag instead of
+   patching its own copy. **Two results the flag PR rests on:**
+
+   **The folds are mitres, not welds.** Rendered every `folds>60` member on
+   Fremont and drone against `shipped`: they sit at letter junctions — the
+   M's V, the T's stem, the H's bar. On Fremont's T the polygon axis
+   UPGRADES the top bar from a thin bean run to a real satin column, which
+   is why its count rose. `docs/renders/polygon-axis-2026-09-16/`.
+
+   **The density price is the opposite of what the render suggested.** Drone's
+   M gains crossing columns by eye, so `coverage_max` was measured beside the
+   bare-area win: **drone 10.70 → 6.73** — from over the 9.33 block ceiling to
+   under the 6.67 warn line — enthusiast 4.70 → 6.28, becker 80 4.57 → 5.38,
+   Fremont unchanged at 6.69, no grade moving. The eye read a busier picture
+   as more thread; the instrument says drone sheds its worst stack.
+
+   **Corpus A/B, 26 fixtures at 80 mm / left_chest** (`tools/flip_sheet.py`,
+   arm `polygon_axis`): **20 move, 6 byte-identical; net −276 stitches, +15
+   trims, and blocks, cones and colour stops all unchanged.** Three grades up
+   — **becker B 76 → B 88**, `logo_script_tires` B 88 → **A 100**,
+   `photo_dof_meadow` C 64 → B 76 — and one down, `photo_grass_macro`, which
+   stays F while its raw score falls 22 → 10.
+
+   **Read the +15 per fixture, because it inverts by artwork kind.** Trims
+   FALL on six of the seven real customer logos — drone −6, tires −2,
+   enthusiast −2, becker −1, gaulke −1, the screenshot −1 — and RISE on the
+   photographs and synthetics (summit +6, the gradient repro +5, bridge_bar
+   +4, grass_macro +2, meadow +1, chrome +1), plus `logo_golden_tee` +10,
+   the one real logo that pays. A satin skeleton on a photograph is reading a
+   segmenter's blobs, not strokes, which is where the flag has least business
+   and shows its worst rows; the lane this was built for is where it wins.
+
+   **Runtime: roughly neutral.** becker at 80 mm 24.7 → 29.1 s (×1.18),
+   enthusiast 40.1 → 38.9 s (×0.97), both measured while other cores were
+   busy, so read them as "no order-of-magnitude cost", not as a benchmark.
 2. **Area-weighting for `classify_ribbon`** — the lever this census points at
    for Becker parity; already the only survivor of #469's candidates.
 3. Only then revisit `wide_columns` (blocked on decomposition, per its plan).

@@ -71,6 +71,13 @@ ARMS: dict[str, dict] = {
     # and the corners read off the artwork, each rail pushed out a pull.
     # Priced here because it moves every satin-tier letter at once.
     "rail_comp": {"satin_rail_comp": True},
+    # Added 2026-09-16 (item 5). The satin skeleton read from the polygon
+    # instead of thinned from a raster of it, pruned by the boundary-arc
+    # residual rather than by twig length. Priced here because it moves every
+    # satin-tier shape at once, and because the census that produced it read
+    # five designs -- this reads all 26. The open price is density, so read
+    # `coverage_max` beside the bare-area win.
+    "polygon_axis": {"satin_polygon_axis": True},
     # Added 2026-09-09 (item 7). One stitch direction for the design's
     # shapes that have no house of their own: the lettering house angle
     # where its lines agree, else the row direction that cuts the fills

@@ -25,6 +25,45 @@ that is the whole point of the file. Corrections go in `MASTER_SCOPE.md`.
 
 ---
 
+**Last updated:** 2026-09-16 — **item 5: the satin skeleton read from the
+POLYGON, built behind `cfg.satin_polygon_axis`, DEFAULT OFF.**
+
+- **The census came first and it moved the target** (#490,
+  `docs/superpowers/plans/2026-09-15-decomposition-census.md`). Swapping the
+  skeleton source one digitize at a time, five designs x five arms:
+  **no column folds past 90 deg anywhere**, so the N weld the review named is
+  gone on HEAD; a FINER raster is non-monotonic and often worse (becker bare
+  satin 12.2 -> 17.7 mm2 at 24 px/mm, drone 111 -> 167 strokes); and at the
+  pro's own 95.7 mm becker routes ONE satin shape in every arm, so the
+  43-vs-12 trim gap and the 9.6%-vs-44.3% satin share are the satin/fill
+  ROUTING cliff, not decomposition.
+- **`digitizer_core/polygon_axis.py`**: the medial axis as the Voronoi
+  diagram of the densified boundary, pruned by the boundary-arc residual
+  (keep an edge when its generators sit more than 2 x 1.6 local radii apart
+  along the boundary), drawn onto `_rasterize`'s own grid so every walk
+  below it is unchanged. **Leaf-length pruning was tried first and is the
+  wrong test** — on a bar the axis runs spine -> corner diagonal with no
+  junction between, so nothing is a leaf and the hook into the cap corner
+  survives, which is the shape of the H defect that killed both 2026-08-26
+  prototypes.
+- **Wired to BOTH skeleton readers** (`satin_shape` and the per-stroke rung
+  `_stroke_rows`), because routing a shape on one skeleton and sewing it on
+  another is its own defect; the pooled DT classifier stays on the raster.
+- **Corpus A/B, 26 fixtures at 80 mm / left_chest:** 20 move, 6
+  byte-identical, **net -276 stitches, +15 trims, blocks/cones/stops all
+  unchanged**; grades UP becker **B 76 -> B 88**, tires **B 88 -> A 100**,
+  meadow C 64 -> B 76; DOWN grass_macro F 22 -> F 10 (raw, stays F).
+  **The +15 inverts by artwork kind** — trims fall on six of seven real
+  customer logos (drone -6, tires -2, enthusiast -2, becker -1, gaulke -1,
+  screenshot -1) and rise on photographs and synthetics, plus golden_tee +10.
+- **The density price is the opposite of the render's impression.** Drone's M
+  gains crossing columns by eye; `coverage_max` **10.70 -> 6.73**, from over
+  the 9.33 block ceiling to under the 6.67 warn line. enthusiast 4.70 ->
+  6.28, becker 4.57 -> 5.38, Fremont unchanged. Renders:
+  `docs/renders/polygon-axis-2026-09-16/`, `tools/fold_crops.py`.
+- Byte-identical OFF (stitch-hash, two fixtures); off, `polygon_axis.py` is
+  never imported. **Flipping it is Kent's.**
+
 **Last updated:** 2026-09-11 (last) — **`edge_cap` FLIPPED ON, default
 `"bean"`. 45 tests moved and no golden was recaptured.**
 

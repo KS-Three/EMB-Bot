@@ -1806,7 +1806,8 @@ def sequence(
             classify_poly = p.polygon if widened_lettering(p.region) else p.region.polygon
             ribbon = (classify_ribbon(classify_poly, satin_max,
                                       design_class=design_class,
-                                      per_stroke=cfg.satin_per_stroke)
+                                      per_stroke=cfg.satin_per_stroke,
+                                      polygon_axis=cfg.satin_polygon_axis)
                       if tier == "auto" and cfg.satin else None)
             # Kent's gradient ruling (2026-09-04): a shape that RIDES the
             # design's ramp is part of the sweep and sews the sweep's bands,
@@ -1870,6 +1871,7 @@ def sequence(
                     angle_deg=satin_angle_deg,
                     rails_follow_edge=cfg.satin_rails_follow_edge,
                     patch_junctions=cfg.satin_patch_junctions,
+                    polygon_axis=cfg.satin_polygon_axis,
                     # The ceiling the classifier admitted at is the one the
                     # emitter sews at — one number, threaded, never two
                     # constants (DOCTRINE 2026-09-02). The fold guard rides

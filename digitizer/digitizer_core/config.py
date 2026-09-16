@@ -1755,6 +1755,28 @@ class PipelineConfig:
     # **Flipping it ON is Kent's call.** The render is at
     # docs/renders/satin-per-stroke-2026-09-06/.
     satin_per_stroke: bool = False
+    # Read the satin skeleton from the POLYGON instead of thinning a raster
+    # of it (`digitizer_core/polygon_axis.py`), DEFAULT OFF and byte-identical
+    # off -- off, that module is never imported.
+    #
+    # The census that produced it measured the alternatives first
+    # (`docs/superpowers/plans/2026-09-15-decomposition-census.md`): a finer
+    # raster is NOT the fix (12 and 24 px/mm are non-monotonic and often
+    # worse), while this construction takes bare satin becker 12.2 -> 4.2 mm2
+    # and enthusiast 7.0 -> 0.0, with trims down on all four real logos.
+    #
+    # It reaches BOTH places a skeleton is read -- `satin_shape`'s
+    # decomposition and the per-stroke classifier rung (`_stroke_rows`) --
+    # because those disagreeing would route one shape on one skeleton and sew
+    # it on another. The POOLED distance-transform classifier
+    # (`shapefield.build_shape_field`) stays on the raster: it measures widths
+    # rather than walking a skeleton, and moving it would re-tier the corpus
+    # on a change this flag is not about.
+    #
+    # **Flipping it ON is Kent's call**, and the open price is density: on
+    # `drone_render` the M of AND DRONE gains crossing columns (render in the
+    # flag's PR), so read `coverage_max` beside the bare-area win.
+    satin_polygon_axis: bool = False
 
     # Strip letterbox/pillarbox bars from the upload before any ink rule
     # reads them. See digitizer_core/letterbox.py for the defect: a PHONE
