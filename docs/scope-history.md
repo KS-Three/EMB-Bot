@@ -25,6 +25,37 @@ that is the whole point of the file. Corrections go in `MASTER_SCOPE.md`.
 
 ---
 
+**Last updated:** 2026-09-16 (evening) — **the size cliff is INPUT
+RESOLUTION; the M's over-stitching is diagnosed to the corner crosses.**
+
+- **Cliff, answered** (`docs/classifier-cliff-is-input-resolution-2026-09-16.md`).
+  Three cures refuted on becker 80-100 mm: `classify_area_weighted` (worst
+  1 mm step 0.288, unchanged), a three-pitch median of every gate metric
+  (0.292; prototyped as `cfg.classify_multiscale` and REVERTED in the same
+  session), and `simplify_tol_mm` scaled to the design (0.310). **A margin
+  cannot work**: the metrics jitter rather than drift -- the rope border's
+  `explained` reads 0.8172 / 0.8082 / 0.8057 / **0.7937** / **0.7943** /
+  0.8279 / 0.8248 from 86 to 89 mm.
+  **What it is:** becker is the only committed source far below
+  `min_px_per_mm` 4.0 (1.8 px/mm), so stage 1's upscale FACTOR moves with the
+  target width and the vectorizer traces a differently-invented polygon at
+  each size. Its swing over 85-90 mm is **0.301 against 0.053 (bridge_bar,
+  5.0 px/mm), 0.072 (gaulke, 16.1) and 0.090 (enthusiast, 17.5)**. Pinning
+  the floor at 8 px/mm takes the swing to **0.031** and the worst step to
+  **0.018**.
+  **The sting:** the stable state is LOW satin (0.12-0.15 vs 0.36-0.43),
+  because at 8 px/mm becker's letters measure their real 5.4-7.1 mm and the
+  frozen 5.0 mm cap refuses them. The question lands back on the cap, gate 1.
+- **The M, diagnosed not fixed.** Same members (4), same spine length
+  (~16 mm), same radii (p50 0.81 vs 0.82) and a slightly SMOOTHER turn
+  profile, yet `satin_polygon_axis` lays **+57% stations and +77% thread**
+  (219 -> 387 mm) in drone's M. Refuted: the Goldman join (emitting members
+  unjoined is byte-identical), the corner cuts (removing them is WORSE --
+  window coverage p95 3.46 -> 4.07), and spine sharpness. What is left is the
+  CROSSES at corners: columns read p50 1.94 vs shipped 2.28 but p90 **3.21 vs
+  2.64** -- long crosses spanning the corner diagonals, which is the crossing
+  Kent saw. Emitter work, not a knob.
+
 **Last updated:** 2026-09-16 (latest) — **Kent's renders review: three
 rulings, and the M ruling HOLDS `satin_polygon_axis`.**
 
