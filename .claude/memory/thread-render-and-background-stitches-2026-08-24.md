@@ -24,6 +24,10 @@ coverage, which is exactly what makes a sparse design look solid.
 **The first thread render found the defect in one look.** The subject was
 about a quarter of the frame; the rest was deck boards, rendered in thread.
 
+**Why it survived until this renderer existed:** every acceptance sheet before
+this one showed VECTOR PROOFS — region outlines, not thread. No tonal ruling
+Kent was ever asked for could see the thing being judged.
+
 ## The defect: 72.2% of the design sewed removed background
 
 `photo_prep_background_removal` cuts the subject out with rembg, and stage 2

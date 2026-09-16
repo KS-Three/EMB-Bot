@@ -53,9 +53,36 @@ three shrinks, and every piece of correcting evidence was already in a
 docstring — `StitchPlan.palette`'s, `_stats_payload`'s, `reviewFromJob`'s.
 The 7-minute corpus runs produced the number; the reading produced the answer.
 
-## Budget
+## Budget, and why the obvious reclaims are worth nothing
 
 `MASTER_SCOPE.md` sits at **799 of its 800-line budget** after defect 30.
 Defect 29 was compacted to a fixed-state pointer in the same pass to make
 room, and the file's long-line style means an entry costs a line whatever its
 prose. **The next addition needs a retirement first.**
+
+**The budget was a preference until `tests/test_scope_budget.py` (3 tests)
+enforced it** the same afternoon. `tools/scope_budget.py` reports the split.
+
+**The reclaim is not a defect, and the two intuitive ways to reclaim space
+both return zero:**
+
+- Live defects are **138 lines of 799 (17%, 30 entries)**; capability areas
+  take **255**, and **area 1 alone takes 107** against a detail file of
+  **3,871**. So the defect list is not what is eating the budget.
+- **Retiring a numbered defect reclaims NOTHING** — the Closed section keeps
+  every number, so Live to Closed swaps a line for a line.
+- **Compacting an entry's prose reclaims zero** — entries are single very long
+  lines, so shorter prose is the same one line.
+
+**Count with `wc -l`.** `split("
+")` on a trailing-newline file over-reports
+by one, and the tool's first cut would have failed the budget a line early on
+that alone.
+
+## The warnings panel has no severity because the FIELD does not exist
+
+`warn()` returns `{code, message, **extra}`; `finding()` returns
+`{code, severity, message, **extra}`. That is the whole reason
+`QualityReport.svelte` can rank and colour findings while the warnings panel
+cannot — it is not a display choice. **Adding severity means assigning one to
+57 codes, which is a product call, not a refactor.**
