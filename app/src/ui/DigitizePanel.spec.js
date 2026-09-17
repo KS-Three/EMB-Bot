@@ -944,6 +944,94 @@ describe("auto-restitch on shape edits", () => {
     expect(calls.length).toBeGreaterThanOrEqual(1);
   });
 
+  // A border is not a drag. It is picked from a menu or a select, it is
+  // complete the moment it is picked, and there is no second half coming — so
+  // the two seconds the debounce spends waiting for the user to "stop editing"
+  // are two seconds of a canvas that has not acknowledged the click. The
+  // canvas's own right-click Add/Remove border writes this same field
+  // (shapeOverrides[sid].border, via the same elupdate path), which is where
+  // the wait was most visible: you click a menu item and nothing happens.
+  test("a BORDER change restitches immediately — no idle pause to wait out", async () => {
+    const { getByLabelText } = await panelWithService([shapeRow("s1")]);
+    await fireEvent.change(getByLabelText(/^Border \u2014 /), { target: { value: "auto" } });
+    vi.advanceTimersByTime(0);        // the 0 ms hop off the reactive tick
+    await Promise.resolve();
+    expect(calls.length).toBeGreaterThanOrEqual(1);
+  });
+
+  // The armed line must not FLASH on the path that never waits. A border
+  // schedules at 0 ms, and a 0 ms timeout is a macrotask — it fires after
+  // Svelte has already flushed the DOM — so arming it "briefly" would paint
+  // "restitching when you stop editing" for a frame on every border toggle,
+  // about an edit that is not waiting for anything. The fix is to not arm at
+  // all when there is no pause, which is also what makes the comment on that
+  // block true.
+  test("a border change never shows the armed line, not even for a frame", async () => {
+    const { getByLabelText, queryByText } = await panelWithService([shapeRow("s1")]);
+    await fireEvent.change(getByLabelText(/^Border \u2014 /), { target: { value: "auto" } });
+    expect(queryByText("Restitch now")).toBeNull();
+  });
+
+  // The narrowness is the safety property: if "border" could ever be returned
+  // for a change that also moved a boundary, a drag would take the fast path
+  // and queue a full stage 0-7 run behind every nudge. This is that guard at
+  // the panel level rather than on the pure function.
+  test("a stitch-type change still waits — the fast path is borders ONLY", async () => {
+    const { getByLabelText } = await panelWithService([shapeRow("s1")]);
+    await fireEvent.change(getByLabelText(/^Stitch type \u2014 /), { target: { value: "satin" } });
+    vi.advanceTimersByTime(0);
+    await Promise.resolve();
+    expect(calls).toHaveLength(0);
+    vi.advanceTimersByTime(2500);
+    await Promise.resolve();
+    expect(calls.length).toBeGreaterThanOrEqual(1);
+  });
+
+  // "Restitch now" skips the remaining pause for the edits that still have
+  // one. Before it, the only way to not wait was to press "Digitize again",
+  // which ran immediately AND left the armed timer to fire a second identical
+  // run behind it — 10-14 s of service time on a photograph, for nothing.
+  test("\"Restitch now\" runs once, and cancels the pending timer rather than doubling", async () => {
+    const { getByLabelText, findByText } = await panelWithService([shapeRow("s1")]);
+    await fireEvent.change(getByLabelText(/^Stitch type \u2014 /), { target: { value: "satin" } });
+    const now = await findByText("Restitch now");
+    await fireEvent.click(now);
+    await Promise.resolve();
+    expect(calls).toHaveLength(1);
+    // The armed timer must be gone, not merely beaten to it.
+    vi.advanceTimersByTime(5000);
+    await Promise.resolve();
+    expect(calls).toHaveLength(1);
+  });
+
+  // The armed window is what the button lives in, and it has to close again —
+  // a control offering to hurry a restitch that already ran is a dead control.
+  test("the armed line appears only while a restitch is waiting", async () => {
+    const { getByLabelText, queryByText } = await panelWithService([shapeRow("s1")]);
+    expect(queryByText("Restitch now")).toBeNull();
+    await fireEvent.change(getByLabelText(/^Stitch type \u2014 /), { target: { value: "satin" } });
+    expect(queryByText("Restitch now")).not.toBeNull();
+    vi.advanceTimersByTime(2500);
+    await Promise.resolve();
+    expect(queryByText("Restitch now")).toBeNull();
+  });
+
+  // Pressing "Digitize again" during the pause was reachable before any of
+  // this and ran TWICE: once on the click, once more when the armed timer fired
+  // behind it with the same edits in it. On a photograph that is a second
+  // 10-14 s run for nothing. Starting a run of any kind now disarms the
+  // pending one, because either way that run carries the current edits.
+  test("pressing Digitize again during the pause does not run twice", async () => {
+    const { getByLabelText, getByRole } = await panelWithService([shapeRow("s1")]);
+    await fireEvent.change(getByLabelText(/^Stitch type \u2014 /), { target: { value: "satin" } });
+    await fireEvent.click(getByRole("button", { name: "Digitize again" }));
+    await Promise.resolve();
+    expect(calls).toHaveLength(1);
+    vi.advanceTimersByTime(5000);
+    await Promise.resolve();
+    expect(calls).toHaveLength(1);
+  });
+
   test("rapid edits collapse into ONE restitch, not one per edit", async () => {
     // The whole point of the debounce: ten adjustments cost one 10-second
     // run, not ten queued behind each other.

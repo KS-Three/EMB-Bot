@@ -179,9 +179,16 @@ test("stale layer edits: service flags them, the panel surfaces them, Clear + Ap
   // Located by class, not accessible name: the button reads "Apply layer
   // changes" when idle but "Digitizing…" mid-flight, and it disappearing
   // entirely (hasPendingEdits false) is the "edit landed" signal.
+  //
+  // There is no click here any more, and that is the assertion. A BORDER is
+  // complete the moment it is picked, so it restitches on the pick rather than
+  // waiting out the 2 s idle pause the other shape edits keep (editKind in
+  // lib/digitizer.js) — this button goes straight to "Digitizing…" and is gone
+  // before anything could press it. Waiting for it to disappear is the same
+  // "edit landed" signal the note above describes, reached on its own. The
+  // button's own click is still driven by the recovery flow at the end of this
+  // spec, so nothing about it goes untested.
   const apply = page.locator(".dgp-apply");
-  await expect(apply).toHaveText("Apply layer changes");
-  await apply.click();
   await expect(apply).toBeHidden({ timeout: 120_000 });
   // The service actually sewed the border: the stitch count moved.
   await expect(page.locator(".dgp-stats")).not.toHaveText(statsBefore);
@@ -217,13 +224,20 @@ test("stale layer edits: service flags them, the panel surfaces them, Clear + Ap
   // panel never silently drops a user's edit -- recovery is explicit.
   await expect(apply).toBeHidden();
 
-  // ---- recover: Clear them, then Apply -----------------------------------
+  // ---- recover: Clear them, and it re-sews itself ------------------------
   await page.getByRole("button", { name: "Clear them" }).click();
   await expect(unmatched).toBeHidden();
-  // Dropping the stale override makes the element's edits differ from the
-  // ones this result was digitized with -> Apply reappears.
-  await expect(apply).toHaveText("Apply layer changes");
-  await apply.click();
+  // Dropping the stale override makes the element's edits differ from the ones
+  // this result was digitized with, so a restitch is owed. It no longer waits
+  // to be asked for: the override being dropped here is a BORDER, and a border
+  // change restitches on the spot (editKind in lib/digitizer.js), so recovery
+  // completes on the one "Clear them" click instead of on two.
+  //
+  // WORTH KNOWING, because it is a consequence of that rule rather than
+  // something aimed at: the rule reads the edit SET, so it cannot tell a
+  // border picked off a menu from a border dropped by a bulk recovery. Clear a
+  // stale BOUNDARY instead and this same step keeps the 2 s pause and its
+  // Apply button. Both recover; only the number of clicks differs.
   await expect(apply).toBeHidden({ timeout: 120_000 });
 
   // Clean state: no stale-edit warning, no unmatched notice, both shapes

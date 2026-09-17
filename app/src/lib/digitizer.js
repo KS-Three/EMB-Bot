@@ -374,6 +374,64 @@ export function editsKey(edits) {
   ]);
 }
 
+// ---- how urgently does a change want stitching? (restitch pacing) ----------
+//
+// Every shape edit lands in the same place — `shape_overrides` — so the
+// restitch scheduler cannot tell a dragged outline from a border picked off
+// the canvas menu by looking at WHERE the change is. It has to look at what
+// MOVED.
+//
+//   "border"  every difference is a `border` value, and nothing else moved.
+//             A border is chosen from a menu or a select and is COMPLETE the
+//             moment it is chosen — there is no second half coming — so the
+//             idle pause buys nothing and costs the user two seconds of a
+//             canvas that has not acknowledged the click.
+//
+//   "other"   anything else: a dragged boundary above all, but also a tier, an
+//             underlay, a thread, a delete, a merge, a split. These keep the
+//             pause. A drag needs it (the next nudge is a moment away, and a
+//             restitch is a full stage 0-7 service run — 0.65 s on line art,
+//             ~10-14 s on a photograph, with no useful cache because the job
+//             key folds shape_overrides into the config), and the rest keep it
+//             because Kent's 2026-08-13 debounce ruling covers them and
+//             nothing measured says they hurt.
+//
+//   "none"    nothing moved — a toggled-then-untoggled edit canonicalizes back
+//             to where it started, exactly as the job cache sees it.
+//
+// Deliberately NARROW. The tempting version of this function asks the broader
+// question — "is this a decision or a drag?" — and hands every select the fast
+// path too. That is a bigger behaviour change than the one that was asked for,
+// on controls a user can keyboard-arrow through (each arrow firing `change`),
+// and the existing debounce tests encode the ruling it would overturn. So the
+// fast path has to be EARNED by a change containing nothing but borders, and
+// everything else keeps the behaviour it already had.
+function withoutBorders(edits) {
+  const ov = (edits && edits.shape_overrides) || {};
+  const stripped = {};
+  for (const sid of Object.keys(ov)) {
+    const entry = { ...ov[sid] };
+    delete entry.border;
+    // Empty entries are dropped, the same way canonicalShapeEdits drops them —
+    // otherwise a shape whose ONLY override is a border would leave an empty
+    // object behind on one side and nothing on the other, and a border-only
+    // change would read as "other".
+    if (Object.keys(entry).length) stripped[sid] = entry;
+  }
+  return { ...(edits || {}), shape_overrides: stripped };
+}
+
+// (prev, next) -> "none" | "border" | "other". Both arguments are
+// canonicalShapeEdits output; pure, so the pacing rule is tested without a
+// browser, a service or a clock.
+export function editKind(prevEdits, nextEdits) {
+  if (editsKey(prevEdits) === editsKey(nextEdits)) return "none";
+  // Identical once the borders are taken out = borders were all that moved.
+  return editsKey(withoutBorders(prevEdits)) === editsKey(withoutBorders(nextEdits))
+    ? "border"
+    : "other";
+}
+
 // Within-layer sew-order reorder (contract v1.2, the Layers panel's up/down
 // control for shapes sharing one color). `rowIds` is the layer's OWN shapes
 // in their currently displayed order — already accounting for any sew_order
