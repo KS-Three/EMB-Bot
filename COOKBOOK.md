@@ -699,6 +699,21 @@ hand-rolling it in JS.
   and canvas tools", not "Canvas tools" — an e2e that right-clicks ON a
   digitized shape and expects the plain name will not find it.
 
+- **A border edit restitches at 0 ms; every other shape edit keeps the 2 s
+  pause (2026-09-17).** `DigitizePanel`'s restitch scheduler asks
+  `editKind(prevEdits, nextEdits)` (`lib/digitizer.js`) what moved, because
+  every shape edit lands in the same `shape_overrides` object and WHERE the
+  change is cannot tell a dragged outline from a menu pick. It answers
+  `"border"` only when EVERY difference is a border value — narrow on purpose,
+  so it can never swallow a boundary and put a full stage 0-7 run behind every
+  nudge. **Two traps if you touch this:** the 0 ms path must still go through
+  `setTimeout`, since the scheduler runs inside a reactive statement and
+  `runDigitize` patches the element (a direct call re-enters mid-flush); and it
+  must NOT set the armed flag, because a 0 ms timeout is a macrotask that fires
+  after Svelte has flushed, so arming it paints the "waiting" line for a frame
+  on every border toggle. Starting a run of any kind disarms a pending one —
+  without that, "Digitize again" during the pause runs twice.
+
 - **`digitizer/` cites its own docs relative to the package root**, i.e.
   bare `docs/dt-classifier-spike-2026-08-02.md` meaning
   `digitizer/docs/...` (8 such references vs 2 spelled-out ones, mostly in
