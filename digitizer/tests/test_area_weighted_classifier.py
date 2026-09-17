@@ -73,3 +73,47 @@ def test_stage7_passes_the_flag():
     assert "area_weighted=cfg.classify_area_weighted" in inspect.getsource(s7)
     for fn in (s6.classify_ribbon, s6.is_satin_candidate, s6._dt_stats):
         assert "area_weighted" in inspect.signature(fn).parameters, fn.__name__
+
+
+def test_a_weighting_rescue_must_still_be_a_stroke():
+    """SCOPED 2026-09-16, on the render rather than on the stitch count.
+
+    Where the weighted reading is what flips a shape into satin, the shape has
+    to BE a stroke. Rendered, it often is not: of the ten shapes the flag
+    promotes, Fremont's 33.1 mm2 blob (elongation 7.0) and enthusiast's
+    19.9 mm2 star (8.1) sew a criss-cross over ground the fill handled
+    cleanly, while drone's 14.7 mm2 edge strip (16.8) becomes the satin column
+    it wanted to be. Promotions across the three designs go 10 -> 2.
+
+    This star is that shape class: the weighting DOES make it regular --
+    cv 0.58 -> 0.45, under the 0.5 gate -- and its elongation 9.4 is under
+    the promote path's own bar, so the verdict stays `dt_irregular`.
+    """
+    from digitizer_core import machine
+    from digitizer_core.stage6_satin import _PROMOTE_ELONGATION_MIN, classify_ribbon
+
+    star = unary_union([box(0, 3.2, 9, 4.8), box(3.7, 0, 5.3, 8),
+                        Point(4.5, 4).buffer(2.6)])
+    plain = classify_ribbon(star, machine.SATIN_MAX_WIDTH_MM, full_metrics=True)
+    weighted = classify_ribbon(star, machine.SATIN_MAX_WIDTH_MM,
+                               full_metrics=True, area_weighted=True)
+
+    assert plain.reason == "dt_irregular", "the plain gates refuse this shape"
+    assert 2.0 * weighted.metrics["dt_std"] < weighted.metrics["dt_mean"],         "the weighting makes it regular -- without the bar it would sew satin"
+    assert weighted.metrics["elongation"] < _PROMOTE_ELONGATION_MIN
+    assert not weighted.satin and weighted.reason == "dt_irregular"
+
+
+def test_the_scope_leaves_a_shape_the_plain_reading_already_took():
+    """The bar applies ONLY where the weighting flipped the verdict: a shape
+    the unweighted gates already pass keeps its satin call, weighted or not,
+    however stubby it is."""
+    from digitizer_core import machine
+    from digitizer_core.stage6_satin import classify_ribbon
+
+    bar = box(0, 0, 14, 2.2)
+    plain = classify_ribbon(bar, machine.SATIN_MAX_WIDTH_MM, full_metrics=True)
+    weighted = classify_ribbon(bar, machine.SATIN_MAX_WIDTH_MM,
+                               full_metrics=True, area_weighted=True)
+    assert plain.satin and weighted.satin
+    assert weighted.reason == plain.reason
