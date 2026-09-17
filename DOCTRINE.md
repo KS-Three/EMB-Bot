@@ -5630,8 +5630,11 @@ smoothing EARNS its place on blocky low-resolution art: becker at 1.8 px/mm
 sews 12.2 mm2 of bare satin off the grown polygon and **34.5 mm2** off its own
 artwork. The obvious discriminator does not separate them -- grown/artwork
 vertex ratio p50 is 8.3 on becker against 5.9 on drone and 6.1 on enthusiast.
-So the flag carries a MODE (`True`/`"grown"`, `"artwork"`, `"simplified"`),
-measured on four designs in its PR, and which one ships is Kent's.
+So the flag carries a MODE (`True`/`"artwork"`, `"grown"`, `"simplified"`),
+measured on four designs in its PR. **Kent ruled `"artwork"` the same day**,
+with its price named: becker's bare satin 5.8 -> 25.7 mm2 (nearly all of it
+around the one BECKER outline) and `logo_golden_tee` gaining a machine stop,
+13 -> 14 blocks on the same 12 cones. Turning the flag on gives that mode.
 
 *(measured 2026-09-16 -- `digitizer_core/stage6_satin._axis_polygon`;
 `tools/decomposition_census.py --arms shipped polyaxis polyaxis_art

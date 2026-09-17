@@ -4346,18 +4346,28 @@ def _axis_polygon(poly: Polygon, art_poly: Polygon | None, mode):
     not: becker p50 8.3 against drone 5.9 and enthusiast 6.1). Hence a mode,
     measured on four designs in the flag's PR, and Kent's to set:
 
-      True / "grown"  the polygon as stage 5 grew it (the 2026-09-15 default)
-      "artwork"       the artwork polygon, rails still sewn on the grown one
-      "simplified"    the grown polygon with detail under `_AXIS_SIMPLIFY_MM`
-                      dropped -- between the two on every number measured
+      True / "artwork"  the artwork polygon, rails still sewn on the grown
+                        one -- KENT'S RULING 2026-09-16, so turning the flag
+                        on gives the mode that answers his M
+      "grown"           the polygon as stage 5 grew it (what 2026-09-15
+                        shipped, and what he called over stitched)
+      "simplified"      the grown polygon with detail under
+                        `_AXIS_SIMPLIFY_MM` dropped -- between the two on
+                        every number measured
+
+    His ruling came with its price named: becker's bare satin goes 5.8 -> 25.7
+    mm2, nearly all of it around the one BECKER outline, and `logo_golden_tee`
+    gains a machine stop (13 -> 14 blocks on the same 12 cones).
     """
     if not mode:
         return poly
-    if mode == "artwork" and art_poly is not None:
-        return art_poly
+    if mode == "grown":
+        return poly
     if mode == "simplified":
         return poly.simplify(_AXIS_SIMPLIFY_MM)
-    return poly
+    # True and "artwork" alike: the artwork when we have it, else the grown
+    # polygon, which is the only thing left to read.
+    return art_poly if art_poly is not None else poly
 
 
 def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
