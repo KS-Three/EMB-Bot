@@ -1784,7 +1784,15 @@ class PipelineConfig:
     # the flag takes **+66% at the peak and +62% at p95**, under the warn
     # level in both arms, so no threshold on that check would ever have said
     # so. DOCTRINE "A design-wide MAX hides a local stack".
-    satin_polygon_axis: bool = False
+    # True / "artwork" reads the axis off the ARTWORK polygon with the rails
+    # still sewn on the grown one -- Kent's ruling 2026-09-16, because the
+    # grown polygon's round joins are what over-stitched drone's M. "grown"
+    # is what 2026-09-15 shipped, "simplified" drops detail under 0.25 mm and
+    # sits between them. See `stage6_satin._axis_polygon`: this is a mode
+    # rather than a constant because the growth's smoothing is also what
+    # keeps becker's blocky 1.8 px/mm artwork off bare cloth (5.8 -> 25.7 mm2
+    # under his ruling), and no rule separates the two cases.
+    satin_polygon_axis: bool | str = False
     # Weight the satin/fill classifier's distance transform by RADIUS instead
     # of counting every skeleton pixel equally, DEFAULT OFF and byte-identical
     # off (equal weights reduce to the shipped arithmetic).

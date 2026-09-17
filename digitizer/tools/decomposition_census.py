@@ -75,7 +75,8 @@ CASES = {
     "fremont": ("photo/logo_hotel_fremont.webp", dict(target_width_mm=92.5)),
     "drone": ("photo/drone_render.png", dict(target_width_mm=80.0)),
 }
-ARMS = ("shipped", "raster12", "raster24", "noprune", "polyaxis")
+ARMS = ("shipped", "raster12", "raster24", "noprune", "polyaxis",
+        "polyaxis_art", "polyaxis_simp")
 PRO = {"becker95": "reference/becker_hat_polo_large_beckers_logolc.dst"}
 
 # A polygon-axis edge survives when its generators are more than twice this
@@ -107,7 +108,11 @@ def apply_arm(arm: str) -> dict:
     if arm == "shipped":
         return {}
     if arm == "polyaxis":
-        return {"satin_polygon_axis": True}
+        return {"satin_polygon_axis": True}            # the grown polygon
+    if arm == "polyaxis_art":
+        return {"satin_polygon_axis": "artwork"}
+    if arm == "polyaxis_simp":
+        return {"satin_polygon_axis": "simplified"}
     if arm in ("raster12", "raster24"):
         f = 2.0 if arm == "raster12" else 4.0
         s6._RASTER_PX_PER_MM = 6.0 * f
