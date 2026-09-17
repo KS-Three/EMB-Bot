@@ -5639,3 +5639,66 @@ around the one BECKER outline) and `logo_golden_tee` gaining a machine stop,
 *(measured 2026-09-16 -- `digitizer_core/stage6_satin._axis_polygon`;
 `tools/decomposition_census.py --arms shipped polyaxis polyaxis_art
 polyaxis_simp`)*
+
+## The satin/fill size cliff is INPUT RESOLUTION, and no threshold rule reaches it (2026-09-16)
+
+Three candidate cures measured and refuted on becker, 80-100 mm, sewn satin
+share off the emitted plan (`tools/classifier_cliff.py`):
+
+| arm | span | worst 1 mm step |
+|---|---|---|
+| shipped | 0.402 | 0.288 at 87 -> 88 |
+| `classify_area_weighted` | 0.385 | 0.288 |
+| three-pitch median (prototyped, reverted) | 0.402 | 0.292 |
+| `simplify_tol_mm` scaled to the design | 0.387 | 0.310 |
+
+**A margin cannot work, and the reason is measurable:** the gate metrics
+JITTER rather than drift. The rope border's `explained` every 0.5 mm from 86
+to 89 reads 0.8172, 0.8082, 0.8057, **0.7937**, **0.7943**, 0.8279, 0.8248 --
+under the 0.80 floor at 87.5-88.0 and back HIGHER at 88.5; the 266 mm2
+shape's p90 jitters 4.77, 5.00, 5.22, 5.01, 4.92 across the 5.0 cap. Widening
+a threshold moves the edge to wherever the jitter next lands.
+
+**What it is.** Cliff amplitude is not a smooth function of source
+resolution; it is concentrated on artwork stage 1 has to INVENT. becker
+(1.8 px/mm, the only committed source far under `min_px_per_mm` 4.0) swings
+0.301 over 85-90 mm against 0.053 for bridge_bar at 5.0 px/mm, 0.072 for
+gaulke at 16.1 and 0.090 for enthusiast at 17.5 -- **4-6x every other
+fixture**. The Lanczos upscale's FACTOR moves with the target width, so the
+vectorizer traces a differently-invented polygon at each size. Pin the floor
+(`min_px_per_mm` = `upscale_cap` = 8.0) and the cliff goes: **span
+0.301 -> 0.031, worst step 0.288 -> 0.018.**
+
+**The sting, and why this is not a free fix.** The stabilised state is the
+LOW-satin one (0.12-0.15 against 0.36-0.43): at 8 px/mm becker's letters
+measure their real 5.4-7.1 mm width and `SATIN_MAX_WIDTH_MM` = 5.0 refuses
+them as `dt_p90_cap`. The high-satin readings were a coarse raster
+UNDER-reading letter width, not a verdict worth stabilising. So the question
+lands back on the cap -- frozen behind gate 1 until a sew-out -- and no
+classifier change routes around it.
+
+*(measured 2026-09-16 -- `docs/classifier-cliff-is-input-resolution-2026-09-16.md`)*
+
+## `StitchRun.jump` means the needle lifts to REACH the run, not that the run is needle-up (2026-09-16)
+
+A filter written as `if run.jump: continue` — intending "skip travel" —
+drops every run the machine JUMPS TO, which is most first runs of a shape. It
+read gaulke as sewing 8 of 39 letters at 80 mm and produced a headline claim
+that **~78% of a real customer's lettering was unsewn**, with a clean ramp
+(20% at 80 mm, 85% at 92 mm) that looked exactly like a size threshold worth
+acting on. Every one of those letters was sewn: re-counted on the run KIND,
+**100% carry thread at 60, 80, 92 and 100 mm**, and the first letter opened
+by hand had a 96-point satin run.
+
+The dataclass says so in two lines that were there the whole time:
+`StitchRun` is *"One needle-down path"*, and `jump` is *"True when the machine
+must lift the needle to reach points[0]"*. **Thread-vs-travel is
+`run.kind`**, never `run.jump`; `jump` and `trim` describe how the needle
+ARRIVED.
+
+The same bug read every letter's thread coverage as 0.000 IoU and was caught
+only because a hand-check of one shape disagreed with the batch — which is
+the practical rule: when an instrument reports a catastrophe on a design
+whose render looks fine, open one row by hand before writing it down.
+
+*(2026-09-16 — claim made and retracted the same session; scope-history)*

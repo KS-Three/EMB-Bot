@@ -25,6 +25,89 @@ that is the whole point of the file. Corrections go in `MASTER_SCOPE.md`.
 
 ---
 
+**Last updated:** 2026-09-16 (late) — **what `classify_area_weighted`
+actually promotes, rendered: two of three are worse, and ELONGATION separates
+them.**
+
+The flag (#496, DEFAULT OFF) promotes 10 shapes fill -> satin across
+enthusiast, Fremont and drone, for a corpus −5,027 stitches and two grades up.
+Nobody had looked at the shapes. Rendered against the fill they replace
+(`docs/renders/area-weighted-promotions-2026-09-16/`):
+
+| shape | shipped | area-weighted | by eye |
+|---|---|---|---|
+| Fremont 33.1 mm2 blob | tidy fill rows | criss-cross satin over a shape that is not a stroke | **worse** |
+| enthusiast 19.9 mm2 star | clean fill | overlapping crosses through the centre | **worse** |
+| drone 14.7 mm2 edge strip | fill | a proper satin column along the strip | **right** |
+
+**`elongation` separates the good promotion from the bad ones** — drone's
+strip 16.8 and its sibling 14.1, against the star at 8.1 and the blob at 7.0
+(all 10: p10 4.8, p50 8.4, p90 14.4). The engine already carries the constant
+this wants: `_PROMOTE_ELONGATION_MIN` = 10.0, used by the promote path today.
+
+**So the flag as merged is not the thing to flip.** The scoped version —
+require elongation when the WEIGHTED reading is what flips the verdict — is
+the next build, and it will buy less than −5,027 stitches by construction.
+Not built; no measurement of the scoped version exists yet.
+
+**Last updated:** 2026-09-16 (night) — **a claim made and RETRACTED the
+same session: gaulke's lettering is NOT unsewn. `StitchRun.jump` means the
+needle lifts to REACH a run, not that the run is needle-up.**
+
+- **What was claimed, and is false:** that only ~20% of gaulke's letter-sized
+  shapes sew at 80 mm, ramping to ~85% at 92 mm, i.e. "~78% of this
+  customer's lettering is unsewn at left-chest size". It came from counting
+  runs with `not r.jump`, which drops every run the machine JUMPS TO — most
+  first runs of a shape. **Re-measured on the run KIND instead: 100% of the
+  letters carry thread at 60, 80, 92 and 100 mm**, area 100% at every size.
+  The one letter inspected by hand had a 96-point satin run all along.
+- **The lesson, and it is a trap worth naming:** `StitchRun`'s docstring says
+  it plainly — *"One needle-down path"*, and `jump` is *"True when the
+  machine must lift the needle to reach points[0]"*. A filter on `jump` reads
+  a fully sewn design as bare, and the number it produces (78% missing) is
+  exactly the shape of a finding someone would act on. DOCTRINE entry with it.
+- **What survives from that pass, measured correctly:** thread-to-artwork IoU
+  per letter rises with size for BOTH letter kinds — straight-sided shapes
+  0.528 / 0.503 / 0.547 / 0.573 / 0.597 and curved ones 0.546 / 0.540 /
+  0.515 / 0.562 / 0.583 at 60 / 70 / 80 / 90 / 100 mm (median letter height
+  3.32 - 5.49 mm). The straight-vs-curved ordering does flip around 4 mm, but
+  **opposite to Kent's read** (curved measures better below it, straight
+  above) and by 0.01-0.04, so **IoU is not the instrument his judgement is
+  using** — edge roughness on curved boundary runs is the next thing to try.
+- Still true and independent of the bug: renders 2 and 3 of gaulke differ in
+  SIZE as well as in the card, median letter height **3.77 vs 4.39 mm**.
+
+**Last updated:** 2026-09-16 (evening) — **the size cliff is INPUT
+RESOLUTION; the M's over-stitching is diagnosed to the corner crosses.**
+
+- **Cliff, answered** (`docs/classifier-cliff-is-input-resolution-2026-09-16.md`).
+  Three cures refuted on becker 80-100 mm: `classify_area_weighted` (worst
+  1 mm step 0.288, unchanged), a three-pitch median of every gate metric
+  (0.292; prototyped as `cfg.classify_multiscale` and REVERTED in the same
+  session), and `simplify_tol_mm` scaled to the design (0.310). **A margin
+  cannot work**: the metrics jitter rather than drift -- the rope border's
+  `explained` reads 0.8172 / 0.8082 / 0.8057 / **0.7937** / **0.7943** /
+  0.8279 / 0.8248 from 86 to 89 mm.
+  **What it is:** becker is the only committed source far below
+  `min_px_per_mm` 4.0 (1.8 px/mm), so stage 1's upscale FACTOR moves with the
+  target width and the vectorizer traces a differently-invented polygon at
+  each size. Its swing over 85-90 mm is **0.301 against 0.053 (bridge_bar,
+  5.0 px/mm), 0.072 (gaulke, 16.1) and 0.090 (enthusiast, 17.5)**. Pinning
+  the floor at 8 px/mm takes the swing to **0.031** and the worst step to
+  **0.018**.
+  **The sting:** the stable state is LOW satin (0.12-0.15 vs 0.36-0.43),
+  because at 8 px/mm becker's letters measure their real 5.4-7.1 mm and the
+  frozen 5.0 mm cap refuses them. The question lands back on the cap, gate 1.
+- **The M, diagnosed not fixed.** Same members (4), same spine length
+  (~16 mm), same radii (p50 0.81 vs 0.82) and a slightly SMOOTHER turn
+  profile, yet `satin_polygon_axis` lays **+57% stations and +77% thread**
+  (219 -> 387 mm) in drone's M. Refuted: the Goldman join (emitting members
+  unjoined is byte-identical), the corner cuts (removing them is WORSE --
+  window coverage p95 3.46 -> 4.07), and spine sharpness. What is left is the
+  CROSSES at corners: columns read p50 1.94 vs shipped 2.28 but p90 **3.21 vs
+  2.64** -- long crosses spanning the corner diagonals, which is the crossing
+  Kent saw. Emitter work, not a knob.
+
 **Last updated:** 2026-09-16 (latest) — **Kent's renders review: three
 rulings, and the M ruling HOLDS `satin_polygon_axis`.**
 
