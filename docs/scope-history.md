@@ -11,6 +11,27 @@ number out of this file as live status. If something in here still governs a
 decision today, it belongs in `MASTER_SCOPE.md` carrying a dated evidence
 pointer; if it isn't there, treat it as superseded until re-measured.
 
+---
+
+**Last updated:** 2026-09-17 — border restitch pacing (PR #504)
+
+A border override now restitches on the pick instead of waiting out the 2 s
+idle debounce. Measured against the live digitizer service by sampling
+`.dgp-stats` in a tight loop after the canvas menu's **Add border**:
+**5,944 stitches at 140 ms** (pre-border), **6,073 at 357 ms** (bordered) —
+so the restitch itself was ~0.2 s and the 2 s pause in front of it was the
+whole of the perceived wait. Two squares, 80x30 mm; a photograph is still the
+10-14 s run the debounce notes describe.
+
+The stale wash was probed at 60 ms intervals across the same window and never
+caught: on this fixture the element is un-hatched again before a frame could
+show it. That is why no per-shape canvas cue was added — `isStale`'s standing
+comment rules the per-shape version out anyway ("a more precise-looking
+half-truth", because stage 5 resolves overlap BETWEEN shapes).
+
+Suites at the time: engine 536 pass / 0 fail / 9 skipped; studio 1230 pass;
+studio e2e 70 pass against the live service.
+
 **The ordering trap.** Entries are newest-first, and several describe defects
 that a *later* (higher up) entry closes. Read upward before concluding anything
 is still open. Worked example: the 2026-08-06 entry flags `stage6_satin.py`'s

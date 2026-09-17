@@ -2189,3 +2189,104 @@ test("spoolCount falls back to rgb when the cones carry no name, and to colorCou
   expect(spoolCount({ colorCount: 4 })).toBe(4);
   expect(spoolCount(null)).toBe(0);
 });
+
+// ---------------------------------------------------------------------------
+// editKind — the restitch pacing rule.
+//
+// The scheduler cannot tell a dragged outline from a border picked off the
+// canvas menu by WHERE the change landed (both are `shape_overrides`), so it
+// asks what moved. A border is complete when it is picked and starts stitching
+// at once; everything else keeps the 2 s pause it already had.
+//
+// These tests pin the narrowness, which is the point: "border" has to be
+// earned by a change containing nothing else, so the fast path can never
+// swallow a drag.
+describe("editKind (restitch pacing)", () => {
+  const ring = (dx = 0) => [[0 + dx, 0], [10 + dx, 0], [10 + dx, 10], [0 + dx, 10]];
+  const edits = async (el) => {
+    const { canonicalShapeEdits } = await import("./digitizer.js");
+    return canonicalShapeEdits(el);
+  };
+  const el = (overrides) => digitizedElement({ shapeOverrides: overrides });
+
+  it("reads an unchanged edit set as 'none'", async () => {
+    const { editKind } = await import("./digitizer.js");
+    const a = await edits(el({ s1: { border: "auto" } }));
+    const b = await edits(el({ s1: { border: "auto" } }));
+    expect(editKind(a, b)).toBe("none");
+  });
+
+  it("reads a toggled-then-untoggled edit as 'none', like the job cache does", async () => {
+    const { editKind } = await import("./digitizer.js");
+    const a = await edits(el({}));
+    const b = await edits(el({ s1: {} }));   // canonicalizes away to nothing
+    expect(editKind(a, b)).toBe("none");
+  });
+
+  it("reads a border picked off the canvas menu as 'border'", async () => {
+    const { editKind } = await import("./digitizer.js");
+    const none = await edits(el({}));
+    const added = await edits(el({ s1: { border: "auto" } }));
+    expect(editKind(none, added)).toBe("border");
+    // "Remove border" — the other half of the same menu.
+    const removed = await edits(el({ s1: { border: "off" } }));
+    expect(editKind(added, removed)).toBe("border");
+    // "Use design setting" — clears the override entirely.
+    expect(editKind(removed, none)).toBe("border");
+  });
+
+  it("reads borders on SEVERAL shapes at once as 'border'", async () => {
+    const { editKind } = await import("./digitizer.js");
+    const a = await edits(el({ s1: { border: "auto" } }));
+    const b = await edits(el({ s1: { border: "off" }, s2: { border: "bean" } }));
+    expect(editKind(a, b)).toBe("border");
+  });
+
+  // The case the rule turns on. A shape that has been hand-edited keeps its
+  // ring in `shape_overrides` forever after; a border toggled on THAT shape
+  // must still take the fast path, because the ring did not move — it is
+  // merely sitting next to the thing that did.
+  it("reads a border toggle on an already-dragged shape as 'border'", async () => {
+    const { editKind } = await import("./digitizer.js");
+    const dragged = await edits(el({ s1: { boundary_override: ring() } }));
+    const bordered = await edits(el({ s1: { boundary_override: ring(), border: "auto" } }));
+    expect(editKind(dragged, bordered)).toBe("border");
+  });
+
+  it("reads a dragged boundary as 'other' — the pause is what it is for", async () => {
+    const { editKind } = await import("./digitizer.js");
+    const none = await edits(el({}));
+    const first = await edits(el({ s1: { boundary_override: ring() } }));
+    expect(editKind(none, first)).toBe("other");
+    // ...and every nudge after it.
+    expect(editKind(first, await edits(el({ s1: { boundary_override: ring(1) } })))).toBe("other");
+    // ...and clearing it again.
+    expect(editKind(first, none)).toBe("other");
+  });
+
+  // Everything Kent's 2026-08-13 debounce ruling already covered keeps the
+  // pause. Deliberately NOT on the fast path: a wider rule was written first
+  // and backed out, because it changed the behaviour of controls nobody asked
+  // about and broke the tests that encode that ruling.
+  it("reads every other edit as 'other'", async () => {
+    const { editKind } = await import("./digitizer.js");
+    const base = await edits(el({}));
+    expect(editKind(base, await edits(el({ s1: { tier: "satin" } })))).toBe("other");
+    expect(editKind(base, await edits(el({ s1: { underlay_style: "edge_run" } })))).toBe("other");
+    expect(editKind(base, await edits(el({ s1: { thread_index: 3 } })))).toBe("other");
+    expect(editKind(base, await edits(el({ s1: { fill_angle_deg: 45 } })))).toBe("other");
+    expect(editKind(base, await edits(digitizedElement({ deletedShapeIds: ["s1"] })))).toBe("other");
+    expect(editKind(base, await edits(digitizedElement({ mergeGroups: [["s1", "s2"]] })))).toBe("other");
+  });
+
+  // Mixed changes take the SLOW path: the fast one is for a change that is
+  // nothing but borders, and a border riding along with a drag is a drag.
+  it("reads a border bundled with anything else as 'other'", async () => {
+    const { editKind } = await import("./digitizer.js");
+    const a = await edits(el({ s1: { boundary_override: ring() } }));
+    const b = await edits(el({ s1: { boundary_override: ring(1) }, s2: { border: "auto" } }));
+    expect(editKind(a, b)).toBe("other");
+    const c = await edits(el({ s1: { border: "auto", tier: "fill" } }));
+    expect(editKind(await edits(el({})), c)).toBe("other");
+  });
+});

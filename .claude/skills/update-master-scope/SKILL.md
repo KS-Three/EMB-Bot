@@ -16,14 +16,14 @@ failure mode this skill exists to prevent:**
 
 | File | Holds | Rule |
 |---|---|---|
-| `MASTER_SCOPE.md` | current state only | **800-line budget** |
+| `MASTER_SCOPE.md` | current state only | **27,000-word budget** |
 | `DOCTRINE.md` | decided / tried / disproved / paid for | no budget; must change what someone DOES |
 | `docs/scope-history.md` | dated snapshots | append-only, never edited |
 | `docs/scope/<area>.md` | per-area supporting detail | linked from the verdict |
 
 `DOCTRINE.md` was split out of MASTER_SCOPE on 2026-08-28 and holds **Standing
 rulings, Measured negatives, Corrections and Gotchas**. Do NOT move those back:
-they do not go stale and only accumulate, so sharing the 800-line budget with
+they do not go stale and only accumulate, so sharing the budget with
 current status meant status kept losing. A ruling, a rejected approach, a
 correction or a session-costing trap goes there, not here.
 
@@ -105,7 +105,14 @@ rules below are mechanical rather than advisory.
 7. If Kent previously overrode a score, don't silently revert it back to my
    own proposal on the next pass — carry his correction forward unless the
    evidence has genuinely changed since.
-8. **Check the budget last: `wc -l MASTER_SCOPE.md` must be ≤ 800.** Over it,
+8. **Check the budget last: `awk '{n+=NF} END{print n}' MASTER_SCOPE.md` must
+   be ≤ 27,000 words.** Kent replaced the old 800-LINE budget with this on
+   2026-09-14, because a line budget cannot see the file's content in either
+   direction — this file's defect entries run to several hundred words on ONE
+   line. **Use that `awk`, never `wc -w`**, which is locale-dependent here and
+   answers ~900 words low where `LANG` is unset. MASTER_SCOPE rule 4 carries
+   the ruling; DOCTRINE's "A budget that cannot see its own file" has the
+   reasoning. Over it,
    compact before you finish — do not leave it over and move on.
 
    **Compact by moving, never by deleting.** In order of preference:
@@ -117,7 +124,7 @@ rules below are mechanical rather than advisory.
    3. A research catalogue or a closed investigation →
       `docs/scope/research-backlog.md`.
 
-   If you genuinely cannot get under 800 without cutting something still in
+   If you genuinely cannot get under budget without cutting something still in
    force, that is a real signal — say so to Kent rather than deleting it. The
    budget exists to force compaction, not to justify destroying content.
 

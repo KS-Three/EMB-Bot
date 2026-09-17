@@ -186,6 +186,26 @@ overlay drew a large, obvious spike over unchanged stitching.
   run. **The full-rerun half of that reasoning is closed by the stage 0-4
   cache below (2026-08-22); the debounce itself stays — even the cached
   finish + re-plan is seconds on a photo, not per-keystroke cheap.**
+  **BORDERS LEFT THE DEBOUNCE 2026-09-17, and the carve-out's shape is the
+  point.** The reasoning above is entirely about a DRAG: the next nudge is a
+  moment away, so waiting is how ten adjustments cost one run. A border has no
+  next nudge — it is picked from a menu or a select and is finished — so the
+  pause was pure latency in front of a canvas that had not acknowledged the
+  click, which is what Kent asked to fix. `editKind` (`lib/digitizer.js`) diffs
+  two canonical edit sets and answers `"border"` only when EVERY difference is
+  a border value; the panel schedules 0 ms for that and `RESTITCH_IDLE_MS` for
+  everything else. Measured against the live service: 5,944 stitches at 140 ms
+  after the menu click, 6,073 at 357 ms — previously 2 s of pause before that
+  same ~0.2 s run. **Do not widen it to "decisions vs drags".** That version
+  was written first and backed out: it put every select on the fast path,
+  including ones a user can keyboard-arrow through, and it broke the tests
+  encoding Kent's 2026-08-13 ruling. Narrowness is the safety property — a
+  border bundled with anything else reads as `"other"` and keeps the pause.
+  Two defects fell out of building it, both caught by writing the test first:
+  pressing "Digitize again" during the pause ran TWICE (the armed timer fired
+  behind it), and arming the 0 ms path flashed "restitching when you stop
+  editing" for a frame, since a 0 ms timeout is a macrotask and fires after
+  Svelte flushes.
 - **Where the 10 seconds actually goes — measured 2026-08-13, and it decides
   whether a cache is worth funding** (Kent asked for the number first):
 

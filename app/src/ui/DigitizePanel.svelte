@@ -28,6 +28,7 @@
     textClusterMembers,
     textClusterSeed,
     remapBlockColors,
+    editKind,
     spoolCount } from "../lib/digitizer.js";
   import {
     appliedBorders,
@@ -294,6 +295,15 @@
 
   async function runDigitize(el) {
     if (!el.sourcePng || !health) return;
+    // An armed restitch is now redundant whichever way this call goes: either
+    // it runs below with the current edits in it, or the in-flight guard sets
+    // `rerunWanted` and it runs straight after with the same edits. Letting
+    // the timer survive would put a second identical run behind this one —
+    // 10-14 s of service time on a photograph, for nothing. (Reachable before
+    // this by pressing "Digitize again" during the pause.)
+    clearTimeout(restitchTimer);
+    restitchTimer = 0;
+    restitchArmed = false;
     if (phase !== "idle") {
       rerunWanted = true; // a change landed mid-flight; run again after
       return;
@@ -446,24 +456,66 @@
   // ten adjustments cost one run, not ten.
   const RESTITCH_IDLE_MS = 2000;
   let restitchTimer = 0;
-  let prevEditsKey = editsKey(canonicalShapeEdits(element));
+  // Armed = a restitch is scheduled and has not started. Its own flag rather
+  // than `restitchTimer !== 0` because the timer id is a number Svelte has no
+  // reason to treat as interesting, and the "Restitch now" control has to
+  // appear and disappear with it.
+  let restitchArmed = false;
+  let prevEdits = canonicalShapeEdits(element);
+  let prevEditsKey = editsKey(prevEdits);
   $: {
-    const k = editsKey(canonicalShapeEdits(element));
+    const edits = canonicalShapeEdits(element);
+    const k = editsKey(edits);
     if (k !== prevEditsKey) {
+      // WHAT moved decides how long to wait — see editKind in digitizer.js.
+      // A border is complete the moment it is picked, so it starts stitching
+      // on the click instead of two seconds after it; everything else keeps
+      // the pause it already had (a drag needs it, and Kent's 2026-08-13
+      // ruling covers the rest).
+      const kind = editKind(prevEdits, edits);
+      prevEdits = edits;
       prevEditsKey = k;
       // `health` gates it: with no service there is nothing to restitch to,
       // and the existing "saved with the design, applied next time you
       // digitize" branch already covers that honestly.
-      if (element.result && health) scheduleRestitch();
+      if (element.result && health) {
+        scheduleRestitch(kind === "border" ? 0 : RESTITCH_IDLE_MS);
+      }
     }
   }
 
-  function scheduleRestitch() {
+  // Still a timeout at 0 ms rather than a direct call: this runs inside a
+  // reactive statement, and runDigitize patches the element, so calling it
+  // here would re-enter the block mid-flush. A zero-delay timeout puts the run
+  // on the next tick, where every other caller already starts it.
+  function scheduleRestitch(delayMs) {
+    const wait = delayMs == null ? RESTITCH_IDLE_MS : delayMs;
     clearTimeout(restitchTimer);
+    // Armed only when there is a pause to be armed THROUGH. A 0 ms timeout is
+    // a macrotask, so it fires after Svelte has flushed the DOM — arming it
+    // "just for a moment" paints "restitching when you stop editing" for a
+    // frame on every border toggle, about an edit that is not waiting for
+    // anything. Measured, not reasoned: the test above this behaviour failed
+    // before this line read `wait > 0`.
+    restitchArmed = wait > 0;
     restitchTimer = setTimeout(() => {
       restitchTimer = 0;
+      restitchArmed = false;
       runDigitize(element);
-    }, RESTITCH_IDLE_MS);
+    }, wait);
+  }
+
+  // "Restitch now" — skip the remaining pause. Only reachable while a restitch
+  // is armed, so it never starts a run the scheduler was not already going to
+  // start; it just stops making the user wait out a pause they have finished
+  // with. (A drag is the case this is for: the pause is right by default, and
+  // wrong the moment you know you are done.)
+  function restitchNow() {
+    if (!restitchArmed) return;
+    clearTimeout(restitchTimer);
+    restitchTimer = 0;
+    restitchArmed = false;
+    runDigitize(element);
   }
 
   onDestroy(() => clearTimeout(restitchTimer));
@@ -475,6 +527,12 @@
   // ---- derived view state ---------------------------------------------------
 
   $: pending = phase !== "idle";
+  // A run in flight OR one armed and waiting out its pause. Both mean the same
+  // thing to anything READING the stitch plan — what is on the canvas is the
+  // previous request — and the armed window used to be unmarked, so a dragged
+  // outline sat for two seconds with the readouts silently describing the
+  // design the user had just changed.
+  $: restitching = pending || restitchArmed;
   $: statusLine =
     phase === "running" ? "Digitizing your art…" :
     phase === "queued" ? "Waiting for the digitizer — another job is running…" :
@@ -1686,7 +1744,7 @@
            what MOVE when the toggle does. On a payload with no `runs` the
            wording says "requested" and never "sewn" (borderMenu.js). -->
       {#if element.result}
-        <div class="dgp-borders" class:dgp-borders-stale={pending}>
+        <div class="dgp-borders" class:dgp-borders-stale={restitching}>
           <p class="dgp-bline">
             <span class="dgp-bkey">Borders</span>
             <span
@@ -1699,7 +1757,7 @@
             <span class="dgp-bkey">Design edge</span>
             <span title={edgeCap.title}>{edgeCapLine}</span>
           </p>
-          {#if pending}
+          {#if restitching}
             <p class="dgp-bnote">Restitching — these read the previous stitch plan.</p>
           {/if}
         </div>
@@ -1776,6 +1834,20 @@
       {pending ? "Digitizing…" : element.result ? "Digitize again" : "Digitize"}
     </button>
     {#if statusLine}<p class="dgp-status" role="status">{statusLine}</p>{/if}
+    <!-- The armed window: an edit has landed and its restitch is waiting out
+         the pause. A border never gets here — it schedules at 0 ms and is
+         never armed at all, deliberately, so this line cannot flash for an
+         edit that is not waiting for anything — so this is the OTHER edits: a
+         dragged outline above all, where the pause is right by default and
+         wrong the moment you know you are finished. That is what the button is
+         for: before it, the only way to skip the wait was to stop trusting it
+         and press "Digitize again", which queued a second identical run. -->
+    {#if restitchArmed}
+      <p class="dgp-status dgp-armed" role="status">
+        <span>Change saved — restitching when you stop editing.</span>
+        <button type="button" class="dgp-now" on:click={restitchNow}>Restitch now</button>
+      </p>
+    {/if}
 
     {#if element.result}
       <p class="dgp-stats">
@@ -2948,6 +3020,18 @@
     background: var(--bg);
   }
   .dgp-borders-stale { opacity: 0.6; }
+  .dgp-armed { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+  .dgp-now {
+    font: inherit;
+    font-size: 0.85em;
+    padding: 0.15rem 0.5rem;
+    border: 1px solid currentColor;
+    border-radius: 3px;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+  }
+  .dgp-now:hover { background: rgba(127, 127, 127, 0.18); }
   .dgp-bline {
     margin: 0;
     font-size: var(--fs-2xs);

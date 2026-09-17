@@ -17,7 +17,7 @@ at the bottom for the authority model behind the confidence ratings.
 four of its findings are standing rulings in [`DOCTRINE.md`](DOCTRINE.md). Its
 code and instruments are ON `main`. *(confirmed 2026-08-17 — `git ls-tree`)*
 
-**Last updated:** 2026-09-08. **This file is current state only, under an
+**Last updated:** 2026-09-17. **This file is current state only, under an
 800-line budget.** Its three companions: standing rulings, rejected approaches,
 corrections and session-costing traps live in [`DOCTRINE.md`](DOCTRINE.md);
 dated snapshots in [`docs/scope-history.md`](docs/scope-history.md); per-area
@@ -278,22 +278,15 @@ being deleted, same as the defect list. Detail stays in its own section rather
 than duplicated here, so this list can go stale about WHAT IS OPEN but never
 about the facts.
 
-1. **RESOLVED 2026-08-22 — the stage 0-4 cache is funded and built**, split at
-   the review-edit seam. *(confirmed — tests/test_generation_cache.py)*
+1. **RESOLVED 2026-08-22 — the stage 0-4 cache is funded and built**, split at the review-edit seam. *(tests/test_generation_cache.py)*
 
-9. **RESOLVED 2026-08-24 — tonal v1: shade escape closed, `bound_shade` ships
-   ON** as the photo-route default. *(2026-08-24 — area 1)*
+9. **RESOLVED 2026-08-24 — tonal v1: shade escape closed, `bound_shade` ships ON** as the photo-route default. *(area 1)*
 
 **Also open, same category — so this queue is not a half-truth. All predate
 2026-08-14 except where noted:**
 
-2. **RESOLVED 2026-09-08 — the DST codec is fixed, both directions**, and it
-   never needed the call: gate 1 listed it as a physical constant, and which
-   nibble carries X is settled by a documented format with a reference
-   implementation in `digitizer/.venv`. Retired from the gate the same day.
-   *(DOCTRINE 2026-09-07/08; ROADMAP gate 1)*
-3. **RESOLVED 2026-08-19, ratified 2026-09-02 — `split_tonal_regions` is ON for
-   photo classes** (`effective_split_tonal`). Cost: defect 20.
+2. **RESOLVED 2026-09-08 — the DST codec is fixed, both directions**, and never needed the call; retired from gate 1 the same day. *(DOCTRINE 2026-09-07/08; ROADMAP gate 1)*
+3. **RESOLVED 2026-08-19, ratified 2026-09-02 — `split_tonal_regions` is ON for photo classes** (`effective_split_tonal`). Cost: defect 20.
 4. **Billing / backend.** Tabled since the pivot; Stripe + an entitlement
    check is the leaning, nothing committed. Needs its own session. See
    `PRODUCT.md`, "Open — not yet decided".
@@ -319,15 +312,9 @@ about the facts.
    auto-scaling of any text containing `+ - / < = > \ _ ¯ °`. **0** → all 26
    are the same gate-1 case and this closes permanently.
    *(measured 2026-08-28 — `.embf` decode; detail: area 2)*
-10. **RESOLVED 2026-08-25 — Studio typography: "tighter and more editorial."**
-   Kent's standing direction; new UI is set to it, not re-litigated. What it
-   means in practice is in the area doc. *(2026-08-25)*
+10. **RESOLVED 2026-08-25 — Studio typography: "tighter and more editorial."** Kent's standing direction; new UI is set to it, not re-litigated. *(area doc)*
 
-11. **RESOLVED 2026-09-02 (Kent's call) — `cfg.is_photographic` is reachable
-   from the UI.** Detection remains open as defect 15. The correction this
-   entry carried — it described the world before the fix — is in
-   [`DOCTRINE.md`](DOCTRINE.md).
-   *(confirmed 2026-09-07 — grep; `digitizer.js`, `DigitizePanel.svelte`)*
+11. **RESOLVED 2026-09-02 (Kent's call) — `cfg.is_photographic` is reachable from the UI.** Detection remains open as defect 15. *(confirmed 2026-09-07; correction in DOCTRINE)*
 
 8. **Font lawyer consult — optional.** Only gates RESTORING the 13 pulled
    ShareAlike fonts; the brief is written and ready to send. Nothing waits
@@ -341,8 +328,7 @@ about the facts.
    adjacent-shade pairs and their ΔE are in [area 1](docs/scope/1-auto-digitizing-quality.md).
    *(measured 2026-09-02; tabled 2026-09-02 — Kent)*
 
-13. **RESOLVED 2026-09-03 — the stitch-angle rule is ADOPTED (cap 30°)**, both
-   passes built and flipped ON by Kent. *(2026-09-03 — area 1)*
+13. **RESOLVED 2026-09-03 — the stitch-angle rule is ADOPTED (cap 30°)**, both passes built and flipped ON by Kent. *(area 1)*
 
 14. **RESOLVED 2026-09-12 for XXX and VP3 — Kent's scope call.**
    `SERVICE_ONLY_FORMATS` is `{jef, xxx, vp3}` and both have buttons; PEC and
@@ -365,6 +351,15 @@ about the facts.
    touch. *(2026-09-12 — `app/src/App.stepHistory.spec.js`, with a source
    guard that no bare `step = ...` bypasses the helper)*
 
+17. **OPEN: clearing a stale BORDER now recovers on one click, not two.** The
+   0 ms border path reads the edit SET, so it cannot tell a border picked off
+   the menu from one dropped by the unmatched-edit "Clear them" recovery, which
+   used to need "Apply layer changes" after it. A stale BOUNDARY still pauses,
+   so the click count depends on what went stale. Both recover; nothing is
+   silently dropped. Gating recovery out of the fast lane is a few lines if
+   Kent wants the two-click contract back.
+   *(2026-09-17 — `e2e/digitize-stale-edits.spec.js`)*
+
 16. **Manual mode does not reproduce auto's sew order once a tiny region exists
    in an early layer.** Auto orders blocks by PALETTE LAYER, manual by AREA.
    Surfaced 2026-09-13 by the `keep_thin_strokes` flip, which adds exactly
@@ -381,29 +376,21 @@ area they drag down, documented once here.
 ### DST codec — FIXED, both directions (2026-09-08)
 
 X and Y were in the wrong nibbles of every record byte, and it round-tripped
-against itself so the pair's own tests never saw it. **It was a MIRROR, not a
-quarter turn** — a bbox swap fits both, and the Studio told customers to rotate,
-which cannot fix one. Both encoders now match
+against itself so the pair's own tests never saw it. Both encoders now match
 `pystitch.DstWriter.encode_record` bit-for-bit and the crossval DST control
-reads `identity`. Two siblings closed the same week: the colour-change byte (a
-standard reader saw ZERO stops) and the terminal `end` sentinel written as a
-stitch. *(fixed 2026-09-08 — `test/dst.test.js` byte pins from pystitch)*
+reads `identity`; the colour-change byte and the terminal `end` sentinel closed
+the same week. **The cross-validation harness is ALIVE** and CI fails loud when
+its pins cannot run. *(fixed 2026-09-08 — `test/dst.test.js` byte pins)*
 
 **Still true, and the only live part:** a `.dst` written BEFORE the fix is in
 the old dialect and re-imports mirrored. Old files are not repaired, so
-DesignPanel's note stays, scoped to pre-fix files and the scoping asserted. The
-Download step's DST caveats, asterisk and demotion behind PES are gone, their
-absence asserted in `DownloadStep.spec.js` and `design-import.spec.js`.
+DesignPanel's note stays, scoped to pre-fix files and the scoping asserted.
 
-**The cross-validation harness is ALIVE** — it reproduced the transposition
-exactly (rms 0.0) and caught the broken browser PES/EXP encoders; CI fails loud
-when the pins cannot run. *(confirmed 2026-08-22 — engine green, 0 skips)*
-
-The 2026-09-07 lettering-routing measurement is superseded: both encoders are
-spec-correct, so lettering's encoder is a routing question, not a correctness
-one. Teardown and superseded numbers: DOCTRINE 09-07/08,
-`docs/dst-axis-verdict-2026-07-31.md`, `docs/scope/4-export-formats.md`,
-scope-history 09-08, `dst-codec-axis-discrepancy` in memory.
+How it was diagnosed (a MIRROR, not a quarter turn — a bbox swap fits both),
+the superseded lettering-routing measurement, and the full teardown:
+[area 4](docs/scope/4-export-formats.md), DOCTRINE 09-07/08,
+`docs/dst-axis-verdict-2026-07-31.md`, scope-history 09-08,
+`dst-codec-axis-discrepancy` in memory.
 
 ### Font license compliance — RESOLVED, and kept resolved by construction
 
@@ -750,7 +737,7 @@ slightly off the artwork — a bug that reads as an inaccurate *tracer*.
 and indigo respectively. Ember's gesture and colour vocabulary, matched
 deliberately. The default bow takes its side from the turn the path is making,
 so a run of curved nodes arcs instead of scalloping. Backspace mid-draft takes
-back the last node. *(confirmed 2026-08-25 — `curvedNodeThrough` tests + browser)* **The border decision is on the canvas too (2026-09-09, Kent's pick after item 6):** right-click a recognised shape — on its outline, or anywhere inside it — and the field's tool menu grows a shape section: the shape's name, then **Add border** (writes the engine's `auto`: satin where a column fits, bean where not) or **Remove border** (`off`), and **Use design setting** once the shape has its own. It writes `shapeOverrides[sid].border`, the field the panel's Border select already edits, through the same `elupdate` path as a boundary drag, so undo, carry-forward across a re-digitize and the two-second idle restitch all come for free; a shape sewn as satin gets no border from either way in (stage 7's rule, on the item's tooltip). Interior picking is `shapeOverlay.hitShapeInterior` (smallest containing ring, so a mark inside a counter wins over its surround); the decision table is `borderMenu.js`. *(confirmed 2026-09-09 — `borderMenu.spec.js`, `shapeOverlay.spec.js`, `e2e/field-border-menu.spec.js` against the live service, and the open menu looked at at 1440 and 1024 px)*
+back the last node. *(confirmed 2026-08-25 — `curvedNodeThrough` tests + browser)* **The border decision is on the canvas too (2026-09-09, Kent's pick after item 6):** right-click a recognised shape — on its outline, or anywhere inside it — and the field's tool menu grows a shape section: the shape's name, then **Add border** (writes the engine's `auto`: satin where a column fits, bean where not) or **Remove border** (`off`), and **Use design setting** once the shape has its own. It writes `shapeOverrides[sid].border`, the field the panel's Border select already edits, through the same `elupdate` path as a boundary drag, so undo, carry-forward across a re-digitize and the automatic restitch all come for free; a shape sewn as satin gets no border from either way in (stage 7's rule, on the item's tooltip). **That restitch no longer waits (2026-09-17):** a border is complete when it is picked, so `editKind` schedules it at 0 ms; every other shape edit keeps the 2 s pause a drag needs. Narrow by construction — "border" only when EVERY difference in the edit set is a border value, so it cannot swallow a boundary. The edits that still pause say so, with a **Restitch now** control. *(measured 2026-09-17 — `editKind`, `lib/digitizer.js`; why it is not wider, in the area doc)* Interior picking is `shapeOverlay.hitShapeInterior` (smallest containing ring, so a mark inside a counter wins over its surround); the decision table is `borderMenu.js`. *(confirmed 2026-09-09 — `borderMenu.spec.js`, `shapeOverlay.spec.js`, `e2e/field-border-menu.spec.js` against the live service, and the open menu looked at at 1440 and 1024 px)*
 
 **Detail moved to the area doc (2026-08-27, rule 5):** the copy/paste, Duplicate
 and Dim-slider defects; the 2026-08-26 browser session (a canvas opening below
