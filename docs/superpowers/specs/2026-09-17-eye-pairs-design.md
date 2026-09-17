@@ -192,7 +192,7 @@ the instruments' INNER functions; nothing re-digitizes.
 | `trims_per_1000` | lower | preflight metrics / Design records | yes |
 | `preflight_raw_score` | higher | `run_preflight(...)["metrics"]["raw_score"]` | no |
 | `preflight_blocks` | lower | count of `severity == "block"` | no |
-| `uncovered_wanted_mm2` | lower | preflight metrics | no |
+| `uncovered_total_mm2` | lower | preflight metrics — NOT `uncovered_wanted_mm2`, which is that check's DENOMINATOR (the area the design wants covered: 476.8 mm² on a tiny design graded A 100, measured 2026-09-17) and says nothing about a defect | no |
 | `thread_worst_delta_e` | lower | preflight metrics | no |
 | `artfid`, `artfid_coverage`, `artfid_structure` | higher | `artfidelity_self` `stitch_coverage_field` / `art_ink_field` / `register` / `ms_ssim` | yes |
 | `artfid_colour` | higher | `artfidelity_self.colour_score(image, result, plan, cfg)` | no |
