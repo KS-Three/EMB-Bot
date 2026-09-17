@@ -446,6 +446,21 @@ def classify_ribbon(poly: Polygon, max_width_mm: float, *,
             return _floor_or(RibbonVerdict(True, "stroke_ribbon", metrics),
                              stats, design_class, metrics)
         return RibbonVerdict(False, "dt_irregular", metrics)
+    if area_weighted and stats.elongation < _PROMOTE_ELONGATION_MIN:
+        # SCOPED 2026-09-16, on the render rather than on the stitch count.
+        # Weighting the radii by area lets a shape pass `2s < m` that the
+        # unweighted reading refuses -- and where that flip is what earned
+        # satin, the shape has to BE a stroke. Rendered, it often is not: of
+        # the ten shapes the flag promotes, Fremont's 33.1 mm2 blob
+        # (elongation 7.0) and enthusiast's 19.9 mm2 star (8.1) sew a
+        # criss-cross over something the fill handled cleanly, while drone's
+        # 14.7 mm2 edge strip (16.8) becomes the satin column it always
+        # wanted to be. So a flipped verdict is held to the promote path's
+        # own bar, `_PROMOTE_ELONGATION_MIN`; the check costs a second DT
+        # only on shapes the weighting actually rescued.
+        plain = _dt_stats(poly)
+        if plain is not None and 2.0 * plain.std >= plain.mean:
+            return RibbonVerdict(False, "dt_irregular", metrics)
     if stats.p90_mm > max_width_mm:
         return RibbonVerdict(False, "dt_p90_cap", metrics)
     return _floor_or(RibbonVerdict(True, "satin", metrics),
