@@ -70,6 +70,13 @@ def test_a_missing_tesseract_reads_null_not_a_crash(tiny, held, monkeypatch):
     def no_ocr(*_a, **_k):
         raise RuntimeError("tesseract is not installed")
 
+    # A box without the binary is BOTH of these at once. Patching `measure`
+    # alone is not that box: where tesseract IS installed (CI), preflight's
+    # own legibility check calls the same module-level `measure`, and the
+    # raise escapes `run_preflight` instead of reaching the guard under test.
+    # That is how this test went red on PR #506's digitizer job (2026-09-18)
+    # while passing on Kent's machine, which has no tesseract.
+    monkeypatch.setattr(ft.core_legibility, "tesseract_available", lambda: False)
     monkeypatch.setattr(ft.core_legibility, "measure", no_ocr)
     row = ft.features_full(tiny, cfg, gen, result, plan, design)
     assert row["legibility"] is None
