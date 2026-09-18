@@ -135,6 +135,73 @@ def test_the_default_runner_measures_the_worktree_it_actually_built(tiny_repo, t
     assert not dest.exists()
 
 
+def registered(repo: Path) -> int:
+    """How many worktrees git believes this repository has (1 = just itself)."""
+    return git(repo, "worktree", "list", "--porcelain").count("worktree ")
+
+
+def half_made(worktree: Path) -> None:
+    """What a `git worktree add` killed midway leaves: the registration and
+    a directory, but no `.git` file tying one to the other."""
+    (worktree / ".git").unlink()
+
+
+def test_a_half_made_worktree_does_not_block_the_next_run(tiny_repo, tmp_path):
+    """Review 2026-09-17, measured on git 2.55: `worktree remove --force`
+    clears a registration whose directory is wholly GONE, but fails
+    validation on a half-made one ("'.git' does not exist"). The runner then
+    rmtree'd the directory and called `add`, which git refuses — "a missing
+    but already registered worktree; use ... 'prune'" — for every fixture of
+    every later render, as an error row that does not say why."""
+    from tools.eye_pairs import __main__ as cli
+    repo, old, _same = tiny_repo
+    scratch = tmp_path / "scratch"
+    scratch.mkdir()
+    dest = scratch / f"eye-pairs-ref-{old}"
+    half_made(refarm.add_worktree(repo, old, dest))
+    _runner, closer, _env = cli._default_ref_runner(old, repo=repo, scratch=scratch)
+    assert (dest / "digitizer" / "requirements.txt").exists()
+    closer()
+    assert registered(repo) == 1 and not dest.exists()
+
+
+def test_a_failure_after_the_worktree_exists_leaves_nothing_behind(tiny_repo, tmp_path, monkeypatch):
+    from tools.eye_pairs import __main__ as cli
+    repo, old, _same = tiny_repo
+    scratch = tmp_path / "scratch"
+    scratch.mkdir()
+
+    def dies(*_a, **_k):
+        raise RuntimeError("could not compare requirements.txt")
+
+    monkeypatch.setattr(cli, "ref_environment", dies)
+    with pytest.raises(RuntimeError, match="requirements"):
+        cli._default_ref_runner(old, repo=repo, scratch=scratch)
+    assert registered(repo) == 1
+    assert not (scratch / f"eye-pairs-ref-{old}").exists()
+
+
+def test_the_closer_clears_a_worktree_git_can_no_longer_remove(tiny_repo, tmp_path):
+    from tools.eye_pairs import __main__ as cli
+    repo, old, _same = tiny_repo
+    scratch = tmp_path / "scratch"
+    scratch.mkdir()
+    _runner, closer, _env = cli._default_ref_runner(old, repo=repo, scratch=scratch)
+    half_made(scratch / f"eye-pairs-ref-{old}")       # damaged while the render ran
+    closer()
+    assert registered(repo) == 1
+    assert not (scratch / f"eye-pairs-ref-{old}").exists()
+
+
+def test_pruning_never_touches_a_worktree_that_is_still_there(tiny_repo, tmp_path):
+    """`git worktree prune` only drops registrations whose directory is
+    missing — the property that makes it safe beside Kent's live lanes."""
+    repo, old, _same = tiny_repo
+    live = refarm.add_worktree(repo, old, tmp_path / "live_lane")
+    refarm.prune_worktrees(repo)
+    assert registered(repo) == 2 and (live / "digitizer" / "requirements.txt").exists()
+
+
 def stub_engine(root: Path) -> Path:
     """A fake `digitizer_core` that answers with what it was asked."""
     pkg = root / "digitizer_core"

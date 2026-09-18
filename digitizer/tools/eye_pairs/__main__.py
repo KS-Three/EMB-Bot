@@ -40,7 +40,7 @@ from . import features as ft
 from .features import base_cfg, digitize_once, features_design_only, features_full
 from .pairs import (ARMS, BASE, ArmRun, build_pairs, design_hash, load_picks,
                     sealed_hash, unpicked)
-from .refarm import add_worktree, ref_environment, remove_worktree, run_ref_design
+from .refarm import add_worktree, discard_worktree, ref_environment, run_ref_design
 from .server import PORT, make_server
 
 DIGITIZER = Path(__file__).resolve().parents[2]
@@ -90,15 +90,21 @@ def _default_ref_runner(ref: str, *, repo=None, scratch=None):
     repo = REPO if repo is None else Path(repo)
     scratch = Path(tempfile.gettempdir() if scratch is None else scratch)
     dest = scratch.resolve() / f"eye-pairs-ref-{ref}"
-    remove_worktree(repo, dest)                       # a crashed earlier run
-    shutil.rmtree(dest, ignore_errors=True)
-    engine = add_worktree(repo, ref, dest) / "digitizer"
-    env = ref_environment(repo, ref, main_digitizer=repo / "digitizer", ref_digitizer=engine)
+    discard_worktree(repo, dest)                      # a crashed earlier run
+    try:
+        engine = add_worktree(repo, ref, dest) / "digitizer"
+        env = ref_environment(repo, ref, main_digitizer=repo / "digitizer",
+                              ref_digitizer=engine)
+    except BaseException:
+        # No closer exists yet, so nothing else would ever clean this up —
+        # whether `add` died partway or the measuring after it did.
+        discard_worktree(repo, dest)
+        raise
 
     def runner(image, width_mm, garment, max_colors):
         return run_ref_design(sys.executable, engine, image, width_mm, garment, max_colors)
 
-    return runner, lambda: remove_worktree(repo, dest), env
+    return runner, lambda: discard_worktree(repo, dest), env
 
 
 def render(out=OUT, cases=None, arms=None, fixtures=None, only_arms=None,

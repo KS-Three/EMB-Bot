@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import subprocess
 import tempfile
 from pathlib import Path
@@ -74,6 +75,28 @@ def remove_worktree(repo_root, dest) -> None:
     path = guard_scratch(dest, repo_root)
     subprocess.run(["git", "-C", str(repo_root), "worktree", "remove", "--force",
                     str(path)], check=False, **CAPTURED)
+
+
+def prune_worktrees(repo_root) -> None:
+    """Drop registrations whose directory is GONE — and only those, which is
+    what makes this safe beside live lanes: a worktree that is still there
+    is never touched."""
+    subprocess.run(["git", "-C", str(repo_root), "worktree", "prune"],
+                   check=False, **CAPTURED)
+
+
+def discard_worktree(repo_root, dest) -> None:
+    """Leave neither a directory nor a registration, whatever state the
+    worktree is in. `remove --force` alone is not that: measured on git
+    2.55, it clears a registration whose directory is wholly gone but fails
+    validation on a HALF-MADE one (an `add` killed midway: the directory,
+    no `.git` file) — and with the registration left behind, every later
+    `add` at that path is refused as "missing but already registered"
+    (review 2026-09-17). Removing the directory and pruning covers both."""
+    path = guard_scratch(dest, repo_root)
+    remove_worktree(repo_root, path)
+    shutil.rmtree(path, ignore_errors=True)
+    prune_worktrees(repo_root)
 
 
 def rembg_venv_present(digitizer_dir) -> bool:
