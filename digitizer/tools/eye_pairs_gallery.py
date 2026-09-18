@@ -229,6 +229,43 @@ def pair_records(public: list[dict], sealed: dict[str, dict], picks: dict[str, d
     return recs
 
 
+def _empty_tally() -> dict:
+    return {"wins": 0, "losses": 0, "ties": 0, "skipped": 0, "by_fixture": {}}
+
+
+def arm_tally(recs: list[dict], skipped: list[dict]) -> dict[str, dict]:
+    """Per arm, its live pairs against shipped as COUNTS, per fixture and
+    pooled, plus how many fixtures skipped it as identical. Repeats are the
+    consistency control and are not counted twice; never a rate."""
+    tally: dict[str, dict] = {}
+    for r in recs:
+        if r["kind"] != "live" or not r["arm"]:
+            continue
+        t = tally.setdefault(r["arm"], _empty_tally())
+        if r["pick"] == "tie":
+            t["ties"] += 1
+            t["by_fixture"][r["fixture"]] = "tie"
+        elif r["pick"] == r["arm_side"]:
+            t["wins"] += 1
+            t["by_fixture"][r["fixture"]] = "win"
+        else:
+            t["losses"] += 1
+            t["by_fixture"][r["fixture"]] = "loss"
+    for s in skipped:
+        tally.setdefault(s["arm"], _empty_tally())["skipped"] += 1
+    return tally
+
+
+def fixture_sizes() -> dict[str, tuple[float, str]]:
+    """Width and garment per fixture from the yardstick's own source,
+    `tools.thin_strokes.REAL_ART`; an unknown fixture shows blanks."""
+    try:
+        from tools.thin_strokes import REAL_ART
+    except ImportError:
+        return {}
+    return {name: (float(w), g) for name, (_rel, w, g) in REAL_ART.items()}
+
+
 def build(src: Path, out: Path, budget: int = BUDGET_BYTES) -> dict:
     public = json.loads((Path(src) / "pairs.json").read_text(encoding="utf-8"))
     picks = final_picks(Path(src) / "picks.jsonl")

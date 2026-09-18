@@ -265,3 +265,31 @@ def test_refused_metric_is_flagged_not_dropped():
     r = _records()
     art = _chip(r["P003"]["chips"], "artfid")
     assert art["refused"] is True and art["prefers"] == "R" and art["agrees"] is True
+
+
+# ---- tallies --------------------------------------------------------------
+
+def test_arm_tally_counts_live_pairs_only_and_identical_skips():
+    recs = list(_records().values())
+    t = g.arm_tally(recs, SKIPPED)
+    assert t["per_stroke"] == {"wins": 1, "losses": 0, "ties": 0, "skipped": 0,
+                               "by_fixture": {"fx_a": "win"}}   # the repeat P004 is not counted
+    assert t["polygon_axis"]["wins"] == 1
+    assert t["design_angle"] == {"wins": 0, "losses": 0, "ties": 0, "skipped": 1,
+                                 "by_fixture": {}}
+    assert g.BASE not in t
+
+
+def test_arm_tally_loss_and_tie():
+    picks = {pid: {"pair": pid, "choice": c, "ms": 1, "ts": "t", "undo_of": None}
+             for pid, c in {**PICKS, "P001": "R", "P003": "tie"}.items()}
+    recs = g.pair_records(PUBLIC, SEALED, picks, FEATS, {})
+    t = g.arm_tally(recs, [])
+    assert (t["per_stroke"]["losses"], t["per_stroke"]["by_fixture"]) == (1, {"fx_a": "loss"})
+    assert (t["polygon_axis"]["ties"], t["polygon_axis"]["by_fixture"]) == (1, {"fx_b": "tie"})
+
+
+def test_fixture_sizes_reads_the_real_art_table():
+    sizes = g.fixture_sizes()
+    assert sizes["becker"] == (100.0, "left_chest")
+    assert sizes["fremont"] == (92.5, "patch")
