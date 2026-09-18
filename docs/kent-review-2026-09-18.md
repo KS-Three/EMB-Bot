@@ -55,6 +55,12 @@ enthusiast (`polygon_axis`), drone and screenshot (`area_weighted`) were
 judged bad under both settings, with no note on what is wrong. These are the
 lead to follow if quality work resumes from this review.
 
+**Re-render them before chasing them.** These renders came from the renderer
+as it stood before #513 ("draw jump runs — they sew, and skipping them faked
+bare letters"). Both sides of every pair were drawn by the same renderer, so
+the before/after comparisons stand. But a logo judged bad on both sides may
+have been partly judged on bare-looking letters that actually sew.
+
 ## Side effects recorded elsewhere
 
 - **Blinding:** this review showed five of PR #506's ten blind-sitting arms
