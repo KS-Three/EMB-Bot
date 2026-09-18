@@ -209,13 +209,19 @@ def test_a_directionless_metric_is_described_never_judged():
                                                 "picked_higher": 10}
 
 
-def test_ref_rows_are_kept_apart_from_flag_rows():
+def test_design_only_rows_are_kept_apart_from_flag_rows_by_the_stored_flag():
     sealed, picks, feats = world(4, agree=4)
+    # NOT named like REF_ARM — the stored flag is what decides the bucket.
     sealed["P900"] = {"fixture": "fx0", "kind": "live", "repeat_of": None,
-                      "left_arm": BASE, "right_arm": REF_ARM}
+                      "left_arm": BASE, "right_arm": "ref_0901", "design_only": True}
     picks["P900"] = {"pair": "P900", "choice": "L"}
+    # Named like the ref arm but NOT design-only: stays in the flag bucket.
+    sealed["P901"] = {"fixture": "fx1", "kind": "live", "repeat_of": None,
+                      "left_arm": BASE, "right_arm": REF_ARM, "design_only": False}
+    picks["P901"] = {"pair": "P901", "choice": "R"}
     assert [r["pair"] for r in an.decided_rows(sealed, picks, ref=True)] == ["P900"]
-    assert "P900" not in [r["pair"] for r in an.decided_rows(sealed, picks, ref=False)]
+    flag = [r["pair"] for r in an.decided_rows(sealed, picks, ref=False)]
+    assert "P900" not in flag and "P901" in flag
 
 
 def test_the_ceiling_is_kents_own_consistency():

@@ -28,6 +28,13 @@ from tools.artfidelity_self import (INK_SATURATION_MAX, MISMATCH_MAX, WEIGHTS,
                                     stitch_coverage_field)
 from tools.thin_strokes import STUDIO_MAX_COLORS
 
+# Bump when a metric is added, removed or redefined. A cached features row
+# whose `schema` differs is a cache MISS: without this, a metric added later
+# never reached rows rendered earlier, and the analysis (which reads by
+# `.get`) quietly scored that metric on fewer pairs (review finding 7,
+# 2026-09-17).
+FEATURES_SCHEMA = 1
+
 # Metrics whose input is the artwork's ink mask: one refusal covers them all.
 INK_METRICS = ("artfid", "artfid_no_colour", "artfid_coverage", "artfid_structure",
                "artfid_colour", "lost_elements", "lost_frac", "ragged_mm", "hausdorff_mm")

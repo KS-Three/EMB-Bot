@@ -11,7 +11,7 @@ import math
 
 import numpy as np
 
-from .pairs import BASE, REF_ARM
+from .pairs import BASE
 
 # metric -> which way is BETTER. "none" is descriptive only: the spec gives
 # those no direction, so they can never be scored as agreement.
@@ -67,15 +67,18 @@ def _picked(s: dict, pick: dict | None) -> str | None:
 
 
 def decided_rows(sealed: dict, picks: dict, *, ref: bool) -> list[dict]:
-    """Decided LIVE pairs. `ref` selects the 08-27 arm or everything else —
-    the two are never pooled: the ref arm carries Design-only metrics."""
+    """Decided LIVE pairs. `ref=True` selects the design-only arms (an older
+    engine run out of process), `ref=False` everything else — the two are
+    never pooled, because a design-only arm carries only the Design-dict
+    metrics. The bucket is the STORED `design_only` flag on the sealed map,
+    never the arm's name (review finding 6, 2026-09-17)."""
     rows = []
     for pid in sorted(sealed):
         s = sealed[pid]
         if s["kind"] != "live":
             continue
         arm = _arm_of(s)
-        if (arm == REF_ARM) != ref:
+        if bool(s.get("design_only", False)) != ref:
             continue
         picked = _picked(s, picks.get(pid))
         if picked in (None, "tie"):

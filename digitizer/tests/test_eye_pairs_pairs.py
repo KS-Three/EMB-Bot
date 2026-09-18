@@ -67,6 +67,21 @@ def test_sides_are_balanced():
     assert abs(base_left - (len(sealed) - base_left)) <= 1
 
 
+def test_design_only_is_a_stored_fact_on_the_sealed_map():
+    """Review finding 6 (2026-09-17): the analysis used to pick the ref
+    bucket by the literal arm NAME. A second `__ref__` row would have been
+    scored in the flag bucket. The capability is stored, not inferred."""
+    rs = runs() + [ep.ArmRun("becker", "ref_0901", "h-old", design_only=True)]
+    _public, sealed, _ = ep.build_pairs(rs, n_identical=1, n_repeat=0)
+    by_arm = {}
+    for s in sealed.values():
+        arm = s["right_arm"] if s["left_arm"] == ep.BASE else s["left_arm"]
+        by_arm.setdefault(arm, set()).add(s["design_only"])
+    assert by_arm["ref_0901"] == {True}
+    assert by_arm["per_stroke"] == {False}
+    assert by_arm[ep.BASE] == {False}          # the identical control
+
+
 def test_the_public_file_leaks_nothing():
     public, _sealed, _ = ep.build_pairs(runs())
     text = json.dumps(public)

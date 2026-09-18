@@ -45,6 +45,13 @@ class ArmRun:
     fixture: str
     arm: str
     design_hash: str
+    # True for an arm that produced only a Design dict (an older engine run
+    # out of process), so it carries the design-only metrics and nothing
+    # else. STORED on the sealed map, never inferred from the arm's name:
+    # the analysis used to pick the ref bucket by the literal `REF_ARM`,
+    # and a second `__ref__` row would have been pooled into the flag
+    # statistics with real values (review finding 6, 2026-09-17).
+    design_only: bool = False
 
 
 def design_hash(design: dict) -> str:
@@ -73,11 +80,12 @@ def build_pairs(runs: list[ArmRun], seed: int = SHUFFLE_SEED,
                 skipped.append({"fixture": fx, "arm": arm,
                                 "reason": "identical_to_base"})
             else:
-                live.append({"fixture": fx, "arm": arm, "kind": "live"})
+                live.append({"fixture": fx, "arm": arm, "kind": "live",
+                             "design_only": by_fx[fx][arm].design_only})
 
     with_base = sorted(fx for fx in by_fx if BASE in by_fx[fx])
     rng.shuffle(with_base)
-    identical = [{"fixture": fx, "arm": BASE, "kind": "identical"}
+    identical = [{"fixture": fx, "arm": BASE, "kind": "identical", "design_only": False}
                  for fx in with_base[:n_identical]]
 
     order = live + identical
@@ -96,7 +104,8 @@ def build_pairs(runs: list[ArmRun], seed: int = SHUFFLE_SEED,
             continue
         order.insert(rng.choice(slots),
                      {"fixture": orig["fixture"], "arm": orig["arm"],
-                      "kind": "repeat", "flip": not orig["flip"], "of": orig})
+                      "kind": "repeat", "flip": not orig["flip"], "of": orig,
+                      "design_only": orig["design_only"]})
 
     for n, entry in enumerate(order, start=1):
         entry["pair"] = f"P{n:03d}"
@@ -113,8 +122,18 @@ def build_pairs(runs: list[ArmRun], seed: int = SHUFFLE_SEED,
             "fixture": entry["fixture"], "left_arm": left, "right_arm": right,
             "kind": entry["kind"],
             "repeat_of": entry["of"]["pair"] if entry["kind"] == "repeat" else None,
+            "design_only": entry["design_only"],
         }
     return public, sealed, skipped
+
+
+def sealed_hash(sealed: dict[str, dict]) -> str:
+    """The identity of a SITTING: what each pair id actually shows. The
+    public list cannot carry this (it names nothing, by design), so a guard
+    that compared public lists could not see an arm swap at equal count —
+    review finding 2, 2026-09-17, shown empirically."""
+    blob = json.dumps(sealed, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(blob.encode("utf-8")).hexdigest()
 
 
 # ---- the picks log ---------------------------------------------------------
