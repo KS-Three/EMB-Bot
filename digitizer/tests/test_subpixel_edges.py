@@ -550,6 +550,28 @@ def test_fit_corners_leaves_what_is_not_a_corner():
     assert protect[8] and not accepted[8]
 
 
+def test_fit_corners_places_an_acute_apex():
+    """A V apex — two sides at 15 deg either side of vertical, a 150 deg
+    turn — with the corner vertex sitting 1 px below the true apex. The
+    turn test is oriented along the contour's travel, so an apex past a
+    right angle is a corner too (it was refused on the absolute dot
+    product; review of PR #515)."""
+    apex = np.array([50.0, 20.0])
+    t = np.linspace(1.5, 7.0, 10)
+    left = np.column_stack([apex[0] - t * np.sin(np.radians(15.0)), apex[1] + t * np.cos(np.radians(15.0))])
+    right = np.column_stack([apex[0] + t * np.sin(np.radians(15.0)), apex[1] + t * np.cos(np.radians(15.0))])
+    # Travel: up the left side to the apex, then down the right side.
+    pts = np.vstack([left[::-1], [apex + (0.0, 1.0)], right, np.zeros((9, 2))])
+    n = len(pts)
+    accepted = np.array([True] * 10 + [False] + [True] * 10 + [False] * 9)
+    corner = np.zeros(n, dtype=bool)
+    corner[10] = True
+    protect = corner.copy()
+    _sp._fit_corners(pts.copy(), pts, accepted, protect, corner, steps=6)
+    assert np.allclose(pts[10], apex, atol=1e-6), pts[10]
+    assert accepted[10] and not protect[10]
+
+
 def test_the_native_read_squares_the_corners_of_an_upscaled_rectangle(tmp_path):
     """A 20 x 12 px rectangle whose edges sit mid-pixel — so every corner
     column is the other edge's ramp, the case the profile read either

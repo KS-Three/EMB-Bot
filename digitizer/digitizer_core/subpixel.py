@@ -212,7 +212,17 @@ def _fit_corners(raw: np.ndarray, pts: np.ndarray, accepted: np.ndarray, protect
             continue
         if min(span_a, span_b) < CORNER_FIT_MIN_SPAN_PX:
             continue
-        if abs(float(da @ db)) > cos_corner:           # the two sides must turn by CORNER_DEG
+        # Orient both directions along the contour's travel — `prev_idx`
+        # runs back from the corner, so its first point is the nearest —
+        # and require the turn between them to reach `CORNER_DEG`. Tested
+        # on the absolute dot product this was symmetric about a right
+        # angle and refused every turn past 120 deg: the apex of an A, V,
+        # M or N, a star's point (review of PR #515, 2026-09-18).
+        if float((prev_pts[0] - prev_pts[-1]) @ da) < 0.0:
+            da = -da
+        if float((next_pts[-1] - next_pts[0]) @ db) < 0.0:
+            db = -db
+        if float(da @ db) > cos_corner:                # a turn under CORNER_DEG is no corner
             continue
         # pa + s * da = pb + t * db
         det = da[0] * (-db[1]) - da[1] * (-db[0])
@@ -330,7 +340,15 @@ def subpixel_contour(raw_xy: np.ndarray, lab: np.ndarray, mask: np.ndarray,
             c_in = vals[:, k:k + 2].mean(axis=1)
             c_out = vals[:, k + 2:].mean(axis=1)
             axis = c_out - c_in
-            contrast = np.linalg.norm(axis, axis=-1)
+            # The three Lab channels in the exact expression the flat-lane
+            # goldens were captured with, and any further channel folded in
+            # by the same `hypot`: `np.linalg.norm` differs from this chain
+            # in the last float32 ulp on a quarter of vectors, and one ulp
+            # moved a drone vertex by 3.2e-6 mm with the flag OFF (review of
+            # PR #515, 2026-09-18) — "byte for byte" means this expression.
+            contrast = np.hypot(np.hypot(axis[:, 0], axis[:, 1]), axis[:, 2])
+            for c in range(3, channels):
+                contrast = np.hypot(contrast, axis[:, c])
             good = base_ok & ~got & (contrast >= min_contrast_de)
             denom = np.where(contrast > 0, contrast ** 2, 1.0)
             t = ((profile - c_in[:, None, :]) * axis[:, None, :]).sum(axis=-1) / denom[:, None]

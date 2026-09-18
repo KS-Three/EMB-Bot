@@ -13016,8 +13016,8 @@ the profile read through a corner pixel samples the OTHER edge's ramp — it
 refuses the corner (kept at its pixel centre, a bevel where the moved sides
 meet it: Becker's M, top left) or accepts it and places it 0.35-0.77 px short
 along the bevel. Only the native path asks for the fit, so a source at its
-own resolution is untouched. DEFAULT OFF, byte-identical off; 9 tests in
-`test_subpixel_edges.py`; `subpixel_edges_upscaled` in `config.py`.
+own resolution is untouched. DEFAULT OFF, byte-identical off; eight tests (nine
+cases) in `test_subpixel_edges.py`; `subpixel_edges_upscaled` in `config.py`.
 
 **Measured, synthetic truth** (a 40 px disc in a 120 px frame at 50 mm — 1.6
 px/mm in, upscaled x2.5 — as an opaque disc on white and as an alpha cutout
