@@ -24,7 +24,10 @@ Everything works in mm, y-down, the same space stage 4 produced.
 from __future__ import annotations
 
 import functools
+import hashlib
 import math
+import struct
+from collections import OrderedDict
 from functools import lru_cache
 
 import numpy as np
@@ -830,6 +833,119 @@ def _score(cost: tuple) -> float:
             + exposed_stitches * _EXPOSED_STITCH_WEIGHT)
 
 
+# ---------------------------------------------------------------------------
+# The fill-reorder memo.
+#
+# `_reorder_for_cover` is the single largest runtime bill in the pipeline:
+# measured 2026-09-17 at **41.67 s of owl_kent's 72.42 s edit tail (57.7%)**
+# and 48.8% of drone_render's, which is why a photograph takes over a minute
+# to re-stitch after a review edit
+# (`docs/flag-runtime-bills-2026-09-12.md`). Almost all of that is re-done
+# work: a review edit changes ONE shape, and **80 of owl_kent's 82 shapes do
+# byte-identical fill work across a border toggle** (measured the same day;
+# the two that move are the bordered shape and `__edge_cap__`).
+#
+# Both reorders are PURE FUNCTIONS OF ONE SHAPE'S OWN INPUTS, which is what
+# makes this safe rather than clever. Read `_reorder_for_cover`: its `sewn`
+# accumulator starts at None and unions only the paths it was handed, so it
+# never sees another shape, the sew order, or anything global. Same inputs,
+# same answer, always.
+#
+# So this is a MEMO, not an approximation: on a hit the caller gets the list
+# the function would have returned, and the stitches are byte-identical. That
+# is the whole design. The alternative considered and rejected was skipping
+# the cover reorder on interactive restitches and keeping it for export --
+# which would have been faster to write and wrong, because the flag exists to
+# take exposed travel from 286 mm to 90 (`config.fill_travel_under_cover`), so
+# the preview would have shown the "in-fill stitching doesn't look clean"
+# artefact that created the flag, and then downloaded something else. A memo
+# has no preview/final divergence to guard.
+#
+# Keyed on a content hash, not on object identity: a re-stitch rebuilds every
+# region from `Generation.fork()`, so the polygons are EQUAL but never the
+# same objects. Hashing a few hundred KB costs microseconds against a
+# function that costs seconds.
+_REORDER_MEMO: OrderedDict[bytes, list] = OrderedDict()
+# Bounded two ways, because an entry-count cap alone is not a memory bound:
+# an entry is one shape's path list, and those range from a handful of points
+# to tens of thousands. 512 entries of owl_kent's ~800-point shapes is about
+# 7 MB; 512 entries of a dense A3 fill would be hundreds. So the point budget
+# is the real limit and the entry count is the cheap guard in front of it.
+# (For scale, the service already tolerates `GenerationCache`'s 4 x 10-40 MB.)
+_REORDER_MEMO_MAX = 512
+_REORDER_MEMO_MAX_POINTS = 4_000_000     # ~64 MB of float pairs
+_reorder_memo_points = 0
+_reorder_memo_stats = {"hit": 0, "miss": 0}
+
+
+def clear_fill_reorder_memo() -> None:
+    """Drop every memoized reorder. For tests that assert on call counts, and
+    for a caller that wants the memory back. Never needed for correctness --
+    a stale entry is impossible, because the key is the full input."""
+    global _reorder_memo_points
+    _REORDER_MEMO.clear()
+    _reorder_memo_points = 0
+    _reorder_memo_stats["hit"] = 0
+    _reorder_memo_stats["miss"] = 0
+
+
+def _geom_bytes(g) -> bytes:
+    """Stable bytes for a shapely geometry, or a sentinel for None."""
+    if g is None:
+        return b"\x00"
+    try:
+        return g.wkb
+    except Exception:                    # pragma: no cover - defensive
+        return repr(g).encode()
+
+
+def _reorder_key(tag: bytes, paths, poly, ring, slack, entry, *scalars) -> bytes:
+    """Hash EVERY input the reordering functions read. Anything left out here
+    is a correctness bug, not a performance one -- two different inputs would
+    collide onto one answer -- so the argument list is deliberately spelled
+    out at each call site rather than captured with *args from the caller."""
+    h = hashlib.blake2b(digest_size=32)
+    h.update(tag)
+    h.update(struct.pack("<I", len(paths)))
+    for path in paths:
+        h.update(struct.pack("<I", len(path)))
+        for x, y in path:
+            h.update(struct.pack("<dd", x, y))
+    for g in (poly, ring, slack):
+        gb = _geom_bytes(g)
+        h.update(struct.pack("<I", len(gb)))
+        h.update(gb)
+    if entry is None:
+        h.update(b"\x00")
+    else:
+        h.update(struct.pack("<dd", float(entry[0]), float(entry[1])))
+    for v in scalars:
+        h.update(struct.pack("<d", float(v)))
+    return h.digest()
+
+
+def _memoized(key: bytes, compute):
+    """LRU lookup around a pure reorder. Returns a COPY of the cached list:
+    the caller owns its result and downstream code is free to mutate it, and
+    a shared list would let one shape's later edit rewrite another's answer."""
+    hit = _REORDER_MEMO.get(key)
+    if hit is not None:
+        _REORDER_MEMO.move_to_end(key)
+        _reorder_memo_stats["hit"] += 1
+        return [list(p) for p in hit]
+    _reorder_memo_stats["miss"] += 1
+    out = compute()
+    global _reorder_memo_points
+    stored = [list(p) for p in out]
+    _REORDER_MEMO[key] = stored
+    _reorder_memo_points += sum(len(p) for p in stored)
+    while _REORDER_MEMO and (len(_REORDER_MEMO) > _REORDER_MEMO_MAX
+                             or _reorder_memo_points > _REORDER_MEMO_MAX_POINTS):
+        _, evicted = _REORDER_MEMO.popitem(last=False)
+        _reorder_memo_points -= sum(len(p) for p in evicted)
+    return out
+
+
 def _reorder_for_fewer_cuts(paths: list[list[tuple[float, float]]], poly: Polygon,
                             ring, slack: Polygon, entry: tuple[float, float] | None,
                             trim_at_mm: float) -> list[list[tuple[float, float]]]:
@@ -1356,11 +1472,20 @@ def stitch_shape(poly: Polygon, shape_id: str, *, angle_deg: float | None,
         fill_paths = _fill_paths(poly, angle, row_mm, stitch_mm,
                                  machine.FILL_STAGGERS, entry, technique=technique,
                                  row_phase_mm=row_phase_mm, keep_row=keep_row)
-    fill_paths = _reorder_for_fewer_cuts(fill_paths, poly, ring, slack, entry,
-                                         trim_at_mm)
+    # Memoized, not changed: both reorders are pure functions of this shape's
+    # own inputs, so a hit returns exactly what the call would have. This is
+    # the seam a review edit re-crosses for every UNCHANGED shape -- 80 of
+    # owl_kent's 82 across a border toggle -- and `_reorder_for_cover` alone
+    # is 57.7% of that design's edit tail. See the memo's own comment.
+    _k = _reorder_key(b"cuts", fill_paths, poly, ring, slack, entry, trim_at_mm)
+    fill_paths = _memoized(_k, lambda: _reorder_for_fewer_cuts(
+        fill_paths, poly, ring, slack, entry, trim_at_mm))
     if under_cover:
-        fill_paths = _reorder_for_cover(fill_paths, poly, ring, slack, entry,
-                                        trim_at_mm, row_mm)
+        _k = _reorder_key(b"cover", fill_paths, poly, ring, slack, entry,
+                          trim_at_mm, row_mm)
+        _before = fill_paths
+        fill_paths = _memoized(_k, lambda: _reorder_for_cover(
+            _before, poly, ring, slack, entry, trim_at_mm, row_mm))
     emit(fill_paths, stitches.FILL, stitch_mm)
 
     if not runs:
