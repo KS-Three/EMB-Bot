@@ -48,7 +48,12 @@ copy for the three small files:
 | `arms.json` | fixture, `left_arm`, `right_arm`, `kind`, `repeat_of` |
 | `picks.jsonl` | last line per pair wins (`L` / `R` / `tie`), `undo_of` honoured |
 | `features.json` | descriptive counts and per-metric direction reads |
-| `results.json` | optional; if present, the exit-clause rows are shown as such |
+| `skipped.json` | optional; the per-arm `identical_to_base` count |
+
+`results.json` is NOT read (plan revision, 2026-09-17): its exit-clause rows
+are exactly the pairs where a metric's sign disagrees with the pick, which
+the chips below already carry, so the "disagreements" filter IS the
+exit-clause list and a second source for it would only drift.
 
 The gallery never digitizes, renders, or recomputes a metric. It imports
 nothing from `tools/eye_pairs/` (that package lands on a different lane);
@@ -82,11 +87,11 @@ python -m tools.eye_pairs_gallery [--src digitizer/eye_pairs_out] [--out <src>/g
    HTML are relative (`img/<hash>.jpg`), never absolute.
 
 Per pair record: `pair, kind, repeat_of, fixture, width_mm, garment,
-shipped_side ("L"|"R"|null for identical), arm_id, arm_change, arm_intent,
-pick, consistent (repeat pairs only: true if the same ARM was chosen both
-times), counts {L: {stitches, trims_per_1000}, R: {...}}, chips: [{metric,
-prefers ("L"|"R"), agrees (bool)}], exit_clause (bool, from results.json when
-present)`.
+shipped_side ("L"|"R"|null for identical), arm_side, arm, arm_change,
+arm_intent, pick, picked_arm, consistent (repeat pairs only: true if the
+same ARM was chosen both times), counts {L: {stitches, trims_per_1000,
+cones}, R: {...}}, chips: [{metric, prefers ("L"|"R"), agrees (bool),
+base, arm, refused (bool)}], img {L, R, art}`.
 
 A chip exists only where the metric is non-null on both arms and differs;
 `prefers` follows `METRIC_BETTER`; `agrees` is `prefers == pick`. Ties and
@@ -123,7 +128,7 @@ not rates), the arm's `identical_to_base` skips, and **the ruling control**:
 decisions are recorded; the page flips nothing.
 
 **Filters** as chips at the top: all · picked arm · picked shipped · ties ·
-controls · disagreements (any red chip) · exit-clause.
+controls · disagreements (any red chip — this is the exit-clause list).
 
 **Nothing on the page is a quality number.** `preflight_raw_score` appears
 only as a chip name like any other metric.
