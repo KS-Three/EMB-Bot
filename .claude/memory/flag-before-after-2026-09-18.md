@@ -26,10 +26,20 @@ pushed from the same session an hour earlier.
   `patch_junctions`, `polygon_axis`, `area_weighted`, `design_angle` and
   `rails_follow_edge` — the last was never in `ARMS` or the spec's §3.2 table,
   so it is a row there now. The rebuild rendered all eleven flags plus
-  `ref_0827` on the nine logos: __COUNTS__.
-- **Republished to the SAME URL.** Its `db` was empty (no notes, no rulings),
-  so nothing was at risk; ids changed from `P001…` to `<arm>__<fixture>` so
-  the next republish never can be.
+  `ref_0827` on the nine logos: **77 pairs, 95 images (13.3 MB), 31
+  arm-runs identical to shipped and not shown, none failed**; the six
+  original arms reproduce the scratch copy's pair counts exactly (per_stroke
+  3, patch_junctions 2, area_weighted 2, the rest 9).
+- **Republished to the SAME URL — and Kent had already judged on it.** The
+  `db` I read at 17:30Z was empty; by 17:50Z it held 34 verdicts, keyed
+  `P001…P034` (all "same" but: rails_follow_edge on tires *after*,
+  design_angle on tires *before*, area_weighted on drone and screenshot
+  *both bad*, polygon_axis on enthusiast *both bad*; no notes, no rulings).
+  Each doc carries `arm` and `fixture`, so they were copied to
+  `<arm>__<fixture>` ids in one batch before the republish, and the page
+  adopts any legacy-keyed doc it meets (`adoptLegacy`) in case a tab was
+  still open on the old page. **Re-read the db right before a republish,
+  not an hour earlier.**
 
 ## What to carry forward
 

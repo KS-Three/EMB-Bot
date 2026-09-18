@@ -173,6 +173,20 @@ function readLocal() {
 function writeLocal(kind, id, body) {
   try { localStorage.setItem(lsKey(kind, id), JSON.stringify(body)); } catch (e) { /* ignore */ }
 }
+// The first labelled page keyed its notes P001..P034; every doc carries its
+// fixture and arm, so a note under an id this page does not know is adopted
+// under `<arm>__<fixture>` when that pair exists and the note is the newer.
+// A tab still open on the old page keeps writing old ids; nothing is lost.
+function adoptLegacy() {
+  if (!LAB) return;
+  const known = new Set(DATA.pairs.map(p => p.pair));
+  for (const [id, d] of Object.entries(state.notes)) {
+    if (known.has(id) || !d || !d.arm || !d.fixture) continue;
+    const nid = `${d.arm}__${d.fixture}`;
+    const cur = state.notes[nid];
+    if (known.has(nid) && (!cur || (cur.updated || "") < (d.updated || ""))) state.notes[nid] = d;
+  }
+}
 async function use(name) {
   // `use()` resolves null when a view cannot run a capability; a rejection is
   // not promised but costs nothing to absorb, and one capability's failure
@@ -193,6 +207,7 @@ async function connect() {
       const snap = await db.collection(kind).get();
       for (const d of snap.docs) { state[kind][d.id] = d.data(); writeLocal(kind, d.id, d.data()); }
     }
+    adoptLegacy();
     sync.textContent = "synced"; sync.classList.remove("bad");
     // Re-render to show what the store holds -- unless a note is being typed
     // right now, in which case the next filter or grouping click will.
@@ -481,6 +496,7 @@ function render() {
 }
 function boot() {
   readLocal();
+  adoptLegacy();
   document.body.classList.toggle("labelled", LAB);
   $("#title").textContent = LAB ? "Before | After · flag review" : "Eye pairs · reveal";
   const filters = $("#filters");
