@@ -89,6 +89,16 @@ def test_render_digitizes_and_pair_builds_the_sitting(rendered):
     assert json.loads((out / "sitting.json").read_text())["n_pairs"] == 7
 
 
+def test_the_picker_starts_on_exactly_what_pair_wrote(rendered):
+    """`--serve` refuses a sitting whose sealed map is not the one
+    `sitting.json` records; this is the other half — what `--pair` really
+    writes must pass that check, images included."""
+    from tools.eye_pairs.server import make_server
+    out, _art, _n, _np, _seen = rendered
+    httpd = make_server(out, port=0)
+    httpd.server_close()
+
+
 def test_each_ref_arm_runs_its_own_commit_and_is_marked_design_only(rendered):
     out, _art, _n, _np, seen = rendered
     assert sorted(seen["commits"]) == ["aaaaaaa", "bbbbbbb"]
