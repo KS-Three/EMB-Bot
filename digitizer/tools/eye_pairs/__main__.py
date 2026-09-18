@@ -341,10 +341,31 @@ def _print(res: dict) -> None:
         print(f"\nTODAY vs {arm}: today preferred on {won} of {len(rows)} decided"
               + (" (photo-class fixtures are environment-confounded; see results.json)"
                  if any(r["confounded"] for r in rows) else ""))
-    fit = res["exploratory"]
-    print("\nEXPLORATORY fit: " + ("not run (fewer than 40 decided pairs)" if fit is None else
-          f"LOFO accuracy {fit['lofo_accuracy']:.2f} vs best single "
-          f"{fit['best_single']['metric']} {fit['best_single']['accuracy']:.2f} (n={fit['n']})"))
+    _print_fit(res["exploratory"])
+
+
+def _print_fit(fit: dict | None) -> None:
+    """ROADMAP gate 4: an accuracy is never printed without the floor it has
+    to clear, its interval, and the figure corrected for that floor."""
+    if fit is None:
+        print("\nEXPLORATORY fit: not run (fewer than 40 decided pairs)")
+        return
+
+    def line(name, acc, ci, above, note=""):
+        if acc is None:
+            return f"  {name:<12}n/a - no held-out fold had both of Kent's answers to learn from"
+        return (f"  {name:<12}acc {acc:.2f}  95% CI [{ci[0]:.2f}, {ci[1]:.2f}]  "
+                f"above baseline {'n/a' if above is None else format(above, '+.2f')}{note}")
+
+    best = fit["best_single"]
+    print(f"\nEXPLORATORY fit, n={fit['n']} - majority baseline {fit['majority_baseline']:.2f}"
+          " (always guessing Kent's")
+    print("commoner pick); 'above baseline' = (acc - baseline)/(1 - baseline), 0 = that")
+    print("guess. Weights are reported and shipped nowhere.")
+    print(line("LOFO", fit["lofo_accuracy"], fit["lofo_wilson"], fit["lofo_above_baseline"],
+               "" if fit["lofo_beats_baseline"] else "  - not distinguishable from the baseline"))
+    print(line("best single", best["accuracy"], best["wilson"], best["above_baseline"],
+               f"  ({best['metric']})"))
 
 
 def verify(image, width_mm: float, garment: str) -> bool:

@@ -291,3 +291,71 @@ def test_the_fit_recovers_a_separable_world_leave_one_fixture_out():
 def test_the_fit_refuses_to_run_under_forty_pairs():
     sealed, picks, feats = fit_world(13, 3)         # 39 decided pairs
     assert an.exploratory_fit(an.decided_rows(sealed, picks, ref=False), feats) is None
+
+
+def test_the_fit_reports_both_accuracies_against_the_majority_baseline():
+    """ROADMAP gate 4 (review 2026-09-17): the two accuracies were returned
+    and printed raw. An accuracy only means something beside what always
+    guessing Kent's commoner pick would score, and with its interval."""
+    sealed, picks, feats = fit_world(9, 6)
+    rows = an.decided_rows(sealed, picks, ref=False)
+    out = an.exploratory_fit(rows, feats)
+    share = sum(r["picked_is_arm"] for r in rows) / len(rows)
+    base = max(share, 1 - share)
+    assert out["label"] == "EXPLORATORY"
+    assert out["majority_baseline"] == pytest.approx(base)
+    assert out["lofo_n"] == 54
+    assert out["lofo_accuracy"] == pytest.approx(out["lofo_hits"] / out["lofo_n"])
+    assert out["lofo_wilson"] == pytest.approx(list(an.wilson(out["lofo_hits"], out["lofo_n"])))
+    assert out["lofo_above_baseline"] == pytest.approx((out["lofo_accuracy"] - base) / (1 - base))
+    assert out["lofo_beats_baseline"] is True       # a separable world clears it
+    best = out["best_single"]
+    assert best["above_baseline"] == pytest.approx((best["accuracy"] - base) / (1 - base))
+    lo, hi = best["wilson"]
+    assert lo <= best["accuracy"] <= hi
+
+
+def lean_world(n_fixtures=10, arms_per_fixture=6, arm_picks=6):
+    """Kent picks shipped on 54 of 60 pairs and NO metric has any say — every
+    delta is zero — so the only thing there is to learn is his lean."""
+    sealed, picks, feats = {}, {}, {}
+    same = {"artfid": 80.0, "lost_elements": 5.0, "ragged_mm": 0.20,
+            "roughness_deg": 4.0, "refusals": {}}
+    i = 0
+    for f in range(n_fixtures):
+        fx = f"fx{f}"
+        feats[fx] = {BASE: dict(same)}
+        for a in range(arms_per_fixture):
+            arm, pid = f"arm{a}", f"P{i:03d}"
+            i += 1
+            feats[fx][arm] = dict(same)
+            sealed[pid] = {"fixture": fx, "kind": "live", "repeat_of": None,
+                           "left_arm": BASE, "right_arm": arm}
+            # One arm-pick in each of the first `arm_picks` fixtures, so every
+            # leave-one-fixture-out training fold still holds both classes.
+            picks[pid] = {"pair": pid, "choice": "R" if (a == 0 and f < arm_picks) else "L"}
+    return sealed, picks, feats
+
+
+def test_a_fit_that_only_learned_kents_lean_earns_nothing():
+    """The trap gate 4 names: raw 0.90 reads like a result. It is the floor —
+    a model with no information predicts "shipped" every time and is right
+    on exactly the share of pairs where Kent picked shipped."""
+    sealed, picks, feats = lean_world()
+    out = an.exploratory_fit(an.decided_rows(sealed, picks, ref=False), feats)
+    assert out["lofo_accuracy"] == pytest.approx(0.9)
+    assert out["majority_baseline"] == pytest.approx(0.9)
+    assert out["lofo_above_baseline"] == pytest.approx(0.0, abs=1e-9)
+    assert out["lofo_beats_baseline"] is False
+    # A metric with no say earns half credit a pair: far UNDER the floor.
+    assert out["best_single"]["accuracy"] == pytest.approx(0.5)
+    assert out["best_single"]["above_baseline"] == pytest.approx(-4.0)
+
+
+def test_a_one_sided_sitting_has_no_corrected_figure_rather_than_a_crash():
+    sealed, picks, feats = lean_world(arm_picks=0)      # Kent never picks an arm
+    out = an.exploratory_fit(an.decided_rows(sealed, picks, ref=False), feats)
+    assert out["majority_baseline"] == 1.0
+    assert out["lofo_accuracy"] is None and out["lofo_above_baseline"] is None
+    assert out["lofo_beats_baseline"] is False
+    assert out["best_single"]["above_baseline"] is None

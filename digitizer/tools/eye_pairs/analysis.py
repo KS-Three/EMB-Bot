@@ -43,7 +43,9 @@ MIN_N_VERDICT = 10
 MIN_N_FIT = 40
 
 
-def wilson(k: int, n: int, z: float = 1.959964) -> tuple[float, float]:
+def wilson(k: float, n: int, z: float = 1.959964) -> tuple[float, float]:
+    """`k` may be fractional: the exploratory fit's single-metric accuracy
+    gives half credit to a pair the metric has no say on."""
     if n == 0:
         return (0.0, 1.0)
     p = k / n
@@ -332,7 +334,26 @@ def exploratory_fit(rows: list[dict], features: dict,
         singles[m] = float(credit.mean())
     best = max(singles, key=singles.get)
 
+    # ROADMAP gate 4: neither accuracy is returned without its floor. Always
+    # guessing Kent's commoner pick scores `baseline` knowing nothing, and the
+    # arms are default-OFF flags he mostly turns down, so that floor is
+    # nowhere near 0.5 (review 2026-09-17: both figures were printed raw).
+    baseline = float(max(y.mean(), 1.0 - y.mean()))
+
+    def above(acc):
+        return None if acc is None or baseline >= 1.0 else (acc - baseline) / (1.0 - baseline)
+
+    lofo = hits / total if total else None
+    lofo_lo, lofo_hi = wilson(hits, total)
     return {"label": "EXPLORATORY", "n": int(len(y)), "features": list(names),
             "weights": [float(v) for v in _logistic(A, y, ridge)],
-            "lofo_accuracy": hits / total if total else None,
-            "best_single": {"metric": best, "accuracy": singles[best]}}
+            "majority_baseline": baseline,
+            "lofo_accuracy": lofo, "lofo_hits": hits, "lofo_n": total,
+            "lofo_wilson": [lofo_lo, lofo_hi],
+            "lofo_above_baseline": above(lofo),
+            # The same test `sign_agreement` applies to `pe`: the interval's
+            # lower bound has to clear the floor, not the point estimate.
+            "lofo_beats_baseline": bool(total and lofo_lo > baseline),
+            "best_single": {"metric": best, "accuracy": singles[best],
+                            "wilson": list(wilson(singles[best] * len(y), len(y))),
+                            "above_baseline": above(singles[best])}}

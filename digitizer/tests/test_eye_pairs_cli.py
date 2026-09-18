@@ -257,6 +257,42 @@ def test_reveal_refuses_a_pick_for_a_pair_that_does_not_exist(rendered, tmp_path
         cli.reveal(out2)
 
 
+def bare_results(**over) -> dict:
+    """The smallest dict `_print` accepts: every section present and empty."""
+    res = {"n_pairs": 0, "decided_flag_pairs": 0,
+           "ceiling": {"n": 0, "consistent": 0, "share": None},
+           "controls": {"identical_n": 0, "identical_tie_rate": None,
+                        "identical_left_share": None, "left_share_all": None},
+           "primary": [], "descriptive": [], "exit_clause": {}, "per_fixture": {},
+           "flag_table": {}, "ref_table": [], "exploratory": None, "skipped": []}
+    res.update(over)
+    return res
+
+
+def test_the_exploratory_line_never_prints_a_raw_accuracy_alone(capsys):
+    """ROADMAP gate 4 (review 2026-09-17): 'LOFO accuracy 0.93 vs best single
+    0.91' was the whole line — no floor, no interval."""
+    from tools.eye_pairs import analysis as an
+
+    from .test_eye_pairs_analysis import fit_world, lean_world
+    sealed, picks, feats = fit_world(9, 6)
+    fit = an.exploratory_fit(an.decided_rows(sealed, picks, ref=False), feats)
+    cli._print(bare_results(exploratory=fit))
+    printed = capsys.readouterr().out
+    assert "EXPLORATORY" in printed
+    assert f"majority baseline {fit['majority_baseline']:.2f}" in printed
+    assert "[%.2f, %.2f]" % tuple(fit["lofo_wilson"]) in printed
+    assert format(fit["lofo_above_baseline"], "+.2f") in printed
+    assert "[%.2f, %.2f]" % tuple(fit["best_single"]["wilson"]) in printed
+    assert format(fit["best_single"]["above_baseline"], "+.2f") in printed
+    assert "not distinguishable" not in printed
+
+    sealed, picks, feats = lean_world()
+    fit = an.exploratory_fit(an.decided_rows(sealed, picks, ref=False), feats)
+    cli._print(bare_results(exploratory=fit))
+    assert "not distinguishable from the baseline" in capsys.readouterr().out
+
+
 def test_verify_finds_no_drift_on_the_synthetic_image(rendered, capsys):
     _out, art, _n, _np, _seen = rendered
     assert cli.verify(art, 40.0, "left_chest") is True
