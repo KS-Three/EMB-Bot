@@ -69,6 +69,43 @@ def remove_worktree(repo_root, dest) -> None:
                     str(path)], check=False, capture_output=True, text=True)
 
 
+def rembg_venv_present(digitizer_dir) -> bool:
+    """Would the engine under this `digitizer/` find its isolated rembg
+    interpreter? The same two paths `stage1_photo_prep` looks at — restated
+    rather than imported, because the question is also asked of ANOTHER
+    checkout's tree. A fresh `git worktree add` never has one: the venv is
+    untracked, so an old engine run from a worktree skips photo prep for an
+    environment reason, not an engine one."""
+    venv = Path(digitizer_dir) / "rembg_isolated" / "venv"
+    return any((venv / rel).exists() for rel in ("bin/python", "Scripts/python.exe"))
+
+
+def requirements_differ(repo_root, ref: str) -> bool:
+    """Has `digitizer/requirements.txt` changed between `ref` and HEAD? The
+    ref arm runs the old commit's SOURCE under today's venv, so changed pins
+    mean the old engine ran against libraries it was not written for."""
+    proc = subprocess.run(
+        ["git", "-C", str(repo_root), "diff", "--quiet", ref, "HEAD", "--",
+         "digitizer/requirements.txt"],
+        capture_output=True, text=True, encoding="utf-8", errors="replace")
+    # 0 = same, 1 = differs. Anything else (128: no such ref) is NOT an
+    # answer, and reading it as one would turn a typo into a measured fact.
+    if proc.returncode not in (0, 1):
+        raise RuntimeError(f"could not compare requirements.txt at {ref!r} with HEAD: "
+                           + (proc.stderr or "").strip()[-300:])
+    return proc.returncode == 1
+
+
+def ref_environment(repo_root, ref: str, *, main_digitizer, ref_digitizer) -> dict:
+    """The facts that decide whether a ref arm differs from today's for a
+    reason that is not the engine. Measured when the ref worktree exists and
+    stored on each row it produces; `analysis.ref_confound` reads them."""
+    return {"ref": ref,
+            "rembg_venv_main": rembg_venv_present(main_digitizer),
+            "rembg_venv_ref": rembg_venv_present(ref_digitizer),
+            "requirements_differ": requirements_differ(repo_root, ref)}
+
+
 def run_ref_design(python, engine_dir, image, width_mm: float, garment: str,
                    max_colors: int, timeout_s: float = 3600.0) -> dict:
     fd, out = tempfile.mkstemp(suffix=".json", prefix="eye_pairs_ref_")

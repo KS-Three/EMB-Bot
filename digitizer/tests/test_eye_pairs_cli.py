@@ -21,6 +21,10 @@ from tools.eye_pairs.pairs import BASE, append_pick  # noqa: E402
 ARMS = {"angle45": {"fill_angle_deg": 45.0}, "inert": {"design_angle": True},
         "ref_a": {"__ref__": "aaaaaaa"}, "ref_b": {"__ref__": "bbbbbbb"}}
 DELTA = {"aaaaaaa": 7, "bbbbbbb": 9}
+# What each fake ref engine "measured" about where it ran. `bbbbbbb` is an
+# old commit whose requirements.txt no longer matches HEAD.
+ENV = {c: {"ref": c, "rembg_venv_main": False, "rembg_venv_ref": False,
+           "requirements_differ": c == "bbbbbbb"} for c in DELTA}
 
 
 def tiny_image(path: Path, extra_dot: bool = False) -> Path:
@@ -50,7 +54,7 @@ def fake_factory(out: Path, seen: dict):
         def closer():
             seen.setdefault("closed", []).append(commit)
 
-        return runner, closer
+        return runner, closer, dict(ENV[commit])
     return factory
 
 
@@ -159,6 +163,97 @@ def test_a_schema_bump_is_a_cache_miss(rendered, tmp_path, monkeypatch):
     cli.render(out2, cases=[("tiny", art, 40.0, "left_chest")], arms=ARMS,
                ref_factory=fake_factory(out2, {}))
     assert len(calls) == 3
+
+
+def test_each_ref_row_carries_the_environment_it_was_made_under(rendered):
+    """Review 2026-09-17: whether the old engine's arm was environment-
+    confounded was INFERRED at reveal from today's design class. The facts
+    are recorded on the row when it is rendered, so a resumed render cannot
+    attribute one call's environment to another call's rows."""
+    out, _art, _n, _np, _seen = rendered
+    feats = json.loads((out / "features.json").read_text())["tiny"]
+    assert feats["ref_a"]["env"] == ENV["aaaaaaa"]
+    assert feats["ref_b"]["env"] == ENV["bbbbbbb"]
+    assert "env" not in feats[BASE] and "env" not in feats["angle45"]
+
+
+def test_a_ref_row_with_no_recorded_environment_is_rendered_again(rendered, tmp_path, monkeypatch):
+    """A row rendered before the environment was recorded would read
+    'unknown' forever. It is the only kind of row this costs a re-run —
+    NOT a schema bump, which would re-digitize every flag arm too."""
+    out, art, n_arms, _np, _seen = rendered
+    out2 = tmp_path / "out_env"
+    shutil.copytree(out, out2)
+    feats = json.loads((out2 / "features.json").read_text())
+    feats["tiny"]["ref_a"].pop("env")
+    (out2 / "features.json").write_text(json.dumps(feats))
+
+    def boom(*_a, **_k):
+        raise AssertionError("a flag arm must stay cached")
+
+    monkeypatch.setattr(cli, "digitize_once", boom)
+    seen: dict = {}
+    assert cli.render(out2, cases=[("tiny", art, 40.0, "left_chest")], arms=ARMS,
+                      ref_factory=fake_factory(out2, seen)) == n_arms
+    assert seen["commits"] == ["aaaaaaa"]                 # ref_b kept its row
+    again = json.loads((out2 / "features.json").read_text())["tiny"]
+    assert again["ref_a"]["env"] == ENV["aaaaaaa"]
+
+
+def picked_copy(out: Path, dest: Path, edit=None) -> Path:
+    """A finished sitting in a private copy; `edit(feats)` rewrites the
+    sealed features first."""
+    shutil.copytree(out, dest)
+    if edit:
+        feats = json.loads((dest / "features.json").read_text())
+        edit(feats)
+        (dest / "features.json").write_text(json.dumps(feats))
+    for p in json.loads((dest / "pairs.json").read_text()):
+        append_pick(dest / "picks.jsonl", p["pair"], "L", 100)
+    return dest
+
+
+def test_reveal_derives_confounded_from_recorded_facts_and_prints_which_fired(
+        rendered, tmp_path, capsys):
+    out, _art, _n, _np, _seen = rendered
+    res = cli.reveal(picked_copy(out, tmp_path / "out_facts"))
+    by_arm = {r["arm"]: r for r in res["ref_table"]}
+    assert by_arm["ref_a"]["confounded"] is False and by_arm["ref_a"]["confounded_why"] == []
+    assert by_arm["ref_b"]["confounded"] is True
+    assert "requirements.txt" in by_arm["ref_b"]["confounded_why"][0]
+    printed = capsys.readouterr().out
+    assert "requirements.txt" in printed and "CONFOUNDED" in printed
+    block_a = printed.split("TODAY vs ref_a")[1].split("TODAY vs")[0]
+    assert "CONFOUNDED" not in block_a and "no recorded fact" in block_a
+
+
+def test_a_photo_fixture_is_confounded_only_by_a_measured_rembg_asymmetry(
+        rendered, tmp_path, capsys):
+    """The old proxy's false positive, end to end: a photo-class fixture on
+    a checkout where NEITHER engine had the rembg venv is not confounded."""
+    out, _art, _n, _np, _seen = rendered
+
+    def photo(main: bool):
+        def edit(feats):
+            feats["tiny"][BASE]["design_class"] = "photo_subject"
+            feats["tiny"]["ref_a"]["env"]["rembg_venv_main"] = main
+        return edit
+
+    res = cli.reveal(picked_copy(out, tmp_path / "out_sym", photo(main=False)))
+    assert {r["arm"]: r["confounded"] for r in res["ref_table"]}["ref_a"] is False
+    capsys.readouterr()
+    res = cli.reveal(picked_copy(out, tmp_path / "out_asym", photo(main=True)))
+    row = {r["arm"]: r for r in res["ref_table"]}["ref_a"]
+    assert row["confounded"] is True and "rembg" in row["confounded_why"][0]
+    assert "rembg" in capsys.readouterr().out
+
+
+def test_an_unrecorded_environment_is_reported_as_unknown(rendered, tmp_path, capsys):
+    out, _art, _n, _np, _seen = rendered
+    res = cli.reveal(picked_copy(out, tmp_path / "out_legacy",
+                                 lambda feats: feats["tiny"]["ref_a"].pop("env")))
+    assert {r["arm"]: r["confounded"] for r in res["ref_table"]}["ref_a"] is None
+    assert "UNKNOWN" in capsys.readouterr().out
 
 
 def test_a_scoped_render_never_rebuilds_the_sitting(rendered, tmp_path):

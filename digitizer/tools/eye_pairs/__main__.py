@@ -37,7 +37,7 @@ from . import features as ft
 from .features import base_cfg, digitize_once, features_design_only, features_full
 from .pairs import (ARMS, BASE, ArmRun, build_pairs, design_hash, load_picks,
                     sealed_hash, unpicked)
-from .refarm import add_worktree, remove_worktree, run_ref_design
+from .refarm import add_worktree, ref_environment, remove_worktree, run_ref_design
 from .server import PORT, make_server
 
 DIGITIZER = Path(__file__).resolve().parents[2]
@@ -61,18 +61,24 @@ def _sha256(path: Path) -> str:
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 
-def _default_ref_runner(ref: str):
-    """-> (runner, closer) for ONE commit. The worktree lives under the
-    system temp dir — never inside the repo (`refarm.guard_scratch`)."""
-    dest = Path(tempfile.gettempdir()).resolve() / f"eye-pairs-ref-{ref}"
-    remove_worktree(REPO, dest)                       # a crashed earlier run
+def _default_ref_runner(ref: str, *, repo=None, scratch=None):
+    """-> (runner, closer, env) for ONE commit. The worktree lives under the
+    system temp dir — never inside the repo (`refarm.guard_scratch`). `env`
+    is what was MEASURED about where the old engine runs, taken while its
+    worktree exists (`refarm.ref_environment`). `repo` and `scratch` exist
+    so a test can run this glue for real against a throwaway repository."""
+    repo = REPO if repo is None else Path(repo)
+    scratch = Path(tempfile.gettempdir() if scratch is None else scratch)
+    dest = scratch.resolve() / f"eye-pairs-ref-{ref}"
+    remove_worktree(repo, dest)                       # a crashed earlier run
     shutil.rmtree(dest, ignore_errors=True)
-    engine = add_worktree(REPO, ref, dest) / "digitizer"
+    engine = add_worktree(repo, ref, dest) / "digitizer"
+    env = ref_environment(repo, ref, main_digitizer=repo / "digitizer", ref_digitizer=engine)
 
     def runner(image, width_mm, garment, max_colors):
         return run_ref_design(sys.executable, engine, image, width_mm, garment, max_colors)
 
-    return runner, lambda: remove_worktree(REPO, dest)
+    return runner, lambda: remove_worktree(repo, dest), env
 
 
 def render(out=OUT, cases=None, arms=None, fixtures=None, only_arms=None,
@@ -84,9 +90,13 @@ def render(out=OUT, cases=None, arms=None, fixtures=None, only_arms=None,
     and render files exist. Name-only keying let a re-exported image stay
     'cached' for a whole sitting (review finding 7, 2026-09-17).
 
-    `ref_factory(commit) -> (runner, closer)` is built once PER COMMIT, so
-    two `__ref__` rows on different commits each get their own engine —
-    the cache used to be 'has any ref been built' (review finding 6).
+    `ref_factory(commit) -> (runner, closer, env)` is built once PER COMMIT,
+    so two `__ref__` rows on different commits each get their own engine —
+    the cache used to be 'has any ref been built' (review finding 6). `env`
+    is stored on every row that runner produces, and a ref row WITHOUT one
+    is a cache miss: it predates the record, and `--reveal` could only call
+    it unknown. That costs the ref rows alone — deliberately not a
+    `FEATURES_SCHEMA` bump, which would re-digitize every flag arm too.
     Never builds pairs: that is `pair()`.
     """
     out = Path(out)
@@ -103,6 +113,7 @@ def render(out=OUT, cases=None, arms=None, fixtures=None, only_arms=None,
     feats_path = out / "features.json"
     feats = json.loads(feats_path.read_text(encoding="utf-8")) if feats_path.exists() else {}
     runners: dict[str, object] = {}
+    envs: dict[str, dict] = {}
     closers: list = []
     ready = 0
     try:
@@ -120,6 +131,7 @@ def render(out=OUT, cases=None, arms=None, fixtures=None, only_arms=None,
                 if (row and "error" not in row
                         and row.get("source_sha256") == src_hash
                         and row.get("schema") == FEATURES_SCHEMA
+                        and ("__ref__" not in kw or row.get("env"))
                         and dpath.exists() and rpath.exists()):
                     _say(f"[{name} / {arm}] cached")
                     ready += 1
@@ -130,12 +142,17 @@ def render(out=OUT, cases=None, arms=None, fixtures=None, only_arms=None,
                     if "__ref__" in kw:
                         commit = kw["__ref__"]
                         if commit not in runners:
-                            runner, closer = ref_factory(commit)
-                            runners[commit] = runner
+                            runner, closer, env = ref_factory(commit)
+                            runners[commit], envs[commit] = runner, env
                             closers.append(closer)
+                            if env.get("requirements_differ"):
+                                _say(f"[{arm}] WARNING: requirements.txt differs between "
+                                     f"{commit} and HEAD - the old source is running under "
+                                     "pins it was not written for; --reveal marks its rows")
                         design = runners[commit](path, width_mm, garment, STUDIO_MAX_COLORS)
                         row = features_design_only(path, design)
                         row["design_only"] = True
+                        row["env"] = envs[commit]
                     else:
                         cfg = base_cfg(width_mm, garment, **kw)
                         gen, result, plan, design = digitize_once(path, cfg)
@@ -267,11 +284,17 @@ def reveal(out=OUT) -> dict:
     table = an.flag_table(sealed, picks)
     ref_table = []
     for r in ref_rows:
-        # The ref worktree has no rembg venv, so a photo-class fixture's old
-        # arm skipped photo prep for an ENVIRONMENT reason, not an engine one.
-        confounded = feats.get(r["fixture"], {}).get(BASE, {}).get("design_class") in PHOTO_CLASSES
+        # Decided from what `--render` MEASURED about the two environments
+        # (the row's `env`), not from the design class alone — see
+        # `analysis.ref_confound` for the false positive that proxy produced.
+        by_arm = feats.get(r["fixture"], {})
+        verdict = an.ref_confound(
+            by_arm.get(r["arm"], {}).get("env"),
+            photo_class=by_arm.get(BASE, {}).get("design_class") in PHOTO_CLASSES)
         ref_table.append({"pair": r["pair"], "fixture": r["fixture"], "arm": r["arm"],
-                          "today_won": not r["picked_is_arm"], "confounded": confounded})
+                          "today_won": not r["picked_is_arm"],
+                          "confounded": verdict["confounded"],
+                          "confounded_why": verdict["why"]})
 
     results = {
         "n_pairs": len(ids), "decided_flag_pairs": len(flag_rows),
@@ -336,12 +359,32 @@ def _print(res: dict) -> None:
         print(f"  {arm:<20} W{t['wins']:>3}  L{t['losses']:>3}  T{t['ties']:>3}"
               f"   identical to shipped on {skips.get(arm, 0)} fixture(s)")
     for arm in sorted({r["arm"] for r in res["ref_table"]}):
-        rows = [r for r in res["ref_table"] if r["arm"] == arm]
-        won = sum(1 for r in rows if r["today_won"])
-        print(f"\nTODAY vs {arm}: today preferred on {won} of {len(rows)} decided"
-              + (" (photo-class fixtures are environment-confounded; see results.json)"
-                 if any(r["confounded"] for r in rows) else ""))
+        _print_ref(arm, [r for r in res["ref_table"] if r["arm"] == arm])
     _print_fit(res["exploratory"])
+
+
+def _print_ref(arm: str, rows: list[dict]) -> None:
+    """One ref arm: the tally, then every environment fact that fired and
+    the fixtures it fired on — named, because 'confounded' alone does not
+    say whether to distrust one photo fixture or the whole arm."""
+    won = sum(1 for r in rows if r["today_won"])
+    print(f"\nTODAY vs {arm}: today preferred on {won} of {len(rows)} decided")
+    fired: dict[tuple[str, str], list[str]] = {}
+    for r in rows:
+        label = "UNKNOWN" if r["confounded"] is None else "CONFOUNDED"
+        for why in r.get("confounded_why") or []:
+            fired.setdefault((label, why), []).append(r["fixture"])
+    for (label, why), fixtures in fired.items():
+        print(f"  {label} on {', '.join(sorted(set(fixtures)))}: {why}"
+              + (" (run --render again: only this arm re-digitizes, and records it)"
+                 if label == "UNKNOWN" else ""))
+    if not fired:
+        print("  no recorded fact confounds this arm: requirements.txt unchanged, and the")
+        print("  rembg venv was the same for both engines on every photo-class fixture")
+    clean = [r for r in rows if r["confounded"] is False]
+    if fired and clean:
+        print(f"  clean pairs: today preferred on {sum(1 for r in clean if r['today_won'])}"
+              f" of {len(clean)}")
 
 
 def _print_fit(fit: dict | None) -> None:

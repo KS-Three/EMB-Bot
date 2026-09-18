@@ -39,6 +39,102 @@ def test_a_scratch_path_outside_the_repo_is_accepted(tmp_path):
     assert refarm.guard_scratch(tmp_path / "wt", REPO) == (tmp_path / "wt").resolve()
 
 
+def git(repo: Path, *args: str) -> str:
+    """Real git in a THROWAWAY repo under tmp_path — never the checkout the
+    tests run from, which may have a live render holding a ref worktree."""
+    import subprocess
+    proc = subprocess.run(
+        ["git", "-C", str(repo), "-c", "user.name=t", "-c", "user.email=t@example.invalid",
+         "-c", "commit.gpgsign=false", *args],
+        check=True, capture_output=True, text=True, encoding="utf-8", errors="replace")
+    return proc.stdout.strip()
+
+
+@pytest.fixture()
+def tiny_repo(tmp_path):
+    """Three commits: `old` and `same` share a requirements.txt, HEAD does not."""
+    repo = tmp_path / "repo"
+    (repo / "digitizer").mkdir(parents=True)
+    git(repo, "init", "-q")
+    (repo / "digitizer" / "requirements.txt").write_text("numpy==2.5.0\n")
+    git(repo, "add", "-A")
+    git(repo, "commit", "-q", "-m", "old")
+    old = git(repo, "rev-parse", "--short", "HEAD")
+    (repo / "README").write_text("unrelated\n")
+    git(repo, "add", "-A")
+    git(repo, "commit", "-q", "-m", "same pins")
+    same = git(repo, "rev-parse", "--short", "HEAD")
+    return repo, old, same
+
+
+def test_requirements_differ_is_measured_with_git_not_remembered(tiny_repo):
+    """Review 2026-09-17: the ref arm runs an old commit's SOURCE under
+    today's venv, and the only check that the pins still matched was a
+    sentence in the spec written on the day it was true."""
+    repo, old, same = tiny_repo
+    assert refarm.requirements_differ(repo, old) is False
+    (repo / "digitizer" / "requirements.txt").write_text("numpy==2.5.1\n")
+    git(repo, "commit", "-q", "-am", "bump numpy")
+    assert refarm.requirements_differ(repo, old) is True
+    assert refarm.requirements_differ(repo, same) is True
+    assert refarm.requirements_differ(repo, "HEAD") is False
+
+
+def test_an_unknown_ref_is_an_error_not_a_clean_bill(tiny_repo):
+    """`git diff --quiet` exits 1 for "differs" and 128 for "no such ref".
+    Reading anything non-zero as one answer, or anything but 1 as "same",
+    turns a typo into a measured fact."""
+    repo, _old, _same = tiny_repo
+    with pytest.raises(RuntimeError, match="requirements"):
+        refarm.requirements_differ(repo, "0000000")
+
+
+@pytest.mark.parametrize("rel", ["bin/python", "Scripts/python.exe"])
+def test_the_rembg_venv_is_found_where_the_engine_looks_for_it(tmp_path, rel):
+    digitizer = tmp_path / "digitizer"
+    assert refarm.rembg_venv_present(digitizer) is False
+    (digitizer / "rembg_isolated").mkdir(parents=True)          # README only: a fresh worktree
+    assert refarm.rembg_venv_present(digitizer) is False
+    exe = digitizer / "rembg_isolated" / "venv" / rel
+    exe.parent.mkdir(parents=True)
+    exe.write_text("")
+    assert refarm.rembg_venv_present(digitizer) is True
+
+
+def test_the_ref_environment_is_three_measured_facts(tiny_repo, tmp_path):
+    repo, old, _same = tiny_repo
+    main, ref = tmp_path / "main_digitizer", tmp_path / "ref_digitizer"
+    exe = main / "rembg_isolated" / "venv" / "Scripts" / "python.exe"
+    exe.parent.mkdir(parents=True)
+    exe.write_text("")
+    ref.mkdir()
+    assert refarm.ref_environment(repo, old, main_digitizer=main, ref_digitizer=ref) == {
+        "ref": old, "rembg_venv_main": True, "rembg_venv_ref": False,
+        "requirements_differ": False}
+
+
+def test_the_default_runner_measures_the_worktree_it_actually_built(tiny_repo, tmp_path):
+    """The glue, run for real: a worktree of the throwaway repo, under a
+    scratch dir of the test's own."""
+    from tools.eye_pairs import __main__ as cli
+    repo, old, _same = tiny_repo
+    exe = repo / "digitizer" / "rembg_isolated" / "venv" / "Scripts" / "python.exe"
+    exe.parent.mkdir(parents=True)                  # untracked, as the real venv is
+    exe.write_text("")
+    scratch = tmp_path / "scratch"
+    scratch.mkdir()
+    _runner, closer, env = cli._default_ref_runner(old, repo=repo, scratch=scratch)
+    dest = scratch / f"eye-pairs-ref-{old}"
+    try:
+        assert (dest / "digitizer" / "requirements.txt").exists()
+        # The checkout has the venv; a fresh worktree of it never does.
+        assert env == {"ref": old, "rembg_venv_main": True, "rembg_venv_ref": False,
+                       "requirements_differ": False}
+    finally:
+        closer()
+    assert not dest.exists()
+
+
 def stub_engine(root: Path) -> Path:
     """A fake `digitizer_core` that answers with what it was asked."""
     pkg = root / "digitizer_core"

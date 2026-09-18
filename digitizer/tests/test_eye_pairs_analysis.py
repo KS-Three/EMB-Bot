@@ -224,6 +224,45 @@ def test_design_only_rows_are_kept_apart_from_flag_rows_by_the_stored_flag():
     assert "P900" not in flag and "P901" in flag
 
 
+def env(main=False, ref=False, reqs=False):
+    return {"ref": "25da2fe", "rembg_venv_main": main, "rembg_venv_ref": ref,
+            "requirements_differ": reqs}
+
+
+def test_a_photo_fixture_is_not_confounded_when_neither_engine_had_rembg():
+    """Review 2026-09-17: `confounded` was `design_class in PHOTO_CLASSES` —
+    an inference. On a checkout with no rembg venv (every worktree) today's
+    engine skipped photo prep exactly as the old one did, so the proxy
+    flagged a confound that was not there."""
+    out = an.ref_confound(env(main=False, ref=False), photo_class=True)
+    assert out == {"confounded": False, "why": []}
+
+
+def test_the_rembg_fact_fires_only_on_an_asymmetry_and_only_on_photo_fixtures():
+    out = an.ref_confound(env(main=True, ref=False), photo_class=True)
+    assert out["confounded"] is True
+    assert len(out["why"]) == 1 and "rembg" in out["why"][0]
+    assert "today's engine only" in out["why"][0]
+    # A flat logo never reaches photo prep, whatever the venvs are.
+    assert an.ref_confound(env(main=True, ref=False), photo_class=False)["confounded"] is False
+    # Both present is as symmetric as both absent.
+    assert an.ref_confound(env(main=True, ref=True), photo_class=True)["confounded"] is False
+
+
+def test_changed_pins_confound_every_fixture_and_say_so():
+    for photo in (True, False):
+        out = an.ref_confound(env(reqs=True), photo_class=photo)
+        assert out["confounded"] is True and "requirements.txt" in out["why"][0]
+    both = an.ref_confound(env(main=True, reqs=True), photo_class=True)
+    assert len(both["why"]) == 2                     # every fact that fired is named
+
+
+def test_an_unrecorded_environment_is_unknown_not_clean():
+    for missing in (None, {}):
+        out = an.ref_confound(missing, photo_class=True)
+        assert out["confounded"] is None and "not recorded" in out["why"][0]
+
+
 def test_the_ceiling_is_kents_own_consistency():
     sealed = {
         "P001": {"fixture": "f", "kind": "live", "repeat_of": None, "left_arm": BASE, "right_arm": "a"},

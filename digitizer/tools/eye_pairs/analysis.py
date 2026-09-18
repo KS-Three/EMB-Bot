@@ -267,6 +267,31 @@ def flag_table(sealed: dict, picks: dict) -> dict:
     return table
 
 
+def ref_confound(env: dict | None, photo_class: bool) -> dict:
+    """Is a ref arm's difference from today's arm partly the ENVIRONMENT's?
+
+    -> {"confounded": True | False | None, "why": [every fact that fired]}.
+    Decided from facts measured when the row was rendered
+    (`refarm.ref_environment`), never from the design class alone: that
+    proxy called every photo-class fixture confounded, and on a checkout
+    with no rembg venv — every worktree — today's engine skips photo prep
+    exactly as the old one does, so there was nothing to flag (review
+    2026-09-17). None means the row predates the record: unknown, not clean.
+    """
+    if not env:
+        return {"confounded": None,
+                "why": ["environment not recorded when this arm was rendered"]}
+    why = []
+    if env["requirements_differ"]:
+        why.append(f"requirements.txt differs between {env['ref']} and HEAD: the old "
+                   "source ran under pins it was not written for")
+    if photo_class and env["rembg_venv_main"] != env["rembg_venv_ref"]:
+        only = "today's" if env["rembg_venv_main"] else "the old"
+        why.append(f"photo-class fixture, and the rembg venv existed for {only} engine "
+                   "only: one arm skipped photo prep")
+    return {"confounded": bool(why), "why": why}
+
+
 # ---- exploratory, and labelled so (spec section 4, SECONDARY) --------------
 
 def _logistic(A: np.ndarray, y: np.ndarray, ridge: float) -> np.ndarray:
