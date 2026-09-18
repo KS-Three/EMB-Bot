@@ -5702,3 +5702,35 @@ the practical rule: when an instrument reports a catastrophe on a design
 whose render looks fine, open one row by hand before writing it down.
 
 *(2026-09-16 — claim made and retracted the same session; scope-history)*
+
+## The ground takes the pull back: on a design with a ground, stage 5's compensation is nearly off (2026-09-16)
+
+`resolve_overlaps` grows every shape by the fabric's pull and then applies
+*"never grow back over a color that is already down"* (there since the first
+stitch planner). Lettering on a patch sits in a HOLE of the ground, and the
+hole is the letter's own artwork, so the clip takes back almost the whole
+growth. Hotel Fremont @ 92.5 mm: **157 of 164 shapes** lose at least half
+their pull band to an earlier colour (`tools/ground_clip.py`); THE's T stem
+is 0.41 mm of art, 1.01 grown, **0.48 planned** — under `SATIN_MIN_CROSS_MM`,
+so the T and E sew as bean runs while the H, traced a hair wider, gets satin.
+The FREMONT T stem plans at 0.84 mm where the professional's file sews
+**1.40** (artwork + 0.61, the full pull each side). drone: 45 of 102.
+ENTHUSIAST and Becker: **0** — they sew on bare cloth, which is why every
+compensation measurement taken on them could not see this.
+
+**The rule.** A compensation, underlap or seam measurement is not general
+until it has been read on a design WITH a ground; the two workhorse
+lettering fixtures have none.
+
+**And a third instance of one mistake.** Putting the width back into the
+POLYGON fails on a small glyph's own gaps: exempting lettering from the clip
+sews THE's T as 1.01 mm satin but closes the E and H at a 3 mm cap height
+(the word reads "TNR"); exempting it while holding the glyph's narrow gaps
+open shreds every skeleton. `lettering_min_column_mm` hit the same wall on
+2026-09-09. **Width for small lettering belongs on the RAILS** —
+`cfg.satin_rail_comp` sews THE's T as 0.97 mm satin with the word intact —
+and that flag carries a defect of its own found here: stage 5 still adds the
+underlap TONGUE to its artwork polygon, a one-sided bulge the skeleton
+branches into (drone `S2492f28b`, 1 stroke → 17; 6 of drone's 58 satin
+shapes). *(2026-09-16 — `docs/fremont-t-ground-clip-2026-09-16.md`, renders
+`docs/renders/fremont-t-2026-09-16/`)*

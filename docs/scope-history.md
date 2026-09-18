@@ -25,6 +25,34 @@ that is the whole point of the file. Corrections go in `MASTER_SCOPE.md`.
 
 ---
 
+**Last updated:** 2026-09-16 (night, later) — **Fremont's T: the ground
+takes the pull back, and `satin_rail_comp` measured for it.** Full record:
+`docs/fremont-t-ground-clip-2026-09-16.md`.
+
+- **Kent's note** — *"Hotel Fremont the T still needs a lot of work"* — is
+  THE's T at 92.5 mm: two bean runs shipped. **Root cause, measured:** stage
+  5 grows each shape by the pull, then *"never grow back over a color that is
+  already down"* cuts it back to its hole in the patch fill. THE's T stem:
+  art 0.41 mm, grown 1.01, **planned 0.48**, crosses 0.47 — under
+  `SATIN_MIN_CROSS_MM`, so bean. The H (same weight in the source, 12–13 px)
+  traced a hair wider and got satin. FREMONT's T stem plans 0.84 mm; the
+  pro's DST sews it **1.40** (art + 0.61).
+- **`tools/ground_clip.py`** (new, 5 tests): Fremont **157 of 164** shapes
+  lose at least half their pull band to an earlier colour, drone 45 of 102,
+  ENTHUSIAST 0 of 27, Becker 0 of 11 — the two lettering workhorses sew on
+  bare cloth, so no earlier compensation measurement could see it.
+- **Refuted the same session:** exempting lettering from the clip (T sews
+  1.01 mm satin, but the E and H close at a 3 mm cap — "TNR"), and exempting
+  it with the glyph's own gaps held (skeletons shred). Third polygon-side
+  widening of small lettering to fail on the glyph's gaps.
+- **`satin_rail_comp` (OFF):** THE's T satin 0.97 mm, H 1.05, E 0.93, FREMONT
+  T 1.35. Corpus, 26 @ 80 mm / left chest: 20 move, **net +3,241 stitches,
+  +59 trims, +1 block, 0 cones**; `script_tires` B → A, `gaulke` C → B, no
+  grade down. **The price is one defect in the flag:** stage 5 still adds the
+  underlap tongue to the artwork polygon and the skeleton branches into it —
+  Golden Tee's 17 tongued satin shapes carry +50 of its +51 trims; drone's
+  `S2492f28b` goes 1 stroke → 17. Flag stays OFF; no engine change.
+
 **Last updated:** 2026-09-16 (late) — **what `classify_area_weighted`
 actually promotes, rendered: two of three are worse, and ELONGATION separates
 them.**
