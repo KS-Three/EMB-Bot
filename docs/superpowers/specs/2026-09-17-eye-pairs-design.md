@@ -249,9 +249,26 @@ on both arms and differs — compared at the rounding each instrument already
 applies to its own output, with no extra tolerance (both arms are
 deterministic, so an exact inequality is a real difference): `a` = the share
 where the arm the metric prefers is the arm Kent picked. Reported as **`2a − 1`** (0 = chance, 1 = always agrees,
-−1 = always disagrees) with n and the Wilson 95% interval on `a`. Verdict:
-*agrees* if the interval's lower bound is above 0.5, *anti-agrees* if its
-upper bound is below 0.5, otherwise *no evidence*; **n < 10 prints "n too
+−1 = always disagrees) with n and the Wilson 95% interval on `a`.
+
+**Corrected 2026-09-17, before any pick existed (code review of PR #506,
+finding 1).** `2a − 1` puts chance at 0.5, which holds only when Kent's
+picks and the metric's preferences are each split 50/50 between arm and
+base. Nothing balances that (§3.3 balances LEFT/RIGHT), and the arms are
+default-OFF flags with measured costs, so a shared lean to shipped is the
+realistic case — under one, an independent metric agrees above 0.5 by
+arithmetic (both at 75% base: `a` = 0.625, Wilson's lower bound clears 0.5
+at n = 60, verified with the module's own `wilson()`). So the chance floor
+is the observed-marginal one this repo's other corrections use
+(`scorecard.type_chance`): `pe = p_pick·p_metric + (1 − p_pick)(1 −
+p_metric)`, and the corrected figure is **`kappa_marginal = (a − pe)/(1 −
+pe)`**. `2a − 1` stays in the output because it was pre-registered; the
+report prints both marginals and flags `skewed` when `pe` is more than 0.05
+from 0.5. A constant metric (`p_metric` 0 or 1) has `pe = a` and earns
+nothing, which is right. Verdict:
+*agrees* if the Wilson interval's lower bound is above `pe`, *anti-agrees*
+if its upper bound is below `pe`, otherwise *no evidence* — identical to the
+pre-registered rule on a balanced sitting; **n < 10 prints "n too
 small" and no verdict.** The HEADLINE row for a metric uses only pairs where
 neither arm carries a refusal for it; the same statistic over ALL pairs is
 printed directly beneath, so dropping refused rows can never be mistaken for

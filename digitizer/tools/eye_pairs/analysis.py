@@ -118,24 +118,62 @@ def _scored(rows, features, metric, include_refused):
             yield r, b, a, pref
 
 
+# How far the expected-by-chance agreement may sit from 0.5 before the
+# report says so. Past it, `kappa` (the pre-registered 2a-1) and
+# `kappa_marginal` part company and only the second is a chance correction.
+SKEW_WARN = 0.05
+
+
 def sign_agreement(rows: list[dict], features: dict, metric: str,
                    include_refused: bool = False) -> dict:
-    n = k = 0
+    """Does the metric point the way Kent did, above chance?
+
+    `a` is the share of scored pairs where they agree. The spec pre-registered
+    `kappa = 2a - 1`, which puts chance at 0.5 — true only when Kent's picks
+    and the metric's preferences are each split 50/50 between arm and base.
+    Neither is balanced by construction (`build_pairs` balances LEFT/RIGHT,
+    not arm/base), and the ten arms are default-OFF flags with measured
+    costs, so a shared lean toward shipped is the realistic case. Under one,
+    an independent metric agrees above 0.5 by arithmetic alone: both at 75%
+    base gives a = 0.625, and Wilson's lower bound clears 0.5 at n = 60
+    (review finding 2026-09-17, verified numerically).
+
+    So the chance floor is taken from the observed marginals the way this
+    repo's other chance corrections do (`scorecard.type_chance`):
+    `pe = p_pick * p_metric + (1 - p_pick) * (1 - p_metric)`, and the verdict
+    tests Wilson's interval on `a` against `pe`, not 0.5. `kappa_marginal =
+    (a - pe) / (1 - pe)` is the corrected figure; `kappa` is kept beside it
+    because it was pre-registered, and `skewed` says when the two disagree.
+    A metric that answers the same way on every pair has `p_metric` of 0 or
+    1, `pe == a`, and earns exactly nothing — which is right.
+    """
+    n = k = picked_arm = metric_arm = 0
     for r, _b, _a, pref in _scored(rows, features, metric, include_refused):
         n += 1
         k += pref == r["picked_is_arm"]
+        picked_arm += r["picked_is_arm"]
+        metric_arm += pref
     lo, hi = wilson(k, n)
     a = k / n if n else None
+    p_pick = picked_arm / n if n else None
+    p_metric = metric_arm / n if n else None
+    pe = (p_pick * p_metric + (1 - p_pick) * (1 - p_metric)) if n else None
+    kappa_marginal = None
+    if pe is not None and pe < 1.0:
+        kappa_marginal = (a - pe) / (1 - pe)
     if n < MIN_N_VERDICT:
         verdict = "n too small"
-    elif lo > 0.5:
+    elif lo > pe:
         verdict = "agrees"
-    elif hi < 0.5:
+    elif hi < pe:
         verdict = "anti-agrees"
     else:
         verdict = "no evidence"
     return {"metric": metric, "n": n, "k": k, "a": a,
             "kappa": None if a is None else 2 * a - 1,
+            "p_pick": p_pick, "p_metric": p_metric, "pe": pe,
+            "kappa_marginal": kappa_marginal,
+            "skewed": (pe is not None and abs(pe - 0.5) > SKEW_WARN),
             "lo": lo, "hi": hi, "verdict": verdict}
 
 
