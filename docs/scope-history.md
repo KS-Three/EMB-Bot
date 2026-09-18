@@ -13,6 +13,54 @@ pointer; if it isn't there, treat it as superseded until re-measured.
 
 ---
 
+**Last updated:** 2026-09-18 (later) — eye pairs: the fourteen review items PR #506's fix scope skipped
+
+`digitizer/tools/eye_pairs/` only — no engine change, no default flip, and
+**no `FEATURES_SCHEMA` bump**: a multi-hour `--render` was running on Kent's
+machine while this was written, and every new row field is optional with its
+fallback stated. Spec, dated paragraph by paragraph:
+`docs/superpowers/specs/2026-09-17-eye-pairs-design.md`.
+
+The two that change what a result can be read as. (1) The exploratory fit's
+LOFO and best-single accuracies were printed raw; they now carry the majority
+baseline, a Wilson interval and `(acc − baseline)/(1 − baseline)` — a world
+where Kent picks shipped 54 of 60 times and every delta is zero scores raw
+**0.90** against a floor of **0.90** (gate 4). (2) The 08-27 arm's
+`confounded` flag was inferred from `design_class`; it is now derived from
+three facts measured at render time (the rembg venv under each engine,
+`git diff` on `requirements.txt`) and `--reveal` prints which fired. On a
+checkout with no rembg venv the old proxy was a false positive.
+
+The other twelve, one commit each: `--serve` refuses a torn sitting, reports
+the sitting hash on `/pairs` (the page polls it) and 409s a pick once a
+`--pair` has rebuilt it; a malformed pick is a 400 instead of a dropped
+connection; `--pair` reads a recorded `design_hash` and hardlinks `img/`
+(renders are now replaced atomically, because `cv2.imwrite` in place would
+have rewritten a linked picture under a live sitting); `--verify` picks
+`tires` by name; child processes are decoded as UTF-8 with replacement; a
+half-made ref worktree is discarded with `git worktree prune` (measured on git
+2.55: `remove --force` handles a missing directory but not a missing `.git`
+file); `build_pairs` links a repeat by key, held to three pinned digests of
+its output; one `_both(..., ties=)` fetch in `analysis`; `stitches` read from
+`stitchCount`; one `tiny_logo` fixture in conftest plus a teardown tripwire on
+the shared sitting; pick timestamps carry their UTC offset.
+
+Also in passing, before any of it: PR #506 was **open and red**, not merged.
+Red 1 was a test that simulated "no tesseract" by patching one function — it
+passes where the binary is missing and fails where it exists, i.e. only on CI.
+Red 2 was MASTER_SCOPE at 27,009 words on the MERGE ref with neither side
+over. Both fixed on #506's branch (Kent's call), which then merged at
+14:34Z.
+
+Suites at the time: the seven eye-pairs / instrument-split test files 82 →
+**146 tests**; those plus `test_scope_budget`, `test_doc_claims` and
+`test_dropped_elements` **189 passed** locally (Python 3.14.6, `-n 4`, 81 s).
+The full digitizer suite was NOT run locally — a 13%-in run showed no failure
+before it was stopped to free the CPU for the render — so CI is the full-suite
+evidence for this one.
+
+---
+
 **Last updated:** 2026-09-18 — CI job times, and the fill-reorder memo
 
 Moved out of MASTER_SCOPE's "CI feedback speed" when the memo entry needed the
