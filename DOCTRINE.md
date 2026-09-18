@@ -535,6 +535,34 @@ Moved verbatim 2026-08-28 — no section was rewritten in the move.
   stubs. *(ruled 2026-09-09 — `tests/test_border.py` seam section; memory
   `border-seam-ownership-2026-09-09`)*
 
+- **A gradient band is not a ribbon.** Kent's ruling 2026-09-09, the same
+  icon: the "golden stitching that looks different" was a 2 mm slice the
+  quantizer cut out of a gradient, which the satin classifier read as a
+  ribbon (`promoted_ribbon`) and sewed as one column of crosses in a field
+  of tatami. A band sews as FILL, at its PARENT's fill angle — the second
+  half is not optional: sewn tatami at its own auto angle the crescent ran
+  140 rows of 1.25 mm across itself and still read as a foreign texture.
+  What a band IS is decided by the PIXELS at its edge, not by its shape (a
+  band and a stroke are the same polygon) and not by its neighbours'
+  colours (that rule was built first and failed on the very crescent it was
+  written for — its second neighbour is the white ring, not the next
+  gradient colour): a stroke's outline is an edge in the artwork, a band's
+  is a line drawn through a smooth gradient. `gradient_band.soft_share`
+  reads that off stage 1's image, 1–5 Lab units across a cut against 73–84
+  across a real edge on the icon. Four traps, all hit on the corpus before
+  it shipped: the share threshold is 0.35 because a band with ONE gradient
+  side is L/(2L+2w) of its own boundary (0.47 measured); a probe in
+  `bg_mask` is hard whatever the colours say (Becker is an alpha cutout
+  whose RGB under transparency is the letters' own dark — every letter edge
+  read soft 1.00); the probe floor is 2.5 SOURCE pixels (stage 1's upscale
+  manufactures pixels, not information); and a bevel is soft at one scale
+  where a gradient is soft at two, AND the neighbour across a band's soft
+  side must be a FILL — the drone badge's extruded P, R, N faces read
+  0.39–0.47 beside their own shaded shadows, which are ribbons, not fields.
+  Ships with `tools/gradient_bands.py`, the corpus survey of every verdict
+  it changes. *(ruled 2026-09-09 — `tests/test_gradient_band.py`; memory
+  `gradient-band-not-ribbon-2026-09-09`)*
+
 ---
 
 ## Measured negatives — built or proposed, then rejected. Do not rebuild.

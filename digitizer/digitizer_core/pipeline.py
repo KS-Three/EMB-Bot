@@ -70,8 +70,11 @@ from .stage7_sequence import (PHOTO_CLASSES, borders_last_layers,
                               depth_sort_layers, sequence)
 from .stitches import StitchPlan
 from .threads import chart_for, rgb_to_lab
+from .gradient_band import mark_gradient_bands
+from .machine import SATIN_MAX_WIDTH_MM
 from .warnings_codes import (
     DROPPED_SMALL_SHAPES,
+    GRADIENT_BANDS_AS_FILL,
     PALETTE_THREAD_MISMATCH,
     PHOTO_AUTO_TIER,
     PHOTO_BACKGROUND_REMOVAL_UNAVAILABLE,
@@ -1080,6 +1083,36 @@ def finish_generation(gen: Generation, cfg: PipelineConfig | None = None) -> Pip
             )
         )
 
+    # A gradient band is not a ribbon (`gradient_band.py`). Judged HERE, on
+    # the final region list with the prepared image still in hand: a band is
+    # a ribbon-shaped region whose boundary is mostly a quantizer's cut
+    # through a smooth gradient rather than an edge in the artwork. Stage 5's
+    # compensation axis and stage 7's tier both read the tag, so it is set
+    # once, upstream of both. Flat lane only — the gradient lane reads its
+    # own ramp for the same idea (`region_rides_design_ramp`).
+    band_warnings: list[dict] = []
+    band_ids: list[str] = []
+    if cfg.gradient_band_fill and gen.classification_class == "flat":
+        band_ids = mark_gradient_bands(
+            regions, p.rgb, p.bg_mask, art_cx, art_cy, p.px_per_mm,
+            satin_max_mm=cfg.satin_max_width_mm or SATIN_MAX_WIDTH_MM,
+            source_px_per_mm=p.input_px_per_mm or p.px_per_mm)
+    else:
+        for r in regions:
+            r.meta.pop("gradient_band", None)
+            r.meta.pop("gradient_band_soft", None)
+    if band_ids:
+        band_warnings.append(
+            warn(
+                GRADIENT_BANDS_AS_FILL,
+                f"{len(band_ids)} thin colour band{'s' if len(band_ids) != 1 else ''} "
+                f"cut from a gradient {'sew' if len(band_ids) != 1 else 'sews'} "
+                "as fill rather than satin — a slice of a blend, not a stroke.",
+                count=len(band_ids),
+                ids=list(band_ids),
+            )
+        )
+
     return PipelineResult(
         regions=regions,
         palette=palette,
@@ -1094,7 +1127,8 @@ def finish_generation(gen: Generation, cfg: PipelineConfig | None = None) -> Pip
             [*gen.classification_warnings, *p.warnings, *prep_warnings,
              *gen.quant_warnings, *gen.small_warnings, *vec_warnings,
              *gen.resnap_warnings, *merge_edit_warnings, *split_edit_warnings,
-             *edit_warnings, *layer_warnings, *palette_warnings]
+             *edit_warnings, *layer_warnings, *palette_warnings,
+             *band_warnings]
         ),
         segmenter=gen.seg_name,
         debug_dir=dbg,

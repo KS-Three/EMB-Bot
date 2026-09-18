@@ -59,13 +59,14 @@ from . import machine, stitches
 from .config import PipelineConfig
 from .fabrics import Fabric
 from .machine import FILL_ROW_MM, FILL_STITCH_MM, SATIN_MAX_WIDTH_MM, TINY_STITCH_MM, satin_ceiling_mm
+from .gradient_band import is_gradient_band
 from .stage5_overlap import PlannedRegion, widened_lettering
 from .stage6_applique import applique_pass, nn_group_key
 from .stage6_blend import SourcePixels, blend_fill, region_rides_design_ramp
 from .stage6_border import border_runs, run_outline, silhouette_cap
 from .stage6_contour import contour_fill
 from .stage6_detail import detail_runs
-from .stage6_fill import stitch_shape
+from .stage6_fill import best_fill_angle_deg, stitch_shape
 from .stage6_meander import meander_fill
 from .stage6_scanline import scanline_fill
 from .stage6_sketch import sketch_fill
@@ -249,6 +250,7 @@ def _sews_satin(region, cfg: PipelineConfig, satin_max_mm: float,
     if tier == "satin":
         return True
     return (tier == "auto" and cfg.satin
+            and not is_gradient_band(region)
             and is_satin_candidate(region.polygon, satin_max_mm,
                                    design_class=design_class,
                                    per_stroke=cfg.satin_per_stroke))
@@ -1171,6 +1173,50 @@ def _owned_by_later(
     return omit, [(oid, length) for oid, _b, length in bands]
 
 
+def _fill_angle_deg(p: PlannedRegion, cfg: PipelineConfig, row_mm: float,
+                    planned_by_id: dict[str, PlannedRegion],
+                    _depth: int = 0) -> float | None:
+    """The fill angle a shape sews at — FILL-ANGLE PRECEDENCE, decided here
+    and nowhere else:
+
+      1. the shape's own review-screen angle (meta["fill_angle_deg"],
+         shape-layers contract v1)
+      2. the global cfg.fill_angle_deg
+      3. a gradient band's PARENT — the region it was cut from
+         (`gradient_band.py`, meta["gradient_band_of"]) — resolved by this
+         same rule, and where that comes back None, the auto angle stage 6
+         would derive for the parent (`best_fill_angle_deg` on the parent's
+         compensated polygon at this fill's row pitch — the identical call
+         `stitch_shape` makes), so the band's rows are parallel to its
+         parent's by construction and the band disappears into the field
+         (its own auto angle runs ACROSS a thin band: the icon's Tangerine
+         crescent sewed 140 rows of 1.25 mm at 90° beside a field at 112°)
+      4. the axis stage 5 compensated along (p.stitch_angle_deg — the
+         directional-comp lane; None when compensation was isotropic)
+      5. None: stage 6 derives its own per-shape angle.
+
+    Stage 5's `_comp_axis` follows the same 1 > 2 order, so with directional
+    comp on, the axis a shape was compensated along and the axis it sews
+    along stay one number by construction — for everything but a band,
+    which is compensated along its own axis and sewn along its parent's;
+    that lane is default OFF and the band is a sliver.
+    """
+    shape_angle = p.region.meta.get("fill_angle_deg")
+    if shape_angle is not None:
+        return float(shape_angle)
+    if cfg.fill_angle_deg is not None:
+        return cfg.fill_angle_deg
+    parent_id = p.region.meta.get("gradient_band_of")
+    if parent_id is not None and _depth < 4:
+        parent = planned_by_id.get(parent_id)
+        if parent is not None:
+            angle = _fill_angle_deg(parent, cfg, row_mm, planned_by_id, _depth + 1)
+            if angle is None:
+                angle = best_fill_angle_deg(parent.polygon, row_mm)
+            return angle
+    return p.stitch_angle_deg
+
+
 def _border_wanted(region, border_style: str, total_area: float,
                    share_min: float, iso_max: float) -> tuple[bool, str]:
     """Does this shape get a border, and in which style? -> (want, style).
@@ -1546,6 +1592,10 @@ def sequence(
     applique_blocks, applique_warnings, planned, applique_cursor = applique_pass(
         planned, cfg, chart_for(cfg))
     blocks.extend(applique_blocks)
+    # A gradient band resolves its fill angle through its parent
+    # (`_fill_angle_deg`); the parent's COMPENSATED polygon is what stage 6
+    # would derive the parent's own angle from, so it is looked up here.
+    planned_by_id = {q.shape_id: q for q in planned}
     if applique_cursor is not None:
         cursor = applique_cursor
 
@@ -1670,10 +1720,14 @@ def sequence(
             # Widened lettering is classified on the polygon it will sew —
             # `p.polygon`, the compensated column — see `widened_lettering`.
             classify_poly = p.polygon if widened_lettering(p.region) else p.region.polygon
+            # A gradient band on "auto" never asks the classifier — it is
+            # fill by its neighbours, not by its shape (`gradient_band.py`);
+            # an explicit "satin" is honoured below as it always was.
             ribbon = (classify_ribbon(classify_poly, satin_max,
                                       design_class=design_class,
                                       per_stroke=cfg.satin_per_stroke)
-                      if tier == "auto" and cfg.satin else None)
+                      if tier == "auto" and cfg.satin
+                      and not is_gradient_band(p.region) else None)
             # Kent's gradient ruling (2026-09-04): a shape that RIDES the
             # design's ramp is part of the sweep and sews the sweep's bands,
             # so the classifier's satin verdict does not apply to it — a
@@ -1872,15 +1926,10 @@ def sequence(
                 # because crosshatch needs its angle now, to plan the +90
                 # pass; that call's own "decided here and nowhere else"
                 # comment still holds for the plain-tatami case it covers.
-                shape_angle = p.region.meta.get("fill_angle_deg")
                 runs, report = stitch_shape(
                     p.polygon,
                     p.shape_id,
-                    angle_deg=(float(shape_angle)
-                               if shape_angle is not None
-                               else cfg.fill_angle_deg
-                               if cfg.fill_angle_deg is not None
-                               else p.stitch_angle_deg),
+                    angle_deg=_fill_angle_deg(p, cfg, row_mm, planned_by_id),
                     row_mm=row_mm,
                     stitch_mm=stitch_mm,
                     underlay_style=eff_underlay_style,
@@ -1907,15 +1956,10 @@ def sequence(
                 # plain-tatami call below would — it is duplicated here only
                 # to keep all four purely-geometric branches (crosshatch,
                 # wave, chevron, brick) reading the same way.
-                shape_angle = p.region.meta.get("fill_angle_deg")
                 runs, report = stitch_shape(
                     p.polygon,
                     p.shape_id,
-                    angle_deg=(float(shape_angle)
-                               if shape_angle is not None
-                               else cfg.fill_angle_deg
-                               if cfg.fill_angle_deg is not None
-                               else p.stitch_angle_deg),
+                    angle_deg=_fill_angle_deg(p, cfg, row_mm, planned_by_id),
                     row_mm=row_mm,
                     stitch_mm=stitch_mm,
                     underlay_style=eff_underlay_style,
@@ -1935,15 +1979,10 @@ def sequence(
                 # (stage6_fill._chevron_row_points), on the same staggered
                 # grid plain tatami already builds. Same slot/contract as
                 # the wave branch immediately above.
-                shape_angle = p.region.meta.get("fill_angle_deg")
                 runs, report = stitch_shape(
                     p.polygon,
                     p.shape_id,
-                    angle_deg=(float(shape_angle)
-                               if shape_angle is not None
-                               else cfg.fill_angle_deg
-                               if cfg.fill_angle_deg is not None
-                               else p.stitch_angle_deg),
+                    angle_deg=_fill_angle_deg(p, cfg, row_mm, planned_by_id),
                     row_mm=row_mm,
                     stitch_mm=stitch_mm,
                     underlay_style=eff_underlay_style,
@@ -1961,15 +2000,10 @@ def sequence(
                 # van-der-Corput anti-moire stagger (_stagger_phase) for
                 # this technique only; every other technique's stagger is
                 # untouched. Same slot/contract as wave and chevron above.
-                shape_angle = p.region.meta.get("fill_angle_deg")
                 runs, report = stitch_shape(
                     p.polygon,
                     p.shape_id,
-                    angle_deg=(float(shape_angle)
-                               if shape_angle is not None
-                               else cfg.fill_angle_deg
-                               if cfg.fill_angle_deg is not None
-                               else p.stitch_angle_deg),
+                    angle_deg=_fill_angle_deg(p, cfg, row_mm, planned_by_id),
                     row_mm=row_mm,
                     stitch_mm=stitch_mm,
                     underlay_style=eff_underlay_style,
@@ -2065,15 +2099,10 @@ def sequence(
                 # Stage 5's `_comp_axis` follows the same 1 > 2 order, so with
                 # directional comp on, the axis a shape was compensated along
                 # and the axis it sews along stay one number by construction.
-                shape_angle = p.region.meta.get("fill_angle_deg")
                 runs, report = stitch_shape(
                     p.polygon,
                     p.shape_id,
-                    angle_deg=(float(shape_angle)
-                               if shape_angle is not None
-                               else cfg.fill_angle_deg
-                               if cfg.fill_angle_deg is not None
-                               else p.stitch_angle_deg),
+                    angle_deg=_fill_angle_deg(p, cfg, row_mm, planned_by_id),
                     row_mm=row_mm,
                     stitch_mm=stitch_mm,
                     underlay_style=eff_underlay_style,

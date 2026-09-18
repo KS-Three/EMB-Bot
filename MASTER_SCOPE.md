@@ -110,8 +110,7 @@ icon. Cloth pointers added to defects 3, 6 and 16 below.
     design/fabric boundary is nobody's. On Kent's icon, **100% of the 293.2 mm
     outer silhouette uncovered at 1.0 mm** vs 0.0% on the glyph edge he rated
     flawless. **FIX BUILT, default OFF, both styles opt-in:** `cfg.edge_cap` —
-    `"bean"` traces it, `"satin"` lays a column just inside, one design-level
-    block after all artwork in a thread already loaded. No new constant (gate 1
+    `"bean"` traces it, `"satin"` lays a column just inside, one design-level block after all artwork in a thread already loaded. No new constant (gate 1
     clean); Studio exposes **Design edge**.
     Icon: bean +12.6%, satin +15.3%. KNOWN LIMIT: cost scales with silhouette
     FRAGMENTATION, not size — `drone_render` caps 38 parts / 78 holes for

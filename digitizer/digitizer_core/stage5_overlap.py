@@ -93,6 +93,7 @@ from shapely.ops import unary_union
 from .config import PipelineConfig
 from .fabrics import Fabric
 from .machine import satin_ceiling_mm
+from .gradient_band import is_gradient_band
 from .regions import Region
 from .stage6_fill import principal_angle_deg
 from .stage6_satin import is_satin_candidate
@@ -276,7 +277,10 @@ def _comp_axis(region: Region, cfg: PipelineConfig, satin_max: float,
         # back all round, and an axial add-back would leave a 0.4 mm
         # "column" stage 7 then declines, silently.
         return None, True
+    # A gradient band on "auto" is fill whatever its shape says
+    # (`gradient_band.py`); an explicit "satin" above it still wins.
     if tier == "satin" or (tier == "auto"
+                           and not is_gradient_band(region)
                            and is_satin_candidate(
                                region.polygon, satin_max,
                                design_class=design_class,

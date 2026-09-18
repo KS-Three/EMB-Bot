@@ -1495,6 +1495,10 @@ const WARNING_TEXT = {
     plural(w.count || 0,
       "One color layer asked for a thread another layer already uses, so they sew together — one less trip to the thread rack.",
       "{n} color layers asked for threads other layers already use, so they sew together — fewer trips to the thread rack."),
+  GRADIENT_BANDS_AS_FILL: (w) =>
+    plural(w.count || 0,
+      "One thin colour band between two neighbouring colours sews as fill, not satin — it's a slice of a gradient, not a stroke.",
+      "{n} thin colour bands between neighbouring colours sew as fill, not satin — they're slices of a gradient, not strokes."),
   BORDER_SEAM_SHARED: (w) =>
     plural(w.count || 0,
       "Two bordered shapes share an edge. It is outlined once, in the colour sewn on top; the shape underneath skips that stretch of its own border.",

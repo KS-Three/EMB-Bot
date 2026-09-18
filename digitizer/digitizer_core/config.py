@@ -1383,6 +1383,15 @@ class PipelineConfig:
     # kept as an escape hatch for comparison sew-outs.
     satin: bool = True
     satin_max_width_mm: float | None = None
+    # A gradient band is not a ribbon (Kent's ruling 2026-09-09, the Instagram
+    # icon's Tangerine sliver): a thin colour slice whose two long sides abut
+    # two different shapes and whose thread is an interpolation of theirs is a
+    # slice of a gradient, not a stroke — it sews as fill like its neighbours,
+    # never as a satin column. `gradient_band.mark_gradient_bands` tags them
+    # in `plan_stitches`; an explicit review-screen `tier: "satin"` still
+    # wins. Flat lane only (the gradient lane has `region_rides_design_ramp`
+    # for the same idea). Default ON; False marks nothing and is byte-identical.
+    gradient_band_fill: bool = True
     # Wide columns (quality review 2026-09-08 item 4; plan
     # `docs/superpowers/plans/2026-09-09-wide-column-policy.md`), DEFAULT
     # OFF, byte-identical off. On, the satin ceiling is

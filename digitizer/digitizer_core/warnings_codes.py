@@ -170,6 +170,11 @@ SHAPE_TOO_THIN_TO_FILL = "SHAPE_TOO_THIN_TO_FILL"  # narrower than a fill can ho
 SHAPE_NOT_STITCHED = "SHAPE_NOT_STITCHED"
 LONG_JUMPS_TRIMMED = "LONG_JUMPS_TRIMMED"          # travel could not stay inside the shape. extra: {"count": int}
 SMALL_SHAPES_AS_RUN = "SMALL_SHAPES_AS_RUN"        # too small for fill or satin; sewn as run outlines instead. extra: {"count": int}
+# Stage 5–7 — a thin colour band between two neighbours whose thread is an
+# interpolation of theirs (a slice of a gradient) sews as fill, not as the
+# satin column its shape alone would earn (`gradient_band.py`; Kent 2026-09-09).
+# extra: {"count": int, "ids": [shape_id], "between": {shape_id: [a, b]}}
+GRADIENT_BANDS_AS_FILL = "GRADIENT_BANDS_AS_FILL"
 # Stage 6 (satin tier, 2026-09-03). A stretch of a stroke inside a satin shape
 # whose crosses fell under SATIN_MIN_CROSS_MM sewed as a bean run along its
 # spine instead of vanishing — the E's arms, the T's bar, a script's connector.
