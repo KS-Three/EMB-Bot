@@ -54,6 +54,11 @@ digitizer/artfid-baseline.txt
 # (docs/artfid-eye-agreement-*.md), which is the part worth reading later.
 digitizer/artfid_eye_out/
 
+# Regenerable output of tools/eye_pairs — renders, SEALED arm map and feature
+# table, and the picks log. The audit trail of a sitting is copied to
+# docs/eye-pairs-<date>/ and committed from there; this directory never is.
+digitizer/eye_pairs_out/
+
 # Codex CLI's mirror of the Claude config (.codex/ hooks+agents, .agents/ skills,
 # AGENTS.md). Local-only on purpose: AGENTS.md is a stale sed-substituted copy of
 # CLAUDE.md whose "Codex" paths do not exist, and .codex/hooks.json hardcodes
