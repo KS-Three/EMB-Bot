@@ -43,6 +43,25 @@ def test_every_analysis_metric_is_produced_and_json_safe(tiny, held):
     assert isinstance(row["refusals"], dict) and isinstance(row["notes"], dict)
 
 
+def test_stitches_is_the_designs_own_count_and_is_counted_only_when_it_has_none(held):
+    """Review 2026-09-17: `_records` re-derived `stitches` from the records
+    although every Design carries `stitchCount` — today's adapter and the
+    one at 25da2fe both write it, as the same expression. Two definitions of
+    one number are one edit from disagreeing; the adapter's is the one the
+    Studio and the exporters already read."""
+    records = [{"type": "stitch"}, {"type": "stitch"}, {"type": "trim"},
+               {"type": "stitch"}, {"type": "color"}, {"type": "stitch"}]
+    bare = ft._records({"stitches": records, "colors": []})
+    assert (bare["stitches"], bare["stops"], bare["trims_per_1000"]) == (4, 1, 250.0)
+    # Where the Design states its count, that is the number — a different one
+    # here only so the test can tell which was read.
+    stated = ft._records({"stitches": records, "colors": [], "stitchCount": 8})
+    assert (stated["stitches"], stated["trims_per_1000"]) == (8, 125.0)
+    # On a real Design the two agree, which is why this changes no feature.
+    _cfg, _gen, _result, plan, design = held
+    assert ft._records(design)["stitches"] == design["stitchCount"] == plan.stats.stitch_count
+
+
 def test_design_only_is_a_subset_that_never_touches_the_engine(tiny, held, monkeypatch):
     _cfg, _gen, _result, _plan, design = held
 

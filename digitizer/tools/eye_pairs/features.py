@@ -64,9 +64,16 @@ def _num(v, places: int = 4) -> float | None:
 
 
 def _records(design: dict) -> dict:
-    """ONE definition of these for every arm, the 08-27 engine included."""
+    """ONE definition of these for every arm, the 08-27 engine included.
+
+    `stitches` is the Design's own `stitchCount` — the adapter writes it, as
+    the same expression, today and at 25da2fe (checked 2026-09-18), and it is
+    the number the Studio and the exporters read. It is counted here only
+    for a Design that states none."""
     stitches = design.get("stitches") or []
-    n = sum(1 for s in stitches if s["type"] == "stitch")
+    n = design.get("stitchCount")
+    if n is None:
+        n = sum(1 for s in stitches if s["type"] == "stitch")
     trims = sum(1 for s in stitches if s["type"] == "trim")
     cones = {(c.get("r"), c.get("g"), c.get("b")) for c in design.get("colors") or []}
     return {"stitches": n,
