@@ -65,6 +65,24 @@ class Prep:
     # the SOURCE resolves detail at the target size (preflight's photo
     # resolution guard) must read this, never `px_per_mm`.
     input_px_per_mm: float = 0.0
+    # The raster as the SOURCE delivered it — after the letterbox strip and
+    # the denoise, BEFORE the resolution-floor upscale — and the per-axis
+    # factor that upscale applied to reach `rgb`: `rgb`'s pixel (x, y) sits
+    # at ((x + 0.5) / sx - 0.5, (y + 0.5) / sy - 0.5) in this frame, cv2's
+    # half-pixel-centre convention. Set only when stage 1 upscaled; None and
+    # (1.0, 1.0) otherwise, so `native_rgb is not None` reads as "was
+    # upscaled". `native_alpha` is the source's own alpha (uint8) when it
+    # had one: on a cutout the anti-alias ramp lives THERE — the RGB under
+    # transparency is whatever the exporter left (`becker_marine_logo.png`
+    # is black everywhere, shape entirely in alpha) — and the `alpha < 128`
+    # threshold that makes `bg_mask` throws it away, then the NEAREST
+    # upscale of that mask turns every edge into a staircase of source
+    # pixels (0.68 mm a step on Becker at 100 mm). `stage4_vectorize` reads
+    # the edge from these under `cfg.subpixel_edges_upscaled`; the Lanczos
+    # ramp in `rgb` is manufactured and `subpixel.py` declines it.
+    native_rgb: np.ndarray | None = None
+    native_alpha: np.ndarray | None = None
+    upscale: tuple[float, float] = (1.0, 1.0)
     # True when the background came from the alpha channel rather than a
     # border color flood. An alpha cutout's background is the GARMENT, whose
     # color this pipeline cannot know (the RGB under transparency is whatever
@@ -426,9 +444,19 @@ def prep(image: str | Path | bytes | np.ndarray, cfg: PipelineConfig) -> Prep:
         )
 
     # --- resolution floor ---------------------------------------------------
+    native_rgb: np.ndarray | None = None
+    native_alpha: np.ndarray | None = None
+    upscale = (1.0, 1.0)
     if px_per_mm < cfg.min_px_per_mm:
         want = min(cfg.upscale_cap, cfg.min_px_per_mm / px_per_mm)
         new_size = (int(round(w * want)), int(round(h * want)))
+        # Kept for stage 4's native-resolution edge read (see `Prep`): the
+        # source's own pixels, and the factor each axis actually got — the
+        # rounding to whole pixels makes it differ from `want` by a part in
+        # a hundred on a small raster, enough to walk a contour off its edge
+        # by the far side of the image.
+        native_rgb, native_alpha = rgb, alpha
+        upscale = (new_size[0] / float(w), new_size[1] / float(h))
         rgb = cv2.resize(rgb, new_size, interpolation=cv2.INTER_LANCZOS4)
         bg = (
             cv2.resize(bg.astype(np.uint8), new_size, interpolation=cv2.INTER_NEAREST) > 0
@@ -495,6 +523,9 @@ def prep(image: str | Path | bytes | np.ndarray, cfg: PipelineConfig) -> Prep:
         px_per_mm=px_per_mm,
         art_bbox=art_bbox,  # type: ignore[arg-type]
         input_px_per_mm=input_px_per_mm,
+        native_rgb=native_rgb,
+        native_alpha=native_alpha,
+        upscale=upscale,
         bg_from_alpha=bg_from_alpha,
         bg_outline_px=bg_outline_px,
         bg_edge_rgb=bg_edge_rgb,

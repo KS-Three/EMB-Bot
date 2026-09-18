@@ -786,6 +786,32 @@ class PipelineConfig:
     # for which step. Quality case unaffected; the clock is now on the
     # record. *(docs/flag-runtime-bills-2026-09-12.md)*
     subpixel_edges: bool = True
+    # The upscaled regime `subpixel_edges` declines, read at the SOURCE's
+    # resolution instead. A source under `min_px_per_mm` reaches stage 4 as
+    # a Lanczos enlargement, and on an alpha cutout not even that: the
+    # `alpha < 128` threshold makes the background mask and a NEAREST
+    # resize of it carries every edge up as a staircase of source pixels —
+    # `becker_marine_logo.png`, a real client logo, is 146 px wide with its
+    # whole shape in alpha, 1.46 px/mm at 100 mm, so every outline and every
+    # MARINE letter sews a 0.68 mm stair. The ramp that locates the edge to
+    # a fraction of a SOURCE pixel is still in the file (Becker's alpha has
+    # 256 levels, 17% of its pixels mid-ramp): ON, stage 4 hands each raw
+    # contour vertex down to the source's frame (`Prep.upscale`), reads the
+    # source's own pixels — Lab of the RGB composited over white by alpha,
+    # with alpha itself as a fourth channel so a transparent-to-ink edge has
+    # contrast whatever the ink's colour — with the same windows, plateaus
+    # and area integral `subpixel.py` uses on a native-resolution source,
+    # and brings the moved vertex back up. The chords the normals and
+    # corners are read over scale with the upscale so they span source
+    # pixels, not stair steps. Nothing is smoothed; a vertex the profile
+    # refuses keeps its pixel centre exactly as before. Not upscaled, or
+    # `subpixel_edges` off, this is inert. No physical constant: every
+    # number is a raster quantity of the source. DEFAULT OFF — built
+    # 2026-09-18 for Kent's "outlining non-standard shapes" ask; the flip is
+    # his, on the ladder's 200 px rung and the Becker render in
+    # scope-history's entry of that day. False is today's polygon, byte for
+    # byte.
+    subpixel_edges_upscaled: bool = False
 
     # Stage 5 — sew order, underlap, pull compensation
     # Which garment/fabric the design is going on. The fabric preset supplies

@@ -263,9 +263,13 @@ is already true OFF from 400 px up, and the criterion is restated:
 | 3 | **BUILT 2026-09-09** — `_refine_curves(accepted=...)`: 0.25 px floor on ≥80%-accepted chords, the midpoint's own point inserted, the 20 px/mm gate lifted ON; bites on small radii where the 15° rule wanted chords the pixel floor refused (§3's BUILT note) | ~40 + 3 tests | none |
 | 4 | **FLIPPED 2026-09-09, Kent's approval** — `subpixel_edges` default True; the flat-lane goldens re-captured on ubuntu-latest by a temporary workflow that proves the runner on the pre-change engine first (`tools/recapture_flat_lane_key.py`), the pushcomp pins re-pinned the same way (`tools/pushcomp_pins.py`); ladder, tier diff and renders in scope-history's flip entry. `curve_turn_deg` stays 15°; upscaled sources stay declined — both carried forward as Kent's. Fallout fixed in the mechanisms it named, not the polygons (DOCTRINE 2026-09-09): stage 6's `medial_axis` pinhole diamond on the "N" foot, the taper zone's crowding on the ribbon head, one injection test pinned to the old trace, three pins re-pinned | docs + goldens + two stage-6 fixes | given |
 
+| 5 | **BUILT 2026-09-18, OFF** — `cfg.subpixel_edges_upscaled`: §8 decision 3's regime read at the SOURCE's resolution instead of declined. `Prep` keeps the pre-upscale raster (`native_rgb`, `native_alpha`, `upscale`); `stage4_vectorize._native_subpixel` hands each vertex down by the half-pixel-centre rule, reads the source's pixels (Lab over white by alpha, alpha as a fourth channel), chords scaled by the upscale, and brings it back; `subpixel._fit_corners` places every flagged corner at the meet of its two fitted side lines (the profile read through a corner pixel samples the other edge's ramp). Ladder 200 rung: purple/orange Hausdorff 0.256/0.339 → 0.031/0.038 mm at 4 vertices, ring 0.525 → 0.205, ribbon 0.496 → 0.232; the 3.7 px bar stays (no plateau). Becker: polygon on the ramp; at 100 mm the outline band flips fill → satin into the decomposition defect. 9 tests. Flip is Kent's — scope-history 2026-09-18 | ~150 + 9 tests | none |
 ## 8. Decisions for Kent
 
 1. Approve the construction (read the ramp; never smooth the polygon).
 2. Accept that the flip moves every golden, judged in CI.
 3. Whether Becker-class sources (under the resolution floor, upscaled) are
-   in scope for the flip or excluded until measured.
+   in scope for the flip or excluded until measured. **Measured 2026-09-18
+   (row 5): read at the source's resolution the regime is as good as the
+   400 px rung's rectangles; whether `subpixel_edges_upscaled` flips is the
+   open call, with Becker's 100 mm tier flip on the table.**

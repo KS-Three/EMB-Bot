@@ -358,3 +358,246 @@ def test_a_source_upscaled_to_the_resolution_floor_keeps_the_pixel_centre_polygo
     assert [list(r.polygon.exterior.coords) for r in on.regions] == \
         [list(r.polygon.exterior.coords) for r in off.regions]
 
+
+
+# --- `cfg.subpixel_edges_upscaled`: the declined regime read at the source's
+# own resolution (built 2026-09-18; `stage4_vectorize._native_subpixel`).
+#
+# The contracts. A source stage 1 upscaled keeps its pixel-centre polygon at
+# the default (the test above); ON, each contour vertex is read against the
+# SOURCE's pixels — its RGB, or its alpha where the shape lives there — and
+# lands on the edge to a fraction of a source pixel where the nearest-
+# upscaled mask carried a staircase of whole source pixels; a corner the
+# profile refuses is placed where its two fitted side lines meet; a source
+# that was not upscaled is untouched by the flag, byte for byte; and the
+# reader takes a fourth channel as it takes the three of Lab.
+
+from digitizer_core import subpixel as _sp
+from digitizer_core.pipeline import build_generation, finish_generation
+
+
+def _coverage_disc(w: int, c: int, r: int, s: int = 16) -> np.ndarray:
+    """A disc's coverage 0..255 at `w` px, drawn at `s`x and INTER_AREA down."""
+    canvas = np.zeros((w * s, w * s), np.uint8)
+    cv2.circle(canvas, (c * s, c * s), r * s, 255, -1)
+    return cv2.resize(canvas, (w, w), interpolation=cv2.INTER_AREA)
+
+
+def _low_res_discs(tmp_path: Path) -> tuple[Path, Path, float]:
+    """-> (opaque PNG, alpha-cutout PNG, true radius mm) of the same 40 px
+    disc in a 120 px frame at 50 mm: 1.6 px/mm in, upscaled to the 4.0
+    floor. The cutout is black RGB everywhere with the coverage in alpha —
+    `becker_marine_logo.png`'s layout. The art bbox is the disc's own 80 px
+    (alpha >= 128), so 1 px is 0.625 mm and the true radius, cv2 filling
+    sub-pixels within r + 0.5, is (40 + 0.5 / 16) * 0.625 mm."""
+    cov = _coverage_disc(120, 60, 40)
+    opaque = np.full((120, 120, 3), 255, np.uint8)
+    for ch, v in enumerate(FG):
+        opaque[:, :, ch] = (255 - (255 - v) * (cov / 255.0)).astype(np.uint8)
+    cutout = np.zeros((120, 120, 4), np.uint8)
+    cutout[:, :, 3] = cov
+    a, b = tmp_path / "opaque.png", tmp_path / "cutout.png"
+    cv2.imwrite(str(a), opaque)
+    cv2.imwrite(str(b), cutout)
+    return a, b, (40.0 + 0.5 / 16.0) * (50.0 / 80.0)
+
+
+def _disc_region(art: Path, **cfg_kw):
+    cfg = PipelineConfig(target_width_mm=50.0, **cfg_kw)
+    gen = build_generation(str(art), cfg)
+    result = finish_generation(gen.fork(), cfg)
+    regions = [r for r in result.regions if not r.meta.get("enclosed_background")]
+    return gen.p, max(regions, key=lambda r: r.polygon.area)
+
+
+def _radial(region) -> tuple[float, float, float, int]:
+    """-> (fitted radius mm, rms deviation mm, max deviation mm, vertices)."""
+    pts = np.asarray(region.polygon.exterior.coords)[:-1]
+    cx, cy, r = _fit_circle(pts)
+    dev = np.hypot(pts[:, 0] - cx, pts[:, 1] - cy) - r
+    return r, float(np.sqrt(np.mean(dev ** 2))), float(np.abs(dev).max()), len(pts)
+
+
+def test_prep_keeps_the_native_raster_only_when_it_upscales(tmp_path):
+    opaque, cutout, _r = _low_res_discs(tmp_path)
+    big, _c, _r2 = _disc(w=400, h=400, c=200, r=150)
+    big_path = tmp_path / "big.png"
+    cv2.imwrite(str(big_path), big)
+    p, _ = _disc_region(opaque)
+    assert p.native_rgb is not None and p.native_alpha is None
+    assert p.native_rgb.shape[:2] == (120, 120)
+    assert p.upscale[0] > 1.0 and p.upscale[1] > 1.0
+    assert p.rgb.shape[1] == round(120 * p.upscale[0])
+    p, _ = _disc_region(cutout)
+    assert p.native_alpha is not None and p.native_alpha.shape == (120, 120)
+    p, _ = _disc_region(big_path)
+    assert p.native_rgb is None and p.native_alpha is None and p.upscale == (1.0, 1.0)
+
+
+@pytest.mark.parametrize("which", ["opaque", "cutout"])
+def test_an_upscaled_low_res_disc_is_read_onto_its_edge_from_the_source(tmp_path, which):
+    """OFF, the polygon is the nearest-upscaled mask's staircase: 0.2 mm of
+    radial scatter, 0.4 mm at worst, and on the cutout a tenth of a
+    millimetre inside the edge (the alpha >= 128 mask, traced at pixel
+    centres). ON, the vertices sit on the circle to a few hundredths of a
+    millimetre — a fraction of a SOURCE pixel (0.625 mm) — the radius is
+    the true one, and the staircase's vertices are gone."""
+    opaque, cutout, true_r = _low_res_discs(tmp_path)
+    art = opaque if which == "opaque" else cutout
+    p_off, off = _disc_region(art, subpixel_edges_upscaled=False)
+    p_on, on = _disc_region(art, subpixel_edges_upscaled=True)
+    assert p_on.upscale[0] > 1.0                       # the regime under test
+    assert "subpixel_accepted" not in off.meta
+    assert on.meta["subpixel_accepted"] >= 0.9
+    r_off, rms_off, max_off, n_off = _radial(off)
+    r_on, rms_on, max_on, n_on = _radial(on)
+    assert rms_off > 0.15 and max_off > 0.3, (rms_off, max_off)        # the staircase, OFF
+    assert rms_on < rms_off / 5, (rms_off, rms_on)
+    assert max_on < 0.06, max_on
+    assert abs(r_on - true_r) < 0.05, (r_on, true_r)
+    if which == "cutout":
+        # The alpha >= 128 mask traced at pixel centres sits a tenth of a
+        # millimetre inside the edge; the opaque disc's k-means mask has no
+        # such bias to lose, so only the cutout pins the radius against OFF.
+        assert abs(r_off - true_r) > 0.08, (r_off, true_r)
+        assert abs(r_on - true_r) < abs(r_off - true_r), (r_off, r_on, true_r)
+    assert n_on < n_off / 2, (n_off, n_on)
+
+
+def test_the_upscaled_flag_is_inert_on_a_source_at_its_own_resolution(tmp_path):
+    """A 400 px disc at 50 mm arrives above the floor: the flag has no
+    regime to act in and the polygon is `subpixel_edges`'s, byte for byte."""
+    img, _c, _r = _disc(w=400, h=400, c=200, r=150)
+    art = tmp_path / "big.png"
+    cv2.imwrite(str(art), img)
+    p, plain = _disc_region(art)
+    assert p.upscale == (1.0, 1.0)
+    _p, flagged = _disc_region(art, subpixel_edges_upscaled=True)
+    assert list(flagged.polygon.exterior.coords) == list(plain.polygon.exterior.coords)
+    assert flagged.meta.get("subpixel_accepted") == plain.meta.get("subpixel_accepted")
+
+
+def test_subpixel_contour_reads_a_fourth_channel_like_the_three_of_lab():
+    """An image whose three Lab channels are flat and whose edge lives only
+    in a fourth channel — a white ink over transparency, alpha scaled to
+    0..100 — is read exactly as a Lab edge is: the vertices move onto the
+    circle and the pixel-centre scatter goes."""
+    cov = _coverage_disc(300, 150, 100)
+    four = np.zeros((300, 300, 4), np.float32)
+    four[..., 0] = 100.0                                   # L flat: no Lab contrast at all
+    four[..., 3] = cov.astype(np.float32) * (100.0 / 255.0)
+    mask = cov >= 128
+    raw = _trace(mask)
+    pts, accepted, _corner = subpixel_contour(raw, four, mask.astype(np.uint8), (0, 0),
+                                              min_contrast_de=CONTRAST)
+    assert accepted.mean() > 0.95
+    cx, cy, r = _fit_circle(pts[accepted])
+    true_c, true_r = 150 - 15 / 32.0, 100 + 0.5 / 16.0
+    assert abs(r - true_r) < 0.05 and abs(cx - true_c) < 0.05 and abs(cy - true_c) < 0.05
+    assert _radial_rms(pts[accepted], cx, cy, r) < 0.05
+    assert _radial_rms(raw[accepted].astype(float), cx, cy, r) > 0.2
+    # The three-channel read is unchanged by the generalisation.
+    lab_only = four[..., :3].copy()
+    lab_only[..., 0] = np.where(mask, 30.0, 100.0)
+    pts3, acc3, _c3 = subpixel_contour(raw, lab_only, mask.astype(np.uint8), (0, 0),
+                                       min_contrast_de=CONTRAST)
+    assert acc3.mean() > 0.95
+
+
+def _right_angle(corner_xy=(162.49, 75.92), top_y=75.4, left_x=162.0):
+    """A refused corner between an accepted top side (along +x, ending
+    before the corner) and an accepted left side (along +y, starting after
+    it), as the ladder's 200 px rectangles showed them."""
+    top = np.column_stack([np.linspace(156.0, 161.5, 8), np.full(8, top_y)])
+    left = np.column_stack([np.full(12, left_x), np.linspace(76.5, 82.0, 12)])
+    pts = np.vstack([top, [corner_xy], left, np.zeros((9, 2))])
+    n = len(pts)
+    accepted = np.array([True] * 8 + [False] + [True] * 12 + [False] * 9)
+    corner = np.zeros(n, dtype=bool)
+    corner[8] = True
+    return pts, accepted, corner
+
+
+def test_fit_corners_places_a_refused_corner_where_its_side_lines_meet():
+    pts, accepted, corner = _right_angle()
+    protect = corner.copy()
+    _sp._fit_corners(pts.copy(), pts, accepted, protect, corner, steps=6)
+    assert np.allclose(pts[8], (162.0, 75.4), atol=1e-6)
+    assert accepted[8] and not protect[8]
+
+
+def test_fit_corners_leaves_what_is_not_a_corner():
+    # Collinear windows: a vertex mid-side between two stretches of one line.
+    pts = np.column_stack([np.linspace(0.0, 20.0, 21), np.zeros(21)])
+    accepted = np.ones(21, dtype=bool)
+    accepted[10] = False
+    corner = np.zeros(21, dtype=bool)
+    corner[10] = True
+    protect = corner.copy()
+    before = pts[10].copy()
+    _sp._fit_corners(pts.copy(), pts, accepted, protect, corner, steps=3)
+    assert np.array_equal(pts[10], before) and protect[10] and not accepted[10]
+    # A meeting point past the reach: the corner vertex three pixels off.
+    pts, accepted, corner = _right_angle(corner_xy=(164.5, 73.0))
+    protect = corner.copy()
+    _sp._fit_corners(pts.copy(), pts, accepted, protect, corner, steps=6)
+    assert np.allclose(pts[8], (164.5, 73.0)) and protect[8]
+    # A curved side (residual past the floor) is no line to meet.
+    pts, accepted, corner = _right_angle()
+    pts[:8, 1] += 1.5 * np.sin(np.linspace(0.0, np.pi, 8))
+    protect = corner.copy()
+    _sp._fit_corners(pts.copy(), pts, accepted, protect, corner, steps=6)
+    assert protect[8] and not accepted[8]
+
+
+def test_the_native_read_squares_the_corners_of_an_upscaled_rectangle(tmp_path):
+    """A 20 x 12 px rectangle whose edges sit mid-pixel — so every corner
+    column is the other edge's ramp, the case the profile read either
+    refuses or places short — in a 120 px frame at 50 mm, upscaled x2.5.
+    ON, the polygon is the four corners and each lands on the truth within
+    a tenth of a source pixel; OFF, the corners sit on the staircase."""
+    s = 16
+    canvas = np.full((120 * s, 120 * s, 3), BG, np.uint8)
+    # Pixel-boundary coordinates 40.5..60.5 x 50.5..62.5 at 16x; in
+    # pixel-CENTRE coordinates (the trace's frame) the edges are at 40, 60,
+    # 50 and 62, each through the middle of a half-covered pixel.
+    cv2.rectangle(canvas, (int(40.5 * s), int(50.5 * s)), (int(60.5 * s) - 1, int(62.5 * s) - 1), FG, -1)
+    img = cv2.resize(canvas, (120, 120), interpolation=cv2.INTER_AREA)
+    # The frame needs a foreground extent of 80 px for the same 1.6 px/mm as
+    # the discs: two far corner dots pin the art bbox without touching the bar.
+    img[20, 20] = FG
+    img[99, 99] = FG
+    art = tmp_path / "rect.png"
+    cv2.imwrite(str(art), img)
+    truth_mm2 = 20.0 * 12.0 / 1.6 ** 2
+
+    def rect_region(**kw):
+        cfg = PipelineConfig(target_width_mm=50.0, **kw)
+        gen = build_generation(str(art), cfg)
+        result = finish_generation(gen.fork(), cfg)
+        # Stage 2 also cuts the upscaled ramp into a halo ring of its own
+        # (a stage-2 matter, the same OFF and ON); the rectangle is the
+        # region nearest the truth's area.
+        return gen.p, min(result.regions, key=lambda r: abs(r.polygon.area - truth_mm2))
+
+    p, off = rect_region(subpixel_edges_upscaled=False)
+    _p, on = rect_region(subpixel_edges_upscaled=True)
+    assert p.upscale[0] > 1.0
+    sx, sy = p.upscale
+    ax0, ay0, ax1, ay1 = p.art_bbox
+    cx, cy = (ax0 + ax1) / 2.0, (ay0 + ay1) / 2.0
+
+    def to_native(pts_mm: np.ndarray) -> np.ndarray:
+        xu = pts_mm[:, 0] * p.px_per_mm + cx
+        yu = pts_mm[:, 1] * p.px_per_mm + cy
+        return np.column_stack([(xu + 0.5) / sx - 0.5, (yu + 0.5) / sy - 0.5])
+
+    truth = [(x, y) for x in (40.0, 60.0) for y in (50.0, 62.0)]
+    on_px = to_native(np.asarray(on.polygon.exterior.coords)[:-1])
+    off_px = to_native(np.asarray(off.polygon.exterior.coords)[:-1])
+    assert len(on_px) == 4, on_px.tolist()
+    for tx, ty in truth:
+        d_on = float(np.min(np.hypot(on_px[:, 0] - tx, on_px[:, 1] - ty)))
+        d_off = float(np.min(np.hypot(off_px[:, 0] - tx, off_px[:, 1] - ty)))
+        assert d_on < 0.1, (tx, ty, d_on, on_px.tolist())
+        assert d_off > 0.1, (tx, ty, d_off)
