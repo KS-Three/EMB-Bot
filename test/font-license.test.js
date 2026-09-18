@@ -198,7 +198,12 @@ test("a font deriving from another licence FAMILY names that base in its attribu
 const RESERVED_NAME_KNOWN_UNRESOLVED = new Map([
   ["fold_inkstitch", "ships as \"Fold Ink/Stitch\" over Reserved Font Name \"Fold\" " +
     "(James Kilfiger). Inherited verbatim from upstream; no permission on record " +
-    "there or here. Awaiting Kent's rename decision — found 2026-09-12."],
+    "there or here. Found 2026-09-12. Kent ruled 2026-09-13: ask the copyright " +
+    "holder, because OFL clause 3 is satisfied outright by written permission — " +
+    "and silence resolves to a rename, so the clause is discharged either way. " +
+    "THE FULL CASE FILE IS docs/fold-reserved-font-name-2026-09-13.md: the " +
+    "evidence, the message to send, and what to do with a yes, a no or silence. " +
+    "Read it before touching this entry."],
 ]);
 
 test("no shipped font's display name uses its own OFL Reserved Font Name", () => {
