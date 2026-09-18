@@ -467,6 +467,10 @@ def _print_fit(fit: dict | None) -> None:
     print("guess. Weights are reported and shipped nowhere.")
     print(line("LOFO", fit["lofo_accuracy"], fit["lofo_wilson"], fit["lofo_above_baseline"],
                "" if fit["lofo_beats_baseline"] else "  - not distinguishable from the baseline"))
+    if fit["lofo_n"] and fit["lofo_n"] != fit["n"]:
+        # A skipped fold: LOFO is held to the floor of the rows it SCORED.
+        print(f"              scored {fit['lofo_n']} of {fit['n']} - a held-out fixture left only one "
+              f"of Kent's answers to learn from; baseline on those rows {fit['lofo_baseline']:.2f}")
     print(line("best single", best["accuracy"], best["wilson"], best["above_baseline"],
                f"  ({best['metric']})"))
 

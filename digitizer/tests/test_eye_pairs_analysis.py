@@ -426,6 +426,30 @@ def test_a_fit_that_only_learned_kents_lean_earns_nothing():
     assert out["best_single"]["above_baseline"] == pytest.approx(-4.0)
 
 
+def test_a_skipped_fold_cannot_flatter_the_fit():
+    """Every arm-pick sits in ONE fixture. Holding that fixture out leaves a
+    single answer to learn from, so the fold is skipped — and the 54 rows
+    LOFO does score are all "shipped". 1.00 on those rows is their FLOOR.
+    Held to the floor over all 60 rows (59/60) it read "+1.00 above
+    baseline" for a model that learned nothing: the accuracy and its
+    baseline have to be taken over the same rows."""
+    sealed, picks, feats = lean_world(arm_picks=1)
+    out = an.exploratory_fit(an.decided_rows(sealed, picks, ref=False), feats)
+    assert (out["n"], out["lofo_n"]) == (60, 54)
+    assert out["lofo_accuracy"] == 1.0
+    assert out["lofo_baseline"] == 1.0
+    assert out["lofo_above_baseline"] is None and out["lofo_beats_baseline"] is False
+    # `best_single` scores every row, so it is still held to the all-row floor.
+    assert out["majority_baseline"] == pytest.approx(59 / 60)
+
+
+def test_with_no_fold_skipped_the_two_floors_are_one_number():
+    sealed, picks, feats = fit_world(9, 6)
+    out = an.exploratory_fit(an.decided_rows(sealed, picks, ref=False), feats)
+    assert out["lofo_n"] == out["n"]
+    assert out["lofo_baseline"] == pytest.approx(out["majority_baseline"])
+
+
 def test_a_one_sided_sitting_has_no_corrected_figure_rather_than_a_crash():
     sealed, picks, feats = lean_world(arm_picks=0)      # Kent never picks an arm
     out = an.exploratory_fit(an.decided_rows(sealed, picks, ref=False), feats)

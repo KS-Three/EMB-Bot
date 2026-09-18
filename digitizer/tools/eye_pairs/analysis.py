@@ -365,14 +365,15 @@ def exploratory_fit(rows: list[dict], features: dict,
     Z = X / scale          # scaled, NOT centred: a zero delta stays "no say"
     A = np.hstack([np.ones((len(Z), 1)), Z])
 
-    hits = total = 0
+    hits = total = scored_arm = 0
     for held in sorted(set(fx.tolist())):
         test, train = fx == held, fx != held
         if len(set(y[train].tolist())) < 2:
-            continue
+            continue                    # one answer to learn from: no model
         w = _logistic(A[train], y[train], ridge)
         hits += int((((A[test] @ w) > 0) == (y[test] == 1.0)).sum())
         total += int(test.sum())
+        scored_arm += int((y[test] == 1.0).sum())
 
     singles = {}
     for j, m in enumerate(names):
@@ -385,9 +386,18 @@ def exploratory_fit(rows: list[dict], features: dict,
     # arms are default-OFF flags he mostly turns down, so that floor is
     # nowhere near 0.5 (review 2026-09-17: both figures were printed raw).
     baseline = float(max(y.mean(), 1.0 - y.mean()))
+    # An accuracy and its floor are taken over the SAME rows. A fold is
+    # skipped when holding its fixture out leaves one answer to learn from,
+    # so LOFO can score fewer rows than `n` — and if every arm-pick sits in
+    # that one fixture, the rows it does score are all "shipped": 1.00 on
+    # them is their floor, and against the all-row floor (59/60) it read
+    # "+1.00 above baseline" for a model that learned nothing.
+    lofo_baseline = (max(scored_arm, total - scored_arm) / total) if total else None
 
-    def above(acc):
-        return None if acc is None or baseline >= 1.0 else (acc - baseline) / (1.0 - baseline)
+    def above(acc, floor):
+        if acc is None or floor is None or floor >= 1.0:
+            return None
+        return (acc - floor) / (1.0 - floor)
 
     lofo = hits / total if total else None
     lofo_lo, lofo_hi = wilson(hits, total)
@@ -395,11 +405,12 @@ def exploratory_fit(rows: list[dict], features: dict,
             "weights": [float(v) for v in _logistic(A, y, ridge)],
             "majority_baseline": baseline,
             "lofo_accuracy": lofo, "lofo_hits": hits, "lofo_n": total,
+            "lofo_baseline": lofo_baseline,
             "lofo_wilson": [lofo_lo, lofo_hi],
-            "lofo_above_baseline": above(lofo),
+            "lofo_above_baseline": above(lofo, lofo_baseline),
             # The same test `sign_agreement` applies to `pe`: the interval's
             # lower bound has to clear the floor, not the point estimate.
-            "lofo_beats_baseline": bool(total and lofo_lo > baseline),
+            "lofo_beats_baseline": bool(total and lofo_lo > lofo_baseline),
             "best_single": {"metric": best, "accuracy": singles[best],
                             "wilson": list(wilson(singles[best] * len(y), len(y))),
-                            "above_baseline": above(singles[best])}}
+                            "above_baseline": above(singles[best], baseline)}}

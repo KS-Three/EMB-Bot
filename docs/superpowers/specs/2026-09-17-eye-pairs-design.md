@@ -416,6 +416,18 @@ credit, so its `k` is fractional). A one-sided sitting (baseline 1.0) reads
 `None`, not a division by zero. No accuracy is printed without all three
 beside it, and the EXPLORATORY label stays.
 
+**An accuracy and its floor are taken over the SAME rows.** A LOFO fold is
+skipped when holding its fixture out leaves only one of Kent's answers to
+learn from, so LOFO can score fewer rows than `n`. If every arm-pick sits in
+that one fixture, the 54 rows it does score are all "shipped": 1.00 on them is
+their floor, and held to the all-row floor (59/60) it read **"+1.00 above
+baseline" for a model that learned nothing** — found re-reading this change
+before it shipped. So LOFO is held to `lofo_baseline`, the majority share
+among the rows it scored; `best_single`, which scores every row, stays on
+`majority_baseline`. With no fold skipped the two are one number, and when
+one is, the report says so: *"scored 54 of 60 … baseline on those rows
+1.00"*.
+
 **One fetch, 2026-09-18.** A pair's two values are read in exactly one place
 (`analysis._both`), whose `ties` argument has no default. The primary, the
 exit clause, the per-fixture count and the descriptive lean pass

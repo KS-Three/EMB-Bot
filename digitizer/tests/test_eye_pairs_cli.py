@@ -553,7 +553,16 @@ def test_the_exploratory_line_never_prints_a_raw_accuracy_alone(capsys):
     sealed, picks, feats = lean_world()
     fit = an.exploratory_fit(an.decided_rows(sealed, picks, ref=False), feats)
     cli._print(bare_results(exploratory=fit))
-    assert "not distinguishable from the baseline" in capsys.readouterr().out
+    printed = capsys.readouterr().out
+    assert "not distinguishable from the baseline" in printed
+    assert "a held-out fixture left" not in printed     # no fold was skipped
+
+    # A skipped fold is SAID, with the floor of the rows that were scored.
+    sealed, picks, feats = lean_world(arm_picks=1)
+    fit = an.exploratory_fit(an.decided_rows(sealed, picks, ref=False), feats)
+    cli._print(bare_results(exploratory=fit))
+    printed = capsys.readouterr().out
+    assert "scored 54 of 60" in printed and "baseline on those rows 1.00" in printed
 
 
 def test_verify_picks_its_fixture_by_name_not_by_position(monkeypatch, capsys):
