@@ -64,7 +64,7 @@ row 7's sidecar count grew from 55 to 85 while staying one-per-font. Rows 2, 4,
 
 ## Explicit non-goals (parking list — not the Ember bar)
 
-Team names, monogram frames, envelopes beyond arc, 3D puff,
+Team names, monogram frames, envelopes beyond arc,
 stitch-level editing, decorative fills, imported-design re-density
 (Wilcom-style stitch processor), a sharing gallery. No user-upload gallery
 is a deliberate choice for the starter design pack (item 3) too —
@@ -97,6 +97,20 @@ ever been given appliqué by accident. It is a capability that exists and must
 be asked for. In scope as of today; its status belongs in `MASTER_SCOPE.md`
 and `docs/scope/` like any other capability, and turning the default on would
 be a separate ruling.
+
+**"3D puff" left this list on 2026-09-17 (Kent's call) — and unlike appliqué,
+nothing was already built.** Every branch mentions puff only in comments, so
+this is a genuine scope addition, not a correction of the record. v1 is the
+Python digitizer's service route only (the browser engine caps satin at 3.0 mm,
+the floor of the puff band), chosen per shape from the canvas right-click menu,
+3.0–5.0 mm columns, multi-colour, OFF by default and byte-identical when off.
+Five of its parameters cannot be settled from any document — end-cap density
+and dimensions, compensation direction, the minimum void, and whether the
+Tajima physically halts on a same-needle colour change — so several of its
+numbers are rulings rather than measurements, and the code says which. Design:
+`docs/superpowers/specs/2026-09-17-3d-puff-design.md`. Evidence:
+`docs/puff-research-2026-09-17.md`. *(nothing built as of 2026-09-18 — status
+moves to `MASTER_SCOPE.md` once a PR lands)*
 
 ## Open — not yet decided
 
