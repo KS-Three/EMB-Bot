@@ -296,16 +296,31 @@ def _print(res: dict) -> None:
         print(f"WARNING  left-share over all decided picks is {k['left_share_all']:.2f} - a side habit")
     print(f"CONTROLS identical pairs: n={k['identical_n']} tie rate={k['identical_tie_rate']}")
     print()
-    print("PRIMARY - chance-corrected agreement (2a-1; 0 = chance). Headline excludes")
-    print("refused pairs; the all-pairs row is printed beside it.")
-    print(f"{'metric':<24}{'n':>4}{'2a-1':>8}{'95% CI on a':>16}  {'verdict':<13}{'all: n':>7}{'2a-1':>8}")
+    print("PRIMARY - agreement above the chance floor pe (from the observed marginals;")
+    print("kappa_m = (a-pe)/(1-pe), 0 = chance). 2a-1 is the pre-registered figure,")
+    print("right only when pe = 0.5. 'fixtures' = fixtures where the metric agrees")
+    print("with the majority of that fixture's pairs / fixtures scored: nine fixtures")
+    print("are the real n. Headline excludes refused pairs; all-pairs beside it.")
+    print(f"{'metric':<22}{'n':>4}{'a':>6}{'pe':>6}{'kappa_m':>8}{'2a-1':>6}"
+          f"{'95% CI on a':>14}  {'verdict':<12}{'fixtures':>9}{'all n':>6}{'k_m':>6}")
+    per_fx = res.get("per_fixture", {})
     for row in res["primary"]:
         h, a = row["headline"], row["all_pairs"]
-        kap = "  n/a" if h["kappa"] is None else f"{h['kappa']:+.2f}"
-        kap_a = "  n/a" if a["kappa"] is None else f"{a['kappa']:+.2f}"
+
+        def f(v, spec="+.2f"):
+            return "n/a" if v is None else format(v, spec)
+
+        pf = per_fx.get(row["metric"], {})
+        fx = f"{pf.get('agree', 0)}/{len(pf.get('fixtures', {}))}"
         ci = "[%.2f, %.2f]" % (h["lo"], h["hi"])
-        print(f"{row['metric']:<24}{h['n']:>4}{kap:>8}{ci:>16}  "
-              f"{h['verdict']:<13}{a['n']:>7}{kap_a:>8}")
+        flag = " skew" if h.get("skewed") else ""
+        print(f"{row['metric']:<22}{h['n']:>4}{f(h['a'], '.2f'):>6}{f(h['pe'], '.2f'):>6}"
+              f"{f(h['kappa_marginal']):>8}{f(h['kappa']):>6}{ci:>14}  "
+              f"{h['verdict']:<12}{fx:>9}{a['n']:>6}{f(a['kappa_marginal']):>6}{flag}")
+    print()
+    print("DESCRIPTIVE - no direction; how often Kent picked the HIGHER value")
+    for d in res.get("descriptive", []):
+        print(f"  {d['metric']:<14} picked higher on {d['picked_higher']} of {d['n']} differing pairs")
     print()
     print("EXIT CLAUSE - pairs where Kent picked the arm a metric scores WORSE")
     for metric, rows in res["exit_clause"].items():

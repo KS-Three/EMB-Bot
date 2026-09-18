@@ -1384,18 +1384,23 @@ phase 1's second clause, *"nothing he judges better ever scores worse"*. It
 is the only place Kent's eye is recorded as DATA rather than prose. Spec:
 `docs/superpowers/specs/2026-09-17-eye-pairs-design.md`.
 
-    .venv/Scripts/python -m tools.eye_pairs --render     # hours; resumable; prints a COUNT only
+    .venv/Scripts/python -m tools.eye_pairs --render     # hours; resumable; --fixtures/--arms scope it
+    .venv/Scripts/python -m tools.eye_pairs --pair       # builds the sitting; prints a COUNT only
     .venv/Scripts/python -m tools.eye_pairs --serve      # http://127.0.0.1:8731 — left / right / space / u
     .venv/Scripts/python -m tools.eye_pairs --reveal     # refuses until every pair is picked
 
 - **Do not open `eye_pairs_out/arms.json`, `features.json` or `designs/`
   before `--reveal`.** They say which picture is which. The picker cannot
   serve them (404 by whitelist); a text editor can.
-- **A finished sitting is committed from `docs/eye-pairs-<date>/`**
-  (`picks.jsonl`, `pairs.json`, `arms.json`), never from `eye_pairs_out/`.
-- Adding a sitting is adding a row to `ARMS` in `tools/eye_pairs/pairs.py`.
-  `--render` refuses to rebuild pairs under a picks log made for different
-  pictures — move the old log aside first.
+- **`eye_pairs_out/picks.jsonl` is Kent's sitting and is NOT regenerable.**
+  A finished sitting is committed from `docs/eye-pairs-<date>/`
+  (`picks.jsonl`, `pairs.json`, `arms.json`, `sitting.json`), never from
+  `eye_pairs_out/`; until that copy exists the gitignored file is the only one.
+- Adding a sitting is adding a row to `ARMS` in `tools/eye_pairs/pairs.py`,
+  then `--render` (only the new arm digitizes) and `--pair`. `--pair`
+  refuses to build any pair set but the one `sitting.json` records once
+  picks exist — move the old log aside first. A `--render` scoped with
+  `--fixtures`/`--arms` never touches the sitting.
 - The 08-27 arm runs the old engine from a worktree under the system temp
   dir. On a photo-class fixture it is ENVIRONMENT-confounded (that worktree
   has no `rembg_isolated/venv`); `--reveal` marks those rows.

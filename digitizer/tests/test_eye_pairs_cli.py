@@ -229,6 +229,23 @@ def test_reveal_reports_every_section_once_picked(rendered, tmp_path):
     assert json.loads((out2 / "results.json").read_text())["n_pairs"] == res["n_pairs"]
 
 
+def test_reveal_prints_the_per_fixture_count_and_the_descriptive_block(rendered, tmp_path, capsys):
+    """Review finding 11 (2026-09-17): per_fixture and descriptive were
+    computed into results.json and never printed; the spec puts the
+    per-fixture count beside each pooled figure."""
+    out, _art, _n, _np, _seen = rendered
+    out2 = tmp_path / "out9"
+    shutil.copytree(out, out2)
+    for p in json.loads((out2 / "pairs.json").read_text()):
+        append_pick(out2 / "picks.jsonl", p["pair"], "L", 100)
+    cli.reveal(out2)
+    printed = capsys.readouterr().out
+    assert "fixtures" in printed and "DESCRIPTIVE" in printed
+    assert "kappa_m" in printed and "pe" in printed
+    for metric in ("stitches", "cones", "stops"):
+        assert metric in printed
+
+
 def test_reveal_refuses_a_pick_for_a_pair_that_does_not_exist(rendered, tmp_path):
     out, _art, _n, _np, _seen = rendered
     out2 = tmp_path / "out8"

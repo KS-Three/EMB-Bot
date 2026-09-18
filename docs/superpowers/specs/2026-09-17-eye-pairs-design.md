@@ -116,7 +116,8 @@ arm never takes the run down (`artfid_eye_rank`'s rule).
 
 | verb | does |
 |---|---|
-| `--render` | digitize base + arms per fixture; render; extract features; build pairs. Resume-safe: a checkpoint is written after every (fixture, arm), and a finished one is skipped on rerun. `--fixtures a,b` / `--arms x,y` limit the run (smoke tests, a second sitting). Prints pair COUNT only. |
+| `--render` | digitize base + arms per fixture; render; extract features. Resume-safe: a checkpoint is written after every (fixture, arm), and a finished one is skipped on rerun — a row is reused only when its `source_sha256` and `schema` match. `--fixtures a,b` / `--arms x,y` limit the run (smoke tests, a second sitting) and **never touch the sitting**. Prints the arm-run COUNT only. |
+| `--pair` | build the sitting from every rendered arm (**split out of `--render` 2026-09-17, review findings 2–3**: a scoped render used to reshuffle the whole sitting). Writes `sitting.json` with a hash of the SEALED map; once picks exist it refuses any other map, and refuses when `sitting.json` is missing. Prints pair COUNT only. |
 | `--serve` | the picker, §3.5 |
 | `--reveal` | refuses unless every pair id has a pick and no pick names an unknown pair; then runs §4 and writes `results.json` + the results tables to stdout |
 | `--verify` | drift control: on one fixture, the features this tool computes from a held plan equal what each instrument's own `analyse()` returns after digitizing for itself. Unlike `artfid_eye_rank --verify` it contaminates nothing — Kent never ranks by score here, and the features stay sealed from the picker either way |
@@ -125,6 +126,7 @@ Files, all under `digitizer/eye_pairs_out/` (gitignored, new `.gitignore` line):
 
 ```
 pairs.json      PUBLIC  [{"pair","left","right","art"}]
+sitting.json    PUBLIC  {"sealed_sha256","n_pairs","built_ts"}   (a hash names nothing)
 img/            PUBLIC  P###_L.jpg  P###_R.jpg  P###_art.png
 arms.json       SEALED  pair -> {fixture, left_arm, right_arm, kind, repeat_of}
 features.json   SEALED  fixture -> arm -> {metric: value|null, "refusals": {...}}

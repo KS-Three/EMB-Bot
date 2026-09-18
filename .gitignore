@@ -54,9 +54,11 @@ digitizer/artfid-baseline.txt
 # (docs/artfid-eye-agreement-*.md), which is the part worth reading later.
 digitizer/artfid_eye_out/
 
-# Regenerable output of tools/eye_pairs — renders, SEALED arm map and feature
-# table, and the picks log. The audit trail of a sitting is copied to
-# docs/eye-pairs-<date>/ and committed from there; this directory never is.
+# Output of tools/eye_pairs. The renders, the SEALED arm map and the feature
+# table are regenerable (hours of compute, but a fixed seed). picks.jsonl is
+# NOT: it is Kent's sitting, and until it is copied to docs/eye-pairs-<date>/
+# (COOKBOOK "Eye pairs") this directory holds the only copy. Gitignored means
+# kept out of the public repo, not safe to delete — CLAUDE.md footgun 5.
 digitizer/eye_pairs_out/
 
 # Codex CLI's mirror of the Claude config (.codex/ hooks+agents, .agents/ skills,

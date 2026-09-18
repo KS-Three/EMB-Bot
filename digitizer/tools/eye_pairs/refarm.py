@@ -48,6 +48,11 @@ def guard_scratch(dest, repo_root) -> Path:
     path, repo = path.resolve(), Path(repo_root).resolve()
     if path == repo or repo in path.parents:
         raise ValueError(f"worktree path {path} is inside the repository {repo}")
+    if path in repo.parents:
+        # The other direction: a dest the repo is INSIDE of. The default
+        # runner rmtree's the dest it is handed, so this is the difference
+        # between a scratch dir and every checkout under it.
+        raise ValueError(f"worktree path {path} contains the repository {repo}")
     return path
 
 

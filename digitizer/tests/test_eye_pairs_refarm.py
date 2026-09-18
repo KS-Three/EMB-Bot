@@ -24,6 +24,17 @@ def test_a_worktree_inside_the_repo_is_refused():
         refarm.guard_scratch(REPO, REPO)
 
 
+def test_an_ancestor_of_the_repo_is_refused_too():
+    """Review finding 14 (2026-09-17): the guard rejected a path INSIDE the
+    repo but not one the repo is inside of — and the default runner rmtree's
+    whatever the guard accepts. Memory `worktree-add-empty-var-wipes-cwd`
+    records what that class of path costs."""
+    with pytest.raises(ValueError, match="contains"):
+        refarm.guard_scratch(REPO.parent, REPO)
+    with pytest.raises(ValueError, match="contains"):
+        refarm.guard_scratch(REPO.parents[1], REPO)
+
+
 def test_a_scratch_path_outside_the_repo_is_accepted(tmp_path):
     assert refarm.guard_scratch(tmp_path / "wt", REPO) == (tmp_path / "wt").resolve()
 
