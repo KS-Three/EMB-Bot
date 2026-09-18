@@ -114,7 +114,9 @@ const FILTERS = [
   ["shipped", "picked shipped", p => p.pick !== "tie" && p.pick === p.shipped_side],
   ["ties", "ties", p => p.pick === "tie"],
   ["controls", "controls", p => p.kind !== "live"],
-  ["against", "disagreements", p => p.chips.some(c => !c.agrees)],
+  // The yardstick's exit-clause list, exactly: decided live flag pairs where
+  // a metric scores the arm Kent picked as worse (ref arm excluded there too).
+  ["against", "disagreements", p => p.kind === "live" && !p.is_ref && p.chips.some(c => !c.agrees)],
 ];
 const JOB = [["yes", "yes"], ["no", "no"], ["unsure", "can't tell"]];
 const RULING = [["flip_on", "flip ON"], ["keep_off", "keep OFF"], ["needs_work", "needs work"]];
@@ -145,13 +147,20 @@ function readLocal() {
 function writeLocal(kind, id, body) {
   try { localStorage.setItem(lsKey(kind, id), JSON.stringify(body)); } catch (e) { /* ignore */ }
 }
+async function use(name) {
+  // `use()` resolves null when a view cannot run a capability; a rejection is
+  // not promised but costs nothing to absorb, and one capability's failure
+  // must never take the other down.
+  try { return await window.claude.use(name); } catch (e) { return null; }
+}
 async function connect() {
   const sync = $("#sync");
+  const local = () => { sync.textContent = "not synced · local only"; sync.classList.add("bad"); };
   const claude = window.claude;
-  if (!claude || typeof claude.use !== "function") { sync.textContent = "not synced · local only"; sync.classList.add("bad"); return; }
-  const [db, downloads] = await Promise.all([claude.use("db"), claude.use("downloads")]);
-  store.downloads = downloads;
-  if (!db) { sync.textContent = "not synced · local only"; sync.classList.add("bad"); return; }
+  if (!claude || typeof claude.use !== "function") return local();
+  const db = await use("db");
+  store.downloads = await use("downloads");
+  if (!db) return local();
   store.db = db;
   try {
     for (const kind of ["notes", "rulings"]) {
@@ -159,7 +168,9 @@ async function connect() {
       for (const d of snap.docs) { state[kind][d.id] = d.data(); writeLocal(kind, d.id, d.data()); }
     }
     sync.textContent = "synced"; sync.classList.remove("bad");
-    render();
+    // Re-render to show what the store holds -- unless a note is being typed
+    // right now, in which case the next filter or grouping click will.
+    if (!(document.activeElement && document.activeElement.tagName === "TEXTAREA")) render();
   } catch (e) {
     sync.textContent = "not synced · " + (e && e.code ? e.code : "error"); sync.classList.add("bad");
   }
@@ -232,8 +243,15 @@ function kindBadge(p) {
   }
   return null;
 }
+function confoundBadge(p) {
+  if (!p.confounded) return null;
+  return el("span", {class: "kind bad", text: "confounded · old engine skipped photo prep",
+    title: "The 08-27 engine ran without the rembg venv, so on a photo-class design this pair compares environments, not engines."});
+}
 function viewFor(p, side) {
-  const who = p.shipped_side === null ? "shipped (both)" : (side === p.shipped_side ? "shipped" : p.arm);
+  const who = p.shipped_side === null ? "shipped (both)"
+    : p.is_ref ? (side === p.shipped_side ? "today" : "08-27 engine")
+    : (side === p.shipped_side ? "shipped" : p.arm);
   const isArm = p.shipped_side !== null && side !== p.shipped_side;
   const picked = p.pick === side;
   const img = el("img", {src: p.img[side], alt: `${p.fixture} ${who}`, loading: "lazy"});
@@ -254,7 +272,7 @@ function chipsRow(p) {
   for (const c of p.chips) {
     const dir = c.prefers === p.arm_side ? p.arm : "shipped";
     row.append(el("span", {class: "m " + (c.agrees ? "yes" : "no") + (c.refused ? " ref" : ""),
-      text: c.metric, title: `${c.metric} prefers ${dir}: shipped ${c.base} vs ${p.arm} ${c.arm}${c.refused ? " · instrument refused this artwork" : ""}`}));
+      text: c.metric, title: `${c.metric} points to ${dir}${c.agrees ? " — the side you picked" : " — the other side"}${c.refused ? " · instrument refused this artwork" : ""}`}));
   }
   return row;
 }
@@ -280,7 +298,7 @@ function pairCard(p) {
       el("span", {class: "pid", text: p.pair}),
       el("h3", {text: p.fixture}),
       p.width_mm != null ? el("span", {class: "size", text: `${p.width_mm} mm · ${p.garment}`}) : null,
-      kindBadge(p)),
+      kindBadge(p), confoundBadge(p)),
     p.arm ? el("div", {class: "armline"}, el("code", {text: p.arm_change}), p.arm_intent) : null,
     el("div", {class: "art"}, el("img", {src: p.img.art, alt: `${p.fixture} artwork`, loading: "lazy"})),
     el("div", {class: "views"}, L.fig, R.fig),
@@ -297,19 +315,25 @@ function armHead(arm, a) {
   const write = body => persist("rulings", arm, {...body, updated: new Date().toISOString()}, saved);
   const ta = el("textarea", {id: `ruling-${arm}`, placeholder: "why", text: r.note || ""});
   ta.addEventListener("input", debounce(() => write({ruling: (state.rulings[arm] || {}).ruling ?? null, note: ta.value}), 600));
+  // The ref arm is an engine snapshot, not a flag: a "win" for it means the
+  // OLD engine was preferred, and there is nothing to flip.
+  const isRef = arm === "ref_0827";
   const strip = el("div", {class: "strip"});
-  for (const [fx, res] of Object.entries(a.by_fixture || {})) strip.append(el("span", {class: res, text: `${fx} ${res}`}));
+  const word = res => isRef ? ({win: "then", loss: "today", tie: "tie"})[res] : res;
+  for (const [fx, res] of Object.entries(a.by_fixture || {})) strip.append(el("span", {class: res, text: `${fx} ${word(res)}`}));
+  const tally = isRef
+    ? [el("span", {class: "l", text: `${a.wins} then preferred`}), el("span", {class: "w", text: `${a.losses} today preferred`}),
+       el("span", {text: `${a.ties} ties`})]
+    : [el("span", {class: "w", text: `${a.wins} wins`}), el("span", {class: "l", text: `${a.losses} losses`}),
+       el("span", {text: `${a.ties} ties`}), el("span", {class: "s", text: `${a.skipped} identical, not shown`})];
   return el("section", {class: "armhead"},
     el("div", {}, el("h2", {text: arm}), el("div", {class: "change", text: a.change}), el("p", {text: a.intent})),
-    el("div", {},
-      el("div", {class: "tally"},
-        el("span", {class: "w", text: `${a.wins} wins`}), el("span", {class: "l", text: `${a.losses} losses`}),
-        el("span", {text: `${a.ties} ties`}), el("span", {class: "s", text: `${a.skipped} identical, not shown`})),
-      strip),
-    el("div", {class: "ruling"},
-      el("label", {for: `ruling-${arm}`, text: "Your ruling"}),
-      segControl(RULING, r.ruling, v => write({ruling: v, note: ta.value})),
-      ta, saved));
+    el("div", {}, el("div", {class: "tally"}, ...tally), strip),
+    isRef ? el("div", {class: "ruling"}, el("label", {for: `ruling-${arm}`, text: "Note"}), ta, saved)
+          : el("div", {class: "ruling"},
+              el("label", {for: `ruling-${arm}`, text: "Your ruling"}),
+              segControl(RULING, r.ruling, v => write({ruling: v, note: ta.value})),
+              ta, saved));
 }
 function render() {
   const main = $("#main");

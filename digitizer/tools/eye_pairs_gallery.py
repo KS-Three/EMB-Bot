@@ -23,11 +23,18 @@ import cv2
 import numpy as np
 
 BASE = "base"
+REF_ARM = "ref_0827"
+# The yardstick's ref arm runs the old engine in a worktree with no rembg
+# venv, so a photo-class fixture's old arm skipped photo prep for an
+# ENVIRONMENT reason; its pairs are shown, and marked.
+PHOTO_CLASSES = ("photo_subject", "photo_scene")   # digitizer_core.config.PHOTO_CLASSES
 HERE = Path(__file__).resolve().parent
 TEMPLATE = HERE / "eye_pairs_gallery.html"
 DATA_TOKEN = "__GALLERY_DATA__"
 BUDGET_BYTES = 60_000_000      # the artifact's per-version limit is 64 MB
-MAX_EDGE = 1400                # a render's long edge after re-encoding
+# A render's long edge after re-encoding. render_design pads 2 mm a side at
+# 14 px/mm, so becker at 100 mm is 1456 px: 1500 leaves every fixture unresampled.
+MAX_EDGE = 1500
 ART_MAX_EDGE = 800
 JPEG_Q = 85
 
@@ -196,8 +203,10 @@ def chips(feats: dict, fixture: str, arm: str, choice: str,
         prefers = arm_side if prefers_arm else shipped
         refused = bool((base_row.get("refusals") or {}).get(metric)
                        or (arm_row.get("refusals") or {}).get(metric))
+        # Direction only. The values stay in features.json: a review sheet
+        # carries no scorecard number (acceptance_ab's rule, ROADMAP gate 4).
         out.append({"metric": metric, "prefers": prefers, "agrees": prefers == choice,
-                    "base": bv, "arm": av, "refused": refused})
+                    "refused": refused})
     return out
 
 
@@ -211,11 +220,14 @@ def pair_records(public: list[dict], sealed: dict[str, dict], picks: dict[str, d
         arm_side = None if shipped is None else ("R" if shipped == "L" else "L")
         width, garment = sizes.get(fx, (None, None))
         change, intent = ARM_INTENT.get(arm, (arm or "", "")) if arm else ("", "")
+        is_ref = arm == REF_ARM
+        base_class = (feats.get(fx, {}).get(BASE) or {}).get("design_class")
         recs.append({
             "pair": pid, "kind": s["kind"], "repeat_of": s.get("repeat_of"),
             "fixture": fx, "width_mm": width, "garment": garment,
             "shipped_side": shipped, "arm_side": arm_side, "arm": arm,
             "arm_change": change, "arm_intent": intent,
+            "is_ref": is_ref, "confounded": is_ref and base_class in PHOTO_CLASSES,
             "pick": pk["choice"], "picked_arm": picked_arm(s, pk), "ms": pk.get("ms"),
             "counts": {"L": _counts(feats, fx, s["left_arm"]),
                        "R": _counts(feats, fx, s["right_arm"])},
@@ -316,6 +328,9 @@ def collect_images(src: Path, public: list[dict], sealed: dict[str, dict],
         }
         names[pid] = {}
         for key, (path, png) in sources.items():
+            if not path.exists():
+                raise SystemExit(f"REFUSED: {path} is missing for pair {pid} "
+                                 f"-- the yardstick's --render did not finish")
             data = path.read_bytes()
             digest = hashlib.sha256(data).hexdigest()[:12]
             if digest not in seen:

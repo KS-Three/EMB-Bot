@@ -267,6 +267,44 @@ def test_refused_metric_is_flagged_not_dropped():
     assert art["refused"] is True and art["prefers"] == "R" and art["agrees"] is True
 
 
+def test_chips_carry_direction_only_never_the_values():
+    # acceptance_ab's rule: no scorecard number on a review sheet. The values
+    # live in features.json for whoever needs them; the page gets the sign.
+    r = _records()
+    for c in r["P001"]["chips"]:
+        assert set(c) == {"metric", "prefers", "agrees", "refused"}
+
+
+# ---- the 08-27 engine arm -------------------------------------------------
+
+REF_PUBLIC = [{"pair": "P010", "left": "P010_L.jpg", "right": "P010_R.jpg", "art": "P010_art.png"},
+              {"pair": "P011", "left": "P011_L.jpg", "right": "P011_R.jpg", "art": "P011_art.png"}]
+REF_SEALED = {"P010": {"fixture": "fx_a", "left_arm": "base", "right_arm": "ref_0827",
+                       "kind": "live", "repeat_of": None},
+              "P011": {"fixture": "fx_p", "left_arm": "ref_0827", "right_arm": "base",
+                       "kind": "live", "repeat_of": None}}
+REF_FEATS = {"fx_a": {"base": _row(design_class="flat"), "ref_0827": _row(stitches=900)},
+             "fx_p": {"base": _row(design_class="photo_subject"), "ref_0827": _row(stitches=900)}}
+
+
+def test_photo_classes_pin_the_pipeline_config():
+    from digitizer_core.config import PHOTO_CLASSES
+    assert tuple(g.PHOTO_CLASSES) == tuple(PHOTO_CLASSES)
+
+
+def test_ref_arm_is_marked_and_a_photo_fixture_is_confounded():
+    picks = {pid: {"pair": pid, "choice": c, "ms": 1, "ts": "t", "undo_of": None}
+             for pid, c in {"P010": "R", "P011": "R"}.items()}
+    r = {x["pair"]: x for x in g.pair_records(REF_PUBLIC, REF_SEALED, picks, REF_FEATS, {})}
+    assert r["P010"]["is_ref"] is True and r["P010"]["confounded"] is False
+    assert r["P011"]["is_ref"] is True and r["P011"]["confounded"] is True
+    live = _records()
+    assert live["P001"]["is_ref"] is False and live["P001"]["confounded"] is False
+    # P010: Kent picked R = the old engine; P011: picked R = today's.
+    t = g.arm_tally(list(r.values()), [])
+    assert (t["ref_0827"]["wins"], t["ref_0827"]["losses"]) == (1, 1)
+
+
 # ---- tallies --------------------------------------------------------------
 
 def test_arm_tally_counts_live_pairs_only_and_identical_skips():
@@ -332,6 +370,13 @@ def test_over_budget_is_refused_with_the_total_named(tmp_path):
     src = make_set(tmp_path)
     with pytest.raises(SystemExit, match=r"REFUSED: gallery images total .* over the 0 MB"):
         g.collect_images(src, PUBLIC, SEALED, tmp_path / "g" / "img", budget=10)
+
+
+def test_missing_source_image_is_a_refusal_not_a_traceback(tmp_path):
+    src = make_set(tmp_path, renders=False)
+    (src / "img" / "P003_R.jpg").unlink()
+    with pytest.raises(SystemExit, match=r"REFUSED: .*P003_R\.jpg"):
+        g.collect_images(src, PUBLIC, SEALED, tmp_path / "g" / "img")
 
 
 # ---- html and the whole build ---------------------------------------------
