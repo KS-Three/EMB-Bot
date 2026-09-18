@@ -5702,3 +5702,104 @@ the practical rule: when an instrument reports a catastrophe on a design
 whose render looks fine, open one row by hand before writing it down.
 
 *(2026-09-16 — claim made and retracted the same session; scope-history)*
+
+## A suite that only compares your code to your own code cannot see a symmetric bug (2026-09-13)
+
+`tools/render-dst.mjs` kept a private copy of the DST delta table, never
+received the 2026-09-08 axis fix, and drew **every** design transposed for five
+days. It is the repo's ONLY renderer — so the instrument this document's own
+rule sends you to when a claim is about orientation (*"render it"*) was the
+broken one. `tools/sewout_bridge.mjs` printed `decodeDST`'s extents beside that
+preview in one JSON output, **96 × 66 against 66 × 96**, with nothing comparing
+them: the picture a human checks before committing thread to the gate-1 sew-out
+was a quarter turn from the card it would sew.
+
+Every `dstimport` test passed throughout, and would have kept passing. They
+compare our decoder against our own encoder, so they are **blind by construction
+to any error both halves share** — which is also how the original axis bug
+survived to 2026-09-08.
+
+**The fix that found it is the reusable part: an EXTERNAL ORACLE.** The five
+commissioned Becker files in `digitizer/testdata/reference/` were written by
+somebody else's software, and a Tajima header declares its own extents in
+`+X/-X/+Y/-Y`. Decoded against that number we did not produce: the private table
+read all five transposed (46.8 × 76.5 against a header saying 76.5 × 46.8), the
+shared table read all five correctly. `test/dstimport.test.js` now pins it, with
+the pre-2026-09-08 table kept as a **negative control** so the check cannot pass
+on a decoder that does nothing.
+
+**The rule.** Round-trip tests prove self-consistency, never correctness. When a
+codec, a converter or a serialiser matters, find something in the repo that a
+third party wrote and check against a number IT states. Where no such artifact
+exists, say so — it is a real gap, not a passing suite.
+
+*(2026-09-13 — PR #477; the transpose is in `docs/research-gap-audit-2026-09-12.md`)*
+
+## Stale documentation fails toward REFUSAL, so check a blocker before believing it (2026-09-13)
+
+The 2026-09-12 gap audit built a ledger of every in-code and read-first claim
+that names a blocker or states a default, and ran the command that settles each
+against HEAD. **Ten of thirteen were false.** The distribution is the finding:
+they did not fail in random directions, they failed toward *do not do this*.
+
+- `digitizer_service/formats.py` demanded "a sew-out on the shop's Tajima" for a
+  question settled four days earlier — and had the nibble backwards too
+  (pystitch puts **X in the LOW nibble**, `+1 X` → `0x01`).
+- `app/src/lib/exporters.js` repeated the same dead claim **in present tense** as
+  the stated justification for a live routing gate.
+- Two font files said a question needed `scratch_ink/`, "which exists on Kent's
+  machine and not in a cloud checkout". Upstream `inkstitch/embroidery-fonts` is
+  PUBLIC and `src/<font>/ltr.svg` answers an unauthenticated request with **HTTP
+  200** — the blocker had never been real, and behind it sat the answer to a
+  question that had been open since 2026-08-28.
+- `MASTER_SCOPE` said U01 "loses the colour change entirely". **And the audit's
+  own correction of that was overstated in the opposite direction** — see the
+  next paragraph, because it is the more useful half.
+
+**Three threads were being refused on paper.** That is the same shape that cost
+six weeks on the DST axis: a session reads a confident sentence, declines work
+that is not actually blocked, and the sentence survives another cycle because
+nobody who believed it went looking.
+
+**The asymmetry is what to act on.** A doc that overclaims capability gets caught
+the moment someone tries it. A doc that overclaims a BLOCKER is never tested,
+because believing it is how you stop. So a written blocker is the claim to
+re-measure first, and "it needs a machine / a local checkout / Kent's box" is the
+exact wording that has been wrong most often here.
+
+*(2026-09-13 — PR #477 deleted four of them; ledger in `docs/research-gap-audit-2026-09-12.md`)*
+
+## A scanner-based guard needs a mutation aimed at what the SCANNER cannot see (2026-09-14)
+
+`digitizer/tests/test_machine_wire.py` exists because physical constants are
+hand-mirrored across the JS/Python boundary and nothing checked them. It works by
+regex-scanning both trees. **Three separate bugs of one class have now been found
+in it, two of them before it ever shipped**, and the pattern is worth the entry:
+
+1. **"First declaration wins."** The first cut recorded one declaration per name,
+   so drifting `satinfont.js`'s copy of `FILL_ROW_MM` — the THIRD copy, after
+   `digitize.js` and `machine.py` — changed nothing the test could see. Caught
+   by its author's own mutation test, and fixing it is what revealed that the
+   duplication is not only cross-language: four pairs are JS↔JS.
+2. **A reading, not a regex.** `MAX_DELTA` (121 `dst.js` / 127 `exp.js`) was
+   recorded as a pure name collision between two formats' record limits. Half
+   right: the record limits genuinely differ and must, but WHICH of them gets
+   used as the *sewn* split is a separate question, and EXP was answering it
+   wrongly — a 12.5 mm sewn move where the machine ceiling is 12.1.
+3. **`\s*$` after the number.** The Python pattern anchored end-of-line
+   immediately after the value, so **36 of `machine.py`'s constants were invisible**
+   for carrying the trailing comment that is this codebase's house style. Found
+   2026-09-14 when a tie port added `TIE_STITCH_MM`, asserted it was now guarded,
+   and a mutation test walked straight through. Fixing it took the shared count
+   18 → 21 and surfaced a real divergence nobody could see (`UNDERLAY_INSET_MM`).
+
+**The rule.** A guard that finds its subjects by pattern has two failure modes,
+and the ordinary mutation test only catches one. Mutating a constant the scanner
+already sees proves the ASSERTION works. You must also mutate something the
+scanner might not reach — a third copy, a different file, a line written in the
+house style the pattern was not tried against — because a scanner that silently
+matches nothing reports green forever. Pin the population (`assert len(shared) >=
+N` with the measured N and its date), so a regex that narrows fails loudly
+instead of quietly protecting less.
+
+*(2026-09-13/14 — PRs #477 and the 2026-09-14 tie port)*
