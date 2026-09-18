@@ -236,7 +236,14 @@ one concealed it; entry 2 is a flag that LEFT this list unnoticed for two weeks.
    way — a jump read as thread, **39.8 → 9.0 mm** phantom link, fixed
    2026-09-02, residual is a `-shadeN` id. **Still DO NOT FLIP, permanently:**
    gate 1 names link cover tolerance and the sew-out is accepted as-is. Largest
-   lever on defects 4 and 6. *(`docs/hardening-closeout-2026-08-02.md`;
+   lever on defects 4 and 6. **The tolerance now has a published RIVAL
+   (2026-09-13):** Embird puts a hidden connection *"at least 2~3 mm inside"*
+   the covering object, sized against hooping displacement and thread pull —
+   3-4x `LINK_COVER_INSET_MM` 0.75, whose derivation is pure thread-reach and
+   budgets zero for cloth movement. **Card block 7 is the sew-out that answers
+   it — drafted, and NOT BUILT:** `tools/sewout_card.py` still emits blocks 1-6.
+   *(`docs/trade-knowledge-2026-09-13.md` §2a)*
+   *(`docs/hardening-closeout-2026-08-02.md`;
    [2026-09-02](docs/scorecard-baseline-attribution-2026-09-02.md))*
 2. ~~`split_tonal_regions`~~ — **NOT LATENT: ON for photo classes since
    2026-08-19** (`d3f3c547`, spec decision 2); this said otherwise for two
