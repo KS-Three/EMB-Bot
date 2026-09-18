@@ -264,7 +264,7 @@ here, so a good-faith flip would have shipped bare-fabric thread unwarned.)*
 |---|---|---|
 | 1. Auto-digitizing quality (image → stitches) | In progress | **Low** beyond flat spot-color art; human faces TABLED pending a more capable tier *(Kent, 2026-08-25)* |
 | 2. Font library & lettering | Implemented — 85 fonts, satin + bean/running + cross-stitch, LTR + Hebrew RTL | High (tech) / High (compliance). Zero stunted glyphs since the 2026-08-22 transform fix; the guards now assert their own coverage |
-| 3. Studio app / guided wizard | Implemented | Medium (fabric-preset accuracy: **pending sew-out** — the 2026-09-01 icon was uncontrolled, so the card still gates this). Held at Medium by that gate alone; the display layer had a defect class that shipped unseen for want of UI-behaviour coverage, and hand-driving sweeps on 2026-08-25, 2026-09-07 and 2026-09-08 closed the known ones — the 09-07 pass added the project lifecycle, the built bundle and the printed worksheet, and the 09-08 pass found four more on screens nobody had driven in combination (defect 42), including the review summarising a mixed design as one of its elements. **The pattern is worth the row:** every one came from driving the app, none from reading it *(confirmed — area doc, defect 42)*. The preview now renders thread as a lit cylinder at physical width; its lighting is eye-tuned, not sew-verified |
+| 3. Studio app / guided wizard | Implemented | Medium (fabric-preset accuracy: **pending sew-out** — the 2026-09-01 icon was uncontrolled, so the card still gates this). Held at Medium by that gate alone; the display layer had a defect class that shipped unseen for want of UI-behaviour coverage, and three hand-driving sweeps (2026-08-25, 09-07, 09-08) closed the known ones — detail in the area doc and defect 42. **The pattern is worth the row:** every one came from driving the app, none from reading it *(confirmed — area doc, defect 42)*. The preview now renders thread as a lit cylinder at physical width; its lighting is eye-tuned, not sew-verified |
 | 4. Export formats | Implemented | Varies by format — see below |
 | 5. Stitch-out review & manual editing tools | Implemented — Kent's direct-manipulation request is **complete** (2026-08-13) | High. Every surviving requirement of the 2026-08-12 request ships: outlines+nodes on the canvas, the pulse cue, select-then-edit, node drag, line drag, add node, delete. Requirement 5 (whole-shape drag) was withdrawn by Kent. Geometry is unit-tested and every interaction was driven in a real browser against a live service. Manual draw mode now traces over the uploaded artwork, and right-click places a curved node |
 
@@ -351,15 +351,7 @@ about the facts.
    touch. *(2026-09-12 — `app/src/App.stepHistory.spec.js`, with a source
    guard that no bare `step = ...` bypasses the helper)*
 
-17. **RESOLVED 2026-09-17 (Kent) — clearing a stale BORDER recovers on ONE
-   click.** The 0 ms border path reads the edit SET, so it cannot tell a
-   border picked off the menu from one dropped by the
-   unmatched-edit "Clear them" recovery; a stale BOUNDARY pauses, so the
-   click count depends on what went stale. Kent's reasoning: you still click
-   "Clear them" explicitly, so no edit is dropped behind your back — which is
-   what "recovery is explicit" protects — and the restitch just follows the
-   decision. Do not "fix" the inconsistency by gating recovery out of the fast
-   lane. *(ruled 2026-09-17 — `e2e/digitize-stale-edits.spec.js`)*
+17. **RESOLVED 2026-09-17 (Kent) — clearing a stale BORDER recovers on ONE click**, a stale BOUNDARY still on two. Kept: "Clear them" is an explicit click, so nothing is dropped behind the user's back, which is what "recovery is explicit" protects. Do NOT gate recovery out of the fast lane to tidy the inconsistency. *(`e2e/digitize-stale-edits.spec.js`)*
 
 16. **Manual mode does not reproduce auto's sew order once a tiny region exists
    in an early layer.** Auto orders blocks by PALETTE LAYER, manual by AREA.
@@ -412,12 +404,10 @@ successful only: `digitizer` **min 31.2 / p50 51.0 / max 59.0**; `studio-e2e`
 5.5; `studio` 0.9; `engine` 0.5. A fifth, `art-fidelity-baseline`, is
 push-to-`main`-only and gates nothing.
 
-**Budget an hour per PR; read a 50-minute `digitizer` job as normal.** The
-"10 to 42 minutes" carried here until today is refuted — **76% of recent
-jobs exceed 42 minutes** and the floor is 31.2. Medians are still climbing
-(50.6 → 51.7 → 53.8 across 09-12/13/14), so treat any number here as drifting
-and spend one `curl` on `/actions/runs/<id>/jobs` before calling a job stuck.
-`studio-e2e` has quietly doubled against CLAUDE.md's 2.7.
+**Budget an hour per PR; read a 50-minute `digitizer` job as normal.** Medians
+keep climbing, so treat every number here as drifting and spend one `curl` on
+`/actions/runs/<id>/jobs` before calling a job stuck. Superseded figures and
+the climb: scope-history.
 
 **Tuning levers are spent — do not re-run this search.** `-n auto` is pinned;
 caching won 18m38s → 14m00s (#369); `--dist loadfile` buys 5.8% but floors at
@@ -739,6 +729,8 @@ and indigo respectively. Ember's gesture and colour vocabulary, matched
 deliberately. The default bow takes its side from the turn the path is making,
 so a run of curved nodes arcs instead of scalloping. Backspace mid-draft takes
 back the last node. *(confirmed 2026-08-25 — `curvedNodeThrough` tests + browser)* **The border decision is on the canvas too (2026-09-09, Kent's pick after item 6):** right-click a recognised shape — on its outline, or anywhere inside it — and the field's tool menu grows a shape section: the shape's name, then **Add border** (writes the engine's `auto`: satin where a column fits, bean where not) or **Remove border** (`off`), and **Use design setting** once the shape has its own. It writes `shapeOverrides[sid].border`, the field the panel's Border select already edits, through the same `elupdate` path as a boundary drag, so undo, carry-forward across a re-digitize and the automatic restitch all come for free; a shape sewn as satin gets no border from either way in (stage 7's rule, on the item's tooltip). **That restitch no longer waits (2026-09-17):** a border is complete when it is picked, so `editKind` schedules it at 0 ms; every other shape edit keeps the 2 s pause a drag needs. Narrow by construction — "border" only when EVERY difference in the edit set is a border value, so it cannot swallow a boundary. The edits that still pause say so, with a **Restitch now** control. *(measured 2026-09-17 — `editKind`, `lib/digitizer.js`; why it is not wider, in the area doc)* Interior picking is `shapeOverlay.hitShapeInterior` (smallest containing ring, so a mark inside a counter wins over its surround); the decision table is `borderMenu.js`. *(confirmed 2026-09-09 — `borderMenu.spec.js`, `shapeOverlay.spec.js`, `e2e/field-border-menu.spec.js` against the live service, and the open menu looked at at 1440 and 1024 px)*
+
+**A review edit on a photograph is 44% faster, byte-identically (2026-09-17).** `_reorder_for_cover` was the pipeline's largest single bill — **41.67 s of owl_kent's 72.42 s edit tail** — and almost all of it already-done work: **80 of 82 shapes do byte-identical fill work across a border toggle**. Both fill reorders are pure functions of ONE shape's own inputs, so a content-keyed memo is exact (79.34 → **44.61 s**, checked against the same edit computed cold). **That purity IS the safety property — re-check it if either reorder is edited**, or this becomes silent corruption rather than a failure. *(measured 2026-09-17 — `tests/test_fill_reorder_memo.py`, 5 mutation-verified; area doc)*
 
 **Detail moved to the area doc (2026-08-27, rule 5):** the copy/paste, Duplicate
 and Dim-slider defects; the 2026-08-26 browser session (a canvas opening below
