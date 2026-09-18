@@ -164,6 +164,41 @@ def test_ties_nulls_and_equal_values_are_not_counted():
     assert an.sign_agreement(rows, feats, "ragged_mm")["n"] < r["n"]
 
 
+def test_both_values_or_nothing_and_what_a_tie_means_is_the_callers_call():
+    """Review 2026-09-17: fetch-base / fetch-arm / skip-if-missing was written
+    out three times, and the three did not treat a tie alike — on purpose in
+    the fit, invisibly everywhere. One helper; `ties` is a required word."""
+    feats = {"fx": {BASE: {"artfid": 80.0, "ragged_mm": 0.2, "lost_frac": None},
+                    "a": {"artfid": 81.0, "ragged_mm": 0.2, "lost_frac": 0.1}}}
+    row = {"fixture": "fx", "arm": "a"}
+    assert an._both(feats, row, "artfid", ties=False) == (80.0, 81.0)
+    assert an._both(feats, row, "ragged_mm", ties=False) is None       # equal: no say
+    assert an._both(feats, row, "ragged_mm", ties=True) == (0.2, 0.2)  # the fit's zero delta
+    for ties in (True, False):
+        assert an._both(feats, row, "lost_frac", ties=ties) is None    # missing on one arm
+        assert an._both(feats, row, "thin_recall", ties=ties) is None  # missing on both
+    with pytest.raises(TypeError):
+        an._both(feats, row, "artfid")                                 # never defaulted
+
+
+def test_a_tie_is_no_say_for_a_verdict_and_a_zero_delta_for_the_fit():
+    """The divergence, pinned in one place so it stays deliberate."""
+    sealed, picks, feats = world(12, agree=12, metric="stitches",
+                                 arm_value=5000, base_value=4000)
+    feats["fx3"]["a"]["stitches"] = feats["fx3"][BASE]["stitches"]
+    rows = an.decided_rows(sealed, picks, ref=False)
+    assert an.lean(rows, feats, "stitches")["n"] == 11
+    sealed, picks, feats = world(12, agree=12)
+    feats["fx3"]["a"]["ragged_mm"] = feats["fx3"][BASE]["ragged_mm"]
+    rows = an.decided_rows(sealed, picks, ref=False)
+    assert an.sign_agreement(rows, feats, "ragged_mm")["n"] == 11
+    assert len(an.exit_clause(rows, feats, "ragged_mm")) == 0
+    assert "fx3" not in an.per_fixture_sign(rows, feats, "ragged_mm")["fixtures"]
+    # ... while the fit keeps every all-tie row of `lean_world`: 60 of 60.
+    sealed, picks, feats = lean_world()
+    assert an.exploratory_fit(an.decided_rows(sealed, picks, ref=False), feats)["n"] == 60
+
+
 def test_refused_pairs_leave_the_headline_and_stay_in_the_all_pairs_row():
     sealed, picks, feats = world(30, agree=30, refused={f"fx{i}" for i in range(10)})
     rows = an.decided_rows(sealed, picks, ref=False)

@@ -102,10 +102,30 @@ def _refused(features: dict, fixture: str, arm: str, metric: str) -> bool:
     return metric in (features.get(fixture, {}).get(arm, {}).get("refusals") or {})
 
 
-def _prefers_arm(metric: str, base_v: float | None, arm_v: float | None) -> bool | None:
-    """True/False = the metric prefers the arm/the base; None = it has no say."""
+def _both(features: dict, row: dict, metric: str, *, ties: bool) -> tuple[float, float] | None:
+    """-> (base value, arm value) for one decided row, or None when the
+    metric cannot speak on it: missing on either arm, always; equal on both,
+    unless `ties`.
+
+    THE one place a pair's two values are fetched. `ties` has no default
+    because what a tie means is the caller's decision, and the callers
+    differ on purpose: a verdict (`_scored`) and a lean drop a tie — the
+    metric prefers neither arm — while the exploratory fit keeps it as a
+    zero delta, "no say" on that one feature of a row that still has a
+    pick and three other features. Written out three times, that difference
+    was invisible (review 2026-09-17)."""
+    b = _value(features, row["fixture"], BASE, metric)
+    a = _value(features, row["fixture"], row["arm"], metric)
+    if b is None or a is None or (not ties and a == b):
+        return None
+    return b, a
+
+
+def _prefers_arm(metric: str, base_v: float, arm_v: float) -> bool | None:
+    """True/False = the metric prefers the arm/the base; None = it has no
+    direction, so it never has a say."""
     direction = METRICS[metric]
-    if direction == "none" or base_v is None or arm_v is None or base_v == arm_v:
+    if direction == "none":
         return None
     return arm_v > base_v if direction == "higher" else arm_v < base_v
 
@@ -116,11 +136,10 @@ def _scored(rows, features, metric, include_refused):
                 _refused(features, r["fixture"], BASE, metric)
                 or _refused(features, r["fixture"], r["arm"], metric)):
             continue
-        b = _value(features, r["fixture"], BASE, metric)
-        a = _value(features, r["fixture"], r["arm"], metric)
-        pref = _prefers_arm(metric, b, a)
+        values = _both(features, r, metric, ties=False)
+        pref = None if values is None else _prefers_arm(metric, *values)
         if pref is not None:
-            yield r, b, a, pref
+            yield r, *values, pref
 
 
 # How far the expected-by-chance agreement may sit from 0.5 before the
@@ -212,10 +231,10 @@ def lean(rows: list[dict], features: dict, metric: str) -> dict:
     """For a directionless metric: how often Kent picked the HIGHER value."""
     n = hi = 0
     for r in rows:
-        b = _value(features, r["fixture"], BASE, metric)
-        a = _value(features, r["fixture"], r["arm"], metric)
-        if b is None or a is None or a == b:
+        values = _both(features, r, metric, ties=False)
+        if values is None:
             continue
+        b, a = values
         n += 1
         hi += (a > b) == r["picked_is_arm"]
     return {"metric": metric, "n": n, "picked_higher": hi}
@@ -325,10 +344,12 @@ def exploratory_fit(rows: list[dict], features: dict,
     for r in rows:
         vals = []
         for m in names:
-            b = _value(features, r["fixture"], BASE, m)
-            a = _value(features, r["fixture"], r["arm"], m)
-            if b is None or a is None:
+            # `ties=True`, deliberately: a zero delta is "no say" on ONE
+            # feature of a row that still has a pick and three others.
+            values = _both(features, r, m, ties=True)
+            if values is None:
                 break
+            b, a = values
             # Oriented: positive always means "this metric prefers the arm".
             vals.append(a - b if METRICS[m] == "higher" else b - a)
         else:
