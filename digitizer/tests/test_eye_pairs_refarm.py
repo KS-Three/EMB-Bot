@@ -164,6 +164,49 @@ def test_the_driver_runs_the_engine_in_its_working_directory(tmp_path):
     assert design["widthMM"] == 92.5
 
 
+def test_an_engine_that_dies_writing_undecodable_bytes_still_says_why(tmp_path):
+    """Review 2026-09-17, reproduced on Python 3.14.6 / cp1252: `text=True`
+    with no `encoding` decodes the child's stderr in a reader THREAD using
+    the locale codec. One byte that codec cannot map kills the thread, so
+    `proc.stderr` comes back None and the reason the old engine died is
+    lost — or the error handler itself dies on `None[-600:]`. 0x81 is
+    unmapped in cp1252 and an invalid start byte in UTF-8, so this is red on
+    Kent's box and on CI alike."""
+    pkg = tmp_path / "engine" / "digitizer_core"
+    pkg.mkdir(parents=True)
+    (pkg / "__init__.py").write_text(
+        "import sys\n"
+        "sys.stderr.buffer.write(b'\\x81\\x8d the old engine blew up\\n')\n"
+        "sys.stderr.flush()\n"
+        "sys.exit(3)\n")
+    with pytest.raises(RuntimeError, match="the old engine blew up"):
+        refarm.run_ref_design(sys.executable, tmp_path / "engine", tmp_path / "art.png",
+                              80.0, "left_chest", 6)
+
+
+def test_every_child_process_is_decoded_the_same_lenient_way(tiny_repo, tmp_path, monkeypatch):
+    """git's messages carry paths, and Kent's contain whatever his folders
+    are called. Every call is real; the spy only records how it was asked."""
+    import subprocess
+    repo, old, _same = tiny_repo
+    seen = []
+    real = subprocess.run
+
+    def spy(cmd, **kw):
+        seen.append((cmd[0] if cmd[0] == "git" else "python", kw))
+        return real(cmd, **kw)
+
+    monkeypatch.setattr(refarm.subprocess, "run", spy)
+    wt = refarm.add_worktree(repo, old, tmp_path / "wt")
+    refarm.requirements_differ(repo, old)
+    refarm.remove_worktree(repo, wt)
+    refarm.run_ref_design(sys.executable, stub_engine(tmp_path / "engine"),
+                          tmp_path / "art.png", 80.0, "left_chest", 6)
+    assert len(seen) >= 4
+    for who, kw in seen:
+        assert (kw.get("encoding"), kw.get("errors")) == ("utf-8", "replace"), who
+
+
 def test_the_driver_refuses_to_run_todays_engine_by_accident(tmp_path):
     """No `digitizer_core` in the working directory: the import would fall
     through to the INSTALLED package — today's engine — and the '08-27 arm'

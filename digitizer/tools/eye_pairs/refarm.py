@@ -39,6 +39,13 @@ with open(out, "w", encoding="utf-8") as fh:
 """
 
 
+# How every child's output is captured. `text=True` ALONE decodes in a reader
+# thread with the locale codec (cp1252 on Kent's box); one byte that codec
+# cannot map kills the thread, `proc.stderr` comes back None, and the reason
+# a child failed is lost (review 2026-09-17, reproduced on Python 3.14.6).
+CAPTURED = {"capture_output": True, "text": True, "encoding": "utf-8", "errors": "replace"}
+
+
 def guard_scratch(dest, repo_root) -> Path:
     if dest is None or not str(dest).strip():
         raise ValueError("worktree path is empty — refusing to call git")
@@ -59,14 +66,14 @@ def guard_scratch(dest, repo_root) -> Path:
 def add_worktree(repo_root, ref: str, dest) -> Path:
     path = guard_scratch(dest, repo_root)
     subprocess.run(["git", "-C", str(repo_root), "worktree", "add", "--detach",
-                    str(path), ref], check=True, capture_output=True, text=True)
+                    str(path), ref], check=True, **CAPTURED)
     return path
 
 
 def remove_worktree(repo_root, dest) -> None:
     path = guard_scratch(dest, repo_root)
     subprocess.run(["git", "-C", str(repo_root), "worktree", "remove", "--force",
-                    str(path)], check=False, capture_output=True, text=True)
+                    str(path)], check=False, **CAPTURED)
 
 
 def rembg_venv_present(digitizer_dir) -> bool:
@@ -86,8 +93,7 @@ def requirements_differ(repo_root, ref: str) -> bool:
     mean the old engine ran against libraries it was not written for."""
     proc = subprocess.run(
         ["git", "-C", str(repo_root), "diff", "--quiet", ref, "HEAD", "--",
-         "digitizer/requirements.txt"],
-        capture_output=True, text=True, encoding="utf-8", errors="replace")
+         "digitizer/requirements.txt"], **CAPTURED)
     # 0 = same, 1 = differs. Anything else (128: no such ref) is NOT an
     # answer, and reading it as one would turn a typo into a measured fact.
     if proc.returncode not in (0, 1):
@@ -114,7 +120,7 @@ def run_ref_design(python, engine_dir, image, width_mm: float, garment: str,
         proc = subprocess.run(
             [str(python), "-c", DRIVER, str(image), out, str(width_mm), garment,
              str(max_colors)],
-            cwd=str(engine_dir), capture_output=True, text=True, timeout=timeout_s)
+            cwd=str(engine_dir), timeout=timeout_s, **CAPTURED)
         if proc.returncode != 0:
             raise RuntimeError("ref engine failed: " + (proc.stderr or proc.stdout)[-600:])
         return json.loads(Path(out).read_text(encoding="utf-8"))
