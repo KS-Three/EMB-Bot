@@ -1,0 +1,11 @@
+<!-- digitizer/tools/eye_pairs_gallery.html — STUB, replaced in Task 5 -->
+<title>Eye Pairs Reveal</title>
+<style>:root{--bg:#F4F3EF;--ink:#1B1D21}body{background:var(--bg);color:var(--ink);padding-inline:16px}</style>
+<main id="main">Loading pairs…</main>
+<script>const DATA = __GALLERY_DATA__;</script>
+<script>
+document.getElementById("main").textContent = DATA.n_pairs + " pairs";
+for (const p of DATA.pairs) for (const k of ["L", "R", "art"]) {
+  const img = document.createElement("img"); img.src = p.img[k]; document.body.appendChild(img);
+}
+</script>

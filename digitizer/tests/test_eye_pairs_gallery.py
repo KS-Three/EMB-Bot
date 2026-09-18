@@ -332,3 +332,52 @@ def test_over_budget_is_refused_with_the_total_named(tmp_path):
     src = make_set(tmp_path)
     with pytest.raises(SystemExit, match=r"REFUSED: gallery images total .* over the 0 MB"):
         g.collect_images(src, PUBLIC, SEALED, tmp_path / "g" / "img", budget=10)
+
+
+# ---- html and the whole build ---------------------------------------------
+
+def _strip_style(html: str) -> str:
+    return re.sub(r"<style>.*?</style>", "", html, flags=re.S)
+
+
+def test_build_writes_index_and_every_referenced_image_exists(tmp_path):
+    src = make_set(tmp_path)
+    out = tmp_path / "gallery"
+    data = g.build(src, out)
+    html = (out / "index.html").read_text(encoding="utf-8")
+    assert g.DATA_TOKEN not in html
+    refs = set(re.findall(r'img/[0-9a-f]{12}\.(?:jpg|png)', html))
+    assert refs and all((out / r).exists() for r in refs)
+    assert data["n_pairs"] == 4
+    assert data["pairs"][0]["img"]["L"].startswith("img/")
+    assert set(data["arms"]) == {"per_stroke", "polygon_axis", "design_angle"}
+    assert data["arms"]["design_angle"]["skipped"] == 1
+    assert data["arms"]["per_stroke"]["intent"] == g.ARM_INTENT["per_stroke"][1]
+
+
+def test_html_carries_no_absolute_path_and_no_percent_outside_css(tmp_path):
+    src = make_set(tmp_path)
+    out = tmp_path / "gallery"
+    g.build(src, out)
+    html = (out / "index.html").read_text(encoding="utf-8")
+    assert str(tmp_path) not in html and "C:\\" not in html and 'src="/' not in html
+    assert "%" not in _strip_style(html)
+
+
+def test_inlined_json_cannot_close_the_script_tag():
+    html = g.build_html({"pairs": [{"arm_intent": "a </script> b"}], "arms": {},
+                         "generated": "d", "n_pairs": 1})
+    assert "</script> b" not in html and "<\\/script> b" in html
+
+
+def test_cli_refuses_before_the_sitting_is_complete(tmp_path, capsys):
+    src = make_set(tmp_path, picks={"P001": "L"})
+    with pytest.raises(SystemExit, match="3 of 4"):
+        g.main(["--src", str(src), "--out", str(tmp_path / "gallery")])
+
+
+def test_cli_builds_and_prints_the_totals(tmp_path, capsys):
+    src = make_set(tmp_path)
+    assert g.main(["--src", str(src), "--out", str(tmp_path / "gallery")]) == 0
+    out = capsys.readouterr().out
+    assert "4 pairs" in out and "6 images" in out and "index.html" in out

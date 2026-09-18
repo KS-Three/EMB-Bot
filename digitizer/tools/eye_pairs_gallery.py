@@ -332,8 +332,65 @@ def collect_images(src: Path, public: list[dict], sealed: dict[str, dict],
     return names, total
 
 
+# ---- the page ---------------------------------------------------------------
+
+def build_html(data: dict) -> str:
+    template = TEMPLATE.read_text(encoding="utf-8")
+    if DATA_TOKEN not in template:
+        raise SystemExit(f"REFUSED: {TEMPLATE.name} has no {DATA_TOKEN} token")
+    payload = json.dumps(data, separators=(",", ":")).replace("</", "<\\/")
+    return template.replace(DATA_TOKEN, payload)
+
+
+def _read_json(path: Path, default=None):
+    if not path.exists():
+        if default is not None:
+            return default
+        raise SystemExit(f"REFUSED: {path} is missing -- run the yardstick's --render first")
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
 def build(src: Path, out: Path, budget: int = BUDGET_BYTES) -> dict:
-    public = json.loads((Path(src) / "pairs.json").read_text(encoding="utf-8"))
-    picks = final_picks(Path(src) / "picks.jsonl")
+    """Refuse until every pair is picked, then join, copy, emit. Returns the
+    data the page was given, for the caller and the tests."""
+    src, out = Path(src), Path(out)
+    public = _read_json(src / "pairs.json")
+    sealed = _read_json(src / "arms.json")
+    feats = _read_json(src / "features.json")
+    skipped = _read_json(src / "skipped.json", default=[])
+    picks = final_picks(src / "picks.jsonl")
     refuse_if_incomplete([p["pair"] for p in public], picks)
-    raise NotImplementedError
+
+    recs = pair_records(public, sealed, picks, feats, fixture_sizes())
+    names, total = collect_images(src, public, sealed, out / "img", budget)
+    for r in recs:
+        r["img"] = names[r["pair"]]
+    tally = arm_tally(recs, skipped)
+    arms = {arm: {"change": ARM_INTENT.get(arm, (arm, ""))[0],
+                  "intent": ARM_INTENT.get(arm, (arm, ""))[1], **t}
+            for arm, t in sorted(tally.items())}
+    data = {"generated": time.strftime("%Y-%m-%d"), "n_pairs": len(recs),
+            "arms": arms, "pairs": recs}
+    out.mkdir(parents=True, exist_ok=True)
+    (out / "index.html").write_text(build_html(data), encoding="utf-8")
+    data["_images"] = len({v for d in names.values() for v in d.values()})
+    data["_bytes"] = total
+    return data
+
+
+def main(argv: list[str] | None = None) -> int:
+    ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
+    ap.add_argument("--src", default="eye_pairs_out",
+                    help="the yardstick's output dir (default: eye_pairs_out)")
+    ap.add_argument("--out", default=None, help="default: <src>/gallery")
+    args = ap.parse_args(argv)
+    src = Path(args.src)
+    out = Path(args.out) if args.out else src / "gallery"
+    data = build(src, out)
+    print(f"{data['n_pairs']} pairs, {len(data['arms'])} arms, "
+          f"{data['_images']} images ({data['_bytes'] / 1e6:.1f} MB) -> {out / 'index.html'}")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
