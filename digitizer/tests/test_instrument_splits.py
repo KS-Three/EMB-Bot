@@ -46,6 +46,22 @@ def test_analyse_equals_analyse_design_on_the_same_digitize(tool, tiny, digitize
 
 
 @pytest.mark.parametrize("tool", [es, de], ids=["edge_smoothness", "dropped_elements"])
+def test_a_precomputed_registration_gives_the_same_row_without_registering(
+        tool, tiny, digitized, monkeypatch):
+    from tools.artfidelity_self import register_design
+    _cfg, result, design = digitized
+    own = tool.analyse_design(tiny, design, route=result.design_class)
+    reg = register_design(tiny, design)
+
+    def boom(*_a, **_k):
+        raise AssertionError("must reuse the registration it was handed")
+
+    monkeypatch.setattr(tool, "register", boom)
+    assert tool.analyse_design(tiny, design, route=result.design_class,
+                               registered=reg) == own
+
+
+@pytest.mark.parametrize("tool", [es, de], ids=["edge_smoothness", "dropped_elements"])
 def test_analyse_design_never_digitizes(tool, tiny, digitized, monkeypatch):
     _cfg, _result, design = digitized
 

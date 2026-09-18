@@ -76,9 +76,45 @@ def test_a_missing_tesseract_reads_null_not_a_crash(tiny, held, monkeypatch):
     assert "RuntimeError" in row["notes"]["legibility"]
 
 
+def test_the_registration_search_runs_once_per_arm(tiny, held, monkeypatch):
+    """Review finding 9 (2026-09-17): features_design_only registered the
+    fields, then each split instrument registered the same fields again —
+    three 441-point grid searches per arm, 0.4-3.9 s each at real sizes."""
+    import tools.artfidelity_self as afs
+    import tools.dropped_elements as de
+    import tools.edge_smoothness as es
+    cfg, gen, result, plan, design = held
+    calls = []
+    real = afs.register
+
+    def counting(*a, **k):
+        calls.append(1)
+        return real(*a, **k)
+
+    for mod in (afs, de, es):
+        monkeypatch.setattr(mod, "register", counting)
+    ft.features_full(tiny, cfg, gen, result, plan, design)
+    assert len(calls) == 1
+
+
+def test_artfid_is_the_instruments_own_number(tiny, held):
+    """Review finding 8 (2026-09-17): artfid was recomposed by hand from
+    4-dp components and rounded to 2 dp, where score_image rounds once to
+    1 dp from raw values; and --verify never checked it."""
+    from tools.artfidelity_self import score_image
+    cfg, gen, result, plan, design = held
+    row = ft.features_full(tiny, cfg, gen, result, plan, design)
+    theirs = score_image(tiny, cfg)
+    assert row["artfid"] == theirs["artfid"]
+    assert row["artfid"] == round(row["artfid"], 1)
+    assert row["refusals"].get("artfid") == theirs["refusal"]
+
+
 def test_an_ink_refusal_marks_every_ink_based_metric(tiny, held, monkeypatch):
+    import tools.artfidelity_self as afs
     _cfg, _gen, _result, _plan, design = held
-    monkeypatch.setattr(ft, "ink_is_ambiguous", lambda _p: True)
+    # The ladder lives in ONE place now; patch it there.
+    monkeypatch.setattr(afs, "ink_is_ambiguous", lambda _p: True)
     row = ft.features_design_only(tiny, design)
     assert row["ragged_mm"] is not None            # the value is KEPT
     for m in ft.INK_METRICS:

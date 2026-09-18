@@ -29,6 +29,7 @@ from digitizer_core.stitchviz import render_design
 
 from tools import dropped_elements, edge_smoothness
 from tools.artfid_eye_rank import VIEW_PX_PER_MM, _normalise_art
+from tools.artfidelity_self import score_image
 from tools.thin_strokes import STUDIO_MAX_COLORS, corpus_cases
 
 from . import analysis as an
@@ -339,13 +340,23 @@ def verify(image, width_mm: float, garment: str) -> bool:
     mine = features_full(image, cfg, gen, result, plan, design)
     lost = dropped_elements.analyse(image, cfg)
     edge = edge_smoothness.analyse(image, cfg)
+    # The artfid family was the one metric family this tool composed by hand
+    # rather than imported, and the one --verify did not check (review
+    # finding 8, 2026-09-17). `score_image` digitizes for itself; that is the
+    # point of a drift control.
+    fid = score_image(image, cfg)
     checks = [("lost_elements", mine["lost_elements"], int(lost["lost"])),
               ("lost_frac", mine["lost_frac"], round(float(lost["lost_frac"]), 4)),
               ("ragged_mm", mine["ragged_mm"], round(float(edge["ragged_mm"]), 4)),
-              ("hausdorff_mm", mine["hausdorff_mm"], round(float(edge["hausdorff_mm"]), 4))]
+              ("hausdorff_mm", mine["hausdorff_mm"], round(float(edge["hausdorff_mm"]), 4)),
+              ("artfid", mine["artfid"], fid["artfid"]),
+              ("artfid_coverage", round(mine["artfid_coverage"], 3), fid["coverage"]),
+              ("artfid_colour", round(mine["artfid_colour"], 3), fid["colour"]),
+              ("artfid_structure", round(mine["artfid_structure"], 3), fid["structure"]),
+              ("refusal", mine["refusals"].get("artfid"), fid["refusal"])]
     ok = True
     for name, a, b in checks:
-        same = a == b
+        same = bool(a == b)          # numpy floats compare to np.bool_
         ok &= same
         print(f"  {name:<16} held={a!r:<12} own={b!r:<12} {'OK' if same else 'DRIFT'}")
     print("MATCH" if ok else "DRIFT - the held-plan path diverged from the instruments")

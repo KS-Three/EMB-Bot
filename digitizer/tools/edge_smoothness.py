@@ -104,7 +104,7 @@ from enginefidelity import _boundary, boundary_distance_mm  # noqa: E402
 from digitizer_core.adapter import plan_to_design  # noqa: E402
 from digitizer_core.config import PipelineConfig  # noqa: E402
 from digitizer_core.pipeline import digitize  # noqa: E402
-from tools.artfidelity_self import (FIXTURES, RES, art_ink_field,  # noqa: E402
+from tools.artfidelity_self import (FIXTURES, RES, Registered, art_ink_field,  # noqa: E402
                                     ink_is_ambiguous, ink_saturation,
                                     INK_SATURATION_MAX, register,
                                     stitch_coverage_field)
@@ -193,7 +193,8 @@ def analyse(image_path: str | Path, cfg: PipelineConfig | None = None) -> dict:
 
 
 def analyse_design(image_path: str | Path, design: dict,
-                   route: str | None = None) -> dict:
+                   route: str | None = None, *,
+                   registered: Registered | None = None) -> dict:
     """`analyse` for a design somebody else already digitized.
 
     `tools.eye_pairs` digitizes each arm ONCE and hands the same design to
@@ -201,12 +202,18 @@ def analyse_design(image_path: str | Path, design: dict,
     multiply that bill by the number of instruments. `route` is carried
     through to the row untouched (None when the caller has no
     `PipelineResult`, e.g. a design produced by an older engine).
+    `registered` is the coverage/ink registration already made by such a
+    caller; None registers here.
     """
     image_path = Path(image_path)
 
-    ours = stitch_coverage_field(design)
-    art = art_ink_field(image_path, float(design["widthMM"]))
-    _, O_f, A_f, dx, dy = register(ours, art)
+    if registered is None:
+        ours = stitch_coverage_field(design)
+        art = art_ink_field(image_path, float(design["widthMM"]))
+        _, O_f, A_f, dx, dy = register(ours, art)
+    else:
+        O_f, A_f, dx, dy = (registered.O_f, registered.A_f,
+                            registered.dx_mm, registered.dy_mm)
     sewn, ink = O_f >= 0.5, A_f >= 0.5
 
     offset_mm, ragged_mm = boundary_spread(sewn, ink)

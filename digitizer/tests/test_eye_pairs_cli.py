@@ -240,6 +240,9 @@ def test_reveal_refuses_a_pick_for_a_pair_that_does_not_exist(rendered, tmp_path
         cli.reveal(out2)
 
 
-def test_verify_finds_no_drift_on_the_synthetic_image(rendered):
+def test_verify_finds_no_drift_on_the_synthetic_image(rendered, capsys):
     _out, art, _n, _np, _seen = rendered
     assert cli.verify(art, 40.0, "left_chest") is True
+    printed = capsys.readouterr().out
+    # Review finding 8: the artfid family and the refusal are checked too.
+    assert "artfid" in printed and "refusal" in printed

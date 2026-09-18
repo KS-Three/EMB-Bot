@@ -22,10 +22,8 @@ from digitizer_core.pipeline import build_generation, finish_generation, plan_st
 from digitizer_core.preflight import run_preflight
 
 from tools import curve_fidelity, dropped_elements, edge_smoothness, thin_strokes
-from tools.artfidelity_self import (INK_SATURATION_MAX, MISMATCH_MAX, WEIGHTS,
-                                    art_ink_field, colour_score, ink_is_ambiguous,
-                                    ink_saturation, ms_ssim, register,
-                                    stitch_coverage_field)
+from tools.artfidelity_self import (WEIGHTS, colour_score, composite, ms_ssim,
+                                    refusal_for, register_design)
 from tools.thin_strokes import STUDIO_MAX_COLORS
 
 # Bump when a metric is added, removed or redefined. A cached features row
@@ -77,61 +75,49 @@ def _records(design: dict) -> dict:
             "trims_per_1000": round(1000.0 * trims / n, 2) if n else None}
 
 
-def _ink_refusal(image: Path, ours, art) -> str | None:
-    """`artfidelity_self.score_image`'s refusal ladder, on fields already built."""
-    ink_px = float((art >= 0.5).sum())
-    sewn_px = float((ours >= 0.5).sum())
-    if ink_px == 0 or sewn_px == 0:
-        return "nothing to compare"
-    mismatch = max(ink_px, sewn_px) / min(ink_px, sewn_px)
-    if mismatch > MISMATCH_MAX:
-        return f"subject mismatch, {mismatch:.1f}x"
-    saturation = ink_saturation(image)
-    if saturation > INK_SATURATION_MAX:
-        return f"ink mask saturates the frame, {saturation:.0%}"
-    if ink_is_ambiguous(image):
-        return "ink ambiguous (knocked-out lettering)"
-    return None
-
-
-def features_design_only(image: str | Path, design: dict) -> dict:
-    image = Path(image)
+def _design_only(image: Path, design: dict) -> tuple[dict, float, float]:
+    """-> (row, coverage, structure) with the two components UNROUNDED, so
+    `features_full` can compose `artfid` the way the instrument does — from
+    raw values, rounded once to 1 dp. The stored components are rounded for
+    the JSON file only."""
     row: dict = _records(design)
 
-    ours = stitch_coverage_field(design)
-    art = art_ink_field(image, float(design["widthMM"]))
-    coverage, O_f, A_f, _dx, _dy = register(ours, art)
-    structure = ms_ssim(O_f, A_f)
+    # ONE registration per design, shared with both split instruments.
+    reg = register_design(image, design)
+    coverage = float(reg.coverage)
+    structure = float(ms_ssim(reg.O_f, reg.A_f))
     row["artfid_coverage"] = _num(coverage)
     row["artfid_structure"] = _num(structure)
     row["artfid_no_colour"] = _num(
-        100.0 * (WEIGHTS[0] * row["artfid_coverage"] + WEIGHTS[2] * row["artfid_structure"])
-        / (WEIGHTS[0] + WEIGHTS[2]), 2)
+        100.0 * (WEIGHTS[0] * coverage + WEIGHTS[2] * structure)
+        / (WEIGHTS[0] + WEIGHTS[2]), 1)
 
-    lost = dropped_elements.analyse_design(image, design)
+    lost = dropped_elements.analyse_design(image, design, registered=reg)
     row["lost_elements"] = int(lost["lost"])
     row["lost_frac"] = _num(lost["lost_frac"])
-    edge = edge_smoothness.analyse_design(image, design)
+    edge = edge_smoothness.analyse_design(image, design, registered=reg)
     row["ragged_mm"] = _num(edge["ragged_mm"])
     row["hausdorff_mm"] = _num(edge["hausdorff_mm"])
 
-    reason = _ink_refusal(image, ours, art)
+    reason, _mismatch, _saturation = refusal_for(image, reg.ours, reg.art)
     row["refusals"] = ({m: reason for m in INK_METRICS if m in row} if reason else {})
     row["notes"] = {}
-    return row
+    return row, coverage, structure
+
+
+def features_design_only(image: str | Path, design: dict) -> dict:
+    return _design_only(Path(image), design)[0]
 
 
 def features_full(image: str | Path, cfg: PipelineConfig, gen, result, plan,
                   design: dict) -> dict:
     image = Path(image)
-    row = features_design_only(image, design)
+    row, coverage, structure = _design_only(image, design)
     ink_reason = next(iter(row["refusals"].values()), None)
 
     colour, _excess = colour_score(image, result, plan, cfg)
     row["artfid_colour"] = _num(colour)
-    row["artfid"] = _num(100.0 * (WEIGHTS[0] * row["artfid_coverage"]
-                                  + WEIGHTS[1] * row["artfid_colour"]
-                                  + WEIGHTS[2] * row["artfid_structure"]), 2)
+    row["artfid"] = _num(composite(coverage, float(colour), structure), 1)
     if ink_reason:
         row["refusals"]["artfid"] = row["refusals"]["artfid_colour"] = ink_reason
 
