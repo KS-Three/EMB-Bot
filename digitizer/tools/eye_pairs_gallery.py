@@ -266,6 +266,72 @@ def fixture_sizes() -> dict[str, tuple[float, str]]:
     return {name: (float(w), g) for name, (_rel, w, g) in REAL_ART.items()}
 
 
+# ---- images -----------------------------------------------------------------
+
+def _source_render(src: Path, per_pair_name: str, fixture: str, arm: str) -> Path:
+    """The yardstick writes one render per (fixture, arm) under renders/ and a
+    copy per pair side under img/; prefer the former, take the latter."""
+    unique = src / "renders" / f"{fixture}__{arm}.jpg"
+    return unique if unique.exists() else src / "img" / per_pair_name
+
+
+def _source_art(src: Path, per_pair_name: str, fixture: str) -> Path:
+    unique = src / "renders" / f"{fixture}__art.png"
+    return unique if unique.exists() else src / "img" / per_pair_name
+
+
+def _reencode(data: bytes, max_edge: int, png: bool) -> bytes:
+    img = cv2.imdecode(np.frombuffer(data, np.uint8), cv2.IMREAD_UNCHANGED)
+    if img is None:
+        raise SystemExit("REFUSED: an image could not be decoded")
+    h, w = img.shape[:2]
+    scale = max_edge / max(h, w)
+    if scale < 1.0:
+        img = cv2.resize(img, (max(1, round(w * scale)), max(1, round(h * scale))),
+                         interpolation=cv2.INTER_AREA)
+    ok, buf = cv2.imencode(".png" if png else ".jpg", img,
+                           [] if png else [cv2.IMWRITE_JPEG_QUALITY, JPEG_Q])
+    if not ok:
+        raise SystemExit("REFUSED: an image could not be re-encoded")
+    return buf.tobytes()
+
+
+def collect_images(src: Path, public: list[dict], sealed: dict[str, dict],
+                   out_img: Path, budget: int = BUDGET_BYTES
+                   ) -> tuple[dict[str, dict[str, str]], int]:
+    """-> (pair id -> {L, R, art} relative names, bytes written). One output
+    file per DISTINCT source (sha256 of the source bytes), so a fixture's base
+    render — shown in every one of its pairs — is shipped once."""
+    out_img.mkdir(parents=True, exist_ok=True)
+    names: dict[str, dict[str, str]] = {}
+    seen: dict[str, str] = {}
+    total = 0
+    for p in public:
+        pid = p["pair"]
+        s = sealed[pid]
+        sources = {
+            "L": (_source_render(src, p["left"], s["fixture"], s["left_arm"]), False),
+            "R": (_source_render(src, p["right"], s["fixture"], s["right_arm"]), False),
+            "art": (_source_art(src, p["art"], s["fixture"]), True),
+        }
+        names[pid] = {}
+        for key, (path, png) in sources.items():
+            data = path.read_bytes()
+            digest = hashlib.sha256(data).hexdigest()[:12]
+            if digest not in seen:
+                encoded = _reencode(data, ART_MAX_EDGE if png else MAX_EDGE, png)
+                fname = f"{digest}.{'png' if png else 'jpg'}"
+                (out_img / fname).write_bytes(encoded)
+                seen[digest] = f"img/{fname}"
+                total += len(encoded)
+            names[pid][key] = seen[digest]
+    if total > budget:
+        raise SystemExit(f"REFUSED: gallery images total {total / 1e6:.1f} MB, "
+                         f"over the {budget / 1e6:.0f} MB artifact budget "
+                         f"(lower MAX_EDGE or JPEG_Q and rerun)")
+    return names, total
+
+
 def build(src: Path, out: Path, budget: int = BUDGET_BYTES) -> dict:
     public = json.loads((Path(src) / "pairs.json").read_text(encoding="utf-8"))
     picks = final_picks(Path(src) / "picks.jsonl")

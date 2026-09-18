@@ -293,3 +293,42 @@ def test_fixture_sizes_reads_the_real_art_table():
     sizes = g.fixture_sizes()
     assert sizes["becker"] == (100.0, "left_chest")
     assert sizes["fremont"] == (92.5, "patch")
+
+
+# ---- images ---------------------------------------------------------------
+
+def test_images_are_deduplicated_by_content(tmp_path):
+    src = make_set(tmp_path)
+    names, total = g.collect_images(src, PUBLIC, SEALED, tmp_path / "g" / "img")
+    files = sorted(p.name for p in (tmp_path / "g" / "img").iterdir())
+    # 4 distinct renders + 2 artworks; P001/P002/P004 share fx_a base, P002 is base|base.
+    assert len(files) == 6
+    assert names["P001"]["R"] == names["P002"]["L"] == names["P002"]["R"] == names["P004"]["L"]
+    assert names["P001"]["L"] == names["P004"]["R"]
+    assert names["P001"]["art"] == names["P002"]["art"] == names["P004"]["art"]
+    assert names["P003"]["art"] != names["P001"]["art"]
+    assert all(v.startswith("img/") for v in names["P001"].values())
+    assert total == sum((tmp_path / "g" / "img" / f).stat().st_size for f in files)
+
+
+def test_images_fall_back_to_the_per_pair_copies_without_renders(tmp_path):
+    src = make_set(tmp_path, renders=False)
+    names, _ = g.collect_images(src, PUBLIC, SEALED, tmp_path / "g" / "img")
+    assert len(list((tmp_path / "g" / "img").iterdir())) == 6
+    assert names["P001"]["R"] == names["P004"]["L"]
+
+
+def test_renders_are_capped_to_the_long_edge(tmp_path, monkeypatch):
+    src = make_set(tmp_path)
+    big = np.zeros((300, 3000, 3), np.uint8)
+    cv2.imwrite(str(src / "renders" / "fx_a__base.jpg"), big)
+    monkeypatch.setattr(g, "MAX_EDGE", 1000)
+    names, _ = g.collect_images(src, PUBLIC, SEALED, tmp_path / "g" / "img")
+    out = cv2.imread(str(tmp_path / "g" / names["P001"]["R"]))
+    assert out.shape[1] == 1000 and out.shape[0] == 100
+
+
+def test_over_budget_is_refused_with_the_total_named(tmp_path):
+    src = make_set(tmp_path)
+    with pytest.raises(SystemExit, match=r"REFUSED: gallery images total .* over the 0 MB"):
+        g.collect_images(src, PUBLIC, SEALED, tmp_path / "g" / "img", budget=10)
