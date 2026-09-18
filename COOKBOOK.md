@@ -1377,6 +1377,32 @@ correction). Two rules stop a repeat:
    comparison against the baseline is comparing against a stale ruler —
    say so wherever the comparison is quoted.
 
+### Eye pairs — the blind A/B picker (2026-09-17)
+
+`python -m tools.eye_pairs` (from `digitizer/`) is the instrument for ROADMAP
+phase 1's second clause, *"nothing he judges better ever scores worse"*. It
+is the only place Kent's eye is recorded as DATA rather than prose. Spec:
+`docs/superpowers/specs/2026-09-17-eye-pairs-design.md`.
+
+    .venv/Scripts/python -m tools.eye_pairs --render     # hours; resumable; prints a COUNT only
+    .venv/Scripts/python -m tools.eye_pairs --serve      # http://127.0.0.1:8731 — left / right / space / u
+    .venv/Scripts/python -m tools.eye_pairs --reveal     # refuses until every pair is picked
+
+- **Do not open `eye_pairs_out/arms.json`, `features.json` or `designs/`
+  before `--reveal`.** They say which picture is which. The picker cannot
+  serve them (404 by whitelist); a text editor can.
+- **A finished sitting is committed from `docs/eye-pairs-<date>/`**
+  (`picks.jsonl`, `pairs.json`, `arms.json`), never from `eye_pairs_out/`.
+- Adding a sitting is adding a row to `ARMS` in `tools/eye_pairs/pairs.py`.
+  `--render` refuses to rebuild pairs under a picks log made for different
+  pictures — move the old log aside first.
+- The 08-27 arm runs the old engine from a worktree under the system temp
+  dir. On a photo-class fixture it is ENVIRONMENT-confounded (that worktree
+  has no `rembg_isolated/venv`); `--reveal` marks those rows.
+- A metric that *agrees* can be trusted for the DIRECTION of a same-design
+  A/B and nothing more: not across designs, not across routes, not as a
+  quality percentage, and never as grounds to advance a phase — that is Kent's.
+
 ## The one rule that explains most "quality" bug reports
 
 **Flat, spot-color art in → pro-quality stitches out. Photographic/gradient
