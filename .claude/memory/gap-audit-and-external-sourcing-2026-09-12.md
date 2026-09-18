@@ -90,15 +90,20 @@ real instability but not the size cliff it was nominated for, whose cause is
 input resolution); `honoka`, the commissioning route and the `corpus_scorecard`
 exit-code widening are still open.
 
-## One loose end that is not in the repo
+## The one open thread: Fold Ink/Stitch
 
-The **Fold Ink/Stitch** case: the font ships under a name using its own OFL
-Reserved Font Name ("Fold", James Kilfiger), inherited verbatim from upstream
-with no permission on record anywhere — 1 hit in 82 shipped OFL sidecars, and 1
-in 102 upstream. `test/font-license.test.js` guards the class and records this
-one in `RESERVED_NAME_KNOWN_UNRESOLVED`. Kent's call 2026-09-13 was to **email
-Kilfiger for permission**, since OFL clause 3 is satisfied outright by written
-permission. A draft was written to the session scratchpad and **deliberately not
-committed** — CLAUDE.md bars adding legal correspondence to a public repo without
-asking. If no reply ever comes, silence resolves to a rename, and the guard's
-entry is deleted along with it.
+The font ships under a name using its own OFL Reserved Font Name ("Fold", James
+Kilfiger), inherited verbatim from upstream with no permission on record
+anywhere — 1 hit in 82 shipped OFL sidecars, and 1 in 102 upstream.
+`test/font-license.test.js` guards the class and records this one in
+`RESERVED_NAME_KNOWN_UNRESOLVED`. Kent's call 2026-09-13: **ask the copyright
+holder**, since OFL clause 3 is satisfied outright by written permission, and
+silence resolves to a rename — so the clause is discharged either way.
+
+**Everything is now in [`docs/fold-reserved-font-name-2026-09-13.md`](../../docs/fold-reserved-font-name-2026-09-13.md)**
+— the evidence, the message to send, and what to do with a yes, a no or silence.
+It was drafted to a session scratchpad and deliberately left out of this public
+repo (CLAUDE.md bars adding legal correspondence without asking); Kent asked for
+it committed on 2026-09-18, which is the permission that rule wanted. The two
+contact addresses were already in the shipped `fold_inkstitch.LICENSE.txt`, so
+the case file points at that sidecar rather than restating them.
