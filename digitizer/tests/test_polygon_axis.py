@@ -168,3 +168,32 @@ def test_an_unknown_axis_mode_falls_back_to_the_grown_polygon():
     # an unknown string falls through to the ruled default rather than to a
     # third behaviour of its own
     assert _axis_polygon(grown, art, "artwrok") is art
+
+
+def _underlay_count(poly, art, axis):
+    from digitizer_core import stage6_satin as s6
+    runs, _rep = s6.satin_shape(poly, "S1", underlay_style="zigzag", trim_at_mm=3.0,
+                                art_poly=art, polygon_axis=axis)
+    return sum(1 for r in runs if r.kind == "underlay")
+
+
+def test_the_oversize_skip_reads_the_width_that_sews_not_the_ink():
+    """Under the axis the width FIELD comes off the artwork, but the column
+    sews on stage 5's grown polygon. `_stroke_underlay` skips its zigzag on a
+    column wider than the cap (the logo_alpha stack) -- and it must judge
+    that on the thread, not the ink. Found on becker 2026-09-18: A and R read
+    exactly 5.00 on the artwork, sewed ~5.6, got the zigzag, and piled thread
+    7.38 units deep (4.85 with the skip honoured).
+
+    A 4.8 mm bar grown 0.3 a side sews 5.4: one underlay run (the centre
+    walk), exactly as with the flag off. A 4.0 mm bar sews 4.6 and keeps its
+    zigzag either way."""
+    wide_art = box(0, 0, 20, 4.8)
+    wide = wide_art.buffer(0.3, join_style=1)
+    assert _underlay_count(wide, wide_art, False) == 1, "flag off: grown field is oversize"
+    assert _underlay_count(wide, wide_art, "artwork") == 1, "the thread is 5.4 mm"
+
+    narrow_art = box(0, 0, 20, 4.0)
+    narrow = narrow_art.buffer(0.3, join_style=1)
+    assert _underlay_count(narrow, narrow_art, False) == 2
+    assert _underlay_count(narrow, narrow_art, "artwork") == 2

@@ -3772,7 +3772,8 @@ def _stroke_underlay(poly: Polygon, st: Stroke, style: str, shape_id: str,
                      fold_guard: bool = False,
                      rail_comp_mm: float = 0.0,
                      rail_comp_floor_mm: float = 0.0,
-                     half_mm: float | None = None) -> list[StitchRun]:
+                     half_mm: float | None = None,
+                     field_from_art: bool = False) -> list[StitchRun]:
     """Underlay for ONE stroke: a center run down its spine, plus a sparse
     zigzag for the styles that ask for it. Built from the same spine the satin
     will follow, so it always sits under the column.
@@ -3848,8 +3849,21 @@ def _stroke_underlay(poly: Polygon, st: Stroke, style: str, shape_id: str,
     # stage 7 under `cfg.wide_columns`; the constant by default).
     # Under rail-side comp the field is the artwork's and the column sews a
     # pull wider on each side; the check is on what sews (0.0 otherwise).
+    #
+    # `field_from_art` (`satin_polygon_axis`): the field was read off the
+    # ARTWORK, but `poly` -- what sews -- is stage 5's grown polygon, a pull
+    # wider each side, and rail comp is 0.0 there so nothing above covers the
+    # gap. Judge on the wider of the two. Without it becker's A and R read
+    # exactly 5.00 on the ink, sewed ~5.6, and got a zigzag that stacked
+    # thread 7.38 units deep (4.85 honoured; measured 2026-09-18).
+    def _sewn_half(p):
+        h = field.half_at(p)
+        if field_from_art:
+            h = max(h, poly.boundary.distance(SPoint(p)))
+        return h
+
     oversize = field is not None and any(
-        (field.half_at(p) + rail_comp_mm) * 2.0 > max_width_mm for p in spine)
+        (_sewn_half(p) + rail_comp_mm) * 2.0 > max_width_mm for p in spine)
     if style == "zigzag" and not oversize:
         steps = max(2, int(math.ceil(length / machine.SATIN_ZIGZAG_PITCH_MM)))
         sp = _resample(spine, steps)
@@ -4564,7 +4578,8 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
                                              max_width_mm=max_width_mm, fold_guard=fold_guard,
                                              rail_comp_mm=rail_comp_mm,
                                              rail_comp_floor_mm=rail_comp_floor_mm,
-                                             half_mm=half_mm),
+                                             half_mm=half_mm,
+                                             field_from_art=axis_poly is not poly),
                            StitchRun(points=pts, kind=stitches.SATIN, shape_id=shape_id)]
         first_of_stroke = True
         for run in stroke_runs:
