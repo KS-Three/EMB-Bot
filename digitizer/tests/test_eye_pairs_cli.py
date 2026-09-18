@@ -533,6 +533,30 @@ def test_the_exploratory_line_never_prints_a_raw_accuracy_alone(capsys):
     assert "not distinguishable from the baseline" in capsys.readouterr().out
 
 
+def test_verify_picks_its_fixture_by_name_not_by_position(monkeypatch, capsys):
+    """Review 2026-09-17: `corpus_cases()[1]` happened to be "tires". That
+    list is REAL_ART's dict order minus byte-duplicates found at runtime, so
+    a new first row — or a duplicate ahead of it — silently moves the drift
+    control onto another logo."""
+    cases = [("becker", Path("b.png"), 100.0, "left_chest"),
+             ("enthusiast", Path("e.png"), 80.0, "left_chest"),
+             ("tires", Path("t.png"), 80.0, "left_chest")]
+    monkeypatch.setattr(cli, "corpus_cases", lambda: cases)
+    asked = []
+    monkeypatch.setattr(cli, "verify", lambda image, w, g: asked.append((image, w, g)) or True)
+    assert cli.main(["--verify"]) == 0
+    assert asked == [(Path("t.png"), 80.0, "left_chest")]
+    assert "verifying on tires" in capsys.readouterr().out
+
+
+def test_verify_says_so_when_its_fixture_has_left_the_corpus(monkeypatch):
+    monkeypatch.setattr(cli, "corpus_cases",
+                        lambda: [("becker", Path("b.png"), 100.0, "left_chest")])
+    monkeypatch.setattr(cli, "verify", lambda *_a: True)
+    with pytest.raises(SystemExit, match="REFUSED.*tires"):
+        cli.main(["--verify"])
+
+
 def test_verify_finds_no_drift_on_the_synthetic_image(rendered, capsys):
     _out, art, _n, _np, _seen = rendered
     assert cli.verify(art, 40.0, "left_chest") is True

@@ -48,6 +48,8 @@ REPO = DIGITIZER.parent
 OUT = DIGITIZER / "eye_pairs_out"
 # Re-exported so a test can monkeypatch the schema the cache key reads.
 FEATURES_SCHEMA = ft.FEATURES_SCHEMA
+# The drift control's fixture: the cheapest real logo in the corpus.
+VERIFY_FIXTURE = "tires"
 
 
 def _say(msg: str) -> None:
@@ -517,7 +519,14 @@ def main(argv: list[str] | None = None) -> int:
         reveal(args.out)
         return 0
     if args.verify:
-        name, path, width_mm, garment = corpus_cases()[1]      # "tires": the cheapest real logo
+        # By NAME. `corpus_cases()` is REAL_ART's dict order minus the
+        # byte-duplicates it finds at runtime, so an index is a coincidence.
+        by_name = {case[0]: case for case in corpus_cases()}
+        if VERIFY_FIXTURE not in by_name:
+            raise SystemExit(f"REFUSED: --verify runs on the corpus fixture "
+                             f"{VERIFY_FIXTURE!r}, and corpus_cases() no longer lists it "
+                             f"(it has: {', '.join(by_name)}).")
+        name, path, width_mm, garment = by_name[VERIFY_FIXTURE]
         print(f"verifying on {name}")
         return 0 if verify(path, width_mm, garment) else 1
     ap.print_help()
