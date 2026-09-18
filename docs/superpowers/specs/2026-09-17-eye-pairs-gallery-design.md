@@ -205,7 +205,7 @@ width. Evidence (screenshots, console clean) goes in the PR.
 
 ## 8. Runtime and sequence
 
-Generator: seconds (re-encoding ~110 images). Sequence: yardstick PR merges
+Generator: seconds (re-encoding ~120 images). Sequence: yardstick PR merges
 → Kent's sitting → `--reveal` → this generator → publish artifact with
 `files` = `img/*` → Kent annotates → I read `db` → commit notes. The
 generator and page are built and tested now against the synthetic set, so

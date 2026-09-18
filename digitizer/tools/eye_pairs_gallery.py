@@ -384,11 +384,17 @@ LABELLED_TITLE = "Flag Before After"
 TITLE_TOKEN = "__GALLERY_TITLE__"
 
 
-def _stitches(designs: Path, fixture: str, arm: str):
-    path = designs / f"{fixture}__{arm}.json"
+def _require(path: Path, fixture: str, arm: str) -> Path:
+    """Labelled mode has no per-pair copies, so a missing file is named by
+    its `--render` path, never by an `img/` fallback that never existed."""
     if not path.exists():
         raise SystemExit(f"REFUSED: {path} is missing for {fixture} / {arm} "
                          f"-- the yardstick's --render did not finish")
+    return path
+
+
+def _stitches(designs: Path, fixture: str, arm: str):
+    path = _require(designs / f"{fixture}__{arm}.json", fixture, arm)
     return json.loads(path.read_text(encoding="utf-8")).get("stitches")
 
 
@@ -403,8 +409,10 @@ def labelled_records(src: Path, feats: dict, sizes: dict[str, tuple[float, str]]
     """-> (pair records, skipped rows, failed rows). One pair per (fixture,
     arm) in features.json whose stitches differ from the base's. An arm that
     raised is a failed row, an identical one a skipped row; neither is shown.
-    Arms in the spec's order, then fixtures by name."""
+    The records come in the spec's arm order, then fixture name; the page
+    groups by arm and orders the groups itself."""
     designs = Path(src) / "designs"
+    renders = Path(src) / "renders"
     order = {arm: n for n, arm in enumerate(ARM_INTENT)}
     recs: list[dict] = []
     skipped: list[dict] = []
@@ -417,6 +425,8 @@ def labelled_records(src: Path, feats: dict, sizes: dict[str, tuple[float, str]]
                            "reason": (base_row or {}).get("error", "not rendered")})
             continue
         base_stitches = _stitches(designs, fx, BASE)
+        _require(renders / f"{fx}__{BASE}.jpg", fx, BASE)
+        _require(renders / f"{fx}__art.png", fx, "art")
         width, garment = sizes.get(fx, (None, None))
         base_class = base_row.get("design_class")
         for arm, row in by_arm.items():
@@ -428,6 +438,7 @@ def labelled_records(src: Path, feats: dict, sizes: dict[str, tuple[float, str]]
             if _stitches(designs, fx, arm) == base_stitches:
                 skipped.append({"fixture": fx, "arm": arm, "reason": "identical_to_base"})
                 continue
+            _require(renders / f"{fx}__{arm}.jpg", fx, arm)
             is_ref = arm == REF_ARM
             shipped, arm_side = ("R", "L") if is_ref else ("L", "R")
             change, intent = ARM_INTENT.get(arm, (arm, ""))

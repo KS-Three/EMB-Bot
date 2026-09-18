@@ -346,7 +346,7 @@ No real-logo digitize in CI (the `digitizer` job already runs ~50 minutes).
 
 ## 6. Runtime and failure
 
-99 digitizes plus 9 on the old ref. Per-design clocks at customer defaults
+108 digitizes plus 9 on the old ref (99 before `rails_follow_edge` joined the table). Per-design clocks at customer defaults
 have never been recorded (`docs/flag-runtime-bills-2026-09-12.md` measured
 the parity config only), so the budget is an estimate — one to three hours,
 run in the background, resumable. `--render` records wall-clock per

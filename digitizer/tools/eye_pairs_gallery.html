@@ -61,7 +61,8 @@ textarea{font:inherit;color:inherit;background:var(--bg);border:1px solid var(--
 .art{display:flex;justify-content:center}
 .art img{max-height:110px;width:auto;max-width:100%;border:1px solid var(--rule);background:var(--paper)}
 .views{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-@media (max-width:700px){.views{grid-template-columns:1fr}.armhead{grid-template-columns:1fr}.bar{position:static}}
+@media (max-width:700px){.views{grid-template-columns:1fr}.armhead{grid-template-columns:1fr}body.labelled .bar{position:static}}
+#progress:empty{display:none}
 .view{position:relative;overflow:hidden;border:2px solid var(--rule);border-radius:8px;background:var(--well);touch-action:none;cursor:grab;aspect-ratio:var(--ar,3/2)}
 .view.picked{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 25%,transparent)}
 .view img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;transform-origin:0 0;user-select:none;-webkit-user-drag:none;pointer-events:none}
@@ -157,11 +158,14 @@ const fmt = n => n == null ? "—" : Number(n).toLocaleString();
 
 // ---- storage: db when the viewer grants it, localStorage meanwhile --------
 const store = {db: null, downloads: null, queue: new Map()};
-const lsKey = (kind, id) => `eyepairs:${kind}:${id}`;
+// The mode is in the key: a ruling given on the labelled page must never
+// pre-fill the reveal's control when both load on one origin.
+const MODE = LAB ? "labelled" : "reveal";
+const lsKey = (kind, id) => `eyepairs:${MODE}:${kind}:${id}`;
 function readLocal() {
   try {
     for (const key of Object.keys(localStorage)) {
-      const m = /^eyepairs:(notes|rulings):(.+)$/.exec(key);
+      const m = new RegExp(`^eyepairs:${MODE}:(notes|rulings):(.+)$`).exec(key);
       if (m) state[m[1]][m[2]] = JSON.parse(localStorage.getItem(key));
     }
   } catch (e) { /* storage unavailable: render without it */ }
@@ -355,7 +359,9 @@ function pairCard(p) {
         segControl(JOB, note.job_done, v => write({job_done: v, note: ta.value})),
         ta, saved)
     : (LAB ? el("div", {class: "inputs tight"}, el("label", {for: `note-${p.pair}`, text: "Note"}), ta, saved) : null);
+  // Hidden while empty: an empty flex item would still take the column's gap.
   const chipsBox = el("div", {}, chipsRow(p));
+  chipsBox.hidden = !chipsBox.firstChild;
   const card = el("article", {class: "pair", id: p.pair},
     el("header", {},
       el("span", {class: "pid", text: p.pair}),
@@ -381,6 +387,7 @@ function pairCard(p) {
     }
     const row = chipsRow(p);
     chipsBox.replaceChildren(...(row ? [row] : []));
+    chipsBox.hidden = !row;
   }
   return card;
 }
@@ -474,6 +481,7 @@ function render() {
 }
 function boot() {
   readLocal();
+  document.body.classList.toggle("labelled", LAB);
   $("#title").textContent = LAB ? "Before | After · flag review" : "Eye pairs · reveal";
   const filters = $("#filters");
   for (const [id, label] of FILTERS) {

@@ -1428,14 +1428,18 @@ contamination and say so in the reveal.
 The first copy was made by hand on Kent's box and its generator never
 reached the repo; the 2026-09-18 rebuild ran in a cloud container as four
 parallel `--render --out <lane> --fixtures …` lanes (three of three logos
-each for the flag arms, one for `ref_0827` on all nine), merged by
-unioning `features.json` and copying `renders/` + `designs/` — a flag
-lane's `base` row wins, and the merge refuses if two lanes' base designs
-differ. Budget an hour on four cores; `fremont` is ~2.5 min an arm under
-contention and `tires` ~80 s (photo-scene prep), the rest under 25 s.
-`rembg_isolated/venv` was built first so photo-class fixtures got the
+each for the flag arms, one for `ref_0827` on all nine — its worktree path
+is fixed, so two ref lanes would collide), then
+`python -m tools.eye_pairs.merge eye_pairs_out <lane> …`: rows are unioned,
+the FIRST lane listed wins a (fixture, arm) that two lanes both rendered,
+and it refuses if two lanes disagree on a design's bytes or a fixture's
+source hash — which is how a base digitized once per lane is shown to be
+the same design. Budget an hour on four cores; `fremont` is ~2.5 min an
+arm under contention and `tires` ~80 s (photo-scene prep), the rest under
+25 s. `rembg_isolated/venv` was built first so photo-class fixtures got the
 cutout the product ships; without it every such render differs from Kent's
 box on BOTH sides.
+
 ### Eye pairs — the blind A/B picker (2026-09-17)
 
 `python -m tools.eye_pairs` (from `digitizer/`) is the instrument for ROADMAP
