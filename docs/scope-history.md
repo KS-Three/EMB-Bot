@@ -13,6 +13,32 @@ pointer; if it isn't there, treat it as superseded until re-measured.
 
 ---
 
+**Last updated:** 2026-09-18 — CI job times, and the fill-reorder memo
+
+Moved out of MASTER_SCOPE's "CI feedback speed" when the memo entry needed the
+words; the instruction ("budget an hour, read 50 minutes as normal, curl before
+calling a job stuck") stays there, these figures do not.
+
+Re-measured 2026-09-14, last 70 successful runs: `digitizer` **min 31.2 / p50
+51.0 / max 59.0**; `studio-e2e` 5.5; `studio` 0.9; `engine` 0.5. The "10 to 42
+minutes" carried until then was refuted — **76% of recent jobs exceeded 42
+minutes**, floor 31.2 — and the daily medians were still climbing, 50.6 → 51.7
+→ 53.8 across 09-12/13/14. `studio-e2e` had quietly doubled against
+CLAUDE.md's 2.7.
+
+**Observed 2026-09-17/18, three PR runs:** `digitizer` ~48 min (#504), ~55 min
+(#505 first head), ~55 min (#505 final head); `studio-e2e` 4.4-5.8 min;
+`studio` ~1 min; `engine` ~0.6 min. Consistent with the 09-14 band, no further
+climb visible in three points.
+
+**The fill-reorder memo** (PR #505) landed the same night: a photo review edit
+79.34 → 44.61 s, byte-identical. Local suite at the time: 3 failed (the three
+documented platform-numerics goldens, verified to fail identically on the
+pre-memo tree), 2477 passed, 12 skipped, 8 xfailed, 37m06s on a 4-core
+container.
+
+---
+
 **Last updated:** 2026-09-17 — border restitch pacing (PR #504)
 
 A border override now restitches on the pick instead of waiting out the 2 s
