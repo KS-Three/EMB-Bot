@@ -40,6 +40,12 @@ pushed from the same session an hour earlier.
   adopts any legacy-keyed doc it meets (`adoptLegacy`) in case a tab was
   still open on the old page. **Re-read the db right before a republish,
   not an hour earlier.**
+- **Kent's ruling on the six flags was already recorded** —
+  `docs/kent-review-2026-09-18.md` and [[six-flags-invisible-at-viewing-size-2026-09-18]],
+  landed with #507's squash at 18:37Z while this session was rendering: 29
+  of 34 "no difference", all six stay OFF, *record it and stop*. The
+  republished page adds the other five flags and the 08-27 engine, which
+  he has not judged; it does not reopen the six.
 
 ## What to carry forward
 
@@ -65,7 +71,11 @@ pushed from the same session an hour earlier.
   worked through the proxy), and never let it appear mid-lane, or the base
   arm and a later arm of the same fixture were prepped differently. Under
   four-lane contention tires takes ~80 s an arm against 33 s solo, fremont
-  ~150 s.
+  ~150 s. **His three tires verdicts** (polygon_axis, rails_follow_edge,
+  design_angle — the last two are his only non-"same" flag calls) were
+  given on the no-cutout renders; the republished page shows the cutout
+  renders under those same verdicts, so re-judge them before reading them
+  against the new pictures.
 - **Four lanes on four cores**: three `--render --out <lane> --fixtures …`
   lanes for the flag arms and one for `ref_0827` (its worktree path is
   fixed, so two ref lanes would collide), merged by unioning `features.json`
@@ -75,7 +85,9 @@ pushed from the same session an hour earlier.
 - **The yardstick's renderer never had the jump-run bug.** `stitchviz.
   render_design` draws every `stitch` record and skips only the `jump`
   MOVE; PR #513 fixed `bare_patch_render.py` and `thread_color_render.py`,
-  which the eye-pairs pages do not use. The scratch copy's renders were sound.
+  which the eye-pairs pages do not use. The scratch copy's renders were
+  sound, and `docs/kent-review-2026-09-18.md`'s "re-render them before
+  chasing them, the renderer predates #513" caveat is moot for that reason.
 - **Kent's held `design_angle` ruling** is still only on the throwaway
   preview artifact (`6Rc8urLWN1fXc8oh7xVtPg`), by his choice; it was not
   copied to the labelled page and its text is not in the repo.

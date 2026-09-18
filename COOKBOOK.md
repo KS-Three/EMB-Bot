@@ -1423,7 +1423,10 @@ blind picks). And judging a pair here first **contaminates a later blind
 sitting on the same pairs**: he will have seen which side is which. Kent
 chose the labelled page with that known (2026-09-18); if the sitting is
 still wanted, run it on fixtures he has not judged here, or accept the
-contamination and say so in the reveal.
+contamination and say so in the reveal. His first sitting on it (34 pairs,
+six flags) is `docs/kent-review-2026-09-18.md` — *record it and stop*, all
+six stay OFF; the 2026-09-18 republish added the other five flags and the
+08-27 engine, which he has not judged.
 
 The first copy was made by hand on Kent's box and its generator never
 reached the repo; the 2026-09-18 rebuild ran in a cloud container as four
