@@ -156,7 +156,10 @@ def append_pick(path: str | Path, pair: str, choice: str | None, ms: int,
 
 
 def load_picks(path: str | Path) -> dict[str, dict]:
-    """pair id -> its FINAL pick. An undo line removes the pair again."""
+    """pair id -> its FINAL pick, in CLICK order. An undo line removes the
+    pair again; a re-pick moves it to the end (pop first — re-assigning an
+    existing key would keep its old position), so the picker's Undo after a
+    reload takes back the pair judged last."""
     picks: dict[str, dict] = {}
     p = Path(path)
     if not p.exists():
@@ -168,6 +171,7 @@ def load_picks(path: str | Path) -> dict[str, dict]:
         if row.get("undo_of"):
             picks.pop(row["undo_of"], None)
         else:
+            picks.pop(row["pair"], None)
             picks[row["pair"]] = row
     return picks
 

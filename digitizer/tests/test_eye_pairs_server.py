@@ -16,11 +16,12 @@ from tools.eye_pairs.pairs import load_picks  # noqa: E402
 @pytest.fixture()
 def site(tmp_path):
     (tmp_path / "img").mkdir()
-    pairs = [{"pair": "P001", "left": "P001_L.jpg", "right": "P001_R.jpg",
-              "art": "P001_art.png"}]
+    pairs = [{"pair": pid, "left": f"{pid}_L.jpg", "right": f"{pid}_R.jpg",
+              "art": f"{pid}_art.png"} for pid in ("P001", "P002")]
     (tmp_path / "pairs.json").write_text(json.dumps(pairs))
-    for name in ("P001_L.jpg", "P001_R.jpg", "P001_art.png"):
-        (tmp_path / "img" / name).write_bytes(b"bytes-of-" + name.encode())
+    for pid in ("P001", "P002"):
+        for name in (f"{pid}_L.jpg", f"{pid}_R.jpg", f"{pid}_art.png"):
+            (tmp_path / "img" / name).write_bytes(b"bytes-of-" + name.encode())
     (tmp_path / "arms.json").write_text('{"P001": {"fixture": "becker"}}')
     (tmp_path / "features.json").write_text("{}")
     (tmp_path / "designs").mkdir()
@@ -51,6 +52,32 @@ def test_the_page_and_the_public_pairs_are_served(site):
     _status, body = get(base + "/pairs")
     data = json.loads(body)
     assert data["pairs"][0]["pair"] == "P001" and data["picked"] == []
+
+
+def test_the_page_guards_against_held_keys_and_failed_posts(site):
+    """Review findings 4 and 5 (2026-09-17): the keydown handler fired on OS
+    auto-repeat, so a held arrow burned through pairs Kent never saw; and
+    pick() advanced the queue before the POST resolved, so a dropped
+    connection left the old images on screen while the next click was
+    recorded against the next pair. The page is inline JS, so the testable
+    surface is that the guards are present in what is served."""
+    _out, base = site
+    html = get(base + "/")[1].decode()
+    assert "if(e.repeat)return;" in html
+    assert "if(!r.ok)throw" in html
+    assert "busy" in html and "if(busy" in html
+    # The queue advances AFTER the POST succeeds, not before it is sent.
+    assert html.index("await send(") < html.index("queue.shift()")
+    assert "Not saved" in html                      # the visible failure banner
+
+
+def test_picked_is_reported_in_click_order_so_undo_after_a_reload_is_right(site):
+    _out, base = site
+    post(base + "/pick", {"pair": "P002", "choice": "L", "ms": 5})
+    post(base + "/pick", {"pair": "P001", "choice": "R", "ms": 5})
+    assert json.loads(get(base + "/pairs")[1])["picked"] == ["P002", "P001"]
+    post(base + "/pick", {"pair": "P002", "choice": "tie", "ms": 5})   # re-picked: now last
+    assert json.loads(get(base + "/pairs")[1])["picked"] == ["P001", "P002"]
 
 
 def test_only_listed_images_are_served(site):

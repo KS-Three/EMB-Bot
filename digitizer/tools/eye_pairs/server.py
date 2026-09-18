@@ -23,6 +23,7 @@ PAGE = """<!doctype html>
 body{margin:0;background:#2b2b2b;color:#ddd;font:14px system-ui,sans-serif}
 #bar{padding:8px 12px;display:flex;gap:12px;align-items:center}
 #count{min-width:6em}
+#msg{color:#ffb454;min-height:1.2em}
 #row{display:flex;gap:8px;align-items:flex-start;justify-content:center;padding:0 8px}
 .view{flex:1 1 0;overflow:hidden;background:#fff;cursor:zoom-in;max-height:84vh}
 .view img{width:100%;display:block;transform-origin:50% 50%}
@@ -34,44 +35,73 @@ button{font:inherit;padding:6px 14px}
 <button id="bl">&larr; Left</button>
 <button id="bt">space &middot; Can't tell</button>
 <button id="br">Right &rarr;</button>
-<button id="bu">u &middot; Undo</button></div>
+<button id="bu">u &middot; Undo</button>
+<span id="msg"></span></div>
 <div id="row">
 <div class="view" id="vl"><img id="il" alt=""></div>
 <div id="art"><img id="ia" alt=""></div>
 <div class="view" id="vr"><img id="ir" alt=""></div>
 </div>
 <script>
-let pairs=[],queue=[],done=[],t0=0,zoom=false;
+// `busy` is the latch: set while a pair's images are still loading and
+// while a POST is in flight, so no keypress can act until the pair on
+// screen is the pair the click is for. `done` is in CLICK order (the
+// server reports picks that way), so Undo after a reload takes back the
+// pair judged last, not the highest id.
+let pairs=[],queue=[],done=[],t0=0,zoom=false,busy=false,loading=0;
 const $=id=>document.getElementById(id);
 async function load(){
   const r=await (await fetch('/pairs')).json();
   pairs=r.pairs;const picked=new Set(r.picked);
   queue=pairs.filter(p=>!picked.has(p.pair));
-  done=pairs.filter(p=>picked.has(p.pair)).map(p=>p.pair);
+  done=r.picked.slice();
   show();
+}
+function loaded(){
+  loading=Math.max(0,loading-1);
+  if(loading===0){busy=false;t0=performance.now();}
 }
 function show(){
   setZoom(false);
   $('count').textContent=(pairs.length-queue.length)+' / '+pairs.length;
   if(!queue.length){$('row').innerHTML='<p style="padding:40px">All pairs picked. Close this tab and run --reveal.</p>';return;}
   const p=queue[0];
+  busy=true;loading=2;
   $('il').src='/img/'+p.left;$('ir').src='/img/'+p.right;$('ia').src='/img/'+p.art;
-  t0=performance.now();
 }
+for(const id of ['il','ir']){$(id).addEventListener('load',loaded);$(id).addEventListener('error',loaded);}
 async function send(body){
-  await fetch('/pick',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  const r=await fetch('/pick',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  if(!r.ok)throw new Error('HTTP '+r.status);
+  return r;
 }
 async function pick(choice){
-  if(!queue.length)return;
-  const p=queue.shift();done.push(p.pair);
-  await send({pair:p.pair,choice:choice,ms:Math.round(performance.now()-t0)});
+  if(busy||!queue.length)return;
+  busy=true;
+  const p=queue[0];
+  try{
+    await send({pair:p.pair,choice:choice,ms:Math.round(performance.now()-t0)});
+  }catch(err){
+    $('msg').textContent='Not saved ('+err.message+') - the same pair is still showing; try again.';
+    busy=false;return;
+  }
+  queue.shift();done.push(p.pair);
+  $('msg').textContent='';
   show();
 }
 async function undo(){
-  if(!done.length)return;
-  const id=done.pop();
-  await send({pair:id,undo:true,ms:0});
+  if(busy||!done.length)return;
+  busy=true;
+  const id=done[done.length-1];
+  try{
+    await send({pair:id,undo:true,ms:0});
+  }catch(err){
+    $('msg').textContent='Undo not saved ('+err.message+'); try again.';
+    busy=false;return;
+  }
+  done.pop();
   queue.unshift(pairs.find(p=>p.pair===id));
+  $('msg').textContent='';
   show();
 }
 function setZoom(on,ox,oy){
@@ -95,6 +125,7 @@ for(const id of ['vl','vr']){
 $('bl').onclick=()=>pick('L');$('br').onclick=()=>pick('R');
 $('bt').onclick=()=>pick('tie');$('bu').onclick=undo;
 document.addEventListener('keydown',e=>{
+  if(e.repeat)return;
   if(e.key==='ArrowLeft')pick('L');
   else if(e.key==='ArrowRight')pick('R');
   else if(e.key===' '){e.preventDefault();pick('tie');}
@@ -130,8 +161,11 @@ def make_server(out_dir, port: int = PORT, host: str = "127.0.0.1") -> Threading
             if path == "/":
                 self._send(200, PAGE.encode("utf-8"), "text/html; charset=utf-8")
             elif path == "/pairs":
+                # Click order, not id order: `load_picks` keeps first-seen
+                # order and an undo-then-repick moves a pair to the end,
+                # which is exactly when it was judged last.
                 with lock:
-                    picked = sorted(load_picks(log))
+                    picked = list(load_picks(log))
                 body = json.dumps({"pairs": pairs, "picked": picked}).encode("utf-8")
                 self._send(200, body, "application/json")
             elif path.startswith("/img/") and path[len("/img/"):] in allowed:
