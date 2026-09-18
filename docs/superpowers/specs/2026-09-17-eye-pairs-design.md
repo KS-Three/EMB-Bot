@@ -79,6 +79,7 @@ exactly one change:
 | `polygon_axis` | `satin_polygon_axis="artwork"` |
 | `area_weighted` | `classify_area_weighted=True` |
 | `design_angle` | `design_angle=True` |
+| `rails_follow_edge` | `satin_rails_follow_edge=True` (added 2026-09-18: the labelled before/after page already carried it) |
 | `rail_comp` | `satin_rail_comp=True` |
 | `wide_columns` | `wide_columns=True` |
 | `lettering_column` | `lettering_min_column_mm=1.0` |

@@ -82,7 +82,7 @@ python -m tools.eye_pairs_gallery [--src digitizer/eye_pairs_out] [--out <src>/g
 3. **De-duplicate images by content hash.** The yardstick writes one file per
    pair side, so a fixture's base render is copied ~ten times; the gallery
    keeps one copy per distinct content, named `<sha256[:12]>.jpg`. Expected
-   ~110 unique files for 9 fixtures × 11 arms + artwork — under the
+   ~120 unique files for 9 fixtures × 12 arms + artwork — under the
    artifact's 255-file limit. **Re-encoded** with OpenCV at JPEG q85, long
    edge ≤ 1400 px, so the set stays under the 64 MB per-version limit; the
    generator prints the total and refuses above 60 MB.

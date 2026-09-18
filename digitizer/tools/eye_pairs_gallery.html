@@ -1,6 +1,6 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Eye Pairs Reveal</title>
+<title>__GALLERY_TITLE__</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
 :root{
@@ -61,7 +61,7 @@ textarea{font:inherit;color:inherit;background:var(--bg);border:1px solid var(--
 .art{display:flex;justify-content:center}
 .art img{max-height:110px;width:auto;max-width:100%;border:1px solid var(--rule);background:var(--paper)}
 .views{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-@media (max-width:700px){.views{grid-template-columns:1fr}.armhead{grid-template-columns:1fr}}
+@media (max-width:700px){.views{grid-template-columns:1fr}.armhead{grid-template-columns:1fr}.bar{position:static}}
 .view{position:relative;overflow:hidden;border:2px solid var(--rule);border-radius:8px;background:var(--well);touch-action:none;cursor:grab;aspect-ratio:var(--ar,3/2)}
 .view.picked{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 25%,transparent)}
 .view img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;transform-origin:0 0;user-select:none;-webkit-user-drag:none;pointer-events:none}
@@ -77,16 +77,19 @@ textarea{font:inherit;color:inherit;background:var(--bg);border:1px solid var(--
 .m.ref{border-style:dashed}
 .inputs{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;border-top:1px solid var(--rule);padding-top:10px}
 .inputs label{font-weight:500}
+.inputs.tight{border-top:0;padding-top:0}
 .saved{font-size:12px;color:var(--muted);min-width:5ch}
 .zoomhint{font-size:11px;color:var(--muted)}
 #export{background:var(--surface);border:1px solid var(--rule);border-radius:10px;padding:12px 16px;display:flex;flex-direction:column;gap:8px;max-width:1280px;margin:20px auto 0}
+#export[hidden]{display:none}
 #export textarea{min-height:120px;font-family:var(--mono);font-size:12px}
 .empty{color:var(--muted);padding:40px 0;text-align:center}
 @media (prefers-reduced-motion:no-preference){.view img{transition:transform 40ms linear}}
 </style>
 
 <header class="bar">
-  <div><h1>Eye pairs · reveal</h1><div class="meta" id="meta"></div></div>
+  <div><h1 id="title">Eye pairs · reveal</h1><div class="meta" id="meta"></div></div>
+  <strong class="mono" id="progress"></strong>
   <div class="seg" id="group" role="group" aria-label="Group pairs">
     <button type="button" data-g="arm" class="on" id="g-arm">by arm</button>
     <button type="button" data-g="fixture" id="g-fixture">by fixture</button>
@@ -108,7 +111,15 @@ textarea{font:inherit;color:inherit;background:var(--bg);border:1px solid var(--
 <script>
 (() => {
 "use strict";
-const FILTERS = [
+// Two pages from one file. REVEAL (after the blind sitting): what Kent
+// picked, unblinded. LABELLED: before | after with the arm named, Kent's
+// verdict taken here; no pick exists, so nothing below reads one.
+const LAB = DATA.labelled === true;
+const verdictOf = p => (state.notes[p.pair] || {}).verdict || null;
+// Labelled: BEFORE is always the left side and AFTER the right -- the
+// generator puts shipped | flag, and for the 08-27 arm old engine | today.
+const afterSide = p => p.is_ref ? p.shipped_side : p.arm_side;
+const REVEAL_FILTERS = [
   ["all", "all", () => true],
   ["arm", "picked arm", p => p.pick !== "tie" && p.pick === p.arm_side],
   ["shipped", "picked shipped", p => p.pick !== "tie" && p.pick === p.shipped_side],
@@ -118,6 +129,17 @@ const FILTERS = [
   // a metric scores the arm Kent picked as worse (ref arm excluded there too).
   ["against", "disagreements", p => p.kind === "live" && !p.is_ref && p.chips.some(c => !c.agrees)],
 ];
+const LABELLED_FILTERS = [
+  ["all", "all", () => true],
+  ["todo", "not judged yet", p => !verdictOf(p)],
+  ["after", "after better", p => verdictOf(p) === "after"],
+  ["before", "before better", p => verdictOf(p) === "before"],
+  ["same", "no difference", p => verdictOf(p) === "same"],
+  ["both_bad", "both bad", p => verdictOf(p) === "both_bad"],
+  ["against", "instruments disagree", p => chipAgreement(p).some(c => !c.agrees)],
+];
+const FILTERS = LAB ? LABELLED_FILTERS : REVEAL_FILTERS;
+const VERDICT = [["after", "after is better"], ["before", "before is better"], ["same", "no difference"], ["both_bad", "both bad"]];
 const JOB = [["yes", "yes"], ["no", "no"], ["unsure", "can't tell"]];
 const RULING = [["flip_on", "flip ON"], ["keep_off", "keep OFF"], ["needs_work", "needs work"]];
 const state = {group: "arm", filter: "all", notes: {}, rulings: {}};
@@ -249,30 +271,54 @@ function confoundBadge(p) {
     title: "The 08-27 engine ran without the rembg venv, so on a photo-class design this pair compares environments, not engines."});
 }
 function viewFor(p, side) {
-  const who = p.shipped_side === null ? "shipped (both)"
+  const who = LAB
+    ? (side === afterSide(p) ? (p.is_ref ? "AFTER · today" : `AFTER · ${p.arm} ON`)
+                             : (p.is_ref ? "BEFORE · 08-27 engine" : "BEFORE · shipped"))
+    : p.shipped_side === null ? "shipped (both)"
     : p.is_ref ? (side === p.shipped_side ? "today" : "08-27 engine")
     : (side === p.shipped_side ? "shipped" : p.arm);
-  const isArm = p.shipped_side !== null && side !== p.shipped_side;
-  const picked = p.pick === side;
+  // The accent marks the side under judgement: the arm (reveal), the AFTER side (labelled).
+  const isArm = LAB ? side === afterSide(p) : (p.shipped_side !== null && side !== p.shipped_side);
+  // The ring: the side Kent picked (reveal), or the side his verdict favours (labelled).
+  const v = LAB ? verdictOf(p) : null;
+  const picked = LAB ? (v === "after" ? side === afterSide(p) : v === "before" ? side !== afterSide(p) : false)
+                     : p.pick === side;
   const img = el("img", {src: p.img[side], alt: `${p.fixture} ${who}`, loading: "lazy"});
   const box = el("div", {class: "view" + (picked ? " picked" : ""), tabindex: "0", title: "wheel to zoom, drag to pan, double-click to reset"}, img);
   img.addEventListener("load", () => { box.style.setProperty("--ar", `${img.naturalWidth}/${img.naturalHeight}`); }, {once: true});
   const c = p.counts[side] || {};
+  // Present but hidden until picked, so a labelled verdict can show it in place.
+  const better = el("span", {class: "picked", text: LAB ? "better" : "picked"});
+  better.hidden = !picked;
   const cap = el("div", {class: "cap"},
     el("span", {class: "who" + (isArm ? " arm" : ""), text: who}),
-    picked ? el("span", {class: "picked", text: "picked"}) : (p.pick === "tie" ? el("span", {class: "n", text: "tie"}) : null),
+    better,
+    !picked && p.pick === "tie" ? el("span", {class: "n", text: "tie"}) : null,
     el("span", {class: "n", text: `${fmt(c.stitches)} st`}),
     el("span", {class: "n", text: `${c.trims_per_1000 == null ? "—" : c.trims_per_1000} trims/1000`}),
     el("span", {class: "n", text: `${fmt(c.cones)} cones`}));
-  return {box, img, fig: el("figure", {style: "margin:0"}, box, cap)};
+  return {box, img, better, fig: el("figure", {style: "margin:0"}, box, cap)};
+}
+// A chip agrees with the pick (reveal) or with Kent's verdict (labelled). In
+// labelled mode the chips stay hidden until a verdict exists, so an
+// instrument's lean never sits in front of his eye before it has spoken;
+// "no difference" and "both bad" agree with nothing and show none.
+function chipAgreement(p) {
+  if (!LAB) return p.chips;
+  const v = verdictOf(p);
+  if (v !== "after" && v !== "before") return [];
+  return p.chips.map(c => ({...c, agrees: (c.prefers === afterSide(p)) === (v === "after")}));
 }
 function chipsRow(p) {
-  if (!p.chips.length) return null;
+  const chips = chipAgreement(p);
+  if (!chips.length) return null;
   const row = el("div", {class: "metrics"}, el("span", {class: "lbl", text: "instruments"}));
-  for (const c of p.chips) {
-    const dir = c.prefers === p.arm_side ? p.arm : "shipped";
+  for (const c of chips) {
+    const dir = LAB ? (c.prefers === afterSide(p) ? "after" : "before") : (c.prefers === p.arm_side ? p.arm : "shipped");
+    const how = LAB ? (c.agrees ? " — agrees with your verdict" : " — against your verdict")
+                    : (c.agrees ? " — the side you picked" : " — the other side");
     row.append(el("span", {class: "m " + (c.agrees ? "yes" : "no") + (c.refused ? " ref" : ""),
-      text: c.metric, title: `${c.metric} points to ${dir}${c.agrees ? " — the side you picked" : " — the other side"}${c.refused ? " · instrument refused this artwork" : ""}`}));
+      text: c.metric, title: `${c.metric} points to ${dir}${how}${c.refused ? " · instrument refused this artwork" : ""}`}));
   }
   return row;
 }
@@ -288,11 +334,28 @@ function segControl(options, current, onPick) {
 function pairCard(p) {
   const L = viewFor(p, "L"), R = viewFor(p, "R");
   attachZoom([L, R]);
-  const note = state.notes[p.pair] || {job_done: null, note: ""};
+  const note = state.notes[p.pair] || {verdict: null, job_done: null, note: ""};
   const saved = el("span", {class: "saved"});
-  const write = body => persist("notes", p.pair, {...body, updated: new Date().toISOString()}, saved);
-  const ta = el("textarea", {id: `note-${p.pair}`, placeholder: "note — what your eye saw", text: note.note || ""});
-  ta.addEventListener("input", debounce(() => write({job_done: (state.notes[p.pair] || {}).job_done ?? null, note: ta.value}), 600));
+  // One document per pair; every control merges into it so none clobbers another.
+  const write = patch => {
+    const cur = state.notes[p.pair] || {};
+    const body = {...(LAB ? {verdict: cur.verdict ?? null} : {}),
+                  job_done: cur.job_done ?? null, note: cur.note ?? "", ...patch,
+                  updated: new Date().toISOString()};
+    if (LAB) { body.fixture = p.fixture; body.arm = p.arm; }
+    persist("notes", p.pair, body, saved);
+  };
+  const ta = el("textarea", {id: `note-${p.pair}`, placeholder: LAB ? "note — what your eye saw, what to fix" : "note — what your eye saw", text: note.note || ""});
+  ta.addEventListener("input", debounce(() => write({note: ta.value}), 600));
+  const jobLabel = LAB ? "Did the flag do what it claims?" : "Did the arm do what it claims?";
+  // The 08-27 engine claims nothing, so a labelled ref pair takes a verdict and a note only.
+  const jobRow = (p.arm && !(LAB && p.is_ref))
+    ? el("div", {class: "inputs" + (LAB ? " tight" : "")},
+        el("label", {for: `note-${p.pair}`, text: jobLabel}),
+        segControl(JOB, note.job_done, v => write({job_done: v, note: ta.value})),
+        ta, saved)
+    : (LAB ? el("div", {class: "inputs tight"}, el("label", {for: `note-${p.pair}`, text: "Note"}), ta, saved) : null);
+  const chipsBox = el("div", {}, chipsRow(p));
   const card = el("article", {class: "pair", id: p.pair},
     el("header", {},
       el("span", {class: "pid", text: p.pair}),
@@ -302,11 +365,23 @@ function pairCard(p) {
     p.arm ? el("div", {class: "armline"}, el("code", {text: p.arm_change}), p.arm_intent) : null,
     el("div", {class: "art"}, el("img", {src: p.img.art, alt: `${p.fixture} artwork`, loading: "lazy"})),
     el("div", {class: "views"}, L.fig, R.fig),
-    chipsRow(p),
-    p.arm ? el("div", {class: "inputs"},
-      el("label", {for: `note-${p.pair}`, text: "Did the arm do what it claims?"}),
-      segControl(JOB, note.job_done, v => write({job_done: v, note: ta.value})),
-      ta, saved) : null);
+    chipsBox,
+    LAB ? el("div", {class: "inputs"},
+      el("label", {text: "Verdict"}),
+      // A verdict moves the ring and shows the chips IN PLACE: the zoom, the
+      // note being typed and the saved mark all stay where they are.
+      segControl(VERDICT, note.verdict, v => { write({verdict: v, note: ta.value}); showVerdict(); refreshTallies(); })) : null,
+    jobRow);
+  function showVerdict() {
+    const v = verdictOf(p);
+    for (const [side, view] of [["L", L], ["R", R]]) {
+      const on = v === "after" ? side === afterSide(p) : v === "before" ? side !== afterSide(p) : false;
+      view.box.classList.toggle("picked", on);
+      view.better.hidden = !on;
+    }
+    const row = chipsRow(p);
+    chipsBox.replaceChildren(...(row ? [row] : []));
+  }
   return card;
 }
 function armHead(arm, a) {
@@ -318,6 +393,17 @@ function armHead(arm, a) {
   // The ref arm is an engine snapshot, not a flag: a "win" for it means the
   // OLD engine was preferred, and there is nothing to flip.
   const isRef = arm === "ref_0827";
+  if (LAB) {
+    // The tally is Kent's verdicts so far; refreshTallies fills it on every click.
+    return el("section", {class: "armhead"},
+      el("div", {}, el("h2", {text: arm}), el("div", {class: "change", text: a.change}), el("p", {text: a.intent})),
+      el("div", {}, el("div", {class: "tally", "data-arm": arm}), el("div", {class: "strip", "data-arm-strip": arm})),
+      isRef ? el("div", {class: "ruling"}, el("label", {for: `ruling-${arm}`, text: "Note"}), ta, saved)
+            : el("div", {class: "ruling"},
+                el("label", {for: `ruling-${arm}`, text: "Your ruling"}),
+                segControl(RULING, r.ruling, v => write({ruling: v, note: ta.value})),
+                ta, saved));
+  }
   const strip = el("div", {class: "strip"});
   const word = res => isRef ? ({win: "then", loss: "today", tie: "tie"})[res] : res;
   for (const [fx, res] of Object.entries(a.by_fixture || {})) strip.append(el("span", {class: res, text: `${fx} ${word(res)}`}));
@@ -335,13 +421,36 @@ function armHead(arm, a) {
               segControl(RULING, r.ruling, v => write({ruling: v, note: ta.value})),
               ta, saved));
 }
+// Labelled only: per arm, Kent's verdicts so far as counts and a per-fixture
+// strip, plus the page's progress line. Counts, never a rate.
+function refreshTallies() {
+  if (!LAB) return;
+  let judged = 0;
+  for (const [arm, a] of Object.entries(DATA.arms)) {
+    const mine = DATA.pairs.filter(p => p.arm === arm);
+    const n = {after: 0, before: 0, same: 0, both_bad: 0, todo: 0};
+    for (const p of mine) n[verdictOf(p) || "todo"]++;
+    judged += mine.length - n.todo;
+    const t = document.querySelector(`[data-arm="${arm}"]`);
+    if (t) t.replaceChildren(
+      el("span", {class: "w", text: `${n.after} after better`}), el("span", {class: "l", text: `${n.before} before better`}),
+      el("span", {text: `${n.same} no difference`}), el("span", {class: "l", text: `${n.both_bad} both bad`}),
+      el("span", {class: "s", text: `${n.todo} to judge · ${a.skipped} identical, not shown` + (a.failed ? ` · ${a.failed} failed to digitize` : "")}));
+    const s = document.querySelector(`[data-arm-strip="${arm}"]`);
+    if (s) s.replaceChildren(...mine.map(p => {
+      const v = verdictOf(p);
+      return el("span", {class: v === "after" ? "win" : (v === "before" || v === "both_bad") ? "loss" : "", text: `${p.fixture}${v ? " · " + v.replace("_", " ") : ""}`});
+    }));
+  }
+  $("#progress").textContent = `${judged} of ${DATA.n_pairs} judged`;
+}
 function render() {
   const main = $("#main");
   main.replaceChildren();
   const keep = FILTERS.find(f => f[0] === state.filter)[2];
   const pairs = DATA.pairs.filter(keep);
   $("#meta").textContent = `${DATA.n_pairs} pairs · ${Object.keys(DATA.arms).length} arms · built ${DATA.generated} · ${pairs.length} shown`;
-  if (!pairs.length) { main.append(el("div", {class: "empty", text: "No pairs match this filter."})); return; }
+  if (!pairs.length) { main.append(el("div", {class: "empty", text: "No pairs match this filter."})); refreshTallies(); return; }
   const groups = new Map();
   for (const p of pairs) {
     const key = state.group === "arm" ? (p.arm || "controls") : p.fixture;
@@ -361,9 +470,11 @@ function render() {
     for (const p of groups.get(key)) g.append(pairCard(p));
     main.append(g);
   }
+  refreshTallies();
 }
 function boot() {
   readLocal();
+  $("#title").textContent = LAB ? "Before | After · flag review" : "Eye pairs · reveal";
   const filters = $("#filters");
   for (const [id, label] of FILTERS) {
     const b = el("button", {type: "button", class: "chip" + (id === state.filter ? " on" : ""), text: label});
