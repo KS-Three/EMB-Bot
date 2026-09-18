@@ -28,6 +28,29 @@ def test_same_seed_same_pairs():
         or ep.build_pairs(runs(), seed=7)[1] != ep.build_pairs(runs(), seed=8)[1]
 
 
+@pytest.mark.parametrize("kw, digest", [
+    ({}, "f9fba8281d8d318cf5740e5d226426027238a662667a8ce855526a28aca404bd"),
+    ({"seed": 7}, "dadef395a28220f242f77d4c52bfbdaa64e995e753ca288420c21fd7d0f2cdfd"),
+    ({"seed": 7, "n_identical": 2, "n_repeat": 6},
+     "ceb0b28af3412667a2f7887bc9f392dba4012f02f9f58a494562c2fa2285b093"),
+], ids=["shipped-seed", "seed-7", "seed-7-small-controls"])
+def test_the_sitting_a_seed_builds_is_pinned(kw, digest):
+    """Captured 2026-09-18 from the implementation PR #506 shipped, BEFORE
+    `build_pairs` was restructured, so that refactor — and the next — is
+    held to byte-identical output. Not a platform golden: this is pure
+    `random.Random` over strings, and the three digests were checked equal
+    on Python 3.12.10 (CI's) and 3.14.6 (Kent's).
+
+    Why it is worth a pin at all: the sealed map IS the identity of a
+    sitting. A change that reshuffles it makes `--pair` refuse a sitting
+    that already has picks — loudly, but after the fact. If this fails, the
+    order Kent will be shown has changed. Re-pin only on purpose, and never
+    while a sitting with picks is waiting on `--reveal`."""
+    import hashlib
+    blob = json.dumps(ep.build_pairs(runs(), **kw), sort_keys=True, separators=(",", ":"))
+    assert hashlib.sha256(blob.encode()).hexdigest() == digest
+
+
 def test_an_arm_identical_to_base_is_skipped_and_logged():
     public, sealed, skipped = ep.build_pairs(runs(identical={("becker", "design_angle")}),
                                              n_identical=0, n_repeat=0)

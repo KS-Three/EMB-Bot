@@ -97,23 +97,33 @@ def build_pairs(runs: list[ArmRun], seed: int = SHUFFLE_SEED,
     for entry, flip in zip(order, flips):
         entry["flip"] = flip
 
+    # A repeat names its original by KEY — a fixture has one live pair per
+    # arm — and the key becomes a pair id only once ids exist. It used to
+    # hold the original's dict (`"of": orig`) and read `["pair"]` off it
+    # later, which worked only because ids were written onto those same
+    # objects in place: copy the entries anywhere in between and it was a
+    # KeyError (review 2026-09-17). Same draws from `rng`, same output.
+    def key(e: dict) -> tuple[str, str]:
+        return (e["fixture"], e["arm"])
+
     for orig in rng.sample(live, min(n_repeat, len(live))):
-        at = next(i for i, e in enumerate(order) if e is orig)
+        at = next(i for i, e in enumerate(order)
+                  if e["kind"] == "live" and key(e) == key(orig))
         slots = [i for i in range(len(order) + 1) if i not in (at, at + 1)]
         if not slots:
             continue
+        shown = order[at]          # the entry that carries `flip`, found by key
         order.insert(rng.choice(slots),
-                     {"fixture": orig["fixture"], "arm": orig["arm"],
-                      "kind": "repeat", "flip": not orig["flip"], "of": orig,
-                      "design_only": orig["design_only"]})
+                     {"fixture": shown["fixture"], "arm": shown["arm"],
+                      "kind": "repeat", "flip": not shown["flip"],
+                      "design_only": shown["design_only"]})
 
-    for n, entry in enumerate(order, start=1):
-        entry["pair"] = f"P{n:03d}"
+    ids = [f"P{n:03d}" for n in range(1, len(order) + 1)]
+    live_id = {key(e): pid for pid, e in zip(ids, order) if e["kind"] == "live"}
 
     public: list[dict] = []
     sealed: dict[str, dict] = {}
-    for entry in order:
-        pid = entry["pair"]
+    for pid, entry in zip(ids, order):
         left, right = ((entry["arm"], BASE) if entry["flip"]
                        else (BASE, entry["arm"]))
         public.append({"pair": pid, "left": f"{pid}_L.jpg",
@@ -121,7 +131,7 @@ def build_pairs(runs: list[ArmRun], seed: int = SHUFFLE_SEED,
         sealed[pid] = {
             "fixture": entry["fixture"], "left_arm": left, "right_arm": right,
             "kind": entry["kind"],
-            "repeat_of": entry["of"]["pair"] if entry["kind"] == "repeat" else None,
+            "repeat_of": live_id[key(entry)] if entry["kind"] == "repeat" else None,
             "design_only": entry["design_only"],
         }
     return public, sealed, skipped
