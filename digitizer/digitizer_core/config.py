@@ -806,12 +806,17 @@ class PipelineConfig:
     # pixels, not stair steps. Nothing is smoothed; a vertex the profile
     # refuses keeps its pixel centre exactly as before. Not upscaled, or
     # `subpixel_edges` off, this is inert. No physical constant: every
-    # number is a raster quantity of the source. DEFAULT OFF — built
-    # 2026-09-18 for Kent's "outlining non-standard shapes" ask; the flip is
-    # his, on the ladder's 200 px rung and the Becker render in
-    # scope-history's entry of that day. False is today's polygon, byte for
-    # byte.
-    subpixel_edges_upscaled: bool = False
+    # number is a raster quantity of the source. Built 2026-09-18 for Kent's
+    # "outlining non-standard shapes" ask, OFF; **DEFAULT ON the same day —
+    # Kent's flip**, on the ladder's 200 px rung, a synthetic disc's radial
+    # RMS 0.25 -> 0.013 mm, and the Becker renders in scope-history's entry
+    # of that day, with the cost on the table: Becker at 100 mm flips its
+    # outline band fill -> satin into the satin decomposition defect (bare
+    # 0 -> 35 mm2) until that arm lands. No committed golden pins an
+    # upscaled source, so the flip moved none; the Becker-keyed tests that
+    # moved are named in that entry. False is the pre-flip polygon — the
+    # staircase — byte for byte.
+    subpixel_edges_upscaled: bool = True
 
     # Stage 5 — sew order, underlap, pull compensation
     # Which garment/fabric the design is going on. The fabric preset supplies

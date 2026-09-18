@@ -348,12 +348,17 @@ def test_a_source_upscaled_to_the_resolution_floor_keeps_the_pixel_centre_polygo
     """The Lanczos ramp is manufactured and the step declines it (the
     ladder's 200 px rung: the bar's polygon 4 -> 11 vertices, the orange
     rectangle's spread 0.063 -> 0.174 mm). A 120 px logo at 50 mm is 2.4
-    px/mm in, upscaled to the 4.0 floor."""
+    px/mm in, upscaled to the 4.0 floor. With `subpixel_edges_upscaled`
+    off (ON by default since Kent's 2026-09-18 flip) that regime is read
+    from the SOURCE instead — the tests below — so this pins the decline
+    with it off."""
     img, _c, _r = _disc(w=120, h=120, c=60, r=40)
     art = tmp_path / "small.png"
     cv2.imwrite(str(art), img)
-    off, _p = digitize(art, PipelineConfig(target_width_mm=50.0, subpixel_edges=False))
-    on, _p = digitize(art, PipelineConfig(target_width_mm=50.0, subpixel_edges=True))
+    off, _p = digitize(art, PipelineConfig(target_width_mm=50.0, subpixel_edges=False,
+                                           subpixel_edges_upscaled=False))
+    on, _p = digitize(art, PipelineConfig(target_width_mm=50.0, subpixel_edges=True,
+                                          subpixel_edges_upscaled=False))
     assert not any("subpixel_accepted" in r.meta for r in on.regions)
     assert [list(r.polygon.exterior.coords) for r in on.regions] == \
         [list(r.polygon.exterior.coords) for r in off.regions]

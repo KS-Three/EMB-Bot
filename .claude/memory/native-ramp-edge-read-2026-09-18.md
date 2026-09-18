@@ -1,6 +1,6 @@
 ---
 name: native-ramp-edge-read-2026-09-18
-description: Low-res uploads sew staircases because stage 1 thresholds alpha and NEAREST-upscales the mask; the ramp is still in the file. `subpixel_edges_upscaled` reads it at the source's resolution (built OFF). Byte-identity is an expression, not a value.
+description: Low-res uploads sew staircases because stage 1 thresholds alpha and NEAREST-upscales the mask; the ramp is still in the file. `subpixel_edges_upscaled` reads it at the source's resolution (built and flipped ON 2026-09-18). Byte-identity is an expression, not a value. Lettering stays trace-as-shape.
 metadata:
   type: project
 ---
@@ -30,13 +30,19 @@ radial RMS 0.25 → 0.013 mm; ladder 200 rung rectangles' Hausdorff 0.26/0.34
 → 0.03/0.04 at four vertices; 400 rung byte-identical. Scope-history entry
 of the day has the tables; renders in `docs/renders/native-ramp-2026-09-18/`.
 
-**The trade-off, which is why it shipped OFF:** the polygon is right by every
+**The trade-off, stated to Kent; he flipped it ON the same day anyway:** the polygon is right by every
 instrument, and Becker at 100 mm then flips its 1021 mm² outline band FILL →
 SATIN (DT p90 drops under the 5.0 cap once the staircase goes) into the satin
 decomposition defect: uncovered 0 → 35 mm², visibly worse at arm's length.
 `satin_polygon_axis` on top does not rescue it. This is the classifier cliff
 (`classifier-cliff-is-input-resolution-2026-09-16.md`) seen from the other
-side. The flip is Kent's.
+side. Kent's ruling: flip, and take the decomposition arm as the follow-up.
+His second ruling that day: lettering stays TRACE-AS-SHAPE (the customer's
+font exactly, never a library font) — next are the two mechanisms in
+[[letterform-fidelity-2026-08-26]]: pull compensation on the satin rails after
+decomposition (`satin_rail_comp` exists OFF; which skeleton is his call) and a
+cap-arm classifier so `_prune_spurs` stops dropping the N's foot. Font
+identification for Convert-to-text was offered and NOT chosen.
 
 ## Traps — each cost real time
 
