@@ -187,9 +187,22 @@ def analyse(image_path: str | Path, cfg: PipelineConfig | None = None) -> dict:
     """Digitize `image_path` and measure how its sewn edges behave."""
     cfg = cfg or PipelineConfig()
     image_path = Path(image_path)
-
     result, plan = digitize(image_path, cfg)
-    design = plan_to_design(plan)
+    return analyse_design(image_path, plan_to_design(plan),
+                          route=result.design_class)
+
+
+def analyse_design(image_path: str | Path, design: dict,
+                   route: str | None = None) -> dict:
+    """`analyse` for a design somebody else already digitized.
+
+    `tools.eye_pairs` digitizes each arm ONCE and hands the same design to
+    every instrument; an instrument that insisted on its own engine run would
+    multiply that bill by the number of instruments. `route` is carried
+    through to the row untouched (None when the caller has no
+    `PipelineResult`, e.g. a design produced by an older engine).
+    """
+    image_path = Path(image_path)
 
     ours = stitch_coverage_field(design)
     art = art_ink_field(image_path, float(design["widthMM"]))
@@ -210,7 +223,7 @@ def analyse(image_path: str | Path, cfg: PipelineConfig | None = None) -> dict:
 
     return {
         "fixture": image_path.name,
-        "route": result.design_class,
+        "route": route,
         "ragged_mm": round(ragged_mm, 3),
         "offset_mm": round(offset_mm, 3),
         "perimeter_ratio": round(p_sewn / p_art, 3) if p_art else 0.0,
