@@ -457,3 +457,64 @@ not.
 **Still stale after this, and not fixed here:** `DigitizePanel.svelte`'s
 `RESTITCH_IDLE_MS` comment still says "10-14s … with no useful cache". It is a
 code comment, not a doc, and the table above is what replaces it.
+
+## Bisected: ONE flag is half the photograph's edit tail — 2026-09-17
+
+The section above found 86% of `owl_kent`'s edit tail inside `blend_fill` but
+did not say which flag. Bisected with this file's own method — warm-up
+discarded, one flag off at a time, baseline re-measured afterwards and the two
+baselines' difference used as the noise floor, stitch count reported so an
+INERT flag is visible rather than ranked.
+
+`owl_kent.jpg`, customer defaults, 80 mm, `max_colors=6`. Baseline tail
+**72.42 s**, noise floor **±0.40 s**:
+
+| flag OFF | tail saved | share | stitches (base 26,396) | |
+|---|---|---|---|---|
+| **`fill_travel_under_cover`** | **41.67 s** | **57.7%** | 28,896 | |
+| `subpixel_edges` | 9.32 s | 12.9% | 26,922 | |
+| `borders_last` | 4.36 s | 6.0% | 26,413 | |
+| `curve_turn_deg` | 2.83 s | 3.9% | 26,423 | |
+| `edge_cap` | 0.95 s | 1.3% | 25,206 | |
+| `design_ramp` | 0.30 s | 0.4% | 26,396 | **INERT** |
+| `enclosed_by_garment` | −0.33 s | −0.5% | 26,396 | **INERT** |
+| `satin_house_fourfold` | −1.19 s | −1.6% | 26,396 | **INERT** |
+
+Holds on a second photograph — `drone_render`, baseline tail 54.49 s
+(±0.68): `fill_travel_under_cover` off saves **26.61 s (48.8%)** for
+**+1,364** stitches.
+
+**This corroborates the table above rather than contradicting it.** That table
+already ranked `fill_travel_under_cover` first by clock (+59.8% worst), and its
+machinery (`_reorder_for_cover`, `_order_cost`, `travel_path`) is what the
+profile in the previous section found. What is added is a photograph, customer
+defaults, and the edit tail as the denominator.
+
+**DENOMINATORS DIFFER — do not compare these percentages with the table
+above.** That table is *% of total digitize time*; this one is *% of the edit
+TAIL*, which excludes the stages 0-4 that a review edit gets from cache. On
+`owl_kent` the same 41.67 s is 50.7% of total digitize time (82.26 s) and 57.7%
+of the tail. The tail is the right denominator for "how long does my edit take"
+and the wrong one for comparing against the four designs above. **It therefore
+still does not resolve the 2026-09-13 boost-off caveat** — that needs
+`flagcost.py`, its designs, its denominator.
+
+**It is NOT a free win, and the flag is not inert.** Turning it off costs
++2,500 stitches on `owl_kent` and +1,364 on `drone_render` — it is buying
+exactly what it was built to buy (its docstring: 22 of 27 fill-phase travel
+runs exposed on the Hotel Fremont field, 286 of 450 mm). Three flags in the
+table above ARE inert here and cost nothing to leave on; this one is a real
+trade.
+
+Timeline, for the "why did the tail grow" question: `_reorder_for_cover`
+landed in **PR #454, 2026-09-11** — a month after the 6.63 s tail
+`docs/scope/5-review-manual-editing.md` measured on 2026-08-13. That is most of
+the growth, and it was a deliberate, argued change, not a regression.
+
+**Not flipped, and not mine to flip.** Default-ON with a quality case that was
+argued and ruled; this file's own verdict stands. What the numbers do enable is
+a question worth putting to Kent: the cover-aware reorder could in principle be
+skipped on an interactive EDIT restitch and kept for the digitize that ships,
+which would buy back ~half the photo preview without changing a delivered
+stitch. That needs a preview/final distinction the service does not have today,
+so it is a proposal, not a patch.
