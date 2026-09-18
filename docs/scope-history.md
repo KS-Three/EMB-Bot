@@ -13083,3 +13083,55 @@ that shows a bevelled corner; spread and offset average it away.
 
 *(built and measured 2026-09-18 — `tests/test_subpixel_edges.py`,
 `docs/renders/native-ramp-2026-09-18/`, the ladder run above)*
+
+### Addendum, later the same day — FLIPPED ON, and what the flip moved
+
+Kent's ruling on the question above: **flip `subpixel_edges_upscaled` ON now**,
+with the Becker 100 mm tier flip on the table; the satin decomposition arm is
+the follow-up. Also ruled: **lettering stays trace-as-shape** (the customer's
+font exactly, never a library font); the next lettering work is the two
+mechanisms in `letterform-fidelity-2026-08-26.md` — pull compensation on the
+satin rails after decomposition (`satin_rail_comp` exists OFF; which skeleton
+is his call) and a cap-arm classifier so `_prune_spurs` stops dropping the
+N's foot. Font identification for Convert-to-text was offered and not chosen.
+
+**The full local suite under the flip (2606 passed, 12 skipped, 8 xfailed,
+24m49s at `-n 4`): fifteen reds.** Three are the platform goldens CLAUDE.md
+names. No committed golden pins an upscaled source (the flat-lane and
+photo-lane goldens are all 8 px/mm or better), so none moved. The other
+twelve, and what was done:
+
+- `test_edge_cap_budget` (5): every number measured on becker's staircase
+  polygons at 88/110 mm. Under the flip the bill sweep across the three
+  widths reads **[19.7, 25.1, 25.1] and no longer swings**, the ceiling
+  never fires, and the dropped-cap block differs — the outline band is a
+  different tier on the accurate polygon. The file's `_run` now holds the
+  flag OFF and says so: it pins the budget MECHANISM on the polygons it was
+  measured on. Worth its own line: part of the edge cap's cost on becker was
+  the staircase.
+- `test_junction_patch_flag` (2): with the flip, the SATIN cover mode lays a
+  **tatami run inside becker's satin outline band** at 80 mm
+  (`S118e45fc`) — an open observation about `satin_patch_junctions="satin"`
+  (OFF, judged "no difference" 2026-09-18) on the accurate polygon. `_cfg`
+  holds the flag OFF with the note.
+- `test_satin_per_stroke_flag` (2): at 100 mm the band is already satin
+  under the flip, so the per-stroke rung moves nothing on becker any more;
+  the two tests that need a fixture the flag moves read the pre-flip
+  polygons and say so.
+- `test_thread_match_better_spool[bridge]` (1): bridge is **3.49 px/mm at
+  80 mm — under the floor**, so the flip reads its edges too; one more small
+  shape's thread is judged, as a warn, under that file's unfloored read.
+  Re-pinned BRIDGE (2, 1) → (2, 2), the same way the 2026-09-09 flip re-pinned
+  it.
+- `test_memory_budget` (1): the new index line was 266 characters against the
+  260 cap; shortened.
+- `test_scope_budget` (1): MASTER_SCOPE's 27,000-word budget — main sits at
+  26,998 and the flip's sentence took it to 27,129. Reclaimed the way that
+  file documents: the flip's sentence cut to 46 words, and the "Make it
+  bigger" chips paragraph (2026-09-06, ~230 words) moved verbatim to
+  `docs/scope/3-studio-app-wizard.md` behind a one-line claim with its
+  dated pointer.
+
+*(flipped and re-measured 2026-09-18 — the full-suite log is not committed;
+the test files carry the notes)*
+

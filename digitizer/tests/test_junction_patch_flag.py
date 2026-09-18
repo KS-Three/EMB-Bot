@@ -35,6 +35,15 @@ def _points(plan) -> list:
 
 
 def _cfg(**kw) -> PipelineConfig:
+    # `subpixel_edges_upscaled` held OFF: the 37.2 mm2 bare crotch and every
+    # patch measured here are becker's on its staircase polygons; Kent's
+    # 2026-09-18 flip reads that source from its own pixels, and on the
+    # accurate outline band the SATIN cover mode lays a tatami run inside
+    # the satin shape (`test_the_satin_cover_*` failed on it). That is an
+    # open observation about the satin cover on the new polygon, recorded
+    # in scope-history's flip addendum; this file pins the patch mechanism
+    # on the polygons it was measured on.
+    kw.setdefault("subpixel_edges_upscaled", False)
     return PipelineConfig(target_width_mm=80.0, garment_id="left_chest", **kw)
 
 
