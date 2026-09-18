@@ -448,12 +448,28 @@
   // — correct, but it made the canvas editor feel like it was drawing on a
   // photograph rather than editing a design.
   //
-  // Debounced rather than immediate because a restitch is a full stage 0-7
-  // service run: measured 0.65s on simple line art but ~10-14s on a real
-  // photograph, with no useful cache (the job key folds shape_overrides into
-  // the config, so every edit is a guaranteed miss). Firing per drag would
-  // queue a 10s run behind every nudge. Waiting for the user to STOP means
-  // ten adjustments cost one run, not ten.
+  // Debounced rather than immediate because a restitch costs real time and a
+  // drag produces many edits a second: waiting for the user to STOP means ten
+  // adjustments cost one run, not ten.
+  //
+  // RE-MEASURED 2026-09-17, at customer defaults, because the figures that
+  // used to sit here sent a session down a dead end. They said "0.65s on
+  // simple line art but ~10-14s on a real photograph, with no useful cache
+  // (the job key folds shape_overrides into the config, so every edit is a
+  // guaranteed miss)" — true when written on 2026-08-13, and wrong NINE DAYS
+  // LATER when the stage 0-4 generation cache landed. A shape edit HITS that
+  // cache: `generation_key` strips the four review-edit keys, so only the
+  // tail re-runs, and the "10-14s" describes a full run nobody pays any more.
+  //
+  // What a shape edit actually costs (finish_generation + plan_stitches):
+  //   five logo fixtures      0.95 - 3.61 s
+  //   owl_kent (photograph)   44.6 s, of which ~97% is plan_stitches
+  //
+  // So the pause is what stops a DRAG queueing runs; it is not standing in
+  // front of a ten-second wait on ordinary line art. Treat both numbers as
+  // dated measurements, not facts — the trail, the per-flag bisect and the
+  // fill-reorder memo that took the photograph from 79.3 s are in
+  // `docs/flag-runtime-bills-2026-09-12.md`.
   const RESTITCH_IDLE_MS = 2000;
   let restitchTimer = 0;
   // Armed = a restitch is scheduled and has not started. Its own flag rather

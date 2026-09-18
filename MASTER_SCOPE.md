@@ -324,34 +324,18 @@ about the facts.
    *"I'm honestly not concerned about the hopping idea, we can table this one
    for a further discussion."* Do not build the shade-merge or further hopping
    polish until he reopens it; the 08-31 mechanical fixes are merged and
-   unaffected. The committed corpus can now pose the question — defensible
-   adjacent-shade pairs and their ΔE are in [area 1](docs/scope/1-auto-digitizing-quality.md).
-   *(measured 2026-09-02; tabled 2026-09-02 — Kent)*
+   unaffected. Defensible adjacent-shade pairs and their ΔE:
+   [area 1](docs/scope/1-auto-digitizing-quality.md). *(tabled 2026-09-02 — Kent)*
 
 13. **RESOLVED 2026-09-03 — the stitch-angle rule is ADOPTED (cap 30°)**, both passes built and flipped ON by Kent. *(area 1)*
 
-14. **RESOLVED 2026-09-12 for XXX and VP3 — Kent's scope call.**
-   `SERVICE_ONLY_FORMATS` is `{jef, xxx, vp3}` and both have buttons; PEC and
-   U01 stay OUT of scope. The evidence is a committed harness — run it rather
-   than re-derive it. Both read back `identity` and **return the design's own
-   thread RGB where PES, PEC and JEF snap to their chart**. Two recorded
-   hold-reasons for **U01 were wrong** (its colour change survives as
-   `NEEDLE_SET`; the +100-unit offset does not reproduce) — it is held because
-   no thread palette survives and no real Barudan reader has seen one. VP3's
-   0.1 mm quantisation is **deliberately not surfaced to the customer** (Kent,
-   same day). *(measured 2026-09-12 — `digitizer/tools/format_roundtrip.py`;
-   PRODUCT.md item 1)*
+14. **RESOLVED 2026-09-12 for XXX and VP3 — Kent's scope call.** `SERVICE_ONLY_FORMATS` is `{jef, xxx, vp3}`, both with buttons; PEC and U01 stay OUT. Two rulings that still govern: **U01 is held for want of a surviving thread palette and a real Barudan reader, NOT for the two hold-reasons once recorded — both were measured wrong**, and VP3's 0.1 mm quantisation is deliberately not surfaced to the customer. Evidence is a committed harness; run it rather than re-derive it. *(`digitizer/tools/format_roundtrip.py`; PRODUCT.md item 1)*
 
-15. **RESOLVED 2026-09-12 — the wizard's steps are browser history entries.**
-   `lib/stepHistory.js`. The anti-trap rule is the whole design: **the first
-   step REPLACES the entry the browser already has and only a step after it
-   pushes**, so n steps cost n−1 entries and Back from step 1 still leaves the
-   Studio. It is NOT routing — no URL reaches `pushState` — and restoring the
-   step across a reload is deliberately out. Verified in a real Chromium with
-   touch. *(2026-09-12 — `app/src/App.stepHistory.spec.js`, with a source
-   guard that no bare `step = ...` bypasses the helper)*
+15. **RESOLVED 2026-09-12 — the wizard's steps are browser history entries** (`lib/stepHistory.js`). The anti-trap rule IS the design and survives here: **the first step REPLACES the entry the browser already has, only a step after it pushes**, so Back from step 1 still leaves the Studio. Not routing — no URL reaches `pushState`. *(`app/src/App.stepHistory.spec.js`, with a source guard against a bare `step = ...`)*
 
-17. **RESOLVED 2026-09-17 (Kent) — clearing a stale BORDER recovers on ONE click**, a stale BOUNDARY still on two. Kept: "Clear them" is an explicit click, so nothing is dropped behind the user's back, which is what "recovery is explicit" protects. Do NOT gate recovery out of the fast lane to tidy the inconsistency. *(`e2e/digitize-stale-edits.spec.js`)*
+17. **RESOLVED 2026-09-17 (Kent) — clearing a stale BORDER recovers on ONE click**, a stale BOUNDARY on two. Kept: "Clear them" is an explicit click, so nothing is dropped behind the user's back — what "recovery is explicit" protects. Do NOT gate recovery out of the fast lane to tidy this. *(`e2e/digitize-stale-edits.spec.js`)*
+
+18. **OPEN: a COLD photo digitize is ~90 s and `fill_travel_under_cover` is ~58% of it.** The 2026-09-17 memo fixed the RE-stitch (79.3 → 44.6 s); the first digitize still pays the flag in full. Three ways out, all Kent's: flip it off (costs stitches, re-exposes the travel it hides), optimise `_reorder_for_cover` (golden-pinned — a win must be byte-identical), or accept it. **Do not re-derive the numbers** — method, noise floor, per-flag table and three INERT flags are in the doc. *(measured 2026-09-17 — `docs/flag-runtime-bills-2026-09-12.md`)*
 
 16. **Manual mode does not reproduce auto's sew order once a tiny region exists
    in an early layer.** Auto orders blocks by PALETTE LAYER, manual by AREA.
