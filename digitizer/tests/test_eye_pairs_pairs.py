@@ -123,6 +123,25 @@ def test_picks_are_append_only_and_the_last_line_wins(tmp_path):
     assert picks["P001"]["choice"] == "R" and picks["P002"]["choice"] == "tie"
 
 
+def test_a_pick_is_stamped_with_its_utc_offset(tmp_path):
+    """Review 2026-09-17: `ts` was naive local time. picks.jsonl is the one
+    file here that is not regenerable and is committed as the audit trail;
+    a stamp with no offset cannot be ordered against a CI log, a commit, or
+    a pick made across a DST change."""
+    import re
+    from datetime import datetime, timezone
+    log = tmp_path / "picks.jsonl"
+    ep.append_pick(log, "P001", "L", 900)
+    ts = json.loads(log.read_text(encoding="utf-8").splitlines()[0])["ts"]
+    assert re.fullmatch(r"\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d[+-]\d\d:\d\d", ts), ts
+    stamped = datetime.fromisoformat(ts)
+    assert stamped.utcoffset() is not None
+    assert abs((datetime.now(timezone.utc) - stamped).total_seconds()) < 60
+    # A caller's own stamp is still written as given.
+    ep.append_pick(log, "P002", "R", 1, ts="t1")
+    assert json.loads(log.read_text(encoding="utf-8").splitlines()[1])["ts"] == "t1"
+
+
 def test_undo_returns_the_pair_to_the_queue(tmp_path):
     log = tmp_path / "picks.jsonl"
     ep.append_pick(log, "P001", "L", 900, ts="t0")

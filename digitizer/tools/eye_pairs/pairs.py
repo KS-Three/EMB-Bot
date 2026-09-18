@@ -10,8 +10,8 @@ import hashlib
 import json
 import os
 import random
-import time
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 
 SHUFFLE_SEED = 20260917
@@ -151,13 +151,21 @@ def sealed_hash(sealed: dict[str, dict]) -> str:
 CHOICES = ("L", "R", "tie")
 
 
+def now_iso() -> str:
+    """ISO 8601 local time WITH its UTC offset, to the second. A naive stamp
+    cannot be ordered against a commit, a CI log, or a pick made on the far
+    side of a DST change — and picks.jsonl is the one file here that cannot
+    be regenerated (review 2026-09-17)."""
+    return datetime.now().astimezone().isoformat(timespec="seconds")
+
+
 def append_pick(path: str | Path, pair: str, choice: str | None, ms: int,
                 undo_of: str | None = None, ts: str | None = None) -> None:
     """One line per click, flushed to disk before returning. Never rewrites."""
     if undo_of is None and choice not in CHOICES:
         raise ValueError(f"choice must be one of {CHOICES}, got {choice!r}")
     line = {"pair": pair, "choice": None if undo_of else choice, "ms": int(ms),
-            "ts": ts if ts is not None else time.strftime("%Y-%m-%dT%H:%M:%S"),
+            "ts": ts if ts is not None else now_iso(),
             "undo_of": undo_of}
     with open(path, "a", encoding="utf-8") as fh:
         fh.write(json.dumps(line) + "\n")

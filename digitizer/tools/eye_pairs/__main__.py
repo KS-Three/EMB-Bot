@@ -39,7 +39,7 @@ from . import analysis as an
 from . import features as ft
 from .features import base_cfg, digitize_once, features_design_only, features_full
 from .pairs import (ARMS, BASE, ArmRun, build_pairs, design_hash, load_picks,
-                    sealed_hash, unpicked)
+                    now_iso, sealed_hash, unpicked)
 from .refarm import add_worktree, discard_worktree, ref_environment, run_ref_design
 from .server import PORT, make_server
 
@@ -286,7 +286,7 @@ def pair(out=OUT) -> int:
     _write_json(out / "arms.json", sealed)
     _write_json(out / "skipped.json", skipped)
     _write_json(sitting, {"sealed_sha256": new_hash, "n_pairs": len(public),
-                          "built_ts": time.strftime("%Y-%m-%dT%H:%M:%S")})
+                          "built_ts": now_iso()})
     print(f"{len(public)} pairs ready in {out}. Next: python -m tools.eye_pairs --serve")
     return len(public)
 

@@ -87,7 +87,10 @@ def test_render_digitizes_and_pair_builds_the_sitting(rendered):
         for k in ("left", "right", "art"):
             assert (out / "img" / p[k]).stat().st_size > 0
     assert "tiny" not in (out / "pairs.json").read_text()
-    assert json.loads((out / "sitting.json").read_text())["n_pairs"] == 7
+    sitting = json.loads((out / "sitting.json").read_text())
+    assert sitting["n_pairs"] == 7
+    from datetime import datetime
+    assert datetime.fromisoformat(sitting["built_ts"]).utcoffset() is not None
 
 
 def test_the_picker_starts_on_exactly_what_pair_wrote(rendered):
