@@ -1402,8 +1402,20 @@ is the only place Kent's eye is recorded as DATA rather than prose. Spec:
   picks exist — move the old log aside first. A `--render` scoped with
   `--fixtures`/`--arms` never touches the sitting.
 - The 08-27 arm runs the old engine from a worktree under the system temp
-  dir. On a photo-class fixture it is ENVIRONMENT-confounded (that worktree
-  has no `rembg_isolated/venv`); `--reveal` marks those rows.
+  dir. Whether it is ENVIRONMENT-confounded is **measured at `--render`, not
+  assumed** (2026-09-18): the rembg venv present for today's engine and for
+  the old one, and whether `requirements.txt` changed since `25da2fe`.
+  `--reveal` prints which fact fired and on which fixtures. It depends on
+  where you render from: on Kent's machine the main checkout has the rembg
+  venv (checked 2026-09-18) and a fresh worktree never does, so from there
+  photo-class fixtures ARE confounded; from a `.claude/worktrees/` lane
+  neither engine has it and they are not.
+- **One `--render` at a time.** It discards and rebuilds
+  `%TEMP%/eye-pairs-ref-25da2fe` on start, which is the running render's
+  engine if one is already going.
+- **Do not `--pair` while `--serve` is up.** The picker notices (it polls the
+  sitting's hash, shows a banner, and the server 409s further picks) — but
+  the fix is still to stop `--serve`, start it again and reload.
 - A metric that *agrees* can be trusted for the DIRECTION of a same-design
   A/B and nothing more: not across designs, not across routes, not as a
   quality percentage, and never as grounds to advance a phase — that is Kent's.
