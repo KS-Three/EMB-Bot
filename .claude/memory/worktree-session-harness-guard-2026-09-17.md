@@ -42,4 +42,7 @@ mobile preset).
 **The memory junction is per-checkout.** Writing to
 `~/.claude/projects/<mangled>/memory/` from a worktree session is refused
 ("edit the worktree copy"); write to `<worktree>/.claude/memory/` and it
-rides the PR, which is where this file came from.
+rides the PR, which is where this file came from. **And because it rides the
+PR, `tests/test_memory_budget.py` gates it:** an index line over 260 chars
+turned PR #507's `digitizer` job red after 55 minutes with 2514 other tests
+green. Run that one file (half a second) after ANY edit to `MEMORY.md`.
