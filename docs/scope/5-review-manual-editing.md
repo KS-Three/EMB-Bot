@@ -183,7 +183,15 @@ overlay drew a large, obvious spike over unchanged stitching.
   so every geometry edit was a guaranteed miss. Measured 0.65s on line art,
   ~10s on a real photograph. Firing per drag would queue a 10s run behind
   every nudge; waiting for the user to stop means ten adjustments cost one
-  run. **The full-rerun half of that reasoning is closed by the stage 0-4
+  run. **Those two numbers are 2026-08-13 and both are now wrong — re-measured
+  2026-09-17 at customer defaults** (`docs/flag-runtime-bills-2026-09-12.md`,
+  "At CUSTOMER defaults, on a real photograph"). What an EDIT actually re-runs
+  is the tail alone, because `generation_key` strips the review-edit keys and
+  stages 0-4 hit the cache: **0.95-3.6 s across five logo fixtures, 76.9-78.3 s
+  on `owl_kent`**. The premise no longer holds in either direction, and a
+  planned "border-only fast path" was dropped on the strength of it — on a logo
+  there is no 10-14 s to remove, and on a photograph 97% of the tail is
+  `plan_stitches`, which any border pass re-runs anyway. **The full-rerun half of that reasoning is closed by the stage 0-4
   cache below (2026-08-22); the debounce itself stays — even the cached
   finish + re-plan is seconds on a photo, not per-keystroke cheap.**
   **BORDERS LEFT THE DEBOUNCE 2026-09-17, and the carve-out's shape is the
@@ -221,6 +229,13 @@ overlay drew a large, obvious spike over unchanged stitching.
   by definition. **Worth building for logo work; not a route to "instant" on
   photos.** (Absolute figures were taken under heavy machine load — the
   RATIO is the finding, not the wall-clock.)
+  **The ratio itself has since moved, which is the part that matters: on
+  `owl_kent` the tail is now 97% of the edit cost, not 47%** (re-measured
+  2026-09-17 at customer defaults —
+  `docs/flag-runtime-bills-2026-09-12.md`). So "nearly half a photo's cost is
+  stitch planning" now understates it: nearly ALL of it is, and the stage 0-4
+  cache this table funded covers the cheap half on a photograph. The verdict
+  above still stands for logos, which is what it was built for.
   **BUILT 2026-08-22 — Kent funded it in that session's workload answer.**
   The split lands exactly at the seam the table predicted: `pipeline.
   build_generation` (stages 0-4, edit-independent — verified none of it

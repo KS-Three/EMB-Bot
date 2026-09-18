@@ -351,14 +351,15 @@ about the facts.
    touch. *(2026-09-12 — `app/src/App.stepHistory.spec.js`, with a source
    guard that no bare `step = ...` bypasses the helper)*
 
-17. **OPEN: clearing a stale BORDER now recovers on one click, not two.** The
-   0 ms border path reads the edit SET, so it cannot tell a border picked off
-   the menu from one dropped by the unmatched-edit "Clear them" recovery, which
-   used to need "Apply layer changes" after it. A stale BOUNDARY still pauses,
-   so the click count depends on what went stale. Both recover; nothing is
-   silently dropped. Gating recovery out of the fast lane is a few lines if
-   Kent wants the two-click contract back.
-   *(2026-09-17 — `e2e/digitize-stale-edits.spec.js`)*
+17. **RESOLVED 2026-09-17 (Kent) — clearing a stale BORDER recovers on ONE
+   click.** The 0 ms border path reads the edit SET, so it cannot tell a
+   border picked off the menu from one dropped by the
+   unmatched-edit "Clear them" recovery; a stale BOUNDARY pauses, so the
+   click count depends on what went stale. Kent's reasoning: you still click
+   "Clear them" explicitly, so no edit is dropped behind your back — which is
+   what "recovery is explicit" protects — and the restitch just follows the
+   decision. Do not "fix" the inconsistency by gating recovery out of the fast
+   lane. *(ruled 2026-09-17 — `e2e/digitize-stale-edits.spec.js`)*
 
 16. **Manual mode does not reproduce auto's sew order once a tiny region exists
    in an early layer.** Auto orders blocks by PALETTE LAYER, manual by AREA.
