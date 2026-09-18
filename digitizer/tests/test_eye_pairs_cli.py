@@ -5,14 +5,14 @@ import shutil
 import sys
 from pathlib import Path
 
-import cv2
-import numpy as np
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from tools.eye_pairs import __main__ as cli  # noqa: E402
 from tools.eye_pairs.pairs import BASE, append_pick, design_hash  # noqa: E402
+
+from .conftest import draw_tiny_logo  # noqa: E402
 
 # Measured 2026-09-17 on this image: fill_angle_deg=45 changes the stitches,
 # design_angle=True does not. The second is the identical-skip rule's test.
@@ -26,16 +26,6 @@ DELTA = {"aaaaaaa": 7, "bbbbbbb": 9}
 # old commit whose requirements.txt no longer matches HEAD.
 ENV = {c: {"ref": c, "rembg_venv_main": False, "rembg_venv_ref": False,
            "requirements_differ": c == "bbbbbbb"} for c in DELTA}
-
-
-def tiny_image(path: Path, extra_dot: bool = False) -> Path:
-    img = np.full((160, 240, 3), 255, np.uint8)
-    cv2.rectangle(img, (30, 40), (110, 120), (0, 0, 0), -1)
-    cv2.circle(img, (170, 80), 35, (0, 0, 200), -1)
-    if extra_dot:
-        cv2.circle(img, (40, 140), 6, (0, 0, 0), -1)
-    cv2.imwrite(str(path), img)
-    return path
 
 
 def fake_factory(out: Path, seen: dict):
@@ -59,16 +49,30 @@ def fake_factory(out: Path, seen: dict):
     return factory
 
 
+def fingerprint(out: Path) -> dict[str, bytes]:
+    """Every file of a sitting that a test could disturb, by content."""
+    return {p.relative_to(out).as_posix(): p.read_bytes()
+            for p in sorted(out.rglob("*")) if p.is_file() and p.parent.name != "renders"}
+
+
 @pytest.fixture(scope="module")
-def rendered(tmp_path_factory):
-    root = tmp_path_factory.mktemp("cli")
-    art = tiny_image(root / "tiny.png")
-    out = root / "out"
+def rendered(tmp_path_factory, tiny_logo):
+    """ONE rendered + paired sitting for the whole module (it costs ~10 s).
+    Shared, so READ-ONLY: a test that writes — a pick, an edited features
+    row, a second `--pair` — copies it under `tmp_path` first. An early
+    version cleaned its picks up with a bare `.unlink()` instead, which
+    leaves them behind for every later test the moment an assert fails
+    first (review 2026-09-17). The teardown below is the tripwire."""
+    out = tmp_path_factory.mktemp("cli") / "out"
     seen: dict = {}
-    n_arms = cli.render(out, cases=[("tiny", art, 40.0, "left_chest")], arms=ARMS,
+    n_arms = cli.render(out, cases=[("tiny", tiny_logo, 40.0, "left_chest")], arms=ARMS,
                         ref_factory=fake_factory(out, seen))
     n_pairs = cli.pair(out)
-    return out, art, n_arms, n_pairs, seen
+    before = fingerprint(out)
+    yield out, tiny_logo, n_arms, n_pairs, seen
+    after = fingerprint(out)
+    assert sorted(after) == sorted(before), "a test added or removed a file in the SHARED sitting"
+    assert after == before, "a test rewrote a file in the SHARED sitting; copy it to tmp_path"
 
 
 def test_render_digitizes_and_pair_builds_the_sitting(rendered):
@@ -146,7 +150,7 @@ def test_a_changed_source_image_is_a_cache_miss(rendered, tmp_path, monkeypatch)
     out, _art, _n, _np, _seen = rendered
     out2 = tmp_path / "out2"
     shutil.copytree(out, out2)
-    art2 = tiny_image(tmp_path / "tiny.png", extra_dot=True)     # same NAME, new bytes
+    art2 = draw_tiny_logo(tmp_path / "tiny.png", extra_dot=True)  # same NAME, new bytes
     calls = []
     real = cli.digitize_once
 

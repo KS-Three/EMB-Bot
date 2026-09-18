@@ -2,8 +2,6 @@ import json
 import sys
 from pathlib import Path
 
-import cv2
-import numpy as np
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -13,13 +11,10 @@ from tools.eye_pairs import features as ft  # noqa: E402
 
 
 @pytest.fixture(scope="module")
-def tiny(tmp_path_factory):
-    img = np.full((160, 240, 3), 255, np.uint8)
-    cv2.rectangle(img, (30, 40), (110, 120), (0, 0, 0), -1)
-    cv2.circle(img, (170, 80), 35, (0, 0, 200), -1)
-    path = tmp_path_factory.mktemp("feat") / "tiny.png"
-    cv2.imwrite(str(path), img)
-    return path
+def tiny(tiny_logo):
+    """conftest's `tiny_logo` — the image this module used to hand-build —
+    under the name these tests already take it by."""
+    return tiny_logo
 
 
 @pytest.fixture(scope="module")

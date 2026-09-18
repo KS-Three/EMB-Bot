@@ -53,6 +53,33 @@ def client():
 
 TESTDATA = Path(__file__).resolve().parent.parent / "testdata"
 
+
+def draw_tiny_logo(path: Path, extra_dot: bool = False) -> Path:
+    """A 240x160 white card with a black rectangle and a red disc: the
+    cheapest image that digitizes to two regions (~2 s). Three modules each
+    hand-built this, pixel for pixel, until 2026-09-18 — the instrument
+    splits, the eye-pairs features and the eye-pairs CLI. `extra_dot` is the
+    same artwork re-exported with one more mark: same NAME, different bytes,
+    for the cache-key test. cv2/numpy are imported here, not at module
+    scope, for the reason the `client` fixture above gives."""
+    import cv2
+    import numpy as np
+
+    img = np.full((160, 240, 3), 255, np.uint8)
+    cv2.rectangle(img, (30, 40), (110, 120), (0, 0, 0), -1)
+    cv2.circle(img, (170, 80), 35, (0, 0, 200), -1)
+    if extra_dot:
+        cv2.circle(img, (40, 140), 6, (0, 0, 0), -1)
+    cv2.imwrite(str(path), img)
+    return path
+
+
+@pytest.fixture(scope="session")
+def tiny_logo(tmp_path_factory) -> Path:
+    """`draw_tiny_logo` on disk as `tiny.png`, once per session. Read-only:
+    a test that needs to change it draws its own under `tmp_path`."""
+    return draw_tiny_logo(tmp_path_factory.mktemp("tiny_logo") / "tiny.png")
+
 # The real-read OCR tests skip when the tesseract binary is absent — but
 # never on CI, where the workflow apt-installs it: if that provisioning is
 # ever lost in a refactor, the five OCR tests must fail loud, not go dark
