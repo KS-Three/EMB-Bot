@@ -1377,6 +1377,27 @@ correction). Two rules stop a repeat:
    comparison against the baseline is comparing against a stale ruler —
    say so wherever the comparison is quoted.
 
+### The eye-pairs reveal gallery (2026-09-17)
+
+`cd digitizer && python -m tools.eye_pairs_gallery` reads the yardstick's
+`eye_pairs_out/` (`pairs.json`, `arms.json`, `picks.jsonl`, `features.json`,
+`renders/`) and writes `eye_pairs_out/gallery/index.html` + `img/`, each
+distinct render shipped once, re-encoded under the artifact's size limit.
+**It refuses until every pair is picked** — the page names arms, and naming
+one mid-sitting breaks the repeat controls; the refusal is the same rule as
+the yardstick's `--reveal`. Publish `index.html` as an Artifact with `img/*`
+as `files` and `capabilities: {db: {}, downloads: true}`. Kent's per-pair
+"did the arm do what it claims" and per-arm rulings (`flip ON` / `keep OFF`
+/ `needs work`) land in the artifact's `db` (`notes/<pair>`,
+`rulings/<arm>`) — never in the page, so a republish cannot overwrite them
+(the 08-27 artifact trap); read them back with `ArtifactData` and commit
+them as `docs/eye-pairs-<date>/kent-notes.json`. No score or agreement
+figure appears on the page (`acceptance_ab`'s rule; ROADMAP gate 4) — the
+instrument chips show only which way each metric points against his pick,
+and the "disagreements" filter IS the exit-clause list. Spec:
+`docs/superpowers/specs/2026-09-17-eye-pairs-gallery-design.md`; the
+generator imports nothing from `tools/eye_pairs/` and pins its arm and
+metric tables by test.
 ### Eye pairs — the blind A/B picker (2026-09-17)
 
 `python -m tools.eye_pairs` (from `digitizer/`) is the instrument for ROADMAP
