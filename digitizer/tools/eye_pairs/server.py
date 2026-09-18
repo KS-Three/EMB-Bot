@@ -14,6 +14,7 @@ that has happened.
 from __future__ import annotations
 
 import json
+import math
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -22,6 +23,9 @@ from urllib.parse import unquote, urlparse
 from .pairs import CHOICES, append_pick, load_picks, sealed_hash
 
 PORT = 8731
+# A pick is under a hundred bytes. The cap keeps a wrong Content-Length from
+# parking a handler thread on a read that nothing will satisfy.
+MAX_BODY = 4096
 
 PAGE = """<!doctype html>
 <meta charset="utf-8"><title>Eye pairs</title>
@@ -239,12 +243,26 @@ def make_server(out_dir, port: int = PORT, host: str = "127.0.0.1") -> Threading
                 return
             try:
                 length = int(self.headers.get("Content-Length") or 0)
+                if not 0 <= length <= MAX_BODY:
+                    raise ValueError("unreasonable Content-Length")
                 body = json.loads(self.rfile.read(length) or b"{}")
             except (ValueError, json.JSONDecodeError):
                 self._send(400, b"bad json", "text/plain")
                 return
-            pair, undo = body.get("pair"), bool(body.get("undo"))
-            if pair not in ids or (not undo and body.get("choice") not in CHOICES):
+            # Everything below runs in the handler thread, where an uncaught
+            # exception is a dropped connection and a banner that cannot say
+            # why (review 2026-09-17). So the SHAPE is checked before use:
+            # valid JSON need not be an object, and `ms` need not be a number.
+            if not isinstance(body, dict):
+                self._send(400, b"bad pick: not an object", "text/plain")
+                return
+            pair, undo, ms = body.get("pair"), bool(body.get("undo")), body.get("ms")
+            if ms is None:
+                ms = 0
+            if (not isinstance(pair, str) or pair not in ids
+                    or (not undo and body.get("choice") not in CHOICES)
+                    or isinstance(ms, bool) or not isinstance(ms, (int, float))
+                    or not math.isfinite(ms) or ms < 0):
                 self._send(400, b"bad pick", "text/plain")
                 return
             if sitting_on_disk(out) != loaded:
@@ -257,7 +275,7 @@ def make_server(out_dir, port: int = PORT, host: str = "127.0.0.1") -> Threading
                 if undo:
                     append_pick(log, pair, None, 0, undo_of=pair)
                 else:
-                    append_pick(log, pair, body["choice"], int(body.get("ms") or 0))
+                    append_pick(log, pair, body["choice"], int(ms))
             self._send(200, b'{"ok": true}', "application/json")
 
     return ThreadingHTTPServer((host, port), Handler)

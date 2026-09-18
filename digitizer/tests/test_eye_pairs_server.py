@@ -133,6 +133,56 @@ def test_a_bad_pick_is_a_400_and_writes_nothing(site, body):
     assert not (out / "picks.jsonl").exists()
 
 
+def post_raw(url, data: bytes):
+    req = urllib.request.Request(url, data=data,
+                                 headers={"Content-Type": "application/json"})
+    with urllib.request.urlopen(req) as r:
+        return r.status, json.loads(r.read())
+
+
+@pytest.mark.parametrize("raw", [
+    b"[1, 2]", b'"P001"', b"null", b"7",                       # valid JSON, not an object
+    b'{"pair": "P001", "choice": "L", "ms": "fast"}',
+    b'{"pair": "P001", "choice": "L", "ms": [812]}',
+    b'{"pair": "P001", "choice": "L", "ms": true}',
+    b'{"pair": "P001", "choice": "L", "ms": -5}',
+    b'{"pair": "P001", "choice": "L", "ms": 1e999}',           # parses to inf
+    b'{"pair": ["P001"], "choice": "L", "ms": 5}',             # unhashable id
+], ids=["list", "string", "null", "number", "ms-word", "ms-list", "ms-bool",
+        "ms-negative", "ms-infinite", "pair-list"])
+def test_a_malformed_pick_is_a_400_not_a_dropped_connection(site, raw):
+    """Review 2026-09-17: a non-object body died on `body.get`, a non-numeric
+    `ms` on `int()` — inside the handler thread, so the client saw the
+    connection drop and the page's banner said 'Not saved (Failed to
+    fetch)' with nothing to say why."""
+    out, base = site
+    with pytest.raises(urllib.error.HTTPError) as err:
+        post_raw(base + "/pick", raw)
+    assert err.value.code == 400
+    assert not (out / "picks.jsonl").exists()
+    # ... and the server is still there for the next click.
+    assert post(base + "/pick", {"pair": "P001", "choice": "L", "ms": 5})[1] == {"ok": True}
+
+
+def test_an_oversized_body_is_refused_before_it_is_read(site):
+    """A pick is under a hundred bytes. Without a cap, a wrong
+    Content-Length parks a handler thread on a read nothing will satisfy."""
+    out, base = site
+    raw = b'{"pair": "P001", "choice": "L", "ms": 5, "pad": "' + b"x" * 5000 + b'"}'
+    with pytest.raises(urllib.error.HTTPError) as err:
+        post_raw(base + "/pick", raw)
+    assert err.value.code == 400
+    assert not (out / "picks.jsonl").exists()
+
+
+@pytest.mark.parametrize("ms, stored", [(None, 0), (812, 812), (812.6, 812)])
+def test_a_missing_or_fractional_ms_is_still_a_pick(site, ms, stored):
+    out, base = site
+    body = {"pair": "P001", "choice": "R"} | ({} if ms is None else {"ms": ms})
+    assert post(base + "/pick", body)[1] == {"ok": True}
+    assert load_picks(out / "picks.jsonl")["P001"]["ms"] == stored
+
+
 # ---- a sitting rebuilt under a running picker (review 2026-09-17) ----------
 # `make_server` reads the pair list ONCE. The public list is identical for any
 # two sittings of one size — it names nothing, by design — so after a `--pair`
