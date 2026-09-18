@@ -105,8 +105,10 @@ def _panel(art, cfg, result, plan, bounds, px_per_mm, changed, title):
 
     # 2. Thread, each run in its own block's cone.
     chart = chart_for(cfg)
+    # A `jump` run still sews (the needle lifts to reach points[0]); see
+    # bare_patch_render.py for what skipping it hid.
     for block, run in plan.iter_runs():
-        if run.jump or len(run.points) < 2:
+        if len(run.points) < 2:
             continue
         cv2.polylines(img, [to_px(run.points)], False,
                       _bgr(chart[block.thread_index].rgb), 1, cv2.LINE_AA)
