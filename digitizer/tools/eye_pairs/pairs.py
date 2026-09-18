@@ -31,6 +31,9 @@ ARMS: dict[str, dict] = {
     "polygon_axis": {"satin_polygon_axis": "artwork"},
     "area_weighted": {"classify_area_weighted": True},
     "design_angle": {"design_angle": True},
+    # The 2026-09-18 labelled before/after page carried this arm; it stays so
+    # the same six flags Kent already has in front of him keep their column.
+    "rails_follow_edge": {"satin_rails_follow_edge": True},
     "rail_comp": {"satin_rail_comp": True},
     "wide_columns": {"wide_columns": True},
     "lettering_column": {"lettering_min_column_mm": 1.0},

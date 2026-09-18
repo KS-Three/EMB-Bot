@@ -79,6 +79,7 @@ exactly one change:
 | `polygon_axis` | `satin_polygon_axis="artwork"` |
 | `area_weighted` | `classify_area_weighted=True` |
 | `design_angle` | `design_angle=True` |
+| `rails_follow_edge` | `satin_rails_follow_edge=True` (added 2026-09-18: the labelled before/after page already carried it) |
 | `rail_comp` | `satin_rail_comp=True` |
 | `wide_columns` | `wide_columns=True` |
 | `lettering_column` | `lettering_min_column_mm=1.0` |
@@ -345,7 +346,7 @@ No real-logo digitize in CI (the `digitizer` job already runs ~50 minutes).
 
 ## 6. Runtime and failure
 
-99 digitizes plus 9 on the old ref. Per-design clocks at customer defaults
+108 digitizes plus 9 on the old ref (99 before `rails_follow_edge` joined the table). Per-design clocks at customer defaults
 have never been recorded (`docs/flag-runtime-bills-2026-09-12.md` measured
 the parity config only), so the budget is an estimate — one to three hours,
 run in the background, resumable. `--render` records wall-clock per

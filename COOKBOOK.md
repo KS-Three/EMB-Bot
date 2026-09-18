@@ -1398,6 +1398,51 @@ and the "disagreements" filter IS the exit-clause list. Spec:
 `docs/superpowers/specs/2026-09-17-eye-pairs-gallery-design.md`; the
 generator imports nothing from `tools/eye_pairs/` and pins its arm and
 metric tables by test.
+
+### The labelled before | after page — "Flag Before After" (2026-09-18)
+
+`cd digitizer && python -m tools.eye_pairs_gallery --labelled` is the same
+generator's OTHER page: every rendered arm beside shipped, **BEFORE on the
+left and AFTER on the right, the flag named**, Kent's verdict taken on the
+page (`after is better` / `before is better` / `no difference` / `both
+bad`, then *did the flag do what it claims* and a note; per arm, his
+ruling). It reads only `--render`'s output (`features.json`, `designs/`,
+`renders/`) — **no `--pair`, no sitting, no pick**; an arm whose stitches
+equal shipped's is counted as *identical, not shown*, an arm that raised as
+*failed*. Pair ids are `<arm>__<fixture>`, not opaque, so a note keyed by
+one survives a re-render, a new arm, and a republish. Instrument chips stay
+hidden until he has given a verdict, then colour by agreement with it; the
+per-arm tally is a count of his verdicts, never a rate. Published as
+https://claude.ai/artifact/6mjKrbnCX21MM9gQUry4Zp — **republish to that
+URL**, never a new one: his notes live in its `db`, keyed by those ids.
+
+Two things it is not. It is **not the blind sitting** — a verdict given
+knowing which side is the flag is evidence for a *ruling*, and never enters
+the yardstick's agreement statistic (§4 of the eye-pairs spec needs the
+blind picks). And judging a pair here first **contaminates a later blind
+sitting on the same pairs**: he will have seen which side is which. Kent
+chose the labelled page with that known (2026-09-18); if the sitting is
+still wanted, run it on fixtures he has not judged here, or accept the
+contamination and say so in the reveal. His first sitting on it (34 pairs,
+six flags) is `docs/kent-review-2026-09-18.md` — *record it and stop*, all
+six stay OFF; the 2026-09-18 republish added the other five flags and the
+08-27 engine, which he has not judged.
+
+The first copy was made by hand on Kent's box and its generator never
+reached the repo; the 2026-09-18 rebuild ran in a cloud container as four
+parallel `--render --out <lane> --fixtures …` lanes (three of three logos
+each for the flag arms, one for `ref_0827` on all nine — its worktree path
+is fixed, so two ref lanes would collide), then
+`python -m tools.eye_pairs.merge eye_pairs_out <lane> …`: rows are unioned,
+the FIRST lane listed wins a (fixture, arm) that two lanes both rendered,
+and it refuses if two lanes disagree on a design's bytes or a fixture's
+source hash — which is how a base digitized once per lane is shown to be
+the same design. Budget an hour on four cores; `fremont` is ~2.5 min an
+arm under contention and `tires` ~80 s (photo-scene prep), the rest under
+25 s. `rembg_isolated/venv` was built first so photo-class fixtures got the
+cutout the product ships; without it every such render differs from Kent's
+box on BOTH sides.
+
 ### Eye pairs — the blind A/B picker (2026-09-17)
 
 `python -m tools.eye_pairs` (from `digitizer/`) is the instrument for ROADMAP

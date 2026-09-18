@@ -18,8 +18,8 @@ from tools import eye_pairs_gallery as g  # noqa: E402
 
 # Restated from the yardstick spec, sections 3.2 and 3.7 / analysis.METRICS.
 SPEC_ARMS = ["per_stroke", "patch_junctions", "polygon_axis", "area_weighted",
-             "design_angle", "rail_comp", "wide_columns", "lettering_column",
-             "phantom_dissolve", "directional_comp", "ref_0827"]
+             "design_angle", "rails_follow_edge", "rail_comp", "wide_columns",
+             "lettering_column", "phantom_dissolve", "directional_comp", "ref_0827"]
 SPEC_METRICS = {
     "trims_per_1000": "lower", "preflight_raw_score": "higher",
     "preflight_blocks": "lower", "uncovered_total_mm2": "lower",
@@ -426,3 +426,126 @@ def test_cli_builds_and_prints_the_totals(tmp_path, capsys):
     assert g.main(["--src", str(src), "--out", str(tmp_path / "gallery")]) == 0
     out = capsys.readouterr().out
     assert "4 pairs" in out and "6 images" in out and "index.html" in out
+
+
+# ---- labelled mode --------------------------------------------------------
+# Before | after with the arm named, built from --render's output alone: no
+# pairs.json, no arms.json, no picks.jsonl. Kent's 2026-09-18 flag-review page.
+
+LAB_FEATS = {
+    "fx_a": {"base": _row(design_class="flat"),
+             "per_stroke": _row(stitches=1100, trims_per_1000=2.0, artfid=72.0,
+                                ragged_mm=0.35),
+             "design_angle": _row(),                       # same stitches as base below
+             "wide_columns": {"error": "ValueError: boom"}},
+    "fx_p": {"base": _row(design_class="photo_subject"),
+             "ref_0827": _row(stitches=900, design_only=True)},
+}
+LAB_STITCHES = {("fx_a", "base"): [[0, 0], [1, 1]], ("fx_a", "per_stroke"): [[0, 0], [2, 2]],
+                ("fx_a", "design_angle"): [[0, 0], [1, 1]],
+                ("fx_p", "base"): [[5, 5], [6, 6]], ("fx_p", "ref_0827"): [[5, 5], [7, 7]]}
+
+
+def make_labelled_set(tmp_path: Path) -> Path:
+    src = tmp_path / "eye_pairs_out"
+    (src / "designs").mkdir(parents=True)
+    (src / "renders").mkdir()
+    (src / "features.json").write_text(json.dumps(LAB_FEATS), encoding="utf-8")
+    for n, ((fx, arm), st) in enumerate(LAB_STITCHES.items()):
+        (src / "designs" / f"{fx}__{arm}.json").write_text(json.dumps({"stitches": st}),
+                                                           encoding="utf-8")
+        _img(src / "renders" / f"{fx}__{arm}.jpg", (10 * n + 5,) * 3)
+    _img(src / "renders" / "fx_a__art.png", (200, 200, 200))
+    _img(src / "renders" / "fx_p__art.png", (210, 210, 210))
+    return src
+
+
+def test_labelled_builds_without_a_sitting(tmp_path):
+    src = make_labelled_set(tmp_path)
+    out = tmp_path / "gallery"
+    data = g.build(src, out, labelled=True)
+    assert not (src / "picks.jsonl").exists() and not (src / "pairs.json").exists()
+    assert data["labelled"] is True and data["n_pairs"] == 2
+    # Spec-order arms, readable ids: a note keyed by one survives a rebuild.
+    assert [p["pair"] for p in data["pairs"]] == ["per_stroke__fx_a", "ref_0827__fx_p"]
+    html = (out / "index.html").read_text(encoding="utf-8")
+    assert "<title>Flag Before After</title>" in html and g.TITLE_TOKEN not in html
+    refs = set(re.findall(r'img/[0-9a-f]{12}\.(?:jpg|png)', html))
+    assert refs and all((out / r).exists() for r in refs)
+    assert "%" not in _strip_style(html)
+
+
+def test_labelled_before_is_left_for_a_flag_and_the_old_engine_for_the_ref(tmp_path):
+    data = g.build(make_labelled_set(tmp_path), tmp_path / "g", labelled=True)
+    flag, ref = data["pairs"]
+    assert (flag["shipped_side"], flag["arm_side"], flag["is_ref"]) == ("L", "R", False)
+    assert (flag["counts"]["L"]["stitches"], flag["counts"]["R"]["stitches"]) == (1000, 1100)
+    assert (ref["shipped_side"], ref["arm_side"], ref["is_ref"], ref["confounded"]) == ("R", "L", True, True)
+    assert (ref["counts"]["L"]["stitches"], ref["counts"]["R"]["stitches"]) == (900, 1000)
+    assert flag["pick"] is None and flag["picked_arm"] is None and flag["kind"] == "live"
+    assert flag["img"]["L"] != flag["img"]["R"] and flag["img"]["art"] != ref["img"]["art"]
+
+
+def test_labelled_skips_identical_arms_and_counts_failures_but_never_scores(tmp_path):
+    data = g.build(make_labelled_set(tmp_path), tmp_path / "g", labelled=True)
+    arms = data["arms"]
+    assert list(arms) == ["per_stroke", "design_angle", "wide_columns", "ref_0827"]
+    assert arms["design_angle"] == {"change": g.ARM_INTENT["design_angle"][0],
+                                    "intent": g.ARM_INTENT["design_angle"][1],
+                                    "is_ref": False, "n_pairs": 0, "skipped": 1, "failed": 0}
+    assert (arms["wide_columns"]["failed"], arms["wide_columns"]["n_pairs"]) == (1, 0)
+    assert (arms["per_stroke"]["n_pairs"], arms["ref_0827"]["is_ref"]) == (1, True)
+    # A null pick is not a loss: the page counts verdicts as Kent gives them.
+    for a in arms.values():
+        assert not {"wins", "losses", "ties", "by_fixture"} & set(a)
+    assert data["_skipped"] == [{"fixture": "fx_a", "arm": "design_angle",
+                                 "reason": "identical_to_base"}]
+    assert data["_failed"] == [{"fixture": "fx_a", "arm": "wide_columns",
+                                "reason": "ValueError: boom"}]
+
+
+def test_labelled_chips_carry_direction_and_refusal_only(tmp_path):
+    data = g.build(make_labelled_set(tmp_path), tmp_path / "g", labelled=True)
+    chips = data["pairs"][0]["chips"]
+    assert chips and all(set(c) == {"metric", "prefers", "refused"} for c in chips)
+    assert _chip(chips, "trims_per_1000")["prefers"] == "R"   # lower is better: the arm, on the right
+    assert _chip(chips, "ragged_mm")["prefers"] == "L"
+
+
+def test_labelled_refuses_on_a_missing_render_or_design(tmp_path):
+    src = make_labelled_set(tmp_path)
+    (src / "renders" / "fx_a__per_stroke.jpg").unlink()
+    with pytest.raises(SystemExit, match=r"REFUSED: .*fx_a__per_stroke\.jpg"):
+        g.build(src, tmp_path / "g", labelled=True)
+    src2 = make_labelled_set(tmp_path / "two")
+    (src2 / "designs" / "fx_a__per_stroke.json").unlink()
+    with pytest.raises(SystemExit, match=r"REFUSED: .*fx_a / per_stroke"):
+        g.build(src2, tmp_path / "g2", labelled=True)
+
+
+def test_labelled_ids_survive_a_new_arm(tmp_path):
+    src = make_labelled_set(tmp_path)
+    before = g.build(src, tmp_path / "g1", labelled=True)
+    feats = json.loads((src / "features.json").read_text(encoding="utf-8"))
+    feats["fx_a"]["polygon_axis"] = _row(stitches=1200)
+    (src / "features.json").write_text(json.dumps(feats), encoding="utf-8")
+    (src / "designs" / "fx_a__polygon_axis.json").write_text(json.dumps({"stitches": [[9, 9]]}),
+                                                             encoding="utf-8")
+    _img(src / "renders" / "fx_a__polygon_axis.jpg", (77, 77, 77))
+    after = g.build(src, tmp_path / "g2", labelled=True)
+    assert {p["pair"] for p in before["pairs"]} < {p["pair"] for p in after["pairs"]}
+
+
+def test_reveal_build_keeps_its_title_and_is_not_labelled(tmp_path):
+    data = g.build(make_set(tmp_path), tmp_path / "gallery")
+    html = (tmp_path / "gallery" / "index.html").read_text(encoding="utf-8")
+    assert "<title>Eye Pairs Reveal</title>" in html and g.TITLE_TOKEN not in html
+    assert data["labelled"] is False
+
+
+def test_cli_labelled_prints_the_skips_and_failures(tmp_path, capsys):
+    src = make_labelled_set(tmp_path)
+    assert g.main(["--src", str(src), "--out", str(tmp_path / "g"), "--labelled"]) == 0
+    out = capsys.readouterr().out
+    assert "2 pairs" in out and "1 arm-runs identical" in out and "1 failed" in out
+    assert "FAILED fx_a / wide_columns: ValueError: boom" in out
