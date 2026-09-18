@@ -197,8 +197,13 @@ def render(out=OUT, cases=None, arms=None, fixtures=None, only_arms=None,
                 row["design_hash"] = design_hash(design)     # read by `pair()`
                 dpath.write_text(json.dumps(design), encoding="utf-8")
                 with _replacing(rpath) as tmp:
-                    cv2.imwrite(str(tmp), render_design(design, px_per_mm=VIEW_PX_PER_MM),
-                                [cv2.IMWRITE_JPEG_QUALITY, 92])
+                    # `imwrite` reports failure by RETURNING False. Raised
+                    # here, before the row is checkpointed, so a resumed
+                    # render does this arm again instead of pairing a row
+                    # that has no picture.
+                    if not cv2.imwrite(str(tmp), render_design(design, px_per_mm=VIEW_PX_PER_MM),
+                                       [cv2.IMWRITE_JPEG_QUALITY, 92]):
+                        raise OSError(f"could not write {rpath}")
                 feats.setdefault(name, {})[arm] = row
                 _write_json(feats_path, feats)          # checkpoint per arm
                 ready += 1

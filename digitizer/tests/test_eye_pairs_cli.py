@@ -423,6 +423,22 @@ def test_a_paired_image_is_a_snapshot_a_later_render_cannot_rewrite(rendered, tm
     assert not list((out2 / "renders").glob("*.tmp.*"))
 
 
+def test_a_render_that_cannot_be_written_says_so_and_is_not_checkpointed(
+        tiny_logo, tmp_path, monkeypatch):
+    """`cv2.imwrite` reports failure by RETURNING False. Written in place
+    that was silent; behind the atomic replace it would surface as a
+    FileNotFoundError about a temp name. Either way the row must not be
+    checkpointed as ready, so a resumed render does the arm again."""
+    out = tmp_path / "out_nowrite"
+    monkeypatch.setattr(cli.cv2, "imwrite", lambda *_a, **_k: False)
+    with pytest.raises(OSError, match=r"could not write .*tiny__base"):
+        cli.render(out, cases=[("tiny", tiny_logo, 40.0, "left_chest")], arms={},
+                   ref_factory=fake_factory(out, {}))
+    feats = json.loads((out / "features.json").read_text()) if (out / "features.json").exists() else {}
+    assert BASE not in feats.get("tiny", {})
+    assert not list((out / "renders").glob("*.tmp.*"))
+
+
 def test_pair_refuses_a_different_sealed_map_over_existing_picks(rendered, tmp_path):
     """Review finding 2 (2026-09-17): the guard compared the PUBLIC lists,
     which are identity-blind — an arm swap at equal count passed."""
