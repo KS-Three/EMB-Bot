@@ -13054,14 +13054,14 @@ diagonals straight, the outline band's arcs smooth; thread renders OFF | ON at
 
 | | stitches | trims | uncovered mm² | the 1021 mm² outline band |
 |---|---|---|---|---|
-| 80 mm OFF → ON | 6833 → 6969 | 51 → 55 | 6.5 → 17.0 | satin → satin |
-| 100 mm OFF → ON | 17701 → 11312 | 40 → 50 | 0.0 → 28.2 | **fill → satin** |
+| 80 mm OFF → ON | 6833 → 6705 | 51 → 52 | 6.5 → 18.5 | satin → satin |
+| 100 mm OFF → ON | 17701 → 11289 | 40 → 47 | 0.0 → 34.8 | **fill → satin** |
 
 At 100 mm the band's DT p90 drops under `SATIN_MAX_WIDTH_MM` once the
 staircase goes, the tier flips, and the band's satin decomposition is the
-open defect (bare junction blobs — the C's bowl is the 17-28 mm², bare in
-both arms and larger ON; `satin_polygon_axis="artwork"` on top reads 34.8 /
-49.8 mm², worse). This is `docs/classifier-cliff-is-input-resolution-2026-09-16.md`'s
+open defect (bare junction blobs — the C's bowl is most of the 18-35 mm²,
+bare in both arms and larger ON; `satin_polygon_axis="artwork"` on top reads
+34.8 / 48.2 mm², no better). This is `docs/classifier-cliff-is-input-resolution-2026-09-16.md`'s
 finding from the other side: the fixture most sensitive to boundary detail
 now gets accurate boundary detail. **The flip is Kent's, with both facts on
 the table:** the outline instruments all move the right way, and the sewn
