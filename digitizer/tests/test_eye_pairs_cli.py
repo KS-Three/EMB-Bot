@@ -1,5 +1,6 @@
 import copy
 import json
+import os
 import shutil
 import sys
 from pathlib import Path
@@ -11,7 +12,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from tools.eye_pairs import __main__ as cli  # noqa: E402
-from tools.eye_pairs.pairs import BASE, append_pick  # noqa: E402
+from tools.eye_pairs.pairs import BASE, append_pick, design_hash  # noqa: E402
 
 # Measured 2026-09-17 on this image: fill_angle_deg=45 changes the stitches,
 # design_angle=True does not. The second is the identical-skip rule's test.
@@ -279,6 +280,140 @@ def test_a_scoped_render_never_rebuilds_the_sitting(rendered, tmp_path):
     assert (out2 / "arms.json").read_bytes() == before
     feats = json.loads((out2 / "features.json").read_text())["tiny"]
     assert "angle30" in feats
+
+
+# ---- pair() does each piece of work once (review 2026-09-17) ---------------
+# It used to re-read and re-hash every design (0.8 MB of JSON each on a real
+# logo) and rmtree + re-copy every image, on every call.
+
+def test_render_records_what_would_be_sewn_on_the_row(rendered):
+    out, _art, _n, _np, _seen = rendered
+    feats = json.loads((out / "features.json").read_text())["tiny"]
+    for arm in (BASE, "angle45", "inert", "ref_a", "ref_b"):
+        on_disk = json.loads((out / "designs" / f"tiny__{arm}.json").read_text())
+        assert feats[arm]["design_hash"] == design_hash(on_disk), arm
+
+
+def test_pair_reads_the_recorded_hash_and_opens_no_design(rendered, tmp_path, monkeypatch):
+    out, _art, _n, n_pairs, _seen = rendered
+    out2 = tmp_path / "out_hash"
+    shutil.copytree(out, out2)
+
+    def boom(_design):
+        raise AssertionError("pair() must not re-hash a design whose hash is on its row")
+
+    monkeypatch.setattr(cli, "design_hash", boom)
+    assert cli.pair(out2) == n_pairs
+    assert (out2 / "arms.json").read_bytes() == (out / "arms.json").read_bytes()
+
+
+def test_a_row_rendered_before_the_hash_was_recorded_is_hashed_from_its_design(rendered, tmp_path):
+    """No FEATURES_SCHEMA bump came with `design_hash`, so such rows exist."""
+    out, _art, _n, n_pairs, _seen = rendered
+    out2 = tmp_path / "out_nohash"
+    shutil.copytree(out, out2)
+    feats = json.loads((out2 / "features.json").read_text())
+    for row in feats["tiny"].values():
+        row.pop("design_hash")
+    (out2 / "features.json").write_text(json.dumps(feats))
+    assert cli.pair(out2) == n_pairs
+    assert (out2 / "arms.json").read_bytes() == (out / "arms.json").read_bytes()
+    assert json.loads((out2 / "skipped.json").read_text()) == [
+        {"fixture": "tiny", "arm": "inert", "reason": "identical_to_base"}]
+
+
+def hardlinks_work(where: Path) -> bool:
+    probe, link = where / "probe", where / "probe_link"
+    probe.write_text("x")
+    try:
+        os.link(probe, link)
+    except OSError:
+        return False
+    return True
+
+
+def test_paired_images_are_hardlinks_where_the_filesystem_allows(rendered, tmp_path):
+    if not hardlinks_work(tmp_path):
+        pytest.skip("this filesystem has no hardlinks; the copy fallback has its own test")
+    out, _art, _n, _np, _seen = rendered
+    out2 = tmp_path / "out_link"
+    shutil.copytree(out, out2)
+    shutil.rmtree(out2 / "img")       # copytree brought COPIES, which pair() rightly keeps
+    cli.pair(out2)
+    sealed = json.loads((out2 / "arms.json").read_text())
+    for p in json.loads((out2 / "pairs.json").read_text()):
+        s = sealed[p["pair"]]
+        assert os.path.samefile(out2 / "img" / p["left"],
+                                out2 / "renders" / f"tiny__{s['left_arm']}.jpg")
+        assert os.path.samefile(out2 / "img" / p["art"], out2 / "renders" / "tiny__art.png")
+
+
+def test_images_are_copied_where_hardlinks_are_refused(rendered, tmp_path, monkeypatch):
+    out, _art, _n, n_pairs, _seen = rendered
+    out2 = tmp_path / "out_copy"
+    shutil.copytree(out, out2)
+    shutil.rmtree(out2 / "img")
+
+    def refuse(*_a, **_k):
+        raise OSError("hardlinks not supported here")
+
+    monkeypatch.setattr(cli.os, "link", refuse)
+    assert cli.pair(out2) == n_pairs
+    sealed = json.loads((out2 / "arms.json").read_text())
+    for p in json.loads((out2 / "pairs.json").read_text()):
+        s = sealed[p["pair"]]
+        assert (out2 / "img" / p["right"]).read_bytes() == \
+            (out2 / "renders" / f"tiny__{s['right_arm']}.jpg").read_bytes()
+
+
+def test_a_second_pair_places_nothing_again_and_clears_what_no_pair_names(
+        rendered, tmp_path, monkeypatch):
+    out, _art, _n, n_pairs, _seen = rendered
+    out2 = tmp_path / "out_again"
+    shutil.copytree(out, out2)
+    cli.pair(out2)
+    (out2 / "img" / "P999_L.jpg").write_bytes(b"left over from a larger sitting")
+    before = {f.name: f.stat().st_mtime_ns for f in (out2 / "img").iterdir()}
+
+    def boom(*_a, **_k):
+        raise AssertionError("an image already in place must not be placed again")
+
+    monkeypatch.setattr(cli.os, "link", boom)
+    monkeypatch.setattr(cli.shutil, "copy2", boom)
+    assert cli.pair(out2) == n_pairs
+    after = {f.name: f.stat().st_mtime_ns for f in (out2 / "img").iterdir()}
+    assert "P999_L.jpg" not in after
+    before.pop("P999_L.jpg")
+    assert after == before
+
+
+def test_a_paired_image_is_a_snapshot_a_later_render_cannot_rewrite(rendered, tmp_path):
+    """The price of a hardlink: `cv2.imwrite` rewrites a file IN PLACE, so
+    re-rendering an arm would change the picture a live sitting is serving
+    (and truncate it mid-write). Renders are replaced atomically instead,
+    which leaves the paired link on the old bytes."""
+    out, art, _n, _np, _seen = rendered
+    out2 = tmp_path / "out_snap"
+    shutil.copytree(out, out2)
+    shutil.rmtree(out2 / "img")       # so pair() places links, not copytree's copies
+    cli.pair(out2)
+    sealed = json.loads((out2 / "arms.json").read_text())
+    shown = None
+    for p in json.loads((out2 / "pairs.json").read_text()):
+        s = sealed[p["pair"]]
+        if "angle45" in (s["left_arm"], s["right_arm"]):
+            shown = out2 / "img" / (p["left"] if s["left_arm"] == "angle45" else p["right"])
+            break
+    before = shown.read_bytes()
+    feats = json.loads((out2 / "features.json").read_text())
+    feats["tiny"].pop("angle45")                              # force the arm to render again
+    (out2 / "features.json").write_text(json.dumps(feats))
+    cli.render(out2, cases=[("tiny", art, 40.0, "left_chest")],
+               arms={"angle45": {"fill_angle_deg": 20.0}}, only_arms=["angle45"],
+               ref_factory=fake_factory(out2, {}))
+    assert (out2 / "renders" / "tiny__angle45.jpg").read_bytes() != before   # it did change
+    assert shown.read_bytes() == before
+    assert not list((out2 / "renders").glob("*.tmp.*"))
 
 
 def test_pair_refuses_a_different_sealed_map_over_existing_picks(rendered, tmp_path):

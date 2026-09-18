@@ -13,8 +13,11 @@ Spec: docs/superpowers/specs/2026-09-17-eye-pairs-design.md
 from __future__ import annotations
 
 import argparse
+import contextlib
+import filecmp
 import hashlib
 import json
+import os
 import shutil
 import sys
 import tempfile
@@ -59,6 +62,21 @@ def _write_json(path: Path, data) -> None:
 
 def _sha256(path: Path) -> str:
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+
+
+@contextlib.contextmanager
+def _replacing(path: Path):
+    """Yields a temp path to write, then swaps it in. A render is REPLACED,
+    never rewritten in place: `pair()` hardlinks renders into `img/`, and
+    `cv2.imwrite` on the same path would change — and mid-write truncate — a
+    picture a live sitting is serving. After a replace the paired link still
+    holds the old bytes, which is what a copy used to guarantee."""
+    tmp = path.with_name(f"{path.stem}.tmp{path.suffix}")     # keeps the codec's extension
+    try:
+        yield tmp
+        tmp.replace(path)
+    finally:
+        tmp.unlink(missing_ok=True)
 
 
 def _default_ref_runner(ref: str, *, repo=None, scratch=None):
@@ -122,7 +140,8 @@ def render(out=OUT, cases=None, arms=None, fixtures=None, only_arms=None,
             art = out / "renders" / f"{name}__art.png"
             sources = feats.setdefault("__sources__", {})
             if not art.exists() or sources.get(name) != src_hash:
-                _normalise_art(Path(path), art)
+                with _replacing(art) as tmp:
+                    _normalise_art(Path(path), tmp)
                 sources[name] = src_hash
             for arm, kw in [(BASE, {})] + list(arms.items()):
                 dpath = out / "designs" / f"{name}__{arm}.json"
@@ -167,9 +186,11 @@ def render(out=OUT, cases=None, arms=None, fixtures=None, only_arms=None,
                 row["wall_s"] = round(time.time() - started, 1)
                 row["source_sha256"] = src_hash
                 row["schema"] = FEATURES_SCHEMA
+                row["design_hash"] = design_hash(design)     # read by `pair()`
                 dpath.write_text(json.dumps(design), encoding="utf-8")
-                cv2.imwrite(str(rpath), render_design(design, px_per_mm=VIEW_PX_PER_MM),
-                            [cv2.IMWRITE_JPEG_QUALITY, 92])
+                with _replacing(rpath) as tmp:
+                    cv2.imwrite(str(tmp), render_design(design, px_per_mm=VIEW_PX_PER_MM),
+                                [cv2.IMWRITE_JPEG_QUALITY, 92])
                 feats.setdefault(name, {})[arm] = row
                 _write_json(feats_path, feats)          # checkpoint per arm
                 ready += 1
@@ -178,6 +199,24 @@ def render(out=OUT, cases=None, arms=None, fixtures=None, only_arms=None,
             closer()
     print(f"{ready} arm-runs ready in {out}. Next: python -m tools.eye_pairs --pair")
     return ready
+
+
+def _place(src: Path, dst: Path) -> None:
+    """`dst` shows `src`: a hardlink where the filesystem allows one, a copy
+    where it does not, and nothing at all when it already does. A pair's
+    images used to be rmtree'd and copied afresh on every `--pair` — three
+    files a pair, the artwork once per PAIR rather than once per fixture
+    (review 2026-09-17)."""
+    if dst.exists():
+        # `shallow`: equal size + mtime is taken as equal without reading,
+        # which is what `copy2` below preserves; otherwise bytes are compared.
+        if os.path.samefile(src, dst) or filecmp.cmp(src, dst, shallow=True):
+            return
+        dst.unlink()
+    try:
+        os.link(src, dst)
+    except OSError:                         # FAT/exFAT, a cross-device out dir, ...
+        shutil.copy2(src, dst)
 
 
 def pair(out=OUT) -> int:
@@ -200,8 +239,12 @@ def pair(out=OUT) -> int:
             dpath = out / "designs" / f"{name}__{arm}.json"
             if "error" in row or not dpath.exists():
                 continue
-            runs.append(ArmRun(name, arm,
-                               design_hash(json.loads(dpath.read_text(encoding="utf-8"))),
+            # `--render` records the hash with the row. A row rendered before
+            # it did has none — no FEATURES_SCHEMA bump came with the field,
+            # on purpose — and is hashed from its design as before.
+            sewn = row.get("design_hash") or design_hash(
+                json.loads(dpath.read_text(encoding="utf-8")))
+            runs.append(ArmRun(name, arm, sewn,
                                design_only=bool(row.get("design_only", False))))
     public, sealed, skipped = build_pairs(runs)
     new_hash = sealed_hash(sealed)
@@ -220,13 +263,17 @@ def pair(out=OUT) -> int:
                              "pictures.")
 
     img = out / "img"
-    shutil.rmtree(img, ignore_errors=True)
-    img.mkdir()
+    img.mkdir(exist_ok=True)
+    wanted: dict[str, Path] = {}
     for p in public:
         s = sealed[p["pair"]]
-        shutil.copyfile(out / "renders" / f"{s['fixture']}__{s['left_arm']}.jpg", img / p["left"])
-        shutil.copyfile(out / "renders" / f"{s['fixture']}__{s['right_arm']}.jpg", img / p["right"])
-        shutil.copyfile(out / "renders" / f"{s['fixture']}__art.png", img / p["art"])
+        wanted[p["left"]] = out / "renders" / f"{s['fixture']}__{s['left_arm']}.jpg"
+        wanted[p["right"]] = out / "renders" / f"{s['fixture']}__{s['right_arm']}.jpg"
+        wanted[p["art"]] = out / "renders" / f"{s['fixture']}__art.png"
+    for stale in [f for f in img.iterdir() if f.name not in wanted]:
+        stale.unlink()                      # a larger earlier sitting's leftovers
+    for name, src in wanted.items():
+        _place(src, img / name)
     _write_json(out / "pairs.json", public)
     _write_json(out / "arms.json", sealed)
     _write_json(out / "skipped.json", skipped)
