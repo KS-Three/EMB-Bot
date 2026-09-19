@@ -4105,3 +4105,36 @@ was read on.
 **Flipped ON the same day — Kent's call; False is the pre-flip cap.** `tests/test_edge_cap_lettering.py` (10);
 render `docs/renders/lettering-edge-cap-2026-09-19/`. *(built and measured
 2026-09-19 — scope-history, step 5)*
+
+## The bold-letter junction: `satin_junction_stack` (designed and built OFF 2026-09-19)
+
+Kent's ruling on
+`docs/superpowers/plans/2026-09-19-junction-construction.md`: A + B + C as
+one flag. The defect: the R of the 127 mm fixture under
+`satin_lettering_split` folds one column over itself through one welded
+corner (311 self-crossing pairs, 294 in one junction blob), and across the
+nine logos 1,420 of 1,607 seam pairs sit in the 30–60° welds. A: a weld is
+refused past 30° of turn by the merge's own baseline — the corpus number
+(`tools/weld_turns.py`: the trough is 20–30° at 13 pairs on 75 welds) — and
+the arms end at the node; the fold guard's radius rule was tried at three
+windows and separates nothing. B: an arm ending at a meeting of several runs
+into the node by its own half-width. C: the satin junction cover under the
+arms. Measured: the R fixture 311 → 0 pairs at 7,253 → 7,283 stitches and
+trims 34 → 44 (the R's welds 8 → 3, all five over 30° refused), uncovered
+0.0 both ways; MARINE 80 mm 103 → 0 at trims 7 → 9 (the doc's A + C proxy
+paid +12: B is the lever on trims); Becker 100 mm under the split flag
+uncovered 35.5 → 0.0 at 8,612 → 8,353 stitches and trims 53 → 61, its 528
+remaining letter pairs not welds (469 in plain columns, 59 in Goldman joins
+— bends inside one arm). Two predictions falsified: the layers inside the
+junctions do not rise toward the pro's (p95 3.3–4.2 against 3.9–7.2; B
+overlaps ends, it does not stack), and the fixture's trims pay +10 not +4.
+Nine logos: stitches 89,105 → 89,723 (+0.7%), trims 476 → 489 (Bridge Bar 82
+→ 95, Becker 38 → 44, Golden Tee 43 → 47, ENTHUSIAST 16 → 18, Fremont 56 →
+57, tires and the screenshot level, drone 126 → 122, gaulke 38 → 29), the
+lettering groups' self-crossing pairs 1,004 → 596 (Golden Tee 381 → 113,
+gaulke 186 → 106, drone 264 → 220, ENTHUSIAST 19 → 8, the screenshot 141 →
+136), uncovered unchanged on eight and Becker's 35.5 → 0.0, warnings
+unchanged on every one. Off byte-identical. `tests/test_junction_stack.py`
+(10); renders `docs/renders/junction-construction-2026-09-19/`. The flip is
+Kent's. *(built and measured 2026-09-19 — scope-history, the junction
+build)*

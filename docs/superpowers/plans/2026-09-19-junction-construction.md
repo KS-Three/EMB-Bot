@@ -8,7 +8,9 @@ in this document; every number below was read on today's engine
 monkeypatched constant, so the build can be priced before it is
 written. §7 is what is Kent's — **and his ruling, the same day: build
 A + B + C as one flag (`satin_junction_stack`, OFF), each part
-measurable inside it; this document lands first, on its own PR.**
+measurable inside it; this document lands first, on its own PR.
+BUILT the same day as `cfg.satin_junction_stack`, OFF — §6 carries the
+predictions against the build's results.**
 
 ## 0. What governs this — read before changing the plan
 
@@ -209,16 +211,31 @@ layers and bare per blob, ours against the pro's. `tools/wide_columns.py
 --compare` and preflight price the whole: stitches, trims, coverage,
 uncovered, findings.
 
-## 6. Predictions, to be held against results in the build PR
+## 6. Predictions against the build's results (built 2026-09-19, the same day)
 
-| prediction | fixture | falsified if |
-|---|---|---|
-| A refuses the R's weld and no other weld in the R | R at 127 mm, split | the fold survives, or a straight-through weld (0–30°) is refused |
-| A + B: uncovered stays 0.0 on the fixture WITHOUT the cover | R at 127 mm; MARINE 80 | uncovered > 0.5 mm² with C off |
-| A + B: layers inside the R's blobs rise toward the pro's p95 (4–7) and stay under `COVERAGE_WARN_UNITS` | Becker 100, split, vs `pro_layers` | any blob's max over the warn line, or p95 still under 3 |
-| trims on the fixture within +4 of today (34), not the proxy's +12 | R at 127 mm | trims > 38 |
-| nine logos: the 30–60° welds' seam pairs fall by more than half; uncovered unchanged or down; stitches within ±1% | corpus, defaults | pairs fall by less than half, or any logo's uncovered rises |
-| no golden moves | flat-lane keys, pushcomp, stage-2 | any byte moves |
+| prediction | fixture | falsified if | result |
+|---|---|---|---|
+| A refuses the R's weld and no other weld in the R | R at 127 mm, split | the fold survives, or a straight-through weld (0–30°) is refused | **falsified as written, held as meant**: the gate refuses FIVE of the R's eight welds (34.5, 35.7, 44.4, 46.5, 47.8°), none under 30° (2.5, 3.9, 26.9 stand); the design's welds 16 → 7; the fold 311 → 0 |
+| A + B: uncovered stays 0.0 on the fixture WITHOUT the cover | R at 127 mm; MARINE 80 | uncovered > 0.5 mm² with C off | **held** on MARINE 80 (`test_marine_80_keeps_its_cover_without_the_junction_cover`, the cover neutralised: 0 folds, uncovered ≤ 0.5) |
+| A + B: layers inside the R's blobs rise toward the pro's p95 (4–7) and stay under `COVERAGE_WARN_UNITS` | Becker 100, split, vs `pro_layers` | any blob's max over the warn line, or p95 still under 3 | **falsified**: the R's blobs read p95 3.33 / 3.93 / 4.18 (split alone 3.54 / 3.60 / 3.97) against the pro's 3.90 / 5.13 / 7.18, the I's 2.01 against 4.32; every letter blob's max under the warn line (≤ 6.37). B reaches in by one half-width and the layers do not move; the pro's stack is denser than an overlap of ends |
+| trims on the fixture within +4 of today (34), not the proxy's +12 | R at 127 mm | trims > 38 | **falsified**: 44 (+10); MARINE 80 pays +2 (7 → 9), where the proxy paid +12 |
+| nine logos: the 30–60° welds' seam pairs fall by more than half; uncovered unchanged or down; stitches within ±1% | corpus, defaults | pairs fall by less than half, or any logo's uncovered rises | **partly falsified**: the lettering groups' self-crossing pairs fall 1,004 → 596 (−41%, not more than half: Golden Tee 381 → 113, gaulke 186 → 106, drone 264 → 220); uncovered unchanged on eight and Becker's 35.5 → 0.0; stitches +0.7% (89,105 → 89,723); trims 476 → 489, Bridge Bar's 82 → 95 the cost to name, gaulke's 38 → 29 the gain |
+| no golden moves | flat-lane keys, pushcomp, stage-2 | any byte moves | **held**: the flat-lane, pushcomp and stage-2 keys byte-identical — 481 passed in the lettering-adjacent subset with the goldens (CI's three deselects), 0 failed |
+
+**What the build found beyond the table.** The corpus histogram by ten
+degrees (383 welds): 0–10 carries 127 seam pairs on 64 welds, 10–20 47
+on 82, 20–30 **13 on 75** — the trough — 30–40 302 on 72, 40–50 274 on
+58, 50–60 844 on 32; the fold guard's radius rule (§3 A as written)
+separates nothing at 1, 2 or 3 mm (the R 0.97 at 2 mm, Becker's
+301-seam weld 1.25, a clean weld 0.80), so the gate reads the merge's
+own baseline at **30°**, the corpus number, swept on the fixtures at
+20–45 (fold-free from 30 down, MARINE 80 keeps 42 pairs at 35, the R
+folds again at 45). Becker's band keeps **528 letter pairs under the
+flag at every threshold** — 469 in plain columns, 59 in Goldman-joined
+strokes — so they are not welds: bends inside one arm, `_split_sharp_corners`'
+rules' territory, the next thing to read. The R fixture's
+`DENSITY_EXTREME` is the split flag's (satin pitch 1.12 mm against a
+0.4 target) and the stack leaves it at 1.09.
 
 ## 7. What is Kent's
 

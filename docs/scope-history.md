@@ -14093,3 +14093,79 @@ offered and not taken. The doc lands on its own docs-only PR; the build
 follows on a branch of its own.
 
 *(ruled 2026-09-19 — Kent's answer)*
+
+## 2026-09-19 — The junction construction BUILT: `satin_junction_stack`, OFF (Kent's ruling: A + B + C as one flag)
+
+Kent's ruling on the design doc, the same day. One flag, three parts,
+each read on its own inside it.
+
+**A — the weld gate.** `_merge_through_junctions(weld_max_dot=...)`:
+under the flag a weld is refused past `_STACK_WELD_TURN_DEG` = **30°** of
+turn by the merge's own two-half-width baseline, and the arms end at the
+node (a two-arm node then takes the existing corner path: one arm owns
+the corner and is extended, the other tucks). The number is read off the
+corpus, not derived: `tools/weld_turns.py` (committed) over the nine
+logos' 383 welds by ten degrees of turn — 0–10 carries 127 seam pairs on
+64 welds, 10–20 47 on 82, 20–30 **13 on 75**, 30–40 302 on 72, 40–50 274
+on 58, 50–60 844 on 32. The design doc's own proposal — the fold guard's
+radius rule — was tried first at 1, 2 and 3 mm windows and **separates
+nothing**: the R's folding weld reads 0.97 at 2 mm, a 301-seam weld on
+Becker's outline 1.25, a clean weld 0.80. Swept on the fixtures at
+20–45°: fold-free from 30 down, MARINE 80 keeps 42 pairs at 35, the R
+folds again at 45 (342). On the R fixture the gate refuses five of the
+R's eight welds (34.5–47.8°) and none under 30°; the design's welds
+16 → 7.
+
+**B — arms that run into the node.** `satin_stroke(junction_stack=...)`:
+an end at a meeting of several — no single owner to tuck under — runs
+INTO the node by its own half-width instead of stopping at the blob's
+edge. **C — the cover.** `satin_shape` sews the satin junction cover
+(`patch_junctions="satin"`) under the arms unless a cover was asked for
+explicitly. Threaded through stage 7 and appliqué like the other satin
+flags; off, byte-identical (pinned).
+
+**Measured.**
+
+| fixture | stitches | trims | letter self-crossing pairs | uncovered | coverage_max |
+|---|---|---|---|---|---|
+| R fixture, 127 mm, `satin_lettering_split` | 7,253 → 7,283 | 34 → 44 | **311 → 0** | 0.0 → 0.0 (worst 4.0 → 1.8) | 6.20 → 5.36 |
+| MARINE 80 mm, defaults | 1,774 → 1,787 | 7 → 9 | **103 → 0** | 0.0 → 0.0 | 4.76 → 4.91 |
+| Becker 100 mm, `satin_lettering_split` | 8,612 → 8,353 | 53 → 61 | 546 → 528 | **35.5 → 0.0** | 6.68 → 6.16 |
+
+The doc's A + C proxy paid +12 trims on MARINE 80; the build pays +2 — B is
+the lever on trims. Becker's 528 remaining letter pairs are **not welds**:
+they hold at every threshold of the sweep, 469 in plain columns and 59 in
+Goldman-joined strokes — bends inside one arm, `_split_sharp_corners`'
+rules' territory, the next thing to read. The R fixture's `DENSITY_EXTREME`
+is the split flag's (satin pitch 1.12 mm against a 0.4 target) and the stack
+leaves it at 1.09. Nine logos at corpus widths, `tools`' sheet: stitches
+89,105 → 89,723 (+0.7%), trims 476 → 489 (Bridge Bar 82 → 95, Becker 38 →
+44, Golden Tee 43 → 47, ENTHUSIAST 16 → 18, Fremont 56 → 57, tires and the
+screenshot level, drone 126 → 122, gaulke 38 → 29), the lettering groups'
+self-crossing pairs 1,004 → 596 (Golden Tee 381 → 113, gaulke 186 → 106,
+drone 264 → 220, ENTHUSIAST 19 → 8, the screenshot 141 → 136), uncovered
+unchanged on eight and Becker's 35.5 → 0.0, warnings unchanged on every one.
+
+**Against the pro** (`pro_layers --blobs`, Becker 100 mm, split + stack):
+the R's blobs read p95 3.33 / 3.93 / 4.18 (split alone 3.54 / 3.60 /
+3.97) against his 3.90 / 5.13 / 7.18, the I's 2.01 against 4.32; every
+letter blob's max under the warn line (≤ 6.37). **B overlaps the ends;
+it does not stack them** — the pro's density at a junction is not an
+overlap of arm ends, and what it is (more crosses per mm through the
+junction, a second pass) is the next design question.
+
+**Predictions against results** (the plan's §6, filled): 1 falsified as
+written (five welds refused, not one) and held as meant (none under 30°);
+2 held (A + B alone leave MARINE 80 whole with the cover neutralised);
+3 **falsified** (layers); 4 **falsified** (+10 trims, not +4); 5 and 6
+in the table above and the PR.
+
+**Tests:** `tests/test_junction_stack.py`, 10 — default OFF; explicit OFF
+byte-identical; the gate refuses a 45° weld the default admits and keeps
+a straight one; the threshold is the corpus number; the R stops folding
+and keeps its cover and thread; MARINE 80 stops folding within +4 trims;
+A + B alone leave no bare artwork with the cover neutralised; an explicit
+cover setting wins over part C.
+
+*(built and measured 2026-09-19 — `tools/weld_turns.py`; the sweep and
+the arms lived in the session's scratchpad, the numbers are the record)*
