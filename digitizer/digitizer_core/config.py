@@ -1008,8 +1008,10 @@ class PipelineConfig:
     # the strokes that will sew are ordered along ONE Euler walk of the web
     # (`_euler_stroke_order`, the font engine's `routeGlyph` construction:
     # Chinese-postman duplication where a dead end forces it, Hierholzer,
-    # last visit sews), so every travel leg lies under a column sewn later
-    # and the walk always has an unsewn path. Applies to every satin shape.
+    # last visit sews), so every travel leg it emits lies under a column
+    # sewn later; a stroke with an interior junction (an H's or K's stem)
+    # sews whole and can still leave the needle at a dead end, which then
+    # trims as before. Applies to every satin shape.
     # Measured 2026-09-19 (scope-history, step 2): the fixture 45 -> 27
     # trims at 2,564 -> 2,482 stitches; the nine real logos 592 -> 486
     # trims at a net -19 stitches, self-crossings, uncovered area and

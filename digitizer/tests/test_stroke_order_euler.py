@@ -12,14 +12,20 @@ forces it, a Hierholzer trail, each stroke sewn at its LAST visit so every
 travel leg lies under a column sewn later. A stroke is walked THROUGH — the
 column enters where the walk arrives and leaves by the other end, its
 underlay chained backwards from that entry — and the cursor may snap to the
-nearest node it can still leave from (`snap_to_open`).
+nearest node it can still leave from (`snap_to_open`). The walk's quantum
+is the graph edge and the sewing quantum the stroke, so a stroke with an
+interior junction (an H's stem) sews whole and can leave the needle at a
+dead end; that hop trims as the nearest order would.
 
 Contracts pinned: OFF ("nearest", the default) is byte-identical to the
 shipped engine; on synthetic webs the walk visits every stroke once, an
-open path needs no duplicate, a T's dead end is walked twice, and between
-consecutive strokes an unsewn path always exists; on the plan's own fixture
-(MARINE in `manga_impact` at 80 mm, built at test time) the trims fall, the
-stitches do not rise, nothing goes uncovered, and travel appears.
+open path needs no duplicate, a T's dead end is walked twice, between
+consecutive strokes an unsewn path exists wherever no stroke crosses an
+interior junction, and an H shows the one hop that has none; on the plan's
+own fixture (`docs/renders/lettering-route-2026-09-19/marine_80mm_traced_input.png`,
+MARINE in `manga_impact` traced at 80 mm — the committed raster the plan's
+numbers were measured on) the trims fall, the stitches do not rise, the
+uncovered artwork does not grow, and travel appears.
 """
 from __future__ import annotations
 
@@ -35,7 +41,6 @@ from digitizer_core import stitches
 from digitizer_core.pipeline import build_generation, finish_generation, plan_stitches
 from digitizer_core.preflight import run_preflight
 
-from tests.test_house_from_line import _word_raster
 
 
 def _stroke(*pts, free_start=True, free_end=True):
@@ -80,14 +85,22 @@ def _unsewn_path(nodes, edges, adj, a, b, sewn, allow):
     return a == b
 
 
-def _walk_covers_every_hop(strokes):
+def _hops_without_a_path(strokes):
     nodes, edges, adj, order, entry = _walk(strokes)
     assert sorted(order) == list(range(len(strokes)))
     sewn: set[int] = set()
+    stranded = []
     for prev, nxt in zip(order, order[1:]):
         sewn.add(prev)
-        assert _unsewn_path(nodes, edges, adj, _exit_node(nodes, strokes, prev, entry),
-                            _entry_node(nodes, strokes, nxt, entry), sewn, {nxt}), (order, prev, nxt)
+        if not _unsewn_path(nodes, edges, adj, _exit_node(nodes, strokes, prev, entry),
+                            _entry_node(nodes, strokes, nxt, entry), sewn, {nxt}):
+            stranded.append((prev, nxt))
+    return order, entry, stranded
+
+
+def _walk_covers_every_hop(strokes):
+    order, entry, stranded = _hops_without_a_path(strokes)
+    assert not stranded, (order, stranded)
     return order, entry
 
 
@@ -123,6 +136,20 @@ def test_an_e_is_one_walk_whatever_its_stem_sews_when():
     _walk_covers_every_hop([stem, *arms])
 
 
+def test_an_h_sews_a_stem_whole_and_can_strand_the_needle_once():
+    """Both stems carry an interior junction (the bar lands mid-stem). A stem
+    sews whole from end to end, so the needle can finish at a dead end the
+    walk had left by the junction -- the hop then trims, as it would under
+    the nearest order. The contract is that this happens at most once per
+    such stroke and never leaves a travel leg unsewn-over: the legs the walk
+    emits are still the unsewn ones."""
+    left = _stroke((0, 0), (0, 5), (0, 10))
+    right = _stroke((8, 0), (8, 5), (8, 10))
+    bar = _stroke((0, 5), (8, 5))
+    order, _entry, stranded = _hops_without_a_path([left, right, bar])
+    assert len(stranded) <= 1, (order, stranded)
+
+
 def test_two_islands_are_two_walks():
     a = [_stroke((0, 0), (10, 0)), _stroke((10, 0), (10, 10))]
     b = [_stroke((50, 0), (60, 0)), _stroke((60, 0), (60, 10))]
@@ -143,11 +170,17 @@ def test_a_stub_loop_does_not_decide_a_strokes_entry():
 
 # --- through the pipeline ---------------------------------------------------
 
+FIXTURE = (Path(__file__).resolve().parents[2] / "docs" / "renders"
+           / "lettering-route-2026-09-19" / "marine_80mm_traced_input.png")
+
+
 @pytest.fixture(scope="module")
-def marine(tmp_path_factory) -> Path:
-    p = tmp_path_factory.mktemp("word") / "marine80.png"
-    cv2.imwrite(str(p), _word_raster("MARINE", 80.2))
-    return p
+def marine() -> Path:
+    """The plan's own fixture: MARINE (`manga_impact`) rasterised at 12 px/mm
+    for the route review, committed with its renders. `_word_raster` builds
+    a near copy, but not the one the plan's numbers were measured on."""
+    assert FIXTURE.exists(), FIXTURE
+    return FIXTURE
 
 
 def _plan(art: Path, **kw):
@@ -186,13 +219,18 @@ def test_nearest_explicitly_is_the_default(marine, nearest):
 def test_the_walk_trims_less_and_sews_no_more_on_the_fixture(nearest, euler):
     st_n, trims_n, travel_n = _counts(nearest[2])
     st_e, trims_e, travel_e = _counts(euler[2])
-    assert trims_e <= trims_n - 10, (trims_n, trims_e)                      # measured 45 -> 27
-    assert st_e <= st_n, (st_n, st_e)                                       # 2,564 -> 2,482
+    assert trims_e <= trims_n - 12, (trims_n, trims_e)                      # measured 46 -> 28 (stats.trims)
+    assert st_e <= st_n, (st_n, st_e)                                       # 2,564 -> 2,480
     assert travel_e > travel_n                                              # 3 -> 17 legs
 
 
-def test_the_walk_leaves_nothing_uncovered(euler, marine):
-    cfg, result, plan = euler
-    pf = run_preflight(result, plan, cfg, image=str(marine))
-    assert pf["metrics"].get("uncovered_total_mm2", 0.0) == 0.0
-    assert "THREAD_ON_BARE_FABRIC" not in {w["code"] for w in pf.get("warnings", [])}
+def test_the_walk_does_not_grow_the_uncovered_artwork(nearest, euler, marine):
+    """`ARTWORK_UNCOVERED` and `LINK_UNCOVERED` are preflight's instruments
+    for bare artwork and for a hop over bare fabric; the walk must move
+    neither on the fixture (0.0 mm² both ways, no link finding)."""
+    cfg_n, result_n, plan_n = nearest
+    cfg_e, result_e, plan_e = euler
+    pf_n = run_preflight(result_n, plan_n, cfg_n, image=str(marine))
+    pf_e = run_preflight(result_e, plan_e, cfg_e, image=str(marine))
+    assert pf_e["metrics"].get("uncovered_total_mm2", 0.0) <= pf_n["metrics"].get("uncovered_total_mm2", 0.0)
+    assert "LINK_UNCOVERED" not in {f["code"] for f in pf_e["findings"]}

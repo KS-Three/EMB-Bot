@@ -4123,7 +4123,18 @@ def _euler_stroke_order(nodes, edges, adj, n_strokes: int,
     and the entry end is the direction that last visit ran. Between strokes
     the existing `_graph_travel` still finds the path: every edge the trail
     walks between two consecutive strokes belongs to a stroke sewn later,
-    so it is unsewn when walked.
+    so it is unsewn when walked -- for a stroke whose spans all end at its
+    own ends. The walk's quantum is the graph EDGE and the sewing quantum
+    is the STROKE: a stroke with an interior junction (an H's stem, a K's,
+    an X's) sews whole and leaves the needle at a spine END while the
+    trail went on from the junction, and if that end is a dead end whose
+    only segments are the stroke's own, the next hop has no unsewn path
+    and trims exactly as the nearest order would (measured 2026-09-19 on
+    H, K, X, +, t, and 179 of 600 random connected webs). What the walk
+    guarantees is the weaker thing it sews: every travel leg it emits lies
+    under a column sewn later. Sewing per span, or deferring the strokes
+    with interior junctions, would close the gap and is a decomposition
+    question -- Kent's.
 
     Chinese postman first: per connected component, odd nodes are paired
     greedily along shortest edge paths and those paths' edges duplicated
@@ -4589,8 +4600,10 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
     `stroke_order` (`cfg.satin_stroke_order`, plan step 2, 2026-09-19):
     "nearest" is `_order_strokes`, the shipped order; "euler" re-orders the
     strokes that will sew along one Euler walk of the travel web
-    (`_euler_stroke_order`) so the needle-down travel between them always
-    has an unsewn path. "nearest" is byte-identical to before the option.
+    (`_euler_stroke_order`) so every travel leg lies under a column sewn
+    later and, for strokes without an interior junction, the hop between
+    strokes always has an unsewn path. "nearest" is byte-identical to
+    before the option.
 
     `art_poly` / `hairline_floor_mm` are forwarded to `satin_stroke` (see
     there): the region's own uncompensated polygon and the vectorizer's
