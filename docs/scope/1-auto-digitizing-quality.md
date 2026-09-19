@@ -4085,17 +4085,22 @@ outline nothing linear already covers, and on a satin-sewn letter that is
 exactly the bare corners and junction seams the decomposition leaves — on
 the 80 mm MARINE fixture 17 of the cap's 18 runs and 418 of its 457 stitches
 stood on the letters' outlines, the cap patching a defect upstream. A typed
-glyph gets no cap. ON, a text-cluster member that sewed satin hands its
-sewn polygon to the cap's `omit` (`_satin_lettering_cover`, read off the
-runs laid, never a verdict); a member that filled keeps its cap, since a
-tatami letter's rows end in open air at its edge. Fixture: stitches 2,192 →
-1,774, trims 23 → 7 (the typed word: 3), cap runs 18 → 1, uncovered 0.0 both
-ways, every non-cap run byte-identical; Becker at 80 mm 6,588 → 6,444 at
-trims 43 → 36, uncovered 18.5 both ways; the 127 mm fixture and Becker at
-100 mm, whose letters fill, byte-identical. Nine logos: NINE_LOGOS. Found
-on the way: the wide-column fold guard's load-bearing case on Becker at
-80 mm is gone under the corner rule (coverage_max 4.67 unguarded, against
-7.07 on 2026-09-09); its test is pinned on the pruner it was read on. The
-flip is Kent's. `tests/test_edge_cap_lettering.py` (10); render
-`docs/renders/lettering-edge-cap-2026-09-19/`. *(built and measured
+glyph gets no cap. ON, a text-cluster member that sewed satin hands its sewn
+polygon to the cap's `omit` (`_satin_lettering_cover`, read off the runs
+laid, never a verdict); a member that filled keeps its cap, since a tatami
+letter's rows end in open air at its edge. Fixture: stitches 2,192 → 1,774,
+trims 23 → 7 (the typed word: 3), cap runs 18 → 1, uncovered 0.0 both ways,
+every non-cap run byte-identical; Becker at 80 mm 6,588 → 6,444 at trims 43
+→ 36, uncovered 18.5 both ways; the 127 mm fixture and Becker at 100 mm,
+whose letters fill, byte-identical. Nine logos: five move — ENTHUSIAST 2,478
+→ 2,442 stitches at trims 18 → 16, Golden Tee 6,969 → 6,945 / 44 → 43,
+gaulke 4,536 → 4,454 / 41 → 38, drone 18,733 → 18,715 / 127 → 126, the
+screenshot 8,244 → 8,085 / 73 → 68; Becker (its letters fill at 100 mm),
+tires, Fremont and Bridge Bar byte-identical; trims 488 → 476 at −319
+stitches, with uncovered area, self-crossings and warnings unchanged on
+every one. Found on the way: the wide-column fold guard's load-bearing case
+on Becker at 80 mm is gone under the corner rule (coverage_max 4.67
+unguarded, against 7.07 on 2026-09-09); its test is pinned on the pruner it
+was read on. The flip is Kent's. `tests/test_edge_cap_lettering.py` (10);
+render `docs/renders/lettering-edge-cap-2026-09-19/`. *(built and measured
 2026-09-19 — scope-history, step 5)*

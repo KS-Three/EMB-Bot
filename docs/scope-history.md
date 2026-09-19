@@ -13685,17 +13685,22 @@ published saving and cover include what the cap was told not to sew. Off,
 byte-identical. The bare corners a letter still has are now its own to
 show, and that is the measurement.
 
-**Measured.** The fixture at 80 mm: stitches **2,192 → 1,774**, trims
-**23 → 7** — the typed word sews 3 — cap runs 18 → 1 (the one left, 39
-stitches, stands on a non-text fragment), cap stitches on satin letters 418
-→ 0, uncovered artwork 0.0 both ways with the worst bare patch 2.2 →
-2.5 mm² (under the finding's floor), coverage_max 4.69 → 4.76,
-`TRIM_HEAVY` gone; every run that is not the cap is byte-identical. The
-render (`docs/renders/lettering-edge-cap-2026-09-19/`) shows the hooks
-gone from every letter. Becker at 80 mm: 6,588 → 6,444, trims 43 → 36, cap
-runs 16 → 9, uncovered 18.5 mm² both ways. The 127 mm fixture and Becker at
-100 mm, whose letters fill under step 4 OFF: byte-identical. Nine logos at
-corpus widths: NINE_LOGOS.
+**Measured.** The fixture at 80 mm: stitches **2,192 → 1,774**, trims **23 →
+7** — the typed word sews 3 — cap runs 18 → 1 (the one left, 39 stitches,
+stands on a non-text fragment), cap stitches on satin letters 418 → 0,
+uncovered artwork 0.0 both ways with the worst bare patch 2.2 → 2.5 mm²
+(under the finding's floor), coverage_max 4.69 → 4.76, `TRIM_HEAVY` gone;
+every run that is not the cap is byte-identical. The render
+(`docs/renders/lettering-edge-cap-2026-09-19/`) shows the hooks gone from
+every letter. Becker at 80 mm: 6,588 → 6,444, trims 43 → 36, cap runs 16 →
+9, uncovered 18.5 mm² both ways. The 127 mm fixture and Becker at 100 mm,
+whose letters fill under step 4 OFF: byte-identical. Nine logos at corpus
+widths: five move — ENTHUSIAST 2,478 → 2,442 stitches at trims 18 → 16,
+Golden Tee 6,969 → 6,945 / 44 → 43, gaulke 4,536 → 4,454 / 41 → 38, drone
+18,733 → 18,715 / 127 → 126, the screenshot 8,244 → 8,085 / 73 → 68; Becker
+(its letters fill at 100 mm), tires, Fremont and Bridge Bar byte-identical;
+trims 488 → 476 at −319 stitches, with uncovered area, self-crossings and
+warnings unchanged on every one.
 
 **The yardstick now.** Traced MARINE at 80 mm with steps 0–3a and 5 ON:
 1,774 stitches / 7 trims against the font engine's 1,782 / 3. The stitch
