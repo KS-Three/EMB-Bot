@@ -4010,7 +4010,7 @@ render, keeping the fonts' bar rule (a bar takes its own perpendicular) over
 the pro's one angle; False is the pre-flip engine.** *(built, measured and
 flipped 2026-09-19 — scope-history, step 1 and its addendum)*
 
-## Lettering: one path per letter — the Euler-walk stroke order (`satin_stroke_order`, built OFF 2026-09-19)
+## Lettering: one path per letter — the Euler-walk stroke order (`satin_stroke_order`, built and flipped ON 2026-09-19)
 
 Plan step 2. A satin shape's strokes sew nearest-first and travel between
 strokes along the unsewn web or trim when none is left; on a letter of
@@ -4028,5 +4028,6 @@ cursor may snap to the nearest node it can leave from. Fixture: 45 → 27
 trims, 2,564 → 2,482 stitches, uncovered 0.0 both ways; nine logos:
 trims **592 → 486** across the nine (Becker 46 → 38, tires 11 → 8, ENTHUSIAST 27 → 19, Fremont 75 → 55, Bridge Bar 112 → 85, Golden Tee 66 → 45, gaulke 39 → 35, drone 144 → 132, the screenshot 72 → 69) at a net −19 stitches (−58 to +65 per logo), travel 1,478 → 2,934 mm, satin self-crossings, uncovered area and preflight warnings unchanged on every one. Applies to every satin shape. `tools/travel_cover.py` reads every travel leg
 against the thread sewn after it (gate 3's instrument): at 80 mm across the nine logos the walk adds 1,064 mm of travel and 1.4 mm of new exposure (244.7 → 246.1 mm; the 245 mm exposed is the nearest order's own legs, a pre-existing finding); Becker at 80 mm reads uncovered 18.5 → 26.0 mm² because a nearest-order travel leg had lifted six half-millimetre cells of a bare column seam over the 0.25 floor.
-`tests/test_stroke_order_euler.py` (10). *(built and measured 2026-09-19 —
-scope-history, step 2)*
+`tests/test_stroke_order_euler.py` (10). **Flipped ON the same day — Kent's
+call; "nearest" is the pre-flip engine.** *(built, measured and flipped
+2026-09-19 — scope-history, step 2 and its addendum)*

@@ -15,10 +15,12 @@ underlay chained backwards from that entry — and the cursor may snap to the
 nearest node it can still leave from (`snap_to_open`). The walk's quantum
 is the graph edge and the sewing quantum the stroke, so a stroke with an
 interior junction (an H's stem) sews whole and can leave the needle at a
-dead end; that hop trims as the nearest order would.
+dead end; that hop trims as the nearest order would. Built "nearest" and
+flipped to "euler" the same day (Kent, 2026-09-19); "nearest" is the
+pre-flip engine.
 
-Contracts pinned: OFF ("nearest", the default) is byte-identical to the
-shipped engine; on synthetic webs the walk visits every stroke once, an
+Contracts pinned: "euler" is the default and explicit "euler" is the
+default's output; "nearest" is still there; on synthetic webs the walk visits every stroke once, an
 open path needs no duplicate, a T's dead end is walked twice, between
 consecutive strokes an unsewn path exists wherever no stroke crosses an
 interior junction, and an H shows the one hop that has none; on the plan's
@@ -104,8 +106,9 @@ def _walk_covers_every_hop(strokes):
     return order, entry
 
 
-def test_the_default_is_the_shipped_order():
-    assert PipelineConfig().satin_stroke_order == "nearest"
+def test_the_default_is_the_walk():
+    """Built "nearest", flipped to "euler" the same day -- Kent's call."""
+    assert PipelineConfig().satin_stroke_order == "euler"
 
 
 def test_an_open_path_of_strokes_is_one_walk_with_no_duplicate():
@@ -201,17 +204,19 @@ def _counts(plan):
 
 @pytest.fixture(scope="module")
 def nearest(marine):
-    return _plan(marine)
+    """The pre-flip engine, explicitly."""
+    return _plan(marine, satin_stroke_order="nearest")
 
 
 @pytest.fixture(scope="module")
 def euler(marine):
-    return _plan(marine, satin_stroke_order="euler")
+    """The shipped default."""
+    return _plan(marine)
 
 
-def test_nearest_explicitly_is_the_default(marine, nearest):
-    _cfg, _r, explicit = _plan(marine, satin_stroke_order="nearest")
-    a = [(str(run.kind), run.shape_id, [tuple(p) for p in run.points]) for _b, run in nearest[2].iter_runs()]
+def test_euler_explicitly_is_the_default(marine, euler):
+    _cfg, _r, explicit = _plan(marine, satin_stroke_order="euler")
+    a = [(str(run.kind), run.shape_id, [tuple(p) for p in run.points]) for _b, run in euler[2].iter_runs()]
     b = [(str(run.kind), run.shape_id, [tuple(p) for p in run.points]) for _b, run in explicit.iter_runs()]
     assert a == b
 

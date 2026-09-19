@@ -1015,9 +1015,11 @@ class PipelineConfig:
     # Measured 2026-09-19 (scope-history, step 2): the fixture 45 -> 27
     # trims at 2,564 -> 2,482 stitches; the nine real logos 592 -> 486
     # trims at a net -19 stitches, self-crossings, uncovered area and
-    # warnings unchanged on every one. No physical constant. DEFAULT
-    # "nearest"; the flip is Kent's.
-    satin_stroke_order: str = "nearest"
+    # warnings unchanged on every one; `tools/travel_cover.py` reads the
+    # walk's 1,064 mm of added travel at 80 mm as covered to within 1.4 mm.
+    # No physical constant. Built "nearest" and **DEFAULT "euler" the same
+    # day -- Kent's flip.** "nearest" is the pre-flip engine, byte for byte.
+    satin_stroke_order: str = "euler"
     # Each satin rail reaches ITS OWN edge (defect 23's open half, built
     # 2026-09-03 for Kent's flip). The rail model places both rails at the
     # NEARER edge's distance from a smoothed spine, so on every raster

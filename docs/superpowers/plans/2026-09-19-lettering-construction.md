@@ -4,8 +4,10 @@
 engine's construction, in that order). Step 0 built and flipped ON the same
 day (`cfg.satin_house_from_line`); step 1 BUILT, measured and FLIPPED ON
 the same day too (`cfg.satin_house_anchor`, Kent's call over the THERMAL
-render, keeping the fonts' bar rule); step 2 chosen next. Review it rests
-on: `docs/lettering-route-review-2026-09-19.md`.
+render, keeping the fonts' bar rule); step 2 BUILT, measured and FLIPPED ON
+the same day (`cfg.satin_stroke_order = "euler"`, Kent's call); step 3
+chosen next. Review it rests on:
+`docs/lettering-route-review-2026-09-19.md`.
 
 **Yardstick.** The review's construction: a library font's own word — its
 glyphs' satin columns as ribbon polygons, laid out with the font's advances —
@@ -88,8 +90,8 @@ customer already had right.
    with curves for stems reads near zero (montecarlo, pacificlo) where the
    eye sees a lean.
 2. **One path per letter — Euler-walk stroke order. BUILT 2026-09-19,
-   `cfg.satin_stroke_order = "euler"`, OFF ("nearest" is the shipped order,
-   byte for byte); the flip is Kent's.** The font engine's `routeGlyph`
+   `cfg.satin_stroke_order = "euler"`, and FLIPPED ON the same day (Kent;
+   "nearest" is the pre-flip order, byte for byte).** The font engine's `routeGlyph`
    construction on stage 6's own travel graph (`_euler_stroke_order`):
    Chinese-postman duplication where a dead end forces it, a Hierholzer
    trail, each stroke sewn at its LAST visit so every travel leg lies under

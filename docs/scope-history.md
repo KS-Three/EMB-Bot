@@ -13455,3 +13455,15 @@ test time rather than the plan's.
 
 *(built and measured 2026-09-19 — the loop's instrumentation lived in the
 session's scratchpad, the numbers are the record)*
+
+### Addendum, later the same day — step 2 FLIPPED ON, step 3 next
+
+Put to Kent with the nine-logo numbers, the instrument's reading and the
+renders (AskUserQuestion, 2026-09-19): **flip `satin_stroke_order` to
+`"euler"` now** — his call; **step 3 (corners) next**, with the skeleton
+ruling it needs. `"nearest"` is the pre-flip engine byte for byte;
+`tests/test_stroke_order_euler.py` pins the default and reads the
+pre-flip order explicitly. What the flip moved in the full suite is
+recorded in the PR (#516) body.
+
+*(flipped 2026-09-19 — Kent's answers; config comment)*
