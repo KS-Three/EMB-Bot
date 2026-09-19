@@ -19,7 +19,7 @@ from __future__ import annotations
 
 import math
 
-from shapely.geometry import LineString, box
+from shapely.geometry import LineString, Polygon, box
 from shapely.ops import unary_union
 
 from digitizer_core import PipelineConfig, machine
@@ -183,6 +183,44 @@ def test_the_config_flag_reaches_the_fill_tier(monkeypatch):
     assert _stage7_hands_over(monkeypatch, fill_bridge_cut=True) == [True]
 
 
+def test_the_lift_warning_does_not_claim_the_lift_was_forced(monkeypatch):
+    """`LONG_JUMPS_TRIMMED`'s engine prose said the thread "had to be" lifted,
+    and its code comment "travel could not stay inside the shape". True when a
+    lift only ever meant no route existed; under `fill_bridge_cut` the engine
+    also lifts where a route exists and a cut is cheaper. The Studio has its
+    own sentence for this code and never said "had to"; this is the fallback
+    every other consumer reads. The count is forced at `stitch_shape`'s report,
+    which is the seam stage 7 reads it from."""
+    from digitizer_core import stage7_sequence
+    from digitizer_core.pipeline import BackgroundInfo, PipelineResult, plan_stitches
+    from digitizer_core.regions import Region
+    from digitizer_core.threads import chart_for
+
+    real = stage7_sequence.stitch_shape
+
+    def two_lifts(*a, **k):
+        runs, report = real(*a, **k)
+        return runs, {**report, "jumps": 2}
+
+    monkeypatch.setattr(stage7_sequence, "stitch_shape", two_lifts)
+    cfg = PipelineConfig()
+    poly = box(-20, -10, 20, 10)
+    chart = chart_for(cfg)
+    region = Region(shape_id="Sbox00001", polygon=poly, thread_index=0,
+                    thread_number=chart[0].number, area_mm2=poly.area,
+                    meta={"layer": 0, "stitched": True})
+    plan = plan_stitches(PipelineResult(
+        regions=[region],
+        palette=[{"brand": chart.label, "brand_id": chart.id,
+                  "number": region.thread_number, "name": "x", "rgb": [0, 0, 0]}],
+        background=BackgroundInfo(detected=False), px_per_mm=10.0,
+        design_size_mm=(40.0, 20.0)), cfg)
+    (w,) = [w for w in plan.warnings if w["code"] == "LONG_JUMPS_TRIMMED"]
+    assert w["count"] == 2
+    assert "lifted 2 times" in w["message"]
+    assert "had to" not in w["message"]
+
+
 def test_every_site_that_passes_covered_routing_passes_the_cut_rule():
     """Seven call sites hand `stitch_shape` the covered-routing flag (five in
     stage 7, two in the blend tier) and the cut rule is inert without it, so
@@ -249,6 +287,49 @@ def test_flag_on_is_never_dearer_than_flag_off_by_its_own_scorer():
                                   cut_bridges=True))
 
     assert score(cut_bridges=True) <= score(), "the flag bought a dearer plan"
+
+
+# A shape with NOTHING exposed, entered from far away. Found 2026-09-19 on the
+# phone screenshot, by asking why a white 10 mm² shape looked different in the
+# ON thread render when none of its bridges had been lifted. The first cure for
+# the early exit was "price the candidate whenever the flag is on and there is
+# a cut" -- and the cut `_order_cost` counts here is only the ENTRY hop from
+# the previous shape, which nearly every shape has. So ON re-ordered almost
+# every multi-column fill, exposed or not: a flipped column and 5 fewer travel
+# stitches on this one, never worse by score, the pipeline's dearest function
+# run everywhere, and none of it this flag's business. The flag prices exposed
+# bridges; a shape with none must sew exactly as it does with the flag off.
+# The polygon is that shape's sewing polygon, simplified to 0.1 mm and moved
+# to the origin -- a literal, because no synthetic shape reproduced it and a
+# traced one differs by platform.
+_NOTHING_EXPOSED = Polygon([
+    (0.08, 1.51), (0.21, 1.72), (0.00, 2.53), (0.16, 2.76), (0.84, 2.58), (1.38, 2.71),
+    (1.84, 2.41), (2.71, 2.94), (2.59, 3.50), (2.70, 3.75), (3.73, 3.74), (3.60, 3.42),
+    (3.98, 2.98), (4.15, 3.07), (4.01, 3.74), (4.91, 4.17), (5.32, 3.75), (5.95, 1.63),
+    (5.87, 0.50), (5.71, 0.69), (4.61, 0.30), (4.06, 0.77), (3.51, 0.22), (2.57, 0.53),
+    (1.95, 0.00), (1.63, 0.68), (1.32, 0.30), (1.00, 0.81), (0.69, 0.53), (0.22, 0.92)])
+_ENTERED_FROM = (-25.9, 73.46)
+
+
+def test_a_shape_with_nothing_exposed_is_left_alone():
+    from digitizer_core.stage6_fill import clear_fill_reorder_memo
+    row = machine.FILL_ROW_MM
+
+    def sew(**kw):
+        clear_fill_reorder_memo()
+        runs, _report = stitch_shape(_NOTHING_EXPOSED, "S1", angle_deg=None, row_mm=row,
+                                     stitch_mm=3.0, underlay_style="none", trim_at_mm=TRIM_AT,
+                                     start_near=_ENTERED_FROM, under_cover=True, **kw)
+        return runs
+
+    off = sew()
+    paths = [list(r.points) for r in off if r.kind == "fill"]
+    ring = _inset_ring(_NOTHING_EXPOSED, machine.TRAVEL_INSET_MM)
+    cost = _order_cost(paths, _NOTHING_EXPOSED, ring, _NOTHING_EXPOSED.buffer(0.01),
+                       _ENTERED_FROM, TRIM_AT, row)
+    assert cost[0] >= 1 and cost[2] == 0.0, f"fixture: an entry cut and nothing exposed, got {cost}"
+    key = lambda rs: [(r.kind, r.points, r.jump, r.trim) for r in rs]
+    assert key(sew(cut_bridges=True)) == key(off)
 
 
 def test_a_two_pass_fill_is_left_alone():
