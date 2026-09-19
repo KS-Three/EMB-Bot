@@ -12,8 +12,10 @@ measurable inside it; this document lands first, on its own PR.
 BUILT the same day as `cfg.satin_junction_stack` and FLIPPED ON the
 same day (Kent's call over the fixtures, the nine-logo sheet and the
 goldens; False is the pre-flip engine) — §6 carries the predictions
-against the build's results. Step 4 stays OFF until its
-`DENSITY_EXTREME` is read.**
+against the build's results. Step 4's `DENSITY_EXTREME` was READ the
+same day: the instrument, not the letters — the satin density reader
+counted split penetrations as rail steps (fixed; the fixture reads 0.43
+against the 0.40 target). Step 4's flip is Kent's again.**
 
 ## 0. What governs this — read before changing the plan
 

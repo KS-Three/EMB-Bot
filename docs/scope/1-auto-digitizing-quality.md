@@ -4136,5 +4136,23 @@ gaulke 186 → 106, drone 264 → 220, ENTHUSIAST 19 → 8, the screenshot 141 �
 136), uncovered unchanged on eight and Becker's 35.5 → 0.0, warnings
 unchanged on every one. Off byte-identical. `tests/test_junction_stack.py`
 (10); renders `docs/renders/junction-construction-2026-09-19/`. **Flipped ON the same day — Kent's call; False is the pre-flip
-engine.** Step 4 stays OFF until its `DENSITY_EXTREME` is read. *(built and measured 2026-09-19 — scope-history, the junction
+engine.** Step 4's `DENSITY_EXTREME` was the
+instrument (below); its flip is Kent's again. *(built and measured 2026-09-19 — scope-history, the junction
 build)*
+
+## `DENSITY_EXTREME` on split satin was the instrument (fixed 2026-09-19)
+
+The first of the two findings the junction build surfaced, read the same
+day. `preflight._satin_rail_advance_mm` reads the satin rail pitch as the
+distance between points two apart (rails alternate A, B, A, B), and a
+split satin column carries extra penetrations along each cross, so on
+split lettering two apart was a mid-cross hop: the lettering plan's
+127 mm fixture under `satin_lettering_split` read 1.09 mm against the
+0.40 target (ratio 2.8, a `DENSITY_EXTREME` warn) on columns sewn at
+0.43. The reader now strips the splits with `stage6_satin.strip_splits`
+first, the reader the coverage map already used; unsplit runs are
+unchanged (MARINE 80 0.445 → 0.444, Becker 100 under the split flag
+0.455 → 0.415, the fixture 1.094 → 0.428, no finding). The playbook's
+parity trap in its second form — the parity broken by the splits instead
+of the slicing. `tests/test_density_split_satin.py` (3). *(read and
+fixed 2026-09-19 — scope-history)*

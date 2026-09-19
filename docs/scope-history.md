@@ -14184,3 +14184,34 @@ plain-column letter crossings against `_split_sharp_corners`' rules.
 What the flip moved in the suite is recorded in the PR (#520) body.
 
 *(flipped and ruled 2026-09-19 — Kent's answers; config comment)*
+
+## 2026-09-19 — Finding 1 of the junction build: `DENSITY_EXTREME` on split satin was the instrument
+
+Kent's pick after the flip: read what the finding measures before step 4
+is priced on it. `preflight._satin_rail_advance_mm` reads the satin rail
+pitch as the median distance between points two apart — rails alternate
+A, B, A, B — and a split satin column carries one or more penetrations
+along every cross (`_split_points`, over `SPLIT_SATIN_ABOVE_MM`), so with
+them in the list two apart is a mid-cross hop. Measured: the lettering
+plan's 127 mm fixture under `satin_lettering_split` read **1.094 mm**
+against the 0.40 target (ratio 2.8, the `DENSITY_EXTREME` warn step 4
+was held on) with the splits in, **0.428** with them stripped; the
+default fill of the same fixture 0.587 → 0.410 (two split runs, under
+the 1.5× line either way); MARINE 80 0.445 → 0.444; Becker 100 under the
+split flag 0.455 → 0.415. The reader now strips the splits with
+`stage6_satin.strip_splits` — the reader `_coverage_map` already used —
+before measuring; unsplit runs are unchanged. The playbook's parity trap
+in its second form: the parity broken by the splits instead of the
+slicing. So step 4's blocker was the instrument, not the letters, and the
+split flag's flip is Kent's again on the numbers it had (the R fixture
+under split + stack: 7,283 stitches / 44 trims / no fold, against the
+fill's 9,642 / 31).
+
+`tests/test_density_split_satin.py` (3): a split column reads its rail
+pitch and not its split length, an unsplit column is unchanged, the
+fixture raises no satin density finding. `test_preflight`'s dropped-limb
+injection is pinned on the pre-flip junction engine: the stack's part C
+sews the cover under the arms by default and patches exactly the hole
+the injection makes.
+
+*(read and fixed 2026-09-19 — the probe lived in the session's scratchpad)*
