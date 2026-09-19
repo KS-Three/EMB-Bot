@@ -14350,3 +14350,35 @@ scoring rows are in the README; nothing here is a cloth result yet.
 *(exported and read back 2026-09-19 — `sewout_arm2.py` and
 `sewout_readback.py` in the session's scratchpad; the README carries the
 numbers)*
+
+### Addendum, the same day — what the split flip moved in the full suite, and Becker's fill exposure at 80 mm
+
+The full digitizer suite on the merged, doubly-flipped tree (`satin_junction_stack`
+and `satin_lettering_split` both ON, main at #518): **2,698 passed, 28m41s,
+four moved**, every one Becker, every one pinned on
+`satin_lettering_split=False` with its reason in the file:
+
+- `tests/test_fill_bridges.py` (2): the census's honesty tests read a
+  fixture with NO exposed bridges — *"a vacuous fixture proves nothing
+  here"*. Becker at 80 mm had four exposed fill runs, 38.7 mm, and every one
+  lay in the MARINE band's FILLED letters; under the flip the band sews as
+  split satin and the fill tier's exposure reads **0 runs / 0.0 mm**.
+- `tests/test_edge_cap_budget.py` (2): the cliff sweep's gate saving at
+  88 mm reads 31.9% against the 12.0% the cliff doc measured, and the run
+  counts sit flat at [9, 8, 9] — the band stopped being fill, the lettering
+  cover (step 5) omits it from the cap, and the gate saves more. The file
+  pins the budget mechanism measured on the filled band, so it reads it.
+
+**The finding inside the first pin.** Under today's defaults Becker at
+80 mm has no exposed fill-tier travel at all (0 runs / 0.0 mm, against
+4 / 38.7 mm with the split OFF; stitches 7,107 → 6,057, trims 41 → 43).
+The exposed-travel entry above read Becker's fill legs at 31.2 mm, and
+#518's flip prep measured `fill_bridge_cut` on *"Becker's 22.9 mm leg →
+4.0"* — that leg was the band's fill, and under this flag it is not there
+to cut. The nine-logo trade `fill_bridge_cut` was priced on (exposed travel
+248.6 → 140.9 mm, trims 458 → 464) was measured on `main` at #516, before
+either flip; **it is unmeasured on the doubly-flipped tree**, and its flip
+is still Kent's pending call.
+
+*(measured 2026-09-19 — full suite log and `probe_movers.py` in the
+session's scratchpad; the pins carry the numbers)*
