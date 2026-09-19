@@ -249,3 +249,25 @@ def test_design_ends_with_an_end_record():
     design = plan_to_design(_plan([(0.0, 0.0), (1.0, 1.0)]))
     assert design["stitches"][-1] == {"x": 0, "y": 0, "type": "end"}
     assert [s["type"] for s in design["stitches"]].count("end") == 1
+
+
+def test_the_design_counts_what_the_plans_stats_count():
+    """A penetration within `SAME_POINT_MM` of the one before it on a
+    continuous path is one needle position: `iter_machine_commands` drops
+    it, so the file and `plan.stats` never carry it, and the design JSON
+    (what the Studio counts and the worksheet prints) must not either.
+    Until 2026-09-19 it did, and the review read one fewer stitch than the
+    sheet whenever a travel leg ended exactly where the next run began. A
+    jump breaks the path: the coincident point after one is real."""
+    from digitizer_core.stitches import SATIN, TRAVEL
+
+    a = StitchRun(points=[(0.0, 0.0), (5.0, 0.0), (10.0, 0.0)], kind=TRAVEL, shape_id="s")
+    b = StitchRun(points=[(10.0, 0.0), (10.0, 4.0), (10.0, 8.0)], kind=SATIN, shape_id="s")
+    plan = StitchPlan(blocks=[StitchBlock(thread_index=0, thread_number="1234", rgb=(10, 20, 30), runs=[a, b])])
+    design = plan_to_design(plan)
+    assert sum(1 for s in design["stitches"] if s["type"] == "stitch") == plan.stats.stitch_count == 5
+
+    c = StitchRun(points=[(10.0, 0.0), (10.0, 4.0), (10.0, 8.0)], kind=SATIN, shape_id="s", jump=True)
+    plan = StitchPlan(blocks=[StitchBlock(thread_index=0, thread_number="1234", rgb=(10, 20, 30), runs=[a, c])])
+    design = plan_to_design(plan)
+    assert sum(1 for s in design["stitches"] if s["type"] == "stitch") == plan.stats.stitch_count == 6

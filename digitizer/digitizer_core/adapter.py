@@ -38,6 +38,7 @@ import math
 import pystitch
 
 from .stitches import StitchBlock, StitchPlan
+from . import stitches as stitches_mod
 
 UNITS_PER_MM = 10.0
 
@@ -114,8 +115,11 @@ def plan_to_design(plan: StitchPlan, name: str = "Digitized design") -> dict:
     colors: list[dict] = []
     runs: list[dict] = []
     last: tuple[int, int] | None = None
+    last_pen: tuple[float, float] | None = None      # the dedupe tracker, in mm
+    just_changed_path = True
 
     for bi, block in enumerate(plan.blocks):
+        just_changed_path = True                     # a block boundary breaks the path
         r, g, b = block.rgb
         colors.append(
             {
@@ -155,10 +159,27 @@ def plan_to_design(plan: StitchPlan, name: str = "Digitized design") -> dict:
             # The span opens HERE — after the trim/jump records above, so i0
             # is the first `stitch` and not the travel that preceded it.
             i0 = len(stitches)
+            # The same dedupe `iter_machine_commands` applies: two penetrations
+            # closer than SAME_POINT_MM on one continuous path are one needle
+            # position, and the file drops the second. Until 2026-09-19 this
+            # loop kept it, so the design JSON (what the Studio counts and the
+            # worksheet prints) ran ahead of `plan.stats` (what the review
+            # states and the file holds) by one record per coincidence --
+            # the e2e `worksheet-digitized-lane` read 2,218 against 2,216 the
+            # day the Euler stroke order added travel legs that end exactly
+            # where the next run starts. The tracker resets wherever the
+            # stream's does: a jump, a trim, a block boundary.
+            if run.jump or run.trim or just_changed_path:
+                last_pen = None
             for pt in run.points:
+                if last_pen is not None and math.dist(last_pen, pt) < stitches_mod.SAME_POINT_MM:
+                    continue
                 x, y = _u(*pt)
                 stitches.append({"x": x, "y": y, "type": STITCH})
                 last = (x, y)
+                last_pen = pt
+            last_pen = run.points[-1]
+            just_changed_path = False
             if len(stitches) > i0:
                 # Guarded rather than assumed: a run that emitted nothing has
                 # no span to describe, and `i1 = i0 - 1` would be an inverted
