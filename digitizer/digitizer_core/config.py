@@ -1353,10 +1353,11 @@ class PipelineConfig:
     # bridge read as exposed and bought a cut that hid nothing (a two-hole
     # plate: trims 0 -> 2). Exposure per pass is unmeasured; the photo lane's
     # crosshatch is where that matters.
-    # Measured ON (nine logos, 80 mm, the shipped euler order): exposed travel
-    # 246.3 -> 141.1 mm by `tools/travel_cover.py`, 432.3 -> 226.2 by
-    # `tools/fill_bridges.py`, trims 471 -> 477, stitches 77,558 -> 77,489,
-    # uncovered unchanged on all nine; Becker's 22.9 mm leg -> 4.0. OFF is
+    # Measured ON (nine logos, 80 mm, main's defaults after #516): exposed
+    # travel 248.6 -> 140.9 mm by `tools/travel_cover.py`, 432.3 -> 226.2 by
+    # `tools/fill_bridges.py`, trims 458 -> 464, stitches 76,774 -> 76,705,
+    # uncovered unchanged on all nine; Becker's 22.9 mm leg -> 4.0. The delta
+    # held across three engine states that day (+6 trims each time). OFF is
     # plan-md5-identical to the engine before it, all nine. Read it yourself:
     # `tools/travel_legs.py --set fill_bridge_cut=true`.
     # **Before a flip:** a lift this makes raises `report["jumps"]`, and the

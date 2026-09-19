@@ -14008,3 +14008,25 @@ no trailing comma — checked by breaking a site that way); and
 
 *(reviewed, fixed and re-measured 2026-09-19 — `tests/test_fill_bridge_cut.py`;
 `digitizer/tools/travel_legs.py --set fill_bridge_cut=true`)*
+
+### Addendum, the same day — #516 merged; the numbers on main's defaults
+
+#516 merged while the above was in review, ten commits on from the lane this
+was measured on, with `satin_corner_twigs` and `edge_cap_skip_lettering`
+flipped ON on the way. `main` merged in; the three figures above are each
+labelled with the engine they were measured on and none is withdrawn, but
+"current" is this one. Nine logos, 80 mm, `main`'s defaults, OFF → ON:
+exposed travel **248.6 → 140.9 mm** (`travel_cover`), 432.3 → 226.2
+(`fill_bridges`, to the decimal on all three engines — the fill tier reads
+none of the satin flags), trims **458 → 464**, stitches 76,774 → 76,705,
+`uncovered_total_mm2` identical on all nine. Becker 31.2 → 8.3 (trims 36 →
+37), Fremont 57.7 → 20.8 (33 → 37), Bridge Bar 26.0 → 15.8 (83 → 84), the
+screenshot 59.6 → 25.2 (69 → 73), drone 69.0 → 65.7 (127 → 123); tires,
+ENTHUSIAST, Golden Tee and gaulke are md5-identical OFF and ON. The delta is
+the same +6 trims on all three engine states. Fremont is again the only
+design whose finding codes change, 0.50 → 0.267 as before; drone's worst
+cluster reads 0.154 → 0.143 here, a third direction-and-size from the same
+rule. `COOKBOOK.md`'s instrument list (new in #516) gains
+`tools/travel_legs.py` and the correction to `travel_cover`'s line.
+
+*(measured 2026-09-19 — merged tree `8ae881b8`)*

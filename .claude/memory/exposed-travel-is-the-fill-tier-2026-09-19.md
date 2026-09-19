@@ -1,6 +1,6 @@
 ---
 name: exposed-travel-is-the-fill-tier-2026-09-19
-description: travel_cover.py's 245 mm of exposed travel on the nine logos is NOT a new gate-3 finding — 97.7% is the fill tier's column bridges on their own finished fill (defect 21's residual, read by fill_bridges.py on 09-11), 0.0 mm on bare fabric; the 1 mm grid under-reads it by a third; `cfg.fill_bridge_cut` BUILT OFF (per-bridge cut at Kent's 25:2 rate, single-pass fills, 246.3 -> 141.1 mm for +6 trims); Fremont's OCR drop under it is judge noise
+description: travel_cover.py's 245 mm of exposed travel on the nine logos is NOT a new gate-3 finding — 97.7% is the fill tier's column bridges on their own finished fill (defect 21's residual, read by fill_bridges.py on 09-11), 0.0 mm on bare fabric; the 1 mm grid under-reads it by a third; `cfg.fill_bridge_cut` BUILT OFF (per-bridge cut at Kent's 25:2 rate, single-pass fills, 248.6 -> 140.9 mm for +6 trims); Fremont's OCR drop under it is judge noise
 metadata:
   type: project
 ---
@@ -42,9 +42,10 @@ and then BUILT the same day, **`cfg.fill_bridge_cut`, DEFAULT OFF, Kent's
 flip**: `emit` sewed any in-shape route however exposed and only lifted when
 no route existed, so `_score`'s ratified 25 : 2 rate was never asked about a
 single BRIDGE. Lifting a bridge whose own cost exceeds a cut (gap over
-`trim_at`) takes the nine logos 246.3 -> 141.1 mm exposed for 471 -> 477
-trims on the shipped euler order (244.6 -> 139.5, 587 -> 593 under
-nearest), uncovered unchanged, OFF plan-md5-identical on all nine
+`trim_at`) takes the nine logos 248.6 -> 140.9 mm exposed for 458 -> 464
+trims on main's defaults after #516 (the same +6 trims and ~-105 mm on the
+two earlier engine states that day), uncovered unchanged, OFF
+plan-md5-identical on all nine
 (`tests/test_fill_bridge_cut.py`, 15, on shapely fixtures — Becker's leg
 depends on a 0.20 mm notch in a trace, and traces differ by platform). Read
 it with `tools/travel_legs.py --set fill_bridge_cut=true`.
