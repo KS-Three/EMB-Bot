@@ -103,7 +103,16 @@ def probe(art: str, width: float, garment: str, flags: dict,
         if g is None:
             continue
         edges, half_mm, field, scale, to_mm, dt_mm, _skel, _dist = g
-        decisions, _merged = jb.merge_decisions(edges, dt_mm, half_mm, scale)
+        # The census re-runs the merge on its own; under `satin_junction_stack`
+        # it must run it at the flag's threshold, or the welds it reports are
+        # the shipped merge's and not the plan's.
+        real_dot = s6._WELD_MAX_DOT
+        if flags.get("satin_junction_stack"):
+            s6._WELD_MAX_DOT = s6._STACK_WELD_MAX_DOT
+        try:
+            decisions, _merged = jb.merge_decisions(edges, dt_mm, half_mm, scale)
+        finally:
+            s6._WELD_MAX_DOT = real_dot
         arm_px = max(5, int(round(2.0 * half_mm * scale)))
         runs = by.get(sid, [])
         sat = [x for x in runs if x.kind == "satin"]

@@ -1075,8 +1075,14 @@ class PipelineConfig:
     # the pro's do (his p95 4-7 layers inside a MARINE junction blob against
     # our 2-4). C: the satin junction cover (`satin_patch_junctions =
     # "satin"`) under the arms for whatever is still bare. Measured
-    # 2026-09-19 (scope-history). DEFAULT OFF, byte-identical off; the flip
-    # is Kent's.
+    # 2026-09-19 (scope-history, the junction build): the R fixture at
+    # 127 mm under the split flag 311 -> 0 self-crossing pairs at 7,253 ->
+    # 7,283 stitches and trims 34 -> 44, uncovered 0.0 both ways; MARINE
+    # at 80 mm 103 -> 0 at trims 7 -> 9; Becker at 100 mm under the split
+    # flag uncovered 35.5 -> 0.0. The layers inside the junctions do NOT
+    # rise to the pro's (p95 3.3-4.2 against his 3.9-7.2): B overlaps the
+    # ends, it does not stack them. DEFAULT OFF, byte-identical off; the
+    # flip is Kent's.
     satin_junction_stack: bool = False
     # Each satin rail reaches ITS OWN edge (defect 23's open half, built
     # 2026-09-03 for Kent's flip). The rail model places both rails at the
