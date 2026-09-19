@@ -15,7 +15,10 @@ goldens; False is the pre-flip engine) — §6 carries the predictions
 against the build's results. Step 4's `DENSITY_EXTREME` was READ the
 same day: the instrument, not the letters — the satin density reader
 counted split penetrations as rail steps (fixed; the fixture reads 0.43
-against the 0.40 target). Step 4's flip is Kent's again.**
+against the 0.40 target). Step 4's flip is Kent's again. Becker's
+residual letter pairs were read too: all in four Goldman-joined strokes,
+the join's own mitre counted within the run — the pro's kind, not a
+fold; nothing to build.**
 
 ## 0. What governs this — read before changing the plan
 
@@ -237,8 +240,14 @@ own baseline at **30°**, the corpus number, swept on the fixtures at
 20–45 (fold-free from 30 down, MARINE 80 keeps 42 pairs at 35, the R
 folds again at 45). Becker's band keeps **528 letter pairs under the
 flag at every threshold** — 469 in plain columns, 59 in Goldman-joined
-strokes — so they are not welds: bends inside one arm, `_split_sharp_corners`'
-rules' territory, the next thing to read. The R fixture's
+strokes — so they are not welds — and read stroke by stroke the same day they are
+not bends inside an arm either: **every one sits in a Goldman-joined
+stroke** (the A's 260 at a 52° join, the E's 209 at 64°, the R's 59 at
+47°, one more at 57°), the owner's corner cap sweeping over the member
+that butts into it, counted within the run because a joined stroke sews
+as one run. That is DOCTRINE 2026-09-09's "crossing pairs at a join are
+the join" (the pro's file carries 2,593); the earlier plain-column count
+was a matching artefact of the probe. Nothing to build. The R fixture's
 `DENSITY_EXTREME` is the split flag's (satin pitch 1.12 mm against a
 0.4 target) and the stack leaves it at 1.09.
 
