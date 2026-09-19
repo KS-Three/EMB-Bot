@@ -13341,3 +13341,19 @@ votes unchanged; explicit OFF is the shipped default; a one-letter group
 *(built and measured 2026-09-19 — the probe scripts lived in the session's
 scratchpad, the numbers are the record; renders in
 `docs/renders/lettering-anchor-2026-09-19/`)*
+
+### Addendum, later the same day — step 1 FLIPPED ON, the bar rule kept, step 2 next
+
+Put to Kent with the drone render and the instrument's numbers
+(AskUserQuestion, 2026-09-19): **flip `satin_house_anchor` ON now** — his
+call; **keep the fonts' bar rule** (2026-09-03: a bar that cannot span the
+house takes its own perpendicular) over the pro's one-angle convention,
+"for now" — so the stems-and-bars look on THERMAL is the ruled look, and
+the one-angle bars (short wide columns along the bar at the house angle)
+are not to be built without a new ruling; and **step 2 next** — one path
+per letter, the Euler-walk stroke order. `False` on the flag is the
+pre-flip engine byte for byte; `tests/test_house_anchor.py` pins the
+default ON and the OFF side explicitly. What the flip moved in the full
+suite is recorded in the PR (#516) body.
+
+*(flipped 2026-09-19 — Kent's answers; config comment)*

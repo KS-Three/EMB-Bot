@@ -990,9 +990,14 @@ class PipelineConfig:
     # to its line wherever the art is rotated, and a leaned script keeps
     # its lean. The votes still answer a group with no line and a group
     # with no stems (the bridge logo's wheel spokes). Not a physical
-    # constant. DEFAULT OFF -- measured in scope-history 2026-09-19; the
-    # flip is Kent's.
-    satin_house_anchor: bool = False
+    # constant. Built OFF and measured (scope-history 2026-09-19, step 1:
+    # drone's satin self-crossings 496 -> 430 at +167 stitches / +5 trims,
+    # Fremont's 87 -> 66; THERMAL then shows the 09-03 rule's stems-square,
+    # bars-perpendicular look where the vote's accidental 108 deg had
+    # leaned everything one way -- put to Kent with the render, and he kept
+    # the fonts' bar rule); **DEFAULT ON the same day -- Kent's flip.**
+    # False is the pre-flip engine, byte for byte.
+    satin_house_anchor: bool = True
     # Each satin rail reaches ITS OWN edge (defect 23's open half, built
     # 2026-09-03 for Kent's flip). The rail model places both rails at the
     # NEARER edge's distance from a smoothed spine, so on every raster

@@ -2,9 +2,10 @@
 
 **Status:** decision document, Kent's ruling 2026-09-19 (trace + the font
 engine's construction, in that order). Step 0 built and flipped ON the same
-day (`cfg.satin_house_from_line`); step 1 BUILT the same day, OFF
-(`cfg.satin_house_anchor`), measured below — the flip is Kent's. Review it
-rests on: `docs/lettering-route-review-2026-09-19.md`.
+day (`cfg.satin_house_from_line`); step 1 BUILT, measured and FLIPPED ON
+the same day too (`cfg.satin_house_anchor`, Kent's call over the THERMAL
+render, keeping the fonts' bar rule); step 2 chosen next. Review it rests
+on: `docs/lettering-route-review-2026-09-19.md`.
 
 **Yardstick.** The review's construction: a library font's own word — its
 glyphs' satin columns as ribbon polygons, laid out with the font's advances —
@@ -38,7 +39,8 @@ customer already had right.
    179.9°, its satin runs' cross concentration **0.059 → 0.287**, stitches
    2,492 → 2,499, trims 24 → 25. Flipped ON 2026-09-19.
 1. **Anchor the house to the line of text; read only the SLANT from the
-   stems — BUILT 2026-09-19, `cfg.satin_house_anchor`, OFF (Kent's flip).**
+   stems — BUILT 2026-09-19, `cfg.satin_house_anchor`, and FLIPPED ON the
+   same day (Kent, over the THERMAL render; the fonts' bar rule stands).**
    Found building step 0: when the doubled-angle vote passes on a
    diagonal-heavy word it returns a house pulled off the line by the
    diagonals — AMAZE 27°, NAVY 147°, ZANY 151°, VANE 160°, HOTEL 27° on the

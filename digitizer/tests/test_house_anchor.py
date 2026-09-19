@@ -11,6 +11,8 @@ text takes house = the line + its STEMS' slant -- the strokes within the
 lean cap of the line's normal, length-weighted median offset, on chains
 resampled at the four-fold reading's chord -- and the votes are not asked.
 A group with no line, or no stems in that family, is voted on as before.
+Built OFF and flipped ON the same day (Kent, 2026-09-19); False is the
+pre-flip engine.
 
 Fixtures are words built at test time from committed `src/fonts/*.json`
 (see `test_house_from_line._word_raster`). "HOTEL" in `manga_impact` at
@@ -77,9 +79,9 @@ def script_word(tmp_path_factory) -> Path:
     return p
 
 
-def test_the_flag_is_off_by_default():
-    """Built OFF; the flip is Kent's."""
-    assert PipelineConfig().satin_house_anchor is False
+def test_the_flag_is_on_by_default():
+    """Built OFF, flipped ON the same day -- Kent's call, 2026-09-19."""
+    assert PipelineConfig().satin_house_anchor is True
 
 
 # --- the slant reading on its own -------------------------------------------
@@ -133,58 +135,64 @@ def test_the_window_is_the_lean_cap():
 # --- through the pipeline ---------------------------------------------------
 
 @pytest.fixture(scope="module")
+def hotel_off(hotel):
+    """One digitize of HOTEL with the anchor OFF (the pre-flip engine), shared."""
+    return _run(hotel, 80.2, satin_house_anchor=False)
+
+
+@pytest.fixture(scope="module")
 def hotel_default(hotel):
-    """One digitize of HOTEL at the shipped defaults, shared."""
+    """One digitize of HOTEL at the shipped defaults (anchor ON), shared."""
     return _run(hotel, 80.2)
 
 
-def test_off_the_word_keeps_the_votes_pulled_house(hotel_default):
-    group = _group(hotel_default)
+def test_off_the_word_keeps_the_votes_pulled_house(hotel_off):
+    group = _group(hotel_off)
     line = tc._line_of_text_deg(group)
     house = _house(group)
     assert house is not None and line is not None
     assert _angle_gap(house, line) > 15.0, (house, line)                        # 27.2 against 180.0
 
 
-def test_off_explicitly_is_the_shipped_default(hotel, hotel_default):
-    off = {r.shape_id: r.meta.get("satin_angle_deg")
-           for r in _run(hotel, 80.2, satin_house_anchor=False).regions}
+def test_on_explicitly_is_the_shipped_default(hotel, hotel_default):
+    on = {r.shape_id: r.meta.get("satin_angle_deg")
+          for r in _run(hotel, 80.2, satin_house_anchor=True).regions}
     default = {r.shape_id: r.meta.get("satin_angle_deg") for r in hotel_default.regions}
-    assert off == default and any(v is not None for v in default.values())
+    assert on == default and any(v is not None for v in default.values())
 
 
-def test_a_group_with_no_line_of_text_is_voted_on_as_before(hotel_default):
+def test_a_group_with_no_line_of_text_is_voted_on_as_before(hotel_off):
     """One letter makes no line (`_line_of_text_deg` None), so the anchor
     has nothing to hold and the votes answer, anchored or not."""
-    alone = _group(hotel_default)[:1]
+    alone = _group(hotel_off)[:1]
     assert tc._line_of_text_deg(alone) is None
     voted = tc._cluster_house_angle_deg(alone, fourfold=True, from_line=True)
     assert tc._cluster_house_angle_deg(alone, fourfold=True, from_line=True, anchor=True) == voted
 
 
-def test_on_the_word_sews_square_to_its_line(hotel):
-    group = _group(_run(hotel, 80.2, satin_house_anchor=True))
+def test_on_the_word_sews_square_to_its_line(hotel_default):
+    group = _group(hotel_default)
     line = tc._line_of_text_deg(group)
     assert _angle_gap(_house(group), line) < 1.5, (_house(group), line)
     assert _angle_gap(line, 0.0) < 2.0                                          # an upright word on the axis
 
 
 def test_off_the_word_turned_20_deg_is_further_off_still(hotel_turned):
-    group = _group(_run(hotel_turned, 80.2))
+    group = _group(_run(hotel_turned, 80.2, satin_house_anchor=False))
     line = tc._line_of_text_deg(group)
     assert 15.0 < _angle_gap(line, 0.0) < 25.0, line                            # the turn happened
     assert _angle_gap(_house(group), line) > 15.0, (_house(group), line)        # 25.5 against 160.4
 
 
 def test_on_the_word_turned_20_deg_follows_the_art(hotel_turned):
-    group = _group(_run(hotel_turned, 80.2, satin_house_anchor=True))
+    group = _group(_run(hotel_turned, 80.2))                                    # the shipped default
     line = tc._line_of_text_deg(group)
     assert 15.0 < _angle_gap(line, 0.0) < 25.0, line
     assert _angle_gap(_house(group), line) < 5.0, (_house(group), line)         # 163.6 against 160.4
 
 
 def test_on_a_leaned_script_keeps_its_lean(script_word):
-    group = _group(_run(script_word, 80.2, satin_house_anchor=True))
+    group = _group(_run(script_word, 80.2))                                     # the shipped default
     line = tc._line_of_text_deg(group)
     house = _house(group)
     lean = (house - line + 90.0) % 180.0 - 90.0

@@ -97,6 +97,12 @@ def _word_raster(word: str, width_mm: float, px_per_mm: float = 12.0, *,
     return canvas
 
 
+# The third reading is tried only when a group is NOT anchored (plan step 1,
+# `satin_house_anchor`, ON since the same day), so every run in this file
+# turns the anchor off to test the reading it is about.
+PRE_ANCHOR = dict(satin_house_anchor=False)
+
+
 @pytest.fixture(scope="module")
 def refused_word(tmp_path_factory) -> Path:
     """The word both votes refuse: KAYAK at 80 mm."""
@@ -109,7 +115,7 @@ def refused_word(tmp_path_factory) -> Path:
 def refused_off(refused_word):
     """One digitize of the refused word with the flag OFF, shared by the
     tests that only read it."""
-    return _run(refused_word, 80.2, satin_house_from_line=False)
+    return _run(refused_word, 80.2, satin_house_from_line=False, **PRE_ANCHOR)
 
 
 @pytest.fixture(scope="module")
@@ -153,7 +159,7 @@ def test_both_votes_refuse_the_word_at_80mm_and_off_it_keeps_no_house(refused_of
 
 
 def test_on_the_refused_word_takes_one_cross_along_its_line_of_text(refused_word):
-    result = _run(refused_word, 80.2)                              # the shipped default
+    result = _run(refused_word, 80.2, **PRE_ANCHOR)                              # from_line at its default, ON
     group = tc._lettering_groups(result.regions)[0]
     letters = [r for r in result.regions if r.meta.get("text_candidate")]
     angles = [r.meta.get("satin_angle_deg") for r in group]
@@ -168,8 +174,8 @@ def test_on_the_refused_word_takes_one_cross_along_its_line_of_text(refused_word
 
 
 def test_a_word_a_vote_accepts_is_untouched_by_the_flag(accepted_word):
-    off = _letters(accepted_word, 127.4, satin_house_from_line=False)
-    on = _letters(accepted_word, 127.4)
+    off = _letters(accepted_word, 127.4, satin_house_from_line=False, **PRE_ANCHOR)
+    on = _letters(accepted_word, 127.4, **PRE_ANCHOR)
     a_off = sorted(r.meta.get("satin_angle_deg") for r in off)
     a_on = sorted(r.meta.get("satin_angle_deg") for r in on)
     assert a_off and a_off[0] is not None                        # the doubled-angle vote passes here

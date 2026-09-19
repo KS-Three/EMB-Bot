@@ -3974,7 +3974,7 @@ diagonal residue (AMAZE 27°, NAVY 147°; on real logos enthusiast's subline
 `docs/superpowers/plans/2026-09-19-lettering-construction.md`.
 *(built, measured, flipped 2026-09-19 — scope-history's entry of that day)*
 
-## Lettering house-angle: ANCHORED to the line of text (`satin_house_anchor`, built OFF 2026-09-19)
+## Lettering house-angle: ANCHORED to the line of text (`satin_house_anchor`, built OFF and flipped ON 2026-09-19)
 
 Plan step 1. Both votes decide the house from every stroke, and on lettering
 with diagonals the diagonals pull the answer off the stems' perpendicular
@@ -4005,4 +4005,7 @@ Rejected on measurement: a kernel mode for the slant, a straightness gate on
 the votes. Limits: stem-poor words read their diagonals' middle (ZANY −12°);
 brush scripts with curved strokes read near zero. `tests/test_house_anchor.py`
 (15); `tools/satin_lean.py [--anchor]` prints each group's house and cross
-concentration. *(built and measured 2026-09-19 — scope-history, step 1)*
+concentration. **Flipped ON the same day — Kent's call over the THERMAL
+render, keeping the fonts' bar rule (a bar takes its own perpendicular) over
+the pro's one angle; False is the pre-flip engine.** *(built, measured and
+flipped 2026-09-19 — scope-history, step 1 and its addendum)*
