@@ -13161,7 +13161,6 @@ the customer's font — but a traced letter must get the font engine's
 construction: split-satin instead of fill for lettering over the cap, rail-side
 pull compensation after decomposition, the cap-arm classifier, the house angle
 verified firing, and no halo hooks. Bring-your-own-font-file is a later option;
-it pays off only after that construction. Kent's call on the amended plan.
+it pays off only after that construction. **Kent's ruling, the same day: trace + the font engine's construction, in that order** — font identification and bring-your-own-font-file declined for now.
 
 *(measured 2026-09-19 — the write-up carries the method)*
-
