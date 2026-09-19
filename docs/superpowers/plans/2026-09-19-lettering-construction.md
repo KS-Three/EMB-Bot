@@ -16,8 +16,12 @@ junction construction existed, then FLIPPED ON the same day once
 density finding proved to be the instrument
 (`2026-09-19-junction-construction.md`); step 5 BUILT, measured and FLIPPED ON the
 same day (`cfg.edge_cap_skip_lettering`, Kent's call: the fixture's trims
-23 → 7 against the typed word's 3). Every step is built; next is a
-sew-out sheet for the two flips cloth still owes (3b, and 5's check).
+23 → 7 against the typed word's 3). Every step is built and the
+sew-out sheet is on Kent's machine, in two cuts: the first for the two
+flips cloth still owes (3b, and 5's check), the second — today's defaults
+with `satin_junction_stack` and step 4 ON beside the pre-flip arm — for
+the stacked junction and the split column on cloth (scope-history
+2026-09-19, the step-4 addenda).
 Review it rests on:
 `docs/lettering-route-review-2026-09-19.md`.
 

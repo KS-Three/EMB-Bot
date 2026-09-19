@@ -14320,3 +14320,33 @@ stack and split ON, beside its pre-flip arm. What the flip moved in the
 suite is recorded in the PR (#520) body.
 
 *(flipped and ruled 2026-09-19 — Kent's answers; config comment)*
+
+### Addendum, the same day — the second sew-out cut: stack + split beside the pre-flip arm
+
+The first sheet's four fixtures exported again on today's defaults
+(`satin_junction_stack` and `satin_lettering_split` both ON), `.dst` and
+`.pes` through the service's own writers, a render beside each, every
+file read back through pystitch and agreeing with the plan to the stitch.
+Beside the first cut's `*_default` (the engine as #516 merged it, now the
+PRE-flip arm), `*_stack_split`:
+
+| design | default: stitches / trims / uncovered mm² | stack_split | what moved |
+|---|---|---|---|
+| MARINE 80 mm | 1,774 / 7 / 0.0 | 1,969 / 13 / 0.0 | the fold gone (103 → 0 pairs); the stack alone read 1,787 / 9, the rest is the split's |
+| MARINE 127 mm | 9,642 / 31 / 0.0 (letters FILL) | 7,283 / 44 / 0.0 (letters split as satin) | the R's 311-pair fold gone; no `DENSITY_EXTREME` |
+| Becker 100 mm | 12,037 / 39 / 35.5 | 8,353 / 61 / 0.0 | the band's 35.5 mm² of bare artwork closed by the junction cover under the arms |
+| drone 80 mm | 18,715 / 127 / 0.0 | 18,626 / 123 / 0.0 | nothing to speak of |
+
+`TRIM_HEAVY` on every `stack_split` arm is the trims in the table, read
+by preflight. The sheet's README gained **question C** for the pair: does
+a junction sewn as a stack of arms read as a clean corner or as a lump, is
+any wedge bare where an arm ends at the node, does the fold show on
+`default` as a ridge or pucker, and does a split column read as one satin
+or show its mid-column seam — with what each answer flips (a lump or a
+bare wedge sends the stack back to OFF and re-prices part B against cloth;
+a seam sends the split back to OFF). The files are on Kent's machine; the
+scoring rows are in the README; nothing here is a cloth result yet.
+
+*(exported and read back 2026-09-19 — `sewout_arm2.py` and
+`sewout_readback.py` in the session's scratchpad; the README carries the
+numbers)*
