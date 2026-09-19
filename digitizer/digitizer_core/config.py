@@ -1355,14 +1355,17 @@ class PipelineConfig:
     # crosshatch is where that matters.
     # Measured ON (nine logos, 80 mm, main's defaults after #516): exposed
     # travel 248.6 -> 140.9 mm by `tools/travel_cover.py`, 432.3 -> 226.2 by
-    # `tools/fill_bridges.py`, trims 458 -> 464, stitches 76,774 -> 76,705,
+    # `tools/fill_bridges.py`, trims 458 -> 464, stitches 76,774 -> 76,706,
     # uncovered unchanged on all nine; Becker's 22.9 mm leg -> 4.0. The delta
-    # held across three engine states that day (+6 trims each time). OFF is
+    # held across three engine states that day (+6 trims each time). As
+    # thread, OFF above ON: `docs/renders/fill-bridge-cut-2026-09-19/`. OFF is
     # plan-md5-identical to the engine before it, all nine. Read it yourself:
     # `tools/travel_legs.py --set fill_bridge_cut=true`.
-    # **Before a flip:** a lift this makes raises `report["jumps"]`, and the
-    # customer line that reads says the thread "had to be" lifted — it did
-    # not, the engine chose to.
+    # A lift this makes raises `report["jumps"]`, which `LONG_JUMPS_TRIMMED`
+    # counts. Its ENGINE prose said the thread "had to be" lifted and now says
+    # "is lifted"; the Studio's own sentence for the code ("gets cut N times
+    # where it has to travel a long way") never made the claim. `TRIM_HEAVY`'s
+    # in-shape share rises with it.
     # **The cost is trims, and one reading that looks like a cost and is
     # not:** Hotel Fremont gains a LETTERING_ILLEGIBLE warn (tagline OCR
     # 0.50 -> 0.27). The tagline's own 13 runs are byte-identical either way;
