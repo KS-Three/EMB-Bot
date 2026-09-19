@@ -208,10 +208,15 @@ def _cap_block(plan):
 def test_a_fill_sewn_text_candidate_keeps_its_cap():
     """A 20 mm-wide "letter" fills (over the satin ceiling), and its rows
     end in open air at its edge — the defect the cap exists for. ON is
-    byte-identical to OFF, cap included."""
+    byte-identical to OFF, cap included.
+
+    Pinned on `satin_lettering_split=False`: since step 4 flipped ON
+    (2026-09-19) a text candidate never fills by default — it splits as
+    satin — so the fill-sewn letter this test is about exists only on the
+    pre-flip engine. The case is still real there and the cap still owes it."""
     slab = [_region(_bar(20, 30), "T", 3, 0, {"text_candidate": True})]
-    off = _plan_for(slab, edge_cap_skip_lettering=False)
-    on = _plan_for(slab)
+    off = _plan_for(slab, edge_cap_skip_lettering=False, satin_lettering_split=False)
+    on = _plan_for(slab, satin_lettering_split=False)
     kinds = {str(r.kind) for b in off.blocks for r in b.runs if r.shape_id == "T"}
     assert str(stitches.FILL) in kinds, kinds
     assert _cap_block(off) is not None, "a lone fill should be capped"
