@@ -13545,3 +13545,23 @@ stitches and trims do not rise, the uncovered artwork does not grow.
 
 *(built and measured 2026-09-19 — the census and probes lived in the
 session's scratchpad, the numbers are the record)*
+
+### Addendum, later the same day — step 3a FLIPPED ON, the rail-comp skeleton ruled, step 4 next
+
+Put to Kent with the nine-logo numbers and the renders (AskUserQuestion,
+2026-09-19): **flip `satin_corner_twigs` ON now** — his call, Becker's
++725 at 100 mm accepted as step 4's shape; **`satin_rail_comp`
+skeletonises the ARTWORK, as shipped** — the 09-09 plan's §7 decision 1,
+ruled; its flip still waits on a sew-out; **step 4 next** (wide lettering:
+split, never fill). `False` on the corner flag is the pre-flip pruner byte
+for byte; `tests/test_corner_twigs.py` pins the default and the OFF side.
+Two files hold the pre-flip pruner where they measured on it:
+`test_stroke_order_euler.py` (the walk's fixture numbers were read before
+step 3) and `test_junction_patch_flag.py`, whose satin cover clears
+Becker's finding at a net −1 stitch under the corner rule (6,528 → 6,527)
+instead of adding thread — the same kind of observation that file already
+records for the 09-18 flip. No golden moves: the flat-lane, pushcomp and
+stage-2 keys CI runs are byte-identical with the rule ON. What the flip
+moved in the full suite is recorded in the PR (#516) body.
+
+*(flipped and ruled 2026-09-19 — Kent's answers; config comments)*

@@ -4032,7 +4032,7 @@ against the thread sewn after it (gate 3's instrument): at 80 mm across the nine
 call; "nearest" is the pre-flip engine.** *(built, measured and flipped
 2026-09-19 — scope-history, step 2 and its addendum)*
 
-## Lettering corners: the spur pruner's structure rule (`satin_corner_twigs`, built OFF 2026-09-19)
+## Lettering corners: the spur pruner's structure rule (`satin_corner_twigs`, built and flipped ON 2026-09-19)
 
 Plan step 3a, the letterform study's mechanism #2. `_prune_spurs` erased a
 corner's twig and with it the junction's degree, so a letter's diagonal and
@@ -4050,6 +4050,8 @@ synthetic N stops folding; a square-capped bar's spine is straight either
 way. `tests/test_corner_twigs.py` (6). **Step 3b, `satin_rail_comp`,
 re-measured on today's engine:** IoU-to-target Fremont 0.681 → 0.836,
 ENTHUSIAST 0.875 → 0.900, drone 0.803 → 0.826; meadow 0.811 → 0.779 at
-+340 stitches; its skeleton choice and flip are Kent's (plan
-`2026-09-09-rail-side-pull-comp.md` §7). *(built and measured 2026-09-19
-— scope-history, step 3a)*
++340 stitches; its skeleton is RULED the artwork (Kent, 2026-09-19) and
+its flip waits on a sew-out (plan `2026-09-09-rail-side-pull-comp.md` §7).
+**3a flipped ON the same day — Kent's call; False is the pre-flip
+pruner.** *(built, measured and flipped 2026-09-19 — scope-history, step
+3a and its addendum)*

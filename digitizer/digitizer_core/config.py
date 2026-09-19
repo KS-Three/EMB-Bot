@@ -1035,8 +1035,10 @@ class PipelineConfig:
     # at 2,480 -> 2,192 stitches; nine logos 1,813 -> 1,004 at trims 486 ->
     # 488, uncovered unchanged, stitches +588 of which Becker's band at
     # 100 mm is +725 (three more strokes, each with its own underlay). No
-    # physical constant. DEFAULT OFF; the flip is Kent's.
-    satin_corner_twigs: bool = False
+    # physical constant. Built OFF and **DEFAULT ON the same day -- Kent's
+    # flip** over the nine-logo numbers and the renders; False is the
+    # pre-flip pruner, byte for byte.
+    satin_corner_twigs: bool = True
     # Each satin rail reaches ITS OWN edge (defect 23's open half, built
     # 2026-09-03 for Kent's flip). The rail model places both rails at the
     # NEARER edge's distance from a smoothed spine, so on every raster
@@ -1071,9 +1073,12 @@ class PipelineConfig:
     # 0.887 -> 0.884; trims 26 -> 22 / 96 -> 83 / 46 -> 45 / 36 -> 40;
     # thread sewn outside the artwork 147-322 mm2 -> 0. The skeleton is the
     # artwork's; the grown polygon's with artwork rails was measured too
-    # (plan doc 4c) and is the safer decomposition on a blocky source.
-    # DEFAULT OFF, byte-identical off; flipping it is Kent's on a sew-out,
-    # the render and the goldens.
+    # (plan doc 4c) and is the safer decomposition on a blocky source --
+    # **RULED 2026-09-19, Kent: the artwork, as shipped** (re-measured that
+    # day with the lettering steps ON: IoU-to-target Fremont 0.681 -> 0.836,
+    # ENTHUSIAST 0.875 -> 0.900, drone 0.803 -> 0.826; meadow 0.811 ->
+    # 0.779 at +340 stitches). DEFAULT OFF, byte-identical off; flipping it
+    # is Kent's on a sew-out, the render and the goldens.
     satin_rail_comp: bool = False
     # None = the fabric preset's fill underlay style. One of "none" |
     # "edge_run" | "center_run" | "edge_zigzag" | "edge_lattice" |
