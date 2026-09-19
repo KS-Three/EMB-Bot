@@ -946,6 +946,122 @@ class PipelineConfig:
     # digitize time does not move. The 4.1 margin is 0.01 -- a thin one, and
     # the benchmark test is the tripwire that says so if the pipeline drifts.
     satin_house_fourfold: bool = True
+    # The house angle's THIRD reading, for a line of lettering BOTH votes
+    # refuse: the cross runs ALONG the line of text, which under the
+    # stitch-angle rule is the stems' perpendicular for upright lettering
+    # (the stems are the family square to the line — the rule's own
+    # correction, 2026-09-03). Found building the lettering construction
+    # (2026-09-19, `docs/lettering-route-review-2026-09-19.md`): a block
+    # word with diagonals — "MARINE" in `manga_impact`, traced at 80 mm —
+    # groups as one line of seven letters and then gets NO house at all,
+    # because its verticals and horizontals cancel in doubled-angle space
+    # (nR^2 5.0 against the 6.9 bar) and its diagonals pull the four-fold
+    # resultant to 0.164, under the 0.25 floor whose own comment names "the
+    # diagonal blind spot" as where it would first be found wanting. The
+    # same word at 127 mm passes (17.6), so the outcome was deciding on
+    # size, and the fallback the pass had — per-stroke tangents — is the
+    # worst answer for a word: the cross angles read 0.23 concentration,
+    # the "indistinguishable from random" class of the 2026-08-26 study.
+    # ON, such a group takes the line's own direction as its cross; every
+    # group either vote accepts is untouched, and a group with no line
+    # (`_line_of_text_deg` None — a blob, a short two-line wordmark) still
+    # fails open. A leaned script would have passed the first vote; the
+    # per-stroke fade past the 30 deg cap (`_clamp_to_span`) still applies
+    # to every diagonal. Not a physical constant. Built OFF and measured
+    # (scope-history 2026-09-19: it fires on three of the nine real logos'
+    # 24 lettering groups — the ENTHUSIAST wordmark, whose satin runs' cross
+    # concentration goes 0.059 -> 0.287 at +7 stitches / +1 trim, and two
+    # tiny groups on the phone screenshot); **DEFAULT ON the same day —
+    # Kent's flip.** False is the fail-open behaviour, byte for byte.
+    satin_house_from_line: bool = True
+    # The house angle ANCHORED to the line of text (lettering construction
+    # plan step 1, 2026-09-19; `textcluster.SATIN_HOUSE_STEM_WINDOW_DEG`
+    # has the mechanism). Both votes above decide the house from EVERY
+    # stroke of the group, and lettering with diagonals gets an answer the
+    # diagonals pulled off the stems' perpendicular the adopted rule names:
+    # of the 24 lettering groups on the nine real logos, the doubled-angle
+    # vote accepts twelve that make a line and have stems, and puts NINE of
+    # them 12-79 deg off their own line of text on upright words
+    # (enthusiast's subline 130 deg, fremont 98, drone 115 / 108); the font
+    # word HOTEL 27 deg, and 45 once it is turned 20 deg -- the vote does
+    # not follow the art. ON, a group that makes a line takes the
+    # line plus the slant of its STEMS -- the strokes within the lean cap
+    # of the line's normal, median offset -- so an upright word sews square
+    # to its line wherever the art is rotated, and a leaned script keeps
+    # its lean. The votes still answer a group with no line and a group
+    # with no stems (the bridge logo's wheel spokes). Not a physical
+    # constant. Built OFF and measured (scope-history 2026-09-19, step 1:
+    # drone's satin self-crossings 496 -> 430 at +167 stitches / +5 trims,
+    # Fremont's 87 -> 66; THERMAL then shows the 09-03 rule's stems-square,
+    # bars-perpendicular look where the vote's accidental 108 deg had
+    # leaned everything one way -- put to Kent with the render, and he kept
+    # the fonts' bar rule); **DEFAULT ON the same day -- Kent's flip.**
+    # False is the pre-flip engine, byte for byte.
+    satin_house_anchor: bool = True
+    # How a satin shape's strokes are ordered (lettering construction plan
+    # step 2, 2026-09-19). "nearest": `_order_strokes` -- whichever stroke's
+    # preferred entry is closest to the needle next, and between strokes the
+    # needle walks the UNSEWN web (`_graph_travel`) or trims when no unsewn
+    # path is left; once a few strokes of a letter are down there usually is
+    # none, and 35 of the 41 trims on the plan's MARINE fixture are that hop
+    # inside one letter (the font engine sews the same word with 3). "euler":
+    # the strokes that will sew are ordered along ONE Euler walk of the web
+    # (`_euler_stroke_order`, the font engine's `routeGlyph` construction:
+    # Chinese-postman duplication where a dead end forces it, Hierholzer,
+    # last visit sews), so every travel leg it emits lies under a column
+    # sewn later; a stroke with an interior junction (an H's or K's stem)
+    # sews whole and can still leave the needle at a dead end, which then
+    # trims as before. Applies to every satin shape.
+    # Measured 2026-09-19 (scope-history, step 2): the fixture 45 -> 27
+    # trims at 2,564 -> 2,482 stitches; the nine real logos 592 -> 486
+    # trims at a net -19 stitches, self-crossings, uncovered area and
+    # warnings unchanged on every one; `tools/travel_cover.py` reads the
+    # walk's 1,064 mm of added travel at 80 mm as covered to within 1.4 mm.
+    # No physical constant. Built "nearest" and **DEFAULT "euler" the same
+    # day -- Kent's flip.** "nearest" is the pre-flip engine, byte for byte.
+    satin_stroke_order: str = "euler"
+    # The spur pruner's structure rule (lettering construction plan step 3,
+    # 2026-09-19; the letterform study's mechanism #2). `_prune_spurs`
+    # erases a corner's short twig and with it the junction's degree, so a
+    # letter's diagonal and stem weld into one column folding through the
+    # corner (PRECISION's N, Becker's R foot: the bare bottom-right).
+    # Keeping every twig instead hooks a square-capped bar's spine into its
+    # corner (the H defect, `test_pushcomp`'s rectangle). ON, a node with
+    # two short free arms and one longer arm is a cap and both arms go
+    # whatever their exact length; a node with one short free arm between
+    # two longer arms is a corner and the twig stays, holding the junction
+    # open for `_merge_through_junctions`. Measured 2026-09-19 (scope-
+    # history, step 3a): the fixture's satin self-crossing pairs 277 -> 103
+    # at 2,480 -> 2,192 stitches; nine logos 1,813 -> 1,004 at trims 486 ->
+    # 488, uncovered unchanged, stitches +588 of which Becker's band at
+    # 100 mm is +725 (three more strokes, each with its own underlay). No
+    # physical constant. Built OFF and **DEFAULT ON the same day -- Kent's
+    # flip** over the nine-logo numbers and the renders; False is the
+    # pre-flip pruner, byte for byte.
+    satin_corner_twigs: bool = True
+    # Split, never fill, for lettering (lettering construction plan step 4,
+    # 2026-09-19; Kent's 2026-09-11 rule for the browser lettering engine,
+    # applied on the traced path). A text-cluster member is classified and
+    # sewn with NO width ceiling -- `classify_ribbon`'s width gates never
+    # send a letter to tatami, the per-stroke rung reads its arms, and the
+    # emitter's per-station cap is lifted with the wide-column fold guard
+    # (`_fold_caps`) holding every bend -- so a wide letter stroke is a
+    # split-satin column (crosses over `SPLIT_SATIN_ABOVE_MM` split as they
+    # always did), not a fill. The ribbon gates that are about SHAPE
+    # (aspect, irregularity, elongation) still apply: a blob still fills.
+    # Only lettering (`meta["text_candidate"]`) is touched; every other
+    # shape keeps `machine.satin_ceiling_mm`. Measured 2026-09-19 (scope-
+    # history, step 4): MARINE traced at 127 mm, fill 6 -> satin 6 at
+    # 9,642 -> 7,753 stitches, trims 31 -> 47 -- and 311 satin self-
+    # crossings, every one in the R's junction ball (DOCTRINE 2026-09-09:
+    # a junction blob is not a column; this lifts the ceiling, it does not
+    # build the junction); Becker at 100 mm 12,037 -> 9,056 at trims 39 ->
+    # 71; MARINE at 80 mm +328 stitches, the zigzag underlay the oversize
+    # skip used to withhold. No physical constant moves: the ceiling is lifted
+    # for one population the pro sews as columns (7-23% of Becker's over
+    # 5 mm), not re-tuned. DEFAULT OFF, and KEPT OFF on Kent's call the
+    # same day: the bold-letter junction construction comes first.
+    satin_lettering_split: bool = False
     # Each satin rail reaches ITS OWN edge (defect 23's open half, built
     # 2026-09-03 for Kent's flip). The rail model places both rails at the
     # NEARER edge's distance from a smoothed spine, so on every raster
@@ -980,9 +1096,12 @@ class PipelineConfig:
     # 0.887 -> 0.884; trims 26 -> 22 / 96 -> 83 / 46 -> 45 / 36 -> 40;
     # thread sewn outside the artwork 147-322 mm2 -> 0. The skeleton is the
     # artwork's; the grown polygon's with artwork rails was measured too
-    # (plan doc 4c) and is the safer decomposition on a blocky source.
-    # DEFAULT OFF, byte-identical off; flipping it is Kent's on a sew-out,
-    # the render and the goldens.
+    # (plan doc 4c) and is the safer decomposition on a blocky source --
+    # **RULED 2026-09-19, Kent: the artwork, as shipped** (re-measured that
+    # day with the lettering steps ON: IoU-to-target Fremont 0.681 -> 0.836,
+    # ENTHUSIAST 0.875 -> 0.900, drone 0.803 -> 0.826; meadow 0.811 ->
+    # 0.779 at +340 stitches). DEFAULT OFF, byte-identical off; flipping it
+    # is Kent's on a sew-out, the render and the goldens.
     satin_rail_comp: bool = False
     # None = the fabric preset's fill underlay style. One of "none" |
     # "edge_run" | "center_run" | "edge_zigzag" | "edge_lattice" |
@@ -1647,6 +1766,30 @@ class PipelineConfig:
     # was to cap the COST and leave `classify_ribbon` alone — a deliberate
     # symptom fix, taken knowing the artwork still flips.
     edge_cap_over_budget: str = "warn"
+    # No edge cap on lettering (lettering construction plan step 5,
+    # 2026-09-19). The design-silhouette cap above sews only the stretches
+    # of the outline nothing linear already covers -- and on a satin-sewn
+    # letter that is exactly the bare corners and junction seams the satin
+    # decomposition leaves, so the cap was patching a defect upstream: on
+    # the plan's traced MARINE at 80 mm, 17 of its 18 cap runs and 418 of
+    # its 457 cap stitches stand on the letters' outlines (16 of the word's
+    # 41 trims before steps 1-3). A typed glyph gets no cap: the font
+    # engine sews columns and nothing else. ON, a text-cluster member that
+    # sewed SATIN -- not fill: a tatami letter's rows still end in open
+    # air, the defect the cap exists for -- hands its whole sewn outline to
+    # the cap's `omit`, so no cap sample stands on it, on bare fabric or as
+    # the edge of a hole in a fill; everything else is capped as before,
+    # and the bare corners a letter still has are now the letter's own to
+    # show (measured as uncovered artwork, scope-history step 5). Measured
+    # 2026-09-19: the fixture 2,192 -> 1,774 stitches, trims 23 -> 7 (the
+    # typed word: 3), uncovered 0.0 both ways; Becker at 80 mm trims 43 ->
+    # 36; fill-lettering designs byte-identical. Built OFF and FLIPPED ON
+    # the same day -- Kent's call 2026-09-19, over the fixture's trims (23 ->
+    # 7 against the typed word's 3), the render (the hooks gone from every
+    # letter) and the nine-logo sheet (five move: -12 trims / -319 stitches,
+    # uncovered area unchanged on all nine). False is the pre-flip cap byte
+    # for byte.
+    edge_cap_skip_lettering: bool = True
     # EXPERIMENT, default OFF — option (b) of the same plan doc, the other
     # half of Kent's 2026-08-23 (a)+(b) decision: `shade_palette_bind` above
     # masks the shade snap to the palette; THIS flag makes the palette worth
