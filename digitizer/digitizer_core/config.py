@@ -1095,6 +1095,54 @@ class PipelineConfig:
     # and the goldens byte-identical. False is the pre-flip merge, tuck and
     # cover byte for byte.
     satin_junction_stack: bool = True
+    # The lettering yardstick's trims gap, read with a per-trim census
+    # (2026-09-19, scope-history): traced MARINE at 80 mm sews 13 trims
+    # against the typed word's 3, and across the nine logos the lettering
+    # trims fall in three buckets -- the hop from one letter to the NEXT
+    # (the biggest: the Euler walk starts nearest the needle and ends
+    # wherever the trail runs out, so the next letter is a jump over
+    # `trim_at`), the walk refusing a within-letter hop (no unsewn spine
+    # left), and the hop from a stroke's underlay to its own column (the
+    # column is cap-extended and, under the stack, run into the node; the
+    # underlay is not, so the hop reads past `trim_at` inside the column).
+    # Two levers, one flag each, both built OFF for Kent's flip.
+    #
+    # `satin_exit_toward_next`: the Euler walk's END is chosen too. With
+    # two or more odd nodes the walk runs between two of them; today the
+    # start is the odd node nearest the needle and the end falls where the
+    # postman pairing leaves it. On, stage 7 hands the emitter the nearest
+    # point of the next shape it will sew (`end_near`, the nearest
+    # remaining shape by polygon distance -- the pick rule's own answer
+    # once the needle is there) and the walk picks the (start, end) pair of
+    # odd nodes that minimises the entry hop plus the exit hop, pairing the
+    # rest as before; with no odd node (a closed web) the start minimises
+    # the two hops together. Nothing about WHICH edges are travel changes,
+    # only which end the walk leaves by. False is the walk as shipped.
+    # Measured 2026-09-19 (scope-history, "the lettering yardstick's trims
+    # gap"): MARINE 80 mm 13 -> 9 trims at 1,969 -> 1,953 stitches, its
+    # letter-to-letter hops 6 -> 3 (the typed word's three); nine logos
+    # 478 -> 465 trims at -103 stitches, uncovered and finding codes
+    # unchanged -- tires 10 -> 6, ENTHUSIAST 19 -> 12, Golden Tee 48 -> 43,
+    # gaulke 30 -> 34 the one cost. Built OFF for Kent's flip.
+    satin_exit_toward_next: bool = False
+    # `satin_underlay_on_column`: a stroke's underlay is built on its
+    # column's OWN stations -- the spine after the junction trims, the
+    # cap extension and the stack's run-in -- instead of the raw skeleton
+    # stroke, which is what a MIXED stroke's hairline-split parts already
+    # do. The centre run then ends exactly where the column enters, so the
+    # hop between them is a stitch and not a lift, and the zigzag's rails
+    # are cast where the column's are. Open strokes only: a closed loop's
+    # underlay already meets its column. False is the underlay on the raw
+    # stroke, byte for byte.
+    # The underlay's first point stays on the web (the raw spine's end, so
+    # the walk can still reach it) and its last stitch runs to the column's
+    # first cross. Measured 2026-09-19: MARINE 80 mm 13 -> 12 trims at
+    # +9% stitches (the zigzag appears on strokes whose raw spine ran into
+    # a junction blob); Becker 100 mm 61 -> 48, its ten underlay-to-column
+    # hops gone, at +481; nine logos 478 -> 465 at +0.8% stitches, Golden
+    # Tee 48 -> 51 the cost. Built OFF for Kent's flip; with the exit lever
+    # the fixture reads 8 and the nine 454.
+    satin_underlay_on_column: bool = False
     # Each satin rail reaches ITS OWN edge (defect 23's open half, built
     # 2026-09-03 for Kent's flip). The rail model places both rails at the
     # NEARER edge's distance from a smoothed spine, so on every raster

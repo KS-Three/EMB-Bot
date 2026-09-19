@@ -14479,3 +14479,92 @@ is still Kent's pending call.
 
 *(measured 2026-09-19 — full suite log and `probe_movers.py` in the
 session's scratchpad; the pins carry the numbers)*
+
+## 2026-09-19 — the lettering yardstick's trims gap: read with a per-trim census, and two levers built OFF
+
+Kent's pick once the two lettering flips and the `fill_bridge_cut`
+re-measure had landed (AskUserQuestion, 2026-09-19): the yardstick's
+remaining gap. Traced MARINE at 80 mm on today's defaults sews **1,969
+stitches / 13 trims** against the typed word's 1,782 / 3.
+
+**The census** (`trim_census.py`, `trim_census_corpus.py` in the session's
+scratchpad: every trim, the runs either side, the gap, and whether the
+satin walk was asked for a needle-down path and refused). The fixture's
+13: the first needle-down, the cap's run, **six hops from one letter to
+the next** (4.4–15.3 mm), **four hops from a stroke's underlay to its own
+column** (3.3–4.2 mm, inside the column) and one hop the walk refused.
+The pre-flip engine had 7; the stack added three letter-to-letter hops
+(its arms end at nodes, so the walk's exit moved) and the split the four
+underlay hops (its wide columns are cap-extended and run into the node
+by their half-width; the underlay, built on the raw skeleton stroke, is
+not, so the hop reads past `trim_at`). Nine logos at 80 mm, lettering
+runs only, 149 trims: **98 letter-to-letter, 27 refused walks, 11
+underlay-to-column** (Becker 9 of them), 3 underlay-to-underlay, the rest
+colour changes and first stitches. The typed word's 3 are letter-to-
+letter hops too (`digitize.js`: a jump over `trimAtMm` is a trim; two of
+its five are under it).
+
+**Lever 1, `satin_exit_toward_next` — the walk ends facing the next
+shape.** `_euler_stroke_order` starts at the odd node nearest the needle
+and ends wherever the postman pairing leaves it. On, stage 7 hands the
+emitter the nearest point of the shape it will sew next (the nearest
+remaining shape by polygon distance — the pick rule's own answer once the
+needle is there) and the last component's (start, end) pair of odd nodes
+is the one that minimises the entry hop plus the exit hop, the other odd
+nodes paired as before; a closed web's start pays both hops. Which edges
+are travel does not change.
+
+**Lever 2, `satin_underlay_on_column` — the underlay on the column's own
+stations.** What a mixed stroke's hairline-split parts already did: the
+centre run and the zigzag are built on the column's stations (trimmed at
+junctions, extended to the cap, run into the node under the stack) so
+the underlay ends where the column enters. Two things it needed on the
+way: the underlay's first point is the raw spine's end, on the web —
+built on the stations alone the walk could not snap to it and refused 17
+of 34 hops on the fixture — and its last stitch carries the needle to the
+column's first cross (the zigzag ends on an inset rail a station short).
+
+**Measured** (2026-09-19, tree of this entry; OFF is byte-identical, md5
+on five logos and every fixture test):
+
+| | stitches | trims | letter trims by cause | exposed travel | uncovered |
+|---|---|---|---|---|---|
+| MARINE 80 OFF | 1,969 | 13 | letter→letter 6, underlay→column 4, refused 1 | 0.4 | 0.0 |
+| exit | 1,953 | **9** | **3**, 3, 1 — the typed word's three | 1.3 | 0.0 |
+| underlay | 2,146 | 12 | 6, **0**, 4 | 0.4 | 0.0 |
+| both | 2,132 | **8** | 4, 0, 2 | 0.4 | 0.0 |
+| MARINE 127 (split) OFF → exit / underlay / both | 7,283 → 7,289 / 7,340 / 7,337 | 44 → 43 / **36** / **34** | underlay→column 9 → 9 / 0 / 0 | 8.8 → 8.8 / 9.7 / 9.7 | 0.0 |
+| Becker 100 OFF → exit / underlay / both | 8,353 → 8,334 / 8,834 / 8,876 | 61 → 59 / **48** / **48** | underlay→column 10 → 8 / 0 / 0 | 0.5 → 0.5 / 1.8 / 2.8 | 0.0 |
+| **nine logos** OFF → exit / underlay / both | 77,182 → 77,079 / 77,778 / 77,707 | **478 → 465 / 465 / 454** | letter→letter 98 → 91 / 96 / 91; underlay→column 11 → 9 / 0 / 0; refused 27 → 28 / 32 / 32 | 147.3 → 142.6 / 151.2 / 146.9 | 0.0 all |
+
+Per logo the exit lever: tires 10 → 6, ENTHUSIAST 19 → 12, Golden Tee
+48 → 43, Fremont 39 → 37, Bridge Bar 97 → 96, Becker 43 → 43, drone
+119 → 120, the screenshot 73 → 74, **gaulke 30 → 34** (its walk's new
+exit strands one more hop and lengthens a letter hop). The underlay
+lever: Becker 43 → 32 at +171 stitches, tires 10 → 8, ENTHUSIAST 19 →
+16, gaulke 30 → 29, Fremont and drone and the screenshot unchanged,
+Bridge Bar 97 → 98, **Golden Tee 48 → 51** (refused 4 → 8, +189
+stitches, `coverage_max` 7.0 → 8.5). Its stitch cost, +0.8% on the nine
+and +9% on the fixture, is the zigzag appearing on strokes whose RAW
+spine ran into a junction blob (the oversize skip read the blob's width;
+the stations stop short of it) plus the underlay now covering the cap
+extensions. Finding codes unchanged on every design and every arm
+(`TRIM_HEAVY` leaves MARINE 80 under the exit lever and both).
+
+**What the fixture still trims with both on:** the first needle-down,
+the cap's run, four letter-to-letter hops (the typed word trims three:
+its letters sit closer), two refused walks. The refused walks — 27 on the
+nine logos, the H/K/X interior-junction case step 2 recorded — are the
+next bucket and are decomposition, not ordering.
+
+**Tests:** `tests/test_trim_levers.py` (10): both OFF by default and
+explicit OFF byte-identical; on an H web the walk ends nearest `end_near`
+and without it is the shipped walk; the fixture's letter hops 6 → ≤ 3 and
+trims −3 at no stitch cost under the exit lever; on a bar the underlay's
+last point IS the column's first under the underlay lever and is not
+without; the fixture's underlay-to-column trims 4 → 0 at ≤ +15% stitches;
+both under ten trims.
+
+*(measured 2026-09-19 — `trim_census.py`, `trim_census_corpus.py`,
+`levers_corpus.py` in the session's scratchpad; the numbers are the
+record)*
