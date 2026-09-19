@@ -4055,3 +4055,25 @@ its flip waits on a sew-out (plan `2026-09-09-rail-side-pull-comp.md` §7).
 **3a flipped ON the same day — Kent's call; False is the pre-flip
 pruner.** *(built, measured and flipped 2026-09-19 — scope-history, step
 3a and its addendum)*
+
+## Lettering: split, never fill (`satin_lettering_split`, built OFF 2026-09-19)
+
+Plan step 4, Kent's 2026-09-11 rule for the browser lettering engine on the
+traced path. A text-cluster member is classified and sewn with no width
+ceiling (`_satin_ceiling_for`: ∞, the per-stroke rung on, the fold guard
+on; every other shape keeps `satin_ceiling_mm`), so `classify_ribbon`'s
+width gates never send a letter to tatami and `split_satin` carries the
+width; the shape gates still apply, a blob still fills. Fixture, MARINE
+traced at 127 mm: the six members go fill 6 → satin 6 at 9,642 → 7,753
+stitches, trims 31 → 47, uncovered 0.0 — and satin self-crossings 0 →
+311, every one in the R's junction ball, with `DENSITY_EXTREME`
+(coverage_max 5.49 → 6.24); at 80 mm +328 stitches, the zigzag underlay
+the oversize skip used to withhold. Becker at 100 mm 12,037 → 9,056 at
+trims 39 → 71; composed with `satin_patch_junctions="satin"` its uncovered
+35.5 → 0.0 mm². Nine logos: only Becker moves. **The limit is DOCTRINE
+2026-09-09's — a junction blob is not a column: the flag lifts the ceiling
+and builds no junction**, so the flip trades tatami letters for split-satin
+letters whose junction balls fan until the bold-letter junction
+construction exists. The flip is Kent's. `tests/test_lettering_split.py`
+(7); renders `docs/renders/lettering-split-2026-09-19/`. *(built and
+measured 2026-09-19 — scope-history, step 4)*

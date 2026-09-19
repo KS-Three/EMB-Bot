@@ -1051,7 +1051,13 @@ class PipelineConfig:
     # (aspect, irregularity, elongation) still apply: a blob still fills.
     # Only lettering (`meta["text_candidate"]`) is touched; every other
     # shape keeps `machine.satin_ceiling_mm`. Measured 2026-09-19 (scope-
-    # history, step 4). No physical constant moves: the ceiling is lifted
+    # history, step 4): MARINE traced at 127 mm, fill 6 -> satin 6 at
+    # 9,642 -> 7,753 stitches, trims 31 -> 47 -- and 311 satin self-
+    # crossings, every one in the R's junction ball (DOCTRINE 2026-09-09:
+    # a junction blob is not a column; this lifts the ceiling, it does not
+    # build the junction); Becker at 100 mm 12,037 -> 9,056 at trims 39 ->
+    # 71; MARINE at 80 mm +328 stitches, the zigzag underlay the oversize
+    # skip used to withhold. No physical constant moves: the ceiling is lifted
     # for one population the pro sews as columns (7-23% of Becker's over
     # 5 mm), not re-tuned. DEFAULT OFF; the flip is Kent's.
     satin_lettering_split: bool = False

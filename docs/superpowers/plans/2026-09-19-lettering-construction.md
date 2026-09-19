@@ -8,7 +8,9 @@ render, keeping the fonts' bar rule); step 2 BUILT, measured and FLIPPED ON
 the same day (`cfg.satin_stroke_order = "euler"`, Kent's call); step 3a
 BUILT and FLIPPED ON the same day (`cfg.satin_corner_twigs`, Kent's call);
 3b re-measured and its skeleton RULED (the artwork, Kent), its flip
-waiting on a sew-out; step 4 chosen next. Review it rests on:
+waiting on a sew-out; step 4 BUILT OFF and measured the same day
+(`cfg.satin_lettering_split`): the wide stems sew as columns and the R's
+junction ball fans — its flip is Kent's. Review it rests on:
 `docs/lettering-route-review-2026-09-19.md`.
 
 **Yardstick.** The review's construction: a library font's own word — its
@@ -162,12 +164,50 @@ customer already had right.
    artwork, as shipped in the flag (Kent, 2026-09-19)**; the flip itself
    still waits on a sew-out, since where the pull lands is what the fabric
    answers to.
-4. **Wide lettering: split, never fill.** Classify a text-cluster member per
-   stroke (`satin_per_stroke`'s unit), lift the cap for lettering and let
-   `split_satin` carry the width — but only once step 3 and the wide-stroke
-   decomposition stop the self-crossings the cap arms showed (143 / 250).
-   The pro sews 7-23% of Becker's columns over 5 mm; the browser engine
-   splits, never fills (Kent, 2026-09-11).
+4. **Wide lettering: split, never fill — BUILT 2026-09-19,
+   `cfg.satin_lettering_split`, DEFAULT OFF; the flip is Kent's.** Kent's
+   2026-09-11 rule for the browser lettering engine (split ON, fill off),
+   applied on the traced path. A text-cluster member is classified and
+   sewn with NO width ceiling — `_satin_ceiling_for` answers (∞, the
+   per-stroke rung on, the wide-column fold guard on) for a
+   `text_candidate` and the design's (`satin_ceiling_mm`,
+   `satin_per_stroke`, `wide_columns`) for every other shape, read by the
+   borders-last predicate, the classifier call and `satin_shape` alike —
+   so `classify_ribbon`'s width gates never send a letter to tatami and
+   `split_satin` carries the width over `SPLIT_SATIN_ABOVE_MM` as it always
+   did; the ribbon gates that are about SHAPE (aspect, irregularity,
+   elongation) still apply, so a blob still fills. Nothing physical moves.
+   **Fixture, MARINE traced at 127 mm**
+   (`docs/renders/lettering-split-2026-09-19/`): the six text-cluster
+   members (the M's two halves, the R, the I, the N's body, the E's stem —
+   the A and the letters' inner fragments are not text candidates and
+   fill either way) go fill 6 → satin 6, stitches **9,642 → 7,753**, trims
+   31 → 47 (edge-cap runs 17 → 27), uncovered 0.0 both ways — and satin
+   self-crossing pairs **0 → 311, every one of them in the R** (six
+   strokes: bowl, stem and leg meeting in one junction ball), with a
+   `DENSITY_EXTREME` finding (coverage_max 5.49 → 6.24). The render says
+   the same: the M, I and N stems sew as clean wide columns; the R's ball
+   fans. That is DOCTRINE 2026-09-09's limit — "a junction blob is not a
+   column"; at 17 mm a bold letter has no arms to stand a junction
+   against — reached by the flag, not made by it: it lifts the ceiling
+   and builds no junction. **At 80 mm** (the review's fixture, all seven
+   members satin either way): stitches 2,192 → **2,520**, the +328 being
+   zigzag underlay 405 → 698 — the emitter withholds it under a column
+   wider than the ceiling it was admitted at (its `oversize` check), and
+   with no ceiling every wide stroke gets its underlay; trims 23 → 26,
+   crossings 103 both ways, coverage_max 4.69 → 5.08. **Becker at
+   100 mm**: stitches 12,037 → 9,056, trims 39 → 71, self-crossings 714 →
+   1,260, uncovered 35.5 mm² both ways, coverage_max 4.91 → 6.68; composed
+   with `satin_patch_junctions="satin"` the uncovered artwork reads
+   **0.0** at 9,079 stitches / 75 trims (`TRIM_HEAVY` the one finding
+   left); with `satin_polygon_axis="artwork"` instead, worse on every
+   count (coverage_max 9.45, uncovered 48.2, `DENSITY_STACKED`). Nine
+   logos at corpus widths: only Becker moves; the other eight are
+   byte-identical in stitches, trims, crossings, uncovered area and
+   warnings. So the flip is a choice between tatami letters (today) and
+   split-satin letters whose junction balls fan, until the bold-letter
+   junction construction exists (item 5 PR 3's finding: the pro stacks
+   MORE layers at every junction). `tests/test_lettering_split.py` (7).
 5. **No edge cap on lettering** once step 3 covers the corners: a typed
    glyph gets none; today removing it would expose the bare corners it
    patches.
