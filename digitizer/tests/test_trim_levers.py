@@ -8,7 +8,8 @@ so the next letter is a jump over `trim_at`), the walk refusing a
 within-letter hop, and the hop from a stroke's underlay to its own column
 (cap-extended and, under the stack, run into the node; the underlay is not).
 
-Two levers, one flag each, both BUILT OFF for Kent's flip:
+Two levers, one flag each, both BUILT OFF, and lever 1 FLIPPED ON the same
+day on Kent's call (lever 2 stays OFF):
 
 * `cfg.satin_exit_toward_next` -- stage 7 hands the emitter the nearest
   point of the shape it will sew next and the walk picks its (start, end)
@@ -22,7 +23,8 @@ Two levers, one flag each, both BUILT OFF for Kent's flip:
 Measured on the fixture (2026-09-19): 13 trims -> 9 with the exit lever
 (letter-to-letter 6 -> 3, the typed word's 3) at 1,969 -> 1,953 stitches;
 -> 12 with the underlay lever at 2,146; -> 8 with both at 2,132. Pinned as
-directions and floors. Both OFF is byte-identical.
+directions and floors. `satin_exit_toward_next=False` is the pre-flip
+walk byte for byte; explicit True is the default.
 """
 from __future__ import annotations
 
@@ -70,35 +72,41 @@ def _trims_by_cause(result, plan) -> dict[str, int]:
 
 @pytest.fixture(scope="module")
 def off():
-    return _run()
+    """The pre-flip engine, explicitly: neither lever."""
+    return _run(satin_exit_toward_next=False)
 
 
 @pytest.fixture(scope="module")
 def exit_on():
-    return _run(satin_exit_toward_next=True)
+    """The default since the flip."""
+    return _run()
 
 
 @pytest.fixture(scope="module")
 def underlay_on():
-    return _run(satin_underlay_on_column=True)
+    """Lever 2 alone, on the pre-flip walk."""
+    return _run(satin_exit_toward_next=False, satin_underlay_on_column=True)
 
 
 @pytest.fixture(scope="module")
 def both_on():
-    return _run(satin_exit_toward_next=True, satin_underlay_on_column=True)
+    return _run(satin_underlay_on_column=True)
 
 
 # --- the flags -----------------------------------------------------------------
 
-def test_both_are_off_by_default():
+def test_lever_one_is_on_and_lever_two_off_by_default():
+    """Built OFF and flipped the same day -- Kent's call over the numbers in
+    the module docstring. False stays reachable: it is the pre-flip walk,
+    pinned by the `off` fixture here."""
     cfg = PipelineConfig()
-    assert cfg.satin_exit_toward_next is False
+    assert cfg.satin_exit_toward_next is True
     assert cfg.satin_underlay_on_column is False
 
 
-def test_explicit_off_is_the_default(off):
-    _r, default = off
-    _r2, explicit = _run(satin_exit_toward_next=False, satin_underlay_on_column=False)
+def test_explicit_on_is_the_default_byte_for_byte(exit_on):
+    _r, default = exit_on
+    _r2, explicit = _run(satin_exit_toward_next=True, satin_underlay_on_column=False)
     assert _points(explicit) == _points(default)
 
 

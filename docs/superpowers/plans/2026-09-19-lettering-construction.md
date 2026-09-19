@@ -22,12 +22,13 @@ flips cloth still owes (3b, and 5's check), the second — today's defaults
 with `satin_junction_stack` and step 4 ON beside the pre-flip arm — for
 the stacked junction and the split column on cloth (scope-history
 2026-09-19, the step-4 addenda). The yardstick's trims gap is read (a
-per-trim census) and two levers are BUILT OFF for Kent's flip:
-`satin_exit_toward_next` (the walk ends facing the next letter; the
-fixture 13 → 9 trims, its letter hops the typed word's three) and
-`satin_underlay_on_column` (the underlay ends where the column enters;
-13 → 12 at +9% stitches, Becker 61 → 48) — scope-history 2026-09-19,
-"the lettering yardstick's trims gap".
+per-trim census) and two levers are BUILT: `satin_exit_toward_next`
+(the walk ends facing the next letter; the fixture 13 → 9 trims, its
+letter hops the typed word's three) — FLIPPED ON the same day, Kent's
+call — and `satin_underlay_on_column` (the underlay ends where the
+column enters; 13 → 12 at +9% stitches, Becker 61 → 48), held OFF on
+the same call — scope-history 2026-09-19, "the lettering yardstick's
+trims gap".
 Review it rests on:
 `docs/lettering-route-review-2026-09-19.md`.
 
@@ -276,10 +277,9 @@ junction stack: **1,969 stitches / 13 trims** against the font engine's
 1,782 / 3 (steps 0–3a and 5 alone read 1,774 / 7). The thirteen, by the
 census: the first needle-down, the cap's run, six letter-to-letter hops
 (the stack moved the walk's exits), four underlay-to-column hops inside
-the split's wide columns, one refused walk. With the two levers built
-for it (OFF): 9 under the exit lever — its letter hops the typed word's
-three — and 8 with both, the rest the first stitch, the cap, four letter
-hops and two refused walks.
+the split's wide columns, one refused walk. With lever 1 ON (Kent): **9**
+— its letter hops the typed word's three — and 8 with lever 2 too (held
+OFF), the rest the first stitch, the cap, letter hops and refused walks.
 
 ## Not this plan
 

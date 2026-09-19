@@ -14568,3 +14568,15 @@ both under ten trims.
 *(measured 2026-09-19 — `trim_census.py`, `trim_census_corpus.py`,
 `levers_corpus.py` in the session's scratchpad; the numbers are the
 record)*
+
+### Addendum, the same day — lever 1 FLIPPED ON (`satin_exit_toward_next`), lever 2 held OFF
+
+Put to Kent with the table above (AskUserQuestion, 2026-09-19): **flip
+lever 1 ON, keep lever 2 OFF** — his call, on −13 trims across the nine
+logos at −103 stitches with the fixture's letter hops at the typed word's
+three, against gaulke's +4; lever 2's eleven further trims at 57 stitches
+each did not clear his 25-a-trim rate. `False` is the pre-flip walk byte
+for byte, pinned by `tests/test_trim_levers.py`'s `off` fixture. What the
+flip moved in the suite is recorded in the PR (#523) body.
+
+*(flipped and ruled 2026-09-19 — Kent's answer; config comment)*

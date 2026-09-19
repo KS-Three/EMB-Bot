@@ -1123,8 +1123,11 @@ class PipelineConfig:
     # letter-to-letter hops 6 -> 3 (the typed word's three); nine logos
     # 478 -> 465 trims at -103 stitches, uncovered and finding codes
     # unchanged -- tires 10 -> 6, ENTHUSIAST 19 -> 12, Golden Tee 48 -> 43,
-    # gaulke 30 -> 34 the one cost. Built OFF for Kent's flip.
-    satin_exit_toward_next: bool = False
+    # gaulke 30 -> 34 the one cost. Built OFF and FLIPPED ON the same day
+    # -- Kent's call 2026-09-19 over those numbers (lever 2 below stays
+    # OFF on the same call). False is the walk as shipped before it, byte
+    # for byte, and `tests/test_trim_levers.py` pins both sides.
+    satin_exit_toward_next: bool = True
     # `satin_underlay_on_column`: a stroke's underlay is built on its
     # column's OWN stations -- the spine after the junction trims, the
     # cap extension and the stack's run-in -- instead of the raw skeleton
