@@ -14240,3 +14240,19 @@ what mis-read, and `crossing_pairs` on a joined run is a mitre count.
 Measured negative, recorded.
 
 *(read 2026-09-19 — the probe lived in the session's scratchpad)*
+
+### Addendum, the same day — step 4 FLIPPED ON (`satin_lettering_split`), a second sew-out arm next
+
+Put to Kent once the junction build had taken the fold out of the R
+(311 → 0 under `satin_junction_stack`) and finding 1 had shown the split
+flag's `DENSITY_EXTREME` to be the instrument (AskUserQuestion,
+2026-09-19): **flip `satin_lettering_split` ON now** — his call, on the R
+fixture at 127 mm sewing split with no fold and no finding at 7,283
+stitches / 44 trims against the fill's 9,642 / 31. `False` is the
+pre-flip engine byte for byte (a text-cluster member over the ceiling
+fills), pinned by `tests/test_lettering_split.py`. **Next**: a second
+sew-out arm — the first sheet's fixtures exported on today's defaults,
+stack and split ON, beside its pre-flip arm. What the flip moved in the
+suite is recorded in the PR (#520) body.
+
+*(flipped and ruled 2026-09-19 — Kent's answers; config comment)*

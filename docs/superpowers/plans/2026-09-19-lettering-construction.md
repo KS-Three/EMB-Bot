@@ -11,8 +11,10 @@ BUILT and FLIPPED ON the same day (`cfg.satin_corner_twigs`, Kent's call);
 waiting on a sew-out; step 4 BUILT OFF and measured the same day
 (`cfg.satin_lettering_split`): the wide stems sew as columns and the R's
 junction ball fans — KEPT OFF (Kent, 2026-09-19) until the bold-letter
-junction construction exists (designed and priced the same day:
-`2026-09-19-junction-construction.md`); step 5 BUILT, measured and FLIPPED ON the
+junction construction existed, then FLIPPED ON the same day once
+`satin_junction_stack` took the fold out of the R and the split-satin
+density finding proved to be the instrument
+(`2026-09-19-junction-construction.md`); step 5 BUILT, measured and FLIPPED ON the
 same day (`cfg.edge_cap_skip_lettering`, Kent's call: the fixture's trims
 23 → 7 against the typed word's 3). Every step is built; next is a
 sew-out sheet for the two flips cloth still owes (3b, and 5's check).
@@ -171,8 +173,13 @@ customer already had right.
    still waits on a sew-out, since where the pull lands is what the fabric
    answers to.
 4. **Wide lettering: split, never fill — BUILT 2026-09-19,
-   `cfg.satin_lettering_split`, DEFAULT OFF, and KEPT OFF the same day
-   (Kent's call: the junction construction first; step 5 next).** Kent's
+   `cfg.satin_lettering_split`, DEFAULT OFF, KEPT OFF the same day
+   (Kent's call: the junction construction first) and FLIPPED ON later
+   that day, once `satin_junction_stack` took the fold out of the R (311
+   → 0) and its `DENSITY_EXTREME` proved to be the instrument (preflight
+   now strips the splits before reading the rail pitch): the R fixture
+   sews split, no fold, no finding, at 7,283 stitches / 44 trims against
+   the fill's 9,642 / 31 — Kent's call. False is the pre-flip engine.** Kent's
    2026-09-11 rule for the browser lettering engine (split ON, fill off),
    applied on the traced path. A text-cluster member is classified and
    sewn with NO width ceiling — `_satin_ceiling_for` answers (∞, the

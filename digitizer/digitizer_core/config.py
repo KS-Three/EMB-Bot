@@ -1059,9 +1059,16 @@ class PipelineConfig:
     # 71; MARINE at 80 mm +328 stitches, the zigzag underlay the oversize
     # skip used to withhold. No physical constant moves: the ceiling is lifted
     # for one population the pro sews as columns (7-23% of Becker's over
-    # 5 mm), not re-tuned. DEFAULT OFF, and KEPT OFF on Kent's call the
-    # same day: the bold-letter junction construction comes first.
-    satin_lettering_split: bool = False
+    # 5 mm), not re-tuned. Built OFF and KEPT OFF on Kent's call the same
+    # day, on the R's fanning junction ball; then FLIPPED ON later that day
+    # once `satin_junction_stack` (below) took the fold out of the R (311
+    # -> 0 self-crossing pairs) and the split-satin density finding proved
+    # to be the instrument (preflight now strips the splits before reading
+    # the rail pitch). Kent's call over the R fixture at 127 mm: split, no
+    # fold, no finding, 7,283 stitches / 44 trims against the fill's 9,642
+    # / 31. False is the pre-flip engine byte for byte: a text-cluster
+    # member over the ceiling fills.
+    satin_lettering_split: bool = True
     # The bold-letter junction sewn as the pro sews it (junction construction
     # plan `2026-09-19-junction-construction.md`; Kent's ruling: A + B + C as
     # one flag). A: a weld through a node is REFUSED past

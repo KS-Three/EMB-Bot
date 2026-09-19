@@ -15,7 +15,7 @@ goldens; False is the pre-flip engine) — §6 carries the predictions
 against the build's results. Step 4's `DENSITY_EXTREME` was READ the
 same day: the instrument, not the letters — the satin density reader
 counted split penetrations as rail steps (fixed; the fixture reads 0.43
-against the 0.40 target). Step 4's flip is Kent's again. Becker's
+against the 0.40 target). Step 4 was then FLIPPED ON on his call. Becker's
 residual letter pairs were read too: all in four Goldman-joined strokes,
 the join's own mitre counted within the run — the pro's kind, not a
 fold; nothing to build.**

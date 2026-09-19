@@ -49,17 +49,21 @@ def _region(text: bool) -> Region:
                   area_mm2=poly.area, meta=meta)
 
 
-def test_the_flag_is_off_by_default():
-    """Built OFF; the flip is Kent's."""
-    assert PipelineConfig().satin_lettering_split is False
+def test_the_flag_is_on_by_default():
+    """Built OFF, kept OFF on the R's fanning junction ball, then flipped ON
+    the same day once `satin_junction_stack` took the fold out of the R and
+    the split-satin density finding proved to be the instrument (Kent's
+    calls, 2026-09-19). False is the pre-flip engine, pinned below."""
+    assert PipelineConfig().satin_lettering_split is True
+    assert PipelineConfig(satin_lettering_split=False).satin_lettering_split is False
 
 
 def test_the_helper_lifts_the_ceiling_for_lettering_only_under_the_flag():
     cap = machine.SATIN_MAX_WIDTH_MM
-    off = PipelineConfig()
+    off = PipelineConfig(satin_lettering_split=False)
     assert _satin_ceiling_for(_region(True), off, cap) == (cap, off.satin_per_stroke, bool(off.wide_columns))
     assert _satin_ceiling_for(_region(False), off, cap) == (cap, off.satin_per_stroke, bool(off.wide_columns))
-    on = PipelineConfig(satin_lettering_split=True)
+    on = PipelineConfig()
     assert _satin_ceiling_for(_region(True), on, cap) == (math.inf, True, True)
     assert _satin_ceiling_for(_region(False), on, cap) == (cap, on.satin_per_stroke, bool(on.wide_columns))
 
@@ -83,18 +87,20 @@ def _tiers(plan) -> dict[str, set]:
 
 @pytest.fixture(scope="module")
 def off():
+    """The pre-flip engine, explicitly."""
     assert FIXTURE.exists(), FIXTURE
-    return _plan(FIXTURE)
+    return _plan(FIXTURE, satin_lettering_split=False)
 
 
 @pytest.fixture(scope="module")
 def on():
-    return _plan(FIXTURE, satin_lettering_split=True)
+    """The default since the flip."""
+    return _plan(FIXTURE)
 
 
-def test_off_explicitly_is_the_default(off):
-    _cfg, _r, explicit = _plan(FIXTURE, satin_lettering_split=False)
-    a = [(str(run.kind), run.shape_id, [tuple(p) for p in run.points]) for _b, run in off[2].iter_runs()]
+def test_on_explicitly_is_the_default(on):
+    _cfg, _r, explicit = _plan(FIXTURE, satin_lettering_split=True)
+    a = [(str(run.kind), run.shape_id, [tuple(p) for p in run.points]) for _b, run in on[2].iter_runs()]
     b = [(str(run.kind), run.shape_id, [tuple(p) for p in run.points]) for _b, run in explicit.iter_runs()]
     assert a == b
 

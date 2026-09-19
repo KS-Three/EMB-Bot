@@ -4074,7 +4074,10 @@ trims 39 → 71; composed with `satin_patch_junctions="satin"` its uncovered
 2026-09-09's — a junction blob is not a column: the flag lifts the ceiling
 and builds no junction**, so the flip trades tatami letters for split-satin
 letters whose junction balls fan until the bold-letter junction
-construction exists. Kept OFF (Kent, 2026-09-19). `tests/test_lettering_split.py`
+construction exists. Kept OFF (Kent, 2026-09-19), then FLIPPED ON
+later that day once `satin_junction_stack` took the fold out of the R and
+the split-satin density finding proved to be the instrument (Kent's call;
+False is the pre-flip engine). `tests/test_lettering_split.py`
 (7); renders `docs/renders/lettering-split-2026-09-19/`. *(built and
 measured 2026-09-19 — scope-history, step 4)*
 
