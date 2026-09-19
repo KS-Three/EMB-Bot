@@ -1062,6 +1062,22 @@ class PipelineConfig:
     # 5 mm), not re-tuned. DEFAULT OFF, and KEPT OFF on Kent's call the
     # same day: the bold-letter junction construction comes first.
     satin_lettering_split: bool = False
+    # The bold-letter junction sewn as the pro sews it (junction construction
+    # plan `2026-09-19-junction-construction.md`; Kent's ruling: A + B + C as
+    # one flag). A: a weld through a node is REFUSED past
+    # `stage6_satin._STACK_WELD_TURN_DEG` of turn by the merge's own baseline
+    # and both arms end at the node -- a two-arm node then takes the corner
+    # path (one arm owns the corner and is extended, the other tucks). The
+    # number is read off the corpus with `tools/weld_turns.py`: the seam
+    # pairs sit in the 30-60 deg welds (1,420 of 1,607), the R of the 127 mm
+    # fixture folds at 44 deg. B: an arm ending at a meeting of several
+    # runs INTO the node by its own half-width, so the arms stack there as
+    # the pro's do (his p95 4-7 layers inside a MARINE junction blob against
+    # our 2-4). C: the satin junction cover (`satin_patch_junctions =
+    # "satin"`) under the arms for whatever is still bare. Measured
+    # 2026-09-19 (scope-history). DEFAULT OFF, byte-identical off; the flip
+    # is Kent's.
+    satin_junction_stack: bool = False
     # Each satin rail reaches ITS OWN edge (defect 23's open half, built
     # 2026-09-03 for Kent's flip). The rail model places both rails at the
     # NEARER edge's distance from a smoothed spine, so on every raster

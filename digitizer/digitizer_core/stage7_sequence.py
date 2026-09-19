@@ -1925,6 +1925,7 @@ def sequence(
                     polygon_axis=cfg.satin_polygon_axis,
                     stroke_order=cfg.satin_stroke_order,
                     corner_twigs=cfg.satin_corner_twigs,
+                    junction_stack=cfg.satin_junction_stack,
                     # The ceiling the classifier admitted at is the one the
                     # emitter sews at — one number, threaded, never two
                     # constants (DOCTRINE 2026-09-02). The fold guard rides
