@@ -1039,6 +1039,22 @@ class PipelineConfig:
     # flip** over the nine-logo numbers and the renders; False is the
     # pre-flip pruner, byte for byte.
     satin_corner_twigs: bool = True
+    # Split, never fill, for lettering (lettering construction plan step 4,
+    # 2026-09-19; Kent's 2026-09-11 rule for the browser lettering engine,
+    # applied on the traced path). A text-cluster member is classified and
+    # sewn with NO width ceiling -- `classify_ribbon`'s width gates never
+    # send a letter to tatami, the per-stroke rung reads its arms, and the
+    # emitter's per-station cap is lifted with the wide-column fold guard
+    # (`_fold_caps`) holding every bend -- so a wide letter stroke is a
+    # split-satin column (crosses over `SPLIT_SATIN_ABOVE_MM` split as they
+    # always did), not a fill. The ribbon gates that are about SHAPE
+    # (aspect, irregularity, elongation) still apply: a blob still fills.
+    # Only lettering (`meta["text_candidate"]`) is touched; every other
+    # shape keeps `machine.satin_ceiling_mm`. Measured 2026-09-19 (scope-
+    # history, step 4). No physical constant moves: the ceiling is lifted
+    # for one population the pro sews as columns (7-23% of Becker's over
+    # 5 mm), not re-tuned. DEFAULT OFF; the flip is Kent's.
+    satin_lettering_split: bool = False
     # Each satin rail reaches ITS OWN edge (defect 23's open half, built
     # 2026-09-03 for Kent's flip). The rail model places both rails at the
     # NEARER edge's distance from a smoothed spine, so on every raster

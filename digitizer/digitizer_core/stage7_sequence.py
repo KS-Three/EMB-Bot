@@ -213,6 +213,20 @@ def depth_sort_layers(regions, thread_indices: list[int], chart) -> list[int]:
     return [thread_indices[L] for L in order]
 
 
+def _satin_ceiling_for(region, cfg: PipelineConfig, satin_max_mm: float
+                       ) -> tuple[float, bool, bool]:
+    """-> (width ceiling, per-stroke rung, fold guard) for THIS region: the
+    design's under `machine.satin_ceiling_mm` for every shape, and no
+    ceiling at all -- the per-stroke rung on, the fold guard on -- for a
+    text-cluster member under `cfg.satin_lettering_split` (plan step 4,
+    2026-09-19: split, never fill, for lettering). One helper, so the
+    borders-last predicate, the classifier call and the emitter agree on
+    what a letter is admitted at."""
+    if cfg.satin_lettering_split and region.meta.get("text_candidate"):
+        return math.inf, True, True
+    return satin_max_mm, cfg.satin_per_stroke, bool(cfg.wide_columns)
+
+
 def _sews_satin(region, cfg: PipelineConfig, satin_max_mm: float,
                 design_class: str) -> bool:
     """Will this region reach the satin tier? — the borders-last predicate.
@@ -251,10 +265,11 @@ def _sews_satin(region, cfg: PipelineConfig, satin_max_mm: float,
     tier = str(region.meta.get("tier", "auto")).lower()
     if tier == "satin":
         return True
+    satin_max_mm, per_stroke, _fold = _satin_ceiling_for(region, cfg, satin_max_mm)
     return (tier == "auto" and cfg.satin
             and is_satin_candidate(region.polygon, satin_max_mm,
                                    design_class=design_class,
-                                   per_stroke=cfg.satin_per_stroke))
+                                   per_stroke=per_stroke))
 
 
 def borders_last_layers(regions, thread_indices: list[int],
@@ -1804,9 +1819,10 @@ def sequence(
             # Widened lettering is classified on the polygon it will sew —
             # `p.polygon`, the compensated column — see `widened_lettering`.
             classify_poly = p.polygon if widened_lettering(p.region) else p.region.polygon
-            ribbon = (classify_ribbon(classify_poly, satin_max,
+            shape_max, shape_per_stroke, shape_fold = _satin_ceiling_for(p.region, cfg, satin_max)
+            ribbon = (classify_ribbon(classify_poly, shape_max,
                                       design_class=design_class,
-                                      per_stroke=cfg.satin_per_stroke,
+                                      per_stroke=shape_per_stroke,
                                       polygon_axis=cfg.satin_polygon_axis,
                                       area_weighted=cfg.classify_area_weighted)
                       if tier == "auto" and cfg.satin else None)
@@ -1879,8 +1895,8 @@ def sequence(
                     # emitter sews at — one number, threaded, never two
                     # constants (DOCTRINE 2026-09-02). The fold guard rides
                     # with the wide ceiling.
-                    max_width_mm=satin_max,
-                    fold_guard=cfg.wide_columns,
+                    max_width_mm=shape_max,
+                    fold_guard=shape_fold,
                     # A hairline sews as a bean only where the ART has ink:
                     # `p.polygon` is the compensated outline, and pull comp
                     # grows a vectorization needle into a "stroke". The
