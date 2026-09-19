@@ -1586,7 +1586,8 @@ def _fourfold_votes(chains: list[tuple[list[tuple[float, float]], float]],
 
 
 def _cluster_house_angle_deg(members: list[Region], *,
-                             fourfold: bool = False) -> float | None:
+                             fourfold: bool = False,
+                             from_line: bool = False) -> float | None:
     """The dominant CROSS angle over a text cluster's strokes, in degrees on
     [0, 180), or None when the strokes carry no dominant direction.
 
@@ -1640,24 +1641,34 @@ def _cluster_house_angle_deg(members: list[Region], *,
     # No single direction. Two orthogonal ones? Same test in four-fold space,
     # on grain-free votes, and with an effect-size floor -- see
     # SATIN_HOUSE_CHORD_PX and SATIN_HOUSE_FOURFOLD_MIN_R for both. Opt-in.
-    if not fourfold:
+    if fourfold:
+        votes = _fourfold_votes(chains)
+        if votes is not None:
+            resultant4, n_eff4, axis = votes
+            if (resultant4 >= SATIN_HOUSE_FOURFOLD_MIN_R
+                    and n_eff4 * resultant4 * resultant4 >= critical):
+                line = _line_of_text_deg(members)
+                if line is None:
+                    return None
+                return _house_along_line_deg(axis, line)
+    if not from_line:
         return None
-    votes = _fourfold_votes(chains)
-    if votes is None:
-        return None
-    resultant4, n_eff4, axis = votes
-    if resultant4 < SATIN_HOUSE_FOURFOLD_MIN_R:
-        return None
-    if n_eff4 * resultant4 * resultant4 < critical:
-        return None
+    # The THIRD reading (`config.satin_house_from_line`): both votes refused,
+    # so the strokes themselves say nothing significant — a block word whose
+    # verticals and horizontals cancel and whose diagonals hold the four-fold
+    # resultant under its floor ("MARINE" at 80 mm, 2026-09-19). The group
+    # still IS a line of text, and under the stitch-angle rule the stems of
+    # upright lettering are the family square to that line, so the cross runs
+    # along it. A group that makes no line keeps failing open.
     line = _line_of_text_deg(members)
     if line is None:
         return None
-    return _house_along_line_deg(axis, line)
+    return line % 180.0
 
 
 def set_lettering_house_angle(regions: list[Region], p: Prep, *,
-                              fourfold: bool = False) -> None:
+                              fourfold: bool = False,
+                              from_line: bool = False) -> None:
     """Post-regularization pass: give every member of one line of lettering
     ONE house cross angle, so its letters agree instead of each following its
     own spine tangent (`satin_angle_deg` in `Region.meta`).
@@ -1669,7 +1680,10 @@ def set_lettering_house_angle(regions: list[Region], p: Prep, *,
 
     `fourfold` enables the second reading (`config.satin_house_fourfold`,
     default OFF); absent it, this pass is byte-identical to what shipped
-    before that reading existed.
+    before that reading existed. `from_line` enables the third
+    (`config.satin_house_from_line`): a group both votes refuse takes the
+    cross along its own line of text instead of falling open — see
+    `_cluster_house_angle_deg`.
 
     `p` is accepted, not read, matching `detect_text_clusters` and
     `regularize_text_clusters` for the same reason: a future revision that
@@ -1701,7 +1715,7 @@ def set_lettering_house_angle(regions: list[Region], p: Prep, *,
     operator-set value rather than a derived one.
     """
     for members in _lettering_groups(regions):
-        angle = _cluster_house_angle_deg(members, fourfold=fourfold)
+        angle = _cluster_house_angle_deg(members, fourfold=fourfold, from_line=from_line)
         if angle is None:
             continue
         for r in members:

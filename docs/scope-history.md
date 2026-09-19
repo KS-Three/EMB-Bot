@@ -13,7 +13,7 @@ pointer; if it isn't there, treat it as superseded until re-measured.
 
 ---
 
-**Last updated:** 2026-09-19 — the lettering-route review (trace-as-shape stays; the gap is the construction, not the shape); 2026-09-18, the upscaled regime read at the source's own resolution, built and flipped ON
+**Last updated:** 2026-09-19 — the lettering construction plan and its step 0 (`satin_house_from_line`, OFF), after the lettering-route review; 2026-09-18, the upscaled regime read at the source's own resolution, built and flipped ON
 
 Moved out of MASTER_SCOPE's "CI feedback speed" when the memo entry needed the
 words; the instruction ("budget an hour, read 50 minutes as normal, curl before
@@ -13164,3 +13164,47 @@ verified firing, and no halo hooks. Bring-your-own-font-file is a later option;
 it pays off only after that construction. **Kent's ruling, the same day: trace + the font engine's construction, in that order** — font identification and bring-your-own-font-file declined for now.
 
 *(measured 2026-09-19 — the write-up carries the method)*
+
+## 2026-09-19 — Lettering construction, step 0: the house angle's third reading (`satin_house_from_line`, OFF), and what the vote turned out to do
+
+Kent's ruling on the review: trace, plus the font engine's construction.
+Plan: `docs/superpowers/plans/2026-09-19-lettering-construction.md`, with the
+yardstick (a font's own word sewn both ways) and the trim/angle/tier
+accounting on it.
+
+**Step 0.** On the review's fixture at 80 mm the seven letters group as one
+line and BOTH house-angle votes refuse them (doubled-angle nR² 5.0 against the
+6.9 bar; four-fold R4 0.164 under the 0.25 floor — the "diagonal blind spot"
+that floor's own comment names), so the word got no house and its cross
+angles read 0.23 concentration; at 127 mm the same word passes (17.6). Built
+`cfg.satin_house_from_line`, OFF: a group both votes refuse takes the cross
+along its own line of text — the stems' perpendicular for upright lettering,
+which is the adopted rule's own anchor. Byte-identical off. Five tests in
+`test_house_from_line.py` on a word built at test time from the committed
+`manga_impact.json` (KAYAK at 80 mm refuses with margin: 3.9 and 0.06;
+MARINE at 127 mm pins "untouched").
+
+**Where it fires** (the 22 lettering groups across the nine `REAL_ART`
+logos): three. The **ENTHUSIAST wordmark** (11 letters, nR² 0.9, R4 0.243):
+house None → 179.9°, the word's satin runs' cross concentration **0.059 →
+0.287** (stems and diagonals now hold one house; bars still take their own
+perpendicular under `_clamp_to_span`, as the font authors sew them),
+stitches 2,492 → 2,499, trims 24 → 25 — render in
+`docs/renders/lettering-route-2026-09-19/`. And two tiny groups on the phone
+screenshot. Every other group already had a house from a vote.
+
+**Two findings about the vote itself, both for step 1 of the plan.**
+(1) It is not stable: "MARINE" at 80 mm refuses from the shipped binary's
+quantised rails (5.0) and passes from the source rails (11.2); refuses at
+60 mm (4.5); KAYAK 80 mm 3.9, AMAZE 60 mm 0.35. (2) When it PASSES on a
+diagonal-heavy word it returns a house pulled off the line by the
+diagonals: AMAZE 27°, NAVY 147°, ZANY 151°, VANE 160° on the font word, and
+on real logos enthusiast's 14-letter subline **130°**, fremont **97.9° and
+162°**, bridge 45° and 16° — not the stems' perpendicular the rule names. The
+anchor-to-the-line construction (plan step 1) is the answer to both; it
+changes every group a vote currently passes and is measured before it is
+proposed.
+
+*(built and measured 2026-09-19 — `tests/test_house_from_line.py`; the probe
+scripts lived in the session's scratchpad, the numbers are the record)*
+

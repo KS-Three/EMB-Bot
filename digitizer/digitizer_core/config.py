@@ -946,6 +946,30 @@ class PipelineConfig:
     # digitize time does not move. The 4.1 margin is 0.01 -- a thin one, and
     # the benchmark test is the tripwire that says so if the pipeline drifts.
     satin_house_fourfold: bool = True
+    # The house angle's THIRD reading, for a line of lettering BOTH votes
+    # refuse: the cross runs ALONG the line of text, which under the
+    # stitch-angle rule is the stems' perpendicular for upright lettering
+    # (the stems are the family square to the line — the rule's own
+    # correction, 2026-09-03). Found building the lettering construction
+    # (2026-09-19, `docs/lettering-route-review-2026-09-19.md`): a block
+    # word with diagonals — "MARINE" in `manga_impact`, traced at 80 mm —
+    # groups as one line of seven letters and then gets NO house at all,
+    # because its verticals and horizontals cancel in doubled-angle space
+    # (nR^2 5.0 against the 6.9 bar) and its diagonals pull the four-fold
+    # resultant to 0.164, under the 0.25 floor whose own comment names "the
+    # diagonal blind spot" as where it would first be found wanting. The
+    # same word at 127 mm passes (17.6), so the outcome was deciding on
+    # size, and the fallback the pass had — per-stroke tangents — is the
+    # worst answer for a word: the cross angles read 0.23 concentration,
+    # the "indistinguishable from random" class of the 2026-08-26 study.
+    # ON, such a group takes the line's own direction as its cross; every
+    # group either vote accepts is untouched, and a group with no line
+    # (`_line_of_text_deg` None — a blob, a short two-line wordmark) still
+    # fails open. A leaned script would have passed the first vote; the
+    # per-stroke fade past the 30 deg cap (`_clamp_to_span`) still applies
+    # to every diagonal. Not a physical constant. DEFAULT OFF — measured
+    # in scope-history 2026-09-19; the flip is Kent's.
+    satin_house_from_line: bool = False
     # Each satin rail reaches ITS OWN edge (defect 23's open half, built
     # 2026-09-03 for Kent's flip). The rail model places both rails at the
     # NEARER edge's distance from a smoothed spine, so on every raster
