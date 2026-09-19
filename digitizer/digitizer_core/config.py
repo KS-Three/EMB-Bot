@@ -1781,7 +1781,10 @@ class PipelineConfig:
     # the edge of a hole in a fill; everything else is capped as before,
     # and the bare corners a letter still has are now the letter's own to
     # show (measured as uncovered artwork, scope-history step 5). Measured
-    # 2026-09-19. DEFAULT OFF; the flip is Kent's.
+    # 2026-09-19: the fixture 2,192 -> 1,774 stitches, trims 23 -> 7 (the
+    # typed word: 3), uncovered 0.0 both ways; Becker at 80 mm trims 43 ->
+    # 36; fill-lettering designs byte-identical. DEFAULT OFF; the flip is
+    # Kent's.
     edge_cap_skip_lettering: bool = False
     # EXPERIMENT, default OFF — option (b) of the same plan doc, the other
     # half of Kent's 2026-08-23 (a)+(b) decision: `shade_palette_bind` above

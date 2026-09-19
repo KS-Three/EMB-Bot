@@ -13654,3 +13654,73 @@ offered and not taken. **Step 5 next**: no edge cap on lettering — the
 plan's own precondition, step 3's corner cover, is ON.
 
 *(ruled 2026-09-19 — Kent's answers; config comment)*
+
+## 2026-09-19 — Lettering construction, step 5: no edge cap on lettering (`edge_cap_skip_lettering`, OFF)
+
+Kent's pick after step 4 was kept OFF: the plan's last step, its
+precondition — step 3's corner cover — now ON.
+
+**What it was.** The design-silhouette cap (`cfg.edge_cap`, "bean" since
+2026-09-11) sews only the stretches of the outline nothing linear already
+covers (`silhouette_cap`'s `omit`). On a satin-sewn letter that is exactly
+the bare corners and junction seams the satin decomposition leaves, so the
+cap was patching a defect upstream — the review's table read it as 16 of
+the traced word's 41 trims. Measured on the plan's fixture (MARINE traced
+at 80 mm) before building: **17 of the cap's 18 runs and 418 of its 457
+stitches stand on the satin letters' outlines** (a sample within 0.35 mm of
+a letter's boundary); at 127 mm, where the letters fill, none do. A typed
+glyph gets no cap: the font engine sews columns and nothing else.
+
+**The construction — `cfg.edge_cap_skip_lettering`, OFF.** A text-cluster
+member that sewed SATIN hands its sewn polygon (`PlannedRegion.polygon`,
+the same object the silhouette is the union of, so the letter's stretch of
+the silhouette's boundary lies exactly on it) to the cap's `omit`, and no
+cap sample stands on it — on bare fabric or as the edge of a hole in a
+fill. `_satin_lettering_cover` reads which members sewed satin off the
+runs the design actually laid, never off a verdict: a member with a fill
+run keeps its cap, because a tatami letter's rows end in open air at its
+edge and that is the defect the cap exists for; a run-tier member is
+already linear cover. Everything else is capped as before, and the gate's
+published saving and cover include what the cap was told not to sew. Off,
+byte-identical. The bare corners a letter still has are now its own to
+show, and that is the measurement.
+
+**Measured.** The fixture at 80 mm: stitches **2,192 → 1,774**, trims
+**23 → 7** — the typed word sews 3 — cap runs 18 → 1 (the one left, 39
+stitches, stands on a non-text fragment), cap stitches on satin letters 418
+→ 0, uncovered artwork 0.0 both ways with the worst bare patch 2.2 →
+2.5 mm² (under the finding's floor), coverage_max 4.69 → 4.76,
+`TRIM_HEAVY` gone; every run that is not the cap is byte-identical. The
+render (`docs/renders/lettering-edge-cap-2026-09-19/`) shows the hooks
+gone from every letter. Becker at 80 mm: 6,588 → 6,444, trims 43 → 36, cap
+runs 16 → 9, uncovered 18.5 mm² both ways. The 127 mm fixture and Becker at
+100 mm, whose letters fill under step 4 OFF: byte-identical. Nine logos at
+corpus widths: NINE_LOGOS.
+
+**The yardstick now.** Traced MARINE at 80 mm with steps 0–3a and 5 ON:
+1,774 stitches / 7 trims against the font engine's 1,782 / 3. The stitch
+count has crossed. The seven trims, read off the plan: the first
+needle-down, five hops inside the word over `TRIM_AT_MM` (3.2–17.9 mm,
+stroke to stroke and letter to letter — step 2's remainder), and one into
+the cap's last run, on a non-text fragment.
+
+**Found on the way — from the step 3a flip's full suite.** Two tests
+measured on the pre-flip pruner moved and are pinned on it
+(`satin_corner_twigs=False`, the `PRE_FLIP_RC` posture): the duplicate-cone
+fold pays 107 stitches on drone under the corner rule (17,536 against
+17,429, still at less flying), the pruner's numbers not the fold's; and the
+wide-column fold guard's load-bearing case on Becker at 80 mm is gone —
+coverage_max reads **4.67** with the guard neutralised, under the warn
+line, against 7.07 on 2026-09-09 — because the corners it capped a column
+folding through now sew as two columns meeting. The guard's code is
+unchanged. Full suite on that tree, CI's deselects: 2 failed (those two),
+2,653 passed, 29m57s.
+
+**Tests:** `tests/test_edge_cap_lettering.py`, 10 — the flag off by
+default; explicit OFF is the default's output; OFF the cap stands on the
+satin letters, ON no sample does; trims and cap runs fall with the cover
+kept; only the cap moves; a fill-sewn text candidate keeps its cap; a
+design with no lettering is untouched; the helper's two answers.
+
+*(built and measured 2026-09-19 — the census and arms lived in the
+session's scratchpad, the numbers are the record)*

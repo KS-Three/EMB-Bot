@@ -11,7 +11,9 @@ BUILT and FLIPPED ON the same day (`cfg.satin_corner_twigs`, Kent's call);
 waiting on a sew-out; step 4 BUILT OFF and measured the same day
 (`cfg.satin_lettering_split`): the wide stems sew as columns and the R's
 junction ball fans — KEPT OFF (Kent, 2026-09-19) until the bold-letter
-junction construction exists; step 5 chosen next. Review it rests on:
+junction construction exists; step 5 BUILT OFF and measured
+(`cfg.edge_cap_skip_lettering`): the fixture's trims 23 → 7 against the
+typed word's 3 — its flip is Kent's. Review it rests on:
 `docs/lettering-route-review-2026-09-19.md`.
 
 **Yardstick.** The review's construction: a library font's own word — its
@@ -210,9 +212,49 @@ customer already had right.
    split-satin letters whose junction balls fan, until the bold-letter
    junction construction exists (item 5 PR 3's finding: the pro stacks
    MORE layers at every junction). `tests/test_lettering_split.py` (7).
-5. **No edge cap on lettering** once step 3 covers the corners: a typed
-   glyph gets none; today removing it would expose the bare corners it
-   patches.
+5. **No edge cap on lettering — BUILT 2026-09-19,
+   `cfg.edge_cap_skip_lettering`, DEFAULT OFF; the flip is Kent's.** The
+   design-silhouette cap (`cfg.edge_cap`, "bean") sews only the stretches
+   of the outline nothing linear already covers, and on a satin-sewn
+   letter that is exactly the bare corners and junction seams the satin
+   decomposition leaves — so it was patching a defect upstream: on the
+   80 mm fixture, **17 of the cap's 18 runs and 418 of its 457 stitches
+   stood on the letters' outlines** (the review's "16 of the 41 trims").
+   A typed glyph gets no cap. The construction: a text-cluster member
+   that sewed SATIN hands its sewn polygon to the cap's `omit`
+   (`_satin_lettering_cover`, read off the runs the design laid, never a
+   verdict), so no cap sample stands on it — on bare fabric or as the edge
+   of a hole in a fill; a member that sewed FILL keeps its cap, because a
+   tatami letter's rows end in open air at its edge and that is the
+   defect the cap exists for; everything else is capped as before. The
+   bare corners a letter still has are now its own to show, and that is
+   the measurement. **Fixture (MARINE 80 mm)**: stitches 2,192 → **1,774**,
+   trims **23 → 7** (the typed word: 3), cap runs 18 → 1, cap stitches on
+   satin letters 418 → 0, uncovered artwork 0.0 both ways (the worst bare
+   patch 2.2 → 2.5 mm², under the finding's floor), `TRIM_HEAVY` gone;
+   every run that is not the cap byte-identical. Becker at 80 mm: 6,588 →
+   6,444, trims 43 → 36, uncovered 18.5 both ways. The 127 mm fixture and
+   Becker at 100 mm, whose letters fill (step 4 OFF), byte-identical — the
+   negative half of the rule. Nine logos at corpus widths: five move — ENTHUSIAST 2,478 → 2,442 stitches at trims 18 → 16, Golden
+   Tee 6,969 → 6,945 / 44 → 43, gaulke 4,536 → 4,454 / 41 → 38, drone
+   18,733 → 18,715 / 127 → 126, the screenshot 8,244 → 8,085 / 73 → 68;
+   Becker (its letters fill at 100 mm), tires, Fremont and Bridge Bar
+   byte-identical; trims 488 → 476 at −319 stitches, with uncovered area,
+   self-crossings and warnings unchanged on every one.
+   Render `docs/renders/lettering-edge-cap-2026-09-19/`. Found on the
+   way, from the step 3a flip's full suite: the wide-column fold guard's
+   load-bearing case on Becker at 80 mm (coverage_max 7.07 without it,
+   2026-09-09) is gone under the corner rule — 4.67 without the guard,
+   because the corners it capped a column folding through now sew as two
+   columns meeting; the guard's code is unchanged and its case is pinned
+   on the pruner it was read on. `tests/test_edge_cap_lettering.py` (10).
+
+**The yardstick now.** Traced MARINE at 80 mm, steps 0–3a ON and 5 ON:
+1,774 stitches / 7 trims against the font engine's 1,782 / 3. The stitch
+count has crossed. The seven trims: the first needle-down, five hops
+inside the word over `TRIM_AT_MM` (3.2–17.9 mm, stroke to stroke and
+letter to letter — step 2's remainder), and one into the cap's last run,
+on a non-text fragment.
 
 ## Not this plan
 
