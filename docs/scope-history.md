@@ -14030,3 +14030,66 @@ rule. `COOKBOOK.md`'s instrument list (new in #516) gains
 `tools/travel_legs.py` and the correction to `travel_cover`'s line.
 
 *(measured 2026-09-19 — merged tree `8ae881b8`)*
+
+## 2026-09-19 — The bold-letter junction: designed and priced before code (`2026-09-19-junction-construction.md`)
+
+Kent's pick while the sew-out sheet is on his machine: the construction
+step 4 turned out to need, as a design document for his ruling. No
+engine code; every number read on `main` at #516 with existing flags and
+one monkeypatched constant.
+
+**The defect, named.** The R of the 127 mm fixture under
+`satin_lettering_split`: 311 self-crossing pairs, **all in one 109-point
+run** (the foot of the leg), **294 seated in one junction blob** at
+(5.24, 6.25) whose merge decisions read weld / weld / dropped — one
+column welded through a corner and folding over itself, the fold step
+3a stopped at the pruner made again at the merge. Disabling the fork
+drop moves the 311 to another run (not the cause); refusing welds past
+a turn removes them. The probe (`weld_turns`, to be committed): every
+weld in the nine logos turns under 60° by the merge's two-half-width
+baseline, the R's at **44.4°**, and **the seam pairs sit in the 30–60°
+bin** — the fixture 296 of 296, Becker 734 of 734 (in the BECKER
+outline's welds at 53–58°, not the band), Golden Tee 403 of 537, Bridge
+Bar 106 of 106, drone 70 of 70, gaulke 89 of 126; under 30° almost
+none. The baseline is right for the decision and wrong for the cost:
+the cost is the fold `_fold_caps` already prices on a wide column.
+
+**The pro's junction is a stack of arms, not a column through them.**
+`pro_layers --blobs` on Becker at 100 mm with the band as columns: at
+every MARINE junction the pro's mean and p95 layers exceed ours (the R's
+(−0.9, 26.0): ours 2.28 / 3.97 / max 4.86, his 3.64 / 7.25 / 10.15; the
+I's: ours 1.14 / 2.06, his 2.94 / 4.38) and his bare fraction reads
+0.00–0.07 where ours reaches 0.23.
+
+**Priced by proxy** (`_WELD_MAX_DOT` −0.9 for part A, the satin junction
+cover for part C):
+
+| fixture | today: stitches / trims / pairs / uncovered | A | A + C |
+|---|---|---|---|
+| R fixture 127 mm, split | 7,253 / 34 / 311 / 0.0 | 6,906 / 43 / 0 / 25.8 | **7,018 / 46 / 0 / 0.0** |
+| MARINE 80 mm | 1,774 / 7 / 103 / 0.0 | 1,475 / 13 / 0 / 22.8 | **1,829 / 19 / 0 / 0.0** |
+| Becker 100 mm, split | 8,612 / 53 / 1,260 / 35.5 | 7,461 / 59 / 556 / 108.5 | **8,059 / 67 / 556 / 0.0** |
+
+Refusing the weld kills the fold and bares the junction (the arms end
+short of it by `_junction_entry_mm`); the cover closes it; the price is
+**+12 trims per word**. Part B — an ending arm runs into the node by its
+own half-width and stacks, as the pro's do — is the lever on both the
+bare cloth and the trims, and is not measurable by proxy. The
+recommendation is A + B + C as one flag (`satin_junction_stack`, OFF),
+the fold rule reusing `_fold_caps`' radius constant (no new physical
+constant). Six predictions with their falsifiers, the fixtures, and
+what is Kent's (§6, §4, §7 of the plan). Renders:
+`docs/renders/junction-construction-2026-09-19/`.
+
+*(designed and measured 2026-09-19 — the probes lived in the session's
+scratchpad; `weld_turns` is to be committed with the build)*
+
+### Addendum, the same day — Kent's ruling on the junction construction
+
+Put to Kent with the doc (AskUserQuestion, 2026-09-19): **build A + B + C
+as one flag** (`satin_junction_stack`, OFF), each part measurable inside
+it; the per-letter override was offered and not taken; A + C alone was
+offered and not taken. The doc lands on its own docs-only PR; the build
+follows on a branch of its own.
+
+*(ruled 2026-09-19 — Kent's answer)*
