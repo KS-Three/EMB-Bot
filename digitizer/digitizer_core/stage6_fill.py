@@ -1112,10 +1112,18 @@ def _reorder_for_cover(paths: list[list[tuple[float, float]]], poly: Polygon,
     # nothing on top" and still lose to the order this function would have
     # found. Review finding 2026-09-19, a plate with two holes: this exit kept
     # a plan scoring 86.0 where flag-OFF's order scores 40.1 by the same
-    # scorer. With the candidate always priced when there is a cut, ON picks
-    # the cheaper of the same two orders OFF chooses between, so the flag can
-    # never buy a dearer plan than it replaces.
-    if before[2] <= 0.0 and not (cut_bridges and before[0] > 0):
+    # scorer. So the exit is taken on what the order exposes BEFORE any lift,
+    # which is exactly the question flag-OFF asks: ON prices the candidate for
+    # the same shapes OFF does and picks the cheaper of the same two orders,
+    # so it can never buy a dearer plan than it replaces -- and a shape with
+    # nothing exposed sews as it does with the flag off.
+    # (The first cure asked "is there a cut?" instead. The cut `_order_cost`
+    # counts is usually just the ENTRY hop from the previous shape, so that
+    # re-ordered nearly every multi-column fill under ON, exposed or not.)
+    exposed = before[2]
+    if cut_bridges and exposed <= 0.0 and before[0] > 0:
+        exposed = _order_cost(paths, poly, ring, slack, entry, trim_at_mm, row_mm)[2]
+    if exposed <= 0.0:
         return paths
 
     pinned = len(paths) - 1

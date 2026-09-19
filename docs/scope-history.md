@@ -14031,6 +14031,70 @@ rule. `COOKBOOK.md`'s instrument list (new in #516) gains
 
 *(measured 2026-09-19 — merged tree `8ae881b8`)*
 
+### Addendum, the same day — flip prep: the thread renders found a second fault in the early exit, and the warning's wording
+
+Kent's pick after #517 merged (AskUserQuestion, 2026-09-19): prepare the
+flip — the wording, then OFF against ON as THREAD so the trade can be judged
+by eye.
+
+**The renders** (`docs/renders/fill-bridge-cut-2026-09-19/`, `stitchviz.
+render_design` — the renderer the legibility check reads — 80 mm, `main`'s
+defaults, OFF above and ON below; each design whole at 12 px/mm and an 18 mm
+window on its worst exposed leg at 40 px/mm). **Becker:** OFF, a ring of
+running stitches laps the M-shaped ground's right leg — down its outer edge,
+across the foot, up the inside — lying on the finished fill; ON it is gone
+and the leg is clean. **Fremont:** OFF, a white travel line crosses the
+field diagonally between the L and the F and on down past `EAT |`; ON it is
+gone, and the second diagonal beside it stays — that bridge is cheaper than
+a cut. **The screenshot:** OFF, a dark loop runs round the block under the
+white mark and along its bottom edge; ON it is gone.
+
+**What the screenshot's first ON render showed that it should not have.** A
+white 10 mm² shape beside the dark block looked different — and none of its
+bridges had been lifted. Diffed run by run: same two fill columns, the first
+one flipped, its bridge 3 points / 2.8 mm → 2 points / 2.1 mm. The review
+round's cure for `_reorder_for_cover`'s early exit had been *"price the
+candidate whenever the flag is on and there is a cut"*, and **the cut
+`_order_cost` counts is usually just the ENTRY hop from the previous shape,
+which nearly every shape has.** So ON was re-ordering almost every
+multi-column fill, exposed or not: never worse by score (that shape: 9 → 4
+travel stitches), the pipeline's dearest function run everywhere, and none
+of it this flag's business. **The exit is now taken on what the order
+exposes BEFORE any lift — exactly the question flag-OFF asks.** ON prices
+the candidate for the same shapes OFF does and picks the cheaper of the same
+two orders, so it still cannot buy a dearer plan (the two-hole plate), and a
+shape with nothing exposed sews as it does with the flag off. On the nine
+logos that one shape was the only plan the broad rule had moved: 17 of the
+18 plans are md5-identical across the two rules, the screenshot's ON reads
+8,029 → 8,030 stitches, and every headline figure stands — exposed **248.6 →
+140.9 mm**, 432.3 → 226.2, trims **458 → 464**, stitches 76,774 → 76,706
+(was 76,705), uncovered identical on all nine. No synthetic shape reproduced
+it (combs, dumbbells, lobes, horseshoes: all either expose something or do
+not differ), so the test carries that shape's own sewing polygon, simplified
+to 0.1 mm, as a 31-vertex literal. #517 shipped the broad rule; the flag is
+OFF, so nothing a customer sews was touched.
+
+**The wording — smaller than the review and I made it sound.** The review
+round recorded that a lift this rule makes feeds the customer line *"the
+thread had to be lifted N times inside a shape"*. It does not: the Studio
+has its own sentence for `LONG_JUMPS_TRIMMED` (*"The thread gets cut {n}
+times where it has to travel a long way"*), a note behind the disclosure,
+and it never said "had to". "Had to be lifted" is the ENGINE's fallback
+prose, read by every other consumer, with a code comment beside it —
+*"travel could not stay inside the shape"* — that the flag makes false. Both
+now say what happens (`"The thread is lifted N times inside a shape."`)
+rather than why; the config comment that called it "the customer line" is
+corrected. Pinned by forcing the count at `stitch_shape`'s report, the seam
+stage 7 reads it from: no hand-built shape fires the warning through stages
+5–7, which is itself worth knowing — nothing in the suite exercised that
+sentence.
+
+**Tests:** `tests/test_fill_bridge_cut.py`, 17.
+
+*(rendered, found, fixed and re-measured 2026-09-19 — the render and diff
+scripts lived in the session's scratchpad; the renders and the numbers are
+the record)*
+
 ## 2026-09-19 — The bold-letter junction: designed and priced before code (`2026-09-19-junction-construction.md`)
 
 Kent's pick while the sew-out sheet is on his machine: the construction

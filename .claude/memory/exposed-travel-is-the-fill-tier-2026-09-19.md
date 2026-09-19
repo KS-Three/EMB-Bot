@@ -62,6 +62,26 @@ bridge read as exposed (trims 0 -> 2 on a plate, hiding nothing). The rule
 is single-pass only; exposure per pass is unmeasured, and that — not the
 flag — is the open item for the photo lane.
 
+**A third, found by LOOKING at the ON thread render, after the PR had
+merged.** A white 10 mm² shape on the screenshot looked different though none
+of its bridges was lifted. My review-round cure for (1) was "price the
+candidate whenever the flag is on and there is a cut" — and the cut
+`_order_cost` counts is usually just the ENTRY hop from the previous shape,
+so ON was re-ordering nearly every multi-column fill. 262 green tests, a
+reviewer and three nine-logo runs had not seen it: totals moved by one
+stitch. The exit now asks what flag-OFF asks (what the order exposes BEFORE
+any lift). When a flag changes a plan, diff the runs of every shape in the
+picture, not just the ones the flag is for — and render before calling a
+flag measured. Renders: `docs/renders/fill-bridge-cut-2026-09-19/`.
+
+**The warning's wording was smaller than it looked.** "The thread had to be
+lifted" is the ENGINE's fallback prose; the Studio's own sentence for
+`LONG_JUMPS_TRIMMED` never said "had to". Check the CONSUMER before calling
+a string customer-facing ([[code-seam-and-customer-voice-2026-09-07]]). And
+no hand-built shape fires that warning through stages 5-7 — nothing in the
+suite exercised the sentence until the count was forced at `stitch_shape`'s
+report.
+
 **The trap that nearly went in the record as a cost:** Fremont gains
 `LETTERING_ILLEGIBLE` under the flag (tagline OCR 0.50 -> 0.27). The
 tagline's own 13 runs are byte-identical; two of the white FIELD's bridges

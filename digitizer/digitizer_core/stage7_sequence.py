@@ -638,7 +638,7 @@ def _chain(runs: list[StitchRun], regions: list[PlannedRegion], base_thread: int
     chaining and a base-thread-tagged run met.
 
     The returned count is how many of the links replaced a lift INSIDE a shape,
-    so the operator-facing "the thread had to be lifted N times inside a shape"
+    so the operator-facing "the thread is lifted N times inside a shape"
     warning still reports what the machine will actually do.
 
     Distance is refused a vote on everything except the far end of the range.
@@ -2754,7 +2754,10 @@ def sequence(
         warnings.append(
             warn(
                 LONG_JUMPS_TRIMMED,
-                f"The thread had to be lifted {jumps} time"
+                # "is lifted", not "had to be": with `cfg.fill_bridge_cut` a
+                # lift can be the engine's CHOICE -- a route existed and a cut
+                # was cheaper than thread on top of finished fill.
+                f"The thread is lifted {jumps} time"
                 f"{'s' if jumps != 1 else ''} inside a shape.",
                 count=jumps,
             )
