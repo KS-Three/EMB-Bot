@@ -998,6 +998,20 @@ class PipelineConfig:
     # the fonts' bar rule); **DEFAULT ON the same day -- Kent's flip.**
     # False is the pre-flip engine, byte for byte.
     satin_house_anchor: bool = True
+    # How a satin shape's strokes are ordered (lettering construction plan
+    # step 2, 2026-09-19). "nearest": `_order_strokes` -- whichever stroke's
+    # preferred entry is closest to the needle next, and between strokes the
+    # needle walks the UNSEWN web (`_graph_travel`) or trims when no unsewn
+    # path is left; once a few strokes of a letter are down there usually is
+    # none, and 35 of the 41 trims on the plan's MARINE fixture are that hop
+    # inside one letter (the font engine sews the same word with 3). "euler":
+    # the strokes that will sew are ordered along ONE Euler walk of the web
+    # (`_euler_stroke_order`, the font engine's `routeGlyph` construction:
+    # Chinese-postman duplication where a dead end forces it, Hierholzer,
+    # last visit sews), so every travel leg lies under a column sewn later
+    # and the walk always has an unsewn path. No physical constant. DEFAULT
+    # "nearest" -- measured in scope-history 2026-09-19; the flip is Kent's.
+    satin_stroke_order: str = "nearest"
     # Each satin rail reaches ITS OWN edge (defect 23's open half, built
     # 2026-09-03 for Kent's flip). The rail model places both rails at the
     # NEARER edge's distance from a smoothed spine, so on every raster

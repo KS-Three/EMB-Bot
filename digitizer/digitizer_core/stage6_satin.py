@@ -3947,8 +3947,17 @@ def _build_travel_graph(strokes: list[Stroke]):
 
 def _graph_travel(cur, target, sewn: set[int], allow: set[int],
                   nodes, edges, adj, *,
-                  trim_at_mm: float) -> list[tuple[float, float]] | None:
+                  trim_at_mm: float,
+                  snap_to_open: bool = False) -> list[tuple[float, float]] | None:
     """Needle-down path from cur to target over UNSEWN spines, or None.
+
+    `snap_to_open` (the Euler walk, plan step 2): when the node the cursor
+    snaps to has no unsewn edge to leave by, snap instead to the nearest
+    node within `trim_at_mm` that has one. A 2 mm stroke's column is
+    shortened by its caps and can end nearer the junction it was sewn FROM
+    than the one the walk leaves by, and the strict snap then reads a dead
+    end where the walk has an open leg a millimetre away. Off, the snap is
+    exactly what it was.
 
     Edges belonging to already-sewn strokes are forbidden: running stitches on
     top of finished satin show, which is the same reason the fill path prefers
@@ -3970,6 +3979,16 @@ def _graph_travel(cur, target, sewn: set[int], allow: set[int],
         return best
 
     s, t = snap(cur), snap(target)
+
+    def open_at(i: int) -> bool:
+        return any(edges[ei]["k"] not in sewn or edges[ei]["k"] in allow
+                   for ei in adj.get(i, []))
+
+    if snap_to_open and nodes and (s is None or not open_at(s)):
+        cands = [i for i in range(len(nodes))
+                 if open_at(i) and math.dist(cur, nodes[i]) <= trim_at_mm]
+        if cands:
+            s = min(cands, key=lambda i: math.dist(cur, nodes[i]))
     if s is None and nodes:
         # Cursor-side retry: the needle sits wherever the previous run ended —
         # often a cap-extended point a millimetre or two off the spine web —
@@ -4083,6 +4102,166 @@ def _order_strokes(strokes: list[Stroke],
         else:
             cur = a if _choose_stroke_entry(cur, a, st.free_start, b, st.free_end) else b
     return out
+
+
+def _euler_stroke_order(nodes, edges, adj, n_strokes: int,
+                        start_near: tuple[float, float] | None,
+                        ) -> tuple[list[int], dict[int, bool]]:
+    """Sew order over the travel graph's strokes as ONE walk, the way the
+    font engine routes a glyph (`satinfont.routeGlyph`): (order of stroke
+    indices, {stroke index: enter at spine[0]?}).
+
+    Lettering construction plan step 2 (2026-09-19). `_order_strokes` picks
+    the nearest stroke next, and once a few strokes are down the unsewn web
+    between the needle and the next one is gone, so `_graph_travel` finds no
+    path and the hop is a trim -- 35 of the 41 trims on the plan's MARINE
+    fixture are that, inside one letter. An Euler trail over the web visits
+    every span, and where a span is walked more than once its EARLIER visits
+    are travel and its LAST visit is the column, so every travel leg lies
+    under a column sewn later. The stroke order is each stroke's last visit
+    (a stroke split by junctions sews whole, once its last span is walked),
+    and the entry end is the direction that last visit ran. Between strokes
+    the existing `_graph_travel` still finds the path: every edge the trail
+    walks between two consecutive strokes belongs to a stroke sewn later,
+    so it is unsewn when walked.
+
+    Chinese postman first: per connected component, odd nodes are paired
+    greedily along shortest edge paths and those paths' edges duplicated
+    (the duplicates are the extra travel, only where a dead end forces it),
+    then Hierholzer from the odd node nearest `start_near` (or the nearest
+    node at all when every degree is even). Same construction as the font
+    engine's, on the same kind of graph, with the same greedy pairing.
+
+    Strokes the graph does not reach (no edge) keep their given order, last.
+    """
+    if not edges:
+        return list(range(n_strokes)), {}
+    # Multigraph of edge INSTANCES; a duplicate is another instance of the
+    # same edge (same "k", same points).
+    inst: list[tuple[int, int, int]] = []          # (edge index, a, b)
+    iadj: dict[int, list[int]] = {}
+
+    def add(ei: int) -> None:
+        e = edges[ei]
+        iadj.setdefault(e["a"], []).append(len(inst))
+        iadj.setdefault(e["b"], []).append(len(inst))
+        inst.append((ei, e["a"], e["b"]))
+
+    for ei in range(len(edges)):
+        # A segment whose two ends merged into one node -- the 0.2 mm stub
+        # `_build_travel_graph` leaves where a cut lands one sample from a
+        # spine's end -- is a self-loop: no travel, no direction, and it
+        # would otherwise be the "last visit" that sets a stroke's order
+        # and entry. Out.
+        if edges[ei]["a"] != edges[ei]["b"]:
+            add(ei)
+    if not inst:
+        return list(range(n_strokes)), {}
+
+    def other(ii: int, u: int) -> int:
+        _ei, a, b = inst[ii]
+        return b if a == u else a
+
+    # Components.
+    comp: dict[int, int] = {}
+    comps: list[list[int]] = []
+    for s0 in range(len(nodes)):
+        if s0 in comp or not iadj.get(s0):
+            continue
+        cid = len(comps)
+        comp[s0] = cid
+        stack = [s0]
+        members = []
+        while stack:
+            u = stack.pop()
+            members.append(u)
+            for ii in iadj.get(u, []):
+                v = other(ii, u)
+                if v not in comp:
+                    comp[v] = cid
+                    stack.append(v)
+        comps.append(members)
+
+    def nearest(cands: list[int]) -> int:
+        if start_near is None:
+            return min(cands)
+        return min(cands, key=lambda i: (math.dist(start_near, nodes[i]), i))
+
+    circuit: list[tuple[int, int]] = []             # (instance, from node)
+    # Components in the order the needle would meet them: nearest first.
+    for members in sorted(comps, key=lambda m: (0.0 if start_near is None
+                                                 else min(math.dist(start_near, nodes[i]) for i in m))):
+        odd = [u for u in members if len(iadj.get(u, [])) % 2 == 1]
+        guard = 0
+        while len(odd) > 2 and guard < 4 * len(members) + 8:
+            guard += 1
+            u = odd[0]
+            # Shortest edge-path (by length) from u to the nearest OTHER odd
+            # node, then duplicate its edges: interior parities are kept and
+            # both ends go even.
+            dist = {u: 0.0}
+            prev: dict[int, tuple[int, int]] = {}
+            pq = [(0.0, u)]
+            target = None
+            while pq:
+                d, x = heapq.heappop(pq)
+                if d > dist.get(x, 1e18):
+                    continue
+                if x != u and len(iadj.get(x, [])) % 2 == 1:
+                    target = x
+                    break
+                for ii in iadj.get(x, []):
+                    y = other(ii, x)
+                    nd = d + edges[inst[ii][0]]["len"]
+                    if nd < dist.get(y, 1e18):
+                        dist[y] = nd
+                        prev[y] = (x, ii)
+                        heapq.heappush(pq, (nd, y))
+            if target is None:
+                break
+            x = target
+            while x != u:
+                px, ii = prev[x]
+                add(inst[ii][0])
+                x = px
+            odd = [v for v in members if len(iadj.get(v, [])) % 2 == 1]
+        start = nearest(odd) if odd else nearest(members)
+        # Hierholzer.
+        used: set[int] = set()
+        ptr = {v: 0 for v in members}
+        stack = [start]
+        edge_stack: list[tuple[int, int]] = []
+        local: list[tuple[int, int]] = []
+        while stack:
+            v = stack[-1]
+            lst = iadj.get(v, [])
+            while ptr[v] < len(lst) and lst[ptr[v]] in used:
+                ptr[v] += 1
+            if ptr[v] < len(lst):
+                ii = lst[ptr[v]]
+                ptr[v] += 1
+                used.add(ii)
+                edge_stack.append((ii, v))
+                stack.append(other(ii, v))
+            else:
+                stack.pop()
+                if edge_stack:
+                    local.append(edge_stack.pop())
+        local.reverse()
+        circuit.extend(local)
+
+    last: dict[int, int] = {}
+    entry: dict[int, bool] = {}
+    for pos, (ii, frm) in enumerate(circuit):
+        ei, a, _b = inst[ii]
+        k = edges[ei]["k"]
+        last[k] = pos
+        # Forward along the spine when the walk runs a -> b: the graph
+        # builder makes "a" the spine-earlier end of every segment.
+        entry[k] = (frm == a)
+    ordered = sorted(last, key=lambda k: last[k])
+    ordered += [k for k in range(n_strokes) if k not in last]
+    return ordered, entry
 
 
 # --- junction patches ------------------------------------------------------
@@ -4402,9 +4581,16 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
                 rail_comp_mm: float = 0.0,
                 rail_comp_floor_mm: float = 0.0,
                 polygon_axis: bool | str = False,
+                stroke_order: str = "nearest",
                 ) -> tuple[list[StitchRun], dict]:
     """One satin-classified shape -> runs in sew order, plus the same report
     contract `stitch_shape` uses, so stage 7 can treat the two identically.
+
+    `stroke_order` (`cfg.satin_stroke_order`, plan step 2, 2026-09-19):
+    "nearest" is `_order_strokes`, the shipped order; "euler" re-orders the
+    strokes that will sew along one Euler walk of the travel web
+    (`_euler_stroke_order`) so the needle-down travel between them always
+    has an unsewn path. "nearest" is byte-identical to before the option.
 
     `art_poly` / `hairline_floor_mm` are forwarded to `satin_stroke` (see
     there): the region's own uncompensated polygon and the vectorizer's
@@ -4527,6 +4713,27 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
     order = list(dict.fromkeys(k["si"] for k in kept))
     gmap = {si: gi for gi, si in enumerate(order)}
     nodes, g_edges, g_adj = _build_travel_graph([strokes[si] for si in order])
+    euler_entry: dict[int, bool] = {}
+    if stroke_order == "euler" and len(order) > 1:
+        # One walk over the web (see `_euler_stroke_order`): the strokes
+        # re-sorted by their last visit, each stroke's parts kept together
+        # and in their own order, and the column's entry end taken from the
+        # walk's direction instead of the nearest-cap rule.
+        walk, euler_entry = _euler_stroke_order(nodes, g_edges, g_adj, len(order), start_near)
+        rank = {gi: r for r, gi in enumerate(walk)}
+
+        def walk_key(k: dict):
+            gi = gmap[k["si"]]
+            # A stroke sewn in parts sews them in the walk's direction:
+            # nearest the entry end first.
+            along = 0.0
+            if gi in euler_entry:
+                sp = strokes[k["si"]].spine
+                entry_pt = sp[0] if euler_entry[gi] else sp[-1]
+                mid = k["pts"][len(k["pts"]) // 2]
+                along = math.dist(mid, entry_pt)
+            return (rank.get(gi, len(walk)), k["si"], along)
+        kept.sort(key=walk_key)
     last_part = {k["si"]: ki for ki, k in enumerate(kept)}
     sewn: set[int] = set()
 
@@ -4566,6 +4773,39 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
                                              rail_comp_floor_mm=rail_comp_floor_mm,
                                              half_mm=half_mm),
                            StitchRun(points=pts, kind=stitches.SATIN, shape_id=shape_id)]
+        # Under the Euler walk a stroke is walked THROUGH: the column enters
+        # at the end the walk arrives at and leaves by the other, where the
+        # next leg starts. Its underlay must therefore END at that entry end
+        # -- so it starts at the far end, and the travel below carries the
+        # needle there along the web and the stroke's own unsewn spine
+        # (`allow={gi}`), needle down, under the underlay and the column
+        # that follow. With the nearest-first orientation the underlay ended
+        # where the column entered and the pair came back out where it went
+        # in, so the walk's next leg started from the wrong end of every
+        # stroke and the hop was a trim (measured 2026-09-19 on the plan's
+        # fixture: 8 of 18 within-letter trims were underlay -> column).
+        walk_entry = None
+        if gi in euler_entry and kind == stitches.SATIN:
+            # The end the walk arrives at, by geometry rather than by the
+            # column's own point order: a short cap-extended column can start
+            # nearer the spine's far end than its near one.
+            sp = st.spine
+            walk_entry = sp[0] if euler_entry[gi] else sp[-1]
+            # Orient the stroke's runs from the column BACKWARDS: the column
+            # runs the walk's way; the underlay run before it ends where the
+            # column enters; each earlier underlay run ends where the next
+            # one starts. So the runs chain needle-down with no hop between
+            # them, and the first one starts at whichever end the parity
+            # leaves -- the far end (the travel below walks there) or the
+            # entry end itself.
+            column = stroke_runs[-1]
+            if math.dist(walk_entry, column.points[-1]) < math.dist(walk_entry, column.points[0]):
+                column.points.reverse()
+            want = column.points[0]
+            for run in reversed(stroke_runs[:-1]):
+                if math.dist(want, run.points[0]) < math.dist(want, run.points[-1]):
+                    run.points.reverse()
+                want = run.points[0]
         first_of_stroke = True
         for run in stroke_runs:
             cursor = runs[-1].points[-1] if runs else start_near
@@ -4577,7 +4817,9 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
                 # what the law's professional decisions were read off of, and
                 # its orientation is already tuned to avoid extra hops
                 # between strokes (see the loop's own note below).
-                if run.kind == stitches.SATIN:
+                if walk_entry is not None:
+                    pass                # oriented above, as one chain
+                elif run.kind == stitches.SATIN:
                     if _choose_stroke_entry(cursor, run.points[0], k["free_start"],
                                             run.points[-1], k["free_end"]):
                         run.points.reverse()
@@ -4589,7 +4831,8 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
                 if direct >= machine.TINY_STITCH_MM:
                     path = _graph_travel(cursor, run.points[0], sewn, {gi},
                                          nodes, g_edges, g_adj,
-                                         trim_at_mm=trim_at_mm)
+                                         trim_at_mm=trim_at_mm,
+                                         snap_to_open=bool(euler_entry))
                     if path is not None and len(path) >= 2:
                         plen = sum(math.dist(a, b) for a, b in zip(path, path[1:]))
                         # Same cap as the fill path: past this, travel under
