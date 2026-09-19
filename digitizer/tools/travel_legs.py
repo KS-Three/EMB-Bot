@@ -36,16 +36,20 @@ legs.
 
 ## What it found (2026-09-19, nine logos, 80 mm, `--order nearest`)
 
-244.8 mm grid-exposed, `travel_cover`'s 244.7: **239.1 mm (97.7%) is
+244.6 mm grid-exposed, `travel_cover`'s own figure: **239.0 mm (97.7%) is
 `stage6_fill.stitch_shape`'s `emit`** -- the fill tier's bridge between two
-columns of ONE shape -- and 5.7 mm is `stage6_satin.satin_shape`'s
+columns of ONE shape -- and 5.6 mm is `stage6_satin.satin_shape`'s
 between-stroke walk. Nothing from stage 7 (`chain_links` is OFF) or the
-junction-cover walk (`satin_patch_junctions` is OFF). **0.0 mm lies on bare
-fabric and 0.0 mm on unsewn artwork**: every exposed fill sample lies on that
-shape's own finished fill, in the same thread. It is MASTER_SCOPE defect 21's
-residual -- `tools/fill_bridges.py` read the same bridges on 2026-09-11 -- not
-gate 3's letter. And the grid UNDER-reads it: 375.0 mm by the exact test.
-`docs/scope-history.md`, 2026-09-19, "the exposed travel legs".
+junction-cover walk (`satin_patch_junctions` is OFF). **Every exposed fill
+sample is `own-fill`, 374.9 of 374.9 mm: the leg's own shape's finished fill,
+in the same thread. None on bare fabric, none on unsewn artwork.** (The satin
+walk's 6.1 mm: 3.9 on same-colour top stitching, 0.8 on another colour, 1.4
+`own-bare` at column seams.) It is MASTER_SCOPE defect 21's residual --
+`tools/fill_bridges.py` read the same bridges on 2026-09-11 -- not gate 3's
+letter. And the grid UNDER-reads it: 374.9 mm by the exact test against 239.0.
+`docs/scope-history.md`, 2026-09-19, "the exposed travel legs". (That entry
+quotes 239.1 / 375.0 / 5.7 from a scratch run that summed per-leg roundings;
+these are this tool's own sums.)
 """
 from __future__ import annotations
 

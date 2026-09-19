@@ -1319,21 +1319,32 @@ class PipelineConfig:
     # same rate than the cut it avoids is lifted instead
     # (`stage6_fill._cut_is_cheaper`), in the emitter and the scorer alike.
     # No constant is added or moved. Inert without `fill_travel_under_cover`,
-    # which is what tracks the sewn footprint.
-    # Measured ON (nine logos, 80 mm, nearest order): exposed travel
-    # 244.6 -> 139.5 mm by `tools/travel_cover.py`, 432.3 -> 226.2 by
-    # `tools/fill_bridges.py`, trims 587 -> 593, stitches 77,678 -> 77,610,
+    # which is what tracks the sewn footprint, and on TWO-PASS fills
+    # (crosshatch, the density boost): that footprint cannot tell pass-one
+    # fill that pass two will cover from finished fill, so every pass-two
+    # bridge read as exposed and bought a cut that hid nothing (a two-hole
+    # plate: trims 0 -> 2). Exposure per pass is unmeasured; the photo lane's
+    # crosshatch is where that matters.
+    # Measured ON (nine logos, 80 mm, the shipped euler order): exposed travel
+    # 246.3 -> 141.1 mm by `tools/travel_cover.py`, 432.3 -> 226.2 by
+    # `tools/fill_bridges.py`, trims 471 -> 477, stitches 77,558 -> 77,489,
     # uncovered unchanged on all nine; Becker's 22.9 mm leg -> 4.0. OFF is
-    # plan-md5-identical to the engine before it, all nine.
+    # plan-md5-identical to the engine before it, all nine. Read it yourself:
+    # `tools/travel_legs.py --set fill_bridge_cut=true`.
+    # **Before a flip:** a lift this makes raises `report["jumps"]`, and the
+    # customer line that reads says the thread "had to be" lifted — it did
+    # not, the engine chose to.
     # **The cost is trims, and one reading that looks like a cost and is
     # not:** Hotel Fremont gains a LETTERING_ILLEGIBLE warn (tagline OCR
     # 0.50 -> 0.27). The tagline's own 13 runs are byte-identical either way;
     # what moved is two of the white FIELD's bridges that ran needle-down
     # through the tagline band and are now cut, and tesseract swapped one
     # noise string for another (`VAT] CY § Pw` at confidence 46 for `| | TL`)
-    # on lettering lost on the thread under both. Drone's moved the other way,
-    # 0.10 -> 0.25. `docs/scope-history.md` 2026-09-19, "the exposed travel
-    # legs" and its addendum; `tests/test_fill_bridge_cut.py`.
+    # on lettering lost on the thread under both. Drone's moved 0.10 -> 0.25
+    # under the nearest order and 0.36 -> 0.05 under euler: opposite ways
+    # from one rule, which is what noise looks like. `docs/scope-history.md`
+    # 2026-09-19, "the exposed travel legs" and its two addenda;
+    # `tests/test_fill_bridge_cut.py`.
     fill_bridge_cut: bool = False
 
     # Task A2 (2026-08-14, tools/pro_parity): the corpus's professional

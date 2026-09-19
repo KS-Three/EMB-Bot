@@ -1,6 +1,6 @@
 ---
 name: exposed-travel-is-the-fill-tier-2026-09-19
-description: travel_cover.py's 245 mm of exposed travel on the nine logos is NOT a new gate-3 finding — 97.7% is the fill tier's column bridges on their own finished fill (defect 21's residual, read by fill_bridges.py on 09-11), 0.0 mm on bare fabric; the 1 mm grid under-reads it by a third; `cfg.fill_bridge_cut` BUILT OFF (per-bridge cut at Kent's 25:2 rate, 244.6 -> 139.5 mm for +6 trims); Fremont's OCR drop under it is judge noise
+description: travel_cover.py's 245 mm of exposed travel on the nine logos is NOT a new gate-3 finding — 97.7% is the fill tier's column bridges on their own finished fill (defect 21's residual, read by fill_bridges.py on 09-11), 0.0 mm on bare fabric; the 1 mm grid under-reads it by a third; `cfg.fill_bridge_cut` BUILT OFF (per-bridge cut at Kent's 25:2 rate, single-pass fills, 246.3 -> 141.1 mm for +6 trims); Fremont's OCR drop under it is judge noise
 metadata:
   type: project
 ---
@@ -42,10 +42,24 @@ and then BUILT the same day, **`cfg.fill_bridge_cut`, DEFAULT OFF, Kent's
 flip**: `emit` sewed any in-shape route however exposed and only lifted when
 no route existed, so `_score`'s ratified 25 : 2 rate was never asked about a
 single BRIDGE. Lifting a bridge whose own cost exceeds a cut (gap over
-`trim_at`) takes the nine logos 244.6 -> 139.5 mm exposed for 587 -> 593
-trims, uncovered unchanged, OFF plan-md5-identical on all nine
-(`tests/test_fill_bridge_cut.py`, 12, on shapely fixtures — Becker's leg
-depends on a 0.20 mm notch in a trace, and traces differ by platform).
+`trim_at`) takes the nine logos 246.3 -> 141.1 mm exposed for 471 -> 477
+trims on the shipped euler order (244.6 -> 139.5, 587 -> 593 under
+nearest), uncovered unchanged, OFF plan-md5-identical on all nine
+(`tests/test_fill_bridge_cut.py`, 15, on shapely fixtures — Becker's leg
+depends on a 0.20 mm notch in a trace, and traces differ by platform). Read
+it with `tools/travel_legs.py --set fill_bridge_cut=true`.
+
+**Two things the review round found, both about where a per-bridge rule
+stops being true.** (1) Once the scorer lifts dear bridges, "nothing
+exposed" no longer means "nothing to win": `_reorder_for_cover`'s early exit
+kept a plan scoring 86.0 where flag-OFF's order scored 40.1 by the same
+scorer. A flag justified by a rate must be checked for buying a DEARER plan
+at that rate — price ON's result with ON's scorer against OFF's. (2)
+Two-pass fills (crosshatch, density boost): the sewn footprint cannot tell
+pass-one fill that pass two will cover from finished fill, so every pass-two
+bridge read as exposed (trims 0 -> 2 on a plate, hiding nothing). The rule
+is single-pass only; exposure per pass is unmeasured, and that — not the
+flag — is the open item for the photo lane.
 
 **The trap that nearly went in the record as a cost:** Fremont gains
 `LETTERING_ILLEGIBLE` under the flag (tagline OCR 0.50 -> 0.27). The

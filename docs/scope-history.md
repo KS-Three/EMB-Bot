@@ -13728,3 +13728,87 @@ first, the two wiring tests by reverting the wiring.
 *(built and measured 2026-09-19 — `tests/test_fill_bridge_cut.py`;
 `digitizer/tools/travel_legs.py`; the nine-logo and md5 scripts lived in
 the session's scratchpad, the numbers are the record)*
+
+### Addendum, the same day — the review round: the flag could buy a DEARER plan, two-pass fills, and the numbers on the shipped order
+
+`emb-bot-reviewer` on the two commits above. Every finding was reproduced
+before it was acted on.
+
+**REAL, ON-path only — `_reorder_for_cover`'s early exit.** *"Nothing
+exposed; nothing to win"* is false once `cut_bridges` is on: the scorer lifts
+a dear bridge, so the original order reads "one cut, nothing on top" and the
+reorder is skipped without ever pricing the order it would have found. On a
+plate with two holes ON kept a plan scoring **86.0** where flag-OFF's order
+scores **40.1** by the same scorer — one trim and 40 more travel stitches to
+hide 24 mm, dearer than OFF at the very rate the flag is justified by. Now
+the candidate is always priced when the flag is on and there is a cut; since
+the greedy candidate does not depend on the flag, ON picks the cheaper of
+the same two orders OFF chooses between, so **it cannot buy a dearer plan
+than it replaces**. On the nine logos the fix moved one plan (the
+screenshot's ON, −1 stitch); every OFF plan and the other eight ON plans are
+md5-identical to before it.
+
+**Found while measuring the reviewer's two-pass note — the rule is for
+SINGLE-PASS fills.** Crosshatch and the density boost sew the shape twice,
+and the sewn footprint cannot tell pass-one fill that pass two is about to
+cover from fill that is finished, so every pass-two bridge read as exposed:
+on the two-hole plate trims 0 → 2 (crosshatch) and 1 → 3 (boosted), on a
+three-hole plate 0 → 3 both ways — cuts that hide nothing. `stitch_shape`
+now leaves both alone. The customer default has the boost OFF and the nine
+logos are single-pass tatami, so the figures below are unaffected; **the
+photo lane's crosshatch is where this would have landed, and exposure per
+pass is unmeasured** — that, not the flag, is the open item there.
+
+**The numbers on the SHIPPED stroke order** (euler since #516's flip the same
+day; the entry above is `--order nearest` to match the figures it was
+correcting). Nine logos, 80 mm, final code, OFF → ON: exposed travel
+**246.3 → 141.1 mm** (`travel_cover`), 432.3 → 226.2 (`fill_bridges`),
+trims **471 → 477**, stitches 77,558 → 77,489, `uncovered_total_mm2`
+identical on all nine. Becker 31.2 → 8.3 (trims 38 → 39), Fremont 56.7 →
+19.9 (33 → 37), Bridge Bar 25.5 → 15.3 (86 → 87), the screenshot 57.5 →
+25.7 (70 → 74), drone 69.6 → 66.3 (133 → 129); tires, ENTHUSIAST, Golden
+Tee and gaulke do not move. Under nearest the totals are 244.6 → 139.5 and
+587 → 593 still. **The OCR judge again:** Fremont 0.50 → 0.267 under either
+order; drone's worst cluster went 0.10 → 0.25 under nearest and **0.36 →
+0.05 under euler** — opposite directions from the same rule on lettering
+already flagged illegible both ways, which is what noise looks like.
+
+**The instrument can now read the flag.** The reviewer's second point: none
+of the three named instruments could set `fill_bridge_cut`, so the flip
+decision was not reproducible from the repo. `tools/travel_legs.py` takes
+`--set KEY=VALUE` (any `PipelineConfig` field), measures the SHIPPED stroke
+order unless `--order` names one, and prints stitches and trims. Its `top`
+bucket is split: **`own-fill` — finished fill of the leg's OWN shape — is
+374.9 of the 374.9 mm of exposed fill travel**, so the first entry's "that
+shape's own finished fill" is now read rather than inferred from "same
+colour". Its own sums are 244.6 / 239.0 / 5.6 / 374.9 where the first entry
+quotes 244.8 / 239.1 / 5.7 / 375.0 from a scratch run that summed per-leg
+roundings. The satin walk's 6.1 mm: 3.9 on same-colour top stitching, 0.8 on
+another colour, 1.4 bare at column seams — so "0.0 mm on unsewn artwork" is
+true of the fill tier and 1.4 mm short of true overall.
+
+**Open before any flip, none of them built:** a lift this rule makes raises
+`report["jumps"]`, which feeds the customer line *"the thread had to be
+lifted N times inside a shape"* — it did not have to be, the engine chose
+to, and the wording should say so; `TRIM_HEAVY`'s in-shape share rises with
+it; `chain_links` ON could re-bury a lift (unmeasured, OFF).
+
+**Not this change's, found by running the full local suite:** 11 setup
+errors in `test_house_anchor.py` / `test_house_from_line.py` (#516's), a
+bare `read_text()` decoding a UTF-8 font file as cp1252 on Windows; Linux CI
+never sees it. Fixed with `encoding="utf-8"`. The suite's other reds are the
+three recorded Windows-local goldens and no fourth: 2,665 passed, 3 failed,
+3 skipped, 8 xfailed (48 min, sharing the machine with the review
+agent's probes).
+
+**Tests:** `tests/test_fill_bridge_cut.py`, 15 — added: the two-hole plate
+(ON never dearer than OFF by its own scorer), two-pass fills left alone, the
+memo key carries the flag; the scorer/emitter test now checks the emitter's
+trims against the scorer's cuts; the call-site tripwire parses the source
+instead of pattern-matching it (the regex missed `under_cover = cfg.x` with
+no trailing comma — checked by breaking a site that way); and
+`test_flag_off_is_the_engine_as_it_was` is renamed
+`test_explicit_off_is_the_default`, which is all it pins.
+
+*(reviewed, fixed and re-measured 2026-09-19 — `tests/test_fill_bridge_cut.py`;
+`digitizer/tools/travel_legs.py --set fill_bridge_cut=true`)*
