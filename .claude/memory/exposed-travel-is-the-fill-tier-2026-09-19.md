@@ -1,6 +1,6 @@
 ---
 name: exposed-travel-is-the-fill-tier-2026-09-19
-description: travel_cover.py's 245 mm of exposed travel on the nine logos is NOT a new gate-3 finding — 97.7% is the fill tier's column bridges on their own finished fill (defect 21's residual, read by fill_bridges.py on 09-11), 0.0 mm on bare fabric; the 1 mm grid under-reads it by a third; one arm priced (per-bridge cut at Kent's 25:2 rate, 244.6 -> 139.5 mm for +6 trims), not built
+description: travel_cover.py's 245 mm of exposed travel on the nine logos is NOT a new gate-3 finding — 97.7% is the fill tier's column bridges on their own finished fill (defect 21's residual, read by fill_bridges.py on 09-11), 0.0 mm on bare fabric; the 1 mm grid under-reads it by a third; `cfg.fill_bridge_cut` BUILT OFF (per-bridge cut at Kent's 25:2 rate, 244.6 -> 139.5 mm for +6 trims); Fremont's OCR drop under it is judge noise
 metadata:
   type: project
 ---
@@ -37,12 +37,25 @@ There is none; the work is in `stage6_fill`.
 
 **How to apply:** before proposing anything for exposed travel, read DOCTRINE's
 "last third of exposed fill travel" entry — three routing fixes and an
-ordering arm are already priced out. The one arm NOT yet tried was priced
-here and is Kent's call: `emit` sews any in-shape route however exposed and
-only lifts when no route exists, so `_score`'s ratified 25 : 2 rate is never
-asked about a single BRIDGE. Lifting a bridge whose own cost exceeds a cut
-(gap over `trim_at`) takes the nine logos 244.6 -> 139.5 mm exposed for
-587 -> 593 trims, uncovered unchanged — but Fremont's tagline OCR read-back
-falls 0.50 -> 0.27 (it sat exactly on the warn line) with no mechanism
-established, so render before any flip. Full record: `docs/scope-history.md`,
-2026-09-19, "the exposed travel legs".
+ordering arm are already priced out. The one arm not yet tried was priced
+and then BUILT the same day, **`cfg.fill_bridge_cut`, DEFAULT OFF, Kent's
+flip**: `emit` sewed any in-shape route however exposed and only lifted when
+no route existed, so `_score`'s ratified 25 : 2 rate was never asked about a
+single BRIDGE. Lifting a bridge whose own cost exceeds a cut (gap over
+`trim_at`) takes the nine logos 244.6 -> 139.5 mm exposed for 587 -> 593
+trims, uncovered unchanged, OFF plan-md5-identical on all nine
+(`tests/test_fill_bridge_cut.py`, 12, on shapely fixtures — Becker's leg
+depends on a 0.20 mm notch in a trace, and traces differ by platform).
+
+**The trap that nearly went in the record as a cost:** Fremont gains
+`LETTERING_ILLEGIBLE` under the flag (tagline OCR 0.50 -> 0.27). The
+tagline's own 13 runs are byte-identical; two of the white FIELD's bridges
+ran through the tagline band and are now cut, and tesseract swapped one
+noise string for another on lettering lost under both arms (`VAT] CY § Pw`
+at confidence 46 scored exactly 0.50 and PASSED a `>=` line). Drone moved
+the other way. When the OCR judge moves, diff the cluster's own runs and
+dump its crops (`legibility.measure(..., dump=)`) before believing it — and
+read logs with Python, not `grep`: the `§` made grep call the log binary and
+silently drop the one line that mattered, which looked like state leaking
+between arms. Full record: `docs/scope-history.md`, 2026-09-19, "the
+exposed travel legs" and its addendum.

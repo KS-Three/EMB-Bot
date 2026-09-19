@@ -2027,6 +2027,7 @@ def sequence(
                     underlay_style=eff_underlay_style,
                     trim_at_mm=trim_at,
                     under_cover=cfg.fill_travel_under_cover,
+                    cut_bridges=cfg.fill_bridge_cut,
                     start_near=entry,
                     technique="crosshatch",
                 )
@@ -2057,6 +2058,7 @@ def sequence(
                     underlay_style=eff_underlay_style,
                     trim_at_mm=trim_at,
                     under_cover=cfg.fill_travel_under_cover,
+                    cut_bridges=cfg.fill_bridge_cut,
                     start_near=entry,
                     technique="wave",
                 )
@@ -2080,6 +2082,7 @@ def sequence(
                     underlay_style=eff_underlay_style,
                     trim_at_mm=trim_at,
                     under_cover=cfg.fill_travel_under_cover,
+                    cut_bridges=cfg.fill_bridge_cut,
                     start_near=entry,
                     technique="chevron",
                 )
@@ -2101,6 +2104,7 @@ def sequence(
                     underlay_style=eff_underlay_style,
                     trim_at_mm=trim_at,
                     under_cover=cfg.fill_travel_under_cover,
+                    cut_bridges=cfg.fill_bridge_cut,
                     start_near=entry,
                     technique="brick",
                 )
@@ -2204,6 +2208,7 @@ def sequence(
                     underlay_style=eff_underlay_style,
                     trim_at_mm=trim_at,
                     under_cover=cfg.fill_travel_under_cover,
+                    cut_bridges=cfg.fill_bridge_cut,
                     start_near=entry,
                     density_boost=cfg.fill_density_boost,
                 )

@@ -13666,3 +13666,65 @@ gate 3's letter.
 
 *(measured 2026-09-19 — `digitizer/tools/travel_legs.py`; the arm and the
 render script lived in the session's scratchpad, the numbers are the record)*
+
+### Addendum, the same day — the arm BUILT, DEFAULT OFF (`cfg.fill_bridge_cut`), and Fremont's OCR reading explained
+
+Put to Kent with the numbers above (AskUserQuestion, 2026-09-19): **build
+it, default OFF**; the flip stays his.
+
+**What was built.** `stage6_fill._cut_is_cheaper(a, bridge, sewn,
+trim_at_mm)`: a bridge that shows (over the one-stitch exposure tolerance),
+spans a gap over `trim_at`, and scores more than one cut by `_score`'s own
+two constants is lifted. Asked in `emit` and in `_order_cost` alike — the
+scorer and the emitter agreeing is DOCTRINE's stated prerequisite — and
+carried into `_reorder_for_cover`'s memo key, since it changes what the
+scorer counts. Threaded to the same seven `stitch_shape` call sites as
+`fill_travel_under_cover` (five in stage 7, two in the blend tier), without
+which it is inert: that flag is what tracks the sewn footprint. No constant
+added or moved. With `chain_links` ON (it is OFF, gate 3) stage 7 could
+re-bury a lift this rule made; not measured.
+
+**Measured, nine logos, 80 mm, nearest — the built flag reproduces the
+priced arm to the digit:** exposed travel **244.6 → 139.5 mm**
+(`travel_cover`), 432.3 → 226.2 (`fill_bridges`), trims **587 → 593**,
+stitches 77,678 → 77,610, `uncovered_total_mm2` identical on all nine;
+per-logo rows as the table above. **OFF is plan-md5-identical to the engine
+before the change on all nine** (every run's thread, kind, jump, trim,
+shape and points; the base measured in a detached worktree at `fb749de5`).
+Four logos do not move at all (OFF md5 == ON md5: tires, ENTHUSIAST, Golden
+Tee, gaulke).
+
+**Fremont's `LETTERING_ILLEGIBLE` is the judge, not the thread**
+(`docs/renders/travel-legs-2026-09-19/fremont_tagline_ocr_input_art_off_on.jpg`
+— the crops tesseract read, from `legibility.measure`'s own `dump=`). The
+tagline cluster's 12 shapes sew 13 runs and they are **byte-identical** OFF
+and ON. What differs inside the tagline's box is the white FIELD's travel:
+OFF, two of its exposed bridges run needle-down through the tagline band
+(3.3 and 8.9 mm of them inside the box — the two diagonal lines in the
+render); ON, both are cuts. 231 of the crop's 61,920 pixels change. OFF,
+tesseract read `VAT] CY § Pw` at confidence 46.5, which scores 0.50 against
+`EATSTAYPLAYWZ` and passes a `>=` 0.5 line; ON it read `| | TL` at 63.3,
+0.267. Neither is the tagline, which is lost on the thread under both arms
+at this size; the reading follows the flag whichever arm runs first
+(checked both orders). Drone's worst cluster moved the other way, 0.102 →
+0.25. **So the arm's recorded "one adverse reading" is withdrawn as a cost:
+its only cost is the six trims.** It stands as a finding about the
+instrument — a similarity of exactly 0.50 from a 46-confidence garble is
+not a pass.
+
+**Tests:** `tests/test_fill_bridge_cut.py`, 12 — the default; the rule on
+four hand-built bridges (long and exposed, short and exposed, long and
+hidden, exposed under `trim_at`); on a two-legged comb whose only route to
+the second leg climbs back up the first (a bridge costing 31.2 against a cut's 25): ON sews no
+bridge dearer than a cut, exposes less, trims more and sews the same fill
+penetrations, explicit OFF is the default's runs, the flag is inert without
+covered routing, and `_order_cost` counts one more cut for the same order;
+stage 7 hands the flag to the real `stitch_shape`; and every call site that
+passes covered routing passes the rule. The fixtures are shapely polygons
+on purpose: Becker's leg exists because of a 0.20 mm notch in a traced
+outline, and a trace differs by platform. Each test was watched failing
+first, the two wiring tests by reverting the wiring.
+
+*(built and measured 2026-09-19 — `tests/test_fill_bridge_cut.py`;
+`digitizer/tools/travel_legs.py`; the nine-logo and md5 scripts lived in
+the session's scratchpad, the numbers are the record)*

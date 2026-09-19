@@ -1310,6 +1310,32 @@ class PipelineConfig:
     # *(docs/flag-runtime-bills-2026-09-12.md)*
     fill_travel_under_cover: bool = True
 
+    # BUILT 2026-09-19, DEFAULT OFF — Kent's flip. What the flag above cannot
+    # reach: `emit` sews ANY in-shape route between two fill columns, however
+    # much of it lies on finished fill, and lifts only when no route exists;
+    # `_score`'s ratified rate (a trim is 25 stitches, an exposed stitch 2) is
+    # only ever asked about whole column orders, never about one bridge. ON,
+    # a bridge that shows, spans a gap over `trim_at`, and costs more at that
+    # same rate than the cut it avoids is lifted instead
+    # (`stage6_fill._cut_is_cheaper`), in the emitter and the scorer alike.
+    # No constant is added or moved. Inert without `fill_travel_under_cover`,
+    # which is what tracks the sewn footprint.
+    # Measured ON (nine logos, 80 mm, nearest order): exposed travel
+    # 244.6 -> 139.5 mm by `tools/travel_cover.py`, 432.3 -> 226.2 by
+    # `tools/fill_bridges.py`, trims 587 -> 593, stitches 77,678 -> 77,610,
+    # uncovered unchanged on all nine; Becker's 22.9 mm leg -> 4.0. OFF is
+    # plan-md5-identical to the engine before it, all nine.
+    # **The cost is trims, and one reading that looks like a cost and is
+    # not:** Hotel Fremont gains a LETTERING_ILLEGIBLE warn (tagline OCR
+    # 0.50 -> 0.27). The tagline's own 13 runs are byte-identical either way;
+    # what moved is two of the white FIELD's bridges that ran needle-down
+    # through the tagline band and are now cut, and tesseract swapped one
+    # noise string for another (`VAT] CY § Pw` at confidence 46 for `| | TL`)
+    # on lettering lost on the thread under both. Drone's moved the other way,
+    # 0.10 -> 0.25. `docs/scope-history.md` 2026-09-19, "the exposed travel
+    # legs" and its addendum; `tests/test_fill_bridge_cut.py`.
+    fill_bridge_cut: bool = False
+
     # Task A2 (2026-08-14, tools/pro_parity): the corpus's professional
     # SOLID fill elements sew at roughly double a single ordinary pass's
     # density — see machine.FILL_DENSITY_BOOST_MIN_WIDTH_MM's own comment
