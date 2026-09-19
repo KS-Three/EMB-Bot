@@ -770,6 +770,10 @@ def _order_cost(paths: list[list[tuple[float, float]]], poly: Polygon, ring,
     stitches lie over fill already laid. Without it the third figure is 0.0
     and the first two are exactly what this function returned before.
 
+    `cut_bridges` asks `_cut_is_cheaper` about each found bridge exactly as
+    `emit` does, so a bridge the emitter will lift is counted here as the cut
+    it becomes and not as the travel it would have been.
+
     `emit` cuts exactly when `travel_path` finds no route AND the gap exceeds
     `trim_at_mm` (its `bridge is None` branch), and lays travel stitches when it
     does find one. Scoring with that same rule rather than a distance proxy is
@@ -1103,8 +1107,16 @@ def _reorder_for_cover(paths: list[list[tuple[float, float]]], poly: Polygon,
         return paths
     before = _order_cost(paths, poly, ring, slack, entry, trim_at_mm, row_mm,
                          cut_bridges=cut_bridges)
-    if before[2] <= 0.0:
-        return paths                     # nothing exposed; nothing to win
+    # Nothing exposed, nothing to win -- unless `cut_bridges` is why nothing is
+    # exposed: the scorer lifts a dear bridge, so an order can read "one cut,
+    # nothing on top" and still lose to the order this function would have
+    # found. Review finding 2026-09-19, a plate with two holes: this exit kept
+    # a plan scoring 86.0 where flag-OFF's order scores 40.1 by the same
+    # scorer. With the candidate always priced when there is a cut, ON picks
+    # the cheaper of the same two orders OFF chooses between, so the flag can
+    # never buy a dearer plan than it replaces.
+    if before[2] <= 0.0 and not (cut_bridges and before[0] > 0):
+        return paths
 
     pinned = len(paths) - 1
     remaining = set(range(pinned))
@@ -1413,6 +1425,13 @@ def stitch_shape(poly: Polygon, shape_id: str, *, angle_deg: float | None,
     parameter itself defaults False so a caller that does not pass it (the
     contour tier's finish patches) is byte-identical to before it existed.
 
+    `cut_bridges` (`PipelineConfig.fill_bridge_cut`, default OFF): a fill
+    bridge that shows and costs more at `_score`'s rate than the cut it
+    avoids is lifted instead of sewn — see `_cut_is_cheaper`. Inert without
+    `under_cover`, which is what tracks the sewn footprint, and on the two-pass
+    fills (crosshatch, the density boost), where that footprint cannot tell
+    what pass two will cover.
+
     `start_near` is where the needle is when this shape's turn comes; the
     underlay and the fill both begin at whichever of their own valid starting
     points is nearest it.
@@ -1460,6 +1479,15 @@ def stitch_shape(poly: Polygon, shape_id: str, *, angle_deg: float | None,
     # the exposure tolerance already allows.
     sewn = None
     route_cache: dict = {}
+    # `cut_bridges` is for single-pass fills. Crosshatch and the density boost
+    # sew the shape twice, and the footprint above cannot tell pass-one fill
+    # that pass two is about to cover from fill that is finished: every
+    # pass-two bridge would read as exposed and be weighed against a cut it
+    # does not need (measured on a two-hole plate: trims 0 -> 2 crosshatch,
+    # 1 -> 3 boosted, hiding nothing). Same predicate as the dispatch below.
+    two_pass = technique == "crosshatch" or (
+        technique == "tatami" and density_boost and is_solid_fill(poly))
+    cut_bridges = cut_bridges and under_cover and not two_pass
 
     def emit(paths: list[list[tuple[float, float]]], kind: str, max_step: float) -> None:
         nonlocal sewn

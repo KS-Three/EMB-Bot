@@ -17,16 +17,22 @@ both, one row per TRAVEL run:
   exact    no LATER sewn segment within half a thread width of the sample --
            the thread itself, no cell and no floor. Where grid < exact the
            1 mm cell is crediting a leg with the NEXT column's thread.
-  under    what each exact-exposed sample lies on: `top` finished top
-           stitching of the same colour, `other` another colour's, `underlay`
-           underlay only, `own-bare` its own shape with no thread at all,
-           `art-bare` another shape's artwork with none, `FABRIC` no artwork.
+  under    what each exact-exposed sample lies on: `own-fill` the leg's OWN
+           shape's finished fill, `top` any other finished top stitching of
+           the same colour, `other` another colour's, `underlay` underlay
+           only, `own-bare` its own shape with no thread at all, `art-bare`
+           another shape's artwork with none, `FABRIC` no artwork.
 
-    .venv/bin/python tools/travel_legs.py [case ...] [--width MM] [--order nearest|euler] [--rows]
+    .venv/bin/python tools/travel_legs.py [case ...] [--width MM] [--order nearest|euler]
+                                          [--set KEY=VALUE ...] [--rows]
 
 Cases and config are `travel_cover.py`'s (the nine `REAL_ART` logos, 80 mm,
-the case's garment, max_colors 6). `--rows` prints every leg; the default is
-the per-emitter summary and each case's exposed legs.
+the case's garment, max_colors 6), except that the stroke order is the
+SHIPPED default unless `--order` names one. `--set` puts any
+`PipelineConfig` field on the config, which is how a default-OFF flag is
+read with this instrument: `--set fill_bridge_cut=true`. `--rows` prints
+every leg; the default is the per-emitter summary and each case's exposed
+legs.
 
 ## What it found (2026-09-19, nine logos, 80 mm, `--order nearest`)
 
@@ -79,7 +85,22 @@ from digitizer_core.pipeline import build_generation, finish_generation, plan_st
 
 import travel_cover as tc  # noqa: E402
 
-UNDER = ("top", "other", "underlay", "own-bare", "art-bare", "FABRIC")
+UNDER = ("own-fill", "top", "other", "underlay", "own-bare", "art-bare", "FABRIC")
+
+
+def _value(text: str):
+    """`--set`'s right-hand side: true/false/none, a number, else the string."""
+    low = text.lower()
+    if low in ("true", "false"):
+        return low == "true"
+    if low == "none":
+        return None
+    for cast in (int, float):
+        try:
+            return cast(text)
+        except ValueError:
+            pass
+    return text
 
 
 def legs(result, plan) -> list[dict]:
@@ -134,9 +155,12 @@ def legs(result, plan) -> list[dict]:
                 continue
             row["exact_mm"] += L
             hits = etree.query(pt.buffer(half), predicate="intersects") if etree is not None else []
+            under = [runs[earlier[h][0]] for h in hits]
             kinds = {(flat[earlier[h][0]][0] == bi, runs[earlier[h][0]].kind) for h in hits}
             top = {k for k in kinds if k[1] not in (stitches.UNDERLAY, stitches.TRAVEL)}
-            if any(same for same, _kind in top):
+            if any(u.kind == stitches.FILL and u.shape_id == run.shape_id for u in under):
+                where = "own-fill"
+            elif any(same for same, _kind in top):
                 where = "top"
             elif top:
                 where = "other"
@@ -166,24 +190,33 @@ def _under(d: dict) -> str:
 
 def main(argv: list[str]) -> None:
     from thin_strokes import corpus_cases  # noqa: E402  (tools/ on sys.path)
-    width, order, show_rows = 80.0, "nearest", "--rows" in argv
+    width, show_rows = 80.0, "--rows" in argv
+    extra: dict = {}
     names: list[str] = []
     it = iter(a for a in argv if a != "--rows")
     for a in it:
         if a == "--width":
             width = float(next(it))
         elif a == "--order":
-            order = next(it)
+            extra["satin_stroke_order"] = next(it)
+        elif a == "--set":
+            key, _eq, val = next(it).partition("=")
+            extra[key] = _value(val)
         else:
             names.append(a)
     grand: dict = defaultdict(lambda: defaultdict(float))
+    totals = dict(stitches=0, trims=0)
     for name, path, _cw, garment in corpus_cases():
         if names and name not in names:
             continue
         cfg = PipelineConfig(target_width_mm=width, garment_id=garment,
-                             max_colors=6, satin_stroke_order=order)
+                             max_colors=6, **extra)
+        order = cfg.satin_stroke_order
         result = finish_generation(build_generation(str(path), cfg).fork(), cfg)
-        rows = legs(result, plan_stitches(result, cfg))
+        plan = plan_stitches(result, cfg)
+        rows = legs(result, plan)
+        totals["stitches"] += plan.stats.stitch_count
+        totals["trims"] += plan.stats.trims
         per: dict = defaultdict(lambda: defaultdict(float))
         for r in rows:
             key = f"{r['emitter'][0]}:{r['emitter'][1]}"
@@ -194,7 +227,9 @@ def main(argv: list[str]) -> None:
                 d["exact"] += r["exact_mm"]
                 for k in UNDER:
                     d[k] += r["under"][k]
-        print(f"## {name} @ {width:g} mm ({order}): {len(rows)} legs, "
+        print(f"## {name} @ {width:g} mm ({order}"
+              + "".join(f", {k}={v}" for k, v in extra.items() if k != "satin_stroke_order")
+              + f"): st={plan.stats.stitch_count} trims={plan.stats.trims}, {len(rows)} legs, "
               f"grid-exposed {sum(r['grid_mm'] for r in rows):.1f} mm, "
               f"exact {sum(r['exact_mm'] for r in rows):.1f} mm", flush=True)
         for key, d in sorted(per.items()):
@@ -207,7 +242,8 @@ def main(argv: list[str]) -> None:
                       f"{_run(r['prev'])} -> travel[{r['n']}] {r['len_mm']:.1f} mm "
                       f"(chord {r['chord_mm']:.1f}) -> {_run(r['next'])} | "
                       f"grid={r['grid_mm']:.1f} exact={r['exact_mm']:.1f} | {_under(r['under'])}")
-    print(f"\n=== all cases: grid-exposed {sum(d['grid'] for d in grand.values()):.1f} mm, "
+    print(f"\n=== all cases: st={totals['stitches']} trims={totals['trims']}, "
+          f"grid-exposed {sum(d['grid'] for d in grand.values()):.1f} mm, "
           f"exact {sum(d['exact'] for d in grand.values()):.1f} mm")
     for key, d in sorted(grand.items()):
         print(f"   {key:32s} legs={int(d['legs']):3d} travel={d['travel']:7.1f} "

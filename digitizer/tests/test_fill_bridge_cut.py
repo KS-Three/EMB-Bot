@@ -25,7 +25,8 @@ from shapely.ops import unary_union
 from digitizer_core import PipelineConfig, machine
 from digitizer_core.stage6_fill import (
     _EXPOSED_STITCH_WEIGHT, _EXPOSED_TOLERANCE_MM, _TRIM_STITCH_EQUIVALENT,
-    _cut_is_cheaper, _densify, _inset_ring, _order_cost, stitch_shape,
+    _cut_is_cheaper, _densify, _inset_ring, _order_cost, _reorder_key, _score,
+    stitch_shape,
 )
 
 TRIM_AT = 3.0
@@ -121,8 +122,14 @@ def test_flag_on_sews_no_bridge_dearer_than_a_cut():
     assert _fill_points(on) == _fill_points(off)
 
 
-def test_flag_off_is_the_engine_as_it_was():
+def test_explicit_off_is_the_default():
+    """Pins the keyword's default and nothing more -- both calls take the same
+    path. That OFF is the engine as it WAS is a measurement, not this test:
+    the plan md5 of all nine logos against the commit before the flag
+    (`docs/scope-history.md`, 2026-09-19 addendum), and the goldens."""
+    from digitizer_core.stage6_fill import clear_fill_reorder_memo
     base = _sew(under_cover=True)
+    clear_fill_reorder_memo()            # so the second call is not a memo hit
     explicit = _sew(under_cover=True, cut_bridges=False)
     assert [(r.kind, r.points, r.jump, r.trim) for r in explicit] == \
         [(r.kind, r.points, r.jump, r.trim) for r in base]
@@ -181,24 +188,30 @@ def test_every_site_that_passes_covered_routing_passes_the_cut_rule():
     stage 7, two in the blend tier) and the cut rule is inert without it, so
     the two travel together. A new site that copies one and not the other
     sews one tier by a different rule with nothing failing."""
-    import re
+    import ast
     from pathlib import Path
 
     import digitizer_core
     sites = 0
     for f in sorted(Path(digitizer_core.__file__).parent.glob("*.py")):
-        src = f.read_text(encoding="utf-8")
-        for m in re.finditer(r"under_cover=cfg\.fill_travel_under_cover,", src):
+        # Parsed, not pattern-matched: a site spelled `under_cover = config.…`
+        # or wrapped differently is still a call with that keyword.
+        for node in ast.walk(ast.parse(f.read_text(encoding="utf-8"))):
+            if not isinstance(node, ast.Call):
+                continue
+            kw = {k.arg: ast.unparse(k.value) for k in node.keywords if k.arg}
+            if "fill_travel_under_cover" not in kw.get("under_cover", ""):
+                continue
             sites += 1
-            call_end = src.index(")", m.end())
-            assert "cut_bridges=cfg.fill_bridge_cut" in src[m.end():call_end], (
-                f"{f.name}:{src.count(chr(10), 0, m.start()) + 1}")
+            assert "fill_bridge_cut" in kw.get("cut_bridges", ""), f"{f.name}:{node.lineno}"
     assert sites >= 7
 
 
 def test_the_scorer_counts_the_lift_the_emitter_will_make():
     """DOCTRINE 2026-09-11: scorer and emitter must agree before any order
-    guard can be trusted. Same paths, same order: one more cut, less exposed."""
+    guard can be trusted. Same paths, same order: one more cut, less exposed
+    -- and the cuts the scorer counts for the ON order are the trims the
+    emitter made sewing it."""
     paths = [list(r.points) for r in _sew(under_cover=True) if r.kind == "fill"]
     ring = _inset_ring(_COMB, machine.TRAVEL_INSET_MM)
     slack = _COMB.buffer(0.01)
@@ -206,3 +219,64 @@ def test_the_scorer_counts_the_lift_the_emitter_will_make():
     on = _order_cost(paths, _COMB, ring, slack, None, TRIM_AT, ROW, cut_bridges=True)
     assert on[0] == off[0] + 1, (off, on)
     assert on[2] < off[2], (off, on)
+    sewn_on = _sew(under_cover=True, cut_bridges=True)
+    on_paths = [list(r.points) for r in sewn_on if r.kind == "fill"]
+    scored = _order_cost(on_paths, _COMB, ring, slack, None, TRIM_AT, ROW, cut_bridges=True)
+    assert scored[0] == sum(1 for r in sewn_on if r.trim)
+
+
+# Review finding, 2026-09-19. A plate with two holes, rows along it: OFF, the
+# cover-aware reorder finds an order with no cut and 9.6 exposed stitches
+# (score 40.1). ON, the scorer lifts the dear bridge of the ORIGINAL order, so
+# that order reads "one cut, nothing exposed" -- and `_reorder_for_cover`'s
+# early exit ("nothing exposed; nothing to win") kept it without ever pricing
+# the order OFF had found: one trim and 40 more travel stitches, score 86.0,
+# dearer than flag-off at the very rate the flag is justified by.
+_PLATE = box(0, 0, 60, 20).difference(box(10, 5, 20, 15)).difference(box(40, 5, 50, 15))
+
+
+def test_flag_on_is_never_dearer_than_flag_off_by_its_own_scorer():
+    row = machine.FILL_ROW_MM
+    ring = _inset_ring(_PLATE, machine.TRAVEL_INSET_MM)
+    slack = _PLATE.buffer(0.01)
+
+    def score(**kw):
+        runs, _report = stitch_shape(_PLATE, "S1", angle_deg=0.0, row_mm=row, stitch_mm=3.0,
+                                     underlay_style="none", trim_at_mm=TRIM_AT,
+                                     under_cover=True, **kw)
+        paths = [list(r.points) for r in runs if r.kind == "fill"]
+        return _score(_order_cost(paths, _PLATE, ring, slack, None, TRIM_AT, row,
+                                  cut_bridges=True))
+
+    assert score(cut_bridges=True) <= score(), "the flag bought a dearer plan"
+
+
+def test_a_two_pass_fill_is_left_alone():
+    """Crosshatch and the density boost sew the shape twice. The sewn
+    footprint cannot tell pass-one fill that pass two is about to cover from
+    fill that is finished, so every pass-two bridge reads as exposed and the
+    rule's premise -- exposed means it will SHOW -- does not hold. Measured
+    on this plate before the guard: trims 0 -> 2 (crosshatch) and 1 -> 3
+    (density boost), cuts that hide nothing. Until exposure is measured per
+    pass the rule is for single-pass fills only."""
+    from digitizer_core.stage6_fill import clear_fill_reorder_memo
+
+    def sew(**kw):
+        clear_fill_reorder_memo()
+        runs, _report = stitch_shape(_PLATE, "S1", angle_deg=0.0, row_mm=machine.FILL_ROW_MM,
+                                     stitch_mm=3.0, underlay_style="none", trim_at_mm=TRIM_AT,
+                                     under_cover=True, **kw)
+        return [(r.kind, r.points, r.jump, r.trim) for r in runs]
+
+    for two_pass in (dict(technique="crosshatch"), dict(density_boost=True)):
+        assert sew(cut_bridges=True, **two_pass) == sew(**two_pass), two_pass
+
+
+def test_the_flag_is_part_of_the_reorder_memo_key():
+    """An ON run handed the order an OFF run memoized is a correctness bug,
+    not a slow path -- `_reorder_key`'s own words."""
+    paths = [list(r.points) for r in _sew(under_cover=True) if r.kind == "fill"]
+    ring = _inset_ring(_COMB, machine.TRAVEL_INSET_MM)
+    slack = _COMB.buffer(0.01)
+    key = lambda flag: _reorder_key(b"cover", paths, _COMB, ring, slack, None, TRIM_AT, ROW, flag)
+    assert key(True) != key(False)
