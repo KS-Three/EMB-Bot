@@ -11,7 +11,8 @@ BUILT and FLIPPED ON the same day (`cfg.satin_corner_twigs`, Kent's call);
 waiting on a sew-out; step 4 BUILT OFF and measured the same day
 (`cfg.satin_lettering_split`): the wide stems sew as columns and the R's
 junction ball fans — KEPT OFF (Kent, 2026-09-19) until the bold-letter
-junction construction exists; step 5 BUILT, measured and FLIPPED ON the
+junction construction exists (designed and priced the same day:
+`2026-09-19-junction-construction.md`); step 5 BUILT, measured and FLIPPED ON the
 same day (`cfg.edge_cap_skip_lettering`, Kent's call: the fixture's trims
 23 → 7 against the typed word's 3). Every step is built; next is a
 sew-out sheet for the two flips cloth still owes (3b, and 5's check).
