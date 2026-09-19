@@ -1355,9 +1355,10 @@ class PipelineConfig:
     # crosshatch is where that matters.
     # Measured ON (nine logos, 80 mm, main's defaults after #516): exposed
     # travel 248.6 -> 140.9 mm by `tools/travel_cover.py`, 432.3 -> 226.2 by
-    # `tools/fill_bridges.py`, trims 458 -> 464, stitches 76,774 -> 76,705,
+    # `tools/fill_bridges.py`, trims 458 -> 464, stitches 76,774 -> 76,706,
     # uncovered unchanged on all nine; Becker's 22.9 mm leg -> 4.0. The delta
-    # held across three engine states that day (+6 trims each time). OFF is
+    # held across three engine states that day (+6 trims each time). As
+    # thread, OFF above ON: `docs/renders/fill-bridge-cut-2026-09-19/`. OFF is
     # plan-md5-identical to the engine before it, all nine. Read it yourself:
     # `tools/travel_legs.py --set fill_bridge_cut=true`.
     # A lift this makes raises `report["jumps"]`, which `LONG_JUMPS_TRIMMED`
