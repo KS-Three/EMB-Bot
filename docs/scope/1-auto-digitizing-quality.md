@@ -4009,3 +4009,20 @@ concentration. **Flipped ON the same day — Kent's call over the THERMAL
 render, keeping the fonts' bar rule (a bar takes its own perpendicular) over
 the pro's one angle; False is the pre-flip engine.** *(built, measured and
 flipped 2026-09-19 — scope-history, step 1 and its addendum)*
+
+## Lettering: one path per letter — the Euler-walk stroke order (`satin_stroke_order`, built OFF 2026-09-19)
+
+Plan step 2. A satin shape's strokes sew nearest-first and travel between
+strokes along the unsewn web or trim when none is left; on a letter of
+several strokes that web is used up after the first few, and 18 of the
+plan fixture's 45 trims were that hop inside one letter. `"euler"` orders
+the strokes along one walk of the web — the font engine's `routeGlyph`
+construction: Chinese-postman duplication where a dead end forces it, a
+Hierholzer trail, each stroke sewn at its last visit so every travel leg
+lies under a column sewn later. Each stroke is walked through (column in
+at the walk's arrival end and out the other, underlay chained backwards
+from the entry), the graph builder's self-loop stubs are skipped, and the
+cursor may snap to the nearest node it can leave from. Fixture: 45 → 27
+trims, 2,564 → 2,482 stitches, uncovered 0.0 both ways; nine logos:
+trims **592 → 486** across the nine (Becker 46 → 38, tires 11 → 8, ENTHUSIAST 27 → 19, Fremont 75 → 55, Bridge Bar 112 → 85, Golden Tee 66 → 45, gaulke 39 → 35, drone 144 → 132, the screenshot 72 → 69) at a net −19 stitches (−58 to +65 per logo), travel 1,478 → 2,934 mm, satin self-crossings, uncovered area and preflight warnings unchanged on every one. Applies to every satin shape. `tests/test_stroke_order_euler.py`
+(9). *(built and measured 2026-09-19 — scope-history, step 2)*

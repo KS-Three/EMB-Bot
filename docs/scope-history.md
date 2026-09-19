@@ -13357,3 +13357,78 @@ default ON and the OFF side explicitly. What the flip moved in the full
 suite is recorded in the PR (#516) body.
 
 *(flipped 2026-09-19 — Kent's answers; config comment)*
+
+## 2026-09-19 — Lettering construction, step 2: one path per letter — the Euler-walk stroke order (`satin_stroke_order = "euler"`, OFF)
+
+Kent's pick after step 1 flipped. Built the same day, OFF (`"nearest"` is
+the shipped order, byte for byte); the flip is his. Plan:
+`docs/superpowers/plans/2026-09-19-lettering-construction.md`, step 2.
+
+**What the trims were.** On the plan's fixture (MARINE, `manga_impact`,
+traced at 80 mm; 45 trims on this engine, 41 when the plan was written) the
+sewing loop in `satin_shape` orders a shape's strokes nearest-first
+(`_order_strokes`) and, between strokes, walks the UNSEWN web needle-down
+(`_graph_travel`) or trims when no unsewn path is left. Instrumented
+(2026-09-19): of the 26 trims on lettering runs, 18 were inside one letter,
+and the travel call before each had returned None with the strokes between
+the needle and the target already sewn — the order had used up the web.
+The other 18 of the 45 are `run → run` hops between the edge cap's bean
+runs, steps 3 and 5's.
+
+**The construction.** `_euler_stroke_order`: the font engine's
+`routeGlyph` on stage 6's own travel graph (`_build_travel_graph`, the
+strokes' spines cut where another stroke's end lands). Chinese postman
+first — odd nodes paired greedily along shortest edge paths and those edges
+duplicated, so the duplicates are the extra travel and only where a dead
+end forces it — then a Hierholzer trail from the odd node nearest the
+needle; each stroke sews at its LAST visit, so every edge the trail walks
+between two consecutive strokes belongs to a stroke sewn later and is
+unsewn when walked, and the existing `_graph_travel` finds it. Three things
+the fixture taught, each caught by instrumenting the loop rather than by
+reasoning: (1) a stroke has to be walked THROUGH — the column enters at the
+end the walk arrives by and leaves by the other, and its underlay runs are
+chained backwards from that entry (the nearest-first orientation ended the
+underlay where the column entered, so the pair came back out where it went
+in and the walk's next leg started from the wrong end: 8 of the 18
+within-letter trims were `underlay → column`); the column's direction is
+read by geometry, since a short cap-extended column can start nearer the
+spine's far end; a stroke sewn in parts sews them in the walk's direction.
+(2) The 0.2 mm stubs the graph builder leaves where a cut lands one sample
+from a spine's end are self-loops: no travel, no direction, and they were
+the "last visit" that set a stroke's order and entry — skipped. (3)
+`_graph_travel(snap_to_open=True)`: a 2 mm stroke's cap-shortened column
+can end nearer the junction it was sewn FROM than the one the walk leaves
+by (0.73 against 1.63 mm on the M's short stroke), and the strict 0.8 mm
+snap then read a dead end; the cursor may snap to the nearest node within
+`trim_at_mm` that it can still leave from. Off, the snap is what it was.
+The order applies to EVERY satin shape, not only lettering — the travel
+web is the same object (tires: 11 → 8 trims with no letters at all).
+
+**Fixture, nearest → euler:** 45 → **27 trims**, 2,564 → 2,482 stitches
+(the tie-offs saved outweigh the 117 mm of travel added), travel legs 3 →
+17, satin self-crossings 277 both ways, uncovered 0.0 both ways, coverage
+peak 4.52 → 4.74 (travel under columns). The trims on lettering runs 26 →
+8: 4 are cap-extension hops — the underlay ends at the spine's end and the
+column starts 3.2–3.4 mm past it, over `TRIM_AT_MM` = 3.0, which the
+nearest order pays too — 3 are between letters, 1 is a walk the graph
+could not give. At 127 mm the word is tatami and the flag changes nothing
+(9,645 / 30 both ways). The font engine sews the same word with 3.
+
+**Nine logos, nearest → euler** (corpus widths): trims **592 → 486** across the nine (Becker 46 → 38, tires 11 → 8, ENTHUSIAST 27 → 19, Fremont 75 → 55, Bridge Bar 112 → 85, Golden Tee 66 → 45, gaulke 39 → 35, drone 144 → 132, the screenshot 72 → 69) at a net −19 stitches (−58 to +65 per logo), travel 1,478 → 2,934 mm, satin self-crossings, uncovered area and preflight warnings unchanged on every one.
+
+**Renders** (`docs/renders/lettering-euler-2026-09-19/`): the fixture,
+Becker's MARINE and the ENTHUSIAST wordmark, nearest above and euler below
+— alike to the eye, which is the point: the walk changes where the needle
+travels under the thread, not what the thread looks like.
+
+**Tests:** `tests/test_stroke_order_euler.py`, 9 — the default; synthetic
+webs (an open path is one walk with no duplicate and every entry forward; a
+T walks its dead end twice and sews the bar last; an E is one walk whatever
+its stem sews when; two islands are two walks, the nearer first; a stub
+loop decides nothing) each checked for the contract that every hop between
+consecutive strokes has an unsewn path; on the fixture, explicit "nearest"
+is byte-identical to the default, the walk trims at least 10 fewer and sews
+no more stitches, and nothing goes uncovered.
+
+*(built and measured 2026-09-19 — the loop's instrumentation lived in the
+session's scratchpad, the numbers are the record)*

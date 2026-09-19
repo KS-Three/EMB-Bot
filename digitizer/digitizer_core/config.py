@@ -1009,8 +1009,12 @@ class PipelineConfig:
     # (`_euler_stroke_order`, the font engine's `routeGlyph` construction:
     # Chinese-postman duplication where a dead end forces it, Hierholzer,
     # last visit sews), so every travel leg lies under a column sewn later
-    # and the walk always has an unsewn path. No physical constant. DEFAULT
-    # "nearest" -- measured in scope-history 2026-09-19; the flip is Kent's.
+    # and the walk always has an unsewn path. Applies to every satin shape.
+    # Measured 2026-09-19 (scope-history, step 2): the fixture 45 -> 27
+    # trims at 2,564 -> 2,482 stitches; the nine real logos 592 -> 486
+    # trims at a net -19 stitches, self-crossings, uncovered area and
+    # warnings unchanged on every one. No physical constant. DEFAULT
+    # "nearest"; the flip is Kent's.
     satin_stroke_order: str = "nearest"
     # Each satin rail reaches ITS OWN edge (defect 23's open half, built
     # 2026-09-03 for Kent's flip). The rail model places both rails at the

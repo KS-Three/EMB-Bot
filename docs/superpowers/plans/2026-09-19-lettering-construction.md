@@ -87,12 +87,31 @@ customer already had right.
    hardly a stem reads its diagonals' middle (ZANY −12°); a brush script
    with curves for stems reads near zero (montecarlo, pacificlo) where the
    eye sees a lean.
-2. **One path per letter — Euler-walk stroke order.** Order the strokes of a
-   text-cluster member so the existing unsewn-web travel always has a path:
-   depth-first over the spine graph, travelling down unsewn spines and
-   sewing back, like `satinfont.routeGlyph`. Target on the fixture: 35 → a
-   handful of within-letter trims. No physical constant (nothing crosses
-   bare fabric; every leg lies under a later column of the same shape).
+2. **One path per letter — Euler-walk stroke order. BUILT 2026-09-19,
+   `cfg.satin_stroke_order = "euler"`, OFF ("nearest" is the shipped order,
+   byte for byte); the flip is Kent's.** The font engine's `routeGlyph`
+   construction on stage 6's own travel graph (`_euler_stroke_order`):
+   Chinese-postman duplication where a dead end forces it, a Hierholzer
+   trail, each stroke sewn at its LAST visit so every travel leg lies under
+   a column sewn later; the existing `_graph_travel` then always finds the
+   unsewn path. Three things the fixture taught, each measured before it
+   was built: a stroke must be walked THROUGH (column in at the walk's
+   arrival end, out the other; the underlay chained backwards from that
+   entry — nearest-first orientation brought the pair back out where it
+   went in, 8 of 18 within-letter trims); the 0.2 mm self-loop stubs of the
+   graph builder must be skipped (they were setting orders and entries);
+   and the cursor may snap to the nearest node it can still leave from
+   (`snap_to_open`: a 2 mm column's caps end it nearer the junction it
+   came from). It applies to EVERY satin shape, not only lettering — the
+   travel web is the same object. **Fixture (MARINE 80 mm): 45 → 27
+   trims, 2,564 → 2,482 stitches, 3 → 17 travel legs (117 mm),
+   self-crossings and uncovered area unchanged**; the trims on lettering
+   runs 26 → 8, of which 4 are cap-extension hops (underlay end to a
+   3.2–3.4 mm cap-extended column start, over `TRIM_AT_MM` 3.0 — the
+   nearest order pays them too) and 3 are between letters; the 18 edge-cap
+   `run → run` trims are steps 3 and 5's. Nine logos: trims **592 → 486** across the nine (Becker 46 → 38, tires 11 → 8, ENTHUSIAST 27 → 19, Fremont 75 → 55, Bridge Bar 112 → 85, Golden Tee 66 → 45, gaulke 39 → 35, drone 144 → 132, the screenshot 72 → 69) at a net −19 stitches (−58 to +65 per logo), travel 1,478 → 2,934 mm, satin self-crossings, uncovered area and preflight warnings unchanged on every one.
+   Tests: `tests/test_stroke_order_euler.py` (9). Render:
+   `docs/renders/lettering-euler-2026-09-19/`.
 3. **Corners: rail-side pull compensation after decomposition
    (`satin_rail_comp`, built OFF; which skeleton is Kent's) and the cap-arm
    classifier for `_prune_spurs`** — the letterform study's mechanisms #1
