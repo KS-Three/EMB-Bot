@@ -183,6 +183,44 @@ def test_the_config_flag_reaches_the_fill_tier(monkeypatch):
     assert _stage7_hands_over(monkeypatch, fill_bridge_cut=True) == [True]
 
 
+def test_the_lift_warning_does_not_claim_the_lift_was_forced(monkeypatch):
+    """`LONG_JUMPS_TRIMMED`'s engine prose said the thread "had to be" lifted,
+    and its code comment "travel could not stay inside the shape". True when a
+    lift only ever meant no route existed; under `fill_bridge_cut` the engine
+    also lifts where a route exists and a cut is cheaper. The Studio has its
+    own sentence for this code and never said "had to"; this is the fallback
+    every other consumer reads. The count is forced at `stitch_shape`'s report,
+    which is the seam stage 7 reads it from."""
+    from digitizer_core import stage7_sequence
+    from digitizer_core.pipeline import BackgroundInfo, PipelineResult, plan_stitches
+    from digitizer_core.regions import Region
+    from digitizer_core.threads import chart_for
+
+    real = stage7_sequence.stitch_shape
+
+    def two_lifts(*a, **k):
+        runs, report = real(*a, **k)
+        return runs, {**report, "jumps": 2}
+
+    monkeypatch.setattr(stage7_sequence, "stitch_shape", two_lifts)
+    cfg = PipelineConfig()
+    poly = box(-20, -10, 20, 10)
+    chart = chart_for(cfg)
+    region = Region(shape_id="Sbox00001", polygon=poly, thread_index=0,
+                    thread_number=chart[0].number, area_mm2=poly.area,
+                    meta={"layer": 0, "stitched": True})
+    plan = plan_stitches(PipelineResult(
+        regions=[region],
+        palette=[{"brand": chart.label, "brand_id": chart.id,
+                  "number": region.thread_number, "name": "x", "rgb": [0, 0, 0]}],
+        background=BackgroundInfo(detected=False), px_per_mm=10.0,
+        design_size_mm=(40.0, 20.0)), cfg)
+    (w,) = [w for w in plan.warnings if w["code"] == "LONG_JUMPS_TRIMMED"]
+    assert w["count"] == 2
+    assert "lifted 2 times" in w["message"]
+    assert "had to" not in w["message"]
+
+
 def test_every_site_that_passes_covered_routing_passes_the_cut_rule():
     """Seven call sites hand `stitch_shape` the covered-routing flag (five in
     stage 7, two in the blend tier) and the cut rule is inert without it, so
