@@ -13467,3 +13467,81 @@ pre-flip order explicitly. What the flip moved in the full suite is
 recorded in the PR (#516) body.
 
 *(flipped 2026-09-19 — Kent's answers; config comment)*
+
+## 2026-09-19 — Lettering construction, step 3a: the spur pruner's structure rule (`satin_corner_twigs`, OFF), and step 3b re-measured
+
+Kent's pick after step 2 flipped: corners. The letterform study
+(2026-08-26) named two mechanisms; this entry is the second, built, and
+the first, re-measured.
+
+**Mechanism #2, what it was.** `_prune_spurs` erases a corner's short
+twig and, with it, the junction's DEGREE: a 3-way node with a letter's
+diagonal, its stem and a short branch into the corner becomes a 2-way
+pass-through once the branch goes, and the walker welds the diagonal to
+the stem as one column folding through the corner — PRECISION's N,
+Becker's R foot, the bare bottom-right Kent named twice. Keeping every
+twig instead hooks a square-capped bar's spine into its corner (the
+study's H defect: one of a cap's two I-beam arms surviving the length
+threshold by 0.027 mm). The study asked for a "cap-arm classifier" on the
+twig's tip width.
+
+**Instrument first — that test does not exist on this raster.** A census
+of the 739 spurs the pruner erases on five logos (Becker, ENTHUSIAST,
+drone, Fremont, Golden Tee; tip and node distance-transform values, twig
+length): every spur over half a millimetre ends at a 1 px distance
+transform (0.17 mm at 6 px/mm), tip/node ratio 0.06–0.25 — a corner twig
+and a cap arm alike reach the apex, and the only ratios over 0.5 are
+sub-0.3 mm fragments. What separates the two is the NODE: a cap's I-beam
+is two short free arms at one node off a stem; a corner twig is one short
+free arm between two longer arms.
+
+**The construction — `cfg.satin_corner_twigs`, OFF.** `_prune_spurs`
+reads each spur's node: two short free arms (under `_CAP_ARM_MAX_SPURS` =
+1.5 spur lengths) and a longer arm → a cap, both arms go whatever their
+exact length; one short free arm and at least two longer arms → a corner,
+the twig stays and holds the junction open for `_merge_through_junctions`
+to decide the weld on its own terms; anything else keeps today's length
+rule. Threaded through stage 7 and appliqué like the other satin flags.
+Off, the pruner is what it was.
+
+**Measured.** The plan's fixture (MARINE 80 mm): satin self-crossing
+pairs **277 → 103**, stitches 2,480 → 2,192, trims 28 → 23, edge-cap runs
+21 → 18, uncovered 0.0 both ways. A synthetic N (two stems and a diagonal,
+2 mm): off, two of its three strokes fold 90° through the corners; on, no
+stroke turns more than 45° and the three are stem, diagonal, stem. A
+45 × 4.5 mm square-capped bar's spine is straight either way. Nine logos
+at corpus widths, OFF → ON: satin self-crossings **1,813 → 1,004**
+(Fremont 66 → 13, gaulke 547 → 186, drone 430 → 264, the screenshot 271 →
+141, Golden Tee 484 → 381, ENTHUSIAST 15 → 19; Becker, tires and Bridge Bar
+0 both ways), trims 486 → 488 (gaulke 35 → 41, drone 132 → 127, the
+screenshot 69 → 73), uncovered unchanged on eight and Becker 34.8 → 35.5
+mm², stitches 88,882 → 89,470. **The one cost: Becker's MARINE band at
+100 mm, +725 stitches** (11,319 → 12,044) — the rule keeps three more
+strokes in the band (satin runs 18 → 21) and each gets its own zigzag
+underlay, 722 → 1,361 underlay stitches with the satin flat (2,630 →
+2,615); at 80 mm the same logo reads −174. `tools/letterforms.py` at
+80 mm: crossing pairs drone 388 → 275, Becker 382 → 156 (within a column
+23 → 0), ENTHUSIAST 138 → 93 with its bare junction area 2.85 → 0.0 mm²;
+stitches drone 18,274 → 17,990, Becker 6,762 → 6,588. Renders
+(`docs/renders/lettering-corners-2026-09-19/`): the fixture, drone's
+lettering and Becker's MARINE, off above and on below — the N's and R's
+corners sew as two columns meeting instead of one folding.
+
+**Mechanism #1 re-measured — `satin_rail_comp` (built OFF 2026-09-09).**
+`tools/rail_comp.py --compare` on today's engine (steps 0–2 ON): thread-
+vs-target IoU Fremont 0.681 → **0.836** (score 76 → 88), ENTHUSIAST 0.875
+→ 0.900 (trims 21 → 17), drone 0.803 → 0.826, Becker 0.896 → 0.898 (trims
+38 → 30, uncovered 26.0 → 21.5), gaulke 0.828 → 0.837 (score 64 → 76),
+sunset 0.734 → 0.807 (76 → 88); meadow 0.811 → 0.779 with coverage_max
+7.97 → 9.72 and +340 stitches — the one fixture it costs. Thread sewn
+outside the artwork 147–357 mm² → 0–8 on every lettering fixture. Its two
+decisions are the 09-09 plan's §7, unchanged: which polygon to
+skeletonise, and the flip after a sew-out — Kent's.
+
+**Tests:** `tests/test_corner_twigs.py`, 6 — the flag off by default; the
+bar's straight spine either way; the synthetic N; explicit OFF is the
+default's output; the fixture's self-crossings fall by more than half,
+stitches and trims do not rise, the uncovered artwork does not grow.
+
+*(built and measured 2026-09-19 — the census and probes lived in the
+session's scratchpad, the numbers are the record)*

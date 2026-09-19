@@ -1030,8 +1030,12 @@ class PipelineConfig:
     # two short free arms and one longer arm is a cap and both arms go
     # whatever their exact length; a node with one short free arm between
     # two longer arms is a corner and the twig stays, holding the junction
-    # open for `_merge_through_junctions`. No physical constant. DEFAULT
-    # OFF -- measured in scope-history 2026-09-19; the flip is Kent's.
+    # open for `_merge_through_junctions`. Measured 2026-09-19 (scope-
+    # history, step 3a): the fixture's satin self-crossing pairs 277 -> 103
+    # at 2,480 -> 2,192 stitches; nine logos 1,813 -> 1,004 at trims 486 ->
+    # 488, uncovered unchanged, stitches +588 of which Becker's band at
+    # 100 mm is +725 (three more strokes, each with its own underlay). No
+    # physical constant. DEFAULT OFF; the flip is Kent's.
     satin_corner_twigs: bool = False
     # Each satin rail reaches ITS OWN edge (defect 23's open half, built
     # 2026-09-03 for Kent's flip). The rail model places both rails at the

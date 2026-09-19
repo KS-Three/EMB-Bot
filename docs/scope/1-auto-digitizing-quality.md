@@ -4031,3 +4031,25 @@ against the thread sewn after it (gate 3's instrument): at 80 mm across the nine
 `tests/test_stroke_order_euler.py` (10). **Flipped ON the same day — Kent's
 call; "nearest" is the pre-flip engine.** *(built, measured and flipped
 2026-09-19 — scope-history, step 2 and its addendum)*
+
+## Lettering corners: the spur pruner's structure rule (`satin_corner_twigs`, built OFF 2026-09-19)
+
+Plan step 3a, the letterform study's mechanism #2. `_prune_spurs` erased a
+corner's twig and with it the junction's degree, so a letter's diagonal and
+stem welded into one column folding through the corner (PRECISION's N,
+Becker's R foot). The study's tip-width classifier does not exist on this
+raster (census of 739 spurs: every one over 0.5 mm ends at a 1 px distance
+transform), so the rule is by structure: two short free arms at a node off
+a stem are a cap and both go; one short free arm between two longer arms
+is a corner and stays, holding the junction open. Fixture: satin
+self-crossing pairs 277 → 103 at 2,480 → 2,192 stitches; nine logos:
+1,813 → 1,004 at trims 486 → 488 and uncovered unchanged (Becker 34.8 →
+35.5 mm²), stitches +588 of which Becker's band at 100 mm is +725 — three
+more strokes, each with its own zigzag underlay, the cost to name. A
+synthetic N stops folding; a square-capped bar's spine is straight either
+way. `tests/test_corner_twigs.py` (6). **Step 3b, `satin_rail_comp`,
+re-measured on today's engine:** IoU-to-target Fremont 0.681 → 0.836,
+ENTHUSIAST 0.875 → 0.900, drone 0.803 → 0.826; meadow 0.811 → 0.779 at
++340 stitches; its skeleton choice and flip are Kent's (plan
+`2026-09-09-rail-side-pull-comp.md` §7). *(built and measured 2026-09-19
+— scope-history, step 3a)*

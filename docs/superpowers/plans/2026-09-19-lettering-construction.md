@@ -5,8 +5,9 @@ engine's construction, in that order). Step 0 built and flipped ON the same
 day (`cfg.satin_house_from_line`); step 1 BUILT, measured and FLIPPED ON
 the same day too (`cfg.satin_house_anchor`, Kent's call over the THERMAL
 render, keeping the fonts' bar rule); step 2 BUILT, measured and FLIPPED ON
-the same day (`cfg.satin_stroke_order = "euler"`, Kent's call); step 3
-chosen next. Review it rests on:
+the same day (`cfg.satin_stroke_order = "euler"`, Kent's call); step 3a
+BUILT, OFF (`cfg.satin_corner_twigs`) and 3b re-measured, both awaiting
+Kent's flips. Review it rests on:
 `docs/lettering-route-review-2026-09-19.md`.
 
 **Yardstick.** The review's construction: a library font's own word — its
@@ -120,11 +121,44 @@ customer already had right.
    against the thread sewn AFTER it (preflight's own ribbon rule);
    at 80 mm across the nine logos the walk adds 1,064 mm of travel (1,530 → 2,594 mm) and **1.4 mm of new exposure** — exposed travel 244.7 → 246.1 mm, from gaulke (0.0 → 1.4 mm, worst leg 0.5 mm) and Bridge Bar (22.8 → 25.5) against Golden Tee's 2.3 → 0.4 and Fremont's 57.2 → 56.7; Becker, tires, ENTHUSIAST, drone and the screenshot within 0.3 mm; trims 587 → 471. The 245 mm that IS exposed is the nearest order's own (Becker's 22.9 mm leg, Fremont's 21.8, the screenshot's 26% of its travel) — a pre-existing finding this instrument is the first to read, not this step's. **Becker at 80 mm** (not its 100 mm corpus width, where 34.8 mm² both ways) reads `uncovered_total_mm2` 18.5 → 26.0 under the walk; diffed cell by cell, the six half-millimetre samples that flip sit at 0.26–0.32 units under the nearest order and 0.20–0.21 under the walk, on the seam between two of the MARINE band's columns, and what lifted them over the 0.25 floor was a 23-point travel leg the nearest order happened to route across the seam. The seam is bare of column thread under both orders — the decomposition's, step 3's — and the walk's legs run elsewhere; the columns' own points are identical either way (checked: `satin_shape` returns the same point set from either entry). Tests: `tests/test_stroke_order_euler.py` (10, on the
    committed fixture raster). Render: `docs/renders/lettering-euler-2026-09-19/`.
-3. **Corners: rail-side pull compensation after decomposition
-   (`satin_rail_comp`, built OFF; which skeleton is Kent's) and the cap-arm
-   classifier for `_prune_spurs`** — the letterform study's mechanisms #1
-   and #2. Measure by the bare corners the edge cap currently patches: the
-   hook runs should go as the corners fill.
+3. **Corners — the letterform study's mechanisms #1 and #2.**
+   **3a, mechanism #2, BUILT 2026-09-19: `cfg.satin_corner_twigs`, OFF
+   (the flip is Kent's).** `_prune_spurs` erased a corner's twig and with
+   it the junction's degree, so a letter's diagonal and stem welded into
+   one column folding through the corner. The study's "cap-arm classifier
+   on tip width" does not exist on this raster — a census of 739 spurs on
+   five logos shows every spur over 0.5 mm ends at a 1 px distance
+   transform, corner twig and cap arm alike — so the rule is by STRUCTURE:
+   a node with two short free arms and a longer one is a cap (both arms
+   go, whatever their exact length — the H defect's 0.027 mm survivor
+   too); a node with one short free arm between two longer arms is a
+   corner (the twig stays and holds the junction open). Fixture: satin
+   self-crossing pairs **277 → 103**, stitches 2,480 → 2,192, trims 28 →
+   23, uncovered 0.0 both ways; nine logos at corpus widths:
+   self-crossings **1,813 → 1,004** (Fremont 66 → 13, gaulke 547 → 186,
+   drone 430 → 264, the screenshot 271 → 141, Golden Tee 484 → 381), trims
+   486 → 488, uncovered unchanged but Becker 34.8 → 35.5 mm², stitches
+   +588 of which **Becker's band at 100 mm is +725** — three more strokes
+   kept in the band, each with its own zigzag underlay (underlay 722 →
+   1,361, satin flat), the one cost to name. `tools/letterforms.py` at
+   80 mm: crossing pairs drone 388 → 275, Becker 382 → 156 (within a
+   column 23 → 0), ENTHUSIAST 138 → 93 with its bare junction area 2.85 →
+   0.0 mm². A synthetic N stops folding 90° through its corners; a
+   45 × 4.5 mm bar's spine is straight either way.
+   `tests/test_corner_twigs.py` (6). Renders:
+   `docs/renders/lettering-corners-2026-09-19/`.
+   **3b, mechanism #1: `satin_rail_comp`** (built OFF 2026-09-09) —
+   re-measured on today's engine with steps 0–2 ON (`tools/rail_comp.py
+   --compare`, 2026-09-19): thread-vs-target IoU Fremont 0.681 → **0.836**
+   (score 76 → 88), ENTHUSIAST 0.875 → 0.900 (trims 21 → 17), drone 0.803
+   → 0.826, Becker 0.896 → 0.898 (trims 38 → 30, uncovered 26.0 → 21.5),
+   gaulke 0.828 → 0.837 (score 64 → 76), sunset 0.734 → 0.807; meadow
+   0.811 → 0.779 with coverage_max 7.97 → 9.72 and +340 stitches — the one
+   fixture it costs. Thread sewn outside the artwork 147–357 mm² → ≤ 8 on
+   every lettering fixture. Its two open decisions are unchanged from
+   plan `2026-09-09-rail-side-pull-comp.md` §7: which polygon to
+   skeletonise (the artwork, shipped, or the grown one), and the flip
+   itself, after a sew-out — both Kent's.
 4. **Wide lettering: split, never fill.** Classify a text-cluster member per
    stroke (`satin_per_stroke`'s unit), lift the cap for lettering and let
    `split_satin` carry the width — but only once step 3 and the wide-stroke
