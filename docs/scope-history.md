@@ -14169,3 +14169,18 @@ cover setting wins over part C.
 
 *(built and measured 2026-09-19 — `tools/weld_turns.py`; the sweep and
 the arms lived in the session's scratchpad, the numbers are the record)*
+
+### Addendum, the same day — `satin_junction_stack` FLIPPED ON, step 4 held, the two findings next
+
+Put to Kent with the fixtures, the nine-logo sheet and the goldens
+(AskUserQuestion, 2026-09-19): **flip `satin_junction_stack` ON now** —
+his call; `False` is the pre-flip merge, tuck and cover byte for byte,
+pinned by `tests/test_junction_stack.py`. **Step 4 stays OFF**: the R
+fixture sews split with no fold under the stack (7,283 / 44 against the
+fill's 9,642 / 31), but the split flag's `DENSITY_EXTREME` on the fixture
+is read first. **Next**: the two findings the build surfaced — what
+`DENSITY_EXTREME` reads on split-satin letters, and Becker's 469
+plain-column letter crossings against `_split_sharp_corners`' rules.
+What the flip moved in the suite is recorded in the PR (#520) body.
+
+*(flipped and ruled 2026-09-19 — Kent's answers; config comment)*

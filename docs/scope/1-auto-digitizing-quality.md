@@ -4135,6 +4135,6 @@ lettering groups' self-crossing pairs 1,004 → 596 (Golden Tee 381 → 113,
 gaulke 186 → 106, drone 264 → 220, ENTHUSIAST 19 → 8, the screenshot 141 →
 136), uncovered unchanged on eight and Becker's 35.5 → 0.0, warnings
 unchanged on every one. Off byte-identical. `tests/test_junction_stack.py`
-(10); renders `docs/renders/junction-construction-2026-09-19/`. The flip is
-Kent's. *(built and measured 2026-09-19 — scope-history, the junction
+(10); renders `docs/renders/junction-construction-2026-09-19/`. **Flipped ON the same day — Kent's call; False is the pre-flip
+engine.** Step 4 stays OFF until its `DENSITY_EXTREME` is read. *(built and measured 2026-09-19 — scope-history, the junction
 build)*
