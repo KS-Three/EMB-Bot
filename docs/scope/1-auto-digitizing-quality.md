@@ -4106,7 +4106,7 @@ was read on.
 render `docs/renders/lettering-edge-cap-2026-09-19/`. *(built and measured
 2026-09-19 — scope-history, step 5)*
 
-## The bold-letter junction: `satin_junction_stack` (designed and built OFF 2026-09-19)
+## The bold-letter junction: `satin_junction_stack` (designed, built and flipped ON 2026-09-19)
 
 Kent's ruling on
 `docs/superpowers/plans/2026-09-19-junction-construction.md`: A + B + C as

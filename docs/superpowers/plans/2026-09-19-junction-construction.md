@@ -9,8 +9,11 @@ monkeypatched constant, so the build can be priced before it is
 written. §7 is what is Kent's — **and his ruling, the same day: build
 A + B + C as one flag (`satin_junction_stack`, OFF), each part
 measurable inside it; this document lands first, on its own PR.
-BUILT the same day as `cfg.satin_junction_stack`, OFF — §6 carries the
-predictions against the build's results.**
+BUILT the same day as `cfg.satin_junction_stack` and FLIPPED ON the
+same day (Kent's call over the fixtures, the nine-logo sheet and the
+goldens; False is the pre-flip engine) — §6 carries the predictions
+against the build's results. Step 4 stays OFF until its
+`DENSITY_EXTREME` is read.**
 
 ## 0. What governs this — read before changing the plan
 

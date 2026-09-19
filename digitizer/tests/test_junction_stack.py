@@ -17,6 +17,10 @@ Measured 2026-09-19 (first build): the R fixture 311 → 0 pairs at trims
 34 → 44, uncovered 0.0 both ways; MARINE at 80 mm 103 → 0 at trims 7 → 9,
 uncovered 0.0 both ways; Becker at 100 mm under the split flag uncovered
 35.5 → 0.0. Off is byte-identical.
+
+**Built OFF and FLIPPED ON the same day** (Kent's call 2026-09-19, over
+those numbers, the nine-logo sheet and the goldens). `False` is the
+pre-flip merge, tuck and cover byte for byte, and this file pins both sides.
 """
 from __future__ import annotations
 
@@ -73,35 +77,39 @@ def _points(plan):
 
 @pytest.fixture(scope="module")
 def m80_off():
-    return _run(FIXTURE_80, 80.2)
+    """The pre-flip engine, explicitly."""
+    return _run(FIXTURE_80, 80.2, satin_junction_stack=False)
 
 
 @pytest.fixture(scope="module")
 def m80_on():
-    return _run(FIXTURE_80, 80.2, satin_junction_stack=True)
+    """The default since the flip."""
+    return _run(FIXTURE_80, 80.2)
 
 
 @pytest.fixture(scope="module")
 def r127_off():
-    return _run(FIXTURE_127, 127.4, satin_lettering_split=True)
+    return _run(FIXTURE_127, 127.4, satin_lettering_split=True,
+                satin_junction_stack=False)
 
 
 @pytest.fixture(scope="module")
 def r127_on():
-    return _run(FIXTURE_127, 127.4, satin_lettering_split=True,
-                satin_junction_stack=True)
+    return _run(FIXTURE_127, 127.4, satin_lettering_split=True)
 
 
 # --- the flag ---------------------------------------------------------------
 
-def test_the_default_is_off():
-    """Built OFF; the flip is Kent's."""
-    assert PipelineConfig().satin_junction_stack is False
+def test_the_default_is_on():
+    """Built OFF and flipped ON the same day — Kent's call. False stays
+    reachable: it is the pre-flip engine, pinned by every OFF fixture here."""
+    assert PipelineConfig().satin_junction_stack is True
+    assert PipelineConfig(satin_junction_stack=False).satin_junction_stack is False
 
 
-def test_explicit_off_is_the_default_byte_for_byte(m80_off):
-    _c, _r, default = m80_off
-    _c2, _r2, explicit = _run(FIXTURE_80, 80.2, satin_junction_stack=False)
+def test_explicit_on_is_the_default_byte_for_byte(m80_on):
+    _c, _r, default = m80_on
+    _c2, _r2, explicit = _run(FIXTURE_80, 80.2, satin_junction_stack=True)
     assert _points(explicit) == _points(default)
 
 
@@ -188,7 +196,7 @@ def test_marine_80_keeps_its_cover_without_the_junction_cover(monkeypatch):
     the fixture — the cover (C) is the backstop, not the construction.
     Falsified if uncovered rises over 0.5 mm² with the cover neutralised."""
     monkeypatch.setattr(s6, "_junction_cover_runs", lambda *a, **k: [])
-    cfg, result, plan = _run(FIXTURE_80, 80.2, satin_junction_stack=True)
+    cfg, result, plan = _run(FIXTURE_80, 80.2)
     assert _letter_folds(result, plan) == 0
     assert _uncovered(FIXTURE_80, cfg, result, plan) <= 0.5
 
@@ -206,7 +214,7 @@ def test_an_explicit_cover_setting_wins_over_part_c():
     import digitizer_core.stage7_sequence as s7
     s7.satin_shape = spy
     try:
-        _run(FIXTURE_80, 80.2, satin_junction_stack=True, satin_patch_junctions=True)
+        _run(FIXTURE_80, 80.2, satin_patch_junctions=True)
     finally:
         s7.satin_shape = real
     assert seen and all(v is True for v in seen)

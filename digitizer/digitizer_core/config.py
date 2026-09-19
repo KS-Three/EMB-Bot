@@ -1081,9 +1081,13 @@ class PipelineConfig:
     # at 80 mm 103 -> 0 at trims 7 -> 9; Becker at 100 mm under the split
     # flag uncovered 35.5 -> 0.0. The layers inside the junctions do NOT
     # rise to the pro's (p95 3.3-4.2 against his 3.9-7.2): B overlaps the
-    # ends, it does not stack them. DEFAULT OFF, byte-identical off; the
-    # flip is Kent's.
-    satin_junction_stack: bool = False
+    # ends, it does not stack them. Built OFF and FLIPPED ON the same day
+    # -- Kent's call 2026-09-19 over the fixtures, the nine-logo sheet
+    # (stitches +0.7%, crossings 1,004 -> 596, uncovered never up, trims
+    # 476 -> 489 with Bridge Bar's +13 the cost and gaulke's -9 the gain)
+    # and the goldens byte-identical. False is the pre-flip merge, tuck and
+    # cover byte for byte.
+    satin_junction_stack: bool = True
     # Each satin rail reaches ITS OWN edge (defect 23's open half, built
     # 2026-09-03 for Kent's flip). The rail model places both rails at the
     # NEARER edge's distance from a smoothed spine, so on every raster
