@@ -94,6 +94,10 @@ def plan_to_design(plan: StitchPlan, name: str = "Digitized design") -> dict:
         would have to re-derive the interleaving rules above and would drift
         the first time one of them changed.
       * **Every record in `stitches[i0..i1]` is a `stitch` of that run**, in
+        order — and a span can hold FEWER records than the run has points:
+        a penetration within `SAME_POINT_MM` of the one before it on a
+        continuous path is dropped, as `iter_machine_commands` drops it, so
+        the records are the machine's penetrations (2026-09-19). It is
         run-point order — the spans are contiguous and hold nothing else.
       * **The spans partition the `stitch` records exactly** — every one is
         covered, none twice. A run whose points emitted no `stitch` record

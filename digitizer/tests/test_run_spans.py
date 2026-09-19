@@ -18,6 +18,8 @@ travel between tiers, and a hand-built two-run plan has none of those.
 """
 from __future__ import annotations
 
+import math
+
 from collections import Counter
 
 import pytest
@@ -68,24 +70,55 @@ def fixture(request):
 
 # --- The identity ---------------------------------------------------------
 
+def _penetrations(plan):
+    """Each run's points as the MACHINE sews them: a penetration within
+    `SAME_POINT_MM` of the one before it on a continuous path is the same
+    needle position and is dropped, the way `iter_machine_commands` drops
+    it — the rule the adapter mirrors since 2026-09-19, written out here a
+    second time rather than imported, so the test is not the function
+    checking itself. The tracker resets where the stream's does: a jump, a
+    trim, a block boundary."""
+    from digitizer_core.stitches import SAME_POINT_MM
+
+    out = []
+    for block in plan.blocks:
+        last = None
+        for run in block.runs:
+            if not run.points:
+                continue
+            if run.jump or run.trim:
+                last = None
+            kept = []
+            for p in run.points:
+                if last is not None and math.dist(last, p) < SAME_POINT_MM:
+                    continue
+                kept.append(p)
+                last = p
+            last = run.points[-1]
+            out.append((run, kept))
+    return out
+
+
 def test_every_span_holds_only_its_own_runs_stitches(fixture):
     """`stitches[i0..i1]` is that run's penetrations, in order, and nothing
-    else — no jump, no trim, no colour record ever falls inside a span."""
+    else — no jump, no trim, no colour record ever falls inside a span. A
+    run's span can hold FEWER records than the run has points: a coincident
+    penetration is one needle position (see `_penetrations`)."""
     plan, design = fixture
     recs = design["stitches"]
-    sewn = [run for _b, run in plan.iter_runs() if run.points]
+    sewn = _penetrations(plan)
     spans = design["runs"]
     assert len(spans) == len(sewn), "one span per run that emitted stitches"
 
-    for span, run in zip(spans, sewn):
+    for span, (run, kept) in zip(spans, sewn):
         assert span["i0"] <= span["i1"], span
         window = recs[span["i0"]:span["i1"] + 1]
-        assert len(window) == len(run.points)
+        assert len(window) == len(kept) <= len(run.points)
         assert {r["type"] for r in window} == {"stitch"}
         # Coordinate for coordinate, through the adapter's one y-flip. This is
         # what makes the span an index into THIS run rather than into a run
         # with the same length somewhere else in the stream.
-        assert [(r["x"], r["y"]) for r in window] == [_u(*p) for p in run.points]
+        assert [(r["x"], r["y"]) for r in window] == [_u(*p) for p in kept]
 
 
 def test_the_spans_partition_every_stitch_record_exactly_once(fixture):
@@ -204,12 +237,18 @@ def test_stock_config_marks_no_border_at_all(enthusiast):
 def test_the_index_moves_no_stitch(fixture):
     """The records and the totals are what they would be with no index at all
     — proved by rebuilding them from the plan by the adapter's own rule rather
-    than by trusting the same function twice."""
+    than by trusting the same function twice — and they are what the MACHINE
+    sews: the stream `export.plan_to_pattern` encodes and `plan.stats` counts,
+    penetration for penetration (2026-09-19: the worksheet and the review
+    disagreed by the coincident records the adapter used to keep)."""
+    from digitizer_core.stitches import CMD_STITCH, iter_machine_commands
+
     plan, design = fixture
-    rebuilt = [_u(*p) for _b, run in plan.iter_runs() for p in run.points]
-    assert [(r["x"], r["y"]) for r in design["stitches"]
-            if r["type"] == "stitch"] == rebuilt
-    assert design["stitchCount"] == len(rebuilt)
+    rebuilt = [_u(*p) for _run, kept in _penetrations(plan) for p in kept]
+    got = [(r["x"], r["y"]) for r in design["stitches"] if r["type"] == "stitch"]
+    assert got == rebuilt
+    assert got == [_u(*pt) for cmd, pt in iter_machine_commands(plan) if cmd == CMD_STITCH]
+    assert design["stitchCount"] == len(rebuilt) == plan.stats.stitch_count
     assert design["stitches"][-1]["type"] == "end"
 
 

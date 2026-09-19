@@ -1900,8 +1900,10 @@ def test_a_dropped_limb_is_reported_and_names_its_shape(monkeypatch):
     the injection keeps its ground there; the paired product test below
     runs the shipped default.
     """
-    def unguarded(mask, spur_len_px):
-        """`_prune_spurs` exactly as it shipped before the 2026-08-21 fix."""
+    def unguarded(mask, spur_len_px, **_kw):
+        """`_prune_spurs` exactly as it shipped before the 2026-08-21 fix
+        (`**_kw` swallows `corner_twigs`, the 2026-09-19 keyword, which the
+        shipped default leaves off anyway)."""
         for _ in range(4):
             removed = 0
             for e in stage6_satin._skeleton_edges(mask):
