@@ -14095,6 +14095,64 @@ sentence.
 scripts lived in the session's scratchpad; the renders and the numbers are
 the record)*
 
+### Addendum, the same day — re-measured on the doubly-flipped tree: Becker's leg is gone, the trade is Fremont's and the screenshot's
+
+Kent's pick once #520 had landed the two lettering flips (AskUserQuestion,
+2026-09-19): price the flip on the engine it would be flipped on. Under
+`satin_lettering_split` Becker's MARINE band sews as split satin, and the
+band's FILLED letters were where every one of Becker's exposed fill bridges
+lay (the step-4 addendum above: 4 runs / 38.7 mm → 0 / 0.0) — so the
+headline leg, *"Becker's 22.9 mm leg → 4.0"*, is not there to cut. Nine
+logos, 80 mm, the case's garment, shipped order, `satin_junction_stack` and
+`satin_lettering_split` ON (tree `08c856a2`), OFF → ON:
+
+| | exposed, `travel_cover` | exact (`travel_legs`) | `fill_bridges` | worst leg | trims | stitches |
+|---|---|---|---|---|---|---|
+| Becker | 0.4 → 0.4 | 0.0 → 0.0 | 0 → 0 | 0.4 → 0.4 | 43 → 43 | 6,057 → 6,057, **md5-identical** |
+| Fremont | 58.0 → **21.1** | 109.4 → 34.9 | 136.5 → 39.8 | 21.8 → 9.8 | 35 → 39 | 13,123 → 13,092 |
+| Bridge Bar | 30.0 → 19.7 | 32.3 → 22.7 | 33.9 → 11.1 | 10.2 → 3.6 | 96 → 97 | 14,686 → 14,680 |
+| the screenshot | 60.9 → **26.0** | 104.2 → 48.5 | 107.1 → 45.0 | 14.0 → 5.0 | 69 → 73 | 8,233 → 8,178 |
+| drone | 69.1 → 65.8 | 90.3 → 94.8 | 111.9 → 111.8 | 8.3 → 8.3 | 123 → 119 | 18,626 → 18,658 |
+| tires, ENTHUSIAST, Golden Tee, gaulke | md5-identical OFF and ON | | | | | |
+| **nine** | **232.7 → 147.4** | 352.6 → 217.2 | 393.6 → 211.9 | | **473 → 478** | 77,242 → 77,182 |
+
+`uncovered_total_mm2` is 0.0 on all nine both ways and the finding codes
+are identical on all nine. **The OCR judge did not run:** this container
+has no `tesseract`, so `LETTERING_ILLEGIBLE` is read on neither arm —
+Fremont's 0.50 → 0.267 (the judge, not the thread, per the addendum above)
+is neither confirmed nor withdrawn by this run. Drone is the scorer's
+choice again: four fewer trims, 66 mm more travel (533.5 → 599.4), 3 mm
+less of it grid-exposed and 4.5 mm more by the exact test.
+
+**Against main at #516's 248.6 → 140.9 mm and 458 → 464 trims.** Becker's
+31.2 → 8.3 at +1 trim is gone, and it is the only thing that is: the four
+other movers read within a millimetre or two of their #516 figures
+(Fremont 57.7 → 20.8 then, 58.0 → 21.1 now; the screenshot 59.6 → 25.2 and
+60.9 → 26.0; drone 69.0 → 65.7 and 69.1 → 65.8; Bridge Bar 26.0 → 15.8 and
+30.0 → 19.7 — its OFF rose 4 mm with the stack, and the bridges the flag
+cuts are the same 33.9 → 11.1 by `fill_bridges`). The fill tier reads none
+of the satin flags: `fill_bridges` across the eight logos other than
+Becker is 393.6 → 211.9 here against 432.3 − 38.7 → 226.2 − 14.2 there.
+The delta is now **−85 mm exposed for +5 trims**, on four of nine logos,
+byte-identical on the other five.
+
+**Renders** (`docs/renders/fill-bridge-cut-2026-09-19/*_stack_split_tree.jpg`,
+the flip-prep layout: whole design at 12 px/mm OFF above ON below, an 18 mm
+window on OFF's worst exposed leg at 40 px/mm). Becker's two panels are one
+plan: the M of MARINE is satin now where the flip-prep zoom showed the ring
+of running stitches lapping its filled right leg, and the window sits on
+the C's 0.4 mm satin walk. Fremont: the white diagonal between the L and
+the F is there OFF and gone ON, the second diagonal beside it stays. The
+screenshot: the dark line along the block's bottom edge under the white
+marks is there OFF and gone ON.
+
+**The flip stays Kent's.** What it buys on the engine it would land on: a
+third of the exposed fill travel for five trims.
+
+*(measured 2026-09-19 — `tools/travel_legs.py` bare and `--set
+fill_bridge_cut=true`; the md5s, `fill_bridges` sums and renders from
+`fbc_remeasure.py` in the session's scratchpad; the numbers are the record)*
+
 ## 2026-09-19 — The bold-letter junction: designed and priced before code (`2026-09-19-junction-construction.md`)
 
 Kent's pick while the sew-out sheet is on his machine: the construction
