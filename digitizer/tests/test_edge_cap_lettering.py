@@ -17,6 +17,11 @@ marine_80mm_traced_input.png`, 80.2 mm): stitches 2,192 → 1,774, trims
 23 → 7, cap runs 18 → 1, cap stitches on satin letters 418 → 0, uncovered
 artwork 0.0 both ways. The 127 mm fixture, whose letters fill, is
 byte-identical either way — the negative half of the rule.
+
+**Built OFF and FLIPPED ON the same day** (Kent's call 2026-09-19, over
+those numbers, the render and the nine-logo sheet: five logos move for −12
+trims / −319 stitches, uncovered area unchanged on all nine). `False` is the
+pre-flip cap byte for byte, and this file pins both sides.
 """
 from __future__ import annotations
 
@@ -59,12 +64,14 @@ def _run(**kw):
 
 @pytest.fixture(scope="module")
 def off():
-    return _run()
+    """The pre-flip cap, explicitly."""
+    return _run(edge_cap_skip_lettering=False)
 
 
 @pytest.fixture(scope="module")
 def on():
-    return _run(edge_cap_skip_lettering=True)
+    """The default since the flip."""
+    return _run()
 
 
 def _tiers(plan):
@@ -104,14 +111,16 @@ def _uncovered(cfg, result, plan) -> float:
     return float(pf["metrics"].get("uncovered_total_mm2") or 0.0)
 
 
-def test_the_default_is_off():
-    """Built OFF; the flip is Kent's (plan step 5)."""
-    assert PipelineConfig().edge_cap_skip_lettering is False
+def test_the_default_is_on():
+    """Built OFF and flipped ON the same day — Kent's call (plan step 5).
+    False stays reachable: it is the pre-flip cap, pinned below."""
+    assert PipelineConfig().edge_cap_skip_lettering is True
+    assert PipelineConfig(edge_cap_skip_lettering=False).edge_cap_skip_lettering is False
 
 
-def test_explicit_off_is_the_default_byte_for_byte(off):
-    _cfg, _result, default = off
-    _c, _r, explicit = _run(edge_cap_skip_lettering=False)
+def test_explicit_on_is_the_default_byte_for_byte(on):
+    _cfg, _result, default = on
+    _c, _r, explicit = _run(edge_cap_skip_lettering=True)
     assert ([r.points for _b, r in explicit.iter_runs()]
             == [r.points for _b, r in default.iter_runs()])
 
@@ -201,8 +210,8 @@ def test_a_fill_sewn_text_candidate_keeps_its_cap():
     end in open air at its edge — the defect the cap exists for. ON is
     byte-identical to OFF, cap included."""
     slab = [_region(_bar(20, 30), "T", 3, 0, {"text_candidate": True})]
-    off = _plan_for(slab)
-    on = _plan_for(slab, edge_cap_skip_lettering=True)
+    off = _plan_for(slab, edge_cap_skip_lettering=False)
+    on = _plan_for(slab)
     kinds = {str(r.kind) for b in off.blocks for r in b.runs if r.shape_id == "T"}
     assert str(stitches.FILL) in kinds, kinds
     assert _cap_block(off) is not None, "a lone fill should be capped"
@@ -214,7 +223,7 @@ def test_a_design_with_no_lettering_is_untouched():
     input and the plan is what it was."""
     both = [_region(_bar(15, 30, cx=-7.5), "L", 3, 0),
             _region(_bar(15, 30, cx=7.5), "R", 5, 1)]
-    assert _points(_plan_for(both, edge_cap_skip_lettering=True)) == _points(_plan_for(both))
+    assert _points(_plan_for(both, edge_cap_skip_lettering=False)) == _points(_plan_for(both))
 
 
 # --- the helper reads the runs, not a verdict --------------------------------

@@ -4074,11 +4074,11 @@ trims 39 → 71; composed with `satin_patch_junctions="satin"` its uncovered
 2026-09-09's — a junction blob is not a column: the flag lifts the ceiling
 and builds no junction**, so the flip trades tatami letters for split-satin
 letters whose junction balls fan until the bold-letter junction
-construction exists. The flip is Kent's. `tests/test_lettering_split.py`
+construction exists. Kept OFF (Kent, 2026-09-19). `tests/test_lettering_split.py`
 (7); renders `docs/renders/lettering-split-2026-09-19/`. *(built and
 measured 2026-09-19 — scope-history, step 4)*
 
-## Lettering: no edge cap on lettering (`edge_cap_skip_lettering`, built OFF 2026-09-19)
+## Lettering: no edge cap on lettering (`edge_cap_skip_lettering`, built and flipped ON 2026-09-19)
 
 Plan step 5. The design-silhouette cap sews only the stretches of the
 outline nothing linear already covers, and on a satin-sewn letter that is
@@ -4101,6 +4101,7 @@ stitches, with uncovered area, self-crossings and warnings unchanged on
 every one. Found on the way: the wide-column fold guard's load-bearing case
 on Becker at 80 mm is gone under the corner rule (coverage_max 4.67
 unguarded, against 7.07 on 2026-09-09); its test is pinned on the pruner it
-was read on. The flip is Kent's. `tests/test_edge_cap_lettering.py` (10);
+was read on.
+**Flipped ON the same day — Kent's call; False is the pre-flip cap.** `tests/test_edge_cap_lettering.py` (10);
 render `docs/renders/lettering-edge-cap-2026-09-19/`. *(built and measured
 2026-09-19 — scope-history, step 5)*

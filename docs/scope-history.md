@@ -13729,3 +13729,16 @@ design with no lettering is untouched; the helper's two answers.
 
 *(built and measured 2026-09-19 — the census and arms lived in the
 session's scratchpad, the numbers are the record)*
+
+### Addendum, later the same day — step 5 FLIPPED ON, a sew-out sheet next
+
+Put to Kent with the fixture's numbers, the render and the nine-logo
+sheet (AskUserQuestion, 2026-09-19): **flip `edge_cap_skip_lettering` ON
+now** — his call; `False` is the pre-flip cap byte for byte, and
+`tests/test_edge_cap_lettering.py` pins both sides. Every step of the plan
+is now built, and his pick for what follows is a **sew-out sheet**: the
+plan's fixtures exported for his machine, OFF and ON, for the flips cloth
+still owes — 3b's rail comp, and this one's check on cloth. What the flip
+moved in the suite is recorded in the PR (#516) body.
+
+*(flipped and ruled 2026-09-19 — Kent's answers; config comment)*

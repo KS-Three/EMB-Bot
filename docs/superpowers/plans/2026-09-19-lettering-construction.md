@@ -11,9 +11,11 @@ BUILT and FLIPPED ON the same day (`cfg.satin_corner_twigs`, Kent's call);
 waiting on a sew-out; step 4 BUILT OFF and measured the same day
 (`cfg.satin_lettering_split`): the wide stems sew as columns and the R's
 junction ball fans — KEPT OFF (Kent, 2026-09-19) until the bold-letter
-junction construction exists; step 5 BUILT OFF and measured
-(`cfg.edge_cap_skip_lettering`): the fixture's trims 23 → 7 against the
-typed word's 3 — its flip is Kent's. Review it rests on:
+junction construction exists; step 5 BUILT, measured and FLIPPED ON the
+same day (`cfg.edge_cap_skip_lettering`, Kent's call: the fixture's trims
+23 → 7 against the typed word's 3). Every step is built; next is a
+sew-out sheet for the two flips cloth still owes (3b, and 5's check).
+Review it rests on:
 `docs/lettering-route-review-2026-09-19.md`.
 
 **Yardstick.** The review's construction: a library font's own word — its
@@ -213,7 +215,9 @@ customer already had right.
    junction construction exists (item 5 PR 3's finding: the pro stacks
    MORE layers at every junction). `tests/test_lettering_split.py` (7).
 5. **No edge cap on lettering — BUILT 2026-09-19,
-   `cfg.edge_cap_skip_lettering`, DEFAULT OFF; the flip is Kent's.** The
+   `cfg.edge_cap_skip_lettering`, and FLIPPED ON the same day (Kent, over
+   the fixture's trims, the render and the nine-logo sheet; False is the
+   pre-flip cap byte for byte).** The
    design-silhouette cap (`cfg.edge_cap`, "bean") sews only the stretches
    of the outline nothing linear already covers, and on a satin-sewn
    letter that is exactly the bare corners and junction seams the satin

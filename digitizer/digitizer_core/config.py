@@ -1783,9 +1783,13 @@ class PipelineConfig:
     # show (measured as uncovered artwork, scope-history step 5). Measured
     # 2026-09-19: the fixture 2,192 -> 1,774 stitches, trims 23 -> 7 (the
     # typed word: 3), uncovered 0.0 both ways; Becker at 80 mm trims 43 ->
-    # 36; fill-lettering designs byte-identical. DEFAULT OFF; the flip is
-    # Kent's.
-    edge_cap_skip_lettering: bool = False
+    # 36; fill-lettering designs byte-identical. Built OFF and FLIPPED ON
+    # the same day -- Kent's call 2026-09-19, over the fixture's trims (23 ->
+    # 7 against the typed word's 3), the render (the hooks gone from every
+    # letter) and the nine-logo sheet (five move: -12 trims / -319 stitches,
+    # uncovered area unchanged on all nine). False is the pre-flip cap byte
+    # for byte.
+    edge_cap_skip_lettering: bool = True
     # EXPERIMENT, default OFF — option (b) of the same plan doc, the other
     # half of Kent's 2026-08-23 (a)+(b) decision: `shade_palette_bind` above
     # masks the shade snap to the palette; THIS flag makes the palette worth
