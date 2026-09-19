@@ -10,7 +10,8 @@ BUILT and FLIPPED ON the same day (`cfg.satin_corner_twigs`, Kent's call);
 3b re-measured and its skeleton RULED (the artwork, Kent), its flip
 waiting on a sew-out; step 4 BUILT OFF and measured the same day
 (`cfg.satin_lettering_split`): the wide stems sew as columns and the R's
-junction ball fans — its flip is Kent's. Review it rests on:
+junction ball fans — KEPT OFF (Kent, 2026-09-19) until the bold-letter
+junction construction exists; step 5 chosen next. Review it rests on:
 `docs/lettering-route-review-2026-09-19.md`.
 
 **Yardstick.** The review's construction: a library font's own word — its
@@ -165,7 +166,8 @@ customer already had right.
    still waits on a sew-out, since where the pull lands is what the fabric
    answers to.
 4. **Wide lettering: split, never fill — BUILT 2026-09-19,
-   `cfg.satin_lettering_split`, DEFAULT OFF; the flip is Kent's.** Kent's
+   `cfg.satin_lettering_split`, DEFAULT OFF, and KEPT OFF the same day
+   (Kent's call: the junction construction first; step 5 next).** Kent's
    2026-09-11 rule for the browser lettering engine (split ON, fill off),
    applied on the traced path. A text-cluster member is classified and
    sewn with NO width ceiling — `_satin_ceiling_for` answers (∞, the

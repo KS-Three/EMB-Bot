@@ -1059,7 +1059,8 @@ class PipelineConfig:
     # 71; MARINE at 80 mm +328 stitches, the zigzag underlay the oversize
     # skip used to withhold. No physical constant moves: the ceiling is lifted
     # for one population the pro sews as columns (7-23% of Becker's over
-    # 5 mm), not re-tuned. DEFAULT OFF; the flip is Kent's.
+    # 5 mm), not re-tuned. DEFAULT OFF, and KEPT OFF on Kent's call the
+    # same day: the bold-letter junction construction comes first.
     satin_lettering_split: bool = False
     # Each satin rail reaches ITS OWN edge (defect 23's open half, built
     # 2026-09-03 for Kent's flip). The rail model places both rails at the
