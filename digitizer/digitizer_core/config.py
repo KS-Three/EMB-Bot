@@ -1059,9 +1059,42 @@ class PipelineConfig:
     # 71; MARINE at 80 mm +328 stitches, the zigzag underlay the oversize
     # skip used to withhold. No physical constant moves: the ceiling is lifted
     # for one population the pro sews as columns (7-23% of Becker's over
-    # 5 mm), not re-tuned. DEFAULT OFF, and KEPT OFF on Kent's call the
-    # same day: the bold-letter junction construction comes first.
-    satin_lettering_split: bool = False
+    # 5 mm), not re-tuned. Built OFF and KEPT OFF on Kent's call the same
+    # day, on the R's fanning junction ball; then FLIPPED ON later that day
+    # once `satin_junction_stack` (below) took the fold out of the R (311
+    # -> 0 self-crossing pairs) and the split-satin density finding proved
+    # to be the instrument (preflight now strips the splits before reading
+    # the rail pitch). Kent's call over the R fixture at 127 mm: split, no
+    # fold, no finding, 7,283 stitches / 44 trims against the fill's 9,642
+    # / 31. False is the pre-flip engine byte for byte: a text-cluster
+    # member over the ceiling fills.
+    satin_lettering_split: bool = True
+    # The bold-letter junction sewn as the pro sews it (junction construction
+    # plan `2026-09-19-junction-construction.md`; Kent's ruling: A + B + C as
+    # one flag). A: a weld through a node is REFUSED past
+    # `stage6_satin._STACK_WELD_TURN_DEG` of turn by the merge's own baseline
+    # and both arms end at the node -- a two-arm node then takes the corner
+    # path (one arm owns the corner and is extended, the other tucks). The
+    # number is read off the corpus with `tools/weld_turns.py`: the seam
+    # pairs sit in the 30-60 deg welds (1,420 of 1,607), the R of the 127 mm
+    # fixture folds at 44 deg. B: an arm ending at a meeting of several
+    # runs INTO the node by its own half-width, so the arms stack there as
+    # the pro's do (his p95 4-7 layers inside a MARINE junction blob against
+    # our 2-4). C: the satin junction cover (`satin_patch_junctions =
+    # "satin"`) under the arms for whatever is still bare. Measured
+    # 2026-09-19 (scope-history, the junction build): the R fixture at
+    # 127 mm under the split flag 311 -> 0 self-crossing pairs at 7,253 ->
+    # 7,283 stitches and trims 34 -> 44, uncovered 0.0 both ways; MARINE
+    # at 80 mm 103 -> 0 at trims 7 -> 9; Becker at 100 mm under the split
+    # flag uncovered 35.5 -> 0.0. The layers inside the junctions do NOT
+    # rise to the pro's (p95 3.3-4.2 against his 3.9-7.2): B overlaps the
+    # ends, it does not stack them. Built OFF and FLIPPED ON the same day
+    # -- Kent's call 2026-09-19 over the fixtures, the nine-logo sheet
+    # (stitches +0.7%, crossings 1,004 -> 596, uncovered never up, trims
+    # 476 -> 489 with Bridge Bar's +13 the cost and gaulke's -9 the gain)
+    # and the goldens byte-identical. False is the pre-flip merge, tuck and
+    # cover byte for byte.
+    satin_junction_stack: bool = True
     # Each satin rail reaches ITS OWN edge (defect 23's open half, built
     # 2026-09-03 for Kent's flip). The rail model places both rails at the
     # NEARER edge's distance from a smoothed spine, so on every raster

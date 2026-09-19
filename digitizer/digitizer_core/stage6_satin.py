@@ -127,6 +127,21 @@ _TANGENT_WIDTHS = 1.0
 # How opposed two arms must be to count as one stroke through a node. -0.5 welds
 # arms 120 deg apart -- a stroke turning 60 deg, which pivots and sprays.
 _WELD_MAX_DOT = -0.5
+# Under `satin_junction_stack` (junction construction plan, 2026-09-19): the
+# turn, by the SAME baseline, past which a weld is refused and the two arms
+# end at the node. Read off the corpus's welds with `tools/weld_turns.py`
+# rather than derived. Across the nine logos at their corpus widths, 383
+# welds, by ten degrees of turn: 0-10 carries 127 seam pairs on 64 welds,
+# 10-20 47 on 82, 20-30 **13 on 75** -- the trough -- then 30-40 302 on 72,
+# 40-50 274 on 58 and 50-60 844 on 32; the R of the 127 mm fixture folds
+# at 44.4 deg. The fold guard's own radius rule (0.7 R against the node's
+# ball) was tried at 1, 2 and 3 mm windows and separates nothing: the R
+# reads 0.97 at 2 mm, a 301-seam weld on Becker's outline 1.25, a clean
+# weld 0.80. Swept on the fixtures at 20-45 deg (scope-history, the
+# junction build): the fixtures' folds are gone from 25 deg down, and the
+# corpus trough is 20-30, so 30 refuses the fewest welds that hold them.
+_STACK_WELD_TURN_DEG = 30.0
+_STACK_WELD_MAX_DOT = -math.cos(math.radians(_STACK_WELD_TURN_DEG))
 # A spine turning more than this many degrees within about one stroke width
 # gets the column CUT there. This started at 35 and the corpus overruled it:
 # across 19 professional files, 1,436 corner events sit INSIDE a continuing
@@ -1441,7 +1456,8 @@ def _cluster_junctions(edges: list[dict], max_len_px: float,
 
 
 def _merge_through_junctions(edges: list[dict], dt_mm=None, half_mm: float = 0.0,
-                             scale: float = 1.0) -> list[dict]:
+                             scale: float = 1.0,
+                             weld_max_dot: float | None = None) -> list[dict]:
     """Join skeleton edges that run straight through a branch node.
 
     The skeleton of a T is three edges meeting at one node — but the BAR is one
@@ -1478,7 +1494,12 @@ def _merge_through_junctions(edges: list[dict], dt_mm=None, half_mm: float = 0.0
     Ends that still have a through-partner, and every end at a node with three
     or more surviving arms, are untouched — a T's stem still tucks under its
     bar exactly as before.
+
+    `weld_max_dot` replaces `_WELD_MAX_DOT` as the weld's admission
+    (`satin_junction_stack`: `_STACK_WELD_MAX_DOT`, a 30 deg turn); None is
+    the shipped threshold, byte-identical.
     """
+    weld_limit = _WELD_MAX_DOT if weld_max_dot is None else weld_max_dot
     corners = dt_mm is not None and half_mm > 0
     # How far along an arm its direction at the node is measured. Five pixels
     # is under a millimetre, and at a corner the medial axis has already
@@ -1560,7 +1581,7 @@ def _merge_through_junctions(edges: list[dict], dt_mm=None, half_mm: float = 0.0
             # Anti-aligned means straight-through; the threshold admits a bend
             # but refuses a corner sharp enough that the column would have to
             # pivot, which no parallel-rail satin can sew.
-            if best is None or best[0] >= _WELD_MAX_DOT:
+            if best is None or best[0] >= weld_limit:
                 break
             welded.add(best[1])
             welded.add(best[2])
@@ -2026,6 +2047,7 @@ def extract_strokes(poly: Polygon, *,
                      half_extra_mm: float = 0.0,
                      polygon_axis: bool = False,
                      corner_twigs: bool = False,
+                     junction_stack: bool = False,
                      ) -> tuple[list[Stroke], float, _WidthField | None]:
     """-> (strokes in mm, mean half-width in mm, local width field).
 
@@ -2112,7 +2134,8 @@ def extract_strokes(poly: Polygon, *,
         _skeleton_edges(skel_mask),
         max(_JUNCTION_CLUSTER_MIN_PX, _JUNCTION_CLUSTER_HALFWIDTHS * len_px),
         dt_mm)
-    for e in _merge_through_junctions(edges, dt_mm, half_px / scale, scale):
+    for e in _merge_through_junctions(edges, dt_mm, half_px / scale, scale,
+                                      weld_max_dot=_STACK_WELD_MAX_DOT if junction_stack else None):
         length = sum(math.dist(a, b) for a, b in zip(e["pts"], e["pts"][1:]))
         # "Free" here means free in the SKELETON — a corner end re-flagged by
         # `_merge_through_junctions` is still a chain between two branch nodes
@@ -3378,7 +3401,8 @@ def _satin_joined(poly: Polygon, stroke: Stroke, half_mm: float,
                   max_width_mm: float = machine.SATIN_MAX_WIDTH_MM,
                   fold_guard: bool = False,
                   rail_comp_mm: float = 0.0,
-                  rail_comp_floor_mm: float = 0.0) -> list[tuple[float, float]]:
+                  rail_comp_floor_mm: float = 0.0,
+                  junction_stack: bool = False) -> list[tuple[float, float]]:
     """A stroke with Goldman corners (`Stroke.corners`) -> its members sewn as
     separate columns and laid end to end in chain order.
 
@@ -3423,7 +3447,8 @@ def _satin_joined(poly: Polygon, stroke: Stroke, half_mm: float,
                              art_poly=art_poly, hairline_floor_mm=hairline_floor_mm,
                              rails_follow_edge=rails_follow_edge,
                              max_width_mm=max_width_mm, fold_guard=fold_guard,
-                             rail_comp_mm=rail_comp_mm, rail_comp_floor_mm=rail_comp_floor_mm)
+                             rail_comp_mm=rail_comp_mm, rail_comp_floor_mm=rail_comp_floor_mm,
+                             junction_stack=junction_stack)
         above = machine.SPLIT_SATIN_ABOVE_MM if split_above_mm is None else split_above_mm
         if parts is not None and len(parts) > n_before and n_before > n_start_joined:
             # The join stays ONE stroke in `parts` as well: this member's
@@ -3466,7 +3491,8 @@ def satin_stroke(poly: Polygon, stroke: Stroke, half_mm: float,
                  max_width_mm: float = machine.SATIN_MAX_WIDTH_MM,
                  fold_guard: bool = False,
                  rail_comp_mm: float = 0.0,
-                 rail_comp_floor_mm: float = 0.0) -> list[tuple[float, float]]:
+                 rail_comp_floor_mm: float = 0.0,
+                 junction_stack: bool = False) -> list[tuple[float, float]]:
     """One stroke -> flat zigzag points (A1, B1, A2, B2, ...).
 
     `parts` (2026-09-03), when a list is passed, additionally receives the
@@ -3524,7 +3550,8 @@ def satin_stroke(poly: Polygon, stroke: Stroke, half_mm: float,
                              art_poly=art_poly, hairline_floor_mm=hairline_floor_mm,
                              rails_follow_edge=rails_follow_edge,
                              max_width_mm=max_width_mm, fold_guard=fold_guard,
-                             rail_comp_mm=rail_comp_mm, rail_comp_floor_mm=rail_comp_floor_mm)
+                             rail_comp_mm=rail_comp_mm, rail_comp_floor_mm=rail_comp_floor_mm,
+                             junction_stack=junction_stack)
 
     spine = _smooth(stroke.spine, 3, stroke.closed)
     spine = _round_corners(spine, half_mm, stroke.closed)
@@ -3575,7 +3602,15 @@ def satin_stroke(poly: Polygon, stroke: Stroke, half_mm: float,
             # What has to be cleared is the other arm's SEWN width: under
             # rail-side comp the field is the artwork's and the arm sews a
             # pull wider (0.0 otherwise -- byte-identical).
-            trims.append(max(0.0, edge + rail_comp_mm - _JUNCTION_TUCK_MM))
+            #
+            # `junction_stack`, part B (2026-09-19): an end at a meeting of
+            # several -- no single owner to tuck under -- runs INTO the node
+            # by its own half-width instead of stopping at the blob's edge,
+            # so the arms' ends overlap inside the ball the way the pro's
+            # do. A corner tuck (`under` set) is already under its owner and
+            # keeps its clearance.
+            reach_in = half_mm if (junction_stack and under is None) else 0.0
+            trims.append(max(0.0, edge + rail_comp_mm - _JUNCTION_TUCK_MM - reach_in))
         if trims[0] or trims[1]:
             spine = _trim_chain(spine, trims[0], trims[1])
 
@@ -4654,6 +4689,7 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
                 polygon_axis: bool | str = False,
                 stroke_order: str = "nearest",
                 corner_twigs: bool = False,
+                junction_stack: bool = False,
                 ) -> tuple[list[StitchRun], dict]:
     """One satin-classified shape -> runs in sew order, plus the same report
     contract `stitch_shape` uses, so stage 7 can treat the two identically.
@@ -4661,6 +4697,14 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
     `corner_twigs` (`cfg.satin_corner_twigs`, plan step 3, 2026-09-19): the
     spur pruner's structure rule -- see `_CAP_ARM_MAX_SPURS`. Off, the
     pruner is what it was.
+
+    `junction_stack` (`cfg.satin_junction_stack`, the junction construction
+    plan, 2026-09-19): the pro's junction. A weld is refused past
+    `_STACK_WELD_TURN_DEG` and the arms end at the node (`extract_strokes`);
+    an arm ending at a meeting of several runs into the node by its own
+    half-width (`satin_stroke`); and the satin junction cover sews under
+    the arms for whatever is still bare (`patch_junctions="satin"` unless
+    a cover is already asked for). Off, byte-identical.
 
     `stroke_order` (`cfg.satin_stroke_order`, plan step 2, 2026-09-19):
     "nearest" is `_order_strokes`, the shipped order; "euler" re-orders the
@@ -4738,7 +4782,8 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
     strokes, half_mm, field = extract_strokes(axis_poly, use_shapefield=use_shapefield,
                                               polygon_axis=polygon_axis,
                                               half_extra_mm=rail_comp_mm,
-                                              corner_twigs=corner_twigs)
+                                              corner_twigs=corner_twigs,
+                                              junction_stack=junction_stack)
     if not strokes:
         report["empty"] = True
         return [], report
@@ -4768,7 +4813,8 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
                      art_poly=art_poly, hairline_floor_mm=hairline_floor_mm,
                      rails_follow_edge=rails_follow_edge,
                      max_width_mm=max_width_mm, fold_guard=fold_guard,
-                     rail_comp_mm=rail_comp_mm, rail_comp_floor_mm=rail_comp_floor_mm)
+                     rail_comp_mm=rail_comp_mm, rail_comp_floor_mm=rail_comp_floor_mm,
+                     junction_stack=junction_stack)
         mixed = len(parts) > 1
         for kind, pts, piece, at_start, at_end in parts:
             if kind == stitches.SATIN and len(pts) < 4:
@@ -4943,6 +4989,10 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
     # separate sweeps removed from this repo on 2026-09-06. If a consumer ever
     # wants the count it goes in beside `hairline_runs`, aggregated at
     # `stage7_sequence` ~2114, with something that actually reads it.
+    if junction_stack and not patch_junctions:
+        # Part C of `satin_junction_stack`: the satin cover under the arms
+        # for whatever A and B leave bare. An explicit cover setting wins.
+        patch_junctions = "satin"
     if patch_junctions == "satin" and runs:
         # The cover goes FIRST, under the arms (2026-09-09, item 5 PR 2):
         # see `_junction_cover_runs`. Found on the runs as sewn so far, so

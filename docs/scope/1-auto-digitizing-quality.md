@@ -4074,7 +4074,10 @@ trims 39 → 71; composed with `satin_patch_junctions="satin"` its uncovered
 2026-09-09's — a junction blob is not a column: the flag lifts the ceiling
 and builds no junction**, so the flip trades tatami letters for split-satin
 letters whose junction balls fan until the bold-letter junction
-construction exists. Kept OFF (Kent, 2026-09-19). `tests/test_lettering_split.py`
+construction exists. Kept OFF (Kent, 2026-09-19), then FLIPPED ON
+later that day once `satin_junction_stack` took the fold out of the R and
+the split-satin density finding proved to be the instrument (Kent's call;
+False is the pre-flip engine). `tests/test_lettering_split.py`
 (7); renders `docs/renders/lettering-split-2026-09-19/`. *(built and
 measured 2026-09-19 — scope-history, step 4)*
 
@@ -4105,3 +4108,54 @@ was read on.
 **Flipped ON the same day — Kent's call; False is the pre-flip cap.** `tests/test_edge_cap_lettering.py` (10);
 render `docs/renders/lettering-edge-cap-2026-09-19/`. *(built and measured
 2026-09-19 — scope-history, step 5)*
+
+## The bold-letter junction: `satin_junction_stack` (designed, built and flipped ON 2026-09-19)
+
+Kent's ruling on
+`docs/superpowers/plans/2026-09-19-junction-construction.md`: A + B + C as
+one flag. The defect: the R of the 127 mm fixture under
+`satin_lettering_split` folds one column over itself through one welded
+corner (311 self-crossing pairs, 294 in one junction blob), and across the
+nine logos 1,420 of 1,607 seam pairs sit in the 30–60° welds. A: a weld is
+refused past 30° of turn by the merge's own baseline — the corpus number
+(`tools/weld_turns.py`: the trough is 20–30° at 13 pairs on 75 welds) — and
+the arms end at the node; the fold guard's radius rule was tried at three
+windows and separates nothing. B: an arm ending at a meeting of several runs
+into the node by its own half-width. C: the satin junction cover under the
+arms. Measured: the R fixture 311 → 0 pairs at 7,253 → 7,283 stitches and
+trims 34 → 44 (the R's welds 8 → 3, all five over 30° refused), uncovered
+0.0 both ways; MARINE 80 mm 103 → 0 at trims 7 → 9 (the doc's A + C proxy
+paid +12: B is the lever on trims); Becker 100 mm under the split flag
+uncovered 35.5 → 0.0 at 8,612 → 8,353 stitches and trims 53 → 61, its remaining letter pairs not welds (read the same day: all four
+strokes that carry them are Goldman joins — the mitre, the pro's kind,
+counted within the run; nothing to build). Two predictions falsified: the layers inside the
+junctions do not rise toward the pro's (p95 3.3–4.2 against 3.9–7.2; B
+overlaps ends, it does not stack), and the fixture's trims pay +10 not +4.
+Nine logos: stitches 89,105 → 89,723 (+0.7%), trims 476 → 489 (Bridge Bar 82
+→ 95, Becker 38 → 44, Golden Tee 43 → 47, ENTHUSIAST 16 → 18, Fremont 56 →
+57, tires and the screenshot level, drone 126 → 122, gaulke 38 → 29), the
+lettering groups' self-crossing pairs 1,004 → 596 (Golden Tee 381 → 113,
+gaulke 186 → 106, drone 264 → 220, ENTHUSIAST 19 → 8, the screenshot 141 →
+136), uncovered unchanged on eight and Becker's 35.5 → 0.0, warnings
+unchanged on every one. Off byte-identical. `tests/test_junction_stack.py`
+(10); renders `docs/renders/junction-construction-2026-09-19/`. **Flipped ON the same day — Kent's call; False is the pre-flip
+engine.** Step 4's `DENSITY_EXTREME` was the
+instrument (below); its flip is Kent's again. *(built and measured 2026-09-19 — scope-history, the junction
+build)*
+
+## `DENSITY_EXTREME` on split satin was the instrument (fixed 2026-09-19)
+
+The first of the two findings the junction build surfaced, read the same
+day. `preflight._satin_rail_advance_mm` reads the satin rail pitch as the
+distance between points two apart (rails alternate A, B, A, B), and a
+split satin column carries extra penetrations along each cross, so on
+split lettering two apart was a mid-cross hop: the lettering plan's
+127 mm fixture under `satin_lettering_split` read 1.09 mm against the
+0.40 target (ratio 2.8, a `DENSITY_EXTREME` warn) on columns sewn at
+0.43. The reader now strips the splits with `stage6_satin.strip_splits`
+first, the reader the coverage map already used; unsplit runs are
+unchanged (MARINE 80 0.445 → 0.444, Becker 100 under the split flag
+0.455 → 0.415, the fixture 1.094 → 0.428, no finding). The playbook's
+parity trap in its second form — the parity broken by the splits instead
+of the slicing. `tests/test_density_split_satin.py` (3). *(read and
+fixed 2026-09-19 — scope-history)*

@@ -14095,6 +14095,39 @@ sentence.
 scripts lived in the session's scratchpad; the renders and the numbers are
 the record)*
 
+### Addendum, the same day — `fill_bridge_cut` FLIPPED ON (Kent's call)
+
+Put to Kent with the three thread renders and the nine-logo figures
+(AskUserQuestion, 2026-09-19): **flip `cfg.fill_bridge_cut` ON.** Judged on a
+render, not yet on cloth — a candidate for the sew-out sheet the lettering
+plan is preparing for its own two flips; nobody has put it there yet. `False` is the engine before it, plan-md5-identical on the nine
+logos; `stitch_shape`'s own `cut_bridges` keyword still defaults False, the
+way `under_cover` does, so a caller that does not pass it (the contour
+tier's finish patches) is untouched.
+
+**What the flip moved in the suite: nothing it pins.** Full local digitizer
+suite with the default ON: **2,698 passed, 3 failed, 3 skipped, 8 xfailed,
+0 errors** (43m48s) — the three are the recorded Windows-local goldens
+(`enthusiast_logo` on the flat-lane and photo-dispatch goldens,
+`logo_whitebg-towel` on pushcomp), the same three as before the flag
+existed, and no fourth. ENTHUSIAST is md5-identical OFF and ON, so its two
+are not this flip's on any machine. No golden is re-pinned and none needed
+the Linux recapture workflow: no pinned fixture sews a fill bridge dearer
+than a cut. (The 11 setup errors the earlier run carried are gone with
+#517's `encoding="utf-8"`.)
+
+**What a customer's logo gets** (nine logos, 80 mm, `main`'s defaults):
+exposed fill travel 248.6 → 140.9 mm, 458 → 464 trims, 76,774 → 76,706
+stitches, uncovered unchanged; four of the nine do not change at all. Photo
+designs are untouched by construction — crosshatch is two-pass and the rule
+leaves it alone — until exposure per pass is measured.
+
+`tools/pro_parity/flagcost.py`'s default-ON list gains the flag, so its
+runtime bill can be read; not yet read. `tests/test_fill_bridge_cut.py`
+pins the default and that stage 7 hands `False` over when asked.
+
+*(flipped 2026-09-19 — Kent's answer; config comment)*
+
 ## 2026-09-19 — The bold-letter junction: designed and priced before code (`2026-09-19-junction-construction.md`)
 
 Kent's pick while the sew-out sheet is on his machine: the construction
@@ -14158,35 +14191,227 @@ follows on a branch of its own.
 
 *(ruled 2026-09-19 — Kent's answer)*
 
-### Addendum, the same day — `fill_bridge_cut` FLIPPED ON (Kent's call)
+## 2026-09-19 — The junction construction BUILT: `satin_junction_stack`, OFF (Kent's ruling: A + B + C as one flag)
 
-Put to Kent with the three thread renders and the nine-logo figures
-(AskUserQuestion, 2026-09-19): **flip `cfg.fill_bridge_cut` ON.** Judged on a
-render, not yet on cloth — a candidate for the sew-out sheet the lettering
-plan is preparing for its own two flips; nobody has put it there yet. `False` is the engine before it, plan-md5-identical on the nine
-logos; `stitch_shape`'s own `cut_bridges` keyword still defaults False, the
-way `under_cover` does, so a caller that does not pass it (the contour
-tier's finish patches) is untouched.
+Kent's ruling on the design doc, the same day. One flag, three parts,
+each read on its own inside it.
 
-**What the flip moved in the suite: nothing it pins.** Full local digitizer
-suite with the default ON: **2,698 passed, 3 failed, 3 skipped, 8 xfailed,
-0 errors** (43m48s) — the three are the recorded Windows-local goldens
-(`enthusiast_logo` on the flat-lane and photo-dispatch goldens,
-`logo_whitebg-towel` on pushcomp), the same three as before the flag
-existed, and no fourth. ENTHUSIAST is md5-identical OFF and ON, so its two
-are not this flip's on any machine. No golden is re-pinned and none needed
-the Linux recapture workflow: no pinned fixture sews a fill bridge dearer
-than a cut. (The 11 setup errors the earlier run carried are gone with
-#517's `encoding="utf-8"`.)
+**A — the weld gate.** `_merge_through_junctions(weld_max_dot=...)`:
+under the flag a weld is refused past `_STACK_WELD_TURN_DEG` = **30°** of
+turn by the merge's own two-half-width baseline, and the arms end at the
+node (a two-arm node then takes the existing corner path: one arm owns
+the corner and is extended, the other tucks). The number is read off the
+corpus, not derived: `tools/weld_turns.py` (committed) over the nine
+logos' 383 welds by ten degrees of turn — 0–10 carries 127 seam pairs on
+64 welds, 10–20 47 on 82, 20–30 **13 on 75**, 30–40 302 on 72, 40–50 274
+on 58, 50–60 844 on 32. The design doc's own proposal — the fold guard's
+radius rule — was tried first at 1, 2 and 3 mm windows and **separates
+nothing**: the R's folding weld reads 0.97 at 2 mm, a 301-seam weld on
+Becker's outline 1.25, a clean weld 0.80. Swept on the fixtures at
+20–45°: fold-free from 30 down, MARINE 80 keeps 42 pairs at 35, the R
+folds again at 45 (342). On the R fixture the gate refuses five of the
+R's eight welds (34.5–47.8°) and none under 30°; the design's welds
+16 → 7.
 
-**What a customer's logo gets** (nine logos, 80 mm, `main`'s defaults):
-exposed fill travel 248.6 → 140.9 mm, 458 → 464 trims, 76,774 → 76,706
-stitches, uncovered unchanged; four of the nine do not change at all. Photo
-designs are untouched by construction — crosshatch is two-pass and the rule
-leaves it alone — until exposure per pass is measured.
+**B — arms that run into the node.** `satin_stroke(junction_stack=...)`:
+an end at a meeting of several — no single owner to tuck under — runs
+INTO the node by its own half-width instead of stopping at the blob's
+edge. **C — the cover.** `satin_shape` sews the satin junction cover
+(`patch_junctions="satin"`) under the arms unless a cover was asked for
+explicitly. Threaded through stage 7 and appliqué like the other satin
+flags; off, byte-identical (pinned).
 
-`tools/pro_parity/flagcost.py`'s default-ON list gains the flag, so its
-runtime bill can be read; not yet read. `tests/test_fill_bridge_cut.py`
-pins the default and that stage 7 hands `False` over when asked.
+**Measured.**
 
-*(flipped 2026-09-19 — Kent's answer; config comment)*
+| fixture | stitches | trims | letter self-crossing pairs | uncovered | coverage_max |
+|---|---|---|---|---|---|
+| R fixture, 127 mm, `satin_lettering_split` | 7,253 → 7,283 | 34 → 44 | **311 → 0** | 0.0 → 0.0 (worst 4.0 → 1.8) | 6.20 → 5.36 |
+| MARINE 80 mm, defaults | 1,774 → 1,787 | 7 → 9 | **103 → 0** | 0.0 → 0.0 | 4.76 → 4.91 |
+| Becker 100 mm, `satin_lettering_split` | 8,612 → 8,353 | 53 → 61 | 546 → 528 | **35.5 → 0.0** | 6.68 → 6.16 |
+
+The doc's A + C proxy paid +12 trims on MARINE 80; the build pays +2 — B is
+the lever on trims. Becker's 528 remaining letter pairs are **not welds**:
+they hold at every threshold of the sweep, 469 in plain columns and 59 in
+Goldman-joined strokes — bends inside one arm, `_split_sharp_corners`'
+rules' territory, the next thing to read. The R fixture's `DENSITY_EXTREME`
+is the split flag's (satin pitch 1.12 mm against a 0.4 target) and the stack
+leaves it at 1.09. Nine logos at corpus widths, `tools`' sheet: stitches
+89,105 → 89,723 (+0.7%), trims 476 → 489 (Bridge Bar 82 → 95, Becker 38 →
+44, Golden Tee 43 → 47, ENTHUSIAST 16 → 18, Fremont 56 → 57, tires and the
+screenshot level, drone 126 → 122, gaulke 38 → 29), the lettering groups'
+self-crossing pairs 1,004 → 596 (Golden Tee 381 → 113, gaulke 186 → 106,
+drone 264 → 220, ENTHUSIAST 19 → 8, the screenshot 141 → 136), uncovered
+unchanged on eight and Becker's 35.5 → 0.0, warnings unchanged on every one.
+
+**Against the pro** (`pro_layers --blobs`, Becker 100 mm, split + stack):
+the R's blobs read p95 3.33 / 3.93 / 4.18 (split alone 3.54 / 3.60 /
+3.97) against his 3.90 / 5.13 / 7.18, the I's 2.01 against 4.32; every
+letter blob's max under the warn line (≤ 6.37). **B overlaps the ends;
+it does not stack them** — the pro's density at a junction is not an
+overlap of arm ends, and what it is (more crosses per mm through the
+junction, a second pass) is the next design question.
+
+**Predictions against results** (the plan's §6, filled): 1 falsified as
+written (five welds refused, not one) and held as meant (none under 30°);
+2 held (A + B alone leave MARINE 80 whole with the cover neutralised);
+3 **falsified** (layers); 4 **falsified** (+10 trims, not +4); 5 and 6
+in the table above and the PR.
+
+**Tests:** `tests/test_junction_stack.py`, 10 — default OFF; explicit OFF
+byte-identical; the gate refuses a 45° weld the default admits and keeps
+a straight one; the threshold is the corpus number; the R stops folding
+and keeps its cover and thread; MARINE 80 stops folding within +4 trims;
+A + B alone leave no bare artwork with the cover neutralised; an explicit
+cover setting wins over part C.
+
+*(built and measured 2026-09-19 — `tools/weld_turns.py`; the sweep and
+the arms lived in the session's scratchpad, the numbers are the record)*
+
+### Addendum, the same day — `satin_junction_stack` FLIPPED ON, step 4 held, the two findings next
+
+Put to Kent with the fixtures, the nine-logo sheet and the goldens
+(AskUserQuestion, 2026-09-19): **flip `satin_junction_stack` ON now** —
+his call; `False` is the pre-flip merge, tuck and cover byte for byte,
+pinned by `tests/test_junction_stack.py`. **Step 4 stays OFF**: the R
+fixture sews split with no fold under the stack (7,283 / 44 against the
+fill's 9,642 / 31), but the split flag's `DENSITY_EXTREME` on the fixture
+is read first. **Next**: the two findings the build surfaced — what
+`DENSITY_EXTREME` reads on split-satin letters, and Becker's 469
+plain-column letter crossings against `_split_sharp_corners`' rules.
+What the flip moved in the suite is recorded in the PR (#520) body.
+
+*(flipped and ruled 2026-09-19 — Kent's answers; config comment)*
+
+## 2026-09-19 — Finding 1 of the junction build: `DENSITY_EXTREME` on split satin was the instrument
+
+Kent's pick after the flip: read what the finding measures before step 4
+is priced on it. `preflight._satin_rail_advance_mm` reads the satin rail
+pitch as the median distance between points two apart — rails alternate
+A, B, A, B — and a split satin column carries one or more penetrations
+along every cross (`_split_points`, over `SPLIT_SATIN_ABOVE_MM`), so with
+them in the list two apart is a mid-cross hop. Measured: the lettering
+plan's 127 mm fixture under `satin_lettering_split` read **1.094 mm**
+against the 0.40 target (ratio 2.8, the `DENSITY_EXTREME` warn step 4
+was held on) with the splits in, **0.428** with them stripped; the
+default fill of the same fixture 0.587 → 0.410 (two split runs, under
+the 1.5× line either way); MARINE 80 0.445 → 0.444; Becker 100 under the
+split flag 0.455 → 0.415. The reader now strips the splits with
+`stage6_satin.strip_splits` — the reader `_coverage_map` already used —
+before measuring; unsplit runs are unchanged. The playbook's parity trap
+in its second form: the parity broken by the splits instead of the
+slicing. So step 4's blocker was the instrument, not the letters, and the
+split flag's flip is Kent's again on the numbers it had (the R fixture
+under split + stack: 7,283 stitches / 44 trims / no fold, against the
+fill's 9,642 / 31).
+
+`tests/test_density_split_satin.py` (3): a split column reads its rail
+pitch and not its split length, an unsplit column is unchanged, the
+fixture raises no satin density finding. `test_preflight`'s dropped-limb
+injection is pinned on the pre-flip junction engine: the stack's part C
+sews the cover under the arms by default and patches exactly the hole
+the injection makes.
+
+*(read and fixed 2026-09-19 — the probe lived in the session's scratchpad)*
+
+## 2026-09-19 — Finding 2 of the junction build: Becker's residual letter crossings are the Goldman join's mitre, not folds
+
+The build left Becker's band at 100 mm (split + stack) with 528 letter
+crossing pairs that held at every threshold of the weld gate's sweep,
+which the build entry called "bends inside one arm" on a probe that
+matched runs to joined strokes by their points and mis-filed 469 of them
+as plain columns. Read stroke by stroke with a spy on `satin_stroke`
+(each emitted stroke, its column's within-run pairs, its sharpest turn
+over the corner split's own one-half-width baseline, and whether it is a
+join): **565 pairs in four strokes, every one a Goldman join**
+(`Stroke.corners` set) — the A's 260 at a 52° join a quarter of the way
+along its spine, the E's 209 at 64° past the middle, the R's 59 at 47°,
+and a 50 mm ribbon's 37 at 57° — with the crossing seats clustered at the
+join (the A's at 5–18% of the spine, the E's at 52–74%). A joined stroke
+sews as ONE run (`_satin_joined`), so the owner's corner cap sweeping
+over the member that butts into it counts as within-run pairs, which is
+exactly the reading DOCTRINE 2026-09-09 already ruled on: crossing pairs
+at a join ARE the join, and the pro's own MARINE carries 2,593 of them.
+So there is no fold left in Becker's letters under the flag, no bend the
+corner rules missed, and nothing to build; the counting instrument is
+what mis-read, and `crossing_pairs` on a joined run is a mitre count.
+Measured negative, recorded.
+
+*(read 2026-09-19 — the probe lived in the session's scratchpad)*
+
+### Addendum, the same day — step 4 FLIPPED ON (`satin_lettering_split`), a second sew-out arm next
+
+Put to Kent once the junction build had taken the fold out of the R
+(311 → 0 under `satin_junction_stack`) and finding 1 had shown the split
+flag's `DENSITY_EXTREME` to be the instrument (AskUserQuestion,
+2026-09-19): **flip `satin_lettering_split` ON now** — his call, on the R
+fixture at 127 mm sewing split with no fold and no finding at 7,283
+stitches / 44 trims against the fill's 9,642 / 31. `False` is the
+pre-flip engine byte for byte (a text-cluster member over the ceiling
+fills), pinned by `tests/test_lettering_split.py`. **Next**: a second
+sew-out arm — the first sheet's fixtures exported on today's defaults,
+stack and split ON, beside its pre-flip arm. What the flip moved in the
+suite is recorded in the PR (#520) body.
+
+*(flipped and ruled 2026-09-19 — Kent's answers; config comment)*
+
+### Addendum, the same day — the second sew-out cut: stack + split beside the pre-flip arm
+
+The first sheet's four fixtures exported again on today's defaults
+(`satin_junction_stack` and `satin_lettering_split` both ON), `.dst` and
+`.pes` through the service's own writers, a render beside each, every
+file read back through pystitch and agreeing with the plan to the stitch.
+Beside the first cut's `*_default` (the engine as #516 merged it, now the
+PRE-flip arm), `*_stack_split`:
+
+| design | default: stitches / trims / uncovered mm² | stack_split | what moved |
+|---|---|---|---|
+| MARINE 80 mm | 1,774 / 7 / 0.0 | 1,969 / 13 / 0.0 | the fold gone (103 → 0 pairs); the stack alone read 1,787 / 9, the rest is the split's |
+| MARINE 127 mm | 9,642 / 31 / 0.0 (letters FILL) | 7,283 / 44 / 0.0 (letters split as satin) | the R's 311-pair fold gone; no `DENSITY_EXTREME` |
+| Becker 100 mm | 12,037 / 39 / 35.5 | 8,353 / 61 / 0.0 | the band's 35.5 mm² of bare artwork closed by the junction cover under the arms |
+| drone 80 mm | 18,715 / 127 / 0.0 | 18,626 / 123 / 0.0 | nothing to speak of |
+
+`TRIM_HEAVY` on every `stack_split` arm is the trims in the table, read
+by preflight. The sheet's README gained **question C** for the pair: does
+a junction sewn as a stack of arms read as a clean corner or as a lump, is
+any wedge bare where an arm ends at the node, does the fold show on
+`default` as a ridge or pucker, and does a split column read as one satin
+or show its mid-column seam — with what each answer flips (a lump or a
+bare wedge sends the stack back to OFF and re-prices part B against cloth;
+a seam sends the split back to OFF). The files are on Kent's machine; the
+scoring rows are in the README; nothing here is a cloth result yet.
+
+*(exported and read back 2026-09-19 — `sewout_arm2.py` and
+`sewout_readback.py` in the session's scratchpad; the README carries the
+numbers)*
+
+### Addendum, the same day — what the split flip moved in the full suite, and Becker's fill exposure at 80 mm
+
+The full digitizer suite on the merged, doubly-flipped tree (`satin_junction_stack`
+and `satin_lettering_split` both ON, main at #518): **2,698 passed, 28m41s,
+four moved**, every one Becker, every one pinned on
+`satin_lettering_split=False` with its reason in the file:
+
+- `tests/test_fill_bridges.py` (2): the census's honesty tests read a
+  fixture with NO exposed bridges — *"a vacuous fixture proves nothing
+  here"*. Becker at 80 mm had four exposed fill runs, 38.7 mm, and every one
+  lay in the MARINE band's FILLED letters; under the flip the band sews as
+  split satin and the fill tier's exposure reads **0 runs / 0.0 mm**.
+- `tests/test_edge_cap_budget.py` (2): the cliff sweep's gate saving at
+  88 mm reads 31.9% against the 12.0% the cliff doc measured, and the run
+  counts sit flat at [9, 8, 9] — the band stopped being fill, the lettering
+  cover (step 5) omits it from the cap, and the gate saves more. The file
+  pins the budget mechanism measured on the filled band, so it reads it.
+
+**The finding inside the first pin.** Under today's defaults Becker at
+80 mm has no exposed fill-tier travel at all (0 runs / 0.0 mm, against
+4 / 38.7 mm with the split OFF; stitches 7,107 → 6,057, trims 41 → 43).
+The exposed-travel entry above read Becker's fill legs at 31.2 mm, and
+#518's flip prep measured `fill_bridge_cut` on *"Becker's 22.9 mm leg →
+4.0"* — that leg was the band's fill, and under this flag it is not there
+to cut. The nine-logo trade `fill_bridge_cut` was priced on (exposed travel
+248.6 → 140.9 mm, trims 458 → 464) was measured on `main` at #516, before
+either flip; **it is unmeasured on the doubly-flipped tree**, and its flip
+is still Kent's pending call.
+
+*(measured 2026-09-19 — full suite log and `probe_movers.py` in the
+session's scratchpad; the pins carry the numbers)*
