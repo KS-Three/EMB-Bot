@@ -1766,6 +1766,23 @@ class PipelineConfig:
     # was to cap the COST and leave `classify_ribbon` alone — a deliberate
     # symptom fix, taken knowing the artwork still flips.
     edge_cap_over_budget: str = "warn"
+    # No edge cap on lettering (lettering construction plan step 5,
+    # 2026-09-19). The design-silhouette cap above sews only the stretches
+    # of the outline nothing linear already covers -- and on a satin-sewn
+    # letter that is exactly the bare corners and junction seams the satin
+    # decomposition leaves, so the cap was patching a defect upstream: on
+    # the plan's traced MARINE at 80 mm, 17 of its 18 cap runs and 418 of
+    # its 457 cap stitches stand on the letters' outlines (16 of the word's
+    # 41 trims before steps 1-3). A typed glyph gets no cap: the font
+    # engine sews columns and nothing else. ON, a text-cluster member that
+    # sewed SATIN -- not fill: a tatami letter's rows still end in open
+    # air, the defect the cap exists for -- hands its whole sewn outline to
+    # the cap's `omit`, so no cap sample stands on it, on bare fabric or as
+    # the edge of a hole in a fill; everything else is capped as before,
+    # and the bare corners a letter still has are now the letter's own to
+    # show (measured as uncovered artwork, scope-history step 5). Measured
+    # 2026-09-19. DEFAULT OFF; the flip is Kent's.
+    edge_cap_skip_lettering: bool = False
     # EXPERIMENT, default OFF — option (b) of the same plan doc, the other
     # half of Kent's 2026-08-23 (a)+(b) decision: `shade_palette_bind` above
     # masks the shade snap to the palette; THIS flag makes the palette worth
