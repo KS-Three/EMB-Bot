@@ -13546,6 +13546,202 @@ stitches and trims do not rise, the uncovered artwork does not grow.
 *(built and measured 2026-09-19 — the census and probes lived in the
 session's scratchpad, the numbers are the record)*
 
+### Addendum, later the same day — step 3a FLIPPED ON, the rail-comp skeleton ruled, step 4 next
+
+Put to Kent with the nine-logo numbers and the renders (AskUserQuestion,
+2026-09-19): **flip `satin_corner_twigs` ON now** — his call, Becker's
++725 at 100 mm accepted as step 4's shape; **`satin_rail_comp`
+skeletonises the ARTWORK, as shipped** — the 09-09 plan's §7 decision 1,
+ruled; its flip still waits on a sew-out; **step 4 next** (wide lettering:
+split, never fill). `False` on the corner flag is the pre-flip pruner byte
+for byte; `tests/test_corner_twigs.py` pins the default and the OFF side.
+Two files hold the pre-flip pruner where they measured on it:
+`test_stroke_order_euler.py` (the walk's fixture numbers were read before
+step 3) and `test_junction_patch_flag.py`, whose satin cover clears
+Becker's finding at a net −1 stitch under the corner rule (6,528 → 6,527)
+instead of adding thread — the same kind of observation that file already
+records for the 09-18 flip. No golden moves: the flat-lane, pushcomp and
+stage-2 keys CI runs are byte-identical with the rule ON. What the flip
+moved in the full suite is recorded in the PR (#516) body.
+
+*(flipped and ruled 2026-09-19 — Kent's answers; config comments)*
+
+## 2026-09-19 — Lettering construction, step 4: split, never fill, for lettering (`satin_lettering_split`, OFF)
+
+Kent's pick after step 3a flipped: wide lettering. The rule is his
+2026-09-11 ruling for the browser lettering engine — split ON, fill off —
+applied on the traced path.
+
+**What it was.** A traced letter over `machine.satin_ceiling_mm` went to
+tatami. On the review's MARINE traced at 127 mm, `classify_ribbon` refused
+four of the eight largest regions by `dt_p90_cap` and three by
+`dt_irregular`, and the per-stroke rung could not admit a stroke over the
+cap either; 14 of the 15 regions filled. `wide_columns` (6.5 mm, item 4)
+admitted only the band, and the pro sews 7–23% of Becker's satin crosses
+over 5 mm.
+
+**The construction — `cfg.satin_lettering_split`, OFF.** One helper,
+`_satin_ceiling_for(region, cfg, satin_max)`, answers (width ceiling,
+per-stroke rung, fold guard) for a region: (∞, on, on) for a
+`text_candidate` under the flag, (`satin_ceiling_mm`,
+`cfg.satin_per_stroke`, `cfg.wide_columns`) for everything else — read by
+the borders-last predicate `_sews_satin`, by the classifier call and by
+`satin_shape` in `stitch_one`, so the three agree on what a letter is
+admitted at. `split_satin` carries the width over `SPLIT_SATIN_ABOVE_MM`
+as it always did; the wide-column fold guard (`_fold_caps`) holds every
+bend; the ribbon gates that are about SHAPE (aspect, irregularity,
+elongation) still apply, so a blob still fills. Off, byte-identical.
+Nothing physical moves: the ceiling is lifted for one population, not
+re-tuned.
+
+**Measured.** The plan's fixture, MARINE traced at 127 mm
+(`docs/renders/lettering-split-2026-09-19/marine_127mm_traced_input.png`):
+the six text-cluster members — the M's two halves, the R, the I, the N's
+body, the E's stem; the A and the letters' inner fragments are not text
+candidates and fill either way — go fill 6 → satin 6, stitches **9,642 →
+7,753**, trims 31 → 47 (edge-cap runs 17 → 27), uncovered 0.0 both ways,
+and satin self-crossing pairs (ties and splits stripped, the committed
+instrument's count) **0 → 311, every one of them in the R** — six
+strokes, the bowl, stem and leg meeting in one junction ball — with a
+`DENSITY_EXTREME` finding, coverage_max 5.49 → 6.24. The render
+(`marine_127mm_traced_split_off_above_on_below.jpg`) shows what the
+numbers say: the M, I and N stems sew as clean wide columns; the R's ball
+fans. At 80 mm, the review's fixture, all seven members sew satin either
+way and the flag reads stitches 2,192 → **2,520**: +328, of which the
+zigzag underlay is 405 → 698 — the emitter withholds underlay beneath a
+column wider than the ceiling it was admitted at (`oversize`), and with no
+ceiling every wide stroke gets its own; trims 23 → 26, crossings 103 both
+ways, coverage_max 4.69 → 5.08. Becker at 100 mm: stitches 12,037 →
+9,056, trims 39 → 71, self-crossings 714 → 1,260, uncovered 35.5 mm² both
+ways, coverage_max 4.91 → 6.68 (`ARTWORK_UNCOVERED`, `TRIM_HEAVY`).
+Composed with `satin_patch_junctions="satin"` (item 5 PR 2's cover) the
+uncovered artwork reads **0.0** at 9,079 stitches / 75 trims, `TRIM_HEAVY`
+the one finding left; composed with `satin_polygon_axis="artwork"`
+instead, worse on every count (9,416 stitches, 85 trims, coverage_max
+9.45, uncovered 48.2, `DENSITY_STACKED`). Nine logos at corpus widths:
+only Becker moves (12,037 → 9,056, trims 38 → 70 on the corpus sheet's
+garment); the other eight — tires, ENTHUSIAST, Fremont, Bridge Bar, Golden
+Tee, gaulke, drone, the screenshot — are byte-identical in stitches, trims,
+crossings, uncovered area and warnings.
+
+**The limit it reaches.** DOCTRINE 2026-09-09: a junction blob is not a
+column, and at 17 mm a bold letter has no arms to stand a junction
+against. The flag lifts the ceiling; it builds no junction — the R's 311
+are the ball fanning, and item 5 PR 3's finding stands (the pro stacks
+MORE layers at every MARINE junction, p95 3.7–7.3 against our 1.8–3.8).
+So the flip is a choice between tatami letters, today's, and split-satin
+letters whose junction balls fan, until the bold-letter junction
+construction exists. That construction is the next thing this plan has no
+step for.
+
+**Tests:** `tests/test_lettering_split.py`, 7 — the flag off by default;
+the helper's two answers; explicit OFF is the default's output; OFF, at
+least five of the six members fill; ON, every member sews satin and none
+fills; the non-lettering tiers unchanged; fewer stitches and the uncovered
+artwork not growing.
+
+*(built and measured 2026-09-19 — the arms and probes lived in the
+session's scratchpad, the numbers are the record)*
+
+### Addendum, later the same day — step 4 KEPT OFF, step 5 next
+
+Put to Kent with the fixture's numbers and the render (AskUserQuestion,
+2026-09-19): **`satin_lettering_split` stays OFF** — his call, on the R's
+fanning junction ball and the `DENSITY_EXTREME` finding; the flag waits on
+the bold-letter junction construction, which has no plan step yet (item 5
+PR 3's finding is its brief). Composing the satin junction cover was
+offered and not taken. **Step 5 next**: no edge cap on lettering — the
+plan's own precondition, step 3's corner cover, is ON.
+
+*(ruled 2026-09-19 — Kent's answers; config comment)*
+
+## 2026-09-19 — Lettering construction, step 5: no edge cap on lettering (`edge_cap_skip_lettering`, OFF)
+
+Kent's pick after step 4 was kept OFF: the plan's last step, its
+precondition — step 3's corner cover — now ON.
+
+**What it was.** The design-silhouette cap (`cfg.edge_cap`, "bean" since
+2026-09-11) sews only the stretches of the outline nothing linear already
+covers (`silhouette_cap`'s `omit`). On a satin-sewn letter that is exactly
+the bare corners and junction seams the satin decomposition leaves, so the
+cap was patching a defect upstream — the review's table read it as 16 of
+the traced word's 41 trims. Measured on the plan's fixture (MARINE traced
+at 80 mm) before building: **17 of the cap's 18 runs and 418 of its 457
+stitches stand on the satin letters' outlines** (a sample within 0.35 mm of
+a letter's boundary); at 127 mm, where the letters fill, none do. A typed
+glyph gets no cap: the font engine sews columns and nothing else.
+
+**The construction — `cfg.edge_cap_skip_lettering`, OFF.** A text-cluster
+member that sewed SATIN hands its sewn polygon (`PlannedRegion.polygon`,
+the same object the silhouette is the union of, so the letter's stretch of
+the silhouette's boundary lies exactly on it) to the cap's `omit`, and no
+cap sample stands on it — on bare fabric or as the edge of a hole in a
+fill. `_satin_lettering_cover` reads which members sewed satin off the
+runs the design actually laid, never off a verdict: a member with a fill
+run keeps its cap, because a tatami letter's rows end in open air at its
+edge and that is the defect the cap exists for; a run-tier member is
+already linear cover. Everything else is capped as before, and the gate's
+published saving and cover include what the cap was told not to sew. Off,
+byte-identical. The bare corners a letter still has are now its own to
+show, and that is the measurement.
+
+**Measured.** The fixture at 80 mm: stitches **2,192 → 1,774**, trims **23 →
+7** — the typed word sews 3 — cap runs 18 → 1 (the one left, 39 stitches,
+stands on a non-text fragment), cap stitches on satin letters 418 → 0,
+uncovered artwork 0.0 both ways with the worst bare patch 2.2 → 2.5 mm²
+(under the finding's floor), coverage_max 4.69 → 4.76, `TRIM_HEAVY` gone;
+every run that is not the cap is byte-identical. The render
+(`docs/renders/lettering-edge-cap-2026-09-19/`) shows the hooks gone from
+every letter. Becker at 80 mm: 6,588 → 6,444, trims 43 → 36, cap runs 16 →
+9, uncovered 18.5 mm² both ways. The 127 mm fixture and Becker at 100 mm,
+whose letters fill under step 4 OFF: byte-identical. Nine logos at corpus
+widths: five move — ENTHUSIAST 2,478 → 2,442 stitches at trims 18 → 16,
+Golden Tee 6,969 → 6,945 / 44 → 43, gaulke 4,536 → 4,454 / 41 → 38, drone
+18,733 → 18,715 / 127 → 126, the screenshot 8,244 → 8,085 / 73 → 68; Becker
+(its letters fill at 100 mm), tires, Fremont and Bridge Bar byte-identical;
+trims 488 → 476 at −319 stitches, with uncovered area, self-crossings and
+warnings unchanged on every one.
+
+**The yardstick now.** Traced MARINE at 80 mm with steps 0–3a and 5 ON:
+1,774 stitches / 7 trims against the font engine's 1,782 / 3. The stitch
+count has crossed. The seven trims, read off the plan: the first
+needle-down, five hops inside the word over `TRIM_AT_MM` (3.2–17.9 mm,
+stroke to stroke and letter to letter — step 2's remainder), and one into
+the cap's last run, on a non-text fragment.
+
+**Found on the way — from the step 3a flip's full suite.** Two tests
+measured on the pre-flip pruner moved and are pinned on it
+(`satin_corner_twigs=False`, the `PRE_FLIP_RC` posture): the duplicate-cone
+fold pays 107 stitches on drone under the corner rule (17,536 against
+17,429, still at less flying), the pruner's numbers not the fold's; and the
+wide-column fold guard's load-bearing case on Becker at 80 mm is gone —
+coverage_max reads **4.67** with the guard neutralised, under the warn
+line, against 7.07 on 2026-09-09 — because the corners it capped a column
+folding through now sew as two columns meeting. The guard's code is
+unchanged. Full suite on that tree, CI's deselects: 2 failed (those two),
+2,653 passed, 29m57s.
+
+**Tests:** `tests/test_edge_cap_lettering.py`, 10 — the flag off by
+default; explicit OFF is the default's output; OFF the cap stands on the
+satin letters, ON no sample does; trims and cap runs fall with the cover
+kept; only the cap moves; a fill-sewn text candidate keeps its cap; a
+design with no lettering is untouched; the helper's two answers.
+
+*(built and measured 2026-09-19 — the census and arms lived in the
+session's scratchpad, the numbers are the record)*
+
+### Addendum, later the same day — step 5 FLIPPED ON, a sew-out sheet next
+
+Put to Kent with the fixture's numbers, the render and the nine-logo
+sheet (AskUserQuestion, 2026-09-19): **flip `edge_cap_skip_lettering` ON
+now** — his call; `False` is the pre-flip cap byte for byte, and
+`tests/test_edge_cap_lettering.py` pins both sides. Every step of the plan
+is now built, and his pick for what follows is a **sew-out sheet**: the
+plan's fixtures exported for his machine, OFF and ON, for the flips cloth
+still owes — 3b's rail comp, and this one's check on cloth. What the flip
+moved in the suite is recorded in the PR (#516) body.
+
+*(flipped and ruled 2026-09-19 — Kent's answers; config comment)*
 ## 2026-09-19 — the exposed travel legs: the fill tier's, on finished fill, never on fabric — and one arm priced
 
 `tools/travel_cover.py` (the step-2 entry above) read ~245 mm of exposed

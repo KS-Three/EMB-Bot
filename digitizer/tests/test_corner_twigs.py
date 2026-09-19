@@ -13,11 +13,14 @@ arm is a cap and both arms go whatever their exact length; a node with one
 short free arm between two longer arms is a corner and the twig stays,
 holding the junction open for `_merge_through_junctions`.
 
-Contracts pinned: OFF (the default) is the shipped pruner; a square-capped
-bar's spine is straight either way; a synthetic N stops folding 90 deg
-through its corners; on the plan's fixture the satin self-crossings fall by
-more than half (277 -> 103 measured), the stitches fall, and nothing goes
-uncovered.
+Built OFF and flipped ON the same day (Kent, 2026-09-19); False is the
+pre-flip pruner.
+
+Contracts pinned: ON is the default and explicit ON is the default's
+output; OFF is still the pre-flip pruner; a square-capped bar's spine is
+straight either way; a synthetic N stops folding 90 deg through its
+corners; on the plan's fixture the satin self-crossings fall by more than
+half (277 -> 103 measured), the stitches fall, and nothing goes uncovered.
 """
 from __future__ import annotations
 
@@ -55,9 +58,9 @@ def _crossing_pairs(points, window: int = 40) -> int:
     return crossing_pairs(points, window)
 
 
-def test_the_flag_is_off_by_default():
-    """Built OFF; the flip is Kent's."""
-    assert PipelineConfig().satin_corner_twigs is False
+def test_the_flag_is_on_by_default():
+    """Built OFF, flipped ON the same day -- Kent's call, 2026-09-19."""
+    assert PipelineConfig().satin_corner_twigs is True
 
 
 def test_a_square_capped_bar_keeps_a_straight_spine_either_way():
@@ -94,21 +97,23 @@ def _plan(art: Path, **kw):
 
 @pytest.fixture(scope="module")
 def off():
-    return _plan(FIXTURE)
+    """The pre-flip pruner, explicitly."""
+    return _plan(FIXTURE, satin_corner_twigs=False)
 
 
 @pytest.fixture(scope="module")
 def on():
-    return _plan(FIXTURE, satin_corner_twigs=True)
+    """The shipped default."""
+    return _plan(FIXTURE)
 
 
 def _crossings(plan) -> int:
     return sum(_crossing_pairs(strip_ties(run.points)) for _b, run in plan.iter_runs() if run.kind == "satin")
 
 
-def test_off_explicitly_is_the_default(off):
-    _cfg, _r, explicit = _plan(FIXTURE, satin_corner_twigs=False)
-    a = [(str(run.kind), run.shape_id, [tuple(p) for p in run.points]) for _b, run in off[2].iter_runs()]
+def test_on_explicitly_is_the_default(on):
+    _cfg, _r, explicit = _plan(FIXTURE, satin_corner_twigs=True)
+    a = [(str(run.kind), run.shape_id, [tuple(p) for p in run.points]) for _b, run in on[2].iter_runs()]
     b = [(str(run.kind), run.shape_id, [tuple(p) for p in run.points]) for _b, run in explicit.iter_runs()]
     assert a == b
 

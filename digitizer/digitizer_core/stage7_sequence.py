@@ -213,6 +213,20 @@ def depth_sort_layers(regions, thread_indices: list[int], chart) -> list[int]:
     return [thread_indices[L] for L in order]
 
 
+def _satin_ceiling_for(region, cfg: PipelineConfig, satin_max_mm: float
+                       ) -> tuple[float, bool, bool]:
+    """-> (width ceiling, per-stroke rung, fold guard) for THIS region: the
+    design's under `machine.satin_ceiling_mm` for every shape, and no
+    ceiling at all -- the per-stroke rung on, the fold guard on -- for a
+    text-cluster member under `cfg.satin_lettering_split` (plan step 4,
+    2026-09-19: split, never fill, for lettering). One helper, so the
+    borders-last predicate, the classifier call and the emitter agree on
+    what a letter is admitted at."""
+    if cfg.satin_lettering_split and region.meta.get("text_candidate"):
+        return math.inf, True, True
+    return satin_max_mm, cfg.satin_per_stroke, bool(cfg.wide_columns)
+
+
 def _sews_satin(region, cfg: PipelineConfig, satin_max_mm: float,
                 design_class: str) -> bool:
     """Will this region reach the satin tier? — the borders-last predicate.
@@ -251,10 +265,11 @@ def _sews_satin(region, cfg: PipelineConfig, satin_max_mm: float,
     tier = str(region.meta.get("tier", "auto")).lower()
     if tier == "satin":
         return True
+    satin_max_mm, per_stroke, _fold = _satin_ceiling_for(region, cfg, satin_max_mm)
     return (tier == "auto" and cfg.satin
             and is_satin_candidate(region.polygon, satin_max_mm,
                                    design_class=design_class,
-                                   per_stroke=cfg.satin_per_stroke))
+                                   per_stroke=per_stroke))
 
 
 def borders_last_layers(regions, thread_indices: list[int],
@@ -1254,6 +1269,40 @@ def _sewn_linear_cover(blocks: list[StitchBlock]):
     return unary_union([ln.buffer(half_w) for ln in lines])
 
 
+def _satin_lettering_cover(cap_sewn: list[PlannedRegion],
+                           blocks: list[StitchBlock]):
+    """The outlines the cap leaves alone under `cfg.edge_cap_skip_lettering`
+    (lettering construction plan step 5, 2026-09-19): every text-cluster
+    member that sewed as SATIN, as the polygon it sewed -- the same
+    `p.polygon` the silhouette is the union of, so the letter's stretch of
+    the silhouette's boundary lies exactly on it.
+
+    Satin only, read off the runs the design actually laid rather than off
+    a verdict: a member with a fill run keeps its cap, because a tatami
+    letter's rows end in open air at its edge and that is the defect the
+    cap exists for; a member sewn on the run tier is already linear cover
+    in its own right. None when no such member sewed, so the caller's
+    `omit` is what it was.
+    """
+    satin_ids: set = set()
+    fill_ids: set = set()
+    for b in blocks:
+        for r in b.runs:
+            if not r.shape_id:
+                continue
+            if r.kind == stitches.SATIN:
+                satin_ids.add(r.shape_id)
+            elif r.kind == stitches.FILL:
+                fill_ids.add(r.shape_id)
+    polys = [p.polygon for p in cap_sewn
+             if p.region.meta.get("text_candidate")
+             and p.shape_id in satin_ids and p.shape_id not in fill_ids
+             and p.polygon is not None and not p.polygon.is_empty]
+    if not polys:
+        return None
+    return unary_union(polys)
+
+
 def _gate_saving(silhouette, omit, gated_runs, *, style: str,
                  entry, trim_at_mm: float,
                  width_mm: float | None) -> tuple[float, float]:
@@ -1804,9 +1853,10 @@ def sequence(
             # Widened lettering is classified on the polygon it will sew —
             # `p.polygon`, the compensated column — see `widened_lettering`.
             classify_poly = p.polygon if widened_lettering(p.region) else p.region.polygon
-            ribbon = (classify_ribbon(classify_poly, satin_max,
+            shape_max, shape_per_stroke, shape_fold = _satin_ceiling_for(p.region, cfg, satin_max)
+            ribbon = (classify_ribbon(classify_poly, shape_max,
                                       design_class=design_class,
-                                      per_stroke=cfg.satin_per_stroke,
+                                      per_stroke=shape_per_stroke,
                                       polygon_axis=cfg.satin_polygon_axis,
                                       area_weighted=cfg.classify_area_weighted)
                       if tier == "auto" and cfg.satin else None)
@@ -1879,8 +1929,8 @@ def sequence(
                     # emitter sews at — one number, threaded, never two
                     # constants (DOCTRINE 2026-09-02). The fold guard rides
                     # with the wide ceiling.
-                    max_width_mm=satin_max,
-                    fold_guard=cfg.wide_columns,
+                    max_width_mm=shape_max,
+                    fold_guard=shape_fold,
                     # A hairline sews as a bean only where the ART has ink:
                     # `p.polygon` is the compensated outline, and pull comp
                     # grows a vectorization needle into a "stroke". The
@@ -2489,6 +2539,16 @@ def sequence(
         # ties are not cover either — travel is hidden or exposed but never a
         # finish, and underlay is under the very rows that end short.
         cap_omit = _sewn_linear_cover(blocks)
+        # Step 5 of the lettering plan (2026-09-19): a satin-sewn letter's
+        # outline is the letter's own -- a typed glyph gets no cap -- so
+        # its sewn polygon joins the cover and no cap sample stands on it.
+        # The gate's published saving and cover then include it, which is
+        # what they measure: what the cap was told not to sew.
+        if cfg.edge_cap_skip_lettering:
+            _letters = _satin_lettering_cover(cap_sewn, blocks)
+            if _letters is not None:
+                cap_omit = (_letters if cap_omit is None
+                            else unary_union([cap_omit, _letters]))
         c_runs, c_report = silhouette_cap(
             silhouette,
             "__edge_cap__",

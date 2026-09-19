@@ -369,7 +369,8 @@ hand-rolling it in JS.
   columns already sewn, `--off` for the before), `digitizer/tools/satin_lean.py`
   (how far satin crosses lean off their own perpendicular and off the house
   angle, and the thread pitch across the column; `--stock` for the instrument's
-  own floor on unhoused columns), `digitizer/tools/fill_dust.py` (fill steps
+  own floor on unhoused columns; `--anchor` for the house anchored to the
+  line of text, lettering plan step 1), `digitizer/tools/fill_dust.py` (fill steps
   halved by float dust at the stitch-length threshold), `digitizer/tools/rail_edge.py`
   (where satin rails sit against the artwork edge, rail jitter and same-rail
   holes; `--ladders` for the containment-miss census, `--bare` for coverage as
@@ -448,6 +449,19 @@ hand-rolling it in JS.
   thread's IoU against the compensated target and the artwork; `--compare`
   digitizes OFF/ON `cfg.satin_rail_comp` with stitches, trims and
   preflight's coverage/uncovered — the item 6 instrument),
+  `digitizer/tools/travel_cover.py` (every travel leg read against the thread
+  sewn AFTER it, by preflight's own ribbon rule — exposed length per leg and
+  per design, `--order nearest|euler`, `--width`; the lettering plan's step 2
+  instrument, which found the 245 mm exposed at 80 mm to be the nearest
+  order's own legs, not the Euler walk's — and not the satin tier's at all:
+  see the next one; its 1 mm grid under-reads fill exposure by a third),
+  `digitizer/tools/travel_legs.py` (WHOSE each travel leg is and what it lies
+  on: the emitter off the construction call stack, the runs either side, the
+  grid reading beside an exact one, and `own-fill` / `top` / `other` /
+  `underlay` / `own-bare` / `art-bare` / `FABRIC` under every exposed
+  sample; `--set KEY=VALUE` puts any config field on, so it is how
+  `fill_bridge_cut` is read — 97.7% of that 245 mm is the FILL tier's column
+  bridges on their own finished fill, defect 21's residual, none on fabric),
   `digitizer/tools/pushcomp_pins.py` (`test_pushcomp.GOLDEN_FLAG_OFF`'s tuples
   as THIS tree computes them, for a re-pin with the same pre-change proof),
   `digitizer/tools/resnap_escape.py` (cones `revalidate_threads` ADDS, and how

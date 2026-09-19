@@ -4032,7 +4032,7 @@ against the thread sewn after it (gate 3's instrument): at 80 mm across the nine
 call; "nearest" is the pre-flip engine.** *(built, measured and flipped
 2026-09-19 — scope-history, step 2 and its addendum)*
 
-## Lettering corners: the spur pruner's structure rule (`satin_corner_twigs`, built OFF 2026-09-19)
+## Lettering corners: the spur pruner's structure rule (`satin_corner_twigs`, built and flipped ON 2026-09-19)
 
 Plan step 3a, the letterform study's mechanism #2. `_prune_spurs` erased a
 corner's twig and with it the junction's degree, so a letter's diagonal and
@@ -4050,6 +4050,58 @@ synthetic N stops folding; a square-capped bar's spine is straight either
 way. `tests/test_corner_twigs.py` (6). **Step 3b, `satin_rail_comp`,
 re-measured on today's engine:** IoU-to-target Fremont 0.681 → 0.836,
 ENTHUSIAST 0.875 → 0.900, drone 0.803 → 0.826; meadow 0.811 → 0.779 at
-+340 stitches; its skeleton choice and flip are Kent's (plan
-`2026-09-09-rail-side-pull-comp.md` §7). *(built and measured 2026-09-19
-— scope-history, step 3a)*
++340 stitches; its skeleton is RULED the artwork (Kent, 2026-09-19) and
+its flip waits on a sew-out (plan `2026-09-09-rail-side-pull-comp.md` §7).
+**3a flipped ON the same day — Kent's call; False is the pre-flip
+pruner.** *(built, measured and flipped 2026-09-19 — scope-history, step
+3a and its addendum)*
+
+## Lettering: split, never fill (`satin_lettering_split`, built OFF 2026-09-19)
+
+Plan step 4, Kent's 2026-09-11 rule for the browser lettering engine on the
+traced path. A text-cluster member is classified and sewn with no width
+ceiling (`_satin_ceiling_for`: ∞, the per-stroke rung on, the fold guard
+on; every other shape keeps `satin_ceiling_mm`), so `classify_ribbon`'s
+width gates never send a letter to tatami and `split_satin` carries the
+width; the shape gates still apply, a blob still fills. Fixture, MARINE
+traced at 127 mm: the six members go fill 6 → satin 6 at 9,642 → 7,753
+stitches, trims 31 → 47, uncovered 0.0 — and satin self-crossings 0 →
+311, every one in the R's junction ball, with `DENSITY_EXTREME`
+(coverage_max 5.49 → 6.24); at 80 mm +328 stitches, the zigzag underlay
+the oversize skip used to withhold. Becker at 100 mm 12,037 → 9,056 at
+trims 39 → 71; composed with `satin_patch_junctions="satin"` its uncovered
+35.5 → 0.0 mm². Nine logos: only Becker moves. **The limit is DOCTRINE
+2026-09-09's — a junction blob is not a column: the flag lifts the ceiling
+and builds no junction**, so the flip trades tatami letters for split-satin
+letters whose junction balls fan until the bold-letter junction
+construction exists. Kept OFF (Kent, 2026-09-19). `tests/test_lettering_split.py`
+(7); renders `docs/renders/lettering-split-2026-09-19/`. *(built and
+measured 2026-09-19 — scope-history, step 4)*
+
+## Lettering: no edge cap on lettering (`edge_cap_skip_lettering`, built and flipped ON 2026-09-19)
+
+Plan step 5. The design-silhouette cap sews only the stretches of the
+outline nothing linear already covers, and on a satin-sewn letter that is
+exactly the bare corners and junction seams the decomposition leaves — on
+the 80 mm MARINE fixture 17 of the cap's 18 runs and 418 of its 457 stitches
+stood on the letters' outlines, the cap patching a defect upstream. A typed
+glyph gets no cap. ON, a text-cluster member that sewed satin hands its sewn
+polygon to the cap's `omit` (`_satin_lettering_cover`, read off the runs
+laid, never a verdict); a member that filled keeps its cap, since a tatami
+letter's rows end in open air at its edge. Fixture: stitches 2,192 → 1,774,
+trims 23 → 7 (the typed word: 3), cap runs 18 → 1, uncovered 0.0 both ways,
+every non-cap run byte-identical; Becker at 80 mm 6,588 → 6,444 at trims 43
+→ 36, uncovered 18.5 both ways; the 127 mm fixture and Becker at 100 mm,
+whose letters fill, byte-identical. Nine logos: five move — ENTHUSIAST 2,478
+→ 2,442 stitches at trims 18 → 16, Golden Tee 6,969 → 6,945 / 44 → 43,
+gaulke 4,536 → 4,454 / 41 → 38, drone 18,733 → 18,715 / 127 → 126, the
+screenshot 8,244 → 8,085 / 73 → 68; Becker (its letters fill at 100 mm),
+tires, Fremont and Bridge Bar byte-identical; trims 488 → 476 at −319
+stitches, with uncovered area, self-crossings and warnings unchanged on
+every one. Found on the way: the wide-column fold guard's load-bearing case
+on Becker at 80 mm is gone under the corner rule (coverage_max 4.67
+unguarded, against 7.07 on 2026-09-09); its test is pinned on the pruner it
+was read on.
+**Flipped ON the same day — Kent's call; False is the pre-flip cap.** `tests/test_edge_cap_lettering.py` (10);
+render `docs/renders/lettering-edge-cap-2026-09-19/`. *(built and measured
+2026-09-19 — scope-history, step 5)*

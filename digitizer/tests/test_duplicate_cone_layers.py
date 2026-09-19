@@ -135,7 +135,13 @@ def test_three_declarations_of_one_cone_all_land_on_the_first():
 # artwork cone sews twice again (`[..., 259, ..., 259, ...]`) and the fold
 # stops paying for itself in thread (18,140 against 18,049). Those are the
 # flip's numbers, not this fold's, and the claims here are the fold's.
-PRE_FLIP_RC = {"robust_region_colour": False, "keep_thin_strokes": False}
+# `satin_corner_twigs` joined 2026-09-19 (flipped ON by Kent, lettering
+# plan step 3a) for the same reason again: the corner rule keeps a letter's
+# corner twig, the walk's columns take different entry ends, and the fold's
+# reorder then pays 107 stitches on drone (17,536 against 17,429, still at
+# less flying). The pruner's numbers, not the fold's.
+PRE_FLIP_RC = {"robust_region_colour": False, "keep_thin_strokes": False,
+               "satin_corner_twigs": False}
 
 
 @pytest.fixture(scope="module")

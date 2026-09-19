@@ -186,8 +186,15 @@ def marine() -> Path:
     return FIXTURE
 
 
+# The fixture numbers below (46 -> 28 trims, 2,564 -> 2,480 stitches) were
+# measured on the pre-step-3 pruner; `satin_corner_twigs` (ON since the same
+# day) changes the fixture's strokes, so this file measures the WALK alone
+# by holding the pruner at the state those numbers were read on.
+PRE_TWIGS = dict(satin_corner_twigs=False)
+
+
 def _plan(art: Path, **kw):
-    cfg = PipelineConfig(target_width_mm=80.2, garment_id="left_chest", max_colors=6, **kw)
+    cfg = PipelineConfig(target_width_mm=80.2, garment_id="left_chest", max_colors=6, **PRE_TWIGS, **kw)
     gen = build_generation(str(art), cfg)
     result = finish_generation(gen.fork(), cfg)
     plan = plan_stitches(result, cfg)

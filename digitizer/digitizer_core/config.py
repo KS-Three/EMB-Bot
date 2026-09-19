@@ -1035,8 +1035,33 @@ class PipelineConfig:
     # at 2,480 -> 2,192 stitches; nine logos 1,813 -> 1,004 at trims 486 ->
     # 488, uncovered unchanged, stitches +588 of which Becker's band at
     # 100 mm is +725 (three more strokes, each with its own underlay). No
-    # physical constant. DEFAULT OFF; the flip is Kent's.
-    satin_corner_twigs: bool = False
+    # physical constant. Built OFF and **DEFAULT ON the same day -- Kent's
+    # flip** over the nine-logo numbers and the renders; False is the
+    # pre-flip pruner, byte for byte.
+    satin_corner_twigs: bool = True
+    # Split, never fill, for lettering (lettering construction plan step 4,
+    # 2026-09-19; Kent's 2026-09-11 rule for the browser lettering engine,
+    # applied on the traced path). A text-cluster member is classified and
+    # sewn with NO width ceiling -- `classify_ribbon`'s width gates never
+    # send a letter to tatami, the per-stroke rung reads its arms, and the
+    # emitter's per-station cap is lifted with the wide-column fold guard
+    # (`_fold_caps`) holding every bend -- so a wide letter stroke is a
+    # split-satin column (crosses over `SPLIT_SATIN_ABOVE_MM` split as they
+    # always did), not a fill. The ribbon gates that are about SHAPE
+    # (aspect, irregularity, elongation) still apply: a blob still fills.
+    # Only lettering (`meta["text_candidate"]`) is touched; every other
+    # shape keeps `machine.satin_ceiling_mm`. Measured 2026-09-19 (scope-
+    # history, step 4): MARINE traced at 127 mm, fill 6 -> satin 6 at
+    # 9,642 -> 7,753 stitches, trims 31 -> 47 -- and 311 satin self-
+    # crossings, every one in the R's junction ball (DOCTRINE 2026-09-09:
+    # a junction blob is not a column; this lifts the ceiling, it does not
+    # build the junction); Becker at 100 mm 12,037 -> 9,056 at trims 39 ->
+    # 71; MARINE at 80 mm +328 stitches, the zigzag underlay the oversize
+    # skip used to withhold. No physical constant moves: the ceiling is lifted
+    # for one population the pro sews as columns (7-23% of Becker's over
+    # 5 mm), not re-tuned. DEFAULT OFF, and KEPT OFF on Kent's call the
+    # same day: the bold-letter junction construction comes first.
+    satin_lettering_split: bool = False
     # Each satin rail reaches ITS OWN edge (defect 23's open half, built
     # 2026-09-03 for Kent's flip). The rail model places both rails at the
     # NEARER edge's distance from a smoothed spine, so on every raster
@@ -1071,9 +1096,12 @@ class PipelineConfig:
     # 0.887 -> 0.884; trims 26 -> 22 / 96 -> 83 / 46 -> 45 / 36 -> 40;
     # thread sewn outside the artwork 147-322 mm2 -> 0. The skeleton is the
     # artwork's; the grown polygon's with artwork rails was measured too
-    # (plan doc 4c) and is the safer decomposition on a blocky source.
-    # DEFAULT OFF, byte-identical off; flipping it is Kent's on a sew-out,
-    # the render and the goldens.
+    # (plan doc 4c) and is the safer decomposition on a blocky source --
+    # **RULED 2026-09-19, Kent: the artwork, as shipped** (re-measured that
+    # day with the lettering steps ON: IoU-to-target Fremont 0.681 -> 0.836,
+    # ENTHUSIAST 0.875 -> 0.900, drone 0.803 -> 0.826; meadow 0.811 ->
+    # 0.779 at +340 stitches). DEFAULT OFF, byte-identical off; flipping it
+    # is Kent's on a sew-out, the render and the goldens.
     satin_rail_comp: bool = False
     # None = the fabric preset's fill underlay style. One of "none" |
     # "edge_run" | "center_run" | "edge_zigzag" | "edge_lattice" |
@@ -1775,6 +1803,30 @@ class PipelineConfig:
     # was to cap the COST and leave `classify_ribbon` alone — a deliberate
     # symptom fix, taken knowing the artwork still flips.
     edge_cap_over_budget: str = "warn"
+    # No edge cap on lettering (lettering construction plan step 5,
+    # 2026-09-19). The design-silhouette cap above sews only the stretches
+    # of the outline nothing linear already covers -- and on a satin-sewn
+    # letter that is exactly the bare corners and junction seams the satin
+    # decomposition leaves, so the cap was patching a defect upstream: on
+    # the plan's traced MARINE at 80 mm, 17 of its 18 cap runs and 418 of
+    # its 457 cap stitches stand on the letters' outlines (16 of the word's
+    # 41 trims before steps 1-3). A typed glyph gets no cap: the font
+    # engine sews columns and nothing else. ON, a text-cluster member that
+    # sewed SATIN -- not fill: a tatami letter's rows still end in open
+    # air, the defect the cap exists for -- hands its whole sewn outline to
+    # the cap's `omit`, so no cap sample stands on it, on bare fabric or as
+    # the edge of a hole in a fill; everything else is capped as before,
+    # and the bare corners a letter still has are now the letter's own to
+    # show (measured as uncovered artwork, scope-history step 5). Measured
+    # 2026-09-19: the fixture 2,192 -> 1,774 stitches, trims 23 -> 7 (the
+    # typed word: 3), uncovered 0.0 both ways; Becker at 80 mm trims 43 ->
+    # 36; fill-lettering designs byte-identical. Built OFF and FLIPPED ON
+    # the same day -- Kent's call 2026-09-19, over the fixture's trims (23 ->
+    # 7 against the typed word's 3), the render (the hooks gone from every
+    # letter) and the nine-logo sheet (five move: -12 trims / -319 stitches,
+    # uncovered area unchanged on all nine). False is the pre-flip cap byte
+    # for byte.
+    edge_cap_skip_lettering: bool = True
     # EXPERIMENT, default OFF — option (b) of the same plan doc, the other
     # half of Kent's 2026-08-23 (a)+(b) decision: `shade_palette_bind` above
     # masks the shade snap to the palette; THIS flag makes the palette worth
