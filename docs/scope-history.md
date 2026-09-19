@@ -14577,6 +14577,13 @@ logos at −103 stitches with the fixture's letter hops at the typed word's
 three, against gaulke's +4; lever 2's eleven further trims at 57 stitches
 each did not clear his 25-a-trim rate. `False` is the pre-flip walk byte
 for byte, pinned by `tests/test_trim_levers.py`'s `off` fixture. What the
-flip moved in the suite is recorded in the PR (#523) body.
+flip moved: nothing in the digitizer suite (the lettering-adjacent subset
+with the goldens, 348 passed), and one Studio e2e whose premise the flip
+retired — `quality-report.spec.js` had asserted the ENTHUSIAST fixture
+"reliably has some" findings, and on the Studio's own settings (a tote,
+`isacord`, the bean cap) the flip took it from `TRIM_HEAVY` to a clean
+report: 9 trims for 2,311 stitches, 3.9 per 1,000 against the 4.1 line,
+grade A. The panel's clean state ("Nothing to flag") is now the other
+accepted rendering, the same posture the test already took on the grade.
 
 *(flipped and ruled 2026-09-19 — Kent's answer; config comment)*
