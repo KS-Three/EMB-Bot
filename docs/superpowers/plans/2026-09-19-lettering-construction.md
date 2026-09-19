@@ -2,8 +2,9 @@
 
 **Status:** decision document, Kent's ruling 2026-09-19 (trace + the font
 engine's construction, in that order). Step 0 built and flipped ON the same
-day (`cfg.satin_house_from_line`); step 1 chosen next, the same day. Review it rests on:
-`docs/lettering-route-review-2026-09-19.md`.
+day (`cfg.satin_house_from_line`); step 1 BUILT the same day, OFF
+(`cfg.satin_house_anchor`), measured below — the flip is Kent's. Review it
+rests on: `docs/lettering-route-review-2026-09-19.md`.
 
 **Yardstick.** The review's construction: a library font's own word — its
 glyphs' satin columns as ribbon polygons, laid out with the font's advances —
@@ -31,25 +32,51 @@ customer already had right.
 0. **House angle, third reading — BUILT and FLIPPED ON the same day, Kent's call (`satin_house_from_line`).**
    A group both votes refuse takes the cross along its line of text (the
    stems' perpendicular for upright lettering — the adopted rule). Fires on
-   3 of the 22 lettering groups across the nine logos: the ENTHUSIAST
+   3 of the 24 lettering groups across the nine logos: the ENTHUSIAST
    wordmark (11 letters: doubled-angle nR² 0.9, four-fold 0.243) and two
    tiny groups on the phone screenshot. ENTHUSIAST's word: house None →
    179.9°, its satin runs' cross concentration **0.059 → 0.287**, stitches
    2,492 → 2,499, trims 24 → 25. Flipped ON 2026-09-19.
 1. **Anchor the house to the line of text; read only the SLANT from the
-   stems.** Found building step 0: when the doubled-angle vote passes on a
+   stems — BUILT 2026-09-19, `cfg.satin_house_anchor`, OFF (Kent's flip).**
+   Found building step 0: when the doubled-angle vote passes on a
    diagonal-heavy word it returns a house pulled off the line by the
-   diagonals — AMAZE 27°, NAVY 147°, ZANY 151°, VANE 160° on the font word;
-   on real logos enthusiast's subline **130°**, fremont **97.9° / 162°**,
-   bridge 45° / 16° — which is not the stems' perpendicular the rule names.
-   And the vote's verdict sits on a knife edge: "MARINE" at 80 mm reads
-   nR² 5.0 from the shipped binary's quantised rails and 11.2 from the
-   source rails, 4.5 at 60 mm. The construction: for a group with a line,
-   house = line + slant, slant read from the near-normal family only
-   (strokes within the 30° cap of the line's normal), zero when that family
-   is silent; the votes stay as the detector for a leaned script only.
-   Changes every group a vote currently passes: measure the nine logos'
-   groups before/after, render Becker, enthusiast, fremont.
+   diagonals — AMAZE 27°, NAVY 147°, ZANY 151°, VANE 160°, HOTEL 17° on the
+   font word (HOTEL turned 20°: 45° off); on real logos enthusiast's subline
+   **130°**, fremont **97.9° / 162°**, drone 115° / 108° — not the stems'
+   perpendicular the rule names. And the vote's verdict sits on a knife
+   edge: "MARINE" at 80 mm reads nR² 5.0 from the shipped binary's
+   quantised rails and 11.2 from the source rails, 4.5 at 60 mm.
+   The construction as built: for a group with a line, house = line + slant,
+   slant = the length-weighted MEDIAN offset of the strokes within the 30°
+   lean cap of the line's normal, on chains resampled at the four-fold
+   reading's 4 px chord; a family under 10% of the skeleton is silent and
+   the group goes to the votes as before, as does a group with no line.
+   Not "votes as a script detector": every shipped font's lean fits the
+   window (montecarlo's rails 26.6°), so a leaned script reads its own
+   slant (mam_script "Marine" +15.4°, visibly right) and no detector was
+   needed; a script leaned past 30° would go to the votes by silence.
+   **Measured** (scope-history 2026-09-19, step 1): on the 24 real-logo
+   groups the vote accepts 12 with a line and stems and puts 9 of them
+   12–79° off the line; the anchor puts 15 of 19 anchored groups within 2°
+   of it, the other four being the Fremont rope's twists (not letters,
+   16°/19°) and two 1–2 mm screenshot groups (8°/10° of skeleton noise).
+   Font words within 0.6° upright, within 2.5° turned 15° and 30°. Corpus
+   cost: drone +167 stitches / +5 trims with its satin self-crossings
+   496 → 430; enthusiast +16 / +2; everything else within ±24 stitches.
+   **The look it exposes, for the flip:** THERMAL (drone, 7.6 mm) sewed at
+   one accidental 108° lean everywhere (both families inside the fade),
+   cross concentration 0.339; anchored at 0° its stems sew square and its
+   bars take their own perpendicular under `_clamp_to_span` — the fonts'
+   convention the 09-03 rule adopted — and the concentration reads 0.038.
+   The pro sews one angle. Render
+   `docs/renders/lettering-anchor-2026-09-19/drone_lettering_anchor_off_above_on_below.jpg`.
+   Rejected on measurement: a kernel mode for the slant (jumps to the
+   diagonals' peak: NAVY −19°, VANE +17°) and a straightness gate on the
+   votes (VANE flips −11/−15/+16 across thresholds). Limits: a family with
+   hardly a stem reads its diagonals' middle (ZANY −12°); a brush script
+   with curves for stems reads near zero (montecarlo, pacificlo) where the
+   eye sees a lean.
 2. **One path per letter — Euler-walk stroke order.** Order the strokes of a
    text-cluster member so the existing unsewn-web travel always has a path:
    depth-first over the spine graph, travelling down unsewn spines and

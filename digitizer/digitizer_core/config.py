@@ -969,11 +969,30 @@ class PipelineConfig:
     # per-stroke fade past the 30 deg cap (`_clamp_to_span`) still applies
     # to every diagonal. Not a physical constant. Built OFF and measured
     # (scope-history 2026-09-19: it fires on three of the nine real logos'
-    # 22 lettering groups — the ENTHUSIAST wordmark, whose satin runs' cross
+    # 24 lettering groups — the ENTHUSIAST wordmark, whose satin runs' cross
     # concentration goes 0.059 -> 0.287 at +7 stitches / +1 trim, and two
     # tiny groups on the phone screenshot); **DEFAULT ON the same day —
     # Kent's flip.** False is the fail-open behaviour, byte for byte.
     satin_house_from_line: bool = True
+    # The house angle ANCHORED to the line of text (lettering construction
+    # plan step 1, 2026-09-19; `textcluster.SATIN_HOUSE_STEM_WINDOW_DEG`
+    # has the mechanism). Both votes above decide the house from EVERY
+    # stroke of the group, and lettering with diagonals gets an answer the
+    # diagonals pulled off the stems' perpendicular the adopted rule names:
+    # of the 24 lettering groups on the nine real logos, the doubled-angle
+    # vote accepts twelve that make a line and have stems, and puts NINE of
+    # them 12-79 deg off their own line of text on upright words
+    # (enthusiast's subline 130 deg, fremont 98, drone 115 / 108); the font
+    # word HOTEL 27 deg, and 45 once it is turned 20 deg -- the vote does
+    # not follow the art. ON, a group that makes a line takes the
+    # line plus the slant of its STEMS -- the strokes within the lean cap
+    # of the line's normal, median offset -- so an upright word sews square
+    # to its line wherever the art is rotated, and a leaned script keeps
+    # its lean. The votes still answer a group with no line and a group
+    # with no stems (the bridge logo's wheel spokes). Not a physical
+    # constant. DEFAULT OFF -- measured in scope-history 2026-09-19; the
+    # flip is Kent's.
+    satin_house_anchor: bool = False
     # Each satin rail reaches ITS OWN edge (defect 23's open half, built
     # 2026-09-03 for Kent's flip). The rail model places both rails at the
     # NEARER edge's distance from a smoothed spine, so on every raster

@@ -58,8 +58,13 @@ def _column_polygon(a, b) -> Polygon | None:
     return best
 
 
-def _word_raster(word: str, width_mm: float, px_per_mm: float = 12.0) -> np.ndarray:
-    font = json.loads(FONT.read_text())
+def _word_raster(word: str, width_mm: float, px_per_mm: float = 12.0, *,
+                 font_path: Path = FONT, rotate_deg: float = 0.0) -> np.ndarray:
+    """`word` set in the font at `font_path` (a committed `src/fonts/*.json`),
+    `width_mm` wide, black on white at `px_per_mm`; `rotate_deg` turns the
+    finished raster counter-clockwise as displayed (a positive angle puts the
+    line of text at `-rotate_deg` in the pipeline's y-down frame)."""
+    font = json.loads(font_path.read_text())
     x = 0.0
     shapes = []
     for ch in word:
@@ -81,7 +86,15 @@ def _word_raster(word: str, width_mm: float, px_per_mm: float = 12.0) -> np.ndar
         for r in p.interiors:
             hole = np.round(((np.asarray(r.coords) - (x0, y0)) * scale * px_per_mm + pad * px_per_mm) * 4).astype(np.int32)
             cv2.fillPoly(canvas, [hole.reshape(-1, 1, 2)], 255)
-    return cv2.resize(canvas, (w, h), interpolation=cv2.INTER_AREA)
+    canvas = cv2.resize(canvas, (w, h), interpolation=cv2.INTER_AREA)
+    if rotate_deg:
+        side = int(math.hypot(w, h)) + 2
+        big = np.full((side, side), 255, np.uint8)
+        oy, ox = (side - h) // 2, (side - w) // 2
+        big[oy:oy + h, ox:ox + w] = canvas
+        m = cv2.getRotationMatrix2D((side / 2.0, side / 2.0), rotate_deg, 1.0)
+        canvas = cv2.warpAffine(big, m, (side, side), flags=cv2.INTER_AREA, borderValue=255)
+    return canvas
 
 
 @pytest.fixture(scope="module")

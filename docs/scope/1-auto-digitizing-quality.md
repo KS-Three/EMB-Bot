@@ -3958,7 +3958,7 @@ stems; bars and stems then fade to their own perpendicular under
 `_clamp_to_span`, so the exposure is diagonals leaning toward the wrong axis.
 No fixture has one.
 
-Fires on three of the nine real logos' 22 lettering groups: the ENTHUSIAST
+Fires on three of the nine real logos' 24 lettering groups: the ENTHUSIAST
 wordmark (nR² 0.9, R4 0.243 — it straddles the four-fold floor between 80 mm
 and 93 mm, passing at 93) and two tiny groups on the phone screenshot.
 ENTHUSIAST at 80 mm: house None → 179.9°, the word's satin runs' cross
@@ -3974,3 +3974,30 @@ diagonal residue (AMAZE 27°, NAVY 147°; on real logos enthusiast's subline
 `docs/superpowers/plans/2026-09-19-lettering-construction.md`.
 *(built, measured, flipped 2026-09-19 — scope-history's entry of that day)*
 
+## Lettering house-angle: ANCHORED to the line of text (`satin_house_anchor`, built OFF 2026-09-19)
+
+Plan step 1. Both votes decide the house from every stroke, and on lettering
+with diagonals the diagonals pull the answer off the stems' perpendicular
+the 09-03 rule names: of the nine real logos' 24 lettering groups, the
+doubled-angle vote accepts twelve with a line and stems and puts NINE of
+them 12–79° off their own line (enthusiast's subline 130°, Fremont's EAT
+STAY PLAY 98°, drone 115° / 108°), and on the font word HOTEL 27° — 45° once
+the word is turned 20°. ON, a group that makes a line takes house = line +
+slant, the slant being the length-weighted median offset from the line's
+normal of the strokes within the 30° lean cap of it, on chord-resampled
+chains; a family under 10% of the skeleton is silent and the votes answer
+as before, as they do a group with no line. 15 of 19 anchored groups land
+within 2° of their line; the four that do not are the Fremont rope's twists
+(not letters) and two 1–2 mm screenshot groups. A leaned script reads its
+own slant (`mam_script` +15.4°); the votes were not needed as a detector.
+Corpus cost: drone +167 stitches / +5 trims with self-crossings 496 → 430,
+enthusiast +16 / +2, the rest within ±24. **What the flip decides:** on
+THERMAL the vote's accidental 108° put both stroke families inside the fade
+(one uniform lean, concentration 0.339); anchored at 0° the stems sew square
+and the bars take their own perpendicular — the fonts' convention the rule
+adopted, not the pro's one angle — and the concentration reads 0.038. Render
+`docs/renders/lettering-anchor-2026-09-19/drone_lettering_anchor_off_above_on_below.jpg`.
+Rejected on measurement: a kernel mode for the slant, a straightness gate on
+the votes. Limits: stem-poor words read their diagonals' middle (ZANY −12°);
+brush scripts with curved strokes read near zero. `tests/test_house_anchor.py`
+(13). *(built and measured 2026-09-19 — scope-history, step 1)*

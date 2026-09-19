@@ -773,7 +773,8 @@ def build_generation(
     # a direction that clears a chance-corrected significance test: everything
     # else keeps today's behaviour byte-identical.
     set_lettering_house_angle(regions, p, fourfold=cfg.satin_house_fourfold,
-                              from_line=cfg.satin_house_from_line)
+                              from_line=cfg.satin_house_from_line,
+                              anchor=cfg.satin_house_anchor)
 
     # Gradient class: the one shared fill-row angle for the whole design
     # (2026-08-03 angle-fragmentation fix) — the design ramp's row angle when

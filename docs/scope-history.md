@@ -13218,3 +13218,107 @@ already fails, so no re-capture is possible or pending.
 *(built, measured and flipped 2026-09-19 — `tests/test_house_from_line.py`;
 the probe scripts lived in the session's scratchpad, the numbers are the
 record)*
+
+## 2026-09-19 — Lettering construction, step 1: the house ANCHORED to the line of text (`satin_house_anchor`, OFF), and the vote's answer on every group
+
+Kent's pick after step 0 flipped: step 1, "anchor the house to the line;
+read only the slant from the stems". Built the same day, OFF; the flip is
+his. Plan: `docs/superpowers/plans/2026-09-19-lettering-construction.md`.
+
+**What the vote does, measured on all 24 lettering groups of the nine
+real logos** (`_lettering_groups`, the population `set_lettering_house_angle`
+angles; the step-0 entry said 22 — the recount is 24). Three make no line,
+two are the Bridge logo's wheel spokes (every stroke along the diagonal
+they lie on: no stems), nineteen make a line and have stems. The
+doubled-angle vote accepts twelve of those nineteen and puts **nine of the
+twelve 12–79° off the group's own line of text**, all on upright words:
+enthusiast's 14-letter subline 130° (50° off), Fremont's EAT | STAY | PLAY
+98° (79°), drone's AND DRONE 115° (65°) and THERMAL 108° (72°), the
+screenshot's rows 28° / 168° / 11°, the Fremont rope's twists 162° / 162°.
+Becker's two lines sit 5° and 2° off. The font words agree: HOTEL 27° off,
+and **45° off once the word is turned 20°** — the vote does not follow the
+art, it follows the raster's diagonals.
+
+**The construction.** For a group that makes a line
+(`_line_of_text_deg`), house = line + slant, where slant is the
+length-weighted MEDIAN offset from the line's normal of the strokes within
+the 30° lean cap of it (`SATIN_HOUSE_STEM_WINDOW_DEG` = 90 −
+`SATIN_HOUSE_MIN_SPAN_DEG`, the same cap `_clamp_to_span` lets a stroke
+lean), on chains resampled at the four-fold reading's 4 px chord. A family
+under 10% of the skeleton's length (`SATIN_HOUSE_STEM_MIN_FRAC`) is silent
+and the group goes to the votes as before, as does a group with no line.
+Two things the first draft got wrong and the measurement caught: (1) on
+RAW skeleton steps every segment runs at a compass angle, so the family is
+exactly the 90° steps and the median exactly the raster's vertical — house
+0.0 on every group, including three whose lines sit at 9–19°; the chord
+resampling the four-fold reading already uses fixes it. (2) "Votes as a
+leaned-script detector" was not needed: every shipped font's lean fits the
+window (`montecarlo`'s rails, the most leaned of 85, 26.6°), so a script
+reads its own slant — `mam_script` "Marine" +15.4°, the stems visibly so;
+turned 20°, +12.2°.
+
+**Before/after, the 19 anchored groups.** The anchor puts **15 within 2° of
+the line** (Becker 174.8 / 177.2 → 180; enthusiast 130 → 180; Fremont 179.2
+/ 179.1 / 97.9 → 0; drone 178.2 / 115.2 / 108.1 → 0; gaulke 1.0 → 0; the
+screenshot's 176 / 168 / 11 → 0). The four that are not: the Fremont rope's
+40 and 33 twists (2 mm strands the lettering gate admits; their "slant" is
+the strands' lean, 16° and 19°) and two screenshot groups of 1–2 mm glyphs
+(8° and 10°, skeletons a few pixels long). Font words, `manga_impact`:
+MARINE / KAYAK / HOTEL / ENTHUSIAST / VANE within 0.6° of the line upright;
+MARINE turned 15° and 30° within 2.5°; HOTEL turned 20° within 3.1° where
+the vote sits 45° off. Silent as designed: the Bridge spokes (family 0.00
+of the skeleton where the nineteen read 0.24–0.78) keep the votes' 45° /
+16°.
+
+**What it costs on the corpus** (OFF → ON, corpus widths): drone 18,558 →
+18,725 stitches, 139 → 144 trims, satin self-crossings **496 → 430**;
+enthusiast 2,499 → 2,515 / 25 → 27; screenshot 8,242 → 8,262 / 70 → 72;
+Fremont +7 / 75 → 75, self-crossings 87 → 66; Becker −24 / 46 → 46; gaulke
++4 / 40 → 39; tires, Bridge, Golden Tee byte-for-byte. Enthusiast's and the
+screenshot's extra trims come from groups whose house moved 179.9° → 0.0°
+and 3.4° → 180° — the same lines, the opposite direction, so a fill's row
+order flips; a normalisation of the house to [0, 90) would remove it and
+was not built unmeasured.
+
+**The look it exposes, which is the flip's real question.** THERMAL
+(drone, 7.6 mm, satin): at the vote's accidental 108° BOTH families sat
+inside the fade, so every stroke leaned the same way and the word's cross
+concentration read 0.339; anchored at 0° the stems sew square and the T's
+bar, E's arms, H's bar and L's foot take their own perpendicular under
+`_clamp_to_span` — the 86 fonts' convention the 09-03 rule adopted — and
+the concentration reads **0.038**. The metric measures ONE angle, which is
+what the pro does (E's arms as short wide columns along the bar at the
+word's angle) and not what the rule does; the render shows the difference
+plainly:
+`docs/renders/lettering-anchor-2026-09-19/drone_lettering_anchor_off_above_on_below.jpg`
+(THERMAL uniform above, stems-and-bars below; PRECISION unchanged). Becker's
+MARINE (fill, 100 mm) goes from rows leaning 5° to rows on the line; the
+ENTHUSIAST and Fremont renders are alike both ways. Which convention block
+lettering should follow is Kent's, and it is prior to this flip.
+
+**Rejected on measurement**, so nobody re-tries them: a kernel MODE of the
+family for the slant (bandwidths 3–8°) jumps to the diagonals' own peak on a
+narrow face — NAVY −19°, VANE +17°, MARINE at 127 mm −18° at 5° — where the
+median reads under 1°; a straightness gate on the votes (segments count only
+where the chain turns under T° per chord, tried for scripts and tiny text)
+makes VANE read −11 / −15 / +16 at T = 15 / 10 / 5 and NAVY −13 at 15 and
+0.6 at 10. **Limits, named:** a family with hardly a stem reads the middle of
+its diagonals (ZANY −12°, AMAZE −9°, VANE 0.2° upright but −6.7° turned); a
+brush script whose strokes are curves reads near zero from them
+(`montecarlo` +0.3°, `pacificlo` −6.2°) where the eye sees a 10–25° forward
+lean; the Fremont rope; tiny text. NAVY never groups at the font's own
+advances (its letters fuse), which is why HOTEL carries the tests.
+
+**Tests:** `tests/test_house_anchor.py`, 13 — the flag off by default; six
+on `_stem_slant_deg` alone (square stems read 0; leaned stems read their
+lean and a bar does not vote; the median holds three stems against a
+longer diagonal; a 45° stroke is not a stem; a 3% family is silent and a
+14% one is not; the window is the lean cap); HOTEL at 80 mm OFF 27° off its
+line and ON within 1.5°, turned 20° OFF 45° off and ON within 5°;
+`mam_script` "Marine" keeps a 10–25° lean; three spokes fall through to the
+votes unchanged. `_word_raster` in `test_house_from_line.py` now takes a
+font path and a rotation. Both files: 18 passed.
+
+*(built and measured 2026-09-19 — the probe scripts lived in the session's
+scratchpad, the numbers are the record; renders in
+`docs/renders/lettering-anchor-2026-09-19/`)*
