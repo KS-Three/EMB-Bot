@@ -1371,7 +1371,12 @@ class PipelineConfig:
     # *(docs/flag-runtime-bills-2026-09-12.md)*
     fill_travel_under_cover: bool = True
 
-    # BUILT 2026-09-19, DEFAULT OFF — Kent's flip. What the flag above cannot
+    # BUILT 2026-09-19 and FLIPPED ON the same day — Kent's call over the
+    # thread renders (`docs/renders/fill-bridge-cut-2026-09-19/`, OFF above
+    # ON: Becker's ring of travel round a finished leg, Fremont's line across
+    # the field, the screenshot's loop, each gone), judged on a render and not
+    # yet on cloth. False is the engine before it, plan-md5-identical on the
+    # nine logos. What the flag above cannot
     # reach: `emit` sews ANY in-shape route between two fill columns, however
     # much of it lies on finished fill, and lifts only when no route exists;
     # `_score`'s ratified rate (a trim is 25 stitches, an exposed stitch 2) is
@@ -1410,7 +1415,7 @@ class PipelineConfig:
     # from one rule, which is what noise looks like. `docs/scope-history.md`
     # 2026-09-19, "the exposed travel legs" and its two addenda;
     # `tests/test_fill_bridge_cut.py`.
-    fill_bridge_cut: bool = False
+    fill_bridge_cut: bool = True
 
     # Task A2 (2026-08-14, tools/pro_parity): the corpus's professional
     # SOLID fill elements sew at roughly double a single ordinary pass's

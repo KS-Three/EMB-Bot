@@ -1,5 +1,5 @@
-"""`cfg.fill_bridge_cut` (default OFF): a fill bridge dearer than the cut it
-avoids is lifted instead of sewn.
+"""`cfg.fill_bridge_cut` (default ON since Kent's flip, 2026-09-19): a fill bridge
+dearer than the cut it avoids is lifted instead of sewn.
 
 `_score` already says what a trim is worth (`_TRIM_STITCH_EQUIVALENT`, 25) and
 what a stitch lying on finished fill is worth (`_EXPOSED_STITCH_WEIGHT`, 2) —
@@ -66,8 +66,12 @@ def _fill_points(runs):
     return sorted(p for r in runs if r.kind == "fill" for p in r.points)
 
 
-def test_the_flag_is_off_by_default():
-    assert PipelineConfig().fill_bridge_cut is False
+def test_the_flag_is_on_by_default():
+    """Kent's flip, 2026-09-19, over the thread renders
+    (`docs/renders/fill-bridge-cut-2026-09-19/`). `stitch_shape`'s own
+    `cut_bridges` keyword still defaults False, the way `under_cover` does, so
+    a caller that does not pass it sews as it did before the rule existed."""
+    assert PipelineConfig().fill_bridge_cut is True
 
 
 def test_a_long_bridge_on_finished_fill_is_dearer_than_the_cut():
@@ -179,8 +183,8 @@ def _stage7_hands_over(monkeypatch, **cfg_kw) -> list:
 
 
 def test_the_config_flag_reaches_the_fill_tier(monkeypatch):
-    assert _stage7_hands_over(monkeypatch) == [False]
-    assert _stage7_hands_over(monkeypatch, fill_bridge_cut=True) == [True]
+    assert _stage7_hands_over(monkeypatch) == [True]
+    assert _stage7_hands_over(monkeypatch, fill_bridge_cut=False) == [False]
 
 
 def test_the_lift_warning_does_not_claim_the_lift_was_forced(monkeypatch):
