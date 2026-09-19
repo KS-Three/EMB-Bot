@@ -53,7 +53,7 @@ import math
 
 import shapely
 from shapely.geometry import LineString, Point, Polygon
-from shapely.ops import unary_union
+from shapely.ops import nearest_points, unary_union
 
 from . import machine, stitches
 from .config import PipelineConfig
@@ -1794,7 +1794,8 @@ def sequence(
     for _group_key in sorted({nn_group_key(p) for p in planned}):
         group = [p for p in planned if nn_group_key(p) == _group_key]
 
-        def stitch_one(p: PlannedRegion, entry: tuple[float, float] | None):
+        def stitch_one(p: PlannedRegion, entry: tuple[float, float] | None,
+                       exit_near: tuple[float, float] | None = None):
             # The review screen's per-shape tier (shape-layers contract v1;
             # "sketch" added in v1.3): "auto" is the ladder below exactly as
             # it always ran; "satin", "fill", "run" and "sketch" force one
@@ -1926,6 +1927,8 @@ def sequence(
                     stroke_order=cfg.satin_stroke_order,
                     corner_twigs=cfg.satin_corner_twigs,
                     junction_stack=cfg.satin_junction_stack,
+                    end_near=exit_near if cfg.satin_exit_toward_next else None,
+                    underlay_on_column=cfg.satin_underlay_on_column,
                     # The ceiling the classifier admitted at is the one the
                     # emitter sews at — one number, threaded, never two
                     # constants (DOCTRINE 2026-09-02). The fold guard rides
@@ -2405,7 +2408,20 @@ def sequence(
             # every seam it shares — its own border block must not yield to
             # itself, and nothing sewn after it may yield to it either.
             border_later.pop(p.shape_id, None)
-            runs, report, filled = stitch_one(p, cursor)
+            # `cfg.satin_exit_toward_next`: where the needle goes next -- the
+            # nearest remaining shape by polygon distance, the pick rule's
+            # own answer once the needle is there -- handed to the satin
+            # emitter so its walk can end facing it. Read only; the pick
+            # below is untouched.
+            exit_near = None
+            if cfg.satin_exit_toward_next:
+                cands = [i for i in pool if i != pick] or list(remaining)
+                if cands:
+                    nxt = min(cands, key=lambda i: (
+                        round(group[i].polygon.distance(p.polygon), 6), rank[i]))
+                    q = nearest_points(p.polygon, group[nxt].polygon)[1]
+                    exit_near = (float(q.x), float(q.y))
+            runs, report, filled = stitch_one(p, cursor, exit_near)
             thin += int(filled and report["too_thin"])
             jumps += report["jumps"]
             as_run += report.get("as_run", 0)

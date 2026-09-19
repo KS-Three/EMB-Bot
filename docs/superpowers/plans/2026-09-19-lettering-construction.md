@@ -21,7 +21,14 @@ sew-out sheet is on Kent's machine, in two cuts: the first for the two
 flips cloth still owes (3b, and 5's check), the second — today's defaults
 with `satin_junction_stack` and step 4 ON beside the pre-flip arm — for
 the stacked junction and the split column on cloth (scope-history
-2026-09-19, the step-4 addenda).
+2026-09-19, the step-4 addenda). The yardstick's trims gap is read (a
+per-trim census) and two levers are BUILT: `satin_exit_toward_next`
+(the walk ends facing the next letter; the fixture 13 → 9 trims, its
+letter hops the typed word's three) — FLIPPED ON the same day, Kent's
+call — and `satin_underlay_on_column` (the underlay ends where the
+column enters; 13 → 12 at +9% stitches, Becker 61 → 48), held OFF on
+the same call — scope-history 2026-09-19, "the lettering yardstick's
+trims gap".
 Review it rests on:
 `docs/lettering-route-review-2026-09-19.md`.
 
@@ -265,12 +272,14 @@ customer already had right.
    columns meeting; the guard's code is unchanged and its case is pinned
    on the pruner it was read on. `tests/test_edge_cap_lettering.py` (10).
 
-**The yardstick now.** Traced MARINE at 80 mm, steps 0–3a ON and 5 ON:
-1,774 stitches / 7 trims against the font engine's 1,782 / 3. The stitch
-count has crossed. The seven trims: the first needle-down, five hops
-inside the word over `TRIM_AT_MM` (3.2–17.9 mm, stroke to stroke and
-letter to letter — step 2's remainder), and one into the cap's last run,
-on a non-text fragment.
+**The yardstick now.** Traced MARINE at 80 mm, steps 0–5 ON and the
+junction stack: **1,969 stitches / 13 trims** against the font engine's
+1,782 / 3 (steps 0–3a and 5 alone read 1,774 / 7). The thirteen, by the
+census: the first needle-down, the cap's run, six letter-to-letter hops
+(the stack moved the walk's exits), four underlay-to-column hops inside
+the split's wide columns, one refused walk. With lever 1 ON (Kent): **9**
+— its letter hops the typed word's three — and 8 with lever 2 too (held
+OFF), the rest the first stitch, the cap, letter hops and refused walks.
 
 ## Not this plan
 
