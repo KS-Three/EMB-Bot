@@ -1338,6 +1338,44 @@ class PipelineConfig:
     # *(docs/flag-runtime-bills-2026-09-12.md)*
     fill_travel_under_cover: bool = True
 
+    # BUILT 2026-09-19, DEFAULT OFF — Kent's flip. What the flag above cannot
+    # reach: `emit` sews ANY in-shape route between two fill columns, however
+    # much of it lies on finished fill, and lifts only when no route exists;
+    # `_score`'s ratified rate (a trim is 25 stitches, an exposed stitch 2) is
+    # only ever asked about whole column orders, never about one bridge. ON,
+    # a bridge that shows, spans a gap over `trim_at`, and costs more at that
+    # same rate than the cut it avoids is lifted instead
+    # (`stage6_fill._cut_is_cheaper`), in the emitter and the scorer alike.
+    # No constant is added or moved. Inert without `fill_travel_under_cover`,
+    # which is what tracks the sewn footprint, and on TWO-PASS fills
+    # (crosshatch, the density boost): that footprint cannot tell pass-one
+    # fill that pass two will cover from finished fill, so every pass-two
+    # bridge read as exposed and bought a cut that hid nothing (a two-hole
+    # plate: trims 0 -> 2). Exposure per pass is unmeasured; the photo lane's
+    # crosshatch is where that matters.
+    # Measured ON (nine logos, 80 mm, main's defaults after #516): exposed
+    # travel 248.6 -> 140.9 mm by `tools/travel_cover.py`, 432.3 -> 226.2 by
+    # `tools/fill_bridges.py`, trims 458 -> 464, stitches 76,774 -> 76,705,
+    # uncovered unchanged on all nine; Becker's 22.9 mm leg -> 4.0. The delta
+    # held across three engine states that day (+6 trims each time). OFF is
+    # plan-md5-identical to the engine before it, all nine. Read it yourself:
+    # `tools/travel_legs.py --set fill_bridge_cut=true`.
+    # **Before a flip:** a lift this makes raises `report["jumps"]`, and the
+    # customer line that reads says the thread "had to be" lifted — it did
+    # not, the engine chose to.
+    # **The cost is trims, and one reading that looks like a cost and is
+    # not:** Hotel Fremont gains a LETTERING_ILLEGIBLE warn (tagline OCR
+    # 0.50 -> 0.27). The tagline's own 13 runs are byte-identical either way;
+    # what moved is two of the white FIELD's bridges that ran needle-down
+    # through the tagline band and are now cut, and tesseract swapped one
+    # noise string for another (`VAT] CY § Pw` at confidence 46 for `| | TL`)
+    # on lettering lost on the thread under both. Drone's moved 0.10 -> 0.25
+    # under the nearest order and 0.36 -> 0.05 under euler: opposite ways
+    # from one rule, which is what noise looks like. `docs/scope-history.md`
+    # 2026-09-19, "the exposed travel legs" and its two addenda;
+    # `tests/test_fill_bridge_cut.py`.
+    fill_bridge_cut: bool = False
+
     # Task A2 (2026-08-14, tools/pro_parity): the corpus's professional
     # SOLID fill elements sew at roughly double a single ordinary pass's
     # density — see machine.FILL_DENSITY_BOOST_MIN_WIDTH_MM's own comment

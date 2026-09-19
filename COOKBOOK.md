@@ -453,7 +453,15 @@ hand-rolling it in JS.
   sewn AFTER it, by preflight's own ribbon rule — exposed length per leg and
   per design, `--order nearest|euler`, `--width`; the lettering plan's step 2
   instrument, which found the 245 mm exposed at 80 mm to be the nearest
-  order's own legs, not the Euler walk's),
+  order's own legs, not the Euler walk's — and not the satin tier's at all:
+  see the next one; its 1 mm grid under-reads fill exposure by a third),
+  `digitizer/tools/travel_legs.py` (WHOSE each travel leg is and what it lies
+  on: the emitter off the construction call stack, the runs either side, the
+  grid reading beside an exact one, and `own-fill` / `top` / `other` /
+  `underlay` / `own-bare` / `art-bare` / `FABRIC` under every exposed
+  sample; `--set KEY=VALUE` puts any config field on, so it is how
+  `fill_bridge_cut` is read — 97.7% of that 245 mm is the FILL tier's column
+  bridges on their own finished fill, defect 21's residual, none on fabric),
   `digitizer/tools/pushcomp_pins.py` (`test_pushcomp.GOLDEN_FLAG_OFF`'s tuples
   as THIS tree computes them, for a re-pin with the same pre-change proof),
   `digitizer/tools/resnap_escape.py` (cones `revalidate_threads` ADDS, and how

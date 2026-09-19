@@ -64,7 +64,10 @@ def _word_raster(word: str, width_mm: float, px_per_mm: float = 12.0, *,
     `width_mm` wide, black on white at `px_per_mm`; `rotate_deg` turns the
     finished raster counter-clockwise as displayed (a positive angle puts the
     line of text at `-rotate_deg` in the pipeline's y-down frame)."""
-    font = json.loads(font_path.read_text())
+    # utf-8 by name: the font's licence text carries an "é", and a bare
+    # `read_text()` is cp1252 on Windows -- 11 setup errors on Kent's machine
+    # while Linux CI, whose default is utf-8, stayed green (2026-09-19).
+    font = json.loads(font_path.read_text(encoding="utf-8"))
     x = 0.0
     shapes = []
     for ch in word:

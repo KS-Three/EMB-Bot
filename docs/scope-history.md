@@ -13742,3 +13742,291 @@ still owes — 3b's rail comp, and this one's check on cloth. What the flip
 moved in the suite is recorded in the PR (#516) body.
 
 *(flipped and ruled 2026-09-19 — Kent's answers; config comment)*
+## 2026-09-19 — the exposed travel legs: the fill tier's, on finished fill, never on fabric — and one arm priced
+
+`tools/travel_cover.py` (the step-2 entry above) read ~245 mm of exposed
+travel on the nine logos at 80 mm under the nearest order and called it *"a
+pre-existing finding this instrument is the first to read"*. Traced leg by
+leg (`tools/travel_legs.py`, new: the emitter of every TRAVEL run read off
+the construction call stack, the runs either side, and each half-millimetre
+sample read against the thread itself as well as the 1 mm grid). **That
+sentence is wrong, and the entry above is left as written: it is
+MASTER_SCOPE defect 21's residual, which `tools/fill_bridges.py` read on
+2026-09-11 with its cause established.**
+
+**Whose legs.** 244.8 mm grid-exposed (the instrument's 244.7): **239.1 mm —
+97.7% — is `stage6_fill.stitch_shape`'s `emit`** (line 1452), the bridge
+between two fill columns of ONE shape; 5.7 mm is `stage6_satin.satin_shape`'s
+between-stroke `_graph_travel` walk (line 4921). The other candidates emit
+nothing under this config: stage 7's `_chain` (`chain_links` OFF), the
+`_junction_cover_runs` walk (`satin_patch_junctions` OFF), border, contour.
+Per logo, fill / satin: Becker 31.2 / 0.0, tires no travel at all,
+ENTHUSIAST 3.8 / 0.0, Fremont 56.3 / 0.9, Bridge Bar 22.6 / 0.0, Golden Tee
+0.0 / 2.3, gaulke 0.0 / 0.0, drone 67.9 / 2.0, the screenshot 57.2 / 0.5.
+The fill tier does not read `satin_stroke_order`, which is why the Euler
+walk moved the total by 1.4 mm.
+
+**What they lie on — not gate 3's letter.** Of 375.0 mm of fill-tier travel
+exposed by the exact test (below), **all 375.0 mm lies on that shape's own
+FINISHED fill, in the same thread; 0.0 mm on bare fabric, 0.0 mm on unsewn
+artwork, 0.0 mm on another colour.** Nothing sews after the leg because the
+fill under it is already complete. That is thread on top of finished tatami
+— defect 21, *"on light thread over light fill it reads as a line"* — not
+needle-down thread on bare fabric. Neither is it the 0.2-unit floor missing
+thread that is there: the floor errs the other way.
+
+**The grid UNDER-reads the fill legs by a third.** A sample with no later
+sewn segment within half a thread width: 375.0 mm against the grid's 239.1
+(Becker 39.4 / 31.2, Fremont 108.6 / 56.3, the screenshot 102.8 / 57.2,
+drone 89.6 / 67.9). A 1 mm cell credits a leg running along a finished
+column's edge with the NEXT column's thread. `fill_bridges`' own measure
+(a full-row footprint, which over-claims a column's ends by a row) reads
+432.3 mm on the same plans. Three instruments, one population; quote the
+one whose question you are asking. Separately, a bridge's two END steps
+belong to no run — `emit` appends `bridge[:-1]` and `_densify` is
+a-exclusive — so Becker's run #2 is a 7.1 mm bridge the instrument sees
+2.4 mm of. On the satin legs the grid errs the OTHER way: of 5.7 mm, the
+exact test confirms 3.2 mm retracing a hairline run on Golden Tee and
+0.8 mm over another colour on drone; the rest are sub-2 mm hops the cell
+cannot resolve.
+
+**Becker at 80 mm, every leg** (left_chest, max_colors 6, nearest; the two
+fill shapes are black grounds in the BECKER arch, S118e45fc is MARINE):
+
+| run | shape | emitter | before → after | leg (gap) mm | grid | exact | on | `fill_bridges` | cost at 25 : 2 |
+|---|---|---|---|---|---|---|---|---|---|
+| #2 | Saee8fbe5 | fill `emit` | fill[199] → fill[164] | 2.4 (7.1) | 0.0 | 0.0 | — | clean | 2.0 |
+| #5 | Saee8fbe5 | fill `emit` | fill[6] → fill[68] | 2.3 (6.9) | 0.9 | 1.8 | own fill | under tolerance | 3.6 |
+| **#8** | Saee8fbe5 | fill `emit` | fill[67] → fill[39] | **24.5 (8.4)** | **22.9** | 24.5 | own fill | no corridor | **34.6** |
+| #10 | Saee8fbe5 | fill `emit` | fill[39] → fill[158] | 20.3 (7.5) | 0.3 | 4.0 | own fill | router | 17.6 |
+| #17 | Sf795e8d1 | fill `emit` | fill[112] → fill[144] | 6.8 (11.3) | 3.2 | 3.6 | own fill | no corridor | 6.9 |
+| #19 | Sf795e8d1 | fill `emit` | fill[144] → fill[118] | 16.2 (8.5) | 4.0 | 5.5 | own fill | no corridor | 17.1 |
+| #27 | S118e45fc | `satin_shape` | satin[46] trim → underlay[3] | 5.2 | 0.0 | 0.0 | — | | |
+| #34 | S118e45fc | `satin_shape` | satin[110] → underlay[8] | 47.5 (13.9) | 0.0 | 0.0 | — | | |
+| #37 | S118e45fc | `satin_shape` | satin[36] trim → underlay[8] | 7.4 | 0.0 | 1.0 | a column seam, 0.03 mm past the test | | |
+| #44 | S118e45fc | `satin_shape` | satin[154] → underlay[30] | 4.4 | 0.0 | 0.0 | — | | |
+
+**The 22.9 mm leg, rendered**
+(`docs/renders/travel-legs-2026-09-19/becker_80mm_fill_bridges_sew_order.jpg`,
+columns numbered in sew order). The needle finishes the fifth column at the
+shape's top-right corner; the sixth starts 8.4 mm away across finished fill.
+The straight hop leaves the polygon for **0.20 mm** — a sliver notch in the
+traced outline — so `travel_path` refuses it and takes the inset ring the
+short way round: down the finished right leg, along its foot and up its
+inner side, 24.5 mm, all of it on top. No unsewn ground touches either end
+(`fill_bridges`: no corridor, not jumpable, no later colour over it).
+
+**One arm, PRICED NOT BUILT (scratch monkeypatch on `travel_path`, no engine
+file touched) — and no constant added or moved.** `_score` already says
+what a trim is worth (25 stitches) and what an exposed stitch is worth (2),
+both Kent's, ratified 2026-09-03 — but it is only ever asked to compare two
+whole ORDERS. `emit` never asks it about one BRIDGE: if any in-shape route
+exists it is sewn, however exposed, and the thread is lifted only when no
+route exists at all. The arm asks: where the gap is over `trim_at` (so the
+lift really is a cut) and the bridge's own cost — travel stitches + exposed
+stitches × 2 — exceeds 25, lift. Applied inside `travel_path`'s result, so
+`_order_cost` and `emit` see the same rule. It is NOT the 09-11 entry's
+"lift when shorter than `trim_at`" (that priced the lifts that cost no
+trim; this prices the ones that do) and not ordering work, which DOCTRINE
+says moves the rate first. Nine logos, 80 mm, nearest:
+
+| | exposed, `travel_cover` | exposed, `fill_bridges` | worst leg | trims | stitches |
+|---|---|---|---|---|---|
+| Becker | 31.2 → **8.3** | 38.7 → 14.2 | 22.9 → 4.0 | 52 → 53 | 6,757 → 6,749 |
+| Fremont | 57.2 → **20.3** | 136.5 → 39.8 | 21.8 → 9.3 | 57 → 61 | 13,202 → 13,171 |
+| Bridge Bar | 22.8 → 12.6 | 33.9 → 11.1 | 10.2 → 2.2 | 113 → 114 | 14,505 → 14,499 |
+| the screenshot | 57.5 → **25.7** | 107.1 → 45.0 | 10.9 → 5.0 | 73 → 77 | 8,261 → 8,206 |
+| drone | 69.9 → 66.6 | 111.9 → 111.8 | 9.1 → 9.1 | 145 → 141 | 18,718 → 18,750 |
+| tires, ENTHUSIAST, Golden Tee, gaulke | unchanged | unchanged | | unchanged | unchanged |
+| **nine** | **244.6 → 139.5** | **432.3 → 226.2** | | **587 → 593** | 77,678 → 77,610 |
+
+`uncovered_total_mm2` is identical on all nine and the preflight finding
+codes on eight. **The one adverse reading: Fremont gains a
+`LETTERING_ILLEGIBLE` warn.** Its tagline cluster (art read
+`EATSTAYPLAYWZ`, 5.9 mm) read back at 0.50 similarity before — exactly ON
+the warn line, passing by `>=` — and 0.267 (`TL`) under the arm;
+`HOTELFREMONT` reads 1.0 both ways. The mechanism is NOT established: every
+order sews the same fill penetrations, so only travel, trims and ties moved
+in the white field the tagline is cut out of, and the judge is an OCR of a
+render. It is a reason to look at a render before any flip, not a
+measurement of the thread. Drone is the scorer choosing differently once a
+cut has a price inside the route: four fewer trims, 66 mm more travel,
+3.3 mm less of it exposed. What is left after the rule is bridges cheaper
+than a cut at Kent's own rate — Becker's other four cost 3.6 to 17.6. **It
+is a trade Kent already priced, but more trims is still his call** (all
+nine already carry `TRIM_HEAVY`); if wanted it is a config flag, default
+OFF, with `travel_cover`, `fill_bridges` and `travel_legs` as its
+instruments. Not proposed: letting the straight hop leave the shape by
+0.2 mm. That is needle-down outside the artwork by construction, which IS
+gate 3's letter.
+
+*(measured 2026-09-19 — `digitizer/tools/travel_legs.py`; the arm and the
+render script lived in the session's scratchpad, the numbers are the record)*
+
+### Addendum, the same day — the arm BUILT, DEFAULT OFF (`cfg.fill_bridge_cut`), and Fremont's OCR reading explained
+
+Put to Kent with the numbers above (AskUserQuestion, 2026-09-19): **build
+it, default OFF**; the flip stays his.
+
+**What was built.** `stage6_fill._cut_is_cheaper(a, bridge, sewn,
+trim_at_mm)`: a bridge that shows (over the one-stitch exposure tolerance),
+spans a gap over `trim_at`, and scores more than one cut by `_score`'s own
+two constants is lifted. Asked in `emit` and in `_order_cost` alike — the
+scorer and the emitter agreeing is DOCTRINE's stated prerequisite — and
+carried into `_reorder_for_cover`'s memo key, since it changes what the
+scorer counts. Threaded to the same seven `stitch_shape` call sites as
+`fill_travel_under_cover` (five in stage 7, two in the blend tier), without
+which it is inert: that flag is what tracks the sewn footprint. No constant
+added or moved. With `chain_links` ON (it is OFF, gate 3) stage 7 could
+re-bury a lift this rule made; not measured.
+
+**Measured, nine logos, 80 mm, nearest — the built flag reproduces the
+priced arm to the digit:** exposed travel **244.6 → 139.5 mm**
+(`travel_cover`), 432.3 → 226.2 (`fill_bridges`), trims **587 → 593**,
+stitches 77,678 → 77,610, `uncovered_total_mm2` identical on all nine;
+per-logo rows as the table above. **OFF is plan-md5-identical to the engine
+before the change on all nine** (every run's thread, kind, jump, trim,
+shape and points; the base measured in a detached worktree at `fb749de5`).
+Four logos do not move at all (OFF md5 == ON md5: tires, ENTHUSIAST, Golden
+Tee, gaulke).
+
+**Fremont's `LETTERING_ILLEGIBLE` is the judge, not the thread**
+(`docs/renders/travel-legs-2026-09-19/fremont_tagline_ocr_input_art_off_on.jpg`
+— the crops tesseract read, from `legibility.measure`'s own `dump=`). The
+tagline cluster's 12 shapes sew 13 runs and they are **byte-identical** OFF
+and ON. What differs inside the tagline's box is the white FIELD's travel:
+OFF, two of its exposed bridges run needle-down through the tagline band
+(3.3 and 8.9 mm of them inside the box — the two diagonal lines in the
+render); ON, both are cuts. 231 of the crop's 61,920 pixels change. OFF,
+tesseract read `VAT] CY § Pw` at confidence 46.5, which scores 0.50 against
+`EATSTAYPLAYWZ` and passes a `>=` 0.5 line; ON it read `| | TL` at 63.3,
+0.267. Neither is the tagline, which is lost on the thread under both arms
+at this size; the reading follows the flag whichever arm runs first
+(checked both orders). Drone's worst cluster moved the other way, 0.102 →
+0.25. **So the arm's recorded "one adverse reading" is withdrawn as a cost:
+its only cost is the six trims.** It stands as a finding about the
+instrument — a similarity of exactly 0.50 from a 46-confidence garble is
+not a pass.
+
+**Tests:** `tests/test_fill_bridge_cut.py`, 12 — the default; the rule on
+four hand-built bridges (long and exposed, short and exposed, long and
+hidden, exposed under `trim_at`); on a two-legged comb whose only route to
+the second leg climbs back up the first (a bridge costing 31.2 against a cut's 25): ON sews no
+bridge dearer than a cut, exposes less, trims more and sews the same fill
+penetrations, explicit OFF is the default's runs, the flag is inert without
+covered routing, and `_order_cost` counts one more cut for the same order;
+stage 7 hands the flag to the real `stitch_shape`; and every call site that
+passes covered routing passes the rule. The fixtures are shapely polygons
+on purpose: Becker's leg exists because of a 0.20 mm notch in a traced
+outline, and a trace differs by platform. Each test was watched failing
+first, the two wiring tests by reverting the wiring.
+
+*(built and measured 2026-09-19 — `tests/test_fill_bridge_cut.py`;
+`digitizer/tools/travel_legs.py`; the nine-logo and md5 scripts lived in
+the session's scratchpad, the numbers are the record)*
+
+### Addendum, the same day — the review round: the flag could buy a DEARER plan, two-pass fills, and the numbers on the shipped order
+
+`emb-bot-reviewer` on the two commits above. Every finding was reproduced
+before it was acted on.
+
+**REAL, ON-path only — `_reorder_for_cover`'s early exit.** *"Nothing
+exposed; nothing to win"* is false once `cut_bridges` is on: the scorer lifts
+a dear bridge, so the original order reads "one cut, nothing on top" and the
+reorder is skipped without ever pricing the order it would have found. On a
+plate with two holes ON kept a plan scoring **86.0** where flag-OFF's order
+scores **40.1** by the same scorer — one trim and 40 more travel stitches to
+hide 24 mm, dearer than OFF at the very rate the flag is justified by. Now
+the candidate is always priced when the flag is on and there is a cut; since
+the greedy candidate does not depend on the flag, ON picks the cheaper of
+the same two orders OFF chooses between, so **it cannot buy a dearer plan
+than it replaces**. On the nine logos the fix moved one plan (the
+screenshot's ON, −1 stitch); every OFF plan and the other eight ON plans are
+md5-identical to before it.
+
+**Found while measuring the reviewer's two-pass note — the rule is for
+SINGLE-PASS fills.** Crosshatch and the density boost sew the shape twice,
+and the sewn footprint cannot tell pass-one fill that pass two is about to
+cover from fill that is finished, so every pass-two bridge read as exposed:
+on the two-hole plate trims 0 → 2 (crosshatch) and 1 → 3 (boosted), on a
+three-hole plate 0 → 3 both ways — cuts that hide nothing. `stitch_shape`
+now leaves both alone. The customer default has the boost OFF and the nine
+logos are single-pass tatami, so the figures below are unaffected; **the
+photo lane's crosshatch is where this would have landed, and exposure per
+pass is unmeasured** — that, not the flag, is the open item there.
+
+**The numbers on the SHIPPED stroke order** (euler since #516's flip the same
+day; the entry above is `--order nearest` to match the figures it was
+correcting). Nine logos, 80 mm, final code, OFF → ON: exposed travel
+**246.3 → 141.1 mm** (`travel_cover`), 432.3 → 226.2 (`fill_bridges`),
+trims **471 → 477**, stitches 77,558 → 77,489, `uncovered_total_mm2`
+identical on all nine. Becker 31.2 → 8.3 (trims 38 → 39), Fremont 56.7 →
+19.9 (33 → 37), Bridge Bar 25.5 → 15.3 (86 → 87), the screenshot 57.5 →
+25.7 (70 → 74), drone 69.6 → 66.3 (133 → 129); tires, ENTHUSIAST, Golden
+Tee and gaulke do not move. Under nearest the totals are 244.6 → 139.5 and
+587 → 593 still. **The OCR judge again:** Fremont 0.50 → 0.267 under either
+order; drone's worst cluster went 0.10 → 0.25 under nearest and **0.36 →
+0.05 under euler** — opposite directions from the same rule on lettering
+already flagged illegible both ways, which is what noise looks like.
+
+**The instrument can now read the flag.** The reviewer's second point: none
+of the three named instruments could set `fill_bridge_cut`, so the flip
+decision was not reproducible from the repo. `tools/travel_legs.py` takes
+`--set KEY=VALUE` (any `PipelineConfig` field), measures the SHIPPED stroke
+order unless `--order` names one, and prints stitches and trims. Its `top`
+bucket is split: **`own-fill` — finished fill of the leg's OWN shape — is
+374.9 of the 374.9 mm of exposed fill travel**, so the first entry's "that
+shape's own finished fill" is now read rather than inferred from "same
+colour". Its own sums are 244.6 / 239.0 / 5.6 / 374.9 where the first entry
+quotes 244.8 / 239.1 / 5.7 / 375.0 from a scratch run that summed per-leg
+roundings. The satin walk's 6.1 mm: 3.9 on same-colour top stitching, 0.8 on
+another colour, 1.4 bare at column seams — so "0.0 mm on unsewn artwork" is
+true of the fill tier and 1.4 mm short of true overall.
+
+**Open before any flip, none of them built:** a lift this rule makes raises
+`report["jumps"]`, which feeds the customer line *"the thread had to be
+lifted N times inside a shape"* — it did not have to be, the engine chose
+to, and the wording should say so; `TRIM_HEAVY`'s in-shape share rises with
+it; `chain_links` ON could re-bury a lift (unmeasured, OFF).
+
+**Not this change's, found by running the full local suite:** 11 setup
+errors in `test_house_anchor.py` / `test_house_from_line.py` (#516's), a
+bare `read_text()` decoding a UTF-8 font file as cp1252 on Windows; Linux CI
+never sees it. Fixed with `encoding="utf-8"`. The suite's other reds are the
+three recorded Windows-local goldens and no fourth: 2,665 passed, 3 failed,
+3 skipped, 8 xfailed (48 min, sharing the machine with the review
+agent's probes).
+
+**Tests:** `tests/test_fill_bridge_cut.py`, 15 — added: the two-hole plate
+(ON never dearer than OFF by its own scorer), two-pass fills left alone, the
+memo key carries the flag; the scorer/emitter test now checks the emitter's
+trims against the scorer's cuts; the call-site tripwire parses the source
+instead of pattern-matching it (the regex missed `under_cover = cfg.x` with
+no trailing comma — checked by breaking a site that way); and
+`test_flag_off_is_the_engine_as_it_was` is renamed
+`test_explicit_off_is_the_default`, which is all it pins.
+
+*(reviewed, fixed and re-measured 2026-09-19 — `tests/test_fill_bridge_cut.py`;
+`digitizer/tools/travel_legs.py --set fill_bridge_cut=true`)*
+
+### Addendum, the same day — #516 merged; the numbers on main's defaults
+
+#516 merged while the above was in review, ten commits on from the lane this
+was measured on, with `satin_corner_twigs` and `edge_cap_skip_lettering`
+flipped ON on the way. `main` merged in; the three figures above are each
+labelled with the engine they were measured on and none is withdrawn, but
+"current" is this one. Nine logos, 80 mm, `main`'s defaults, OFF → ON:
+exposed travel **248.6 → 140.9 mm** (`travel_cover`), 432.3 → 226.2
+(`fill_bridges`, to the decimal on all three engines — the fill tier reads
+none of the satin flags), trims **458 → 464**, stitches 76,774 → 76,705,
+`uncovered_total_mm2` identical on all nine. Becker 31.2 → 8.3 (trims 36 →
+37), Fremont 57.7 → 20.8 (33 → 37), Bridge Bar 26.0 → 15.8 (83 → 84), the
+screenshot 59.6 → 25.2 (69 → 73), drone 69.0 → 65.7 (127 → 123); tires,
+ENTHUSIAST, Golden Tee and gaulke are md5-identical OFF and ON. The delta is
+the same +6 trims on all three engine states. Fremont is again the only
+design whose finding codes change, 0.50 → 0.267 as before; drone's worst
+cluster reads 0.154 → 0.143 here, a third direction-and-size from the same
+rule. `COOKBOOK.md`'s instrument list (new in #516) gains
+`tools/travel_legs.py` and the correction to `travel_cover`'s line.
+
+*(measured 2026-09-19 — merged tree `8ae881b8`)*
