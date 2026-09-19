@@ -1657,8 +1657,43 @@ def _merge_through_junctions(edges: list[dict], dt_mm=None, half_mm: float = 0.0
     return [c for i, c in chains.items() if find(i) == i]
 
 
-def _prune_spurs(mask: np.ndarray, spur_len_px: float) -> None:
+# Lettering construction plan step 3 (2026-09-19), the letterform study's
+# mechanism #2: `_prune_spurs` erases a corner's twig and, with it, the
+# junction's DEGREE -- a 3-way node with the diagonal, the stem and a short
+# branch into the corner (PRECISION's N, Becker's R foot) becomes a 2-way
+# pass-through once the branch goes, and the walker welds the diagonal to
+# the stem as one column folding through the corner. The twig itself is
+# worthless (every corner twig on the corpus ends at a 1 px distance
+# transform: census of 739 spurs on five logos, 2026-09-19 -- the "tip as
+# wide as the stroke" test the study proposed does not exist on this
+# raster); what matters is the NODE it holds open. The other kind of spur
+# is a square cap's I-beam: two short free arms at one node off the end of
+# a stem, both of which must go -- the study's H defect is one of them
+# surviving the length threshold by 0.027 mm and hooking the stem's spine
+# into the corner. So the rule is by structure, not by length alone:
+#   * a node with TWO free arms under `_CAP_ARM_MAX_SPURS` spur lengths and
+#     one longer arm is a cap -- both arms are pruned, whatever their
+#     exact length (the H's 10.90 px arm against a 10.74 px bar goes too);
+#   * a node with ONE free arm under the spur length and at least two arms
+#     that are not spurs is a corner between two strokes -- the twig is
+#     KEPT so the node stays a junction and `_merge_through_junctions`
+#     decides the weld on its own terms;
+#   * anything else keeps today's rule (a short free arm is a spur).
+# Behind `cfg.satin_corner_twigs`; off, the function is what it was.
+_CAP_ARM_MAX_SPURS = 1.5
+
+
+def _node_key(px: tuple[int, int]) -> tuple[int, int]:
+    return px
+
+
+def _prune_spurs(mask: np.ndarray, spur_len_px: float, *,
+                 corner_twigs: bool = False) -> None:
     """Erase short dead-end twigs in place, keeping their branch node.
+
+    `corner_twigs` (plan step 3, see `_CAP_ARM_MAX_SPURS`): a node's two
+    short free arms are a cap and both go; a lone short free arm between two
+    longer arms is a corner twig and stays, holding the junction open.
 
     Repeats so a twig hidden behind another twig still goes — but only ever
     erases dead ends the skeleton grew on its own. Deleting a spur leaves its
@@ -1679,16 +1714,40 @@ def _prune_spurs(mask: np.ndarray, spur_len_px: float) -> None:
     exposed: set[tuple[int, int]] = set()
     for _ in range(4):
         removed = 0
-        for e in _skeleton_edges(mask):
+        edges = _skeleton_edges(mask)
+        # Under the structure rule: what meets at each node. An edge's end
+        # that is not free sits on a node pixel; two edges meet where those
+        # pixels coincide (or touch, on a clique).
+        arms: dict[tuple[int, int], list[tuple[int, float, bool]]] = {}
+        if corner_twigs:
+            for i, e in enumerate(edges):
+                if e["closed"]:
+                    continue
+                length = sum(math.dist(a, b) for a, b in zip(e["pts"], e["pts"][1:]))
+                spur = (e["free_start"] != e["free_end"]) and length < spur_len_px * _CAP_ARM_MAX_SPURS
+                for end, free in ((e["pts"][0], e["free_start"]), (e["pts"][-1], e["free_end"])):
+                    if not free:
+                        arms.setdefault(_node_key(end), []).append((i, length, spur))
+        for i, e in enumerate(edges):
             if e["closed"] or (e["free_start"] == e["free_end"]):
                 continue  # spur = exactly one free end
             tip = e["pts"][0] if e["free_start"] else e["pts"][-1]
             if tip in exposed:
                 continue  # a stem we un-branched, not a twig that grew short
             length = sum(math.dist(a, b) for a, b in zip(e["pts"], e["pts"][1:]))
-            if length >= spur_len_px:
-                continue
             keep = e["pts"][-1] if e["free_start"] else e["pts"][0]
+            if corner_twigs:
+                here = arms.get(_node_key(keep), [])
+                short_free = [a for a in here if a[2]]
+                longer = [a for a in here if not a[2]]
+                if len(short_free) == 2 and i in {a[0] for a in short_free} and longer:
+                    pass                    # a cap's I-beam: both arms go
+                elif length >= spur_len_px:
+                    continue                # not a spur by length
+                elif len(short_free) == 1 and len(longer) >= 2:
+                    continue                # a corner twig: keep the node open
+            elif length >= spur_len_px:
+                continue
             exposed.add(keep)
             for px in e["pts"]:
                 if px != keep:
@@ -1966,6 +2025,7 @@ def extract_strokes(poly: Polygon, *,
                      use_shapefield: bool = False,
                      half_extra_mm: float = 0.0,
                      polygon_axis: bool = False,
+                     corner_twigs: bool = False,
                      ) -> tuple[list[Stroke], float, _WidthField | None]:
     """-> (strokes in mm, mean half-width in mm, local width field).
 
@@ -2036,7 +2096,7 @@ def extract_strokes(poly: Polygon, *,
     # otherwise -- identical arithmetic at 0.0.
     len_px = half_px + max(0.0, half_extra_mm) * scale
     if not polygon_axis:
-        _prune_spurs(skel_mask, max(3.0, len_px * 1.6))
+        _prune_spurs(skel_mask, max(3.0, len_px * 1.6), corner_twigs=corner_twigs)
     if not skel_mask.any():
         return [], half_px / scale, field
 
@@ -4593,9 +4653,14 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
                 rail_comp_floor_mm: float = 0.0,
                 polygon_axis: bool | str = False,
                 stroke_order: str = "nearest",
+                corner_twigs: bool = False,
                 ) -> tuple[list[StitchRun], dict]:
     """One satin-classified shape -> runs in sew order, plus the same report
     contract `stitch_shape` uses, so stage 7 can treat the two identically.
+
+    `corner_twigs` (`cfg.satin_corner_twigs`, plan step 3, 2026-09-19): the
+    spur pruner's structure rule -- see `_CAP_ARM_MAX_SPURS`. Off, the
+    pruner is what it was.
 
     `stroke_order` (`cfg.satin_stroke_order`, plan step 2, 2026-09-19):
     "nearest" is `_order_strokes`, the shipped order; "euler" re-orders the
@@ -4672,7 +4737,8 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
     axis_poly = _axis_polygon(poly, art_poly, polygon_axis)
     strokes, half_mm, field = extract_strokes(axis_poly, use_shapefield=use_shapefield,
                                               polygon_axis=polygon_axis,
-                                              half_extra_mm=rail_comp_mm)
+                                              half_extra_mm=rail_comp_mm,
+                                              corner_twigs=corner_twigs)
     if not strokes:
         report["empty"] = True
         return [], report

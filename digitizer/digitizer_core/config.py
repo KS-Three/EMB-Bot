@@ -1020,6 +1020,19 @@ class PipelineConfig:
     # No physical constant. Built "nearest" and **DEFAULT "euler" the same
     # day -- Kent's flip.** "nearest" is the pre-flip engine, byte for byte.
     satin_stroke_order: str = "euler"
+    # The spur pruner's structure rule (lettering construction plan step 3,
+    # 2026-09-19; the letterform study's mechanism #2). `_prune_spurs`
+    # erases a corner's short twig and with it the junction's degree, so a
+    # letter's diagonal and stem weld into one column folding through the
+    # corner (PRECISION's N, Becker's R foot: the bare bottom-right).
+    # Keeping every twig instead hooks a square-capped bar's spine into its
+    # corner (the H defect, `test_pushcomp`'s rectangle). ON, a node with
+    # two short free arms and one longer arm is a cap and both arms go
+    # whatever their exact length; a node with one short free arm between
+    # two longer arms is a corner and the twig stays, holding the junction
+    # open for `_merge_through_junctions`. No physical constant. DEFAULT
+    # OFF -- measured in scope-history 2026-09-19; the flip is Kent's.
+    satin_corner_twigs: bool = False
     # Each satin rail reaches ITS OWN edge (defect 23's open half, built
     # 2026-09-03 for Kent's flip). The rail model places both rails at the
     # NEARER edge's distance from a smoothed spine, so on every raster

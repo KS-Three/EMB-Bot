@@ -1120,7 +1120,8 @@ def _fall_through_flat(poly: Polygon, shape_id: str, cfg: PipelineConfig,
                                 split_above_mm=split_above,
                                 use_shapefield=bool(cfg.extra.get("shapefield")),
                                 patch_junctions=cfg.satin_patch_junctions,
-                                stroke_order=cfg.satin_stroke_order)
+                                stroke_order=cfg.satin_stroke_order,
+                                corner_twigs=cfg.satin_corner_twigs)
     if runs:
         return runs, "SATIN"
     runs, _report = run_outline(poly, shape_id, entry=entry,
