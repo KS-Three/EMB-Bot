@@ -13383,7 +13383,17 @@ duplicated, so the duplicates are the extra travel and only where a dead
 end forces it — then a Hierholzer trail from the odd node nearest the
 needle; each stroke sews at its LAST visit, so every edge the trail walks
 between two consecutive strokes belongs to a stroke sewn later and is
-unsewn when walked, and the existing `_graph_travel` finds it. Three things
+unsewn when walked, and the existing `_graph_travel` finds it — for a
+stroke whose spans all end at its own ends. The review (same day) measured
+the gap: the walk's quantum is the graph edge and the sewing quantum the
+stroke, so a stroke with an interior junction (an H's or K's stem) sews
+whole and can leave the needle at a dead end whose only segments are its
+own; that hop trims exactly as the nearest order would (H, K, X, +, t; 179
+of 600 random connected webs). What the walk guarantees is that every
+travel leg it EMITS lies under a column sewn later; the fixture's "1 walk
+the graph could not give" is this. Sewing per span, or deferring the
+strokes with interior junctions, would close it — a decomposition
+question, Kent's. Three things
 the fixture taught, each caught by instrumenting the loop rather than by
 reasoning: (1) a stroke has to be walked THROUGH — the column enters at the
 end the walk arrives by and leaves by the other, and its underlay runs are
@@ -13416,19 +13426,32 @@ could not give. At 127 mm the word is tatami and the flag changes nothing
 
 **Nine logos, nearest → euler** (corpus widths): trims **592 → 486** across the nine (Becker 46 → 38, tires 11 → 8, ENTHUSIAST 27 → 19, Fremont 75 → 55, Bridge Bar 112 → 85, Golden Tee 66 → 45, gaulke 39 → 35, drone 144 → 132, the screenshot 72 → 69) at a net −19 stitches (−58 to +65 per logo), travel 1,478 → 2,934 mm, satin self-crossings, uncovered area and preflight warnings unchanged on every one.
 
+**Gate 3's instrument — `tools/travel_cover.py`** (built on the review's
+finding that neither preflight instrument can see this feature's thread:
+`ARTWORK_UNCOVERED` measures artwork with no thread, `LINK_UNCOVERED`
+classifies a shape's own travel as routing). For every TRAVEL run the
+thread sewn AFTER it is rasterised with `_coverage_map`'s own ribbon rule
+and the leg sampled every 0.5 mm against it; a sample under 0.2 units of
+later thread is EXPOSED. at 80 mm across the nine logos the walk adds 1,064 mm of travel (1,530 → 2,594 mm) and **1.4 mm of new exposure** — exposed travel 244.7 → 246.1 mm, from gaulke (0.0 → 1.4 mm, worst leg 0.5 mm) and Bridge Bar (22.8 → 25.5) against Golden Tee's 2.3 → 0.4 and Fremont's 57.2 → 56.7; Becker, tires, ENTHUSIAST, drone and the screenshot within 0.3 mm; trims 587 → 471. The 245 mm that IS exposed is the nearest order's own (Becker's 22.9 mm leg, Fremont's 21.8, the screenshot's 26% of its travel) — a pre-existing finding this instrument is the first to read, not this step's. **Becker at 80 mm** (not its 100 mm corpus width, where 34.8 mm² both ways) reads `uncovered_total_mm2` 18.5 → 26.0 under the walk; diffed cell by cell, the six half-millimetre samples that flip sit at 0.26–0.32 units under the nearest order and 0.20–0.21 under the walk, on the seam between two of the MARINE band's columns, and what lifted them over the 0.25 floor was a 23-point travel leg the nearest order happened to route across the seam. The seam is bare of column thread under both orders — the decomposition's, step 3's — and the walk's legs run elsewhere; the columns' own points are identical either way (checked: `satin_shape` returns the same point set from either entry).
+
 **Renders** (`docs/renders/lettering-euler-2026-09-19/`): the fixture,
 Becker's MARINE and the ENTHUSIAST wordmark, nearest above and euler below
 — alike to the eye, which is the point: the walk changes where the needle
 travels under the thread, not what the thread looks like.
 
-**Tests:** `tests/test_stroke_order_euler.py`, 9 — the default; synthetic
+**Tests:** `tests/test_stroke_order_euler.py`, 10 — the default; synthetic
 webs (an open path is one walk with no duplicate and every entry forward; a
 T walks its dead end twice and sews the bar last; an E is one walk whatever
-its stem sews when; two islands are two walks, the nearer first; a stub
-loop decides nothing) each checked for the contract that every hop between
-consecutive strokes has an unsewn path; on the fixture, explicit "nearest"
-is byte-identical to the default, the walk trims at least 10 fewer and sews
-no more stitches, and nothing goes uncovered.
+its stem sews when; an H strands the needle at most once; two islands are
+two walks, the nearer first; a stub loop decides nothing) each checked
+against the hop-has-an-unsewn-path model; on the committed fixture raster
+(`docs/renders/lettering-route-2026-09-19/marine_80mm_traced_input.png`,
+46 → 28 `stats.trims` at 80.2 mm) explicit "nearest" is byte-identical to
+the default, the walk trims at least 12 fewer and sews no more stitches,
+the uncovered artwork does not grow and no `LINK_UNCOVERED` fires. The
+review caught the first version asserting a preflight key that does not
+exist against a code that does not exist, and measuring a raster built at
+test time rather than the plan's.
 
 *(built and measured 2026-09-19 — the loop's instrumentation lived in the
 session's scratchpad, the numbers are the record)*

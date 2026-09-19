@@ -93,8 +93,12 @@ customer already had right.
    construction on stage 6's own travel graph (`_euler_stroke_order`):
    Chinese-postman duplication where a dead end forces it, a Hierholzer
    trail, each stroke sewn at its LAST visit so every travel leg lies under
-   a column sewn later; the existing `_graph_travel` then always finds the
-   unsewn path. Three things the fixture taught, each measured before it
+   a column sewn later; the existing `_graph_travel` then finds the unsewn
+   path wherever no stroke crosses an interior junction (the review's
+   finding: an H's or K's stem sews whole and can leave the needle at a
+   dead end, which then trims as before — H, K, X, +, t and 179 of 600
+   random webs; sewing per span would close it and is a decomposition
+   question, Kent's). Three things the fixture taught, each measured before it
    was built: a stroke must be walked THROUGH (column in at the walk's
    arrival end, out the other; the underlay chained backwards from that
    entry — nearest-first orientation brought the pair back out where it
@@ -110,8 +114,10 @@ customer already had right.
    3.2–3.4 mm cap-extended column start, over `TRIM_AT_MM` 3.0 — the
    nearest order pays them too) and 3 are between letters; the 18 edge-cap
    `run → run` trims are steps 3 and 5's. Nine logos: trims **592 → 486** across the nine (Becker 46 → 38, tires 11 → 8, ENTHUSIAST 27 → 19, Fremont 75 → 55, Bridge Bar 112 → 85, Golden Tee 66 → 45, gaulke 39 → 35, drone 144 → 132, the screenshot 72 → 69) at a net −19 stitches (−58 to +65 per logo), travel 1,478 → 2,934 mm, satin self-crossings, uncovered area and preflight warnings unchanged on every one.
-   Tests: `tests/test_stroke_order_euler.py` (9). Render:
-   `docs/renders/lettering-euler-2026-09-19/`.
+   **Gate 3's instrument, `tools/travel_cover.py`**: every travel leg read
+   against the thread sewn AFTER it (preflight's own ribbon rule);
+   at 80 mm across the nine logos the walk adds 1,064 mm of travel (1,530 → 2,594 mm) and **1.4 mm of new exposure** — exposed travel 244.7 → 246.1 mm, from gaulke (0.0 → 1.4 mm, worst leg 0.5 mm) and Bridge Bar (22.8 → 25.5) against Golden Tee's 2.3 → 0.4 and Fremont's 57.2 → 56.7; Becker, tires, ENTHUSIAST, drone and the screenshot within 0.3 mm; trims 587 → 471. The 245 mm that IS exposed is the nearest order's own (Becker's 22.9 mm leg, Fremont's 21.8, the screenshot's 26% of its travel) — a pre-existing finding this instrument is the first to read, not this step's. **Becker at 80 mm** (not its 100 mm corpus width, where 34.8 mm² both ways) reads `uncovered_total_mm2` 18.5 → 26.0 under the walk; diffed cell by cell, the six half-millimetre samples that flip sit at 0.26–0.32 units under the nearest order and 0.20–0.21 under the walk, on the seam between two of the MARINE band's columns, and what lifted them over the 0.25 floor was a 23-point travel leg the nearest order happened to route across the seam. The seam is bare of column thread under both orders — the decomposition's, step 3's — and the walk's legs run elsewhere; the columns' own points are identical either way (checked: `satin_shape` returns the same point set from either entry). Tests: `tests/test_stroke_order_euler.py` (10, on the
+   committed fixture raster). Render: `docs/renders/lettering-euler-2026-09-19/`.
 3. **Corners: rail-side pull compensation after decomposition
    (`satin_rail_comp`, built OFF; which skeleton is Kent's) and the cap-arm
    classifier for `_prune_spurs`** — the letterform study's mechanisms #1

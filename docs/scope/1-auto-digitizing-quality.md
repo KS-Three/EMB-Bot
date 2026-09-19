@@ -4018,11 +4018,15 @@ several strokes that web is used up after the first few, and 18 of the
 plan fixture's 45 trims were that hop inside one letter. `"euler"` orders
 the strokes along one walk of the web — the font engine's `routeGlyph`
 construction: Chinese-postman duplication where a dead end forces it, a
-Hierholzer trail, each stroke sewn at its last visit so every travel leg
-lies under a column sewn later. Each stroke is walked through (column in
+Hierholzer trail, each stroke sewn at its last visit so every travel leg it
+emits lies under a column sewn later (a stroke with an interior junction —
+an H's stem — sews whole and can still strand the needle at a dead end,
+which trims as before). Each stroke is walked through (column in
 at the walk's arrival end and out the other, underlay chained backwards
 from the entry), the graph builder's self-loop stubs are skipped, and the
 cursor may snap to the nearest node it can leave from. Fixture: 45 → 27
 trims, 2,564 → 2,482 stitches, uncovered 0.0 both ways; nine logos:
-trims **592 → 486** across the nine (Becker 46 → 38, tires 11 → 8, ENTHUSIAST 27 → 19, Fremont 75 → 55, Bridge Bar 112 → 85, Golden Tee 66 → 45, gaulke 39 → 35, drone 144 → 132, the screenshot 72 → 69) at a net −19 stitches (−58 to +65 per logo), travel 1,478 → 2,934 mm, satin self-crossings, uncovered area and preflight warnings unchanged on every one. Applies to every satin shape. `tests/test_stroke_order_euler.py`
-(9). *(built and measured 2026-09-19 — scope-history, step 2)*
+trims **592 → 486** across the nine (Becker 46 → 38, tires 11 → 8, ENTHUSIAST 27 → 19, Fremont 75 → 55, Bridge Bar 112 → 85, Golden Tee 66 → 45, gaulke 39 → 35, drone 144 → 132, the screenshot 72 → 69) at a net −19 stitches (−58 to +65 per logo), travel 1,478 → 2,934 mm, satin self-crossings, uncovered area and preflight warnings unchanged on every one. Applies to every satin shape. `tools/travel_cover.py` reads every travel leg
+against the thread sewn after it (gate 3's instrument): at 80 mm across the nine logos the walk adds 1,064 mm of travel and 1.4 mm of new exposure (244.7 → 246.1 mm; the 245 mm exposed is the nearest order's own legs, a pre-existing finding); Becker at 80 mm reads uncovered 18.5 → 26.0 mm² because a nearest-order travel leg had lifted six half-millimetre cells of a bare column seam over the 0.25 floor.
+`tests/test_stroke_order_euler.py` (10). *(built and measured 2026-09-19 —
+scope-history, step 2)*
