@@ -14095,10 +14095,46 @@ sentence.
 scripts lived in the session's scratchpad; the renders and the numbers are
 the record)*
 
+### Addendum, the same day — `fill_bridge_cut` FLIPPED ON (Kent's call)
+
+Put to Kent with the three thread renders and the nine-logo figures
+(AskUserQuestion, 2026-09-19): **flip `cfg.fill_bridge_cut` ON.** Judged on a
+render, not yet on cloth — a candidate for the sew-out sheet the lettering
+plan is preparing for its own two flips; nobody has put it there yet. `False` is the engine before it, plan-md5-identical on the nine
+logos; `stitch_shape`'s own `cut_bridges` keyword still defaults False, the
+way `under_cover` does, so a caller that does not pass it (the contour
+tier's finish patches) is untouched.
+
+**What the flip moved in the suite: nothing it pins.** Full local digitizer
+suite with the default ON: **2,698 passed, 3 failed, 3 skipped, 8 xfailed,
+0 errors** (43m48s) — the three are the recorded Windows-local goldens
+(`enthusiast_logo` on the flat-lane and photo-dispatch goldens,
+`logo_whitebg-towel` on pushcomp), the same three as before the flag
+existed, and no fourth. ENTHUSIAST is md5-identical OFF and ON, so its two
+are not this flip's on any machine. No golden is re-pinned and none needed
+the Linux recapture workflow: no pinned fixture sews a fill bridge dearer
+than a cut. (The 11 setup errors the earlier run carried are gone with
+#517's `encoding="utf-8"`.)
+
+**What a customer's logo gets** (nine logos, 80 mm, `main`'s defaults):
+exposed fill travel 248.6 → 140.9 mm, 458 → 464 trims, 76,774 → 76,706
+stitches, uncovered unchanged; four of the nine do not change at all. Photo
+designs are untouched by construction — crosshatch is two-pass and the rule
+leaves it alone — until exposure per pass is measured.
+
+`tools/pro_parity/flagcost.py`'s default-ON list gains the flag, so its
+runtime bill can be read; not yet read. `tests/test_fill_bridge_cut.py`
+pins the default and that stage 7 hands `False` over when asked.
+
+*(flipped 2026-09-19 — Kent's answer; config comment)*
+
 ### Addendum, the same day — re-measured on the doubly-flipped tree: Becker's leg is gone, the trade is Fremont's and the screenshot's
 
 Kent's pick once #520 had landed the two lettering flips (AskUserQuestion,
-2026-09-19): price the flip on the engine it would be flipped on. Under
+2026-09-19): price the flip on the engine it would land on. **He flipped
+it ON in a parallel session while this ran** (#521, the addendum above),
+so these are the numbers the flip buys on the current engine, not a
+pricing ahead of the ruling. Under
 `satin_lettering_split` Becker's MARINE band sews as split satin, and the
 band's FILLED letters were where every one of Becker's exposed fill bridges
 lay (the step-4 addendum above: 4 runs / 38.7 mm → 0 / 0.0) — so the
@@ -14146,8 +14182,11 @@ the F is there OFF and gone ON, the second diagonal beside it stays. The
 screenshot: the dark line along the block's bottom edge under the white
 marks is there OFF and gone ON.
 
-**The flip stays Kent's.** What it buys on the engine it would land on: a
-third of the exposed fill travel for five trims.
+**The flip is made.** What it buys on the engine it landed on: a third of
+the exposed fill travel for five trims, on Fremont, the screenshot, Bridge
+Bar and drone; Becker, whose leg made the case, no longer moves. The cloth
+check #521's entry names — OFF against ON on the sew-out sheet — is still
+nobody's.
 
 *(measured 2026-09-19 — `tools/travel_legs.py` bare and `--set
 fill_bridge_cut=true`; the md5s, `fill_bridges` sums and renders from
