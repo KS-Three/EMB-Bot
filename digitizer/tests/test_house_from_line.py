@@ -93,7 +93,7 @@ def _word_raster(word: str, width_mm: float, px_per_mm: float = 12.0, *,
         oy, ox = (side - h) // 2, (side - w) // 2
         big[oy:oy + h, ox:ox + w] = canvas
         m = cv2.getRotationMatrix2D((side / 2.0, side / 2.0), rotate_deg, 1.0)
-        canvas = cv2.warpAffine(big, m, (side, side), flags=cv2.INTER_AREA, borderValue=255)
+        canvas = cv2.warpAffine(big, m, (side, side), flags=cv2.INTER_LINEAR, borderValue=255)
     return canvas
 
 

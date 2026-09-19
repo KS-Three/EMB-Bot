@@ -3986,18 +3986,23 @@ the word is turned 20°. ON, a group that makes a line takes house = line +
 slant, the slant being the length-weighted median offset from the line's
 normal of the strokes within the 30° lean cap of it, on chord-resampled
 chains; a family under 10% of the skeleton is silent and the votes answer
-as before, as they do a group with no line. 15 of 19 anchored groups land
-within 2° of their line; the four that do not are the Fremont rope's twists
-(not letters) and two 1–2 mm screenshot groups. A leaned script reads its
-own slant (`mam_script` +15.4°); the votes were not needed as a detector.
-Corpus cost: drone +167 stitches / +5 trims with self-crossings 496 → 430,
-enthusiast +16 / +2, the rest within ±24. **What the flip decides:** on
+as before, as they do a group with no line. Output: drone's satin
+self-crossings 496 → 430 and Fremont's 87 → 66, at drone +167 stitches /
++5 trims, enthusiast +16 / +2, the rest within ±24. Instrument check: the
+slant reads under 2° on 15 of the 19 anchored groups; the four it does not
+are the Fremont rope's twists (not letters) and two 1–2 mm screenshot
+groups. A leaned script reads its own slant (`mam_script` +15.4°); the
+votes were not needed as a detector. **What the flip decides:** on
 THERMAL the vote's accidental 108° put both stroke families inside the fade
-(one uniform lean, concentration 0.339); anchored at 0° the stems sew square
-and the bars take their own perpendicular — the fonts' convention the rule
-adopted, not the pro's one angle — and the concentration reads 0.038. Render
+(one uniform lean); anchored at 0° the stems sew square and the bars take
+their own perpendicular — the fonts' convention the rule adopted, not the
+pro's one angle. `tools/satin_lean.py drone [--anchor]`: THERMAL's cross
+concentration 0.319 → 0.248, AND DRONE's 0.227 → 0.297; the word's lean off
+each cross's own perpendicular p50 17.0° → 11.8°, bars at their own
+perpendicular 7% → 14% of crosses. Render
 `docs/renders/lettering-anchor-2026-09-19/drone_lettering_anchor_off_above_on_below.jpg`.
 Rejected on measurement: a kernel mode for the slant, a straightness gate on
 the votes. Limits: stem-poor words read their diagonals' middle (ZANY −12°);
 brush scripts with curved strokes read near zero. `tests/test_house_anchor.py`
-(13). *(built and measured 2026-09-19 — scope-history, step 1)*
+(15); `tools/satin_lean.py [--anchor]` prints each group's house and cross
+concentration. *(built and measured 2026-09-19 — scope-history, step 1)*

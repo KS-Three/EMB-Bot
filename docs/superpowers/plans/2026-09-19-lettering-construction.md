@@ -41,7 +41,7 @@ customer already had right.
    stems — BUILT 2026-09-19, `cfg.satin_house_anchor`, OFF (Kent's flip).**
    Found building step 0: when the doubled-angle vote passes on a
    diagonal-heavy word it returns a house pulled off the line by the
-   diagonals — AMAZE 27°, NAVY 147°, ZANY 151°, VANE 160°, HOTEL 17° on the
+   diagonals — AMAZE 27°, NAVY 147°, ZANY 151°, VANE 160°, HOTEL 27° on the
    font word (HOTEL turned 20°: 45° off); on real logos enthusiast's subline
    **130°**, fremont **97.9° / 162°**, drone 115° / 108° — not the stems'
    perpendicular the rule names. And the vote's verdict sits on a knife
@@ -58,18 +58,26 @@ customer already had right.
    needed; a script leaned past 30° would go to the votes by silence.
    **Measured** (scope-history 2026-09-19, step 1): on the 24 real-logo
    groups the vote accepts 12 with a line and stems and puts 9 of them
-   12–79° off the line; the anchor puts 15 of 19 anchored groups within 2°
-   of it, the other four being the Fremont rope's twists (not letters,
-   16°/19°) and two 1–2 mm screenshot groups (8°/10° of skeleton noise).
-   Font words within 0.6° upright, within 2.5° turned 15° and 30°. Corpus
-   cost: drone +167 stitches / +5 trims with its satin self-crossings
-   496 → 430; enthusiast +16 / +2; everything else within ±24 stitches.
+   12–79° off the line. Output: drone's satin self-crossings **496 → 430**
+   and Fremont's 87 → 66 at drone +167 stitches / +5 trims, enthusiast
+   +16 / +2, everything else within ±24 stitches. Instrument check: the
+   slant reads under 2° on 15 of the 19 anchored groups (all upright), the
+   other four being the Fremont rope's twists (not letters, 16°/19°) and
+   two 1–2 mm screenshot groups (8°/10° of skeleton noise); font words
+   under 0.6° upright, under 2.5° turned 15° and 30°.
    **The look it exposes, for the flip:** THERMAL (drone, 7.6 mm) sewed at
-   one accidental 108° lean everywhere (both families inside the fade),
-   cross concentration 0.339; anchored at 0° its stems sew square and its
-   bars take their own perpendicular under `_clamp_to_span` — the fonts'
-   convention the 09-03 rule adopted — and the concentration reads 0.038.
-   The pro sews one angle. Render
+   one accidental 108° lean everywhere (both families inside the fade);
+   anchored at 0° its stems sew square and its bars take their own
+   perpendicular under `_clamp_to_span` — the fonts' convention the 09-03
+   rule adopted. The pro sews one angle. Measured with the committed
+   instrument (`tools/satin_lean.py drone [--anchor]`, splits and ties
+   stripped): THERMAL's cross concentration 0.319 → 0.248, AND DRONE's
+   0.227 → 0.297, PRECISION's 0.170 → 0.178; over the word's 2,000 crosses
+   the lean off each cross's own perpendicular p50 17.0° → 11.8°, crosses
+   within 10° of the house 25% → 34%, bars at their own perpendicular
+   (80–90°) 7% → 14%. (A scratch probe read 0.339 → 0.038 on THERMAL; it
+   counted tie stitches and split penetrations as crosses and is
+   withdrawn — which is why the instrument is committed.) Render
    `docs/renders/lettering-anchor-2026-09-19/drone_lettering_anchor_off_above_on_below.jpg`.
    Rejected on measurement: a kernel mode for the slant (jumps to the
    diagonals' peak: NAVY −19°, VANE +17°) and a straightness gate on the

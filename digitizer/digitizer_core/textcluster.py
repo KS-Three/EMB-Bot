@@ -1490,7 +1490,11 @@ SATIN_HOUSE_FOURFOLD_MIN_R = 0.25
 # and 33 strands along the border, 2 mm), gets the strands' median lean as
 # a "slant"; under `_clamp_to_span` a 2 mm strand still sews within the cap.
 # (4) Tiny text (1-2 mm, the phone screenshot) reads 8-10 deg of noise from
-# skeletons a few pixels long. A straightness gate on the votes (segment
+# skeletons a few pixels long. (5) The weighted median takes the LOWER
+# middle on an exact tie, so a family of two equal diagonals at +/-25 deg
+# and no stem reads -25, not 0; real families discretise the tie away, and
+# a word of nothing but V and A would be the first to find this.
+# A straightness gate on the votes (segment
 # counts only where the chain turns under T deg per chord) was tried for (2)
 # and (4) and REJECTED: at T = 15 / 10 / 5 the same word flips between -11,
 # -15 and +16 (VANE), NAVY reads -13 at 15 and 0.6 at 10, and montecarlo
@@ -1545,8 +1549,8 @@ def _stem_slant_deg(chains: list[tuple[list[tuple[float, float]], float]],
     for offset, length in family:
         acc += length
         if acc >= weight / 2.0:
-            return offset
-    return family[-1][0]
+            break
+    return offset
 
 
 def _resample_chain(chain: list[tuple[float, float]],

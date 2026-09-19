@@ -5,7 +5,7 @@
 Both house-angle votes decide from every stroke of a group, and on lettering
 with diagonals the diagonals pull the answer off the stems' perpendicular
 the stitch-angle rule names (2026-09-03): on the nine real logos the
-doubled-angle vote puts six of the twelve groups it accepts 12-50 deg off
+doubled-angle vote puts nine of the twelve groups it accepts 12-79 deg off
 their own line of text, all upright words. ON, a group that makes a line of
 text takes house = the line + its STEMS' slant -- the strokes within the
 lean cap of the line's normal, length-weighted median offset, on chains
@@ -132,12 +132,34 @@ def test_the_window_is_the_lean_cap():
 
 # --- through the pipeline ---------------------------------------------------
 
-def test_off_the_word_keeps_the_votes_pulled_house(hotel):
-    group = _group(_run(hotel, 80.2))
+@pytest.fixture(scope="module")
+def hotel_default(hotel):
+    """One digitize of HOTEL at the shipped defaults, shared."""
+    return _run(hotel, 80.2)
+
+
+def test_off_the_word_keeps_the_votes_pulled_house(hotel_default):
+    group = _group(hotel_default)
     line = tc._line_of_text_deg(group)
     house = _house(group)
     assert house is not None and line is not None
     assert _angle_gap(house, line) > 15.0, (house, line)                        # 27.2 against 180.0
+
+
+def test_off_explicitly_is_the_shipped_default(hotel, hotel_default):
+    off = {r.shape_id: r.meta.get("satin_angle_deg")
+           for r in _run(hotel, 80.2, satin_house_anchor=False).regions}
+    default = {r.shape_id: r.meta.get("satin_angle_deg") for r in hotel_default.regions}
+    assert off == default and any(v is not None for v in default.values())
+
+
+def test_a_group_with_no_line_of_text_is_voted_on_as_before(hotel_default):
+    """One letter makes no line (`_line_of_text_deg` None), so the anchor
+    has nothing to hold and the votes answer, anchored or not."""
+    alone = _group(hotel_default)[:1]
+    assert tc._line_of_text_deg(alone) is None
+    voted = tc._cluster_house_angle_deg(alone, fourfold=True, from_line=True)
+    assert tc._cluster_house_angle_deg(alone, fourfold=True, from_line=True, anchor=True) == voted
 
 
 def test_on_the_word_sews_square_to_its_line(hotel):

@@ -13235,7 +13235,7 @@ twelve 12–79° off the group's own line of text**, all on upright words:
 enthusiast's 14-letter subline 130° (50° off), Fremont's EAT | STAY | PLAY
 98° (79°), drone's AND DRONE 115° (65°) and THERMAL 108° (72°), the
 screenshot's rows 28° / 168° / 11°, the Fremont rope's twists 162° / 162°.
-Becker's two lines sit 5° and 2° off. The font words agree: HOTEL 27° off,
+Becker's two lines sit 5.2° and 2.8° off. The font words agree: HOTEL 27° off,
 and **45° off once the word is turned 20°** — the vote does not follow the
 art, it follows the raster's diagonals.
 
@@ -13257,8 +13257,12 @@ window (`montecarlo`'s rails, the most leaned of 85, 26.6°), so a script
 reads its own slant — `mam_script` "Marine" +15.4°, the stems visibly so;
 turned 20°, +12.2°.
 
-**Before/after, the 19 anchored groups.** The anchor puts **15 within 2° of
-the line** (Becker 174.8 / 177.2 → 180; enthusiast 130 → 180; Fremont 179.2
+**Before/after, the 19 anchored groups** — an instrument check on the slant
+reader, not a thread measurement (the anchor RETURNS line + slant, so
+"within 2° of the line" says the slant read under 2° on an upright word;
+the thread numbers are the self-crossings and stitch counts below). The
+anchor puts **15 within 2° of the line** (Becker 174.8 / 177.2 → 180;
+enthusiast 130 → 180; Fremont 179.2
 / 179.1 / 97.9 → 0; drone 178.2 / 115.2 / 108.1 → 0; gaulke 1.0 → 0; the
 screenshot's 176 / 168 / 11 → 0). The four that are not: the Fremont rope's
 40 and 33 twists (2 mm strands the lettering gate admits; their "slant" is
@@ -13282,14 +13286,23 @@ was not built unmeasured.
 
 **The look it exposes, which is the flip's real question.** THERMAL
 (drone, 7.6 mm, satin): at the vote's accidental 108° BOTH families sat
-inside the fade, so every stroke leaned the same way and the word's cross
-concentration read 0.339; anchored at 0° the stems sew square and the T's
-bar, E's arms, H's bar and L's foot take their own perpendicular under
-`_clamp_to_span` — the 86 fonts' convention the 09-03 rule adopted — and
-the concentration reads **0.038**. The metric measures ONE angle, which is
-what the pro does (E's arms as short wide columns along the bar at the
-word's angle) and not what the rule does; the render shows the difference
-plainly:
+inside the fade, so every stroke leaned the same way; anchored at 0° the
+stems sew square and the T's bar, E's arms, H's bar and L's foot take their
+own perpendicular under `_clamp_to_span` — the 86 fonts' convention the
+09-03 rule adopted. Measured with the committed instrument
+(`tools/satin_lean.py drone [--anchor]`: the tool's own drone case at
+80 mm, splits and ties stripped): THERMAL's cross concentration **0.319 →
+0.248**, AND DRONE's 0.227 → 0.297, PRECISION's 0.170 → 0.178; over the
+2,000 crosses of the housed lettering, the lean off each cross's own
+perpendicular p50 **17.0° → 11.8°**, crosses within 10° of the house 25% →
+34%, bars at their own perpendicular (80–90° off the house) 7% → 14%. The
+concentration measures ONE angle, which is what the pro does (E's arms as
+short wide columns along the bar at the word's angle) and not what the
+rule does, so a group whose stems and bars both sew square reads low by
+design. **Withdrawn:** the scratch probe this entry first quoted read
+THERMAL 0.339 → 0.038; it counted tie stitches and split penetrations as
+crosses and ran a different config, and the reviewer's ask for a committed
+instrument is what caught it. The render shows the difference plainly:
 `docs/renders/lettering-anchor-2026-09-19/drone_lettering_anchor_off_above_on_below.jpg`
 (THERMAL uniform above, stems-and-bars below; PRECISION unchanged). Becker's
 MARINE (fill, 100 mm) goes from rows leaning 5° to rows on the line; the
@@ -13309,15 +13322,21 @@ brush script whose strokes are curves reads near zero from them
 lean; the Fremont rope; tiny text. NAVY never groups at the font's own
 advances (its letters fuse), which is why HOTEL carries the tests.
 
-**Tests:** `tests/test_house_anchor.py`, 13 — the flag off by default; six
+**Instrument:** `tools/satin_lean.py [case] [--anchor]` now prints each
+lettering group's house, satin runs and cross concentration, so the THERMAL
+figure above is re-measurable (`drone` with and without `--anchor`).
+
+**Tests:** `tests/test_house_anchor.py`, 15 — the flag off by default; six
 on `_stem_slant_deg` alone (square stems read 0; leaned stems read their
 lean and a bar does not vote; the median holds three stems against a
 longer diagonal; a 45° stroke is not a stem; a 3% family is silent and a
 14% one is not; the window is the lean cap); HOTEL at 80 mm OFF 27° off its
 line and ON within 1.5°, turned 20° OFF 45° off and ON within 5°;
 `mam_script` "Marine" keeps a 10–25° lean; three spokes fall through to the
-votes unchanged. `_word_raster` in `test_house_from_line.py` now takes a
-font path and a rotation. Both files: 18 passed.
+votes unchanged; explicit OFF is the shipped default; a one-letter group
+(no line) is voted on anchored or not. `_word_raster` in
+`test_house_from_line.py` now takes a font path and a rotation. Both files:
+20 passed.
 
 *(built and measured 2026-09-19 — the probe scripts lived in the session's
 scratchpad, the numbers are the record; renders in
