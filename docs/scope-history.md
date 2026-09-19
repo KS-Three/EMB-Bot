@@ -13,7 +13,7 @@ pointer; if it isn't there, treat it as superseded until re-measured.
 
 ---
 
-**Last updated:** 2026-09-18 — the upscaled regime read at the source's own resolution (`subpixel_edges_upscaled`, built OFF); earlier that day, CI job times and the fill-reorder memo
+**Last updated:** 2026-09-19 — the lettering-route review (trace-as-shape stays; the gap is the construction, not the shape); 2026-09-18, the upscaled regime read at the source's own resolution, built and flipped ON
 
 Moved out of MASTER_SCOPE's "CI feedback speed" when the memo entry needed the
 words; the instruction ("budget an hour, read 50 minutes as normal, curl before
@@ -13134,4 +13134,34 @@ twelve, and what was done:
 
 *(flipped and re-measured 2026-09-18 — the full-suite log is not committed;
 the test files carry the notes)*
+
+## 2026-09-19 — Is trace-as-shape the right lettering route? Reviewed, with three measurements
+
+Kent asked for a review of the previous day's ruling rather than a restatement.
+Full write-up: `docs/lettering-route-review-2026-09-19.md`. The three findings:
+
+- **A library-font match is not available for real logos.** 174 traced letters
+  on the nine `REAL_ART` logos against all 3,802 usable A-Za-z0-9 glyphs of the
+  85 shipped fonts (bbox-normalised mask IoU, best over the library): 11% reach
+  0.90, median 0.753 — and the same letter in a *different* font scores a
+  median 0.928, so 0.90 is "same letter, wrong font"; the hits are `I`s. Font
+  identification is dead on arrival; do not build it.
+- **Same letterforms, two constructions.** `manga_impact` "MARINE" typed through
+  the font engine vs rasterised at 12 px/mm and traced, Studio defaults. 80 mm:
+  1,782 stitches / 3 trims / 44 columns against 2,461 / **41 trims** / 10
+  regions (four are halo hooks), cross-angle concentration 0.63 vs **0.23**.
+  127 mm: 3,115 / 4 against 9,645 / 30 with **14 of 15 letters as tatami**.
+  Renders: `docs/renders/lettering-route-2026-09-19/`. The polygon is not the
+  problem; what stages 5 and 6 do with it is.
+- **The pro** satins every MARINE letter at one angle and widens Fremont's
+  strokes to sewable columns (already in the repo's own measurements).
+
+**Verdict:** trace-as-shape stays as the shape source — the only one that keeps
+the customer's font — but a traced letter must get the font engine's
+construction: split-satin instead of fill for lettering over the cap, rail-side
+pull compensation after decomposition, the cap-arm classifier, the house angle
+verified firing, and no halo hooks. Bring-your-own-font-file is a later option;
+it pays off only after that construction. Kent's call on the amended plan.
+
+*(measured 2026-09-19 — the write-up carries the method)*
 
