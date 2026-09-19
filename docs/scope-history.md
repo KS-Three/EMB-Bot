@@ -14095,39 +14095,6 @@ sentence.
 scripts lived in the session's scratchpad; the renders and the numbers are
 the record)*
 
-### Addendum, the same day — `fill_bridge_cut` FLIPPED ON (Kent's call)
-
-Put to Kent with the three thread renders and the nine-logo figures
-(AskUserQuestion, 2026-09-19): **flip `cfg.fill_bridge_cut` ON.** Judged on a
-render, not yet on cloth — a candidate for the sew-out sheet the lettering
-plan is preparing for its own two flips; nobody has put it there yet. `False` is the engine before it, plan-md5-identical on the nine
-logos; `stitch_shape`'s own `cut_bridges` keyword still defaults False, the
-way `under_cover` does, so a caller that does not pass it (the contour
-tier's finish patches) is untouched.
-
-**What the flip moved in the suite: nothing it pins.** Full local digitizer
-suite with the default ON: **2,698 passed, 3 failed, 3 skipped, 8 xfailed,
-0 errors** (43m48s) — the three are the recorded Windows-local goldens
-(`enthusiast_logo` on the flat-lane and photo-dispatch goldens,
-`logo_whitebg-towel` on pushcomp), the same three as before the flag
-existed, and no fourth. ENTHUSIAST is md5-identical OFF and ON, so its two
-are not this flip's on any machine. No golden is re-pinned and none needed
-the Linux recapture workflow: no pinned fixture sews a fill bridge dearer
-than a cut. (The 11 setup errors the earlier run carried are gone with
-#517's `encoding="utf-8"`.)
-
-**What a customer's logo gets** (nine logos, 80 mm, `main`'s defaults):
-exposed fill travel 248.6 → 140.9 mm, 458 → 464 trims, 76,774 → 76,706
-stitches, uncovered unchanged; four of the nine do not change at all. Photo
-designs are untouched by construction — crosshatch is two-pass and the rule
-leaves it alone — until exposure per pass is measured.
-
-`tools/pro_parity/flagcost.py`'s default-ON list gains the flag, so its
-runtime bill can be read; not yet read. `tests/test_fill_bridge_cut.py`
-pins the default and that stage 7 hands `False` over when asked.
-
-*(flipped 2026-09-19 — Kent's answer; config comment)*
-
 ## 2026-09-19 — The bold-letter junction: designed and priced before code (`2026-09-19-junction-construction.md`)
 
 Kent's pick while the sew-out sheet is on his machine: the construction
@@ -14190,6 +14157,39 @@ offered and not taken. The doc lands on its own docs-only PR; the build
 follows on a branch of its own.
 
 *(ruled 2026-09-19 — Kent's answer)*
+
+### Addendum, the same day — `fill_bridge_cut` FLIPPED ON (Kent's call)
+
+Put to Kent with the three thread renders and the nine-logo figures
+(AskUserQuestion, 2026-09-19): **flip `cfg.fill_bridge_cut` ON.** Judged on a
+render, not yet on cloth — a candidate for the sew-out sheet the lettering
+plan is preparing for its own two flips; nobody has put it there yet. `False` is the engine before it, plan-md5-identical on the nine
+logos; `stitch_shape`'s own `cut_bridges` keyword still defaults False, the
+way `under_cover` does, so a caller that does not pass it (the contour
+tier's finish patches) is untouched.
+
+**What the flip moved in the suite: nothing it pins.** Full local digitizer
+suite with the default ON: **2,698 passed, 3 failed, 3 skipped, 8 xfailed,
+0 errors** (43m48s) — the three are the recorded Windows-local goldens
+(`enthusiast_logo` on the flat-lane and photo-dispatch goldens,
+`logo_whitebg-towel` on pushcomp), the same three as before the flag
+existed, and no fourth. ENTHUSIAST is md5-identical OFF and ON, so its two
+are not this flip's on any machine. No golden is re-pinned and none needed
+the Linux recapture workflow: no pinned fixture sews a fill bridge dearer
+than a cut. (The 11 setup errors the earlier run carried are gone with
+#517's `encoding="utf-8"`.)
+
+**What a customer's logo gets** (nine logos, 80 mm, `main`'s defaults):
+exposed fill travel 248.6 → 140.9 mm, 458 → 464 trims, 76,774 → 76,706
+stitches, uncovered unchanged; four of the nine do not change at all. Photo
+designs are untouched by construction — crosshatch is two-pass and the rule
+leaves it alone — until exposure per pass is measured.
+
+`tools/pro_parity/flagcost.py`'s default-ON list gains the flag, so its
+runtime bill can be read; not yet read. `tests/test_fill_bridge_cut.py`
+pins the default and that stage 7 hands `False` over when asked.
+
+*(flipped 2026-09-19 — Kent's answer; config comment)*
 
 ## 2026-09-19 — The junction construction BUILT: `satin_junction_stack`, OFF (Kent's ruling: A + B + C as one flag)
 
