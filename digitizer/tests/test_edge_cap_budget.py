@@ -75,10 +75,20 @@ def _run(fixture: str, width: float, cap: str = "bean",
     was measured before that flip — only the 110 mm no-gate reading needs it.
     """
     extra = {} if keep_thin_strokes is None else {"keep_thin_strokes": keep_thin_strokes}
+    # `subpixel_edges_upscaled` is held OFF: every number in this file was
+    # measured on becker's staircase polygons (1.46-1.8 px/mm, upscaled), and
+    # Kent's 2026-09-18 flip reads that source from its own pixels instead.
+    # Under the flip the bill sweep across CHEAP/CLIFF/NO_GATE reads
+    # [19.7, 25.1, 25.1] — it no longer swings, the ceiling never fires at
+    # 88 or 110 mm, and the dropped-cap block differs — because the outline
+    # band is a different tier on the accurate polygon. What this file pins
+    # is the edge-cap budget MECHANISM, measured on those polygons, so it
+    # reads them (scope-history 2026-09-18, the flip's addendum).
     _result, plan = digitize(
         TESTDATA / fixture,
         PipelineConfig(target_width_mm=width, edge_cap=cap,
-                       edge_cap_over_budget=over_budget, **extra))
+                       edge_cap_over_budget=over_budget,
+                       subpixel_edges_upscaled=False, **extra))
     return plan
 
 

@@ -13,7 +13,7 @@ pointer; if it isn't there, treat it as superseded until re-measured.
 
 ---
 
-**Last updated:** 2026-09-18 — CI job times, and the fill-reorder memo
+**Last updated:** 2026-09-18 — the upscaled regime read at the source's own resolution (`subpixel_edges_upscaled`, built OFF); earlier that day, CI job times and the fill-reorder memo
 
 Moved out of MASTER_SCOPE's "CI feedback speed" when the memo entry needed the
 words; the instruction ("budget an hour, read 50 minutes as normal, curl before
@@ -12982,3 +12982,156 @@ neither can be gamed by reflowing.
 
 *(measured 2026-09-14 — `git show origin/main:MASTER_SCOPE.md` against the
 working tree)*
+
+
+## 2026-09-18 — the upscaled regime read at the source's own resolution: `cfg.subpixel_edges_upscaled` BUILT, OFF
+
+Kent's ask that day: better outlining of "non-standard shapes", and crisp
+lettering whichever way it is reached. Rendering the nine `REAL_ART` logos
+beside their artwork, the one whose outline disagrees with the artwork at
+arm's length is the low-resolution one: `becker_marine_logo.png` is **146 px
+wide with its whole shape in alpha** (RGB black everywhere, 256 alpha levels,
+17% of pixels mid-ramp), 1.46 px/mm at 100 mm, and every outline and every
+MARINE letter sews a **staircase of 0.68 mm steps**. Mechanism, read in
+`stage1_prep`: the `alpha < 128` threshold makes `bg_mask`, the NEAREST
+resize carries it to the 4.0 floor as a staircase of source pixels, and
+`stage4_vectorize` declines `subpixel_edges` on any upscaled source (plan
+`2026-09-08-subpixel-edges.md` §8 decision 3, "excluded until measured on
+real upscaled art"). The ramp that locates the edge below a source pixel was
+in the file all along; stage 1 threw it away.
+
+**Built:** `Prep.native_rgb` / `native_alpha` / `upscale` (the pre-upscale
+raster and the per-axis factor, set only when stage 1 upscaled); stage 4's
+`_native_subpixel` hands each raw vertex down by cv2's half-pixel-centre rule,
+reads the SOURCE's pixels — Lab of the RGB composited over white by alpha,
+with alpha itself as a fourth channel so a transparent-to-ink edge has
+contrast whatever the ink — with `subpixel.py`'s own windows, plateaus and
+area integral, the normal and corner chords scaled by the upscale so they
+span source pixels rather than stair steps, and brings the vertex back up.
+`subpixel_contour` took three generalisations for it (any channel count, an
+`inside_fn` for a mask in another frame, `step_scale`) and one new
+construction, `_fit_corners`: every flagged corner is placed where the
+least-squares lines through its two sides' accepted vertices meet, because
+the profile read through a corner pixel samples the OTHER edge's ramp — it
+refuses the corner (kept at its pixel centre, a bevel where the moved sides
+meet it: Becker's M, top left) or accepts it and places it 0.35-0.77 px short
+along the bevel. Only the native path asks for the fit, so a source at its
+own resolution is untouched. DEFAULT OFF, byte-identical off; eight tests (nine
+cases) in `test_subpixel_edges.py`; `subpixel_edges_upscaled` in `config.py`.
+
+**Measured, synthetic truth** (a 40 px disc in a 120 px frame at 50 mm — 1.6
+px/mm in, upscaled x2.5 — as an opaque disc on white and as an alpha cutout
+in Becker's layout): radial RMS against the fitted circle **0.213 → 0.018 mm**
+opaque and **0.246 → 0.013 mm** cutout, worst vertex 0.38 → 0.04 and 0.43 →
+0.02 mm, the cutout's radius bias −0.13 → −0.004 mm (the thresholded mask
+traced at pixel centres sits inside its edge), vertices 100 / 164 → 32. A 20
+x 12 px rectangle with mid-pixel edges: four vertices, each within a tenth of
+a source pixel of the truth (0.35-0.77 px short before the corner fit).
+
+**Measured, the ladder's 200 px rung** (`tools/edge_truth_ladder.py --rungs
+200 --flag subpixel_edges_upscaled`, x1.91 / x1.82 to the floor), OFF → ON:
+
+| shape | spread mm | offset mm | hausdorff mm | roughness deg | vertices | iou |
+|---|---|---|---|---|---|---|
+| circle | 0.173 → 0.092 | −0.156 → −0.098 | 1.023 → 0.922 | 9.6 → 6.1 | 73 → 39 | 0.973 → 0.986 |
+| ring | 0.188 → 0.086 | −0.109 → −0.038 | 0.525 → 0.205 | 9.5 → 5.0 | 87 → 80 | 0.941 → 0.971 |
+| purple | 0.035 → 0.016 | −0.213 → −0.008 | 0.256 → 0.031 | — | 4 → 4 | 0.918 → 0.994 |
+| orange | 0.063 → 0.020 | −0.241 → −0.009 | 0.339 → 0.038 | — | 4 → 4 | 0.908 → 0.993 |
+| ribbon | 0.127 → 0.067 | −0.116 → −0.019 | 0.496 → 0.232 | 10.2 → 4.6 | 120 → 46 | 0.888 → 0.957 |
+| bar | 0.031 → 0.066 | −0.310 → −0.024 | 0.339 → 0.326 | — | 4 → 17 | 0.719 → 0.974 |
+
+The bar is 3.7 source pixels tall: its ends have no plateau, every vertex on
+them reads as a corner with no side to fit, and they stay at their pixel
+centres — the thin-stroke plan's regime, not this one's. The 400 px rung is
+byte-identical ON and OFF: off the regime the flag is inert (pinned).
+Runtime: Becker at 100 mm 12.0 → 3.6 s, because the fill below went away.
+
+**Measured, Becker — the outline is right and what it then SEWS is the
+classifier cliff.** The polygon sits on the ramp midline at every zoom
+(`docs/renders/native-ramp-2026-09-18/`: the M's corners square, the A's
+diagonals straight, the outline band's arcs smooth; thread renders OFF | ON at
+80 and 100 mm, and the bare ink in red at 80). Sewn, at the Studio's six colours:
+
+| | stitches | trims | uncovered mm² | the 1021 mm² outline band |
+|---|---|---|---|---|
+| 80 mm OFF → ON | 6833 → 6705 | 51 → 52 | 6.5 → 18.5 | satin → satin |
+| 100 mm OFF → ON | 17701 → 11289 | 40 → 47 | 0.0 → 34.8 | **fill → satin** |
+
+At 100 mm the band's DT p90 drops under `SATIN_MAX_WIDTH_MM` once the
+staircase goes, the tier flips, and the band's satin decomposition is the
+open defect (bare junction blobs — the C's bowl is most of the 18-35 mm²,
+bare in both arms and larger ON; `satin_polygon_axis="artwork"` on top reads
+34.8 / 48.2 mm², no better). This is `docs/classifier-cliff-is-input-resolution-2026-09-16.md`'s
+finding from the other side: the fixture most sensitive to boundary detail
+now gets accurate boundary detail. **The flip is Kent's, with both facts on
+the table:** the outline instruments all move the right way, and the sewn
+Becker at 100 mm reads worse at arm's length until the decomposition arm
+lands. No other `REAL_ART` logo is under the floor (bridge is 5.0 px/mm), so
+nothing else moves.
+
+**Traps found building it.** (1) The corner fit's reach cap: 1.5 px refused
+every corner on the ladder's rectangles (measured 1.48-1.61 px from the meet
+— a quantiser-eroded corner pixel puts the trace a whole pixel in on both
+axes past the half it already sits in); it is 1.5·√2. (2) The profile read
+ACCEPTS a corner on anti-aliased art and places it short — a green suite
+would never have said so; the rectangle test did. (3) Two coordinate
+conventions: cv2's resize maps by half-pixel centres for Lanczos and by floor
+for NEAREST, and the upscale factor per axis differs from `want` by the
+rounding to whole pixels — enough to walk a contour off its edge by the far
+side of a small raster. (4) The ladder's "vertices: max" column is the one
+that shows a bevelled corner; spread and offset average it away.
+
+*(built and measured 2026-09-18 — `tests/test_subpixel_edges.py`,
+`docs/renders/native-ramp-2026-09-18/`, the ladder run above)*
+
+### Addendum, later the same day — FLIPPED ON, and what the flip moved
+
+Kent's ruling on the question above: **flip `subpixel_edges_upscaled` ON now**,
+with the Becker 100 mm tier flip on the table; the satin decomposition arm is
+the follow-up. Also ruled: **lettering stays trace-as-shape** (the customer's
+font exactly, never a library font); the next lettering work is the two
+mechanisms in `letterform-fidelity-2026-08-26.md` — pull compensation on the
+satin rails after decomposition (`satin_rail_comp` exists OFF; which skeleton
+is his call) and a cap-arm classifier so `_prune_spurs` stops dropping the
+N's foot. Font identification for Convert-to-text was offered and not chosen.
+
+**The full local suite under the flip (2606 passed, 12 skipped, 8 xfailed,
+24m49s at `-n 4`): fifteen reds.** Three are the platform goldens CLAUDE.md
+names. No committed golden pins an upscaled source (the flat-lane and
+photo-lane goldens are all 8 px/mm or better), so none moved. The other
+twelve, and what was done:
+
+- `test_edge_cap_budget` (5): every number measured on becker's staircase
+  polygons at 88/110 mm. Under the flip the bill sweep across the three
+  widths reads **[19.7, 25.1, 25.1] and no longer swings**, the ceiling
+  never fires, and the dropped-cap block differs — the outline band is a
+  different tier on the accurate polygon. The file's `_run` now holds the
+  flag OFF and says so: it pins the budget MECHANISM on the polygons it was
+  measured on. Worth its own line: part of the edge cap's cost on becker was
+  the staircase.
+- `test_junction_patch_flag` (2): with the flip, the SATIN cover mode lays a
+  **tatami run inside becker's satin outline band** at 80 mm
+  (`S118e45fc`) — an open observation about `satin_patch_junctions="satin"`
+  (OFF, judged "no difference" 2026-09-18) on the accurate polygon. `_cfg`
+  holds the flag OFF with the note.
+- `test_satin_per_stroke_flag` (2): at 100 mm the band is already satin
+  under the flip, so the per-stroke rung moves nothing on becker any more;
+  the two tests that need a fixture the flag moves read the pre-flip
+  polygons and say so.
+- `test_thread_match_better_spool[bridge]` (1): bridge is **3.49 px/mm at
+  80 mm — under the floor**, so the flip reads its edges too; one more small
+  shape's thread is judged, as a warn, under that file's unfloored read.
+  Re-pinned BRIDGE (2, 1) → (2, 2), the same way the 2026-09-09 flip re-pinned
+  it.
+- `test_memory_budget` (1): the new index line was 266 characters against the
+  260 cap; shortened.
+- `test_scope_budget` (1): MASTER_SCOPE's 27,000-word budget — main sits at
+  26,998 and the flip's sentence took it to 27,129. Reclaimed the way that
+  file documents: the flip's sentence cut to 46 words, and the "Make it
+  bigger" chips paragraph (2026-09-06, ~230 words) moved verbatim to
+  `docs/scope/3-studio-app-wizard.md` behind a one-line claim with its
+  dated pointer.
+
+*(flipped and re-measured 2026-09-18 — the full-suite log is not committed;
+the test files carry the notes)*
+
