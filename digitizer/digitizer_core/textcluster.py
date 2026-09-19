@@ -1659,11 +1659,12 @@ def _cluster_house_angle_deg(members: list[Region], *,
     # resultant under its floor ("MARINE" at 80 mm, 2026-09-19). The group
     # still IS a line of text, and under the stitch-angle rule the stems of
     # upright lettering are the family square to that line, so the cross runs
-    # along it. A group that makes no line keeps failing open.
-    line = _line_of_text_deg(members)
-    if line is None:
-        return None
-    return line % 180.0
+    # along it. A group that makes no line keeps failing open. Same limit as
+    # the four-fold reading: a vertically STACKED upright word reads its line
+    # down the stems, so its cross would run along them — bars and stems then
+    # fade to their own perpendicular under `_clamp_to_span`, and the exposure
+    # is diagonals leaning toward the wrong axis. No fixture has one.
+    return _line_of_text_deg(members)
 
 
 def set_lettering_house_angle(regions: list[Region], p: Prep, *,

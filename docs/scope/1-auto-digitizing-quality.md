@@ -3940,3 +3940,37 @@ queue, the numbers behind it live here. Verbatim.
    build the shade-merge or further hopping polish until he reopens it; the
    08-31 mechanical fixes (`start_near`, the re-snap rehome) are merged and
    unaffected. *(measured 2026-09-02 — `sequence_census.py`, 26 fixtures; tabled 2026-09-02 — Kent)*
+
+## Lettering house-angle: the THIRD reading — the line of text itself (2026-09-19)
+
+Both votes above can refuse a plain block word. "MARINE" in `manga_impact`,
+traced at 80 mm: its verticals and horizontals cancel in doubled-angle space
+(nR² 5.0 against 6.9) and its diagonals hold the four-fold resultant at
+0.164, under the 0.25 floor whose own comment names "the diagonal blind spot"
+— so the word got no house and its crosses read 0.23 concentration, while
+the same word at 127 mm passed (17.6). `_cluster_house_angle_deg` now has a
+third reading, `PipelineConfig.satin_house_from_line`: a group both votes
+refuse takes the cross along its own line of text — the stems' perpendicular
+for upright lettering, the rule's own anchor. A group with no line
+(`_line_of_text_deg` None) still fails open. Limit carried from the four-fold
+reading: a vertically STACKED upright word would get its cross along the
+stems; bars and stems then fade to their own perpendicular under
+`_clamp_to_span`, so the exposure is diagonals leaning toward the wrong axis.
+No fixture has one.
+
+Fires on three of the nine real logos' 22 lettering groups: the ENTHUSIAST
+wordmark (nR² 0.9, R4 0.243 — it straddles the four-fold floor between 80 mm
+and 93 mm, passing at 93) and two tiny groups on the phone screenshot.
+ENTHUSIAST at 80 mm: house None → 179.9°, the word's satin runs' cross
+concentration 0.059 → 0.287, +7 stitches, +1 trim; the chaining benchmark at
+93 mm is unchanged. **Built and flipped ON the same day — Kent's call.**
+Five tests in `tests/test_house_from_line.py` on a word built at test time
+from the committed `manga_impact.json`.
+
+The probe that found it also found what the doubled reading does on a
+diagonal-heavy word it ACCEPTS: a house pulled off the line by the single-
+diagonal residue (AMAZE 27°, NAVY 147°; on real logos enthusiast's subline
+130°, fremont 97.9° / 162°) — not the stems' perpendicular. That is step 1 of
+`docs/superpowers/plans/2026-09-19-lettering-construction.md`.
+*(built, measured, flipped 2026-09-19 — scope-history's entry of that day)*
+

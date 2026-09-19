@@ -13205,6 +13205,16 @@ anchor-to-the-line construction (plan step 1) is the answer to both; it
 changes every group a vote currently passes and is measured before it is
 proposed.
 
-*(built and measured 2026-09-19 — `tests/test_house_from_line.py`; the probe
-scripts lived in the session's scratchpad, the numbers are the record)*
+**Flipped ON the same day — Kent's call**, with step 1 of the plan chosen
+next. The reviewer's measurement worth carrying: the ENTHUSIAST wordmark
+straddles the four-fold floor between sizes — R4 0.243 at 80 mm (refused, the
+flag fires) and a pass at 93 mm (the chaining benchmark's pitch, where the
+flip changes nothing: 3.25/1k, 11 trims, both ways). The "+1 trim" above is
+an 80 mm number, and the straddle is the vote's size-instability seen a
+third way. The flat-lane golden's `photo/enthusiast_logo.png` entry moves
+under the flip; it is the platform red CI already deselects and Windows
+already fails, so no re-capture is possible or pending.
 
+*(built, measured and flipped 2026-09-19 — `tests/test_house_from_line.py`;
+the probe scripts lived in the session's scratchpad, the numbers are the
+record)*

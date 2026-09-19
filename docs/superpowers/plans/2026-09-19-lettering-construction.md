@@ -1,8 +1,8 @@
 # Lettering construction — give a traced letter the font engine's rules (2026-09-19)
 
 **Status:** decision document, Kent's ruling 2026-09-19 (trace + the font
-engine's construction, in that order). Step 0 built the same day
-(`cfg.satin_house_from_line`, OFF). Review it rests on:
+engine's construction, in that order). Step 0 built and flipped ON the same
+day (`cfg.satin_house_from_line`); step 1 chosen next, the same day. Review it rests on:
 `docs/lettering-route-review-2026-09-19.md`.
 
 **Yardstick.** The review's construction: a library font's own word — its
@@ -28,14 +28,14 @@ customer already had right.
 
 ## The steps, in the order they buy the most
 
-0. **House angle, third reading — BUILT, OFF (`satin_house_from_line`).**
+0. **House angle, third reading — BUILT and FLIPPED ON the same day, Kent's call (`satin_house_from_line`).**
    A group both votes refuse takes the cross along its line of text (the
    stems' perpendicular for upright lettering — the adopted rule). Fires on
    3 of the 22 lettering groups across the nine logos: the ENTHUSIAST
    wordmark (11 letters: doubled-angle nR² 0.9, four-fold 0.243) and two
    tiny groups on the phone screenshot. ENTHUSIAST's word: house None →
    179.9°, its satin runs' cross concentration **0.059 → 0.287**, stitches
-   2,492 → 2,499, trims 24 → 25. Flip is Kent's.
+   2,492 → 2,499, trims 24 → 25. Flipped ON 2026-09-19.
 1. **Anchor the house to the line of text; read only the SLANT from the
    stems.** Found building step 0: when the doubled-angle vote passes on a
    diagonal-heavy word it returns a house pulled off the line by the

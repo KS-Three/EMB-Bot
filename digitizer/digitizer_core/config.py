@@ -967,9 +967,13 @@ class PipelineConfig:
     # (`_line_of_text_deg` None — a blob, a short two-line wordmark) still
     # fails open. A leaned script would have passed the first vote; the
     # per-stroke fade past the 30 deg cap (`_clamp_to_span`) still applies
-    # to every diagonal. Not a physical constant. DEFAULT OFF — measured
-    # in scope-history 2026-09-19; the flip is Kent's.
-    satin_house_from_line: bool = False
+    # to every diagonal. Not a physical constant. Built OFF and measured
+    # (scope-history 2026-09-19: it fires on three of the nine real logos'
+    # 22 lettering groups — the ENTHUSIAST wordmark, whose satin runs' cross
+    # concentration goes 0.059 -> 0.287 at +7 stitches / +1 trim, and two
+    # tiny groups on the phone screenshot); **DEFAULT ON the same day —
+    # Kent's flip.** False is the fail-open behaviour, byte for byte.
+    satin_house_from_line: bool = True
     # Each satin rail reaches ITS OWN edge (defect 23's open half, built
     # 2026-09-03 for Kent's flip). The rail model places both rails at the
     # NEARER edge's distance from a smoothed spine, so on every raster
