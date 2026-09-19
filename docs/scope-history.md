@@ -14215,3 +14215,28 @@ sews the cover under the arms by default and patches exactly the hole
 the injection makes.
 
 *(read and fixed 2026-09-19 — the probe lived in the session's scratchpad)*
+
+## 2026-09-19 — Finding 2 of the junction build: Becker's residual letter crossings are the Goldman join's mitre, not folds
+
+The build left Becker's band at 100 mm (split + stack) with 528 letter
+crossing pairs that held at every threshold of the weld gate's sweep,
+which the build entry called "bends inside one arm" on a probe that
+matched runs to joined strokes by their points and mis-filed 469 of them
+as plain columns. Read stroke by stroke with a spy on `satin_stroke`
+(each emitted stroke, its column's within-run pairs, its sharpest turn
+over the corner split's own one-half-width baseline, and whether it is a
+join): **565 pairs in four strokes, every one a Goldman join**
+(`Stroke.corners` set) — the A's 260 at a 52° join a quarter of the way
+along its spine, the E's 209 at 64° past the middle, the R's 59 at 47°,
+and a 50 mm ribbon's 37 at 57° — with the crossing seats clustered at the
+join (the A's at 5–18% of the spine, the E's at 52–74%). A joined stroke
+sews as ONE run (`_satin_joined`), so the owner's corner cap sweeping
+over the member that butts into it counts as within-run pairs, which is
+exactly the reading DOCTRINE 2026-09-09 already ruled on: crossing pairs
+at a join ARE the join, and the pro's own MARINE carries 2,593 of them.
+So there is no fold left in Becker's letters under the flag, no bend the
+corner rules missed, and nothing to build; the counting instrument is
+what mis-read, and `crossing_pairs` on a joined run is a mitre count.
+Measured negative, recorded.
+
+*(read 2026-09-19 — the probe lived in the session's scratchpad)*

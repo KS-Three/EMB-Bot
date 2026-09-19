@@ -4123,9 +4123,9 @@ arms. Measured: the R fixture 311 → 0 pairs at 7,253 → 7,283 stitches and
 trims 34 → 44 (the R's welds 8 → 3, all five over 30° refused), uncovered
 0.0 both ways; MARINE 80 mm 103 → 0 at trims 7 → 9 (the doc's A + C proxy
 paid +12: B is the lever on trims); Becker 100 mm under the split flag
-uncovered 35.5 → 0.0 at 8,612 → 8,353 stitches and trims 53 → 61, its 528
-remaining letter pairs not welds (469 in plain columns, 59 in Goldman joins
-— bends inside one arm). Two predictions falsified: the layers inside the
+uncovered 35.5 → 0.0 at 8,612 → 8,353 stitches and trims 53 → 61, its remaining letter pairs not welds (read the same day: all four
+strokes that carry them are Goldman joins — the mitre, the pro's kind,
+counted within the run; nothing to build). Two predictions falsified: the layers inside the
 junctions do not rise toward the pro's (p95 3.3–4.2 against 3.9–7.2; B
 overlaps ends, it does not stack), and the fixture's trims pay +10 not +4.
 Nine logos: stitches 89,105 → 89,723 (+0.7%), trims 476 → 489 (Bridge Bar 82
