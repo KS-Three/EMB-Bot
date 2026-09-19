@@ -1,6 +1,6 @@
 ---
 name: exposed-travel-is-the-fill-tier-2026-09-19
-description: travel_cover.py's 245 mm of exposed travel on the nine logos is NOT a new gate-3 finding — 97.7% is the fill tier's column bridges on their own finished fill (defect 21's residual, read by fill_bridges.py on 09-11), 0.0 mm on bare fabric; the 1 mm grid under-reads it by a third; `cfg.fill_bridge_cut` BUILT OFF (per-bridge cut at Kent's 25:2 rate, single-pass fills, 248.6 -> 140.9 mm for +6 trims); Fremont's OCR drop under it is judge noise
+description: travel_cover.py's 245 mm of exposed travel on the nine logos is NOT a new gate-3 finding — 97.7% is the fill tier's column bridges on their own finished fill (defect 21's residual, read by fill_bridges.py on 09-11), 0.0 mm on bare fabric; the 1 mm grid under-reads it by a third; `cfg.fill_bridge_cut` built and FLIPPED ON by Kent the same day over thread renders (per-bridge cut at Kent's 25:2 rate, single-pass fills, 248.6 -> 140.9 mm for +6 trims); Fremont's OCR drop under it is judge noise
 metadata:
   type: project
 ---
@@ -38,8 +38,9 @@ There is none; the work is in `stage6_fill`.
 **How to apply:** before proposing anything for exposed travel, read DOCTRINE's
 "last third of exposed fill travel" entry — three routing fixes and an
 ordering arm are already priced out. The one arm not yet tried was priced
-and then BUILT the same day, **`cfg.fill_bridge_cut`, DEFAULT OFF, Kent's
-flip**: `emit` sewed any in-shape route however exposed and only lifted when
+and then BUILT the same day, **`cfg.fill_bridge_cut`, DEFAULT ON — Kent's flip
+2026-09-19, judged on thread renders, not yet on cloth; the full suite moved
+nothing it pins (the three Windows-local goldens and no fourth)**: `emit` sewed any in-shape route however exposed and only lifted when
 no route existed, so `_score`'s ratified 25 : 2 rate was never asked about a
 single BRIDGE. Lifting a bridge whose own cost exceeds a cut (gap over
 `trim_at`) takes the nine logos 248.6 -> 140.9 mm exposed for 458 -> 464
