@@ -1399,6 +1399,14 @@ class PipelineConfig:
     # thread, OFF above ON: `docs/renders/fill-bridge-cut-2026-09-19/`. OFF is
     # plan-md5-identical to the engine before it, all nine. Read it yourself:
     # `tools/travel_legs.py --set fill_bridge_cut=true`.
+    # **Re-measured on the tree with `satin_junction_stack` and
+    # `satin_lettering_split` ON (2026-09-19, after #520):** 232.7 -> 147.4 mm,
+    # trims 473 -> 478, stitches 77,242 -> 77,182, uncovered and finding codes
+    # identical. Becker is now md5-identical OFF and ON -- its leg was the
+    # MARINE band's FILL and the band sews as satin -- so the trade is
+    # Fremont's (58.0 -> 21.1, +4 trims), the screenshot's (60.9 -> 26.0, +4),
+    # Bridge Bar's (+1) and drone's (-4); five of nine do not move.
+    # `*_stack_split_tree.jpg` beside the renders above.
     # A lift this makes raises `report["jumps"]`, which `LONG_JUMPS_TRIMMED`
     # counts. Its ENGINE prose said the thread "had to be" lifted and now says
     # "is lifted"; the Studio's own sentence for the code ("gets cut N times
