@@ -1742,8 +1742,12 @@ class PipelineConfig:
     # DEFAULT OFF, byte-identical off, and it is PRICED — do not flip it on
     # the evidence in this repo (Kent's call, 2026-09-19). Cap order abandons
     # nearest-neighbour travel by design, and that is not free: measured ON vs
-    # OFF at 80 mm, `logo_gaulke_roofing` goes 723.7 -> 1528.9 mm needle-up
-    # (+111.2%) and 56 -> 64 trims, `becker_marine_logo` +11.3% and 50 -> 54.
+    # OFF at 80 mm on `478fbbb6`, `logo_gaulke_roofing` goes 387.5 -> 1260.6 mm
+    # needle-up (+225.3%) and 31 -> 49 trims, `becker_marine_logo` +22.2% and
+    # 48 -> 47. QUOTE THE TREE with these: an earlier pass the same morning
+    # read +111.2% and +11.3% on `da6606e4`, and only `main` had moved --
+    # the lettering series' flips improved the OFF baseline and so roughly
+    # doubled this flag's relative cost (DOCTRINE).
     # Defect 4 is that we ALREADY trim 3.1x the professional, so this makes
     # the worst-measured parity gap worse. Against that, the benefit it claims
     # — less crown distortion on a stretching seamed front — has no instrument

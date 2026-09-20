@@ -22,13 +22,23 @@ centre-out and bottom-up all along. `cfg.cap_center_out` closes that split
 behind a default-OFF flag; the standing rulings are in DOCTRINE's "Measured
 negatives", these are the numbers behind them.
 
-A/B at 80 mm on `hat_front`, `tools/cap_order_ab.py`, ON vs OFF:
+A/B at 80 mm on `hat_front`, `tools/cap_order_ab.py`, ON vs OFF, **on merge
+commit `478fbbb6`** (post the lettering-construction series):
 
 | fixture | stitches | trims | needle-up mm | group sizes |
 |---|---|---|---|---|
-| `becker_marine_logo` | 7166 → 7158 | 50 → 54 | 1084.0 → 1206.7 (+11.3%) | 17, 1 |
-| `logo_script_tires` | 2415 → 2415 | 10 → 10 | 191.0 → 191.0 (0.0%) | 4, 2 |
-| `photo/logo_gaulke_roofing` | 4539 → 4606 | 56 → 64 | 723.7 → 1528.9 (+111.2%) | 42, 9, 2 |
+| `becker_marine_logo` | 6441 → 6432 | 48 → 47 | 852.9 → 1042.6 (+22.2%) | 17, 1 |
+| `logo_script_tires` | 2434 → 2434 | 7 → 7 | 202.3 → 202.3 (0.0%) | 4, 2 |
+| `photo/logo_gaulke_roofing` | 4263 → 4395 | 31 → 49 | 387.5 → 1260.6 (+225.3%) | 42, 9, 2 |
+
+**Superseded, same day, and kept because the supersession is the point.** The
+first pass ran on `da6606e4` that morning and read: becker 7166 → 7158,
+50 → 54 trims, 1084.0 → 1206.7 (+11.3%); script_tires 2415 → 2415,
+10 → 10, 191.0 (0.0%); gaulke 4539 → 4606, 56 → 64, 723.7 → 1528.9
+(+111.2%). The flag did not change between the two runs — `main` did, flipping
+`satin_junction_stack`, `satin_lettering_split`, `fill_bridge_cut` and the
+lettering flags ON in between. That moved the OFF baseline (gaulke 56 → 31
+trims, 723.7 → 387.5 mm) and roughly doubled the flag's relative cost.
 
 `logo_whitebg` and `logo_alpha` are byte-identical on both arms and were the
 first two fixtures tried — every colour group holds one shape, so there is

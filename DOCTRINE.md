@@ -732,11 +732,21 @@ Moved verbatim 2026-08-28 — no section was rewritten in the move.
   costs it.** `cfg.cap_center_out` is BUILT and parked OFF (MASTER_SCOPE
   latent 4); this is the evidence behind the park, so it is not re-measured.
   Measured 2026-09-19 with `digitizer/tools/cap_order_ab.py`, ON vs OFF at
-  80 mm on `hat_front`: `logo_gaulke_roofing` **723.7 → 1528.9 mm needle-up
-  (+111.2%)** and **56 → 64 trims**; `becker_marine_logo` **1084.0 → 1206.7
-  (+11.3%)** and **50 → 54 trims**; `logo_script_tires` byte-for-byte
-  unchanged. Read that against MASTER_SCOPE defect 4 — *we already trim 3.1x
-  the professional* — and the rule makes the worst-measured parity gap worse.
+  80 mm on `hat_front`, **on `478fbbb6`** — the tree matters, see below:
+  `logo_gaulke_roofing` **387.5 → 1260.6 mm needle-up (+225.3%)** and
+  **31 → 49 trims**; `becker_marine_logo` **852.9 → 1042.6 (+22.2%)** and
+  **48 → 47 trims**; `logo_script_tires` byte-for-byte unchanged. Read that
+  against MASTER_SCOPE defect 4 — *we already trim 3.1x the professional* —
+  and the rule makes the worst-measured parity gap worse.
+  **PIN THE TREE WHEN YOU QUOTE THIS.** The first pass of these numbers was
+  taken on `da6606e4` that morning and read +111.2% / +8 trims on gaulke and
+  +11.3% / +4 on becker. Nothing about the flag changed between the two
+  readings; **`main` did** — the lettering-construction series flipped
+  `satin_junction_stack`, `satin_lettering_split`, `fill_bridge_cut` and
+  several lettering flags ON the same day, which improved the OFF BASELINE
+  sharply (gaulke 56 → 31 trims, 723.7 → 387.5 mm) and therefore made the
+  flag's relative cost roughly double. A cost quoted as a percentage is a
+  ratio against a baseline somebody else is actively moving.
   **The two halves are not equally supported.** Bottom-up is a tiebreak and
   nearly free; centre-out is what abandons nearest-neighbour travel, and it
   is the half the pro contradicts: on `gaulke`, the only cap/flat pair in the

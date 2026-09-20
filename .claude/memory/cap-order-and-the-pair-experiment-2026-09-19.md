@@ -34,9 +34,16 @@ pushed 2026-09-18 and still without a PR.
 
 **The measurement reversed my own recommendation**, which is the part worth
 carrying. I designed the flag expecting to recommend flipping it. Centre-out
-costs +111.2% needle-up and +8 trims on gaulke; the one readable pro pair
+costs +225.3% needle-up and +18 trims on gaulke; the one readable pro pair
 backs bottom-up and contradicts centre-out — the expensive half is the
 unsupported half. Numbers in scope-history 09-19, rulings in DOCTRINE.
+
+**And the numbers went stale inside one day, which is its own lesson.** The
+first pass read +111.2% on `da6606e4`; re-measured on `478fbbb6` after
+merging main it read +225.3%. The flag never changed — the lettering series
+flipped several flags ON that improved the OFF BASELINE, and a percentage is
+a ratio against a baseline other lanes are actively moving. Pin the tree in
+the same sentence as the number, every time.
 
 **Two process notes.** The first A/B I ran showed a flat zero and I briefly
 read it as "the flag does nothing" — wrong fixtures, every cone holding one
