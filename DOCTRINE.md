@@ -556,7 +556,7 @@ Moved verbatim 2026-08-28 — no section was rewritten in the move.
   ONLY"* since it was split from DOCTRINE, with `docs/scope/` and
   `docs/scope-history.md` as the two places overflow goes. Nothing enforced it,
   and on 2026-09-07 it reached **799** of its then-800-LINE budget — noticed
-  only because the next entry did not fit. `tests/test_scope_budget.py` (7) now
+  only because the next entry did not fit. `tests/test_scope_budget.py` (9) now
   enforces it, and its failure message names the reclaim rather than just
   saying "too long", because a bare limit gets the next line squeezed in
   somewhere else. **The unit became WORDS on 2026-09-14** (Kent) — see "A

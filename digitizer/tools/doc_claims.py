@@ -44,6 +44,13 @@ import sys
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 
+# `python tools/doc_claims.py` puts `tools/` on sys.path, NOT `digitizer/`,
+# so `tools._console` is unimportable until this line. See that module for
+# why a tool that prints doc text has to widen its own stdout.
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
+
+from tools._console import utf8_console                    # noqa: E402
+
 # Current-state docs: a disagreement here is a DEFECT and fails the run.
 # MASTER_SCOPE says "Current state ONLY"; DOCTRINE only accumulates rulings.
 STRICT = ["MASTER_SCOPE.md", "DOCTRINE.md"]
@@ -280,6 +287,7 @@ def check_constants(text: str, doc: str, mods: dict
 
 
 def main() -> int:
+    utf8_console()
     mods = _modules()
     counts = test_counts()
     if not counts:
