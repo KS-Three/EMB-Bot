@@ -14831,23 +14831,23 @@ image.
 grade; corpus widths and garments, `max_colors=6`, today's defaults; a
 stage-1 arm rebuilds the generation):
 
-| case | raster | OFF | ON, whole image | ON, halo 8 px |
-|---|---|---|---|---|
-| Becker | the file | 8,334 / 59 / 18 / flat / 0.5 / B | 8,440 / 54 / 17 / flat / 0.4 / B | 8,440 / 54 / 17 / flat / 0.4 / B |
-| Becker | the file, black under alpha | 15,547 / 157 / 152 / gradient / 4.4 / D | 8,440 / 54 / 17 / flat / 0.4 / B | 8,440 / 54 / 17 / flat / 0.4 / B |
-| Becker | the Studio's canvas raster | 15,318 / 175 / 151 / gradient / 2.3 / C | 8,440 / 54 / 17 / flat / 0.4 / B | 8,440 / 54 / 17 / flat / 0.4 / B |
-| ENTHUSIAST | the file | 2,478 / 12 / 31 / flat / 3.8 / B | 2,491 / 17 / 31 / flat / 0.0 / B | 2,491 / 17 / 31 / flat / 0.0 / B |
-| ENTHUSIAST | the file, black under alpha | 2,478 / 12 / 31 / flat / 3.8 / B | 2,491 / 17 / 31 / flat / 0.0 / B | 2,491 / 17 / 31 / flat / 0.0 / B |
-| ENTHUSIAST | the Studio's canvas raster | 2,417 / 11 / 31 / gradient / 1.8 / B | 2,406 / 11 / 31 / flat / 0.0 / B | 2,406 / 11 / 31 / flat / 0.0 / B |
-| Fremont | the file | 19,864 / 59 / 164 / gradient / 7.2 / B | 19,901 / 44 / 164 / gradient / 85.3 / B | 19,901 / 44 / 164 / gradient / 85.3 / B |
-| Fremont | the file, black under alpha | 19,864 / 59 / 164 / gradient / 7.2 / B | 19,901 / 44 / 164 / gradient / 85.3 / B | 19,901 / 44 / 164 / gradient / 85.3 / B |
-| Fremont | the Studio's canvas raster | 19,694 / 50 / 160 / gradient / 16.7 / B | 19,618 / 50 / 160 / gradient / 11.5 / B | 19,612 / 50 / 160 / gradient / 11.0 / B |
-| drone | the file | 18,651 / 120 / 107 / gradient / 65.8 / F | 20,841 / 153 / 135 / gradient / 80.5 / F | 21,238 / 147 / 129 / gradient / 55.7 / F |
-| drone | the file, black under alpha | 19,807 / 121 / 115 / gradient / 73.1 / F | 20,841 / 153 / 135 / gradient / 80.5 / F | 21,238 / 156 / 144 / gradient / 100.9 / F |
-| drone | the Studio's canvas raster | 19,514 / 124 / 115 / gradient / 95.8 / F | 18,791 / 148 / 126 / gradient / 80.0 / F | 18,997 / 161 / 131 / gradient / 97.2 / F |
-| Becker at 100 | the file | 8,334 / 59 / 18 / flat / 0.5 / B | 8,440 / 54 / 17 / flat / 0.4 / B | 8,440 / 54 / 17 / flat / 0.4 / B |
-| Becker at 100 | the file, black under alpha | 15,547 / 157 / 152 / gradient / 4.4 / D | 8,440 / 54 / 17 / flat / 0.4 / B | 8,440 / 54 / 17 / flat / 0.4 / B |
-| Becker at 100 | the Studio's canvas raster | 15,318 / 175 / 151 / gradient / 2.3 / C | 8,440 / 54 / 17 / flat / 0.4 / B | 8,440 / 54 / 17 / flat / 0.4 / B |
+| case | raster | OFF | ON, whole image | ON, halo 8 px | ON, gated on the upscale |
+|---|---|---|---|---|---|
+| Becker | the file | 8,334 / 59 / 18 / flat / 0.5 / B | 8,440 / 54 / 17 / flat / 0.4 / B | 8,440 / 54 / 17 / flat / 0.4 / B | **8,440 / 54 / 17 / flat / 0.4 / B** |
+| Becker | the file, black under alpha | 15,547 / 157 / 152 / gradient / 4.4 / D | 8,440 / 54 / 17 / flat / 0.4 / B | 8,440 / 54 / 17 / flat / 0.4 / B | **8,440 / 54 / 17 / flat / 0.4 / B** |
+| Becker | the Studio's canvas raster | 15,318 / 175 / 151 / gradient / 2.3 / C | 8,440 / 54 / 17 / flat / 0.4 / B | 8,440 / 54 / 17 / flat / 0.4 / B | **8,440 / 54 / 17 / flat / 0.4 / B** |
+| ENTHUSIAST | the file | 2,478 / 12 / 31 / flat / 3.8 / B | 2,491 / 17 / 31 / flat / 0.0 / B | 2,491 / 17 / 31 / flat / 0.0 / B | **= OFF** |
+| ENTHUSIAST | the file, black under alpha | 2,478 / 12 / 31 / flat / 3.8 / B | 2,491 / 17 / 31 / flat / 0.0 / B | 2,491 / 17 / 31 / flat / 0.0 / B | **= OFF** |
+| ENTHUSIAST | the Studio's canvas raster | 2,417 / 11 / 31 / gradient / 1.8 / B | 2,406 / 11 / 31 / flat / 0.0 / B | 2,406 / 11 / 31 / flat / 0.0 / B | **= OFF** |
+| Fremont | the file | 19,864 / 59 / 164 / gradient / 7.2 / B | 19,901 / 44 / 164 / gradient / 85.3 / B | 19,901 / 44 / 164 / gradient / 85.3 / B | **= OFF** |
+| Fremont | the file, black under alpha | 19,864 / 59 / 164 / gradient / 7.2 / B | 19,901 / 44 / 164 / gradient / 85.3 / B | 19,901 / 44 / 164 / gradient / 85.3 / B | **= OFF** |
+| Fremont | the Studio's canvas raster | 19,694 / 50 / 160 / gradient / 16.7 / B | 19,618 / 50 / 160 / gradient / 11.5 / B | 19,612 / 50 / 160 / gradient / 11.0 / B | **= OFF** |
+| drone | the file | 18,651 / 120 / 107 / gradient / 65.8 / F | 20,841 / 153 / 135 / gradient / 80.5 / F | 21,238 / 147 / 129 / gradient / 55.7 / F | **= OFF** |
+| drone | the file, black under alpha | 19,807 / 121 / 115 / gradient / 73.1 / F | 20,841 / 153 / 135 / gradient / 80.5 / F | 21,238 / 156 / 144 / gradient / 100.9 / F | **= OFF** |
+| drone | the Studio's canvas raster | 19,514 / 124 / 115 / gradient / 95.8 / F | 18,791 / 148 / 126 / gradient / 80.0 / F | 18,997 / 161 / 131 / gradient / 97.2 / F | **= OFF** |
+| Becker at 100 | the file | 8,334 / 59 / 18 / flat / 0.5 / B | 8,440 / 54 / 17 / flat / 0.4 / B | 8,440 / 54 / 17 / flat / 0.4 / B | **8,440 / 54 / 17 / flat / 0.4 / B** |
+| Becker at 100 | the file, black under alpha | 15,547 / 157 / 152 / gradient / 4.4 / D | 8,440 / 54 / 17 / flat / 0.4 / B | 8,440 / 54 / 17 / flat / 0.4 / B | **8,440 / 54 / 17 / flat / 0.4 / B** |
+| Becker at 100 | the Studio's canvas raster | 15,318 / 175 / 151 / gradient / 2.3 / C | 8,440 / 54 / 17 / flat / 0.4 / B | 8,440 / 54 / 17 / flat / 0.4 / B | **8,440 / 54 / 17 / flat / 0.4 / B** |
 
 **Readings.**
 
@@ -14883,8 +14883,17 @@ stage-1 arm rebuilds the generation):
   changes nothing on ENTHUSIAST's or Fremont's files, and on drone gives up
   the invariance — 147 trims on the file, **156** with black under it —
   without recovering the file's 120 (its exposed travel 80.5 → 55.7 on the
-  file, 100.9 on black). The parameter stays at 0; the whole-image
-  extension is the coherent form.
+  file, 100.9 on black). The parameter stays at 0.
+- **Gated on the resolution-floor upscale, the cure is free.** Kent's pick
+  after the first two arms: `alpha_edge_extend_upscaled_only` runs the
+  extension only where stage 1 will upscale — the artwork's pixel width at
+  the target under `min_px_per_mm`, read off the alpha ≥ 128 box so stage 0
+  and stage 1 decide from one rule (`alpha_edge.upscale_expected`). On the
+  fifteen rows: Becker's six read the cure (**8,440 / 54 / 17 / flat / B**
+  from every raster) and the other nine are **byte-identical to OFF** in
+  every column, findings and trim causes included. The Lanczos upscale was
+  the reader that mattered; above the floor the under-alpha colour never
+  reached the design on these files, and the gate leaves them alone.
 
 **Also found.** `tests/test_stage0_classify.py::test_same_input_classified_twice_is_identical[logo_whitebg]`
 fails on this container with the change stashed and the box idle
@@ -14895,14 +14904,48 @@ failed**, 27m49s, `-n auto`, the three platform goldens deselected as CI
 does). The box, not the tree; recorded so the next solo re-run of that
 test does not send anyone chasing it.
 
-**Tests.** `tests/test_alpha_edge_extend.py` (6): the default is OFF; the
-helper's contract; the halo's reach; on a synthetic cutout under the
-resolution floor, OFF leaks the under-alpha colour into the sewn edge (two
-exporters read differently) and ON reads every pixel the same whatever sat
-underneath while the two deliberate readers still see each file's own
-colour; an opaque image is untouched ON. The stage-0, enclosed-background
-and sub-pixel suites pass with the flag off.
+**Tests.** `tests/test_alpha_edge_extend.py` (7): the default (OFF when
+written; the gated form since the flip below); the helper's contract; the
+halo's reach; the gate open under the floor and shut above it,
+byte-identical to OFF there; on a synthetic cutout under the resolution
+floor, OFF leaks the under-alpha colour into the sewn edge (two exporters
+read differently) and ON reads every pixel the same whatever sat underneath
+while the two deliberate readers still see each file's own colour; an
+opaque image is untouched ON. The stage-0, enclosed-background and
+sub-pixel suites pass with the flag off.
 
-*(built and measured 2026-09-20 — Kent's pick; `tools/studio_raster_census.py`
+*(built and measured 2026-09-20 — Kent's picks; `tools/studio_raster_census.py`
 rasters `native`, `native_black`, `studio`, arms `default`, `extend`,
-`extend_halo8`; the flip is Kent's)*
+`extend_halo8`, `extend_upscaled`; the flip is Kent's)*
+
+### Addendum, the same day — Kent's flip: `alpha_edge_extend` ON, gated on the upscale
+
+**The pick.** Put to Kent with the four-arm table above, he flipped the
+gated form ON: `alpha_edge_extend=True` with
+`alpha_edge_extend_upscaled_only=True` and no halo (`alpha_edge_extend_px`
+stays 0). What ships: an alpha cutout whose artwork sits under the 4 px/mm
+resolution floor at its target width — the one regime in which the Lanczos
+upscale was measured to smear the under-alpha colour into the sewn edge —
+is read with nearest-opaque colour under every non-opaque pixel, in stage 0
+and stage 1 alike, while `bg_edge_rgb` and preflight's border colour keep
+the file's own; every other file reads byte for byte as before. On the
+census that is Becker **8,334 / 59 → 8,440 / 54** from its file, and the
+same 54 from black under its alpha and from the Studio raster; the other
+nine rows unmoved. OFF is now the pre-flip engine, and a test whose numbers
+were read on it holds `alpha_edge_extend=False` rather than moving its pin
+(the rule the sub-pixel, junction-stack and split flips set).
+
+**Tests.** `tests/test_alpha_edge_extend.py` (7) re-pinned: the default is
+the gated form with no halo; OFF is the pre-flip engine; an opaque image
+reads the same OFF, gated and whole-image; the gate test reads the same
+from the bare defaults as from the explicit gated arm. The census tool's
+arms: `extend` and `extend_halo8` set the gate False explicitly (whole
+image means whole image whatever the defaults), `extend_upscaled` is
+`default` today, and a new `extend_off` is the engine every `default` row
+in a census JSON written before the flip was read on.
+
+**The full suite on the flipped tree, and the pins it moves,** are the
+follow-through commit's to record here.
+
+*(flipped 2026-09-20 — Kent's call; config, tests, DOCTRINE, MASTER_SCOPE,
+memory)*

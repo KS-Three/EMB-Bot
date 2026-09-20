@@ -23,8 +23,11 @@ under-alpha rewrite), `studio_high` / `studio_high_bleed` (the candidate
 Studio fix), `native_black` (the file with RGB zeroed under alpha == 0 — the
 hostile exporter, what a canvas does minus its partial-alpha noise). Arms:
 today's defaults, then each lettering flip OFF against them (plus
-`fill_bridge_cut`, whose trade was read on the file too), and `extend` —
-stage 1's `alpha_edge_extend` ON. One `build_generation` per raster; a
+`fill_bridge_cut`, whose trade was read on the file too), and the three
+`extend*` forms of stage 1's `alpha_edge_extend` — measured against the
+pre-flip defaults; Kent flipped the gated form ON on 2026-09-20, so on
+today's engine `default` is `extend_upscaled` and `extend_off` is the
+engine every `default` row written before the flip was read on. One `build_generation` per raster; a
 stage-6/7 arm finishes from a fork, which is identical to a fresh build for
 those flags (checked 2026-09-20 on three of them); the stage-1 arm rebuilds. Per row: stitches, trims, lettering trims by cause (the
 2026-09-19 census's rule, with `_graph_travel` spied for refusals), exposed
@@ -80,17 +83,22 @@ ARMS: dict[str, dict] = {
     "cap_skip": {"edge_cap_skip_lettering": False},
     "exit": {"satin_exit_toward_next": False},
     "bridge_cut": {"fill_bridge_cut": False},
-    # Stage 1's alpha edge extension (built OFF 2026-09-20): ON against the
-    # defaults. A stage-1 flag changes the generation, so this arm rebuilds.
-    "extend": {"alpha_edge_extend": True},
+    # Stage 1's alpha edge extension (built OFF 2026-09-20, the gated form
+    # flipped ON the same day by Kent). A stage-1 flag changes the
+    # generation, so these arms rebuild. Whole image: every non-opaque pixel.
+    "extend": {"alpha_edge_extend": True, "alpha_edge_extend_upscaled_only": False},
     # The halo variant: the extension reaches 8 source px from the opaque
     # edge (every kernel's reach) and leaves a deeper backdrop alone.
-    "extend_halo8": {"alpha_edge_extend": True, "alpha_edge_extend_px": 8},
+    "extend_halo8": {"alpha_edge_extend": True, "alpha_edge_extend_px": 8, "alpha_edge_extend_upscaled_only": False},
     # Gated on the resolution-floor upscale: the extension only where the
-    # Lanczos upscale will run (Kent's pick after the first two arms).
+    # Lanczos upscale will run (Kent's pick after the first two arms, and
+    # the shipped defaults since the flip — identical to `default` today).
     "extend_upscaled": {"alpha_edge_extend": True, "alpha_edge_extend_upscaled_only": True},
+    # The pre-flip engine: what every `default` row in a census JSON written
+    # before 2026-09-20's flip was read on.
+    "extend_off": {"alpha_edge_extend": False},
 }
-PREFIX_ARMS = {"extend", "extend_halo8", "extend_upscaled"}
+PREFIX_ARMS = {"extend", "extend_halo8", "extend_upscaled", "extend_off"}
 RASTERS = ["native", "studio", "area", "native_bleed", "studio_bleed", "studio_high", "studio_high_bleed", "native_black"]
 # The per-flag arms run on the file and the panel's raster; the candidate-fix
 # rasters carry the defaults (and, for `native_black`, the extend arm).

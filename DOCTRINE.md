@@ -5989,8 +5989,15 @@ all reproduced 14. The trace's `px_per_mm` — 14.61 against the file's 17.05
   78 mm of travel across its holes). The halo variant
   (`alpha_edge_extend_px`) is a measured negative: on drone it gives up the
   invariance (147 on the file, 156 with black underneath) without
-  recovering the file's 120. The flip is Kent's. *(measured 2026-09-20 —
-  scope-history §E and the extend addendum; built the same day)*
+  recovering the file's 120. **Gated on the resolution-floor upscale
+  (`alpha_edge_extend_upscaled_only`, Kent's pick) it is the cure at no
+  cost:** Becker's three rasters read 54 trims and the other nine rows are
+  byte-identical to OFF — the Lanczos upscale was the reader that
+  mattered. **Kent flipped that gated form ON the same day**; OFF is the
+  pre-flip engine, and a test whose numbers were read on it holds OFF
+  (`alpha_edge_extend=False`) rather than moving its pin. *(measured
+  2026-09-20 — scope-history §E and the extend addendum; built and flipped
+  the same day)*
 - **A gap between two paths on ONE file is a finding, not a curiosity.** The
   14-vs-9 was seen while fixing the e2e for PR #523 and set aside because the
   test was green either way; every engine measurement here goes through a

@@ -1,5 +1,7 @@
 """`cfg.alpha_edge_extend` — stage 1 stops reading the RGB under an alpha
-cutout's transparency (built OFF 2026-09-20, Kent's pick on the census).
+cutout's transparency (built OFF 2026-09-20, Kent's pick on the census;
+flipped ON the same day, gated on the resolution-floor upscale — Kent's
+pick after the census's four arms).
 
 The shape of an alpha cutout lives in alpha; the RGB under its transparency
 is whatever the exporter or a browser canvas left there, and stage 1's two
@@ -17,11 +19,13 @@ there, `bg_edge_rgb` and preflight's `GROUND_SEWN` border colour, read it
 from `Prep.raw_rgb`; the naive whole-image fill that gave them the extended
 colour sewed Fremont's ground (scope-history 2026-09-20 §E).
 
-Pinned: the default is OFF and OFF is the shipped path; the helper's
-contract; on a synthetic cutout with a real alpha ramp, under the floor so
-the upscale runs, OFF leaks the under-alpha colour into the sewn edge (the
-two exporters read differently) and ON does not (they read the same), while
-the background side still reads each file's own colour.
+Pinned: the default is ON in the gated form (`alpha_edge_extend_upscaled_only`)
+with no halo, and OFF is the pre-flip engine; the helper's contract; on a
+synthetic cutout with a real alpha ramp, under the floor so the upscale runs,
+OFF leaks the under-alpha colour into the sewn edge (the two exporters read
+differently) and ON does not (they read the same), while the background side
+still reads each file's own colour; above the floor the gate is shut and the
+shipped engine is byte-identical to OFF.
 """
 from __future__ import annotations
 
@@ -33,8 +37,15 @@ from digitizer_core import PipelineConfig
 from digitizer_core import stage1_prep as s1
 
 
-def test_the_default_is_off():
-    assert PipelineConfig().alpha_edge_extend is False
+def test_the_default_is_on_gated_on_the_upscale_with_no_halo():
+    # Kent's flip 2026-09-20, after the census: the whole-image form cost the
+    # friendly files (ENTHUSIAST +5 trims, drone +33, Fremont +78 mm of
+    # exposed travel); the gated form was measured byte-identical to OFF
+    # everywhere the upscale does not run and the cure where it does.
+    cfg = PipelineConfig()
+    assert cfg.alpha_edge_extend is True
+    assert cfg.alpha_edge_extend_upscaled_only is True
+    assert cfg.alpha_edge_extend_px == 0
 
 
 def test_the_helper_extends_nearest_opaque_colour_and_touches_nothing_else():
@@ -75,7 +86,7 @@ def _cutout(under_rgb, size=48, ramp=3):
 @pytest.mark.parametrize("extend", [False, True])
 def test_on_the_under_alpha_colour_stops_reaching_the_sewn_edge_and_off_it_still_does(extend):
     # 48 px at 30 mm = 1.6 px/mm: under the 4 px/mm floor, so the Lanczos
-    # upscale runs, as it does on Becker.
+    # upscale runs, as it does on Becker — and so the shipped gate opens.
     cfg = PipelineConfig(target_width_mm=30.0, alpha_edge_extend=extend)
     friendly = s1.prep(_cutout((180, 30, 30)), cfg)      # the exporter left the ink colour underneath
     hostile = s1.prep(_cutout((0, 0, 0)), cfg)           # a canvas left black
@@ -96,16 +107,18 @@ def test_on_the_under_alpha_colour_stops_reaching_the_sewn_edge_and_off_it_still
         assert raw_diff[friendly.bg_mask].max() > 20
     else:
         assert friendly.raw_rgb is None and hostile.raw_rgb is None
-        # The shipped path: black under the alpha darkens the sewn edge.
+        # The pre-flip engine: black under the alpha darkens the sewn edge.
         assert diff[sewn].max() > 20, int(diff[sewn].max())
 
 
-def test_off_is_the_shipped_path_and_an_opaque_image_is_untouched_on():
-    """No alpha, or an alpha with nothing non-opaque: ON changes nothing."""
+def test_an_opaque_image_is_untouched_on():
+    """No alpha, or an alpha with nothing non-opaque: ON changes nothing —
+    the shipped engine and the pre-flip one read an opaque file the same."""
     rgb = np.zeros((40, 40, 3), np.uint8); rgb[10:30, 10:30] = (30, 30, 200)
-    a = s1.prep(rgb, PipelineConfig(target_width_mm=20.0)).rgb
-    b = s1.prep(rgb, PipelineConfig(target_width_mm=20.0, alpha_edge_extend=True)).rgb
-    assert np.array_equal(a, b)
+    a = s1.prep(rgb, PipelineConfig(target_width_mm=20.0, alpha_edge_extend=False)).rgb
+    b = s1.prep(rgb, PipelineConfig(target_width_mm=20.0)).rgb
+    c = s1.prep(rgb, PipelineConfig(target_width_mm=20.0, alpha_edge_extend=True, alpha_edge_extend_upscaled_only=False)).rgb
+    assert np.array_equal(a, b) and np.array_equal(a, c)
 
 
 def test_the_halo_extends_only_within_reach_of_the_edge_and_leaves_a_deeper_backdrop_alone():
@@ -125,24 +138,28 @@ def test_the_halo_extends_only_within_reach_of_the_edge_and_leaves_a_deeper_back
 
 
 def test_gated_on_the_upscale_the_extension_runs_under_the_floor_and_not_above_it():
-    """`alpha_edge_extend_upscaled_only` (Kent's pick, 2026-09-20): the
-    extension only where stage 1 will upscale — the one place black under
-    the alpha was measured to bite. Both stages decide from
-    `alpha_edge.upscale_expected`, the floor test on the alpha >= 128 box."""
+    """`alpha_edge_extend_upscaled_only` (Kent's pick, 2026-09-20, and the
+    form he flipped ON): the extension only where stage 1 will upscale — the
+    one place black under the alpha was measured to bite. Both stages decide
+    from `alpha_edge.upscale_expected`, the floor test on the alpha >= 128
+    box. The shipped defaults are this gate, so `PipelineConfig()` alone is
+    the gated arm."""
     from digitizer_core.alpha_edge import upscale_expected
-    assert PipelineConfig().alpha_edge_extend_upscaled_only is False
+    assert PipelineConfig().alpha_edge_extend_upscaled_only is True
     friendly, hostile = _cutout((180, 30, 30)), _cutout((0, 0, 0))
     a = friendly[..., 3]
     assert upscale_expected(a, 30.0, 4.0) is True        # 30 px of art at 30 mm: 1 px/mm, under the floor
     assert upscale_expected(a, 5.0, 4.0) is False        # the same art at 5 mm: 6 px/mm, above it
     assert upscale_expected(np.zeros((4, 4), np.uint8), 30.0, 4.0) is False
     gated = dict(alpha_edge_extend=True, alpha_edge_extend_upscaled_only=True)
-    # Under the floor: the gate opens and the two exporters read the same.
+    # Under the floor: the gate opens and the two exporters read the same —
+    # from the explicit gated arm and from the bare defaults alike.
     lo_f, lo_h = s1.prep(friendly, PipelineConfig(target_width_mm=30.0, **gated)), s1.prep(hostile, PipelineConfig(target_width_mm=30.0, **gated))
     assert lo_f.raw_rgb is not None and np.array_equal(lo_f.rgb, lo_h.rgb)
-    # Above the floor: nothing runs — byte-identical to OFF, and the two
-    # exporters go on reading differently, as they do today.
-    off_f = s1.prep(friendly, PipelineConfig(target_width_mm=5.0))
+    assert np.array_equal(s1.prep(hostile, PipelineConfig(target_width_mm=30.0)).rgb, lo_f.rgb)
+    # Above the floor: nothing runs — byte-identical to the pre-flip engine,
+    # and the two exporters go on reading differently, as they did before.
+    off_f = s1.prep(friendly, PipelineConfig(target_width_mm=5.0, alpha_edge_extend=False))
     hi_f = s1.prep(friendly, PipelineConfig(target_width_mm=5.0, **gated))
     hi_h = s1.prep(hostile, PipelineConfig(target_width_mm=5.0, **gated))
     assert hi_f.raw_rgb is None and np.array_equal(hi_f.rgb, off_f.rgb)

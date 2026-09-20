@@ -247,10 +247,14 @@ class PipelineConfig:
     # whole-image fill that gave them the extended colour sewed Fremont's
     # ground (scope-history 2026-09-20 §E). Not a physical constant: it
     # changes which pixels the stages read, never a fabric number. Built OFF
-    # 2026-09-20 (Kent's pick); OFF is the shipped path byte for byte; the
-    # flip is Kent's, on the census (`tools/studio_raster_census.py`, arm
-    # `extend`, raster `native_black`).
-    alpha_edge_extend: bool = False
+    # 2026-09-20 (Kent's pick), measured in three forms on the census
+    # (`tools/studio_raster_census.py`, arms `extend*`, raster
+    # `native_black`), and FLIPPED ON the same day (Kent) in the gated form
+    # below: with `alpha_edge_extend_upscaled_only` the extension runs only
+    # where the resolution-floor upscale will, the one reader measured to
+    # smear the under-alpha colour into the sewn edge. OFF is the pre-flip
+    # engine byte for byte; a test whose numbers were read on it holds OFF.
+    alpha_edge_extend: bool = True
     # How far under the alpha the extension reaches, in SOURCE pixels from
     # the opaque edge; 0 = every non-opaque pixel. Every kernel that reads
     # across the edge reaches a few pixels (Sobel 1, the bilateral 2,
@@ -271,8 +275,13 @@ class PipelineConfig:
     # read the same from the file and from black and paid for the
     # whole-image extension (ENTHUSIAST +5 trims, drone +33, Fremont +78 mm
     # of exposed travel). Built 2026-09-20 on Kent's pick, measured beside
-    # the other two forms in scope-history; the flip is his.
-    alpha_edge_extend_upscaled_only: bool = False
+    # the other two forms in scope-history: Becker's six rows read the cure
+    # (8,440 stitches / 54 trims / flat / B from the file, from black under
+    # its alpha and from the Studio raster alike) and the other nine rows
+    # are byte-identical to OFF. ON 2026-09-20 (Kent), with
+    # `alpha_edge_extend`; the whole-image form is `alpha_edge_extend=True`
+    # with this False.
+    alpha_edge_extend_upscaled_only: bool = True
 
     # Stage 1.5 — photo prep (photo plan §2 rows 3-4; build step 3, first
     # slice — stage1_photo_prep.py). CLAHE tone rescue + texture kill on the
