@@ -89,7 +89,19 @@ def _becker_coverage(monkeypatch, guard: bool) -> tuple[float, float]:
         monkeypatch.setattr(s6, "_fold_caps",
                             lambda spine, angles, closed, frac=None: [math.inf] * len(spine))
     art = TESTDATA / "becker_marine_logo.png"
-    cfg = PipelineConfig(target_width_mm=80.0, wide_columns=True)
+    # On the pruner the guard was measured against. The corner rule
+    # (`satin_corner_twigs`, ON 2026-09-19, lettering plan step 3a) sews
+    # Becker's corners as two columns meeting instead of one column folding
+    # through them -- and the fold the guard capped here goes with it:
+    # coverage_max reads 4.67 with the guard neutralised, under the warn
+    # line, so on today's pruner the guard has nothing to do on this
+    # fixture. The guard's code is unchanged; its load-bearing case is
+    # pinned where it was read.
+    # ... and on the pre-stack merge (`satin_junction_stack`, ON 2026-09-19):
+    # its weld gate refuses the bendy welds outright, and with them goes
+    # the bend the guard capped, for the second time (4.67 unguarded).
+    cfg = PipelineConfig(target_width_mm=80.0, wide_columns=True,
+                         satin_corner_twigs=False, satin_junction_stack=False)
     result, plan = digitize(art, cfg)
     m = run_preflight(result, plan, cfg, image=art)["metrics"]
     return float(m["coverage_max"]), float(m["uncovered_worst_mm2"])

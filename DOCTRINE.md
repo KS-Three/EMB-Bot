@@ -5855,3 +5855,74 @@ N` with the measured N and its date), so a regex that narrows fails loudly
 instead of quietly protecting less.
 
 *(2026-09-13/14 — PRs #477 and the 2026-09-14 tie port)*
+
+## "Bad edges" is not "bad outlines" — attribute a wobble to its STAGE before fixing either (2026-09-19)
+
+Kent asked for work on *"identifying shapes and outlines"* and, asked what he
+saw, said *"right shapes, bad edges … wobbly / lumpy curves … it needs to be
+perfect."* The obvious build was stage 4: curve fitting, arcs, a finer raster.
+A throwaway spike measured both halves first, offset removed, same unit:
+
+| fixture (source px) | outline vs artwork, std / p95 | sewn rails vs outline, std / p95 |
+|---|---|---|
+| `enthusiast_logo` (0.068 mm) | 0.011 / 0.023 mm | 0.071 / 0.185 mm |
+| `becker_marine_logo` (0.552 mm) | 0.074 / 0.154 | 0.082 / 0.195 |
+| `logo_whitebg` (synthetic) | 0.049 / 0.039 | 0.029 / 0.058 |
+
+**On decent artwork the polygon is already within a hundredth of a millimetre
+of the art and the stitching adds six times that about a clean outline.**
+Stage-4 curve fitting would have moved nothing there. It is the second time
+this shape of mistake was on the table — 2026-09-09, "the polygon growth was
+smoothing the outline", blamed the outline for what lived in the rails.
+
+`tools/edge_wobble.py` is that spike's stitch-side half, kept (10 tests). It
+reads `result.regions[].polygon` and `plan.iter_runs()` only — no raster, no
+registration. Per tier, on `main` at `24fce102` (after 2026-09-19's satin flips —
+junction stack, lettering split, corner twigs, euler order, exit lever):
+
+| fixture | satin std / p95 / >0.15 mm | fill std | bean/run |
+|---|---|---|---|
+| `enthusiast_logo` | 0.110 / 0.230 / 12.5% | 0.010 | 0.000 |
+| `becker_marine_logo` | 0.099 / 0.200 / 9.5% | **0.177** | 0.000 |
+| `logo_gaulke_roofing` | 0.088 / 0.170 / 6.7% | 0.019 | 0.000 |
+| `logo_whitebg` | 0.038 / 0.067 / 0.8% | 0.022 | 0.000 |
+
+**The spike table above and this one's first cut were measured on a STALE base
+(`da6606e4`) — the session never ran `git fetch` and `main` was ~70 commits
+ahead, the same day's satin flips among them (CLAUDE.md trap 8, walked into
+exactly).** Caught only because the PR came up `DIRTY`. Re-measured after the
+merge: satin barely moved (0.106 / 0.101 / 0.098 before), so the finding stands
+and those flips are not this lever either. **One number did move and is
+UNREAD: Becker's fill tier, 0.037 → 0.177 std, 11.3% over 0.15 mm, dips to
+−1.22 mm on one shape, n 796 → 248.** Something in today's flips changed what
+sews as `fill` there; do not quote "fill ends sit on the outline" for Becker
+until it is read.
+
+**The wobble is SATIN RAILS, on every real logo, and not on the synthetic
+one** — which is why no suite saw it. Bean outlines sit on their outline, and
+fill row ends do everywhere but Becker (above). `satin_rails_follow_edge` ON moved the spike's rail figure about
+10% (0.071 → 0.064, 0.082 → 0.074), agreeing with Kent's eye calling that flag
+invisible (2026-09-18). The worst points are all INWARD dips of 0.45–0.95 mm.
+**Not diagnosed: why.** Not established: that 0.10 mm std is what his eye
+sees — thread is ~0.4 mm, so it is plausible and unproven.
+
+Three traps the instrument cost, each a way to read clean where it is not:
+
+- **A rolling median INVERTS an alternation.** On a ±a sawtooth a 7-point
+  window holds four of the other sign, so the baseline is −s and the deviation
+  reads 2a. The baseline is a 3-point median (one dent cannot drag it) then a
+  trapezoid-weighted mean, whose alternating sum is exactly zero.
+- **A turn-angle test for fill row ends drops the wobbling ones.** An end
+  0.3 mm shy of its neighbour turns 53° into the link, not 90°: 12 of 24 ends
+  found, every one at d = 0.00. Row ends are direction REVERSALS along the row
+  axis, plus the link's other vertex.
+- **Short stitches are excused by the guard's own condition, never by size.**
+  `_short_stitch_guard` retracts where a rail steps under 0.3 mm; the same
+  0.4 mm inward dip on a rail stepping a full 0.4 mm is a sawtooth, and a
+  size-only filter would have made the instrument blind to exactly that.
+
+The outline half (low-resolution uploads, Becker class) is real and separate;
+it needs registration to measure and was left in the spike on purpose.
+
+*(measured 2026-09-19 — `tools/edge_wobble.py`, `tests/test_edge_wobble.py`;
+the spike's scripts were throwaway and are not in the repo)*

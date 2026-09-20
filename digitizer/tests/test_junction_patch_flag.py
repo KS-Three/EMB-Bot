@@ -44,6 +44,17 @@ def _cfg(**kw) -> PipelineConfig:
     # in scope-history's flip addendum; this file pins the patch mechanism
     # on the polygons it was measured on.
     kw.setdefault("subpixel_edges_upscaled", False)
+    # `satin_corner_twigs` held OFF for the same reason (Kent's 2026-09-19
+    # flip): the corner rule re-decomposes the arms the cover patches, and on
+    # Becker at 80 mm the satin cover then clears the finding at a net -1
+    # stitch (6,528 -> 6,527) instead of adding thread -- the mechanism is
+    # measured on the decomposition it was built on.
+    kw.setdefault("satin_corner_twigs", False)
+    # `satin_junction_stack` held OFF too (Kent's 2026-09-19 flip, the same
+    # day): its part C composes this very cover under the arms by default,
+    # so OFF and ON would sew the same cover and this file's contrast -- the
+    # cover alone against no cover -- would read nothing.
+    kw.setdefault("satin_junction_stack", False)
     return PipelineConfig(target_width_mm=80.0, garment_id="left_chest", **kw)
 
 

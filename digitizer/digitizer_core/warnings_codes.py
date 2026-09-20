@@ -193,7 +193,7 @@ SHAPE_TOO_THIN_TO_FILL = "SHAPE_TOO_THIN_TO_FILL"  # narrower than a fill can ho
 # list[str], "threads": list[str], "total_mm2": float, "largest_mm2": float};
 # stage 7's still carries {"count": int} only.
 SHAPE_NOT_STITCHED = "SHAPE_NOT_STITCHED"
-LONG_JUMPS_TRIMMED = "LONG_JUMPS_TRIMMED"          # travel could not stay inside the shape. extra: {"count": int}
+LONG_JUMPS_TRIMMED = "LONG_JUMPS_TRIMMED"          # the thread is lifted inside a shape: travel could not stay inside it, or (cfg.fill_bridge_cut) a route existed and the cut was cheaper than thread on top of finished fill. extra: {"count": int}
 SMALL_SHAPES_AS_RUN = "SMALL_SHAPES_AS_RUN"        # too small for fill or satin; sewn as run outlines instead. extra: {"count": int}
 # Stage 6 (satin tier, 2026-09-03). A stretch of a stroke inside a satin shape
 # whose crosses fell under SATIN_MIN_CROSS_MM sewed as a bean run along its

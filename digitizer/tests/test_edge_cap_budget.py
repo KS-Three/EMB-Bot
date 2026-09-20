@@ -84,11 +84,19 @@ def _run(fixture: str, width: float, cap: str = "bean",
     # band is a different tier on the accurate polygon. What this file pins
     # is the edge-cap budget MECHANISM, measured on those polygons, so it
     # reads them (scope-history 2026-09-18, the flip's addendum).
+    # `satin_lettering_split` is held OFF for the same reason (flipped ON
+    # 2026-09-19, Kent's call): every number here was measured with becker's
+    # MARINE band FILLING at 80-110 mm. Under the flip the band sews as split
+    # satin, the lettering cover (step 5) then omits it from the cap, and the
+    # sweep reads gate_saved_pct 31.9 at 88 mm against the 12.0 the cliff doc
+    # measured, with run counts [9, 8, 9] flat across it -- the gate saving
+    # more because the letters stopped being fill, not the mechanism moving.
     _result, plan = digitize(
         TESTDATA / fixture,
         PipelineConfig(target_width_mm=width, edge_cap=cap,
                        edge_cap_over_budget=over_budget,
-                       subpixel_edges_upscaled=False, **extra))
+                       subpixel_edges_upscaled=False,
+                       satin_lettering_split=False, **extra))
     return plan
 
 

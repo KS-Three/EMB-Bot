@@ -24,10 +24,21 @@ Also prints the median THREAD pitch across the column (two threads per
 station, so 0.200 mm at `SATIN_SPACING_MM` 0.4): 0.152 on every leaned
 column before density compensation, 0.20 after.
 
-    .venv/bin/python tools/satin_lean.py [case ...] [--stock]
+Also, per lettering group (`textcluster._lettering_groups`, the population
+`set_lettering_house_angle` angles): its house, its satin runs and their
+cross CONCENTRATION -- the length-weighted doubled-angle resultant of the
+crosses, 1.0 when every cross in the group runs one way, ~0 when two
+families run perpendicular to each other. It measures ONE angle, which is
+the pro's convention (2026-09-03 §2) and not the rule's (bars take their own
+perpendicular), so a group whose stems and bars both sew square reads LOW
+by design; the number behind the step-1 flip decision (2026-09-19) is this
+one, on drone's THERMAL with and without `--anchor`.
+
+    .venv/bin/python tools/satin_lean.py [case ...] [--stock] [--anchor]
 
 Cases: fremont (four-fold on), enthusiast (93 mm, four-fold on), drone
-(four-fold on), becker, gaulke, or a path under `testdata/`.
+(four-fold on), becker, gaulke, or a path under `testdata/`. `--anchor`
+digitizes with `satin_house_anchor=True` (plan step 1).
 """
 from __future__ import annotations
 
@@ -43,6 +54,7 @@ import numpy as np  # noqa: E402
 from digitizer_core import PipelineConfig, digitize  # noqa: E402
 from digitizer_core.stage6_satin import strip_splits  # noqa: E402
 from digitizer_core.stitches import strip_ties  # noqa: E402
+from digitizer_core.textcluster import _lettering_groups  # noqa: E402
 
 CASES = {
     "fremont": ("photo/logo_hotel_fremont.webp",
@@ -91,18 +103,54 @@ def crosses(plan, house: dict[str, float]):
     return np.asarray(leans), np.asarray(rel), np.asarray(pitches)
 
 
+def concentration(plan, shape_ids: set[str]) -> tuple[float | None, int]:
+    """-> (cross concentration, satin runs) over the satin runs of
+    `shape_ids`: |sum L e^(2i theta)| / sum L over every segment of each run
+    with splits and ties stripped, or None with no satin run."""
+    c = s = total = 0.0
+    runs = 0
+    for _block, run in plan.iter_runs():
+        if run.kind != "satin" or run.shape_id not in shape_ids:
+            continue
+        runs += 1
+        pts = np.asarray(strip_splits(strip_ties(list(run.points))), dtype=float)
+        if len(pts) < 2:
+            continue
+        vec = pts[1:] - pts[:-1]
+        length = np.hypot(vec[:, 0], vec[:, 1])
+        keep = length > 0.0
+        theta = np.arctan2(vec[keep, 1], vec[keep, 0])
+        c += float(np.sum(length[keep] * np.cos(2.0 * theta)))
+        s += float(np.sum(length[keep] * np.sin(2.0 * theta)))
+        total += float(np.sum(length[keep]))
+    if runs == 0 or total <= 0.0:
+        return None, runs
+    return float(np.hypot(c, s) / total), runs
+
+
 def main(argv: list[str]) -> None:
     stock = "--stock" in argv
+    anchor = "--anchor" in argv
     names = [a for a in argv if not a.startswith("--")] or list(CASES)
     for name in names:
         rel, kw = CASES.get(name, (name, dict(target_width_mm=80.0)))
+        if anchor:
+            kw = dict(kw, satin_house_anchor=True)
         result, plan = digitize(ROOT / "testdata" / rel, PipelineConfig(**kw))
+        for group in _lettering_groups(result.regions):
+            heights = sorted(r.polygon.bounds[3] - r.polygon.bounds[1] for r in group)
+            angle = group[0].meta.get("satin_angle_deg")
+            conc, runs = concentration(plan, {r.shape_id for r in group})
+            print(f"  group n={len(group):2d} h~{heights[len(heights) // 2]:4.1f} mm "
+                  f"house={'None' if angle is None else f'{angle:5.1f}'} "
+                  f"satin runs={runs:3d} cross concentration="
+                  f"{'-' if conc is None else f'{conc:.3f}'}")
         house = {r.shape_id: r.meta["satin_angle_deg"] for r in result.regions
                  if r.meta.get("satin_angle_deg") is not None}
         if stock:
             house = {r.shape_id: r.meta.get("satin_angle_deg", 0.0) for r in result.regions}
         lean, vs_house, pitch = crosses(plan, house)
-        print(f"## {name}{' (stock)' if stock else ''} st={plan.stats.stitch_count} "
+        print(f"## {name}{' (stock)' if stock else ''}{' (anchor)' if anchor else ''} st={plan.stats.stitch_count} "
               f"trims={plan.stats.trims} housed={len(house)} crosses={len(lean)}")
         if len(lean) == 0:
             continue
