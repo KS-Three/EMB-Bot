@@ -263,6 +263,16 @@ class PipelineConfig:
     # 156 with black under it) without recovering the file's 120. Kept so
     # the next reader can re-measure rather than rebuild; 0 is the form.
     alpha_edge_extend_px: int = 0
+    # The extension only where the resolution-floor upscale will run (the
+    # artwork under `min_px_per_mm` at the target width, decided the same
+    # way in stage 0 and stage 1 — `alpha_edge.upscale_expected`). Measured
+    # 2026-09-20: the Lanczos upscale is the reader that smeared black under
+    # Becker's alpha into 59 -> 157 trims; the three cutouts above the floor
+    # read the same from the file and from black and paid for the
+    # whole-image extension (ENTHUSIAST +5 trims, drone +33, Fremont +78 mm
+    # of exposed travel). Built 2026-09-20 on Kent's pick, measured beside
+    # the other two forms in scope-history; the flip is his.
+    alpha_edge_extend_upscaled_only: bool = False
 
     # Stage 1.5 — photo prep (photo plan §2 rows 3-4; build step 3, first
     # slice — stage1_photo_prep.py). CLAHE tone rescue + texture kill on the

@@ -65,3 +65,35 @@ def extend_opaque_colour(rgb: np.ndarray, alpha: np.ndarray, max_px: int = 0) ->
     else:
         out[..., :3] = filled
     return out
+
+
+def upscale_expected(alpha: np.ndarray, target_width_mm: float, min_px_per_mm: float) -> bool:
+    """Will stage 1's resolution-floor upscale run on this cutout? The same
+    test stage 1 makes later — the artwork's pixel width at the target width
+    against `cfg.min_px_per_mm` — read off the bounding box of alpha >= 128,
+    which on the alpha branch IS stage 1's foreground box (border-connected
+    transparency is the background; an enclosed transparent hole sits inside
+    the box either way). Stage 0 decodes the file for itself before stage 1
+    runs, so both stages decide `alpha_edge_extend_upscaled_only` from this
+    one rule and read the same picture.
+
+    Measured 2026-09-20 (scope-history, the extend addendum): the only
+    cutout black-under-alpha hurt was the one the Lanczos upscale smears
+    (Becker at 1.46 px/mm, 59 -> 157 trims); the three above the floor read
+    the same from the file and from black, and paid for the extension.
+    """
+    ys, xs = np.nonzero(alpha >= 128)
+    if len(xs) == 0 or target_width_mm <= 0:
+        return False
+    art_w_px = max(1, int(xs.max()) - int(xs.min()) + 1)
+    return art_w_px / float(target_width_mm) < float(min_px_per_mm)
+
+
+def extension_applies(cfg, alpha: np.ndarray | None) -> bool:
+    """The one gate both stages use: the flag, a real alpha, and — under
+    `alpha_edge_extend_upscaled_only` — an upscale ahead."""
+    if not cfg.alpha_edge_extend or alpha is None or not (alpha < 255).any():
+        return False
+    if cfg.alpha_edge_extend_upscaled_only:
+        return upscale_expected(alpha, cfg.target_width_mm, cfg.min_px_per_mm)
+    return True

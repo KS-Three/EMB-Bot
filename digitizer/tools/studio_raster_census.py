@@ -86,8 +86,11 @@ ARMS: dict[str, dict] = {
     # The halo variant: the extension reaches 8 source px from the opaque
     # edge (every kernel's reach) and leaves a deeper backdrop alone.
     "extend_halo8": {"alpha_edge_extend": True, "alpha_edge_extend_px": 8},
+    # Gated on the resolution-floor upscale: the extension only where the
+    # Lanczos upscale will run (Kent's pick after the first two arms).
+    "extend_upscaled": {"alpha_edge_extend": True, "alpha_edge_extend_upscaled_only": True},
 }
-PREFIX_ARMS = {"extend", "extend_halo8"}
+PREFIX_ARMS = {"extend", "extend_halo8", "extend_upscaled"}
 RASTERS = ["native", "studio", "area", "native_bleed", "studio_bleed", "studio_high", "studio_high_bleed", "native_black"]
 # The per-flag arms run on the file and the panel's raster; the candidate-fix
 # rasters carry the defaults (and, for `native_black`, the extend arm).

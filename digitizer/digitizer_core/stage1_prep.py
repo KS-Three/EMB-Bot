@@ -40,7 +40,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-from .alpha_edge import extend_opaque_colour  # noqa: F401  (re-exported: stage 1 is where it acts)
+from .alpha_edge import extend_opaque_colour, extension_applies  # noqa: F401  (re-exported: stage 1 is where it acts)
 from .config import PipelineConfig
 from .letterbox import strip_letterbox
 from .threads import rgb_to_lab
@@ -271,7 +271,7 @@ def prep(image: str | Path | bytes | np.ndarray, cfg: PipelineConfig) -> Prep:
     # readers that want exactly that (`bg_edge_rgb` below, preflight's border
     # colour — see `extend_opaque_colour`). With the flag off nothing here
     # runs and `raw` is never read.
-    extend = bool(cfg.alpha_edge_extend and alpha is not None and (alpha < 255).any())
+    extend = extension_applies(cfg, alpha)
     raw = rgb
     if extend:
         rgb = extend_opaque_colour(rgb, alpha, cfg.alpha_edge_extend_px)

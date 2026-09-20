@@ -122,3 +122,28 @@ def test_the_halo_extends_only_within_reach_of_the_edge_and_leaves_a_deeper_back
     everywhere = s1.extend_opaque_colour(rgb, alpha, max_px=0)
     assert tuple(everywhere[0, 0]) == (200, 100, 50)
     assert PipelineConfig().alpha_edge_extend_px == 0
+
+
+def test_gated_on_the_upscale_the_extension_runs_under_the_floor_and_not_above_it():
+    """`alpha_edge_extend_upscaled_only` (Kent's pick, 2026-09-20): the
+    extension only where stage 1 will upscale — the one place black under
+    the alpha was measured to bite. Both stages decide from
+    `alpha_edge.upscale_expected`, the floor test on the alpha >= 128 box."""
+    from digitizer_core.alpha_edge import upscale_expected
+    assert PipelineConfig().alpha_edge_extend_upscaled_only is False
+    friendly, hostile = _cutout((180, 30, 30)), _cutout((0, 0, 0))
+    a = friendly[..., 3]
+    assert upscale_expected(a, 30.0, 4.0) is True        # 30 px of art at 30 mm: 1 px/mm, under the floor
+    assert upscale_expected(a, 5.0, 4.0) is False        # the same art at 5 mm: 6 px/mm, above it
+    assert upscale_expected(np.zeros((4, 4), np.uint8), 30.0, 4.0) is False
+    gated = dict(alpha_edge_extend=True, alpha_edge_extend_upscaled_only=True)
+    # Under the floor: the gate opens and the two exporters read the same.
+    lo_f, lo_h = s1.prep(friendly, PipelineConfig(target_width_mm=30.0, **gated)), s1.prep(hostile, PipelineConfig(target_width_mm=30.0, **gated))
+    assert lo_f.raw_rgb is not None and np.array_equal(lo_f.rgb, lo_h.rgb)
+    # Above the floor: nothing runs — byte-identical to OFF, and the two
+    # exporters go on reading differently, as they do today.
+    off_f = s1.prep(friendly, PipelineConfig(target_width_mm=5.0))
+    hi_f = s1.prep(friendly, PipelineConfig(target_width_mm=5.0, **gated))
+    hi_h = s1.prep(hostile, PipelineConfig(target_width_mm=5.0, **gated))
+    assert hi_f.raw_rgb is None and np.array_equal(hi_f.rgb, off_f.rgb)
+    assert not np.array_equal(hi_f.rgb, hi_h.rgb)
