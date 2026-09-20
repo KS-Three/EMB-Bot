@@ -34,6 +34,34 @@ Moved verbatim 2026-08-28 — no section was rewritten in the move.
 
 ## Standing rulings — decided, do not re-litigate
 
+- **The worksheet states only what the ENGINE KNOWS. Kent's ruling
+  2026-09-20.** The machine-physics playbook's Part 3 lists what the sheet
+  "must start carrying": assumed backing, topper, needle spec, tension targets
+  in grams with the 1/3-2/3 check, the colour-stop to needle map, thread
+  metres, runtime. Kent took the first, second, fifth, sixth and seventh and
+  **left needle size and tension off**, asked directly and with the trade-table
+  provenance in front of him. The line he drew: every printed claim must be
+  derivable from the fabric preset or from the design's own stitches — a sheet
+  that prints gram targets this repo cannot verify, next to a machine that may
+  simply run different, is worse than one that stays silent. Do not "complete"
+  Part 3 by adding them later without asking again.
+  *(2026-09-20 — `src/pdfsheet.js`, `app/src/lib/pdfsheet.spec.js`)*
+
+- **A backing class is a garment property, not a stitch-count threshold.**
+  Same ruling's mechanism, recorded because the old behaviour looks defensible
+  in isolation: the sheet prescribed cutaway only past 25,000 stitches, so a
+  3,000-stitch left chest on jersey and the same design on canvas — goods that
+  want OPPOSITE stabilizers — both got silence. `assumed_backing` /
+  `needs_topper` now come off the fabric preset and print on every sheet that
+  names a garment we ship. The threshold survives, demoted to an escalation
+  (tear-away → cutaway past 25k), so the old rule is a special case rather
+  than a contradiction. **An unknown garment prints nothing** — no basis, no
+  claim, the same posture the thread-metres row already takes. Note that
+  `fabricForGarment` is the WRONG lookup for this: it falls back to pique_knit
+  for anything unknown, which is right when you are about to sew and wrong
+  when you are about to print advice. Use `GARMENT_FABRIC` directly.
+  *(2026-09-20 — `digitizer/tests/test_fabric_wire.py` guards both engines)*
+
 - **A real PHOTOGRAPH counts as a tonal positive for the flat/gradient
   boundary.** Kent's ruling 2026-09-11, taken with the cost in front of him.
   The reason it is not a free label: stage 0's PHOTO gate already fails on
@@ -1497,6 +1525,34 @@ its hedge as it is copied forward** — is why this file is split.
 ---
 
 ## Gotchas — cost someone a session once
+
+- **Adding an engine file means FOUR lists, and only three were documented —
+  now guarded.** `src/*.js` files are plain scripts sharing one
+  `globalThis.EMB`, and the load order lives in `app/scripts/copy-engine.mjs`
+  (`ENGINE_FILES`, what gets copied), `app/index.html` (the `<script>` tags,
+  what the browser actually loads) and `app/src/lib/emb.js` (`ENGINE_KEYS`,
+  what app code reads). `emb.js`'s comment has always said "MUST stay in
+  sync" and **nothing enforced it**. The fourth is a private module list in
+  `estimate.spec.js`'s `beforeAll`, named in no comment at all — a spec
+  fixture, so deliberately out of the new guard's scope, but it is what makes
+  a green-looking run possible with the file half-wired.
+  **Why the failure is quiet rather than loud:** a file copied but never
+  script-tagged simply is not on `EMB`, and house style is for callers to
+  guard for a missing engine symbol (a missing symbol means a stale
+  `public/engine/` copy — see `estimate.js` on `THREAD_LENGTH_FACTOR`). So
+  the row just vanishes, on a build whose only defect is a forgotten line of
+  HTML. `app/src/lib/engineList.spec.js` now compares all three shipping
+  lists, membership AND order, and was mutation-proved by deleting the
+  `index.html` tag. *(hit 2026-09-20 adding `sewtime.js`)*
+
+- **A parser that reads a list must strip comments first.** `ENGINE_KEYS` has
+  a comment block INSIDE the array explaining why `"fonts.js"` is excluded —
+  and it names the file in quotes, so a naive scan for quoted `.js` literals
+  reads the explanation as an entry and silently adds back the one file the
+  comment exists to keep out. Cost ten minutes of a wrong count during the
+  guard above; the same shape as `test_fabric_wire.py`'s anti-vacuity rule,
+  which is why that file pins its parser before it pins anything else.
+  *(2026-09-20)*
 
 - **A loose PROBE produces false positives at a steady rate, and the tell is
   always in what the tool reported rather than what the page looked like
