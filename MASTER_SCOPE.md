@@ -486,6 +486,20 @@ there is a commitment or a defect. The two items that bind how work may be done
 toolset — moved to [`DOCTRINE.md`](DOCTRINE.md) 2026-09-08, since they are
 constraints rather than status.
 
+### Machine-physics change list — audited, and no longer orphaned
+
+No status doc pointed at the machine-physics playbook until 2026-09-20: three
+research docs cite its LAWS, nothing tracked its 17-row engine change list.
+Audited row by row against `main` in
+[`docs/scope/machine-physics-backlog.md`](docs/scope/machine-physics-backlog.md):
+**2 built, 2 built-but-gated, 8 partial, 5 not built.** None is a defect yet —
+whether the unbuilt rows become numbered entries here is Kent's call. The one
+number that governs a decision: of the 5 not-built rows only **row 2** (the
+pull-comp mm table) is blocked by gate 1; the other four the playbook itself
+marks desk-safe. Rows 7 and 8 are gated behind `cfg.directional_comp` on
+purpose — gate 1, do not flip.
+*(audited 2026-09-20 — code read, `origin/main` 1ac731cd)*
+
 ---
 
 ## Capability areas
@@ -643,17 +657,14 @@ thumbnail. Pinned on the literal 0.4 and both ratios. *(2026-09-04 — `preview.
 
 **Thread lighting is unverified against real thread** — eye-tuned, and the one physical out (2026-09-01) cannot settle it: its colours were random operator threading, so DOCTRINE bars grading colour from it at all. Treat the look as a preference, not a calibration. *(suspected 2026-08-25; sharpened 2026-09-14)*
 
-**Typographic punctuation folds to its ASCII twin where a font lacks it.** `satinfont.js TYPOGRAPHIC_FOLD` stitches the twin ONLY where the fancy form is missing — 367 font x character combinations rescued, and all 85 fonts hash identically on text that never needed it. Not NFKD: accented letters are different letters and stay unfolded. What it cost before the fix (a phone's U+2019 sewing "Fritschs Stitches", under a note naming a character that looks identical to the one typed): DOCTRINE; scope-history 09-07. *(fixed 2026-09-07)*
+**Typographic punctuation folds to its ASCII twin where a font lacks it.** `satinfont.js TYPOGRAPHIC_FOLD`, 367 font x character combinations rescued; not NFKD. Detail: [area 3](docs/scope/3-studio-app-wizard.md); DOCTRINE. *(fixed 2026-09-07)*
 
 **A design is named after what is in it, and the registry stops swallowing
-failed writes.** Every project was "Untitled design", so "My designs" listed
-rows a customer could only tell apart by opening each, and every backup
-downloaded as `untitled-design.embproj`. A still-unnamed design now takes its
-name from its content; a name typed by hand is sticky. Separately,
-`renameProject` and `deleteProject` reported success for an index write that
-never landed — a name and a project's membership of the registry live ONLY in
-that index — and `deleteProject` removed the record before writing it. Both
-propagate now, index first. *(fixed 2026-09-07 — area 3; DOCTRINE)*
+failed writes.** Every project was "Untitled design"; `renameProject` and
+`deleteProject` reported success for index writes that never landed. Both
+propagate now, index first. Detail:
+[area 3](docs/scope/3-studio-app-wizard.md); DOCTRINE.
+*(fixed 2026-09-07)*
 
 **The built bundle works wherever it is served.** `vite.config.js` sets
 `base: "./"` and five hand-written `/fonts/…` paths ignored it, so below the
@@ -661,7 +672,7 @@ domain root the lettering lane produced nothing; font LICENCE links were among
 the five. Document-relative now, identical at the root. *(fixed 2026-09-07 —
 `assetPaths.spec.js`)*
 
-**Lettering under the cap floor now names a way out.** The "cannot be sewn" verdict was the only one with no fix while the milder branch named two. Levers were measured before being named, so line breaks lead and "fewer characters" is second; "Size up" is withheld at the width cap, the rule the hairline branch already followed. The measured ladder (74 chars at default left chest = 1.3 mm against a 4 mm floor, and what each lever buys): scope-history 09-07. *(fixed 2026-09-07)*
+**Lettering under the cap floor now names a way out.** Line breaks lead, "fewer characters" second, "Size up" withheld at the width cap. Detail: [area 3](docs/scope/3-studio-app-wizard.md); scope-history 09-07. *(fixed 2026-09-07)*
 
 ### 4. Export formats — [detail](docs/scope/4-export-formats.md)
 
