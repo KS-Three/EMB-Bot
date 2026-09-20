@@ -15108,8 +15108,15 @@ both. The two tools' arms pin the flag: `stage0_scale_arms` carries the
 fourth arm with the three measured ones held OFF, and the census tool's
 `extend*` arms hold it OFF so their rows keep their meaning.
 
-**The full suite on this tree** and any pin it moves: the follow-through
-commit's to record here.
+**The full suite on this tree: 2,746 passed, 0 failed, 5 xfailed** (29m43s,
+`-n auto`, CI's three platform goldens deselected). No pin moved, and the
+five expected failures are the windows cases: the three synthetics and
+ENTHUSIAST in `DEPARTS_FROM_NATIVE`, plus the unrelated one the suite
+already carried. The two drone params and the two ENTHUSIAST params that
+were strict xfails this morning are plain passing tests now — the whole
+`photo_*` half of the scale defect, gone with the two picks of the day,
+while the `flat` → `gradient` half is exactly where the recalibration spec
+left it.
 
 *(built 2026-09-20 — Kent's call; `tools/stage0_scale_arms.py run --corpus`,
 arm `gated_s0whole`)*
