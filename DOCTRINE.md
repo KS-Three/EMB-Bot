@@ -6090,3 +6090,38 @@ all reproduced 14. The trace's `px_per_mm` — 14.61 against the file's 17.05
   path no customer uses, and the e2e is the only test that goes through the
   one they do. When the two disagree, the e2e is the primary source and the
   engine probe is the one to explain.
+
+## Stage 0's scale defect is two defects, and the test's own resample makes one of them (2026-09-20)
+
+`tests/test_classifier_scale_invariance.py` pins "the same artwork classifies
+differently by export resolution" as one known defect — the pixel-absolute
+signal windows. Measured on its six fixtures and the nine real logos under
+the three forms of `alpha_edge_extend` (`tools/stage0_scale_arms.py`,
+scope-history 2026-09-20, the scale addendum), it is two:
+
+- **The `flat` → `gradient` flips on downscale are the windows, on every
+  fixture, alpha or not.** The three opaque fixtures cannot be touched by the
+  extension and read identically under all three arms; `logo_alpha` changes
+  signals but not class. That half is the recalibration spec's subject and
+  nothing about alpha is in it.
+- **The `photo_*` misroutes on downscaled alpha cutouts are the RGB under the
+  alpha — put there by the resampler.** PIL resamples RGBA premultiplied, so
+  `_classify_at` hands stage 0 a file with black under alpha == 0 and noise
+  under the ramp — the Studio-canvas rewrite, manufactured by the harness.
+  Drone's `photo_subject` at 200–250 px and ENTHUSIAST's `photo_scene` at
+  200–400 are `unique_color_mass` reading that black (0.31–0.51, against
+  0.09–0.22 with the colour extended); whole-image extension removes every
+  one. **Do not read a downscaled RGBA fixture as "the same artwork
+  smaller"** — it is a hostile exporter's file, and the premultiplied Lanczos
+  also bakes the exporter's ramp colour into edge pixels that clip opaque,
+  which no extension can undo (pinned in the tool's test).
+- **The shipped gate has a boundary the whole-image form has not.** The
+  extension switches off where the art box crosses 4 px/mm at the target, so
+  ENTHUSIAST reads `gradient` at 320 px, `photo_scene` at 400 (exactly OFF's
+  reading) and `gradient` again at 500: one class change the whole-image arm
+  does not make. On the nine logos at native size the three arms read one
+  class each, so a stage-0-only whole-image read would change no corpus class
+  and remove both the reachable misroute and the boundary. Kent's to pick;
+  not a threshold move.
+
+*(measured 2026-09-20 — `tools/stage0_scale_arms.py run --corpus`)*
