@@ -590,6 +590,11 @@ the Layers panel, and fabric/garment presets. Logic coverage is broad —
 nearly every `app/src/lib/*.js` module has a paired spec — with UI-behaviour
 coverage riding on live-browser e2e specs across several garments, the image
 content path, four export formats, and the embroidery field's own chrome.
+**The worksheet states the digitizer's assumptions; both surfaces state run
+time.** Backing and topper come off the fabric preset, not a stitch count;
+`src/sewtime.js` gives minutes at 650 spm incl. trims. Only what the engine
+derives — Kent's ruling left needle and tension off. *(2026-09-20 — DOCTRINE)*
+
 **What holds it at Medium:** fabric-preset accuracy is gated on the controlled
 sew-out CARD, which has not been sewn — the one physical out so far (2026-09-01)
 was a single uncontrolled icon. See Cross-cutting issues.
@@ -644,7 +649,7 @@ thumbnail. Pinned on the literal 0.4 and both ratios. *(2026-09-04 — `preview.
 
 **Thread lighting is unverified against real thread** — eye-tuned, and the one physical out (2026-09-01) cannot settle it: its colours were random operator threading, so DOCTRINE bars grading colour from it at all. Treat the look as a preference, not a calibration. *(suspected 2026-08-25; sharpened 2026-09-14)*
 
-**Typographic punctuation folds to its ASCII twin where a font lacks it.** `satinfont.js TYPOGRAPHIC_FOLD` stitches the twin ONLY where the fancy form is missing — 367 font x character combinations rescued, and all 85 fonts hash identically on text that never needed it. Not NFKD: accented letters are different letters and stay unfolded. What it cost before the fix (a phone's U+2019 sewing "Fritschs Stitches", under a note naming a character that looks identical to the one typed): DOCTRINE; scope-history 09-07. *(fixed 2026-09-07)*
+**Typographic punctuation folds to its ASCII twin where a font lacks it** (`satinfont.js TYPOGRAPHIC_FOLD`) — [area doc](docs/scope/3-studio-app-wizard.md). *(fixed 2026-09-07)*
 
 **A design is named after what is in it, and the registry stops swallowing
 failed writes.** Every project was "Untitled design", so "My designs" listed
