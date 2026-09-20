@@ -105,6 +105,16 @@ def _design_only(image: Path, design: dict) -> tuple[dict, float, float]:
     # different questions and can move opposite ways: `unsewn_frac` is artwork
     # the stitch-out never covered, `overshoot_frac` is thread standing on
     # cloth the artwork leaves bare. See `dropped_elements.analyse_design`.
+    #
+    # DELIBERATELY NOT in `analysis.METRICS` or `eye_pairs_gallery.METRIC_BETTER`
+    # (2026-09-20). Those two are the YARDSTICK's table -- spec sections 3.2 and
+    # 3.7, restated and pinned by `tests/test_eye_pairs_gallery.py::
+    # test_metric_table_pins_the_yardstick_spec` -- and every metric in them is
+    # a chip in Kent's labelling UI and a candidate for the phase-1 agreement
+    # statistic. Adding to it mid-campaign changes what he is shown and what
+    # gets scored, which is his call and the spec's, not a side effect of
+    # splitting an instrument. Rows carry the two regardless, so anything
+    # reading features by name (this module's own guard test) gets them.
     row["unsewn_frac"] = _num(lost["unsewn_frac"])
     row["overshoot_frac"] = _num(lost["overshoot_frac"])
     edge = edge_smoothness.analyse_design(image, design, registered=reg)

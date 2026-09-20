@@ -28,11 +28,6 @@ METRICS: dict[str, str] = {
     "artfid_colour": "higher",
     "lost_elements": "lower",
     "lost_frac": "lower",
-    # The two halves of `lost_frac`, which can move OPPOSITE ways under one
-    # change (rails further out cover more artwork and spill more thread), so
-    # the total's direction is not either half's. Both are still "lower".
-    "unsewn_frac": "lower",
-    "overshoot_frac": "lower",
     "ragged_mm": "lower",
     "hausdorff_mm": "lower",
     "roughness_deg": "lower",

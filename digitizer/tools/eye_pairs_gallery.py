@@ -123,9 +123,6 @@ METRIC_BETTER: dict[str, str] = {
     "artfid_colour": "higher",
     "lost_elements": "lower",
     "lost_frac": "lower",
-    # The two halves of `lost_frac` — see `eye_pairs/analysis.py`'s note.
-    "unsewn_frac": "lower",
-    "overshoot_frac": "lower",
     "ragged_mm": "lower",
     "hausdorff_mm": "lower",
     "roughness_deg": "lower",
