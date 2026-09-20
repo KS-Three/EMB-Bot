@@ -215,7 +215,13 @@ building it produced a measurement:
    the alpha (`unique_color_mass` 0.335 pre-flip, 0.091 extended, 0.159 native).
    The test pins the pre-flip reading; the drone does not count toward §2. The
    remaining four fixtures still carry the defect this spec is about
-   (scope-history 2026-09-20, the flip addendum).
+   (scope-history 2026-09-20, the flip addendum). Measured the same day under
+   all three forms of the extension (`tools/stage0_scale_arms.py`, the scale
+   addendum): the `flat` → `gradient` flips on downscale are the windows on
+   every fixture, opaque or not — this spec's subject, unchanged — while the
+   `photo_*` misroutes on the alpha fixtures were the RGB under the alpha,
+   which PIL's premultiplied resample puts there (black under alpha == 0)
+   and the extension removes.
 3. **It is not an artifact of the resampler.** `photo/enthusiast_logo.png` is
    `flat` at its native 1400x316 and `gradient` at 500 px under NEAREST,
    BILINEAR, BICUBIC and LANCZOS alike. NEAREST interpolates nothing and posts
