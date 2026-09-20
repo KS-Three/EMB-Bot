@@ -1929,6 +1929,7 @@ def sequence(
                     junction_stack=cfg.satin_junction_stack,
                     end_near=exit_near if cfg.satin_exit_toward_next else None,
                     underlay_on_column=cfg.satin_underlay_on_column,
+                    walk_cursor_reach_mm=cfg.satin_walk_cursor_reach_mm,
                     # The ceiling the classifier admitted at is the one the
                     # emitter sews at — one number, threaded, never two
                     # constants (DOCTRINE 2026-09-02). The fold guard rides

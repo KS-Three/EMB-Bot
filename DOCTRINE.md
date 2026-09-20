@@ -6090,3 +6090,38 @@ all reproduced 14. The trace's `px_per_mm` — 14.61 against the file's 17.05
   path no customer uses, and the e2e is the only test that goes through the
   one they do. When the two disagree, the e2e is the primary source and the
   engine probe is the one to explain.
+
+## A "refused walk" is five different refusals, and four of them are not relaxable (2026-09-20)
+
+The lettering trim census counts a `walk-refused` bucket by logging
+`path is None` from `stage6_satin._graph_travel`. Read that as one cause and
+the obvious next move is "relax the walk" — which is not a change anyone can
+make, because the function refuses four different ways and its caller a
+fifth. Measured over 838 between-stroke walks, the two MARINE fixtures and
+the nine corpus logos (`tools/refused_walks.py`, scope-history 2026-09-20):
+
+- **343 refusals, and 262 of them are a web that does not reach.** All 118
+  `target_unsnapped` and 128 of the 176 `cursor_unsnapped` have no path even
+  at a 12 mm snap radius with nothing forbidden: different components of the
+  spine web, usually different letters. **A trim is the correct answer
+  there**, and no radius, cap or flag changes it. The strict 0.8 mm target
+  snap that looked like the obvious thing to loosen is doing no harm; its own
+  comment claimed as much and this is the measurement.
+- **The relaxable cause is 47 calls: the needle's distance from the web.**
+  It ends wherever the last run ended, often a cap-extended point off the
+  spine. Those have a path once it reaches, at a 4.1 mm median leg.
+- **A wider reach alone would not have worked.** Past `trim_at` the leg from
+  the true cursor onto the web is trimmed by the linking loop — the very trim
+  the walk was for — so the walk must carry the leg as stitches. Two changes,
+  one flag (`satin_walk_cursor_reach_mm`, built OFF), and the second half is
+  invisible in any before/after that only counts refusals.
+- **`too_long` is a refusal the census could not see at all**, because the
+  caller throws the path away after `_graph_travel` returns it. Three calls,
+  median 105.95 mm of walking for a 2.42 mm move: right to refuse.
+
+**The general shape: a bucket named after a symptom hides its own
+distribution.** Before proposing a fix for a counted cause, count the
+sub-causes — here the honest headline is that three quarters of the bucket is
+not a defect at all.
+
+*(measured 2026-09-20 — `tools/refused_walks.py`, Kent's pick)*
