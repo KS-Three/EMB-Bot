@@ -208,6 +208,14 @@ building it produced a measurement:
    is stable on both counts — and for a reason unrelated to correctness: its
    gradient reading (0.458) sits far enough above the 0.0015 threshold that no
    downscale in range crosses it.
+   *Status 2026-09-20:* `photo/drone_render.png` left BOTH sets, and not through
+   this spec — Kent's flip of `alpha_edge_extend` (gated on the resolution-floor
+   upscale) gave stage 0 nearest-opaque colour under the render's alpha at every
+   sweep width, and its 250-px `photo_subject` turned out to be the backdrop under
+   the alpha (`unique_color_mass` 0.335 pre-flip, 0.091 extended, 0.159 native).
+   The test pins the pre-flip reading; the drone does not count toward §2. The
+   remaining four fixtures still carry the defect this spec is about
+   (scope-history 2026-09-20, the flip addendum).
 3. **It is not an artifact of the resampler.** `photo/enthusiast_logo.png` is
    `flat` at its native 1400x316 and `gradient` at 500 px under NEAREST,
    BILINEAR, BICUBIC and LANCZOS alike. NEAREST interpolates nothing and posts

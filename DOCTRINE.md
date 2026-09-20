@@ -6056,12 +6056,40 @@ all reproduced 14. The trace's `px_per_mm` — 14.61 against the file's 17.05
   endpoint — painted in the artwork's own colours, halos become shapes.
   ENTHUSIAST's file goes 12 → 17 trims under it (its exporter's white under
   the alpha was the friendlier choice) and drone 120 → 153. So the fix
-  belongs where the RGB is READ — the bilateral denoise and the Lanczos
-  upscale on premultiplied colour, leaving `bg_edge_rgb` and the
-  enclosed-hole colour alone — and that is unmeasured and Kent's to build.
-  Until then a Becker-class design digitizes differently from the file than
-  from the Studio, and the Studio's is the worse one. *(measured
-  2026-09-20 — scope-history §E)*
+  belongs where the RGB is READ — and that is `cfg.alpha_edge_extend`,
+  built OFF the same day on Kent's pick: every stage reads nearest-opaque
+  colour under every non-opaque pixel (`stage1_prep.extend_opaque_colour`),
+  and the two readers that want the file's own colour there — `bg_edge_rgb`
+  and preflight's `GROUND_SEWN` border colour — read it from `Prep.raw_rgb`.
+  **Every stage, not only the two filters:** a first cut that put the file's
+  colour back under alpha < 128 after the denoise and the upscale left
+  Becker-with-black-underneath at gradient / 146 regions, because stage 0's
+  gradient signal and stage 2's segmentation run kernels over the whole
+  raster and mask to the artwork afterwards — a kernel on the edge reads
+  what is under the alpha whatever the mask says. Its census (the four
+  cutouts as they are, with black painted under their alpha, and the Studio
+  raster; scope-history 2026-09-20, the extend addendum) is measured: ON,
+  every cutout reads the same whatever sat under its alpha — Becker 157
+  and 175 trims → 54 on the hostile rasters — and the friendly files pay
+  (ENTHUSIAST 12 → 17, drone 120 → 153, Fremont's plate 15 fewer trims for
+  78 mm of travel across its holes). The halo variant
+  (`alpha_edge_extend_px`) is a measured negative: on drone it gives up the
+  invariance (147 on the file, 156 with black underneath) without
+  recovering the file's 120. **Gated on the resolution-floor upscale
+  (`alpha_edge_extend_upscaled_only`, Kent's pick) it is the cure at no
+  cost:** Becker's three rasters read 54 trims and the other nine rows are
+  byte-identical to OFF — the Lanczos upscale was the reader that
+  mattered. **Kent flipped that gated form ON the same day**; OFF is the
+  pre-flip engine, and a test whose numbers were read on it holds OFF
+  (`alpha_edge_extend=False`) rather than moving its pin. The full suite on
+  the flipped tree moved no fixture pin and turned two strict xfails green:
+  `photo/drone_render.png`'s 250-px `photo_subject` in the scale-invariance
+  test was the render's backdrop under its alpha (`unique_color_mass` 0.335
+  pre-flip, 0.091 extended, 0.159 at native), not the pixel-absolute signal
+  windows — **do not count the drone toward the stage-0 recalibration's
+  acceptance**; the other four fixtures still carry that defect. *(measured
+  2026-09-20 — scope-history §E and the extend addendum; built and flipped
+  the same day)*
 - **A gap between two paths on ONE file is a finding, not a curiosity.** The
   14-vs-9 was seen while fixing the e2e for PR #523 and set aside because the
   test was green either way; every engine measurement here goes through a
