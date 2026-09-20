@@ -135,7 +135,13 @@ test("the review step shows the grade, the findings, and the thread bill", async
   // 2026-09-19, when the satin walk started ending each letter facing the
   // next one (`satin_exit_toward_next`) and its trims fell under the
   // professional band on the Studio's own settings (9 for 2,311 stitches on
-  // a tote, 3.9 per 1,000 against the 4.1 line). A clean report is the
+  // a tote, 3.9 per 1,000 against the 4.1 line; 11 and grade B with the
+  // lever off). Those numbers are the PANEL's raster — its 1,200-px canvas
+  // re-encode of the file, which is what every job sees (DigitizePanel's
+  // PROCESS_MAX_PX); the file itself, straight into the engine, reads 14
+  // trims and TRIM_HEAVY with the lever on. `tools/studio-raster.mjs`
+  // writes the panel's raster for measuring; DOCTRINE 2026-09-20 has the
+  // three reasons the two differ. A clean report is the
   // other thing this panel renders, and it is a sentence too — so the
   // contract here is the same as the grade's above: whichever state the
   // engine produces, the panel says it in preflight's words rather than

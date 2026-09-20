@@ -1187,6 +1187,9 @@ cd app && npm install && npm run dev     # Studio dev server
 tools/start-emb-bot.ps1     # Windows: both servers in their own windows + opens the browser
 cd app && npm test          # Studio tests (vitest) — expected clean
 node tools/build-embf.mjs   # rebuild the binary font library (see section above)
+node tools/studio-raster.mjs FILE...   # the raster the Studio ACTUALLY sends (1,200-px long-edge cap, its own
+                                       # rasterize.js in Playwright's Chromium) -> digitizer/.cache/studio-raster/;
+                                       # measure the engine on THIS, not on the file (DOCTRINE 2026-09-20)
 
 cd digitizer && .venv/Scripts/python -m pytest -q -n auto   # Python digitizer tests (runtime + expected failures below)
 cd digitizer && .venv/Scripts/python -m digitizer_service   # service on 127.0.0.1:8721

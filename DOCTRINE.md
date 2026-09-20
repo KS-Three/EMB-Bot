@@ -5874,3 +5874,101 @@ it needs registration to measure and was left in the spike on purpose.
 
 *(measured 2026-09-19 — `tools/edge_wobble.py`, `tests/test_edge_wobble.py`;
 the spike's scripts were throwaway and are not in the repo)*
+
+## The Studio never sends the file: the engine sees a 1,200-px canvas re-encode, and the canvas rewrites the RGB under transparency (2026-09-19/20)
+
+`app/src/ui/DigitizePanel.svelte` takes every upload through `loadImage` +
+`rasterSize` (`app/src/lib/rasterize.js`, long edge capped at
+`PROCESS_MAX_PX = 1200` — a localStorage-size choice), a 2D canvas
+`drawImage`, and `toDataURL("image/png")`, and POSTs THAT PNG to `/digitize`.
+Seven of the nine REAL_ART corpus logos are larger than the cap (tires 1585,
+ENTHUSIAST 1400, Fremont 2500, Golden Tee 2193, gaulke 2778, drone 1536, the
+screenshot 2207 px; Becker 146 and Bridge Bar 400 pass through unresized), so
+every engine number read off `digitizer/testdata/` — the lettering plan's
+nine-logo tables, the trim census, the thin-stroke and junction work — was
+read on a raster no customer sends. It surfaced as a loose end in PR #523:
+the quality-report e2e's ENTHUSIAST job (the Studio's own settings, through
+the service) read **2,311 stitches / 9 trims / grade A** and the same file
+straight into the engine read **2,318 / 14 / grade B, `TRIM_HEAVY`**. Twelve
+option combinations, the service's own decoder and the design conversion
+all reproduced 14. The trace's `px_per_mm` — 14.61 against the file's 17.05
+— was the tell: 1,400 px had become 1,200.
+
+**Three mechanisms, and the second is the one that bites hardest.**
+
+1. **The resample.** No cv2 resize of the file reproduces the browser's:
+   at the Studio's exact 1200×271, `INTER_AREA` reads 14 trims and
+   `INTER_LINEAR` 13 against the browser's 9. A cv2 stand-in is not the
+   Studio's raster; only the Studio's rasterizer is.
+2. **Premultiplied alpha.** A 2D canvas stores premultiplied RGBA, so on
+   export every fully transparent pixel comes back `(0,0,0)` and every
+   semi-transparent pixel's RGB carries un-premultiply rounding noise
+   (alpha 5: 32 → 51). Becker's file (146×91, NOT resized) is one colour
+   `(32,31,35)` everywhere with the shape entirely in alpha; through the
+   canvas its alpha is identical, its RGB identical wherever opaque — and
+   the engine reads **flat / 18 regions / 8,334 stitches / 59 trims** from
+   the file and **gradient / 151 regions / 15,318 / 175** from the Studio's
+   raster, with `LETTERING_TOO_SMALL` and `THREAD_MATCH_POOR` appearing.
+   The pipeline READS the RGB under transparency: stage 1's bilateral
+   denoise (d=5) and its Lanczos ×2.7 upscale to the 4 px/mm floor both
+   blur whatever sits there into the edge pixels, and stage 0 and stage 2
+   then read the halo. Restoring the file's RGB under `alpha == 0` alone
+   takes the Studio raster to 24 regions; restoring every band makes the two
+   byte-identical. The texture-pipeline cure — give every non-opaque pixel
+   the RGB of its nearest opaque pixel (`cv2.distanceTransformWithLabels`,
+   `DIST_LABEL_PIXEL`) — reads **flat / 17 / 8,440 / 54 from BOTH** on
+   Becker (the file's own 8,334 / 59 rested on a white patch its exporter
+   left under the alpha) — and is NOT the fix, see below. Four of the nine logos are alpha cutouts (Becker, ENTHUSIAST
+   — white under its alpha, so the canvas flips it to black — Fremont,
+   drone). *(measured 2026-09-20 — scratchpad `becker_bands.py`,
+   `becker_bleed.py`; scope-history 2026-09-20 carries the corpus table)*
+3. **The filter.** The panel never sets `imageSmoothingQuality`, so the
+   downscale runs at Chrome's default "low" — a bilinear tap with no area
+   averaging. The tires logo has no alpha at all and reads **2,475 stitches
+   / 6 trims / grade A** from its 1,585-px file, **2,487 / 14 / grade B
+   (`TRIM_HEAVY`)** from the Studio's 1,200-px raster, and 2,363 / 8 / A
+   from cv2 `INTER_AREA` at the same size — the customer's design carries
+   eight trims the artwork does not. The service's own decoder already caps
+   at 2,800 px with `INTER_AREA` (`DECODE_MAX_SIDE_PX`), so the panel's
+   resample buys the engine nothing; it exists for localStorage.
+
+**What changes.**
+
+- **Measure on the Studio's raster, never on the file.** `node
+  tools/studio-raster.mjs FILE...` runs the checkout's own `rasterize.js` in
+  Playwright's Chromium and makes the panel's canvas calls; its ENTHUSIAST
+  output reproduced the e2e job to the stitch (2,311 / 9 / 30 jumps / A).
+  Output lands in `digitizer/.cache/studio-raster/` (gitignored, re-creatable).
+  `tests/test_studio_raster_cap.py` pins the tool's cap to the panel's
+  constant and the seven-of-nine population. A number read off the file is
+  a number on a raster the customer never sends, and on an alpha cutout it
+  is a number on whatever the exporter left under the alpha.
+- **Two candidate fixes, both measurable with the tool before anyone builds
+  them, both Kent's.** The Studio can send the file's own bytes to
+  `/digitize` and keep its 1,200-px canvas for the localStorage preview only
+  (the service's decoder takes over the cap, with a better filter); or set
+  `imageSmoothingQuality = "high"` before the draw (`--smoothing high`
+  writes exactly that raster). Neither touches an alpha cutout's
+  under-transparency RGB, which is the pipeline's to stop reading.
+- **An alpha cutout's result is a function of the RGB under its
+  transparency until stage 1 stops reading it — and the bleed is the proof,
+  not the fix.** The nearest-opaque bleed makes Becker's two rasters
+  identical and BREAKS Fremont (`GROUND_SEWN`, grade D, exposed travel 7.2
+  → 85.3 mm on the file). Fremont has no enclosed transparent hole; what the
+  bleed changes there is `bg_edge_rgb`, the mean colour of the background
+  pixels hugging the artwork, which stage 2 uses as the anti-alias
+  endpoint — painted in the artwork's own colours, halos become shapes.
+  ENTHUSIAST's file goes 12 → 17 trims under it (its exporter's white under
+  the alpha was the friendlier choice) and drone 120 → 153. So the fix
+  belongs where the RGB is READ — the bilateral denoise and the Lanczos
+  upscale on premultiplied colour, leaving `bg_edge_rgb` and the
+  enclosed-hole colour alone — and that is unmeasured and Kent's to build.
+  Until then a Becker-class design digitizes differently from the file than
+  from the Studio, and the Studio's is the worse one. *(measured
+  2026-09-20 — scope-history §E)*
+- **A gap between two paths on ONE file is a finding, not a curiosity.** The
+  14-vs-9 was seen while fixing the e2e for PR #523 and set aside because the
+  test was green either way; every engine measurement here goes through a
+  path no customer uses, and the e2e is the only test that goes through the
+  one they do. When the two disagree, the e2e is the primary source and the
+  engine probe is the one to explain.

@@ -28,7 +28,18 @@ letter hops the typed word's three) — FLIPPED ON the same day, Kent's
 call — and `satin_underlay_on_column` (the underlay ends where the
 column enters; 13 → 12 at +9% stitches, Becker 61 → 48), held OFF on
 the same call — scope-history 2026-09-19, "the lettering yardstick's
-trims gap".
+trims gap". **Re-read 2026-09-20 on the raster the Studio actually
+uploads** (`tools/studio-raster.mjs`; DOCTRINE 2026-09-19/20: the panel
+re-encodes every upload through a 1,200-px canvas that also rewrites the
+RGB under transparency): the 80 mm yardstick is the customer's number
+(under the cap, no alpha — byte-identical on every arm); the 127 mm
+fixture (7,289 / 43 → 5,857 / 37) and seven of the nine logos are not.
+The walk (−198 / −237 trims on the nine, file / Studio), the cap skip
+(−27 / −27) and the exit lever's sum (−13 / −14) hold on the Studio's
+raster; the exit lever's per-logo deltas flip sign on five of nine, so a
+single logo's trim delta under about five is not evidence. Numbers in
+scope-history 2026-09-20; every nine-logo figure above it was read on
+the file.
 Review it rests on:
 `docs/lettering-route-review-2026-09-19.md`.
 
