@@ -555,3 +555,34 @@ this is the full entry.
 `test_machine_wire.py` does the same for the 21 shared individual constants
 (2026-09-14). What law 26's month of silent browser drift cost: DOCTRINE.
 *(2026-09-07; 2026-09-14)*
+## The `.embproj` carries the original artwork (2026-09-20)
+
+Since 2026-09-20 a digitize sends the customer's FILE, not the panel's
+1,200-px preview (DOCTRINE 2026-09-19/20), and the file's bytes live in
+IndexedDB under their SHA-256 (`lib/sourceStore.js`). IndexedDB is this
+browser's, so a design opened on another machine, or after cleared site data,
+had only the preview and re-digitized from it with the panel's note. Kent's
+pick the same day: the `.embproj` now carries every stored original its
+elements point at — `sources` in the envelope, base64 under the same key,
+BESIDE the project and never inside it, so the registry record in
+localStorage stays preview-sized (`lib/projectFile.js`). Import puts them back
+in the store before the project is registered, under the key the bytes hash
+to here (`lib/projectSources.js`). Driven end to end in
+`app/e2e/design-originals.spec.js`: export byte for byte, wipe both stores,
+import, and a re-digitize whose `/digitize` POST carries the file under its
+own name. A file saved before that day carries no originals; a preview-path
+upload (SVG, GIF, oversize, a rotated JPEG) has none to carry. *(built and
+verified 2026-09-20 — scope-history, the originals addendum)*
+
+## Moved from MASTER_SCOPE (2026-09-20) — the built bundle's asset paths
+
+Lifted verbatim from the area-3 summary to buy MASTER_SCOPE.md headroom: on
+2026-09-20 both `main` and this lane sat at exactly 27,000 of 27,000 words, so
+any lane adding a line overflowed the merge even when each side was legal on
+its own. `MASTER_SCOPE.md` keeps a one-line pointer; this is the full entry.
+
+**The built bundle works wherever it is served.** `vite.config.js` sets
+`base: "./"` and five hand-written `/fonts/…` paths ignored it, so below the
+domain root the lettering lane produced nothing; font LICENCE links were among
+the five. Document-relative now, identical at the root. *(fixed 2026-09-07 —
+`assetPaths.spec.js`)*

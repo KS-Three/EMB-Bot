@@ -4043,7 +4043,8 @@ def _build_travel_graph(strokes: list[Stroke]):
 def _graph_travel(cur, target, sewn: set[int], allow: set[int],
                   nodes, edges, adj, *,
                   trim_at_mm: float,
-                  snap_to_open: bool = False) -> list[tuple[float, float]] | None:
+                  snap_to_open: bool = False,
+                  cursor_reach_mm: float = 0.0) -> list[tuple[float, float]] | None:
     """Needle-down path from cur to target over UNSEWN spines, or None.
 
     `snap_to_open` (the Euler walk, plan step 2): when the node the cursor
@@ -4058,8 +4059,19 @@ def _graph_travel(cur, target, sewn: set[int], allow: set[int],
     top of finished satin show, which is the same reason the fill path prefers
     a trim over long travel across finished coverage.
 
+    `cursor_reach_mm` (`cfg.satin_walk_cursor_reach_mm`, 0 = off) widens the
+    cursor-side retry past `trim_at_mm`. It is the caller's business to sew
+    the leg it buys: the returned path starts on the web, and a snap further
+    than `trim_at_mm` leaves a gap the linking loop would TRIM rather than
+    sew, which is the trim this was meant to save. Measured 2026-09-20
+    (`tools/refused_walks.py`): of 838 between-stroke walks over the two
+    MARINE fixtures and the nine corpus logos, 343 were refused and 176 of
+    those were this snap — but only 47 have a path at all once the needle
+    reaches the web (median leg 4.1 mm, median path 5.64 mm); the other 128
+    are in another component, where a trim is correct.
+
     `trim_at_mm` is the caller's sew-vs-jump bound (the linking loop's), used
-    only as the cursor-side snap retry radius below — the value itself is the
+    as the cursor-side snap retry radius below — the value itself is the
     caller's business. Note the design coupling this buys: a future
     cloth-driven retune of trim_at_mm also moves how far off the web a cursor
     may sit and still walk. Intended — both answer "how long a leg is sewable
@@ -4098,7 +4110,7 @@ def _graph_travel(cur, target, sewn: set[int], allow: set[int],
         # target is a stroke start the graph was built from, so a 0.8mm miss
         # there means the web genuinely does not reach it.
         ni = min(range(len(nodes)), key=lambda i: math.dist(cur, nodes[i]))
-        if math.dist(cur, nodes[ni]) <= trim_at_mm:
+        if math.dist(cur, nodes[ni]) <= max(trim_at_mm, cursor_reach_mm):
             s = ni
     if s is None or t is None:
         return None
@@ -4722,6 +4734,7 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
                 junction_stack: bool = False,
                 end_near: tuple[float, float] | None = None,
                 underlay_on_column: bool = False,
+                walk_cursor_reach_mm: float = 0.0,
                 ) -> tuple[list[StitchRun], dict]:
     """One satin-classified shape -> runs in sew order, plus the same report
     contract `stitch_shape` uses, so stage 7 can treat the two identically.
@@ -4819,6 +4832,10 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
     # the artwork polygon gives 100 and 161 (2026-09-16, Kent's "the M is over
     # stitched"). The raster skeleton never saw them: 6 px/mm quantises an
     # 0.3 mm arc away. Rails still come from `poly`, so the pull is sewn.
+    # `satin_walk_cursor_reach_mm`: how far off the web the needle may sit and
+    # still walk (0 = off, the pre-2026-09-20 rule, where the radius IS
+    # `trim_at_mm`). The travel block below sews the leg a wider reach buys.
+    walk_cursor_reach = float(walk_cursor_reach_mm or 0.0)
     axis_poly = _axis_polygon(poly, art_poly, polygon_axis)
     strokes, half_mm, field = extract_strokes(axis_poly, use_shapefield=use_shapefield,
                                               polygon_axis=polygon_axis,
@@ -5024,8 +5041,19 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
                     path = _graph_travel(cursor, run.points[0], sewn, {gi},
                                          nodes, g_edges, g_adj,
                                          trim_at_mm=trim_at_mm,
-                                         snap_to_open=bool(euler_entry))
+                                         snap_to_open=bool(euler_entry),
+                                         cursor_reach_mm=walk_cursor_reach)
                     if path is not None and len(path) >= 2:
+                        # A snap past `trim_at` leaves a leg the linking loop
+                        # would trim — the very trim the walk was for — so the
+                        # walk carries it: the needle sews from where it is
+                        # onto the web (`satin_walk_cursor_reach_mm`, measured
+                        # 2026-09-20 in `tools/refused_walks.py`). Inside
+                        # `trim_at` nothing changes: that hop is the linking
+                        # loop's, as before.
+                        if (walk_cursor_reach > trim_at_mm
+                                and math.dist(cursor, path[0]) > trim_at_mm):
+                            path = [tuple(cursor)] + list(path)
                         plen = sum(math.dist(a, b) for a, b in zip(path, path[1:]))
                         # Same cap as the fill path: past this, travel under
                         # future coverage reads worse than the trim it saves.

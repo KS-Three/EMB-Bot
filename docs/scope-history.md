@@ -14641,3 +14641,724 @@ grade A. The panel's clean state ("Nothing to flag") is now the other
 accepted rendering, the same posture the test already took on the grade.
 
 *(flipped and ruled 2026-09-19 — Kent's answer; config comment)*
+
+## 2026-09-20 — The Studio never sends the file: the lettering census and every flip re-read on the raster the panel actually uploads (Kent's pick)
+
+**Why.** After PR #523 the pick was to re-measure the trims census and
+the lettering flips through the Studio's 1,200-px cap, on the loose end
+that PR left: the quality-report e2e's ENTHUSIAST job read **2,311
+stitches / 9 trims / grade A** through the Studio and the same file
+straight into the engine read **2,318 / 14 / grade B**. `DigitizePanel`
+re-encodes every upload through a canvas capped at `PROCESS_MAX_PX =
+1200` before the service sees a pixel; seven of the nine REAL_ART logos
+and the plan's MARINE 127 fixture are larger. DOCTRINE 2026-09-19/20
+carries the three mechanisms — the cap, premultiplied alpha rewriting the
+RGB under transparency that stage 1 reads, Chrome's default "low"
+smoothing — and the rulings. This entry carries the numbers.
+
+**The instrument.** `tools/studio-raster.mjs` loads the checkout's own
+`rasterize.js` into Playwright's Chromium, makes the panel's canvas calls
+and writes the PNG the panel would upload. Verified before anything was
+measured on it: its ENTHUSIAST raster through the e2e's own request (a
+tote, `isacord`, the bean cap) reproduces the job **to the stitch** —
+2,311 / 9 design trims / 30 jumps / grade A / score 100 — and with the
+exit lever off on that raster reads 11 trims and grade B, so PR #523's
+credit to the lever stands on the customer's raster (the file reads 14
+with the lever either way). Every row below: `target_width_mm` and
+`garment_id` from `corpus_cases()`, `max_colors=6`, today's defaults;
+one `build_generation` per raster and every arm finished from a fork
+(checked identical to a fresh build on three flags). Lettering trims by
+cause as in the 2026-09-19 census (`_graph_travel` spied for refusals),
+exposed travel from `travel_cover`, uncovered area and findings from
+preflight. `cv2.INTER_AREA` at the Studio's exact size ran beside it as
+the Python-only stand-in candidate.
+
+### A. Today's defaults: the file → the Studio's raster (INTER_AREA in parentheses)
+
+| case | px file → Studio | px/mm | stitches | trims | exposed mm | findings, file → Studio |
+|---|---|---|---|---|---|---|
+| tires | 1585×992 → 1200×751 | 19.8 → 15.0 | 2,475 → 2,487 (2,363) | **6 → 14** (8) | 0.0 → 0.4 | — → `TRIM_HEAVY` |
+| ENTHUSIAST | 1400×316 → 1200×271 | 17.5 → 15.0 | 2,478 → 2,417 (2,578) | 12 → 11 (13) | 3.8 → 1.8 | `TRIM_HEAVY` both |
+| Fremont | 2500×1345 → 1200×646 | 27.0 → 13.0 | 19,864 → 19,694 (19,841) | 59 → 50 (57) | 7.2 → 16.7 | unchanged |
+| Bridge Bar | 400×400, unresized | 5.0 | 14,661 → 14,661 | 96 → 96 | 17.0 | unchanged, byte-identical |
+| Golden Tee | 2193×2193 → 1200×1200 | 27.4 → 15.0 | 7,070 → 6,879 (6,792) | 43 → 47 (44) | 6.6 → 9.8 | unchanged |
+| gaulke | 1284×2778 → 555×1200 | 16.1 → 6.9 | 4,406 → 4,034 (**13,206**) | 34 → 28 (43) | 1.8 → 0.0 | unchanged |
+| drone | 1536×1024 → 1200×800 | 19.2 → 15.0 | 18,651 → 19,514 (17,915) | 120 → 124 (123) | 65.8 → 95.8 | unchanged |
+| screenshot | 1020×2207 → 555×1200 | 12.8 → 6.9 | 8,190 → 7,455 (7,750) | 74 → 64 (74) | 25.6 → 27.2 | unchanged |
+| Becker | 146×91, unresized | 1.46 | 8,334 → **15,318** | 59 → **175** | 0.5 → 2.3 | `TRIM_HEAVY` → + `LETTERING_TOO_SMALL`, `THREAD_MATCH_POOR` |
+| **nine logos** | | | **86,129 → 92,459** (100,424) | **503 → 609** (633) | | lettering trims 144 → 152 |
+| MARINE 80 (plan fixture) | 1058×253, unresized | 13.2 | 1,953 → 1,953 | 9 → 9 | 1.3 | byte-identical, every arm |
+| MARINE 127 (plan fixture) | 1624×346 → 1200×256 | 12.8 → 9.4 | 7,289 → 5,857 (5,853) | 43 → 37 (35) | 8.8 → 1.8 | `TRIM_HEAVY` both; refused walks 9 → 20 |
+| Becker at 100 | 146×91, unresized | 1.46 | 8,334 → 15,318 | 59 → 175 | 0.5 → 2.3 | as Becker |
+
+**Readings.** Becker is the alpha case and carries the whole aggregate:
+identical alpha and identical opaque RGB, +6,984 stitches and +116
+trims, two new findings; the other eight logos net **−10 trims** on the
+Studio's raster. Tires has no alpha and goes 6 → 14 on the filter alone
+(INTER_AREA at the same size reads 8). The alpha cutouts move most after
+Becker — ENTHUSIAST's white under its alpha becomes black (12 → 11
+trims at −61 stitches), Fremont 59 → 50 with exposed travel 7.2 → 16.7
+mm, drone 120 → 124 with exposed travel 65.8 → 95.8 mm. gaulke and the
+screenshot lose more than half their pixels (555 × 1200, 6.9 px/mm) and
+read fewer trims at fewer stitches — a coarser raster traces fewer
+fragments, which is not the same thing as a cleaner design. Bridge Bar
+(400 px, RGB) and MARINE 80 (1,058 px, greyscale) are byte-identical
+either way: an under-cap image with no alpha passes through the canvas
+unchanged, so **the plan's 80 mm yardstick (1,953 / 9 against the typed
+word's 1,782 / 3) is the customer's number.** MARINE 127 is not — 7,289 /
+43 → 5,857 / 37 with refused walks 9 → 20 at 9.4 px/mm — so the step-4
+and junction-stack fixture numbers read at 127 mm were read on a raster
+the Studio would have shrunk by a quarter. **`INTER_AREA` is not a
+stand-in**: 633 trims against the Studio's 609, tires 8 against 14, and
+gaulke 13,206 stitches against 4,034 (its cause was not chased; it is not
+the browser's raster, which is the point — measure on the tool's output
+or not at all).
+
+### B. Each lettering flip, OFF → today's default, on both rasters (nine logos)
+
+| flag | trims OFF → ON, file / Studio | stitches OFF → ON, file / Studio | per-logo trim delta (ON − OFF), file / Studio |
+|---|---|---|---|
+| `satin_house_from_line` | 503 → 503 / 609 → 609 | unchanged | no trim moves on either |
+| `satin_house_anchor` | 503 → 503 / 609 → 609 | unchanged | no trim moves on either |
+| `satin_stroke_order="euler"` | **701 → 503 / 846 → 609** | 86,501 → 86,129 / 93,009 → 92,459 | tires −12/−5; ENTHUSIAST −14/−12; Fremont −27/−30; Bridge −23/−23; Golden Tee −52/−41; gaulke −8/−25; drone −28/−33; screenshot −1/−6; Becker −33/−62 |
+| `satin_corner_twigs` | 490 → 503 / 598 → 609 | 86,293 → 86,129 / 93,654 → 92,459 | tires −1/+5; ENTHUSIAST −2/−3; Fremont +1/0; Bridge +6/+6; Golden Tee +2/−7; gaulke −3/−4; drone −4/0; screenshot +6/+5; Becker +8/+9 |
+| `satin_lettering_split` | 494 → 503 / 584 → 609 | 89,567 → 86,129 / 94,866 → 92,459 | Becker +9/+26, drone 0/−1, the rest 0/0 |
+| `satin_junction_stack` | 492 → 503 / 582 → 609 | 85,358 → 86,129 / 91,289 → 92,459 | tires −1/+7; ENTHUSIAST −1/−1; Fremont +2/+2; Bridge +12/+12; Golden Tee +1/−7; gaulke −3/−9; drone −4/+2; screenshot +3/+3; Becker +2/+18 |
+| `edge_cap_skip_lettering` | **530 → 503 / 636 → 609** | 86,718 → 86,129 / 93,107 → 92,459 | ENTHUSIAST −2/−1; Golden Tee −1/0; gaulke −4/−5; drone −1/−4; screenshot −1/−2; Becker −18/−15; the rest 0 |
+| `satin_exit_toward_next` | **516 → 503 / 623 → 609** | 86,241 → 86,129 / 92,560 → 92,459 | tires −4/**+1**; ENTHUSIAST −7/−3; Fremont 0/−4; Bridge −1/−1; Golden Tee −5/−1; gaulke +4/**−11**; drone +1/**−3**; screenshot +1/**−3**; Becker −2/**+11** |
+| `fill_bridge_cut` | 501 → 503 / 602 → 609 | 86,163 → 86,129 / 92,645 → 92,459 | Fremont +1/0; Bridge +1/+1; drone −4/+6; screenshot +4/0; the rest 0 |
+
+Sign agreement of the per-logo trim deltas, file against Studio: the
+walk 9 of 9 agree; the cap skip 5 agree, 3 unmoved, 1 zero on one side;
+the twigs 5 agree, 2 opposite; the stack 6 agree, **3 opposite**; the
+exit lever 3 agree, **5 opposite**; the bridge cut 1 agree, 1 opposite,
+the rest unmoved.
+
+**What survives the re-read.** The walk (−198 on the file, −237 on the
+Studio's raster, every logo agreeing) and the cap skip (−27 / −27) are
+robust to the raster. The exit lever holds **in sum** (−13 / −14) and
+not per logo: its sign flips on five of nine, so PR #523's per-logo line
+(tires 10 → 6, gaulke 30 → 34) was raster noise and its nine-logo sum is
+the finding. The twigs, the split and the stack are trim COSTS on both
+rasters (+13 / +11, +9 / +25, +11 / +27) — they were flipped for corners,
+fill-free stems and junctions, not trims, and on the Studio's raster
+Becker's alpha noise carries most of their bill (split +26, stack +18 on
+Becker alone). `fill_bridge_cut` +2 / +7. The house line and the anchor
+move no trim on either raster; their instruments (cross-angle
+concentration, self-crossings) were not re-read here. **The noise floor
+this sets:** a single logo's trim delta under about five is not evidence
+on either raster; nine-logo sums of ten or more have held across every
+flag that had one.
+
+### C. The fixtures, arm by arm
+
+MARINE 80 is byte-identical on both rasters under every arm (default
+1,953 / 9; the walk off 2,071 / 32; the cap skip off 2,341 / 24; the
+exit lever off 1,969 / 13; the split off 1,768 / 7; the stack off 2,109 /
+10) — every number the plan quotes at 80 mm is the customer's. MARINE
+127 is not: default 7,289 / 43 on the file against 5,857 / 37 through the
+Studio; the split off 9,625 / 34 against 8,807 / 22; the stack off 7,247
+/ 34 against 5,532 / 20; the walk off 7,305 / 49 against 5,888 / 48. The
+direction of every flip holds there; the magnitudes do not. Becker at
+100 mm is the alpha case throughout (the walk off 8,380 / 92 on the file
+against 15,299 / 237 through the Studio).
+
+### E. The candidate fixes, measured before anyone builds them
+
+Today's defaults, stitches / trims / grade. "Studio, high smoothing" is
+the panel's draw with `imageSmoothingQuality = "high"` (the tool's
+`--smoothing high`); "bleed" gives every non-opaque pixel the RGB of its
+nearest opaque pixel before the engine reads it; a dash is a raster the
+change cannot touch (no resize, or no transparency).
+
+| case | file (= the Studio sending its bytes) | Studio today | Studio, high smoothing | Studio + bleed | file + bleed | Studio, high + bleed |
+|---|---|---|---|---|---|---|
+| tires | 2,475 / 6 / A | 2,487 / 14 / B | 2,418 / 8 / A | — | — | — |
+| ENTHUSIAST | 2,478 / 12 / B | 2,417 / 11 / B | 2,524 / 16 / B | 2,406 / 11 / B | 2,491 / 17 / B | 2,394 / 9 / A |
+| Fremont | 19,864 / 59 / B | 19,694 / 50 / B | 19,725 / 48 / B | 19,618 / 50 / D, `GROUND_SEWN` | 19,901 / 44 / D, `GROUND_SEWN` | 19,692 / 47 / D, `GROUND_SEWN` |
+| Golden Tee | 7,070 / 43 / F | 6,879 / 47 / F | 6,720 / 43 / F | — | — | — |
+| gaulke | 4,406 / 34 / B | 4,034 / 28 / B | 3,836 / 36 / B | — | — | — |
+| drone | 18,651 / 120 / F | 19,514 / 124 / F | 18,800 / 123 / F | 18,791 / 148 / F | 20,841 / 153 / F | 18,455 / 117 / F |
+| screenshot | 8,190 / 74 / F | 7,455 / 64 / F | 8,732 / 84 / F | — | — | — |
+| Becker | 8,334 / 59 / B | 15,318 / 175 / C | — | 8,440 / 54 / B | 8,440 / 54 / B | 8,440 / 54 / B |
+| MARINE 127 | 7,289 / 43 / B | 5,857 / 37 / B | 6,030 / 39 / B | — | — | — |
+
+**Sending the file's bytes is the file column.** If the Studio keeps its
+1,200-px canvas for the localStorage preview and POSTs the upload as it
+is, the service's own decoder takes over the cap (`DECODE_MAX_SIDE_PX`
+2,800, `INTER_AREA`; every corpus logo is under it) and the resample, the
+filter and the alpha rewrite all go in one move — on the nine logos 609 →
+503 trims and 92,459 → 86,129 stitches, Becker 175 → 59, tires 14 → 6.
+It is the one change measured on every case, and its cost is the
+upload's own size on the wire (the service's 12 MB limit stands).
+**High smoothing is not a clean win:** tires 14 → 8 and grade A, Golden
+Tee 47 → 43, Fremont 50 → 48, drone 124 → 123 — but ENTHUSIAST 11 → 16
+(its class flips to gradient), gaulke 28 → 36, the screenshot 64 → 84,
+MARINE 127 37 → 39. A better filter is still a filter the engine never
+asked for. **The bleed proves the mechanism and is not the fix** (DOCTRINE
+2026-09-19/20): Becker 175 → 54 from either raster, and Fremont keeps its
+50 trims but sews its ground (`GROUND_SEWN`, grade D; on the file 59 → 44
+with exposed travel 7.2 → 85.3 mm), drone 124 → 148 (the file 120 → 153),
+ENTHUSIAST's file 12 → 17 — it repaints `bg_edge_rgb`, stage 2's
+anti-alias endpoint. The reading-side fix (the bilateral denoise and the
+Lanczos upscale on premultiplied colour, `bg_edge_rgb` and the
+enclosed-hole colour untouched) is unmeasured. With high smoothing AND the
+bleed ENTHUSIAST reads 9 trims and grade A and drone 117: the ceiling this
+table sees, not a recommendation.
+
+*(measured 2026-09-20 — `tools/studio-raster.mjs`;
+`digitizer/tools/studio_raster_census.py`, whose `run` subcommand carries
+every raster above and reproduces the scratchpad census row for row;
+DOCTRINE 2026-09-19/20; `tests/test_studio_raster_cap.py`)*
+
+### Addendum, the same day — Kent's pick on §E: the Studio sends the file's bytes (BUILT)
+
+Put to Kent with the table above (AskUserQuestion, 2026-09-20): send the
+file's bytes — his call. `DigitizePanel` now POSTs the upload itself for
+the formats the service decodes (PNG, JPEG, WebP, BMP — `uploadPlan` in
+`lib/rasterize.js`, with `/health`'s `limits` deciding oversize) and keeps
+its 1,200-px canvas as the localStorage preview; SVG and GIF, which only a
+browser rasterises, keep the canvas path, as does a file outside the
+service's limits. The original's bytes live in IndexedDB under their
+SHA-256 (`lib/sourceStore.js`; content-addressed, so a file uploaded
+twice is one record) and the element carries only the key
+(`element.sourceFile`); a re-digitize after a reload sends the same bytes,
+and one whose record is gone (cleared site data, another browser, an
+`.embproj` opened elsewhere — the file does not carry originals) sends the
+preview and says so in the panel, because the two digitize differently.
+The preview path is tick-for-tick the pre-change flow, so restitch timing
+did not move.
+
+**Verified through the real panel, not the engine:** the quality-report
+e2e's `/digitize` request shrank from **47,730 to 18,688 bytes** (the
+18,265-byte ENTHUSIAST file plus the multipart config) and its job came
+back at **2,318 stitches / 13 trims / 33 jumps / 17.05 px/mm / grade B,
+`TRIM_HEAVY`** — table A's file column for that fixture to the stitch,
+where the day before the same test read 2,311 / 9 / 14.61 px/mm / A. So
+every "file" number in tables A–E above is now the customer's number, and
+every measurement in the lettering plan made on `digitizer/testdata/` is
+the customer's again. Tests: `lib/sourceStore.spec.js` (a fake IndexedDB;
+the content key, the round trip, absence), `uploadPlan` in
+`lib/rasterize.spec.js` (formats, vector/GIF, both limits from `/health`
+and from the defaults), `startDigitize` with bytes in
+`lib/digitizer.spec.js`, three panel tests (a PNG stores and patches the
+key, an SVG does not, a digitize sends the bytes and falls back with the
+note); the Studio suite 1,241 passed, the e2e suite through the changed
+panel, and `tests/test_studio_raster_cap.py` pins the send rule from the
+source. `tools/studio-raster.mjs` stays as the census's instrument and the
+measure of the preview path.
+
+*(built and verified 2026-09-20 — Kent's answer; trace of the
+quality-report e2e on the changed panel)*
+
+### Addendum, the same day — Kent's pick after the Studio fix: stage 1 stops reading under the alpha (`alpha_edge_extend`, BUILT OFF), measured
+
+**Why.** The Studio fix stops the canvas rewriting what sits under a
+cutout's alpha; any exporter can still leave black, a matte, or a whole
+render there, and the engine reads it. Kent's pick: a stage-1 flag OFF
+that makes the under-alpha colour irrelevant, measured on the four cutouts
+as they are, with black painted under their alpha (`native_black` in
+`tools/studio_raster_census.py`: RGB zeroed wherever alpha == 0, the
+hostile exporter), and on the Studio's canvas raster (the preview path).
+
+**What was built, and what the first cut taught.** `cfg.alpha_edge_extend`
+makes every stage read nearest-opaque colour under every non-opaque pixel
+(`digitizer_core/alpha_edge.py`, a `distanceTransformWithLabels` fill,
+applied by stage 0 after its own decode and by stage 1 for the raster the
+later stages read); the two readers that want the file's OWN colour under
+the transparency — `bg_edge_rgb`, stage 2's anti-alias endpoint, and
+preflight's `GROUND_SEWN` border colour — read it from `Prep.raw_rgb`, the
+file's colour carried through the same denoise and upscale. The first cut
+fed the extended image to the two filters only and put the file's colour
+back under alpha < 128 afterwards; Becker with black under its alpha
+stayed at **gradient / 146 regions / 14,978 / 142** under it, because stage
+0's gradient signal and stage 2's segmentation run kernels over the whole
+raster and mask to the artwork afterwards — a kernel on the edge reads
+what is under the alpha whatever the mask says — and because stage 0
+decodes the file for itself before stage 1 runs. `alpha_edge_extend_px`
+is the halo variant: the extension reaches N source px from the opaque
+edge (every kernel's reach: Sobel 1, the bilateral 2, Lanczos4 4) and
+leaves a deeper backdrop as the file has it; 0, the default, is the whole
+image.
+
+**Measured** (stitches / trims / regions / class / exposed travel mm /
+grade; corpus widths and garments, `max_colors=6`, today's defaults; a
+stage-1 arm rebuilds the generation):
+
+| case | raster | OFF | ON, whole image | ON, halo 8 px | ON, gated on the upscale |
+|---|---|---|---|---|---|
+| Becker | the file | 8,334 / 59 / 18 / flat / 0.5 / B | 8,440 / 54 / 17 / flat / 0.4 / B | 8,440 / 54 / 17 / flat / 0.4 / B | **8,440 / 54 / 17 / flat / 0.4 / B** |
+| Becker | the file, black under alpha | 15,547 / 157 / 152 / gradient / 4.4 / D | 8,440 / 54 / 17 / flat / 0.4 / B | 8,440 / 54 / 17 / flat / 0.4 / B | **8,440 / 54 / 17 / flat / 0.4 / B** |
+| Becker | the Studio's canvas raster | 15,318 / 175 / 151 / gradient / 2.3 / C | 8,440 / 54 / 17 / flat / 0.4 / B | 8,440 / 54 / 17 / flat / 0.4 / B | **8,440 / 54 / 17 / flat / 0.4 / B** |
+| ENTHUSIAST | the file | 2,478 / 12 / 31 / flat / 3.8 / B | 2,491 / 17 / 31 / flat / 0.0 / B | 2,491 / 17 / 31 / flat / 0.0 / B | **= OFF** |
+| ENTHUSIAST | the file, black under alpha | 2,478 / 12 / 31 / flat / 3.8 / B | 2,491 / 17 / 31 / flat / 0.0 / B | 2,491 / 17 / 31 / flat / 0.0 / B | **= OFF** |
+| ENTHUSIAST | the Studio's canvas raster | 2,417 / 11 / 31 / gradient / 1.8 / B | 2,406 / 11 / 31 / flat / 0.0 / B | 2,406 / 11 / 31 / flat / 0.0 / B | **= OFF** |
+| Fremont | the file | 19,864 / 59 / 164 / gradient / 7.2 / B | 19,901 / 44 / 164 / gradient / 85.3 / B | 19,901 / 44 / 164 / gradient / 85.3 / B | **= OFF** |
+| Fremont | the file, black under alpha | 19,864 / 59 / 164 / gradient / 7.2 / B | 19,901 / 44 / 164 / gradient / 85.3 / B | 19,901 / 44 / 164 / gradient / 85.3 / B | **= OFF** |
+| Fremont | the Studio's canvas raster | 19,694 / 50 / 160 / gradient / 16.7 / B | 19,618 / 50 / 160 / gradient / 11.5 / B | 19,612 / 50 / 160 / gradient / 11.0 / B | **= OFF** |
+| drone | the file | 18,651 / 120 / 107 / gradient / 65.8 / F | 20,841 / 153 / 135 / gradient / 80.5 / F | 21,238 / 147 / 129 / gradient / 55.7 / F | **= OFF** |
+| drone | the file, black under alpha | 19,807 / 121 / 115 / gradient / 73.1 / F | 20,841 / 153 / 135 / gradient / 80.5 / F | 21,238 / 156 / 144 / gradient / 100.9 / F | **= OFF** |
+| drone | the Studio's canvas raster | 19,514 / 124 / 115 / gradient / 95.8 / F | 18,791 / 148 / 126 / gradient / 80.0 / F | 18,997 / 161 / 131 / gradient / 97.2 / F | **= OFF** |
+| Becker at 100 | the file | 8,334 / 59 / 18 / flat / 0.5 / B | 8,440 / 54 / 17 / flat / 0.4 / B | 8,440 / 54 / 17 / flat / 0.4 / B | **8,440 / 54 / 17 / flat / 0.4 / B** |
+| Becker at 100 | the file, black under alpha | 15,547 / 157 / 152 / gradient / 4.4 / D | 8,440 / 54 / 17 / flat / 0.4 / B | 8,440 / 54 / 17 / flat / 0.4 / B | **8,440 / 54 / 17 / flat / 0.4 / B** |
+| Becker at 100 | the Studio's canvas raster | 15,318 / 175 / 151 / gradient / 2.3 / C | 8,440 / 54 / 17 / flat / 0.4 / B | 8,440 / 54 / 17 / flat / 0.4 / B | **8,440 / 54 / 17 / flat / 0.4 / B** |
+
+**Readings.**
+
+- **The property Kent asked for holds, and holds exactly.** With the flag
+  ON every cutout reads the same whatever sat under its alpha: Becker's
+  three rasters are one result to the stitch (**8,440 / 54 / 17 / flat /
+  B**, from 157 and 175 trims at grades D and C on the hostile two);
+  ENTHUSIAST, Fremont and drone each read identically from the file and
+  from black underneath. The under-alpha colour is out of the engine.
+- **Its cost lands where the exporter was friendly.** ENTHUSIAST's file
+  goes 12 → 17 trims (its exposed travel 3.8 → 0.0). Fremont's file goes
+  59 → 44 trims and 7.2 → **85.3 mm** of exposed travel — all of it one
+  shape: the 2,120 mm² plate (thread 2) sews 25 trims and 62 travel legs
+  OFF, 10 trims and 89 legs ON, 83.3 of the 85.3 mm on those legs, across
+  the plate's own cut-outs. The plate's polygon moved by 6 mm² (2,125.7 →
+  2,119.6, 155 holes either way) and the fill router's bridging flipped
+  from cuts to travel over the holes — a routing sensitivity to a
+  slightly different polygon, not a colour effect; on the Studio raster the
+  same plate reads the other way (16.7 → 11.5 mm). Drone, a render whose
+  real backdrop sits under its alpha, goes **120 → 153 trims** and 107 →
+  135 regions: its photo lane reads the render better than hard colour
+  plateaus.
+- **Only Becker was hurt by black underneath in the first place.** With
+  the flag OFF, ENTHUSIAST and Fremont read the same from the file and
+  from black (the bilateral does not cross a colour gap that wide and
+  neither is upscaled), drone moves by a trim; Becker, at 1.46 px/mm, is
+  the one the Lanczos floor upscale smears — 59 → 157. So the flag buys
+  robustness on low-resolution cutouts and costs friendly high-resolution
+  ones; the Studio raster column (the preview path, and until 2026-09-20
+  every upload) reads better ON for Becker, ENTHUSIAST (class flat again)
+  and Fremont's exposed travel, worse for drone's trims.
+- **The halo is a measured negative.** At 8 px it keeps Becker's cure and
+  changes nothing on ENTHUSIAST's or Fremont's files, and on drone gives up
+  the invariance — 147 trims on the file, **156** with black under it —
+  without recovering the file's 120 (its exposed travel 80.5 → 55.7 on the
+  file, 100.9 on black). The parameter stays at 0.
+- **Gated on the resolution-floor upscale, the cure is free.** Kent's pick
+  after the first two arms: `alpha_edge_extend_upscaled_only` runs the
+  extension only where stage 1 will upscale — the artwork's pixel width at
+  the target under `min_px_per_mm`, read off the alpha ≥ 128 box so stage 0
+  and stage 1 decide from one rule (`alpha_edge.upscale_expected`). On the
+  fifteen rows: Becker's six read the cure (**8,440 / 54 / 17 / flat / B**
+  from every raster) and the other nine are **byte-identical to OFF** in
+  every column, findings and trim causes included. The Lanczos upscale was
+  the reader that mattered; above the floor the under-alpha colour never
+  reached the design on these files, and the gate leaves them alone.
+
+**Also found.** `tests/test_stage0_classify.py::test_same_input_classified_twice_is_identical[logo_whitebg]`
+fails on this container with the change stashed and the box idle
+(`gradient_smoothness` 0.0005601322072834591 against
+0.0005601321504400403 — `cv2.boxFilter` on float32, the 10th decimal); CI
+passes it, and so did the full local run on this tree (**2,735 passed, 0
+failed**, 27m49s, `-n auto`, the three platform goldens deselected as CI
+does). The box, not the tree; recorded so the next solo re-run of that
+test does not send anyone chasing it.
+
+**Tests.** `tests/test_alpha_edge_extend.py` (7): the default (OFF when
+written; the gated form since the flip below); the helper's contract; the
+halo's reach; the gate open under the floor and shut above it,
+byte-identical to OFF there; on a synthetic cutout under the resolution
+floor, OFF leaks the under-alpha colour into the sewn edge (two exporters
+read differently) and ON reads every pixel the same whatever sat underneath
+while the two deliberate readers still see each file's own colour; an
+opaque image is untouched ON. The stage-0, enclosed-background and
+sub-pixel suites pass with the flag off.
+
+*(built and measured 2026-09-20 — Kent's picks; `tools/studio_raster_census.py`
+rasters `native`, `native_black`, `studio`, arms `default`, `extend`,
+`extend_halo8`, `extend_upscaled`; the flip is Kent's)*
+
+### Addendum, the same day — Kent's flip: `alpha_edge_extend` ON, gated on the upscale
+
+**The pick.** Put to Kent with the four-arm table above, he flipped the
+gated form ON: `alpha_edge_extend=True` with
+`alpha_edge_extend_upscaled_only=True` and no halo (`alpha_edge_extend_px`
+stays 0). What ships: an alpha cutout whose artwork sits under the 4 px/mm
+resolution floor at its target width — the one regime in which the Lanczos
+upscale was measured to smear the under-alpha colour into the sewn edge —
+is read with nearest-opaque colour under every non-opaque pixel, in stage 0
+and stage 1 alike, while `bg_edge_rgb` and preflight's border colour keep
+the file's own; every other file reads byte for byte as before. On the
+census that is Becker **8,334 / 59 → 8,440 / 54** from its file, and the
+same 54 from black under its alpha and from the Studio raster; the other
+nine rows unmoved. OFF is now the pre-flip engine, and a test whose numbers
+were read on it holds `alpha_edge_extend=False` rather than moving its pin
+(the rule the sub-pixel, junction-stack and split flips set).
+
+**Tests.** `tests/test_alpha_edge_extend.py` (7) re-pinned: the default is
+the gated form with no halo; OFF is the pre-flip engine; an opaque image
+reads the same OFF, gated and whole-image; the gate test reads the same
+from the bare defaults as from the explicit gated arm. The census tool's
+arms: `extend` and `extend_halo8` set the gate False explicitly (whole
+image means whole image whatever the defaults), `extend_upscaled` is
+`default` today, and a new `extend_off` is the engine every `default` row
+in a census JSON written before the flip was read on.
+
+**The full suite on the flipped tree: 2,736 passed, 0 failed, and two
+strict XPASSes — no fixture pin moved.** 28m22s, `-n auto`, CI's three
+platform goldens deselected. Every Becker-based test passed as written:
+Becker's design moves 8,334 / 59 → 8,440 / 54 under the gate, and nothing in
+the suite had pinned the numbers the move touches. The two XPASSes are the
+finding: `tests/test_classifier_scale_invariance.py`'s two drone cases —
+`photo/drone_render.png` classified `photo_subject` at 250 px and `gradient`
+at 400, 640 and native, a resolution-dependence the file has carried as a
+strict xfail since 2026-08-15 — now read `gradient` at every width. Not the
+recalibration: at the default 80 mm every sweep width sits under the floor,
+so the gate opens and stage 0 reads nearest-opaque colour under the render's
+alpha, where its real backdrop sits; `unique_color_mass` at 250 px reads
+**0.335 on the pre-flip engine, 0.091 extended**, against 0.159 at native
+(where the gate is shut and both engines read the same). The drone's 250-px
+class was the backdrop under its alpha, not the pixel-absolute signal
+windows — which the remaining four fixtures still demonstrate. Per the
+file's own rule the marker came off, the drone left `FLIPS_ACROSS_SWEEP`
+and `DEPARTS_FROM_NATIVE` with the dated record, and a new test pins the
+pre-flip reading (`alpha_edge_extend=False` at 250 px still departs from
+native; the shipped engine does not) so the record stays executable. Do
+not count the drone toward the recalibration spec's §2 acceptance.
+
+*(flipped 2026-09-20 — Kent's call; config, tests, DOCTRINE, MASTER_SCOPE,
+memory)*
+### Addendum, the same day — Kent's pick: the `.embproj` carries the original artwork (BUILT)
+
+Put to Kent after the `alpha_edge_extend` flip (AskUserQuestion,
+2026-09-20), beside three other picks: close the hole the paragraph above
+names — *"an `.embproj` opened elsewhere — the file does not carry
+originals"*. His call. The store is this browser's IndexedDB, so a design
+opened on another machine, or after cleared site data, had the 1,200-px
+preview and nothing else, and re-digitized from it with the panel's note.
+
+**What was built.** The envelope (`lib/projectFile.js`) gains `sources`:
+`{ <key>: { type, name, size, data } }`, the original's bytes base64 under
+the SHA-256 key the store uses, written BESIDE `project` and never inside
+it — `project` is the very object the registry keeps, so the localStorage
+record stays preview-sized by construction. Only keys a digitized element
+points at are written (a stale map cannot smuggle a stranger's artwork
+into someone's file), and a project with no stored original writes the
+envelope it always did, no `sources` member at all. The version stamp is
+2; parsing never keys on it, so a version-1 file parses identically with
+`sources: {}`. `lib/projectSources.js` is the bridge: `collectSources`
+gathers what the store still holds for the project's keys at export (a
+record that is gone is simply not embedded), and `restoreSources` puts the
+file's originals back BEFORE the project is registered, each under the key
+its bytes hash to here and every element repointed if that differs from
+the file's key (a file saved without `crypto.subtle` carries a random
+key), so one original uploaded here and imported from a file is one
+record. Neither throws: a browser that cannot keep originals registers the
+design and its elements digitize from the preview, with the note. On
+import a `sources` entry is read as defensively as the project — not an
+object, not base64, decodes to nothing, over `SOURCE_MAX_BYTES` (64 MiB,
+checked on the base64 length before decoding), or unreferenced — and is
+dropped while the design imports.
+
+**Proved through the real app, not the fakes** (`app/e2e/design-originals.spec.js`,
+3): upload ENTHUSIAST → Export → the downloaded `enthusiast-logo.embproj`
+carries one source under the fixture's SHA-256 whose base64 decodes to the
+18,265 bytes on disk, `image/png`, `enthusiast_logo.png`, while neither
+the file's `project` nor any registry record contains them; wipe
+localStorage AND the IndexedDB database (which is what "another machine"
+is) → Import → the record is back under its content key and the registry
+record still holds only the key; with the service up, press *Digitize
+again* and the `/digitize` POST's `image` part is the file itself —
+`enthusiast_logo.png`, `image/png`, 18,265 bytes, the PNG's own first
+sixteen bytes — read through a `fetch` hook because Chromium exposes no
+post data for a multipart body with a Blob part; the panel shows no
+fallback note. Unit: `lib/projectFile.spec.js` (+8: the round trip byte
+for byte, only referenced keys, the old envelope for a project without
+originals, `{}` for a file without them and for a bare record, eight
+malformed shapes dropped with the design intact, the oversize refusal
+before decoding, the base64 helpers at every length, the version stamp and
+a version-1 file, `sourceKeysOf`), `lib/projectSources.spec.js` (7, against
+an in-memory store: gather once per key and skip what is gone, never
+throw; restore under the content key with every element repointed, the
+same project back when nothing moved, an unavailable store or a full one
+counted and the design unchanged, no-ops). Studio unit suite **1,256
+passed**; e2e suite through the changed drawer.
+
+**Still true.** A file saved before today carries no originals, and a
+preview-path upload (SVG, GIF, a file outside the service's limits, a JPEG
+the browser rotated) has none to carry — those digitize from the canvas on
+every machine alike, as they did. Nothing prunes the store, as before.
+
+*(built and verified 2026-09-20 — Kent's pick; `app/e2e/design-originals.spec.js`)*
+
+### Addendum, the same day — Kent's pick: how much of stage 0's scale defect is the alpha, measured
+
+The drone leaving the scale test's broken sets raised the question, and Kent
+picked it (AskUserQuestion, 2026-09-20): of the resolution-dependence
+`tests/test_classifier_scale_invariance.py` pins, how much is the RGB under
+an alpha cutout's transparency — which `alpha_edge_extend` removes — and how
+much is the pixel-absolute signal windows, which it cannot touch.
+Measurement only; no threshold moved (ROADMAP gate 2).
+
+**The instrument** (`tools/stage0_scale_arms.py`, committed; `tests/test_stage0_scale_arms.py`):
+each of the test's six fixtures at native and down a ladder (200, 250, 320,
+400, 500, 640, 800, 1,000, 1,200 px — the test's own 250 / 400 / 640 among
+them), resampled exactly as the test does (PIL LANCZOS), classified under
+three arms — the extension OFF (the pre-flip engine), gated (the shipped
+engine: only where the resolution-floor upscale will run, decided at the
+default 80 mm) and whole-image — with, per row, whether the gate opened and
+whether the extension changes any pixel. The three opaque fixtures cannot be
+touched by the extension and are the control. `--corpus` adds the nine
+REAL_ART logos at their census widths.
+
+**Per arm, on the six (same class across 250/400/640 · across the ladder · equal to native everywhere):**
+
+| fixture | alpha | OFF | gated (shipped) | whole-image |
+|---|---|---|---|---|
+| `logo_alpha` | yes | yes · yes · **no** (every downscale `gradient`, native `flat`) | same | same |
+| `logo_whitebg` | no | yes · yes · **no** (same shape) | identical to OFF | identical to OFF |
+| `ribbon_curve` | no | yes · yes · **no** (same shape) | identical to OFF | identical to OFF |
+| ENTHUSIAST | yes | **no** (250 / 400 `photo_scene`, 640 `gradient`) · no · no | **no** (250 `gradient`, **400 `photo_scene`**, 640 `gradient`) · no · no | **yes · yes** · no (every downscale `gradient`, native `flat`) |
+| drone | yes | **no** (250 `photo_subject`) · no · no | yes · yes · yes | yes · yes · yes |
+| `summit_badge` | no | yes · yes · yes | identical | identical |
+
+- **The opaque fixtures and `logo_alpha` are the windows defect, whole.**
+  Three files the extension cannot change and one whose class it does not
+  change (its signals move — `unique_color_mass` 0.082 → 0.036 at 250 px —
+  and stay on the same side of every threshold): native `flat`, `gradient`
+  at every downscale. Their `gradient_smoothness` reads 0.0000–0.0006 at
+  native and 0.005–0.48 downscaled against the 0.0015 gate, at every width
+  in the ladder. Nothing about the alpha is in that.
+- **The under-alpha part is exactly the `photo_*` misroutes.** Drone's 200
+  and 250 px `photo_subject` (`unique_color_mass` 0.315 / 0.335 OFF, 0.104 /
+  0.091 extended, 0.159 at native) and ENTHUSIAST's 200–400 px `photo_scene`
+  (0.51 / 0.49 / 0.37 / 0.34 OFF against 0.22 / 0.20 / 0.14 / 0.12
+  extended, the 0.28 photo floor between them). Whole-image removes every
+  one: drone equals native at every width, ENTHUSIAST is one class across
+  the whole ladder. What remains on ENTHUSIAST — `gradient` downscaled,
+  `flat` native — is the windows again (`gradient_smoothness` 0.19–0.61
+  against 0.0000 at native).
+- **The gate adds a flip of its own at the floor.** ENTHUSIAST's art box
+  crosses 4 px/mm between 320 and 400 px at 80 mm, so the shipped engine
+  extends at 320 (`gradient`) and not at 400 — where it reads exactly what
+  OFF reads, `photo_scene` at 0.339 — then `gradient` again from 500. One
+  more class change than whole-image, at the width where the extension
+  switches off. Drone's box is narrower (gate open through 640) and Fremont's
+  class does not move where its gate shuts, so on these fixtures the
+  boundary bites ENTHUSIAST alone; it exists wherever an alpha cutout's
+  under-alpha colour would have crossed a threshold just above the floor.
+- **The test's harness makes hostile files.** PIL resamples RGBA
+  premultiplied, so every downscaled alpha fixture arrives with black under
+  alpha == 0 and rounding noise under the ramp — the rewrite the Studio's
+  canvas made (DOCTRINE 2026-09-19/20), manufactured by `_classify_at`
+  itself; `extension_changes_pixels` is `yes` on every downscaled alpha row.
+  Pinned in the tool's test, along with the part no extension can undo: the
+  premultiplied Lanczos bakes the exporter's RAMP colour into edge pixels
+  that come out opaque (alpha overshoots and clips to 255), so a cutout with
+  black under its ramp and the same cutout with ink there read apart at 200
+  px even under whole-image, while at native they read identical. The
+  spec's *"not an artifact of the resampler"* stands for the windows half
+  (NEAREST flips too); the `photo_*` half on alpha fixtures is the
+  resampler's premultiplication read through the whole-raster kernels.
+
+**The nine real logos at their census widths (`--corpus`):** no class moves
+at native under any arm — Becker `flat`, ENTHUSIAST `flat`, Fremont and
+drone `gradient`, tires `photo_scene`, the other four `gradient`, identically
+across OFF / gated / whole. Downscaled: tires (opaque) flips `gradient` ↔
+`photo_scene` by resolution alone (`unique_color_mass` 0.06 at 200 px → 0.47
+at 1,000, all arms identical — windows); Fremont OFF reads `photo_scene` at
+200, **`flat` at 250**, `gradient` from 320, and the extension removes the
+250-px `flat` (0.273 → 0.238 `unique_color_mass`, `gradient` under both ON
+arms) but not the 200-px `photo_scene` (0.415 → 0.347, still over 0.28);
+drone as above; bridge, golden_tee, gaulke, screenshot invariant on every
+arm.
+
+**What this says, and does not.** Of the resolution-dependence the scale
+test pins, the alpha extension owns the `photo_*` misroutes and nothing
+else; the `flat` → `gradient` flips on downscale are the pixel-absolute
+windows on every fixture, opaque or not, and the recalibration spec's
+subject is unchanged (its four remaining fixtures are all windows cases).
+The shipped gate leaves one such misroute reachable (ENTHUSIAST at 400 px)
+and adds a class boundary at the floor that whole-image does not have —
+while on the corpus at native size the three arms read one class per logo,
+so a stage-0-only whole-image read (classification on the extended raster
+everywhere; stage 1 keeping the gate for the pixels it sews) would change
+no corpus class and remove both. Not built: it is a change to what stage 0
+reads, the same kind as the flip, and Kent's to pick; no threshold moves
+under gate 2 either way.
+
+*(measured 2026-09-20 — Kent's pick; `tools/stage0_scale_arms.py run --corpus`;
+the JSON is the scratchpad's, the tool regenerates it)*
+
+### Addendum, the same day — Kent's pick on the scale reading: stage 0 classifies on the whole-image extension (`alpha_edge_extend_stage0_whole`, ON)
+
+Put to Kent with the tables above (AskUserQuestion, 2026-09-20): a flag under
+which classification reads the extended raster everywhere while stage 1
+keeps the resolution-floor gate for the pixels it sews — his call, ON.
+`alpha_edge.extension_applies` gains `ignore_gate`, which stage 0 passes from
+the flag; stage 1 is untouched, so every sewn pixel is what the flip
+earlier today made it. **This changes stage 0's input only** — no threshold
+moved (ROADMAP gate 2), and the `flat` → `gradient` half of the defect is not
+this flag's.
+
+**Measured on the same instrument, a fourth arm (`gated_s0whole`, the
+shipped engine) beside the three:** it reads what `whole` reads in every
+stage-0 cell of the ladder — ENTHUSIAST `gradient` at every downscale
+(200–1,200 px, `unique_color_mass` 0.22 → 0.04), `flat` at native, so the
+400-px `photo_scene` and the flip at the floor are gone and it is **one class
+across the whole ladder**; drone equals native at every width; the three
+opaque fixtures and `logo_alpha` read exactly as under every other arm
+(windows); `summit_badge` invariant. On the nine real logos at their census
+widths no class moves at native (Becker and ENTHUSIAST `flat`, Fremont and
+drone `gradient`, tires `photo_scene`, four `gradient` — the same four arms
+across), and downscaled the arm reads as `whole` did: Fremont's 250-px `flat`
+gone, its 200-px `photo_scene` (`unique_color_mass` 0.347) and tires'
+opaque `gradient` ↔ `photo_scene` flip still there, both windows.
+
+**The scale test moved as the tables said it would.** ENTHUSIAST's two
+strict xfails in `FLIPS_ACROSS_SWEEP` XPASSed on this tree, so the set is
+EMPTY now, with the dated record, and a new test pins the boundary that
+was there — with stage 0 held to the gate
+(`alpha_edge_extend_stage0_whole=False`) ENTHUSIAST reads one class at 250
+px and another at 400, and the 400-px reading is the pre-flip engine's;
+the shipped engine reads the sweep as one class. It stays in
+`DEPARTS_FROM_NATIVE` with the three synthetics: the four windows cases the
+recalibration spec is about. `tests/test_alpha_edge_extend.py` (+1): above
+the floor stage 0 reads the friendly and the hostile cutout the same and
+stops with the flag off, while stage 1 stays byte-identical to OFF under
+both. The two tools' arms pin the flag: `stage0_scale_arms` carries the
+fourth arm with the three measured ones held OFF, and the census tool's
+`extend*` arms hold it OFF so their rows keep their meaning.
+
+**The full suite on this tree: 2,746 passed, 0 failed, 5 xfailed** (29m43s,
+`-n auto`, CI's three platform goldens deselected). No pin moved, and the
+five expected failures are the windows cases: the three synthetics and
+ENTHUSIAST in `DEPARTS_FROM_NATIVE`, plus the unrelated one the suite
+already carried. The two drone params and the two ENTHUSIAST params that
+were strict xfails this morning are plain passing tests now — the whole
+`photo_*` half of the scale defect, gone with the two picks of the day,
+while the `flat` → `gradient` half is exactly where the recalibration spec
+left it.
+
+*(built 2026-09-20 — Kent's call; `tools/stage0_scale_arms.py run --corpus`,
+arm `gated_s0whole`)*
+## 2026-09-20 — The refused-walk bucket: what a walk's refusal actually is, and the one relaxation in it (Kent's pick)
+
+**The question.** The lettering trim census (2026-09-19) counts a
+`walk-refused` bucket — MARINE 127 read 20 of them, the largest remaining
+lettering trim cause — by logging `path is None` from
+`stage6_satin._graph_travel`. It could not say WHY any refusal happened, and
+"relax the walk" is not one change: the function has four distinct ways to
+refuse and its CALLER has a fifth.
+
+**The instrument.** `digitizer/tools/refused_walks.py` (committed —
+DOCTRINE 2026-09-11; `tests/test_refused_walks.py`, 6) classifies every
+between-stroke walk:
+
+| reason | what it is |
+|---|---|
+| `cursor_unsnapped` | the needle sits further than `trim_at` (3.0 mm) from any node — it ends wherever the last run ended, often a cap-extended point off the web |
+| `target_unsnapped` | the stroke start sits further than the strict 0.8 mm snap `_graph_travel` keeps on the target side |
+| `blocked_by_sewn` | a path exists, but every route runs over strokes already sewn, which show |
+| `disconnected` | no path even with nothing forbidden: different components of the web |
+| `too_long` | a path was FOUND and the caller threw it away (`plen <= max(20, 4 x direct)`) — invisible to the census, which logged only `None` |
+
+Reachability is asked of the real `_graph_travel` (the same call with `sewn`
+emptied), so nothing duplicates its Dijkstra; only the two thresholds are
+mirrored, and the tests pin both against it.
+
+**838 walks, two MARINE fixtures and the nine corpus logos, today's defaults:**
+
+| | calls | ok | trivial | too_long | cursor_unsnapped | target_unsnapped | blocked_by_sewn | disconnected |
+|---|---|---|---|---|---|---|---|---|
+| all eleven | 838 | 322 | 173 | 3 | **176** | 118 | 34 | 12 |
+| marine127 | 26 | 6 | 4 | 1 | 10 | 1 | 4 | 0 |
+
+- **Three quarters of the refusals are a web that does not reach, and no
+  flag changes that.** Of the 343 refusals, **all 118** `target_unsnapped`
+  and **128 of the 176** `cursor_unsnapped` have no path even at a 12 mm
+  snap radius with nothing forbidden: the two strokes are in different
+  components. A trim is the correct answer there. The strict 0.8 mm target
+  snap is doing no harm — `_graph_travel`'s own comment said "a 0.8mm miss
+  there means the web genuinely does not reach it", and this measured it.
+- **The one relaxable cause is the cursor's reach: 47 calls.** Those have a
+  path once the needle reaches the web, at a **4.1 mm median leg and a
+  5.64 mm median path**.
+- **`blocked_by_sewn` is small and is a trade, not a wall:** 34 calls, median
+  free path 5.84 mm against a 4.87 mm direct hop — a short run over finished
+  satin to save a trim. Not built; it is a different ruling (thread over
+  thread, not thread on fabric).
+- **`too_long` is three calls** and all three are right to refuse: the median
+  path is 105.95 mm for a 2.42 mm move.
+
+**Built OFF: `cfg.satin_walk_cursor_reach_mm`** (0 = off, and off the radius
+IS `trim_at`, which is what shipped). ON it does two things, because either
+alone is useless: the cursor-side retry reaches that far, AND the walk sews
+the leg from where the needle is onto the web — past `trim_at` the linking
+loop would trim that hop, which is the trim the walk was for.
+
+**OFF vs 5.0 mm, the same eleven cases** (stitches / trims / exposed travel mm):
+
+| case | stitches | trims | exposed travel | grade | `cursor_unsnapped` walks |
+|---|---|---|---|---|---|
+| marine127 | 7,289 → 7,289 | **43 → 41** | 8.8 → 9.2 | B → B | 10 → 4 |
+| marine80 | 1,953 → 1,953 | 9 → 9 | 1.3 → 1.3 | A → A | 2 → 2 |
+| becker | 8,440 → 8,433 | 54 → 51 | 0.4 → 3.4 | B → B | 21 → 14 |
+| tires | 2,475 → 2,475 | 6 → 6 | 0.0 → 0.0 | A → A | 3 → 3 |
+| ENTHUSIAST | 2,478 → 2,478 | 12 → 12 | 3.8 → 3.8 | B → B | 3 → 1 |
+| fremont | 19,869 → 19,860 | 55 → 53 | 17.5 → 24.0 | B → B | 12 → 8 |
+| bridge | 14,945 → 14,949 | 98 → 96 | 17.8 → 27.7 | F → F | 23 → 18 |
+| golden_tee | 6,976 → 6,970 | 38 → 36 | 0.9 → 6.5 | F → F | 24 → 19 |
+| gaulke | 4,406 → 4,385 | 34 → 29 | 1.8 → 16.5 | B → B | 12 → 7 |
+| drone | 17,898 → 17,884 | 122 → 119 | 58.1 → 67.9 | F → F | 45 → 35 |
+| screenshot | 8,333 → 8,304 | 72 → 69 | 29.9 → 45.5 | F → F | 21 → 14 |
+| **nine logos** | 85,820 → 85,738 | **491 → 471** | **130.2 → 195.3** | no grade moves | 164 → 119 |
+
+- **Twenty fewer trims on the nine, for 65 mm more exposed travel** — about
+  3.3 mm of exposed thread per trim saved, and the nine-logo sum clears the
+  census's own noise floor (a single logo's trim delta under five is not
+  evidence; sums of ten or more have held). Stitches are flat (−82 on 85,820)
+  and no grade or finding moves on any case.
+- **The ratio is not uniform, and that is the decision.** Becker pays 3.0 mm
+  for three trims and MARINE 127 pays 0.4 mm for two; gaulke pays 14.7 mm for
+  five and the screenshot 15.6 mm for three. The flag has one number, so it
+  buys the good trades and the poor ones together.
+
+**A tighter radius buys proportionally less, so there is no natural number.**
+At 4.0 mm the nine logos read **491 → 476 trims for 130.2 → 177.1 mm**
+exposed: 15 trims for 47 mm, against 5.0 mm's 20 for 65 mm. The fifth
+millimetre costs 3.6 mm of exposed thread per trim where the first four cost
+3.1 — near enough flat, with no knee to site the default at. Per case it
+mostly buys the same trims more cheaply (gaulke 34 → 31 at +8.5 mm against
+34 → 29 at +14.7; the screenshot 72 → 70 at +11.6 against 72 → 69 at +15.6),
+and MARINE 127 reads 42 at either radius against 43 OFF. **So the flag's
+number is a taste call on exposed thread, not a measurement**, which is why
+it ships as a millimetre knob at 0 rather than as a boolean.
+
+**The full suite on this tree: 2,756 passed, 0 failed** (26m52s, `-n auto`,
+CI's three platform goldens deselected). Nothing moved: the flag is OFF and
+OFF is the shipped engine, which is what the run proves — the two changes
+inside it (the wider retry, the leg the walk carries) both sit behind
+`walk_cursor_reach > trim_at_mm`.
+
+**Kent's ruling, put to him with the two radii: the flag stays OFF until a
+sew-out settles it.** Both sides of the trade are what the eye judges and
+this metric cannot — a trim leaves tails to clip and a tie-off bump, a
+rescued walk leaves a short run of thread on the fabric between letters — so
+it joins the sew-out sheet rather than the defaults.
+`digitizer/tools/sewout_walk_reach.py` (committed,
+`tests/test_sewout_walk_reach.py`) writes the arms: three cases whose trade
+differs most — becker (3.0 mm of exposed thread for three trims, the best
+ratio), gaulke (14.7 mm for five, the worst) and MARINE 127 (0.4 mm for two,
+nearly free) — at OFF / 4.0 / 5.0 mm, `.dst` and `.pes` through the service's
+own writers, each read back through pystitch and **required to match the
+plan's stitch count** before it is offered to the machine (measured: both
+writers round-trip the penetrations exactly). The sheet, with question D and
+what each of its three answers flips, is committed at
+`docs/renders/lettering-walk-reach-2026-09-20/README.md`; the files are not,
+and the tool regenerates them on the machine that will sew them.
+
+**One thing the export added to the reading:** the worst single exposed leg
+is **3.0-3.3 mm on every ON arm of all three cases**, and it does not grow
+with the radius — that is the length the eye has to judge, not the 65 mm
+total. becker reads identically at 4 and 5 mm (51 trims, 3.4 mm either way),
+so there the cheaper radius is free; gaulke is where the radii differ most
+(31 trims at 10.3 mm against 29 at 16.5).
+
+*(measured 2026-09-20 — Kent's pick; `tools/refused_walks.py run` and
+`compare --reach`; built OFF and exported to the sheet the same day, the
+flip and the radius are Kent's, on cloth)*

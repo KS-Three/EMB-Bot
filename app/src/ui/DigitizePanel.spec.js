@@ -1239,3 +1239,99 @@ describe("border readout — what sewed, not what was asked for", () => {
     expect(getByText("Design edge off.")).toBeTruthy();
   });
 });
+
+// ---- what the upload STORES and what a digitize SENDS (2026-09-20) --------
+//
+// The panel used to send its 1,200-px canvas PNG to the service; it now
+// stores the file's own bytes (lib/sourceStore.js) and sends THOSE, keeping
+// the canvas as the preview. jsdom has neither a canvas nor IndexedDB, so
+// both are stood in for: the canvas by a stub returning a fixed data URL,
+// the store by an in-memory map through vi.mock. `loadImage` is the same
+// controlled stub the file banner describes.
+const { fakeStore } = vi.hoisted(() => ({ fakeStore: new Map() }));
+vi.mock("../lib/sourceStore.js", () => ({
+  sourceStoreAvailable: () => true,
+  sourceKeyFor: async (bytes) => "key-" + bytes.length,
+  putSource: async (key, rec) => { fakeStore.set(key, rec); },
+  getSource: async (key) => fakeStore.get(key) || null,
+  deleteSource: async (key) => { fakeStore.delete(key); },
+}));
+
+describe("the upload stores the file and a digitize sends it", () => {
+  const LIMITS = { max_upload_bytes: 12 * 1024 * 1024, max_pixels: 40_000_000 };
+  beforeEach(() => {
+    fakeStore.clear();
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue({ drawImage() {} });
+    vi.spyOn(HTMLCanvasElement.prototype, "toDataURL").mockReturnValue("data:image/png;base64,AAAA");
+    loadImageResult = () => Promise.resolve({ width: 1400, height: 316 });
+  });
+  afterEach(() => vi.restoreAllMocks());
+
+  async function upload(container, file) {
+    const input = container.querySelector('.dgp-upload input[type="file"]');
+    Object.defineProperty(input, "files", { value: [file] });
+    await fireEvent.change(input);
+  }
+
+  test("a PNG is stored under its content key; the element carries the key and the preview, never the bytes", async () => {
+    const patches = [];
+    const { container } = render(Harness, {
+      props: {
+        element: baseElement([], { sourcePng: null, result: null, review: null }),
+        health: { ok: true, limits: LIMITS },
+        onPatch: (d) => patches.push(d),
+      },
+    });
+    const bytes = new Uint8Array([137, 80, 78, 71, 9, 9, 9]);
+    await upload(container, new File([bytes], "logo.png", { type: "image/png" }));
+    await waitFor(() => expect(patches.length).toBeGreaterThanOrEqual(1));
+    const p = patches[0].patch;
+    expect(p.sourcePng).toBe("AAAA");
+    expect(p.name).toBe("logo.png");
+    expect(p.sourceFile).toEqual({ key: "key-7", type: "image/png", size: 7, width: 1400, height: 316 });
+    expect(fakeStore.get("key-7")).toEqual({ bytes, type: "image/png", name: "logo.png" });
+    expect(JSON.stringify(p)).not.toContain('"bytes"');
+  });
+
+  test("an SVG keeps the preview path — nothing stored, sourceFile null — because only a browser rasterises it", async () => {
+    const patches = [];
+    const { container } = render(Harness, {
+      props: {
+        element: baseElement([], { sourcePng: null, result: null, review: null }),
+        health: { ok: true, limits: LIMITS },
+        onPatch: (d) => patches.push(d),
+      },
+    });
+    await upload(container, new File(["<svg xmlns='http://www.w3.org/2000/svg'/>"], "logo.svg", { type: "image/svg+xml" }));
+    await waitFor(() => expect(patches.length).toBeGreaterThanOrEqual(1));
+    expect(patches[0].patch.sourcePng).toBe("AAAA");
+    expect(patches[0].patch.sourceFile).toBeNull();
+    expect(fakeStore.size).toBe(0);
+  });
+
+  test("a digitize sends the stored bytes while they are there, and the preview — saying so — once they are gone", async () => {
+    const mod = await import("../lib/digitizer.js");
+    const sent = [];
+    vi.spyOn(mod, "digitize").mockImplementation(async (image) => { sent.push(image); return null; });
+    const bytes = new Uint8Array([82, 73, 70, 70]);
+    fakeStore.set("k9", { bytes, type: "image/webp", name: "logo.webp" });
+    const { getByRole, queryByTestId, findByTestId } = render(Harness, {
+      props: {
+        element: baseElement([], { name: "logo.webp", sourceFile: { key: "k9", type: "image/webp", size: 4, width: 10, height: 10 } }),
+        health: { ok: true, limits: LIMITS },
+      },
+    });
+    await fireEvent.click(getByRole("button", { name: /^Digitize( again)?$/ }));
+    await waitFor(() => expect(sent).toHaveLength(1));
+    expect(sent[0]).toEqual({ bytes, type: "image/webp", name: "logo.webp" });
+    expect(queryByTestId("source-note")).toBeNull();
+
+    // Cleared site data, another browser: the original is gone. The preview
+    // goes up (the pre-2026-09-20 result) and the panel says which one this is.
+    fakeStore.clear();
+    await fireEvent.click(getByRole("button", { name: /^Digitize( again)?$/ }));
+    await waitFor(() => expect(sent).toHaveLength(2));
+    expect(sent[1]).toBe("data:image/png;base64,AAAA");
+    expect(await findByTestId("source-note")).toHaveTextContent(/original file is no longer stored/);
+  });
+});

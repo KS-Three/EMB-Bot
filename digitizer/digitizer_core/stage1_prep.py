@@ -40,6 +40,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 
+from .alpha_edge import extend_opaque_colour, extension_applies  # noqa: F401  (re-exported: stage 1 is where it acts)
 from .config import PipelineConfig
 from .letterbox import strip_letterbox
 from .threads import rgb_to_lab
@@ -120,6 +121,13 @@ class Prep:
     # miss). `pipeline.finish_generation` compares it with `cfg.garment_rgb`
     # to decide whether those holes sew (`cfg.enclosed_by_garment`).
     bg_rgb: tuple[int, int, int] | None = None
+    # The raster with the file's OWN colour under the transparency, in
+    # `rgb`'s frame and through the same denoise and upscale — set only
+    # under `cfg.alpha_edge_extend`, where `rgb` carries nearest-opaque
+    # colour there instead. For the readers that want the exporter's colour
+    # (preflight's `GROUND_SEWN` border colour); `bg_edge_rgb` above is
+    # already read from it. None otherwise: read `rgb`.
+    raw_rgb: np.ndarray | None = None
     warnings: list[dict] = field(default_factory=list)
 
 
@@ -257,10 +265,23 @@ def prep(image: str | Path | bytes | np.ndarray, cfg: PipelineConfig) -> Prep:
     rgb, alpha = _load(image, cfg.strip_letterbox)
     warnings: list[dict] = []
 
+    # `cfg.alpha_edge_extend`: every stage reads nearest-opaque colour under
+    # every non-opaque pixel instead of whatever the exporter left there;
+    # `raw` keeps the file's own, carried through the same steps, for the two
+    # readers that want exactly that (`bg_edge_rgb` below, preflight's border
+    # colour — see `extend_opaque_colour`). With the flag off nothing here
+    # runs and `raw` is never read.
+    extend = extension_applies(cfg, alpha)
+    raw = rgb
+    if extend:
+        rgb = extend_opaque_colour(rgb, alpha, cfg.alpha_edge_extend_px)
+
     if cfg.denoise:
         # Edge-preserving; on flat art this is nearly a no-op, which is the
         # point — it cleans JPEG mosquito noise without softening boundaries.
         rgb = cv2.bilateralFilter(rgb, d=5, sigmaColor=30, sigmaSpace=5)
+        if extend:
+            raw = cv2.bilateralFilter(raw, d=5, sigmaColor=30, sigmaSpace=5)
 
     h, w = rgb.shape[:2]
     bg_outline_px = None
@@ -458,6 +479,10 @@ def prep(image: str | Path | bytes | np.ndarray, cfg: PipelineConfig) -> Prep:
         native_rgb, native_alpha = rgb, alpha
         upscale = (new_size[0] / float(w), new_size[1] / float(h))
         rgb = cv2.resize(rgb, new_size, interpolation=cv2.INTER_LANCZOS4)
+        if extend:
+            # The file's own under-alpha colour, brought to the same frame
+            # the same way, for the two readers that want it.
+            raw = cv2.resize(raw, new_size, interpolation=cv2.INTER_LANCZOS4)
         bg = (
             cv2.resize(bg.astype(np.uint8), new_size, interpolation=cv2.INTER_NEAREST) > 0
         )
@@ -508,14 +533,15 @@ def prep(image: str | Path | bytes | np.ndarray, cfg: PipelineConfig) -> Prep:
     # Color the artwork's outer anti-alias band blends toward (see Prep).
     # Measured from the background side of the boundary, so it is correct for
     # both an opaque backdrop and an alpha cutout (where it picks up whatever
-    # RGB sits under the transparency).
+    # RGB sits under the transparency — from `raw` under `alpha_edge_extend`,
+    # so the flag changes what the filters read and not what this reads).
     bg_edge_rgb = None
     if bg.any():
         near_fg = (
             cv2.dilate((~bg).astype(np.uint8), np.ones((5, 5), np.uint8)) > 0
         ) & bg
         if near_fg.any():
-            bg_edge_rgb = rgb[near_fg].reshape(-1, 3).mean(axis=0)
+            bg_edge_rgb = (raw if extend else rgb)[near_fg].reshape(-1, 3).mean(axis=0)
 
     return Prep(
         rgb=rgb,
@@ -531,5 +557,6 @@ def prep(image: str | Path | bytes | np.ndarray, cfg: PipelineConfig) -> Prep:
         bg_edge_rgb=bg_edge_rgb,
         enclosed_mask=enclosed if enclosed.any() else None,
         bg_rgb=bg_rgb,
+        raw_rgb=raw if extend else None,
         warnings=warnings,
     )

@@ -226,6 +226,79 @@ class PipelineConfig:
     min_px_per_mm: float = 4.0         # resolution floor at target size
     upscale_cap: float = 4.0           # max Lanczos upscale factor
     denoise: bool = True
+    # Stage 1 stops reading the RGB under an alpha cutout's transparency.
+    # The shape of a cutout lives in alpha; the RGB underneath is whatever
+    # the exporter (or a browser canvas) left, and both filters above read
+    # it — the bilateral denoise and the Lanczos floor upscale blur it into
+    # the edge pixels the design sews. Measured 2026-09-20 on Becker: the
+    # file (one colour everywhere, the shape in alpha) reads flat / 18
+    # regions / 8,334 stitches / 59 trims; the SAME alpha with black under
+    # it reads gradient / 151 / 15,318 / 175 (DOCTRINE 2026-09-19/20 — the
+    # Studio's canvas did exactly that until the panel started sending the
+    # file, and any exporter can). ON, every stage reads nearest-opaque
+    # colour under every non-opaque pixel (`stage1_prep.extend_opaque_colour`)
+    # — every stage, because stage 0's gradient signal and stage 2's
+    # segmentation run kernels over the whole raster and mask afterwards; a
+    # first cut that put the file's own colour back under alpha < 128 after
+    # the two filters left Becker-with-black-underneath at gradient / 146
+    # regions. The two readers that want the file's own colour there —
+    # `bg_edge_rgb`, stage 2's anti-alias endpoint, and preflight's
+    # `GROUND_SEWN` border colour — read it from `Prep.raw_rgb`; the naive
+    # whole-image fill that gave them the extended colour sewed Fremont's
+    # ground (scope-history 2026-09-20 §E). Not a physical constant: it
+    # changes which pixels the stages read, never a fabric number. Built OFF
+    # 2026-09-20 (Kent's pick), measured in three forms on the census
+    # (`tools/studio_raster_census.py`, arms `extend*`, raster
+    # `native_black`), and FLIPPED ON the same day (Kent) in the gated form
+    # below: with `alpha_edge_extend_upscaled_only` the extension runs only
+    # where the resolution-floor upscale will, the one reader measured to
+    # smear the under-alpha colour into the sewn edge. OFF is the pre-flip
+    # engine byte for byte; a test whose numbers were read on it holds OFF.
+    alpha_edge_extend: bool = True
+    # How far under the alpha the extension reaches, in SOURCE pixels from
+    # the opaque edge; 0 = every non-opaque pixel. Every kernel that reads
+    # across the edge reaches a few pixels (Sobel 1, the bilateral 2,
+    # Lanczos4 4 at source scale), so a halo covers them while a backdrop
+    # an exporter left further under the alpha — drone's render, which its
+    # photo lane reads better than hard plateaus — stays as the file has it.
+    # MEASURED NEGATIVE 2026-09-20 (scope-history, the extend addendum): at
+    # 8 px it keeps Becker's cure and changes nothing on ENTHUSIAST or
+    # Fremont, and on drone gives up the invariance (147 trims on the file,
+    # 156 with black under it) without recovering the file's 120. Kept so
+    # the next reader can re-measure rather than rebuild; 0 is the form.
+    alpha_edge_extend_px: int = 0
+    # The extension only where the resolution-floor upscale will run (the
+    # artwork under `min_px_per_mm` at the target width, decided the same
+    # way in stage 0 and stage 1 — `alpha_edge.upscale_expected`). Measured
+    # 2026-09-20: the Lanczos upscale is the reader that smeared black under
+    # Becker's alpha into 59 -> 157 trims; the three cutouts above the floor
+    # read the same from the file and from black and paid for the
+    # whole-image extension (ENTHUSIAST +5 trims, drone +33, Fremont +78 mm
+    # of exposed travel). Built 2026-09-20 on Kent's pick, measured beside
+    # the other two forms in scope-history: Becker's six rows read the cure
+    # (8,440 stitches / 54 trims / flat / B from the file, from black under
+    # its alpha and from the Studio raster alike) and the other nine rows
+    # are byte-identical to OFF. ON 2026-09-20 (Kent), with
+    # `alpha_edge_extend`; the whole-image form is `alpha_edge_extend=True`
+    # with this False.
+    alpha_edge_extend_upscaled_only: bool = True
+    # Stage 0 classifies on the whole-image extension wherever the file has
+    # alpha, gate or no gate; stage 1 keeps the gate above for the pixels it
+    # sews. Measured 2026-09-20 (`tools/stage0_scale_arms.py`, scope-history,
+    # the scale addendum) on the scale test's six fixtures and the nine real
+    # logos: the `photo_*` misroutes on downscaled alpha cutouts are
+    # `unique_color_mass` reading the RGB under the alpha (drone 0.335 at
+    # 250 px against 0.091 extended; ENTHUSIAST 0.34-0.51 against 0.12-0.22),
+    # and the gate left one reachable — ENTHUSIAST at 400 px reads
+    # `photo_scene`, exactly the pre-flip reading, between `gradient` at 320
+    # and 500 — because the extension switches off where the art box crosses
+    # the floor. On the nine logos at native size no class moves under any
+    # arm, so classification gives up nothing by reading whole-image, and the
+    # sewn pixels are untouched: this flag changes stage 0's input only. The
+    # flat -> gradient flips on downscale are the pixel-absolute signal
+    # windows and are NOT this flag's; the recalibration spec keeps them
+    # (ROADMAP gate 2 — no threshold moved here). ON 2026-09-20 (Kent).
+    alpha_edge_extend_stage0_whole: bool = True
 
     # Stage 1.5 — photo prep (photo plan §2 rows 3-4; build step 3, first
     # slice — stage1_photo_prep.py). CLAHE tone rescue + texture kill on the
@@ -1128,6 +1201,30 @@ class PipelineConfig:
     # OFF on the same call). False is the walk as shipped before it, byte
     # for byte, and `tests/test_trim_levers.py` pins both sides.
     satin_exit_toward_next: bool = True
+    # How far off the travel web the needle may sit and still walk to the
+    # next stroke, in mm; 0 = off, and off the radius IS `trim_at` (3.0,
+    # `machine.TRIM_AT_MM`), which is what shipped before 2026-09-20.
+    #
+    # Between strokes the linking pass asks `_graph_travel` for a needle-down
+    # path over the unsewn spine web; no path means a lift, and that is a
+    # trim. The anatomy of those refusals (`tools/refused_walks.py`, Kent's
+    # pick 2026-09-20; 838 walks over the two MARINE fixtures and the nine
+    # corpus logos): 343 refused, and the biggest single cause — 176 — is the
+    # needle sitting further than `trim_at` from any node, because it ends
+    # wherever the last run ended, often a cap-extended point off the web.
+    # But only 47 of those 176 have a path at all once the needle reaches the
+    # web; the other 128 are in a different component, where a trim is the
+    # correct answer and no radius changes that. Nor does the target side:
+    # all 118 `target_unsnapped` refusals are also different components, so
+    # the strict 0.8 mm snap `_graph_travel` keeps there is doing no harm —
+    # its own comment said so and this measured it.
+    #
+    # ON, the cursor-side retry reaches this far AND the walk sews the leg
+    # from where the needle is onto the web (past `trim_at` that hop would
+    # otherwise be trimmed — the trim this is for). So the flag buys a walk
+    # at the price of a leg that may be exposed on fabric; the rescued calls
+    # measured a 4.1 mm median leg and a 5.64 mm median path.
+    satin_walk_cursor_reach_mm: float = 0.0
     # `satin_underlay_on_column`: a stroke's underlay is built on its
     # column's OWN stations -- the spine after the junction trims, the
     # cap extension and the stack's run-in -- instead of the raw skeleton

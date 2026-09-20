@@ -311,6 +311,27 @@ test("startDigitize POSTs multipart image+config to /digitize exactly as test_se
   for (const k of Object.keys(sent)) expect(PIPELINE_CONFIG_FIELDS).toContain(k);
 });
 
+test("startDigitize sends the customer's FILE when handed its bytes — its own type and name, not a re-encoded PNG", async () => {
+  stubStorage({});
+  const { startDigitize, buildDigitizeConfig } = await import("./digitizer.js");
+  const calls = [];
+  const fetchFn = vi.fn(async (url, opts) => {
+    calls.push({ url, opts });
+    return { ok: true, status: 202, json: async () => ({ job_id: "j2", state: "queued", cached: false }) };
+  });
+  const bytes = new Uint8Array([82, 73, 70, 70, 1, 2, 3, 4]);
+  await startDigitize({ bytes, type: "image/webp", name: "logo.webp" }, buildDigitizeConfig(digitizedElement(), PROJECT), fetchFn);
+  const image = calls[0].opts.body.get("image");
+  expect(image.type).toBe("image/webp");
+  expect(image.name).toBe("logo.webp");
+  expect(image.size).toBe(bytes.length);
+  // The base64 preview path is unchanged: a PNG named art.png.
+  await startDigitize(TINY_PNG_B64, buildDigitizeConfig(digitizedElement(), PROJECT), fetchFn);
+  const preview = calls[1].opts.body.get("image");
+  expect(preview.type).toBe("image/png");
+  expect(preview.name).toBe("art.png");
+});
+
 test("startDigitize surfaces the service's own detail sentence on a 400", async () => {
   stubStorage({});
   const { startDigitize } = await import("./digitizer.js");
