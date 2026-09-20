@@ -15051,5 +15051,17 @@ loop would trim that hop, which is the trim the walk was for.
   five and the screenshot 15.6 mm for three. The flag has one number, so it
   buys the good trades and the poor ones together.
 
+**A tighter radius buys proportionally less, so there is no natural number.**
+At 4.0 mm the nine logos read **491 → 476 trims for 130.2 → 177.1 mm**
+exposed: 15 trims for 47 mm, against 5.0 mm's 20 for 65 mm. The fifth
+millimetre costs 3.6 mm of exposed thread per trim where the first four cost
+3.1 — near enough flat, with no knee to site the default at. Per case it
+mostly buys the same trims more cheaply (gaulke 34 → 31 at +8.5 mm against
+34 → 29 at +14.7; the screenshot 72 → 70 at +11.6 against 72 → 69 at +15.6),
+and MARINE 127 reads 42 at either radius against 43 OFF. **So the flag's
+number is a taste call on exposed thread, not a measurement**, which is why
+it ships as a millimetre knob at 0 rather than as a boolean.
+
 *(measured 2026-09-20 — Kent's pick; `tools/refused_walks.py run` and
-`compare`; built OFF the same day, the flip is Kent's)*
+`compare --reach`; built OFF the same day, the flip and the radius are
+Kent's)*
