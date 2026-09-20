@@ -15166,6 +15166,30 @@ OFF is the shipped engine, which is what the run proves — the two changes
 inside it (the wider retry, the leg the walk carries) both sit behind
 `walk_cursor_reach > trim_at_mm`.
 
+**Kent's ruling, put to him with the two radii: the flag stays OFF until a
+sew-out settles it.** Both sides of the trade are what the eye judges and
+this metric cannot — a trim leaves tails to clip and a tie-off bump, a
+rescued walk leaves a short run of thread on the fabric between letters — so
+it joins the sew-out sheet rather than the defaults.
+`digitizer/tools/sewout_walk_reach.py` (committed,
+`tests/test_sewout_walk_reach.py`) writes the arms: three cases whose trade
+differs most — becker (3.0 mm of exposed thread for three trims, the best
+ratio), gaulke (14.7 mm for five, the worst) and MARINE 127 (0.4 mm for two,
+nearly free) — at OFF / 4.0 / 5.0 mm, `.dst` and `.pes` through the service's
+own writers, each read back through pystitch and **required to match the
+plan's stitch count** before it is offered to the machine (measured: both
+writers round-trip the penetrations exactly). The sheet, with question D and
+what each of its three answers flips, is committed at
+`docs/renders/lettering-walk-reach-2026-09-20/README.md`; the files are not,
+and the tool regenerates them on the machine that will sew them.
+
+**One thing the export added to the reading:** the worst single exposed leg
+is **3.0-3.3 mm on every ON arm of all three cases**, and it does not grow
+with the radius — that is the length the eye has to judge, not the 65 mm
+total. becker reads identically at 4 and 5 mm (51 trims, 3.4 mm either way),
+so there the cheaper radius is free; gaulke is where the radii differ most
+(31 trims at 10.3 mm against 29 at 16.5).
+
 *(measured 2026-09-20 — Kent's pick; `tools/refused_walks.py run` and
-`compare --reach`; built OFF the same day, the flip and the radius are
-Kent's)*
+`compare --reach`; built OFF and exported to the sheet the same day, the
+flip and the radius are Kent's, on cloth)*
