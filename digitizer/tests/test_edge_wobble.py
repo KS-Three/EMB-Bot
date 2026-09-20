@@ -243,6 +243,65 @@ def test_every_flagged_point_is_listed_and_the_design_render_rings_them(tmp_path
     assert red.sum() > 40
 
 
+# --- the reverse direction: outline with no thread on it -------------------
+
+def test_a_fully_sewn_ring_has_no_unsewn_outline():
+    row = measure(ring_satin(arc=(0.0, 2 * math.pi)))
+    assert row["unsewn"]["edge_mm"] < 0.5
+    assert row["unsewn"]["spans"] == []
+
+
+def test_an_unsewn_quarter_is_found_though_no_stitch_is_there_to_flag():
+    # Stitches -> outline cannot see this: there are no stitches to measure.
+    row = measure(ring_satin(arc=(0.0, 1.5 * math.pi)))
+    bare = 0.5 * math.pi * (R_OUT + R_IN)                      # both rails' quarter
+    assert row["unsewn"]["edge_mm"] == pytest.approx(bare, abs=2.5)
+    assert row["unsewn"]["share"] == pytest.approx(0.25, abs=0.03)
+    assert len(row["unsewn"]["spans"]) == 2
+    a = 1.75 * math.pi                                          # middle of the gap
+    mids = [s["at_mm"] for s in row["unsewn"]["spans"]]
+    assert min(math.dist(m, (R_OUT * math.cos(a), R_OUT * math.sin(a))) for m in mids) < 1.5
+
+
+def test_a_corner_cut_deep_enough_leaves_the_corner_bare():
+    frame, pts = square_frame_satin(round_mm=2.0)               # corner 0.83 mm from thread
+    spans = measure(pts, poly=frame)["unsewn"]["spans"]
+    assert len(spans) == 4
+    assert all(max(abs(s["at_mm"][0]), abs(s["at_mm"][1])) > 9.0 for s in spans)
+    assert all(s["gap_mm"] == pytest.approx(2.0 * (math.sqrt(2) - 1), abs=0.15) for s in spans)
+    # ...and a shallow one does not: half a thread of corner is not bare cloth.
+    frame, pts = square_frame_satin(round_mm=0.5)
+    assert measure(pts, poly=frame)["unsewn"]["spans"] == []
+
+
+def test_thread_from_a_neighbouring_shape_counts_as_cover():
+    # Seam ownership: the shape underneath skips an edge the one on top sews.
+    a = Polygon([(0, 0), (10, 0), (10, 4), (0, 4)])
+    b = Polygon([(0, 4), (10, 4), (10, 8), (0, 8)])
+    def rows(y0, y1):
+        out = []
+        for j, y in enumerate(np.arange(y0, y1 + 1e-9, 0.4)):
+            r = [(0.0, y), (5.0, y), (10.0, y)]
+            out += r if j % 2 == 0 else r[::-1]
+        return out
+    plan = plan_with([StitchRun(points=rows(0.0, 3.2), kind=stitches.FILL, shape_id="a"),
+                      StitchRun(points=rows(3.6, 8.0), kind=stitches.FILL, shape_id="b")])
+    row = ew.analyse_plan({"a": a, "b": b}, plan)
+    assert row["unsewn"]["spans"] == []                         # a's top edge is under b's rows
+
+
+def test_a_shape_with_no_thread_at_all_is_counted_not_listed_span_by_span():
+    plan = plan_of(ring_satin(arc=(0.0, 2 * math.pi)))
+    lost = Point(30, 0).buffer(2.0)
+    row = ew.analyse_plan({"s": ring(), "lost": lost}, plan)
+    assert row["unsewn"]["shapes_without_thread"] == ["lost"]
+    assert all(s["shape_id"] != "lost" for s in row["unsewn"]["spans"])
+    # A letter's counter is MEANT to be bare. Every threadless shape on the
+    # first real run was one (4 / 7 / 9 on three logos) — not a dropped element.
+    row = ew.analyse_plan({"s": ring(), "lost": lost}, plan, background={"lost"})
+    assert row["unsewn"]["shapes_without_thread"] == []
+
+
 def test_synthetic_logo_control_stays_clean():
     """The spike's control (2026-09-19): `logo_whitebg` sews on its outline.
     A ceiling, not a golden — it moves only if rails start to wander."""

@@ -240,6 +240,80 @@ def _unreadable_ends(d: np.ndarray) -> np.ndarray:
     return out
 
 
+# The reverse direction. Stitches -> outline cannot flag a place with no
+# stitches in it, and that is most of what Kent meant by "you missed quite a
+# few" (2026-09-19): the bare crotch of Becker's M and the foot of
+# Enthusiast's N are outline with NO THREAD NEAR IT. So the outline is walked
+# too: a sample further than UNSEWN_GAP_MM from any visible thread — half a
+# thread's width plus the pull standoff, generously — is bare, and a run of
+# them at least UNSEWN_MIN_SPAN_MM long is a span worth a ring. Thread from
+# ANY shape counts as cover: under seam ownership the shape beneath skips an
+# edge the shape on top sews, and that edge is not bare.
+UNSEWN_GAP_MM = 0.5
+UNSEWN_STEP_MM = 0.25
+UNSEWN_MIN_SPAN_MM = 0.75
+
+
+def _unsewn(polygons: dict, plan, background: frozenset = frozenset()) -> dict:
+    """`background` names shapes that are MEANT to carry no thread — stage 1's
+    enclosed background (a letter's counter, a knocked-out word). On the first
+    real run every threadless shape was one of those (4 / 7 / 9 on enthusiast /
+    Becker / Gaulke), so an unqualified count reads as dropped elements and is
+    not. They are left out of `shapes_without_thread`."""
+    segs, threaded = [], set()
+    for _b, run in plan.iter_runs():
+        if run.kind in TIER and len(run.points) >= 2:
+            P = np.asarray(run.points, float)
+            segs.append(shapely.linestrings(np.stack([P[:-1], P[1:]], axis=1)))
+            threaded.add(run.shape_id)
+    without = sorted(sid for sid, p in polygons.items()
+                     if sid not in threaded and sid not in background and not p.is_empty)
+    out = dict(edge_mm=0.0, share=None, spans=[], shapes_without_thread=without)
+    if not segs:
+        return out
+    tree = shapely.STRtree(np.concatenate(segs))
+    total = 0.0
+    for sid, poly in polygons.items():
+        if sid not in threaded or poly.is_empty:
+            continue
+        for geom in getattr(poly, "geoms", [poly]):
+            for ring in (geom.exterior, *geom.interiors):
+                line = LineString(ring.coords)
+                n = max(8, int(line.length / UNSEWN_STEP_MM))
+                step = line.length / n
+                total += line.length
+                pts = shapely.line_interpolate_point(line, np.arange(n) * step)
+                idx, dist = tree.query_nearest(pts, return_distance=True, all_matches=False)
+                gap = np.zeros(n)
+                gap[idx[0]] = dist
+                bare = gap > UNSEWN_GAP_MM
+                if not bare.any():
+                    continue
+                if bare.all():
+                    runs = [np.arange(n)]
+                else:                                    # circular runs: start on a sewn sample
+                    k = int(np.argmin(bare))
+                    order = np.r_[k:n, 0:k]
+                    b = bare[order]
+                    edges = np.flatnonzero(np.diff(np.r_[0, b.astype(int), 0]))
+                    runs = [order[a:z] for a, z in zip(edges[0::2], edges[1::2])]
+                for r in runs:
+                    if len(r) * step < UNSEWN_MIN_SPAN_MM:
+                        continue
+                    xy = shapely.get_coordinates(pts[r])
+                    mid = xy[len(xy) // 2]
+                    out["edge_mm"] += len(r) * step
+                    out["spans"].append(dict(
+                        shape_id=sid, length_mm=round(len(r) * step, 2),
+                        gap_mm=round(float(gap[r].max()), 3),
+                        at_mm=(round(float(mid[0]), 2), round(float(mid[1]), 2)),
+                        path_mm=[(round(float(x), 2), round(float(y), 2)) for x, y in xy]))
+    out["edge_mm"] = round(out["edge_mm"], 2)
+    out["share"] = round(out["edge_mm"] / total, 4) if total else None
+    out["spans"].sort(key=lambda s: -s["length_mm"])
+    return out
+
+
 def _summary(dev: np.ndarray, d: np.ndarray) -> dict:
     if not len(dev):
         return dict(points=0, wobble_std_mm=None, wobble_p95_mm=None,
@@ -253,8 +327,9 @@ def _summary(dev: np.ndarray, d: np.ndarray) -> dict:
                 offset_mm=round(float(np.median(d)), 4))
 
 
-def analyse_plan(polygons: dict, plan) -> dict:
-    """`polygons` is shape_id -> shapely Polygon, in the plan's own mm frame."""
+def analyse_plan(polygons: dict, plan, background=frozenset()) -> dict:
+    """`polygons` is shape_id -> shapely Polygon, in the plan's own mm frame.
+    `background` is the shape ids meant to carry no thread (see `_unsewn`)."""
     rings_of, corners_of = {}, {}
     rows = []          # (tier, shape_id, x, y, dev, d, zone)
     excused = unread = 0
@@ -311,6 +386,7 @@ def analyse_plan(polygons: dict, plan) -> dict:
     out["flagged"] = [dict(tier=r[0], zone=r[6], dev_mm=round(float(r[4]), 3),
                            at_mm=(round(float(r[2]), 2), round(float(r[3]), 2)))
                       for r in rows if abs(r[4]) > OVER_MM]
+    out["unsewn"] = _unsewn(polygons, plan, frozenset(background))
     return out
 
 
@@ -419,6 +495,9 @@ def render_design(polygons: dict, plan, row: dict, out_path: str | Path,
     for f in row["flagged"]:
         cv2.circle(im, tuple(int(v) for v in px([f["at_mm"]])[0]),
                    max(4, int(0.45 * px_per_mm)), (0, 0, 235), 2, cv2.LINE_AA)
+    for s in row["unsewn"]["spans"]:                     # outline with no thread on it
+        cv2.polylines(im, [px(s["path_mm"])], False, (220, 0, 220),
+                      max(3, int(0.2 * px_per_mm)), cv2.LINE_AA)
     out_path = Path(out_path)
     out_path.parent.mkdir(parents=True, exist_ok=True)
     cv2.imwrite(str(out_path), im)
@@ -430,7 +509,8 @@ def analyse(image_path: str | Path, cfg: PipelineConfig | None = None,
     image_path = Path(image_path)
     result, plan = digitize(image_path, cfg or PipelineConfig())
     polygons = {r.shape_id: r.polygon for r in result.regions}
-    row = analyse_plan(polygons, plan)
+    row = analyse_plan(polygons, plan, background={
+        r.shape_id for r in result.regions if r.meta.get("enclosed_background")})
     if render_dir is not None:
         row["render"] = str(render_worst(polygons, plan, row,
                                          Path(render_dir) / f"{image_path.stem}_worst.png"))
@@ -471,6 +551,13 @@ def main(argv: list[str] | None = None) -> int:
         for z, s in r["rail_zones"].items():
             print(f"  rails/{z:6s} n={s['points']:6d}  std {s['wobble_std_mm']:.3f}  "
                   f"p95 {s['wobble_p95_mm']:.3f}  >{OVER_MM} mm {s['share_over']:.1%}")
+        u = r["unsewn"]
+        print(f"  unsewn outline: {u['edge_mm']:.1f} mm in {len(u['spans'])} spans "
+              f"({u['share'] or 0:.1%} of sewn shapes' outline), "
+              f"{len(u['shapes_without_thread'])} shapes with no thread at all")
+        for s in u["spans"][:5]:
+            print(f"    bare  {s['length_mm']:5.2f} mm long, {s['gap_mm']:.2f} mm from thread  "
+                  f"{s['shape_id']}  at {s['at_mm']}")
         for w in r["worst"]:
             print(f"    worst {w['dev_mm']:+.2f} mm  {w['tier']:6s} {w['zone'] or '-':6s} "
                   f"{w['shape_id']}  at {w['at_mm']}")

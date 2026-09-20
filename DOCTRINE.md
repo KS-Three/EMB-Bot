@@ -5902,6 +5902,27 @@ rather than inferred. Kent has not yet said whether these are what he sees.
   points `_row_ends` takes for row ends. Not yet fixed or confirmed — do not
   quote Becker's fill row until it is.
 
+- **Stitches → outline cannot flag a place with no stitches in it.** Kent on
+  the worst-five tiles: *"Yes, those are some. But you missed quite a few."*
+  The bare crotch of an M has no penetration there to measure, so nothing was
+  ringed. The instrument walks the OUTLINE too now (`unsewn`): a sample over
+  0.5 mm from any visible thread is bare, a run of them ≥ 0.75 mm is a span.
+  Becker **32.6 mm in 16 spans** (2.7% of its sewn outline) — the square top
+  corners of M, A, I and N in MARINE, the feet of A and N — Gaulke 6.6 mm in 4,
+  Enthusiast 2.2 mm in 3, the synthetic logo 0.0. Thread from ANY shape counts
+  as cover (seam ownership leaves the under-shape's edge to the shape on top).
+  **Every threadless shape on the first run (4 / 7 / 9) was stage 1's enclosed
+  background — counters, a knocked-out word — not a dropped element;** they
+  are excluded by `meta["enclosed_background"]`, and an unqualified count would
+  have read as seven lost letters on Becker.
+- **Still blind, by construction:** bean-tier small text (a bean sits ON its
+  outline, so it reads 0.000 whatever it looks like — anything wrong there is
+  the outline's), and everything about the outline against the ARTWORK.
+
+`--render DIR` writes the whole design too (`*_all.png`): every flagged
+penetration ringed red, every bare span magenta, on a 5 mm lettered grid, so a
+cell with something ugly and no mark names what the instrument still misses.
+
 The outline half (low-resolution uploads, Becker class) is real and separate;
 it needs registration to measure and was left in the spike on purpose.
 

@@ -3643,6 +3643,13 @@ logo: `docs/renders/edge-wobble-2026-09-19/` (`--render DIR`). Becker's fill
 row is probably the instrument misreading a split column's mid-points as row
 ends (DOCTRINE) — unconfirmed.
 
+**The reverse direction (`unsewn`) — outline with no thread within 0.5 mm:**
+Becker 32.6 mm in 16 spans (2.7% of its sewn outline; MARINE's square corners
+and feet), Gaulke 6.6 mm in 4, Enthusiast 2.2 mm in 3, synthetic 0.0. This is
+what stitches → outline cannot see, and what Kent's *"you missed quite a few"*
+was. Whole-design pages with every mark on a lettered grid: `*_all.png` in the
+same render folder. Blind still: bean-tier small text, and outline vs artwork.
+
 Satin barely moved across 2026-09-19's satin flips (0.106 / 0.101 / 0.098 on
 the pre-flip base), and `satin_rails_follow_edge` moved the spike's figure
 ~10% — neither is the lever. **Open:** why the rails wobble (worst points are
