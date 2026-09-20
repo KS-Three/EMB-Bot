@@ -128,11 +128,15 @@ export const FIXTURES = {
 // ---- geometry ---------------------------------------------------------
 // pystitch's frame is +Y DOWN, the Design model's is +Y UP, so a design point
 // (x, y) must read back as (x, -y). Everything below works in design frame.
-function fileSegments(records, kinds) {
+// Sewn thread is STITCH records and nothing else: a JUMP or a TRIM is the
+// needle up. Inlined rather than parameterised, because widening it would
+// silently redefine every number below it — including the thread length that
+// is the tell for a stitch quietly demoted to travel.
+function fileSegments(records) {
   const segs = [];
   let prev = null;
   for (const [x, y, cmd] of records) {
-    if (!kinds.has(cmd)) { prev = null; continue; }
+    if (cmd !== "STITCH") { prev = null; continue; }
     const p = [x, -y];
     if (prev) segs.push([prev[0], prev[1], p[0], p[1]]);
     prev = p;
@@ -201,6 +205,11 @@ function pointToSegment(px, py, s) {
   return Math.hypot(px - (s[0] + vx * t), py - (s[1] + vy * t));
 }
 
+// The ring search stops at 6 cells (38.4 mm) and then scans everything. The
+// fallback is not a nicety: a file that is transposed, displaced or in the
+// wrong units — the 2026-09-08 class of defect, the one this tool is FOR — has
+// its thread further away than any ring, and an Infinity here reaches `--json`
+// as `null`, which reads exactly like a field that was never measured.
 function nearest(px, py, segs, g) {
   let best = Infinity;
   for (let ring = 0; ring <= 6; ring++) {
@@ -217,6 +226,8 @@ function nearest(px, py, segs, g) {
     // best beats that, searching wider cannot improve it.
     if (best <= ring * CELL) return best;
   }
+  if (Number.isFinite(best)) return best;
+  for (const s of segs) best = Math.min(best, pointToSegment(px, py, s));
   return best;
 }
 
@@ -267,13 +278,16 @@ function orientationFit(previewSegs, fileSegs) {
     }
     table[name] = +(on / t.length).toFixed(6);
   }
-  const best = Object.entries(table).sort((a, b) => b[1] - a[1])[0][0];
+  // "none" rather than the first key when nothing fits: `sort` is stable, so a
+  // table of zeros would hand back `identity` — the reassuring answer — for a
+  // file that lines up under no orientation at all. The crossval harness's
+  // `classifyTransform` returns "none" for the same reason.
+  const ranked = Object.entries(table).sort((a, b) => b[1] - a[1]);
+  const best = ranked[0][1] > 0 ? ranked[0][0] : "none";
   return { best, table };
 }
 
 // ---- harness ----------------------------------------------------------
-const SEWN = new Set(["STITCH"]);
-
 export function runPreviewVsDst({ python = resolvePython(), fixtures = Object.keys(FIXTURES), keepDir = null } = {}) {
   if (!python) {
     throw new Error("No python with pystitch found (set EMB_CROSSVAL_PYTHON or create digitizer/.venv)");
@@ -303,7 +317,7 @@ export function runPreviewVsDst({ python = resolvePython(), fixtures = Object.ke
       const d = decoded[`pv_${name}.${fmt}`];
       const key = `${fmt}.${name}`;
       if (!d || d.error) { results[key] = { error: (d && d.error) || "no decode output" }; continue; }
-      const fileSegs = fileSegments(d.stitches, SEWN);
+      const fileSegs = fileSegments(d.stitches);
       const travel = travelSegments(d.stitches);
       const pb = bbox(previewSegs), fb = bbox(fileSegs);
       const off = pb && fb ? [pb[0] - fb[0], pb[1] - fb[1]] : [0, 0];

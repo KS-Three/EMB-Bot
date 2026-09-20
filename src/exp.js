@@ -44,14 +44,15 @@
   // clamped the axes independently until 2026-09-20, which walks an L and puts
   // the file's thread off the line the Studio drew, with every count, extent
   // and endpoint still matching.
+  //
+  // Always returns at least one step: a NaN delta or a missing limit used to
+  // make `n` NaN, skip the loop and hand the caller an empty array to
+  // dereference. Identical to dst.js's copy on purpose —
+  // test/encoder-split.test.js drives all three through one set of cases.
   function splitSteps(dx, dy, limit, minSteps) {
     const lim = limit || MAX_DELTA;
-    let n = Math.max(
-      minSteps || 1,
-      1,
-      Math.ceil(Math.abs(dx) / lim),
-      Math.ceil(Math.abs(dy) / lim)
-    );
+    const need = Math.max(Math.ceil(Math.abs(dx) / lim), Math.ceil(Math.abs(dy) / lim));
+    let n = Math.max(minSteps || 1, 1, Number.isFinite(need) ? need : 1);
     for (;;) {
       const steps = [];
       let accX = 0, accY = 0, ok = true;

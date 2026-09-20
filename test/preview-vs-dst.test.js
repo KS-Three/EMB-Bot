@@ -68,6 +68,15 @@ for (const fixture of FIXTURES) {
       assert.ok(r.strayMm.previewToFile <= 0.06,
         `drawn line strays ${r.strayMm.previewToFile} mm from the file's thread`);
 
+      // The harness aligns bounding-box minima before comparing, so a
+      // CONSTANT offset between the picture and the file would be absorbed
+      // silently — stray, thread and counts all stay perfect. It records the
+      // offset it applied, so assert it was nothing. The design-fit preview is
+      // translation-invariant, but where the needle lands inside the hoop is
+      // not.
+      assert.deepStrictEqual(r.translationUnits, [0, 0],
+        "the file sits where the design put it, not merely in the same shape");
+
       // A split only ever adds records; it must never drop or demote one.
       assert.ok(r.fileSegments >= r.previewSegments,
         "a split adds sewn segments, it does not remove them");

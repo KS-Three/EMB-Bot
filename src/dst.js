@@ -168,20 +168,27 @@
   // `n` can need one more step than the pure ratio suggests: two adjacent
   // roundings can differ by one more unit than dx/n, so a step can come out at
   // limit+1. Rather than reason about when, emit and check.
+  //
+  // It ALWAYS returns at least one step, and the three copies of it are
+  // identical on purpose — `exp.js` and `pes.js` carry the same function
+  // because these files are standalone browser globals with no shared module
+  // between them, so the only thing keeping them honest is
+  // `test/encoder-split.test.js` driving all three through one set of cases.
+  // They drifted within an hour of being written (this copy had no `lim`
+  // fallback), which is what the `Number.isFinite` guard and the shared test
+  // are both for: a missing limit or a NaN delta used to make `n` NaN, skip
+  // the loop entirely and hand the caller an empty array to dereference.
   function splitSteps(dx, dy, limit, minSteps) {
-    let n = Math.max(
-      minSteps || 1,
-      1,
-      Math.ceil(Math.abs(dx) / limit),
-      Math.ceil(Math.abs(dy) / limit)
-    );
+    const lim = limit || MAX_DELTA;
+    const need = Math.max(Math.ceil(Math.abs(dx) / lim), Math.ceil(Math.abs(dy) / lim));
+    let n = Math.max(minSteps || 1, 1, Number.isFinite(need) ? need : 1);
     for (;;) {
       const steps = [];
       let accX = 0, accY = 0, ok = true;
       for (let i = 1; i <= n; i++) {
         const sx = Math.round((dx * i) / n) - accX;
         const sy = Math.round((dy * i) / n) - accY;
-        if (Math.abs(sx) > limit || Math.abs(sy) > limit) { ok = false; break; }
+        if (Math.abs(sx) > lim || Math.abs(sy) > lim) { ok = false; break; }
         steps.push([sx, sy]);
         accX += sx; accY += sy;
       }
