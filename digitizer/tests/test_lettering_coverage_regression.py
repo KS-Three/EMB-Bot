@@ -55,11 +55,22 @@ voted the cap's cone over the whole silhouette rather than the stretch it
 actually sews (0.2882 → **0.2748**). Both are in DOCTRINE 2026-09-20 with
 their counter-trades.
 
-That leaves **0.0239 over the 2026-09-02 baseline**, in two named pieces:
-~0.0069 is 768de79e's own recorded open item, the symmetric-offset rail
-model (`tools/rail_edge.py` still reads 17.6% of this fixture's rail points
-more than 0.1 mm inside the art), and ~0.0170 is post-2026-09-09 drift that
-has never been bisected.
+That leaves **0.0239 over the 2026-09-02 baseline**. ~0.0069 is 768de79e's own
+recorded open item, the symmetric-offset rail model (`tools/rail_edge.py`
+still reads 17.6% of this fixture's rail points more than 0.1 mm inside the
+art). The other ~0.0170 was bisected the same day over all 91 engine commits
+in the window (DOCTRINE 2026-09-20 has the table): the biggest step is PR
+#455, whose entire engine diff is `config.py` flipping the edge cap ON by
+default, and the next is 5d2db084's `satin_junction_stack` /
+`satin_lettering_split` flips.
+
+**Do not read either as a lever.** Turning the cap off on today's engine gives
+back 0.0045, not the 0.0230 it cost when it landed, and the junction stack
+0.0005 against 0.0093 — the vote fix above took part of the first and later
+work absorbed the rest. With BOTH off this fixture still reads 0.2698, over
+the bar, so what is left is unconditional code and not a default anyone can
+switch. Those defaults are Kent's calls, made for other reasons; they are
+priced here, not second-guessed.
 
 **It is marked `xfail(strict=True)` rather than left hard-red, and that is
 the only concession made to it.** The bar, the fixture and the assertion are
@@ -103,8 +114,9 @@ LOST_FRAC_TODAY = 0.2748
 @pytest.mark.xfail(strict=True, reason=(
     "0.2748 against a 0.26 bar. Two causes fixed 2026-09-20 (satin rail "
     "clearance floor, edge-cap thread vote); the 0.0239 residual is "
-    "768de79e's own open symmetric-offset rail model plus unbisected "
-    "post-2026-09-09 drift. STRICT: if this XPASSes the residual is closed "
+    "768de79e's own open symmetric-offset rail model plus drift bisected the "
+    "same day to defaults that do NOT give it back when switched off (both "
+    "off still reads 0.2698). STRICT: if this XPASSes the residual is closed "
     "and the marker should be deleted, not the test."))
 def test_lettering_coverage_has_not_regressed_since_the_rail_change():
     """A lettering fixture must not lose more artwork than the engine lost
