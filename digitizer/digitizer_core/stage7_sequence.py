@@ -1366,15 +1366,76 @@ def _over_budget_action(cfg) -> str:
     return action if action in EDGE_CAP_OVER_BUDGET_ACTIONS else "warn"
 
 
+def _cap_path_frontage(runs, sewn: list[PlannedRegion]) -> dict[int, float]:
+    """Millimetres of the cap's own stitch path that ride each thread's edge.
+
+    Every segment of every emitted cap run is attributed to the NEAREST sewn
+    region's boundary, and its length added to that region's thread. This is
+    the cap as it will be sewn, so a stretch of silhouette the emitter dropped
+    cannot vote and a stretch it kept votes exactly its own length.
+
+    Nearest rather than on-the-boundary because the cap is not obliged to sit
+    on the outline: `bean` rides it, `satin` zigzags about it by
+    `cfg.border_width_mm`, and both are continuing the same edge. Measured on
+    `enthusiast_logo` at 80 mm, bean: the worst cap point is 0.19 mm off a
+    region edge.
+    """
+    bounds = [p.polygon.boundary for p in sewn]
+    threads = [p.region.thread_index for p in sewn]
+    if not bounds:
+        return {}
+    try:
+        tree = shapely.STRtree(bounds)
+    except Exception:
+        return {}
+    frontage: dict[int, float] = {}
+    for r in runs or ():
+        pts = list(getattr(r, "points", ()) or ())
+        for a, b in zip(pts, pts[1:]):
+            try:
+                seg = LineString([a, b])
+                if seg.length <= 0:
+                    continue
+                idx = tree.nearest(seg.interpolate(0.5, normalized=True))
+            except Exception:
+                continue
+            if idx is None:
+                continue
+            ti = threads[int(idx)]
+            frontage[ti] = frontage.get(ti, 0.0) + seg.length
+    return frontage
+
+
 def _cap_thread(silhouette, sewn: list[PlannedRegion],
-                default_thread: int) -> int:
+                default_thread: int, runs=None) -> int:
     """Which cone the design-silhouette cap sews in (cfg.edge_cap).
 
-    The cap continues an edge that already exists, so it sews in the thread
-    of whichever region owns the most of that edge: for each sewn region,
-    how much of its own boundary lies ON the silhouette boundary, summed per
-    thread. A region buried in the middle of the design contributes nothing;
-    the colours actually facing bare fabric decide.
+    The cap continues an edge that already exists, so it sews in the thread of
+    whichever region owns the most of the edge THE CAP ACTUALLY SEWS
+    (`_cap_path_frontage`, over the emitted runs). A region buried in the
+    middle of the design contributes nothing, and neither does one whose
+    frontage the gate told the emitter to skip.
+
+    **Voting over the whole silhouette instead put the cap in a colour it
+    never touches.** `cfg.edge_cap`'s gate (Kent 2026-09-11) hands the emitter
+    everything linear the design already sewed, and the emitter drops the
+    outline samples standing on it; the vote never saw that geometry. On
+    `enthusiast_logo` at 80 mm the ungated vote scores 473.8 mm of Smoky
+    lettering against 131.7 mm of Not Quite Red and picks Smoky, while
+    **100% of the emitted cap — all 117 stitches, 81.4 mm — rides the red
+    star.** The star wears a continuous charcoal halo. *(2026-09-20;
+    `tests/test_lettering_coverage_regression.py` is what priced it)*
+
+    **The obvious cheaper fix does NOT work, and this is the second time that
+    proxy has lied here.** Voting over
+    `silhouette.boundary.difference(cap_omit)` — the open edge by LENGTH —
+    still picks Smoky on that design, 116.6 mm against red's 55.5 mm: 165.9 mm
+    of the 581.7 mm silhouette survives the gate as remnant arcs between
+    letters, and every one of them is under `_ARC_MIN_MM` and dropped
+    unstitched. `_gate_saving`'s docstring records the same divergence from
+    the other side (length says 51.7% where stitches say 94.2% on this exact
+    fixture). Measure the stitches; the length proxy is not a cheaper version
+    of this answer, it is a different and wrong one.
 
     This is deliberately a CHOICE AMONG THREADS THE DESIGN ALREADY SEWS, not
     a chart lookup: the result-level palette is regions-derived (see
@@ -1382,26 +1443,31 @@ def _cap_thread(silhouette, sewn: list[PlannedRegion],
     colour of its own to sample — inventing a cone for it would grow the
     operator's cone list for a decoration nobody asked to be a new colour.
 
+    With no `runs` the vote falls back to silhouette frontage, which is what
+    this did before 2026-09-20 — a caller with no emitted cap to read has
+    nothing better, and the two agree wherever the gate omits nothing.
+
     Ties break on the lower thread index, the same deterministic tiebreak
     the geometry picks use. `default_thread` covers the degenerate case
     where no region touches the silhouette measurably.
     """
     if silhouette is None or getattr(silhouette, "is_empty", True):
         return default_thread
-    try:
-        edge = silhouette.boundary.buffer(_BORDER_SEAM_EPS_MM)
-    except Exception:
-        return default_thread
-    frontage: dict[int, float] = {}
-    for p in sewn:
+    frontage = _cap_path_frontage(runs, sewn)
+    if not frontage:
         try:
-            shared = p.polygon.boundary.intersection(edge)
+            band = silhouette.boundary.buffer(_BORDER_SEAM_EPS_MM)
         except Exception:
-            continue
-        length = getattr(shared, "length", 0.0)
-        if length > 0:
-            ti = p.region.thread_index
-            frontage[ti] = frontage.get(ti, 0.0) + length
+            return default_thread
+        for p in sewn:
+            try:
+                shared = p.polygon.boundary.intersection(band)
+            except Exception:
+                continue
+            length = getattr(shared, "length", 0.0)
+            if length > 0:
+                ti = p.region.thread_index
+                frontage[ti] = frontage.get(ti, 0.0) + length
     if not frontage:
         return default_thread
     return min(frontage, key=lambda ti: (-round(frontage[ti], 6), ti))
@@ -2612,7 +2678,8 @@ def sequence(
                 jumps += c_report["jumps"]
                 cap_lightened = c_report["bean_loops"]
                 c_index = _cap_thread(silhouette, cap_sewn,
-                                      cap_sewn[0].region.thread_index)
+                                      cap_sewn[0].region.thread_index,
+                                      runs=c_runs)
                 c_thread = chart_for(cfg)[c_index]
                 blocks.append(
                     StitchBlock(
