@@ -226,6 +226,25 @@ class PipelineConfig:
     min_px_per_mm: float = 4.0         # resolution floor at target size
     upscale_cap: float = 4.0           # max Lanczos upscale factor
     denoise: bool = True
+    # Stage 1 stops reading the RGB under an alpha cutout's transparency.
+    # The shape of a cutout lives in alpha; the RGB underneath is whatever
+    # the exporter (or a browser canvas) left, and both filters above read
+    # it — the bilateral denoise and the Lanczos floor upscale blur it into
+    # the edge pixels the design sews. Measured 2026-09-20 on Becker: the
+    # file (one colour everywhere, the shape in alpha) reads flat / 18
+    # regions / 8,334 stitches / 59 trims; the SAME alpha with black under
+    # it reads gradient / 151 / 15,318 / 175 (DOCTRINE 2026-09-19/20 — the
+    # Studio's canvas did exactly that until the panel started sending the
+    # file, and any exporter can). ON, the filters read nearest-opaque
+    # colour under every non-opaque pixel (`stage1_prep.extend_opaque_colour`)
+    # and the file's own under-alpha colour goes back wherever alpha < 128
+    # before `bg_edge_rgb` and the enclosed holes read it — the naive fill
+    # that skipped that step sewed Fremont's ground (scope-history
+    # 2026-09-20 §E). Not a physical constant: it changes which pixels a
+    # filter reads, never a fabric number. Built OFF 2026-09-20 (Kent's
+    # pick); OFF is the shipped path byte for byte; the flip is Kent's, on
+    # the census (`tools/studio_raster_census.py`, arm `extend`).
+    alpha_edge_extend: bool = False
 
     # Stage 1.5 — photo prep (photo plan §2 rows 3-4; build step 3, first
     # slice — stage1_photo_prep.py). CLAHE tone rescue + texture kill on the

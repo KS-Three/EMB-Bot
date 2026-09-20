@@ -5899,12 +5899,15 @@ all reproduced 14. The trace's `px_per_mm` — 14.61 against the file's 17.05
   endpoint — painted in the artwork's own colours, halos become shapes.
   ENTHUSIAST's file goes 12 → 17 trims under it (its exporter's white under
   the alpha was the friendlier choice) and drone 120 → 153. So the fix
-  belongs where the RGB is READ — the bilateral denoise and the Lanczos
-  upscale on premultiplied colour, leaving `bg_edge_rgb` and the
-  enclosed-hole colour alone — and that is unmeasured and Kent's to build.
-  Until then a Becker-class design digitizes differently from the file than
-  from the Studio, and the Studio's is the worse one. *(measured
-  2026-09-20 — scope-history §E)*
+  belongs where the RGB is READ — and that is `cfg.alpha_edge_extend`,
+  built OFF the same day on Kent's pick: the bilateral denoise and the
+  Lanczos upscale read nearest-opaque colour under every non-opaque pixel
+  (`stage1_prep.extend_opaque_colour`) and the file's own under-alpha colour
+  goes back wherever alpha < 128 before `bg_edge_rgb` and the enclosed holes
+  read it. Its census (the four cutouts as they are, with black painted
+  under their alpha, and the Studio raster; scope-history 2026-09-20, the
+  extend addendum) is what the flip waits on. *(measured 2026-09-20 —
+  scope-history §E; built the same day)*
 - **A gap between two paths on ONE file is a finding, not a curiosity.** The
   14-vs-9 was seen while fixing the e2e for PR #523 and set aside because the
   test was green either way; every engine measurement here goes through a

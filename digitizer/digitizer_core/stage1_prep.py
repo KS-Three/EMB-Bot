@@ -253,9 +253,55 @@ def _border_connected(mask: np.ndarray) -> np.ndarray:
     return np.isin(labels, list(touching))
 
 
+def extend_opaque_colour(rgb: np.ndarray, alpha: np.ndarray) -> np.ndarray:
+    """Every non-opaque pixel takes the RGB of its NEAREST opaque pixel; alpha
+    is untouched and the input is not.
+
+    The RGB under an alpha cutout's transparency is whatever the exporter (or
+    a browser canvas) left there — the shape lives in alpha — and both of
+    stage 1's filters read it: the bilateral denoise and the Lanczos upscale
+    blur it into the edge pixels, and stage 0 and stage 2 then read the halo.
+    Measured 2026-09-20: Becker's file (one colour everywhere, the shape in
+    alpha) reads flat / 18 regions / 8,334 stitches / 59 trims; the SAME
+    pixels with black under the alpha read gradient / 151 / 15,318 / 175.
+    `cfg.alpha_edge_extend` feeds the filters this image instead, so what sits
+    under the alpha stops mattering — and ONLY the filters: the file's own
+    under-alpha colour is put back afterwards wherever alpha < 128, because
+    `bg_edge_rgb` (stage 2's anti-alias endpoint) and an enclosed hole's
+    colour are read from there, and painting those in the artwork's colours
+    sews Fremont's ground (`GROUND_SEWN`, measured the same day with the
+    naive version of this fill).
+
+    `cv2.distanceTransformWithLabels` with `DIST_LABEL_PIXEL` numbers the
+    zero pixels of the mask 1..N in row-major order, so a non-opaque pixel's
+    label indexes its nearest opaque one. Returns the input itself when
+    nothing is non-opaque or nothing is opaque (nothing to extend from).
+    """
+    opaque = (alpha >= 255).astype(np.uint8)
+    if opaque.all() or not opaque.any():
+        return rgb
+    _dist, labels = cv2.distanceTransformWithLabels(
+        1 - opaque, cv2.DIST_L2, 3, labelType=cv2.DIST_LABEL_PIXEL)
+    ys, xs = np.nonzero(opaque)
+    src = np.stack([ys, xs], axis=1)[labels - 1]
+    out = rgb.copy()
+    out[..., :3] = rgb[src[..., 0], src[..., 1], :3]
+    return out
+
+
 def prep(image: str | Path | bytes | np.ndarray, cfg: PipelineConfig) -> Prep:
     rgb, alpha = _load(image, cfg.strip_letterbox)
     warnings: list[dict] = []
+
+    # `cfg.alpha_edge_extend`: the two filters below read nearest-opaque
+    # colour under every non-opaque pixel instead of whatever the exporter
+    # left there; `raw` keeps the file's own so it can go back under the
+    # transparency before `bg_edge_rgb` and the enclosed holes read it (see
+    # `extend_opaque_colour`). With the flag off nothing here runs.
+    extend = bool(cfg.alpha_edge_extend and alpha is not None and (alpha < 255).any())
+    raw = rgb
+    if extend:
+        rgb = extend_opaque_colour(rgb, alpha)
 
     if cfg.denoise:
         # Edge-preserving; on flat art this is nearly a no-op, which is the
@@ -458,6 +504,10 @@ def prep(image: str | Path | bytes | np.ndarray, cfg: PipelineConfig) -> Prep:
         native_rgb, native_alpha = rgb, alpha
         upscale = (new_size[0] / float(w), new_size[1] / float(h))
         rgb = cv2.resize(rgb, new_size, interpolation=cv2.INTER_LANCZOS4)
+        if extend:
+            # The file's own under-alpha colour, brought to the same frame
+            # the same way, for the restore below.
+            raw = cv2.resize(raw, new_size, interpolation=cv2.INTER_LANCZOS4)
         bg = (
             cv2.resize(bg.astype(np.uint8), new_size, interpolation=cv2.INTER_NEAREST) > 0
         )
@@ -504,6 +554,19 @@ def prep(image: str | Path | bytes | np.ndarray, cfg: PipelineConfig) -> Prep:
                 min_px_per_mm=cfg.min_px_per_mm,
             )
         )
+
+    if extend:
+        # Under the transparency (alpha < 128 — `bg` and `enclosed` together
+        # on the alpha branch, at this frame's scale) the file's own colour
+        # goes back: `bg_edge_rgb` below and stage 4's enclosed-hole colour
+        # read it, and they must read what they always read. The pixels the
+        # design sews (alpha >= 128) keep the extended, filtered colour.
+        # (`enclosed` is only brought to the upscaled frame when it has
+        # pixels; an empty one is still in the source frame and adds nothing.)
+        under = bg | enclosed if enclosed.shape == bg.shape else bg
+        if under.any():
+            rgb = rgb.copy()
+            rgb[under] = raw[under]
 
     # Color the artwork's outer anti-alias band blends toward (see Prep).
     # Measured from the background side of the boundary, so it is correct for
