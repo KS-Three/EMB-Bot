@@ -5919,6 +5919,32 @@ rather than inferred. Kent has not yet said whether these are what he sees.
   outline, so it reads 0.000 whatever it looks like — anything wrong there is
   the outline's), and everything about the outline against the ARTWORK.
 
+**Root cause of the bare corners, first pass (same day) — TWO mechanisms, and a
+plain bar has neither.** A synthetic 5.5 × 16 mm bar, a 2.5 mm bar and an L sew
+square and fully covered (0 bare spans), so "satin cannot make a square corner"
+is NOT the cause. On Becker's real letters, read at stitch level:
+
+- **A — the spine enters the cap off-centre, and the rails are symmetric at the
+  NEARER edge.** MARINE's I, first station past the cap (a probe wrapping
+  `_rail_points`, so treat the digits as expired): true reach 1.35 mm one side,
+  3.25 the other, BOTH rails placed at 1.35; the spine starts 1.3 mm off the
+  stroke's centre — a surviving medial-axis fork toward one corner — and takes
+  ~8 stations to walk back. The far rail stops up to 1.9 mm short: a bare
+  triangular corner. This is defect 23's open half, seen from the outline.
+- **B — leaning stitches meet a square cap.** On the M and N stems the crosses
+  lean 30–60° off the stem's perpendicular and the column ends square, so the
+  whole cap edge is a bare wedge (one span 5.5 mm). Nothing built addresses it.
+
+**`satin_rails_follow_edge` treats A's symptom and is measurable now**
+(`edge_wobble.analyse` with the flag, reproducible): bare outline Becker
+32.6 → 14.8 mm, Gaulke 6.6 → 2.8, Enthusiast 2.2 → 0.0 — **and it roughens the
+rails to do it**: Becker satin std 0.097 → 0.137, series ends over 0.15 mm
+12.8 → 22.5%. The flag's own comment predicted that cost (2026-09-03); this is
+the first instrument that shows both sides of the trade on one row. Becker's
+remaining 14.8 mm is B. A fix at the CAUSE — re-centre the spine's last stations
+between the two true edges, so the symmetric model is right — has not been
+built or measured.
+
 `--render DIR` writes the whole design too (`*_all.png`): every flagged
 penetration ringed red, every bare span magenta, on a 5 mm lettered grid, so a
 cell with something ugly and no mark names what the instrument still misses.
