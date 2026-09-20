@@ -14708,3 +14708,51 @@ Studio; the split off 9,625 / 34 against 8,807 / 22; the stack off 7,247
 direction of every flip holds there; the magnitudes do not. Becker at
 100 mm is the alpha case throughout (the walk off 8,380 / 92 on the file
 against 15,299 / 237 through the Studio).
+
+### E. The candidate fixes, measured before anyone builds them
+
+Today's defaults, stitches / trims / grade. "Studio, high smoothing" is
+the panel's draw with `imageSmoothingQuality = "high"` (the tool's
+`--smoothing high`); "bleed" gives every non-opaque pixel the RGB of its
+nearest opaque pixel before the engine reads it; a dash is a raster the
+change cannot touch (no resize, or no transparency).
+
+| case | file (= the Studio sending its bytes) | Studio today | Studio, high smoothing | Studio + bleed | file + bleed | Studio, high + bleed |
+|---|---|---|---|---|---|---|
+| tires | 2,475 / 6 / A | 2,487 / 14 / B | 2,418 / 8 / A | — | — | — |
+| ENTHUSIAST | 2,478 / 12 / B | 2,417 / 11 / B | 2,524 / 16 / B | 2,406 / 11 / B | 2,491 / 17 / B | 2,394 / 9 / A |
+| Fremont | 19,864 / 59 / B | 19,694 / 50 / B | 19,725 / 48 / B | 19,618 / 50 / D, `GROUND_SEWN` | 19,901 / 44 / D, `GROUND_SEWN` | 19,692 / 47 / D, `GROUND_SEWN` |
+| Golden Tee | 7,070 / 43 / F | 6,879 / 47 / F | 6,720 / 43 / F | — | — | — |
+| gaulke | 4,406 / 34 / B | 4,034 / 28 / B | 3,836 / 36 / B | — | — | — |
+| drone | 18,651 / 120 / F | 19,514 / 124 / F | 18,800 / 123 / F | 18,791 / 148 / F | 20,841 / 153 / F | 18,455 / 117 / F |
+| screenshot | 8,190 / 74 / F | 7,455 / 64 / F | 8,732 / 84 / F | — | — | — |
+| Becker | 8,334 / 59 / B | 15,318 / 175 / C | — | 8,440 / 54 / B | 8,440 / 54 / B | 8,440 / 54 / B |
+| MARINE 127 | 7,289 / 43 / B | 5,857 / 37 / B | 6,030 / 39 / B | — | — | — |
+
+**Sending the file's bytes is the file column.** If the Studio keeps its
+1,200-px canvas for the localStorage preview and POSTs the upload as it
+is, the service's own decoder takes over the cap (`DECODE_MAX_SIDE_PX`
+2,800, `INTER_AREA`; every corpus logo is under it) and the resample, the
+filter and the alpha rewrite all go in one move — on the nine logos 609 →
+503 trims and 92,459 → 86,129 stitches, Becker 175 → 59, tires 14 → 6.
+It is the one change measured on every case, and its cost is the
+upload's own size on the wire (the service's 12 MB limit stands).
+**High smoothing is not a clean win:** tires 14 → 8 and grade A, Golden
+Tee 47 → 43, Fremont 50 → 48, drone 124 → 123 — but ENTHUSIAST 11 → 16
+(its class flips to gradient), gaulke 28 → 36, the screenshot 64 → 84,
+MARINE 127 37 → 39. A better filter is still a filter the engine never
+asked for. **The bleed proves the mechanism and is not the fix** (DOCTRINE
+2026-09-19/20): Becker 175 → 54 from either raster, and Fremont keeps its
+50 trims but sews its ground (`GROUND_SEWN`, grade D; on the file 59 → 44
+with exposed travel 7.2 → 85.3 mm), drone 124 → 148 (the file 120 → 153),
+ENTHUSIAST's file 12 → 17 — it repaints `bg_edge_rgb`, stage 2's
+anti-alias endpoint. The reading-side fix (the bilateral denoise and the
+Lanczos upscale on premultiplied colour, `bg_edge_rgb` and the
+enclosed-hole colour untouched) is unmeasured. With high smoothing AND the
+bleed ENTHUSIAST reads 9 trims and grade A and drone 117: the ceiling this
+table sees, not a recommendation.
+
+*(measured 2026-09-20 — `tools/studio-raster.mjs`;
+`digitizer/tools/studio_raster_census.py`, whose `run` subcommand carries
+every raster above and reproduces the scratchpad census row for row;
+DOCTRINE 2026-09-19/20; `tests/test_studio_raster_cap.py`)*
