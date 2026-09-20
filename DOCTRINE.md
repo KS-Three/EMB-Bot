@@ -5995,7 +5995,13 @@ all reproduced 14. The trace's `px_per_mm` — 14.61 against the file's 17.05
   byte-identical to OFF — the Lanczos upscale was the reader that
   mattered. **Kent flipped that gated form ON the same day**; OFF is the
   pre-flip engine, and a test whose numbers were read on it holds OFF
-  (`alpha_edge_extend=False`) rather than moving its pin. *(measured
+  (`alpha_edge_extend=False`) rather than moving its pin. The full suite on
+  the flipped tree moved no fixture pin and turned two strict xfails green:
+  `photo/drone_render.png`'s 250-px `photo_subject` in the scale-invariance
+  test was the render's backdrop under its alpha (`unique_color_mass` 0.335
+  pre-flip, 0.091 extended, 0.159 at native), not the pixel-absolute signal
+  windows — **do not count the drone toward the stage-0 recalibration's
+  acceptance**; the other four fixtures still carry that defect. *(measured
   2026-09-20 — scope-history §E and the extend addendum; built and flipped
   the same day)*
 - **A gap between two paths on ONE file is a finding, not a curiosity.** The

@@ -14944,8 +14944,27 @@ image means whole image whatever the defaults), `extend_upscaled` is
 `default` today, and a new `extend_off` is the engine every `default` row
 in a census JSON written before the flip was read on.
 
-**The full suite on the flipped tree, and the pins it moves,** are the
-follow-through commit's to record here.
+**The full suite on the flipped tree: 2,736 passed, 0 failed, and two
+strict XPASSes — no fixture pin moved.** 28m22s, `-n auto`, CI's three
+platform goldens deselected. Every Becker-based test passed as written:
+Becker's design moves 8,334 / 59 → 8,440 / 54 under the gate, and nothing in
+the suite had pinned the numbers the move touches. The two XPASSes are the
+finding: `tests/test_classifier_scale_invariance.py`'s two drone cases —
+`photo/drone_render.png` classified `photo_subject` at 250 px and `gradient`
+at 400, 640 and native, a resolution-dependence the file has carried as a
+strict xfail since 2026-08-15 — now read `gradient` at every width. Not the
+recalibration: at the default 80 mm every sweep width sits under the floor,
+so the gate opens and stage 0 reads nearest-opaque colour under the render's
+alpha, where its real backdrop sits; `unique_color_mass` at 250 px reads
+**0.335 on the pre-flip engine, 0.091 extended**, against 0.159 at native
+(where the gate is shut and both engines read the same). The drone's 250-px
+class was the backdrop under its alpha, not the pixel-absolute signal
+windows — which the remaining four fixtures still demonstrate. Per the
+file's own rule the marker came off, the drone left `FLIPS_ACROSS_SWEEP`
+and `DEPARTS_FROM_NATIVE` with the dated record, and a new test pins the
+pre-flip reading (`alpha_edge_extend=False` at 250 px still departs from
+native; the shipped engine does not) so the record stays executable. Do
+not count the drone toward the recalibration spec's §2 acceptance.
 
 *(flipped 2026-09-20 — Kent's call; config, tests, DOCTRINE, MASTER_SCOPE,
 memory)*
