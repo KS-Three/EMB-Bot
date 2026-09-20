@@ -5869,6 +5869,39 @@ Three traps the instrument cost, each a way to read clean where it is not:
   0.4 mm inward dip on a rail stepping a full 0.4 mm is a sawtooth, and a
   size-only filter would have made the instrument blind to exactly that.
 
+**It is mostly CORNERS, then column ends, and only then a lumpy curve
+(same day, `rail_zones`).** Share of rail penetrations over 0.15 mm, by where
+they sit:
+
+| fixture | corner (<0.6 mm of a >35° vertex) | series end (<1.5 mm) | mid-column |
+|---|---|---|---|
+| `enthusiast_logo` | 26.0% | 10.5% | 3.5% |
+| `becker_marine_logo` | 14.9% | 12.8% | 4.1% |
+| `logo_gaulke_roofing` | 12.0% | 5.4% | 3.7% |
+
+Three different fixes, which one pooled number cannot tell apart. The renders
+(`docs/renders/edge-wobble-2026-09-19/`, thread at width over the outline, the
+five worst spots each) show what the numbers are made of, and none of it is a
+subtle 0.1 mm: notches where two satin sections join, a bare wedge in the
+crotch of Becker's M, slivers along Gaulke's oblique chevron edges, the foot
+of Enthusiast's N diagonal outside the thread. **On Becker the OUTLINE is
+visibly stair-stepped in the same tiles** — the low-resolution half, seen
+rather than inferred. Kent has not yet said whether these are what he sees.
+
+- **A projection COMPRESSES toward a convex corner, and the short-stitch excuse
+  was reading the projected step.** A rail cutting a corner at 1 mm radius
+  steps 0.4 mm along itself and 0.28 along the outline — under the guard's
+  0.3 — so every corner-cutting penetration was excused as technique. The
+  instrument under-read the zone that carries most of the defect until the
+  zone test went red. The step is now measured along the rail, between the
+  dip's neighbours. A series END that dips has one neighbour and cannot be
+  told apart either way: it is neither excused nor counted, it is REPORTED
+  (`series_ends_unread`, 46–122 on the real logos).
+- **Becker's fill jump (0.037 → 0.177) is probably the INSTRUMENT, not the
+  engine:** the render shows a fanned, split column whose mid-column split
+  points `_row_ends` takes for row ends. Not yet fixed or confirmed — do not
+  quote Becker's fill row until it is.
+
 The outline half (low-resolution uploads, Becker class) is real and separate;
 it needs registration to measure and was left in the spike on purpose.
 

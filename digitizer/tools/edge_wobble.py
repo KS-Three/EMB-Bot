@@ -54,7 +54,10 @@ and it is excused by the guard's OWN condition — an inward dip whose
 along-boundary step is under that threshold — never by size alone: the same
 dip on a rail stepping a full 0.4 mm is a sawtooth and is counted.
 
-    .venv/Scripts/python tools/edge_wobble.py [fixture ...] [--json]
+    .venv/Scripts/python tools/edge_wobble.py [fixture ...] [--json] [--render DIR]
+
+`--render DIR` writes `<fixture>_worst.png`: the five worst spots as thread
+over outline, for the eye this number has not yet been checked against.
 """
 from __future__ import annotations
 
@@ -89,6 +92,18 @@ GAP_MM = 1.5
 MIN_SERIES = 8
 # "Visible" — a third of a 0.4 mm thread. The spike's table is quoted at it.
 OVER_MM = 0.15
+# Where a rail deviation sits. The first root-cause probe (2026-09-19) found
+# the rate of >OVER_MM deviations at 15-26% within 0.6 mm of an outline corner
+# against 2-4% mid-column, on all three real logos: most of "wobble" is rails
+# ROUNDING CORNERS, then column ends, and only then a lumpy curve. One pooled
+# number cannot say which, and they are three different fixes. A "corner" is
+# an outline vertex turning more than CORNER_TURN_DEG — which a curve tighter
+# than ~1 mm radius also is, at this engine's chord lengths, and rightly so: a
+# rail rounds both the same way. "end" is the end of a measured series.
+CORNER_TURN_DEG = 35.0
+CORNER_MM = 0.6
+END_MM = 1.5
+ZONES = ("corner", "end", "mid")
 SHORT_STITCH_DIP_MM = 0.1
 SHORT_STITCH_STEP_MM = machine.SATIN_SHORT_STITCH_AT_MM * 1.15
 
@@ -137,6 +152,25 @@ def _edge_parts(run) -> list[np.ndarray]:
     return [P]
 
 
+def _corners(rings: list[LineString]) -> np.ndarray:
+    out = []
+    for ring in rings:
+        C = np.asarray(ring.coords)[:-1]
+        a, b = C - np.roll(C, 1, 0), np.roll(C, -1, 0) - C
+        turn = np.abs(np.arctan2(a[:, 0] * b[:, 1] - a[:, 1] * b[:, 0], (a * b).sum(1)))
+        out.append(C[turn > math.radians(CORNER_TURN_DEG)])
+    return np.vstack(out) if out else np.zeros((0, 2))
+
+
+def _zones(P: np.ndarray, s: np.ndarray, corners: np.ndarray) -> np.ndarray:
+    z = np.full(len(P), "mid", dtype=object)
+    z[np.minimum(s - s[0], s[-1] - s) < END_MM] = "end"
+    if len(corners):
+        near = np.hypot(*(P[:, None, :] - corners[None, :, :]).transpose(2, 0, 1)).min(1)
+        z[near < CORNER_MM] = "corner"
+    return z
+
+
 def _baseline(d: np.ndarray, n: int) -> np.ndarray:
     w = np.ones(n + 1)
     w[0] = w[-1] = 0.5
@@ -167,12 +201,43 @@ def _series(part: np.ndarray, rings: list[LineString], poly):
     return out
 
 
-def _excused(d: np.ndarray, s: np.ndarray) -> np.ndarray:
-    """The guard's own condition: an inward dip on a bunched rail."""
-    lo = np.r_[np.inf, d[:-1]]
-    hi = np.r_[d[1:], np.inf]
-    step = np.minimum(np.r_[np.inf, np.diff(s)], np.r_[np.diff(s), np.inf])
-    return (d < np.minimum(lo, hi) - SHORT_STITCH_DIP_MM) & (step < SHORT_STITCH_STEP_MM)
+def _excused(P: np.ndarray, d: np.ndarray) -> np.ndarray:
+    """The guard's own condition: an inward dip on a bunched rail.
+
+    The step is measured ALONG THE RAIL, between the dip's two neighbours —
+    never along the outline the points project onto. The first cut used the
+    projected step, and a projection compresses toward a convex corner: a rail
+    cutting a corner at 1 mm radius steps 0.4 mm along itself and 0.28 along
+    the outline, under `SATIN_SHORT_STITCH_AT_MM`, so the corner-cutting
+    penetration was excused as technique and the instrument under-read the
+    one zone that carries most of the defect. Caught by the zone test.
+    """
+    n = len(d)
+    out = np.zeros(n, bool)
+    if n < 3:
+        return out
+    chord = P[2:] - P[:-2]
+    L = np.maximum(np.hypot(*chord.T), 1e-9)
+    t = ((P[1:-1] - P[:-2]) * chord).sum(1) / L          # along-rail, prev -> dip
+    step = np.minimum(t, L - t)
+    dip = d[1:-1] < np.minimum(d[:-2], d[2:]) - SHORT_STITCH_DIP_MM
+    out[1:-1] = dip & (step < SHORT_STITCH_STEP_MM)
+    return out
+
+
+def _unreadable_ends(d: np.ndarray) -> np.ndarray:
+    """A series END that dips inward has one neighbour, so its un-retracted
+    step cannot be recovered: it may be a short stitch or a defect, and the
+    instrument cannot tell. It is neither excused nor counted — it is reported
+    (`series_ends_unread`). Both guesses were tried: counting it read a 0.6 mm
+    "defect" on a clean tight curve whose last station the guard retracted;
+    a one-neighbour estimate excused a corner-cutting point wherever a ring's
+    first vertex happens to be a corner."""
+    out = np.zeros(len(d), bool)
+    if len(d) >= 2:
+        out[0] = d[0] < d[1] - SHORT_STITCH_DIP_MM
+        out[-1] = d[-1] < d[-2] - SHORT_STITCH_DIP_MM
+    return out
 
 
 def _summary(dev: np.ndarray, d: np.ndarray) -> dict:
@@ -190,9 +255,9 @@ def _summary(dev: np.ndarray, d: np.ndarray) -> dict:
 
 def analyse_plan(polygons: dict, plan) -> dict:
     """`polygons` is shape_id -> shapely Polygon, in the plan's own mm frame."""
-    rings_of = {}
-    rows = []          # (tier, shape_id, x, y, dev, d)
-    excused = 0
+    rings_of, corners_of = {}, {}
+    rows = []          # (tier, shape_id, x, y, dev, d, zone)
+    excused = unread = 0
     for _block, run in plan.iter_runs():
         tier, poly = TIER.get(run.kind), polygons.get(run.shape_id)
         if tier is None or poly is None or poly.is_empty:
@@ -201,11 +266,15 @@ def analyse_plan(polygons: dict, plan) -> dict:
             geoms = getattr(poly, "geoms", [poly])
             rings_of[run.shape_id] = [LineString(r.coords) for g in geoms
                                       for r in (g.exterior, *g.interiors)]
+            corners_of[run.shape_id] = _corners(rings_of[run.shape_id])
         for part in _edge_parts(run):
             for P, d, s in _series(part, rings_of[run.shape_id], poly):
                 if run.kind in RAIL_KINDS:
-                    skip = _excused(d, s)
+                    skip = _excused(P, d)
                     excused += int(skip.sum())
+                    P, d, s = P[~skip], d[~skip], s[~skip]
+                    skip = _unreadable_ends(d)
+                    unread += int(skip.sum())
                     P, d, s = P[~skip], d[~skip], s[~skip]
                     if len(d) < MIN_SERIES:
                         continue
@@ -213,21 +282,28 @@ def analyse_plan(polygons: dict, plan) -> dict:
                 n = max(4, int(round(WINDOW_MM / max(step, 1e-6))) // 2 * 2)
                 n = min(n, (len(d) - 1) // 2 * 2)
                 dev = d - _baseline(d, n)
-                rows += [(tier, run.shape_id, x, y, v, dd)
-                         for (x, y), v, dd in zip(P, dev, d)]
+                zone = (_zones(P, s, corners_of[run.shape_id])
+                        if run.kind in RAIL_KINDS else [None] * len(P))
+                rows += [(tier, run.shape_id, x, y, v, dd, z)
+                         for (x, y), v, dd, z in zip(P, dev, d, zone)]
 
     dev = np.array([r[4] for r in rows])
     d = np.array([r[5] for r in rows])
     tiers = np.array([r[0] for r in rows])
+    zones = np.array([r[6] for r in rows], dtype=object)
     out = _summary(dev, d)
     out["short_stitches_excused"] = excused
+    out["series_ends_unread"] = unread
     out["by_tier"] = {t: _summary(dev[tiers == t], d[tiers == t])
                       for t in dict.fromkeys(r[0] for r in rows)}
+    out["rail_zones"] = {z: _summary(dev[zones == z], d[zones == z])
+                         for z in ZONES if (zones == z).any()}
     worst = []
     for i in np.argsort(-np.abs(dev)) if len(dev) else []:
-        _t, sid, x, y, v, _d = rows[i]
+        _t, sid, x, y, v, _d, _z = rows[i]
         if all(w["shape_id"] != sid or math.dist(w["at_mm"], (x, y)) > 2.0 for w in worst):
-            worst.append(dict(shape_id=sid, tier=rows[i][0], dev_mm=round(float(v), 3),
+            worst.append(dict(shape_id=sid, tier=rows[i][0], zone=rows[i][6],
+                              dev_mm=round(float(v), 3),
                               at_mm=(round(float(x), 2), round(float(y), 2))))
         if len(worst) == 5:
             break
@@ -235,10 +311,65 @@ def analyse_plan(polygons: dict, plan) -> dict:
     return out
 
 
-def analyse(image_path: str | Path, cfg: PipelineConfig | None = None) -> dict:
+THREAD_MM = 0.35
+
+
+def render_worst(polygons: dict, plan, row: dict, out_path: str | Path,
+                 box_mm: float = 10.0, px_per_mm: int = 60) -> Path:
+    """One tile per `row["worst"]` spot: the thread as sewn (at thread width,
+    in its own colour), the outline it was given (green), the spot (red ring).
+
+    For Kent's eye, which is the judge this number has not yet met. No
+    artwork in it on purpose — that would need registration, and the question
+    here is only whether the thread follows the outline.
+    """
+    import cv2
+
+    side = int(round(box_mm * px_per_mm))
+    tiles = []
+    for w in row["worst"]:
+        x0, y0 = w["at_mm"][0] - box_mm / 2, w["at_mm"][1] - box_mm / 2
+        im = np.full((side, side, 3), 255, np.uint8)
+
+        def px(P):
+            return np.round((np.asarray(P, float) - (x0, y0)) * px_per_mm).astype(np.int32)
+
+        for block, run in plan.iter_runs():
+            if run.kind not in TIER or len(run.points) < 2:
+                continue
+            P = np.asarray(run.points, float)
+            if (P.max(0) < (x0, y0)).any() or (P.min(0) > (x0 + box_mm, y0 + box_mm)).any():
+                continue
+            r, g, b = block.rgb
+            if min(r, g, b) > 225:                       # white thread on a white tile
+                r = g = b = 190
+            cv2.polylines(im, [px(P)], False, (int(b), int(g), int(r)),
+                          max(1, int(round(THREAD_MM * px_per_mm))), cv2.LINE_AA)
+        for poly in polygons.values():
+            for geom in getattr(poly, "geoms", [poly]):
+                for ring in (geom.exterior, *geom.interiors):
+                    cv2.polylines(im, [px(ring.coords)], True, (0, 170, 0), 2, cv2.LINE_AA)
+        c = (side // 2, side // 2)
+        cv2.circle(im, c, int(0.6 * px_per_mm), (0, 0, 235), 2, cv2.LINE_AA)
+        label = f"{w['dev_mm']:+.2f} mm  {w['tier']} {w['zone'] or ''}  box {box_mm:g} mm"
+        cv2.putText(im, label, (6, 18), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 3, cv2.LINE_AA)
+        cv2.putText(im, label, (6, 18), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 1, cv2.LINE_AA)
+        tiles.append(im)
+    out_path = Path(out_path)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    cv2.imwrite(str(out_path), np.hstack(tiles) if tiles else np.full((side, side, 3), 255, np.uint8))
+    return out_path
+
+
+def analyse(image_path: str | Path, cfg: PipelineConfig | None = None,
+            render_dir: str | Path | None = None) -> dict:
     image_path = Path(image_path)
     result, plan = digitize(image_path, cfg or PipelineConfig())
-    row = analyse_plan({r.shape_id: r.polygon for r in result.regions}, plan)
+    polygons = {r.shape_id: r.polygon for r in result.regions}
+    row = analyse_plan(polygons, plan)
+    if render_dir is not None:
+        row["render"] = str(render_worst(polygons, plan, row,
+                                         Path(render_dir) / f"{image_path.stem}_worst.png"))
     return {"fixture": image_path.name, "route": result.design_class, **row}
 
 
@@ -253,19 +384,32 @@ def _resolve(names: list[str]) -> list[Path]:
 def main(argv: list[str] | None = None) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
     as_json = "--json" in argv
-    rows = [analyse(p) for p in _resolve([a for a in argv if not a.startswith("--")])]
+    render_dir = None
+    if "--render" in argv:
+        i = argv.index("--render")
+        render_dir = argv[i + 1]
+        del argv[i:i + 2]
+    rows = [analyse(p, render_dir=render_dir)
+            for p in _resolve([a for a in argv if not a.startswith("--")])]
     if as_json:
         print(json.dumps(rows, indent=1))
         return 0
     for r in rows:
         print(f"{r['fixture']}  ({r['route']})  {r['points']} edge penetrations, "
-              f"{r['short_stitches_excused']} short stitches excused")
+              f"{r['short_stitches_excused']} short stitches excused, "
+              f"{r['series_ends_unread']} series ends unread")
         for t, s in r["by_tier"].items():
             print(f"  {t:7s} n={s['points']:6d}  std {s['wobble_std_mm']:.3f}  "
                   f"p95 {s['wobble_p95_mm']:.3f}  max {s['wobble_max_mm']:.2f} mm  "
                   f">{OVER_MM} mm {s['share_over']:.1%}  offset {s['offset_mm']:+.2f}")
+        for z, s in r["rail_zones"].items():
+            print(f"  rails/{z:6s} n={s['points']:6d}  std {s['wobble_std_mm']:.3f}  "
+                  f"p95 {s['wobble_p95_mm']:.3f}  >{OVER_MM} mm {s['share_over']:.1%}")
         for w in r["worst"]:
-            print(f"    worst {w['dev_mm']:+.2f} mm  {w['tier']:6s} {w['shape_id']}  at {w['at_mm']}")
+            print(f"    worst {w['dev_mm']:+.2f} mm  {w['tier']:6s} {w['zone'] or '-':6s} "
+                  f"{w['shape_id']}  at {w['at_mm']}")
+        if r.get("render"):
+            print(f"  render: {r['render']}")
     return 0
 
 

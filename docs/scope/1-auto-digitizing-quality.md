@@ -3635,6 +3635,14 @@ edge; no raster, no registration. On `main` at `24fce102`:
 | `logo_gaulke_roofing` | 0.088 / 0.170 / 6.7% | 0.019 | 0.000 |
 | `logo_whitebg` | 0.038 / 0.067 / 0.8% | 0.022 | 0.000 |
 
+**By zone (`rail_zones`), share of rail penetrations over 0.15 mm:** corner
+26.0 / 14.9 / 12.0% (enthusiast / Becker / Gaulke), series end 10.5 / 12.8 /
+5.4%, mid-column 3.5 / 4.1 / 3.7%. Corners first, ends second, a lumpy curve a
+distant third — three different fixes. Renders of the five worst spots per
+logo: `docs/renders/edge-wobble-2026-09-19/` (`--render DIR`). Becker's fill
+row is probably the instrument misreading a split column's mid-points as row
+ends (DOCTRINE) — unconfirmed.
+
 Satin barely moved across 2026-09-19's satin flips (0.106 / 0.101 / 0.098 on
 the pre-flip base), and `satin_rails_follow_edge` moved the spike's figure
 ~10% — neither is the lever. **Open:** why the rails wobble (worst points are

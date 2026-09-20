@@ -28,6 +28,15 @@ re-measure (so those flips are not this lever). Fetch FIRST.
 `satin_rails_follow_edge` ON moves it ~10% — consistent with
 [[six-flags-invisible-at-viewing-size-2026-09-18]].
 
+**By zone (`rail_zones`): corners first** — 12–26% of rail points within
+0.6 mm of an outline corner are >0.15 mm off, series ends 5–13%, mid-column
+3.5–4.1%. "Lumpy curves" is the SMALLEST share; rounded/notched corners and
+column ends are most of it. Renders (`--render DIR`,
+`docs/renders/edge-wobble-2026-09-19/`) show notches at satin joins, a bare
+crotch in Becker's M, slivers on Gaulke's oblique edges, and Becker's OUTLINE
+visibly stair-stepped. Kent has not yet judged them. Becker's fill row is
+probably an instrument misread of split-column mid-points — unconfirmed.
+
 **Why:** stage-4 curve fitting was the obvious build and would have moved
 nothing on decent art. Second time the outline was nearly blamed for the rails
 (DOCTRINE 2026-09-09).
