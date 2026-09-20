@@ -235,15 +235,21 @@ class PipelineConfig:
     # regions / 8,334 stitches / 59 trims; the SAME alpha with black under
     # it reads gradient / 151 / 15,318 / 175 (DOCTRINE 2026-09-19/20 — the
     # Studio's canvas did exactly that until the panel started sending the
-    # file, and any exporter can). ON, the filters read nearest-opaque
+    # file, and any exporter can). ON, every stage reads nearest-opaque
     # colour under every non-opaque pixel (`stage1_prep.extend_opaque_colour`)
-    # and the file's own under-alpha colour goes back wherever alpha < 128
-    # before `bg_edge_rgb` and the enclosed holes read it — the naive fill
-    # that skipped that step sewed Fremont's ground (scope-history
-    # 2026-09-20 §E). Not a physical constant: it changes which pixels a
-    # filter reads, never a fabric number. Built OFF 2026-09-20 (Kent's
-    # pick); OFF is the shipped path byte for byte; the flip is Kent's, on
-    # the census (`tools/studio_raster_census.py`, arm `extend`).
+    # — every stage, because stage 0's gradient signal and stage 2's
+    # segmentation run kernels over the whole raster and mask afterwards; a
+    # first cut that put the file's own colour back under alpha < 128 after
+    # the two filters left Becker-with-black-underneath at gradient / 146
+    # regions. The two readers that want the file's own colour there —
+    # `bg_edge_rgb`, stage 2's anti-alias endpoint, and preflight's
+    # `GROUND_SEWN` border colour — read it from `Prep.raw_rgb`; the naive
+    # whole-image fill that gave them the extended colour sewed Fremont's
+    # ground (scope-history 2026-09-20 §E). Not a physical constant: it
+    # changes which pixels the stages read, never a fabric number. Built OFF
+    # 2026-09-20 (Kent's pick); OFF is the shipped path byte for byte; the
+    # flip is Kent's, on the census (`tools/studio_raster_census.py`, arm
+    # `extend`, raster `native_black`).
     alpha_edge_extend: bool = False
 
     # Stage 1.5 — photo prep (photo plan §2 rows 3-4; build step 3, first

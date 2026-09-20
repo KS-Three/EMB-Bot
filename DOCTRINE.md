@@ -5900,14 +5900,19 @@ all reproduced 14. The trace's `px_per_mm` — 14.61 against the file's 17.05
   ENTHUSIAST's file goes 12 → 17 trims under it (its exporter's white under
   the alpha was the friendlier choice) and drone 120 → 153. So the fix
   belongs where the RGB is READ — and that is `cfg.alpha_edge_extend`,
-  built OFF the same day on Kent's pick: the bilateral denoise and the
-  Lanczos upscale read nearest-opaque colour under every non-opaque pixel
-  (`stage1_prep.extend_opaque_colour`) and the file's own under-alpha colour
-  goes back wherever alpha < 128 before `bg_edge_rgb` and the enclosed holes
-  read it. Its census (the four cutouts as they are, with black painted
-  under their alpha, and the Studio raster; scope-history 2026-09-20, the
-  extend addendum) is what the flip waits on. *(measured 2026-09-20 —
-  scope-history §E; built the same day)*
+  built OFF the same day on Kent's pick: every stage reads nearest-opaque
+  colour under every non-opaque pixel (`stage1_prep.extend_opaque_colour`),
+  and the two readers that want the file's own colour there — `bg_edge_rgb`
+  and preflight's `GROUND_SEWN` border colour — read it from `Prep.raw_rgb`.
+  **Every stage, not only the two filters:** a first cut that put the file's
+  colour back under alpha < 128 after the denoise and the upscale left
+  Becker-with-black-underneath at gradient / 146 regions, because stage 0's
+  gradient signal and stage 2's segmentation run kernels over the whole
+  raster and mask to the artwork afterwards — a kernel on the edge reads
+  what is under the alpha whatever the mask says. Its census (the four
+  cutouts as they are, with black painted under their alpha, and the Studio
+  raster; scope-history 2026-09-20, the extend addendum) is what the flip
+  waits on. *(measured 2026-09-20 — scope-history §E; built the same day)*
 - **A gap between two paths on ONE file is a finding, not a curiosity.** The
   14-vs-9 was seen while fixing the e2e for PR #523 and set aside because the
   test was green either way; every engine measurement here goes through a

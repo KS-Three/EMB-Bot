@@ -7,11 +7,15 @@ filters — the bilateral denoise and the Lanczos resolution-floor upscale —
 blur that colour into the edge pixels the design then sews. Measured
 2026-09-20 on Becker: the file (one colour everywhere) reads flat / 18
 regions / 8,334 stitches / 59 trims, the same alpha with black underneath
-gradient / 151 / 15,318 / 175. ON, the filters read nearest-opaque colour
-under every non-opaque pixel instead, and the file's own under-alpha colour
-goes back wherever alpha < 128 before `bg_edge_rgb` and the enclosed holes
-read it — the naive whole-image fill that skipped that step sewed Fremont's
-ground (scope-history 2026-09-20 §E).
+gradient / 151 / 15,318 / 175. ON, every stage reads nearest-opaque colour
+under every non-opaque pixel instead — every stage, because stage 0's
+gradient signal and stage 2's segmentation run kernels over the whole raster
+and mask afterwards (a first cut that put the file's own colour back under
+alpha < 128 after the filters left Becker-with-black-underneath at gradient
+/ 146 regions) — while the two readers that want the file's own colour
+there, `bg_edge_rgb` and preflight's `GROUND_SEWN` border colour, read it
+from `Prep.raw_rgb`; the naive whole-image fill that gave them the extended
+colour sewed Fremont's ground (scope-history 2026-09-20 §E).
 
 Pinned: the default is OFF and OFF is the shipped path; the helper's
 contract; on a synthetic cutout with a real alpha ramp, under the floor so
@@ -80,12 +84,18 @@ def test_on_the_under_alpha_colour_stops_reaching_the_sewn_edge_and_off_it_still
     sewn = ~friendly.bg_mask
     diff = np.abs(friendly.rgb.astype(int) - hostile.rgb.astype(int)).max(axis=2)
     if extend:
-        # The sewn pixels read the same whatever sat under the alpha...
-        assert diff[sewn].max() == 0, int(diff[sewn].max())
-        # ...and the background side still reads each file's own colour.
+        # Every pixel any stage reads is the same whatever sat under the
+        # alpha — the sewn ones and the extended background alike...
+        assert diff.max() == 0, int(diff.max())
+        # ...while the two readers that want the file's own colour under the
+        # transparency still get it: the anti-alias endpoint and the raw
+        # raster preflight reads its border colour from.
         assert tuple(np.round(friendly.bg_edge_rgb).astype(int)) != tuple(np.round(hostile.bg_edge_rgb).astype(int))
-        assert diff[friendly.bg_mask].max() > 0
+        assert friendly.raw_rgb is not None and hostile.raw_rgb is not None
+        raw_diff = np.abs(friendly.raw_rgb.astype(int) - hostile.raw_rgb.astype(int)).max(axis=2)
+        assert raw_diff[friendly.bg_mask].max() > 20
     else:
+        assert friendly.raw_rgb is None and hostile.raw_rgb is None
         # The shipped path: black under the alpha darkens the sewn edge.
         assert diff[sewn].max() > 20, int(diff[sewn].max())
 
