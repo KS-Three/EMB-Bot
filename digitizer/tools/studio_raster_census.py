@@ -20,11 +20,16 @@ INTER_AREA at the Studio's exact size — the Python-only stand-in candidate,
 measured NOT to be one), `native_bleed` / `studio_bleed` (every non-opaque
 pixel given the RGB of its nearest opaque pixel — the cure for the
 under-alpha rewrite), `studio_high` / `studio_high_bleed` (the candidate
-Studio fix). Arms: today's defaults, then each lettering flip OFF against
-them (plus `fill_bridge_cut`, whose trade was read on the file too). One
-`build_generation` per raster; every arm finishes from a fork, which is
-identical to a fresh build for these stage-6/7 flags (checked 2026-09-20 on
-three of them). Per row: stitches, trims, lettering trims by cause (the
+Studio fix), `native_black` (the file with RGB zeroed under alpha == 0 — the
+hostile exporter, what a canvas does minus its partial-alpha noise). Arms:
+today's defaults, then each lettering flip OFF against them (plus
+`fill_bridge_cut`, whose trade was read on the file too), and the three
+`extend*` forms of stage 1's `alpha_edge_extend` — measured against the
+pre-flip defaults; Kent flipped the gated form ON on 2026-09-20, so on
+today's engine `default` is `extend_upscaled` and `extend_off` is the
+engine every `default` row written before the flip was read on. One `build_generation` per raster; a
+stage-6/7 arm finishes from a fork, which is identical to a fresh build for
+those flags (checked 2026-09-20 on three of them); the stage-1 arm rebuilds. Per row: stitches, trims, lettering trims by cause (the
 2026-09-19 census's rule, with `_graph_travel` spied for refusals), exposed
 travel (`travel_cover`), uncovered area, coverage_max, grade, findings.
 Rows append to the JSON as they land, and a rerun skips rows already there.
@@ -53,6 +58,7 @@ from digitizer_core import textcluster as tc  # noqa: E402
 from digitizer_core.config import PipelineConfig  # noqa: E402
 from digitizer_core.pipeline import build_generation, finish_generation, plan_stitches  # noqa: E402
 from digitizer_core.preflight import run_preflight  # noqa: E402
+from digitizer_core.stage1_prep import extend_opaque_colour  # noqa: E402
 from tools.thin_strokes import corpus_cases  # noqa: E402
 from tools.travel_cover import travel_exposure  # noqa: E402
 
@@ -77,10 +83,25 @@ ARMS: dict[str, dict] = {
     "cap_skip": {"edge_cap_skip_lettering": False},
     "exit": {"satin_exit_toward_next": False},
     "bridge_cut": {"fill_bridge_cut": False},
+    # Stage 1's alpha edge extension (built OFF 2026-09-20, the gated form
+    # flipped ON the same day by Kent). A stage-1 flag changes the
+    # generation, so these arms rebuild. Whole image: every non-opaque pixel.
+    "extend": {"alpha_edge_extend": True, "alpha_edge_extend_upscaled_only": False},
+    # The halo variant: the extension reaches 8 source px from the opaque
+    # edge (every kernel's reach) and leaves a deeper backdrop alone.
+    "extend_halo8": {"alpha_edge_extend": True, "alpha_edge_extend_px": 8, "alpha_edge_extend_upscaled_only": False},
+    # Gated on the resolution-floor upscale: the extension only where the
+    # Lanczos upscale will run (Kent's pick after the first two arms, and
+    # the shipped defaults since the flip — identical to `default` today).
+    "extend_upscaled": {"alpha_edge_extend": True, "alpha_edge_extend_upscaled_only": True},
+    # The pre-flip engine: what every `default` row in a census JSON written
+    # before 2026-09-20's flip was read on.
+    "extend_off": {"alpha_edge_extend": False},
 }
-RASTERS = ["native", "studio", "area", "native_bleed", "studio_bleed", "studio_high", "studio_high_bleed"]
+PREFIX_ARMS = {"extend", "extend_halo8", "extend_upscaled", "extend_off"}
+RASTERS = ["native", "studio", "area", "native_bleed", "studio_bleed", "studio_high", "studio_high_bleed", "native_black"]
 # The per-flag arms run on the file and the panel's raster; the candidate-fix
-# rasters carry the defaults only.
+# rasters carry the defaults (and, for `native_black`, the extend arm).
 FULL_ARM_RASTERS = {"native", "studio"}
 
 
@@ -93,22 +114,30 @@ def studio_path(path: Path, smoothing: str | None = None) -> Path:
 
 
 def bleed(img: np.ndarray) -> np.ndarray | None:
-    """Every non-opaque pixel takes the RGB of its NEAREST opaque pixel; alpha
-    is untouched. None when there is nothing to do (no alpha, no partial
-    alpha, or nothing opaque) — the identity, not a copy."""
+    """The naive whole-image fill (§E's "bleed"): every non-opaque pixel takes
+    the RGB of its NEAREST opaque pixel — `stage1_prep.extend_opaque_colour`,
+    applied to the file itself so bg_edge_rgb and the enclosed holes read it
+    too (which is what broke Fremont). None when there is nothing to do (no
+    alpha, no partial alpha, or nothing opaque) — the identity, not a copy."""
     if img.ndim != 3 or img.shape[2] != 4:
         return None
     a = img[..., 3]
-    opaque = (a >= 255).astype(np.uint8)
+    opaque = a >= 255
     if opaque.all() or not opaque.any():
         return None
-    # DIST_LABEL_PIXEL numbers the zero pixels of the mask 1..N in row-major
-    # order, so the label of a transparent pixel indexes its nearest opaque one.
-    _d, labels = cv2.distanceTransformWithLabels(1 - opaque, cv2.DIST_L2, 3, labelType=cv2.DIST_LABEL_PIXEL)
-    ys, xs = np.nonzero(opaque)
-    src = np.stack([ys, xs], axis=1)[labels - 1]
     out = img.copy()
-    out[..., :3] = img[src[..., 0], src[..., 1], :3]
+    out[..., :3] = extend_opaque_colour(img[..., :3], a)
+    return out
+
+
+def black_under_alpha(img: np.ndarray) -> np.ndarray | None:
+    """The hostile exporter: RGB zeroed wherever alpha == 0 (what a browser
+    canvas does to every fully transparent pixel, minus its partial-alpha
+    noise). None for an image with no fully transparent pixel."""
+    if img.ndim != 3 or img.shape[2] != 4 or not (img[..., 3] == 0).any():
+        return None
+    out = img.copy()
+    out[img[..., 3] == 0, :3] = 0
     return out
 
 
@@ -134,7 +163,7 @@ def raster_file(name: str, path: Path, out_dir: Path) -> Path | None:
         return studio_path(path)
     if name == "area":
         return area_raster(path, out_dir)
-    src = path if name == "native_bleed" else studio_path(path, "high" if name.startswith("studio_high") else None)
+    src = path if name in ("native_bleed", "native_black") else studio_path(path, "high" if name.startswith("studio_high") else None)
     if not src.exists():
         return None
     raw = cv2.imread(str(src), cv2.IMREAD_UNCHANGED)
@@ -143,7 +172,7 @@ def raster_file(name: str, path: Path, out_dir: Path) -> Path | None:
         if st is not None and raw.shape[:2] == st.shape[:2] and np.array_equal(raw, st):
             return None      # not resized: the smoothing setting cannot matter
         return src
-    img = bleed(raw)
+    img = black_under_alpha(raw) if name == "native_black" else bleed(raw)
     if img is None:
         return None          # no real transparency: the bleed is the identity
     out = out_dir / f"{path.stem}.{name}.png"
@@ -213,7 +242,7 @@ def run(args: argparse.Namespace) -> None:
             rpath = raster_file(raster, path, derived)
             if rpath is None or not rpath.exists():
                 continue
-            arms = ARMS if raster in FULL_ARM_RASTERS else {"default": {}}
+            arms = ARMS if raster in FULL_ARM_RASTERS else {a: ARMS[a] for a in ("default", *PREFIX_ARMS)}
             todo = [a for a in arms if a in args.arms and (name, raster, a) not in done]
             if not todo:
                 continue
@@ -222,8 +251,11 @@ def run(args: argparse.Namespace) -> None:
             gen = build_generation(str(rpath), PipelineConfig(target_width_mm=width, garment_id=garment, max_colors=6))
             for arm in todo:
                 cfg = PipelineConfig(target_width_mm=width, garment_id=garment, max_colors=6, **arms[arm])
+                # A stage-6/7 arm finishes from the shared generation; a
+                # stage-1 arm has to build its own.
+                g = build_generation(str(rpath), cfg) if arm in PREFIX_ARMS else gen
                 row = dict(case=name, raster=raster, arm=arm, px=f"{w}x{h}", px_per_mm=round(w / width, 2),
-                           **measure(gen, rpath, cfg))
+                           **measure(g, rpath, cfg))
                 rows.append(row)
                 print(f"[{(time.time() - t0) / 60:5.1f} min] {json.dumps(row)}", flush=True)
                 out_path.write_text(json.dumps(rows, indent=1))

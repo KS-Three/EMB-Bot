@@ -226,6 +226,62 @@ class PipelineConfig:
     min_px_per_mm: float = 4.0         # resolution floor at target size
     upscale_cap: float = 4.0           # max Lanczos upscale factor
     denoise: bool = True
+    # Stage 1 stops reading the RGB under an alpha cutout's transparency.
+    # The shape of a cutout lives in alpha; the RGB underneath is whatever
+    # the exporter (or a browser canvas) left, and both filters above read
+    # it — the bilateral denoise and the Lanczos floor upscale blur it into
+    # the edge pixels the design sews. Measured 2026-09-20 on Becker: the
+    # file (one colour everywhere, the shape in alpha) reads flat / 18
+    # regions / 8,334 stitches / 59 trims; the SAME alpha with black under
+    # it reads gradient / 151 / 15,318 / 175 (DOCTRINE 2026-09-19/20 — the
+    # Studio's canvas did exactly that until the panel started sending the
+    # file, and any exporter can). ON, every stage reads nearest-opaque
+    # colour under every non-opaque pixel (`stage1_prep.extend_opaque_colour`)
+    # — every stage, because stage 0's gradient signal and stage 2's
+    # segmentation run kernels over the whole raster and mask afterwards; a
+    # first cut that put the file's own colour back under alpha < 128 after
+    # the two filters left Becker-with-black-underneath at gradient / 146
+    # regions. The two readers that want the file's own colour there —
+    # `bg_edge_rgb`, stage 2's anti-alias endpoint, and preflight's
+    # `GROUND_SEWN` border colour — read it from `Prep.raw_rgb`; the naive
+    # whole-image fill that gave them the extended colour sewed Fremont's
+    # ground (scope-history 2026-09-20 §E). Not a physical constant: it
+    # changes which pixels the stages read, never a fabric number. Built OFF
+    # 2026-09-20 (Kent's pick), measured in three forms on the census
+    # (`tools/studio_raster_census.py`, arms `extend*`, raster
+    # `native_black`), and FLIPPED ON the same day (Kent) in the gated form
+    # below: with `alpha_edge_extend_upscaled_only` the extension runs only
+    # where the resolution-floor upscale will, the one reader measured to
+    # smear the under-alpha colour into the sewn edge. OFF is the pre-flip
+    # engine byte for byte; a test whose numbers were read on it holds OFF.
+    alpha_edge_extend: bool = True
+    # How far under the alpha the extension reaches, in SOURCE pixels from
+    # the opaque edge; 0 = every non-opaque pixel. Every kernel that reads
+    # across the edge reaches a few pixels (Sobel 1, the bilateral 2,
+    # Lanczos4 4 at source scale), so a halo covers them while a backdrop
+    # an exporter left further under the alpha — drone's render, which its
+    # photo lane reads better than hard plateaus — stays as the file has it.
+    # MEASURED NEGATIVE 2026-09-20 (scope-history, the extend addendum): at
+    # 8 px it keeps Becker's cure and changes nothing on ENTHUSIAST or
+    # Fremont, and on drone gives up the invariance (147 trims on the file,
+    # 156 with black under it) without recovering the file's 120. Kept so
+    # the next reader can re-measure rather than rebuild; 0 is the form.
+    alpha_edge_extend_px: int = 0
+    # The extension only where the resolution-floor upscale will run (the
+    # artwork under `min_px_per_mm` at the target width, decided the same
+    # way in stage 0 and stage 1 — `alpha_edge.upscale_expected`). Measured
+    # 2026-09-20: the Lanczos upscale is the reader that smeared black under
+    # Becker's alpha into 59 -> 157 trims; the three cutouts above the floor
+    # read the same from the file and from black and paid for the
+    # whole-image extension (ENTHUSIAST +5 trims, drone +33, Fremont +78 mm
+    # of exposed travel). Built 2026-09-20 on Kent's pick, measured beside
+    # the other two forms in scope-history: Becker's six rows read the cure
+    # (8,440 stitches / 54 trims / flat / B from the file, from black under
+    # its alpha and from the Studio raster alike) and the other nine rows
+    # are byte-identical to OFF. ON 2026-09-20 (Kent), with
+    # `alpha_edge_extend`; the whole-image form is `alpha_edge_extend=True`
+    # with this False.
+    alpha_edge_extend_upscaled_only: bool = True
 
     # Stage 1.5 — photo prep (photo plan §2 rows 3-4; build step 3, first
     # slice — stage1_photo_prep.py). CLAHE tone rescue + texture kill on the

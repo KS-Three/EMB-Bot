@@ -77,15 +77,25 @@ FIXTURES = {
 # 900x900 badge whose gradient reading (0.458) sits far enough above the 0.0015
 # threshold that no amount of downscaling in this range crosses it. That it is
 # stable for a reason unrelated to correctness is itself worth knowing.
+#
+# `photo/drone_render.png` LEFT both sets on 2026-09-20, and not through the
+# recalibration: Kent's flip of `alpha_edge_extend` (gated on the resolution-
+# floor upscale) gave stage 0 nearest-opaque colour under the render's alpha
+# wherever the upscale runs, and the sweep's three widths all run it at the
+# default 80 mm. Its 250-px `photo_subject` was the render's own backdrop
+# under the alpha: `unique_color_mass` read 0.335 there on the pre-flip
+# engine and 0.091 with the colour extended, against 0.159 at native. Both
+# sweep tests XPASSed strictly on the flipped tree (2,736 passed, those two),
+# so the marker came off, as this file says it must; the pre-flip reading is
+# pinned below so the record stays executable. The signal windows are still
+# pixel-absolute — the remaining four fixtures say so.
 FLIPS_ACROSS_SWEEP = {
-    "photo/drone_render.png",       # 250px=photo_subject, then gradient
     "photo/enthusiast_logo.png",    # 250/400=photo_scene, 640=gradient
 }
 DEPARTS_FROM_NATIVE = {
     "logo_alpha.png",               # native flat, 250px=gradient
     "logo_whitebg.png",             # native flat, 250px=gradient
     "ribbon_curve.png",             # native flat, downscaled=gradient
-    "photo/drone_render.png",       # native gradient, 250px=photo_subject
     "photo/enthusiast_logo.png",    # native flat, every width=not flat
 }
 
@@ -109,14 +119,14 @@ def _params(broken: set[str]):
     ]
 
 
-def _classify_at(path: Path, width: int, tmp: Path) -> str:
+def _classify_at(path: Path, width: int, tmp: Path, cfg: PipelineConfig | None = None) -> str:
     im = Image.open(path)
     conv = im.convert("RGBA") if im.mode in ("RGBA", "LA", "P") else im.convert("RGB")
     assert width < conv.width, f"{path.name} is only {conv.width}px — would upscale"
     height = max(1, round(conv.height / conv.width * width))
     out = tmp / f"{path.stem}_{width}.png"
     conv.resize((width, height), Image.LANCZOS).save(out)
-    return stage0_classify.classify(str(out), PipelineConfig()).class_
+    return stage0_classify.classify(str(out), cfg or PipelineConfig()).class_
 
 
 def test_native_classes_are_the_baseline_these_sweeps_depart_from():
@@ -152,3 +162,17 @@ def test_downscaling_does_not_change_an_artwork_class(rel, tmp_path):
     for w in WIDTHS:
         got = _classify_at(TESTDATA / rel, w, tmp_path)
         assert got == native, f"{rel} at {w}px is {got}, native is {native}"
+
+
+def test_the_drone_left_the_broken_set_through_the_alpha_extension_not_a_recalibration(tmp_path):
+    """The record behind the sets above, executable: on the pre-flip engine
+    (`alpha_edge_extend=False`) the drone at 250 px still reads a different
+    class from its native one — the render's backdrop under its alpha — and
+    on the shipped engine it reads the native class. If this stops holding,
+    the drone's invariance came from somewhere else and the comment lies."""
+    rel = "photo/drone_render.png"
+    native = stage0_classify.classify(str(TESTDATA / rel), PipelineConfig()).class_
+    assert native == FIXTURES[rel]
+    pre_flip = _classify_at(TESTDATA / rel, 250, tmp_path, PipelineConfig(alpha_edge_extend=False))
+    assert pre_flip != native, f"pre-flip engine reads {pre_flip} at 250px — the drone's dependence is gone without the extension"
+    assert _classify_at(TESTDATA / rel, 250, tmp_path) == native
