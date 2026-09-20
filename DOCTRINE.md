@@ -6171,3 +6171,90 @@ sub-causes — here the honest headline is that three quarters of the bucket is
 not a defect at all.
 
 *(measured 2026-09-20 — `tools/refused_walks.py`, Kent's pick)*
+
+## A guard's own repair, scoped to the rare case; and the second time an edge's LENGTH lied about its stitches (2026-09-20)
+
+`enthusiast_logo` at 80 mm lost 0.3006 of its ink to
+`tools/dropped_elements` where the 2026-09-02 engine lost 0.2509 — +21.7 mm²
+of 395.5. Bisected to 768de79e alone (defect 23, rails onto the boundary
+crossing), which measured jitter, cross width, same-rail holes, thread and
+wall time, all improved, and did not measure coverage. Two independent causes
+came out of it, and **both are a mechanism that had already been written down
+and then pointed at the wrong population.**
+
+**A — the clearance floor sat inside `if in_taper:` and so never ran in a
+column body.** The outer-rail density refinement
+(`stage6_satin._rail_points`) sizes its insert count from the OUTER rail
+(`adv = max(...)`) and inserts the pieces into BOTH rails. Wherever the rails
+advance unequally — which on a bend is *the reason the refinement exists* —
+the inner rail crowds under `SATIN_SHORT_STITCH_AT_MM` and
+`_short_stitch_guard` retracts those stations up to 0.6 mm INWARD, off the
+artwork the rail was placed on. The floor written to stop exactly that was
+added for a taper tip in 2026-09-09 and left inside the taper branch. Hoisted
+above it, trade kept verbatim, no new constant.
+
+**The taper is the rare case and the column body is the common one**, which
+is the whole lesson: the guard fires where the geometry crowds, and the
+geometry crowds on every bend. Ask where a guard FIRES, not where its repair
+was written.
+
+**B — `_cap_thread` voted on the whole silhouette, including the stretch the
+gate told the emitter not to sew.** `cfg.edge_cap`'s gate (Kent 2026-09-11)
+hands the emitter every linear thing already sewn; the vote never saw it. On
+`enthusiast_logo` the vote scored 473.8 mm of Smoky lettering against 131.7 mm
+of Not Quite Red and picked Smoky, while **100% of the emitted cap — all 117
+stitches, 81.4 mm — rides the red star.** Rendered: a charcoal ring round the
+star. The vote now reads the emitted runs, nearest sewn boundary per segment.
+Stitch count and routing are untouched; only the cone changes.
+
+**The cheap fix for B does NOT work, and this is the second time that proxy
+has lied here.** Voting over `silhouette.boundary.difference(cap_omit)` — the
+open edge by LENGTH — still picks Smoky, 116.6 mm against red's 55.5 mm:
+165.9 mm of the 581.7 mm silhouette survives the gate as remnant arcs between
+letters, and every one is under `_ARC_MIN_MM` and dropped unstitched.
+`_gate_saving`'s docstring already recorded the same divergence from the other
+side (length 51.7% where stitches say 94.2%, this exact fixture) and nobody
+connected the two. **When a question is about what gets SEWN, measure
+stitches. Edge length is not a cheaper version of that answer, it is a
+different and wrong one.**
+
+**The counter-trade, measured, because the taper comment says the crowding was
+accepted to avoid density holes.** It was not a hole trade — both sides
+improved. Same-rail steps under 0.30 mm and steps over two pitches, per
+fixture, before → after:
+
+| fixture | crowded < 0.30 mm | holes > 0.80 mm | worst same-rail step | stitches |
+|---|---|---|---|---|
+| becker | 1.23% → **0.56%** | 51 → **29** | 7.260 mm, unchanged | 8440 → 8070 |
+| tires | 1.22% → **0.85%** | 4 → **2** | 1.924 mm, unchanged | 2475 → 2295 |
+| enthusiast | 1.46% → **1.11%** | 30 → **27** | 2.235 mm, unchanged | 2478 → 2388 |
+| bridge | 1.62% → **0.52%** | 70 → **52** | 4.000 mm, unchanged | 14659 → 14417 |
+
+No fixture's worst same-rail step moved at all, so nothing opened; the large
+steps that went away were the guard's own retractions reading back as gaps.
+
+**What it costs: 3–7% of the thread, and the two coverage instruments
+disagree again.** `rail_edge --bare` (geometric, satin-scoped) gets WORSE —
+enthusiast 3.94 → 4.92%, becker 6.00 → 6.72% — while `lost_frac` (per-pixel
+CIEDE2000 on the render) gets better on all four. That is the same
+disagreement `satin_rails_follow_edge` produced in the opposite direction
+(2026-09-03, and the pinned test's docstring says so), so it is a property of
+the two instruments, not of this cure: **fewer crosses in the middle of a bend
+is less union area, and rails that stay on the edge is more of what a customer
+sees.** `enthusiast`'s `legibility` also slips 1.0 → 0.958. Kent has not ruled
+on which instrument owns this call.
+
+Every other reading improves: edge wobble (satin std enthusiast 0.106 → 0.089,
+becker 0.102 → 0.092; >0.15 mm 12.2 → 8.7% and 9.7 → 8.2%), rail jitter p90
+(0.4705 → 0.1895 and 0.3949 → 0.1158), `roughness_deg` on all four, and
+`lost_frac` becker 0.0404 → 0.0401, tires 0.1270 → 0.1248, bridge 0.1072 →
+0.1067. Unsewn outline is byte-unchanged on both fixtures.
+
+**The two fixes together move 0.3006 → 0.2748 and the pinned test still FAILS
+at a 0.26 bar.** A 0.0069 residual is 768de79e's own recorded open item (the
+symmetric-offset rail model: `rail_edge` still reads 17.6% of enthusiast's
+rail points more than 0.1 mm inside the art), and ~0.0170 is post-2026-09-09
+drift that has never been bisected. The bar was not moved.
+
+*(measured 2026-09-20 — `tests/test_lettering_coverage_regression.py`,
+`tools/rail_edge.py`, `tools/edge_wobble.py`, `tools/eye_pairs`)*
