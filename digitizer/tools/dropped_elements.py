@@ -36,6 +36,30 @@ described the failure:
     knockout filled in  a colour where bare cloth belongs
     wrong thread        one colour where another belongs
 
+## `lost_frac` is a SUM, and a fixture can be entirely one of its halves
+
+Read the total as "coverage" and you will chase the wrong defect. Every region
+carries `ink`, so the total splits cleanly and both halves are reported:
+
+  * `unsewn_frac` — regions ON the ink. Artwork the stitch-out never covered.
+    This is the one Kent named ("the red arm was lost").
+  * `overshoot_frac` — regions OFF it. Thread standing on cloth the artwork
+    leaves bare: a column sewing wider than the shape it belongs to.
+
+Measured 2026-09-20, all four at 80 mm left_chest:
+
+    enthusiast  lost_frac 0.3002   unsewn   0%   overshoot 100%
+    tires       lost_frac 0.1270   unsewn   0%   overshoot 100%
+    becker      lost_frac 0.0509   unsewn  44%   overshoot  56%
+    bridge      lost_frac 0.1070   unsewn 100%   overshoot   0%
+
+They move in OPPOSITE directions under one engine change — satin rails placed
+further out cover more artwork AND spill more thread — so the total cannot say
+which one a change bought, and a wordmark's total says nothing about coverage
+at all. That is not hypothetical: a session read `enthusiast`'s 0.3006 as lost
+coverage and set out to recover artwork that was never uncovered
+(`tools/rail_edge.py --bare` does not move across the change it blamed).
+
 ## Segment the disagreement, not the artwork
 
 Three definitions of "element" were tried first and each had a hole. They are
@@ -321,6 +345,34 @@ def analyse_design(image_path: str | Path, design: dict,
     ink_mm2 = float(A_ink.sum()) / px_per_mm2
     lost_mm2 = sum(x["mm2"] for x in lost)
 
+    # THE TOTAL IS TWO DIFFERENT DEFECTS ADDED TOGETHER, and a fixture can be
+    # entirely one of them. Each region already knows which (`ink`): a region
+    # ON the artwork's ink is somewhere the stitch-out failed to put thread
+    # (Kent's "the red arm was lost"); a region OFF it is thread standing on
+    # cloth that should be bare -- a column sewing wider than its artwork.
+    # Split, because reading the total as "coverage" has already sent a
+    # session the wrong way (2026-09-20): a lettering guard was written to
+    # recover "lost coverage" on `enthusiast_logo`, whose `lost_frac` of
+    # 0.3006 is 118.7 mm2 of overshoot and ZERO mm2 of unsewn ink, and whose
+    # `tools/rail_edge.py --bare` coverage reading does not move at all
+    # across the change that was blamed for it. Measured the same day, same
+    # config, 80 mm left_chest -- the split is not a corner case, it is the
+    # normal state of affairs:
+    #
+    #     enthusiast  lost_frac 0.3002   unsewn   0%   overshoot 100%
+    #     tires       lost_frac 0.1270   unsewn   0%   overshoot 100%
+    #     becker      lost_frac 0.0509   unsewn  44%   overshoot  56%
+    #     bridge      lost_frac 0.1070   unsewn 100%   overshoot   0%
+    #
+    # The two also move in OPPOSITE directions under the same engine change:
+    # satin rails placed further out cover more artwork and spill more
+    # thread, so a single number hides which one a change bought. Pin the half
+    # a fixture is actually made of, and pin the other half alongside it so the
+    # first cannot be bought with it
+    # (`tests/test_lettering_coverage_regression.py` does both).
+    unsewn_mm2 = sum(x["mm2"] for x in lost if x["ink"])
+    overshoot_mm2 = sum(x["mm2"] for x in lost if not x["ink"])
+
     # Same refusals as the scoring instrument: where the ink mask is unreliable,
     # every number here is unreliable in the same way and for the same reason.
     sat = ink_saturation(image_path)
@@ -338,6 +390,17 @@ def analyse_design(image_path: str | Path, design: dict,
         "lost": len(lost),
         "lost_mm2": round(lost_mm2, 1),
         "lost_frac": round(lost_mm2 / ink_mm2, 4) if ink_mm2 else 0.0,
+        # Both halves are expressed against the SAME denominator (the artwork's
+        # ink area), so they sum to `lost_frac` (to the last decimal place kept
+        # -- three independent roundings, so do not assert equality on them)
+        # and either can be compared against it directly.
+        # `overshoot_frac` can exceed 1.0 in principle -- it is thread outside
+        # the ink measured in units of the ink -- and that is the honest
+        # reading, not a bug to clamp.
+        "unsewn_mm2": round(unsewn_mm2, 1),
+        "unsewn_frac": round(unsewn_mm2 / ink_mm2, 4) if ink_mm2 else 0.0,
+        "overshoot_mm2": round(overshoot_mm2, 1),
+        "overshoot_frac": round(overshoot_mm2 / ink_mm2, 4) if ink_mm2 else 0.0,
         "worst_mm2": lost[0]["mm2"] if lost else 0.0,
         "shift_x_mm": round(dx, 1),
         "shift_y_mm": round(dy, 1),
@@ -397,11 +460,18 @@ def main(argv: list[str] | None = None) -> int:
               f"{r['lost_mm2']:>8.1f} {100 * r['lost_frac']:>8.1f}% "
               f"{r['worst_mm2']:>8.1f}"
               + ("   REFUSED" if r["refusal"] else ""))
+        # On its own line rather than as two more columns: the table is already
+        # 76 characters and this is the reading most fixtures are decided by.
+        print(f"{'':26s}   unsewn {r['unsewn_mm2']:>7.1f} mm2 "
+              f"({100 * r['unsewn_frac']:.1f}%)   |   "
+              f"overshoot {r['overshoot_mm2']:>7.1f} mm2 "
+              f"({100 * r['overshoot_frac']:.1f}%)")
         if args.detail and r["_lost"]:
             for d in r["_lost"][:6]:
                 print(f"{'':26s}   {d['mm2']:>6.1f} mm2 at "
                       f"({d['cx'] / RES:.0f},{d['cy'] / RES:.0f}) mm, "
-                      f"dE {d['delta_e']:>5.1f}, {d['cover'] * 100:.0f}% sewn")
+                      f"dE {d['delta_e']:>5.1f}, {d['cover'] * 100:.0f}% sewn, "
+                      f"{'unsewn ink' if d['ink'] else 'thread on ground'}")
 
     if args.csv:
         args.csv.parent.mkdir(parents=True, exist_ok=True)

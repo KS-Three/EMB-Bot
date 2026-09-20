@@ -545,7 +545,7 @@ hand-rolling it in JS.
   so the legitimate dated snapshots in `docs/scope/` stay advisory instead of
   making it permanently red. `tests/test_doc_claims.py` covers it.
 
-  **Two traps these instruments have already sprung, both costly:**
+  **Three traps these instruments have already sprung, all costly:**
   `StitchRun.jump` means the needle was lifted to REACH the run — the run is
   still needle-down, so filtering on it does NOT exclude travel, it excludes
   genuinely sewn work (a `sewn` count built that way reported 11 of 25
@@ -553,6 +553,20 @@ hand-rolling it in JS.
   a finding labels a shade row `"<shape_id> shade <number>"` for its message —
   that string is not a shape id, and looking it up directly reports every
   gradient band as 0.00 mm2 and unsewn.
+
+  **And `dropped_elements`' `lost_frac` is a SUM of two opposite defects**
+  (2026-09-20): artwork never covered, plus thread standing on bare cloth.
+  Read `unsewn_frac` / `overshoot_frac`, never the total — a wordmark is
+  typically 100% overshoot (`enthusiast` 0.3006, of which **0.0** is unsewn
+  ink) and a photo lane 100% unsewn (`bridge`). The two move in OPPOSITE
+  directions under one engine change, so the total cannot say which one a
+  change bought, and a session read a wordmark's total as lost coverage and
+  set out to recover artwork that was never uncovered. Neither half polices
+  the other on its own: `unsewn_frac` only counts regions ≥ 1 mm² after a
+  0.5 mm opening, so coverage lost as a thin rind along every column is
+  invisible to it (a candidate that added 1.7 points of bare satin read
+  0.0028 there) — that shape of loss belongs to `rail_edge.bare_area`. See
+  DOCTRINE 2026-09-20 and `tests/test_lettering_coverage_regression.py`.
 - **Acceptance A/B contact sheet** (`digitizer/tools/acceptance_ab.py`, pure
   logic in `digitizer_core/tools_acceptance.py`): the phase-4 eyeball loop.
   Runs every image in the gitignored `digitizer/testdata/photo/acceptance/`

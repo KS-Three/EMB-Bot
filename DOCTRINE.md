@@ -6171,3 +6171,68 @@ sub-causes — here the honest headline is that three quarters of the bucket is
 not a defect at all.
 
 *(measured 2026-09-20 — `tools/refused_walks.py`, Kent's pick)*
+
+## A wordmark's `lost_frac` is OVERSHOOT, not coverage — and no fix separates the rail's two effects (2026-09-20)
+
+`dropped_elements`' `lost_frac` sums two unrelated defects: artwork the
+stitch-out never covered, and thread standing on cloth the artwork leaves
+bare. A fixture can be **entirely one of them**, and reading the total as
+"coverage" sent a session after artwork that was never uncovered. Measured,
+all four at 80 mm left_chest:
+
+    enthusiast  lost_frac 0.3002   unsewn   0%   overshoot 100%
+    tires       lost_frac 0.1270   unsewn   0%   overshoot 100%
+    becker      lost_frac 0.0509   unsewn  44%   overshoot  56%
+    bridge      lost_frac 0.1070   unsewn 100%   overshoot   0%
+
+`enthusiast`'s 0.3006 is **0.0 mm² of unsewn ink and 118.7 mm² of overshoot**
+— all 32 regions read `ink=False` with `cover` ≈ 0.99 — while
+`rail_edge --bare`, the geometric coverage instrument, reads **3.94% before
+and after** the commit blamed for the move. The total moved; coverage did
+not. Both halves now ship separately (`unsewn_frac`, `overshoot_frac`,
+`FEATURES_SCHEMA` 2).
+
+**This is also why the two WORDMARKs regressed against the 08-27 engine
+while the two non-wordmarks improved.** `768de79e` (defect 23) puts an
+overshooting rail on the nearest boundary crossing instead of stepping in
+15%: 242 firings on this fixture out of 1436 satin penetrations, placing at
+a median **0.980** of the requested width, so the rail lands ON the shape
+edge. Rails further out cover more artwork **and** spill more thread — one
+knob, two populations, helping the coverage-bound designs and hurting the
+overshoot-bound ones. The 16.6 mm² it adds is 100% within 1.0 mm of the ink
+edge, median 0.30 mm outside, three quarters along free edges.
+
+**Three cures were measured and every one bought an instrument with another:**
+
+    candidate                lost_frac  jitter enth/becker  bare(93mm)
+    shipped                     0.3006     0.0227 / 0.0246     3.94%
+    revert the branch           0.2584     0.0413 / 0.0447     3.94%
+    inset the branch 0.20 mm    0.2430     0.0401 / 0.0539     3.99%
+    global corridor cap         0.2420     0.0280 / 0.0287     5.58%
+
+The inset is **worse than a full revert on becker**, and that is the
+generalisable part: **jitter is deviation from the neighbours' chord, so
+offsetting a SUBSET is a step at every boundary of that subset.** The
+crossing placement is smooth precisely *because* it agrees with neighbours
+sitting on the edge. Any rule that moves only the overshooting 17% re-creates
+the dent it removes. The corridor cap avoids that by being global — and pays
+in real coverage, dropping `max_out` 0.541 → 0.300 mm, which is pull
+compensation, gate 1.
+
+So the spill and the jitter win are **one degree of freedom**, not two
+effects to be separated. **Kent's ruling 2026-09-20: keep 768de79e's
+placement, pin what actually regressed.**
+
+**`unsewn_frac` alone cannot police the trade, and that was measured, not
+assumed.** The guard first pinned it at 0.02 and claimed that made the
+corridor cap fail; the cap read **0.0028** and sailed through, because
+`dropped_elements` only counts regions ≥ 1 mm² after a 0.5 mm opening, so
+coverage lost as a thin rind along every column never forms a region it can
+see. `rail_edge.bare_area` sees exactly that (5.50% → 7.22% on the same pair
+at that fixture's config). **Two instruments, two shapes of loss:** a whole
+element gone, versus a rind everywhere. A guard that pins one is gameable by
+the other.
+
+*(measured 2026-09-20 — `tests/test_lettering_coverage_regression.py`, three
+assertions, each verified to fire: `satin_rails_follow_edge=True` reads
+overshoot 0.3555, the corridor cap reads bare 7.22%)*
