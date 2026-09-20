@@ -6376,3 +6376,70 @@ drift that has never been bisected. The bar was not moved.
 
 *(measured 2026-09-20 — `tests/test_lettering_coverage_regression.py`,
 `tools/rail_edge.py`, `tools/edge_wobble.py`, `tools/eye_pairs`)*
+
+## The drift was bisected, and a step a commit COST is not a lever you can pull back (2026-09-20)
+
+The residual left after the two fixes above — 0.2748 against the 2026-09-02
+baseline's 0.2509 — was 0.0239, and 0.0170 of it had never been bisected. It
+has now been, on `enthusiast_logo` at 80 mm, over the 91 first-parent commits
+between 14f99580 (2026-09-03) and cf840cbd that touch `digitizer_core/`. Every
+arm is a temp worktree running that commit's engine in a subprocess
+(`tools/eye_pairs/refarm.py`) whose Design dict is scored by TODAY's
+`features_design_only`, so one ruler measures all of them — about 20 seconds an
+arm, and both known endpoints reproduced exactly (0.2702 and 0.3006) before any
+new arm was believed.
+
+| engine at | `lost_frac` | step |
+|---|---|---|
+| 14f99580, 5edfb91a (09-03) | 0.2702 | — |
+| b603e972 (09-04) | 0.2808 | **+0.0106** |
+| f2173491, eb1aec1c (09-06/07) | 0.2808 | — |
+| 8c88e0e5 (09-09) | 0.2703 | **−0.0105** |
+| …68057a59, PR #454 (09-11) | 0.2703 | — |
+| **59085f70, PR #455 (09-11)** | 0.2933 | **+0.0230** |
+| 87aca27a (09-15) | 0.2933 | — |
+| bff6b37a (09-19) | 0.2946 | +0.0013 |
+| **5d2db084 (09-19)** | 0.3039 | **+0.0093** |
+| 62f492b7 (09-19) | 0.3039 | — |
+| 24fce102, PR #523 (09-19) | 0.3006 | −0.0033 |
+| 48b03066, 9d813fbf, cf840cbd | 0.3006 | — |
+
+**The biggest step is one PR whose entire engine diff is `config.py`, 29 lines:
+PR #455, "Flip the edge cap ON by default (bean)".** Turning that default on
+cost this fixture 0.0230 — more than the rail commit the whole investigation
+started from. The second is 5d2db084, `satin_junction_stack` ON and
+`satin_lettering_split` step 4 ON, Kent's own flips the same day. The 09-04
+step and the 09-09 step cancel: something broke and something fixed it, net
++0.0001.
+
+**And then the trap.** Those are steps in HISTORY, not levers on the tree.
+Measured on today's engine with both fixes in:
+
+| arm | `lost_frac` | stitches |
+|---|---|---|
+| shipped | 0.2748 | 2388 |
+| `edge_cap="none"` | 0.2703 | 2271 |
+| `satin_junction_stack=False` | 0.2743 | 2312 |
+| `satin_lettering_split=False` | 0.2748 | 2380 |
+| cap none + junction off | **0.2698** | 2195 |
+
+**The flag that cost 0.0230 when it landed gives back 0.0045 if you turn it
+off now, and the one that cost 0.0093 gives back 0.0005.** The thread-vote fix
+took 0.0134 of the cap's step and later work absorbed the rest; the engine
+moved around both flips. A bisect step is what the tree did on that day, and
+nothing entitles you to read it as what the flag is worth today — if you want
+the second number, toggle the flag and measure it.
+
+**Nothing in the defaults reaches the bar.** With the cap off AND the junction
+stack off the fixture reads 0.2698, still over 0.26, so the remaining 0.0189
+over baseline is unconditional code: 0.0069 of it is 768de79e's own recorded
+open item (the symmetric-offset rail model, `rail_edge` still reading 17.6% of
+this fixture's rail points more than 0.1 mm inside the art) and the rest is not
+attributable to any flag that has been tried. **No default was changed on the
+strength of any of this** — the edge cap and the junction stack are Kent's
+calls, made for folds and for a finished silhouette edge, and they are priced
+here, not second-guessed.
+
+*(measured 2026-09-20 — `tools/eye_pairs/refarm.py` + `features_design_only`,
+21 arms; the driver was a scratch script and is not in the repo, but it is
+fifteen lines over the two functions named above)*
