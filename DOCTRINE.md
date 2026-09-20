@@ -727,6 +727,68 @@ Moved verbatim 2026-08-28 — no section was rewritten in the move.
 
 ## Measured negatives — built or proposed, then rejected. Do not rebuild.
 
+- **Cap centre-out ordering costs more than twice the needle-up travel, and
+  the one pro file that can be read disagrees with exactly the half that
+  costs it.** `cfg.cap_center_out` is BUILT and parked OFF (MASTER_SCOPE
+  latent 4); this is the evidence behind the park, so it is not re-measured.
+  Measured 2026-09-19 with `digitizer/tools/cap_order_ab.py`, ON vs OFF at
+  80 mm on `hat_front`, **on `478fbbb6`** — the tree matters, see below:
+  `logo_gaulke_roofing` **387.5 → 1260.6 mm needle-up (+225.3%)** and
+  **31 → 49 trims**; `becker_marine_logo` **852.9 → 1042.6 (+22.2%)** and
+  **48 → 47 trims**; `logo_script_tires` byte-for-byte unchanged. Read that
+  against MASTER_SCOPE defect 4 — *we already trim 3.1x the professional* —
+  and the rule makes the worst-measured parity gap worse.
+  **PIN THE TREE WHEN YOU QUOTE THIS.** The first pass of these numbers was
+  taken on `da6606e4` that morning and read +111.2% / +8 trims on gaulke and
+  +11.3% / +4 on becker. Nothing about the flag changed between the two
+  readings; **`main` did** — the lettering-construction series flipped
+  `satin_junction_stack`, `satin_lettering_split`, `fill_bridge_cut` and
+  several lettering flags ON the same day, which improved the OFF BASELINE
+  sharply (gaulke 56 → 31 trims, 723.7 → 387.5 mm) and therefore made the
+  flag's relative cost roughly double. A cost quoted as a percentage is a
+  ratio against a baseline somebody else is actively moving.
+  **The two halves are not equally supported.** Bottom-up is a tiebreak and
+  nearly free; centre-out is what abandons nearest-neighbour travel, and it
+  is the half the pro contradicts: on `gaulke`, the only cap/flat pair in the
+  corpus this is readable from, his cap file scores `bottom_up` **-0.856**
+  against his own left-chest **+0.827** (rule CONFIRMED, and reversed from
+  the flat garment) but `centre_out` **-0.314** against **+0.475** — his cap
+  works INWARD toward the seam. n = 1 pair, so that is an observation and not
+  a finding; it is recorded because it points the same way as the cost.
+  **Do not read this as "the craft rule is wrong."** Law 34 is [P] Melco x2
+  and [T] ASI, and the benefit it claims — less crown distortion on a
+  stretching seamed front — has no instrument here at all. Only the COST is
+  measured. What is settled is that the benefit must be priced on cloth
+  before the travel is spent, which is why the flag ships off.
+  *(measured 2026-09-19 — `tools/cap_order_ab.py`, `tools/cap_order_pro.py`;
+  scope-history 09-19)*
+
+- **A pro's stitch file mostly cannot answer "what ORDER did he sew in", and
+  the reason is the trim rate.** A run ends at a needle lift, and this
+  professional barely lifts — the mirror image of defect 4. Seven of the
+  eight cap/flat files in `tools/cap_order_pro.py`'s corpus decode to **9 to
+  13 runs across 4-5 colour blocks**, one to six runs per block, which holds
+  no ordering to correlate; only `gaulke` (42 runs in a single block) can be
+  read at all. So a run-level probe is the wrong instrument for any ordering
+  question about his work, and the right one assigns runs to REGIONS first —
+  which `tools/pro_parity/diff` on the `claude/pro-overlay-diff` lane already
+  does. Build on that rather than rebuilding region assignment.
+  *(measured 2026-09-19 — `tools/cap_order_pro.py`)*
+
+- **The obvious fixtures cannot see a within-cone ordering change, and their
+  zero is structural rather than a verdict.** `cfg.cap_center_out` reorders
+  shapes INSIDE a colour block, so a block holding one shape has nothing to
+  reorder. `logo_whitebg` and `logo_alpha` are exactly that — every group
+  size 1 — and an A/B on them reported a flat zero on both arms, which was
+  briefly read as "the flag does nothing". Real client artwork is the
+  opposite: `becker_marine_logo` holds **17** shapes in one cone,
+  `logo_gaulke_roofing` **42/9/2**, `logo_bridge_bar`
+  **16/15/12/8/6/5/5/3/3/2**. **Before pricing any within-group rule, print
+  the group sizes** — `cap_order_ab.py` now does, beside the delta, for this
+  reason. The general form is this file's own repeated lesson: a gate that
+  finds nothing on input you believed was obvious is first a question about
+  the input. *(measured 2026-09-19)*
+
 - **A stitch file cannot tell a CAP from a tatami's row turns, and pretending
   otherwise reversed the same answer twice in one session.** The question was
   whether the professional caps his design silhouette (`cfg.edge_cap`,

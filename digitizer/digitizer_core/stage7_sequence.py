@@ -103,6 +103,15 @@ _LINK_SEARCH_NODES = 120
 # lockstep so drift fails loud instead of quietly un-flooring a new class.
 from .config import PHOTO_CLASSES, is_photographic  # canonical copy lives in config.py
 
+# The garments that sew cap-style (cfg.cap_center_out). MIRRORED verbatim
+# from the browser engine's `capMode` predicate in `src/digitize.js` — the
+# whole point of the flag is that the two lanes stopped disagreeing about the
+# same hat, so a membership change here must land there too.
+# `fabrics.GARMENT_FABRIC` is NOT the right source: it maps `beanie` to
+# jersey, because a beanie's FABRIC is a knit even though its geometry is a
+# cap. Fabric and curvature are different questions.
+CAP_GARMENTS = ("hat_front", "beanie")
+
 # Row 14's underlay split, expressed in the vocabularies the two tiers
 # actually speak (fabrics.py's ids):
 #  - Fill zones get a LIGHT MESH — edge run + one lattice pass — instead of
@@ -1626,6 +1635,10 @@ def sequence(
                       if cfg.underlay else "none")
     satin_max = satin_ceiling_mm(cfg)
     trim_at = fabric.trim_at_mm
+    # Cap sew order (cfg.cap_center_out, default OFF — config.py's block has
+    # the craft argument and the lane-split history). Resolved once per call:
+    # the garment cannot change between groups.
+    cap_order = cfg.cap_center_out and cfg.garment_id in CAP_GARMENTS
 
     # `cfg.border is None` means "let the class decide" — see config.py's own
     # block for why None and not "off". Only the real PHOTO_CLASSES take the
@@ -2408,6 +2421,25 @@ def sequence(
         centre = unary_union([p.polygon for p in group]).centroid
         far = {i: round(group[i].polygon.centroid.distance(centre), 6)
                for i in range(len(group))}
+        # Cap order, when it is on: distance from the design's vertical
+        # centreline, then the bill end first. The centreline is `x = 0`
+        # because stage 4 puts the origin at the artwork bbox centre, and
+        # "bill end" is DESCENDING y because that frame's y runs DOWN — the
+        # same two keys, in the same order, as `src/digitize.js`'s `capMode`.
+        #
+        # `x = 0` holds for BOTH producers that reach this function, which is
+        # the thing to check before trusting it: `run_stages` centres on the
+        # artwork bbox (stage4_vectorize line 93) and `manual.py` recentres
+        # the combined shape bbox onto the origin for exactly that reason
+        # (its own line 219). So no caller arrives in an off-centre frame.
+        #
+        # Deliberately NOT keyed on `centre` above: that is this GROUP's own
+        # centroid, so each cone would sew outward from wherever its own
+        # shapes happen to sit. The seam is a property of the garment, not of
+        # the colour, so every group measures from the same line.
+        cap_key = ({i: (round(abs(group[i].polygon.centroid.x), 6),
+                        -round(group[i].polygon.centroid.y, 6), rank[i])
+                    for i in range(len(group))} if cap_order else {})
 
         # The review screen's within-layer sew order (shape-layers contract
         # v1.2, `Region.meta["sew_order"]`): a shape carrying one is "due" at
@@ -2463,6 +2495,12 @@ def sequence(
                     if late else unpinned)
             if due is not None and (sew_order[due] <= next_slot or not unpinned):
                 pick = due
+            elif cap_order:
+                # Replaces BOTH geometry branches, not just the seed: on a cap
+                # the whole sweep runs centre-out, so nearest-neighbour from
+                # the cursor never gets a vote. `capMode` short-circuits the
+                # browser lane's ordering the same way.
+                pick = min(pool, key=lambda i: cap_key[i])
             elif cursor is None:
                 pick = min(pool, key=lambda i: (-far[i], rank[i]))
             else:

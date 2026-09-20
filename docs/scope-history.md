@@ -13,6 +13,60 @@ pointer; if it isn't there, treat it as superseded until re-measured.
 
 ---
 
+**Last updated:** 2026-09-19 — cap sew order built and parked (`cap_center_out`, OFF), with its cost priced and the pro's own cap files read
+
+The Python lane had never read `garment_id` for sew ORDER — it reached
+`fabrics.py` for pull compensation, underlay, density and trim distance and
+stopped, while the browser engine's `capMode` has ordered cap garments
+centre-out and bottom-up all along. `cfg.cap_center_out` closes that split
+behind a default-OFF flag; the standing rulings are in DOCTRINE's "Measured
+negatives", these are the numbers behind them.
+
+A/B at 80 mm on `hat_front`, `tools/cap_order_ab.py`, ON vs OFF, **on merge
+commit `478fbbb6`** (post the lettering-construction series):
+
+| fixture | stitches | trims | needle-up mm | group sizes |
+|---|---|---|---|---|
+| `becker_marine_logo` | 6441 → 6432 | 48 → 47 | 852.9 → 1042.6 (+22.2%) | 17, 1 |
+| `logo_script_tires` | 2434 → 2434 | 7 → 7 | 202.3 → 202.3 (0.0%) | 4, 2 |
+| `photo/logo_gaulke_roofing` | 4263 → 4395 | 31 → 49 | 387.5 → 1260.6 (+225.3%) | 42, 9, 2 |
+
+**Superseded, same day, and kept because the supersession is the point.** The
+first pass ran on `da6606e4` that morning and read: becker 7166 → 7158,
+50 → 54 trims, 1084.0 → 1206.7 (+11.3%); script_tires 2415 → 2415,
+10 → 10, 191.0 (0.0%); gaulke 4539 → 4606, 56 → 64, 723.7 → 1528.9
+(+111.2%). The flag did not change between the two runs — `main` did, flipping
+`satin_junction_stack`, `satin_lettering_split`, `fill_bridge_cut` and the
+lettering flags ON in between. That moved the OFF baseline (gaulke 56 → 31
+trims, 723.7 → 387.5 mm) and roughly doubled the flag's relative cost.
+
+`logo_whitebg` and `logo_alpha` are byte-identical on both arms and were the
+first two fixtures tried — every colour group holds one shape, so there is
+nothing to reorder; that zero is structural (DOCTRINE).
+
+`tools/cap_order_pro.py`, the pro's own cap-vs-left-chest pairs on identical
+artwork, Spearman against sew position, run-count-weighted per file:
+
+| pair | garment | runs | blocks scored | `centre_out` | `bottom_up` |
+|---|---|---|---|---|---|
+| gaulke | cap | 42 | 1/1 | −0.314 | −0.856 |
+| gaulke | flat | 42 | 1/1 | +0.475 | +0.827 |
+| becker_large | cap | 10 | 0/5 | — | — |
+| becker_large | flat | 10 | 1/4 | +0.371 | +0.771 |
+| becker_small | cap / flat | 9 / 9 | 0/5, 0/4 | — | — |
+| mfab | cap | 13 | 1/5 | +0.257 | +0.943 |
+| mfab | flat | 10 | 0/5 | — | — |
+
+Only `gaulke` yields a scorable PAIR, so n = 1 for the paired difference
+(`centre_out` −0.789, `bottom_up` −1.683). The blanks are not missing files:
+this pro barely lifts the needle, so most files hold too few runs per block
+to carry an order at all.
+
+Suite on Kent's Windows box, 2026-09-19, `-n auto`: pre-change **3 failed,
+2627 passed, 3 skipped, 8 xfailed in 43:59** — the three are the three
+CLAUDE.md names (`test_flat_lane_byte_identical`, `test_pushcomp`,
+`test_stage2_photo_segment`), per-fixture platform numerics.
+
 **Last updated:** 2026-09-19 — the lettering construction plan and its step 0 (`satin_house_from_line`, OFF), after the lettering-route review; 2026-09-18, the upscaled regime read at the source's own resolution, built and flipped ON
 
 Moved out of MASTER_SCOPE's "CI feedback speed" when the memo entry needed the
