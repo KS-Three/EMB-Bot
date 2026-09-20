@@ -127,6 +127,21 @@ _TANGENT_WIDTHS = 1.0
 # How opposed two arms must be to count as one stroke through a node. -0.5 welds
 # arms 120 deg apart -- a stroke turning 60 deg, which pivots and sprays.
 _WELD_MAX_DOT = -0.5
+# Under `satin_junction_stack` (junction construction plan, 2026-09-19): the
+# turn, by the SAME baseline, past which a weld is refused and the two arms
+# end at the node. Read off the corpus's welds with `tools/weld_turns.py`
+# rather than derived. Across the nine logos at their corpus widths, 383
+# welds, by ten degrees of turn: 0-10 carries 127 seam pairs on 64 welds,
+# 10-20 47 on 82, 20-30 **13 on 75** -- the trough -- then 30-40 302 on 72,
+# 40-50 274 on 58 and 50-60 844 on 32; the R of the 127 mm fixture folds
+# at 44.4 deg. The fold guard's own radius rule (0.7 R against the node's
+# ball) was tried at 1, 2 and 3 mm windows and separates nothing: the R
+# reads 0.97 at 2 mm, a 301-seam weld on Becker's outline 1.25, a clean
+# weld 0.80. Swept on the fixtures at 20-45 deg (scope-history, the
+# junction build): the fixtures' folds are gone from 25 deg down, and the
+# corpus trough is 20-30, so 30 refuses the fewest welds that hold them.
+_STACK_WELD_TURN_DEG = 30.0
+_STACK_WELD_MAX_DOT = -math.cos(math.radians(_STACK_WELD_TURN_DEG))
 # A spine turning more than this many degrees within about one stroke width
 # gets the column CUT there. This started at 35 and the corpus overruled it:
 # across 19 professional files, 1,436 corner events sit INSIDE a continuing
@@ -1441,7 +1456,8 @@ def _cluster_junctions(edges: list[dict], max_len_px: float,
 
 
 def _merge_through_junctions(edges: list[dict], dt_mm=None, half_mm: float = 0.0,
-                             scale: float = 1.0) -> list[dict]:
+                             scale: float = 1.0,
+                             weld_max_dot: float | None = None) -> list[dict]:
     """Join skeleton edges that run straight through a branch node.
 
     The skeleton of a T is three edges meeting at one node — but the BAR is one
@@ -1478,7 +1494,12 @@ def _merge_through_junctions(edges: list[dict], dt_mm=None, half_mm: float = 0.0
     Ends that still have a through-partner, and every end at a node with three
     or more surviving arms, are untouched — a T's stem still tucks under its
     bar exactly as before.
+
+    `weld_max_dot` replaces `_WELD_MAX_DOT` as the weld's admission
+    (`satin_junction_stack`: `_STACK_WELD_MAX_DOT`, a 30 deg turn); None is
+    the shipped threshold, byte-identical.
     """
+    weld_limit = _WELD_MAX_DOT if weld_max_dot is None else weld_max_dot
     corners = dt_mm is not None and half_mm > 0
     # How far along an arm its direction at the node is measured. Five pixels
     # is under a millimetre, and at a corner the medial axis has already
@@ -1560,7 +1581,7 @@ def _merge_through_junctions(edges: list[dict], dt_mm=None, half_mm: float = 0.0
             # Anti-aligned means straight-through; the threshold admits a bend
             # but refuses a corner sharp enough that the column would have to
             # pivot, which no parallel-rail satin can sew.
-            if best is None or best[0] >= _WELD_MAX_DOT:
+            if best is None or best[0] >= weld_limit:
                 break
             welded.add(best[1])
             welded.add(best[2])
@@ -1657,8 +1678,43 @@ def _merge_through_junctions(edges: list[dict], dt_mm=None, half_mm: float = 0.0
     return [c for i, c in chains.items() if find(i) == i]
 
 
-def _prune_spurs(mask: np.ndarray, spur_len_px: float) -> None:
+# Lettering construction plan step 3 (2026-09-19), the letterform study's
+# mechanism #2: `_prune_spurs` erases a corner's twig and, with it, the
+# junction's DEGREE -- a 3-way node with the diagonal, the stem and a short
+# branch into the corner (PRECISION's N, Becker's R foot) becomes a 2-way
+# pass-through once the branch goes, and the walker welds the diagonal to
+# the stem as one column folding through the corner. The twig itself is
+# worthless (every corner twig on the corpus ends at a 1 px distance
+# transform: census of 739 spurs on five logos, 2026-09-19 -- the "tip as
+# wide as the stroke" test the study proposed does not exist on this
+# raster); what matters is the NODE it holds open. The other kind of spur
+# is a square cap's I-beam: two short free arms at one node off the end of
+# a stem, both of which must go -- the study's H defect is one of them
+# surviving the length threshold by 0.027 mm and hooking the stem's spine
+# into the corner. So the rule is by structure, not by length alone:
+#   * a node with TWO free arms under `_CAP_ARM_MAX_SPURS` spur lengths and
+#     one longer arm is a cap -- both arms are pruned, whatever their
+#     exact length (the H's 10.90 px arm against a 10.74 px bar goes too);
+#   * a node with ONE free arm under the spur length and at least two arms
+#     that are not spurs is a corner between two strokes -- the twig is
+#     KEPT so the node stays a junction and `_merge_through_junctions`
+#     decides the weld on its own terms;
+#   * anything else keeps today's rule (a short free arm is a spur).
+# Behind `cfg.satin_corner_twigs`; off, the function is what it was.
+_CAP_ARM_MAX_SPURS = 1.5
+
+
+def _node_key(px: tuple[int, int]) -> tuple[int, int]:
+    return px
+
+
+def _prune_spurs(mask: np.ndarray, spur_len_px: float, *,
+                 corner_twigs: bool = False) -> None:
     """Erase short dead-end twigs in place, keeping their branch node.
+
+    `corner_twigs` (plan step 3, see `_CAP_ARM_MAX_SPURS`): a node's two
+    short free arms are a cap and both go; a lone short free arm between two
+    longer arms is a corner twig and stays, holding the junction open.
 
     Repeats so a twig hidden behind another twig still goes — but only ever
     erases dead ends the skeleton grew on its own. Deleting a spur leaves its
@@ -1679,16 +1735,40 @@ def _prune_spurs(mask: np.ndarray, spur_len_px: float) -> None:
     exposed: set[tuple[int, int]] = set()
     for _ in range(4):
         removed = 0
-        for e in _skeleton_edges(mask):
+        edges = _skeleton_edges(mask)
+        # Under the structure rule: what meets at each node. An edge's end
+        # that is not free sits on a node pixel; two edges meet where those
+        # pixels coincide (or touch, on a clique).
+        arms: dict[tuple[int, int], list[tuple[int, float, bool]]] = {}
+        if corner_twigs:
+            for i, e in enumerate(edges):
+                if e["closed"]:
+                    continue
+                length = sum(math.dist(a, b) for a, b in zip(e["pts"], e["pts"][1:]))
+                spur = (e["free_start"] != e["free_end"]) and length < spur_len_px * _CAP_ARM_MAX_SPURS
+                for end, free in ((e["pts"][0], e["free_start"]), (e["pts"][-1], e["free_end"])):
+                    if not free:
+                        arms.setdefault(_node_key(end), []).append((i, length, spur))
+        for i, e in enumerate(edges):
             if e["closed"] or (e["free_start"] == e["free_end"]):
                 continue  # spur = exactly one free end
             tip = e["pts"][0] if e["free_start"] else e["pts"][-1]
             if tip in exposed:
                 continue  # a stem we un-branched, not a twig that grew short
             length = sum(math.dist(a, b) for a, b in zip(e["pts"], e["pts"][1:]))
-            if length >= spur_len_px:
-                continue
             keep = e["pts"][-1] if e["free_start"] else e["pts"][0]
+            if corner_twigs:
+                here = arms.get(_node_key(keep), [])
+                short_free = [a for a in here if a[2]]
+                longer = [a for a in here if not a[2]]
+                if len(short_free) == 2 and i in {a[0] for a in short_free} and longer:
+                    pass                    # a cap's I-beam: both arms go
+                elif length >= spur_len_px:
+                    continue                # not a spur by length
+                elif len(short_free) == 1 and len(longer) >= 2:
+                    continue                # a corner twig: keep the node open
+            elif length >= spur_len_px:
+                continue
             exposed.add(keep)
             for px in e["pts"]:
                 if px != keep:
@@ -1966,6 +2046,8 @@ def extract_strokes(poly: Polygon, *,
                      use_shapefield: bool = False,
                      half_extra_mm: float = 0.0,
                      polygon_axis: bool = False,
+                     corner_twigs: bool = False,
+                     junction_stack: bool = False,
                      ) -> tuple[list[Stroke], float, _WidthField | None]:
     """-> (strokes in mm, mean half-width in mm, local width field).
 
@@ -2036,7 +2118,7 @@ def extract_strokes(poly: Polygon, *,
     # otherwise -- identical arithmetic at 0.0.
     len_px = half_px + max(0.0, half_extra_mm) * scale
     if not polygon_axis:
-        _prune_spurs(skel_mask, max(3.0, len_px * 1.6))
+        _prune_spurs(skel_mask, max(3.0, len_px * 1.6), corner_twigs=corner_twigs)
     if not skel_mask.any():
         return [], half_px / scale, field
 
@@ -2052,7 +2134,8 @@ def extract_strokes(poly: Polygon, *,
         _skeleton_edges(skel_mask),
         max(_JUNCTION_CLUSTER_MIN_PX, _JUNCTION_CLUSTER_HALFWIDTHS * len_px),
         dt_mm)
-    for e in _merge_through_junctions(edges, dt_mm, half_px / scale, scale):
+    for e in _merge_through_junctions(edges, dt_mm, half_px / scale, scale,
+                                      weld_max_dot=_STACK_WELD_MAX_DOT if junction_stack else None):
         length = sum(math.dist(a, b) for a, b in zip(e["pts"], e["pts"][1:]))
         # "Free" here means free in the SKELETON — a corner end re-flagged by
         # `_merge_through_junctions` is still a chain between two branch nodes
@@ -3318,7 +3401,8 @@ def _satin_joined(poly: Polygon, stroke: Stroke, half_mm: float,
                   max_width_mm: float = machine.SATIN_MAX_WIDTH_MM,
                   fold_guard: bool = False,
                   rail_comp_mm: float = 0.0,
-                  rail_comp_floor_mm: float = 0.0) -> list[tuple[float, float]]:
+                  rail_comp_floor_mm: float = 0.0,
+                  junction_stack: bool = False) -> list[tuple[float, float]]:
     """A stroke with Goldman corners (`Stroke.corners`) -> its members sewn as
     separate columns and laid end to end in chain order.
 
@@ -3363,7 +3447,8 @@ def _satin_joined(poly: Polygon, stroke: Stroke, half_mm: float,
                              art_poly=art_poly, hairline_floor_mm=hairline_floor_mm,
                              rails_follow_edge=rails_follow_edge,
                              max_width_mm=max_width_mm, fold_guard=fold_guard,
-                             rail_comp_mm=rail_comp_mm, rail_comp_floor_mm=rail_comp_floor_mm)
+                             rail_comp_mm=rail_comp_mm, rail_comp_floor_mm=rail_comp_floor_mm,
+                             junction_stack=junction_stack)
         above = machine.SPLIT_SATIN_ABOVE_MM if split_above_mm is None else split_above_mm
         if parts is not None and len(parts) > n_before and n_before > n_start_joined:
             # The join stays ONE stroke in `parts` as well: this member's
@@ -3406,7 +3491,8 @@ def satin_stroke(poly: Polygon, stroke: Stroke, half_mm: float,
                  max_width_mm: float = machine.SATIN_MAX_WIDTH_MM,
                  fold_guard: bool = False,
                  rail_comp_mm: float = 0.0,
-                 rail_comp_floor_mm: float = 0.0) -> list[tuple[float, float]]:
+                 rail_comp_floor_mm: float = 0.0,
+                 junction_stack: bool = False) -> list[tuple[float, float]]:
     """One stroke -> flat zigzag points (A1, B1, A2, B2, ...).
 
     `parts` (2026-09-03), when a list is passed, additionally receives the
@@ -3464,7 +3550,8 @@ def satin_stroke(poly: Polygon, stroke: Stroke, half_mm: float,
                              art_poly=art_poly, hairline_floor_mm=hairline_floor_mm,
                              rails_follow_edge=rails_follow_edge,
                              max_width_mm=max_width_mm, fold_guard=fold_guard,
-                             rail_comp_mm=rail_comp_mm, rail_comp_floor_mm=rail_comp_floor_mm)
+                             rail_comp_mm=rail_comp_mm, rail_comp_floor_mm=rail_comp_floor_mm,
+                             junction_stack=junction_stack)
 
     spine = _smooth(stroke.spine, 3, stroke.closed)
     spine = _round_corners(spine, half_mm, stroke.closed)
@@ -3515,7 +3602,15 @@ def satin_stroke(poly: Polygon, stroke: Stroke, half_mm: float,
             # What has to be cleared is the other arm's SEWN width: under
             # rail-side comp the field is the artwork's and the arm sews a
             # pull wider (0.0 otherwise -- byte-identical).
-            trims.append(max(0.0, edge + rail_comp_mm - _JUNCTION_TUCK_MM))
+            #
+            # `junction_stack`, part B (2026-09-19): an end at a meeting of
+            # several -- no single owner to tuck under -- runs INTO the node
+            # by its own half-width instead of stopping at the blob's edge,
+            # so the arms' ends overlap inside the ball the way the pro's
+            # do. A corner tuck (`under` set) is already under its owner and
+            # keeps its clearance.
+            reach_in = half_mm if (junction_stack and under is None) else 0.0
+            trims.append(max(0.0, edge + rail_comp_mm - _JUNCTION_TUCK_MM - reach_in))
         if trims[0] or trims[1]:
             spine = _trim_chain(spine, trims[0], trims[1])
 
@@ -3947,8 +4042,17 @@ def _build_travel_graph(strokes: list[Stroke]):
 
 def _graph_travel(cur, target, sewn: set[int], allow: set[int],
                   nodes, edges, adj, *,
-                  trim_at_mm: float) -> list[tuple[float, float]] | None:
+                  trim_at_mm: float,
+                  snap_to_open: bool = False) -> list[tuple[float, float]] | None:
     """Needle-down path from cur to target over UNSEWN spines, or None.
+
+    `snap_to_open` (the Euler walk, plan step 2): when the node the cursor
+    snaps to has no unsewn edge to leave by, snap instead to the nearest
+    node within `trim_at_mm` that has one. A 2 mm stroke's column is
+    shortened by its caps and can end nearer the junction it was sewn FROM
+    than the one the walk leaves by, and the strict snap then reads a dead
+    end where the walk has an open leg a millimetre away. Off, the snap is
+    exactly what it was.
 
     Edges belonging to already-sewn strokes are forbidden: running stitches on
     top of finished satin show, which is the same reason the fill path prefers
@@ -3970,6 +4074,16 @@ def _graph_travel(cur, target, sewn: set[int], allow: set[int],
         return best
 
     s, t = snap(cur), snap(target)
+
+    def open_at(i: int) -> bool:
+        return any(edges[ei]["k"] not in sewn or edges[ei]["k"] in allow
+                   for ei in adj.get(i, []))
+
+    if snap_to_open and nodes and (s is None or not open_at(s)):
+        cands = [i for i in range(len(nodes))
+                 if open_at(i) and math.dist(cur, nodes[i]) <= trim_at_mm]
+        if cands:
+            s = min(cands, key=lambda i: math.dist(cur, nodes[i]))
     if s is None and nodes:
         # Cursor-side retry: the needle sits wherever the previous run ended —
         # often a cap-extended point a millimetre or two off the spine web —
@@ -4083,6 +4197,207 @@ def _order_strokes(strokes: list[Stroke],
         else:
             cur = a if _choose_stroke_entry(cur, a, st.free_start, b, st.free_end) else b
     return out
+
+
+def _euler_stroke_order(nodes, edges, adj, n_strokes: int,
+                        start_near: tuple[float, float] | None,
+                        end_near: tuple[float, float] | None = None,
+                        ) -> tuple[list[int], dict[int, bool]]:
+    """Sew order over the travel graph's strokes as ONE walk, the way the
+    font engine routes a glyph (`satinfont.routeGlyph`): (order of stroke
+    indices, {stroke index: enter at spine[0]?}).
+
+    Lettering construction plan step 2 (2026-09-19). `_order_strokes` picks
+    the nearest stroke next, and once a few strokes are down the unsewn web
+    between the needle and the next one is gone, so `_graph_travel` finds no
+    path and the hop is a trim -- 35 of the 41 trims on the plan's MARINE
+    fixture are that, inside one letter. An Euler trail over the web visits
+    every span, and where a span is walked more than once its EARLIER visits
+    are travel and its LAST visit is the column, so every travel leg lies
+    under a column sewn later. The stroke order is each stroke's last visit
+    (a stroke split by junctions sews whole, once its last span is walked),
+    and the entry end is the direction that last visit ran. Between strokes
+    the existing `_graph_travel` still finds the path: every edge the trail
+    walks between two consecutive strokes belongs to a stroke sewn later,
+    so it is unsewn when walked -- for a stroke whose spans all end at its
+    own ends. The walk's quantum is the graph EDGE and the sewing quantum
+    is the STROKE: a stroke with an interior junction (an H's stem, a K's,
+    an X's) sews whole and leaves the needle at a spine END while the
+    trail went on from the junction, and if that end is a dead end whose
+    only segments are the stroke's own, the next hop has no unsewn path
+    and trims exactly as the nearest order would (measured 2026-09-19 on
+    H, K, X, +, t, and 179 of 600 random connected webs). What the walk
+    guarantees is the weaker thing it sews: every travel leg it emits lies
+    under a column sewn later. Sewing per span, or deferring the strokes
+    with interior junctions, would close the gap and is a decomposition
+    question -- Kent's.
+
+    Chinese postman first: per connected component, odd nodes are paired
+    greedily along shortest edge paths and those paths' edges duplicated
+    (the duplicates are the extra travel, only where a dead end forces it),
+    then Hierholzer from the odd node nearest `start_near` (or the nearest
+    node at all when every degree is even). Same construction as the font
+    engine's, on the same kind of graph, with the same greedy pairing.
+
+    Strokes the graph does not reach (no edge) keep their given order, last.
+
+    `end_near` (`cfg.satin_exit_toward_next`, 2026-09-19): where the needle
+    goes NEXT. On the component the walk leaves last, the (start, end)
+    pair of odd nodes is the one that minimises the entry hop from
+    `start_near` plus the exit hop to `end_near`, and the postman pairing
+    is done over the OTHER odd nodes so those two stay odd and Hierholzer
+    from the start ends at the end; a component with no odd node picks
+    the start that minimises both hops together. None is the walk as
+    shipped: start nearest the needle, end wherever the pairing leaves it.
+    """
+    if not edges:
+        return list(range(n_strokes)), {}
+    # Multigraph of edge INSTANCES; a duplicate is another instance of the
+    # same edge (same "k", same points).
+    inst: list[tuple[int, int, int]] = []          # (edge index, a, b)
+    iadj: dict[int, list[int]] = {}
+
+    def add(ei: int) -> None:
+        e = edges[ei]
+        iadj.setdefault(e["a"], []).append(len(inst))
+        iadj.setdefault(e["b"], []).append(len(inst))
+        inst.append((ei, e["a"], e["b"]))
+
+    for ei in range(len(edges)):
+        # A segment whose two ends merged into one node -- the 0.2 mm stub
+        # `_build_travel_graph` leaves where a cut lands one sample from a
+        # spine's end -- is a self-loop: no travel, no direction, and it
+        # would otherwise be the "last visit" that sets a stroke's order
+        # and entry. Out.
+        if edges[ei]["a"] != edges[ei]["b"]:
+            add(ei)
+    if not inst:
+        return list(range(n_strokes)), {}
+
+    def other(ii: int, u: int) -> int:
+        _ei, a, b = inst[ii]
+        return b if a == u else a
+
+    # Components.
+    comp: dict[int, int] = {}
+    comps: list[list[int]] = []
+    for s0 in range(len(nodes)):
+        if s0 in comp or not iadj.get(s0):
+            continue
+        cid = len(comps)
+        comp[s0] = cid
+        stack = [s0]
+        members = []
+        while stack:
+            u = stack.pop()
+            members.append(u)
+            for ii in iadj.get(u, []):
+                v = other(ii, u)
+                if v not in comp:
+                    comp[v] = cid
+                    stack.append(v)
+        comps.append(members)
+
+    def nearest(cands: list[int]) -> int:
+        if start_near is None:
+            return min(cands)
+        return min(cands, key=lambda i: (math.dist(start_near, nodes[i]), i))
+
+    circuit: list[tuple[int, int]] = []             # (instance, from node)
+    # Components in the order the needle would meet them: nearest first.
+    comp_order = sorted(comps, key=lambda m: (0.0 if start_near is None
+                                              else min(math.dist(start_near, nodes[i]) for i in m)))
+    for ci, members in enumerate(comp_order):
+        odd = [u for u in members if len(iadj.get(u, [])) % 2 == 1]
+        # `end_near`: on the LAST component the walk's two ends are chosen
+        # together and kept out of the pairing below.
+        reserved: tuple[int, int] | None = None
+        if (end_near is not None and start_near is not None
+                and ci == len(comp_order) - 1 and len(odd) >= 2):
+            reserved = min(((s, e) for s in odd for e in odd if s != e),
+                           key=lambda se: (math.dist(start_near, nodes[se[0]])
+                                           + math.dist(nodes[se[1]], end_near), se))
+        guard = 0
+        while len([v for v in odd if reserved is None or v not in reserved]) > (0 if reserved else 2) \
+                and guard < 4 * len(members) + 8:
+            guard += 1
+            u = next(v for v in odd if reserved is None or v not in reserved)
+            # Shortest edge-path (by length) from u to the nearest OTHER odd
+            # node, then duplicate its edges: interior parities are kept and
+            # both ends go even.
+            dist = {u: 0.0}
+            prev: dict[int, tuple[int, int]] = {}
+            pq = [(0.0, u)]
+            target = None
+            while pq:
+                d, x = heapq.heappop(pq)
+                if d > dist.get(x, 1e18):
+                    continue
+                if (x != u and len(iadj.get(x, [])) % 2 == 1
+                        and (reserved is None or x not in reserved)):
+                    target = x
+                    break
+                for ii in iadj.get(x, []):
+                    y = other(ii, x)
+                    nd = d + edges[inst[ii][0]]["len"]
+                    if nd < dist.get(y, 1e18):
+                        dist[y] = nd
+                        prev[y] = (x, ii)
+                        heapq.heappush(pq, (nd, y))
+            if target is None:
+                break
+            x = target
+            while x != u:
+                px, ii = prev[x]
+                add(inst[ii][0])
+                x = px
+            odd = [v for v in members if len(iadj.get(v, [])) % 2 == 1]
+        if reserved is not None:
+            start = reserved[0]
+        elif (end_near is not None and start_near is not None
+                and ci == len(comp_order) - 1 and not odd):
+            # A closed web: the circuit ends where it starts, so one node
+            # pays both hops.
+            start = min(members, key=lambda i: (math.dist(start_near, nodes[i])
+                                                + math.dist(nodes[i], end_near), i))
+        else:
+            start = nearest(odd) if odd else nearest(members)
+        # Hierholzer.
+        used: set[int] = set()
+        ptr = {v: 0 for v in members}
+        stack = [start]
+        edge_stack: list[tuple[int, int]] = []
+        local: list[tuple[int, int]] = []
+        while stack:
+            v = stack[-1]
+            lst = iadj.get(v, [])
+            while ptr[v] < len(lst) and lst[ptr[v]] in used:
+                ptr[v] += 1
+            if ptr[v] < len(lst):
+                ii = lst[ptr[v]]
+                ptr[v] += 1
+                used.add(ii)
+                edge_stack.append((ii, v))
+                stack.append(other(ii, v))
+            else:
+                stack.pop()
+                if edge_stack:
+                    local.append(edge_stack.pop())
+        local.reverse()
+        circuit.extend(local)
+
+    last: dict[int, int] = {}
+    entry: dict[int, bool] = {}
+    for pos, (ii, frm) in enumerate(circuit):
+        ei, a, _b = inst[ii]
+        k = edges[ei]["k"]
+        last[k] = pos
+        # Forward along the spine when the walk runs a -> b: the graph
+        # builder makes "a" the spine-earlier end of every segment.
+        entry[k] = (frm == a)
+    ordered = sorted(last, key=lambda k: last[k])
+    ordered += [k for k in range(n_strokes) if k not in last]
+    return ordered, entry
 
 
 # --- junction patches ------------------------------------------------------
@@ -4402,9 +4717,43 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
                 rail_comp_mm: float = 0.0,
                 rail_comp_floor_mm: float = 0.0,
                 polygon_axis: bool | str = False,
+                stroke_order: str = "nearest",
+                corner_twigs: bool = False,
+                junction_stack: bool = False,
+                end_near: tuple[float, float] | None = None,
+                underlay_on_column: bool = False,
                 ) -> tuple[list[StitchRun], dict]:
     """One satin-classified shape -> runs in sew order, plus the same report
     contract `stitch_shape` uses, so stage 7 can treat the two identically.
+
+    `end_near` (`cfg.satin_exit_toward_next`, 2026-09-19): where the needle
+    goes after this shape; under the Euler order the walk is chosen to END
+    nearest it (`_euler_stroke_order`). None is the walk as shipped.
+
+    `underlay_on_column` (`cfg.satin_underlay_on_column`, 2026-09-19): an
+    open stroke's underlay is built on its column's own stations rather
+    than the raw stroke -- what a mixed stroke's parts already do -- so the
+    centre run ends where the column enters. Off, byte-identical.
+
+    `corner_twigs` (`cfg.satin_corner_twigs`, plan step 3, 2026-09-19): the
+    spur pruner's structure rule -- see `_CAP_ARM_MAX_SPURS`. Off, the
+    pruner is what it was.
+
+    `junction_stack` (`cfg.satin_junction_stack`, the junction construction
+    plan, 2026-09-19): the pro's junction. A weld is refused past
+    `_STACK_WELD_TURN_DEG` and the arms end at the node (`extract_strokes`);
+    an arm ending at a meeting of several runs into the node by its own
+    half-width (`satin_stroke`); and the satin junction cover sews under
+    the arms for whatever is still bare (`patch_junctions="satin"` unless
+    a cover is already asked for). Off, byte-identical.
+
+    `stroke_order` (`cfg.satin_stroke_order`, plan step 2, 2026-09-19):
+    "nearest" is `_order_strokes`, the shipped order; "euler" re-orders the
+    strokes that will sew along one Euler walk of the travel web
+    (`_euler_stroke_order`) so every travel leg lies under a column sewn
+    later and, for strokes without an interior junction, the hop between
+    strokes always has an unsewn path. "nearest" is byte-identical to
+    before the option.
 
     `art_poly` / `hairline_floor_mm` are forwarded to `satin_stroke` (see
     there): the region's own uncompensated polygon and the vectorizer's
@@ -4473,7 +4822,9 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
     axis_poly = _axis_polygon(poly, art_poly, polygon_axis)
     strokes, half_mm, field = extract_strokes(axis_poly, use_shapefield=use_shapefield,
                                               polygon_axis=polygon_axis,
-                                              half_extra_mm=rail_comp_mm)
+                                              half_extra_mm=rail_comp_mm,
+                                              corner_twigs=corner_twigs,
+                                              junction_stack=junction_stack)
     if not strokes:
         report["empty"] = True
         return [], report
@@ -4503,7 +4854,8 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
                      art_poly=art_poly, hairline_floor_mm=hairline_floor_mm,
                      rails_follow_edge=rails_follow_edge,
                      max_width_mm=max_width_mm, fold_guard=fold_guard,
-                     rail_comp_mm=rail_comp_mm, rail_comp_floor_mm=rail_comp_floor_mm)
+                     rail_comp_mm=rail_comp_mm, rail_comp_floor_mm=rail_comp_floor_mm,
+                     junction_stack=junction_stack)
         mixed = len(parts) > 1
         for kind, pts, piece, at_start, at_end in parts:
             if kind == stitches.SATIN and len(pts) < 4:
@@ -4514,6 +4866,8 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
                          # the spine slice, only for a part of a MIXED stroke:
                          # a whole-stroke satin keeps the legacy underlay call
                          "piece": piece if mixed else None,
+                         # the column's own stations, for `underlay_on_column`
+                         "slice": piece,
                          "free_start": st.free_start and at_start,
                          "free_end": st.free_end and at_end})
     if not kept:
@@ -4527,6 +4881,28 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
     order = list(dict.fromkeys(k["si"] for k in kept))
     gmap = {si: gi for gi, si in enumerate(order)}
     nodes, g_edges, g_adj = _build_travel_graph([strokes[si] for si in order])
+    euler_entry: dict[int, bool] = {}
+    if stroke_order == "euler" and len(order) > 1:
+        # One walk over the web (see `_euler_stroke_order`): the strokes
+        # re-sorted by their last visit, each stroke's parts kept together
+        # and in their own order, and the column's entry end taken from the
+        # walk's direction instead of the nearest-cap rule.
+        walk, euler_entry = _euler_stroke_order(nodes, g_edges, g_adj, len(order), start_near,
+                                                end_near=end_near)
+        rank = {gi: r for r, gi in enumerate(walk)}
+
+        def walk_key(k: dict):
+            gi = gmap[k["si"]]
+            # A stroke sewn in parts sews them in the walk's direction:
+            # nearest the entry end first.
+            along = 0.0
+            if gi in euler_entry:
+                sp = strokes[k["si"]].spine
+                entry_pt = sp[0] if euler_entry[gi] else sp[-1]
+                mid = k["pts"][len(k["pts"]) // 2]
+                along = math.dist(mid, entry_pt)
+            return (rank.get(gi, len(walk)), k["si"], along)
+        kept.sort(key=walk_key)
     last_part = {k["si"]: ki for ki, k in enumerate(kept)}
     sewn: set[int] = set()
 
@@ -4558,14 +4934,55 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
             # Underlay under THIS part only when the stroke is mixed — a
             # centre run under its hairline stretch would be thread under a
             # run, which Law 50 puts nothing under.
-            under = st if k["piece"] is None else Stroke(
-                spine=k["piece"], free_start=False, free_end=False, closed=False)
+            if k["piece"] is not None:
+                under = Stroke(spine=k["piece"], free_start=False, free_end=False, closed=False)
+            elif underlay_on_column and not st.closed and k["slice"] and len(k["slice"]) >= 2:
+                # `cfg.satin_underlay_on_column`: the column's stations --
+                # junction-trimmed, cap-extended, run into the node under
+                # the stack -- so the centre run ends where the column
+                # enters and the zigzag's rails are cast where its are.
+                under = Stroke(spine=list(k["slice"]), free_start=False, free_end=False, closed=False)
+            else:
+                under = st
             stroke_runs = [*_stroke_underlay(poly, under, eff_style, shape_id, field,
                                              max_width_mm=max_width_mm, fold_guard=fold_guard,
                                              rail_comp_mm=rail_comp_mm,
                                              rail_comp_floor_mm=rail_comp_floor_mm,
                                              half_mm=half_mm),
                            StitchRun(points=pts, kind=stitches.SATIN, shape_id=shape_id)]
+        # Under the Euler walk a stroke is walked THROUGH: the column enters
+        # at the end the walk arrives at and leaves by the other, where the
+        # next leg starts. Its underlay must therefore END at that entry end
+        # -- so it starts at the far end, and the travel below carries the
+        # needle there along the web and the stroke's own unsewn spine
+        # (`allow={gi}`), needle down, under the underlay and the column
+        # that follow. With the nearest-first orientation the underlay ended
+        # where the column entered and the pair came back out where it went
+        # in, so the walk's next leg started from the wrong end of every
+        # stroke and the hop was a trim (measured 2026-09-19 on the plan's
+        # fixture: 8 of 18 within-letter trims were underlay -> column).
+        walk_entry = None
+        if gi in euler_entry and kind == stitches.SATIN:
+            # The end the walk arrives at, by geometry rather than by the
+            # column's own point order: a short cap-extended column can start
+            # nearer the spine's far end than its near one.
+            sp = st.spine
+            walk_entry = sp[0] if euler_entry[gi] else sp[-1]
+            # Orient the stroke's runs from the column BACKWARDS: the column
+            # runs the walk's way; the underlay run before it ends where the
+            # column enters; each earlier underlay run ends where the next
+            # one starts. So the runs chain needle-down with no hop between
+            # them, and the first one starts at whichever end the parity
+            # leaves -- the far end (the travel below walks there) or the
+            # entry end itself.
+            column = stroke_runs[-1]
+            if math.dist(walk_entry, column.points[-1]) < math.dist(walk_entry, column.points[0]):
+                column.points.reverse()
+            want = column.points[0]
+            for run in reversed(stroke_runs[:-1]):
+                if math.dist(want, run.points[0]) < math.dist(want, run.points[-1]):
+                    run.points.reverse()
+                want = run.points[0]
         first_of_stroke = True
         for run in stroke_runs:
             cursor = runs[-1].points[-1] if runs else start_near
@@ -4577,19 +4994,37 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
                 # what the law's professional decisions were read off of, and
                 # its orientation is already tuned to avoid extra hops
                 # between strokes (see the loop's own note below).
-                if run.kind == stitches.SATIN:
+                if walk_entry is not None:
+                    pass                # oriented above, as one chain
+                elif run.kind == stitches.SATIN:
                     if _choose_stroke_entry(cursor, run.points[0], k["free_start"],
                                             run.points[-1], k["free_end"]):
                         run.points.reverse()
                 elif math.dist(cursor, run.points[-1]) < math.dist(cursor, run.points[0]):
                     run.points.reverse()
+            if (first_of_stroke and underlay_on_column and kind == stitches.SATIN
+                    and run.kind == stitches.UNDERLAY and not st.closed and st.spine):
+                # `underlay_on_column`: the underlay now starts at the column's
+                # far STATION -- cap-extended, or run into the node -- which
+                # sits 1-3 mm off the travel web, so the walk below could not
+                # snap to it and refused (measured 2026-09-19 on the fixture:
+                # 17 of 34 hops refused for 8). Start the run at the raw
+                # spine's end instead, on the web, and let its first stitch
+                # carry the needle out to the station along the column's own
+                # axis, under the column.
+                raw = min((st.spine[0], st.spine[-1]),
+                          key=lambda q: math.dist(q, run.points[0]))
+                d_raw = math.dist(raw, run.points[0])
+                if machine.TINY_STITCH_MM <= d_raw <= trim_at_mm:
+                    run.points.insert(0, raw)
             if first_of_stroke and cursor is not None:
                 # Between strokes, walk the unsewn web instead of lifting.
                 direct = math.dist(cursor, run.points[0])
                 if direct >= machine.TINY_STITCH_MM:
                     path = _graph_travel(cursor, run.points[0], sewn, {gi},
                                          nodes, g_edges, g_adj,
-                                         trim_at_mm=trim_at_mm)
+                                         trim_at_mm=trim_at_mm,
+                                         snap_to_open=bool(euler_entry))
                     if path is not None and len(path) >= 2:
                         plen = sum(math.dist(a, b) for a, b in zip(path, path[1:]))
                         # Same cap as the fill path: past this, travel under
@@ -4599,6 +5034,18 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
                             runs.append(StitchRun(points=_resample(path, n),
                                                   kind=stitches.TRAVEL,
                                                   shape_id=shape_id))
+            if (underlay_on_column and not first_of_stroke and run.kind == stitches.SATIN
+                    and runs and runs[-1].kind == stitches.UNDERLAY
+                    and len(stroke_runs) >= 2 and runs[-1] is stroke_runs[-2]):
+                # `underlay_on_column`: the last underlay run ends on an inset
+                # rail a station or so from where the column enters, and on a
+                # wide column that hop reads past `trim_at` (3.3-4.2 mm on the
+                # fixture's split columns, measured 2026-09-19) and lifted.
+                # Both points are inside the column, so the hop is sewn as the
+                # underlay's last stitch, under the column that follows.
+                gap = math.dist(runs[-1].points[-1], run.points[0])
+                if machine.TINY_STITCH_MM <= gap <= 2.0 * trim_at_mm:
+                    runs[-1].points.append(run.points[0])
             first_of_stroke = False
             runs.append(run)
         if last_part[k["si"]] == ki:
@@ -4621,6 +5068,10 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
     # separate sweeps removed from this repo on 2026-09-06. If a consumer ever
     # wants the count it goes in beside `hairline_runs`, aggregated at
     # `stage7_sequence` ~2114, with something that actually reads it.
+    if junction_stack and not patch_junctions:
+        # Part C of `satin_junction_stack`: the satin cover under the arms
+        # for whatever A and B leave bare. An explicit cover setting wins.
+        patch_junctions = "satin"
     if patch_junctions == "satin" and runs:
         # The cover goes FIRST, under the arms (2026-09-09, item 5 PR 2):
         # see `_junction_cover_runs`. Found on the runs as sewn so far, so

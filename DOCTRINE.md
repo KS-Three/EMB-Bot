@@ -5825,18 +5825,30 @@ smoothing the outline", blamed the outline for what lived in the rails.
 
 `tools/edge_wobble.py` is that spike's stitch-side half, kept (10 tests). It
 reads `result.regions[].polygon` and `plan.iter_runs()` only — no raster, no
-registration. First run, per tier:
+registration. Per tier, on `main` at `24fce102` (after 2026-09-19's satin flips —
+junction stack, lettering split, corner twigs, euler order, exit lever):
 
 | fixture | satin std / p95 / >0.15 mm | fill std | bean/run |
 |---|---|---|---|
-| `enthusiast_logo` | 0.106 / 0.239 / 12.2% | 0.014 | 0.000 |
-| `becker_marine_logo` | 0.101 / 0.229 / 10.4% | 0.037 | 0.000 |
-| `logo_gaulke_roofing` | 0.098 / 0.201 / 9.1% | 0.019 | 0.000 |
+| `enthusiast_logo` | 0.110 / 0.230 / 12.5% | 0.010 | 0.000 |
+| `becker_marine_logo` | 0.099 / 0.200 / 9.5% | **0.177** | 0.000 |
+| `logo_gaulke_roofing` | 0.088 / 0.170 / 6.7% | 0.019 | 0.000 |
 | `logo_whitebg` | 0.038 / 0.067 / 0.8% | 0.022 | 0.000 |
 
+**The spike table above and this one's first cut were measured on a STALE base
+(`da6606e4`) — the session never ran `git fetch` and `main` was ~70 commits
+ahead, the same day's satin flips among them (CLAUDE.md trap 8, walked into
+exactly).** Caught only because the PR came up `DIRTY`. Re-measured after the
+merge: satin barely moved (0.106 / 0.101 / 0.098 before), so the finding stands
+and those flips are not this lever either. **One number did move and is
+UNREAD: Becker's fill tier, 0.037 → 0.177 std, 11.3% over 0.15 mm, dips to
+−1.22 mm on one shape, n 796 → 248.** Something in today's flips changed what
+sews as `fill` there; do not quote "fill ends sit on the outline" for Becker
+until it is read.
+
 **The wobble is SATIN RAILS, on every real logo, and not on the synthetic
-one** — which is why no suite saw it. Fill row ends and bean outlines sit on
-their outline. `satin_rails_follow_edge` ON moved the spike's rail figure about
+one** — which is why no suite saw it. Bean outlines sit on their outline, and
+fill row ends do everywhere but Becker (above). `satin_rails_follow_edge` ON moved the spike's rail figure about
 10% (0.071 → 0.064, 0.082 → 0.074), agreeing with Kent's eye calling that flag
 invisible (2026-09-18). The worst points are all INWARD dips of 0.45–0.95 mm.
 **Not diagnosed: why.** Not established: that 0.10 mm std is what his eye

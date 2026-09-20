@@ -1900,8 +1900,10 @@ def test_a_dropped_limb_is_reported_and_names_its_shape(monkeypatch):
     the injection keeps its ground there; the paired product test below
     runs the shipped default.
     """
-    def unguarded(mask, spur_len_px):
-        """`_prune_spurs` exactly as it shipped before the 2026-08-21 fix."""
+    def unguarded(mask, spur_len_px, **_kw):
+        """`_prune_spurs` exactly as it shipped before the 2026-08-21 fix
+        (`**_kw` swallows `corner_twigs`, the 2026-09-19 keyword, which the
+        shipped default leaves off anyway)."""
         for _ in range(4):
             removed = 0
             for e in stage6_satin._skeleton_edges(mask):
@@ -1922,7 +1924,13 @@ def test_a_dropped_limb_is_reported_and_names_its_shape(monkeypatch):
     monkeypatch.setattr(stage6_satin, "_prune_spurs", unguarded)
 
     art = TESTDATA / "photo/enthusiast_logo.png"
-    c = cfg(target_width_mm=150.0, max_colors=6, subpixel_edges=False)
+    # On the pre-flip junction engine too (`satin_junction_stack`, ON since
+    # 2026-09-19): its part C sews the satin junction cover under the arms
+    # by default, and the cover patches exactly the hole this injection
+    # makes -- the finding it must fire is then, correctly, not raised. The
+    # positive case keeps its ground on the engine it was read on.
+    c = cfg(target_width_mm=150.0, max_colors=6, subpixel_edges=False,
+            satin_junction_stack=False)
     result, plan_ = digitize(art, c)
     report = run_preflight(result, plan_, c, image=art)
 

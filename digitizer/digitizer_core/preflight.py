@@ -1901,12 +1901,22 @@ def _satin_rail_advance_mm(plan: StitchPlan) -> float | None:
 
     Rails alternate A, B, A, B ... so two apart is the same rail — measured
     two-apart, never sliced at fixed parity (the playbook's parity trap).
+
+    On the RAILS, with the split penetrations stripped (2026-09-19): a
+    split satin column carries one or more penetrations along each cross
+    (`stage6_satin.strip_splits` is the reader every other instrument here
+    uses), and with them in the list "two apart" is a mid-cross hop, not
+    the rail pitch — the lettering plan's 127 mm fixture under
+    `satin_lettering_split` read 1.09 mm against the 0.40 target and raised
+    `DENSITY_EXTREME` on columns sewn at 0.43 (the same trap in its second
+    form: the parity is broken by the splits instead of the slicing).
+    Unsplit runs are unchanged by the strip.
     """
     adv: list[float] = []
     for _b, run in plan.iter_runs():
         if run.kind != stitches.SATIN:
             continue
-        pts = run.points
+        pts = strip_splits(run.points)
         for i in range(len(pts) - 2):
             adv.append(math.dist(pts[i], pts[i + 2]))
     if len(adv) < _MIN_SAMPLES:

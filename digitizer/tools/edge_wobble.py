@@ -16,7 +16,10 @@ millimetre and the STITCHING adds six times that about a clean outline. On a
 low-resolution upload both sides wobble. The synthetic control sews clean,
 which is why no suite ever saw this. `satin_rails_follow_edge` ON moved the
 rail figure about 10% (0.071 -> 0.064, 0.082 -> 0.074) — Kent's eye had
-already called that flag invisible.
+already called that flag invisible. (The spike ran on `da6606e4`, BEFORE
+2026-09-19's satin flips; this tool's own satin row was re-measured after
+them and barely moved. Its live numbers are in DOCTRINE 2026-09-19 — quote
+those, not this table.)
 
 ## Why this is not `edge_smoothness` or `curve_fidelity`
 

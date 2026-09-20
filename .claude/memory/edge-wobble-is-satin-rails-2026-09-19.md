@@ -16,8 +16,15 @@ pixels) both wobble ~0.08. Synthetic `logo_whitebg` is clean on both sides —
 why no suite saw it.
 
 `tools/edge_wobble.py` (kept, 10 tests) reads plan vs polygon only. Per tier on
-real logos: **satin std ~0.10 mm, p95 0.20–0.24, 9–12% over 0.15 mm; fill row
-ends 0.01–0.04; bean/run 0.000.** Worst points are all INWARD dips 0.45–0.95 mm.
+real logos, `main` at `24fce102`: **satin std 0.09–0.11 mm, p95 0.17–0.23,
+7–13% over 0.15 mm; bean/run 0.000; fill row ends 0.01–0.02 EXCEPT Becker,
+0.177 and unread** (it was 0.037 before 2026-09-19's satin flips). Worst satin
+points are all INWARD dips 0.5–0.95 mm.
+
+**The first measurement ran on a stale base** — no `git fetch` at session
+start, `main` ~70 commits ahead with the same day's satin flips in it; the PR
+coming up `DIRTY` is the only thing that caught it. Satin barely moved on
+re-measure (so those flips are not this lever). Fetch FIRST.
 `satin_rails_follow_edge` ON moves it ~10% — consistent with
 [[six-flags-invisible-at-viewing-size-2026-09-18]].
 
