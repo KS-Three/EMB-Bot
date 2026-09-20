@@ -1459,6 +1459,36 @@ class PipelineConfig:
     # travel-only order reachable and tested rather than dead-by-default.
     # tests/test_borders_last.py pins the default and both halves.
     borders_last: bool = True
+    # Cap sew order (2026-09-19). A cap front is a curved, seamed, stretching
+    # object with a raised centre seam, and the craft rule for one is to sew
+    # BOTTOM-UP and CENTRE-OUT so distortion radiates away from the seam
+    # instead of being pushed across it (machine-physics playbook Law 34,
+    # [P] Melco x2, [T] ASI). ON, a cap garment's shapes are picked by
+    # distance from the design's vertical centreline (`x = 0` in stage 4's
+    # frame — origin at the artwork bbox centre), tiebreaking DESCENDING y,
+    # which is the bill end first because that frame's y runs DOWN.
+    #
+    # This closes a LANE SPLIT, it is not a new idea: the browser engine has
+    # done exactly this since before the flag existed (`src/digitize.js`'s
+    # `capMode`, same two keys, same garments), while the Python digitizer —
+    # the lane every auto-digitized design actually travels — read
+    # `garment_id` for pull compensation, underlay, density and trim distance
+    # and never for ORDER. So the same hat got cap physics from one lane and
+    # no cap order from the other.
+    #
+    # Pure sequencing, like `borders_last` above: no physical constant enters
+    # and gate 1 is untouched. Scope is the ordering ONLY — the rest of Law 34
+    # (sectioned cap-front fills, seam-parallel stitching, lettering last, the
+    # ~57 mm height ceiling, extra pull comp across the seam) is deliberately
+    # not here (Kent's call, 2026-09-19); the last of those IS gate-1 work.
+    #
+    # DEFAULT OFF, byte-identical off, by Kent's call the same day: the flip
+    # waits on a render of a real hat fixture, so the rule and the goldens it
+    # moves never arrive in one change. Known cost when it does flip: cap
+    # order ignores travel, so trims and jumps can rise — the browser lane
+    # already accepts that trade. tests/test_cap_center_out.py pins the
+    # default, the two keys, the precedence and the off-lane no-op.
+    cap_center_out: bool = False
     # One cone, one layer (defect 18, the SECOND spool-revisit mechanism).
     # Stage 2 quantizes to COLOURS, and two quantized colours can snap to one
     # physical cone: `drone_render` @ 80 mm declares 21 palette slots holding
