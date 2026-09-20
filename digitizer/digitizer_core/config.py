@@ -1482,12 +1482,22 @@ class PipelineConfig:
     # ~57 mm height ceiling, extra pull comp across the seam) is deliberately
     # not here (Kent's call, 2026-09-19); the last of those IS gate-1 work.
     #
-    # DEFAULT OFF, byte-identical off, by Kent's call the same day: the flip
-    # waits on a render of a real hat fixture, so the rule and the goldens it
-    # moves never arrive in one change. Known cost when it does flip: cap
-    # order ignores travel, so trims and jumps can rise — the browser lane
-    # already accepts that trade. tests/test_cap_center_out.py pins the
-    # default, the two keys, the precedence and the off-lane no-op.
+    # DEFAULT OFF, byte-identical off, and it is PRICED — do not flip it on
+    # the evidence in this repo (Kent's call, 2026-09-19). Cap order abandons
+    # nearest-neighbour travel by design, and that is not free: measured ON vs
+    # OFF at 80 mm, `logo_gaulke_roofing` goes 723.7 -> 1528.9 mm needle-up
+    # (+111.2%) and 56 -> 64 trims, `becker_marine_logo` +11.3% and 50 -> 54.
+    # Defect 4 is that we ALREADY trim 3.1x the professional, so this makes
+    # the worst-measured parity gap worse. Against that, the benefit it claims
+    # — less crown distortion on a stretching seamed front — has no instrument
+    # here at all, and the one pro cap/flat pair readable from the corpus
+    # backs the BOTTOM-UP half while contradicting the CENTRE-OUT half, which
+    # is the half that spends the travel. So only cloth settles it.
+    # Full evidence: DOCTRINE "Measured negatives", scope-history 09-19,
+    # renders in docs/renders/cap-order-2026-09-19/, instruments
+    # tools/cap_order_ab.py and tools/cap_order_pro.py.
+    # tests/test_cap_center_out.py pins the default, the two keys, the
+    # precedence against `sew_order` and `borders_last`, and the off-lane no-op.
     cap_center_out: bool = False
     # One cone, one layer (defect 18, the SECOND spool-revisit mechanism).
     # Stage 2 quantizes to COLOURS, and two quantized colours can snap to one
