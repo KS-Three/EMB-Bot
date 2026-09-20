@@ -131,17 +131,18 @@ test("the review step shows the grade, the findings, and the thread bill", async
   await expect(quality.locator(".qr-grade b")).toHaveText(/^[ABCDF]$/);
   await expect(quality.locator(".qr-grade .qr-score")).toHaveText(/^\d{1,3}\/100$/);
 
-  // The findings are the substance. This fixture carried TRIM_HEAVY until
-  // 2026-09-19, when the satin walk started ending each letter facing the
-  // next one (`satin_exit_toward_next`) and its trims fell under the
-  // professional band on the Studio's own settings (9 for 2,311 stitches on
-  // a tote, 3.9 per 1,000 against the 4.1 line; 11 and grade B with the
-  // lever off). Those numbers are the PANEL's raster — its 1,200-px canvas
-  // re-encode of the file, which is what every job sees (DigitizePanel's
-  // PROCESS_MAX_PX); the file itself, straight into the engine, reads 14
-  // trims and TRIM_HEAVY with the lever on. `tools/studio-raster.mjs`
-  // writes the panel's raster for measuring; DOCTRINE 2026-09-20 has the
-  // three reasons the two differ. A clean report is the
+  // The findings are the substance. This fixture carried TRIM_HEAVY, lost it
+  // for a day, and carries it again — and the reason is the lesson. On
+  // 2026-09-19 the satin walk started ending each letter facing the next one
+  // (`satin_exit_toward_next`) and the report went clean: 9 trims for 2,311
+  // stitches on a tote, 3.9 per 1,000 against the 4.1 line. Those numbers
+  // were the PANEL's raster — a 1,200-px canvas re-encode it used to send in
+  // place of the file (DOCTRINE 2026-09-19/20: resampled at Chrome's default
+  // smoothing, its RGB under transparency rewritten). Since 2026-09-20 the
+  // panel sends the file itself, and this fixture reads 2,318 stitches / 13
+  // trims / grade B with TRIM_HEAVY — the engine's own number for it, which
+  // the direct probes always gave. `tools/studio-raster.mjs` still writes
+  // the preview raster for measuring that path. A clean report is the
   // other thing this panel renders, and it is a sentence too — so the
   // contract here is the same as the grade's above: whichever state the
   // engine produces, the panel says it in preflight's words rather than

@@ -14756,3 +14756,43 @@ table sees, not a recommendation.
 `digitizer/tools/studio_raster_census.py`, whose `run` subcommand carries
 every raster above and reproduces the scratchpad census row for row;
 DOCTRINE 2026-09-19/20; `tests/test_studio_raster_cap.py`)*
+
+### Addendum, the same day — Kent's pick on §E: the Studio sends the file's bytes (BUILT)
+
+Put to Kent with the table above (AskUserQuestion, 2026-09-20): send the
+file's bytes — his call. `DigitizePanel` now POSTs the upload itself for
+the formats the service decodes (PNG, JPEG, WebP, BMP — `uploadPlan` in
+`lib/rasterize.js`, with `/health`'s `limits` deciding oversize) and keeps
+its 1,200-px canvas as the localStorage preview; SVG and GIF, which only a
+browser rasterises, keep the canvas path, as does a file outside the
+service's limits. The original's bytes live in IndexedDB under their
+SHA-256 (`lib/sourceStore.js`; content-addressed, so a file uploaded
+twice is one record) and the element carries only the key
+(`element.sourceFile`); a re-digitize after a reload sends the same bytes,
+and one whose record is gone (cleared site data, another browser, an
+`.embproj` opened elsewhere — the file does not carry originals) sends the
+preview and says so in the panel, because the two digitize differently.
+The preview path is tick-for-tick the pre-change flow, so restitch timing
+did not move.
+
+**Verified through the real panel, not the engine:** the quality-report
+e2e's `/digitize` request shrank from **47,730 to 18,688 bytes** (the
+18,265-byte ENTHUSIAST file plus the multipart config) and its job came
+back at **2,318 stitches / 13 trims / 33 jumps / 17.05 px/mm / grade B,
+`TRIM_HEAVY`** — table A's file column for that fixture to the stitch,
+where the day before the same test read 2,311 / 9 / 14.61 px/mm / A. So
+every "file" number in tables A–E above is now the customer's number, and
+every measurement in the lettering plan made on `digitizer/testdata/` is
+the customer's again. Tests: `lib/sourceStore.spec.js` (a fake IndexedDB;
+the content key, the round trip, absence), `uploadPlan` in
+`lib/rasterize.spec.js` (formats, vector/GIF, both limits from `/health`
+and from the defaults), `startDigitize` with bytes in
+`lib/digitizer.spec.js`, three panel tests (a PNG stores and patches the
+key, an SVG does not, a digitize sends the bytes and falls back with the
+note); the Studio suite 1,241 passed, the e2e suite through the changed
+panel, and `tests/test_studio_raster_cap.py` pins the send rule from the
+source. `tools/studio-raster.mjs` stays as the census's instrument and the
+measure of the preview path.
+
+*(built and verified 2026-09-20 — Kent's answer; trace of the
+quality-report e2e on the changed panel)*

@@ -183,6 +183,14 @@ export function defaultDigitizedElement(id) {
     type: "digitized",
     name: "",
     sourcePng: null,
+    // The customer's file, as uploaded (2026-09-20): { key, type, size, width,
+    // height }, its bytes in IndexedDB under `key` (lib/sourceStore.js). This
+    // is what a digitize SENDS; `sourcePng` above is the 1,200-px preview the
+    // panel used to send and still shows. null on a project saved before
+    // this field existed, on a vector/GIF/oversize upload, and where the
+    // browser could not store the bytes — all of which digitize from the
+    // preview, the pre-2026-09-20 path.
+    sourceFile: null,
     params: { ...DEFAULT_DIGITIZE_PARAMS },
     // A sibling of params, not a member of it (spec 2026-08-18 decision 4):
     // this names a fact about the SOURCE ART ("this is a photo"), not a
