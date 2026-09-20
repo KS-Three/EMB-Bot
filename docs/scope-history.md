@@ -15030,3 +15030,102 @@ the browser rotated) has none to carry — those digitize from the canvas on
 every machine alike, as they did. Nothing prunes the store, as before.
 
 *(built and verified 2026-09-20 — Kent's pick; `app/e2e/design-originals.spec.js`)*
+
+### Addendum, the same day — Kent's pick: how much of stage 0's scale defect is the alpha, measured
+
+The drone leaving the scale test's broken sets raised the question, and Kent
+picked it (AskUserQuestion, 2026-09-20): of the resolution-dependence
+`tests/test_classifier_scale_invariance.py` pins, how much is the RGB under
+an alpha cutout's transparency — which `alpha_edge_extend` removes — and how
+much is the pixel-absolute signal windows, which it cannot touch.
+Measurement only; no threshold moved (ROADMAP gate 2).
+
+**The instrument** (`tools/stage0_scale_arms.py`, committed; `tests/test_stage0_scale_arms.py`):
+each of the test's six fixtures at native and down a ladder (200, 250, 320,
+400, 500, 640, 800, 1,000, 1,200 px — the test's own 250 / 400 / 640 among
+them), resampled exactly as the test does (PIL LANCZOS), classified under
+three arms — the extension OFF (the pre-flip engine), gated (the shipped
+engine: only where the resolution-floor upscale will run, decided at the
+default 80 mm) and whole-image — with, per row, whether the gate opened and
+whether the extension changes any pixel. The three opaque fixtures cannot be
+touched by the extension and are the control. `--corpus` adds the nine
+REAL_ART logos at their census widths.
+
+**Per arm, on the six (same class across 250/400/640 · across the ladder · equal to native everywhere):**
+
+| fixture | alpha | OFF | gated (shipped) | whole-image |
+|---|---|---|---|---|
+| `logo_alpha` | yes | yes · yes · **no** (every downscale `gradient`, native `flat`) | same | same |
+| `logo_whitebg` | no | yes · yes · **no** (same shape) | identical to OFF | identical to OFF |
+| `ribbon_curve` | no | yes · yes · **no** (same shape) | identical to OFF | identical to OFF |
+| ENTHUSIAST | yes | **no** (250 / 400 `photo_scene`, 640 `gradient`) · no · no | **no** (250 `gradient`, **400 `photo_scene`**, 640 `gradient`) · no · no | **yes · yes** · no (every downscale `gradient`, native `flat`) |
+| drone | yes | **no** (250 `photo_subject`) · no · no | yes · yes · yes | yes · yes · yes |
+| `summit_badge` | no | yes · yes · yes | identical | identical |
+
+- **The opaque fixtures and `logo_alpha` are the windows defect, whole.**
+  Three files the extension cannot change and one whose class it does not
+  change (its signals move — `unique_color_mass` 0.082 → 0.036 at 250 px —
+  and stay on the same side of every threshold): native `flat`, `gradient`
+  at every downscale. Their `gradient_smoothness` reads 0.0000–0.0006 at
+  native and 0.005–0.48 downscaled against the 0.0015 gate, at every width
+  in the ladder. Nothing about the alpha is in that.
+- **The under-alpha part is exactly the `photo_*` misroutes.** Drone's 200
+  and 250 px `photo_subject` (`unique_color_mass` 0.315 / 0.335 OFF, 0.104 /
+  0.091 extended, 0.159 at native) and ENTHUSIAST's 200–400 px `photo_scene`
+  (0.51 / 0.49 / 0.37 / 0.34 OFF against 0.22 / 0.20 / 0.14 / 0.12
+  extended, the 0.28 photo floor between them). Whole-image removes every
+  one: drone equals native at every width, ENTHUSIAST is one class across
+  the whole ladder. What remains on ENTHUSIAST — `gradient` downscaled,
+  `flat` native — is the windows again (`gradient_smoothness` 0.19–0.61
+  against 0.0000 at native).
+- **The gate adds a flip of its own at the floor.** ENTHUSIAST's art box
+  crosses 4 px/mm between 320 and 400 px at 80 mm, so the shipped engine
+  extends at 320 (`gradient`) and not at 400 — where it reads exactly what
+  OFF reads, `photo_scene` at 0.339 — then `gradient` again from 500. One
+  more class change than whole-image, at the width where the extension
+  switches off. Drone's box is narrower (gate open through 640) and Fremont's
+  class does not move where its gate shuts, so on these fixtures the
+  boundary bites ENTHUSIAST alone; it exists wherever an alpha cutout's
+  under-alpha colour would have crossed a threshold just above the floor.
+- **The test's harness makes hostile files.** PIL resamples RGBA
+  premultiplied, so every downscaled alpha fixture arrives with black under
+  alpha == 0 and rounding noise under the ramp — the rewrite the Studio's
+  canvas made (DOCTRINE 2026-09-19/20), manufactured by `_classify_at`
+  itself; `extension_changes_pixels` is `yes` on every downscaled alpha row.
+  Pinned in the tool's test, along with the part no extension can undo: the
+  premultiplied Lanczos bakes the exporter's RAMP colour into edge pixels
+  that come out opaque (alpha overshoots and clips to 255), so a cutout with
+  black under its ramp and the same cutout with ink there read apart at 200
+  px even under whole-image, while at native they read identical. The
+  spec's *"not an artifact of the resampler"* stands for the windows half
+  (NEAREST flips too); the `photo_*` half on alpha fixtures is the
+  resampler's premultiplication read through the whole-raster kernels.
+
+**The nine real logos at their census widths (`--corpus`):** no class moves
+at native under any arm — Becker `flat`, ENTHUSIAST `flat`, Fremont and
+drone `gradient`, tires `photo_scene`, the other four `gradient`, identically
+across OFF / gated / whole. Downscaled: tires (opaque) flips `gradient` ↔
+`photo_scene` by resolution alone (`unique_color_mass` 0.06 at 200 px → 0.47
+at 1,000, all arms identical — windows); Fremont OFF reads `photo_scene` at
+200, **`flat` at 250**, `gradient` from 320, and the extension removes the
+250-px `flat` (0.273 → 0.238 `unique_color_mass`, `gradient` under both ON
+arms) but not the 200-px `photo_scene` (0.415 → 0.347, still over 0.28);
+drone as above; bridge, golden_tee, gaulke, screenshot invariant on every
+arm.
+
+**What this says, and does not.** Of the resolution-dependence the scale
+test pins, the alpha extension owns the `photo_*` misroutes and nothing
+else; the `flat` → `gradient` flips on downscale are the pixel-absolute
+windows on every fixture, opaque or not, and the recalibration spec's
+subject is unchanged (its four remaining fixtures are all windows cases).
+The shipped gate leaves one such misroute reachable (ENTHUSIAST at 400 px)
+and adds a class boundary at the floor that whole-image does not have —
+while on the corpus at native size the three arms read one class per logo,
+so a stage-0-only whole-image read (classification on the extended raster
+everywhere; stage 1 keeping the gate for the pixels it sews) would change
+no corpus class and remove both. Not built: it is a change to what stage 0
+reads, the same kind as the flip, and Kent's to pick; no threshold moves
+under gate 2 either way.
+
+*(measured 2026-09-20 — Kent's pick; `tools/stage0_scale_arms.py run --corpus`;
+the JSON is the scratchpad's, the tool regenerates it)*

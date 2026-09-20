@@ -435,27 +435,29 @@ question waits behind it, measured both ways — DOCTRINE,
 
 ### Evaluation corpus & harness — real gap, newly tracked here
 
-**The gap: no repeatable automated quality signal**, so every serious quality
-question queues behind a corpus nobody has or a sew-out nobody has scheduled. A
-labelled corpus plus a scoring harness would let a classifier change be judged
-against *something* before either arrives.
+**The gap: no repeatable automated quality signal**; a labelled corpus plus a
+scoring harness would let a classifier change be judged before a corpus or a
+sew-out arrives.
 
-**Seven measured cases where the harness disagrees with the sewn result — one of them since retracted:** [`docs/yardstick-disagreements-2026-09-06.md`](docs/yardstick-disagreements-2026-09-06.md) — phase 1's exit condition is a claim about disagreements and nothing was gathering them. Two are load-bearing: a 32.7 → 1.4 ΔE00 thread fix that moves no grade or block (the metric moves; the verdict does not), and four photo fixtures that score HIGHER with a ratified quality tier off. Append; do not curate — **row 7 held for one day and is kept, marked, because the retraction is the finding**: it was measured on a tree with the `~base_valid` bug in it, and fixing that bug reversed its direction (2026-09-07). *(assembled 2026-09-06)*
+**Seven measured cases where the harness disagrees with the sewn result — one of them since retracted:** [`docs/yardstick-disagreements-2026-09-06.md`](docs/yardstick-disagreements-2026-09-06.md) — phase 1's exit condition is a claim about disagreements and nothing was gathering them. Two are load-bearing: a 32.7 → 1.4 ΔE00 thread fix that moves no grade or block (the metric moves; the verdict does not), and four photo fixtures that score HIGHER with a ratified quality tier off. Append; do not curate — **row 7 is kept, marked: the retraction is the finding** (measured with the `~base_valid` bug in the tree; the fix reversed its direction, 2026-09-07). *(assembled 2026-09-06)*
 
-**Phase 1's exit condition has TWO instruments: `digitizer/tools/eye_pairs` (its second clause — Kent's picks on same-design A/B pairs; built 2026-09-17, PR #506, no sitting yet; labelled page `tools/eye_pairs_gallery --labelled` (built 2026-09-18 — #514)) and `digitizer/tools/artfid_eye_rank.py`,** a blind rank harness correlating ARTFID's ordering with a viewer's. First run: the pre-registered primary is **null and underpowered by construction** (tau-b +0.048, n=7 after refusals). The load-bearing result sits behind it — **ARTFID scores are NOT comparable across routes**, and "preflight grade beats ARTFID" is a confound for `route == flat`. Do not pool ARTFID over mixed routes and read the ordering as quality. Also live: `colour` reads exactly 1.000 on 11 of 14 fixtures while carrying 25% of the composite. Full result, statistical limits, and two of my own hypotheses disproved: DOCTRINE "ARTFID is not comparable ACROSS routes". *(measured 2026-09-11 — [`docs/artfid-eye-agreement-2026-09-11.md`](docs/artfid-eye-agreement-2026-09-11.md))*
+**Phase 1's exit condition has TWO instruments: `digitizer/tools/eye_pairs` (its second clause — Kent's picks on same-design A/B pairs; built 2026-09-17, PR #506, no sitting yet; labelled page `tools/eye_pairs_gallery --labelled` (built 2026-09-18 — #514)) and `digitizer/tools/artfid_eye_rank.py`,** a blind rank harness correlating ARTFID's ordering with a viewer's. First run: the pre-registered primary is **null and underpowered by construction** (tau-b +0.048, n=7 after refusals). The load-bearing result sits behind it — **ARTFID scores are NOT comparable across routes**, and "preflight grade beats ARTFID" is a confound for `route == flat`. Do not pool ARTFID over mixed routes and read the ordering as quality. Also live: `colour` reads exactly 1.000 on 11 of 14 fixtures while carrying 25% of the composite. Full result and two disproved hypotheses: DOCTRINE "ARTFID is not comparable ACROSS routes". *(measured 2026-09-11 — [`docs/artfid-eye-agreement-2026-09-11.md`](docs/artfid-eye-agreement-2026-09-11.md))*
 
 **Harness half: BUILT — `digitizer/tools/corpus_scorecard.py`.** `capture`/`diff`
 over 26 fixtures x 2, aggregating preflight's score. REPORTING, not a CI gate;
 detail: [area 1](docs/scope/1-auto-digitizing-quality.md). **The 2026-08-12
-baseline was SOUND — 38/38 rows re-scored exactly on its own commit, so every
-mover was real**, and all were attributed before the 2026-09-02 recapture,
-which also drops the duplicate fixture and stamps its commit.
+baseline was SOUND — 38/38 rows re-scored exactly, every mover real** and
+attributed before the 2026-09-02 recapture (duplicate fixture dropped, commit
+stamped).
 *(2026-08-21; 2026-09-02 — [notes](docs/scorecard-baseline-attribution-2026-09-02.md))*
 
 **The corpus is half-present, and its real-artwork half keeps contradicting the
 synthetics** — six of seven real customer logos route to GRADIENT at stage 0, so
 a "flat spot-colour art" claim tuned on synthetics is untested against real
-input. **A second harness, `tools/pro_parity/`, measures distance from the
+input. **Stage 0's scale defect is two (2026-09-20):** `flat` → `gradient` on
+downscale is the pixel-absolute windows on every fixture; the `photo_*`
+misroutes on downscaled alpha cutouts were RGB under the alpha — `alpha_edge_extend`
+removes them, the shipped gate leaves ENTHUSIAST's at 400 px. *(scope-history, DOCTRINE)* **A second harness, `tools/pro_parity/`, measures distance from the
 PROFESSIONAL digitization** of the same 23 designs; its scale changed
 2026-08-14, so read the Gotcha in [`DOCTRINE.md`](DOCTRINE.md) before comparing
 to any earlier number. Which fixtures misroute, and which half of the corpus a
