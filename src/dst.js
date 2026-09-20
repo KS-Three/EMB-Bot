@@ -144,30 +144,57 @@
     return header;
   }
 
-  function clampStep(delta) {
-    if (delta > MAX_DELTA) return MAX_DELTA;
-    if (delta < -MAX_DELTA) return -MAX_DELTA;
-    return delta;
+  // Split (dx,dy) into steps of at most `limit` per axis whose signed deltas
+  // sum EXACTLY to (dx,dy) and whose landing points follow the straight line
+  // between the two ends. `minSteps` forces a floor (the trim convention needs
+  // three records however short the move is).
+  //
+  // The line part is the whole point, and it is what this repo got wrong until
+  // 2026-09-20. Every encoder here clamped the axes independently —
+  // `stepX = clampStep(dx); stepY = clampStep(dy)` — which spends the smaller
+  // axis entirely in the FIRST record and then travels along the other one.
+  // The endpoints, the bounding box and the stitch count all still matched, so
+  // the crossval harness, the goldens and the whole Studio suite stayed green:
+  // one thing that differed was the path in between, which is exactly what the
+  // customer was shown. A resized logo put the file's thread 0.41 mm off the
+  // drawn line and a 30.6 mm diagonal 3.6 mm off (`test/encoder-split.test.js`,
+  // `tools/preview-vs-dst.mjs`).
+  //
+  // Cumulative rounding — round the RUNNING total, then subtract what has
+  // already been emitted — is what keeps the sum exact while every landing
+  // point stays within half a unit of the line on each axis. `splitTrim` has
+  // always done it this way; the oversize-move loop never did.
+  //
+  // `n` can need one more step than the pure ratio suggests: two adjacent
+  // roundings can differ by one more unit than dx/n, so a step can come out at
+  // limit+1. Rather than reason about when, emit and check.
+  function splitSteps(dx, dy, limit, minSteps) {
+    let n = Math.max(
+      minSteps || 1,
+      1,
+      Math.ceil(Math.abs(dx) / limit),
+      Math.ceil(Math.abs(dy) / limit)
+    );
+    for (;;) {
+      const steps = [];
+      let accX = 0, accY = 0, ok = true;
+      for (let i = 1; i <= n; i++) {
+        const sx = Math.round((dx * i) / n) - accX;
+        const sy = Math.round((dy * i) / n) - accY;
+        if (Math.abs(sx) > limit || Math.abs(sy) > limit) { ok = false; break; }
+        steps.push([sx, sy]);
+        accX += sx; accY += sy;
+      }
+      if (ok) return steps;
+      n++;
+    }
   }
 
-  // Split a trim's total (dx,dy) into >=3 jump records, each within +/-MAX_DELTA,
-  // whose signed deltas sum exactly to (dx,dy). Tajima convention: a machine
-  // reads >=3 consecutive jumps as a trim command. Zero delta -> 3 zero jumps.
+  // A trim's travel, as >=3 jump records: the Tajima convention is that a
+  // machine reads three consecutive jumps as a trim command. Zero delta -> 3
+  // zero jumps.
   function splitTrim(dx, dy) {
-    const n = Math.max(
-      3,
-      Math.ceil(Math.abs(dx) / MAX_DELTA),
-      Math.ceil(Math.abs(dy) / MAX_DELTA)
-    );
-    const steps = [];
-    let accX = 0, accY = 0;
-    for (let i = 1; i <= n; i++) {
-      const sx = Math.round((dx * i) / n) - accX;
-      const sy = Math.round((dy * i) / n) - accY;
-      steps.push([sx, sy]);
-      accX += sx; accY += sy;
-    }
-    return steps;
+    return splitSteps(dx, dy, MAX_DELTA, 3);
   }
 
   function encodeDST(design) {
@@ -281,19 +308,17 @@
       // real design puts it at the last stitch's own position, delta zero.
       const isStitch = flag === "stitch" && st.type !== "end";
       const splitFlag = isStitch && lastWasStitch ? "stitch" : "jump";
-      let dx = targetX - lastX;
-      let dy = targetY - lastY;
-      while (Math.abs(dx) > MAX_DELTA || Math.abs(dy) > MAX_DELTA) {
-        const stepX = clampStep(dx);
-        const stepY = clampStep(dy);
-        records.push(encodeRecord(stepX, stepY, splitFlag));
-        lastX += stepX;
-        lastY += stepY;
-        dx = targetX - lastX;
-        dy = targetY - lastY;
+      // One step when the move fits a record — byte-identical to the old loop
+      // for every design that never splits. The LAST step carries the record's
+      // real flag; the ones before it are intermediates.
+      const steps = splitSteps(targetX - lastX, targetY - lastY, MAX_DELTA, 1);
+      for (let k = 0; k < steps.length - 1; k++) {
+        records.push(encodeRecord(steps[k][0], steps[k][1], splitFlag));
+        lastX += steps[k][0];
+        lastY += steps[k][1];
       }
-
-      records.push(encodeRecord(dx, dy, flag));
+      const last = steps[steps.length - 1];
+      records.push(encodeRecord(last[0], last[1], flag));
       lastWasStitch = isStitch;
       lastX = targetX;
       lastY = targetY;
@@ -324,5 +349,10 @@
     endRecord,
     buildHeader,
     encodeDST,
+    // Exported for `test/encoder-split.test.js`: the three encoders each carry
+    // their own copy of this (they are standalone browser globals, loaded in a
+    // fixed order with no shared module), so the test drives all three through
+    // one set of cases rather than trusting them to stay in step by eye.
+    splitSteps,
   };
 });

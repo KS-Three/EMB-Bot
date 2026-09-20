@@ -38,11 +38,33 @@
   // Two's-complement signed byte.
   const sb = (v) => (v < 0 ? v + 256 : v);
 
-  function clampStep(delta, limit) {
+  // Split (dx,dy) into steps of at most `limit` per axis that sum EXACTLY to
+  // (dx,dy) and whose landing points follow the straight line between the two
+  // ends. See src/dst.js's copy for why this exists: all three encoders
+  // clamped the axes independently until 2026-09-20, which walks an L and puts
+  // the file's thread off the line the Studio drew, with every count, extent
+  // and endpoint still matching.
+  function splitSteps(dx, dy, limit, minSteps) {
     const lim = limit || MAX_DELTA;
-    if (delta > lim) return lim;
-    if (delta < -lim) return -lim;
-    return delta;
+    let n = Math.max(
+      minSteps || 1,
+      1,
+      Math.ceil(Math.abs(dx) / lim),
+      Math.ceil(Math.abs(dy) / lim)
+    );
+    for (;;) {
+      const steps = [];
+      let accX = 0, accY = 0, ok = true;
+      for (let i = 1; i <= n; i++) {
+        const sx = Math.round((dx * i) / n) - accX;
+        const sy = Math.round((dy * i) / n) - accY;
+        if (Math.abs(sx) > lim || Math.abs(sy) > lim) { ok = false; break; }
+        steps.push([sx, sy]);
+        accX += sx; accY += sy;
+      }
+      if (ok) return steps;
+      n++;
+    }
   }
 
   function colorRecord() {
@@ -103,18 +125,14 @@
       // jump record(s). Separate the trim command from the travel move.
       if (st.type === "trim") {
         records.push(trimRecord());
-        let dx = targetX - lastX;
-        let dy = targetY - lastY;
-        while (Math.abs(dx) > MAX_DELTA || Math.abs(dy) > MAX_DELTA) {
-          const stepX = clampStep(dx);
-          const stepY = clampStep(dy);
-          records.push(jumpRecord(stepX, stepY));
-          lastX += stepX;
-          lastY += stepY;
-          dx = targetX - lastX;
-          dy = targetY - lastY;
+        const dx = targetX - lastX;
+        const dy = targetY - lastY;
+        // A zero-delta trim still writes no jump at all, exactly as before.
+        if (dx !== 0 || dy !== 0) {
+          for (const [sx, sy] of splitSteps(dx, dy, MAX_DELTA, 1)) {
+            records.push(jumpRecord(sx, sy));
+          }
         }
-        if (dx !== 0 || dy !== 0) records.push(jumpRecord(dx, dy));
         lastX = targetX;
         lastY = targetY;
         continue;
@@ -122,24 +140,16 @@
 
       const isJump = st.type === "jump";
 
-      let dx = targetX - lastX;
-      let dy = targetY - lastY;
+      const dx = targetX - lastX;
+      const dy = targetY - lastY;
 
       // Travel splits at the RECORD limit; a sewn move splits at the
       // SEWABILITY ceiling, which is lower. Same shape as pes.js's
       // `chained ? PEC_MAX_SEWN_DELTA : PEC_MAX_DELTA`.
       const limit = isJump ? MAX_DELTA : EXP_MAX_SEWN_DELTA;
-      while (Math.abs(dx) > limit || Math.abs(dy) > limit) {
-        const stepX = clampStep(dx, limit);
-        const stepY = clampStep(dy, limit);
-        records.push(isJump ? jumpRecord(stepX, stepY) : stitchRecord(stepX, stepY));
-        lastX += stepX;
-        lastY += stepY;
-        dx = targetX - lastX;
-        dy = targetY - lastY;
+      for (const [sx, sy] of splitSteps(dx, dy, limit, 1)) {
+        records.push(isJump ? jumpRecord(sx, sy) : stitchRecord(sx, sy));
       }
-
-      records.push(isJump ? jumpRecord(dx, dy) : stitchRecord(dx, dy));
       lastX = targetX;
       lastY = targetY;
     }
@@ -157,5 +167,7 @@
 
   return {
     encodeEXP,
+    // Exported for test/encoder-split.test.js — see the note on dst.js's copy.
+    splitSteps,
   };
 });

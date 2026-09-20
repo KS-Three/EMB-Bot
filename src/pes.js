@@ -94,11 +94,33 @@
   // move. See the chain rule in pecEncodeStitches.
   const PEC_MAX_SEWN_DELTA = 121;
 
-  function pecClampStep(delta, limit) {
+  // Split (dx,dy) into steps of at most `limit` per axis that sum EXACTLY to
+  // (dx,dy) and whose landing points follow the straight line between the two
+  // ends. See src/dst.js's copy for why this exists: all three encoders
+  // clamped the axes independently until 2026-09-20, which walks an L and puts
+  // the file's thread off the line the Studio drew, with every count, extent
+  // and endpoint still matching.
+  function splitSteps(dx, dy, limit, minSteps) {
     const lim = limit || PEC_MAX_DELTA;
-    if (delta > lim) return lim;
-    if (delta < -lim) return -lim;
-    return delta;
+    let n = Math.max(
+      minSteps || 1,
+      1,
+      Math.ceil(Math.abs(dx) / lim),
+      Math.ceil(Math.abs(dy) / lim)
+    );
+    for (;;) {
+      const steps = [];
+      let accX = 0, accY = 0, ok = true;
+      for (let i = 1; i <= n; i++) {
+        const sx = Math.round((dx * i) / n) - accX;
+        const sy = Math.round((dy * i) / n) - accY;
+        if (Math.abs(sx) > lim || Math.abs(sy) > lim) { ok = false; break; }
+        steps.push([sx, sy]);
+        accX += sx; accY += sy;
+      }
+      if (ok) return steps;
+      n++;
+    }
   }
 
   // Long-form flag: 0 = plain stitch, PEC_FLAG_JUMP = jump, PEC_FLAG_TRIM =
@@ -162,20 +184,17 @@
       const limit = chained ? PEC_MAX_SEWN_DELTA : PEC_MAX_DELTA;
       const splitFlag = chained ? 0 : PEC_FLAG_JUMP;
 
-      let dx = sx - px;
-      let dy = sy - py;
-
-      while (Math.abs(dx) > limit || Math.abs(dy) > limit) {
-        const stepX = pecClampStep(dx, limit);
-        const stepY = pecClampStep(dy, limit);
-        pecWriteRecord(w, stepX, stepY, splitFlag);
-        px += stepX;
-        py += stepY;
-        dx = sx - px;
-        dy = sy - py;
+      // One step when the move fits a record, so a design that never splits
+      // encodes byte-for-byte as before. The LAST step carries the record's
+      // real flag; the ones before it are intermediates.
+      const steps = splitSteps(sx - px, sy - py, limit, 1);
+      for (let k = 0; k < steps.length - 1; k++) {
+        pecWriteRecord(w, steps[k][0], steps[k][1], splitFlag);
+        px += steps[k][0];
+        py += steps[k][1];
       }
-
-      pecWriteRecord(w, dx, dy, flag);
+      const lastStep = steps[steps.length - 1];
+      pecWriteRecord(w, lastStep[0], lastStep[1], flag);
       px = sx;
       py = sy;
       lastWasStitch = isStitch;
@@ -405,5 +424,7 @@
     return Uint8Array.from(w.bytes);
   }
 
-  return { encodePES, writePEC };
+  // splitSteps is exported for test/encoder-split.test.js — see the note on
+  // dst.js's copy.
+  return { encodePES, writePEC, splitSteps };
 });
