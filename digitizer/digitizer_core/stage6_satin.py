@@ -2810,34 +2810,52 @@ def _rail_points(poly: Polygon, spine: list[tuple[float, float]], closed: bool,
             ref_b.append(rail_b[i])
             continue
         m = int(math.ceil(adv / pitch))
-        if in_taper:
-            # In the taper zone the pieces must also stay ABOVE the guard
-            # threshold: a bare ceil splits a 0.53 mm interval into 0.26 mm
-            # halves, the guard fires on every one, and the retracted points
-            # read as fresh ~0.8 mm same-rail steps — the defect rebuilt by
-            # its own repair (measured on the ribbon tail before this floor).
-            #
-            # The pieces below are even along EACH rail, and the rails of a
-            # taper advance unequally, so the short rail can crowd under the
-            # guard while the long one is still over-wide. A pulled station
-            # reads back as a same-rail step of up to 0.82 mm (the 0.6 mm
-            # pull has a component along the rail near a tip), so crowding
-            # is accepted only where the alternative is a real hole: the
-            # long rail left wider than two pitches, which is what every
-            # density read here calls over-wide. Measured on ribbon_curve's
-            # head, 80 mm: the flipped tip's second interval advances 0.52
-            # against 0.60 mm, took one station under the old floor, and the
-            # guard's pull on it read 0.82 mm -- now it takes none and the
-            # long rail keeps a 0.60 mm step; the pre-flip tip's first
-            # interval advances 0.50 against 0.85 mm and still takes its one
-            # station, the pull there reading 0.5 mm (2026-09-09).
-            adv_min = min(math.dist(rail_a[i - 1], rail_a[i]),
-                          math.dist(rail_b[i - 1], rail_b[i]))
-            m_clear = max(1, int(adv_min / machine.SATIN_SHORT_STITCH_AT_MM))
-            if m_clear < m and adv / m_clear > 2.0 * pitch:
-                m = max(1, min(m, int(adv / machine.SATIN_SHORT_STITCH_AT_MM)))
-            else:
-                m = min(m, m_clear)
+        # The pieces must stay ABOVE the guard threshold: a bare ceil splits a
+        # 0.53 mm interval into 0.26 mm halves, `_short_stitch_guard` fires on
+        # every one, and the retracted points read as fresh ~0.8 mm same-rail
+        # steps — the defect rebuilt by its own repair (measured on the ribbon
+        # tail before this floor).
+        #
+        # The count is sized from the OUTER rail (`adv`, the max above) and
+        # inserted into BOTH, so wherever the rails advance unequally the
+        # SHORT one can crowd under the guard while the long one is still
+        # over-wide. A pulled station reads back as a same-rail step of up to
+        # 0.82 mm (the 0.6 mm pull has a component along the rail near a tip),
+        # so crowding is accepted only where the alternative is a real hole:
+        # the long rail left wider than two pitches, which is what every
+        # density read here calls over-wide. Measured on ribbon_curve's head,
+        # 80 mm: the flipped tip's second interval advances 0.52 against
+        # 0.60 mm, took one station under the old floor, and the guard's pull
+        # on it read 0.82 mm -- now it takes none and the long rail keeps a
+        # 0.60 mm step; the pre-flip tip's first interval advances 0.50
+        # against 0.85 mm and still takes its one station, the pull there
+        # reading 0.5 mm (2026-09-09).
+        #
+        # **This clamp used to sit inside `if in_taper:` and so never ran in a
+        # column BODY — where the same unequal advance happens on every bend,
+        # and where there are far more intervals of it (2026-09-20).** The
+        # rails of a bend advance unequally for exactly the reason this
+        # refinement exists (the outer rail outruns the spine by half-width x
+        # angle turned), so sizing from the outer rail and inserting into the
+        # inner is the crowding machine, not an edge case of it. Measured with
+        # the refinement on and the clamp taper-only, share of same-rail steps
+        # under SATIN_SHORT_STITCH_AT_MM: becker 1.6 -> 12.7%, tires
+        # 4.4 -> 17.6%, enthusiast 3.8 -> 13.8%, bridge 1.8 -> 8.3%, and
+        # 93-98% of those crowded steps touch a station this refinement
+        # inserted. The guard then retracts them up to 0.6 mm INWARD, off the
+        # artwork the rail was placed on: 1-2% of penetrations but 10-17% of
+        # every deviation over 0.15 mm, mean -0.17 to -0.34 mm. That is
+        # coverage, and `tests/test_lettering_coverage_regression.py` is what
+        # priced it. The taper's trade above is kept verbatim — it is the same
+        # trade in both places, and the `> 2.0 * pitch` arm is what stops this
+        # clamp from opening a density hole to close a coverage one.
+        adv_min = min(math.dist(rail_a[i - 1], rail_a[i]),
+                      math.dist(rail_b[i - 1], rail_b[i]))
+        m_clear = max(1, int(adv_min / machine.SATIN_SHORT_STITCH_AT_MM))
+        if m_clear < m and adv / m_clear > 2.0 * pitch:
+            m = max(1, min(m, int(adv / machine.SATIN_SHORT_STITCH_AT_MM)))
+        else:
+            m = min(m, m_clear)
         for j in range(1, m):
             t = j / m
             if in_taper:
