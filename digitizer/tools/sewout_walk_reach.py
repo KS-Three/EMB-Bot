@@ -47,6 +47,7 @@ from digitizer_core.config import PipelineConfig  # noqa: E402
 from digitizer_core.pipeline import build_generation, finish_generation, plan_stitches  # noqa: E402
 from digitizer_service import formats  # noqa: E402
 
+from tools._console import utf8_console  # noqa: E402
 from tools.travel_cover import travel_exposure  # noqa: E402
 
 RENDERS = REPO / "docs" / "renders"
@@ -167,6 +168,10 @@ def readme(rows: list[dict]) -> str:
 
 
 def main(argv=None):
+    # The sheet this prints carries U+2192, which a cp1252 stdout cannot
+    # encode (tools/_console.py) — and this tool is meant to be run on
+    # the Windows box that will sew the files. Widen before printing.
+    utf8_console()
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--out", type=Path, default=ROOT / ".cache" / "sewout-walk-reach")
     a = ap.parse_args(argv)

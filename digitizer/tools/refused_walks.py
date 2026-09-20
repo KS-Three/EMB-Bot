@@ -58,6 +58,7 @@ from digitizer_core.pipeline import build_generation, finish_generation, plan_st
 
 from digitizer_core.preflight import run_preflight  # noqa: E402
 
+from tools._console import utf8_console  # noqa: E402
 from tools.thin_strokes import corpus_cases  # noqa: E402
 from tools.travel_cover import travel_exposure  # noqa: E402
 
@@ -300,6 +301,9 @@ def compare_table(rows: list[dict], reach_mm: float) -> str:
 
 
 def main(argv=None):
+    # This tool's own tables carry U+2192, which a cp1252 stdout cannot
+    # encode (tools/_console.py). Widen before anything is printed.
+    utf8_console()
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     sub = ap.add_subparsers(dest="cmd", required=True)
     r = sub.add_parser("run")
