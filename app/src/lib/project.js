@@ -116,6 +116,15 @@ export const DEFAULT_DIGITIZE_PARAMS = {
   // whatever it stored, "none" included -- the back-fill only fills an
   // ABSENT field.
   edge_cap: "bean",
+  // The basting box (PipelineConfig.baste_box) — a rectangle of long loose
+  // stitches OUTSIDE the design, sewn before any artwork, so the operator can
+  // stop the machine ten seconds in and see whether the garment went into the
+  // hoop straight. Picked out with tweezers afterwards. It costs no colour
+  // stop (it sews in the first artwork thread) but it does cost stitches and
+  // time, so it is OFF and asked for rather than assumed — Kent's call
+  // 2026-09-20, the standing pattern here for anything that adds thread
+  // nobody requested. A project saved before today takes this default.
+  baste_box: false,
   // Off by default, matching the service's own `detail_layer` default — it
   // costs real stitches (+39% on the owl photo below) and buys nothing on
   // flat logo art, which is the common case. Measured 2026-08-12 on a snowy

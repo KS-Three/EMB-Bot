@@ -73,7 +73,7 @@ from .stage6_scanline import scanline_fill
 from .stage6_sketch import sketch_fill
 from .stage6_satin import classify_ribbon, is_satin_candidate, satin_shape
 from .stage6_streamline import streamline_fill
-from .stitches import StitchBlock, StitchRun
+from .stitches import RUN, StitchBlock, StitchRun
 from .threads import chart_for
 from .warnings_codes import (BLEND_NO_REGIONS_DECOMPOSED, BORDER_LIGHTENED,
                              BORDER_SEAM_SHARED,
@@ -1521,6 +1521,54 @@ def _fill_angle_for(p, cfg: PipelineConfig) -> float | None:
     return p.stitch_angle_deg
 
 
+def _prepend_baste_box(blocks: list[StitchBlock]) -> None:
+    """Put a long-stitch rectangle around the work, first, in the first thread.
+
+    Mutates `blocks[0]`: the box's runs go at the front of that block's own
+    run list rather than into a block of their own, because a block boundary
+    is a colour change and on a single head that is a stop and a re-thread.
+    Same thread, one block, no stop — and the artwork keeps its own order
+    entirely, since nothing after the insertion point is touched except the
+    first artwork run's lift flags.
+    """
+    pts = [p for b in blocks for r in b.runs for p in r.points]
+    if not pts:
+        return
+    m = machine.BASTE_MARGIN_MM
+    x0 = min(p[0] for p in pts) - m
+    x1 = max(p[0] for p in pts) + m
+    y0 = min(p[1] for p in pts) - m
+    y1 = max(p[1] for p in pts) + m
+
+    # Walk the rectangle, stepping at most BASTE_STITCH_MM. `_densify` is the
+    # same helper the link router uses, so the spacing rule has one owner.
+    corners = [(x0, y0), (x1, y0), (x1, y1), (x0, y1), (x0, y0)]
+    ring: list[tuple[float, float]] = [corners[0]]
+    for a, b in zip(corners, corners[1:]):
+        ring.extend(_densify(a, b, machine.BASTE_STITCH_MM))
+    box = StitchRun(points=ring, kind=RUN, shape_id="__baste_box__",
+                    jump=True, trim=True)
+
+    first = blocks[0]
+    if first.runs:
+        # The needle lifts and the thread is cut between the box and the
+        # work: without it the machine drags from the rectangle straight into
+        # the design, a line of thread across the garment that the box exists
+        # to keep clear of.
+        #
+        # MEASURED 2026-09-20 by deleting each line in turn: `trim` is
+        # ALREADY True here (every block's first run is forced that way
+        # upstream) and `jump` is NOT. Only the lift is genuinely this
+        # function's to set — but both are written, because what this needs
+        # to guarantee is "the artwork does not drag out of the box", not
+        # "whatever the forcing upstream happens to do today". One redundant
+        # assignment against a thread dragged across a customer's garment.
+        first.runs[0].jump = True
+        first.runs[0].trim = True
+    _apply_ties([box])
+    first.runs[:0] = [box]
+
+
 def sequence(
     planned: list[PlannedRegion], fabric: Fabric, cfg: PipelineConfig,
     source_pixels: SourcePixels | None = None,
@@ -2809,6 +2857,16 @@ def sequence(
                 )
             )
             cursor = d_runs[-1].points[-1]
+
+    # The basting box (cfg.baste_box, default OFF — config.py carries the
+    # craft argument and the three engineering choices).
+    #
+    # HERE, and not earlier, on purpose: everything above has finished
+    # planning, so the box cannot join `_sewn_linear_cover` and cannot
+    # suppress the silhouette cap it surrounds. Basting is not on the finished
+    # garment, and cover it does not provide must not be counted.
+    if cfg.baste_box and blocks and any(b.runs for b in blocks):
+        _prepend_baste_box(blocks)
 
     warnings: list[dict] = list(applique_warnings)
     if thin:

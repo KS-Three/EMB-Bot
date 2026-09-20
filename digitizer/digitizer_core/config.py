@@ -1813,6 +1813,27 @@ class PipelineConfig:
     # travel-only order reachable and tested rather than dead-by-default.
     # tests/test_borders_last.py pins the default and both halves.
     borders_last: bool = True
+    # The basting box (2026-09-20, playbook law 25 — named Desk-safe, never
+    # built). ON, a rectangle of long loose running stitches sews OUTSIDE the
+    # design before any artwork, so the operator can stop the machine ten
+    # seconds in and see whether the garment is hooped straight instead of
+    # finding out eighteen thousand stitches later. Removed with tweezers
+    # afterwards, which is why the stitch is long (machine.BASTE_STITCH_MM)
+    # and why it sits clear of the work (machine.BASTE_MARGIN_MM).
+    #
+    # It sews in the FIRST ARTWORK THREAD, prepended into that block rather
+    # than emitted as its own: a block boundary is a colour change, and on a
+    # single head that is a stop and a re-thread — a basting box that costs
+    # the operator a stop has taken more than it gave. And it is inserted
+    # after the silhouette cap and detail layer are planned, so it never
+    # joins `_sewn_linear_cover`; basting is not on the finished garment, and
+    # counting it as cover would suppress the very edge cap it surrounds.
+    #
+    # DEFAULT OFF, byte-identical off (Kent, 2026-09-20): it adds stitches
+    # nobody asked for, and the standing pattern for that here is a control
+    # the user turns on. tests/test_baste_box.py pins the default, the order,
+    # the margin, the lift-away and the no-extra-stop property.
+    baste_box: bool = False
     # Cap sew order (2026-09-19). A cap front is a curved, seamed, stretching
     # object with a raised centre seam, and the craft rule for one is to sew
     # BOTTOM-UP and CENTRE-OUT so distortion radiates away from the seam

@@ -56,7 +56,7 @@ const PIPELINE_CONFIG_FIELDS = [
   "underlay_style", "underlay", "satin", "satin_max_width_mm", "border",
   "border_width_mm", "deleted_shape_ids", "shape_overrides",
   "merge_shape_ids", "split_shapes", "photo_segment_sam2", "detail_layer",
-  "forced_class", "edge_cap", "is_photographic", "garment_rgb",
+  "forced_class", "edge_cap", "is_photographic", "garment_rgb", "baste_box",
 ];
 
 test("buildDigitizeConfig sends the stored thread-brand preference and the project garment, in service field names", async () => {
@@ -73,6 +73,11 @@ test("buildDigitizeConfig sends the stored thread-brand preference and the proje
     // "bean" since Kent's flip 2026-09-11 — the service's own default moved
     // the same day, and this must keep matching it.
     edge_cap: "bean",
+    // Always sent, false by default (Kent 2026-09-20). Listed here rather
+    // than allowed to be absent for the same reason `detail_layer` is: this
+    // assertion is the contract for the WHOLE request object, and a field
+    // that may or may not appear is a field whose absence nobody notices.
+    baste_box: false,
     thread_brand: "madeira-rayon",
     garment_id: "left_chest",
   });
@@ -2310,4 +2315,28 @@ describe("editKind (restitch pacing)", () => {
     const c = await edits(el({ s1: { border: "auto", tier: "fill" } }));
     expect(editKind(await edits(el({})), c)).toBe("other");
   });
+});
+
+test("baste_box rides buildDigitizeConfig, and an old project takes today's default", async () => {
+  // The basting box (PipelineConfig.baste_box, default OFF — Kent 2026-09-20).
+  // Same additive-default contract as edge_cap above: the field is always
+  // sent, never undefined, and a project saved before it existed takes
+  // today's default rather than an absent key.
+  //
+  // This lives on the DIGITIZE element on purpose. A basting box helps most
+  // on an uploaded design large enough to hoop badly, and the auto-digitize
+  // lane is the only one that reaches the engine that can emit it — so the
+  // control appears exactly where it works, instead of being a toggle that
+  // silently does nothing for a lettering design.
+  stubStorage({});
+  const { buildDigitizeConfig } = await import("./digitizer.js");
+  expect(buildDigitizeConfig(digitizedElement(), PROJECT).baste_box).toBe(false);
+
+  const on = digitizedElement({
+    params: {
+      target_width_mm: 80, max_colors: 6, satin: true,
+      fill_angle_deg: null, border: "off", baste_box: true,
+    },
+  });
+  expect(buildDigitizeConfig(on, PROJECT).baste_box).toBe(true);
 });

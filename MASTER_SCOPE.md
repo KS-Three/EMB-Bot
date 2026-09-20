@@ -590,6 +590,9 @@ the Layers panel, and fabric/garment presets. Logic coverage is broad —
 nearly every `app/src/lib/*.js` module has a paired spec — with UI-behaviour
 coverage riding on live-browser e2e specs across several garments, the image
 content path, four export formats, and the embroidery field's own chrome.
+**A basting box is offered** (`cfg.baste_box`, OFF) — long stitches outside
+the work, sewn first, in the first thread so it costs no stop. *(2026-09-20 — DOCTRINE)*
+
 **What holds it at Medium:** fabric-preset accuracy is gated on the controlled
 sew-out CARD, which has not been sewn — the one physical out so far (2026-09-01)
 was a single uncontrolled icon. See Cross-cutting issues.

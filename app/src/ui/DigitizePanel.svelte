@@ -1787,6 +1787,27 @@
           <option value="satin">Satin cap (full column)</option>
         </select>
       </label>
+      <!-- A rectangle of long loose stitches OUTSIDE the design, sewn before
+           any artwork, so the machine can be stopped ten seconds in to check
+           the garment went into the hoop straight — rather than finding out
+           eighteen thousand stitches later. Picked out with tweezers after.
+           It costs no colour stop (it sews in the first artwork thread) but
+           it does cost stitches and time, so it is asked for, not assumed:
+           Kent's call 2026-09-20, the standing pattern for anything that adds
+           thread nobody requested.
+
+           It sits on THIS panel, which is the auto-digitize lane, because
+           that is the lane whose engine can emit it. A lettering design never
+           passes through here, so the control cannot appear somewhere it
+           would quietly do nothing. -->
+      <label class="dgp-param">
+        <span>Basting box</span>
+        <input
+          type="checkbox"
+          checked={element.params.baste_box}
+          on:change={(e) => setParam("baste_box", e.currentTarget.checked)}
+        />
+      </label>
 
       <!-- What the two selects above ACTUALLY produced, read off the stitch
            plan (design.runs) rather than off the request. Kent, 2026-09-15:

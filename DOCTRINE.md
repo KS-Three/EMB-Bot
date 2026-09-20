@@ -34,6 +34,35 @@ Moved verbatim 2026-08-28 — no section was rewritten in the move.
 
 ## Standing rulings — decided, do not re-litigate
 
+- **Anything that adds thread nobody asked for is OPT-IN. Kent, 2026-09-20,
+  on the basting box.** Asked directly whether it should be opt-in, automatic
+  on knits and pile (the fabric table already knows which goods shift in the
+  hoop), or always on, he took opt-in and off by default. The reasoning that
+  survives the specific feature: a basting box is *obviously* good for the job
+  that needs it, and it still puts stitches on a garment the customer did not
+  order them for. Note the cost of the choice, so nobody re-opens it as if it
+  were free — **a feature nobody discovers helps nobody**, and the person who
+  most needs a hooping check is the one not thinking about hooping.
+  *(`cfg.baste_box`, `tests/test_baste_box.py`)*
+
+- **Three shape rules for any design-level pass added to stage 7**, settled
+  building the basting box and general beyond it:
+  1. **Sew it in an existing thread, prepended into that block** rather than
+     as a block of its own. A block boundary is a colour change, and on a
+     single head that is a stop and a re-thread — a convenience feature that
+     costs the operator a stop has taken more than it gave.
+  2. **Insert it AFTER the silhouette cap and detail layer are planned**, so
+     it cannot join `_sewn_linear_cover`. Basting is removed from the finished
+     garment; counting it as cover would suppress the very edge cap it
+     surrounds, and the design would ship missing a finish because of thread
+     that is not there any more.
+  3. **Force the lift on the run that follows it.** MEASURED the same day by
+     deleting each flag in turn: `trim` is ALREADY True on a block's first run
+     (forced upstream) and `jump` is NOT. Write both anyway — the guarantee
+     needed is "the artwork does not drag out of the box", not "whatever the
+     upstream forcing happens to do today".
+  *(2026-09-20 — `_prepend_baste_box`, `digitizer_core/stage7_sequence.py`)*
+
 - **A real PHOTOGRAPH counts as a tonal positive for the flat/gradient
   boundary.** Kent's ruling 2026-09-11, taken with the cost in front of him.
   The reason it is not a free label: stage 0's PHOTO gate already fails on

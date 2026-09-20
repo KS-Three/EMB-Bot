@@ -760,6 +760,29 @@ TIE_STITCHES = 3      # three legs is the standard lock
 # floats means someone picks them out with scissors afterwards.
 TRIM_AT_MM = 3.0
 
+# --- Basting box (cfg.baste_box) -------------------------------------------
+#
+# A rectangle of long loose stitches OUTSIDE the design, sewn first, so the
+# operator can halt after ten seconds and see whether the garment went into
+# the hoop straight. Playbook law 25, Desk-safe.
+#
+# Neither number is gate-1 material, and the test is the gate's own: fabric
+# settles a constant when fabric is what the constant is about. This thread is
+# picked out of the finished garment with tweezers — it changes nothing about
+# how the ARTWORK sews, sits outside every shape, and no sew-out can tell you
+# whether a guide rectangle belongs 3 mm or 5 mm off the work. They are
+# conventions, chosen and stated, not measurements pretending otherwise.
+
+# How far outside the design the box runs. Far enough to clear the artwork and
+# any pull compensation growth, close enough that it still says something
+# about placement.
+BASTE_MARGIN_MM = 4.0
+
+# Stitch length along the box. Deliberately long: basting is removed by hand,
+# and a dense ring is a second design to unpick. Well under MAX_STITCH_MM so
+# the format never has to split a record.
+BASTE_STITCH_MM = 5.0
+
 # --- Estimation ------------------------------------------------------------
 
 # Thread consumed per mm of stitch path: the top thread travels down and back

@@ -13,6 +13,40 @@ pointer; if it isn't there, treat it as superseded until re-measured.
 
 ---
 
+**Last updated:** 2026-09-20 — the basting box, built and offered (`cfg.baste_box`, OFF)
+
+Playbook law 25 named it ("optional basting box on knits") and rated it
+Desk-safe; it had never been built — zero matches for baste/basting anywhere in
+the repo. A rectangle of long loose running stitches OUTSIDE the design, sewn
+before any artwork, so the machine can be stopped ten seconds in to check the
+garment went into the hoop straight rather than finding out eighteen thousand
+stitches later. Rulings and the three shape rules are in DOCTRINE.
+
+Constants (`machine.py`): `BASTE_MARGIN_MM` 4.0, `BASTE_STITCH_MM` 5.0. Neither
+is gate-1: the thread is picked out of the finished garment, sits outside every
+shape, changes nothing about how the artwork sews, and no sew-out can tell you
+whether a guide rectangle belongs 3 mm or 5 mm off the work. Conventions,
+chosen and stated.
+
+Measured on `becker_marine_logo` at 80 mm, `left_chest`, ON: **1 basting run,
+2 blocks, 5,589 stitches** — the block count and the thread list are identical
+to OFF, which is the no-extra-stop property the feature is built around
+(`test_it_costs_no_extra_colour_stop`). Render: `docs/renders/baste-box-2026-09-20/`.
+
+Reachable: `cfg.baste_box` is sent by `buildDigitizeConfig` (always, never
+undefined — the same additive-default contract `edge_cap` uses) from a
+checkbox on the Digitize panel. It lives on THAT panel deliberately, because
+the auto-digitize lane is the one whose engine emits it; a lettering design
+never passes through there, so the control cannot appear somewhere it would
+quietly do nothing. **The lettering/manual lane has no basting box** — a named
+gap, not an oversight: prepending a ring to a finished JS design means
+re-indexing every `design.runs` span, and that was judged its own piece of
+work rather than a rushed addition here.
+
+Studio suite **1257 passed / 58 files**. Two pre-existing specs updated for the
+new config field: the whole-object assertion in `digitizer.spec.js` and its
+`PIPELINE_CONFIG_FIELDS` list.
+
 **Last updated:** 2026-09-19 — cap sew order built and parked (`cap_center_out`, OFF), with its cost priced and the pro's own cap files read
 
 The Python lane had never read `garment_id` for sew ORDER — it reached

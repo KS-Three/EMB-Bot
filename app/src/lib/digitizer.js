@@ -128,6 +128,12 @@ export function buildDigitizeConfig(element, project) {
     // default and its off-path is byte-identity tested
     // (digitizer/tests/test_edge_cap.py).
     edge_cap: p.edge_cap,
+    // The basting box. Always sent, never undefined, same additive-default
+    // contract as edge_cap above — `p` has already been back-filled from
+    // today's defaults, so a project saved before the field existed sends
+    // `false` rather than an absent key. Off-path is byte-identity tested
+    // (digitizer/tests/test_baste_box.py).
+    baste_box: !!p.baste_box,
   };
   if (p.fill_angle_deg != null) cfg.fill_angle_deg = p.fill_angle_deg;
   // Omitted when null, for a stronger reason than fill_angle_deg's. The
