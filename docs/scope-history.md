@@ -14968,6 +14968,68 @@ not count the drone toward the recalibration spec's §2 acceptance.
 
 *(flipped 2026-09-20 — Kent's call; config, tests, DOCTRINE, MASTER_SCOPE,
 memory)*
+### Addendum, the same day — Kent's pick: the `.embproj` carries the original artwork (BUILT)
+
+Put to Kent after the `alpha_edge_extend` flip (AskUserQuestion,
+2026-09-20), beside three other picks: close the hole the paragraph above
+names — *"an `.embproj` opened elsewhere — the file does not carry
+originals"*. His call. The store is this browser's IndexedDB, so a design
+opened on another machine, or after cleared site data, had the 1,200-px
+preview and nothing else, and re-digitized from it with the panel's note.
+
+**What was built.** The envelope (`lib/projectFile.js`) gains `sources`:
+`{ <key>: { type, name, size, data } }`, the original's bytes base64 under
+the SHA-256 key the store uses, written BESIDE `project` and never inside
+it — `project` is the very object the registry keeps, so the localStorage
+record stays preview-sized by construction. Only keys a digitized element
+points at are written (a stale map cannot smuggle a stranger's artwork
+into someone's file), and a project with no stored original writes the
+envelope it always did, no `sources` member at all. The version stamp is
+2; parsing never keys on it, so a version-1 file parses identically with
+`sources: {}`. `lib/projectSources.js` is the bridge: `collectSources`
+gathers what the store still holds for the project's keys at export (a
+record that is gone is simply not embedded), and `restoreSources` puts the
+file's originals back BEFORE the project is registered, each under the key
+its bytes hash to here and every element repointed if that differs from
+the file's key (a file saved without `crypto.subtle` carries a random
+key), so one original uploaded here and imported from a file is one
+record. Neither throws: a browser that cannot keep originals registers the
+design and its elements digitize from the preview, with the note. On
+import a `sources` entry is read as defensively as the project — not an
+object, not base64, decodes to nothing, over `SOURCE_MAX_BYTES` (64 MiB,
+checked on the base64 length before decoding), or unreferenced — and is
+dropped while the design imports.
+
+**Proved through the real app, not the fakes** (`app/e2e/design-originals.spec.js`,
+3): upload ENTHUSIAST → Export → the downloaded `enthusiast-logo.embproj`
+carries one source under the fixture's SHA-256 whose base64 decodes to the
+18,265 bytes on disk, `image/png`, `enthusiast_logo.png`, while neither
+the file's `project` nor any registry record contains them; wipe
+localStorage AND the IndexedDB database (which is what "another machine"
+is) → Import → the record is back under its content key and the registry
+record still holds only the key; with the service up, press *Digitize
+again* and the `/digitize` POST's `image` part is the file itself —
+`enthusiast_logo.png`, `image/png`, 18,265 bytes, the PNG's own first
+sixteen bytes — read through a `fetch` hook because Chromium exposes no
+post data for a multipart body with a Blob part; the panel shows no
+fallback note. Unit: `lib/projectFile.spec.js` (+8: the round trip byte
+for byte, only referenced keys, the old envelope for a project without
+originals, `{}` for a file without them and for a bare record, eight
+malformed shapes dropped with the design intact, the oversize refusal
+before decoding, the base64 helpers at every length, the version stamp and
+a version-1 file, `sourceKeysOf`), `lib/projectSources.spec.js` (7, against
+an in-memory store: gather once per key and skip what is gone, never
+throw; restore under the content key with every element repointed, the
+same project back when nothing moved, an unavailable store or a full one
+counted and the design unchanged, no-ops). Studio unit suite **1,256
+passed**; e2e suite through the changed drawer.
+
+**Still true.** A file saved before today carries no originals, and a
+preview-path upload (SVG, GIF, a file outside the service's limits, a JPEG
+the browser rotated) has none to carry — those digitize from the canvas on
+every machine alike, as they did. Nothing prunes the store, as before.
+
+*(built and verified 2026-09-20 — Kent's pick; `app/e2e/design-originals.spec.js`)*
 
 ### Addendum, the same day — Kent's pick: how much of stage 0's scale defect is the alpha, measured
 

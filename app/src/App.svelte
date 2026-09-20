@@ -26,6 +26,7 @@
     autoNameProject,
   } from "./lib/projects.js";
   import { buildProjectFile, parseProjectFile, projectFileName } from "./lib/projectFile.js";
+  import { collectSources, restoreSources } from "./lib/projectSources.js";
   import { triggerDownload } from "./lib/download.js";
   import { shouldShow, dismiss, visibleHint } from "./lib/hints.js";
   import { effectiveHoop } from "./lib/hoop.js";
@@ -938,15 +939,22 @@
 
   // Export the current project from live in-memory state (never a stale
   // storage read mid-edit); any other row loads from the registry.
-  function exportFromDrawer(id) {
+  async function exportFromDrawer(id) {
     const proj = id === currentId ? project : loadProject(id);
     if (!proj) {
       drawerNotice = "Couldn't load that design to export it.";
       return;
     }
     const name = nameFor(id);
+    // The customer's original artwork rides in the file (2026-09-20,
+    // projectFile.js `sources`): the design then digitizes from the FILE
+    // wherever it is opened, not from the 1,200-px preview the registry
+    // keeps. An original this browser no longer holds is simply not
+    // embedded; that element digitizes from its preview there, with the
+    // panel's note, as every element did before originals travelled.
+    const sources = await collectSources(proj);
     triggerDownload({
-      bytes: buildProjectFile(proj, name),
+      bytes: buildProjectFile(proj, name, sources),
       filename: projectFileName(name),
       mime: "application/json",
     });
@@ -970,7 +978,13 @@
       drawerNotice = "That doesn't look like a design file (.embproj).";
       return;
     }
-    const imported = importProject(parsed.project, parsed.name);
+    // The file's originals go into this browser's store BEFORE the project
+    // is registered, so every element points at a record that exists here
+    // (and at the key its bytes hash to — projectSources.js). A browser that
+    // cannot keep them registers the design all the same; those elements
+    // digitize from the preview, and the panel says so when they do.
+    const restored = await restoreSources(parsed.project, parsed.sources);
+    const imported = importProject(restored.project, parsed.name);
     if (!imported) {
       drawerNotice = "Couldn't save the imported design — storage may be full.";
       return;
