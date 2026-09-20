@@ -3609,6 +3609,40 @@ rules out redundancy without proving independence. Instrument only, no engine
 change. *(measured 2026-08-27 — PR #281;
 `docs/curve-fidelity-from-the-stitch-path-2026-08-27.md`)*
 
+*Moved from MASTER_SCOPE (2026-09-19), verbatim, to make room under its word
+budget:* On Kent's four Becker artworks the two SPARSE ones measure roughest —
+complexity, not size (an earlier "small placements sew rougher" reading is
+withdrawn).
+
+## The wobble attributed to its stage — SATIN RAILS, not the outline (2026-09-19)
+
+Kent: *"right shapes, bad edges … wobbly / lumpy curves … it needs to be
+perfect."* A third smoothness instrument, and the first that can say WHICH
+STAGE a wobble was born in. A spike put both halves in one unit (offset
+removed): on `enthusiast_logo` stage 4's polygon tracks the artwork at
+**0.011 mm** std while the sewn rails wander **0.071** about that polygon; on
+Becker (0.55 mm source pixels) both wobble ~0.08; synthetic `logo_whitebg` is
+clean on both sides, which is why no suite saw it.
+
+`tools/edge_wobble.py` keeps the stitch-side half: `result.regions[].polygon`
+against `plan.iter_runs()`, signed distance, high-passed over 3 mm along the
+edge; no raster, no registration. On `main` at `24fce102`:
+
+| fixture | satin std / p95 / >0.15 mm | fill std | bean/run |
+|---|---|---|---|
+| `enthusiast_logo` | 0.110 / 0.230 / 12.5% | 0.010 | 0.000 |
+| `becker_marine_logo` | 0.099 / 0.200 / 9.5% | **0.177** | 0.000 |
+| `logo_gaulke_roofing` | 0.088 / 0.170 / 6.7% | 0.019 | 0.000 |
+| `logo_whitebg` | 0.038 / 0.067 / 0.8% | 0.022 | 0.000 |
+
+Satin barely moved across 2026-09-19's satin flips (0.106 / 0.101 / 0.098 on
+the pre-flip base), and `satin_rails_follow_edge` moved the spike's figure
+~10% — neither is the lever. **Open:** why the rails wobble (worst points are
+all inward dips, 0.5–0.95 mm); whether 0.10 mm is what Kent's eye sees;
+Becker's fill tier (0.037 → 0.177 across the flips, unread); and the low-res
+OUTLINE half, which needs registration and was left in the spike.
+*(measured 2026-09-19 — `tests/test_edge_wobble.py`, 10; DOCTRINE 2026-09-19)*
+
 ## Fill travel under cover — defect 21 FIXED, default ON by Kent's flip (2026-09-03)
 
 Kent's *"the in-fill stitching doesn't look clean"* (Hotel Fremont, 2026-09-02)
