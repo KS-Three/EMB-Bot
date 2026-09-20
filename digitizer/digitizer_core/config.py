@@ -251,6 +251,14 @@ class PipelineConfig:
     # flip is Kent's, on the census (`tools/studio_raster_census.py`, arm
     # `extend`, raster `native_black`).
     alpha_edge_extend: bool = False
+    # How far under the alpha the extension reaches, in SOURCE pixels from
+    # the opaque edge; 0 = every non-opaque pixel. Every kernel that reads
+    # across the edge reaches a few pixels (Sobel 1, the bilateral 2,
+    # Lanczos4 4 at source scale), so a halo covers them while a backdrop
+    # an exporter left further under the alpha — drone's render, which its
+    # photo lane reads better than hard plateaus — stays as the file has it.
+    # Measured 2026-09-20 beside the whole-image extension; Kent's call.
+    alpha_edge_extend_px: int = 0
 
     # Stage 1.5 — photo prep (photo plan §2 rows 3-4; build step 3, first
     # slice — stage1_photo_prep.py). CLAHE tone rescue + texture kill on the

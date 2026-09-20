@@ -274,7 +274,7 @@ def prep(image: str | Path | bytes | np.ndarray, cfg: PipelineConfig) -> Prep:
     extend = bool(cfg.alpha_edge_extend and alpha is not None and (alpha < 255).any())
     raw = rgb
     if extend:
-        rgb = extend_opaque_colour(rgb, alpha)
+        rgb = extend_opaque_colour(rgb, alpha, cfg.alpha_edge_extend_px)
 
     if cfg.denoise:
         # Edge-preserving; on flat art this is nearly a no-op, which is the

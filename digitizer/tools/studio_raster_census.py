@@ -83,8 +83,11 @@ ARMS: dict[str, dict] = {
     # Stage 1's alpha edge extension (built OFF 2026-09-20): ON against the
     # defaults. A stage-1 flag changes the generation, so this arm rebuilds.
     "extend": {"alpha_edge_extend": True},
+    # The halo variant: the extension reaches 8 source px from the opaque
+    # edge (every kernel's reach) and leaves a deeper backdrop alone.
+    "extend_halo8": {"alpha_edge_extend": True, "alpha_edge_extend_px": 8},
 }
-PREFIX_ARMS = {"extend"}
+PREFIX_ARMS = {"extend", "extend_halo8"}
 RASTERS = ["native", "studio", "area", "native_bleed", "studio_bleed", "studio_high", "studio_high_bleed", "native_black"]
 # The per-flag arms run on the file and the panel's raster; the candidate-fix
 # rasters carry the defaults (and, for `native_black`, the extend arm).

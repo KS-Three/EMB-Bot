@@ -106,3 +106,19 @@ def test_off_is_the_shipped_path_and_an_opaque_image_is_untouched_on():
     a = s1.prep(rgb, PipelineConfig(target_width_mm=20.0)).rgb
     b = s1.prep(rgb, PipelineConfig(target_width_mm=20.0, alpha_edge_extend=True)).rgb
     assert np.array_equal(a, b)
+
+
+def test_the_halo_extends_only_within_reach_of_the_edge_and_leaves_a_deeper_backdrop_alone():
+    """`alpha_edge_extend_px`: within N source px of the opaque edge the fill
+    is the nearest opaque colour; further under the alpha the file's own
+    colour stays (drone's render backdrop, which its photo lane wants)."""
+    rgb = np.zeros((20, 20, 3), np.uint8); rgb[...] = (7, 8, 9)          # the backdrop the exporter left
+    alpha = np.zeros((20, 20), np.uint8); alpha[8:12, 8:12] = 255
+    rgb[8:12, 8:12] = (200, 100, 50)
+    out = s1.extend_opaque_colour(rgb, alpha, max_px=2)
+    assert tuple(out[7, 9]) == (200, 100, 50) and tuple(out[6, 9]) == (200, 100, 50)   # 1 and 2 px out: extended
+    assert tuple(out[5, 9]) == (7, 8, 9) and tuple(out[0, 0]) == (7, 8, 9)               # beyond the halo: the file's own
+    assert np.array_equal(out[8:12, 8:12], rgb[8:12, 8:12])
+    everywhere = s1.extend_opaque_colour(rgb, alpha, max_px=0)
+    assert tuple(everywhere[0, 0]) == (200, 100, 50)
+    assert PipelineConfig().alpha_edge_extend_px == 0

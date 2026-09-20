@@ -11,7 +11,7 @@ import cv2
 import numpy as np
 
 
-def extend_opaque_colour(rgb: np.ndarray, alpha: np.ndarray) -> np.ndarray:
+def extend_opaque_colour(rgb: np.ndarray, alpha: np.ndarray, max_px: int = 0) -> np.ndarray:
     """Every non-opaque pixel takes the RGB of its NEAREST opaque pixel; alpha
     is untouched and the input is not.
 
@@ -39,14 +39,29 @@ def extend_opaque_colour(rgb: np.ndarray, alpha: np.ndarray) -> np.ndarray:
     zero pixels of the mask 1..N in row-major order, so a non-opaque pixel's
     label indexes its nearest opaque one. Returns the input itself when
     nothing is non-opaque or nothing is opaque (nothing to extend from).
+
+    `max_px` > 0 extends only within that many source pixels of the opaque
+    edge — the reach of every kernel that reads across it (Sobel 1, the
+    bilateral 2, Lanczos4 4, the segmenters' neighbourhoods a few) — and
+    leaves what lies further under the alpha as the file has it. Measured
+    2026-09-20 (scope-history, the extend addendum): the whole-image
+    extension cures Becker and costs drone, a render whose REAL backdrop
+    sits under its alpha and whose photo lane reads better with it than with
+    hard colour plateaus; the halo is the variant that keeps the cure where
+    the kernels reach and the backdrop where they do not.
     """
     opaque = (alpha >= 255).astype(np.uint8)
     if opaque.all() or not opaque.any():
         return rgb
-    _dist, labels = cv2.distanceTransformWithLabels(
+    dist, labels = cv2.distanceTransformWithLabels(
         1 - opaque, cv2.DIST_L2, 3, labelType=cv2.DIST_LABEL_PIXEL)
     ys, xs = np.nonzero(opaque)
     src = np.stack([ys, xs], axis=1)[labels - 1]
     out = rgb.copy()
-    out[..., :3] = rgb[src[..., 0], src[..., 1], :3]
+    filled = rgb[src[..., 0], src[..., 1], :3]
+    if max_px > 0:
+        within = dist <= float(max_px)
+        out[within, :3] = filled[within]
+    else:
+        out[..., :3] = filled
     return out

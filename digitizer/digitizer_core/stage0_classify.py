@@ -473,7 +473,7 @@ def classify(image: str | Path | bytes | np.ndarray, cfg: PipelineConfig,
     # underneath classified "gradient" from a raster stage 1 had already
     # extended (measured 2026-09-20).
     if cfg.alpha_edge_extend and alpha is not None and (alpha < 255).any():
-        rgb = extend_opaque_colour(rgb, alpha)
+        rgb = extend_opaque_colour(rgb, alpha, cfg.alpha_edge_extend_px)
     fg = _fg_mask(rgb, alpha)
 
     ucm = _unique_color_mass(rgb, fg, cfg.seed)
