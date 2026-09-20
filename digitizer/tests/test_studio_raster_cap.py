@@ -134,3 +134,22 @@ def test_the_edge_bleed_fills_every_non_opaque_pixel_from_its_nearest_opaque_one
     assert bleed(img[..., :3]) is None                                     # no alpha
     opaque = img.copy(); opaque[..., 3] = 255
     assert bleed(opaque) is None                                           # nothing to fill
+
+
+def test_the_panel_sends_the_file_itself_for_rasters_the_service_decodes():
+    """Kent's pick on the census (2026-09-20): the customer's bytes go to
+    /digitize and the 1,200-px canvas is the preview. Pinned by reading the
+    source, like the cap above: the panel routes uploads through `uploadPlan`
+    and stores the original (`putSource`), the request builder accepts bytes,
+    and the policy names exactly the formats cv2 decodes — GIF and SVG stay
+    on the canvas path, which is what this file's tool still measures."""
+    panel = PANEL.read_text(encoding="utf-8")
+    assert "uploadPlan(file, img, health && health.limits)" in panel
+    assert "await putSource(key, { bytes, type, name: file.name })" in panel
+    assert "sourceFile" in panel
+    client = (ROOT / "app" / "src" / "lib" / "digitizer.js").read_text(encoding="utf-8")
+    assert "new Blob([image.bytes], { type: image.type" in client
+    policy = RASTERIZE.read_text(encoding="utf-8")
+    assert 'SERVICE_DECODES = new Set(["image/png", "image/jpeg", "image/webp", "image/bmp"])' in policy
+    assert "image/gif" not in policy.split("SERVICE_DECODES = new Set(")[1].split(")")[0]
+    assert "return { asIs: false, reason: \"vector\"" in policy

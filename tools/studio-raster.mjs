@@ -1,17 +1,24 @@
 #!/usr/bin/env node
-// tools/studio-raster.mjs — write the raster the Studio ACTUALLY sends the
-// digitizer, so an engine measurement reads the pixels a customer's job reads.
+// tools/studio-raster.mjs — write the raster the Studio's PREVIEW path makes
+// of a file: what DigitizePanel sent to the digitizer for every upload until
+// 2026-09-20, and still sends for the uploads the service cannot decode (SVG,
+// GIF) or that sit outside its limits, and for a re-digitize whose stored
+// original is gone (`app/src/lib/rasterize.js` `uploadPlan`).
 //
 // DigitizePanel downsamples every upload to PROCESS_MAX_PX = 1200 on its long
 // edge (a localStorage-size choice — `app/src/ui/DigitizePanel.svelte`)
 // through `loadImage` + `rasterSize` (`app/src/lib/rasterize.js`), a 2D canvas
-// `drawImage`, and `toDataURL("image/png")`, BEFORE the service ever sees the
-// pixels. Seven of the nine REAL_ART corpus logos are larger than that, so a
-// measurement on the file in `digitizer/testdata/` reads a raster no customer
-// sends. Found 2026-09-19: the quality-report e2e's ENTHUSIAST job read 2,311
-// stitches / 9 trims / grade A through the Studio and the same file read
-// 2,318 / 14 / grade B straight into the engine — and no cv2 resample of the
-// file reproduces the browser's (INTER_AREA 14 trims, INTER_LINEAR 13).
+// `drawImage`, and `toDataURL("image/png")`. Until 2026-09-20 THAT PNG was the
+// upload, so the service never saw the customer's pixels. Seven of the nine
+// REAL_ART corpus logos are larger than the cap, so a measurement on the file
+// in `digitizer/testdata/` read a raster no customer sent. Found 2026-09-19:
+// the quality-report e2e's ENTHUSIAST job read 2,311 stitches / 9 trims /
+// grade A through the Studio and the same file read 2,318 / 14 / grade B
+// straight into the engine — and no cv2 resample of the file reproduces the
+// browser's (INTER_AREA 14 trims, INTER_LINEAR 13). Kent's pick on the census
+// (scope-history 2026-09-20 §E): the panel now sends the file's own bytes for
+// PNG/JPEG/WebP/BMP, and this raster is the preview. The tool stays as the
+// census's instrument and as the measure of the preview path.
 //
 // So this script approximates nothing: it loads the checkout's `rasterize.js`
 // verbatim into the Playwright Chromium the e2e suite already uses, calls the

@@ -1112,11 +1112,21 @@ export async function exportViaService(design, format, label, fetchFn = globalTh
 }
 
 // POST /digitize (multipart image + config JSON) -> { job_id, state, cached }.
+// `image` is the customer's file as { bytes: Uint8Array, type, name } — since
+// 2026-09-20 the panel sends the upload itself (lib/rasterize.js `uploadPlan`,
+// lib/sourceStore.js) — or a base64 PNG string, the preview path: vectors,
+// GIFs, files outside the service's limits, and a re-digitize whose original
+// is no longer stored. The two digitize DIFFERENTLY (DOCTRINE 2026-09-19/20),
+// which is why the panel tells the user when it had to fall back.
 // 202 is the service's accept status; anything non-ok throws with the
 // service's own detail sentence.
-export async function startDigitize(pngBase64, config, fetchFn = globalThis.fetch) {
+export async function startDigitize(image, config, fetchFn = globalThis.fetch) {
   const form = new FormData();
-  form.append("image", new Blob([b64ToBytes(pngBase64)], { type: "image/png" }), "art.png");
+  if (typeof image === "string") {
+    form.append("image", new Blob([b64ToBytes(image)], { type: "image/png" }), "art.png");
+  } else {
+    form.append("image", new Blob([image.bytes], { type: image.type || "application/octet-stream" }), image.name || "art");
+  }
   form.append("config", JSON.stringify(config));
   const r = await fetchFn(digitizerUrl() + "/digitize", { method: "POST", body: form });
   if (!r.ok) throw new Error(await httpDetail(r));
@@ -1151,8 +1161,8 @@ export async function pollJob(jobId, opts = {}) {
 // Submit + poll in one call. An identical image+config re-run returns the
 // finished job immediately (the service's content-hash cache) — that is what
 // makes the change-a-param-look-again loop usable.
-export async function digitize(pngBase64, config, opts = {}) {
-  const sub = await startDigitize(pngBase64, config, opts.fetchFn || globalThis.fetch);
+export async function digitize(image, config, opts = {}) {
+  const sub = await startDigitize(image, config, opts.fetchFn || globalThis.fetch);
   return pollJob(sub.job_id, opts);
 }
 

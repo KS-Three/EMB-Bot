@@ -39,7 +39,9 @@ The walk (−198 / −237 trims on the nine, file / Studio), the cap skip
 raster; the exit lever's per-logo deltas flip sign on five of nine, so a
 single logo's trim delta under about five is not evidence. Numbers in
 scope-history 2026-09-20; every nine-logo figure above it was read on
-the file.
+the file — and since the same day's fix (Kent's pick: the panel sends the
+upload's bytes) the file IS what the customer's job reads, so those
+figures stand as the customer's.
 Review it rests on:
 `docs/lettering-route-review-2026-09-19.md`.
 

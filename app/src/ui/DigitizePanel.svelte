@@ -40,7 +40,8 @@
     indexRuns,
     shapeBorderState } from "../lib/borderMenu.js";
   import { loadPalette, nearestInList } from "../lib/threads.js";
-  import { loadImage, rasterSize, isVectorFile } from "../lib/rasterize.js";
+  import { loadImage, rasterSize, isVectorFile, uploadPlan } from "../lib/rasterize.js";
+  import { getSource, putSource, sourceKeyFor, sourceStoreAvailable } from "../lib/sourceStore.js";
 
   // Editor panel for an auto-digitized artwork element (build step 10).
   // The element stores the source image (processing size, PNG base64), the
@@ -55,11 +56,20 @@
 
   const d = createEventDispatcher();
 
-  // Processing size (long edge). The pipeline needs nowhere near the
-  // original resolution ("2000 px across is plenty" — service limits), and
-  // this base64 lives in localStorage with the project, so smaller is a
-  // feature: at 1200 px a flat-color logo PNG is typically well under 500 KB.
+  // PREVIEW size (long edge) — since 2026-09-20 this canvas is what the
+  // panel SHOWS and saves with the project, not what it sends. It used to be
+  // both, and the pipeline read a raster the customer never made: resampled
+  // at Chrome's default smoothing, its RGB under transparency rewritten by
+  // the canvas (DOCTRINE 2026-09-19/20; nine logos 503 -> 609 trims). The
+  // file's own bytes now go to /digitize (lib/rasterize.js `uploadPlan`) and
+  // live in IndexedDB (lib/sourceStore.js). This base64 lives in localStorage
+  // with the project, so smaller is a feature: at 1200 px a flat-color logo
+  // PNG is typically well under 500 KB.
   const PROCESS_MAX_PX = 1200;
+  // Set when a digitize had to send the preview because the original's bytes
+  // are gone (cleared site data, another browser): the two digitize
+  // differently, so the panel says which one this result came from.
+  let sourceNote = "";
   // Storage guard on the stored base64 itself (localStorage isn't infinite —
   // same reasoning as DesignPanel's 1 MB DST cap).
   const MAX_SOURCE_B64 = 2_000_000;
@@ -100,11 +110,34 @@
         error = "That image is too heavy to save with the design — the limit is about 1.5 MB after downscaling. Simplify or shrink it and try again.";
         return;
       }
+      // The file itself is what digitizes, when the service can decode it and
+      // it is within the service's limits; its bytes go to IndexedDB so a
+      // re-digitize after a reload sends the same thing. A store that refuses
+      // (private window, storage blocked) is not a failed upload — the preview
+      // path still works, it is just the pre-2026-09-20 result.
+      let sourceFile = null;
+      const plan = uploadPlan(file, img, health && health.limits);
+      if (plan.asIs && sourceStoreAvailable()) {
+        try {
+          const bytes = new Uint8Array(await file.arrayBuffer());
+          // Asked again WITH the bytes: a JPEG the browser rotated on decode
+          // stays on the canvas path (uploadPlan's "orientation").
+          if (uploadPlan(file, img, health && health.limits, bytes).asIs) {
+            const key = await sourceKeyFor(bytes);
+            const type = file.type || plan.type || "";
+            await putSource(key, { bytes, type, name: file.name });
+            sourceFile = { key, type, size: bytes.length, width: img.width, height: img.height };
+          }
+        } catch {
+          sourceFile = null;
+        }
+      }
+      sourceNote = "";
       // New artwork resets everything the old artwork produced — including
       // the layer list and its edits, which are keyed to the OLD art's
       // shape ids and would only produce SHAPE_EDIT_UNKNOWN_ID noise here.
       patch({
-        sourcePng: b64, name: file.name, result: null, warnings: [], blockColors: {}, sizeMm: null,
+        sourcePng: b64, sourceFile, name: file.name, result: null, warnings: [], blockColors: {}, sizeMm: null,
         review: null, shapeOverrides: {}, deletedShapeIds: [], appliedEdits: null,
         mergeGroups: [], splitLines: {},
       });
@@ -293,6 +326,27 @@
   $: changed = runDelta(element);
   $: hasPrior = !!(element && element.priorRun && element.result);
 
+  // What goes to the service: the customer's file while its bytes are still
+  // here, else the preview PNG — and the panel says so, because the two
+  // digitize differently (DOCTRINE 2026-09-19/20: the preview is resampled and
+  // its RGB under transparency rewritten).
+  async function imageToSend(el) {
+    if (el.sourceFile && el.sourceFile.key) {
+      let rec = null;
+      try {
+        rec = await getSource(el.sourceFile.key);
+      } catch {
+        rec = null;   // a store that will not read is a missing original, not a failed digitize
+      }
+      if (rec) {
+        sourceNote = "";
+        return { bytes: rec.bytes, type: rec.type || el.sourceFile.type || "", name: el.name || rec.name || "art" };
+      }
+      sourceNote = "Digitized from the saved preview — the original file is no longer stored in this browser, and the preview sews a little differently. Replace the artwork with the original for the full result.";
+    }
+    return el.sourcePng;
+  }
+
   async function runDigitize(el) {
     if (!el.sourcePng || !health) return;
     // An armed restitch is now redundant whichever way this call goes: either
@@ -312,7 +366,11 @@
     phase = "submitting";
     try {
       const cfg = buildDigitizeConfig(el, project);
-      const job = await digitize(el.sourcePng, cfg, {
+      // The preview path is synchronous here on purpose: it is the
+      // pre-2026-09-20 flow tick for tick, so nothing about restitch timing
+      // moved for an element with no stored original.
+      const image = el.sourceFile && el.sourceFile.key ? await imageToSend(el) : el.sourcePng;
+      const job = await digitize(image, cfg, {
         onState: (s) => {
           if (!destroyed) phase = s === "running" ? "running" : "queued";
         },
@@ -1619,6 +1677,7 @@
        a failed REPLACE — where they can already see their artwork — was the
        only case that spoke. -->
   {#if error}<p class="dgp-error" role="alert">{error}</p>{/if}
+  {#if sourceNote}<p class="dgp-note" data-testid="source-note">{sourceNote}</p>{/if}
 
   {#if !element.sourcePng}
     <p class="dgp-note">

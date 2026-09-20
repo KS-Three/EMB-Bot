@@ -5815,7 +5815,7 @@ ENTHUSIAST 1400, Fremont 2500, Golden Tee 2193, gaulke 2778, drone 1536, the
 screenshot 2207 px; Becker 146 and Bridge Bar 400 pass through unresized), so
 every engine number read off `digitizer/testdata/` — the lettering plan's
 nine-logo tables, the trim census, the thin-stroke and junction work — was
-read on a raster no customer sends. It surfaced as a loose end in PR #523:
+read on a raster no customer sent (until the fix below landed, the same day). It surfaced as a loose end in PR #523:
 the quality-report e2e's ENTHUSIAST job (the Studio's own settings, through
 the service) read **2,311 stitches / 9 trims / grade A** and the same file
 straight into the engine read **2,318 / 14 / grade B, `TRIM_HEAVY`**. Twelve
@@ -5872,13 +5872,23 @@ all reproduced 14. The trace's `px_per_mm` — 14.61 against the file's 17.05
   constant and the seven-of-nine population. A number read off the file is
   a number on a raster the customer never sends, and on an alpha cutout it
   is a number on whatever the exporter left under the alpha.
-- **Two candidate fixes, both measurable with the tool before anyone builds
-  them, both Kent's.** The Studio can send the file's own bytes to
-  `/digitize` and keep its 1,200-px canvas for the localStorage preview only
-  (the service's decoder takes over the cap, with a better filter); or set
-  `imageSmoothingQuality = "high"` before the draw (`--smoothing high`
-  writes exactly that raster). Neither touches an alpha cutout's
-  under-transparency RGB, which is the pipeline's to stop reading.
+- **Two candidate fixes, both measured with the tool before anyone built
+  them (scope-history 2026-09-20 §E), and Kent picked the first.** The
+  Studio sends the file's own bytes to `/digitize` and keeps its 1,200-px
+  canvas for the localStorage preview only (the service's decoder takes over
+  the cap, with a proper area filter) — **built the same day**: `uploadPlan`
+  in `rasterize.js` decides (PNG/JPEG/WebP/BMP within the service's limits go
+  as they are; SVG, GIF and oversize files keep the canvas path), the bytes
+  live in IndexedDB under their SHA-256 (`sourceStore.js`) with the element
+  carrying only the key (`sourceFile`), and a re-digitize whose original is
+  gone sends the preview and SAYS so. Verified through the real panel: the
+  quality-report e2e's request shrank from 47,730 to 18,688 bytes (the
+  18,265-byte file plus the config) and its job came back at 2,318 / 13
+  trims / 17.05 px/mm / grade B — the file column. The other candidate,
+  `imageSmoothingQuality = "high"` (`--smoothing high` writes exactly that
+  raster), measured worse on three logos and is not built. Neither touches
+  an alpha cutout's under-transparency RGB, which is the pipeline's to stop
+  reading.
 - **An alpha cutout's result is a function of the RGB under its
   transparency until stage 1 stops reading it — and the bleed is the proof,
   not the fix.** The nearest-opaque bleed makes Becker's two rasters
