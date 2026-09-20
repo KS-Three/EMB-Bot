@@ -15062,6 +15062,12 @@ and MARINE 127 reads 42 at either radius against 43 OFF. **So the flag's
 number is a taste call on exposed thread, not a measurement**, which is why
 it ships as a millimetre knob at 0 rather than as a boolean.
 
+**The full suite on this tree: 2,756 passed, 0 failed** (26m52s, `-n auto`,
+CI's three platform goldens deselected). Nothing moved: the flag is OFF and
+OFF is the shipped engine, which is what the run proves — the two changes
+inside it (the wider retry, the leg the walk carries) both sit behind
+`walk_cursor_reach > trim_at_mm`.
+
 *(measured 2026-09-20 — Kent's pick; `tools/refused_walks.py run` and
 `compare --reach`; built OFF the same day, the flip and the radius are
 Kent's)*
