@@ -13,6 +13,13 @@ before/after render gives neither:
      first and last runs ringed. Two of those side by side show an ordering
      change the way a before/after of the finished stitches cannot.
 
+**The picture does NOT show the cost.** Only needle-DOWN runs are drawn, so
+the travel between them — the thing that more than doubles on `gaulke` — is
+invisible in it. The table is where the cost lives; the map only answers what
+moved. Drawing the jumps was considered and left out: on a 42-shape group the
+flight lines cover the artwork and the ordering becomes unreadable, which is
+the one thing this view exists to show.
+
 The progression map doubles as the orientation check DOCTRINE asks for
 ("when a claim is about ORIENTATION, render it"). `cap_center_out`'s second
 key claims that the LARGER y is the bill end of the cap, because stage 4's

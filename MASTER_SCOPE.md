@@ -17,7 +17,7 @@ at the bottom for the authority model behind the confidence ratings.
 four of its findings are standing rulings in [`DOCTRINE.md`](DOCTRINE.md). Its
 code and instruments are ON `main`. *(confirmed 2026-08-17 — `git ls-tree`)*
 
-**Last updated:** 2026-09-17. **This file is current state only, under an
+**Last updated:** 2026-09-19. **This file is current state only, under an
 800-line budget.** Its three companions: standing rulings, rejected approaches,
 corrections and session-costing traps live in [`DOCTRINE.md`](DOCTRINE.md);
 dated snapshots in [`docs/scope-history.md`](docs/scope-history.md); per-area
@@ -246,6 +246,16 @@ one concealed it; entry 2 is a flag that LEFT this list unnoticed for two weeks.
    per-class default cannot be confirmed from a dataclass line.** Ratified
    2026-09-02, left gate 3; cost is defect 20. *(`pipeline.effective_split_tonal`)*
 3. **`strip_letterbox` — ON by default since 2026-09-14.** A phone screenshot's black bars read as ink and inverted the design: ground sewn in white thread, logo left as negative space. Held OFF first because 13 tests leaned on the fixture's pathology; all re-pointed. The card's 9-px shadow strips then kept its white ground sewing (`GROUND_SEWN`, gaulke F 34) until **2026-09-15**: `letterbox.detect_edge_strips` trims them, only once bars are found — the logo sews on bare garment (yardstick-disagreements row 8). OFF stays the pre-flip engine byte for byte. *(2026-09-14 — DOCTRINE "A fixture's PATHOLOGY can be load-bearing")*
+
+4. **`cap_center_out` — the cap sew rule, built and priced OFF.** Closes a
+   real lane split: the browser engine has ordered caps centre-out/bottom-up
+   all along (`src/digitize.js` `capMode`), the Python lane never read
+   `garment_id` for ORDER. **DO NOT FLIP on the evidence that exists** — only
+   the COST is measured (gaulke +111.2% needle-up, +8 trims, against defect
+   4's 3.1x trim gap), while the benefit it claims, less crown distortion,
+   has no instrument here. The pro's one readable pair backs bottom-up and
+   contradicts centre-out, which is the expensive half. A sew-out prices it.
+   *(measured 2026-09-19 — DOCTRINE "Measured negatives"; scope-history 09-19)*
 
 *(added 2026-08-17 — `docs/project-review-2026-08-16.md` §1.6: chaining was absent
 here, so a good-faith flip would have shipped bare-fabric thread unwarned.)*
