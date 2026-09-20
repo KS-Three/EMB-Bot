@@ -221,7 +221,11 @@ building it produced a measurement:
    every fixture, opaque or not — this spec's subject, unchanged — while the
    `photo_*` misroutes on the alpha fixtures were the RGB under the alpha,
    which PIL's premultiplied resample puts there (black under alpha == 0)
-   and the extension removes.
+   and the extension removes. Kent's pick on that reading, the same day:
+   stage 0 classifies on the whole-image extension
+   (`alpha_edge_extend_stage0_whole`, ON), so `photo/enthusiast_logo.png`
+   left `FLIPS_ACROSS_SWEEP` too; it stays in `DEPARTS_FROM_NATIVE` with
+   the three synthetics — the four windows cases this spec is about.
 3. **It is not an artifact of the resampler.** `photo/enthusiast_logo.png` is
    `flat` at its native 1400x316 and `gradient` at 500 px under NEAREST,
    BILINEAR, BICUBIC and LANCZOS alike. NEAREST interpolates nothing and posts

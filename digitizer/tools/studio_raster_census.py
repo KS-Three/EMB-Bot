@@ -86,17 +86,20 @@ ARMS: dict[str, dict] = {
     # Stage 1's alpha edge extension (built OFF 2026-09-20, the gated form
     # flipped ON the same day by Kent). A stage-1 flag changes the
     # generation, so these arms rebuild. Whole image: every non-opaque pixel.
-    "extend": {"alpha_edge_extend": True, "alpha_edge_extend_upscaled_only": False},
+    # All four pin `alpha_edge_extend_stage0_whole` OFF: they were measured
+    # before Kent's later pick that day (stage 0 classifies on the whole-image
+    # extension), so the arms keep the meaning their rows were read with.
+    "extend": {"alpha_edge_extend": True, "alpha_edge_extend_upscaled_only": False, "alpha_edge_extend_stage0_whole": False},
     # The halo variant: the extension reaches 8 source px from the opaque
     # edge (every kernel's reach) and leaves a deeper backdrop alone.
-    "extend_halo8": {"alpha_edge_extend": True, "alpha_edge_extend_px": 8, "alpha_edge_extend_upscaled_only": False},
+    "extend_halo8": {"alpha_edge_extend": True, "alpha_edge_extend_px": 8, "alpha_edge_extend_upscaled_only": False, "alpha_edge_extend_stage0_whole": False},
     # Gated on the resolution-floor upscale: the extension only where the
-    # Lanczos upscale will run (Kent's pick after the first two arms, and
-    # the shipped defaults since the flip — identical to `default` today).
-    "extend_upscaled": {"alpha_edge_extend": True, "alpha_edge_extend_upscaled_only": True},
+    # Lanczos upscale will run (Kent's pick after the first two arms; the
+    # shipped defaults from the flip until the stage-0 pick the same day).
+    "extend_upscaled": {"alpha_edge_extend": True, "alpha_edge_extend_upscaled_only": True, "alpha_edge_extend_stage0_whole": False},
     # The pre-flip engine: what every `default` row in a census JSON written
     # before 2026-09-20's flip was read on.
-    "extend_off": {"alpha_edge_extend": False},
+    "extend_off": {"alpha_edge_extend": False, "alpha_edge_extend_stage0_whole": False},
 }
 PREFIX_ARMS = {"extend", "extend_halo8", "extend_upscaled", "extend_off"}
 RASTERS = ["native", "studio", "area", "native_bleed", "studio_bleed", "studio_high", "studio_high_bleed", "native_black"]

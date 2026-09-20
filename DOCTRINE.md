@@ -6121,10 +6121,16 @@ scope-history 2026-09-20, the scale addendum), it is two:
   reading) and `gradient` again at 500: one class change the whole-image arm
   does not make. On the nine logos at native size the three arms read one
   class each, so a stage-0-only whole-image read would change no corpus class
-  and remove both the reachable misroute and the boundary. Kent's to pick;
-  not a threshold move.
+  and remove both the reachable misroute and the boundary. **Kent picked it
+  the same day — `alpha_edge_extend_stage0_whole`, ON:** stage 0 classifies
+  on the extended raster wherever the file has alpha, stage 1 keeps the gate
+  for the pixels it sews; ENTHUSIAST left the scale test's sweep set
+  (`gradient` at 250 / 400 / 640) and stays in the native set, where the
+  windows are. Not a threshold move; the flat → gradient half is untouched.
 
-*(measured 2026-09-20 — `tools/stage0_scale_arms.py run --corpus`)*
+*(measured and built 2026-09-20 — `tools/stage0_scale_arms.py run --corpus`,
+arm `gated_s0whole`)*
+
 ## A "refused walk" is five different refusals, and four of them are not relaxable (2026-09-20)
 
 The lettering trim census counts a `walk-refused` bucket by logging

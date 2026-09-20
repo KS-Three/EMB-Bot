@@ -164,3 +164,29 @@ def test_gated_on_the_upscale_the_extension_runs_under_the_floor_and_not_above_i
     hi_h = s1.prep(hostile, PipelineConfig(target_width_mm=5.0, **gated))
     assert hi_f.raw_rgb is None and np.array_equal(hi_f.rgb, off_f.rgb)
     assert not np.array_equal(hi_f.rgb, hi_h.rgb)
+
+
+def test_stage_0_reads_the_whole_image_extension_above_the_floor_while_stage_1_keeps_the_gate():
+    """`alpha_edge_extend_stage0_whole` (Kent's pick 2026-09-20, ON): above the
+    resolution floor, where stage 1's gate is shut, stage 0 still classifies
+    the friendly and the hostile cutout the same, and stops doing so with the
+    flag off — while stage 1's raster stays byte-identical to the pre-flip
+    engine there, whatever the flag says."""
+    from digitizer_core import stage0_classify as s0
+    assert PipelineConfig().alpha_edge_extend_stage0_whole is True
+    friendly, hostile = _cutout((180, 30, 30)), _cutout((0, 0, 0))
+    # 48 px of image at 5 mm: 9.6 px/mm, above the floor — the gate is shut.
+    shipped = PipelineConfig(target_width_mm=5.0)
+    a, b = s0.classify(friendly, shipped), s0.classify(hostile, shipped)
+    assert (a.class_, a.signals) == (b.class_, b.signals)
+    stage1_only = PipelineConfig(target_width_mm=5.0, alpha_edge_extend_stage0_whole=False)
+    c, d = s0.classify(friendly, stage1_only), s0.classify(hostile, stage1_only)
+    assert c.signals != d.signals
+    # And the pre-flip engine reads the friendly file as the gated one does.
+    off = PipelineConfig(target_width_mm=5.0, alpha_edge_extend=False)
+    assert s0.classify(friendly, off).signals == c.signals
+    # Stage 1 above the floor: byte-identical to OFF under both settings.
+    p_off = s1.prep(hostile, off)
+    for cfg in (shipped, stage1_only):
+        p = s1.prep(hostile, cfg)
+        assert p.raw_rgb is None and np.array_equal(p.rgb, p_off.rgb)

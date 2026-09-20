@@ -456,8 +456,8 @@ synthetics** — six of seven real customer logos route to GRADIENT at stage 0, 
 a "flat spot-colour art" claim tuned on synthetics is untested against real
 input. **Stage 0's scale defect is two (2026-09-20):** `flat` → `gradient` on
 downscale is the pixel-absolute windows on every fixture; the `photo_*`
-misroutes on downscaled alpha cutouts were RGB under the alpha — `alpha_edge_extend`
-removes them, the shipped gate leaves ENTHUSIAST's at 400 px. *(scope-history, DOCTRINE)* **A second harness, `tools/pro_parity/`, measures distance from the
+misroutes on downscaled alpha cutouts were RGB under the alpha, gone since
+stage 0 reads the whole-image extension (Kent). *(scope-history, DOCTRINE)* **A second harness, `tools/pro_parity/`, measures distance from the
 PROFESSIONAL digitization** of the same 23 designs; its scale changed
 2026-08-14, so read the Gotcha in [`DOCTRINE.md`](DOCTRINE.md) before comparing
 to any earlier number. Which fixtures misroute, and which half of the corpus a

@@ -15067,6 +15067,59 @@ under gate 2 either way.
 
 *(measured 2026-09-20 — Kent's pick; `tools/stage0_scale_arms.py run --corpus`;
 the JSON is the scratchpad's, the tool regenerates it)*
+
+### Addendum, the same day — Kent's pick on the scale reading: stage 0 classifies on the whole-image extension (`alpha_edge_extend_stage0_whole`, ON)
+
+Put to Kent with the tables above (AskUserQuestion, 2026-09-20): a flag under
+which classification reads the extended raster everywhere while stage 1
+keeps the resolution-floor gate for the pixels it sews — his call, ON.
+`alpha_edge.extension_applies` gains `ignore_gate`, which stage 0 passes from
+the flag; stage 1 is untouched, so every sewn pixel is what the flip
+earlier today made it. **This changes stage 0's input only** — no threshold
+moved (ROADMAP gate 2), and the `flat` → `gradient` half of the defect is not
+this flag's.
+
+**Measured on the same instrument, a fourth arm (`gated_s0whole`, the
+shipped engine) beside the three:** it reads what `whole` reads in every
+stage-0 cell of the ladder — ENTHUSIAST `gradient` at every downscale
+(200–1,200 px, `unique_color_mass` 0.22 → 0.04), `flat` at native, so the
+400-px `photo_scene` and the flip at the floor are gone and it is **one class
+across the whole ladder**; drone equals native at every width; the three
+opaque fixtures and `logo_alpha` read exactly as under every other arm
+(windows); `summit_badge` invariant. On the nine real logos at their census
+widths no class moves at native (Becker and ENTHUSIAST `flat`, Fremont and
+drone `gradient`, tires `photo_scene`, four `gradient` — the same four arms
+across), and downscaled the arm reads as `whole` did: Fremont's 250-px `flat`
+gone, its 200-px `photo_scene` (`unique_color_mass` 0.347) and tires'
+opaque `gradient` ↔ `photo_scene` flip still there, both windows.
+
+**The scale test moved as the tables said it would.** ENTHUSIAST's two
+strict xfails in `FLIPS_ACROSS_SWEEP` XPASSed on this tree, so the set is
+EMPTY now, with the dated record, and a new test pins the boundary that
+was there — with stage 0 held to the gate
+(`alpha_edge_extend_stage0_whole=False`) ENTHUSIAST reads one class at 250
+px and another at 400, and the 400-px reading is the pre-flip engine's;
+the shipped engine reads the sweep as one class. It stays in
+`DEPARTS_FROM_NATIVE` with the three synthetics: the four windows cases the
+recalibration spec is about. `tests/test_alpha_edge_extend.py` (+1): above
+the floor stage 0 reads the friendly and the hostile cutout the same and
+stops with the flag off, while stage 1 stays byte-identical to OFF under
+both. The two tools' arms pin the flag: `stage0_scale_arms` carries the
+fourth arm with the three measured ones held OFF, and the census tool's
+`extend*` arms hold it OFF so their rows keep their meaning.
+
+**The full suite on this tree: 2,746 passed, 0 failed, 5 xfailed** (29m43s,
+`-n auto`, CI's three platform goldens deselected). No pin moved, and the
+five expected failures are the windows cases: the three synthetics and
+ENTHUSIAST in `DEPARTS_FROM_NATIVE`, plus the unrelated one the suite
+already carried. The two drone params and the two ENTHUSIAST params that
+were strict xfails this morning are plain passing tests now — the whole
+`photo_*` half of the scale defect, gone with the two picks of the day,
+while the `flat` → `gradient` half is exactly where the recalibration spec
+left it.
+
+*(built 2026-09-20 — Kent's call; `tools/stage0_scale_arms.py run --corpus`,
+arm `gated_s0whole`)*
 ## 2026-09-20 — The refused-walk bucket: what a walk's refusal actually is, and the one relaxation in it (Kent's pick)
 
 **The question.** The lettering trim census (2026-09-19) counts a

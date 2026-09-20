@@ -282,6 +282,23 @@ class PipelineConfig:
     # `alpha_edge_extend`; the whole-image form is `alpha_edge_extend=True`
     # with this False.
     alpha_edge_extend_upscaled_only: bool = True
+    # Stage 0 classifies on the whole-image extension wherever the file has
+    # alpha, gate or no gate; stage 1 keeps the gate above for the pixels it
+    # sews. Measured 2026-09-20 (`tools/stage0_scale_arms.py`, scope-history,
+    # the scale addendum) on the scale test's six fixtures and the nine real
+    # logos: the `photo_*` misroutes on downscaled alpha cutouts are
+    # `unique_color_mass` reading the RGB under the alpha (drone 0.335 at
+    # 250 px against 0.091 extended; ENTHUSIAST 0.34-0.51 against 0.12-0.22),
+    # and the gate left one reachable — ENTHUSIAST at 400 px reads
+    # `photo_scene`, exactly the pre-flip reading, between `gradient` at 320
+    # and 500 — because the extension switches off where the art box crosses
+    # the floor. On the nine logos at native size no class moves under any
+    # arm, so classification gives up nothing by reading whole-image, and the
+    # sewn pixels are untouched: this flag changes stage 0's input only. The
+    # flat -> gradient flips on downscale are the pixel-absolute signal
+    # windows and are NOT this flag's; the recalibration spec keeps them
+    # (ROADMAP gate 2 — no threshold moved here). ON 2026-09-20 (Kent).
+    alpha_edge_extend_stage0_whole: bool = True
 
     # Stage 1.5 — photo prep (photo plan §2 rows 3-4; build step 3, first
     # slice — stage1_photo_prep.py). CLAHE tone rescue + texture kill on the

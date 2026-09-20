@@ -20,14 +20,18 @@ from digitizer_core import PipelineConfig
 from tools import stage0_scale_arms as t
 
 
-def test_the_arms_are_the_flag_s_three_forms_and_the_shipped_one_is_among_them():
+def test_the_arms_are_the_flag_s_forms_and_the_shipped_one_is_among_them():
     shipped = PipelineConfig()
-    assert set(t.ARMS) == {"off", "gated", "whole"}
+    assert set(t.ARMS) == {"off", "gated", "whole", "gated_s0whole"}
     assert PipelineConfig(**t.ARMS["off"]).alpha_edge_extend is False
     g = PipelineConfig(**t.ARMS["gated"])
-    assert (g.alpha_edge_extend, g.alpha_edge_extend_upscaled_only) == (shipped.alpha_edge_extend, shipped.alpha_edge_extend_upscaled_only) == (True, True)
+    assert (g.alpha_edge_extend, g.alpha_edge_extend_upscaled_only, g.alpha_edge_extend_stage0_whole) == (True, True, False)
     w = PipelineConfig(**t.ARMS["whole"])
-    assert (w.alpha_edge_extend, w.alpha_edge_extend_upscaled_only) == (True, False)
+    assert (w.alpha_edge_extend, w.alpha_edge_extend_upscaled_only, w.alpha_edge_extend_stage0_whole) == (True, False, False)
+    # Kent's pick on the 2026-09-20 tables is the shipped engine.
+    k = PipelineConfig(**t.ARMS["gated_s0whole"])
+    assert (k.alpha_edge_extend, k.alpha_edge_extend_upscaled_only, k.alpha_edge_extend_stage0_whole) == (
+        shipped.alpha_edge_extend, shipped.alpha_edge_extend_upscaled_only, shipped.alpha_edge_extend_stage0_whole) == (True, True, True)
     assert set(t.SWEEP) <= set(t.WIDTHS)
 
 
@@ -52,8 +56,11 @@ def test_on_a_cutout_the_gate_and_the_extension_are_reported_per_width(tmp_path)
         assert set(r) >= {"off", "gated", "whole"} and set(r["off"]) >= {"class", "confidence", "unique_color_mass", "gradient_smoothness"}
     # 200 px of image at the default 80 mm is under the 4 px/mm floor; 500 is not.
     assert rows[0]["gate_open"] is True and rows[1]["gate_open"] is False
-    # Where the gate is shut, the gated arm IS the off arm.
+    # Where the gate is shut, the gated arm IS the off arm — and the shipped
+    # engine (stage 0 on the whole-image extension) reads what `whole` reads.
     assert rows[1]["gated"] == rows[1]["off"]
+    assert rows[1]["gated_s0whole"] == rows[1]["whole"]
+    assert rows[0]["gated_s0whole"] == rows[0]["gated"] == rows[0]["whole"]
     # On the FILE, the two exporters' choice of under-alpha colour stops
     # mattering under the whole-image extension: this file with black under
     # its alpha ramp reads what the same file with the ink colour there reads
@@ -89,7 +96,7 @@ def test_an_opaque_file_reads_the_same_under_every_arm(tmp_path):
     rows = t.measure_fixture(p, widths=(200,), tmp=tmp_path)
     for r in rows:
         assert r["has_alpha"] is False and r["gate_open"] is False and r["extension_changes_pixels"] is False
-        assert r["off"] == r["gated"] == r["whole"]
+        assert r["off"] == r["gated"] == r["whole"] == r["gated_s0whole"]
     text = t.tables(rows)
     assert "opaque" in text and "| off |" in text and "| whole |" in text
 
