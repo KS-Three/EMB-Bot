@@ -257,7 +257,11 @@ class PipelineConfig:
     # Lanczos4 4 at source scale), so a halo covers them while a backdrop
     # an exporter left further under the alpha — drone's render, which its
     # photo lane reads better than hard plateaus — stays as the file has it.
-    # Measured 2026-09-20 beside the whole-image extension; Kent's call.
+    # MEASURED NEGATIVE 2026-09-20 (scope-history, the extend addendum): at
+    # 8 px it keeps Becker's cure and changes nothing on ENTHUSIAST or
+    # Fremont, and on drone gives up the invariance (147 trims on the file,
+    # 156 with black under it) without recovering the file's 120. Kept so
+    # the next reader can re-measure rather than rebuild; 0 is the form.
     alpha_edge_extend_px: int = 0
 
     # Stage 1.5 — photo prep (photo plan §2 rows 3-4; build step 3, first

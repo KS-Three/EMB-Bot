@@ -5982,8 +5982,15 @@ all reproduced 14. The trace's `px_per_mm` — 14.61 against the file's 17.05
   raster and mask to the artwork afterwards — a kernel on the edge reads
   what is under the alpha whatever the mask says. Its census (the four
   cutouts as they are, with black painted under their alpha, and the Studio
-  raster; scope-history 2026-09-20, the extend addendum) is what the flip
-  waits on. *(measured 2026-09-20 — scope-history §E; built the same day)*
+  raster; scope-history 2026-09-20, the extend addendum) is measured: ON,
+  every cutout reads the same whatever sat under its alpha — Becker 157
+  and 175 trims → 54 on the hostile rasters — and the friendly files pay
+  (ENTHUSIAST 12 → 17, drone 120 → 153, Fremont's plate 15 fewer trims for
+  78 mm of travel across its holes). The halo variant
+  (`alpha_edge_extend_px`) is a measured negative: on drone it gives up the
+  invariance (147 on the file, 156 with black underneath) without
+  recovering the file's 120. The flip is Kent's. *(measured 2026-09-20 —
+  scope-history §E and the extend addendum; built the same day)*
 - **A gap between two paths on ONE file is a finding, not a curiosity.** The
   14-vs-9 was seen while fixing the e2e for PR #523 and set aside because the
   test was green either way; every engine measurement here goes through a

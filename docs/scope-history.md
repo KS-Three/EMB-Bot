@@ -14796,3 +14796,111 @@ measure of the preview path.
 
 *(built and verified 2026-09-20 — Kent's answer; trace of the
 quality-report e2e on the changed panel)*
+
+### Addendum, the same day — Kent's pick after the Studio fix: stage 1 stops reading under the alpha (`alpha_edge_extend`, BUILT OFF), measured
+
+**Why.** The Studio fix stops the canvas rewriting what sits under a
+cutout's alpha; any exporter can still leave black, a matte, or a whole
+render there, and the engine reads it. Kent's pick: a stage-1 flag OFF
+that makes the under-alpha colour irrelevant, measured on the four cutouts
+as they are, with black painted under their alpha (`native_black` in
+`tools/studio_raster_census.py`: RGB zeroed wherever alpha == 0, the
+hostile exporter), and on the Studio's canvas raster (the preview path).
+
+**What was built, and what the first cut taught.** `cfg.alpha_edge_extend`
+makes every stage read nearest-opaque colour under every non-opaque pixel
+(`digitizer_core/alpha_edge.py`, a `distanceTransformWithLabels` fill,
+applied by stage 0 after its own decode and by stage 1 for the raster the
+later stages read); the two readers that want the file's OWN colour under
+the transparency — `bg_edge_rgb`, stage 2's anti-alias endpoint, and
+preflight's `GROUND_SEWN` border colour — read it from `Prep.raw_rgb`, the
+file's colour carried through the same denoise and upscale. The first cut
+fed the extended image to the two filters only and put the file's colour
+back under alpha < 128 afterwards; Becker with black under its alpha
+stayed at **gradient / 146 regions / 14,978 / 142** under it, because stage
+0's gradient signal and stage 2's segmentation run kernels over the whole
+raster and mask to the artwork afterwards — a kernel on the edge reads
+what is under the alpha whatever the mask says — and because stage 0
+decodes the file for itself before stage 1 runs. `alpha_edge_extend_px`
+is the halo variant: the extension reaches N source px from the opaque
+edge (every kernel's reach: Sobel 1, the bilateral 2, Lanczos4 4) and
+leaves a deeper backdrop as the file has it; 0, the default, is the whole
+image.
+
+**Measured** (stitches / trims / regions / class / exposed travel mm /
+grade; corpus widths and garments, `max_colors=6`, today's defaults; a
+stage-1 arm rebuilds the generation):
+
+| case | raster | OFF | ON, whole image | ON, halo 8 px |
+|---|---|---|---|---|
+| Becker | the file | 8,334 / 59 / 18 / flat / 0.5 / B | 8,440 / 54 / 17 / flat / 0.4 / B | 8,440 / 54 / 17 / flat / 0.4 / B |
+| Becker | the file, black under alpha | 15,547 / 157 / 152 / gradient / 4.4 / D | 8,440 / 54 / 17 / flat / 0.4 / B | 8,440 / 54 / 17 / flat / 0.4 / B |
+| Becker | the Studio's canvas raster | 15,318 / 175 / 151 / gradient / 2.3 / C | 8,440 / 54 / 17 / flat / 0.4 / B | 8,440 / 54 / 17 / flat / 0.4 / B |
+| ENTHUSIAST | the file | 2,478 / 12 / 31 / flat / 3.8 / B | 2,491 / 17 / 31 / flat / 0.0 / B | 2,491 / 17 / 31 / flat / 0.0 / B |
+| ENTHUSIAST | the file, black under alpha | 2,478 / 12 / 31 / flat / 3.8 / B | 2,491 / 17 / 31 / flat / 0.0 / B | 2,491 / 17 / 31 / flat / 0.0 / B |
+| ENTHUSIAST | the Studio's canvas raster | 2,417 / 11 / 31 / gradient / 1.8 / B | 2,406 / 11 / 31 / flat / 0.0 / B | 2,406 / 11 / 31 / flat / 0.0 / B |
+| Fremont | the file | 19,864 / 59 / 164 / gradient / 7.2 / B | 19,901 / 44 / 164 / gradient / 85.3 / B | 19,901 / 44 / 164 / gradient / 85.3 / B |
+| Fremont | the file, black under alpha | 19,864 / 59 / 164 / gradient / 7.2 / B | 19,901 / 44 / 164 / gradient / 85.3 / B | 19,901 / 44 / 164 / gradient / 85.3 / B |
+| Fremont | the Studio's canvas raster | 19,694 / 50 / 160 / gradient / 16.7 / B | 19,618 / 50 / 160 / gradient / 11.5 / B | 19,612 / 50 / 160 / gradient / 11.0 / B |
+| drone | the file | 18,651 / 120 / 107 / gradient / 65.8 / F | 20,841 / 153 / 135 / gradient / 80.5 / F | 21,238 / 147 / 129 / gradient / 55.7 / F |
+| drone | the file, black under alpha | 19,807 / 121 / 115 / gradient / 73.1 / F | 20,841 / 153 / 135 / gradient / 80.5 / F | 21,238 / 156 / 144 / gradient / 100.9 / F |
+| drone | the Studio's canvas raster | 19,514 / 124 / 115 / gradient / 95.8 / F | 18,791 / 148 / 126 / gradient / 80.0 / F | 18,997 / 161 / 131 / gradient / 97.2 / F |
+| Becker at 100 | the file | 8,334 / 59 / 18 / flat / 0.5 / B | 8,440 / 54 / 17 / flat / 0.4 / B | 8,440 / 54 / 17 / flat / 0.4 / B |
+| Becker at 100 | the file, black under alpha | 15,547 / 157 / 152 / gradient / 4.4 / D | 8,440 / 54 / 17 / flat / 0.4 / B | 8,440 / 54 / 17 / flat / 0.4 / B |
+| Becker at 100 | the Studio's canvas raster | 15,318 / 175 / 151 / gradient / 2.3 / C | 8,440 / 54 / 17 / flat / 0.4 / B | 8,440 / 54 / 17 / flat / 0.4 / B |
+
+**Readings.**
+
+- **The property Kent asked for holds, and holds exactly.** With the flag
+  ON every cutout reads the same whatever sat under its alpha: Becker's
+  three rasters are one result to the stitch (**8,440 / 54 / 17 / flat /
+  B**, from 157 and 175 trims at grades D and C on the hostile two);
+  ENTHUSIAST, Fremont and drone each read identically from the file and
+  from black underneath. The under-alpha colour is out of the engine.
+- **Its cost lands where the exporter was friendly.** ENTHUSIAST's file
+  goes 12 → 17 trims (its exposed travel 3.8 → 0.0). Fremont's file goes
+  59 → 44 trims and 7.2 → **85.3 mm** of exposed travel — all of it one
+  shape: the 2,120 mm² plate (thread 2) sews 25 trims and 62 travel legs
+  OFF, 10 trims and 89 legs ON, 83.3 of the 85.3 mm on those legs, across
+  the plate's own cut-outs. The plate's polygon moved by 6 mm² (2,125.7 →
+  2,119.6, 155 holes either way) and the fill router's bridging flipped
+  from cuts to travel over the holes — a routing sensitivity to a
+  slightly different polygon, not a colour effect; on the Studio raster the
+  same plate reads the other way (16.7 → 11.5 mm). Drone, a render whose
+  real backdrop sits under its alpha, goes **120 → 153 trims** and 107 →
+  135 regions: its photo lane reads the render better than hard colour
+  plateaus.
+- **Only Becker was hurt by black underneath in the first place.** With
+  the flag OFF, ENTHUSIAST and Fremont read the same from the file and
+  from black (the bilateral does not cross a colour gap that wide and
+  neither is upscaled), drone moves by a trim; Becker, at 1.46 px/mm, is
+  the one the Lanczos floor upscale smears — 59 → 157. So the flag buys
+  robustness on low-resolution cutouts and costs friendly high-resolution
+  ones; the Studio raster column (the preview path, and until 2026-09-20
+  every upload) reads better ON for Becker, ENTHUSIAST (class flat again)
+  and Fremont's exposed travel, worse for drone's trims.
+- **The halo is a measured negative.** At 8 px it keeps Becker's cure and
+  changes nothing on ENTHUSIAST's or Fremont's files, and on drone gives up
+  the invariance — 147 trims on the file, **156** with black under it —
+  without recovering the file's 120 (its exposed travel 80.5 → 55.7 on the
+  file, 100.9 on black). The parameter stays at 0; the whole-image
+  extension is the coherent form.
+
+**Also found.** `tests/test_stage0_classify.py::test_same_input_classified_twice_is_identical[logo_whitebg]`
+fails on this container with the change stashed and the box idle
+(`gradient_smoothness` 0.0005601322072834591 against
+0.0005601321504400403 — `cv2.boxFilter` on float32, the 10th decimal); CI
+passes it. Not this flag's; recorded here so the next full-suite reader
+does not chase it.
+
+**Tests.** `tests/test_alpha_edge_extend.py` (6): the default is OFF; the
+helper's contract; the halo's reach; on a synthetic cutout under the
+resolution floor, OFF leaks the under-alpha colour into the sewn edge (two
+exporters read differently) and ON reads every pixel the same whatever sat
+underneath while the two deliberate readers still see each file's own
+colour; an opaque image is untouched ON. The stage-0, enclosed-background
+and sub-pixel suites pass with the flag off.
+
+*(built and measured 2026-09-20 — Kent's pick; `tools/studio_raster_census.py`
+rasters `native`, `native_black`, `studio`, arms `default`, `extend`,
+`extend_halo8`; the flip is Kent's)*
