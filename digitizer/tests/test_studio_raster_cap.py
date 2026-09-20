@@ -26,7 +26,9 @@ import re
 from pathlib import Path
 
 import cv2
+import numpy as np
 
+from tools.studio_raster_census import bleed
 from tools.thin_strokes import corpus_cases
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -110,3 +112,25 @@ def test_the_plans_two_marine_fixtures_sit_either_side_of_the_cap():
     cap = _panel_cap()
     assert _long_edge(MARINE_80) <= cap
     assert _long_edge(MARINE_127) > cap
+
+
+def test_the_edge_bleed_fills_every_non_opaque_pixel_from_its_nearest_opaque_one():
+    """The cure DOCTRINE 2026-09-20 measured on Becker (flat / 17 / 8,440 /
+    54 from both rasters). Alpha is untouched; opaque RGB is untouched; a
+    transparent or semi-transparent pixel takes the RGB of the nearest opaque
+    pixel whatever the canvas or the exporter left there; an image with no
+    alpha, or no partial alpha, is left alone (None, the identity)."""
+    img = np.zeros((4, 6, 4), np.uint8)
+    img[:, :3, :3] = (10, 20, 30); img[:, 3:, :3] = (200, 210, 220)        # two opaque colours...
+    img[..., 3] = 255
+    img[0, :, 3] = 0; img[0, :, :3] = (0, 0, 0)                            # ...a transparent row the canvas made black
+    img[1, 2, 3] = 128; img[1, 2, :3] = (99, 99, 99)                       # ...and one noisy semi-transparent pixel
+    out = bleed(img)
+    assert out is not None
+    assert np.array_equal(out[..., 3], img[..., 3])
+    assert np.array_equal(out[1:, :, :3][img[1:, :, 3] == 255], img[1:, :, :3][img[1:, :, 3] == 255])
+    assert tuple(out[0, 0, :3]) == (10, 20, 30) and tuple(out[0, 5, :3]) == (200, 210, 220)
+    assert tuple(out[1, 2, :3]) == (10, 20, 30)
+    assert bleed(img[..., :3]) is None                                     # no alpha
+    opaque = img.copy(); opaque[..., 3] = 255
+    assert bleed(opaque) is None                                           # nothing to fill

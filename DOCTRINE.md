@@ -5845,9 +5845,9 @@ all reproduced 14. The trace's `px_per_mm` — 14.61 against the file's 17.05
    takes the Studio raster to 24 regions; restoring every band makes the two
    byte-identical. The texture-pipeline cure — give every non-opaque pixel
    the RGB of its nearest opaque pixel (`cv2.distanceTransformWithLabels`,
-   `DIST_LABEL_PIXEL`) — reads **flat / 17 / 8,440 / 54 from BOTH** (the
-   file's own 8,334 / 59 rested on a white patch its exporter left under
-   the alpha). Four of the nine logos are alpha cutouts (Becker, ENTHUSIAST
+   `DIST_LABEL_PIXEL`) — reads **flat / 17 / 8,440 / 54 from BOTH** on
+   Becker (the file's own 8,334 / 59 rested on a white patch its exporter
+   left under the alpha) — and is NOT the fix, see below. Four of the nine logos are alpha cutouts (Becker, ENTHUSIAST
    — white under its alpha, so the canvas flips it to black — Fremont,
    drone). *(measured 2026-09-20 — scratchpad `becker_bands.py`,
    `becker_bleed.py`; scope-history 2026-09-20 carries the corpus table)*
@@ -5880,11 +5880,21 @@ all reproduced 14. The trace's `px_per_mm` — 14.61 against the file's 17.05
   writes exactly that raster). Neither touches an alpha cutout's
   under-transparency RGB, which is the pipeline's to stop reading.
 - **An alpha cutout's result is a function of the RGB under its
-  transparency until stage 1 stops reading it.** The nearest-opaque bleed is
-  measured as the cure on Becker and is Kent's to build (a stage-1 line, a
-  flag, its own re-read); until then a Becker-class design digitizes
-  differently from the file than from the Studio, and the Studio's is the
-  worse one.
+  transparency until stage 1 stops reading it — and the bleed is the proof,
+  not the fix.** The nearest-opaque bleed makes Becker's two rasters
+  identical and BREAKS Fremont (`GROUND_SEWN`, grade D, exposed travel 7.2
+  → 85.3 mm on the file). Fremont has no enclosed transparent hole; what the
+  bleed changes there is `bg_edge_rgb`, the mean colour of the background
+  pixels hugging the artwork, which stage 2 uses as the anti-alias
+  endpoint — painted in the artwork's own colours, halos become shapes.
+  ENTHUSIAST's file goes 12 → 17 trims under it (its exporter's white under
+  the alpha was the friendlier choice) and drone 120 → 153. So the fix
+  belongs where the RGB is READ — the bilateral denoise and the Lanczos
+  upscale on premultiplied colour, leaving `bg_edge_rgb` and the
+  enclosed-hole colour alone — and that is unmeasured and Kent's to build.
+  Until then a Becker-class design digitizes differently from the file than
+  from the Studio, and the Studio's is the worse one. *(measured
+  2026-09-20 — scope-history §E)*
 - **A gap between two paths on ONE file is a finding, not a curiosity.** The
   14-vs-9 was seen while fixing the e2e for PR #523 and set aside because the
   test was green either way; every engine measurement here goes through a

@@ -14587,3 +14587,124 @@ grade A. The panel's clean state ("Nothing to flag") is now the other
 accepted rendering, the same posture the test already took on the grade.
 
 *(flipped and ruled 2026-09-19 — Kent's answer; config comment)*
+
+## 2026-09-20 — The Studio never sends the file: the lettering census and every flip re-read on the raster the panel actually uploads (Kent's pick)
+
+**Why.** After PR #523 the pick was to re-measure the trims census and
+the lettering flips through the Studio's 1,200-px cap, on the loose end
+that PR left: the quality-report e2e's ENTHUSIAST job read **2,311
+stitches / 9 trims / grade A** through the Studio and the same file
+straight into the engine read **2,318 / 14 / grade B**. `DigitizePanel`
+re-encodes every upload through a canvas capped at `PROCESS_MAX_PX =
+1200` before the service sees a pixel; seven of the nine REAL_ART logos
+and the plan's MARINE 127 fixture are larger. DOCTRINE 2026-09-19/20
+carries the three mechanisms — the cap, premultiplied alpha rewriting the
+RGB under transparency that stage 1 reads, Chrome's default "low"
+smoothing — and the rulings. This entry carries the numbers.
+
+**The instrument.** `tools/studio-raster.mjs` loads the checkout's own
+`rasterize.js` into Playwright's Chromium, makes the panel's canvas calls
+and writes the PNG the panel would upload. Verified before anything was
+measured on it: its ENTHUSIAST raster through the e2e's own request (a
+tote, `isacord`, the bean cap) reproduces the job **to the stitch** —
+2,311 / 9 design trims / 30 jumps / grade A / score 100 — and with the
+exit lever off on that raster reads 11 trims and grade B, so PR #523's
+credit to the lever stands on the customer's raster (the file reads 14
+with the lever either way). Every row below: `target_width_mm` and
+`garment_id` from `corpus_cases()`, `max_colors=6`, today's defaults;
+one `build_generation` per raster and every arm finished from a fork
+(checked identical to a fresh build on three flags). Lettering trims by
+cause as in the 2026-09-19 census (`_graph_travel` spied for refusals),
+exposed travel from `travel_cover`, uncovered area and findings from
+preflight. `cv2.INTER_AREA` at the Studio's exact size ran beside it as
+the Python-only stand-in candidate.
+
+### A. Today's defaults: the file → the Studio's raster (INTER_AREA in parentheses)
+
+| case | px file → Studio | px/mm | stitches | trims | exposed mm | findings, file → Studio |
+|---|---|---|---|---|---|---|
+| tires | 1585×992 → 1200×751 | 19.8 → 15.0 | 2,475 → 2,487 (2,363) | **6 → 14** (8) | 0.0 → 0.4 | — → `TRIM_HEAVY` |
+| ENTHUSIAST | 1400×316 → 1200×271 | 17.5 → 15.0 | 2,478 → 2,417 (2,578) | 12 → 11 (13) | 3.8 → 1.8 | `TRIM_HEAVY` both |
+| Fremont | 2500×1345 → 1200×646 | 27.0 → 13.0 | 19,864 → 19,694 (19,841) | 59 → 50 (57) | 7.2 → 16.7 | unchanged |
+| Bridge Bar | 400×400, unresized | 5.0 | 14,661 → 14,661 | 96 → 96 | 17.0 | unchanged, byte-identical |
+| Golden Tee | 2193×2193 → 1200×1200 | 27.4 → 15.0 | 7,070 → 6,879 (6,792) | 43 → 47 (44) | 6.6 → 9.8 | unchanged |
+| gaulke | 1284×2778 → 555×1200 | 16.1 → 6.9 | 4,406 → 4,034 (**13,206**) | 34 → 28 (43) | 1.8 → 0.0 | unchanged |
+| drone | 1536×1024 → 1200×800 | 19.2 → 15.0 | 18,651 → 19,514 (17,915) | 120 → 124 (123) | 65.8 → 95.8 | unchanged |
+| screenshot | 1020×2207 → 555×1200 | 12.8 → 6.9 | 8,190 → 7,455 (7,750) | 74 → 64 (74) | 25.6 → 27.2 | unchanged |
+| Becker | 146×91, unresized | 1.46 | 8,334 → **15,318** | 59 → **175** | 0.5 → 2.3 | `TRIM_HEAVY` → + `LETTERING_TOO_SMALL`, `THREAD_MATCH_POOR` |
+| **nine logos** | | | **86,129 → 92,459** (100,424) | **503 → 609** (633) | | lettering trims 144 → 152 |
+| MARINE 80 (plan fixture) | 1058×253, unresized | 13.2 | 1,953 → 1,953 | 9 → 9 | 1.3 | byte-identical, every arm |
+| MARINE 127 (plan fixture) | 1624×346 → 1200×256 | 12.8 → 9.4 | 7,289 → 5,857 (5,853) | 43 → 37 (35) | 8.8 → 1.8 | `TRIM_HEAVY` both; refused walks 9 → 20 |
+| Becker at 100 | 146×91, unresized | 1.46 | 8,334 → 15,318 | 59 → 175 | 0.5 → 2.3 | as Becker |
+
+**Readings.** Becker is the alpha case and carries the whole aggregate:
+identical alpha and identical opaque RGB, +6,984 stitches and +116
+trims, two new findings; the other eight logos net **−10 trims** on the
+Studio's raster. Tires has no alpha and goes 6 → 14 on the filter alone
+(INTER_AREA at the same size reads 8). The alpha cutouts move most after
+Becker — ENTHUSIAST's white under its alpha becomes black (12 → 11
+trims at −61 stitches), Fremont 59 → 50 with exposed travel 7.2 → 16.7
+mm, drone 120 → 124 with exposed travel 65.8 → 95.8 mm. gaulke and the
+screenshot lose more than half their pixels (555 × 1200, 6.9 px/mm) and
+read fewer trims at fewer stitches — a coarser raster traces fewer
+fragments, which is not the same thing as a cleaner design. Bridge Bar
+(400 px, RGB) and MARINE 80 (1,058 px, greyscale) are byte-identical
+either way: an under-cap image with no alpha passes through the canvas
+unchanged, so **the plan's 80 mm yardstick (1,953 / 9 against the typed
+word's 1,782 / 3) is the customer's number.** MARINE 127 is not — 7,289 /
+43 → 5,857 / 37 with refused walks 9 → 20 at 9.4 px/mm — so the step-4
+and junction-stack fixture numbers read at 127 mm were read on a raster
+the Studio would have shrunk by a quarter. **`INTER_AREA` is not a
+stand-in**: 633 trims against the Studio's 609, tires 8 against 14, and
+gaulke 13,206 stitches against 4,034 (its cause was not chased; it is not
+the browser's raster, which is the point — measure on the tool's output
+or not at all).
+
+### B. Each lettering flip, OFF → today's default, on both rasters (nine logos)
+
+| flag | trims OFF → ON, file / Studio | stitches OFF → ON, file / Studio | per-logo trim delta (ON − OFF), file / Studio |
+|---|---|---|---|
+| `satin_house_from_line` | 503 → 503 / 609 → 609 | unchanged | no trim moves on either |
+| `satin_house_anchor` | 503 → 503 / 609 → 609 | unchanged | no trim moves on either |
+| `satin_stroke_order="euler"` | **701 → 503 / 846 → 609** | 86,501 → 86,129 / 93,009 → 92,459 | tires −12/−5; ENTHUSIAST −14/−12; Fremont −27/−30; Bridge −23/−23; Golden Tee −52/−41; gaulke −8/−25; drone −28/−33; screenshot −1/−6; Becker −33/−62 |
+| `satin_corner_twigs` | 490 → 503 / 598 → 609 | 86,293 → 86,129 / 93,654 → 92,459 | tires −1/+5; ENTHUSIAST −2/−3; Fremont +1/0; Bridge +6/+6; Golden Tee +2/−7; gaulke −3/−4; drone −4/0; screenshot +6/+5; Becker +8/+9 |
+| `satin_lettering_split` | 494 → 503 / 584 → 609 | 89,567 → 86,129 / 94,866 → 92,459 | Becker +9/+26, drone 0/−1, the rest 0/0 |
+| `satin_junction_stack` | 492 → 503 / 582 → 609 | 85,358 → 86,129 / 91,289 → 92,459 | tires −1/+7; ENTHUSIAST −1/−1; Fremont +2/+2; Bridge +12/+12; Golden Tee +1/−7; gaulke −3/−9; drone −4/+2; screenshot +3/+3; Becker +2/+18 |
+| `edge_cap_skip_lettering` | **530 → 503 / 636 → 609** | 86,718 → 86,129 / 93,107 → 92,459 | ENTHUSIAST −2/−1; Golden Tee −1/0; gaulke −4/−5; drone −1/−4; screenshot −1/−2; Becker −18/−15; the rest 0 |
+| `satin_exit_toward_next` | **516 → 503 / 623 → 609** | 86,241 → 86,129 / 92,560 → 92,459 | tires −4/**+1**; ENTHUSIAST −7/−3; Fremont 0/−4; Bridge −1/−1; Golden Tee −5/−1; gaulke +4/**−11**; drone +1/**−3**; screenshot +1/**−3**; Becker −2/**+11** |
+| `fill_bridge_cut` | 501 → 503 / 602 → 609 | 86,163 → 86,129 / 92,645 → 92,459 | Fremont +1/0; Bridge +1/+1; drone −4/+6; screenshot +4/0; the rest 0 |
+
+Sign agreement of the per-logo trim deltas, file against Studio: the
+walk 9 of 9 agree; the cap skip 5 agree, 3 unmoved, 1 zero on one side;
+the twigs 5 agree, 2 opposite; the stack 6 agree, **3 opposite**; the
+exit lever 3 agree, **5 opposite**; the bridge cut 1 agree, 1 opposite,
+the rest unmoved.
+
+**What survives the re-read.** The walk (−198 on the file, −237 on the
+Studio's raster, every logo agreeing) and the cap skip (−27 / −27) are
+robust to the raster. The exit lever holds **in sum** (−13 / −14) and
+not per logo: its sign flips on five of nine, so PR #523's per-logo line
+(tires 10 → 6, gaulke 30 → 34) was raster noise and its nine-logo sum is
+the finding. The twigs, the split and the stack are trim COSTS on both
+rasters (+13 / +11, +9 / +25, +11 / +27) — they were flipped for corners,
+fill-free stems and junctions, not trims, and on the Studio's raster
+Becker's alpha noise carries most of their bill (split +26, stack +18 on
+Becker alone). `fill_bridge_cut` +2 / +7. The house line and the anchor
+move no trim on either raster; their instruments (cross-angle
+concentration, self-crossings) were not re-read here. **The noise floor
+this sets:** a single logo's trim delta under about five is not evidence
+on either raster; nine-logo sums of ten or more have held across every
+flag that had one.
+
+### C. The fixtures, arm by arm
+
+MARINE 80 is byte-identical on both rasters under every arm (default
+1,953 / 9; the walk off 2,071 / 32; the cap skip off 2,341 / 24; the
+exit lever off 1,969 / 13; the split off 1,768 / 7; the stack off 2,109 /
+10) — every number the plan quotes at 80 mm is the customer's. MARINE
+127 is not: default 7,289 / 43 on the file against 5,857 / 37 through the
+Studio; the split off 9,625 / 34 against 8,807 / 22; the stack off 7,247
+/ 34 against 5,532 / 20; the walk off 7,305 / 49 against 5,888 / 48. The
+direction of every flip holds there; the magnitudes do not. Becker at
+100 mm is the alpha case throughout (the walk off 8,380 / 92 on the file
+against 15,299 / 237 through the Studio).
