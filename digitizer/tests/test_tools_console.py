@@ -37,9 +37,13 @@ TOOLS = pathlib.Path(__file__).resolve().parents[1] / "tools"
 DOC_READERS = {"scope_budget", "memory_budget", "doc_claims"}
 
 #: Tools that NAME a `.md` path without ever reading one — `acceptance_ab`
-#: points the reader at `rembg_isolated/README.md` in a message. They carry no
-#: exposure, and listing them is what lets the sweep below stay exhaustive.
-NAMES_ONLY = {"acceptance_ab"}
+#: points the reader at `rembg_isolated/README.md` in a message, and
+#: `sewout_walk_reach` WRITES one beside the sew-out files it exports. Neither
+#: reads doc text, so neither is exposed through a doc; listing them is what
+#: lets the sweep below stay exhaustive. (`sewout_walk_reach` widens its
+#: stdout all the same — its own sheet prints arrows, which is the OTHER
+#: exposure, swept separately below.)
+NAMES_ONLY = {"acceptance_ab", "sewout_walk_reach"}
 
 
 def cp1252_stream() -> tuple[io.BytesIO, io.TextIOWrapper]:
@@ -88,8 +92,7 @@ def test_every_doc_reading_tool_widens_its_stdout():
     """The structural half. `scope_budget` is the one that crashed, but the
     fix is only worth anything if its two siblings carry it too."""
     missing = sorted(name for name in DOC_READERS
-                     if "utf8_console" not in (TOOLS / f"{name}.py").read_text(
-                         encoding="utf-8"))
+                     if not _calls_utf8_console(TOOLS / f"{name}.py"))
     assert not missing, (
         "doc-reading tools that never widen stdout, so a U+2192 in the doc "
         "they print will crash them on a cp1252 console: " + ", ".join(missing))
@@ -142,19 +145,52 @@ def _fits_cp1252(ch: str) -> bool:
     return True
 
 
+def _calls_utf8_console(path: pathlib.Path) -> bool:
+    """Does `path` actually CALL `utf8_console`, not merely mention it?
+
+    The text check this replaces (`"utf8_console" not in source`) is satisfied
+    by the import line alone. Measured 2026-09-20: deleting the call from
+    `refused_walks` and leaving its import kept the sweep green, so a tool
+    could import the fix, never wire it, and still pass the test that exists
+    to catch exactly that. An import is not a widened stream.
+    """
+    tree = ast.parse(path.read_text(encoding="utf-8"), str(path))
+    return any(isinstance(n, ast.Call) and isinstance(n.func, ast.Name)
+               and n.func.id == "utf8_console" for n in ast.walk(tree))
+
+
 def _printed_literals(path: pathlib.Path):
     """Every character a `print(...)` in `path` writes from a literal.
 
     f-strings included: `ast.walk` reaches a `JoinedStr`'s literal parts, which
     is where the headers live — `f"... worst mean→median ΔE00 |"`.
+
+    **A printed helper counts too** (added 2026-09-20). Reading only the
+    literals *inside* the `print(...)` call missed the commonest shape in
+    `tools/`: build the table in a function, print what it returns. Both
+    `refused_walks` and `sewout_walk_reach` were written that way and both
+    print `→` — the sweep called them clean, and only the doc-name guard
+    above caught one of them, by a different route. So a `print(NAME(...))`
+    whose `NAME` is a function defined in the same module also yields that
+    function's literals. One level, which is the shape that occurs; a helper
+    that calls a second helper is still out of reach and is why this is a
+    tripwire rather than a proof.
     """
     tree = ast.parse(path.read_text(encoding="utf-8"), str(path))
+    helpers = {n.name: n for n in ast.walk(tree)
+               if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))}
     for node in ast.walk(tree):
         if (isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
                 and node.func.id == "print"):
-            for part in ast.walk(node):
-                if isinstance(part, ast.Constant) and isinstance(part.value, str):
-                    yield from part.value
+            reach = [node]
+            for arg in node.args:
+                inner = arg.func.id if isinstance(arg, ast.Call) and isinstance(arg.func, ast.Name) else None
+                if inner in helpers:
+                    reach.append(helpers[inner])
+            for root in reach:
+                for part in ast.walk(root):
+                    if isinstance(part, ast.Constant) and isinstance(part.value, str):
+                        yield from part.value
 
 
 def test_no_tool_prints_a_literal_its_console_cannot_take():
@@ -171,12 +207,16 @@ def test_no_tool_prints_a_literal_its_console_cannot_take():
 
     This is the tripwire, not the sweep's result: a header written months from
     now with an arrow or a sigma in it fails here instead of on Kent's box.
+
+    Re-swept 2026-09-20 after `_printed_literals` learned to follow a printed
+    helper: `refused_walks` and `sewout_walk_reach` both print `→` from a
+    table built in a function, and both now widen stdout.
     """
     offenders = []
     for path in sorted(TOOLS.rglob("*.py")):
         hazard = sorted({ch for ch in _printed_literals(path)
                          if not _fits_cp1252(ch)})
-        if hazard and "utf8_console" not in path.read_text(encoding="utf-8"):
+        if hazard and not _calls_utf8_console(path):
             offenders.append(f"{path.name} prints {''.join(hazard)!r}")
     assert not offenders, (
         "tools that print a character cp1252 cannot encode and never widen "

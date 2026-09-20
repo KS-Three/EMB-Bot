@@ -15182,3 +15182,129 @@ left it.
 
 *(built 2026-09-20 — Kent's call; `tools/stage0_scale_arms.py run --corpus`,
 arm `gated_s0whole`)*
+## 2026-09-20 — The refused-walk bucket: what a walk's refusal actually is, and the one relaxation in it (Kent's pick)
+
+**The question.** The lettering trim census (2026-09-19) counts a
+`walk-refused` bucket — MARINE 127 read 20 of them, the largest remaining
+lettering trim cause — by logging `path is None` from
+`stage6_satin._graph_travel`. It could not say WHY any refusal happened, and
+"relax the walk" is not one change: the function has four distinct ways to
+refuse and its CALLER has a fifth.
+
+**The instrument.** `digitizer/tools/refused_walks.py` (committed —
+DOCTRINE 2026-09-11; `tests/test_refused_walks.py`, 6) classifies every
+between-stroke walk:
+
+| reason | what it is |
+|---|---|
+| `cursor_unsnapped` | the needle sits further than `trim_at` (3.0 mm) from any node — it ends wherever the last run ended, often a cap-extended point off the web |
+| `target_unsnapped` | the stroke start sits further than the strict 0.8 mm snap `_graph_travel` keeps on the target side |
+| `blocked_by_sewn` | a path exists, but every route runs over strokes already sewn, which show |
+| `disconnected` | no path even with nothing forbidden: different components of the web |
+| `too_long` | a path was FOUND and the caller threw it away (`plen <= max(20, 4 x direct)`) — invisible to the census, which logged only `None` |
+
+Reachability is asked of the real `_graph_travel` (the same call with `sewn`
+emptied), so nothing duplicates its Dijkstra; only the two thresholds are
+mirrored, and the tests pin both against it.
+
+**838 walks, two MARINE fixtures and the nine corpus logos, today's defaults:**
+
+| | calls | ok | trivial | too_long | cursor_unsnapped | target_unsnapped | blocked_by_sewn | disconnected |
+|---|---|---|---|---|---|---|---|---|
+| all eleven | 838 | 322 | 173 | 3 | **176** | 118 | 34 | 12 |
+| marine127 | 26 | 6 | 4 | 1 | 10 | 1 | 4 | 0 |
+
+- **Three quarters of the refusals are a web that does not reach, and no
+  flag changes that.** Of the 343 refusals, **all 118** `target_unsnapped`
+  and **128 of the 176** `cursor_unsnapped` have no path even at a 12 mm
+  snap radius with nothing forbidden: the two strokes are in different
+  components. A trim is the correct answer there. The strict 0.8 mm target
+  snap is doing no harm — `_graph_travel`'s own comment said "a 0.8mm miss
+  there means the web genuinely does not reach it", and this measured it.
+- **The one relaxable cause is the cursor's reach: 47 calls.** Those have a
+  path once the needle reaches the web, at a **4.1 mm median leg and a
+  5.64 mm median path**.
+- **`blocked_by_sewn` is small and is a trade, not a wall:** 34 calls, median
+  free path 5.84 mm against a 4.87 mm direct hop — a short run over finished
+  satin to save a trim. Not built; it is a different ruling (thread over
+  thread, not thread on fabric).
+- **`too_long` is three calls** and all three are right to refuse: the median
+  path is 105.95 mm for a 2.42 mm move.
+
+**Built OFF: `cfg.satin_walk_cursor_reach_mm`** (0 = off, and off the radius
+IS `trim_at`, which is what shipped). ON it does two things, because either
+alone is useless: the cursor-side retry reaches that far, AND the walk sews
+the leg from where the needle is onto the web — past `trim_at` the linking
+loop would trim that hop, which is the trim the walk was for.
+
+**OFF vs 5.0 mm, the same eleven cases** (stitches / trims / exposed travel mm):
+
+| case | stitches | trims | exposed travel | grade | `cursor_unsnapped` walks |
+|---|---|---|---|---|---|
+| marine127 | 7,289 → 7,289 | **43 → 41** | 8.8 → 9.2 | B → B | 10 → 4 |
+| marine80 | 1,953 → 1,953 | 9 → 9 | 1.3 → 1.3 | A → A | 2 → 2 |
+| becker | 8,440 → 8,433 | 54 → 51 | 0.4 → 3.4 | B → B | 21 → 14 |
+| tires | 2,475 → 2,475 | 6 → 6 | 0.0 → 0.0 | A → A | 3 → 3 |
+| ENTHUSIAST | 2,478 → 2,478 | 12 → 12 | 3.8 → 3.8 | B → B | 3 → 1 |
+| fremont | 19,869 → 19,860 | 55 → 53 | 17.5 → 24.0 | B → B | 12 → 8 |
+| bridge | 14,945 → 14,949 | 98 → 96 | 17.8 → 27.7 | F → F | 23 → 18 |
+| golden_tee | 6,976 → 6,970 | 38 → 36 | 0.9 → 6.5 | F → F | 24 → 19 |
+| gaulke | 4,406 → 4,385 | 34 → 29 | 1.8 → 16.5 | B → B | 12 → 7 |
+| drone | 17,898 → 17,884 | 122 → 119 | 58.1 → 67.9 | F → F | 45 → 35 |
+| screenshot | 8,333 → 8,304 | 72 → 69 | 29.9 → 45.5 | F → F | 21 → 14 |
+| **nine logos** | 85,820 → 85,738 | **491 → 471** | **130.2 → 195.3** | no grade moves | 164 → 119 |
+
+- **Twenty fewer trims on the nine, for 65 mm more exposed travel** — about
+  3.3 mm of exposed thread per trim saved, and the nine-logo sum clears the
+  census's own noise floor (a single logo's trim delta under five is not
+  evidence; sums of ten or more have held). Stitches are flat (−82 on 85,820)
+  and no grade or finding moves on any case.
+- **The ratio is not uniform, and that is the decision.** Becker pays 3.0 mm
+  for three trims and MARINE 127 pays 0.4 mm for two; gaulke pays 14.7 mm for
+  five and the screenshot 15.6 mm for three. The flag has one number, so it
+  buys the good trades and the poor ones together.
+
+**A tighter radius buys proportionally less, so there is no natural number.**
+At 4.0 mm the nine logos read **491 → 476 trims for 130.2 → 177.1 mm**
+exposed: 15 trims for 47 mm, against 5.0 mm's 20 for 65 mm. The fifth
+millimetre costs 3.6 mm of exposed thread per trim where the first four cost
+3.1 — near enough flat, with no knee to site the default at. Per case it
+mostly buys the same trims more cheaply (gaulke 34 → 31 at +8.5 mm against
+34 → 29 at +14.7; the screenshot 72 → 70 at +11.6 against 72 → 69 at +15.6),
+and MARINE 127 reads 42 at either radius against 43 OFF. **So the flag's
+number is a taste call on exposed thread, not a measurement**, which is why
+it ships as a millimetre knob at 0 rather than as a boolean.
+
+**The full suite on this tree: 2,756 passed, 0 failed** (26m52s, `-n auto`,
+CI's three platform goldens deselected). Nothing moved: the flag is OFF and
+OFF is the shipped engine, which is what the run proves — the two changes
+inside it (the wider retry, the leg the walk carries) both sit behind
+`walk_cursor_reach > trim_at_mm`.
+
+**Kent's ruling, put to him with the two radii: the flag stays OFF until a
+sew-out settles it.** Both sides of the trade are what the eye judges and
+this metric cannot — a trim leaves tails to clip and a tie-off bump, a
+rescued walk leaves a short run of thread on the fabric between letters — so
+it joins the sew-out sheet rather than the defaults.
+`digitizer/tools/sewout_walk_reach.py` (committed,
+`tests/test_sewout_walk_reach.py`) writes the arms: three cases whose trade
+differs most — becker (3.0 mm of exposed thread for three trims, the best
+ratio), gaulke (14.7 mm for five, the worst) and MARINE 127 (0.4 mm for two,
+nearly free) — at OFF / 4.0 / 5.0 mm, `.dst` and `.pes` through the service's
+own writers, each read back through pystitch and **required to match the
+plan's stitch count** before it is offered to the machine (measured: both
+writers round-trip the penetrations exactly). The sheet, with question D and
+what each of its three answers flips, is committed at
+`docs/renders/lettering-walk-reach-2026-09-20/README.md`; the files are not,
+and the tool regenerates them on the machine that will sew them.
+
+**One thing the export added to the reading:** the worst single exposed leg
+is **3.0-3.3 mm on every ON arm of all three cases**, and it does not grow
+with the radius — that is the length the eye has to judge, not the 65 mm
+total. becker reads identically at 4 and 5 mm (51 trims, 3.4 mm either way),
+so there the cheaper radius is free; gaulke is where the radii differ most
+(31 trims at 10.3 mm against 29 at 16.5).
+
+*(measured 2026-09-20 — Kent's pick; `tools/refused_walks.py run` and
+`compare --reach`; built OFF and exported to the sheet the same day, the
+flip and the radius are Kent's, on cloth)*

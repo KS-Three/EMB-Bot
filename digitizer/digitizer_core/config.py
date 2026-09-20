@@ -1201,6 +1201,30 @@ class PipelineConfig:
     # OFF on the same call). False is the walk as shipped before it, byte
     # for byte, and `tests/test_trim_levers.py` pins both sides.
     satin_exit_toward_next: bool = True
+    # How far off the travel web the needle may sit and still walk to the
+    # next stroke, in mm; 0 = off, and off the radius IS `trim_at` (3.0,
+    # `machine.TRIM_AT_MM`), which is what shipped before 2026-09-20.
+    #
+    # Between strokes the linking pass asks `_graph_travel` for a needle-down
+    # path over the unsewn spine web; no path means a lift, and that is a
+    # trim. The anatomy of those refusals (`tools/refused_walks.py`, Kent's
+    # pick 2026-09-20; 838 walks over the two MARINE fixtures and the nine
+    # corpus logos): 343 refused, and the biggest single cause — 176 — is the
+    # needle sitting further than `trim_at` from any node, because it ends
+    # wherever the last run ended, often a cap-extended point off the web.
+    # But only 47 of those 176 have a path at all once the needle reaches the
+    # web; the other 128 are in a different component, where a trim is the
+    # correct answer and no radius changes that. Nor does the target side:
+    # all 118 `target_unsnapped` refusals are also different components, so
+    # the strict 0.8 mm snap `_graph_travel` keeps there is doing no harm —
+    # its own comment said so and this measured it.
+    #
+    # ON, the cursor-side retry reaches this far AND the walk sews the leg
+    # from where the needle is onto the web (past `trim_at` that hop would
+    # otherwise be trimmed — the trim this is for). So the flag buys a walk
+    # at the price of a leg that may be exposed on fabric; the rescued calls
+    # measured a 4.1 mm median leg and a 5.64 mm median path.
+    satin_walk_cursor_reach_mm: float = 0.0
     # `satin_underlay_on_column`: a stroke's underlay is built on its
     # column's OWN stations -- the spine after the junction trims, the
     # cap extension and the stack's run-in -- instead of the raw skeleton
