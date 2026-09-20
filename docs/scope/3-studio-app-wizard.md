@@ -542,3 +542,22 @@ Two things fell out of that run, one fixed and one recorded:
 Lifted verbatim from the area-3 summary on 2026-09-18 to bring `MASTER_SCOPE.md` back under its 27,000-word budget (the offload mechanism it documents); the summary keeps the one-line claim and the dated pointer. Snapshot as of 2026-09-06, not re-verified since.
 
 **Both "Make it bigger" chips offer a PARTIAL remedy, and the comment justifying them misquoted the finding it cited** — it read `LETTERING_TOO_SMALL`'s message as ending *"Enlarging helps"* when on that same commit it already ended *"...but does not fully clear it ... Remove or simplify the smallest lettering"*. Corrected in place with the history; the buttons are LEFT for Kent, since whether a partial remedy earns one is his call. `STITCHES_TOO_SHORT` no longer recommends enlarging at all and now names the shapes carrying the short steps — it and `LETTERING_TOO_SMALL` measure the same quantity at the same threshold (`MIN_COLUMN_MM` **is** `machine.MIN_STITCH_MM`) and it never fired alone over the corpus at 80 mm (the only width swept), but only **66%** of its short steps sit in a shape lettering named: the rest are sewable columns (1.1–3.2 mm median) with a narrow waist. **And the button itself is now measured: ONE PRESS CLEARS THE FINDING ON 1 OF 10** corpus fixtures (two presses on 4 of 10) and makes it **worse on 3** — `photo_dof_meadow` 0.36 → 0.58 → 0.71 — while the satin shape count rises on every fixture (2 → 9, 42 → 71), which is "the smallest shapes regenerate at any size" from the other side. No grade claim is drawn from that sweep: several checks move with size and 5 of the 10 are on the clamped floor. *(measured 2026-09-06 — `tools/short_satin_overlap.py`, `tools/enlarge_cure.py`, `tests/test_short_satin_shapes.py` (14); DOCTRINE)*
+
+## The `.embproj` carries the original artwork (2026-09-20)
+
+Since 2026-09-20 a digitize sends the customer's FILE, not the panel's
+1,200-px preview (DOCTRINE 2026-09-19/20), and the file's bytes live in
+IndexedDB under their SHA-256 (`lib/sourceStore.js`). IndexedDB is this
+browser's, so a design opened on another machine, or after cleared site data,
+had only the preview and re-digitized from it with the panel's note. Kent's
+pick the same day: the `.embproj` now carries every stored original its
+elements point at — `sources` in the envelope, base64 under the same key,
+BESIDE the project and never inside it, so the registry record in
+localStorage stays preview-sized (`lib/projectFile.js`). Import puts them back
+in the store before the project is registered, under the key the bytes hash
+to here (`lib/projectSources.js`). Driven end to end in
+`app/e2e/design-originals.spec.js`: export byte for byte, wipe both stores,
+import, and a re-digitize whose `/digitize` POST carries the file under its
+own name. A file saved before that day carries no originals; a preview-path
+upload (SVG, GIF, oversize, a rotated JPEG) has none to carry. *(built and
+verified 2026-09-20 — scope-history, the originals addendum)*
