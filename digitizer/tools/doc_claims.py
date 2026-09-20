@@ -192,14 +192,29 @@ def test_counts() -> dict[str, int]:
     that goes quiet when its input is broken is the failure this whole tool
     exists to stop.
     """
+    # `errors="replace"`, and the `or ""` below, because the decode happens on
+    # a READER THREAD: a byte the parent's encoding cannot take does not raise
+    # out of `run()`, it kills that thread and leaves `stdout` as None, so the
+    # `except` above never fires and the promise three lines up ("returns {}
+    # when collection fails") is broken by an AttributeError instead.
+    # Reproduced on Windows 2026-09-20: this suite has a test whose NAME holds
+    # an "e-acute" (`test_applique.py::test_cover_closure_overlap_reads_the_
+    # applique_specific_stitch_count`), the child pytest writes it as cp1252
+    # 0xe9, and a parent started with `-X utf8` -- the flag this repo's own
+    # command lines use -- decodes as UTF-8 and dies. It only bites SINGLE
+    # -PROCESS: under `-n auto` the xdist worker is not in UTF-8 mode, so the
+    # full suite is green and one file on its own is red. CI never sees it.
+    # A test id is ASCII-ish by construction, so replacing an undecodable byte
+    # costs nothing a count depends on.
     try:
         out = subprocess.run(
             [sys.executable, "-m", "pytest", "-q", "--collect-only"],
-            capture_output=True, text=True, cwd=ROOT / "digitizer", timeout=300)
+            capture_output=True, text=True, errors="replace",
+            cwd=ROOT / "digitizer", timeout=300)
     except Exception:                                   # pragma: no cover
         return {}
     counts: dict[str, int] = {}
-    for line in out.stdout.splitlines():
+    for line in (out.stdout or "").splitlines():
         if line.startswith("tests/") and "::" in line:
             counts[line.split("::", 1)[0]] = counts.get(
                 line.split("::", 1)[0], 0) + 1
