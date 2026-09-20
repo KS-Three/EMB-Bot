@@ -12,10 +12,21 @@ change list with a per-row buildability column, most rows marked "Desk-safe",
 and nothing pointed at it. That is why gaps in it get rediscovered by accident
 rather than tracked.
 
-**This is a status audit, not a commitment.** No row here is a defect until
-Kent says it is. The playbook's own status column ("Desk-safe" vs
-"Sew-out-gated") is carried through as the sort key, because it is the column
-that says which rows ROADMAP gate 1 actually blocks.
+**Four rows are now numbered defects; the rest are a list.** Kent's call
+2026-09-20, after this audit: promote the highest-value desk-safe rows to
+MASTER_SCOPE and leave the remainder here with their buildability column
+intact — rather than spending a permanent number on all thirteen, or on none.
+
+| Playbook row | MASTER_SCOPE defect |
+|---|---|
+| 3 — `assumed_backing` per preset | **45** (also unblocks the Part 3 worksheet) |
+| 17 — monotonic smoothness score | **46** |
+| 9 — overlap angle- and fabric-conditional | **47** |
+| 6 — speed model + `TRIM_COST` | **48** (also unblocks row 16's runtime) |
+
+Everything else here is status, not a commitment. The playbook's own column
+("Desk-safe" vs "Sew-out-gated") is carried through as the sort key, because it
+is the column that says which rows ROADMAP gate 1 actually blocks.
 
 **Method.** Targeted reads of `digitizer/digitizer_core/` (`fabrics.py`,
 `machine.py`, `config.py`, `preflight.py`, `warnings_codes.py`,
