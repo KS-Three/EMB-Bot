@@ -1813,6 +1813,50 @@ class PipelineConfig:
     # travel-only order reachable and tested rather than dead-by-default.
     # tests/test_borders_last.py pins the default and both halves.
     borders_last: bool = True
+    # Cap sew order (2026-09-19). A cap front is a curved, seamed, stretching
+    # object with a raised centre seam, and the craft rule for one is to sew
+    # BOTTOM-UP and CENTRE-OUT so distortion radiates away from the seam
+    # instead of being pushed across it (machine-physics playbook Law 34,
+    # [P] Melco x2, [T] ASI). ON, a cap garment's shapes are picked by
+    # distance from the design's vertical centreline (`x = 0` in stage 4's
+    # frame — origin at the artwork bbox centre), tiebreaking DESCENDING y,
+    # which is the bill end first because that frame's y runs DOWN.
+    #
+    # This closes a LANE SPLIT, it is not a new idea: the browser engine has
+    # done exactly this since before the flag existed (`src/digitize.js`'s
+    # `capMode`, same two keys, same garments), while the Python digitizer —
+    # the lane every auto-digitized design actually travels — read
+    # `garment_id` for pull compensation, underlay, density and trim distance
+    # and never for ORDER. So the same hat got cap physics from one lane and
+    # no cap order from the other.
+    #
+    # Pure sequencing, like `borders_last` above: no physical constant enters
+    # and gate 1 is untouched. Scope is the ordering ONLY — the rest of Law 34
+    # (sectioned cap-front fills, seam-parallel stitching, lettering last, the
+    # ~57 mm height ceiling, extra pull comp across the seam) is deliberately
+    # not here (Kent's call, 2026-09-19); the last of those IS gate-1 work.
+    #
+    # DEFAULT OFF, byte-identical off, and it is PRICED — do not flip it on
+    # the evidence in this repo (Kent's call, 2026-09-19). Cap order abandons
+    # nearest-neighbour travel by design, and that is not free: measured ON vs
+    # OFF at 80 mm on `478fbbb6`, `logo_gaulke_roofing` goes 387.5 -> 1260.6 mm
+    # needle-up (+225.3%) and 31 -> 49 trims, `becker_marine_logo` +22.2% and
+    # 48 -> 47. QUOTE THE TREE with these: an earlier pass the same morning
+    # read +111.2% and +11.3% on `da6606e4`, and only `main` had moved --
+    # the lettering series' flips improved the OFF baseline and so roughly
+    # doubled this flag's relative cost (DOCTRINE).
+    # Defect 4 is that we ALREADY trim 3.1x the professional, so this makes
+    # the worst-measured parity gap worse. Against that, the benefit it claims
+    # — less crown distortion on a stretching seamed front — has no instrument
+    # here at all, and the one pro cap/flat pair readable from the corpus
+    # backs the BOTTOM-UP half while contradicting the CENTRE-OUT half, which
+    # is the half that spends the travel. So only cloth settles it.
+    # Full evidence: DOCTRINE "Measured negatives", scope-history 09-19,
+    # renders in docs/renders/cap-order-2026-09-19/, instruments
+    # tools/cap_order_ab.py and tools/cap_order_pro.py.
+    # tests/test_cap_center_out.py pins the default, the two keys, the
+    # precedence against `sew_order` and `borders_last`, and the off-lane no-op.
+    cap_center_out: bool = False
     # One cone, one layer (defect 18, the SECOND spool-revisit mechanism).
     # Stage 2 quantizes to COLOURS, and two quantized colours can snap to one
     # physical cone: `drone_render` @ 80 mm declares 21 palette slots holding

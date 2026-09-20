@@ -248,6 +248,10 @@ one concealed it; entry 2 is a flag that LEFT this list unnoticed for two weeks.
    2026-09-02, left gate 3; cost is defect 20. *(`pipeline.effective_split_tonal`)*
 3. **`strip_letterbox` — ON by default since 2026-09-14.** A phone screenshot's black bars read as ink and inverted the design: ground sewn in white thread, logo left as negative space. Held OFF first because 13 tests leaned on the fixture's pathology; all re-pointed. The card's 9-px shadow strips then kept its white ground sewing (`GROUND_SEWN`, gaulke F 34) until **2026-09-15**: `letterbox.detect_edge_strips` trims them, only once bars are found — the logo sews on bare garment (yardstick-disagreements row 8). OFF stays the pre-flip engine byte for byte. *(2026-09-14 — DOCTRINE "A fixture's PATHOLOGY can be load-bearing")*
 
+4. **`cap_center_out` — cap sew order, built OFF.** The Python lane never
+   read `garment_id` for ORDER; the browser engine did. **DO NOT FLIP:**
+   only the cost is measured, and it is heavy. *(measured 2026-09-19 — DOCTRINE)*
+
 *(added 2026-08-17 — `docs/project-review-2026-08-16.md` §1.6: chaining was absent
 here, so a good-faith flip would have shipped bare-fabric thread unwarned.)*
 
@@ -592,11 +596,8 @@ content path, four export formats, and the embroidery field's own chrome.
 sew-out CARD, which has not been sewn — the one physical out so far (2026-09-01)
 was a single uncontrolled icon. See Cross-cutting issues.
 
-**The two engines' fabric tables agree, and `test_fabric_wire.py` keeps them so**
-— field-for-field, asserting AGREEMENT only; the numbers stay gate 1. Its sibling
-`test_machine_wire.py` does the same for the 21 shared individual constants
-(2026-09-14). What law 26's month of silent browser drift cost: DOCTRINE.
-*(2026-09-07; 2026-09-14)*
+**The two engines' fabric and machine tables are wire-tested to agree**
+(`test_fabric_wire.py`, `test_machine_wire.py`) — [area doc](docs/scope/3-studio-app-wizard.md).
 
 **A Studio change is not verified until it has been *looked at* in a browser.**
 Six buyer-visible defects across the 2026-08-25 and 09-07 sweeps, none seen by a
@@ -657,11 +658,7 @@ never landed — a name and a project's membership of the registry live ONLY in
 that index — and `deleteProject` removed the record before writing it. Both
 propagate now, index first. *(fixed 2026-09-07 — area 3; DOCTRINE)*
 
-**The built bundle works wherever it is served.** `vite.config.js` sets
-`base: "./"` and five hand-written `/fonts/…` paths ignored it, so below the
-domain root the lettering lane produced nothing; font LICENCE links were among
-the five. Document-relative now, identical at the root. *(fixed 2026-09-07 —
-`assetPaths.spec.js`)*
+**The built bundle works wherever it is served** — [area doc](docs/scope/3-studio-app-wizard.md). *(fixed 2026-09-07)*
 
 **Lettering under the cap floor now names a way out.** The "cannot be sewn" verdict was the only one with no fix while the milder branch named two. Levers were measured before being named, so line breaks lead and "fewer characters" is second; "Size up" is withheld at the width cap, the rule the hairline branch already followed. The measured ladder (74 chars at default left chest = 1.3 mm against a 4 mm floor, and what each lever buys): scope-history 09-07. *(fixed 2026-09-07)*
 
