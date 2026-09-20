@@ -6032,7 +6032,13 @@ all reproduced 14. The trace's `px_per_mm` — 14.61 against the file's 17.05
   as they are; SVG, GIF and oversize files keep the canvas path), the bytes
   live in IndexedDB under their SHA-256 (`sourceStore.js`) with the element
   carrying only the key (`sourceFile`), and a re-digitize whose original is
-  gone sends the preview and SAYS so. Verified through the real panel: the
+  gone sends the preview and SAYS so. The same day, on Kent's pick, the
+  `.embproj` started carrying the originals too — BESIDE the project
+  (`projectFile.js` `sources`, restored by `projectSources.js` before the
+  import registers), never on the element, so the localStorage record stays
+  preview-sized and a design opened on another machine digitizes from the
+  file; driven end to end in `e2e/design-originals.spec.js`. Verified
+  through the real panel: the
   quality-report e2e's request shrank from 47,730 to 18,688 bytes (the
   18,265-byte file plus the config) and its job came back at 2,318 / 13
   trims / 17.05 px/mm / grade B — the file column. The other candidate,
@@ -6121,7 +6127,47 @@ scope-history 2026-09-20, the scale addendum), it is two:
   reading) and `gradient` again at 500: one class change the whole-image arm
   does not make. On the nine logos at native size the three arms read one
   class each, so a stage-0-only whole-image read would change no corpus class
-  and remove both the reachable misroute and the boundary. Kent's to pick;
-  not a threshold move.
+  and remove both the reachable misroute and the boundary. **Kent picked it
+  the same day — `alpha_edge_extend_stage0_whole`, ON:** stage 0 classifies
+  on the extended raster wherever the file has alpha, stage 1 keeps the gate
+  for the pixels it sews; ENTHUSIAST left the scale test's sweep set
+  (`gradient` at 250 / 400 / 640) and stays in the native set, where the
+  windows are. Not a threshold move; the flat → gradient half is untouched.
 
-*(measured 2026-09-20 — `tools/stage0_scale_arms.py run --corpus`)*
+*(measured and built 2026-09-20 — `tools/stage0_scale_arms.py run --corpus`,
+arm `gated_s0whole`)*
+
+## A "refused walk" is five different refusals, and four of them are not relaxable (2026-09-20)
+
+The lettering trim census counts a `walk-refused` bucket by logging
+`path is None` from `stage6_satin._graph_travel`. Read that as one cause and
+the obvious next move is "relax the walk" — which is not a change anyone can
+make, because the function refuses four different ways and its caller a
+fifth. Measured over 838 between-stroke walks, the two MARINE fixtures and
+the nine corpus logos (`tools/refused_walks.py`, scope-history 2026-09-20):
+
+- **343 refusals, and 262 of them are a web that does not reach.** All 118
+  `target_unsnapped` and 128 of the 176 `cursor_unsnapped` have no path even
+  at a 12 mm snap radius with nothing forbidden: different components of the
+  spine web, usually different letters. **A trim is the correct answer
+  there**, and no radius, cap or flag changes it. The strict 0.8 mm target
+  snap that looked like the obvious thing to loosen is doing no harm; its own
+  comment claimed as much and this is the measurement.
+- **The relaxable cause is 47 calls: the needle's distance from the web.**
+  It ends wherever the last run ended, often a cap-extended point off the
+  spine. Those have a path once it reaches, at a 4.1 mm median leg.
+- **A wider reach alone would not have worked.** Past `trim_at` the leg from
+  the true cursor onto the web is trimmed by the linking loop — the very trim
+  the walk was for — so the walk must carry the leg as stitches. Two changes,
+  one flag (`satin_walk_cursor_reach_mm`, built OFF), and the second half is
+  invisible in any before/after that only counts refusals.
+- **`too_long` is a refusal the census could not see at all**, because the
+  caller throws the path away after `_graph_travel` returns it. Three calls,
+  median 105.95 mm of walking for a 2.42 mm move: right to refuse.
+
+**The general shape: a bucket named after a symptom hides its own
+distribution.** Before proposing a fix for a counted cause, count the
+sub-causes — here the honest headline is that three quarters of the bucket is
+not a defect at all.
+
+*(measured 2026-09-20 — `tools/refused_walks.py`, Kent's pick)*

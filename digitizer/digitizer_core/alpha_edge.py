@@ -89,11 +89,20 @@ def upscale_expected(alpha: np.ndarray, target_width_mm: float, min_px_per_mm: f
     return art_w_px / float(target_width_mm) < float(min_px_per_mm)
 
 
-def extension_applies(cfg, alpha: np.ndarray | None) -> bool:
+def extension_applies(cfg, alpha: np.ndarray | None, ignore_gate: bool = False) -> bool:
     """The one gate both stages use: the flag, a real alpha, and — under
-    `alpha_edge_extend_upscaled_only` — an upscale ahead."""
+    `alpha_edge_extend_upscaled_only` — an upscale ahead.
+
+    `ignore_gate` is stage 0's under `cfg.alpha_edge_extend_stage0_whole`
+    (Kent's pick, 2026-09-20): classification reads the extended raster
+    wherever the file has alpha, while stage 1 keeps the gate for the pixels
+    it sews. Measured the same day (`tools/stage0_scale_arms.py`): the gate
+    left one `photo_*` misroute reachable (ENTHUSIAST at 400 px, exactly the
+    pre-flip reading) and added a class flip where the extension switches
+    off, and on the nine real logos at native size no class moves under
+    any arm — so stage 0 gives up nothing by reading whole-image."""
     if not cfg.alpha_edge_extend or alpha is None or not (alpha < 255).any():
         return False
-    if cfg.alpha_edge_extend_upscaled_only:
+    if cfg.alpha_edge_extend_upscaled_only and not ignore_gate:
         return upscale_expected(alpha, cfg.target_width_mm, cfg.min_px_per_mm)
     return True
