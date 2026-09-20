@@ -3635,6 +3635,21 @@ edge; no raster, no registration. On `main` at `24fce102`:
 | `logo_gaulke_roofing` | 0.088 / 0.170 / 6.7% | 0.019 | 0.000 |
 | `logo_whitebg` | 0.038 / 0.067 / 0.8% | 0.022 | 0.000 |
 
+**By zone (`rail_zones`), share of rail penetrations over 0.15 mm:** corner
+26.0 / 14.9 / 12.0% (enthusiast / Becker / Gaulke), series end 10.5 / 12.8 /
+5.4%, mid-column 3.5 / 4.1 / 3.7%. Corners first, ends second, a lumpy curve a
+distant third — three different fixes. Renders of the five worst spots per
+logo: `docs/renders/edge-wobble-2026-09-19/` (`--render DIR`). Becker's fill
+row is probably the instrument misreading a split column's mid-points as row
+ends (DOCTRINE) — unconfirmed.
+
+**The reverse direction (`unsewn`) — outline with no thread within 0.5 mm:**
+Becker 32.6 mm in 16 spans (2.7% of its sewn outline; MARINE's square corners
+and feet), Gaulke 6.6 mm in 4, Enthusiast 2.2 mm in 3, synthetic 0.0. This is
+what stitches → outline cannot see, and what Kent's *"you missed quite a few"*
+was. Whole-design pages with every mark on a lettered grid: `*_all.png` in the
+same render folder. Blind still: bean-tier small text, and outline vs artwork.
+
 Satin barely moved across 2026-09-19's satin flips (0.106 / 0.101 / 0.098 on
 the pre-flip base), and `satin_rails_follow_edge` moved the spike's figure
 ~10% — neither is the lever. **Open:** why the rails wobble (worst points are

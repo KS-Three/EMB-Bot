@@ -5869,6 +5869,86 @@ Three traps the instrument cost, each a way to read clean where it is not:
   0.4 mm inward dip on a rail stepping a full 0.4 mm is a sawtooth, and a
   size-only filter would have made the instrument blind to exactly that.
 
+**It is mostly CORNERS, then column ends, and only then a lumpy curve
+(same day, `rail_zones`).** Share of rail penetrations over 0.15 mm, by where
+they sit:
+
+| fixture | corner (<0.6 mm of a >35° vertex) | series end (<1.5 mm) | mid-column |
+|---|---|---|---|
+| `enthusiast_logo` | 26.0% | 10.5% | 3.5% |
+| `becker_marine_logo` | 14.9% | 12.8% | 4.1% |
+| `logo_gaulke_roofing` | 12.0% | 5.4% | 3.7% |
+
+Three different fixes, which one pooled number cannot tell apart. The renders
+(`docs/renders/edge-wobble-2026-09-19/`, thread at width over the outline, the
+five worst spots each) show what the numbers are made of, and none of it is a
+subtle 0.1 mm: notches where two satin sections join, a bare wedge in the
+crotch of Becker's M, slivers along Gaulke's oblique chevron edges, the foot
+of Enthusiast's N diagonal outside the thread. **On Becker the OUTLINE is
+visibly stair-stepped in the same tiles** — the low-resolution half, seen
+rather than inferred. Kent has not yet said whether these are what he sees.
+
+- **A projection COMPRESSES toward a convex corner, and the short-stitch excuse
+  was reading the projected step.** A rail cutting a corner at 1 mm radius
+  steps 0.4 mm along itself and 0.28 along the outline — under the guard's
+  0.3 — so every corner-cutting penetration was excused as technique. The
+  instrument under-read the zone that carries most of the defect until the
+  zone test went red. The step is now measured along the rail, between the
+  dip's neighbours. A series END that dips has one neighbour and cannot be
+  told apart either way: it is neither excused nor counted, it is REPORTED
+  (`series_ends_unread`, 46–122 on the real logos).
+- **Becker's fill jump (0.037 → 0.177) is probably the INSTRUMENT, not the
+  engine:** the render shows a fanned, split column whose mid-column split
+  points `_row_ends` takes for row ends. Not yet fixed or confirmed — do not
+  quote Becker's fill row until it is.
+
+- **Stitches → outline cannot flag a place with no stitches in it.** Kent on
+  the worst-five tiles: *"Yes, those are some. But you missed quite a few."*
+  The bare crotch of an M has no penetration there to measure, so nothing was
+  ringed. The instrument walks the OUTLINE too now (`unsewn`): a sample over
+  0.5 mm from any visible thread is bare, a run of them ≥ 0.75 mm is a span.
+  Becker **32.6 mm in 16 spans** (2.7% of its sewn outline) — the square top
+  corners of M, A, I and N in MARINE, the feet of A and N — Gaulke 6.6 mm in 4,
+  Enthusiast 2.2 mm in 3, the synthetic logo 0.0. Thread from ANY shape counts
+  as cover (seam ownership leaves the under-shape's edge to the shape on top).
+  **Every threadless shape on the first run (4 / 7 / 9) was stage 1's enclosed
+  background — counters, a knocked-out word — not a dropped element;** they
+  are excluded by `meta["enclosed_background"]`, and an unqualified count would
+  have read as seven lost letters on Becker.
+- **Still blind, by construction:** bean-tier small text (a bean sits ON its
+  outline, so it reads 0.000 whatever it looks like — anything wrong there is
+  the outline's), and everything about the outline against the ARTWORK.
+
+**Root cause of the bare corners, first pass (same day) — TWO mechanisms, and a
+plain bar has neither.** A synthetic 5.5 × 16 mm bar, a 2.5 mm bar and an L sew
+square and fully covered (0 bare spans), so "satin cannot make a square corner"
+is NOT the cause. On Becker's real letters, read at stitch level:
+
+- **A — the spine enters the cap off-centre, and the rails are symmetric at the
+  NEARER edge.** MARINE's I, first station past the cap (a probe wrapping
+  `_rail_points`, so treat the digits as expired): true reach 1.35 mm one side,
+  3.25 the other, BOTH rails placed at 1.35; the spine starts 1.3 mm off the
+  stroke's centre — a surviving medial-axis fork toward one corner — and takes
+  ~8 stations to walk back. The far rail stops up to 1.9 mm short: a bare
+  triangular corner. This is defect 23's open half, seen from the outline.
+- **B — leaning stitches meet a square cap.** On the M and N stems the crosses
+  lean 30–60° off the stem's perpendicular and the column ends square, so the
+  whole cap edge is a bare wedge (one span 5.5 mm). Nothing built addresses it.
+
+**`satin_rails_follow_edge` treats A's symptom and is measurable now**
+(`edge_wobble.analyse` with the flag, reproducible): bare outline Becker
+32.6 → 14.8 mm, Gaulke 6.6 → 2.8, Enthusiast 2.2 → 0.0 — **and it roughens the
+rails to do it**: Becker satin std 0.097 → 0.137, series ends over 0.15 mm
+12.8 → 22.5%. The flag's own comment predicted that cost (2026-09-03); this is
+the first instrument that shows both sides of the trade on one row. Becker's
+remaining 14.8 mm is B. A fix at the CAUSE — re-centre the spine's last stations
+between the two true edges, so the symmetric model is right — has not been
+built or measured.
+
+`--render DIR` writes the whole design too (`*_all.png`): every flagged
+penetration ringed red, every bare span magenta, on a 5 mm lettered grid, so a
+cell with something ugly and no mark names what the instrument still misses.
+
 The outline half (low-resolution uploads, Becker class) is real and separate;
 it needs registration to measure and was left in the spike on purpose.
 
