@@ -3,10 +3,14 @@ import {
   buildProjectFile,
   parseProjectFile,
   projectFileName,
+  sourceKeysOf,
+  encodeBase64,
+  decodeBase64,
   PROJECT_FILE_FORMAT,
   PROJECT_FILE_VERSION,
+  SOURCE_MAX_BYTES,
 } from "./projectFile.js";
-import { defaultProject, migrateProject, updateElement, addElement } from "./project.js";
+import { defaultProject, defaultDigitizedElement, migrateProject, updateElement, addElement } from "./project.js";
 
 // --- round trip ---------------------------------------------------------
 
@@ -156,4 +160,136 @@ test("projectFileName sanitizes to a safe kebab-case .embproj name", () => {
   expect(projectFileName("  ---  ")).toBe("design.embproj");
   expect(projectFileName("")).toBe("design.embproj");
   expect(projectFileName("Simple")).toBe("simple.embproj");
+});
+
+// --- the customer's original artwork rides in the file (2026-09-20) --------
+//
+// A digitize sends the FILE, whose bytes live in IndexedDB under their
+// SHA-256 (lib/sourceStore.js); the registry record carries only the key. So
+// a design opened on another machine had the 1,200-px preview and nothing
+// else. The envelope now carries the originals BESIDE the project, and only
+// the ones an element points at.
+
+function bytesOf(n, seed = 1) {
+  const out = new Uint8Array(n);
+  for (let i = 0; i < n; i++) out[i] = (i * 31 + seed * 7) & 0xff;
+  return out;
+}
+
+function digitizedProject(keys) {
+  const elements = keys.map((key, i) => ({
+    ...defaultDigitizedElement("d" + (i + 1)),
+    name: "logo.png",
+    sourcePng: "data:image/png;base64,AAAA",
+    sourceFile: key ? { key, type: "image/png", size: 3, width: 10, height: 10 } : null,
+  }));
+  return { ...defaultProject(), elements, selectedId: "d1" };
+}
+
+test("an original the store holds rides in the file and comes back byte for byte", () => {
+  const project = digitizedProject(["abc"]);
+  const bytes = bytesOf(1000);
+  const text = buildProjectFile(project, "Cap", { abc: { bytes, type: "image/png", name: "logo.png" } });
+
+  const raw = JSON.parse(text);
+  expect(raw.sources.abc.size).toBe(1000);
+  expect(typeof raw.sources.abc.data).toBe("string");
+  // The project object itself stays byte-free: the bytes sit beside it.
+  expect(JSON.stringify(raw.project)).not.toContain(raw.sources.abc.data.slice(0, 32));
+
+  const parsed = parseProjectFile(text);
+  expect(parsed.project.elements[0].sourceFile.key).toBe("abc");
+  expect(parsed.sources.abc.bytes).toEqual(bytes);
+  expect(parsed.sources.abc.type).toBe("image/png");
+  expect(parsed.sources.abc.name).toBe("logo.png");
+});
+
+test("only originals an element points at are written, and a project with none writes the envelope it always did", () => {
+  const project = digitizedProject(["abc"]);
+  const text = buildProjectFile(project, "Cap", {
+    abc: { bytes: bytesOf(5), type: "", name: "" },
+    zzz: { bytes: bytesOf(5, 2), type: "image/png", name: "stranger.png" },
+    empty: { bytes: new Uint8Array(0) },
+  });
+  expect(Object.keys(JSON.parse(text).sources)).toEqual(["abc"]);
+
+  // No stored original, or nothing to embed: no `sources` member at all.
+  expect("sources" in JSON.parse(buildProjectFile(defaultProject(), "x", { abc: { bytes: bytesOf(5) } }))).toBe(false);
+  expect("sources" in JSON.parse(buildProjectFile(project, "x"))).toBe(false);
+  expect("sources" in JSON.parse(buildProjectFile(project, "x", {}))).toBe(false);
+});
+
+test("a file without originals parses to an empty sources map, a bare record too", () => {
+  expect(parseProjectFile(buildProjectFile(digitizedProject(["abc"]), "x")).sources).toEqual({});
+  expect(parseProjectFile(JSON.stringify(digitizedProject(["abc"]))).sources).toEqual({});
+});
+
+test("malformed or unreferenced source entries are dropped and the design still imports", () => {
+  const project = digitizedProject(["abc"]);
+  const envelope = (sources) =>
+    JSON.stringify({ format: PROJECT_FILE_FORMAT, version: 2, name: "x", project, sources });
+  const cases = [
+    "not an object",
+    ["abc"],
+    { abc: "not an object" },
+    { abc: { data: 42 } },
+    { abc: { data: "!!!!" } },                       // not base64
+    { abc: { data: "abc" } },                        // not a multiple of 4
+    { abc: { data: "" } },                           // decodes to nothing
+    { other: { data: encodeBase64(bytesOf(9)) } },   // no element points at it
+  ];
+  for (const sources of cases) {
+    const parsed = parseProjectFile(envelope(sources));
+    expect(parsed, JSON.stringify(sources)).not.toBeNull();
+    expect(parsed.project.elements[0].sourceFile.key).toBe("abc");
+    expect(parsed.sources).toEqual({});
+  }
+  // And a good entry beside a bad one survives.
+  const parsed = parseProjectFile(envelope({ abc: { data: encodeBase64(bytesOf(9)), type: 7, name: null }, bad: 1 }));
+  expect(parsed.sources.abc.bytes).toEqual(bytesOf(9));
+  expect(parsed.sources.abc.type).toBe("");
+  expect(parsed.sources.abc.name).toBe("");
+});
+
+test("an oversize original is refused before it is decoded", () => {
+  const project = digitizedProject(["abc"]);
+  const text = buildProjectFile(project, "x", { abc: { bytes: bytesOf(200), type: "image/png", name: "big.png" } });
+  expect(parseProjectFile(text, { maxSourceBytes: 100 }).sources).toEqual({});
+  expect(parseProjectFile(text, { maxSourceBytes: 200 }).sources.abc.bytes).toEqual(bytesOf(200));
+  expect(parseProjectFile(text).sources.abc.bytes).toEqual(bytesOf(200));
+  expect(SOURCE_MAX_BYTES).toBeGreaterThanOrEqual(12 * 1024 * 1024);   // the service's upload limit fits
+});
+
+test("the base64 helpers round-trip every length and refuse what is not base64", () => {
+  for (let n = 0; n < 7; n++) {
+    const b = bytesOf(n, n);
+    expect(decodeBase64(encodeBase64(b))).toEqual(b);
+  }
+  const big = bytesOf(100_000, 3);
+  expect(decodeBase64(encodeBase64(big))).toEqual(big);
+  expect(decodeBase64("abc")).toBeNull();
+  expect(decodeBase64("ab=c")).toBeNull();
+  expect(decodeBase64("a b=")).toBeNull();
+  expect(decodeBase64(42)).toBeNull();
+  expect(decodeBase64("")).toEqual(new Uint8Array(0));
+});
+
+test("the version stamp is 2 and a version-1 file parses the same as a version-2 one", () => {
+  expect(PROJECT_FILE_VERSION).toBe(2);
+  const project = digitizedProject(["abc"]);
+  const v1 = JSON.stringify({ format: PROJECT_FILE_FORMAT, version: 1, name: "Old", savedAt: "2026-07-29T00:00:00Z", project });
+  const p1 = parseProjectFile(v1);
+  const p2 = parseProjectFile(buildProjectFile(project, "Old"));
+  expect(p1.project).toEqual(p2.project);
+  expect(p1.sources).toEqual({});
+  expect(p1.name).toBe("Old");
+});
+
+test("sourceKeysOf names each original once and ignores everything that is not a digitized upload", () => {
+  const project = digitizedProject(["abc", "abc", null, "def"]);
+  project.elements.push({ ...defaultProject().elements[0], id: "t1" });      // a text element
+  expect(sourceKeysOf(project)).toEqual(["abc", "def"]);
+  expect(sourceKeysOf(defaultProject())).toEqual([]);
+  expect(sourceKeysOf(null)).toEqual([]);
+  expect(sourceKeysOf({ elements: "nope" })).toEqual([]);
 });

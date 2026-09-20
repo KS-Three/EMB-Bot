@@ -6032,7 +6032,13 @@ all reproduced 14. The trace's `px_per_mm` — 14.61 against the file's 17.05
   as they are; SVG, GIF and oversize files keep the canvas path), the bytes
   live in IndexedDB under their SHA-256 (`sourceStore.js`) with the element
   carrying only the key (`sourceFile`), and a re-digitize whose original is
-  gone sends the preview and SAYS so. Verified through the real panel: the
+  gone sends the preview and SAYS so. The same day, on Kent's pick, the
+  `.embproj` started carrying the originals too — BESIDE the project
+  (`projectFile.js` `sources`, restored by `projectSources.js` before the
+  import registers), never on the element, so the localStorage record stays
+  preview-sized and a design opened on another machine digitizes from the
+  file; driven end to end in `e2e/design-originals.spec.js`. Verified
+  through the real panel: the
   quality-report e2e's request shrank from 47,730 to 18,688 bytes (the
   18,265-byte file plus the config) and its job came back at 2,318 / 13
   trims / 17.05 px/mm / grade B — the file column. The other candidate,
