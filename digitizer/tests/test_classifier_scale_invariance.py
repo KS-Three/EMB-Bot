@@ -89,9 +89,21 @@ FIXTURES = {
 # so the marker came off, as this file says it must; the pre-flip reading is
 # pinned below so the record stays executable. The signal windows are still
 # pixel-absolute — the remaining four fixtures say so.
-FLIPS_ACROSS_SWEEP = {
-    "photo/enthusiast_logo.png",    # 250/400=photo_scene, 640=gradient
-}
+#
+# `photo/enthusiast_logo.png` LEFT `FLIPS_ACROSS_SWEEP` later the same day, on
+# Kent's next pick (`alpha_edge_extend_stage0_whole`): stage 0 now classifies
+# on the whole-image extension wherever the file has alpha, so ENTHUSIAST
+# reads `gradient` at 250, 400 and 640 alike. Under the gate alone it read
+# `gradient` at 250 (gate open), `photo_scene` at 400 (gate shut — exactly
+# the pre-flip reading, `unique_color_mass` 0.339 against the 0.28 photo
+# floor) and `gradient` at 640: the extension switching off where the art
+# box crossed 4 px/mm at 80 mm was itself a class flip. It stays in
+# `DEPARTS_FROM_NATIVE`: `gradient` downscaled against `flat` at native is
+# the pixel-absolute windows, which no extension touches
+# (`tools/stage0_scale_arms.py`, scope-history 2026-09-20, the scale
+# addendum). The boundary reading is pinned below so the record stays
+# executable.
+FLIPS_ACROSS_SWEEP = set()
 DEPARTS_FROM_NATIVE = {
     "logo_alpha.png",               # native flat, 250px=gradient
     "logo_whitebg.png",             # native flat, 250px=gradient
@@ -176,3 +188,21 @@ def test_the_drone_left_the_broken_set_through_the_alpha_extension_not_a_recalib
     pre_flip = _classify_at(TESTDATA / rel, 250, tmp_path, PipelineConfig(alpha_edge_extend=False))
     assert pre_flip != native, f"pre-flip engine reads {pre_flip} at 250px — the drone's dependence is gone without the extension"
     assert _classify_at(TESTDATA / rel, 250, tmp_path) == native
+
+
+def test_enthusiast_s_sweep_flip_was_the_gate_s_boundary_and_stage_0_s_whole_image_read_removes_it(tmp_path):
+    """The record behind `FLIPS_ACROSS_SWEEP` being empty, executable: with
+    stage 0 held to the gate (`alpha_edge_extend_stage0_whole=False`)
+    ENTHUSIAST reads a different class at 400 px — the gate shut, the
+    pre-flip reading — from 250 px, where the gate is open; the shipped
+    engine reads the sweep as one class. Its native class stays `flat`
+    against `gradient` downscaled: the windows, still in `DEPARTS_FROM_NATIVE`."""
+    rel = "photo/enthusiast_logo.png"
+    gated = PipelineConfig(alpha_edge_extend_stage0_whole=False)
+    at_250 = _classify_at(TESTDATA / rel, 250, tmp_path, gated)
+    at_400 = _classify_at(TESTDATA / rel, 400, tmp_path, gated)
+    assert at_250 != at_400, f"gate-only engine reads {at_250} at 250px and {at_400} at 400px — the boundary is gone without the stage-0 read"
+    assert at_400 == _classify_at(TESTDATA / rel, 400, tmp_path, PipelineConfig(alpha_edge_extend=False))
+    shipped = {w: _classify_at(TESTDATA / rel, w, tmp_path) for w in WIDTHS}
+    assert len(set(shipped.values())) == 1, shipped
+    assert rel in DEPARTS_FROM_NATIVE and rel not in FLIPS_ACROSS_SWEEP

@@ -66,10 +66,16 @@ FIXTURES = {
 WIDTHS = (200, 250, 320, 400, 500, 640, 800, 1000, 1200)
 SWEEP = (250, 400, 640)
 
+# The three forms measured on 2026-09-20, each pinning `alpha_edge_extend_stage0_whole`
+# OFF so they keep the meaning the tables were read with, and the fourth arm
+# Kent picked on those tables the same day — the shipped engine since: stage 1
+# extends only where the resolution-floor upscale runs, stage 0 classifies on
+# the extended raster everywhere.
 ARMS: dict[str, dict] = {
-    "off": {"alpha_edge_extend": False},
-    "gated": {"alpha_edge_extend": True, "alpha_edge_extend_upscaled_only": True},
-    "whole": {"alpha_edge_extend": True, "alpha_edge_extend_upscaled_only": False},
+    "off": {"alpha_edge_extend": False, "alpha_edge_extend_stage0_whole": False},
+    "gated": {"alpha_edge_extend": True, "alpha_edge_extend_upscaled_only": True, "alpha_edge_extend_stage0_whole": False},
+    "whole": {"alpha_edge_extend": True, "alpha_edge_extend_upscaled_only": False, "alpha_edge_extend_stage0_whole": False},
+    "gated_s0whole": {"alpha_edge_extend": True, "alpha_edge_extend_upscaled_only": True, "alpha_edge_extend_stage0_whole": True},
 }
 SIGNALS = ("unique_color_mass", "gradient_smoothness", "alpha_softness")
 
@@ -159,18 +165,21 @@ def tables(rows: list[dict], arms=ARMS) -> str:
         native = next(r for r in frows if r["width"] == "native")
         out.append(f"\n### {fix} — native {native['width_px']}x{native['height_px']}, "
                    f"{'alpha' if native['has_alpha'] else 'opaque'}, gate decided at {native.get('target_mm', 80.0):g} mm, native class "
-                   f"{native['off']['class']} (OFF) / {native['gated']['class']} (gated) / {native['whole']['class']} (whole)\n")
-        out.append("| width | gate | ext. changes px | " + " | ".join(f"{a}: class (ucm / grad)" for a in arms) + " |")
-        out.append("|---|---|---|" + "---|" * len(arms))
+                   + " / ".join(f"{native[a]['class']} ({a})" for a in arms if a in native) + "\n")
+        present = [a for a in arms if a in native]
+        out.append("| width | gate | ext. changes px | " + " | ".join(f"{a}: class (ucm / grad)" for a in present) + " |")
+        out.append("|---|---|---|" + "---|" * len(present))
         for r in frows:
             out.append(f"| {r['width']} | {'open' if r['gate_open'] else 'shut'} | {'yes' if r['extension_changes_pixels'] else 'no'} | "
-                       + " | ".join(_fmt(r[a]) for a in arms) + " |")
+                       + " | ".join(_fmt(r[a]) for a in present) + " |")
     out.append("\n### Invariance per arm\n")
     out.append("| fixture | arm | same class across 250/400/640 | same across the ladder | equals native at every width |")
     out.append("|---|---|---|---|---|")
     for fix, frows in by_fix.items():
         native = next(r for r in frows if r["width"] == "native")
         for a in arms:
+            if a not in native:
+                continue
             classes = {r["width"]: r[a]["class"] for r in frows}
             sweep = {classes[w] for w in SWEEP if w in classes}
             ladder = {c for w, c in classes.items() if w != "native"}
