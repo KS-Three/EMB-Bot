@@ -14890,8 +14890,10 @@ stage-1 arm rebuilds the generation):
 fails on this container with the change stashed and the box idle
 (`gradient_smoothness` 0.0005601322072834591 against
 0.0005601321504400403 — `cv2.boxFilter` on float32, the 10th decimal); CI
-passes it. Not this flag's; recorded here so the next full-suite reader
-does not chase it.
+passes it, and so did the full local run on this tree (**2,735 passed, 0
+failed**, 27m49s, `-n auto`, the three platform goldens deselected as CI
+does). The box, not the tree; recorded so the next solo re-run of that
+test does not send anyone chasing it.
 
 **Tests.** `tests/test_alpha_edge_extend.py` (6): the default is OFF; the
 helper's contract; the halo's reach; on a synthetic cutout under the
