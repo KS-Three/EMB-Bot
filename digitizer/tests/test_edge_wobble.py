@@ -223,6 +223,26 @@ def test_render_draws_one_tile_per_worst_spot(tmp_path):
     assert (img.reshape(-1, 3) != 255).any(1).mean() > 0.05
 
 
+def test_every_flagged_point_is_listed_and_the_design_render_rings_them(tmp_path):
+    import cv2
+    frame, pts = square_frame_satin(round_mm=1.0)
+    plan = plan_of(pts)
+    row = ew.analyse_plan({"s": frame}, plan)
+    n_over = round(row["share_over"] * row["points"])
+    assert len(row["flagged"]) == n_over >= 3
+    assert all(abs(f["dev_mm"]) > ew.OVER_MM for f in row["flagged"])
+    # Every corner is accounted for: flagged, or — for the one corner the
+    # ring's first vertex happens to sit on — owned up to as an unread end.
+    quadrants = {(f["at_mm"][0] > 0, f["at_mm"][1] > 0) for f in row["flagged"]}
+    assert len(quadrants) >= 3
+    assert len(quadrants) + row["series_ends_unread"] >= 4
+    out = ew.render_design({"s": frame}, plan, row, tmp_path / "d.png", px_per_mm=10)
+    img = cv2.imread(str(out))
+    assert img.shape[1] >= 200 and img.shape[0] >= 200          # 20 mm frame + margin
+    red = (img[..., 2] > 200) & (img[..., 0] < 80) & (img[..., 1] < 80)
+    assert red.sum() > 40
+
+
 def test_synthetic_logo_control_stays_clean():
     """The spike's control (2026-09-19): `logo_whitebg` sews on its outline.
     A ceiling, not a golden — it moves only if rails start to wander."""

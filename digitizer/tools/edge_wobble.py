@@ -308,6 +308,9 @@ def analyse_plan(polygons: dict, plan) -> dict:
         if len(worst) == 5:
             break
     out["worst"] = worst
+    out["flagged"] = [dict(tier=r[0], zone=r[6], dev_mm=round(float(r[4]), 3),
+                           at_mm=(round(float(r[2]), 2), round(float(r[3]), 2)))
+                      for r in rows if abs(r[4]) > OVER_MM]
     return out
 
 
@@ -361,6 +364,67 @@ def render_worst(polygons: dict, plan, row: dict, out_path: str | Path,
     return out_path
 
 
+def _draw_plan(im, plan, polygons, px, thread_px: int) -> None:
+    import cv2
+    for block, run in plan.iter_runs():
+        if run.kind not in TIER or len(run.points) < 2:
+            continue
+        r, g, b = block.rgb
+        if min(r, g, b) > 225:                           # white thread on a white page
+            r = g = b = 190
+        cv2.polylines(im, [px(run.points)], False, (int(b), int(g), int(r)),
+                      thread_px, cv2.LINE_AA)
+    for poly in polygons.values():
+        for geom in getattr(poly, "geoms", [poly]):
+            for ring in (geom.exterior, *geom.interiors):
+                cv2.polylines(im, [px(ring.coords)], True, (0, 170, 0), 1, cv2.LINE_AA)
+
+
+def render_design(polygons: dict, plan, row: dict, out_path: str | Path,
+                  px_per_mm: int = 30, grid_mm: float = 5.0) -> Path:
+    """The WHOLE design, every flagged penetration ringed, on a lettered grid.
+
+    Kent on the worst-five tiles, 2026-09-19: *"Yes, those are some. But you
+    missed quite a few."* Five tiles are a keyhole. This is the page he can
+    answer on: a cell with something ugly and NO ring in it ("C4") is a defect
+    this instrument does not see, and that list is the instrument's next job.
+    """
+    import cv2
+
+    pts = [np.asarray(run.points, float) for _b, run in plan.iter_runs()
+           if run.kind in TIER and len(run.points)]
+    allp = np.vstack(pts) if pts else np.zeros((1, 2))
+    lo = np.floor(allp.min(0) / grid_mm) * grid_mm
+    hi = np.ceil(allp.max(0) / grid_mm) * grid_mm
+    pad = 24                                             # label gutter, px
+    W, H = ((hi - lo) * px_per_mm).astype(int)
+    im = np.full((H + pad, W + pad, 3), 255, np.uint8)
+
+    def px(P):
+        return (np.round((np.asarray(P, float) - lo) * px_per_mm) + pad).astype(np.int32)
+
+    _draw_plan(im, plan, polygons, px, max(1, int(round(THREAD_MM * px_per_mm))))
+    for i, x in enumerate(np.arange(lo[0], hi[0] + 1e-6, grid_mm)):
+        X = int((x - lo[0]) * px_per_mm) + pad
+        cv2.line(im, (X, pad), (X, H + pad), (225, 200, 160), 1)
+        if x < hi[0]:
+            cv2.putText(im, chr(65 + i % 26), (X + int(grid_mm * px_per_mm / 2) - 5, 16),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (120, 70, 0), 1, cv2.LINE_AA)
+    for j, y in enumerate(np.arange(lo[1], hi[1] + 1e-6, grid_mm)):
+        Y = int((y - lo[1]) * px_per_mm) + pad
+        cv2.line(im, (pad, Y), (W + pad, Y), (225, 200, 160), 1)
+        if y < hi[1]:
+            cv2.putText(im, str(j + 1), (3, Y + int(grid_mm * px_per_mm / 2) + 5),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (120, 70, 0), 1, cv2.LINE_AA)
+    for f in row["flagged"]:
+        cv2.circle(im, tuple(int(v) for v in px([f["at_mm"]])[0]),
+                   max(4, int(0.45 * px_per_mm)), (0, 0, 235), 2, cv2.LINE_AA)
+    out_path = Path(out_path)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    cv2.imwrite(str(out_path), im)
+    return out_path
+
+
 def analyse(image_path: str | Path, cfg: PipelineConfig | None = None,
             render_dir: str | Path | None = None) -> dict:
     image_path = Path(image_path)
@@ -370,6 +434,8 @@ def analyse(image_path: str | Path, cfg: PipelineConfig | None = None,
     if render_dir is not None:
         row["render"] = str(render_worst(polygons, plan, row,
                                          Path(render_dir) / f"{image_path.stem}_worst.png"))
+        row["render_design"] = str(render_design(polygons, plan, row,
+                                                 Path(render_dir) / f"{image_path.stem}_all.png"))
     return {"fixture": image_path.name, "route": result.design_class, **row}
 
 
@@ -409,7 +475,8 @@ def main(argv: list[str] | None = None) -> int:
             print(f"    worst {w['dev_mm']:+.2f} mm  {w['tier']:6s} {w['zone'] or '-':6s} "
                   f"{w['shape_id']}  at {w['at_mm']}")
         if r.get("render"):
-            print(f"  render: {r['render']}")
+            print(f"  render: {r['render']}\n  render: {r['render_design']}  "
+                  f"({len(r['flagged'])} flagged penetrations ringed)")
     return 0
 
 
