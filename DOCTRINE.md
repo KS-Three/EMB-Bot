@@ -34,6 +34,34 @@ Moved verbatim 2026-08-28 — no section was rewritten in the move.
 
 ## Standing rulings — decided, do not re-litigate
 
+- **The worksheet states only what the ENGINE KNOWS. Kent's ruling
+  2026-09-20.** The machine-physics playbook's Part 3 lists what the sheet
+  "must start carrying": assumed backing, topper, needle spec, tension targets
+  in grams with the 1/3-2/3 check, the colour-stop to needle map, thread
+  metres, runtime. Kent took the first, second, fifth, sixth and seventh and
+  **left needle size and tension off**, asked directly and with the trade-table
+  provenance in front of him. The line he drew: every printed claim must be
+  derivable from the fabric preset or from the design's own stitches — a sheet
+  that prints gram targets this repo cannot verify, next to a machine that may
+  simply run different, is worse than one that stays silent. Do not "complete"
+  Part 3 by adding them later without asking again.
+  *(2026-09-20 — `src/pdfsheet.js`, `app/src/lib/pdfsheet.spec.js`)*
+
+- **A backing class is a garment property, not a stitch-count threshold.**
+  Same ruling's mechanism, recorded because the old behaviour looks defensible
+  in isolation: the sheet prescribed cutaway only past 25,000 stitches, so a
+  3,000-stitch left chest on jersey and the same design on canvas — goods that
+  want OPPOSITE stabilizers — both got silence. `assumed_backing` /
+  `needs_topper` now come off the fabric preset and print on every sheet that
+  names a garment we ship. The threshold survives, demoted to an escalation
+  (tear-away → cutaway past 25k), so the old rule is a special case rather
+  than a contradiction. **An unknown garment prints nothing** — no basis, no
+  claim, the same posture the thread-metres row already takes. Note that
+  `fabricForGarment` is the WRONG lookup for this: it falls back to pique_knit
+  for anything unknown, which is right when you are about to sew and wrong
+  when you are about to print advice. Use `GARMENT_FABRIC` directly.
+  *(2026-09-20 — `digitizer/tests/test_fabric_wire.py` guards both engines)*
+
 - **A real PHOTOGRAPH counts as a tonal positive for the flat/gradient
   boundary.** Kent's ruling 2026-09-11, taken with the cost in front of him.
   The reason it is not a free label: stage 0's PHOTO gate already fails on
@@ -1497,6 +1525,34 @@ its hedge as it is copied forward** — is why this file is split.
 ---
 
 ## Gotchas — cost someone a session once
+
+- **Adding an engine file means FOUR lists, and only three were documented —
+  now guarded.** `src/*.js` files are plain scripts sharing one
+  `globalThis.EMB`, and the load order lives in `app/scripts/copy-engine.mjs`
+  (`ENGINE_FILES`, what gets copied), `app/index.html` (the `<script>` tags,
+  what the browser actually loads) and `app/src/lib/emb.js` (`ENGINE_KEYS`,
+  what app code reads). `emb.js`'s comment has always said "MUST stay in
+  sync" and **nothing enforced it**. The fourth is a private module list in
+  `estimate.spec.js`'s `beforeAll`, named in no comment at all — a spec
+  fixture, so deliberately out of the new guard's scope, but it is what makes
+  a green-looking run possible with the file half-wired.
+  **Why the failure is quiet rather than loud:** a file copied but never
+  script-tagged simply is not on `EMB`, and house style is for callers to
+  guard for a missing engine symbol (a missing symbol means a stale
+  `public/engine/` copy — see `estimate.js` on `THREAD_LENGTH_FACTOR`). So
+  the row just vanishes, on a build whose only defect is a forgotten line of
+  HTML. `app/src/lib/engineList.spec.js` now compares all three shipping
+  lists, membership AND order, and was mutation-proved by deleting the
+  `index.html` tag. *(hit 2026-09-20 adding `sewtime.js`)*
+
+- **A parser that reads a list must strip comments first.** `ENGINE_KEYS` has
+  a comment block INSIDE the array explaining why `"fonts.js"` is excluded —
+  and it names the file in quotes, so a naive scan for quoted `.js` literals
+  reads the explanation as an entry and silently adds back the one file the
+  comment exists to keep out. Cost ten minutes of a wrong count during the
+  guard above; the same shape as `test_fabric_wire.py`'s anti-vacuity rule,
+  which is why that file pins its parser before it pins anything else.
+  *(2026-09-20)*
 
 - **A loose PROBE produces false positives at a steady rate, and the tell is
   always in what the tool reported rather than what the page looked like
@@ -6320,6 +6376,73 @@ drift that has never been bisected. The bar was not moved.
 
 *(measured 2026-09-20 — `tests/test_lettering_coverage_regression.py`,
 `tools/rail_edge.py`, `tools/edge_wobble.py`, `tools/eye_pairs`)*
+
+## The drift was bisected, and a step a commit COST is not a lever you can pull back (2026-09-20)
+
+The residual left after the two fixes above — 0.2748 against the 2026-09-02
+baseline's 0.2509 — was 0.0239, and 0.0170 of it had never been bisected. It
+has now been, on `enthusiast_logo` at 80 mm, over the 91 first-parent commits
+between 14f99580 (2026-09-03) and cf840cbd that touch `digitizer_core/`. Every
+arm is a temp worktree running that commit's engine in a subprocess
+(`tools/eye_pairs/refarm.py`) whose Design dict is scored by TODAY's
+`features_design_only`, so one ruler measures all of them — about 20 seconds an
+arm, and both known endpoints reproduced exactly (0.2702 and 0.3006) before any
+new arm was believed.
+
+| engine at | `lost_frac` | step |
+|---|---|---|
+| 14f99580, 5edfb91a (09-03) | 0.2702 | — |
+| b603e972 (09-04) | 0.2808 | **+0.0106** |
+| f2173491, eb1aec1c (09-06/07) | 0.2808 | — |
+| 8c88e0e5 (09-09) | 0.2703 | **−0.0105** |
+| …68057a59, PR #454 (09-11) | 0.2703 | — |
+| **59085f70, PR #455 (09-11)** | 0.2933 | **+0.0230** |
+| 87aca27a (09-15) | 0.2933 | — |
+| bff6b37a (09-19) | 0.2946 | +0.0013 |
+| **5d2db084 (09-19)** | 0.3039 | **+0.0093** |
+| 62f492b7 (09-19) | 0.3039 | — |
+| 24fce102, PR #523 (09-19) | 0.3006 | −0.0033 |
+| 48b03066, 9d813fbf, cf840cbd | 0.3006 | — |
+
+**The biggest step is one PR whose entire engine diff is `config.py`, 29 lines:
+PR #455, "Flip the edge cap ON by default (bean)".** Turning that default on
+cost this fixture 0.0230 — more than the rail commit the whole investigation
+started from. The second is 5d2db084, `satin_junction_stack` ON and
+`satin_lettering_split` step 4 ON, Kent's own flips the same day. The 09-04
+step and the 09-09 step cancel: something broke and something fixed it, net
++0.0001.
+
+**And then the trap.** Those are steps in HISTORY, not levers on the tree.
+Measured on today's engine with both fixes in:
+
+| arm | `lost_frac` | stitches |
+|---|---|---|
+| shipped | 0.2748 | 2388 |
+| `edge_cap="none"` | 0.2703 | 2271 |
+| `satin_junction_stack=False` | 0.2743 | 2312 |
+| `satin_lettering_split=False` | 0.2748 | 2380 |
+| cap none + junction off | **0.2698** | 2195 |
+
+**The flag that cost 0.0230 when it landed gives back 0.0045 if you turn it
+off now, and the one that cost 0.0093 gives back 0.0005.** The thread-vote fix
+took 0.0134 of the cap's step and later work absorbed the rest; the engine
+moved around both flips. A bisect step is what the tree did on that day, and
+nothing entitles you to read it as what the flag is worth today — if you want
+the second number, toggle the flag and measure it.
+
+**Nothing in the defaults reaches the bar.** With the cap off AND the junction
+stack off the fixture reads 0.2698, still over 0.26, so the remaining 0.0189
+over baseline is unconditional code: 0.0069 of it is 768de79e's own recorded
+open item (the symmetric-offset rail model, `rail_edge` still reading 17.6% of
+this fixture's rail points more than 0.1 mm inside the art) and the rest is not
+attributable to any flag that has been tried. **No default was changed on the
+strength of any of this** — the edge cap and the junction stack are Kent's
+calls, made for folds and for a finished silhouette edge, and they are priced
+here, not second-guessed.
+
+*(measured 2026-09-20 — `tools/eye_pairs/refarm.py` + `features_design_only`,
+21 arms; the driver was a scratch script and is not in the repo, but it is
+fifteen lines over the two functions named above)*
 
 ## A file can carry every coordinate correctly and still sew a path nobody was shown (2026-09-20)
 

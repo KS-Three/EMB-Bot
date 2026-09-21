@@ -143,6 +143,11 @@ export async function exportWorksheetPDF(design, garment, hoop, chartLabel, hoop
   const facts = sewFacts(design);
   EMB.buildWorksheetPDF(design, {
     garmentLabel: garment.label || "",
+    // The id as well as the label: the sheet resolves the fabric preset from
+    // it to state the backing class and whether the goods want a topper. A
+    // label is for the reader, an id is for the lookup, and passing only the
+    // first is what left the sheet guessing stabilizer from a stitch count.
+    garmentId: garment.id || "",
     hoop: hoop ? { label: hoop.label, widthMm: hoop.widthMm, heightMm: hoop.heightMm } : null,
     sew: { trims: facts.trims, threadM: facts.threadM },
     // Whose thread numbering the sheet's codes belong to. The caller has

@@ -50,6 +50,51 @@ segments, worst axis 15.6 mm, file thread 0.41 mm off the drawn line.
 moved.
 
 ---
+**Last updated:** 2026-09-20 — the operator bundle: backing class, topper, run time, and what the stop numbers are for
+
+Three linked gaps from the machine-physics playbook, closed together. Rulings
+in DOCTRINE ("the worksheet states only what the engine knows"); these are the
+specifics.
+
+**`assumed_backing` + `needs_topper` on the fabric presets** (playbook law 33,
+never built). Both engines, kept identical by `test_fabric_wire.py`, whose
+`FIELDS` map now carries them — adding a field to one table forces the other,
+which is how this was developed (the wire test was the RED step). Values:
+cap_buckram for `structured_cap`; cutaway for `pique_knit`, `jersey_tee`,
+`fleece_sweatshirt`, `terry_towel`; tearaway for `canvas_tote`,
+`woven_dress`; topper on the two pile goods only — the same pair
+`density_adjust` already singles out. `_norm` in that test learned booleans on
+the way in (Python `True` vs JS `true` would otherwise read as drift on every
+preset); mutation-proved by flipping both topper values and watching it name
+both presets.
+
+**The worksheet states them.** `Stabilizer:` now comes from the garment and
+prints on every sheet naming one we ship; the old 25,000-stitch rule survives
+as an ESCALATION (tear-away → cutaway), naming the design's own count rather
+than the threshold. `Topper: yes/no` either way, because absence is not an
+answer. An unknown garment prints neither. Under the Thread Sequence, one
+line saying what the numbers ARE: *"Set these in order at the machine - DST
+carries no colour data."* — the colour-stop half of the separation-of-duties
+contract, and hand work on every job.
+
+**Run time, the missing half of the cost card** (laws 36/38). New engine
+module `src/sewtime.js`: `(stitches + trims x TRIM_COST_STITCHES) / PLAN_SPM`,
+650 spm and 120 stitch-equivalents, twinned into `machine.py` and picked up
+automatically by `test_machine_wire.py` (mutation-proved: 650 → 700 names both
+files). Printed with its basis attached on both surfaces —
+`Run time: ~8 min at 650 spm (incl. trims)` on the sheet, `~10 min at 650 spm`
+on the review screen, where `sewSummary`'s own header had promised a "how long
+it runs" row since it was written and never had one. Floors at one minute:
+a 200-stitch monogram is 18 seconds, and "0 min" reads as nothing to do.
+Verified in a real browser on the "Name on a hat" quick start — Hat Front,
+2,349 stitches, 8 trims, row reading **~5 min at 650 spm** between Stitches
+and Trims (2349 + 8x120 = 3309 / 650 = 5.09).
+
+Suites on Kent's box: engine **552 passed** (545 + 7), Studio **1269 passed /
+59 files**. Two pre-existing specs were rewritten rather than deleted — the
+worksheet's cutaway test (the rule it pins survives as the escalation) and
+`sewSummary`'s two row-order assertions.
+
 **Last updated:** 2026-09-19 — cap sew order built and parked (`cap_center_out`, OFF), with its cost priced and the pro's own cap files read
 
 The Python lane had never read `garment_id` for sew ORDER — it reached

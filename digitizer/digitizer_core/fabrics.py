@@ -24,11 +24,29 @@ class Fabric:
     density_adjust: float
     trim_at_mm: float
     notes: str
+    # --- what the DIGITIZER assumed the operator would hoop (Law 33) -------
+    #
+    # Neither field places a stitch. They exist because the worksheet has
+    # always made a stabilizer claim to the customer and had no fabric to
+    # base it on — it prescribed cutaway purely past a stitch COUNT, so a
+    # 3,000-stitch left chest on jersey and the same design on canvas got the
+    # same silence. The backing class is a property of the goods.
+    #
+    # `cutaway` for knits and pile (they stretch or crush and need permanent
+    # support), `tearaway` for stable wovens, `cap_buckram` for a structured
+    # cap front whose backing is built into the garment. Categorical trade
+    # practice, not a tuned number, so gate 1 does not apply — no sew-out
+    # settles whether a polo is a knit. Topper (a water-soluble film over the
+    # nap) is a separate axis: only the two pile goods need it, which is the
+    # same pair `density_adjust` already singles out below.
+    assumed_backing: str = "cutaway"
+    needs_topper: bool = False
 
 
 FABRICS: list[Fabric] = [
     Fabric("structured_cap", "Structured cap", 0.4, "edge_zigzag", "center_run",
-           1.0, 3.0, "Foam/structured cap front; firm, sew center-out."),
+           1.0, 3.0, "Foam/structured cap front; firm, sew center-out.",
+           "cap_buckram", False),
     # fill_underlay was "edge_lattice" until corpus law 26 (docs/corpus-laws-
     # round3-2026-08-01.md): the professional corpus never puts a full
     # crosshatch-lattice pass under a knit fill, only a single edge-walk
@@ -37,9 +55,9 @@ FABRICS: list[Fabric] = [
     # of COVERAGE_WARN_UNITS (machine.py); see that constant's derivation
     # comment for why the two moved together.
     Fabric("pique_knit", "Pique knit (polo)", 0.3, "edge_run", "center_run",
-           1.0, 3.0, "Polo pique; moderate stretch."),
+           1.0, 3.0, "Polo pique; moderate stretch.", "cutaway", False),
     Fabric("jersey_tee", "Jersey / t-shirt", 0.35, "edge_run", "center_run",
-           1.0, 3.0, "Stretchy knit; needs solid underlay."),
+           1.0, 3.0, "Stretchy knit; needs solid underlay.", "cutaway", False),
     # Pile fabrics run BELOW 1.0: the multiplier scales row SPACING, and pile
     # needs tighter rows, not looser — stitches sink into the nap (physics law
     # 30: density +10-20% on lofty goods, and more total thread on loft
@@ -51,13 +69,15 @@ FABRICS: list[Fabric] = [
     # and a direct code read, same day. Exact values are sew-out-gated; the
     # DIRECTION is not.
     Fabric("fleece_sweatshirt", "Fleece / sweatshirt", 0.5, "double_lattice", "zigzag",
-           0.90, 3.5, "Thick nap; heavy underlay, topping helps."),
+           0.90, 3.5, "Thick nap; heavy underlay, topping helps.",
+           "cutaway", True),
     Fabric("canvas_tote", "Canvas / twill", 0.2, "edge_run", "center_run",
-           1.0, 3.0, "Stable woven; minimal compensation."),
+           1.0, 3.0, "Stable woven; minimal compensation.", "tearaway", False),
     Fabric("terry_towel", "Terry towel", 0.6, "double_lattice", "zigzag",
-           0.85, 4.0, "High loops; heavy underlay + topping essential."),
+           0.85, 4.0, "High loops; heavy underlay + topping essential.",
+           "cutaway", True),
     Fabric("woven_dress", "Woven dress shirt", 0.2, "edge_run", "center_run",
-           1.0, 3.0, "Stable woven; minimal compensation."),
+           1.0, 3.0, "Stable woven; minimal compensation.", "tearaway", False),
 ]
 
 _BY_ID = {f.id: f for f in FABRICS}

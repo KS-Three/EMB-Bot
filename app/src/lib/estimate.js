@@ -70,6 +70,18 @@ export function sewSummary(design) {
     { label: "Size", value: `${design.widthMM.toFixed(0)} × ${design.heightMM.toFixed(0)} mm` },
     { label: "Stitches", value: f.stitches.toLocaleString() },
   ];
+  // How long it runs — the row this function's own header has promised since
+  // it was written, and the one a shop actually schedules on. Trims are in
+  // the figure because they cost real minutes: a 12-stop logo is not its
+  // stitch count divided by a speed.
+  //
+  // The basis rides with the number, for the same reason the worksheet prints
+  // it: 650 spm is a planning rate from a trade table, not something measured
+  // here, and a bare "~10 min" would read as though it were.
+  const runMin = EMB.sewTimeMin ? EMB.sewTimeMin(f.stitches, f.trims) : null;
+  if (runMin != null) {
+    rows.push({ label: "Run time", value: `~${runMin} min at ${EMB.PLAN_SPM} spm` });
+  }
   // A single-colour design has no change to report, and printing "0 thread
   // changes" invites the reader to look for the control that sets it.
   if (f.threadChanges > 0) {

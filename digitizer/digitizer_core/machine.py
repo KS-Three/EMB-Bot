@@ -767,6 +767,26 @@ TRIM_AT_MM = 3.0
 # thumb used for the operator-facing estimate only; nothing geometric.
 THREAD_LENGTH_FACTOR = 1.35
 
+# How long the machine is busy. Same standing as THREAD_LENGTH_FACTOR above:
+# operator-facing estimate only, nothing geometric, so gate 1 does not apply.
+#
+# PLAN_SPM is a planning speed, not the nameplate — a machine rated 1,000-1,200
+# does not hold it, because firmware slows for stitches over 3-4 mm and top
+# speed spikes tension. TRIM_COST_STITCHES is what one trim costs in
+# stitch-equivalents: trimmer, reposition, and the operator's colour-stop
+# handling on top (~11 s at the plan rate).
+#
+# [P] Tajima TMEZ, HAPPY workbook; [T] Embroidery Legacy. The machine-physics
+# playbook rates this pair "high confidence on mechanism, medium on
+# constants", which is why every surface that prints a run time prints the
+# basis beside it instead of letting it read as measured here.
+#
+# Hand-ported to `src/sewtime.js` for the same reason `fabrics.js` and
+# THREAD_LENGTH_FACTOR are: a lettering design never reaches this engine, and
+# the two lanes must not quote a customer different times for the same job.
+PLAN_SPM = 650
+TRIM_COST_STITCHES = 120
+
 
 def clamp_stitch_mm(value: float) -> float:
     """Keep a requested stitch length inside what the machine can actually do."""

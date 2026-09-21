@@ -586,3 +586,18 @@ its own. `MASTER_SCOPE.md` keeps a one-line pointer; this is the full entry.
 domain root the lettering lane produced nothing; font LICENCE links were among
 the five. Document-relative now, identical at the root. *(fixed 2026-09-07 —
 `assetPaths.spec.js`)*
+
+## Moved from MASTER_SCOPE (2026-09-20) — typographic punctuation folding
+
+Lifted verbatim from the area-3 summary to buy MASTER_SCOPE.md headroom for
+the operator-sheet entry. `MASTER_SCOPE.md` keeps a one-line pointer; this is
+the full entry.
+
+**Typographic punctuation folds to its ASCII twin where a font lacks it.**
+`satinfont.js TYPOGRAPHIC_FOLD` stitches the twin ONLY where the fancy form is
+missing — 367 font x character combinations rescued, and all 85 fonts hash
+identically on text that never needed it. Not NFKD: accented letters are
+different letters and stay unfolded. What it cost before the fix (a phone's
+U+2019 sewing "Fritschs Stitches", under a note naming a character that looks
+identical to the one typed): DOCTRINE; scope-history 09-07.
+*(fixed 2026-09-07)*
