@@ -50,10 +50,17 @@ Measured 2026-09-20, all four at 80 mm left_chest, on the post-#537 engine
 (the pre-#537 readings were 0.3002 / 0.1270 / 0.0509 / 0.1070 -- those two
 fixes moved the TOTALS and left the composition alone):
 
-    enthusiast  lost_frac 0.2744   unsewn   0%   overshoot 100%
-    tires       lost_frac 0.1248   unsewn   0%   overshoot 100%
-    becker      lost_frac 0.0504   unsewn  44%   overshoot  56%
-    bridge      lost_frac 0.1066   unsewn 100%   overshoot   0%
+    fixture      width   lost_frac   unsewn  wrong-colour  overshoot
+    enthusiast   80 mm      0.3006       0%           0%        100%
+    tires        80 mm      0.1270       0%           0%        100%
+    becker      100 mm      0.0404      71%           0%         29%
+    bridge       80 mm      0.1072       0%         100%          0%
+
+    Re-measured 2026-09-20 at each fixture's OWN `REAL_ART` width, with the
+    third class in. Two numbers moved and both were the two-class split's
+    fault: bridge was reported "100% unsewn" when nothing there is unsewn at
+    all (its `uncovered_ink_mm2` is 10.2 of 271.4 lost), and becker reads 71/29
+    at its real 100 mm rather than the 44/56 an 80 mm run gives.
 
 A 0% in that column is NOT "the instrument looked and found nothing": the vote
 is `A_ink[region].mean() > 0.5`, and where the largest per-region ink fraction
@@ -277,6 +284,41 @@ def analyse(image_path: str | Path, cfg: PipelineConfig | None = None) -> dict:
                           route=result.design_class)
 
 
+# A region is COVERED when this much of it has thread on it. The same 0.5 the
+# `ink` flag uses, for the same reason: a region is classified by what most of
+# it is, not by its edge pixels.
+COVERED_FRAC = 0.5
+
+
+def split_lost(lost: list[dict]) -> dict[str, float]:
+    """Split the lost area into the THREE failure modes this module's own
+    docstring names, not two.
+
+    A first cut of this keyed on `ink` alone and called everything on the ink
+    "unsewn". That is wrong wherever a region is on the ink AND covered:
+    thread is present, in the wrong colour. On `logo_bridge_bar` all 70
+    regions are `ink=True` at `cover` 0.794-1.000, so the two-class split
+    reported 271 mm2 "100% unsewn" when honest unsewn there is ~10 mm2 — and
+    "unsewn" is the word that sends a reader after coverage.
+
+      ink & bare      -> unsewn        "white cloth where a colour belongs"
+      ink & covered   -> wrong_colour  "one colour where another belongs"
+      not ink         -> overshoot     "a colour where bare cloth belongs"
+
+    Exhaustive and disjoint by construction, so the three still sum to
+    `lost_mm2` and `lost_frac` keeps meaning what every pinned number in the
+    repo already assumes it means.
+    """
+    on_ink = [x for x in lost if x["ink"]]
+    return {
+        "unsewn_mm2": sum(x["mm2"] for x in on_ink
+                          if x.get("cover", 0.0) < COVERED_FRAC),
+        "wrong_colour_mm2": sum(x["mm2"] for x in on_ink
+                                if x.get("cover", 0.0) >= COVERED_FRAC),
+        "overshoot_mm2": sum(x["mm2"] for x in lost if not x["ink"]),
+    }
+
+
 def analyse_design(image_path: str | Path, design: dict,
                    route: str | None = None, *,
                    registered: Registered | None = None) -> dict:
@@ -432,8 +474,10 @@ def analyse_design(image_path: str | Path, design: dict,
     # a fixture is actually made of, and pin the other half alongside it so the
     # first cannot be bought with it
     # (`tests/test_lettering_coverage_regression.py` does both).
-    unsewn_mm2 = sum(x["mm2"] for x in lost if x["ink"])
-    overshoot_mm2 = sum(x["mm2"] for x in lost if not x["ink"])
+    _split = split_lost(lost)
+    unsewn_mm2 = _split["unsewn_mm2"]
+    wrong_colour_mm2 = _split["wrong_colour_mm2"]
+    overshoot_mm2 = _split["overshoot_mm2"]
 
     # Same refusals as the scoring instrument: where the ink mask is unreliable,
     # every number here is unreliable in the same way and for the same reason.
@@ -461,6 +505,9 @@ def analyse_design(image_path: str | Path, design: dict,
         # reading, not a bug to clamp.
         "unsewn_mm2": round(unsewn_mm2, 1),
         "unsewn_frac": round(unsewn_mm2 / ink_mm2, 4) if ink_mm2 else 0.0,
+        "wrong_colour_mm2": round(wrong_colour_mm2, 1),
+        "wrong_colour_frac": (round(wrong_colour_mm2 / ink_mm2, 4)
+                              if ink_mm2 else 0.0),
         "overshoot_mm2": round(overshoot_mm2, 1),
         "overshoot_frac": round(overshoot_mm2 / ink_mm2, 4) if ink_mm2 else 0.0,
         # Colour-free, unfiltered coverage. `uncovered_elements` is the one to
