@@ -6534,6 +6534,22 @@ the UNcompensated artwork. They are separated by exactly `pull_comp_mm`, so
 wherever pull comp > 0 they are **guaranteed to disagree in sign** on any
 change that moves rails radially. Not a puzzle: a definition.
 
+**A SECOND bias, same instrument, independent of the first.** The artwork is
+rasterised to `design["widthMM"]` -- which `adapter.py` documents as *"the true
+stitch extents"*, 80.6 mm against a requested 80.0 -- while `stage1_prep` sets
+`px_per_mm = art_w_px / cfg.target_width_mm`, so the artwork's own ink bbox is
+80.0 by construction. **The instrument enlarges the artwork by 0.75% using the
+very overshoot it is measuring**, damping its own reading. Corrected, and only
+that: `enthusiast` **0.2748 → 0.2369** — BELOW the 0.26 bar the guard asserts
+under `xfail(strict=True)`, so fixing it alone turns that test RED with the
+residual still open. `uncovered_elements` reads 0 both ways, which is the point
+of having it.
+
+**Kent's ruling 2026-09-20: record both, fix neither.** Fixing either renumbers
+every pinned `lost_frac` in the repo and takes a required check on `main` red
+in the meantime; the colour-free reading is what a claim about coverage should
+cite instead.
+
 **One live consequence to kill rather than schedule.** The guard attributes
 ~0.0069 of the residual to "17.6% of this fixture's rail points more than
 0.1 mm INSIDE the art" — 768de79e's open symmetric-offset item. Rails sitting

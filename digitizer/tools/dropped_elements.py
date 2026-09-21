@@ -46,12 +46,19 @@ carries `ink`, so the total splits cleanly and both halves are reported:
   * `overshoot_frac` — regions OFF it. Thread standing on cloth the artwork
     leaves bare: a column sewing wider than the shape it belongs to.
 
-Measured 2026-09-20, all four at 80 mm left_chest:
+Measured 2026-09-20, all four at 80 mm left_chest, on the post-#537 engine
+(the pre-#537 readings were 0.3002 / 0.1270 / 0.0509 / 0.1070 -- those two
+fixes moved the TOTALS and left the composition alone):
 
-    enthusiast  lost_frac 0.3002   unsewn   0%   overshoot 100%
-    tires       lost_frac 0.1270   unsewn   0%   overshoot 100%
-    becker      lost_frac 0.0509   unsewn  44%   overshoot  56%
-    bridge      lost_frac 0.1070   unsewn 100%   overshoot   0%
+    enthusiast  lost_frac 0.2744   unsewn   0%   overshoot 100%
+    tires       lost_frac 0.1248   unsewn   0%   overshoot 100%
+    becker      lost_frac 0.0504   unsewn  44%   overshoot  56%
+    bridge      lost_frac 0.1066   unsewn 100%   overshoot   0%
+
+A 0% in that column is NOT "the instrument looked and found nothing": the vote
+is `A_ink[region].mean() > 0.5`, and where the largest per-region ink fraction
+is 0.33 (as on `enthusiast`) it could not have returned True whatever the
+engine did. `uncovered_elements` is the reading that can say nothing was lost.
 
 They move in OPPOSITE directions under one engine change — satin rails placed
 further out cover more artwork AND spill more thread — so the total cannot say
@@ -59,6 +66,35 @@ which one a change bought, and a wordmark's total says nothing about coverage
 at all. That is not hypothetical: a session read `enthusiast`'s 0.3006 as lost
 coverage and set out to recover artwork that was never uncovered
 (`tools/rail_edge.py --bare` does not move across the change it blamed).
+
+## TWO MEASUREMENT BIASES, both recorded and NEITHER fixed (Kent, 2026-09-20)
+
+Fixing either renumbers every pinned `lost_frac` in the repo, including a
+`xfail(strict=True)` on `main`, so both are written down and left alone. Read
+`uncovered_elements` / `uncovered_ink_frac` when you need a number that does
+not ride on them.
+
+**1. The opening sits exactly on a fabric constant.** `left_chest` ->
+`pique_knit`, `pull_comp_mm` 0.30; `stage5_overlap` buffers every shape by it
+and `stitchviz` draws `THREAD_MM` 0.40, so a CORRECTLY sewn shape already
+stands 0.30 + 0.20 = **0.50 mm** proud of its artwork -- and `HALO_OPEN_PX` is
+5 px at `RES`, which is **0.50 mm**. The headline is a threshold detector
+balanced on the pedestal: the same design reads 182.7 / 108.5 / 32.9 / 10.2 /
+5.7 / 0.0 mm2 at kernels 3/5/7/9/11/13 px. Structural, not fixture-bound --
+every knit preset carries pull comp (pique 0.30, jersey 0.35, fleece 0.50).
+
+**2. The artwork is rasterised to the STITCH extents, not to its own size.**
+Lines below pass `design["widthMM"]` to `art_colour_field` / `art_ink_field`,
+and `adapter.py` documents that field as *"the true stitch extents"* -- 80.6 mm
+where the user asked for 80.0 -- while `stage1_prep.py` sets
+`px_per_mm = art_w_px / cfg.target_width_mm`, so the artwork's own ink bbox IS
+80.0 by construction. The instrument therefore enlarges the artwork by 0.75%
+USING THE VERY OVERSHOOT IT IS MEASURING, which damps its own reading.
+Measured 2026-09-20 with only that one argument corrected: `enthusiast`
+**0.2748 -> 0.2369**, which is BELOW the 0.26 bar
+`tests/test_lettering_coverage_regression.py` asserts under `xfail(strict=True)`
+-- so fixing this alone turns that test RED without the residual being closed.
+`uncovered_elements` reads 0 either way.
 
 ## Segment the disagreement, not the artwork
 
