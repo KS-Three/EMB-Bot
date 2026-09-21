@@ -117,6 +117,11 @@ def _design_only(image: Path, design: dict) -> tuple[dict, float, float]:
     # reading features by name (this module's own guard test) gets them.
     row["unsewn_frac"] = _num(lost["unsewn_frac"])
     row["overshoot_frac"] = _num(lost["overshoot_frac"])
+    # Colour-free coverage, immune to every filter the two above ride on.
+    # `uncovered_elements` is a COUNT, so it is not an INK_METRIC candidate
+    # for the agreement statistic; it is a tripwire, read as 0-or-not.
+    row["uncovered_ink_frac"] = _num(lost["uncovered_ink_frac"])
+    row["uncovered_elements"] = int(lost["uncovered_elements"])
     edge = edge_smoothness.analyse_design(image, design, registered=reg)
     row["ragged_mm"] = _num(edge["ragged_mm"])
     row["hausdorff_mm"] = _num(edge["hausdorff_mm"])

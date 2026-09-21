@@ -345,6 +345,32 @@ def analyse_design(image_path: str | Path, design: dict,
     ink_mm2 = float(A_ink.sum()) / px_per_mm2
     lost_mm2 = sum(x["mm2"] for x in lost)
 
+    # COVERAGE, WITHOUT COLOUR AND WITHOUT THE OPENING. Artwork ink carrying no
+    # thread -- a set difference of two masks, no CIEDE2000, no `LOST_DELTA_E`,
+    # no `HALO_OPEN_PX`, no `MIN_ELEMENT_MM2`. It exists because every filter
+    # above it is tuned around a half-millimetre, and on a knit that is exactly
+    # the size of the thing being filtered: `pique_knit`'s `pull_comp_mm` is
+    # 0.3 and `stitchviz.THREAD_MM` is 0.4, so a correctly-sewn shape already
+    # stands 0.3 + 0.2 = 0.50 mm proud of its artwork -- and `HALO_OPEN_PX` is
+    # 5 px at RES, which is 0.50 mm. The opening sits ON the pedestal, so the
+    # headline number is a threshold detector balanced on a fabric constant and
+    # its MAGNITUDE is not quotable (measured 2026-09-20: the same design reads
+    # 182.7 / 108.5 / 32.9 / 10.2 / 5.7 / 0.0 mm2 at kernels 3/5/7/9/11/13 px).
+    # These three are not: a mask difference cannot be moved by re-tuning a
+    # filter, so "did the artwork get sewn" has an answer that survives.
+    # `enthusiast_logo` at 80 mm reads 3.5 mm2 of 395.5 (0.90%), largest
+    # component 0.88 mm2, NOTHING at or over 1 mm2 -- a rim, not an element --
+    # while thread covers 1.51x the ink and the thread field matches the
+    # artwork DILATED BY 0.30 mm to IoU 0.856, which is `pull_comp_mm` exactly.
+    uncov = A_ink & ~thread
+    _n, _lab, _st, _ = cv2.connectedComponentsWithStats(
+        uncov.astype(np.uint8), 8)
+    _areas = sorted((float(_st[i, cv2.CC_STAT_AREA]) / px_per_mm2
+                     for i in range(1, _n)), reverse=True)
+    uncovered_ink_mm2 = float(uncov.sum()) / px_per_mm2
+    uncovered_worst_mm2 = _areas[0] if _areas else 0.0
+    uncovered_elements = sum(1 for a in _areas if a >= MIN_ELEMENT_MM2)
+
     # THE TOTAL IS TWO DIFFERENT DEFECTS ADDED TOGETHER, and a fixture can be
     # entirely one of them. Each region already knows which (`ink`): a region
     # ON the artwork's ink is somewhere the stitch-out failed to put thread
@@ -401,6 +427,14 @@ def analyse_design(image_path: str | Path, design: dict,
         "unsewn_frac": round(unsewn_mm2 / ink_mm2, 4) if ink_mm2 else 0.0,
         "overshoot_mm2": round(overshoot_mm2, 1),
         "overshoot_frac": round(overshoot_mm2 / ink_mm2, 4) if ink_mm2 else 0.0,
+        # Colour-free, unfiltered coverage. `uncovered_elements` is the one to
+        # gate on: it counts artwork blobs at or over `MIN_ELEMENT_MM2` with no
+        # thread, which is Kent's "the red arm was lost" and nothing else.
+        "uncovered_ink_mm2": round(uncovered_ink_mm2, 1),
+        "uncovered_ink_frac": (round(uncovered_ink_mm2 / ink_mm2, 4)
+                               if ink_mm2 else 0.0),
+        "uncovered_worst_mm2": round(uncovered_worst_mm2, 2),
+        "uncovered_elements": uncovered_elements,
         "worst_mm2": lost[0]["mm2"] if lost else 0.0,
         "shift_x_mm": round(dx, 1),
         "shift_y_mm": round(dy, 1),

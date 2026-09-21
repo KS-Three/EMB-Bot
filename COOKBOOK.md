@@ -557,8 +557,15 @@ hand-rolling it in JS.
   **And `dropped_elements`' `lost_frac` is a SUM of two opposite defects**
   (2026-09-20): artwork never covered, plus thread standing on bare cloth.
   Read `unsewn_frac` / `overshoot_frac`, never the total — a wordmark is
-  typically 100% overshoot (`enthusiast` 0.3006, of which **0.0** is unsewn
-  ink) and a photo lane 100% unsewn (`bridge`). The two move in OPPOSITE
+  typically 100% overshoot and a photo lane 100% unsewn (`bridge`). **But
+  never quote `unsewn_frac`'s zero as evidence** — its per-region vote
+  (`mean > 0.5`) cannot fire where the largest region ink fraction is 0.33,
+  as on `enthusiast`; read `uncovered_elements` / `uncovered_ink_frac`, which
+  are colour-free and unopened (0.90% of ink, no component over 1 mm²).
+  **Nor quote `overshoot_frac` as an area:** `HALO_OPEN_PX` is 0.50 mm and
+  `pull_comp_mm` + thread half-width is 0.30 + 0.20 = 0.50 mm, so the opening
+  sits exactly on the pedestal and the figure swings 182.7 → 0.0 mm² across
+  kernels 3→13 px. It is a same-instrument drift tripwire, nothing more. The two move in OPPOSITE
   directions under one engine change, so the total cannot say which one a
   change bought, and a session read a wordmark's total as lost coverage and
   set out to recover artwork that was never uncovered. Neither half polices

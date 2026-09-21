@@ -14,13 +14,33 @@ left_chest:
     becker      lost_frac 0.0509   unsewn  44%   overshoot  56%
     bridge      lost_frac 0.1070   unsewn 100%   overshoot   0%
 
-`enthusiast`'s 0.3006 is **0.0 mm² of unsewn ink and 118.7 mm² of thread on
-bare cloth** — all 32 regions `ink=False`, `cover` ≈ 0.99 — while
-`rail_edge --bare` reads **3.94% before and after** the commit blamed for the
-move. **The letters sew fatter than they are drawn; nothing went uncovered.**
-A brief asked me to "recover the lost coverage" on this fixture; there was
-none to recover. Both halves ship separately now (`unsewn_frac`,
-`overshoot_frac`, `FEATURES_SCHEMA` 2).
+`enthusiast` reads `unsewn_frac` **0.0000**, and **that zero is a property of
+the method, not a finding** — the per-region vote is `A_ink[r].mean() > 0.5`
+and the largest per-region ink fraction here is **0.33**, so `True` was
+unreachable whatever the engine did. Measure it colour-free and unopened
+instead: **3.5 mm² of 395.5 mm² of ink carries no thread (0.90%), nothing at
+or over 1 mm²** — a rim, not an element — while thread covers **1.51×** the
+ink and the thread field matches the artwork **dilated by 0.30 mm** (IoU
+0.856), which is `pique_knit.pull_comp_mm` exactly. `rail_edge --bare` reads
+3.94% before and after the commit blamed for the move. **So nothing went
+uncovered** — a brief asked me to "recover the lost coverage" here and there
+was none to recover — but do NOT call the fattening the defect either: it is
+CONFIGURED (`stage5_overlap` buffers by `pull_comp_mm`, the renderer draws
+0.4 mm thread), and naming it the defect points a cure at a fabric constant,
+which is gate 1.
+
+**The instrument's opening sits exactly on that pedestal.** 0.30 + 0.20 =
+**0.50 mm**, and `HALO_OPEN_PX` is 5 px = **0.50 mm**. So `overshoot_frac`'s
+MAGNITUDE is not quotable — the same design reads 182.7 / 108.5 / 32.9 / 10.2
+/ 5.7 / 0.0 mm² at kernels 3/5/7/9/11/13 px — and it is structural: every knit
+preset carries pull comp (pique 0.30, jersey 0.35, fleece 0.50). **Pull comp
+sets the LEVEL, rail placement moves the DELTA** (pull comp was constant
+across the 768de79e bisect). And it explains the instrument disagreement
+exactly: `rail_edge.bare_area` grades against the COMPENSATED outline,
+`dropped_elements` against the artwork — separated by `pull_comp_mm`, so they
+are guaranteed to disagree in sign on any radial rail move. Both halves ship
+separately now (`unsewn_frac`, `overshoot_frac`), plus the colour-free
+`uncovered_elements` / `uncovered_ink_frac` (`FEATURES_SCHEMA` 2).
 
 **Why both wordmarks regressed against the 08-27 engine while both
 non-wordmarks improved.** `768de79e` (defect 23) puts an overshooting rail on
