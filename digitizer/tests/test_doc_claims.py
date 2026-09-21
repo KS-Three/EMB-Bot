@@ -14,6 +14,7 @@ digitizes anything.
 """
 
 import dataclasses
+import subprocess
 
 import pytest
 
@@ -216,3 +217,48 @@ def test_the_shipped_current_state_docs_have_accurate_test_counts():
             problems += doc_claims.check_test_counts(
                 path.read_text(encoding="utf-8"), doc, counts)[0]
     assert problems == [], problems
+
+
+# --- The collector's own contract, on a cp1252 box ---------------------------
+# Kent's Windows box, 2026-09-20: `test_counts()` raised instead of returning,
+# and the whole checker went down with it. `pytest --collect-only` emits a
+# cp1252 byte (0xe9) somewhere in this suite's collected ids; `text=True`
+# decodes as UTF-8, so subprocess's READER THREAD dies with UnicodeDecodeError
+# and `run()` hands back `stdout=None` with `returncode=0`. The `except
+# Exception: return {}` above cannot catch it — the exception was raised on a
+# different thread — so the documented "returns {} when collection fails"
+# contract was not kept, and CI never saw it because CI is UTF-8.
+#
+# The repo already had the lesson written down (`tools/_console.py`, "the
+# budget instrument survives a cp1252 stdout"); it was applied to this tool's
+# OWN stdout and not to the child it spawns.
+
+
+def test_collection_degrades_to_empty_rather_than_raising(monkeypatch):
+    """The docstring's contract, pinned: a collection that produces no usable
+    stdout returns {} so the caller can say "unverifiable".
+
+    Reproduces the exact observed shape — returncode 0, stdout None — rather
+    than a raised exception, because that is what a dead reader thread leaves
+    behind and it is the case the existing `except` clause misses.
+    """
+    def fake_run(*_a, **_kw):
+        return subprocess.CompletedProcess(args=[], returncode=0,
+                                           stdout=None, stderr=None)
+    monkeypatch.setattr(doc_claims.subprocess, "run", fake_run)
+    assert doc_claims.test_counts() == {}
+
+
+def test_collection_actually_collects_on_this_repo():
+    """And the contract is not an excuse to return {} forever.
+
+    This suite has tests, so a working collector finds some. RED on a cp1252
+    console before the encoding fix; the skip in the regression guard above
+    hid it there, which is why this asserts rather than skips.
+    """
+    counts = doc_claims.test_counts()
+    assert counts, (
+        "test_counts() collected nothing on a repo that plainly has tests — "
+        "the collector is broken, not the repo. On Windows this is the "
+        "cp1252 reader-thread death described above.")
+    assert any(f.endswith("test_doc_claims.py") for f in counts), sorted(counts)[:5]

@@ -13,6 +13,43 @@ pointer; if it isn't there, treat it as superseded until re-measured.
 
 ---
 
+**Last updated:** 2026-09-20 — the previewer measured against the file it hands the customer, and the split-path defect that found
+
+**Three lanes, driven through the shipped Studio headless, download captured,
+decoded with pystitch, compared against `designToStrands` on the design the
+exporter was handed:**
+
+| lane | encoder | sewn segments preview/file | orientation | pixel IoU | thread m preview/file |
+|---|---|---|---|---|---|
+| lettering "FRITSCH'S Rb4" | browser | 2640 / 2640 | identity 1.000 | 1.0000 | 3.411 / 3.411 |
+| auto-digitized logo | service (pyembroidery) | 2285 / 2285 | identity 1.000 | 1.0000 | 3.372 / 3.372 |
+| logo + lettering, 4 colours | browser | 2753 / 2753 | identity 1.000 | 1.0000 | 3.595 / 3.595 |
+
+Zero endpoint residual, zero translation; every other dihedral orientation
+≤ 0.005. Colour records 3 → 3 `COLOR_CHANGE`, trims 21 → 21. The app's own
+caption, its exported PNG and the file agreed: 2,796 stitches · 80×20 mm.
+
+**The split-path defect, before and after** (`tools/preview-vs-dst.mjs`, worst
+stray of the file's thread from the drawn line):
+
+| fixture | pre-fix | post-fix |
+|---|---|---|
+| `dogleg` (diagonals over one record) | 14.866 mm, thread 279.33 vs 270.1 drawn | 0.039 mm, thread equal |
+| `resized` (import scaled to 300 mm) | 0.163 mm | 0.000 mm |
+| `lettering` (manga_impact "A", shipping defaults) | 0.000 mm — never splits | 0.000 mm |
+
+**Reachability, measured the same day.** `manga_impact` "AB" at Full Back with
+shipping defaults (`splitSatin` ON): 27,074 stitches, **0** sewn segments over
+one record, worst axis 4.5 mm — against the census's `off` arm at 1,930 of
+5,861. The Studio's auto-digitized logo resized to 250 mm: 24 over-record
+segments, worst axis 15.6 mm, file thread 0.41 mm off the drawn line.
+
+**Suites after the fix:** engine `node --test` 562/562, Studio vitest 58 files /
+1,256 tests, both exit 0. Three crossval pins moved from `longestSewnUnits ===
+121` to `100` (equal steps along the line); no golden or byte-identical test
+moved.
+
+---
 **Last updated:** 2026-09-20 — the operator bundle: backing class, topper, run time, and what the stop numbers are for
 
 Three linked gaps from the machine-physics playbook, closed together. Rulings
@@ -111,6 +148,15 @@ Suite on Kent's Windows box, 2026-09-19, `-n auto`: pre-change **3 failed,
 2627 passed, 3 skipped, 8 xfailed in 43:59** — the three are the three
 CLAUDE.md names (`test_flat_lane_byte_identical`, `test_pushcomp`,
 `test_stage2_photo_segment`), per-fixture platform numerics.
+**Last updated:** 2026-09-20 — defects 41 and 42 retired from MASTER_SCOPE's Live section, moved here whole
+
+Both were marked FIXED and were still sitting under *"Live defects — believed true right now"*. Moved here verbatim to buy budget space for four defects promoted from the machine-physics audit (`docs/scope/machine-physics-backlog.md`); one-line pointers keep both numbers in the Closed section, because other docs cite them by number. Accurate as of their own dates, not re-verified since.
+
+41. **The review screen quoted the cost of a sew-out on one lane and nothing at all on the other — FIXED 2026-09-07.** An auto-digitized design comes back with `preflight`/`stats` and `QualityReport` prints the four facts an operator needs before loading a machine (stitches, thread changes, trims, metres). A lettering, hand-drawn, shape or imported-DST design never reaches the service, so the same screen showed the garment, the hoop, the content, the font — **and not one number**; measured by walking Review with a text design, `section.quality` absent and no mention of thread, metres or trims anywhere on the page. `lib/estimate.js` computes them in the browser from the design already in hand, **only when the service has said nothing**, so one design never gets two answers. **The basis is the service's**: path length on `designToStrands`'s chain-break rule (= Python's `StitchRun.length_mm`) times `machine.THREAD_LENGTH_FACTOR` **1.35**, hand-ported into the engine and guarded against drift by `test/digitize.test.js` — the third constant to take that treatment after `FILL_ROW_MM` and `SATIN_SPACING_MM`. **Measured, and it does NOT agree exactly with the service on the same geometry: 4.95 m against 4.87, 1.6% high**, because `plan_to_design` emits a run the machine reaches without travelling as plain consecutive stitches, so the design records carry no marker for that boundary and the walk joins two runs. Irreducible from the browser, and the reason for the gate. The browser lane's own designs do not have it — `buildLetteringDesign` SEWS its short travel. **Two self-inflicted defects caught while building it**: `EMB.THREAD_LENGTH_FACTOR || 1` quoted a path length as thread (1.5 m for a design needing 2.1) against a stale `app/public/engine/` copy — now no factor, no row; and the field caption was the ONE stitch count in the app printing a bare `1289` where everything else says `1,289`. `estimate.spec.js` (7). *(measured 2026-09-07)*
+
+42. **Five buyer-visible defects on the Studio's own screens — ALL FIXED 2026-09-08, all found by driving the app rather than reading it.** (a) **The second starter design failed the app's own quality check on click.** `chest-name` was the only template pinning a size, 76.2 mm, where its own default text sews 7.6 mm caps with **69% of the lettering under the 1 mm column floor** — so the app handed a beginner a design and immediately told them to size up, on the one screen where they have no reason to doubt it. 92 mm is the first width with no thin lettering AND 4.7 mm of slack; the first attempt used 101.6 (the cap-height optimum) and `field-chrome.spec.js` failed it, correctly — at the placement's full width the design cannot be nudged at all. Guarded from both sides, each mutation-proved. (b) **The review summarised a mixed design as its digitized element alone** — `2,253 stitches` shown for a **3,367-stitch** design, the commonest thing a customer combines. The gate asked "is there a quality report?" when the question is "does it cover the design?"; a residual where two logos gave no total at all was fixed the same day. Worksheet and exported file were right throughout, so the machine had the correct number and the customer did not. (c) **The arrow-key announcement and the align row blamed the hoop** for a limit the garment placement box set — `hoopSizeMm()` returns `garment.widthIn`, so on a left chest the app pointed at something with 14 mm free each side. Words only; the clamp is correct and untouched. (d) **PRODUCT.md row 7 cited `src/fonts/milli_marif_bold.LICENSE.txt`** as its proof that per-font licence research had been done — a file that research deleted, because the font was pulled. (e) **The colour count came from the slider on TWO screens while everything beside it came from the design.** On the shipped `Logo patch` starter at its default: **`Colors 4 · background removed` beside `Thread changes 1`** — one change is two blocks, and the palette strip one click back rendered two swatches (70.1% / 29.9%). `Colors` was `element.nColors`, a CEILING the customer asked for; every other row on that card is measured from the design. Median-cut returns only as many entries as the art needs (two at every setting from 2 to 8), so no empty palette slot is required for the two to part company. Money, not tidiness — a colour is a cone to buy and a re-thread on a single-needle machine — and it lands on the browser flatten lane, which is what a phone always gets and what any machine gets with the service down. The threshold that decides "this colour sews" now lives once, in `flatten.js` (`MIN_SWATCH_SHARE`/`sewnColorCount`), where it had been an inline literal in ImagePanel and a different quantity in the recap; `summary.js` takes the integer rather than the flat so it keeps its deliberate freedom from the engine. The same slider read the element CHIP on the content step — `Image · 4 colors` directly above a swatch strip rendering two, inches apart on one screen — and that half was found only by re-reading the production bundle after the review card was fixed, which is the argument for checking the whole surface rather than the one screen the report came from. The worksheet was right throughout — it reads `design.colors`. Verified across five surfaces on one design: 2 swatches → chip `Image · 2 colors` → `Colors 2` → `Thread changes 1` → 2 cone rows on Download. *(fixed 2026-09-08 — #416/#417/#418 and this PR; area 3, area 2; scope-history 09-08)*
+
+---
 
 **Last updated:** 2026-09-19 — the lettering construction plan and its step 0 (`satin_house_from_line`, OFF), after the lettering-route review; 2026-09-18, the upscaled regime read at the source's own resolution, built and flipped ON
 

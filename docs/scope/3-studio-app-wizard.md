@@ -543,6 +543,41 @@ Lifted verbatim from the area-3 summary on 2026-09-18 to bring `MASTER_SCOPE.md`
 
 **Both "Make it bigger" chips offer a PARTIAL remedy, and the comment justifying them misquoted the finding it cited** — it read `LETTERING_TOO_SMALL`'s message as ending *"Enlarging helps"* when on that same commit it already ended *"...but does not fully clear it ... Remove or simplify the smallest lettering"*. Corrected in place with the history; the buttons are LEFT for Kent, since whether a partial remedy earns one is his call. `STITCHES_TOO_SHORT` no longer recommends enlarging at all and now names the shapes carrying the short steps — it and `LETTERING_TOO_SMALL` measure the same quantity at the same threshold (`MIN_COLUMN_MM` **is** `machine.MIN_STITCH_MM`) and it never fired alone over the corpus at 80 mm (the only width swept), but only **66%** of its short steps sit in a shape lettering named: the rest are sewable columns (1.1–3.2 mm median) with a narrow waist. **And the button itself is now measured: ONE PRESS CLEARS THE FINDING ON 1 OF 10** corpus fixtures (two presses on 4 of 10) and makes it **worse on 3** — `photo_dof_meadow` 0.36 → 0.58 → 0.71 — while the satin shape count rises on every fixture (2 → 9, 42 → 71), which is "the smallest shapes regenerate at any size" from the other side. No grade claim is drawn from that sweep: several checks move with size and 5 of the 10 are on the clamped floor. *(measured 2026-09-06 — `tools/short_satin_overlap.py`, `tools/enlarge_cure.py`, `tests/test_short_satin_shapes.py` (14); DOCTRINE)*
 
+## Moved from MASTER_SCOPE (2026-09-20) — three fixed Studio entries
+
+Lifted verbatim from the area-3 summary on 2026-09-20 to buy budget space for
+the machine-physics backlog pointer (see
+[`machine-physics-backlog.md`](machine-physics-backlog.md)); the summary keeps
+the one-line claim and the dated pointer, as the 2026-09-18 and 2026-09-19
+moves above did. All three are FIXED entries — the verdict is current, the
+mechanism detail below is what no longer needed to sit in the dashboard.
+
+**Typographic punctuation folds to its ASCII twin where a font lacks it.**
+`satinfont.js TYPOGRAPHIC_FOLD` stitches the twin ONLY where the fancy form is
+missing — 367 font x character combinations rescued, and all 85 fonts hash
+identically on text that never needed it. Not NFKD: accented letters are
+different letters and stay unfolded. What it cost before the fix (a phone's
+U+2019 sewing "Fritschs Stitches", under a note naming a character that looks
+identical to the one typed): DOCTRINE; scope-history 09-07. *(fixed
+2026-09-07)*
+
+**Lettering under the cap floor now names a way out.** The "cannot be sewn"
+verdict was the only one with no fix while the milder branch named two. Levers
+were measured before being named, so line breaks lead and "fewer characters"
+is second; "Size up" is withheld at the width cap, the rule the hairline
+branch already followed. The measured ladder (74 chars at default left chest =
+1.3 mm against a 4 mm floor, and what each lever buys): scope-history 09-07.
+*(fixed 2026-09-07)*
+
+**A design is named after what is in it, and the registry stops swallowing
+failed writes.** Every project was "Untitled design", so "My designs" listed
+rows a customer could only tell apart by opening each, and every backup
+downloaded as `untitled-design.embproj`. A still-unnamed design now takes its
+name from its content; a name typed by hand is sticky. Separately,
+`renameProject` and `deleteProject` reported success for an index write that
+never landed — a name and a project's membership of the registry live ONLY in
+that index — and `deleteProject` removed the record before writing it. Both
+propagate now, index first. *(fixed 2026-09-07 — area 3; DOCTRINE)*
 ## Moved from MASTER_SCOPE (2026-09-19) — the two engines' wire tests
 
 Lifted verbatim from the area-3 summary on 2026-09-19 to bring

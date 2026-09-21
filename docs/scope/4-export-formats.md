@@ -279,3 +279,29 @@ conflict gets resolved by whoever merges second rather than by whoever
 understood it. *(measured 2026-09-08 — `digitizer_service/formats.py` writers
 round-tripped through `pystitch.read`; endpoint validation read from
 `app.py:901-905`)*
+
+## The JEF file declares a hoop it does not fit (2026-09-07)
+
+Moved here from `MASTER_SCOPE.md` on 2026-09-20 — the verdict and the
+customer-facing rule stay there, the teardown lives here. Nothing is retracted.
+
+`pystitch.JefWriter.get_jef_hoop_size` reads the design bbox correctly and then
+falls off the end of its own ladder to `HOOP_110X110` — the second smallest of
+its five codes — for anything ≥ 200 mm in either axis. Read off `/export`'s
+bytes: 199 mm → code 4 (200×200, fits); 201 mm → code 0 (110×110, does not).
+
+Reachable well past the four oversize garments: a **140 × 200 mm design fits the
+app's LARGEST hoop** and 150 × 240 fits the 6×10, so `hoopFitNote` is silent and
+the file is stamped 110×110 anyway. That is why the Studio's caveat is a
+persistent note beside the JEF button rather than a line in the hoop-exceeds
+dialog (DOCTRINE).
+
+What a Janome does with the mismatch is ROADMAP gate 1 (no machine here), so the
+note says "may refuse" and names the two levers that are measured: under 200 mm
+the header is correct, and DST/EXP carry no hoop header at all (only `JefWriter`
+and `PesWriter` write one — PES deliberately not named). Rewriting the byte to
+code 4 is a live option for Kent, not shipped: it is still wrong for a 250 mm
+design, and the case for it is a firmware claim.
+
+Pinned by `digitizer/tests/test_jef_hoop_code.py` (10 tests); if it goes red
+pystitch fixed it — drop the test and this section.
