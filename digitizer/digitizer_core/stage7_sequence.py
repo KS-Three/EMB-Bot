@@ -71,7 +71,7 @@ from .stage6_fill import stitch_shape
 from .stage6_meander import meander_fill
 from .stage6_scanline import scanline_fill
 from .stage6_sketch import sketch_fill
-from .stage6_satin import classify_ribbon, is_satin_candidate, satin_shape
+from .stage6_satin import classify_ribbon, satin_shape
 from .stage6_streamline import streamline_fill
 from .stitches import StitchBlock, StitchRun
 from .threads import chart_for
@@ -243,12 +243,35 @@ def _sews_satin(region, cfg: PipelineConfig, satin_max_mm: float,
     Mirrors `stitch_one`'s routing exactly: an explicit review-screen
     `tier: "satin"` forces the tier regardless of the classifier AND the
     global satin switch (the user already answered the question), while an
-    auto shape reaches satin only when `cfg.satin` is on and
-    `is_satin_candidate` says ribbon — the identical call, on the identical
-    artwork polygon, `_comp_axis` and `stitch_one` both make, so the three
-    cannot disagree about which shapes those are. Every other pinned tier
-    reads as not-satin even for a ribbon-shaped polygon: an explicit "fill"
-    is an instruction, not a hint.
+    auto shape reaches satin only when `cfg.satin` is on and the classifier
+    says ribbon. Every other pinned tier reads as not-satin even for a
+    ribbon-shaped polygon: an explicit "fill" is an instruction, not a hint.
+
+    **`classify_ribbon` directly, not the `is_satin_candidate` wrapper, and
+    with every keyword `stitch_one` passes** — one reading of one question,
+    which is the only shape of this that stays true. It did not until
+    2026-09-20: this predicate called `is_satin_candidate`, which takes
+    `area_weighted` (never passed here) and has no `polygon_axis` parameter
+    at ALL, while the emitter passed both off `cfg`. The docstring claimed
+    an identical call and the claim was false. Latent only because
+    `cfg.satin_polygon_axis` and `cfg.classify_area_weighted` both default
+    OFF — and both are on the pending-flags list Kent has not ruled on
+    (`docs/kent-review-2026-09-18.md`: `satin_polygon_axis="artwork"` 8 of 9
+    pairs "no difference", `classify_area_weighted` 2 of 2 "both bad"), so
+    either flip is the one that makes this live: a layer moved late, a
+    detail picked last, or a seam yielded, on a shape that then sews fill.
+    `tests/test_prediction_matches_emitter.py` compares this predicate
+    against the SEWN tier with each flag on, and reads both call sites'
+    keyword names off the AST so the next flag cannot reopen it.
+
+    Stage 5's `_comp_axis` is a THIRD reading of the same question and was
+    NOT brought along: it still calls `is_satin_candidate` with neither flag
+    and without `_satin_ceiling_for`'s lettering-split ceiling. Left rather
+    than missed, because it is gated one level deeper — `resolve_overlaps`
+    only calls it when `cfg.directional_comp` or `cfg.satin_rail_comp` is on,
+    both default OFF, so it takes TWO flips to reach, not one. Its consumers
+    are different too (the axis a shape is compensated along, and
+    `PlannedRegion.satin_tier`, which decides rail comp). Kent's call.
 
     Two edges, stated honestly (the first version of this docstring had the
     width-floor case BACKWARDS — caught in review before it shipped):
@@ -260,25 +283,28 @@ def _sews_satin(region, cfg: PipelineConfig, satin_max_mm: float,
       stays the right answer.
     - A photo-lane shape demoted by the width floor sews EARLY, with the
       fills: `photo_width_floor` is a not-satin verdict
-      (`RibbonVerdict(False, ...)`), so `is_satin_candidate` — and
-      therefore this predicate — says False, even though `stitch_one`
-      reroutes exactly those shapes to an outline run. Treating them as
-      late details would mean reading `classify_ribbon`'s reason here;
-      deliberately NOT done — it engages only in the photo classes, where
-      Kent's 2026-09-01 flip ruling kept the layer half out entirely (the
-      pipeline call-site gate) and left the photo lane's ordering to the
-      measured depth story. Likewise an explicit `tier: "run"` detail
-      gets no late bias — this rule is scoped to the sew-out's own
-      defect, border SATIN, on purpose.
+      (`RibbonVerdict(False, ...)`), so `.satin` — and therefore this
+      predicate — says False, even though `stitch_one` reroutes exactly
+      those shapes to an outline run. Treating them as late details would
+      mean reading the verdict's `.reason` as well as its `.satin` — one
+      attribute away now that this calls `classify_ribbon` itself, and
+      still deliberately NOT done: the floor engages only in the photo
+      classes, where Kent's 2026-09-01 flip ruling kept the layer half out
+      entirely (the pipeline call-site gate) and left the photo lane's
+      ordering to the measured depth story. Likewise an explicit
+      `tier: "run"` detail gets no late bias — this rule is scoped to the
+      sew-out's own defect, border SATIN, on purpose.
     """
     tier = str(region.meta.get("tier", "auto")).lower()
     if tier == "satin":
         return True
     satin_max_mm, per_stroke, _fold = _satin_ceiling_for(region, cfg, satin_max_mm)
     return (tier == "auto" and cfg.satin
-            and is_satin_candidate(region.polygon, satin_max_mm,
-                                   design_class=design_class,
-                                   per_stroke=per_stroke))
+            and classify_ribbon(region.polygon, satin_max_mm,
+                                design_class=design_class,
+                                per_stroke=per_stroke,
+                                polygon_axis=cfg.satin_polygon_axis,
+                                area_weighted=cfg.classify_area_weighted).satin)
 
 
 def borders_last_layers(regions, thread_indices: list[int],
@@ -322,7 +348,7 @@ def borders_last_layers(regions, thread_indices: list[int],
     with no satin-dominated layer — every flat golden — comes back
     untouched, order and palette both.
 
-    Costs one `is_satin_candidate` per stitched region when the flag is on
+    Costs one `classify_ribbon` per stitched region when the flag is on
     (stage 7 will classify again when it routes) — accepted with the
     2026-09-01 default flip; `borders_last=False` opts back out.
     """
@@ -1921,7 +1947,7 @@ def sequence(
             # user has already answered the question it asks.
             #
             # One classify_ribbon call carries both decisions the ladder needs:
-            # the satin/fill verdict is_satin_candidate wrapped (identical
+            # the satin/fill verdict `_sews_satin` predicts on (identical
             # computation), and Law 31's photo-lane width floor — a shape that
             # EARNED satin but would sew a thread-width column
             # (`photo_width_floor`, photo classes only; see the constant's
