@@ -6443,3 +6443,87 @@ here, not second-guessed.
 *(measured 2026-09-20 — `tools/eye_pairs/refarm.py` + `features_design_only`,
 21 arms; the driver was a scratch script and is not in the repo, but it is
 fifteen lines over the two functions named above)*
+
+## A file can carry every coordinate correctly and still sew a path nobody was shown (2026-09-20)
+
+**Kent's question was "does the previewer match the .dst the tool makes".** On
+every shipping path it does, exactly — but answering it found a class of defect
+no existing check could see, because every instrument in the repo compares
+COORDINATES and this one lives between them.
+
+**What was measured first — the previewer and the file agree.** Three lanes
+driven through the real Studio headless, the actual download captured, decoded
+with pystitch, compared against `designToStrands` on the design the exporter was
+handed (the previewer's own module, hooked live through `EMB.encodeDST` and
+`fetch`):
+
+| lane | encoder | sewn segments preview/file | orientation | pixel IoU |
+|---|---|---|---|---|
+| lettering | browser | 2640 / 2640 | identity 1.000 | 1.0000 |
+| digitized logo | service (pyembroidery) | 2285 / 2285 | identity 1.000 | 1.0000 |
+| logo + text, 4 colours | browser | 2753 / 2753 | identity 1.000 | 1.0000 |
+
+Zero endpoint residual, zero translation, thread metres equal to the millimetre,
+colour stops and trims preserved one for one. The other seven dihedral
+orientations score ≤ 0.005, so the 2026-09-08 axis fix holds in both encoders.
+
+**What it found — the SPLIT walked an L.** A move too long for one record is
+divided, and all three encoders divided it by clamping each axis
+independently (`stepX = clampStep(dx); stepY = clampStep(dy)`). That spends the
+smaller axis entirely in the first record and then runs along the other one. The
+endpoints, the bounding box, the stitch count and the extents all still matched
+— the only thing that differed was the path in between, which is the part the
+customer was shown. Design: (200,900) → (260,1200). File: (200,900) →
+(260,1021) → (260,1142) → (260,1200), **3.6 mm off the line**, and **14.87 mm**
+off on the worst fixture case.
+
+**Nothing caught it for one reason worth remembering: every over-length fixture
+in the repo was AXIS-ALIGNED.** The crossval harness's `long` fixture is 300
+units in x and zero in y, and an axis-aligned split is straight however you
+clamp it. **A fixture that cannot distinguish two implementations is not
+coverage of the thing they disagree about** — the same shape as the 2026-09-13
+"a suite that only compares your code to your own code cannot see a symmetric
+bug".
+
+**It was reachable, but not through lettering.** `splitSatin` going ON
+(2026-09-11) removed the population there: the `manga_impact` "AB" monogram at
+Full Back, shipping defaults, has **0** sewn segments over one record (worst
+axis 4.5 mm) where the census's `off` arm still counts 1,930 of 5,861. The live
+path is **RESIZING an imported or auto-digitized element** —
+`buildImportedDesign(targetWidthMm)` scales stitch coordinates, so the Studio's
+own auto-digitized logo pulled to 250 mm gives 24 over-record segments, worst
+axis 15.6 mm, and put the file's thread **0.41 mm** off the drawn line.
+
+**Fixed the same day, in all three encoders**, by stepping along the segment:
+`splitSteps(dx, dy, limit, minSteps)` rounds the RUNNING total and subtracts
+what has already been emitted, so the sum stays exact while every landing point
+stays within half a unit (0.05 mm) of the line. `splitTrim` had always done it
+this way; the oversize-move loop never did.
+
+**One visible side effect, deliberate: a split move is now divided into EQUAL
+steps.** A 300-unit move is 3 × 100 where it used to be 121 + 121 + 58, so the
+crossval `long` pins moved from `longestSewnUnits === 121` to `100`. Equal
+division is the better sew — no 5.8 mm stub after two maxed-out stitches — and
+the ceiling is still asserted. **No golden and no byte-identical test moved**:
+the three real lanes never split, so shipping designs encode byte-for-byte as
+before.
+
+**The instrument is `tools/preview-vs-dst.mjs`, pinned by
+`test/preview-vs-dst.test.js`.** It compares the previewer's own
+`designToStrands` output against pystitch's read of the encoded bytes, in three
+fixtures × three formats, and reports orientation, how far the file's thread
+strays from the drawn line, and sewn thread either side. Against the pre-fix
+encoders 13 of its 17 assertions fail; after, all pass. Its own fixture guard
+asserts the fixtures still REACH the split, because that is exactly how the old
+one stopped meaning anything.
+
+**Two format facts found alongside, both no-ops, both worth not re-deriving:**
+a `.dst` carries no thread colours at all (`threads: []` — the preview shows
+colour, the file holds stops in order; PES/JEF/XXX/VP3 carry RGB), and a
+leading trim at the very first record does not read back as a trim, because
+pystitch only promotes a jump run that follows a stitch. Nothing to cut at file
+start.
+
+*(measured 2026-09-20 — `tools/preview-vs-dst.mjs`, `test/encoder-split.test.js`,
+three lanes driven through the shipped Studio; Kent's call to fix all three
+encoders and land the instrument)*

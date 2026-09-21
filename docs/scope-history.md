@@ -13,6 +13,43 @@ pointer; if it isn't there, treat it as superseded until re-measured.
 
 ---
 
+**Last updated:** 2026-09-20 — the previewer measured against the file it hands the customer, and the split-path defect that found
+
+**Three lanes, driven through the shipped Studio headless, download captured,
+decoded with pystitch, compared against `designToStrands` on the design the
+exporter was handed:**
+
+| lane | encoder | sewn segments preview/file | orientation | pixel IoU | thread m preview/file |
+|---|---|---|---|---|---|
+| lettering "FRITSCH'S Rb4" | browser | 2640 / 2640 | identity 1.000 | 1.0000 | 3.411 / 3.411 |
+| auto-digitized logo | service (pyembroidery) | 2285 / 2285 | identity 1.000 | 1.0000 | 3.372 / 3.372 |
+| logo + lettering, 4 colours | browser | 2753 / 2753 | identity 1.000 | 1.0000 | 3.595 / 3.595 |
+
+Zero endpoint residual, zero translation; every other dihedral orientation
+≤ 0.005. Colour records 3 → 3 `COLOR_CHANGE`, trims 21 → 21. The app's own
+caption, its exported PNG and the file agreed: 2,796 stitches · 80×20 mm.
+
+**The split-path defect, before and after** (`tools/preview-vs-dst.mjs`, worst
+stray of the file's thread from the drawn line):
+
+| fixture | pre-fix | post-fix |
+|---|---|---|
+| `dogleg` (diagonals over one record) | 14.866 mm, thread 279.33 vs 270.1 drawn | 0.039 mm, thread equal |
+| `resized` (import scaled to 300 mm) | 0.163 mm | 0.000 mm |
+| `lettering` (manga_impact "A", shipping defaults) | 0.000 mm — never splits | 0.000 mm |
+
+**Reachability, measured the same day.** `manga_impact` "AB" at Full Back with
+shipping defaults (`splitSatin` ON): 27,074 stitches, **0** sewn segments over
+one record, worst axis 4.5 mm — against the census's `off` arm at 1,930 of
+5,861. The Studio's auto-digitized logo resized to 250 mm: 24 over-record
+segments, worst axis 15.6 mm, file thread 0.41 mm off the drawn line.
+
+**Suites after the fix:** engine `node --test` 562/562, Studio vitest 58 files /
+1,256 tests, both exit 0. Three crossval pins moved from `longestSewnUnits ===
+121` to `100` (equal steps along the line); no golden or byte-identical test
+moved.
+
+---
 **Last updated:** 2026-09-20 — the operator bundle: backing class, topper, run time, and what the stop numbers are for
 
 Three linked gaps from the machine-physics playbook, closed together. Rulings
