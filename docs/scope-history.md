@@ -13,6 +13,104 @@ pointer; if it isn't there, treat it as superseded until re-measured.
 
 ---
 
+**Last updated:** 2026-09-20 — the operator bundle: backing class, topper, run time, and what the stop numbers are for
+
+Three linked gaps from the machine-physics playbook, closed together. Rulings
+in DOCTRINE ("the worksheet states only what the engine knows"); these are the
+specifics.
+
+**`assumed_backing` + `needs_topper` on the fabric presets** (playbook law 33,
+never built). Both engines, kept identical by `test_fabric_wire.py`, whose
+`FIELDS` map now carries them — adding a field to one table forces the other,
+which is how this was developed (the wire test was the RED step). Values:
+cap_buckram for `structured_cap`; cutaway for `pique_knit`, `jersey_tee`,
+`fleece_sweatshirt`, `terry_towel`; tearaway for `canvas_tote`,
+`woven_dress`; topper on the two pile goods only — the same pair
+`density_adjust` already singles out. `_norm` in that test learned booleans on
+the way in (Python `True` vs JS `true` would otherwise read as drift on every
+preset); mutation-proved by flipping both topper values and watching it name
+both presets.
+
+**The worksheet states them.** `Stabilizer:` now comes from the garment and
+prints on every sheet naming one we ship; the old 25,000-stitch rule survives
+as an ESCALATION (tear-away → cutaway), naming the design's own count rather
+than the threshold. `Topper: yes/no` either way, because absence is not an
+answer. An unknown garment prints neither. Under the Thread Sequence, one
+line saying what the numbers ARE: *"Set these in order at the machine - DST
+carries no colour data."* — the colour-stop half of the separation-of-duties
+contract, and hand work on every job.
+
+**Run time, the missing half of the cost card** (laws 36/38). New engine
+module `src/sewtime.js`: `(stitches + trims x TRIM_COST_STITCHES) / PLAN_SPM`,
+650 spm and 120 stitch-equivalents, twinned into `machine.py` and picked up
+automatically by `test_machine_wire.py` (mutation-proved: 650 → 700 names both
+files). Printed with its basis attached on both surfaces —
+`Run time: ~8 min at 650 spm (incl. trims)` on the sheet, `~10 min at 650 spm`
+on the review screen, where `sewSummary`'s own header had promised a "how long
+it runs" row since it was written and never had one. Floors at one minute:
+a 200-stitch monogram is 18 seconds, and "0 min" reads as nothing to do.
+Verified in a real browser on the "Name on a hat" quick start — Hat Front,
+2,349 stitches, 8 trims, row reading **~5 min at 650 spm** between Stitches
+and Trims (2349 + 8x120 = 3309 / 650 = 5.09).
+
+Suites on Kent's box: engine **552 passed** (545 + 7), Studio **1269 passed /
+59 files**. Two pre-existing specs were rewritten rather than deleted — the
+worksheet's cutaway test (the rule it pins survives as the escalation) and
+`sewSummary`'s two row-order assertions.
+
+**Last updated:** 2026-09-19 — cap sew order built and parked (`cap_center_out`, OFF), with its cost priced and the pro's own cap files read
+
+The Python lane had never read `garment_id` for sew ORDER — it reached
+`fabrics.py` for pull compensation, underlay, density and trim distance and
+stopped, while the browser engine's `capMode` has ordered cap garments
+centre-out and bottom-up all along. `cfg.cap_center_out` closes that split
+behind a default-OFF flag; the standing rulings are in DOCTRINE's "Measured
+negatives", these are the numbers behind them.
+
+A/B at 80 mm on `hat_front`, `tools/cap_order_ab.py`, ON vs OFF, **on merge
+commit `478fbbb6`** (post the lettering-construction series):
+
+| fixture | stitches | trims | needle-up mm | group sizes |
+|---|---|---|---|---|
+| `becker_marine_logo` | 6441 → 6432 | 48 → 47 | 852.9 → 1042.6 (+22.2%) | 17, 1 |
+| `logo_script_tires` | 2434 → 2434 | 7 → 7 | 202.3 → 202.3 (0.0%) | 4, 2 |
+| `photo/logo_gaulke_roofing` | 4263 → 4395 | 31 → 49 | 387.5 → 1260.6 (+225.3%) | 42, 9, 2 |
+
+**Superseded, same day, and kept because the supersession is the point.** The
+first pass ran on `da6606e4` that morning and read: becker 7166 → 7158,
+50 → 54 trims, 1084.0 → 1206.7 (+11.3%); script_tires 2415 → 2415,
+10 → 10, 191.0 (0.0%); gaulke 4539 → 4606, 56 → 64, 723.7 → 1528.9
+(+111.2%). The flag did not change between the two runs — `main` did, flipping
+`satin_junction_stack`, `satin_lettering_split`, `fill_bridge_cut` and the
+lettering flags ON in between. That moved the OFF baseline (gaulke 56 → 31
+trims, 723.7 → 387.5 mm) and roughly doubled the flag's relative cost.
+
+`logo_whitebg` and `logo_alpha` are byte-identical on both arms and were the
+first two fixtures tried — every colour group holds one shape, so there is
+nothing to reorder; that zero is structural (DOCTRINE).
+
+`tools/cap_order_pro.py`, the pro's own cap-vs-left-chest pairs on identical
+artwork, Spearman against sew position, run-count-weighted per file:
+
+| pair | garment | runs | blocks scored | `centre_out` | `bottom_up` |
+|---|---|---|---|---|---|
+| gaulke | cap | 42 | 1/1 | −0.314 | −0.856 |
+| gaulke | flat | 42 | 1/1 | +0.475 | +0.827 |
+| becker_large | cap | 10 | 0/5 | — | — |
+| becker_large | flat | 10 | 1/4 | +0.371 | +0.771 |
+| becker_small | cap / flat | 9 / 9 | 0/5, 0/4 | — | — |
+| mfab | cap | 13 | 1/5 | +0.257 | +0.943 |
+| mfab | flat | 10 | 0/5 | — | — |
+
+Only `gaulke` yields a scorable PAIR, so n = 1 for the paired difference
+(`centre_out` −0.789, `bottom_up` −1.683). The blanks are not missing files:
+this pro barely lifts the needle, so most files hold too few runs per block
+to carry an order at all.
+
+Suite on Kent's Windows box, 2026-09-19, `-n auto`: pre-change **3 failed,
+2627 passed, 3 skipped, 8 xfailed in 43:59** — the three are the three
+CLAUDE.md names (`test_flat_lane_byte_identical`, `test_pushcomp`,
+`test_stage2_photo_segment`), per-fixture platform numerics.
 **Last updated:** 2026-09-20 — defects 41 and 42 retired from MASTER_SCOPE's Live section, moved here whole
 
 Both were marked FIXED and were still sitting under *"Live defects — believed true right now"*. Moved here verbatim to buy budget space for four defects promoted from the machine-physics audit (`docs/scope/machine-physics-backlog.md`); one-line pointers keep both numbers in the Closed section, because other docs cite them by number. Accurate as of their own dates, not re-verified since.

@@ -228,6 +228,49 @@ def test_the_cap_thread_falls_back_when_nothing_touches_the_edge():
     assert _cap_thread(far, planned, default_thread=7) == 7
 
 
+# Thread 3 owns most of the silhouette; thread 5 owns the short right-hand
+# end of it. The gate leaves only thread 5's end to sew, so every stitch the
+# cap emits lands there — the shape of the `enthusiast_logo` defect
+# (2026-09-20), where the lettering's 473.8 mm out-voted the star's 131.7 mm
+# while 100% of the emitted cap rode the star.
+_WIDE = region(bar(24, 10, cx=-12), "WIDE", 3, 0)
+_END = region(bar(6, 10, cx=3), "END", 5, 1)
+
+
+def _capped(**kw) -> int:
+    planned, _ = resolve_overlaps([_WIDE, _END], FAB, PipelineConfig())
+    silhouette = unary_union([p.polygon for p in planned])
+    return _cap_thread(silhouette, planned, default_thread=99, **kw)
+
+
+def _runs_along(shape_id: str) -> list:
+    """A one-run cap tracing the outer edge of one of the two fields, as the
+    emitter would hand it back after the gate dropped everything else."""
+    planned, _ = resolve_overlaps([_WIDE, _END], FAB, PipelineConfig())
+    poly = next(p.polygon for p in planned if p.region.shape_id == shape_id)
+    minx, miny, maxx, maxy = poly.bounds
+    pts = [(maxx, miny + t * (maxy - miny) / 8.0) for t in range(9)]
+    return [SimpleNamespace(points=pts, shape_id="__edge_cap__")]
+
+
+def test_the_cap_thread_votes_on_the_edge_it_actually_sews():
+    """A thread that owns the silhouette but none of the stitches the cap
+    emits must not take the cap: the gate has already told the emitter not
+    to sew there, so those stitches would all land in someone else's
+    colour."""
+    assert _capped() == 3, "with no runs to read, the wide field still wins"
+    assert _capped(runs=_runs_along("END")) == 5
+
+
+def test_a_cap_with_no_runs_to_read_keeps_todays_vote():
+    """Degenerate, and deliberately not a behaviour change: a caller with no
+    emitted cap should load the cone it always loaded rather than fall
+    through to `default_thread`."""
+    assert _capped(runs=None) == 3
+    assert _capped(runs=[]) == 3
+    assert _capped(runs=[SimpleNamespace(points=[], shape_id="x")]) == 3
+
+
 # --- honest on empty ----------------------------------------------------------
 
 def test_a_silhouette_too_small_to_cap_warns_rather_than_going_silent():

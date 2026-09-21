@@ -578,6 +578,18 @@ name from its content; a name typed by hand is sticky. Separately,
 never landed — a name and a project's membership of the registry live ONLY in
 that index — and `deleteProject` removed the record before writing it. Both
 propagate now, index first. *(fixed 2026-09-07 — area 3; DOCTRINE)*
+## Moved from MASTER_SCOPE (2026-09-19) — the two engines' wire tests
+
+Lifted verbatim from the area-3 summary on 2026-09-19 to bring
+`MASTER_SCOPE.md` back under its 27,000-word budget, the same way the "Make it
+bigger" chips moved on 2026-09-18. `MASTER_SCOPE.md` keeps a one-line pointer;
+this is the full entry.
+
+**The two engines' fabric tables agree, and `test_fabric_wire.py` keeps them so**
+— field-for-field, asserting AGREEMENT only; the numbers stay gate 1. Its sibling
+`test_machine_wire.py` does the same for the 21 shared individual constants
+(2026-09-14). What law 26's month of silent browser drift cost: DOCTRINE.
+*(2026-09-07; 2026-09-14)*
 ## The `.embproj` carries the original artwork (2026-09-20)
 
 Since 2026-09-20 a digitize sends the customer's FILE, not the panel's
@@ -596,3 +608,31 @@ import, and a re-digitize whose `/digitize` POST carries the file under its
 own name. A file saved before that day carries no originals; a preview-path
 upload (SVG, GIF, oversize, a rotated JPEG) has none to carry. *(built and
 verified 2026-09-20 — scope-history, the originals addendum)*
+
+## Moved from MASTER_SCOPE (2026-09-20) — the built bundle's asset paths
+
+Lifted verbatim from the area-3 summary to buy MASTER_SCOPE.md headroom: on
+2026-09-20 both `main` and this lane sat at exactly 27,000 of 27,000 words, so
+any lane adding a line overflowed the merge even when each side was legal on
+its own. `MASTER_SCOPE.md` keeps a one-line pointer; this is the full entry.
+
+**The built bundle works wherever it is served.** `vite.config.js` sets
+`base: "./"` and five hand-written `/fonts/…` paths ignored it, so below the
+domain root the lettering lane produced nothing; font LICENCE links were among
+the five. Document-relative now, identical at the root. *(fixed 2026-09-07 —
+`assetPaths.spec.js`)*
+
+## Moved from MASTER_SCOPE (2026-09-20) — typographic punctuation folding
+
+Lifted verbatim from the area-3 summary to buy MASTER_SCOPE.md headroom for
+the operator-sheet entry. `MASTER_SCOPE.md` keeps a one-line pointer; this is
+the full entry.
+
+**Typographic punctuation folds to its ASCII twin where a font lacks it.**
+`satinfont.js TYPOGRAPHIC_FOLD` stitches the twin ONLY where the fancy form is
+missing — 367 font x character combinations rescued, and all 85 fonts hash
+identically on text that never needed it. Not NFKD: accented letters are
+different letters and stay unfolded. What it cost before the fix (a phone's
+U+2019 sewing "Fritschs Stitches", under a note naming a character that looks
+identical to the one typed): DOCTRINE; scope-history 09-07.
+*(fixed 2026-09-07)*

@@ -6,7 +6,7 @@ const srcDir = join(here, "..", "..", "src");
 const outDir = join(here, "..", "public", "engine");
 // Dependency order MUST match EMB-Bot.html.
 export const ENGINE_FILES = [
-  "units.js", "garments.js", "fabrics.js", "fill.js", "geometry.js",
+  "units.js", "sewtime.js", "garments.js", "fabrics.js", "fill.js", "geometry.js",
   "quantize.js", "flatten.js", "satin.js", "satinplay.js", "crossfill.js", "satinfont.js",
   "fontbin.js",
   "svgpath.js", "svgimport.js",

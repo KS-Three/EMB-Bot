@@ -199,7 +199,7 @@ icon. Cloth pointers added to defects 3, 6 and 16 below.
 
 44. **Satin borders sat 1.9 mm INSIDE every abutting colour — FIXED 2026-09-09 (Kent's ruling: the colour sewn on top owns a shared seam).** `_yield_frontage` (2026-08-06) had the LATER shape retreat its whole circuit column + margin off any seam an earlier border already held; on a flat logo every colour abuts, so on the Instagram icon (`border="auto"`, 80 mm, flat) **14 of 17** bordered shapes sewed a satin stripe a median 1.4–1.9 mm inside their own fill and one lost its border outright — its own test pinned the inset as wanted, and nobody saw it for a month because the Studio could not reach `cfg.border` until #318. Now `stage7_sequence._owned_by_later` hands each seam to the bordered shape still to sew over it and `stage6_border.border_runs(omit=…)` sews the shape underneath as open arcs on the rest of its edge: every bordered shape has half its penetrations ON its visible edge (p10 0.00 mm), 33,292 → **30,420** st, trims 34 → 30, and `BORDER_SEAM_SHARED` is a note naming the pairs. Found under it: two abutting visible edges are NOT one curve (each side is its own DP contour of the same pixel boundary; p90 0.09–0.43 mm apart), so the seam tolerance is `2 × simplify_tol_mm`, not 0.02 mm — the hair-width found half of every seam and sewed 28 stubs of 1.6–2.4 mm on one ring. A fully enclosed EARLY shape now gets no border of its own (the ring over it borders that seam) — by the rule; a sew-out judges the look. Prediction blind spots (a fill whose rows all degenerate, a `photo_width_floor` reroute, a gradient shape riding the design ramp) leave one seam unbordered or doubled, never a stripe. *(measured 2026-09-09 — `tests/test_border.py` seam section, 32 passing; DOCTRINE standing ruling; memory `border-seam-ownership-2026-09-09`)*
 
-45. **No fabric preset declares the stabilizer it assumes — backing is guessed from STITCH COUNT instead.** Law 33: every preset silently presumes a backing (knit → cutaway, towel → tearaway + topper, cap → buckram), and the preset is only valid if that backing is on the machine. `Fabric` has no `assumed_backing` field, so two places infer it from stitch count — `preflight.STITCHES_CUTAWAY_MIN = 25_000` → `STABILIZER_CUTAWAY`, and `src/pdfsheet.js`'s `CUTAWAY_STITCHES` line. A 30,000-stitch design on canvas is told cutaway; a 9,000-stitch one on jersey is told nothing. This also blocks the Part 3 worksheet contract, which cannot print an assumption the engine never made. Desk-safe by the playbook's own column — the mapping is published, not a physical constant, so gate 1 does not reach it. *(confirmed 2026-09-20 — playbook row 3; `docs/scope/machine-physics-backlog.md`)*
+45. **No fabric preset declares the stabilizer it assumes — backing is guessed from STITCH COUNT instead.** Law 33: every preset silently presumes a backing (knit → cutaway, towel → tearaway + topper, cap → buckram), and the preset is only valid if that backing is on the machine. `Fabric` has no `assumed_backing` field, so two places infer it from stitch count — `preflight.STITCHES_CUTAWAY_MIN` → `STABILIZER_CUTAWAY`, and `src/pdfsheet.js`'s `CUTAWAY_STITCHES` line. A 30,000-stitch design on canvas is told cutaway; a 9,000-stitch one on jersey is told nothing. This also blocks the Part 3 worksheet contract, which cannot print an assumption the engine never made. Desk-safe by the playbook's own column — the mapping is published, not a physical constant, so gate 1 does not reach it. *(confirmed 2026-09-20 — playbook row 3; `docs/scope/machine-physics-backlog.md`)*
 
 46. **The smoothness score exists and preflight cannot see it.** Law 37 asks for a monotonic direction-change score with no cutoff, and `tools/edge_smoothness.py`, `curve_fidelity.py`, `edge_wobble.py` and `curve_tiers.py` are exactly that — offline. No smoothness/roughness/churn code appears among preflight's 24 codes or `warnings_codes.py`'s 58, so the grade a customer sees is blind to Kent's most frequent complaint. `edge_smoothness.py`'s own docstring is the evidence: *"`preflight` graded `logo_whitebg` **A 100**"* on a design he calls not smooth, and `becker_marine_logo` B 76 where he calls the edges jagged. Desk-safe, and the cheapest row on the list — the instrument is built, the output ships, nothing connects them. **Not to be confused with `curve_turn_deg`** (a stage-4 vertex refinement on input geometry), which an earlier read scored as this. *(confirmed 2026-09-20 — playbook row 17; `docs/scope/machine-physics-backlog.md`)*
 
@@ -253,6 +253,10 @@ one concealed it; entry 2 is a flag that LEFT this list unnoticed for two weeks.
    per-class default cannot be confirmed from a dataclass line.** Ratified
    2026-09-02, left gate 3; cost is defect 20. *(`pipeline.effective_split_tonal`)*
 3. **`strip_letterbox` — ON by default since 2026-09-14.** A phone screenshot's black bars read as ink and inverted the design: ground sewn in white thread, logo left as negative space. Held OFF first because 13 tests leaned on the fixture's pathology; all re-pointed. The card's 9-px shadow strips then kept its white ground sewing (`GROUND_SEWN`, gaulke F 34) until **2026-09-15**: `letterbox.detect_edge_strips` trims them, only once bars are found — the logo sews on bare garment (yardstick-disagreements row 8). OFF stays the pre-flip engine byte for byte. *(2026-09-14 — DOCTRINE "A fixture's PATHOLOGY can be load-bearing")*
+
+4. **`cap_center_out` — cap sew order, built OFF.** The Python lane never
+   read `garment_id` for ORDER; the browser engine did. **DO NOT FLIP:**
+   only the cost is measured, and it is heavy. *(measured 2026-09-19 — DOCTRINE)*
 
 *(added 2026-08-17 — `docs/project-review-2026-08-16.md` §1.6: chaining was absent
 here, so a good-faith flip would have shipped bare-fabric thread unwarned.)*
@@ -609,15 +613,17 @@ the Layers panel, and fabric/garment presets. Logic coverage is broad —
 nearly every `app/src/lib/*.js` module has a paired spec — with UI-behaviour
 coverage riding on live-browser e2e specs across several garments, the image
 content path, four export formats, and the embroidery field's own chrome.
+**The worksheet states the digitizer's assumptions; both surfaces state run
+time.** Backing and topper come off the fabric preset, not a stitch count;
+`src/sewtime.js` gives minutes at 650 spm incl. trims. Only what the engine
+derives — Kent's ruling left needle and tension off. *(2026-09-20 — DOCTRINE)*
+
 **What holds it at Medium:** fabric-preset accuracy is gated on the controlled
 sew-out CARD, which has not been sewn — the one physical out so far (2026-09-01)
 was a single uncontrolled icon. See Cross-cutting issues.
 
-**The two engines' fabric tables agree, and `test_fabric_wire.py` keeps them so**
-— field-for-field, asserting AGREEMENT only; the numbers stay gate 1. Its sibling
-`test_machine_wire.py` does the same for the 21 shared individual constants
-(2026-09-14). What law 26's month of silent browser drift cost: DOCTRINE.
-*(2026-09-07; 2026-09-14)*
+**The two engines' fabric and machine tables are wire-tested to agree**
+(`test_fabric_wire.py`, `test_machine_wire.py`) — [area doc](docs/scope/3-studio-app-wizard.md).
 
 **A Studio change is not verified until it has been *looked at* in a browser.**
 Six buyer-visible defects across the 2026-08-25 and 09-07 sweeps, none seen by a
@@ -666,7 +672,7 @@ thumbnail. Pinned on the literal 0.4 and both ratios. *(2026-09-04 — `preview.
 
 **Thread lighting is unverified against real thread** — eye-tuned, and the one physical out (2026-09-01) cannot settle it: its colours were random operator threading, so DOCTRINE bars grading colour from it at all. Treat the look as a preference, not a calibration. *(suspected 2026-08-25; sharpened 2026-09-14)*
 
-**Typographic punctuation folds to its ASCII twin where a font lacks it.** `satinfont.js TYPOGRAPHIC_FOLD`, 367 font x character combinations rescued; not NFKD. Detail: [area 3](docs/scope/3-studio-app-wizard.md); DOCTRINE. *(fixed 2026-09-07)*
+**Typographic punctuation folds to its ASCII twin where a font lacks it** (`satinfont.js TYPOGRAPHIC_FOLD`) — [area doc](docs/scope/3-studio-app-wizard.md). *(fixed 2026-09-07)*
 
 **A design is named after what is in it, and the registry stops swallowing
 failed writes.** Every project was "Untitled design"; `renameProject` and
@@ -675,11 +681,7 @@ propagate now, index first. Detail:
 [area 3](docs/scope/3-studio-app-wizard.md); DOCTRINE.
 *(fixed 2026-09-07)*
 
-**The built bundle works wherever it is served.** `vite.config.js` sets
-`base: "./"` and five hand-written `/fonts/…` paths ignored it, so below the
-domain root the lettering lane produced nothing; font LICENCE links were among
-the five. Document-relative now, identical at the root. *(fixed 2026-09-07 —
-`assetPaths.spec.js`)*
+**The built bundle works wherever it is served** — [area doc](docs/scope/3-studio-app-wizard.md). *(fixed 2026-09-07)*
 
 **Lettering under the cap floor now names a way out.** Line breaks lead, "fewer characters" second, "Size up" withheld at the width cap. Detail: [area 3](docs/scope/3-studio-app-wizard.md); scope-history 09-07. *(fixed 2026-09-07)*
 
