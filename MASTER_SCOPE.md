@@ -17,7 +17,7 @@ at the bottom for the authority model behind the confidence ratings.
 four of its findings are standing rulings in [`DOCTRINE.md`](DOCTRINE.md). Its
 code and instruments are ON `main`. *(confirmed 2026-08-17 — `git ls-tree`)*
 
-**Last updated:** 2026-09-17. **This file is current state only, under an
+**Last updated:** 2026-09-19. **This file is current state only, under an
 800-line budget.** Its three companions: standing rulings, rejected approaches,
 corrections and session-costing traps live in [`DOCTRINE.md`](DOCTRINE.md);
 dated snapshots in [`docs/scope-history.md`](docs/scope-history.md); per-area
@@ -154,7 +154,7 @@ icon. Cloth pointers added to defects 3, 6 and 16 below.
 
 22. **Small curves sew as polygons — FIXED, DEFAULT ON (Kent's flip, 2026-09-03)** (`curve_turn_deg` = 15; None/0 = the old polygon): a turn-per-vertex bound re-reads each Douglas-Peucker edge against its raw arc, split at the midpoint, floored at one pixel; near-floor lettering exempt per ring. Fremont's counter **9 → 33 vertices, 47° → 17°**, inner rail σ 0.038 → 0.026 mm, trims 52 → 45. **Gated to 20 px/mm** (`_CURVE_MIN_PX_PER_MM`; four pixels of tolerance at 0.2 mm): below it the 1-px floor read raster texture as arcs — every 10–16 px/mm fixture got rougher (sunset 16.1 → 16.5, meadow 15.2 → 16.5) and two borderline ribbons changed tier through the DT classifier's skeleton — so a 600–1200 px web logo at 80 mm is byte-identical and every golden stays pinned — but 1200 px art at ≤ 60 mm (2000 px at ≤ 100 mm) is over the line and refines, and the line is a cliff (60 → 61 mm changes every curve's polygon; Kent's to accept); `tools/curve_tiers.py` is the per-shape tier diff. *(measured 2026-09-03 — `docs/round-curves-2026-09-03.md`, "The flip")*
 
-23. **Rail dents — FIXED (Kent, 2026-09-03), diagnosis corrected.** `place` stepped an overshooting rail in by 15% however small the overshoot (250–1000 placements per design, 70–90% under one pixel) and now puts it on the artwork edge along its own normal, with a micron of containment tolerance; taper zones and caps keep the ladder. Rail jitter p50 **halves on every fixture** (Fremont 0.012 → 0.0045 mm), same-rail holes 11 → 5, median rail 0.02–0.08 mm further out, nothing further outside the art. The "one whole rail 15% short in every golden" was the synthetic bar, not the goldens (the micron alone moved 4 stitches on Fremont); the 8–24% of rail points > 0.1 mm inside on real art turned out to be the short-stitch guard, corridor caps and corners, not the rail model — the honest coverage number is BARE SATIN AREA, and each rail reaching its own edge (`satin_rails_follow_edge`, **BUILT, DEFAULT OFF, Kent's flip**) takes it Becker 8.6 → 5.8%, ENTHUSIAST 5.7 → 4.4%, drone 6.1 → 4.6% for +10–17% thread, +50% rail jitter and more guard retractions; the pull comp was tuned with the far rail short — a sew-out question. Goldens re-pinned in #329: alpha, ribbon ×3. *(measured 2026-09-03 — `docs/rail-dents-2026-09-03.md`)* **Its COVERAGE cost went unmeasured until 2026-09-20, and it is OVERSHOOT, not bare art.** On `enthusiast` at 80 mm the change puts **16.6 mm² more thread OUTSIDE the ink** (100% within 1.0 mm of the edge, median 0.30 mm out, three quarters on free edges) while bare satin area does not move (3.94% both ways): the fixture's whole `lost_frac` of 0.3006 is **0.0 mm² unsewn ink and 118.7 mm² overshoot** — the letters sew fatter than they are drawn. Both WORDMARKs regressed against the 08-27 arm while both non-wordmarks improved, for one reason: rails further out cover more artwork AND spill more thread — one knob, two populations. Three cures measured, each trading one instrument for another; the revert and a 0.20 mm inset hand back the jitter win (the inset is WORSE than a full revert on becker, because offsetting the overshooting 17% of stations is a step against their neighbours), and a global corridor cap holds jitter but costs 1.6 points of bare satin and eats pull comp (`max_out` 0.541 → 0.300). **Kent's ruling 2026-09-20: keep the placement — the overshoot stays OPEN.** `lost_frac` now ships SPLIT (`unsewn_frac` / `overshoot_frac`; a wordmark is ~100% the latter, `bridge` 100% the former) and the guard pins three readings, each verified to fire. *(measured 2026-09-20 — PR #536; DOCTRINE)*
+23. **Rail dents — FIXED (Kent, 2026-09-03), diagnosis corrected.** `place` stepped an overshooting rail in by 15% however small the overshoot (250–1000 placements per design, 70–90% under one pixel) and now puts it on the artwork edge along its own normal, with a micron of containment tolerance; taper zones and caps keep the ladder. Rail jitter p50 **halves on every fixture** (Fremont 0.012 → 0.0045 mm), same-rail holes 11 → 5, median rail 0.02–0.08 mm further out, nothing further outside the art. The "one whole rail 15% short in every golden" was the synthetic bar, not the goldens (the micron alone moved 4 stitches on Fremont); the 8–24% of rail points > 0.1 mm inside on real art turned out to be the short-stitch guard, corridor caps and corners, not the rail model — the honest coverage number is BARE SATIN AREA, and each rail reaching its own edge (`satin_rails_follow_edge`, **BUILT, DEFAULT OFF, Kent's flip**) takes it Becker 8.6 → 5.8%, ENTHUSIAST 5.7 → 4.4%, drone 6.1 → 4.6% for +10–17% thread, +50% rail jitter and more guard retractions; the pull comp was tuned with the far rail short — a sew-out question. Goldens re-pinned in #329: alpha, ribbon ×3. *(measured 2026-09-03 — `docs/rail-dents-2026-09-03.md`)* **Its cost is OVERSHOOT, not bare art (2026-09-20):** `enthusiast` reads **0.0 mm² unsewn ink, 108.5 mm² thread OUTSIDE it**, bare satin unmoved — letters sew fatter than drawn. `lost_frac` ships SPLIT. *(measured 2026-09-20 — PR #536; DOCTRINE)*
 
 24. **Hairline columns (< 0.6 mm) — the MECHANISM is fixed, the tier is not.** A hairline STRETCH of a stroke (crosses under the 0.5 mm floor, ≥ three bean stations of spine) now sews as a 3-pass bean along its spine in both engines, only where the uncompensated art is wider than `simplify_tol_mm` (pull comp grew a 0.04 mm needle into a tick); Fremont's 2.6 mm "THE" reads. Whether a 0.5 mm bean reads better on cloth than a dropped bar is card block 5's question — `pending sew-out`. *(fixed 2026-09-03 — `docs/design-review-fine-lettering-2026-09-03.md`)*
 
@@ -245,6 +245,10 @@ one concealed it; entry 2 is a flag that LEFT this list unnoticed for two weeks.
    per-class default cannot be confirmed from a dataclass line.** Ratified
    2026-09-02, left gate 3; cost is defect 20. *(`pipeline.effective_split_tonal`)*
 3. **`strip_letterbox` — ON by default since 2026-09-14.** A phone screenshot's black bars read as ink and inverted the design: ground sewn in white thread, logo left as negative space. Held OFF first because 13 tests leaned on the fixture's pathology; all re-pointed. The card's 9-px shadow strips then kept its white ground sewing (`GROUND_SEWN`, gaulke F 34) until **2026-09-15**: `letterbox.detect_edge_strips` trims them, only once bars are found — the logo sews on bare garment (yardstick-disagreements row 8). OFF stays the pre-flip engine byte for byte. *(2026-09-14 — DOCTRINE "A fixture's PATHOLOGY can be load-bearing")*
+
+4. **`cap_center_out` — cap sew order, built OFF.** The Python lane never
+   read `garment_id` for ORDER; the browser engine did. **DO NOT FLIP:**
+   only the cost is measured, and it is heavy. *(measured 2026-09-19 — DOCTRINE)*
 
 *(added 2026-08-17 — `docs/project-review-2026-08-16.md` §1.6: chaining was absent
 here, so a good-faith flip would have shipped bare-fabric thread unwarned.)*
@@ -586,15 +590,17 @@ the Layers panel, and fabric/garment presets. Logic coverage is broad —
 nearly every `app/src/lib/*.js` module has a paired spec — with UI-behaviour
 coverage riding on live-browser e2e specs across several garments, the image
 content path, four export formats, and the embroidery field's own chrome.
+**The worksheet states the digitizer's assumptions; both surfaces state run
+time.** Backing and topper come off the fabric preset, not a stitch count;
+`src/sewtime.js` gives minutes at 650 spm incl. trims. Only what the engine
+derives — Kent's ruling left needle and tension off. *(2026-09-20 — DOCTRINE)*
+
 **What holds it at Medium:** fabric-preset accuracy is gated on the controlled
 sew-out CARD, which has not been sewn — the one physical out so far (2026-09-01)
 was a single uncontrolled icon. See Cross-cutting issues.
 
-**The two engines' fabric tables agree, and `test_fabric_wire.py` keeps them so**
-— field-for-field, asserting AGREEMENT only; the numbers stay gate 1. Its sibling
-`test_machine_wire.py` does the same for the 21 shared individual constants
-(2026-09-14). What law 26's month of silent browser drift cost: DOCTRINE.
-*(2026-09-07; 2026-09-14)*
+**The two engines' fabric and machine tables are wire-tested to agree**
+(`test_fabric_wire.py`, `test_machine_wire.py`) — [area doc](docs/scope/3-studio-app-wizard.md).
 
 **A Studio change is not verified until it has been *looked at* in a browser.**
 Six buyer-visible defects across the 2026-08-25 and 09-07 sweeps, none seen by a
@@ -643,7 +649,7 @@ thumbnail. Pinned on the literal 0.4 and both ratios. *(2026-09-04 — `preview.
 
 **Thread lighting is unverified against real thread** — eye-tuned, and the one physical out (2026-09-01) cannot settle it: its colours were random operator threading, so DOCTRINE bars grading colour from it at all. Treat the look as a preference, not a calibration. *(suspected 2026-08-25; sharpened 2026-09-14)*
 
-**Typographic punctuation folds to its ASCII twin where a font lacks it.** `satinfont.js TYPOGRAPHIC_FOLD` stitches the twin ONLY where the fancy form is missing — 367 font x character combinations rescued, and all 85 fonts hash identically on text that never needed it. Not NFKD: accented letters are different letters and stay unfolded. What it cost before the fix (a phone's U+2019 sewing "Fritschs Stitches", under a note naming a character that looks identical to the one typed): DOCTRINE; scope-history 09-07. *(fixed 2026-09-07)*
+**Typographic punctuation folds to its ASCII twin where a font lacks it** (`satinfont.js TYPOGRAPHIC_FOLD`) — [area doc](docs/scope/3-studio-app-wizard.md). *(fixed 2026-09-07)*
 
 **A design is named after what is in it, and the registry stops swallowing
 failed writes.** Every project was "Untitled design", so "My designs" listed
@@ -655,11 +661,7 @@ never landed — a name and a project's membership of the registry live ONLY in
 that index — and `deleteProject` removed the record before writing it. Both
 propagate now, index first. *(fixed 2026-09-07 — area 3; DOCTRINE)*
 
-**The built bundle works wherever it is served.** `vite.config.js` sets
-`base: "./"` and five hand-written `/fonts/…` paths ignored it, so below the
-domain root the lettering lane produced nothing; font LICENCE links were among
-the five. Document-relative now, identical at the root. *(fixed 2026-09-07 —
-`assetPaths.spec.js`)*
+**The built bundle works wherever it is served** — [area doc](docs/scope/3-studio-app-wizard.md). *(fixed 2026-09-07)*
 
 **Lettering under the cap floor now names a way out.** The "cannot be sewn" verdict was the only one with no fix while the milder branch named two. Levers were measured before being named, so line breaks lead and "fewer characters" is second; "Size up" is withheld at the width cap, the rule the hairline branch already followed. The measured ladder (74 chars at default left chest = 1.3 mm against a 4 mm floor, and what each lever buys): scope-history 09-07. *(fixed 2026-09-07)*
 
