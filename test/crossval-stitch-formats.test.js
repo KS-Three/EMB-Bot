@@ -210,10 +210,18 @@ test("crossval: a long stitch is SPLIT into stitches by DST", async (t) => {
   const r = skipOrGet(t, "dst.long");
   if (!r) return;
   assert.ok(r.decodedStitches > r.expectedStitches, "the 300-unit segment must become several records");
-  // 121 units per axis is the format's own reach, so that is the longest a
-  // reader can see sewn. (A diagonal step could reach 121*sqrt(2); this
-  // fixture's long segment is axis-aligned.)
-  assert.strictEqual(r.longestSewnUnits, 121);
+  // 100, not 121, since 2026-09-20: a split move is divided into EQUAL steps
+  // along the line (300 units -> 3 x 100), where it used to max each axis out
+  // at the record's reach and leave a 58-unit stub. The change came with the
+  // dogleg fix — stepping along the segment instead of clamping each axis on
+  // its own is what puts the file's thread on the line the Studio draws, and
+  // equal division is what that looks like on an axis-aligned move.
+  //
+  // The invariant worth keeping is the ceiling; the exact number is the
+  // tripwire. (A diagonal step could reach 121*sqrt(2); this fixture's long
+  // segment is axis-aligned.)
+  assert.ok(r.longestSewnUnits <= 121, "no sewn record past the sewability bar");
+  assert.strictEqual(r.longestSewnUnits, 100);
 });
 
 test("crossval: EXP splits it at the sewability ceiling too (FIXED 2026-09-13)", async (t) => {
@@ -236,7 +244,11 @@ test("crossval: EXP splits it at the sewability ceiling too (FIXED 2026-09-13)",
   // Kent ruled 2026-09-13, the same call as the PES one: split at 121. All
   // three encoders now agree to the unit on what a sewn move may be, while
   // each keeps its own record reach for TRAVEL (EXP still jumps at ±127).
-  assert.strictEqual(r.longestSewnUnits, 121);
+  //
+  // 100 rather than 121 since 2026-09-20 — equal steps along the line, see
+  // the DST test above.
+  assert.ok(r.longestSewnUnits <= 121, "no sewn record past the sewability bar");
+  assert.strictEqual(r.longestSewnUnits, 100);
   // Count is still not equal to DST's: the design's own leading zero-delta
   // jump reads differently between the two readers (pystitch reports JUMP 1
   // for EXP and 0 for DST on an identical zero-length move — observed, not
@@ -262,7 +274,10 @@ test("crossval: PES splits it too, at the imported 121 (FIXED 2026-09-12)", asyn
   // and the 2026-09-11 split-satin ruling is stated in. 121 rather than EXP's
   // 127 so that a PES file never carries a sewn move DST would have split.
   assert.ok(r.decodedStitches > r.expectedStitches, "the 300-unit segment must become several records");
-  assert.strictEqual(r.longestSewnUnits, 121);
+  // 100 rather than 121 since 2026-09-20 — equal steps along the line, see
+  // the DST test above.
+  assert.ok(r.longestSewnUnits <= 121, "no sewn record past the sewability bar");
+  assert.strictEqual(r.longestSewnUnits, 100);
   // And PES now reads EXACTLY like the DST control on this fixture: same
   // count, same longest sewn segment. Three encoders, one sew-out. (EXP
   // differs only by the 6 units of slack its record has — see the test

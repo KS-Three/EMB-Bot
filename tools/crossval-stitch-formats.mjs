@@ -217,7 +217,10 @@ export function resolvePython() {
   return null;
 }
 
-function pyDecode(python, files) {
+// Exported since 2026-09-20 so tools/preview-vs-dst.mjs reads its files
+// through the SAME decoder call this harness does — one place that knows
+// crossval_decode.py's JSON contract, rather than two that can drift.
+export function pyDecode(python, files) {
   const r = spawnSync(python, [path.join(ROOT, "tools", "crossval_decode.py"), ...files], {
     encoding: "utf8",
     timeout: 120000,

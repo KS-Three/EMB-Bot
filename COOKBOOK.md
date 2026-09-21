@@ -408,6 +408,13 @@ hand-rolling it in JS.
   instrument), `digitizer/tools/thread_color_render.py` (a design drawn in
   the cones it will actually sew, each changed shape tiled OFF beside ON at
   90 px/mm — a 0.9 mm2 shard is four pixels at whole-design scale),
+  `tools/preview-vs-dst.mjs` (the only thing comparing a PICTURE to a FILE:
+  the previewer's own `designToStrands` against pystitch's read of the
+  encoded bytes, three fixtures x DST/EXP/PES, reporting orientation, how far
+  the file's thread strays from the drawn line, and sewn thread either side —
+  its fixtures must REACH the split path, which its test asserts, because the
+  crossval harness's axis-aligned `long` fixture is exactly how the 2026-09-20
+  dogleg survived),
   `tools/long-stitch-census.mjs` (the BROWSER lettering lane: every sewn
   segment of the 85 shipped fonts at three texts, counted past one DST
   record **per axis** — `--doctrine` reproduces DOCTRINE 2026-09-07's own
