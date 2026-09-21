@@ -123,7 +123,15 @@ def test_a_layer_that_sews_nothing_leaves_no_cone_in_the_plan(whitebg):
     sewn_cones = {b.thread_number for b in plan.blocks}
     for number in dead_cones:
         assert number not in [e["number"] for e in plan.palette] or number in sewn_cones
-    assert len(whitebg.palette) > len(plan.palette)
+    # Against the ARTWORK palette. `plan.palette` is one entry per block and
+    # the design-silhouette cap (ON by default since 2026-09-11) adds a block
+    # of its own at the end — in a cone the design already loads, so it adds
+    # no NEW cone, but it does add a slot. The claim here is about a dead
+    # layer's cone surviving into the machine's list, which the cap cannot
+    # cause; dropping its slot keeps the comparison measuring that.
+    art = [e for e, b in zip(plan.palette, plan.blocks)
+           if not any(r.shape_id == "__edge_cap__" for r in b.runs)]
+    assert len(whitebg.palette) > len(art)
 
 
 # --- 3. a block is never labelled with another cone's name -----------------

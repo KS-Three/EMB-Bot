@@ -309,7 +309,7 @@ def test_starved_is_now_silent_where_the_area_gate_cried_wolf():
     assert report["starved"] == 0
 
 
-def test_the_cited_0_51_false_alarm_is_the_fixture_logos_own(whitebg):
+def test_the_cited_0_51_false_alarm_is_the_fixture_logos_own(whitebg_pre_flip):
     """The config block's "firing on 0.51 mm elsewhere", found: whitebg's
     Sf5200f3f measures 0.499 mm bare under contour while its known drops sum
     to 1.7 % of its area — the old gate fired, the recalibrated one is
@@ -323,9 +323,20 @@ def test_the_cited_0_51_false_alarm_is_the_fixture_logos_own(whitebg):
     `starved_threshold_mm` (0.33 at shipped spacing), same as before the
     shrink, just closer to it in absolute terms since the healthy floor
     moved too.
+
+    UPDATE 2026-09-13 (`cfg.keep_thin_strokes` ON by default, Kent's
+    ruling): this reads `whitebg_pre_flip`, because the flip changes both
+    polygons under it. Measured that day on the shipped engine, Sf5200f3f
+    reads 0.200 mm bare (it no longer swallows the sub-floor sliver it used
+    to absorb) and Sb253ebba's skipped area collapses 1.208 -> 0.192 mm²,
+    under the 1 % of its own area this test needs to say "the old gate fired
+    here" — so ON, the false-alarm analysis these two shapes were chosen for
+    no longer has its premise. The analysis is about the OLD gate on the
+    polygons it was made on; the flip's own arithmetic on this fixture is
+    pinned in `tests/test_keep_thin_strokes.py`.
     """
     for shape_id, cited in (("Sf5200f3f", 0.168), ("Sb253ebba", 0.154)):
-        p, _row, fabric = _logo_shape(whitebg, shape_id)
+        p, _row, fabric = _logo_shape(whitebg_pre_flip, shape_id)
         _runs, report = contour_fill(p.polygon, p.shape_id, spacing_mm=machine.CONTOUR_RING_MM,
                                      stitch_mm=machine.FILL_STITCH_MM,
                                      underlay_style=fabric.fill_underlay,

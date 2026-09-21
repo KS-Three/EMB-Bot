@@ -353,6 +353,19 @@ are not sewable from the product.
 Where: `satinplay.js emitZigzag`, `satinfont.js routeGlyph`,
 `digitize.js buildLetteringDesign`. Effort: medium.
 
+**BUILT 2026-09-11 — and "eighteen of the 85" is LOW BY FOUR TIMES.** Measured
+with `tools/long-stitch-census.mjs` (validated against DOCTRINE's own Full Back
+row to the stitch): **80 of 85 fonts throw a stitch no machine can sew, worst
+98.7 mm**, and one letter at **Left Chest** breaks 63 of 85 on its own. Two
+units bugs fixed unconditionally take it to 66; `splitSatin` or
+`wideColumnFill` — both built, both measured OFF first — take it to 9, all of
+them cross-stitch fonts, which is a separate question. The default was Kent's,
+because DOCTRINE 2026-09-07 calls the choice between split, fill and capping
+*"a look-and-fabric decision with a sew-out behind it"*; **he ruled the split
+ON and the fill off** (2.47× the stitches and not one extra trim, against the
+fill's 5.22× and 68.8×). Plan, numbers and the three options as they were put:
+[`docs/superpowers/plans/2026-09-11-wide-columns-in-lettering.md`](superpowers/plans/2026-09-11-wide-columns-in-lettering.md).
+
 ### 11. A legibility yardstick on the render, and an un-clamped grade
 
 Phase 1's exit is that the metric agrees with Kent's eye. Today

@@ -147,6 +147,40 @@ def test_a_cut_through_a_gradient_sews_as_fill_at_its_parents_angle():
     assert abs(band_deg - 90.0) > 30.0, band_deg
 
 
+def test_a_stale_parent_id_without_the_tag_does_not_steer_the_rows():
+    """The two keys are written together, so a lone `gradient_band_of` means
+    a stale one survived — a cached region list, a re-run with the flag off.
+
+    It used to steer anyway: `_fill_angle_for` read the parent id on its own,
+    and `pipeline.finish_generation`'s flag-off branch cleared `gradient_band`
+    and `gradient_band_soft` but not `gradient_band_of`, so a band could keep
+    sewing at its parent's angle with the rule switched off — the half of the
+    ruling that is not the tier. Both ends closed 2026-09-20.
+
+    The parent carries an explicit 45 deg so the two answers cannot be
+    confused: this synthetic band's OWN auto angle is ~0 deg, the same as a
+    30 x 20 parent's, so a test that used the auto angle on both sides would
+    pass whether the rung fired or not.
+    """
+    regions = _three_bands(tier="fill")
+    regions[0].meta["fill_angle_deg"] = 45.0
+    regions[1].meta["gradient_band_of"] = "Sleft"     # stale: no tag beside it
+    assert not is_gradient_band(regions[1])
+    blocks, _ = _sew(regions)
+    assert "fill" in _kinds(blocks, "Sband")
+    assert abs(_row_angle_deg(blocks, "Sleft") - 45.0) <= 5.0, "the parent honours its own angle"
+    band_deg = _row_angle_deg(blocks, "Sband")
+    assert abs(band_deg - 45.0) > 20.0, f"a stale id steered the rows to the parent: {band_deg}"
+
+    # And the positive control, same geometry: TAGGED, it does follow.
+    tagged = _three_bands(tier="fill")
+    tagged[0].meta["fill_angle_deg"] = 45.0
+    tagged[1].meta["gradient_band_of"] = "Sleft"
+    tagged[1].meta["gradient_band"] = True
+    blocks, _ = _sew(tagged)
+    assert abs(_row_angle_deg(blocks, "Sband") - 45.0) <= 5.0
+
+
 def test_a_stripe_between_two_flat_panels_keeps_its_satin():
     """Same regions, same colours, same shape — hard edges in the picture.
     A stroke that happens to sit between two fills is still a stroke."""

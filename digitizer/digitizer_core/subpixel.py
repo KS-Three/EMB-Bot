@@ -128,6 +128,116 @@ PLATEAU_TOL = 0.15
 DROP_REJECTED_RUN_MAX = 2
 
 
+# The corner construction for a source read at its own resolution
+# (`corner_fit`). The profile read above samples through the corner pixel
+# itself, and on anti-aliased art that pixel's column is the OTHER edge's
+# ramp: a rectangle whose left edge sits mid-pixel has a corner column at
+# half coverage, so the top edge's profile through it never reaches its
+# inside plateau and the corner is refused — kept at its pixel centre, up to
+# 0.7 px inside the true corner, and the polygon shows a bevel where the
+# moved side vertices meet it (Becker's M, top left, 2026-09-18; the
+# ladder's rectangles sit on pixel boundaries and never hit this), or is
+# ACCEPTED and placed short along a bevel by the same bias. The sides
+# themselves read cleanly a few pixels away, so every flagged corner is
+# placed where the two side lines meet: each side is the least-squares line
+# through the accepted, non-corner vertices within `CORNER_FIT_STEPS_MULT`
+# corner steps on that side, kept only when it is straight
+# (`CORNER_FIT_RESIDUAL_PX`) and long enough to have a direction
+# (`CORNER_FIT_MIN_SPAN_PX`), the two must still turn by `CORNER_DEG`, and
+# the meeting point may lie at most `CORNER_FIT_REACH_PX` from the pixel
+# centre — a label's corner pixel can be eroded by the quantiser (a
+# quarter-covered corner goes to the background), which puts the trace's
+# corner a whole pixel in on BOTH axes past the half pixel the centre
+# already sits in: 1.5 px on each axis, 2.12 px on the diagonal (measured
+# on the ladder's 200 px rectangles, 2026-09-18: the trace's corners sat
+# 1.48-1.61 px from the meet, and a 1.5 px cap refused every one). A
+# one-pixel protrusion on a curve cannot reach this rung of the test: its
+# two "sides" are either curved past the residual or collinear. A short
+# side whose own vertices were
+# all refused (the ladder's 200 px bar is under four source pixels tall)
+# gives no line and the corner stays; two near-parallel lines (a vertex in
+# the middle of such a side, whose windows reach the long edges either
+# side) are not a corner and it stays.
+CORNER_FIT_STEPS_MULT = 2
+CORNER_FIT_RESIDUAL_PX = 0.25
+CORNER_FIT_MIN_SPAN_PX = 1.0
+CORNER_FIT_REACH_PX = 1.5 * math.sqrt(2.0)
+
+
+def _fit_line(pts: np.ndarray) -> tuple[np.ndarray, np.ndarray, float, float] | None:
+    """-> (point on the line, unit direction, rms residual px, span px) of
+    the least-squares line through `pts`, or None below two points."""
+    if len(pts) < 2:
+        return None
+    mean = pts.mean(axis=0)
+    d = pts - mean
+    _u, s, vt = np.linalg.svd(d, full_matrices=False)
+    direction = vt[0]
+    along = d @ direction
+    across = d @ np.array([-direction[1], direction[0]])
+    rms = float(np.sqrt(np.mean(across ** 2)))
+    span = float(along.max() - along.min())
+    return mean, direction, rms, span
+
+
+def _fit_corners(raw: np.ndarray, pts: np.ndarray, accepted: np.ndarray, protect: np.ndarray,
+                 corner: np.ndarray, steps: int) -> None:
+    """Place every `corner` at the meeting point of its two fitted side
+    lines, in place — see `CORNER_FIT_STEPS_MULT`. Every flagged corner,
+    not only a refused one: the profile read can ACCEPT a corner on
+    anti-aliased art and still place it short, because the side profile it
+    reads through the corner pixel is the other edge's ramp (a 20 x 12 px
+    rectangle with mid-pixel edges, upscaled x2.5: each accepted corner sat
+    0.35-0.77 source px along a bevel, 2026-09-18), and the side lines do
+    not have that bias. A corner the fit cannot place keeps whatever the
+    profile gave it, protected or not."""
+    n = len(raw)
+    if n == 0 or not corner.any():
+        return
+    window = max(2, CORNER_FIT_STEPS_MULT * steps)
+    usable = accepted & ~corner
+    cos_corner = math.cos(math.radians(CORNER_DEG))
+    for i in np.flatnonzero(corner):
+        prev_idx = (i - np.arange(1, window + 1)) % n
+        next_idx = (i + np.arange(1, window + 1)) % n
+        prev_pts = pts[prev_idx[usable[prev_idx]]]
+        next_pts = pts[next_idx[usable[next_idx]]]
+        a = _fit_line(prev_pts)
+        b = _fit_line(next_pts)
+        if a is None or b is None:
+            continue
+        pa, da, rms_a, span_a = a
+        pb, db, rms_b, span_b = b
+        if max(rms_a, rms_b) > CORNER_FIT_RESIDUAL_PX:
+            continue
+        if min(span_a, span_b) < CORNER_FIT_MIN_SPAN_PX:
+            continue
+        # Orient both directions along the contour's travel — `prev_idx`
+        # runs back from the corner, so its first point is the nearest —
+        # and require the turn between them to reach `CORNER_DEG`. Tested
+        # on the absolute dot product this was symmetric about a right
+        # angle and refused every turn past 120 deg: the apex of an A, V,
+        # M or N, a star's point (review of PR #515, 2026-09-18).
+        if float((prev_pts[0] - prev_pts[-1]) @ da) < 0.0:
+            da = -da
+        if float((next_pts[-1] - next_pts[0]) @ db) < 0.0:
+            db = -db
+        if float(da @ db) > cos_corner:                # a turn under CORNER_DEG is no corner
+            continue
+        # pa + s * da = pb + t * db
+        det = da[0] * (-db[1]) - da[1] * (-db[0])
+        if abs(det) < 1e-9:
+            continue
+        rhs = pb - pa
+        s = (rhs[0] * (-db[1]) - rhs[1] * (-db[0])) / det
+        meet = pa + s * da
+        if math.hypot(meet[0] - raw[i, 0], meet[1] - raw[i, 1]) > CORNER_FIT_REACH_PX:
+            continue
+        pts[i] = meet
+        accepted[i] = True
+        protect[i] = False
+
+
 def _oriented_normals(raw: np.ndarray, steps: int, inside) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """-> (normal from the chord `steps` behind to the vertex, normal from the
     vertex to `steps` ahead, ok) — each unit length and pointing OUTSIDE,
@@ -152,14 +262,29 @@ def _oriented_normals(raw: np.ndarray, steps: int, inside) -> tuple[np.ndarray, 
 
 def subpixel_contour(raw_xy: np.ndarray, lab: np.ndarray, mask: np.ndarray,
                      mask_origin: tuple[int, int], *,
-                     min_contrast_de: float) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+                     min_contrast_de: float,
+                     inside_fn=None,
+                     step_scale: float = 1.0,
+                     corner_fit: bool = False) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """-> (points (N, 2) float64, accepted (N,) bool, corner (N,) bool).
 
     `raw_xy`: a closed contour of pixel centres, (x, y) in the frame of
-    `lab` ((H, W, 3) float CIELAB of the prepped image). `mask`: the
-    shape's own pixels (nonzero = inside), a crop whose top-left pixel sits
-    at `mask_origin` = (x, y) in the same frame; used only to orient the
-    normals. `min_contrast_de`: the least CIE76 distance between the two
+    `lab` ((H, W, C) float — CIELAB of the prepped image, C = 3; the
+    native-resolution read appends the source's alpha as a fourth channel,
+    and the contrast and the projection use every channel alike). `mask`:
+    the shape's own pixels (nonzero = inside), a crop whose top-left pixel
+    sits at `mask_origin` = (x, y) in the same frame; used only to orient
+    the normals. `inside_fn`, when given, replaces that lookup: a callable
+    from (N, 2) points in `lab`'s frame to a bool per point, for a caller
+    whose mask lives in a different frame from `lab` (stage 4's
+    native-resolution read hands the contour down to the source's pixels
+    while the label mask stays at the upscaled ones). `step_scale`: contour
+    vertices per pixel of `lab` — the chords the normals and the corner
+    test are read over (`NORMAL_STEPS`, `CORNER_STEPS`) are scaled by it so
+    they span the same distance in `lab`'s pixels whatever the density of
+    the trace; a nearest-neighbour upscale by four hands four vertices per
+    source pixel, and read at one step they see only the manufactured
+    staircase. `min_contrast_de`: the least CIE76 distance between the two
     side colours for an edge to be readable at all. `corner` marks the
     corners a side could not be read at, which `drop_isolated_rejects` must
     keep (see `CORNER_REACH_PX`).
@@ -169,10 +294,13 @@ def subpixel_contour(raw_xy: np.ndarray, lab: np.ndarray, mask: np.ndarray,
     pts = raw.copy()
     accepted = np.zeros(n, dtype=bool)
     corner = np.zeros(n, dtype=bool)
-    if n < 2 * CORNER_STEPS + 1:
+    normal_steps = max(1, int(round(NORMAL_STEPS * step_scale)))
+    corner_steps = max(1, int(round(CORNER_STEPS * step_scale)))
+    if n < 2 * corner_steps + 1:
         return pts, accepted, corner
+    channels = int(lab.shape[-1])
 
-    def inside(xy: np.ndarray) -> np.ndarray:
+    def inside_mask(xy: np.ndarray) -> np.ndarray:
         xi = np.rint(xy[:, 0]).astype(int) - int(mask_origin[0])
         yi = np.rint(xy[:, 1]).astype(int) - int(mask_origin[1])
         within = (xi >= 0) & (yi >= 0) & (xi < mask.shape[1]) & (yi < mask.shape[0])
@@ -180,9 +308,11 @@ def subpixel_contour(raw_xy: np.ndarray, lab: np.ndarray, mask: np.ndarray,
         out[within] = mask[yi[within], xi[within]] > 0
         return out
 
+    inside = inside_fn if inside_fn is not None else inside_mask
+
     idx = np.arange(n)
     # The blended normal every vertex is read along first.
-    tang = raw[(idx + NORMAL_STEPS) % n] - raw[(idx - NORMAL_STEPS) % n]
+    tang = raw[(idx + normal_steps) % n] - raw[(idx - normal_steps) % n]
     tlen = np.hypot(tang[:, 0], tang[:, 1])
     ok = tlen > 1e-9
     tang = tang / np.where(ok, tlen, 1.0)[:, None]
@@ -205,12 +335,20 @@ def subpixel_contour(raw_xy: np.ndarray, lab: np.ndarray, mask: np.ndarray,
             sample_xy = raw[:, None, :] + offsets[None, :, None] * normals[:, None, :]
             coords = [sample_xy[..., 1].ravel(), sample_xy[..., 0].ravel()]            # (row, col)
             vals = np.stack([map_coordinates(lab[..., c], coords, order=1, mode="nearest")
-                             for c in range(3)], axis=-1).reshape(n, len(offsets), 3)
+                             for c in range(channels)], axis=-1).reshape(n, len(offsets), channels)
             profile = vals[:, :k]
             c_in = vals[:, k:k + 2].mean(axis=1)
             c_out = vals[:, k + 2:].mean(axis=1)
             axis = c_out - c_in
+            # The three Lab channels in the exact expression the flat-lane
+            # goldens were captured with, and any further channel folded in
+            # by the same `hypot`: `np.linalg.norm` differs from this chain
+            # in the last float32 ulp on a quarter of vectors, and one ulp
+            # moved a drone vertex by 3.2e-6 mm with the flag OFF (review of
+            # PR #515, 2026-09-18) — "byte for byte" means this expression.
             contrast = np.hypot(np.hypot(axis[:, 0], axis[:, 1]), axis[:, 2])
+            for c in range(3, channels):
+                contrast = np.hypot(contrast, axis[:, c])
             good = base_ok & ~got & (contrast >= min_contrast_de)
             denom = np.where(contrast > 0, contrast ** 2, 1.0)
             t = ((profile - c_in[:, None, :]) * axis[:, None, :]).sum(axis=-1) / denom[:, None]
@@ -231,7 +369,7 @@ def subpixel_contour(raw_xy: np.ndarray, lab: np.ndarray, mask: np.ndarray,
 
     # Corners: read along each side's own normal and intersect the two
     # offset side lines.
-    n_prev, n_next, side_ok = _oriented_normals(raw, CORNER_STEPS, inside)
+    n_prev, n_next, side_ok = _oriented_normals(raw, corner_steps, inside)
     cos_turn = np.clip((n_prev * n_next).sum(axis=1), -1.0, 1.0)
     corner = side_ok & (np.degrees(np.arccos(cos_turn)) >= CORNER_DEG)
     protect = np.zeros(n, dtype=bool)
@@ -253,6 +391,13 @@ def subpixel_contour(raw_xy: np.ndarray, lab: np.ndarray, mask: np.ndarray,
     s_star, got = read_edge(normal, ok & ~corner)
     pts[got] = raw[got] + s_star[got, None] * normal[got]
     accepted |= got
+    # `corner_fit`: every flagged corner is placed where its two fitted
+    # side lines meet, from the sides' own accepted vertices — see
+    # `CORNER_FIT_STEPS_MULT`. Only the native-resolution read asks for it;
+    # at the default it is not run, so a native-resolution source's polygon
+    # is untouched by this construction.
+    if corner_fit:
+        _fit_corners(raw, pts, accepted, protect, corner, corner_steps)
     return pts, accepted, protect
 
 

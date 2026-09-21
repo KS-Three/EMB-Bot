@@ -187,8 +187,14 @@ test("right-click a shape: Add border reaches the panel's select and the stitch-
 
   // The same field the panel's own Border select edits.
   await expect.poll(() => borderSelectValues(page), { timeout: 10_000 }).toContain("auto");
-  // ...and the design restitches on its own after the idle pause: the stats
-  // line changes (a satin border on a square is hundreds of stitches).
+  // ...and the design restitches on its own: the stats line changes (a satin
+  // border on a square is hundreds of stitches). A border no longer waits out
+  // the 2 s idle pause the other shape edits keep — it is complete the moment
+  // it is picked, so it schedules at once (editKind in lib/digitizer.js).
+  // MEASURED against the live service 2026-09-17, by sampling this very line
+  // in a tight loop after the click: 5,944 stitches at 140 ms, 6,073 at
+  // 357 ms. The poll's timeout is generous because the restitch is a full
+  // stage 0-7 run on an unknown machine, not because anything pauses first.
   await expect.poll(() => page.locator(".dgp-stats").innerText(), { timeout: 120_000 }).not.toBe(statsBefore);
 
   // Right-click INSIDE the same square (just below its top edge): the border

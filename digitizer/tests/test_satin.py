@@ -435,7 +435,10 @@ def test_a_degenerate_raster_defers_under_its_own_name(monkeypatch):
     could not fail: the sliver returns `satin`, so the test was passing while
     demonstrating the exact conflation it names.
     """
-    monkeypatch.setattr(stage6_satin, "_dt_stats", lambda poly: None)
+    # `**kw` since 2026-09-16: `_dt_stats` takes `area_weighted` now, and a
+    # stub that pins the OLD signature fails on the keyword rather than on
+    # the behaviour this test is about.
+    monkeypatch.setattr(stage6_satin, "_dt_stats", lambda poly, **kw: None)
     v = classify_ribbon(BAR, machine.SATIN_MAX_WIDTH_MM)
     assert v.satin, "a degenerate raster defers to the verdict already reached"
     assert v.reason == "dt_degenerate", (

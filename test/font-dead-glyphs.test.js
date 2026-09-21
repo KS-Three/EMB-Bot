@@ -52,17 +52,80 @@ function sews(font, g) {
 // font — Kent's call, deliberately deferred), but its blast radius includes
 // glyphs where the run is not construction, it is the glyph.
 //
-// NOT confirmed for these fonts, and do not write it up as confirmed: whether
-// upstream authored a stitch length that was stripped, or never authored one,
-// is indistinguishable from the built JSON — both produce a bare point array.
-// It needs the Ink/Stitch SVG sources in scratch_ink/, which exist on Kent's
-// machine and not in a cloud checkout.
+// MEASURED 2026-09-13, and it splits these fonts into two different defects.
+//
+// This said the question was "indistinguishable from the built JSON" and
+// "needs the Ink/Stitch SVG sources in scratch_ink/, which exist on Kent's
+// machine and not in a cloud checkout". The second half was wrong: upstream
+// `inkstitch/embroidery-fonts` is PUBLIC, and `src/<font>/ltr.svg` answers an
+// unauthenticated `raw.githubusercontent.com` request with HTTP 200. No local
+// directory is needed, and none was used to produce the numbers below.
+//
+// Reading each dead glyph's own `GlyphLayer-<char>` group upstream:
+//
+//   roaring_twenties_KOR        10/10 carry running_stitch_length_mm="2.5"
+//   roaring_twenties_KOR_small  10/10 carry running_stitch_length_mm="1.5"
+//   ondulamarif_{Medium,S,XL}    0/4  carry one
+//   western_light                0/2  carry one
+//
+// So the 26 are TWO defects, not one. The 20 roaring glyphs were AUTHORED and
+// then stripped by `stripRunParamsIfSatin` — recoverable in this repo, by
+// scoping the strip to glyphs that actually have satin columns (these have
+// zero). The other 6 never had a length upstream, so reviving them means
+// inventing a stitch length, which ROADMAP gate 1 refuses; they stay dead.
+//
+// This answers "Waiting on Kent" item 7, whose own text set the test: ">0 ->
+// the narrow fix revives the 20 — Kent's call, since inking those glyphs
+// changes the bbox auto-scaling of any text containing + - / < = > \\ _ ¯ °.
+// 0 -> all 26 are the same gate-1 case and this closes permanently." It is
+// >0, on 20 of 20, at a single authored value per font.
+//
+// KENT RULED 2026-09-13: revive the 20. `tools/build-font.mjs`'s
+// `stripRunParamsIfSatin` is now scoped per glyph — it strips only glyphs that
+// themselves carry satin columns, so a runs-only glyph keeps what it authored.
+// Verified by building all four fonts from the upstream SVGs, before and after:
+//
+//   roaring_twenties_KOR        10 dead glyphs, runs-with-a-length  0 -> 28
+//   roaring_twenties_KOR_small  10 dead glyphs,                     0 -> 28
+//   western_light / ondulamarif  6 dead glyphs,                     0 ->  0
+//   the same font's 146 SATIN glyphs                                0 ->  0
+//
+// The last row is the safety check: the strip still applies where its reason
+// applies, so no construction stitches are added to designs customers have.
+//
+// THE REBUILD LANDED 2026-09-15, so the 20 are GONE from the list below and
+// the "A-B" case now expects `[]`. This paragraph used to say they were still
+// listed on purpose, because the binaries are built from `scratch_ink/`, which
+// needs `_tiers.json` and lives only on Kent's machine. That is still true —
+// what unblocked it is `tools/build-embf.mjs --only <keys>`, which re-emits
+// named fonts without the full build's orphan clean (a full rebuild here emits
+// 55 of the 85 shipped fonts and deletes the other 30, `cyrillic` and both
+// Hebrew fonts among them).
+//
+// The bbox shift this paragraph asked to check BEFORE shipping, measured on
+// the rebuilt binaries via `layoutText` at emMm 20:
+//
+//   HAMBURG        0.0% wide   0.0% tall   <- no revived glyph, untouched
+//   A-B / A+B      0.0%        0.0%
+//   3/4            0.0%       +0.5%
+//   50% > 40%      0.0%       +0.4%
+//   UNDER_SCORE    0.0%       +7.8%
+//   <TAG>        +96.2%        0.0%
+//
+// `<TAG>` is the shape of the cost: `<` and `>` contributed no ink, so they
+// contributed no bbox, and now they do. Text WITHOUT these ten characters does
+// not move at all, which is the property that makes this safe for shipped
+// designs. Kent ruled to ship on 2026-09-13 and re-confirmed on 2026-09-15
+// with these numbers in front of him.
 const KNOWN_DEAD = {
   ondulamarif_Medium: ["'"],
   ondulamarif_S: ["'"],
   ondulamarif_XL: [":", "º"],
-  roaring_twenties_KOR: ["+", "-", "/", "<", "=", ">", "\\", "_", "¯", "°"],
-  roaring_twenties_KOR_small: ["+", "-", "/", "<", "=", ">", "\\", "_", "¯", "°"],
+  // roaring_twenties_KOR / _small held ten each here until 2026-09-15. They
+  // were authored with a stitch length upstream and lost it to a font-wide
+  // strip; the per-glyph strip plus the rebuild gave it back. The remaining
+  // six never had a length to lose, so they stay — reviving one means
+  // inventing a stitch length, which ROADMAP gate 1 refuses.
   western_light: ["4", "ç"],
 };
 
@@ -190,7 +253,10 @@ test("typing them produces a report, which is the half the user actually sees", 
   for (const [key, text, want] of [
     ["western_light", "2024", ["4"]],
     ["western_light", "fa\u00e7ade", ["\u00e7"]],
-    ["roaring_twenties_KOR", "A-B", ["-"]],
+    // Revived 2026-09-15: "-" sews, so nothing is reported. Kept as a case
+    // rather than deleted, because it is the one that proves the revival
+    // reaches the half of the system the user actually sees.
+    ["roaring_twenties_KOR", "A-B", []],
   ]) {
     const font = byKey.get(key);
     if (!font) continue;

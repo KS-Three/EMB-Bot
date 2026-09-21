@@ -1,0 +1,28 @@
+{
+  "ranked_by": "Claude, from the blind pairs only; scores and the label->fixture mapping were not read before this file was written",
+  "dated": "2026-09-11",
+  "criterion": "How much of the artwork's information survives, MINUS how much wrong information is added. Source difficulty is deliberately NOT compensated for: an easy fixture reproduced perfectly ranks above a brutal one reproduced adequately, because the question is fidelity to the artwork, not credit for effort.",
+  "order_best_first": ["K", "F", "G", "H", "I", "L", "M", "A", "N", "C", "B", "J", "D", "E"],
+  "reasons": {
+    "K": "Near perfect. Slotted navy rectangle reproduced exactly, including the slot's inner corners. Trivial geometry, so this is not evidence the engine is good - it is the ceiling.",
+    "F": "Near perfect. Satin column tracks the S-curve end to end; width, taper and colour all match. Nothing dropped, nothing invented.",
+    "G": "Very good. 'Tires' script fully legible, every letterform correctly shaped, single correct colour. Edges scalloped where the art has clean curves; counters slightly choked.",
+    "H": "All five elements present and correctly placed, the 1-2px orange dot included. Spurious blue outline invented around the red disc and the purple/orange rectangle; tiny teal square lost.",
+    "I": "Same artwork as H, effectively identical result and identical defects. Tied on merit; ordered after H only because a tie needs an order.",
+    "L": "Both words legible and MARINE is solid, but BECKER's interiors are patchy - a shell with bare fabric showing through where the art is solid mass. CONTAMINATED fixture, excluded from the primary by pre-registration.",
+    "M": "Split verdict. 'HOTEL FREMONT' is the best text in the whole set and the hex frame is clean, but the rope border, 'EST 1895' and 'EAT | STAY | PLAY' are all destroyed, and the badge interior is sewn in white thread. Hero perfect, every secondary element gone.",
+    "A": "Recognisable at a glance, but three real structural errors: the closed shield outline breaks into two detached arcs, the white star knockout comes out filled dark, and 'ENTERPRISES INC.' goes mushy.",
+    "N": "Reads as the right logo - swoosh, tee, GT all recognisable - but 'GOLF' mangles into overlapping gold/white/teal strokes and the GT interiors go unsewn.",
+    "C": "The subject is faithful: three blobs, right hues, right positions, nothing lost, and the concentric banding is honest tonal quantisation. Ranked here anyway because the blank ground is sewn as a full-frame thread mass, so the overall silhouette is a lumpy cloud rather than three discs, plus an invented cyan wedge.",
+    "B": "Wheel and disc read correctly and the script is mostly legible, but the entire 'BAR & RESTAURANT' arc is destroyed - replaced by a featureless black swoosh with no letterforms - and a teal that exists nowhere in the artwork is invented.",
+    "J": "Badge structure survives and the gradient banding is defensible, but the grey vignette backdrop is sewn as an enormous thread mass, the bottom line is illegible mush, and the ring arc colours come out of sequence.",
+    "D": "The hero subject is unreadable: the quadcopter becomes a dark mass with scattered grey shards, the left half of the split scene is a void, the reticle is gone. The wordmark beside it is crisp, which is exactly what makes this instructive.",
+    "E": "Worst by a wide margin. Polarity inverted - the engine sews the GROUND in near-white thread and leaves the logo as negative space. White thread on white cloth: the file is unusable, not merely inaccurate."
+  },
+  "predictions_recorded_before_unblinding": [
+    "ARTFID's three components (coverage IoU, per-region CIEDE2000, multi-scale SSIM) cannot read a letter. 'ANO DRONK' scores identically to 'AND DRONE' on all three. So fixtures whose damage is LEXICAL (D, M, B, J, N) should score better than this eye ranks them.",
+    "D specifically is predicted to be the largest single disagreement: crisp wordmark and well-matched colours, hero subject unreadable.",
+    "Conversely E's damage is exactly what coverage IoU is built to catch, so metric and eye should agree that E is terrible - if they do not, that is a defect in the metric, not a difference of taste.",
+    "K and F are trivial fixtures reproduced almost exactly; if they do NOT top the metric, something is wrong with the metric."
+  ]
+}

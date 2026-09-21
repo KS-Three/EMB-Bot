@@ -289,6 +289,12 @@ def test_flat_lane_is_byte_identical_with_the_flag_on(fixture):
             target_width_mm=80.0,
             photo_prep=True,
             photo_prep_background_removal=True,
+            # Matches `_golden_snapshot`'s own config, which pins
+            # `edge_cap="none"` (2026-09-11): both sides of a
+            # byte-identity comparison have to stand on the same
+            # engine, and the design-silhouette cap is not what this
+            # flag is being measured against.
+            edge_cap="none",
         ),
     )
     snap = {

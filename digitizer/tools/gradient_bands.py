@@ -34,6 +34,7 @@ from digitizer_core.gradient_band import is_gradient_band  # noqa: E402
 from digitizer_core.machine import SATIN_MAX_WIDTH_MM  # noqa: E402
 from digitizer_core.pipeline import run_stages  # noqa: E402
 from digitizer_core.stage6_satin import classify_ribbon, ribbon_width_mm  # noqa: E402
+from digitizer_core.stage7_sequence import _satin_ceiling_for  # noqa: E402
 from digitizer_core.threads import chart_for  # noqa: E402
 
 TESTDATA = ROOT / "testdata"
@@ -51,8 +52,18 @@ def survey(path: Path, width_mm: float, brand: str | None):
     for r in result.regions:
         if "gradient_band_soft" not in r.meta:
             continue
-        v = classify_ribbon(r.polygon, satin_max, design_class="flat",
-                            per_stroke=cfg.satin_per_stroke)
+        # The SAME call stage 7 makes, per shape — `_satin_ceiling_for` and
+        # both classifier flags. This tool asked with a flat ceiling and the
+        # two flags off until 2026-09-20, which was the same call then and
+        # quietly stopped being it as `satin_lettering_split`,
+        # `satin_polygon_axis` and `classify_area_weighted` landed: a survey
+        # whose "what the classifier said" column is not what the classifier
+        # said is worse than no survey.
+        shape_max, shape_per_stroke, _fold = _satin_ceiling_for(r, cfg, satin_max)
+        v = classify_ribbon(r.polygon, shape_max, design_class="flat",
+                            per_stroke=shape_per_stroke,
+                            polygon_axis=cfg.satin_polygon_axis,
+                            area_weighted=cfg.classify_area_weighted)
         rows.append(dict(
             shape=r.shape_id, area=r.polygon.area, width=ribbon_width_mm(r.polygon),
             thread=f"{r.thread_number} {chart[r.thread_index].name}",

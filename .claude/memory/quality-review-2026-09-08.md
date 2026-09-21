@@ -429,3 +429,715 @@ assumed). Scope-history's fourth 09-08 entry has the OFF → ON table.
   `skeletonEdges` still has it.
 - Open: which skeleton; flip after a sew-out; the 2× pull meaning
   (Python per rail, JS total).
+
+## Item 7 — `cfg.design_angle` BUILT, DEFAULT OFF (2026-09-09, Kent's pick after #438)
+
+- Instrument `tools/design_direction.py` (`--pro` reads the sewn Becker
+  files the scorecard's way). **The pro holds ONE fill angle at every size
+  (20.5–20.6° in the slab, 12.6–14.2° in the small fills, three files at
+  76.5 / 95.7 / 101.9 mm) regardless of aspect** → no per-shape override,
+  no threshold. Ours at 95.7 mm: nine fills spread to R 0.15 (house 2°,
+  derived fills 85–91°); `direction` 0.0 (raw 0.43).
+- **No objective derives the pro's 20°**: the column objective summed over
+  the design picks 90° (the slab: 50 columns at 90, 58 at 0, 202 at 22.5),
+  the principal axis 0°, the house 2°, the trade 45°. The house is the
+  constant-free nearest → the flag takes the house where the lettering's
+  lines agree within the 30° cap, else the gradient lane's own shared
+  angle where the design holds one, else the design-wide column objective
+  (the per-shape one's 16 candidates plus the principal axis — the PCA
+  candidate was missing at first and a lone fill moved for no reason).
+- ON at 76.5 / 95.7 / 101.9 mm: spread → 1.0 / 0.999 / 0.995; `direction`
+  0.388 / 0.0 / 0.0 → 0.41 / 0.289 / 0.249; stitches −1.5% / +4.2% / +6.3%
+  (the slab's columns — the pro pays it too); trims 38→39, 27→22, 27→25.
+  Forced flat 80 mm: Bridge Bar 15 fills 0.781 → 1.0 at −2.6% (39 satin
+  leaned); gaulke +7.5% (ground leaves its own 0° for the house's 155°);
+  Fremont +3.9%; Golden Tee −1.6%. Photo classes (rule 3, the objective): R 0.42–0.91 → 1.0 at −0.1% to +1.7% stitches, scene stub +7 trims. Corpus 80 mm: 19 of 26 move, −0.08% stitches, +1 trim — outside the photo fills it is satin leaning. Rule 2 (the lane's ramp angle) came from that sweep: white_icon's strokes at 0° against 134° rows.
+- At 80 mm routed, every real logo takes the gradient lane (one angle
+  already, no `stitch_shape` fill) — the review's Bridge Bar spread is a
+  forced-flat population. Read a spread claim against the lane (DOCTRINE).
+- The last ~20° is a taste constant — Kent's; photo classes not gated (no
+  measured loss, no pro photo file); non-lettering satin leans as briefed.
+- Wiring: `designangle.set_design_angle` after the house pass (stage-4
+  polygon, since stage 5's `_comp_axis` reads the key); stage 7's
+  `_fill_angle_for` (five sites, one precedence); satin's fallback before
+  the per-stroke tangent. `tests/test_design_angle.py` (7). Byte-identical
+  off on ten fixtures. Renders in `docs/renders/design-direction-2026-09-09/`.
+
+## Next pick — item 8, the gradient-lane colour bundle (Kent, 2026-09-10 00:30Z)
+
+Chosen right after PR #440 (item 7) opened with auto-merge armed. **Do not
+push to `claude/emb-bot-quality-review-acwj61` until #440 merges** (a push
+lands in it and re-runs the 30-minute digitizer job); then `git fetch
+origin main && git merge --ff-only origin/main`. Item 8's brief (review
+§8): the five built colour flags — `enforce_color_cap`,
+`resnap_mask_matches_grader`, `revalidate_small_shapes`,
+`bind_resnap_all_classes`, `dissolve_phantom_blends` — measured TOGETHER
+as one set with a render sheet per fixture and one decision doc to default
+them from; it must say which flags survive item 1 (the real-logo lane).
+Their individual measurements: `docs/pending-flag-decisions-2026-09-06.md`;
+`dissolve_phantom_blends` was banked OFF by Kent 2026-09-04 before the
+page-mask bug was fixed — re-present, do not re-open.
+
+## Item 8 — the colour bundle MEASURED (2026-09-10, PR #441)
+
+- `tools/flip_sheet.py` grew the `color_cap` single, `colour4` (the four
+  not ruled) / `colour5` (+ the ruled `dissolve_phantom_blends`) bundle
+  arms, a `PROXIES` table (forced flat, OUTSIDE ARMS so `forced_class` is
+  never a "single"), `--fixture`, `--max-colors`, and a stops column.
+  Renderer takes repeated `--flag`.
+- At the engine budget (12): `colour4` 9 moved, −22 cones/−22 stops/−22
+  blocks, 3 grades up, none down; `colour5` 10 moved, −4,023 st, −77
+  trims. NOT the sum of its rows (cap −18 + bind −17 → −22 together).
+  chrome's D→C is the `mask_small` pair alone. At the Studio's 6: `colour4` −47 cones/−43 stops (every real logo lands ON the promised 6), `colour5` −4,509 st/−80 trims; one grade down, summit_badge (synthetic) F 16 → F 0, a new THREAD_MATCH_POOR block from the cap's merge.
+- **The sheet's budget is 12; the Studio ships 6** — different questions
+  for the cap (drone 23 → 6 at 6; 17 → 12 at 12). Every row now records
+  its budget; one budget per `--out`.
+- **Forced flat is NOT the item-1 answer the docstrings predicted**:
+  `flat_colour5` −28 cones on five logos; Golden Tee sews 24 cones under
+  12 forced flat — the re-snap escapes past the flat lane's hard cap too.
+  Flat singles: the bind −26 cones, the cap −21 (drone, golden tee), the mask −4, the floor 0, the dissolve BYTE-IDENTICAL on all nine — item 1 retires only the dissolve.
+- Forcing the flat lane on a PHOTOGRAPH costs ten minutes a fixture and
+  answers nothing; `--fixture` exists so the proxy runs on logos only.
+- Two self-kills from `pgrep -f`/`grep` patterns that matched my own
+  shell: match with a bracketed literal (`flip_sheet[.]py`) and never put
+  the restart command in the same call as the kill.
+- Shipped as PR #441 (ready-for-review 03:18Z, auto-merge armed). Next: Kent's flip decision on the four not ruled (`colour4`) and his re-read of the halo render; then the next build pick.
+
+## Kent's rulings 2026-09-10 03:30Z — flip the four as one set; item 9 next
+
+- **Flip `colour4` ON by default** (`enforce_color_cap`,
+  `resnap_mask_matches_grader`, `revalidate_small_shapes`,
+  `bind_resnap_all_classes`) — one PR, AFTER #441 merges (auto-merge
+  armed; no push to the branch until then). `dissolve_phantom_blends`
+  stays OFF (his 2026-09-04 ruling stands). The flip moves goldens: the
+  recapture is ubuntu CI only, never this box. Every "DEFAULT OFF" claim
+  for the four in docs and docstrings must move with it (test_doc_claims).
+- **Then item 9**: enclosed letter bodies decided by garment colour, not a
+  global unstitched default (review §9).
+- **Flip in progress (03:40Z, local, unpushed)**: the four defaults are True in config.py with docstrings; docs moved (MASTER_SCOPE defects 15/28/31, DOCTRINE 1443, scope/1, pending-flag-decisions, flip-sheet doc, decision sheet DECIDED, scope-history entry); flip_sheet.py has `off4`/`flat_off4` (the pre-flip engine). Pending: the pinned tests (`test_flag_defaults_off` ×2 → ON; the `_default_digest` vs explicit-False contracts in the bind/small/mask tests → default == explicit True), goldens only if the flat-lane/photo-lane/pushcomp runs move (the bundle left whitebg/alpha/ribbon untouched at 12, so probably none), full suite, then push after #441 merges (rebase the local commits onto origin/main first).
+- **The flip's own test run found a loss the sheet understated (04:30Z)**:
+  `test_bridge_bar_keeps_its_artwork` names `0501` Sun as artwork and lost
+  it under the four. Measured: the Bridge Bar disc's pixels are
+  (251, 235, 65), ΔE00 1.0 from Sun; the flipped engine sews the disc
+  `6031` Limelight, 7.0 away, at 12 AND at 6 (the `_mc6` sheet's middle
+  panel is lime where the left is yellow — I had written "a touch greener
+  … the same logo" and Kent ruled on that). It is the BIND's price, not
+  the cap's (`resnap_bind` alone drops Sun; `color_cap` alone keeps it).
+  Mechanism: stage 2 hands the palette the disc REGION's mean,
+  (223, 220, 77) — the black lettering, bird and rope inside it pull the
+  mean 12 ΔE00 darker and greener through their anti-aliased edges — and
+  the k-medoids palette rightly picks Limelight (2.5) for that mean; the
+  unbound re-snap used to read the source pixels and correct it to Sun
+  (double-loading Lemon beside it); the bind holds the palette's answer.
+  Fix upstream: a robust region colour in stage 2 (median, or the mean
+  over the region's modal pixels) — candidate next build; the decision
+  sheet (status line, §2, §4, §5.3), MASTER_SCOPE's item-8 block and the
+  flip PR body carry the correction. Shipped as ruled, flagged, not
+  withheld (his 2026-09-04 ruling on arming).
+- **Item 9 built in a scratch worktree while the flip's suite ran**
+  (`scratchpad/item9-wt`, local branch `item9-wip`, cut from the flip
+  commit) so the suite ran on an untouched tree; it lands on the lane by
+  cherry-pick after the flip PR merges. The main venv's python imports the
+  WORKTREE's package when cwd is the worktree's `digitizer/` (sys.path[0]
+  beats the editable install's finder) — verified before trusting a run.
+  The Studio's component specs cannot run there (vite refuses the
+  symlinked node_modules outside the root: 13 files, "Cannot find module
+  /@fs/…"); lib specs run fine; the full vitest runs on the main tree
+  after the cherry-pick.
+- **Shipped as PR #442 (05:05Z, ready-for-review, auto-merge armed at
+  `blocked`, check-in at 06:06Z).** Full suite on the flipped tree: 3
+  failed / 2,183 passed / 3 skipped / 7 xfailed in 29 min, the three being
+  CI's platform reds. No golden moved. Nothing pushes to the lane until it
+  merges; item 9 waits in the worktree.
+
+## Item 9 — `cfg.enclosed_by_garment` BUILT, DEFAULT OFF (2026-09-10, Kent's pick after #441)
+
+- The rule: a border-flood hole (colour KNOWN, `Prep.bg_rgb`) sews by
+  default when ΔE00(hole, garment) > 10 (`DELTA_E_CLEARLY_DIFFERENT`,
+  pinned); one verdict per design (`stage4_vectorize.garment_sews_enclosed`),
+  read by the stitched seam AND the colour cap's ranking (a hole that will
+  sew is sewn area — without that the cap merged whitebg's White into a
+  kept cone because "holes buy no slot"). Alpha holes untouched. Override
+  wins; `meta["enclosed_by_garment"]` survives the override so the panel
+  can say why. Studio sends `project.fabricRgb` as `garment_rgb`.
+- Measured at 12 / 80 mm: whitebg and Golden Tee sew their white holes
+  white on Navy/Black (+571 st / 1 cone; +3,027 st / +7 tr / 1 cone) and
+  are byte-identical on White/Natural (6.4 from Natural, under 10);
+  gaulke's 46 black bodies sew on any light garment: +3,979 st and
+  **+43 trims** (23 → 66), and they are the FRAGMENTS the vectorizer kept
+  when they were holes — STEEL ROOFING & SUPPLY reads, GAULKE INDUSTRIES
+  does not; `keep_thin_strokes` is the other half. Black: byte-identical.
+- Threshold: at 5 Natural would sew white holes white on off-white (the
+  08-15 verdict's "wrong" case); at 10 it never does. §5.1 is Kent's.
+- **Shipped as PR #443 (05:58Z, ready-for-review, auto-merge armed).** Pushed
+  after the changed-package tests, the Studio suite (1,094) and the doc
+  checkers; the full digitizer suite was still running on the same tree
+  (the first run, in the worktree, died silently at 32% with no traceback,
+  no OOM and 15 GB free — cause unknown; restarted on the main tree). PR
+  body carries Kent's three decisions; the AskUserQuestion follows.
+  Full suite on the landed tree: 3 failed / 2,202 passed / 3 skipped / 7
+  xfailed in 24 min — the three platform reds; PR body updated with it.
+
+## Kent's rulings 2026-09-10 ~06:40Z — item 9 flipped ON; threshold 10; alpha holes stay toggled
+
+- Answered the three-way AskUserQuestion with every recommended option:
+  threshold 10, alpha holes to the review toggle, **flip ON now**. He said
+  "in this PR" but #443 had auto-merged at 06:34Z while the question was
+  open, so the flip is its own PR on the lane restarted from main (the
+  merged-PR rule: never stack on merged history).
+- The flip is one line + the pinned test + MASTER_SCOPE/plan §7/scope-history;
+  `garment_rgb` appears in no other test and no golden names a garment, so
+  nothing else moves. The e2e specs drive whitebg (6.4 from Natural, declines)
+  and the alpha enthusiast logo (unknown colour, declines).
+- **Shipped as PR #444 (12:56Z, ready-for-review, auto-merge armed at
+  `blocked`, check-in scheduled ~60 min out).** The lane is restarted on
+  main (1ed05ae, #443's merge) with the flip commit on top; this memory
+  note is committed locally and pushes only after #444 merges (a push into
+  an armed PR resets its checks).
+
+## Next pick — the Bridge Bar yellow: a robust region colour in stage 2 (Kent, 2026-09-10 12:57Z)
+
+- Chosen over item 1 (the real-logo lane), item 11 (legibility yardstick)
+  and item 12 (fill travel under cover). Scope: stage 2 hands the palette
+  each region's plain MEAN (`stage2_photo_segment.py`, the `region_labs`
+  list before `select_palette`); a big region full of inclusions gets a
+  colour no pixel carries (Bridge Bar's disc: (223, 220, 77) for pixels at
+  (251, 235, 65), 12 ΔE00). Flag first, DEFAULT OFF, byte-identical off;
+  measure on the flip sheet's 26 fixtures; the photo-lane snapshot golden
+  pins stage 2, so a flip is a CI recapture.
+- **Built (13:05Z):** the seam `_region_pixels_lab` + `_region_lab` (OFF ==
+  the old mean byte for byte; the photo-lane and flat-lane goldens pass),
+  `region_colour_candidates` (mean / median / modal mean),
+  `cfg.robust_region_colour` DEFAULT OFF, `tools/region_colour.py`, the
+  flip-sheet arm `region_colour`, 10 tests. **Census (20 lane fixtures, 422
+  regions):** median moves 155 regions' spools, modal mean 169; 33 bimodal
+  (26 on the screenshot); the real logos move most of their AREA (Bridge Bar
+  66.5%, Golden Tee 54.4%, drone 66.8%), photos and ramps nothing. **The
+  statistic is the modal mean**: on the disc, mean → Limelight, median →
+  Lemon (2.1), modal mean → Sun (1.0). A per-channel median is a colour no
+  pixel need carry. Next: the flip sheet `off` vs `region_colour` at 12 and
+  6 (fresh caches `build/flip_sheet_rc*` — the item-8 caches' `off` rows are
+  the PRE-flip engine), Bridge Bar / Golden Tee / drone renders, PR after
+  #444 merges, then Kent: the flip (a photo-lane snapshot recapture on CI if
+  any golden fixture moves).
+- **#444 merged 13:41Z** (all four checks green at 13:40); the lane is
+  rebased onto its merge (698ce03) with the region-colour commits on top,
+  still unpushed until the flip sheet at 6 and the full suite are in.
+- **Measured (13:45Z):** flip sheet `off` vs `region_colour`, fresh caches
+  `build/flip_sheet_rc` (12) and `_mc6` (6): 11 move / 15 identical at
+  both budgets. At 12 Bridge Bar 12 cones + a repeated 0108 (13 blocks) →
+  11/11, disc → Sun, COLOR_STOPS_HEAVY gone, F 0 → F 4; screenshot 12 → 10
+  cones; Golden Tee 11 → 12 cones but blocking 4 → 2; the photo-scene STUB
+  +3,382 st / +29 tr (+1 spool, 21 → 31 regions). At 6: net −2 blocks / −2
+  stops; Bridge Bar −768 st / −28 tr (7 → 6 blocks, the repeated cone) with
+  +1 blocking thread; Golden Tee 9 → 7 blocks, −1 blocking; screenshot −1;
+  drone +1. The Golden Tee render's "0015 → 3971" is the CAP remapping its
+  unstitched holes at 12 (13 medoids for 12), not the region colour —
+  invisible on fabric, and on navy item 9 keeps White. gaulke and Fremont
+  byte-identical (their big regions are already pure).
+- **Trap (13:55Z, DOCTRINE):** `run_preflight(image=<PIL RGB array>)` grades
+  colours REVERSED (`_load` treats an ndarray as cv2's BGR); the scorecard
+  and flip sheet pass the PATH. My first blocking-findings census read the
+  disc as (63, 235, 251) and blocked Sun at 43.6 with a teal remedy. Also:
+  two self-kills again — `pkill -f 'x[.]py'` in a call whose text ALSO
+  names x.py elsewhere (sed/nohup) kills the shell (exit 144). Kill by PID,
+  in its own call.
+- **Full suite caught the seam (14:40Z): 12 failed** = 3 platform reds + 9
+  from the OFF path — I had averaged Lab pixels where the engine averages
+  RGB and converts once (`rgb_to_lab(mean)` ≠ `mean(rgb_to_lab)`). The
+  photo-lane byte-identity golden (`test_photo_lane_byte_identical.py`,
+  which I had NOT run — only the flat-lane and dispatch goldens) failed on
+  drone, summit, the white-icon repro and the subject stub; three
+  `test_thread_revalidate` facts, `test_bridge_bar_keeps_its_artwork` and
+  `better_spool[bridge]` moved. Fixed: the seam passes RGB pixels and OFF is
+  the old expression exactly; candidates' `mean` is that point. DOCTRINE
+  entry. Every `off` row of both flip-sheet caches, the census and the
+  renders' OFF panels were the wrong engine → recomputed before the PR.
+- **Corrected census (exact OFF point):** median moves 146, modal mean 163
+  of 422 (was 155/169 under the Lab mean); Bridge Bar 56.9% of area, Golden
+  Tee 33.8%, drone 65.2%, screenshot 65.0%; 33 bimodal (27 screenshot).
+  Renders re-made on the exact engine; the change lists are the same.
+- **Exact-engine blocking census at 6 (15:25Z):** Bridge Bar 2 → 3 blocks,
+  all shards, its 1,023 mm² disc off the list (Limelight warn 7.5 → nothing
+  under Sun; the script was never a finding); Golden Tee 4 → 3, all shards
+  (the Lab-mean OFF's "Black 40.4 on a red shard" and "153 mm² yellow-orange"
+  were artefacts of the wrong OFF); screenshot 5 → 4, the 470 mm² ground
+  off the list; drone 5 → 5 with the 211 mm² orange entering at Pumpkin 10.9
+  (Fox Fire 3.5 by colour) — the one large shape that gets worse, a
+  six-cone budget trade. Corpus block count level at both budgets.
+
+## HANDOFF — region colour, where things stand (2026-09-10 ~15:35Z)
+
+- **Lane `claude/emb-bot-quality-review-acwj61`: 11 local commits, UNPUSHED,
+  on top of main 698ce03 (#444's merge).** All the region-colour work:
+  seam + flag (DEFAULT OFF) + census tool + flip-sheet arm + 10 tests +
+  renders + plan §0–§5 + MASTER_SCOPE (800) + scope-history + DOCTRINE (two
+  entries) + memory. Working tree clean. Nothing is armed on the branch;
+  pushing is safe once the suite is green.
+- **Running:** the full digitizer suite on this tree —
+  `/tmp/claude-0/-home-user-EMB-Bot/3f5c00bb-5357-55fc-9cff-fc33fcf55405/scratchpad/rc/full_suite2.txt`
+  (started ~15:05Z; `EXIT` line when done). Green = exactly the three
+  platform reds (`test_flat_lane_byte_identical[enthusiast]`,
+  `test_stage2_photo_segment[enthusiast]`, `test_pushcomp[whitebg-towel]`).
+  If the container restarted and the log has no EXIT: re-run
+  `cd digitizer && .venv/bin/python -m pytest -q -n auto -p no:cacheprovider`.
+- **Then, in order:** (1) fill `<<COUNTS>>` in
+  `…/scratchpad/rc/pr_body.md` with the suite line (if the scratchpad is
+  gone, the PR body is reconstructible from the plan's §2–§5 and the
+  commit messages); (2) `git push -u origin claude/emb-bot-quality-review-acwj61`
+  (retry 2/4/8/16); (3) PR ready-for-review, title "Region colour: a
+  robust centre for the palette's per-region point, cfg.robust_region_colour
+  (DEFAULT OFF)", body from pr_body.md + the footer; (4)
+  `enable_pr_auto_merge` while `blocked`; (5) `subscribe_pr_activity`;
+  (6) `send_later` ~60 min; (7) memory note; (8) AskUserQuestion — Kent's
+  one decision: flip ON (recommended: the disc is the case it was built
+  for; price = a synthetic stub's +3,382 stitches / +29 trims and drone's
+  211 mm² orange one spool step at 6; catch = photo-lane snapshot golden
+  recapture on ubuntu CI) or keep OFF as a measured instrument until
+  item 1's lane decides where real logos go.
+- Renders are in `docs/renders/region-colour-2026-09-10/` (committed).
+- **Shipped as PR #445 (15:45Z, ready-for-review, auto-merge armed at
+  `blocked`, subscribed, check-in ~60 min out).** Full suite on the pushed
+  tree: 3 failed / 2,213 passed / 3 skipped / 7 xfailed in 46 min — the
+  three platform reds; the photo-lane golden passes. The handoff section
+  above is now history except the flip decision, which is Kent's
+  (AskUserQuestion put at the end of this turn; he asked to clear after).
+
+## Kent's ruling 2026-09-10 ~17:20Z — flip `robust_region_colour` ON in a follow-up PR
+
+- **Ruled ON**, as a separate PR AFTER #445 merges (auto-merge armed; do
+  not push to the lane until then — a push lands in #445 and resets its
+  checks). He then cleared the context; this is the handoff.
+- **The flip PR, in order:** (1) `git fetch origin main` and fast-forward /
+  rebase the lane onto #445's merge; (2) `config.py`:
+  `robust_region_colour: bool = True` + docstring "DEFAULT ON since
+  2026-09-10 (Kent's ruling on the flip sheet and the Bridge Bar render;
+  False is the pre-flip engine byte for byte)"; (3) tests:
+  `test_default_off_and_the_radius…` → `_on_`; keep the OFF byte-identity
+  test (explicit `robust_region_colour=False`) and the Bridge Bar pair;
+  (4) **goldens move**: `testdata/photo_lane_segment_golden.json` on drone,
+  summit_badge, repro_gradient_white_icon, photo_subject_stub (the four the
+  Lab-mean cut failed on are the four whose stage-2 output the modal mean
+  changes) — recapture on ubuntu CI ONLY (`recapture-goldens.yml`, the way
+  the sub-pixel PR 4 did it, with the pre-change proof), never on this box;
+  check `test_stage2_photo_segment`'s gradient golden and
+  `test_flat_lane_byte_identical` too (flat lane should be untouched);
+  (5) tests that document the OFF palette on Bridge Bar and friends may
+  move (`test_thread_match_better_spool[bridge]`, `test_phantom_blend_photo`
+  Bridge Bar pair, `test_thread_revalidate` ×3 — the ones the Lab-mean cut
+  broke): restate on `robust_region_colour=False` where they document the
+  pre-flip fact, as the colour-bundle flip did with PRE_FLIP; (6)
+  `tools/flip_sheet.py`: the `region_colour` arm becomes inert against
+  `off` — add an `off_rc` arm (`robust_region_colour: False`, the pre-flip
+  engine) beside `off4`; (7) MASTER_SCOPE item-8/region-colour sentence,
+  plan §5/§6, scope-history entry, `docs/scope/*` if any line says DEFAULT
+  OFF for it (`tools/doc_claims.py` is STRICT on MASTER_SCOPE/DOCTRINE);
+  (8) full suite (expect the three platform reds + the moved goldens until
+  CI recaptures); PR ready-for-review, auto-merge, subscribe, send_later;
+  (9) the next-build question: candidates item 1 (the real-logo lane),
+  item 11 (legibility yardstick + un-clamped grade), item 12 (fill travel
+  under cover), item 13 (photo detection from EXIF/face), item 14 (the
+  edge-finish flags).
+
+## 2026-09-10 ~18:15Z — #445 MERGED (auto-merge, 18:03Z); the flip PR in progress
+
+- Lane rebased onto e0833d7 (#445's merge), the two memory commits pushed,
+  the check-in trigger deleted.
+- The flip PR, built on the recipe above: default True + docstring;
+  `conftest.PRE_FLIP` carries `robust_region_colour: False` beside the
+  bundle's four (every file that prices one colour flag alone stays on the
+  engine its numbers were taken on — which is why the Lab-mean cut's
+  failure list is NOT this flip's: those files were on the pre-flip engine
+  already); `test_robust_region_colour` restated (default ON; the Bridge
+  Bar pair pins default == ON arm and != OFF); `tools/flip_sheet.py`
+  `off_rc` (the pre-flip engine; `region_colour` is inert against `off`
+  now); `tools/recapture_photo_lane_key.py` (new, the photo-lane twin of
+  the flat tool, with `--dry-run` for reading a footprint on a box that
+  must not capture); the temporary `recapture-goldens.yml` (push-triggered
+  by the push that brings it, commits the golden back, removed in the
+  commit after). Docs carry placeholders for the moved keys, the workflow
+  run, the restated tests and the suite line — filled from the suite and
+  the run before committing (grep the angle-bracket markers out first).
+- **19:11Z — commit `58a3255` pushed** (default True, PRE_FLIP, restated
+  pins, `off_rc`, the recapture tool, the temporary workflow). Suite on
+  the flipped default BEFORE the restatements: 25 failed / 2,191 passed —
+  3 platform reds + 6 golden keys + 16 pre-flip pins (8 on PRE_FLIP, fixed
+  by the conftest change alone; `test_thread_revalidate` ×4 and
+  `test_rehome_resnapped` hold the flag False in their CFGs; drone's
+  duplicate-cone fold holds it too and records the flipped numbers: +21
+  stitches for −56 mm needle-up and −2 stops). All restated files re-run
+  green. The recapture workflow is run **34518855051** (started 19:10:54Z);
+  it commits the golden back to the lane — `git pull` after it, verify the
+  photo-lane test locally, then commit 2: docs (MASTER_SCOPE / plan §6 /
+  scope-history already carry the run id; the suite line is the one
+  placeholder left), the test docstring note (applied), workflow removal,
+  memory; then the PR. Full suite on the final tree running locally.
+- **19:15Z — the golden landed: run 34518855051 succeeded in 4.5 min, every
+  key passed the pre-change machine check, six re-written exactly as the
+  local dry runs predicted, commit `27a7739` on the lane; the runner then
+  ran both golden files green (13 passed, enthusiast deselected). Lane
+  fast-forwarded; the workflow file removed for commit 2.
+
+## 2026-09-10 ~20:05Z — the flip SHIPPED as PR #448 (ready-for-review; auto-merge armed after this push)
+
+- `robust_region_colour` DEFAULT ON: commits `58a3255` (the flip, PRE_FLIP,
+  the restated pins, `off_rc`, the recapture tool, the temporary workflow),
+  `27a7739` (the runner's golden: six of seven keys, every key
+  machine-checked on `e0833d7`, run 34518855051), `a28ef6a` (the docstring
+  note, the workflow removed, docs). Suite on the final tree: 9 failed /
+  2,207 passed — the three platform reds and the six keys against the OLD
+  golden (that run started before the runner's commit landed); with the
+  runner's golden the photo-lane file passes here (8 passed).
+- Facts the next session should not re-derive: region_blobs moves at
+  STAGE 2 (one medoid, 293 → 276, the base spool of a 656 mm² blob the
+  tonal split sews as bands of its own) while its plan is byte-identical —
+  a plan-level sheet cannot see a stage-2 move, the golden can; drone's
+  duplicate-cone fold on the flipped engine is +21 stitches / −56 mm
+  needle-up / −2 stops (the test holds the pre-flip engine and records
+  this); `off_rc` == the #445 cache's `off` row byte for byte on Bridge Bar
+  at 12; `tools/recapture_photo_lane_key.py --dry-run` reads a change's
+  golden footprint on a box that must not capture.
+- CI on #448: four jobs; `digitizer` expected green (its three deselects
+  plus the runner's golden). Check-in scheduled ~60 min out; delete it
+  once the PR merges, then `git fetch origin main` and fast-forward the
+  lane before anything else is pushed.
+- Next: Kent's next-build pick (AskUserQuestion at the end of this turn):
+  item 11 (the legibility yardstick + un-clamped grade) recommended, item 1
+  (the real-logo lane), item 12 (fill travel under cover), item 13 (photo
+  detection from EXIF/face); items 10 (JS wide columns) and 14 (the
+  edge-finish flags) named as the other live candidates.
+
+## Kent's pick 2026-09-10 ~20:00Z — "Item 11 and 1"
+
+- Both, in that order: item 11 (the legibility yardstick on the render +
+  the un-clamped grade + THREAD_MATCH_POOR's area floor) first, so item 1
+  (the real-logo lane) is judged by a grade that moves. Item 1 after.
+- **Do not push to the lane until #448 merges** (auto-merge armed; the
+  check-in trigger `trig_01LgZ1jn26VmztuYsiabsuZy` fires 20:56Z). Build
+  locally; commits held.
+- **20:43Z — #448 MERGED** (auto-merge; `digitizer` green in 46 min on the
+  runner's golden). Check-in trigger deleted; lane fast-forwarded onto the
+  merge. The push hold is lifted — item 11's commits can go up as they
+  are ready.
+
+## Item 11 in progress (2026-09-10 ~20:00Z →) — the legibility yardstick, the un-clamped score, the thread-match floor
+
+- Plan `docs/superpowers/plans/2026-09-10-legibility-yardstick.md` (§0–§3
+  written; §4 tables pending the runs; §5 Kent's two decisions: the
+  LEGIBILITY thresholds/flip, and the gradient lane's yardstick).
+- BUILT so far (uncommitted): `_THREAD_MATCH_MIN_PATCH_MM2` (= the
+  uncovered sibling's 5.0 mm², ON; rows carry `footprint_mm2`, findings
+  `worst_patch_mm2` / `sub_floor_count`, sub-floor offenders listed and
+  flagged, a thread with only sub-floor offenders emits nothing);
+  `digitizer_core/legibility.py` (the tool's measurement moved in, plus a
+  `sewn` flag per cluster and `ART_MIN_LETTERS` = 3 — a one-letter OCR
+  "truth" on the art side (Bridge Bar reads "X" at 77) judged a cluster at
+  0.00); `tools/legibility.py` is now a CLI over it; preflight
+  `LETTERING_ILLEGIBLE` behind `cfg.legibility_check` DEFAULT OFF, with
+  PROVISIONAL `LEGIBILITY_BLOCK` 0.5 / `LEGIBILITY_WARN` 0.75 and
+  `legibility_*` metrics (checked False when off / no image / no
+  tesseract); flip sheet rows carry `raw_score` and read verdicts off it;
+  scorecard prints raw beside score. Tests: `tests/test_legibility_check.py`
+  (7; 38 with the wiring + legibility files, green).
+- Measured: the read costs 3.7–16.8 s per design (24 tesseract calls per
+  cluster) under load; Fremont's HOTEL FREMONT reads 0.74 today (banner
+  noise on the ART side — under a 0.75 warn, a false positive to weigh).
+- Running: `tools/thread_match_floor.py run` (the 0/2/5/10 sweep over the
+  scorecard matrix → §4.1 and §4.3), `tools/legibility.py --corpus` at 6
+  and 12 (→ §4.2), the preflight/thread-match test files against the floor
+  (→ `test_thread_match_area_in_message.py` needs restating: gaulke's
+  0.58 mm² shard no longer blocks — that is the point).
+- Then: scorecard `diff` on this tree (attribute every mover since the
+  09-04 baseline: the flips, then the floor), `capture`, docs (MASTER_SCOPE
+  in place at 800), full suite, PR, AskUserQuestion for §5.
+- **~21:40Z — item 11 measured and calibrated.** Floor sweep: 40 → 26
+  blocks at 5 mm², gaulke D 46 → B 76, no design leaves the 0 floor (10 of
+  52 on it, raw −140 .. −26). Legibility: the crops (kept in
+  `docs/renders/legibility-2026-09-10/`) showed the similarity noisy in the
+  middle (DRONE 0.22 readable under SPOTIFY 0.50 blobs; HOTEL FREMONT 0.74
+  clean) → provisional warn-only under 0.5 (`LEGIBILITY_BLOCK` 0.0), the
+  options for Kent in plan §5 (A warn-only / B 0.2+0.7 / C 0.5+0.75 / D
+  off) plus the gradient-lane yardstick. DOCTRINE entry written. Tests
+  restated: area-in-message (rewritten), enclosed-background and
+  better-spool (unfloored helpers), raw depth −62, bimodal pin (footprint
+  key — its edit still pending: the literal holds an expression). Docs:
+  MASTER_SCOPE in place (800) and scope-history carry two angle-bracket
+  placeholders (the recapture, the suite line) until the scorecard
+  recapture and the full suite — grep them out before committing those two. Scorecard `diff` running for the attribution.
+- **~22:00Z — commit `9f3d09c` pushed (item 11's code, tests, tools, plan,
+  renders, DOCTRINE, COOKBOOK).** Scorecard diff vs the 09-04 baseline: 46
+  of 52 pairs moved; attributed (this PR's floor on four fixtures exactly,
+  the flips since 09-04 for the rest) and two grade drops BISECTED on
+  main's first-parent history with a one-pair scorer in a scratch
+  worktree: grass_macro B 76 → D 40 at #432 (subpixel flip; D 52 since
+  #437) and Becker @ hat_front B 88 → 76 at #433 (junction clustering;
+  hat_front only). Both left as a follow-up (plan §4.4; the task-card tool
+  timed out twice, so the record is the plan + the recapture commit).
+  Recapture running (`capture`, stamps `9f3d09c`); full suite running;
+  commit 2 = baseline + MASTER_SCOPE + scope-history + plan §4.4 + memory,
+  then the PR (body drafted in the scratchpad), auto-merge, subscribe,
+  send_later, AskUserQuestion on plan §5 + item 1 next.
+
+## 2026-09-10 ~22:40Z — item 11 SHIPPED as PR #449 (ready-for-review; auto-merge armed after this push)
+
+- Commits `9f3d09c` (the floor ON, raw_score read, legibility into the
+  package + `cfg.legibility_check` DEFAULT OFF with provisional warn-only
+  0.5 / block 0.0, tests, tools, plan §0–§5, renders, DOCTRINE, COOKBOOK),
+  `42312c8` (the scorecard recaptured at `9f3d09c` with every one of the
+  46 movers attributed — the floor's exactly, the flips since 09-04, two
+  grade drops bisected to #432 / #433 and left as a follow-up),
+  `b000277` (scope-history). Full suite: 3 failed / 2,224 passed — the
+  three platform reds.
+- **Kent's two decisions (plan §5), asked at the end of this turn:** the
+  `LETTERING_ILLEGIBLE` severity rule and the flip (A warn-only under 0.5
+  as built / B block 0.2 + warn 0.7 / C block 0.5 + warn 0.75 / D keep
+  OFF), and whether the gradient lane is judged on excess (row 4). A flip
+  ON is a follow-up PR: `legibility_check: bool = True`, the thresholds
+  as ruled, a scorecard recapture (the legibility metrics enter the
+  baseline; `legibility_checked` True on the tesseract box), tests that
+  pin finding sets on text fixtures re-read on the flipped default, and
+  the ~3.5 s per cluster cost stated in the Studio's terms.
+- **Then item 1 (the real-logo lane)** — Kent's pick; plan
+  `docs/superpowers/plans/2026-09-08-real-logo-lane-and-thin-strokes.md`:
+  the instrument re-measures stage 0's boundary on the enlarged real
+  tonal set first (gate 2 — no recalibration without real tonal artwork),
+  then the route; ten fixtures change lane, every gradient golden moves
+  (a CI recapture like #448's). Do not push to the lane while #449 is
+  armed.
+- Follow-up not this PR's: `photo_grass_macro` B 76 → D 52 at #432 and
+  Becker @ hat_front B 88 → 76 at #433 (plan §4.4; the task-card tool
+  timed out twice).
+
+## Kent's rulings 2026-09-10 ~22:45Z on plan §5
+
+- **Legibility: option A** — `LETTERING_ILLEGIBLE` warns under 0.5 and
+  never blocks (as built), and `cfg.legibility_check` flips ON, as a
+  follow-up PR after #449 merges (auto-merge armed; no push to the lane
+  until then). The flip PR: the default, the docstrings/comments no longer
+  "provisional", the two default tests, every test that pins a finding set
+  or score on a text fixture with the artwork re-read on the flipped
+  default (drone, Bridge Bar at 12, the screenshot gain a warn; gaulke,
+  ENTHUSIAST, Fremont, Becker do not), a Studio FIX_FOR entry (the same
+  "Make it bigger" as LETTERING_TOO_SMALL), the scorecard recaptured with
+  the legibility metrics live, MASTER_SCOPE in place, scope-history, plan
+  §6. The cost (~3.5 s per text cluster per generate) stated in the PR.
+- **Yardstick: keep raw distance on the gradient lane** — row 4 of
+  yardstick-disagreements is RULED, not open: a logo's palette can be
+  changed and the finding names the closer loaded spool. Record in the
+  doc (append), preflight's comment, MASTER_SCOPE's row-4 sentence, plan §5.
+- Then item 1 (the real-logo lane).
+- **23:28Z — #449 MERGED** (auto-merge; `digitizer` green). Trigger deleted,
+  lane fast-forwarded to `15bf978`. The push hold is lifted; the flip work
+  (uncommitted) can go up once its suite reports.
+- **2026-09-11 ~00:00Z — the flip's recapture read.** 7 of 52 pairs gain
+  LETTERING_ILLEGIBLE (Bridge Bar ×2, screenshot ×2, summit ×2, drone
+  left_chest only — hat_front reads 0.545, the cap's density changes the
+  RENDER); only Bridge Bar's clamped score moves; gaulke is silent because
+  its clusters are unsewn (the `sewn` rule working). `legibility_checked`
+  True on all 52. Preflight 2.0 → 12.9 s on drone. Commits `28e3fc7`
+  (code/tests/Studio/docs) + the baseline.
+
+## Item 1 (Kent's second pick) — PR 5 MEASURED 2026-09-11, gate-2 clean
+
+- `tools/color_diversity.py` + `tests/test_color_diversity.py` (18) +
+  `docs/stage0-signal-decision-2026-09-11.md`. Changes nothing.
+- **The foreground definition was never written down and it decides the
+  answer.** bbox (whole art bbox) reproduces the 08-15 table — bridge
+  16–17 vs its 17, drone 19–20 vs its 19, tires/gaulke/fremont 2 — and the
+  classes separate by 4. engine (what stage 1 digitizes) puts bridge at 39
+  above drone's 24 and they do not order: a JPEG's compression noise
+  counted without its flat ground. ALWAYS name the mode.
+- **The two real flat logos added since August widened the gap 2 → 4**
+  (golden_tee 4, screenshot 1, both far below drone 20).
+- **Blocker unchanged: ONE real tonal artwork vs the spec's four.** The
+  acceptance dir is gitignored (README only in any clone); scratch_* absent
+  in a cloud checkout; the owl and its four siblings are SYNTHETIC
+  (make_photo_fixtures.py) and barred, as is the repro icon. The tool
+  refuses below four and prints the unblocking act: drop 3–5 real tonal
+  artworks in `digitizer/testdata/photo/acceptance/` and re-run.
+- So PR 6a is supported-not-authorised; PR 6b (route by the ramp gate's own
+  refusal) needs no boundary and is Kent's ruling on gate 2's letter.
+- **Uncommitted and unpushed while #450 is armed** (a push lands in it).
+  Commit locally, push after #450 merges, then the PR and the question.
+- **Kent's ruling 2026-09-11 on the item-1 fork: he supplies 3–5 real tonal
+  artworks, then the boundary gets sited (PR 6a).** PR 6b (route by the ramp
+  gate's refusal) is NOT taken. The hand-off is in
+  `digitizer/testdata/photo/acceptance/README.md` (what counts, what is
+  barred, the one command with `--foreground bbox`) and in the decision doc
+  §3a. **Item 1 is blocked on that artwork by his choice** — when it lands,
+  re-run the tool, site the boundary, then plan §5b's three-arm measurement
+  (all seven real logos + drone, on the stitches) before the lane moves.
+- **00:55Z 2026-09-11 — #450 MERGED** (main 96c7b3d) and item 1's PR 5
+  shipped as **#451** (ready-for-review, auto-merge armed, subscribed,
+  check-in 01:56Z). The branch no longer fast-forwards onto main — main
+  carries the merge commit and the lane carries two commits on top of
+  829eae2 — which is the normal post-merge divergence, not a conflict.
+- **Item 1 is now BLOCKED on Kent's tonal artwork by his own ruling.** Next
+  session: if `digitizer/testdata/photo/acceptance/` has real artwork in it,
+  run `tools/color_diversity.py --foreground bbox`; four or more real tonal
+  positives sites the boundary, then plan §5b's three-arm measurement
+  BEFORE the lane changes. If not, ask him what to build while it waits
+  (items 12 fill travel under cover, 13 photo detection from EXIF/face,
+  14 the edge-finish flags).
+- **01:45Z 2026-09-11 — #451 MERGED** (main 0b0cbbb). Lane fast-forwarded;
+  trigger deleted; tree clean. Four PRs this session: #445/#448 region
+  colour, #449 item 11, #450 the legibility flip + row 4 ruled, #451 item
+  1's PR 5.
+- **Item 1 cannot be unblocked from a CLOUD session**: the acceptance
+  directory is gitignored and its contents never leave Kent's machine, so
+  the tonal artwork arrives in a LOCAL session (claude-personal.cmd) and
+  the boundary gets sited there. Still README-only here.
+
+## Kent's pick 2026-09-11 ~01:50Z — "Lets do all of them" (items 13, 12, 14, 10)
+
+Order chosen (dependency and cost, one PR each, same discipline —
+instrument/plan, build, measure, renders, docs, PR, auto-merge, next):
+
+1. **Item 13 — detect photographs from EXIF/face.** Small-to-medium, gate 2
+   does not apply (no colour gate moves), and it FEEDS item 1: stage 0 then
+   only has to separate flat from gradient among LOGOS. DOCTRINE names the
+   route: EXIF or face, declaration as the fallback.
+2. **Item 12 — finish fill travel under cover.** Instrument FIRST (the cause
+   is not established): name each exposed bridge and why it was laid, then
+   the rule. No gate.
+3. **Item 14 — settle the two edge-finish flags** (`edge_cap`,
+   `satin_rails_follow_edge`), gate-1 held: read the pro's files for
+   whether he caps a silhouette and how far a rail reaches, render, then
+   Kent's call.
+4. **Item 10 — wide columns in the JS lettering engine.** Port the Python
+   split-satin + fill fallback and its constants; stops where the
+   look-and-fabric call starts (MASTER_SCOPE holds that as Kent's).
+
+## Item 13 BUILT 2026-09-11 — stage 1.25, photograph detection, DEFAULT OFF
+
+- **What landed.** `cfg.detect_photographic` (default False) →
+  `digitizer_core/photo_signals.py`: EXIF camera Make/Model, then the YuNet
+  detector already shipped at `stage1_photo_prep.detect_faces_seam`, run once
+  per generation on `p.rgb` (already in hand — no second decode). A hit fills
+  `config.is_photographic` in as True.
+- **The contract that matters: True or None. NEVER False.** Silence is "no
+  opinion", because `owl_kent.jpg` is a real photograph both signals miss
+  (re-saved → no EXIF; an owl → no face). False there would suppress the
+  machinery on exactly the designs that need it. So detection can only ADD,
+  the declaration still wins in both directions, and the checkbox stays a
+  fallback rather than becoming a vestige. **Do not "improve" this to False.**
+- **The plumbing trap, solved once.** `is_photographic` has NINE call sites
+  across four modules, and detection happens inside `build_generation` —
+  which rewrites only its own local cfg. `finish_generation`, `plan_stitches`
+  and `run_preflight` are separate entry points holding the CALLER's config
+  (the service re-finishes from a cached generation on every review edit). So
+  the verdict rides `Generation.detected_photographic` and then
+  `PipelineResult.detected_photographic`, exactly like `design_class` and
+  `faces_present`, and each entry point folds it in with one line,
+  `photo_signals.apply_detection`. Preflight uses its existing
+  re-read-the-warning pattern (`_PHOTO_DETECTED`). **Add an entry point that
+  reads `is_photographic` and you must add that line**, or the verdict is
+  silently lost there.
+- **The service passes `exif_source=data`** — its own `_decode` hands the
+  pipeline an ndarray, and an ndarray has no header left to read a camera out
+  of. Without it the EXIF half is dead in the only path a customer uses.
+- **Measured 2026-09-11, `tools/photo_signals.py`, 22 committed fixtures: 0
+  false positives and 0 true positives.** Nothing committed here carries a
+  camera header or a face, so every fixture reads identically on and off.
+  That is the honest result, not a bug: the value is on real uploads. The
+  suite reaches the true-positive side through a JPEG header the test writes
+  and a monkeypatched face seam — which prove the READER and claim nothing
+  about artwork. `logo_script_tires.png` reads `photo_scene` from stage 0
+  both ways: a pre-existing class-route false positive, not detection's.
+- Cost: EXIF 0.4–50.8 ms; EXIF+face 0.03–0.14 s against preps of 0.04–1.10 s.
+  EXIF short-circuits. Off, `resolve` returns before reading a byte.
+- **The flip is Kent's and is NOT proposed on this evidence** — turning it on
+  would change nothing measurable here, so there is no measurement to flip on.
+  It becomes answerable the moment real photographs land (the same artwork
+  item 1 waits for), which is the one thing that would show both halves.
+
+## Item 12 — 2026-09-11: cause established, BOTH fixes measured negative
+
+- **PR #452 (item 13) merged** at ~03:10Z; main 952c09f0, lane fast-forwarded,
+  check-in trigger deleted. CI all four green.
+- **Item 12's answer: 88% of exposed fill travel has NO unsewn corridor.** The
+  needle finishes a column standing inside finished fill with the next column
+  behind more of it. `digitizer/tools/fill_bridges.py` is the census; 9
+  fixtures, 92 bridges, 912.6 mm. Becker and Fremont are 100% no-corridor.
+- **All three review remedies priced and disqualified**: cover-colour routing
+  2%, jump-under-`trim_at` 8 bridges / 26 mm (none on the four review designs),
+  and a bigger detour cap BUILT and a perfect no-op on all nine.
+- **My own fourth arm was worse, and the reason matters**: a corridor-preferring
+  greedy tier finds orders with fewer CUTS, and `_score` buys those at 25
+  stitches a trim against 2 an exposed stitch (gaulke 3.1 -> 84.0 mm at 23 -> 17
+  trims). **Do not attempt ordering work until Kent moves that exchange rate.**
+- **Second standing fact, found by the failed ratchet**: `_order_cost` and
+  `emit` can disagree about what an order sews — the emitter keeps a
+  `route_cache` across a shape's bridges, the scorer builds a fresh one.
+- **The self-catch worth remembering**: the first census reported a
+  detour-budget fix for 26 bridges. `travel_path` returns its route WITHOUT the
+  start point, and that first step is the exposed part; the tell was a 0.5x
+  detour ratio, impossible between two fixed points. An impossible number is a
+  measurement bug, never a finding.
+- Engine reverted to main's behaviour; only the instrument, its test and the
+  record ship. Next: item 14 (edge-finish flags, gate-1 held), then item 10.
+
+## Item 14 — 2026-09-11: measured, CORRECTED TWICE, and edge_cap gated
+
+**The entry below replaces an earlier one that published version 2's numbers.
+Read the correction, not the headline it had.**
+
+- **Two wrong readings, both with clean tables.** `tools/pro_silhouette.py`
+  v1 built cover from whole runs and skipped fill runs → pro **76.7–100%
+  uncovered**. v2 added every column phase back, a tatami's own row turns
+  included → pro **0.5–2.2% uncovered**, and on OUR side it called Fremont
+  0.0% uncovered.
+- **What caught it: the edge-cap GATE, which reads real run kinds.** It saved
+  Fremont nothing while the tool said Fremont needed nothing. The engine puts
+  **0.0 mm of linear stitch on Fremont's 203.7 mm outer boundary**. *Two
+  instruments disagreeing is the finding — publish neither until they are one
+  measurement or two clearly labelled ones.*
+- **Defensible now.** OURS is exact (the instrument calls the engine's own
+  `_sewn_linear_cover`): **5.9–100.0% of the sewn silhouette has no linear
+  stitching** — enthusiast 5.9, drone 20.2, Becker 24.5, gaulke 76.7, whitebg
+  82.6, Fremont 100.0; 3,266 mm, median 76.7%. HIS is a **lower bound** via
+  `border_pro`'s certified fill-edge test: **at least 19.1–26.1% of 7,063 mm
+  of fill edge bordered**, none in the fill's own colour block. A
+  silhouette-coverage % for him is NOT knowable from a stitch file.
+- **The gate** (`silhouette_cap(omit=…)`, Kent's "gate it, then flip"): hand
+  both emitters everything linear already sewn; `run_outline` gained
+  `border_runs`' arc machinery. No new constant. **Bill +8.6–100.4% →
+  +5.9–26.3%** (median +13.4%), uncovered → **0.1–6.2%**. Fremont unchanged,
+  correctly.
+- **Style is NOT settled** — bean cheaper in stitches on 5/6, satin cheaper in
+  trims on 3. Gate 1's sew-out owns it. The flip picks bean, one config away.
+- **`satin_rails_follow_edge`**: not answerable from stitch files. Circular.
+- Next: the flip PR (goldens recaptured on ubuntu CI), then item 10.
+
+
+## edge_cap FLIPPED ON 2026-09-11 — default "bean", 45 tests moved, no golden recaptured
+
+- **Kent's two rulings this round**: (1) "gate it, then flip" — the gate went
+  in #454, this is the flip; (2) on the cone re-load the flip exposed, "keep
+  the best match, accept the stop".
+- **Why bean**: cheaper in stitches on 5/6 (median +13.4% vs satin's +14.9%),
+  closes gaulke best (0.1% vs 6.4%). **But satin is cheaper in TRIMS on 5/6**
+  and at Kent's own 25-stitch trim price the two are within 4%. **Style is
+  still the sew-out's** — one config value changes it. Do not read the bean
+  choice as settled craft.
+- **The cone re-load** (the finding neither of us could see when he ordered
+  the flip): the cap is its own block in the cone owning most of the
+  silhouette, so ALL SIX fixtures re-load a cone already run — colliding with
+  `merge_duplicate_cone_layers`' invariant. Reusing the last cone instead:
+  gaulke would get a 5.4%-frontage colour where the best match owns 95.0%;
+  enthusiast 22.2% vs 77.8%. Carved out by name in
+  `test_duplicate_cone_layers` + `test_rehome_resnapped`.
+- **Trim rate moves BOTH ways** (off→bean /1k): becker 6.26→8.03, gaulke
+  2.42→3.50, but fremont 4.55→4.28, drone 5.26→5.24. **Four of six were
+  already over the 4.1 professional ceiling with the cap OFF** — my first
+  read ("the flip blows out the trim band") was over-general and is corrected
+  in the test comment. `test_chaining`'s 93 mm fixture does cross (2.43→5.1)
+  and pins `edge_cap="none"` on both arms: never re-base a professional band
+  to admit our own cost.
+- **No golden recaptured, deliberately.** Byte-identity guards pin
+  `edge_cap="none"` — their job is "this OTHER change did not move the lane".
+  Synthetic sequencing fixtures say `edge_cap="none"` explicitly; the cap is
+  owned by `tests/test_edge_cap.py`.
+- **One product seam**: the cap's block has no review shape, so the service
+  flags it `design_edge: true` or the Sequencer shows a nameless row.
+- Suite lands on the three documented platform reds and nothing else.

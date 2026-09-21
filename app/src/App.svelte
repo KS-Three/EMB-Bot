@@ -3,6 +3,7 @@
   import { createHistory } from "./lib/history.js";
   import { applyTemplate } from "./lib/templates.js";
   import { canAdvance, nextStep, prevStep, isSewable } from "./lib/flow.js";
+  import { createStepHistory } from "./lib/stepHistory.js";
   import { designSummary } from "./lib/summary.js";
   import { sewSummary } from "./lib/estimate.js";
   import { generateAll } from "./lib/generate.js";
@@ -25,6 +26,7 @@
     autoNameProject,
   } from "./lib/projects.js";
   import { buildProjectFile, parseProjectFile, projectFileName } from "./lib/projectFile.js";
+  import { collectSources, restoreSources } from "./lib/projectSources.js";
   import { triggerDownload } from "./lib/download.js";
   import { shouldShow, dismiss, visibleHint } from "./lib/hints.js";
   import { effectiveHoop } from "./lib/hoop.js";
@@ -89,6 +91,17 @@
   let project = resetHasImage(bootProject);
   let projectName = nameFor(currentId);
   let step = "garment";
+  // Browser Back steps back a WIZARD step instead of leaving the Studio --
+  // see lib/stepHistory.js, including why the first step must never get an
+  // entry of its own. Every step change in this file goes through this
+  // object: a bare `step = ...` would move the panel without moving the
+  // browser, and the two would then disagree about where Back lands
+  // (App.stepHistory.spec.js pins that there are no such assignments).
+  const stepHistory = createStepHistory({
+    history: typeof window === "undefined" ? null : window.history,
+    onStep: (s) => (step = s),
+  });
+  stepHistory.start(step);
   // Boot builds `project` directly rather than through enterProject(), so
   // the open-a-legacy-project case above needs its twin here.
   applyAutoName();
@@ -567,7 +580,7 @@
     // you happen to walk to the Content step. Gated on the same canAdvance()
     // the step nav uses, so this can never route into a step the flow itself
     // treats as unreachable.
-    if (step !== "content" && canAdvance("garment", project)) step = "content";
+    if (step !== "content" && canAdvance("garment", project)) stepHistory.go("content");
     persist();
   }
 
@@ -659,7 +672,7 @@
     // stale value cannot attach itself to the wrong element.
     runtime = { flats: {}, workImages: {} };
     persist();
-    step = "content";
+    stepHistory.go("content");
   }
 
   function onSelect(id) {
@@ -758,7 +771,10 @@
 
   function go(dir) {
     const s = dir > 0 ? nextStep(step) : prevStep(step);
-    if (s) step = s;
+    // stepHistory.go() hands a backwards move to the browser's own Back when
+    // the previous entry IS that step, so the sidebar's Back button and the
+    // phone's Back gesture are one gesture rather than two that disagree.
+    if (s) stepHistory.go(s);
   }
 
   function readable(id) {
@@ -782,7 +798,11 @@
     designDims = null;
     currentId = id;
     projectName = name;
-    step = targetStep;
+    // replace, not go: switching designs is not a move through the flow, and
+    // an entry of its own would make Back rewind the step of a project that
+    // is no longer open. The step moves; the history entry stays the one the
+    // user is already on.
+    stepHistory.replace(targetStep);
     history.reset(project); // history is per-project; a switch starts fresh
     syncHistoryFlags();
     restoreArtwork(project);
@@ -919,15 +939,22 @@
 
   // Export the current project from live in-memory state (never a stale
   // storage read mid-edit); any other row loads from the registry.
-  function exportFromDrawer(id) {
+  async function exportFromDrawer(id) {
     const proj = id === currentId ? project : loadProject(id);
     if (!proj) {
       drawerNotice = "Couldn't load that design to export it.";
       return;
     }
     const name = nameFor(id);
+    // The customer's original artwork rides in the file (2026-09-20,
+    // projectFile.js `sources`): the design then digitizes from the FILE
+    // wherever it is opened, not from the 1,200-px preview the registry
+    // keeps. An original this browser no longer holds is simply not
+    // embedded; that element digitizes from its preview there, with the
+    // panel's note, as every element did before originals travelled.
+    const sources = await collectSources(proj);
     triggerDownload({
-      bytes: buildProjectFile(proj, name),
+      bytes: buildProjectFile(proj, name, sources),
       filename: projectFileName(name),
       mime: "application/json",
     });
@@ -951,7 +978,13 @@
       drawerNotice = "That doesn't look like a design file (.embproj).";
       return;
     }
-    const imported = importProject(parsed.project, parsed.name);
+    // The file's originals go into this browser's store BEFORE the project
+    // is registered, so every element points at a record that exists here
+    // (and at the key its bytes hash to — projectSources.js). A browser that
+    // cannot keep them registers the design all the same; those elements
+    // digitize from the preview, and the panel says so when they do.
+    const restored = await restoreSources(parsed.project, parsed.sources);
+    const imported = importProject(restored.project, parsed.name);
     if (!imported) {
       drawerNotice = "Couldn't save the imported design — storage may be full.";
       return;
@@ -1009,7 +1042,7 @@
   }
 </script>
 
-<svelte:window on:keydown={onGlobalKey} />
+<svelte:window on:keydown={onGlobalKey} on:popstate={(e) => stepHistory.pop(e)} />
 
 <header class="topbar">
   <div class="topbar-logo">
@@ -1031,7 +1064,7 @@
       type="button"
       class="topbar-download"
       disabled={!hasStitches}
-      on:click={() => (step = "download")}
+      on:click={() => stepHistory.go("download")}
     >
       Download
     </button>
@@ -1168,7 +1201,7 @@
       canNext={canAdvance(step, project)}
       on:back={() => go(-1)}
       on:next={() => go(1)}
-      on:goto={(e) => (step = e.detail)}
+      on:goto={(e) => stepHistory.go(e.detail)}
     />
   </aside>
 

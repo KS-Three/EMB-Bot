@@ -1,10 +1,15 @@
-"""MASTER_SCOPE.md states an 800-line budget. Nothing enforced it.
+"""MASTER_SCOPE.md states a 27,000-WORD budget. This enforces it.
 
-The rule is the document's own, in its own words — *"Current state ONLY,
-under an 800-line budget"* — with per-area detail in `docs/scope/` and dated
-snapshots in `docs/scope-history.md` as the two places overflow is supposed
-to go. On 2026-09-07 the file reached **799**, one line of headroom, and the
-only reason anybody noticed is that the next entry did not fit.
+The rule is the document's own, with per-area detail in `docs/scope/` and dated
+snapshots in `docs/scope-history.md` as the two places overflow is supposed to
+go. It was an 800-LINE budget until 2026-09-14, when Kent ruled it over to words
+because lines could not see the file's content: a correction pass that REMOVED
+181 words and 1,208 characters ADDED 45 lines, and the file holds one
+23,638-character line counted as 1 of 801. The unit is `str.split()`, which
+matches the `awk '{n+=NF}'` the document's rule 4 names — deliberately NOT
+`wc -w`, which is locale-dependent here and reads 908 words lower where `LANG`
+is unset. See `word_count`'s docstring and DOCTRINE, "A budget that cannot see
+its own file".
 
 **A budget nothing checks is a preference.** This is the check, and its
 failure message names where the reclaim is, because a test that says "too
@@ -19,12 +24,14 @@ moving Live → Closed swaps a line for a line.
 """
 from __future__ import annotations
 
+import io
 import re
+import sys
 
 import pytest
 
 from tools.scope_budget import (BUDGET, SCOPE, areas, line_count,
-                                live_and_closed, sections)
+                                live_and_closed, main, sections, word_count)
 
 
 @pytest.fixture(scope="module")
@@ -46,15 +53,30 @@ def test_the_counter_agrees_with_wc_l(text):
     assert line_count(text) == text.count("\n") + (0 if text.endswith("\n") else 1)
 
 
+def test_the_word_counter_is_locale_stable_and_is_not_wc_w(text):
+    """The replacement metric nearly repeated the bug it replaced.
+
+    `wc -w` answers 26,381 on this file under `C`/`POSIX` and 27,289 under
+    `C.UTF-8` — it mis-splits em-dashes, arrows and `×` outside a UTF-8 locale,
+    and cloud containers here run with `LANG` unset. `str.split()` does not
+    depend on the locale at all, which is why the budget is measured with it.
+    """
+    assert word_count("a b  c\n d\t e") == 5
+    assert word_count("") == 0
+    assert word_count("em—dash arrow→here 2×3") == 3, (
+        "the counter split on a non-ASCII character, which is exactly how wc -w "
+        "reads this file 908 words short outside a UTF-8 locale")
+
+
 def test_master_scope_is_within_its_own_budget(text):
-    n = line_count(text)
+    n = word_count(text)
     if n <= BUDGET:
         return
     biggest = sorted(sections(text), key=lambda r: -r[1])[:3]
     worst = max(areas(text), key=lambda r: r[1], default=("", 0, 0))
     pytest.fail(
-        f"MASTER_SCOPE.md is {n} lines against its own {BUDGET}-line budget.\n"
-        f"Biggest sections: "
+        f"MASTER_SCOPE.md is {n:,} words against its own {BUDGET:,}-word budget.\n"
+        f"Biggest sections (lines, as a locator — the budget is words): "
         + ", ".join(f"{name} {ln}" for name, ln in biggest) + ".\n"
         f"The reclaim is capability area '{worst[0]}' — {worst[1]} lines here "
         f"against {worst[2]} in its own docs/scope/ detail file, which is the "
@@ -121,3 +143,63 @@ def test_the_entry_split_is_the_load_bearing_part(text):
     assert len(live) >= 15, [n for n, _i, _b in live]
     assert len(closed) >= 10, [n for n, _i, _b in closed]
     assert not ({n for n, _i, _b in live} & {n for n, _i, _b in closed})
+
+
+def _fits_cp1252(ch: str) -> bool:
+    try:
+        ch.encode("cp1252")
+    except UnicodeEncodeError:
+        return False
+    return True
+
+
+def test_main_prints_its_whole_report_to_a_cp1252_console(monkeypatch):
+    """Kent's crash, reproduced. It is a REGRESSION test, not a unit test.
+
+    Running the tool on Windows without `-X utf8` printed the per-section
+    table and then died::
+
+        UnicodeEncodeError: 'charmap' codec can't encode character '→'
+
+    on the capability-area table, because area 1 is named *"Auto-digitizing
+    quality (image → stitches)"* in MASTER_SCOPE.md's own heading and the
+    tool prints doc text verbatim. It died **after** most of its output, so a
+    hurried reader could mistake a crash for a finished run — which is the
+    worst possible failure for the instrument that says whether a doc edit
+    fits, at six words of headroom.
+
+    The stream here is `errors="strict"` on purpose: strict is the default,
+    and lenience is the entire bug.
+    """
+    raw = io.BytesIO()
+    stream = io.TextIOWrapper(raw, encoding="cp1252", errors="strict",
+                              newline="")
+    monkeypatch.setattr(sys, "stdout", stream)
+
+    rc = main([])
+    stream.flush()
+    out = raw.getvalue().decode("utf-8")
+
+    assert rc == 0
+    assert "capability area" in out, "the table that crashed never printed"
+    assert "numbered entries:" in out, "main() stopped before its last section"
+    assert "The reclaim is" in out, "main() stopped before its closing advice"
+
+
+def test_that_regression_test_still_has_teeth(monkeypatch):
+    """The test above is only a test while the doc still holds a character
+    cp1252 cannot encode. Rename area 1 and it would pass on any stream,
+    forever, proving nothing — so assert the hazard is still in the output."""
+    raw = io.BytesIO()
+    stream = io.TextIOWrapper(raw, encoding="cp1252", errors="strict",
+                              newline="")
+    monkeypatch.setattr(sys, "stdout", stream)
+    main([])
+    stream.flush()
+    out = raw.getvalue().decode("utf-8")
+
+    hazards = sorted({ch for ch in out if not _fits_cp1252(ch)})
+    assert hazards, (
+        "nothing this tool prints is outside cp1252 any more, so the "
+        "regression test above can no longer fail. Point it at whatever "
+        "MASTER_SCOPE.md uses now, or retire both.")

@@ -114,7 +114,14 @@ def test_repro_sews_one_block_per_spool_end_to_end():
     cfg = PipelineConfig(target_width_mm=80.0)
     result, plan = digitize(REPRO, cfg)
 
-    threads = [b.thread_index for b in plan.blocks]
+    # ARTWORK blocks only. The design-silhouette cap (ON by default since
+    # 2026-09-11) sews last in whichever cone owns most of the silhouette, so
+    # it re-loads a cone the job already ran — Kent ruled that price
+    # acceptable rather than put a badly matched colour on the edge (the
+    # reasoning is in `test_duplicate_cone_layers`' own carve-out). The
+    # rehome's claim is about the artwork, and it is unchanged.
+    threads = [b.thread_index for b in plan.blocks
+               if not any(r.shape_id == "__edge_cap__" for r in b.runs)]
     assert len(threads) == len(set(threads)), (
         f"a spool is revisited across colour changes: {threads}"
     )
@@ -137,8 +144,15 @@ def test_flag_off_reproduces_the_split():
     and tested (the family posture `merge_adjacent_same_thread` documents):
     the repro's re-snap split comes back — one spool sewing more than one
     block — which is also the lever the sequencing A/B measured with."""
+    # `robust_region_colour=False`: the split is a re-snap on the mean-point
+    # palette (the repro's six medoids, one of them the drifted sliver's);
+    # since the 2026-09-10 flip the repro quantizes to three and nothing
+    # drifts, so the pre-flip engine (False, byte for byte) is the state
+    # this lever is measured on -- the same pin `test_thread_revalidate`
+    # holds on the same fixture.
     cfg = PipelineConfig(target_width_mm=80.0, rehome_resnapped=False,
-                         merge_adjacent_same_thread=False)
+                         merge_adjacent_same_thread=False,
+                         robust_region_colour=False)
     _result, plan = digitize(REPRO, cfg)
     threads = [b.thread_index for b in plan.blocks]
     assert len(threads) > len(set(threads)), (

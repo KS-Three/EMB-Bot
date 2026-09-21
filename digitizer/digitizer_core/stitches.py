@@ -30,6 +30,28 @@ RUN = "run"            # the run tier: a rescued small shape's outline, bean tec
 TRAVEL = "travel"
 TIE = "tie"
 
+# Run ROLES — a separate axis from `kind`, and the two answer different
+# questions. `kind` says HOW a run sews (a satin column, a tatami row, a bean
+# pass); `role` says WHICH TIER asked for it, for the two tiers whose runs are
+# otherwise indistinguishable from the shape's own stitching.
+#
+# The border tier is the reason this exists. `stage6_border.border_runs`
+# stamps a per-shape border with that shape's own `shape_id` and an ordinary
+# kind — BORDER when a column fits, BEAN when the shape is too narrow to host
+# one and the tier lightens (its documented fallback). So from the outside a
+# bordered shape and an unbordered one carry the same fields, and no client
+# could tell whether a border was actually GENERATED as opposed to merely
+# requested. The design-silhouette cap was identifiable only by the sentinel
+# shape id `"__edge_cap__"`, which is a convention, not a contract.
+#
+# "" is every other run, including every run the run tier rescues (a small
+# shape's outline sews with the same bean technique and is NOT a border — see
+# `run_outline`'s callers in stage 7: the below-floor rescue, the photo width
+# floor and the reactive rescue all sew the ARTWORK itself, so calling one a
+# border would report an edging the design does not have).
+ROLE_BORDER = "border"
+ROLE_EDGE_CAP = "edge_cap"
+
 # The machine command stream a plan compiles to — see `iter_machine_commands`.
 CMD_STITCH = "stitch"
 CMD_JUMP = "jump"
@@ -62,6 +84,12 @@ class StitchRun:
     # region.thread_index`, so an unset run collapses to today's single
     # region-thread block by construction.
     shade_thread_index: int | None = None
+    # Which TIER asked for this run — "" | ROLE_BORDER | ROLE_EDGE_CAP. See
+    # the constants above for why it is not derivable from `kind`/`shape_id`.
+    # Additive and defaulted on purpose: every one of the thirty construction
+    # sites in this package leaves it alone, and it moves no stitch. Declared
+    # LAST so no positional `StitchRun(points, kind)` call shifts.
+    role: str = ""
 
     @property
     def length_mm(self) -> float:

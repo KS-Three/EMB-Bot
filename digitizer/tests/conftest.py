@@ -84,6 +84,30 @@ def whitebg():
 
 
 @pytest.fixture(scope="session")
+def whitebg_pre_flip():
+    """The same fixture on the engine BEFORE `cfg.keep_thin_strokes` was
+    flipped ON by default (2026-09-13, Kent's ruling on
+    `docs/thin-strokes-flip-2026-09-13.md`).
+
+    ON, whitebg's ~1.2 mm² teal patch is contrasting, clears the run tier's
+    floors and is KEPT as its own teal run instead of being absorbed into
+    the white ground it touches; a second former absorbee (~0.42 mm²) fails
+    those floors and drops instead. So the fixture gains a region, a block
+    and a cone, `ABSORBED_SMALL_SHAPES` stops being emitted, and two
+    neighbours' polygons shrink by the pieces they no longer swallow. That
+    is the shipped engine now, pinned in `tests/test_keep_thin_strokes.py`
+    and in the flat-lane golden — use the plain `whitebg` fixture for
+    anything asking what the engine DOES.
+
+    This one exists for the handful of claims that were MEASURED on the old
+    polygons and are about something else entirely (stage 3's absorb
+    reporting, the bare-core gate's false-alarm analysis): the posture
+    `PRE_FLIP` below documents, as a fixture because three tests in two
+    files need the same run."""
+    return run_stages(TESTDATA / "logo_whitebg.png", cfg(keep_thin_strokes=False))
+
+
+@pytest.fixture(scope="session")
 def alpha():
     return run_stages(TESTDATA / "logo_alpha.png", cfg())
 
@@ -178,3 +202,61 @@ def segments(stitch_plan):
     for b, run in stitch_plan.iter_runs():
         for a, c in zip(run.points, run.points[1:]):
             yield b, run, a, c
+
+
+# The colour bundle (quality review 2026-09-08 item 8): four flags Kent
+# flipped ON by default as one set on 2026-09-10 (`docs/colour-bundle-
+# decision-2026-09-10.md`), and a fifth later the same day --
+# `robust_region_colour`, the stage-2 repair for the loss that flip's own
+# test run found (PR #445 built it OFF; the PR after flipped it on his
+# ruling). Each flag's own test file still prices the flag ALONE, so its
+# baseline is the PRE-FLIP engine -- the five False -- and "on" is that
+# baseline plus the one flag; otherwise "off" would mean "this flag off,
+# the others on", which is not the engine any measurement was made on. The
+# shipped engine is BUNDLE_ON (the fifth flag is the default there), and
+# each file pins that once.
+COLOUR_BUNDLE = ("enforce_color_cap", "resnap_mask_matches_grader",
+                 "revalidate_small_shapes", "bind_resnap_all_classes")
+PRE_FLIP = {name: False for name in COLOUR_BUNDLE + ("robust_region_colour",)}
+# `edge_cap` joined the flipped set 2026-09-11 ("bean", Kent's ruling after
+# item 14). It is a STRING, not a bool, so it cannot ride the dict
+# comprehension above -- and it is in PRE_FLIP for the same reason the five
+# are: a test pricing one flag alone must measure against the engine its
+# measurement was made on, and every cap arm before today was made with the
+# cap off.
+PRE_FLIP["edge_cap"] = "none"
+# `keep_thin_strokes` joined the flipped set 2026-09-13 (Kent's ruling on
+# `docs/thin-strokes-flip-2026-09-13.md`), and is in PRE_FLIP for the same
+# reason as the six above: ON it keeps a contrasting sub-floor region for the
+# run tier instead of absorbing it, which adds regions, blocks and cones to
+# real logos -- so an arm measured before today was measured without it, and
+# a test pricing one OTHER flag must not silently pick it up. Measured: with
+# it left ON, twelve such arms across seven files moved (the owl, Bridge Bar,
+# gaulke, the screenshot, drone).
+PRE_FLIP["keep_thin_strokes"] = False
+# `strip_letterbox` joined the flipped set 2026-09-14, and is in PRE_FLIP for
+# exactly the reason stated above: a test pricing one flag alone must measure
+# against the engine its measurement was made on. Every arm in the resnap and
+# thread-match files was measured on `photo/logo_gaulke_roofing.png` WITH its
+# letterbox bars — 16.1 px/mm, the 247-vs-54 px footprint, the 63.6 dE00
+# Silver — and cropping the bars changes the raster those numbers describe.
+#
+# This is NOT a way of dodging the re-point work. The distinction that
+# settles it: those tests are about the COLOUR flags, and `strip_letterbox`
+# is orthogonal to every one of them, so pinning it here keeps each test
+# measuring the thing it is named for, on the pixels it measured. The tests
+# that are genuinely ABOUT the crop (`test_letterbox`, the full-bleed guard,
+# `test_enclosed_by_garment`) do not use PRE_FLIP and were re-pointed
+# properly instead.
+#
+# Measured before choosing this: no single fixture in the corpus reproduces
+# gaulke's uncropped severity on BOTH axes the resnap premise asserts.
+# `photo/logo_bridge_bar.jpg` has the footprint inflation (raw 229 px vs
+# grader 39, ratio 5.87 against the test's `> 3`) but not the bimodality
+# (26 dark pixels against `> 50`, because it decodes at 4.0 px/mm);
+# `photo/screenshot_phone_ui_golke.jpg` has the bimodality (92 dark / 102
+# light at 12.75 px/mm) but not the ratio (2.20). Splitting one premise
+# across two fixtures to keep a number green would have been the
+# fit-to-output move this repo's doctrine warns about.
+PRE_FLIP["strip_letterbox"] = False
+BUNDLE_ON = {name: True for name in COLOUR_BUNDLE}

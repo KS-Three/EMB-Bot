@@ -880,7 +880,10 @@ def test_flat_lane_is_byte_identical_with_the_sam2_flag_on(fixture):
 
     result, plan = digitize(
         TESTDATA / fixture,
-        PipelineConfig(target_width_mm=80.0, photo_segment_sam2=True),
+        # `edge_cap="none"` matches `_golden_snapshot`'s own config
+        # (2026-09-11): one engine on both sides of a byte-identity check.
+        PipelineConfig(target_width_mm=80.0, photo_segment_sam2=True,
+                       edge_cap="none"),
     )
     snap = {
         "shape_ids": sorted(r.shape_id for r in result.regions),

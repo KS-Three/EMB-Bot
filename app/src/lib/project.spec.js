@@ -12,6 +12,7 @@ import {
   selectElement,
   updateElement,
   migrateProject,
+  looksLikeProject,
   deriveProjectName,
   UNTITLED_NAME,
 } from "./project.js";
@@ -377,6 +378,68 @@ test("migrateProject only carries over v1 fields that were actually present", ()
   const m = migrateProject(v1);
   const el = m.elements[0];
   expect(el).toEqual(defaultTextElement("e1"));
+});
+
+// --- migrateProject recognizes a project by SHAPE, not by a version literal --
+// Regression pins for the silent-data-loss class found 2026-09-14 (the gap
+// audit's finding 4). The migrator used to test `version === 2` exactly, so
+// three shapes that carry a perfectly readable elements array were turned into
+// a blank defaultProject() -- and on the .embproj import path that blank was
+// handed back as a successful load wearing the customer's own file name.
+
+const twoRealElements = () => [
+  { ...defaultTextElement("e1"), text: "FRITSCH'S STITCHES" },
+  { ...defaultTextElement("e2"), text: "EST 1895" },
+];
+
+test("migrateProject keeps the elements of a FORWARD-version project instead of blanking it", () => {
+  const v3 = { version: 3, selectedId: "e1", elements: twoRealElements() };
+  const m = migrateProject(v3);
+  expect(m.elements.map((e) => e.text)).toEqual(["FRITSCH'S STITCHES", "EST 1895"]);
+  // ...and the stamp stays forward: restamping it 2 would make the next
+  // auto-save write a v3 design back as v2, a permanent silent downgrade.
+  expect(m.version).toBe(3);
+});
+
+test("migrateProject accepts a version stamped as the string \"2\" and normalizes it to a number", () => {
+  const m = migrateProject({ version: "2", selectedId: "e1", elements: twoRealElements() });
+  expect(m.elements).toHaveLength(2);
+  expect(m.version).toBe(2);
+});
+
+test("migrateProject recovers a project whose version key never reached disk", () => {
+  const m = migrateProject({ selectedId: "e1", elements: twoRealElements() });
+  expect(m.elements.map((e) => e.text)).toEqual(["FRITSCH'S STITCHES", "EST 1895"]);
+  expect(m.version).toBe(2);
+});
+
+test("a v1 blob still routes to the v1 branch, not the structural v2 one", () => {
+  // v1 predates `elements` entirely, so the structural test above must not
+  // swallow it -- its flat fields still have to become one text element.
+  const m = migrateProject({ mode: "text", text: "KENT", fontKey: "medium_font" });
+  expect(m.version).toBe(2);
+  expect(m.elements).toHaveLength(1);
+  expect(m.elements[0].type).toBe("text");
+  expect(m.elements[0].text).toBe("KENT");
+});
+
+test("looksLikeProject separates a recoverable design from input with none in it", () => {
+  expect(looksLikeProject({ version: 2, elements: [] })).toBe(true);
+  expect(looksLikeProject({ version: 3, elements: twoRealElements() })).toBe(true);
+  expect(looksLikeProject({ version: "2" })).toBe(true);
+  expect(looksLikeProject({ elements: [] })).toBe(true);
+  expect(looksLikeProject({ mode: "text" })).toBe(true);
+  expect(looksLikeProject({ text: "KENT" })).toBe(true);
+  expect(looksLikeProject({ fontKey: "medium_font" })).toBe(true);
+
+  expect(looksLikeProject(null)).toBe(false);
+  expect(looksLikeProject(undefined)).toBe(false);
+  expect(looksLikeProject(42)).toBe(false);
+  expect(looksLikeProject("garbage")).toBe(false);
+  expect(looksLikeProject([])).toBe(false);
+  expect(looksLikeProject({})).toBe(false);
+  expect(looksLikeProject({ foo: "bar" })).toBe(false);
+  expect(looksLikeProject({ version: 1 })).toBe(false); // v1 stamp, no v1 fields
 });
 
 test("migrateProject falls back to defaultProject() for unparseable input", () => {

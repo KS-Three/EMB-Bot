@@ -366,6 +366,56 @@ tonal min, and the margin. Two outcomes:
 Either way the `CLASSIFIED_GRADIENT` copy and the reading row stay honest
 about which lane sewed the design.
 
+**"And the photo gate follows the same construction" is load-bearing, not a
+nicety — measured 2026-09-11.** `logo_script_tires.png` never reaches the
+flat/gradient gate at all: it exits at the PHOTO gate, where
+`unique_color_mass` reads 0.3608 against `UCM_PHOTO_MIN = 0.28`. A PR 6a that
+ships only the flat/gradient half therefore leaves it misrouted — as
+`gradient` instead of `photo_scene`, because a clean anti-aliased edge over
+perfectly flat interiors still reads `gradient_smoothness` 0.72, 480× its
+gate. Two further facts that bear on how 6a is built:
+
+- **`unique_color_mass` fails for a DIFFERENT reason than its sibling**, so
+  porting the flat/gradient construction across is not a formality. It has no
+  perceptual floor: 97.1% of that 0.3608 comes from a white ground reading
+  253.00 ± 0.75, which the fixed k=16 quantize splits across five centres
+  0.20–1.02 dE00 apart (`DELTA_E_VISIBLE` is 5.0). The spec's own §5b said
+  this signal "is not implicated … should not be replaced"; that is corrected.
+- **Its reading is not reproducible across k-means seeds** (0.196–0.361 over
+  seeds 0–11, 5 of 12 crossing), so any before/after on the photo gate must
+  sweep the seed rather than compare two single draws. The replacement signal
+  has no such term, which is one more argument for it.
+
+Evidence and the probe: `docs/stage0-tires-photo-scene-2026-09-11.md`,
+`digitizer/tools/stage0_signal_origin.py`. The xfail tripwire PR 6a should
+expect to turn green is
+`tests/test_stage0_signal_origin.py::test_a_flat_script_wordmark_classifies_flat_at_every_seed`.
+
+**The candidate signal, stressed against both populations (2026-09-11).** Two
+results, one reassuring and one that lands on §8's open question:
+
+- **Geometry: it passes.** §9a of that doc measures the shipped
+  `gradient_smoothness` being crossed by artwork GEOMETRY alone — four real
+  logos still read `gradient` after binarization, at 6–164× the gate. The
+  candidate, on the same binarized twins, reads **1 or 2 everywhere**. The
+  failure mode does not transfer.
+- **Photographs: the margin goes to ZERO — and Kent has now ruled they
+  count.** This section's own open question is ANSWERED (2026-09-11, with the
+  number below in front of him): a real photograph is a tonal positive,
+  because stage 0's photo gate already fails on one (`owl_kent` 0.1107 against
+  a 0.28 gate) and it therefore lands in the flat/gradient gate. `owl_kent` is
+  enrolled in `color_diversity`'s corpus as of that ruling, so the tool now
+  prints gap 0 by default. **PR 6a needs a boundary that clears a real
+  photograph, or both gates replaced together; the +4 gap is retired.** Enrol
+  `photo/owl_kent.jpg`, the repo's only real photograph, as a real tonal
+  positive and `color_diversity`'s verdict flips from *flat max 16 / tonal min
+  20 / gap +4* to **flat max 16 (`bridge`) / tonal min 16 (`owl_kent`) / gap
+  0, separating at NO rung**. So **do not quote the +4 gap as if photographs
+  were in the tonal set** — under that reading the candidate does not order
+  the classes either. Caveats, both real: `owl_kent.jpg` is a 554 px re-save,
+  and n=2 tonal rows is still under the spec's four-row floor. Note also that
+  `color_diversity`'s corpus enrols the SYNTHETIC owl and not the real one.
+
 ### 5b. What the lane change is measured on
 
 All seven real logos plus drone, at the Studio's defaults, three arms

@@ -169,6 +169,25 @@ cd digitizer && .venv/Scripts/python -m digitizer_service   # service on 127.0.0
 - Always `python -m pytest`, never `python foo.py` — a bare invocation does not put
   cwd on `sys.path`.
 - **Never pipe pytest to `tail`** — you get tail's exit code, so a red run reads green.
+  **This reaches the BACKGROUND-TASK channel too, which is how it still bites.**
+  A backgrounded `pytest ... | tail -25` reports *"completed (exit code 0)"* in
+  the task notification while pytest returned 1 — the notification is relaying
+  tail's code, not pytest's. A session read that 0 as green on 2026-09-14 and
+  nearly shipped two self-inflicted failures. Redirect to a log and append the
+  code yourself: `pytest -q > log 2>&1; echo "EXIT=$?" >> log`.
+- **A cloud container here is FOUR cores, so `-n auto` IS `-n 4`** (`nproc` 4,
+  `sched_getaffinity` 4 — measured 2026-09-14). Do not expect the ~9 min Kent's
+  Windows box does; **budget ~45 minutes for a full local digitizer run**, and
+  read that as healthy rather than hung.
+  **The one thing that actually doubles it is starting a SECOND suite.** Two
+  full runs overlapping on those four cores measured **79.1 and 80.9 minutes
+  against 44.5 solo** — 1.8x, from self-inflicted contention, not from `-n auto`
+  and not from any limit. Start one, let it finish.
+  **And do not diagnose a long run as killed the way that session did:** `pytest
+  -q` buffers, so a log sitting at 8% says nothing, and `pgrep -c pytest`
+  returns 0 against a live run because the process is `.venv/bin/python -m
+  pytest` (match `pgrep -fc "python -m pytest"` instead). All three runs that
+  day were declared dead and all three had completed normally.
 - The expected failure classes (golden mismatches on machines that didn't
   capture the golden, OCR skips without `tesseract`) live in `COOKBOOK.md`
   ("Running things"). Check there before treating a red run as a regression.
@@ -189,17 +208,77 @@ cd digitizer && .venv/Scripts/python -m digitizer_service   # service on 127.0.0
 
 6. **Playwright MCP needs an explicit browser path in this class of sandbox.** `@playwright/mcp`'s bundled `playwright-core` expects a newer browser revision than what's pre-cached at `/opt/pw-browsers/`, and outbound access to Playwright's browser-download CDN is blocked (403) in this environment class — so the plain `npx @playwright/mcp@latest` config fails outright, with no download fallback. `.mcp.json` launches it through `tools/mcp-playwright.mjs` instead, which passes `--executable-path /opt/pw-browsers/chromium` only when that path exists (so a machine without it, e.g. Kent's local setup, still gets normal auto-download behavior). Don't simplify `.mcp.json` back to a bare `npx @playwright/mcp@latest` command. Confirmed 2026-08-03.
 
+   **`.mcp.json` carries a SECOND server since 2026-09-12 — `huggingface`, and it
+   deliberately sends NO token.** A remote HTTP server at
+   `https://huggingface.co/mcp`, added so a session can check a candidate model's
+   **license and maintenance status against the Hub** instead of against its own
+   README — which matters here specifically because this is a commercial product
+   in a public repo and the embroidery-adjacent prior art is largely GPL-3.0
+   (Ink/Stitch). **But a Hub licence TAG is a publisher declaration, not a licence
+   GRANT — never stop at the tag.** `ZhengPeng7/BiRefNet` reads `license:mit` in
+   search results AND in its model card's YAML front matter, yet the weights repo
+   ships **no LICENSE file at all** — 9 files, none a licence (`hf_fs find --name
+   *LICENSE*` returns zero entries, checked 2026-09-12) — and a 3-vote
+   adversarial review REFUTED *"BiRefNet is MIT for BOTH code and published
+   weights"* **0-3**. Read the actual file with `hf_fs` before calling any licence
+   settled; `docs/tooling-research-2026-09-12.md` §3 carries the full trail.
+   **The two endpoints also disagree on DOWNLOAD counts** — `hub_repo_search`
+   reported 42.9K for `BiRefNet_HR-matting` where `hub_repo_details` says 2.5M,
+   and 1.9M vs 20.0M for `facebook/sam3` — so treat a count as order-of-magnitude
+   and never quote one as a measured figure. **Anonymous access is real, measured
+   2026-09-12:** `initialize` returns HTTP 200 with no credential and
+   `tools/list` gives four tools — `hf_whoami`, `hub_repo_search`,
+   `hub_repo_details`, `hf_fs` (which reads files out of a Hub repo, so a
+   `LICENSE` can be read directly rather than inferred from a tag). A token
+   would add more (paper/space/doc search), but there is **no
+   `Authorization` header on purpose**: an unset `${HF_TOKEN}` expands to a bare
+   `Bearer `, and sending an empty credential is worse than sending none — it
+   turns a working anonymous server into a 401. Add the header only alongside a
+   real token, never speculatively.
+   **That 200 is no longer the common case — re-measured 2026-09-15: 4 of 11.**
+   The other seven were `500` or, mostly, `504` after a THIRTY-SECOND hang, on a
+   machine where `https://huggingface.co/` itself answers 200 in 0.15 s. So a
+   hang or a 5xx here is the MCP endpoint, not your config and not a missing
+   token — do not go add `${HF_TOKEN}` to `.mcp.json` over it (see the paragraph
+   above for why that makes it worse). Retry two or three times: the runs that
+   did connect completed the handshake and returned the same four tools,
+   unchanged. **This is also why a session can see the server's instructions and
+   still have NO `mcp__huggingface__*` tools** — `initialize` succeeded and
+   `tools/list` did not, which looks like the server is tool-less rather than
+   flaky. Hit exactly that way on 2026-09-15.
+   **The trap is `hub_repo_search`'s parameter name.** It takes **`repo_types`, an
+   ARRAY** (`["model"]`), not `repo_type`. Pass the singular and the call
+   SUCCEEDS and returns *"No repositories found for the given criteria"* — a wrong
+   argument reads exactly like a true negative, so a session concludes the model
+   does not exist on the Hub. Hit while adding this, on a model with 985K
+   downloads. **This is NOT a runtime dependency** — nothing in `digitizer/`,
+   `src/`, or `app/` calls it, and it moves no defect on its own; it is a
+   research-loop tool for license and maintenance questions.
+
 7. **Three green checks is NOT a green PR — the fourth is the slow one.** CI runs
    four jobs on a PR. `engine` and `studio` finish in well under a minute
    (p50 0.5 and 0.8) and `studio-e2e` in about three (p50 2.7).
-   **`digitizer` runs 10 to 42 minutes** — measured 2026-09-06 over the last
-   220 completed jobs, not estimated. This line said "12–18" until then, which
-   was TRUE WHEN WRITTEN (medians 15.0–15.2 on 2026-08-27/28) and now holds
-   for **half** of them: the daily median walked 15.0 → 16.5 → 17.6 → 18.7 →
-   20.7 and then jumped to **29.6 on 2026-09-06**, max 41.8. Budget half an
-   hour, and read a 35-minute job as normal rather than stuck. (A fifth job,
+   **`digitizer` runs 33 to 55 minutes** — re-measured 2026-09-12 over the
+   last 36 successful jobs: min **32.7**, p50 **49.7**, p90 54.6, max 55.4,
+   with daily medians 48.6 (09-11) and 50.6 (09-12). **Budget an hour, and
+   read a 50-minute job as normal rather than stuck.** (A fifth job,
    `art-fidelity-baseline`, is push-to-`main`-only and `continue-on-error` — it
-   never appears on a PR and gates nothing.) So a PR shows 3/4 green long
+   never appears on a PR and gates nothing.)
+
+   This line keeps going stale in one direction, so read the trend rather
+   than the number: "12–18" (medians 15.0–15.2, 2026-08-27/28) → "10 to 42"
+   (220 jobs, 2026-09-06, after the daily median walked 15.0 → 16.5 → 17.6 →
+   18.7 → 20.7 → **29.6**, max 41.8) → this. Every revision was TRUE WHEN
+   WRITTEN. **The 09-06 text is what makes this worth re-measuring rather
+   than nudging:** it said budget half an hour and read 35 minutes as normal,
+   and half an hour is now BELOW the fastest job on record — so a session
+   trusting it reads a perfectly healthy run as hung and goes looking for a
+   failure that is not there. That nearly happened on PR #469, whose
+   `digitizer` job took **53m 59s** and went green. If you are reading this
+   after 2026-09-12, assume it has drifted again and spend one `curl` on
+   `/actions/runs/<id>/jobs` before concluding anything about a long job.
+
+   So a PR shows 3/4 green long
    before it is green, and merging there is how `main` has gone red — run 994
    (PR #249) and run 1006 (PR #253) both merged to a failing conclusion, and
    `preview.js` has arrived unparseable on `main` **four** times, each one caught

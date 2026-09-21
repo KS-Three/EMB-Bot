@@ -11,7 +11,12 @@
   import { selectedIdsOf } from "../lib/project.js";
   import { effectiveHoop, hoopFitNote } from "../lib/hoop.js";
   import { shapeOutlinesInFieldMm, pulseAt, createPulseTracker, hitOverlay, hitShapeInterior, moveNode, moveEdge, insertNode, fieldMmToOutlineMm } from "../lib/shapeOverlay.js";
-  import { borderMenuItems } from "../lib/borderMenu.js";
+  import {
+    appliedBorders,
+    borderMenuItems,
+    borderRequestPending,
+    indexRuns,
+    shapeBorderState } from "../lib/borderMenu.js";
   import { boundaryIssues, canonicalShapeEdits, editsKey } from "../lib/digitizer.js";
   import Hint from "./Hint.svelte";
   import Icon from "./Icon.svelte";
@@ -1729,6 +1734,21 @@
       elId: el.id,
       shapeId: hit.shapeId,
       name: shapeMenuName(row),
+      // What this shape's border ACTUALLY is, read off the stitch plan
+      // (design.runs) rather than off the request the two items below write.
+      // The menu used to offer "Remove border" on shapes with no border on
+      // them -- the engine declines a satin-tiered shape outright and gives a
+      // too-narrow one a bean run -- so the action is now labelled by what is
+      // there. Absent `runs` the state says "requested" and claims nothing;
+      // see lib/borderMenu.js.
+      state: shapeBorderState({
+        shapeId: hit.shapeId,
+        entry,
+        designBorder: design,
+        index: indexRuns(el.result, new Set((edit.rows || []).map((r) => r && r.id))),
+        tier: row.tier,
+        pending: borderRequestPending(appliedBorders(el.appliedEdits), hit.shapeId, entry),
+      }),
       items: borderMenuItems(entry, design),
     };
   }
@@ -2255,6 +2275,15 @@
                none, Remove border when it has one; and the way back to the
                design-wide setting once an override exists. -->
           <li role="none" class="fieldmenu-head">{fieldMenu.shape.name}</li>
+          {#if fieldMenu.shape.state && fieldMenu.shape.state.label}
+            <!-- The state line, above the actions, because it is what makes
+                 the action legible: "Remove border" under "no border sewn"
+                 tells you the request is on and the engine declined it, which
+                 is the one thing this menu could not say before. -->
+            <li role="none" class="fieldmenu-state" title={fieldMenu.shape.state.title}>
+              {fieldMenu.shape.state.label}
+            </li>
+          {/if}
           {#each fieldMenu.shape.items as it (it.id)}
             <li role="none">
               <button type="button" role="menuitem" title={it.title} on:click={() => chooseBorder(it)}>

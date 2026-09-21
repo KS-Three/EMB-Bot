@@ -28,9 +28,20 @@
     textClusterMembers,
     textClusterSeed,
     remapBlockColors,
-  } from "../lib/digitizer.js";
+    editKind,
+    spoolCount } from "../lib/digitizer.js";
+  import {
+    appliedBorders,
+    borderRequestPending,
+    borderSummaryText,
+    borderTally,
+    edgeCapState,
+    edgeCapSummaryText,
+    indexRuns,
+    shapeBorderState } from "../lib/borderMenu.js";
   import { loadPalette, nearestInList } from "../lib/threads.js";
-  import { loadImage, rasterSize, isVectorFile } from "../lib/rasterize.js";
+  import { loadImage, rasterSize, isVectorFile, uploadPlan } from "../lib/rasterize.js";
+  import { getSource, putSource, sourceKeyFor, sourceStoreAvailable } from "../lib/sourceStore.js";
 
   // Editor panel for an auto-digitized artwork element (build step 10).
   // The element stores the source image (processing size, PNG base64), the
@@ -45,11 +56,20 @@
 
   const d = createEventDispatcher();
 
-  // Processing size (long edge). The pipeline needs nowhere near the
-  // original resolution ("2000 px across is plenty" — service limits), and
-  // this base64 lives in localStorage with the project, so smaller is a
-  // feature: at 1200 px a flat-color logo PNG is typically well under 500 KB.
+  // PREVIEW size (long edge) — since 2026-09-20 this canvas is what the
+  // panel SHOWS and saves with the project, not what it sends. It used to be
+  // both, and the pipeline read a raster the customer never made: resampled
+  // at Chrome's default smoothing, its RGB under transparency rewritten by
+  // the canvas (DOCTRINE 2026-09-19/20; nine logos 503 -> 609 trims). The
+  // file's own bytes now go to /digitize (lib/rasterize.js `uploadPlan`) and
+  // live in IndexedDB (lib/sourceStore.js). This base64 lives in localStorage
+  // with the project, so smaller is a feature: at 1200 px a flat-color logo
+  // PNG is typically well under 500 KB.
   const PROCESS_MAX_PX = 1200;
+  // Set when a digitize had to send the preview because the original's bytes
+  // are gone (cleared site data, another browser): the two digitize
+  // differently, so the panel says which one this result came from.
+  let sourceNote = "";
   // Storage guard on the stored base64 itself (localStorage isn't infinite —
   // same reasoning as DesignPanel's 1 MB DST cap).
   const MAX_SOURCE_B64 = 2_000_000;
@@ -90,11 +110,34 @@
         error = "That image is too heavy to save with the design — the limit is about 1.5 MB after downscaling. Simplify or shrink it and try again.";
         return;
       }
+      // The file itself is what digitizes, when the service can decode it and
+      // it is within the service's limits; its bytes go to IndexedDB so a
+      // re-digitize after a reload sends the same thing. A store that refuses
+      // (private window, storage blocked) is not a failed upload — the preview
+      // path still works, it is just the pre-2026-09-20 result.
+      let sourceFile = null;
+      const plan = uploadPlan(file, img, health && health.limits);
+      if (plan.asIs && sourceStoreAvailable()) {
+        try {
+          const bytes = new Uint8Array(await file.arrayBuffer());
+          // Asked again WITH the bytes: a JPEG the browser rotated on decode
+          // stays on the canvas path (uploadPlan's "orientation").
+          if (uploadPlan(file, img, health && health.limits, bytes).asIs) {
+            const key = await sourceKeyFor(bytes);
+            const type = file.type || plan.type || "";
+            await putSource(key, { bytes, type, name: file.name });
+            sourceFile = { key, type, size: bytes.length, width: img.width, height: img.height };
+          }
+        } catch {
+          sourceFile = null;
+        }
+      }
+      sourceNote = "";
       // New artwork resets everything the old artwork produced — including
       // the layer list and its edits, which are keyed to the OLD art's
       // shape ids and would only produce SHAPE_EDIT_UNKNOWN_ID noise here.
       patch({
-        sourcePng: b64, name: file.name, result: null, warnings: [], blockColors: {}, sizeMm: null,
+        sourcePng: b64, sourceFile, name: file.name, result: null, warnings: [], blockColors: {}, sizeMm: null,
         review: null, shapeOverrides: {}, deletedShapeIds: [], appliedEdits: null,
         mergeGroups: [], splitLines: {},
       });
@@ -196,6 +239,16 @@
       next: (p) => ({ target_width_mm: Math.min(400, Math.round((p.target_width_mm || 80) * 1.25)) }),
       spent: (p) => `${Math.round(p.target_width_mm)} → ${Math.min(400, Math.round((p.target_width_mm || 80) * 1.25))} mm wide`,
     },
+    // The same cure again (2026-09-10, quality review item 11): the check
+    // reads the lettering back off the RENDER and warns when the thread no
+    // longer says what the artwork says. Its own remedy line is "Make the
+    // lettering bigger or simpler", and size is the half this panel owns —
+    // the other half is the artwork, which no button here can change.
+    LETTERING_ILLEGIBLE: {
+      label: "Make it bigger",
+      next: (p) => ({ target_width_mm: Math.min(400, Math.round((p.target_width_mm || 80) * 1.25)) }),
+      spent: (p) => `${Math.round(p.target_width_mm)} → ${Math.min(400, Math.round((p.target_width_mm || 80) * 1.25))} mm wide`,
+    },
   };
 
   function offeredFixes(el) {
@@ -273,8 +326,38 @@
   $: changed = runDelta(element);
   $: hasPrior = !!(element && element.priorRun && element.result);
 
+  // What goes to the service: the customer's file while its bytes are still
+  // here, else the preview PNG — and the panel says so, because the two
+  // digitize differently (DOCTRINE 2026-09-19/20: the preview is resampled and
+  // its RGB under transparency rewritten).
+  async function imageToSend(el) {
+    if (el.sourceFile && el.sourceFile.key) {
+      let rec = null;
+      try {
+        rec = await getSource(el.sourceFile.key);
+      } catch {
+        rec = null;   // a store that will not read is a missing original, not a failed digitize
+      }
+      if (rec) {
+        sourceNote = "";
+        return { bytes: rec.bytes, type: rec.type || el.sourceFile.type || "", name: el.name || rec.name || "art" };
+      }
+      sourceNote = "Digitized from the saved preview — the original file is no longer stored in this browser, and the preview sews a little differently. Replace the artwork with the original for the full result.";
+    }
+    return el.sourcePng;
+  }
+
   async function runDigitize(el) {
     if (!el.sourcePng || !health) return;
+    // An armed restitch is now redundant whichever way this call goes: either
+    // it runs below with the current edits in it, or the in-flight guard sets
+    // `rerunWanted` and it runs straight after with the same edits. Letting
+    // the timer survive would put a second identical run behind this one —
+    // 10-14 s of service time on a photograph, for nothing. (Reachable before
+    // this by pressing "Digitize again" during the pause.)
+    clearTimeout(restitchTimer);
+    restitchTimer = 0;
+    restitchArmed = false;
     if (phase !== "idle") {
       rerunWanted = true; // a change landed mid-flight; run again after
       return;
@@ -283,7 +366,11 @@
     phase = "submitting";
     try {
       const cfg = buildDigitizeConfig(el, project);
-      const job = await digitize(el.sourcePng, cfg, {
+      // The preview path is synchronous here on purpose: it is the
+      // pre-2026-09-20 flow tick for tick, so nothing about restitch timing
+      // moved for an element with no stored original.
+      const image = el.sourceFile && el.sourceFile.key ? await imageToSend(el) : el.sourcePng;
+      const job = await digitize(image, cfg, {
         onState: (s) => {
           if (!destroyed) phase = s === "running" ? "running" : "queued";
         },
@@ -427,24 +514,66 @@
   // ten adjustments cost one run, not ten.
   const RESTITCH_IDLE_MS = 2000;
   let restitchTimer = 0;
-  let prevEditsKey = editsKey(canonicalShapeEdits(element));
+  // Armed = a restitch is scheduled and has not started. Its own flag rather
+  // than `restitchTimer !== 0` because the timer id is a number Svelte has no
+  // reason to treat as interesting, and the "Restitch now" control has to
+  // appear and disappear with it.
+  let restitchArmed = false;
+  let prevEdits = canonicalShapeEdits(element);
+  let prevEditsKey = editsKey(prevEdits);
   $: {
-    const k = editsKey(canonicalShapeEdits(element));
+    const edits = canonicalShapeEdits(element);
+    const k = editsKey(edits);
     if (k !== prevEditsKey) {
+      // WHAT moved decides how long to wait — see editKind in digitizer.js.
+      // A border is complete the moment it is picked, so it starts stitching
+      // on the click instead of two seconds after it; everything else keeps
+      // the pause it already had (a drag needs it, and Kent's 2026-08-13
+      // ruling covers the rest).
+      const kind = editKind(prevEdits, edits);
+      prevEdits = edits;
       prevEditsKey = k;
       // `health` gates it: with no service there is nothing to restitch to,
       // and the existing "saved with the design, applied next time you
       // digitize" branch already covers that honestly.
-      if (element.result && health) scheduleRestitch();
+      if (element.result && health) {
+        scheduleRestitch(kind === "border" ? 0 : RESTITCH_IDLE_MS);
+      }
     }
   }
 
-  function scheduleRestitch() {
+  // Still a timeout at 0 ms rather than a direct call: this runs inside a
+  // reactive statement, and runDigitize patches the element, so calling it
+  // here would re-enter the block mid-flush. A zero-delay timeout puts the run
+  // on the next tick, where every other caller already starts it.
+  function scheduleRestitch(delayMs) {
+    const wait = delayMs == null ? RESTITCH_IDLE_MS : delayMs;
     clearTimeout(restitchTimer);
+    // Armed only when there is a pause to be armed THROUGH. A 0 ms timeout is
+    // a macrotask, so it fires after Svelte has flushed the DOM — arming it
+    // "just for a moment" paints "restitching when you stop editing" for a
+    // frame on every border toggle, about an edit that is not waiting for
+    // anything. Measured, not reasoned: the test above this behaviour failed
+    // before this line read `wait > 0`.
+    restitchArmed = wait > 0;
     restitchTimer = setTimeout(() => {
       restitchTimer = 0;
+      restitchArmed = false;
       runDigitize(element);
-    }, RESTITCH_IDLE_MS);
+    }, wait);
+  }
+
+  // "Restitch now" — skip the remaining pause. Only reachable while a restitch
+  // is armed, so it never starts a run the scheduler was not already going to
+  // start; it just stops making the user wait out a pause they have finished
+  // with. (A drag is the case this is for: the pause is right by default, and
+  // wrong the moment you know you are done.)
+  function restitchNow() {
+    if (!restitchArmed) return;
+    clearTimeout(restitchTimer);
+    restitchTimer = 0;
+    restitchArmed = false;
+    runDigitize(element);
   }
 
   onDestroy(() => clearTimeout(restitchTimer));
@@ -456,6 +585,12 @@
   // ---- derived view state ---------------------------------------------------
 
   $: pending = phase !== "idle";
+  // A run in flight OR one armed and waiting out its pause. Both mean the same
+  // thing to anything READING the stitch plan — what is on the canvas is the
+  // previous request — and the armed window used to be unmarked, so a dragged
+  // outline sat for two seconds with the readouts silently describing the
+  // design the user had just changed.
+  $: restitching = pending || restitchArmed;
   $: statusLine =
     phase === "running" ? "Digitizing your art…" :
     phase === "queued" ? "Waiting for the digitizer — another job is running…" :
@@ -738,6 +873,50 @@
   $: sewableShapes = orderedShapes.filter(
     (r) => !deletedIds.includes(r.id) && effStitched(r, overrides)
   );
+
+  // ---- borders, as SEWN rather than as asked for ---------------------------
+  //
+  // Everything else in this panel about borders is the REQUEST — the two
+  // selects and the per-row one write `params.border` / `shapeOverrides[sid]
+  // .border`, and until now the panel read those straight back and called it
+  // the answer. The engine declines: a satin-tiered shape never gets a border,
+  // a shape too narrow for a column gets a bean run, a narrower one gets
+  // nothing. `design.runs` (contract 2026-09-15) is the read-back; lib/
+  // borderMenu.js turns it into states, and NULL when the payload has no runs,
+  // which every line below renders as "requested" rather than "sewn".
+  //
+  // Recomputed only when the result, the review or the overrides change — the
+  // walk is over runs (hundreds), not stitches (tens of thousands), and the
+  // stitch records it does touch are only the edge cap's own span.
+  $: runIndex = indexRuns(element.result, knownIds);
+  $: appliedBorderSet = appliedBorders(element.appliedEdits);
+  $: borderCounts = borderTally({
+    rows: sewableShapes,
+    overrides,
+    designBorder: element.params.border,
+    index: runIndex,
+  });
+  $: borderLine = borderSummaryText(borderCounts, element.params.border);
+  $: edgeCap = edgeCapState({
+    mode: element.params.edge_cap,
+    warnings: element.warnings,
+    index: runIndex,
+  });
+  $: edgeCapLine = edgeCapSummaryText(edgeCap);
+
+  // One row's border state. `row.tier` deliberately, not `effTier` — this is
+  // about what the CURRENT stitches did, and effTier folds in a forced tier
+  // that has not been stitched yet.
+  function borderStateFor(row) {
+    return shapeBorderState({
+      shapeId: row.id,
+      entry: overrides[row.id],
+      designBorder: element.params.border,
+      index: runIndex,
+      tier: row.tier,
+      pending: borderRequestPending(appliedBorderSet, row.id, overrides[row.id]),
+    });
+  }
 
   // The Sequencer view's color blocks: `sewableShapes` grouped by effLayer,
   // in sew order (the same list moveShape's up/down buttons walk, just
@@ -1498,6 +1677,7 @@
        a failed REPLACE — where they can already see their artwork — was the
        only case that spoke. -->
   {#if error}<p class="dgp-error" role="alert">{error}</p>{/if}
+  {#if sourceNote}<p class="dgp-note" data-testid="source-note">{sourceNote}</p>{/if}
 
   {#if !element.sourcePng}
     <p class="dgp-note">
@@ -1607,6 +1787,40 @@
           <option value="satin">Satin cap (full column)</option>
         </select>
       </label>
+
+      <!-- What the two selects above ACTUALLY produced, read off the stitch
+           plan (design.runs) rather than off the request. Kent, 2026-09-15:
+           "easier to identify when a satin border is or isn't generated and
+           what it looks like going back and forth between satin border
+           on/off". Both selects can be declined by the engine — a satin-tiered
+           shape never takes a border, a narrow one takes a bean run or
+           nothing, and the design edge finds nothing to sew on a small design
+           — and none of that was visible anywhere before this block.
+
+           It sits directly under the two controls that cause it, not in the
+           warnings list, for the same reason the artwork-reading row does:
+           this is the sentence you read while deciding, and the counts are
+           what MOVE when the toggle does. On a payload with no `runs` the
+           wording says "requested" and never "sewn" (borderMenu.js). -->
+      {#if element.result}
+        <div class="dgp-borders" class:dgp-borders-stale={restitching}>
+          <p class="dgp-bline">
+            <span class="dgp-bkey">Borders</span>
+            <span
+              title={borderCounts.verified
+                ? "Read off the stitch plan: which shapes actually have a border on them, and how it sewed. “Not generated” means you asked for one and the engine added none — usually a shape too narrow to hold an outline. Open Edit shapes to see which."
+                : "This design was stitched before the Studio could read back which runs sewed, so this is the request, not the cloth."}
+            >{borderLine}</span>
+          </p>
+          <p class="dgp-bline">
+            <span class="dgp-bkey">Design edge</span>
+            <span title={edgeCap.title}>{edgeCapLine}</span>
+          </p>
+          {#if restitching}
+            <p class="dgp-bnote">Restitching — these read the previous stitch plan.</p>
+          {/if}
+        </div>
+      {/if}
     </div>
 
     <!-- What the art was read as, in plain words, plus the one correction that
@@ -1679,12 +1893,26 @@
       {pending ? "Digitizing…" : element.result ? "Digitize again" : "Digitize"}
     </button>
     {#if statusLine}<p class="dgp-status" role="status">{statusLine}</p>{/if}
+    <!-- The armed window: an edit has landed and its restitch is waiting out
+         the pause. A border never gets here — it schedules at 0 ms and is
+         never armed at all, deliberately, so this line cannot flash for an
+         edit that is not waiting for anything — so this is the OTHER edits: a
+         dragged outline above all, where the pause is right by default and
+         wrong the moment you know you are finished. That is what the button is
+         for: before it, the only way to skip the wait was to stop trusting it
+         and press "Digitize again", which queued a second identical run. -->
+    {#if restitchArmed}
+      <p class="dgp-status dgp-armed" role="status">
+        <span>Change saved — restitching when you stop editing.</span>
+        <button type="button" class="dgp-now" on:click={restitchNow}>Restitch now</button>
+      </p>
+    {/if}
 
     {#if element.result}
       <p class="dgp-stats">
         {element.result.stitchCount.toLocaleString()} stitches ·
         {element.result.widthMM.toFixed(0)}×{element.result.heightMM.toFixed(0)} mm ·
-        {element.result.colorCount} color{element.result.colorCount === 1 ? "" : "s"}
+        {spoolCount(element.result)} color{spoolCount(element.result) === 1 ? "" : "s"}
       </p>
 
       <!-- Item 10: a re-digitize used to replace the design in place with
@@ -2157,6 +2385,19 @@
                       <span class="dgp-lname">{rowName(row)}</span>
                       <span class="dgp-larea">{fmtArea(row.areaMm2)}</span>
                       <span class="dgp-ltier tier-{tier || 'none'}">{tier || "not sewn"}</span>
+                      <!-- The border this row actually has on it (borderMenu
+                           .js's shapeBorderState), beside the tier badge
+                           because the two answer the same question about the
+                           same shape: what is on the cloth. Silent when
+                           nothing asked for a border — the select right below
+                           already says that, and a badge per row saying "no"
+                           is how a list becomes unreadable. -->
+                      {@const bst = borderStateFor(row)}
+                      {#if bst.label}
+                        <span class="dgp-lbadge dgp-lborder dgp-lborder-{bst.tone}" title={bst.title}>
+                          {bst.label}
+                        </span>
+                      {/if}
                       {#if needsColour}
                         <span
                           class="dgp-lbadge dgp-lbadge-needscolor"
@@ -2789,6 +3030,85 @@
     border: 1px solid var(--tint-border, #ccd6fb);
     border-radius: 8px;
     padding: 1px 5px;
+  }
+
+  /* The border badges. Three weights, and the ONE that has to stand out is
+     "the engine declined" -- that is the state Kent cannot see today and the
+     only one that wants a decision. A sewn border is reassurance and stays
+     quiet; a bean border is a downgrade worth noticing but not an alarm.
+     Colour here is chrome, never thread: the canvas is where thread colour is
+     judged, and recolouring a stitch to signal structure would break that.
+
+     Every colour is an EXISTING theme.css token. There is no success/ok token
+     in the palette and this is not the place to invent one: theme.css's own
+     header records what happened last time this file asked for names that were
+     never defined (--warn-text/--warn-bg x23, silently taking a hardcoded
+     olive fallback while the rest of the app used --warn). So "sewn" reads in
+     the accent family, which the app already spends on affirmative state. */
+  .dgp-lborder { white-space: nowrap; }
+  .dgp-lborder-ok {
+    color: var(--accent);
+    border-color: var(--tint-border);
+    background: var(--tint);
+  }
+  .dgp-lborder-note {
+    color: var(--warn-text);
+    border-color: var(--warn-text);
+    background: var(--warn-bg);
+  }
+  .dgp-lborder-quiet {
+    color: var(--muted);
+    border-color: var(--border);
+    background: var(--bg);
+  }
+  .dgp-lborder-warn {
+    color: var(--danger);
+    border-color: var(--danger);
+    background: var(--surface);
+  }
+
+  /* The design-level readout under the two border selects. Deliberately plain
+     -- it is a status line, not a warning: on a healthy design every border
+     asked for is on the cloth and this should read as calmly as the stitch
+     count does. */
+  .dgp-borders {
+    margin-top: 2px;
+    padding: 6px 8px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-s, 6px);
+    background: var(--bg);
+  }
+  .dgp-borders-stale { opacity: 0.6; }
+  .dgp-armed { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+  .dgp-now {
+    font: inherit;
+    font-size: 0.85em;
+    padding: 0.15rem 0.5rem;
+    border: 1px solid currentColor;
+    border-radius: 3px;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+  }
+  .dgp-now:hover { background: rgba(127, 127, 127, 0.18); }
+  .dgp-bline {
+    margin: 0;
+    font-size: var(--fs-2xs);
+    line-height: var(--lh-snug, 1.4);
+    color: var(--ink);
+  }
+  .dgp-bline + .dgp-bline { margin-top: 3px; }
+  .dgp-bkey {
+    display: inline-block;
+    min-width: 76px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: var(--tracking-wide);
+  }
+  .dgp-bnote {
+    margin: 4px 0 0;
+    font-size: var(--fs-2xs);
+    color: var(--muted);
   }
   /* The needs-colour marker (contract v1.7): warning-tinted like the
      enclosed-areas banner, since it flags the same class of silent wrong

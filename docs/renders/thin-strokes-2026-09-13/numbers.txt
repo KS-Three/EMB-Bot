@@ -1,0 +1,67 @@
+cfg.keep_thin_strokes OFF -> ON, tree 8a94bfe, Studio defaults (max_colors 6).
+Every panel: faded artwork under the thread in its own cone colour
+(tools/thread_color_render.py's panel), OFF on the left.
+
+logo_hotel_fremont @ 92.5 mm / patch
+  OFF  18316 st / 103 tr / 54 reg / 3 cones / 4 blocks / C 64 (raw 64)
+  ON   19881 st / 76 tr / 164 reg / 3 cones / 4 blocks / B 76 (raw 76)
+  thin strokes 162 (975 mm): lost 18 -> 3, recall 85.2% -> 92.5%
+
+drone_render @ 80 mm / left_chest
+  OFF  17250 st / 97 tr / 74 reg / 6 cones / 9 blocks / F 0 (raw -68)
+  ON   18551 st / 140 tr / 107 reg / 6 cones / 9 blocks / F 0 (raw -68)
+  thin strokes 45 (349 mm): lost 11 -> 4, recall 79.5% -> 95.5%
+  cones OFF ['1776', '3335', '1102', '3971', '1305', '1776', '0145', '3971', '3971']
+        ON  ['1776', '1305', '0111', '0108', '3971', '1305', '1776', '2564', '3971']
+
+logo_gaulke_roofing @ 80 mm / left_chest
+  OFF  11131 st / 40 tr / 56 reg / 2 cones / 3 blocks / B 76 (raw 76)
+  ON   11034 st / 43 tr / 62 reg / 4 cones / 5 blocks / B 76 (raw 76)
+  thin strokes 18 (163 mm): lost 15 -> 15, recall 42.0% -> 42.0%
+  cones OFF ['0015', '4174', '0015']
+        ON  ['0015', '2564', '0111', '0145', '0015']
+
+logo_bridge_bar @ 80 mm / left_chest
+  OFF  13820 st / 96 tr / 49 reg / 6 cones / 6 blocks / F 0 (raw -8)
+  ON   14600 st / 124 tr / 78 reg / 6 cones / 6 blocks / F 4 (raw 4)
+  thin strokes 2 (3 mm): lost 0 -> 0, recall 100.0% -> 54.6%
+  cones OFF ['0501', '0020', '1720', '0108', '5866', '4423']
+        ON  ['0501', '0020', '1720', '1375', '0108', '4423']
+
+logo_golden_tee @ 80 mm / left_chest
+  OFF  6846 st / 61 tr / 37 reg / 6 cones / 8 blocks / F 0 (raw -32)
+  ON   6843 st / 67 tr / 39 reg / 6 cones / 9 blocks / F 0 (raw -50)
+  thin strokes 3 (8 mm): lost 1 -> 0, recall 74.4% -> 88.1%
+  cones OFF ['0703', '0020', '3971', '1102', '3344', '1902', '3971', '0020']
+        ON  ['0703', '0020', '3971', '1102', '1902', '3344', '3971', '0703', '0020']
+
+logo_bridge_bar, halo: 11438 st / 64 tr / 32 reg / 6 cones / 7 blocks / F 16 (raw 16)
+logo_bridge_bar, kts_halo: 11669 st / 65 tr / 33 reg / 6 cones / 7 blocks / F 16 (raw 16)
+
+Where Fremont's +1,565 stitches go (emitted per block, off iter_machine_commands):
+  0015 white ground   12412 -> 11968
+  0020 black          3484  -> 3504
+  0862 tan            1478  -> 3428     <- EST 1895 / EAT STAY PLAY / rope
+  0015 white (2nd)    942   -> 981
+  total               18316 -> 19881
+
+Fremont thin-stroke recall by the stroke's own artwork colour:
+  black, 22 strokes, 581.3 mm:  96.0% -> 99.3%   lost 2 -> 0
+  tan,  136 strokes, 387.4 mm:  69.6% -> 82.8%   lost 14 -> 2
+  white,  4 strokes,   6.1 mm:  48.4% -> 67.4%   lost 2 -> 1
+
+Attribution for the 09-08 -> 09-13 sign change on the stitch count (Fremont):
+  today                             18316 -> 19881  (+1565)
+  edge_cap="none"                   17374 -> 18900  (+1526)   not the cap
+  layer_palette_from_regions=False  18316 -> 19881  byte-identical
+  subpixel_edges=False              18337 -> 16974  (-1363)   <- the cause
+  the seven post-09-08 defaults put back
+                                    17326 -> 15996  (-1330)   the 09-08 table
+
+gaulke with a garment colour set (white), so enclosed_by_garment acts:
+  OFF 14011 st / 67 tr; ON 13665 st / 65 tr -- the lettering still does not read
+
+Goldens moved by a flip (engine default max_colors 12):
+  logo_whitebg  6148 st / 10 tr / 5 cones -> 6175 / 11 / 6
+  logo_alpha    5774 st /  9 tr / 5 cones -> 5784 / 10 / 6
+  ribbon_curve, bg_uncertain: byte-identical

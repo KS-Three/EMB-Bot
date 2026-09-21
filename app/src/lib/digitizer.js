@@ -96,6 +96,13 @@ export async function fetchHealth(fetchFn = globalThis.fetch) {
 //   garment_id — the project's garment, which picks the fabric preset (pull
 //     compensation, underlay, density) service-side. Ids match by construction
 //     (digitizer_core/fabrics.py mirrors the engine's GARMENT_FABRIC).
+//   garment_rgb — the project's fabric colour (project.fabricRgb, the swatch
+//     the garment step picks), so the service can decide whether enclosed
+//     background-coloured holes (letter bodies, counters) sew on THIS garment
+//     (cfg.enclosed_by_garment, the engine's default — not a Studio control).
+//     Sent whenever the project carries one, like garment_id; the service's
+//     rule is off by default, so existing designs re-digitize identically
+//     after the one cache-key change.
 // fill_angle_deg is omitted when null: null means "per-shape auto" and the
 // service treats an absent key the same way — omitting keeps the config (and
 // the job cache key) minimal. forced_class (the flat-art override the panel
@@ -188,6 +195,9 @@ export function buildDigitizeConfig(element, project) {
   const brand = loadPreferredPaletteId();
   if (brand && brand !== "studio") cfg.thread_brand = brand;
   if (project && project.garmentId) cfg.garment_id = project.garmentId;
+  if (project && Array.isArray(project.fabricRgb) && project.fabricRgb.length >= 3) {
+    cfg.garment_rgb = project.fabricRgb.slice(0, 3).map((v) => Math.round(Number(v)));
+  }
   // Shape-layers edits (contract v1) ride the same config — already in the
   // service's canonical spelling (canonicalShapeEdits below), so the job
   // cache key changes exactly when an edit changes and a no-op edit stays a
@@ -362,6 +372,64 @@ export function editsKey(edits) {
     (edits && edits.merge_shape_ids) || [],
     (edits && edits.split_shapes) || {},
   ]);
+}
+
+// ---- how urgently does a change want stitching? (restitch pacing) ----------
+//
+// Every shape edit lands in the same place — `shape_overrides` — so the
+// restitch scheduler cannot tell a dragged outline from a border picked off
+// the canvas menu by looking at WHERE the change is. It has to look at what
+// MOVED.
+//
+//   "border"  every difference is a `border` value, and nothing else moved.
+//             A border is chosen from a menu or a select and is COMPLETE the
+//             moment it is chosen — there is no second half coming — so the
+//             idle pause buys nothing and costs the user two seconds of a
+//             canvas that has not acknowledged the click.
+//
+//   "other"   anything else: a dragged boundary above all, but also a tier, an
+//             underlay, a thread, a delete, a merge, a split. These keep the
+//             pause. A drag needs it (the next nudge is a moment away, and a
+//             restitch is a full stage 0-7 service run — 0.65 s on line art,
+//             ~10-14 s on a photograph, with no useful cache because the job
+//             key folds shape_overrides into the config), and the rest keep it
+//             because Kent's 2026-08-13 debounce ruling covers them and
+//             nothing measured says they hurt.
+//
+//   "none"    nothing moved — a toggled-then-untoggled edit canonicalizes back
+//             to where it started, exactly as the job cache sees it.
+//
+// Deliberately NARROW. The tempting version of this function asks the broader
+// question — "is this a decision or a drag?" — and hands every select the fast
+// path too. That is a bigger behaviour change than the one that was asked for,
+// on controls a user can keyboard-arrow through (each arrow firing `change`),
+// and the existing debounce tests encode the ruling it would overturn. So the
+// fast path has to be EARNED by a change containing nothing but borders, and
+// everything else keeps the behaviour it already had.
+function withoutBorders(edits) {
+  const ov = (edits && edits.shape_overrides) || {};
+  const stripped = {};
+  for (const sid of Object.keys(ov)) {
+    const entry = { ...ov[sid] };
+    delete entry.border;
+    // Empty entries are dropped, the same way canonicalShapeEdits drops them —
+    // otherwise a shape whose ONLY override is a border would leave an empty
+    // object behind on one side and nothing on the other, and a border-only
+    // change would read as "other".
+    if (Object.keys(entry).length) stripped[sid] = entry;
+  }
+  return { ...(edits || {}), shape_overrides: stripped };
+}
+
+// (prev, next) -> "none" | "border" | "other". Both arguments are
+// canonicalShapeEdits output; pure, so the pacing rule is tested without a
+// browser, a service or a clock.
+export function editKind(prevEdits, nextEdits) {
+  if (editsKey(prevEdits) === editsKey(nextEdits)) return "none";
+  // Identical once the borders are taken out = borders were all that moved.
+  return editsKey(withoutBorders(prevEdits)) === editsKey(withoutBorders(nextEdits))
+    ? "border"
+    : "other";
 }
 
 // Within-layer sew-order reorder (contract v1.2, the Layers panel's up/down
@@ -1044,11 +1112,21 @@ export async function exportViaService(design, format, label, fetchFn = globalTh
 }
 
 // POST /digitize (multipart image + config JSON) -> { job_id, state, cached }.
+// `image` is the customer's file as { bytes: Uint8Array, type, name } — since
+// 2026-09-20 the panel sends the upload itself (lib/rasterize.js `uploadPlan`,
+// lib/sourceStore.js) — or a base64 PNG string, the preview path: vectors,
+// GIFs, files outside the service's limits, and a re-digitize whose original
+// is no longer stored. The two digitize DIFFERENTLY (DOCTRINE 2026-09-19/20),
+// which is why the panel tells the user when it had to fall back.
 // 202 is the service's accept status; anything non-ok throws with the
 // service's own detail sentence.
-export async function startDigitize(pngBase64, config, fetchFn = globalThis.fetch) {
+export async function startDigitize(image, config, fetchFn = globalThis.fetch) {
   const form = new FormData();
-  form.append("image", new Blob([b64ToBytes(pngBase64)], { type: "image/png" }), "art.png");
+  if (typeof image === "string") {
+    form.append("image", new Blob([b64ToBytes(image)], { type: "image/png" }), "art.png");
+  } else {
+    form.append("image", new Blob([image.bytes], { type: image.type || "application/octet-stream" }), image.name || "art");
+  }
   form.append("config", JSON.stringify(config));
   const r = await fetchFn(digitizerUrl() + "/digitize", { method: "POST", body: form });
   if (!r.ok) throw new Error(await httpDetail(r));
@@ -1083,8 +1161,8 @@ export async function pollJob(jobId, opts = {}) {
 // Submit + poll in one call. An identical image+config re-run returns the
 // finished job immediately (the service's content-hash cache) — that is what
 // makes the change-a-param-look-again loop usable.
-export async function digitize(pngBase64, config, opts = {}) {
-  const sub = await startDigitize(pngBase64, config, opts.fetchFn || globalThis.fetch);
+export async function digitize(image, config, opts = {}) {
+  const sub = await startDigitize(image, config, opts.fetchFn || globalThis.fetch);
   return pollJob(sub.job_id, opts);
 }
 
@@ -1143,6 +1221,37 @@ export function decodedFromDesign(design) {
 // object itself: a re-digitize patches a NEW result object onto the element,
 // and a WeakMap lets an abandoned result's decoded copy be collected.
 const decodedCache = new WeakMap();
+// How many SPOOLS a digitized design asks the customer to buy — which is not
+// `design.colorCount`, and stopped being it on 2026-09-11.
+//
+// `colorCount` is `colors.length`, one entry per sew BLOCK (adapter.py builds
+// it that way, and the encoders need it that way). A block is a machine STOP.
+// Since the design-silhouette cap went default on, the cap sews last in
+// whichever cone owns most of the edge and so re-loads a cone the job already
+// ran on essentially every design — Kent's ruling, taken deliberately rather
+// than put a 5.4%-frontage cone on an edge a 95.0% one owns. So stops and
+// spools now differ by one on most designs, and the word "colors" on a
+// customer-facing line has always meant spools here: "a colour is a cone to
+// buy and a re-thread on a single-needle machine" (MASTER_SCOPE defect 42e,
+// Kent 2026-09-08, where the same two quantities were shown side by side
+// disagreeing).
+//
+// Keyed on the cone's NAME, which adapter.py writes as "<number> <name>" —
+// the spool id. Falls back to rgb for a design whose colors carry no name
+// (the browser lettering lane names them "Color 1", "Color 2", …, which are
+// already distinct per block, so that lane is unaffected either way).
+export function spoolCount(design) {
+  const colors = (design && design.colors) || null;
+  if (!Array.isArray(colors) || !colors.length) {
+    return (design && design.colorCount) || 0;
+  }
+  const seen = new Set();
+  for (const c of colors) {
+    seen.add(c && c.name ? String(c.name) : `${c && c.r},${c && c.g},${c && c.b}`);
+  }
+  return seen.size;
+}
+
 export function decodedFromDesignCached(design) {
   if (!design || typeof design !== "object") return null;
   let hit = decodedCache.get(design);
@@ -1300,12 +1409,34 @@ const WARNING_TEXT = {
   // THEIR artwork, because that is the sentence they read before deciding
   // whether to override it (DigitizePanel's flat-art nudge fires on the first
   // three of them).
+  //
+  // The photo lines state their CONSEQUENCE conditionally, and that is the
+  // measured error rate talking, not hedging. Stage 0 misroutes most real
+  // customer logos — six of seven reach `gradient` — and `logo_script_tires
+  // .png`, flat black script on a white ground, reaches a non-flat lane on
+  // the ground's ±1 grey-level grain whichever way it arrives: `photo_scene`
+  // from the file, `gradient` through THIS panel, which downsamples to
+  // PROCESS_MAX_PX first and hands stage 0 a different raster
+  // (docs/stage0-tires-photo-scene-2026-09-11.md §6b). "Photos sew rougher —
+  // check the preview closely" therefore reached a large share of its readers
+  // as a warning about a photograph they had not uploaded, and about a rough
+  // result they were not going to get: that fixture's photo-lane output scores
+  // the same as its flat-lane output and sews the same design. Saying "if
+  // that reading is right" costs the real photographs nothing and stops the
+  // misread ones asserting something false about someone's artwork.
+  //
+  // The CORRECTION deliberately stays out of these sentences. DigitizePanel's
+  // read-row already offers it with a button, on exactly these three codes,
+  // and putting it here too printed the same guidance twice on one screen —
+  // which three panel tests caught by finding two matches where they expect
+  // one. Warning text says what the engine decided; the read-row is where the
+  // customer changes it. Kent's call to fix the copy, 2026-09-11.
   CLASSIFIED_GRADIENT: () =>
     "The art reads as smooth shading rather than flat color. Areas that shade smoothly enough sew in a few blended thread shades; the rest sew in one flat color.",
   CLASSIFIED_PHOTO_SUBJECT: () =>
-    "The art reads as a photo of a person, pet or product. Photos sew rougher than flat artwork — check the preview closely before stitching this one out.",
+    "The art reads as a photo of a person, pet or product. If that reading is right, photos sew rougher than flat artwork — check the preview closely before stitching this one out.",
   CLASSIFIED_PHOTO_SCENE: () =>
-    "The art reads as a photographic scene. Photos sew rougher than flat artwork — check the preview closely before stitching this one out.",
+    "The art reads as a photographic scene. If that reading is right, photos sew rougher than flat artwork — check the preview closely before stitching this one out.",
   CLASSIFICATION_UNCERTAIN: () =>
     "The art didn't clearly read as flat, shaded or photographic, so it was digitized as flat art. If it's really a photo, expect a rougher result than usual.",
   // Stage 7's own routing note (digitizer_core/warnings_codes.py) for the
@@ -1317,6 +1448,18 @@ const WARNING_TEXT = {
   // naming the tier (w.tier) — "thread-paint" is the customer word for the
   // streamline tier this route picks; a second tier landing here can revisit.
   photo_auto_tier: () => "Rendered as a photo (thread-paint).",
+  // Stage 1.25 (2026-09-11): the engine decided this art is a PHOTOGRAPH from
+  // the camera in its file, or from a face in it — not from colour, which
+  // demonstrably cannot tell a photo from a shaded logo here. Named because
+  // the consequence is visible (photos sew rougher, and the palette binds
+  // tighter), and because a customer who disagrees can say so. The engine
+  // sentence it replaces names the palette bind and the shade bind, which are
+  // internal machinery nobody uploading a picture has heard of.
+  PHOTO_DETECTED: (w) =>
+    (w && w.signal === "face"
+      ? "A face was detected in this art, so it was digitized as a photograph. "
+      : "This file still carries the camera that took it, so it was digitized as a photograph. ")
+    + "Photos sew rougher than flat artwork — check the preview closely before stitching this one out.",
   BACKGROUND_UNCERTAIN: () =>
     "The background was hard to separate from the art. Check the stitch preview for missing or extra areas.",
   // The NUMBER is the actionable part and this sentence used to omit it.

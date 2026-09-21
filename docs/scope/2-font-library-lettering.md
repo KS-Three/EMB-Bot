@@ -527,19 +527,28 @@ every font, not just unlucky ones. That is the actual reason fold_inkstitch's
 tile read "012345" and not "ABCDEF". Letters come first explicitly now.
 *(measured 2026-08-22 — 85/85 name-derived, verified by disabling the rule)*
 
-## 26 glyphs that sew nothing — needs Kent, and needs his machine (2026-08-22)
+## 6 glyphs that sew nothing — 20 of the 26 revived 2026-09-15
 
-Six shipped fonts contain single-character glyphs that are PRESENT, take their
+Four shipped fonts contain single-character glyphs that are PRESENT, take their
 advance, look selectable in every UI, and put no thread down. Register and
 per-font list: `test/font-dead-glyphs.test.js`, which fails in both directions
 so a new one is caught and a fixed one must come off.
 
 | font | dead glyphs |
 |---|---|
-| `roaring_twenties_KOR` / `_small` | `+ - / < = > \ _ ¯ °` (10 each) |
 | `western_light` | `4`, `ç` |
 | `ondulamarif_XL` | `:`, `º` |
 | `ondulamarif_Medium` / `_S` | `'` |
+
+**This said 26 in six fonts, from 2026-08-22 until 2026-09-15.** The other 20
+were `roaring_twenties_KOR` / `_small`'s `+ - / < = > \ _ ¯ °`, ten each, and
+they are now alive: upstream authored a stitch length for all twenty, a
+font-wide strip discarded it, `tools/build-font.mjs` now scopes that strip per
+glyph, and `tools/build-embf.mjs --only` re-emitted the two binaries without
+the full build's orphan clean. The remaining six are a DIFFERENT defect and are
+not work: upstream authored no length for them, so reviving one means inventing
+a stitch length, which ROADMAP gate 1 refuses. The split between the two causes
+is worked through below and was settled from the shipped binaries.
 
 The user-facing half is CLOSED: `layoutText` reports them (`unsupported`) and
 the Studio shows "This font can't stitch …", so typing "2024" in

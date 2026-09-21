@@ -102,6 +102,22 @@ gradient lane should be JUDGED on excess** — which is the part that would
 re-base the scorecard, and is Kent's.
 `digitizer/tools/spool_remedy.py`. *(measured 2026-09-06)*
 
+**RULED 2026-09-10, and this row closes: the gradient lane stays on RAW
+distance.** Kent's call, put to him with the numbers under the new patch
+floor (quality review item 11): `THREAD_MATCH_POOR` still blocks 26 times
+over the 52-pair scorecard matrix, every one on the gradient lane's raw
+yardstick, and on 2026-09-06 four of the seven F fixtures cleared every
+block under excess. His reason is the one this row's own text names as the
+product question — **a logo's palette can be changed and a photograph's
+cannot**, so on a logo "already the closest cone this design loads" is not
+a pass, it is a cone to buy, and the finding has named that closer loaded
+spool on every route since 2026-09-06. Nothing in the code moves: the
+gradient lane was never rescored, so the ruling is a decision recorded, not
+a change. What the item-11 floor DID take off this lane is the shard: 16 of
+the 40 blocking findings judged on patches under 5 mm², and they no longer
+judge at all (`digitizer/tools/thread_match_floor.py`).
+*(ruled 2026-09-10 — `docs/superpowers/plans/2026-09-10-legibility-yardstick.md` §5)*
+
 ## 5. It scored the colour of regions that never sew
 
 Until 2026-09-06 `_region_color_errors` built a row for every region including
@@ -197,6 +213,65 @@ list is.** It is what caught the bug above.
 
 `digitizer/tools/flip_sheet.py`, `docs/flip-sheet-2026-09-06.md`.
 *(measured 2026-09-06, retracted on re-measurement 2026-09-07)*
+
+## 8. B 76 for a design that sewed a white rectangle, F 34 once the logo came back
+
+`logo_gaulke_roofing` is a phone screenshot: a white card between two black
+letterbox bars. Before `strip_letterbox` (#485) the bars read as ink, so the
+black logo read as enclosed background and went unsewn — **the file sewed a
+white rectangle with the logo as bare fabric**, one stray black stroke on it.
+**The scorecard graded that B 76.**
+
+With the strip ON the logo sews — sun, roof, window, both lines of lettering —
+and **the grade fell B 76 → F 34 on both garments** (Linux, the #486
+recapture): `GROUND_SEWN:block`, because the card was still sewing, 79.9% of
+the stitches, round a now-visible logo. So the check was right about the
+thread and the letter was wrong about the design: the change Kent would judge
+far better scored 42 points worse, while the design that could not be sewn at
+all had scored a B.
+
+**Why the old B:** nothing in preflight reads whether the ARTWORK sewed. The
+white card matched its thread exactly, the bars were background, and every
+check that exists passed a design with no logo in it.
+
+**Closed on the engine side 2026-09-15** (`letterbox.detect_edge_strips`):
+the card's two 9-px shadow strips held stage 1's border agreement at 0.693
+under the 0.75 floor; trimmed, it reads 1.000, the card is ground, and the
+logo sews on bare garment — **C 64, `GROUND_SEWN` gone, 13,378 → 4,531
+stitches** (measured on Windows, so read the grade as advisory — DOCTRINE
+2026-09-15; the stitch drop is the card leaving). The row stays for what it
+shows: **a grade on a design whose subject never sewed is not evidence**, and
+row 7's rule generalises — where a change alters WHAT sews, look at the render
+before the letter. Renders: `stage6_stitches.png` for the three states, by
+`digitizer_core` debug_dir on `photo/logo_gaulke_roofing.png` at 80 mm /
+left_chest with `strip_letterbox` False, and True before and after the strip
+trim. *(measured 2026-09-15)*
+
+## 9. The density check looked at the whole design and missed the one letter
+
+`cfg.satin_polygon_axis`'s render (2026-09-16) showed drone's M of AND DRONE
+gaining crossing columns. Priced on `coverage_max` the flag reads as a
+density WIN — **10.70 → 6.73**, from over the 9.33 block ceiling to under the
+6.67 warn line — and that number was published as "it is less thread, not
+more". **Kent looked and ruled *"the M is over stitched"*.**
+
+Measured in a 12 mm window on the M itself rather than over the design:
+
+| | design max | M window max | M p95 | M p50 |
+|---|---:|---:|---:|---:|
+| shipped | 10.70 | 2.78 | 2.13 | 0.73 |
+| polygon axis | 6.73 | **4.61** | **3.46** | 0.98 |
+
+**+66% at the peak, +62% at p95, on the feature the eye picked out.** Both
+arms are under the warn level there, so no threshold on this check would have
+caught it: `coverage_max` is a per-DESIGN extremum, and drone's worst stack is
+somewhere else entirely, so the flag's own headline number moved in the
+opposite direction to the thing being judged.
+
+Unlike rows 1–6 this is not the metric lacking a term for the change — the
+instrument exists and has the right units. It was pointed at the whole design
+when the question was about one letter. *(measured 2026-09-16; DOCTRINE "A
+design-wide MAX hides a local stack")*
 
 ---
 

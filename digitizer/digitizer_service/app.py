@@ -40,7 +40,26 @@ from digitizer_core.threads import DEFAULT_BRAND, brand_index, load_chart
 from . import formats
 from .jobs import DONE, GenerationCache, JobRegistry, content_key, generation_key
 
-VERSION = "0.5.0"
+# 0.5.0 -> 0.6.0, 2026-09-15: `design.runs`, the run-span index, is now on
+# every `/digitize` and `/digitize-manual` response.
+#
+# Read this before looking for a response-contract version to bump instead:
+# THE "contract v1.x" NUMBERS IN THIS FILE ARE A DIFFERENT CONTRACT. They
+# version the shape-LAYERS contract — what a `shape_overrides` entry may hold
+# on the way IN, plus the handful of server-computed read-only fields echoed
+# back inside `review.shapes` (v1.2 `sew_order`, v1.5 `merge_shape_ids` /
+# `split_shapes`, v1.7 `enclosed_colour_unknown`). `design` is not part of it:
+# it is the EMB-Bot `Design` dict, owned by `digitizer_core.adapter
+# .plan_to_design` and mirrored by `src/digitize.js` in the browser, and it
+# carries no version of its own. So the honest place to record an additive
+# change to it is here and in the adapter's docstring, and bumping a
+# shape-layers number for it would have been a lie in the other direction.
+#
+# The change is additive and a client that ignores `runs` behaves exactly as
+# it did. Feature detection does not need this number either — the presence of
+# `design.runs` is the signal, and it has to be, because a design loaded from
+# a saved project never came through /health at all.
+VERSION = "0.6.0"
 
 # An upload this large is a photograph someone dragged in by mistake, and the
 # pipeline would spend minutes on it before saying so.
@@ -444,6 +463,20 @@ def _validate_config_dict(data: dict, allowed_fields: set[str]) -> dict:
     # path. Checked here so a client typo is a 400 naming the valid values,
     # rather than the ValueError `stage0_classify.classify` raises — which
     # would reach the caller as a 500.
+    # `garment_rgb` reaches `PipelineConfig` as whatever JSON carried, so a
+    # malformed one (a hex string, four channels, 300) would surface as a
+    # TypeError deep in `stage4_vectorize.garment_sews_enclosed` — a 500.
+    # Checked here as a 400 naming the shape, like forced_class above.
+    rgb = data.get("garment_rgb")
+    if rgb is not None and not (
+        isinstance(rgb, (list, tuple)) and len(rgb) == 3
+        and all(isinstance(v, int) and not isinstance(v, bool) and 0 <= v <= 255
+                for v in rgb)
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="garment_rgb must be three integers 0-255, e.g. [235, 232, 223].",
+        )
     forced = data.get("forced_class")
     if forced is not None and forced not in CLASSES:
         raise HTTPException(
@@ -610,6 +643,15 @@ def _review_payload(result, plan=None) -> dict:
                 # colour-KNOWN enclosed region and for everything untagged.
                 "enclosed_colour_unknown": r.meta.get(
                     "enclosed_colour_unknown", False),
+                # Why an enclosed region is stitched when it is (server-
+                # computed, read-only, same category): True when the
+                # garment rule (`cfg.enclosed_by_garment` + `garment_rgb`)
+                # made it sew by default — the garment is a clearly different
+                # colour from the hole. Stays True under a review override
+                # that turns the shape back off, so the panel can say "the
+                # garment would sew this; you turned it off". False for an
+                # ordinary hole, an alpha hole, and everything untagged.
+                "enclosed_by_garment": bool(r.meta.get("enclosed_by_garment", False)),
                 # Text-cluster detection (server-computed, read-only — no
                 # `_OVERRIDE_KEYS` entry, same category as `layer` and
                 # `enclosed_background`): whether this shape was tagged as a
@@ -677,10 +719,29 @@ def _stats_payload(plan, design: dict, region_ids: set[str] | None = None) -> di
         # gradient's spools — the download's thread list (`design.colors`) was
         # right the whole time.
         "blocks": [
-            {**cone, "shape_ids": _block_shape_ids(block, region_ids)}
+            {**cone, "shape_ids": _block_shape_ids(block, region_ids),
+             **({"design_edge": True} if _is_edge_cap(block) else {})}
             for cone, block in zip(plan.palette, plan.blocks)
         ],
     }
+
+
+# The shape id `stage7_sequence` stamps on the design-silhouette cap's runs.
+# By string, the `preflight._CLASSIFIED_PHOTO` convention: the service neither
+# owns the constant nor should break in a tree where the cap has not landed.
+_EDGE_CAP_SHAPE_ID = "__edge_cap__"
+
+
+def _is_edge_cap(block) -> bool:
+    """The one block with no review shape behind it.
+
+    `cfg.edge_cap` is ON by default since 2026-09-11, so every design now ends
+    with a block that outlines the union of several regions rather than any one
+    of them — `_block_shape_ids` correctly returns [] for it. Without a flag
+    saying so, the Sequencer would show a nameless row the user cannot map to
+    anything on the canvas.
+    """
+    return any(r.shape_id == _EDGE_CAP_SHAPE_ID for r in block.runs)
 
 
 def _block_shape_ids(block, region_ids: set[str] | None = None) -> list[str]:
@@ -753,12 +814,24 @@ async def start_digitize(
         gen = generations.get(gen_key)
         gen_hit = gen is not None
         if gen is None:
-            gen = build_generation(pixels, cfg)
+            # `data`, not `pixels`, for the EXIF half of photograph
+            # detection (cfg.detect_photographic, default OFF): `_decode`
+            # above hands the pipeline an ndarray, and an ndarray has no
+            # header left to read the camera out of. Costs nothing when the
+            # flag is off — `photo_signals.resolve` returns before touching
+            # it — and the bytes are already in hand for the cache key.
+            gen = build_generation(pixels, cfg, exif_source=data)
             generations.put(gen_key, gen)
         result = finish_generation(gen.fork(), cfg)
         plan = plan_stitches(result, cfg)
         design = plan_to_design(plan, name="Digitized design")
         return {
+            # `design.runs` rides along (service 0.6.0): a run-span index
+            # over `design.stitches`, so a renderer can draw a satin column
+            # differently from a tatami fill and a client can say whether a
+            # border was GENERATED rather than merely requested. Contract and
+            # its three invariants: `adapter.plan_to_design`. Additive — a
+            # client that ignores it behaves exactly as it did.
             "design": design,
             "review": _review_payload(result, plan),
             "stats": _stats_payload(plan, design,
@@ -855,6 +928,12 @@ async def start_digitize_manual(
         plan = plan_stitches(result, cfg)
         design = plan_to_design(plan, name="Manual design")
         return {
+            # `design.runs` rides along (service 0.6.0): a run-span index
+            # over `design.stitches`, so a renderer can draw a satin column
+            # differently from a tatami fill and a client can say whether a
+            # border was GENERATED rather than merely requested. Contract and
+            # its three invariants: `adapter.plan_to_design`. Additive — a
+            # client that ignores it behaves exactly as it did.
             "design": design,
             "review": _review_payload(result, plan),
             "stats": _stats_payload(plan, design,

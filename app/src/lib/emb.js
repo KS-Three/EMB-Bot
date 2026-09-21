@@ -10,7 +10,7 @@ export const EMB = g.EMB;
 // MUST stay in sync with scripts/copy-engine.mjs's ENGINE_FILES and the
 // <script src="/engine/..."> order in index.html.
 export const ENGINE_KEYS = [
-  "units.js", "garments.js", "fabrics.js", "fill.js", "geometry.js",
+  "units.js", "sewtime.js", "garments.js", "fabrics.js", "fill.js", "geometry.js",
   "quantize.js", "flatten.js", "satin.js", "satinplay.js", "crossfill.js", "satinfont.js",
   "fontbin.js",
   "svgpath.js", "svgimport.js",

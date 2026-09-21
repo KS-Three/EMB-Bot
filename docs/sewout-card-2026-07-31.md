@@ -2,6 +2,14 @@
 
 **One hooping. Six questions. Print this page and take it to the machine.**
 
+*(Block 1 answers two of them since 2026-09-14: the lock leg, and whether the
+browser lettering lane should tie by default. Same two bars, same tug.)*
+
+*(A seventh — block 7, FLOAT CLEARANCE — is drafted at the bottom but is
+NOT in the built file. It is the one measurement `chain_links` waits on.
+Read it before the next machine session; do not expect to sew it from the
+current `.dst`.)*
+
 File: `EMBBOT_SEWOUT_CARD.dst` (built by `digitizer/tools/sewout_card.py` +
 `tools/sewout_bridge.mjs`, written by the browser encoder — the codec with sew
 evidence on this machine). Design **66.0 mm wide x 96.0 mm tall**, **5,048
@@ -18,16 +26,32 @@ Fabric: the constants under test are tuned for the default preset
 Load the file, cap driver OFF, rotation untouched, and read the panel
 **before sewing**:
 
+**INVERTED 2026-09-14 — the old table would have cost you the hooping.** Until
+today this read *"~88 x 66 mm, preview sideways → transposition confirmed
+(expected). **Hoop sideways or rotate 90 on the panel**"*, and called an upright
+preview *"surprising"*. Both halves of the codec were fixed on **2026-09-08**
+(X/Y nibbles now match `pystitch.DstWriter.encode_record` bit-for-bit; the
+colour-change byte and terminal `end` sentinel corrected the same week), so
+those readings are backwards — and acting on the old row by rotating on the
+panel would sew the entire card a quarter turn out.
+
+**There is no old file to be careful about.** `EMBBOT_SEWOUT_CARD.dst` lives in
+`digitizer/debug_out/`, which is gitignored and absent from a fresh clone, so
+the card you sew can only be one you rebuild (commands at the bottom) — and a
+rebuild today runs the fixed codec. Rebuild first; do not hunt for an old copy.
+
 | Panel reading | Meaning |
 |---|---|
-| ~**66 x 88 mm**, preview upright like the diagram below | Machine reads EMB-Bot's convention — *surprising, report back* |
-| ~**88 x 66 mm**, preview sideways | Transposition confirmed on hardware (expected). Hoop sideways or rotate 90 on the panel and note which way |
-| Color count **6** | Machine honors EMB-Bot's color-change byte (0x43) |
-| Color count **0** | Standard reading confirmed — the card will sew straight through with **no color stops**. Fine: run it all in one dark thread, blocks identified by position |
+| ~**66 x 96 mm**, preview upright like the diagram below | **Expected.** The machine and EMB-Bot agree, as the software cross-read says they should |
+| ~**96 x 66 mm**, preview sideways | **Report back before sewing** — a rebuilt card should not do this. Either the file predates 2026-09-08 (rebuild it) or the fix does not hold on real hardware, which is a finding worth more than the card |
+| Color count **6** | **Expected** — six colour changes across seven blocks |
+| Color count **0** | Report back. The 0x43-vs-0xC3 colour byte was corrected 2026-09-08; a rebuilt card showing no stops means that fix does not hold on this machine. Sewable anyway: run it in one dark thread, blocks identified by position |
 
-(Cross-check already done in software: pyembroidery, a standards reader,
-decodes this exact file as 87.8 x 66.0 with 0 color changes — the known axis
-dispute, `docs/dst-axis-verdict-2026-07-31.md`. Not a defect in the card.)
+(Cross-check in software: `pystitch` — a standards reader, and `pyembroidery`'s
+replacement here since 2026-08-11 — decodes a rebuilt card upright with its
+colour changes intact. The 2026-07-31 axis dispute
+(`docs/dst-axis-verdict-2026-07-31.md`) is **settled in software** and is no
+longer something this card is spending a hooping to test.)
 
 ## The card, as EMB-Bot previews it (sew order top to bottom)
 
@@ -74,8 +98,27 @@ holds under a firm tug and does not read as a lump or a dark knot at the end
 of the column.
 
 > **Decision: if B holds without a visible lump -> change `TIE_STITCH_MM` to
-> 0.45 in `digitizer/digitizer_core/machine.py`. If B pulls out, 0.8 stands.
-> If both hold and neither lumps, take 0.45 (less thread in the lock).**
+> 0.45 in BOTH `digitizer/digitizer_core/machine.py` AND `src/digitize.js`.
+> If B pulls out, 0.8 stands. If both hold and neither lumps, take 0.45 (less
+> thread in the lock).**
+
+**Two files since 2026-09-14, not one.** This decision line named only
+`machine.py` because the browser lane had no lock stitches at all — zero
+tie/lock records existed anywhere in `src/`. The lettering port gave it a
+second copy of `TIE_STITCH_MM`, so changing one file and not the other is now
+exactly the cross-language drift corpus law 26 cost a month to. Guarded:
+`digitizer/tests/test_machine_wire.py` fails if the two stop agreeing, so a
+half-applied decision here is caught by the `digitizer` CI job rather than by
+someone noticing.
+
+**This block now also decides a SECOND question — the browser default.** Ties
+ship OFF in the lettering lane (`ties: true` opts in) precisely because the leg
+under test here has never met cloth on either lane. Measured cost of turning
+them on, all 85 shipped fonts: **+3.31%** stitches on a 4-character word,
+**+8.00%** on `Fritsch's Stitches`, **+7.7%** on two and three lines, and
+**zero added trims** at every length. So the tug test answers both "is 0.8 the
+right leg" and "is a lock worth ~8% of the thread on a lettering job."
+*(`docs/lettering-ties-2026-09-14.md`)*
 
 ## 2 — FILL DENSITY / INTERLEAVE (blue)
 
@@ -181,14 +224,129 @@ the tongue sits under the blue.**
 > `tools/seam_underlap.py` reads what any design actually carries against
 > the number chosen.**
 
+## 7 — FLOAT CLEARANCE / CHAINING (yellow, sews last) — **PROPOSED, NOT YET IN THE BUILT FILE**
+
+**Status: a spec, not geometry.** `sewout_card.py` does not emit this block
+yet, so the current `EMBBOT_SEWOUT_CARD.dst` has six. Adding it changes the
+card's stitch count, extents and block count — the header figures above stay
+correct only until it is built. Drafted 2026-09-13; clearances below are
+proposed and want Kent's eye before anyone cuts thread.
+
+**The question, and why it is the only one left.** `chain_links` routes a
+needle-down connection between shapes instead of cutting it, and all three of
+its structural preconditions closed in August (`c8ab7ad` 08-03, `11ceecc`
+08-04, `f8e8968` 08-11 — the `PipelineConfig.chain_links` docstring carries
+the full trail). Re-measured with chaining ON over four acceptance fixtures:
+**chaining-added bare thread 0.00 mm on every one**, while the benchmark goes
+**9.82 -> 4.06 trims/1k** and full_back **7.35 -> 4.73**. Against defect 4 —
+we trim 3.1x the professional — that is the largest measured lever in the
+codebase, and it is parked behind one line in that docstring:
+
+> A sew-out that says at what clearance a needle-down float actually shows —
+> `LINK_COVER_TOL_MM` is still a thread spec, not a measurement.
+
+`LINK_COVER_TOL_MM = 0.2` is simply half of `COVERAGE_THREAD_W_MM` (0.40). It
+asserts that a float within 0.2 mm of thread is invisible. Nothing has ever
+checked that on fabric. The measured hairline gaps between fanned satin
+crosses run to **0.127 mm inscribed radius / 0.121 mm beyond the thread
+edge** and persist at any inset — so the tolerance sits barely above a gap the
+geometry cannot avoid. Whether that is comfortable or reckless is a cloth
+question, and only a cloth question: no reference implementation, format spec
+or corpus can answer where a human eye catches a float.
+
+Five cases, one colour throughout, no trims inside the block. Each is a pair
+of 8 x 6 mm tatami patches with a needle-down float crossing between them —
+the exact geometry chaining creates.
+
+- **A: 0.2 mm gap** — `LINK_COVER_TOL_MM` itself. The case the constant
+  claims is invisible.
+- **B: 0.5 mm gap.**
+- **C: 1.0 mm gap.**
+- **D: 2.0 mm gap** — below every fabric's `trim_at_mm`, so today's preflight
+  would pass it silently.
+- **E: ride-on-top** — the float crosses the middle of one solid 10 x 6 mm
+  patch instead of a gap. This is law 60's OTHER cover mechanism (a link
+  riding on work its own colour already laid) and it has never been tested on
+  fabric at all. The thread here is not hidden; the claim is that same-colour
+  thread on same-colour thread does not read as a line.
+- **F: INSET DEPTH — added 2026-09-13, and it is the case a vendor already
+  has an opinion about.** Two more pairs, where the float is BURIED under a
+  later-sewing patch rather than crossing a gap, routed **0.75 mm** inside
+  that patch's edge in the first pair and **2.0 mm** inside in the second.
+  0.75 is our shipped `LINK_COVER_INSET_MM`; 2.0 is the floor of the only
+  published figure anyone states — Embird's *"place connection at least 2~3 mm
+  inside of the upper object"*, which it sizes explicitly against *"little
+  displacement of yellow stitches, which often happens as result of loose
+  hooping of fabric or pull effect of the thread"*
+  (`docs/trade-knowledge-2026-09-13.md` §2a). **Our 0.75 mm budgets nothing
+  for that failure mode** — its derivation is pure thread-reach (fill 0.223,
+  satin 0.501, run inradius 0.539, + 0.2 tolerance) and asks only where thread
+  stops relative to a polygon, never whether the cloth moves afterwards.
+
+**Hold the block up to the light at arm's length first and just look: does
+any float read as a stray line? Then close up under good light, gap by gap.
+Then drag a fingernail across each gap the way block 3 tests floating
+crosses — a float that catches is one that will snag in wear even if it
+hides.** For E, look across the patch at a low angle for a ridge.
+
+**THEN STRETCH IT, and look again — this step is the point of F and was
+missing from the 2026-09-12 draft.** Pull the fabric gently in both
+directions across each buried float, the way block 6 stretches a seam, and
+release. Displacement is the whole justification for the published 2–3 mm
+number, so a float judged only at rest is judged on the easy case: the
+question is not whether cover hides it on a flat hooped panel, it is whether
+cover still hides it after the garment has moved.
+
+> **Decision: the smallest gap that shows a line is the exposure
+> `LINK_COVER_TOL_MM` must stay under. If A (0.2 mm) shows, the shipped
+> tolerance is too generous — chaining stays OFF until the cover is
+> tightened, and this card has earned its keep. If A and B are both clean,
+> the tolerance has real headroom and `chain_links` can flip ON with the
+> measurement behind it. If D is the first to show, set the tolerance
+> between C and D and a second card narrows it. Independently: if E shows a
+> ridge or a colour step, law 60's own-thread half is NOT free, and
+> `_link_cover` needs a width or count floor on the already-laid cover
+> rather than crediting any centreline. `tools/chain_probe.py` and
+> `preflight._link_coverage` read what any design actually carries against
+> whatever number this settles. AND ON F, THE ONE WITH A PUBLISHED RIVAL: if
+> the 0.75 mm pair shows after stretching where the 2.0 mm pair does not,
+> `LINK_COVER_INSET_MM` is undersized against a failure mode it never
+> modelled, and the honest fix is to raise it — our own derivation comment
+> says "erring big turns a buriable link into a jump (a needle-up move,
+> invisible); erring small sews a float on bare fabric. Round up, never
+> down." If BOTH survive the stretch, 0.75 stands with cloth behind it for
+> the first time and the published 2–3 mm is simply a more conservative shop
+> rule. If both fail, the inset is not the lever and chaining needs a
+> different cover test.**
+
+**Build note for whoever adds it:** the float must be a genuine needle-down
+transport segment, not a run-tier stitch path — `preflight._transport_and_content`
+only counts a connection as transport when it crosses a shape boundary with
+`jump` False, and its raster cell is `_LINK_CELL_MM = 0.1`, so a gap under
+0.1 mm cannot be resolved by the software instrument either way.
+
 ## File verification (done in software, for the record)
 
 - Browser round-trip (`tools/sewout_bridge.mjs`): 3,326 stitches encoded =
   3,326 decoded; 4 color changes; 66.0 x 87.8 mm extents both directions;
   preview rendered from the actual DST bytes and inspected.
-- pyembroidery cross-read: 87.8 x 66.0 (axes swapped) and 0 color changes —
-  expected transposition + 0x43 color byte, per the DST verdict memo. Left
-  as-is deliberately; this card is also the hardware test of that dispute.
+  *(These are the 2026-07-31 build's numbers; the header records a 2026-09-03
+  rebuild at 5,048 stitches / 66.0 x 96.0 mm which was never re-verified here.
+  Re-run the two commands below before the machine session and replace this
+  line — do not carry an old count to the machine.)*
+- **THE DST AXIS DISPUTE IS SETTLED AND IS NO LONGER THIS CARD'S JOB
+  (corrected 2026-09-14).** This section used to read *"pyembroidery
+  cross-read: 87.8 x 66.0 (axes swapped) and 0 color changes — expected
+  transposition + 0x43 color byte … this card is also the hardware test of
+  that dispute."* Both halves were fixed in software on **2026-09-08**: the
+  codec's X/Y nibbles now match `pystitch.DstWriter.encode_record`
+  bit-for-bit, the crossval DST control reads `identity`, and the colour-change
+  byte and terminal `end` sentinel were corrected the same week. `pyembroidery`
+  is not a dependency any more either — `pystitch` replaced it 2026-08-11.
+  **Spending a hooping to re-test a settled format question would waste the
+  session**, which is the specific cost this correction exists to avoid; a
+  rebuilt card should cross-read with matching extents and its real colour
+  changes.
 - Lock-bar tie legs measured in the emitted points: 0.800 / 0.450 mm.
 - Interleave offset measured between square C's passes: 0.20 mm.
 

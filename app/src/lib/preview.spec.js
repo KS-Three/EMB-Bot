@@ -1,5 +1,5 @@
 import { test, expect, vi } from "vitest";
-import { fitTransform, hoopTransform, luminance, isDark, weavePattern, drawHoopOutline, renderRealistic, threadLayers, threadLodLayers, layerSubsetForCount, drawThreads, TRUE_COLOUR_LAYER, THREAD_WIDTH_MM } from "./preview.js";
+import { fitTransform, hoopTransform, luminance, isDark, weavePattern, drawHoopOutline, renderRealistic, threadLayers, threadLodLayers, layerSubsetForCount, drawThreads, kindStyle, TRUE_COLOUR_LAYER, THREAD_WIDTH_MM } from "./preview.js";
 // ONE import line, deliberately. Three had accumulated here -- each bad merge
 // of this file stacked another partial copy on top rather than reconciling the
 // list, so the same seven names were declared three times over. esbuild
@@ -814,4 +814,276 @@ test("drawThreads leaves no dash set on the context — the overlays that draw a
   expect(calls.length).toBeGreaterThan(0);
   const last = calls[calls.length - 1][0];
   expect(last).toEqual([]); // solid on exit, whatever it did in between
+});
+
+// ---- Stitch KINDS ----------------------------------------------------------
+//
+// Kent, 2026-09-15: "it's hard to see the satin borders when they are on, off
+// or even existent." The shading was never the problem — nothing told the
+// renderer which strands were what, so satin, tatami, bean runs, underlay and
+// travel were all drawn with one profile. `design.runs` (see strands.js) is
+// that missing half, and these tests pin both what each kind now looks like
+// and the rule that its absence changes nothing.
+
+// A ctx double that records the ORDER of everything, not just the colours:
+// several of the claims below ("underlay sits under", "a border's shadow lands
+// on the fill, not beneath it") are claims about draw order, which is only
+// visible in the call sequence.
+function makeCallLog() {
+  const calls = [];
+  let _ss, _lw;
+  const ctx = {
+    save: () => calls.push(["save"]), restore: () => calls.push(["restore"]),
+    setTransform: () => {}, closePath: () => {},
+    beginPath: () => calls.push(["beginPath"]),
+    moveTo: () => {}, lineTo: () => {}, arcTo: () => {},
+    stroke: () => calls.push(["stroke", _ss, _lw]),
+    fillRect: () => {}, setLineDash: (d) => calls.push(["dash", d && d.slice()]),
+    lineCap: "", lineJoin: "", fillStyle: "",
+    get strokeStyle() { return _ss; }, set strokeStyle(v) { _ss = v; },
+    get lineWidth() { return _lw; }, set lineWidth(v) { _lw = v; },
+    calls,
+  };
+  return ctx;
+}
+// Every stroke() in order, as {color, width}.
+const strokesOf = (ctx) => ctx.calls.filter((c) => c[0] === "stroke").map((c) => ({ color: c[1], width: c[2] }));
+const alphaOf = (c) => { const m = /^rgba\(0,0,0,([\d.]+)\)$/.exec(c || ""); return m ? Number(m[1]) : null; };
+const firstIndexOf = (list, pred) => list.findIndex(pred);
+
+// A design made of consecutive runs of one colour, one span per run.
+function kindedDesign(kinds, rgb) {
+  const stitches = [];
+  const runs = [];
+  kinds.forEach(([kind, role], k) => {
+    const i0 = stitches.length;
+    for (let i = 0; i < 4; i++) stitches.push({ x: k * 40 + i * 9, y: (i % 2) * 7, type: "stitch" });
+    runs.push({ i0, i1: stitches.length - 1, kind, role: role || "", shape: "s" + k, block: 0 });
+  });
+  stitches.push({ x: 0, y: 0, type: "end" });
+  return { stitches, colors: [{ r: rgb[0], g: rgb[1], b: rgb[2] }], runs };
+}
+
+test("the kind table cannot flatter coverage: no kind is drawn WIDER than the physical thread, and the two coverage-bearing kinds are exactly 1", () => {
+  // THREAD_WIDTH_MM is physical so that preview coverage IS the coverage the
+  // machine lays (see the anti-flattery guard above). A kind that inflated
+  // itself would reintroduce exactly that defect one level down — an open fill
+  // that looks solid — while leaving the constant untouched and the guard
+  // green. Kinds may sit UNDER the physical width (a lone running stitch sinks
+  // into the weave; an underlay is buried) but never over it.
+  for (const kind of ["stitch", "satin", "fill", "run", "underlay", "travel", "nonsense"]) {
+    for (const role of ["", "border", "edge_cap"]) {
+      expect(kindStyle(kind, role).w).toBeLessThanOrEqual(1);
+      expect(kindStyle(kind, role).w).toBeGreaterThan(0);
+    }
+  }
+  expect(kindStyle("satin", "").w).toBe(1);
+  expect(kindStyle("fill", "").w).toBe(1);
+  expect(kindStyle("satin", "border").w).toBe(1);
+  // An unknown kind or role costs distinction, never correctness.
+  expect(kindStyle("nonsense", "nonsense")).toMatchObject({ w: 1, tone: 1, sheen: 1, bead: 1, shadow: 1 });
+});
+
+test("NO kind marks structure with a colour — every stroke follows the thread, so the canvas can still be judged for thread colour", () => {
+  // The honest levers are light and width. A magenta border overlay would be
+  // legible and would lie: this canvas is also what Kent picks thread off.
+  const design = kindedDesign([["underlay"], ["fill"], ["satin", "border"], ["travel"], ["run"]], [0, 0, 0]);
+  const paint = (rgb) => {
+    const ctx = makeCallLog();
+    renderRealistic({ width: 300, height: 220, getContext: () => ctx }, design, { colorOverride: rgb });
+    return strokesOf(ctx).map((s) => s.color);
+  };
+  const red = paint([200, 10, 10]);
+  const blue = paint([10, 120, 220]);
+  expect(red.length).toBe(blue.length);
+  expect(red.length).toBeGreaterThan(10);
+  for (let i = 0; i < red.length; i++) {
+    if (alphaOf(red[i]) != null) {
+      // The drop shadow is the ONLY thread-independent paint, and it is black.
+      expect(red[i]).toBe(blue[i]);
+      expect(red[i]).toMatch(/^rgba\(0,0,0,/);
+    } else {
+      // Everything else moved with the thread — nothing is a fixed hue.
+      expect(red[i]).not.toBe(blue[i]);
+      expect(red[i]).toMatch(/^rgb\(/);
+    }
+  }
+});
+
+test("satin returns more light than tatami, and tatami's sheen is broken into far shorter beads", () => {
+  // The two coverage kinds are the same physical width, so the whole
+  // difference has to live in the light: a satin column is long, taut and
+  // unbroken (continuous specular); a tatami row is short and ends in a
+  // penetration every few millimetres (chopped specular). That contrast is
+  // what makes a fill read matte beside a border.
+  const rgb = [180, 60, 50], angle = 0.4, lw = 8;
+  const satin = threadLayers(rgb, angle, lw, kindStyle("satin", ""));
+  const fill = threadLayers(rgb, angle, lw, kindStyle("fill", ""));
+  const lum = (css) => { const [r, g, b] = css.match(/\d+/g).map(Number); return luminance([r, g, b]); };
+  expect(lum(satin[4].color)).toBeGreaterThan(lum(fill[4].color));
+  expect(lum(satin[3].color)).toBeGreaterThan(lum(fill[3].color));
+  // Bead length: satin's on-dash is more than twice tatami's.
+  expect(satin[4].dash[0]).toBeGreaterThan(fill[4].dash[0] * 2);
+  // Both keep the lopsided ~3:1 duty cycle, so each still reads as modulated
+  // sheen on a continuous thread rather than as a dashed line.
+  expect(satin[4].dash[0] / satin[4].dash[1]).toBeCloseTo(fill[4].dash[0] / fill[4].dash[1], 6);
+  // Neither is drawn narrower than the other: this is light, not geometry.
+  expect(satin[0].width).toBe(fill[0].width);
+});
+
+test("underlay and travel sit UNDER: thinner, dimmer, and drawn before the stitching that covers them", () => {
+  const u = kindStyle("underlay", ""), t = kindStyle("travel", ""), s = kindStyle("satin", "");
+  expect(u.w).toBeLessThan(s.w);
+  expect(t.w).toBeLessThan(u.w);          // travel is the faintest thing on the cloth
+  expect(u.tone).toBeLessThan(1);          // in the top layer's shadow
+  expect(u.sheen).toBeLessThan(s.sheen);
+  expect(u.shadow).toBeLessThan(s.shadow); // sunk into the weave, not proud of it
+  expect(u.z).toBeLessThan(s.z);
+  expect(t.z).toBeLessThan(u.z);
+
+  // ...and the z rank really is what the renderer draws by. One colour, satin
+  // FIRST in sew order, underlay second: without the rank the underlay would
+  // paint over the satin.
+  const design = kindedDesign([["satin"], ["underlay"]], [200, 10, 10]);
+  const ctx = makeCallLog();
+  renderRealistic({ width: 300, height: 220, getContext: () => ctx }, design, {});
+  const cols = strokesOf(ctx).map((v) => v.color);
+  const trueColour = "rgb(200,10,10)";                                   // satin's layer 2
+  const underlayTrue = `rgb(${Math.round(200 * u.tone)},${Math.round(10 * u.tone)},${Math.round(10 * u.tone)})`;
+  const iUnderlay = firstIndexOf(cols, (c) => c === underlayTrue);
+  const iSatin = firstIndexOf(cols, (c) => c === trueColour);
+  expect(iUnderlay).toBeGreaterThan(-1);
+  expect(iSatin).toBeGreaterThan(-1);
+  expect(iUnderlay).toBeLessThan(iSatin);
+});
+
+test("a border reads as RAISED: a deeper shadow than plain satin, cast ON the fill it encloses rather than under it", () => {
+  // This is the whole answer to "I can't see the satin borders". A border is
+  // not a different thread — it is the same thread standing proud of the fill,
+  // sewn last and usually over its own underlay. So it gets the cue a raised
+  // object gets in any photograph: a longer, darker drop shadow, plus a
+  // crisper silhouette. No recolouring anywhere.
+  const border = kindStyle("satin", "border");
+  expect(border.shadow).toBeGreaterThan(kindStyle("satin", "").shadow);
+  expect(border.rim).toBeLessThan(1);           // darker silhouette = crisper edge
+  expect(border.z).toBeGreaterThan(kindStyle("satin", "").z); // drawn last in its block
+  expect(kindStyle("satin", "edge_cap")).toMatchObject({ shadow: border.shadow, rim: border.rim });
+
+  const design = kindedDesign([["fill"], ["satin", "border"]], [200, 10, 10]);
+  const ctx = makeCallLog();
+  renderRealistic({ width: 300, height: 220, getContext: () => ctx }, design, {});
+  const strokes = strokesOf(ctx);
+  const shadows = strokes.map((v) => alphaOf(v.color));
+  const iFillPaint = firstIndexOf(strokes, (v) => v.color === "rgb(200,10,10)");
+  const iRaisedShadow = firstIndexOf(shadows, (a) => a != null && a > 0.3);
+  expect(iFillPaint).toBeGreaterThan(-1);
+  // The raised shadow is drawn AFTER the fill: a shadow cast onto a fill has
+  // to land on top of it. Left in the global pre-pass it would be painted over
+  // by the very thing it is supposed to fall on.
+  expect(iRaisedShadow).toBeGreaterThan(iFillPaint);
+  // ...and it is deeper than the ordinary one that ran before everything.
+  const preAlpha = shadows.find((a) => a != null);
+  expect(preAlpha).toBeLessThan(shadows[iRaisedShadow]);
+  expect(shadows[iRaisedShadow]).toBeLessThanOrEqual(0.42); // a shadow, never an outline
+});
+
+test("a bean run draws as a thin single line — narrower than the column kinds, never wider", () => {
+  const run = kindStyle("run", "");
+  expect(run.w).toBeLessThan(kindStyle("satin", "").w);
+  expect(run.w).toBeLessThan(kindStyle("fill", "").w);
+  const ctx = makeCallLog();
+  drawThreads(ctx, [{ x0: 0, y0: 0, x1: 20, y1: 0, rgb: [200, 10, 10], kind: "run", role: "", shape: "b" }],
+    (x) => x, (y) => y, 8, { layers: [0, 1, 2, 3, 4] });
+  const widest = Math.max(...strokesOf(ctx).map((v) => v.width));
+  expect(widest).toBeLessThan(8 * 1.04); // the shadow pass is the widest stroke
+});
+
+test("NO runs: the render is call-for-call what it was before kinds existed", () => {
+  // The hard requirement. Every .embproj saved before 2026-09-15, every
+  // imported .dst and the browser's own lettering/manual/shape lanes produce
+  // designs with no `runs` at all, and they must render EXACTLY as they did.
+  //
+  // Byte-identity against the pre-change module was proven out of band over 12
+  // renderRealistic configurations and 5 direct drawThreads widths (~380 KB of
+  // recorded canvas calls, diffed to zero). What this pins in-suite is the
+  // equivalence class around it: absent, empty and malformed `runs` are all
+  // the same render, and so is a `runs` that says every stitch is a plain
+  // stitch -- plus the two shadow-pass constants that identity rests on.
+  const base = { stitches: [
+    { x: 0, y: 0, type: "stitch" }, { x: 30, y: 10, type: "stitch" },
+    { x: 60, y: -10, type: "stitch" }, { x: 60, y: -10, type: "trim" },
+    { x: 90, y: 20, type: "stitch" }, { x: 120, y: 20, type: "stitch" },
+  ], colors: [{ r: 200, g: 10, b: 10 }] };
+  const render = (d) => {
+    const ctx = makeCallLog();
+    renderRealistic({ width: 300, height: 220, getContext: () => ctx }, d, {});
+    return JSON.stringify(ctx.calls);
+  };
+  const reference = render(base);
+  for (const runs of [undefined, null, [], "junk", [{ i0: NaN, i1: 3, kind: "satin" }]]) {
+    expect(render({ ...base, runs })).toBe(reference);
+  }
+  // A span that says "plain stitch" IS the neutral style, not a near-miss.
+  expect(render({ ...base, runs: [{ i0: 0, i1: 5, kind: "stitch", role: "", shape: "", block: 0 }] })).toBe(reference);
+
+  // The single pre-pass those bytes depend on: ONE shadow path, at the
+  // original opacity and the original 1.04 width multiple.
+  const ctx = makeCallLog();
+  renderRealistic({ width: 300, height: 220, getContext: () => ctx }, base, {});
+  const strokes = strokesOf(ctx);
+  const shadowStrokes = strokes.filter((v) => alphaOf(v.color) != null);
+  expect(shadowStrokes.length).toBe(1);
+  expect(shadowStrokes[0].color).toBe("rgba(0,0,0,0.22)");
+  const lw = Math.max(1.2, 0.4 * (fitTransform(base, 300, 220, 24).scale * 10));
+  expect(shadowStrokes[0].width).toBeCloseTo(lw * 1.04, 10);
+});
+
+test("FLAT view ignores kinds on purpose — it is the coverage answer, and coverage must not move between views", () => {
+  // threadStyle 'flat' exists to answer "is this shape filled", with the
+  // lighting gone. Thinning an underlay or a travel there would change the
+  // coverage reading, so the flat path is deliberately untouched by kinds.
+  const design = kindedDesign([["underlay"], ["fill"], ["satin", "border"]], [200, 10, 10]);
+  const kinded = (() => { const c = makeCallLog(); renderRealistic({ width: 300, height: 220, getContext: () => c }, design, { threadStyle: "flat" }); return JSON.stringify(c.calls); })();
+  const plain = (() => {
+    const c = makeCallLog();
+    const { runs, ...noRuns } = design;
+    renderRealistic({ width: 300, height: 220, getContext: () => c }, noRuns, { threadStyle: "flat" });
+    return JSON.stringify(c.calls);
+  })();
+  expect(kinded).toBe(plain);
+});
+
+test("the planner's OWN kind names are the ones this table answers to — including the three the contract sketch left out", () => {
+  // digitizer_core/stitches.py is the vocabulary: underlay, fill, satin,
+  // border, bean, run, travel, tie. `border` is a KIND there (a closed outline
+  // circuit sewn as a satin column), not only a role, and `bean` is the light
+  // outline tier's triple run — so a table that knew only satin/fill/run/
+  // underlay/travel would have dropped the border strand to neutral. That
+  // strand is the one Kent cannot see; getting it wrong would have been the
+  // whole feature missing its target while every test stayed green.
+  // Compared on APPEARANCE, not on `key` -- `key` is the draw-group identity,
+  // so two kinds that look the same still group separately.
+  const look = ({ key, ...rest }) => rest;
+  expect(look(kindStyle("border", ""))).toEqual(look(kindStyle("satin", "")));
+  expect(look(kindStyle("bean", ""))).toEqual(look(kindStyle("run", "")));
+  // A tie is a 2 mm lock the following run sews over — drawn, but quietly.
+  expect(kindStyle("tie", "").w).toBeLessThan(kindStyle("run", "").w);
+  expect(kindStyle("tie", "").sheen).toBeLessThan(kindStyle("satin", "").sheen);
+  // And the narrow-shape border fallback (BORDER -> BEAN, same role) still
+  // reads as a border rather than as ordinary outline stitching.
+  expect(kindStyle("bean", "border").shadow).toBeGreaterThan(kindStyle("bean", "").shadow);
+});
+
+test("a role does NOT raise a run that is underneath by nature — a border's bridge travel stays a connector", () => {
+  // stage6_border.border_runs stamps role:"border" on the TRAVEL runs that
+  // bridge to the ring, because they belong to that tier. They are still
+  // travel: thread the design hides. Lifting them off the cloth with the
+  // border's shadow would advertise exactly what should recede.
+  const look = ({ key, ...rest }) => rest;
+  expect(look(kindStyle("travel", "border"))).toEqual(look(kindStyle("travel", "")));
+  expect(look(kindStyle("underlay", "border"))).toEqual(look(kindStyle("underlay", "")));
+  expect(look(kindStyle("tie", "edge_cap"))).toEqual(look(kindStyle("tie", "")));
+  // ...while the stitching that FORMS the border does stand proud.
+  expect(kindStyle("border", "border").raised).toBe(true);
+  expect(kindStyle("travel", "border").raised).toBe(false);
 });

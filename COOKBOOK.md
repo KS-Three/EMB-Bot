@@ -270,6 +270,35 @@ hand-rolling it in JS.
   gate, not `gradient_smoothness`** — `drone_render.png` reads rough on
   smoothness because of glow halos and an inset scene. The threshold order
   is documented in the module; read the why before "fixing" it.
+- **Stage 1.25 — "is this a PHOTOGRAPH?" (`photo_signals.py`, 2026-09-11)** is
+  a separate question from the classifier above and answered by separate
+  signals, because the colour ones cannot: a real photograph reads LESS
+  photographic than two gradient logos on `unique_color_mass`. EXIF camera
+  Make/Model, then the YuNet detector, behind `cfg.detect_photographic`
+  (DEFAULT OFF). It answers **True or None, never False**, so it can only ADD
+  photographs and an explicit `is_photographic` still wins. Detection runs in
+  `build_generation`, but `finish_generation`, `plan_stitches` and preflight
+  each arrive holding the CALLER's config — the verdict therefore rides the
+  `Generation` and the `PipelineResult` (like `design_class`), and the first
+  two fold it back in with one line, `photo_signals.apply_detection`. Preflight
+  instead re-reads the `PHOTO_DETECTED` warning — the pattern it already uses
+  for the classifier's verdict, and the one that still works when it is handed
+  a bare plan with no result. **If you add another entry point that reads
+  `is_photographic`, add the fold to it**, or a detected photograph silently
+  loses the machinery there. Nothing
+  committed here trips either signal, so the corpus cannot show you it works —
+  see DOCTRINE before concluding it is broken.
+- **The design-silhouette cap (`cfg.edge_cap`, DEFAULT `"bean"` since
+  2026-09-11)** closes the design/fabric boundary where every tatami row ends
+  in open air — the union of several shapes' edges, which no per-shape border
+  can reach. Two consequences to know before reading a plan: **every design now
+  ends with one extra BLOCK**, and that block sews in a cone the job already
+  ran, so the operator re-loads it (Kent ruled that stop acceptable rather than
+  cap the edge in a badly matched colour — DOCTRINE carries the numbers). It is
+  gated: `silhouette_cap(omit=…)` skips whatever linear stitching already
+  covers the outline, which is what took the bill from +8.6-100.4% down to
+  +5.9-26.3%. Turning it off is `edge_cap="none"`, and most tests whose subject
+  is artwork sequencing say exactly that.
 - **`stage2_photo_segment.py`** is a drop-in alternative to
   `stage2_quantize.quantize()` with the same `Quant` output contract, so
   stages 3–4 run unchanged. It exists because global k-means clusters color
@@ -340,7 +369,8 @@ hand-rolling it in JS.
   columns already sewn, `--off` for the before), `digitizer/tools/satin_lean.py`
   (how far satin crosses lean off their own perpendicular and off the house
   angle, and the thread pitch across the column; `--stock` for the instrument's
-  own floor on unhoused columns), `digitizer/tools/fill_dust.py` (fill steps
+  own floor on unhoused columns; `--anchor` for the house anchored to the
+  line of text, lettering plan step 1), `digitizer/tools/fill_dust.py` (fill steps
   halved by float dust at the stitch-length threshold), `digitizer/tools/rail_edge.py`
   (where satin rails sit against the artwork edge, rail jitter and same-rail
   holes; `--ladders` for the containment-miss census, `--bare` for coverage as
@@ -367,9 +397,23 @@ hand-rolling it in JS.
   `digitizer/tools/revalidate_floor.py` (which shapes `revalidate_threads`
   REFUSES on its pixel floor and whether the answer would have changed — it
   wraps the real function and lets the real pass run, so it measures the
-  shipped design), `digitizer/tools/thread_color_render.py` (a design drawn in
+  shipped design), `digitizer/tools/region_colour.py` (every SLIC-lane
+  region of every fixture: its mean, its median and its modal mean in Lab,
+  their distance from the mean, and the chart spool each would pick —
+  the census that chose the statistic behind `cfg.robust_region_colour`),
+  `digitizer/tools/enclosed_census.py` (every scorecard
+  fixture's enclosed regions — count, area, share of the design, the colour
+  they would sew in or "unknown" on an alpha hole — and the garment rule's
+  verdict against each Studio swatch at both thresholds; item 9's
+  instrument), `digitizer/tools/thread_color_render.py` (a design drawn in
   the cones it will actually sew, each changed shape tiled OFF beside ON at
   90 px/mm — a 0.9 mm2 shard is four pixels at whole-design scale),
+  `tools/long-stitch-census.mjs` (the BROWSER lettering lane: every sewn
+  segment of the 85 shipped fonts at three texts, counted past one DST
+  record **per axis** — `--doctrine` reproduces DOCTRINE 2026-09-07's own
+  Full Back row to the stitch, which is what makes the rest of its output
+  quotable, `--big` sweeps the regime the defect lives in, and `--arm
+  off|split|fill|both` prices item 10's two answers side by side),
   `digitizer/tools/junction_nodes.py` (every node-to-node edge of the satin
   skeleton per shape with its length, the DT at both ends and the shape's
   half-width — the histogram `_cluster_junctions`' threshold was read from;
@@ -392,12 +436,32 @@ hand-rolling it in JS.
   frame by the whole design's stitch box: coverage layers and thread inside
   our own letters and blobs, ours beside the pro's — the calibration that
   showed our junctions under-stacked, not over),
+  `digitizer/tools/design_direction.py` (where a design's stitch directions
+  point: per fill shape the row angle it sewed, its aspect and where the
+  angle came from; per design the spread over the half-circle; `--pro FILE`
+  registers a professional's stitch file into our frame the scorecard's way
+  and reports its spread, ours, the chance-corrected `direction` agreement
+  and the pro's direction inside each of our shapes — the item 7 instrument
+  that found the pro holding one fill angle at every size),
   `digitizer/tools/rail_comp.py` (what stage 5's pull growth does to every
   satin-tier shape — the corner-arc vertices, the exterior slots it seals,
   the stroke graph on the artwork against the grown polygon — and the
   thread's IoU against the compensated target and the artwork; `--compare`
   digitizes OFF/ON `cfg.satin_rail_comp` with stitches, trims and
   preflight's coverage/uncovered — the item 6 instrument),
+  `digitizer/tools/travel_cover.py` (every travel leg read against the thread
+  sewn AFTER it, by preflight's own ribbon rule — exposed length per leg and
+  per design, `--order nearest|euler`, `--width`; the lettering plan's step 2
+  instrument, which found the 245 mm exposed at 80 mm to be the nearest
+  order's own legs, not the Euler walk's — and not the satin tier's at all:
+  see the next one; its 1 mm grid under-reads fill exposure by a third),
+  `digitizer/tools/travel_legs.py` (WHOSE each travel leg is and what it lies
+  on: the emitter off the construction call stack, the runs either side, the
+  grid reading beside an exact one, and `own-fill` / `top` / `other` /
+  `underlay` / `own-bare` / `art-bare` / `FABRIC` under every exposed
+  sample; `--set KEY=VALUE` puts any config field on, so it is how
+  `fill_bridge_cut` is read — 97.7% of that 245 mm is the FILL tier's column
+  bridges on their own finished fill, defect 21's residual, none on fabric),
   `digitizer/tools/pushcomp_pins.py` (`test_pushcomp.GOLDEN_FLAG_OFF`'s tuples
   as THIS tree computes them, for a re-pin with the same pre-change proof),
   `digitizer/tools/resnap_escape.py` (cones `revalidate_threads` ADDS, and how
@@ -412,7 +476,35 @@ hand-rolling it in JS.
   `THREAD_MATCH_POOR`, whether a spool the design ALREADY LOADS is
   meaningfully closer — 5 of the F-wall's 24 blocks name one) and
   `digitizer/tools/floor_depth.py` (how far BELOW zero the floored designs
-  sit, since the score clamps at 0 and hides a 234-point spread behind it).
+  sit, since the score clamps at 0 and hides a 234-point spread behind it),
+  and, 2026-09-10, `digitizer/tools/thread_match_floor.py` (every
+  `THREAD_MATCH_POOR` finding over the scorecard matrix with the graded
+  patch that judged it, then the same designs under a 0 / 2 / 5 / 10 mm²
+  patch floor — `run` caches per pair, `report` prints the movers, the floor
+  depth and the totals; the sweep behind `_THREAD_MATCH_MIN_PATCH_MM2`), and,
+  2026-09-11, `digitizer/tools/color_diversity.py` (the 08-15 spec's
+  candidate stage-0 signal — 3-bit colours needed to cover 90% of foreground
+  — swept over resolution on a corpus labelled real/synthetic, the margin
+  read at NATIVE resolution, and a refusal below four real tonal artworks.
+  `--foreground bbox` is the definition that reproduces the spec's own table;
+  `engine` is the pixels stage 1 digitizes. They disagree by an order of
+  magnitude on a JPEG, so a number from this tool always names its mode).
+
+  And, same day, `digitizer/tools/stage0_signal_origin.py` — the one that
+  answers WHERE a stage-0 verdict came from rather than what it was: the share
+  of `unique_color_mass` contributed by the background interior, the ink
+  interior and the anti-aliased band; which k-means centres landed in each and
+  how far apart they are in CIEDE2000; the spread of the verdict across seeds
+  (`classify`'s own confidence is one draw, so it cannot show this); and
+  `--ablations` / `--sweep` for the one-variable arms and the export-resolution
+  sweep. It is what showed `logo_script_tires.png`'s photo-lane misroute to be
+  97% the white ground's ±1 grey-level grain and not the lettering at all
+  (`docs/stage0-tires-photo-scene-2026-09-11.md`). **Hand it a file, not an
+  array you rebuilt** — its own arms had to learn that: four real fixtures
+  carry alpha, `_fg_mask` calls alpha ≤ 127 background, and a three-channel
+  rebuild silently promotes every transparent pixel to foreground
+  (`enthusiast_logo` read `flat` through the file and `gradient` through the
+  same pixels without alpha).
 
   Three more added 2026-09-08 for the quality review and the plans it opened
   (`docs/quality-review-2026-09-08.md`): `digitizer/tools/sewn_tiers.py` (the
@@ -431,7 +523,10 @@ hand-rolling it in JS.
   lettering loss, because tesseract's word model reads Fremont's sewn
   "T H C" as THE at confidence 95 — a per-cluster 1.00 certifies the word,
   not the glyphs, and the missing arm is `thin_strokes.py`'s to see; needs
-  the tesseract binary, which CI has). The first two run anywhere; the third
+  the tesseract binary, which CI has — and since 2026-09-10 the measurement
+  itself lives in `digitizer_core/legibility.py`, the tool being a CLI over
+  it, because preflight's `LETTERING_ILLEGIBLE` check (`cfg.legibility_check`)
+  reads the same code). The first two run anywhere; the third
   skips without tesseract the way the OCR tests do. A fourth, the same day,
   for the sub-pixel edges plan: `digitizer/tools/edge_truth_ladder.py` (stage
   4's polygons against the synthetic fixtures' VECTOR truth at 200–3200 px —
@@ -617,6 +712,21 @@ hand-rolling it in JS.
   through `elupdate` like a boundary drag. Its `aria-label` is then "Shape
   and canvas tools", not "Canvas tools" — an e2e that right-clicks ON a
   digitized shape and expects the plain name will not find it.
+
+- **A border edit restitches at 0 ms; every other shape edit keeps the 2 s
+  pause (2026-09-17).** `DigitizePanel`'s restitch scheduler asks
+  `editKind(prevEdits, nextEdits)` (`lib/digitizer.js`) what moved, because
+  every shape edit lands in the same `shape_overrides` object and WHERE the
+  change is cannot tell a dragged outline from a menu pick. It answers
+  `"border"` only when EVERY difference is a border value — narrow on purpose,
+  so it can never swallow a boundary and put a full stage 0-7 run behind every
+  nudge. **Two traps if you touch this:** the 0 ms path must still go through
+  `setTimeout`, since the scheduler runs inside a reactive statement and
+  `runDigitize` patches the element (a direct call re-enters mid-flush); and it
+  must NOT set the armed flag, because a 0 ms timeout is a macrotask that fires
+  after Svelte has flushed, so arming it paints the "waiting" line for a frame
+  on every border toggle. Starting a run of any kind disarms a pending one —
+  without that, "Digitize again" during the pause runs twice.
 
 - **`digitizer/` cites its own docs relative to the package root**, i.e.
   bare `docs/dt-classifier-spike-2026-08-02.md` meaning
@@ -1077,6 +1187,10 @@ cd app && npm install && npm run dev     # Studio dev server
 tools/start-emb-bot.ps1     # Windows: both servers in their own windows + opens the browser
 cd app && npm test          # Studio tests (vitest) — expected clean
 node tools/build-embf.mjs   # rebuild the binary font library (see section above)
+node tools/studio-raster.mjs FILE...   # the Studio's PREVIEW raster (1,200-px long-edge cap, its own rasterize.js in
+                                       # Playwright's Chromium) -> digitizer/.cache/studio-raster/. What the panel SENT
+                                       # until 2026-09-20 and still sends for SVG/GIF/oversize; rasters now go as the
+                                       # file (DOCTRINE 2026-09-19/20)
 
 cd digitizer && .venv/Scripts/python -m pytest -q -n auto   # Python digitizer tests (runtime + expected failures below)
 cd digitizer && .venv/Scripts/python -m digitizer_service   # service on 127.0.0.1:8721
@@ -1242,6 +1356,27 @@ either. `tools/bundle.mjs` (the standalone's rebuild step) was doubly dead
 2026-08-11**. The Studio has no CDN runtime dependencies (jsPDF is
 npm-bundled, Inter via fontsource, fonts ship locally as `.embf`).
 
+### Prepping the pro-parity corpus — budget for Hotel Fremont
+
+`prep_all.py` re-digitizes all 23 customer designs and needs
+`PRO_PARITY_ROOT` pointing at Kent's `Embroidery Files` and `PRO_PARITY_OUT`
+at a scratch dir OUTSIDE the tree (the loose files are customer work and this
+repo is public). Most designs take 2–20 minutes each.
+
+**`hotel_fremont_hat` takes ~87 minutes on its own** — 5203.9 s measured
+2026-09-12, all of it inside `run_ours`, and it completes successfully. It is
+NOT hung, and a session that kills it will simply pay the cost again: this
+happened twice before the run was left alone long enough to finish. Size does
+not explain it — `gaulke_jb` is 32,665 pro / 43,780 ours stitches against
+Fremont's 17,067 / 12,075 and finishes in **155 s**. For contrast on the same
+run: `precision_drone` 239 s, `gaulke_roofing_lc` 347 s, `gaulke_plowing_lc`
+641 s, `gaulke_plowing_hat` 1200 s.
+
+So a whole-corpus prep is roughly 1.5 hours of ordinary work plus 1.5 hours of
+Fremont. Prep the slugs you actually need (`prep_all.py <slug> ...`), and if
+you need the whole thing, start it and go do something else. The cause is
+unprofiled and filed separately.
+
 ### Recapturing `corpus_scorecard_baseline.json`
 
 The baseline once sat unrefreshed through ~15 digitizer commits; the next
@@ -1259,6 +1394,103 @@ correction). Two rules stop a repeat:
    -- digitizer/digitizer_core` shows landed pipeline commits, any grade
    comparison against the baseline is comparing against a stale ruler —
    say so wherever the comparison is quoted.
+
+### The eye-pairs reveal gallery (2026-09-17)
+
+`cd digitizer && python -m tools.eye_pairs_gallery` reads the yardstick's
+`eye_pairs_out/` (`pairs.json`, `arms.json`, `picks.jsonl`, `features.json`,
+`renders/`) and writes `eye_pairs_out/gallery/index.html` + `img/`, each
+distinct render shipped once, re-encoded under the artifact's size limit.
+**It refuses until every pair is picked** — the page names arms, and naming
+one mid-sitting breaks the repeat controls; the refusal is the same rule as
+the yardstick's `--reveal`. Publish `index.html` as an Artifact with `img/*`
+as `files` and `capabilities: {db: {}, downloads: true}`. Kent's per-pair
+"did the arm do what it claims" and per-arm rulings (`flip ON` / `keep OFF`
+/ `needs work`) land in the artifact's `db` (`notes/<pair>`,
+`rulings/<arm>`) — never in the page, so a republish cannot overwrite them
+(the 08-27 artifact trap); read them back with `ArtifactData` and commit
+them as `docs/eye-pairs-<date>/kent-notes.json`. No score or agreement
+figure appears on the page (`acceptance_ab`'s rule; ROADMAP gate 4) — the
+instrument chips show only which way each metric points against his pick,
+and the "disagreements" filter IS the exit-clause list. Spec:
+`docs/superpowers/specs/2026-09-17-eye-pairs-gallery-design.md`; the
+generator imports nothing from `tools/eye_pairs/` and pins its arm and
+metric tables by test.
+
+### The labelled before | after page — "Flag Before After" (2026-09-18)
+
+`cd digitizer && python -m tools.eye_pairs_gallery --labelled` is the same
+generator's OTHER page: every rendered arm beside shipped, **BEFORE on the
+left and AFTER on the right, the flag named**, Kent's verdict taken on the
+page (`after is better` / `before is better` / `no difference` / `both
+bad`, then *did the flag do what it claims* and a note; per arm, his
+ruling). It reads only `--render`'s output (`features.json`, `designs/`,
+`renders/`) — **no `--pair`, no sitting, no pick**; an arm whose stitches
+equal shipped's is counted as *identical, not shown*, an arm that raised as
+*failed*. Pair ids are `<arm>__<fixture>`, not opaque, so a note keyed by
+one survives a re-render, a new arm, and a republish. Instrument chips stay
+hidden until he has given a verdict, then colour by agreement with it; the
+per-arm tally is a count of his verdicts, never a rate. Published as
+https://claude.ai/artifact/6mjKrbnCX21MM9gQUry4Zp — **republish to that
+URL**, never a new one: his notes live in its `db`, keyed by those ids.
+
+Two things it is not. It is **not the blind sitting** — a verdict given
+knowing which side is the flag is evidence for a *ruling*, and never enters
+the yardstick's agreement statistic (§4 of the eye-pairs spec needs the
+blind picks). And judging a pair here first **contaminates a later blind
+sitting on the same pairs**: he will have seen which side is which. Kent
+chose the labelled page with that known (2026-09-18); if the sitting is
+still wanted, run it on fixtures he has not judged here, or accept the
+contamination and say so in the reveal. His first sitting on it (34 pairs,
+six flags) is `docs/kent-review-2026-09-18.md` — *record it and stop*, all
+six stay OFF; the 2026-09-18 republish added the other five flags and the
+08-27 engine, which he has not judged.
+
+The first copy was made by hand on Kent's box and its generator never
+reached the repo; the 2026-09-18 rebuild ran in a cloud container as four
+parallel `--render --out <lane> --fixtures …` lanes (three of three logos
+each for the flag arms, one for `ref_0827` on all nine — its worktree path
+is fixed, so two ref lanes would collide), then
+`python -m tools.eye_pairs.merge eye_pairs_out <lane> …`: rows are unioned,
+the FIRST lane listed wins a (fixture, arm) that two lanes both rendered,
+and it refuses if two lanes disagree on a design's bytes or a fixture's
+source hash — which is how a base digitized once per lane is shown to be
+the same design. Budget an hour on four cores; `fremont` is ~2.5 min an
+arm under contention and `tires` ~80 s (photo-scene prep), the rest under
+25 s. `rembg_isolated/venv` was built first so photo-class fixtures got the
+cutout the product ships; without it every such render differs from Kent's
+box on BOTH sides.
+
+### Eye pairs — the blind A/B picker (2026-09-17)
+
+`python -m tools.eye_pairs` (from `digitizer/`) is the instrument for ROADMAP
+phase 1's second clause, *"nothing he judges better ever scores worse"*. It
+is the only place Kent's eye is recorded as DATA rather than prose. Spec:
+`docs/superpowers/specs/2026-09-17-eye-pairs-design.md`.
+
+    .venv/Scripts/python -m tools.eye_pairs --render     # hours; resumable; --fixtures/--arms scope it
+    .venv/Scripts/python -m tools.eye_pairs --pair       # builds the sitting; prints a COUNT only
+    .venv/Scripts/python -m tools.eye_pairs --serve      # http://127.0.0.1:8731 — left / right / space / u
+    .venv/Scripts/python -m tools.eye_pairs --reveal     # refuses until every pair is picked
+
+- **Do not open `eye_pairs_out/arms.json`, `features.json` or `designs/`
+  before `--reveal`.** They say which picture is which. The picker cannot
+  serve them (404 by whitelist); a text editor can.
+- **`eye_pairs_out/picks.jsonl` is Kent's sitting and is NOT regenerable.**
+  A finished sitting is committed from `docs/eye-pairs-<date>/`
+  (`picks.jsonl`, `pairs.json`, `arms.json`, `sitting.json`), never from
+  `eye_pairs_out/`; until that copy exists the gitignored file is the only one.
+- Adding a sitting is adding a row to `ARMS` in `tools/eye_pairs/pairs.py`,
+  then `--render` (only the new arm digitizes) and `--pair`. `--pair`
+  refuses to build any pair set but the one `sitting.json` records once
+  picks exist — move the old log aside first. A `--render` scoped with
+  `--fixtures`/`--arms` never touches the sitting.
+- The 08-27 arm runs the old engine from a worktree under the system temp
+  dir. On a photo-class fixture it is ENVIRONMENT-confounded (that worktree
+  has no `rembg_isolated/venv`); `--reveal` marks those rows.
+- A metric that *agrees* can be trusted for the DIRECTION of a same-design
+  A/B and nothing more: not across designs, not across routes, not as a
+  quality percentage, and never as grounds to advance a phase — that is Kent's.
 
 ## The one rule that explains most "quality" bug reports
 

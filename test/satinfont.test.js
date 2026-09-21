@@ -79,7 +79,13 @@ test("layoutText: charIdx accounts for a skipped space and a newline exactly lik
 test("buildLetteringDesign: straight 'AB' targetWidthMm 40 reports the extent it actually sews", () => {
   const base = { garment: { widthIn: 5, heightIn: 2.25 }, pxPerMm: 8, targetWidthMm: 40, underlay: false };
   const d = DG.buildLetteringDesign(font, "AB", base);
-  assert.strictEqual(d.stitchCount, 701, "stitchCount frozen");
+  // 701 -> 703 on 2026-09-11: the Euler-walk underpath's 2 mm pitch was not
+  // being divided by the fit scale (satinfont.js UNDERPATH_STEP_MM), so at
+  // this design's scale it stepped further than 2 mm and two stitches were
+  // missing. Nothing else in that change touches this stream — proven by
+  // applying the units fix ALONE to the pre-change tree, which reproduces
+  // every one of these numbers byte for byte.
+  assert.strictEqual(d.stitchCount, 703, "stitchCount frozen");
   closeTo(d.widthMM, 40.2, 0.01, "widthMM = the sewn span, 0.2 mm wider than the 40 mm asked for");
   closeTo(d.heightMM, 23.0, 0.01, "heightMM");
   // And it is the stitches' own bbox, not a second opinion about them — the
@@ -89,7 +95,7 @@ test("buildLetteringDesign: straight 'AB' targetWidthMm 40 reports the extent it
   closeTo(d.widthMM, (Math.max(...xs) - Math.min(...xs)) / 10, 1e-9, "widthMM is the stitch bbox");
   closeTo(d.heightMM, (Math.max(...ys) - Math.min(...ys)) / 10, 1e-9, "heightMM is the stitch bbox");
   const sew = d.stitches.filter((s) => s.type === "stitch");
-  assert.strictEqual(sew.length, 701);
+  assert.strictEqual(sew.length, 703);
   assert.deepStrictEqual(sew[0], { x: -56, y: -54, type: "stitch" });
   assert.deepStrictEqual(sew[sew.length - 1], { x: 142, y: 20, type: "stitch" });
 });
@@ -811,8 +817,8 @@ test("underlay ladder: default-on is a real, intended output change — pinned d
   const base = { garment: { widthIn: 5, heightIn: 2.25 }, pxPerMm: 8, targetWidthMm: 40 };
   const off = DG.buildLetteringDesign(font, "AB", { ...base, underlay: false });
   const on = DG.buildLetteringDesign(font, "AB", base);
-  assert.strictEqual(off.stitchCount, 701, "underlay off: the unchanged pre-fix number");
-  assert.strictEqual(on.stitchCount, 855, "underlay on (the default): +154 stitches, +22.0%");
+  assert.strictEqual(off.stitchCount, 703, "underlay off: the pre-underlay-ladder number, +2 for the 2026-09-11 underpath units fix");
+  assert.strictEqual(on.stitchCount, 857, "underlay on (the default): +154 stitches, +21.9%");
   assert.strictEqual(on._debug.nTrims, off._debug.nTrims, "underlay must not add a single trim");
   closeTo(on.widthMM, off.widthMM, 1e-9, "and must not move the design bbox");
   closeTo(on.heightMM, off.heightMM, 1e-9, "or its height");
@@ -824,7 +830,12 @@ test("underlay ladder: default-on is a real, intended output change — pinned d
   const tinyOn = DG.buildLetteringDesign(font, "AB", { ...base, targetWidthMm: 8 });
   const tinyOff = DG.buildLetteringDesign(font, "AB", { ...base, targetWidthMm: 8, underlay: false });
   assert.deepStrictEqual(tinyOn, tinyOff, "an 8mm-wide AB fits to a 4.4mm cap — under the floor, so no underlay at all");
-  assert.strictEqual(tinyOn.stitchCount, 189);
+  // 189 -> 188 with the 2026-09-11 underpath units fix, and DOWN is right
+  // here for the same reason UP was right for the 40 mm arm above: this
+  // design is scaled DOWN to fit 8 mm, so the unscaled 2 mm pitch was
+  // stepping 2 x sc < 2 mm on the fabric and over-stitching the travel.
+  // One number, two directions, because the bug was the frame.
+  assert.strictEqual(tinyOn.stitchCount, 188);
 });
 
 // ---- Width guards (2026-09-03): cross floor, hairline fallback, report ------

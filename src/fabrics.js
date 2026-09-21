@@ -17,6 +17,14 @@
       densityAdjust: 1.0,
       trimAtMm: 3.0,
       notes: "Foam/structured cap front; firm, sew center-out.",
+      // What the operator must hoop. Stated on the worksheet, never read by
+      // the stitch planner — and kept field-for-field identical to
+      // `digitizer/digitizer_core/fabrics.py` by `test_fabric_wire.py`,
+      // which is what stops the two lanes printing different advice for the
+      // same garment. See that table's comment for why these are trade
+      // categories rather than gate-1 constants.
+      assumedBacking: "cap_buckram",
+      needsTopper: false,
     },
     // fillUnderlay was "edge_lattice" on both knits until corpus law 26
     // (docs/corpus-laws-round3-2026-08-01.md, ruled SHIPPED 2026-08-05): under
@@ -38,6 +46,8 @@
       densityAdjust: 1.0,
       trimAtMm: 3.0,
       notes: "Polo pique; moderate stretch.",
+      assumedBacking: "cutaway",
+      needsTopper: false,
     },
     {
       id: "jersey_tee",
@@ -48,6 +58,8 @@
       densityAdjust: 1.0,
       trimAtMm: 3.0,
       notes: "Stretchy knit; needs solid underlay.",
+      assumedBacking: "cutaway",
+      needsTopper: false,
     },
     {
       id: "fleece_sweatshirt",
@@ -61,6 +73,8 @@
       densityAdjust: 0.90,
       trimAtMm: 3.5,
       notes: "Thick nap; heavy underlay, topping helps.",
+      assumedBacking: "cutaway",
+      needsTopper: true,
     },
     {
       id: "canvas_tote",
@@ -71,6 +85,8 @@
       densityAdjust: 1.0,
       trimAtMm: 3.0,
       notes: "Stable woven; minimal compensation.",
+      assumedBacking: "tearaway",
+      needsTopper: false,
     },
     {
       id: "terry_towel",
@@ -81,6 +97,8 @@
       densityAdjust: 0.85, // pile: tighter, not looser -- see fleece note
       trimAtMm: 4.0,
       notes: "High loops; heavy underlay + topping essential.",
+      assumedBacking: "cutaway",
+      needsTopper: true,
     },
     {
       id: "woven_dress",
@@ -91,6 +109,8 @@
       densityAdjust: 1.0,
       trimAtMm: 3.0,
       notes: "Stable woven; minimal compensation.",
+      assumedBacking: "tearaway",
+      needsTopper: false,
     },
   ];
 
@@ -120,5 +140,12 @@
     FABRICS,
     getFabric,
     fabricForGarment,
+    // Exported for callers that must tell "this garment uses the default
+    // preset" from "I have never heard of this garment" — `fabricForGarment`
+    // deliberately conflates them behind a pique_knit fallback, which is the
+    // right answer when you are about to SEW something and the wrong one when
+    // you are about to PRINT advice about it. The worksheet takes the second
+    // case: no known garment, no stabilizer claim.
+    GARMENT_FABRIC,
   };
 });

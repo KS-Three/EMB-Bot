@@ -10,6 +10,15 @@
 // consecutive pairs (pts[2k], pts[2k+1]) are the width-spanning cross-stitches
 // and pts[2k+1]->pts[2k+2] are the short connectors (the satin bounce). The
 // leading edge alternates per station so consecutive crosses share a side.
+//
+// WITH SPLIT SATIN ON (`opts.splitAboveMm`) a cross carries intermediate
+// penetrations, so the strict 2k pairing no longer holds. It is still
+// RECOVERABLE, and by the same rule the Python engine's `strip_splits` uses:
+// every split point is an exact lerp between its neighbours, so it lies ON
+// the segment joining them, and no rail penetration ever can — consecutive
+// rail points always turn, because the bounce reverses direction and
+// degenerate crosses are dropped at the cross floor. Drop the collinear
+// interior points and the pairs come back.
 (function (root, factory) {
   const api = factory(root);
   if (typeof module !== "undefined" && module.exports) module.exports = api;
@@ -17,9 +26,89 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function (root) {
   const _node = typeof module !== "undefined" && module.exports;
   const satin = _node ? require("./satin.js") : root.EMB;
+  const fillmod = _node ? require("./fill.js") : root.EMB;
   const chainLength = satin.chainLength;
   const resampleChain = satin.resampleChain;
   const EPS = 1e-9;
+
+  // ---- Split satin (quality review item 10) ------------------------------
+  // A cross too long to lie flat on the fabric gets intermediate penetrations
+  // instead of one thrown stitch. All three numbers MIRROR the Python
+  // engine's — `machine.SPLIT_SEGMENT_MM`, `SPLIT_STAGGER_PERIOD`,
+  // `SPLIT_STAGGER_STEP_SEGS`, `SPLIT_STAGGER_WAVE` — so nothing new is
+  // invented here (ROADMAP gate 1); move both or neither, the rule
+  // `fabrics.js` and the width guards in satinfont.js already live under.
+  // The threshold itself is the CALLER's (`opts.splitAboveMm`), because that
+  // is the policy half and satinfont.js owns policy.
+  //
+  //   SPLIT_SEGMENT_MM      target segment of a split cross: k = ceil(cross /
+  //                         this) segments, penetrations at j/k. Corpus:
+  //                         implied segment med 2.51 mm, raw segment med
+  //                         inside wide columns 3.10, and the observed k mode
+  //                         matches ceil(W/3.0) at 5, 6, 7 and 9 mm widths.
+  //                         Equal to machine.FILL_STITCH_MM, and that is no
+  //                         accident: a cross too long to lie flat penetrates
+  //                         at fill pitch.
+  //   SPLIT_STAGGER_*       the comb shifts station to station so split holes
+  //                         never trench a straight line down the column —
+  //                         the same defect fill staggering exists for.
+  //                         Corpus over 27,256 k=2 split crosses: offset from
+  //                         mid-cross med 0.117 of the cross, station-to-
+  //                         station shift med 0.214; a 4-station wave at
+  //                         +-0.23 of one segment reproduces both.
+  const SPLIT_SEGMENT_MM = 3.0;
+  const SPLIT_STAGGER_PERIOD = 4;
+  const SPLIT_STAGGER_STEP_SEGS = 0.23;
+  const SPLIT_STAGGER_WAVE = [1.0, -1.0, 1.0 / 3.0, -1.0 / 3.0];
+
+  // Intermediate penetrations for one leg, or [] when it needs none. Exact
+  // port of `stage6_satin._split_points`, in PIXELS (the caller pre-converts,
+  // the way every other guard in this module takes its floor).
+  //
+  // Points are exact lerps on a->b: the recovery rule in this file's header
+  // depends on that collinearity. The shift is +-0.23 of one segment, so the
+  // shortest end segment is 0.77 * len/k and the longest 1.23 * len/k — at a
+  // 5 mm threshold that is 1.9 to 3.7 mm, clear of the needle minimum at one
+  // end and of the format ceiling at the other.
+  function splitLeg(a, b, station, abovePx, segPx) {
+    if (!(abovePx > 0)) return [];
+    const len = Math.hypot(b.x - a.x, b.y - a.y);
+    if (!(len > abovePx)) return [];
+    const k = Math.ceil(len / (segPx > 0 ? segPx : abovePx));
+    if (!(k > 1)) return [];
+    const period = SPLIT_STAGGER_WAVE.length;
+    const wave = SPLIT_STAGGER_WAVE[((station % period) + period) % period];
+    const shift = SPLIT_STAGGER_STEP_SEGS * wave;
+    const out = [];
+    for (let j = 1; j < k; j++) {
+      const t = (j + shift) / k;
+      out.push({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t });
+    }
+    return out;
+  }
+
+  // The inverse: a run's points with split penetrations removed. Mirrors
+  // `stage6_satin.strip_splits` — an instrument that reads a satin run as
+  // alternating rail penetrations calls this first.
+  function stripSplits(points) {
+    if (!points || points.length < 3) return (points || []).slice();
+    const out = [points[0]];
+    for (let i = 1; i < points.length - 1; i++) {
+      const a = out[out.length - 1], p = points[i], b = points[i + 1];
+      const abx = b.x - a.x, aby = b.y - a.y;
+      const apx = p.x - a.x, apy = p.y - a.y;
+      const len2 = abx * abx + aby * aby;
+      const eps = 1e-6;
+      let onSeg = false;
+      if (len2 > eps * eps && Math.abs(apx * aby - apy * abx) <= eps * Math.sqrt(len2)) {
+        const t = (apx * abx + apy * aby) / len2;
+        onSeg = t > 0 && t < 1;
+      }
+      if (!onSeg) out.push(p);
+    }
+    out.push(points[points.length - 1]);
+    return out;
+  }
 
   // Arc-length fraction (0..1) of the nearest point on `chain` to (px,py).
   function nearestFrac(chain, px, py) {
@@ -260,7 +349,22 @@
 
   // Turn corresponded pairs into zig-zag satin at the given density.
   // opts = { spacingMm, pxPerMm, pullCompMm=0, weightMm=0, slantDeg=0,
-  //          minCrossMm=0, counterGuard=null, shortStitch=null }.
+  //          minCrossMm=0, counterGuard=null, shortStitch=null,
+  //          splitAboveMm=0 }.
+  // `splitAboveMm` (quality review item 10): a leg longer than this carries
+  // intermediate penetrations instead of being thrown whole — see splitLeg.
+  // 0 or absent is byte-identical to before it existed. The split fires on
+  // the FINAL geometry, after the counter guard, the short-stitch pull and
+  // the cross floor, so none of those ever sees a split point; and the
+  // stagger phase runs on the KEPT station count, so a dropped station does
+  // not advance the wave. Both are how the Python emitter sequences it.
+  //
+  // BOTH legs are offered to the split, not just the cross. In this module
+  // the leading rail alternates per station, so the connector is normally
+  // one spacing long and declines the split on its own length — but when the
+  // cross floor drops a run of stations the connector becomes a chord across
+  // whatever was skipped, and that is exactly a leg that must not be thrown
+  // whole either.
   // `shortStitch` = { atMm, pull, maxMm, stats } — see pullShort above.
   // `weightMm` is the bold/thin preset's share of the widening, kept apart
   // from `pullCompMm` so the counter guard can hold it back per rail while
@@ -289,7 +393,7 @@
       maxPx: (opts.shortStitch.maxMm || 0) * (opts.pxPerMm || 1),
       stats: opts.shortStitch.stats || null,
     } : null;
-    let prevA = null, prevB = null;
+    let prevA = null, prevB = null, kept = 0;
     // Cross floor (Law 47 / 51, 2026-09-03). A cross shorter than
     // `opts.minCrossMm` is not a satin stitch: the two rails have pinched
     // together (a tapered tip, a hairline stroke) and sewing it piles thread
@@ -300,6 +404,8 @@
     // keeps exactly that legacy guard, so every caller that never asks is
     // byte-identical; satinfont passes the floor pre-divided by the fit scale.
     const minCrossPx = Math.max(0.3, (opts.minCrossMm || 0) * (opts.pxPerMm || 1));
+    const splitAbovePx = (opts.splitAboveMm || 0) * (opts.pxPerMm || 1);
+    const splitSegPx = (opts.splitSegmentMm || SPLIT_SEGMENT_MM) * (opts.pxPerMm || 1);
     const slantRad = ((opts.slantDeg || 0) * Math.PI) / 180;
     const M = A.length;
     if (M < 2) return [];
@@ -344,13 +450,36 @@
       }
       prevA = { x: ax, y: ay }; prevB = { x: bx, y: by };
       if (Math.hypot(pA.x - pB.x, pA.y - pB.y) < minCrossPx) continue;
-      if (t % 2 === 0) { out.push(pA, pB); } else { out.push(pB, pA); }
+      const lead = t % 2 === 0 ? pA : pB, trail = t % 2 === 0 ? pB : pA;
+      if (!(splitAbovePx > 0)) { out.push(lead, trail); continue; }
+      if (out.length) {
+        const into = splitLeg(out[out.length - 1], lead, kept, splitAbovePx, splitSegPx);
+        for (const q of into) out.push(q);
+        if (opts.splitStats) opts.splitStats.splitPenetrations += into.length;
+      }
+      out.push(lead);
+      // THE CROSS IS ALWAYS SPLIT A->B AND REVERSED FOR TRAVERSAL, never
+      // split lead->trail. The Python emitter keeps a constant rail order, so
+      // there the wave's sign flip genuinely walks the comb across the
+      // column; here the leading rail alternates, and splitting in traversal
+      // order makes the direction flip cancel the sign flip exactly —
+      // measured on a straight 7.5 mm column, stations 0 and 1 both put their
+      // penetrations at 24.6 and 44.6 px, which is the trenched line of holes
+      // the stagger exists to prevent. Split in the column's own frame and
+      // the same two stations land at 0.410/0.743 and 0.257/0.590 of the
+      // cross, as the corpus wave intends.
+      const mid = splitLeg(pA, pB, kept, splitAbovePx, splitSegPx);
+      if (t % 2 === 1) mid.reverse();
+      for (const q of mid) out.push(q);
+      if (opts.splitStats) opts.splitStats.splitPenetrations += mid.length;
+      out.push(trail);
+      kept += 1;
     }
     return out;
   }
 
-  // Split a satin span [lo,hi] (fractions, lo < hi) into SATIN and HAIRLINE
-  // segments by the cross length at each zigzag station — the same stations,
+  // Split a satin span [lo,hi] (fractions, lo < hi) into SATIN, HAIRLINE and
+  // WIDE segments by the cross length at each zigzag station — the same stations,
   // the same pull-comp widening and the same floor emitZigzag applies, so a
   // segment classed satin here keeps its crosses there.
   //
@@ -369,16 +498,30 @@
   // satin (emitZigzag drops that one cross — a chord ONE station long, along
   // the column) and a lone surviving cross inside a hairline stays a run.
   //
-  // Returns [{ f0, f1, thin }] in lo -> hi order, covering [lo,hi] exactly.
-  // With no floor (`opts.minCrossMm` absent/0) it is one satin segment, so
+  // The WIDE class is the same idea at the other end of the width scale
+  // (quality review item 10). Past `opts.maxCrossMm` the two rails are no
+  // longer a ribbon: the cross is a float that snags and pulls the fabric,
+  // and the honest answer is the one the Python engine's classifier gives a
+  // shape this wide — sew it as a fill, not as satin. Absent or 0 means no
+  // ceiling and no wide class, so every caller that never asks is unchanged.
+  //
+  // Classed in STRETCHES for the same reason the hairline is: a per-station
+  // switch would alternate fill and satin down one stroke. The absorb loop
+  // below is shared, so a lone wide station inside a satin stretch stays
+  // satin (its cross is split instead) and a lone satin station inside a
+  // wide stretch joins the fill.
+  //
+  // Returns [{ f0, f1, thin, wide }] in lo -> hi order, covering [lo,hi]
+  // exactly. With neither floor nor ceiling it is one satin segment, so
   // legacy callers see no change.
   function splitByCrossFloor(geom, lo, hi, opts) {
     const o = opts || {};
-    const one = [{ f0: lo, f1: hi, thin: false }];
+    const one = [{ f0: lo, f1: hi, thin: false, wide: false }];
     if (!geom || !(geom.total > EPS) || !(hi > lo)) return one;
     const pxPerMm = o.pxPerMm || 1;
     const minCrossPx = (o.minCrossMm || 0) * pxPerMm;
-    if (!(minCrossPx > 0)) return one;
+    const maxCrossPx = (o.maxCrossMm || 0) * pxPerMm;
+    if (!(minCrossPx > 0) && !(maxCrossPx > 0)) return one;
     const spacingPx = (o.spacingMm || 0.4) * pxPerMm;
     // The same widening emitZigzag will apply at this station — pull comp
     // plus weight, the weight held back by the counter guard where it holds
@@ -394,9 +537,11 @@
       const a = interpAt(geom.A, geom.cum, s), b = interpAt(geom.B, geom.cum, s);
       const push = stationPush(a.x, a.y, b.x, b.y, pullPx, weightPx, guard, false);
       const compPx = push.apply ? push.a + push.b : 0;
-      const thin = Math.hypot(a.x - b.x, a.y - b.y) + compPx < minCrossPx;
+      const cross = Math.hypot(a.x - b.x, a.y - b.y) + compPx;
+      const cls = cross < minCrossPx ? "thin"
+        : (maxCrossPx > 0 && cross > maxCrossPx ? "wide" : "satin");
       const last = runs[runs.length - 1];
-      if (last && last.thin === thin) last.end = t; else runs.push({ thin, start: t, end: t });
+      if (last && last.cls === cls) last.end = t; else runs.push({ cls, start: t, end: t });
     }
     const beanPx = (o.beanStepMm || 0.73) * pxPerMm;
     const minSeg = Math.max(2, Math.ceil(beanPx / (spacingPx > 0 ? spacingPx : 4)));
@@ -408,7 +553,7 @@
     // clear minSeg to stay satin; under that it joins the run.)
     const beanSeg = Math.max(minSeg, Math.ceil((2 * beanPx) / (spacingPx > 0 ? spacingPx : 4)));
     const count = (r) => r.end - r.start + 1;
-    const need = (i) => (runs[i].thin ? beanSeg : minSeg);
+    const need = (i) => (runs[i].cls === "thin" ? beanSeg : minSeg);
     // Absorb the shortest under-length run into its longer neighbour, then
     // coalesce, until every run clears its floor (or one run remains).
     while (runs.length > 1) {
@@ -417,24 +562,31 @@
       if (idx < 0) break;
       const prev = runs[idx - 1], next = runs[idx + 1];
       const into = prev && (!next || count(prev) >= count(next)) ? idx - 1 : idx + 1;
-      runs[idx].thin = runs[into].thin;
+      runs[idx].cls = runs[into].cls;
       const merged = [];
       for (const r of runs) {
         const last = merged[merged.length - 1];
-        if (last && last.thin === r.thin) last.end = r.end; else merged.push({ thin: r.thin, start: r.start, end: r.end });
+        if (last && last.cls === r.cls) last.end = r.end; else merged.push({ cls: r.cls, start: r.start, end: r.end });
       }
       runs = merged;
     }
     // One run left: the whole span is satin, or the whole span is a hairline
-    // — which still has to clear the three-station floor to sew as one.
-    if (runs.length === 1) return [{ f0: lo, f1: hi, thin: runs[0].thin && count(runs[0]) >= beanSeg }];
+    // — which still has to clear the three-station floor to sew as one — or
+    // the whole span is wide, which needs no extra floor because a fill has
+    // no minimum length to be worth sewing.
+    if (runs.length === 1) {
+      return [{ f0: lo, f1: hi,
+                thin: runs[0].cls === "thin" && count(runs[0]) >= beanSeg,
+                wide: runs[0].cls === "wide" }];
+    }
     // Segment boundaries sit halfway between the last station of one run and
     // the first of the next; the outer ends are the span's own.
     const at = (t) => lo + (t / steps) * (hi - lo);
     return runs.map((r, i) => ({
       f0: i === 0 ? lo : at(r.start - 0.5),
       f1: i === runs.length - 1 ? hi : at(r.end + 0.5),
-      thin: r.thin,
+      thin: r.cls === "thin",
+      wide: r.cls === "wide",
     }));
   }
 
@@ -469,6 +621,54 @@
     if (!geom || geom.total <= EPS || geom.A.length < 2) return [];
     const [As, Bs] = sliceParallel([geom.A, geom.B], geom.cum, f0 * geom.total, f1 * geom.total);
     return emitZigzag(As, Bs, opts || {});
+  }
+
+  // TATAMI FILL over fraction span [f0,f1] of a precomputed columnGeom —
+  // the wide-column fallback (quality review item 10).
+  //
+  // Past the satin ceiling a cross is a float, and the Python engine's
+  // classifier sends a shape that wide to fill. Here the "shape" is the
+  // stretch itself: its polygon is the two corresponded rails, out along A
+  // and back along B, which is exactly the area the satin would have covered.
+  // Nothing is invented — the rows run at `fill.pcaAngleDeg` of that polygon
+  // (the same angle rule this engine's image lane already gives every fill it
+  // emits) at the caller's own row pitch and stitch length, both of which are
+  // the mirrored `machine.FILL_ROW_MM` / `FILL_STITCH_MM` the image lane
+  // sews by.
+  //
+  // Returns a LIST OF SUB-PATHS, not one point list. `markConnectors` tags
+  // any span-to-span travel too long to sew as `{travel:true}`, because on a
+  // column that curves back on itself one scanline crosses the ink twice and
+  // the move between the two crossings goes over bare fabric. This module's
+  // callers express "lift the needle" per RUN, not per point, so the fill is
+  // cut at those points and each piece becomes its own run — the existing
+  // mechanism, rather than a new per-point one. A straight column comes back
+  // as a single piece.
+  //
+  // opts = { pxPerMm, fillRowMm, fillStitchMm }.
+  function fillFromGeom(geom, f0, f1, opts) {
+    if (!geom || geom.total <= EPS || geom.A.length < 2) return [];
+    const o = opts || {};
+    const pxPerMm = o.pxPerMm || 1;
+    const rowPx = (o.fillRowMm || 0) * pxPerMm;
+    const stitchPx = (o.fillStitchMm || 0) * pxPerMm;
+    if (!(rowPx > 0) || !(stitchPx > 0)) return [];
+    const [As, Bs] = sliceParallel([geom.A, geom.B], geom.cum, f0 * geom.total, f1 * geom.total);
+    if (As.length < 2) return [];
+    const ring = As.concat(Bs.slice().reverse());
+    if (ring.length < 3) return [];
+    const angleDeg = fillmod.pcaAngleDeg([ring]);
+    const pts = fillmod.tatamiFill([ring], {
+      rowSpacing: rowPx, angleDeg, maxStitch: stitchPx, markConnectors: true });
+    if (!pts || pts.length < 2) return [];
+    const segs = [];
+    let cur = [];
+    for (const q of pts) {
+      if (q.travel) { if (cur.length >= 2) segs.push(cur); cur = [{ x: q.x, y: q.y }]; continue; }
+      cur.push({ x: q.x, y: q.y });
+    }
+    if (cur.length >= 2) segs.push(cur);
+    return segs;
   }
 
   // Running-stitch centerline over span [f0,f1], resampled to ~stepMm.
@@ -740,7 +940,8 @@
 
   return {
     satinFromRails, centerRun, correspond, columnGeom, satinFromGeom, centerFromGeom,
-    centerUnderlayFromGeom, edgeUnderlayFromGeom, beanFromGeom, splitByCrossFloor,
-    railCloud, counterGap, stationPush, pullShort,
+    centerUnderlayFromGeom, edgeUnderlayFromGeom, beanFromGeom, fillFromGeom,
+    splitByCrossFloor, railCloud, counterGap, stationPush, pullShort,
+    splitLeg, stripSplits, SPLIT_SEGMENT_MM,
   };
 });

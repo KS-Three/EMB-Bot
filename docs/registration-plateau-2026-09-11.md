@@ -1,0 +1,248 @@
+# The registration search had no way out of a flat zero — 2026-09-11
+
+`scorecard.register` could return a wrong alignment with `iou=0.0` and say
+nothing. Reported from a synthetic fixture; investigated against the real
+corpus; fixed.
+
+**Every real pair registers correctly as prepped — but the defect is NOT
+fixture-only.** Under the drop-an-element stress the report asked about, one
+real arm picks an alignment 17.79 mm wrong, and it is `gaulke_roofing_hat`,
+the family `pairframe.py` singles out. What bounds it is sparsity, and that
+boundary is measured, not argued.
+
+*(An earlier draft of this file opened "no real pair hits it, and that is a
+measurement, not a guess." That was written after 13 designs and before the
+gaulke family was prepped. It was wrong; this is what replaced it.)*
+
+## What was broken
+
+`pairframe.register_pair` pre-shifts ours by the bbox-centre delta and then
+calls `scorecard.register`, which seeds at `(0, 0)` **and** at the bbox-centre
+delta *of what it was handed*. By then that is already centred, so
+**both of its seeds are the same point** — the two-seed search is a one-seed
+search in the one caller that matters.
+
+A bbox centre is dragged by half the excursion of any element **one** side
+sews. When the shared geometry is narrower than the resulting error, the two
+solid masks touch **nowhere**: all eight 1 mm probes read zero, there is no
+gradient in any direction, and the climb returns the bad seed.
+
+Measured on the reported fixture (one shared satin bar, plus extra bars at
+different distances on each side):
+
+```
+register_pair -> Reg(scale=1.0, flip_y=False, dx=0.0, dy=-4.0, iou=0.0)
+truth         -> dy=0.0, iou=0.404
+```
+
+The IoU landscape, probed at 0.5 mm — a flat zero across the whole
+neighbourhood the search can see, with a **decoy** peak on the far side:
+
+| dy | −6 | −5 | −4 | −3 | −2 | 0 | +2 | +3 | +4 | +5 | +6 |
+|----|----|----|----|----|----|---|----|----|----|----|----|
+| IoU | 0.000 | 0.046 | **0.165** | 0.046 | 0.000 | **0.000 ← seed** | 0.000 | 0.102 | **0.404** | 0.102 | 0.000 |
+
+## Does any REAL pair hit it? Not as prepped — but the mechanism is real
+
+The prepped customer corpus, and then the scenario the report named ("the pro
+sews a large extra element the digitizer completely missed, or vice versa"),
+built out of **real** stitch geometry rather than fixtures.
+
+*Coverage: **22 of the 23** `prep_all.DESIGNS` — all 22 as-prepped, plus 87
+element-drop arms. Not measured: `hotel_fremont_patch` alone. Its sibling
+`hotel_fremont_hat` took **5203.9 s (86.7 min)** in the engine against 2–20
+for every other design — `gaulke_jb` is twice the stitch count and finishes
+in 155 s — so the patch was still prepping when this closed. All five gaulke
+designs ARE included, which is the family that matters here.*
+
+*__The 86.7 minutes was a defect, found and fixed 2026-09-12 (PR #464), and
+the corpus is no longer gated on it.__ `_sewn_linear_cover` — the silhouette
+cap's gate, one day old at the time — buffered `unary_union(lines)`, which
+NODES every satin zigzag at every crossing (Fremont: 138 runs / 9,677 points
+→ a 49,535-part MultiLineString); buffering the ribbons instead is the same
+set and byte-identical output. `hotel_fremont_hat` preps in **13.4 s**,
+`hotel_fremont_patch` in **24.1 s**, and the **whole 23-design corpus in
+12.1 minutes** (23/23 `ok=True`, 2026-09-12). The nine designs with a
+recorded time before the fix: 8,288 s → 274 s. **The study WAS then re-run at
+23 of 23 the same day — see "Re-run at 23 of 23" below.** The bullets and the
+fill-ratio table immediately following are the ORIGINAL 22-design numbers,
+left as written; the re-run section says which of them survived and which did
+not.*
+
+- **Every real pair as prepped**: the greedy search already sat exactly on the
+  exhaustive optimum of its own objective (gap `+0.0000` on every one). Seed
+  error under 0.5 mm everywhere except `gaulke_plowing_hat` (3.4 mm) and
+  `machine_beanie`, whose famous −26.65 mm offset the centroid seed handles
+  correctly.
+- **Losing a whole spatial extremity** on `becker` (real independent artwork,
+  not art reconstructed from the pro file): dropping 75% of one side pulls the
+  centroid **23.8 mm** — and the search *still* lands on the exhaustive
+  optimum at every step of the ladder.
+- **But under the element-drop stress, one real arm DOES miss.** Delete colour
+  block 0 from our `gaulke_roofing_hat` and the old search returns
+  `iou 0.0036 @ (+2.00, −0.50)` where the exhaustive optimum — which the new
+  search finds — is `iou 0.0068 @ (−15.00, +4.75)`. That is **17.79 mm** of
+  wrong alignment, on real thread, in the very design `pairframe.py` singles
+  out as the re-composed one.
+
+**And it is bounded by sparsity, measured.** Ranking every element-drop arm by
+fill ratio (solid thread area / bbox area of the thinner side — the quantity
+deciding whether a few mm of seed error still overlaps anything):
+
+| fill ratio | arms | old vs new |
+|---|---|---|
+| 0.000 – 0.003 | 3 | **1 miss** (`gaulke_roofing_hat` blk 0, 17.79 mm apart) |
+| 0.222 – 0.916 | 84 | 84/84 same alignment (max 1.58 mm, on flat optima) |
+
+Nothing in between: the corpus jumps from 0.003 to 0.222. So the old search is
+exact wherever thread actually fills its frame, and fails only where what is
+left is **scraps** — 0.99 m of our thread against the pro's 13.02 m. You do not
+reach that regime by digitizing badly; you reach it by deleting most of one
+side. No as-prepped pair is close to it.
+
+### Re-run at 23 of 23 — the conclusion holds, the sparsity bound does not
+
+*2026-09-12, `tools/pro_parity/regsweep.py` (this study's harness, committed
+this time — the original was a session script and was gone). 228 arms over all
+23 designs, both flips, 901 s.*
+
+**The conclusion that matters survives, twice over.** On all 228 arms the
+shipped search is at the 0.5 mm lattice optimum — **0 arms** where an
+exhaustive scan beats it. And of the 114 `register_pair` outcomes — the
+alignment a CALLER actually receives, best flip winning — **only 2 move**
+against the pre-#463 search, and both are the ones already recorded here:
+`gaulke_roofing_hat` blk 0 at 17.10 mm (the flip changes), and
+`becker_hat_large` blk 0 at **1.58 mm**, the flat optimum the table above
+already names. Hotel Fremont's hat and patch, measured here for the first
+time, move nothing.
+
+**The sparsity bound is wrong as stated, though, and the table above is the
+reason it looked right.** It ranks arms by fill ratio and finds the misses only
+below 0.003 — but it counts one arm per drop, and each drop has TWO, one per
+y-flip. Counting both, **35 arms move, and 25 of them sit at fill ≥ 0.30** —
+the band this file calls exact:
+
+| arm | fill | old → new | apart |
+|---|---|---|---|
+| `proseal_hat` blk 2, flipped | 0.3495 | 0.2098 → 0.2872 | **32.37 mm** |
+| `becker_hat_large` blk 0, flipped | 0.2451 | 0.2233 → 0.2648 | 32.76 mm |
+| `becker_lc_large` blk 1, flipped | 0.3006 | 0.2587 → 0.3087 | 29.02 mm |
+| `gaulke_roofing_lc` as-prepped, flipped | 0.3865 | 0.2931 → 0.2972 | 18.00 mm |
+
+Every one of them is the **y-flipped** hypothesis, which for these designs is
+the wrong one and loses the flip election to its unflipped twin — which is
+exactly why none of it reaches a caller. So sparsity is not what bounds the
+defect. **What bounds it is that the error lands on the losing flip**, and
+sparsity only matters because when both flips score near zero the election
+stops being decided by geometry: `gaulke_roofing_hat` blk 0 is the one arm
+where the old search's error actually flipped the winner (0.0041 flipped
+against 0.0036 unflipped — noise), and it is the one arm that reached a
+caller.
+
+That is a narrower claim than "exact wherever thread fills its frame", and a
+more useful one: **a dense pair is protected by the election, not by the
+search.** Anything that consumes a single flip's `Reg` without electing
+between them does not have that protection, and the correlation seeds are what
+make it safe to do so.
+
+**Why normal real data is immune:** a real logo is a dense blob. Slide it 30 mm
+and it still overlaps itself — on `becker`, IoU is non-zero across the entire
+±30 mm sweep in both axes and smoothly unimodal. The plateau needs the two
+masks to be **disjoint at the seed**, which needs *sparse, thin* geometry with
+large empty gaps. That is what synthetic fixtures are made of and what customer
+logos are not.
+
+Two caveats that keep this honest:
+
+- `prep_all.reconstruct` builds `art.png` **from the pro file's own stitches**,
+  so the corpus systematically understates the mismatch (IoU ~0.91–0.99). The
+  one pair digitized from Kent's real artwork, `becker_smoke`, scores 0.64.
+  The extremity ladder above was run on that pair for exactly this reason.
+- Two `tires_hat_3d` arms register at IoU ≈ 0.001. That is **not** a collapse:
+  verified exhaustively, the search is at the optimum — dropping that block
+  leaves 1.58 m of our thread against 23 m of the pro's, so the union is
+  genuinely dominated.
+
+## The fix, and why not a grid
+
+A coarse grid was the obvious suggestion and it is the wrong tool **twice
+over**:
+
+- **Unaffordable.** 2 mm steps = 1,257 legal points ≈ **73 s**, against
+  **4.9 s** for the entire present search.
+- **Still unsafe.** A basin can be one thread wide. This fixture's is 2 mm, so
+  a 4 mm grid steps clean over it. Making the grid fine enough to guarantee
+  capture costs ~5,000 evaluations.
+
+What works instead is one FFT. IoU = `inter / (|A| + |B| − inter)` rises
+strictly with `inter` whenever `|A|` and `|B|` are fixed — which under a
+translation of a **zero-padded** mask they are. So the cross-correlation peak
+**is** the IoU optimum, scanned at 0.5 mm over every offset inside `REG_MAX`,
+for 7–85 ms. Those peaks are added as *seeds*; the exact objective still
+scores and polishes them, and the original seeds are still climbed.
+
+## The second defect, which only appeared once the search got stronger
+
+`bounds()` pads 8 mm. The search may move ours **40**. A shift that carried
+thread off the raster had it silently dropped from the union — **which raises
+IoU**. The search was being paid to slide ours out of frame.
+
+The old local climb rarely reached far enough to collect that bonus. A search
+that actually explores does: on this fixture the y-flipped arm scored **0.494**
+against the correct **0.404**, purely because 15 of its 44 mm² had left the
+frame — and it *won*, so `register_pair` returned a spurious flip. Fixed by
+padding the search frame by `REG_MAX`, which also makes `|ours|`
+translation-invariant — the assumption the correlation argument rests on.
+
+**The lesson worth keeping: strengthening a search against a flawed objective
+finds the flaw.** The clipping bug was years-old and harmless only because
+nothing was strong enough to exploit it. Anywhere we sharpen an optimiser, the
+next thing to check is whether its objective deserves the sharpening.
+
+## Cost
+
++9% on `becker` (4.9 s → 5.3 s); 1.6× on a worst-case 380 mm, 48k-segment slab
+(4.7 s → 7.7 s). The FFT itself is 0.3 s of that; the rest is the extra seed
+earning its own hill-climb.
+
+## The silence, closed
+
+Finding the optimum is not the same as the optimum meaning anything. Two files
+sharing almost no thread still have a best translation, and `overlay.py` /
+`diff.py` took the `Reg` unchecked — which is how the original defect stayed
+invisible in the first place. The failure mode is silence.
+
+Kent's call: warn, don't raise. `register_pair` now emits a
+`RegistrationWarning` when the winning IoU is under `REG_IOU_FLOOR = 0.05`. A
+warning rather than a refusal because near-zero overlap is a legitimate
+*reading* of two files that genuinely share nothing, and the probes in this
+very investigation deliberately produce it.
+
+The floor comes off the measured spread rather than from feel — an order of
+magnitude clear on both sides:
+
+| | IoU |
+|---|---|
+| real corpus, as prepped | 0.64 – 0.99 |
+| the plateau fixture's TRUE optimum | 0.404 |
+| **`REG_IOU_FLOOR`** | **0.05** |
+| the degenerate arms that motivated it | 0.001 – 0.007 |
+
+Verified on real data, not only the fixture: rebuilding `gaulke_roofing_hat`'s
+`ours.dst` without block 0 and passing it through `register_pair` fires the
+warning at `iou=0.0068`, while `gaulke_roofing_hat`, `gaulke_jb`,
+`becker_lc_large` and `proseal_beanie` all stay quiet. The message is ASCII, so
+it survives a cp1252 Windows console.
+
+## Still open
+
+**Closed 2026-09-12.** `hotel_fremont_patch` was the one design this study
+never measured, because the 87-minute engine run on its sibling (PR #464) left
+it still prepping. Both are measured now and neither moves anything: see
+"Re-run at 23 of 23" above, which also corrects this file's sparsity bound.
+
+Still open from that re-run: nothing blocks a caller, but **a consumer that
+takes one flip's `Reg` without electing between the two flips is not protected
+by anything measured here.** No such caller exists today — `register_pair` is
+the only exposed entry point and it always elects — so this is a constraint on
+future callers, not a defect.

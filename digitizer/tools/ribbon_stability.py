@@ -85,6 +85,39 @@ def _stats_from(r: np.ndarray, area: float, scale: float,
                     elongation=(spine_len_mm / width_mm) if width_mm > 0 else 0.0)
 
 
+def _weighted_percentile(values: np.ndarray, weights: np.ndarray, q: float) -> float:
+    """The `q`-th percentile of `values` weighted by `weights`.
+
+    Plain linear interpolation on the weighted CDF, and it reduces to
+    `np.percentile` when every weight is equal.
+    """
+    order = np.argsort(values)
+    v, w = values[order], weights[order]
+    cdf = np.cumsum(w) - 0.5 * w
+    cdf /= w.sum()
+    return float(np.interp(q / 100.0, cdf, v))
+
+
+def _weighted_stats(r: np.ndarray, area: float, scale: float) -> _DtStats | None:
+    """`_dt_stats`' numbers with each skeleton pixel weighted by its radius."""
+    if r.size == 0 or r.mean() <= 0:
+        return None
+    w = r.astype(np.float64)
+    mean = float(np.average(r, weights=w))
+    std = float(np.sqrt(np.average((r - mean) ** 2, weights=w)))
+    spine_len_mm = float(r.size) / scale
+    width_mm = 2.0 * float(r.mean()) / scale        # unweighted: see `area`
+    swept = spine_len_mm * width_mm
+    return _DtStats(
+        mean=mean, std=std,
+        # the cap stays UNWEIGHTED -- see `stage6_satin._dt_stats`
+        p90_mm=2.0 * float(np.percentile(r, s6._DT_TIGHTEN_PERCENTILE)) / scale,
+        spine_len_mm=spine_len_mm,
+        explained=(area / swept) if swept > 0 else 0.0,
+        elongation=(spine_len_mm / width_mm) if width_mm > 0 else 0.0,
+    )
+
+
 def variant_stats(poly, variant: str) -> _DtStats | None:
     field = build_shape_field(poly)
     if field is None or not field.skel.any():
@@ -115,6 +148,21 @@ def variant_stats(poly, variant: str) -> _DtStats | None:
         ys, xs = np.nonzero(m)
         return _stats_from(dist[ys, xs], float(poly.area), scale,
                            r_full=full if variant == "hybrid" else None)
+    if variant == "area":
+        # AREA-WEIGHTING (2026-09-16). Every other variant here changes WHICH
+        # skeleton pixels are measured; this one changes what a pixel COUNTS
+        # FOR. The gates pool the DT over skeleton pixels equally, so a long
+        # thin tail outvotes a wide body of few pixels, and the cliff the gap
+        # audit measured is one pixel of drift deciding +4,923 penetrations
+        # (becker at 87 -> 88 mm, sewn satin 42.5% -> 12.8%). A pixel of
+        # spine at radius r stands for 2r of area, so weight it by r.
+        #
+        # `spine_len_mm` and `explained` stay on the UNWEIGHTED mean on
+        # purpose: `explained` is area over what the spine sweeps, and
+        # weighting its width term by width would compare a shape against a
+        # sweep it never makes -- the blob-vs-ribbon separation (0.13 against
+        # 0.85+) is the one thing no variant may disturb.
+        return _weighted_stats(full, float(poly.area), scale)
     if variant.startswith("smooth:"):
         rad = int(variant.split(":")[1])
         ker = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2 * rad + 1, 2 * rad + 1))

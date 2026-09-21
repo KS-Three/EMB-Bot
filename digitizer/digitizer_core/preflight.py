@@ -126,18 +126,20 @@ from . import machine, stitches
 from .config import PHOTO_CLASSES, PipelineConfig
 from .pipeline import PipelineResult, fabric_for
 from .stage0_classify import classify
-from .stage1_prep import prep
+from .stage1_prep import _dominant_border_color, prep
 from .stage6_meander import MEANDER_CELL_MM, MEANDER_COARSE_LEVELS
 from .stage6_satin import strip_splits
 from .stage6_scanline import SCANLINE_LEVEL_STRIDES, SCANLINE_ROW_MM
 from .stage6_streamline import (STREAMLINE_D_SEP_DARK_MM,
                                 STREAMLINE_D_SEP_LIGHT_MM)
+from . import legibility as _legibility
 from .stitches import StitchPlan
 from .threads import chart_for, rgb_to_lab
 
 # --- Codes (may migrate to warnings_codes.py at merge) ---------------------
 
-THREAD_MATCH_POOR = "THREAD_MATCH_POOR"        # extra: {thread_number, thread_name, brand_id, delta_e, yardstick, excess_delta_e, better_spool, worst_shape_id, worst_shape_area_mm2, worst_shape_area_frac, region_count, regions_scored, regions, artwork_rgb, thread_rgb} — excess_delta_e/better_spool are the gap to the best ALREADY-LOADED spool and that spool, populated on EVERY route since 2026-09-06 (both None when nothing loaded is meaningfully closer). `yardstick` ("excess"/"raw") says which one produced the SEVERITY, so a populated excess is never mistaken for a rescored finding
+THREAD_MATCH_POOR = "THREAD_MATCH_POOR"        # extra: {thread_number, thread_name, brand_id, delta_e, yardstick, excess_delta_e, better_spool, worst_shape_id, worst_shape_area_mm2, worst_shape_area_frac, worst_patch_mm2, region_count, regions_scored, sub_floor_count, regions: [{shape_id, delta_e, footprint_mm2, sub_floor, excess_delta_e}], artwork_rgb, thread_rgb} — worst_patch_mm2 is the graded footprint that JUDGED (a shade band's own strip), region_count the offenders at or above `_THREAD_MATCH_MIN_PATCH_MM2`, sub_floor_count the offenders under it (listed, flagged, never judging) — excess_delta_e/better_spool are the gap to the best ALREADY-LOADED spool and that spool, populated on EVERY route since 2026-09-06 (both None when nothing loaded is meaningfully closer). `yardstick` ("excess"/"raw") says which one produced the SEVERITY, so a populated excess is never mistaken for a rescored finding
+LETTERING_ILLEGIBLE = "LETTERING_ILLEGIBLE"    # extra: {clusters, readable, judged, lost, worst_cluster, worst_similarity, worst_art_text, worst_render_text, legibility, rows: [{cluster, height_mm, art_text, art_conf, render_text, render_conf, similarity, sewn, enclosed}]} — `judged` is the sewn clusters the art side could read, `lost` how many of those read back under LEGIBILITY_WARN; `rows` carries every cluster, unsewn and unreadable ones included, flagged
 LETTERING_TOO_SMALL = "LETTERING_TOO_SMALL"    # extra: {count, satin_total, shapes: [{shape_id, column_mm, extent_mm}]} — satin_total is the DENOMINATOR the message needs ("38 of 46"), which reads very differently from a bare 38
 STITCHES_TOO_LONG = "STITCHES_TOO_LONG"        # extra: {count, max_mm}
 STITCHES_TOO_SHORT = "STITCHES_TOO_SHORT"      # extra: {fraction, count, total, uncovered_shapes, shapes: [{shape_id, short, steps, median_mm, also_too_small}]} — `shapes` is every satin shape carrying a short step, worst first; `also_too_small` is whether LETTERING_TOO_SMALL already named it, and `uncovered_shapes` counts the ones it did NOT (a sewable column with a narrow waist passes lettering's median test and still breaks thread)
@@ -154,6 +156,7 @@ STABILIZER_CUTAWAY = "STABILIZER_CUTAWAY"      # extra: {stitch_count, threshold
 COLOR_STOPS_HEAVY = "COLOR_STOPS_HEAVY"        # extra: {color_changes, max_stops, distinct_cones, closest_pair, closest_pair_delta_e, repeated_cones} — closest_pair is the two cones a CIEDE2000 over the deduped palette says are nearest (None under two distinct cones); repeated_cones names any cone already sewn in more than one block, which is a free merge
 FACE_TOO_SMALL = "FACE_TOO_SMALL"              # extra: {count, design_mm, fits_hoop_mm, min_hoop_mm}
 CLASS_OVERRIDE_TECHNIQUE_MISMATCH = "CLASS_OVERRIDE_TECHNIQUE_MISMATCH"  # extra: {forced_class, detected_class, fill_technique}
+GROUND_SEWN = "GROUND_SEWN"                    # extra: {shape_id, area_frac, area_mm2, span_frac, delta_e, thread_number, thread_name, thread_rgb, border_rgb, thread_mm} — the design-spanning shape that sews the artwork's OWN background colour, i.e. the page behind the logo sewn as if it were the logo
 
 # The stage-6 warning this module re-reads. Owned by the contour-fill lane
 # (warnings_codes.CONTOUR_RING_UNREACHABLE); named by string so preflight
@@ -167,6 +170,14 @@ _CONTOUR_RING_UNREACHABLE = "CONTOUR_RING_UNREACHABLE"
 # signal computation entirely), so `_is_photo_class` checks cfg.forced_class
 # first.
 _CLASSIFIED_PHOTO = ("CLASSIFIED_PHOTO_SUBJECT", "CLASSIFIED_PHOTO_SCENE")
+
+# Stage 1.25's detection verdict (cfg.detect_photographic), re-read the same
+# way. Not a classification — detection never moves the class, it answers the
+# separate "is this photographic CONTENT" question — but it reaches preflight
+# by exactly the same route the classifier's verdict does, and for the same
+# reason: the pipeline said what it decided, preflight carries that rather
+# than re-running two detectors of its own.
+_PHOTO_DETECTED = "PHOTO_DETECTED"
 
 # The photo auto-route's announcement (warnings_codes.PHOTO_AUTO_TIER, emitted
 # by pipeline.run_stages), re-read by the density check under the same
@@ -291,6 +302,32 @@ _COVERAGE_FLOOR_UNITS = 0.25
 # magnitude bigger. The finding sums every patch at or over this size.
 _COVERAGE_MIN_PATCH_MM2 = 25.0
 
+# Legibility on the render (quality review 2026-09-08 item 11, built
+# 2026-09-10 behind `cfg.legibility_check`, DEFAULT OFF): per text cluster,
+# the edit similarity between what tesseract reads off the artwork and off
+# the thread render (`legibility.measure`; 1.0 the thread says what the art
+# says). RULED by Kent 2026-09-10 (option A of docs/superpowers/plans/
+# 2026-09-10-legibility-yardstick.md §5): a warn under 0.5, never a block,
+# and the check ON by default. Read off the corpus on this engine AND the
+# OCR crops themselves (docs/renders/legibility-2026-09-10/):
+# the similarity is trustworthy at its ends and noisy in the middle. Above
+# ~0.7 the thread reads back (ENTHUSIAST 1.00, THE 1.00, HOTEL FREMONT 0.74
+# — that one depressed by banner noise on the ART side, its letters clean);
+# at 0.00 it says nothing (the screenshot's 3 mm UI rows). Between, the
+# number does not rank what the eye sees: drone's DRONE at 0.22 reads to a
+# person with its E lost (Kent's "the E on drone"), the screenshot's 9 mm
+# GOLKE line at 0.59 reads cleanly, and its 2 mm SPOTIFY at 0.50 is blobs.
+# So no similarity band separates LOST lettering from DAMAGED lettering,
+# and the check WARNS and never blocks: a warn under 0.5 catches every row
+# Kent named or no eye reads (Bridge Bar's whole design 0.13 — "Resturant
+# was dropped completely", DRONE 0.22/0.36, NVISK and 5G4 0.00) and stays
+# silent on every row that reads (GOLKE 0.59, HOTEL FREMONT 0.74); SPOTIFY
+# at 0.50 is the one miss, 2 mm lettering LETTERING_TOO_SMALL already
+# names. LEGIBILITY_BLOCK is 0.0 — never — until a picture supports one,
+# which is what Kent ruled.
+LEGIBILITY_BLOCK = 0.0
+LEGIBILITY_WARN = 0.5
+
 # --- Artwork left uncovered -------------------------------------------------
 
 # The instrument for "the engine meant to sew this and part of it got no
@@ -349,6 +386,23 @@ _UNCOVERED_ERODE_MM = 0.4
 # are reported unconditionally and are the honest output; the finding is the
 # opinionated part.
 _UNCOVERED_MIN_PATCH_MM2 = 5.0
+# The thread-match check's own patch floor, the sibling's number (quality
+# review 2026-09-08 item 11, built 2026-09-10). Until then THREAD_MATCH_POOR
+# had NO area floor: judged per thread on its worst graded patch, it told
+# `logo_gaulke_roofing` "do not sew" over 63.6 dE00 on a 0.58 mm2 shard in
+# the words `drone_render` got for 14.1 dE00 over 1,648 mm2 — measured
+# 2026-09-06 over the seven F-grade fixtures, the worst shape behind a
+# blocking finding ran 0.58-1,648.5 mm2, 12 of 23 under 5 mm2. A graded row
+# whose FOOTPRINT (its own eroded, aligned pixels — a shade band's strip,
+# not its parent region) is under this cannot set a thread's severity: the
+# thread is judged on its worst patch at or above it, sub-floor offenders
+# ride in `extra.regions` flagged `sub_floor`, and a thread whose offenders
+# are all sub-floor emits nothing, exactly as `_uncovered_findings` drops a
+# sub-floor patch. One constant, not two: a patch too small to be worth an
+# uncovered finding is too small to condemn a spool over. The 2.0 / 5.0 /
+# 10.0 sweep is in docs/superpowers/plans/2026-09-10-legibility-yardstick.md
+# §4.1. A row with no footprint (a caller-built row) is judged as before.
+_THREAD_MATCH_MIN_PATCH_MM2 = _UNCOVERED_MIN_PATCH_MM2
 
 # Fraction of a run's direction changes that must reverse (turn past 120 deg)
 # before the run is read as a satin COLUMN rather than a path. A column lays
@@ -730,6 +784,7 @@ def _region_color_errors(p, result: PipelineResult, plan: StitchPlan,
             px = p.rgb[pixel_sel].reshape(-1, 3)
             if len(px) < _MIN_COLOR_PIXELS:
                 return
+            footprint_px = len(px)          # before the sample cap below
             if len(px) > _COLOR_SAMPLE_PX:
                 idx = np.linspace(0, len(px) - 1,
                                   _COLOR_SAMPLE_PX).astype(np.int64)
@@ -741,6 +796,10 @@ def _region_color_errors(p, result: PipelineResult, plan: StitchPlan,
                 "thread_index": thread_index,
                 "delta_e": float(np.median(deltaE_ciede2000(lab_px, lab_thr))),
                 "artwork_rgb": [int(v) for v in np.median(px, axis=0)],
+                # The graded patch's own size in mm2 — the eroded, aligned
+                # pixels this row was judged on (a shade band's strip, not
+                # its parent region), read by the thread-match floor.
+                "footprint_mm2": footprint_px / (p.px_per_mm ** 2),
                 "_lab_px": lab_px,
             })
 
@@ -934,21 +993,33 @@ def _thread_match_findings(p, result: PipelineResult, plan: StitchPlan,
                 r["_alt"] = None
             # WHAT JUDGES IS UNCHANGED. Excess is REPORTED on every route;
             # only the photo route is SCORED on it. Whether the gradient lane
-            # should also be judged on excess is a product call (a logo's
-            # palette can be changed, a photograph's cannot) — recorded as
-            # disagreement 4 in docs/yardstick-disagreements-2026-09-06.md,
-            # deliberately not taken here. So no severity and no grade moves.
+            # should also be judged on excess was a product call (a logo's
+            # palette can be changed, a photograph's cannot) — disagreement 4
+            # in docs/yardstick-disagreements-2026-09-06.md — and Kent RULED
+            # it 2026-09-10: the gradient lane stays on raw distance, because
+            # the customer can buy the closer cone this finding names. So no
+            # severity and no grade moves, by ruling now rather than by
+            # deferral.
             r["_score"] = r["_excess"] if (photo and want_alt) else r["delta_e"]
 
         offenders = sorted((r for r in t_rows if r["_score"] > DELTA_E_VISIBLE),
                            key=lambda r: -r["_score"])
-        if not offenders:
+        # The sibling floor (`_THREAD_MATCH_MIN_PATCH_MM2`, 2026-09-10): an
+        # offender whose graded footprint is under it cannot set the
+        # severity. It is still listed, flagged, so a review screen can
+        # point at it; the thread is judged on its worst patch at or above
+        # the floor, and one with nothing above it emits no finding.
+        sub_floor = [r for r in offenders
+                     if r.get("footprint_mm2") is not None
+                     and r["footprint_mm2"] < _THREAD_MATCH_MIN_PATCH_MM2]
+        judged = [r for r in offenders if r not in sub_floor]
+        if not judged:
             continue
-        top = offenders[0]
+        top = judged[0]
         thread = chart[t]
         clearly = top["_score"] > DELTA_E_CLEARLY_DIFFERENT
         what = "is clearly a different color than" if clearly else "is visibly off"
-        n = len(offenders)
+        n = len(judged)
         # How big the offender actually is. This check has NO area floor —
         # measured 2026-09-06 over the seven F-grade fixtures, the worst shape
         # behind a blocking finding runs min 0.58 mm2, p50 3.17, max 1,648.5,
@@ -1018,14 +1089,24 @@ def _thread_match_findings(p, result: PipelineResult, plan: StitchPlan,
             worst_shape_area_mm2=(None if area is None else round(area, 2)),
             worst_shape_area_frac=(None if area is None or not total_area
                                    else round(area / total_area, 5)),
+            # The graded patch that JUDGED — its own eroded footprint, which
+            # on a shade band is the band's strip and not the region above.
+            worst_patch_mm2=(None if top.get("footprint_mm2") is None
+                             else round(top["footprint_mm2"], 2)),
             region_count=n,
             regions_scored=len(t_rows),
+            # Offenders too small to judge under `_THREAD_MATCH_MIN_PATCH_MM2`;
+            # each is in `regions` below with `sub_floor: True`.
+            sub_floor_count=len(sub_floor),
             # Offenders are ORDERED by whichever yardstick judged them, so an
             # entry carries its excess too wherever one was found — otherwise
             # the list reads as unsorted by the only number it shows. Same
             # `_excess`-not-`_score` rule as above.
             regions=[{"shape_id": r["shape_id"],
                       "delta_e": round(r["delta_e"], 1),
+                      **({} if r.get("footprint_mm2") is None
+                         else {"footprint_mm2": round(r["footprint_mm2"], 2)}),
+                      **({} if r not in sub_floor else {"sub_floor": True}),
                       **({} if r["_alt"] is None
                          else {"excess_delta_e": round(r["_excess"], 1)})}
                      for r in offenders],
@@ -1047,12 +1128,19 @@ def _is_photo_class(plan: StitchPlan, cfg: PipelineConfig) -> bool:
     classifier's own published verdict is re-read from plan.warnings, the
     `_contour_findings` pattern. CLASSIFICATION_UNCERTAIN designs fell back
     to flat and correctly read False here.
+
+    Stage 1.25's PHOTO_DETECTED counts too (2026-09-11): a photograph EXIF or
+    a face identified is photographic content whatever tier stage 0 routed it
+    to, which is the whole point of the split. It sits BELOW the declaration
+    check, so an explicit False still suppresses everything — the caller
+    outranks a detector, in both directions.
     """
     if cfg.is_photographic is not None:
         return bool(cfg.is_photographic)
     if cfg.forced_class in PHOTO_CLASSES:
         return True
-    return any(w.get("code") in _CLASSIFIED_PHOTO for w in plan.warnings)
+    return any(w.get("code") in _CLASSIFIED_PHOTO or w.get("code") == _PHOTO_DETECTED
+               for w in plan.warnings)
 
 
 def _photo_resolution_findings(p, plan: StitchPlan,
@@ -1158,6 +1246,129 @@ def _face_size_findings(plan: StitchPlan) -> tuple[list[dict], dict]:
         design_mm=[round(float(v), 1) for v in plan.design_size_mm],
         fits_hoop_mm=FACE_BLOCK_HOOP_MM,
         min_hoop_mm=list(FACE_MIN_HOOP_MM),
+    )], metrics
+
+
+# --- The ground sewn as artwork ----------------------------------------------
+#
+# The failure this exists for is the one `letterbox.py` names one level up:
+# POLARITY. When stage 1's border flood cannot find the ground, the ground
+# does not stop existing — it becomes the largest shape in the design and
+# sews, in a thread chosen to match it. Nothing downstream can tell that from
+# a legitimate design that happens to fill its frame, and nothing upstream
+# raises anything: `BACKGROUND_ABSENT` says "no background found", which is a
+# statement about the SEARCH, not about the file that came out of it.
+#
+# Measured 2026-09-14 across twelve fixtures, every one digitized at 80 mm /
+# left_chest. The two designs whose ground is genuinely sewn, and the ten
+# whose largest shape is real artwork:
+#
+#   case           span%   area%   dE(thread, border)   ground?
+#   golke           98.3    79.9                 0.20   YES  (post letterbox crop;
+#                                                            the card no longer sews
+#                                                            since the 2026-09-15 strip
+#                                                            trim — the thresholds were
+#                                                            NOT re-sited, and summit
+#                                                            remains the tight side)
+#   summit          96.8    60.1                10.99   YES  (vignette ground)
+#   ribbon_curve    99.9   100.0                47.48   no
+#   bg_uncertain    99.7   100.0                72.66   no
+#   becker          66.5    28.4                 4.73   no
+#   golden_tee      12.1    20.2                11.14   no
+#   drone           47.8    47.4                16.17   no
+#   tires           47.5    58.1                98.88   no
+#   logo_whitebg    32.7    44.5                47.48   no
+#   logo_alpha      32.9    44.5                46.30   no
+#   bridge_bar      32.9    45.9                29.28   no
+#   enthusiast       8.2    12.8                47.83   no
+#
+# **NEITHER TEST WORKS ALONE, and that is the whole design.** Colour alone
+# accepts `becker` (4.73) and `golden_tee` (11.14) — both CLOSER to their
+# border than summit's real ground is — because a logo may legitimately be
+# painted in its page's own colour. Span alone accepts `ribbon_curve` and
+# `bg_uncertain`, which fill their frames on purpose. Requiring both leaves
+# four fixtures at span >= 0.90, and their distances are 0.20, 10.99, 47.48,
+# 72.66: any threshold between 11 and 47 separates them exactly.
+#
+# The margin is asymmetric and the tight side is the MISS side: 1.0 below the
+# gate to summit, 35.5 above it to the nearest clean fixture. So this check
+# fails toward silence, which is the right direction for something wired to a
+# download confirm.
+_GROUND_SPAN_MIN = 0.90     # the shape covers this fraction of the design's own bbox, both axes
+_GROUND_DELTA_E = 12.0      # CIEDE2000 from the sewn thread to the artwork's dominant border colour
+_GROUND_AREA_MIN = 0.25     # of the design's total stitched area — below this it is trim, not ground
+_GROUND_AREA_BLOCK = 0.40   # at or above this, the ground IS the design (golke 0.799, summit 0.601)
+
+
+def _ground_sewn_findings(p, result: PipelineResult,
+                          cfg: PipelineConfig) -> tuple[list[dict], dict]:
+    """The design-spanning shape that sews the artwork's own background colour.
+
+    Judged on the THREAD rather than on the artwork pixels under the shape,
+    for two reasons. The operator's question is about what comes off the
+    machine — a cone the width of the whole design, in the colour of the page
+    — and the thread is that answer directly. And it needs no second
+    rasterization pass: `_region_color_errors` already re-reads the artwork
+    for the thread-match check, and duplicating that cost to reach a number
+    that measured WORSE is not a trade worth making (artwork-median distance
+    reads 0.00 on both `becker` and `golden_tee`, which are clean).
+    """
+    metrics = {"ground_span_frac": None, "ground_delta_e": None,
+               "ground_area_frac": None}
+    regions = getattr(result, "regions", None) or []
+    dw, dh = getattr(result, "design_size_mm", (0.0, 0.0))
+    if not regions or not dw or not dh or p is None:
+        return [], metrics
+
+    total_area = sum(r.area_mm2 for r in regions)
+    if total_area <= 0:
+        return [], metrics
+
+    biggest = max(regions, key=lambda r: r.area_mm2)
+    x0, y0, x1, y1 = biggest.polygon.bounds
+    span = (min(1.0, (x1 - x0) / dw)) * (min(1.0, (y1 - y0) / dh))
+    area_frac = biggest.area_mm2 / total_area
+
+    thread = chart_for(cfg)[biggest.thread_index]
+    # The artwork's own page colour, read off the raster's border. Under
+    # `cfg.alpha_edge_extend` the raster's border carries nearest-opaque
+    # colour (stage 1 extends it under the transparency for every reader);
+    # the file's own colour there is `p.raw_rgb`, which is what this
+    # finding has always read and must keep reading.
+    border_rgb = _dominant_border_color(p.raw_rgb if getattr(p, "raw_rgb", None) is not None else p.rgb)
+    # Same CIEDE2000-on-skimage-rgb2lab convention as every other colour
+    # distance in this module (`threads.rgb_to_lab`, never cv2's 8-bit Lab).
+    delta_e = float(deltaE_ciede2000(
+        rgb_to_lab(np.asarray(thread.rgb, np.uint8).reshape(1, 3)),
+        rgb_to_lab(np.asarray(border_rgb, np.uint8).reshape(1, 3)),
+    )[0])
+
+    metrics.update({"ground_span_frac": round(float(span), 3),
+                    "ground_delta_e": round(float(delta_e), 2),
+                    "ground_area_frac": round(float(area_frac), 3)})
+
+    if (span < _GROUND_SPAN_MIN or delta_e >= _GROUND_DELTA_E
+            or area_frac < _GROUND_AREA_MIN):
+        return [], metrics
+
+    severity = "block" if area_frac >= _GROUND_AREA_BLOCK else "warn"
+    return [finding(
+        GROUND_SEWN, severity,
+        f"The biggest shape in this design is {thread.number} "
+        f"{thread.name} — the same color as the artwork's own background — "
+        f"and it spans the whole design, {area_frac * 100:.0f}% of the "
+        "stitching. That is usually the page behind the logo rather than "
+        "part of it. Sewn, it fills the garment with thread the color of "
+        "the cloth and leaves the logo as bare fabric. Delete that shape in "
+        "review, or confirm the background really is meant to sew.",
+        shape_id=biggest.shape_id,
+        area_frac=round(float(area_frac), 3),
+        area_mm2=round(float(biggest.area_mm2), 1),
+        span_frac=round(float(span), 3),
+        delta_e=round(float(delta_e), 2),
+        thread_number=thread.number, thread_name=thread.name,
+        thread_rgb=[int(v) for v in thread.rgb],
+        border_rgb=[int(v) for v in border_rgb],
     )], metrics
 
 
@@ -1695,12 +1906,22 @@ def _satin_rail_advance_mm(plan: StitchPlan) -> float | None:
 
     Rails alternate A, B, A, B ... so two apart is the same rail — measured
     two-apart, never sliced at fixed parity (the playbook's parity trap).
+
+    On the RAILS, with the split penetrations stripped (2026-09-19): a
+    split satin column carries one or more penetrations along each cross
+    (`stage6_satin.strip_splits` is the reader every other instrument here
+    uses), and with them in the list "two apart" is a mid-cross hop, not
+    the rail pitch — the lettering plan's 127 mm fixture under
+    `satin_lettering_split` read 1.09 mm against the 0.40 target and raised
+    `DENSITY_EXTREME` on columns sewn at 0.43 (the same trap in its second
+    form: the parity is broken by the splits instead of the slicing).
+    Unsplit runs are unchanged by the strip.
     """
     adv: list[float] = []
     for _b, run in plan.iter_runs():
         if run.kind != stitches.SATIN:
             continue
-        pts = run.points
+        pts = strip_splits(run.points)
         for i in range(len(pts) - 2):
             adv.append(math.dist(pts[i], pts[i + 2]))
     if len(adv) < _MIN_SAMPLES:
@@ -2789,6 +3010,71 @@ def _same_hole_findings(plan: StitchPlan) -> tuple[list[dict], float | None]:
     )], rate
 
 
+# --- Legibility on the render -----------------------------------------------
+
+def _legibility_findings(p, result: PipelineResult, plan: StitchPlan,
+                         cfg: PipelineConfig) -> tuple[list[dict], dict]:
+    """What the thread SAYS against what the artwork says, per text cluster
+    (`legibility.measure`), aggregated to ONE finding per design the way the
+    lettering and thread checks are: the worst sewn, readable cluster judges,
+    every cluster rides in `extra.rows`, and the message names the words the
+    thread does not say. The second value is the metrics, `legibility_checked`
+    True — the caller writes the False side, so a report always says whether
+    this ran and a missing check is never read as a clean one.
+    """
+    r = _legibility.measure(p, result, plan)
+    judged = [row for row in r["rows"]
+              if row["similarity"] is not None and row.get("sewn", True)]
+    worst = min(judged, key=lambda row: row["similarity"]) if judged else None
+    metrics = {
+        "legibility_checked": True,
+        "legibility": r["legibility"],
+        "legibility_clusters": r["clusters"],
+        "legibility_readable": r["readable_on_art"],
+        "legibility_worst": None if worst is None else round(worst["similarity"], 3),
+    }
+    rows = [{"cluster": row["cluster"], "height_mm": row["height_mm"],
+             "art_text": _legibility.normalise(row["art_text"]),
+             "art_conf": row["art_conf"],
+             "render_text": _legibility.normalise(row["render_text"]),
+             "render_conf": row["render_conf"],
+             "similarity": (None if row["similarity"] is None
+                            else round(row["similarity"], 3)),
+             "sewn": row.get("sewn", True), "enclosed": row.get("enclosed", False)}
+            for row in r["rows"]]
+    if worst is None or worst["similarity"] >= LEGIBILITY_WARN:
+        return [], metrics
+    lost = [row for row in judged if row["similarity"] < LEGIBILITY_WARN]
+    clearly = worst["similarity"] < LEGIBILITY_BLOCK
+    art = _legibility.normalise(worst["art_text"])
+    render = _legibility.normalise(worst["render_text"]) or "nothing legible"
+    what = ("is lost on the thread" if clearly else "is damaged on the thread")
+    where = (f"the lettering" if len(judged) == 1
+             else f"{len(lost)} of the {len(judged)} text clusters")
+    # Both sides are READINGS — tesseract's, of the artwork and of the thread
+    # render. The first draft said "the artwork says \u2018DROM\u2019", which
+    # tells a customer their own art says something it does not: DROM is what
+    # the OCR made of DRONE. Attribute both readings to the reading.
+    return [finding(
+        LETTERING_ILLEGIBLE,
+        "block" if clearly else "warn",
+        f"Reading the stitched design back, {where} {what}: the artwork reads "
+        f"\u2018{art}\u2019 where the thread reads \u2018{render}\u2019 "
+        f"({worst['similarity']:.0%} of the letters match). Make the lettering "
+        f"bigger or simpler before sewing.",
+        clusters=r["clusters"],
+        readable=r["readable_on_art"],
+        judged=len(judged),
+        lost=len(lost),
+        worst_cluster=worst["cluster"],
+        worst_similarity=round(worst["similarity"], 3),
+        worst_art_text=art,
+        worst_render_text=_legibility.normalise(worst["render_text"]),
+        legibility=r["legibility"],
+        rows=rows,
+    )], metrics
+
+
 # --- The report -------------------------------------------------------------
 
 def run_preflight(result: PipelineResult, plan: StitchPlan,
@@ -2824,6 +3110,32 @@ def run_preflight(result: PipelineResult, plan: StitchPlan,
         findings.extend(thread_findings)
     metrics["thread_match_checked"] = p is not None and result is not None
     metrics["thread_worst_delta_e"] = None if worst_de is None else round(worst_de, 1)
+
+    # Legibility on the render — what the thread SAYS against what the art
+    # says, per text cluster. Needs the artwork, the regions (the clusters)
+    # and the tesseract binary; `cfg.legibility_check` (ON by default since
+    # 2026-09-10, Kent's ruling), and the report says whether it ran either
+    # way.
+    if (cfg.legibility_check and p is not None and result is not None
+            and _legibility.tesseract_available()):
+        leg_findings, leg_metrics = _legibility_findings(p, result, plan, cfg)
+        findings.extend(leg_findings)
+        metrics.update(leg_metrics)
+    else:
+        metrics.update({"legibility_checked": False, "legibility": None,
+                        "legibility_clusters": None, "legibility_readable": None,
+                        "legibility_worst": None})
+
+    # The ground sewn as artwork. Needs the artwork (for its border colour)
+    # AND the regions (for the shape that spans the design), so it sits with
+    # the other checks that re-read `p` rather than with the plan-only ones.
+    if p is not None and result is not None:
+        ground_findings, ground_metrics = _ground_sewn_findings(p, result, cfg)
+        findings.extend(ground_findings)
+        metrics.update(ground_metrics)
+    else:
+        metrics.update({"ground_span_frac": None, "ground_delta_e": None,
+                        "ground_area_frac": None})
 
     if p is not None:
         res_findings, res_metrics = _photo_resolution_findings(p, plan, cfg)

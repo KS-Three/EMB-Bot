@@ -205,12 +205,20 @@ def test_quantize_is_deterministic():
 # --- stage 3: small-region policy ----------------------------------------
 
 
-def test_subsewable_details_are_absorbed_or_dropped_but_always_reported(whitebg):
+def test_subsewable_details_are_absorbed_or_dropped_but_always_reported(whitebg_pre_flip):
     # The fixture has a ~1 mm teal patch on the circle's edge (absorbed into
     # the circle) and an isolated ~1 mm dot (nothing to absorb into: dropped).
-    assert ABSORBED_SMALL_SHAPES in codes(whitebg)
-    assert DROPPED_SMALL_SHAPES in codes(whitebg)
-    teal = [r for r in whitebg.regions if r.thread_number == "4531"]
+    #
+    # `whitebg_pre_flip`, not `whitebg`, since 2026-09-13: `cfg.keep_thin_
+    # strokes` is ON by default now (Kent's ruling), and the whole point of
+    # that flag is that a CONTRASTING sub-floor region is kept for the run
+    # tier instead of absorbed — so on the shipped engine this teal patch
+    # does survive as a region and nothing is absorbed here at all. That arm
+    # is pinned in `tests/test_keep_thin_strokes.py`; the absorb policy this
+    # test is about is still the flag's OFF behaviour, and still reachable.
+    assert ABSORBED_SMALL_SHAPES in codes(whitebg_pre_flip)
+    assert DROPPED_SMALL_SHAPES in codes(whitebg_pre_flip)
+    teal = [r for r in whitebg_pre_flip.regions if r.thread_number == "4531"]
     assert teal == [], "the sub-sewable teal patch should not survive as a region"
 
 
@@ -268,10 +276,14 @@ def test_small_enclosed_hole_is_not_absorbed_into_its_enclosing_letter():
     assert hole_region.area_mm2 > 1.0, "the real counter, not a noise scrap"
 
 
-def test_antialias_cleanup_is_not_reported_as_lost_artwork(whitebg):
+def test_antialias_cleanup_is_not_reported_as_lost_artwork(whitebg_pre_flip):
     # ~30 sliver regions get cleaned up; reporting all of them would train
     # the user to ignore the warnings panel. Only intentional-sized art counts.
-    absorbed = next(w for w in whitebg.warnings if w["code"] == ABSORBED_SMALL_SHAPES)
+    #
+    # `whitebg_pre_flip` since 2026-09-13, for the reason the test above
+    # gives: with `cfg.keep_thin_strokes` ON this fixture emits no
+    # ABSORBED_SMALL_SHAPES warning at all, so there is no count to bound.
+    absorbed = next(w for w in whitebg_pre_flip.warnings if w["code"] == ABSORBED_SMALL_SHAPES)
     assert absorbed["count"] < absorbed.get("cleaned_total", absorbed["count"]) + 1
     assert absorbed["count"] <= 3, absorbed
 

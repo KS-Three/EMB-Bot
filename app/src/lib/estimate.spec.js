@@ -9,7 +9,7 @@ import { createRequire } from "node:module";
 beforeAll(() => {
   const require = createRequire(import.meta.url);
   globalThis.window = globalThis;
-  for (const f of ["units", "garments", "fabrics", "fill", "geometry", "satin",
+  for (const f of ["units", "sewtime", "garments", "fabrics", "fill", "geometry", "satin",
                    "satinplay", "satinfont", "fontbin", "dst", "fonts", "digitize"])
     require("../../../src/" + f + ".js");
 });
@@ -79,7 +79,10 @@ test("without the engine's factor there is NO metres row, not a wrong one", asyn
     expect(sewFacts(D).threadM).toBeNull();
     expect(sewSummary(D).map((r) => r.label)).not.toContain("Thread");
     // Everything countable is still counted — only the estimate is withheld.
-    expect(sewSummary(D).map((r) => r.label)).toEqual(["Size", "Stitches", "Thread changes", "Trims"]);
+    // "Run time" survives a missing thread factor on purpose: it is derived
+    // from stitches and trims, which are still known. Only the thread
+    // estimate depends on the factor, and only it is withheld.
+    expect(sewSummary(D).map((r) => r.label)).toEqual(["Size", "Stitches", "Run time", "Thread changes", "Trims"]);
   } finally {
     EMB.THREAD_LENGTH_FACTOR = real;
   }
@@ -87,8 +90,13 @@ test("without the engine's factor there is NO metres row, not a wrong one", asyn
 
 test("the rows read in the order an operator uses them", async () => {
   const { sewSummary } = await import("./estimate.js");
-  expect(sewSummary(D).map((r) => r.label)).toEqual(["Size", "Stitches", "Thread changes", "Trims", "Thread"]);
-  expect(sewSummary(D).map((r) => r.value)).toEqual(["30 × 10 mm", "7", "1", "1", "0.1 m (estimate)"]);
+  // "Run time" joined 2026-09-20 in the slot this function's own header has
+  // described since it was written ("how big, how long it runs, how many
+  // times they have to touch it, how much thread"). D is 7 stitches and 1
+  // trim: 7 + 120 = 127 equivalents, well under a minute, so it floors to the
+  // "~1 min" that stops a real job reading as "nothing to do".
+  expect(sewSummary(D).map((r) => r.label)).toEqual(["Size", "Stitches", "Run time", "Thread changes", "Trims", "Thread"]);
+  expect(sewSummary(D).map((r) => r.value)).toEqual(["30 × 10 mm", "7", "~1 min at 650 spm", "1", "1", "0.1 m (estimate)"]);
 });
 
 test("a single-colour design reports no thread change, and zero trims IS reported", async () => {
@@ -124,4 +132,43 @@ test("a real lettering design's facts agree with what the field caption says", a
   // metres of thread, not centimetres and not kilometres.
   expect(f.threadM).toBeGreaterThan(0.3);
   expect(f.threadM).toBeLessThan(20);
+});
+
+// --- how long it runs (2026-09-20) ------------------------------------------
+
+test("sewSummary states run time, which its own comment already promised", async () => {
+  // The function's header has described these rows as "how big, HOW LONG IT
+  // RUNS, how many times they have to touch it, how much thread" since it was
+  // written — and the row it names second did not exist. Machine time is the
+  // number a shop schedules on, and the one that decides whether a stop-heavy
+  // design is worth re-digitizing.
+  const { sewSummary } = await import("./estimate.js");
+  const stitches = [];
+  for (let i = 0; i < 6500; i++) stitches.push({ x: i, y: 0, type: "stitch" });
+  stitches.push({ x: 0, y: 0, type: "trim" });
+  stitches.push({ x: 1, y: 1, type: "stitch" });
+  const rows = sewSummary({ widthMM: 100, heightMM: 50, stitches });
+  const run = rows.find((r) => r.label === "Run time");
+  expect(run).toBeTruthy();
+  // 6,501 stitches + 1 trim x 120 = 6,621 / 650 spm -> 10 min, and the basis
+  // travels with the number rather than being left to the reader.
+  expect(run.value).toBe("~10 min at 650 spm");
+});
+
+test("the run-time row sits where the operator reads it, right after the stitches", async () => {
+  const { sewSummary } = await import("./estimate.js");
+  const rows = sewSummary({
+    widthMM: 100,
+    heightMM: 50,
+    stitches: [{ x: 0, y: 0, type: "stitch" }, { x: 5, y: 5, type: "stitch" }],
+  });
+  const labels = rows.map((r) => r.label);
+  expect(labels.indexOf("Run time")).toBe(labels.indexOf("Stitches") + 1);
+});
+
+test("a design with nothing sewn still reports no rows at all", async () => {
+  // The run-time row must not resurrect the "0 stitches" noise sewSummary
+  // exists to avoid.
+  const { sewSummary } = await import("./estimate.js");
+  expect(sewSummary({ widthMM: 10, heightMM: 10, stitches: [] })).toEqual([]);
 });

@@ -36,6 +36,7 @@ from digitizer_core.preflight import (
     DELTA_E_VISIBLE,
     DENSITY_EXTREME,
     DENSITY_STACKED,
+    GROUND_SEWN,
     LETTERING_TOO_SMALL,
     LINK_UNCOVERED,
     PHOTO_MIN_PX_PER_MM,
@@ -148,7 +149,16 @@ def test_a_clean_real_plan_earns_a_clean_report(whitebg, plan):
     assert m["input_px_per_mm"] == pytest.approx(8.39, abs=0.05)
     assert m["input_px_per_mm"] < PHOTO_MIN_PX_PER_MM
     assert m["subject_bg_delta_l"] == pytest.approx(59.2, abs=0.5)
-    assert m["color_changes"] == 4
+    # 5, not 4, since 2026-09-11: the design-silhouette cap sews as its own
+    # block in a cone the design already loads, so the operator really does
+    # get one more stop. Kent ruled that price acceptable (the alternative
+    # put a 5.4%-frontage cone on gaulke's edge instead of a 95.0% one).
+    # 6, not 5, since 2026-09-13: `cfg.keep_thin_strokes` ON by default
+    # (Kent's ruling) keeps this fixture's ~1.2 mm teal patch as its own run
+    # in its own thread, which is a sixth colour block and a sixth cone. The
+    # whole arithmetic is pinned in `tests/test_keep_thin_strokes.py`; this
+    # number is the report reading it.
+    assert m["color_changes"] == 6
 
 
 # --- Thread color fidelity ---------------------------------------------------
@@ -261,8 +271,11 @@ def test_a_bimodal_thread_is_judged_by_its_worst_region_not_the_pool():
     assert "Sbad" in hit[0]["message"]
     assert hit[0]["extra"]["region_count"] == 1
     assert hit[0]["extra"]["regions_scored"] == 2
-    assert hit[0]["extra"]["regions"] == [
-        {"shape_id": "Sbad", "delta_e": hit[0]["extra"]["delta_e"]}]
+    # `regions` rows carry their graded footprint since 2026-09-10 (the
+    # thread-match floor reads it); the id and the distance are the pins.
+    assert [(r["shape_id"], r["delta_e"]) for r in hit[0]["extra"]["regions"]] == [
+        ("Sbad", hit[0]["extra"]["delta_e"])]
+    assert hit[0]["extra"]["regions"][0]["footprint_mm2"] >= 5.0
     # The worst-region number rides out as the metric to watch.
     assert report["metrics"]["thread_worst_delta_e"] == hit[0]["extra"]["delta_e"]
     json.dumps(report)
@@ -1693,9 +1706,12 @@ def test_color_stops_past_the_single_needle_wall_warn():
     hit = [f for f in report["findings"] if f["code"] == COLOR_STOPS_HEAVY]
     assert len(hit) == 1
     assert hit[0]["severity"] == "warn"
-    assert hit[0]["extra"]["color_changes"] == 11
+    # 12 since the edge cap flipped on (2026-09-11): eleven artwork stops
+    # plus the cap's own block. The WALL is still 11, so this fixture is
+    # still over it — which is what the test is about.
+    assert hit[0]["extra"]["color_changes"] == 12
     assert hit[0]["extra"]["max_stops"] == COLOR_STOPS_MAX
-    assert report["metrics"]["color_changes"] == 11
+    assert report["metrics"]["color_changes"] == 12
     json.dumps(report)
 
 
@@ -1707,7 +1723,11 @@ def test_a_design_at_the_stop_cap_is_not_warned(plan):
     report = run_preflight(None, stitch_plan, cfg(**PLAN_CFG_KW))
 
     assert COLOR_STOPS_HEAVY not in _codes(report)
-    assert report["metrics"]["color_changes"] == 4
+    # +1 the edge cap's block (2026-09-11), +1 the teal run `keep_thin_
+    # strokes` keeps (2026-09-13, Kent's ruling) — both pinned in the
+    # clean-report test above. Six is still well inside the 10-stop wall
+    # this test is about.
+    assert report["metrics"]["color_changes"] == 6
 
 
 # --- Scoring -----------------------------------------------------------------
@@ -1880,8 +1900,10 @@ def test_a_dropped_limb_is_reported_and_names_its_shape(monkeypatch):
     the injection keeps its ground there; the paired product test below
     runs the shipped default.
     """
-    def unguarded(mask, spur_len_px):
-        """`_prune_spurs` exactly as it shipped before the 2026-08-21 fix."""
+    def unguarded(mask, spur_len_px, **_kw):
+        """`_prune_spurs` exactly as it shipped before the 2026-08-21 fix
+        (`**_kw` swallows `corner_twigs`, the 2026-09-19 keyword, which the
+        shipped default leaves off anyway)."""
         for _ in range(4):
             removed = 0
             for e in stage6_satin._skeleton_edges(mask):
@@ -1902,7 +1924,13 @@ def test_a_dropped_limb_is_reported_and_names_its_shape(monkeypatch):
     monkeypatch.setattr(stage6_satin, "_prune_spurs", unguarded)
 
     art = TESTDATA / "photo/enthusiast_logo.png"
-    c = cfg(target_width_mm=150.0, max_colors=6, subpixel_edges=False)
+    # On the pre-flip junction engine too (`satin_junction_stack`, ON since
+    # 2026-09-19): its part C sews the satin junction cover under the arms
+    # by default, and the cover patches exactly the hole this injection
+    # makes -- the finding it must fire is then, correctly, not raised. The
+    # positive case keeps its ground on the engine it was read on.
+    c = cfg(target_width_mm=150.0, max_colors=6, subpixel_edges=False,
+            satin_junction_stack=False)
     result, plan_ = digitize(art, c)
     report = run_preflight(result, plan_, c, image=art)
 
@@ -1958,13 +1986,58 @@ def test_a_full_bleed_design_does_not_report_its_own_border():
     `borderValue=0`. A check that fires on every full-bleed logo is a check
     operators learn to ignore.
     """
-    art = TESTDATA / "photo/logo_gaulke_roofing.png"
+    from digitizer_core.stage1_prep import prep
+
+    art = TESTDATA / "photo/photo_chrome_specular.png"
     c = cfg(target_width_mm=90.0, max_colors=6)
+
+    # RE-POINTED 2026-09-15 from `photo/logo_gaulke_roofing.png`, exactly as
+    # the note that stood here asked: the 2026-09-15 edge-strip trim
+    # (`letterbox.detect_edge_strips`) gave gaulke a background — its white
+    # card is ground now, which was the fix — so the full-bleed assertion
+    # below fired (bg_mask 0.787) and that file stopped testing full bleed.
+    # (A comment in `test_letterbox.py` named a `testdata/full_bleed_bars.png`
+    # as this guard's home; no such file was ever committed.)
+    #
+    # `photo_chrome_specular.png` is full bleed on its own pixels — stage 1
+    # reports BACKGROUND_ABSENT, `bg_mask` 0.000%, art bbox the whole frame —
+    # and it CATCHES the bug, measured by putting it back: with `cv2.erode`'s
+    # default border this design reads **147.5 mm²** uncovered (the rim
+    # strip), and 0.0 with `borderValue=0`. That second number is why it was
+    # chosen over the other seven full-bleed fixtures: a guard is only a guard
+    # if the defect is visible on it.
+    #
+    # Asserted rather than assumed, because the property is the entire reason
+    # this test uses this file: if a future change gives the design a
+    # background, this guard has silently stopped testing full bleed and must
+    # be re-pointed, not re-tuned.
+    p = prep(art, c)
+    assert p.bg_mask.mean() == 0.0, "fixture is no longer full-bleed"
+    assert p.art_bbox == (0, 0, p.rgb.shape[1], p.rgb.shape[0])
+
     result, plan_ = digitize(art, c)
     report = run_preflight(result, plan_, c, image=art)
 
     assert _uncovered(report) is None
-    assert report["metrics"]["uncovered_worst_mm2"] == 0.0
+    # The defect's own signature is a PERMANENT STRIP down the rim — present
+    # at every erosion width, 37.5 mm² when it was measured. A strip cannot
+    # be a rounding artefact, so the quantity that separates it from healthy
+    # noise is the TOTAL qualifying uncovered area, and that reads 0.0 here.
+    #
+    # This used to assert only `uncovered_worst_mm2 < 1.0`, a single number
+    # that drifted with unrelated work: `== 0.0` until 2026-09-13
+    # (`cfg.keep_thin_strokes` ON by default gained gaulke sub-floor
+    # regions), then `< 1.0`, and the letterbox crop put the worst patch at
+    # exactly 1.0 — failing a guard whose defect is two orders of magnitude
+    # away. Asserting the total pins what the bug actually moved; the
+    # worst-patch bound stays as a second, deliberately loose net (37.5 mm² on
+    # gaulke when first measured; 147.5 on this fixture, measured 2026-09-15).
+    assert report["metrics"]["uncovered_total_mm2"] == 0.0, \
+        report["metrics"]["uncovered_total_mm2"]
+    assert report["metrics"]["uncovered_worst_mm2"] < 5.0, \
+        report["metrics"]["uncovered_worst_mm2"]
+    # It really did measure something, rather than passing on an empty design.
+    assert report["metrics"]["uncovered_wanted_mm2"] > 0.0
 
 
 def test_without_the_artwork_the_uncovered_check_is_skipped_and_says_so(whitebg, plan):
@@ -2319,3 +2392,100 @@ def test_a_one_cone_photo_design_is_not_silenced_by_the_rescoring():
     assert hit, "a single-cone photo design must still report an unreachable colour"
     assert hit[0]["extra"]["excess_delta_e"] is None
     assert hit[0]["extra"]["delta_e"] > DELTA_E_CLEARLY_DIFFERENT
+
+
+# --- GROUND_SEWN: the page behind the logo, sewn as if it were the logo ------
+#
+# Both halves of the check are load-bearing and neither works alone — the
+# twelve-fixture measurement is tabulated beside the thresholds in
+# `preflight._ground_sewn_findings`. These tests pin that pairing: a shape
+# that matches the ground colour but does NOT span stays silent (a logo may
+# legitimately be painted in its page's own colour — `becker` reads 4.73 dE
+# and is clean), and a shape that spans but does NOT match stays silent too
+# (`ribbon_curve` and `bg_uncertain` fill their frames on purpose).
+
+def _ground_scene(span: bool, ground_coloured: bool):
+    """A white page with one big shape on it. `span` decides whether that
+    shape covers the frame; `ground_coloured` whether it sews white."""
+    from types import SimpleNamespace
+
+    from shapely.geometry import Polygon
+
+    from digitizer_core.regions import Region
+    from digitizer_core.stage1_prep import prep
+    from digitizer_core.threads import chart_for, rgb_to_lab
+
+    c = cfg()
+    chart = chart_for(c)
+    white_i = chart.nearest_index(rgb_to_lab(np.array([[255, 255, 255]], np.uint8))[0])
+    black_i = chart.nearest_index(rgb_to_lab(np.array([[0, 0, 0]], np.uint8))[0])
+
+    # A white page with a black mark on it, so stage 1 reads a white border.
+    img = np.full((400, 500, 3), 255, np.uint8)
+    img[60:340, 80:420] = (20, 20, 20)
+    p = prep(img, c)
+
+    dw_mm, dh_mm = 100.0, 80.0
+    frac = 1.0 if span else 0.4
+    w, h = dw_mm * frac, dh_mm * frac
+    poly = Polygon([(-w / 2, -h / 2), (w / 2, -h / 2), (w / 2, h / 2), (-w / 2, h / 2)])
+    spool = white_i if ground_coloured else black_i
+
+    big = Region(shape_id="Sbig", polygon=poly, thread_index=spool,
+                 thread_number=chart[spool].number, area_mm2=float(poly.area))
+    # A second, small shape so the big one is not trivially 100% of the area
+    # in the non-spanning arm — `_GROUND_AREA_MIN` must be cleared on merit.
+    small = Polygon([(-5, -5), (5, -5), (5, 5), (-5, 5)])
+    tiny = Region(shape_id="Stiny", polygon=small, thread_index=black_i,
+                  thread_number=chart[black_i].number, area_mm2=float(small.area))
+
+    result = SimpleNamespace(regions=[big, tiny], design_size_mm=(dw_mm, dh_mm))
+    return result, img, c
+
+
+def _ground_codes(span: bool, ground_coloured: bool):
+    result, img, c = _ground_scene(span, ground_coloured)
+    empty = StitchPlan(blocks=[], palette=[])
+    return _codes(run_preflight(result, empty, c, image=img))
+
+
+def test_a_design_spanning_shape_in_the_grounds_own_colour_blocks():
+    assert GROUND_SEWN in _ground_codes(span=True, ground_coloured=True)
+
+
+def test_the_grounds_colour_alone_is_not_enough_it_must_also_span():
+    """`becker` is the real case: its largest shape sits 4.73 dE00 from its
+    own border and is perfectly good artwork. Colour without span is a logo
+    painted in its page's colour, which is not a defect."""
+    assert GROUND_SEWN not in _ground_codes(span=False, ground_coloured=True)
+
+
+def test_spanning_alone_is_not_enough_it_must_also_match_the_ground():
+    """`ribbon_curve` and `bg_uncertain` both cover 99%+ of their frames on
+    purpose, at 47.48 and 72.66 dE00 from the border. Filling the frame is a
+    design choice, not a polarity failure."""
+    assert GROUND_SEWN not in _ground_codes(span=True, ground_coloured=False)
+
+
+def test_ground_sewn_is_silent_without_the_artwork_and_says_so():
+    """`image=None` is a legitimate caller (re-scoring a stored plan), and the
+    border colour is unknowable there — the metrics must read None rather
+    than the check guessing."""
+    result, _img, c = _ground_scene(span=True, ground_coloured=True)
+    report = run_preflight(result, StitchPlan(blocks=[], palette=[]), c, image=None)
+    assert GROUND_SEWN not in _codes(report)
+    assert report["metrics"]["ground_span_frac"] is None
+    assert report["metrics"]["ground_delta_e"] is None
+
+
+def test_a_clean_fixture_reports_no_ground_and_still_measures_one():
+    """The promise every metric in this module was validated against: clean
+    work earns a clean report. `logo_whitebg` is a logo on a white field —
+    its largest shape must not be called the ground — and the metrics ride
+    out anyway so the number is auditable rather than merely absent."""
+    c = cfg()
+    report = run_preflight(run_stages(ART, c), StitchPlan(blocks=[], palette=[]),
+                           c, image=ART)
+    assert GROUND_SEWN not in _codes(report)
+    assert report["metrics"]["ground_span_frac"] is not None
+    assert report["metrics"]["ground_delta_e"] is not None

@@ -77,6 +77,12 @@ def plan_for(regions: list[Region], thread_indices: list[int] | None = None,
              source_pixels=None, **cfg_kw):
     """Build the emitted plan the same way pipeline.py does: (optional)
     depth sort, stage 5, stage 7. Returns (plan-ish, thread_indices)."""
+    # The design-silhouette cap is ON by default since 2026-09-11 (Kent's
+    # flip). These fixtures are synthetic bars whose subject is the ORDER the
+    # artwork sews in, not the design's outer edge, and a cap block would add
+    # a thread and a shape id to every expectation here without testing
+    # anything this file is about. `tests/test_edge_cap.py` owns the cap.
+    cfg_kw.setdefault("edge_cap", "none")
     c = PipelineConfig(**cfg_kw)
     if depth_sort:
         assert thread_indices is not None
@@ -308,8 +314,12 @@ def _two_square_image() -> np.ndarray:
 
 
 def test_photo_class_plan_is_depth_sorted_end_to_end():
+    # `edge_cap="none"` for the same reason `plan_for` sets it: the cap sews
+    # last in whichever cone owns most of the silhouette, which says nothing
+    # about depth sorting and would break the palette/block alignment this
+    # asserts (the cap's block is not a palette LAYER).
     result, plan = digitize(_two_square_image(), PipelineConfig(
-        target_width_mm=80.0, forced_class="photo_subject"))
+        target_width_mm=80.0, forced_class="photo_subject", edge_cap="none"))
     assert len(plan.blocks) >= 2
     lums = [_lum(b.rgb) for b in plan.blocks]
     assert lums == sorted(lums), "photo blocks sew dark→light"
@@ -320,7 +330,7 @@ def test_photo_class_plan_is_depth_sorted_end_to_end():
 
 def test_flat_class_keeps_largest_area_first_end_to_end():
     _, plan = digitize(_two_square_image(), PipelineConfig(
-        target_width_mm=80.0, forced_class="flat"))
+        target_width_mm=80.0, forced_class="flat", edge_cap="none"))
     assert len(plan.blocks) >= 2
     assert _lum(plan.blocks[0].rgb) > _lum(plan.blocks[-1].rgb), \
         "flat control: the big LIGHT square still sews first"
@@ -328,7 +338,7 @@ def test_flat_class_keeps_largest_area_first_end_to_end():
 
 def test_extra_flag_opts_a_non_photo_class_in():
     _, plan = digitize(_two_square_image(), PipelineConfig(
-        target_width_mm=80.0, forced_class="flat",
+        target_width_mm=80.0, forced_class="flat", edge_cap="none",
         extra={"photo_sequencing": True}))
     lums = [_lum(b.rgb) for b in plan.blocks]
     assert lums == sorted(lums), "explicit opt-in depth-sorts a flat design"

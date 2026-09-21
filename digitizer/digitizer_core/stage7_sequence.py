@@ -53,7 +53,7 @@ import math
 
 import shapely
 from shapely.geometry import LineString, Point, Polygon
-from shapely.ops import unary_union
+from shapely.ops import nearest_points, unary_union
 
 from . import machine, stitches
 from .config import PipelineConfig
@@ -63,7 +63,9 @@ from .gradient_band import is_gradient_band
 from .stage5_overlap import PlannedRegion, widened_lettering
 from .stage6_applique import applique_pass, nn_group_key
 from .stage6_blend import SourcePixels, blend_fill, region_rides_design_ramp
-from .stage6_border import border_runs, run_outline, silhouette_cap
+from .stage6_border import (EDGE_CAP_BUDGET_PCT,
+                            EDGE_CAP_OVER_BUDGET_ACTIONS, border_runs,
+                            run_outline, silhouette_cap)
 from .stage6_contour import contour_fill
 from .stage6_detail import detail_runs
 from .stage6_fill import best_fill_angle_deg, stitch_shape
@@ -80,7 +82,8 @@ from .warnings_codes import (BLEND_NO_REGIONS_DECOMPOSED, BORDER_LIGHTENED,
                              CONTOUR_DIRECTIONAL_COMP_UNSEWN,
                              CONTOUR_RING_UNREACHABLE, EDGE_CAP_APPLIED,
                              EDGE_CAP_EMPTY,
-                             EDGE_CAP_LIGHTENED, HAIRLINE_STROKES_AS_RUN,
+                             EDGE_CAP_LIGHTENED, EDGE_CAP_OVER_BUDGET,
+                             HAIRLINE_STROKES_AS_RUN,
                              LONG_JUMPS_TRIMMED,
                              SHAPE_NOT_STITCHED, SHAPE_TOO_THIN_TO_FILL,
                              SMALL_SHAPES_AS_RUN, warn)
@@ -100,6 +103,15 @@ _LINK_SEARCH_NODES = 120
 # must land there too, and tests/test_photo_width_floor.py pins the
 # lockstep so drift fails loud instead of quietly un-flooring a new class.
 from .config import PHOTO_CLASSES, is_photographic  # canonical copy lives in config.py
+
+# The garments that sew cap-style (cfg.cap_center_out). MIRRORED verbatim
+# from the browser engine's `capMode` predicate in `src/digitize.js` — the
+# whole point of the flag is that the two lanes stopped disagreeing about the
+# same hat, so a membership change here must land there too.
+# `fabrics.GARMENT_FABRIC` is NOT the right source: it maps `beanie` to
+# jersey, because a beanie's FABRIC is a knit even though its geometry is a
+# cap. Fabric and curvature are different questions.
+CAP_GARMENTS = ("hat_front", "beanie")
 
 # Row 14's underlay split, expressed in the vocabularies the two tiers
 # actually speak (fabrics.py's ids):
@@ -211,6 +223,20 @@ def depth_sort_layers(regions, thread_indices: list[int], chart) -> list[int]:
     return [thread_indices[L] for L in order]
 
 
+def _satin_ceiling_for(region, cfg: PipelineConfig, satin_max_mm: float
+                       ) -> tuple[float, bool, bool]:
+    """-> (width ceiling, per-stroke rung, fold guard) for THIS region: the
+    design's under `machine.satin_ceiling_mm` for every shape, and no
+    ceiling at all -- the per-stroke rung on, the fold guard on -- for a
+    text-cluster member under `cfg.satin_lettering_split` (plan step 4,
+    2026-09-19: split, never fill, for lettering). One helper, so the
+    borders-last predicate, the classifier call and the emitter agree on
+    what a letter is admitted at."""
+    if cfg.satin_lettering_split and region.meta.get("text_candidate"):
+        return math.inf, True, True
+    return satin_max_mm, cfg.satin_per_stroke, bool(cfg.wide_columns)
+
+
 def _sews_satin(region, cfg: PipelineConfig, satin_max_mm: float,
                 design_class: str) -> bool:
     """Will this region reach the satin tier? — the borders-last predicate.
@@ -249,11 +275,12 @@ def _sews_satin(region, cfg: PipelineConfig, satin_max_mm: float,
     tier = str(region.meta.get("tier", "auto")).lower()
     if tier == "satin":
         return True
+    satin_max_mm, per_stroke, _fold = _satin_ceiling_for(region, cfg, satin_max_mm)
     return (tier == "auto" and cfg.satin
             and not is_gradient_band(region)
             and is_satin_candidate(region.polygon, satin_max_mm,
                                    design_class=design_class,
-                                   per_stroke=cfg.satin_per_stroke))
+                                   per_stroke=per_stroke))
 
 
 def borders_last_layers(regions, thread_indices: list[int],
@@ -622,7 +649,7 @@ def _chain(runs: list[StitchRun], regions: list[PlannedRegion], base_thread: int
     chaining and a base-thread-tagged run met.
 
     The returned count is how many of the links replaced a lift INSIDE a shape,
-    so the operator-facing "the thread had to be lifted N times inside a shape"
+    so the operator-facing "the thread is lifted N times inside a shape"
     warning still reports what the machine will actually do.
 
     Distance is refused a vote on everything except the far end of the range.
@@ -1173,50 +1200,6 @@ def _owned_by_later(
     return omit, [(oid, length) for oid, _b, length in bands]
 
 
-def _fill_angle_deg(p: PlannedRegion, cfg: PipelineConfig, row_mm: float,
-                    planned_by_id: dict[str, PlannedRegion],
-                    _depth: int = 0) -> float | None:
-    """The fill angle a shape sews at — FILL-ANGLE PRECEDENCE, decided here
-    and nowhere else:
-
-      1. the shape's own review-screen angle (meta["fill_angle_deg"],
-         shape-layers contract v1)
-      2. the global cfg.fill_angle_deg
-      3. a gradient band's PARENT — the region it was cut from
-         (`gradient_band.py`, meta["gradient_band_of"]) — resolved by this
-         same rule, and where that comes back None, the auto angle stage 6
-         would derive for the parent (`best_fill_angle_deg` on the parent's
-         compensated polygon at this fill's row pitch — the identical call
-         `stitch_shape` makes), so the band's rows are parallel to its
-         parent's by construction and the band disappears into the field
-         (its own auto angle runs ACROSS a thin band: the icon's Tangerine
-         crescent sewed 140 rows of 1.25 mm at 90° beside a field at 112°)
-      4. the axis stage 5 compensated along (p.stitch_angle_deg — the
-         directional-comp lane; None when compensation was isotropic)
-      5. None: stage 6 derives its own per-shape angle.
-
-    Stage 5's `_comp_axis` follows the same 1 > 2 order, so with directional
-    comp on, the axis a shape was compensated along and the axis it sews
-    along stay one number by construction — for everything but a band,
-    which is compensated along its own axis and sewn along its parent's;
-    that lane is default OFF and the band is a sliver.
-    """
-    shape_angle = p.region.meta.get("fill_angle_deg")
-    if shape_angle is not None:
-        return float(shape_angle)
-    if cfg.fill_angle_deg is not None:
-        return cfg.fill_angle_deg
-    parent_id = p.region.meta.get("gradient_band_of")
-    if parent_id is not None and _depth < 4:
-        parent = planned_by_id.get(parent_id)
-        if parent is not None:
-            angle = _fill_angle_deg(parent, cfg, row_mm, planned_by_id, _depth + 1)
-            if angle is None:
-                angle = best_fill_angle_deg(parent.polygon, row_mm)
-            return angle
-    return p.stitch_angle_deg
-
-
 def _border_wanted(region, border_style: str, total_area: float,
                    share_min: float, iso_max: float) -> tuple[bool, str]:
     """Does this shape get a border, and in which style? -> (want, style).
@@ -1247,15 +1230,223 @@ def _border_wanted(region, border_style: str, total_area: float,
     return bool(want), style
 
 
+# The run kinds that FINISH an edge. A satin column, a border circuit, a bean
+# outline and the run tier all lay thread ALONG a boundary, which is what a cap
+# does; a fill row crosses one and stops. Named here rather than derived so the
+# gate's reasoning is readable at the seam that uses it.
+_LINEAR_KINDS = (stitches.SATIN, stitches.BORDER, stitches.BEAN, stitches.RUN)
+
+
+def _sewn_linear_cover(blocks: list[StitchBlock]):
+    """What this design has already sewn ALONG an edge, as one geometry.
+
+    The silhouette cap's gate (`cfg.edge_cap`, Kent 2026-09-11). Every linear
+    run's polyline at one thread width — `machine.COVERAGE_THREAD_W_MM`, the
+    existing "width of the ribbon a single stitch lays" constant, so nothing
+    new is invented here and ROADMAP gate 1 is not touched.
+
+    None when nothing linear has sewn, which is the honest answer for a
+    design that is all fill: there the whole outline ends in open air and the
+    cap should close all of it, exactly as it did before the gate existed.
+
+    **That `None` is also how the cap's bill goes back to the pre-gate
+    +8.6-100.4% regime, and it used to do so in silence** — `becker_marine_logo`
+    at 110 mm has zero linear runs and pays +53.4% (2026-09-12). It is not a
+    bug here: an all-fill design genuinely has no covered edge. What was
+    missing was anyone pricing it, so since 2026-09-12 the caller publishes
+    `omit_cover_mm2` and `gate_saved_pct` on every bill (`_gate_saving`) and
+    says so out loud past `EDGE_CAP_BUDGET_PCT`.
+
+    Each run is buffered into its own ribbon and the RIBBONS are unioned —
+    never `unary_union(lines).buffer(...)`, which is the same set by
+    `buffer(A u B, r) == buffer(A, r) u buffer(B, r)` (a Minkowski sum
+    distributes over a union) and a catastrophically more expensive way to
+    reach it. Unioning the polylines first NODES them at every crossing, and
+    a satin zigzag crosses itself: on Hotel Fremont's hat, 106 of 138 linear
+    runs are non-simple and 9,677 points node into a 49,535-part
+    MultiLineString. Buffering that soup ran 86.5 of the design's 86.7-minute
+    prep and exhausted a 39 GB box (GEOS `bad allocation`); the ribbons give
+    the identical polygon in 1.5 s. *(measured 2026-09-12,
+    `tests/test_edge_cap.py` pins the cost)*
+    """
+    lines = []
+    for b in blocks:
+        for r in b.runs:
+            if r.kind in _LINEAR_KINDS and len(r.points) > 1:
+                lines.append(LineString(r.points))
+    if not lines:
+        return None
+    half_w = machine.COVERAGE_THREAD_W_MM / 2.0
+    return unary_union([ln.buffer(half_w) for ln in lines])
+
+
+def _satin_lettering_cover(cap_sewn: list[PlannedRegion],
+                           blocks: list[StitchBlock]):
+    """The outlines the cap leaves alone under `cfg.edge_cap_skip_lettering`
+    (lettering construction plan step 5, 2026-09-19): every text-cluster
+    member that sewed as SATIN, as the polygon it sewed -- the same
+    `p.polygon` the silhouette is the union of, so the letter's stretch of
+    the silhouette's boundary lies exactly on it.
+
+    Satin only, read off the runs the design actually laid rather than off
+    a verdict: a member with a fill run keeps its cap, because a tatami
+    letter's rows end in open air at its edge and that is the defect the
+    cap exists for; a member sewn on the run tier is already linear cover
+    in its own right. None when no such member sewed, so the caller's
+    `omit` is what it was.
+    """
+    satin_ids: set = set()
+    fill_ids: set = set()
+    for b in blocks:
+        for r in b.runs:
+            if not r.shape_id:
+                continue
+            if r.kind == stitches.SATIN:
+                satin_ids.add(r.shape_id)
+            elif r.kind == stitches.FILL:
+                fill_ids.add(r.shape_id)
+    polys = [p.polygon for p in cap_sewn
+             if p.region.meta.get("text_candidate")
+             and p.shape_id in satin_ids and p.shape_id not in fill_ids
+             and p.polygon is not None and not p.polygon.is_empty]
+    if not polys:
+        return None
+    return unary_union(polys)
+
+
+def _gate_saving(silhouette, omit, gated_runs, *, style: str,
+                 entry, trim_at_mm: float,
+                 width_mm: float | None) -> tuple[float, float]:
+    """-> (what the cap's gate saved, in %, how much cover it had, in mm²).
+
+    `1 - gated/ungated` over the SAME geometry: the same cap emitted twice,
+    once with the `omit` the design earned and once with none. The cliff doc
+    calls this "the one number that would have made this visible at a
+    glance", and it is right — on `becker_marine_logo` the gate saves 82.5%
+    at 80 mm and 2.9% at 95.7 mm while the UNGATED cost only tracks the
+    growing ring (4,951 -> 6,026 raw stitches over the same +20% of size).
+    The whole jump in the bill is the gate's saving collapsing, and nothing
+    in the old bill said so. Both counts are raw run points, before ties.
+
+    **It is a second emission on a default-ON path, and that is deliberate.**
+    Every cheaper proxy measures something else: the share of the outline's
+    LENGTH that `omit` covers reads 56.5% where the stitches say 82.5%
+    (becker at 80 mm) and 51.7% against 94.2% (`enthusiast_logo`). They
+    diverge because a remnant arc under `_ARC_MIN_MM` is dropped outright —
+    its stitches vanish although its length was never covered — so the
+    cheaper number understates the saving by up to 40 points, design by
+    design. Measured cost, six fixtures, 2026-09-12:
+    bean — the shipped style — 0.01-0.08 s, under half a percent of a 5-85 s
+    digitize; satin 0.4-3.8 s, from +2% of a digitize (`logo_gaulke_roofing`)
+    to +19% (`enthusiast_logo`, a 12.7 s design whose satin cap is already a
+    fifth of it). If that ever has to go, take the length proxy and RENAME
+    the field — do not quietly publish one number under the other's name.
+
+    Skipped where the gate had no input at all: the saving is 0.0 by
+    definition, the probe would re-emit the identical runs, and that is
+    precisely the becker-at-110 mm case this exists for.
+    """
+    cover_mm2 = 0.0 if omit is None else round(float(omit.area), 1)
+    if omit is None or getattr(omit, "is_empty", False):
+        return 0.0, cover_mm2
+    ungated, _report = silhouette_cap(silhouette, "__edge_cap__", style=style,
+                                      entry=entry, trim_at_mm=trim_at_mm,
+                                      width_mm=width_mm, omit=None)
+    ungated_st = sum(len(r.points) for r in ungated)
+    if not ungated_st:
+        return 0.0, cover_mm2
+    gated_st = sum(len(r.points) for r in gated_runs)
+    return round(100.0 * (1.0 - gated_st / ungated_st), 1), cover_mm2
+
+
+def _over_budget_action(cfg) -> str:
+    """What a cap bill over `EDGE_CAP_BUDGET_PCT` does — `"warn"` or `"drop"`.
+
+    The whole behavioural difference of `cfg.edge_cap_over_budget`, in one
+    named function on purpose: "default off is byte-identical" is a claim a
+    test can then price by EXECUTION (does this ever return `"drop"`?) rather
+    than by comparing two outputs that might happen to agree —
+    `tests/test_edge_cap_budget.py`, on the model
+    `test_resnap_mask_matches_grader.py` set on 2026-09-12.
+
+    Anything unrecognised reads as `"warn"`, the shipped behaviour, for the
+    same reason `cfg.edge_cap`'s own reader treats a typo as "no cap": a
+    misspelled knob must never silently DELETE a pass the design asked for.
+    """
+    action = str(getattr(cfg, "edge_cap_over_budget", "warn") or "warn").lower()
+    return action if action in EDGE_CAP_OVER_BUDGET_ACTIONS else "warn"
+
+
+def _cap_path_frontage(runs, sewn: list[PlannedRegion]) -> dict[int, float]:
+    """Millimetres of the cap's own stitch path that ride each thread's edge.
+
+    Every segment of every emitted cap run is attributed to the NEAREST sewn
+    region's boundary, and its length added to that region's thread. This is
+    the cap as it will be sewn, so a stretch of silhouette the emitter dropped
+    cannot vote and a stretch it kept votes exactly its own length.
+
+    Nearest rather than on-the-boundary because the cap is not obliged to sit
+    on the outline: `bean` rides it, `satin` zigzags about it by
+    `cfg.border_width_mm`, and both are continuing the same edge. Measured on
+    `enthusiast_logo` at 80 mm, bean: the worst cap point is 0.19 mm off a
+    region edge.
+    """
+    bounds = [p.polygon.boundary for p in sewn]
+    threads = [p.region.thread_index for p in sewn]
+    if not bounds:
+        return {}
+    try:
+        tree = shapely.STRtree(bounds)
+    except Exception:
+        return {}
+    frontage: dict[int, float] = {}
+    for r in runs or ():
+        pts = list(getattr(r, "points", ()) or ())
+        for a, b in zip(pts, pts[1:]):
+            try:
+                seg = LineString([a, b])
+                if seg.length <= 0:
+                    continue
+                idx = tree.nearest(seg.interpolate(0.5, normalized=True))
+            except Exception:
+                continue
+            if idx is None:
+                continue
+            ti = threads[int(idx)]
+            frontage[ti] = frontage.get(ti, 0.0) + seg.length
+    return frontage
+
+
 def _cap_thread(silhouette, sewn: list[PlannedRegion],
-                default_thread: int) -> int:
+                default_thread: int, runs=None) -> int:
     """Which cone the design-silhouette cap sews in (cfg.edge_cap).
 
-    The cap continues an edge that already exists, so it sews in the thread
-    of whichever region owns the most of that edge: for each sewn region,
-    how much of its own boundary lies ON the silhouette boundary, summed per
-    thread. A region buried in the middle of the design contributes nothing;
-    the colours actually facing bare fabric decide.
+    The cap continues an edge that already exists, so it sews in the thread of
+    whichever region owns the most of the edge THE CAP ACTUALLY SEWS
+    (`_cap_path_frontage`, over the emitted runs). A region buried in the
+    middle of the design contributes nothing, and neither does one whose
+    frontage the gate told the emitter to skip.
+
+    **Voting over the whole silhouette instead put the cap in a colour it
+    never touches.** `cfg.edge_cap`'s gate (Kent 2026-09-11) hands the emitter
+    everything linear the design already sewed, and the emitter drops the
+    outline samples standing on it; the vote never saw that geometry. On
+    `enthusiast_logo` at 80 mm the ungated vote scores 473.8 mm of Smoky
+    lettering against 131.7 mm of Not Quite Red and picks Smoky, while
+    **100% of the emitted cap — all 117 stitches, 81.4 mm — rides the red
+    star.** The star wears a continuous charcoal halo. *(2026-09-20;
+    `tests/test_lettering_coverage_regression.py` is what priced it)*
+
+    **The obvious cheaper fix does NOT work, and this is the second time that
+    proxy has lied here.** Voting over
+    `silhouette.boundary.difference(cap_omit)` — the open edge by LENGTH —
+    still picks Smoky on that design, 116.6 mm against red's 55.5 mm: 165.9 mm
+    of the 581.7 mm silhouette survives the gate as remnant arcs between
+    letters, and every one of them is under `_ARC_MIN_MM` and dropped
+    unstitched. `_gate_saving`'s docstring records the same divergence from
+    the other side (length says 51.7% where stitches say 94.2% on this exact
+    fixture). Measure the stitches; the length proxy is not a cheaper version
+    of this answer, it is a different and wrong one.
 
     This is deliberately a CHOICE AMONG THREADS THE DESIGN ALREADY SEWS, not
     a chart lookup: the result-level palette is regions-derived (see
@@ -1263,26 +1454,31 @@ def _cap_thread(silhouette, sewn: list[PlannedRegion],
     colour of its own to sample — inventing a cone for it would grow the
     operator's cone list for a decoration nobody asked to be a new colour.
 
+    With no `runs` the vote falls back to silhouette frontage, which is what
+    this did before 2026-09-20 — a caller with no emitted cap to read has
+    nothing better, and the two agree wherever the gate omits nothing.
+
     Ties break on the lower thread index, the same deterministic tiebreak
     the geometry picks use. `default_thread` covers the degenerate case
     where no region touches the silhouette measurably.
     """
     if silhouette is None or getattr(silhouette, "is_empty", True):
         return default_thread
-    try:
-        edge = silhouette.boundary.buffer(_BORDER_SEAM_EPS_MM)
-    except Exception:
-        return default_thread
-    frontage: dict[int, float] = {}
-    for p in sewn:
+    frontage = _cap_path_frontage(runs, sewn)
+    if not frontage:
         try:
-            shared = p.polygon.boundary.intersection(edge)
+            band = silhouette.boundary.buffer(_BORDER_SEAM_EPS_MM)
         except Exception:
-            continue
-        length = getattr(shared, "length", 0.0)
-        if length > 0:
-            ti = p.region.thread_index
-            frontage[ti] = frontage.get(ti, 0.0) + length
+            return default_thread
+        for p in sewn:
+            try:
+                shared = p.polygon.boundary.intersection(band)
+            except Exception:
+                continue
+            length = getattr(shared, "length", 0.0)
+            if length > 0:
+                ti = p.region.thread_index
+                frontage[ti] = frontage.get(ti, 0.0) + length
     if not frontage:
         return default_thread
     return min(frontage, key=lambda ti: (-round(frontage[ti], 6), ti))
@@ -1307,6 +1503,55 @@ def _border_seam_warning(seams: list[tuple[str, str, float]]) -> dict | None:
         count=n,
         pairs=[[a, b] for a, b, _length in seams],
     )
+
+
+def _fill_angle_for(p, cfg: PipelineConfig, row_mm: float | None = None,
+                    planned_by_id: "dict[str, PlannedRegion] | None" = None,
+                    _depth: int = 0) -> float | None:
+    """The row angle a fill-tier shape sews at -- the precedence stated at
+    the plain-tatami call in `stitch_one`, in one place so the five
+    call sites (tatami and the four geometric techniques) cannot drift
+    apart: the review's own angle, the global, the design angle
+    (`cfg.design_angle`), a gradient band's PARENT, stage 5's compensation
+    axis, else None (stage 6 derives its own).
+
+    The band rung is Kent's 2026-09-09 ruling, and it is half of it:
+    refusing satin only stops the band being a ribbon, it does not stop it
+    reading as its own texture. A thin band's OWN auto angle runs across it
+    — the icon's Tangerine crescent sewed 140 rows of 1.25 mm at 90° beside
+    a field at 112° — so it follows `meta["gradient_band_of"]`, the
+    neighbour across the most soft samples, resolved by this same rule. If
+    that comes back None it takes the angle stage 6 would derive for the
+    parent, `best_fill_angle_for` on the parent's compensated polygon at
+    THIS fill's row pitch: the identical call `stitch_shape` makes for the
+    parent, so the rows are parallel by construction rather than by
+    coincidence.
+
+    `row_mm`/`planned_by_id` are optional so every caller that predates the
+    band rung (and every test that calls this directly) keeps working and
+    keeps its answer: without them the band rung cannot fire and the
+    function is the four-rung one it was."""
+    shape_angle = p.region.meta.get("fill_angle_deg")
+    if shape_angle is not None:
+        return float(shape_angle)
+    if cfg.fill_angle_deg is not None:
+        return cfg.fill_angle_deg
+    design = p.region.meta.get("design_angle_deg")
+    if design is not None:
+        return float(design)
+    # Gated on the TAG, not on the parent id alone: the two are written
+    # together, so a lone `gradient_band_of` means a stale one survived a
+    # re-run, and a stale parent must not steer a shape's rows.
+    parent_id = p.region.meta.get("gradient_band_of") if is_gradient_band(p.region) else None
+    if parent_id is not None and planned_by_id is not None and _depth < 4:
+        parent = planned_by_id.get(parent_id)
+        if parent is not None:
+            angle = _fill_angle_for(parent, cfg, row_mm, planned_by_id, _depth + 1)
+            if angle is None and row_mm is not None:
+                angle = best_fill_angle_deg(parent.polygon, row_mm)
+            if angle is not None:
+                return angle
+    return p.stitch_angle_deg
 
 
 def sequence(
@@ -1423,6 +1668,10 @@ def sequence(
                       if cfg.underlay else "none")
     satin_max = satin_ceiling_mm(cfg)
     trim_at = fabric.trim_at_mm
+    # Cap sew order (cfg.cap_center_out, default OFF — config.py's block has
+    # the craft argument and the lane-split history). Resolved once per call:
+    # the garment cannot change between groups.
+    cap_order = cfg.cap_center_out and cfg.garment_id in CAP_GARMENTS
 
     # `cfg.border is None` means "let the class decide" — see config.py's own
     # block for why None and not "off". Only the real PHOTO_CLASSES take the
@@ -1593,7 +1842,7 @@ def sequence(
         planned, cfg, chart_for(cfg))
     blocks.extend(applique_blocks)
     # A gradient band resolves its fill angle through its parent
-    # (`_fill_angle_deg`); the parent's COMPENSATED polygon is what stage 6
+    # (`_fill_angle_for`); the parent's COMPENSATED polygon is what stage 6
     # would derive the parent's own angle from, so it is looked up here.
     planned_by_id = {q.shape_id: q for q in planned}
     if applique_cursor is not None:
@@ -1661,7 +1910,8 @@ def sequence(
     for _group_key in sorted({nn_group_key(p) for p in planned}):
         group = [p for p in planned if nn_group_key(p) == _group_key]
 
-        def stitch_one(p: PlannedRegion, entry: tuple[float, float] | None):
+        def stitch_one(p: PlannedRegion, entry: tuple[float, float] | None,
+                       exit_near: tuple[float, float] | None = None):
             # The review screen's per-shape tier (shape-layers contract v1;
             # "sketch" added in v1.3): "auto" is the ladder below exactly as
             # it always ran; "satin", "fill", "run" and "sketch" force one
@@ -1723,9 +1973,12 @@ def sequence(
             # A gradient band on "auto" never asks the classifier — it is
             # fill by its neighbours, not by its shape (`gradient_band.py`);
             # an explicit "satin" is honoured below as it always was.
-            ribbon = (classify_ribbon(classify_poly, satin_max,
+            shape_max, shape_per_stroke, shape_fold = _satin_ceiling_for(p.region, cfg, satin_max)
+            ribbon = (classify_ribbon(classify_poly, shape_max,
                                       design_class=design_class,
-                                      per_stroke=cfg.satin_per_stroke)
+                                      per_stroke=shape_per_stroke,
+                                      polygon_axis=cfg.satin_polygon_axis,
+                                      area_weighted=cfg.classify_area_weighted)
                       if tier == "auto" and cfg.satin
                       and not is_gradient_band(p.region) else None)
             # Kent's gradient ruling (2026-09-04): a shape that RIDES the
@@ -1753,6 +2006,13 @@ def sequence(
                 satin_angle_deg = p.region.meta.get("satin_angle_deg")
                 if satin_angle_deg is None:
                     satin_angle_deg = cfg.satin_angle_deg
+                if satin_angle_deg is None and p.region.meta.get("design_angle_deg") is not None:
+                    # `cfg.design_angle` (2026-09-09): non-lettering satin
+                    # takes the design's one direction as its house, so
+                    # `_clamp_to_span` gives it the lean rule lettering has.
+                    # Behind the review's and the house's own angle; absent
+                    # the key, the per-stroke tangent as before.
+                    satin_angle_deg = float(p.region.meta["design_angle_deg"])
                 # Law 50's first rung (machine.SATIN_UNDERLAY_MIN_EXTENT_MM,
                 # 2026-09-03): small lettering sews bare. Judged on the
                 # ARTWORK extent, the same reason the satin/fill call is —
@@ -1783,12 +2043,19 @@ def sequence(
                     angle_deg=satin_angle_deg,
                     rails_follow_edge=cfg.satin_rails_follow_edge,
                     patch_junctions=cfg.satin_patch_junctions,
+                    polygon_axis=cfg.satin_polygon_axis,
+                    stroke_order=cfg.satin_stroke_order,
+                    corner_twigs=cfg.satin_corner_twigs,
+                    junction_stack=cfg.satin_junction_stack,
+                    end_near=exit_near if cfg.satin_exit_toward_next else None,
+                    underlay_on_column=cfg.satin_underlay_on_column,
+                    walk_cursor_reach_mm=cfg.satin_walk_cursor_reach_mm,
                     # The ceiling the classifier admitted at is the one the
                     # emitter sews at — one number, threaded, never two
                     # constants (DOCTRINE 2026-09-02). The fold guard rides
                     # with the wide ceiling.
-                    max_width_mm=satin_max,
-                    fold_guard=cfg.wide_columns,
+                    max_width_mm=shape_max,
+                    fold_guard=shape_fold,
                     # A hairline sews as a bean only where the ART has ink:
                     # `p.polygon` is the compensated outline, and pull comp
                     # grows a vectorization needle into a "stroke". The
@@ -1929,12 +2196,13 @@ def sequence(
                 runs, report = stitch_shape(
                     p.polygon,
                     p.shape_id,
-                    angle_deg=_fill_angle_deg(p, cfg, row_mm, planned_by_id),
+                    angle_deg=_fill_angle_for(p, cfg, row_mm, planned_by_id),
                     row_mm=row_mm,
                     stitch_mm=stitch_mm,
                     underlay_style=eff_underlay_style,
                     trim_at_mm=trim_at,
                     under_cover=cfg.fill_travel_under_cover,
+                    cut_bridges=cfg.fill_bridge_cut,
                     start_near=entry,
                     technique="crosshatch",
                 )
@@ -1959,12 +2227,13 @@ def sequence(
                 runs, report = stitch_shape(
                     p.polygon,
                     p.shape_id,
-                    angle_deg=_fill_angle_deg(p, cfg, row_mm, planned_by_id),
+                    angle_deg=_fill_angle_for(p, cfg, row_mm, planned_by_id),
                     row_mm=row_mm,
                     stitch_mm=stitch_mm,
                     underlay_style=eff_underlay_style,
                     trim_at_mm=trim_at,
                     under_cover=cfg.fill_travel_under_cover,
+                    cut_bridges=cfg.fill_bridge_cut,
                     start_near=entry,
                     technique="wave",
                 )
@@ -1982,12 +2251,13 @@ def sequence(
                 runs, report = stitch_shape(
                     p.polygon,
                     p.shape_id,
-                    angle_deg=_fill_angle_deg(p, cfg, row_mm, planned_by_id),
+                    angle_deg=_fill_angle_for(p, cfg, row_mm, planned_by_id),
                     row_mm=row_mm,
                     stitch_mm=stitch_mm,
                     underlay_style=eff_underlay_style,
                     trim_at_mm=trim_at,
                     under_cover=cfg.fill_travel_under_cover,
+                    cut_bridges=cfg.fill_bridge_cut,
                     start_near=entry,
                     technique="chevron",
                 )
@@ -2003,12 +2273,13 @@ def sequence(
                 runs, report = stitch_shape(
                     p.polygon,
                     p.shape_id,
-                    angle_deg=_fill_angle_deg(p, cfg, row_mm, planned_by_id),
+                    angle_deg=_fill_angle_for(p, cfg, row_mm, planned_by_id),
                     row_mm=row_mm,
                     stitch_mm=stitch_mm,
                     underlay_style=eff_underlay_style,
                     trim_at_mm=trim_at,
                     under_cover=cfg.fill_travel_under_cover,
+                    cut_bridges=cfg.fill_bridge_cut,
                     start_near=entry,
                     technique="brick",
                 )
@@ -2088,26 +2359,34 @@ def sequence(
                 # 6 derives its own from the compensated polygon, which is a
                 # different number.
                 #
-                # FILL-ANGLE PRECEDENCE, decided here and nowhere else:
+                # FILL-ANGLE PRECEDENCE, decided in `_fill_angle_for` and
+                # nowhere else:
                 #   1. the shape's own review-screen angle
                 #      (meta["fill_angle_deg"], shape-layers contract v1)
                 #   2. the global cfg.fill_angle_deg
-                #   3. the axis stage 5 compensated along
+                #   3. the design angle (meta["design_angle_deg"], written
+                #      only under `cfg.design_angle` -- `designangle.py`)
+                #   4. the axis stage 5 compensated along
                 #      (p.stitch_angle_deg — the directional-comp lane; None
                 #      when compensation was isotropic)
-                #   4. None: stage 6 derives its own per-shape PCA.
-                # Stage 5's `_comp_axis` follows the same 1 > 2 order, so with
-                # directional comp on, the axis a shape was compensated along
-                # and the axis it sews along stay one number by construction.
+                #   5. a gradient band's PARENT, the region it was cut
+                #      from (`gradient_band.py`, meta["gradient_band_of"])
+                #   6. None: stage 6 derives its own per-shape PCA.
+                # Stage 5's `_comp_axis` follows the same 1 > 2 > 3 order, so
+                # with directional comp on, the axis a shape was compensated
+                # along and the axis it sews along stay one number by
+                # construction — for everything but a band, which is
+                # compensated along its own axis and sewn along its parent's.
                 runs, report = stitch_shape(
                     p.polygon,
                     p.shape_id,
-                    angle_deg=_fill_angle_deg(p, cfg, row_mm, planned_by_id),
+                    angle_deg=_fill_angle_for(p, cfg, row_mm, planned_by_id),
                     row_mm=row_mm,
                     stitch_mm=stitch_mm,
                     underlay_style=eff_underlay_style,
                     trim_at_mm=trim_at,
                     under_cover=cfg.fill_travel_under_cover,
+                    cut_bridges=cfg.fill_bridge_cut,
                     start_near=entry,
                     density_boost=cfg.fill_density_boost,
                 )
@@ -2186,6 +2465,25 @@ def sequence(
         centre = unary_union([p.polygon for p in group]).centroid
         far = {i: round(group[i].polygon.centroid.distance(centre), 6)
                for i in range(len(group))}
+        # Cap order, when it is on: distance from the design's vertical
+        # centreline, then the bill end first. The centreline is `x = 0`
+        # because stage 4 puts the origin at the artwork bbox centre, and
+        # "bill end" is DESCENDING y because that frame's y runs DOWN — the
+        # same two keys, in the same order, as `src/digitize.js`'s `capMode`.
+        #
+        # `x = 0` holds for BOTH producers that reach this function, which is
+        # the thing to check before trusting it: `run_stages` centres on the
+        # artwork bbox (stage4_vectorize line 93) and `manual.py` recentres
+        # the combined shape bbox onto the origin for exactly that reason
+        # (its own line 219). So no caller arrives in an off-centre frame.
+        #
+        # Deliberately NOT keyed on `centre` above: that is this GROUP's own
+        # centroid, so each cone would sew outward from wherever its own
+        # shapes happen to sit. The seam is a property of the garment, not of
+        # the colour, so every group measures from the same line.
+        cap_key = ({i: (round(abs(group[i].polygon.centroid.x), 6),
+                        -round(group[i].polygon.centroid.y, 6), rank[i])
+                    for i in range(len(group))} if cap_order else {})
 
         # The review screen's within-layer sew order (shape-layers contract
         # v1.2, `Region.meta["sew_order"]`): a shape carrying one is "due" at
@@ -2241,6 +2539,12 @@ def sequence(
                     if late else unpinned)
             if due is not None and (sew_order[due] <= next_slot or not unpinned):
                 pick = due
+            elif cap_order:
+                # Replaces BOTH geometry branches, not just the seed: on a cap
+                # the whole sweep runs centre-out, so nearest-neighbour from
+                # the cursor never gets a vote. `capMode` short-circuits the
+                # browser lane's ordering the same way.
+                pick = min(pool, key=lambda i: cap_key[i])
             elif cursor is None:
                 pick = min(pool, key=lambda i: (-far[i], rank[i]))
             else:
@@ -2253,7 +2557,20 @@ def sequence(
             # every seam it shares — its own border block must not yield to
             # itself, and nothing sewn after it may yield to it either.
             border_later.pop(p.shape_id, None)
-            runs, report, filled = stitch_one(p, cursor)
+            # `cfg.satin_exit_toward_next`: where the needle goes next -- the
+            # nearest remaining shape by polygon distance, the pick rule's
+            # own answer once the needle is there -- handed to the satin
+            # emitter so its walk can end facing it. Read only; the pick
+            # below is untouched.
+            exit_near = None
+            if cfg.satin_exit_toward_next:
+                cands = [i for i in pool if i != pick] or list(remaining)
+                if cands:
+                    nxt = min(cands, key=lambda i: (
+                        round(group[i].polygon.distance(p.polygon), 6), rank[i]))
+                    q = nearest_points(p.polygon, group[nxt].polygon)[1]
+                    exit_near = (float(q.x), float(q.y))
+            runs, report, filled = stitch_one(p, cursor, exit_near)
             thin += int(filled and report["too_thin"])
             jumps += report["jumps"]
             as_run += report.get("as_run", 0)
@@ -2366,6 +2683,38 @@ def sequence(
     cap_cost: dict | None = None
     if cap_style in ("bean", "satin") and cap_sewn:
         silhouette = unary_union([p.polygon for p in cap_sewn])
+        # THE GATE (Kent's call 2026-09-11, item 14). Cap only the stretches
+        # that genuinely end in open air. Everything LINEAR this design has
+        # already sewn — every satin column, border, bean and run tier — is
+        # handed over as `omit`, and the emitters drop the outline samples
+        # standing on it.
+        #
+        # Why it is needed and why it is not a taste call: measured across six
+        # fixtures (`tools/pro_silhouette.py`), capping the whole outline
+        # bills +8.6% to +100.4% stitches, and two of the six were paying for
+        # an edge already closed — Hotel Fremont reads 0.0% uncovered because
+        # its own satin border closes it, and `enthusiast_logo` is satin
+        # lettering with no area fill at all yet paid the largest bill on the
+        # sheet. The professional's own files cap 97.8-99.5% of their
+        # silhouette, so the CAP has a precedent; paying for one twice does
+        # not.
+        #
+        # Fills are deliberately not cover: a tatami row ENDING on the
+        # boundary is the defect this pass exists to close, so counting it
+        # would make the gate circular and close nothing. Travel, underlay and
+        # ties are not cover either — travel is hidden or exposed but never a
+        # finish, and underlay is under the very rows that end short.
+        cap_omit = _sewn_linear_cover(blocks)
+        # Step 5 of the lettering plan (2026-09-19): a satin-sewn letter's
+        # outline is the letter's own -- a typed glyph gets no cap -- so
+        # its sewn polygon joins the cover and no cap sample stands on it.
+        # The gate's published saving and cover then include it, which is
+        # what they measure: what the cap was told not to sew.
+        if cfg.edge_cap_skip_lettering:
+            _letters = _satin_lettering_cover(cap_sewn, blocks)
+            if _letters is not None:
+                cap_omit = (_letters if cap_omit is None
+                            else unary_union([cap_omit, _letters]))
         c_runs, c_report = silhouette_cap(
             silhouette,
             "__edge_cap__",
@@ -2373,44 +2722,84 @@ def sequence(
             entry=cursor,
             trim_at_mm=trim_at,
             width_mm=cfg.border_width_mm,
+            omit=cap_omit,
         )
+        # What the gate actually saved on THIS design, measured — the number
+        # whose absence let a +58.7% bill read like a +13% one. Computed only
+        # where there is a bill to put it in, and BEFORE `_apply_ties` adds
+        # tie stitches to the runs that will be sewn (the probe's runs never
+        # are, so tying one side would price the two differently).
+        cap_gate_saved, cap_omit_mm2 = (
+            _gate_saving(silhouette, cap_omit, c_runs, style=cap_style,
+                         entry=cursor, trim_at_mm=trim_at,
+                         width_mm=cfg.border_width_mm)
+            if c_runs else (0.0, 0.0))
         if c_runs:
-            jumps += c_report["jumps"]
-            cap_lightened = c_report["bean_loops"]
             # The needle always lifts into a new block and the thread is
             # always cut coming out of the previous one — the same forcing
             # the detail layer below and every artwork block above get.
             c_runs[0].jump = True
             c_runs[0].trim = True
             _apply_ties(c_runs)
-            c_index = _cap_thread(silhouette, cap_sewn,
-                                  cap_sewn[0].region.thread_index)
-            c_thread = chart_for(cfg)[c_index]
-            blocks.append(
-                StitchBlock(
-                    thread_index=c_index,
-                    thread_number=c_thread.number,
-                    rgb=tuple(c_thread.rgb),
-                    runs=c_runs,
-                )
-            )
-            cursor = c_runs[-1].points[-1]
             # The bill, always. See EDGE_CAP_APPLIED: the cost is not
             # predictable from the design's size, it scales with how
             # fragmented the silhouette is, so the only honest thing is to
             # measure it on THIS design and say so.
             _cap_st = sum(len(r.points) for r in c_runs)
-            _art_st = sum(b.stitch_count for b in blocks) - _cap_st
+            # The artwork's own stitches: every block so far, the cap not yet
+            # among them. (Identical to the post-append
+            # `sum(...) - _cap_st` this replaced — `StitchBlock.stitch_count`
+            # IS `sum(len(r.points) for r in runs)` — and computed here
+            # because the budget decision below has to happen before the
+            # append, not after it.)
+            _art_st = sum(b.stitch_count for b in blocks)
+            _percent = round(100.0 * _cap_st / _art_st, 1) if _art_st else 0.0
+            cap_over_budget = _art_st > 0 and _percent > EDGE_CAP_BUDGET_PCT
+            cap_dropped = cap_over_budget and _over_budget_action(cfg) == "drop"
+            if not cap_dropped:
+                jumps += c_report["jumps"]
+                cap_lightened = c_report["bean_loops"]
+                c_index = _cap_thread(silhouette, cap_sewn,
+                                      cap_sewn[0].region.thread_index,
+                                      runs=c_runs)
+                c_thread = chart_for(cfg)[c_index]
+                blocks.append(
+                    StitchBlock(
+                        thread_index=c_index,
+                        thread_number=c_thread.number,
+                        rgb=tuple(c_thread.rgb),
+                        runs=c_runs,
+                    )
+                )
+                cursor = c_runs[-1].points[-1]
             cap_cost = {
                 "style": cap_style,
                 "stitches": _cap_st,
-                "percent": round(100.0 * _cap_st / _art_st, 1) if _art_st else 0.0,
-                "edges": c_report["loops"] + c_report["bean_loops"],
+                "percent": _percent,
+                # How many RINGS the cap went around — the fragmentation
+                # number this field has always CLAIMED to be and, until
+                # 2026-09-12, was not: it read `loops + bean_loops`, and
+                # `run_outline` counts one `loops` per emitted RUN, so it
+                # went 18 -> 25 -> 16 on becker as the bill went +18% ->
+                # +26% -> +57%, falling precisely because the cap got more
+                # expensive. `whole_loops + arcs` is the run count and is
+                # published beside it; `whole_loops + yielded` is the ring
+                # count (see stage6_border.silhouette_cap for why those add
+                # up). Unchanged on any design the gate does not split.
+                "edges": c_report["whole_loops"] + c_report["yielded"],
+                "whole_loops": c_report["whole_loops"],
+                "arcs": c_report["arcs"],
+                "yielded": c_report["yielded"],
                 # Hairline cracks in the union that were filled rather than
                 # ringed — see stage6_border._fill_cracks. Part of the bill
                 # because "1 edge, 20 cracks ignored" is the number that
                 # says the silhouette was one shape after all.
                 "cracks_filled": c_report["holes_skipped"],
+                "gate_saved_pct": cap_gate_saved,
+                "omit_cover_mm2": cap_omit_mm2,
+                "over_budget": cap_over_budget,
+                "budget_pct": EDGE_CAP_BUDGET_PCT,
+                "dropped": cap_dropped,
             }
         else:
             cap_empty_style = cap_style
@@ -2531,7 +2920,10 @@ def sequence(
         warnings.append(
             warn(
                 LONG_JUMPS_TRIMMED,
-                f"The thread had to be lifted {jumps} time"
+                # "is lifted", not "had to be": with `cfg.fill_bridge_cut` a
+                # lift can be the engine's CHOICE -- a route existed and a cut
+                # was cheaper than thread on top of finished fill.
+                f"The thread is lifted {jumps} time"
                 f"{'s' if jumps != 1 else ''} inside a shape.",
                 count=jumps,
             )
@@ -2586,6 +2978,55 @@ def sequence(
                 "shapes do not join into one silhouette is being outlined "
                 "many times over, which is where a cap stops being cheap.",
                 **cap_cost,
+            )
+        )
+    # The cap defending its own bill (Kent's ruling 2026-09-12, on
+    # docs/edge-cap-cliff-2026-09-12.md §8 item 2). `EDGE_CAP_APPLIED` above
+    # fires on EVERY run, which is what let +58.7% read like +13%; this fires
+    # only when the bill clears the ceiling, and it carries the diagnosis —
+    # what the gate saved, and how much cover it had to work with.
+    #
+    # The TRIGGER is the bill alone, not "the gate lost its input AND the
+    # bill is high". A design that genuinely sews no linear stitch (an
+    # all-fill logo) is the case `_sewn_linear_cover`'s `None` was written
+    # for: capping its whole outline is correct, and when that is also cheap
+    # there is nothing to say. What is never acceptable is the COST, however
+    # the design arrived at it — so the cover and the saving ride along as
+    # fields, to tell a collapsed gate (becker: 0.0 mm², 0.0% saved) apart
+    # from a fragmented silhouette (`drone_render`: 1,091 mm², 80% saved, and
+    # still expensive).
+    if cap_cost is not None and cap_cost["over_budget"]:
+        # Two sentences, and the middle one is the diagnosis. "No thread on
+        # its own edge" is a different design from "plenty of thread and
+        # still expensive", and the operator's next move differs: the first
+        # is a size or a tiering away from being cheap, the second is a
+        # silhouette that was never one edge.
+        _why = (" This design lays no thread along its own edge at all, so "
+                "there was nothing to skip and the whole outline was traced "
+                "end to end." if cap_cost["omit_cover_mm2"] <= 0.0 else
+                f" The thread this design already lays along its own edge "
+                f"({cap_cost['omit_cover_mm2']:,} mm² of it) saved "
+                f"{cap_cost['gate_saved_pct']}% of the cap; the rest was "
+                f"drawn from scratch.")
+        _tail = (" The cap was dropped, so this design has no edge cap at "
+                 "all." if cap_cost["dropped"] else
+                 " It was sewn anyway: re-size the design, switch the design "
+                 "edge off, or accept the cost — the same artwork can bill "
+                 "+18% at one size and +59% eight millimetres up.")
+        warnings.append(
+            warn(
+                EDGE_CAP_OVER_BUDGET,
+                f"The design edge added {cap_cost['stitches']:,} stitches — "
+                f"+{cap_cost['percent']}% of the design, past the "
+                f"+{cap_cost['budget_pct']}% mark where capping an edge stops "
+                f"paying for itself." + _why + _tail,
+                style=cap_cost["style"],
+                stitches=cap_cost["stitches"],
+                percent=cap_cost["percent"],
+                budget_pct=cap_cost["budget_pct"],
+                gate_saved_pct=cap_cost["gate_saved_pct"],
+                omit_cover_mm2=cap_cost["omit_cover_mm2"],
+                dropped=cap_cost["dropped"],
             )
         )
     if cap_empty_style:

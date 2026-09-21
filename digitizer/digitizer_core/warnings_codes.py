@@ -10,12 +10,23 @@ CLASSIFIED_GRADIENT = "CLASSIFIED_GRADIENT"            # routed to the blend fil
 CLASSIFIED_PHOTO_SUBJECT = "CLASSIFIED_PHOTO_SUBJECT"  # portrait/pet/product; no dedicated handling yet (step 3+)
 CLASSIFIED_PHOTO_SCENE = "CLASSIFIED_PHOTO_SCENE"      # scenery/landscape; no dedicated handling yet (step 6+)
 CLASSIFICATION_UNCERTAIN = "CLASSIFICATION_UNCERTAIN"  # below the confidence floor; treated as flat rather than guessed
+CLASSIFICATION_SEED_UNSTABLE = "CLASSIFICATION_SEED_UNSTABLE"  # seed sweep ran and the seeds disagree across a gate; the verdict is one draw
 
 # Stage 1
 BACKGROUND_UNCERTAIN = "BACKGROUND_UNCERTAIN"      # border flood intruded deep past the artwork margin
 INPUT_LOW_RESOLUTION = "INPUT_LOW_RESOLUTION"      # px_per_mm below floor even after capped upscale
 BACKGROUND_ENCLOSED = "BACKGROUND_ENCLOSED"        # enclosed bg-colored region treated as hole (review-toggleable)
 BACKGROUND_ABSENT = "BACKGROUND_ABSENT"            # full-bleed art: no background found, whole canvas stitched. extra: {"agreement": float}
+
+# Stage 1.25 (photograph detection — quality review 2026-09-08 item 13).
+# Rides cfg.detect_photographic (default OFF) and fires ONLY when a signal
+# actually said photograph; silence emits nothing, because no signal firing is
+# "no opinion", not "not a photograph" (see photo_signals' module docstring).
+# Info, not a problem: it names which signal fired, because the consequence —
+# the palette resnap bind, the shade bind, preflight's photo yardstick — is
+# something the caller may want to override with an explicit declaration.
+# extra: {"signal": "exif" | "face", "detail": str}
+PHOTO_DETECTED = "PHOTO_DETECTED"
 
 # Stage 1.5 (photo prep — photo plan §2 rows 3-4, build step 3 first slice)
 # Info, not a problem: tone prep + texture kill ran on this photo-classified
@@ -143,15 +154,29 @@ SHAPES_LEFT_UNSEWN = "SHAPES_LEFT_UNSEWN"
 
 # Stage 4/5 seam (pipeline.run_stages, after compact_layers)
 # The sew-order palette is per LAYER — `compact_layers` reads each layer's
-# thread out of stage 2's quantized palette. `revalidate_threads` (fix #6.3)
-# runs BEFORE it and re-snaps individual shapes to a different spool, without
-# moving them to another layer, so a layer can end up holding two threads and
-# its palette entry naming a spool no shape in it carries. Stage 7 partitions
-# blocks by (sew_index, step_key, thread) and is therefore right regardless —
-# it is the palette, i.e. the cone list a human loads and the review screen
-# shows, that is wrong. Measured on the pro corpus 2026-08-14: 5 of 23
-# designs, worst `hotel_fremont_patch` (layer 0 lists 1755 Hyacinth while
-# 1,813 of its 1,815 mm² sew in 4071).
+# thread out of stage 2's quantized palette. Passes that re-snap individual
+# shapes to a different spool without moving them to another layer leave a
+# layer holding two threads and its palette entry naming a spool no shape in
+# it carries. `revalidate_threads` (fix #6.3) was the original producer; since
+# the colour bundle flipped on 2026-09-10 it is `enforce_color_cap`, which
+# `rehome_resnapped_regions` structurally cannot repair (wrong stamp, and it
+# runs first) — 24 shapes on 3 of 26 fixtures at `max_colors=12`, 76 on two
+# real-customer fixtures at the Studio's shipped 6.
+#
+# Stage 7 partitions blocks by (sew_index, step_key, thread) and is therefore
+# right regardless — and so is the OPERATOR's list. This comment used to say
+# "the cone list a human loads … is wrong"; that is false, and DOCTRINE
+# recorded it so on 2026-09-07. A human loads `plan.palette`, per BLOCK,
+# consistent on 26 of 26 fixtures. What is wrong is the REVIEW SCREEN's
+# per-layer list — the labels a user reorders and recolours by.
+#
+# `cfg.layer_palette_from_regions` (default OFF) elects each layer's cone
+# from its own regions and closes it; this warning is the detector for the
+# OFF path. Note it is blind to the LARGER direction — a layer naming a cone
+# no block sews at all, on 9 of 26 fixtures, 6 of them silent here. That one
+# is reported by `tools/palette_mismatch.py`'s phantom column, never by this
+# code: a layer nobody is left in produces no mismatched region.
+# Full measurement: `docs/palette-mismatch-2026-09-12.md`.
 # extra: {"count": int, "layers": list[int], "ids": list[str],
 #         "listed": list[str], "actual": list[str]}
 PALETTE_THREAD_MISMATCH = "PALETTE_THREAD_MISMATCH"
@@ -168,12 +193,13 @@ SHAPE_TOO_THIN_TO_FILL = "SHAPE_TOO_THIN_TO_FILL"  # narrower than a fill can ho
 # list[str], "threads": list[str], "total_mm2": float, "largest_mm2": float};
 # stage 7's still carries {"count": int} only.
 SHAPE_NOT_STITCHED = "SHAPE_NOT_STITCHED"
-LONG_JUMPS_TRIMMED = "LONG_JUMPS_TRIMMED"          # travel could not stay inside the shape. extra: {"count": int}
+LONG_JUMPS_TRIMMED = "LONG_JUMPS_TRIMMED"          # the thread is lifted inside a shape: travel could not stay inside it, or (cfg.fill_bridge_cut) a route existed and the cut was cheaper than thread on top of finished fill. extra: {"count": int}
 SMALL_SHAPES_AS_RUN = "SMALL_SHAPES_AS_RUN"        # too small for fill or satin; sewn as run outlines instead. extra: {"count": int}
-# Stage 5–7 — a thin colour band between two neighbours whose thread is an
-# interpolation of theirs (a slice of a gradient) sews as fill, not as the
-# satin column its shape alone would earn (`gradient_band.py`; Kent 2026-09-09).
-# extra: {"count": int, "ids": [shape_id], "between": {shape_id: [a, b]}}
+# Stage 5–7 — a thin colour band the quantizer cut out of a smooth gradient
+# sews as fill, not as the satin column its shape alone would earn. What
+# identifies it is the source pixels either side of its boundary, not its
+# colour (`gradient_band.py`; Kent 2026-09-09).
+# extra: {"count": int, "ids": [shape_id]}
 GRADIENT_BANDS_AS_FILL = "GRADIENT_BANDS_AS_FILL"
 # Stage 6 (satin tier, 2026-09-03). A stretch of a stroke inside a satin shape
 # whose crosses fell under SATIN_MIN_CROSS_MM sewed as a bean run along its
@@ -255,8 +281,33 @@ EDGE_CAP_EMPTY = "EDGE_CAP_EMPTY"
 # On that design "the design silhouette" is not one edge and the feature's
 # premise does not hold, so the honest move is to report the bill rather than
 # to guess a fragmentation threshold nobody has sewn.
-# extra: {"style": str, "stitches": int, "percent": float, "edges": int}
+# extra: {"style": str, "stitches": int, "percent": float, "edges": int,
+#         "whole_loops": int, "arcs": int, "yielded": int,
+#         "cracks_filled": int, "gate_saved_pct": float,
+#         "omit_cover_mm2": float, "over_budget": bool, "budget_pct": float,
+#         "dropped": bool}
+# `edges` is the number of silhouette RINGS the cap went around; `whole_loops`
+# and `arcs` split the runs it emitted (a ring the gate cut sews as arcs, and
+# an operator reading fragmentation needs the ring count, not the run count —
+# see stage6_border.silhouette_cap). `gate_saved_pct` is 1 - gated/ungated on
+# the same geometry: the single number that says whether the gate is working
+# on THIS design, and the one whose absence let a +58.7% bill pass for a month.
 EDGE_CAP_APPLIED = "EDGE_CAP_APPLIED"
+# The cap's bill cleared `stage6_border.EDGE_CAP_BUDGET_PCT` (40% of the
+# artwork's own stitches). Loud because the cap is DEFAULT ON: the bill was
+# always reported honestly, and that was not enough — `EDGE_CAP_APPLIED` fires
+# on every run, so the one run where the cap costs two-fifths of the design or
+# more read exactly like the ninety that cost a tenth. Measured cause on
+# `becker_marine_logo` (docs/edge-cap-cliff-2026-09-12.md): one shape carries
+# ~94% of the design's linear cover, that shape's satin/fill verdict is not
+# monotone in design size, and when it tiers to fill the gate's input — and
+# with it the gate's saving — collapses from 72% to 3%, or to nothing at all.
+# The warning carries the diagnosis, not just the number: `gate_saved_pct` and
+# `omit_cover_mm2` say whether the gate had anything to work with.
+# extra: {"style": str, "stitches": int, "percent": float, "budget_pct":
+#         float, "gate_saved_pct": float, "omit_cover_mm2": float,
+#         "dropped": bool}
+EDGE_CAP_OVER_BUDGET = "EDGE_CAP_OVER_BUDGET"
 # The satin cap fell back to its own bean lightening on part of the
 # silhouette — `border_runs`' documented contract, surfaced rather than
 # absorbed so a cap that reads lighter than expected has a reason on screen.

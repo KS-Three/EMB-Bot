@@ -242,7 +242,10 @@ apart; §7.
 - **Which polygon the flag skeletonises** (§4c): the artwork (shipped: the
   item as specified, IoU up on three fixtures of four, Becker's A into 7
   strokes) or the grown polygon (the default's decomposition, Becker
-  outright better, ENTHUSIAST flat). One line either way.
+  outright better, ENTHUSIAST flat). One line either way. **RULED
+  2026-09-19 — the artwork, as shipped** (Kent, after the flag was
+  re-measured with the lettering construction's steps 0–2 ON:
+  scope-history 2026-09-19, step 3a entry).
 - Flip `satin_rail_comp` ON by default — after a sew-out, since where the
   pull lands is what the fabric answers to; every satin golden re-captures.
 - The 2× disagreement between the engines on what `pull_comp_mm` means

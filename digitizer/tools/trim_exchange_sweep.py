@@ -53,6 +53,7 @@ sys.path.insert(0, str(ROOT))
 
 from digitizer_core.config import PipelineConfig  # noqa: E402
 from digitizer_core.pipeline import digitize  # noqa: E402
+from tools._console import utf8_console  # noqa: E402
 
 TRIM_STITCH_EQUIVALENT = 25.0
 
@@ -118,6 +119,7 @@ def diff(before_path: str, after_path: str) -> int:
 
 
 def main() -> None:
+    utf8_console()          # the header below carries Δ
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("tag", nargs="?", default="RUN",

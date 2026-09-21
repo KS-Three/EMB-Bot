@@ -33,7 +33,7 @@ This entry is the decisions and the traps.
 - **Wisconsin** → 15-vertex polygon, 14 fill rows at 45°, peninsula under
   `MIN_FILL_WIDTH_MM`. A scale + border question; Border was None.
 
-## The fix — BUILT, DEFAULT OFF — and the three traps inside it
+## The fix (PR #321) — BUILT, DEFAULT OFF — and the three traps inside it
 
 Second reading in `_cluster_house_angle_deg`: when doubled space finds
 nothing, quadrupled space, same Rayleigh test — two orthogonal families

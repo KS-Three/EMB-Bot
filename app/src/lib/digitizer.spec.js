@@ -56,7 +56,7 @@ const PIPELINE_CONFIG_FIELDS = [
   "underlay_style", "underlay", "satin", "satin_max_width_mm", "border",
   "border_width_mm", "deleted_shape_ids", "shape_overrides",
   "merge_shape_ids", "split_shapes", "photo_segment_sam2", "detail_layer",
-  "forced_class", "edge_cap", "is_photographic",
+  "forced_class", "edge_cap", "is_photographic", "garment_rgb",
 ];
 
 test("buildDigitizeConfig sends the stored thread-brand preference and the project garment, in service field names", async () => {
@@ -70,11 +70,30 @@ test("buildDigitizeConfig sends the stored thread-brand preference and the proje
     satin: true,
     border: "off",
     detail_layer: false,
-    edge_cap: "none",
+    // "bean" since Kent's flip 2026-09-11 — the service's own default moved
+    // the same day, and this must keep matching it.
+    edge_cap: "bean",
     thread_brand: "madeira-rayon",
     garment_id: "left_chest",
   });
   for (const k of Object.keys(cfg)) expect(PIPELINE_CONFIG_FIELDS).toContain(k);
+});
+
+test("buildDigitizeConfig sends the project's fabric colour as garment_rgb, and nothing when the project has none", async () => {
+  stubStorage({});
+  const { buildDigitizeConfig } = await import("./digitizer.js");
+  // The garment step's Navy swatch; the engine's enclosed_by_garment rule
+  // reads it (digitizer_core/config.py) — the Studio only carries it.
+  const navy = buildDigitizeConfig(digitizedElement(), { ...PROJECT, fabricRgb: [31, 41, 84] });
+  expect(navy.garment_rgb).toEqual([31, 41, 84]);
+  expect(navy.garment_id).toBe("left_chest");
+  for (const k of Object.keys(navy)) expect(PIPELINE_CONFIG_FIELDS).toContain(k);
+  // A pre-fabricRgb save (project.js migrates additively) sends no colour,
+  // so the service's rule declines rather than guessing a garment.
+  expect(buildDigitizeConfig(digitizedElement(), PROJECT)).not.toHaveProperty("garment_rgb");
+  // Exactly three channels, whatever a custom hex round-trip stored.
+  const custom = buildDigitizeConfig(digitizedElement(), { ...PROJECT, fabricRgb: [12.4, 200, 7, 255] });
+  expect(custom.garment_rgb).toEqual([12, 200, 7]);
 });
 
 test("border is OMITTED when unset, so the service picks per artwork class", async () => {
@@ -176,14 +195,24 @@ test("detail_layer rides buildDigitizeConfig both ways, and back-fills false for
   expect(buildDigitizeConfig(on, PROJECT).detail_layer).toBe(true);
 });
 
-test("edge_cap rides buildDigitizeConfig, and back-fills \"none\" for projects saved before the field existed", async () => {
+test("edge_cap rides buildDigitizeConfig, and back-fills today's default for projects saved before the field existed", async () => {
   stubStorage({});
   const { buildDigitizeConfig } = await import("./digitizer.js");
 
-  // Same additive-default contract detail_layer relies on above: a project
-  // saved before the design-edge cap existed must send "none" — the service's
-  // own default, whose off-path is byte-identity tested — not undefined.
-  expect(buildDigitizeConfig(digitizedElement(), PROJECT).edge_cap).toBe("none");
+  // Same additive-default contract detail_layer relies on above: the field is
+  // always sent, never undefined. A project saved before the design-edge cap
+  // existed stored nothing, so it takes TODAY's default — "bean" since Kent's
+  // flip 2026-09-11 — exactly as a pre-colour-bundle project takes today's
+  // colour defaults when it is re-digitized. A project that stored "none"
+  // explicitly still sends "none": the back-fill only fills an ABSENT field.
+  expect(buildDigitizeConfig(digitizedElement(), PROJECT).edge_cap).toBe("bean");
+  const off = digitizedElement({
+    params: {
+      target_width_mm: 80, max_colors: 6, satin: true,
+      fill_angle_deg: null, border: "off", edge_cap: "none",
+    },
+  });
+  expect(buildDigitizeConfig(off, PROJECT).edge_cap).toBe("none");
 
   for (const style of ["bean", "satin"]) {
     const el = digitizedElement({
@@ -280,6 +309,27 @@ test("startDigitize POSTs multipart image+config to /digitize exactly as test_se
   expect(sent.thread_brand).toBe("isacord");
   expect(sent.garment_id).toBe("left_chest");
   for (const k of Object.keys(sent)) expect(PIPELINE_CONFIG_FIELDS).toContain(k);
+});
+
+test("startDigitize sends the customer's FILE when handed its bytes — its own type and name, not a re-encoded PNG", async () => {
+  stubStorage({});
+  const { startDigitize, buildDigitizeConfig } = await import("./digitizer.js");
+  const calls = [];
+  const fetchFn = vi.fn(async (url, opts) => {
+    calls.push({ url, opts });
+    return { ok: true, status: 202, json: async () => ({ job_id: "j2", state: "queued", cached: false }) };
+  });
+  const bytes = new Uint8Array([82, 73, 70, 70, 1, 2, 3, 4]);
+  await startDigitize({ bytes, type: "image/webp", name: "logo.webp" }, buildDigitizeConfig(digitizedElement(), PROJECT), fetchFn);
+  const image = calls[0].opts.body.get("image");
+  expect(image.type).toBe("image/webp");
+  expect(image.name).toBe("logo.webp");
+  expect(image.size).toBe(bytes.length);
+  // The base64 preview path is unchanged: a PNG named art.png.
+  await startDigitize(TINY_PNG_B64, buildDigitizeConfig(digitizedElement(), PROJECT), fetchFn);
+  const preview = calls[1].opts.body.get("image");
+  expect(preview.type).toBe("image/png");
+  expect(preview.name).toBe("art.png");
 });
 
 test("startDigitize surfaces the service's own detail sentence on a 400", async () => {
@@ -1345,6 +1395,23 @@ test("describeWarnings translates pipeline codes to customer language, with coun
   expect(out[2].text).toBe("The thread gets cut 2 times where it has to travel a long way.");
 });
 
+test("describeWarnings names WHICH signal called the art a photograph", async () => {
+  // Stage 1.25 (cfg.detect_photographic). The engine sentence this replaces
+  // names the palette bind and the shade bind, which are internal machinery
+  // nobody uploading a picture has heard of — and a customer who disagrees
+  // with the verdict needs to know what the engine saw to disagree with it.
+  stubStorage({});
+  const { describeWarnings } = await import("./digitizer.js");
+  const out = describeWarnings([
+    { code: "PHOTO_DETECTED", message: "engine prose", signal: "exif", detail: "EXIF camera 'Canon EOS R6'" },
+    { code: "PHOTO_DETECTED", message: "engine prose", signal: "face", detail: "1 face(s) detected" },
+  ]);
+  expect(out[0].text).toContain("camera that took it");
+  expect(out[1].text).toContain("A face was detected");
+  expect(out[0].text).not.toContain("engine prose");
+  expect(out[1].text).not.toContain("palette bind");
+});
+
 test("describeWarnings explains a hairline stroke sewn as a run as what happened, not a fault", async () => {
   stubStorage({});
   const { describeWarnings } = await import("./digitizer.js");
@@ -1740,6 +1807,34 @@ test("describeWarnings speaks all four stage-0 classification codes instead of f
   }
 });
 
+test("the photo readings make their rough-result warning conditional, because most of them are misreads", async () => {
+  // The measured error rate, not hedging. Stage 0 misroutes six of seven real
+  // customer logos to `gradient`, and `logo_script_tires.png` — flat black
+  // script on white — to `photo_scene` on its background's ±1 grey-level
+  // grain (docs/stage0-tires-photo-scene-2026-09-11.md). Told flatly, "photos
+  // sew rougher — check the preview closely" reached those customers as a
+  // warning about a photograph they never uploaded AND about a rough result
+  // they were not going to get: that fixture scores the same down either lane.
+  //
+  // The CORRECTION is deliberately not asserted here — DigitizePanel's
+  // read-row owns it, with a button, and duplicating it printed the same
+  // guidance twice on one screen (DigitizePanel.spec's three reading-row tests
+  // found two matches where they expect one, which is how that was caught).
+  stubStorage({});
+  const { describeWarnings } = await import("./digitizer.js");
+  const out = describeWarnings(
+    ["CLASSIFIED_PHOTO_SUBJECT", "CLASSIFIED_PHOTO_SCENE"].map((code) => ({ code }))
+  );
+  for (const line of out) {
+    expect(line.text).toContain("If that reading is right");
+    // The consequence still has to be THERE for the photographs this is right
+    // about — the fix is its conditionality, not its removal.
+    expect(line.text).toContain("check the preview closely");
+    // And it stays out of the read-row's job.
+    expect(line.text).not.toContain("no shading or photo texture");
+  }
+});
+
 // ---- INPUT_LOW_RESOLUTION carries the number ------------------------------
 //
 // The engine has always known the figure; the panel threw it away and said
@@ -2080,4 +2175,139 @@ test("an unlisted code is a NOTE, deliberately, and is still shown", async () =>
   ]);
   expect(line.text).toContain("2 small openings were held open");
   expect(line.text).not.toContain("ENGINE PROSE");
+});
+
+// ---- spoolCount: what the customer BUYS, not what the machine stops for ----
+test("spoolCount folds a cone the design re-loads, and colorCount does not", async () => {
+  const { spoolCount } = await import("./digitizer.js");
+  // Three blocks, two spools — the shape the design-silhouette cap produces on
+  // essentially every design since it went default on (it sews last in the
+  // cone that owns most of the edge, so it re-loads one already run).
+  const design = {
+    colorCount: 3,
+    colors: [
+      { r: 226, g: 60, b: 115, name: "2521 Fuchsia" },
+      { r: 255, g: 255, b: 255, name: "0015 White" },
+      { r: 226, g: 60, b: 115, name: "2521 Fuchsia" },
+    ],
+  };
+  expect(spoolCount(design)).toBe(2);
+  expect(design.colorCount).toBe(3);   // the stop count is still true, and still there
+});
+
+test("spoolCount counts every distinct cone when none repeats", async () => {
+  const { spoolCount } = await import("./digitizer.js");
+  expect(spoolCount({ colorCount: 2, colors: [{ name: "2521 Fuchsia" }, { name: "0015 White" }] })).toBe(2);
+});
+
+test("spoolCount falls back to rgb when the cones carry no name, and to colorCount with no colors", async () => {
+  const { spoolCount } = await import("./digitizer.js");
+  // The browser lettering lane names its colours "Color 1", "Color 2", … which
+  // are already distinct per block, so it is unaffected either way; a design
+  // with no names at all is folded on the colour itself.
+  expect(spoolCount({ colors: [{ r: 1, g: 2, b: 3 }, { r: 1, g: 2, b: 3 }, { r: 9, g: 9, b: 9 }] })).toBe(2);
+  expect(spoolCount({ colorCount: 4, colors: [] })).toBe(4);
+  expect(spoolCount({ colorCount: 4 })).toBe(4);
+  expect(spoolCount(null)).toBe(0);
+});
+
+// ---------------------------------------------------------------------------
+// editKind — the restitch pacing rule.
+//
+// The scheduler cannot tell a dragged outline from a border picked off the
+// canvas menu by WHERE the change landed (both are `shape_overrides`), so it
+// asks what moved. A border is complete when it is picked and starts stitching
+// at once; everything else keeps the 2 s pause it already had.
+//
+// These tests pin the narrowness, which is the point: "border" has to be
+// earned by a change containing nothing else, so the fast path can never
+// swallow a drag.
+describe("editKind (restitch pacing)", () => {
+  const ring = (dx = 0) => [[0 + dx, 0], [10 + dx, 0], [10 + dx, 10], [0 + dx, 10]];
+  const edits = async (el) => {
+    const { canonicalShapeEdits } = await import("./digitizer.js");
+    return canonicalShapeEdits(el);
+  };
+  const el = (overrides) => digitizedElement({ shapeOverrides: overrides });
+
+  it("reads an unchanged edit set as 'none'", async () => {
+    const { editKind } = await import("./digitizer.js");
+    const a = await edits(el({ s1: { border: "auto" } }));
+    const b = await edits(el({ s1: { border: "auto" } }));
+    expect(editKind(a, b)).toBe("none");
+  });
+
+  it("reads a toggled-then-untoggled edit as 'none', like the job cache does", async () => {
+    const { editKind } = await import("./digitizer.js");
+    const a = await edits(el({}));
+    const b = await edits(el({ s1: {} }));   // canonicalizes away to nothing
+    expect(editKind(a, b)).toBe("none");
+  });
+
+  it("reads a border picked off the canvas menu as 'border'", async () => {
+    const { editKind } = await import("./digitizer.js");
+    const none = await edits(el({}));
+    const added = await edits(el({ s1: { border: "auto" } }));
+    expect(editKind(none, added)).toBe("border");
+    // "Remove border" — the other half of the same menu.
+    const removed = await edits(el({ s1: { border: "off" } }));
+    expect(editKind(added, removed)).toBe("border");
+    // "Use design setting" — clears the override entirely.
+    expect(editKind(removed, none)).toBe("border");
+  });
+
+  it("reads borders on SEVERAL shapes at once as 'border'", async () => {
+    const { editKind } = await import("./digitizer.js");
+    const a = await edits(el({ s1: { border: "auto" } }));
+    const b = await edits(el({ s1: { border: "off" }, s2: { border: "bean" } }));
+    expect(editKind(a, b)).toBe("border");
+  });
+
+  // The case the rule turns on. A shape that has been hand-edited keeps its
+  // ring in `shape_overrides` forever after; a border toggled on THAT shape
+  // must still take the fast path, because the ring did not move — it is
+  // merely sitting next to the thing that did.
+  it("reads a border toggle on an already-dragged shape as 'border'", async () => {
+    const { editKind } = await import("./digitizer.js");
+    const dragged = await edits(el({ s1: { boundary_override: ring() } }));
+    const bordered = await edits(el({ s1: { boundary_override: ring(), border: "auto" } }));
+    expect(editKind(dragged, bordered)).toBe("border");
+  });
+
+  it("reads a dragged boundary as 'other' — the pause is what it is for", async () => {
+    const { editKind } = await import("./digitizer.js");
+    const none = await edits(el({}));
+    const first = await edits(el({ s1: { boundary_override: ring() } }));
+    expect(editKind(none, first)).toBe("other");
+    // ...and every nudge after it.
+    expect(editKind(first, await edits(el({ s1: { boundary_override: ring(1) } })))).toBe("other");
+    // ...and clearing it again.
+    expect(editKind(first, none)).toBe("other");
+  });
+
+  // Everything Kent's 2026-08-13 debounce ruling already covered keeps the
+  // pause. Deliberately NOT on the fast path: a wider rule was written first
+  // and backed out, because it changed the behaviour of controls nobody asked
+  // about and broke the tests that encode that ruling.
+  it("reads every other edit as 'other'", async () => {
+    const { editKind } = await import("./digitizer.js");
+    const base = await edits(el({}));
+    expect(editKind(base, await edits(el({ s1: { tier: "satin" } })))).toBe("other");
+    expect(editKind(base, await edits(el({ s1: { underlay_style: "edge_run" } })))).toBe("other");
+    expect(editKind(base, await edits(el({ s1: { thread_index: 3 } })))).toBe("other");
+    expect(editKind(base, await edits(el({ s1: { fill_angle_deg: 45 } })))).toBe("other");
+    expect(editKind(base, await edits(digitizedElement({ deletedShapeIds: ["s1"] })))).toBe("other");
+    expect(editKind(base, await edits(digitizedElement({ mergeGroups: [["s1", "s2"]] })))).toBe("other");
+  });
+
+  // Mixed changes take the SLOW path: the fast one is for a change that is
+  // nothing but borders, and a border riding along with a drag is a drag.
+  it("reads a border bundled with anything else as 'other'", async () => {
+    const { editKind } = await import("./digitizer.js");
+    const a = await edits(el({ s1: { boundary_override: ring() } }));
+    const b = await edits(el({ s1: { boundary_override: ring(1) }, s2: { border: "auto" } }));
+    expect(editKind(a, b)).toBe("other");
+    const c = await edits(el({ s1: { border: "auto", tier: "fill" } }));
+    expect(editKind(await edits(el({})), c)).toBe("other");
+  });
 });

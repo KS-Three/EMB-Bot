@@ -254,10 +254,17 @@ function stitchParams(t) {
 // IMPORTANT: satin fonts carry authored running-stitch paths too (montecarlo
 // 646, cats 837), which EMB-Bot has always dropped. Honouring them would add
 // stitches to satin fonts that carry such paths — up to the 66 of 85 that have
-// satin columns at all; the exact number is NOT determinable from the built
-// output, because a stripped param and a never-authored one both leave a bare
-// point array, so it needs the scratch_ink/ SVG sources. That is a change to
-// existing customer designs either way, and Kent's call, not this change's.
+// satin columns at all. The exact number is not determinable from the BUILT
+// output — a stripped param and a never-authored one both leave a bare point
+// array — but it is determinable, and was, on 2026-09-13: upstream
+// `inkstitch/embroidery-fonts` is public and `src/<font>/ltr.svg` answers an
+// unauthenticated raw.githubusercontent.com request with HTTP 200, so this
+// never needed `scratch_ink/` or Kent's machine, which is what this comment
+// used to say. For the dead-glyph half of the question the answer is 20 of 20
+// authored (roaring_twenties_KOR 2.5 mm, its _small twin 1.5 mm) against 6 of
+// 6 never authored; see test/font-dead-glyphs.test.js for the per-glyph table.
+// That is still a change to existing customer designs, and still Kent's call,
+// not this change's.
 // (This read "all 62 shipped fonts" until 2026-08-22 — the library size when
 // it was written, and wrong on both the count and the scope.) So stripRunParamsIfSatin() below
 // removes these params again for any font that has satin columns, keeping
@@ -394,6 +401,30 @@ for (const file of svgFiles) {
   if (!hasSatin) return;
   for (const g of Object.values(glyphs)) {
     if (!g.runs) continue;
+    // SCOPED PER GLYPH 2026-09-13 (Kent's call). This used to strip every
+    // glyph in the font as soon as ANY glyph had a satin column, which killed
+    // 20 glyphs whose runs are not construction — they ARE the glyph.
+    //
+    // The strip's reason only applies where a run accompanies a column: on a
+    // satin glyph the authored run is underlay/travel, and honouring it would
+    // add construction stitches to designs customers already have (the
+    // deferred call this function exists for). A glyph with NO columns has no
+    // such run to confuse — whatever it authored is the only thing it sews.
+    //
+    // Measured upstream before the change (inkstitch/embroidery-fonts,
+    // src/<font>/ltr.svg, public and readable over plain HTTPS):
+    //   roaring_twenties_KOR        10/10 dead glyphs author 2.5 mm, 0 columns
+    //   roaring_twenties_KOR_small  10/10 author 1.5 mm, 0 columns
+    //   ondulamarif_{Medium,S,XL}    0/4  author any length
+    //   western_light                0/2  author any length
+    // So this revives exactly the 20 and leaves the other 6 dead, which is
+    // right: they never had a length, and inventing one is ROADMAP gate 1.
+    //
+    // Closes "Waiting on Kent" item 7, whose own text set the test (">0 ->
+    // the narrow fix revives the 20 — Kent's call"). Kent ruled 2026-09-13.
+    // It changes the bbox auto-scaling of any text containing + - / < = > \
+    // _ ¯ °, because those glyphs currently contribute nothing to the box.
+    if (!(g.cols || []).length) continue;
     g.runs = g.runs.map((r) => (r && r.pts ? r.pts : r));
   }
 })();

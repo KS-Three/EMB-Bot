@@ -59,7 +59,10 @@ def _two_shapes(**overrides) -> list[dict]:
 
 def test_fill_and_satin_shapes_produce_a_real_plan():
     shapes = _two_shapes()
-    c = cfg(garment_id="left_chest")
+    # `edge_cap="none"`: these are two synthetic shapes and the subject is
+    # that two threads make two blocks. The design-silhouette cap (ON by
+    # default since 2026-09-11) would add a third, testing nothing here.
+    c = cfg(garment_id="left_chest", edge_cap="none")
     result = build_manual_result(shapes, c)
 
     assert len(result.regions) == 2
@@ -162,7 +165,9 @@ def test_shapes_sharing_a_thread_sew_as_one_color_block():
     result = build_manual_result(shapes, cfg())
     assert len({r.meta["layer"] for r in result.regions}) == 1
 
-    plan = plan_stitches(result, cfg())
+    # Cap off for the same reason as above: "one thread, one block" is the
+    # claim, and the cap is a second block by construction.
+    plan = plan_stitches(result, cfg(edge_cap="none"))
     assert len(plan.blocks) == 1
     assert plan.blocks[0].stitch_count > 0
 
@@ -258,8 +263,21 @@ def test_copying_a_real_auto_digitized_design_through_manual_reproduces_it():
     difference: `design_size_mm`'s bbox in the auto path also spans the one
     enclosed-background region excluded from stitching, which manual mode —
     having no notion of an unstitched phantom shape — never carries, so the
-    two designs recenter a fraction of a millimetre apart)."""
-    c = cfg(**PLAN_CFG_KW)
+    two designs recenter a fraction of a millimetre apart).
+
+    Pinned to `keep_thin_strokes=False` 2026-09-13, the day Kent flipped that
+    flag ON by default, and the pin is worth reading rather than assuming.
+    ON, whitebg keeps a 1.3 mm² teal region (`S35cd33b4`, run tier) and auto
+    sews it FIFTH — `['1704','3902','1305','2905','4531','5510','3902']` —
+    while the same shapes copied into manual mode sew it sixth,
+    `[...,'5510','4531','3902']`. Neither list is wrong: auto's block order
+    follows the palette LAYER (stage 4 sorts regions by `(layer, -area,
+    shape_id)`), manual mode has no layers and orders by area, and until a
+    tiny region existed in an early layer the two orders agreed. So this is
+    a SECOND difference of the same kind as the enclosed-background one
+    above — a notion auto carries that manual mode cannot — found by the
+    flip, recorded here, and not fixed by it."""
+    c = cfg(keep_thin_strokes=False, **PLAN_CFG_KW)
     auto_result = run_stages(TESTDATA / "logo_whitebg.png", c)
     auto_plan = plan_stitches(auto_result, c)
 

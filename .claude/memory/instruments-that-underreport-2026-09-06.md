@@ -162,7 +162,8 @@ Related, and the reason #4 matters beyond tidiness: the same-hole RATE is a
 ratio whose denominator moved. A/B'd at both row pitches, penetrations grew
 **×1.17–2.30** while repeat points moved ×0.98–1.15 (28 against 28 on
 `logo_whitebg` — the same integer) and **`max_strikes` was identical on all
-four fixtures**. The check went quiet across the whole corpus with the fabric
+four fixtures**. Net, **the rate fell ×0.43–0.83 on denominator growth
+alone**. The check went quiet across the whole corpus with the fabric
 struck in exactly the same places. **Its silence is not evidence that anything
 improved** — ROADMAP gate 4, arriving somewhere nobody had connected it to.
 

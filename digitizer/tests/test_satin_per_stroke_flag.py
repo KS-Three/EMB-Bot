@@ -59,7 +59,11 @@ def test_on_moves_the_sewn_result_where_the_measurement_said_it_would():
     ribbon far more cheaply than fill rows do.
     """
     art = TESTDATA / "becker_marine_logo.png"
-    kw = dict(target_width_mm=100.0, garment_id="left_chest")
+    # Pre-flip polygons on purpose: with `subpixel_edges_upscaled` (Kent's
+    # 2026-09-18 flip) becker's outline band is already satin at 100 mm and
+    # the three shapes this rung promoted no longer exist as such, so the
+    # flag moves nothing there. The rung's mechanics are what this pins.
+    kw = dict(target_width_mm=100.0, garment_id="left_chest", subpixel_edges_upscaled=False)
     _off_r, off = digitize(art, PipelineConfig(**kw))
     _on_r, on = digitize(art, PipelineConfig(**kw, satin_per_stroke=True))
 
@@ -204,7 +208,8 @@ def test_is_satin_candidate_forwards_the_flag():
     about.
     """
     art = TESTDATA / "becker_marine_logo.png"
-    result, _plan = digitize(art, PipelineConfig(target_width_mm=100.0,
+    # Pre-flip polygons, as in `test_on_moves_the_sewn_result_...` above.
+    result, _plan = digitize(art, PipelineConfig(target_width_mm=100.0, subpixel_edges_upscaled=False,
                                                  garment_id="left_chest"))
     smax = machine.SATIN_MAX_WIDTH_MM
     moved = [r.shape_id for r in result.regions

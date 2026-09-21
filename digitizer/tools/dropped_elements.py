@@ -93,7 +93,7 @@ from digitizer_core.config import PipelineConfig  # noqa: E402
 from digitizer_core.pipeline import digitize  # noqa: E402
 from digitizer_core.stitchviz import render_design  # noqa: E402
 from digitizer_core.threads import rgb_to_lab  # noqa: E402
-from tools.artfidelity_self import (FIXTURES, RES, art_ink_field,  # noqa: E402
+from tools.artfidelity_self import (FIXTURES, RES, Registered, art_ink_field,  # noqa: E402
                                     ink_is_ambiguous, ink_saturation,
                                     INK_SATURATION_MAX, register,
                                     stitch_coverage_field)
@@ -209,7 +209,18 @@ def disagreement(a_rgb: np.ndarray, s_rgb: np.ndarray) -> tuple:
 
 
 def analyse(image_path: str | Path, cfg: PipelineConfig | None = None) -> dict:
-    """Digitize `image_path` and report the artwork elements the stitch-out lost.
+    """Digitize `image_path`, then report what `analyse_design` finds lost."""
+    cfg = cfg or PipelineConfig()
+    image_path = Path(image_path)
+    result, plan = digitize(image_path, cfg)
+    return analyse_design(image_path, plan_to_design(plan),
+                          route=result.design_class)
+
+
+def analyse_design(image_path: str | Path, design: dict,
+                   route: str | None = None, *,
+                   registered: Registered | None = None) -> dict:
+    """Report the artwork elements the stitch-out `design` lost.
 
     An element is a connected run of ONE artwork colour. It is "lost" when the
     stitch-out no longer shows that colour there — which covers all three ways
@@ -221,18 +232,20 @@ def analyse(image_path: str | Path, cfg: PipelineConfig | None = None) -> dict:
 
     Registration is `artfidelity_self.register` on the ink masks, so an element
     counted lost here is lost at the same alignment that instrument scores.
+    `registered` is that registration already made by a caller that holds
+    several instruments (`tools.eye_pairs`); None registers here.
     """
-    cfg = cfg or PipelineConfig()
     image_path = Path(image_path)
-
-    result, plan = digitize(image_path, cfg)
-    design = plan_to_design(plan)
 
     # Align on the same binary fields artfidelity_self uses, then carry that
     # shift to the colour rasters so every layer sits on one canvas.
-    ours_f = stitch_coverage_field(design)
-    art_f = art_ink_field(image_path, float(design["widthMM"]))
-    _, O_f, A_f, dx, dy = register(ours_f, art_f)
+    if registered is None:
+        ours_f = stitch_coverage_field(design)
+        art_f = art_ink_field(image_path, float(design["widthMM"]))
+        _, O_f, A_f, dx, dy = register(ours_f, art_f)
+    else:
+        O_f, A_f, dx, dy = (registered.O_f, registered.A_f,
+                            registered.dx_mm, registered.dy_mm)
     H, W = O_f.shape
 
     art_rgb, art_ink = art_colour_field(image_path, float(design["widthMM"]))
@@ -321,7 +334,7 @@ def analyse(image_path: str | Path, cfg: PipelineConfig | None = None) -> dict:
     lost.sort(key=lambda d: -d["mm2"])
     return {
         "fixture": image_path.name,
-        "route": result.design_class,
+        "route": route,
         "lost": len(lost),
         "lost_mm2": round(lost_mm2, 1),
         "lost_frac": round(lost_mm2 / ink_mm2, 4) if ink_mm2 else 0.0,

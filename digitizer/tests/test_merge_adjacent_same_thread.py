@@ -27,6 +27,7 @@ from digitizer_core import PipelineConfig
 from digitizer_core.pipeline import digitize
 from digitizer_core.stage7_sequence import _merge_adjacent_same_thread
 from digitizer_core.stitches import StitchBlock, StitchRun
+from tests.conftest import PRE_FLIP
 
 
 TESTDATA = Path(__file__).resolve().parent.parent / "testdata"
@@ -150,8 +151,13 @@ def test_ties_are_applied_exactly_once_across_the_merge():
         # variants and only a DOUBLED tie could move the stitch count).
         regions = [region(0, 0, "Sa", 7), region(30, 1, "Sb", 9),
                    region(60, 2, "Sc", 7)]
+        # `edge_cap="none"`: three synthetic bars, and the claim is about the
+        # block SEQUENCE [7, 9, 7] the merge collapses. The design-silhouette
+        # cap (ON by default since 2026-09-11) appends a fourth block that the
+        # merge has nothing to say about.
         conf = PipelineConfig(garment_id="left_chest",
-                              merge_adjacent_same_thread=merge)
+                              merge_adjacent_same_thread=merge,
+                              edge_cap="none")
         planned, _ = resolve_overlaps(regions, fabric, conf)
         blocks, _ = sequence(planned, fabric, conf)
         return blocks
@@ -173,10 +179,24 @@ def test_the_pipelines_own_output_no_longer_needs_the_merge():
     14-15, 2026-08-28) are consolidated upstream by
     `rehome_resnapped_regions` now, so merge-off equals merge-on. If this
     ever fails, a NEW split source has appeared — find it before reaching
-    for the merge to paper over it."""
+    for the merge to paper over it.
+
+    2026-09-13: one appeared, it was FOUND rather than papered over, and it
+    is a default — `cfg.keep_thin_strokes`, flipped ON that day (Kent's
+    ruling). The pipeline arms `resolve_small_regions` with the quantiser's
+    layer colours on EVERY lane when that flag is on, so on the owl two
+    contrasting sub-floor regions are now kept instead of absorbed and come
+    back as their own blocks: with the flag on and the merge off the owl
+    plans `[..., 305, 305, ..., 12, 12, ...]`. The shipped engine still sews
+    no such pair — `merge_adjacent_same_thread` is ON by default and folds
+    them — so what this test pins, the claim that the RE-SNAP splits are
+    consolidated upstream, is pinned on the engine that claim was measured
+    on (PRE_FLIP's posture, and the same reason `test_the_hoist_...` below
+    pins its own arms)."""
     img = TESTDATA / "photo/owl_kent.jpg"
     _r, off = digitize(img, PipelineConfig(target_width_mm=100.0,
                                            is_photographic=True,
+                                           keep_thin_strokes=False,
                                            merge_adjacent_same_thread=False))
     seq = [b.thread_index for b in off.blocks]
     assert all(x != y for x, y in zip(seq, seq[1:])), (
@@ -281,11 +301,14 @@ def test_the_hoist_moves_no_stitches_and_changes_no_pixels_on_the_owl():
     # would read as "the hoist did nothing" on a plan that gave it nothing
     # to do. The old polygon keeps the revisit, so the end-to-end argument
     # keeps its ground; the gate itself is flag-blind.
+    # ... and to the engine before the 2026-09-10 colour-bundle flip
+    # (PRE_FLIP), for the same reason: the four flags re-cone the owl's
+    # blocks and the plan the hoist argument needs is the pre-flip one.
     off = digitize(img, PipelineConfig(target_width_mm=100.0,
                                        hoist_same_thread_margin_mm=0.0,
-                                       subpixel_edges=False))[1]
+                                       subpixel_edges=False, **PRE_FLIP))[1]
     on = digitize(img, PipelineConfig(target_width_mm=100.0,
-                                      subpixel_edges=False))[1]
+                                      subpixel_edges=False, **PRE_FLIP))[1]
 
     assert len(on.blocks) < len(off.blocks), "no revisit was hoisted at all"
     n_off = sum(len(r.points) for b in off.blocks for r in b.runs)

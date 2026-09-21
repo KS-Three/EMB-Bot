@@ -96,6 +96,12 @@ def region(poly: Polygon, sid: str, meta: dict | None = None) -> Region:
 
 
 def plan_for(regions: list[Region], **cfg_kw):
+    # The design-silhouette cap is ON by default since 2026-09-11 (Kent's
+    # flip). These fixtures are synthetic bars whose subject is the ORDER the
+    # artwork sews in, not the design's outer edge, and a cap block would add
+    # a thread and a shape id to every expectation here without testing
+    # anything this file is about. `tests/test_edge_cap.py` owns the cap.
+    cfg_kw.setdefault("edge_cap", "none")
     c = PipelineConfig(**cfg_kw)
     planned, _ = resolve_overlaps(regions, FAB, c)
     blocks, warnings = sequence(planned, FAB, c)
@@ -159,7 +165,11 @@ def test_noop_edits_are_byte_identical_to_the_shipped_engine():
     """Empty deletions + empty overrides, explicitly present, must reproduce
     the committed pre-contract golden to the byte — full point stream via the
     DST writer, not counts. The hash is test_pushcomp's pinned baseline."""
-    noop = dict(deleted_shape_ids=[], shape_overrides={})
+    # `edge_cap="none"` because the hash IS test_pushcomp's isotropic
+    # baseline (see that file's own note): the design-silhouette cap flipped
+    # ON 2026-09-11 and both sides of this comparison have to stand on the
+    # engine the golden was captured from.
+    noop = dict(deleted_shape_ids=[], shape_overrides={}, edge_cap="none")
     stages = run_stages(ART, cfg(**noop))
     plan = plan_stitches(stages, cfg(garment_id="left_chest", **noop))
     blob = export_dst(plan)
@@ -292,7 +302,12 @@ def test_layer_override_changes_sew_order(base, edited):
     assert sew_rank(base[1])[blue][0] == 1, "baseline: 3902 sews second"
     order = sew_rank(edited["plan"])
     b_block, _ = order[blue]
-    assert b_block == len(edited["plan"].blocks) - 1, "layer 99 sews last"
+    # "last of the ARTWORK blocks": the design-silhouette cap sews after
+    # every one of them (ON by default since 2026-09-11) and is not a layer,
+    # so an override cannot and should not outrank it.
+    art = [i for i, b in enumerate(edited["plan"].blocks)
+           if not any(r.shape_id == "__edge_cap__" for r in b.runs)]
+    assert b_block == art[-1], "layer 99 sews last of the artwork"
     assert edited["plan"].blocks[b_block].thread_number == "3902"
     # The palette still lists 3902 — moving a shape never drops its cone.
     assert "3902" in [p["number"] for p in edited["result"].palette]

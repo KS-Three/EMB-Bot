@@ -28,17 +28,20 @@ test below is what pins that claim.
 """
 from __future__ import annotations
 
+import math
+import time
 from types import SimpleNamespace
 
 from shapely import affinity
-from shapely.geometry import Polygon
+from shapely.geometry import LineString, Polygon
 from shapely.ops import unary_union
 
-from digitizer_core import PipelineConfig, get_fabric
+from digitizer_core import PipelineConfig, get_fabric, machine
 from digitizer_core.regions import Region
 from digitizer_core.stage5_overlap import resolve_overlaps
 from digitizer_core.stage6_border import EDGE_CAP_STYLES, silhouette_cap
-from digitizer_core.stage7_sequence import _cap_thread, sequence
+from digitizer_core.stage7_sequence import (_cap_thread, _sewn_linear_cover,
+                                            sequence)
 from digitizer_core.threads import CHART
 from digitizer_core.warnings_codes import EDGE_CAP_APPLIED, EDGE_CAP_EMPTY
 
@@ -91,21 +94,37 @@ def cap_block(plan):
 
 # --- the default: nothing happens -------------------------------------------
 
-def test_the_default_is_none():
-    assert PipelineConfig().edge_cap == "none"
-    assert "none" in EDGE_CAP_STYLES
+def test_the_default_is_bean():
+    """Kent's flip, 2026-09-11 — "gate it, then flip", after item 14 measured
+    5.9-100.0% of the sewn silhouette carrying no linear stitching at all
+    (median 76.7%) and the gate brought the bill down to +5.9-26.3%.
+
+    Bean rather than satin because it is cheaper in stitches on five of six
+    fixtures and closes the two worst-open designs at least as well; the STYLE
+    is still a sew-out's call (gate 1), and this line is where to change it.
+    `config.py`'s own comment carries the table.
+    """
+    assert PipelineConfig().edge_cap == "bean"
+    assert "none" in EDGE_CAP_STYLES, "turning it off must stay reachable"
 
 
-def test_off_by_default_is_byte_identical_to_the_flag_not_existing():
-    """Gate 3's pin. `edge_cap` defaulting to "none" must leave every
-    existing plan exactly as it was — same blocks, same stitches, same
-    coordinates — or the option is a silent default change wearing an
-    opt-in's clothes."""
-    base = plan_for(BOTH)
-    explicit_off = plan_for(BOTH, edge_cap="none")
-    assert cap_block(base) is None
-    assert len(base.blocks) == len(explicit_off.blocks)
-    for a, b in zip(base.blocks, explicit_off.blocks):
+def test_turning_it_off_is_byte_identical_to_the_flag_not_existing():
+    """The off-path pin. It used to be the DEFAULT path and is now the
+    explicit one (Kent's flip 2026-09-11), which changes which config the
+    test has to build and nothing about what it proves: `edge_cap="none"`
+    must leave a plan exactly as it was before this pass existed — same
+    blocks, same stitches, same coordinates.
+
+    This is what keeps every pre-flip golden meaningful, and what
+    `conftest.PRE_FLIP` relies on.
+    """
+    off = plan_for(BOTH, edge_cap="none")
+    assert cap_block(off) is None
+    capped = plan_for(BOTH)
+    assert cap_block(capped) is not None, "the default should now cap"
+    art = [b for b in capped.blocks if b is not cap_block(capped)]
+    assert len(art) == len(off.blocks)
+    for a, b in zip(art, off.blocks):
         assert a.thread_index == b.thread_index
         assert [r.points for r in a.runs] == [r.points for r in b.runs]
 
@@ -115,7 +134,8 @@ def test_an_unknown_style_is_inert_rather_than_an_error():
     nothing, exactly as "none" does."""
     typo = plan_for(BOTH, edge_cap="stain")
     assert cap_block(typo) is None
-    assert stitch_count(typo) == stitch_count(plan_for(BOTH))
+    # Against the OFF plan, not the default one: the default caps now.
+    assert stitch_count(typo) == stitch_count(plan_for(BOTH, edge_cap="none"))
 
 
 # --- both styles emit --------------------------------------------------------
@@ -146,7 +166,7 @@ def test_satin_costs_more_thread_than_bean():
 def test_a_cap_only_adds_stitches():
     """Whatever the cap costs, it must not disturb the artwork underneath —
     the design's own stitches are unchanged and the cap is purely additive."""
-    base = plan_for(BOTH)
+    base = plan_for(BOTH, edge_cap="none")
     for style in ("bean", "satin"):
         plan = plan_for(BOTH, edge_cap=style)
         cap = cap_block(plan)
@@ -208,6 +228,49 @@ def test_the_cap_thread_falls_back_when_nothing_touches_the_edge():
     assert _cap_thread(far, planned, default_thread=7) == 7
 
 
+# Thread 3 owns most of the silhouette; thread 5 owns the short right-hand
+# end of it. The gate leaves only thread 5's end to sew, so every stitch the
+# cap emits lands there — the shape of the `enthusiast_logo` defect
+# (2026-09-20), where the lettering's 473.8 mm out-voted the star's 131.7 mm
+# while 100% of the emitted cap rode the star.
+_WIDE = region(bar(24, 10, cx=-12), "WIDE", 3, 0)
+_END = region(bar(6, 10, cx=3), "END", 5, 1)
+
+
+def _capped(**kw) -> int:
+    planned, _ = resolve_overlaps([_WIDE, _END], FAB, PipelineConfig())
+    silhouette = unary_union([p.polygon for p in planned])
+    return _cap_thread(silhouette, planned, default_thread=99, **kw)
+
+
+def _runs_along(shape_id: str) -> list:
+    """A one-run cap tracing the outer edge of one of the two fields, as the
+    emitter would hand it back after the gate dropped everything else."""
+    planned, _ = resolve_overlaps([_WIDE, _END], FAB, PipelineConfig())
+    poly = next(p.polygon for p in planned if p.region.shape_id == shape_id)
+    minx, miny, maxx, maxy = poly.bounds
+    pts = [(maxx, miny + t * (maxy - miny) / 8.0) for t in range(9)]
+    return [SimpleNamespace(points=pts, shape_id="__edge_cap__")]
+
+
+def test_the_cap_thread_votes_on_the_edge_it_actually_sews():
+    """A thread that owns the silhouette but none of the stitches the cap
+    emits must not take the cap: the gate has already told the emitter not
+    to sew there, so those stitches would all land in someone else's
+    colour."""
+    assert _capped() == 3, "with no runs to read, the wide field still wins"
+    assert _capped(runs=_runs_along("END")) == 5
+
+
+def test_a_cap_with_no_runs_to_read_keeps_todays_vote():
+    """Degenerate, and deliberately not a behaviour change: a caller with no
+    emitted cap should load the cone it always loaded rather than fall
+    through to `default_thread`."""
+    assert _capped(runs=None) == 3
+    assert _capped(runs=[]) == 3
+    assert _capped(runs=[SimpleNamespace(points=[], shape_id="x")]) == 3
+
+
 # --- honest on empty ----------------------------------------------------------
 
 def test_a_silhouette_too_small_to_cap_warns_rather_than_going_silent():
@@ -247,15 +310,18 @@ def test_the_cap_always_reports_what_it_cost():
 
 
 def test_no_cost_report_when_the_cap_is_off():
-    assert _cap_warning(plan_for(BOTH)) is None
     assert _cap_warning(plan_for(BOTH, edge_cap="none")) is None
+    assert _cap_warning(plan_for(BOTH, edge_cap="stain")) is None
+    # ...and one WITH the cap, so the assertions above cannot pass vacuously
+    # on a plan that stopped capping for some unrelated reason.
+    assert _cap_warning(plan_for(BOTH)) is not None
 
 
 def test_the_reported_percent_is_against_the_artwork_not_the_total():
     """+13.2% must mean "the design grew by an eighth", not "the cap is an
     eighth of what you now have" — the two differ by enough to matter at the
     sizes this feature costs."""
-    base = stitch_count(plan_for(BOTH))
+    base = stitch_count(plan_for(BOTH, edge_cap="none"))
     plan = plan_for(BOTH, edge_cap="satin")
     w = _cap_warning(plan)
     assert w["percent"] == round(100.0 * w["stitches"] / base, 1)
@@ -345,3 +411,69 @@ def test_a_crack_is_judged_by_width_not_perimeter():
     _, thin_narrow = silhouette_cap(thin, "S", style="bean", entry=None,
                                     trim_at_mm=6.0, width_mm=1.0)
     assert thin_narrow["holes_skipped"] == 0 and thin_narrow["loops"] == 2
+
+
+# --- the gate's own cost ------------------------------------------------------
+
+def _fan_column(cx, n):
+    """A satin column turning a corner, as slab-serif lettering makes one.
+
+    The outer rail travels further than the inner one, so consecutive crosses
+    overlap and the polyline crosses ITSELF. That is not a pathological
+    invention: 106 of Hotel Fremont's 138 linear runs are non-simple for
+    exactly this reason, and its satin alone nodes 9,404 points into 49,425
+    segments.
+    """
+    pts = []
+    for i in range(n):
+        t = i / (n - 1)
+        a = -0.5 + 2.9 * t
+        ai = -0.5 + 2.9 * min(1.0, t * 1.35)            # the inner rail lags
+        pts.append((cx + 2.6 * math.cos(a), 2.6 * math.sin(a)) if i % 2
+                   else (cx + 0.8 * math.cos(ai), 0.8 * math.sin(ai)))
+    return pts
+
+
+def _satin_blocks(cols: int, n: int):
+    """`_sewn_linear_cover` reads only `b.runs`, `r.kind` and `r.points`."""
+    runs = [SimpleNamespace(kind="satin", points=_fan_column(c * 3.0, n))
+            for c in range(cols)]
+    return [SimpleNamespace(runs=runs)]
+
+
+def test_the_cover_is_the_union_of_each_runs_own_ribbon():
+    """The identity the gate is allowed to lean on.
+
+    `buffer(A u B, r) == buffer(A, r) u buffer(B, r)` for positive r — a
+    Minkowski sum distributes over a union — so the cover may be assembled
+    either way. It must NOT be assembled by noding the raw polylines first:
+    see the cost test below for what that costs on real lettering.
+    """
+    blocks = _satin_blocks(6, 28)
+    cover = _sewn_linear_cover(blocks)
+    ribbons = unary_union([LineString(r.points).buffer(
+        machine.COVERAGE_THREAD_W_MM / 2.0)
+        for b in blocks for r in b.runs])
+    assert cover.symmetric_difference(ribbons).area < 1e-9
+
+
+def test_the_cover_does_not_pay_for_noding_the_stitch_path():
+    """Hotel Fremont's 86.7-minute prep, 2026-09-12.
+
+    The gate used to hand `unary_union(lines)` — every satin zigzag noded at
+    every self- and mutual-crossing — to a single `buffer()`. On Fremont that
+    is a 49,535-part MultiLineString, and buffering it ran 86 minutes and
+    tens of GB of commit for a cover the design's own 138 ribbons give in
+    1.5 seconds.
+
+    This is a budget, not a stopwatch race: on this fixture the shipped
+    spelling measures 0.26 s and the noded one 32.2 s, so 4.0 s sits 15x
+    above the first and 8x below the second. A box slow enough to fail this
+    green could not run the suite at all.
+    """
+    blocks = _satin_blocks(18, 52)
+    t0 = time.time()
+    cover = _sewn_linear_cover(blocks)
+    elapsed = time.time() - t0
+    assert cover is not None and cover.area > 0.0
+    assert elapsed < 4.0, f"_sewn_linear_cover took {elapsed:.1f}s"

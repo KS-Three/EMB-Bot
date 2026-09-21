@@ -11,6 +11,152 @@ number out of this file as live status. If something in here still governs a
 decision today, it belongs in `MASTER_SCOPE.md` carrying a dated evidence
 pointer; if it isn't there, treat it as superseded until re-measured.
 
+---
+
+**Last updated:** 2026-09-20 — the operator bundle: backing class, topper, run time, and what the stop numbers are for
+
+Three linked gaps from the machine-physics playbook, closed together. Rulings
+in DOCTRINE ("the worksheet states only what the engine knows"); these are the
+specifics.
+
+**`assumed_backing` + `needs_topper` on the fabric presets** (playbook law 33,
+never built). Both engines, kept identical by `test_fabric_wire.py`, whose
+`FIELDS` map now carries them — adding a field to one table forces the other,
+which is how this was developed (the wire test was the RED step). Values:
+cap_buckram for `structured_cap`; cutaway for `pique_knit`, `jersey_tee`,
+`fleece_sweatshirt`, `terry_towel`; tearaway for `canvas_tote`,
+`woven_dress`; topper on the two pile goods only — the same pair
+`density_adjust` already singles out. `_norm` in that test learned booleans on
+the way in (Python `True` vs JS `true` would otherwise read as drift on every
+preset); mutation-proved by flipping both topper values and watching it name
+both presets.
+
+**The worksheet states them.** `Stabilizer:` now comes from the garment and
+prints on every sheet naming one we ship; the old 25,000-stitch rule survives
+as an ESCALATION (tear-away → cutaway), naming the design's own count rather
+than the threshold. `Topper: yes/no` either way, because absence is not an
+answer. An unknown garment prints neither. Under the Thread Sequence, one
+line saying what the numbers ARE: *"Set these in order at the machine - DST
+carries no colour data."* — the colour-stop half of the separation-of-duties
+contract, and hand work on every job.
+
+**Run time, the missing half of the cost card** (laws 36/38). New engine
+module `src/sewtime.js`: `(stitches + trims x TRIM_COST_STITCHES) / PLAN_SPM`,
+650 spm and 120 stitch-equivalents, twinned into `machine.py` and picked up
+automatically by `test_machine_wire.py` (mutation-proved: 650 → 700 names both
+files). Printed with its basis attached on both surfaces —
+`Run time: ~8 min at 650 spm (incl. trims)` on the sheet, `~10 min at 650 spm`
+on the review screen, where `sewSummary`'s own header had promised a "how long
+it runs" row since it was written and never had one. Floors at one minute:
+a 200-stitch monogram is 18 seconds, and "0 min" reads as nothing to do.
+Verified in a real browser on the "Name on a hat" quick start — Hat Front,
+2,349 stitches, 8 trims, row reading **~5 min at 650 spm** between Stitches
+and Trims (2349 + 8x120 = 3309 / 650 = 5.09).
+
+Suites on Kent's box: engine **552 passed** (545 + 7), Studio **1269 passed /
+59 files**. Two pre-existing specs were rewritten rather than deleted — the
+worksheet's cutaway test (the rule it pins survives as the escalation) and
+`sewSummary`'s two row-order assertions.
+
+**Last updated:** 2026-09-19 — cap sew order built and parked (`cap_center_out`, OFF), with its cost priced and the pro's own cap files read
+
+The Python lane had never read `garment_id` for sew ORDER — it reached
+`fabrics.py` for pull compensation, underlay, density and trim distance and
+stopped, while the browser engine's `capMode` has ordered cap garments
+centre-out and bottom-up all along. `cfg.cap_center_out` closes that split
+behind a default-OFF flag; the standing rulings are in DOCTRINE's "Measured
+negatives", these are the numbers behind them.
+
+A/B at 80 mm on `hat_front`, `tools/cap_order_ab.py`, ON vs OFF, **on merge
+commit `478fbbb6`** (post the lettering-construction series):
+
+| fixture | stitches | trims | needle-up mm | group sizes |
+|---|---|---|---|---|
+| `becker_marine_logo` | 6441 → 6432 | 48 → 47 | 852.9 → 1042.6 (+22.2%) | 17, 1 |
+| `logo_script_tires` | 2434 → 2434 | 7 → 7 | 202.3 → 202.3 (0.0%) | 4, 2 |
+| `photo/logo_gaulke_roofing` | 4263 → 4395 | 31 → 49 | 387.5 → 1260.6 (+225.3%) | 42, 9, 2 |
+
+**Superseded, same day, and kept because the supersession is the point.** The
+first pass ran on `da6606e4` that morning and read: becker 7166 → 7158,
+50 → 54 trims, 1084.0 → 1206.7 (+11.3%); script_tires 2415 → 2415,
+10 → 10, 191.0 (0.0%); gaulke 4539 → 4606, 56 → 64, 723.7 → 1528.9
+(+111.2%). The flag did not change between the two runs — `main` did, flipping
+`satin_junction_stack`, `satin_lettering_split`, `fill_bridge_cut` and the
+lettering flags ON in between. That moved the OFF baseline (gaulke 56 → 31
+trims, 723.7 → 387.5 mm) and roughly doubled the flag's relative cost.
+
+`logo_whitebg` and `logo_alpha` are byte-identical on both arms and were the
+first two fixtures tried — every colour group holds one shape, so there is
+nothing to reorder; that zero is structural (DOCTRINE).
+
+`tools/cap_order_pro.py`, the pro's own cap-vs-left-chest pairs on identical
+artwork, Spearman against sew position, run-count-weighted per file:
+
+| pair | garment | runs | blocks scored | `centre_out` | `bottom_up` |
+|---|---|---|---|---|---|
+| gaulke | cap | 42 | 1/1 | −0.314 | −0.856 |
+| gaulke | flat | 42 | 1/1 | +0.475 | +0.827 |
+| becker_large | cap | 10 | 0/5 | — | — |
+| becker_large | flat | 10 | 1/4 | +0.371 | +0.771 |
+| becker_small | cap / flat | 9 / 9 | 0/5, 0/4 | — | — |
+| mfab | cap | 13 | 1/5 | +0.257 | +0.943 |
+| mfab | flat | 10 | 0/5 | — | — |
+
+Only `gaulke` yields a scorable PAIR, so n = 1 for the paired difference
+(`centre_out` −0.789, `bottom_up` −1.683). The blanks are not missing files:
+this pro barely lifts the needle, so most files hold too few runs per block
+to carry an order at all.
+
+Suite on Kent's Windows box, 2026-09-19, `-n auto`: pre-change **3 failed,
+2627 passed, 3 skipped, 8 xfailed in 43:59** — the three are the three
+CLAUDE.md names (`test_flat_lane_byte_identical`, `test_pushcomp`,
+`test_stage2_photo_segment`), per-fixture platform numerics.
+
+**Last updated:** 2026-09-19 — the lettering construction plan and its step 0 (`satin_house_from_line`, OFF), after the lettering-route review; 2026-09-18, the upscaled regime read at the source's own resolution, built and flipped ON
+
+Moved out of MASTER_SCOPE's "CI feedback speed" when the memo entry needed the
+words; the instruction ("budget an hour, read 50 minutes as normal, curl before
+calling a job stuck") stays there, these figures do not.
+
+Re-measured 2026-09-14, last 70 successful runs: `digitizer` **min 31.2 / p50
+51.0 / max 59.0**; `studio-e2e` 5.5; `studio` 0.9; `engine` 0.5. The "10 to 42
+minutes" carried until then was refuted — **76% of recent jobs exceeded 42
+minutes**, floor 31.2 — and the daily medians were still climbing, 50.6 → 51.7
+→ 53.8 across 09-12/13/14. `studio-e2e` had quietly doubled against
+CLAUDE.md's 2.7.
+
+**Observed 2026-09-17/18, three PR runs:** `digitizer` ~48 min (#504), ~55 min
+(#505 first head), ~55 min (#505 final head); `studio-e2e` 4.4-5.8 min;
+`studio` ~1 min; `engine` ~0.6 min. Consistent with the 09-14 band, no further
+climb visible in three points.
+
+**The fill-reorder memo** (PR #505) landed the same night: a photo review edit
+79.34 → 44.61 s, byte-identical. Local suite at the time: 3 failed (the three
+documented platform-numerics goldens, verified to fail identically on the
+pre-memo tree), 2477 passed, 12 skipped, 8 xfailed, 37m06s on a 4-core
+container.
+
+---
+
+**Last updated:** 2026-09-17 — border restitch pacing (PR #504)
+
+A border override now restitches on the pick instead of waiting out the 2 s
+idle debounce. Measured against the live digitizer service by sampling
+`.dgp-stats` in a tight loop after the canvas menu's **Add border**:
+**5,944 stitches at 140 ms** (pre-border), **6,073 at 357 ms** (bordered) —
+so the restitch itself was ~0.2 s and the 2 s pause in front of it was the
+whole of the perceived wait. Two squares, 80x30 mm; a photograph is still the
+10-14 s run the debounce notes describe.
+
+The stale wash was probed at 60 ms intervals across the same window and never
+caught: on this fixture the element is un-hatched again before a frame could
+show it. That is why no per-shape canvas cue was added — `isStale`'s standing
+comment rules the per-shape version out anyway ("a more precise-looking
+half-truth", because stage 5 resolves overlap BETWEEN shapes).
+
+Suites at the time: engine 536 pass / 0 fail / 9 skipped; studio 1230 pass;
+studio e2e 70 pass against the live service.
+
 **The ordering trap.** Entries are newest-first, and several describe defects
 that a *later* (higher up) entry closes. Read upward before concluding anything
 is still open. Worked example: the 2026-08-06 entry flags `stage6_satin.py`'s
@@ -22,6 +168,369 @@ you hunting a bug that closed eight days ago.
 **Append-only.** New dated entries go at the top of the journal below, under
 their own `**Last updated:**` line. Nothing in here is edited to stay true —
 that is the whole point of the file. Corrections go in `MASTER_SCOPE.md`.
+
+---
+
+**Last updated:** 2026-09-16 (late) — **what `classify_area_weighted`
+actually promotes, rendered: two of three are worse, and ELONGATION separates
+them.**
+
+The flag (#496, DEFAULT OFF) promotes 10 shapes fill -> satin across
+enthusiast, Fremont and drone, for a corpus −5,027 stitches and two grades up.
+Nobody had looked at the shapes. Rendered against the fill they replace
+(`docs/renders/area-weighted-promotions-2026-09-16/`):
+
+| shape | shipped | area-weighted | by eye |
+|---|---|---|---|
+| Fremont 33.1 mm2 blob | tidy fill rows | criss-cross satin over a shape that is not a stroke | **worse** |
+| enthusiast 19.9 mm2 star | clean fill | overlapping crosses through the centre | **worse** |
+| drone 14.7 mm2 edge strip | fill | a proper satin column along the strip | **right** |
+
+**`elongation` separates the good promotion from the bad ones** — drone's
+strip 16.8 and its sibling 14.1, against the star at 8.1 and the blob at 7.0
+(all 10: p10 4.8, p50 8.4, p90 14.4). The engine already carries the constant
+this wants: `_PROMOTE_ELONGATION_MIN` = 10.0, used by the promote path today.
+
+**So the flag as merged is not the thing to flip.** The scoped version —
+require elongation when the WEIGHTED reading is what flips the verdict — is
+the next build, and it will buy less than −5,027 stitches by construction.
+Not built; no measurement of the scoped version exists yet.
+
+**Last updated:** 2026-09-16 (night) — **a claim made and RETRACTED the
+same session: gaulke's lettering is NOT unsewn. `StitchRun.jump` means the
+needle lifts to REACH a run, not that the run is needle-up.**
+
+- **What was claimed, and is false:** that only ~20% of gaulke's letter-sized
+  shapes sew at 80 mm, ramping to ~85% at 92 mm, i.e. "~78% of this
+  customer's lettering is unsewn at left-chest size". It came from counting
+  runs with `not r.jump`, which drops every run the machine JUMPS TO — most
+  first runs of a shape. **Re-measured on the run KIND instead: 100% of the
+  letters carry thread at 60, 80, 92 and 100 mm**, area 100% at every size.
+  The one letter inspected by hand had a 96-point satin run all along.
+- **The lesson, and it is a trap worth naming:** `StitchRun`'s docstring says
+  it plainly — *"One needle-down path"*, and `jump` is *"True when the
+  machine must lift the needle to reach points[0]"*. A filter on `jump` reads
+  a fully sewn design as bare, and the number it produces (78% missing) is
+  exactly the shape of a finding someone would act on. DOCTRINE entry with it.
+- **What survives from that pass, measured correctly:** thread-to-artwork IoU
+  per letter rises with size for BOTH letter kinds — straight-sided shapes
+  0.528 / 0.503 / 0.547 / 0.573 / 0.597 and curved ones 0.546 / 0.540 /
+  0.515 / 0.562 / 0.583 at 60 / 70 / 80 / 90 / 100 mm (median letter height
+  3.32 - 5.49 mm). The straight-vs-curved ordering does flip around 4 mm, but
+  **opposite to Kent's read** (curved measures better below it, straight
+  above) and by 0.01-0.04, so **IoU is not the instrument his judgement is
+  using** — edge roughness on curved boundary runs is the next thing to try.
+- Still true and independent of the bug: renders 2 and 3 of gaulke differ in
+  SIZE as well as in the card, median letter height **3.77 vs 4.39 mm**.
+
+**Last updated:** 2026-09-16 (evening) — **the size cliff is INPUT
+RESOLUTION; the M's over-stitching is diagnosed to the corner crosses.**
+
+- **Cliff, answered** (`docs/classifier-cliff-is-input-resolution-2026-09-16.md`).
+  Three cures refuted on becker 80-100 mm: `classify_area_weighted` (worst
+  1 mm step 0.288, unchanged), a three-pitch median of every gate metric
+  (0.292; prototyped as `cfg.classify_multiscale` and REVERTED in the same
+  session), and `simplify_tol_mm` scaled to the design (0.310). **A margin
+  cannot work**: the metrics jitter rather than drift -- the rope border's
+  `explained` reads 0.8172 / 0.8082 / 0.8057 / **0.7937** / **0.7943** /
+  0.8279 / 0.8248 from 86 to 89 mm.
+  **What it is:** becker is the only committed source far below
+  `min_px_per_mm` 4.0 (1.8 px/mm), so stage 1's upscale FACTOR moves with the
+  target width and the vectorizer traces a differently-invented polygon at
+  each size. Its swing over 85-90 mm is **0.301 against 0.053 (bridge_bar,
+  5.0 px/mm), 0.072 (gaulke, 16.1) and 0.090 (enthusiast, 17.5)**. Pinning
+  the floor at 8 px/mm takes the swing to **0.031** and the worst step to
+  **0.018**.
+  **The sting:** the stable state is LOW satin (0.12-0.15 vs 0.36-0.43),
+  because at 8 px/mm becker's letters measure their real 5.4-7.1 mm and the
+  frozen 5.0 mm cap refuses them. The question lands back on the cap, gate 1.
+- **The M, diagnosed not fixed.** Same members (4), same spine length
+  (~16 mm), same radii (p50 0.81 vs 0.82) and a slightly SMOOTHER turn
+  profile, yet `satin_polygon_axis` lays **+57% stations and +77% thread**
+  (219 -> 387 mm) in drone's M. Refuted: the Goldman join (emitting members
+  unjoined is byte-identical), the corner cuts (removing them is WORSE --
+  window coverage p95 3.46 -> 4.07), and spine sharpness. What is left is the
+  CROSSES at corners: columns read p50 1.94 vs shipped 2.28 but p90 **3.21 vs
+  2.64** -- long crosses spanning the corner diagonals, which is the crossing
+  Kent saw. Emitter work, not a knob.
+
+**Last updated:** 2026-09-16 (latest) — **Kent's renders review: three
+rulings, and the M ruling HOLDS `satin_polygon_axis`.**
+
+- **"The M is over stitched"** — drone's M of AND DRONE under
+  `cfg.satin_polygon_axis`. **The flag is HELD until the crossing columns are
+  fixed.** My own report had priced it the other way on `coverage_max`
+  (10.70 -> 6.73, a design-wide max) and said it sheds thread; read in a 12 mm
+  window on the M it takes **+66% at its peak and +62% at p95** (2.78 -> 4.61,
+  2.13 -> 3.46), under the warn level in both arms so no threshold catches it.
+  DOCTRINE "A design-wide MAX hides a local stack"; yardstick-disagreements
+  row 9.
+- **"Hotel Fremont the T still needs a lot of work, but it improved"** — the
+  flag upgrades the T's top bar from a bean run to a satin column, and that
+  is an improvement, not a finish. The T stays an open letterform case.
+- **"Golke letters that are straight characters are better in [render 2],
+  curved letters are better in [render 3]"** — on the gaulke card, the two
+  states differ in SCALE as well as in the card: before the edge-strip trim
+  the card is the artwork so 80 mm spans the card, after it only the logo is,
+  and the same letters sew **16% larger — median letter height 3.77 mm ->
+  4.39 mm** (42 dark shapes either way, 40 satin -> 39). So the split he saw
+  is a size effect: curved letterforms improve with size, straight ones do
+  not, on the same artwork through the same engine. Not yet explained; no
+  flag rides on it.
+
+**Last updated:** 2026-09-16 (later) — **`cfg.classify_area_weighted` built,
+DEFAULT OFF; the gap audit's cliff cure is REFUTED and the cliff's real cause
+is named.** Full doc: `docs/classifier-area-weighting-2026-09-16.md`.
+
+- **What it fixes:** boundary-detail verdict flips **3 -> 0**
+  (`tools/ribbon_stability.py --variant area`), with 14 shipped verdicts
+  changing and **every one `dt_irregular` -> satin** (enthusiast 1, Fremont 2,
+  drone 11, becker 0); archetypes keep satin, serrated discs stay refused.
+- **What it does NOT fix, against the audit's §4.2 claim that "only
+  area-weighting survives":** the SIZE cliff is untouched. becker every mm
+  from 80 to 100 (`tools/classifier_cliff.py`): worst 1 mm step **0.288 at
+  87 -> 88 mm in BOTH arms**, span 0.402 shipped against 0.385 weighted.
+- **The cliff's cause, measured by diffing every verdict at 87 and 88 mm:**
+  three thresholds crossed by under 1% in one millimetre -- the 756 mm2 rope
+  border's `explained` **0.806 -> 0.794** against the 0.80 promote floor, a
+  266.7 mm2 shape's p90 **4.96 -> 5.01** against the 5.0 mm cap, and a
+  157.8 mm2 shape's cv 0.523 -> 0.488 against 0.5. becker goes 12 satin
+  shapes of 18 to 10, 7,567 stitches to 13,402. **A cure is a MARGIN rule,
+  not a better statistic** -- and Kent's, since the 5.0 is frozen.
+- **The cap must not be weighted, measured:** the first cut weighted `p90`
+  too and demoted becker's rope border and `S579cb1c2`, taking sewn satin
+  **0.468 -> 0.193** at 80 mm. Only the regularity gate is weighted;
+  `explained`/`elongation` stay on the swept width.
+- **Corpus A/B, 26 fixtures:** 9 move, 17 identical, net **-5,027 stitches,
+  +41 trims**, blocks/cones/stops unchanged; chrome_specular and meadow
+  C 64 -> B 76, drone raw -122 -> -134 (stays F). **Every mover is photo- or
+  gradient-lane; no flat logo moves.**
+
+**Last updated:** 2026-09-16 — **item 5: the satin skeleton read from the
+POLYGON, built behind `cfg.satin_polygon_axis`, DEFAULT OFF.**
+
+- **The census came first and it moved the target** (#490,
+  `docs/superpowers/plans/2026-09-15-decomposition-census.md`). Swapping the
+  skeleton source one digitize at a time, five designs x five arms:
+  **no column folds past 90 deg anywhere**, so the N weld the review named is
+  gone on HEAD; a FINER raster is non-monotonic and often worse (becker bare
+  satin 12.2 -> 17.7 mm2 at 24 px/mm, drone 111 -> 167 strokes); and at the
+  pro's own 95.7 mm becker routes ONE satin shape in every arm, so the
+  43-vs-12 trim gap and the 9.6%-vs-44.3% satin share are the satin/fill
+  ROUTING cliff, not decomposition.
+- **`digitizer_core/polygon_axis.py`**: the medial axis as the Voronoi
+  diagram of the densified boundary, pruned by the boundary-arc residual
+  (keep an edge when its generators sit more than 2 x 1.6 local radii apart
+  along the boundary), drawn onto `_rasterize`'s own grid so every walk
+  below it is unchanged. **Leaf-length pruning was tried first and is the
+  wrong test** — on a bar the axis runs spine -> corner diagonal with no
+  junction between, so nothing is a leaf and the hook into the cap corner
+  survives, which is the shape of the H defect that killed both 2026-08-26
+  prototypes.
+- **Wired to BOTH skeleton readers** (`satin_shape` and the per-stroke rung
+  `_stroke_rows`), because routing a shape on one skeleton and sewing it on
+  another is its own defect; the pooled DT classifier stays on the raster.
+- **Corpus A/B, 26 fixtures at 80 mm / left_chest:** 20 move, 6
+  byte-identical, **net -276 stitches, +15 trims, blocks/cones/stops all
+  unchanged**; grades UP becker **B 76 -> B 88**, tires **B 88 -> A 100**,
+  meadow C 64 -> B 76; DOWN grass_macro F 22 -> F 10 (raw, stays F).
+  **The +15 inverts by artwork kind** — trims fall on six of seven real
+  customer logos (drone -6, tires -2, enthusiast -2, becker -1, gaulke -1,
+  screenshot -1) and rise on photographs and synthetics, plus golden_tee +10.
+- **The density price is the opposite of the render's impression.** Drone's M
+  gains crossing columns by eye; `coverage_max` **10.70 -> 6.73**, from over
+  the 9.33 block ceiling to under the 6.67 warn line. enthusiast 4.70 ->
+  6.28, becker 4.57 -> 5.38, Fremont unchanged. Renders:
+  `docs/renders/polygon-axis-2026-09-16/`, `tools/fold_crops.py`.
+- Byte-identical OFF (stitch-hash, two fixtures); off, `polygon_axis.py` is
+  never imported. **Flipping it is Kent's.**
+
+**Last updated:** 2026-09-11 (last) — **`edge_cap` FLIPPED ON, default
+`"bean"`. 45 tests moved and no golden was recaptured.**
+
+- **Kent's ruling was "gate it, then flip".** The gate shipped in #454; this is
+  the flip. `PipelineConfig.edge_cap` and the Studio's project default both
+  move to `"bean"`, and `conftest.PRE_FLIP` carries `edge_cap="none"` so a test
+  pricing one flag still stands on the engine its measurement was made on.
+
+- **Why bean, and why the style is still open.** Bean is cheaper in stitches on
+  five of six fixtures (median +13.4% against satin's +14.9%) and closes the
+  two worst-open designs at least as well. **Satin is cheaper in TRIMS on five
+  of six** (becker 50/54, gaulke 32/40, drone 88/92), and priced at Kent's own
+  25-stitch trim the two are within 4% overall. Gate 1's sew-out owns it; one
+  config value changes it.
+
+- **The trim rate moves BOTH ways**, because the cap adds stitches as well as
+  trims (per 1,000, off → bean): becker 6.26 → 8.03, gaulke 2.42 → 3.50, but
+  fremont 4.55 → 4.28 and drone 5.26 → 5.24, enthusiast 9.77 → 9.63. **Four of
+  the six are already over the 4.1 professional ceiling with the cap OFF.**
+  `test_chaining`'s 93 mm fixture does cross it (2.43 → 5.1) and now pins
+  `edge_cap="none"` on both arms — re-basing a professional band to admit our
+  own cost would be excusing it by moving the ruler.
+
+- **The cone re-load, and the second ruling.** The cap is its own block in the
+  cone that owns most of the silhouette, so on all six fixtures it re-loads a
+  cone already run — colliding with `merge_duplicate_cone_layers`' invariant.
+  Reusing the last-loaded cone instead would cost gaulke a 5.4%-frontage colour
+  where the best match owns 95.0%. **Kent: keep the best match, accept the
+  stop.** Carved out by name in `test_duplicate_cone_layers` and
+  `test_rehome_resnapped`; every artwork revisit still fails them.
+
+- **No golden was recaptured.** The byte-identity guards
+  (`test_flat_lane_byte_identical`, `test_stage2_photo_segment`,
+  `test_pushcomp`'s isotropic hash, and the no-op shape-override hash that
+  shares it) pin `edge_cap="none"`: their job is "this OTHER change did not
+  move the lane", and recapturing them would retire a pre-change baseline to
+  record a change they were never about. Most other movers are synthetic
+  sequencing fixtures, which now say `edge_cap="none"` explicitly.
+
+- **One product seam.** The cap's block is the only one with no review shape
+  behind it, so the service flags it `design_edge: true`; without that the
+  Sequencer would show a nameless row nothing on the canvas maps to.
+
+---
+
+**Last updated:** 2026-09-11 (later still) — **item 14 measured, corrected
+twice, and `edge_cap` GATED. The gate is what makes a cap affordable.**
+
+- **The reading reversed itself twice before it was right, and the correction
+  is the entry.** Version 1 of `tools/pro_silhouette.py` built its "cover" from
+  whole runs and skipped any run that was an area fill — but in this corpus a
+  run is routinely both a fill and the host of the columns bordering it — and
+  read the pro **76.7-100% uncovered**. Version 2 added every column phase
+  back, a big tatami's own row turns included, and read him **0.5-2.2%**.
+  **The edge cap's own gate, which reads real run KINDS, is what exposed it:**
+  it saved Hotel Fremont nothing while the tool claimed Fremont needed nothing,
+  and the engine puts 0.0 mm of linear stitch on Fremont's 203.7 mm outer
+  boundary. Version 2's numbers reached a commit on this branch before the
+  disagreement surfaced; they are withdrawn here.
+
+- **What is defensible.** Ours EXACTLY, from the plan's own run kinds (the
+  instrument now calls `stage7_sequence._sewn_linear_cover`, the same function
+  the gate uses, so the two cannot drift): **5.9-100.0% of the sewn silhouette
+  carries no linear stitching** — enthusiast 5.9, drone 20.2, Becker 24.5,
+  gaulke 76.7, whitebg 82.6, **Fremont 100.0**, 3,266 mm in total, median 76.7%.
+  His as a LOWER BOUND through `border_pro`'s certified fill-edge test: **at
+  least 19.1-26.1% of 7,063 mm of fill edge bordered** (median 23.8%), none in
+  the fill's own colour block. A silhouette-coverage percentage for him is not
+  knowable from a stitch file.
+
+- **THE GATE** (`silhouette_cap(omit=...)`, Kent's ruling "gate it, then
+  flip"): everything linear already sewn is handed to both emitters, which drop
+  the outline samples standing on it and cap only what genuinely ends in open
+  air. `run_outline` gained the arc machinery `border_runs` already had. No new
+  constant — the arc floor is `_ARC_MIN_MM` and the tolerance `_OMIT_TOL_MM`.
+  **The bill falls from +8.6-100.4% to +5.9-26.3%** (median +13.4%) and the edge
+  still closes to **0.1-6.2%**: becker 10,663 -> 6,603 st, enthusiast 4,716 ->
+  2,492, drone 21,593 -> 17,376. Fremont does not move, which is the gate being
+  right — its outer edge has nothing on it, so there was nothing to skip.
+
+- **Style not settled.** Bean is cheaper in stitches on five of six (median
+  +13.4% against satin's +14.9%) and closes gaulke better (0.1% against 6.4%);
+  satin costs fewer trims (becker 50/54, gaulke 32/40, drone 88/92). Neither
+  dominates — gate 1's sew-out owns it. The flip is its own PR.
+
+- **`satin_rails_follow_edge` is not answerable from stitch files.** The rails
+  define the shape; asking whether they reach its edge is circular.
+
+---
+
+**Last updated:** 2026-09-11 (later) — **item 12's cause is established, and it
+disqualifies every fix the review proposed. Two arms built, measured, reverted.**
+
+- **The instrument is the deliverable.** `digitizer/tools/fill_bridges.py`
+  itemises what `fill_exposure.py` totals: for each bridge still lying over
+  finished fill, which relaxation of `travel_path`'s caps would produce a clean
+  route, how much of it a later colour buries, what a jump would cost against
+  `trim_at`, and — the question the review did not ask — whether ANY unsewn
+  ground connects the two ends.
+
+- **9 fixtures, 92 bridges, 912.6 mm: 88% (801 mm) have no corridor.** 6%
+  (55 mm) have one the router cannot use, 4% (36 mm) are the detour cap, 2%
+  (20 mm) are already buried. Becker and Hotel Fremont are 100% no-corridor.
+
+- **The review's own figures were stale.** It quotes Becker 55.8 of 148 mm;
+  today's engine reads **29.6 of 76.7**. Bridge Bar 75.8 of 194 reads 114.2 of
+  275.4, Fremont 59.6 of 185 reads 23.9 of 123.5.
+
+- **Arm 1 — raise the detour cap when the alternative is exposed travel rather
+  than a lift.** Built (`cfg.fill_travel_detour`), measured, **a perfect no-op
+  on all nine fixtures**, reverted.
+
+- **Arm 2 — prefer a next column that still shares unsewn ground** (a second
+  greedy tier in `_reorder_for_cover`). Built, measured **WORSE on six of nine**
+  — gaulke 3.1 -> 84.0 mm exposed at 23 -> 17 trims, Fremont 23.9 -> 99.9,
+  sunset 325.5 -> 552.1, meadow 255.8 -> 403.7 — because it succeeds at finding
+  orders with fewer CUTS and `_score` buys those at 25 stitches a trim against
+  2 an exposed stitch. A per-shape exposure ratchet moved only meadow and
+  sunset and left gaulke at 84.0, exposing a second fact: `_order_cost` and
+  `emit` can disagree, because the emitter keeps a `route_cache` across a
+  shape's bridges and the scorer builds a fresh one. Reverted.
+
+- **The probe that lied, and how it was caught.** The first census reported the
+  detour cap blocking 26 bridges / 110 mm. `travel_path` returns its route with
+  the START EXCLUDED (`_densify` is a-exclusive) and that first step is exactly
+  the part inside the column just finished, so scoring the bare route read every
+  short bridge as clean. The tell was a detour ratio of **0.5x** — impossible
+  between two fixed points. Corrected: 8 bridges / 36 mm, whose clean route is
+  1.0-1.4x the straight gap and was inside the 4x cap all along, which is why
+  arm 1 could only ever be a no-op. `tests/test_fill_bridges.py` (4) pins the
+  start point so it cannot come back.
+
+- **What is left is Kent's, then a prerequisite, then real work:** the
+  exposed-vs-trim exchange rate (ratified 2026-09-03, before this measurement
+  existed); making the scorer and the emitter agree; and replacing the greedy
+  with a route over the columns' connectivity graph so an island is never
+  stranded in the first place.
+
+---
+
+**Last updated:** 2026-09-11 — **the engine can tell a photograph from a logo
+without looking at colour. Default OFF, and a no-op on everything committed.**
+
+- **Stage 1.25 (`cfg.detect_photographic`, quality review item 13).** EXIF
+  camera Make/Model, then the YuNet detector already shipped at
+  `stage1_photo_prep.detect_faces_seam`, run once per generation on the prep
+  raster that is already in hand. A hit fills `config.is_photographic` in as
+  True. The two signals were measured 4/4 photos and 4/4 portraits against 0/9
+  logos on 2026-08-25 (PR #245) and DOCTRINE has named the route ever since;
+  this is the wiring.
+
+- **It answers True or None. Never False** — silence is "no opinion", not "not
+  a photograph", because `owl_kent.jpg` is a real photograph BOTH signals miss
+  (re-saved, so no EXIF; an owl, so no face). So detection can only ever ADD
+  photographs, an explicit declaration still beats it in both directions, and
+  the checkbox stays the fallback rather than becoming a vestige.
+
+- **Measured on the committed corpus, 2026-09-11** (`tools/photo_signals.py`,
+  22 fixtures): **0 false positives** — no logo trips either signal — and **0
+  true positives**, because nothing committed here carries a camera header or a
+  face. Every fixture reads identically with detection on and off. That is the
+  honest headline: the value lands on real uploads (a phone photo carries EXIF),
+  and this repo's artwork cannot demonstrate it. `logo_script_tires.png` reads
+  `photo_scene` from stage 0 both ways — a pre-existing class-route false
+  positive, not detection's.
+
+- **Cost when on:** EXIF 0.4–50.8 ms; EXIF plus the face pass 0.03–0.14 s,
+  against preps of 0.04–1.10 s. EXIF short-circuits, so a photo that kept its
+  header never pays for the detector. Off, `photo_signals.resolve` returns
+  before reading a byte.
+
+- **The plumbing, because it is the part that could rot.** Detection happens
+  inside `build_generation`, which rewrites only its own config —
+  `finish_generation`, `plan_stitches` and preflight are separate entry points
+  holding the CALLER's config, and the service re-finishes from a cached
+  generation on every review edit. So the verdict rides the `Generation` and
+  then the `PipelineResult` the way stage 0's class and stage 1.5's
+  `faces_present` already do, and each entry point folds it back in with
+  `photo_signals.apply_detection`. None of the nine `is_photographic()` call
+  sites learned that detection exists. The service passes its upload BYTES down
+  past its own decode (`exif_source=`), because an ndarray has no header left.
+
+- `tests/test_photo_detection.py` (28), `tests/test_code_wires.py` (the
+  preflight mirror grew to five constants / six codes),
+  `src/lib/digitizer.spec.js` (the panel names which signal fired instead of
+  reciting the engine's palette-bind prose).
 
 ---
 
@@ -12007,3 +12516,2894 @@ the browser at 1440 × 900 and 1024 × 768.
 
 *(2026-09-09 — `docs/superpowers/plans/2026-09-09-canvas-border-menu.md`;
 detail in `docs/scope/5-review-manual-editing.md`)*
+
+## 2026-09-09 — item 7: one stitch direction per design, `cfg.design_angle`, DEFAULT OFF
+
+Kent's pick after #438. Measured first (`tools/design_direction.py --pro`,
+the three sewn Becker files that share the artwork, read the scorecard's
+way — dominant direction per 2 mm cell): **the pro holds ONE fill angle at
+every size** — 20.5–20.6° inside the aspect-2.5 slab, 12.6–14.2° inside
+the aspect-1.5–2.0 small fills — so the review's "per-shape override on
+strong aspect" had nothing to override for and was not built. Ours at the
+pro's 95.7 mm: nine fills at a resultant of **0.15** over the half-circle
+(the lettering's house at 2°, every other fill at 85–91° by its own column
+count); chance-corrected `direction` **0.0** (raw 0.43).
+
+The flag: after the house pass, one angle for every fill- and satin-tier
+shape without a house or review angle — the lettering house where its
+lines agree within the 30° cap, else the gradient lane's own shared angle
+where the design holds one, else the row direction with the fewest
+columns summed over the design's fills (the per-shape objective one level
+up: its sixteen candidates plus the principal axis, its tie rule). Stage 7
+reads it before the per-shape derivation at all five `stitch_shape` sites;
+satin before the per-stroke tangent, so non-lettering satin gets
+`_clamp_to_span`'s lean rule; stage 5's `_comp_axis` in the same order.
+Metadata only (`Region.meta["design_angle_deg"]`); no new constant.
+
+ON at the pro's three sizes (76.5 / 95.7 / 101.9 mm): spread 0.777 / 0.15
+/ 0.221 → **1.0 / 0.999 / 0.995**; `direction` 0.388 / 0.0 / 0.0 → **0.41
+/ 0.289 / 0.249** (raw 0.69 / 0.43 / 0.43 → 0.71 / 0.64 / 0.62); stitches
+−1.5% / +4.2% / +6.3% — the slab's columns (58 at 0°, 50 at 90°), the
+price of one angle, which the pro pays at its 20° too; trims 38 → 39, 27
+→ 22, 27 → 25. What remains is the pro's ~20° house-style offset from the
+lettering's cross, which no objective in the repo derives: a taste
+constant, Kent's (DOCTRINE). Forced flat at 80 mm, where the real logos
+become tatami: Bridge Bar's 15 fills 0.781 → 1.0 (10 bins → 1) at −2.6%
+stitches with its 39 satin strokes leaned; gaulke +7.5% (the card ground
+leaves its own 0° for the lettering's 155°); Fremont +3.9%, 46 → 49
+trims; Golden Tee's 49 non-lettering strokes −1.6%. Routed at 80 mm every
+real logo takes the gradient lane and has no tatami fill, so the flag's
+live population there is the photo-class fills and non-lettering satin:
+the four photo fixtures' 8–12 fills each go from R 0.42–0.91 (3–6 bins) to 1.0 at −0.1% to +1.7% stitches, trims 89 → 86, 42 → 49, 48 → 48, 40 → 37 — nothing to score them against, so a look (§7.2). the 26-fixture sweep at 80 mm moves 19 designs for −0.08% stitches
+(316,271 → 316,026) and +1 trim in total, and outside the photo fills it
+is non-lettering satin taking the lean — 1 to 29 strokes a design, −2.3%
+to +0.2%. The gradient lane's rule came from that sweep: the white icon's
+strokes had leaned to the objective's 0° against ramp rows at 134°.
+
+OFF byte-identical on ten fixtures. Tests: `tests/test_design_angle.py`
+(7). Renders: `docs/renders/design-direction-2026-09-09/` (Becker OFF /
+ON / the pro; Bridge Bar flat OFF / ON). Flip-sheet arm `design_angle`.
+
+*(2026-09-09 — `docs/superpowers/plans/2026-09-09-design-direction-policy.md`;
+DOCTRINE "The professional holds one fill angle per design, and no
+objective of ours derives it")*
+
+## 2026-09-10 — item 8: the gradient-lane colour bundle priced as one set
+
+Kent's pick after #440. No engine change: the five built, default-OFF
+colour flags (`enforce_color_cap`, `resnap_mask_matches_grader`,
+`revalidate_small_shapes`, `bind_resnap_all_classes`, and the RULED
+`dissolve_phantom_blends`, re-presented and not re-opened) measured
+TOGETHER on one tree with `tools/flip_sheet.py`, which grew the missing
+`color_cap` single, the `colour4` / `colour5` bundle arms, a forced-flat
+proxy table, `--fixture`, `--max-colors` and a colour-stops column.
+
+At the engine budget (12), 26 fixtures at 80 mm: `colour4` moves 9 for
+−995 stitches, −11 trims, **−22 blocks / −22 cones / −22 stops**, three
+grades up, none down; `colour5` moves 10 for **−4,023 stitches, −77
+trims**, −26 / −25 / −26 — the ruled flag is the stitch and trim lever
+(Bridge Bar alone −2,936 / −63, and the render shows why: the pink
+phantom outline around the script and the grey ghost spoke are gone).
+Not the sum of its rows: the cap's −18 cones and the bind's −17 overlap
+to −22. `photo_chrome_specular`'s D 52 → C 64 under the bundle is the
+`mask_small` pair alone (mask + lowered floor), byte for byte. At the Studio's shipped 6 the set is the bigger lever: `colour4` takes **−47 cones / −43 stops / −43 blocks** off nine fixtures (drone 23 → 6, Bridge Bar 13 → 6, Golden Tee 14 → 6, screenshot 14 → 6 — the slider's promise kept on every real logo), `colour5` adds −4,509 stitches and −80 trims; one grade falls, `summit_badge` (synthetic) F 16 → F 0 on a new `THREAD_MATCH_POOR` block from the cap's merge.
+
+Two corrections the measurement made. **The sheet's budget is 12 and the
+Studio ships 6** — for the cap those are different questions (drone 23 →
+6 at 6, 17 → 12 at 12); every row now records its budget. **Item 1 does
+not make the bundle moot**: forced flat, `colour5` still takes 28 cones
+and 28 stops off five of the nine real logos — Golden Tee sews 24 cones
+under a budget of 12 on the flat lane, because the re-snap escapes past
+the flat lane's hard cap exactly as on the gradient lane. The flat-lane singles say the bind does most of that work (−26 cones on five logos) and the cap the rest (−21 on drone and Golden Tee); the dissolve is the one flag item 1 retires (byte-identical on all nine forced flat).
+
+Renders: `docs/renders/colour-bundle-2026-09-10/` (ten contact sheets,
+OFF / colour4 / colour5). Decision doc:
+`docs/colour-bundle-decision-2026-09-10.md`, one recommendation per flag.
+Nothing flipped.
+
+*(2026-09-10 — `docs/superpowers/plans/2026-09-10-colour-bundle.md`)*
+
+## 2026-09-10 — the colour bundle FLIPPED: four defaults ON as one set
+
+Kent's ruling on the decision sheet, the same day it was measured:
+`enforce_color_cap`, `resnap_mask_matches_grader`, `revalidate_small_shapes`
+and `bind_resnap_all_classes` are **ON by default**; `dissolve_phantom_blends`
+stays banked OFF (his 2026-09-04 ruling). What the shipped engine now does
+at the Studio's 6 colours, against the pre-flip engine (`flip_sheet.py`'s
+`off4` arm): −47 cones, −43 stops, −43 blocks over nine corpus fixtures;
+every real logo sews exactly the promised 6 (drone 23 → 6, Bridge Bar 13 →
+6, Golden Tee 14 → 6, screenshot 14 → 6); chrome and meadow D 52 → C 64,
+gaulke F 34 → D 46; one synthetic grade down (summit F 16 → F 0, a new
+`THREAD_MATCH_POOR` block from the cap's merge). The visible costs are the
+cap's: Golden Tee's GT letters lose their maroon edge at 6, the badge's
+upper orange band goes cream. False on each flag is the pre-flip engine
+byte for byte, and the flip sheet's four colour singles are now inert
+against `off` (kept so the published rows stay nameable).
+
+**Tests.** Seventeen tests went red under the flip and every one was
+documenting the PRE-flip engine, not a flag: the spool-remedy findings and
+gaulke's block list, `COLOR_STOPS_HEAVY` on Bridge Bar, the raw-score depth
+on screenshot, the phantom-blend Bridge Bar pair, the owl hoist,
+`is_photographic`'s premise, the palette gate's unbound half. Each now
+builds its config on `conftest.PRE_FLIP` (the four False) and says so; the
+palette-gate test pins both halves. No golden moved — the flat-lane keys,
+the photo-lane snapshot and the pushcomp tuples pass — and the full suite
+on the flipped tree fails exactly CI's three platform reds (3 failed, 2,183 passed, 3 skipped, 7 xfailed in 29 min with `-n auto` on this box; the three are `test_flat_lane_byte_identical[enthusiast]`, `test_stage2_photo_segment[enthusiast]` and `test_pushcomp[whitebg-towel]`).
+**And the flip's own run found the one line the decision sheet got wrong:**
+`test_bridge_bar_keeps_its_artwork` names `0501` Sun as artwork and lost
+it. The disc's pixels are (251, 235, 65), ΔE00 1.0 from Sun; the flipped
+engine sews it `6031` Limelight, 7.0 away, at both budgets — the bind's
+price, not the cap's, because stage 2 hands the palette the disc REGION's
+mean, 12 ΔE00 off through the anti-aliased inclusions, and the bound
+re-snap can no longer correct it as the escape did. Sheet corrected in
+place; the fix is upstream, a robust region colour in stage 2.
+
+*(2026-09-10 — `docs/colour-bundle-decision-2026-09-10.md` §5; the ruling
+in `.claude/memory/quality-review-2026-09-08.md`)*
+
+## 2026-09-10 — item 9 BUILT: `cfg.enclosed_by_garment`, DEFAULT OFF
+
+Kent's pick after #441: enclosed letter bodies decided by the garment
+colour, not a global unstitched default. The 2026-08-15 verdict left every
+enclosed background-coloured region (letter bodies, counters, donut holes)
+unstitched because white into a white polo is wrong — and it was made
+without knowing the garment. Now the Studio sends `project.fabricRgb` as
+`cfg.garment_rgb`, stage 1 carries the border flood's colour as
+`Prep.bg_rgb`, and one verdict per design
+(`stage4_vectorize.garment_sews_enclosed`) sews a flood hole by default when
+the two are more than 10 ΔE00 apart (`DELTA_E_CLEARLY_DIFFERENT`, pinned
+equal by test); the colour cap reads the same verdict so a hole that will
+sew keeps its cone; a review override wins; alpha holes, whose colour nobody
+knows, are untouched; `BACKGROUND_ENCLOSED` says what was decided and why.
+Measured at the engine's 12 / 80 mm on a fabric-coloured ground
+(`docs/renders/enclosed-by-garment-2026-09-10/`): whitebg and Golden Tee sew
+their white holes white on Navy and Black (+571 stitches / +1 cone; +3,027 /
++7 trims / +1 cone) and are byte-identical on White and Natural (6.4 from
+Natural, under the threshold); gaulke's 46 black bodies sew on any light
+garment for +3,979 stitches and **+43 trims** (23 → 66), and what sews is
+the fragments the vectorizer kept when they were holes — STEEL ROOFING &
+SUPPLY reads, GAULKE INDUSTRIES does not, the thin-stroke plan's own gaulke
+finding from the other side; on Black they are the fabric and the engine is
+byte-identical. OFF is byte-identical with a garment colour given. The
+threshold (10 or the review's 5, which would sew white on off-white), the
+alpha holes and the flip are Kent's (plan §5). At the Studio's budget of 6
+a sewing hole's cone takes a slot from a logo already at six: Golden Tee
+ON Navy keeps White for its four holes and the cap merges `1312` Burnt
+Orange — the GT letters' red edge — into Black (35 ΔE00), the slider's
+price named by `COLOR_CAP_APPLIED`; whitebg lands on exactly 6 and gaulke
+on 3. And gaulke's white ground turns its fill rows from 0° to 45° once
+the bodies inside it sew (6,585 of 6,645 row segments horizontal OFF,
+7,097 of 7,175 diagonal ON Navy): `best_fill_angle_deg`'s fewest-columns
+argmin on the polygon the ground is sewn as, which the stitched bodies
+change — a second reason to re-read item 7's `cfg.design_angle` flip.
+`tests/test_enclosed_by_garment.py`
+(12), seven service tests, the Studio spec.
+
+*(2026-09-10 — `docs/superpowers/plans/2026-09-10-enclosed-by-garment.md` §6)*
+
+## 2026-09-10 — item 9 FLIPPED ON: `cfg.enclosed_by_garment` defaults True
+
+Kent's three rulings on the renders and PR #443, the same day the rule was
+built OFF: the threshold stays 10 (the Studio's default Natural never sews a
+white hole white), alpha holes stay with the review toggle (the 08-15
+verdict's §5.2 stands), and the default is ON with the catches accepted —
+gaulke's +43 trims and fragmentary letters, the Golden Tee slot at the
+Studio's 6, the 45° turn of gaulke's ground. False is the pre-flip engine
+byte for byte; with no `garment_rgb` the rule declines, so no golden moves.
+For a customer who never touches the swatch: a black-background logo's
+letter bodies now sew on Natural, a white one's do not.
+
+*(2026-09-10 — `docs/superpowers/plans/2026-09-10-enclosed-by-garment.md` §7)*
+
+## 2026-09-10 — a robust region colour for the palette, BUILT as `cfg.robust_region_colour`, DEFAULT OFF
+
+Kent's pick after item 9: the loss the colour-bundle flip's own test run
+found (#442), repaired at its source. Stage 2 hands the palette each
+SLIC+RAG region's plain MEAN, which a big flat region full of drawn-on
+inclusions turns into a colour no pixel carries — Bridge Bar's disc reads
+(223, 220, 77) for pixels at (251, 235, 65) and the palette rightly picks
+Limelight. The one mean is now one seam (`_region_pixels_lab` +
+`_region_lab`, OFF byte for byte the old expression), and ON the point is
+the modal mean of the region's Lab pixels — the mean over the pixels within
+5 ΔE00 of the per-channel median — chosen by `tools/region_colour.py`'s
+census (20 lane fixtures, 422 regions: the median and the modal mean move
+nearly the same regions' spools, 146 and 163, and where they differ the
+modal mean lands on the artwork — the disc goes to `0713` Lemon under the
+median, 2.1 ΔE00 from its pixels, and to `0501` Sun, 1.0, under the modal
+mean; 33 regions are bimodal, 27 of them on the phone-UI screenshot). Flip
+sheet, 26 fixtures at 80 mm: 11 move, 15 byte-identical. At 12: Bridge Bar
+12 cones with a repeated `0108` (13 blocks) → 11 / 11, the disc on Sun,
+`COLOR_STOPS_HEAVY` gone, F 0 → F 4; the screenshot 11 → 10 cones; Golden
+Tee 11 → 12 cones (+118 stitches, +5 trims) while its blocking threads fall
+4 → 2; the synthetic photo-scene stub takes a fifth spool and +3,382
+stitches / +29 trims at the same B 76; net +2,498 stitches / +24 trims / +1
+cone / 0 blocks. At the Studio's 6: net +2,244 stitches / +3 trims / 0
+blocks / 0 stops; Bridge Bar 13,820 / 96 / 6 / 6 against 14,588 / 124 / 6 /
+7 (−768 stitches, −28 trims) with one more blocking thread on a shard while
+its 1,023 mm² disc leaves the blocking list, Golden Tee +249 stitches and
+one blocking shard fewer, the screenshot's 470 mm² ground off the list,
+drone level at five with its 211 mm² orange entering (the one large shape
+that gets worse); no grade letter moves. Renders: the disc goes from yellow-green to a clean yellow;
+Golden Tee's letters and drone read the same. Flipping it is Kent's — a
+photo-lane snapshot recapture on CI. `tests/test_robust_region_colour.py`
+(10).
+
+*(2026-09-10 — `docs/superpowers/plans/2026-09-10-region-colour.md` §4)*
+
+## 2026-09-10 — region colour FLIPPED ON: `cfg.robust_region_colour` defaults True
+
+Kent's ruling on the flip sheet's `off` / `region_colour` rows at 12 and 6
+and the Bridge Bar render, the same day the flag was built OFF (#445), as
+the PR after it: the disc sews `0501` Sun where the shipped engine sewed
+`6031` Limelight, 7.0 ΔE00 from the artwork, and the price is the sheet's
+— a synthetic stub's +3,382 stitches / +29 trims and Golden Tee's twelfth
+cone at 12, drone's 211 mm² orange one spool step at the Studio's 6. False
+is the pre-flip engine byte for byte, and `conftest.PRE_FLIP` now carries
+it False beside the bundle's four so every one-flag price is still read on
+the engine it was measured on. The photo-lane snapshot golden pins stage 2
+and moves on six of its seven keys — drone (12 of 21 medoids, the label map and its warnings), summit_badge (7 of 13, the label map), the repro white icon (six medoids become three; the label map), the subject stub (its one spool), and region_blobs with and without the bg-mask variant (one of six medoids, `293 → 276`: the base spool of a 656 mm² blob the tonal split sews as bands of its own, so its PLAN is byte-identical at both budgets, which is why the flip sheet read it as unmoved) — while fur_ramp does not move: re-captured on ubuntu-latest with the pre-change
+proof (`tools/recapture_photo_lane_key.py --pre-change-tree` at main
+`e0833d7`, every key reproduced byte for byte there first; workflow run
+34518855051, commit `27a7739`, the runner green on both golden files
+afterwards), never on a dev box; the flat-lane keys, the gradient dispatch's
+and the pushcomp tuples do not move. Fourteen tests went red under the flip beyond the six golden keys and the three platform reds, every one documenting the pre-flip engine: eight on `PRE_FLIP`, which now carries the flag False beside the bundle's four (the phantom-blend Bridge Bar pair, the spool-remedy findings, the photograph declaration, the small-shape re-snap); the four re-validation pins and the re-home split on the repro's Azalea Pink sliver, whose configs now hold the flag False and say why (under the modal mean the repro quantizes to three medoids and the sliver never drifts); and drone's duplicate-cone fold, whose "fewer stitches AND less flying" was measured on the mean-point palette — on the flipped engine the fold still removes both revisits and two stops but trades 21 stitches for 56 mm less needle-up (16,324 → 16,345 stitches; 1,568 → 1,512 mm), so that file holds the engine it measured and records the new numbers. No assertion was loosened. Full suite on the flipped
+tree: **9 failed, 2,207 passed, 3 skipped, 7 xfailed in 43 min** with `-n auto` on this box, started before the runner's golden landed — the three platform reds CI deselects (`test_flat_lane_byte_identical[enthusiast]`, `test_stage2_photo_segment[enthusiast]`, `test_pushcomp[whitebg-towel]`) and the six photo-lane keys against the pre-flip golden; with the runner's golden in place that file passes here as well (8 passed), so the tree fails exactly CI's three deselects. The flip sheet's `off_rc` arm is the pre-flip engine,
+byte-identical to the #445 cache's `off` row on Bridge Bar at 12.
+
+*(2026-09-10 — `docs/superpowers/plans/2026-09-10-region-colour.md` §6)*
+
+## 2026-09-10 — item 11 BUILT: the thread-match floor ON, the un-clamped score read, `cfg.legibility_check` DEFAULT OFF
+
+Kent's pick after the region-colour flip ("Item 11 and 1", in that order):
+the three measured ways the grade cannot see what his eye sees, repaired
+before item 1 moves every gradient fixture.
+
+**The floor.** `THREAD_MATCH_POOR` judged a thread on its worst graded
+patch with no area floor, so a 0.58 mm² shard and a 1,648 mm² field both
+said "do not sew". `_THREAD_MATCH_MIN_PATCH_MM2` is the uncovered check's
+5.0 mm², ON: a patch under it cannot judge, sub-floor offenders ride flagged
+in `regions`, a thread with nothing above the floor emits nothing. Swept at
+0 / 2 / 5 / 10 over the scorecard matrix (52 pairs, 80 mm, 12 colours): 40
+blocking findings → 34 / 26 / 18; at the shipped 5, sixteen of the forty
+judged on patches under 5 mm² (gaulke's `4174` on 0.21, the screenshot's
+`1776` 0.92 and `0108` 1.03, drone's `3335` 1.92 and `0111` 2.52, Golden
+Tee's `0532` 2.41, …), gaulke D 46 → B 76 on both garments, drone raw −140
+→ −80, the screenshot −116 → −38, Golden Tee −92/−104 → −50/−62, Bridge
+Bar unmoved (its two blocks judge on 9.5 and 9.8 mm² — at 10 they would go
+and it would read C 64 / D 52, which is why 5 and not 10), no design leaves
+the 0 floor, warns 70 → 70.
+
+**The un-clamped score, read.** `raw_score` (carried since 09-06, inert)
+now rides on the flip sheet's rows and its grade-up/down verdicts and on
+the scorecard's score line; the baseline recaptured 2026-09-10 at `9f3d09c`: 46 of 52 pairs had moved since the 2026-09-04 capture, every mover attributed in the recapture commit — this PR's floor on drone, gaulke, Golden Tee and the screenshot (exact, from the sweep), the flips since 09-04 for the rest, and two grade drops bisected on main's first-parent history to #432 (grass_macro B 76 → D 52, the subpixel flip) and #433 (Becker at hat_front B 88 → 76, junction clustering; left_chest unmoved) and left flagged for a follow-up, not this PR's. On this
+engine 10 of 52 pairs sit on the clamped 0 with raw −140 .. −26 (09-06:
+12 pairs, −272 .. −38); three of them just gained 42–78 points under the
+floor and the printed grade shows none of it.
+
+**Legibility as a preflight check, DEFAULT OFF.** The 09-08 instrument
+moved into the package (`digitizer_core/legibility.py`; the tool is a CLI
+over it), grew a `sewn` flag per cluster (a cluster nothing sews is the
+unsewn warnings' business) and a three-letter floor on the ART truth
+(`ART_MIN_LETTERS` — Bridge Bar's wordmark read "X" at 77 and judged a
+cluster at 0.00). `LETTERING_ILLEGIBLE` aggregates like the lettering
+check: the worst sewn readable cluster judges, every cluster rides in
+`rows`, the message names the words; `legibility_checked` is False when the
+flag is off, the artwork absent or tesseract missing. Corpus on this engine
+at 6 and 12: ENTHUSIAST 0.96, Fremont 0.78 (HOTEL FREMONT 0.74 — banner
+noise on the art side, letters clean), the screenshot 0.48 (SPOTIFY 0.50
+blobs at 2 mm, the 9 mm GOLKE line 0.59 readable, two 3 mm rows 0.00),
+drone 0.22 / 0.36 (DRONE reads with its E lost — "the E on drone"), Bridge
+Bar 0.13 at 12 ("Resturant was dropped completely"), gaulke unsewn. The
+crops (`docs/renders/legibility-2026-09-10/`) put a readable 0.22 under an
+illegible 0.50, so no band separates lost from damaged: the provisional
+rule warns under 0.5 and never blocks (`LEGIBILITY_WARN` 0.5,
+`LEGIBILITY_BLOCK` 0.0), Kent's to rule with the two-band alternatives
+priced in the plan. The read costs about 3.5 s per text cluster.
+
+**Tests.** `tests/test_legibility_check.py` (7), the area-in-message file
+restated for the floor (gaulke's shard emits nothing, drone's field still
+blocks, the denominator test on Golden Tee), the spool-remedy and
+enclosed-background files hold the check unfloored where they document
+findings that rode sub-floor patches, the screenshot's raw depth re-pinned
+−272 → −62 on the pre-flip engine, the bimodal preflight pin allows the
+new `footprint_mm2`. Full digitizer suite on this tree: 3 failed, 2,224 passed, 3 skipped, 7 xfailed in 55 min with `-n auto` on this box under load — exactly CI's three platform reds (`test_flat_lane_byte_identical[enthusiast]`, `test_stage2_photo_segment[enthusiast]`, `test_pushcomp[whitebg-towel]`); no golden moved.
+
+*(2026-09-10 — `docs/superpowers/plans/2026-09-10-legibility-yardstick.md` §4)*
+
+## 2026-09-10 — item 11's flip: `cfg.legibility_check` ON (warn-only under 0.5), and yardstick row 4 closed on raw distance
+
+Kent's two rulings on the plan's §5, taken the day #449 shipped.
+
+**Option A, and ON.** `LETTERING_ILLEGIBLE` warns under `LEGIBILITY_WARN`
+0.5 and never blocks (`LEGIBILITY_BLOCK` 0.0) — the OCR crops showed the
+similarity trustworthy at its ends and noisy between, so one band is what
+the number carries honestly. `cfg.legibility_check` defaults True; False is
+the pre-flip report byte for byte. **On the scorecard corpus the flip adds
+the warn to 7 of 52 pairs**: Bridge Bar both garments (0.13 — "Resturant
+was dropped completely"), the screenshot both (worst 0.00 on its 3 mm UI
+rows), summit_badge both (worst 0.00 — "Text on the bottom was dropped
+out", his 08-27 note, a true positive the plan's own corpus table had not
+covered) and drone at left_chest (0.36 — "the E on drone") but NOT at
+hat_front (0.545: the cap's density changes the render the check reads, so
+the same design crosses the line on one garment and not the other — worth
+knowing about a check that reads the RENDER). Only Bridge Bar's CLAMPED
+score moves (16 → 4 and 4 → 0); the other five pairs sit on the 0 floor and
+move in `raw_score` alone — disagreement row 6's mechanism, visible for the
+first time because the same PR made the raw score readable. Silent where it
+should be: gaulke reads 0.21–0.29 and does not warn (its clusters are the
+unsewn enclosed holes — the `sewn` rule), Becker and Golden Tee have no
+readable art-side truth, Fremont at 80 mm reads 0.96–1.00, ENTHUSIAST 0.92–0.96.
+The costs: preflight 2.0 → 12.9 s on drone (3 clusters) and 0.8 → 7.7 s on
+ENTHUSIAST (2), about 3.5 s per cluster on every generate; it never blocks;
+and SPOTIFY at exactly 0.50 is missed (`LETTERING_TOO_SMALL` names it).
+In the Studio the finding joins the "Make it bigger" button, deduped with
+the two size checks. The customer-facing message attributes BOTH sides to
+the OCR — the first draft read "the artwork says 'DROM'", which tells a
+customer their own art says something it does not.
+
+**Row 4 closes: the gradient lane stays on RAW distance.** A logo's palette
+can be changed and a photograph's cannot, so "already the closest cone this
+design loads" is a cone to buy, not a pass — and the finding has named that
+spool on every route since 2026-09-06. No code moves; the row is appended
+to, preflight's comment says ruled rather than deferred.
+
+Full digitizer suite on the flipped tree: 3 failed, 2,224 passed, 3 skipped,
+7 xfailed in 41 min — the same three platform reds and the same pass count
+as with the flag off, so no test moved under the flip. Studio panel suite 65
+passed. Baseline recaptured on the flipped engine.
+
+*(2026-09-10 — `docs/superpowers/plans/2026-09-10-legibility-yardstick.md` §6)*
+
+## 2026-09-11 — item 1, PR 5: the 08-15 stage-0 signal re-measured, and the definition nobody had written down
+
+Kent's second pick ("Item 11 and 1"). Gate 2 says the instrument re-measures
+the boundary on real tonal artwork before any recalibration, so this is that
+measurement and it changes nothing: `tools/color_diversity.py`,
+`tests/test_color_diversity.py` (18), decision doc
+`docs/stage0-signal-decision-2026-09-11.md`.
+
+**The foreground definition moves the statistic by an order of magnitude,
+and the spec never defined it.** "Distinct 3-bit-per-channel colours needed
+to cover 90% of FOREGROUND pixels" — counting the whole art bbox reproduces
+the 08-15 table closely (`bridge` 16–17 against its 17, `drone` 19–20
+against its 19, `tires` 2, `gaulke` 2, `fremont` 2), so that is what the
+table measured; counting only the pixels stage 1 would DIGITIZE puts
+`bridge` at 39, above `drone`'s 24, and the classes stop ordering entirely.
+Excluding the background removes the flat ground that dominates the 90% and
+leaves a JPEG's compression noise to be counted alone. The tool implements
+both, names the one that produced a number, and the doc says quote the bbox
+reading.
+
+**Under the spec's own definition the signal still orders the classes, and
+the new evidence widened the gap.** Eight real flat artworks (the spec's six
+plus `logo_golden_tee` and `screenshot_phone_ui_golke`, both arrived since)
+against one real tonal (`drone_render`), at native resolution: flat max 16
+(`bridge`) against tonal min 20 (`drone`), **gap 4** where August's was 2.
+The two new logos read 4 and 1 — far below drone — so enrolling them helped
+rather than hurt.
+
+**The blocker is unchanged: one real tonal artwork against the spec's four.**
+`testdata/photo/acceptance/` is gitignored by design and holds only its
+README in any clone, `scratch_*` is absent from a cloud checkout, and every
+synthetic row (the five `make_photo_fixtures.py` photographs — the owl
+included — the repro of Kent's icon, `summit_badge`, both ramps) is
+measured, printed and EXCLUDED from the margin, which is gate 2 in code. The
+tool refuses below four real positives rather than siting a boundary on one.
+The unblocking act is one drag (3–5 real tonal artworks into the acceptance
+directory, never committed, never leaving the machine) and one command.
+
+So PR 6a (implement the spec's §4/§6 signal) is supported but not
+authorised, and PR 6b (route by consequence — the ramp gate's own refusal,
+which needs no boundary) is the live alternative and Kent's ruling on gate
+2's letter.
+
+*(measured 2026-09-11 — `docs/stage0-signal-decision-2026-09-11.md`;
+plan `docs/superpowers/plans/2026-09-08-real-logo-lane-and-thin-strokes.md` §5a)*
+
+---
+
+## 2026-09-11 — the browser lettering engine's unsewable stitches (review item 10)
+
+Snapshot. Do not quote as live status.
+
+`tools/long-stitch-census.mjs`, 85 shipped `.embf` fonts × three texts (`AB`
+@ Full Back, `Yours` @ Full Back, `A` @ Left Chest) = 255 designs, at the
+Studio's own defaults. A sewn segment is counted past one DST record when
+`max(|dx|,|dy|) > 12.1 mm` — per axis, because that is what a record carries,
+and the rule that reproduces DOCTRINE 2026-09-07's own Full Back row
+(1,933 of 5,828, worst 44.9 mm, on a design measuring 304.9 × 146.2 mm).
+
+| | fonts with an unsewable stitch | segments over a record | worst axis | stitches | trims |
+|---|---:|---:|---:|---:|---:|
+| before any of this | 80 / 85 | 187,174 of 1,061,115 | 98.7 mm | 1,063,183 | not measured |
+| two units fixes only | 66 / 85 | 180,900 of 1,147,744 | 98.7 mm | 1,149,812 | 1,817 |
+| + `splitSatin` | 9 / 85 | 1,832 of 2,838,506 | 23.6 mm | 2,840,574 | 1,817 |
+| + `wideColumnFill` | 9 / 85 | 1,832 of 5,880,370 | 23.6 mm | 6,005,760 | 125,014 |
+
+Pre-change, per text: `AB` @ Full Back 80/85 fonts (130,651 of 512,449
+segments), `Yours` @ Full Back 61/85 (39,258 of 412,617), `A` @ Left Chest
+63/85 (17,265 of 136,049).
+
+The eight worst designs, `off` → `split` → `fill`:
+
+| font | text / garment | over a record | worst axis | off st | split st | fill st | fill trims |
+|---|---|---:|---:|---:|---:|---:|---:|
+| `roaring_twenties_KOR` | AB / Full Back | 1,395 / 3,408 | 98.7 | 3,410 | 44,528 | 109,613 | 5 |
+| `alchemy` | AB / Full Back | 1,454 / 3,569 | 89.4 | 3,571 | 21,096 | 50,174 | 940 |
+| `excalibur_KOR` | AB / Full Back | 2,861 / 6,806 | 61.8 | 6,808 | 41,866 | 100,753 | 1,499 |
+| `inkstitch_masego` | AB / Full Back | 1,879 / 4,566 | 53.2 | 4,570 | 34,218 | 85,445 | 212 |
+| `alchemy` | A / Left Chest | 450 / 1,184 | 50.2 | 1,185 | 4,593 | 10,920 | 223 |
+| `manga_impact` | AB / Full Back | 1,930 / 5,861 | 44.9 | 5,863 | 27,074 | 63,352 | 109 |
+
+The nine fonts left over a record under both knobs are all cross-stitch
+fonts — `egyptian`, `eloquent`, `heavenly` and their `_small` twins,
+`jaquarda_bastarda_9`, `jersey_15`, `noble` — routed through `crossfill.js`,
+whose lattice is in glyph units by design. The long segment is an X's arm.
+
+`SATIN_BASELINE`'s five pinned fonts under the units fixes: montecarlo
+1157 → 1166, alchemy 751 → 751, venezia 996 → 997, cats 1238 → 1243,
+apesplit 2470 → 2475. `satinfont.test.js`'s 40 mm AB 701 → 703 and its 8 mm
+AB 189 → 188.
+
+Underpath pitch on the fabric at fitScale 0.5 / 1 / 8.47, before and after:
+1.02, 2.05, 17.35 mm → 2.05, 2.05, 2.04 mm.
+
+Kent ruled the same day: **`splitSatin` ON, `wideColumnFill` off** — the
+`+ splitSatin` row is the shipped default from here. The flip moved four
+tests. `SATIN_BASELINE`: only `alchemy`, 751 → 786. The other three
+(`digitize.test.js`'s slant arm, `generate.spec.js`'s slant and bold/thin
+arms) were comparing raw stitch counts or average stitch length, which a
+split cross breaks by construction — bold read 24.537 against thin's 24.678,
+inverted — and now compare total sewn path, which is exactly invariant under
+splitting. Slant thread ratio, split off → on: 1.0299 → 1.0300 on the Studio
+arm and 1.0312 → 1.0313 on the engine arm, against the geometric bound
+1/cos 15° = 1.0353.
+
+*(measured 2026-09-11 — plan
+`docs/superpowers/plans/2026-09-11-wide-columns-in-lettering.md`)*
+
+
+## 2026-09-12/13 — four stale diagnostics corrected, two flags flipped, and the edge cap's bill found oscillating
+
+A parallel session (nine agents). Six PRs merged: `c37c4c6`, `d8b9973`,
+`624deed`, `339de3a`, `82e1ae1`, `9c26222`.
+
+**The theme was documentation that had stopped being true**, and the worst of it
+was executable advice. `tools/crossval-stitch-formats.mjs` told its reader that
+if the DST control shows `identity`, *"the harness is broken — not the codec
+vindicated"* — backwards since the 2026-09-08 axis fix, and the repair it points
+at is putting X back in the high nibble. `tools/spool_remedy.py --masks` built
+its config on today's defaults, where the fix it diagnoses is already ON, and
+printed the result as "stage 4 today". Defect 30's numbers and named mechanism
+were both wrong (6 of 26 / 34 shapes → 3 of 26 / 24; "all six" → 0 of 3; the
+producer is `enforce_color_cap`, not a re-snap). CLAUDE.md's `digitizer` CI band
+said 10–42 min when the floor had moved to 32.7.
+
+**Two flags flipped, both on Kent's ruling after a corpus pass he asked for:**
+`cfg.layer_palette_from_regions` (mislabelled layers 7 → 0 at `max_colors=12`
+and 13 → 0 at the shipped 6; plans byte-identical 26/26 at both settings; the
+accepted price is duplicate review rows) and `cfg.keep_thin_strokes` (drone's
+`AND DRONE` unsewn → sewn; Fremont 103 → 76 trims at +8.5% stitches, C 64 → B
+76; the accepted price is gaulke's 2 → 4 cones for zero recall change and
+becker's second cone on a one-cone design).
+
+**Two shipped behind flags:** `cfg.edge_cap_over_budget` (default `"warn"`, no
+stitch moves) and the `edges` field corrected to silhouette rings.
+
+**Numbers worth not re-deriving.** Becker's edge-cap bill: +18.1% at 80 mm,
+**+58.7% at 88**, +56.6% at 95.7, +53.4% at 110 — a 0.3 mm size change is worth
+34%. Format round-trips: XXX and VP3 both `identity` and both return the
+design's own thread RGB, which PES, PEC and JEF do not. PES's long-stitch split
+moved exactly 9 of 85 fonts at Full Back and left the left-chest corpus hash
+untouched. `keep_thin_strokes`' flip moved 30 tests across 18 files, and the
+33-failure first run attributed to 3 + 30 against a pre-change worktree.
+
+**Everything durable from this went to DOCTRINE** (seven entries: one-width
+bills, thresholds non-monotone in size, rate metrics that cannot police their
+own denominator, synthetic suites blind to tiering, pre-change-tree attribution,
+golden-recapture refusals, and reading the render before repeating the claim).
+
+*(2026-09-12/13 — `docs/edge-cap-cliff-2026-09-12.md`,
+`docs/palette-mismatch-2026-09-12.md`, `docs/palette-flip-corpus-2026-09-12.md`,
+`docs/thin-strokes-flip-2026-09-13.md`, renders alongside each)*
+
+## 2026-09-14 — CI job durations re-measured; the "10 to 42 minutes" line is refuted
+
+Measured from the public Actions API (unauthenticated, HTTP 200 — the repo is
+public), last 70 completed workflow runs, **successful jobs only** so a job that
+died early cannot flatter the floor.
+
+| job | n | min | p50 | p90 | max |
+|---|---|---|---|---|---|
+| `digitizer` | 42 | 31.2 | 51.0 | 55.1 | 59.0 |
+| `art-fidelity-baseline` | 20 | 6.3 | 8.6 | 11.2 | 11.5 |
+| `studio-e2e` | 63 | 4.1 | 5.5 | 5.7 | 6.0 |
+| `studio` | 66 | 0.6 | 0.9 | 0.9 | 2.0 |
+| `engine` | 66 | 0.4 | 0.5 | 0.6 | 0.7 |
+
+`digitizer` daily medians: **50.6** (09-12, n=23), **51.7** (09-13, n=18),
+**53.8** (09-14, n=1). Still climbing.
+
+**32 of 42 (76%) exceed the 42-minute ceiling MASTER_SCOPE documented**, and the
+minimum observed is 31.2 — above the old range's midpoint. That line is now
+corrected in place.
+
+**Where this sits against the two prior readings, which disagree with each
+other.** CLAUDE.md's 2026-09-12 figures (n=36 successful: min 32.7, p50 49.7,
+p90 54.6, max 55.4) agree closely with this one. The 2026-09-12 gap audit's
+§3 figures (n=88: min 22.4, p50 40.8, p90 53.8, max 72.1) do not — most likely
+a wider date window pulling in older, faster runs at the bottom. **This
+measurement corroborates CLAUDE.md's and does not reproduce the audit's**, so
+the audit's row should not be quoted as the live number.
+
+Second finding, not previously tracked: **`studio-e2e` has roughly doubled**,
+p50 5.5 against the p50 2.7 CLAUDE.md documents. Small in absolute terms, but it
+is drifting in the same direction as `digitizer` and nothing was watching it.
+
+*(measured 2026-09-14 — `/repos/KS-Three/EMB-Bot/actions/runs/<id>/jobs`)*
+
+## 2026-09-14 — MASTER_SCOPE's 800-line budget does not measure its content
+
+Found while acting on Kent's "fix the books" call, trying to bring the file back
+under budget after correcting five false sew-out claims.
+
+**The measurement.** `MASTER_SCOPE.md` before and after that correction pass:
+
+| | lines | non-blank | words | chars | longest line |
+|---|---|---|---|---|---|
+| `origin/main` (038d424) | 801 | 662 | 27,470 | 174,851 | 23,638 |
+| after the corrections | 833 | 688 | **27,145** | **172,762** | 23,638 |
+
+**The pass REMOVED 325 words and 2,089 characters and ADDED 32 lines.** Both
+directions at once, because the text replaced sat on very long lines and the
+replacement is wrapped at the file's own median width of 76 characters.
+
+**The file contains a single 23,638-character line** (L576, the 2026-09-08
+quality review) — 13.5% of the whole document's characters, counted as 1 of 801
+lines. Nine lines exceed 3,000 characters; 77 exceed 120.
+
+**So the budget is unenforceable in both directions.** A section can be genuinely
+compacted and still blow it, while 23 KB of prose hides behind one line. Worse,
+the rule's incentive is backwards: the cheapest way to obey it is to join
+paragraphs onto single long lines, which costs nothing in content, makes every
+future diff a whole-paragraph rewrite, and hides growth from the very number
+meant to catch it.
+
+This is the audit's own pattern 3 — *the counter and the sentence measure
+different quantities* — applied to the status file that reported that pattern.
+
+**Not fixed here: the budget rule is Kent's** (`MASTER_SCOPE.md`, "The rules that
+keep this file current", rule 4: *"Budget: 800 lines. Over it, compact before
+adding. The number has teeth"*). Recommendation put to him 2026-09-14: measure
+the budget in **words** (~27,000, which is where it sits today) or characters,
+not lines, and leave wrapping alone. Either is countable in one command and
+neither can be gamed by reflowing.
+
+*(measured 2026-09-14 — `git show origin/main:MASTER_SCOPE.md` against the
+working tree)*
+
+
+## 2026-09-18 — the upscaled regime read at the source's own resolution: `cfg.subpixel_edges_upscaled` BUILT, OFF
+
+Kent's ask that day: better outlining of "non-standard shapes", and crisp
+lettering whichever way it is reached. Rendering the nine `REAL_ART` logos
+beside their artwork, the one whose outline disagrees with the artwork at
+arm's length is the low-resolution one: `becker_marine_logo.png` is **146 px
+wide with its whole shape in alpha** (RGB black everywhere, 256 alpha levels,
+17% of pixels mid-ramp), 1.46 px/mm at 100 mm, and every outline and every
+MARINE letter sews a **staircase of 0.68 mm steps**. Mechanism, read in
+`stage1_prep`: the `alpha < 128` threshold makes `bg_mask`, the NEAREST
+resize carries it to the 4.0 floor as a staircase of source pixels, and
+`stage4_vectorize` declines `subpixel_edges` on any upscaled source (plan
+`2026-09-08-subpixel-edges.md` §8 decision 3, "excluded until measured on
+real upscaled art"). The ramp that locates the edge below a source pixel was
+in the file all along; stage 1 threw it away.
+
+**Built:** `Prep.native_rgb` / `native_alpha` / `upscale` (the pre-upscale
+raster and the per-axis factor, set only when stage 1 upscaled); stage 4's
+`_native_subpixel` hands each raw vertex down by cv2's half-pixel-centre rule,
+reads the SOURCE's pixels — Lab of the RGB composited over white by alpha,
+with alpha itself as a fourth channel so a transparent-to-ink edge has
+contrast whatever the ink — with `subpixel.py`'s own windows, plateaus and
+area integral, the normal and corner chords scaled by the upscale so they
+span source pixels rather than stair steps, and brings the vertex back up.
+`subpixel_contour` took three generalisations for it (any channel count, an
+`inside_fn` for a mask in another frame, `step_scale`) and one new
+construction, `_fit_corners`: every flagged corner is placed where the
+least-squares lines through its two sides' accepted vertices meet, because
+the profile read through a corner pixel samples the OTHER edge's ramp — it
+refuses the corner (kept at its pixel centre, a bevel where the moved sides
+meet it: Becker's M, top left) or accepts it and places it 0.35-0.77 px short
+along the bevel. Only the native path asks for the fit, so a source at its
+own resolution is untouched. DEFAULT OFF, byte-identical off; eight tests (nine
+cases) in `test_subpixel_edges.py`; `subpixel_edges_upscaled` in `config.py`.
+
+**Measured, synthetic truth** (a 40 px disc in a 120 px frame at 50 mm — 1.6
+px/mm in, upscaled x2.5 — as an opaque disc on white and as an alpha cutout
+in Becker's layout): radial RMS against the fitted circle **0.213 → 0.018 mm**
+opaque and **0.246 → 0.013 mm** cutout, worst vertex 0.38 → 0.04 and 0.43 →
+0.02 mm, the cutout's radius bias −0.13 → −0.004 mm (the thresholded mask
+traced at pixel centres sits inside its edge), vertices 100 / 164 → 32. A 20
+x 12 px rectangle with mid-pixel edges: four vertices, each within a tenth of
+a source pixel of the truth (0.35-0.77 px short before the corner fit).
+
+**Measured, the ladder's 200 px rung** (`tools/edge_truth_ladder.py --rungs
+200 --flag subpixel_edges_upscaled`, x1.91 / x1.82 to the floor), OFF → ON:
+
+| shape | spread mm | offset mm | hausdorff mm | roughness deg | vertices | iou |
+|---|---|---|---|---|---|---|
+| circle | 0.173 → 0.092 | −0.156 → −0.098 | 1.023 → 0.922 | 9.6 → 6.1 | 73 → 39 | 0.973 → 0.986 |
+| ring | 0.188 → 0.086 | −0.109 → −0.038 | 0.525 → 0.205 | 9.5 → 5.0 | 87 → 80 | 0.941 → 0.971 |
+| purple | 0.035 → 0.016 | −0.213 → −0.008 | 0.256 → 0.031 | — | 4 → 4 | 0.918 → 0.994 |
+| orange | 0.063 → 0.020 | −0.241 → −0.009 | 0.339 → 0.038 | — | 4 → 4 | 0.908 → 0.993 |
+| ribbon | 0.127 → 0.067 | −0.116 → −0.019 | 0.496 → 0.232 | 10.2 → 4.6 | 120 → 46 | 0.888 → 0.957 |
+| bar | 0.031 → 0.066 | −0.310 → −0.024 | 0.339 → 0.326 | — | 4 → 17 | 0.719 → 0.974 |
+
+The bar is 3.7 source pixels tall: its ends have no plateau, every vertex on
+them reads as a corner with no side to fit, and they stay at their pixel
+centres — the thin-stroke plan's regime, not this one's. The 400 px rung is
+byte-identical ON and OFF: off the regime the flag is inert (pinned).
+Runtime: Becker at 100 mm 12.0 → 3.6 s, because the fill below went away.
+
+**Measured, Becker — the outline is right and what it then SEWS is the
+classifier cliff.** The polygon sits on the ramp midline at every zoom
+(`docs/renders/native-ramp-2026-09-18/`: the M's corners square, the A's
+diagonals straight, the outline band's arcs smooth; thread renders OFF | ON at
+80 and 100 mm, and the bare ink in red at 80). Sewn, at the Studio's six colours:
+
+| | stitches | trims | uncovered mm² | the 1021 mm² outline band |
+|---|---|---|---|---|
+| 80 mm OFF → ON | 6833 → 6705 | 51 → 52 | 6.5 → 18.5 | satin → satin |
+| 100 mm OFF → ON | 17701 → 11289 | 40 → 47 | 0.0 → 34.8 | **fill → satin** |
+
+At 100 mm the band's DT p90 drops under `SATIN_MAX_WIDTH_MM` once the
+staircase goes, the tier flips, and the band's satin decomposition is the
+open defect (bare junction blobs — the C's bowl is most of the 18-35 mm²,
+bare in both arms and larger ON; `satin_polygon_axis="artwork"` on top reads
+34.8 / 48.2 mm², no better). This is `docs/classifier-cliff-is-input-resolution-2026-09-16.md`'s
+finding from the other side: the fixture most sensitive to boundary detail
+now gets accurate boundary detail. **The flip is Kent's, with both facts on
+the table:** the outline instruments all move the right way, and the sewn
+Becker at 100 mm reads worse at arm's length until the decomposition arm
+lands. No other `REAL_ART` logo is under the floor (bridge is 5.0 px/mm), so
+nothing else moves.
+
+**Traps found building it.** (1) The corner fit's reach cap: 1.5 px refused
+every corner on the ladder's rectangles (measured 1.48-1.61 px from the meet
+— a quantiser-eroded corner pixel puts the trace a whole pixel in on both
+axes past the half it already sits in); it is 1.5·√2. (2) The profile read
+ACCEPTS a corner on anti-aliased art and places it short — a green suite
+would never have said so; the rectangle test did. (3) Two coordinate
+conventions: cv2's resize maps by half-pixel centres for Lanczos and by floor
+for NEAREST, and the upscale factor per axis differs from `want` by the
+rounding to whole pixels — enough to walk a contour off its edge by the far
+side of a small raster. (4) The ladder's "vertices: max" column is the one
+that shows a bevelled corner; spread and offset average it away.
+
+*(built and measured 2026-09-18 — `tests/test_subpixel_edges.py`,
+`docs/renders/native-ramp-2026-09-18/`, the ladder run above)*
+
+### Addendum, later the same day — FLIPPED ON, and what the flip moved
+
+Kent's ruling on the question above: **flip `subpixel_edges_upscaled` ON now**,
+with the Becker 100 mm tier flip on the table; the satin decomposition arm is
+the follow-up. Also ruled: **lettering stays trace-as-shape** (the customer's
+font exactly, never a library font); the next lettering work is the two
+mechanisms in `letterform-fidelity-2026-08-26.md` — pull compensation on the
+satin rails after decomposition (`satin_rail_comp` exists OFF; which skeleton
+is his call) and a cap-arm classifier so `_prune_spurs` stops dropping the
+N's foot. Font identification for Convert-to-text was offered and not chosen.
+
+**The full local suite under the flip (2606 passed, 12 skipped, 8 xfailed,
+24m49s at `-n 4`): fifteen reds.** Three are the platform goldens CLAUDE.md
+names. No committed golden pins an upscaled source (the flat-lane and
+photo-lane goldens are all 8 px/mm or better), so none moved. The other
+twelve, and what was done:
+
+- `test_edge_cap_budget` (5): every number measured on becker's staircase
+  polygons at 88/110 mm. Under the flip the bill sweep across the three
+  widths reads **[19.7, 25.1, 25.1] and no longer swings**, the ceiling
+  never fires, and the dropped-cap block differs — the outline band is a
+  different tier on the accurate polygon. The file's `_run` now holds the
+  flag OFF and says so: it pins the budget MECHANISM on the polygons it was
+  measured on. Worth its own line: part of the edge cap's cost on becker was
+  the staircase.
+- `test_junction_patch_flag` (2): with the flip, the SATIN cover mode lays a
+  **tatami run inside becker's satin outline band** at 80 mm
+  (`S118e45fc`) — an open observation about `satin_patch_junctions="satin"`
+  (OFF, judged "no difference" 2026-09-18) on the accurate polygon. `_cfg`
+  holds the flag OFF with the note.
+- `test_satin_per_stroke_flag` (2): at 100 mm the band is already satin
+  under the flip, so the per-stroke rung moves nothing on becker any more;
+  the two tests that need a fixture the flag moves read the pre-flip
+  polygons and say so.
+- `test_thread_match_better_spool[bridge]` (1): bridge is **3.49 px/mm at
+  80 mm — under the floor**, so the flip reads its edges too; one more small
+  shape's thread is judged, as a warn, under that file's unfloored read.
+  Re-pinned BRIDGE (2, 1) → (2, 2), the same way the 2026-09-09 flip re-pinned
+  it.
+- `test_memory_budget` (1): the new index line was 266 characters against the
+  260 cap; shortened.
+- `test_scope_budget` (1): MASTER_SCOPE's 27,000-word budget — main sits at
+  26,998 and the flip's sentence took it to 27,129. Reclaimed the way that
+  file documents: the flip's sentence cut to 46 words, and the "Make it
+  bigger" chips paragraph (2026-09-06, ~230 words) moved verbatim to
+  `docs/scope/3-studio-app-wizard.md` behind a one-line claim with its
+  dated pointer.
+
+*(flipped and re-measured 2026-09-18 — the full-suite log is not committed;
+the test files carry the notes)*
+
+## 2026-09-19 — Is trace-as-shape the right lettering route? Reviewed, with three measurements
+
+Kent asked for a review of the previous day's ruling rather than a restatement.
+Full write-up: `docs/lettering-route-review-2026-09-19.md`. The three findings:
+
+- **A library-font match is not available for real logos.** 174 traced letters
+  on the nine `REAL_ART` logos against all 3,802 usable A-Za-z0-9 glyphs of the
+  85 shipped fonts (bbox-normalised mask IoU, best over the library): 11% reach
+  0.90, median 0.753 — and the same letter in a *different* font scores a
+  median 0.928, so 0.90 is "same letter, wrong font"; the hits are `I`s. Font
+  identification is dead on arrival; do not build it.
+- **Same letterforms, two constructions.** `manga_impact` "MARINE" typed through
+  the font engine vs rasterised at 12 px/mm and traced, Studio defaults. 80 mm:
+  1,782 stitches / 3 trims / 44 columns against 2,461 / **41 trims** / 10
+  regions (four are halo hooks), cross-angle concentration 0.63 vs **0.23**.
+  127 mm: 3,115 / 4 against 9,645 / 30 with **14 of 15 letters as tatami**.
+  Renders: `docs/renders/lettering-route-2026-09-19/`. The polygon is not the
+  problem; what stages 5 and 6 do with it is.
+- **The pro** satins every MARINE letter at one angle and widens Fremont's
+  strokes to sewable columns (already in the repo's own measurements).
+
+**Verdict:** trace-as-shape stays as the shape source — the only one that keeps
+the customer's font — but a traced letter must get the font engine's
+construction: split-satin instead of fill for lettering over the cap, rail-side
+pull compensation after decomposition, the cap-arm classifier, the house angle
+verified firing, and no halo hooks. Bring-your-own-font-file is a later option;
+it pays off only after that construction. **Kent's ruling, the same day: trace + the font engine's construction, in that order** — font identification and bring-your-own-font-file declined for now.
+
+*(measured 2026-09-19 — the write-up carries the method)*
+
+## 2026-09-19 — Lettering construction, step 0: the house angle's third reading (`satin_house_from_line`, OFF), and what the vote turned out to do
+
+Kent's ruling on the review: trace, plus the font engine's construction.
+Plan: `docs/superpowers/plans/2026-09-19-lettering-construction.md`, with the
+yardstick (a font's own word sewn both ways) and the trim/angle/tier
+accounting on it.
+
+**Step 0.** On the review's fixture at 80 mm the seven letters group as one
+line and BOTH house-angle votes refuse them (doubled-angle nR² 5.0 against the
+6.9 bar; four-fold R4 0.164 under the 0.25 floor — the "diagonal blind spot"
+that floor's own comment names), so the word got no house and its cross
+angles read 0.23 concentration; at 127 mm the same word passes (17.6). Built
+`cfg.satin_house_from_line`, OFF: a group both votes refuse takes the cross
+along its own line of text — the stems' perpendicular for upright lettering,
+which is the adopted rule's own anchor. Byte-identical off. Five tests in
+`test_house_from_line.py` on a word built at test time from the committed
+`manga_impact.json` (KAYAK at 80 mm refuses with margin: 3.9 and 0.06;
+MARINE at 127 mm pins "untouched").
+
+**Where it fires** (the 22 lettering groups across the nine `REAL_ART`
+logos): three. The **ENTHUSIAST wordmark** (11 letters, nR² 0.9, R4 0.243):
+house None → 179.9°, the word's satin runs' cross concentration **0.059 →
+0.287** (stems and diagonals now hold one house; bars still take their own
+perpendicular under `_clamp_to_span`, as the font authors sew them),
+stitches 2,492 → 2,499, trims 24 → 25 — render in
+`docs/renders/lettering-route-2026-09-19/`. And two tiny groups on the phone
+screenshot. Every other group already had a house from a vote.
+
+**Two findings about the vote itself, both for step 1 of the plan.**
+(1) It is not stable: "MARINE" at 80 mm refuses from the shipped binary's
+quantised rails (5.0) and passes from the source rails (11.2); refuses at
+60 mm (4.5); KAYAK 80 mm 3.9, AMAZE 60 mm 0.35. (2) When it PASSES on a
+diagonal-heavy word it returns a house pulled off the line by the
+diagonals: AMAZE 27°, NAVY 147°, ZANY 151°, VANE 160° on the font word, and
+on real logos enthusiast's 14-letter subline **130°**, fremont **97.9° and
+162°**, bridge 45° and 16° — not the stems' perpendicular the rule names. The
+anchor-to-the-line construction (plan step 1) is the answer to both; it
+changes every group a vote currently passes and is measured before it is
+proposed.
+
+**Flipped ON the same day — Kent's call**, with step 1 of the plan chosen
+next. The reviewer's measurement worth carrying: the ENTHUSIAST wordmark
+straddles the four-fold floor between sizes — R4 0.243 at 80 mm (refused, the
+flag fires) and a pass at 93 mm (the chaining benchmark's pitch, where the
+flip changes nothing: 3.25/1k, 11 trims, both ways). The "+1 trim" above is
+an 80 mm number, and the straddle is the vote's size-instability seen a
+third way. The flat-lane golden's `photo/enthusiast_logo.png` entry moves
+under the flip; it is the platform red CI already deselects and Windows
+already fails, so no re-capture is possible or pending.
+
+*(built, measured and flipped 2026-09-19 — `tests/test_house_from_line.py`;
+the probe scripts lived in the session's scratchpad, the numbers are the
+record)*
+
+## 2026-09-19 — Lettering construction, step 1: the house ANCHORED to the line of text (`satin_house_anchor`, OFF), and the vote's answer on every group
+
+Kent's pick after step 0 flipped: step 1, "anchor the house to the line;
+read only the slant from the stems". Built the same day, OFF; the flip is
+his. Plan: `docs/superpowers/plans/2026-09-19-lettering-construction.md`.
+
+**What the vote does, measured on all 24 lettering groups of the nine
+real logos** (`_lettering_groups`, the population `set_lettering_house_angle`
+angles; the step-0 entry said 22 — the recount is 24). Three make no line,
+two are the Bridge logo's wheel spokes (every stroke along the diagonal
+they lie on: no stems), nineteen make a line and have stems. The
+doubled-angle vote accepts twelve of those nineteen and puts **nine of the
+twelve 12–79° off the group's own line of text**, all on upright words:
+enthusiast's 14-letter subline 130° (50° off), Fremont's EAT | STAY | PLAY
+98° (79°), drone's AND DRONE 115° (65°) and THERMAL 108° (72°), the
+screenshot's rows 28° / 168° / 11°, the Fremont rope's twists 162° / 162°.
+Becker's two lines sit 5.2° and 2.8° off. The font words agree: HOTEL 27° off,
+and **45° off once the word is turned 20°** — the vote does not follow the
+art, it follows the raster's diagonals.
+
+**The construction.** For a group that makes a line
+(`_line_of_text_deg`), house = line + slant, where slant is the
+length-weighted MEDIAN offset from the line's normal of the strokes within
+the 30° lean cap of it (`SATIN_HOUSE_STEM_WINDOW_DEG` = 90 −
+`SATIN_HOUSE_MIN_SPAN_DEG`, the same cap `_clamp_to_span` lets a stroke
+lean), on chains resampled at the four-fold reading's 4 px chord. A family
+under 10% of the skeleton's length (`SATIN_HOUSE_STEM_MIN_FRAC`) is silent
+and the group goes to the votes as before, as does a group with no line.
+Two things the first draft got wrong and the measurement caught: (1) on
+RAW skeleton steps every segment runs at a compass angle, so the family is
+exactly the 90° steps and the median exactly the raster's vertical — house
+0.0 on every group, including three whose lines sit at 9–19°; the chord
+resampling the four-fold reading already uses fixes it. (2) "Votes as a
+leaned-script detector" was not needed: every shipped font's lean fits the
+window (`montecarlo`'s rails, the most leaned of 85, 26.6°), so a script
+reads its own slant — `mam_script` "Marine" +15.4°, the stems visibly so;
+turned 20°, +12.2°.
+
+**Before/after, the 19 anchored groups** — an instrument check on the slant
+reader, not a thread measurement (the anchor RETURNS line + slant, so
+"within 2° of the line" says the slant read under 2° on an upright word;
+the thread numbers are the self-crossings and stitch counts below). The
+anchor puts **15 within 2° of the line** (Becker 174.8 / 177.2 → 180;
+enthusiast 130 → 180; Fremont 179.2
+/ 179.1 / 97.9 → 0; drone 178.2 / 115.2 / 108.1 → 0; gaulke 1.0 → 0; the
+screenshot's 176 / 168 / 11 → 0). The four that are not: the Fremont rope's
+40 and 33 twists (2 mm strands the lettering gate admits; their "slant" is
+the strands' lean, 16° and 19°) and two screenshot groups of 1–2 mm glyphs
+(8° and 10°, skeletons a few pixels long). Font words, `manga_impact`:
+MARINE / KAYAK / HOTEL / ENTHUSIAST / VANE within 0.6° of the line upright;
+MARINE turned 15° and 30° within 2.5°; HOTEL turned 20° within 3.1° where
+the vote sits 45° off. Silent as designed: the Bridge spokes (family 0.00
+of the skeleton where the nineteen read 0.24–0.78) keep the votes' 45° /
+16°.
+
+**What it costs on the corpus** (OFF → ON, corpus widths): drone 18,558 →
+18,725 stitches, 139 → 144 trims, satin self-crossings **496 → 430**;
+enthusiast 2,499 → 2,515 / 25 → 27; screenshot 8,242 → 8,262 / 70 → 72;
+Fremont +7 / 75 → 75, self-crossings 87 → 66; Becker −24 / 46 → 46; gaulke
++4 / 40 → 39; tires, Bridge, Golden Tee byte-for-byte. Enthusiast's and the
+screenshot's extra trims come from groups whose house moved 179.9° → 0.0°
+and 3.4° → 180° — the same lines, the opposite direction, so a fill's row
+order flips; a normalisation of the house to [0, 90) would remove it and
+was not built unmeasured.
+
+**The look it exposes, which is the flip's real question.** THERMAL
+(drone, 7.6 mm, satin): at the vote's accidental 108° BOTH families sat
+inside the fade, so every stroke leaned the same way; anchored at 0° the
+stems sew square and the T's bar, E's arms, H's bar and L's foot take their
+own perpendicular under `_clamp_to_span` — the 86 fonts' convention the
+09-03 rule adopted. Measured with the committed instrument
+(`tools/satin_lean.py drone [--anchor]`: the tool's own drone case at
+80 mm, splits and ties stripped): THERMAL's cross concentration **0.319 →
+0.248**, AND DRONE's 0.227 → 0.297, PRECISION's 0.170 → 0.178; over the
+2,000 crosses of the housed lettering, the lean off each cross's own
+perpendicular p50 **17.0° → 11.8°**, crosses within 10° of the house 25% →
+34%, bars at their own perpendicular (80–90° off the house) 7% → 14%. The
+concentration measures ONE angle, which is what the pro does (E's arms as
+short wide columns along the bar at the word's angle) and not what the
+rule does, so a group whose stems and bars both sew square reads low by
+design. **Withdrawn:** the scratch probe this entry first quoted read
+THERMAL 0.339 → 0.038; it counted tie stitches and split penetrations as
+crosses and ran a different config, and the reviewer's ask for a committed
+instrument is what caught it. The render shows the difference plainly:
+`docs/renders/lettering-anchor-2026-09-19/drone_lettering_anchor_off_above_on_below.jpg`
+(THERMAL uniform above, stems-and-bars below; PRECISION unchanged). Becker's
+MARINE (fill, 100 mm) goes from rows leaning 5° to rows on the line; the
+ENTHUSIAST and Fremont renders are alike both ways. Which convention block
+lettering should follow is Kent's, and it is prior to this flip.
+
+**Rejected on measurement**, so nobody re-tries them: a kernel MODE of the
+family for the slant (bandwidths 3–8°) jumps to the diagonals' own peak on a
+narrow face — NAVY −19°, VANE +17°, MARINE at 127 mm −18° at 5° — where the
+median reads under 1°; a straightness gate on the votes (segments count only
+where the chain turns under T° per chord, tried for scripts and tiny text)
+makes VANE read −11 / −15 / +16 at T = 15 / 10 / 5 and NAVY −13 at 15 and
+0.6 at 10. **Limits, named:** a family with hardly a stem reads the middle of
+its diagonals (ZANY −12°, AMAZE −9°, VANE 0.2° upright but −6.7° turned); a
+brush script whose strokes are curves reads near zero from them
+(`montecarlo` +0.3°, `pacificlo` −6.2°) where the eye sees a 10–25° forward
+lean; the Fremont rope; tiny text. NAVY never groups at the font's own
+advances (its letters fuse), which is why HOTEL carries the tests.
+
+**Instrument:** `tools/satin_lean.py [case] [--anchor]` now prints each
+lettering group's house, satin runs and cross concentration, so the THERMAL
+figure above is re-measurable (`drone` with and without `--anchor`).
+
+**Tests:** `tests/test_house_anchor.py`, 15 — the flag off by default; six
+on `_stem_slant_deg` alone (square stems read 0; leaned stems read their
+lean and a bar does not vote; the median holds three stems against a
+longer diagonal; a 45° stroke is not a stem; a 3% family is silent and a
+14% one is not; the window is the lean cap); HOTEL at 80 mm OFF 27° off its
+line and ON within 1.5°, turned 20° OFF 45° off and ON within 5°;
+`mam_script` "Marine" keeps a 10–25° lean; three spokes fall through to the
+votes unchanged; explicit OFF is the shipped default; a one-letter group
+(no line) is voted on anchored or not. `_word_raster` in
+`test_house_from_line.py` now takes a font path and a rotation. Both files:
+20 passed.
+
+*(built and measured 2026-09-19 — the probe scripts lived in the session's
+scratchpad, the numbers are the record; renders in
+`docs/renders/lettering-anchor-2026-09-19/`)*
+
+### Addendum, later the same day — step 1 FLIPPED ON, the bar rule kept, step 2 next
+
+Put to Kent with the drone render and the instrument's numbers
+(AskUserQuestion, 2026-09-19): **flip `satin_house_anchor` ON now** — his
+call; **keep the fonts' bar rule** (2026-09-03: a bar that cannot span the
+house takes its own perpendicular) over the pro's one-angle convention,
+"for now" — so the stems-and-bars look on THERMAL is the ruled look, and
+the one-angle bars (short wide columns along the bar at the house angle)
+are not to be built without a new ruling; and **step 2 next** — one path
+per letter, the Euler-walk stroke order. `False` on the flag is the
+pre-flip engine byte for byte; `tests/test_house_anchor.py` pins the
+default ON and the OFF side explicitly. What the flip moved in the full
+suite is recorded in the PR (#516) body.
+
+*(flipped 2026-09-19 — Kent's answers; config comment)*
+
+## 2026-09-19 — Lettering construction, step 2: one path per letter — the Euler-walk stroke order (`satin_stroke_order = "euler"`, OFF)
+
+Kent's pick after step 1 flipped. Built the same day, OFF (`"nearest"` is
+the shipped order, byte for byte); the flip is his. Plan:
+`docs/superpowers/plans/2026-09-19-lettering-construction.md`, step 2.
+
+**What the trims were.** On the plan's fixture (MARINE, `manga_impact`,
+traced at 80 mm; 45 trims on this engine, 41 when the plan was written) the
+sewing loop in `satin_shape` orders a shape's strokes nearest-first
+(`_order_strokes`) and, between strokes, walks the UNSEWN web needle-down
+(`_graph_travel`) or trims when no unsewn path is left. Instrumented
+(2026-09-19): of the 26 trims on lettering runs, 18 were inside one letter,
+and the travel call before each had returned None with the strokes between
+the needle and the target already sewn — the order had used up the web.
+The other 18 of the 45 are `run → run` hops between the edge cap's bean
+runs, steps 3 and 5's.
+
+**The construction.** `_euler_stroke_order`: the font engine's
+`routeGlyph` on stage 6's own travel graph (`_build_travel_graph`, the
+strokes' spines cut where another stroke's end lands). Chinese postman
+first — odd nodes paired greedily along shortest edge paths and those edges
+duplicated, so the duplicates are the extra travel and only where a dead
+end forces it — then a Hierholzer trail from the odd node nearest the
+needle; each stroke sews at its LAST visit, so every edge the trail walks
+between two consecutive strokes belongs to a stroke sewn later and is
+unsewn when walked, and the existing `_graph_travel` finds it — for a
+stroke whose spans all end at its own ends. The review (same day) measured
+the gap: the walk's quantum is the graph edge and the sewing quantum the
+stroke, so a stroke with an interior junction (an H's or K's stem) sews
+whole and can leave the needle at a dead end whose only segments are its
+own; that hop trims exactly as the nearest order would (H, K, X, +, t; 179
+of 600 random connected webs). What the walk guarantees is that every
+travel leg it EMITS lies under a column sewn later; the fixture's "1 walk
+the graph could not give" is this. Sewing per span, or deferring the
+strokes with interior junctions, would close it — a decomposition
+question, Kent's. Three things
+the fixture taught, each caught by instrumenting the loop rather than by
+reasoning: (1) a stroke has to be walked THROUGH — the column enters at the
+end the walk arrives by and leaves by the other, and its underlay runs are
+chained backwards from that entry (the nearest-first orientation ended the
+underlay where the column entered, so the pair came back out where it went
+in and the walk's next leg started from the wrong end: 8 of the 18
+within-letter trims were `underlay → column`); the column's direction is
+read by geometry, since a short cap-extended column can start nearer the
+spine's far end; a stroke sewn in parts sews them in the walk's direction.
+(2) The 0.2 mm stubs the graph builder leaves where a cut lands one sample
+from a spine's end are self-loops: no travel, no direction, and they were
+the "last visit" that set a stroke's order and entry — skipped. (3)
+`_graph_travel(snap_to_open=True)`: a 2 mm stroke's cap-shortened column
+can end nearer the junction it was sewn FROM than the one the walk leaves
+by (0.73 against 1.63 mm on the M's short stroke), and the strict 0.8 mm
+snap then read a dead end; the cursor may snap to the nearest node within
+`trim_at_mm` that it can still leave from. Off, the snap is what it was.
+The order applies to EVERY satin shape, not only lettering — the travel
+web is the same object (tires: 11 → 8 trims with no letters at all).
+
+**Fixture, nearest → euler:** 45 → **27 trims**, 2,564 → 2,482 stitches
+(the tie-offs saved outweigh the 117 mm of travel added), travel legs 3 →
+17, satin self-crossings 277 both ways, uncovered 0.0 both ways, coverage
+peak 4.52 → 4.74 (travel under columns). The trims on lettering runs 26 →
+8: 4 are cap-extension hops — the underlay ends at the spine's end and the
+column starts 3.2–3.4 mm past it, over `TRIM_AT_MM` = 3.0, which the
+nearest order pays too — 3 are between letters, 1 is a walk the graph
+could not give. At 127 mm the word is tatami and the flag changes nothing
+(9,645 / 30 both ways). The font engine sews the same word with 3.
+
+**Nine logos, nearest → euler** (corpus widths): trims **592 → 486** across the nine (Becker 46 → 38, tires 11 → 8, ENTHUSIAST 27 → 19, Fremont 75 → 55, Bridge Bar 112 → 85, Golden Tee 66 → 45, gaulke 39 → 35, drone 144 → 132, the screenshot 72 → 69) at a net −19 stitches (−58 to +65 per logo), travel 1,478 → 2,934 mm, satin self-crossings, uncovered area and preflight warnings unchanged on every one.
+
+**Gate 3's instrument — `tools/travel_cover.py`** (built on the review's
+finding that neither preflight instrument can see this feature's thread:
+`ARTWORK_UNCOVERED` measures artwork with no thread, `LINK_UNCOVERED`
+classifies a shape's own travel as routing). For every TRAVEL run the
+thread sewn AFTER it is rasterised with `_coverage_map`'s own ribbon rule
+and the leg sampled every 0.5 mm against it; a sample under 0.2 units of
+later thread is EXPOSED. at 80 mm across the nine logos the walk adds 1,064 mm of travel (1,530 → 2,594 mm) and **1.4 mm of new exposure** — exposed travel 244.7 → 246.1 mm, from gaulke (0.0 → 1.4 mm, worst leg 0.5 mm) and Bridge Bar (22.8 → 25.5) against Golden Tee's 2.3 → 0.4 and Fremont's 57.2 → 56.7; Becker, tires, ENTHUSIAST, drone and the screenshot within 0.3 mm; trims 587 → 471. The 245 mm that IS exposed is the nearest order's own (Becker's 22.9 mm leg, Fremont's 21.8, the screenshot's 26% of its travel) — a pre-existing finding this instrument is the first to read, not this step's. **Becker at 80 mm** (not its 100 mm corpus width, where 34.8 mm² both ways) reads `uncovered_total_mm2` 18.5 → 26.0 under the walk; diffed cell by cell, the six half-millimetre samples that flip sit at 0.26–0.32 units under the nearest order and 0.20–0.21 under the walk, on the seam between two of the MARINE band's columns, and what lifted them over the 0.25 floor was a 23-point travel leg the nearest order happened to route across the seam. The seam is bare of column thread under both orders — the decomposition's, step 3's — and the walk's legs run elsewhere; the columns' own points are identical either way (checked: `satin_shape` returns the same point set from either entry).
+
+**Renders** (`docs/renders/lettering-euler-2026-09-19/`): the fixture,
+Becker's MARINE and the ENTHUSIAST wordmark, nearest above and euler below
+— alike to the eye, which is the point: the walk changes where the needle
+travels under the thread, not what the thread looks like.
+
+**Tests:** `tests/test_stroke_order_euler.py`, 10 — the default; synthetic
+webs (an open path is one walk with no duplicate and every entry forward; a
+T walks its dead end twice and sews the bar last; an E is one walk whatever
+its stem sews when; an H strands the needle at most once; two islands are
+two walks, the nearer first; a stub loop decides nothing) each checked
+against the hop-has-an-unsewn-path model; on the committed fixture raster
+(`docs/renders/lettering-route-2026-09-19/marine_80mm_traced_input.png`,
+46 → 28 `stats.trims` at 80.2 mm) explicit "nearest" is byte-identical to
+the default, the walk trims at least 12 fewer and sews no more stitches,
+the uncovered artwork does not grow and no `LINK_UNCOVERED` fires. The
+review caught the first version asserting a preflight key that does not
+exist against a code that does not exist, and measuring a raster built at
+test time rather than the plan's.
+
+*(built and measured 2026-09-19 — the loop's instrumentation lived in the
+session's scratchpad, the numbers are the record)*
+
+### Addendum, later the same day — step 2 FLIPPED ON, step 3 next
+
+Put to Kent with the nine-logo numbers, the instrument's reading and the
+renders (AskUserQuestion, 2026-09-19): **flip `satin_stroke_order` to
+`"euler"` now** — his call; **step 3 (corners) next**, with the skeleton
+ruling it needs. `"nearest"` is the pre-flip engine byte for byte;
+`tests/test_stroke_order_euler.py` pins the default and reads the
+pre-flip order explicitly. What the flip moved in the full suite is
+recorded in the PR (#516) body.
+
+*(flipped 2026-09-19 — Kent's answers; config comment)*
+
+## 2026-09-19 — Lettering construction, step 3a: the spur pruner's structure rule (`satin_corner_twigs`, OFF), and step 3b re-measured
+
+Kent's pick after step 2 flipped: corners. The letterform study
+(2026-08-26) named two mechanisms; this entry is the second, built, and
+the first, re-measured.
+
+**Mechanism #2, what it was.** `_prune_spurs` erases a corner's short
+twig and, with it, the junction's DEGREE: a 3-way node with a letter's
+diagonal, its stem and a short branch into the corner becomes a 2-way
+pass-through once the branch goes, and the walker welds the diagonal to
+the stem as one column folding through the corner — PRECISION's N,
+Becker's R foot, the bare bottom-right Kent named twice. Keeping every
+twig instead hooks a square-capped bar's spine into its corner (the
+study's H defect: one of a cap's two I-beam arms surviving the length
+threshold by 0.027 mm). The study asked for a "cap-arm classifier" on the
+twig's tip width.
+
+**Instrument first — that test does not exist on this raster.** A census
+of the 739 spurs the pruner erases on five logos (Becker, ENTHUSIAST,
+drone, Fremont, Golden Tee; tip and node distance-transform values, twig
+length): every spur over half a millimetre ends at a 1 px distance
+transform (0.17 mm at 6 px/mm), tip/node ratio 0.06–0.25 — a corner twig
+and a cap arm alike reach the apex, and the only ratios over 0.5 are
+sub-0.3 mm fragments. What separates the two is the NODE: a cap's I-beam
+is two short free arms at one node off a stem; a corner twig is one short
+free arm between two longer arms.
+
+**The construction — `cfg.satin_corner_twigs`, OFF.** `_prune_spurs`
+reads each spur's node: two short free arms (under `_CAP_ARM_MAX_SPURS` =
+1.5 spur lengths) and a longer arm → a cap, both arms go whatever their
+exact length; one short free arm and at least two longer arms → a corner,
+the twig stays and holds the junction open for `_merge_through_junctions`
+to decide the weld on its own terms; anything else keeps today's length
+rule. Threaded through stage 7 and appliqué like the other satin flags.
+Off, the pruner is what it was.
+
+**Measured.** The plan's fixture (MARINE 80 mm): satin self-crossing
+pairs **277 → 103**, stitches 2,480 → 2,192, trims 28 → 23, edge-cap runs
+21 → 18, uncovered 0.0 both ways. A synthetic N (two stems and a diagonal,
+2 mm): off, two of its three strokes fold 90° through the corners; on, no
+stroke turns more than 45° and the three are stem, diagonal, stem. A
+45 × 4.5 mm square-capped bar's spine is straight either way. Nine logos
+at corpus widths, OFF → ON: satin self-crossings **1,813 → 1,004**
+(Fremont 66 → 13, gaulke 547 → 186, drone 430 → 264, the screenshot 271 →
+141, Golden Tee 484 → 381, ENTHUSIAST 15 → 19; Becker, tires and Bridge Bar
+0 both ways), trims 486 → 488 (gaulke 35 → 41, drone 132 → 127, the
+screenshot 69 → 73), uncovered unchanged on eight and Becker 34.8 → 35.5
+mm², stitches 88,882 → 89,470. **The one cost: Becker's MARINE band at
+100 mm, +725 stitches** (11,319 → 12,044) — the rule keeps three more
+strokes in the band (satin runs 18 → 21) and each gets its own zigzag
+underlay, 722 → 1,361 underlay stitches with the satin flat (2,630 →
+2,615); at 80 mm the same logo reads −174. `tools/letterforms.py` at
+80 mm: crossing pairs drone 388 → 275, Becker 382 → 156 (within a column
+23 → 0), ENTHUSIAST 138 → 93 with its bare junction area 2.85 → 0.0 mm²;
+stitches drone 18,274 → 17,990, Becker 6,762 → 6,588. Renders
+(`docs/renders/lettering-corners-2026-09-19/`): the fixture, drone's
+lettering and Becker's MARINE, off above and on below — the N's and R's
+corners sew as two columns meeting instead of one folding.
+
+**Mechanism #1 re-measured — `satin_rail_comp` (built OFF 2026-09-09).**
+`tools/rail_comp.py --compare` on today's engine (steps 0–2 ON): thread-
+vs-target IoU Fremont 0.681 → **0.836** (score 76 → 88), ENTHUSIAST 0.875
+→ 0.900 (trims 21 → 17), drone 0.803 → 0.826, Becker 0.896 → 0.898 (trims
+38 → 30, uncovered 26.0 → 21.5), gaulke 0.828 → 0.837 (score 64 → 76),
+sunset 0.734 → 0.807 (76 → 88); meadow 0.811 → 0.779 with coverage_max
+7.97 → 9.72 and +340 stitches — the one fixture it costs. Thread sewn
+outside the artwork 147–357 mm² → 0–8 on every lettering fixture. Its two
+decisions are the 09-09 plan's §7, unchanged: which polygon to
+skeletonise, and the flip after a sew-out — Kent's.
+
+**Tests:** `tests/test_corner_twigs.py`, 6 — the flag off by default; the
+bar's straight spine either way; the synthetic N; explicit OFF is the
+default's output; the fixture's self-crossings fall by more than half,
+stitches and trims do not rise, the uncovered artwork does not grow.
+
+*(built and measured 2026-09-19 — the census and probes lived in the
+session's scratchpad, the numbers are the record)*
+
+### Addendum, later the same day — step 3a FLIPPED ON, the rail-comp skeleton ruled, step 4 next
+
+Put to Kent with the nine-logo numbers and the renders (AskUserQuestion,
+2026-09-19): **flip `satin_corner_twigs` ON now** — his call, Becker's
++725 at 100 mm accepted as step 4's shape; **`satin_rail_comp`
+skeletonises the ARTWORK, as shipped** — the 09-09 plan's §7 decision 1,
+ruled; its flip still waits on a sew-out; **step 4 next** (wide lettering:
+split, never fill). `False` on the corner flag is the pre-flip pruner byte
+for byte; `tests/test_corner_twigs.py` pins the default and the OFF side.
+Two files hold the pre-flip pruner where they measured on it:
+`test_stroke_order_euler.py` (the walk's fixture numbers were read before
+step 3) and `test_junction_patch_flag.py`, whose satin cover clears
+Becker's finding at a net −1 stitch under the corner rule (6,528 → 6,527)
+instead of adding thread — the same kind of observation that file already
+records for the 09-18 flip. No golden moves: the flat-lane, pushcomp and
+stage-2 keys CI runs are byte-identical with the rule ON. What the flip
+moved in the full suite is recorded in the PR (#516) body.
+
+*(flipped and ruled 2026-09-19 — Kent's answers; config comments)*
+
+## 2026-09-19 — Lettering construction, step 4: split, never fill, for lettering (`satin_lettering_split`, OFF)
+
+Kent's pick after step 3a flipped: wide lettering. The rule is his
+2026-09-11 ruling for the browser lettering engine — split ON, fill off —
+applied on the traced path.
+
+**What it was.** A traced letter over `machine.satin_ceiling_mm` went to
+tatami. On the review's MARINE traced at 127 mm, `classify_ribbon` refused
+four of the eight largest regions by `dt_p90_cap` and three by
+`dt_irregular`, and the per-stroke rung could not admit a stroke over the
+cap either; 14 of the 15 regions filled. `wide_columns` (6.5 mm, item 4)
+admitted only the band, and the pro sews 7–23% of Becker's satin crosses
+over 5 mm.
+
+**The construction — `cfg.satin_lettering_split`, OFF.** One helper,
+`_satin_ceiling_for(region, cfg, satin_max)`, answers (width ceiling,
+per-stroke rung, fold guard) for a region: (∞, on, on) for a
+`text_candidate` under the flag, (`satin_ceiling_mm`,
+`cfg.satin_per_stroke`, `cfg.wide_columns`) for everything else — read by
+the borders-last predicate `_sews_satin`, by the classifier call and by
+`satin_shape` in `stitch_one`, so the three agree on what a letter is
+admitted at. `split_satin` carries the width over `SPLIT_SATIN_ABOVE_MM`
+as it always did; the wide-column fold guard (`_fold_caps`) holds every
+bend; the ribbon gates that are about SHAPE (aspect, irregularity,
+elongation) still apply, so a blob still fills. Off, byte-identical.
+Nothing physical moves: the ceiling is lifted for one population, not
+re-tuned.
+
+**Measured.** The plan's fixture, MARINE traced at 127 mm
+(`docs/renders/lettering-split-2026-09-19/marine_127mm_traced_input.png`):
+the six text-cluster members — the M's two halves, the R, the I, the N's
+body, the E's stem; the A and the letters' inner fragments are not text
+candidates and fill either way — go fill 6 → satin 6, stitches **9,642 →
+7,753**, trims 31 → 47 (edge-cap runs 17 → 27), uncovered 0.0 both ways,
+and satin self-crossing pairs (ties and splits stripped, the committed
+instrument's count) **0 → 311, every one of them in the R** — six
+strokes, the bowl, stem and leg meeting in one junction ball — with a
+`DENSITY_EXTREME` finding, coverage_max 5.49 → 6.24. The render
+(`marine_127mm_traced_split_off_above_on_below.jpg`) shows what the
+numbers say: the M, I and N stems sew as clean wide columns; the R's ball
+fans. At 80 mm, the review's fixture, all seven members sew satin either
+way and the flag reads stitches 2,192 → **2,520**: +328, of which the
+zigzag underlay is 405 → 698 — the emitter withholds underlay beneath a
+column wider than the ceiling it was admitted at (`oversize`), and with no
+ceiling every wide stroke gets its own; trims 23 → 26, crossings 103 both
+ways, coverage_max 4.69 → 5.08. Becker at 100 mm: stitches 12,037 →
+9,056, trims 39 → 71, self-crossings 714 → 1,260, uncovered 35.5 mm² both
+ways, coverage_max 4.91 → 6.68 (`ARTWORK_UNCOVERED`, `TRIM_HEAVY`).
+Composed with `satin_patch_junctions="satin"` (item 5 PR 2's cover) the
+uncovered artwork reads **0.0** at 9,079 stitches / 75 trims, `TRIM_HEAVY`
+the one finding left; composed with `satin_polygon_axis="artwork"`
+instead, worse on every count (9,416 stitches, 85 trims, coverage_max
+9.45, uncovered 48.2, `DENSITY_STACKED`). Nine logos at corpus widths:
+only Becker moves (12,037 → 9,056, trims 38 → 70 on the corpus sheet's
+garment); the other eight — tires, ENTHUSIAST, Fremont, Bridge Bar, Golden
+Tee, gaulke, drone, the screenshot — are byte-identical in stitches, trims,
+crossings, uncovered area and warnings.
+
+**The limit it reaches.** DOCTRINE 2026-09-09: a junction blob is not a
+column, and at 17 mm a bold letter has no arms to stand a junction
+against. The flag lifts the ceiling; it builds no junction — the R's 311
+are the ball fanning, and item 5 PR 3's finding stands (the pro stacks
+MORE layers at every MARINE junction, p95 3.7–7.3 against our 1.8–3.8).
+So the flip is a choice between tatami letters, today's, and split-satin
+letters whose junction balls fan, until the bold-letter junction
+construction exists. That construction is the next thing this plan has no
+step for.
+
+**Tests:** `tests/test_lettering_split.py`, 7 — the flag off by default;
+the helper's two answers; explicit OFF is the default's output; OFF, at
+least five of the six members fill; ON, every member sews satin and none
+fills; the non-lettering tiers unchanged; fewer stitches and the uncovered
+artwork not growing.
+
+*(built and measured 2026-09-19 — the arms and probes lived in the
+session's scratchpad, the numbers are the record)*
+
+### Addendum, later the same day — step 4 KEPT OFF, step 5 next
+
+Put to Kent with the fixture's numbers and the render (AskUserQuestion,
+2026-09-19): **`satin_lettering_split` stays OFF** — his call, on the R's
+fanning junction ball and the `DENSITY_EXTREME` finding; the flag waits on
+the bold-letter junction construction, which has no plan step yet (item 5
+PR 3's finding is its brief). Composing the satin junction cover was
+offered and not taken. **Step 5 next**: no edge cap on lettering — the
+plan's own precondition, step 3's corner cover, is ON.
+
+*(ruled 2026-09-19 — Kent's answers; config comment)*
+
+## 2026-09-19 — Lettering construction, step 5: no edge cap on lettering (`edge_cap_skip_lettering`, OFF)
+
+Kent's pick after step 4 was kept OFF: the plan's last step, its
+precondition — step 3's corner cover — now ON.
+
+**What it was.** The design-silhouette cap (`cfg.edge_cap`, "bean" since
+2026-09-11) sews only the stretches of the outline nothing linear already
+covers (`silhouette_cap`'s `omit`). On a satin-sewn letter that is exactly
+the bare corners and junction seams the satin decomposition leaves, so the
+cap was patching a defect upstream — the review's table read it as 16 of
+the traced word's 41 trims. Measured on the plan's fixture (MARINE traced
+at 80 mm) before building: **17 of the cap's 18 runs and 418 of its 457
+stitches stand on the satin letters' outlines** (a sample within 0.35 mm of
+a letter's boundary); at 127 mm, where the letters fill, none do. A typed
+glyph gets no cap: the font engine sews columns and nothing else.
+
+**The construction — `cfg.edge_cap_skip_lettering`, OFF.** A text-cluster
+member that sewed SATIN hands its sewn polygon (`PlannedRegion.polygon`,
+the same object the silhouette is the union of, so the letter's stretch of
+the silhouette's boundary lies exactly on it) to the cap's `omit`, and no
+cap sample stands on it — on bare fabric or as the edge of a hole in a
+fill. `_satin_lettering_cover` reads which members sewed satin off the
+runs the design actually laid, never off a verdict: a member with a fill
+run keeps its cap, because a tatami letter's rows end in open air at its
+edge and that is the defect the cap exists for; a run-tier member is
+already linear cover. Everything else is capped as before, and the gate's
+published saving and cover include what the cap was told not to sew. Off,
+byte-identical. The bare corners a letter still has are now its own to
+show, and that is the measurement.
+
+**Measured.** The fixture at 80 mm: stitches **2,192 → 1,774**, trims **23 →
+7** — the typed word sews 3 — cap runs 18 → 1 (the one left, 39 stitches,
+stands on a non-text fragment), cap stitches on satin letters 418 → 0,
+uncovered artwork 0.0 both ways with the worst bare patch 2.2 → 2.5 mm²
+(under the finding's floor), coverage_max 4.69 → 4.76, `TRIM_HEAVY` gone;
+every run that is not the cap is byte-identical. The render
+(`docs/renders/lettering-edge-cap-2026-09-19/`) shows the hooks gone from
+every letter. Becker at 80 mm: 6,588 → 6,444, trims 43 → 36, cap runs 16 →
+9, uncovered 18.5 mm² both ways. The 127 mm fixture and Becker at 100 mm,
+whose letters fill under step 4 OFF: byte-identical. Nine logos at corpus
+widths: five move — ENTHUSIAST 2,478 → 2,442 stitches at trims 18 → 16,
+Golden Tee 6,969 → 6,945 / 44 → 43, gaulke 4,536 → 4,454 / 41 → 38, drone
+18,733 → 18,715 / 127 → 126, the screenshot 8,244 → 8,085 / 73 → 68; Becker
+(its letters fill at 100 mm), tires, Fremont and Bridge Bar byte-identical;
+trims 488 → 476 at −319 stitches, with uncovered area, self-crossings and
+warnings unchanged on every one.
+
+**The yardstick now.** Traced MARINE at 80 mm with steps 0–3a and 5 ON:
+1,774 stitches / 7 trims against the font engine's 1,782 / 3. The stitch
+count has crossed. The seven trims, read off the plan: the first
+needle-down, five hops inside the word over `TRIM_AT_MM` (3.2–17.9 mm,
+stroke to stroke and letter to letter — step 2's remainder), and one into
+the cap's last run, on a non-text fragment.
+
+**Found on the way — from the step 3a flip's full suite.** Two tests
+measured on the pre-flip pruner moved and are pinned on it
+(`satin_corner_twigs=False`, the `PRE_FLIP_RC` posture): the duplicate-cone
+fold pays 107 stitches on drone under the corner rule (17,536 against
+17,429, still at less flying), the pruner's numbers not the fold's; and the
+wide-column fold guard's load-bearing case on Becker at 80 mm is gone —
+coverage_max reads **4.67** with the guard neutralised, under the warn
+line, against 7.07 on 2026-09-09 — because the corners it capped a column
+folding through now sew as two columns meeting. The guard's code is
+unchanged. Full suite on that tree, CI's deselects: 2 failed (those two),
+2,653 passed, 29m57s.
+
+**Tests:** `tests/test_edge_cap_lettering.py`, 10 — the flag off by
+default; explicit OFF is the default's output; OFF the cap stands on the
+satin letters, ON no sample does; trims and cap runs fall with the cover
+kept; only the cap moves; a fill-sewn text candidate keeps its cap; a
+design with no lettering is untouched; the helper's two answers.
+
+*(built and measured 2026-09-19 — the census and arms lived in the
+session's scratchpad, the numbers are the record)*
+
+### Addendum, later the same day — step 5 FLIPPED ON, a sew-out sheet next
+
+Put to Kent with the fixture's numbers, the render and the nine-logo
+sheet (AskUserQuestion, 2026-09-19): **flip `edge_cap_skip_lettering` ON
+now** — his call; `False` is the pre-flip cap byte for byte, and
+`tests/test_edge_cap_lettering.py` pins both sides. Every step of the plan
+is now built, and his pick for what follows is a **sew-out sheet**: the
+plan's fixtures exported for his machine, OFF and ON, for the flips cloth
+still owes — 3b's rail comp, and this one's check on cloth. What the flip
+moved in the suite is recorded in the PR (#516) body.
+
+*(flipped and ruled 2026-09-19 — Kent's answers; config comment)*
+## 2026-09-19 — the exposed travel legs: the fill tier's, on finished fill, never on fabric — and one arm priced
+
+`tools/travel_cover.py` (the step-2 entry above) read ~245 mm of exposed
+travel on the nine logos at 80 mm under the nearest order and called it *"a
+pre-existing finding this instrument is the first to read"*. Traced leg by
+leg (`tools/travel_legs.py`, new: the emitter of every TRAVEL run read off
+the construction call stack, the runs either side, and each half-millimetre
+sample read against the thread itself as well as the 1 mm grid). **That
+sentence is wrong, and the entry above is left as written: it is
+MASTER_SCOPE defect 21's residual, which `tools/fill_bridges.py` read on
+2026-09-11 with its cause established.**
+
+**Whose legs.** 244.8 mm grid-exposed (the instrument's 244.7): **239.1 mm —
+97.7% — is `stage6_fill.stitch_shape`'s `emit`** (line 1452), the bridge
+between two fill columns of ONE shape; 5.7 mm is `stage6_satin.satin_shape`'s
+between-stroke `_graph_travel` walk (line 4921). The other candidates emit
+nothing under this config: stage 7's `_chain` (`chain_links` OFF), the
+`_junction_cover_runs` walk (`satin_patch_junctions` OFF), border, contour.
+Per logo, fill / satin: Becker 31.2 / 0.0, tires no travel at all,
+ENTHUSIAST 3.8 / 0.0, Fremont 56.3 / 0.9, Bridge Bar 22.6 / 0.0, Golden Tee
+0.0 / 2.3, gaulke 0.0 / 0.0, drone 67.9 / 2.0, the screenshot 57.2 / 0.5.
+The fill tier does not read `satin_stroke_order`, which is why the Euler
+walk moved the total by 1.4 mm.
+
+**What they lie on — not gate 3's letter.** Of 375.0 mm of fill-tier travel
+exposed by the exact test (below), **all 375.0 mm lies on that shape's own
+FINISHED fill, in the same thread; 0.0 mm on bare fabric, 0.0 mm on unsewn
+artwork, 0.0 mm on another colour.** Nothing sews after the leg because the
+fill under it is already complete. That is thread on top of finished tatami
+— defect 21, *"on light thread over light fill it reads as a line"* — not
+needle-down thread on bare fabric. Neither is it the 0.2-unit floor missing
+thread that is there: the floor errs the other way.
+
+**The grid UNDER-reads the fill legs by a third.** A sample with no later
+sewn segment within half a thread width: 375.0 mm against the grid's 239.1
+(Becker 39.4 / 31.2, Fremont 108.6 / 56.3, the screenshot 102.8 / 57.2,
+drone 89.6 / 67.9). A 1 mm cell credits a leg running along a finished
+column's edge with the NEXT column's thread. `fill_bridges`' own measure
+(a full-row footprint, which over-claims a column's ends by a row) reads
+432.3 mm on the same plans. Three instruments, one population; quote the
+one whose question you are asking. Separately, a bridge's two END steps
+belong to no run — `emit` appends `bridge[:-1]` and `_densify` is
+a-exclusive — so Becker's run #2 is a 7.1 mm bridge the instrument sees
+2.4 mm of. On the satin legs the grid errs the OTHER way: of 5.7 mm, the
+exact test confirms 3.2 mm retracing a hairline run on Golden Tee and
+0.8 mm over another colour on drone; the rest are sub-2 mm hops the cell
+cannot resolve.
+
+**Becker at 80 mm, every leg** (left_chest, max_colors 6, nearest; the two
+fill shapes are black grounds in the BECKER arch, S118e45fc is MARINE):
+
+| run | shape | emitter | before → after | leg (gap) mm | grid | exact | on | `fill_bridges` | cost at 25 : 2 |
+|---|---|---|---|---|---|---|---|---|---|
+| #2 | Saee8fbe5 | fill `emit` | fill[199] → fill[164] | 2.4 (7.1) | 0.0 | 0.0 | — | clean | 2.0 |
+| #5 | Saee8fbe5 | fill `emit` | fill[6] → fill[68] | 2.3 (6.9) | 0.9 | 1.8 | own fill | under tolerance | 3.6 |
+| **#8** | Saee8fbe5 | fill `emit` | fill[67] → fill[39] | **24.5 (8.4)** | **22.9** | 24.5 | own fill | no corridor | **34.6** |
+| #10 | Saee8fbe5 | fill `emit` | fill[39] → fill[158] | 20.3 (7.5) | 0.3 | 4.0 | own fill | router | 17.6 |
+| #17 | Sf795e8d1 | fill `emit` | fill[112] → fill[144] | 6.8 (11.3) | 3.2 | 3.6 | own fill | no corridor | 6.9 |
+| #19 | Sf795e8d1 | fill `emit` | fill[144] → fill[118] | 16.2 (8.5) | 4.0 | 5.5 | own fill | no corridor | 17.1 |
+| #27 | S118e45fc | `satin_shape` | satin[46] trim → underlay[3] | 5.2 | 0.0 | 0.0 | — | | |
+| #34 | S118e45fc | `satin_shape` | satin[110] → underlay[8] | 47.5 (13.9) | 0.0 | 0.0 | — | | |
+| #37 | S118e45fc | `satin_shape` | satin[36] trim → underlay[8] | 7.4 | 0.0 | 1.0 | a column seam, 0.03 mm past the test | | |
+| #44 | S118e45fc | `satin_shape` | satin[154] → underlay[30] | 4.4 | 0.0 | 0.0 | — | | |
+
+**The 22.9 mm leg, rendered**
+(`docs/renders/travel-legs-2026-09-19/becker_80mm_fill_bridges_sew_order.jpg`,
+columns numbered in sew order). The needle finishes the fifth column at the
+shape's top-right corner; the sixth starts 8.4 mm away across finished fill.
+The straight hop leaves the polygon for **0.20 mm** — a sliver notch in the
+traced outline — so `travel_path` refuses it and takes the inset ring the
+short way round: down the finished right leg, along its foot and up its
+inner side, 24.5 mm, all of it on top. No unsewn ground touches either end
+(`fill_bridges`: no corridor, not jumpable, no later colour over it).
+
+**One arm, PRICED NOT BUILT (scratch monkeypatch on `travel_path`, no engine
+file touched) — and no constant added or moved.** `_score` already says
+what a trim is worth (25 stitches) and what an exposed stitch is worth (2),
+both Kent's, ratified 2026-09-03 — but it is only ever asked to compare two
+whole ORDERS. `emit` never asks it about one BRIDGE: if any in-shape route
+exists it is sewn, however exposed, and the thread is lifted only when no
+route exists at all. The arm asks: where the gap is over `trim_at` (so the
+lift really is a cut) and the bridge's own cost — travel stitches + exposed
+stitches × 2 — exceeds 25, lift. Applied inside `travel_path`'s result, so
+`_order_cost` and `emit` see the same rule. It is NOT the 09-11 entry's
+"lift when shorter than `trim_at`" (that priced the lifts that cost no
+trim; this prices the ones that do) and not ordering work, which DOCTRINE
+says moves the rate first. Nine logos, 80 mm, nearest:
+
+| | exposed, `travel_cover` | exposed, `fill_bridges` | worst leg | trims | stitches |
+|---|---|---|---|---|---|
+| Becker | 31.2 → **8.3** | 38.7 → 14.2 | 22.9 → 4.0 | 52 → 53 | 6,757 → 6,749 |
+| Fremont | 57.2 → **20.3** | 136.5 → 39.8 | 21.8 → 9.3 | 57 → 61 | 13,202 → 13,171 |
+| Bridge Bar | 22.8 → 12.6 | 33.9 → 11.1 | 10.2 → 2.2 | 113 → 114 | 14,505 → 14,499 |
+| the screenshot | 57.5 → **25.7** | 107.1 → 45.0 | 10.9 → 5.0 | 73 → 77 | 8,261 → 8,206 |
+| drone | 69.9 → 66.6 | 111.9 → 111.8 | 9.1 → 9.1 | 145 → 141 | 18,718 → 18,750 |
+| tires, ENTHUSIAST, Golden Tee, gaulke | unchanged | unchanged | | unchanged | unchanged |
+| **nine** | **244.6 → 139.5** | **432.3 → 226.2** | | **587 → 593** | 77,678 → 77,610 |
+
+`uncovered_total_mm2` is identical on all nine and the preflight finding
+codes on eight. **The one adverse reading: Fremont gains a
+`LETTERING_ILLEGIBLE` warn.** Its tagline cluster (art read
+`EATSTAYPLAYWZ`, 5.9 mm) read back at 0.50 similarity before — exactly ON
+the warn line, passing by `>=` — and 0.267 (`TL`) under the arm;
+`HOTELFREMONT` reads 1.0 both ways. The mechanism is NOT established: every
+order sews the same fill penetrations, so only travel, trims and ties moved
+in the white field the tagline is cut out of, and the judge is an OCR of a
+render. It is a reason to look at a render before any flip, not a
+measurement of the thread. Drone is the scorer choosing differently once a
+cut has a price inside the route: four fewer trims, 66 mm more travel,
+3.3 mm less of it exposed. What is left after the rule is bridges cheaper
+than a cut at Kent's own rate — Becker's other four cost 3.6 to 17.6. **It
+is a trade Kent already priced, but more trims is still his call** (all
+nine already carry `TRIM_HEAVY`); if wanted it is a config flag, default
+OFF, with `travel_cover`, `fill_bridges` and `travel_legs` as its
+instruments. Not proposed: letting the straight hop leave the shape by
+0.2 mm. That is needle-down outside the artwork by construction, which IS
+gate 3's letter.
+
+*(measured 2026-09-19 — `digitizer/tools/travel_legs.py`; the arm and the
+render script lived in the session's scratchpad, the numbers are the record)*
+
+### Addendum, the same day — the arm BUILT, DEFAULT OFF (`cfg.fill_bridge_cut`), and Fremont's OCR reading explained
+
+Put to Kent with the numbers above (AskUserQuestion, 2026-09-19): **build
+it, default OFF**; the flip stays his.
+
+**What was built.** `stage6_fill._cut_is_cheaper(a, bridge, sewn,
+trim_at_mm)`: a bridge that shows (over the one-stitch exposure tolerance),
+spans a gap over `trim_at`, and scores more than one cut by `_score`'s own
+two constants is lifted. Asked in `emit` and in `_order_cost` alike — the
+scorer and the emitter agreeing is DOCTRINE's stated prerequisite — and
+carried into `_reorder_for_cover`'s memo key, since it changes what the
+scorer counts. Threaded to the same seven `stitch_shape` call sites as
+`fill_travel_under_cover` (five in stage 7, two in the blend tier), without
+which it is inert: that flag is what tracks the sewn footprint. No constant
+added or moved. With `chain_links` ON (it is OFF, gate 3) stage 7 could
+re-bury a lift this rule made; not measured.
+
+**Measured, nine logos, 80 mm, nearest — the built flag reproduces the
+priced arm to the digit:** exposed travel **244.6 → 139.5 mm**
+(`travel_cover`), 432.3 → 226.2 (`fill_bridges`), trims **587 → 593**,
+stitches 77,678 → 77,610, `uncovered_total_mm2` identical on all nine;
+per-logo rows as the table above. **OFF is plan-md5-identical to the engine
+before the change on all nine** (every run's thread, kind, jump, trim,
+shape and points; the base measured in a detached worktree at `fb749de5`).
+Four logos do not move at all (OFF md5 == ON md5: tires, ENTHUSIAST, Golden
+Tee, gaulke).
+
+**Fremont's `LETTERING_ILLEGIBLE` is the judge, not the thread**
+(`docs/renders/travel-legs-2026-09-19/fremont_tagline_ocr_input_art_off_on.jpg`
+— the crops tesseract read, from `legibility.measure`'s own `dump=`). The
+tagline cluster's 12 shapes sew 13 runs and they are **byte-identical** OFF
+and ON. What differs inside the tagline's box is the white FIELD's travel:
+OFF, two of its exposed bridges run needle-down through the tagline band
+(3.3 and 8.9 mm of them inside the box — the two diagonal lines in the
+render); ON, both are cuts. 231 of the crop's 61,920 pixels change. OFF,
+tesseract read `VAT] CY § Pw` at confidence 46.5, which scores 0.50 against
+`EATSTAYPLAYWZ` and passes a `>=` 0.5 line; ON it read `| | TL` at 63.3,
+0.267. Neither is the tagline, which is lost on the thread under both arms
+at this size; the reading follows the flag whichever arm runs first
+(checked both orders). Drone's worst cluster moved the other way, 0.102 →
+0.25. **So the arm's recorded "one adverse reading" is withdrawn as a cost:
+its only cost is the six trims.** It stands as a finding about the
+instrument — a similarity of exactly 0.50 from a 46-confidence garble is
+not a pass.
+
+**Tests:** `tests/test_fill_bridge_cut.py`, 12 — the default; the rule on
+four hand-built bridges (long and exposed, short and exposed, long and
+hidden, exposed under `trim_at`); on a two-legged comb whose only route to
+the second leg climbs back up the first (a bridge costing 31.2 against a cut's 25): ON sews no
+bridge dearer than a cut, exposes less, trims more and sews the same fill
+penetrations, explicit OFF is the default's runs, the flag is inert without
+covered routing, and `_order_cost` counts one more cut for the same order;
+stage 7 hands the flag to the real `stitch_shape`; and every call site that
+passes covered routing passes the rule. The fixtures are shapely polygons
+on purpose: Becker's leg exists because of a 0.20 mm notch in a traced
+outline, and a trace differs by platform. Each test was watched failing
+first, the two wiring tests by reverting the wiring.
+
+*(built and measured 2026-09-19 — `tests/test_fill_bridge_cut.py`;
+`digitizer/tools/travel_legs.py`; the nine-logo and md5 scripts lived in
+the session's scratchpad, the numbers are the record)*
+
+### Addendum, the same day — the review round: the flag could buy a DEARER plan, two-pass fills, and the numbers on the shipped order
+
+`emb-bot-reviewer` on the two commits above. Every finding was reproduced
+before it was acted on.
+
+**REAL, ON-path only — `_reorder_for_cover`'s early exit.** *"Nothing
+exposed; nothing to win"* is false once `cut_bridges` is on: the scorer lifts
+a dear bridge, so the original order reads "one cut, nothing on top" and the
+reorder is skipped without ever pricing the order it would have found. On a
+plate with two holes ON kept a plan scoring **86.0** where flag-OFF's order
+scores **40.1** by the same scorer — one trim and 40 more travel stitches to
+hide 24 mm, dearer than OFF at the very rate the flag is justified by. Now
+the candidate is always priced when the flag is on and there is a cut; since
+the greedy candidate does not depend on the flag, ON picks the cheaper of
+the same two orders OFF chooses between, so **it cannot buy a dearer plan
+than it replaces**. On the nine logos the fix moved one plan (the
+screenshot's ON, −1 stitch); every OFF plan and the other eight ON plans are
+md5-identical to before it.
+
+**Found while measuring the reviewer's two-pass note — the rule is for
+SINGLE-PASS fills.** Crosshatch and the density boost sew the shape twice,
+and the sewn footprint cannot tell pass-one fill that pass two is about to
+cover from fill that is finished, so every pass-two bridge read as exposed:
+on the two-hole plate trims 0 → 2 (crosshatch) and 1 → 3 (boosted), on a
+three-hole plate 0 → 3 both ways — cuts that hide nothing. `stitch_shape`
+now leaves both alone. The customer default has the boost OFF and the nine
+logos are single-pass tatami, so the figures below are unaffected; **the
+photo lane's crosshatch is where this would have landed, and exposure per
+pass is unmeasured** — that, not the flag, is the open item there.
+
+**The numbers on the SHIPPED stroke order** (euler since #516's flip the same
+day; the entry above is `--order nearest` to match the figures it was
+correcting). Nine logos, 80 mm, final code, OFF → ON: exposed travel
+**246.3 → 141.1 mm** (`travel_cover`), 432.3 → 226.2 (`fill_bridges`),
+trims **471 → 477**, stitches 77,558 → 77,489, `uncovered_total_mm2`
+identical on all nine. Becker 31.2 → 8.3 (trims 38 → 39), Fremont 56.7 →
+19.9 (33 → 37), Bridge Bar 25.5 → 15.3 (86 → 87), the screenshot 57.5 →
+25.7 (70 → 74), drone 69.6 → 66.3 (133 → 129); tires, ENTHUSIAST, Golden
+Tee and gaulke do not move. Under nearest the totals are 244.6 → 139.5 and
+587 → 593 still. **The OCR judge again:** Fremont 0.50 → 0.267 under either
+order; drone's worst cluster went 0.10 → 0.25 under nearest and **0.36 →
+0.05 under euler** — opposite directions from the same rule on lettering
+already flagged illegible both ways, which is what noise looks like.
+
+**The instrument can now read the flag.** The reviewer's second point: none
+of the three named instruments could set `fill_bridge_cut`, so the flip
+decision was not reproducible from the repo. `tools/travel_legs.py` takes
+`--set KEY=VALUE` (any `PipelineConfig` field), measures the SHIPPED stroke
+order unless `--order` names one, and prints stitches and trims. Its `top`
+bucket is split: **`own-fill` — finished fill of the leg's OWN shape — is
+374.9 of the 374.9 mm of exposed fill travel**, so the first entry's "that
+shape's own finished fill" is now read rather than inferred from "same
+colour". Its own sums are 244.6 / 239.0 / 5.6 / 374.9 where the first entry
+quotes 244.8 / 239.1 / 5.7 / 375.0 from a scratch run that summed per-leg
+roundings. The satin walk's 6.1 mm: 3.9 on same-colour top stitching, 0.8 on
+another colour, 1.4 bare at column seams — so "0.0 mm on unsewn artwork" is
+true of the fill tier and 1.4 mm short of true overall.
+
+**Open before any flip, none of them built:** a lift this rule makes raises
+`report["jumps"]`, which feeds the customer line *"the thread had to be
+lifted N times inside a shape"* — it did not have to be, the engine chose
+to, and the wording should say so; `TRIM_HEAVY`'s in-shape share rises with
+it; `chain_links` ON could re-bury a lift (unmeasured, OFF).
+
+**Not this change's, found by running the full local suite:** 11 setup
+errors in `test_house_anchor.py` / `test_house_from_line.py` (#516's), a
+bare `read_text()` decoding a UTF-8 font file as cp1252 on Windows; Linux CI
+never sees it. Fixed with `encoding="utf-8"`. The suite's other reds are the
+three recorded Windows-local goldens and no fourth: 2,665 passed, 3 failed,
+3 skipped, 8 xfailed (48 min, sharing the machine with the review
+agent's probes).
+
+**Tests:** `tests/test_fill_bridge_cut.py`, 15 — added: the two-hole plate
+(ON never dearer than OFF by its own scorer), two-pass fills left alone, the
+memo key carries the flag; the scorer/emitter test now checks the emitter's
+trims against the scorer's cuts; the call-site tripwire parses the source
+instead of pattern-matching it (the regex missed `under_cover = cfg.x` with
+no trailing comma — checked by breaking a site that way); and
+`test_flag_off_is_the_engine_as_it_was` is renamed
+`test_explicit_off_is_the_default`, which is all it pins.
+
+*(reviewed, fixed and re-measured 2026-09-19 — `tests/test_fill_bridge_cut.py`;
+`digitizer/tools/travel_legs.py --set fill_bridge_cut=true`)*
+
+### Addendum, the same day — #516 merged; the numbers on main's defaults
+
+#516 merged while the above was in review, ten commits on from the lane this
+was measured on, with `satin_corner_twigs` and `edge_cap_skip_lettering`
+flipped ON on the way. `main` merged in; the three figures above are each
+labelled with the engine they were measured on and none is withdrawn, but
+"current" is this one. Nine logos, 80 mm, `main`'s defaults, OFF → ON:
+exposed travel **248.6 → 140.9 mm** (`travel_cover`), 432.3 → 226.2
+(`fill_bridges`, to the decimal on all three engines — the fill tier reads
+none of the satin flags), trims **458 → 464**, stitches 76,774 → 76,705,
+`uncovered_total_mm2` identical on all nine. Becker 31.2 → 8.3 (trims 36 →
+37), Fremont 57.7 → 20.8 (33 → 37), Bridge Bar 26.0 → 15.8 (83 → 84), the
+screenshot 59.6 → 25.2 (69 → 73), drone 69.0 → 65.7 (127 → 123); tires,
+ENTHUSIAST, Golden Tee and gaulke are md5-identical OFF and ON. The delta is
+the same +6 trims on all three engine states. Fremont is again the only
+design whose finding codes change, 0.50 → 0.267 as before; drone's worst
+cluster reads 0.154 → 0.143 here, a third direction-and-size from the same
+rule. `COOKBOOK.md`'s instrument list (new in #516) gains
+`tools/travel_legs.py` and the correction to `travel_cover`'s line.
+
+*(measured 2026-09-19 — merged tree `8ae881b8`)*
+
+### Addendum, the same day — flip prep: the thread renders found a second fault in the early exit, and the warning's wording
+
+Kent's pick after #517 merged (AskUserQuestion, 2026-09-19): prepare the
+flip — the wording, then OFF against ON as THREAD so the trade can be judged
+by eye.
+
+**The renders** (`docs/renders/fill-bridge-cut-2026-09-19/`, `stitchviz.
+render_design` — the renderer the legibility check reads — 80 mm, `main`'s
+defaults, OFF above and ON below; each design whole at 12 px/mm and an 18 mm
+window on its worst exposed leg at 40 px/mm). **Becker:** OFF, a ring of
+running stitches laps the M-shaped ground's right leg — down its outer edge,
+across the foot, up the inside — lying on the finished fill; ON it is gone
+and the leg is clean. **Fremont:** OFF, a white travel line crosses the
+field diagonally between the L and the F and on down past `EAT |`; ON it is
+gone, and the second diagonal beside it stays — that bridge is cheaper than
+a cut. **The screenshot:** OFF, a dark loop runs round the block under the
+white mark and along its bottom edge; ON it is gone.
+
+**What the screenshot's first ON render showed that it should not have.** A
+white 10 mm² shape beside the dark block looked different — and none of its
+bridges had been lifted. Diffed run by run: same two fill columns, the first
+one flipped, its bridge 3 points / 2.8 mm → 2 points / 2.1 mm. The review
+round's cure for `_reorder_for_cover`'s early exit had been *"price the
+candidate whenever the flag is on and there is a cut"*, and **the cut
+`_order_cost` counts is usually just the ENTRY hop from the previous shape,
+which nearly every shape has.** So ON was re-ordering almost every
+multi-column fill, exposed or not: never worse by score (that shape: 9 → 4
+travel stitches), the pipeline's dearest function run everywhere, and none
+of it this flag's business. **The exit is now taken on what the order
+exposes BEFORE any lift — exactly the question flag-OFF asks.** ON prices
+the candidate for the same shapes OFF does and picks the cheaper of the same
+two orders, so it still cannot buy a dearer plan (the two-hole plate), and a
+shape with nothing exposed sews as it does with the flag off. On the nine
+logos that one shape was the only plan the broad rule had moved: 17 of the
+18 plans are md5-identical across the two rules, the screenshot's ON reads
+8,029 → 8,030 stitches, and every headline figure stands — exposed **248.6 →
+140.9 mm**, 432.3 → 226.2, trims **458 → 464**, stitches 76,774 → 76,706
+(was 76,705), uncovered identical on all nine. No synthetic shape reproduced
+it (combs, dumbbells, lobes, horseshoes: all either expose something or do
+not differ), so the test carries that shape's own sewing polygon, simplified
+to 0.1 mm, as a 31-vertex literal. #517 shipped the broad rule; the flag is
+OFF, so nothing a customer sews was touched.
+
+**The wording — smaller than the review and I made it sound.** The review
+round recorded that a lift this rule makes feeds the customer line *"the
+thread had to be lifted N times inside a shape"*. It does not: the Studio
+has its own sentence for `LONG_JUMPS_TRIMMED` (*"The thread gets cut {n}
+times where it has to travel a long way"*), a note behind the disclosure,
+and it never said "had to". "Had to be lifted" is the ENGINE's fallback
+prose, read by every other consumer, with a code comment beside it —
+*"travel could not stay inside the shape"* — that the flag makes false. Both
+now say what happens (`"The thread is lifted N times inside a shape."`)
+rather than why; the config comment that called it "the customer line" is
+corrected. Pinned by forcing the count at `stitch_shape`'s report, the seam
+stage 7 reads it from: no hand-built shape fires the warning through stages
+5–7, which is itself worth knowing — nothing in the suite exercised that
+sentence.
+
+**Tests:** `tests/test_fill_bridge_cut.py`, 17.
+
+*(rendered, found, fixed and re-measured 2026-09-19 — the render and diff
+scripts lived in the session's scratchpad; the renders and the numbers are
+the record)*
+
+### Addendum, the same day — `fill_bridge_cut` FLIPPED ON (Kent's call)
+
+Put to Kent with the three thread renders and the nine-logo figures
+(AskUserQuestion, 2026-09-19): **flip `cfg.fill_bridge_cut` ON.** Judged on a
+render, not yet on cloth — a candidate for the sew-out sheet the lettering
+plan is preparing for its own two flips; nobody has put it there yet. `False` is the engine before it, plan-md5-identical on the nine
+logos; `stitch_shape`'s own `cut_bridges` keyword still defaults False, the
+way `under_cover` does, so a caller that does not pass it (the contour
+tier's finish patches) is untouched.
+
+**What the flip moved in the suite: nothing it pins.** Full local digitizer
+suite with the default ON: **2,698 passed, 3 failed, 3 skipped, 8 xfailed,
+0 errors** (43m48s) — the three are the recorded Windows-local goldens
+(`enthusiast_logo` on the flat-lane and photo-dispatch goldens,
+`logo_whitebg-towel` on pushcomp), the same three as before the flag
+existed, and no fourth. ENTHUSIAST is md5-identical OFF and ON, so its two
+are not this flip's on any machine. No golden is re-pinned and none needed
+the Linux recapture workflow: no pinned fixture sews a fill bridge dearer
+than a cut. (The 11 setup errors the earlier run carried are gone with
+#517's `encoding="utf-8"`.)
+
+**What a customer's logo gets** (nine logos, 80 mm, `main`'s defaults):
+exposed fill travel 248.6 → 140.9 mm, 458 → 464 trims, 76,774 → 76,706
+stitches, uncovered unchanged; four of the nine do not change at all. Photo
+designs are untouched by construction — crosshatch is two-pass and the rule
+leaves it alone — until exposure per pass is measured.
+
+`tools/pro_parity/flagcost.py`'s default-ON list gains the flag, so its
+runtime bill can be read; not yet read. `tests/test_fill_bridge_cut.py`
+pins the default and that stage 7 hands `False` over when asked.
+
+*(flipped 2026-09-19 — Kent's answer; config comment)*
+
+### Addendum, the same day — re-measured on the doubly-flipped tree: Becker's leg is gone, the trade is Fremont's and the screenshot's
+
+Kent's pick once #520 had landed the two lettering flips (AskUserQuestion,
+2026-09-19): price the flip on the engine it would land on. **He flipped
+it ON in a parallel session while this ran** (#521, the addendum above),
+so these are the numbers the flip buys on the current engine, not a
+pricing ahead of the ruling. Under
+`satin_lettering_split` Becker's MARINE band sews as split satin, and the
+band's FILLED letters were where every one of Becker's exposed fill bridges
+lay (the step-4 addendum above: 4 runs / 38.7 mm → 0 / 0.0) — so the
+headline leg, *"Becker's 22.9 mm leg → 4.0"*, is not there to cut. Nine
+logos, 80 mm, the case's garment, shipped order, `satin_junction_stack` and
+`satin_lettering_split` ON (tree `08c856a2`), OFF → ON:
+
+| | exposed, `travel_cover` | exact (`travel_legs`) | `fill_bridges` | worst leg | trims | stitches |
+|---|---|---|---|---|---|---|
+| Becker | 0.4 → 0.4 | 0.0 → 0.0 | 0 → 0 | 0.4 → 0.4 | 43 → 43 | 6,057 → 6,057, **md5-identical** |
+| Fremont | 58.0 → **21.1** | 109.4 → 34.9 | 136.5 → 39.8 | 21.8 → 9.8 | 35 → 39 | 13,123 → 13,092 |
+| Bridge Bar | 30.0 → 19.7 | 32.3 → 22.7 | 33.9 → 11.1 | 10.2 → 3.6 | 96 → 97 | 14,686 → 14,680 |
+| the screenshot | 60.9 → **26.0** | 104.2 → 48.5 | 107.1 → 45.0 | 14.0 → 5.0 | 69 → 73 | 8,233 → 8,178 |
+| drone | 69.1 → 65.8 | 90.3 → 94.8 | 111.9 → 111.8 | 8.3 → 8.3 | 123 → 119 | 18,626 → 18,658 |
+| tires, ENTHUSIAST, Golden Tee, gaulke | md5-identical OFF and ON | | | | | |
+| **nine** | **232.7 → 147.4** | 352.6 → 217.2 | 393.6 → 211.9 | | **473 → 478** | 77,242 → 77,182 |
+
+`uncovered_total_mm2` is 0.0 on all nine both ways and the finding codes
+are identical on all nine. **The OCR judge did not run:** this container
+has no `tesseract`, so `LETTERING_ILLEGIBLE` is read on neither arm —
+Fremont's 0.50 → 0.267 (the judge, not the thread, per the addendum above)
+is neither confirmed nor withdrawn by this run. Drone is the scorer's
+choice again: four fewer trims, 66 mm more travel (533.5 → 599.4), 3 mm
+less of it grid-exposed and 4.5 mm more by the exact test.
+
+**Against main at #516's 248.6 → 140.9 mm and 458 → 464 trims.** Becker's
+31.2 → 8.3 at +1 trim is gone, and it is the only thing that is: the four
+other movers read within a millimetre or two of their #516 figures
+(Fremont 57.7 → 20.8 then, 58.0 → 21.1 now; the screenshot 59.6 → 25.2 and
+60.9 → 26.0; drone 69.0 → 65.7 and 69.1 → 65.8; Bridge Bar 26.0 → 15.8 and
+30.0 → 19.7 — its OFF rose 4 mm with the stack, and the bridges the flag
+cuts are the same 33.9 → 11.1 by `fill_bridges`). The fill tier reads none
+of the satin flags: `fill_bridges` across the eight logos other than
+Becker is 393.6 → 211.9 here against 432.3 − 38.7 → 226.2 − 14.2 there.
+The delta is now **−85 mm exposed for +5 trims**, on four of nine logos,
+byte-identical on the other five.
+
+**Renders** (`docs/renders/fill-bridge-cut-2026-09-19/*_stack_split_tree.jpg`,
+the flip-prep layout: whole design at 12 px/mm OFF above ON below, an 18 mm
+window on OFF's worst exposed leg at 40 px/mm). Becker's two panels are one
+plan: the M of MARINE is satin now where the flip-prep zoom showed the ring
+of running stitches lapping its filled right leg, and the window sits on
+the C's 0.4 mm satin walk. Fremont: the white diagonal between the L and
+the F is there OFF and gone ON, the second diagonal beside it stays. The
+screenshot: the dark line along the block's bottom edge under the white
+marks is there OFF and gone ON.
+
+**The flip is made.** What it buys on the engine it landed on: a third of
+the exposed fill travel for five trims, on Fremont, the screenshot, Bridge
+Bar and drone; Becker, whose leg made the case, no longer moves. The cloth
+check #521's entry names — OFF against ON on the sew-out sheet — is still
+nobody's.
+
+*(measured 2026-09-19 — `tools/travel_legs.py` bare and `--set
+fill_bridge_cut=true`; the md5s, `fill_bridges` sums and renders from
+`fbc_remeasure.py` in the session's scratchpad; the numbers are the record)*
+
+## 2026-09-19 — The bold-letter junction: designed and priced before code (`2026-09-19-junction-construction.md`)
+
+Kent's pick while the sew-out sheet is on his machine: the construction
+step 4 turned out to need, as a design document for his ruling. No
+engine code; every number read on `main` at #516 with existing flags and
+one monkeypatched constant.
+
+**The defect, named.** The R of the 127 mm fixture under
+`satin_lettering_split`: 311 self-crossing pairs, **all in one 109-point
+run** (the foot of the leg), **294 seated in one junction blob** at
+(5.24, 6.25) whose merge decisions read weld / weld / dropped — one
+column welded through a corner and folding over itself, the fold step
+3a stopped at the pruner made again at the merge. Disabling the fork
+drop moves the 311 to another run (not the cause); refusing welds past
+a turn removes them. The probe (`weld_turns`, to be committed): every
+weld in the nine logos turns under 60° by the merge's two-half-width
+baseline, the R's at **44.4°**, and **the seam pairs sit in the 30–60°
+bin** — the fixture 296 of 296, Becker 734 of 734 (in the BECKER
+outline's welds at 53–58°, not the band), Golden Tee 403 of 537, Bridge
+Bar 106 of 106, drone 70 of 70, gaulke 89 of 126; under 30° almost
+none. The baseline is right for the decision and wrong for the cost:
+the cost is the fold `_fold_caps` already prices on a wide column.
+
+**The pro's junction is a stack of arms, not a column through them.**
+`pro_layers --blobs` on Becker at 100 mm with the band as columns: at
+every MARINE junction the pro's mean and p95 layers exceed ours (the R's
+(−0.9, 26.0): ours 2.28 / 3.97 / max 4.86, his 3.64 / 7.25 / 10.15; the
+I's: ours 1.14 / 2.06, his 2.94 / 4.38) and his bare fraction reads
+0.00–0.07 where ours reaches 0.23.
+
+**Priced by proxy** (`_WELD_MAX_DOT` −0.9 for part A, the satin junction
+cover for part C):
+
+| fixture | today: stitches / trims / pairs / uncovered | A | A + C |
+|---|---|---|---|
+| R fixture 127 mm, split | 7,253 / 34 / 311 / 0.0 | 6,906 / 43 / 0 / 25.8 | **7,018 / 46 / 0 / 0.0** |
+| MARINE 80 mm | 1,774 / 7 / 103 / 0.0 | 1,475 / 13 / 0 / 22.8 | **1,829 / 19 / 0 / 0.0** |
+| Becker 100 mm, split | 8,612 / 53 / 1,260 / 35.5 | 7,461 / 59 / 556 / 108.5 | **8,059 / 67 / 556 / 0.0** |
+
+Refusing the weld kills the fold and bares the junction (the arms end
+short of it by `_junction_entry_mm`); the cover closes it; the price is
+**+12 trims per word**. Part B — an ending arm runs into the node by its
+own half-width and stacks, as the pro's do — is the lever on both the
+bare cloth and the trims, and is not measurable by proxy. The
+recommendation is A + B + C as one flag (`satin_junction_stack`, OFF),
+the fold rule reusing `_fold_caps`' radius constant (no new physical
+constant). Six predictions with their falsifiers, the fixtures, and
+what is Kent's (§6, §4, §7 of the plan). Renders:
+`docs/renders/junction-construction-2026-09-19/`.
+
+*(designed and measured 2026-09-19 — the probes lived in the session's
+scratchpad; `weld_turns` is to be committed with the build)*
+
+### Addendum, the same day — Kent's ruling on the junction construction
+
+Put to Kent with the doc (AskUserQuestion, 2026-09-19): **build A + B + C
+as one flag** (`satin_junction_stack`, OFF), each part measurable inside
+it; the per-letter override was offered and not taken; A + C alone was
+offered and not taken. The doc lands on its own docs-only PR; the build
+follows on a branch of its own.
+
+*(ruled 2026-09-19 — Kent's answer)*
+
+## 2026-09-19 — The junction construction BUILT: `satin_junction_stack`, OFF (Kent's ruling: A + B + C as one flag)
+
+Kent's ruling on the design doc, the same day. One flag, three parts,
+each read on its own inside it.
+
+**A — the weld gate.** `_merge_through_junctions(weld_max_dot=...)`:
+under the flag a weld is refused past `_STACK_WELD_TURN_DEG` = **30°** of
+turn by the merge's own two-half-width baseline, and the arms end at the
+node (a two-arm node then takes the existing corner path: one arm owns
+the corner and is extended, the other tucks). The number is read off the
+corpus, not derived: `tools/weld_turns.py` (committed) over the nine
+logos' 383 welds by ten degrees of turn — 0–10 carries 127 seam pairs on
+64 welds, 10–20 47 on 82, 20–30 **13 on 75**, 30–40 302 on 72, 40–50 274
+on 58, 50–60 844 on 32. The design doc's own proposal — the fold guard's
+radius rule — was tried first at 1, 2 and 3 mm windows and **separates
+nothing**: the R's folding weld reads 0.97 at 2 mm, a 301-seam weld on
+Becker's outline 1.25, a clean weld 0.80. Swept on the fixtures at
+20–45°: fold-free from 30 down, MARINE 80 keeps 42 pairs at 35, the R
+folds again at 45 (342). On the R fixture the gate refuses five of the
+R's eight welds (34.5–47.8°) and none under 30°; the design's welds
+16 → 7.
+
+**B — arms that run into the node.** `satin_stroke(junction_stack=...)`:
+an end at a meeting of several — no single owner to tuck under — runs
+INTO the node by its own half-width instead of stopping at the blob's
+edge. **C — the cover.** `satin_shape` sews the satin junction cover
+(`patch_junctions="satin"`) under the arms unless a cover was asked for
+explicitly. Threaded through stage 7 and appliqué like the other satin
+flags; off, byte-identical (pinned).
+
+**Measured.**
+
+| fixture | stitches | trims | letter self-crossing pairs | uncovered | coverage_max |
+|---|---|---|---|---|---|
+| R fixture, 127 mm, `satin_lettering_split` | 7,253 → 7,283 | 34 → 44 | **311 → 0** | 0.0 → 0.0 (worst 4.0 → 1.8) | 6.20 → 5.36 |
+| MARINE 80 mm, defaults | 1,774 → 1,787 | 7 → 9 | **103 → 0** | 0.0 → 0.0 | 4.76 → 4.91 |
+| Becker 100 mm, `satin_lettering_split` | 8,612 → 8,353 | 53 → 61 | 546 → 528 | **35.5 → 0.0** | 6.68 → 6.16 |
+
+The doc's A + C proxy paid +12 trims on MARINE 80; the build pays +2 — B is
+the lever on trims. Becker's 528 remaining letter pairs are **not welds**:
+they hold at every threshold of the sweep, 469 in plain columns and 59 in
+Goldman-joined strokes — bends inside one arm, `_split_sharp_corners`'
+rules' territory, the next thing to read. The R fixture's `DENSITY_EXTREME`
+is the split flag's (satin pitch 1.12 mm against a 0.4 target) and the stack
+leaves it at 1.09. Nine logos at corpus widths, `tools`' sheet: stitches
+89,105 → 89,723 (+0.7%), trims 476 → 489 (Bridge Bar 82 → 95, Becker 38 →
+44, Golden Tee 43 → 47, ENTHUSIAST 16 → 18, Fremont 56 → 57, tires and the
+screenshot level, drone 126 → 122, gaulke 38 → 29), the lettering groups'
+self-crossing pairs 1,004 → 596 (Golden Tee 381 → 113, gaulke 186 → 106,
+drone 264 → 220, ENTHUSIAST 19 → 8, the screenshot 141 → 136), uncovered
+unchanged on eight and Becker's 35.5 → 0.0, warnings unchanged on every one.
+
+**Against the pro** (`pro_layers --blobs`, Becker 100 mm, split + stack):
+the R's blobs read p95 3.33 / 3.93 / 4.18 (split alone 3.54 / 3.60 /
+3.97) against his 3.90 / 5.13 / 7.18, the I's 2.01 against 4.32; every
+letter blob's max under the warn line (≤ 6.37). **B overlaps the ends;
+it does not stack them** — the pro's density at a junction is not an
+overlap of arm ends, and what it is (more crosses per mm through the
+junction, a second pass) is the next design question.
+
+**Predictions against results** (the plan's §6, filled): 1 falsified as
+written (five welds refused, not one) and held as meant (none under 30°);
+2 held (A + B alone leave MARINE 80 whole with the cover neutralised);
+3 **falsified** (layers); 4 **falsified** (+10 trims, not +4); 5 and 6
+in the table above and the PR.
+
+**Tests:** `tests/test_junction_stack.py`, 10 — default OFF; explicit OFF
+byte-identical; the gate refuses a 45° weld the default admits and keeps
+a straight one; the threshold is the corpus number; the R stops folding
+and keeps its cover and thread; MARINE 80 stops folding within +4 trims;
+A + B alone leave no bare artwork with the cover neutralised; an explicit
+cover setting wins over part C.
+
+*(built and measured 2026-09-19 — `tools/weld_turns.py`; the sweep and
+the arms lived in the session's scratchpad, the numbers are the record)*
+
+### Addendum, the same day — `satin_junction_stack` FLIPPED ON, step 4 held, the two findings next
+
+Put to Kent with the fixtures, the nine-logo sheet and the goldens
+(AskUserQuestion, 2026-09-19): **flip `satin_junction_stack` ON now** —
+his call; `False` is the pre-flip merge, tuck and cover byte for byte,
+pinned by `tests/test_junction_stack.py`. **Step 4 stays OFF**: the R
+fixture sews split with no fold under the stack (7,283 / 44 against the
+fill's 9,642 / 31), but the split flag's `DENSITY_EXTREME` on the fixture
+is read first. **Next**: the two findings the build surfaced — what
+`DENSITY_EXTREME` reads on split-satin letters, and Becker's 469
+plain-column letter crossings against `_split_sharp_corners`' rules.
+What the flip moved in the suite is recorded in the PR (#520) body.
+
+*(flipped and ruled 2026-09-19 — Kent's answers; config comment)*
+
+## 2026-09-19 — Finding 1 of the junction build: `DENSITY_EXTREME` on split satin was the instrument
+
+Kent's pick after the flip: read what the finding measures before step 4
+is priced on it. `preflight._satin_rail_advance_mm` reads the satin rail
+pitch as the median distance between points two apart — rails alternate
+A, B, A, B — and a split satin column carries one or more penetrations
+along every cross (`_split_points`, over `SPLIT_SATIN_ABOVE_MM`), so with
+them in the list two apart is a mid-cross hop. Measured: the lettering
+plan's 127 mm fixture under `satin_lettering_split` read **1.094 mm**
+against the 0.40 target (ratio 2.8, the `DENSITY_EXTREME` warn step 4
+was held on) with the splits in, **0.428** with them stripped; the
+default fill of the same fixture 0.587 → 0.410 (two split runs, under
+the 1.5× line either way); MARINE 80 0.445 → 0.444; Becker 100 under the
+split flag 0.455 → 0.415. The reader now strips the splits with
+`stage6_satin.strip_splits` — the reader `_coverage_map` already used —
+before measuring; unsplit runs are unchanged. The playbook's parity trap
+in its second form: the parity broken by the splits instead of the
+slicing. So step 4's blocker was the instrument, not the letters, and the
+split flag's flip is Kent's again on the numbers it had (the R fixture
+under split + stack: 7,283 stitches / 44 trims / no fold, against the
+fill's 9,642 / 31).
+
+`tests/test_density_split_satin.py` (3): a split column reads its rail
+pitch and not its split length, an unsplit column is unchanged, the
+fixture raises no satin density finding. `test_preflight`'s dropped-limb
+injection is pinned on the pre-flip junction engine: the stack's part C
+sews the cover under the arms by default and patches exactly the hole
+the injection makes.
+
+*(read and fixed 2026-09-19 — the probe lived in the session's scratchpad)*
+
+## 2026-09-19 — Finding 2 of the junction build: Becker's residual letter crossings are the Goldman join's mitre, not folds
+
+The build left Becker's band at 100 mm (split + stack) with 528 letter
+crossing pairs that held at every threshold of the weld gate's sweep,
+which the build entry called "bends inside one arm" on a probe that
+matched runs to joined strokes by their points and mis-filed 469 of them
+as plain columns. Read stroke by stroke with a spy on `satin_stroke`
+(each emitted stroke, its column's within-run pairs, its sharpest turn
+over the corner split's own one-half-width baseline, and whether it is a
+join): **565 pairs in four strokes, every one a Goldman join**
+(`Stroke.corners` set) — the A's 260 at a 52° join a quarter of the way
+along its spine, the E's 209 at 64° past the middle, the R's 59 at 47°,
+and a 50 mm ribbon's 37 at 57° — with the crossing seats clustered at the
+join (the A's at 5–18% of the spine, the E's at 52–74%). A joined stroke
+sews as ONE run (`_satin_joined`), so the owner's corner cap sweeping
+over the member that butts into it counts as within-run pairs, which is
+exactly the reading DOCTRINE 2026-09-09 already ruled on: crossing pairs
+at a join ARE the join, and the pro's own MARINE carries 2,593 of them.
+So there is no fold left in Becker's letters under the flag, no bend the
+corner rules missed, and nothing to build; the counting instrument is
+what mis-read, and `crossing_pairs` on a joined run is a mitre count.
+Measured negative, recorded.
+
+*(read 2026-09-19 — the probe lived in the session's scratchpad)*
+
+### Addendum, the same day — step 4 FLIPPED ON (`satin_lettering_split`), a second sew-out arm next
+
+Put to Kent once the junction build had taken the fold out of the R
+(311 → 0 under `satin_junction_stack`) and finding 1 had shown the split
+flag's `DENSITY_EXTREME` to be the instrument (AskUserQuestion,
+2026-09-19): **flip `satin_lettering_split` ON now** — his call, on the R
+fixture at 127 mm sewing split with no fold and no finding at 7,283
+stitches / 44 trims against the fill's 9,642 / 31. `False` is the
+pre-flip engine byte for byte (a text-cluster member over the ceiling
+fills), pinned by `tests/test_lettering_split.py`. **Next**: a second
+sew-out arm — the first sheet's fixtures exported on today's defaults,
+stack and split ON, beside its pre-flip arm. What the flip moved in the
+suite is recorded in the PR (#520) body.
+
+*(flipped and ruled 2026-09-19 — Kent's answers; config comment)*
+
+### Addendum, the same day — the second sew-out cut: stack + split beside the pre-flip arm
+
+The first sheet's four fixtures exported again on today's defaults
+(`satin_junction_stack` and `satin_lettering_split` both ON), `.dst` and
+`.pes` through the service's own writers, a render beside each, every
+file read back through pystitch and agreeing with the plan to the stitch.
+Beside the first cut's `*_default` (the engine as #516 merged it, now the
+PRE-flip arm), `*_stack_split`:
+
+| design | default: stitches / trims / uncovered mm² | stack_split | what moved |
+|---|---|---|---|
+| MARINE 80 mm | 1,774 / 7 / 0.0 | 1,969 / 13 / 0.0 | the fold gone (103 → 0 pairs); the stack alone read 1,787 / 9, the rest is the split's |
+| MARINE 127 mm | 9,642 / 31 / 0.0 (letters FILL) | 7,283 / 44 / 0.0 (letters split as satin) | the R's 311-pair fold gone; no `DENSITY_EXTREME` |
+| Becker 100 mm | 12,037 / 39 / 35.5 | 8,353 / 61 / 0.0 | the band's 35.5 mm² of bare artwork closed by the junction cover under the arms |
+| drone 80 mm | 18,715 / 127 / 0.0 | 18,626 / 123 / 0.0 | nothing to speak of |
+
+`TRIM_HEAVY` on every `stack_split` arm is the trims in the table, read
+by preflight. The sheet's README gained **question C** for the pair: does
+a junction sewn as a stack of arms read as a clean corner or as a lump, is
+any wedge bare where an arm ends at the node, does the fold show on
+`default` as a ridge or pucker, and does a split column read as one satin
+or show its mid-column seam — with what each answer flips (a lump or a
+bare wedge sends the stack back to OFF and re-prices part B against cloth;
+a seam sends the split back to OFF). The files are on Kent's machine; the
+scoring rows are in the README; nothing here is a cloth result yet.
+
+*(exported and read back 2026-09-19 — `sewout_arm2.py` and
+`sewout_readback.py` in the session's scratchpad; the README carries the
+numbers)*
+
+### Addendum, the same day — what the split flip moved in the full suite, and Becker's fill exposure at 80 mm
+
+The full digitizer suite on the merged, doubly-flipped tree (`satin_junction_stack`
+and `satin_lettering_split` both ON, main at #518): **2,698 passed, 28m41s,
+four moved**, every one Becker, every one pinned on
+`satin_lettering_split=False` with its reason in the file:
+
+- `tests/test_fill_bridges.py` (2): the census's honesty tests read a
+  fixture with NO exposed bridges — *"a vacuous fixture proves nothing
+  here"*. Becker at 80 mm had four exposed fill runs, 38.7 mm, and every one
+  lay in the MARINE band's FILLED letters; under the flip the band sews as
+  split satin and the fill tier's exposure reads **0 runs / 0.0 mm**.
+- `tests/test_edge_cap_budget.py` (2): the cliff sweep's gate saving at
+  88 mm reads 31.9% against the 12.0% the cliff doc measured, and the run
+  counts sit flat at [9, 8, 9] — the band stopped being fill, the lettering
+  cover (step 5) omits it from the cap, and the gate saves more. The file
+  pins the budget mechanism measured on the filled band, so it reads it.
+
+**The finding inside the first pin.** Under today's defaults Becker at
+80 mm has no exposed fill-tier travel at all (0 runs / 0.0 mm, against
+4 / 38.7 mm with the split OFF; stitches 7,107 → 6,057, trims 41 → 43).
+The exposed-travel entry above read Becker's fill legs at 31.2 mm, and
+#518's flip prep measured `fill_bridge_cut` on *"Becker's 22.9 mm leg →
+4.0"* — that leg was the band's fill, and under this flag it is not there
+to cut. The nine-logo trade `fill_bridge_cut` was priced on (exposed travel
+248.6 → 140.9 mm, trims 458 → 464) was measured on `main` at #516, before
+either flip; **it is unmeasured on the doubly-flipped tree**, and its flip
+is still Kent's pending call.
+
+*(measured 2026-09-19 — full suite log and `probe_movers.py` in the
+session's scratchpad; the pins carry the numbers)*
+
+## 2026-09-19 — the lettering yardstick's trims gap: read with a per-trim census, and two levers built OFF
+
+Kent's pick once the two lettering flips and the `fill_bridge_cut`
+re-measure had landed (AskUserQuestion, 2026-09-19): the yardstick's
+remaining gap. Traced MARINE at 80 mm on today's defaults sews **1,969
+stitches / 13 trims** against the typed word's 1,782 / 3.
+
+**The census** (`trim_census.py`, `trim_census_corpus.py` in the session's
+scratchpad: every trim, the runs either side, the gap, and whether the
+satin walk was asked for a needle-down path and refused). The fixture's
+13: the first needle-down, the cap's run, **six hops from one letter to
+the next** (4.4–15.3 mm), **four hops from a stroke's underlay to its own
+column** (3.3–4.2 mm, inside the column) and one hop the walk refused.
+The pre-flip engine had 7; the stack added three letter-to-letter hops
+(its arms end at nodes, so the walk's exit moved) and the split the four
+underlay hops (its wide columns are cap-extended and run into the node
+by their half-width; the underlay, built on the raw skeleton stroke, is
+not, so the hop reads past `trim_at`). Nine logos at 80 mm, lettering
+runs only, 149 trims: **98 letter-to-letter, 27 refused walks, 11
+underlay-to-column** (Becker 9 of them), 3 underlay-to-underlay, the rest
+colour changes and first stitches. The typed word's 3 are letter-to-
+letter hops too (`digitize.js`: a jump over `trimAtMm` is a trim; two of
+its five are under it).
+
+**Lever 1, `satin_exit_toward_next` — the walk ends facing the next
+shape.** `_euler_stroke_order` starts at the odd node nearest the needle
+and ends wherever the postman pairing leaves it. On, stage 7 hands the
+emitter the nearest point of the shape it will sew next (the nearest
+remaining shape by polygon distance — the pick rule's own answer once the
+needle is there) and the last component's (start, end) pair of odd nodes
+is the one that minimises the entry hop plus the exit hop, the other odd
+nodes paired as before; a closed web's start pays both hops. Which edges
+are travel does not change.
+
+**Lever 2, `satin_underlay_on_column` — the underlay on the column's own
+stations.** What a mixed stroke's hairline-split parts already did: the
+centre run and the zigzag are built on the column's stations (trimmed at
+junctions, extended to the cap, run into the node under the stack) so
+the underlay ends where the column enters. Two things it needed on the
+way: the underlay's first point is the raw spine's end, on the web —
+built on the stations alone the walk could not snap to it and refused 17
+of 34 hops on the fixture — and its last stitch carries the needle to the
+column's first cross (the zigzag ends on an inset rail a station short).
+
+**Measured** (2026-09-19, tree of this entry; OFF is byte-identical, md5
+on five logos and every fixture test):
+
+| | stitches | trims | letter trims by cause | exposed travel | uncovered |
+|---|---|---|---|---|---|
+| MARINE 80 OFF | 1,969 | 13 | letter→letter 6, underlay→column 4, refused 1 | 0.4 | 0.0 |
+| exit | 1,953 | **9** | **3**, 3, 1 — the typed word's three | 1.3 | 0.0 |
+| underlay | 2,146 | 12 | 6, **0**, 4 | 0.4 | 0.0 |
+| both | 2,132 | **8** | 4, 0, 2 | 0.4 | 0.0 |
+| MARINE 127 (split) OFF → exit / underlay / both | 7,283 → 7,289 / 7,340 / 7,337 | 44 → 43 / **36** / **34** | underlay→column 9 → 9 / 0 / 0 | 8.8 → 8.8 / 9.7 / 9.7 | 0.0 |
+| Becker 100 OFF → exit / underlay / both | 8,353 → 8,334 / 8,834 / 8,876 | 61 → 59 / **48** / **48** | underlay→column 10 → 8 / 0 / 0 | 0.5 → 0.5 / 1.8 / 2.8 | 0.0 |
+| **nine logos** OFF → exit / underlay / both | 77,182 → 77,079 / 77,778 / 77,707 | **478 → 465 / 465 / 454** | letter→letter 98 → 91 / 96 / 91; underlay→column 11 → 9 / 0 / 0; refused 27 → 28 / 32 / 32 | 147.3 → 142.6 / 151.2 / 146.9 | 0.0 all |
+
+Per logo the exit lever: tires 10 → 6, ENTHUSIAST 19 → 12, Golden Tee
+48 → 43, Fremont 39 → 37, Bridge Bar 97 → 96, Becker 43 → 43, drone
+119 → 120, the screenshot 73 → 74, **gaulke 30 → 34** (its walk's new
+exit strands one more hop and lengthens a letter hop). The underlay
+lever: Becker 43 → 32 at +171 stitches, tires 10 → 8, ENTHUSIAST 19 →
+16, gaulke 30 → 29, Fremont and drone and the screenshot unchanged,
+Bridge Bar 97 → 98, **Golden Tee 48 → 51** (refused 4 → 8, +189
+stitches, `coverage_max` 7.0 → 8.5). Its stitch cost, +0.8% on the nine
+and +9% on the fixture, is the zigzag appearing on strokes whose RAW
+spine ran into a junction blob (the oversize skip read the blob's width;
+the stations stop short of it) plus the underlay now covering the cap
+extensions. Finding codes unchanged on every design and every arm
+(`TRIM_HEAVY` leaves MARINE 80 under the exit lever and both).
+
+**What the fixture still trims with both on:** the first needle-down,
+the cap's run, four letter-to-letter hops (the typed word trims three:
+its letters sit closer), two refused walks. The refused walks — 27 on the
+nine logos, the H/K/X interior-junction case step 2 recorded — are the
+next bucket and are decomposition, not ordering.
+
+**Tests:** `tests/test_trim_levers.py` (10): both OFF by default and
+explicit OFF byte-identical; on an H web the walk ends nearest `end_near`
+and without it is the shipped walk; the fixture's letter hops 6 → ≤ 3 and
+trims −3 at no stitch cost under the exit lever; on a bar the underlay's
+last point IS the column's first under the underlay lever and is not
+without; the fixture's underlay-to-column trims 4 → 0 at ≤ +15% stitches;
+both under ten trims.
+
+*(measured 2026-09-19 — `trim_census.py`, `trim_census_corpus.py`,
+`levers_corpus.py` in the session's scratchpad; the numbers are the
+record)*
+
+### Addendum, the same day — lever 1 FLIPPED ON (`satin_exit_toward_next`), lever 2 held OFF
+
+Put to Kent with the table above (AskUserQuestion, 2026-09-19): **flip
+lever 1 ON, keep lever 2 OFF** — his call, on −13 trims across the nine
+logos at −103 stitches with the fixture's letter hops at the typed word's
+three, against gaulke's +4; lever 2's eleven further trims at 57 stitches
+each did not clear his 25-a-trim rate. `False` is the pre-flip walk byte
+for byte, pinned by `tests/test_trim_levers.py`'s `off` fixture. What the
+flip moved: nothing in the digitizer suite (the lettering-adjacent subset
+with the goldens, 348 passed), and one Studio e2e whose premise the flip
+retired — `quality-report.spec.js` had asserted the ENTHUSIAST fixture
+"reliably has some" findings, and on the Studio's own settings (a tote,
+`isacord`, the bean cap) the flip took it from `TRIM_HEAVY` to a clean
+report: 9 trims for 2,311 stitches, 3.9 per 1,000 against the 4.1 line,
+grade A. The panel's clean state ("Nothing to flag") is now the other
+accepted rendering, the same posture the test already took on the grade.
+
+*(flipped and ruled 2026-09-19 — Kent's answer; config comment)*
+
+## 2026-09-20 — The Studio never sends the file: the lettering census and every flip re-read on the raster the panel actually uploads (Kent's pick)
+
+**Why.** After PR #523 the pick was to re-measure the trims census and
+the lettering flips through the Studio's 1,200-px cap, on the loose end
+that PR left: the quality-report e2e's ENTHUSIAST job read **2,311
+stitches / 9 trims / grade A** through the Studio and the same file
+straight into the engine read **2,318 / 14 / grade B**. `DigitizePanel`
+re-encodes every upload through a canvas capped at `PROCESS_MAX_PX =
+1200` before the service sees a pixel; seven of the nine REAL_ART logos
+and the plan's MARINE 127 fixture are larger. DOCTRINE 2026-09-19/20
+carries the three mechanisms — the cap, premultiplied alpha rewriting the
+RGB under transparency that stage 1 reads, Chrome's default "low"
+smoothing — and the rulings. This entry carries the numbers.
+
+**The instrument.** `tools/studio-raster.mjs` loads the checkout's own
+`rasterize.js` into Playwright's Chromium, makes the panel's canvas calls
+and writes the PNG the panel would upload. Verified before anything was
+measured on it: its ENTHUSIAST raster through the e2e's own request (a
+tote, `isacord`, the bean cap) reproduces the job **to the stitch** —
+2,311 / 9 design trims / 30 jumps / grade A / score 100 — and with the
+exit lever off on that raster reads 11 trims and grade B, so PR #523's
+credit to the lever stands on the customer's raster (the file reads 14
+with the lever either way). Every row below: `target_width_mm` and
+`garment_id` from `corpus_cases()`, `max_colors=6`, today's defaults;
+one `build_generation` per raster and every arm finished from a fork
+(checked identical to a fresh build on three flags). Lettering trims by
+cause as in the 2026-09-19 census (`_graph_travel` spied for refusals),
+exposed travel from `travel_cover`, uncovered area and findings from
+preflight. `cv2.INTER_AREA` at the Studio's exact size ran beside it as
+the Python-only stand-in candidate.
+
+### A. Today's defaults: the file → the Studio's raster (INTER_AREA in parentheses)
+
+| case | px file → Studio | px/mm | stitches | trims | exposed mm | findings, file → Studio |
+|---|---|---|---|---|---|---|
+| tires | 1585×992 → 1200×751 | 19.8 → 15.0 | 2,475 → 2,487 (2,363) | **6 → 14** (8) | 0.0 → 0.4 | — → `TRIM_HEAVY` |
+| ENTHUSIAST | 1400×316 → 1200×271 | 17.5 → 15.0 | 2,478 → 2,417 (2,578) | 12 → 11 (13) | 3.8 → 1.8 | `TRIM_HEAVY` both |
+| Fremont | 2500×1345 → 1200×646 | 27.0 → 13.0 | 19,864 → 19,694 (19,841) | 59 → 50 (57) | 7.2 → 16.7 | unchanged |
+| Bridge Bar | 400×400, unresized | 5.0 | 14,661 → 14,661 | 96 → 96 | 17.0 | unchanged, byte-identical |
+| Golden Tee | 2193×2193 → 1200×1200 | 27.4 → 15.0 | 7,070 → 6,879 (6,792) | 43 → 47 (44) | 6.6 → 9.8 | unchanged |
+| gaulke | 1284×2778 → 555×1200 | 16.1 → 6.9 | 4,406 → 4,034 (**13,206**) | 34 → 28 (43) | 1.8 → 0.0 | unchanged |
+| drone | 1536×1024 → 1200×800 | 19.2 → 15.0 | 18,651 → 19,514 (17,915) | 120 → 124 (123) | 65.8 → 95.8 | unchanged |
+| screenshot | 1020×2207 → 555×1200 | 12.8 → 6.9 | 8,190 → 7,455 (7,750) | 74 → 64 (74) | 25.6 → 27.2 | unchanged |
+| Becker | 146×91, unresized | 1.46 | 8,334 → **15,318** | 59 → **175** | 0.5 → 2.3 | `TRIM_HEAVY` → + `LETTERING_TOO_SMALL`, `THREAD_MATCH_POOR` |
+| **nine logos** | | | **86,129 → 92,459** (100,424) | **503 → 609** (633) | | lettering trims 144 → 152 |
+| MARINE 80 (plan fixture) | 1058×253, unresized | 13.2 | 1,953 → 1,953 | 9 → 9 | 1.3 | byte-identical, every arm |
+| MARINE 127 (plan fixture) | 1624×346 → 1200×256 | 12.8 → 9.4 | 7,289 → 5,857 (5,853) | 43 → 37 (35) | 8.8 → 1.8 | `TRIM_HEAVY` both; refused walks 9 → 20 |
+| Becker at 100 | 146×91, unresized | 1.46 | 8,334 → 15,318 | 59 → 175 | 0.5 → 2.3 | as Becker |
+
+**Readings.** Becker is the alpha case and carries the whole aggregate:
+identical alpha and identical opaque RGB, +6,984 stitches and +116
+trims, two new findings; the other eight logos net **−10 trims** on the
+Studio's raster. Tires has no alpha and goes 6 → 14 on the filter alone
+(INTER_AREA at the same size reads 8). The alpha cutouts move most after
+Becker — ENTHUSIAST's white under its alpha becomes black (12 → 11
+trims at −61 stitches), Fremont 59 → 50 with exposed travel 7.2 → 16.7
+mm, drone 120 → 124 with exposed travel 65.8 → 95.8 mm. gaulke and the
+screenshot lose more than half their pixels (555 × 1200, 6.9 px/mm) and
+read fewer trims at fewer stitches — a coarser raster traces fewer
+fragments, which is not the same thing as a cleaner design. Bridge Bar
+(400 px, RGB) and MARINE 80 (1,058 px, greyscale) are byte-identical
+either way: an under-cap image with no alpha passes through the canvas
+unchanged, so **the plan's 80 mm yardstick (1,953 / 9 against the typed
+word's 1,782 / 3) is the customer's number.** MARINE 127 is not — 7,289 /
+43 → 5,857 / 37 with refused walks 9 → 20 at 9.4 px/mm — so the step-4
+and junction-stack fixture numbers read at 127 mm were read on a raster
+the Studio would have shrunk by a quarter. **`INTER_AREA` is not a
+stand-in**: 633 trims against the Studio's 609, tires 8 against 14, and
+gaulke 13,206 stitches against 4,034 (its cause was not chased; it is not
+the browser's raster, which is the point — measure on the tool's output
+or not at all).
+
+### B. Each lettering flip, OFF → today's default, on both rasters (nine logos)
+
+| flag | trims OFF → ON, file / Studio | stitches OFF → ON, file / Studio | per-logo trim delta (ON − OFF), file / Studio |
+|---|---|---|---|
+| `satin_house_from_line` | 503 → 503 / 609 → 609 | unchanged | no trim moves on either |
+| `satin_house_anchor` | 503 → 503 / 609 → 609 | unchanged | no trim moves on either |
+| `satin_stroke_order="euler"` | **701 → 503 / 846 → 609** | 86,501 → 86,129 / 93,009 → 92,459 | tires −12/−5; ENTHUSIAST −14/−12; Fremont −27/−30; Bridge −23/−23; Golden Tee −52/−41; gaulke −8/−25; drone −28/−33; screenshot −1/−6; Becker −33/−62 |
+| `satin_corner_twigs` | 490 → 503 / 598 → 609 | 86,293 → 86,129 / 93,654 → 92,459 | tires −1/+5; ENTHUSIAST −2/−3; Fremont +1/0; Bridge +6/+6; Golden Tee +2/−7; gaulke −3/−4; drone −4/0; screenshot +6/+5; Becker +8/+9 |
+| `satin_lettering_split` | 494 → 503 / 584 → 609 | 89,567 → 86,129 / 94,866 → 92,459 | Becker +9/+26, drone 0/−1, the rest 0/0 |
+| `satin_junction_stack` | 492 → 503 / 582 → 609 | 85,358 → 86,129 / 91,289 → 92,459 | tires −1/+7; ENTHUSIAST −1/−1; Fremont +2/+2; Bridge +12/+12; Golden Tee +1/−7; gaulke −3/−9; drone −4/+2; screenshot +3/+3; Becker +2/+18 |
+| `edge_cap_skip_lettering` | **530 → 503 / 636 → 609** | 86,718 → 86,129 / 93,107 → 92,459 | ENTHUSIAST −2/−1; Golden Tee −1/0; gaulke −4/−5; drone −1/−4; screenshot −1/−2; Becker −18/−15; the rest 0 |
+| `satin_exit_toward_next` | **516 → 503 / 623 → 609** | 86,241 → 86,129 / 92,560 → 92,459 | tires −4/**+1**; ENTHUSIAST −7/−3; Fremont 0/−4; Bridge −1/−1; Golden Tee −5/−1; gaulke +4/**−11**; drone +1/**−3**; screenshot +1/**−3**; Becker −2/**+11** |
+| `fill_bridge_cut` | 501 → 503 / 602 → 609 | 86,163 → 86,129 / 92,645 → 92,459 | Fremont +1/0; Bridge +1/+1; drone −4/+6; screenshot +4/0; the rest 0 |
+
+Sign agreement of the per-logo trim deltas, file against Studio: the
+walk 9 of 9 agree; the cap skip 5 agree, 3 unmoved, 1 zero on one side;
+the twigs 5 agree, 2 opposite; the stack 6 agree, **3 opposite**; the
+exit lever 3 agree, **5 opposite**; the bridge cut 1 agree, 1 opposite,
+the rest unmoved.
+
+**What survives the re-read.** The walk (−198 on the file, −237 on the
+Studio's raster, every logo agreeing) and the cap skip (−27 / −27) are
+robust to the raster. The exit lever holds **in sum** (−13 / −14) and
+not per logo: its sign flips on five of nine, so PR #523's per-logo line
+(tires 10 → 6, gaulke 30 → 34) was raster noise and its nine-logo sum is
+the finding. The twigs, the split and the stack are trim COSTS on both
+rasters (+13 / +11, +9 / +25, +11 / +27) — they were flipped for corners,
+fill-free stems and junctions, not trims, and on the Studio's raster
+Becker's alpha noise carries most of their bill (split +26, stack +18 on
+Becker alone). `fill_bridge_cut` +2 / +7. The house line and the anchor
+move no trim on either raster; their instruments (cross-angle
+concentration, self-crossings) were not re-read here. **The noise floor
+this sets:** a single logo's trim delta under about five is not evidence
+on either raster; nine-logo sums of ten or more have held across every
+flag that had one.
+
+### C. The fixtures, arm by arm
+
+MARINE 80 is byte-identical on both rasters under every arm (default
+1,953 / 9; the walk off 2,071 / 32; the cap skip off 2,341 / 24; the
+exit lever off 1,969 / 13; the split off 1,768 / 7; the stack off 2,109 /
+10) — every number the plan quotes at 80 mm is the customer's. MARINE
+127 is not: default 7,289 / 43 on the file against 5,857 / 37 through the
+Studio; the split off 9,625 / 34 against 8,807 / 22; the stack off 7,247
+/ 34 against 5,532 / 20; the walk off 7,305 / 49 against 5,888 / 48. The
+direction of every flip holds there; the magnitudes do not. Becker at
+100 mm is the alpha case throughout (the walk off 8,380 / 92 on the file
+against 15,299 / 237 through the Studio).
+
+### E. The candidate fixes, measured before anyone builds them
+
+Today's defaults, stitches / trims / grade. "Studio, high smoothing" is
+the panel's draw with `imageSmoothingQuality = "high"` (the tool's
+`--smoothing high`); "bleed" gives every non-opaque pixel the RGB of its
+nearest opaque pixel before the engine reads it; a dash is a raster the
+change cannot touch (no resize, or no transparency).
+
+| case | file (= the Studio sending its bytes) | Studio today | Studio, high smoothing | Studio + bleed | file + bleed | Studio, high + bleed |
+|---|---|---|---|---|---|---|
+| tires | 2,475 / 6 / A | 2,487 / 14 / B | 2,418 / 8 / A | — | — | — |
+| ENTHUSIAST | 2,478 / 12 / B | 2,417 / 11 / B | 2,524 / 16 / B | 2,406 / 11 / B | 2,491 / 17 / B | 2,394 / 9 / A |
+| Fremont | 19,864 / 59 / B | 19,694 / 50 / B | 19,725 / 48 / B | 19,618 / 50 / D, `GROUND_SEWN` | 19,901 / 44 / D, `GROUND_SEWN` | 19,692 / 47 / D, `GROUND_SEWN` |
+| Golden Tee | 7,070 / 43 / F | 6,879 / 47 / F | 6,720 / 43 / F | — | — | — |
+| gaulke | 4,406 / 34 / B | 4,034 / 28 / B | 3,836 / 36 / B | — | — | — |
+| drone | 18,651 / 120 / F | 19,514 / 124 / F | 18,800 / 123 / F | 18,791 / 148 / F | 20,841 / 153 / F | 18,455 / 117 / F |
+| screenshot | 8,190 / 74 / F | 7,455 / 64 / F | 8,732 / 84 / F | — | — | — |
+| Becker | 8,334 / 59 / B | 15,318 / 175 / C | — | 8,440 / 54 / B | 8,440 / 54 / B | 8,440 / 54 / B |
+| MARINE 127 | 7,289 / 43 / B | 5,857 / 37 / B | 6,030 / 39 / B | — | — | — |
+
+**Sending the file's bytes is the file column.** If the Studio keeps its
+1,200-px canvas for the localStorage preview and POSTs the upload as it
+is, the service's own decoder takes over the cap (`DECODE_MAX_SIDE_PX`
+2,800, `INTER_AREA`; every corpus logo is under it) and the resample, the
+filter and the alpha rewrite all go in one move — on the nine logos 609 →
+503 trims and 92,459 → 86,129 stitches, Becker 175 → 59, tires 14 → 6.
+It is the one change measured on every case, and its cost is the
+upload's own size on the wire (the service's 12 MB limit stands).
+**High smoothing is not a clean win:** tires 14 → 8 and grade A, Golden
+Tee 47 → 43, Fremont 50 → 48, drone 124 → 123 — but ENTHUSIAST 11 → 16
+(its class flips to gradient), gaulke 28 → 36, the screenshot 64 → 84,
+MARINE 127 37 → 39. A better filter is still a filter the engine never
+asked for. **The bleed proves the mechanism and is not the fix** (DOCTRINE
+2026-09-19/20): Becker 175 → 54 from either raster, and Fremont keeps its
+50 trims but sews its ground (`GROUND_SEWN`, grade D; on the file 59 → 44
+with exposed travel 7.2 → 85.3 mm), drone 124 → 148 (the file 120 → 153),
+ENTHUSIAST's file 12 → 17 — it repaints `bg_edge_rgb`, stage 2's
+anti-alias endpoint. The reading-side fix (the bilateral denoise and the
+Lanczos upscale on premultiplied colour, `bg_edge_rgb` and the
+enclosed-hole colour untouched) is unmeasured. With high smoothing AND the
+bleed ENTHUSIAST reads 9 trims and grade A and drone 117: the ceiling this
+table sees, not a recommendation.
+
+*(measured 2026-09-20 — `tools/studio-raster.mjs`;
+`digitizer/tools/studio_raster_census.py`, whose `run` subcommand carries
+every raster above and reproduces the scratchpad census row for row;
+DOCTRINE 2026-09-19/20; `tests/test_studio_raster_cap.py`)*
+
+### Addendum, the same day — Kent's pick on §E: the Studio sends the file's bytes (BUILT)
+
+Put to Kent with the table above (AskUserQuestion, 2026-09-20): send the
+file's bytes — his call. `DigitizePanel` now POSTs the upload itself for
+the formats the service decodes (PNG, JPEG, WebP, BMP — `uploadPlan` in
+`lib/rasterize.js`, with `/health`'s `limits` deciding oversize) and keeps
+its 1,200-px canvas as the localStorage preview; SVG and GIF, which only a
+browser rasterises, keep the canvas path, as does a file outside the
+service's limits. The original's bytes live in IndexedDB under their
+SHA-256 (`lib/sourceStore.js`; content-addressed, so a file uploaded
+twice is one record) and the element carries only the key
+(`element.sourceFile`); a re-digitize after a reload sends the same bytes,
+and one whose record is gone (cleared site data, another browser, an
+`.embproj` opened elsewhere — the file does not carry originals) sends the
+preview and says so in the panel, because the two digitize differently.
+The preview path is tick-for-tick the pre-change flow, so restitch timing
+did not move.
+
+**Verified through the real panel, not the engine:** the quality-report
+e2e's `/digitize` request shrank from **47,730 to 18,688 bytes** (the
+18,265-byte ENTHUSIAST file plus the multipart config) and its job came
+back at **2,318 stitches / 13 trims / 33 jumps / 17.05 px/mm / grade B,
+`TRIM_HEAVY`** — table A's file column for that fixture to the stitch,
+where the day before the same test read 2,311 / 9 / 14.61 px/mm / A. So
+every "file" number in tables A–E above is now the customer's number, and
+every measurement in the lettering plan made on `digitizer/testdata/` is
+the customer's again. Tests: `lib/sourceStore.spec.js` (a fake IndexedDB;
+the content key, the round trip, absence), `uploadPlan` in
+`lib/rasterize.spec.js` (formats, vector/GIF, both limits from `/health`
+and from the defaults), `startDigitize` with bytes in
+`lib/digitizer.spec.js`, three panel tests (a PNG stores and patches the
+key, an SVG does not, a digitize sends the bytes and falls back with the
+note); the Studio suite 1,241 passed, the e2e suite through the changed
+panel, and `tests/test_studio_raster_cap.py` pins the send rule from the
+source. `tools/studio-raster.mjs` stays as the census's instrument and the
+measure of the preview path.
+
+*(built and verified 2026-09-20 — Kent's answer; trace of the
+quality-report e2e on the changed panel)*
+
+### Addendum, the same day — Kent's pick after the Studio fix: stage 1 stops reading under the alpha (`alpha_edge_extend`, BUILT OFF), measured
+
+**Why.** The Studio fix stops the canvas rewriting what sits under a
+cutout's alpha; any exporter can still leave black, a matte, or a whole
+render there, and the engine reads it. Kent's pick: a stage-1 flag OFF
+that makes the under-alpha colour irrelevant, measured on the four cutouts
+as they are, with black painted under their alpha (`native_black` in
+`tools/studio_raster_census.py`: RGB zeroed wherever alpha == 0, the
+hostile exporter), and on the Studio's canvas raster (the preview path).
+
+**What was built, and what the first cut taught.** `cfg.alpha_edge_extend`
+makes every stage read nearest-opaque colour under every non-opaque pixel
+(`digitizer_core/alpha_edge.py`, a `distanceTransformWithLabels` fill,
+applied by stage 0 after its own decode and by stage 1 for the raster the
+later stages read); the two readers that want the file's OWN colour under
+the transparency — `bg_edge_rgb`, stage 2's anti-alias endpoint, and
+preflight's `GROUND_SEWN` border colour — read it from `Prep.raw_rgb`, the
+file's colour carried through the same denoise and upscale. The first cut
+fed the extended image to the two filters only and put the file's colour
+back under alpha < 128 afterwards; Becker with black under its alpha
+stayed at **gradient / 146 regions / 14,978 / 142** under it, because stage
+0's gradient signal and stage 2's segmentation run kernels over the whole
+raster and mask to the artwork afterwards — a kernel on the edge reads
+what is under the alpha whatever the mask says — and because stage 0
+decodes the file for itself before stage 1 runs. `alpha_edge_extend_px`
+is the halo variant: the extension reaches N source px from the opaque
+edge (every kernel's reach: Sobel 1, the bilateral 2, Lanczos4 4) and
+leaves a deeper backdrop as the file has it; 0, the default, is the whole
+image.
+
+**Measured** (stitches / trims / regions / class / exposed travel mm /
+grade; corpus widths and garments, `max_colors=6`, today's defaults; a
+stage-1 arm rebuilds the generation):
+
+| case | raster | OFF | ON, whole image | ON, halo 8 px | ON, gated on the upscale |
+|---|---|---|---|---|---|
+| Becker | the file | 8,334 / 59 / 18 / flat / 0.5 / B | 8,440 / 54 / 17 / flat / 0.4 / B | 8,440 / 54 / 17 / flat / 0.4 / B | **8,440 / 54 / 17 / flat / 0.4 / B** |
+| Becker | the file, black under alpha | 15,547 / 157 / 152 / gradient / 4.4 / D | 8,440 / 54 / 17 / flat / 0.4 / B | 8,440 / 54 / 17 / flat / 0.4 / B | **8,440 / 54 / 17 / flat / 0.4 / B** |
+| Becker | the Studio's canvas raster | 15,318 / 175 / 151 / gradient / 2.3 / C | 8,440 / 54 / 17 / flat / 0.4 / B | 8,440 / 54 / 17 / flat / 0.4 / B | **8,440 / 54 / 17 / flat / 0.4 / B** |
+| ENTHUSIAST | the file | 2,478 / 12 / 31 / flat / 3.8 / B | 2,491 / 17 / 31 / flat / 0.0 / B | 2,491 / 17 / 31 / flat / 0.0 / B | **= OFF** |
+| ENTHUSIAST | the file, black under alpha | 2,478 / 12 / 31 / flat / 3.8 / B | 2,491 / 17 / 31 / flat / 0.0 / B | 2,491 / 17 / 31 / flat / 0.0 / B | **= OFF** |
+| ENTHUSIAST | the Studio's canvas raster | 2,417 / 11 / 31 / gradient / 1.8 / B | 2,406 / 11 / 31 / flat / 0.0 / B | 2,406 / 11 / 31 / flat / 0.0 / B | **= OFF** |
+| Fremont | the file | 19,864 / 59 / 164 / gradient / 7.2 / B | 19,901 / 44 / 164 / gradient / 85.3 / B | 19,901 / 44 / 164 / gradient / 85.3 / B | **= OFF** |
+| Fremont | the file, black under alpha | 19,864 / 59 / 164 / gradient / 7.2 / B | 19,901 / 44 / 164 / gradient / 85.3 / B | 19,901 / 44 / 164 / gradient / 85.3 / B | **= OFF** |
+| Fremont | the Studio's canvas raster | 19,694 / 50 / 160 / gradient / 16.7 / B | 19,618 / 50 / 160 / gradient / 11.5 / B | 19,612 / 50 / 160 / gradient / 11.0 / B | **= OFF** |
+| drone | the file | 18,651 / 120 / 107 / gradient / 65.8 / F | 20,841 / 153 / 135 / gradient / 80.5 / F | 21,238 / 147 / 129 / gradient / 55.7 / F | **= OFF** |
+| drone | the file, black under alpha | 19,807 / 121 / 115 / gradient / 73.1 / F | 20,841 / 153 / 135 / gradient / 80.5 / F | 21,238 / 156 / 144 / gradient / 100.9 / F | **= OFF** |
+| drone | the Studio's canvas raster | 19,514 / 124 / 115 / gradient / 95.8 / F | 18,791 / 148 / 126 / gradient / 80.0 / F | 18,997 / 161 / 131 / gradient / 97.2 / F | **= OFF** |
+| Becker at 100 | the file | 8,334 / 59 / 18 / flat / 0.5 / B | 8,440 / 54 / 17 / flat / 0.4 / B | 8,440 / 54 / 17 / flat / 0.4 / B | **8,440 / 54 / 17 / flat / 0.4 / B** |
+| Becker at 100 | the file, black under alpha | 15,547 / 157 / 152 / gradient / 4.4 / D | 8,440 / 54 / 17 / flat / 0.4 / B | 8,440 / 54 / 17 / flat / 0.4 / B | **8,440 / 54 / 17 / flat / 0.4 / B** |
+| Becker at 100 | the Studio's canvas raster | 15,318 / 175 / 151 / gradient / 2.3 / C | 8,440 / 54 / 17 / flat / 0.4 / B | 8,440 / 54 / 17 / flat / 0.4 / B | **8,440 / 54 / 17 / flat / 0.4 / B** |
+
+**Readings.**
+
+- **The property Kent asked for holds, and holds exactly.** With the flag
+  ON every cutout reads the same whatever sat under its alpha: Becker's
+  three rasters are one result to the stitch (**8,440 / 54 / 17 / flat /
+  B**, from 157 and 175 trims at grades D and C on the hostile two);
+  ENTHUSIAST, Fremont and drone each read identically from the file and
+  from black underneath. The under-alpha colour is out of the engine.
+- **Its cost lands where the exporter was friendly.** ENTHUSIAST's file
+  goes 12 → 17 trims (its exposed travel 3.8 → 0.0). Fremont's file goes
+  59 → 44 trims and 7.2 → **85.3 mm** of exposed travel — all of it one
+  shape: the 2,120 mm² plate (thread 2) sews 25 trims and 62 travel legs
+  OFF, 10 trims and 89 legs ON, 83.3 of the 85.3 mm on those legs, across
+  the plate's own cut-outs. The plate's polygon moved by 6 mm² (2,125.7 →
+  2,119.6, 155 holes either way) and the fill router's bridging flipped
+  from cuts to travel over the holes — a routing sensitivity to a
+  slightly different polygon, not a colour effect; on the Studio raster the
+  same plate reads the other way (16.7 → 11.5 mm). Drone, a render whose
+  real backdrop sits under its alpha, goes **120 → 153 trims** and 107 →
+  135 regions: its photo lane reads the render better than hard colour
+  plateaus.
+- **Only Becker was hurt by black underneath in the first place.** With
+  the flag OFF, ENTHUSIAST and Fremont read the same from the file and
+  from black (the bilateral does not cross a colour gap that wide and
+  neither is upscaled), drone moves by a trim; Becker, at 1.46 px/mm, is
+  the one the Lanczos floor upscale smears — 59 → 157. So the flag buys
+  robustness on low-resolution cutouts and costs friendly high-resolution
+  ones; the Studio raster column (the preview path, and until 2026-09-20
+  every upload) reads better ON for Becker, ENTHUSIAST (class flat again)
+  and Fremont's exposed travel, worse for drone's trims.
+- **The halo is a measured negative.** At 8 px it keeps Becker's cure and
+  changes nothing on ENTHUSIAST's or Fremont's files, and on drone gives up
+  the invariance — 147 trims on the file, **156** with black under it —
+  without recovering the file's 120 (its exposed travel 80.5 → 55.7 on the
+  file, 100.9 on black). The parameter stays at 0.
+- **Gated on the resolution-floor upscale, the cure is free.** Kent's pick
+  after the first two arms: `alpha_edge_extend_upscaled_only` runs the
+  extension only where stage 1 will upscale — the artwork's pixel width at
+  the target under `min_px_per_mm`, read off the alpha ≥ 128 box so stage 0
+  and stage 1 decide from one rule (`alpha_edge.upscale_expected`). On the
+  fifteen rows: Becker's six read the cure (**8,440 / 54 / 17 / flat / B**
+  from every raster) and the other nine are **byte-identical to OFF** in
+  every column, findings and trim causes included. The Lanczos upscale was
+  the reader that mattered; above the floor the under-alpha colour never
+  reached the design on these files, and the gate leaves them alone.
+
+**Also found.** `tests/test_stage0_classify.py::test_same_input_classified_twice_is_identical[logo_whitebg]`
+fails on this container with the change stashed and the box idle
+(`gradient_smoothness` 0.0005601322072834591 against
+0.0005601321504400403 — `cv2.boxFilter` on float32, the 10th decimal); CI
+passes it, and so did the full local run on this tree (**2,735 passed, 0
+failed**, 27m49s, `-n auto`, the three platform goldens deselected as CI
+does). The box, not the tree; recorded so the next solo re-run of that
+test does not send anyone chasing it.
+
+**Tests.** `tests/test_alpha_edge_extend.py` (7): the default (OFF when
+written; the gated form since the flip below); the helper's contract; the
+halo's reach; the gate open under the floor and shut above it,
+byte-identical to OFF there; on a synthetic cutout under the resolution
+floor, OFF leaks the under-alpha colour into the sewn edge (two exporters
+read differently) and ON reads every pixel the same whatever sat underneath
+while the two deliberate readers still see each file's own colour; an
+opaque image is untouched ON. The stage-0, enclosed-background and
+sub-pixel suites pass with the flag off.
+
+*(built and measured 2026-09-20 — Kent's picks; `tools/studio_raster_census.py`
+rasters `native`, `native_black`, `studio`, arms `default`, `extend`,
+`extend_halo8`, `extend_upscaled`; the flip is Kent's)*
+
+### Addendum, the same day — Kent's flip: `alpha_edge_extend` ON, gated on the upscale
+
+**The pick.** Put to Kent with the four-arm table above, he flipped the
+gated form ON: `alpha_edge_extend=True` with
+`alpha_edge_extend_upscaled_only=True` and no halo (`alpha_edge_extend_px`
+stays 0). What ships: an alpha cutout whose artwork sits under the 4 px/mm
+resolution floor at its target width — the one regime in which the Lanczos
+upscale was measured to smear the under-alpha colour into the sewn edge —
+is read with nearest-opaque colour under every non-opaque pixel, in stage 0
+and stage 1 alike, while `bg_edge_rgb` and preflight's border colour keep
+the file's own; every other file reads byte for byte as before. On the
+census that is Becker **8,334 / 59 → 8,440 / 54** from its file, and the
+same 54 from black under its alpha and from the Studio raster; the other
+nine rows unmoved. OFF is now the pre-flip engine, and a test whose numbers
+were read on it holds `alpha_edge_extend=False` rather than moving its pin
+(the rule the sub-pixel, junction-stack and split flips set).
+
+**Tests.** `tests/test_alpha_edge_extend.py` (7) re-pinned: the default is
+the gated form with no halo; OFF is the pre-flip engine; an opaque image
+reads the same OFF, gated and whole-image; the gate test reads the same
+from the bare defaults as from the explicit gated arm. The census tool's
+arms: `extend` and `extend_halo8` set the gate False explicitly (whole
+image means whole image whatever the defaults), `extend_upscaled` is
+`default` today, and a new `extend_off` is the engine every `default` row
+in a census JSON written before the flip was read on.
+
+**The full suite on the flipped tree: 2,736 passed, 0 failed, and two
+strict XPASSes — no fixture pin moved.** 28m22s, `-n auto`, CI's three
+platform goldens deselected. Every Becker-based test passed as written:
+Becker's design moves 8,334 / 59 → 8,440 / 54 under the gate, and nothing in
+the suite had pinned the numbers the move touches. The two XPASSes are the
+finding: `tests/test_classifier_scale_invariance.py`'s two drone cases —
+`photo/drone_render.png` classified `photo_subject` at 250 px and `gradient`
+at 400, 640 and native, a resolution-dependence the file has carried as a
+strict xfail since 2026-08-15 — now read `gradient` at every width. Not the
+recalibration: at the default 80 mm every sweep width sits under the floor,
+so the gate opens and stage 0 reads nearest-opaque colour under the render's
+alpha, where its real backdrop sits; `unique_color_mass` at 250 px reads
+**0.335 on the pre-flip engine, 0.091 extended**, against 0.159 at native
+(where the gate is shut and both engines read the same). The drone's 250-px
+class was the backdrop under its alpha, not the pixel-absolute signal
+windows — which the remaining four fixtures still demonstrate. Per the
+file's own rule the marker came off, the drone left `FLIPS_ACROSS_SWEEP`
+and `DEPARTS_FROM_NATIVE` with the dated record, and a new test pins the
+pre-flip reading (`alpha_edge_extend=False` at 250 px still departs from
+native; the shipped engine does not) so the record stays executable. Do
+not count the drone toward the recalibration spec's §2 acceptance.
+
+*(flipped 2026-09-20 — Kent's call; config, tests, DOCTRINE, MASTER_SCOPE,
+memory)*
+### Addendum, the same day — Kent's pick: the `.embproj` carries the original artwork (BUILT)
+
+Put to Kent after the `alpha_edge_extend` flip (AskUserQuestion,
+2026-09-20), beside three other picks: close the hole the paragraph above
+names — *"an `.embproj` opened elsewhere — the file does not carry
+originals"*. His call. The store is this browser's IndexedDB, so a design
+opened on another machine, or after cleared site data, had the 1,200-px
+preview and nothing else, and re-digitized from it with the panel's note.
+
+**What was built.** The envelope (`lib/projectFile.js`) gains `sources`:
+`{ <key>: { type, name, size, data } }`, the original's bytes base64 under
+the SHA-256 key the store uses, written BESIDE `project` and never inside
+it — `project` is the very object the registry keeps, so the localStorage
+record stays preview-sized by construction. Only keys a digitized element
+points at are written (a stale map cannot smuggle a stranger's artwork
+into someone's file), and a project with no stored original writes the
+envelope it always did, no `sources` member at all. The version stamp is
+2; parsing never keys on it, so a version-1 file parses identically with
+`sources: {}`. `lib/projectSources.js` is the bridge: `collectSources`
+gathers what the store still holds for the project's keys at export (a
+record that is gone is simply not embedded), and `restoreSources` puts the
+file's originals back BEFORE the project is registered, each under the key
+its bytes hash to here and every element repointed if that differs from
+the file's key (a file saved without `crypto.subtle` carries a random
+key), so one original uploaded here and imported from a file is one
+record. Neither throws: a browser that cannot keep originals registers the
+design and its elements digitize from the preview, with the note. On
+import a `sources` entry is read as defensively as the project — not an
+object, not base64, decodes to nothing, over `SOURCE_MAX_BYTES` (64 MiB,
+checked on the base64 length before decoding), or unreferenced — and is
+dropped while the design imports.
+
+**Proved through the real app, not the fakes** (`app/e2e/design-originals.spec.js`,
+3): upload ENTHUSIAST → Export → the downloaded `enthusiast-logo.embproj`
+carries one source under the fixture's SHA-256 whose base64 decodes to the
+18,265 bytes on disk, `image/png`, `enthusiast_logo.png`, while neither
+the file's `project` nor any registry record contains them; wipe
+localStorage AND the IndexedDB database (which is what "another machine"
+is) → Import → the record is back under its content key and the registry
+record still holds only the key; with the service up, press *Digitize
+again* and the `/digitize` POST's `image` part is the file itself —
+`enthusiast_logo.png`, `image/png`, 18,265 bytes, the PNG's own first
+sixteen bytes — read through a `fetch` hook because Chromium exposes no
+post data for a multipart body with a Blob part; the panel shows no
+fallback note. Unit: `lib/projectFile.spec.js` (+8: the round trip byte
+for byte, only referenced keys, the old envelope for a project without
+originals, `{}` for a file without them and for a bare record, eight
+malformed shapes dropped with the design intact, the oversize refusal
+before decoding, the base64 helpers at every length, the version stamp and
+a version-1 file, `sourceKeysOf`), `lib/projectSources.spec.js` (7, against
+an in-memory store: gather once per key and skip what is gone, never
+throw; restore under the content key with every element repointed, the
+same project back when nothing moved, an unavailable store or a full one
+counted and the design unchanged, no-ops). Studio unit suite **1,256
+passed**; e2e suite through the changed drawer.
+
+**Still true.** A file saved before today carries no originals, and a
+preview-path upload (SVG, GIF, a file outside the service's limits, a JPEG
+the browser rotated) has none to carry — those digitize from the canvas on
+every machine alike, as they did. Nothing prunes the store, as before.
+
+*(built and verified 2026-09-20 — Kent's pick; `app/e2e/design-originals.spec.js`)*
+
+### Addendum, the same day — Kent's pick: how much of stage 0's scale defect is the alpha, measured
+
+The drone leaving the scale test's broken sets raised the question, and Kent
+picked it (AskUserQuestion, 2026-09-20): of the resolution-dependence
+`tests/test_classifier_scale_invariance.py` pins, how much is the RGB under
+an alpha cutout's transparency — which `alpha_edge_extend` removes — and how
+much is the pixel-absolute signal windows, which it cannot touch.
+Measurement only; no threshold moved (ROADMAP gate 2).
+
+**The instrument** (`tools/stage0_scale_arms.py`, committed; `tests/test_stage0_scale_arms.py`):
+each of the test's six fixtures at native and down a ladder (200, 250, 320,
+400, 500, 640, 800, 1,000, 1,200 px — the test's own 250 / 400 / 640 among
+them), resampled exactly as the test does (PIL LANCZOS), classified under
+three arms — the extension OFF (the pre-flip engine), gated (the shipped
+engine: only where the resolution-floor upscale will run, decided at the
+default 80 mm) and whole-image — with, per row, whether the gate opened and
+whether the extension changes any pixel. The three opaque fixtures cannot be
+touched by the extension and are the control. `--corpus` adds the nine
+REAL_ART logos at their census widths.
+
+**Per arm, on the six (same class across 250/400/640 · across the ladder · equal to native everywhere):**
+
+| fixture | alpha | OFF | gated (shipped) | whole-image |
+|---|---|---|---|---|
+| `logo_alpha` | yes | yes · yes · **no** (every downscale `gradient`, native `flat`) | same | same |
+| `logo_whitebg` | no | yes · yes · **no** (same shape) | identical to OFF | identical to OFF |
+| `ribbon_curve` | no | yes · yes · **no** (same shape) | identical to OFF | identical to OFF |
+| ENTHUSIAST | yes | **no** (250 / 400 `photo_scene`, 640 `gradient`) · no · no | **no** (250 `gradient`, **400 `photo_scene`**, 640 `gradient`) · no · no | **yes · yes** · no (every downscale `gradient`, native `flat`) |
+| drone | yes | **no** (250 `photo_subject`) · no · no | yes · yes · yes | yes · yes · yes |
+| `summit_badge` | no | yes · yes · yes | identical | identical |
+
+- **The opaque fixtures and `logo_alpha` are the windows defect, whole.**
+  Three files the extension cannot change and one whose class it does not
+  change (its signals move — `unique_color_mass` 0.082 → 0.036 at 250 px —
+  and stay on the same side of every threshold): native `flat`, `gradient`
+  at every downscale. Their `gradient_smoothness` reads 0.0000–0.0006 at
+  native and 0.005–0.48 downscaled against the 0.0015 gate, at every width
+  in the ladder. Nothing about the alpha is in that.
+- **The under-alpha part is exactly the `photo_*` misroutes.** Drone's 200
+  and 250 px `photo_subject` (`unique_color_mass` 0.315 / 0.335 OFF, 0.104 /
+  0.091 extended, 0.159 at native) and ENTHUSIAST's 200–400 px `photo_scene`
+  (0.51 / 0.49 / 0.37 / 0.34 OFF against 0.22 / 0.20 / 0.14 / 0.12
+  extended, the 0.28 photo floor between them). Whole-image removes every
+  one: drone equals native at every width, ENTHUSIAST is one class across
+  the whole ladder. What remains on ENTHUSIAST — `gradient` downscaled,
+  `flat` native — is the windows again (`gradient_smoothness` 0.19–0.61
+  against 0.0000 at native).
+- **The gate adds a flip of its own at the floor.** ENTHUSIAST's art box
+  crosses 4 px/mm between 320 and 400 px at 80 mm, so the shipped engine
+  extends at 320 (`gradient`) and not at 400 — where it reads exactly what
+  OFF reads, `photo_scene` at 0.339 — then `gradient` again from 500. One
+  more class change than whole-image, at the width where the extension
+  switches off. Drone's box is narrower (gate open through 640) and Fremont's
+  class does not move where its gate shuts, so on these fixtures the
+  boundary bites ENTHUSIAST alone; it exists wherever an alpha cutout's
+  under-alpha colour would have crossed a threshold just above the floor.
+- **The test's harness makes hostile files.** PIL resamples RGBA
+  premultiplied, so every downscaled alpha fixture arrives with black under
+  alpha == 0 and rounding noise under the ramp — the rewrite the Studio's
+  canvas made (DOCTRINE 2026-09-19/20), manufactured by `_classify_at`
+  itself; `extension_changes_pixels` is `yes` on every downscaled alpha row.
+  Pinned in the tool's test, along with the part no extension can undo: the
+  premultiplied Lanczos bakes the exporter's RAMP colour into edge pixels
+  that come out opaque (alpha overshoots and clips to 255), so a cutout with
+  black under its ramp and the same cutout with ink there read apart at 200
+  px even under whole-image, while at native they read identical. The
+  spec's *"not an artifact of the resampler"* stands for the windows half
+  (NEAREST flips too); the `photo_*` half on alpha fixtures is the
+  resampler's premultiplication read through the whole-raster kernels.
+
+**The nine real logos at their census widths (`--corpus`):** no class moves
+at native under any arm — Becker `flat`, ENTHUSIAST `flat`, Fremont and
+drone `gradient`, tires `photo_scene`, the other four `gradient`, identically
+across OFF / gated / whole. Downscaled: tires (opaque) flips `gradient` ↔
+`photo_scene` by resolution alone (`unique_color_mass` 0.06 at 200 px → 0.47
+at 1,000, all arms identical — windows); Fremont OFF reads `photo_scene` at
+200, **`flat` at 250**, `gradient` from 320, and the extension removes the
+250-px `flat` (0.273 → 0.238 `unique_color_mass`, `gradient` under both ON
+arms) but not the 200-px `photo_scene` (0.415 → 0.347, still over 0.28);
+drone as above; bridge, golden_tee, gaulke, screenshot invariant on every
+arm.
+
+**What this says, and does not.** Of the resolution-dependence the scale
+test pins, the alpha extension owns the `photo_*` misroutes and nothing
+else; the `flat` → `gradient` flips on downscale are the pixel-absolute
+windows on every fixture, opaque or not, and the recalibration spec's
+subject is unchanged (its four remaining fixtures are all windows cases).
+The shipped gate leaves one such misroute reachable (ENTHUSIAST at 400 px)
+and adds a class boundary at the floor that whole-image does not have —
+while on the corpus at native size the three arms read one class per logo,
+so a stage-0-only whole-image read (classification on the extended raster
+everywhere; stage 1 keeping the gate for the pixels it sews) would change
+no corpus class and remove both. Not built: it is a change to what stage 0
+reads, the same kind as the flip, and Kent's to pick; no threshold moves
+under gate 2 either way.
+
+*(measured 2026-09-20 — Kent's pick; `tools/stage0_scale_arms.py run --corpus`;
+the JSON is the scratchpad's, the tool regenerates it)*
+
+### Addendum, the same day — Kent's pick on the scale reading: stage 0 classifies on the whole-image extension (`alpha_edge_extend_stage0_whole`, ON)
+
+Put to Kent with the tables above (AskUserQuestion, 2026-09-20): a flag under
+which classification reads the extended raster everywhere while stage 1
+keeps the resolution-floor gate for the pixels it sews — his call, ON.
+`alpha_edge.extension_applies` gains `ignore_gate`, which stage 0 passes from
+the flag; stage 1 is untouched, so every sewn pixel is what the flip
+earlier today made it. **This changes stage 0's input only** — no threshold
+moved (ROADMAP gate 2), and the `flat` → `gradient` half of the defect is not
+this flag's.
+
+**Measured on the same instrument, a fourth arm (`gated_s0whole`, the
+shipped engine) beside the three:** it reads what `whole` reads in every
+stage-0 cell of the ladder — ENTHUSIAST `gradient` at every downscale
+(200–1,200 px, `unique_color_mass` 0.22 → 0.04), `flat` at native, so the
+400-px `photo_scene` and the flip at the floor are gone and it is **one class
+across the whole ladder**; drone equals native at every width; the three
+opaque fixtures and `logo_alpha` read exactly as under every other arm
+(windows); `summit_badge` invariant. On the nine real logos at their census
+widths no class moves at native (Becker and ENTHUSIAST `flat`, Fremont and
+drone `gradient`, tires `photo_scene`, four `gradient` — the same four arms
+across), and downscaled the arm reads as `whole` did: Fremont's 250-px `flat`
+gone, its 200-px `photo_scene` (`unique_color_mass` 0.347) and tires'
+opaque `gradient` ↔ `photo_scene` flip still there, both windows.
+
+**The scale test moved as the tables said it would.** ENTHUSIAST's two
+strict xfails in `FLIPS_ACROSS_SWEEP` XPASSed on this tree, so the set is
+EMPTY now, with the dated record, and a new test pins the boundary that
+was there — with stage 0 held to the gate
+(`alpha_edge_extend_stage0_whole=False`) ENTHUSIAST reads one class at 250
+px and another at 400, and the 400-px reading is the pre-flip engine's;
+the shipped engine reads the sweep as one class. It stays in
+`DEPARTS_FROM_NATIVE` with the three synthetics: the four windows cases the
+recalibration spec is about. `tests/test_alpha_edge_extend.py` (+1): above
+the floor stage 0 reads the friendly and the hostile cutout the same and
+stops with the flag off, while stage 1 stays byte-identical to OFF under
+both. The two tools' arms pin the flag: `stage0_scale_arms` carries the
+fourth arm with the three measured ones held OFF, and the census tool's
+`extend*` arms hold it OFF so their rows keep their meaning.
+
+**The full suite on this tree: 2,746 passed, 0 failed, 5 xfailed** (29m43s,
+`-n auto`, CI's three platform goldens deselected). No pin moved, and the
+five expected failures are the windows cases: the three synthetics and
+ENTHUSIAST in `DEPARTS_FROM_NATIVE`, plus the unrelated one the suite
+already carried. The two drone params and the two ENTHUSIAST params that
+were strict xfails this morning are plain passing tests now — the whole
+`photo_*` half of the scale defect, gone with the two picks of the day,
+while the `flat` → `gradient` half is exactly where the recalibration spec
+left it.
+
+*(built 2026-09-20 — Kent's call; `tools/stage0_scale_arms.py run --corpus`,
+arm `gated_s0whole`)*
+## 2026-09-20 — The refused-walk bucket: what a walk's refusal actually is, and the one relaxation in it (Kent's pick)
+
+**The question.** The lettering trim census (2026-09-19) counts a
+`walk-refused` bucket — MARINE 127 read 20 of them, the largest remaining
+lettering trim cause — by logging `path is None` from
+`stage6_satin._graph_travel`. It could not say WHY any refusal happened, and
+"relax the walk" is not one change: the function has four distinct ways to
+refuse and its CALLER has a fifth.
+
+**The instrument.** `digitizer/tools/refused_walks.py` (committed —
+DOCTRINE 2026-09-11; `tests/test_refused_walks.py`, 6) classifies every
+between-stroke walk:
+
+| reason | what it is |
+|---|---|
+| `cursor_unsnapped` | the needle sits further than `trim_at` (3.0 mm) from any node — it ends wherever the last run ended, often a cap-extended point off the web |
+| `target_unsnapped` | the stroke start sits further than the strict 0.8 mm snap `_graph_travel` keeps on the target side |
+| `blocked_by_sewn` | a path exists, but every route runs over strokes already sewn, which show |
+| `disconnected` | no path even with nothing forbidden: different components of the web |
+| `too_long` | a path was FOUND and the caller threw it away (`plen <= max(20, 4 x direct)`) — invisible to the census, which logged only `None` |
+
+Reachability is asked of the real `_graph_travel` (the same call with `sewn`
+emptied), so nothing duplicates its Dijkstra; only the two thresholds are
+mirrored, and the tests pin both against it.
+
+**838 walks, two MARINE fixtures and the nine corpus logos, today's defaults:**
+
+| | calls | ok | trivial | too_long | cursor_unsnapped | target_unsnapped | blocked_by_sewn | disconnected |
+|---|---|---|---|---|---|---|---|---|
+| all eleven | 838 | 322 | 173 | 3 | **176** | 118 | 34 | 12 |
+| marine127 | 26 | 6 | 4 | 1 | 10 | 1 | 4 | 0 |
+
+- **Three quarters of the refusals are a web that does not reach, and no
+  flag changes that.** Of the 343 refusals, **all 118** `target_unsnapped`
+  and **128 of the 176** `cursor_unsnapped` have no path even at a 12 mm
+  snap radius with nothing forbidden: the two strokes are in different
+  components. A trim is the correct answer there. The strict 0.8 mm target
+  snap is doing no harm — `_graph_travel`'s own comment said "a 0.8mm miss
+  there means the web genuinely does not reach it", and this measured it.
+- **The one relaxable cause is the cursor's reach: 47 calls.** Those have a
+  path once the needle reaches the web, at a **4.1 mm median leg and a
+  5.64 mm median path**.
+- **`blocked_by_sewn` is small and is a trade, not a wall:** 34 calls, median
+  free path 5.84 mm against a 4.87 mm direct hop — a short run over finished
+  satin to save a trim. Not built; it is a different ruling (thread over
+  thread, not thread on fabric).
+- **`too_long` is three calls** and all three are right to refuse: the median
+  path is 105.95 mm for a 2.42 mm move.
+
+**Built OFF: `cfg.satin_walk_cursor_reach_mm`** (0 = off, and off the radius
+IS `trim_at`, which is what shipped). ON it does two things, because either
+alone is useless: the cursor-side retry reaches that far, AND the walk sews
+the leg from where the needle is onto the web — past `trim_at` the linking
+loop would trim that hop, which is the trim the walk was for.
+
+**OFF vs 5.0 mm, the same eleven cases** (stitches / trims / exposed travel mm):
+
+| case | stitches | trims | exposed travel | grade | `cursor_unsnapped` walks |
+|---|---|---|---|---|---|
+| marine127 | 7,289 → 7,289 | **43 → 41** | 8.8 → 9.2 | B → B | 10 → 4 |
+| marine80 | 1,953 → 1,953 | 9 → 9 | 1.3 → 1.3 | A → A | 2 → 2 |
+| becker | 8,440 → 8,433 | 54 → 51 | 0.4 → 3.4 | B → B | 21 → 14 |
+| tires | 2,475 → 2,475 | 6 → 6 | 0.0 → 0.0 | A → A | 3 → 3 |
+| ENTHUSIAST | 2,478 → 2,478 | 12 → 12 | 3.8 → 3.8 | B → B | 3 → 1 |
+| fremont | 19,869 → 19,860 | 55 → 53 | 17.5 → 24.0 | B → B | 12 → 8 |
+| bridge | 14,945 → 14,949 | 98 → 96 | 17.8 → 27.7 | F → F | 23 → 18 |
+| golden_tee | 6,976 → 6,970 | 38 → 36 | 0.9 → 6.5 | F → F | 24 → 19 |
+| gaulke | 4,406 → 4,385 | 34 → 29 | 1.8 → 16.5 | B → B | 12 → 7 |
+| drone | 17,898 → 17,884 | 122 → 119 | 58.1 → 67.9 | F → F | 45 → 35 |
+| screenshot | 8,333 → 8,304 | 72 → 69 | 29.9 → 45.5 | F → F | 21 → 14 |
+| **nine logos** | 85,820 → 85,738 | **491 → 471** | **130.2 → 195.3** | no grade moves | 164 → 119 |
+
+- **Twenty fewer trims on the nine, for 65 mm more exposed travel** — about
+  3.3 mm of exposed thread per trim saved, and the nine-logo sum clears the
+  census's own noise floor (a single logo's trim delta under five is not
+  evidence; sums of ten or more have held). Stitches are flat (−82 on 85,820)
+  and no grade or finding moves on any case.
+- **The ratio is not uniform, and that is the decision.** Becker pays 3.0 mm
+  for three trims and MARINE 127 pays 0.4 mm for two; gaulke pays 14.7 mm for
+  five and the screenshot 15.6 mm for three. The flag has one number, so it
+  buys the good trades and the poor ones together.
+
+**A tighter radius buys proportionally less, so there is no natural number.**
+At 4.0 mm the nine logos read **491 → 476 trims for 130.2 → 177.1 mm**
+exposed: 15 trims for 47 mm, against 5.0 mm's 20 for 65 mm. The fifth
+millimetre costs 3.6 mm of exposed thread per trim where the first four cost
+3.1 — near enough flat, with no knee to site the default at. Per case it
+mostly buys the same trims more cheaply (gaulke 34 → 31 at +8.5 mm against
+34 → 29 at +14.7; the screenshot 72 → 70 at +11.6 against 72 → 69 at +15.6),
+and MARINE 127 reads 42 at either radius against 43 OFF. **So the flag's
+number is a taste call on exposed thread, not a measurement**, which is why
+it ships as a millimetre knob at 0 rather than as a boolean.
+
+**The full suite on this tree: 2,756 passed, 0 failed** (26m52s, `-n auto`,
+CI's three platform goldens deselected). Nothing moved: the flag is OFF and
+OFF is the shipped engine, which is what the run proves — the two changes
+inside it (the wider retry, the leg the walk carries) both sit behind
+`walk_cursor_reach > trim_at_mm`.
+
+**Kent's ruling, put to him with the two radii: the flag stays OFF until a
+sew-out settles it.** Both sides of the trade are what the eye judges and
+this metric cannot — a trim leaves tails to clip and a tie-off bump, a
+rescued walk leaves a short run of thread on the fabric between letters — so
+it joins the sew-out sheet rather than the defaults.
+`digitizer/tools/sewout_walk_reach.py` (committed,
+`tests/test_sewout_walk_reach.py`) writes the arms: three cases whose trade
+differs most — becker (3.0 mm of exposed thread for three trims, the best
+ratio), gaulke (14.7 mm for five, the worst) and MARINE 127 (0.4 mm for two,
+nearly free) — at OFF / 4.0 / 5.0 mm, `.dst` and `.pes` through the service's
+own writers, each read back through pystitch and **required to match the
+plan's stitch count** before it is offered to the machine (measured: both
+writers round-trip the penetrations exactly). The sheet, with question D and
+what each of its three answers flips, is committed at
+`docs/renders/lettering-walk-reach-2026-09-20/README.md`; the files are not,
+and the tool regenerates them on the machine that will sew them.
+
+**One thing the export added to the reading:** the worst single exposed leg
+is **3.0-3.3 mm on every ON arm of all three cases**, and it does not grow
+with the radius — that is the length the eye has to judge, not the 65 mm
+total. becker reads identically at 4 and 5 mm (51 trims, 3.4 mm either way),
+so there the cheaper radius is free; gaulke is where the radii differ most
+(31 trims at 10.3 mm against 29 at 16.5).
+
+*(measured 2026-09-20 — Kent's pick; `tools/refused_walks.py run` and
+`compare --reach`; built OFF and exported to the sheet the same day, the
+flip and the radius are Kent's, on cloth)*

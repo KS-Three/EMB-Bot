@@ -1,5 +1,14 @@
 # The five parked flags, measured together — 2026-09-06
 
+> **2026-09-10:** the colour flags in this sheet were re-measured as ONE set
+> on the current tree, at both colour budgets, in
+> `docs/colour-bundle-decision-2026-09-10.md`; on that sheet Kent flipped
+> `resnap_mask_matches_grader`, `revalidate_small_shapes`,
+> `bind_resnap_all_classes` (and `enforce_color_cap`, not in this sheet) ON
+> by default. Every number below was measured with them OFF at `max_colors`
+> 12 and reads as history. `satin_per_stroke` and `satin_patch_junctions`
+> remain parked as this sheet left them.
+
 A decision sheet for the flags that are built, measured and still OFF. Every
 number is one pass of `digitizer/tools/flip_sheet.py` over the scorecard's own
 26 fixtures at 80 mm / `left_chest`. **Twelve arms**: the shipped default,

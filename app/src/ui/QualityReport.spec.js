@@ -237,6 +237,33 @@ test("lists the cones the machine loads, labelled from the per-block list, with 
   expect(list).toHaveTextContent("0015 White");
 });
 
+test("a cone re-loaded by the edge cap is ONE row with its metres summed", () => {
+  // The design-silhouette cap sews last in whichever cone owns most of the
+  // edge, so it re-loads a cone the job already ran (Kent's ruling 2026-09-11
+  // — the alternative put a 5.4%-frontage cone on an edge a 95.0% one owns).
+  // This list is a SHOPPING LIST, not a stop list: listed per block it would
+  // name 2521 Fuchsia twice and split its 12.7 m across the two rows, so a
+  // customer buying from it buys a spool they already have and under-orders
+  // the one they need.
+  const stats = {
+    thread_m_total: 22.8,
+    thread_m_by_color: [9.5, 10.6, 2.7],
+    blocks: [
+      { number: "2521", name: "Fuchsia", rgb: [226, 60, 115], shape_ids: ["a"] },
+      { number: "0015", name: "White", rgb: [255, 255, 255], shape_ids: ["b"] },
+      { number: "2521", name: "Fuchsia", rgb: [226, 60, 115], design_edge: true },
+    ],
+  };
+  const { getByRole } = render(QualityReport, { props: { entries: [entry({ stats })] } });
+  const list = getByRole("list", { name: "Threads to load" });
+  expect(list.querySelectorAll("li").length).toBe(2);
+  expect(list).toHaveTextContent("12.2 m");          // 9.5 + 2.7, on one row
+  expect(list).not.toHaveTextContent("9.5 m");
+  expect(list).toHaveTextContent("0015 White");
+  // …and first-seen order is kept, so the list still reads in sew order.
+  expect(list.querySelectorAll("li")[0]).toHaveTextContent("2521 Fuchsia");
+});
+
 test("shows no per-cone list when the block list is missing or does not match the metres", () => {
   const { queryByRole } = render(QualityReport, { props: { entries: [
     entry({ stats: { thread_m_total: 20.1, thread_m_by_color: [9.5, 10.6] } }),

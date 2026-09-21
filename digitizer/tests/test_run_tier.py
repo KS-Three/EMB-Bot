@@ -123,7 +123,12 @@ def test_rescue_off_restores_the_old_drop():
         PipelineConfig(target_width_mm=80.0, garment_id="left_chest",
                        small_shape_rescue=False))
     assert len(result.regions) == 1, "only the wordmark survives without rescue"
-    assert not [r for _b, r in plan.iter_runs() if r.kind == "run"]
+    # The design-silhouette cap also emits `kind="run"` (its bean tier), and
+    # it is ON by default since 2026-09-11 — a different pass on different
+    # geometry, so it is excluded by shape_id rather than by turning the cap
+    # off, which would stop this test exercising the shipped engine.
+    assert not [r for _b, r in plan.iter_runs()
+                if r.kind == "run" and r.shape_id != "__edge_cap__"]
     dropped = next(w for w in plan.warnings if w["code"] == DROPPED_SMALL_SHAPES)
     assert dropped["count"] == 7, "six bars and the dot, all reportable-sized"
     assert SMALL_SHAPES_AS_RUN not in {w["code"] for w in plan.warnings}

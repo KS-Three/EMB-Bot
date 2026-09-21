@@ -1,5 +1,9 @@
 """`cfg.resnap_mask_matches_grader` — the re-snap and the grader score the same
-pixels. DEFAULT OFF.
+pixels. DEFAULT ON since 2026-09-10 (Kent's colour-bundle ruling; this line
+said OFF until 2026-09-12, which `test_flag_defaults_on` had already
+contradicted). Every arm below still prices the flag ALONE over the pre-flip
+engine — `conftest.PRE_FLIP` — because that is the engine the numbers in this
+docstring were measured on.
 
 `stage4_vectorize.revalidate_threads` and `preflight._region_color_errors`
 claim the same estimator and have it: both take the median of the per-pixel
@@ -47,7 +51,7 @@ from digitizer_core.pipeline import digitize
 from digitizer_core.stage4_vectorize import _region_footprint
 from digitizer_core.threads import chart_for
 
-from .conftest import TESTDATA
+from .conftest import BUNDLE_ON, PRE_FLIP, TESTDATA
 
 GAULKE = "photo/logo_gaulke_roofing.png"
 # The region the flag exists for, and the spool the unmasked footprint picks.
@@ -68,7 +72,7 @@ def _run(fixture: str, on: bool):
     `test_bind_resnap_all_classes` records: CI runners are 2-core, so a
     straight-through file pays for every repeated `digitize`."""
     art = TESTDATA / fixture
-    result, plan = digitize(art, _cfg(resnap_mask_matches_grader=on))
+    result, plan = digitize(art, _cfg(**{**PRE_FLIP, "resnap_mask_matches_grader": on}))   # the flag alone, over the pre-flip engine
     coords = tuple(
         (round(x, 4), round(y, 4), run.kind, run.jump, run.trim)
         for _b, run in plan.iter_runs() for x, y in run.points)
@@ -76,18 +80,79 @@ def _run(fixture: str, on: bool):
     return coords, threads, result, plan
 
 
-@pytest.mark.parametrize("fixture", [GAULKE, *CONTROLS])
-def test_off_is_byte_identical_to_the_shipped_engine(fixture):
-    """The flag's price of admission on this lane. `_region_footprint` is used
-    by `tag_enclosed_background` too, so an edit that leaked out of the OFF
-    path would move far more than the re-snap."""
-    shipped, _, _, _ = _run(fixture, False)
-    art = TESTDATA / fixture
-    result, plan = digitize(art, _cfg())          # no keyword at all
-    coords = tuple(
-        (round(x, 4), round(y, 4), run.kind, run.jump, run.trim)
-        for _b, run in plan.iter_runs() for x, y in run.points)
-    assert coords == shipped
+def test_flag_defaults_on():
+    """Kent's ruling 2026-09-10: ON, as one half of the pair with
+    `revalidate_small_shapes` in the colour bundle."""
+    assert PipelineConfig().resnap_mask_matches_grader is True
+
+
+class _CountingCv2:
+    """`stage4_vectorize`'s `cv2` global, with `erode` counted.
+
+    Swapped in with `monkeypatch.setattr(V, "cv2", ...)`, so it scopes to that
+    module alone — patching `cv2.erode` on the shared module would also count
+    preflight's and stage 1's erosions and prove nothing about this guard.
+    """
+
+    def __init__(self, real):
+        self._real = real
+        self.erodes = 0
+
+    def __getattr__(self, name):          # fillPoly, connectedComponents, ...
+        return getattr(self._real, name)
+
+    def erode(self, *a, **kw):
+        self.erodes += 1
+        return self._real.erode(*a, **kw)
+
+
+@pytest.mark.parametrize("fixture", [GAULKE, "logo_alpha.png"])
+def test_off_the_masking_code_never_executes(fixture, monkeypatch):
+    """The off-path claim as an EXECUTION fact, not an output comparison.
+
+    Every other test here prices what the flag DOES. This one prices what it
+    does not do, and it is the assertion the "byte-identical when off"
+    convention actually rests on: two runs that happen to produce the same
+    stitches are weak evidence (a fixture can simply have no shape the mask
+    would move), while zero executions of the new code is proof, on any
+    fixture, that the off path runs the pre-flag instruction stream.
+
+    It works because `cv2.erode` is called in exactly ONE place in
+    `stage4_vectorize` — inside `if grader_mask:` — so the count IS the
+    guard. If someone later adds an unguarded erosion to that module this
+    test fails, which is the right answer: the off path would no longer be
+    the engine every `_run(fixture, False)` baseline in this file assumes.
+    """
+    import digitizer_core.stage4_vectorize as V
+
+    seen = {}
+    for on in (False, True):
+        shim = _CountingCv2(cv2)
+        monkeypatch.setattr(V, "cv2", shim)
+        digitize(TESTDATA / fixture,
+                 _cfg(**{**PRE_FLIP, "resnap_mask_matches_grader": on}))
+        monkeypatch.undo()
+        seen[on] = shim.erodes
+
+    assert seen[False] == 0, (
+        f"{fixture}: stage 4 eroded {seen[False]}x with the flag OFF — the "
+        "guard leaks, so 'off is the pre-flip engine' is no longer true")
+    assert seen[True] > 0, (
+        f"{fixture}: the flag is ON and stage 4 never eroded, so this test "
+        "is not actually watching the guarded call site")
+
+
+@pytest.mark.parametrize("fixture", [GAULKE, "logo_alpha.png"])
+def test_the_shipped_engine_is_the_four_flags_on(fixture):
+    """No keyword at all against the four colour flags spelled out True, so a
+    change to any of the four defaults shows up as a difference. The flag's
+    own price of admission -- OFF over the pre-flip engine is that engine --
+    is what every `_run(fixture, False)` below stands on."""
+    def coords(cfg):
+        _, plan = digitize(TESTDATA / fixture, cfg)
+        return tuple((round(x, 4), round(y, 4), run.kind, run.jump, run.trim)
+                     for _b, run in plan.iter_runs() for x, y in run.points)
+    assert coords(_cfg()) == coords(_cfg(**BUNDLE_ON))
 
 
 def test_the_two_masks_really_do_disagree_on_this_region():
@@ -127,6 +192,14 @@ def test_the_flagged_mask_really_matches_the_graders(fixture):
     footprint: 97.5% on alpha, 98.8% on gaulke. So `_region_color_errors`
     now rounds the same way, and this replica of it rounds too; the
     alignment touches preflight only, never `tag_enclosed_background`.
+
+    **Re-measured 2026-09-12: the residual is now ZERO on gaulke** —
+    553,014 / 553,014 px, exactly 100% IoU, not one pixel disagreeing. The
+    threshold below stays `> 0.999` rather than becoming equality on
+    purpose: 100% was measured on gaulke ONLY — `logo_alpha` was not
+    re-measured exactly, it merely passes the threshold — so equality is not
+    a proved property of every raster, and pinning a rasteriser tie-break
+    would make this test fail for a reason that is not what it watches.
     """
     _, _, result, _ = _run(fixture, False)
     p = pf.prep(TESTDATA / fixture, _cfg())
@@ -179,7 +252,7 @@ def test_on_the_resnap_stops_choosing_silver_for_near_black_artwork():
 def _shape_delta_e(on: bool) -> float:
     art = TESTDATA / GAULKE
     _, _, result, plan = _run(GAULKE, on)
-    cfg = _cfg(resnap_mask_matches_grader=on)
+    cfg = _cfg(**{**PRE_FLIP, "resnap_mask_matches_grader": on})
     p = pf.prep(art, cfg)
     rows = pf._region_color_errors(p, result, plan, cfg)
     mine = [r for r in rows

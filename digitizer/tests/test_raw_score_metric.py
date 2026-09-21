@@ -21,16 +21,20 @@ from digitizer_core import preflight as pf
 from digitizer_core.config import PipelineConfig
 from digitizer_core.pipeline import digitize
 
-from .conftest import TESTDATA
+from .conftest import PRE_FLIP, TESTDATA
 
-FLOORED = "photo/screenshot_phone_ui_golke.jpg"   # score 0, raw -272
+FLOORED = "photo/screenshot_phone_ui_golke.jpg"   # score 0, raw -272 (-62 under the 2026-09-10 patch floor)
 CLEAN = "logo_alpha.png"                          # score 100, raw 100
 
 
 @lru_cache(maxsize=None)
 def _report(fixture: str):
     art = TESTDATA / fixture
-    cfg = PipelineConfig(target_width_mm=80.0, garment_id="left_chest")
+    cfg = PipelineConfig(target_width_mm=80.0, garment_id="left_chest", **PRE_FLIP)
+    # PRE_FLIP: the colour flags Kent flipped ON on 2026-09-10 (the
+    # bundle's four and `robust_region_colour`) are held OFF here because
+    # this file documents a fact of the engine before those flips
+    # (conftest.PRE_FLIP says why).
     result, plan = digitize(art, cfg)
     return pf.run_preflight(result, plan, cfg, image=art)
 
@@ -53,7 +57,12 @@ def test_a_floored_design_reports_its_real_depth():
     rep = _report(FLOORED)
     assert rep["score"] == 0
     assert rep["metrics"]["raw_score"] < 0
-    assert rep["metrics"]["raw_score"] == pytest.approx(-272, abs=30)
+    # -272 on 2026-09-06; -62 since 2026-09-10 on the same pre-flip engine,
+    # because `THREAD_MATCH_POOR`'s patch floor (quality review item 11)
+    # took the screenshot's sub-5 mm2 shards out of the judging — the
+    # design is still under water, three blocking findings deep, and this
+    # is exactly the move `raw_score` exists to show (the printed 0 did not).
+    assert rep["metrics"]["raw_score"] == pytest.approx(-62, abs=30)
 
 
 @pytest.mark.parametrize("fixture", [FLOORED, CLEAN])

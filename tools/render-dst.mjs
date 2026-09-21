@@ -1,7 +1,26 @@
 // Decode a Tajima .DST and rasterize it to a PNG so we can SEE the stitch-out.
 // Usage: node tools/render-dst.mjs <in.dst> <out.png> [scale]
+//
+// The delta table comes from src/dstimport.js and MUST NOT be copied back in
+// here. This file kept its own copy until 2026-09-13, which meant it never
+// received the 2026-09-08 axis fix (X moved from the high nibble to the low
+// one, matching pystitch). From that date every picture this tool drew was an
+// exact TRANSPOSE of the file it was handed — measured: a design authored
+// 40 x 10 units decoded here as 10 x 40.
+//
+// That mattered more than a wrong tile, for two reasons. It is the repo's ONLY
+// renderer, and DOCTRINE's rule for an orientation claim is "render it" — so
+// the instrument the rule sends you to was the broken one. And
+// tools/sewout_bridge.mjs prints decodeDST's size beside this tool's picture in
+// one JSON output, so the preview a human checks before committing thread to
+// the gate-1 sew-out disagreed with the card it would sew, with nothing
+// comparing them.
 import fs from "node:fs";
 import zlib from "node:zlib";
+import { createRequire } from "node:module";
+
+const require = createRequire(import.meta.url);
+const { decodeDelta } = require("../src/dstimport.js");
 
 const [, , inPath, outPath, scaleArg, colorsPath] = process.argv;
 const scale = scaleArg ? parseFloat(scaleArg) : 6; // px per mm
@@ -16,31 +35,7 @@ if (colorsPath && fs.existsSync(colorsPath)) {
 const header = buf.slice(0, 512).toString("latin1");
 const stitchData = buf.slice(512);
 
-// --- decode 3-byte records ---
-function decodeDelta(b0, b1, b2) {
-  let x = 0, y = 0;
-  if (b0 & 0x80) x += 1;
-  if (b0 & 0x40) x -= 1;
-  if (b0 & 0x20) x += 9;
-  if (b0 & 0x10) x -= 9;
-  if (b0 & 0x08) y -= 9;
-  if (b0 & 0x04) y += 9;
-  if (b0 & 0x02) y -= 1;
-  if (b0 & 0x01) y += 1;
-  if (b1 & 0x80) x += 3;
-  if (b1 & 0x40) x -= 3;
-  if (b1 & 0x20) x += 27;
-  if (b1 & 0x10) x -= 27;
-  if (b1 & 0x08) y -= 27;
-  if (b1 & 0x04) y += 27;
-  if (b1 & 0x02) y -= 3;
-  if (b1 & 0x01) y += 3;
-  if (b2 & 0x20) x += 81;
-  if (b2 & 0x10) x -= 81;
-  if (b2 & 0x08) y -= 81;
-  if (b2 & 0x04) y += 81;
-  return [x, y];
-}
+// --- decode 3-byte records: decodeDelta is imported above, never redefined ---
 
 const PAL = [
   [220, 40, 40], [40, 120, 220], [40, 170, 80], [230, 160, 30], [150, 60, 200],

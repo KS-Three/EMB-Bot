@@ -21,7 +21,7 @@ from digitizer_core import PipelineConfig
 from digitizer_core.config import PHOTO_CLASSES, is_photographic
 from digitizer_core.pipeline import plan_stitches, run_stages
 from digitizer_core.preflight import run_preflight
-from tests.conftest import TESTDATA
+from tests.conftest import PRE_FLIP, TESTDATA
 
 OWL = TESTDATA / "photo" / "owl_kent.jpg"
 
@@ -65,8 +65,12 @@ def test_declaring_a_gradient_photograph_brings_it_inside_max_colors():
     to budget. Preflight moves with it: the grade was F/0 driven by 12
     THREAD_MATCH_POOR findings scored on the wrong yardstick.
     """
-    plain = PipelineConfig()
-    declared = PipelineConfig(is_photographic=True)
+    # PRE_FLIP: with `enforce_color_cap` ON by default (2026-09-10) the owl is
+    # inside max_colors undeclared too, so the defect this test documents is
+    # only visible on the engine before the flip; the flag's own contract --
+    # declaring applies the palette bind -- is unchanged.
+    plain = PipelineConfig(**PRE_FLIP)
+    declared = PipelineConfig(is_photographic=True, **PRE_FLIP)
 
     res_a = run_stages(OWL, plain)
     plan_a = plan_stitches(res_a, plain)

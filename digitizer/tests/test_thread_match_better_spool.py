@@ -34,7 +34,7 @@ from digitizer_core import preflight as pf
 from digitizer_core.config import PipelineConfig
 from digitizer_core.pipeline import digitize
 
-from .conftest import TESTDATA
+from .conftest import PRE_FLIP, TESTDATA
 
 TINY = "photo/logo_gaulke_roofing.png"      # 4 cones, the 63.6 -> 58.6 case
 BRIDGE = "photo/logo_bridge_bar.jpg"        # 8 cones, the 21.3 -> 10.3 case
@@ -55,7 +55,14 @@ PHOTO = "photo/photo_dof_meadow.png"        # photo route: must be untouched
 # misaligned one left 0 and took the hairline fallback. Bisected: restoring
 # truncation alone restores both counts. Kent's to keep or revisit — the
 # scorecard moves on these two fixtures by exactly those two findings.
-SEVERITY = {TINY: (1, 1), BRIDGE: (2, 1), PHOTO: (0, 1)}   # (block, warn)
+#
+# RE-PINNED 2026-09-18 with `subpixel_edges_upscaled` ON by default (Kent's
+# flip): BRIDGE (2, 1) -> (2, 2). bridge is 3.49 px/mm at 80 mm, under the
+# floor, so its edges are now read from its own pixels; one more small
+# shape's thread is judged, as a warn, under this file's unfloored read.
+# Not this file's change and not a rescoring — the same finding mechanism on
+# a different polygon (scope-history 2026-09-18, the flip's addendum).
+SEVERITY = {TINY: (1, 1), BRIDGE: (2, 2), PHOTO: (0, 1)}   # (block, warn)
 
 
 @lru_cache(maxsize=None)
@@ -67,9 +74,27 @@ def _findings(fixture: str):
     return copies — the same rule as the other cached thread suites.
     """
     art = TESTDATA / fixture
-    cfg = PipelineConfig(target_width_mm=80.0, garment_id="left_chest")
+    cfg = PipelineConfig(target_width_mm=80.0, garment_id="left_chest", **PRE_FLIP)
+    # PRE_FLIP: the colour flags Kent flipped ON on 2026-09-10 (the
+    # bundle's four and `robust_region_colour`) are held OFF here because
+    # this file documents a fact of the engine before those flips
+    # (conftest.PRE_FLIP says why).
     result, plan = digitize(art, cfg)
-    report = pf.run_preflight(result, plan, cfg, image=art)
+    # UNFLOORED on purpose. `_THREAD_MATCH_MIN_PATCH_MM2` (2026-09-10,
+    # quality review item 11) stops a patch under 5 mm2 from judging a
+    # thread, and the findings this file documents ride exactly such
+    # patches: gaulke's 3971 (the 63.6 dE00 on 0.21 mm2 that names a loaded
+    # 1375) and meadow's one excess-yardstick warn. Under the shipped floor
+    # they are gone — that change's own tests
+    # (`tests/test_thread_match_area_in_message.py`) pin it. What THIS file
+    # pins is the remedy mechanism, measured on those findings, so it reads
+    # the check unfloored and says so.
+    old_floor = pf._THREAD_MATCH_MIN_PATCH_MM2
+    pf._THREAD_MATCH_MIN_PATCH_MM2 = 0.0
+    try:
+        report = pf.run_preflight(result, plan, cfg, image=art)
+    finally:
+        pf._THREAD_MATCH_MIN_PATCH_MM2 = old_floor
     return [f for f in report["findings"]
             if f.get("code") == "THREAD_MATCH_POOR"]
 

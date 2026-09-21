@@ -244,7 +244,7 @@ def mark_gradient_bands(regions, rgb: np.ndarray, bg_mask: np.ndarray | None,
         # not qualify: a bevelled letter face beside its own extruded shadow
         # is soft at both probes (the drone badge's R and N, 0.39–0.40) and
         # that shadow is another ribbon, not a field. Stage 7 sews the band's
-        # rows at the parent's angle (`stage7_sequence._fill_angle_deg`), so
+        # rows at the parent's angle (`stage7_sequence._fill_angle_for`), so
         # the band disappears into the field instead of reading as its own
         # texture.
         parent_id = max(owners, key=lambda k: (owners[k], k))

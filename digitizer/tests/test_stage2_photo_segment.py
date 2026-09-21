@@ -48,6 +48,11 @@ FIXTURE = PHOTO_DIR / "region_blobs.png"
 
 def _cfg(**kw) -> PipelineConfig:
     kw.setdefault("target_width_mm", 80.0)
+    # `edge_cap="none"` by default here for the same reason the flat-lane
+    # golden pins it (2026-09-11): these goldens exist to show the PHOTO
+    # dispatch left the flat and gradient lanes alone, and the design edge
+    # cap is a block added on top of whatever those lanes produce.
+    kw.setdefault("edge_cap", "none")
     return PipelineConfig(**kw)
 
 
@@ -248,8 +253,17 @@ def test_busy_gradient_fixtures_land_inside_the_accept_band(fixture):
     """The actual defect this pass fixes: plain k-means fragmented
     drone_render.png into 192+ final regions (measured pre-fix), ~10x the
     plan doc's own 20-80 accept band (F4 criteria). SLIC+RAG at the retuned
-    threshold lands both independent real busy fixtures inside that band."""
-    cfg = PipelineConfig(target_width_mm=90.0)
+    threshold lands both independent real busy fixtures inside that band.
+
+    `keep_thin_strokes=False` since 2026-09-13, the day it went ON by
+    default (Kent's ruling). The band is about SEGMENTATION fragmenting;
+    that flag adds a deliberate THIRD population on top of the segmentation
+    (`thin_ink.find_thin_ink`, gradient class only), and on the shipped
+    engine drone_render lands at 120 regions here — the flip sheet records
+    and Kent accepted that (74 -> 107 at the fixture's own Studio params).
+    Reading the band against an engine that adds regions on purpose would
+    make this test report the flip as fragmentation."""
+    cfg = PipelineConfig(target_width_mm=90.0, keep_thin_strokes=False)
     result = run_stages(str(PHOTO_DIR / fixture), cfg)
     assert result.design_class == "gradient"
     assert 20 <= len(result.regions) <= 80, (

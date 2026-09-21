@@ -121,15 +121,39 @@ def test_three_declarations_of_one_cone_all_land_on_the_first():
 
 # --- the whole pipeline, on the fixture the defect was found on ---------------
 
+# The whole-pipeline claims below were measured on the mean-point palette
+# (the docstring's numbers). Since the 2026-09-10 flip of
+# `robust_region_colour` drone's palette moves (12 of its 21 medoids), and
+# on that engine the fold still removes both revisits and two stops but
+# trades 21 stitches for 56 mm less flying (16,324 -> 16,345 stitches,
+# needle-up 1,568 -> 1,512 mm, 112 lifts either way; measured 2026-09-10).
+# "Fewer stitches AND less needle-up" is a fact of the engine it was
+# measured on, so the fixtures hold that engine (False, byte for byte) and
+# say so here -- the posture `conftest.PRE_FLIP` documents.
+# `keep_thin_strokes` joined that posture 2026-09-13 (flipped ON by Kent's
+# ruling) for the same reason: ON, drone keeps 33 more sub-floor regions, an
+# artwork cone sews twice again (`[..., 259, ..., 259, ...]`) and the fold
+# stops paying for itself in thread (18,140 against 18,049). Those are the
+# flip's numbers, not this fold's, and the claims here are the fold's.
+# `satin_corner_twigs` joined 2026-09-19 (flipped ON by Kent, lettering
+# plan step 3a) for the same reason again: the corner rule keeps a letter's
+# corner twig, the walk's columns take different entry ends, and the fold's
+# reorder then pays 107 stitches on drone (17,536 against 17,429, still at
+# less flying). The pruner's numbers, not the fold's.
+PRE_FLIP_RC = {"robust_region_colour": False, "keep_thin_strokes": False,
+               "satin_corner_twigs": False}
+
+
 @pytest.fixture(scope="module")
 def drone_off():
     return digitize(DRONE, cfg(target_width_mm=80.0,
-                              merge_duplicate_cones=False))
+                              merge_duplicate_cones=False, **PRE_FLIP_RC))
 
 
 @pytest.fixture(scope="module")
 def drone_on():
-    return digitize(DRONE, cfg(target_width_mm=80.0, merge_duplicate_cones=True))
+    return digitize(DRONE, cfg(target_width_mm=80.0, merge_duplicate_cones=True,
+                              **PRE_FLIP_RC))
 
 
 def test_the_default_is_on():
@@ -147,11 +171,32 @@ def test_the_fixture_still_declares_duplicate_cones(drone_off):
         "no cone revisit left on the fixture — re-pick it or retire this file"
 
 
-def test_the_fold_removes_every_cone_revisit(drone_on):
+def test_the_fold_removes_every_cone_revisit_EXCEPT_THE_CAP(drone_on):
+    """The fold's invariant, with the one exemption Kent ruled on 2026-09-11.
+
+    The design-silhouette cap (`cfg.edge_cap`, default "bean" since that
+    ruling) is a design-level pass that sews AFTER all artwork, in the thread
+    of whichever region owns most of the silhouette — so on essentially every
+    design it re-loads a cone the job already ran. Measured that day across
+    six fixtures: **all six**, and the alternative was measured too. Always
+    reusing the last-loaded cone would remove the stop and put the wrong
+    colour on the edge — on `logo_gaulke_roofing` the best-match cone owns
+    **95.0%** of the silhouette against the last-sewn cone's **5.4%**, and on
+    `enthusiast_logo` 77.8% against 22.2%.
+
+    **Kent's call: keep the best match and accept the stop.** So the fold's
+    rule is unchanged for every ARTWORK block — which is what it was written
+    about, and what this test still pins — and the cap is excluded by name.
+    A second cap block, or an artwork revisit, still fails here.
+    """
     _res, plan = drone_on
-    cones = [b.thread_index for b in plan.blocks]
+    art = [b for b in plan.blocks
+           if not any(r.shape_id == "__edge_cap__" for r in b.runs)]
+    caps = len(plan.blocks) - len(art)
+    assert caps <= 1, f"more than one cap block: {caps}"
+    cones = [b.thread_index for b in art]
     assert len(cones) == len(set(cones)), \
-        f"a cone still sews twice: {cones}"
+        f"an artwork cone still sews twice: {cones}"
 
 
 def test_the_fold_costs_the_operator_fewer_stops(drone_off, drone_on):
@@ -205,7 +250,8 @@ def test_an_explicit_layer_override_still_beats_the_fold(drone_on):
     sid = next(r.shape_id for b in plan.blocks for r in b.runs if r.shape_id)
     _r2, pinned = digitize(DRONE, cfg(target_width_mm=80.0,
                                       merge_duplicate_cones=True,
-                                      shape_overrides={sid: {"layer": 0}}))
+                                      shape_overrides={sid: {"layer": 0}},
+                                      **PRE_FLIP_RC))
     first = next(r.shape_id for b in pinned.blocks for r in b.runs if r.shape_id)
     assert first == sid, "a shape pinned to layer 0 must open the design"
 
@@ -215,7 +261,8 @@ def test_off_leaves_the_design_exactly_as_it_was(drone_off):
     not exist. Same blocks, same threads, same coordinates."""
     _o, base = drone_off
     _e, explicit = digitize(DRONE, cfg(target_width_mm=80.0,
-                                       merge_duplicate_cones=False))
+                                       merge_duplicate_cones=False,
+                                       **PRE_FLIP_RC))
     assert len(base.blocks) == len(explicit.blocks)
     for a, b in zip(base.blocks, explicit.blocks):
         assert a.thread_index == b.thread_index

@@ -1,15 +1,17 @@
 ---
 name: digitizer-local-env
-description: "Kent's-machine digitizer env facts — venv is editable-installed since 2026-08-17, and system tesseract is NOT installed so the real-read OCR tests skip locally (skipif since PR #165; CI has it)"
+description: "Kent's-machine digitizer env facts — venv is editable-installed since 2026-08-17, system tesseract is NOT installed so the real-read OCR tests skip locally (skipif since PR #165; CI has it), and the rembg cutout venv EXISTS since 2026-09-11"
 metadata: 
   node_type: memory
   type: project
   originSessionId: 454c41ed-686f-44ec-97b3-9a1c6fd607a8
-  modified: 2026-08-18T00:23:55.802Z
+  modified: 2026-09-11T23:42:23.906Z
 ---
 
-Two machine-local facts about `<repo-root>\digitizer` (Kent's Windows box), both confirmed 2026-08-17:
+Three machine-local facts about `<repo-root>\digitizer` (Kent's Windows box); the first two confirmed 2026-08-17, the third added 2026-09-11:
 
 1. **Venv is editable now.** The venv had stale NON-editable copies of `digitizer_core`/`digitizer_service` in site-packages (installed 2026-08-15); from any cwd other than `digitizer/` they silently shadowed repo code. Fixed 2026-08-17: `pip uninstall digitizer-core` + `pip install -e ".[service,dev]"`. Verify with `pip show digitizer-core` — it must list `Editable project location: ...\EMB-Bot\digitizer`. If that line is missing, someone reran a non-editable install and the shadowing is back.
 
 2. **System `tesseract` binary is not installed** (not on PATH). It is a separate non-pip install (`digitizer/README.md` Setup; pyproject comment near `pytesseract`). Consequence: the five real-read OCR tests SKIP locally — `skipif(shutil.which("tesseract") is None)` since PR #165 (2026-08-17). Before those markers they FAILED as unexplained local reds; the confirmed set (not "presumably") was the OCR-gate damaging case, both `test_ocr_suggest` real reads, and `test_pipeline`/`test_service`'s `saw_a_real_character` tests. CI apt-installs tesseract and runs all five. Reproduced on an untouched checkout, so it is environment, not code. Install tesseract on PATH to exercise OCR end-to-end — but don't install system software without asking Kent. Related local-failure memory: [[windows-goldens-fail-locally]].
+
+3. **The rembg cutout venv EXISTS on this box as of 2026-09-11** (Kent approved the download), and **as of 2026-09-14 it exists in the MAIN CHECKOUT too** (`digitizer/rembg_isolated/venv`) — the sentence below used to say the main checkout still lacked it, which was true when written. It was first built in a WORKTREE at `.claude/worktrees/jolly-northcutt-bc5538/digitizer/rembg_isolated/venv`; it is gitignored and per-checkout, so every OTHER worktree still lacks it and still reports `PHOTO_BACKGROUND_REMOVAL_UNAVAILABLE`. Rebuild elsewhere with `C:\Users\EE-LT-11030\AppData\Local\Programs\Python\Python312\python.exe -m venv rembg_isolated/venv` then `rembg_isolated\venv\Scripts\pip install -r rembg_isolated\requirements.txt` (README's instructions; ~1 min). **The 178 MB model is already cached machine-wide at `C:\Users\EE-LT-11030\.u2net\isnet-general-use.onnx`, so no second download** — inference ~6 s on a 1585x992 image. Also: the README's warning that numba refuses numpy >= 2.5 has ALREADY AGED OUT — pip now resolves numpy 2.5.3 with numba 0.67.0 and it imports fine. Without this venv the photo lane silently skips its whole prep block (cutout, tone, texture, face priors), so a "photo lane" measurement taken without it is the classical route wearing a photo label. **And the converse trap, measured 2026-09-14: having it changes NOTHING outside the photo classes.** Stage 1.5 is double-gated on the opt-in flag AND `config.PHOTO_CLASSES`, which is `("photo_subject", "photo_scene")` — `gradient` is not in it. Building the venv left `summit_badge.png` (gradient) byte-identical at 19,249 stitches with its background still sewn, while `logo_script_tires.png` (misrouted `photo_scene`) moved 2,345 -> 2,287. So do not reach for this venv to explain a gradient design's background: that is stage 1's border flood, and `preflight.GROUND_SEWN` is what reports it.

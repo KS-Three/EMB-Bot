@@ -42,12 +42,13 @@ Usage:
         code), COUNT changes on finding codes present in both runs (a code
         going 5x -> 6x is drift too -- the set-based blind spot pinned in
         commit 76af7a6, fixed 2026-08-11), and metric drift beyond a noise
-        threshold. Exit code is non-zero only for the one low-noise,
-        high-confidence signal this script is willing to call a real
+        threshold. Exit code is non-zero for the two low-noise,
+        high-confidence signals this script is willing to call a real
         regression outright: a "block"-severity finding that was not there
         before -- including one MORE instance of a block code the baseline
-        already carried. Everything else is reported, not enforced -- read
-        it, don't just check the exit code.
+        already carried -- and a LETTER GRADE that fell into a worse band
+        (added 2026-09-14, see `_grade_fell`). Everything else is reported,
+        not enforced -- read it, don't just check the exit code.
 """
 from __future__ import annotations
 
@@ -217,6 +218,7 @@ def capture() -> dict:
                 print(f"{key}: ERROR {row['error']}")
             else:
                 print(f"{key}: grade={row['grade']} score={row['score']} "
+                      f"raw={row['metrics'].get('raw_score')} "
                       f"findings={len(row['findings'])}")
     # Stamp the capture commit/date so staleness is measured, not
     # remembered -- neither key collides with a `_run_key` string, and
@@ -273,6 +275,36 @@ def _metric_deltas(old: dict, new: dict) -> list[str]:
     return lines
 
 
+# The letter bands run_preflight itself publishes (preflight.py: A >= 90,
+# B >= 75, C >= 60, D >= 40, else F), best to worst.
+_GRADE_ORDER = ("A", "B", "C", "D", "F")
+
+
+def _grade_fell(old_grade: str | None, new_grade: str | None) -> bool:
+    """True when `new_grade` sits in a strictly worse band than `old_grade`.
+
+    Why this is an exit-code signal and the module docstring's "no invented
+    pass/fail numbers" caution still holds: this invents no threshold and no
+    new instrument. The four cut points are `run_preflight`'s own, the
+    baseline has always recorded the resulting letter, and `diff` has always
+    PRINTED the fall -- it just exited 0 afterwards.
+
+    That gap is the finding it was added for *(measured 2026-09-12 --
+    docs/research-gap-audit-2026-09-12.md §4.1)*: on the 2026-09-11 edge-cap
+    flip, `logo_script_tires` went A 100 -> B 88 with corpus thread +9.10% and
+    11 of 14 fixtures moving. The drop was written into a CI artifact, ARTFID
+    did not see it, and every check was green -- the regression was measured
+    and then discarded for want of a non-zero exit.
+
+    A grade that IMPROVES is not a failure, and a missing letter is "no
+    verdict" rather than the worst band, so a row recovering from a captured
+    error never reads as a fall.
+    """
+    if old_grade not in _GRADE_ORDER or new_grade not in _GRADE_ORDER:
+        return False
+    return _GRADE_ORDER.index(new_grade) > _GRADE_ORDER.index(old_grade)
+
+
 def diff() -> int:
     if not OUT.exists():
         print(f"no baseline at {OUT} -- run `capture` first.", file=sys.stderr)
@@ -300,11 +332,27 @@ def diff() -> int:
                 old = {"score": None, "grade": None, "findings": [], "metrics": {}}
 
             lines = []
+            # The clamped score and, beside it, the UNCLAMPED one (item 11,
+            # 2026-09-10): a floored design can move -272 -> -180 with the
+            # printed 0 unchanged, and that is the line row 1 of
+            # yardstick-disagreements asked for. `_metric_deltas` below also
+            # reports `raw_score` drift past the noise fraction once the
+            # baseline carries the key; this line says it in words.
+            raw_old = old.get("metrics", {}).get("raw_score")
+            raw_new = new.get("metrics", {}).get("raw_score")
             if old["score"] != new["score"]:
                 arrow = "worse" if new["score"] < old["score"] else "better"
-                lines.append(f"  score: {old['score']} -> {new['score']} ({arrow})")
+                lines.append(f"  score: {old['score']} -> {new['score']} ({arrow}; "
+                             f"raw {raw_old} -> {raw_new})")
+            elif raw_old is not None and raw_new is not None and raw_old != raw_new:
+                arrow = "worse" if raw_new < raw_old else "better"
+                lines.append(f"  score: {old['score']} unchanged, raw {raw_old} -> {raw_new} ({arrow})")
             if old["grade"] != new["grade"]:
-                lines.append(f"  grade: {old['grade']} -> {new['grade']}")
+                fell = _grade_fell(old["grade"], new["grade"])
+                lines.append(f"  grade: {old['grade']} -> {new['grade']}"
+                             f"{' (FELL A BAND)' if fell else ''}")
+                if fell:
+                    hard_fail = True
 
             # Count-aware since 2026-08-11 (`_finding_changes`) -- the blind
             # spot commit 76af7a6 pinned here, where the old set difference

@@ -98,6 +98,12 @@ def plan_for(regions: list[Region], fabric=FAB, design_class: str = "flat",
              **cfg_kw):
     """Stage 5 then stage 7, the way pipeline.py runs them (the layer pass is
     exercised separately — these are the within-group tests' harness)."""
+    # The design-silhouette cap is ON by default since 2026-09-11 (Kent's
+    # flip). These fixtures are synthetic bars whose subject is the ORDER the
+    # artwork sews in, not the design's outer edge, and a cap block would add
+    # a thread and a shape id to every expectation here without testing
+    # anything this file is about. `tests/test_edge_cap.py` owns the cap.
+    cfg_kw.setdefault("edge_cap", "none")
     c = PipelineConfig(**cfg_kw)
     planned, _ = resolve_overlaps(regions, fabric, c)
     blocks, warnings = sequence(planned, fabric, c, design_class=design_class)
@@ -304,6 +310,11 @@ def test_repro_fixture_border_satin_sews_after_its_cone_s_fills():
         for r in result.regions
     }
     ranks = sew_rank(SimpleNamespace(blocks=plan.blocks))
+    # The design-silhouette cap (ON by default since 2026-09-11) has no
+    # region behind it — it is the union of several — so `satin_by_id` has no
+    # verdict for it and it is not part of the within-cone question this
+    # asks. Dropped by name rather than guarded at every lookup.
+    ranks.pop("__edge_cap__", None)
     by_block: dict[int, list[str]] = {}
     for sid, (bi, _rank) in ranks.items():
         by_block.setdefault(bi, []).append(sid)

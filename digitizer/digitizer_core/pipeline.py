@@ -31,6 +31,8 @@ from shapely.geometry import Polygon
 from . import debugviz
 from .config import PipelineConfig
 from .fabrics import Fabric, fabric_for_garment, get_fabric
+from .machine import FILL_ROW_MM
+from .photo_signals import apply_detection, resolve as resolve_photo_signals
 from .regions import (
     Region,
     apply_layer_overrides,
@@ -53,12 +55,14 @@ from .stage3_segment import (
     ClassicalSegmenter,
     Segmenter,
     compact_layers,
+    layer_palette_threads,
     merge_duplicate_cone_layers,
     resolve_small_regions,
 )
-from .stage4_vectorize import (enforce_color_cap,
+from .stage4_vectorize import (enforce_color_cap, garment_sews_enclosed,
                                rehome_resnapped_regions, revalidate_threads,
                                tag_enclosed_background, vectorize)
+from .designangle import set_design_angle
 from .textcluster import (detect_text_clusters, ocr_suggest_text,
                           regularize_text_clusters,
                           set_lettering_house_angle)
@@ -73,12 +77,14 @@ from .threads import chart_for, rgb_to_lab
 from .gradient_band import mark_gradient_bands
 from .machine import SATIN_MAX_WIDTH_MM
 from .warnings_codes import (
+    BACKGROUND_ENCLOSED,
     DROPPED_SMALL_SHAPES,
     GRADIENT_BANDS_AS_FILL,
     PALETTE_THREAD_MISMATCH,
     PHOTO_AUTO_TIER,
     PHOTO_BACKGROUND_REMOVAL_UNAVAILABLE,
     PHOTO_BACKGROUND_REMOVED,
+    PHOTO_DETECTED,
     PHOTO_FACE_PRIORS_UNAVAILABLE,
     PHOTO_FACES_DETECTED,
     PHOTO_SAM2_SEGMENTATION_UNAVAILABLE,
@@ -193,6 +199,13 @@ class PipelineResult:
     # Defaults None — a hand-built PipelineResult and every non-demand run
     # read exactly as before the field existed.
     palette_spools: list[int] | None = None
+    # Stage 1.25's verdict, carried one hop further for the SAME reason
+    # `design_class` and `faces_present` above are: `plan_stitches` and
+    # `run_preflight` are separate entry points holding the CALLER's config,
+    # and detection happened inside `build_generation` where they cannot see
+    # it. Defaults False — a hand-built PipelineResult, and every caller that
+    # never turned detection on, reads exactly as before the field existed.
+    detected_photographic: bool = False
 
     @property
     def shape_ids(self) -> list[str]:
@@ -237,6 +250,15 @@ class Generation:
     # Defaulted so a hand-built Generation (tests) reads exactly as before
     # the field existed.
     quant_palette_spools: list[int] | None = None
+    # Stage 1.25's verdict (`cfg.detect_photographic`): did a signal say
+    # PHOTOGRAPH? Carried for the same reason `faces_present` is — a runtime
+    # fact only that pass can answer, and `finish_generation` arrives
+    # holding the CALLER's config, which knows nothing about it. False
+    # whenever detection was off, was pre-empted by a declaration, or simply
+    # found nothing, so a hand-built Generation reads exactly as it did
+    # before the field existed; `photo_signals.apply_detection` is the only
+    # thing that reads it.
+    detected_photographic: bool = False
     # The rembg subject cutout, (H, W) bool with True = SUBJECT, or None
     # (every job that did not opt into `cfg.photo_prep_background_removal`,
     # and every job where the isolated venv was missing or the worker
@@ -279,6 +301,7 @@ class Generation:
             resnap_warnings=list(self.resnap_warnings),
             faces_present=self.faces_present,
             seg_name=self.seg_name,
+            detected_photographic=self.detected_photographic,
             design_row_angle_deg=self.design_row_angle_deg,
             design_ramp=self.design_ramp,
             quant_palette_spools=(
@@ -343,10 +366,17 @@ def build_generation(
     image: str | Path | bytes | np.ndarray,
     cfg: PipelineConfig | None = None,
     segmenter: Segmenter | None = None,
+    exif_source: str | Path | bytes | None = None,
 ) -> Generation:
     """Stages 0-4: artwork in, a `Generation` out — ids assigned, computed
     facts tagged, review edits NOT yet applied. `run_stages` composes this
-    with `finish_generation`; the service caches the result across edits."""
+    with `finish_generation`; the service caches the result across edits.
+
+    `exif_source` is the UNDECODED upload, for a caller that decoded the
+    artwork itself and hands an ndarray here — the service does, and an
+    ndarray has no EXIF header left to read. Only `cfg.detect_photographic`
+    consults it, and only for the camera tags; everything else reads `image`.
+    """
     cfg = cfg or PipelineConfig()
     seg = segmenter or ClassicalSegmenter()
     dbg = Path(cfg.debug_dir) if cfg.debug_dir else None
@@ -366,6 +396,44 @@ def build_generation(
     if dbg:
         debugviz.stage1(dbg, p.rgb, p.bg_mask)
 
+    # Everything stages 1 and 1.5 have to say, in one list. Declared here
+    # rather than beside the photo-prep block below because stage 1.25 now
+    # writes into it first.
+    prep_warnings: list[dict] = []
+
+    # Stage 1.25 — IS THIS A PHOTOGRAPH? (quality review 2026-09-08 item 13)
+    # Off by default and free when off. On, it answers with two signals that
+    # are not colour statistics, because stage 0's colour statistics
+    # demonstrably cannot (`config.is_photographic` carries the measurement:
+    # a real photograph reads LESS photographic than two gradient logos on
+    # stage 0's own primary gate). EXIF first, then the YuNet detector the
+    # photo-prep block below already ships — `p.rgb` is the raster it wants,
+    # RGB per stage 1's contract, and it is in hand right here, so detection
+    # costs no second decode.
+    #
+    # It rewrites `cfg` for THIS function only. The verdict rides the
+    # Generation from here, because `finish_generation` and `plan_stitches`
+    # arrive later holding the CALLER's config and fold it back in with one
+    # line each (`photo_signals.apply_detection` — see it for why that beats
+    # teaching nine call sites about detection). Preflight takes the third
+    # route it already uses for the classifier's verdict: it re-reads the
+    # warning below.
+    cfg, signals = resolve_photo_signals(
+        cfg, image=image if exif_source is None else exif_source, rgb=p.rgb)
+    detected_photographic = bool(signals and signals.is_photograph)
+    if detected_photographic:
+        prep_warnings.append(
+            warn(
+                PHOTO_DETECTED,
+                f"Detected as a photograph — {signals.why}. The photographic "
+                "machinery applies: the palette bind, the shade bind and "
+                "preflight's photo yardstick. Declaring this design "
+                "non-photographic overrides it.",
+                signal=signals.signal,
+                detail=signals.why,
+            )
+        )
+
     # Stage 1.5 — photo prep (plan §2 rows 3-4; build step 3 first slice).
     # DOUBLE-gated: the opt-in flag AND a photo classification, so neither
     # the default config nor a photo-classified design under default config
@@ -376,7 +444,6 @@ def build_generation(
     # former AND `source_pixels` for the tonal tiers — sees the prepped
     # image; that is the point (texture below the sewable floor should not
     # reach any consumer).
-    prep_warnings: list[dict] = []
     face_regions = None
     # The REAL rembg-derived subject/background mask, distinct from
     # `p.bg_mask` (which, by the time `photo_segment` runs, may just be
@@ -664,8 +731,13 @@ def build_generation(
     # to the dataclass, its copy, and every construction site for no
     # behavioural difference.
     if cfg.enforce_color_cap:
+        # A flood hole the garment rule will stitch is sewn area, so its cone
+        # competes for a slot (`garment_sews_enclosed`, the same verdict the
+        # stitched default reads in `finish_generation`). Off / no garment /
+        # alpha: False, the ranking the cap shipped with.
         resnap_warnings = list(resnap_warnings) + enforce_color_cap(
-            regions, chart_for(cfg), cfg.max_colors)
+            regions, chart_for(cfg), cfg.max_colors,
+            count_enclosed=garment_sews_enclosed(p, cfg)[0])
 
     # Same ordering rationale as `tag_enclosed_background` immediately above:
     # a computed FACT re-derived every generation, so it belongs before shape
@@ -703,7 +775,9 @@ def build_generation(
     # `ocr_suggest_text` does. Metadata only, and only where the strokes carry
     # a direction that clears a chance-corrected significance test: everything
     # else keeps today's behaviour byte-identical.
-    set_lettering_house_angle(regions, p, fourfold=cfg.satin_house_fourfold)
+    set_lettering_house_angle(regions, p, fourfold=cfg.satin_house_fourfold,
+                              from_line=cfg.satin_house_from_line,
+                              anchor=cfg.satin_house_anchor)
 
     # Gradient class: the one shared fill-row angle for the whole design
     # (2026-08-03 angle-fragmentation fix) — the design ramp's row angle when
@@ -720,6 +794,21 @@ def build_generation(
     else:
         design_row_angle_deg = None
 
+    # `cfg.design_angle` (2026-09-09): one direction for everything the house
+    # pass left alone -- the house angle where its lines agree, else the
+    # gradient lane's own shared angle just above where the design holds one
+    # (that lane's fills sew at it whatever the metadata says, so its satin
+    # should lean to the same number), else the row direction that cuts the
+    # design's fills into the fewest columns in total. Metadata only, read by
+    # stages 5 and 7 behind the review's and the house's own angles; absent,
+    # byte-identical. The row spacing is the one stage 7 will run at, so the
+    # objective counts the columns the fill will actually have.
+    if cfg.design_angle:
+        fabric = fabric_for(cfg)
+        set_design_angle(regions, cfg, classification.class_,
+                         row_mm=(cfg.fill_row_mm or FILL_ROW_MM) * max(0.1, fabric.density_adjust),
+                         lane_angle=design_row_angle_deg)
+
     return Generation(
         classification_class=classification.class_,
         classification_warnings=classification.warnings,
@@ -734,6 +823,7 @@ def build_generation(
         # `face_regions` is set only when stage 1.5 both ran (photo_prep's
         # double gate) AND found at least one face — see that block above.
         faces_present=bool(face_regions),
+        detected_photographic=detected_photographic,
         # `region_former` (the stage-2 dispatch fact, see its comment) wins
         # over the stage-3 mask deriver's name, so review.segmenter finally
         # answers "which segmenter ran" instead of always "classical".
@@ -754,11 +844,54 @@ def build_generation(
     )
 
 
+def _with_garment_reading(prep_warnings: list[dict], cfg: PipelineConfig,
+                          bg_rgb: tuple[int, int, int] | None, sews: bool,
+                          de00: float | None, n_sewn: int) -> list[dict]:
+    """Stage 1's `BACKGROUND_ENCLOSED` entry with the garment rule's
+    reading appended — a new list, the input untouched. Unchanged when the
+    rule did not look (`de00` None: off, no garment, alpha holes)."""
+    if de00 is None:
+        return prep_warnings
+    out: list[dict] = []
+    garment = tuple(int(v) for v in list(cfg.garment_rgb or ())[:3])
+    for w in prep_warnings:
+        if w.get("code") != BACKGROUND_ENCLOSED:
+            out.append(w)
+            continue
+        w = dict(w)
+        area = w.get("area_frac")
+        share = f"{float(area):.0%} of this design" if area is not None else "part of this design"
+        if sews:
+            w["message"] = (
+                f"Enclosed background-colored areas are {share} and SEW, because "
+                f"the garment colour {garment} is clearly different from the "
+                f"background they were cut from (ΔE00 {de00:.1f}) — toggle any off "
+                "in review if it should stay a hole.")
+        else:
+            w["message"] = (
+                w["message"] + f" Against the garment colour {garment} they read "
+                f"as the fabric (ΔE00 {de00:.1f}), so they stay holes.")
+        w["garment_rgb"] = list(garment)
+        w["bg_rgb"] = list(bg_rgb) if bg_rgb is not None else None
+        w["delta_e00"] = round(float(de00), 2)
+        w["sews_by_garment"] = bool(sews)
+        w["threshold_de00"] = float(cfg.enclosed_by_garment_de00)
+        w["sewn_by_garment"] = int(n_sewn)
+        out.append(w)
+    return out
+
+
 def finish_generation(gen: Generation, cfg: PipelineConfig | None = None) -> PipelineResult:
     """Review edits + palette settlement: the cheap, edit-dependent tail of
     `run_stages`. Mutates `gen`'s regions and warning lists in place — hand
     it a `Generation.fork()`, never a cached original."""
     cfg = cfg or PipelineConfig()
+    # Stage 1.25's verdict, folded into the caller's config. Detection ran in
+    # `build_generation`, which rewrote only its own local cfg; this entry
+    # point takes a fresh one, so without this line a detected photograph
+    # would lose the palette bind the moment the service re-finished it from
+    # its cache. A no-op unless detection actually fired.
+    cfg = apply_detection(cfg, gen.detected_photographic)
     dbg = Path(cfg.debug_dir) if cfg.debug_dir else None
     p = gen.p
     regions = gen.regions
@@ -793,11 +926,32 @@ def finish_generation(gen: Generation, cfg: PipelineConfig | None = None) -> Pip
     # `enclosed_background`, a fact re-tagged THIS generation, so override
     # and default belong in one expression after tagging — not split between
     # an edit pass and a fallback pass.
+    # The garment rule (`cfg.enclosed_by_garment`, DEFAULT OFF): a
+    # border-flood hole sews by default when the garment is a clearly
+    # different colour from the background it was cut from — one verdict per
+    # design (`garment_sews_enclosed`), applied to every enclosed region whose
+    # colour is known; an alpha hole (`enclosed_colour_unknown`) keeps the
+    # verdict's default. Sits INSIDE the same expression as the override so
+    # a review `stitched` still wins over it, exactly as over the default.
+    sews_by_garment, garment_de00 = garment_sews_enclosed(p, cfg)
     shape_overrides = cfg.shape_overrides or {}
+    n_by_garment = 0
     for r in regions:
+        default_stitched = not r.meta.get("enclosed_background", False)
+        if (sews_by_garment and not default_stitched
+                and not r.meta.get("enclosed_colour_unknown", False)):
+            default_stitched = True
+            r.meta["enclosed_by_garment"] = True
+            n_by_garment += 1
         r.meta["stitched"] = (shape_overrides.get(r.shape_id) or {}).get(
-            "stitched", not r.meta.get("enclosed_background", False)
+            "stitched", default_stitched
         )
+    # Stage 1's BACKGROUND_ENCLOSED sentence promised holes "left unstitched";
+    # when the rule looked at a garment, say what it decided. On a COPY —
+    # `p` is shared across forks (`Generation.fork`), its warnings are not
+    # this request's to rewrite.
+    prep_own_warnings = _with_garment_reading(
+        p.warnings, cfg, p.bg_rgb, sews_by_garment, garment_de00, n_by_garment)
 
     thread_indices, layer_warnings = compact_layers(regions, quant_indices)
     # One cone, one layer (cfg.merge_duplicate_cones, default OFF — defect
@@ -1037,19 +1191,41 @@ def finish_generation(gen: Generation, cfg: PipelineConfig | None = None) -> Pip
         return out
 
     chart = chart_for(cfg)
-    palette = [_cone(chart, t) for t in thread_indices]
+    # `thread_indices` is stage 2's memory of what each layer WAS. With
+    # `cfg.layer_palette_from_regions` ON each layer's cone is elected from
+    # its own regions instead, which is the only way `palette[i]` can be
+    # true about layer i after a pass moves a region's thread without
+    # moving the region — see `stage3_segment.layer_palette_threads`.
+    # OFF is stage 2's list, byte for byte, and the election never runs.
+    palette_threads = (
+        layer_palette_threads(regions, thread_indices, shape_overrides)
+        if cfg.layer_palette_from_regions else thread_indices
+    )
+    palette = [_cone(chart, t) for t in palette_threads]
 
     # The palette is per LAYER; a region's thread is per REGION, and
     # `revalidate_threads` above can move one without the other. Since
     # 2026-08-31 `rehome_resnapped_regions` moves the region to the layer
-    # DECLARING its new cone, so the surviving population here is the
-    # re-snap whose target no layer declares (it stays put, its layer's
-    # palette entry names a cone it no longer carries — drone_render's L1
-    # carries re-snapped t0/t17 in t16's layer, live proof) plus whatever a
-    # future mechanism invents. The operator loads a cone that sews nothing
-    # while the thread that IS sewn is missing from the list; only this
-    # human-facing color list is wrong, which is exactly why it could stay
-    # invisible. Measured on the pro corpus, 2026-08-14: 5 of 23 designs.
+    # DECLARING its new cone — but it keys on the re-snap stamp alone, and
+    # `enforce_color_cap` both runs AFTER it and leaves a different stamp
+    # (`color_cap_merged_from`), so a capped region is never rehomed. Since
+    # the colour bundle flipped on 2026-09-10 the cap is the producer of
+    # EVERY diverged region on the corpus: 24 shapes on 3 of 26 fixtures at
+    # `max_colors=12`, 76 on two real-customer fixtures at the Studio's
+    # shipped 6, and not one of them a bare re-snap
+    # (`docs/palette-mismatch-2026-09-12.md` §1, re-measured 2026-09-12;
+    # the earlier reading here — "the re-snap whose target no layer
+    # declares", "drone_render's L1 … live proof" — named a population that
+    # no longer exists, and `repro_gradient_white_icon` now diverges on
+    # nothing at all).
+    #
+    # THE OPERATOR IS NOT AFFECTED, and the previous sentence here said he
+    # was. He threads from `plan.palette`, which is per BLOCK and checked
+    # consistent on 26 of 26 fixtures; what is wrong is the REVIEW SCREEN's
+    # per-layer list, the thing a user reorders and recolours by. It stays
+    # harmless only because every customer-facing cone list reads
+    # `stats.blocks` or `design.colors` and `review.palette` has exactly two
+    # readers, neither positional — one `.length` ends that.
     #
     # An explicit `layer` override is exempt, and only that: putting a shape
     # into another thread's layer is precisely what that override MEANS (see
@@ -1098,8 +1274,14 @@ def finish_generation(gen: Generation, cfg: PipelineConfig | None = None) -> Pip
             satin_max_mm=cfg.satin_max_width_mm or SATIN_MAX_WIDTH_MM,
             source_px_per_mm=p.input_px_per_mm or p.px_per_mm)
     else:
+        # All THREE keys, including `gradient_band_of`: a region list can
+        # arrive with meta from an earlier run (the stage 0-4 cache, a review
+        # edit), and stage 7's fill-angle rung reads the parent id, so leaving
+        # it behind would keep a band sewing at its parent's angle with the
+        # flag off. `mark_gradient_bands` clears all three for the same reason.
         for r in regions:
             r.meta.pop("gradient_band", None)
+            r.meta.pop("gradient_band_of", None)
             r.meta.pop("gradient_band_soft", None)
     if band_ids:
         band_warnings.append(
@@ -1124,7 +1306,7 @@ def finish_generation(gen: Generation, cfg: PipelineConfig | None = None) -> Pip
         px_per_mm=p.px_per_mm,
         design_size_mm=design,
         warnings=merge_warnings(
-            [*gen.classification_warnings, *p.warnings, *prep_warnings,
+            [*gen.classification_warnings, *prep_own_warnings, *prep_warnings,
              *gen.quant_warnings, *gen.small_warnings, *vec_warnings,
              *gen.resnap_warnings, *merge_edit_warnings, *split_edit_warnings,
              *edit_warnings, *layer_warnings, *palette_warnings,
@@ -1135,6 +1317,7 @@ def finish_generation(gen: Generation, cfg: PipelineConfig | None = None) -> Pip
         source_pixels=source_pixels,
         design_class=gen.classification_class,
         faces_present=faces_present,
+        detected_photographic=gen.detected_photographic,
         palette_spools=(
             list(gen.quant_palette_spools)
             if gen.quant_palette_spools is not None else None
@@ -1161,6 +1344,10 @@ def fabric_for(cfg: PipelineConfig) -> Fabric:
 def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> StitchPlan:
     """Stages 5-7: regions -> stitches. Safe to re-run on one PipelineResult."""
     cfg = cfg or PipelineConfig()
+    # Same fold as `finish_generation`'s, one hop further out: stage 7's
+    # photo sequencing and the shade bind read `is_photographic`, and this
+    # entry point is routinely called with a config built from scratch.
+    cfg = apply_detection(cfg, result.detected_photographic)
     fabric = fabric_for(cfg)
     dbg = Path(cfg.debug_dir) if cfg.debug_dir else None
 

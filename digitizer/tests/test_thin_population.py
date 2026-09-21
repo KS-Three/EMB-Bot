@@ -108,7 +108,11 @@ def test_on_the_photo_lane_the_bars_a_superpixel_swallows_are_sewn_with_the_flag
 
     art = tmp_path / "bars.png"
     _strokes_on_a_panel(art)
-    off = ts.run(art, 50.0, "left_chest", forced_class="gradient")
+    # `keep_thin_strokes` is DEFAULT ON since 2026-09-13 (Kent's ruling), so
+    # the OFF arm names it: without that, both arms would be the same engine
+    # and this pair would pass by agreeing with itself.
+    off = ts.run(art, 50.0, "left_chest", forced_class="gradient",
+                 flag="keep_thin_strokes=false")
     on = ts.run(art, 50.0, "left_chest", forced_class="gradient", flag="keep_thin_strokes")
     assert off["thin_strokes"] == 6 and on["thin_strokes"] == 6, (off["thin_strokes"], on["thin_strokes"])
     assert off["recall"] < 0.2, off["recall"]

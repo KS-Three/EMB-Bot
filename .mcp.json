@@ -3,6 +3,10 @@
     "playwright": {
       "command": "node",
       "args": ["${CLAUDE_PROJECT_DIR:-.}/tools/mcp-playwright.mjs"]
+    },
+    "huggingface": {
+      "type": "http",
+      "url": "https://huggingface.co/mcp"
     }
   }
 }

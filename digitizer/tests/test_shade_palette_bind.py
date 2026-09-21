@@ -301,9 +301,13 @@ def test_end_to_end_flag_flips_blocks_from_chart_wide_to_palette_only():
     source = _source(_full_ramp())
 
     def blocks_for(bind: bool):
+        # `edge_cap="none"`: the claim is "all shades share one spool ->
+        # ONE merged block", and the design-silhouette cap (ON by default
+        # since 2026-09-11) is a second block that has nothing to do with
+        # the shade bind.
         cfg = PipelineConfig(fill_technique="streamline",
                              streamline_mode="layered",
-                             shade_palette_bind=bind)
+                             shade_palette_bind=bind, edge_cap="none")
         planned, _ = resolve_overlaps([_region(poly, meta={"tier": "fill"})],
                                       FAB, cfg, design_class="photo_subject")
         blocks, _w = S7.sequence(planned, FAB, cfg, source_pixels=source,

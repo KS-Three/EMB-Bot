@@ -316,30 +316,50 @@ test("buildWorksheetPDF treats a missing design as all-zero stats rather than th
   }
 });
 
-test("buildWorksheetPDF prescribes cutaway stabilizer past 25k stitches, and only past it", () => {
+test("the 25k craft rule survives as an ESCALATION, not as the only trigger", () => {
   // The craft rule [P -- OESD, via docs/photo-digitizing-plan-2026-07-31.md
   // section 2 row 15]: est. > 25k stitches -> cutaway prescription on the
   // worksheet. The worksheet carries the rule itself (twin of the digitizer
   // preflight's STABILIZER_CUTAWAY finding) because it also serves designs
   // that never pass through the digitizer service -- lettering, imports,
   // combined designs -- whose stitch count is only known here.
+  //
+  // WHAT CHANGED, 2026-09-20, and why this test was rewritten rather than
+  // deleted: the stitch count used to be the ONLY trigger, so under 25,000
+  // the sheet said nothing about stabilizer at all -- and the same design on
+  // jersey and on canvas, goods that want opposite stabilizers, got identical
+  // silence. The backing class is a property of the GARMENT, so it now comes
+  // from the fabric preset. The threshold above is not gone: it escalates a
+  // garment whose own backing is lighter than cutaway. The rule survives; the
+  // silence does not.
   const dom = installFakeDom();
   const originalJspdf = globalThis.window.jspdf;
   globalThis.window.jspdf = { jsPDF: FakeJsPDF };
 
   try {
+    // Heavy on a tear-away garment: escalated, and it names the count that
+    // did it rather than the threshold, so the operator can see the margin.
     const heavy = buildWorksheetPDF(baseDesign({ stitchCount: 26676 }), {
       fileName: "heavy.pdf",
+      garmentId: "tote",
     });
     const heavyStrings = heavy.texts.map((t) => t.str);
     expect(heavyStrings).toContain(
-      "Stabilizer: cutaway (over 25,000 stitches - tear-away releases under this much thread)"
+      "Stabilizer: cutaway (escalated - 26,676 stitches; tear-away releases under this much thread)"
     );
 
-    // The quiet side: the base design (4,321 stitches) and the boundary
-    // itself (exactly 25,000 is not "over") both stay silent -- a worksheet
-    // line that shows on every design trains the operator to ignore it.
-    for (const count of [4321, 25000]) {
+    // The boundary is unchanged: exactly 25,000 is not "over", so a tear-away
+    // garment is still told tear-away.
+    const edge = buildWorksheetPDF(baseDesign({ stitchCount: 25000 }), {
+      fileName: "edge.pdf",
+      garmentId: "tote",
+    });
+    expect(edge.texts.map((t) => t.str)).toContain("Stabilizer: tearaway");
+
+    // The quiet side moved rather than vanished: with NO garment named there
+    // is no basis for a claim, so the sheet still says nothing -- the same
+    // posture the thread-metres row takes without a thread factor.
+    for (const count of [4321, 26676]) {
       const doc = buildWorksheetPDF(baseDesign({ stitchCount: count }), {
         fileName: "modest.pdf",
       });
@@ -575,4 +595,109 @@ test("the worksheet says nothing about the hoop when the design fits", () => {
     hoopNote: "",
   });
   expect(doc.texts.map((t) => t.str).some((s) => /Exceeds/.test(s))).toBe(false);
+});
+
+// --- What the DIGITIZER assumed, stated on the sheet (playbook Part 3) -------
+//
+// The separation-of-duties argument: the stitch file can only demand, the
+// operator must supply. Until now the sheet made exactly one supply-side
+// claim — "Stabilizer: cutaway" — and based it on a stitch COUNT rather than
+// on the goods, so a 3,000-stitch left chest on jersey and the same design on
+// canvas got identical silence. These tests pin the claims that replace it,
+// and every one of them is derived from something the engine actually knows:
+// the fabric preset, or the design's own stitches and trims.
+
+function metaFor(garmentId, extra) {
+  return Object.assign(
+    {
+      garmentLabel: "Left chest",
+      garmentId,
+      fileName: "embbot-worksheet.pdf",
+      garmentBox: { widthMM: 127, heightMM: 57.15 },
+    },
+    extra || {}
+  );
+}
+
+function sheetStrings(design, meta) {
+  const dom = installFakeDom();
+  const originalJspdf = globalThis.window.jspdf;
+  globalThis.window.jspdf = { jsPDF: FakeJsPDF };
+  try {
+    return buildWorksheetPDF(design, meta).texts.map((t) => t.str);
+  } finally {
+    globalThis.window.jspdf = originalJspdf;
+    dom.restore && dom.restore();
+  }
+}
+
+test("the stabilizer line comes from the GARMENT, not from a stitch count", () => {
+  // A small design: under the 25,000-stitch rule that used to be the only
+  // trigger, this sheet said nothing about stabilizer at all.
+  const polo = sheetStrings(baseDesign(), metaFor("left_chest"));
+  expect(polo).toContain("Stabilizer: cutaway");
+
+  const tote = sheetStrings(baseDesign(), metaFor("tote"));
+  expect(tote).toContain("Stabilizer: tearaway");
+
+  const hat = sheetStrings(baseDesign(), metaFor("hat_front"));
+  expect(hat).toContain("Stabilizer: cap buckram");
+});
+
+test("a heavy design escalates a tearaway garment to cutaway, and says why", () => {
+  // The old CUTAWAY_STITCHES rule survives as an ESCALATION rather than as
+  // the only trigger: past this much thread, tear-away releases whatever the
+  // goods would otherwise have taken.
+  const heavy = baseDesign({ stitchCount: 30000 });
+  const strings = sheetStrings(heavy, metaFor("tote"));
+  expect(strings.some((s) => s.startsWith("Stabilizer: cutaway"))).toBe(true);
+  expect(strings.some((s) => s.includes("30,000 stitches"))).toBe(true);
+});
+
+test("a garment already on cutaway does not get told twice", () => {
+  const heavy = baseDesign({ stitchCount: 30000 });
+  const strings = sheetStrings(heavy, metaFor("left_chest"));
+  const lines = strings.filter((s) => s.startsWith("Stabilizer:"));
+  expect(lines).toHaveLength(1);
+});
+
+test("the topper line is stated either way, because absence is not an answer", () => {
+  expect(sheetStrings(baseDesign(), metaFor("towel"))).toContain("Topper: yes");
+  expect(sheetStrings(baseDesign(), metaFor("left_chest"))).toContain("Topper: no");
+});
+
+test("run time is printed with the basis that produced it", () => {
+  // 4,321 stitches + 6 trims x 120 = 5,041 equivalents / 650 spm = 7.75 min.
+  const strings = sheetStrings(
+    baseDesign(),
+    metaFor("left_chest", { sew: { trims: 6, threadM: 4.2 } })
+  );
+  expect(strings).toContain("Run time: ~8 min at 650 spm (incl. trims)");
+});
+
+test("run time still prints when the design was never walked for trims", () => {
+  // `sew` is absent for a design the Studio has no walk for; the needle time
+  // is still knowable from the stitch count alone.
+  const strings = sheetStrings(baseDesign(), metaFor("left_chest"));
+  expect(strings).toContain("Run time: ~7 min at 650 spm (incl. trims)");
+});
+
+test("the thread sequence says these numbers are the operator's to set", () => {
+  const strings = sheetStrings(baseDesign(), metaFor("left_chest"));
+  // DST carries no colour data at all, so the ordinal beside each cone is
+  // hand-mapped at the machine every single job. The sheet has always
+  // numbered them and never said what the numbers were for.
+  expect(
+    strings.some((s) => s.includes("DST carries no colour"))
+  ).toBe(true);
+});
+
+test("an unknown garment states nothing rather than guessing", () => {
+  // Same posture as the thread-metres row: no basis, no line. A worksheet
+  // that invents a backing class is worse than one that stays quiet.
+  const strings = sheetStrings(baseDesign(), metaFor("no_such_garment"));
+  expect(strings.some((s) => s.startsWith("Stabilizer:"))).toBe(false);
+  expect(strings.some((s) => s.startsWith("Topper:"))).toBe(false);
+  // The run time needs no garment, so it survives.
+  expect(strings.some((s) => s.startsWith("Run time:"))).toBe(true);
 });

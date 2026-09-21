@@ -90,7 +90,35 @@ test("bean repeats backtrack each stitch (repeats:1 => triple stitch)", () => {
 // uniform letters, where before the A was a tiny mark beside four oversized
 // overlapping ones. Library-wide: 25 of 80 byte-identical, and of the 55 that
 // changed the great majority moved 0.00% in stitch count.
-const SATIN_BASELINE = { montecarlo: 1157, alchemy: 751, venezia: 996, cats: 1238, apesplit: 2470 };
+//
+// 2026-09-11 (c): the Euler-walk UNDERPATH pitch was not fit-scaled. The
+// underlay pitch three lines away in the same function was
+// (`UNDERLAY_STEP_MM / fitScale`), which is what identifies this as a units
+// bug rather than a choice: text scaled up to fit a garment sewed its
+// needle-down travel at 2 mm TIMES the scale. Found while measuring quality
+// review item 10 — after the satin split, the only sewn segments left over
+// one DST record on an "AB" Full Back were three underpath steps of 22.1,
+// 19.0 and 22.3 mm in a design whose longest satin leg was 5.0 mm.
+//
+// UP is the correct direction for these five, all of which scale UP to reach
+// 40 mm: the same travel, at the pitch it always meant. Text scaled DOWN
+// moves the other way and that is equally right — satinfont.test.js's 8 mm
+// arm loses one stitch, because there the unscaled pitch was too SHORT on
+// the fabric. montecarlo 1157 -> 1166, alchemy 751 -> 751 (unmoved), venezia
+// 996 -> 997, cats 1238 -> 1243, apesplit 2470 -> 2475; +0.00% to +0.78%.
+// Isolated rather than assumed: applying ONLY the units fix to the
+// pre-change tree reproduces all five new numbers, and the whole stitch
+// array with them, byte for byte — so nothing else landing that day moved
+// this stream. (Both wide-column knobs default off, and off is unchanged.)
+//
+// 2026-09-11 (d): `splitSatin` went default ON (Kent's ruling — see
+// satinfont.js). Only ONE of the five moves, and it is the one the census
+// already singled out: `alchemy` is the sole font of 85 that threw a stitch
+// past a DST record on the small-text sweep, so it is the only one here with
+// crosses past the 5.0 mm split threshold at 40 mm. 751 -> 786, +4.7%, all of
+// it intermediate penetrations on crosses that were already too long to lie
+// flat. The other four are untouched, which is the threshold doing its job.
+const SATIN_BASELINE = { montecarlo: 1166, alchemy: 786, venezia: 997, cats: 1243, apesplit: 2475 };
 
 // These five are committed, so the guard below should never fire. It throws on
 // CI regardless: a pinned baseline whose font has vanished is not "nothing to
@@ -127,15 +155,22 @@ test("no shipped font carries stitchable run params (they are stripped at import
   const bins = fs.readdirSync(BIN).filter((f) => f.endsWith(".embf"));
   // Iterating an empty list is the same vacuous pass one level down.
   assert.ok(bins.length > 50, `only ${bins.length} .embf files — the library did not build`);
+  // Scoped per GLYPH since 2026-09-15, matching build-font's strip. The rule
+  // this protects is "no glyph gains construction stitches over its shipped
+  // design", and construction is what a run is only when the glyph ALSO has
+  // satin columns. In a runs-only glyph the run is not construction, it IS the
+  // glyph — which is why roaring_twenties_KOR's ten symbols sewed nothing for
+  // as long as this was judged font-wide. Checked against the whole library
+  // the day it changed: 0 glyphs with satin carry stitchable run params, and
+  // exactly 20 runs-only glyphs do (the ten in each roaring_twenties_KOR).
   for (const f of bins) {
     const font = fb.decodeFontBin(fs.readFileSync(path.join(BIN, f)));
-    let satin = 0;
-    for (const g of Object.values(font.glyphs)) satin += (g.cols || []).length;
-    if (!satin) continue; // a runs-only font legitimately keeps its params
-    for (const g of Object.values(font.glyphs))
+    for (const [ch, g] of Object.entries(font.glyphs)) {
+      if (!(g.cols || []).length) continue; // the run IS the glyph here
       for (const r of g.runs || [])
         assert.ok(!(r && r.pts && r.lenMm > 0),
-          `${f} is a satin font but carries stitchable run params — it would gain stitches vs. its shipped design`);
+          `${f} glyph ${JSON.stringify(ch)} has satin columns AND stitchable run params — it would gain construction stitches vs. its shipped design`);
+    }
   }
 });
 

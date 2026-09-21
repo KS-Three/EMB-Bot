@@ -711,8 +711,23 @@ describe("findings that have a knob behind them", () => {
     const { container } = withFindings([
       { code: "LETTERING_TOO_SMALL", severity: "warn", message: "a" },
       { code: "STITCHES_TOO_SHORT", severity: "warn", message: "b" },
+      // The legibility check (2026-09-10) shares that cure and must not add
+      // a third identical button.
+      { code: "LETTERING_ILLEGIBLE", severity: "warn", message: "c" },
     ]);
     expect(container.querySelectorAll(".dgp-fix").length).toBe(1);
+  });
+
+  test("lettering the thread no longer says offers to enlarge", () => {
+    const { getByTestId } = withFindings(
+      [{ code: "LETTERING_ILLEGIBLE", severity: "warn",
+         message: "the artwork says ‘DRONE’ and the thread reads ‘VR74A’." }]);
+    const box = getByTestId("digitize-fixes");
+    expect(box.textContent).toMatch(/Make it bigger/);
+    expect(box.textContent).toMatch(/80 → 100 mm wide/);
+    // The finding's own words say WHY the button is offered — on the
+    // button's tooltip, where every fix carries its `why`.
+    expect(box.querySelector(".dgp-fix").title).toMatch(/the thread reads/);
   });
 
   test("a finding with NO knob behind it offers nothing — silence beats a button that does not help", () => {
@@ -929,6 +944,94 @@ describe("auto-restitch on shape edits", () => {
     expect(calls.length).toBeGreaterThanOrEqual(1);
   });
 
+  // A border is not a drag. It is picked from a menu or a select, it is
+  // complete the moment it is picked, and there is no second half coming — so
+  // the two seconds the debounce spends waiting for the user to "stop editing"
+  // are two seconds of a canvas that has not acknowledged the click. The
+  // canvas's own right-click Add/Remove border writes this same field
+  // (shapeOverrides[sid].border, via the same elupdate path), which is where
+  // the wait was most visible: you click a menu item and nothing happens.
+  test("a BORDER change restitches immediately — no idle pause to wait out", async () => {
+    const { getByLabelText } = await panelWithService([shapeRow("s1")]);
+    await fireEvent.change(getByLabelText(/^Border \u2014 /), { target: { value: "auto" } });
+    vi.advanceTimersByTime(0);        // the 0 ms hop off the reactive tick
+    await Promise.resolve();
+    expect(calls.length).toBeGreaterThanOrEqual(1);
+  });
+
+  // The armed line must not FLASH on the path that never waits. A border
+  // schedules at 0 ms, and a 0 ms timeout is a macrotask — it fires after
+  // Svelte has already flushed the DOM — so arming it "briefly" would paint
+  // "restitching when you stop editing" for a frame on every border toggle,
+  // about an edit that is not waiting for anything. The fix is to not arm at
+  // all when there is no pause, which is also what makes the comment on that
+  // block true.
+  test("a border change never shows the armed line, not even for a frame", async () => {
+    const { getByLabelText, queryByText } = await panelWithService([shapeRow("s1")]);
+    await fireEvent.change(getByLabelText(/^Border \u2014 /), { target: { value: "auto" } });
+    expect(queryByText("Restitch now")).toBeNull();
+  });
+
+  // The narrowness is the safety property: if "border" could ever be returned
+  // for a change that also moved a boundary, a drag would take the fast path
+  // and queue a full stage 0-7 run behind every nudge. This is that guard at
+  // the panel level rather than on the pure function.
+  test("a stitch-type change still waits — the fast path is borders ONLY", async () => {
+    const { getByLabelText } = await panelWithService([shapeRow("s1")]);
+    await fireEvent.change(getByLabelText(/^Stitch type \u2014 /), { target: { value: "satin" } });
+    vi.advanceTimersByTime(0);
+    await Promise.resolve();
+    expect(calls).toHaveLength(0);
+    vi.advanceTimersByTime(2500);
+    await Promise.resolve();
+    expect(calls.length).toBeGreaterThanOrEqual(1);
+  });
+
+  // "Restitch now" skips the remaining pause for the edits that still have
+  // one. Before it, the only way to not wait was to press "Digitize again",
+  // which ran immediately AND left the armed timer to fire a second identical
+  // run behind it — 10-14 s of service time on a photograph, for nothing.
+  test("\"Restitch now\" runs once, and cancels the pending timer rather than doubling", async () => {
+    const { getByLabelText, findByText } = await panelWithService([shapeRow("s1")]);
+    await fireEvent.change(getByLabelText(/^Stitch type \u2014 /), { target: { value: "satin" } });
+    const now = await findByText("Restitch now");
+    await fireEvent.click(now);
+    await Promise.resolve();
+    expect(calls).toHaveLength(1);
+    // The armed timer must be gone, not merely beaten to it.
+    vi.advanceTimersByTime(5000);
+    await Promise.resolve();
+    expect(calls).toHaveLength(1);
+  });
+
+  // The armed window is what the button lives in, and it has to close again —
+  // a control offering to hurry a restitch that already ran is a dead control.
+  test("the armed line appears only while a restitch is waiting", async () => {
+    const { getByLabelText, queryByText } = await panelWithService([shapeRow("s1")]);
+    expect(queryByText("Restitch now")).toBeNull();
+    await fireEvent.change(getByLabelText(/^Stitch type \u2014 /), { target: { value: "satin" } });
+    expect(queryByText("Restitch now")).not.toBeNull();
+    vi.advanceTimersByTime(2500);
+    await Promise.resolve();
+    expect(queryByText("Restitch now")).toBeNull();
+  });
+
+  // Pressing "Digitize again" during the pause was reachable before any of
+  // this and ran TWICE: once on the click, once more when the armed timer fired
+  // behind it with the same edits in it. On a photograph that is a second
+  // 10-14 s run for nothing. Starting a run of any kind now disarms the
+  // pending one, because either way that run carries the current edits.
+  test("pressing Digitize again during the pause does not run twice", async () => {
+    const { getByLabelText, getByRole } = await panelWithService([shapeRow("s1")]);
+    await fireEvent.change(getByLabelText(/^Stitch type \u2014 /), { target: { value: "satin" } });
+    await fireEvent.click(getByRole("button", { name: "Digitize again" }));
+    await Promise.resolve();
+    expect(calls).toHaveLength(1);
+    vi.advanceTimersByTime(5000);
+    await Promise.resolve();
+    expect(calls).toHaveLength(1);
+  });
+
   test("rapid edits collapse into ONE restitch, not one per edit", async () => {
     // The whole point of the debounce: ten adjustments cost one 10-second
     // run, not ten queued behind each other.
@@ -984,5 +1087,251 @@ describe("a file that cannot be decoded", () => {
     });
     await fireEvent.change(input);
     expect(await findByRole("alert")).toHaveTextContent(/Couldn’t read that file as an image/);
+  });
+});
+
+// ---- the border readout ----------------------------------------------------
+//
+// Kent, 2026-09-15: "easier to identify when a satin border is or isn't
+// generated and what it looks like going back and forth between satin border
+// on/off". The panel used to read `params.border` / `shapeOverrides[sid]
+// .border` straight back and call that the answer; the engine declines in
+// three different ways and none of them were visible. These tests are about
+// the gap: the request is the input, `design.runs` is the truth, and the panel
+// must never print the first as if it were the second.
+//
+// The decision table itself is tested browser-free in lib/borderMenu.spec.js;
+// what is checked here is that the panel feeds it the right things (the
+// EMITTED tier, not a forced one; the per-shape override; the design param)
+// and renders both halves.
+describe("border readout — what sewed, not what was asked for", () => {
+  function resultWith(runs) {
+    const base = {
+      stitchCount: 100, widthMM: 50, heightMM: 50, colorCount: 1,
+      colors: [], stitches: [],
+    };
+    return runs === null ? base : { ...base, runs };
+  }
+  const run = (shape, kind, role = "") => ({ i0: 0, i1: 0, kind, shape, role, block: 0 });
+
+  // Three shapes, one of each interesting outcome, with the design-wide
+  // Border select on: s1 gets its satin column, s2 is too narrow and gets a
+  // bean run, s3 is asked for one and the engine adds none.
+  const SHAPES = [shapeRow("s1"), shapeRow("s2"), shapeRow("s3")];
+  const RUNS = [
+    run("s1", "fill"), run("s1", "satin", "border"),
+    run("s2", "fill"), run("s2", "run", "border"),
+    run("s3", "fill"),
+  ];
+
+  function panelWithRuns(runs = RUNS, extra = {}) {
+    return renderPanel(SHAPES, {
+      params: { ...DEFAULT_DIGITIZE_PARAMS, border: "auto" },
+      result: resultWith(runs),
+      ...extra,
+    });
+  }
+
+  test("counts what is on the cloth, and names the declines", () => {
+    const { getByText } = panelWithRuns();
+    expect(getByText("2 of 3 borders sewn (1 satin, 1 bean) · 1 not generated.")).toBeTruthy();
+  });
+
+  test("with NO runs in the payload it says requested, and never says sewn", () => {
+    const { getByText, queryByText } = panelWithRuns(null);
+    expect(getByText(/3 shapes asking for a border/)).toBeTruthy();
+    expect(getByText(/the request, not the cloth/)).toBeTruthy();
+    expect(queryByText(/sewn \(/)).toBeNull();
+  });
+
+  test("toggling the design Border select moves the numbers — the whole ask", async () => {
+    const { getByText, getByLabelText, queryByText } = panelWithRuns();
+    expect(getByText(/2 of 3 borders sewn/)).toBeTruthy();
+    await fireEvent.change(getByLabelText("Border"), { target: { value: "off" } });
+    expect(queryByText(/2 of 3 borders sewn/)).toBeNull();
+    expect(getByText(/^No shape borders/)).toBeTruthy();
+    // ...and back again, off the same evidence
+    await fireEvent.change(getByLabelText("Border"), { target: { value: "auto" } });
+    expect(getByText(/2 of 3 borders sewn/)).toBeTruthy();
+  });
+
+  test("a per-shape override is counted the way the engine reads it", async () => {
+    const { getByText, getByLabelText } = panelWithRuns();
+    const sel = getByLabelText(/^Border — shape 1 of 3/);   // s1's own row
+    await fireEvent.change(sel, { target: { value: "off" } });
+    expect(getByText(/1 of 2 borders sewn \(1 bean\)/)).toBeTruthy();
+  });
+
+  test("each row is badged with the border it actually has", () => {
+    const { container } = panelWithRuns();
+    const badges = [...container.querySelectorAll(".dgp-lborder")].map((b) => b.textContent.trim());
+    expect(badges).toEqual(["satin border", "bean border", "no border sewn"]);
+  });
+
+  test("the declined badge explains itself without inventing a cause", () => {
+    const { container } = panelWithRuns();
+    const declined = container.querySelector(".dgp-lborder-warn");
+    expect(declined.getAttribute("title")).toMatch(/did not add one/);
+    expect(declined.getAttribute("title")).toMatch(/too narrow to hold one/);
+    expect(declined.getAttribute("title")).toMatch(/would be a guess/);
+  });
+
+  test("an expected decline is NOT painted as a fault", () => {
+    // The engine declining a satin-tiered shape is it working as documented.
+    // Toning that off `state` alone turned three of four rows red on the first
+    // real design this was driven on, which is how a healthy design comes to
+    // look broken.
+    const { container } = renderPanel([shapeRow("sat", { tier: "satin" })], {
+      params: { ...DEFAULT_DIGITIZE_PARAMS, border: "auto" },
+      result: resultWith(RUNS),
+    });
+    expect(container.querySelector(".dgp-lborder-warn")).toBeNull();
+    expect(container.querySelector(".dgp-lborder-quiet")).toBeTruthy();
+  });
+
+  test("a satin-tiered shape says WHY, and says it with no runs to check", () => {
+    for (const runs of [RUNS, null]) {
+      const { container } = renderPanel([shapeRow("sat", { tier: "satin" })], {
+        params: { ...DEFAULT_DIGITIZE_PARAMS, border: "auto" },
+        result: resultWith(runs),
+      });
+      const badge = container.querySelector(".dgp-lborder");
+      expect(badge.textContent.trim()).toBe("no border — sews as satin");
+      expect(badge.getAttribute("title")).toMatch(/already an outline/);
+    }
+  });
+
+  test("a row nobody asked to border carries no badge — the list stays readable", () => {
+    const { container } = renderPanel(SHAPES, { result: resultWith(RUNS) });
+    expect(container.querySelectorAll(".dgp-lborder")).toHaveLength(0);
+  });
+
+  test("a just-toggled row reads PENDING, and only that row does", async () => {
+    const { container, getByLabelText } = panelWithRuns(RUNS, {
+      // as if the current stitches were made with s1 bordered and nothing else set
+      appliedEdits: JSON.stringify([[], { s1: { border: "auto" } }, [], {}]),
+    });
+    await fireEvent.change(getByLabelText(/^Border — shape 1 of 3/), { target: { value: "bean" } });
+    const badges = [...container.querySelectorAll(".dgp-lborder")].map((b) => b.textContent.trim());
+    expect(badges[0]).toBe("border pending");
+    expect(badges.slice(1)).toEqual(["bean border", "no border sewn"]);
+  });
+
+  test("the design edge reports the engine's own bill", () => {
+    const { getByText } = renderPanel(SHAPES, {
+      result: resultWith(RUNS),
+      warnings: [{ code: "EDGE_CAP_APPLIED", stitches: 1204, percent: 21.3, edges: 1 }],
+    });
+    expect(getByText("Bean edge sewn — 1,204 stitches (+21.3% of the design).")).toBeTruthy();
+  });
+
+  test("the design edge says when it found nothing to sew", () => {
+    const { getByText } = renderPanel(SHAPES, {
+      result: resultWith(RUNS),        // runs present, none of them edge_cap
+      warnings: [],
+    });
+    expect(getByText("Design edge found nothing to sew.")).toBeTruthy();
+  });
+
+  test("switching the design edge off says so rather than staying silent", async () => {
+    const { getByText, getByLabelText } = renderPanel(SHAPES, { result: resultWith(RUNS) });
+    await fireEvent.change(getByLabelText("Design edge"), { target: { value: "none" } });
+    expect(getByText("Design edge off.")).toBeTruthy();
+  });
+});
+
+// ---- what the upload STORES and what a digitize SENDS (2026-09-20) --------
+//
+// The panel used to send its 1,200-px canvas PNG to the service; it now
+// stores the file's own bytes (lib/sourceStore.js) and sends THOSE, keeping
+// the canvas as the preview. jsdom has neither a canvas nor IndexedDB, so
+// both are stood in for: the canvas by a stub returning a fixed data URL,
+// the store by an in-memory map through vi.mock. `loadImage` is the same
+// controlled stub the file banner describes.
+const { fakeStore } = vi.hoisted(() => ({ fakeStore: new Map() }));
+vi.mock("../lib/sourceStore.js", () => ({
+  sourceStoreAvailable: () => true,
+  sourceKeyFor: async (bytes) => "key-" + bytes.length,
+  putSource: async (key, rec) => { fakeStore.set(key, rec); },
+  getSource: async (key) => fakeStore.get(key) || null,
+  deleteSource: async (key) => { fakeStore.delete(key); },
+}));
+
+describe("the upload stores the file and a digitize sends it", () => {
+  const LIMITS = { max_upload_bytes: 12 * 1024 * 1024, max_pixels: 40_000_000 };
+  beforeEach(() => {
+    fakeStore.clear();
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue({ drawImage() {} });
+    vi.spyOn(HTMLCanvasElement.prototype, "toDataURL").mockReturnValue("data:image/png;base64,AAAA");
+    loadImageResult = () => Promise.resolve({ width: 1400, height: 316 });
+  });
+  afterEach(() => vi.restoreAllMocks());
+
+  async function upload(container, file) {
+    const input = container.querySelector('.dgp-upload input[type="file"]');
+    Object.defineProperty(input, "files", { value: [file] });
+    await fireEvent.change(input);
+  }
+
+  test("a PNG is stored under its content key; the element carries the key and the preview, never the bytes", async () => {
+    const patches = [];
+    const { container } = render(Harness, {
+      props: {
+        element: baseElement([], { sourcePng: null, result: null, review: null }),
+        health: { ok: true, limits: LIMITS },
+        onPatch: (d) => patches.push(d),
+      },
+    });
+    const bytes = new Uint8Array([137, 80, 78, 71, 9, 9, 9]);
+    await upload(container, new File([bytes], "logo.png", { type: "image/png" }));
+    await waitFor(() => expect(patches.length).toBeGreaterThanOrEqual(1));
+    const p = patches[0].patch;
+    expect(p.sourcePng).toBe("AAAA");
+    expect(p.name).toBe("logo.png");
+    expect(p.sourceFile).toEqual({ key: "key-7", type: "image/png", size: 7, width: 1400, height: 316 });
+    expect(fakeStore.get("key-7")).toEqual({ bytes, type: "image/png", name: "logo.png" });
+    expect(JSON.stringify(p)).not.toContain('"bytes"');
+  });
+
+  test("an SVG keeps the preview path — nothing stored, sourceFile null — because only a browser rasterises it", async () => {
+    const patches = [];
+    const { container } = render(Harness, {
+      props: {
+        element: baseElement([], { sourcePng: null, result: null, review: null }),
+        health: { ok: true, limits: LIMITS },
+        onPatch: (d) => patches.push(d),
+      },
+    });
+    await upload(container, new File(["<svg xmlns='http://www.w3.org/2000/svg'/>"], "logo.svg", { type: "image/svg+xml" }));
+    await waitFor(() => expect(patches.length).toBeGreaterThanOrEqual(1));
+    expect(patches[0].patch.sourcePng).toBe("AAAA");
+    expect(patches[0].patch.sourceFile).toBeNull();
+    expect(fakeStore.size).toBe(0);
+  });
+
+  test("a digitize sends the stored bytes while they are there, and the preview — saying so — once they are gone", async () => {
+    const mod = await import("../lib/digitizer.js");
+    const sent = [];
+    vi.spyOn(mod, "digitize").mockImplementation(async (image) => { sent.push(image); return null; });
+    const bytes = new Uint8Array([82, 73, 70, 70]);
+    fakeStore.set("k9", { bytes, type: "image/webp", name: "logo.webp" });
+    const { getByRole, queryByTestId, findByTestId } = render(Harness, {
+      props: {
+        element: baseElement([], { name: "logo.webp", sourceFile: { key: "k9", type: "image/webp", size: 4, width: 10, height: 10 } }),
+        health: { ok: true, limits: LIMITS },
+      },
+    });
+    await fireEvent.click(getByRole("button", { name: /^Digitize( again)?$/ }));
+    await waitFor(() => expect(sent).toHaveLength(1));
+    expect(sent[0]).toEqual({ bytes, type: "image/webp", name: "logo.webp" });
+    expect(queryByTestId("source-note")).toBeNull();
+
+    // Cleared site data, another browser: the original is gone. The preview
+    // goes up (the pre-2026-09-20 result) and the panel says which one this is.
+    fakeStore.clear();
+    await fireEvent.click(getByRole("button", { name: /^Digitize( again)?$/ }));
+    await waitFor(() => expect(sent).toHaveLength(2));
+    expect(sent[1]).toBe("data:image/png;base64,AAAA");
+    expect(await findByTestId("source-note")).toHaveTextContent(/original file is no longer stored/);
   });
 });

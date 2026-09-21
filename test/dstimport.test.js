@@ -370,3 +370,188 @@ test("every DST in the repo still decodes", () => {
   assert.ok(decodeDST(standardBytes()).stitchCount > 0, "pystitch fixture");
   assert.ok(decodeDST(dst.encodeDST(fixtureDesign())).stitchCount > 0, "EMB-Bot's own encoder");
 });
+
+// The delta table has ONE home, and a third-party file's own header proves it.
+//
+// Every test above this line compares our decoder against our own encoder, so
+// they all pass just as happily when both halves are wrong the same way — which
+// is exactly how the axis bug survived until 2026-09-08. These two tests use an
+// EXTERNAL oracle instead: the five professionally digitized Becker files in
+// digitizer/testdata/reference/ were written by somebody else's software, and a
+// Tajima header declares its own extents in `+X/-X/+Y/-Y` (0.1 mm units). If our
+// read direction is wrong, the decoded extents come back transposed against a
+// number we did not produce.
+//
+// This exists because tools/render-dst.mjs kept a PRIVATE copy of the delta
+// table, never received the 2026-09-08 fix, and drew every design transposed for
+// five days — while being the repo's only renderer, and therefore the instrument
+// DOCTRINE's "when a claim is about ORIENTATION, render it" rule sends you to.
+// Measured 2026-09-13 on these five files: the private table read all five
+// transposed (46.8x76.5 against a header saying 76.5x46.8); the shared one reads
+// all five correctly.
+const REFERENCE_DIR = path.join(__dirname, "..", "digitizer", "testdata", "reference");
+
+function headerExtentsMM(buf) {
+  const hdr = buf.slice(0, 512).toString("latin1");
+  const m = hdr.match(/\+X:\s*(\d+).*?-X:\s*(\d+).*?\+Y:\s*(\d+).*?-Y:\s*(\d+)/s);
+  if (!m) return null;
+  return { w: (Number(m[1]) + Number(m[2])) / 10, h: (Number(m[3]) + Number(m[4])) / 10 };
+}
+
+test("decodeDST's extents match each third-party file's OWN declared header", () => {
+  const files = fs.existsSync(REFERENCE_DIR)
+    ? fs.readdirSync(REFERENCE_DIR).filter((n) => n.endsWith(".dst"))
+    : [];
+  // Anti-vacuous: this directory is committed and holds five files. Zero means
+  // the corpus moved, not that the check came back clean.
+  assert.ok(files.length >= 5, `expected >=5 reference .dst files, found ${files.length}`);
+
+  let checked = 0;
+  for (const name of files) {
+    const buf = fs.readFileSync(path.join(REFERENCE_DIR, name));
+    const hdr = headerExtentsMM(buf);
+    if (!hdr) continue;
+    checked++;
+    const dec = decodeDST(new Uint8Array(buf));
+    // 0.3 mm tolerance: the header is written to 0.1 mm and a writer may round
+    // the last record differently. A TRANSPOSE is 20-40 mm on these files, so
+    // this tolerance cannot hide one.
+    assert.ok(Math.abs(dec.widthMM - hdr.w) < 0.3 && Math.abs(dec.heightMM - hdr.h) < 0.3,
+      `${name}: header says ${hdr.w}x${hdr.h} mm, decodeDST says ` +
+      `${dec.widthMM.toFixed(1)}x${dec.heightMM.toFixed(1)} mm. If those are swapped, ` +
+      `the delta table's X/Y nibbles are the wrong way round again.`);
+  }
+  assert.ok(checked >= 5, `only ${checked} reference files carried parseable +X/-X/+Y/-Y header extents`);
+});
+
+test("a transposed delta table FAILS that header check — the oracle has teeth", () => {
+  // The pre-2026-09-08 table, kept here as the negative control so the test
+  // above cannot pass on a decoder that does nothing.
+  function transposedDelta(b0, b1, b2) {
+    let x = 0, y = 0;
+    if (b0 & 0x80) x += 1;  if (b0 & 0x40) x -= 1;
+    if (b0 & 0x20) x += 9;  if (b0 & 0x10) x -= 9;
+    if (b0 & 0x08) y -= 9;  if (b0 & 0x04) y += 9;
+    if (b0 & 0x02) y -= 1;  if (b0 & 0x01) y += 1;
+    if (b1 & 0x80) x += 3;  if (b1 & 0x40) x -= 3;
+    if (b1 & 0x20) x += 27; if (b1 & 0x10) x -= 27;
+    if (b1 & 0x08) y -= 27; if (b1 & 0x04) y += 27;
+    if (b1 & 0x02) y -= 3;  if (b1 & 0x01) y += 3;
+    if (b2 & 0x20) x += 81; if (b2 & 0x10) x -= 81;
+    if (b2 & 0x08) y -= 81; if (b2 & 0x04) y += 81;
+    return [x, y];
+  }
+  const name = fs.readdirSync(REFERENCE_DIR).filter((n) => n.endsWith(".dst"))[0];
+  const buf = fs.readFileSync(path.join(REFERENCE_DIR, name));
+  const hdr = headerExtentsMM(buf);
+  assert.ok(hdr, `${name} has no parseable header extents`);
+
+  const body = buf.slice(512);
+  let x = 0, y = 0, mnx = Infinity, mxx = -Infinity, mny = Infinity, mxy = -Infinity;
+  for (let i = 0; i + 2 < body.length; i += 3) {
+    const b0 = body[i], b1 = body[i + 1], b2 = body[i + 2];
+    if (b0 === 0 && b1 === 0 && b2 === 0xf3) break;
+    const d = transposedDelta(b0, b1, b2);
+    x += d[0]; y += d[1];
+    if (b2 & 0x40) continue;
+    mnx = Math.min(mnx, x); mxx = Math.max(mxx, x);
+    mny = Math.min(mny, y); mxy = Math.max(mxy, y);
+  }
+  const w = (mxx - mnx) / 10, h = (mxy - mny) / 10;
+  assert.ok(Math.abs(w - hdr.w) >= 0.3 || Math.abs(h - hdr.h) >= 0.3,
+    `the transposed table agreed with ${name}'s header (${hdr.w}x${hdr.h}), so the ` +
+    `check above proves nothing — pick a fixture that is not square`);
+  // And it is specifically a SWAP, not noise.
+  assert.ok(Math.abs(w - hdr.h) < 0.3 && Math.abs(h - hdr.w) < 0.3,
+    `expected an exact transpose, got ${w.toFixed(1)}x${h.toFixed(1)} against header ${hdr.w}x${hdr.h}`);
+});
+
+test("tools/render-dst.mjs does not define its own delta table", () => {
+  // The structural half of the same lesson: the bug was not a wrong constant,
+  // it was a SECOND COPY of a right one that then went stale. Keep there being
+  // one.
+  const src = fs.readFileSync(path.join(__dirname, "..", "tools", "render-dst.mjs"), "utf8");
+  assert.ok(/require\(["'][^"']*dstimport\.js["']\)/.test(src),
+    "render-dst.mjs must import the delta table from src/dstimport.js");
+  assert.ok(!/function\s+decodeDelta\s*\(/.test(src),
+    "render-dst.mjs defines its own decodeDelta again — that is the exact defect " +
+    "this test exists for. Import it from src/dstimport.js instead.");
+});
+
+// ---- the run-span index rides through buildImportedDesign ---------------
+//
+// A DST file has no run structure to recover, so `decodeDST` never produces
+// spans and the import lane is normally indexless. But `buildImportedDesign`
+// is a placement/scale/rotate pass over a decoded-shaped object, and anything
+// handed to it that WAS planned (a digitized design, whose spans come from
+// digitizer_core/adapter.py) must not lose them on the way through — the
+// browser canvas draws satin differently from fill off exactly this field.
+//
+// The reason the passthrough is safe and not a guess: this builder writes
+// `stitches[i]` from `srcPoints[i]` one for one — rotation maps a point to a
+// point, scale and offset move it, none of them adds, drops or reorders a
+// record — and the single `end` is appended PAST the last of them.
+
+function spanFixture() {
+  const decoded = {
+    stitches: [
+      { x: -50, y: -20, type: "jump" },
+      { x: -50, y: -20, type: "stitch" },
+      { x: 0, y: -20, type: "stitch" },
+      { x: 50, y: -20, type: "stitch" },
+      { x: 50, y: 20, type: "stitch" },
+    ],
+    colorCount: 1,
+    stitchCount: 4,
+    widthMM: 10,
+    heightMM: 4,
+    jumpCount: 1,
+    trimCount: 0,
+    label: "SPANS",
+  };
+  decoded.runs = [
+    { i0: 1, i1: 2, kind: "satin", shape: "S1", role: "border", block: 0 },
+    { i0: 3, i1: 4, kind: "fill", shape: "S1", role: "", block: 0 },
+  ];
+  return decoded;
+}
+
+test("buildImportedDesign carries a run-span index through untouched", () => {
+  const decoded = spanFixture();
+  const out = buildImportedDesign(decoded, { garment: GARMENT });
+  assert.deepStrictEqual(out.runs, decoded.runs);
+  // The spans still describe the array they are handed back with: each one
+  // covers records that exist, and the appended `end` is outside all of them.
+  for (const s of out.runs) {
+    assert.ok(out.stitches[s.i0] && out.stitches[s.i1], "span inside the array");
+    for (let i = s.i0; i <= s.i1; i++) {
+      assert.notStrictEqual(out.stitches[i].type, "end");
+    }
+  }
+  assert.strictEqual(out.stitches[out.stitches.length - 1].type, "end");
+});
+
+test("rotation, scale and offset move the stitches without moving the spans", () => {
+  const decoded = spanFixture();
+  const out = buildImportedDesign(decoded, {
+    garment: GARMENT, rotationDeg: 90, targetWidthMm: 40, offsetXMm: 5, offsetYMm: -3,
+  });
+  assert.deepStrictEqual(out.runs, decoded.runs);
+  assert.strictEqual(out.stitches.length, decoded.stitches.length + 1);
+  // Record TYPES are preserved position for position — which is what makes
+  // an unchanged span index still true.
+  for (let i = 0; i < decoded.stitches.length; i++) {
+    assert.strictEqual(out.stitches[i].type, decoded.stitches[i].type);
+  }
+});
+
+test("a decoded DST carries no index, and the import invents none", () => {
+  // Absent means "no run information", which is the truth for a machine file.
+  // An empty array would mean "no runs" and a renderer keying off the index
+  // would draw nothing at all over a design full of stitches.
+  const bytes = dst.encodeDST(fixtureDesign());
+  const decoded = decodeDST(bytes);
+  assert.ok(!("runs" in decoded), "decodeDST must not invent spans");
+  const out = buildImportedDesign(decoded, { garment: GARMENT });
+  assert.ok(!("runs" in out), "the import must not invent them either");
+});

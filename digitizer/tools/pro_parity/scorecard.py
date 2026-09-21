@@ -331,12 +331,95 @@ def _iou(a, b):
     return float((a & b).sum() / u) if u else 0.0
 
 
+def _corr_seeds(pc, oc, res=REG_RES, limit=REG_MAX, k=2, sep_mm=6.0):
+    """Translations at which the two SOLID masks overlap most, from one FFT.
+
+    IoU = inter / (|A| + |B| - inter) rises strictly with `inter` whenever |A|
+    and |B| are fixed, which under a translation of a ZERO-PADDED mask they
+    are — so the cross-correlation peak is the IoU optimum, scanned at `res`
+    over EVERY offset inside `limit`, for the cost of one transform. A grid
+    search cannot buy that: at 2 mm steps it costs 1,257 evaluations (73 s on
+    becker_lc_large, against 4.9 s for the whole present search) and is STILL
+    not safe, because a basin can be one thread wide — the fixture in
+    `test_registration_crosses_a_flat_zero_overlap_plateau` has a 2 mm one.
+
+    These are only SEEDS. Padding makes this correlation a slightly different
+    function from the border-blurred raster `at()` scores (measured: they
+    disagree by up to 0.012 IoU on becker), so the hill-climb below still
+    decides, and the pre-existing seeds are still climbed — adding a seed can
+    only raise the best value found FOR A GIVEN objective. That is not the
+    same as "nothing can change": `register` also widened the frame the
+    objective is computed on, which is a real change of the objective and did
+    move one arm of the plateau fixture (0.494 -> 0.397, correctly — see
+    there).
+
+    Measured against the pre-change code over the real corpus — each prepped
+    pair as-prepped, plus one arm per colour block with that block deleted
+    from one side (the brief's "a whole element the other file never sews").
+    Every pair AS PREPPED was already at the exhaustive optimum, so on the
+    corpus's own working range this changes nothing but the ~0.002 of border
+    inflation the wider frame removes. Under the drop-an-element stress it
+    changes one arm and changes it a lot: `gaulke_roofing_hat` minus our
+    block 0 went from `0.0036 @ (+2.00, -0.50)` to the true optimum
+    `0.0068 @ (-15.00, +4.75)` — 17.79 mm of wrong alignment on real thread.
+
+    That arm's fill ratio (solid area / bbox area of the thinner side) is
+    0.003. Sorted by it, the 80 arms at 0.222 and above all pick the SAME
+    alignment old and new; the corpus has nothing between 0.003 and 0.222.
+    So the defect is real on real geometry but lives only where what is left
+    is scraps — 0.99 m of thread against the pro's 13.02 m.
+    Full write-up: `docs/registration-plateau-2026-09-11.md`.
+    """
+    pad = int(limit / res) + 4
+    A = np.pad(pc, pad).astype(np.float32)
+    B = np.pad(oc, pad).astype(np.float32)
+    H, W = A.shape
+    corr = np.fft.irfft2(np.fft.rfft2(A) * np.conj(np.fft.rfft2(B)), s=(H, W))
+    corr = np.rint(corr).astype(np.int64)       # overlap counts are integers
+    n = int(limit / res)
+    ks = np.arange(-n, n + 1)
+    win = corr[np.ix_(ks % H, ks % W)].astype(np.float64)
+    yy, xx = np.meshgrid(ks * res, ks * res, indexing="ij")
+    win[yy * yy + xx * xx > limit * limit] = -1.0
+    out, r = [], max(1, int(sep_mm / res))
+    for _ in range(k):
+        i, j = np.unravel_index(np.argmax(win), win.shape)
+        if win[i, j] <= 0:                      # nothing overlaps anywhere
+            break
+        out.append((round(float(xx[i, j]), 2), round(float(yy[i, j]), 2)))
+        win[max(0, i - r):i + r + 1, max(0, j - r):j + r + 1] = -1.0
+    return out
+
+
 def register(pro_segs, our_segs, bb):
     """Best translation of OURS onto PRO. Pro keeps its native hoop origin and
     ours is bbox-centred, so raw overlap can be meaningless (machine_beanie is
-    26.7 mm apart in y). Seeds at both no-shift and bbox-centre delta, then
-    hill-climbs on solid IoU, 1.0 mm down to 0.25 mm."""
+    26.7 mm apart in y). Seeds at no-shift, at the bbox-centre delta and at the
+    cross-correlation peaks, then hill-climbs on solid IoU, 1.0 mm to 0.25 mm.
+
+    The correlation seeds are not an optimisation — they are the only thing
+    that makes this search safe. A bbox centre is moved by half the excursion
+    of any element ONE side sews, so when the two files' extra content is
+    asymmetric the seed lands off-register; and if the shared geometry is
+    narrower than that error, the two masks then touch NOWHERE and a local
+    climb has no gradient to follow in any direction. It returns the bad seed
+    with iou 0.0 and says nothing. `pairframe.register_pair` is the exposed
+    caller: it applies that same bbox-centre delta ITSELF before calling here,
+    which also collapses the two original seeds into one identical (0, 0).
+    """
+    # The frame must hold every LEGAL shift. `bounds()` pads 8 mm and the
+    # search may move ours 40, so without this a shift that carries thread
+    # off the raster has it silently dropped from the union — which RAISES
+    # IoU. The old local search rarely reached that far and so rarely
+    # collected the bonus; a search that actually explores would chase it.
+    # Measured on the plateau fixture below: the y-flipped arm scored 0.494
+    # against the unflipped 0.404 purely because 15 of its 44 mm2 had fallen
+    # out of frame. Padding here (not in `bounds()`, which the scoring
+    # rasters share) also makes |ours| translation-invariant, which is the
+    # assumption `_corr_seeds` rests on.
+    bb = (bb[0] - REG_MAX, bb[1] - REG_MAX, bb[2] + REG_MAX, bb[3] + REG_MAX)
     pc = solid(raster(pro_segs, bb, res=REG_RES), res=REG_RES)
+    oc0 = solid(raster(our_segs, bb, res=REG_RES), res=REG_RES)
 
     def centre(segs):
         xs = [s[0] for s in segs] + [s[2] for s in segs]
@@ -350,10 +433,13 @@ def register(pro_segs, our_segs, bb):
     pcx, pcy = centre(pro_segs)
     ocx, ocy = centre(our_segs)
     seeds = [(0.0, 0.0), (round(pcx - ocx, 2), round(pcy - ocy, 2))]
+    seeds += _corr_seeds(pc, oc0)
     best = (0.0, 0.0, at(0.0, 0.0))
+    seen = set()
     for sx, sy in seeds:
-        if math.hypot(sx, sy) > REG_MAX:
+        if math.hypot(sx, sy) > REG_MAX or (sx, sy) in seen:
             continue
+        seen.add((sx, sy))
         cx, cy, cur = sx, sy, at(sx, sy)
         if cur > best[2]:
             best = (cx, cy, cur)

@@ -1,0 +1,12 @@
+logo_whitebg on White: OFF 4550 st / 6 tr / 5 cones; ON 4550 st / 6 tr / 5 cones; 0/1 holes sew; dE00 0.0
+logo_whitebg on Natural: OFF 4550 st / 6 tr / 5 cones; ON 4550 st / 6 tr / 5 cones; 0/1 holes sew; dE00 6.42
+logo_whitebg on Navy: OFF 4550 st / 6 tr / 5 cones; ON 5121 st / 7 tr / 6 cones; 1/1 holes sew; dE00 75.21
+logo_whitebg on Black: OFF 4550 st / 6 tr / 5 cones; ON 5121 st / 7 tr / 6 cones; 1/1 holes sew; dE00 100.0
+logo_gaulke_roofing on White: OFF 9078 st / 23 tr / 2 cones; ON 13057 st / 66 tr / 3 cones; 46/46 holes sew; dE00 100.0
+logo_gaulke_roofing on Natural: OFF 9078 st / 23 tr / 2 cones; ON 13057 st / 66 tr / 3 cones; 46/46 holes sew; dE00 88.57
+logo_gaulke_roofing on Navy: OFF 9078 st / 23 tr / 2 cones; ON 13057 st / 66 tr / 3 cones; 46/46 holes sew; dE00 21.29
+logo_gaulke_roofing on Black: OFF 9078 st / 23 tr / 2 cones; ON 9078 st / 23 tr / 2 cones; 0/46 holes sew; dE00 0.0
+logo_golden_tee on White: OFF 6677 st / 59 tr / 11 cones; ON 6677 st / 59 tr / 11 cones; 0/4 holes sew; dE00 0.0
+logo_golden_tee on Natural: OFF 6677 st / 59 tr / 11 cones; ON 6677 st / 59 tr / 11 cones; 0/4 holes sew; dE00 6.42
+logo_golden_tee on Navy: OFF 6677 st / 59 tr / 11 cones; ON 9704 st / 66 tr / 12 cones; 4/4 holes sew; dE00 75.21
+logo_golden_tee on Black: OFF 6677 st / 59 tr / 11 cones; ON 9704 st / 66 tr / 12 cones; 4/4 holes sew; dE00 100.0

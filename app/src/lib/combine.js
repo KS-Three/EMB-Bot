@@ -29,16 +29,50 @@
 // trailing) from each input's stitches before splicing, and does not append
 // one to the combined result — the encoders don't need it, and leaving one
 // in mid-stream actively breaks PES.
+// ---- `runs`: the run-span index, and why it is all-or-nothing -----------
+// A design carries `runs` — spans of `{i0, i1, kind, shape, role, block}`
+// over `stitches` — so the renderer can draw a satin column differently from
+// a tatami fill and the UI can say whether a border was actually generated.
+// Both lanes emit it: `digitizer_core/adapter.py` for a digitized design (and
+// it owns the contract), `src/digitize.js`'s pushSpan for one built in the
+// browser. Its load-bearing property is that the spans PARTITION the stitch
+// records: every one is covered, none twice.
+//
+// Combining has to preserve that or drop it. Two things move the indices
+// here and both must be counted, not assumed: every `end` record stripped out
+// of an input (interior or trailing — see the note above) pulls its design's
+// later stitches DOWN by one, and the trim/color spliced before an input
+// pushes it UP by one or two. So the mapping is a running delta per design,
+// never `i0 + offset`.
+//
+// If any input that SEWS lacks `runs`, the combined design carries none at
+// all. A partial index would still look like a partition to a reader and
+// would leave unclaimed the stitches of an element that never had spans — a
+// wrong render with no symptom. The fallback (no `runs`, draw everything as
+// ordinary stitching) is honest, and it is what every design produced before
+// the index existed already gets.
+//
+// "that sews" is the one exception and it is not a loophole: an element whose
+// font cannot sew any of its characters comes back with no stitches and no
+// `runs` (`emptyWith` in digitize.js). It claims no records, so it can leave
+// none unclaimed, and dropping the index over it would punish every other
+// element for one unsupported character.
 export function combineDesigns(designs) {
   const list = (designs || []).filter(Boolean);
   if (list.length === 0) return null;
   // Single design in -> returned structurally unchanged (same stitches) —
   // no "end" stripping, no rebuilt fields. Whatever the builder produced
-  // (with or without a trailing "end") passes straight through.
+  // (with or without a trailing "end") passes straight through. Its `runs`,
+  // if it has one, is still an index into the very array being returned.
   if (list.length === 1) return list[0];
 
   const stitches = [];
   const colors = [];
+  // Nulled by the loop the moment a stitch-bearing input turns out to have no
+  // index, or to carry one that does not describe its own records. Started
+  // only when there is something to carry, so a project of browser-built
+  // designs on an engine without spans does no work at all.
+  let runs = list.some((d) => Array.isArray(d.runs)) ? [] : null;
   let nSatin = 0, nFill = 0, nTrims = 0, haveDebug = false;
 
   list.forEach((d, i) => {
@@ -65,14 +99,38 @@ export function combineDesigns(designs) {
     const first = (d.colors || [])[0];
     const prev = colors[colors.length - 1];
     const mergesWithPrevious = i > 0 && !!first && !!prev && sameThread(prev, first);
+    // Where this design's colours will land. Read BEFORE the push below, and
+    // shifted by one when the splice merged its first block into the previous
+    // design's last — the same shift the colours themselves take.
+    const colorBase = colors.length - (mergesWithPrevious ? 1 : 0);
     if (i > 0) {
       const last = stitches[stitches.length - 1] || { x: 0, y: 0 };
       stitches.push({ x: last.x, y: last.y, type: "trim" });
       if (!mergesWithPrevious) stitches.push({ x: last.x, y: last.y, type: "color" });
     }
-    for (const s of d.stitches || []) {
-      if (s.type === "end") continue;
+    // The splice records are in; everything this design contributes starts
+    // here. `dropped` is the running delta the `end` strip opens up.
+    const base = stitches.length;
+    const srcStitches = d.stitches || [];
+    // src index -> combined index, or -1 for a record that was dropped. Built
+    // only when there is an index to remap, since it costs one entry per
+    // stitch of every element.
+    const at = runs ? new Int32Array(srcStitches.length) : null;
+    let dropped = 0, sewn = 0;
+    for (let k = 0; k < srcStitches.length; k++) {
+      const s = srcStitches[k];
+      if (s.type === "end") {
+        if (at) at[k] = -1;
+        dropped++;
+        continue;
+      }
+      if (at) at[k] = base + k - dropped;
+      if (s.type === "stitch") sewn++;
       stitches.push(s);
+    }
+    if (runs) {
+      if (Array.isArray(d.runs)) runs = remapSpans(runs, d.runs, at, colorBase, (d.colors || []).length);
+      else if (sewn > 0) runs = null;   // it sewed and said nothing about it
     }
     // When the splice carried no colour change, this design's first block is
     // a continuation of the previous one — the colours array has to lose the
@@ -98,8 +156,39 @@ export function combineDesigns(designs) {
     stitchCount,
     colorCount: colors.length,
   };
+  // Absent, not empty, when there is nothing trustworthy to say — `[]` would
+  // read as "this design contains no runs" and a renderer keying off the
+  // index would draw nothing over a design full of stitches.
+  if (runs) combined.runs = runs;
   if (haveDebug) combined._debug = { nSatin, nFill, nTrims };
   return combined;
+}
+
+// One element's spans, moved onto the combined record array. Returns the
+// accumulator with this element's spans appended, or `null` to abandon the
+// whole index — which is what happens the moment a span does not describe
+// what it claims to, because half an index is indistinguishable from a whole
+// one to every reader.
+function remapSpans(acc, spans, at, colorBase, colorCount) {
+  if (!Array.isArray(spans)) return null;
+  for (const s of spans) {
+    const i0 = at[s.i0];
+    const i1 = at[s.i1];
+    // -1 is a record that was stripped, undefined an index off the end of the
+    // element's own stitches. Either means the span was not describing this
+    // array — a span covers `stitch` records only and none of those are ever
+    // dropped here, so neither can happen on a well-formed input.
+    if (!(i0 >= 0) || !(i1 >= 0) || i1 < i0) return null;
+    // The strip cannot reach INSIDE a span (no `end` record sits between two
+    // stitches of one run), so a span's length has to survive the move. If it
+    // did not, the index is describing some other array.
+    if (i1 - i0 !== s.i1 - s.i0) return null;
+    if (!(s.block >= 0) || s.block >= colorCount) return null;
+    const block = colorBase + s.block;
+    if (block < 0) return null;
+    acc.push({ i0, i1, kind: s.kind, shape: s.shape, role: s.role, block });
+  }
+  return acc;
 }
 
 // Two colour entries name the same thread. Compared on r/g/b alone: `name`

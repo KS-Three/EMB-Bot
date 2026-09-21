@@ -9,6 +9,21 @@
     return { x: p.x * cos - p.y * sin, y: p.x * sin + p.y * cos };
   }
 
+  // Principal-axis angle (degrees) of a set of polygons — the angle a fill's
+  // rows run at when nothing overrides them. Lived in digitize.js until the
+  // lettering lane needed the same rule for a wide column (quality review
+  // item 10); it is here so there is ONE definition rather than two that can
+  // drift. digitize.js still calls it under its own name.
+  function pcaAngleDeg(polys) {
+    let n = 0, mx = 0, my = 0;
+    for (const p of polys) for (const q of p) { mx += q.x; my += q.y; n++; }
+    if (!n) return 45;
+    mx /= n; my /= n;
+    let sxx = 0, syy = 0, sxy = 0;
+    for (const p of polys) for (const q of p) { const dx = q.x - mx, dy = q.y - my; sxx += dx * dx; syy += dy * dy; sxy += dx * dy; }
+    return 0.5 * Math.atan2(2 * sxy, sxx - syy) * 180 / Math.PI;
+  }
+
   // Tatami scan-line fill across one or more polygons.
   // polygons: Array<Array<{x,y}>>; even-odd parity across ALL polygons (holes respected).
   // opts: { rowSpacing, angleDeg=0, maxStitch }
@@ -208,5 +223,6 @@
   return {
     tatamiFill,
     runningOutline,
+    pcaAngleDeg,
   };
 });

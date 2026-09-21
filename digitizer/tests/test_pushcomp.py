@@ -258,8 +258,26 @@ def rail_overhang(art: Polygon, pts) -> float:
 # tuples on the same tree. `towel` is left as it was: its tuple is the
 # original machine's, the platform red CI deselects, and nothing reproduces
 # it anywhere (this tree prints 6168 stitches for it on both machines).
+# RE-PINNED 2026-09-13, `left_chest` ONLY, for `cfg.keep_thin_strokes` ON by
+# default (Kent's ruling on `docs/thin-strokes-flip-2026-09-13.md`: "Flip it —
+# take gaulke and becker as the price"). One entry moves, for the one
+# mechanism `tests/test_keep_thin_strokes.py` documents: whitebg's ~1.2 mm²
+# teal patch is contrasting, clears the run tier's floors and is kept as its
+# own teal run instead of being absorbed into the white ground — 4550 -> 4575
+# stitches, 14231 -> 14318 DST bytes, one more block and cone. Earned the same
+# way as the pins above: a worktree at the pre-change commit (`5d7277c`)
+# reproduces ("d1efd02801fe0955b393", 4550, 14231) byte-for-byte on this
+# machine, so what moved is the engine. Both `ribbon_curve` entries are the
+# control and print identically before and after (the flat lane finds nothing
+# contrasting to keep there). `towel` stays un-re-pinned for the standing
+# reason: the pre-change tree returns ("ac2b95d66294793a8a98", 6168, 19082)
+# here, not the committed tuple, so this machine may not write it — the new
+# engine gives ("9f5846a3c3206e41cfdf", 6185, 19148) here, recorded for
+# whoever re-pins it where it reproduces. Note `tools/pushcomp_pins.py` prints
+# tuples WITHOUT `edge_cap="none"` and so no longer matches this test's own
+# call; these were computed through the test's exact two lines.
 GOLDEN_FLAG_OFF = {
-    ("logo_whitebg.png", "left_chest"): ("d1efd02801fe0955b393", 4550, 14231),
+    ("logo_whitebg.png", "left_chest"): ("89788936d8ce5223b304", 4575, 14318),
     ("logo_whitebg.png", "towel"): ("98c918e7c1576e46f623", 3258, 10349),
     ("ribbon_curve.png", "left_chest"): ("723d6913a38596ea5a94", 991, 3497),
     ("ribbon_curve.png", "hat_front"): ("fec9e9e6401f55d4c1dc", 995, 3509),
@@ -278,8 +296,13 @@ def test_flag_off_is_byte_identical_to_the_shipped_engine(fixture, garment, requ
     from digitizer_core import run_stages
     from .conftest import TESTDATA
 
-    base = run_stages(TESTDATA / fixture, cfg())
-    plan = plan_stitches(base, cfg(garment_id=garment))
+    # `edge_cap="none"`, 2026-09-11: this hash is the ISOTROPIC baseline the
+    # whole directional-comp lane rides on, and the design-silhouette cap
+    # (flipped ON that day) adds a block without touching the compensation
+    # this measures. Re-pinning the hash would retire the baseline to record
+    # a change it was never about — `conftest.PRE_FLIP`'s posture.
+    base = run_stages(TESTDATA / fixture, cfg(edge_cap="none"))
+    plan = plan_stitches(base, cfg(garment_id=garment, edge_cap="none"))
     blob = export_dst(plan)
     want_hash, want_n, want_bytes = GOLDEN_FLAG_OFF[(fixture, garment)]
     got_n = sum(len(r.points) for b in plan.blocks for r in b.runs)

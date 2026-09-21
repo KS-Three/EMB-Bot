@@ -85,6 +85,48 @@ def test_registration_recovers_a_pure_translation():
     assert reg > 0.95, "a pure translation must register back to near-identity"
 
 
+def test_registration_crosses_a_flat_zero_overlap_plateau():
+    """The seed can land where the two files do not touch AT ALL, and a purely
+    local search has no gradient to follow out of that.
+
+    The shape that exposed it (`test_pro_diff.py::test_shape_tags_split_by_ink`,
+    where it was first worked around with ballast geometry rather than fixed):
+    one satin bar identical in both files, plus EXTRA bars on each side at
+    different distances -- the pro's reaching y=18, ours reaching y=26. The two
+    files' bbox centres are then 4 mm apart, so `pairframe.register_pair`'s
+    centre-to-centre pre-shift (applied here by hand, since that is the caller
+    that produces this input) puts the shared bar 4 mm out of register. A 2 mm
+    bar displaced 4 mm overlaps nothing, so IoU is a FLAT ZERO from -2 to +2 mm
+    around the seed: the hill-climb's first 1 mm probe reads 0 in all eight
+    directions and it returns the seed with iou 0.0, while the true optimum
+    (undo the pre-shift: the shared bars land on each other) scores 0.40.
+    """
+    pro = (satin_column(0, 0, 20, 2.0) + satin_column(0, 8, 10, 2.0)
+           + satin_column(0, 16, 10, 2.0))
+    ours = satin_column(0, 0, 20, 2.0) + satin_column(0, 24, 10, 2.0)
+
+    def bbox_centre(segs):                      # pairframe.centre, verbatim
+        xs = [s[0] for s in segs] + [s[2] for s in segs]
+        ys = [s[1] for s in segs] + [s[3] for s in segs]
+        return (min(xs) + max(xs)) / 2, (min(ys) + max(ys)) / 2
+
+    (pcx, pcy), (ocx, ocy) = bbox_centre(pro), bbox_centre(ours)
+    pre_x, pre_y = pcx - ocx, pcy - ocy
+    assert (pre_x, pre_y) == pytest.approx((0.0, -4.0), abs=1e-9), "fixture moved"
+    ours = sc.shifted(ours, pre_x, pre_y)
+    bb = sc.bounds(pro, ours)
+
+    # the plateau itself: no gradient anywhere the local search can reach
+    assert sc._iou(sc.solid(sc.raster(pro, bb, res=sc.REG_RES), res=sc.REG_RES),
+                   sc.solid(sc.raster(ours, bb, res=sc.REG_RES, shift=(0.0, 0.0)),
+                            res=sc.REG_RES)) == 0.0
+    dx, dy, reg = sc.register(pro, ours, bb)
+
+    assert dy == pytest.approx(-pre_y, abs=0.3), "must undo the bad pre-shift"
+    assert dx == pytest.approx(0.0, abs=0.3)
+    assert reg > 0.35, f"the shared bar must find its partner (optimum 0.404), got {reg}"
+
+
 def test_registration_will_not_teleport_a_design_to_fake_agreement():
     """The search is bounded, so it cannot solve a real placement error by
     sliding a design halfway across the hoop."""

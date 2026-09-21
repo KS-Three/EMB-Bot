@@ -609,13 +609,22 @@ def reconstruct(blocks, threads, cvs, path, meta_path):
     return meas, flags
 
 
-def run_ours(art_path, width_mm, outdir, garment_id=None):
-    """`garment_id=None` (the default, and what every run before 2026-08-15
-    used) leaves `fabrics.py` on `DEFAULT_FABRIC_ID = "pique_knit"` — a polo
-    left chest — for every design including cap fronts and beanies. Passing the
+def parity_config(width_mm, garment_id=None, **extra):
+    """The `PipelineConfig` every parity run is measured with — what `run_ours`
+    used to build inline, now callable on its own so a re-digitized arm can
+    build the SAME config plus its own flag overrides, instead of forking this
+    logic.
+
+    `garment_id=None` (the default, and what every run before 2026-08-15 used)
+    leaves `fabrics.py` on `DEFAULT_FABRIC_ID = "pique_knit"` — a polo left
+    chest — for every design including cap fronts and beanies. Passing the
     real garment picks up that garment's pull compensation and underlay style.
     Kept optional so existing callers reproduce their recorded numbers exactly;
     see docs/pro-parity-real-art-2026-08-15.md §5b.
+
+    `extra` is applied LAST, by `setattr`, and an unknown field name raises
+    `TypeError` rather than becoming a stray attribute nothing reads (the
+    fill_density_boost lesson below).
     """
     cfg = PipelineConfig()
     cfg.garment_id = garment_id
@@ -697,6 +706,37 @@ def run_ours(art_path, width_mm, outdir, garment_id=None):
               "every pro-parity number before 2026-08-15 was measured with.",
               flush=True)
     cfg.target_width_mm = round(width_mm, 1)
+    for k, v in extra.items():
+        if k not in PipelineConfig.__dataclass_fields__:
+            raise TypeError(f"PipelineConfig has no field {k!r}")
+        setattr(cfg, k, v)
+    return cfg
+
+
+def write_regions(res, outdir):
+    """`ours_regions.json`: the ARTWORK polygon stage 7 classifies satin-vs-fill
+    on — the same object `is_satin_candidate` is handed — so a probe can
+    re-ask the classifier's question about a prepped design without
+    re-running stages 0-4 and risking a different config than the one that
+    produced these stitches. Rounded to 3 dp: sub-micron precision on a
+    polygon measured in millimetres is noise, and the full float repr triples
+    the file size."""
+    regions = [{"shape_id": r.shape_id, "area_mm2": round(r.area_mm2, 1),
+                "thread": r.thread_number, "tier": r.meta.get("tier"),
+                "bounds": [round(v, 1) for v in r.polygon.bounds],
+                "wkt": shapely.wkt.dumps(r.polygon, rounding_precision=3)}
+               for r in res.regions]
+    p = Path(outdir) / "ours_regions.json"
+    p.write_text(json.dumps(regions, indent=1))
+    return p
+
+
+def run_ours(art_path, width_mm, outdir, garment_id=None):
+    """Builds the config via `parity_config` and runs the engine on it. See
+    `parity_config` for the `garment_id` / env-var / `fill_density_boost`
+    semantics — this function just wires the result through `run_stages`.
+    """
+    cfg = parity_config(width_mm, garment_id)
     res = run_stages(str(art_path), cfg)
     plan = plan_stitches(res, cfg)
     # trim/jump are the engine's OWN run flags (stitches.iter_machine_commands
@@ -757,18 +797,7 @@ def run_ours(art_path, width_mm, outdir, garment_id=None):
             "len_p90": round(lens[9 * n // 10], 2) if n else 0,
         })
     (outdir / "ours_blocks.json").write_text(json.dumps(summary, indent=1))
-    # `wkt` is the ARTWORK polygon stage 7 classifies satin-vs-fill on — the
-    # same object `is_satin_candidate` is handed — so a probe can re-ask the
-    # classifier's question about a prepped design without re-running stages
-    # 0-4 and risking a different config than the one that produced these
-    # stitches. Rounded to 3 dp: sub-micron precision on a polygon measured in
-    # millimetres is noise, and the full float repr triples the file size.
-    regions = [{"shape_id": r.shape_id, "area_mm2": round(r.area_mm2, 1),
-                "thread": r.thread_number, "tier": r.meta.get("tier"),
-                "bounds": [round(v, 1) for v in r.polygon.bounds],
-                "wkt": shapely.wkt.dumps(r.polygon, rounding_precision=3)}
-               for r in res.regions]
-    (outdir / "ours_regions.json").write_text(json.dumps(regions, indent=1))
+    write_regions(res, outdir)
     return res, plan, ours_blocks, [tuple(b.rgb) for b in plan.blocks]
 
 

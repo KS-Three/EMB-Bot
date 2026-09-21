@@ -16,10 +16,13 @@
 // that DST round-trips its own stitch count; it does NOT assert byte content,
 // which is crossval-stitch-formats.test.js's job against pystitch.
 //
-// Note DST here is EMB-Bot's own codec, which is transposed against the
-// Tajima convention and is EMB-Bot-internal only (CLAUDE.md, and
+// Note DST here is EMB-Bot's own codec. It was transposed against the Tajima
+// convention, and EMB-Bot-internal for that reason, until 2026-09-08; it is
+// standard-conformant now (CLAUDE.md, and
 // .claude/memory/dst-codec-axis-discrepancy). A self round-trip is still the
-// right check: it detects the encoder breaking, which is what this guards.
+// right check HERE: it detects the encoder breaking, which is what this
+// guards. Conformance against a standard reader is
+// crossval-stitch-formats.test.js's job, not this file's.
 const assert = require("node:assert");
 const { test } = require("node:test");
 const fs = require("node:fs");
