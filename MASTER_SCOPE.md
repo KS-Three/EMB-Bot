@@ -199,13 +199,9 @@ icon. Cloth pointers added to defects 3, 6 and 16 below.
 
 44. **Satin borders sat 1.9 mm INSIDE every abutting colour — FIXED 2026-09-09 (Kent's ruling: the colour sewn on top owns a shared seam).** `_yield_frontage` (2026-08-06) had the LATER shape retreat its whole circuit column + margin off any seam an earlier border already held; on a flat logo every colour abuts, so on the Instagram icon (`border="auto"`, 80 mm, flat) **14 of 17** bordered shapes sewed a satin stripe a median 1.4–1.9 mm inside their own fill and one lost its border outright — its own test pinned the inset as wanted, and nobody saw it for a month because the Studio could not reach `cfg.border` until #318. Now `stage7_sequence._owned_by_later` hands each seam to the bordered shape still to sew over it and `stage6_border.border_runs(omit=…)` sews the shape underneath as open arcs on the rest of its edge: every bordered shape has half its penetrations ON its visible edge (p10 0.00 mm), 33,292 → **30,420** st, trims 34 → 30, and `BORDER_SEAM_SHARED` is a note naming the pairs. Found under it: two abutting visible edges are NOT one curve (each side is its own DP contour of the same pixel boundary; p90 0.09–0.43 mm apart), so the seam tolerance is `2 × simplify_tol_mm`, not 0.02 mm — the hair-width found half of every seam and sewed 28 stubs of 1.6–2.4 mm on one ring. A fully enclosed EARLY shape now gets no border of its own (the ring over it borders that seam) — by the rule; a sew-out judges the look. Prediction blind spots (a fill whose rows all degenerate, a `photo_width_floor` reroute, a gradient shape riding the design ramp) leave one seam unbordered or doubled, never a stripe. *(measured 2026-09-09 — `tests/test_border.py` seam section, 32 passing; DOCTRINE standing ruling; memory `border-seam-ownership-2026-09-09`)*
 
-45. **No fabric preset declares the stabilizer it assumes — backing is guessed from STITCH COUNT instead.** Law 33: every preset silently presumes a backing (knit → cutaway, towel → tearaway + topper, cap → buckram), and the preset is only valid if that backing is on the machine. `Fabric` has no `assumed_backing` field, so two places infer it from stitch count — `preflight.STITCHES_CUTAWAY_MIN` → `STABILIZER_CUTAWAY`, and `src/pdfsheet.js`'s `CUTAWAY_STITCHES` line. A 30,000-stitch design on canvas is told cutaway; a 9,000-stitch one on jersey is told nothing. This also blocks the Part 3 worksheet contract, which cannot print an assumption the engine never made. Desk-safe by the playbook's own column — the mapping is published, not a physical constant, so gate 1 does not reach it. *(confirmed 2026-09-20 — playbook row 3; `docs/scope/machine-physics-backlog.md`)*
-
 46. **The smoothness score exists and preflight cannot see it.** Law 37 asks for a monotonic direction-change score with no cutoff, and `tools/edge_smoothness.py`, `curve_fidelity.py`, `edge_wobble.py` and `curve_tiers.py` are exactly that — offline. No smoothness/roughness/churn code appears among preflight's 24 codes or `warnings_codes.py`'s 58, so the grade a customer sees is blind to Kent's most frequent complaint. `edge_smoothness.py`'s own docstring is the evidence: *"`preflight` graded `logo_whitebg` **A 100**"* on a design he calls not smooth, and `becker_marine_logo` B 76 where he calls the edges jagged. Desk-safe, and the cheapest row on the list — the instrument is built, the output ships, nothing connects them. **Not to be confused with `curve_turn_deg`** (a stage-4 vertex refinement on input geometry), which an earlier read scored as this. *(confirmed 2026-09-20 — playbook row 17; `docs/scope/machine-physics-backlog.md`)*
 
 47. **`overlap_mm` is one scalar at 0.25 mm, against a law that wants 1.0–2.0.** Law 26: objects sew narrower than drawn, so parallel stitch directions meeting need 1.0 mm overlap on wovens and 1.5–2.0 on knits/fleece, near-perpendicular needs ~0 (the top layer bridges), and engineered gaps under ~0.8 mm close up regardless. `config.py:918` `overlap_mm: float = 0.25` is angle-blind, fabric-blind, and sits under the law's own close-up threshold. No forbid-gap rule exists. The playbook marks the defaults desk-safe and gates only the knit value, so most of this is buildable now. *(confirmed 2026-09-20 — playbook row 9; `docs/scope/machine-physics-backlog.md`)*
-
-48. **No machine-time model, so nothing quotes a runtime.** Law 36: machine time is set by the stitch-length distribution and the stops, not the nameplate — plan at ~650 spm, one trim ≈ 120 stitch-equivalents, and trims and stops are unbilled margin loss (10 avoidable trims on a 144-piece run ≈ 4.4 machine-hours). `THREAD_LENGTH_FACTOR = 1.35` is built; there is no spm model and no `TRIM_COST`. The only `spm` in the engine is two appliqué-scoped constants. This is what holds the cost card at partial (row 16) and keeps runtime off the worksheet — `estimate.js` gives stitches, thread changes, trims and metres, and cannot give time. Desk-safe; the constants are trade-sourced but the model is arithmetic, not a physical constant. *(confirmed 2026-09-20 — playbook rows 6 and 16; `docs/scope/machine-physics-backlog.md`)*
 
 ### Closed — kept numbered, because ten other docs cite them by number
 
@@ -215,6 +211,8 @@ these, and ten other docs cite the numbers.** Caveats on 3, 16 and 17 moved to
 DOCTRINE 2026-09-14.
 
 1. shade-thread collapse (`_shade_blocks`) — RESOLVED 2026-08-19.
+45. no preset declared its assumed stabilizer; backing was guessed from stitch count — RESOLVED 2026-09-20 (`Fabric.assumed_backing` / `needs_topper`, both engines; the worksheet prints both). Playbook law 33.
+48. no machine-time model, so nothing quoted a runtime — RESOLVED 2026-09-20 (`machine.PLAN_SPM` 650, `TRIM_COST_STITCHES` 120; the worksheet prints "Run time ~N min … incl. trims"). Playbook laws 36/38.
 41. the review screen quoted a sew-out's cost on one lane and nothing on the other — FIXED 2026-09-07 (`lib/estimate.js`, browser-side only when the service said nothing). Full text: scope-history 09-20.
 42. five buyer-visible Studio-screen defects, all found by driving the app — ALL FIXED 2026-09-08 (#416/#417/#418). Full text: scope-history 09-20. Still the evidence for At-a-glance area 3's "driving, not reading" note.
 3. 14 jump-trims on an 80mm design — RETIRED 2026-09-01 (Kent) as UNREPRODUCIBLE. Do NOT read the 08-31 repro as a regression (DOCTRINE 09-14). Live concern: defect 4.
@@ -508,9 +506,12 @@ Audited row by row against `main` in
 only **row 2** (the pull-comp mm table) is blocked by gate 1; the other four the
 playbook itself marks desk-safe. Rows 7 and 8 are gated behind
 `cfg.directional_comp` on purpose — gate 1, do not flip.
-**Kent's call 2026-09-20: promote four, list the rest.** Rows 3, 17, 9 and 6 are
-now defects **45–48**; the remaining desk-safe gaps stay in the backlog doc with
-their buildability column intact.
+**Kent's call 2026-09-20: promote four, list the rest.** Rows 3, 17, 9 and 6
+became defects **45–48**; the remaining desk-safe gaps stay in the backlog doc
+with their buildability column intact. **Two closed the same day** — 45 (row 3,
+`assumed_backing`) and 48 (row 6, `PLAN_SPM`/`TRIM_COST_STITCHES`) shipped in
+the operator bundle, which also closed Part 3's backing, topper and runtime
+lines. **46 and 47 are still open** and still desk-safe.
 *(audited 2026-09-20 — code read, `origin/main` 1ac731cd)*
 
 ---

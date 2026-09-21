@@ -19,10 +19,10 @@ intact — rather than spending a permanent number on all thirteen, or on none.
 
 | Playbook row | MASTER_SCOPE defect |
 |---|---|
-| 3 — `assumed_backing` per preset | **45** (also unblocks the Part 3 worksheet) |
+| 3 — `assumed_backing` per preset | **45** — **CLOSED 2026-09-20** |
 | 17 — monotonic smoothness score | **46** |
 | 9 — overlap angle- and fabric-conditional | **47** |
-| 6 — speed model + `TRIM_COST` | **48** (also unblocks row 16's runtime) |
+| 6 — speed model + `TRIM_COST` | **48** — **CLOSED 2026-09-20** |
 
 Everything else here is status, not a commitment. The playbook's own column
 ("Desk-safe" vs "Sew-out-gated") is carried through as the sort key, because it
@@ -35,6 +35,10 @@ is the column that says which rows ROADMAP gate 1 actually blocks.
 Nothing was executed. Verdicts are scored against **`origin/main` at
 `1ac731cd`** — work parked on an open PR is called out as such, because a
 branch is not what ships.
+
+**Re-checked against `origin/main` later the same day (3ea82c4c):** rows 3 and
+6 moved to BUILT, and only those two. Rows 9, 17 and the rest were re-read and
+are unchanged.
 
 *(audited 2026-09-20 — code read, `origin/main` 1ac731cd)*
 
@@ -50,10 +54,10 @@ others absent · **Not built** = no implementation on `main`.
 |---|---|---|---|---|---|
 | 1 | 16, 27 | `fabrics.py` — per-fabric top spacing table + 0.35 mm engine floor | Desk-safe | **Not built** | `Fabric` carries `density_adjust` (a row-spacing MULTIPLIER), not a spacing table. No hard floor anywhere. |
 | 2 | 23 | `fabrics.py` — pull comp `base + slope × width` | **Sew-out-gated** | **Not built** | `pull_comp_mm: float`, one scalar per preset. Gate 1 blocks this one for real. |
-| 3 | 33 | `fabrics.py` — `assumed_backing` per preset | Desk-safe | **Not built** | No such field. Backing is *inferred from stitch count* in two places instead: `preflight.STITCHES_CUTAWAY_MIN = 25_000` → `STABILIZER_CUTAWAY`, and `src/pdfsheet.js`'s `CUTAWAY_STITCHES` line. That is the law's "declare it, don't hide it", inverted. |
+| 3 | 33 | `fabrics.py` — `assumed_backing` per preset | Desk-safe | **BUILT 2026-09-20** | `Fabric.assumed_backing` + `needs_topper`, both engines, kept in step by `test_fabric_wire.py`; the worksheet prints a `Stabilizer:` and a `Topper:` line. **Was:** no such field, and backing was *inferred from stitch count* in two places — `preflight.STITCHES_CUTAWAY_MIN` → `STABILIZER_CUTAWAY`, and `src/pdfsheet.js`'s `CUTAWAY_STITCHES` line — which was the law's "declare it, don't hide it", inverted. |
 | 4 | 28, 30 | `fabrics.py` — underlay ledger + knockdown on pile | Desk-safe | **Partial** | Ledger EXISTS and is consumed: `fill_underlay` / `satin_underlay` per preset, read at `stage7_sequence.py:1559` and passed as `underlay_style`. Missing: per-preset spacing/inset (`UNDERLAY_ZIGZAG_MM` 2.0, `UNDERLAY_LATTICE_MM` 2.5, `UNDERLAY_INSET_MM` 1.0 are engine-wide), "top spacing relaxes one step when underlay upgrades", and knockdown fill — zero hits repo-wide for knockdown / pile-taming / nap. Terry and fleece say "topping essential" in a `notes` STRING only. |
 | 5 | 17, 18 | `machine.py` — `NEEDLE_D`, `SAME_HOLE_R`, MIN_WALK/SATIN/FILL, <0.5 mm filter | Desk-safe | **Partial** | The sub-0.5 mm filter is real and applied across tiers (`if d >= machine.TINY_STITCH_MM` in `stage6_border`/`contour`/`detail`/`fill`). `MIN_STITCH_MM = 1.0` is ONE global floor, not the three per-technique floors (walk 1.5 / satin 1.0 / fill 2.0). No `NEEDLE_D`, no `SAME_HOLE_R` — preflight carries its own unrelated `_SAME_HOLE_QUANTUM_MM = 0.1`. |
-| 6 | 36, 38 | `machine.py` — speed model, `TRIM_COST`, thread budget | Desk-safe | **Partial** | `THREAD_LENGTH_FACTOR = 1.35` built. No spm model, no `TRIM_COST`. The only `spm` in the engine is two appliqué-scoped constants (`APPLIQUE_COVER_SPM = 700`, `APPLIQUE_TRIM_HEAVY_SPM = 650`). |
+| 6 | 36, 38 | `machine.py` — speed model, `TRIM_COST`, thread budget | Desk-safe | **BUILT 2026-09-20** | `PLAN_SPM = 650`, `TRIM_COST_STITCHES = 120`, `THREAD_LENGTH_FACTOR = 1.35`. Was: no spm model, no `TRIM_COST`. The only `spm` in the engine is two appliqué-scoped constants (`APPLIQUE_COVER_SPM = 700`, `APPLIQUE_TRIM_HEAVY_SPM = 650`). |
 | 7 | 22 | stage 5 — pull comp at penetration ends along the stitch angle | Desk-safe | **Gated** | `stage5_overlap.py:332` `directional = bool(cfg.directional_comp) and pull > 0`; `config.py:934` `directional_comp: bool = False`. The shipped path still dilates uniformly. |
 | 8 | 24 | stage 5 — push cutback 0.4 / 0.8 | **Sew-out-gated** | **Gated, and half absent** | `PUSH_CUTBACK_MM = 0.4` exists but is consumed ONLY under the same flag as row 7 (`stage7_sequence.py:1594`, `:1917` — `end_cutback_mm=(machine.PUSH_CUTBACK_MM if cfg.directional_comp else 0.0)`). The 0.8 border-junction value does not exist; `machine.py:484` says so in its own words: *"the border tier does not consume this yet"*. |
 | 9 | 26 | stage 5 — overlap angle- and fabric-conditional | Desk-safe defaults; gate the knit value | **Not built** | `config.py:918` `overlap_mm: float = 0.25`, scalar. That default is well under the law's 1.0–2.0 mm parallel-join figure and under its own 0.8 mm "engineered gaps below this close up" line. No forbid-gap rule. |
@@ -69,6 +73,11 @@ others absent · **Not built** = no implementation on `main`.
 **Tally: 1 built as specced (13, via the field note's revision), 1 built at
 divergent numbers (15), 2 built but gated off (7, 8), 8 partial (4, 5, 6, 10,
 12, 14, 16, 17), 5 not built (1, 2, 3, 9, 11).**
+
+**Updated 2026-09-20, same day:** rows **3 and 6 are now BUILT** (the operator
+bundle), so the standing tally is 4 built, 2 gated, 7 partial, 4 not built —
+and Part 3's backing, topper and runtime lines closed with them. Rows 17 and 9
+remain open as defects 46 and 47.
 
 ### What the buildability column says
 
@@ -100,15 +109,15 @@ stitch count (`CUTAWAY_STITCHES`).
 
 Missing against the contract:
 
-- assumed backing class and weight (blocked on row 3's `assumed_backing`; today
-  it is *guessed from stitch count*, which is the failure the law names)
-- topper yes/no
+- ~~assumed backing class and weight~~ **SHIPPED 2026-09-20** — `Fabric.assumed_backing`,
+  printed as a `Stabilizer:` line; the stitch-count guess is gone
+- ~~topper yes/no~~ **SHIPPED 2026-09-20** — `needs_topper`, printed as `Topper:`
 - needle spec (75/11 RG or SES; escalate to 80/12 for metallic)
 - tension targets in grams, with the satin-underside 1/3–2/3 check
 - the colour-stop → needle map. **DST carries no colour data, so the operator
   hand-maps every stop, every job** — the most concrete operator cost on this
   list
-- estimated runtime at 650 spm (blocked on row 6)
+- ~~estimated runtime at 650 spm~~ **SHIPPED 2026-09-20** — `Run time: ~N min at 650 spm (incl. trims)`
 - cap jobs: load orientation, ~900 spm, placement 0.5 in above bill
 
 Nothing here is a physical constant, so gate 1 does not reach any of it. The
