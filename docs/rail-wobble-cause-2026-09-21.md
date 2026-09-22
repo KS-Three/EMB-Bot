@@ -130,28 +130,86 @@ This is why five attempts have moved it ~10% and no further, and why the one
 cure that fixes the under-reach makes the roughness worse. **`line` and `fill`
 put thread on boundary geometry and inherit its cleanliness (std 0.000 /
 0.010). Satin reconstructs the edge from a medial axis plus a ray-cast
-half-width, and inherits that reconstruction's ambiguity instead.** The wobble
-is the residual of an unresolved disambiguation, not a placement bug.
+half-width, and inherits that reconstruction's ambiguity instead.**
 
-## 5. What follows — proposal, NOT built, NOT measured
+**Read the table as the shape of the trade, NOT as a list of suspects.** §5 and
+§6 went looking for the one that leaks and found that none of them does: every
+mechanism here is net-positive, and the wobble is what the model cannot
+represent once they have all done their jobs. The original version of this
+section ended "the wobble is the residual of an unresolved disambiguation, not
+a placement bug" — half right, and left on the record because the wrong half is
+the one a reader would act on.
 
-The ambiguity looks resolvable with information the pipeline already holds.
-The rays are cast against the whole region's boundary, but `extract_strokes`
-has already partitioned that region: a ray that leaves **this stroke's own
-corridor** has escaped, and one that stays has not. Clip each ray there and
-both `side_a` and `side_b` become trustworthy — at which point per-side
-placement (today's `follow_edge`) would no longer re-admit the escapes, which
-is the only recorded reason it roughens rails.
+## 5. The proposal that came out of §4 — TESTED THE SAME DAY, AND IT FAILED
 
-**Unproven.** It predicts one thing that is cheap to falsify: under a
-stroke-clipped ray, `follow_edge` ON should stop costing std (Becker
-0.097 → 0.137 today). If it still costs, this account is wrong.
+The idea was: clip each ray to the stroke's own corridor, so `side_a`/`side_b`
+both become trustworthy and `follow_edge` stops re-admitting escapes.
+
+**Its premise does not hold.** Two things killed it within the hour.
+
+**(a) The escape never reaches the rails on a clean junction.** A synthetic
+`⊢` — a 3 mm stem with one 13.5 mm arm running out of it perpendicular — puts
+7-8 stations in a band whose outward ray escapes down the arm and reports
+15 mm against a true 1.5 mm. The right rail comes out at **1.50 mm, exactly
+the stem edge, in every arm and at every stroke length tried** (stem half-length
+10.0 → 2.0 mm, escaping stations 7 of 51 up to 8 of 11, symmetric and
+`follow_edge` alike). The existing defences absorb it completely. A cure for a
+leak that does not leak is not a cure.
+
+**(b) The escape test I reached for cannot work anyway.** For a perpendicular
+junction the escaped hit's nearest spine vertex is still the firing station
+itself, so "the hit belongs to this station" does not reject it. A real test
+needs the *sibling* strokes' spines, which `_rail_points` is not given — so the
+cheap version of this proposal does not exist.
+
+## 6. The ablation — there is no mechanism to switch off
+
+`enthusiast_logo`, one defence removed at a time (same method as §2):
+
+| arm | satin n | std | p95 | corner> | end> | mid> | bare mm |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| **shipped** | 828 | **0.089** | 0.198 | 19.2% | 8.0% | 2.1% | 2.2 |
+| no short-stitch guard | 863 | 0.085 | 0.185 | 17.4% | 6.9% | 1.8% | 2.2 |
+| corridor cap off | 862 | 0.101 | 0.218 | 21.4% | 11.8% | 3.0% | 2.2 |
+| no taper zone | 809 | 0.091 | 0.200 | 19.4% | 7.8% | 2.2% | 1.5 |
+| `follow_edge` ON | 886 | 0.102 | 0.220 | 18.5% | 8.3% | **4.8%** | **0.0** |
+
+Together with §2's filter arms, **all six defences are net-positive or
+neutral.** Removing any of them makes the wobble the same or worse; the best
+any removal does is the short-stitch guard's −0.004, on a population that
+moved 828 → 863 points, which is noise at that size.
+
+**So 0.089 mm is not a defect sitting on top of a working model — it is the
+floor of the model with every defence already doing its job.** That is the
+answer to "why do the rails wobble": not because a step is wrong, but because
+a smoothed parallel offset of a medial axis cannot represent a real letter's
+edge any closer than this, and every mechanism in the file is already spending
+something to hold it here.
+
+`follow_edge` ON is worth its own line: it takes the bare outline **2.2 → 0.0 mm**
+— full coverage — for std 0.089 → 0.102 and mid-column 2.1% → 4.8%. The trade
+is real, it is today's, and it is a choice, not a bug.
+
+## 7. What this means for the next attempt
+
+Closing the wobble means **changing the rail model**, not fixing a step in it:
+placing satin rails on boundary geometry the way `line` and `fill` already are
+(§1: std 0.000 and 0.010 against satin's 0.089). That is a large build in the
+file with the most caveats in the repo.
+
+**It should not start before the sew-out question is answered.** Nothing here
+shows 0.089 mm is visible to Kent's eye on cloth
+(`kent-eye-vs-instruments-2026-08-27`), §0 shows closing it does not move
+`lost_frac` on `enthusiast`, and Kent's 2026-09-18 flag review already found
+that the satin/angle flags at this scale read as "no difference" at viewing
+size. A model rebuild justified only by an instrument nobody has tied to cloth
+is exactly the trade this project has paid for before.
 
 Two things this does NOT claim: that 0.09 mm is what Kent's eye sees on cloth
 (still unproven — `kent-eye-vs-instruments-2026-08-27`), and that closing it
 moves `lost_frac`, which §0 says it would not on `enthusiast`.
 
-## Reproducing
+## Reproducing (§6's arms are `_probe_ablate.py`, same throwaway worktree)
 
     # temp worktree on origin/main, main checkout's venv
     cd <worktree>/digitizer
