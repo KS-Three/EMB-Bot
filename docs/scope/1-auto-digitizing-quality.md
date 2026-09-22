@@ -3650,6 +3650,15 @@ what stitches → outline cannot see, and what Kent's *"you missed quite a few"*
 was. Whole-design pages with every mark on a lettered grid: `*_all.png` in the
 same render folder. Blind still: bean-tier small text, and outline vs artwork.
 
+**`cfg.satin_cap_recentre` — BUILT, DEFAULT OFF, Kent's flip (2026-09-19).** A
+free end whose spine tail is a surviving cap fork is cut at the kink and
+rebuilt square. Bare outline Becker 32.6 → 29.3 mm, Enthusiast 2.2 → 0.8,
+Gaulke unchanged; satin wobble not worsened (Becker std 0.097 → 0.094), where
+`satin_rails_follow_edge` reaches 14.8 mm by roughening the rails to 0.137.
+Small because the fork is ~3 mm of Becker's 32.6 (7 of 44 free ends fork, 3
+pass the guards). NOT in MASTER_SCOPE's "Waiting on Kent" — that file sat at
+26,999 of 27,000 words. *(DOCTRINE 2026-09-19; `tests/test_satin_cap_recentre.py`)*
+
 Satin barely moved across 2026-09-19's satin flips (0.106 / 0.101 / 0.098 on
 the pre-flip base), and `satin_rails_follow_edge` moved the spike's figure
 ~10% — neither is the lever. **Open:** why the rails wobble (worst points are

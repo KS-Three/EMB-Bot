@@ -6059,9 +6059,41 @@ is NOT the cause. On Becker's real letters, read at stitch level:
 rails to do it**: Becker satin std 0.097 → 0.137, series ends over 0.15 mm
 12.8 → 22.5%. The flag's own comment predicted that cost (2026-09-03); this is
 the first instrument that shows both sides of the trade on one row. Becker's
-remaining 14.8 mm is B. A fix at the CAUSE — re-centre the spine's last stations
-between the two true edges, so the symmetric model is right — has not been
-built or measured.
+remaining 14.8 mm is B.
+
+**The cause-side fix was built the same day, works, and is SMALL — mechanism A
+as first written over-generalised from one traced corner.** Traced to the
+component boundary on a synthetic stem whose one edge leans 3°: the raw spine's
+tail is a surviving cap FORK running into one corner; `_retract_cap_corner`
+stops at 0.8 of the half-width, which a fork's first millimetre still reads;
+`_extend_to_cap` extends the diagonal onto the corner, and the other corner
+sews 1.11 mm bare (a plain bar: 0.33 — its forks are twins and both pruned).
+`cfg.satin_cap_recentre` (**OFF, byte-identical off**, `_cut_cap_fork`) cuts
+the tail at its KINK — an abrupt turn, the corridor only narrowing after it,
+the tip pinched — and lets the existing extension rebuild a square end. Two
+outcome guards, each earned by a measured harm: a SLANTED cap is refused (the
+fork is what reaches its acute corner; cutting took it 0.48 → 1.23 mm bare)
+and an off-centre rebuild is refused. Measured with `edge_wobble`:
+
+| | bare outline off → cap_recentre → follow_edge | satin std off → cap_recentre → follow_edge |
+|---|---|---|
+| Becker | 32.6 → 29.3 → 14.8 mm | 0.097 → 0.094 → 0.137 |
+| Gaulke | 6.6 → 6.6 → 2.8 | 0.087 → 0.086 → 0.092 |
+| Enthusiast | 2.2 → 0.8 → 0.0 | 0.106 → 0.103 → 0.117 |
+| `logo_whitebg` | 0.0 → 0.0 → 0.0 | 0.037 → 0.037 → 0.018 |
+
+It does what it says and does not roughen a rail — and it missed the target
+set for it before it was built (Becker ≤ 14.8). **Of Becker's 44 free ends only
+7 carry a fork and 3 pass the guards; with the guards removed it is WORSE
+(29.8), so the guards are right and the fork is simply ~3 mm of the 32.6.**
+The bulk is what `follow_edge` recovers — a spine off-centre ALONG the column,
+no kink to cut, every raster skeleton — and mechanism B. The flat end of a
+CURVED column is a wash under the flag (inner corner +0.08 mm, outer −0.07):
+the rebuild is a straight extension on a curving axis, which is its own defect.
+**Lesson, again: one traced span is an anecdote. Count the population before
+sizing the fix** — the tally took one wrapper and ten lines.
+*(`tests/test_satin_cap_recentre.py`, 9; the A/B rows are `edge_wobble.analyse`
+with the flag and reproduce; the 44/7/3 tally was a throwaway wrapper)*
 
 `--render DIR` writes the whole design too (`*_all.png`): every flagged
 penetration ringed red, every bare span magenta, on a 5 mm lettered grid, so a
