@@ -81,8 +81,11 @@ def render(art: Path, width_mm: float, garment: str, out: Path,
             cv2.fillPoly(img, [to_px(ring.coords)], (250, 250, 250))
 
     # 2. thread. Satin darker than the rest so a junction reads as a junction.
+    # A `jump` run still SEWS -- the flag only says the needle lifts to reach
+    # points[0]. Skipping it hid 179 of becker's A's 205 satin points and
+    # drew three satin letters as bare underlay (2026-09-18).
     for _b, run in plan.iter_runs():
-        if run.jump or len(run.points) < 2:
+        if len(run.points) < 2:
             continue
         col = (150, 60, 40) if run.kind == stitches.SATIN else (120, 165, 120)
         cv2.polylines(img, [to_px(run.points)], False, col, 1, cv2.LINE_AA)

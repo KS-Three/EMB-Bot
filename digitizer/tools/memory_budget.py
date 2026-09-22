@@ -35,6 +35,13 @@ BUDGET = 24_986
 #: The per-line target the index states in its own header.
 LINE_CAP = 260
 
+# `python tools/memory_budget.py` puts `tools/` on sys.path, NOT `digitizer/`,
+# so `tools._console` is unimportable until this line. See that module for
+# why a tool that prints doc text has to widen its own stdout.
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
+
+from tools._console import utf8_console                    # noqa: E402
+
 ENTRY = re.compile(r"^- \[(?P<title>.+?)\]\((?P<rel>.+?)\)\s*—\s*(?P<hook>.*)$")
 
 
@@ -100,6 +107,7 @@ def unregistered(text: str) -> list[str]:
 
 
 def main(argv: list[str]) -> int:
+    utf8_console()
     text = INDEX.read_text(encoding="utf-8")
     n = char_count(text)
     rows = entries(text)

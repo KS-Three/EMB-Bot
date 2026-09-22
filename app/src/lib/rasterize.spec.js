@@ -81,3 +81,61 @@ test("an undecodable file rejects with a message that names what DOES work", asy
   expect(UNREADABLE).toMatch(/PNG, JPEG, WebP, GIF, BMP and SVG/);
   expect(UNREADABLE).toMatch(/PDF, AI or EPS/);
 });
+
+// ---- what the panel SENDS (2026-09-20) --------------------------------------
+//
+// The file itself, when the service's decoder can read it and it is inside
+// the service's limits; the canvas PNG otherwise. The reasons are named so a
+// caller can say which one applied.
+import { uploadPlan, SERVICE_DECODES } from "./rasterize.js";
+
+const img = (width, height) => ({ width, height });
+
+test("a raster the service decodes goes up as the file itself", () => {
+  expect(uploadPlan({ name: "logo.png", type: "image/png", size: 40_000 }, img(1400, 316))).toEqual({ asIs: true, reason: "", type: "image/png" });
+  expect(uploadPlan({ name: "logo.webp", type: "image/webp", size: 90_000 }, img(2500, 1345)).asIs).toBe(true);
+  expect(uploadPlan({ name: "photo.JPG", type: "image/jpeg", size: 3_000_000 }, img(4000, 3000)).asIs).toBe(true);
+  // A drag-and-drop or a bare OS leaves the MIME empty: the extension decides.
+  expect(uploadPlan({ name: "logo.jpeg", type: "", size: 10 }, img(10, 10))).toEqual({ asIs: true, reason: "", type: "image/jpeg" });
+  for (const t of ["image/png", "image/jpeg", "image/webp", "image/bmp"]) expect(SERVICE_DECODES.has(t)).toBe(true);
+});
+
+test("a vector or a GIF keeps the canvas path — only a browser rasterises those", () => {
+  expect(uploadPlan({ name: "logo.svg", type: "image/svg+xml", size: 10 }, img(300, 150)).reason).toBe("vector");
+  expect(uploadPlan({ name: "logo.svg", type: "", size: 10 }, img(300, 150)).reason).toBe("vector");
+  expect(uploadPlan({ name: "anim.gif", type: "image/gif", size: 10 }, img(300, 150)).reason).toBe("format");
+  expect(uploadPlan({ name: "mystery", type: "", size: 10 }, img(300, 150)).reason).toBe("format");
+  // A GIF is not even rescued by its bytes being small: the service cannot
+  // decode it at all.
+  expect(uploadPlan({ name: "anim.gif", type: "image/gif", size: 10 }, img(300, 150)).asIs).toBe(false);
+});
+
+test("the service's limits decide, from /health when it has answered and from its own constants before", () => {
+  const big = { name: "scan.png", type: "image/png", size: 13 * 1024 * 1024 };
+  expect(uploadPlan(big, img(1000, 1000)).reason).toBe("bytes");
+  expect(uploadPlan({ ...big, size: 1000 }, img(7000, 6000)).reason).toBe("pixels");
+  // /health's numbers win over the defaults, in both directions.
+  expect(uploadPlan(big, img(1000, 1000), { max_upload_bytes: 20 * 1024 * 1024, max_pixels: 40_000_000 }).asIs).toBe(true);
+  expect(uploadPlan({ ...big, size: 1000 }, img(1000, 1000), { max_upload_bytes: 12 * 1024 * 1024, max_pixels: 500_000 }).reason).toBe("pixels");
+  // A partial limits object still gets the other default.
+  expect(uploadPlan({ ...big, size: 1000 }, img(7000, 6000), { max_upload_bytes: 1 }).reason).toBe("bytes");
+});
+
+test("a JPEG the browser rotated on decode keeps the canvas path — the service ignores EXIF orientation", async () => {
+  const { jpegDimensions } = await import("./rasterize.js");
+  // SOI, then a SOF0 declaring 50 high x 100 wide (the header is what cv2 decodes to).
+  const sof = (h, w) => new Uint8Array([0xff, 0xd8, 0xff, 0xe1, 0x00, 0x04, 0x00, 0x00,   // an APP1 segment to step over
+                                        0xff, 0xc0, 0x00, 0x11, 0x08, h >> 8, h & 255, w >> 8, w & 255, 0x03]);
+  expect(jpegDimensions(sof(50, 100))).toEqual({ height: 50, width: 100 });
+  expect(jpegDimensions(new Uint8Array([0x89, 0x50, 0x4e, 0x47]))).toBeNull();     // a PNG
+  expect(jpegDimensions(new Uint8Array([0xff, 0xd8, 0xff, 0xd9]))).toBeNull();     // no SOF before EOI
+  const jpg = { name: "phone.jpg", type: "image/jpeg", size: 1000 };
+  // Upright: the bitmap is the header's size -> the file goes as it is.
+  expect(uploadPlan(jpg, img(100, 50), null, sof(50, 100)).asIs).toBe(true);
+  // Rotated by EXIF: the browser's bitmap is 50 x 100 against a 100 x 50 header.
+  expect(uploadPlan(jpg, img(50, 100), null, sof(50, 100))).toEqual({ asIs: false, reason: "orientation", type: "image/jpeg" });
+  // Without the bytes the cheaper checks alone decide (the panel's first ask).
+  expect(uploadPlan(jpg, img(50, 100)).asIs).toBe(true);
+  // A PNG is never orientation-checked: it carries no EXIF rotation the browser applies.
+  expect(uploadPlan({ name: "a.png", type: "image/png", size: 10 }, img(50, 100), null, sof(50, 100)).asIs).toBe(true);
+});

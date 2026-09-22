@@ -354,7 +354,8 @@ from .shapecontext import shape_context_distance
 from .shapefield import ShapeField, build_shape_field
 from .shapefield import ShapeField, build_shape_field, rasterize_polygon
 from .stage1_prep import Prep
-from .stage6_satin import _merge_through_junctions, _prune_spurs, _skeleton_edges
+from .stage6_satin import (SATIN_HOUSE_MIN_SPAN_DEG, _merge_through_junctions,
+                           _prune_spurs, _skeleton_edges)
 
 # A group must clear this many members before it counts as "text": letters
 # come in groups, and two similarly-sized small shapes near each other is
@@ -1450,6 +1451,107 @@ SATIN_HOUSE_CHORD_PX = 4.0
 # changes the gate's shape and is Kent's call.
 SATIN_HOUSE_FOURFOLD_MIN_R = 0.25
 
+# The ANCHORED reading (`config.satin_house_anchor`, plan step 1, 2026-09-19):
+# for a group that makes a line of text, house = the line + the stems' slant,
+# and the votes are not consulted at all. Why: both votes decide the house
+# from EVERY stroke, and on lettering with diagonals the diagonals pull the
+# answer off the stems' perpendicular the rule names. Measured on the nine
+# real logos' 24 lettering groups: the doubled vote accepts twelve that make
+# a line and have stems, and puts NINE of them 12-79 deg off their own line
+# -- enthusiast's subline 130 deg, fremont 98, drone 115 / 108, all upright
+# words whose lines read within 4 deg of horizontal; on the font word HOTEL
+# 27 deg, and 45 deg once the word is turned 20 deg. The vote is also
+# size-unstable (MARINE at 80 mm: nR^2 5.0 from the shipped binary's rails,
+# 11.2 from the source rails, 4.5 at 60 mm). The line of text is the one
+# thing a group knows about itself that no single stroke does, so it picks
+# the FAMILY: the strokes within the lean cap of the line's normal
+# (`SATIN_HOUSE_STEM_WINDOW_DEG`, the same 30 deg `_clamp_to_span` lets a
+# stroke lean to reach the house) are the stems, and their length-weighted
+# MEDIAN offset from the normal is the slant. Median, because a block word's
+# family still carries one-sided diagonals (an N's, a Z's) that pull a mean
+# (Becker's two lines: +15.0 / -12.4 by mean, -0.1 / +0.6 by median over a
+# 45 deg window), and a kernel MODE jumps to the diagonals' own peak on a
+# narrow face (NAVY -19, VANE +17 at any bandwidth 3-8 deg, where the median
+# reads under 1). Upright lettering reads a slant near zero and takes the
+# line: the anchor puts 15 of the 19 anchored groups within 2 deg of it,
+# and the font words MARINE / KAYAK / HOTEL / ENTHUSIAST / VANE within 0.6,
+# MARINE turned 15 and 30 deg within 2.5. A leaned script reads its lean
+# (mam_script "Marine": +15.4, its stems visibly so) and takes the stems'
+# perpendicular; every shipped font's lean fits the window (the most leaned
+# rails, montecarlo, 26.6 deg).
+#
+# LIMITS, measured: (1) a family with hardly a stem reads the middle of its
+# diagonals -- ZANY -12, AMAZE -9, VANE 0.2 upright but -6.7 turned 20 deg
+# -- still nearer the stems' perpendicular than the vote (20-30 deg off) and
+# recorded, not hidden. (2) A brush script whose strokes are curves rather
+# than stems reads its slant from the curves: montecarlo +0.3 and pacificlo
+# -6.2 where the eye reads a 10-25 deg forward lean. (3) A non-lettering
+# group `_lettering_groups` admits, such as the Fremont rope's twists (40
+# and 33 strands along the border, 2 mm), gets the strands' median lean as
+# a "slant"; under `_clamp_to_span` a 2 mm strand still sews within the cap.
+# (4) Tiny text (1-2 mm, the phone screenshot) reads 8-10 deg of noise from
+# skeletons a few pixels long. (5) The weighted median takes the LOWER
+# middle on an exact tie, so a family of two equal diagonals at +/-25 deg
+# and no stem reads -25, not 0; real families discretise the tie away, and
+# a word of nothing but V and A would be the first to find this.
+# A straightness gate on the votes (segment
+# counts only where the chain turns under T deg per chord) was tried for (2)
+# and (4) and REJECTED: at T = 15 / 10 / 5 the same word flips between -11,
+# -15 and +16 (VANE), NAVY reads -13 at 15 and 0.6 at 10, and montecarlo
+# goes silent. Not a mechanism.
+#
+# The votes stay for what the anchor cannot read: a group with no line, and
+# a group whose near-normal family is SILENT -- under
+# `SATIN_HOUSE_STEM_MIN_FRAC` of the group's skeleton length -- which is not
+# upright lettering with stems (the bridge logo's wheel spokes, three
+# pointed shapes laid along a diagonal, read 0.00 where the nineteen groups
+# with a line read 0.24-0.78) or a script leaned past the window, which no
+# shipped font is. Both fall through to the readings above, unchanged.
+#
+# Votes are the chains resampled at `SATIN_HOUSE_CHORD_PX`, as the four-fold
+# reading's are, and for the same reason: on raw 8-connected steps every
+# segment runs at a compass angle, so the near-normal family is exactly the
+# 90 deg steps and the median is exactly the raster's own vertical -- the
+# first draft read house = 0.0 on every group, including three whose lines
+# sit at 9-19 deg, which is the grain answering rather than the stems.
+SATIN_HOUSE_STEM_WINDOW_DEG = 90.0 - SATIN_HOUSE_MIN_SPAN_DEG
+SATIN_HOUSE_STEM_MIN_FRAC = 0.1
+
+
+def _stem_slant_deg(chains: list[tuple[list[tuple[float, float]], float]],
+                    line_deg: float,
+                    chord_px: float = SATIN_HOUSE_CHORD_PX) -> float | None:
+    """The stems' signed lean off the normal to `line_deg`, in degrees on
+    [-SATIN_HOUSE_STEM_WINDOW_DEG, +SATIN_HOUSE_STEM_WINDOW_DEG] -- the
+    length-weighted median offset of the segments within that window of
+    the normal, over `chains` (from `_house_chains`) resampled at `chord_px`
+    -- or None when that family is silent (under `SATIN_HOUSE_STEM_MIN_FRAC`
+    of all the segments' length, or nothing to vote on)."""
+    normal = (line_deg + 90.0) % 180.0
+    family: list[tuple[float, float]] = []
+    total = 0.0
+    for chain, scale in chains:
+        pts = _resample_chain(chain, chord_px / scale) if chord_px > 0 else chain
+        for (x0, y0), (x1, y1) in zip(pts, pts[1:]):
+            dx, dy = x1 - x0, y1 - y0
+            length = math.hypot(dx, dy)
+            if length <= 0.0:
+                continue
+            total += length
+            offset = (math.degrees(math.atan2(dy, dx)) - normal + 90.0) % 180.0 - 90.0
+            if abs(offset) <= SATIN_HOUSE_STEM_WINDOW_DEG:
+                family.append((offset, length))
+    weight = sum(length for _offset, length in family)
+    if total <= 0.0 or weight < SATIN_HOUSE_STEM_MIN_FRAC * total:
+        return None
+    family.sort()
+    acc = 0.0
+    for offset, length in family:
+        acc += length
+        if acc >= weight / 2.0:
+            break
+    return offset
+
 
 def _resample_chain(chain: list[tuple[float, float]],
                     step_mm: float) -> list[tuple[float, float]]:
@@ -1586,9 +1688,16 @@ def _fourfold_votes(chains: list[tuple[list[tuple[float, float]], float]],
 
 
 def _cluster_house_angle_deg(members: list[Region], *,
-                             fourfold: bool = False) -> float | None:
+                             fourfold: bool = False,
+                             from_line: bool = False,
+                             anchor: bool = False) -> float | None:
     """The dominant CROSS angle over a text cluster's strokes, in degrees on
     [0, 180), or None when the strokes carry no dominant direction.
+
+    With `anchor=True` (`config.satin_house_anchor`) a group that makes a
+    line of text and has stems takes house = line + the stems' slant,
+    without a vote -- see `SATIN_HOUSE_STEM_WINDOW_DEG` for why and what
+    still falls through to the votes below.
 
     Two readings, tried in order. One dominant stroke direction (a row of
     stems, an arched word) gives the cross perpendicular to it. Failing
@@ -1609,6 +1718,12 @@ def _cluster_house_angle_deg(members: list[Region], *,
     field, or has no skeleton, contributes nothing instead of raising.
     """
     chains = _house_chains(members)
+    if anchor:
+        line = _line_of_text_deg(members)
+        if line is not None:
+            slant = _stem_slant_deg(chains, line)
+            if slant is not None:
+                return (line + slant) % 180.0
     c2 = s2 = total = sq_weight = 0.0
     for trimmed, _scale in chains:
         for (x0, y0), (x1, y1) in zip(trimmed, trimmed[1:]):
@@ -1640,24 +1755,36 @@ def _cluster_house_angle_deg(members: list[Region], *,
     # No single direction. Two orthogonal ones? Same test in four-fold space,
     # on grain-free votes, and with an effect-size floor -- see
     # SATIN_HOUSE_CHORD_PX and SATIN_HOUSE_FOURFOLD_MIN_R for both. Opt-in.
-    if not fourfold:
+    if fourfold:
+        votes = _fourfold_votes(chains)
+        if votes is not None:
+            resultant4, n_eff4, axis = votes
+            if (resultant4 >= SATIN_HOUSE_FOURFOLD_MIN_R
+                    and n_eff4 * resultant4 * resultant4 >= critical):
+                line = _line_of_text_deg(members)
+                if line is None:
+                    return None
+                return _house_along_line_deg(axis, line)
+    if not from_line:
         return None
-    votes = _fourfold_votes(chains)
-    if votes is None:
-        return None
-    resultant4, n_eff4, axis = votes
-    if resultant4 < SATIN_HOUSE_FOURFOLD_MIN_R:
-        return None
-    if n_eff4 * resultant4 * resultant4 < critical:
-        return None
-    line = _line_of_text_deg(members)
-    if line is None:
-        return None
-    return _house_along_line_deg(axis, line)
+    # The THIRD reading (`config.satin_house_from_line`): both votes refused,
+    # so the strokes themselves say nothing significant — a block word whose
+    # verticals and horizontals cancel and whose diagonals hold the four-fold
+    # resultant under its floor ("MARINE" at 80 mm, 2026-09-19). The group
+    # still IS a line of text, and under the stitch-angle rule the stems of
+    # upright lettering are the family square to that line, so the cross runs
+    # along it. A group that makes no line keeps failing open. Same limit as
+    # the four-fold reading: a vertically STACKED upright word reads its line
+    # down the stems, so its cross would run along them — bars and stems then
+    # fade to their own perpendicular under `_clamp_to_span`, and the exposure
+    # is diagonals leaning toward the wrong axis. No fixture has one.
+    return _line_of_text_deg(members)
 
 
 def set_lettering_house_angle(regions: list[Region], p: Prep, *,
-                              fourfold: bool = False) -> None:
+                              fourfold: bool = False,
+                              from_line: bool = False,
+                              anchor: bool = False) -> None:
     """Post-regularization pass: give every member of one line of lettering
     ONE house cross angle, so its letters agree instead of each following its
     own spine tangent (`satin_angle_deg` in `Region.meta`).
@@ -1669,7 +1796,13 @@ def set_lettering_house_angle(regions: list[Region], p: Prep, *,
 
     `fourfold` enables the second reading (`config.satin_house_fourfold`,
     default OFF); absent it, this pass is byte-identical to what shipped
-    before that reading existed.
+    before that reading existed. `from_line` enables the third
+    (`config.satin_house_from_line`): a group both votes refuse takes the
+    cross along its own line of text instead of falling open — see
+    `_cluster_house_angle_deg`. `anchor` (`config.satin_house_anchor`)
+    puts a reading BEFORE the votes: a group with a line and stems takes
+    the line plus the stems' slant, and only a group without either is
+    voted on.
 
     `p` is accepted, not read, matching `detect_text_clusters` and
     `regularize_text_clusters` for the same reason: a future revision that
@@ -1701,7 +1834,8 @@ def set_lettering_house_angle(regions: list[Region], p: Prep, *,
     operator-set value rather than a derived one.
     """
     for members in _lettering_groups(regions):
-        angle = _cluster_house_angle_deg(members, fourfold=fourfold)
+        angle = _cluster_house_angle_deg(members, fourfold=fourfold,
+                                         from_line=from_line, anchor=anchor)
         if angle is None:
             continue
         for r in members:

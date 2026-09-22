@@ -131,13 +131,33 @@ test("the review step shows the grade, the findings, and the thread bill", async
   await expect(quality.locator(".qr-grade b")).toHaveText(/^[ABCDF]$/);
   await expect(quality.locator(".qr-grade .qr-score")).toHaveText(/^\d{1,3}\/100$/);
 
-  // The findings are the substance, and this fixture reliably has some.
+  // The findings are the substance. This fixture carried TRIM_HEAVY, lost it
+  // for a day, and carries it again — and the reason is the lesson. On
+  // 2026-09-19 the satin walk started ending each letter facing the next one
+  // (`satin_exit_toward_next`) and the report went clean: 9 trims for 2,311
+  // stitches on a tote, 3.9 per 1,000 against the 4.1 line. Those numbers
+  // were the PANEL's raster — a 1,200-px canvas re-encode it used to send in
+  // place of the file (DOCTRINE 2026-09-19/20: resampled at Chrome's default
+  // smoothing, its RGB under transparency rewritten). Since 2026-09-20 the
+  // panel sends the file itself, and this fixture reads 2,318 stitches / 13
+  // trims / grade B with TRIM_HEAVY — the engine's own number for it, which
+  // the direct probes always gave. `tools/studio-raster.mjs` still writes
+  // the preview raster for measuring that path. A clean report is the
+  // other thing this panel renders, and it is a sentence too — so the
+  // contract here is the same as the grade's above: whichever state the
+  // engine produces, the panel says it in preflight's words rather than
+  // showing an empty list that reads as "all clear". Pinning "has findings"
+  // would make this an engine test wearing a UI test's clothes.
   const rows = quality.locator(".qr-list li");
-  expect(await rows.count()).toBeGreaterThan(0);
-  // Sentences from preflight, not strings from the app: every finding message
-  // ends in a full stop and is long enough to be advice rather than a label.
-  const first = (await rows.first().innerText()).trim();
-  expect(first.length).toBeGreaterThan(30);
+  if (await rows.count()) {
+    // Sentences from preflight, not strings from the app: every finding
+    // message ends in a full stop and is long enough to be advice rather
+    // than a label.
+    const first = (await rows.first().innerText()).trim();
+    expect(first.length).toBeGreaterThan(30);
+  } else {
+    await expect(quality.locator(".qr-clean")).toContainText("Nothing to flag");
+  }
 
   // The `stats` half. Thread length AND the trim count live only on the job
   // envelope, never in preflight's metrics, so both figures here prove the

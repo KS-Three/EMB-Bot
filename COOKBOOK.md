@@ -369,7 +369,8 @@ hand-rolling it in JS.
   columns already sewn, `--off` for the before), `digitizer/tools/satin_lean.py`
   (how far satin crosses lean off their own perpendicular and off the house
   angle, and the thread pitch across the column; `--stock` for the instrument's
-  own floor on unhoused columns), `digitizer/tools/fill_dust.py` (fill steps
+  own floor on unhoused columns; `--anchor` for the house anchored to the
+  line of text, lettering plan step 1), `digitizer/tools/fill_dust.py` (fill steps
   halved by float dust at the stitch-length threshold), `digitizer/tools/rail_edge.py`
   (where satin rails sit against the artwork edge, rail jitter and same-rail
   holes; `--ladders` for the containment-miss census, `--bare` for coverage as
@@ -407,6 +408,13 @@ hand-rolling it in JS.
   instrument), `digitizer/tools/thread_color_render.py` (a design drawn in
   the cones it will actually sew, each changed shape tiled OFF beside ON at
   90 px/mm — a 0.9 mm2 shard is four pixels at whole-design scale),
+  `tools/preview-vs-dst.mjs` (the only thing comparing a PICTURE to a FILE:
+  the previewer's own `designToStrands` against pystitch's read of the
+  encoded bytes, three fixtures x DST/EXP/PES, reporting orientation, how far
+  the file's thread strays from the drawn line, and sewn thread either side —
+  its fixtures must REACH the split path, which its test asserts, because the
+  crossval harness's axis-aligned `long` fixture is exactly how the 2026-09-20
+  dogleg survived),
   `tools/long-stitch-census.mjs` (the BROWSER lettering lane: every sewn
   segment of the 85 shipped fonts at three texts, counted past one DST
   record **per axis** — `--doctrine` reproduces DOCTRINE 2026-09-07's own
@@ -448,6 +456,19 @@ hand-rolling it in JS.
   thread's IoU against the compensated target and the artwork; `--compare`
   digitizes OFF/ON `cfg.satin_rail_comp` with stitches, trims and
   preflight's coverage/uncovered — the item 6 instrument),
+  `digitizer/tools/travel_cover.py` (every travel leg read against the thread
+  sewn AFTER it, by preflight's own ribbon rule — exposed length per leg and
+  per design, `--order nearest|euler`, `--width`; the lettering plan's step 2
+  instrument, which found the 245 mm exposed at 80 mm to be the nearest
+  order's own legs, not the Euler walk's — and not the satin tier's at all:
+  see the next one; its 1 mm grid under-reads fill exposure by a third),
+  `digitizer/tools/travel_legs.py` (WHOSE each travel leg is and what it lies
+  on: the emitter off the construction call stack, the runs either side, the
+  grid reading beside an exact one, and `own-fill` / `top` / `other` /
+  `underlay` / `own-bare` / `art-bare` / `FABRIC` under every exposed
+  sample; `--set KEY=VALUE` puts any config field on, so it is how
+  `fill_bridge_cut` is read — 97.7% of that 245 mm is the FILL tier's column
+  bridges on their own finished fill, defect 21's residual, none on fabric),
   `digitizer/tools/pushcomp_pins.py` (`test_pushcomp.GOLDEN_FLAG_OFF`'s tuples
   as THIS tree computes them, for a re-pin with the same pre-change proof),
   `digitizer/tools/resnap_escape.py` (cones `revalidate_threads` ADDS, and how
@@ -1173,6 +1194,10 @@ cd app && npm install && npm run dev     # Studio dev server
 tools/start-emb-bot.ps1     # Windows: both servers in their own windows + opens the browser
 cd app && npm test          # Studio tests (vitest) — expected clean
 node tools/build-embf.mjs   # rebuild the binary font library (see section above)
+node tools/studio-raster.mjs FILE...   # the Studio's PREVIEW raster (1,200-px long-edge cap, its own rasterize.js in
+                                       # Playwright's Chromium) -> digitizer/.cache/studio-raster/. What the panel SENT
+                                       # until 2026-09-20 and still sends for SVG/GIF/oversize; rasters now go as the
+                                       # file (DOCTRINE 2026-09-19/20)
 
 cd digitizer && .venv/Scripts/python -m pytest -q -n auto   # Python digitizer tests (runtime + expected failures below)
 cd digitizer && .venv/Scripts/python -m digitizer_service   # service on 127.0.0.1:8721
@@ -1376,6 +1401,103 @@ correction). Two rules stop a repeat:
    -- digitizer/digitizer_core` shows landed pipeline commits, any grade
    comparison against the baseline is comparing against a stale ruler —
    say so wherever the comparison is quoted.
+
+### The eye-pairs reveal gallery (2026-09-17)
+
+`cd digitizer && python -m tools.eye_pairs_gallery` reads the yardstick's
+`eye_pairs_out/` (`pairs.json`, `arms.json`, `picks.jsonl`, `features.json`,
+`renders/`) and writes `eye_pairs_out/gallery/index.html` + `img/`, each
+distinct render shipped once, re-encoded under the artifact's size limit.
+**It refuses until every pair is picked** — the page names arms, and naming
+one mid-sitting breaks the repeat controls; the refusal is the same rule as
+the yardstick's `--reveal`. Publish `index.html` as an Artifact with `img/*`
+as `files` and `capabilities: {db: {}, downloads: true}`. Kent's per-pair
+"did the arm do what it claims" and per-arm rulings (`flip ON` / `keep OFF`
+/ `needs work`) land in the artifact's `db` (`notes/<pair>`,
+`rulings/<arm>`) — never in the page, so a republish cannot overwrite them
+(the 08-27 artifact trap); read them back with `ArtifactData` and commit
+them as `docs/eye-pairs-<date>/kent-notes.json`. No score or agreement
+figure appears on the page (`acceptance_ab`'s rule; ROADMAP gate 4) — the
+instrument chips show only which way each metric points against his pick,
+and the "disagreements" filter IS the exit-clause list. Spec:
+`docs/superpowers/specs/2026-09-17-eye-pairs-gallery-design.md`; the
+generator imports nothing from `tools/eye_pairs/` and pins its arm and
+metric tables by test.
+
+### The labelled before | after page — "Flag Before After" (2026-09-18)
+
+`cd digitizer && python -m tools.eye_pairs_gallery --labelled` is the same
+generator's OTHER page: every rendered arm beside shipped, **BEFORE on the
+left and AFTER on the right, the flag named**, Kent's verdict taken on the
+page (`after is better` / `before is better` / `no difference` / `both
+bad`, then *did the flag do what it claims* and a note; per arm, his
+ruling). It reads only `--render`'s output (`features.json`, `designs/`,
+`renders/`) — **no `--pair`, no sitting, no pick**; an arm whose stitches
+equal shipped's is counted as *identical, not shown*, an arm that raised as
+*failed*. Pair ids are `<arm>__<fixture>`, not opaque, so a note keyed by
+one survives a re-render, a new arm, and a republish. Instrument chips stay
+hidden until he has given a verdict, then colour by agreement with it; the
+per-arm tally is a count of his verdicts, never a rate. Published as
+https://claude.ai/artifact/6mjKrbnCX21MM9gQUry4Zp — **republish to that
+URL**, never a new one: his notes live in its `db`, keyed by those ids.
+
+Two things it is not. It is **not the blind sitting** — a verdict given
+knowing which side is the flag is evidence for a *ruling*, and never enters
+the yardstick's agreement statistic (§4 of the eye-pairs spec needs the
+blind picks). And judging a pair here first **contaminates a later blind
+sitting on the same pairs**: he will have seen which side is which. Kent
+chose the labelled page with that known (2026-09-18); if the sitting is
+still wanted, run it on fixtures he has not judged here, or accept the
+contamination and say so in the reveal. His first sitting on it (34 pairs,
+six flags) is `docs/kent-review-2026-09-18.md` — *record it and stop*, all
+six stay OFF; the 2026-09-18 republish added the other five flags and the
+08-27 engine, which he has not judged.
+
+The first copy was made by hand on Kent's box and its generator never
+reached the repo; the 2026-09-18 rebuild ran in a cloud container as four
+parallel `--render --out <lane> --fixtures …` lanes (three of three logos
+each for the flag arms, one for `ref_0827` on all nine — its worktree path
+is fixed, so two ref lanes would collide), then
+`python -m tools.eye_pairs.merge eye_pairs_out <lane> …`: rows are unioned,
+the FIRST lane listed wins a (fixture, arm) that two lanes both rendered,
+and it refuses if two lanes disagree on a design's bytes or a fixture's
+source hash — which is how a base digitized once per lane is shown to be
+the same design. Budget an hour on four cores; `fremont` is ~2.5 min an
+arm under contention and `tires` ~80 s (photo-scene prep), the rest under
+25 s. `rembg_isolated/venv` was built first so photo-class fixtures got the
+cutout the product ships; without it every such render differs from Kent's
+box on BOTH sides.
+
+### Eye pairs — the blind A/B picker (2026-09-17)
+
+`python -m tools.eye_pairs` (from `digitizer/`) is the instrument for ROADMAP
+phase 1's second clause, *"nothing he judges better ever scores worse"*. It
+is the only place Kent's eye is recorded as DATA rather than prose. Spec:
+`docs/superpowers/specs/2026-09-17-eye-pairs-design.md`.
+
+    .venv/Scripts/python -m tools.eye_pairs --render     # hours; resumable; --fixtures/--arms scope it
+    .venv/Scripts/python -m tools.eye_pairs --pair       # builds the sitting; prints a COUNT only
+    .venv/Scripts/python -m tools.eye_pairs --serve      # http://127.0.0.1:8731 — left / right / space / u
+    .venv/Scripts/python -m tools.eye_pairs --reveal     # refuses until every pair is picked
+
+- **Do not open `eye_pairs_out/arms.json`, `features.json` or `designs/`
+  before `--reveal`.** They say which picture is which. The picker cannot
+  serve them (404 by whitelist); a text editor can.
+- **`eye_pairs_out/picks.jsonl` is Kent's sitting and is NOT regenerable.**
+  A finished sitting is committed from `docs/eye-pairs-<date>/`
+  (`picks.jsonl`, `pairs.json`, `arms.json`, `sitting.json`), never from
+  `eye_pairs_out/`; until that copy exists the gitignored file is the only one.
+- Adding a sitting is adding a row to `ARMS` in `tools/eye_pairs/pairs.py`,
+  then `--render` (only the new arm digitizes) and `--pair`. `--pair`
+  refuses to build any pair set but the one `sitting.json` records once
+  picks exist — move the old log aside first. A `--render` scoped with
+  `--fixtures`/`--arms` never touches the sitting.
+- The 08-27 arm runs the old engine from a worktree under the system temp
+  dir. On a photo-class fixture it is ENVIRONMENT-confounded (that worktree
+  has no `rembg_isolated/venv`); `--reveal` marks those rows.
+- A metric that *agrees* can be trusted for the DIRECTION of a same-design
+  A/B and nothing more: not across designs, not across routes, not as a
+  quality percentage, and never as grounds to advance a phase — that is Kent's.
 
 ## The one rule that explains most "quality" bug reports
 

@@ -36,7 +36,16 @@ CAUSES = {"buried", "budget", "probes", "both", "router", "no-corridor"}
 
 @pytest.fixture(scope="module")
 def run():
-    cfg = PipelineConfig(target_width_mm=80.0)
+    # `satin_lettering_split` is held at its PRE-FLIP `False` (flipped ON
+    # 2026-09-19, Kent's call). Every exposed bridge this fixture ever had --
+    # four runs, 38.7 mm at 80 mm -- lay in the MARINE band's FILLED letters,
+    # and under the flip the band sews as split satin: the fill tier's
+    # exposure on Becker then reads 0 runs / 0.0 mm, and a census of nothing
+    # passes every honesty check below without checking anything. That zero
+    # is a finding (scope-history 2026-09-19, the step-4 addenda), not a
+    # fixture; the instrument's own honesty is what this file pins, and it
+    # needs bridges to be honest about.
+    cfg = PipelineConfig(target_width_mm=80.0, satin_lettering_split=False)
     result, plan = digitize(ART, cfg)
     return result, plan, cfg
 

@@ -81,27 +81,65 @@ def test_the_apex_stays_clean_at_the_wide_ceiling_with_or_without_the_guard():
     assert _apex_crossings(machine.SATIN_WIDE_COLUMN_MAX_MM, True) == 0
 
 
+# Becker's width, chosen so the guard has something to do — see the comment
+# in `_becker_coverage` for why this is not 80 mm any more.
+_FOLD_WIDTH_MM = 114.0
+
+
 def _becker_coverage(monkeypatch, guard: bool) -> tuple[float, float]:
-    """(coverage_max, uncovered_worst_mm2) on Becker at 80 mm, wide columns
-    on, with the fold guard live or neutralised."""
+    """(coverage_max, uncovered_worst_mm2) on Becker, wide columns on, with
+    the fold guard live or neutralised."""
     from digitizer_core.preflight import run_preflight
     if not guard:
         monkeypatch.setattr(s6, "_fold_caps",
                             lambda spine, angles, closed, frac=None: [math.inf] * len(spine))
     art = TESTDATA / "becker_marine_logo.png"
-    cfg = PipelineConfig(target_width_mm=80.0, wide_columns=True)
+    # On the pruner the guard was measured against. The corner rule
+    # (`satin_corner_twigs`, ON 2026-09-19, lettering plan step 3a) sews
+    # Becker's corners as two columns meeting instead of one column folding
+    # through them -- and the fold the guard capped here goes with it:
+    # coverage_max reads 4.67 with the guard neutralised, under the warn
+    # line, so on today's pruner the guard has nothing to do on this
+    # fixture. The guard's code is unchanged; its load-bearing case is
+    # pinned where it was read.
+    # ... and on the pre-stack merge (`satin_junction_stack`, ON 2026-09-19):
+    # its weld gate refuses the bendy welds outright, and with them goes
+    # the bend the guard capped, for the second time (4.67 unguarded).
+    # ... and a THIRD time on 2026-09-20, which is why the width moved. The
+    # density refinement's clearance floor now runs in a column body and not
+    # only in a taper, so the inner rail no longer over-stacks on a bend:
+    # 80 mm unguarded reads 4.96, under the warn line, with both flags above
+    # still off. This one cannot be switched off in the helper -- it is
+    # unconditional code -- so the reading moved to the width where the
+    # stacking is still there. Walked 80-120 mm (2026-09-20): 80 4.96, 90
+    # 5.45, 100 5.61, 110 6.02, 112 6.94, **114 7.18**, 116 5.92, 118 7.80,
+    # 120 7.96. 114 is the one with the guard's own reading comfortably
+    # UNDER the line (5.38) as well as the unguarded one over it; at 118 and
+    # 120 the guard does not get it back under, which is its own open
+    # question and not this test's.
+    #
+    # **The mechanism is pinned elsewhere and does not ride on this fixture**
+    # -- `test_fold_caps_read_the_bend_and_leave_the_straight` drives
+    # `_fold_caps` on a synthetic quarter-circle. What this test adds is that
+    # the cap is load-bearing on real artwork, which is the part that keeps
+    # going stale.
+    cfg = PipelineConfig(target_width_mm=_FOLD_WIDTH_MM, wide_columns=True,
+                         satin_corner_twigs=False, satin_junction_stack=False)
     result, plan = digitize(art, cfg)
     m = run_preflight(result, plan, cfg, image=art)["metrics"]
     return float(m["coverage_max"]), float(m["uncovered_worst_mm2"])
 
 
 def test_the_fold_guard_keeps_a_wide_column_on_a_bend_under_the_warn_line(monkeypatch):
-    """Where the guard is load-bearing, measured (2026-09-09): Becker's
-    outline at 80 mm has bends of radius ~5 mm (p10 4.85) under 5-6 mm
-    columns, and with the ceiling at 6.5 the inner rails stack — coverage_max
-    7.07, past `COVERAGE_WARN_UNITS`, the density spike DOCTRINE 2026-09-02
-    recorded for the coupled route. Capped by the bend's radius it reads
-    5.08. Same stitches within 8, same trims, same bare cloth."""
+    """Where the guard is load-bearing, measured 2026-09-20 at 114 mm:
+    unguarded `coverage_max` 7.18, past `COVERAGE_WARN_UNITS`, the density
+    spike DOCTRINE 2026-09-02 recorded for the coupled route; capped by the
+    bend's radius it reads 5.38, and the bare cloth is identical either way.
+
+    Read at 80 mm when it was written (2026-09-09): bends of radius ~5 mm
+    (p10 4.85) under 5-6 mm columns, 7.07 unguarded against 5.08 guarded.
+    Three later changes have each taken that 80 mm bend away in turn — see
+    `_becker_coverage`."""
     with_guard, bare_with = _becker_coverage(monkeypatch, True)
     assert with_guard < machine.COVERAGE_WARN_UNITS, with_guard
     without, bare_without = _becker_coverage(monkeypatch, False)

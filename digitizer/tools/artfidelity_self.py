@@ -80,6 +80,7 @@ from __future__ import annotations
 import argparse
 import csv
 import sys
+from dataclasses import dataclass
 from pathlib import Path
 
 import cv2
@@ -532,36 +533,51 @@ def colour_score(image, result, plan,
 # One design
 # --------------------------------------------------------------------------
 
-def score_image(image_path: str | Path,
-                cfg: PipelineConfig | None = None) -> dict:
-    """Digitize `image_path` and score the result against its own artwork.
+@dataclass
+class Registered:
+    """One design's coverage field registered against its artwork's ink —
+    the input every ink-based instrument shares. Built ONCE per design by
+    `register_design` and handed to `dropped_elements.analyse_design`,
+    `edge_smoothness.analyse_design` and `tools.eye_pairs`, which used to
+    register the same two fields three times per arm (0.4-3.9 s a call at
+    real design sizes; review finding 9, 2026-09-17)."""
+    ours: np.ndarray        # stitch coverage field, RES px/mm
+    art: np.ndarray         # artwork ink field, same frame
+    coverage: float         # best IoU over the shift search
+    O_f: np.ndarray         # ours, placed on the common canvas
+    A_f: np.ndarray         # art, placed on the common canvas at the best shift
+    dx_mm: float
+    dy_mm: float
 
-    Every returned value is a plain Python scalar or string, safe at a JSON or
-    CSV boundary. `refusal` is None on a scored row, or the reason this row
-    must not be read as an engine result.
-    """
-    cfg = cfg or PipelineConfig()
-    image_path = Path(image_path)
 
-    result, plan = digitize(image_path, cfg)
-    design = plan_to_design(plan)
-
+def register_design(image_path: str | Path, design: dict) -> Registered:
     ours = stitch_coverage_field(design)
     art = art_ink_field(image_path, float(design["widthMM"]))
-
     coverage, O_f, A_f, dx_mm, dy_mm = register(ours, art)
-    structure = ms_ssim(O_f, A_f)
-    colour, median_excess = colour_score(image_path, result, plan, cfg)
+    return Registered(ours, art, coverage, O_f, A_f, dx_mm, dy_mm)
 
-    composite = 100.0 * (WEIGHTS[0] * coverage
-                         + WEIGHTS[1] * colour
-                         + WEIGHTS[2] * structure)
 
-    # Refusals. Both are reported WITH their components rather than in place of
-    # them: the artifact showed refused rows so the refusals stayed visible,
-    # and hiding a row is how a fixture set quietly shrinks to the ones that
-    # flatter it. `mismatch` is checked first — when the two rasters are not
-    # the same picture, "is the ink ambiguous" is not the interesting problem.
+def composite(coverage: float, colour: float, structure: float) -> float:
+    """The ARTFID composite, unrounded. One formula — a hand copy in
+    `tools.eye_pairs` rounded its components first and its result to a
+    different precision (review finding 8, 2026-09-17)."""
+    return 100.0 * (WEIGHTS[0] * coverage
+                    + WEIGHTS[1] * colour
+                    + WEIGHTS[2] * structure)
+
+
+def refusal_for(image_path: str | Path, ours: np.ndarray, art: np.ndarray
+                ) -> tuple[str | None, float | None, float]:
+    """The refusal ladder: -> (refusal or None, subject ratio or None,
+    ink saturation).
+
+    Reported WITH the components rather than in place of them: the artifact
+    showed refused rows so the refusals stayed visible, and hiding a row is
+    how a fixture set quietly shrinks to the ones that flatter it.
+    `mismatch` is checked first — when the two rasters are not the same
+    picture, "is the ink ambiguous" is not the interesting problem.
+    """
+    image_path = Path(image_path)
     ink_px = float((art >= 0.5).sum())
     sewn_px = float((ours >= 0.5).sum())
     saturation = ink_saturation(image_path)
@@ -585,6 +601,28 @@ def score_image(image_path: str | Path,
             refusal = f"ink mask saturates the frame, {saturation:.0%}"
         elif ink_is_ambiguous(image_path):
             refusal = "ink ambiguous (knocked-out lettering)"
+    return refusal, mismatch, saturation
+
+
+def score_image(image_path: str | Path,
+                cfg: PipelineConfig | None = None) -> dict:
+    """Digitize `image_path` and score the result against its own artwork.
+
+    Every returned value is a plain Python scalar or string, safe at a JSON or
+    CSV boundary. `refusal` is None on a scored row, or the reason this row
+    must not be read as an engine result.
+    """
+    cfg = cfg or PipelineConfig()
+    image_path = Path(image_path)
+
+    result, plan = digitize(image_path, cfg)
+    design = plan_to_design(plan)
+
+    reg = register_design(image_path, design)
+    coverage = reg.coverage
+    structure = ms_ssim(reg.O_f, reg.A_f)
+    colour, median_excess = colour_score(image_path, result, plan, cfg)
+    refusal, mismatch, saturation = refusal_for(image_path, reg.ours, reg.art)
 
     pre = run_preflight(result, plan, cfg, image=image_path)
 
@@ -597,14 +635,14 @@ def score_image(image_path: str | Path,
         "coverage": round(coverage, 3),
         "colour": round(colour, 3),
         "structure": round(structure, 3),
-        "artfid": round(composite, 1),
+        "artfid": round(composite(coverage, colour, structure), 1),
         "median_excess_de": (None if median_excess is None
                              else round(median_excess, 2)),
         # Two scalar columns rather than one list: this dict goes straight to
         # `csv.DictWriter` for the CI baseline artifact, and a list lands there
         # as the string "[0.4, -1.2]" that every reader then has to re-parse.
-        "shift_x_mm": round(dx_mm, 1),
-        "shift_y_mm": round(dy_mm, 1),
+        "shift_x_mm": round(reg.dx_mm, 1),
+        "shift_y_mm": round(reg.dy_mm, 1),
         "subject_ratio": None if mismatch is None else round(mismatch, 2),
         "ink_saturation": round(saturation, 3),
         "refusal": refusal,

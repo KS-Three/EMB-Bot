@@ -169,6 +169,25 @@ cd digitizer && .venv/Scripts/python -m digitizer_service   # service on 127.0.0
 - Always `python -m pytest`, never `python foo.py` — a bare invocation does not put
   cwd on `sys.path`.
 - **Never pipe pytest to `tail`** — you get tail's exit code, so a red run reads green.
+  **This reaches the BACKGROUND-TASK channel too, which is how it still bites.**
+  A backgrounded `pytest ... | tail -25` reports *"completed (exit code 0)"* in
+  the task notification while pytest returned 1 — the notification is relaying
+  tail's code, not pytest's. A session read that 0 as green on 2026-09-14 and
+  nearly shipped two self-inflicted failures. Redirect to a log and append the
+  code yourself: `pytest -q > log 2>&1; echo "EXIT=$?" >> log`.
+- **A cloud container here is FOUR cores, so `-n auto` IS `-n 4`** (`nproc` 4,
+  `sched_getaffinity` 4 — measured 2026-09-14). Do not expect the ~9 min Kent's
+  Windows box does; **budget ~45 minutes for a full local digitizer run**, and
+  read that as healthy rather than hung.
+  **The one thing that actually doubles it is starting a SECOND suite.** Two
+  full runs overlapping on those four cores measured **79.1 and 80.9 minutes
+  against 44.5 solo** — 1.8x, from self-inflicted contention, not from `-n auto`
+  and not from any limit. Start one, let it finish.
+  **And do not diagnose a long run as killed the way that session did:** `pytest
+  -q` buffers, so a log sitting at 8% says nothing, and `pgrep -c pytest`
+  returns 0 against a live run because the process is `.venv/bin/python -m
+  pytest` (match `pgrep -fc "python -m pytest"` instead). All three runs that
+  day were declared dead and all three had completed normally.
 - The expected failure classes (golden mismatches on machines that didn't
   capture the golden, OCR skips without `tesseract`) live in `COOKBOOK.md`
   ("Running things"). Check there before treating a red run as a regression.

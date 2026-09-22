@@ -56,6 +56,14 @@ FIELDS = {
     "satinUnderlay": "satin_underlay",
     "densityAdjust": "density_adjust",
     "trimAtMm": "trim_at_mm",
+    # What the DIGITIZER assumed the operator would hoop (playbook Law 33).
+    # These two are not stitch parameters — nothing in either engine reads
+    # them to place a penetration — but they are stated to the customer on
+    # the worksheet, so the two engines disagreeing would print one thing for
+    # a design that went through the service and another for the same
+    # garment in the lettering lane. Same reason as every field above.
+    "assumedBacking": "assumed_backing",
+    "needsTopper": "needs_topper",
 }
 
 
@@ -102,6 +110,15 @@ def _norm(v) -> str:
     this file failed: `str(0.90)` is `'0.9'`, the JS text was `'0.90'`, and it
     reported fleece_sweatshirt as divergent when the two engines agree.
     """
+    if isinstance(v, bool):
+        # Python spells it `True`, JavaScript spells it `true`, and they are
+        # the same physical fact — which is the whole job of this function.
+        # Without this branch `str(True)` is `"True"`, never equal to the JS
+        # literal, so the first boolean field added to the table would report
+        # as drift on every preset while the two engines agree perfectly.
+        # (The numeric branch below already excludes bools on purpose: `True`
+        # must not normalise to `1.0` and collide with a real number.)
+        return "true" if v else "false"
     if isinstance(v, (int, float)) and not isinstance(v, bool):
         return repr(float(v))
     text = str(v).strip().strip('"')
@@ -124,6 +141,9 @@ def test_the_parser_is_not_vacuous():
     assert js["terry_towel"]["densityAdjust"] == "0.85"          # raw text
     assert _norm("0.90") == _norm(0.9) == "0.9"                 # and normalised
     assert _norm("edge_run") == "edge_run"                      # not a number
+    assert _norm(True) == _norm("true") == "true"               # and the two spellings of a bool
+    assert _norm(False) == _norm("false") == "false"
+    assert _norm(True) != _norm(1.0), "a bool must not collide with a number"
     assert all(len(v) == len(FIELDS) for v in js.values()), js
 
     garments = _js_garment_fabric(FABRICS_JS.read_text(encoding="utf-8"))
