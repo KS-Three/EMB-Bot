@@ -66,6 +66,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 
+from .alpha_edge import extend_opaque_colour, extension_applies
 from .config import PipelineConfig
 from .letterbox import strip_letterbox
 from .threads import rgb_to_lab
@@ -466,6 +467,16 @@ def classify(image: str | Path | bytes | np.ndarray, cfg: PipelineConfig,
         return result
 
     rgb, alpha = _load(image, cfg.strip_letterbox)
+    # In step with stage 1 (`cfg.alpha_edge_extend`): the signals below mask
+    # to `fg`, but `_gradient_smoothness`'s kernel sits on the edge and reads
+    # what is under the alpha whatever the mask says — Becker with black
+    # underneath classified "gradient" from a raster stage 1 had already
+    # extended (measured 2026-09-20).
+    # Stage 0 reads the extension wherever the file has alpha when
+    # `alpha_edge_extend_stage0_whole` (Kent's pick 2026-09-20); stage 1 keeps
+    # the resolution-floor gate for the pixels it sews. `alpha_edge.py` says why.
+    if extension_applies(cfg, alpha, ignore_gate=cfg.alpha_edge_extend_stage0_whole):
+        rgb = extend_opaque_colour(rgb, alpha, cfg.alpha_edge_extend_px)
     fg = _fg_mask(rgb, alpha)
 
     ucm = _unique_color_mass(rgb, fg, cfg.seed)

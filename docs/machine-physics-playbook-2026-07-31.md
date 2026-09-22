@@ -68,6 +68,12 @@ Continues the numbered laws. Laws 1–14 covered geometry and the pipeline; 15 o
 
 ## Part 2 — ENGINE CHANGE LIST
 
+> **The Status column below is the ORIGINAL buildability call (2026-07-31), not
+> current build state.** For what is actually built, see
+> [`docs/scope/machine-physics-backlog.md`](scope/machine-physics-backlog.md) —
+> all 17 rows audited against `main` on 2026-09-20, linked from MASTER_SCOPE's
+> Cross-cutting issues. Read the audit before acting on any row here.
+
 | Law | Target | Change | Status |
 |---|---|---|---|
 | 16, 27 | fabrics.py | Per-fabric top spacing table: woven 0.40–0.45, knit 0.45–0.50, lightweight 0.45–0.55, denim/canvas 0.35–0.38, cap 0.35, fleece/terry 0.35–0.45 (+topper assumed), puff 0.28–0.32. Hard floor 0.35 mm engine-wide. **Note: our current knit presets are tighter than every published table — loosen them.** | Desk-safe (values are published); sew-out confirms on our Tajima |

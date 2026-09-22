@@ -32,6 +32,51 @@ triage → investigate → verify → critique → synthesise).
 
 ---
 
+## What happened next — status as of 2026-09-18
+
+**Read this before acting on anything below.** Six days and 29 merges have passed;
+one recommendation here was measured and REFUTED, and several findings are fixed.
+The body of this document is left as written — it is the record of what the sweep
+found on 2026-09-12 — and this section is the delta.
+
+**Refuted.** Area-weighting the satin/fill gate was named here as the only one of
+five reparameterisations that survived measurement. It was built as
+`cfg.classify_area_weighted` and **it does not fix the size cliff it was nominated
+for** (#496, 2026-09-16). It does fix a real instability — boundary-detail verdict
+flips 3 → 0, and 14 shipped verdicts change, every one `dt_irregular → satin` —
+so it shipped DEFAULT OFF on its own merits. The cliff's actual cause was then
+measured as **input resolution** (#499), which no threshold rule reaches. Treat
+this document's ranking of that item as superseded.
+
+**Landed, by this sweep's own PRs (#473, #476, #477):** the transposed renderer and
+`sewout_bridge`'s contradiction; the constants census and `test_machine_wire.py`;
+EXP's sewn ceiling; four false blockers deleted; the OFL clause-3 guard; the
+per-glyph strip that revives 20 glyphs.
+
+**Landed, by later sessions acting on findings here:**
+
+| finding | landed |
+|---|---|
+| `.embproj` opens blank on an unrecognised version | #483 — the recogniser is now `Number(input.version) >= 2 \|\| Array.isArray(input.elements)` |
+| lock stitches absent from the browser lane | #483 — ported for lettering |
+| the 20 glyphs need a rebuild the cloud cannot do | #489, 2026-09-15 — `build-embf.mjs --only <keys>`; `KNOWN_DEAD` no longer lists them, bbox shift measured (`<TAG>` +96.2% wide, text without those characters 0.0%) |
+| `strip_letterbox` held OFF by blast radius | #485 — flipped ON by default |
+
+**Corrected in this document's own wake.** `test_machine_wire.py`, written here,
+had a THIRD blind spot of the class it exists to catch: its Python pattern
+anchored `\s*$` after the value, so **36 of `machine.py`'s constants were
+invisible** for carrying a trailing comment. Found 2026-09-14 by someone else's
+mutation test; the fix took the shared count 18 → 21 and surfaced a real
+divergence (`UNDERLAY_INSET_MM`). See DOCTRINE, *"A scanner-based guard needs a
+mutation aimed at what the SCANNER cannot see"*.
+
+**Still open from this sweep:** `honoka` (not imported), the commissioning route,
+`corpus_scorecard`'s exit code widening, and `REG_IOU_FLOOR` guarding 1 of 8 call
+sites. The Fold Ink/Stitch Reserved-Font-Name case is guarded in
+`test/font-license.test.js` and awaits a reply from its copyright holder.
+
+---
+
 ## 1. The verdict
 
 EMB-Bot's engine is in better shape than its *ability to know that* is. The four

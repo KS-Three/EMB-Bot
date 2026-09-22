@@ -53,7 +53,7 @@ import math
 
 import shapely
 from shapely.geometry import LineString, Point, Polygon
-from shapely.ops import unary_union
+from shapely.ops import nearest_points, unary_union
 
 from . import machine, stitches
 from .config import PipelineConfig
@@ -71,7 +71,7 @@ from .stage6_fill import stitch_shape
 from .stage6_meander import meander_fill
 from .stage6_scanline import scanline_fill
 from .stage6_sketch import sketch_fill
-from .stage6_satin import classify_ribbon, is_satin_candidate, satin_shape
+from .stage6_satin import classify_ribbon, satin_shape
 from .stage6_streamline import streamline_fill
 from .stitches import StitchBlock, StitchRun
 from .threads import chart_for
@@ -102,6 +102,15 @@ _LINK_SEARCH_NODES = 120
 # must land there too, and tests/test_photo_width_floor.py pins the
 # lockstep so drift fails loud instead of quietly un-flooring a new class.
 from .config import PHOTO_CLASSES, is_photographic  # canonical copy lives in config.py
+
+# The garments that sew cap-style (cfg.cap_center_out). MIRRORED verbatim
+# from the browser engine's `capMode` predicate in `src/digitize.js` — the
+# whole point of the flag is that the two lanes stopped disagreeing about the
+# same hat, so a membership change here must land there too.
+# `fabrics.GARMENT_FABRIC` is NOT the right source: it maps `beanie` to
+# jersey, because a beanie's FABRIC is a knit even though its geometry is a
+# cap. Fabric and curvature are different questions.
+CAP_GARMENTS = ("hat_front", "beanie")
 
 # Row 14's underlay split, expressed in the vocabularies the two tiers
 # actually speak (fabrics.py's ids):
@@ -213,6 +222,20 @@ def depth_sort_layers(regions, thread_indices: list[int], chart) -> list[int]:
     return [thread_indices[L] for L in order]
 
 
+def _satin_ceiling_for(region, cfg: PipelineConfig, satin_max_mm: float
+                       ) -> tuple[float, bool, bool]:
+    """-> (width ceiling, per-stroke rung, fold guard) for THIS region: the
+    design's under `machine.satin_ceiling_mm` for every shape, and no
+    ceiling at all -- the per-stroke rung on, the fold guard on -- for a
+    text-cluster member under `cfg.satin_lettering_split` (plan step 4,
+    2026-09-19: split, never fill, for lettering). One helper, so the
+    borders-last predicate, the classifier call and the emitter agree on
+    what a letter is admitted at."""
+    if cfg.satin_lettering_split and region.meta.get("text_candidate"):
+        return math.inf, True, True
+    return satin_max_mm, cfg.satin_per_stroke, bool(cfg.wide_columns)
+
+
 def _sews_satin(region, cfg: PipelineConfig, satin_max_mm: float,
                 design_class: str) -> bool:
     """Will this region reach the satin tier? — the borders-last predicate.
@@ -220,12 +243,35 @@ def _sews_satin(region, cfg: PipelineConfig, satin_max_mm: float,
     Mirrors `stitch_one`'s routing exactly: an explicit review-screen
     `tier: "satin"` forces the tier regardless of the classifier AND the
     global satin switch (the user already answered the question), while an
-    auto shape reaches satin only when `cfg.satin` is on and
-    `is_satin_candidate` says ribbon — the identical call, on the identical
-    artwork polygon, `_comp_axis` and `stitch_one` both make, so the three
-    cannot disagree about which shapes those are. Every other pinned tier
-    reads as not-satin even for a ribbon-shaped polygon: an explicit "fill"
-    is an instruction, not a hint.
+    auto shape reaches satin only when `cfg.satin` is on and the classifier
+    says ribbon. Every other pinned tier reads as not-satin even for a
+    ribbon-shaped polygon: an explicit "fill" is an instruction, not a hint.
+
+    **`classify_ribbon` directly, not the `is_satin_candidate` wrapper, and
+    with every keyword `stitch_one` passes** — one reading of one question,
+    which is the only shape of this that stays true. It did not until
+    2026-09-20: this predicate called `is_satin_candidate`, which takes
+    `area_weighted` (never passed here) and has no `polygon_axis` parameter
+    at ALL, while the emitter passed both off `cfg`. The docstring claimed
+    an identical call and the claim was false. Latent only because
+    `cfg.satin_polygon_axis` and `cfg.classify_area_weighted` both default
+    OFF — and both are on the pending-flags list Kent has not ruled on
+    (`docs/kent-review-2026-09-18.md`: `satin_polygon_axis="artwork"` 8 of 9
+    pairs "no difference", `classify_area_weighted` 2 of 2 "both bad"), so
+    either flip is the one that makes this live: a layer moved late, a
+    detail picked last, or a seam yielded, on a shape that then sews fill.
+    `tests/test_prediction_matches_emitter.py` compares this predicate
+    against the SEWN tier with each flag on, and reads both call sites'
+    keyword names off the AST so the next flag cannot reopen it.
+
+    Stage 5's `_comp_axis` is a THIRD reading of the same question and was
+    NOT brought along: it still calls `is_satin_candidate` with neither flag
+    and without `_satin_ceiling_for`'s lettering-split ceiling. Left rather
+    than missed, because it is gated one level deeper — `resolve_overlaps`
+    only calls it when `cfg.directional_comp` or `cfg.satin_rail_comp` is on,
+    both default OFF, so it takes TWO flips to reach, not one. Its consumers
+    are different too (the axis a shape is compensated along, and
+    `PlannedRegion.satin_tier`, which decides rail comp). Kent's call.
 
     Two edges, stated honestly (the first version of this docstring had the
     width-floor case BACKWARDS — caught in review before it shipped):
@@ -237,24 +283,28 @@ def _sews_satin(region, cfg: PipelineConfig, satin_max_mm: float,
       stays the right answer.
     - A photo-lane shape demoted by the width floor sews EARLY, with the
       fills: `photo_width_floor` is a not-satin verdict
-      (`RibbonVerdict(False, ...)`), so `is_satin_candidate` — and
-      therefore this predicate — says False, even though `stitch_one`
-      reroutes exactly those shapes to an outline run. Treating them as
-      late details would mean reading `classify_ribbon`'s reason here;
-      deliberately NOT done — it engages only in the photo classes, where
-      Kent's 2026-09-01 flip ruling kept the layer half out entirely (the
-      pipeline call-site gate) and left the photo lane's ordering to the
-      measured depth story. Likewise an explicit `tier: "run"` detail
-      gets no late bias — this rule is scoped to the sew-out's own
-      defect, border SATIN, on purpose.
+      (`RibbonVerdict(False, ...)`), so `.satin` — and therefore this
+      predicate — says False, even though `stitch_one` reroutes exactly
+      those shapes to an outline run. Treating them as late details would
+      mean reading the verdict's `.reason` as well as its `.satin` — one
+      attribute away now that this calls `classify_ribbon` itself, and
+      still deliberately NOT done: the floor engages only in the photo
+      classes, where Kent's 2026-09-01 flip ruling kept the layer half out
+      entirely (the pipeline call-site gate) and left the photo lane's
+      ordering to the measured depth story. Likewise an explicit
+      `tier: "run"` detail gets no late bias — this rule is scoped to the
+      sew-out's own defect, border SATIN, on purpose.
     """
     tier = str(region.meta.get("tier", "auto")).lower()
     if tier == "satin":
         return True
+    satin_max_mm, per_stroke, _fold = _satin_ceiling_for(region, cfg, satin_max_mm)
     return (tier == "auto" and cfg.satin
-            and is_satin_candidate(region.polygon, satin_max_mm,
-                                   design_class=design_class,
-                                   per_stroke=cfg.satin_per_stroke))
+            and classify_ribbon(region.polygon, satin_max_mm,
+                                design_class=design_class,
+                                per_stroke=per_stroke,
+                                polygon_axis=cfg.satin_polygon_axis,
+                                area_weighted=cfg.classify_area_weighted).satin)
 
 
 def borders_last_layers(regions, thread_indices: list[int],
@@ -298,7 +348,7 @@ def borders_last_layers(regions, thread_indices: list[int],
     with no satin-dominated layer — every flat golden — comes back
     untouched, order and palette both.
 
-    Costs one `is_satin_candidate` per stitched region when the flag is on
+    Costs one `classify_ribbon` per stitched region when the flag is on
     (stage 7 will classify again when it routes) — accepted with the
     2026-09-01 default flip; `borders_last=False` opts back out.
     """
@@ -623,7 +673,7 @@ def _chain(runs: list[StitchRun], regions: list[PlannedRegion], base_thread: int
     chaining and a base-thread-tagged run met.
 
     The returned count is how many of the links replaced a lift INSIDE a shape,
-    so the operator-facing "the thread had to be lifted N times inside a shape"
+    so the operator-facing "the thread is lifted N times inside a shape"
     warning still reports what the machine will actually do.
 
     Distance is refused a vote on everything except the far end of the range.
@@ -1254,6 +1304,40 @@ def _sewn_linear_cover(blocks: list[StitchBlock]):
     return unary_union([ln.buffer(half_w) for ln in lines])
 
 
+def _satin_lettering_cover(cap_sewn: list[PlannedRegion],
+                           blocks: list[StitchBlock]):
+    """The outlines the cap leaves alone under `cfg.edge_cap_skip_lettering`
+    (lettering construction plan step 5, 2026-09-19): every text-cluster
+    member that sewed as SATIN, as the polygon it sewed -- the same
+    `p.polygon` the silhouette is the union of, so the letter's stretch of
+    the silhouette's boundary lies exactly on it.
+
+    Satin only, read off the runs the design actually laid rather than off
+    a verdict: a member with a fill run keeps its cap, because a tatami
+    letter's rows end in open air at its edge and that is the defect the
+    cap exists for; a member sewn on the run tier is already linear cover
+    in its own right. None when no such member sewed, so the caller's
+    `omit` is what it was.
+    """
+    satin_ids: set = set()
+    fill_ids: set = set()
+    for b in blocks:
+        for r in b.runs:
+            if not r.shape_id:
+                continue
+            if r.kind == stitches.SATIN:
+                satin_ids.add(r.shape_id)
+            elif r.kind == stitches.FILL:
+                fill_ids.add(r.shape_id)
+    polys = [p.polygon for p in cap_sewn
+             if p.region.meta.get("text_candidate")
+             and p.shape_id in satin_ids and p.shape_id not in fill_ids
+             and p.polygon is not None and not p.polygon.is_empty]
+    if not polys:
+        return None
+    return unary_union(polys)
+
+
 def _gate_saving(silhouette, omit, gated_runs, *, style: str,
                  entry, trim_at_mm: float,
                  width_mm: float | None) -> tuple[float, float]:
@@ -1317,15 +1401,76 @@ def _over_budget_action(cfg) -> str:
     return action if action in EDGE_CAP_OVER_BUDGET_ACTIONS else "warn"
 
 
+def _cap_path_frontage(runs, sewn: list[PlannedRegion]) -> dict[int, float]:
+    """Millimetres of the cap's own stitch path that ride each thread's edge.
+
+    Every segment of every emitted cap run is attributed to the NEAREST sewn
+    region's boundary, and its length added to that region's thread. This is
+    the cap as it will be sewn, so a stretch of silhouette the emitter dropped
+    cannot vote and a stretch it kept votes exactly its own length.
+
+    Nearest rather than on-the-boundary because the cap is not obliged to sit
+    on the outline: `bean` rides it, `satin` zigzags about it by
+    `cfg.border_width_mm`, and both are continuing the same edge. Measured on
+    `enthusiast_logo` at 80 mm, bean: the worst cap point is 0.19 mm off a
+    region edge.
+    """
+    bounds = [p.polygon.boundary for p in sewn]
+    threads = [p.region.thread_index for p in sewn]
+    if not bounds:
+        return {}
+    try:
+        tree = shapely.STRtree(bounds)
+    except Exception:
+        return {}
+    frontage: dict[int, float] = {}
+    for r in runs or ():
+        pts = list(getattr(r, "points", ()) or ())
+        for a, b in zip(pts, pts[1:]):
+            try:
+                seg = LineString([a, b])
+                if seg.length <= 0:
+                    continue
+                idx = tree.nearest(seg.interpolate(0.5, normalized=True))
+            except Exception:
+                continue
+            if idx is None:
+                continue
+            ti = threads[int(idx)]
+            frontage[ti] = frontage.get(ti, 0.0) + seg.length
+    return frontage
+
+
 def _cap_thread(silhouette, sewn: list[PlannedRegion],
-                default_thread: int) -> int:
+                default_thread: int, runs=None) -> int:
     """Which cone the design-silhouette cap sews in (cfg.edge_cap).
 
-    The cap continues an edge that already exists, so it sews in the thread
-    of whichever region owns the most of that edge: for each sewn region,
-    how much of its own boundary lies ON the silhouette boundary, summed per
-    thread. A region buried in the middle of the design contributes nothing;
-    the colours actually facing bare fabric decide.
+    The cap continues an edge that already exists, so it sews in the thread of
+    whichever region owns the most of the edge THE CAP ACTUALLY SEWS
+    (`_cap_path_frontage`, over the emitted runs). A region buried in the
+    middle of the design contributes nothing, and neither does one whose
+    frontage the gate told the emitter to skip.
+
+    **Voting over the whole silhouette instead put the cap in a colour it
+    never touches.** `cfg.edge_cap`'s gate (Kent 2026-09-11) hands the emitter
+    everything linear the design already sewed, and the emitter drops the
+    outline samples standing on it; the vote never saw that geometry. On
+    `enthusiast_logo` at 80 mm the ungated vote scores 473.8 mm of Smoky
+    lettering against 131.7 mm of Not Quite Red and picks Smoky, while
+    **100% of the emitted cap — all 117 stitches, 81.4 mm — rides the red
+    star.** The star wears a continuous charcoal halo. *(2026-09-20;
+    `tests/test_lettering_coverage_regression.py` is what priced it)*
+
+    **The obvious cheaper fix does NOT work, and this is the second time that
+    proxy has lied here.** Voting over
+    `silhouette.boundary.difference(cap_omit)` — the open edge by LENGTH —
+    still picks Smoky on that design, 116.6 mm against red's 55.5 mm: 165.9 mm
+    of the 581.7 mm silhouette survives the gate as remnant arcs between
+    letters, and every one of them is under `_ARC_MIN_MM` and dropped
+    unstitched. `_gate_saving`'s docstring records the same divergence from
+    the other side (length says 51.7% where stitches say 94.2% on this exact
+    fixture). Measure the stitches; the length proxy is not a cheaper version
+    of this answer, it is a different and wrong one.
 
     This is deliberately a CHOICE AMONG THREADS THE DESIGN ALREADY SEWS, not
     a chart lookup: the result-level palette is regions-derived (see
@@ -1333,26 +1478,31 @@ def _cap_thread(silhouette, sewn: list[PlannedRegion],
     colour of its own to sample — inventing a cone for it would grow the
     operator's cone list for a decoration nobody asked to be a new colour.
 
+    With no `runs` the vote falls back to silhouette frontage, which is what
+    this did before 2026-09-20 — a caller with no emitted cap to read has
+    nothing better, and the two agree wherever the gate omits nothing.
+
     Ties break on the lower thread index, the same deterministic tiebreak
     the geometry picks use. `default_thread` covers the degenerate case
     where no region touches the silhouette measurably.
     """
     if silhouette is None or getattr(silhouette, "is_empty", True):
         return default_thread
-    try:
-        edge = silhouette.boundary.buffer(_BORDER_SEAM_EPS_MM)
-    except Exception:
-        return default_thread
-    frontage: dict[int, float] = {}
-    for p in sewn:
+    frontage = _cap_path_frontage(runs, sewn)
+    if not frontage:
         try:
-            shared = p.polygon.boundary.intersection(edge)
+            band = silhouette.boundary.buffer(_BORDER_SEAM_EPS_MM)
         except Exception:
-            continue
-        length = getattr(shared, "length", 0.0)
-        if length > 0:
-            ti = p.region.thread_index
-            frontage[ti] = frontage.get(ti, 0.0) + length
+            return default_thread
+        for p in sewn:
+            try:
+                shared = p.polygon.boundary.intersection(band)
+            except Exception:
+                continue
+            length = getattr(shared, "length", 0.0)
+            if length > 0:
+                ti = p.region.thread_index
+                frontage[ti] = frontage.get(ti, 0.0) + length
     if not frontage:
         return default_thread
     return min(frontage, key=lambda ti: (-round(frontage[ti], 6), ti))
@@ -1511,6 +1661,10 @@ def sequence(
                       if cfg.underlay else "none")
     satin_max = satin_ceiling_mm(cfg)
     trim_at = fabric.trim_at_mm
+    # Cap sew order (cfg.cap_center_out, default OFF — config.py's block has
+    # the craft argument and the lane-split history). Resolved once per call:
+    # the garment cannot change between groups.
+    cap_order = cfg.cap_center_out and cfg.garment_id in CAP_GARMENTS
 
     # `cfg.border is None` means "let the class decide" — see config.py's own
     # block for why None and not "off". Only the real PHOTO_CLASSES take the
@@ -1745,7 +1899,8 @@ def sequence(
     for _group_key in sorted({nn_group_key(p) for p in planned}):
         group = [p for p in planned if nn_group_key(p) == _group_key]
 
-        def stitch_one(p: PlannedRegion, entry: tuple[float, float] | None):
+        def stitch_one(p: PlannedRegion, entry: tuple[float, float] | None,
+                       exit_near: tuple[float, float] | None = None):
             # The review screen's per-shape tier (shape-layers contract v1;
             # "sketch" added in v1.3): "auto" is the ladder below exactly as
             # it always ran; "satin", "fill", "run" and "sketch" force one
@@ -1792,7 +1947,7 @@ def sequence(
             # user has already answered the question it asks.
             #
             # One classify_ribbon call carries both decisions the ladder needs:
-            # the satin/fill verdict is_satin_candidate wrapped (identical
+            # the satin/fill verdict `_sews_satin` predicts on (identical
             # computation), and Law 31's photo-lane width floor — a shape that
             # EARNED satin but would sew a thread-width column
             # (`photo_width_floor`, photo classes only; see the constant's
@@ -1804,9 +1959,10 @@ def sequence(
             # Widened lettering is classified on the polygon it will sew —
             # `p.polygon`, the compensated column — see `widened_lettering`.
             classify_poly = p.polygon if widened_lettering(p.region) else p.region.polygon
-            ribbon = (classify_ribbon(classify_poly, satin_max,
+            shape_max, shape_per_stroke, shape_fold = _satin_ceiling_for(p.region, cfg, satin_max)
+            ribbon = (classify_ribbon(classify_poly, shape_max,
                                       design_class=design_class,
-                                      per_stroke=cfg.satin_per_stroke,
+                                      per_stroke=shape_per_stroke,
                                       polygon_axis=cfg.satin_polygon_axis,
                                       area_weighted=cfg.classify_area_weighted)
                       if tier == "auto" and cfg.satin else None)
@@ -1873,12 +2029,18 @@ def sequence(
                     rails_follow_edge=cfg.satin_rails_follow_edge,
                     patch_junctions=cfg.satin_patch_junctions,
                     polygon_axis=cfg.satin_polygon_axis,
+                    stroke_order=cfg.satin_stroke_order,
+                    corner_twigs=cfg.satin_corner_twigs,
+                    junction_stack=cfg.satin_junction_stack,
+                    end_near=exit_near if cfg.satin_exit_toward_next else None,
+                    underlay_on_column=cfg.satin_underlay_on_column,
+                    walk_cursor_reach_mm=cfg.satin_walk_cursor_reach_mm,
                     # The ceiling the classifier admitted at is the one the
                     # emitter sews at — one number, threaded, never two
                     # constants (DOCTRINE 2026-09-02). The fold guard rides
                     # with the wide ceiling.
-                    max_width_mm=satin_max,
-                    fold_guard=cfg.wide_columns,
+                    max_width_mm=shape_max,
+                    fold_guard=shape_fold,
                     # A hairline sews as a bean only where the ART has ink:
                     # `p.polygon` is the compensated outline, and pull comp
                     # grows a vectorization needle into a "stroke". The
@@ -2025,6 +2187,7 @@ def sequence(
                     underlay_style=eff_underlay_style,
                     trim_at_mm=trim_at,
                     under_cover=cfg.fill_travel_under_cover,
+                    cut_bridges=cfg.fill_bridge_cut,
                     start_near=entry,
                     technique="crosshatch",
                 )
@@ -2055,6 +2218,7 @@ def sequence(
                     underlay_style=eff_underlay_style,
                     trim_at_mm=trim_at,
                     under_cover=cfg.fill_travel_under_cover,
+                    cut_bridges=cfg.fill_bridge_cut,
                     start_near=entry,
                     technique="wave",
                 )
@@ -2078,6 +2242,7 @@ def sequence(
                     underlay_style=eff_underlay_style,
                     trim_at_mm=trim_at,
                     under_cover=cfg.fill_travel_under_cover,
+                    cut_bridges=cfg.fill_bridge_cut,
                     start_near=entry,
                     technique="chevron",
                 )
@@ -2099,6 +2264,7 @@ def sequence(
                     underlay_style=eff_underlay_style,
                     trim_at_mm=trim_at,
                     under_cover=cfg.fill_travel_under_cover,
+                    cut_bridges=cfg.fill_bridge_cut,
                     start_near=entry,
                     technique="brick",
                 )
@@ -2202,6 +2368,7 @@ def sequence(
                     underlay_style=eff_underlay_style,
                     trim_at_mm=trim_at,
                     under_cover=cfg.fill_travel_under_cover,
+                    cut_bridges=cfg.fill_bridge_cut,
                     start_near=entry,
                     density_boost=cfg.fill_density_boost,
                 )
@@ -2280,6 +2447,25 @@ def sequence(
         centre = unary_union([p.polygon for p in group]).centroid
         far = {i: round(group[i].polygon.centroid.distance(centre), 6)
                for i in range(len(group))}
+        # Cap order, when it is on: distance from the design's vertical
+        # centreline, then the bill end first. The centreline is `x = 0`
+        # because stage 4 puts the origin at the artwork bbox centre, and
+        # "bill end" is DESCENDING y because that frame's y runs DOWN — the
+        # same two keys, in the same order, as `src/digitize.js`'s `capMode`.
+        #
+        # `x = 0` holds for BOTH producers that reach this function, which is
+        # the thing to check before trusting it: `run_stages` centres on the
+        # artwork bbox (stage4_vectorize line 93) and `manual.py` recentres
+        # the combined shape bbox onto the origin for exactly that reason
+        # (its own line 219). So no caller arrives in an off-centre frame.
+        #
+        # Deliberately NOT keyed on `centre` above: that is this GROUP's own
+        # centroid, so each cone would sew outward from wherever its own
+        # shapes happen to sit. The seam is a property of the garment, not of
+        # the colour, so every group measures from the same line.
+        cap_key = ({i: (round(abs(group[i].polygon.centroid.x), 6),
+                        -round(group[i].polygon.centroid.y, 6), rank[i])
+                    for i in range(len(group))} if cap_order else {})
 
         # The review screen's within-layer sew order (shape-layers contract
         # v1.2, `Region.meta["sew_order"]`): a shape carrying one is "due" at
@@ -2335,6 +2521,12 @@ def sequence(
                     if late else unpinned)
             if due is not None and (sew_order[due] <= next_slot or not unpinned):
                 pick = due
+            elif cap_order:
+                # Replaces BOTH geometry branches, not just the seed: on a cap
+                # the whole sweep runs centre-out, so nearest-neighbour from
+                # the cursor never gets a vote. `capMode` short-circuits the
+                # browser lane's ordering the same way.
+                pick = min(pool, key=lambda i: cap_key[i])
             elif cursor is None:
                 pick = min(pool, key=lambda i: (-far[i], rank[i]))
             else:
@@ -2347,7 +2539,20 @@ def sequence(
             # every seam it shares — its own border block must not yield to
             # itself, and nothing sewn after it may yield to it either.
             border_later.pop(p.shape_id, None)
-            runs, report, filled = stitch_one(p, cursor)
+            # `cfg.satin_exit_toward_next`: where the needle goes next -- the
+            # nearest remaining shape by polygon distance, the pick rule's
+            # own answer once the needle is there -- handed to the satin
+            # emitter so its walk can end facing it. Read only; the pick
+            # below is untouched.
+            exit_near = None
+            if cfg.satin_exit_toward_next:
+                cands = [i for i in pool if i != pick] or list(remaining)
+                if cands:
+                    nxt = min(cands, key=lambda i: (
+                        round(group[i].polygon.distance(p.polygon), 6), rank[i]))
+                    q = nearest_points(p.polygon, group[nxt].polygon)[1]
+                    exit_near = (float(q.x), float(q.y))
+            runs, report, filled = stitch_one(p, cursor, exit_near)
             thin += int(filled and report["too_thin"])
             jumps += report["jumps"]
             as_run += report.get("as_run", 0)
@@ -2482,6 +2687,16 @@ def sequence(
         # ties are not cover either — travel is hidden or exposed but never a
         # finish, and underlay is under the very rows that end short.
         cap_omit = _sewn_linear_cover(blocks)
+        # Step 5 of the lettering plan (2026-09-19): a satin-sewn letter's
+        # outline is the letter's own -- a typed glyph gets no cap -- so
+        # its sewn polygon joins the cover and no cap sample stands on it.
+        # The gate's published saving and cover then include it, which is
+        # what they measure: what the cap was told not to sew.
+        if cfg.edge_cap_skip_lettering:
+            _letters = _satin_lettering_cover(cap_sewn, blocks)
+            if _letters is not None:
+                cap_omit = (_letters if cap_omit is None
+                            else unary_union([cap_omit, _letters]))
         c_runs, c_report = silhouette_cap(
             silhouette,
             "__edge_cap__",
@@ -2527,7 +2742,8 @@ def sequence(
                 jumps += c_report["jumps"]
                 cap_lightened = c_report["bean_loops"]
                 c_index = _cap_thread(silhouette, cap_sewn,
-                                      cap_sewn[0].region.thread_index)
+                                      cap_sewn[0].region.thread_index,
+                                      runs=c_runs)
                 c_thread = chart_for(cfg)[c_index]
                 blocks.append(
                     StitchBlock(
@@ -2686,7 +2902,10 @@ def sequence(
         warnings.append(
             warn(
                 LONG_JUMPS_TRIMMED,
-                f"The thread had to be lifted {jumps} time"
+                # "is lifted", not "had to be": with `cfg.fill_bridge_cut` a
+                # lift can be the engine's CHOICE -- a route existed and a cut
+                # was cheaper than thread on top of finished fill.
+                f"The thread is lifted {jumps} time"
                 f"{'s' if jumps != 1 else ''} inside a shape.",
                 count=jumps,
             )

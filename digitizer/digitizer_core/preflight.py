@@ -1330,7 +1330,12 @@ def _ground_sewn_findings(p, result: PipelineResult,
     area_frac = biggest.area_mm2 / total_area
 
     thread = chart_for(cfg)[biggest.thread_index]
-    border_rgb = _dominant_border_color(p.rgb)
+    # The artwork's own page colour, read off the raster's border. Under
+    # `cfg.alpha_edge_extend` the raster's border carries nearest-opaque
+    # colour (stage 1 extends it under the transparency for every reader);
+    # the file's own colour there is `p.raw_rgb`, which is what this
+    # finding has always read and must keep reading.
+    border_rgb = _dominant_border_color(p.raw_rgb if getattr(p, "raw_rgb", None) is not None else p.rgb)
     # Same CIEDE2000-on-skimage-rgb2lab convention as every other colour
     # distance in this module (`threads.rgb_to_lab`, never cv2's 8-bit Lab).
     delta_e = float(deltaE_ciede2000(
@@ -1901,12 +1906,22 @@ def _satin_rail_advance_mm(plan: StitchPlan) -> float | None:
 
     Rails alternate A, B, A, B ... so two apart is the same rail — measured
     two-apart, never sliced at fixed parity (the playbook's parity trap).
+
+    On the RAILS, with the split penetrations stripped (2026-09-19): a
+    split satin column carries one or more penetrations along each cross
+    (`stage6_satin.strip_splits` is the reader every other instrument here
+    uses), and with them in the list "two apart" is a mid-cross hop, not
+    the rail pitch — the lettering plan's 127 mm fixture under
+    `satin_lettering_split` read 1.09 mm against the 0.40 target and raised
+    `DENSITY_EXTREME` on columns sewn at 0.43 (the same trap in its second
+    form: the parity is broken by the splits instead of the slicing).
+    Unsplit runs are unchanged by the strip.
     """
     adv: list[float] = []
     for _b, run in plan.iter_runs():
         if run.kind != stitches.SATIN:
             continue
-        pts = run.points
+        pts = strip_splits(run.points)
         for i in range(len(pts) - 2):
             adv.append(math.dist(pts[i], pts[i + 2]))
     if len(adv) < _MIN_SAMPLES:

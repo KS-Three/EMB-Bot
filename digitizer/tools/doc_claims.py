@@ -44,6 +44,13 @@ import sys
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 
+# `python tools/doc_claims.py` puts `tools/` on sys.path, NOT `digitizer/`,
+# so `tools._console` is unimportable until this line. See that module for
+# why a tool that prints doc text has to widen its own stdout.
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
+
+from tools._console import utf8_console                    # noqa: E402
+
 # Current-state docs: a disagreement here is a DEFECT and fails the run.
 # MASTER_SCOPE says "Current state ONLY"; DOCTRINE only accumulates rulings.
 STRICT = ["MASTER_SCOPE.md", "DOCTRINE.md"]
@@ -188,11 +195,21 @@ def test_counts() -> dict[str, int]:
     try:
         out = subprocess.run(
             [sys.executable, "-m", "pytest", "-q", "--collect-only"],
-            capture_output=True, text=True, cwd=ROOT / "digitizer", timeout=300)
+            capture_output=True, cwd=ROOT / "digitizer", timeout=300,
+            # NOT `text=True`: that decodes the child as UTF-8 and, on a
+            # cp1252 console, subprocess's reader THREAD dies on the first
+            # byte it cannot decode — leaving returncode 0 and stdout None,
+            # which the `except` below cannot catch because it was raised on
+            # another thread. Kent's box, 2026-09-20; CI is UTF-8 and never
+            # saw it. Same lesson as `tools/_console.py`, applied to the
+            # CHILD rather than to our own stdout.
+            encoding="utf-8", errors="replace")
     except Exception:                                   # pragma: no cover
         return {}
     counts: dict[str, int] = {}
-    for line in out.stdout.splitlines():
+    # Defence in depth: the encoding above is the cure, this keeps the
+    # docstring's "returns {}" contract true even if stdout is ever None again.
+    for line in (out.stdout or "").splitlines():
         if line.startswith("tests/") and "::" in line:
             counts[line.split("::", 1)[0]] = counts.get(
                 line.split("::", 1)[0], 0) + 1
@@ -280,6 +297,7 @@ def check_constants(text: str, doc: str, mods: dict
 
 
 def main() -> int:
+    utf8_console()
     mods = _modules()
     counts = test_counts()
     if not counts:

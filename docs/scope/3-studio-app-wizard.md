@@ -536,3 +536,103 @@ Two things fell out of that run, one fixed and one recorded:
   `(any-pointer: fine)` the way `emptyFieldHint` already does; not worth
   inventing a phone story PRODUCT.md has not decided on (launch posture is
   still "Desktop-only, stated on the site", still stated nowhere).
+
+## Moved from MASTER_SCOPE (2026-09-18) — the "Make it bigger" chips
+
+Lifted verbatim from the area-3 summary on 2026-09-18 to bring `MASTER_SCOPE.md` back under its 27,000-word budget (the offload mechanism it documents); the summary keeps the one-line claim and the dated pointer. Snapshot as of 2026-09-06, not re-verified since.
+
+**Both "Make it bigger" chips offer a PARTIAL remedy, and the comment justifying them misquoted the finding it cited** — it read `LETTERING_TOO_SMALL`'s message as ending *"Enlarging helps"* when on that same commit it already ended *"...but does not fully clear it ... Remove or simplify the smallest lettering"*. Corrected in place with the history; the buttons are LEFT for Kent, since whether a partial remedy earns one is his call. `STITCHES_TOO_SHORT` no longer recommends enlarging at all and now names the shapes carrying the short steps — it and `LETTERING_TOO_SMALL` measure the same quantity at the same threshold (`MIN_COLUMN_MM` **is** `machine.MIN_STITCH_MM`) and it never fired alone over the corpus at 80 mm (the only width swept), but only **66%** of its short steps sit in a shape lettering named: the rest are sewable columns (1.1–3.2 mm median) with a narrow waist. **And the button itself is now measured: ONE PRESS CLEARS THE FINDING ON 1 OF 10** corpus fixtures (two presses on 4 of 10) and makes it **worse on 3** — `photo_dof_meadow` 0.36 → 0.58 → 0.71 — while the satin shape count rises on every fixture (2 → 9, 42 → 71), which is "the smallest shapes regenerate at any size" from the other side. No grade claim is drawn from that sweep: several checks move with size and 5 of the 10 are on the clamped floor. *(measured 2026-09-06 — `tools/short_satin_overlap.py`, `tools/enlarge_cure.py`, `tests/test_short_satin_shapes.py` (14); DOCTRINE)*
+
+## Moved from MASTER_SCOPE (2026-09-20) — three fixed Studio entries
+
+Lifted verbatim from the area-3 summary on 2026-09-20 to buy budget space for
+the machine-physics backlog pointer (see
+[`machine-physics-backlog.md`](machine-physics-backlog.md)); the summary keeps
+the one-line claim and the dated pointer, as the 2026-09-18 and 2026-09-19
+moves above did. All three are FIXED entries — the verdict is current, the
+mechanism detail below is what no longer needed to sit in the dashboard.
+
+**Typographic punctuation folds to its ASCII twin where a font lacks it.**
+`satinfont.js TYPOGRAPHIC_FOLD` stitches the twin ONLY where the fancy form is
+missing — 367 font x character combinations rescued, and all 85 fonts hash
+identically on text that never needed it. Not NFKD: accented letters are
+different letters and stay unfolded. What it cost before the fix (a phone's
+U+2019 sewing "Fritschs Stitches", under a note naming a character that looks
+identical to the one typed): DOCTRINE; scope-history 09-07. *(fixed
+2026-09-07)*
+
+**Lettering under the cap floor now names a way out.** The "cannot be sewn"
+verdict was the only one with no fix while the milder branch named two. Levers
+were measured before being named, so line breaks lead and "fewer characters"
+is second; "Size up" is withheld at the width cap, the rule the hairline
+branch already followed. The measured ladder (74 chars at default left chest =
+1.3 mm against a 4 mm floor, and what each lever buys): scope-history 09-07.
+*(fixed 2026-09-07)*
+
+**A design is named after what is in it, and the registry stops swallowing
+failed writes.** Every project was "Untitled design", so "My designs" listed
+rows a customer could only tell apart by opening each, and every backup
+downloaded as `untitled-design.embproj`. A still-unnamed design now takes its
+name from its content; a name typed by hand is sticky. Separately,
+`renameProject` and `deleteProject` reported success for an index write that
+never landed — a name and a project's membership of the registry live ONLY in
+that index — and `deleteProject` removed the record before writing it. Both
+propagate now, index first. *(fixed 2026-09-07 — area 3; DOCTRINE)*
+## Moved from MASTER_SCOPE (2026-09-19) — the two engines' wire tests
+
+Lifted verbatim from the area-3 summary on 2026-09-19 to bring
+`MASTER_SCOPE.md` back under its 27,000-word budget, the same way the "Make it
+bigger" chips moved on 2026-09-18. `MASTER_SCOPE.md` keeps a one-line pointer;
+this is the full entry.
+
+**The two engines' fabric tables agree, and `test_fabric_wire.py` keeps them so**
+— field-for-field, asserting AGREEMENT only; the numbers stay gate 1. Its sibling
+`test_machine_wire.py` does the same for the 21 shared individual constants
+(2026-09-14). What law 26's month of silent browser drift cost: DOCTRINE.
+*(2026-09-07; 2026-09-14)*
+## The `.embproj` carries the original artwork (2026-09-20)
+
+Since 2026-09-20 a digitize sends the customer's FILE, not the panel's
+1,200-px preview (DOCTRINE 2026-09-19/20), and the file's bytes live in
+IndexedDB under their SHA-256 (`lib/sourceStore.js`). IndexedDB is this
+browser's, so a design opened on another machine, or after cleared site data,
+had only the preview and re-digitized from it with the panel's note. Kent's
+pick the same day: the `.embproj` now carries every stored original its
+elements point at — `sources` in the envelope, base64 under the same key,
+BESIDE the project and never inside it, so the registry record in
+localStorage stays preview-sized (`lib/projectFile.js`). Import puts them back
+in the store before the project is registered, under the key the bytes hash
+to here (`lib/projectSources.js`). Driven end to end in
+`app/e2e/design-originals.spec.js`: export byte for byte, wipe both stores,
+import, and a re-digitize whose `/digitize` POST carries the file under its
+own name. A file saved before that day carries no originals; a preview-path
+upload (SVG, GIF, oversize, a rotated JPEG) has none to carry. *(built and
+verified 2026-09-20 — scope-history, the originals addendum)*
+
+## Moved from MASTER_SCOPE (2026-09-20) — the built bundle's asset paths
+
+Lifted verbatim from the area-3 summary to buy MASTER_SCOPE.md headroom: on
+2026-09-20 both `main` and this lane sat at exactly 27,000 of 27,000 words, so
+any lane adding a line overflowed the merge even when each side was legal on
+its own. `MASTER_SCOPE.md` keeps a one-line pointer; this is the full entry.
+
+**The built bundle works wherever it is served.** `vite.config.js` sets
+`base: "./"` and five hand-written `/fonts/…` paths ignored it, so below the
+domain root the lettering lane produced nothing; font LICENCE links were among
+the five. Document-relative now, identical at the root. *(fixed 2026-09-07 —
+`assetPaths.spec.js`)*
+
+## Moved from MASTER_SCOPE (2026-09-20) — typographic punctuation folding
+
+Lifted verbatim from the area-3 summary to buy MASTER_SCOPE.md headroom for
+the operator-sheet entry. `MASTER_SCOPE.md` keeps a one-line pointer; this is
+the full entry.
+
+**Typographic punctuation folds to its ASCII twin where a font lacks it.**
+`satinfont.js TYPOGRAPHIC_FOLD` stitches the twin ONLY where the fancy form is
+missing — 367 font x character combinations rescued, and all 85 fonts hash
+identically on text that never needed it. Not NFKD: accented letters are
+different letters and stay unfolded. What it cost before the fix (a phone's
+U+2019 sewing "Fritschs Stitches", under a note naming a character that looks
+identical to the one typed): DOCTRINE; scope-history 09-07.
+*(fixed 2026-09-07)*
