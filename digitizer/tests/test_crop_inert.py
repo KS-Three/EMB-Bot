@@ -10,6 +10,7 @@ from pathlib import Path
 import pytest
 
 from digitizer_core import PipelineConfig, digitize
+from tests.test_generation_cache import _design_bytes
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -24,13 +25,17 @@ FIXTURES = [
 
 
 def _digest(rel, width_mm, **kw):
+    """Hash the same canonicalization `test_generation_cache.py` trusts for
+    its own "must never drift" comparisons -- `plan_to_design`'s stitch,
+    color and run records via `_design_bytes`, not just raw coordinates.
+    Coordinates alone missed a block's thread colour, a run's
+    jump/trim/kind/role, and the design's own reported size -- a regression
+    that flipped any of those while leaving geometry untouched would have
+    passed silently (review finding, 2026-09-22)."""
     cfg = PipelineConfig(target_width_mm=width_mm, garment_id="left_chest", **kw)
     result, plan = digitize(ROOT / "testdata" / rel, cfg)
     h = hashlib.sha256()
-    for blk in plan.blocks:
-        for run in blk.runs:
-            for x, y in run.points:
-                h.update(f"{x:.4f},{y:.4f};".encode())
+    h.update(_design_bytes(result, plan))
     return h.hexdigest(), len(result.regions), plan.stats.stitch_count
 
 
