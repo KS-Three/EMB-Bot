@@ -1674,6 +1674,24 @@ here since it explains *why*, not *what's currently true*.
 - **Verify claims, don't trust prior summaries at face value** — this very
   cookbook exists because a memory note said work was "merged to main" when
   it was actually sitting unmerged in a worktree. `git log` is ground truth.
+- **In a cloud session, `git push --force-with-lease` and `git clean -fd` are
+  BLOCKED** by the sandbox's destructive-git classifier, and you will meet them
+  the moment a designated branch's PR merges: restarting that branch from
+  `main` makes the next push non-fast-forward. The working fix is to **merge the
+  old, already-merged head back in** — non-destructive, and the two-dot diff
+  against `main` stays exactly your change. Confirm first with `git cherry
+  origin/main origin/<branch>` that the remote head carries only merged content.
+  To clear untracked leftovers, `rm` the specific files after checking each
+  against `main`; the blanket clean is refused. *(hit twice, 2026-09-12/13 —
+  if this becomes routine, a Bash permission rule in `.claude/settings.json`
+  is Kent's call.)*
+- **Never edit a tracked file from a STALE working tree.** A branch left behind
+  `main` will happily let you append to an old copy and commit the whole
+  regression: on 2026-09-18 this nearly re-bloated `.claude/memory/MEMORY.md`
+  from main's compacted 13,393 characters back to the 48,872 the overflow fix
+  had just removed. `git checkout -B <branch> origin/main` (or at minimum
+  `git checkout origin/main -- <file>`) BEFORE editing, and read the size or
+  content back afterwards.
 - **A Studio change is not verified until it has been LOOKED AT in a
   browser.** The suite is broad on logic and near-silent on presentation: a
   2026-08-25 sweep found an invisible primary CTA (white on white, every step
