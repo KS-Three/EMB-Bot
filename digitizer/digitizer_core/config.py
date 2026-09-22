@@ -2334,6 +2334,22 @@ class PipelineConfig:
     # measured there.
     strip_letterbox: bool = True
 
+    # Normalized crop rectangle (x0, y0, x1, y1) as fractions 0..1 of the
+    # SUBMITTED raster, applied at decode time in stage 0 AND stage 1 before
+    # anything reads the pixels. None = no crop, and None is byte-identical
+    # to the pre-crop engine everywhere.
+    #
+    # Fractions, not pixels: `DigitizePanel.imageToSend` sends the customer's
+    # original file when it fits the service's limits and the Studio's
+    # 1,200-px preview when it does not, so a pixel rectangle would address
+    # the wrong raster silently and only for large uploads.
+    #
+    # Applied in BOTH decode paths for the reason `strip_letterbox` is --
+    # stage 0 owns its own decode, and a crop in only one of them would have
+    # stage 0 classify the chrome the crop exists to remove.
+    # Spec: docs/superpowers/specs/2026-09-22-upload-crop-design.md
+    crop: tuple[float, float, float, float] | None = None
+
     # Sew what the satin tier missed. Crosses are placed along a spine,
     # perpendicular to one arm, sized by a ray that measures THAT arm's width
     # — so where several arms meet, the junction's interior is covered only by
