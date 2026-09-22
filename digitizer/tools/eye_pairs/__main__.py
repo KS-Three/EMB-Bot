@@ -362,6 +362,9 @@ def verify(image, width_mm: float, garment: str) -> bool:
     fid = score_image(image, cfg)
     checks = [("lost_elements", mine["lost_elements"], int(lost["lost"])),
               ("lost_frac", mine["lost_frac"], round(float(lost["lost_frac"]), 4)),
+              ("unsewn_frac", mine["unsewn_frac"], round(float(lost["unsewn_frac"]), 4)),
+              ("overshoot_frac", mine["overshoot_frac"],
+               round(float(lost["overshoot_frac"]), 4)),
               ("ragged_mm", mine["ragged_mm"], round(float(edge["ragged_mm"]), 4)),
               ("hausdorff_mm", mine["hausdorff_mm"], round(float(edge["hausdorff_mm"]), 4)),
               ("artfid", mine["artfid"], fid["artfid"]),
