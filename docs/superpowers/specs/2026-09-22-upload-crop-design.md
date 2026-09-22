@@ -80,18 +80,39 @@ axis** in the submitted raster. 16 px is not a physical constant — it is the
 smallest frame the downstream border-flood can read a background from at all
 (`_border_ring` uses a 2 px ring, and `_modal_corner_ownership` samples 8 px
 corners), so anything smaller fails inside stage 1 with a worse message than
-this check gives. A rectangle that fails validation is a caller error, not artwork
-damage: raise, and let `digitizer_service/errors.py` map it — that file's map
-is an **allowlist** precisely so a message naming the caller's own bad edit
-passes through unchanged (see its 2026-09-07 entry). Do not silently fall
-back to the full frame; a crop that quietly did not apply is the failure mode
-hardest to notice.
+this check gives.
+
+A rectangle that fails validation is a **caller error, not artwork damage**.
+Raise a `ValueError` naming the offending rectangle, and **do NOT add it to
+`digitizer_service/errors._KNOWN`.** That map is an allowlist holding only
+*artwork*-caused failures, precisely so a message naming the caller's own bad
+input passes through unchanged — the same posture that keeps
+`boundary_override` and `merge_shape_ids` errors intact (see that module's
+2026-09-07 docstring). An unmatched exception passing through untouched is
+the correct, already-specified behaviour here.
+
+Do not silently fall back to the full frame; a crop that quietly did not
+apply is the failure mode hardest to notice.
 
 ## 4. Where it applies
 
 In `stage1_prep.prep()`, immediately after `_load` and **before** everything
-else: before the border-flood background detection, before the denoise,
-before the resolution-floor upscale, before `art_bbox`.
+else: before `extension_applies` reads the alpha, before the border-flood
+background detection, before the denoise, before the resolution-floor
+upscale, before `art_bbox`.
+
+**And in `stage0_classify._load` as well — this is not optional.** Stage 0
+deliberately owns its own decode, and `strip_letterbox` already carries the
+rule in a comment in both files: *"the two MUST stay in step: if only one
+stripped, stage 0 would classify a different picture than stage 1
+digitizes."* A crop applied only in stage 1 would have stage 0 classify the
+screenshot's chrome — the exact pixels the crop exists to remove — and the
+class it picks drives the whole downstream route.
+
+Follow the `strip_letterbox` precedent exactly: the transform lives in its
+own small module (`digitizer_core/crop.py`, as `letterbox.py` does) and both
+`_load` functions import it. Do not copy the implementation into two files.
+The crop applies to `rgb` **and** `alpha` together.
 
 Consequences, all intended:
 
