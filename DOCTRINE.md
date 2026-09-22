@@ -6527,3 +6527,124 @@ start.
 *(measured 2026-09-20 — `tools/preview-vs-dst.mjs`, `test/encoder-split.test.js`,
 three lanes driven through the shipped Studio; Kent's call to fix all three
 encoders and land the instrument)*
+## A wordmark's `lost_frac` is OVERSHOOT, not coverage — and no fix separates the rail's two effects (2026-09-20)
+
+`dropped_elements`' `lost_frac` sums two unrelated defects: artwork the
+stitch-out never covered, and thread standing on cloth the artwork leaves
+bare. A fixture can be **entirely one of them**, and reading the total as
+"coverage" sent a session after artwork that was never uncovered. Measured,
+all four at 80 mm left_chest:
+
+    enthusiast  lost_frac 0.3002   unsewn   0%   overshoot 100%
+    tires       lost_frac 0.1270   unsewn   0%   overshoot 100%
+    becker      lost_frac 0.0509   unsewn  44%   overshoot  56%
+    bridge      lost_frac 0.1070   unsewn 100%   overshoot   0%
+
+`enthusiast` reads `unsewn_frac` **0.0000** — but do NOT quote that zero as a
+finding. The per-region vote is `A_ink[region].mean() > 0.5` and the largest
+per-region ink fraction on this fixture is **0.33**, so `True` was unreachable
+whatever the engine did. **Measure coverage without colour and without the
+opening instead:** 3.5 mm² of the artwork's 395.5 mm² of ink carries no
+thread (**0.90%**), largest component 0.88 mm², **nothing at or over 1 mm²** —
+a rim, not an element — while thread covers **1.51×** the ink and the thread
+field matches the artwork **dilated by 0.30 mm** to IoU 0.856. That 0.30 mm is
+`pique_knit.pull_comp_mm` exactly. `rail_edge --bare` reads 3.94% before and
+after the commit blamed for the move. The total moved; coverage did not. Both halves now ship separately (`unsewn_frac`, `overshoot_frac`,
+`FEATURES_SCHEMA` 2).
+
+**This is also why the two WORDMARKs regressed against the 08-27 engine
+while the two non-wordmarks improved.** `768de79e` (defect 23) puts an
+overshooting rail on the nearest boundary crossing instead of stepping in
+15%: 242 firings on this fixture out of 1436 satin penetrations, placing at
+a median **0.980** of the requested width, so the rail lands ON the shape
+edge. Rails further out cover more artwork **and** spill more thread — one
+knob, two populations, helping the coverage-bound designs and hurting the
+overshoot-bound ones. The 16.6 mm² it adds is 100% within 1.0 mm of the ink
+edge, median 0.30 mm outside, three quarters along free edges.
+
+**Three cures were measured and every one bought an instrument with another:**
+
+    candidate                lost_frac  jitter enth/becker  bare(93mm)
+    shipped                     0.3006     0.0227 / 0.0246     3.94%
+    revert the branch           0.2584     0.0413 / 0.0447     3.94%
+    inset the branch 0.20 mm    0.2430     0.0401 / 0.0539     3.99%
+    global corridor cap         0.2420     0.0280 / 0.0287     5.58%
+
+The inset is **worse than a full revert on becker**, and that is the
+generalisable part: **jitter is deviation from the neighbours' chord, so
+offsetting a SUBSET is a step at every boundary of that subset.** The
+crossing placement is smooth precisely *because* it agrees with neighbours
+sitting on the edge. Any rule that moves only the overshooting 17% re-creates
+the dent it removes. The corridor cap avoids that by being global — and pays
+in real coverage, dropping `max_out` 0.541 → 0.300 mm, which is pull
+compensation, gate 1.
+
+So the spill and the jitter win are **one degree of freedom**, not two
+effects to be separated. **Kent's ruling 2026-09-20: keep 768de79e's
+placement, pin what actually regressed.**
+
+**`unsewn_frac` alone cannot police the trade, and that was measured, not
+assumed.** The guard first pinned it at 0.02 and claimed that made the
+corridor cap fail; the cap read **0.0028** and sailed through, because
+`dropped_elements` only counts regions ≥ 1 mm² after a 0.5 mm opening, so
+coverage lost as a thin rind along every column never forms a region it can
+see. `rail_edge.bare_area` sees exactly that (5.50% → 7.22% on the same pair
+at that fixture's config). **Two instruments, two shapes of loss:** a whole
+element gone, versus a rind everywhere. A guard that pins one is gameable by
+the other.
+
+**AND THE INSTRUMENT'S OPENING SITS EXACTLY ON A FABRIC CONSTANT.** `left_chest`
+→ `pique_knit`, `pull_comp_mm` **0.30**; `stage5_overlap` buffers every shape
+by it and `stitchviz` draws `THREAD_MM` **0.40** thread, so a CORRECTLY sewn
+shape already stands 0.30 + 0.20 = **0.50 mm** proud of its artwork — and
+`dropped_elements.HALO_OPEN_PX` is 5 px at RES, which is **0.50 mm**. The
+headline is a threshold detector balanced on the pedestal, so **its MAGNITUDE
+is not quotable**: the same design reads 182.7 / 108.5 / 32.9 / 10.2 / 5.7 /
+0.0 mm² at kernels 3/5/7/9/11/13 px. It is also structural, not fixture-bound
+— every knit preset carries pull comp (pique 0.30, jersey 0.35, fleece 0.50),
+so `full_back` sits at a 0.70 mm pedestal and reads larger still.
+
+**Pull comp sets the LEVEL; rail placement moves the DELTA.** Both the "it is
+all pull comp" reading and the "the letters sew fat, that is the defect"
+reading attribute the whole number to one cause, and both are wrong. Pull comp
+was CONSTANT across the 768de79e bisect, so the 0.2509 → 0.2702 step the guard
+pins cannot be pull comp; equally, calling the fattening itself the defect
+points a cure at deleting a fabric constant, which is gate 1.
+
+**And it says WHY the two instruments disagree, which is sharper than the old
+note.** `rail_edge.bare_area` grades thread against `result.regions[].polygon`
+— the COMPENSATED outline — while `dropped_elements` grades the render against
+the UNcompensated artwork. They are separated by exactly `pull_comp_mm`, so
+wherever pull comp > 0 they are **guaranteed to disagree in sign** on any
+change that moves rails radially. Not a puzzle: a definition.
+
+**A SECOND bias, same instrument, independent of the first.** The artwork is
+rasterised to `design["widthMM"]` -- which `adapter.py` documents as *"the true
+stitch extents"*, 80.6 mm against a requested 80.0 -- while `stage1_prep` sets
+`px_per_mm = art_w_px / cfg.target_width_mm`, so the artwork's own ink bbox is
+80.0 by construction. **The instrument enlarges the artwork by 0.75% using the
+very overshoot it is measuring**, damping its own reading. Corrected, and only
+that: `enthusiast` **0.2748 → 0.2369** — BELOW the 0.26 bar the guard asserts
+under `xfail(strict=True)`, so fixing it alone turns that test RED with the
+residual still open. `uncovered_elements` reads 0 both ways, which is the point
+of having it.
+
+**Kent's ruling 2026-09-20: record both, fix neither.** Fixing either renumbers
+every pinned `lost_frac` in the repo and takes a required check on `main` red
+in the meantime; the colour-free reading is what a claim about coverage should
+cite instead.
+
+**One live consequence to kill rather than schedule.** The guard attributes
+~0.0069 of the residual to "17.6% of this fixture's rail points more than
+0.1 mm INSIDE the art" — 768de79e's open symmetric-offset item. Rails sitting
+inside the art cannot put thread outside it, and there are at most 3.5 mm² of
+unthreaded ink on the whole fixture. There is no 0.0069 of coverage there to
+recover, and closing that item pushes the headline UP.
+
+*(measured 2026-09-20 — `tests/test_lettering_coverage_regression.py`, which
+keeps main's `xfail(strict=True)` on the total and adds three guards beside it:
+overshoot ≤ 0.29, colour-free uncovered elements == 0, bare satin ≤ 6.8%.
+`satin_rails_follow_edge=True` reads overshoot 0.3289 on the post-#537 engine
+— the cure the docstring used to name makes its own number ~20% worse. Claim
+adversarially reviewed by three independent lenses before being written:
+direction upheld, the word "ZERO" and the "sews fatter" framing struck.)*
