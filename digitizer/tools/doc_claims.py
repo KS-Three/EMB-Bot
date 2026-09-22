@@ -192,6 +192,15 @@ def test_counts() -> dict[str, int]:
     that goes quiet when its input is broken is the failure this whole tool
     exists to stop.
     """
+    # WHICH byte, and why the full suite stays green (found independently on
+    # this branch, and the more useful half of the diagnosis): this suite has a
+    # test whose NAME carries an e-acute, the child pytest writes it as cp1252
+    # 0xe9, and a parent started with `-X utf8` — the flag this repo's own
+    # command lines use — decodes it as UTF-8 and dies. It bites SINGLE-PROCESS
+    # only: under `-n auto` the xdist worker is not in UTF-8 mode, so the full
+    # suite is green and this one file on its own is red. A test id is
+    # ASCII-ish by construction, so replacing an undecodable byte costs nothing
+    # a count depends on.
     try:
         out = subprocess.run(
             [sys.executable, "-m", "pytest", "-q", "--collect-only"],

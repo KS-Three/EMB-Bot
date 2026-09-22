@@ -156,7 +156,7 @@ icon. Cloth pointers added to defects 3, 6 and 16 below.
 
 22. **Small curves sew as polygons — FIXED, DEFAULT ON (Kent's flip, 2026-09-03)** (`curve_turn_deg` = 15; None/0 = the old polygon): a turn-per-vertex bound re-reads each Douglas-Peucker edge against its raw arc, split at the midpoint, floored at one pixel; near-floor lettering exempt per ring. Fremont's counter **9 → 33 vertices, 47° → 17°**, inner rail σ 0.038 → 0.026 mm, trims 52 → 45. **Gated to 20 px/mm** (`_CURVE_MIN_PX_PER_MM`; four pixels of tolerance at 0.2 mm): below it the 1-px floor read raster texture as arcs — every 10–16 px/mm fixture got rougher (sunset 16.1 → 16.5, meadow 15.2 → 16.5) and two borderline ribbons changed tier through the DT classifier's skeleton — so a 600–1200 px web logo at 80 mm is byte-identical and every golden stays pinned — but 1200 px art at ≤ 60 mm (2000 px at ≤ 100 mm) is over the line and refines, and the line is a cliff (60 → 61 mm changes every curve's polygon; Kent's to accept); `tools/curve_tiers.py` is the per-shape tier diff. *(measured 2026-09-03 — `docs/round-curves-2026-09-03.md`, "The flip")*
 
-23. **Rail dents — FIXED (Kent, 2026-09-03), diagnosis corrected.** `place` stepped an overshooting rail in by 15% however small the overshoot (250–1000 placements per design, 70–90% under one pixel) and now puts it on the artwork edge along its own normal, with a micron of containment tolerance; taper zones and caps keep the ladder. Rail jitter p50 **halves on every fixture** (Fremont 0.012 → 0.0045 mm), same-rail holes 11 → 5, median rail 0.02–0.08 mm further out, nothing further outside the art. The "one whole rail 15% short in every golden" was the synthetic bar, not the goldens (the micron alone moved 4 stitches on Fremont); the 8–24% of rail points > 0.1 mm inside on real art turned out to be the short-stitch guard, corridor caps and corners, not the rail model — the honest coverage number is BARE SATIN AREA, and each rail reaching its own edge (`satin_rails_follow_edge`, **BUILT, DEFAULT OFF, Kent's flip**) takes it Becker 8.6 → 5.8%, ENTHUSIAST 5.7 → 4.4%, drone 6.1 → 4.6% for +10–17% thread, +50% rail jitter and more guard retractions; the pull comp was tuned with the far rail short — a sew-out question. Goldens re-pinned in #329: alpha, ribbon ×3. *(measured 2026-09-03 — `docs/rail-dents-2026-09-03.md`)*
+23. **Rail dents — FIXED (Kent, 2026-09-03), diagnosis corrected.** `place` stepped an overshooting rail in by 15% however small the overshoot (250–1000 placements per design, 70–90% under one pixel) and now puts it on the artwork edge along its own normal, with a micron of containment tolerance; taper zones and caps keep the ladder. Rail jitter p50 **halves on every fixture** (Fremont 0.012 → 0.0045 mm), same-rail holes 11 → 5, median rail 0.02–0.08 mm further out, nothing further outside the art. The "one whole rail 15% short in every golden" was the synthetic bar, not the goldens (the micron alone moved 4 stitches on Fremont); the 8–24% of rail points > 0.1 mm inside on real art turned out to be the short-stitch guard, corridor caps and corners, not the rail model — the honest coverage number is BARE SATIN AREA, and each rail reaching its own edge (`satin_rails_follow_edge`, **BUILT, DEFAULT OFF, Kent's flip**) takes it Becker 8.6 → 5.8%, ENTHUSIAST 5.7 → 4.4%, drone 6.1 → 4.6% for +10–17% thread, +50% rail jitter and more guard retractions; the pull comp was tuned with the far rail short — a sew-out question. Goldens re-pinned in #329: alpha, ribbon ×3. *(measured 2026-09-03 — `docs/rail-dents-2026-09-03.md`)* **Its cost is OVERSHOOT, not bare art (2026-09-20):** measured colour-free, `enthusiast` leaves **0.90% of its ink unthreaded, nothing over 1 mm²** — no lost element — while thread covers 1.51× the ink. `lost_frac` ships SPLIT. *(measured 2026-09-20 — PR #536; DOCTRINE)*
 
 24. **Hairline columns (< 0.6 mm) — the MECHANISM is fixed, the tier is not.** A hairline STRETCH of a stroke (crosses under the 0.5 mm floor, ≥ three bean stations of spine) now sews as a 3-pass bean along its spine in both engines, only where the uncompensated art is wider than `simplify_tol_mm` (pull comp grew a 0.04 mm needle into a tick); Fremont's 2.6 mm "THE" reads. Whether a 0.5 mm bean reads better on cloth than a dropped bar is card block 5's question — `pending sew-out`. *(fixed 2026-09-03 — `docs/design-review-fine-lettering-2026-09-03.md`)*
 
@@ -337,34 +337,18 @@ about the facts.
    *"I'm honestly not concerned about the hopping idea, we can table this one
    for a further discussion."* Do not build the shade-merge or further hopping
    polish until he reopens it; the 08-31 mechanical fixes are merged and
-   unaffected. The committed corpus can now pose the question — defensible
-   adjacent-shade pairs and their ΔE are in [area 1](docs/scope/1-auto-digitizing-quality.md).
-   *(measured 2026-09-02; tabled 2026-09-02 — Kent)*
+   unaffected. Defensible adjacent-shade pairs and their ΔE:
+   [area 1](docs/scope/1-auto-digitizing-quality.md). *(tabled 2026-09-02 — Kent)*
 
 13. **RESOLVED 2026-09-03 — the stitch-angle rule is ADOPTED (cap 30°)**, both passes built and flipped ON by Kent. *(area 1)*
 
-14. **RESOLVED 2026-09-12 for XXX and VP3 — Kent's scope call.**
-   `SERVICE_ONLY_FORMATS` is `{jef, xxx, vp3}` and both have buttons; PEC and
-   U01 stay OUT of scope. The evidence is a committed harness — run it rather
-   than re-derive it. Both read back `identity` and **return the design's own
-   thread RGB where PES, PEC and JEF snap to their chart**. Two recorded
-   hold-reasons for **U01 were wrong** (its colour change survives as
-   `NEEDLE_SET`; the +100-unit offset does not reproduce) — it is held because
-   no thread palette survives and no real Barudan reader has seen one. VP3's
-   0.1 mm quantisation is **deliberately not surfaced to the customer** (Kent,
-   same day). *(measured 2026-09-12 — `digitizer/tools/format_roundtrip.py`;
-   PRODUCT.md item 1)*
+14. **RESOLVED 2026-09-12 for XXX and VP3 — Kent's scope call.** `SERVICE_ONLY_FORMATS` is `{jef, xxx, vp3}`, both with buttons; PEC and U01 stay OUT. Two rulings that still govern: **U01 is held for want of a surviving thread palette and a real Barudan reader, NOT for the two hold-reasons once recorded — both were measured wrong**, and VP3's 0.1 mm quantisation is deliberately not surfaced to the customer. Evidence is a committed harness; run it rather than re-derive it. *(`digitizer/tools/format_roundtrip.py`; PRODUCT.md item 1)*
 
-15. **RESOLVED 2026-09-12 — the wizard's steps are browser history entries.**
-   `lib/stepHistory.js`. The anti-trap rule is the whole design: **the first
-   step REPLACES the entry the browser already has and only a step after it
-   pushes**, so n steps cost n−1 entries and Back from step 1 still leaves the
-   Studio. It is NOT routing — no URL reaches `pushState` — and restoring the
-   step across a reload is deliberately out. Verified in a real Chromium with
-   touch. *(2026-09-12 — `app/src/App.stepHistory.spec.js`, with a source
-   guard that no bare `step = ...` bypasses the helper)*
+15. **RESOLVED 2026-09-12 — the wizard's steps are browser history entries** (`lib/stepHistory.js`). The anti-trap rule IS the design and survives here: **the first step REPLACES the entry the browser already has, only a step after it pushes**, so Back from step 1 still leaves the Studio. Not routing — no URL reaches `pushState`. *(`app/src/App.stepHistory.spec.js`, with a source guard against a bare `step = ...`)*
 
-17. **RESOLVED 2026-09-17 (Kent) — clearing a stale BORDER recovers on ONE click**, a stale BOUNDARY still on two. Kept: "Clear them" is an explicit click, so nothing is dropped behind the user's back, which is what "recovery is explicit" protects. Do NOT gate recovery out of the fast lane to tidy the inconsistency. *(`e2e/digitize-stale-edits.spec.js`)*
+17. **RESOLVED 2026-09-17 (Kent) — clearing a stale BORDER recovers on ONE click**, a stale BOUNDARY on two. Kept: "Clear them" is an explicit click, so nothing is dropped behind the user's back — what "recovery is explicit" protects. Do NOT gate recovery out of the fast lane to tidy this. *(`e2e/digitize-stale-edits.spec.js`)*
+
+18. **OPEN: a COLD photo digitize is ~90 s and `fill_travel_under_cover` is ~58% of it.** The 2026-09-17 memo fixed the RE-stitch (79.3 → 44.6 s); the first digitize still pays the flag in full. Three ways out, all Kent's: flip it off (costs stitches, re-exposes the travel it hides), optimise `_reorder_for_cover` (golden-pinned — a win must be byte-identical), or accept it. **Do not re-derive the numbers** — method, noise floor, per-flag table and three INERT flags are in the doc. *(measured 2026-09-17 — `docs/flag-runtime-bills-2026-09-12.md`)*
 
 16. **Manual mode does not reproduce auto's sew order once a tiny region exists
    in an early layer.** Auto orders blocks by PALETTE LAYER, manual by AREA.
