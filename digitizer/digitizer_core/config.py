@@ -1243,6 +1243,21 @@ class PipelineConfig:
     # Tee 48 -> 51 the cost. Built OFF for Kent's flip; with the exit lever
     # the fixture reads 8 and the nine 454.
     satin_underlay_on_column: bool = False
+    # `satin_cap_recentre` (built 2026-09-19 for Kent's flip): a free end
+    # whose spine tail is a surviving CAP FORK is cut at the kink and rebuilt
+    # square. A flat cap's medial axis forks toward both corners; on a plain
+    # bar the forks are twins and the pruner drops both, but on a stem whose
+    # one edge leans three degrees one fork survives as the tail,
+    # `_retract_cap_corner` stops at 0.8 of the half-width -- which a fork's
+    # first millimetre still reads -- and `_extend_to_cap` extends the
+    # diagonal onto the corner: the column tapers to a point there and the
+    # other corner sews 1.11 mm bare. Found from the OUTLINE side
+    # (`tools/edge_wobble.py`'s `unsewn`: Becker 32.6 mm of outline with no
+    # thread within 0.5 mm). The cause-side twin of
+    # `satin_rails_follow_edge`, which reaches the same corners by letting
+    # each rail chase its edge and roughens the rails to do it. Numbers:
+    # DOCTRINE 2026-09-19. False is byte-identical.
+    satin_cap_recentre: bool = False
     # Each satin rail reaches ITS OWN edge (defect 23's open half, built
     # 2026-09-03 for Kent's flip). The rail model places both rails at the
     # NEARER edge's distance from a smoothed spine, so on every raster

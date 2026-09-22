@@ -45,8 +45,16 @@ bar sews square (0 bare) — the cause is real-letter geometry: **(A)** spine
 enters the cap off-centre + rails symmetric at the NEARER edge → far rail up
 to 1.9 mm short; **(B)** leaning crosses meet a square cap → bare wedge.
 `satin_rails_follow_edge` ON halves the bare outline (32.6→14.8, 6.6→2.8,
-2.2→0.0) but roughens rails (Becker std 0.097→0.137). Cause-side fix
-(re-centre the spine at caps) and anything for B: not built.
+2.2→0.0) but roughens rails (Becker std 0.097→0.137).
+
+**`cfg.satin_cap_recentre` (OFF) built the same day — correct, clean, SMALL.**
+Cuts a surviving cap fork at its kink (`_cut_cap_fork`); guards refuse slanted
+caps and off-centre rebuilds (each a measured harm). Becker bare 32.6→29.3,
+Enthusiast 2.2→0.8, Gaulke unchanged; rails NOT roughened. It missed its own
+target (≤14.8): only 7 of Becker's 44 free ends fork, 3 pass the guards, and
+guards-off is worse. **I sized the fix from ONE traced corner — count the
+population first.** The bulk is a spine off-centre ALONG the column (what
+follow_edge buys, at a roughness cost) and mechanism B (untouched by anything).
 
 **Why:** stage-4 curve fitting was the obvious build and would have moved
 nothing on decent art. Second time the outline was nearly blamed for the rails

@@ -3169,6 +3169,120 @@ def _retract_cap_corner(spine: list[tuple[float, float]], field: _WidthField | N
     return list(reversed(pts)) if at_start else pts
 
 
+# --- a cap fork that survived as the spine's tail (`cfg.satin_cap_recentre`) --
+#
+# `_retract_cap_corner` asks one question of a free end: is the corridor under
+# 0.8 of the stroke's half-width? A fork toward a cap corner answers "no" for
+# its whole first millimetre -- it LEAVES the centreline where the corridor is
+# full width and the clearance only falls as the corner closes in. So the walk
+# stops with the tail still running diagonally, and `_extend_to_cap` extends
+# along that diagonal and lands the spine ON the corner: the column tapers to a
+# point there and the other corner is abandoned.
+#
+# Found from the outline side, 2026-09-19 (`tools/edge_wobble.py`, `unsewn`):
+# Becker's MARINE carries 32.6 mm of outline with no thread within 0.5 mm, its
+# square corners and feet. A plain bar does not have it -- its two forks are
+# twins and the pruner drops both -- but a stem whose one edge leans THREE
+# DEGREES does: one fork is a hair longer, survives as the tail, and the far
+# corner sews 1.11 mm bare (`tests/test_satin_cap_recentre.py`).
+#
+# The tell is a KINK, not a width: the spine turns abruptly off the stroke's
+# axis, and from the turn to the tip the corridor only narrows, ending pinched.
+# A taper pinches with no kink; a curved end turns with no pinch and no
+# abruptness; a real serif turns and keeps its own width. Only a fork does all
+# three. Cut at the kink and let `_extend_to_cap` rebuild a square end along
+# the axis the stroke actually has.
+_CAP_FORK_REACH_HALFWIDTHS = 3.0   # a fork is at most ~sqrt2 half-widths long; this is slack
+_CAP_FORK_WINDOW_MM = 1.0          # direction is read over this much spine each side
+_CAP_FORK_TURN_DEG = 20.0          # MARINE's I turns 26; a 5 mm-radius curve turns 11 per window
+_CAP_FORK_TIP_FRAC = 0.5           # the tip of a fork is in a corner: clearance -> 0
+_CAP_FORK_LEVEL_FRAC = 0.25        # tip level with the rebuilt cap, in half-widths (slanted cap: 0.34)
+_CAP_FORK_BALANCE = 0.6            # rebuilt end's nearer/farther edge (leaning stem 0.9, curved C 0.16)
+
+
+def _cut_cap_fork(spine: list[tuple[float, float]], poly: Polygon, field: _WidthField | None,
+                  half_mm: float, at_start: bool) -> tuple[list[tuple[float, float]], bool]:
+    """-> (spine, cut). Drop a free end's tail where it is a surviving cap fork."""
+    if field is None or len(spine) < 8 or half_mm <= 0:
+        return spine, False
+    pts = list(reversed(spine)) if at_start else list(spine)       # tip LAST
+    if field.half_at(pts[-1]) >= _CAP_FORK_TIP_FRAC * half_mm:
+        return spine, False
+    n = len(pts)
+    from_tip = [0.0] * n
+    for i in range(n - 2, -1, -1):
+        from_tip[i] = from_tip[i + 1] + math.dist(pts[i], pts[i + 1])
+    total = from_tip[0]
+    budget = _CAP_FORK_REACH_HALFWIDTHS * half_mm
+    w = _CAP_FORK_WINDOW_MM
+
+    def at(dist_from_tip: float) -> int:
+        return next((j for j in range(n - 1, -1, -1) if from_tip[j] >= dist_from_tip), 0)
+
+    best, best_turn = None, 0.0
+    for i in range(n - 2, 0, -1):
+        if from_tip[i] < w:
+            continue
+        if from_tip[i] > budget or from_tip[i] + w > total:
+            break
+        a, b = pts[at(from_tip[i] + w)], pts[at(from_tip[i] - w)]
+        t_in = math.atan2(pts[i][1] - a[1], pts[i][0] - a[0])
+        t_out = math.atan2(b[1] - pts[i][1], b[0] - pts[i][0])
+        turn = abs(math.degrees((t_out - t_in + math.pi) % (2 * math.pi) - math.pi))
+        if turn > best_turn:
+            best, best_turn = i, turn
+    if best is None or best_turn < _CAP_FORK_TURN_DEG:
+        return spine, False
+    halves = [field.half_at(p) for p in pts[best:]]
+    if any(h1 > h0 + 0.1 * half_mm for h0, h1 in zip(halves, halves[1:])):
+        return spine, False                     # it widens again: a serif, not a corner
+    # The kink is rounded over about a window by `_smooth`; step inside it so
+    # the end tangent `_extend_to_cap` reads is the stroke's, not the bend's.
+    keep = at(from_tip[best] + 0.5 * w)
+    if keep < 3:
+        return spine, False
+    # Two checks on the OUTCOME, because a kink is necessary and not
+    # sufficient -- both measured the day this was built, both as harm:
+    #
+    #  * a SLANTED cap (its face not square to the stem). There the fork is
+    #    what reaches the acute corner, and a square rebuilt end cannot cover
+    #    both: cutting took that corner 0.48 -> 1.23 mm bare. Its tell is the
+    #    fork's tip sitting AHEAD of (or behind) where the axis meets the cap.
+    #  * a CURVED column's flat end. The rebuild is a straight extension, and
+    #    a longer one drifts further off a curving axis (a 6.5 mm-radius C:
+    #    inner corner 0.77 -> 0.85). Its tell is the rebuilt end landing
+    #    off-centre between the two edges.
+    #
+    # Either way the end is left exactly as it was -- this is a repair for a
+    # square cap on a straight stem, and says so by refusing the rest.
+    tip, anchor = pts[-1], pts[keep]
+    back = pts[at(from_tip[keep] + 2.0 * half_mm)]
+    d = math.dist(back, anchor)
+    if d < 1e-9:
+        return spine, False
+    ux, uy = (anchor[0] - back[0]) / d, (anchor[1] - back[1]) / d
+
+    def reach(p, dx, dy, far):
+        inter = LineString([p, (p[0] + dx * far, p[1] + dy * far)]).intersection(poly.boundary)
+        hits = [SPoint(p).distance(g) for g in getattr(inter, "geoms", [inter])
+                if not g.is_empty and g.geom_type == "Point"]
+        hits = [h for h in hits if h > 1e-6]
+        return min(hits) if hits else None
+
+    ahead = reach(anchor, ux, uy, half_mm * 4.5 + 0.5)
+    if ahead is None:
+        return spine, False
+    cap = (anchor[0] + ux * ahead, anchor[1] + uy * ahead)
+    if abs((tip[0] - cap[0]) * ux + (tip[1] - cap[1]) * uy) > _CAP_FORK_LEVEL_FRAC * half_mm:
+        return spine, False
+    inside = (cap[0] - ux * 0.3 * half_mm, cap[1] - uy * 0.3 * half_mm)
+    left, right = reach(inside, -uy, ux, 3.0 * half_mm), reach(inside, uy, -ux, 3.0 * half_mm)
+    if left is None or right is None or min(left, right) < _CAP_FORK_BALANCE * max(left, right):
+        return spine, False
+    pts = pts[: keep + 1]
+    return (list(reversed(pts)) if at_start else pts), True
+
+
 def _trim_chain(pts: list[tuple[float, float]], from_start_mm: float,
                 from_end_mm: float) -> list[tuple[float, float]]:
     line = LineString(pts)
@@ -3420,7 +3534,8 @@ def _satin_joined(poly: Polygon, stroke: Stroke, half_mm: float,
                   fold_guard: bool = False,
                   rail_comp_mm: float = 0.0,
                   rail_comp_floor_mm: float = 0.0,
-                  junction_stack: bool = False) -> list[tuple[float, float]]:
+                  junction_stack: bool = False,
+                  cap_recentre: bool = False) -> list[tuple[float, float]]:
     """A stroke with Goldman corners (`Stroke.corners`) -> its members sewn as
     separate columns and laid end to end in chain order.
 
@@ -3466,7 +3581,7 @@ def _satin_joined(poly: Polygon, stroke: Stroke, half_mm: float,
                              rails_follow_edge=rails_follow_edge,
                              max_width_mm=max_width_mm, fold_guard=fold_guard,
                              rail_comp_mm=rail_comp_mm, rail_comp_floor_mm=rail_comp_floor_mm,
-                             junction_stack=junction_stack)
+                             junction_stack=junction_stack, cap_recentre=cap_recentre)
         above = machine.SPLIT_SATIN_ABOVE_MM if split_above_mm is None else split_above_mm
         if parts is not None and len(parts) > n_before and n_before > n_start_joined:
             # The join stays ONE stroke in `parts` as well: this member's
@@ -3510,7 +3625,8 @@ def satin_stroke(poly: Polygon, stroke: Stroke, half_mm: float,
                  fold_guard: bool = False,
                  rail_comp_mm: float = 0.0,
                  rail_comp_floor_mm: float = 0.0,
-                 junction_stack: bool = False) -> list[tuple[float, float]]:
+                 junction_stack: bool = False,
+                 cap_recentre: bool = False) -> list[tuple[float, float]]:
     """One stroke -> flat zigzag points (A1, B1, A2, B2, ...).
 
     `parts` (2026-09-03), when a list is passed, additionally receives the
@@ -3569,7 +3685,7 @@ def satin_stroke(poly: Polygon, stroke: Stroke, half_mm: float,
                              rails_follow_edge=rails_follow_edge,
                              max_width_mm=max_width_mm, fold_guard=fold_guard,
                              rail_comp_mm=rail_comp_mm, rail_comp_floor_mm=rail_comp_floor_mm,
-                             junction_stack=junction_stack)
+                             junction_stack=junction_stack, cap_recentre=cap_recentre)
 
     spine = _smooth(stroke.spine, 3, stroke.closed)
     spine = _round_corners(spine, half_mm, stroke.closed)
@@ -3632,14 +3748,23 @@ def satin_stroke(poly: Polygon, stroke: Stroke, half_mm: float,
         if trims[0] or trims[1]:
             spine = _trim_chain(spine, trims[0], trims[1])
 
+    # `cap_recentre` (`cfg.satin_cap_recentre`, 2026-09-19): a surviving cap
+    # fork is cut at its kink first (`_cut_cap_fork`), and an end so cut is a
+    # square letterform cap -- aimed by the chord, inset a hair, exactly as the
+    # ends `_merge_through_junctions` opened are. Off, neither line runs.
+    forked_start = forked_end = False
     if stroke.free_start:
+        if cap_recentre:
+            spine, forked_start = _cut_cap_fork(spine, poly, field, half_mm, at_start=True)
         spine = _retract_cap_corner(spine, field, half_mm, at_start=True)
         spine = _extend_to_cap(spine, poly, half_mm, at_start=True,
-                               corner=stroke.capped_start)
+                               corner=stroke.capped_start or forked_start)
     if stroke.free_end:
+        if cap_recentre:
+            spine, forked_end = _cut_cap_fork(spine, poly, field, half_mm, at_start=False)
         spine = _retract_cap_corner(spine, field, half_mm, at_start=False)
         spine = _extend_to_cap(spine, poly, half_mm, at_start=False,
-                               corner=stroke.capped_end)
+                               corner=stroke.capped_end or forked_end)
 
     # Push compensation (Law 24). Pull comp is a WIDTH and stage 5 owns it;
     # push is a LENGTH and only this line of the pipeline knows where a column's
@@ -4753,9 +4878,15 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
                 end_near: tuple[float, float] | None = None,
                 underlay_on_column: bool = False,
                 walk_cursor_reach_mm: float = 0.0,
+                cap_recentre: bool = False,
                 ) -> tuple[list[StitchRun], dict]:
     """One satin-classified shape -> runs in sew order, plus the same report
     contract `stitch_shape` uses, so stage 7 can treat the two identically.
+
+    `cap_recentre` (`cfg.satin_cap_recentre`, 2026-09-19): a free end whose
+    spine tail is a surviving cap fork -- running diagonally into one corner
+    -- is cut at the kink and rebuilt square (`_cut_cap_fork`). Off,
+    byte-identical.
 
     `end_near` (`cfg.satin_exit_toward_next`, 2026-09-19): where the needle
     goes after this shape; under the Euler order the walk is chosen to END
@@ -4890,7 +5021,7 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
                      rails_follow_edge=rails_follow_edge,
                      max_width_mm=max_width_mm, fold_guard=fold_guard,
                      rail_comp_mm=rail_comp_mm, rail_comp_floor_mm=rail_comp_floor_mm,
-                     junction_stack=junction_stack)
+                     junction_stack=junction_stack, cap_recentre=cap_recentre)
         mixed = len(parts) > 1
         for kind, pts, piece, at_start, at_end in parts:
             if kind == stitches.SATIN and len(pts) < 4:
