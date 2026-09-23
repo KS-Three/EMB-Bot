@@ -84,3 +84,22 @@ test("text lane reaches a downloadable DST", async ({ page }) => {
   const download = await downloadPromise;
   expect(download.suggestedFilename()).toMatch(/\.dst$/i);
 });
+
+// On a hosted build the service can never appear, so "start it" is advice
+// nobody can follow and the recheck button is a dead affordance. The note has
+// to describe what the web app actually does.
+test("the digitize note describes the browser lane, not a missing service", async ({ page }) => {
+  await page.goto("/");
+
+  // Navigate to the content step
+  await expect(page.getByRole("heading", { name: "What are you putting this on?" })).toBeVisible();
+  await page.getByRole("button", { name: "Tote", exact: true }).click();
+  await page.getByRole("button", { name: "Next", exact: true }).click();
+
+  // Verify the digitize note
+  const note = page.locator(".digitize-offline");
+  await expect(note).toBeVisible({ timeout: 15_000 });
+  await expect(note).toContainText("in your browser");
+  await expect(note).not.toContainText("Start it");
+  await expect(page.locator(".digitize-recheck")).toHaveCount(0);
+});

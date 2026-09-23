@@ -12,6 +12,7 @@
   import Hint from "./Hint.svelte";
   import Icon from "./Icon.svelte";
   import { selectedIdsOf } from "../lib/project.js";
+  import { isHosted } from "../lib/hosted.js";
   export let project;
   // Whether the "add-elements" onboarding hint should render right now --
   // App computes this (shouldShow("add-elements") + the A7 priority rule +
@@ -38,6 +39,11 @@
   // on one screen. Same defect the review card had; see lib/summary.js.
   export let sewnColors = null;
   const d = createEventDispatcher();
+
+  // Build-time posture, not reactive state: a hosted bundle can never reach a
+  // localhost service, so the "start it and check again" affordance below is
+  // dead there and the note has to say what actually happens instead.
+  const hosted = isHosted();
 
   // ---- Task 5 (Slice 5): the real element manager --------------------------
   // Replaces the Task 4 compile-compat adapter (mode tiles + a flattened
@@ -238,11 +244,21 @@
        works, it just falls back to the browser engine's own flatten-and-sew
        lane (App.onAddElement). So this says what CHANGES rather than what is
        missing: art still goes in, it is not auto-digitized. -->
-  <p class="digitize-offline">
-    Artwork will be placed but not auto-digitized — that needs the local
-    digitizer service. Start it, then
-    <button type="button" class="digitize-recheck" on:click={() => d("checkservice")}>check again</button>.
-  </p>
+  {#if hosted}
+    <!-- Hosted: there is nothing to start, so "not auto-digitized" would be
+         both wrong and unactionable. project.js:412 routes artwork to the
+         browser lane when health is null, and that IS a digitize. -->
+    <p class="digitize-offline">
+      Artwork is digitized right here in your browser. The desktop version
+      adds a finer satin pass on small detail.
+    </p>
+  {:else}
+    <p class="digitize-offline">
+      Artwork will be placed but not auto-digitized — that needs the local
+      digitizer service. Start it, then
+      <button type="button" class="digitize-recheck" on:click={() => d("checkservice")}>check again</button>.
+    </p>
+  {/if}
 {/if}
 
 <!-- Keyed on the selected element's id so switching selection (even between
