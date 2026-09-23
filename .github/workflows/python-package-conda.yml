@@ -36,13 +36,6 @@ on:
     branches: [main]
   pull_request:
 
-# deploy-pages (the pages job below) needs an OIDC token to publish to
-# GitHub Pages.
-permissions:
-  contents: read
-  pages: write
-  id-token: write
-
 # Supersede in-flight runs for the same ref rather than racing them. Never
 # cancels on main — a merge's run is the record that main is green, and there
 # is no later run coming to replace it.
@@ -354,15 +347,26 @@ jobs:
     # that ships nowhere near dist/. Gating the deploy on it would add ~50 min
     # to every publish for no signal about the thing being published.
     #
-    # concurrency here is job-level, not a second top-level block: a
-    # top-level `concurrency:` already exists above (CI run dedup/
-    # cancellation, keyed on workflow+ref) and a duplicate top-level
-    # `concurrency:` key would be invalid YAML. Scoping it to this job gets
-    # "one in-flight Pages deploy at a time; never cancel one mid-publish"
-    # without touching that existing block or any existing job.
+    # concurrency AND permissions are job-level here, not top-level blocks:
+    # this workflow had zero `permissions:` keys before this job existed, and
+    # a top-level `concurrency:` already exists above (CI run dedup/
+    # cancellation, keyed on workflow+ref). A top-level `permissions:` would
+    # silently hand `pages: write` + `id-token: write` to the GITHUB_TOKEN of
+    # engine/studio/digitizer/studio-e2e too — a behaviour change to existing
+    # jobs on a PUBLIC repo where those jobs run `npm ci` / `pip install`
+    # against third-party registries. A duplicate top-level `concurrency:`
+    # key would also be invalid YAML. Scoping both to this job gets `pages`
+    # exactly what `deploy-pages` needs (OIDC token, one in-flight deploy,
+    # never cancelled mid-publish) while restoring the other five jobs to
+    # precisely the permissions they had before this PR — the default token,
+    # nothing added.
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: [engine, studio, studio-e2e]
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
     concurrency:
       group: pages
       cancel-in-progress: false
