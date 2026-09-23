@@ -20,6 +20,9 @@ const BASE_URL = `http://localhost:${PORT}`;
 
 export default defineConfig({
   testDir: "./e2e",
+  // e2e/hosted/* need a HOSTED production build served by `vite preview`,
+  // not this config's dev server — they run from playwright.hosted.config.js.
+  testIgnore: "hosted/**",
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
