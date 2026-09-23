@@ -1047,6 +1047,70 @@ describe("auto-restitch on shape edits", () => {
   });
 });
 
+// ---- crop re-digitizes automatically (Task 7, fix round 1, finding 1) -----
+//
+// Finding 1: element.crop rode NO watcher at all -- the panel's own comment
+// says every element change re-runs on its own once a result exists, but a
+// crop drag silently didn't until "Digitize again" was pressed by hand. This
+// is the panel-level wiring test the review flagged as the gap that would
+// have caught it: it does not simulate a pointer drag (CropBox.spec.js
+// already covers the rectangle math and the drag-end-only emission in
+// isolation) -- it proves the SEAM, that a crop change landing on `element`
+// reaches runDigitize the same immediate way a param or isPhoto edit does,
+// with no fake timers needed (this watcher isn't debounced).
+describe("crop re-digitizes automatically", () => {
+  test("changing crop through the real CropBox control re-digitizes immediately", async () => {
+    const mod = await import("../lib/digitizer.js");
+    const calls = [];
+    vi.spyOn(mod, "digitize").mockImplementation(async () => {
+      calls.push(1);
+      return null;
+    });
+    // Starts already cropped, so "Use whole image" is enabled and clicking it
+    // is a genuine change (full-frame is the one crop buildDigitizeConfig
+    // treats as "no crop", so it has to actually round-trip as a real edit).
+    const { getByRole } = render(Harness, {
+      props: {
+        element: baseElement([], {
+          crop: { x0: 0.1, y0: 0.1, x1: 0.9, y1: 0.9 },
+          result: { stitches: [], colors: [], stitchCount: 0, colorCount: 0,
+                    name: "t", widthMM: 50, heightMM: 40 },
+        }),
+        health: { ok: true },
+        onPatch: () => {},
+      },
+    });
+    expect(calls).toHaveLength(0);
+    await fireEvent.click(getByRole("button", { name: "Use whole image" }));
+    expect(calls.length).toBeGreaterThanOrEqual(1);
+  });
+
+  test("mounting with a crop already set does not itself fire -- only a CHANGE does", async () => {
+    // Same prev-value-guard convention as the params/isPhoto/sourcePng
+    // watchers right above this one: a saved project re-opening with a crop
+    // already on the element must not re-digitize itself on arrival.
+    const mod = await import("../lib/digitizer.js");
+    const calls = [];
+    vi.spyOn(mod, "digitize").mockImplementation(async () => {
+      calls.push(1);
+      return null;
+    });
+    render(Harness, {
+      props: {
+        element: baseElement([], {
+          crop: { x0: 0.1, y0: 0.1, x1: 0.9, y1: 0.9 },
+          result: { stitches: [], colors: [], stitchCount: 0, colorCount: 0,
+                    name: "t", widthMM: 50, heightMM: 40 },
+        }),
+        health: { ok: true },
+        onPatch: () => {},
+      },
+    });
+    await Promise.resolve();
+    expect(calls).toHaveLength(0);
+  });
+});
+
 // ---- the upload error, on a panel that has no artwork yet ------------------
 //
 // `{#if error}` used to sit beside the Digitize button, which lives in the

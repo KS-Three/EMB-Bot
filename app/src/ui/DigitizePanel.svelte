@@ -483,6 +483,25 @@
     }
   }
 
+  // `crop` (Task 7) lives on the element itself, not element.params --
+  // buildDigitizeConfig reads it directly, same reason isPhoto does -- so it
+  // needs its own prev-value watcher rather than riding the params
+  // JSON.stringify one above. Fix round 1 (Important finding 1): this watcher
+  // was MISSING entirely, so dragging the box after a result already existed
+  // moved the rectangle on screen and never touched the stitched design until
+  // "Digitize again" was pressed by hand -- silently contradicting every
+  // other watcher's own behavior on this page. CropBox.svelte only calls its
+  // `onchange` once, on drag end (fix round 1, finding 2), so this fires once
+  // per real drag, not once per pointermove.
+  let prevCropJson = JSON.stringify(element.crop);
+  $: {
+    const nowCrop = JSON.stringify(element.crop);
+    if (nowCrop !== prevCropJson) {
+      prevCropJson = nowCrop;
+      if (element.result || phase !== "idle") runDigitize(element);
+    }
+  }
+
   // New artwork digitizes ITSELF. Every other change in this panel already
   // re-runs on its own once a result exists; the first run was the single
   // thing left that the user had to ask for by hand, which meant uploading an

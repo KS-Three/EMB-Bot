@@ -12,14 +12,24 @@
 
   let host = $state(null);
   let dragging = $state(null); // null | {handle, startX, startY, start}
+  // The in-progress rectangle while a drag is live. Fix round 1 (Important
+  // finding 2): `move()` used to call `onchange` on every raw pointermove,
+  // and DigitizePanel's `patch()` triggers an unconditional `saveProject()`
+  // on every `elupdate` -- a JSON.stringify of the whole project, including
+  // the up-to-2 MB `sourcePng`. A drag was firing that full localStorage
+  // write many times a second. `draft` lets the rectangle keep tracking the
+  // pointer smoothly (the derived `rect` below reads it first) without
+  // calling `onchange` until the drag actually ends.
+  let draft = $state(null);
 
   const FULL = { x0: 0, y0: 0, x1: 1, y1: 1 };
-  let rect = $derived(crop ?? FULL);
+  let rect = $derived(draft ?? crop ?? FULL);
   let cropped = $derived(
     rect.x0 > 0.001 || rect.y0 > 0.001 || rect.x1 < 0.999 || rect.y1 < 0.999,
   );
 
   const clamp = (v) => Math.min(Math.max(v, 0), 1);
+  const sameRect = (a, b) => a.x0 === b.x0 && a.y0 === b.y0 && a.x1 === b.x1 && a.y1 === b.y1;
 
   function start(handle, e) {
     e.preventDefault();
@@ -47,12 +57,20 @@
       if (h.includes("s")) next.y1 = clamp(s.y1 + dy);
     }
     if (next.x1 - next.x0 < 0.02 || next.y1 - next.y0 < 0.02) return;
-    onchange(next);
+    draft = next;
   }
 
   function end() {
     dragging = null;
     window.removeEventListener("pointermove", move);
+    // Fire exactly once, on release, and only if the drag actually moved the
+    // rectangle -- a click-and-release with no movement must not manufacture
+    // a patch (one undo step, one re-digitize per REAL change, not per
+    // gesture).
+    if (draft && !sameRect(draft, crop ?? FULL)) {
+      onchange(draft);
+    }
+    draft = null;
   }
 
   function reset() {
