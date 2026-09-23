@@ -20,7 +20,7 @@ a desktop-only component.
 ## Quick start
 
 The Studio has a live stitch preview, multi-element designs, saved projects,
-and a **85-font pre-digitized satin library** loaded on demand. Fonts are
+and an **85-font pre-digitized satin library** loaded on demand. Fonts are
 picked in a searchable browser (search box, Sans/Serif/Script/Display/Small
 filters, per-font recommended size ranges) whose grid uses pre-rendered
 preview images — browsing never downloads font data; only picking a font
