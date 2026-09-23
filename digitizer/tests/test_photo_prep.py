@@ -144,7 +144,21 @@ def test_flag_on_is_byte_identical_for_flat_classified_designs(fixture):
 # `shade_palette_bind` after its own default moved.
 def test_flag_off_emits_no_prep_and_flag_on_emits_one():
     """The opt-in half of the double gate, plus the warning contract."""
-    off = run_stages(FIXTURE, _cfg(forced_class="photo_scene"))
+    # `photo_prep=False` pinned 2026-09-22, for exactly the reason the block
+    # above pins `photo_prep_background_removal`: this arm is named for the
+    # flag being OFF and stopped setting it when the DEFAULT flipped ON
+    # (`fe007e7c`, Kent's 2026-08-24 ruling -- the `on` arm below already
+    # passes `photo_prep=True` explicitly because the default was False when
+    # this was written). From that day it ran the flag ON and passed only
+    # because a requested-but-unavailable rembg cutout makes
+    # `pipeline.build_generation` skip the whole prep block -- the fallback,
+    # not the gate. Nobody saw it: `rembg_isolated/venv` is gitignored, so a
+    # worktree and a fresh clone have no cutout, and on a checkout that DOES
+    # have one this same call crashed in native SEEDS before reaching the
+    # assertion (see stage2_photo_segment's SEEDS_MIN_PX_PER_SUPERPIXEL).
+    # Measured 2026-09-22 with the cutout forced available: crash fixed, this
+    # line then failed honestly on `assert not True`.
+    off = run_stages(FIXTURE, _cfg(forced_class="photo_scene", photo_prep=False))
     assert not any(w["code"] == PHOTO_PREP_APPLIED for w in off.warnings)
 
     on = run_stages(FIXTURE, _cfg(forced_class="photo_scene", photo_prep=True,

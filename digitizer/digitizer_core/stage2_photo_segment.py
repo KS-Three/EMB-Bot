@@ -142,6 +142,88 @@ SEEDS_MIN_FG_FRAC = 0.05
 # busier real photo with a smaller subject before either bound engages.
 SEEDS_MAX_REQUESTED_SUPERPIXELS = 20000
 
+# --- The two bounds that keep SEEDS' own block hierarchy standing up ---------
+#
+# Neither of these is a quality knob. `createSuperpixelSEEDS` validates NOTHING
+# about `num_superpixels` against the image it is given, and past a certain
+# density it goes out of bounds inside its own C++ — so these exist to keep the
+# request inside the range the native code can actually service. Upstream has
+# known this since 2019 and has not fixed it: opencv_contrib issue #2023,
+# "SuperpixelSEEDS/SLIC: fatal error on little matrices", still open.
+#
+# The mechanism, read off `modules/ximgproc/src/seeds.cpp` (5.x) and confirmed
+# by measurement. `initialize()` picks the hierarchy by halving until a block
+# is at least one pixel wide:
+#
+#     do { --seeds_nr_levels;
+#          seeds_wf = (float)width  / num_superpixels_w / (1<<(seeds_nr_levels-1));
+#          seeds_hf = (float)height / num_superpixels_h / (1<<(seeds_nr_levels-1));
+#     } while( seeds_wf < 1.f || seeds_hf < 1.f );
+#
+# Ask for too many and `seeds_nr_levels` falls to 1, where `initImage` sets
+# `seeds_current_level = seeds_nr_levels - 2` = -1, the block-update loop in
+# `iterate()` never runs at all, and the code reads out of bounds. Ask for
+# enough more and `num_superpixels_w` reaches 0, the shift goes negative, and
+# the loop above cannot terminate.
+#
+# All three outcomes were measured 2026-09-22 on Kent's box (Windows, Python
+# 3.14.6) against the opencv-contrib-python-headless 5.0.0.93 that
+# `requirements.txt` pins — so CI runs the same wheel, on a different platform
+# and interpreter. The defect is in portable C++, not in anything
+# platform-specific, but it has NOT been reproduced on CI's Linux/3.12:
+#
+#   * CRASH   — 280x280 asking 20,000, and 40x40 asking 1,200, both
+#               "Windows fatal exception: access violation"; through the
+#               Python bindings the same fault surfaces as
+#               `cv2.error: Unknown C++ exception from OpenCV code`.
+#   * GARBAGE — 200x200 asking 20,000 and 64x64 asking 1,200 return a label
+#               array that is ENTIRELY ZERO. No exception, no warning: the
+#               whole crop silently becomes one superpixel, so the photo
+#               becomes one region. This is the outcome a green suite hides.
+#   * HANG    — any crop one pixel wide: >25 s and still spinning, the
+#               non-terminating loop above.
+#
+# `seeds_nr_levels >= 2` is the line, and it is bounded by two independent
+# conditions, hence two constants (the same belt-and-suspenders shape as the
+# `SEEDS_MIN_FG_FRAC` / `SEEDS_MAX_REQUESTED_SUPERPIXELS` pair above):
+#
+#   1. DENSITY. At most one superpixel per 4 crop pixels.
+#   2. A CROP-SIZE FLOOR, 16 px on each side. Density alone is NOT enough,
+#      because SEEDS floors the request itself
+#      (`if( num_superpixels < 10 ) num_superpixels = 10`), which puts a
+#      floor under the density too: below ~16 px on a side the hierarchy
+#      collapses at ANY count, so there is no request left to clamp to and
+#      the only safe move is not to call SEEDS at all.
+#
+# Swept over the requests this function can ACTUALLY produce — raw request is
+# `clamp(1200 / max(fg_frac, 0.05), 1, 20000)`, so always in [1,200, 20,000] —
+# across every (w, h) on a 2..1600 grid x ten foreground fractions from 0.02
+# to 1.0:
+#
+#     unguarded   76,728 of 1,220,570 cases collapse   (6.3%)
+#     guarded          0 of 1,200,830 cases collapse   (0%)
+#
+# Verified against the real native call and not just that arithmetic: 120
+# random (w, h, fg_frac) draws through the actual `iterate()` crash 8 times
+# unguarded, and 200 draws crash 0 times guarded.
+#
+# Do NOT narrow that sweep to one request per shape. An earlier pass did, and
+# it reported the density cap alone as clean — the collapses it missed were
+# the ELONGATED shapes, where the request interacts with the aspect ratio
+# (`num_superpixels_h = sqrt(N*H/W)` reaches 0 on a wide, short crop) rather
+# than with the pixel count this cap bounds.
+#
+# Both are deliberately generous rather than tight to the collapse boundary,
+# because the boundary is a private implementation detail of a third-party
+# library that is free to move under a version bump. The cost of the slack is
+# nil on real work: every SEEDS call a full suite run makes was logged
+# 2026-09-22 -- 43 distinct shape/request pairs -- and NOT ONE is clamped.
+# The densest is 321x320 asking 3,069: one superpixel per 33.5 px, a factor
+# of 8.4 inside the cap. The smallest crop side is 159 px, ten times the
+# floor. The one input that does clamp is the one this guard exists for.
+SEEDS_MIN_PX_PER_SUPERPIXEL = 4
+SEEDS_MIN_CROP_SIDE_PX = 16
+
 # `num_levels`: SEEDS' own block-hierarchy depth (see `createSuperpixelSEEDS`
 # docs) — more levels refine the grid-to-boundary fit further at more CPU/
 # memory cost. `prior`: 3x3 shape-smoothing strength, range [0, 5]. Both left
@@ -381,6 +463,27 @@ def _seeds_superpixels(rgb: np.ndarray, base_valid: np.ndarray) -> np.ndarray:
     lands somewhat under `requested` here — expected, not a bug; `_seeds_
     superpixels` never depends on hitting the request exactly, only on
     landing in the right order of magnitude).
+
+    **...and that compensation is what made the request unservable** (fixed
+    2026-09-22). Scaling by `1 / bbox_fg_frac` is unbounded from below at
+    `SEEDS_MIN_FG_FRAC`, so a SMALL crop holding a SPARSE foreground asks for
+    a superpixel count SEEDS cannot service and the native code goes out of
+    bounds — see `SEEDS_MIN_PX_PER_SUPERPIXEL` / `SEEDS_MIN_CROP_SIDE_PX`
+    above for the mechanism, the three measured outcomes and the sweeps that
+    set both numbers. The two bounds are applied here, after the crop is
+    known, because both are about the CROP and not about the canvas.
+
+    The path that found it: `region_blobs.png` forced photo-class, with the
+    isolated rembg cutout AVAILABLE, leaves a 222x214 bbox holding 7.85%
+    foreground — a request of 15,292 superpixels over 47,508 px. That is why
+    `tests/test_preflight.py::test_underresolved_photo_input_warns` and
+    `tests/test_photo_prep.py::test_flag_off_emits_no_prep_and_flag_on_emits
+    _one` crashed intermittently rather than always: `rembg_isolated/venv` is
+    gitignored, so a worktree or a fresh clone has no cutout and takes the
+    full 572x494 / 1,815 path that has never crashed, and even where the venv
+    exists the worker is a subprocess under a timeout, so it can lose the
+    race under a parallel run and leave the same harmless request behind. The
+    input SEEDS got was never the same twice; the test bytes always were.
     """
     h, w = base_valid.shape
     out = np.zeros((h, w), np.int64)
@@ -395,6 +498,12 @@ def _seeds_superpixels(rgb: np.ndarray, base_valid: np.ndarray) -> np.ndarray:
     requested = int(round(SEEDS_TARGET_FG_SUPERPIXELS / max(bbox_fg_frac, SEEDS_MIN_FG_FRAC)))
     requested = max(1, min(requested, SEEDS_MAX_REQUESTED_SUPERPIXELS))
     ch, cw = crop_valid.shape
+    if cw < SEEDS_MIN_CROP_SIDE_PX or ch < SEEDS_MIN_CROP_SIDE_PX:
+        crop_out = np.zeros((ch, cw), np.int64)
+        crop_out[crop_valid] = 1
+        out[y0:y1, x0:x1] = crop_out
+        return out
+    requested = max(1, min(requested, (cw * ch) // SEEDS_MIN_PX_PER_SUPERPIXEL))
     seeds = cv2.ximgproc.createSuperpixelSEEDS(
         cw, ch, 3, requested, SEEDS_NUM_LEVELS, SEEDS_PRIOR,
         SEEDS_HISTOGRAM_BINS, SEEDS_DOUBLE_STEP,
