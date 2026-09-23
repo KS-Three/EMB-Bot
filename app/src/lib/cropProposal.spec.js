@@ -62,4 +62,49 @@ describe("proposeCrop", () => {
     expect(r.x1).toBeGreaterThan(r.x0);
     expect(r.y1).toBeGreaterThan(r.y0);
   });
+
+  it("finds ink under a fully transparent border, without inverting", () => {
+    // becker_marine_logo.png shape: one RGB colour everywhere, the shape
+    // carried entirely in alpha. A transparent border sampled for its RGB
+    // (ignoring alpha) would estimate a near-black background and invert
+    // ink detection across the whole image. The border here is fully
+    // transparent, so the correct fallback is white -- against which the
+    // opaque dark block reads as ink, not background.
+    const width = 200, height = 200;
+    const data = new Uint8ClampedArray(width * height * 4);
+    for (let p = 0; p < width * height; p++) {
+      const i = p * 4;
+      data[i] = 32; data[i + 1] = 31; data[i + 2] = 35; data[i + 3] = 0;
+    }
+    for (let y = 60; y < 140; y++) {
+      for (let x = 60; x < 140; x++) {
+        data[(y * width + x) * 4 + 3] = 255; // same RGB, now opaque
+      }
+    }
+    const r = proposeCrop({ data, width, height }, 80);
+    expect(r.x0).toBeLessThanOrEqual(60 / width);
+    expect(r.x1).toBeGreaterThanOrEqual(140 / width);
+    expect(r.y0).toBeLessThanOrEqual(60 / height);
+    expect(r.y1).toBeGreaterThanOrEqual(140 / height);
+    // Not the whole frame -- that would mean the block was never detected
+    // as ink at all (inverted against a near-black background estimate).
+    expect(r.x1 - r.x0).toBeLessThan(0.9);
+    expect(r.y1 - r.y0).toBeLessThan(0.9);
+  });
+
+  it("stays sane when a large ink region touches the frame edge", () => {
+    // A per-channel MEAN over the border would be skewed dark enough by
+    // this much edge-touching ink to push the background estimate more
+    // than INK_TOLERANCE off white, misclassifying most of the rest of the
+    // white frame as ink too. The median must not.
+    const img = art(300, 300, [[0, 0, 150, 150]]);
+    const r = proposeCrop(img, 80);
+    expect(r.x0).toBeLessThanOrEqual(0.05);
+    expect(r.y0).toBeLessThanOrEqual(0.05);
+    expect(r.x1).toBeGreaterThanOrEqual(150 / 300);
+    expect(r.y1).toBeGreaterThanOrEqual(150 / 300);
+    // Sane crop, not the whole (300x300) frame.
+    expect(r.x1 - r.x0).toBeLessThan(0.7);
+    expect(r.y1 - r.y0).toBeLessThan(0.7);
+  });
 });

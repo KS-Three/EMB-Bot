@@ -22,24 +22,51 @@ const MARGIN_MM = 2.0;
 const INK_TOLERANCE = 28;
 const FULL_FRAME = { x0: 0, y0: 0, x1: 1, y1: 1 };
 
+function median(values) {
+  const s = [...values].sort((a, b) => a - b);
+  const mid = s.length >> 1;
+  return s.length % 2 ? s[mid] : (s[mid - 1] + s[mid]) / 2;
+}
+
 function backgroundRgb({ data, width, height }) {
-  // Mean of the frame's 1 px border -- the same premise stage 1's
-  // border-flood uses: a real background owns the frame's edge.
-  let r = 0, g = 0, b = 0, n = 0;
+  // Per-channel MEDIAN over the frame's 1 px border, opaque pixels only --
+  // the same premise stage 1's border-flood uses (a real background owns
+  // the frame's edge), sharpened twice over a plain mean:
+  //
+  // - Opaque-only matches the ink loop's own alpha rule (data[i+3] < 128 is
+  //   not ink). A transparent border sampled unconditionally would pull in
+  //   whatever RGB sits under the transparency -- becker_marine_logo.png is
+  //   one colour everywhere with the shape entirely in alpha, so its
+  //   under-transparency RGB (near-black) would invert ink detection across
+  //   the whole image if the mean counted it.
+  // - Median is close to immune to a minority of border-touching ink, where
+  //   a mean can be skewed past INK_TOLERANCE by a single large mark that
+  //   reaches the edge. Also matches digitizer_core/stage1_prep.py's
+  //   `_dominant_border_color`, a dominant colour rather than an average --
+  //   this proposal should not be less robust than the pipeline it feeds.
+  const rs = [], gs = [], bs = [];
   const at = (x, y) => (y * width + x) * 4;
+  const sample = (x, y) => {
+    const i = at(x, y);
+    if (data[i + 3] < 128) return; // transparent border pixels don't count
+    rs.push(data[i]); gs.push(data[i + 1]); bs.push(data[i + 2]);
+  };
+  // Top and bottom rows, every column (corners included here).
   for (let x = 0; x < width; x++) {
-    for (const y of [0, height - 1]) {
-      const i = at(x, y);
-      r += data[i]; g += data[i + 1]; b += data[i + 2]; n++;
-    }
+    sample(x, 0);
+    sample(x, height - 1);
   }
-  for (let y = 0; y < height; y++) {
-    for (const x of [0, width - 1]) {
-      const i = at(x, y);
-      r += data[i]; g += data[i + 1]; b += data[i + 2]; n++;
-    }
+  // Left and right columns, excluding the two rows already sampled above so
+  // the four corner pixels are each counted once, not twice.
+  for (let y = 1; y < height - 1; y++) {
+    sample(0, y);
+    sample(width - 1, y);
   }
-  return n ? [r / n, g / n, b / n] : [255, 255, 255];
+  // No opaque border pixels at all -- a fully transparent frame -- means
+  // everything visible is ink; white is the correct backdrop assumption for
+  // artwork composited for display.
+  if (!rs.length) return [255, 255, 255];
+  return [median(rs), median(gs), median(bs)];
 }
 
 export function proposeCrop(imageData, widthMm) {
