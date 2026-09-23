@@ -36,6 +36,13 @@ on:
     branches: [main]
   pull_request:
 
+# deploy-pages (the pages job below) needs an OIDC token to publish to
+# GitHub Pages.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
 # Supersede in-flight runs for the same ref rather than racing them. Never
 # cancels on main — a merge's run is the record that main is green, and there
 # is no later run coming to replace it.
@@ -337,3 +344,50 @@ jobs:
           name: artfid-baseline-${{ github.sha }}
           path: digitizer/artfid-baseline.csv
           if-no-files-found: warn
+
+  pages:
+    # Publishes app/dist to GitHub Pages. Push to main only — a PR must never
+    # replace the live site.
+    #
+    # needs is engine/studio/studio-e2e, NOT digitizer: those three cover what
+    # is actually in the bundle, while digitizer runs 33-55 min against Python
+    # that ships nowhere near dist/. Gating the deploy on it would add ~50 min
+    # to every publish for no signal about the thing being published.
+    #
+    # concurrency here is job-level, not a second top-level block: a
+    # top-level `concurrency:` already exists above (CI run dedup/
+    # cancellation, keyed on workflow+ref) and a duplicate top-level
+    # `concurrency:` key would be invalid YAML. Scoping it to this job gets
+    # "one in-flight Pages deploy at a time; never cancel one mid-publish"
+    # without touching that existing block or any existing job.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [engine, studio, studio-e2e]
+    runs-on: ubuntu-latest
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - name: Install
+        working-directory: app
+        run: npm ci
+      - name: Build (hosted)
+        working-directory: app
+        env:
+          # The ONLY place besides playwright.hosted.config.js that sets this.
+          VITE_HOSTED: '1'
+        run: npm run build
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: app/dist
+      - id: deployment
+        uses: actions/deploy-pages@v4
