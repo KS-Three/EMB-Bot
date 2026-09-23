@@ -605,10 +605,24 @@ Append to the end of the `jobs:` mapping, at the same indentation as `engine:` a
         uses: actions/deploy-pages@v4
 ```
 
-- [ ] **Step 3: Validate the YAML before pushing**
+- [ ] **Step 3: Structural check before pushing**
 
-Run: `cd "C:/Users/EE-LT-11030/Claude Personal/EMB-Bot" && python -c "import yaml,sys; d=yaml.safe_load(open('.github/workflows/python-package-conda.yml')); print(sorted(d['jobs'])); print(d['permissions'])"`
-Expected: the job list includes `pages`, and the permissions mapping prints. A YAML error here is far cheaper to find now than as a failed run.
+No YAML parser is reachable here — this machine's `python` has no PyYAML and
+the app's dependency tree ships no `yaml` package (controller checked both,
+ledger F2). GitHub's own parse is the real gate; this catches the realistic
+local failure, which is indentation.
+
+Run:
+
+```bash
+grep -nE "^  [a-z0-9-]+:$" .github/workflows/python-package-conda.yml && grep -nE "^(permissions|concurrency):$" .github/workflows/python-package-conda.yml
+```
+
+Expected: the first command lists `pages:` alongside `engine:`, `studio:`,
+`digitizer:`, `studio-e2e:` and `art-fidelity-baseline:` — all at exactly two
+spaces, `pages` among them. The second prints `permissions:` and
+`concurrency:` at column 0. If `pages:` appears at any other indentation it is
+nested inside the previous job and the workflow is wrong.
 
 - [ ] **Step 4: Commit**
 
