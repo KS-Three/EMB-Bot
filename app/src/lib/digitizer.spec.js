@@ -2311,3 +2311,26 @@ describe("editKind (restitch pacing)", () => {
     expect(editKind(await edits(el({})), c)).toBe("other");
   });
 });
+
+// A hosted build has no localhost service and never will. The probe is not
+// merely doomed there — from an HTTPS page it is blocked as mixed content and
+// logged as an error on EVERY page load, on the product's public face. This
+// asserts the request is not made at all, not merely that the result is null.
+test("hosted: fetchHealth returns null without calling fetch", async () => {
+  const { fetchHealth } = await import("./digitizer.js");
+  const fetchFn = vi.fn(() => {
+    throw new Error("fetch must not be called on a hosted build");
+  });
+  const h = await fetchHealth(fetchFn, { hosted: true });
+  expect(h).toBe(null);
+  expect(fetchFn).not.toHaveBeenCalled();
+});
+
+// The desktop path is the one Kent uses; the flag must not disturb it.
+test("unhosted: fetchHealth still probes and returns the payload", async () => {
+  const { fetchHealth } = await import("./digitizer.js");
+  const fetchFn = vi.fn(async () => ({ ok: true, json: async () => ({ status: "ok" }) }));
+  const h = await fetchHealth(fetchFn, { hosted: false });
+  expect(h).toEqual({ status: "ok" });
+  expect(fetchFn).toHaveBeenCalledTimes(1);
+});

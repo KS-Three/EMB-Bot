@@ -30,6 +30,7 @@
 
 import { loadPreferredPaletteId } from "./threads.js";
 import { DEFAULT_DIGITIZE_PARAMS } from "./project.js";
+import { isHosted } from "./hosted.js";
 
 // The service binds 127.0.0.1:8721 by default (digitizer_service/__main__.py).
 // The localStorage override is a dev/ops seam — e.g. a second instance on
@@ -74,7 +75,12 @@ export function sam2Enabled() {
 
 // GET /health, null on ANY failure (down, refused, non-ok, bad JSON). Studio
 // gates the whole auto-digitize feature on this returning an object.
-export async function fetchHealth(fetchFn = globalThis.fetch) {
+export async function fetchHealth(fetchFn = globalThis.fetch, { hosted = isHosted() } = {}) {
+  // A hosted build has no localhost service and never will, so this request
+  // cannot succeed — and from an HTTPS page it is blocked as mixed content
+  // and logged as an error on every page load. Return the same null the
+  // catch below would produce, without spending the request.
+  if (hosted) return null;
   try {
     const r = await fetchFn(digitizerUrl() + "/health");
     if (!r.ok) return null;
