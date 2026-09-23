@@ -541,6 +541,25 @@ def test_a_malformed_garment_rgb_is_a_400_at_submit_not_a_failed_job(client, bad
     assert "garment_rgb" in r.json()["detail"]
 
 
+@pytest.mark.parametrize("bad", [
+    {"crop": 5},                          # not a list -- probed: TypeError, no len()
+    {"crop": [None, 0, 1, 1]},            # a null entry -- probed: TypeError in float()
+    {"crop": "abcd"},                     # a string -- probed: ValueError in float()
+    {"crop": [0.1, 0.1, 0.9]},            # three fractions
+    {"crop": [0.1, 0.1, 0.9, 0.9, 0.5]},  # five fractions
+    {"crop": [True, 0.1, 0.9, 0.9]},      # bool is not a fraction
+])
+def test_a_malformed_crop_is_a_400_at_submit_not_a_500(client, bad):
+    """None of these crash the service, but each burns a decode and a
+    worker slot and shows a class name to the customer before this check
+    existed -- same posture as garment_rgb/forced_class above."""
+    with ART.open("rb") as f:
+        r = client.post("/digitize", files={"image": (ART.name, f, "image/png")},
+                        data={"config": json.dumps(bad)})
+    assert r.status_code == 400, r.text
+    assert "crop" in r.json()["detail"]
+
+
 def test_the_garment_rule_reaches_the_review_payload_over_http(client):
     """`garment_rgb` + `enclosed_by_garment` (item 9): the whitebg fixture's
     one white hole reports `stitched: False` by default, and on a navy

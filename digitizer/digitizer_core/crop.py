@@ -14,6 +14,8 @@ uploads.
 """
 from __future__ import annotations
 
+import math
+
 import numpy as np
 
 # The smallest frame the downstream background detector can read a border
@@ -38,7 +40,15 @@ def validate_crop(crop, shape) -> tuple[int, int, int, int] | None:
     x0f, y0f, x1f, y1f = (float(v) for v in crop)
     clamp = lambda v: min(max(v, 0.0), 1.0)  # noqa: E731
     x0f, y0f, x1f, y1f = clamp(x0f), clamp(y0f), clamp(x1f), clamp(y1f)
-    if x1f <= x0f or y1f <= y0f:
+    # `clamp` returns a NaN unchanged (`max`/`min` never replace it -- every
+    # comparison against NaN is False), and `x1f <= x0f` is ALSO False for a
+    # NaN operand, so a degenerate rectangle carrying one used to sail past
+    # this guard and die four lines below at `int(round(...))` with "cannot
+    # convert float NaN to integer" -- naming neither `crop` nor the
+    # rectangle. Folded into the same raise rather than a separate one: NaN
+    # is exactly as empty/unusable a rectangle as `x1f <= x0f` already is.
+    if (not all(math.isfinite(v) for v in (x0f, y0f, x1f, y1f))
+            or x1f <= x0f or y1f <= y0f):
         raise ValueError(f"crop is empty after clamping to [0, 1]: {crop!r}")
 
     h, w = shape[:2]

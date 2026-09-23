@@ -152,4 +152,112 @@ describe("CropBox dragging", () => {
     await fireEvent.pointerUp(box, { clientX: 100, clientY: 100, pointerId: 1 });
     expect(onchange).not.toHaveBeenCalled();
   });
+
+  // Finding 7 (2026-09-22 review): `next.x1 = clamp(next.x0 + w)` let x1
+  // saturate at 1 while x0 kept advancing, so a move past the right/bottom
+  // edge SHRANK the box instead of stopping it. A 0.4x0.4 box moved right
+  // and down by 0.5 (well past the 0.3 of room it actually has on either
+  // axis, box starting at 0.3/0.3/0.7/0.7) must stop flush against the
+  // edges at its ORIGINAL size, not shrink into a corner.
+  it("a move dragged past the right/bottom edge stops flush against them, size preserved", async () => {
+    const onchange = vi.fn();
+    render(CropBox, {
+      src: "data:image/png;base64,iVBORw0KGgo=",
+      crop: { x0: 0.3, y0: 0.3, x1: 0.7, y1: 0.7 },
+      onchange,
+    });
+    const box = screen.getByRole("group", { name: "Crop area" });
+    await fireEvent.pointerDown(box, { clientX: 100, clientY: 100, pointerId: 1 });
+    // dx = dy = 100px / 200px host = 0.5 -- more room than the 0.3 available.
+    await fireEvent.pointerMove(box, { clientX: 200, clientY: 200, pointerId: 1 });
+    await fireEvent.pointerUp(box, { clientX: 200, clientY: 200, pointerId: 1 });
+    expect(onchange).toHaveBeenCalledTimes(1);
+    const [got] = onchange.mock.calls[0];
+    expect(got.x0).toBeCloseTo(0.6, 5);
+    expect(got.y0).toBeCloseTo(0.6, 5);
+    expect(got.x1).toBeCloseTo(1.0, 5);
+    expect(got.y1).toBeCloseTo(1.0, 5);
+    // The width/height the box started with, not the ~0.2 the old code left.
+    expect(got.x1 - got.x0).toBeCloseTo(0.4, 5);
+    expect(got.y1 - got.y0).toBeCloseTo(0.4, 5);
+  });
+});
+
+// ---- minFrac: a caller-supplied drag floor (finding 4, 2026-09-22 review) -
+//
+// CropBox's own minimum used to be a hardcoded 2%, which is under the
+// service's 16 px floor on any preview raster narrower than 800 px.
+// `minFrac` lets a caller (DigitizePanel, from the preview's own pixel
+// size) raise that floor; these drive the same resize-handle path finding
+// 8's edge handles use, so they also exercise HANDLES/HANDLE_LABEL beyond
+// the pre-existing corner-only coverage above.
+describe("CropBox minFrac", () => {
+  it("rejects a resize below a caller-supplied minFrac even though it clears the default 0.02", async () => {
+    const onchange = vi.fn();
+    render(CropBox, {
+      src: "data:image/png;base64,iVBORw0KGgo=",
+      crop: { x0: 0.0, y0: 0.0, x1: 0.5, y1: 0.5 },
+      onchange,
+      minFrac: 0.3,
+    });
+    const handle = screen.getByRole("button", { name: "Drag se corner" });
+    await fireEvent.pointerDown(handle, { clientX: 100, clientY: 100, pointerId: 1 });
+    // dx = dy = -45px / 200px host = -0.225 -> shrinks the 0.5-wide box to
+    // 0.275, which is under the 0.3 minFrac but well above the default 0.02.
+    await fireEvent.pointerMove(handle, { clientX: 55, clientY: 55, pointerId: 1 });
+    await fireEvent.pointerUp(handle, { clientX: 55, clientY: 55, pointerId: 1 });
+    // The pre-fix component (flat 0.02) would have accepted this resize;
+    // with minFrac: 0.3 it must not.
+    expect(onchange).not.toHaveBeenCalled();
+  });
+
+  it("the default (no minFrac passed) still allows a resize below 0.3, matching the pre-fix 0.02 floor", async () => {
+    const onchange = vi.fn();
+    render(CropBox, {
+      src: "data:image/png;base64,iVBORw0KGgo=",
+      crop: { x0: 0.0, y0: 0.0, x1: 0.5, y1: 0.5 },
+      onchange,
+    });
+    const handle = screen.getByRole("button", { name: "Drag se corner" });
+    await fireEvent.pointerDown(handle, { clientX: 100, clientY: 100, pointerId: 1 });
+    await fireEvent.pointerMove(handle, { clientX: 55, clientY: 55, pointerId: 1 });
+    await fireEvent.pointerUp(handle, { clientX: 55, clientY: 55, pointerId: 1 });
+    expect(onchange).toHaveBeenCalledTimes(1);
+  });
+});
+
+// ---- edge handles (finding 8, 2026-09-22 review) ---------------------------
+//
+// Spec section 6 asks for handles on corners AND edges; `move()` already
+// implemented the single-axis logic for them (`h.includes("w")` etc. work
+// fine for a one-letter handle name) -- the array just never emitted them.
+describe("CropBox edge handles", () => {
+  it("renders all four edge handles alongside the four corners", () => {
+    render(CropBox, { src: "data:image/png;base64,iVBORw0KGgo=" });
+    for (const name of ["Drag top edge", "Drag bottom edge", "Drag left edge", "Drag right edge"]) {
+      expect(screen.getByRole("button", { name })).toBeInTheDocument();
+    }
+    for (const name of ["Drag nw corner", "Drag ne corner", "Drag sw corner", "Drag se corner"]) {
+      expect(screen.getByRole("button", { name })).toBeInTheDocument();
+    }
+  });
+
+  it("dragging the right edge handle resizes only x1", async () => {
+    const onchange = vi.fn();
+    render(CropBox, {
+      src: "data:image/png;base64,iVBORw0KGgo=",
+      crop: { x0: 0.2, y0: 0.2, x1: 0.6, y1: 0.6 },
+      onchange,
+    });
+    const handle = screen.getByRole("button", { name: "Drag right edge" });
+    await fireEvent.pointerDown(handle, { clientX: 100, clientY: 100, pointerId: 1 });
+    await fireEvent.pointerMove(handle, { clientX: 140, clientY: 130, pointerId: 1 });   // dx=0.2, dy=0.15 (ignored on this axis)
+    await fireEvent.pointerUp(handle, { clientX: 140, clientY: 130, pointerId: 1 });
+    expect(onchange).toHaveBeenCalledTimes(1);
+    const [got] = onchange.mock.calls[0];
+    expect(got.x0).toBeCloseTo(0.2, 5);
+    expect(got.y0).toBeCloseTo(0.2, 5);
+    expect(got.x1).toBeCloseTo(0.8, 5);
+    expect(got.y1).toBeCloseTo(0.6, 5);   // untouched by a right-edge drag
+  });
 });

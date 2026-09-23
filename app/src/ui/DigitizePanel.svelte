@@ -40,7 +40,7 @@
     indexRuns,
     shapeBorderState } from "../lib/borderMenu.js";
   import { loadPalette, nearestInList } from "../lib/threads.js";
-  import { loadImage, rasterSize, isVectorFile, uploadPlan } from "../lib/rasterize.js";
+  import { loadImage, rasterSize, isVectorFile, uploadPlan, pngDimensionsFromBase64 } from "../lib/rasterize.js";
   import { getSource, putSource, sourceKeyFor, sourceStoreAvailable } from "../lib/sourceStore.js";
   import CropBox from "./CropBox.svelte";
   import { proposeCrop } from "../lib/cropProposal.js";
@@ -68,6 +68,15 @@
   // with the project, so smaller is a feature: at 1200 px a flat-color logo
   // PNG is typically well under 500 KB.
   const PROCESS_MAX_PX = 1200;
+  // Matches `digitizer_core/crop.py` MIN_CROP_PX -- the server's own pixel
+  // floor per axis. CropBox's drag floor used to be a flat 2%, which is
+  // under 16 px on any preview raster narrower than 800 px; a customer on a
+  // small upload could drag to that minimum and get a message written for
+  // a programming error ("crop is 12x12 px...") that re-fires on every
+  // later param change until they widen the box (finding 4, 2026-09-22
+  // review). Derived from `element.sourcePng`'s own IHDR header below, so
+  // it tracks the raster CropBox actually shows, not this constant alone.
+  const CROP_MIN_PX = 16;
   // Set when a digitize had to send the preview because the original's bytes
   // are gone (cleared site data, another browser): the two digitize
   // differently, so the panel says which one this result came from.
@@ -501,6 +510,18 @@
       if (element.result || phase !== "idle") runDigitize(element);
     }
   }
+
+  // CropBox's drag floor, sized to the raster it is actually showing
+  // (finding 4, 2026-09-22 review) -- see CROP_MIN_PX above. Read straight
+  // off `element.sourcePng`'s own bytes so it stays correct across a reload
+  // (no upload event re-fires then) without persisting a second field
+  // alongside `crop`. Falls back to CropBox's own default when the PNG
+  // header can't be read (no artwork yet, or a non-PNG test placeholder).
+  $: cropMinFrac = (() => {
+    const dim = element.sourcePng && pngDimensionsFromBase64(element.sourcePng);
+    if (!dim) return 0.02;
+    return Math.min(0.5, Math.max(0.02, CROP_MIN_PX / Math.min(dim.width, dim.height)));
+  })();
 
   // New artwork digitizes ITSELF. Every other change in this panel already
   // re-runs on its own once a result exists; the first run was the single
@@ -1737,6 +1758,7 @@
       src={"data:image/png;base64," + element.sourcePng}
       crop={element.crop}
       onchange={(c) => patch({ crop: c })}
+      minFrac={cropMinFrac}
     />
 
     {#if !health}

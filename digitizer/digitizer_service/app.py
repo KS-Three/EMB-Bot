@@ -483,6 +483,21 @@ def _validate_config_dict(data: dict, allowed_fields: set[str]) -> dict:
             status_code=400,
             detail=f"unknown forced_class {forced!r}. Valid: {', '.join(CLASSES)}.",
         )
+    # `crop` reaches `PipelineConfig` as whatever JSON carried, and
+    # `crop.validate_crop` assumes four numbers -- a malformed value (a bare
+    # int, a null in the list, a string) surfaces as a TypeError/ValueError
+    # deep in stage0/stage1's `_load`, which reaches the caller as a 500
+    # after burning a decode and a worker slot. Checked here as a 400 naming
+    # the shape, like garment_rgb/forced_class above.
+    crop = data.get("crop")
+    if crop is not None and not (
+        isinstance(crop, (list, tuple)) and len(crop) == 4
+        and all(isinstance(v, (int, float)) and not isinstance(v, bool) for v in crop)
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="crop must be four numbers (x0, y0, x1, y1), e.g. [0.1, 0.1, 0.9, 0.9].",
+        )
     if "deleted_shape_ids" in allowed_fields or "shape_overrides" in allowed_fields:
         _canonicalize_shape_edits(data, len(load_chart(brand or DEFAULT_BRAND)))
     return data

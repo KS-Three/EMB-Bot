@@ -67,3 +67,16 @@ def test_wrong_arity_raises():
     rgb, alpha = _art()
     with pytest.raises(ValueError, match="four fractions"):
         apply_crop(rgb, alpha, (0.1, 0.2, 0.3))
+
+
+def test_nan_is_rejected_not_a_cannot_convert_float_nan_to_integer_crash():
+    """`clamp` returns a NaN unchanged, and `x1f <= x0f` is False for NaN
+    too, so a degenerate rectangle carrying one used to sail past the
+    emptiness guard and die four lines later at `int(round(...))` with
+    "cannot convert float NaN to integer" -- naming neither `crop` nor the
+    rectangle (finding 9, 2026-09-22 review)."""
+    rgb, alpha = _art()
+    with pytest.raises(ValueError, match="empty after clamping"):
+        apply_crop(rgb, alpha, (float("nan"), 0.1, 0.5, 0.9))
+    with pytest.raises(ValueError, match="empty after clamping"):
+        apply_crop(rgb, alpha, (0.1, 0.1, 0.5, float("nan")))

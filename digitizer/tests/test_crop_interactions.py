@@ -51,3 +51,11 @@ def test_cropping_an_alpha_cutout_keeps_the_native_frame_bookkeeping_consistent(
     sx, sy = p.upscale
     assert round(p.native_rgb.shape[1] * sx) == p.rgb.shape[1]
     assert round(p.native_rgb.shape[0] * sy) == p.rgb.shape[0]
+    # The two asserts above hold identically with the crop removed -- they
+    # only relate `native_rgb` to `rgb`, both derived from the SAME frame,
+    # so they cannot tell a cropped native frame from an uncropped one. This
+    # is the absolute check that does: becker's source raster is
+    # (91, 146); at crop=(0.1, 0.1, 0.9, 0.9) the cropped native frame is
+    # (73, 116) -- measured directly off `stage1_prep.prep`, not derived
+    # from `rgb`/`upscale` the way the two asserts above are.
+    assert p.native_rgb.shape[:2] == (73, 116)

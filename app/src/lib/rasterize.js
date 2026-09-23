@@ -166,6 +166,35 @@ export function loadImage(file, deps = {}) {
     .catch(() => viaImg());
 }
 
+// A PNG's pixel size straight out of its IHDR chunk -- width at byte 16,
+// height at byte 20, both big-endian (the 8-byte PNG signature is followed
+// by a 4-byte chunk length and the 4-byte "IHDR" tag before the dimensions
+// start). Mirrors `jpegDimensions` above: reading the header is enough, no
+// decode needed. `CropBox`'s drag floor (finding 4, upload-crop review
+// 2026-09-22) needs the size of the ACTUAL raster it displays
+// (`element.sourcePng`), which is already base64 in memory -- reading the
+// header out of those same bytes is simpler and synchronous, unlike loading
+// an <img> just to read naturalWidth/naturalHeight.
+export function pngDimensionsFromBase64(b64) {
+  if (!b64) return null;
+  let bin;
+  try {
+    bin = atob(b64);
+  } catch {
+    return null;
+  }
+  if (bin.length < 24) return null;
+  const SIG = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+  for (let i = 0; i < SIG.length; i++) {
+    if (bin.charCodeAt(i) !== SIG[i]) return null;
+  }
+  const byte = (i) => bin.charCodeAt(i);
+  const u32 = (i) => ((byte(i) << 24) | (byte(i + 1) << 16) | (byte(i + 2) << 8) | byte(i + 3)) >>> 0;
+  const width = u32(16);
+  const height = u32(20);
+  return width && height ? { width, height } : null;
+}
+
 export const UNREADABLE =
   "Couldn’t read that file as an image. PNG, JPEG, WebP, GIF, BMP and SVG all work — " +
   "a PDF, AI or EPS logo needs to be exported as one of those first.";

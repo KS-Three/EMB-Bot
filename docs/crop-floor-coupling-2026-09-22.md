@@ -119,7 +119,11 @@ the first one goes true.
 Sweep A (100 mm, unchanged since round 1) still shows `gate` held
 constant — Becker's own resolution there is already far under the floor,
 so that arm remains a documented negative on the under-floor regime, not a
-test of the coupling.
+test of the coupling. Its stitch counts still swing sharply across the
+crop ladder (8070 -> 12485 -> 11684 -> 5448) — that movement is the crop
+itself changing what there is to digitize, not the gate: `gate` never
+flips in that sweep, so those swings are not evidence of the coupling
+either way.
 
 **Conclusion, stated plainly: on this one fixture, cropping does flip
 `alpha_edge_extend_upscaled_only`, but the flip is a curiosity here, not a

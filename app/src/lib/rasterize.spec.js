@@ -139,3 +139,36 @@ test("a JPEG the browser rotated on decode keeps the canvas path — the service
   // A PNG is never orientation-checked: it carries no EXIF rotation the browser applies.
   expect(uploadPlan({ name: "a.png", type: "image/png", size: 10 }, img(50, 100), null, sof(50, 100)).asIs).toBe(true);
 });
+
+test("pngDimensionsFromBase64 reads width/height from the IHDR header, for CropBox's drag floor", async () => {
+  const { pngDimensionsFromBase64 } = await import("./rasterize.js");
+  // Signature (8) + a made-up chunk length (4, unread) + "IHDR" (4) +
+  // width (4) + height (4) -- 24 bytes, exactly what the reader looks at.
+  // The trailing bit-depth/CRC bytes a real PNG carries are irrelevant to
+  // it and deliberately omitted.
+  const fakePng = (width, height) => {
+    const bytes = new Uint8Array(24);
+    bytes.set([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a], 0);
+    bytes.set([0, 0, 0, 13], 8);
+    bytes.set([0x49, 0x48, 0x44, 0x52], 12);
+    bytes[16] = (width >>> 24) & 0xff; bytes[17] = (width >>> 16) & 0xff;
+    bytes[18] = (width >>> 8) & 0xff; bytes[19] = width & 0xff;
+    bytes[20] = (height >>> 24) & 0xff; bytes[21] = (height >>> 16) & 0xff;
+    bytes[22] = (height >>> 8) & 0xff; bytes[23] = height & 0xff;
+    return Buffer.from(bytes).toString("base64");
+  };
+  expect(pngDimensionsFromBase64(fakePng(1200, 480))).toEqual({ width: 1200, height: 480 });
+  expect(pngDimensionsFromBase64(fakePng(100, 100))).toEqual({ width: 100, height: 100 });
+  expect(pngDimensionsFromBase64(null)).toBeNull();
+  expect(pngDimensionsFromBase64("")).toBeNull();
+  // Not a PNG signature (a JPEG's own SOI/APP1 bytes, padded to length) -> null.
+  const notPng = new Uint8Array(24);
+  notPng.set([0xff, 0xd8, 0xff, 0xe1], 0);
+  expect(pngDimensionsFromBase64(Buffer.from(notPng).toString("base64"))).toBeNull();
+  // Too short to hold an IHDR at all.
+  expect(pngDimensionsFromBase64(Buffer.from([0x89, 0x50, 0x4e, 0x47]).toString("base64"))).toBeNull();
+  // Not valid base64 -- DigitizePanel.spec.js's own placeholder
+  // ("data:image/png;base64,AAAA") is exactly this shape, so this must
+  // degrade to null rather than throw.
+  expect(pngDimensionsFromBase64("data:image/png;base64,AAAA")).toBeNull();
+});

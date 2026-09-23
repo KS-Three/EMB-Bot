@@ -389,6 +389,19 @@ def prep(image: str | Path | bytes | np.ndarray, cfg: PipelineConfig) -> Prep:
 
     fg = ~bg
     if not fg.any():
+        if cfg.crop is not None:
+            # The most likely wrong drag in a feature whose whole point is
+            # dragging: the customer cropped onto an empty region. The
+            # uncropped message below tells them to crop TIGHTER and
+            # re-export their artwork -- backwards advice here, since the
+            # fix is to widen the box, not the art. Kept OUT of
+            # `digitizer_service/errors._KNOWN` on purpose: that map is an
+            # allowlist for artwork-caused failures, and this is customer
+            # input (the crop rectangle), which keeps its own message the
+            # same way a bad `boundary_override`/`merge_shape_ids` edit does.
+            raise ValueError(
+                "the crop rectangle contains no artwork — widen it, or use "
+                "the whole image")
         raise ValueError("no foreground pixels — the whole image reads as background")
 
     ys, xs = np.nonzero(fg)
