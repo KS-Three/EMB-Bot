@@ -227,6 +227,14 @@ export function buildDigitizeConfig(element, project) {
   ) {
     cfg.thread_brand = element.review.brandId;
   }
+  // The customer's crop, as four fractions the service applies at decode
+  // time (digitizer_core/crop.py). Omitted entirely when absent or full
+  // frame, so an uncropped upload stays byte-identical to the pre-crop
+  // engine. Fractions, never pixels: the service may receive the original
+  // file or the 1,200-px preview.
+  const c = element && element.crop;
+  const FULL = c && c.x0 <= 0.001 && c.y0 <= 0.001 && c.x1 >= 0.999 && c.y1 >= 0.999;
+  if (c && !FULL) cfg.crop = [c.x0, c.y0, c.x1, c.y1];
   return cfg;
 }
 

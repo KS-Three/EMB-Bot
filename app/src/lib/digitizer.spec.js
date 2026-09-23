@@ -56,7 +56,7 @@ const PIPELINE_CONFIG_FIELDS = [
   "underlay_style", "underlay", "satin", "satin_max_width_mm", "border",
   "border_width_mm", "deleted_shape_ids", "shape_overrides",
   "merge_shape_ids", "split_shapes", "photo_segment_sam2", "detail_layer",
-  "forced_class", "edge_cap", "is_photographic", "garment_rgb",
+  "forced_class", "edge_cap", "is_photographic", "garment_rgb", "crop",
 ];
 
 test("buildDigitizeConfig sends the stored thread-brand preference and the project garment, in service field names", async () => {
@@ -279,6 +279,47 @@ test("isPhoto sends is_photographic and still out-ranks a stale params.forced_cl
   expect(both.is_photographic).toBe(true);
   expect("forced_class" in both).toBe(false);
   for (const k of Object.keys(both)) expect(PIPELINE_CONFIG_FIELDS).toContain(k);
+});
+
+// ---- crop in the digitize config -------------------------------------------
+//
+// The crop rectangle (Task 6's proposeCrop, drawn/dragged in CropBox.svelte)
+// lives on element.crop as four fractions, not element.params — same reason
+// isPhoto does: it names a fact about how the SOURCE ART should be read
+// before decode, not a PipelineConfig field forwarded from the params list.
+// buildDigitizeConfig turns it into the four-element array crop.py expects
+// and drops it entirely when absent or full-frame, so an uncropped upload's
+// cache key (and its stitches) stay byte-identical to the pre-crop engine.
+describe("crop in the digitize config", () => {
+  it("sends the crop as four fractions when the element carries one", async () => {
+    stubStorage({});
+    const { buildDigitizeConfig } = await import("./digitizer.js");
+    const cfg = buildDigitizeConfig(
+      digitizedElement({ crop: { x0: 0.1, y0: 0.2, x1: 0.9, y1: 0.8 } }),
+      PROJECT,
+    );
+    expect(cfg.crop).toEqual([0.1, 0.2, 0.9, 0.8]);
+    for (const k of Object.keys(cfg)) expect(PIPELINE_CONFIG_FIELDS).toContain(k);
+  });
+
+  it("omits crop entirely when the element has none", async () => {
+    stubStorage({});
+    const { buildDigitizeConfig } = await import("./digitizer.js");
+    const cfg = buildDigitizeConfig(digitizedElement(), PROJECT);
+    expect("crop" in cfg).toBe(false);
+  });
+
+  it("omits crop when it is the full frame", async () => {
+    // An uncropped upload must be byte-identical to the pre-crop engine, so
+    // it must not send a crop key at all.
+    stubStorage({});
+    const { buildDigitizeConfig } = await import("./digitizer.js");
+    const cfg = buildDigitizeConfig(
+      digitizedElement({ crop: { x0: 0, y0: 0, x1: 1, y1: 1 } }),
+      PROJECT,
+    );
+    expect("crop" in cfg).toBe(false);
+  });
 });
 
 test("startDigitize POSTs multipart image+config to /digitize exactly as test_service.py's client does", async () => {

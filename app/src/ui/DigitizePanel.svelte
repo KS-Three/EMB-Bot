@@ -42,6 +42,8 @@
   import { loadPalette, nearestInList } from "../lib/threads.js";
   import { loadImage, rasterSize, isVectorFile, uploadPlan } from "../lib/rasterize.js";
   import { getSource, putSource, sourceKeyFor, sourceStoreAvailable } from "../lib/sourceStore.js";
+  import CropBox from "./CropBox.svelte";
+  import { proposeCrop } from "../lib/cropProposal.js";
 
   // Editor panel for an auto-digitized artwork element (build step 10).
   // The element stores the source image (processing size, PNG base64), the
@@ -110,6 +112,20 @@
         error = "That image is too heavy to save with the design — the limit is about 1.5 MB after downscaling. Simplify or shrink it and try again.";
         return;
       }
+      // Propose a crop from the preview we already drew. Measuring this
+      // canvas is fine; SENDING it is the 2026-09-19/20 regression. The
+      // target width falls back to the design default (80 mm, same as
+      // DEFAULT_DIGITIZE_PARAMS) — sizeMm is cleared to null two lines below
+      // for this new artwork, and target_width_mm is the width still in
+      // scope; proposeCrop only uses it to scale its cell size, and the
+      // customer adjusts the rectangle regardless.
+      let crop = null;
+      try {
+        const px = cv.getContext("2d").getImageData(0, 0, cv.width, cv.height);
+        crop = proposeCrop(px, (element.params && element.params.target_width_mm) || 80);
+      } catch {
+        crop = null;   // tainted canvas or no 2d context: no proposal, no crash
+      }
       // The file itself is what digitizes, when the service can decode it and
       // it is within the service's limits; its bytes go to IndexedDB so a
       // re-digitize after a reload sends the same thing. A store that refuses
@@ -137,7 +153,7 @@
       // the layer list and its edits, which are keyed to the OLD art's
       // shape ids and would only produce SHAPE_EDIT_UNKNOWN_ID noise here.
       patch({
-        sourcePng: b64, sourceFile, name: file.name, result: null, warnings: [], blockColors: {}, sizeMm: null,
+        sourcePng: b64, sourceFile, crop, name: file.name, result: null, warnings: [], blockColors: {}, sizeMm: null,
         review: null, shapeOverrides: {}, deletedShapeIds: [], appliedEdits: null,
         mergeGroups: [], splitLines: {},
       });
@@ -1697,6 +1713,12 @@
       />
       <span class="dgp-srcname">{element.name || "Artwork"}</span>
     </div>
+
+    <CropBox
+      src={"data:image/png;base64," + element.sourcePng}
+      crop={element.crop}
+      onchange={(c) => patch({ crop: c })}
+    />
 
     {#if !health}
       <div class="dgp-offline">
