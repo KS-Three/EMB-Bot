@@ -11,10 +11,16 @@ hand-written JavaScript (`src/`); a Python auto-digitizing engine
 (`digitizer/`) runs behind an optional localhost service for the image
 auto-digitize path — see `digitizer/README.md`.
 
+**Try it without installing anything:** <https://ks-three.github.io/EMB-Bot/>
+— the full Studio, running entirely in your browser. Designs stay on your
+machine; there is no account and nothing is uploaded. The hosted build writes
+DST, PES and EXP; JEF, XXX and VP3 need the local digitizer service, which is
+a desktop-only component.
+
 ## Quick start
 
 The Studio has a live stitch preview, multi-element designs, saved projects,
-and a **55-font pre-digitized satin library** loaded on demand. Fonts are
+and a **85-font pre-digitized satin library** loaded on demand. Fonts are
 picked in a searchable browser (search box, Sans/Serif/Script/Display/Small
 filters, per-font recommended size ranges) whose grid uses pre-rendered
 preview images — browsing never downloads font data; only picking a font
@@ -58,7 +64,7 @@ colors. EMB Bot makes that step **visible and controllable**:
 
 ## Text mode
 
-Switch to **Text**, type your text, pick a font from the 55-font pre-digitized
+Switch to **Text**, type your text, pick a font from the 85-font pre-digitized
 satin library, set garment/fabric/format/density, and **Generate**. Library
 fonts sew as hand-authored satin columns (adapted from the Ink/Stitch open
 embroidery font collection), not auto-traced outlines.

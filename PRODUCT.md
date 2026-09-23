@@ -45,7 +45,14 @@ row 7's sidecar count grew from 55 to 85 while staying one-per-font. Rows 2, 4,
 
 ## Launch posture (decided)
 
-- Desktop-only, stated on the site.
+- **Hosted web app, free, no account** (Kent's call 2026-09-22 —
+  `docs/superpowers/specs/2026-09-22-hosted-studio-design.md`). This replaces
+  "Desktop-only, stated on the site." Hosting breaks the letter of that line
+  and keeps every promise underneath it: projects live in the browser's own
+  storage, nothing is uploaded, there is no account and no subscription. The
+  line existed to differentiate against a subscription SaaS competitor and had
+  become a distribution cost instead. The Python digitizer stays desktop-only,
+  which is what makes JEF/XXX/VP3 unavailable on the web — see the spec's §5.3.
 - **SAM2 photo segmentation ships post-v1** (ruled 2026-08-11): v1 launches
   without it; it returns as an opt-in "enhanced photo mode" download
   (~1 GB) after launch, gated on re-measuring `points_per_side=12` on a
