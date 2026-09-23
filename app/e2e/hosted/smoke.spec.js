@@ -103,3 +103,46 @@ test("the digitize note describes the browser lane, not a missing service", asyn
   await expect(note).not.toContainText("Start it");
   await expect(page.locator(".digitize-recheck")).toHaveCount(0);
 });
+
+// JEF/XXX/VP3 are service-only (exporters.js:97) and no browser encoder
+// exists, so a hosted build can never write them. Kent's ruling: keep the
+// buttons visible and disabled, but stop telling people to start something
+// they cannot start.
+test("service-only formats are disabled with a reason a hosted user can act on", async ({ page }) => {
+  await page.goto("/");
+
+  // Walk to the download step the same way wizard-smoke.spec.js does; if that
+  // navigation differs, copy it from there rather than weakening this test.
+  // ---- Garment -----------------------------------------------------------
+  await expect(page.getByRole("heading", { name: "What are you putting this on?" })).toBeVisible();
+  const toteTile = page.getByRole("button", { name: "Tote", exact: true });
+  await toteTile.click();
+  await expect(toteTile).toHaveClass(/\bsel\b/);
+  await expect(page.getByRole("button", { name: "Next", exact: true })).toBeEnabled();
+  await page.getByRole("button", { name: "Next", exact: true }).click();
+
+  // ---- Content (text) ------------------------------------------------------
+  await expect(page.getByRole("heading", { name: "What are you making?" })).toBeVisible();
+  const textInput = page.getByPlaceholder("Type a name or word");
+  await textInput.fill("EMB TEST");
+  await expect(textInput).toHaveValue("EMB TEST");
+  await expect(page.getByText(/^[\d,]+ stitches/)).toBeVisible();
+  await expect(page.locator(".topbar-download")).toBeEnabled();
+  await page.getByRole("button", { name: "Next", exact: true }).click();
+
+  // ---- Review --------------------------------------------------------------
+  await expect(page.getByRole("heading", { name: "Ready to stitch" })).toBeVisible();
+  await page.getByRole("button", { name: "Next", exact: true }).click();
+
+  // ---- Download --------------------------------------------------------------
+  await expect(page.getByRole("heading", { name: "Download", exact: true })).toBeVisible();
+
+  for (const label of ["JEF", "XXX", "VP3"]) {
+    const btn = page.getByRole("button", { name: new RegExp(label) });
+    await expect(btn).toBeVisible();
+    await expect(btn).toBeDisabled();
+    const title = await btn.getAttribute("title");
+    expect(title).toContain("desktop version");
+    expect(title).not.toContain("digitizer service running");
+  }
+});

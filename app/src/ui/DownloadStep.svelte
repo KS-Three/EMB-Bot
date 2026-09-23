@@ -9,6 +9,7 @@
   import { PALETTE_INDEX, STUDIO_PALETTE, getCachedPalette, loadPalette, nearestInList, loadPreferredPaletteId, savePreferredPaletteId } from "../lib/threads.js";
   import { ensureFonts } from "../lib/fontLoader.js";
   import { effectiveHoop, hoopFitNote } from "../lib/hoop.js";
+  import { isHosted } from "../lib/hosted.js";
   export let project;
   // Task 4 (Slice 5): export now covers every ready element in the project
   // (generateAll's combined design), not just a single text/image design —
@@ -22,6 +23,10 @@
   // to be able to say why they are unavailable instead of throwing when
   // pressed.
   export let digitizerHealth = null;
+  // Build-time posture. On a hosted bundle the three service-only formats can
+  // never become available, so their unavailable reason must name the desktop
+  // version rather than a service the user has no way to start.
+  const hosted = isHosted();
   const d = createEventDispatcher();
   let msg = "";
   let worksheetBusy = false;
@@ -133,7 +138,9 @@
   $: jefAvailable = !isServiceOnlyFormat("jef") || !!digitizerHealth;
   $: jefTitle = jefAvailable
     ? "Janome JEF, written by the digitizer service"
-    : "Janome JEF needs the digitizer service running — it has no in-browser encoder";
+    : hosted
+      ? "Janome JEF needs the desktop version — it has no in-browser encoder"
+      : "Janome JEF needs the digitizer service running — it has no in-browser encoder";
 
   // ---- XXX (Singer) and VP3 (Husqvarna Viking / Pfaff) -----------------
   //
@@ -155,11 +162,15 @@
   $: xxxAvailable = !isServiceOnlyFormat("xxx") || !!digitizerHealth;
   $: xxxTitle = xxxAvailable
     ? "Singer XXX, written by the digitizer service"
-    : "Singer XXX needs the digitizer service running — it has no in-browser encoder";
+    : hosted
+      ? "Singer XXX needs the desktop version — it has no in-browser encoder"
+      : "Singer XXX needs the digitizer service running — it has no in-browser encoder";
   $: vp3Available = !isServiceOnlyFormat("vp3") || !!digitizerHealth;
   $: vp3Title = vp3Available
     ? "Husqvarna Viking / Pfaff VP3, written by the digitizer service"
-    : "Husqvarna Viking / Pfaff VP3 needs the digitizer service running — it has no in-browser encoder";
+    : hosted
+      ? "Husqvarna Viking / Pfaff VP3 needs the desktop version — it has no in-browser encoder"
+      : "Husqvarna Viking / Pfaff VP3 needs the digitizer service running — it has no in-browser encoder";
 
   // fontsReady gates the (necessarily synchronous, template-bound)
   // `combined` derivation below -- it starts false so the very first render
