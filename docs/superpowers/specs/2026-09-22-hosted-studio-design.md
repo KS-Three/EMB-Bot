@@ -170,7 +170,7 @@ touched.
 | `app/src/lib/digitizer.js` | Hosted → health probe returns `null` **without calling `fetch`**. No mixed-content error, no wasted round trip. |
 | `app/src/ui/ContentStep.svelte:241` | Hosted copy states what actually happens (art digitizes in-browser; the desktop digitizer adds finer satin on small detail). Dead "check again" button removed in hosted builds. |
 | `app/src/ui/DownloadStep.svelte:134,156,160` | Hosted-specific unavailable reason on the three `*Title` strings, naming the desktop version. `*Available` untouched. |
-| `.github/workflows/` | New Pages deploy job: `VITE_HOSTED=1 npm run build` after `npm ci` → publish `app/dist`, on push to `main`, after the existing required checks. **The flag is set by the deploy job only** — a local `npm run dev`/`npm run build` stays unhosted and keeps probing the service, which is what Kent's own machine needs. |
+| `.github/workflows/` | New Pages deploy job: `VITE_HOSTED=1 npm run build` after `npm ci` → publish `app/dist`, on push to `main`, gated on `engine`, `studio`, and `studio-e2e` — **deliberately not `digitizer`**, which runs 33-55 min against Python that ships nowhere near `app/dist/` and would add that whole wait to every publish for no signal about the thing being published. **The flag is set by the deploy job only** — a local `npm run dev`/`npm run build` stays unhosted and keeps probing the service, which is what Kent's own machine needs. |
 | `README.md:17,61` | `55-font` → `85-font` (two occurrences; it is 85 per `src/fonts/bin/` and `PRODUCT.md` row 7). Add the hosted URL. |
 | `PRODUCT.md:48` | Amend "Desktop-only, stated on the site." to match what ships. |
 

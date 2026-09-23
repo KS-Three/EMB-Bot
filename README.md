@@ -12,10 +12,11 @@ hand-written JavaScript (`src/`); a Python auto-digitizing engine
 auto-digitize path — see `digitizer/README.md`.
 
 **Try it without installing anything:** <https://ks-three.github.io/EMB-Bot/>
-— the full Studio, running entirely in your browser. Designs stay on your
-machine; there is no account and nothing is uploaded. The hosted build writes
-DST, PES and EXP; JEF, XXX and VP3 need the local digitizer service, which is
-a desktop-only component.
+— nearly the full Studio, running entirely in your browser. Designs stay on
+your machine; there is no account and nothing is uploaded. The hosted build
+writes DST, PES and EXP with the browser's own stitch engine; JEF, XXX, VP3,
+and the desktop app's finer Python satin pass on small detail need the local
+digitizer service, which is a desktop-only component.
 
 ## Quick start
 

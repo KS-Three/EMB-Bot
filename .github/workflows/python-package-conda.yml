@@ -257,6 +257,19 @@ jobs:
         run: npx playwright test --workers=1 --reporter=list,json
         env:
           PLAYWRIGHT_JSON_OUTPUT_NAME: results.json
+      # The hosted-posture suite (playwright.hosted.config.js): a VITE_HOSTED=1
+      # production build served by `vite preview`, with no digitizer service --
+      # exactly what GitHub Pages serves. Nothing else in CI ran this: it is
+      # excluded from the default playwright.config.js (testIgnore: "hosted/**")
+      # and `test:e2e:hosted` appeared in no workflow, while the `pages` job
+      # below publishes to the public site on every push to main. Adding it
+      # HERE, in this job, is what closes that gap: `pages` already declares
+      # `needs: [engine, studio, studio-e2e]`, so this step's pass/fail
+      # automatically gates the deploy on the hosted suite too, with no change
+      # needed to the `pages` job itself.
+      - name: Playwright e2e (hosted posture)
+        working-directory: app
+        run: npm run test:e2e:hosted
       # The digitize-* specs SKIP (not fail) when the service bootstrap can't
       # produce a healthy service — venv missing, spawn failure, dead /health.
       # A skip here is the dark-suite failure mode wearing a green checkmark,
@@ -341,6 +354,13 @@ jobs:
   pages:
     # Publishes app/dist to GitHub Pages. Push to main only — a PR must never
     # replace the live site.
+    #
+    # ONE MANUAL PREREQUISITE, done by hand, once, outside this file: GitHub
+    # Pages must be enabled at repo Settings -> Pages -> Source: GitHub
+    # Actions. Skip that and `deploy-pages` fails with "Get Pages site
+    # failed", which turns main red with nothing wrong in this workflow to
+    # fix. If you are here because main went red on this job, check that
+    # setting before anything else.
     #
     # needs is engine/studio/studio-e2e, NOT digitizer: those three cover what
     # is actually in the bundle, while digitizer runs 33-55 min against Python

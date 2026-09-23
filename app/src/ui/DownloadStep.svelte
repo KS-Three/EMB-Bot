@@ -443,7 +443,12 @@
       await ensureFonts(fontKeysOf(project));
       const out = await exportDesignPreferService(buildDesign(), fmt, {
         label: project.name,
-        preferService: isPurelyDigitized(project),
+        // Hosted gate: a hosted build can never reach 127.0.0.1:8721, so
+        // preferring the service here would fire a doomed request from an
+        // HTTPS page (blocked as mixed content, logged as an error) before
+        // falling back -- the browser encoder is the correct and only path
+        // on a hosted build, not just the fallback.
+        preferService: !hosted && isPurelyDigitized(project),
       });
       triggerDownload(out);
       // The message still names which encoder ran -- neutral provenance, not

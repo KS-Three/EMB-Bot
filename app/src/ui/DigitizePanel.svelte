@@ -42,6 +42,7 @@
   import { loadPalette, nearestInList } from "../lib/threads.js";
   import { loadImage, rasterSize, isVectorFile, uploadPlan } from "../lib/rasterize.js";
   import { getSource, putSource, sourceKeyFor, sourceStoreAvailable } from "../lib/sourceStore.js";
+  import { isHosted } from "../lib/hosted.js";
 
   // Editor panel for an auto-digitized artwork element (build step 10).
   // The element stores the source image (processing size, PNG base64), the
@@ -55,6 +56,12 @@
   export let health = null; // /health payload or null; App owns the probe
 
   const d = createEventDispatcher();
+
+  // Build-time posture, not reactive state: a hosted bundle can never reach a
+  // localhost service, so the "start it and check again" affordance below is
+  // dead there and the note has to say what actually happens instead. Same
+  // flag, same reasoning as ContentStep.svelte's own {#if hosted} note.
+  const hosted = isHosted();
 
   // PREVIEW size (long edge) — since 2026-09-20 this canvas is what the
   // panel SHOWS and saves with the project, not what it sends. It used to be
@@ -1715,14 +1722,28 @@
     </div>
 
     {#if !health}
-      <div class="dgp-offline">
-        <p>
-          The digitizer service isn't running, so digitizing is off.
-          {#if element.result}Your stitched result is saved with the design and still sews and exports.{/if}
-        </p>
-        <p class="dgp-cmd">Start it: <code>python -m digitizer_service</code> in the digitizer folder.</p>
-        <button type="button" class="dgp-check" on:click={() => d("checkservice")}>Check again</button>
-      </div>
+      {#if hosted}
+        <!-- Hosted: there is no service to start and no digitizer folder to
+             find it in, and fetchHealth answers null without fetching, so
+             "Check again" could never change anything. Same posture and
+             voice as ContentStep.svelte's hosted note. -->
+        <div class="dgp-offline">
+          <p>
+            Artwork is digitized right here in your browser. The desktop version
+            adds a finer satin pass on small detail.
+            {#if element.result}Your stitched result is saved with the design and still sews and exports.{/if}
+          </p>
+        </div>
+      {:else}
+        <div class="dgp-offline">
+          <p>
+            The digitizer service isn't running, so digitizing is off.
+            {#if element.result}Your stitched result is saved with the design and still sews and exports.{/if}
+          </p>
+          <p class="dgp-cmd">Start it: <code>python -m digitizer_service</code> in the digitizer folder.</p>
+          <button type="button" class="dgp-check" on:click={() => d("checkservice")}>Check again</button>
+        </div>
+      {/if}
     {/if}
 
     <div class="dgp-params">

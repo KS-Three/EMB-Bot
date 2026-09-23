@@ -1,5 +1,15 @@
 // The hosted build, in a real browser, with no digitizer service running.
 import { test, expect } from "@playwright/test";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { statSync } from "node:fs";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+// The same flat two-squares fixture wizard-smoke.spec.js's own image-content
+// path test uses -- reused rather than adding a new fixture. Flat art, no
+// digitizer service involved, so it exercises exactly the browser
+// flatten-and-sew lane a hosted build falls back to.
+const ART_PNG = path.join(__dirname, "..", "fixtures", "two-squares.png");
 
 // Nothing may reach for the localhost service from a hosted build. This is the
 // assertion Task 1's unit test makes, re-made against the shipped bundle —
@@ -83,6 +93,13 @@ test("text lane reaches a downloadable DST", async ({ page }) => {
 
   const download = await downloadPromise;
   expect(download.suggestedFilename()).toMatch(/\.dst$/i);
+  // The filename check alone would pass on a zero-byte or corrupt download --
+  // this is the test the plan itself calls the proof a customer gets a real
+  // file, so it needs to check the file, not just its name. Same threshold
+  // wizard-smoke.spec.js's own DST download check uses.
+  const dstPath = await download.path();
+  expect(dstPath).toBeTruthy();
+  expect(statSync(dstPath).size).toBeGreaterThan(512);
 });
 
 // On a hosted build the service can never appear, so "start it" is advice
@@ -145,4 +162,60 @@ test("service-only formats are disabled with a reason a hosted user can act on",
     expect(title).toContain("desktop version");
     expect(title).not.toContain("digitizer service running");
   }
+});
+
+// The text lane above proves the wizard works on a hosted build, but text is
+// not the lane VITE_HOSTED actually changes -- the ARTWORK/image lane is.
+// "+ Artwork" routes through resolveArtworkType (project.js), and on a
+// hosted build digitizerHealth is always null (fetchHealth never fetches --
+// see hosted.js and digitizer.js's own hosted-gate tests), so it always
+// resolves to an "image" element: the browser's own flatten-and-sew lane
+// (ImagePanel.svelte), never the "digitized" service lane. That fallback was
+// never proven to reach a file on a hosted build before this test.
+//
+// Navigation and the upload fixture are lifted from wizard-smoke.spec.js's
+// own image-content-path test ("guided wizard: image content path -> review
+// reflects it -> download") -- same fixture, same selectors, same "no
+// oversize confirm" expectation (the imported PNG does not fill the
+// placement box the way auto-fit lettering does, so it fits Tote's 8x8 hoop
+// and downloads in one click, unlike the text lane above).
+test("artwork/image lane reaches a downloadable stitch file", async ({ page }) => {
+  await page.goto("/");
+
+  // ---- Garment -----------------------------------------------------------
+  await expect(page.getByRole("heading", { name: "What are you putting this on?" })).toBeVisible();
+  const toteTile = page.getByRole("button", { name: "Tote", exact: true });
+  await toteTile.click();
+  await expect(toteTile).toHaveClass(/\bsel\b/);
+  await page.getByRole("button", { name: "Next", exact: true }).click();
+
+  // ---- Content (artwork -> image, no service to route to) -----------------
+  await expect(page.getByRole("heading", { name: "What are you making?" })).toBeVisible();
+  await page.getByRole("button", { name: "Artwork", exact: true }).click();
+
+  await page.locator(".uploadbox input[type=file]").setInputFiles(ART_PNG);
+  // Real processed state, not just "the input accepted a file": the panel's
+  // flatten pipeline ran client-side and produced stitchable content.
+  await expect(page.locator(".uploadbox .filename")).toHaveText("two-squares.png");
+  await expect(page.locator(".flatprev")).not.toHaveClass(/hidden/);
+  await expect(page.getByText(/^[\d,]+ stitches/)).toBeVisible();
+  await expect(page.locator(".topbar-download")).toBeEnabled();
+  await page.getByRole("button", { name: "Next", exact: true }).click();
+
+  // ---- Review --------------------------------------------------------------
+  await expect(page.getByRole("heading", { name: "Ready to stitch" })).toBeVisible();
+  await expect(page.locator("dl.summary")).toContainText("Logo / image");
+  await page.getByRole("button", { name: "Next", exact: true }).click();
+
+  // ---- Download --------------------------------------------------------------
+  await expect(page.getByRole("heading", { name: "Download", exact: true })).toBeVisible();
+
+  const downloadPromise = page.waitForEvent("download");
+  await page.getByRole("button", { name: "DST", exact: true }).click();
+  const download = await downloadPromise;
+
+  expect(download.suggestedFilename()).toMatch(/\.dst$/i);
+  const dstPath = await download.path();
+  expect(dstPath).toBeTruthy();
+  expect(statSync(dstPath).size).toBeGreaterThan(512);
 });
