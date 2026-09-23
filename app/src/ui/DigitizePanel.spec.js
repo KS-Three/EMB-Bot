@@ -1053,11 +1053,14 @@ describe("auto-restitch on shape edits", () => {
 // says every element change re-runs on its own once a result exists, but a
 // crop drag silently didn't until "Digitize again" was pressed by hand. This
 // is the panel-level wiring test the review flagged as the gap that would
-// have caught it: it does not simulate a pointer drag (CropBox.spec.js
-// already covers the rectangle math and the drag-end-only emission in
-// isolation) -- it proves the SEAM, that a crop change landing on `element`
-// reaches runDigitize the same immediate way a param or isPhoto edit does,
-// with no fake timers needed (this watcher isn't debounced).
+// have caught it: it does NOT simulate a raw pointer drag through CropBox --
+// that lives in CropBox.spec.js itself (fix round 2), which drives
+// pointerdown/pointermove/pointerup/pointercancel directly and asserts the
+// draft-gating, single-emit-on-release, and cancel-discards-the-draft
+// behavior in isolation. This test proves the SEAM one level up: that a crop
+// change landing on `element` -- however it got there -- reaches runDigitize
+// the same immediate way a param or isPhoto edit does, with no fake timers
+// needed (this watcher isn't debounced).
 describe("crop re-digitizes automatically", () => {
   test("changing crop through the real CropBox control re-digitizes immediately", async () => {
     const mod = await import("../lib/digitizer.js");

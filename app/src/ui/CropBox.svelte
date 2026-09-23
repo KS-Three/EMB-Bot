@@ -34,8 +34,27 @@
   function start(handle, e) {
     e.preventDefault();
     dragging = { handle, startX: e.clientX, startY: e.clientY, start: { ...rect } };
-    window.addEventListener("pointermove", move);
-    window.addEventListener("pointerup", end, { once: true });
+    // Pointer capture, fix round 2 (Important finding 3): without it, a drag
+    // that ends without a pointerup ever reaching this component -- released
+    // outside the viewport, or the gesture cancelled by the platform -- left
+    // `dragging` stuck. Before round 1 that only leaked a listener with no
+    // visible symptom; after round 1 it FREEZES the on-screen rectangle on
+    // the abandoned position forever, because `rect` now reads `draft` first
+    // and nothing ever clears it. Matches the pattern already used by the
+    // three other drag handlers in this codebase (EmbroideryField.svelte,
+    // ManualPanel.svelte, and DigitizePanel.svelte's own edit-drag/
+    // split-drag): capture on the element that received pointerdown,
+    // pointermove/up/cancel listened on an ancestor (`.crop-host` below).
+    // Same try/catch fallback DigitizePanel's `startEditDrag` documents --
+    // unavailable in some test/embedded environments (jsdom implements no
+    // pointer-capture methods at all) -- the drag still works off the
+    // container's own listeners, just without the "released outside the
+    // viewport" guarantee capture buys.
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch {
+      // see comment above
+    }
   }
 
   function move(e) {
@@ -60,16 +79,26 @@
     draft = next;
   }
 
-  function end() {
+  function endDrag() {
+    // Pointerup: a completed drag commits, exactly once, and only if it
+    // actually changed the rectangle -- a click-and-release with no
+    // movement must not manufacture a patch (one undo step, one
+    // re-digitize per REAL change, not per gesture).
     dragging = null;
-    window.removeEventListener("pointermove", move);
-    // Fire exactly once, on release, and only if the drag actually moved the
-    // rectangle -- a click-and-release with no movement must not manufacture
-    // a patch (one undo step, one re-digitize per REAL change, not per
-    // gesture).
     if (draft && !sameRect(draft, crop ?? FULL)) {
       onchange(draft);
     }
+    draft = null;
+  }
+
+  function cancelDrag() {
+    // Pointercancel (fix round 2, finding 3): the gesture ended WITHOUT a
+    // pointerup ever firing here. Discard the draft rather than commit it --
+    // the box must snap back to showing the last COMMITTED crop, not stay
+    // frozen on the abandoned rectangle. No onchange call: nothing about
+    // the crop actually changed from the customer's (or the panel's) point
+    // of view.
+    dragging = null;
     draft = null;
   }
 
@@ -78,7 +107,21 @@
   }
 </script>
 
-<div class="crop-host" bind:this={host}>
+<!-- svelte-ignore a11y_no_static_element_interactions -- this div is not
+     itself the interactive control; it is the delegation point pointer
+     capture bubbles to (see `start`'s own comment). The actual controls are
+     its descendants: `.crop-rect` (role="group", pointerdown starts a
+     move-drag) and the four corner `<button>`s (pointerdown starts a
+     resize-drag). Giving THIS wrapper its own role would be the wrong fix --
+     it has no semantic role of its own to carry, only the plumbing that
+     lets a capture set on a descendant reach a listener up here. -->
+<div
+  class="crop-host"
+  bind:this={host}
+  onpointermove={move}
+  onpointerup={endDrag}
+  onpointercancel={cancelDrag}
+>
   <img {src} alt="Artwork preview with crop area" draggable="false" />
   <div
     class="crop-rect"
