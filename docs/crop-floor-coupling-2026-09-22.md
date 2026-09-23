@@ -7,17 +7,23 @@ compares the artwork's own px/mm at the target width against
 occupies, so in principle a crop could flip the gate as a side effect of
 framing — the same coupling, from the other direction, that killed the
 resolution-floor raise on 2026-09-20. Measured with
-`digitizer/tools/crop_floor_coupling.py`, two sweeps, same fixture
+`digitizer/tools/crop_floor_coupling.py`, three arms, same fixture
 (`becker_marine_logo.png`) and the same five-crop ladder (no crop, an
 explicit full-frame crop, then progressively tighter insets down to the
-middle 40% of the frame), at two target widths.
+middle 40% of the frame).
 
-The first round of this measurement (100 mm only) found the fixture's own
-resolution already deep under the floor, so no crop in the ladder could
-reach the boundary — a real result, but one that cannot answer whether the
-coupling fires, only that it didn't on that one arm. This round adds a
-second sweep at a width discovered (not guessed) to put the uncropped
-artwork above the floor, so the same crop ladder has a boundary to cross.
+Round 1 (100 mm only) found the fixture's own resolution already deep
+under the floor, so no crop in the ladder could reach the boundary — a
+real result, but one that couldn't answer whether the coupling fires.
+Round 2 added a straddling sweep (25 mm, discovered rather than guessed)
+where the same crop ladder does cross the floor, and found the `gate`
+column flips. Round 2 also flagged, honestly, that it couldn't tell how
+much of the resulting stitch-count change was the gate versus the crop
+itself, since both move together. This round (3) adds the counterfactual
+that answers that: the same straddling sweep run again with
+`alpha_edge_extend=False`, so the extension can never apply no matter what
+the crop does — the difference between the shipped arm and this
+forced-off arm, crop by crop, isolates what the gate itself costs.
 
 ## Output (exact)
 
@@ -33,7 +39,7 @@ SWEEP A (under-floor): becker_marine_logo.png @ 100.0 mm
 
 `gate` held constant across this sweep.
 
-SWEEP B (straddling): becker_marine_logo.png @ 25.0 mm
+SWEEP B (straddling, shipped): becker_marine_logo.png @ 25.0 mm
 
                       crop     px/mm     gate  regions stitches   trims
                       None      5.80    False       15     1018       4
@@ -44,13 +50,33 @@ SWEEP B (straddling): becker_marine_logo.png @ 25.0 mm
 
 `gate` CHANGED across this sweep.
 
+SWEEP C (straddling, alpha_edge_extend=False): becker_marine_logo.png @ 25.0 mm
+
+                      crop     px/mm     gate  regions stitches   trims
+                      None      5.80    False       15     1018       4
+      (0.0, 0.0, 1.0, 1.0)      5.80    False       15     1018       4
+      (0.1, 0.1, 0.9, 0.9)      4.64    False       15      994      12
+      (0.2, 0.2, 0.8, 0.8)      3.52     True        9      851       9
+      (0.3, 0.3, 0.7, 0.7)      2.32     True        2      335       2
+
+`gate` CHANGED across this sweep.
+
+SWEEP B vs SWEEP C -- same crop, same width, only alpha_edge_extend differs:
+                      crop     gate  B stitch  C stitch     d_st   B trim   C trim   d_trim
+                      None    False      1018      1018        0        4        4        0
+      (0.0, 0.0, 1.0, 1.0)    False      1018      1018        0        4        4        0
+      (0.1, 0.1, 0.9, 0.9)    False       994       994        0       12       12        0
+      (0.2, 0.2, 0.8, 0.8)     True       851       851        0        9        9        0
+      (0.3, 0.3, 0.7, 0.7)     True       335       335        0        2        2        0
+
+Sweep B/C agree on at least one row.
+
 A `gate` column that CHANGES across crops is the coupling firing.
-Sweep A moved: False. Sweep B moved: True.
+Sweep A moved: False. Sweep B moved: True. B/C diverged: False.
 ```
 
-Exit 0, ran twice (once before this round, once for this round),
-byte-identical output for Sweep A across both. 58s wall for both sweeps
-(10 digitizes) on this run.
+Exit 0. 70s wall for all three arms (15 digitizes) on this run. Sweep A's
+and Sweep B's own tables are byte-identical to the earlier rounds.
 
 ## How the straddling width was picked
 
@@ -64,46 +90,47 @@ ladder used in Sweep A to close the gap.
 
 ## Finding
 
-**The coupling fires.** In Sweep B, `gate` is `False` for the uncropped and
-full-frame-crop rows and the `(0.1, 0.1, 0.9, 0.9)` inset, then flips to
-`True` at `(0.2, 0.2, 0.8, 0.8)` and stays `True` at the tightest inset.
-Nothing about the artwork changed except the crop rectangle; the flip is
-the crop alone moving `input_px_per_mm` (4.64 → 3.52) across the 4.0 floor.
+**The gate flips (Sweep B), but on this fixture it costs nothing
+measurable (Sweep C).** Sweep B vs Sweep C — identical fixture, identical
+25 mm width, identical crop at every row, the *only* difference being
+`alpha_edge_extend=True` (shipped) vs `alpha_edge_extend=False` (forced
+off) — produced byte-for-byte identical `regions` / `stitches` / `trims`
+on all five crops, including the two rows where Sweep B's gate is `True`
+and the extension is actually live. Every row's `d_st` and `d_trim` in the
+B-vs-C table is 0.
 
-Sweep A (100 mm, unchanged from the first round) still shows `gate` held
-constant — Becker's own resolution there is already far under the floor, so
-that arm remains a documented negative on the under-floor regime, not a
-test of the coupling. Both sweeps are kept because they answer different
-questions: A says the coupling does not create surprises for artwork that
-was already going to upscale regardless of crop; B says the coupling is
-real for artwork that starts above the floor and gets cropped into it.
+This is not a coincidence; it has a mechanical explanation, checked
+directly against the pixel data rather than assumed: `becker_marine_logo.png`
+decodes to exactly two RGB colours overall — a near-black `(35, 31, 32)`
+under the opaque logo, and white `(255, 255, 255)` in the fully-transparent
+background. `extend_opaque_colour` only has something to do where a
+non-opaque pixel's colour differs from its nearest opaque neighbour's — and
+by the `(0.1, 0.1, 0.9, 0.9)` inset, the crop has already cut the white
+background entirely out of frame (confirmed directly: the cropped raster
+at `(0.1,…)` and tighter is down to **one** unique colour). So by the time
+the crop reaches the point where the resolution gate flips
+(`(0.2, 0.2, 0.8, 0.8)`), there is no colour heterogeneity left for the
+extension to correct — `extension_applies()` returns `True` there, but
+`extend_opaque_colour` changes **0 of 4,840 pixels**. The gate firing and
+the extension having work to do are two different conditions, and on this
+fixture and this crop ladder the second one is already false by the time
+the first one goes true.
 
-**What it cost, at the flip step in Sweep B** (the `(0.1,…)` → `(0.2,…)`
-transition, where `gate` changes from `False` to `True`):
+Sweep A (100 mm, unchanged since round 1) still shows `gate` held
+constant — Becker's own resolution there is already far under the floor,
+so that arm remains a documented negative on the under-floor regime, not a
+test of the coupling.
 
-| | regions | stitches | trims |
-|---|---|---|---|
-| `(0.1, 0.1, 0.9, 0.9)` — gate `False` | 15 | 994 | 12 |
-| `(0.2, 0.2, 0.8, 0.8)` — gate `True` | 9 | 851 | 9 |
-| change | −6 | −143 (−14.4%) | −3 |
-
-For scale, the same crop step (`(0.1,…)` → `(0.2,…)`) in Sweep A — where
-`gate` does NOT change — also drops region and stitch counts by a
-comparable order (15 → 8 regions, 12,485 → 11,684 stitches, −6.4%). Both
-sweeps lose regions and stitches at that step because the crop itself is
-removing artwork content at every width; that happens whether or not the
-gate moves. This measurement does not isolate how much of Sweep B's −143
-stitches is the gate flipping the alpha extension on versus the crop
-narrowing the artwork, and no such isolation was attempted — reporting it
-either way, without a controlled counterfactual, would be more than this
-run supports.
-
-The size of the move (single-digit percent-to-low-double-digit-percent
-swings in stitches/regions/trims at the crop step where the gate flips) is
-not obviously catastrophic on this one fixture, but it is a real,
-measured, silent change in output driven purely by framing — no flag
-touched, no resolution changed, just where the crop rectangle sits. Per the
-task brief, this is a decision for Kent, not a fix to make in this task:
-the honest options remain pinning the gate to the pre-crop px/mm, or
-accepting that cropping can silently move it. No engine code was changed
-based on this measurement.
+**Conclusion, stated plainly: on this one fixture, cropping does flip
+`alpha_edge_extend_upscaled_only`, but the flip is a curiosity here, not a
+measured hazard — it costs zero regions, zero stitches, zero trims,
+because this crop ladder removes the only colour the extension would have
+touched before the gate ever changes.** That is a property of this
+specific artwork (a flat two-colour alpha cutout whose background sits
+entirely outside the tighter crops), not a general proof that the coupling
+is harmless on every upload — a fixture with colour variation still present
+at the crop that crosses the floor could show a real, nonzero cost; this
+measurement doesn't rule that out. No engine code was changed based on
+this measurement, and none is proposed: whether the coupling is worth
+guarding against in general remains a call for Kent, not settled by one
+fixture reading zero cost.
