@@ -1,8 +1,15 @@
-"""crop=None must be the pre-crop engine, byte for byte.
+"""The crop path itself must be lossless.
 
-The whole feature is gated on this: a crop that changes output when nobody
-asked for one is a regression on every design in the corpus, and the corpus
-cannot see it because every fixture would move together.
+Identity at crop=None is deliberately NOT tested here: a default
+PipelineConfig and crop=None are the same value, so comparing them only tests
+determinism. Engine-wide identity at None is carried by `apply_crop` returning
+the SAME objects on None (tests/test_crop.py::
+test_none_is_a_no_op_and_returns_the_same_objects) plus the existing
+golden-hash tests, which run unchanged in the full suite. (No new golden is
+captured: goldens here are per-platform.)
+
+What is tested here is the case None short-circuits past: a full-frame crop
+takes the crop code path and must change nothing observable.
 """
 import hashlib
 from pathlib import Path
@@ -32,11 +39,6 @@ def _digest(rel, width_mm, **kw):
             for x, y in run.points:
                 h.update(f"{x:.4f},{y:.4f};".encode())
     return h.hexdigest(), len(result.regions), plan.stats.stitch_count
-
-
-@pytest.mark.parametrize("rel,width_mm", FIXTURES)
-def test_crop_none_is_byte_identical_to_omitting_it(rel, width_mm):
-    assert _digest(rel, width_mm) == _digest(rel, width_mm, crop=None)
 
 
 @pytest.mark.parametrize("rel,width_mm", FIXTURES)

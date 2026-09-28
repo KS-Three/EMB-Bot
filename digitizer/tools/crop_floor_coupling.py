@@ -23,6 +23,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
+import numpy as np                                            # noqa: E402
 from digitizer_core import PipelineConfig, digitize          # noqa: E402
 from digitizer_core.alpha_edge import upscale_expected       # noqa: E402
 from digitizer_core.stage1_prep import _load, prep           # noqa: E402
@@ -33,14 +34,12 @@ FIXTURE = "becker_marine_logo.png"
 WIDTH_MM = 100.0
 
 
-def main() -> int:
-    art = ROOT / "testdata" / FIXTURE
-    print(f"{FIXTURE} @ {WIDTH_MM} mm\n")
+def sweep(art, width_mm, crops) -> None:
     print("{:>26}{:>10}{:>9}{:>9}{:>9}{:>8}".format(
-        "crop", "px/mm", "gate", "regions", "stitches", "trims"))
-    for crop in (None, (0.0, 0.0, 1.0, 1.0), (0.1, 0.1, 0.9, 0.9),
-                 (0.2, 0.2, 0.8, 0.8), (0.3, 0.3, 0.7, 0.7)):
-        cfg = PipelineConfig(target_width_mm=WIDTH_MM, garment_id="left_chest",
+        "crop", "px/mm", "gate", "regions", "stitches", "trims")
+          + "{:>10}{:>8}".format("st_noext", "tr_noext"))
+    for crop in crops:
+        cfg = PipelineConfig(target_width_mm=width_mm, garment_id="left_chest",
                              crop=crop)
         _rgb, alpha = _load(art, cfg.strip_letterbox, cfg.crop)
         gate = (upscale_expected(alpha, cfg.target_width_mm, cfg.min_px_per_mm)
@@ -53,7 +52,35 @@ def main() -> int:
         result, plan = digitize(art, cfg)
         print("{:>26}{:>10.2f}{:>9}{:>9}{:>9}{:>8}".format(
             str(crop), ppm, str(gate), len(result.regions),
-            plan.stats.stitch_count, plan.stats.trims))
+            plan.stats.stitch_count, plan.stats.trims), end="")
+        # Same crop with the extension forced OFF: the difference is what the
+        # gate's verdict costs, separated from what the crop itself changes.
+        _r0, plan0 = digitize(art, PipelineConfig(
+            target_width_mm=width_mm, garment_id="left_chest", crop=crop,
+            alpha_edge_extend=False))
+        print("{:>10}{:>8}".format(plan0.stats.stitch_count, plan0.stats.trims))
+
+
+def synthetic_above_floor() -> np.ndarray:
+    """BGRA cutout that CLEARS the floor uncropped: an opaque band spanning a
+    400 px frame (400 px over 80 mm = 5.0 px/mm, floor 4.0) with an inner
+    block so there is more than one region."""
+    art = np.zeros((400, 400, 4), np.uint8)
+    art[150:250, :, :3] = 20
+    art[150:250, :, 3] = 255
+    art[170:230, 100:300, :3] = (30, 30, 200)       # BGR: a red block
+    return art
+
+
+def main() -> int:
+    print(f"{FIXTURE} @ {WIDTH_MM} mm (already under the floor)\n")
+    sweep(ROOT / "testdata" / FIXTURE, WIDTH_MM,
+          (None, (0.0, 0.0, 1.0, 1.0), (0.1, 0.1, 0.9, 0.9),
+           (0.2, 0.2, 0.8, 0.8), (0.3, 0.3, 0.7, 0.7)))
+    print("\nsynthetic RGBA cutout, above the floor uncropped, @ 80.0 mm\n")
+    sweep(synthetic_above_floor(), 80.0,
+          (None, (0.0, 0.0, 1.0, 1.0), (0.05, 0.05, 0.95, 0.95),
+           (0.1, 0.1, 0.9, 0.9), (0.2, 0.2, 0.8, 0.8), (0.3, 0.3, 0.7, 0.7)))
     print("\nA `gate` column that CHANGES across crops is the coupling firing.")
     return 0
 
