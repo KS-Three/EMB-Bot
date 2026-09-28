@@ -37,7 +37,7 @@ WIDTH_MM = 100.0
 def sweep(art, width_mm, crops) -> None:
     print("{:>26}{:>10}{:>9}{:>9}{:>9}{:>8}".format(
         "crop", "px/mm", "gate", "regions", "stitches", "trims")
-          + "{:>10}{:>8}".format("st_noext", "tr_noext"))
+          + "{:>11}{:>11}{:>10}".format("rg_noext", "st_noext", "tr_noext"))
     for crop in crops:
         cfg = PipelineConfig(target_width_mm=width_mm, garment_id="left_chest",
                              crop=crop)
@@ -55,10 +55,11 @@ def sweep(art, width_mm, crops) -> None:
             plan.stats.stitch_count, plan.stats.trims), end="")
         # Same crop with the extension forced OFF: the difference is what the
         # gate's verdict costs, separated from what the crop itself changes.
-        _r0, plan0 = digitize(art, PipelineConfig(
+        r0, plan0 = digitize(art, PipelineConfig(
             target_width_mm=width_mm, garment_id="left_chest", crop=crop,
             alpha_edge_extend=False))
-        print("{:>10}{:>8}".format(plan0.stats.stitch_count, plan0.stats.trims))
+        print("{:>11}{:>11}{:>10}".format(
+            len(r0.regions), plan0.stats.stitch_count, plan0.stats.trims))
 
 
 def synthetic_above_floor() -> np.ndarray:
