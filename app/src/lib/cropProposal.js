@@ -39,25 +39,41 @@ const MARGIN_MM = 2.0;
 const INK_TOLERANCE = 28;
 const FULL_FRAME = { x0: 0, y0: 0, x1: 1, y1: 1 };
 
+function median(values) {
+  const s = values.slice().sort((a, b) => a - b);
+  const mid = s.length >> 1;
+  return s.length % 2 ? s[mid] : (s[mid - 1] + s[mid]) / 2;
+}
+
 function backgroundRgb({ data, width, height }) {
-  // Mean of the frame's 1 px border -- the same premise stage 1's
-  // border-flood uses: a real background owns the frame's edge.
+  // Per-channel MEDIAN of the frame's 1 px border -- the same premise stage
+  // 1's border-flood uses: a real background owns the frame's edge. A median
+  // rather than a mean because ink that touches the edge is common (a logo
+  // bled to the frame), and a mean is dragged past INK_TOLERANCE by a large
+  // enough mark, turning the whole white frame into "ink". It also matches
+  // stage 1's `_dominant_border_color`, a dominant colour, not an average.
+  //
   // Transparent border pixels are skipped (stage 1 treats alpha as
-  // background, and getImageData reports them as 0,0,0). Returns null when
-  // every border pixel is transparent: ink is then just alpha >= 128.
-  let r = 0, g = 0, b = 0, n = 0;
-  const at = (x, y) => (y * width + x) * 4;
-  const add = (i) => {
+  // background, and getImageData reports them as 0,0,0 -- or, for an
+  // alpha-shaped logo, as the ink's own RGB). Returns null when every border
+  // pixel is transparent: ink is then just alpha >= 128.
+  const rs = [], gs = [], bs = [];
+  const add = (x, y) => {
+    const i = (y * width + x) * 4;
     if (data[i + 3] < 128) return;
-    r += data[i]; g += data[i + 1]; b += data[i + 2]; n++;
+    rs.push(data[i]); gs.push(data[i + 1]); bs.push(data[i + 2]);
   };
+  // Top and bottom rows, then the side columns without those two rows, so
+  // each corner pixel is counted once.
   for (let x = 0; x < width; x++) {
-    for (const y of [0, height - 1]) add(at(x, y));
+    add(x, 0);
+    if (height > 1) add(x, height - 1);
   }
-  for (let y = 0; y < height; y++) {
-    for (const x of [0, width - 1]) add(at(x, y));
+  for (let y = 1; y < height - 1; y++) {
+    add(0, y);
+    if (width > 1) add(width - 1, y);
   }
-  return n ? [r / n, g / n, b / n] : null;
+  return rs.length ? [median(rs), median(gs), median(bs)] : null;
 }
 
 export function proposeCrop(imageData, widthMm) {

@@ -92,6 +92,42 @@ describe("proposeCrop", () => {
     expect(r.y1).toBeGreaterThanOrEqual(130 / h);
   });
 
+  it("reads ink carried only in alpha, with the same RGB under the transparency", () => {
+    // becker_marine_logo.png's shape: ONE RGB colour everywhere, the shape
+    // carried entirely in alpha. The transparent border's RGB is the ink's
+    // own colour, so sampling it would class the ink as background.
+    const width = 200, height = 200;
+    const data = new Uint8ClampedArray(width * height * 4);
+    for (let p = 0; p < width * height; p++) {
+      data[p * 4] = 32; data[p * 4 + 1] = 31; data[p * 4 + 2] = 35; data[p * 4 + 3] = 0;
+    }
+    for (let y = 60; y < 140; y++) {
+      for (let x = 60; x < 140; x++) data[(y * width + x) * 4 + 3] = 255;
+    }
+    const r = proposeCrop({ data, width, height }, 80);
+    expect(r.x0).toBeLessThanOrEqual(60 / width);
+    expect(r.x1).toBeGreaterThanOrEqual(140 / width);
+    expect(r.y0).toBeLessThanOrEqual(60 / height);
+    expect(r.y1).toBeGreaterThanOrEqual(140 / height);
+    expect(r.x1 - r.x0).toBeLessThan(0.9);
+    expect(r.y1 - r.y0).toBeLessThan(0.9);
+  });
+
+  it("stays sane when a large ink region touches the frame edge", () => {
+    // Half of two border sides is ink here. A per-channel MEAN over the
+    // border lands ~59 units off white -- past INK_TOLERANCE -- so the white
+    // frame itself reads as ink and the proposal is the whole frame. A
+    // median ignores a minority of edge-touching ink.
+    const img = art(300, 300, [[0, 0, 150, 150]]);
+    const r = proposeCrop(img, 80);
+    expect(r.x0).toBeLessThanOrEqual(0.05);
+    expect(r.y0).toBeLessThanOrEqual(0.05);
+    expect(r.x1).toBeGreaterThanOrEqual(150 / 300);
+    expect(r.y1).toBeGreaterThanOrEqual(150 / 300);
+    expect(r.x1 - r.x0).toBeLessThan(0.7);
+    expect(r.y1 - r.y0).toBeLessThan(0.7);
+  });
+
   it("merges marks about 3 mm apart into one proposal", () => {
     // 400 px over 80 mm = 5 px/mm, so a 15 px gap is 3 mm.
     const img = art(400, 200, [[60, 60, 160, 140], [175, 60, 275, 140]]);
