@@ -956,6 +956,29 @@ def test_boundary_override_with_a_hole_poking_outside_fails_the_job_cleanly_not_
     assert "boundary_override" in state["error"] and "hole" in state["error"].lower()
 
 
+def test_an_inverted_crop_fails_the_job_naming_the_callers_own_rectangle(client):
+    """Spec 7: crop validation errors are deliberately NOT in `errors._KNOWN`,
+    so an unmatched exception passes through unchanged and the caller sees
+    its own bad rectangle named, not a rewritten customer sentence."""
+    with ART.open("rb") as f:
+        r = client.post(
+            "/digitize", files={"image": (ART.name, f, "image/png")},
+            data={"config": json.dumps({
+                "target_width_mm": 80.0, "preflight": False,
+                "crop": [0.9, 0.1, 0.1, 0.9],
+            })},
+        )
+    assert r.status_code == 202
+    job_id = r.json()["job_id"]
+    for _ in range(600):
+        state = client.get(f"/jobs/{job_id}").json()
+        if state["state"] in ("done", "error"):
+            break
+        time.sleep(0.1)
+    assert state["state"] == "error"
+    assert "crop is empty after clamping" in state["error"]
+
+
 # --- shape identity edits (merge/split, contract v1.5) ----------------------
 #
 # The other half of the shape-recognition gap `boundary_override` (above)
