@@ -1902,6 +1902,27 @@ describe("isPhoto forced class (spec 2026-08-18 decision 4)", () => {
   });
 });
 
+describe("crop in the digitize config", () => {
+  it("sends the crop as four fractions when the element carries one", async () => {
+    const { buildDigitizeConfig } = await import("./digitizer.js");
+    const cfg = buildDigitizeConfig({ crop: { x0: 0.1, y0: 0.2, x1: 0.9, y1: 0.8 } }, {});
+    expect(cfg.crop).toEqual([0.1, 0.2, 0.9, 0.8]);
+  });
+
+  it("omits crop entirely when the element has none", async () => {
+    const { buildDigitizeConfig } = await import("./digitizer.js");
+    expect("crop" in buildDigitizeConfig({}, {})).toBe(false);
+  });
+
+  it("omits crop when it is the full frame", async () => {
+    // An uncropped upload must be byte-identical to the pre-crop engine, so
+    // it must not send a crop key at all.
+    const { buildDigitizeConfig } = await import("./digitizer.js");
+    const cfg = buildDigitizeConfig({ crop: { x0: 0, y0: 0, x1: 1, y1: 1 } }, {});
+    expect("crop" in cfg).toBe(false);
+  });
+});
+
 // ---- remapBlockColors ----------------------------------------------------
 
 test("remapBlockColors: a thread override follows its COLOUR across a re-palette", async () => {

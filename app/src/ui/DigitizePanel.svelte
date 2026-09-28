@@ -41,6 +41,8 @@
     shapeBorderState } from "../lib/borderMenu.js";
   import { loadPalette, nearestInList } from "../lib/threads.js";
   import { loadImage, rasterSize, isVectorFile, uploadPlan } from "../lib/rasterize.js";
+  import CropBox from "./CropBox.svelte";
+  import { proposeCrop } from "../lib/cropProposal.js";
   import { getSource, putSource, sourceKeyFor, sourceStoreAvailable } from "../lib/sourceStore.js";
 
   // Editor panel for an auto-digitized artwork element (build step 10).
@@ -104,6 +106,15 @@
       cv.width = w;
       cv.height = h;
       cv.getContext("2d").drawImage(img, 0, 0, w, h);
+      // Propose a crop from the preview we already drew. Measuring this
+      // canvas is fine; SENDING it is the 2026-09-19/20 regression.
+      let crop = null;
+      try {
+        const px = cv.getContext("2d").getImageData(0, 0, cv.width, cv.height);
+        crop = proposeCrop(px, (element.params && element.params.target_width_mm) || 80);
+      } catch {
+        crop = null; // tainted canvas or no 2d context: no proposal, no crash
+      }
       const dataUrl = cv.toDataURL("image/png");
       const b64 = dataUrl.slice(dataUrl.indexOf(",") + 1);
       if (b64.length > MAX_SOURCE_B64) {
@@ -137,7 +148,7 @@
       // the layer list and its edits, which are keyed to the OLD art's
       // shape ids and would only produce SHAPE_EDIT_UNKNOWN_ID noise here.
       patch({
-        sourcePng: b64, sourceFile, name: file.name, result: null, warnings: [], blockColors: {}, sizeMm: null,
+        sourcePng: b64, sourceFile, crop, name: file.name, result: null, warnings: [], blockColors: {}, sizeMm: null,
         review: null, shapeOverrides: {}, deletedShapeIds: [], appliedEdits: null,
         mergeGroups: [], splitLines: {},
       });
@@ -1706,10 +1717,10 @@
     </p>
   {:else}
     <div class="dgp-src">
-      <img
-        class="dgp-thumb"
+      <CropBox
         src={"data:image/png;base64," + element.sourcePng}
-        alt={element.name || "Artwork"}
+        crop={element.crop}
+        onchange={(c) => patch({ crop: c })}
       />
       <span class="dgp-srcname">{element.name || "Artwork"}</span>
     </div>
@@ -2711,7 +2722,7 @@
     color: var(--muted, #6b7280);
     margin: 8px 0 0;
   }
-  .dgp-src { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+  .dgp-src { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; margin-top: 10px; }
   .dgp-thumb {
     width: 56px;
     height: 56px;
