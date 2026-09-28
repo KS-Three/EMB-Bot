@@ -569,6 +569,21 @@
     }
   }
 
+  // A moved crop box changes what the service would digitize, so it restitches
+  // after the same idle pause a shape edit uses (and lights the same armed
+  // state). It must stay quiet on the upload's own patch, which sets a fresh
+  // proposal AND clears `result` in one go: `element.result` is null then, so
+  // this branch is skipped, and the sourcePng watcher above starts the one
+  // and only digitize for a new upload (with that crop already in the config).
+  let prevCropJson = JSON.stringify(element.crop ?? null);
+  $: {
+    const now = JSON.stringify(element.crop ?? null);
+    if (now !== prevCropJson) {
+      prevCropJson = now;
+      if (element.result && element.sourcePng && health) scheduleRestitch(RESTITCH_IDLE_MS);
+    }
+  }
+
   // Still a timeout at 0 ms rather than a direct call: this runs inside a
   // reactive statement, and runDigitize patches the element, so calling it
   // here would re-enter the block mid-flush. A zero-delay timeout puts the run

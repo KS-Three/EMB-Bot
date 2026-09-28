@@ -1257,6 +1257,90 @@ vi.mock("../lib/sourceStore.js", () => ({
   deleteSource: async (key) => { fakeStore.delete(key); },
 }));
 
+const { proposeCropMock } = vi.hoisted(() => ({ proposeCropMock: vi.fn(() => null) }));
+vi.mock("../lib/cropProposal.js", () => ({ proposeCrop: proposeCropMock }));
+
+describe("the upload proposes a crop", () => {
+  beforeEach(() => {
+    fakeStore.clear();
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue({
+      drawImage() {},
+      getImageData: () => ({ width: 10, height: 10, data: new Uint8ClampedArray(400) }),
+    });
+    vi.spyOn(HTMLCanvasElement.prototype, "toDataURL").mockReturnValue("data:image/png;base64,AAAA");
+    loadImageResult = () => Promise.resolve({ width: 1400, height: 316 });
+  });
+  afterEach(() => vi.restoreAllMocks());
+
+  test("the patch carries proposeCrop's rectangle, measured with the target width", async () => {
+    const proposal = { x0: 0.1, y0: 0.1, x1: 0.9, y1: 0.9 };
+    proposeCropMock.mockClear();
+    proposeCropMock.mockReturnValue(proposal);
+    const patches = [];
+    const { container } = render(Harness, {
+      props: {
+        element: baseElement([], { sourcePng: null, result: null, review: null }),
+        health: { ok: true, limits: { max_upload_bytes: 12 * 1024 * 1024, max_pixels: 40_000_000 } },
+        onPatch: (d) => patches.push(d),
+      },
+    });
+    const input = container.querySelector('.dgp-upload input[type="file"]');
+    Object.defineProperty(input, "files", { value: [new File([new Uint8Array([1, 2, 3])], "l.png", { type: "image/png" })] });
+    await fireEvent.change(input);
+    await waitFor(() => expect(patches.length).toBeGreaterThanOrEqual(1));
+    expect(patches[0].patch.crop).toEqual(proposal);
+    expect(proposeCropMock.mock.calls[0][1]).toBeGreaterThan(0);
+    proposeCropMock.mockReturnValue(null);
+  });
+});
+
+describe("a moved crop box restitches", () => {
+  let calls;
+  beforeEach(() => {
+    calls = [];
+    vi.useFakeTimers();
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
+  async function panel(extra) {
+    const mod = await import("../lib/digitizer.js");
+    vi.spyOn(mod, "digitize").mockImplementation(async () => {
+      calls.push(1);
+      return null;
+    });
+    return render(Harness, {
+      props: {
+        element: baseElement([], {
+          result: { stitches: [], colors: [], stitchCount: 0, colorCount: 0, name: "t", widthMM: 50, heightMM: 40 },
+          crop: { x0: 0.2, y0: 0.2, x1: 0.8, y1: 0.8 },
+          ...extra,
+        }),
+        health: { ok: true },
+      },
+    });
+  }
+
+  test("changing the crop with a result in hand arms a restitch after the idle pause", async () => {
+    const { getByRole, queryByText } = await panel();
+    await fireEvent.click(getByRole("button", { name: "Use whole image" }));
+    vi.advanceTimersByTime(1500);
+    expect(calls).toHaveLength(0);
+    expect(queryByText("Restitch now")).not.toBeNull();
+    vi.advanceTimersByTime(1000);
+    await Promise.resolve();
+    expect(calls.length).toBeGreaterThanOrEqual(1);
+  });
+
+  test("with no result yet, a crop change arms nothing (the upload's own digitize covers it)", async () => {
+    const { getByRole, queryByText } = await panel({ result: null });
+    await fireEvent.click(getByRole("button", { name: "Use whole image" }));
+    expect(queryByText("Restitch now")).toBeNull();
+  });
+});
+
 describe("the upload stores the file and a digitize sends it", () => {
   const LIMITS = { max_upload_bytes: 12 * 1024 * 1024, max_pixels: 40_000_000 };
   beforeEach(() => {

@@ -195,6 +195,9 @@ export function defaultDigitizedElement(id) {
     // (projectSources.js), so the registry record stays preview-sized and a
     // design opened elsewhere still digitizes from the file.
     sourceFile: null,
+    // The customer's crop box as fractions of the image, { x0, y0, x1, y1 },
+    // or null for the whole image (also what a pre-crop project loads as).
+    crop: null,
     params: { ...DEFAULT_DIGITIZE_PARAMS },
     // A sibling of params, not a member of it (spec 2026-08-18 decision 4):
     // this names a fact about the SOURCE ART ("this is a photo"), not a
