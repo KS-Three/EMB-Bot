@@ -1,0 +1,626 @@
+{
+ "exported": "2026-09-28T23:50:00Z",
+ "artifact": "https://claude.ai/artifact/6mjKrbnCX21MM9gQUry4Zp",
+ "page_built": "2026-09-18",
+ "pairs": 77,
+ "note": "The labelled before|after page's db, read back with ArtifactData. Ids are <arm>__<fixture>; the 34 first-sitting docs (2026-09-18, ids P001-P034) were copied to these ids before the republish and are folded in. No per-arm ruling was set on the page.",
+ "notes": {
+  "area_weighted__drone": {
+   "arm": "area_weighted",
+   "fixture": "drone",
+   "job_done": "unsure",
+   "note": "",
+   "updated": "2026-09-18T17:44:36.987Z",
+   "verdict": "both_bad"
+  },
+  "area_weighted__screenshot": {
+   "arm": "area_weighted",
+   "fixture": "screenshot",
+   "job_done": "unsure",
+   "note": "",
+   "updated": "2026-09-18T17:44:54.592Z",
+   "verdict": "both_bad"
+  },
+  "design_angle__becker": {
+   "arm": "design_angle",
+   "fixture": "becker",
+   "job_done": "unsure",
+   "note": "",
+   "updated": "2026-09-18T17:45:10.571Z",
+   "verdict": "same"
+  },
+  "design_angle__bridge": {
+   "arm": "design_angle",
+   "fixture": "bridge",
+   "job_done": "unsure",
+   "note": "",
+   "updated": "2026-09-18T17:45:24.492Z",
+   "verdict": "same"
+  },
+  "design_angle__drone": {
+   "arm": "design_angle",
+   "fixture": "drone",
+   "job_done": "unsure",
+   "note": "",
+   "updated": "2026-09-18T17:45:37.792Z",
+   "verdict": "same"
+  },
+  "design_angle__enthusiast": {
+   "arm": "design_angle",
+   "fixture": "enthusiast",
+   "job_done": "unsure",
+   "note": "",
+   "updated": "2026-09-18T17:47:13.671Z",
+   "verdict": "same"
+  },
+  "design_angle__fremont": {
+   "arm": "design_angle",
+   "fixture": "fremont",
+   "job_done": "unsure",
+   "note": "",
+   "updated": "2026-09-18T17:47:11.624Z",
+   "verdict": "same"
+  },
+  "design_angle__gaulke": {
+   "arm": "design_angle",
+   "fixture": "gaulke",
+   "job_done": "unsure",
+   "note": "",
+   "updated": "2026-09-18T17:47:09.480Z",
+   "verdict": "same"
+  },
+  "design_angle__golden_tee": {
+   "arm": "design_angle",
+   "fixture": "golden_tee",
+   "job_done": "unsure",
+   "note": "",
+   "updated": "2026-09-18T17:47:07.457Z",
+   "verdict": "same"
+  },
+  "design_angle__screenshot": {
+   "arm": "design_angle",
+   "fixture": "screenshot",
+   "job_done": "unsure",
+   "note": "",
+   "updated": "2026-09-18T17:47:03.354Z",
+   "verdict": "same"
+  },
+  "design_angle__tires": {
+   "arm": "design_angle",
+   "fixture": "tires",
+   "job_done": "unsure",
+   "note": "",
+   "updated": "2026-09-18T17:47:01.717Z",
+   "verdict": "before"
+  },
+  "directional_comp__becker": {
+   "arm": "directional_comp",
+   "fixture": "becker",
+   "job_done": "unsure",
+   "note": "",
+   "updated": "2026-09-20T20:47:09.991Z",
+   "verdict": "both_bad"
+  },
+  "directional_comp__bridge": {
+   "arm": "directional_comp",
+   "fixture": "bridge",
+   "job_done": "unsure",
+   "note": "",
+   "updated": "2026-09-20T20:47:39.938Z",
+   "verdict": "both_bad"
+  },
+  "directional_comp__drone": {
+   "arm": "directional_comp",
+   "fixture": "drone",
+   "job_done": "yes",
+   "note": "",
+   "updated": "2026-09-20T20:47:48.440Z",
+   "verdict": "after"
+  },
+  "directional_comp__enthusiast": {
+   "arm": "directional_comp",
+   "fixture": "enthusiast",
+   "job_done": null,
+   "note": "",
+   "updated": "2026-09-20T20:48:06.744Z",
+   "verdict": "before"
+  },
+  "directional_comp__fremont": {
+   "arm": "directional_comp",
+   "fixture": "fremont",
+   "job_done": null,
+   "note": "",
+   "updated": "2026-09-20T20:48:15.667Z",
+   "verdict": "before"
+  },
+  "directional_comp__gaulke": {
+   "arm": "directional_comp",
+   "fixture": "gaulke",
+   "job_done": "unsure",
+   "note": "",
+   "updated": "2026-09-20T20:48:30.332Z",
+   "verdict": "before"
+  },
+  "directional_comp__golden_tee": {
+   "arm": "directional_comp",
+   "fixture": "golden_tee",
+   "job_done": "unsure",
+   "note": "",
+   "updated": "2026-09-20T20:48:52.244Z",
+   "verdict": "both_bad"
+  },
+  "directional_comp__screenshot": {
+   "arm": "directional_comp",
+   "fixture": "screenshot",
+   "job_done": "unsure",
+   "note": "This is a shitty logo, don't use this one anyore.",
+   "updated": "2026-09-20T20:49:14.715Z",
+   "verdict": "both_bad"
+  },
+  "directional_comp__tires": {
+   "arm": "directional_comp",
+   "fixture": "tires",
+   "job_done": "unsure",
+   "note": "",
+   "updated": "2026-09-20T20:49:23.757Z",
+   "verdict": "before"
+  },
+  "lettering_column__enthusiast": {
+   "arm": "lettering_column",
+   "fixture": "enthusiast",
+   "job_done": "unsure",
+   "note": "",
+   "updated": "2026-09-20T20:49:43.911Z",
+   "verdict": "before"
+  },
+  "lettering_column__fremont": {
+   "arm": "lettering_column",
+   "fixture": "fremont",
+   "job_done": "yes",
+   "note": "",
+   "updated": "2026-09-20T20:49:57.003Z",
+   "verdict": "before"
+  },
+  "lettering_column__screenshot": {
+   "arm": "lettering_column",
+   "fixture": "screenshot",
+   "job_done": "unsure",
+   "note": "",
+   "updated": "2026-09-20T20:50:15.909Z",
+   "verdict": "both_bad"
+  },
+  "patch_junctions__enthusiast": {
+   "arm": "patch_junctions",
+   "fixture": "enthusiast",
+   "job_done": "yes",
+   "note": "",
+   "updated": "2026-09-20T20:50:27.855Z",
+   "verdict": "after"
+  },
+  "patch_junctions__screenshot": {
+   "arm": "patch_junctions",
+   "fixture": "screenshot",
+   "job_done": "unsure",
+   "note": "",
+   "updated": "2026-09-18T17:47:35.020Z",
+   "verdict": "same"
+  },
+  "per_stroke__becker": {
+   "arm": "per_stroke",
+   "fixture": "becker",
+   "job_done": "unsure",
+   "note": "",
+   "updated": "2026-09-18T17:47:46.658Z",
+   "verdict": "same"
+  },
+  "per_stroke__drone": {
+   "arm": "per_stroke",
+   "fixture": "drone",
+   "job_done": "unsure",
+   "note": "",
+   "updated": "2026-09-18T17:47:53.019Z",
+   "verdict": "same"
+  },
+  "per_stroke__fremont": {
+   "arm": "per_stroke",
+   "fixture": "fremont",
+   "job_done": "unsure",
+   "note": "",
+   "updated": "2026-09-18T17:48:04.238Z",
+   "verdict": "same"
+  },
+  "phantom_dissolve__bridge": {
+   "arm": "phantom_dissolve",
+   "fixture": "bridge",
+   "job_done": "unsure",
+   "note": "",
+   "updated": "2026-09-28T23:45:42.877Z",
+   "verdict": "after"
+  },
+  "phantom_dissolve__gaulke": {
+   "arm": "phantom_dissolve",
+   "fixture": "gaulke",
+   "job_done": "unsure",
+   "note": "",
+   "updated": "2026-09-28T23:45:49.973Z",
+   "verdict": "both_bad"
+  },
+  "phantom_dissolve__golden_tee": {
+   "arm": "phantom_dissolve",
+   "fixture": "golden_tee",
+   "job_done": "unsure",
+   "note": "",
+   "updated": "2026-09-28T23:45:56.890Z",
+   "verdict": "both_bad"
+  },
+  "phantom_dissolve__screenshot": {
+   "arm": "phantom_dissolve",
+   "fixture": "screenshot",
+   "job_done": "unsure",
+   "note": "",
+   "updated": "2026-09-28T23:46:02.397Z",
+   "verdict": "both_bad"
+  },
+  "phantom_dissolve__tires": {
+   "arm": "phantom_dissolve",
+   "fixture": "tires",
+   "job_done": "unsure",
+   "note": "",
+   "updated": "2026-09-28T23:46:22.368Z",
+   "verdict": "both_bad"
+  },
+  "polygon_axis__becker": {
+   "arm": "polygon_axis",
+   "fixture": "becker",
+   "job_done": "unsure",
+   "note": "",
+   "updated": "2026-09-18T17:48:10.975Z",
+   "verdict": "same"
+  },
+  "polygon_axis__bridge": {
+   "arm": "polygon_axis",
+   "fixture": "bridge",
+   "job_done": "unsure",
+   "note": "",
+   "updated": "2026-09-18T17:48:15.210Z",
+   "verdict": "same"
+  },
+  "polygon_axis__drone": {
+   "arm": "polygon_axis",
+   "fixture": "drone",
+   "job_done": "unsure",
+   "note": "",
+   "updated": "2026-09-18T17:48:19.428Z",
+   "verdict": "same"
+  },
+  "polygon_axis__enthusiast": {
+   "arm": "polygon_axis",
+   "fixture": "enthusiast",
+   "job_done": "unsure",
+   "note": "",
+   "updated": "2026-09-18T17:48:35.721Z",
+   "verdict": "both_bad"
+  },
+  "polygon_axis__fremont": {
+   "arm": "polygon_axis",
+   "fixture": "fremont",
+   "job_done": "unsure",
+   "note": "",
+   "updated": "2026-09-18T17:48:52.818Z",
+   "verdict": "same"
+  },
+  "polygon_axis__gaulke": {
+   "arm": "polygon_axis",
+   "fixture": "gaulke",
+   "job_done": "unsure",
+   "note": "",
+   "updated": "2026-09-18T17:48:59.914Z",
+   "verdict": "same"
+  },
+  "polygon_axis__golden_tee": {
+   "arm": "polygon_axis",
+   "fixture": "golden_tee",
+   "job_done": "unsure",
+   "note": "",
+   "updated": "2026-09-18T17:49:04.885Z",
+   "verdict": "same"
+  },
+  "polygon_axis__screenshot": {
+   "arm": "polygon_axis",
+   "fixture": "screenshot",
+   "job_done": "unsure",
+   "note": "",
+   "updated": "2026-09-18T17:49:08.070Z",
+   "verdict": "same"
+  },
+  "polygon_axis__tires": {
+   "arm": "polygon_axis",
+   "fixture": "tires",
+   "job_done": "unsure",
+   "note": "",
+   "updated": "2026-09-18T17:49:18.755Z",
+   "verdict": "same"
+  },
+  "rail_comp__becker": {
+   "arm": "rail_comp",
+   "fixture": "becker",
+   "job_done": "unsure",
+   "note": "",
+   "updated": "2026-09-20T20:51:13.868Z",
+   "verdict": "after"
+  },
+  "rail_comp__bridge": {
+   "arm": "rail_comp",
+   "fixture": "bridge",
+   "job_done": "unsure",
+   "note": "",
+   "updated": "2026-09-20T20:51:21.035Z",
+   "verdict": "after"
+  },
+  "rail_comp__drone": {
+   "arm": "rail_comp",
+   "fixture": "drone",
+   "job_done": "unsure",
+   "note": "",
+   "updated": "2026-09-20T20:51:33.037Z",
+   "verdict": "both_bad"
+  },
+  "rail_comp__enthusiast": {
+   "arm": "rail_comp",
+   "fixture": "enthusiast",
+   "job_done": "yes",
+   "note": "",
+   "updated": "2026-09-20T20:51:40.519Z",
+   "verdict": "after"
+  },
+  "rail_comp__fremont": {
+   "arm": "rail_comp",
+   "fixture": "fremont",
+   "job_done": "yes",
+   "note": "",
+   "updated": "2026-09-20T20:51:48.433Z",
+   "verdict": "after"
+  },
+  "rail_comp__gaulke": {
+   "arm": "rail_comp",
+   "fixture": "gaulke",
+   "job_done": "unsure",
+   "note": "",
+   "updated": "2026-09-20T20:51:56.623Z",
+   "verdict": "both_bad"
+  },
+  "rail_comp__golden_tee": {
+   "arm": "rail_comp",
+   "fixture": "golden_tee",
+   "job_done": "unsure",
+   "note": "",
+   "updated": "2026-09-20T20:52:11.408Z",
+   "verdict": "both_bad"
+  },
+  "rail_comp__screenshot": {
+   "arm": "rail_comp",
+   "fixture": "screenshot",
+   "job_done": "unsure",
+   "note": "",
+   "updated": "2026-09-23T01:51:18.979Z",
+   "verdict": "both_bad"
+  },
+  "rail_comp__tires": {
+   "arm": "rail_comp",
+   "fixture": "tires",
+   "job_done": "yes",
+   "note": "The \"I\" and \"S\" improved, The top of the \"r\" has thread missing",
+   "updated": "2026-09-20T20:52:59.234Z",
+   "verdict": "after"
+  },
+  "rails_follow_edge__becker": {
+   "arm": "rails_follow_edge",
+   "fixture": "becker",
+   "job_done": "unsure",
+   "note": "",
+   "updated": "2026-09-18T17:49:24.117Z",
+   "verdict": "same"
+  },
+  "rails_follow_edge__bridge": {
+   "arm": "rails_follow_edge",
+   "fixture": "bridge",
+   "job_done": "unsure",
+   "note": "",
+   "updated": "2026-09-18T17:49:37.059Z",
+   "verdict": "same"
+  },
+  "rails_follow_edge__drone": {
+   "arm": "rails_follow_edge",
+   "fixture": "drone",
+   "job_done": "unsure",
+   "note": "",
+   "updated": "2026-09-18T17:49:43.455Z",
+   "verdict": "same"
+  },
+  "rails_follow_edge__enthusiast": {
+   "arm": "rails_follow_edge",
+   "fixture": "enthusiast",
+   "job_done": "unsure",
+   "note": "",
+   "updated": "2026-09-18T17:49:48.233Z",
+   "verdict": "same"
+  },
+  "rails_follow_edge__fremont": {
+   "arm": "rails_follow_edge",
+   "fixture": "fremont",
+   "job_done": "unsure",
+   "note": "",
+   "updated": "2026-09-18T17:49:53.651Z",
+   "verdict": "same"
+  },
+  "rails_follow_edge__gaulke": {
+   "arm": "rails_follow_edge",
+   "fixture": "gaulke",
+   "job_done": "unsure",
+   "note": "",
+   "updated": "2026-09-18T17:49:57.440Z",
+   "verdict": "same"
+  },
+  "rails_follow_edge__golden_tee": {
+   "arm": "rails_follow_edge",
+   "fixture": "golden_tee",
+   "job_done": "unsure",
+   "note": "",
+   "updated": "2026-09-18T17:50:00.230Z",
+   "verdict": "same"
+  },
+  "rails_follow_edge__screenshot": {
+   "arm": "rails_follow_edge",
+   "fixture": "screenshot",
+   "job_done": "unsure",
+   "note": "",
+   "updated": "2026-09-18T17:50:03.336Z",
+   "verdict": "same"
+  },
+  "rails_follow_edge__tires": {
+   "arm": "rails_follow_edge",
+   "fixture": "tires",
+   "job_done": "yes",
+   "note": "",
+   "updated": "2026-09-18T17:50:24.565Z",
+   "verdict": "after"
+  },
+  "ref_0827__becker": {
+   "arm": "ref_0827",
+   "fixture": "becker",
+   "job_done": null,
+   "note": "After actually captures the \"C\" border in Becker, The MARINE improved, but still has oportnuities for improvement",
+   "updated": "2026-09-23T01:51:09.806Z",
+   "verdict": "after"
+  },
+  "ref_0827__bridge": {
+   "arm": "ref_0827",
+   "fixture": "bridge",
+   "job_done": null,
+   "note": "The yellow back stitching looks cleaner",
+   "updated": "2026-09-23T01:50:33.120Z",
+   "verdict": "after"
+  },
+  "ref_0827__drone": {
+   "arm": "ref_0827",
+   "fixture": "drone",
+   "job_done": null,
+   "note": "More detail on the woods imagry",
+   "updated": "2026-09-23T01:50:16.058Z",
+   "verdict": "after"
+  },
+  "ref_0827__enthusiast": {
+   "arm": "ref_0827",
+   "fixture": "enthusiast",
+   "job_done": null,
+   "note": "The Red logo trim is much cleaner.",
+   "updated": "2026-09-23T01:49:59.664Z",
+   "verdict": "after"
+  },
+  "ref_0827__fremont": {
+   "arm": "ref_0827",
+   "fixture": "fremont",
+   "job_done": null,
+   "note": "\"THE\" and \"EAT STAY PLAY\" is cleaner",
+   "updated": "2026-09-23T01:49:33.025Z",
+   "verdict": "after"
+  },
+  "ref_0827__gaulke": {
+   "arm": "ref_0827",
+   "fixture": "gaulke",
+   "job_done": null,
+   "note": "TO very different to tell what's being done here.",
+   "updated": "2026-09-22T16:28:04.236Z",
+   "verdict": "both_bad"
+  },
+  "ref_0827__golden_tee": {
+   "arm": "ref_0827",
+   "fixture": "golden_tee",
+   "job_done": null,
+   "note": "",
+   "updated": "2026-09-22T16:27:34.615Z",
+   "verdict": "both_bad"
+  },
+  "ref_0827__screenshot": {
+   "arm": "ref_0827",
+   "fixture": "screenshot",
+   "job_done": null,
+   "note": "Before image has letters all over the place.",
+   "updated": "2026-09-22T16:27:21.545Z",
+   "verdict": "after"
+  },
+  "ref_0827__tires": {
+   "arm": "ref_0827",
+   "fixture": "tires",
+   "job_done": null,
+   "note": "After has much smoother bordering edges",
+   "updated": "2026-09-22T16:26:55.307Z",
+   "verdict": "after"
+  },
+  "wide_columns__becker": {
+   "arm": "wide_columns",
+   "fixture": "becker",
+   "job_done": "unsure",
+   "note": "",
+   "updated": "2026-09-22T16:26:19.521Z",
+   "verdict": "before"
+  },
+  "wide_columns__bridge": {
+   "arm": "wide_columns",
+   "fixture": "bridge",
+   "job_done": "unsure",
+   "note": "",
+   "updated": "2026-09-22T16:26:04.206Z",
+   "verdict": "both_bad"
+  },
+  "wide_columns__drone": {
+   "arm": "wide_columns",
+   "fixture": "drone",
+   "job_done": "unsure",
+   "note": "",
+   "updated": "2026-09-22T16:25:55.948Z",
+   "verdict": "both_bad"
+  },
+  "wide_columns__enthusiast": {
+   "arm": "wide_columns",
+   "fixture": "enthusiast",
+   "job_done": "unsure",
+   "note": "",
+   "updated": "2026-09-22T16:25:44.902Z",
+   "verdict": "both_bad"
+  },
+  "wide_columns__gaulke": {
+   "arm": "wide_columns",
+   "fixture": "gaulke",
+   "job_done": "unsure",
+   "note": "",
+   "updated": "2026-09-22T16:25:30.540Z",
+   "verdict": "both_bad"
+  },
+  "wide_columns__golden_tee": {
+   "arm": "wide_columns",
+   "fixture": "golden_tee",
+   "job_done": "unsure",
+   "note": "",
+   "updated": "2026-09-22T16:25:22.293Z",
+   "verdict": "both_bad"
+  },
+  "wide_columns__screenshot": {
+   "arm": "wide_columns",
+   "fixture": "screenshot",
+   "job_done": "unsure",
+   "note": "",
+   "updated": "2026-09-20T20:53:32.220Z",
+   "verdict": "same"
+  },
+  "wide_columns__tires": {
+   "arm": "wide_columns",
+   "fixture": "tires",
+   "job_done": "unsure",
+   "note": "",
+   "updated": "2026-09-20T20:53:26.118Z",
+   "verdict": "same"
+  }
+ },
+ "rulings": {}
+}
