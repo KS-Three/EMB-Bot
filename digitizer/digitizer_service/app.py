@@ -477,6 +477,33 @@ def _validate_config_dict(data: dict, allowed_fields: set[str]) -> dict:
             status_code=400,
             detail="garment_rgb must be three integers 0-255, e.g. [235, 232, 223].",
         )
+    # `crop` is only read at job time (`digitizer_core.crop.validate_crop`), so
+    # a malformed one used to fail there with whatever Python said first:
+    # "cannot convert float NaN to integer" (the json module ACCEPTS NaN),
+    # "could not convert string to float" for a dict, a TypeError for a null
+    # element, "has no len()" for a bare number. Checked here as a 400 naming
+    # the shape, like garment_rgb. Range, inversion and the pixel floor stay
+    # at job time: the floor needs the decoded raster's size.
+    #
+    # Normalised too, so one crop is one cache key: `null` is the same as
+    # absent (popped), and [0, 0, 1, 1] and [0.0, 0.0, 1.0, 1.0] serialise
+    # the same. A request WITHOUT `crop` is untouched -- no key in, no key
+    # out -- so no pre-crop content/generation key moves.
+    if "crop" in data:
+        crop = data["crop"]
+        if crop is None:
+            data.pop("crop")
+        elif not (
+            isinstance(crop, list) and len(crop) == 4
+            and all(isinstance(v, (int, float)) and not isinstance(v, bool)
+                    and math.isfinite(v) for v in crop)
+        ):
+            raise HTTPException(
+                status_code=400,
+                detail="crop must be four finite fractions [x0, y0, x1, y1] in 0-1.",
+            )
+        else:
+            data["crop"] = [float(v) for v in crop]
     forced = data.get("forced_class")
     if forced is not None and forced not in CLASSES:
         raise HTTPException(

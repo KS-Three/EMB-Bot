@@ -979,6 +979,57 @@ def test_an_inverted_crop_fails_the_job_naming_the_callers_own_rectangle(client)
     assert "crop is empty after clamping" in state["error"]
 
 
+# A malformed crop's SHAPE is a 400 at submit, naming what is wanted -- not a
+# failed job carrying whatever Python said first ("cannot convert float NaN
+# to integer", "has no len()"). json.dumps writes NaN, and json.loads reads
+# it back, so the first case really does arrive over HTTP.
+@pytest.mark.parametrize("bad", [
+    [float("nan"), 0.0, 1.0, 1.0],               # NaN
+    [0.0, 0.0, float("inf"), 1.0],               # inf
+    {"x0": 0.1, "y0": 0.1, "x1": 0.9, "y1": 0.9},  # the Studio's object form
+    [0.1, 0.1, 0.9],                             # wrong arity
+    [True, 0.1, 0.9, 0.9],                       # bool is not a fraction
+    [None, 0.1, 0.9, 0.9],                       # null element
+    ["0.1", 0.1, 0.9, 0.9],                      # string element
+    5,                                           # a bare number
+])
+def test_a_malformed_crop_is_a_400_at_submit_not_a_failed_job(client, bad):
+    with ART.open("rb") as f:
+        r = client.post("/digitize", files={"image": (ART.name, f, "image/png")},
+                        data={"config": json.dumps({"preflight": False, "crop": bad})})
+    assert r.status_code == 400, r.text
+    assert r.json()["detail"] == \
+        "crop must be four finite fractions [x0, y0, x1, y1] in 0-1."
+
+
+def test_parse_config_normalises_crop_to_one_cache_key():
+    """`null` is the same as absent, ints and floats are one spelling, and a
+    request with no crop comes out with no `crop` key -- so no pre-crop
+    content/generation key moved."""
+    from digitizer_service.app import _parse_config
+
+    assert _parse_config(json.dumps({"crop": None})) == {}
+    assert _parse_config(json.dumps({"target_width_mm": 80.0})) == {"target_width_mm": 80.0}
+    a = _parse_config(json.dumps({"crop": [0, 0, 1, 1]}))
+    b = _parse_config(json.dumps({"crop": [0.0, 0.0, 1.0, 1.0]}))
+    assert a == b == {"crop": [0.0, 0.0, 1.0, 1.0]}
+    assert json.dumps(a, sort_keys=True) == json.dumps(b, sort_keys=True)
+
+
+def test_a_null_crop_is_accepted_as_no_crop(client):
+    """`"crop": null` submits (202) and is the SAME job as a config without
+    the key: one content key, so the repeat returns the first job's id."""
+    base = {"target_width_mm": 80.0, "preflight": False}
+    with ART.open("rb") as f:
+        r1 = client.post("/digitize", files={"image": (ART.name, f, "image/png")},
+                         data={"config": json.dumps(base)})
+    with ART.open("rb") as f:
+        r2 = client.post("/digitize", files={"image": (ART.name, f, "image/png")},
+                         data={"config": json.dumps({**base, "crop": None})})
+    assert r1.status_code == 202 and r2.status_code == 202, (r1.text, r2.text)
+    assert r2.json()["job_id"] == r1.json()["job_id"]
+
+
 # --- shape identity edits (merge/split, contract v1.5) ----------------------
 #
 # The other half of the shape-recognition gap `boundary_override` (above)

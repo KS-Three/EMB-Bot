@@ -67,3 +67,15 @@ def test_wrong_arity_raises():
     rgb, alpha = _art()
     with pytest.raises(ValueError, match="four fractions"):
         apply_crop(rgb, alpha, (0.1, 0.2, 0.3))
+
+
+@pytest.mark.parametrize("bad", [
+    (float("nan"), 0.0, 1.0, 1.0),
+    (0.0, 0.0, float("inf"), 1.0),
+    (0.0, float("-inf"), 1.0, 1.0),
+])
+def test_non_finite_fractions_raise_naming_the_rect(bad):
+    rgb, alpha = _art()
+    with pytest.raises(ValueError, match="must be finite") as exc:
+        apply_crop(rgb, alpha, bad)
+    assert repr(bad) in str(exc.value)

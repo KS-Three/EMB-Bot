@@ -14,6 +14,8 @@ uploads.
 """
 from __future__ import annotations
 
+import math
+
 import numpy as np
 
 # The smallest frame the downstream background detector can read a border
@@ -36,6 +38,11 @@ def validate_crop(crop, shape) -> tuple[int, int, int, int] | None:
         raise ValueError(
             f"crop must be four fractions (x0, y0, x1, y1), got {crop!r}")
     x0f, y0f, x1f, y1f = (float(v) for v in crop)
+    # NaN/inf would otherwise surface as "cannot convert float NaN to
+    # integer" from the round() below -- true, and useless to a caller. The
+    # service rejects these at 400 time; this guards every other caller.
+    if not all(math.isfinite(v) for v in (x0f, y0f, x1f, y1f)):
+        raise ValueError(f"crop fractions must be finite, got {crop!r}")
     clamp = lambda v: min(max(v, 0.0), 1.0)  # noqa: E731
     x0f, y0f, x1f, y1f = clamp(x0f), clamp(y0f), clamp(x1f), clamp(y1f)
     if x1f <= x0f or y1f <= y0f:

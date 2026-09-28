@@ -46,12 +46,36 @@ def test_stage0_sees_the_same_picture_stage1_digitizes():
     assert int(p.rgb[:10].mean()) > 200
 
 
+def _signals_equal(a: dict, b: dict) -> bool:
+    if set(a) != set(b):
+        return False
+    for k in a:
+        va, vb = a[k], b[k]
+        if isinstance(va, (int, float, np.floating, np.integer)) and not isinstance(va, bool):
+            if va != pytest.approx(vb, rel=1e-9, abs=1e-12, nan_ok=True):
+                return False
+        elif va != vb:
+            return False
+    return True
+
+
 def test_classify_threads_the_crop_from_cfg():
+    """classify(art, cfg WITH crop) must read exactly the picture
+    classify(art[crop], cfg WITHOUT crop) reads: every signal equal. And the
+    uncropped frame must read differently, or this proves nothing."""
     art = _banner_art()
-    cfg = PipelineConfig(target_width_mm=80.0, crop=(0.0, 0.33, 1.0, 0.67))
-    # Must not raise, and must not classify on the uncropped frame.
-    c = stage0_classify.classify(art, cfg)
-    assert c.class_ in ("flat", "gradient", "photo_subject", "photo_scene")
+    cropped_cfg = PipelineConfig(target_width_mm=80.0, crop=(0.0, 0.33, 1.0, 0.67))
+    plain_cfg = PipelineConfig(target_width_mm=80.0)
+    # 600 * 0.33 = 198 .. 600 * 0.67 = 402, full width.
+    via_cfg = stage0_classify.classify(art, cropped_cfg)
+    by_hand = stage0_classify.classify(np.ascontiguousarray(art[198:402]), plain_cfg)
+    uncropped = stage0_classify.classify(art, plain_cfg)
+    assert via_cfg.class_ == by_hand.class_
+    assert via_cfg.signals, "no signals computed -- nothing was compared"
+    assert _signals_equal(via_cfg.signals, by_hand.signals), (
+        via_cfg.signals, by_hand.signals)
+    assert not _signals_equal(via_cfg.signals, uncropped.signals), (
+        "the crop changed no signal -- the test cannot see whether it was applied")
 
 
 def test_a_bad_crop_raises_out_of_prep():
