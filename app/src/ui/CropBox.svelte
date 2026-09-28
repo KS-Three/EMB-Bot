@@ -11,7 +11,7 @@
   //
   // During a drag the rectangle is LIVE LOCAL state; `onchange` fires once, on
   // pointerup, so a drag is one edit (one undo step, one restitch) rather than
-  // a patch per pointermove.
+  // a patch per pointermove. A pointercancel discards the drag instead.
   let { src, crop = null, onchange = () => {} } = $props();
 
   let host = $state(null);
@@ -33,6 +33,7 @@
     live = s;
     window.addEventListener("pointermove", move);
     window.addEventListener("pointerup", end, { once: true });
+    window.addEventListener("pointercancel", cancel, { once: true });
   }
 
   function move(e) {
@@ -62,6 +63,7 @@
   function detach() {
     window.removeEventListener("pointermove", move);
     window.removeEventListener("pointerup", end);
+    window.removeEventListener("pointercancel", cancel);
   }
 
   function end() {
@@ -73,6 +75,18 @@
     if (s && next && (next.x0 !== s.x0 || next.y0 !== s.y0 || next.x1 !== s.x1 || next.y1 !== s.y1)) {
       onchange(next);
     }
+  }
+
+  // A CANCELLED gesture (the browser took the pointer: a scroll or pinch
+  // won, the pen left range, a system dialog) discards the drag: the box snaps
+  // back to where it was and nothing is emitted. Committing it instead would
+  // restitch on a rectangle the customer never let go of. Without this the
+  // drag stayed live -- no pointerup ever arrives after a pointercancel -- so
+  // the box followed the next pointermove until some later click ended it.
+  function cancel() {
+    dragging = null;
+    live = null;
+    detach();
   }
 
   // An unmount mid-drag must not leave window listeners behind.
@@ -117,7 +131,12 @@
 
 <style>
   .crop-host { position: relative; display: inline-block; line-height: 0; overflow: hidden; }
-  .crop-host img { max-width: 100%; height: auto; user-select: none; }
+  /* max-height bounds a tall upload (a 554 x 1200 phone screenshot, the main
+     use case, was ~650 px tall and pushed the panel's controls below the
+     fold). width:auto keeps the aspect; the host is inline-block with
+     line-height 0, so it shrink-wraps the SCALED image and the percentage
+     rectangle above stays on the picture. */
+  .crop-host img { display: block; max-width: 100%; max-height: 320px; width: auto; height: auto; user-select: none; }
   .crop-rect {
     position: absolute;
     box-sizing: border-box;

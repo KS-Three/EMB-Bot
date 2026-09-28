@@ -10,15 +10,29 @@
 // merges marks up to ~2 empty cells (~4 mm) apart into one blob, so an icon
 // and its wordmark stay together. Each component is ranked by the REAL ink it
 // holds, and its rectangle is the bbox of only its cells that actually have
-// ink, so the dilation does not inflate the box. Measured against the nine REAL_ART logos 2026-09-22 -- no-op on
-// the four that fill their frame, correct tight crops on the other five,
-// nothing cut on any.
+// ink, so the dilation does not inflate the box.
+//
+// The spec's measurement against the nine REAL_ART logos (2026-09-22: a no-op
+// on the four that fill their frame, tight crops on the other five, nothing
+// cut on any) was of a PROTOTYPE of this algorithm, taken before the
+// transparent-background and one-cell-dilation changes landed. The shipped
+// code has not been re-measured against that set; see
+// docs/superpowers/specs/2026-09-22-upload-crop-design.md for what was run.
+//
+// Scale: `widthMm` is the design's TARGET width, and this treats the FULL
+// preview width as that width. The service instead fits the artwork's own
+// bbox to the target, so the real cell is at least as large as this one
+// thinks -- measured in design millimetres, the join distance here is the
+// same or larger than intended. That errs toward merging more marks into
+// one blob, i.e. toward a looser crop, which is the safe side.
 //
 // The result is ALWAYS shown to the customer as a draggable suggestion and
 // never applied silently. That is what separates it from auto-detection.
 
-// Cells roughly this wide at design scale. Half the 4 mm merge distance, so
-// two marks within ~4 mm land in the same or adjacent cells and join.
+// Cells roughly this wide at design scale. The mark mask is dilated by one
+// cell before labelling, so two inked cells join when at most two empty cells
+// separate them: an effective join distance of ~4-6 mm depending on where the
+// marks fall inside their cells.
 const CELL_MM = 2.0;
 const MARGIN_MM = 2.0;
 // How far a channel must sit from the frame's background to count as ink.

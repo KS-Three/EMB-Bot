@@ -571,16 +571,32 @@
 
   // A moved crop box changes what the service would digitize, so it restitches
   // after the same idle pause a shape edit uses (and lights the same armed
-  // state). It must stay quiet on the upload's own patch, which sets a fresh
-  // proposal AND clears `result` in one go: `element.result` is null then, so
-  // this branch is skipped, and the sourcePng watcher above starts the one
-  // and only digitize for a new upload (with that crop already in the config).
+  // state).
+  //
+  // Two windows, the same two the params watcher above handles:
+  //  - The upload's own patch sets a fresh proposal AND a new `sourcePng` in
+  //    one go. That tick is skipped (`sameArt` is false): the sourcePng
+  //    watcher above starts the one and only digitize for a new upload, with
+  //    that crop already in its config.
+  //  - The box moved while that FIRST run is still in flight -- the likeliest
+  //    moment a customer drags it, since the box appears the instant the file
+  //    lands. `result` is still null then, so gating on it alone dropped the
+  //    move silently: the run returned with the proposal's crop and nothing
+  //    marked it stale. `phase !== "idle"` catches it; when the timer fires,
+  //    runDigitize's in-flight guard turns it into `rerunWanted` (or, if the
+  //    first run already returned, it simply runs), so exactly one rerun
+  //    follows with the moved crop.
   let prevCropJson = JSON.stringify(element.crop ?? null);
+  let prevCropSrc = element.sourcePng;
   $: {
     const now = JSON.stringify(element.crop ?? null);
+    const sameArt = element.sourcePng === prevCropSrc;
+    prevCropSrc = element.sourcePng;
     if (now !== prevCropJson) {
       prevCropJson = now;
-      if (element.result && element.sourcePng && health) scheduleRestitch(RESTITCH_IDLE_MS);
+      if (sameArt && element.sourcePng && health && (element.result || phase !== "idle")) {
+        scheduleRestitch(RESTITCH_IDLE_MS);
+      }
     }
   }
 
@@ -2738,14 +2754,6 @@
     margin: 8px 0 0;
   }
   .dgp-src { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; margin-top: 10px; }
-  .dgp-thumb {
-    width: 56px;
-    height: 56px;
-    object-fit: contain;
-    border: 1px solid var(--tint-border, #ccd6fb);
-    border-radius: var(--radius-s, 6px);
-    background: #fff;
-  }
   .dgp-srcname { font-size: var(--fs-xs, 12px); color: var(--muted, #667); word-break: break-all; }
   .dgp-offline {
     margin-top: 10px;

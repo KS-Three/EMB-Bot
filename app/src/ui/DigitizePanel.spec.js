@@ -1334,10 +1334,73 @@ describe("a moved crop box restitches", () => {
     expect(calls.length).toBeGreaterThanOrEqual(1);
   });
 
-  test("with no result yet, a crop change arms nothing (the upload's own digitize covers it)", async () => {
-    const { getByRole, queryByText } = await panel({ result: null });
+  // The upload's patch is simulated by a rerender that sets `sourcePng` and
+  // `crop` together, which is what onFile's single patch does. `digitize` is
+  // held open so the first run is genuinely in flight when the box moves.
+  async function inFlightPanel() {
+    const mod = await import("../lib/digitizer.js");
+    const cfgs = [];
+    const releases = [];
+    vi.spyOn(mod, "digitize").mockImplementation((_img, cfg) => {
+      cfgs.push(cfg);
+      return new Promise((resolve) => releases.push(() => resolve(null)));
+    });
+    const health = { ok: true };
+    const utils = render(Harness, {
+      props: { element: baseElement([], { sourcePng: null, result: null, review: null, crop: null }), health },
+    });
+    await utils.rerender({
+      element: baseElement([], {
+        sourcePng: "data:image/png;base64,BBBB",
+        result: null,
+        review: null,
+        crop: { x0: 0.2, y0: 0.2, x1: 0.8, y1: 0.8 },
+      }),
+      health,
+    });
+    await vi.advanceTimersByTimeAsync(0);
+    return { ...utils, cfgs, releases };
+  }
+
+  test("the upload's own patch (new art + proposal together) starts exactly one run", async () => {
+    const { cfgs, releases } = await inFlightPanel();
+    expect(cfgs).toHaveLength(1);
+    expect(cfgs[0].crop).toEqual([0.2, 0.2, 0.8, 0.8]);
+    releases[0]();
+    await vi.advanceTimersByTimeAsync(5000);
+    expect(cfgs).toHaveLength(1);
+  });
+
+  test("a crop moved while the first run is in flight reruns once after it, with the moved crop", async () => {
+    const { getByRole, cfgs, releases } = await inFlightPanel();
+    expect(cfgs).toHaveLength(1);
     await fireEvent.click(getByRole("button", { name: "Use whole image" }));
-    expect(queryByText("Restitch now")).toBeNull();
+    // Let the idle pause elapse while the first run is still open: the timer
+    // hits runDigitize's in-flight guard and becomes a rerun request.
+    await vi.advanceTimersByTimeAsync(2500);
+    expect(cfgs).toHaveLength(1);
+    releases[0]();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(cfgs).toHaveLength(2);
+    // Full frame is omitted from the config entirely (buildDigitizeConfig).
+    expect(cfgs[1].crop).toBeUndefined();
+    releases[1]();
+    await vi.advanceTimersByTimeAsync(5000);
+    expect(cfgs).toHaveLength(2);
+  });
+
+  test("a crop moved in flight whose pause outlasts the first run still reruns exactly once", async () => {
+    const { getByRole, cfgs, releases } = await inFlightPanel();
+    await fireEvent.click(getByRole("button", { name: "Use whole image" }));
+    releases[0]();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(cfgs).toHaveLength(1);
+    await vi.advanceTimersByTimeAsync(2500);
+    expect(cfgs).toHaveLength(2);
+    expect(cfgs[1].crop).toBeUndefined();
+    releases[1]();
+    await vi.advanceTimersByTimeAsync(5000);
+    expect(cfgs).toHaveLength(2);
   });
 });
 

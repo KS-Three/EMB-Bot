@@ -87,6 +87,21 @@ describe("CropBox", () => {
     expect(onchange).not.toHaveBeenCalled();
   });
 
+  it("a pointercancel discards the drag: the box snaps back and nothing is emitted", () => {
+    stubHost();
+    const onchange = vi.fn();
+    render(CropBox, { src: SRC, crop: { x0: 0.2, y0: 0.2, x1: 0.8, y1: 0.8 }, onchange });
+    const box = screen.getByRole("group", { name: "Crop area" });
+    screen.getByRole("button", { name: "Drag right edge" }).dispatchEvent(ptr("pointerdown", 100, 50));
+    window.dispatchEvent(ptr("pointermove", 120, 50));
+    window.dispatchEvent(ptr("pointercancel", 120, 50));
+    // The drag is over: later moves and a stray pointerup change nothing.
+    window.dispatchEvent(ptr("pointermove", 140, 50));
+    window.dispatchEvent(ptr("pointerup", 140, 50));
+    expect(onchange).not.toHaveBeenCalled();
+    return Promise.resolve().then(() => expect(parseFloat(box.style.width)).toBeCloseTo(60));
+  });
+
   it("emits the full frame when reset is clicked", () => {
     const onchange = vi.fn();
     render(CropBox, { src: SRC, crop: { x0: 0.2, y0: 0.2, x1: 0.8, y1: 0.8 }, onchange });
