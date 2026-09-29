@@ -15491,13 +15491,14 @@ The headline lettering guard goes under its bar for the first time since
 768de79e and its strict xfail is retired; the bare guard beside it fires,
 and is re-pinned with the trade attributed (6.80 → 7.7% bar over the new
 reading, the old pair kept). The rails stand less proud of the ink and cover
-less of it: the symmetric-offset rail model's under-reach, hidden by the
-grown polygon, lands on the artwork. The trims are the surprise against the
+less of it. Measured the same night, and the mechanism named at first was WRONG: it is not the symmetric-offset rail model's under-reach. Under rail comp ENTHUSIAST's share of rail points more than 0.1 mm inside the art FELL, 19.3% → 14.7%, and its cross density is unchanged (same-rail step p50 0.427 → 0.422 mm). The bare artwork rises at JUNCTIONS on Becker (1.39% → 3.80% of its satin art; the tuck adds the pull to what an arm clears, `_JUNCTION_TUCK_MM` arithmetic) and along the rails on ENTHUSIAST (mid-rail 2.06% → 4.12%, cause not yet isolated); and the trims are the artwork skeleton's finer decomposition — MARINE's R goes 5 → 8 strokes and 8 → 14 odd nodes, one letter splits into two components — so the Euler walk jumps more (within-letter jumps 1 → 9 of the 22 trims; underlay-to-column hops 3 → 5; letter-to-letter 3 → 6). `rails_follow_edge`, the built cure for the under-reach, is measured to raise the overshoot headline (0.3289) and the wobble (0.089 → 0.102) and read no-difference on 8 of 9 logos in Kent's eye: not the lever. The trims are the surprise against the
 09-09 reading in `config.py` (ENTHUSIAST 26 → 22, drone 96 → 83, on an
 engine four lettering steps older): on the lettering route's own fixture
 they more than double, and the levers priced on the grown polygon do not
 buy them back. `tests/test_rail_comp.py` pins the MARINE numbers as
-ceilings. Whether the price is accepted is Kent's, asked with the PR.
+ceilings. Kent took the price the same day, shown this table with the PR
+armed: *"Take the price, let it merge"* — an accepted price, not open
+defects.
 
 *(measured 2026-09-29 — `docs/kent-review-2026-09-28.md` "Outcome";
 `tests/test_lettering_coverage_regression.py`, `tests/test_rail_comp.py`)*

@@ -119,9 +119,12 @@ moved off the polygon and onto the rails, and this fixture reads
 baseline. Part of that is exactly the trade the third guard below exists to
 catch: bare artwork goes **6.27% -> 7.10%** and the colour-free uncovered
 fraction 0.90% -> 1.76% (still no element over 1 mm2), so the rails stand
-less proud of the ink AND cover less of it -- the symmetric-offset rail
-model's under-reach, which the grown polygon used to hide by a pull, now
-lands on the artwork itself. The bare bar is re-pinned with that attributed
+less proud of the ink AND cover less of it. NOT the symmetric-offset rail
+model's under-reach -- that share FELL (rail points more than 0.1 mm inside
+the art, 19.3% -> 14.7%) -- but bare artwork along the rails at unchanged
+cross density (mid-rail 2.06% -> 4.12%, cause open) and, on Becker, at the
+junctions (1.39% -> 3.80%, the tuck adding the pull to what an arm clears).
+DOCTRINE 2026-09-28 carries the measurement. The bare bar is re-pinned with that attributed
 (`BARE_BAR`), not raised quietly; the number Kent's flip bought on the
 headline is recorded in `LOST_FRAC_TODAY`.
 """

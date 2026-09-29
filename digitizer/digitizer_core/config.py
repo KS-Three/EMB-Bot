@@ -1311,8 +1311,17 @@ class PipelineConfig:
     # `lost_frac` 0.2748 -> 0.2565 -- under its 0.26 bar for the first time
     # since 768de79e -- for bare artwork 6.27 -> 7.10%, and Becker at 114 mm
     # under `wide_columns` loses the fold guard's margin (5.38 -> 7.47).
-    # The trims are pinned as a ceiling in `tests/test_rail_comp.py`; the
-    # price is recorded, and whether it is accepted is Kent's.
+    # The trims are pinned as a ceiling in `tests/test_rail_comp.py`, and
+    # the price is ACCEPTED -- Kent, 2026-09-29, shown the table: *"Take the
+    # price, let it merge"* -- so the MARINE trims and the ENTHUSIAST bare
+    # artwork are an accepted price, not open defects. Measured the same
+    # night, the mechanism is NOT the rail model's under-reach (that share
+    # fell, 19.3 -> 14.7% on ENTHUSIAST): the bare artwork rises at Becker's
+    # junctions (1.39 -> 3.80%, the tuck adding the pull to what an arm
+    # clears) and along ENTHUSIAST's rails (2.06 -> 4.12%, open), and the
+    # trims are the artwork skeleton's finer decomposition (MARINE's R 5 -> 8
+    # strokes, 8 -> 14 odd nodes; the walk jumps more). Those two are what
+    # lowers the ceiling; DOCTRINE 2026-09-28 has the numbers.
     satin_rail_comp: bool = True
     # None = the fabric preset's fill underlay style. One of "none" |
     # "edge_run" | "center_run" | "edge_zigzag" | "edge_lattice" |
