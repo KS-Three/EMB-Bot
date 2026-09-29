@@ -6728,14 +6728,14 @@ artwork 6.27 → 7.10% and colour-free uncovered ink 0.90 → 1.76%; Becker at
 114 mm under `wide_columns` 5.38 → 7.47 guarded. None of it was on the page
 he judged, and the 09-09 measurement in `config.py` had read the flag as
 FEWER trims (ENTHUSIAST 26 → 22) on an engine four lettering steps older.
-The mechanism is not new: the symmetric-offset rail model's under-reach,
-which the grown polygon hid by a pull, lands on the artwork once the pull is
-on the rails. `docs/kent-review-2026-09-28.md` "Outcome" has the table and
+Measured the same night, and the mechanism named at first was WRONG: it is not the symmetric-offset rail model's under-reach. Under rail comp ENTHUSIAST's share of rail points more than 0.1 mm inside the art FELL, 19.3% → 14.7%, and its cross density is unchanged (same-rail step p50 0.427 → 0.422 mm). The bare artwork rises at JUNCTIONS on Becker (1.39% → 3.80% of its satin art; the tuck adds the pull to what an arm clears, `_JUNCTION_TUCK_MM` arithmetic) and along the rails on ENTHUSIAST (mid-rail 2.06% → 4.12%, cause not yet isolated); and the trims are the artwork skeleton's finer decomposition — MARINE's R goes 5 → 8 strokes and 8 → 14 odd nodes, one letter splits into two components — so the Euler walk jumps more (within-letter jumps 1 → 9 of the 22 trims; underlay-to-column hops 3 → 5; letter-to-letter 3 → 6). `rails_follow_edge`, the built cure for the under-reach, is measured to raise the overshoot headline (0.3289) and the wobble (0.089 → 0.102) and read no-difference on 8 of 9 logos in Kent's eye: not the lever.
+`docs/kent-review-2026-09-28.md` "Outcome" has the table and
 the 29-test blast radius; `tests/test_rail_comp.py` pins the trims as a
 ceiling. **Kent took the price the same day** (*"Take the price, let it
 merge"*), so the MARINE trims and the ENTHUSIAST bare artwork are an
-ACCEPTED PRICE, not open defects for someone to re-solve; the under-reach
-they come from stays 768de79e's open item and the way to lower the ceiling.
+ACCEPTED PRICE, not open defects for someone to re-solve; lowering the
+ceiling means the junction tuck and the artwork decomposition above, not
+the rail model.
 
 ## Four photo-lane tests go red on any machine that has `rembg_isolated/venv` built, and CI never does (2026-09-29)
 

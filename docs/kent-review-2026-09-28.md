@@ -205,25 +205,22 @@ as the flip's**, handled per the repo's own conventions:
 | ENTHUSIAST 80 mm | trims / stitches | 12 / 2,388 | 16 / 2,369 |
 | Becker 114 mm, `wide_columns=True`, twigs+stack off | `coverage_max`, guarded / unguarded (warn 6.67) | 5.38 / 7.18 | 7.47 / 7.63 |
 
-Read together: the rails stand less proud of the ink AND cover less of it.
-The symmetric-offset rail model's under-reach (17.6% of ENTHUSIAST's rail
-points more than 0.1 mm inside the art, 768de79e's own open item) used to be
-hidden by the pull the polygon carried; on the artwork it lands on the
-artwork. That is the "narrower column" trade the bare guard was built to
-catch, and it caught it. The trims are the larger surprise: the 09-09
-measurement in `config.py` read rail comp as FEWER trims on four logos
-(ENTHUSIAST 26 → 22, drone 96 → 83); on the lettering route's own fixture,
-on today's engine, it is more than twice as many, and the levers priced on
-the grown polygon do not buy them back. `tests/test_rail_comp.py` pins the
-MARINE numbers as ceilings so a cheaper build lowers them without touching
-the test.
+Read together: the rails stand less proud of the ink AND cover less of it,
+which is the "narrower column" trade the bare guard was built to catch, and
+it caught it. Measured the same night, and the mechanism named at first was WRONG: it is not the symmetric-offset rail model's under-reach. Under rail comp ENTHUSIAST's share of rail points more than 0.1 mm inside the art FELL, 19.3% → 14.7%, and its cross density is unchanged (same-rail step p50 0.427 → 0.422 mm). The bare artwork rises at JUNCTIONS on Becker (1.39% → 3.80% of its satin art; the tuck adds the pull to what an arm clears, `_JUNCTION_TUCK_MM` arithmetic) and along the rails on ENTHUSIAST (mid-rail 2.06% → 4.12%, cause not yet isolated); and the trims are the artwork skeleton's finer decomposition — MARINE's R goes 5 → 8 strokes and 8 → 14 odd nodes, one letter splits into two components — so the Euler walk jumps more (within-letter jumps 1 → 9 of the 22 trims; underlay-to-column hops 3 → 5; letter-to-letter 3 → 6). `rails_follow_edge`, the built cure for the under-reach, is measured to raise the overshoot headline (0.3289) and the wobble (0.089 → 0.102) and read no-difference on 8 of 9 logos in Kent's eye: not the lever. The trims are the larger surprise against the
+09-09 measurement in `config.py`, which read rail comp as FEWER trims on four
+logos (ENTHUSIAST 26 → 22, drone 96 → 83): on the lettering route's own
+fixture, on today's engine, it is more than twice as many, and the levers
+priced on the grown polygon do not buy them back. `tests/test_rail_comp.py`
+pins the MARINE numbers as ceilings so a cheaper build lowers them without
+touching the test.
 
 **Kent's ruling on the price, 2026-09-29, shown this table with the PR
 armed to merge: *"Take the price, let it merge."*** His pick had been made
 on the look, which the flip improves in his eye on five logos; the trims
 and the bare artwork were not on the page, and he took them knowing. So
 the MARINE trims and the ENTHUSIAST bare artwork are an accepted price,
-not open defects — the under-reach they come from stays 768de79e's open
-item, and a fix for it only lowers the ceiling `tests/test_rail_comp.py`
-pins. Reverting stays one line plus this table's tests moving back. The
+not open defects — and lowering the ceiling `tests/test_rail_comp.py` pins
+means the junction tuck and the artwork decomposition named above, not the
+rail model. Reverting stays one line plus this table's tests moving back. The
 sew-out that would settle the amount is still owed either way.

@@ -38,12 +38,17 @@ better, 8 before better, 30 no difference, 23 both bad; "can't tell" on 59 of
 - **The flip's price, read by the suite and invisible on the page (2026-09-29):**
   MARINE 80 mm 9 → 22 trims at +15% stitches (hops 3 → 6; both 09-19 levers on
   8 → 17); ENTHUSIAST `lost_frac` 0.2748 → 0.2565 — under its bar at last — for
-  bare artwork 6.27 → 7.10%; Becker 114 mm under `wide_columns` 5.38 → 7.47. The
-  under-reach of the symmetric-offset rail model, hidden by the grown polygon,
-  lands on the artwork. 29 tests in 14 files moved, three flat goldens re-captured
+  bare artwork 6.27 → 7.10%; Becker 114 mm under `wide_columns` 5.38 → 7.47. NOT
+  the rail model's under-reach (that share fell 19.3 → 14.7%): Becker's junction
+  tuck adds the pull to what an arm clears (junction bare 1.39 → 3.80%), ENTHUSIAST's
+  mid-rail bare doubles (cause open), and MARINE's letters decompose finer on the
+  artwork (R 5 → 8 strokes, 8 → 14 odd nodes) so the walk jumps more — that is
+  the trims. 29 tests in 14 files moved, three flat goldens re-captured
   with the pre-change proof; `docs/kent-review-2026-09-28.md` "Outcome" has the
   table. Kent took the price the same day (*"Take the price, let it merge"*):
-  an accepted price, not open defects; the under-reach stays 768de79e's item.
+  an accepted price, not open defects; the junction tuck and the artwork
+  decomposition are the levers, not the rail model (`rails_follow_edge` is measured
+  to worsen the headline and the wobble, and read no-difference on 8 of 9).
 - **Four photo-lane tests go red wherever `rembg_isolated/venv` exists** (the
   stub's shade demand, the two-square depth sort, the owl's merge and its
   declared-photographic report) — on the pre-change tree too, and never in CI.
