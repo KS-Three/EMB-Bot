@@ -237,6 +237,16 @@ def test_the_flip_costs_trims_on_the_lettering_fixture_and_says_so():
     1 -> 7). The 2026-09-19 levers priced on the grown polygon do not buy it
     back: both levers ON reads 17 trims on the rails against 8 off them.
 
+    Where they come from, by `tools/refused_walks.py`: 11 of the 22 were
+    walks refused because the stroke's first run started a half-width off
+    the travel web (`target_unsnapped`); the seam fix the same day
+    (`test_under_rail_comp_a_strokes_first_run_starts_on_the_travel_web`)
+    takes those to 2, but eight of them become cursor-side refusals -- the
+    previous column's end sits 3.5 to 7 mm from any node, past `trim_at` --
+    so the fixture reads 21 trims at 2,061 stitches. The cursor side is
+    `satin_walk_cursor_reach_mm`'s question, parked for cloth (Kent,
+    2026-09-20); the rest are letter-to-letter hops and two split webs.
+
     Pinned as CEILINGS, the way the underlay lever's own cost is: a cheaper
     build lowers them and this test stays green; a dearer one fails it. The
     direction is recorded here, not asserted -- the day the rails sew the
@@ -252,8 +262,42 @@ def test_the_flip_costs_trims_on_the_lettering_fixture_and_says_so():
 
     off, on = sewn(satin_rail_comp=False), sewn()
     assert off.stats.trims <= 9, off.stats.trims            # the grown polygon, 2026-09-19's number
-    assert on.stats.trims <= 22, on.stats.trims             # the rails, measured at the flip
+    assert on.stats.trims <= 21, on.stats.trims             # the rails: 22 at the flip, 21 after the seam fix
     assert on.stats.stitch_count <= 1.16 * off.stats.stitch_count, (off.stats.stitch_count, on.stats.stitch_count)
+
+
+def test_under_rail_comp_a_strokes_first_run_starts_on_the_travel_web():
+    """The walk's target is the first point of a stroke's first run. Under
+    rail comp `_stroke_underlay` runs a free end out to the cap, so that
+    point sat about a half-width off the raw spine's end -- the node the
+    travel web is built from -- past the walk's strict 0.8 mm target snap,
+    and the walk refused (MARINE at 80 mm, 2026-09-29: `target_unsnapped`
+    walks 1 -> 11 when the flag went on). Now the run starts at the raw
+    end, on the web, and its first stitch carries the needle out to the
+    cap under the column -- the same cure `underlay_on_column` carries.
+    On this T the first underlay of each stroke used to start 1.58 mm off
+    the web on the rails and 0.0 off it on the grown polygon."""
+    bar = Polygon([(0, 0), (24, 0), (24, 3), (0, 3)])
+    stem = Polygon([(10.5, 3), (13.5, 3), (13.5, 20), (10.5, 20)])
+    poly = bar.union(stem).buffer(0)
+    strokes, _half, _field = s6.extract_strokes(poly, half_extra_mm=PULL, corner_twigs=True,
+                                                 junction_stack=True)
+    assert len(strokes) == 2
+    ends = [st.spine[0] for st in strokes] + [st.spine[-1] for st in strokes]
+    runs, report = s6.satin_shape(poly, "T", underlay_style="center", trim_at_mm=3.0,
+                                  rail_comp_mm=PULL, rail_comp_floor_mm=1.5, corner_twigs=True,
+                                  junction_stack=True, stroke_order="euler")
+    assert not report["empty"]
+    # the first run of each stroke is its centre underlay, and it starts on the web
+    firsts = [r for i, r in enumerate(runs)
+              if r.kind == "underlay" and (i == 0 or runs[i - 1].kind == "satin"
+                                           or runs[i - 1].kind == "travel")]
+    assert len(firsts) == 2, [r.kind for r in runs]
+    for r in firsts:
+        miss = min(math.dist(r.points[0], e) for e in ends)
+        assert miss < 0.8, f"a stroke's first run starts {miss:.2f} mm off the travel web"
+        # and the stitch from there runs out to the cap, not back along the spine
+        assert math.dist(r.points[0], r.points[1]) <= 3.0
 
 
 def test_push_rails_pushes_a_pinched_cross_and_leaves_a_directionless_one():

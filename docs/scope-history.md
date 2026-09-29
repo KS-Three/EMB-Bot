@@ -15491,7 +15491,7 @@ The headline lettering guard goes under its bar for the first time since
 768de79e and its strict xfail is retired; the bare guard beside it fires,
 and is re-pinned with the trade attributed (6.80 → 7.7% bar over the new
 reading, the old pair kept). The rails stand less proud of the ink and cover
-less of it. Measured the same night, and the mechanism named at first was WRONG: it is not the symmetric-offset rail model's under-reach. Under rail comp ENTHUSIAST's share of rail points more than 0.1 mm inside the art FELL, 19.3% → 14.7%, and its cross density is unchanged (same-rail step p50 0.427 → 0.422 mm). The bare artwork rises at JUNCTIONS on Becker (1.39% → 3.80% of its satin art; the tuck adds the pull to what an arm clears, `_JUNCTION_TUCK_MM` arithmetic) and along the rails on ENTHUSIAST (mid-rail 2.06% → 4.12%, cause not yet isolated); and the trims are the artwork skeleton's finer decomposition — MARINE's R goes 5 → 8 strokes and 8 → 14 odd nodes, one letter splits into two components — so the Euler walk jumps more (within-letter jumps 1 → 9 of the 22 trims; underlay-to-column hops 3 → 5; letter-to-letter 3 → 6). `rails_follow_edge`, the built cure for the under-reach, is measured to raise the overshoot headline (0.3289) and the wobble (0.089 → 0.102) and read no-difference on 8 of 9 logos in Kent's eye: not the lever. The trims are the surprise against the
+less of it. Measured the same night, and the mechanism named at first was WRONG: it is not the symmetric-offset rail model's under-reach. Under rail comp ENTHUSIAST's share of rail points more than 0.1 mm inside the art FELL, 19.3% → 14.7%, and its cross density is unchanged (same-rail step p50 0.427 → 0.422 mm). The bare artwork rises at JUNCTIONS on Becker — 1.39% → 3.80% of its satin art on the satin-only instrument, but two thirds of that is one stretch of the C's bowl that the sewn-terms width check now routes to FILL, which `rail_edge.bare_area` counts as bare (with fill counted Becker reads 6.72% → 8.08%); the remainder is sparse crosses at the wordmark's junctions — and along the rails on ENTHUSIAST (mid-rail 2.06% → 4.12%, no fill routing there, cause not yet isolated); and the trims are the artwork skeleton's finer decomposition — MARINE's R goes 5 → 8 strokes and 8 → 14 odd nodes, one letter splits into two components — so the Euler walk jumps more (within-letter jumps 1 → 9 of the 22 trims; underlay-to-column hops 3 → 5; letter-to-letter 3 → 6). `rails_follow_edge`, the built cure for the under-reach, is measured to raise the overshoot headline (0.3289) and the wobble (0.089 → 0.102) and read no-difference on 8 of 9 logos in Kent's eye: not the lever. The trims are the surprise against the
 09-09 reading in `config.py` (ENTHUSIAST 26 → 22, drone 96 → 83, on an
 engine four lettering steps older): on the lettering route's own fixture
 they more than double, and the levers priced on the grown polygon do not
@@ -15502,3 +15502,46 @@ defects.
 
 *(measured 2026-09-29 — `docs/kent-review-2026-09-28.md` "Outcome";
 `tests/test_lettering_coverage_regression.py`, `tests/test_rail_comp.py`)*
+
+## 2026-09-29 — the walk's target under rail comp, put back on the web
+
+`tools/refused_walks.py` on MARINE at 80 mm, rail comp OFF → ON: refused
+walks 4 → 18, and 11 of the 18 are `target_unsnapped` — the stroke's first
+run starts 0.9–2.2 mm from any node of the travel web, past the 0.8 mm
+target snap, because `_stroke_underlay` runs a free end out to the cap under
+rail comp while the web is built from the raw spine ends. Fixed the way
+`underlay_on_column` fixed the same seam on 2026-09-19: the run starts at
+the raw end, on the web, and its first stitch carries the needle out to the
+cap under the column. OFF byte-identical on all eleven corpus cases; ON, one
+underlay penetration per free-ended satin stroke; three flat goldens
+re-captured against `main` at 8a48c3b4 (`machine OK` each), `test_pushcomp`'s
+three reproducible tuples re-pinned, the MARINE ceiling 22 → 21.
+
+| case | OFF trims / st | ON before | ON after | Δ trims | bare OFF / ON |
+|---|---|---|---|---|---|
+| MARINE 80 | 9 / 1,784 | 22 / 2,058 | 21 / 2,061 | −1 | 10.99 / 7.38 |
+| becker 100 | 54 / 8,070 | 51 / 8,247 | 48 / 8,297 | −3 | 5.70 / 8.21 |
+| tires | 13 / 2,247 | 10 / 2,516 | 7 / 2,515 | −3 | 3.64 / 4.55 |
+| enthusiast | 12 / 2,388 | 16 / 2,369 | 15 / 2,390 | −1 | 6.27 / 7.10 |
+| fremont | 59 / 19,862 | 58 / 19,934 | 58 / 19,937 | 0 | 11.52 / 3.53 |
+| bridge | 96 / 14,419 | 104 / 15,907 | 99 / 15,905 | −5 | 7.66 / 5.19 |
+| golden_tee | 43 / 6,892 | 60 / 11,149 | 58 / 11,154 | −2 | 7.53 / 6.68 |
+| gaulke | 34 / 4,168 | 33 / 4,218 | 33 / 4,219 | 0 | 7.43 / 7.15 |
+| drone | 120 / 18,411 | 123 / 18,561 | 122 / 18,581 | −1 | 5.97 / 4.84 |
+| thermal | 120 / 18,411 | 123 / 18,561 | 122 / 18,581 | −1 | 5.97 / 4.84 |
+| screenshot | 74 / 7,862 | 71 / 7,847 | 71 / 7,849 | 0 | 9.55 / 9.47 |
+| **total** | **634** | **671** | **654** | **−17** | |
+
+(`REAL_ART` widths and garments, `max_colors=6`; bare is `rail_edge.bare_area`,
+satin crosses only, so a stretch routed to fill reads as bare — Becker's C.)
+
+What the fix did not buy: on MARINE eight of the eleven became
+`cursor_unsnapped` (the previous column's end 3.5–7 mm from any node, past
+`trim_at`), which is `satin_walk_cursor_reach_mm`'s question, parked for cloth.
+One more reading from the same table, recorded not acted on: `golden_tee`
+sews 6,892 → 11,149 stitches under the flip, its largest stitch cost on any
+fixture. (`thermal` is the byte-identical copy of `drone` that
+`tools/thin_strokes.py` already names, hence its identical row.)
+
+*(measured 2026-09-29 — `tools/refused_walks.py`, the corpus table above;
+`tests/test_rail_comp.py::test_under_rail_comp_a_strokes_first_run_starts_on_the_travel_web`)*

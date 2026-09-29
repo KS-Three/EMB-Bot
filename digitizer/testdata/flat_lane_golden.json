@@ -24,7 +24,7 @@
    "BACKGROUND_ENCLOSED:1",
    "DROPPED_SMALL_SHAPES:2"
   ],
-  "stitch_count": 4580,
+  "stitch_count": 4581,
   "stitch_coords": [
    [
     -39.297,
@@ -30477,29 +30477,36 @@
     true
    ],
    [
-    17.1684,
+    18.2517,
     -14.3685,
     "underlay",
     true,
     true
    ],
    [
-    17.9682,
-    -14.3854,
-    "underlay",
-    true,
-    true
-   ],
-   [
-    17.1684,
+    17.4517,
     -14.3685,
     "underlay",
     true,
     true
    ],
    [
-    17.9682,
-    -14.3854,
+    18.2517,
+    -14.3685,
+    "underlay",
+    true,
+    true
+   ],
+   [
+    17.4517,
+    -14.3685,
+    "underlay",
+    true,
+    true
+   ],
+   [
+    18.2517,
+    -14.3685,
     "underlay",
     true,
     true
@@ -32113,7 +32120,7 @@
    "BACKGROUND_ENCLOSED:1",
    "EMPTY_THREAD_LAYER:1"
   ],
-  "stitch_count": 4602,
+  "stitch_count": 4603,
   "stitch_coords": [
    [
     -39.3041,
@@ -62706,29 +62713,36 @@
     true
    ],
    [
-    17.2537,
+    18.3371,
     -14.3321,
     "underlay",
     true,
     true
    ],
    [
-    18.0536,
-    -14.349,
-    "underlay",
-    true,
-    true
-   ],
-   [
-    17.2537,
+    17.5371,
     -14.3321,
     "underlay",
     true,
     true
    ],
    [
-    18.0536,
-    -14.349,
+    18.3371,
+    -14.3321,
+    "underlay",
+    true,
+    true
+   ],
+   [
+    17.5371,
+    -14.3321,
+    "underlay",
+    true,
+    true
+   ],
+   [
+    18.3371,
+    -14.3321,
     "underlay",
     true,
     true
@@ -64341,32 +64355,39 @@
   "warnings": [
    "BACKGROUND_UNCERTAIN:"
   ],
-  "stitch_count": 990,
+  "stitch_count": 991,
   "stitch_coords": [
    [
-    -39.6565,
-    -0.9588,
+    -38.599,
+    0.0987,
     "underlay",
     true,
     true
    ],
    [
-    -39.0845,
-    -0.3995,
+    -39.1647,
+    -0.467,
     "underlay",
     true,
     true
    ],
    [
-    -39.6565,
-    -0.9588,
+    -38.599,
+    0.0987,
     "underlay",
     true,
     true
    ],
    [
-    -39.0845,
-    -0.3995,
+    -39.1647,
+    -0.467,
+    "underlay",
+    true,
+    true
+   ],
+   [
+    -38.599,
+    0.0987,
     "underlay",
     true,
     true
