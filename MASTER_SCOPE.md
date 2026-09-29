@@ -17,10 +17,9 @@ at the bottom for the authority model behind the confidence ratings.
 four of its findings are standing rulings in [`DOCTRINE.md`](DOCTRINE.md). Its
 code and instruments are ON `main`. *(confirmed 2026-08-17 — `git ls-tree`)*
 
-**Last updated:** 2026-09-20. **This file is current state only, under a
+**Last updated:** 2026-09-29. **This file is current state only, under a
 27,000-word budget** (rule 4 below — Kent replaced the old line budget with it
-on 2026-09-14, and this line still said "800-line" until 2026-09-20). Its three
-companions: standing rulings, rejected approaches,
+on 2026-09-14). Its three companions: standing rulings, rejected approaches,
 corrections and session-costing traps live in [`DOCTRINE.md`](DOCTRINE.md);
 dated snapshots in [`docs/scope-history.md`](docs/scope-history.md); per-area
 supporting detail in [`docs/scope/`](docs/scope/). See "How this document works"
@@ -197,11 +196,9 @@ icon. Cloth pointers added to defects 3, 6 and 16 below.
 
 43. **The numbers chain agrees end to end, and is now MEASURED rather than argued.** On one mixed design: canvas caption, review recap, PDF worksheet and the downloaded DST read back by `pystitch` all give **3,367 stitches / 2 colour changes / 26 trims / 92.2 × 22.9 mm**, and the simulator counter reads 0 and 3,367 at its ends. Recorded because the defect above was a disagreement inside that chain, and because the only reason this can be stated as fact is that each link was driven rather than reasoned from a shared code path. *(measured 2026-09-08 — scope-history 09-08)*
 
-44. **Satin borders sat 1.9 mm INSIDE every abutting colour — FIXED 2026-09-09 (Kent's ruling: the colour sewn on top owns a shared seam).** `_yield_frontage` (2026-08-06) had the LATER shape retreat its whole circuit column + margin off any seam an earlier border already held; on a flat logo every colour abuts, so on the Instagram icon (`border="auto"`, 80 mm, flat) **14 of 17** bordered shapes sewed a satin stripe a median 1.4–1.9 mm inside their own fill and one lost its border outright — its own test pinned the inset as wanted, and nobody saw it for a month because the Studio could not reach `cfg.border` until #318. Now `stage7_sequence._owned_by_later` hands each seam to the bordered shape still to sew over it and `stage6_border.border_runs(omit=…)` sews the shape underneath as open arcs on the rest of its edge: every bordered shape has half its penetrations ON its visible edge (p10 0.00 mm), 33,292 → **30,420** st, trims 34 → 30, and `BORDER_SEAM_SHARED` is a note naming the pairs. Found under it: two abutting visible edges are NOT one curve (each side is its own DP contour of the same pixel boundary; p90 0.09–0.43 mm apart), so the seam tolerance is `2 × simplify_tol_mm`, not 0.02 mm — the hair-width found half of every seam and sewed 28 stubs of 1.6–2.4 mm on one ring. A fully enclosed EARLY shape now gets no border of its own (the ring over it borders that seam) — by the rule; a sew-out judges the look. Prediction blind spots (a fill whose rows all degenerate, a `photo_width_floor` reroute, a gradient shape riding the design ramp) leave one seam unbordered or doubled, never a stripe. *(measured 2026-09-09 — `tests/test_border.py` seam section, 32 passing; DOCTRINE standing ruling; memory `border-seam-ownership-2026-09-09`)*
+46. **The smoothness score exists and preflight cannot see it.** Law 37 wants a monotonic direction-change score with no cutoff; `tools/edge_smoothness.py`, `curve_fidelity.py`, `edge_wobble.py` and `curve_tiers.py` are exactly that — offline. No smoothness code appears among preflight's 24 codes or `warnings_codes.py`'s 58, so the grade a customer sees is blind to Kent's most frequent complaint. Desk-safe, and the cheapest row on the list — the instrument is built, the output ships, nothing connects them. **Not to be confused with `curve_turn_deg`**, which an earlier read scored as this. The graded-A-on-jagged-edges evidence: [backlog](docs/scope/machine-physics-backlog.md). *(confirmed 2026-09-20 — playbook row 17)*
 
-46. **The smoothness score exists and preflight cannot see it.** Law 37 asks for a monotonic direction-change score with no cutoff, and `tools/edge_smoothness.py`, `curve_fidelity.py`, `edge_wobble.py` and `curve_tiers.py` are exactly that — offline. No smoothness/roughness/churn code appears among preflight's 24 codes or `warnings_codes.py`'s 58, so the grade a customer sees is blind to Kent's most frequent complaint. `edge_smoothness.py`'s own docstring is the evidence: *"`preflight` graded `logo_whitebg` **A 100**"* on a design he calls not smooth, and `becker_marine_logo` B 76 where he calls the edges jagged. Desk-safe, and the cheapest row on the list — the instrument is built, the output ships, nothing connects them. **Not to be confused with `curve_turn_deg`** (a stage-4 vertex refinement on input geometry), which an earlier read scored as this. *(confirmed 2026-09-20 — playbook row 17; `docs/scope/machine-physics-backlog.md`)*
-
-47. **`overlap_mm` is one scalar at 0.25 mm, against a law that wants 1.0–2.0.** Law 26: objects sew narrower than drawn, so parallel stitch directions meeting need 1.0 mm overlap on wovens and 1.5–2.0 on knits/fleece, near-perpendicular needs ~0 (the top layer bridges), and engineered gaps under ~0.8 mm close up regardless. `config.py:918` `overlap_mm: float = 0.25` is angle-blind, fabric-blind, and sits under the law's own close-up threshold. No forbid-gap rule exists. The playbook marks the defaults desk-safe and gates only the knit value, so most of this is buildable now. *(confirmed 2026-09-20 — playbook row 9; `docs/scope/machine-physics-backlog.md`)*
+47. **`overlap_mm` is one scalar at 0.25 mm, against a law that wants 1.0–2.0.** Law 26 asks 1.0 mm where parallel stitch directions meet on wovens, 1.5–2.0 on knits/fleece and ~0 near-perpendicular; `config.py:918` is angle-blind, fabric-blind and sits under the law's own 0.8 mm close-up threshold, and no forbid-gap rule exists. Most of it is desk-safe and buildable now — only the knit value is gated. The law's full text: [backlog](docs/scope/machine-physics-backlog.md). *(confirmed 2026-09-20 — playbook row 9)*
 
 ### Closed — kept numbered, because ten other docs cite them by number
 
@@ -211,6 +208,7 @@ these, and ten other docs cite the numbers.** Caveats on 3, 16 and 17 moved to
 DOCTRINE 2026-09-14.
 
 1. shade-thread collapse (`_shade_blocks`) — RESOLVED 2026-08-19.
+44. satin borders sat a median 1.4–1.9 mm INSIDE every abutting colour (14 of 17 bordered shapes on the 80 mm icon) — FIXED 2026-09-09 on Kent's ruling that the colour sewn on top owns a shared seam (`_owned_by_later`, `border_runs(omit=…)`; 33,292 → 30,420 st, trims 34 → 30). Standing ruling: DOCTRINE. Full text: scope-history 09-29.
 45. no preset declared its assumed stabilizer; backing was guessed from stitch count — RESOLVED 2026-09-20 (`Fabric.assumed_backing` / `needs_topper`, both engines; the worksheet prints both). Playbook law 33.
 48. no machine-time model, so nothing quoted a runtime — RESOLVED 2026-09-20 (`machine.PLAN_SPM` 650, `TRIM_COST_STITCHES` 120; the worksheet prints "Run time ~N min … incl. trims"). Playbook laws 36/38.
 41. the review screen quoted a sew-out's cost on one lane and nothing on the other — FIXED 2026-09-07 (`lib/estimate.js`, browser-side only when the service said nothing). Full text: scope-history 09-20.
@@ -260,6 +258,17 @@ one concealed it; entry 2 is a flag that LEFT this list unnoticed for two weeks.
    read `garment_id` for ORDER; the browser engine did. **DO NOT FLIP:**
    only the cost is measured, and it is heavy. *(measured 2026-09-19 — DOCTRINE)*
 
+5. **`satin_cap_recentre` — built OFF 2026-09-22, and it is a flip waiting on
+   a call, not a parked idea.** A free end whose spine tail is a surviving CAP
+   FORK is cut at the kink and rebuilt square: today, on a stem with one edge
+   leaning three degrees, one fork survives the pruner, the column tapers to a
+   point at that corner and the other corner sews **1.11 mm bare**. Found from
+   the OUTLINE side (`edge_wobble`'s `unsewn`: Becker, **32.6 mm** of outline
+   with no thread within 0.5 mm). The cause-side twin of
+   `satin_rails_follow_edge`, which reaches the same corners by roughening the
+   rails and is measured NOT the lever. False is byte-identical.
+   *(confirmed 2026-09-29 — `config.py:1260`; numbers DOCTRINE 2026-09-19)*
+
 *(added 2026-08-17 — `docs/project-review-2026-08-16.md` §1.6: chaining was absent
 here, so a good-faith flip would have shipped bare-fabric thread unwarned.)*
 
@@ -267,7 +276,7 @@ here, so a good-faith flip would have shipped bare-fabric thread unwarned.)*
 
 ## Doctrine — moved to [`DOCTRINE.md`](DOCTRINE.md)
 
-**Standing rulings, Measured negatives, Corrections and Gotchas live in [`DOCTRINE.md`](DOCTRINE.md)** (split 2026-08-28). Read it before proposing work, the same way you read this file for status. The split is not filing: those four sections answer *"has this already been decided, tried, disproved, or paid for?"*, which never goes stale and only accumulates, while this file answers *"where does the project stand today?"* under a line budget. They were competing for one budget and the standing content was winning — this file ran 268 lines over before the split, and two compaction passes could not close it without deleting things that still govern decisions.
+**Standing rulings, Measured negatives, Corrections and Gotchas live in [`DOCTRINE.md`](DOCTRINE.md)** (split 2026-08-28). Read it before proposing work, the same way you read this file for status. The split is not filing: those four sections answer *"has this already been decided, tried, disproved, or paid for?"*, which never goes stale and only accumulates, while this file answers *"where does the project stand today?"* under a word budget. Why they cannot share one budget: DOCTRINE's own entry on the split.
 
 ---
 
@@ -277,7 +286,7 @@ here, so a good-faith flip would have shipped bare-fabric thread unwarned.)*
 |---|---|---|
 | 1. Auto-digitizing quality (image → stitches) | In progress | **Low** beyond flat spot-color art; human faces TABLED pending a more capable tier *(Kent, 2026-08-25)* |
 | 2. Font library & lettering | Implemented — 85 fonts, satin + bean/running + cross-stitch, LTR + Hebrew RTL | High (tech) / High (compliance). Zero stunted glyphs since the 2026-08-22 transform fix; the guards now assert their own coverage |
-| 3. Studio app / guided wizard | Implemented | Medium (fabric-preset accuracy: **pending sew-out** — the 2026-09-01 icon was uncontrolled, so the card still gates this). Held at Medium by that gate alone; the display layer had a defect class that shipped unseen for want of UI-behaviour coverage, and three hand-driving sweeps (2026-08-25, 09-07, 09-08) closed the known ones — detail in the area doc and defect 42. **The pattern is worth the row:** every one came from driving the app, none from reading it *(confirmed — area doc, defect 42)*. The preview now renders thread as a lit cylinder at physical width; its lighting is eye-tuned, not sew-verified |
+| 3. Studio app / guided wizard | Implemented | Medium (fabric-preset accuracy: **pending sew-out** — the 2026-09-01 icon was uncontrolled, so the card still gates this). Held at Medium by that gate alone; the display layer had a defect class that shipped unseen for want of UI-behaviour coverage, and three hand-driving sweeps (2026-08-25, 09-07, 09-08) closed the known ones — detail in the area doc and defect 42. **The pattern is worth the row:** every one came from driving the app, none from reading it *(confirmed — area doc, defect 42)*. The preview now renders thread as a lit cylinder at physical width; its lighting is eye-tuned, not sew-verified. The customer can crop to the logo before the run, on a proposed rectangle *(2026-09-28)* |
 | 4. Export formats | Implemented | Varies by format — see below |
 | 5. Stitch-out review & manual editing tools | Implemented — Kent's direct-manipulation request is **complete** (2026-08-13) | High. Every surviving requirement of the 2026-08-12 request ships: outlines+nodes on the canvas, the pulse cue, select-then-edit, node drag, line drag, add node, delete. Requirement 5 (whole-shape drag) was withdrawn by Kent. Geometry is unit-tested and every interaction was driven in a real browser against a live service. Manual draw mode now traces over the uploaded artwork, and right-click places a curved node |
 
@@ -349,6 +358,23 @@ about the facts.
 17. **RESOLVED 2026-09-17 (Kent) — clearing a stale BORDER recovers on ONE click**, a stale BOUNDARY on two. Kept: "Clear them" is an explicit click, so nothing is dropped behind the user's back — what "recovery is explicit" protects. Do NOT gate recovery out of the fast lane to tidy this. *(`e2e/digitize-stale-edits.spec.js`)*
 
 18. **OPEN: a COLD photo digitize is ~90 s and `fill_travel_under_cover` is ~58% of it.** The 2026-09-17 memo fixed the RE-stitch (79.3 → 44.6 s); the first digitize still pays the flag in full. Three ways out, all Kent's: flip it off (costs stitches, re-exposes the travel it hides), optimise `_reorder_for_cover` (golden-pinned — a win must be byte-identical), or accept it. **Do not re-derive the numbers** — method, noise floor, per-flag table and three INERT flags are in the doc. *(measured 2026-09-17 — `docs/flag-runtime-bills-2026-09-12.md`)*
+
+19. **Three built-OFF satin flags are waiting on a call.** `satin_cap_recentre`
+   (the surviving cap fork — Latent 5, built 2026-09-22) and
+   `satin_patch_junctions = "satin"` (the other construction for BECKER's C
+   bowl, which under `satin_rail_comp` sews as the cover's fill by design —
+   recorded 2026-09-29, not decided) are flip calls. `satin_walk_cursor_reach_mm`
+   is not: Kent parked it for cloth 2026-09-20, and the 09-29 walk fix left
+   eight of MARINE's refusals on that side. *(2026-09-29 — area 1)*
+
+20. **Paired ground truth costs money or it does not exist.** No free source
+   ships artwork PLUS a professional's stitch file of the same design, and the
+   licence chain fails even where a licence exists. The free route's ceiling
+   was taken: cutting the artwork panel out of vendors' two-panel previews grew
+   the corpus **5 artwork fixtures over 5 clients → 11 over 8**, at zero cost.
+   Anything past it is the ~$400 the organic review proposed spending on
+   commercial digitizers — Kent's. *(measured 2026-09-28 —
+   [`docs/paired-ground-truth-sourcing-2026-09-28.md`](docs/paired-ground-truth-sourcing-2026-09-28.md))*
 
 16. **Manual mode does not reproduce auto's sew order once a tiny region exists
    in an early layer.** Auto orders blocks by PALETTE LAYER, manual by AREA.
@@ -519,7 +545,12 @@ Covers both implementations as one capability: the browser JS engine (complete
 but frozen — retired in favour of "feed it clean flat art", not because it is
 broken) and the Python pipeline, the active target. Stages 1–7, fill + satin,
 the service, preflight and the review UI are built. SAM2 is merged and reachable
-via the `embstudio:sam2` dev seam, still `photo_segment_sam2=False`.
+via the `embstudio:sam2` dev seam, still `photo_segment_sam2=False` — and
+**REFUTED as a region former for LOGO art**: 0–8 masks at the shipped
+`points_per_side=12` against the shipped former's 17–164, either finding
+essentially nothing or segmenting the BACKGROUND as the object, at
+`predicted_iou` 0.88–0.99 throughout. *(measured 2026-09-22 —
+[`docs/sam2-on-logo-art-2026-09-22.md`](docs/sam2-on-logo-art-2026-09-22.md))*
 **Tonal work has a shape now (2026-08-25).** Filled beats thread-paint on
 high-contrast subjects and loses badly on faces; the satin-border rule, the
 GeometryCollection crash, the per-ring abruptness gate and `cfg.is_photographic`
@@ -533,7 +564,7 @@ threshold shipped is defended only by an owl. *(measured 2026-08-25 — PRs
 shapes the design already sews. `tools/dropped_elements.py` measures it from the
 artwork's side — 99.1% lost on the logo Kent called "5% completed at most".
 **Both halves of the smoothness complaint now have instruments, and they are not the same measurement** (Spearman 0.028). `tools/edge_smoothness.py` owns edge noise; `tools/curve_fidelity.py` owns the curve half, read from `plan.iter_runs()` because **curve fidelity is not readable from a raster**. Read **`roughness_deg`** per design; `turn_gini` is substantially a COMPLEXITY statistic (Pearson −0.763 vs log trace count), valid only on the ladder or a paired arm; the floor is **stitch length**. *(measured 2026-08-27/28 — PR #281; `docs/curve-fidelity-from-the-stitch-path-2026-08-27.md`)*
-**Wobble attributed (2026-09-19): SATIN RAILS, not the outline** — `tools/edge_wobble.py`: satin std 0.09–0.11 mm on real logos, 0.038 synthetic; outline 0.011. Cause undiagnosed. *(measured 2026-09-19 — DOCTRINE; scope/1)*
+**Wobble attributed (2026-09-19): SATIN RAILS, not the outline** — `tools/edge_wobble.py`: satin std 0.09–0.11 mm on real logos, 0.038 synthetic; outline 0.011. **Cause DIAGNOSED 2026-09-21, and it is the rail MODEL rather than a step inside it:** the rail sits where a width-profile ray puts it, and that ray cannot tell "the shape is wider here" from "the ray escaped into the next arm"; the offset is settled and OUTWARD (+0.24 to +0.25 mm), the width-filter hypothesis is refuted, and the ablation found no mechanism to switch off. Closing it means placing satin rails on boundary geometry the way `line` (std 0.000) and `fill` (0.010) already are — a large build in the most caveated file in the repo, and **not one to start before the sew-out**: nothing ties 0.089 mm to Kent's eye on cloth, and closing it does not move `lost_frac` on ENTHUSIAST. *(measured 2026-09-21 — [`docs/rail-wobble-cause-2026-09-21.md`](docs/rail-wobble-cause-2026-09-21.md))*
 **Two engine defects open, unfixed:** `summit_badge`'s half-removed background, and `stage1_prep.py:254-266` answering a structural question (`BACKGROUND_ABSENT`) through a colour threshold (`bg_tolerance_lab`). *(measured 2026-08-27 — `docs/kent-review-2026-08-27.md`; memory `kent-eye-vs-instruments-2026-08-27`. PR #276's body claims the engine is correct on `summit_badge` — that sentence is wrong, its instrument fix stands.)* **Satin extremity drop — FIXED 2026-08-21.** `_prune_spurs` re-measured a stem its OWN first pass had un-branched, one raster pixel deciding a 3.3 mm tab. **The blind spot that hid it stays fixed:** `preflight`'s `ARTWORK_UNCOVERED`, 5.0 mm² threshold still provisional. *(fixed 2026-08-21 — PR #186)* **Lettering quality — the STITCH-ANGLE mechanism is FIXED 2026-08-27. Three others remain open.** Kent on two sewn logos: *"lettering should be smooth"*, *"ROOKIE MISTAKE"*, and *"Why is the 'N' running Vertically?"*
 
 **Fixed: a word's letters now share one house angle.** `stage6_satin` grew
@@ -610,6 +641,25 @@ derives — Kent's ruling left needle and tension off. *(2026-09-20 — DOCTRINE
 **What holds it at Medium:** fabric-preset accuracy is gated on the controlled
 sew-out CARD, which has not been sewn — the one physical out so far (2026-09-01)
 was a single uncontrolled icon. See Cross-cutting issues.
+
+**The customer crops to the logo, and the crop travels as COORDINATES.** A
+phone screenshot sewed its own chrome — 47 regions and 1,810 stitches, 24.9% of
+`screenshot_phone_ui_golke` at 80 mm — and under that, the art bbox spanned
+status bar to home indicator, so a target of 80 mm mapped to the SCREEN and the
+design came out **80 × 167.3 mm**. The panel now proposes a rectangle on upload
+(`lib/cropProposal.js` — the dominant ink cluster alone when it holds at least
+`DOMINANT_SHARE_MIN` **0.75** of the ink, else the bbox of every cluster;
+**Kent's ruling 2026-09-28** off a 31-image measurement putting the
+screenshot's logo at 0.846 and every genuine multi-part design at ≤ 0.600),
+shows it as a draggable box, and sends four normalized fractions.
+`PipelineConfig.crop` applies them in BOTH decode paths — stage 0 owns its own
+decode, and a crop in only one would have it classify the chrome the crop
+exists to remove. **The file's own bytes still go**; a browser re-encode is
+what 2026-09-20 paid to remove. No crop and a full-frame crop are both
+byte-identical to the pre-crop engine, and a proposal is never applied
+silently. *(confirmed 2026-09-29 — `digitizer_core/crop.py`,
+`app/src/ui/CropBox.svelte`; spec
+[`2026-09-22-upload-crop-design.md`](docs/superpowers/specs/2026-09-22-upload-crop-design.md))*
 
 **The two engines' fabric and machine tables are wire-tested to agree**
 (`test_fabric_wire.py`, `test_machine_wire.py`) — [area doc](docs/scope/3-studio-app-wizard.md).

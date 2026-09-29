@@ -1190,6 +1190,28 @@ Moved verbatim 2026-08-28 — no section was rewritten in the move.
 
 ---
 
+## SAM2 does not see a logo as a scene of objects — refuted on all nine real logos (2026-09-22)
+
+Kent: *"I would think SAM 2 would have the ability to do much better than
+what it is now."* Measured on every `REAL_ART` logo, both lanes. SAM2's
+automatic mask generator returns **0-8 masks at the shipped
+`points_per_side=12`** and 4-25 at `32`, against a shipped region former that
+produces **17-164**, and it fails in two visible ways: it finds essentially
+nothing (`drone` 0.6% of pixels covered, `screenshot` **0.0%** -- zero masks,
+`fremont` 0.9%, `enthusiast` 3.8%) or it segments the BACKGROUND as the object
+(`tires` 90.6%, `golden_tee` 88.8%, `bridge` 96.5%). **Neither is a confidence
+problem** -- `predicted_iou` sits at 0.88-0.99 throughout, so SAM2 is sure.
+Going 12 -> 32 costs **5x runtime** (23-28 s -> 114-135 s per image, CPU) and
+does not change the verdict. `digitizer_core/pipeline.py`'s own exclusion
+comment predicted this.
+
+**The trap worth carrying: the coverage number alone reads like success.** A
+backdrop rectangle scores 96.5% and a correct segmentation of a small logo
+scores 3.8%; only RENDERING separates them. Do not rank a segmenter by covered
+area. Full measurement, and the three defects the renders exposed on the way
+past: [`docs/sam2-on-logo-art-2026-09-22.md`](docs/sam2-on-logo-art-2026-09-22.md).
+
+
 ## Corrections — suspicions this document itself raised, then disproved
 
 - **A grade quoted without its ARM and its YARDSTICK is not a measurement —
@@ -1523,6 +1545,31 @@ its hedge as it is copied forward** — is why this file is split.
   root cause of the short columns, and it is scale-invariant)*
 
 ---
+
+## The parity corpus is a REGISTRY IN CODE, not a directory — and "n=1" was read off a directory listing (2026-09-28)
+
+`docs/organic-review-2026-09-22.md` published the quality program's ground
+truth as *"n=1 -- one client, Becker"*, on the strength of a listing of
+`digitizer/testdata/reference/`. **Wrong, and the method was the error.**
+`blockcensus.py`'s `FIXTURES` already paired FIVE genuine artwork files with
+five different clients (Becker Marine, script TIRES, Hotel Fremont, Golden
+Tee, Precision Drone), and already tagged the four Becker previews
+`pro-derived-render`, skipped by default and never aggregated -- the
+circularity risk that review presented as a discovery was documented in that
+module's own docstring and enforced in code. Its §3.2 arithmetic was wrong
+too. **Count the registry, not the folder.**
+
+The corpus is **11 artwork fixtures over 8 clients** since 2026-09-28, at zero
+cost: most vendors ship a two-panel preview (the customer's artwork beside a
+simulation of the vendor's stitches), and the artwork panel is a legitimate
+pipeline input because, unlike the simulation, it is not derived from the
+pro's answer. **The panel choice is a hand-set manifest on purpose** -- both
+candidate statistics fail, and flatness scores the Becker PREVIEW (1.51) above
+a genuine artwork file (1.84), so a heuristic would have fed a stitch
+simulation to the pipeline as artwork silently, worth +11.3 points of
+flattery. Anything unlisted raises `NotInManifest`.
+*(`tools/pro_parity/preview_split.py`)*
+
 
 ## Gotchas — cost someone a session once
 

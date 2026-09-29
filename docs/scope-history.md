@@ -15598,3 +15598,12 @@ shift, the cross count does not. Nothing on the table moves the bowl.
 *(measured 2026-09-29 — the corpus table above; `tools/rail_edge.bare_area`;
 `docs/renders/rail-comp-junctions-2026-09-29/README.md`;
 `tests/test_rail_comp.py::test_the_flip_costs_trims_on_the_lettering_fixture_and_says_so`)*
+
+## Defect 44's full text, moved out of MASTER_SCOPE 2026-09-29
+
+Moved to bring `MASTER_SCOPE.md` back under its 27,000-word budget after
+the 2026-09-29 pass. The defect is FIXED, so its verdict is a one-liner in
+the Closed list and this is the mechanism detail that no longer needed to
+sit in the dashboard. It is a snapshot: read the code before acting on it.
+
+44. **Satin borders sat 1.9 mm INSIDE every abutting colour — FIXED 2026-09-09 (Kent's ruling: the colour sewn on top owns a shared seam).** `_yield_frontage` (2026-08-06) had the LATER shape retreat its whole circuit column + margin off any seam an earlier border already held; on a flat logo every colour abuts, so on the Instagram icon (`border="auto"`, 80 mm, flat) **14 of 17** bordered shapes sewed a satin stripe a median 1.4–1.9 mm inside their own fill and one lost its border outright — its own test pinned the inset as wanted, and nobody saw it for a month because the Studio could not reach `cfg.border` until #318. Now `stage7_sequence._owned_by_later` hands each seam to the bordered shape still to sew over it and `stage6_border.border_runs(omit=…)` sews the shape underneath as open arcs on the rest of its edge: every bordered shape has half its penetrations ON its visible edge (p10 0.00 mm), 33,292 → **30,420** st, trims 34 → 30, and `BORDER_SEAM_SHARED` is a note naming the pairs. Found under it: two abutting visible edges are NOT one curve (each side is its own DP contour of the same pixel boundary; p90 0.09–0.43 mm apart), so the seam tolerance is `2 × simplify_tol_mm`, not 0.02 mm — the hair-width found half of every seam and sewed 28 stubs of 1.6–2.4 mm on one ring. A fully enclosed EARLY shape now gets no border of its own (the ring over it borders that seam) — by the rule; a sew-out judges the look. Prediction blind spots (a fill whose rows all degenerate, a `photo_width_floor` reroute, a gradient shape riding the design ramp) leave one seam unbordered or doubled, never a stripe. *(measured 2026-09-09 — `tests/test_border.py` seam section, 32 passing; DOCTRINE standing ruling; memory `border-seam-ownership-2026-09-09`)*
