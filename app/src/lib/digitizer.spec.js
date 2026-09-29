@@ -56,7 +56,7 @@ const PIPELINE_CONFIG_FIELDS = [
   "underlay_style", "underlay", "satin", "satin_max_width_mm", "border",
   "border_width_mm", "deleted_shape_ids", "shape_overrides",
   "merge_shape_ids", "split_shapes", "photo_segment_sam2", "detail_layer",
-  "forced_class", "edge_cap", "is_photographic", "garment_rgb",
+  "forced_class", "edge_cap", "is_photographic", "garment_rgb", "crop",
 ];
 
 test("buildDigitizeConfig sends the stored thread-brand preference and the project garment, in service field names", async () => {
@@ -1907,6 +1907,7 @@ describe("crop in the digitize config", () => {
     const { buildDigitizeConfig } = await import("./digitizer.js");
     const cfg = buildDigitizeConfig({ crop: { x0: 0.1, y0: 0.2, x1: 0.9, y1: 0.8 } }, {});
     expect(cfg.crop).toEqual([0.1, 0.2, 0.9, 0.8]);
+    for (const k of Object.keys(cfg)) expect(PIPELINE_CONFIG_FIELDS).toContain(k);
   });
 
   it("omits crop entirely when the element has none", async () => {
