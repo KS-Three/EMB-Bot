@@ -15714,3 +15714,44 @@ No engine change — the apex is an open defect (MASTER_SCOPE 49), not fixed her
 *(measured 2026-09-29 — `tools/bare_anatomy.py`; the tables above;
 `docs/renders/rail-comp-bare-anatomy-2026-09-29/README.md`;
 DOCTRINE 2026-09-29, two entries)*
+
+## 2026-09-29 (addendum) — the same anatomy over the corpus: rail comp IMPROVES coverage on six of nine
+
+The entry above answers ENTHUSIAST and golden_tee. Run over all nine distinct
+`REAL_ART` logos at their own census widths, `tools/bare_anatomy.py --corpus`
+says the flip's coverage effect is **net positive**, which neither the
+2026-09-28 sitting nor the entry above could see from two fixtures.
+
+| fixture | bare OFF | bare ON | worst component OFF | worst component ON |
+|---|---|---|---|---|
+| becker 100 | 5.70% | **8.14%** | 11.99 mm² @0.59 end | **54.38 mm² @2.00 end** |
+| tires 80 | 3.63% | 4.07% | 1.37 mm² @0.29 end | **0.26 mm² @0.13 side** |
+| enthusiast 80 | 6.27% | 6.98% | 1.18 mm² @0.26 end | **3.61 mm² @0.71 end** |
+| fremont 92.5 | 11.52% | **3.53%** | 12.67 mm² @0.08 end | **0.93 mm² @0.28 end** |
+| bridge 80 | 7.66% | **4.96%** | 7.14 mm² @0.53 end | 9.44 mm² @0.57 end |
+| golden_tee 80 | 7.53% | **6.54%** | 3.03 mm² @0.15 end | **2.14 mm² @0.21 end** |
+| gaulke 80 | 7.43% | **6.88%** | 2.04 mm² @0.42 end | **0.47 mm² @0.17 side** |
+| drone 80 | 5.97% | **4.80%** | 1.10 mm² @0.10 end | 2.65 mm² @0.42 end |
+| screenshot 80 | 9.55% | **9.36%** | 2.24 mm² @0.54 end | **1.94 mm² @0.44 end** |
+
+**Six of nine improve on the total, and six of nine improve on the worst
+component.** Two of the three that lose on the total are already explained:
+becker's 54.38 mm² is the C's bowl routed to FILL by the sewn-terms width
+check, which this instrument counts as bare by construction (DOCTRINE
+2026-09-29), and `tires` loses 0.44 points while its worst gap falls from a
+1.37 mm² hole to a 0.26 mm² hairline — the hairline trade of the entry above,
+in its purest form. Only ENTHUSIAST loses on both.
+
+**The apex class is real but not universal: three fixtures of nine** grow a
+new end gap materially past OFF's worst — enthusiast (1.18 → 3.61), drone
+(1.10 → 2.65) and bridge (7.14 → 9.44, plus a new 5.15 mm² @1.00 mm on a
+second shape). That is the population MASTER_SCOPE defect 49 covers, and it
+is the scope of any fix: a targeted repair at tapered free ends, not a
+rethink of the rail model.
+
+**Read this table before quoting the flip's coverage cost.** The 2026-09-28
+record priced it on ENTHUSIAST alone, which is the worst of the nine on this
+instrument and the only one that loses on both measures; quoting 6.27 → 7.10%
+as "what rail comp costs coverage" generalises the outlier.
+
+*(measured 2026-09-29 — `tools/bare_anatomy.py --corpus`, the table above)*
