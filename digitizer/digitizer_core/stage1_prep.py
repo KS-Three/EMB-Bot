@@ -391,10 +391,13 @@ def prep(image: str | Path | bytes | np.ndarray, cfg: PipelineConfig) -> Prep:
     if not fg.any():
         if cfg.crop is not None:
             # The customer dragged the crop box onto empty background. The
-            # uncropped message maps (errors._KNOWN) to advice ending "or crop
-            # tighter", which is backwards here: widen the box. A crop is the
-            # caller's own input, so this stays OUT of `_KNOWN` and reaches the
-            # panel as written, like a bad boundary_override does.
+            # uncropped message says to drag the crop tighter, which is
+            # backwards here: widen the box. The Studio's own crop box produces
+            # this and a customer reads it, so the substring "crop rectangle
+            # contains no artwork" IS a key in errors._KNOWN (customer
+            # sentence, no "ValueError:" prefix). Keep this raise text as is.
+            # Malformed crops from API callers (NaN, arity, inverted rect)
+            # stay out of _KNOWN and reach the caller as written.
             raise ValueError(
                 "the crop rectangle contains no artwork — widen it, or use "
                 "the whole image")

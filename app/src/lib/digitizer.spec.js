@@ -2097,7 +2097,7 @@ test("the machine-cannot-run-it seams say what it costs the design, not what is 
     expect(line.text).not.toContain("/opt/");
     expect(line.text).not.toContain("venv");
   }
-  expect(out[0].text).toContain("Removing or cropping the background yourself");
+  expect(out[0].text).toContain("Removing the background yourself, or dragging the crop box tight around the subject, gives a noticeably cleaner result.");
   expect(out[1].text).toContain("Check faces closely in the preview");
 });
 
@@ -2154,8 +2154,12 @@ test("no translated warning speaks engine, and this is the tripwire that keeps i
     expect(line.text, `${line.code} fell through to the engine message`)
       .not.toContain("ENGINE PROSE");
     for (const word of ENGINE_SPEAK) {
-      expect(line.text.toLowerCase(), `${line.code} says "${word}"`)
-        .not.toContain(word);
+      // A 3-letter token ("rag", "cv2") is matched as a WHOLE word: as a bare
+      // substring "rag" fires inside "dragging" (the crop-box copy, 2026-09-28).
+      const hit = word.length <= 3
+        ? new RegExp(`\\b${word}\\b`).test(line.text.toLowerCase())
+        : line.text.toLowerCase().includes(word);
+      expect(hit, `${line.code} says "${word}"`).toBe(false);
     }
   }
 });

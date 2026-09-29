@@ -10,6 +10,7 @@
     SILENT_WARNINGS,
     ATTENTION_WARNINGS,
     canonicalShapeEdits,
+    countReviewEdits,
     editsKey,
     reviewFromJob,
     reconcileReview,
@@ -158,6 +159,60 @@
       fileBusy = false;
     }
   }
+
+  // ---- crop vs review edits ---------------------------------------------------
+
+  // Review edits are keyed by shape ids that hash the design-space centroid, so
+  // a crop that moves the artwork re-hashes every id and the edits silently stop
+  // applying (SHAPE_EDIT_UNKNOWN_ID). So a crop change on an element that HAS
+  // edits asks first. "Crop anyway" is ONE patch -- the crop and the cleared
+  // edit fields together -- so it is one undo step and nothing is orphaned.
+  // "Keep my edits" emits nothing: CropBox draws from the `crop` prop, so the
+  // box is already back on the old rectangle. Same fields onFile resets;
+  // `appliedEdits` is left alone on purpose (it describes the CURRENT result,
+  // which still carries the edits, so the panel correctly reads "pending").
+  $: reviewEditCount = countReviewEdits(element);
+  let pendingCrop = null;
+  let cropDialogEl;
+  let cropOpener = null;
+
+  function onCropChange(c) {
+    if (reviewEditCount === 0) {
+      patch({ crop: c });
+      return;
+    }
+    cropOpener = typeof document !== "undefined" ? document.activeElement : null;
+    pendingCrop = c;
+  }
+
+  function closeCropDialog() {
+    pendingCrop = null;
+    if (cropOpener && cropOpener.focus) cropOpener.focus();
+    cropOpener = null;
+  }
+
+  function cropAnyway() {
+    const c = pendingCrop;
+    closeCropDialog();
+    if (c) patch({ crop: c, shapeOverrides: {}, deletedShapeIds: [], mergeGroups: [], splitLines: {} });
+  }
+
+  function onCropDialogKeydown(e) {
+    if (e.key === "Escape") { closeCropDialog(); return; }
+    if (e.key !== "Tab" || !cropDialogEl) return;
+    const els = Array.from(cropDialogEl.querySelectorAll("button:not([disabled])"));
+    if (!els.length) return;
+    const first = els[0], last = els[els.length - 1];
+    if (e.shiftKey) {
+      if (document.activeElement === first || !cropDialogEl.contains(document.activeElement)) {
+        e.preventDefault(); last.focus();
+      }
+    } else if (document.activeElement === last || !cropDialogEl.contains(document.activeElement)) {
+      e.preventDefault(); first.focus();
+    }
+  }
+
+  $: if (cropDialogEl) cropDialogEl.focus();
 
   // ---- digitize -------------------------------------------------------------
 
@@ -1765,11 +1820,38 @@
       <CropBox
         src={"data:image/png;base64," + element.sourcePng}
         crop={element.crop}
-        onchange={(c) => patch({ crop: c })}
+        onchange={onCropChange}
         minFrac={cropMinFrac}
       />
       <span class="dgp-srcname">{element.name || "Artwork"}</span>
     </div>
+    {#if pendingCrop}
+      <div
+        class="cg-backdrop"
+        role="presentation"
+        on:click={(e) => { if (e.target === e.currentTarget) closeCropDialog(); }}
+      >
+        <div
+          class="cg-panel"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="cg-title"
+          tabindex="-1"
+          bind:this={cropDialogEl}
+          on:keydown={onCropDialogKeydown}
+        >
+          <h3 id="cg-title">Re-cropping resets your edits</h3>
+          <p class="cg-body">
+            You've made {reviewEditCount} {reviewEditCount === 1 ? "edit" : "edits"} to this design's
+            shapes. Changing the crop re-traces the artwork, so those edits will be cleared.
+          </p>
+          <div class="cg-btns">
+            <button type="button" class="primary" on:click={closeCropDialog}>Keep my edits</button>
+            <button type="button" on:click={cropAnyway}>Crop anyway</button>
+          </div>
+        </div>
+      </div>
+    {/if}
 
     {#if !health}
       <div class="dgp-offline">
@@ -2770,6 +2852,27 @@
   }
   .dgp-src { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; margin-top: 10px; }
   .dgp-srcname { font-size: var(--fs-xs, 12px); color: var(--muted, #667); word-break: break-all; }
+  /* Crop-vs-edits confirm; tokens mirror DownloadStep's hg-backdrop/hg-panel. */
+  .cg-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--overlay);
+    padding: var(--space-5);
+  }
+  .cg-panel {
+    width: min(440px, 100%);
+    background: var(--surface);
+    border-radius: var(--radius-l);
+    box-shadow: var(--shadow-2);
+    padding: var(--space-5);
+  }
+  .cg-panel h3 { margin: 0 0 var(--space-3); }
+  .cg-body { margin: 0 0 var(--space-4); line-height: 1.5; }
+  .cg-btns { display: flex; gap: var(--space-3); flex-wrap: wrap; }
   .dgp-offline {
     margin-top: 10px;
     padding: 8px 10px;

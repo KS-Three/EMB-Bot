@@ -360,6 +360,22 @@ export function canonicalShapeEdits(element) {
   return out;
 }
 
+// How many review edits an element carries, for the "re-cropping resets your
+// edits" prompt. Counted off `canonicalShapeEdits`, so it is exactly what the
+// service would receive: a shape both recoloured and deleted counts once (the
+// override is dropped), a no-op override entry counts zero, and an edit that
+// was toggled back off is not there. One unit per hidden shape, per overridden
+// shape (however many fields it changed), per merge group and per split line.
+export function countReviewEdits(element) {
+  const e = canonicalShapeEdits(element || {});
+  return (
+    (e.deleted_shape_ids ? e.deleted_shape_ids.length : 0) +
+    (e.shape_overrides ? Object.keys(e.shape_overrides).length : 0) +
+    (e.merge_shape_ids ? e.merge_shape_ids.length : 0) +
+    (e.split_shapes ? Object.keys(e.split_shapes).length : 0)
+  );
+}
+
 function isValidSplitLine(line) {
   if (!Array.isArray(line) || line.length !== 2) return false;
   if (!line.every((p) => Array.isArray(p) && p.length === 2 && p.every((c) => typeof c === "number" && Number.isFinite(c)))) {
@@ -1656,7 +1672,7 @@ const WARNING_TEXT = {
   // verbatim; the engine now keeps that in the `reason` payload (MASTER_SCOPE
   // defect 29). What the customer needs is the effect on THEIR design.
   PHOTO_BACKGROUND_REMOVAL_UNAVAILABLE: () =>
-    "Automatic background removal isn't set up on this machine, so this photo was digitized without it — and the tone and texture passes were skipped with it. Removing or cropping the background yourself before uploading gives a noticeably cleaner result.",
+    "Automatic background removal isn't set up on this machine, so this photo was digitized without it — and the tone and texture passes were skipped with it. Removing the background yourself, or dragging the crop box tight around the subject, gives a noticeably cleaner result.",
   PHOTO_FACE_PRIORS_UNAVAILABLE: () =>
     "Face detection isn't set up on this machine, so faces in this photo get no special protection. Check faces closely in the preview before stitching.",
 };

@@ -42,7 +42,7 @@ def test_the_one_a_real_upload_hits_says_what_to_do():
     msg = customer_message(
         ValueError("no foreground pixels — the whole image reads as background"))
     assert "nothing to stitch" in msg
-    assert "crop tighter" in msg
+    assert "drag the crop box tighter around the logo" in msg
 
 
 def test_a_bad_file_gets_the_same_answer_the_upload_gate_gives():

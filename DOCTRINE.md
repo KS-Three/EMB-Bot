@@ -751,6 +751,18 @@ Moved verbatim 2026-08-28 — no section was rewritten in the move.
   stubs. *(ruled 2026-09-09 — `tests/test_border.py` seam section; memory
   `border-seam-ownership-2026-09-09`)*
 
+- **A crop may flip the `alpha_edge_extend_upscaled_only` gate, and that is
+  ACCEPTED. Kent's ruling 2026-09-28.** Cropping into an alpha cutout lowers
+  px/mm at the target width, so it can flip `alpha_edge.upscale_expected` and
+  with it whether the alpha-edge extension runs. Measured, not feared: a
+  synthetic cutout flips False to True between 4.00 and 3.00 px/mm at a small
+  mixed-sign cost, and Becker at 25 mm (real art straddling the floor) sews
+  identically with the extension on and off on every crop row. The gate reads
+  the CROPPED art, which is the art actually sewn, so the flip is the gate
+  telling the truth. **Do not pin the gate to the pre-crop px/mm** to make it
+  stable across a crop drag; that would decide on pixels that are no longer in
+  the design. *(ruled 2026-09-28 — `docs/crop-floor-coupling-2026-09-22.md`)*
+
 ---
 
 ## Measured negatives — built or proposed, then rejected. Do not rebuild.

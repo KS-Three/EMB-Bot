@@ -49,10 +49,19 @@ from __future__ import annotations
 # caused by the ARTWORK belong here — see the module docstring on why a
 # caller's own bad edit must keep its own message.
 _KNOWN: tuple[tuple[str, str], ...] = (
+    # Most specific first. The Studio's own crop box can produce this one and
+    # a customer reads it, so it is in even though crop errors otherwise stay
+    # out: a crop is the caller's own input, and malformed ones from API
+    # callers (NaN, arity, inverted rect) keep their own message. The engine's
+    # raise text (stage1_prep) is unchanged -- the substring is the key.
+    ("crop rectangle contains no artwork",
+     "Your crop box doesn't contain any artwork. Drag it wider, or click "
+     "'Use whole image'."),
     ("no foreground pixels",
      "The whole image read as background, so there was nothing to stitch. "
      "This usually means the art blends into its backdrop — try a version "
-     "with the subject on a clearly different colour, or crop tighter."),
+     "with the subject on a clearly different colour, or drag the crop box "
+     "tighter around the logo."),
     ("could not decode image",
      "That file isn't an image the engine can read. PNG, JPEG, WebP and TIFF "
      "all work; PDF and SVG don't."),

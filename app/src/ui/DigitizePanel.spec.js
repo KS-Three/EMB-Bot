@@ -1536,3 +1536,104 @@ describe("the upload stores the file and a digitize sends it", () => {
     expect(await findByTestId("source-note")).toHaveTextContent(/original file is no longer stored/);
   });
 });
+
+// ---- a crop change that would orphan review edits asks first (2026-09-28) ----
+describe("a crop change on an element with review edits asks before committing", () => {
+  const OLD = { x0: 0.2, y0: 0.2, x1: 0.8, y1: 0.8 };
+  function ptr(type, x, y) {
+    const e = new Event(type, { bubbles: true, cancelable: true });
+    e.clientX = x; e.clientY = y;
+    return e;
+  }
+  function pngB64(width, height) {
+    const b = new Uint8Array(24);
+    b.set([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 13, 0x49, 0x48, 0x44, 0x52], 0);
+    new DataView(b.buffer).setUint32(16, width);
+    new DataView(b.buffer).setUint32(20, height);
+    return Buffer.from(b).toString("base64");
+  }
+  afterEach(() => vi.restoreAllMocks());
+
+  function setup(extra) {
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue({
+      left: 0, top: 0, right: 200, bottom: 100, width: 200, height: 100, x: 0, y: 0,
+    });
+    const patches = [];
+    const utils = render(Harness, {
+      props: {
+        element: baseElement([], { sourcePng: pngB64(1200, 1200), crop: OLD, ...extra }),
+        onPatch: (d) => patches.push(d.patch),
+      },
+    });
+    return { ...utils, patches };
+  }
+  // Right edge 0.8 -> 0.5.
+  function dragRightEdge(getByRole) {
+    getByRole("button", { name: "Drag right edge" }).dispatchEvent(ptr("pointerdown", 160, 50));
+    window.dispatchEvent(ptr("pointermove", 100, 50));
+    window.dispatchEvent(ptr("pointerup", 100, 50));
+  }
+  const EDITS = {
+    shapeOverrides: { a: { thread_index: 3 }, b: { tier: "fill" } },
+    deletedShapeIds: ["c"],
+    mergeGroups: [["d", "e"]],
+    splitLines: { f: [[0, 0], [1, 1]] },
+  };
+
+  test("no edits: the crop commits silently, no dialog", () => {
+    const { getByRole, queryByRole, patches } = setup();
+    dragRightEdge(getByRole);
+    expect(queryByRole("dialog")).toBeNull();
+    expect(patches.filter((p) => "crop" in p)).toHaveLength(1);
+    expect(patches[0].crop.x1).toBeCloseTo(0.5);
+  });
+
+  test("with edits: a dialog with the count appears and nothing is patched yet", async () => {
+    const { getByRole, findByRole, patches } = setup(EDITS);
+    dragRightEdge(getByRole);
+    const dlg = await findByRole("dialog");
+    expect(dlg).toHaveTextContent("Re-cropping resets your edits");
+    // 2 overrides + 1 deletion + 1 merge group + 1 split line
+    expect(dlg).toHaveTextContent("You've made 5 edits to this design's shapes.");
+    expect(dlg).toHaveTextContent("those edits will be cleared");
+    expect(patches).toHaveLength(0);
+  });
+
+  test("Crop anyway: ONE patch sets the crop and clears every edit field", async () => {
+    const { getByRole, findByRole, queryByRole, patches } = setup(EDITS);
+    dragRightEdge(getByRole);
+    await findByRole("dialog");
+    await fireEvent.click(getByRole("button", { name: "Crop anyway" }));
+    expect(patches).toHaveLength(1);
+    expect(patches[0].crop.x1).toBeCloseTo(0.5);
+    expect(patches[0].shapeOverrides).toEqual({});
+    expect(patches[0].deletedShapeIds).toEqual([]);
+    expect(patches[0].mergeGroups).toEqual([]);
+    expect(patches[0].splitLines).toEqual({});
+    await waitFor(() => expect(queryByRole("dialog")).toBeNull());
+  });
+
+  test("Keep my edits: nothing patched, the box shows the old rectangle", async () => {
+    const { getByRole, findByRole, queryByRole, patches } = setup(EDITS);
+    dragRightEdge(getByRole);
+    await findByRole("dialog");
+    await fireEvent.click(getByRole("button", { name: "Keep my edits" }));
+    expect(patches).toHaveLength(0);
+    await waitFor(() => expect(queryByRole("dialog")).toBeNull());
+    const box = getByRole("group", { name: "Crop area" });
+    expect(box.style.left).toBe("20%");
+    expect(parseFloat(box.style.width)).toBeCloseTo(60);
+  });
+
+  test("Use whole image asks the same way", async () => {
+    const { getByRole, findByRole, patches } = setup({ deletedShapeIds: ["c"] });
+    await fireEvent.click(getByRole("button", { name: "Use whole image" }));
+    const dlg = await findByRole("dialog");
+    expect(dlg).toHaveTextContent("You've made 1 edit to this design's shapes.");
+    expect(patches).toHaveLength(0);
+    await fireEvent.click(getByRole("button", { name: "Crop anyway" }));
+    expect(patches).toHaveLength(1);
+    expect(patches[0].crop).toEqual({ x0: 0, y0: 0, x1: 1, y1: 1 });
+    expect(patches[0].deletedShapeIds).toEqual([]);
+  });
+});

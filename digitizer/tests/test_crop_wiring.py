@@ -87,9 +87,9 @@ def test_a_bad_crop_raises_out_of_prep():
 
 def test_a_crop_onto_blank_artwork_says_widen_not_crop_tighter():
     """The likeliest wrong drag: a box landing on empty background. The
-    uncropped message's advice -- "or crop tighter" -- is backwards there;
-    the fix is to widen the box. A crop is the caller's own input, so its
-    message stays out of `errors._KNOWN` and reaches the panel as written."""
+    uncropped message's advice -- crop tighter -- is backwards there; the fix
+    is to widen the box. The Studio's own crop box produces this, so it is in
+    `errors._KNOWN` with a customer sentence."""
     from digitizer_service.errors import customer_message
 
     blank = np.full((40, 40, 3), 255, np.uint8)
@@ -101,5 +101,7 @@ def test_a_crop_onto_blank_artwork_says_widen_not_crop_tighter():
         stage1_prep.prep(_banner_art(), PipelineConfig(
             target_width_mm=80.0, crop=(0.0, 0.8, 0.2, 1.0)))
     said = customer_message(exc.value)
-    assert "crop rectangle contains no artwork" in said
-    assert "crop tighter" not in said
+    assert said == ("Your crop box doesn't contain any artwork. Drag it wider, "
+                    "or click 'Use whole image'.")
+    assert "ValueError" not in said
+    assert "tighter" not in said

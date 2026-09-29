@@ -979,6 +979,35 @@ def test_an_inverted_crop_fails_the_job_naming_the_callers_own_rectangle(client)
     assert "crop is empty after clamping" in state["error"]
 
 
+def test_a_crop_onto_blank_artwork_fails_the_job_with_the_customer_sentence(client):
+    """The Studio's own crop box produces this; unlike a malformed rectangle it
+    IS in `errors._KNOWN`, so the panel gets a sentence with no
+    "ValueError:" prefix."""
+    import io
+    import numpy as np
+    from PIL import Image
+    buf = io.BytesIO()
+    Image.fromarray(np.full((60, 60, 3), 255, np.uint8)).save(buf, "PNG")
+    buf.seek(0)
+    r = client.post(
+        "/digitize", files={"image": ("blank.png", buf, "image/png")},
+        data={"config": json.dumps({
+            "target_width_mm": 80.0, "preflight": False,
+            "crop": [0.0, 0.0, 0.5, 0.5],
+        })},
+    )
+    assert r.status_code == 202
+    job_id = r.json()["job_id"]
+    for _ in range(600):
+        state = client.get(f"/jobs/{job_id}").json()
+        if state["state"] in ("done", "error"):
+            break
+        time.sleep(0.1)
+    assert state["state"] == "error"
+    assert state["error"] == ("Your crop box doesn't contain any artwork. "
+                              "Drag it wider, or click 'Use whole image'.")
+
+
 # A malformed crop's SHAPE is a 400 at submit, naming what is wanted -- not a
 # failed job carrying whatever Python said first ("cannot convert float NaN
 # to integer", "has no len()"). json.dumps writes NaN, and json.loads reads
