@@ -47,12 +47,18 @@ canvas in edit mode for this build.
   the engine's return object, a new component, a new selection model. No
   stitch, trim or colour block moves. The engine `node --test` suite and the
   Studio suite must be green with no golden touched.
-- **One outline convention, not two.** The service reports `outline_mm` in
-  design-centre-origin, y-down mm; `shapeOverlay.shapeOutlinesInFieldMm()`
-  maps that onto the field. The engine's new outlines use the SAME convention
-  so the field needs zero new transform code. A second convention here is
-  how the traced-outline-sits-off-the-artwork class of bug is born
-  (MASTER_SCOPE area 5, `traceFitRect`).
+- **The engine's outlines come out in the space its own stitches are in —
+  no fit, no second transform.** The digitized lane needs
+  `shapeOverlay.shapeOutlinesInFieldMm()`'s bbox→bbox fit because the
+  service's `outline_mm` goes through `buildImportedDesign` (rotate, re-centre,
+  scale, clamp) before it reaches the field. A manual or preset element does
+  not: `generate.js` hands `targetWidthMm` and the offsets straight to
+  `buildQualityDesign`, whose `T()` already produces field mm. So the engine
+  emits each outline through the same `T()` (unrounded), in **field mm, +y
+  up** — exactly what `bboxMmFromStitches` reads and `renderResult.toCanvas`
+  consumes — and the field draws it with one `toCanvas` call per point. A
+  fit here would be a second implementation of `T()` and the class of bug
+  `traceFitRect` exists to prevent (MASTER_SCOPE area 5).
 - **Existing restitch rules stay.** Auto-digitized edits from the popover
   write `shapeOverrides[sid]` through the identical `elupdate` patch the
   border menu sends, so `editKind`'s 0 ms border lane and 2 s everything-else
@@ -78,10 +84,12 @@ shapeOutlines: [
 ]
 ```
 
-- Coordinates: design-centre origin, **y-down**, mm — the service's
-  `outline_mm` convention. Derived from the same fit (`sc`, `cx`, `cy`,
-  `offsetXMm/YMm`) `T()` applies to stitches, so an outline lands exactly on
-  its own stitching.
+- Coordinates: **field mm, +y up, offsets applied** — the stitches' own
+  space, `T(q)` without the integer rounding, divided by
+  `units.DST_UNITS_PER_MM`. An outline therefore lands on its own stitching
+  to within 0.05 mm, and the field maps it with `renderResult.toCanvas`
+  alone (see §2). Elements on this lane carry no rotation (`rotatable()`
+  excludes them), so none is applied.
 - One entry per input shape, in input order, including shapes the engine
   later dropped as too small or degenerate — an entry the field cannot hit
   is harmless; a missing entry is a shape that cannot be selected. Dropped
@@ -112,10 +120,10 @@ selectedShape = null | { elementId, shapeId, lane: "digitized" | "manual" | "sha
   border menu already does. Hidden (`stitched: false`) and deleted shapes are
   not hittable. No hit → deselect and close the popover.
 - **Outlines for `manual` / `shape` elements** come from
-  `runtime[el.id].design.shapeOutlines` mapped through the existing
-  `shapeOutlinesInFieldMm` (same bbox/rotation path the digitized lane
-  uses). Drawn with the same cased-line style; the selected one highlighted;
-  respects the "Show shape outlines" toggle exactly as digitized outlines do.
+  `peById[el.id].design.shapeOutlines` (already field mm, §3) and go
+  straight through `renderResult.toCanvas`. Drawn with the same cased-line
+  style; the selected one highlighted; respects the "Show shape outlines"
+  toggle exactly as digitized outlines do.
 - **Node drag stays digitized-only** in this build. A `manual` selection
   draws the outline and highlight; there are no grab handles on it.
 - **Selection sync:** selecting a hand-drawn shape on the field dispatches
@@ -148,18 +156,20 @@ into it on open, Escape and any pointerdown outside close it (reuse
 
 | row | digitized | manual | preset shape |
 |---|---|---|---|
-| name (thread · area) | ✓ | ✓ | ✓ |
-| Colour — `ThreadPicker compact` | ✓ → `thread_index` + `rgb` | ✓ → `colorRgb` | ✓ → `colorRgb` |
-| Stitch type | Auto / Satin / Fill → `tier` | Fill / Satin → `stitchType` | Auto / Fill / Satin → `stitchType` |
-| Fill angle (blank = auto) | → `fill_angle_deg` | → `angleDeg` | → `angleDeg` |
+| name (thread · area) | ✓ | ✓ (`Shape N · Fill/Satin`) | ✓ (kind) |
+| Colour — `ThreadPicker compact` | ✓ → `thread_index` + `rgb` (nearest cone in the job's chart, as `DigitizePanel.recolorShape`) | ✓ → `colorRgb` | ✓ → `colorRgb` |
+| Stitch type | the Layers row's own ten-entry list (Auto / Satin / Fill / Run / Sketch / Streamline / Cross-hatch / Wave / Chevron / Brick) → `tier` | Fill / Satin → `stitchType` | — |
+| Fill angle | the Layers row's `SHAPE_ANGLES` list → `fill_angle_deg` (shown when the effective tier is fill) | number, blank = auto → `angleDeg` | — |
 | Underlay style (shown when fill) | ✓ → `underlay_style` | — | — |
-| Border | Off / Auto / Bean / Use design setting → `border` | — | — |
-| Edit points | toggles the field's existing node mode | selects the shape in `ManualPanel` and enters its edit mode (scrolls the side canvas into view if clipped) | — |
-| Delete | → `deletedShapeIds` | → removes from `shapes` | → removes from `shapes` |
+| Border | Design setting / No border / Auto border / Bean border → `border` | — | — |
+| Edit points | closes the popover with the shape selected — the field's node mode is already armed by selection | selects the shape in `ManualPanel` and enters its edit mode (scrolls the side canvas into view if clipped) | — |
+| Delete | → `deletedShapeIds` | → removes from `shapes` | — (a preset element IS one shape; the element chip's own remove control already does this) |
 
-Everything a row writes is a field that already exists and is already
-tested end to end; the popover adds no new keys to `shapeOverrides`, to the
-manual shape record, or to the `.embproj` schema.
+A preset element persists only `kind`, `params`, `colorRgb` — `generate.js`
+hardcodes `stitchType: "auto"` and `angleDeg: null` for it — so its popover is
+name and colour, nothing more. Everything a row writes is a field that already
+exists and is already tested end to end; the popover adds no new keys to
+`shapeOverrides`, to the manual shape record, or to the `.embproj` schema.
 
 **Side panels stay.** The Digitize panel's Layers rows and `ManualPanel`'s
 assign box are not removed in this build — drawing still happens on the side
