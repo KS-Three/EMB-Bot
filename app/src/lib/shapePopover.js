@@ -191,17 +191,26 @@ export function popoverPatch({ element, shapeId }, key, value) {
 
 // Recolour on the digitized lane: the engine wants an index into the job's
 // thread chart, not an rgb — DigitizePanel.recolorShape's nearest-in-brand
-// lookup, reproduced. `deps` is for tests; the app passes nothing.
+// lookup, reproduced. `deps` is for tests; the app passes nothing. `element`
+// may be a getter so the patch is built against the element as it is when the
+// chart has loaded, not as it was when the click happened — the caller
+// (EmbroideryField) passes `() => selectedElement()`.
 export async function recolorPatch({ element, shapeId }, rgb, deps = {}) {
   const load = deps.loadPalette || loadPalette;
   const nearest = deps.nearestInList || nearestInList;
-  const brand = (element.review && element.review.brandId) || "isacord";
+  // Resolve element up front for the brand read
+  const el0 = typeof element === "function" ? element() : element;
+  const brand = (el0.review && el0.review.brandId) || "isacord";
   try {
     const pal = await load(brand);
     if (!pal || pal.id !== brand) return null;
+    // Re-resolve element after the await so the patch is built against
+    // the element as it is when the chart has loaded, not as it was when
+    // the click happened
+    const el = typeof element === "function" ? element() : element;
     const n = nearest(pal.threads, rgb);
     if (!n) return null;
-    return overridePatch(element, shapeId, { thread_index: n.index, rgb: [...n.rgb] });
+    return overridePatch(el, shapeId, { thread_index: n.index, rgb: [...n.rgb] });
   } catch (e) {
     return null;
   }

@@ -152,10 +152,25 @@ describe("popoverPatch — digitized lane mirrors DigitizePanel.setOverride", ()
     expect(popoverPatch(ctx, "color", [1, 2, 3])).toBeNull();
     const deps = {
       loadPalette: async (id) => ({ id, threads: [{ index: 0, rgb: [0, 0, 0] }, { index: 7, rgb: [250, 10, 10] }] }),
-      nearestInList: (list, rgb) => list[1],
+      nearestInList: (list, rgb) => { expect(list).toHaveLength(2); expect(rgb).toEqual([255, 0, 0]); return list[1]; },
     };
     expect(await recolorPatch(ctx, [255, 0, 0], deps)).toEqual({
       shapeOverrides: { Sabc: { fill_angle_deg: 45, border: "auto", thread_index: 7, rgb: [250, 10, 10] } },
+    });
+  });
+  test("recolorPatch reads the element after the chart loads, so concurrent edits survive", async () => {
+    let current = digitizedEl;
+    const ctx2 = { element: () => current, shapeId: "Sabc" };
+    const deps = {
+      loadPalette: async (id) => {
+        // Simulate an edit happening while the chart loads
+        current = { ...digitizedEl, shapeOverrides: { Sabc: { tier: "satin" } } };
+        return { id, threads: [{ index: 0, rgb: [0, 0, 0] }, { index: 7, rgb: [250, 10, 10] }] };
+      },
+      nearestInList: (list, rgb) => list[1],
+    };
+    expect(await recolorPatch(ctx2, [255, 0, 0], deps)).toEqual({
+      shapeOverrides: { Sabc: { tier: "satin", thread_index: 7, rgb: [250, 10, 10] } },
     });
   });
   test("recolorPatch is null when the chart cannot be loaded or is not the job's", async () => {
