@@ -12,7 +12,13 @@
   // During a drag the rectangle is LIVE LOCAL state; `onchange` fires once, on
   // pointerup, so a drag is one edit (one undo step, one restitch) rather than
   // a patch per pointermove. A pointercancel discards the drag instead.
-  let { src, crop = null, onchange = () => {} } = $props();
+  //
+  // `minFrac`: the smallest width/height a drag may produce, as a fraction.
+  // The 2% default is under the service's 16 px floor
+  // (`digitizer_core/crop.py` MIN_CROP_PX) on any raster narrower than
+  // 800 px, and a crop under it fails every later digitize with a message
+  // written for a programmer. DigitizePanel passes one sized to the preview.
+  let { src, crop = null, onchange = () => {}, minFrac = 0.02 } = $props();
 
   let host = $state(null);
   let dragging = $state(null); // null | {handle, startX, startY, start}
@@ -31,6 +37,15 @@
     const s = { ...rect };
     dragging = { handle, startX: e.clientX, startY: e.clientY, start: s };
     live = s;
+    // Capture, so a release outside the viewport still ends the drag here
+    // rather than leaving it live. Captured events still bubble to the window
+    // listeners below. jsdom and some embedded hosts have no capture API; the
+    // window listeners alone still work there.
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch {
+      // no capture API: see above
+    }
     window.addEventListener("pointermove", move);
     window.addEventListener("pointerup", end, { once: true });
     window.addEventListener("pointercancel", cancel, { once: true });
@@ -56,7 +71,7 @@
       if (h.includes("n")) next.y0 = clamp(s.y0 + dy);
       if (h.includes("s")) next.y1 = clamp(s.y1 + dy);
     }
-    if (next.x1 - next.x0 < 0.02 || next.y1 - next.y0 < 0.02) return;
+    if (next.x1 - next.x0 < minFrac || next.y1 - next.y0 < minFrac) return;
     live = next;
   }
 

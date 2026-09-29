@@ -1389,6 +1389,14 @@ describe("a moved crop box restitches", () => {
     expect(cfgs).toHaveLength(2);
   });
 
+  test("mounting with a crop already set arms nothing -- only a CHANGE does", async () => {
+    // A saved project reopening with a crop must not restitch on arrival.
+    const { queryByText } = await panel();
+    await vi.advanceTimersByTimeAsync(5000);
+    expect(calls).toHaveLength(0);
+    expect(queryByText("Restitch now")).toBeNull();
+  });
+
   test("a crop moved in flight whose pause outlasts the first run still reruns exactly once", async () => {
     const { getByRole, cfgs, releases } = await inFlightPanel();
     await fireEvent.click(getByRole("button", { name: "Use whole image" }));
@@ -1401,6 +1409,52 @@ describe("a moved crop box restitches", () => {
     releases[1]();
     await vi.advanceTimersByTimeAsync(5000);
     expect(cfgs).toHaveLength(2);
+  });
+});
+
+describe("the crop box's drag floor tracks the preview raster", () => {
+  // The service refuses a crop under 16 px on either axis. On a 100 x 100
+  // preview that is 16%, far above CropBox's own 2% default.
+  function pngB64(width, height) {
+    const b = new Uint8Array(24);
+    b.set([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 13, 0x49, 0x48, 0x44, 0x52], 0);
+    new DataView(b.buffer).setUint32(16, width);
+    new DataView(b.buffer).setUint32(20, height);
+    return Buffer.from(b).toString("base64");
+  }
+  function ptr(type, x, y) {
+    const e = new Event(type, { bubbles: true, cancelable: true });
+    e.clientX = x; e.clientY = y;
+    return e;
+  }
+  afterEach(() => vi.restoreAllMocks());
+
+  async function dragRightEdgeToTenPercent(sourcePng) {
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue({
+      left: 0, top: 0, right: 200, bottom: 100, width: 200, height: 100, x: 0, y: 0,
+    });
+    const patches = [];
+    const { getByRole } = render(Harness, {
+      props: {
+        element: baseElement([], { sourcePng, crop: { x0: 0.2, y0: 0.2, x1: 0.8, y1: 0.8 } }),
+        onPatch: (d) => patches.push(d.patch),
+      },
+    });
+    getByRole("button", { name: "Drag right edge" }).dispatchEvent(ptr("pointerdown", 160, 50));
+    // -100 px of 200: x1 0.8 -> 0.3, a 0.1-wide box.
+    window.dispatchEvent(ptr("pointermove", 60, 50));
+    window.dispatchEvent(ptr("pointerup", 60, 50));
+    return patches.filter((p) => "crop" in p);
+  }
+
+  test("a 100 px preview refuses a box 10 px wide", async () => {
+    expect(await dragRightEdgeToTenPercent(pngB64(100, 100))).toHaveLength(0);
+  });
+
+  test("a 1200 px preview allows the same drag (120 px)", async () => {
+    const got = await dragRightEdgeToTenPercent(pngB64(1200, 1200));
+    expect(got).toHaveLength(1);
+    expect(got[0].crop.x1).toBeCloseTo(0.3);
   });
 });
 

@@ -139,3 +139,29 @@ test("a JPEG the browser rotated on decode keeps the canvas path — the service
   // A PNG is never orientation-checked: it carries no EXIF rotation the browser applies.
   expect(uploadPlan({ name: "a.png", type: "image/png", size: 10 }, img(50, 100), null, sof(50, 100)).asIs).toBe(true);
 });
+
+// A PNG header's 24 bytes: signature, IHDR length, "IHDR", width, height.
+function fakePngB64(width, height, tail = 0) {
+  const b = new Uint8Array(24 + tail);
+  b.set([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a], 0);
+  b.set([0, 0, 0, 13], 8);
+  b.set([0x49, 0x48, 0x44, 0x52], 12);
+  new DataView(b.buffer).setUint32(16, width);
+  new DataView(b.buffer).setUint32(20, height);
+  return Buffer.from(b).toString("base64");
+}
+
+test("pngDimensionsFromBase64 reads the IHDR size, for the crop box's drag floor", async () => {
+  const { pngDimensionsFromBase64 } = await import("./rasterize.js");
+  expect(pngDimensionsFromBase64(fakePngB64(1200, 480))).toEqual({ width: 1200, height: 480 });
+  // Only the header is decoded: a long body after it changes nothing.
+  expect(pngDimensionsFromBase64(fakePngB64(554, 1200, 5000))).toEqual({ width: 554, height: 1200 });
+  expect(pngDimensionsFromBase64(null)).toBeNull();
+  expect(pngDimensionsFromBase64("")).toBeNull();
+  const jpeg = new Uint8Array(24);
+  jpeg.set([0xff, 0xd8, 0xff, 0xe1], 0);
+  expect(pngDimensionsFromBase64(Buffer.from(jpeg).toString("base64"))).toBeNull();
+  expect(pngDimensionsFromBase64(Buffer.from([0x89, 0x50, 0x4e, 0x47]).toString("base64"))).toBeNull();
+  // The panel specs' placeholder is not base64 at all: null, never a throw.
+  expect(pngDimensionsFromBase64("data:image/png;base64,AAAA")).toBeNull();
+});

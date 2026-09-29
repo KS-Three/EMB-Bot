@@ -40,7 +40,7 @@
     indexRuns,
     shapeBorderState } from "../lib/borderMenu.js";
   import { loadPalette, nearestInList } from "../lib/threads.js";
-  import { loadImage, rasterSize, isVectorFile, uploadPlan } from "../lib/rasterize.js";
+  import { loadImage, rasterSize, isVectorFile, uploadPlan, pngDimensionsFromBase64 } from "../lib/rasterize.js";
   import CropBox from "./CropBox.svelte";
   import { proposeCrop } from "../lib/cropProposal.js";
   import { getSource, putSource, sourceKeyFor, sourceStoreAvailable } from "../lib/sourceStore.js";
@@ -586,6 +586,20 @@
   //    runDigitize's in-flight guard turns it into `rerunWanted` (or, if the
   //    first run already returned, it simply runs), so exactly one rerun
   //    follows with the moved crop.
+  // The crop box's drag floor, sized to the raster it shows. The service
+  // refuses a crop under `digitizer_core/crop.py` MIN_CROP_PX (16) on either
+  // axis, and CropBox's own 2% is under that on any preview narrower than
+  // 800 px. Read off `sourcePng`'s PNG header, so it survives a reload
+  // without a second persisted field. The preview is never larger than the
+  // original, so a floor that holds on the preview holds on either raster
+  // the service may be sent.
+  const CROP_MIN_PX = 16;
+  $: cropMinFrac = (() => {
+    const dim = pngDimensionsFromBase64(element.sourcePng);
+    if (!dim) return 0.02;
+    return Math.min(0.5, Math.max(0.02, CROP_MIN_PX / Math.min(dim.width, dim.height)));
+  })();
+
   let prevCropJson = JSON.stringify(element.crop ?? null);
   let prevCropSrc = element.sourcePng;
   $: {
@@ -1752,6 +1766,7 @@
         src={"data:image/png;base64," + element.sourcePng}
         crop={element.crop}
         onchange={(c) => patch({ crop: c })}
+        minFrac={cropMinFrac}
       />
       <span class="dgp-srcname">{element.name || "Artwork"}</span>
     </div>

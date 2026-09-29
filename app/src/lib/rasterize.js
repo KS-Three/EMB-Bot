@@ -166,6 +166,30 @@ export function loadImage(file, deps = {}) {
     .catch(() => viaImg());
 }
 
+// A PNG's pixel size, read from its IHDR chunk: width at byte 16, height at
+// byte 20, big-endian, after the 8-byte signature and the chunk's length and
+// tag. Takes the base64 an element already holds (`sourcePng`) and decodes
+// only its first 33 bytes, so it is cheap and synchronous. null for anything
+// that is not a PNG header, including a string that is not base64 at all.
+export function pngDimensionsFromBase64(b64) {
+  if (!b64) return null;
+  let bin;
+  try {
+    bin = atob(b64.slice(0, 44)); // 44 base64 chars = 33 bytes
+  } catch {
+    return null;
+  }
+  if (bin.length < 24) return null;
+  const SIG = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+  for (let i = 0; i < SIG.length; i++) {
+    if (bin.charCodeAt(i) !== SIG[i]) return null;
+  }
+  const u32 = (i) => ((bin.charCodeAt(i) << 24) | (bin.charCodeAt(i + 1) << 16) |
+    (bin.charCodeAt(i + 2) << 8) | bin.charCodeAt(i + 3)) >>> 0;
+  const width = u32(16), height = u32(20);
+  return width && height ? { width, height } : null;
+}
+
 export const UNREADABLE =
   "Couldn’t read that file as an image. PNG, JPEG, WebP, GIF, BMP and SVG all work — " +
   "a PDF, AI or EPS logo needs to be exported as one of those first.";

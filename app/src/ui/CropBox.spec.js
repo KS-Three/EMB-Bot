@@ -87,6 +87,49 @@ describe("CropBox", () => {
     expect(onchange).not.toHaveBeenCalled();
   });
 
+  it("honours a caller's minFrac above the default 2%", () => {
+    stubHost();
+    const onchange = vi.fn();
+    render(CropBox, { src: SRC, crop: { x0: 0.2, y0: 0.2, x1: 0.8, y1: 0.8 }, onchange, minFrac: 0.3 });
+    screen.getByRole("button", { name: "Drag right edge" }).dispatchEvent(ptr("pointerdown", 160, 50));
+    // -70 px of 200 puts x1 at 0.45: width 0.25, above 2% but under 0.3.
+    window.dispatchEvent(ptr("pointermove", 90, 50));
+    window.dispatchEvent(ptr("pointerup", 90, 50));
+    expect(onchange).not.toHaveBeenCalled();
+  });
+
+  it("a move dragged past the right/bottom edge stops flush, size preserved", () => {
+    stubHost();
+    const onchange = vi.fn();
+    render(CropBox, { src: SRC, crop: { x0: 0.3, y0: 0.3, x1: 0.7, y1: 0.7 }, onchange });
+    screen.getByRole("group", { name: "Crop area" }).dispatchEvent(ptr("pointerdown", 100, 50));
+    // +0.5 on each axis, more than the 0.3 of room there is.
+    window.dispatchEvent(ptr("pointermove", 200, 100));
+    window.dispatchEvent(ptr("pointerup", 200, 100));
+    const n = onchange.mock.calls[0][0];
+    expect(n.x1).toBeCloseTo(1);
+    expect(n.y1).toBeCloseTo(1);
+    expect(n.x1 - n.x0).toBeCloseTo(0.4);
+    expect(n.y1 - n.y0).toBeCloseTo(0.4);
+  });
+
+  it("captures the pointer on the element that started the drag", () => {
+    stubHost();
+    const cap = vi.fn();
+    HTMLElement.prototype.setPointerCapture = cap;
+    try {
+      render(CropBox, { src: SRC, crop: { x0: 0.2, y0: 0.2, x1: 0.8, y1: 0.8 } });
+      const h = screen.getByRole("button", { name: "Drag right edge" });
+      const e = ptr("pointerdown", 100, 50);
+      e.pointerId = 7;
+      h.dispatchEvent(e);
+      expect(cap).toHaveBeenCalledWith(7);
+      expect(cap.mock.contexts[0]).toBe(h);
+    } finally {
+      delete HTMLElement.prototype.setPointerCapture;
+    }
+  });
+
   it("a pointercancel discards the drag: the box snaps back and nothing is emitted", () => {
     stubHost();
     const onchange = vi.fn();
