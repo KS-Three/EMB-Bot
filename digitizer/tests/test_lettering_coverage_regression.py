@@ -123,7 +123,9 @@ less proud of the ink AND cover less of it. NOT the symmetric-offset rail
 model's under-reach -- that share FELL (rail points more than 0.1 mm inside
 the art, 19.3% -> 14.7%) -- but bare artwork along the rails at unchanged
 cross density (mid-rail 2.06% -> 4.12%, cause open) and, on Becker, at the
-junctions (1.39% -> 3.80%, the tuck adding the pull to what an arm clears).
+junctions (1.39% -> 3.80% on this satin-only instrument; two thirds of it is
+the C's bowl routed to FILL by the sewn-terms width check, the rest sparse
+crosses at the wordmark's junctions).
 DOCTRINE 2026-09-28 carries the measurement. The bare bar is re-pinned with that attributed
 (`BARE_BAR`), not raised quietly; the number Kent's flip bought on the
 headline is recorded in `LOST_FRAC_TODAY`.

@@ -301,11 +301,22 @@ def rail_overhang(art: Polygon, pts) -> float:
 # its committed tuple here -- and the flipped engine gives
 # ("5156a48fda60f52313ed", 6186, 19151) on this machine, recorded for whoever
 # re-pins it where it reproduces.
+#
+# RE-PINNED AGAIN 2026-09-29, the same three, one penetration each: under rail
+# comp a stroke's first underlay run now starts at the raw spine's end, on the
+# travel web, and its first stitch carries the needle out to the cap
+# (`satin_shape`, the walk-target seam `underlay_on_column` already cured) --
+# so every free-ended satin stroke gains one underlay penetration: whitebg
+# 4580 -> 4581, ribbon 990 -> 991 on both garments. The pre-change tree
+# (`main` at 8a48c3b4) reproduces the three old tuples byte-for-byte on this
+# machine (that test green there, 2026-09-29); `towel` stays un-re-pinned for
+# the standing reason, and the fixed engine gives
+# ("94412583a538b4d421b8", 6187, 19154) here.
 GOLDEN_FLAG_OFF = {
-    ("logo_whitebg.png", "left_chest"): ("2954769ac88b2a9be9ec", 4580, 14333),
+    ("logo_whitebg.png", "left_chest"): ("4f4bfa09c27d011be7bb", 4581, 14336),
     ("logo_whitebg.png", "towel"): ("98c918e7c1576e46f623", 3258, 10349),
-    ("ribbon_curve.png", "left_chest"): ("7b03a5db83770b210050", 990, 3494),
-    ("ribbon_curve.png", "hat_front"): ("7dccea1f59ee52fbc93f", 990, 3494),
+    ("ribbon_curve.png", "left_chest"): ("4b87ae5794c312193e9c", 991, 3497),
+    ("ribbon_curve.png", "hat_front"): ("58849b92914232dc6c06", 991, 3497),
 }
 
 

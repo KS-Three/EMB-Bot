@@ -1307,7 +1307,9 @@ class PipelineConfig:
     # **Priced when it landed (2026-09-29, `docs/kent-review-2026-09-28.md`
     # "Outcome"), by the suite and not by the render:** MARINE at 80 mm goes
     # 9 -> 22 trims at +15% stitches (letter-to-shape hops 3 -> 6; the
-    # 09-19 levers do not buy it back), ENTHUSIAST at 80 mm reads
+    # 09-19 levers do not buy it back; 21 once the walk's target was put
+    # back on the web the same day, corpus 671 -> 654 -- DOCTRINE
+    # 2026-09-29), ENTHUSIAST at 80 mm reads
     # `lost_frac` 0.2748 -> 0.2565 -- under its 0.26 bar for the first time
     # since 768de79e -- for bare artwork 6.27 -> 7.10%, and Becker at 114 mm
     # under `wide_columns` loses the fold guard's margin (5.38 -> 7.47).
@@ -1317,8 +1319,11 @@ class PipelineConfig:
     # artwork are an accepted price, not open defects. Measured the same
     # night, the mechanism is NOT the rail model's under-reach (that share
     # fell, 19.3 -> 14.7% on ENTHUSIAST): the bare artwork rises at Becker's
-    # junctions (1.39 -> 3.80%, the tuck adding the pull to what an arm
-    # clears) and along ENTHUSIAST's rails (2.06 -> 4.12%, open), and the
+    # junctions (1.39 -> 3.80% on the satin-only instrument; two thirds of
+    # it is the C's bowl routed to FILL by the sewn-terms width check, so
+    # with fill counted Becker reads 6.72 -> 8.08%, the rest sparse crosses
+    # at the wordmark's junctions) and along ENTHUSIAST's rails (2.06 ->
+    # 4.12%, open), and the
     # trims are the artwork skeleton's finer decomposition (MARINE's R 5 -> 8
     # strokes, 8 -> 14 odd nodes; the walk jumps more). Those two are what
     # lowers the ceiling; DOCTRINE 2026-09-28 has the numbers.

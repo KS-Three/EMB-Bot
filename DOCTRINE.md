@@ -6728,7 +6728,7 @@ artwork 6.27 → 7.10% and colour-free uncovered ink 0.90 → 1.76%; Becker at
 114 mm under `wide_columns` 5.38 → 7.47 guarded. None of it was on the page
 he judged, and the 09-09 measurement in `config.py` had read the flag as
 FEWER trims (ENTHUSIAST 26 → 22) on an engine four lettering steps older.
-Measured the same night, and the mechanism named at first was WRONG: it is not the symmetric-offset rail model's under-reach. Under rail comp ENTHUSIAST's share of rail points more than 0.1 mm inside the art FELL, 19.3% → 14.7%, and its cross density is unchanged (same-rail step p50 0.427 → 0.422 mm). The bare artwork rises at JUNCTIONS on Becker (1.39% → 3.80% of its satin art; the tuck adds the pull to what an arm clears, `_JUNCTION_TUCK_MM` arithmetic) and along the rails on ENTHUSIAST (mid-rail 2.06% → 4.12%, cause not yet isolated); and the trims are the artwork skeleton's finer decomposition — MARINE's R goes 5 → 8 strokes and 8 → 14 odd nodes, one letter splits into two components — so the Euler walk jumps more (within-letter jumps 1 → 9 of the 22 trims; underlay-to-column hops 3 → 5; letter-to-letter 3 → 6). `rails_follow_edge`, the built cure for the under-reach, is measured to raise the overshoot headline (0.3289) and the wobble (0.089 → 0.102) and read no-difference on 8 of 9 logos in Kent's eye: not the lever.
+Measured the same night, and the mechanism named at first was WRONG: it is not the symmetric-offset rail model's under-reach. Under rail comp ENTHUSIAST's share of rail points more than 0.1 mm inside the art FELL, 19.3% → 14.7%, and its cross density is unchanged (same-rail step p50 0.427 → 0.422 mm). The bare artwork rises at JUNCTIONS on Becker — 1.39% → 3.80% of its satin art on the satin-only instrument, but two thirds of that is one stretch of the C's bowl that the sewn-terms width check now routes to FILL, which `rail_edge.bare_area` counts as bare (with fill counted Becker reads 6.72% → 8.08%); the remainder is sparse crosses at the wordmark's junctions — and along the rails on ENTHUSIAST (mid-rail 2.06% → 4.12%, no fill routing there, cause not yet isolated); and the trims are the artwork skeleton's finer decomposition — MARINE's R goes 5 → 8 strokes and 8 → 14 odd nodes, one letter splits into two components — so the Euler walk jumps more (within-letter jumps 1 → 9 of the 22 trims; underlay-to-column hops 3 → 5; letter-to-letter 3 → 6). `rails_follow_edge`, the built cure for the under-reach, is measured to raise the overshoot headline (0.3289) and the wobble (0.089 → 0.102) and read no-difference on 8 of 9 logos in Kent's eye: not the lever.
 `docs/kent-review-2026-09-28.md` "Outcome" has the table and
 the 29-test blast radius; `tests/test_rail_comp.py` pins the trims as a
 ceiling. **Kent took the price the same day** (*"Take the price, let it
@@ -6756,3 +6756,35 @@ linked in; attribute against a worktree with the SAME venv state — and the
 fix is theirs, not the engine's: pin `photo_prep_background_removal=False`
 where the premise is about something else. Filed as #553, not folded into
 the flip PR.
+
+## Under rail comp the walk's target sat a half-width off the web, and the census named it (2026-09-29)
+
+The flip's MARINE trims (9 → 22) were first blamed on the artwork
+skeleton's finer decomposition. `tools/refused_walks.py` said otherwise:
+11 of the 22 were walks refused as `target_unsnapped` — the stroke's first
+run (its underlay) started 0.9–2.2 mm from any node of the travel web,
+past `_graph_travel`'s strict 0.8 mm target snap — because under rail comp
+`_stroke_underlay` runs a free end out to the cap and the web is built
+from the RAW spine ends. `underlay_on_column` hit the same seam on
+2026-09-19 and its cure applies verbatim (start the run at the raw end, on
+the web; the first stitch carries the needle out to the cap under the
+column). Landed the same day: OFF byte-identical, one underlay penetration
+per free-ended satin stroke ON, three flat goldens re-captured with the
+proof.
+
+**What it bought, and what it did not.** Across the eleven corpus cases
+the flip's trims go 671 → 654 (OFF 634): Becker 51 → 48, tires 10 → 7,
+bridge 104 → 99, golden_tee 60 → 58, MARINE 22 → 21. On MARINE the eleven
+target refusals became two — and eight became `cursor_unsnapped`: the
+previous column's END sits 3.5–7 mm from any node, past `trim_at`, because
+the artwork's raw spine ends a half-width plus the pruned cap twigs inside
+the cap the column now runs to. That side is `satin_walk_cursor_reach_mm`'s
+question, which Kent parked for cloth (2026-09-20); it is not re-litigated
+here. **Count the refusals by reason before naming a cause** — the
+decomposition story was plausible, cheap to tell, and wrong about the
+majority.
+
+One more thing the same table turned up, recorded and not acted on:
+`golden_tee` sews **6,892 → 11,149 stitches** under rail comp (43 → 60
+trims) — the largest stitch cost of the flip on any fixture, on a logo
+Kent's eye read both-bad under most arms.

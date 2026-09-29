@@ -39,11 +39,17 @@ better, 8 before better, 30 no difference, 23 both bad; "can't tell" on 59 of
   MARINE 80 mm 9 → 22 trims at +15% stitches (hops 3 → 6; both 09-19 levers on
   8 → 17); ENTHUSIAST `lost_frac` 0.2748 → 0.2565 — under its bar at last — for
   bare artwork 6.27 → 7.10%; Becker 114 mm under `wide_columns` 5.38 → 7.47. NOT
-  the rail model's under-reach (that share fell 19.3 → 14.7%): Becker's junction
-  tuck adds the pull to what an arm clears (junction bare 1.39 → 3.80%), ENTHUSIAST's
-  mid-rail bare doubles (cause open), and MARINE's letters decompose finer on the
-  artwork (R 5 → 8 strokes, 8 → 14 odd nodes) so the walk jumps more — that is
-  the trims. 29 tests in 14 files moved, three flat goldens re-captured
+  the rail model's under-reach (that share fell 19.3 → 14.7%): Becker's junction bare
+  reads 1.39 → 3.80% on the satin-only instrument but two thirds of it is the C's bowl
+  routed to FILL by the sewn-terms width check (6.72 → 8.08% with fill counted; the rest
+  sparse crosses at junctions), ENTHUSIAST's mid-rail bare doubles (cause open), and
+  MARINE's letters decompose finer on the
+  artwork (R 5 → 8 strokes, 8 → 14 odd nodes) — but the census says 11 of the 22
+  trims were the walk's TARGET a half-width off the web (the rail-comp underlay
+  starts at the cap tip); fixed the same day (start on the web, DOCTRINE
+  2026-09-29): corpus trims 671 → 654, MARINE 21; the rest are cursor-side
+  (`satin_walk_cursor_reach_mm`, Kent's on cloth). 29 tests in 14 files moved,
+  three flat goldens re-captured
   with the pre-change proof; `docs/kent-review-2026-09-28.md` "Outcome" has the
   table. Kent took the price the same day (*"Take the price, let it merge"*):
   an accepted price, not open defects; the junction tuck and the artwork

@@ -5168,7 +5168,8 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
                         run.points.reverse()
                 elif math.dist(cursor, run.points[-1]) < math.dist(cursor, run.points[0]):
                     run.points.reverse()
-            if (first_of_stroke and underlay_on_column and kind == stitches.SATIN
+            if (first_of_stroke and (underlay_on_column or rail_comp_mm > 0)
+                    and kind == stitches.SATIN
                     and run.kind == stitches.UNDERLAY and not st.closed and st.spine):
                 # `underlay_on_column`: the underlay now starts at the column's
                 # far STATION -- cap-extended, or run into the node -- which
@@ -5178,6 +5179,16 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
                 # spine's end instead, on the web, and let its first stitch
                 # carry the needle out to the station along the column's own
                 # axis, under the column.
+                #
+                # `satin_rail_comp` hits the same seam (2026-09-29): under
+                # rail-side comp `_stroke_underlay` runs a free end out to
+                # the cap, so the underlay's first point -- the walk's
+                # target -- sits about a half-width off the web, past the
+                # strict 0.8 mm target snap, and the walk refuses. Measured
+                # on MARINE at 80 mm the day the flag went on:
+                # `target_unsnapped` walks 1 -> 11 and trims 9 -> 22
+                # (`tools/refused_walks.py`). Same cure, same stitch under
+                # the same column; 0.0 never enters this branch.
                 raw = min((st.spine[0], st.spine[-1]),
                           key=lambda q: math.dist(q, run.points[0]))
                 d_raw = math.dist(raw, run.points[0])

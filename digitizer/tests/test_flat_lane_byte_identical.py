@@ -90,6 +90,18 @@ against the golden's 2351, where the platform drift alone reads 2353) and
 stays un-re-pinned: the tool refuses it on this machine, the standing platform
 red, so its mismatch now carries the flip too and CI deselects it either way.
 
+**Exception TAKEN 2026-09-29 (second that day), the walk-target seam under
+rail comp:** the `logo_whitebg.png`, `logo_alpha.png` and `ribbon_curve.png`
+entries were re-captured after a stroke's first underlay run under
+`satin_rail_comp` started at the raw spine's end (on the travel web) and
+carried the needle out to the cap with its first stitch, instead of starting
+at the cap-extended tip a half-width off the web — one underlay penetration
+per free-ended satin stroke: whitebg 4580 → 4581, alpha 4602 → 4603, ribbon
+990 → 991 coords; region ids, areas and warnings unmoved on all three. The
+pre-change tree (`main` at 8a48c3b4) reproduced all three old entries on
+this machine first (`tools/recapture_flat_lane_key.py --pre-change-tree`,
+`machine OK` each). `photo/enthusiast_logo.png` stays the platform red.
+
 **Second exception, SANCTIONED BUT NOT YET TAKEN (2026-08-14):** the
 `photo/enthusiast_logo.png` entry is stale as of PR #146 (the pro-parity satin
 work: junction entry walk + corner-fork removal —
