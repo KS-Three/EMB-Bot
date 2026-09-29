@@ -5771,6 +5771,59 @@ knob.
 M's own 78.6 deg fold, the one `tools/decomposition_census.py` flagged;
 renders `docs/renders/polygon-axis-2026-09-16/drone_fold0_78.jpg`)*
 
+## "Beyond the node" cannot tell a tapered TIP from a CORNER, because the partner arm is beyond it either way (2026-09-29)
+
+Defect 49: under `satin_rail_comp` a shape keeps its artwork polygon, and the
+artwork's sharp tips are sharp. ENTHUSIAST's A decomposes into 4 strokes
+against the grown polygon's 2, and its apex becomes a NODE where two arms end
+rather than a point one stroke runs through. Both ends read
+`free_end=False`, so `_extend_to_cap` -- whose entire job is that the medial
+axis stops half a width short of a cap -- never runs, and the junction trim
+pulls both arms back on top of that. The column reaches within 0.08 mm of the
+apex off the rails and stops 1.63 mm short on them.
+
+**Two builds aimed at it, both measured, both short of the target.**
+
+1. **Cap a junction end with no single owner whose boundary is within 1.6
+   sewn half-widths along its own tangent.** Fires, and buys real coverage
+   elsewhere -- ENTHUSIAST's end bare 10.49 -> 9.18 mm2 at +82 stitches --
+   but leaves the apex at 3.61 mm2, untouched. Traced: `_is_tip_end` is never
+   CALLED there, because both apex arms have an identified `tuck_under`
+   partner (`_corner_forks` names a partner both ways, each under the other),
+   so the `under is None` gate rejects them first.
+
+2. **Drop that gate and discriminate on the ARTWORK BEYOND the node** -- take
+   the half-plane ahead of the end, clip it to a disc of one reach, and call
+   it a tip when the artwork there fills less than 45% of the half-disc.
+   Reasoning: an apex holds a wedge closing to a point, an L's elbow holds
+   the corner square plus the arm turning out of it. **Measured: completely
+   INERT** -- byte-identical to the flag off, on the fixture it was written
+   for.
+
+**Why 2 could not work, and it is the entry worth keeping.** At a two-arm
+apex the OTHER ARM is also beyond the node -- it descends from the same point
+-- so within a disc of one reach the apex and the elbow hold nearly the same
+artwork. "How much is beyond the node" is blind to the difference by
+construction, whatever the threshold. What separates a tip from a corner is
+whether the artwork beyond is CLOSED by the two arms' own caps or continues
+past them, which is a question about the shape's outline, not about area near
+the node. Do not re-derive an area test here.
+
+**And the meta-lesson, earned three times in one session.** Each of these came
+from reading the call order or the geometry and inferring "the same seam
+again" -- the reasoning was sound each time and the measurement refused it
+twice (see also the outer-rail density refinement entry). On this file,
+measure the TARGET CASE before building: one probe on ENTHUSIAST's A would
+have shown `under` was set before either build existed.
+
+**Still open**, and a construction call rather than a bug: at a tapered tip
+where two arms each tuck under the other, who sews the point? One arm caps it
+and the other tucks under it (pick by tangent alignment); or both cap it and
+overlap, which is what the pro sews at a junction and what
+`satin_junction_stack` part B already argues for. Whether the junction
+cover (part C) could patch it instead was not examined.
+
+
 ## A coverage percentage cannot tell a HOLE from a HAIRLINE, and one flip moved both at once (2026-09-29)
 
 `satin_rail_comp`'s cost on ENTHUSIAST was published as bare artwork 6.27 ->
