@@ -83,3 +83,23 @@ def test_a_bad_crop_raises_out_of_prep():
         stage1_prep.prep(_banner_art(),
                          PipelineConfig(target_width_mm=80.0,
                                         crop=(0.9, 0.1, 0.1, 0.9)))
+
+
+def test_a_crop_onto_blank_artwork_says_widen_not_crop_tighter():
+    """The likeliest wrong drag: a box landing on empty background. The
+    uncropped message's advice -- "or crop tighter" -- is backwards there;
+    the fix is to widen the box. A crop is the caller's own input, so its
+    message stays out of `errors._KNOWN` and reaches the panel as written."""
+    from digitizer_service.errors import customer_message
+
+    blank = np.full((40, 40, 3), 255, np.uint8)
+    with pytest.raises(ValueError, match="no foreground pixels"):
+        stage1_prep.prep(blank, PipelineConfig(target_width_mm=80.0))
+
+    # Rows 480:600, cols 0:80 -- below the logo, outside the chrome: all white.
+    with pytest.raises(ValueError, match="crop rectangle contains no artwork") as exc:
+        stage1_prep.prep(_banner_art(), PipelineConfig(
+            target_width_mm=80.0, crop=(0.0, 0.8, 0.2, 1.0)))
+    said = customer_message(exc.value)
+    assert "crop rectangle contains no artwork" in said
+    assert "crop tighter" not in said

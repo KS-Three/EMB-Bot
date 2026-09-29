@@ -17,6 +17,7 @@ from pathlib import Path
 import pytest
 
 from digitizer_core import PipelineConfig, digitize
+from tests.test_generation_cache import _design_bytes
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -31,13 +32,13 @@ FIXTURES = [
 
 
 def _digest(rel, width_mm, **kw):
+    """Hash the design BYTES -- the canonicalization test_generation_cache.py
+    trusts for its own must-never-drift comparisons -- not bare coordinates.
+    Coordinates alone miss a block's thread colour, a run's jump/trim/kind/
+    role and the design's reported size."""
     cfg = PipelineConfig(target_width_mm=width_mm, garment_id="left_chest", **kw)
     result, plan = digitize(ROOT / "testdata" / rel, cfg)
-    h = hashlib.sha256()
-    for blk in plan.blocks:
-        for run in blk.runs:
-            for x, y in run.points:
-                h.update(f"{x:.4f},{y:.4f};".encode())
+    h = hashlib.sha256(_design_bytes(result, plan))
     return h.hexdigest(), len(result.regions), plan.stats.stitch_count
 
 

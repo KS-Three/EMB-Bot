@@ -1,10 +1,12 @@
 """Crop against the two stage-1 mechanisms it can disturb."""
 from pathlib import Path
 
+import cv2
 import numpy as np
 
 from digitizer_core.config import PipelineConfig
 from digitizer_core import stage1_prep
+from digitizer_core.crop import validate_crop
 from digitizer_core.warnings_codes import INPUT_LOW_RESOLUTION
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -49,3 +51,10 @@ def test_cropping_an_alpha_cutout_keeps_the_native_frame_bookkeeping_consistent(
     sx, sy = p.upscale
     assert round(p.native_rgb.shape[1] * sx) == p.rgb.shape[1]
     assert round(p.native_rgb.shape[0] * sy) == p.rgb.shape[0]
+    # The asserts above only relate native_rgb to rgb, which come from the
+    # SAME frame, so they hold with the crop removed too. This one does not:
+    # the native frame is the cropped box of the source, absolutely.
+    src_h, src_w = cv2.imread(str(BECKER), cv2.IMREAD_UNCHANGED).shape[:2]
+    x0, y0, x1, y1 = validate_crop(cfg.crop, (src_h, src_w))
+    assert p.native_rgb.shape[:2] == (y1 - y0, x1 - x0)
+    assert p.native_rgb.shape[:2] != (src_h, src_w)

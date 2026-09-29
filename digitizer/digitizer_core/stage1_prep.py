@@ -389,6 +389,15 @@ def prep(image: str | Path | bytes | np.ndarray, cfg: PipelineConfig) -> Prep:
 
     fg = ~bg
     if not fg.any():
+        if cfg.crop is not None:
+            # The customer dragged the crop box onto empty background. The
+            # uncropped message maps (errors._KNOWN) to advice ending "or crop
+            # tighter", which is backwards here: widen the box. A crop is the
+            # caller's own input, so this stays OUT of `_KNOWN` and reaches the
+            # panel as written, like a bad boundary_override does.
+            raise ValueError(
+                "the crop rectangle contains no artwork — widen it, or use "
+                "the whole image")
         raise ValueError("no foreground pixels — the whole image reads as background")
 
     ys, xs = np.nonzero(fg)
