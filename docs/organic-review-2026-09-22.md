@@ -40,18 +40,33 @@ Every launch row is green and none of them is *"a customer can install it."*
 This is a real problem, not a nitpick, and it is invisible precisely because
 the checklist does not carry a row for it.
 
-### 2.2 The quality program's ground truth is n≈1
+### 2.2 The quality program's ground truth is thin
 
-```
-digitizer/testdata/reference/   -> 13 files
-```
+> **CORRECTED 2026-09-28. This section originally claimed the ground truth was
+> "n≈1 — one client, Becker", on the strength of a directory listing of
+> `digitizer/testdata/reference/` (13 files). That was wrong, and the method
+> was the error: the corpus is not a directory, it is a registry in code.**
+>
+> `digitizer/tools/pro_parity/blockcensus.py` defines `FIXTURES`, which at the
+> time of the original review already paired **five genuine artwork files with
+> five different clients** — Becker Marine, script TIRES, Hotel Fremont,
+> Golden Tee and Precision Drone — and separately tagged the four Becker
+> preview renders `pro-derived-render`, **skipped by default and never
+> aggregated**. The circularity risk this review presented as a discovery was
+> already documented in that module's own docstring, credited to MASTER_SCOPE
+> "Corrections" / PR #222, and enforced in code.
+>
+> So the honest number was **n≈5 clients**, not n≈1. As of 2026-09-28 it is
+> **11 artwork fixtures across 8 clients** — see §2.2a.
+>
+> The finding that survives is weaker and still worth stating: **five clients
+> is thin** for a yardstick whose exit condition is agreeing with one person's
+> eye. What does *not* survive is the claim that the whole program rests on a
+> single logo family.
 
-That is **one client — Becker** — in 4–5 variants, each `.jpg` + professional
-`.dst` + professional `.pes`. Beside it: ~7 flat test PNGs
-(`becker_marine_logo`, `logo_alpha`, `logo_script_tires`, `logo_whitebg`,
-`black_ground_holes`, `bg_uncertain`, `ribbon_curve`) and 24 photos.
 `scratch_corpus/` holds 37 third-party `.dst` files with **no source art**, so
-they cannot ground a raster→stitch comparison at all.
+those cannot ground a raster→stitch comparison at all — that part was right,
+and it is why raw file counts mislead here.
 
 Measured against that sample:
 
@@ -62,13 +77,44 @@ Measured against that sample:
 | `docs/*.md` | **86,932** lines across **112** files |
 | commits touching `digitizer/` | **743** of 1,999 |
 
-Every pro-parity figure this project quotes — 42.5 on real artwork, "60% of
-Ember", the yardstick that will not agree with Kent's eye — generalises from
-one professional's choices on one logo family.
-
 `ROADMAP.md` Phase 1's exit condition is *"the metric's ranking agrees with
-Kent's visual ranking."* **That gate is unpassable as specified from a single
-sample**, and it has been the active phase for the project's whole life.
+Kent's visual ranking."* Agreement measured across five designs is a weak
+basis for that gate, and it has been the active phase for the project's whole
+life. *(This paragraph originally said the gate was "unpassable as specified
+from a single sample" — see the correction above.)*
+
+### 2.2a What changed on 2026-09-28
+
+The corpus went from **5 artwork fixtures / 5 clients** to **11 / 8**, at zero
+cost, from files already on disk.
+
+Most digitizing vendors ship a two-panel preview beside the stitch file: the
+artwork the customer sent in one panel, a simulation of their own stitches in
+the other. That artwork is a legitimate pipeline input — unlike the simulation,
+it is not derived from the pro's answer — and it was simply never cut out.
+`tools/pro_parity/preview_split.py` now does that, adding M-FAB (×2), C Golke
+Roofing, To a T Machine (×2) and the Hotel Fremont patch.
+
+**Two things that work is careful about, both learned the hard way here:**
+
+- **Which panel is artwork is DATA, not inference.** Two image statistics were
+  measured as candidate discriminators and both failed — colour count dies on
+  a palettised source, and flatness scored Becker's preview (which contains no
+  artwork at all, both panels being simulations) *above* a genuine artwork
+  file. There is no threshold that accepts the real ones and refuses Becker, so
+  a hand-set manifest records the choice and anything unlisted is refused
+  rather than guessed at. The numbers are in that module's docstring.
+- **Becker is deliberately excluded.** Its preview has no artwork panel to
+  recover. That is exactly why `blockcensus.py` tags those files
+  `pro-derived-render` and keeps them out of aggregates.
+
+**A candidate the corpus did not have before:** `toat_machine` and
+`toat_beanie` are the same logo digitized twice, into two different `.PES`
+files (92,877 vs 93,313 bytes, differing md5). If those came from two
+different professionals, that is a free sample of **inter-pro variance** — the
+quantity §3.2 argues is worth paying for and which nothing in this repo has
+ever measured. Provenance is unrecorded, so it is a candidate and not a result;
+settling it costs one question to the shop.
 
 ### 2.3 The 2026-08-11 ruling was made and then never funded
 
@@ -135,15 +181,41 @@ written down here rather than deleted with the branch: the distribution gap is
 real, the static build genuinely works today, and whether to walk through that
 door is a business call, not an engineering one.
 
-### 3.2 Buy ground truth — ~$400, nothing in 112 docs proposes it
+### 3.2 Buy inter-pro variance — and only that
 
-Send 20–30 real logos to 3–4 commercial digitizing services at $10–20 each.
-Yield: a real population for the yardstick, source art paired with pro output,
-and — the part that does not exist anywhere today — **inter-pro variance.**
+> **CORRECTED 2026-09-28.** This section originally proposed sending 20–30
+> logos to 3–4 services "at $10–20 each" and called it **~$400**. The
+> arithmetic was wrong: 20–30 × 3–4 × $10–20 is **$600–2,400**. It also
+> proposed buying breadth that §2.2a then obtained for free.
 
-How much do two professionals disagree with each other on the same logo? That
-number is the ceiling the scorecard should be measured against. Without it,
-"42.5 vs a pro's 75–84" has no denominator.
+**Breadth no longer needs buying.** The vendor previews already on disk
+carried recoverable artwork, which took the corpus from 5 designs to 11 and
+from 5 clients to 8 at zero cost (§2.2a). Anything further of that kind is
+another look through the shop's own archive, not a purchase.
+
+**Inter-pro variance is the one thing money still buys.** How much do two
+professionals disagree with each other on the same logo? That number is the
+ceiling the scorecard should be measured against — without it, "42.5 against a
+pro's 75–84" has no denominator, and a target of 90 may be chasing noise.
+Nothing in this repo measures it.
+
+Researched properly on 2026-09-28
+(`docs/paired-ground-truth-sourcing-2026-09-28.md`), the real cost is far
+lower than this section first claimed:
+
+- Published left-chest digitizing runs **$6–15 per logo**, not $10–20.
+- **Four vendors offer a free or near-free first order**, so a panel of six
+  vendors on one logo is ~$58, and a one-logo pilot lands around **$29**.
+- No free source supplies professional pairs: the only open artwork+stitch
+  pairs found were 21 hobbyist uploads, of which the 7 logo-like ones are all
+  recreations of trademarked marks, under a licence chain that contradicts its
+  own files. No academic stitch-file dataset exists — every "paired dataset" in
+  the literature pairs images with images.
+
+**And there may be a free sample already on disk.** `toat_machine` and
+`toat_beanie` are the same logo digitized twice into two different `.PES`
+files. If two different professionals produced them, that is inter-pro
+variance for nothing; see §2.2a.
 
 ### 3.3 The non-goals are the jobs the engine already wins
 
