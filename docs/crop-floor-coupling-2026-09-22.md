@@ -21,6 +21,15 @@ becker_marine_logo.png @ 100.0 mm (already under the floor)
       (0.2, 0.2, 0.8, 0.8)      0.88     True        8    11684      28          8      11684        28
       (0.3, 0.3, 0.7, 0.7)      0.58     True        2     5448       8          2       5448         8
 
+becker_marine_logo.png @ 25.0 mm (above the floor uncropped: real art straddling it)
+
+                      crop     px/mm     gate  regions stitches   trims   rg_noext   st_noext  tr_noext
+                      None      5.80    False       15     1018       4         15       1018         4
+      (0.0, 0.0, 1.0, 1.0)      5.80    False       15     1018       4         15       1018         4
+      (0.1, 0.1, 0.9, 0.9)      4.64    False       15      994      12         15        994        12
+      (0.2, 0.2, 0.8, 0.8)      3.52     True        9      851       9          9        851         9
+      (0.3, 0.3, 0.7, 0.7)      2.32     True        2      335       2          2        335         2
+
 synthetic RGBA cutout, above the floor uncropped, @ 80.0 mm
 
                       crop     px/mm     gate  regions stitches   trims   rg_noext   st_noext  tr_noext
@@ -36,6 +45,20 @@ synthetic RGBA cutout, above the floor uncropped, @ 80.0 mm
 
 **Becker (already under the floor):** the gate is `True` for every crop, so no
 flip. Not informative about the coupling, only about the never-above-floor case.
+
+**Becker at 25 mm (real art that clears the floor uncropped): the gate flips
+and costs nothing.** Added 2026-09-28, from the parallel build
+(`claude/upload-crop-build` 40fabc9c/f0348214), which found this width and
+reported the same five rows; this run reproduced them exactly. Becker's own
+gate flips between 35 and 40 mm uncropped, so 25 mm sits 45% above the floor.
+The gate goes False to True between crop 0.1 (4.64 px/mm) and 0.2
+(3.52 px/mm), and the ON and OFF arms are identical on every row. That
+build traced why: becker decodes to two colours, near-black ink under the
+opaque logo and white under the transparency, and by the 0.1 inset the crop
+has already cut the white out of frame. When the gate goes True,
+`extend_opaque_colour` has nothing left to change (0 of 4,840 pixels). This
+is a property of this artwork. The synthetic cutout below keeps colour
+variety past the flip and does show a cost.
 
 **Synthetic cutout (clears the floor uncropped): the gate DID flip**, False to
 True between 4.00 px/mm (crop 0.1) and 3.00 px/mm (crop 0.2). Crops of 0 to 10%

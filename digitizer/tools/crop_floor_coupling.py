@@ -32,6 +32,11 @@ from digitizer_core.stage1_prep import _load, prep           # noqa: E402
 # gate was built for.
 FIXTURE = "becker_marine_logo.png"
 WIDTH_MM = 100.0
+# The same file at a width where it CLEARS the floor uncropped, so the crop
+# ladder carries real artwork across it. Becker's own gate flips between 35
+# and 40 mm uncropped; 25 mm sits 45% above the floor. Found by the parallel
+# build (claude/upload-crop-build 40fabc9c).
+STRADDLE_MM = 25.0
 
 
 def sweep(art, width_mm, crops) -> None:
@@ -76,6 +81,11 @@ def synthetic_above_floor() -> np.ndarray:
 def main() -> int:
     print(f"{FIXTURE} @ {WIDTH_MM} mm (already under the floor)\n")
     sweep(ROOT / "testdata" / FIXTURE, WIDTH_MM,
+          (None, (0.0, 0.0, 1.0, 1.0), (0.1, 0.1, 0.9, 0.9),
+           (0.2, 0.2, 0.8, 0.8), (0.3, 0.3, 0.7, 0.7)))
+    print(f"\n{FIXTURE} @ {STRADDLE_MM} mm (above the floor uncropped: real art "
+          "straddling it)\n")
+    sweep(ROOT / "testdata" / FIXTURE, STRADDLE_MM,
           (None, (0.0, 0.0, 1.0, 1.0), (0.1, 0.1, 0.9, 0.9),
            (0.2, 0.2, 0.8, 0.8), (0.3, 0.3, 0.7, 0.7)))
     print("\nsynthetic RGBA cutout, above the floor uncropped, @ 80.0 mm\n")
