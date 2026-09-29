@@ -38,3 +38,17 @@ non-overlapping piece as the recommended option (that is what he chose:
 "run the existing plan; artifact AFTER the sitting"). Related:
 [[worktree-add-empty-var-wipes-cwd]], [[worktree-venv-and-baselines]],
 [[worktree-session-harness-guard-2026-09-17]].
+
+**It happened again 2026-09-28, and worse — a whole BUILD, not a design.**
+Kent picked "build upload crop" from a scorecard review; the plan on `main`
+(#547) looked unstarted, so the session ran all seven tasks with reviews
+(~4 hours). Only afterwards did `git branch --no-merged` show
+`claude/upload-crop-build`: the SAME plan, built end to end on 09-22 through
+its own final-review fix wave — LOCAL ONLY, never pushed, never a PR. A plan
+on `main` with unchecked boxes says nothing about whether it was executed.
+**Before executing any plan, grep branch names and recent commit subjects for
+its topic:** `git branch -a --format="%(refname:short) %(committerdate:short) %(subject)" | grep -i <topic>`.
+And a finished lane that is only on local disk is invisible to every other
+session — push it (`git push origin <b>:refs/heads/<b>`) even without a PR.
+Resolution that day: Kent chose to compare the two builds and PR the better
+one with the other's strengths ported in.

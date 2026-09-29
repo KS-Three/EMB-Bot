@@ -186,6 +186,18 @@ function digitizedProject(keys) {
   return { ...defaultProject(), elements, selectedId: "d1" };
 }
 
+test("a crop box survives save -> load, and a pre-crop element loads with crop null", () => {
+  const project = digitizedProject([null]);
+  const crop = { x0: 0.1, y0: 0.2, x1: 0.9, y1: 0.8 };
+  project.elements[0].crop = crop;
+  const parsed = parseProjectFile(buildProjectFile(project, "d"));
+  expect(parsed.project.elements[0].crop).toEqual(crop);
+
+  const old = digitizedProject([null]);
+  delete old.elements[0].crop;
+  expect(parseProjectFile(buildProjectFile(old, "d")).project.elements[0].crop).toBeNull();
+});
+
 test("an original the store holds rides in the file and comes back byte for byte", () => {
   const project = digitizedProject(["abc"]);
   const bytes = bytesOf(1000);

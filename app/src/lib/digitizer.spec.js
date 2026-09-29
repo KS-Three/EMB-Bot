@@ -56,7 +56,7 @@ const PIPELINE_CONFIG_FIELDS = [
   "underlay_style", "underlay", "satin", "satin_max_width_mm", "border",
   "border_width_mm", "deleted_shape_ids", "shape_overrides",
   "merge_shape_ids", "split_shapes", "photo_segment_sam2", "detail_layer",
-  "forced_class", "edge_cap", "is_photographic", "garment_rgb",
+  "forced_class", "edge_cap", "is_photographic", "garment_rgb", "crop",
 ];
 
 test("buildDigitizeConfig sends the stored thread-brand preference and the project garment, in service field names", async () => {
@@ -1899,6 +1899,28 @@ describe("isPhoto forced class (spec 2026-08-18 decision 4)", () => {
     const cfg = buildDigitizeConfig({ isPhoto: false, params: { forced_class: "flat" } });
     expect(cfg.forced_class).toBe("flat");
     expect("is_photographic" in cfg).toBe(false);
+  });
+});
+
+describe("crop in the digitize config", () => {
+  it("sends the crop as four fractions when the element carries one", async () => {
+    const { buildDigitizeConfig } = await import("./digitizer.js");
+    const cfg = buildDigitizeConfig({ crop: { x0: 0.1, y0: 0.2, x1: 0.9, y1: 0.8 } }, {});
+    expect(cfg.crop).toEqual([0.1, 0.2, 0.9, 0.8]);
+    for (const k of Object.keys(cfg)) expect(PIPELINE_CONFIG_FIELDS).toContain(k);
+  });
+
+  it("omits crop entirely when the element has none", async () => {
+    const { buildDigitizeConfig } = await import("./digitizer.js");
+    expect("crop" in buildDigitizeConfig({}, {})).toBe(false);
+  });
+
+  it("omits crop when it is the full frame", async () => {
+    // An uncropped upload must be byte-identical to the pre-crop engine, so
+    // it must not send a crop key at all.
+    const { buildDigitizeConfig } = await import("./digitizer.js");
+    const cfg = buildDigitizeConfig({ crop: { x0: 0, y0: 0, x1: 1, y1: 1 } }, {});
+    expect("crop" in cfg).toBe(false);
   });
 });
 

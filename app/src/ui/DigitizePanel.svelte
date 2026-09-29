@@ -40,7 +40,9 @@
     indexRuns,
     shapeBorderState } from "../lib/borderMenu.js";
   import { loadPalette, nearestInList } from "../lib/threads.js";
-  import { loadImage, rasterSize, isVectorFile, uploadPlan } from "../lib/rasterize.js";
+  import { loadImage, rasterSize, isVectorFile, uploadPlan, pngDimensionsFromBase64 } from "../lib/rasterize.js";
+  import CropBox from "./CropBox.svelte";
+  import { proposeCrop } from "../lib/cropProposal.js";
   import { getSource, putSource, sourceKeyFor, sourceStoreAvailable } from "../lib/sourceStore.js";
 
   // Editor panel for an auto-digitized artwork element (build step 10).
@@ -104,6 +106,15 @@
       cv.width = w;
       cv.height = h;
       cv.getContext("2d").drawImage(img, 0, 0, w, h);
+      // Propose a crop from the preview we already drew. Measuring this
+      // canvas is fine; SENDING it is the 2026-09-19/20 regression.
+      let crop = null;
+      try {
+        const px = cv.getContext("2d").getImageData(0, 0, cv.width, cv.height);
+        crop = proposeCrop(px, (element.params && element.params.target_width_mm) || 80);
+      } catch {
+        crop = null; // tainted canvas or no 2d context: no proposal, no crash
+      }
       const dataUrl = cv.toDataURL("image/png");
       const b64 = dataUrl.slice(dataUrl.indexOf(",") + 1);
       if (b64.length > MAX_SOURCE_B64) {
@@ -137,7 +148,7 @@
       // the layer list and its edits, which are keyed to the OLD art's
       // shape ids and would only produce SHAPE_EDIT_UNKNOWN_ID noise here.
       patch({
-        sourcePng: b64, sourceFile, name: file.name, result: null, warnings: [], blockColors: {}, sizeMm: null,
+        sourcePng: b64, sourceFile, crop, name: file.name, result: null, warnings: [], blockColors: {}, sizeMm: null,
         review: null, shapeOverrides: {}, deletedShapeIds: [], appliedEdits: null,
         mergeGroups: [], splitLines: {},
       });
@@ -554,6 +565,51 @@
       // digitize" branch already covers that honestly.
       if (element.result && health) {
         scheduleRestitch(kind === "border" ? 0 : RESTITCH_IDLE_MS);
+      }
+    }
+  }
+
+  // A moved crop box changes what the service would digitize, so it restitches
+  // after the same idle pause a shape edit uses (and lights the same armed
+  // state).
+  //
+  // Two windows, the same two the params watcher above handles:
+  //  - The upload's own patch sets a fresh proposal AND a new `sourcePng` in
+  //    one go. That tick is skipped (`sameArt` is false): the sourcePng
+  //    watcher above starts the one and only digitize for a new upload, with
+  //    that crop already in its config.
+  //  - The box moved while that FIRST run is still in flight -- the likeliest
+  //    moment a customer drags it, since the box appears the instant the file
+  //    lands. `result` is still null then, so gating on it alone dropped the
+  //    move silently: the run returned with the proposal's crop and nothing
+  //    marked it stale. `phase !== "idle"` catches it; when the timer fires,
+  //    runDigitize's in-flight guard turns it into `rerunWanted` (or, if the
+  //    first run already returned, it simply runs), so exactly one rerun
+  //    follows with the moved crop.
+  // The crop box's drag floor, sized to the raster it shows. The service
+  // refuses a crop under `digitizer_core/crop.py` MIN_CROP_PX (16) on either
+  // axis, and CropBox's own 2% is under that on any preview narrower than
+  // 800 px. Read off `sourcePng`'s PNG header, so it survives a reload
+  // without a second persisted field. The preview is never larger than the
+  // original, so a floor that holds on the preview holds on either raster
+  // the service may be sent.
+  const CROP_MIN_PX = 16;
+  $: cropMinFrac = (() => {
+    const dim = pngDimensionsFromBase64(element.sourcePng);
+    if (!dim) return 0.02;
+    return Math.min(0.5, Math.max(0.02, CROP_MIN_PX / Math.min(dim.width, dim.height)));
+  })();
+
+  let prevCropJson = JSON.stringify(element.crop ?? null);
+  let prevCropSrc = element.sourcePng;
+  $: {
+    const now = JSON.stringify(element.crop ?? null);
+    const sameArt = element.sourcePng === prevCropSrc;
+    prevCropSrc = element.sourcePng;
+    if (now !== prevCropJson) {
+      prevCropJson = now;
+      if (sameArt && element.sourcePng && health && (element.result || phase !== "idle")) {
+        scheduleRestitch(RESTITCH_IDLE_MS);
       }
     }
   }
@@ -1706,10 +1762,11 @@
     </p>
   {:else}
     <div class="dgp-src">
-      <img
-        class="dgp-thumb"
+      <CropBox
         src={"data:image/png;base64," + element.sourcePng}
-        alt={element.name || "Artwork"}
+        crop={element.crop}
+        onchange={(c) => patch({ crop: c })}
+        minFrac={cropMinFrac}
       />
       <span class="dgp-srcname">{element.name || "Artwork"}</span>
     </div>
@@ -2711,15 +2768,7 @@
     color: var(--muted, #6b7280);
     margin: 8px 0 0;
   }
-  .dgp-src { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
-  .dgp-thumb {
-    width: 56px;
-    height: 56px;
-    object-fit: contain;
-    border: 1px solid var(--tint-border, #ccd6fb);
-    border-radius: var(--radius-s, 6px);
-    background: #fff;
-  }
+  .dgp-src { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; margin-top: 10px; }
   .dgp-srcname { font-size: var(--fs-xs, 12px); color: var(--muted, #667); word-break: break-all; }
   .dgp-offline {
     margin-top: 10px;

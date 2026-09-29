@@ -1257,6 +1257,207 @@ vi.mock("../lib/sourceStore.js", () => ({
   deleteSource: async (key) => { fakeStore.delete(key); },
 }));
 
+const { proposeCropMock } = vi.hoisted(() => ({ proposeCropMock: vi.fn(() => null) }));
+vi.mock("../lib/cropProposal.js", () => ({ proposeCrop: proposeCropMock }));
+
+describe("the upload proposes a crop", () => {
+  beforeEach(() => {
+    fakeStore.clear();
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue({
+      drawImage() {},
+      getImageData: () => ({ width: 10, height: 10, data: new Uint8ClampedArray(400) }),
+    });
+    vi.spyOn(HTMLCanvasElement.prototype, "toDataURL").mockReturnValue("data:image/png;base64,AAAA");
+    loadImageResult = () => Promise.resolve({ width: 1400, height: 316 });
+  });
+  afterEach(() => vi.restoreAllMocks());
+
+  test("the patch carries proposeCrop's rectangle, measured with the target width", async () => {
+    const proposal = { x0: 0.1, y0: 0.1, x1: 0.9, y1: 0.9 };
+    proposeCropMock.mockClear();
+    proposeCropMock.mockReturnValue(proposal);
+    const patches = [];
+    const { container } = render(Harness, {
+      props: {
+        element: baseElement([], { sourcePng: null, result: null, review: null }),
+        health: { ok: true, limits: { max_upload_bytes: 12 * 1024 * 1024, max_pixels: 40_000_000 } },
+        onPatch: (d) => patches.push(d),
+      },
+    });
+    const input = container.querySelector('.dgp-upload input[type="file"]');
+    Object.defineProperty(input, "files", { value: [new File([new Uint8Array([1, 2, 3])], "l.png", { type: "image/png" })] });
+    await fireEvent.change(input);
+    await waitFor(() => expect(patches.length).toBeGreaterThanOrEqual(1));
+    expect(patches[0].patch.crop).toEqual(proposal);
+    expect(proposeCropMock.mock.calls[0][1]).toBeGreaterThan(0);
+    proposeCropMock.mockReturnValue(null);
+  });
+});
+
+describe("a moved crop box restitches", () => {
+  let calls;
+  beforeEach(() => {
+    calls = [];
+    vi.useFakeTimers();
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
+  async function panel(extra) {
+    const mod = await import("../lib/digitizer.js");
+    vi.spyOn(mod, "digitize").mockImplementation(async () => {
+      calls.push(1);
+      return null;
+    });
+    return render(Harness, {
+      props: {
+        element: baseElement([], {
+          result: { stitches: [], colors: [], stitchCount: 0, colorCount: 0, name: "t", widthMM: 50, heightMM: 40 },
+          crop: { x0: 0.2, y0: 0.2, x1: 0.8, y1: 0.8 },
+          ...extra,
+        }),
+        health: { ok: true },
+      },
+    });
+  }
+
+  test("changing the crop with a result in hand arms a restitch after the idle pause", async () => {
+    const { getByRole, queryByText } = await panel();
+    await fireEvent.click(getByRole("button", { name: "Use whole image" }));
+    vi.advanceTimersByTime(1500);
+    expect(calls).toHaveLength(0);
+    expect(queryByText("Restitch now")).not.toBeNull();
+    vi.advanceTimersByTime(1000);
+    await Promise.resolve();
+    expect(calls.length).toBeGreaterThanOrEqual(1);
+  });
+
+  // The upload's patch is simulated by a rerender that sets `sourcePng` and
+  // `crop` together, which is what onFile's single patch does. `digitize` is
+  // held open so the first run is genuinely in flight when the box moves.
+  async function inFlightPanel() {
+    const mod = await import("../lib/digitizer.js");
+    const cfgs = [];
+    const releases = [];
+    vi.spyOn(mod, "digitize").mockImplementation((_img, cfg) => {
+      cfgs.push(cfg);
+      return new Promise((resolve) => releases.push(() => resolve(null)));
+    });
+    const health = { ok: true };
+    const utils = render(Harness, {
+      props: { element: baseElement([], { sourcePng: null, result: null, review: null, crop: null }), health },
+    });
+    await utils.rerender({
+      element: baseElement([], {
+        sourcePng: "data:image/png;base64,BBBB",
+        result: null,
+        review: null,
+        crop: { x0: 0.2, y0: 0.2, x1: 0.8, y1: 0.8 },
+      }),
+      health,
+    });
+    await vi.advanceTimersByTimeAsync(0);
+    return { ...utils, cfgs, releases };
+  }
+
+  test("the upload's own patch (new art + proposal together) starts exactly one run", async () => {
+    const { cfgs, releases } = await inFlightPanel();
+    expect(cfgs).toHaveLength(1);
+    expect(cfgs[0].crop).toEqual([0.2, 0.2, 0.8, 0.8]);
+    releases[0]();
+    await vi.advanceTimersByTimeAsync(5000);
+    expect(cfgs).toHaveLength(1);
+  });
+
+  test("a crop moved while the first run is in flight reruns once after it, with the moved crop", async () => {
+    const { getByRole, cfgs, releases } = await inFlightPanel();
+    expect(cfgs).toHaveLength(1);
+    await fireEvent.click(getByRole("button", { name: "Use whole image" }));
+    // Let the idle pause elapse while the first run is still open: the timer
+    // hits runDigitize's in-flight guard and becomes a rerun request.
+    await vi.advanceTimersByTimeAsync(2500);
+    expect(cfgs).toHaveLength(1);
+    releases[0]();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(cfgs).toHaveLength(2);
+    // Full frame is omitted from the config entirely (buildDigitizeConfig).
+    expect(cfgs[1].crop).toBeUndefined();
+    releases[1]();
+    await vi.advanceTimersByTimeAsync(5000);
+    expect(cfgs).toHaveLength(2);
+  });
+
+  test("mounting with a crop already set arms nothing -- only a CHANGE does", async () => {
+    // A saved project reopening with a crop must not restitch on arrival.
+    const { queryByText } = await panel();
+    await vi.advanceTimersByTimeAsync(5000);
+    expect(calls).toHaveLength(0);
+    expect(queryByText("Restitch now")).toBeNull();
+  });
+
+  test("a crop moved in flight whose pause outlasts the first run still reruns exactly once", async () => {
+    const { getByRole, cfgs, releases } = await inFlightPanel();
+    await fireEvent.click(getByRole("button", { name: "Use whole image" }));
+    releases[0]();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(cfgs).toHaveLength(1);
+    await vi.advanceTimersByTimeAsync(2500);
+    expect(cfgs).toHaveLength(2);
+    expect(cfgs[1].crop).toBeUndefined();
+    releases[1]();
+    await vi.advanceTimersByTimeAsync(5000);
+    expect(cfgs).toHaveLength(2);
+  });
+});
+
+describe("the crop box's drag floor tracks the preview raster", () => {
+  // The service refuses a crop under 16 px on either axis. On a 100 x 100
+  // preview that is 16%, far above CropBox's own 2% default.
+  function pngB64(width, height) {
+    const b = new Uint8Array(24);
+    b.set([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 13, 0x49, 0x48, 0x44, 0x52], 0);
+    new DataView(b.buffer).setUint32(16, width);
+    new DataView(b.buffer).setUint32(20, height);
+    return Buffer.from(b).toString("base64");
+  }
+  function ptr(type, x, y) {
+    const e = new Event(type, { bubbles: true, cancelable: true });
+    e.clientX = x; e.clientY = y;
+    return e;
+  }
+  afterEach(() => vi.restoreAllMocks());
+
+  async function dragRightEdgeToTenPercent(sourcePng) {
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue({
+      left: 0, top: 0, right: 200, bottom: 100, width: 200, height: 100, x: 0, y: 0,
+    });
+    const patches = [];
+    const { getByRole } = render(Harness, {
+      props: {
+        element: baseElement([], { sourcePng, crop: { x0: 0.2, y0: 0.2, x1: 0.8, y1: 0.8 } }),
+        onPatch: (d) => patches.push(d.patch),
+      },
+    });
+    getByRole("button", { name: "Drag right edge" }).dispatchEvent(ptr("pointerdown", 160, 50));
+    // -100 px of 200: x1 0.8 -> 0.3, a 0.1-wide box.
+    window.dispatchEvent(ptr("pointermove", 60, 50));
+    window.dispatchEvent(ptr("pointerup", 60, 50));
+    return patches.filter((p) => "crop" in p);
+  }
+
+  test("a 100 px preview refuses a box 10 px wide", async () => {
+    expect(await dragRightEdgeToTenPercent(pngB64(100, 100))).toHaveLength(0);
+  });
+
+  test("a 1200 px preview allows the same drag (120 px)", async () => {
+    const got = await dragRightEdgeToTenPercent(pngB64(1200, 1200));
+    expect(got).toHaveLength(1);
+    expect(got[0].crop.x1).toBeCloseTo(0.3);
+  });
+});
+
 describe("the upload stores the file and a digitize sends it", () => {
   const LIMITS = { max_upload_bytes: 12 * 1024 * 1024, max_pixels: 40_000_000 };
   beforeEach(() => {
