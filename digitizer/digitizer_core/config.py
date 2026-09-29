@@ -1168,6 +1168,31 @@ class PipelineConfig:
     # and the goldens byte-identical. False is the pre-flip merge, tuck and
     # cover byte for byte.
     satin_junction_stack: bool = True
+    # `satin_tip_caps` (2026-09-29, MASTER_SCOPE defect 49): a junction node
+    # where the arms meet at a TAPERED TIP is a cap, not a junction, and is
+    # capped instead of tucked.
+    #
+    # Under `satin_rail_comp` a shape keeps its artwork polygon, and the
+    # artwork's sharp tips are sharp: ENTHUSIAST's A decomposes into 4 strokes
+    # against the grown polygon's 2, and its apex becomes a NODE where two
+    # arms end rather than a point one stroke runs through. Both ends then
+    # read `free_end=False`, so `_extend_to_cap` -- the function whose entire
+    # job is that the medial axis stops half a width short of a cap -- never
+    # runs, and the junction trim pulls both arms back from the node on top of
+    # it. Measured 2026-09-29: the column reaches within 0.08 mm of the apex
+    # off the rails and stops 1.63 mm short on them, leaving a 3.61 mm2
+    # triangle at 0.71 mm half-width -- the fixture's largest bare component,
+    # and under preflight's `_UNCOVERED_MIN_PATCH_MM2` (5.0) so nothing warns.
+    # Three of nine corpus logos grow an end gap of this class
+    # (`tools/bare_anatomy.py --corpus`).
+    #
+    # ON, an end at a node with no single owner to tuck under is CAPPED when
+    # the boundary sits within `_TIP_REACH_HALVES` sewn half-widths along its
+    # own end tangent -- a tip -- and tucked as before when it does not, which
+    # is every blob junction (an arm's tangent crosses the whole ball). The
+    # reach gate is what separates them and it is the only new number here.
+    # OFF is byte-identical.
+    satin_tip_caps: bool = False
     # The lettering yardstick's trims gap, read with a per-trim census
     # (2026-09-19, scope-history): traced MARINE at 80 mm sews 13 trims
     # against the typed word's 3, and across the nine logos the lettering
