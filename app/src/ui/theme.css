@@ -738,6 +738,67 @@ h1, h2 { letter-spacing: var(--tracking-tight); }
   border-top: 1px solid var(--border);
 }
 
+/* Click-to-edit popover on the design canvas (EmbroideryField ->
+   ShapePopover, 2026-09-29). Same surface as the right-click menu above,
+   because it is the same kind of thing — a per-shape decision made where the
+   shape is — laid out as labelled rows rather than menu items. Absolutely
+   positioned inside .hoop. */
+.shapepop {
+  position: absolute;
+  z-index: 6;
+  min-width: 15rem;
+  padding: var(--space-2);
+  background: var(--surface, #fff);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-m);
+  box-shadow: var(--shadow-2);
+  font-size: var(--fs-sm);
+  color: var(--ink);
+}
+.shapepop:focus { outline: none; }
+.shapepop-head {
+  padding: 0 var(--space-1) var(--space-2);
+  font-size: var(--fs-sm);
+  color: var(--muted);
+  white-space: nowrap;
+}
+.shapepop-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1);
+}
+.shapepop-label { flex: 0 0 5.5rem; color: var(--muted); }
+.shapepop-row select,
+.shapepop-row input[type="number"] {
+  flex: 1 1 auto;
+  min-width: 0;
+  font: inherit;
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-s);
+  background: var(--surface, #fff);
+  color: var(--ink);
+}
+.shapepop-row input[type="number"] { max-width: 5rem; }
+.shapepop-hint { color: var(--muted); font-size: var(--fs-xs); white-space: nowrap; }
+.shapepop-action {
+  display: block;
+  width: 100%;
+  margin-top: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  border: 0;
+  border-radius: var(--radius-s);
+  background: none;
+  text-align: left;
+  font: inherit;
+  color: var(--ink);
+  cursor: pointer;
+}
+.shapepop-action:hover,
+.shapepop-action:focus-visible { background: var(--tint); }
+.shapepop-action.danger { color: var(--danger, #b42318); }
+
 .fieldmeta { min-height: 1.25rem; font-size: var(--fs-md); }
 
 /* Zoom control -- an in-flow row UNDER the canvas, not an overlay on it.
