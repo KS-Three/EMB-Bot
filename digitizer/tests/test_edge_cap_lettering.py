@@ -54,6 +54,14 @@ TOL_MM = 0.35
 # --- the fixture ------------------------------------------------------------
 
 def _run(**kw):
+    # On the grown polygon, explicitly, since `satin_rail_comp` went ON by
+    # default (2026-09-29, Kent's pick on the labelled sitting): every number
+    # this file prices was measured with the pull in the polygon, and on the
+    # rails the fixture itself moves -- 1,784 -> 2,058 stitches and 9 -> 22
+    # trims at the default, letter-to-shape hops 3 -> 6 (measured 2026-09-29,
+    # `tests/test_rail_comp.py` pins the price). The flag under test here is
+    # priced on the engine it was read on; the rails' own cost is pinned there.
+    kw.setdefault("satin_rail_comp", False)
     cfg = PipelineConfig(target_width_mm=80.2, garment_id="left_chest",
                          max_colors=6, **kw)
     gen = build_generation(str(FIXTURE), cfg)

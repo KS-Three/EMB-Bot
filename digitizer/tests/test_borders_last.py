@@ -216,8 +216,19 @@ def test_degenerate_inputs_are_a_no_op():
 # --- the emitted plan, across threads ----------------------------------------
 
 def test_emitted_plan_border_satin_block_sews_after_the_fill_block():
+    # The ribbon sits BESIDE the field, not inside it. Vectorization never
+    # hands stage 5 two colours whose artwork overlaps, and stage 5 never
+    # grows a later colour back over one already down -- so a ribbon whose
+    # whole artwork lay inside the fill's survived the move to sew AFTER it
+    # only as the 0.3 mm rind its pull comp grew past the field's edge (13
+    # fill stitches, `SHAPE_TOO_THIN_TO_FILL`), and once the pull moved onto
+    # the rails (`satin_rail_comp`, ON since 2026-09-29) it had no rind and
+    # was lost outright (`SHAPE_NOT_STITCHED`). Found 2026-09-29; the block
+    # order this test is about was never what kept it green.
+    ribbon = bar(30, 2, cy=17.0)
+
     def regs():
-        return [region(RIBBON, "SAT", 3, 0), region(BIG, "FIL", 5, 1)]
+        return [region(ribbon, "SAT", 3, 0), region(BIG, "FIL", 5, 1)]
 
     baseline = plan_for(regs())
     assert [b.thread_index for b in baseline.blocks] == [3, 5], \

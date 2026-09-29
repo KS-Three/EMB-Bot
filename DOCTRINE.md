@@ -6680,3 +6680,76 @@ overshoot ≤ 0.29, colour-free uncovered elements == 0, bare satin ≤ 6.8%.
 — the cure the docstring used to name makes its own number ~20% worse. Claim
 adversarially reviewed by three independent lenses before being written:
 direction upheld, the word "ZERO" and the "sews fatter" framing struck.)*
+
+## `satin_rail_comp` shipped on Kent's eye, and the flags his eye rejected stay off (2026-09-28)
+
+Kent's ruling, 2026-09-28, after judging all 77 labelled before | after
+pairs (`docs/kent-review-2026-09-28.md`): **`satin_rail_comp` is ON.** It was
+the only pending flag his eye favoured — after-better on becker, bridge,
+ENTHUSIAST, Fremont and tires, before-better nowhere, both-bad only on the
+four logos that are bad under every arm — and his tires note names the gain
+and a cost together (the I and S improved, the top of the r lost thread).
+What moved is WHERE the pull compensation lands (the rails, from the
+artwork's own skeleton), never the amount; the amount is the fabric's and
+gate 1's, and the sew-out that would settle it is still owed. OFF remains
+the pre-09-28 path for anything that needs it.
+
+Three rules from the same sitting, each firing on a proposal:
+
+- **Do not propose flipping `directional_comp`, `lettering_min_column_mm`
+  or `wide_columns` on the look.** His eye read them before-better on 4, 2
+  and 1 logos and after-better on 1, 0 and 0. A case for any of them has to
+  be made on thread, trims or close-range stitch quality, not on how the
+  logo reads.
+- **gaulke, golden_tee, screenshot and drone are engine work, not flag
+  work.** Each was both-bad under three to five arms and under the 08-27
+  engine too. A flag proposal aimed at one of them has already been
+  measured against his eye and lost; his note on screenshot (*"don't use
+  this one anymore"*) asks for its retirement from the corpus, which is its
+  own change and not yet made.
+- **A pair with no pointer to where it changed reads as "no difference".**
+  30 of 77 did, and 59 of 68 job questions were "can't tell", on changes the
+  09-18 review had measured as local (0.05 to 38 percent of a design after
+  a 0.6 mm blur). Put the locator on the page before the next sitting.
+
+And the datum worth keeping beside the 60%-of-Ember number: **today's engine
+beat the 08-27 engine on 7 of 9 logos in his eye** (the other two both-bad),
+with notes naming cleaner trims and borders, letters in place, Becker's C
+border. First direct evidence the month's engine work registered at full
+size. It says nothing about the distance to Ember.
+
+**The flip was priced when it landed (2026-09-29), and the price is the
+lesson: a render sitting prices the LOOK, so read the trims and the coverage
+instruments at the flip, before the arm — not after.** On the same tree,
+OFF → ON: MARINE at 80 mm 9 → 22 trims at +15% stitches (letter-to-shape
+hops 3 → 6; the 09-19 levers both on: 8 → 17); ENTHUSIAST `lost_frac`
+0.2748 → 0.2565, under its bar for the first time since 768de79e, for bare
+artwork 6.27 → 7.10% and colour-free uncovered ink 0.90 → 1.76%; Becker at
+114 mm under `wide_columns` 5.38 → 7.47 guarded. None of it was on the page
+he judged, and the 09-09 measurement in `config.py` had read the flag as
+FEWER trims (ENTHUSIAST 26 → 22) on an engine four lettering steps older.
+The mechanism is not new: the symmetric-offset rail model's under-reach,
+which the grown polygon hid by a pull, lands on the artwork once the pull is
+on the rails. `docs/kent-review-2026-09-28.md` "Outcome" has the table and
+the 29-test blast radius; `tests/test_rail_comp.py` pins the trims as a
+ceiling. Whether the price is accepted is Kent's, asked with the PR.
+
+## Four photo-lane tests go red on any machine that has `rembg_isolated/venv` built, and CI never does (2026-09-29)
+
+`test_shade_palette_demand`'s photo_subject stub, `test_photo_sequencing`'s
+two-square depth sort, `test_merge_adjacent_same_thread`'s owl and
+`test_is_photographic`'s owl fail the moment the isolated rembg worker exists
+— stage 1 removes the stub's and the two-square image's "background" (the
+light square goes, both squares land on one thread) and re-cuts the owl (its
+declared-photographic report keeps six `THREAD_MATCH_POOR` findings instead
+of none), and each test's premise moves. Proved by hiding the venv (all four
+pass) and by linking it into a worktree at the pre-change commit (all four
+fail there too). CI installs no rembg venv and never sees them; a cloud
+session that built the venv for a render, as this one did for the tires
+cutout, does. **Read those four as the machine's, not as a regression of
+what you just changed** — the first attribution pass here counted the fourth
+as the flip's, because the pre-change worktree had no venv until one was
+linked in; attribute against a worktree with the SAME venv state — and the
+fix is theirs, not the engine's: pin `photo_prep_background_removal=False`
+where the premise is about something else. Filed as #553, not folded into
+the flip PR.

@@ -137,9 +137,16 @@ def test_lock_stitches_stay_inside_the_shape(plan):
     noise, not a loosened correctness bar.
     """
     stitch_plan, planned, _ = plan
-    covered = planned[0].polygon
+    # A satin-tier shape sews on rails one pull outside its planned polygon
+    # since `satin_rail_comp` went ON (2026-09-29, Kent's pick): stage 5
+    # leaves it on the artwork and stage 6 grows it. Its sewing geometry is
+    # therefore the polygon plus the pull; 111 rail penetrations read as
+    # outside without it. The 0.1 mm of headroom below is unchanged.
+    pull = fabric_for_garment(PLAN_CFG_KW["garment_id"]).pull_comp_mm
+    footprint = lambda p: p.polygon.buffer(pull) if p.satin_tier else p.polygon
+    covered = footprint(planned[0])
     for p in planned[1:]:
-        covered = covered.union(p.polygon)
+        covered = covered.union(footprint(p))
     covered = covered.buffer(0.1)
     outside = [pt for _, run in stitch_plan.iter_runs() for pt in run.points
                if not covered.covers(Point(pt))]

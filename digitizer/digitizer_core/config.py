@@ -1296,9 +1296,24 @@ class PipelineConfig:
     # **RULED 2026-09-19, Kent: the artwork, as shipped** (re-measured that
     # day with the lettering steps ON: IoU-to-target Fremont 0.681 -> 0.836,
     # ENTHUSIAST 0.875 -> 0.900, drone 0.803 -> 0.826; meadow 0.811 ->
-    # 0.779 at +340 stitches). DEFAULT OFF, byte-identical off; flipping it
-    # is Kent's on a sew-out, the render and the goldens.
-    satin_rail_comp: bool = False
+    # 0.779 at +340 stitches). Was DEFAULT OFF, byte-identical off, its flip
+    # Kent's on a sew-out, the render and the goldens. **FLIPPED ON
+    # 2026-09-28, Kent, on the render**: the labelled sitting
+    # (`docs/kent-review-2026-09-28.md`) read it after-better on becker,
+    # bridge, ENTHUSIAST, Fremont and tires, before-better nowhere, both-bad
+    # on the four logos bad under every arm; the only pending flag his eye
+    # favoured. The sew-out is still owed (the AMOUNT is the fabric's and
+    # unchanged; only where it lands moved). OFF is the pre-09-28 path.
+    # **Priced when it landed (2026-09-29, `docs/kent-review-2026-09-28.md`
+    # "Outcome"), by the suite and not by the render:** MARINE at 80 mm goes
+    # 9 -> 22 trims at +15% stitches (letter-to-shape hops 3 -> 6; the
+    # 09-19 levers do not buy it back), ENTHUSIAST at 80 mm reads
+    # `lost_frac` 0.2748 -> 0.2565 -- under its 0.26 bar for the first time
+    # since 768de79e -- for bare artwork 6.27 -> 7.10%, and Becker at 114 mm
+    # under `wide_columns` loses the fold guard's margin (5.38 -> 7.47).
+    # The trims are pinned as a ceiling in `tests/test_rail_comp.py`; the
+    # price is recorded, and whether it is accepted is Kent's.
+    satin_rail_comp: bool = True
     # None = the fabric preset's fill underlay style. One of "none" |
     # "edge_run" | "center_run" | "edge_zigzag" | "edge_lattice" |
     # "double_lattice" | "zigzag" (fabrics.py's own vocabulary). Feeds the

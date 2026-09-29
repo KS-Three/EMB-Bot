@@ -15453,3 +15453,51 @@ so there the cheaper radius is free; gaulke is where the radii differ most
 *(measured 2026-09-20 — Kent's pick; `tools/refused_walks.py run` and
 `compare --reach`; built OFF and exported to the sheet the same day, the
 flip and the radius are Kent's, on cloth)*
+
+## 2026-09-29 — `satin_rail_comp` flipped ON (Kent's pick on the 09-28 sitting), priced by the suite
+
+The default moved one line; the suite priced it. First full run on the
+flipped engine: **39 failed**. The same 36 (less the flag's own file and one
+rembg timeout) against a worktree at the pre-change commit (`main` at
+72102e8a): **3 failed** — the three node IDs CI deselects — so the rest were
+the flip's or the machine's, and four were the machine's (the rembg-venv
+class, COOKBOOK "Running things" class 4). **29 tests in 14 files were the
+flip's**: three flat-lane golden keys re-captured with the pre-change proof
+(whitebg 4575 → 4580, alpha 4595 → 4602, ribbon 991 → 990 coords; ids,
+areas, warnings unmoved; enthusiast refused, the platform red), three of
+`test_pushcomp`'s four isotropic tuples re-pinned (towel recorded, not
+written), the polygon-growth harness and six flag-pricing tests pinned on
+the grown polygon with dated notes, two geometry guards taught the satin
+footprint (artwork plus the pull), two synthetic fixtures corrected
+(`test_borders_last`'s ribbon lay inside its fill and had survived OFF only
+as a 0.3 mm rind; `test_photo_sequencing`'s 1.4 mm ribbon sat 0.1 mm under
+the zigzag line, which the artwork's width field over-reads), and the
+lettering instruments re-read.
+
+**The price, OFF → ON on the same tree:**
+
+| Fixture | Instrument | OFF | ON |
+|---|---|---|---|
+| MARINE 80.2 mm | trims / stitches | 9 / 1,784 | 22 / 2,058 |
+| MARINE | trims by cause: letter-to-shape · underlay→satin · satin→underlay | 3 · 3 · 1 | 6 · 5 · 7 |
+| MARINE, both 09-19 trim levers ON | trims | 8 | 17 |
+| ENTHUSIAST 80 mm | `lost_frac` (bar 0.26) | 0.2748 | 0.2565 |
+| ENTHUSIAST 80 mm | bare artwork | 6.27% | 7.10% |
+| ENTHUSIAST 80 mm | uncovered ink, colour-free (bar 2%) | 0.90% | 1.76% |
+| ENTHUSIAST 80 mm | trims / stitches | 12 / 2,388 | 16 / 2,369 |
+| Becker 114 mm, `wide_columns=True`, twigs+stack off | `coverage_max` guarded / unguarded (warn 6.67) | 5.38 / 7.18 | 7.47 / 7.63 |
+
+The headline lettering guard goes under its bar for the first time since
+768de79e and its strict xfail is retired; the bare guard beside it fires,
+and is re-pinned with the trade attributed (6.80 → 7.7% bar over the new
+reading, the old pair kept). The rails stand less proud of the ink and cover
+less of it: the symmetric-offset rail model's under-reach, hidden by the
+grown polygon, lands on the artwork. The trims are the surprise against the
+09-09 reading in `config.py` (ENTHUSIAST 26 → 22, drone 96 → 83, on an
+engine four lettering steps older): on the lettering route's own fixture
+they more than double, and the levers priced on the grown polygon do not
+buy them back. `tests/test_rail_comp.py` pins the MARINE numbers as
+ceilings. Whether the price is accepted is Kent's, asked with the PR.
+
+*(measured 2026-09-29 — `docs/kent-review-2026-09-28.md` "Outcome";
+`tests/test_lettering_coverage_regression.py`, `tests/test_rail_comp.py`)*

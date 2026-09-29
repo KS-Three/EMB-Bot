@@ -542,8 +542,17 @@ def test_every_stitch_of_a_contour_plan_stays_inside_its_shape(whitebg):
     from digitizer_core.stage5_overlap import resolve_overlaps
 
     c = cfg(fill_technique="contour", **PLAN_CFG_KW)
-    planned, _w = resolve_overlaps(whitebg.regions, fabric_for(c), c)
-    geom = {p.shape_id: p.polygon for p in planned}
+    fabric = fabric_for(c)
+    planned, _w = resolve_overlaps(whitebg.regions, fabric, c)
+    # A satin-tier shape's sewn footprint is its artwork grown by the pull:
+    # under `satin_rail_comp` (ON since 2026-09-29, Kent's pick) stage 5
+    # leaves it on the artwork polygon and stage 6 moves the rails out, so
+    # its underlay -- an edge walk under those rails -- sits a pull outside
+    # the planned polygon by design. Not this lane's runs, but they carry
+    # the same kind, and OFF the grown polygon hid them here (78 segments
+    # measured when the flag went on).
+    geom = {p.shape_id: (p.polygon.buffer(fabric.pull_comp_mm) if p.satin_tier
+                         else p.polygon) for p in planned}
     plan = plan_stitches(whitebg, c)
 
     outside = 0

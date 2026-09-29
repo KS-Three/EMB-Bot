@@ -75,6 +75,21 @@ is identical to baf702c) reproduced the old golden byte-for-byte first, with
 `ribbon_curve.png` as the untouched control. `enthusiast_logo`'s entry did
 not move (its fill has no travel at all) and stays as it was.
 
+**Exception TAKEN 2026-09-29, `cfg.satin_rail_comp` ON by default (Kent's
+pick on the labelled sitting, `docs/kent-review-2026-09-28.md`):** the
+`logo_whitebg.png`, `logo_alpha.png` and `ribbon_curve.png` entries were
+re-captured after the fabric's pull moved off the polygon and onto the rails
+for every satin-tier shape — the AMOUNT unchanged, so region ids, areas and
+warnings are unmoved on all three, and every satin column's crosses, caps and
+underlay moved: whitebg 4575 → 4580, alpha 4595 → 4602, ribbon 991 → 990
+stitch coords. The pre-change tree (`main` at 72102e8a) reproduced all three
+old entries on this machine before the capture
+(`tools/recapture_flat_lane_key.py --pre-change-tree`, `machine OK` each).
+`photo/enthusiast_logo.png` moves under this flip as well (2252 coords here
+against the golden's 2351, where the platform drift alone reads 2353) and
+stays un-re-pinned: the tool refuses it on this machine, the standing platform
+red, so its mismatch now carries the flip too and CI deselects it either way.
+
 **Second exception, SANCTIONED BUT NOT YET TAKEN (2026-08-14):** the
 `photo/enthusiast_logo.png` entry is stale as of PR #146 (the pro-parity satin
 work: junction entry walk + corner-fork removal —

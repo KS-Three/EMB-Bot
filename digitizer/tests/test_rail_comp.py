@@ -1,5 +1,7 @@
 """`cfg.satin_rail_comp` — pull compensation on the rails, not the polygon.
-DEFAULT OFF (quality review 2026-09-08 item 6, built 2026-09-09).
+Built OFF 2026-09-09 (quality review 2026-09-08 item 6); DEFAULT ON since
+2026-09-28, Kent's flip on the labelled sitting (docs/kent-review-2026-09-28.md).
+OFF is the pre-flip path and is passed explicitly wherever a test needs it.
 
 Stage 5 grows every shape by the fabric's pull with a round join and the
 satin tier skeletonises the grown polygon: arcs on every corner, slots
@@ -8,9 +10,11 @@ keeps its artwork polygon in stage 5 and `_rail_points` moves each rail
 outward by the same pull, held back where a counter would close under
 `min_detail_mm`. The AMOUNT never changes (gate 1); where it lands does.
 
-What these tests guarantee: OFF is the shipped path; ON sews a satin shape
-on its artwork with rails one pull outside it and caps not lengthened; a
-counter is held open; fills and widened lettering are untouched.
+What these tests guarantee: ON is the shipped path and OFF stays reachable;
+ON sews a satin shape on its artwork with rails one pull outside it and caps
+not lengthened; a counter is held open; fills and widened lettering are
+untouched; and the price the flip was measured to carry on the lettering
+fixture is pinned as a ceiling, so it can only get cheaper.
 """
 from __future__ import annotations
 
@@ -85,9 +89,12 @@ def _outside(points, poly: Polygon) -> float:
                for p in points)
 
 
-def test_the_flag_is_off_by_default():
-    """The amount is gate 1's; where it lands is Kent's on the render."""
-    assert PipelineConfig().satin_rail_comp is False
+def test_the_flag_is_on_by_default_since_2026_09_28():
+    # Kent flipped it on the labelled sitting (docs/kent-review-2026-09-28.md):
+    # after-better on five logos, before-better on none. OFF is the old path.
+    assert PipelineConfig().satin_rail_comp is True
+    assert PipelineConfig(satin_rail_comp=False).satin_rail_comp is False
+    # The amount is gate 1's; where it lands was Kent's on the render.
     assert PULL > 0, "the polo preset stopped carrying a pull, so nothing here is measurable"
 
 
@@ -98,7 +105,7 @@ def test_a_bar_is_sewn_on_its_artwork_with_rails_one_pull_outside_and_caps_not_l
     fabric's pull earns is untouched) and the caps stop at the artwork."""
     png = tmp_path / "bar.png"
     _bar_png(png, 24.0, 3.0)
-    off_r, off_p, off_seen = _sewn(png, target_width_mm=24.0)
+    off_r, off_p, off_seen = _sewn(png, target_width_mm=24.0, satin_rail_comp=False)
     on_r, on_p, on_seen = _sewn(png, target_width_mm=24.0, satin_rail_comp=True)
     sid = next(iter(on_seen))
     art = next(r.polygon for r in on_r.regions if r.shape_id == sid)
@@ -163,7 +170,7 @@ def test_the_end_cutback_owes_only_the_push_on_rails(tmp_path):
     positions. The flag moves the column's width, never its length."""
     png = tmp_path / "bar.png"
     _bar_png(png, 24.0, 3.0)
-    _r, off_p, off_seen = _sewn(png, target_width_mm=24.0, directional_comp=True)
+    _r, off_p, off_seen = _sewn(png, target_width_mm=24.0, directional_comp=True, satin_rail_comp=False)
     r, on_p, on_seen = _sewn(png, target_width_mm=24.0, directional_comp=True, satin_rail_comp=True)
     sid = next(iter(on_seen))
     assert set(off_seen) == set(on_seen)
@@ -185,7 +192,7 @@ def test_on_the_wordmark_every_satin_shape_sews_on_its_artwork():
     is only the underlap tongue under a later colour (and the clip of an
     earlier one) -- less than half of OFF's growth band on every shape."""
     art = TESTDATA / "photo" / "drone_render.png"
-    off_r, _off_p, off_seen = _sewn(art)
+    off_r, _off_p, off_seen = _sewn(art, satin_rail_comp=False)
     on_r, _on_p, on_seen = _sewn(art, satin_rail_comp=True)
     art_by_id = {rg.shape_id: rg.polygon for rg in on_r.regions}
     assert len(on_seen) >= 30 and set(on_seen) == set(off_seen)
@@ -219,6 +226,34 @@ def test_widened_lettering_keeps_its_compensated_column(tmp_path):
         assert not seen[rg.shape_id].equals(rg.polygon), \
             f"{rg.shape_id}: a widened glyph lost its column to rail comp"
         assert seen[rg.shape_id].area > rg.polygon.area * 1.3
+
+
+def test_the_flip_costs_trims_on_the_lettering_fixture_and_says_so():
+    """The one cost the labelled sitting could not show: trims. MARINE at
+    80.2 mm (the lettering route's own fixture, `tests/test_stroke_order_euler`)
+    sews 9 trims and 1,784 stitches with the pull in the polygon and 22 trims
+    and 2,058 stitches with it on the rails (2026-09-29, the day of the flip;
+    letter-to-shape hops 3 -> 6, underlay->satin 3 -> 5, satin->underlay
+    1 -> 7). The 2026-09-19 levers priced on the grown polygon do not buy it
+    back: both levers ON reads 17 trims on the rails against 8 off them.
+
+    Pinned as CEILINGS, the way the underlay lever's own cost is: a cheaper
+    build lowers them and this test stays green; a dearer one fails it. The
+    direction is recorded here, not asserted -- the day the rails sew the
+    word in the typed word's three trims, nothing here should be in the way.
+    """
+    from digitizer_core.pipeline import build_generation, finish_generation, plan_stitches
+    from tests.test_stroke_order_euler import FIXTURE
+
+    def sewn(**kw):
+        c = PipelineConfig(target_width_mm=80.2, garment_id="left_chest", max_colors=6, **kw)
+        gen = build_generation(str(FIXTURE), c)
+        return plan_stitches(finish_generation(gen.fork(), c), c)
+
+    off, on = sewn(satin_rail_comp=False), sewn()
+    assert off.stats.trims <= 9, off.stats.trims            # the grown polygon, 2026-09-19's number
+    assert on.stats.trims <= 22, on.stats.trims             # the rails, measured at the flip
+    assert on.stats.stitch_count <= 1.16 * off.stats.stitch_count, (off.stats.stitch_count, on.stats.stitch_count)
 
 
 def test_push_rails_pushes_a_pinched_cross_and_leaves_a_directionless_one():

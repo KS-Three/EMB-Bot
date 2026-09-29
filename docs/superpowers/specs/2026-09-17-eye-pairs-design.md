@@ -80,7 +80,7 @@ exactly one change:
 | `area_weighted` | `classify_area_weighted=True` |
 | `design_angle` | `design_angle=True` |
 | `rails_follow_edge` | `satin_rails_follow_edge=True` (added 2026-09-18: the labelled before/after page already carried it) |
-| `rail_comp` | `satin_rail_comp=True` |
+| ~~`rail_comp`~~ | ~~`satin_rail_comp=True`~~ — shipped ON 2026-09-28 on the labelled sitting (`docs/kent-review-2026-09-28.md`); base now, no longer an arm |
 | `wide_columns` | `wide_columns=True` |
 | `lettering_column` | `lettering_min_column_mm=1.0` |
 | `phantom_dissolve` | `dissolve_phantom_blends=True` |
