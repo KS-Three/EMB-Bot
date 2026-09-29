@@ -6732,7 +6732,10 @@ The mechanism is not new: the symmetric-offset rail model's under-reach,
 which the grown polygon hid by a pull, lands on the artwork once the pull is
 on the rails. `docs/kent-review-2026-09-28.md` "Outcome" has the table and
 the 29-test blast radius; `tests/test_rail_comp.py` pins the trims as a
-ceiling. Whether the price is accepted is Kent's, asked with the PR.
+ceiling. **Kent took the price the same day** (*"Take the price, let it
+merge"*), so the MARINE trims and the ENTHUSIAST bare artwork are an
+ACCEPTED PRICE, not open defects for someone to re-solve; the under-reach
+they come from stays 768de79e's open item and the way to lower the ceiling.
 
 ## Four photo-lane tests go red on any machine that has `rembg_isolated/venv` built, and CI never does (2026-09-29)
 

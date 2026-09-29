@@ -15497,7 +15497,9 @@ grown polygon, lands on the artwork. The trims are the surprise against the
 engine four lettering steps older): on the lettering route's own fixture
 they more than double, and the levers priced on the grown polygon do not
 buy them back. `tests/test_rail_comp.py` pins the MARINE numbers as
-ceilings. Whether the price is accepted is Kent's, asked with the PR.
+ceilings. Kent took the price the same day, shown this table with the PR
+armed: *"Take the price, let it merge"* — an accepted price, not open
+defects.
 
 *(measured 2026-09-29 — `docs/kent-review-2026-09-28.md` "Outcome";
 `tests/test_lettering_coverage_regression.py`, `tests/test_rail_comp.py`)*

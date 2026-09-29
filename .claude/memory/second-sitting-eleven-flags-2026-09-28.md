@@ -42,7 +42,8 @@ better, 8 before better, 30 no difference, 23 both bad; "can't tell" on 59 of
   under-reach of the symmetric-offset rail model, hidden by the grown polygon,
   lands on the artwork. 29 tests in 14 files moved, three flat goldens re-captured
   with the pre-change proof; `docs/kent-review-2026-09-28.md` "Outcome" has the
-  table. Whether Kent takes the price was asked with the PR.
+  table. Kent took the price the same day (*"Take the price, let it merge"*):
+  an accepted price, not open defects; the under-reach stays 768de79e's item.
 - **Four photo-lane tests go red wherever `rembg_isolated/venv` exists** (the
   stub's shade demand, the two-square depth sort, the owl's merge and its
   declared-photographic report) — on the pre-change tree too, and never in CI.

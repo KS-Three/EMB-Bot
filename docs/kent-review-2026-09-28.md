@@ -6,9 +6,10 @@
 > is in the "Outcome" section at the end: MARINE at 80 mm goes **9 → 22
 > trims** at +15% stitches; ENTHUSIAST's `lost_frac` drops under its bar for
 > the first time (0.2748 → 0.2565) while its bare artwork rises 6.27 → 7.10%;
-> Becker at 114 mm under `wide_columns` loses the fold guard's margin. Whether
-> that price is accepted is Kent's call, and it is put to him with the PR.
-> Not picked: retiring `screenshot` from the corpus.
+> Becker at 114 mm under `wide_columns` loses the fold guard's margin. **Kent
+> took the price** (2026-09-29, shown the table: *"Take the price, let it
+> merge"*), so it is an accepted price, not an open defect. Not picked:
+> retiring `screenshot` from the corpus.
 
 **Result, in Kent's words: "The changes were VERY hard to tell the differences
 with the 'before and after' by the human eye."** He judged all 77 pairs on the
@@ -217,8 +218,12 @@ the grown polygon do not buy them back. `tests/test_rail_comp.py` pins the
 MARINE numbers as ceilings so a cheaper build lowers them without touching
 the test.
 
-**What this does not settle:** whether Kent takes that price. His pick was
-made on the look, which the flip improves in his eye on five logos; the
-trims and the bare artwork were not on the page. Reverting is one line plus
-this table's tests moving back. The sew-out that would settle the amount is
-still owed either way.
+**Kent's ruling on the price, 2026-09-29, shown this table with the PR
+armed to merge: *"Take the price, let it merge."*** His pick had been made
+on the look, which the flip improves in his eye on five logos; the trims
+and the bare artwork were not on the page, and he took them knowing. So
+the MARINE trims and the ENTHUSIAST bare artwork are an accepted price,
+not open defects — the under-reach they come from stays 768de79e's open
+item, and a fix for it only lowers the ceiling `tests/test_rail_comp.py`
+pins. Reverting stays one line plus this table's tests moving back. The
+sew-out that would settle the amount is still owed either way.
