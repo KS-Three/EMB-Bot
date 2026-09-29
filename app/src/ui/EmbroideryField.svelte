@@ -10,7 +10,7 @@
   import { designRectPx, hitTest, pickElement, dragResize, clampOffsets, clampPan, buildSnapLines, snapMove, snapResizeWidth, rotateHandlePx, dragRotate, unionBBox, clampGroupDelta, groupResizePatches } from "../lib/interact.js";
   import { selectedIdsOf } from "../lib/project.js";
   import { effectiveHoop, hoopFitNote } from "../lib/hoop.js";
-  import { shapeOutlinesInFieldMm, pulseAt, createPulseTracker, hitOverlay, hitShapeInterior, moveNode, moveEdge, insertNode, fieldMmToOutlineMm } from "../lib/shapeOverlay.js";
+  import { shapeOutlinesInFieldMm, designOutlinesInFieldMm, pulseAt, createPulseTracker, hitOverlay, hitShapeInterior, moveNode, moveEdge, insertNode, fieldMmToOutlineMm } from "../lib/shapeOverlay.js";
   import {
     appliedBorders,
     borderMenuItems,
@@ -540,24 +540,44 @@
     return { dx: dxPx / sx, dy: dyPx / sy };
   }
 
-  // The outlines of ONE digitized element, in canvas px — what the pointer
+  // The three element types that carry per-shape geometry the field can
+  // outline and address (2026-09-29 spec §4). `digitized` shapes come from
+  // the service's review payload and need shapeOverlay's bbox fit;
+  // `manual` and `shape` (preset) elements come from the browser engine's own
+  // `shapeOutlines`, already in field mm.
+  const SHAPE_LANES = new Set(["digitized", "manual", "shape"]);
+
+  // Field-mm outlines + review rows for one element, whatever its lane.
+  // `rows` is [] on the manual lanes: they have no review payload, no hidden
+  // shapes and no pending boundary edits.
+  function outlinesMmFor(el) {
+    if (!el || !SHAPE_LANES.has(el.type)) return null;
+    const pe = peById[el.id];
+    if (!pe) return null;
+    if (el.type === "digitized") {
+      const rows = digitizedRows(el);
+      if (!rows || !pe.bboxMm) return null;
+      return { rows, mm: shapeOutlinesInFieldMm(rows, pe.bboxMm, el.rotationDeg || 0, pendingBoundaries(el)) };
+    }
+    return { rows: [], mm: designOutlinesInFieldMm(pe.design) };
+  }
+
+  // The outlines of ONE shape-bearing element, in canvas px — what the pointer
   // hit-tests against. The left-click editor only ever asks for the selected
   // element's (`editableOutlinesPx`: the others' outlines are there to show
   // what was found, not to be grabbed); the right-click menu asks for the
   // element under the pointer, selected or not, because a per-shape command
   // starts by saying which shape it means.
   function outlinesPxFor(el) {
-    if (!el || el.type !== "digitized" || !renderResult || !renderResult.toCanvas) return null;
-    const rows = digitizedRows(el);
+    if (!renderResult || !renderResult.toCanvas) return null;
+    const src = outlinesMmFor(el);
+    if (!src) return null;
     const pe = peById[el.id];
-    if (!rows || !pe || !pe.bboxMm) return null;
-    const mm = shapeOutlinesInFieldMm(
-      rows, pe.bboxMm, el.rotationDeg || 0, pendingBoundaries(el));
     return {
       el,
-      rows,
+      rows: src.rows,
       pe,
-      outlines: mm.map((o) => ({
+      outlines: src.mm.map((o) => ({
         id: o.id,
         points: (liveRing && liveRing.shapeId === o.id ? liveRing.points : o.points)
           .map(([x, y]) => {
@@ -565,7 +585,7 @@
             return [c.x, c.y];
           }),
       })),
-      mmById: new Map(mm.map((o) => [o.id, o.points])),
+      mmById: new Map(src.mm.map((o) => [o.id, o.points])),
     };
   }
 
@@ -578,7 +598,7 @@
   // `review.shapes` so it is restorable from the Layers list).
   function hiddenShapeIds(el, rows) {
     return new Set([
-      ...rows.filter((r) => r && r.stitched === false).map((r) => r.id),
+      ...(rows || []).filter((r) => r && r.stitched === false).map((r) => r.id),
       ...(el.deletedShapeIds || []),
     ]);
   }
@@ -639,13 +659,24 @@
   // user. Cheap to compute, and it also drops the highlight.
   $: if (project && project.selectedId !== undefined) {
     const sel = selectedElement();
-    if (!sel || sel.type !== "digitized") selectedShapeId = null;
+    if (!sel || !SHAPE_LANES.has(sel.type)) selectedShapeId = null;
   }
 
   function deleteSelectedShape() {
     if (!selectedShapeId) return false;
     const el = selectedElement();
-    if (!el || el.type !== "digitized") return false;
+    if (!el) return false;
+    if (el.type === "manual") {
+      // Same patch ManualPanel.deleteShape sends: the shape leaves
+      // element.shapes, and the panel's own list drops the row.
+      const shapes = el.shapes || [];
+      if (!shapes.some((s) => s && s.id === selectedShapeId)) return false;
+      dispatch("elupdate", { id: el.id, patch: { shapes: shapes.filter((s) => s.id !== selectedShapeId) } });
+      selectedShapeId = null;
+      shapeEditError = "";
+      return true;
+    }
+    if (el.type !== "digitized") return false; // a preset element IS its one shape; its chip removes it
     const cur = el.deletedShapeIds || [];
     if (cur.includes(selectedShapeId)) return false;
     dispatch("elupdate", { id: el.id, patch: { deletedShapeIds: [...cur, selectedShapeId] } });
@@ -803,14 +834,10 @@
     let stillPulsing = false;
 
     for (const el of project.elements || []) {
-      if (el.type !== "digitized") continue;
-      const rows = digitizedRows(el);
-      if (!rows) continue;
-      const pe = peById[el.id];
-      if (!pe || !pe.bboxMm) continue;
-
-      const outlines = shapeOutlinesInFieldMm(
-        rows, pe.bboxMm, el.rotationDeg || 0, pendingBoundaries(el));
+      const src = outlinesMmFor(el);
+      if (!src) continue;
+      const rows = src.rows;
+      const outlines = src.mm;
       if (!outlines.length) continue;
 
       const started = pulses.startedAt(el.id);
@@ -1902,8 +1929,10 @@
       const hit = hitOverlay(edit.outlines, p.x, p.y);
       if (hit) {
         // First click on a shape selects it and stops there — no geometry
-        // moves until you have said which shape you mean.
-        if (hit.shapeId !== selectedShapeId) {
+        // moves until you have said which shape you mean. On the manual and
+        // preset lanes it ALWAYS stops there: node editing for hand-drawn
+        // shapes lives in ManualPanel for now (2026-09-29 spec §8).
+        if (hit.shapeId !== selectedShapeId || edit.el.type !== "digitized") {
           selectedShapeId = hit.shapeId;
           shapeEditError = "";
           drawOverlay();
