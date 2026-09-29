@@ -34,7 +34,8 @@ ARMS: dict[str, dict] = {
     # The 2026-09-18 labelled before/after page carried this arm; it stays so
     # the same six flags Kent already has in front of him keep their column.
     "rails_follow_edge": {"satin_rails_follow_edge": True},
-    "rail_comp": {"satin_rail_comp": True},
+    # `rail_comp` shipped ON 2026-09-28 (Kent, on the labelled sitting), so it
+    # is the base now and no longer an arm.
     "wide_columns": {"wide_columns": True},
     "lettering_column": {"lettering_min_column_mm": 1.0},
     "phantom_dissolve": {"dissolve_phantom_blends": True},

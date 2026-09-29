@@ -127,6 +127,14 @@ tokens on `:root`, dark mode honoured, phone width usable.
   refused the artwork; hover names the direction, never a value;
 - **inputs**: *did the arm do what it claims?* — `yes` / `no` / `can't tell`
   — and a note. Autosaved; a `saved` mark confirms each write.
+- **the change locator** (added 2026-09-29, after Kent read 30 of 77 pairs
+  as "no difference" with nothing pointing at the patch that moved): the
+  generator blurs both renders by 0.6 mm, thresholds the per-channel
+  difference and keeps up to three boxes by area, as fractions of the left
+  render; the page outlines them on both renders and a *zoom to change*
+  button drives the synced zoom to each in turn. Shape and coverage only —
+  an angle-only change blurs away and the card says so. No share or figure
+  reaches the page.
 
 **Per-arm header card** (when grouped by arm): wins / losses / ties of the
 arm against shipped, per fixture as a strip and pooled as counts (counts,

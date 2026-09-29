@@ -18,8 +18,9 @@ from tools import eye_pairs_gallery as g  # noqa: E402
 
 # Restated from the yardstick spec, sections 3.2 and 3.7 / analysis.METRICS.
 SPEC_ARMS = ["per_stroke", "patch_junctions", "polygon_axis", "area_weighted",
-             "design_angle", "rails_follow_edge", "rail_comp", "wide_columns",
+             "design_angle", "rails_follow_edge", "wide_columns",
              "lettering_column", "phantom_dissolve", "directional_comp", "ref_0827"]
+# `rail_comp` shipped ON 2026-09-28 and left the table (docs/kent-review-2026-09-28.md).
 SPEC_METRICS = {
     "trims_per_1000": "lower", "preflight_raw_score": "higher",
     "preflight_blocks": "lower", "uncovered_total_mm2": "lower",
@@ -82,8 +83,10 @@ def make_set(tmp_path: Path, picks: dict[str, str] | None = PICKS,
     (src / "arms.json").write_text(json.dumps(SEALED), encoding="utf-8")
     (src / "features.json").write_text(json.dumps(FEATS), encoding="utf-8")
     (src / "skipped.json").write_text(json.dumps(SKIPPED), encoding="utf-8")
-    colours = {("fx_a", "base"): (10, 10, 10), ("fx_a", "per_stroke"): (20, 20, 20),
-               ("fx_b", "base"): (30, 30, 30), ("fx_b", "polygon_axis"): (40, 40, 40)}
+    # Flat colours far enough apart that the change locator sees a difference
+    # (its blurred threshold is 24 levels); still distinct for the de-dup tests.
+    colours = {("fx_a", "base"): (10, 10, 10), ("fx_a", "per_stroke"): (120, 120, 120),
+               ("fx_b", "base"): (30, 30, 30), ("fx_b", "polygon_axis"): (140, 140, 140)}
     if renders:
         (src / "renders").mkdir()
         for (fx, arm), c in colours.items():
@@ -454,7 +457,7 @@ def make_labelled_set(tmp_path: Path) -> Path:
     for n, ((fx, arm), st) in enumerate(LAB_STITCHES.items()):
         (src / "designs" / f"{fx}__{arm}.json").write_text(json.dumps({"stitches": st}),
                                                            encoding="utf-8")
-        _img(src / "renders" / f"{fx}__{arm}.jpg", (10 * n + 5,) * 3)
+        _img(src / "renders" / f"{fx}__{arm}.jpg", (40 * n + 5,) * 3)   # 40 apart: the locator sees each pair
     _img(src / "renders" / "fx_a__art.png", (200, 200, 200))
     _img(src / "renders" / "fx_p__art.png", (210, 210, 210))
     return src
@@ -549,3 +552,112 @@ def test_cli_labelled_prints_the_skips_and_failures(tmp_path, capsys):
     out = capsys.readouterr().out
     assert "2 pairs" in out and "1 arm-runs identical" in out and "1 failed" in out
     assert "FAILED fx_a / wide_columns: ValueError: boom" in out
+
+
+# ---- change locator -------------------------------------------------------
+# Where a pair changed, for the page to outline and zoom to. Boxes are
+# fractions of the left render; the page never shows a number for them.
+
+def _flat(size=(120, 160), colour=(230, 230, 230)) -> np.ndarray:
+    arr = np.zeros((size[0], size[1], 3), np.uint8)
+    arr[:] = colour
+    return arr
+
+
+def _png(arr: np.ndarray) -> bytes:
+    ok, buf = cv2.imencode(".png", arr)      # lossless, so the diff is exact
+    assert ok
+    return buf.tobytes()
+
+
+def test_identical_renders_have_no_hotspot():
+    a = _flat()
+    assert g.change_hotspots(_png(a), _png(a), px_per_mm=4.0) == []
+
+
+def test_one_patch_is_one_box_around_it():
+    a = _flat()
+    b = a.copy()
+    b[40:60, 100:130] = (30, 30, 30)
+    boxes = g.change_hotspots(_png(a), _png(b), px_per_mm=4.0)
+    assert len(boxes) == 1
+    bx = boxes[0]
+    assert set(bx) == {"x", "y", "w", "h"}
+    assert bx["x"] <= 100 / 160 and bx["x"] + bx["w"] >= 130 / 160     # contains the patch...
+    assert bx["y"] <= 40 / 120 and bx["y"] + bx["h"] >= 60 / 120
+    assert bx["w"] < 0.5 and bx["h"] < 0.5                             # ...and is not the whole image
+    assert all(0.0 <= v <= 1.0 for v in bx.values())
+
+
+def test_boxes_come_largest_first_and_the_cap_holds(monkeypatch):
+    a = _flat()
+    b = a.copy()
+    b[10:20, 10:20] = (30, 30, 30)          # small
+    b[60:100, 60:140] = (30, 30, 30)        # large
+    b[105:115, 145:155] = (30, 30, 30)      # small, elsewhere
+    boxes = g.change_hotspots(_png(a), _png(b), px_per_mm=4.0)
+    assert len(boxes) == 3
+    assert boxes[0]["w"] * boxes[0]["h"] > boxes[1]["w"] * boxes[1]["h"]
+    assert boxes[0]["x"] <= 60 / 160 <= boxes[0]["x"] + boxes[0]["w"]
+    monkeypatch.setattr(g, "MAX_HOTSPOTS", 2)
+    assert len(g.change_hotspots(_png(a), _png(b), px_per_mm=4.0)) == 2
+
+
+def test_stitch_texture_is_not_a_change():
+    # Thin lines every few pixels are what a render's stitch texture looks like
+    # against a flat neighbour; the blur averages them under the threshold.
+    a = _flat()
+    b = a.copy()
+    b[::4, :] = (200, 200, 200)
+    assert g.change_hotspots(_png(a), _png(b), px_per_mm=4.0) == []
+
+
+def test_a_cone_swap_at_equal_brightness_still_counts():
+    a = _flat(colour=(200, 100, 100))
+    b = _flat(colour=(100, 100, 200))
+    boxes = g.change_hotspots(_png(a), _png(b), px_per_mm=4.0)
+    assert len(boxes) == 1 and boxes[0]["w"] > 0.9 and boxes[0]["h"] > 0.9
+
+
+def test_a_right_render_of_another_size_is_resampled_to_the_left():
+    a = _flat((120, 160))
+    b = cv2.resize(a, (320, 240), interpolation=cv2.INTER_NEAREST)
+    b[80:120, 200:260] = (30, 30, 30)
+    boxes = g.change_hotspots(_png(a), _png(b), px_per_mm=4.0)
+    assert len(boxes) == 1
+    assert boxes[0]["x"] <= 100 / 160 and boxes[0]["y"] <= 40 / 120
+
+
+def test_render_scale_pins_the_yardstick_view():
+    try:
+        from tools.artfid_eye_rank import VIEW_PX_PER_MM
+    except ImportError:
+        pytest.skip("yardstick view scale not on this checkout")
+    assert g.RENDER_PX_PER_MM == VIEW_PX_PER_MM
+
+
+def test_build_carries_hotspots_and_none_for_an_identical_control(tmp_path):
+    src = make_set(tmp_path)
+    data = g.build(src, tmp_path / "gallery")
+    by = {p["pair"]: p for p in data["pairs"]}
+    assert by["P002"]["hotspots"] == []                       # base | base
+    assert len(by["P001"]["hotspots"]) == 1                   # flat colours 110 levels apart
+    assert by["P004"]["hotspots"] == by["P001"]["hotspots"]   # same two renders, swapped: computed once
+    html = (tmp_path / "gallery" / "index.html").read_text(encoding="utf-8")
+    assert "%" not in _strip_style(html)                      # the page draws the box, never a figure
+    lab = g.build(make_labelled_set(tmp_path / "lab"), tmp_path / "lab-gallery", labelled=True)
+    assert all(len(p["hotspots"]) == 1 for p in lab["pairs"])
+
+
+# ---- shipped arms -----------------------------------------------------------
+
+def test_a_shipped_arm_is_still_named_on_an_old_sitting():
+    # rail_comp shipped ON 2026-09-28 and left the pending table; a sitting
+    # rendered before that still carries its rows, and the page must say what
+    # it was rather than show a bare id.
+    assert "rail_comp" not in g.ARM_INTENT
+    change, intent = g.arm_intent("rail_comp")
+    assert change.startswith("satin_rail_comp=True") and "shipped" in change and intent
+    assert g.arm_intent("per_stroke") == g.ARM_INTENT["per_stroke"]
+    assert g.arm_intent("nope") == ("nope", "")
+    assert g.arm_intent(None) == ("", "")

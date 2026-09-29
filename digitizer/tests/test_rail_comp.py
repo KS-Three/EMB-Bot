@@ -1,5 +1,7 @@
 """`cfg.satin_rail_comp` — pull compensation on the rails, not the polygon.
-DEFAULT OFF (quality review 2026-09-08 item 6, built 2026-09-09).
+Built OFF 2026-09-09 (quality review 2026-09-08 item 6); DEFAULT ON since
+2026-09-28, Kent's flip on the labelled sitting (docs/kent-review-2026-09-28.md).
+OFF is the pre-flip path and is passed explicitly wherever a test needs it.
 
 Stage 5 grows every shape by the fabric's pull with a round join and the
 satin tier skeletonises the grown polygon: arcs on every corner, slots
@@ -85,9 +87,12 @@ def _outside(points, poly: Polygon) -> float:
                for p in points)
 
 
-def test_the_flag_is_off_by_default():
-    """The amount is gate 1's; where it lands is Kent's on the render."""
-    assert PipelineConfig().satin_rail_comp is False
+def test_the_flag_is_on_by_default_since_2026_09_28():
+    # Kent flipped it on the labelled sitting (docs/kent-review-2026-09-28.md):
+    # after-better on five logos, before-better on none. OFF is the old path.
+    assert PipelineConfig().satin_rail_comp is True
+    assert PipelineConfig(satin_rail_comp=False).satin_rail_comp is False
+    # The amount is gate 1's; where it lands was Kent's on the render.
     assert PULL > 0, "the polo preset stopped carrying a pull, so nothing here is measurable"
 
 
@@ -98,7 +103,7 @@ def test_a_bar_is_sewn_on_its_artwork_with_rails_one_pull_outside_and_caps_not_l
     fabric's pull earns is untouched) and the caps stop at the artwork."""
     png = tmp_path / "bar.png"
     _bar_png(png, 24.0, 3.0)
-    off_r, off_p, off_seen = _sewn(png, target_width_mm=24.0)
+    off_r, off_p, off_seen = _sewn(png, target_width_mm=24.0, satin_rail_comp=False)
     on_r, on_p, on_seen = _sewn(png, target_width_mm=24.0, satin_rail_comp=True)
     sid = next(iter(on_seen))
     art = next(r.polygon for r in on_r.regions if r.shape_id == sid)
@@ -163,7 +168,7 @@ def test_the_end_cutback_owes_only_the_push_on_rails(tmp_path):
     positions. The flag moves the column's width, never its length."""
     png = tmp_path / "bar.png"
     _bar_png(png, 24.0, 3.0)
-    _r, off_p, off_seen = _sewn(png, target_width_mm=24.0, directional_comp=True)
+    _r, off_p, off_seen = _sewn(png, target_width_mm=24.0, directional_comp=True, satin_rail_comp=False)
     r, on_p, on_seen = _sewn(png, target_width_mm=24.0, directional_comp=True, satin_rail_comp=True)
     sid = next(iter(on_seen))
     assert set(off_seen) == set(on_seen)
@@ -185,7 +190,7 @@ def test_on_the_wordmark_every_satin_shape_sews_on_its_artwork():
     is only the underlap tongue under a later colour (and the clip of an
     earlier one) -- less than half of OFF's growth band on every shape."""
     art = TESTDATA / "photo" / "drone_render.png"
-    off_r, _off_p, off_seen = _sewn(art)
+    off_r, _off_p, off_seen = _sewn(art, satin_rail_comp=False)
     on_r, _on_p, on_seen = _sewn(art, satin_rail_comp=True)
     art_by_id = {rg.shape_id: rg.polygon for rg in on_r.regions}
     assert len(on_seen) >= 30 and set(on_seen) == set(off_seen)

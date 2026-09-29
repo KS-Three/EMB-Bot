@@ -6680,3 +6680,40 @@ overshoot ≤ 0.29, colour-free uncovered elements == 0, bare satin ≤ 6.8%.
 — the cure the docstring used to name makes its own number ~20% worse. Claim
 adversarially reviewed by three independent lenses before being written:
 direction upheld, the word "ZERO" and the "sews fatter" framing struck.)*
+
+## `satin_rail_comp` shipped on Kent's eye, and the flags his eye rejected stay off (2026-09-28)
+
+Kent's ruling, 2026-09-28, after judging all 77 labelled before | after
+pairs (`docs/kent-review-2026-09-28.md`): **`satin_rail_comp` is ON.** It was
+the only pending flag his eye favoured — after-better on becker, bridge,
+ENTHUSIAST, Fremont and tires, before-better nowhere, both-bad only on the
+four logos that are bad under every arm — and his tires note names the gain
+and a cost together (the I and S improved, the top of the r lost thread).
+What moved is WHERE the pull compensation lands (the rails, from the
+artwork's own skeleton), never the amount; the amount is the fabric's and
+gate 1's, and the sew-out that would settle it is still owed. OFF remains
+the pre-09-28 path for anything that needs it.
+
+Three rules from the same sitting, each firing on a proposal:
+
+- **Do not propose flipping `directional_comp`, `lettering_min_column_mm`
+  or `wide_columns` on the look.** His eye read them before-better on 4, 2
+  and 1 logos and after-better on 1, 0 and 0. A case for any of them has to
+  be made on thread, trims or close-range stitch quality, not on how the
+  logo reads.
+- **gaulke, golden_tee, screenshot and drone are engine work, not flag
+  work.** Each was both-bad under three to five arms and under the 08-27
+  engine too. A flag proposal aimed at one of them has already been
+  measured against his eye and lost; his note on screenshot (*"don't use
+  this one anymore"*) asks for its retirement from the corpus, which is its
+  own change and not yet made.
+- **A pair with no pointer to where it changed reads as "no difference".**
+  30 of 77 did, and 59 of 68 job questions were "can't tell", on changes the
+  09-18 review had measured as local (0.05 to 38 percent of a design after
+  a 0.6 mm blur). Put the locator on the page before the next sitting.
+
+And the datum worth keeping beside the 60%-of-Ember number: **today's engine
+beat the 08-27 engine on 7 of 9 logos in his eye** (the other two both-bad),
+with notes naming cleaner trims and borders, letters in place, Becker's C
+border. First direct evidence the month's engine work registered at full
+size. It says nothing about the distance to Ember.

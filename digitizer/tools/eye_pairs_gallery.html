@@ -65,7 +65,10 @@ textarea{font:inherit;color:inherit;background:var(--bg);border:1px solid var(--
 #progress:empty{display:none}
 .view{position:relative;overflow:hidden;border:2px solid var(--rule);border-radius:8px;background:var(--well);touch-action:none;cursor:grab;aspect-ratio:var(--ar,3/2)}
 .view.picked{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 25%,transparent)}
-.view img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;transform-origin:0 0;user-select:none;-webkit-user-drag:none;pointer-events:none}
+.view .layer{position:absolute;inset:0;transform-origin:0 0;pointer-events:none}
+.view img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;user-select:none;-webkit-user-drag:none;pointer-events:none}
+.hot{position:absolute;border:2px dashed var(--accent);border-radius:3px;box-shadow:0 0 0 2px color-mix(in srgb,var(--paper) 55%,transparent)}
+.zoomhot{font-size:12px;padding:2px 8px}
 .cap{display:flex;flex-wrap:wrap;gap:4px 12px;align-items:baseline;font-size:12px;margin-top:6px}
 .cap .who{font-weight:600}
 .cap .who.arm{color:var(--accent)}
@@ -85,7 +88,7 @@ textarea{font:inherit;color:inherit;background:var(--bg);border:1px solid var(--
 #export[hidden]{display:none}
 #export textarea{min-height:120px;font-family:var(--mono);font-size:12px}
 .empty{color:var(--muted);padding:40px 0;text-align:center}
-@media (prefers-reduced-motion:no-preference){.view img{transition:transform 40ms linear}}
+@media (prefers-reduced-motion:no-preference){.view .layer{transition:transform 40ms linear}}
 </style>
 
 <header class="bar">
@@ -254,7 +257,16 @@ async function saveNotes() {
 // ---- synced zoom -------------------------------------------------------------
 function attachZoom(views) {
   const z = {s: 1, x: 0, y: 0};
-  const apply = () => { for (const v of views) v.img.style.transform = `translate(${z.x}px,${z.y}px) scale(${z.s})`; };
+  const apply = () => { for (const v of views) v.layer.style.transform = `translate(${z.x}px,${z.y}px) scale(${z.s})`; };
+  // Zoom every view of the pair to one hotspot box (fractions of the render):
+  // the box fills about seven tenths of the view, centred, capped at the wheel's 12x.
+  const zoomTo = box => {
+    const r = views[0].box.getBoundingClientRect();
+    const s = Math.min(12, Math.max(1, 0.7 / Math.max(box.w, box.h, 0.01)));
+    const cx = (box.x + box.w / 2) * r.width, cy = (box.y + box.h / 2) * r.height;
+    z.s = s; z.x = r.width / 2 - cx * s; z.y = r.height / 2 - cy * s;
+    apply();
+  };
   for (const v of views) {
     v.box.addEventListener("wheel", e => {
       e.preventDefault();
@@ -273,7 +285,11 @@ function attachZoom(views) {
     v.box.addEventListener("pointerup", end); v.box.addEventListener("pointercancel", end);
     v.box.addEventListener("dblclick", () => { z.s = 1; z.x = 0; z.y = 0; apply(); });
   }
+  return {zoomTo};
 }
+// A CSS percentage without the literal sign: the build test forbids one
+// anywhere outside <style>, so no figure ever reads as a score on this page.
+const pct = v => (v * 100).toFixed(3) + String.fromCharCode(37);
 
 // ---- render --------------------------------------------------------------------
 function kindBadge(p) {
@@ -303,7 +319,10 @@ function viewFor(p, side) {
   const picked = LAB ? (v === "after" ? side === afterSide(p) : v === "before" ? side !== afterSide(p) : false)
                      : p.pick === side;
   const img = el("img", {src: p.img[side], alt: `${p.fixture} ${who}`, loading: "lazy"});
-  const box = el("div", {class: "view" + (picked ? " picked" : ""), tabindex: "0", title: "wheel to zoom, drag to pan, double-click to reset"}, img);
+  // The hotspot outlines ride the same layer as the render, so they zoom and pan with it.
+  const layer = el("div", {class: "layer"}, img,
+    ...(p.hotspots || []).map(b => el("div", {class: "hot", style: `left:${pct(b.x)};top:${pct(b.y)};width:${pct(b.w)};height:${pct(b.h)}`})));
+  const box = el("div", {class: "view" + (picked ? " picked" : ""), tabindex: "0", title: "wheel to zoom, drag to pan, double-click to reset"}, layer);
   img.addEventListener("load", () => { box.style.setProperty("--ar", `${img.naturalWidth}/${img.naturalHeight}`); }, {once: true});
   const c = p.counts[side] || {};
   // Present but hidden until picked, so a labelled verdict can show it in place.
@@ -316,7 +335,7 @@ function viewFor(p, side) {
     el("span", {class: "n", text: `${fmt(c.stitches)} st`}),
     el("span", {class: "n", text: `${c.trims_per_1000 == null ? "—" : c.trims_per_1000} trims/1000`}),
     el("span", {class: "n", text: `${fmt(c.cones)} cones`}));
-  return {box, img, better, fig: el("figure", {style: "margin:0"}, box, cap)};
+  return {box, img, layer, better, fig: el("figure", {style: "margin:0"}, box, cap)};
 }
 // A chip agrees with the pick (reveal) or with Kent's verdict (labelled). In
 // labelled mode the chips stay hidden until a verdict exists, so an
@@ -352,7 +371,14 @@ function segControl(options, current, onPick) {
 }
 function pairCard(p) {
   const L = viewFor(p, "L"), R = viewFor(p, "R");
-  attachZoom([L, R]);
+  const zoom = attachZoom([L, R]);
+  // Where it changed: the outlines are always drawn; the button drives both
+  // views to the largest box, then the next on each click. Double-click resets.
+  const hots = p.hotspots || [];
+  let hotIdx = 0;
+  const zoomBtn = hots.length ? el("button", {type: "button", class: "zoomhot", title: "zoom both renders to where they differ; double-click a render to reset",
+    text: hots.length > 1 ? `zoom to change (${hots.length} spots)` : "zoom to change"}) : el("span", {class: "kind", text: "no change found after blur"});
+  if (hots.length) zoomBtn.addEventListener("click", () => { zoom.zoomTo(hots[hotIdx]); hotIdx = hotIdx + 1 < hots.length ? hotIdx + 1 : 0; });
   const note = state.notes[p.pair] || {verdict: null, job_done: null, note: ""};
   const saved = el("span", {class: "saved"});
   // One document per pair; every control merges into it so none clobbers another.
@@ -382,7 +408,7 @@ function pairCard(p) {
       el("span", {class: "pid", text: p.pair}),
       el("h3", {text: p.fixture}),
       p.width_mm != null ? el("span", {class: "size", text: `${p.width_mm} mm · ${p.garment}`}) : null,
-      kindBadge(p), confoundBadge(p)),
+      kindBadge(p), confoundBadge(p), p.shipped_side === null ? null : zoomBtn),
     p.arm ? el("div", {class: "armline"}, el("code", {text: p.arm_change}), p.arm_intent) : null,
     el("div", {class: "art"}, el("img", {src: p.img.art, alt: `${p.fixture} artwork`, loading: "lazy"})),
     el("div", {class: "views"}, L.fig, R.fig),

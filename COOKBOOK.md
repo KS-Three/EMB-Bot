@@ -1458,7 +1458,14 @@ equal shipped's is counted as *identical, not shown*, an arm that raised as
 *failed*. Pair ids are `<arm>__<fixture>`, not opaque, so a note keyed by
 one survives a re-render, a new arm, and a republish. Instrument chips stay
 hidden until he has given a verdict, then colour by agreement with it; the
-per-arm tally is a count of his verdicts, never a rate. Published as
+per-arm tally is a count of his verdicts, never a rate. **Every pair carries
+a change locator (2026-09-29)**: the generator blurs both renders by 0.6 mm
+(the 09-18 review's measure — stitch texture gone, shape and shade kept),
+thresholds the per-channel difference, and keeps up to three boxes by area;
+the page outlines them on both renders and *zoom to change* drives the
+synced zoom to each in turn. It finds shape and coverage changes, not
+texture: an angle-only pair (five of the 77) says *no change found after
+blur* instead. No share or figure reaches the page. Published as
 https://claude.ai/artifact/6mjKrbnCX21MM9gQUry4Zp — **republish to that
 URL**, never a new one: his notes live in its `db`, keyed by those ids.
 
