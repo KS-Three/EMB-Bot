@@ -318,3 +318,65 @@ def test_push_rails_pushes_a_pinched_cross_and_leaves_a_directionless_one():
     assert abs(math.dist(pa[0], pb[0]) - 0.8) < 1e-9
     assert abs(math.dist(pa[1], pb[1]) - (2.0 + 0.6)) < 1e-9
     assert pa[2] == a[2] and pb[2] == b[2]
+
+
+def test_the_flips_bare_artwork_is_hairlines_on_the_sides_and_a_hole_at_a_tapered_end():
+    """WHAT the flip's bare artwork is, which its headline could not say.
+
+    `docs/kent-review-2026-09-28.md` recorded ENTHUSIAST's cost as bare
+    artwork 6.27 -> 7.10% with the rise "along the rails (mid-rail 2.06 ->
+    4.12%), cause not yet isolated". Isolated 2026-09-29 with
+    `tools/bare_anatomy.py`, which splits every bare component by WHERE it
+    sits (a disc at a run's terminal cross = an `end` gap, else a `side` gap)
+    and HOW THICK it is (max inscribed radius). The two populations want
+    opposite responses and the percentage cannot tell them apart:
+
+    - **The mid-rail half is HAIRLINES and is not the defect.** 80% of the
+      side area sits in components under 0.10 mm half-width, the worst side
+      component is SMALLER on than off (0.45 against 0.50 mm2), and the
+      same-rail step distribution barely moves (p50 0.427 -> 0.419 mm, share
+      over 0.45 mm 35.1 -> 33.6%, the summed overshoot past the 0.4 mm pitch
+      88.2 -> 71.5 mm). A 0.4 mm thread at the 0.4 mm pitch just touches, so
+      every rail step over it leaves a sliver the coverage model counts;
+      rail comp makes more of them and makes each thinner.
+    - **The cloth-visible cost is at a TAPERED END.** The apex of the A
+      (`Scd87e08f`) sews to within 0.08 mm of the artwork off the rails and
+      stops 1.63 mm short on them, leaving one 3.61 mm2 triangle at 0.71 mm
+      half-width -- the largest bare component on the fixture, and under
+      preflight's `_UNCOVERED_MIN_PATCH_MM2` (5.0), so nothing reports it.
+      Rendered both ways: `docs/renders/rail-comp-bare-anatomy-2026-09-29/`.
+
+    Pinned as CEILINGS and a FLOOR, the way the trims are: the end gap can
+    only get smaller, the hairline share can only get purer. A build that
+    closes the apex lowers the first and leaves this green; one that turns
+    the hairlines into holes fails the third.
+    """
+    from tools.bare_anatomy import components
+    from digitizer_core.pipeline import build_generation, finish_generation, plan_stitches
+
+    cfg = PipelineConfig(target_width_mm=80.0, garment_id="left_chest", max_colors=6)
+    gen = build_generation(str(TESTDATA / "photo" / "enthusiast_logo.png"), cfg)
+    result = finish_generation(gen.fork(), cfg)
+    plan = plan_stitches(result, cfg)
+    polys = {r.shape_id: r.polygon for r in result.regions}
+    comps = components(polys, plan)
+    assert comps
+
+    ends = [c for c in comps if c[2]]
+    sides = [c for c in comps if not c[2]]
+    assert ends and sides
+
+    # 1. the tapered-end hole, as a ceiling (3.61 mm2 measured 2026-09-29)
+    worst_end = max(a for a, _h, _e, _s in ends)
+    assert worst_end <= 3.8, f"the flip's worst end gap grew to {worst_end:.2f} mm2"
+
+    # 2. no side gap is a hole (0.45 mm2 measured; OFF's worst is 0.50)
+    worst_side = max(a for a, _h, _e, _s in sides)
+    assert worst_side <= 0.55, f"a mid-rail gap reached {worst_side:.2f} mm2 — no longer a hairline"
+
+    # 3. and the side population STAYS hairlines (80% measured)
+    side_area = sum(a for a, _h, _e, _s in sides)
+    hairline = sum(a for a, h, _e, _s in sides if h < 0.10)
+    assert hairline / side_area >= 0.70, (
+        f"only {100 * hairline / side_area:.0f}% of mid-rail bare is thinner than "
+        "0.10 mm half-width — the sides have started opening real gaps")

@@ -5771,6 +5771,44 @@ knob.
 M's own 78.6 deg fold, the one `tools/decomposition_census.py` flagged;
 renders `docs/renders/polygon-axis-2026-09-16/drone_fold0_78.jpg`)*
 
+## A coverage percentage cannot tell a HOLE from a HAIRLINE, and one flip moved both at once (2026-09-29)
+
+`satin_rail_comp`'s cost on ENTHUSIAST was published as bare artwork 6.27 ->
+7.10%, with the rise "along the rails (mid-rail 2.06 -> 4.12%), cause not yet
+isolated" (`docs/kent-review-2026-09-28.md`). Isolated with
+`tools/bare_anatomy.py`, which splits each bare component by WHERE it sits (a
+disc at a run's terminal cross = an `end` gap, else a `side` gap) and HOW THICK
+it is (max inscribed radius). **The single percentage was two populations
+moving in OPPOSITE directions:**
+
+- **The mid-rail half is hairlines and is not a defect.** 80% of the side area
+  sits under 0.10 mm half-width, and the worst side component is SMALLER on the
+  rails than off them (0.45 against 0.50 mm2). A 0.4 mm thread at the 0.4 mm
+  pitch just touches, so every rail step over the pitch leaves a sliver the
+  model counts; rail comp makes more of them, each thinner. The step
+  distribution barely moves (p50 0.427 -> 0.419 mm).
+- **The cloth-visible cost is at a TAPERED END, and the headline hid it.** The
+  apex of ENTHUSIAST's A sews to within 0.08 mm of the artwork off the rails
+  and stops **1.63 mm** short on them -- no penetration within 1.5 mm of the
+  apex -- leaving one **3.61 mm2 triangle at 0.71 mm half-width**, the largest
+  bare component on the fixture. Rendered:
+  `docs/renders/rail-comp-bare-anatomy-2026-09-29/`. Under preflight's
+  `_UNCOVERED_MIN_PATCH_MM2` (5.0), so nothing reports it.
+
+**Read the thickness before the total.** Three hundred 0.03 mm2 slivers and one
+3.6 mm2 hole can carry the same square millimetres and want opposite responses;
+`rail_edge --bare` and every percentage built on it are blind to the
+difference by construction. This is the "the zero was a property of the method"
+lesson (2026-09-20) in its coverage form: the instrument was not wrong, it was
+answering a coarser question than the one being asked of it.
+
+**And two hypotheses died here before the right one landed** -- that the
+denominator had changed with the polygon (it had not: 349.6 mm2 both arms), and
+that the pitch had widened (it had not: see the entry above). Both were
+plausible from the code and both were refuted by one measurement. The render is
+what named the real one.
+
+
 ## The polygon axis must not read stage 5's grown polygon (2026-09-16)
 
 Kent ruled drone's M over-stitched under `cfg.satin_polygon_axis`. Root cause,
@@ -6783,6 +6821,33 @@ merge"*), so the MARINE trims and the ENTHUSIAST bare artwork are an
 ACCEPTED PRICE, not open defects for someone to re-solve; lowering the
 ceiling means the junction tuck and the artwork decomposition above, not
 the rail model.
+
+## The outer-rail density refinement sizes its advance on rails `_push_rails` has not moved yet -- and fixing that is INERT (2026-09-29)
+
+Real, and not the lever. `_rail_points`'s outer-rail refinement interpolates
+extra stations wherever a rail's advance outruns the pitch; `_push_rails` then
+moves every rail outward along its cross by the fabric's pull. **The push runs
+AFTER the refinement**, so under `satin_rail_comp` the pitch guarantee is made
+on geometry nobody sews: on a bend the outer rail's arc grows with the push,
+re-opening intervals the loop just closed. That is the same seam as the
+junction tuck and the walk's target (both 2026-09-29) in a third place, and
+the reasoning that it must matter is sound.
+
+**It does not matter.** Measuring the advance between the PUSHED positions
+instead (a 12-line change, byte-identical at `rail_comp_mm == 0`) moves
+ENTHUSIAST at 80 mm by: crosses 509 -> 511, stitches 2,392 -> 2,396, bare
+24.41 -> 24.33 mm2, and the step distribution not at all -- summed overshoot
+past the 0.4 mm pitch **71.5 -> 71.6 mm**, share over 0.45 mm 33.6 -> 33.5%,
+and the guard-fire share slightly WORSE (0.8 -> 1.1%). The refinement's own
+gate is `adv <= pitch * 1.3` = 0.52 mm, and the push adds `pull x angle turned`
+-- a few hundredths of a millimetre per station, which that tolerance absorbs.
+
+**Reverted, and recorded so nobody rebuilds it.** Anyone who reads the call
+order will see the bug; the measurement is the reason not to act on it. If the
+1.3 tolerance is ever revisited, this becomes live again -- but the tolerance
+is how much bare cloth is acceptable between two threads, which fabric
+settles, not geometry (ROADMAP gate 1).
+
 
 ## Four photo-lane tests go red on any machine that has `rembg_isolated/venv` built, and CI never does (2026-09-29)
 

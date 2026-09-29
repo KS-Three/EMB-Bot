@@ -15607,3 +15607,110 @@ the Closed list and this is the mechanism detail that no longer needed to
 sit in the dashboard. It is a snapshot: read the code before acting on it.
 
 44. **Satin borders sat 1.9 mm INSIDE every abutting colour — FIXED 2026-09-09 (Kent's ruling: the colour sewn on top owns a shared seam).** `_yield_frontage` (2026-08-06) had the LATER shape retreat its whole circuit column + margin off any seam an earlier border already held; on a flat logo every colour abuts, so on the Instagram icon (`border="auto"`, 80 mm, flat) **14 of 17** bordered shapes sewed a satin stripe a median 1.4–1.9 mm inside their own fill and one lost its border outright — its own test pinned the inset as wanted, and nobody saw it for a month because the Studio could not reach `cfg.border` until #318. Now `stage7_sequence._owned_by_later` hands each seam to the bordered shape still to sew over it and `stage6_border.border_runs(omit=…)` sews the shape underneath as open arcs on the rest of its edge: every bordered shape has half its penetrations ON its visible edge (p10 0.00 mm), 33,292 → **30,420** st, trims 34 → 30, and `BORDER_SEAM_SHARED` is a note naming the pairs. Found under it: two abutting visible edges are NOT one curve (each side is its own DP contour of the same pixel boundary; p90 0.09–0.43 mm apart), so the seam tolerance is `2 × simplify_tol_mm`, not 0.02 mm — the hair-width found half of every seam and sewed 28 stubs of 1.6–2.4 mm on one ring. A fully enclosed EARLY shape now gets no border of its own (the ring over it borders that seam) — by the rule; a sew-out judges the look. Prediction blind spots (a fill whose rows all degenerate, a `photo_width_floor` reroute, a gradient shape riding the design ramp) leave one seam unbordered or doubled, never a stripe. *(measured 2026-09-09 — `tests/test_border.py` seam section, 32 passing; DOCTRINE standing ruling; memory `border-seam-ownership-2026-09-09`)*
+
+## 2026-09-29 — rail comp's two unexplained costs, isolated: hairlines on the sides, a hole at a tapered end (Kent's pick)
+
+`cfg.satin_rail_comp` shipped ON on 2026-09-28 with two costs that had no
+cause in the record: ENTHUSIAST's bare artwork rising "along the rails
+(mid-rail 2.06 → 4.12%), cause not yet isolated", and `golden_tee` sewing
+6,892 → 11,149 stitches, the flip's largest stitch cost on any fixture,
+"recorded not acted on". Both are named here. **Neither turned out to be
+what its headline said**, and one of them is a defect the headline was
+hiding.
+
+### golden_tee: the artwork skeleton fragmenting, and it BUYS coverage
+
+Not a defect and not new — the same cause already named for MARINE's trims
+on 2026-09-29 (the finer decomposition of the artwork skeleton), showing up
+on a different instrument. The grown polygon is fatter, so its medial axis
+merges what the artwork's splits:
+
+| | OFF | ON |
+|---|---|---|
+| satin runs | 148 | **473** |
+| crosses | 2,535 | 4,377 |
+| median cross (the sewn column width) | 1.364 mm | **1.100 mm** |
+| median column length | 11.30 mm | **5.78 mm** |
+| total column length | 3,663 mm | 5,496 mm (+50%) |
+| satin stitches | 5,246 | 9,072 |
+| travel / underlay runs | 67 / 116 | 279 / 188 |
+| bare artwork | 64.66 mm² (7.53%) | **56.38 mm² (6.54%)** |
+
+Three times as many strokes, each about half as long and a quarter narrower,
+so the column count and the thread follow. **It buys a full point of
+coverage** — the extra stitches are not waste, they are the decomposition
+Kent ruled for on 2026-09-19 being paid for on a logo that has many small
+regions. Priced, not opened as a defect.
+
+### ENTHUSIAST: the "mid-rail" half is hairlines, and the real cost is at a taper
+
+`tools/bare_anatomy.py` (new, this entry) splits every bare component by
+WHERE it sits — a disc at a run's terminal cross is an `end` gap, anything
+else a `side` gap — and by HOW THICK it is, the maximum inscribed radius.
+The single percentage was **two populations moving in opposite directions**:
+
+| ENTHUSIAST 80 mm, left_chest | OFF | ON |
+|---|---|---|
+| bare total | 21.90 mm² (6.27%) | 24.41 mm² (6.98%) |
+| — at stroke ENDS | 11.68 (n=305) | **10.49 (n=231)** |
+| — along the SIDES | 10.23 (n=257) | 13.92 (n=311) |
+| worst SIDE component | 0.50 mm² @ 0.24 mm | **0.45 mm² @ 0.13 mm** |
+| side area under 0.10 mm half-width | 82% | 80% |
+| side area over 0.20 mm half-width | 5% | **0%** |
+| worst END component | 1.18 mm² @ 0.26 mm | **3.61 mm² @ 0.71 mm** |
+
+**The sides are hairlines and are not a defect.** Four fifths of the side
+area sits in components thinner than 0.10 mm half-width, the worst side
+component is *smaller* ON than OFF, and the thick tail disappears entirely.
+A 0.4 mm thread at the 0.4 mm pitch just touches (`SATIN_SPACING_MM` =
+`COVERAGE_THREAD_W_MM` = 0.4), so every rail step over the pitch leaves a
+sliver the coverage model counts; rail comp makes more of them, each
+thinner. The step distribution barely moves: p50 **0.427 → 0.419 mm**, share
+over 0.45 mm 35.1 → 33.6%, summed overshoot past the pitch **88.2 → 71.5 mm**.
+
+**The cloth-visible cost is a hole at a tapered end, and the "mid-rail"
+framing hid it.** The apex of the A (`Scd87e08f`) sews to within **0.08 mm**
+of the artwork off the rails and stops **1.63 mm** short on them — 20
+penetrations within 3 mm of the apex off, 13 on, and **none within 1.5 mm**
+either way on. That is one **3.61 mm² triangle at 0.71 mm half-width**, the
+largest bare component on the fixture. It sits under preflight's
+`_UNCOVERED_MIN_PATCH_MM2` (5.0), so nothing reports it. Rendered both ways
+at 40 px/mm: `docs/renders/rail-comp-bare-anatomy-2026-09-29/`.
+
+### Two hypotheses died on the way, and one is worth not rebuilding
+
+**The denominator had not changed.** The first guess was that
+`rail_edge.bare_area`'s denominator shrank with the polygon (artwork rather
+than grown), so the same bare area read as a larger share. It did not:
+`result.regions[].polygon` is the artwork in BOTH arms, 349.6 mm² either way.
+A clean refutation in one measurement.
+
+**The pitch had not widened either — but the code bug behind that guess is
+real, and fixing it is inert.** `_rail_points` interpolates extra stations
+wherever a rail outruns the pitch, and `_push_rails` moves every rail
+outward AFTERWARDS, so under rail comp the density guarantee is made on
+geometry nobody sews — the junction tuck's and the walk target's seam in a
+third place. Measuring the advance between the PUSHED positions instead
+moves ENTHUSIAST by **crosses 509 → 511, stitches 2,392 → 2,396, summed
+overshoot 71.5 → 71.6 mm**, and makes the guard-fire share slightly worse.
+The refinement's gate is `adv <= pitch * 1.3` = 0.52 mm and the push adds
+`pull × angle turned`, which that tolerance absorbs. **Reverted and recorded
+in DOCTRINE** so the next reader of the call order does not spend a session
+on it. Narrowing the 1.3 is how much bare cloth is acceptable between two
+threads — fabric, not geometry (ROADMAP gate 1).
+
+### What landed
+
+`tools/bare_anatomy.py`, with `--corpus`, `--arms` and a `--render` that
+draws the split (artwork grey, crosses blue, `end` gaps amber, `side` gaps
+red). Its totals reconcile with `rail_edge --bare` by construction — same
+thread width, same per-shape union — so it is that instrument's anatomy, not
+a rival to it. Pinned by
+`tests/test_rail_comp.py::test_the_flips_bare_artwork_is_hairlines_on_the_sides_and_a_hole_at_a_tapered_end`
+as two ceilings and a floor: the end gap can only shrink, the worst side gap
+can only stay a hairline, and the hairline share of side area can only rise.
+No engine change — the apex is an open defect (MASTER_SCOPE 49), not fixed here.
+
+*(measured 2026-09-29 — `tools/bare_anatomy.py`; the tables above;
+`docs/renders/rail-comp-bare-anatomy-2026-09-29/README.md`;
+DOCTRINE 2026-09-29, two entries)*
