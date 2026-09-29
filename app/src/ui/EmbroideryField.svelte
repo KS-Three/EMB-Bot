@@ -18,8 +18,10 @@
     indexRuns,
     shapeBorderState } from "../lib/borderMenu.js";
   import { boundaryIssues, canonicalShapeEdits, editsKey } from "../lib/digitizer.js";
+  import { popoverModel, popoverPatch, recolorPatch } from "../lib/shapePopover.js";
   import Hint from "./Hint.svelte";
   import Icon from "./Icon.svelte";
+  import ShapePopover from "./ShapePopover.svelte";
 
   // Task 4 (Slice 5): the field now renders every element in the project
   // (generateAll's combined design) instead of a single design, and drag/
@@ -526,6 +528,100 @@
   let liveRing = null;      // { shapeId, points } — the drag's working geometry
   let shapeEditError = "";
 
+  // The click-to-edit popover (2026-09-29 spec §5). Open when a CLICK — a
+  // press and release that travelled under CLICK_PX — lands on or inside a
+  // shape; the shape is selected first so the amber highlight shows what the
+  // controls act on. {x, y} are offsets inside .hoop, like fieldMenu's.
+  const CLICK_PX = 4;
+  let shapePop = null;
+  let pressClient = null;   // { x, y, px } — the body-drag press, for the click test
+  let hoopBounds = { w: 0, h: 0 };
+  $: popModel = shapePop && selectedShapeId && project
+    ? popoverModel({ element: selectedElement(), shapeId: selectedShapeId })
+    : null;
+  // A shape that stopped existing (deleted, or gone in a new result) closes
+  // it. Deliberately NOT closeShapePop(): nobody pressed anything here, and
+  // the change may have come from the side panel, whose focus must not be
+  // pulled back to the canvas. The assignment sits in a function on purpose:
+  // written inline, `shapePop = null` makes this statement a writer of
+  // `shapePop`, which `popModel` reads, and Svelte refuses to compile the
+  // pair (reactive_declaration_cycle).
+  $: if (shapePop && !popModel) dropStalePop();
+  function dropStalePop() {
+    shapePop = null;
+  }
+
+  function openShapePop(e) {
+    if (!canvas || !hoopEl) return;
+    const r = canvas.getBoundingClientRect();
+    const hb = hoopEl.getBoundingClientRect();
+    hoopBounds = { w: hb.width, h: hb.height };
+    shapePop = { x: e.clientX - r.left, y: e.clientY - r.top };
+  }
+
+  // Every user-driven close (Escape, an outside press, Delete, Edit points, a
+  // click off every shape) hands keyboard focus back to the canvas, so the
+  // arrow-key nudge and Delete keep working without a click to re-focus it.
+  function closeShapePop() {
+    shapePop = null;
+    if (canvas) canvas.focus({ preventScroll: true });
+  }
+
+  // Which shape of `el` a canvas point is on or inside — the outline the
+  // point is ON wins, else the smallest ring it is INSIDE (a counter beats
+  // its surround). Hidden and deleted shapes are not offered.
+  function shapeAtPoint(el, p) {
+    const edit = outlinesPxFor(el);
+    if (!edit) return null;
+    const hidden = hiddenShapeIds(el, edit.rows);
+    const live = edit.outlines.filter((o) => !hidden.has(o.id));
+    return hitOverlay(live, p.x, p.y) || hitShapeInterior(live, p.x, p.y);
+  }
+
+  async function onPopChange(e) {
+    const el = selectedElement();
+    if (!el || !selectedShapeId) return;
+    const { key, value } = e.detail;
+    const shapeId = selectedShapeId;
+    let patch = popoverPatch({ element: el, shapeId }, key, value);
+    if (!patch && key === "color" && el.type === "digitized") {
+      // A getter bound to THIS element's id, not to "whatever is selected":
+      // the patch is rebuilt against the element as it stands once the thread
+      // chart has loaded (so an edit made during the load is not reverted),
+      // and a selection change during the load cannot aim it at another one.
+      const live = () => (project && (project.elements || []).find((x) => x.id === el.id)) || null;
+      patch = await recolorPatch({ element: live, shapeId }, value);
+      if (!live()) return; // the element went away while the chart loaded
+    }
+    if (!patch) {
+      if (key === "color") shapeEditError = "Couldn't match that color to the job's thread chart.";
+      return;
+    }
+    dispatch("elupdate", { id: el.id, patch });
+  }
+
+  function onPopAction(e) {
+    const el = selectedElement();
+    if (!el || !selectedShapeId) return;
+    const { key } = e.detail;
+    if (key === "delete") {
+      const patch = popoverPatch({ element: el, shapeId: selectedShapeId }, "delete");
+      closeShapePop();
+      if (patch) dispatch("elupdate", { id: el.id, patch });
+      selectedShapeId = null;
+      drawOverlay();
+      return;
+    }
+    if (key === "editPoints") {
+      // Digitized: selection already arms node mode on the canvas, so the
+      // popover just gets out of the way. Manual: the nodes live on
+      // ManualPanel's canvas for now — hand it the shape and ask for edit mode.
+      closeShapePop();
+      if (el.type === "manual") dispatch("shapeselect", { elementId: el.id, shapeId: selectedShapeId, edit: true });
+      drawOverlay();
+    }
+  }
+
   // The canvas transform is an axis-aligned scale+translate, but the y axis
   // flips (field mm are +y up, canvas px are +y down). Rather than hard-code
   // that sign — and re-derive it wrongly the first time preview.js changes —
@@ -774,7 +870,13 @@
   }
 
   function onWindowKey(e) {
-    // Escape closes the tool menu before anything else looks at the key.
+    // Escape closes the shape popover, then the tool menu, before anything
+    // else looks at the key.
+    if (e.key === "Escape" && shapePop) {
+      closeShapePop();
+      e.preventDefault();
+      return;
+    }
     if (e.key === "Escape" && fieldMenu) {
       fieldMenu = null;
       e.preventDefault();
@@ -787,7 +889,10 @@
     const t = e.target;
     const tag = t && t.tagName;
     if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || (t && t.isContentEditable)) return;
-    if (deleteSelectedShape()) e.preventDefault();
+    if (deleteSelectedShape()) {
+      if (shapePop) closeShapePop();
+      e.preventDefault();
+    }
   }
 
   // An element whose saved edits have not been stitched yet. Whole-element
@@ -901,6 +1006,10 @@
         ctx.lineWidth = (editing ? 1.9 : 1.4) + 1.4 * pulse;
         ctx.stroke();
 
+        // Node dots say "drag me", which is only true on the digitized lane —
+        // hand-drawn nodes are edited on ManualPanel's canvas, and a preset
+        // has none to move. The cased outline above still shows the shape.
+        if (el.type !== "digitized") continue;
         const r = NODE_R + 1.7 * pulse + (editing ? 0.6 : 0);
         for (const p of pts) {
           ctx.beginPath();
@@ -1818,9 +1927,12 @@
   // re-render, and `closest` so pressing a menu item does not dismiss it out
   // from under its own click.
   function onWindowPointerDown(e) {
-    if (!fieldMenu) return;
-    if (e.target && e.target.closest && e.target.closest(".fieldmenu")) return;
-    fieldMenu = null;
+    const inside = (cls) => e.target && e.target.closest && e.target.closest(cls);
+    if (fieldMenu && !inside(".fieldmenu")) fieldMenu = null;
+    // A press anywhere but on the popover (or its ThreadPicker's open list,
+    // .tp-panel) closes it; the canvas press that follows decides whether
+    // another shape opens it again.
+    if (shapePop && !inside(".shapepop") && !inside(".tp-panel")) closeShapePop();
   }
 
   function onPointerDown(e) {
@@ -1932,9 +2044,13 @@
         // moves until you have said which shape you mean. On the manual and
         // preset lanes it ALWAYS stops there: node editing for hand-drawn
         // shapes lives in ManualPanel for now (2026-09-29 spec §8).
+        // The press on an outline is the click: it selects and opens the
+        // popover here, and starts no drag for endDrag to test.
         if (hit.shapeId !== selectedShapeId || edit.el.type !== "digitized") {
           selectedShapeId = hit.shapeId;
           shapeEditError = "";
+          if (edit.el.type === "manual") dispatch("shapeselect", { elementId: edit.el.id, shapeId: hit.shapeId, edit: false });
+          openShapePop(e);
           drawOverlay();
           return;
         }
@@ -2016,6 +2132,7 @@
     canvas.setPointerCapture(e.pointerId);
     dragTargetId = targetId;
     dragStartPx = p;
+    pressClient = { x: e.clientX, y: e.clientY, px: p };
     dragStartOffXMm = el.offsetXMm || 0;
     dragStartOffYMm = el.offsetYMm || 0;
     dragStartWidthMm = pe.bboxMm.x1 - pe.bboxMm.x0;
@@ -2206,6 +2323,7 @@
       commitShapeEdit();
       shapeEdit = null;
       liveRing = null;
+      pressClient = null;
       if (canvas) canvas.style.cursor = "default";
       drawOverlay();
       return;
@@ -2213,6 +2331,28 @@
     if (canvas && dragMode && canvas.hasPointerCapture && canvas.hasPointerCapture(e.pointerId)) {
       canvas.releasePointerCapture(e.pointerId);
     }
+    // A press-and-release that did not travel is a CLICK, and a click inside
+    // a shape opens its popover (spec §4). Tested on the element the press
+    // selected, at the RELEASE point. A pointercancel is never a click.
+    if (dragMode === "move" && pressClient && e && e.type !== "pointercancel" && typeof e.clientX === "number") {
+      const moved = Math.hypot(e.clientX - pressClient.x, e.clientY - pressClient.y);
+      if (moved < CLICK_PX) {
+        const el = selectedElement();
+        const p = canvasPointFromEvent(e);
+        const hit = el && SHAPE_LANES.has(el.type) ? shapeAtPoint(el, p) : null;
+        if (hit) {
+          selectedShapeId = hit.shapeId;
+          shapeEditError = "";
+          if (el.type === "manual") dispatch("shapeselect", { elementId: el.id, shapeId: hit.shapeId, edit: false });
+          openShapePop(e);
+        } else if (selectedShapeId || shapePop) {
+          selectedShapeId = null;
+          if (shapePop) closeShapePop();
+        }
+        drawOverlay();
+      }
+    }
+    pressClient = null;
     dragMode = null;
     dragHandle = null;
     dragTargetId = null;
@@ -2333,6 +2473,19 @@
           </button>
         </li>
       </ul>
+    {/if}
+    {#if popModel && shapePop}
+      <!-- The click-to-edit popover (2026-09-29): opened by a left CLICK on
+           or inside a shape — see openShapePop / endDrag. Closed by Escape,
+           any press outside it, or its own close. -->
+      <ShapePopover
+        model={popModel}
+        anchor={shapePop}
+        bounds={hoopBounds}
+        on:change={onPopChange}
+        on:action={onPopAction}
+        on:close={closeShapePop}
+      />
     {/if}
     {#if !hasDesign && !error && hint}
       <p class="fieldhint" class:on-dark={project && project.fabricRgb && isDark(project.fabricRgb)}>{hint}</p>

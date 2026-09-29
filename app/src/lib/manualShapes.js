@@ -603,7 +603,7 @@ export function shapesToRegions(shapes) {
       shapes: [{
         // The Studio's own shape id, so the engine's spans and outlines
         // (design.runs / design.shapeOutlines) can be mapped back to the shape
-        // a click landed on. "" when the caller has none (preset shapes).
+        // a click landed on. "" when the caller has none.
         id: shape.id == null ? "" : String(shape.id),
         outer: outer.map((p) => ({ x: p.x, y: p.y })),
         holes: [],
