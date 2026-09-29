@@ -26,7 +26,8 @@ describe("proposeCrop", () => {
   it("picks the dominant cluster, not the bbox of all ink", () => {
     // A phone screenshot in miniature: a thin chrome band top and bottom,
     // and a big logo in the middle. Bbox-of-all-ink would span the whole
-    // frame; the dominant cluster must not.
+    // frame; the dominant cluster must not. Logo share =
+    // 12000 / (12000 + 2 * 1800) = 0.769 >= 0.75.
     const img = art(200, 600, [
       [10, 4, 190, 14],      // top chrome
       [40, 250, 160, 350],   // logo
@@ -136,7 +137,39 @@ describe("proposeCrop", () => {
     expect(r.x1).toBeGreaterThanOrEqual(275 / 400);
   });
 
-  it("drops a much lighter mark ~20 mm away", () => {
+  // 400 px over 80 mm = 5 px/mm. Marks below sit 160 px = 32 mm apart, well
+  // past the ~4-6 mm join distance, so they are separate clusters.
+  it("keeps BOTH of two equal, far-apart marks (share 0.50 < 0.75)", () => {
+    const img = art(400, 200, [[20, 60, 120, 140], [280, 60, 380, 140]]);
+    const r = proposeCrop(img, 80);
+    expect(r.x0).toBeLessThanOrEqual(20 / 400);
+    expect(r.x1).toBeGreaterThanOrEqual(380 / 400);
+    expect(r.y0).toBeLessThanOrEqual(60 / 200);
+    expect(r.y1).toBeGreaterThanOrEqual(140 / 200);
+  });
+
+  it("keeps both parts of a 60/40 split (share 0.60 < 0.75)", () => {
+    const img = art(400, 200, [[20, 50, 120, 110], [280, 50, 380, 90]]);
+    const r = proposeCrop(img, 80);
+    expect(r.x0).toBeLessThanOrEqual(20 / 400);
+    expect(r.x1).toBeGreaterThanOrEqual(380 / 400);
+  });
+
+  it("crops to the dominant mark just above the 0.75 share (10000/13000 = 0.769)", () => {
+    const img = art(400, 200, [[20, 50, 120, 150], [280, 50, 380, 80]]);
+    const r = proposeCrop(img, 80);
+    expect(r.x0).toBeLessThanOrEqual(20 / 400);
+    expect(r.x1).toBeLessThan(200 / 400);
+  });
+
+  it("keeps everything just below the 0.75 share (10000/13500 = 0.741)", () => {
+    const img = art(400, 200, [[20, 50, 120, 150], [280, 50, 380, 85]]);
+    const r = proposeCrop(img, 80);
+    expect(r.x0).toBeLessThanOrEqual(20 / 400);
+    expect(r.x1).toBeGreaterThanOrEqual(380 / 400);
+  });
+
+  it("drops a much lighter mark ~20 mm away (share 24000/25600 = 0.94)", () => {
     // 100 px gap = 20 mm at 5 px/mm.
     const img = art(600, 200, [[20, 40, 60, 80], [160, 40, 360, 160]]);
     const r = proposeCrop(img, 120);

@@ -1,8 +1,13 @@
-// Propose a crop rectangle: the DOMINANT INK CLUSTER of the artwork.
+// Propose a crop rectangle. The rule: if the DOMINANT INK CLUSTER holds at
+// least DOMINANT_SHARE_MIN (0.75) of all the ink, propose that cluster alone;
+// otherwise propose the bounding box of ALL ink clusters. Both get the same
+// margin, clamped to the frame.
 //
-// Not the bounding box of all non-background ink -- on a phone screenshot
-// that spans status bar to home indicator, i.e. the whole screen, which is
-// useless on the one case the crop tool exists for.
+// The dominant cluster matters because the bounding box of all non-background
+// ink on a phone screenshot spans status bar to home indicator, i.e. the whole
+// screen, which is useless on the one case the crop tool exists for. The share
+// gate matters because a genuine multi-part design must never lose artwork by
+// default.
 //
 // Worked on a coarse cell grid: cells containing ink are marked, the mark
 // mask is DILATED by one cell (a cell is marked if it or any 8-neighbour has
@@ -35,6 +40,15 @@
 // marks fall inside their cells.
 const CELL_MM = 2.0;
 const MARGIN_MM = 2.0;
+// The dominant cluster is proposed alone ONLY when it holds at least this
+// share of ALL ink; below it the proposal is the bbox of every cluster.
+// Kent's ruling 2026-09-28, from a 31-image measurement: a phone screenshot's
+// chrome leaves the logo 0.846 of the ink (the only chrome sample,
+// screenshot_phone_ui_golke.jpg); genuine multi-part designs measured at most
+// 0.600 (two-squares 0.50, trace-holes-and-colors 0.60, fur_ramp 0.50,
+// tight_crop_pale_subject 0.549); the other 27 images have one cluster at
+// >= 0.9985 and are unaffected. 0.75 sits in the 0.600-0.846 gap.
+const DOMINANT_SHARE_MIN = 0.75;
 // How far a channel must sit from the frame's background to count as ink.
 const INK_TOLERANCE = 28;
 const FULL_FRAME = { x0: 0, y0: 0, x1: 1, y1: 1 };
@@ -156,8 +170,23 @@ export function proposeCrop(imageData, widthMm) {
   }
   if (!best) return { ...FULL_FRAME };
 
+  // Dominant cluster only when it holds most of ALL the ink; otherwise the
+  // bbox of every inked cell, so a multi-part design is never cropped down to
+  // one part by default.
+  let [cx0, cy0, cx1, cy1] = best;
+  if (bestInk / total < DOMINANT_SHARE_MIN) {
+    cx0 = cols; cy0 = rows; cx1 = -1; cy1 = -1;
+    for (let c = 0; c < ink.length; c++) {
+      if (!ink[c]) continue;
+      const x = c % cols, y = (c / cols) | 0;
+      if (x < cx0) cx0 = x;
+      if (y < cy0) cy0 = y;
+      if (x > cx1) cx1 = x;
+      if (y > cy1) cy1 = y;
+    }
+  }
+
   const margin = MARGIN_MM * pxPerMm;
-  const [cx0, cy0, cx1, cy1] = best;
   const clamp = (v) => Math.min(Math.max(v, 0), 1);
   return {
     x0: clamp((cx0 * cellPx - margin) / width),
