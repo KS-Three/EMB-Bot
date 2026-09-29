@@ -102,6 +102,13 @@ pre-change tree (`main` at 8a48c3b4) reproduced all three old entries on
 this machine first (`tools/recapture_flat_lane_key.py --pre-change-tree`,
 `machine OK` each). `photo/enthusiast_logo.png` stays the platform red.
 
+The junction tuck in sewn terms (2026-09-29, the third change to
+`satin_rail_comp`'s path that day, DOCTRINE "BECKER's C sews its bowl as
+fill by design") moved NONE of the three flat keys — byte-identical, no
+re-capture — and is noted so the next capture does not go looking; the
+platform red's own reading moved 2252 → 2275 coords under it, against the
+same 2351 golden.
+
 **Second exception, SANCTIONED BUT NOT YET TAKEN (2026-08-14):** the
 `photo/enthusiast_logo.png` entry is stale as of PR #146 (the pro-parity satin
 work: junction entry walk + corner-fork removal —

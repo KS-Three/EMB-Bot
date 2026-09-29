@@ -247,6 +247,12 @@ def test_the_flip_costs_trims_on_the_lettering_fixture_and_says_so():
     `satin_walk_cursor_reach_mm`'s question, parked for cloth (Kent,
     2026-09-20); the rest are letter-to-letter hops and two split webs.
 
+    The junction tuck's floor and reach-in went to sewn terms the same day
+    (DOCTRINE 2026-09-29, the C's bowl): a stacked arm reaches its node as
+    it does on the grown polygon, which is more thread -- the fixture
+    2,061 -> 2,093 stitches (1.155 -> 1.173 of OFF) for bare artwork
+    7.38 -> 7.03% at the same 21 trims -- so the stitch ceiling is 1.18.
+
     Pinned as CEILINGS, the way the underlay lever's own cost is: a cheaper
     build lowers them and this test stays green; a dearer one fails it. The
     direction is recorded here, not asserted -- the day the rails sew the
@@ -263,7 +269,7 @@ def test_the_flip_costs_trims_on_the_lettering_fixture_and_says_so():
     off, on = sewn(satin_rail_comp=False), sewn()
     assert off.stats.trims <= 9, off.stats.trims            # the grown polygon, 2026-09-19's number
     assert on.stats.trims <= 21, on.stats.trims             # the rails: 22 at the flip, 21 after the seam fix
-    assert on.stats.stitch_count <= 1.16 * off.stats.stitch_count, (off.stats.stitch_count, on.stats.stitch_count)
+    assert on.stats.stitch_count <= 1.18 * off.stats.stitch_count, (off.stats.stitch_count, on.stats.stitch_count)
 
 
 def test_under_rail_comp_a_strokes_first_run_starts_on_the_travel_web():

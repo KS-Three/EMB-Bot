@@ -6788,3 +6788,58 @@ One more thing the same table turned up, recorded and not acted on:
 `golden_tee` sews **6,892 → 11,149 stitches** under rail comp (43 → 60
 trims) — the largest stitch cost of the flip on any fixture, on a logo
 Kent's eye read both-bad under most arms.
+
+## BECKER's C sews its bowl as fill by design — and the junction tuck under rail comp was measuring in artwork terms (2026-09-29)
+
+Kent's pick after the seam fix: *why does the C at 80 mm sew a stretch as
+fill under `satin_rail_comp`?* Rendered at 60 px/mm on both skeletons
+(`docs/renders/rail-comp-junctions-2026-09-29/`): the C's bowl is a blob
+about 8 mm across inside strokes 1.8–2.4 mm wide — wider than the 5 mm
+satin ceiling any column can span. On the GROWN polygon the medial axis
+happens to route a short connector stroke through the blob's middle, and
+that connector's 5 mm crosses cover the blob by accident. On the ARTWORK the
+axis hugs the bowl's outer edge, the symmetric-offset rail model puts both
+rails at the NEARER edge's distance, nothing else crosses the blob, and the
+junction cover (`junction_stack` part C) finds a 47 mm² hole no column can
+span — so it sews tatami, which is exactly what part C was built to do.
+The satin-only bare instrument (`rail_edge.bare_area`) had counted that
+fill as bare: the wordmark reads 44.3 → 90.1 mm² satin-only, 44.3 →
+58.5 mm² once the cover's fill is counted.
+
+Three things follow, each of which changes what the next session does.
+
+- **Count the cover's fill before calling a junction bare.** `bare_area`
+  is satin crosses only, so a stretch the cover sews as tatami reads as
+  bare artwork; two thirds of Becker's "junction bare 1.39 → 3.80%" was
+  sewn thread. A jump on that instrument at a junction is a question to
+  re-read with the cover's fill counted (the renders README shows how), not
+  a defect yet.
+- **A blob wider than the ceiling inside a stroke letter is the cover's to
+  fill. Do not go fix the cover.** The other construction for it is
+  Kent's parked `satin_patch_junctions="satin"` (item 5 PR 2: the patch as
+  satin columns along its long axis). Whether a tatami patch inside a satin
+  letter reads right is a render-and-cloth question and his; recorded, not
+  decided, not re-litigated here.
+- **Under rail comp every stage-6 distance compared against a half-width
+  must be in SEWN terms — grep the function for `half_mm` before
+  shipping.** The tuck's junction trim had three terms: the clearance
+  (`field.half_at + rail_comp_mm`, already sewn), the entry floor
+  (`max(entry, half_mm)`, artwork) and the stack's reach-in (`half_mm`,
+  artwork). The two artwork terms left every stacked arm a pull — up to
+  two — further from its node than the grown polygon sews it. Fixed with
+  `half_sewn = half_mm + rail_comp_mm` in all three; `rail_comp_mm == 0`
+  is byte-identical. This is the THIRD rail-comp seam of the same shape
+  in ten days (the underlay's start 2026-09-19, the walk's target
+  2026-09-29): a quantity that was correct on the grown polygon because the
+  polygon carried the pull, and is a pull short on the artwork because
+  nothing else does.
+
+What the tuck fix bought, `main` at bc999033, OFF → ON before → ON after
+(`tools/rail_edge.bare_area`, satin-only): Becker at 80 mm 42 → 39 trims
+and bare 10.34 → 10.22%; at the corpus's own widths MARINE bare
+7.38 → 7.03% at 2,061 → 2,093 stitches (an arm that reaches its node sews
+more thread; the stitch ceiling in `tests/test_rail_comp.py` moved
+1.16 → 1.18 of OFF for it) and 21 trims, Becker 8.21 → 8.14%, ENTHUSIAST
+7.10 → 6.98%, bridge 99 → 96 trims at 5.19 → 4.96%; corpus trims
+654 → 651. What it did not buy: the bowl's hole shrinks by 1 mm².
+The bowl is the skeleton's, not the tuck's.

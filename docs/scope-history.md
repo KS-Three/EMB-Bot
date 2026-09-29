@@ -15545,3 +15545,56 @@ fixture. (`thermal` is the byte-identical copy of `drone` that
 
 *(measured 2026-09-29 — `tools/refused_walks.py`, the corpus table above;
 `tests/test_rail_comp.py::test_under_rail_comp_a_strokes_first_run_starts_on_the_travel_web`)*
+
+## 2026-09-29 — the C's bowl is the cover's fill by design; the junction tuck in sewn terms
+
+Kent's pick after the seam fix: why BECKER's C at 80 mm sews a stretch as
+fill under `satin_rail_comp`. Rendered at 60 px/mm on both skeletons
+(`docs/renders/rail-comp-junctions-2026-09-29/`): the bowl is a blob about
+8 mm across inside 1.8–2.4 mm strokes, wider than the 5 mm satin ceiling. On
+the grown polygon a connector stroke happens to run through it and its 5 mm
+crosses cover it; on the artwork the axis hugs the outer edge, the
+symmetric-offset rails reach only the nearer edge, and the junction cover
+(part C) finds a 47 mm² hole no column can span and sews it as tatami — the
+designed answer. The satin-only bare instrument had read that fill as bare:
+the wordmark 44.3 → 90.1 mm² satin-only, 44.3 → 58.5 mm² with the cover's fill
+counted. The other construction for such a blob is Kent's parked
+`satin_patch_junctions="satin"`; recorded, not decided.
+
+The tuck itself had a seam and it is fixed here: in `satin_stroke`'s junction
+trim the clearance (`field.half_at + rail_comp_mm`) was in sewn terms but the
+entry floor (`max(entry, half_mm)`) and the stack's reach-in (`half_mm`) read
+the artwork's half-width, so under rail comp every stacked arm stopped a pull
+(up to two) further from its node than the grown polygon sews it. All three
+in `half_sewn = half_mm + rail_comp_mm` now; `rail_comp_mm == 0` byte-identical
+(the three flat goldens and `test_pushcomp`'s three reproducible pins
+unmoved). Becker at 80 mm: 42 → 39 trims, bare 10.34 → 10.22% satin-only; the
+bowl's hole 47 → 46 mm².
+
+| case | OFF trims / st | ON after seam | ON after tuck | Δ trims | bare ON seam / tuck |
+|---|---|---|---|---|---|
+| MARINE 80 | 9 / 1,784 | 21 / 2,061 | 21 / 2,093 | 0 | 7.38 / 7.03 |
+| becker 100 | 54 / 8,070 | 48 / 8,297 | 48 / 8,297 | 0 | 8.21 / 8.14 |
+| tires | 13 / 2,247 | 7 / 2,515 | 7 / 2,515 | 0 | 4.55 / 4.55 |
+| enthusiast | 12 / 2,388 | 15 / 2,390 | 15 / 2,392 | 0 | 7.10 / 6.98 |
+| fremont | 59 / 19,862 | 58 / 19,937 | 58 / 19,937 | 0 | 3.53 / 3.53 |
+| bridge | 96 / 14,419 | 99 / 15,905 | 96 / 16,037 | −3 | 5.19 / 4.96 |
+| golden_tee | 43 / 6,892 | 58 / 11,154 | 57 / 11,377 | −1 | 6.68 / 6.54 |
+| gaulke | 34 / 4,168 | 33 / 4,219 | 32 / 4,224 | −1 | 7.15 / 6.88 |
+| drone | 120 / 18,411 | 122 / 18,581 | 123 / 18,595 | +1 | 4.84 / 4.80 |
+| thermal | 120 / 18,411 | 122 / 18,581 | 123 / 18,595 | +1 | 4.84 / 4.80 |
+| screenshot | 74 / 7,862 | 71 / 7,849 | 71 / 7,863 | 0 | 9.47 / 9.36 |
+| **total** | **634** | **654** | **651** | **−3** | |
+
+(`REAL_ART` widths and garments, `max_colors=6`, `main` at bc999033; bare is
+`rail_edge.bare_area`, satin crosses only.) The tuck fix is a coverage gain
+at a stitch cost — an arm that reaches its node sews more thread: MARINE
++32 stitches for bare 7.38 → 7.03%, golden_tee +223 for 6.68 → 6.54%, bridge
++132 for 5.19 → 4.96% and three trims fewer; the MARINE stitch ceiling in
+`tests/test_rail_comp.py` moved 1.16 → 1.18 of OFF for it. Becker's bare
+moves without its stitch count moving (8,297 both ways): the arms' ends
+shift, the cross count does not. Nothing on the table moves the bowl.
+
+*(measured 2026-09-29 — the corpus table above; `tools/rail_edge.bare_area`;
+`docs/renders/rail-comp-junctions-2026-09-29/README.md`;
+`tests/test_rail_comp.py::test_the_flip_costs_trims_on_the_lettering_fixture_and_says_so`)*
