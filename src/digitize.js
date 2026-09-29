@@ -351,7 +351,7 @@
     // filter empty; accept {shapes:[{outer,holes}]} or legacy {polygons:[ring]}
     const regions = colorRegions.filter((r) => r && ((r.shapes && r.shapes.length) || (r.polygons && r.polygons.length)));
     for (const r of regions) if (!r.polygons) r.polygons = r.shapes.map((s) => s.outer);
-    if (!regions.length) return { stitches: [{ x: 0, y: 0, type: "end" }], colors: [], widthMM: 0, heightMM: 0, stitchCount: 0, colorCount: 0, _debug: { nSatin: 0, nFill: 0, nTrims: 0 } };
+    if (!regions.length) return { stitches: [{ x: 0, y: 0, type: "end" }], colors: [], widthMM: 0, heightMM: 0, stitchCount: 0, colorCount: 0, shapeOutlines: [], _debug: { nSatin: 0, nFill: 0, nTrims: 0 } };
 
     // Tag each region with its ORIGINAL caller index before we reorder, so
     // opts.angleOverrides (keyed by original index) survives the sort below.
@@ -389,6 +389,38 @@
 
     const mmPerPxFinal = scalePxToDst / units.DST_UNITS_PER_MM; // final mm per source px
     const pxPerFinalMm = 1 / mmPerPxFinal;                       // source px per final mm
+    // Per-shape OUTLINES (2026-09-29 spec §3): where each input shape lands,
+    // in FIELD mm — the stitches' own space (+y up, offsets applied), i.e.
+    // T(q) without the integer rounding, so the Studio can draw a
+    // hand-drawn or preset shape over its stitching and hit-test it with the
+    // same `toCanvas` it draws the design with. INPUT order, not sew order:
+    // the caller's ids are what a click has to map back to, and the sort
+    // above is this function's private business. Bookkeeping only — no
+    // stitch, order or count changes with it (same posture as `spans`).
+    const shapeOutlines = [];
+    const outlineByRing = new Map(); // outer ring -> its entry, for dropped-marking below
+    {
+      const toFieldMm = (q) => [
+        ((q.x - cx) * scalePxToDst + offXu) / units.DST_UNITS_PER_MM,
+        ((cy - q.y) * scalePxToDst + offYu) / units.DST_UNITS_PER_MM,
+      ];
+      for (const r of regions.slice().sort((a, b) => a._origIdx - b._origIdx)) {
+        const raw = r.shapes || r.polygons.map((p) => ({ outer: p, holes: [] }));
+        for (const s of raw) {
+          if (!s) continue;
+          const outer = Array.isArray(s.outer) ? s.outer : [];
+          const entry = {
+            id: s.id == null ? "" : String(s.id),
+            points: outer.map(toFieldMm),
+            holes: (s.holes || []).filter((h) => h && h.length).map((h) => h.map(toFieldMm)),
+            dropped: outer.length < 3,
+          };
+          shapeOutlines.push(entry);
+          if (outer.length) outlineByRing.set(outer, entry);
+        }
+      }
+    }
+    const dropOutline = (ring) => { const e = outlineByRing.get(ring); if (e) e.dropped = true; };
     // PX_LOOP_EPS guards against a literal zero/degenerate loop step (rowPx=0
     // would spin fillmod.tatamiFill's `for (y=minY; y<=maxY; y+=rowSpacing)`
     // forever) -- NOT a functional minimum density. These four used to be
@@ -567,11 +599,11 @@
       const shapes = orderShapes(shapes0, lastPx);
       for (const shape of shapes) {
         const poly = shape.outer;
-        if (!poly || poly.length < 3) continue; // see the shapes0 filter's comment above
+        if (!poly || poly.length < 3) { if (poly) dropOutline(poly); continue; } // see the shapes0 filter's comment above
         const holes = (shape.holes || []).filter((hh) => hh && hh.length >= 4);
         const outerArea = polyArea(poly), holeArea = holes.reduce((a, hh) => a + polyArea(hh), 0);
         const area = Math.max(0, outerArea - holeArea), perim = polyPerim(poly) + holes.reduce((a, hh) => a + polyPerim(hh), 0);
-        if (area <= 0 || perim <= 0) continue;
+        if (area <= 0 || perim <= 0) { dropOutline(poly); continue; }
         const widthMmFinal = (2 * area / perim) * mmPerPxFinal;
         // satin only for genuinely thin SOLID strokes; ring-with-hole goes to
         // even-odd fill (satinColumn can't represent holes)
@@ -715,7 +747,7 @@
         for (let ri = 0; ri < runs.length; ri++) {
           if (runs[ri] && runs[ri].length) { nonEmpty.push(runs[ri]); nonEmptyKinds.push(runKinds[ri]); }
         }
-        if (!nonEmpty.length) continue;
+        if (!nonEmpty.length) { dropOutline(poly); continue; }
         const entry = nonEmpty[0][0]; // first sewn point of this shape (px)
         if (started && !justChangedColor) {
           const d = Math.hypot(entry.x - lastPx.x, entry.y - lastPx.y);
@@ -735,7 +767,7 @@
     // designWmm/designHmm is the traced-polygon box this was fit to; the sewn
     // extent is what the customer gets. See designExtentMm.
     const extent = designExtentMm(stitches, designWmm, designHmm);
-    return { stitches, colors, widthMM: extent.widthMM, heightMM: extent.heightMM, stitchCount, colorCount: colors.length, runs: spans, _debug: { nSatin, nFill, nTrims, nCenterOut } };
+    return { stitches, colors, widthMM: extent.widthMM, heightMM: extent.heightMM, stitchCount, colorCount: colors.length, runs: spans, shapeOutlines, _debug: { nSatin, nFill, nTrims, nCenterOut } };
   }
 
   // Build a Design from a PRE-DIGITIZED satin font (src/satinfont.js) instead of
