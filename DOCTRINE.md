@@ -5771,6 +5771,22 @@ knob.
 M's own 78.6 deg fold, the one `tools/decomposition_census.py` flagged;
 renders `docs/renders/polygon-axis-2026-09-16/drone_fold0_78.jpg`)*
 
+## A per-class default cannot be confirmed from a dataclass line (moved from MASTER_SCOPE 2026-09-29)
+
+`split_tonal_regions` sat on MASTER_SCOPE's Latent list as "confirmed OFF --
+`config.py`" for two weeks after it had stopped being off. It is ON for photo
+classes since 2026-08-19 (`d3f3c547`, spec decision 2): `effective_split_
+tonal` returns `bool(flag) or class_ in PHOTO_CLASSES`, so the FIELD can only
+turn it on, and reading the field answered a question it had stopped
+deciding two days later.
+
+**The rule: a per-class default is not readable from the dataclass.** Read
+the function that consumes it. Ratified 2026-09-02, left gate 3; its density
+cost is tracked as MASTER_SCOPE defect 20, not as a gate. Moved here
+2026-09-29 for the word budget -- it is a correction, which is this file's
+job, and the Latent list keeps the one-line marker its preamble cites.
+
+
 ## "Beyond the node" cannot tell a tapered TIP from a CORNER, because the partner arm is beyond it either way (2026-09-29)
 
 Defect 49: under `satin_rail_comp` a shape keeps its artwork polygon, and the

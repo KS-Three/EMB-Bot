@@ -15755,3 +15755,56 @@ instrument and the only one that loses on both measures; quoting 6.27 → 7.10%
 as "what rail comp costs coverage" generalises the outlier.
 
 *(measured 2026-09-29 — `tools/bare_anatomy.py --corpus`, the table above)*
+
+## 2026-09-29 — defect 49, attempt 1: `satin_tip_caps` BUILT OFF; it buys coverage on all nine and does NOT close the apex
+
+Kent's pick after the diagnosis. Defect 49: under `satin_rail_comp` a shape
+keeps its artwork polygon, and the artwork's sharp tips are sharp —
+ENTHUSIAST's A decomposes into 4 strokes against the grown polygon's 2, its
+apex becomes a NODE where two arms end rather than a point one stroke runs
+through, both ends read `free_end=False`, `_extend_to_cap` never runs, and
+the junction trim pulls both arms back on top of the half-width the medial
+axis already stopped short by.
+
+**Built as `cfg.satin_tip_caps`, DEFAULT OFF** (gate 3). A junction end with
+no single owner, whose artwork boundary sits within `_TIP_REACH_HALVES` = 1.6
+SEWN half-widths along its own end tangent, is capped instead of tucked.
+**OFF is byte-identical** — verified as plan digests over all nine corpus
+logos across two trees, not reasoned from the guard conditions.
+
+**The price, OFF → ON, nine logos at their own census widths:**
+
+| case | stitches | trims | bare mm² | end bare mm² | worst component |
+|---|---|---|---|---|---|
+| becker 100 | 8,297 → 8,827 (+6.4%) | 48 → 51 | 182.07 → **160.69** | 129.25 → 113.89 | 54.38 → 54.28 |
+| tires 80 | 2,380 → 2,500 (+5.0%) | 5 → 7 | 29.53 → 27.98 | 1.53 → **0.68** | 0.26 → 0.26 |
+| enthusiast 80 | 2,392 → 2,474 (+3.4%) | 15 → 15 | 24.41 → 23.44 | 10.49 → 9.18 | **3.61 → 3.61** |
+| fremont 92.5 | 19,937 → 20,028 (+0.5%) | 58 → 58 | 18.10 → 17.92 | 7.11 → 6.29 | 0.93 → 0.98 |
+| bridge 80 | 16,037 → 16,934 (+5.6%) | 96 → 98 | 59.57 → **52.30** | 38.60 → 32.28 | 9.44 → 9.30 |
+| golden_tee 80 | 11,377 → 12,818 (**+12.7%**) | 57 → **68** | 56.38 → **46.20** | 41.42 → 28.23 | 2.14 → 2.14 |
+| gaulke 80 | 4,224 → 4,375 (+3.6%) | 32 → 33 | 35.02 → 33.23 | 11.37 → 10.45 | 0.47 → 0.41 |
+| drone 80 | 18,595 → 18,836 (+1.3%) | 123 → **122** | 40.19 → 37.28 | 16.38 → 13.42 | 2.65 → 2.65 |
+| screenshot 80 | 7,863 → 8,137 (+3.5%) | 71 → 73 | 32.79 → **27.67** | 14.17 → **9.18** | 1.94 → **0.91** |
+
+**Bare artwork falls on all NINE, and end bare falls on all nine.** The worst
+component improves on three (screenshot 1.94 → 0.91, gaulke, bridge), holds
+on five, and rises on one by 0.05 mm² (fremont). The cost is thread: a median
+of about +3.6% stitches, +0.5% at best, and **+12.7% with +11 trims on
+golden_tee**, which is also the largest coverage gain (−18% bare). Corpus
+total 91,102 → 96,929 stitches, +6.4%.
+
+**It does not close defect 49.** ENTHUSIAST's apex is unchanged at 3.61 mm²:
+both its arms have an identified `tuck_under` partner — each tucks under the
+other (`_corner_forks` names a partner both ways) — so the `under is None`
+gate rejects them before the tip test runs. A second build that dropped that
+gate and discriminated on the ARTWORK BEYOND the node measured **completely
+inert** and was reverted; why an area test cannot work there is DOCTRINE
+("Beyond the node cannot tell a tapered TIP from a CORNER"). **The remaining
+half is a construction call**, not a bug: at a tip where two arms each tuck
+under the other, does one arm cap the point with the other tucked under it,
+or do both cap it and overlap, as `satin_junction_stack` part B already
+argues the pro does at a junction? Whether the junction cover (part C) could
+patch it instead was not examined.
+
+*(measured 2026-09-29 — `tools/bare_anatomy.py`, the table above;
+`tests/test_satin_tip_caps.py`; DOCTRINE 2026-09-29, two entries)*

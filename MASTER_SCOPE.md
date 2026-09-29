@@ -11,11 +11,10 @@ area boundaries.
 on demand via the `/update-master-scope` skill. See "How this document works"
 at the bottom for the authority model behind the confidence ratings.
 
-**START HERE if you are picking up the real-artwork parity work:**
+**START HERE for the real-artwork parity work:**
 [`docs/handoff-2026-08-16.md`](docs/handoff-2026-08-16.md) — the honest baseline
-(**42.5**, not the older ~70) and the metric's own **75-84** pro-vs-pro ceiling;
-four of its findings are standing rulings in [`DOCTRINE.md`](DOCTRINE.md). Its
-code and instruments are ON `main`. *(confirmed 2026-08-17 — `git ls-tree`)*
+(**42.5**, not the older ~70) and the metric's own **75-84** pro-vs-pro ceiling.
+Its code and instruments are ON `main`. *(confirmed 2026-08-17 — `git ls-tree`)*
 
 **Last updated:** 2026-09-29. **This file is current state only, under a
 27,000-word budget** (rule 4 below — Kent replaced the old line budget with it
@@ -196,11 +195,11 @@ icon. Cloth pointers added to defects 3, 6 and 16 below.
 
 43. **The numbers chain agrees end to end, and is MEASURED rather than argued.** Canvas caption, review recap, PDF worksheet and the downloaded DST read back by `pystitch` all give one set of figures on a mixed design, and the simulator counter agrees at both ends. It can be stated as fact only because each link was DRIVEN rather than reasoned from a shared code path — which is the part worth keeping. The figures: scope-history 09-08. *(measured 2026-09-08)*
 
-46. **The smoothness score exists and preflight cannot see it.** Law 37 wants a monotonic direction-change score with no cutoff; `tools/edge_smoothness.py`, `curve_fidelity.py`, `edge_wobble.py` and `curve_tiers.py` are exactly that — offline. No smoothness code appears among preflight's 24 codes or `warnings_codes.py`'s 58, so the grade a customer sees is blind to Kent's most frequent complaint. Desk-safe, and the cheapest row on the list — the instrument is built, the output ships, nothing connects them. **Not to be confused with `curve_turn_deg`**, which an earlier read scored as this. The graded-A-on-jagged-edges evidence: [backlog](docs/scope/machine-physics-backlog.md). *(confirmed 2026-09-20 — playbook row 17)*
+46. **The smoothness score exists and preflight cannot see it.** Law 37 wants a monotonic direction-change score with no cutoff; `tools/edge_smoothness.py`, `curve_fidelity.py`, `edge_wobble.py` and `curve_tiers.py` are exactly that — offline. No smoothness code appears among preflight's 24 codes or `warnings_codes.py`'s 58, so the grade a customer sees is blind to Kent's most frequent complaint. Desk-safe and the cheapest row on the list: the instrument is built, the output ships, nothing connects them. **Not to be confused with `curve_turn_deg`**, which an earlier read scored as this. Evidence: [backlog](docs/scope/machine-physics-backlog.md). *(confirmed 2026-09-20 — playbook row 17)*
 
-47. **`overlap_mm` is one scalar at 0.25 mm, against a law that wants 1.0–2.0.** Law 26 asks 1.0 mm where parallel stitch directions meet on wovens, 1.5–2.0 on knits/fleece and ~0 near-perpendicular; `config.py:918` is angle-blind, fabric-blind and sits under the law's own 0.8 mm close-up threshold, and no forbid-gap rule exists. Most of it is desk-safe and buildable now — only the knit value is gated. The law's full text: [backlog](docs/scope/machine-physics-backlog.md). *(confirmed 2026-09-20 — playbook row 9)*
+47. **`overlap_mm` is one scalar at 0.25 mm, against a law that wants 1.0–2.0.** Law 26 asks 1.0 mm where parallel stitch directions meet on wovens, 1.5–2.0 on knits/fleece and ~0 near-perpendicular; `config.py:918` is angle-blind, fabric-blind and sits under the law's own 0.8 mm close-up threshold, and no forbid-gap rule exists. Most of it is desk-safe and buildable now — only the knit value is gated. Detail: [backlog](docs/scope/machine-physics-backlog.md). *(confirmed 2026-09-20 — playbook row 9)*
 
-49. **A letter's tapered apex sews BARE under `satin_rail_comp`, and preflight's floor sits above it.** ENTHUSIAST's A at 80 mm: the column reaches within **0.08 mm** of the artwork's apex with the pull in the polygon and stops **1.63 mm** short with it on the rails — nothing lands within 1.5 mm of the apex — leaving one **3.61 mm² triangle at 0.71 mm half-width**, the fixture's largest bare component. `_UNCOVERED_MIN_PATCH_MM2` is 5.0, so `ARTWORK_UNCOVERED` never fires. Found by splitting the flip's bare artwork by THICKNESS: the headline it hid behind — "mid-rail bare 2.06 → 4.12%, cause not isolated" — is hairlines, 80% thinner than 0.10 mm half-width, worst component SMALLER than OFF's. Rendered both ways. Kent accepted the flip's price 2026-09-29; this part of it nobody had seen. *(measured 2026-09-29 — `docs/renders/rail-comp-bare-anatomy-2026-09-29/`; `tools/bare_anatomy.py`; ceilings in `tests/test_rail_comp.py`)*
+49. **A letter's tapered apex sews BARE under `satin_rail_comp`, and preflight's floor sits above it.** ENTHUSIAST's A at 80 mm: the column reaches within **0.08 mm** of the artwork's apex with the pull in the polygon and stops **1.63 mm** short with it on the rails — nothing lands within 1.5 mm of the apex — leaving one **3.61 mm² triangle at 0.71 mm half-width**, the fixture's largest bare component. `_UNCOVERED_MIN_PATCH_MM2` is 5.0, so `ARTWORK_UNCOVERED` never fires. Found by splitting the flip's bare artwork by THICKNESS: the headline it hid behind — "mid-rail bare 2.06 → 4.12%, cause not isolated" — is hairlines, 80% thinner than 0.10 mm half-width, worst component SMALLER than OFF's. Rendered both ways. Kent accepted the flip's price 2026-09-29; this part of it nobody had seen. **`satin_tip_caps` (built OFF the same day) does NOT close it**: both apex arms tuck under each other. The rest is a construction call — DOCTRINE. *(measured 2026-09-29 — `docs/renders/rail-comp-bare-anatomy-2026-09-29/`; `tools/bare_anatomy.py`; ceilings in `tests/test_rail_comp.py`)*
 
 ### Closed — kept numbered, because ten other docs cite them by number
 
@@ -235,10 +234,9 @@ one concealed it; entry 2 is a flag that LEFT this list unnoticed for two weeks.
 
 1. **`chain_links` — sews needle-down thread on bare fabric.** 16.15 mm exposed
    over 17 links, stock preset, green suite. Both shipped instruments were
-   blind three ways; all closed 2026-08-18 (four fixtures at **0.00 mm** added
-   bare thread, **9.82 → 4.06** trims/1k). The replacement then erred the other
-   way — a jump read as thread, **39.8 → 9.0 mm** phantom link, fixed
-   2026-09-02, residual is a `-shadeN` id. **Still DO NOT FLIP, permanently:**
+   blind; the replacement then erred the other way and was fixed 2026-09-02
+   (residual: a `-shadeN` id) — the numbers are in the pointers below.
+   **Still DO NOT FLIP, permanently:**
    gate 1 names link cover tolerance and the sew-out is accepted as-is. Largest
    lever on defects 4 and 6. **The tolerance now has a published rival
    (Embird's 2-3 mm), and card block 7 — the sew-out that answers it — is
@@ -247,12 +245,10 @@ one concealed it; entry 2 is a flag that LEFT this list unnoticed for two weeks.
    *(`docs/hardening-closeout-2026-08-02.md`;
    [2026-09-02](docs/scorecard-baseline-attribution-2026-09-02.md))*
 2. ~~`split_tonal_regions`~~ — **NOT LATENT: ON for photo classes since
-   2026-08-19** (`d3f3c547`, spec decision 2); this said otherwise for two
-   weeks. `effective_split_tonal` returns `bool(flag) or class_ in
-   PHOTO_CLASSES` — the field only turns it ON. The old "confirmed OFF —
-   `config.py`" read the FIELD, which stopped deciding two days later: **a
-   per-class default cannot be confirmed from a dataclass line.** Ratified
-   2026-09-02, left gate 3; cost is defect 20. *(`pipeline.effective_split_tonal`)*
+   2026-08-19**, and this list said otherwise for two weeks. Ratified
+   2026-09-02, left gate 3; cost is defect 20. Why the old read was wrong,
+   and the rule it cost — **a per-class default cannot be confirmed from a
+   dataclass line** — is DOCTRINE. *(`pipeline.effective_split_tonal`)*
 3. **`strip_letterbox` — ON by default since 2026-09-14**, and its shadow-strip half since 09-15 (`letterbox.detect_edge_strips`, trimming only once bars are found). A phone screenshot's black bars read as ink and inverted the design: ground sewn in white thread, the logo left as negative space. OFF stays the pre-flip engine byte for byte. Why it was held OFF first, and what the shadow strips cost: DOCTRINE "A fixture's PATHOLOGY can be load-bearing"; scope-history 09-14/15.
 
 4. **`cap_center_out` — cap sew order, built OFF.** The Python lane never
@@ -277,7 +273,7 @@ here, so a good-faith flip would have shipped bare-fabric thread unwarned.)*
 
 ## Doctrine — moved to [`DOCTRINE.md`](DOCTRINE.md)
 
-**Standing rulings, Measured negatives, Corrections and Gotchas live in [`DOCTRINE.md`](DOCTRINE.md)** (split 2026-08-28). Read it before proposing work, the same way you read this file for status. It answers *"has this already been decided, tried, disproved, or paid for?"*, which never goes stale; this file answers *"where does the project stand today?"* under a word budget. Why they cannot share one: DOCTRINE's entry on the split.
+**Standing rulings, Measured negatives, Corrections and Gotchas live in [`DOCTRINE.md`](DOCTRINE.md)** (split 2026-08-28). Read it before proposing work, the same way you read this file for status: it answers what has already been decided, tried, disproved or paid for, which never goes stale, while this file answers where the project stands today, under a word budget.
 
 ---
 
@@ -360,7 +356,7 @@ about the facts.
 
 18. **OPEN: a COLD photo digitize is ~90 s and `fill_travel_under_cover` is ~58% of it.** The 2026-09-17 memo fixed the RE-stitch (79.3 → 44.6 s); the first digitize still pays the flag in full. Three ways out, all Kent's: flip it off (costs stitches, re-exposes the travel it hides), optimise `_reorder_for_cover` (golden-pinned — a win must be byte-identical), or accept it. **Do not re-derive the numbers** — method, noise floor, per-flag table and three INERT flags are in the doc. *(measured 2026-09-17 — `docs/flag-runtime-bills-2026-09-12.md`)*
 
-19. **Three built-OFF satin flags are waiting on a call.** `satin_cap_recentre`
+19. **Four built-OFF satin flags are waiting on a call.** **`satin_tip_caps`** (2026-09-29, defect 49's attempt 1): bare artwork falls on ALL NINE corpus logos — becker 182 → 161 mm², golden_tee 56 → 46 — for a median +3.6% stitches (+12.7% on golden_tee, its biggest gain). OFF byte-identical across two trees. `satin_cap_recentre`
    (the surviving cap fork — Latent 5, built 2026-09-22) and
    `satin_patch_junctions = "satin"` (the other construction for BECKER's C
    bowl, which under `satin_rail_comp` sews as the cover's fill by design —
