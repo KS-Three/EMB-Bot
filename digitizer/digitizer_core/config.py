@@ -1191,8 +1191,21 @@ class PipelineConfig:
     # own end tangent -- a tip -- and tucked as before when it does not, which
     # is every blob junction (an arm's tangent crosses the whole ball). The
     # reach gate is what separates them and it is the only new number here.
-    # OFF is byte-identical.
-    satin_tip_caps: bool = False
+    # False is the pre-flip engine, byte-identical on all nine corpus logos
+    # (plan digests across two trees, 2026-09-29).
+    #
+    # DEFAULT ON since 2026-09-29, Kent's flip on the corpus price
+    # (scope-history, the nine-logo table): bare artwork falls on ALL NINE
+    # and end gaps on all nine -- becker 182.07 -> 160.69 mm2, golden_tee
+    # 56.38 -> 46.20, bridge 59.57 -> 52.30, screenshot 32.79 -> 27.67 and
+    # its worst component 1.94 -> 0.91. The worst component improves on
+    # three, holds on five and rises on one by 0.05 mm2 (fremont). The price
+    # is thread: a median of about +3.6% stitches, +0.5% at best, and
+    # +12.7% with +11 trims on golden_tee -- which is also the largest
+    # coverage gain (-18% bare). Corpus total 91,102 -> 96,929 stitches.
+    # No sew-out backs it; whether a gap at a letter tip shows on cloth is
+    # the card's question, and the flip was taken on the instrument.
+    satin_tip_caps: bool = True
     # The lettering yardstick's trims gap, read with a per-trim census
     # (2026-09-19, scope-history): traced MARINE at 80 mm sews 13 trims
     # against the typed word's 3, and across the nine logos the lettering

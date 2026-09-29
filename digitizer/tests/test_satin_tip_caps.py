@@ -44,9 +44,12 @@ from digitizer_core.pipeline import (build_generation, finish_generation,
 from tests.conftest import TESTDATA
 
 
-def test_the_flag_ships_off():
-    """Gate 3: a default-OFF tier stays off until Kent flips it."""
-    assert PipelineConfig().satin_tip_caps is False
+def test_the_flag_is_on_by_default_since_2026_09_29():
+    """Kent's flip on the corpus price (scope-history, the nine-logo table):
+    bare artwork falls on all nine logos for a median +3.6% stitches. False
+    stays reachable and is the pre-flip engine, byte-identical."""
+    assert PipelineConfig().satin_tip_caps is True
+    assert PipelineConfig(satin_tip_caps=False).satin_tip_caps is False
 
 
 def test_a_tip_reads_as_a_tip_and_a_corridor_does_not():
