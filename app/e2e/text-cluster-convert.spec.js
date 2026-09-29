@@ -148,7 +148,7 @@ test("text cluster: badge appears, convert to text, undo -- through the real ser
   // unambiguous real selector).
   const widthInput = page
     .locator(".dgp-param")
-    .filter({ hasText: "Stitch width" })
+    .filter({ hasText: "Design width" })
     .locator("input[type=number]");
   await widthInput.fill("90");
   await widthInput.blur();

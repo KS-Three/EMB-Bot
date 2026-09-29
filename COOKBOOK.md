@@ -833,6 +833,77 @@ hand-rolling it in JS.
   loudly on an empty lane. `-SkipPrep` re-scores an existing output directory,
   which is what you want when only the SCORER changed.
 
+## Per-shape stitch width (2026-09-29)
+
+Kent, on small shapes, text and letters coming out rough: *"only being able to
+choose a single stitch width across the entire photo or logo"* — and the one
+control called "Stitch width" was the DESIGN's width. Now
+`digitizer_core/stitchwidth.py` (its module docstring is the design doc):
+
+- **Measure.** Every column-shaped region (`2*area/perimeter` under two satin
+  ceilings, or small, or in a text cluster) gets `meta["stitch_width_measured_mm"]`
+  — twice the mean skeleton half-width, via `textcluster._stats_of_polygon`, so
+  it is memoized with the text doors. Cold cost 0.6 s on the 31-shape
+  enthusiast logo, 1.2 s on the 50-shape drone render.
+- **Group.** A text cluster is split into WEIGHT MODES (`split_weight_modes`,
+  ratio `(1+0.15)/(1-0.15)` — the regularizer's tolerance, not a new number;
+  a run wider than the ratio is cut at its largest step, recursively); each
+  mode of two or more records its median as `stitch_width_auto_mm`, named by
+  `stitch_width_group` (`<cluster>` or `<cluster>:<k>`). **The median is NOT
+  a safe default, and this is measured, not assumed:** Gaulke's line is ONE
+  cluster of 35 letters whose widths run 0.77 → 1.33 mm as a smooth chain
+  with no step (an I, an M and an O of one font measure differently at the
+  skeleton), so no split finds "two words" and the first cut moved 21 letters
+  to a 0.95 that nobody has. Evening out is therefore `cfg.stitch_width_auto`,
+  **default False**, the Studio's "Even out lettering widths" box.
+- **Apply** (`apply_stitch_widths`, in `finish_generation` after the edits and
+  the `stitched` resolution): target = override (always), else — only under
+  `stitch_width_auto` — the group median past the 15% tolerance, else
+  `lettering_min_column_mm` on small shapes and lettering (None by default —
+  ROADMAP gate 1; on its own the flag keeps its exact 2026-09-09 door-1
+  meaning). The polygon is OFFSET by half the difference (`offset_polygon`):
+  a hole that would close is held at its original size (stage 5's own rule),
+  a gap between strokes is read off a mitre closing of the shell and never
+  bridged, a stroke thinner than a narrowing step is read off the mirror
+  opening and never erased (an E's arms), all bisected to the largest passing
+  step; `stitch_width_limited` says a guard clamped it; an override under
+  twice the fabric's pull is `below_fabric_pull`, unchanged. A sized shape is
+  `column_sized`, which `stage5_overlap.widened_lettering` now includes, so it
+  gets the regularizer's four rules (no sub-floor run routing, classified and
+  sewn on the compensated polygon, growth kept over the ground, pull on the
+  polygon not the rails).
+- **Wire** (contract v1.8): `shape_overrides[sid].stitch_width_mm`, SEWN mm in
+  `[SATIN_MIN_CROSS_MM, SATIN_WIDE_COLUMN_MAX_MM]` = [0.5, 6.5], validated in
+  `stitchwidth.validate_override_mm` from both `app.py` (400) and
+  `regions.apply_shape_edits` (ValueError). Not carried across a merge or
+  split — those run BEFORE the edits, so the key never exists on a source;
+  a merged shape is measured late in `apply_stitch_widths` instead, so the
+  panel offers it the control. The review payload's per-shape `stitch_width`
+  block reports `art_mm` (the artwork stroke, no pull) and `measured_mm /
+  auto_mm / sewn_mm / override_mm` (sewn mm, artwork + 2 × pull;
+  `stitch_width_pull_mm` is stamped so the payload needs no fabric) plus
+  `source / group / limited / skip_reason`. Sewn = art + 2·pull holds for a
+  SATIN column on both compensation paths (stage 5 grows a sized polygon
+  isotropically; the rails carry the pull on everything else) and NOT for a
+  shape the plan sews as a run — a sub-floor bean on the artwork outline, no
+  pull — which is why the Studio shows `art_mm` on a run-tier row.
+- **Studio.** `canonicalShapeEdits` carries the key (rounded to 0.01 mm,
+  range-checked so it never 400s); `reviewFromJob` maps `stitchWidth`;
+  `stitchWidthGroupRows` is the word. The row control in `DigitizePanel.svelte`
+  writes the whole weight group in ONE patch (one undo step, one restitch;
+  `editKind` reads it as "other", so it keeps the drag debounce) unless
+  "whole word" is unticked. **"Stitch width" on the params list was renamed
+  "Design width"** — both e2e specs that read that label were repointed.
+
+Measured (on-vs-off plan md5): with the box OFF every corpus fixture is
+byte-identical, pinned on the two art fixtures that would move
+(`tests/test_stitch_width.py`, Fremont and Golke). With it ON, over the 24
+`testdata` fixtures: 22 unchanged; `drone_render` / `thermal_badge` bring two
+letters of one word from 0.79/0.82 mm to the word's 0.65 mm; Gaulke moves
+21 letters and is the reason the box is off. The flat-lane goldens are
+unmoved (`enthusiast_logo` is the platform red, identical on the pristine
+tree).
+
 ## Manual digitize: copy/paste and per-shape dim (merged 2026-08-26, PR #255)
 
 Studio Mode 2 (`app/src/ui/ManualPanel.svelte` + `app/src/lib/manualShapes.js`).
