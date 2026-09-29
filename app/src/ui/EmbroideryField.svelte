@@ -534,7 +534,12 @@
   // controls act on. {x, y} are offsets inside .hoop, like fieldMenu's.
   const CLICK_PX = 4;
   let shapePop = null;
-  let pressClient = null;   // { x, y, px } — the body-drag press, for the click test
+  let pressClient = null;   // { x, y, px } — the press, for the click test in endDrag
+  // The press landed on an outline and only SELECTED its shape: the popover
+  // opens on the release, and only if the pointer did not travel. Opening on
+  // the press let a drag open it, and the browser's mousedown default then
+  // took focus back from the dialog.
+  let pressOutline = false;
   let hoopBounds = { w: 0, h: 0 };
   $: popModel = shapePop && selectedShapeId && project
     ? popoverModel({ element: selectedElement(), shapeId: selectedShapeId })
@@ -556,7 +561,11 @@
     const r = canvas.getBoundingClientRect();
     const hb = hoopEl.getBoundingClientRect();
     hoopBounds = { w: hb.width, h: hb.height };
-    shapePop = { x: e.clientX - r.left, y: e.clientY - r.top };
+    const el = selectedElement();
+    // `elementId` pins the dialog to the element it was opened on: a
+    // selection change closes it rather than re-aiming it (the preset model
+    // ignores shapeId, so a re-aimed colour pick would land on another element).
+    shapePop = { x: e.clientX - r.left, y: e.clientY - r.top, elementId: el ? el.id : null };
   }
 
   // Every user-driven close (Escape, an outside press, Delete, Edit points, a
@@ -573,9 +582,16 @@
   function shapeAtPoint(el, p) {
     const edit = outlinesPxFor(el);
     if (!edit) return null;
-    const hidden = hiddenShapeIds(el, edit.rows);
-    const live = edit.outlines.filter((o) => !hidden.has(o.id));
+    const live = liveOutlinesPx(edit);
     return hitOverlay(live, p.x, p.y) || hitShapeInterior(live, p.x, p.y);
+  }
+
+  // The outlines of an `outlinesPxFor` result that a pointer may hit: hidden
+  // (stitched:false) and deleted shapes stay in `edit.outlines` for transform
+  // stability, but they are not drawn, so they must not be grabbable either.
+  function liveOutlinesPx(edit) {
+    const hidden = hiddenShapeIds(edit.el, edit.rows);
+    return edit.outlines.filter((o) => !hidden.has(o.id));
   }
 
   async function onPopChange(e) {
@@ -756,6 +772,13 @@
   $: if (project && project.selectedId !== undefined) {
     const sel = selectedElement();
     if (!sel || !SHAPE_LANES.has(sel.type)) selectedShapeId = null;
+    // An open popover belongs to the element it was opened on. A different
+    // selection (the Layers chips, a press on another element) closes it and
+    // drops its shape rather than re-aiming it at the new element.
+    if (shapePop && project.selectedId !== shapePop.elementId) {
+      selectedShapeId = null;
+      dropStalePop();
+    }
   }
 
   function deleteSelectedShape() {
@@ -1757,7 +1780,7 @@
     // would keep promising "move the element" right up to the moment a click
     // edits a shape instead — the affordance has to agree with the behaviour.
     const hoverEdit = editableOutlinesPx();
-    if (hoverEdit && hitOverlay(hoverEdit.outlines, p.x, p.y)) {
+    if (hoverEdit && hitOverlay(liveOutlinesPx(hoverEdit), p.x, p.y)) {
       canvas.style.cursor = "pointer";
       return;
     }
@@ -2038,19 +2061,23 @@
     // everywhere else inside the element still moves the whole element.
     const edit = editableOutlinesPx();
     if (edit) {
-      const hit = hitOverlay(edit.outlines, p.x, p.y);
+      // Hidden and deleted shapes are not drawn, so they are not grabbable.
+      const hit = hitOverlay(liveOutlinesPx(edit), p.x, p.y);
       if (hit) {
         // First click on a shape selects it and stops there — no geometry
         // moves until you have said which shape you mean. On the manual and
         // preset lanes it ALWAYS stops there: node editing for hand-drawn
         // shapes lives in ManualPanel for now (2026-09-29 spec §8).
-        // The press on an outline is the click: it selects and opens the
-        // popover here, and starts no drag for endDrag to test.
+        // The popover waits for the RELEASE (endDrag's click test): a press
+        // that turns into a drag opens nothing. Capture so the release
+        // reaches endDrag even if it lands off the canvas.
         if (hit.shapeId !== selectedShapeId || edit.el.type !== "digitized") {
           selectedShapeId = hit.shapeId;
           shapeEditError = "";
           if (edit.el.type === "manual") dispatch("shapeselect", { elementId: edit.el.id, shapeId: hit.shapeId, edit: false });
-          openShapePop(e);
+          canvas.setPointerCapture(e.pointerId);
+          pressClient = { x: e.clientX, y: e.clientY, px: p };
+          pressOutline = true;
           drawOverlay();
           return;
         }
@@ -2133,6 +2160,7 @@
     dragTargetId = targetId;
     dragStartPx = p;
     pressClient = { x: e.clientX, y: e.clientY, px: p };
+    pressOutline = false;
     dragStartOffXMm = el.offsetXMm || 0;
     dragStartOffYMm = el.offsetYMm || 0;
     dragStartWidthMm = pe.bboxMm.x1 - pe.bboxMm.x0;
@@ -2324,12 +2352,23 @@
       shapeEdit = null;
       liveRing = null;
       pressClient = null;
+      pressOutline = false;
       if (canvas) canvas.style.cursor = "default";
       drawOverlay();
       return;
     }
-    if (canvas && dragMode && canvas.hasPointerCapture && canvas.hasPointerCapture(e.pointerId)) {
+    if (canvas && (dragMode || pressOutline) && canvas.hasPointerCapture && canvas.hasPointerCapture(e.pointerId)) {
       canvas.releasePointerCapture(e.pointerId);
+    }
+    // A press on an outline already SELECTED its shape (onPointerDown); if it
+    // came back up without travelling, it was a click and opens the popover
+    // for that shape. A drag, or a cancel, opens nothing.
+    if (pressOutline && pressClient && selectedShapeId && e && e.type !== "pointercancel" && typeof e.clientX === "number") {
+      const moved = Math.hypot(e.clientX - pressClient.x, e.clientY - pressClient.y);
+      if (moved < CLICK_PX) {
+        openShapePop(e);
+        drawOverlay();
+      }
     }
     // A press-and-release that did not travel is a CLICK, and a click inside
     // a shape opens its popover (spec §4). Tested on the element the press
@@ -2353,6 +2392,7 @@
       }
     }
     pressClient = null;
+    pressOutline = false;
     dragMode = null;
     dragHandle = null;
     dragTargetId = null;
