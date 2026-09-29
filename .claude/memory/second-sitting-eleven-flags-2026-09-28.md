@@ -27,9 +27,14 @@ better, 8 before better, 30 no difference, 23 both bad; "can't tell" on 59 of
   arms.** They are engine work, not flag work; no flag rescued any. **Kent's note
   on screenshot: "don't use this one anymore"** — retiring it from `REAL_ART` (nine
   tools read it) is a change of its own, pending his go.
-- **The page needs a change locator.** 30 "no difference" and 59 "can't tell" with
+- **The page needs a change locator** — 30 "no difference" and 59 "can't tell" with
   no pointer to where a pair changed; the 09-18 review measured the changes as local.
-  Build the locator before the next sitting, if there is one.
+  **Built 2026-09-29** (`change_hotspots` in the gallery: 0.6 mm blur, per-channel
+  threshold, up to three boxes; outlined on both renders, *zoom to change*). It
+  marks 72 of the 77; the five it cannot are angle-only changes the blur removes.
+- **Kent's picks on the sitting (2026-09-28):** flip `satin_rail_comp` ON — done
+  2026-09-29, the sew-out still owed — and build the locator. Not picked: retiring
+  screenshot from the corpus.
 - **Blinding is spent on these nine logos**: all eleven flags and the ref arm have
   been seen labelled. A blind sitting needs new fixtures.
 
