@@ -3727,24 +3727,33 @@ def satin_stroke(poly: Polygon, stroke: Stroke, half_mm: float,
                 continue
             end = spine[0] if at_start else spine[-1]
             under = stroke.tuck_under_start if at_start else stroke.tuck_under_end
-            edge = field.half_at(end)
+            # Every width here is stated in SEWN terms: under rail-side comp
+            # the field, `under` and `half_mm` are the artwork's and every
+            # arm sews a pull wider on each side, so the clearance, the
+            # entry floor and the stack's reach-in all carry the pull (0.0
+            # otherwise -- byte-identical). Until 2026-09-29 only the
+            # clearance did: the floor and the reach-in read the artwork's
+            # half-width, so under `satin_rail_comp` every stacked arm
+            # stopped a pull further from its node than it did on the grown
+            # polygon, the ball's centre went bare, and the junction cover
+            # patched it with FILL -- BECKER's C at 80 mm, 3 satin cover
+            # runs OFF against 3 fill runs of 175 stitches ON, read as
+            # 32 mm2 of bare satin artwork by the satin-only instrument.
+            half_sewn = half_mm + rail_comp_mm
+            edge = field.half_at(end) + rail_comp_mm
             if under is not None:
-                edge = min(edge, under)
+                edge = min(edge, under + rail_comp_mm)
             entry = _junction_entry_mm(spine, field, half_mm, at_start)
             if entry is not None:
-                edge = min(edge, max(entry, half_mm))
-            # What has to be cleared is the other arm's SEWN width: under
-            # rail-side comp the field is the artwork's and the arm sews a
-            # pull wider (0.0 otherwise -- byte-identical).
-            #
+                edge = min(edge, max(entry, half_sewn))
             # `junction_stack`, part B (2026-09-19): an end at a meeting of
             # several -- no single owner to tuck under -- runs INTO the node
             # by its own half-width instead of stopping at the blob's edge,
             # so the arms' ends overlap inside the ball the way the pro's
             # do. A corner tuck (`under` set) is already under its owner and
             # keeps its clearance.
-            reach_in = half_mm if (junction_stack and under is None) else 0.0
-            trims.append(max(0.0, edge + rail_comp_mm - _JUNCTION_TUCK_MM - reach_in))
+            reach_in = half_sewn if (junction_stack and under is None) else 0.0
+            trims.append(max(0.0, edge - _JUNCTION_TUCK_MM - reach_in))
         if trims[0] or trims[1]:
             spine = _trim_chain(spine, trims[0], trims[1])
 
