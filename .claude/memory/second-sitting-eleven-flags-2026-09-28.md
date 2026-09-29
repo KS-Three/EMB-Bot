@@ -55,6 +55,17 @@ better, 8 before better, 30 no difference, 23 both bad; "can't tell" on 59 of
   an accepted price, not open defects; the junction tuck and the artwork
   decomposition are the levers, not the rail model (`rails_follow_edge` is measured
   to worsen the headline and the wobble, and read no-difference on 8 of 9).
+- **The C's bowl is the cover's fill by design, and the tuck was a pull short
+  (2026-09-29):** rendered both ways (`docs/renders/rail-comp-junctions-2026-09-29/`),
+  BECKER's C holds an 8 mm blob no 5 mm column spans; on the grown polygon a
+  connector's crosses covered it by accident, on the artwork the cover sews it as
+  tatami (part C) and the satin-only bare instrument read that as bare — count the
+  cover's fill before calling a junction bare. The tuck's entry floor and reach-in
+  read the artwork's half-width under rail comp (the third seam of that shape);
+  in sewn terms MARINE bare 7.38 → 7.03% at +32 stitches, bridge 99 → 96 trims,
+  corpus trims 654 → 651; the bowl's hole shrinks 1 mm². The other
+  construction for such a blob is Kent's parked `satin_patch_junctions="satin"`,
+  recorded not decided.
 - **Four photo-lane tests go red wherever `rembg_isolated/venv` exists** (the
   stub's shade demand, the two-square depth sort, the owl's merge and its
   declared-photographic report) — on the pre-change tree too, and never in CI.
