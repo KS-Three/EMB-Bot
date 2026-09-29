@@ -1929,8 +1929,12 @@ def test_a_dropped_limb_is_reported_and_names_its_shape(monkeypatch):
     # by default, and the cover patches exactly the hole this injection
     # makes -- the finding it must fire is then, correctly, not raised. The
     # positive case keeps its ground on the engine it was read on.
+    # ... and on the grown polygon too (`satin_rail_comp`, ON since
+    # 2026-09-29, Kent's pick): on the artwork polygon the unguarded prune
+    # keeps the tab's stem at 150 mm as well, so the injection has nothing to
+    # drop and the finding is, again correctly, not raised.
     c = cfg(target_width_mm=150.0, max_colors=6, subpixel_edges=False,
-            satin_junction_stack=False)
+            satin_junction_stack=False, satin_rail_comp=False)
     result, plan_ = digitize(art, c)
     report = run_preflight(result, plan_, c, image=art)
 

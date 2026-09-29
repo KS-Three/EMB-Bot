@@ -1367,8 +1367,36 @@ failures are EXPECTED:
    To re-derive this list rather than trusting it:
    `python -m pytest tests/ -q -n auto -rs 2>&1 | grep '^SKIPPED' | sed 's/:[0-9]*:/: /' | sort | uniq -c`
 
-Anything red outside class 1 is unexplained and yours to chase, and any
-skip outside classes 2-3 is a new one — chase that too.
+4. **Four photo-lane tests go RED on any machine that has
+   `rembg_isolated/venv` built — and CI never does.** `test_shade_palette_
+   demand.py::test_pipeline_gate_photo_classes_only[photo_subject-...]`,
+   `test_photo_sequencing.py::test_photo_class_plan_is_depth_sorted_end_to_
+   end`, `test_merge_adjacent_same_thread.py::test_the_pipelines_own_
+   output_no_longer_needs_the_merge` and `test_is_photographic.py::test_
+   declaring_a_gradient_photograph_brings_it_inside_max_colors`. With the
+   isolated worker present, stage 1 removes the stub's and the two-square
+   image's "background" (the light square goes; both squares land on one
+   thread) and re-cuts the owl (the merge test's block order and the
+   declared-photographic report's thread-match findings both move), and
+   each test's premise moves. Proved 2026-09-29 both ways: hide the venv
+   and all four pass; link it into a worktree at the pre-change commit and
+   all four fail there too. So on a cloud box that built the venv for a
+   render (the eye-pairs page needs it for the tires cutout) these four are
+   the MACHINE's, not a regression of what you just changed — and note that
+   they are not skips: `test_background_removal`'s two tests SKIP without
+   the venv (class 3), these four FAIL with it. When you attribute a red
+   set against a pre-change worktree, give that worktree the same venv
+   state first (a symlink to `rembg_isolated/venv` will do), or the fourth
+   reads as yours. The fix is theirs
+   and small — pin `photo_prep_background_removal=False` where the premise
+   is about something else — filed as #553, not folded into an unrelated
+   PR. A fourth symptom of the same venv under a loaded 4-core
+   full run: `test_real_background_removal_on_a_real_photo` can report
+   *"rembg worker timed out after 60s"* (it passed alone in 7 s the same
+   hour) — contention, not the engine.
+
+Anything red outside classes 1 and 4 is unexplained and yours to chase, and
+any skip outside classes 2-3 is a new one — chase that too.
 Runtime: 21:34 serial, measured 2026-08-17 on Kent's machine — which is
 why the command above carries `-n auto`: pytest-xdist is pinned in
 `requirements.txt`, and parallel runs are verified to produce the

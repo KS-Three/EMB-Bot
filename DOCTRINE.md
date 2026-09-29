@@ -6717,3 +6717,39 @@ beat the 08-27 engine on 7 of 9 logos in his eye** (the other two both-bad),
 with notes naming cleaner trims and borders, letters in place, Becker's C
 border. First direct evidence the month's engine work registered at full
 size. It says nothing about the distance to Ember.
+
+**The flip was priced when it landed (2026-09-29), and the price is the
+lesson: a render sitting prices the LOOK, so read the trims and the coverage
+instruments at the flip, before the arm — not after.** On the same tree,
+OFF → ON: MARINE at 80 mm 9 → 22 trims at +15% stitches (letter-to-shape
+hops 3 → 6; the 09-19 levers both on: 8 → 17); ENTHUSIAST `lost_frac`
+0.2748 → 0.2565, under its bar for the first time since 768de79e, for bare
+artwork 6.27 → 7.10% and colour-free uncovered ink 0.90 → 1.76%; Becker at
+114 mm under `wide_columns` 5.38 → 7.47 guarded. None of it was on the page
+he judged, and the 09-09 measurement in `config.py` had read the flag as
+FEWER trims (ENTHUSIAST 26 → 22) on an engine four lettering steps older.
+The mechanism is not new: the symmetric-offset rail model's under-reach,
+which the grown polygon hid by a pull, lands on the artwork once the pull is
+on the rails. `docs/kent-review-2026-09-28.md` "Outcome" has the table and
+the 29-test blast radius; `tests/test_rail_comp.py` pins the trims as a
+ceiling. Whether the price is accepted is Kent's, asked with the PR.
+
+## Four photo-lane tests go red on any machine that has `rembg_isolated/venv` built, and CI never does (2026-09-29)
+
+`test_shade_palette_demand`'s photo_subject stub, `test_photo_sequencing`'s
+two-square depth sort, `test_merge_adjacent_same_thread`'s owl and
+`test_is_photographic`'s owl fail the moment the isolated rembg worker exists
+— stage 1 removes the stub's and the two-square image's "background" (the
+light square goes, both squares land on one thread) and re-cuts the owl (its
+declared-photographic report keeps six `THREAD_MATCH_POOR` findings instead
+of none), and each test's premise moves. Proved by hiding the venv (all four
+pass) and by linking it into a worktree at the pre-change commit (all four
+fail there too). CI installs no rembg venv and never sees them; a cloud
+session that built the venv for a render, as this one did for the tires
+cutout, does. **Read those four as the machine's, not as a regression of
+what you just changed** — the first attribution pass here counted the fourth
+as the flip's, because the pre-change worktree had no venv until one was
+linked in; attribute against a worktree with the SAME venv state — and the
+fix is theirs, not the engine's: pin `photo_prep_background_removal=False`
+where the premise is about something else. Filed as #553, not folded into
+the flip PR.

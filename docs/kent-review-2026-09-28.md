@@ -1,5 +1,15 @@
 # Kent's review, 2026-09-28 — eleven pending flags and the 08-27 engine, labelled before | after
 
+> **OUTCOME — Kent picked two things on this review (2026-09-28), and both
+> landed 2026-09-29:** `cfg.satin_rail_comp` is **default ON**, and the page
+> has a change locator. The flip's price, which no render sitting could show,
+> is in the "Outcome" section at the end: MARINE at 80 mm goes **9 → 22
+> trims** at +15% stitches; ENTHUSIAST's `lost_frac` drops under its bar for
+> the first time (0.2748 → 0.2565) while its bare artwork rises 6.27 → 7.10%;
+> Becker at 114 mm under `wide_columns` loses the fold guard's margin. Whether
+> that price is accepted is Kent's call, and it is put to him with the PR.
+> Not picked: retiring `screenshot` from the corpus.
+
 **Result, in Kent's words: "The changes were VERY hard to tell the differences
 with the 'before and after' by the human eye."** He judged all 77 pairs on the
 rebuilt page (PR #514) over four sittings between 2026-09-20 and 2026-09-28.
@@ -150,3 +160,65 @@ call.
 - **Rulings:** none set. The page's per-arm ruling controls (flip ON / keep
   OFF / needs work) are still there, and a session can read them back the
   same way this doc was made.
+
+## Outcome — the flip landed 2026-09-29, and what the suite priced
+
+Kent's picks on this review were **flip `satin_rail_comp` ON** and **build the
+change locator**; both are in the PR after #549. The flag's default moved one
+line; the suite is where the flip was priced, and three of its readings are
+things his eye could not have seen on the page.
+
+**Blast radius, measured the way #481 measured `keep_thin_strokes`.** The
+first full run on the flipped engine was **39 failed**. The same 36 (less the
+flag's own file and a rembg timeout) run against a worktree at the pre-change
+commit (`main` at 72102e8a) returned **3 failed** — the three node IDs CI
+deselects — so 33 were the flip's or the machine's. Four of those turned out
+to be the machine's: `test_shade_palette_demand`'s photo_subject stub,
+`test_photo_sequencing`'s two-square depth sort and the owl in both
+`test_merge_adjacent_same_thread` and `test_is_photographic` fail on ANY
+tree the moment `rembg_isolated/venv` exists (the pre-change tree with the
+venv linked in: the same four), which CI never has and a cloud session that
+rendered the page does (filed as #553). That leaves **29 tests in 14 files
+as the flip's**, handled per the repo's own conventions:
+
+| What moved | Tests | How it was handled |
+|---|---|---|
+| Flat-lane golden, 3 keys (`whitebg` 4575 → 4580, `alpha` 4595 → 4602, `ribbon` 991 → 990 coords; ids, areas, warnings unmoved) | 6 (`test_flat_lane_byte_identical`, `test_stage2_photo_segment`) | re-captured with `recapture_flat_lane_key.py --pre-change-tree`, `machine OK` on each; `enthusiast` refused (platform red, deselected) |
+| `test_pushcomp`'s isotropic pins, 3 of 4 tuples | 4 (incl. `test_shape_overrides`) | re-pinned where the pre-change tree reproduces; `towel` recorded, not written |
+| The polygon-growth harness (`column_of`) reading no overhang on the rails | 7 (`test_pushcomp`) | harness pinned to `satin_rail_comp=False`; the rails' hand-off is `test_rail_comp`'s |
+| Tests pricing another flag on the fixture they measured | 6 (`test_preflight`'s injection; `test_wide_columns`; `test_corner_twigs`, `test_edge_cap_lettering`, `test_trim_levers` ×2) | pinned on the grown polygon, dated, with the rails' reading in the note; the flag also joins `conftest.PRE_FLIP` as the standing posture |
+| Geometry guards reading a satin column's rails as "outside" its planned polygon | 2 (`test_contour`, `test_planning`) | the sewn footprint of a satin-tier shape is its artwork plus the pull |
+| Synthetic fixtures the flip exposed | 2 (`test_borders_last`'s ribbon lay INSIDE the fill and survived OFF only as a 0.3 mm rind; `test_photo_sequencing`'s 1.4 mm ribbon sat 0.1 mm under the zigzag line) | fixture geometry corrected (ribbon beside the fill; 1.2 mm) |
+| The lettering instruments | 2 (`test_lettering_coverage_regression`) | the strict xfail XPASSed and is retired; the bare bar re-pinned with the trade attributed |
+
+**What the flip costs, on the instruments, same tree, OFF → ON (2026-09-29):**
+
+| Fixture | Instrument | OFF | ON |
+|---|---|---|---|
+| MARINE 80.2 mm (the lettering route's fixture) | trims / stitches | 9 / 1,784 | **22 / 2,058** |
+| MARINE, letter-to-shape hops · underlay→satin · satin→underlay | trims by cause | 3 · 3 · 1 | 6 · 5 · 7 |
+| MARINE, both 09-19 trim levers ON | trims | 8 | 17 |
+| ENTHUSIAST 80 mm | `lost_frac` (headline, bar 0.26) | 0.2748 | **0.2565** |
+| ENTHUSIAST 80 mm | bare artwork (`rail_edge --bare`) | 6.27% | **7.10%** |
+| ENTHUSIAST 80 mm | uncovered ink, colour-free (bar 2%) | 0.90% | 1.76% |
+| ENTHUSIAST 80 mm | trims / stitches | 12 / 2,388 | 16 / 2,369 |
+| Becker 114 mm, `wide_columns=True`, twigs+stack off | `coverage_max`, guarded / unguarded (warn 6.67) | 5.38 / 7.18 | 7.47 / 7.63 |
+
+Read together: the rails stand less proud of the ink AND cover less of it.
+The symmetric-offset rail model's under-reach (17.6% of ENTHUSIAST's rail
+points more than 0.1 mm inside the art, 768de79e's own open item) used to be
+hidden by the pull the polygon carried; on the artwork it lands on the
+artwork. That is the "narrower column" trade the bare guard was built to
+catch, and it caught it. The trims are the larger surprise: the 09-09
+measurement in `config.py` read rail comp as FEWER trims on four logos
+(ENTHUSIAST 26 → 22, drone 96 → 83); on the lettering route's own fixture,
+on today's engine, it is more than twice as many, and the levers priced on
+the grown polygon do not buy them back. `tests/test_rail_comp.py` pins the
+MARINE numbers as ceilings so a cheaper build lowers them without touching
+the test.
+
+**What this does not settle:** whether Kent takes that price. His pick was
+made on the look, which the flip improves in his eye on five logos; the
+trims and the bare artwork were not on the page. Reverting is one line plus
+this table's tests moving back. The sew-out that would settle the amount is
+still owed either way.

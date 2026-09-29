@@ -10,9 +10,11 @@ keeps its artwork polygon in stage 5 and `_rail_points` moves each rail
 outward by the same pull, held back where a counter would close under
 `min_detail_mm`. The AMOUNT never changes (gate 1); where it lands does.
 
-What these tests guarantee: OFF is the shipped path; ON sews a satin shape
-on its artwork with rails one pull outside it and caps not lengthened; a
-counter is held open; fills and widened lettering are untouched.
+What these tests guarantee: ON is the shipped path and OFF stays reachable;
+ON sews a satin shape on its artwork with rails one pull outside it and caps
+not lengthened; a counter is held open; fills and widened lettering are
+untouched; and the price the flip was measured to carry on the lettering
+fixture is pinned as a ceiling, so it can only get cheaper.
 """
 from __future__ import annotations
 
@@ -224,6 +226,34 @@ def test_widened_lettering_keeps_its_compensated_column(tmp_path):
         assert not seen[rg.shape_id].equals(rg.polygon), \
             f"{rg.shape_id}: a widened glyph lost its column to rail comp"
         assert seen[rg.shape_id].area > rg.polygon.area * 1.3
+
+
+def test_the_flip_costs_trims_on_the_lettering_fixture_and_says_so():
+    """The one cost the labelled sitting could not show: trims. MARINE at
+    80.2 mm (the lettering route's own fixture, `tests/test_stroke_order_euler`)
+    sews 9 trims and 1,784 stitches with the pull in the polygon and 22 trims
+    and 2,058 stitches with it on the rails (2026-09-29, the day of the flip;
+    letter-to-shape hops 3 -> 6, underlay->satin 3 -> 5, satin->underlay
+    1 -> 7). The 2026-09-19 levers priced on the grown polygon do not buy it
+    back: both levers ON reads 17 trims on the rails against 8 off them.
+
+    Pinned as CEILINGS, the way the underlay lever's own cost is: a cheaper
+    build lowers them and this test stays green; a dearer one fails it. The
+    direction is recorded here, not asserted -- the day the rails sew the
+    word in the typed word's three trims, nothing here should be in the way.
+    """
+    from digitizer_core.pipeline import build_generation, finish_generation, plan_stitches
+    from tests.test_stroke_order_euler import FIXTURE
+
+    def sewn(**kw):
+        c = PipelineConfig(target_width_mm=80.2, garment_id="left_chest", max_colors=6, **kw)
+        gen = build_generation(str(FIXTURE), c)
+        return plan_stitches(finish_generation(gen.fork(), c), c)
+
+    off, on = sewn(satin_rail_comp=False), sewn()
+    assert off.stats.trims <= 9, off.stats.trims            # the grown polygon, 2026-09-19's number
+    assert on.stats.trims <= 22, on.stats.trims             # the rails, measured at the flip
+    assert on.stats.stitch_count <= 1.16 * off.stats.stitch_count, (off.stats.stitch_count, on.stats.stitch_count)
 
 
 def test_push_rails_pushes_a_pinched_cross_and_leaves_a_directionless_one():

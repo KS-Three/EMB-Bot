@@ -35,6 +35,19 @@ better, 8 before better, 30 no difference, 23 both bad; "can't tell" on 59 of
 - **Kent's picks on the sitting (2026-09-28):** flip `satin_rail_comp` ON — done
   2026-09-29, the sew-out still owed — and build the locator. Not picked: retiring
   screenshot from the corpus.
+- **The flip's price, read by the suite and invisible on the page (2026-09-29):**
+  MARINE 80 mm 9 → 22 trims at +15% stitches (hops 3 → 6; both 09-19 levers on
+  8 → 17); ENTHUSIAST `lost_frac` 0.2748 → 0.2565 — under its bar at last — for
+  bare artwork 6.27 → 7.10%; Becker 114 mm under `wide_columns` 5.38 → 7.47. The
+  under-reach of the symmetric-offset rail model, hidden by the grown polygon,
+  lands on the artwork. 29 tests in 14 files moved, three flat goldens re-captured
+  with the pre-change proof; `docs/kent-review-2026-09-28.md` "Outcome" has the
+  table. Whether Kent takes the price was asked with the PR.
+- **Four photo-lane tests go red wherever `rembg_isolated/venv` exists** (the
+  stub's shade demand, the two-square depth sort, the owl's merge and its
+  declared-photographic report) — on the pre-change tree too, and never in CI.
+  Not a regression of anything; #553, DOCTRINE 2026-09-29 and COOKBOOK "Running
+  things" class 4 carry it. Attribute against a worktree with the same venv.
 - **Blinding is spent on these nine logos**: all eleven flags and the ref arm have
   been seen labelled. A blind sitting needs new fixtures.
 

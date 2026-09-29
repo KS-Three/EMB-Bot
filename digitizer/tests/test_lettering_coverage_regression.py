@@ -103,13 +103,27 @@ the bar, so what is left is unconditional code and not a default anyone can
 switch. Those defaults are Kent's calls, made for other reasons; they are
 priced here, not second-guessed.
 
-**It is marked `xfail(strict=True)` rather than left hard-red, and that is
+**It was marked `xfail(strict=True)` rather than left hard-red, and that was
 the only concession made to it.** The bar, the fixture and the assertion are
 byte-for-byte what they were; `digitizer` is a required check on `main`, and
 a required check that can never go green blocks every PR behind it rather
-than reminding anyone of anything. Strict is the point: the day the residual
+than reminding anyone of anything. Strict was the point: the day the residual
 is closed this test XPASSes and goes RED, and whoever sees that deletes the
 marker. **Raising `LOST_FRAC_BAR` is still not an option.**
+
+**That day was 2026-09-29, and the marker is gone -- read what closed it
+before calling it a cure.** `cfg.satin_rail_comp` went ON by default (Kent's
+pick on the labelled sitting, `docs/kent-review-2026-09-28.md`): the pull
+moved off the polygon and onto the rails, and this fixture reads
+**0.2748 -> 0.2565**, under the 0.26 bar and 0.0056 over the 2026-09-02
+baseline. Part of that is exactly the trade the third guard below exists to
+catch: bare artwork goes **6.27% -> 7.10%** and the colour-free uncovered
+fraction 0.90% -> 1.76% (still no element over 1 mm2), so the rails stand
+less proud of the ink AND cover less of it -- the symmetric-offset rail
+model's under-reach, which the grown polygon used to hide by a pull, now
+lands on the artwork itself. The bare bar is re-pinned with that attributed
+(`BARE_BAR`), not raised quietly; the number Kent's flip bought on the
+headline is recorded in `LOST_FRAC_TODAY`.
 """
 from __future__ import annotations
 
@@ -141,16 +155,13 @@ LOST_FRAC_BAR = 0.26
 # leave. Both are kept — the pair is the only thing that says how much of the
 # gap those fixes actually closed.
 LOST_FRAC_WHEN_WRITTEN = 0.3006
-LOST_FRAC_TODAY = 0.2748
+LOST_FRAC_AFTER_0920 = 0.2748
+# 2026-09-29, `satin_rail_comp` ON by default (Kent's pick): the pull on the
+# rails, not the polygon. Under the bar for the first time since 768de79e --
+# and see the module docstring and `BARE_TODAY` for what it traded.
+LOST_FRAC_TODAY = 0.2565
 
 
-@pytest.mark.xfail(strict=True, reason=(
-    "0.2748 against a 0.26 bar. Two causes fixed 2026-09-20 (satin rail "
-    "clearance floor, edge-cap thread vote); the 0.0239 residual is "
-    "768de79e's own open symmetric-offset rail model plus drift bisected the "
-    "same day to defaults that do NOT give it back when switched off (both "
-    "off still reads 0.2698). STRICT: if this XPASSes the residual is closed "
-    "and the marker should be deleted, not the test."))
 def test_lettering_coverage_has_not_regressed_since_the_rail_change():
     """A lettering fixture must not disagree with its artwork more than the
     engine disagreed before 768de79e moved the satin rails.
@@ -187,8 +198,9 @@ def test_lettering_coverage_has_not_regressed_since_the_rail_change():
         f"lettering fidelity regression: {FIXTURE.name} at {WIDTH_MM:g} mm "
         f"disagrees with its artwork over {lost_frac:.4f} of its ink against a "
         f"{LOST_FRAC_BAR} bar (the 2026-09-02 engine measured 0.2509; the "
-        f"engine measured {LOST_FRAC_WHEN_WRITTEN} when this test was written "
-        f"and {LOST_FRAC_TODAY} after the two 2026-09-20 fixes).\n"
+        f"engine measured {LOST_FRAC_WHEN_WRITTEN} when this test was written, "
+        f"{LOST_FRAC_AFTER_0920} after the two 2026-09-20 fixes and "
+        f"{LOST_FRAC_TODAY} with the pull on the rails, 2026-09-29).\n"
         f"Bisected to 768de79e — see this module's docstring. The rails moved "
         f"onto the nearest boundary crossing to kill jitter, and the letters "
         f"now sew about 0.3 mm FATTER than drawn.\n"
@@ -243,16 +255,29 @@ def test_lettering_coverage_has_not_regressed_since_the_rail_change():
 #     headline WORSE, measured: `satin_rails_follow_edge=True` reads 0.3289.
 # --------------------------------------------------------------------------
 
-# Today's readings (post-#537), each with headroom. These are same-instrument
-# tripwires against DRIFT, not physical areas -- `overshoot_frac`'s magnitude
-# moves 182.7 -> 0.0 mm2 as `HALO_OPEN_PX` goes 3 -> 13 px, so it is quotable
-# only against itself at a fixed kernel.
-OVERSHOOT_TODAY = 0.2748
+# Today's readings, each with headroom. These are same-instrument tripwires
+# against DRIFT, not physical areas -- `overshoot_frac`'s magnitude moves
+# 182.7 -> 0.0 mm2 as `HALO_OPEN_PX` goes 3 -> 13 px, so it is quotable only
+# against itself at a fixed kernel.
+#
+# Re-read 2026-09-29 with `satin_rail_comp` ON by default (Kent's pick on the
+# labelled sitting): overshoot 0.2748 -> 0.2565, bare 6.27% -> 7.10%,
+# uncovered 0.90% -> 1.76%. The bare bar MOVES here, and it is the one move
+# in this file that is attributed rather than earned: it was 6.80% (the
+# post-#537 reading plus ~8% headroom) and the flip lands 0.30 points over
+# it -- the narrower-column trade this guard was built to catch, bought by
+# a default Kent chose on the render. Pinned at the same headroom over the
+# new reading so the NEXT unattributed narrowing still fails; the old pair
+# is kept beside it so the price stays legible. Reverting the flag gives
+# every number here back (measured OFF on the same tree, same day).
+OVERSHOOT_TODAY = 0.2565
 OVERSHOOT_BAR = 0.29
-BARE_TODAY = 0.0627
-BARE_BAR = 0.068
-# Colour-free, unfiltered. Today: 0.90% of ink, zero components >= 1 mm2.
-UNCOVERED_FRAC_TODAY = 0.0090
+BARE_BEFORE_RAIL_COMP = 0.0627     # and its bar was 0.068
+BARE_TODAY = 0.0710
+BARE_BAR = 0.077
+# Colour-free, unfiltered. Today: 1.76% of ink, zero components >= 1 mm2
+# (0.90% before the rails carried the pull).
+UNCOVERED_FRAC_TODAY = 0.0176
 UNCOVERED_FRAC_BAR = 0.02
 
 
@@ -321,7 +346,8 @@ def test_the_columns_do_not_get_narrower_to_pay_for_it():
     assert bare <= BARE_BAR, (
         f"{FIXTURE.name} at {WIDTH_MM:g} mm now leaves {100 * bare:.2f}% of "
         f"its satin artwork outside a thread's width of any cross, against a "
-        f"{100 * BARE_BAR:.2f}% bar (post-#537 reading "
-        f"{100 * BARE_TODAY:.2f}%).\nSomething bought a narrower column by "
+        f"{100 * BARE_BAR:.2f}% bar (reading {100 * BARE_TODAY:.2f}% on "
+        f"2026-09-29 with the pull on the rails, {100 * BARE_BEFORE_RAIL_COMP:.2f}% "
+        f"before).\nSomething bought a narrower column by "
         f"dropping artwork. Read `tools/rail_edge.py enthusiast becker "
         f"--bare` and its jitter line together before concluding anything.")
