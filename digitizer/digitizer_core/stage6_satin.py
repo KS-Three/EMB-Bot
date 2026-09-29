@@ -68,6 +68,7 @@ import cv2
 import numpy as np
 from shapely.geometry import LineString, Polygon
 from shapely.geometry import Point as SPoint
+from shapely.ops import unary_union
 from skimage.morphology import medial_axis
 
 from . import machine, stitches
@@ -4823,6 +4824,80 @@ def _junction_cover_runs(poly: Polygon, runs: list[StitchRun], shape_id: str,
     return out
 
 
+def _close_seams(poly: Polygon, pull_mm: float, art_poly: Polygon | None = None) -> Polygon:
+    """The on-rails polygon with the hairline seams of its own construction
+    closed, for the SKELETON to read; the rails, caps and every art reading
+    stay on `poly` itself.
+
+    Under `satin_rail_comp` stage 5 hands satin the artwork polygon unioned
+    with the underlap reach under whatever sews later and cut by whatever
+    sewed earlier, and that boundary carries a seam wherever the artwork's
+    sub-pixel edge meets a buffered or neighbouring one: notches, slivers
+    and holes a fraction of a pull wide. The medial axis reads each one as
+    a branch. `logo_golden_tee` at 80 mm (2026-09-29): the O of GOLF 29 -> 88
+    strokes, its T outline 12 -> 70, the design 178 -> 494 strokes and
+    6,892 -> 11,377 stitches -- satin thread 7,414 -> 10,938 mm laid as 3.2x
+    the columns, most of them stubs, at the same 0.21 mm pitch. The grown
+    polygon never had the seams: a round-joined `buffer(pull)` swallows
+    anything narrower than the pull, the smoothing the artwork skeleton gave
+    up on 2026-09-19 without meaning to.
+
+    Three rules were measured before this one, each reaching past the seams
+    into the letterforms Kent's artwork-skeleton ruling is about. A closing
+    at the pull's radius fillets every crotch: MARINE 37 -> 28 strokes,
+    Becker 62 -> 68, MARINE's bare artwork 7.03 -> 9.45%. A closing at half
+    the pull kept to hairlines (fills nowhere wider than half a pull) still
+    reads the ARTWORK's own notches -- MARINE's 146 x 91 px source is all
+    notches -- and cost MARINE four letter folds, ENTHUSIAST one unsewn
+    element and `ribbon_curve` its golden. So the rule is WHERE, not only
+    how wide: a seam is a hairline fill that touches a stretch of boundary
+    stage 5 ADDED -- `poly`'s boundary off `art_poly`'s -- and nothing on
+    the artwork's own boundary is touched. An interior ring is filled on the
+    same two tests. Without `art_poly` (a direct caller) the width test
+    alone applies. 0.0 pull returns `poly` untouched -- byte-identical off
+    the rails.
+    """
+    if pull_mm <= 0 or poly.is_empty or poly.geom_type != "Polygon":
+        return poly
+    radius, width = 0.5 * pull_mm, 0.5 * pull_mm
+    zone = None
+    if art_poly is not None and art_poly.geom_type == "Polygon" and not art_poly.is_empty:
+        try:
+            zone = poly.boundary.difference(art_poly.boundary.buffer(0.01))
+        except Exception:
+            zone = None
+        if zone is not None and zone.is_empty:
+            return poly                      # the polygon IS the artwork: nothing was added
+        if zone is not None:
+            zone = zone.buffer(0.02)
+    try:
+        added = poly.buffer(radius).buffer(-radius).difference(poly)
+    except Exception:  # a degenerate ring; the skeleton reads the polygon as before
+        return poly
+    parts = list(added.geoms) if added.geom_type == "MultiPolygon" else (
+        [added] if added.geom_type == "Polygon" and not added.is_empty else [])
+    seams = [q for q in parts if q.area > 0.0 and q.buffer(-0.5 * width).is_empty
+             and (zone is None or q.intersects(zone))]
+    out = poly
+    if seams:
+        try:
+            out = unary_union([poly, *seams])
+        except Exception:
+            return poly
+        if out.geom_type == "MultiPolygon":
+            out = max(out.geoms, key=lambda g: g.area)
+        if out.geom_type != "Polygon" or out.is_empty or not out.is_valid:
+            return poly
+    kept = [ring for ring in out.interiors
+            if not Polygon(ring).buffer(-0.5 * width).is_empty
+            or (zone is not None and not LineString(ring.coords).intersects(zone))]
+    if len(kept) != len(out.interiors):
+        out = Polygon(out.exterior, kept)
+        if out.is_empty or not out.is_valid:
+            return poly
+    return out
+
+
 def _axis_polygon(poly: Polygon, art_poly: Polygon | None, mode):
     """Which polygon `polygon_axis` reads its skeleton from.
 
@@ -4995,11 +5070,25 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
     # `trim_at_mm`). The travel block below sews the leg a wider reach buys.
     walk_cursor_reach = float(walk_cursor_reach_mm or 0.0)
     axis_poly = _axis_polygon(poly, art_poly, polygon_axis)
+    raw_axis_poly = axis_poly
+    if rail_comp_mm > 0:
+        # Under rail comp the skeleton reads the polygon with the seams of
+        # its stage-5 construction closed (see `_close_seams`); `poly`
+        # itself, the rails' and the caps' source, is untouched.
+        axis_poly = _close_seams(axis_poly, rail_comp_mm, art_poly)
     strokes, half_mm, field = extract_strokes(axis_poly, use_shapefield=use_shapefield,
                                               polygon_axis=polygon_axis,
                                               half_extra_mm=rail_comp_mm,
                                               corner_twigs=corner_twigs,
                                               junction_stack=junction_stack)
+    if not strokes and axis_poly is not raw_axis_poly:
+        # A closed shape whose skeleton prunes to nothing sews what its raw
+        # polygon sews, never nothing.
+        strokes, half_mm, field = extract_strokes(raw_axis_poly, use_shapefield=use_shapefield,
+                                                  polygon_axis=polygon_axis,
+                                                  half_extra_mm=rail_comp_mm,
+                                                  corner_twigs=corner_twigs,
+                                                  junction_stack=junction_stack)
     if not strokes:
         report["empty"] = True
         return [], report
