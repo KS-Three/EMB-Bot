@@ -54,13 +54,17 @@ async function toContent(page) {
 
 // Draw a rectangle on ManualPanel's canvas: four clicks at fractions of the
 // canvas's displayed box, then Enter to finish (the panel's own key).
-async function drawRectangle(page) {
-  await page.locator(".hoop canvas").click({ button: "right" });
-  await page.locator(".fieldmenu button").filter({ hasText: "Draw shapes" }).click();
+// `x0`/`x1` are the rectangle's left/right as fractions of the canvas width;
+// `open: false` skips the field menu when the drawing panel is already up.
+async function drawRectangle(page, { x0 = 0.25, x1 = 0.75, open = true } = {}) {
+  if (open) {
+    await page.locator(".hoop canvas").click({ button: "right" });
+    await page.locator(".fieldmenu button").filter({ hasText: "Draw shapes" }).click();
+  }
   const mp = page.locator(".mp-canvas");
   await expect(mp).toBeVisible();
   const box = await mp.boundingBox();
-  for (const [fx, fy] of [[0.25, 0.25], [0.75, 0.25], [0.75, 0.75], [0.25, 0.75]]) {
+  for (const [fx, fy] of [[x0, 0.25], [x1, 0.25], [x1, 0.75], [x0, 0.75]]) {
     await page.mouse.click(box.x + box.width * fx, box.y + box.height * fy);
   }
   await mp.focus();
@@ -73,18 +77,43 @@ async function hoopCentre(page) {
   return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
 }
 
+// First dark (stitch) pixel column on the hoop canvas, in canvas px; -1 if none.
+async function firstDarkColumn(page) {
+  return page.evaluate(() => {
+    const c2 = document.querySelector(".hoop canvas");
+    const d = c2.getContext("2d").getImageData(0, 0, c2.width, c2.height).data;
+    for (let x = 0; x < c2.width; x++) for (let y = 0; y < c2.height; y++) {
+      const i = (y * c2.width + x) * 4;
+      if (d[i] < 80 && d[i + 1] < 80 && d[i + 2] < 80) return x;
+    }
+    return -1;
+  });
+}
+
 test("hand-drawn lane: click inside the shape opens its popover; Satin restitches; Escape closes", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await toContent(page);
-  await drawRectangle(page);
+  // Two rectangles, so the panel's selection (finishShape selects the shape it
+  // just finished) sits on Shape 2 before the field is touched: the click on
+  // Shape 1 then has to MOVE the selection, not merely find it already there.
+  await drawRectangle(page, { x0: 0.15, x1: 0.45 });
+  await drawRectangle(page, { x0: 0.55, x1: 0.85, open: false });
+  await expect(page.locator(".mp-shaperow")).toHaveCount(2);
+  await expect(page.locator(".mp-shaperow").nth(1)).toHaveClass(/sel/);
   const before = await page.locator(STATS).innerText();
 
-  // The design is centred in the hoop by default, so the hoop's centre is inside the rectangle.
-  const c = await hoopCentre(page);
-  await page.mouse.click(c.x, c.y);
+  // The element is a small block centred in the hoop (not the whole canvas), so
+  // find Shape 1 from the pixels: its left edge is the first dark column, and
+  // 30 CSS px in (the shape is ~100 wide) is well inside it.
+  const hb = await page.locator(".hoop canvas").boundingBox();
+  const cw = await page.evaluate(() => document.querySelector(".hoop canvas").width);
+  const left = await firstDarkColumn(page);
+  expect(left).toBeGreaterThan(0);
+  await page.mouse.click(hb.x + left / (cw / hb.width) + 30, hb.y + hb.height / 2);
   const dlg = page.getByRole("dialog", { name: "Shape 1 · Fill" });
   await expect(dlg).toBeVisible();
-  // The side panel's row followed the field's selection.
+  // The side panel's row followed the field's selection: Shape 2 -> Shape 1.
+  await expect(page.locator(".mp-shaperow").first()).toHaveClass(/sel/);
   await expect(page.locator(".mp-shaperow.sel")).toHaveCount(1);
 
   await dlg.getByRole("combobox", { name: "Stitch type" }).selectOption("satin");
@@ -103,35 +132,33 @@ test("hand-drawn lane: click inside the shape opens its popover; Satin restitche
   await expect(page.getByRole("dialog")).toHaveCount(0);
 });
 
-// First dark (stitch) pixel column on the hoop canvas, in canvas px; -1 if none.
-async function firstDarkColumn(page) {
-  return page.evaluate(() => {
-    const c2 = document.querySelector(".hoop canvas");
-    const d = c2.getContext("2d").getImageData(0, 0, c2.width, c2.height).data;
-    for (let x = 0; x < c2.width; x++) for (let y = 0; y < c2.height; y++) {
-      const i = (y * c2.width + x) * 4;
-      if (d[i] < 80 && d[i + 1] < 80 && d[i + 2] < 80) return x;
-    }
-    return -1;
-  });
-}
-
 test("a drag that starts inside a shape moves the element and opens nothing", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await toContent(page);
   await drawRectangle(page);
-  await page.waitForTimeout(500); // let the field settle after the stitches land
-  const beforeCol = await firstDarkColumn(page);
-  expect(beforeCol).toBeGreaterThan(0);
+  // Settle: the baseline is the first column that three consecutive reads,
+  // 200 ms apart, agree on (a fixed sleep could sample mid-render).
+  let beforeCol = -2;
+  await expect.poll(async () => {
+    const reads = [];
+    for (let i = 0; i < 3; i++) { reads.push(await firstDarkColumn(page)); await page.waitForTimeout(200); }
+    beforeCol = reads[0];
+    return reads[0] > 0 && reads.every((r) => r === reads[0]);
+  }, { timeout: 15_000 }).toBe(true);
+  const hb = await page.locator(".hoop canvas").boundingBox();
+  const scale = await page.evaluate(() => document.querySelector(".hoop canvas").width) / hb.width;
   const c = await hoopCentre(page);
   await page.mouse.move(c.x, c.y);
   await page.mouse.down();
-  await page.mouse.move(c.x + 40, c.y + 10, { steps: 8 });
+  await page.mouse.move(c.x + 60, c.y + 10, { steps: 8 });
   await page.mouse.up();
   await expect(page.getByRole("dialog")).toHaveCount(0);
-  // The drag was +40 px in x: the design's left edge must have moved right.
-  // (Asserting only "> 0" would pass even if nothing moved.)
-  await expect.poll(() => firstDarkColumn(page), { timeout: 10_000 }).toBeGreaterThan(beforeCol);
+  // The drag is +60 CSS px in x; the column is read in canvas px. MEASURED
+  // 2026-09-29: the element trails the pointer by a constant ~15 px dead zone
+  // (drags of 20/40/60 px moved it 5/25/45), so a +40 drag would only just clear
+  // a 30 px bar; +60 moves it ~45 and leaves margin either way.
+  await expect.poll(() => firstDarkColumn(page), { timeout: 10_000 }).toBeGreaterThanOrEqual(beforeCol + 30 * scale);
+  await expect(page.getByRole("dialog")).toHaveCount(0);
 });
 
 test("digitized lane: click inside a square opens the Layers row's controls; Border restitches at once", async ({ page }) => {
