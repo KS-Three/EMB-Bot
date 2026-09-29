@@ -15649,5 +15649,15 @@ byte-identical on every shape — and closes the seams: golden_tee ON
 (`REAL_ART` widths and garments, `max_colors=6`, `main` at 89161704 with the
 fix; bare is `rail_edge.bare_area`, satin crosses only.)
 
+One pin moved, the way that file moves them: `test_duplicate_cone_layers`'s
+fold claim ("fewer stitches AND less needle-up", measured 2026-09-01 on the
+engine of that day) reads the fold at +16 stitches on drone under the seam
+closing (17,103 against 17,087), because a merged layer changes what sews
+later and earlier around each shape, which is the very boundary the closing
+reads. `satin_rail_comp` joins that file's `PRE_FLIP_RC` beside
+`keep_thin_strokes` and `satin_corner_twigs`, each of which moved the same
+claim by more when it flipped; under it the closing is byte-identical and the
+fold's claim is measured on the engine it was made on.
+
 *(measured 2026-09-29 — the tables above; `tests/test_rail_comp.py::test_under_rail_comp_the_skeleton_reads_the_polygon_with_its_seams_closed`;
 `docs/renders/rail-comp-seams-2026-09-29/README.md`)*

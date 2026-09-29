@@ -140,8 +140,18 @@ def test_three_declarations_of_one_cone_all_land_on_the_first():
 # corner twig, the walk's columns take different entry ends, and the fold's
 # reorder then pays 107 stitches on drone (17,536 against 17,429, still at
 # less flying). The pruner's numbers, not the fold's.
+# `satin_rail_comp` joined 2026-09-29 (flipped ON by Kent 2026-09-28; the
+# seam closing inside its path landed the day after) for the same reason
+# once more: on the rails a shape's skeleton reads the polygon stage 5
+# built from what sews later and earlier around it, a merged layer changes
+# both, and the fold's reorder then pays 16 stitches on drone (17,103
+# against 17,087, one 32-stitch shape reading 68; still 81 mm less flying
+# and two trims fewer). The rails' numbers, not the fold's: off them the
+# fold saves 305 stitches and 181 mm of flying (16,998 against 17,303),
+# the seam closing is byte-identical, and the claim is measured where it
+# was made.
 PRE_FLIP_RC = {"robust_region_colour": False, "keep_thin_strokes": False,
-               "satin_corner_twigs": False}
+               "satin_corner_twigs": False, "satin_rail_comp": False}
 
 
 @pytest.fixture(scope="module")
