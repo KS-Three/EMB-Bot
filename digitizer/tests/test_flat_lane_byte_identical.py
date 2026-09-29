@@ -107,7 +107,11 @@ The junction tuck in sewn terms (2026-09-29, the third change to
 fill by design") moved NONE of the three flat keys — byte-identical, no
 re-capture — and is noted so the next capture does not go looking; the
 platform red's own reading moved 2252 → 2275 coords under it, against the
-same 2351 golden.
+same 2351 golden. The seam closing under rail comp (2026-09-29, the fourth
+change to that path that day, DOCTRINE "The on-rails polygon carries the
+seams of its own construction") moved none of the three flat keys either,
+and left the platform red at 2275: none of these shapes has a stage-5
+seam, which is the only thing it touches.
 
 **Second exception, SANCTIONED BUT NOT YET TAKEN (2026-08-14):** the
 `photo/enthusiast_logo.png` entry is stale as of PR #146 (the pro-parity satin

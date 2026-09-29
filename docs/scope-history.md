@@ -15598,3 +15598,56 @@ shift, the cross count does not. Nothing on the table moves the bowl.
 *(measured 2026-09-29 — the corpus table above; `tools/rail_edge.bare_area`;
 `docs/renders/rail-comp-junctions-2026-09-29/README.md`;
 `tests/test_rail_comp.py::test_the_flip_costs_trims_on_the_lettering_fixture_and_says_so`)*
+
+## 2026-09-29 — golden_tee's +65% under rail comp was the on-rails polygon's seams; the skeleton now reads them closed
+
+Kent's pick after #558. `logo_golden_tee` at 80 mm: 6,892 stitches with the
+pull grown into the polygon, 11,377 on the rails. Per run kind the +4,485
+were satin 5,246 → 9,072, travel 401 → 1,043, underlay +170, run −136, no
+fill; per shape nearly every satin shape doubled (the O of GOLF 408 → 1,087,
+the T outline 496 → 1,030); by run, 148 → 473 satin runs at 35 → 19 points
+each at the same 0.21 mm pitch, satin thread 7,414 → 10,938 mm. Strokes:
+178 → 494 (the O 29 → 88, the T 12 → 70). Not the raster scale — the ON
+polygons re-skeletonised at the OFF scale read 514. The polygon: on the
+rails stage 5 hands satin the artwork ∪ the underlap reach under later
+layers − earlier layers, whose boundary carries a hairline seam wherever
+the artwork's sub-pixel edge meets a buffered or neighbouring one, and the
+medial axis branches at every seam (renders
+`docs/renders/rail-comp-seams-2026-09-29/`).
+
+Three cures measured on the four fixtures' ON polygons (strokes):
+
+| rule | golden_tee | MARINE | becker 100 | ENTHUSIAST |
+|---|---|---|---|---|
+| raw | 494 | 37 | 62 | 28 |
+| closing at the pull | 100 | 28 | 68 | 29 |
+| half-pull closing, hairline fills only | 136 | 36 | 63 | 27 |
+| **the same, touching boundary stage 5 added** (ships) | — | **37** | — | — |
+
+The first re-cuts the letterforms at every crotch (MARINE bare 7.03 →
+9.45%); the second still reads the artwork's own notches (MARINE four
+letter folds, ENTHUSIAST one unsewn element, `ribbon_curve`'s golden
+moved); the third leaves the artwork's own boundary alone — MARINE
+byte-identical on every shape — and closes the seams: golden_tee ON
+6,892 → 7,966 stitches, 473 → 162 satin runs, 57 → 47 trims.
+
+| case | OFF trims / st | ON at #558 | ON with the fix | Δ trims / st | bare ON #558 / fix |
+|---|---|---|---|---|---|
+| MARINE 80 | 9 / 1,784 | 21 / 2,093 | 21 / 2,093 | 0 / +0 | 7.03 / 7.03 |
+| becker 100 | 54 / 8,070 | 48 / 8,297 | 48 / 8,297 | 0 / +0 | 8.14 / 8.14 |
+| tires | 13 / 2,247 | 7 / 2,515 | 7 / 2,515 | 0 / +0 | 4.55 / 4.55 |
+| enthusiast | 12 / 2,388 | 15 / 2,392 | 15 / 2,392 | 0 / +0 | 6.98 / 6.98 |
+| fremont | 59 / 19,862 | 58 / 19,937 | 55 / 19,887 | -3 / -50 | 3.53 / 3.98 |
+| bridge | 96 / 14,419 | 96 / 16,037 | 98 / 15,384 | +2 / -653 | 4.96 / 5.15 |
+| golden_tee | 43 / 6,892 | 57 / 11,377 | 47 / 7,966 | -10 / -3,411 | 6.54 / 10.35 |
+| gaulke | 34 / 4,168 | 32 / 4,224 | 32 / 4,189 | 0 / -35 | 6.88 / 6.89 |
+| drone | 120 / 18,411 | 123 / 18,595 | 123 / 18,540 | 0 / -55 | 4.80 / 4.88 |
+| thermal | 120 / 18,411 | 123 / 18,595 | 123 / 18,540 | 0 / -55 | 4.80 / 4.88 |
+| screenshot | 74 / 7,862 | 71 / 7,863 | 71 / 7,885 | 0 / +22 | 9.36 / 8.97 |
+| **total** | **634** / 104,514 | **651** / 111,925 | **640** / 107,688 | **-11** / -4,237 | |
+
+(`REAL_ART` widths and garments, `max_colors=6`, `main` at 89161704 with the
+fix; bare is `rail_edge.bare_area`, satin crosses only.)
+
+*(measured 2026-09-29 — the tables above; `tests/test_rail_comp.py::test_under_rail_comp_the_skeleton_reads_the_polygon_with_its_seams_closed`;
+`docs/renders/rail-comp-seams-2026-09-29/README.md`)*
