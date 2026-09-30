@@ -4217,3 +4217,41 @@ unchanged (MARINE 80 0.445 → 0.444, Becker 100 under the split flag
 parity trap in its second form — the parity broken by the splits instead
 of the slicing. `tests/test_density_split_satin.py` (3). *(read and
 fixed 2026-09-19 — scope-history)*
+
+## Rail comp: the flip's price and the seams (2026-09-29/30)
+
+Moved out of MASTER_SCOPE's quality-review Item 6 entry on 2026-09-30 to keep
+that file inside its budget; the verdict and a link stay there.
+
+- **Priced at the flip, 2026-09-29, same tree OFF → ON:** MARINE 80 mm 9 → 22
+  trims at +15% stitches, ENTHUSIAST `lost_frac` 0.2748 → 0.2565 for bare
+  6.27 → 7.10%, Becker 114 mm under `wide_columns` 5.38 → 7.47 — the trims a
+  ceiling in `tests/test_rail_comp.py`; the price ACCEPTED by Kent 2026-09-29,
+  "take the price, let it merge". *(measured 2026-09-29)*
+- **Trims.** Half of MARINE's trims were the walk's target sitting a
+  half-width off the web, fixed the same day — corpus trims 671 → 654 (OFF
+  634), MARINE 21 — the rest cursor-side and parked with
+  `satin_walk_cursor_reach_mm`. The junction tuck's floor and reach-in were
+  put in sewn terms the same day (MARINE bare 7.38 → 7.03% at +32 stitches,
+  corpus trims 654 → 651), and BECKER's C sews its 8 mm bowl as the cover's
+  fill BY DESIGN, two thirds of its junction bare —
+  `docs/renders/rail-comp-junctions-2026-09-29/`. *(measured 2026-09-29)*
+- **The seams, skeleton half (2026-09-29).** golden_tee's +65% stitches were
+  the SEAMS of stage 5's on-rails polygon (a hairline wherever two vectorised
+  edges meet, a skeleton branch each: 178 → 494 strokes), and the skeleton
+  reads that polygon with the seams of its construction closed — golden_tee
+  11,377 → 7,966, MARINE byte-identical, corpus trims 651 → 640, the
+  artwork's own boundary untouched (`docs/renders/rail-comp-seams-2026-09-29/`).
+  *(measured 2026-09-29)*
+- **The seams, rails half (2026-09-30, PR #565).** The rails, caps and
+  underlay still read the seamed polygon, so a spine down a closed seam had
+  its crosses stopped at the seam's walls: on main, golden_tee's mean satin
+  stitch was 1.301 mm with rail comp ON against 1.414 mm OFF — rail comp
+  sewing NARROWER than no comp. `satin_shape` now closes the polygon once and
+  sews the whole shape off it (raw polygon if the closed one sews nothing);
+  mean stitch 1.508 mm, golden_tee 7,952 → 7,965 stitches, 43 → 44 trims,
+  satin thread 7,777 → 9,208 mm; MARINE, ENTHUSIAST, ribbon_curve
+  byte-identical, drone +4 stitches. The same PR closes before
+  `simplified` mode simplifies, lets an unreadable artwork boundary close
+  nothing, and leaves a seam open where closing it would seal a bay.
+  *(measured 2026-09-30 — PR #565)*
