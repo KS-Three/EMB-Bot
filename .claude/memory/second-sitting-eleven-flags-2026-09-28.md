@@ -66,6 +66,17 @@ better, 8 before better, 30 no difference, 23 both bad; "can't tell" on 59 of
   corpus trims 654 → 651; the bowl's hole shrinks 1 mm². The other
   construction for such a blob is Kent's parked `satin_patch_junctions="satin"`,
   recorded not decided.
+- **golden_tee's +65% stitches were the on-rails polygon's SEAMS (2026-09-29):**
+  stage 5 hands satin the artwork ∪ underlap reach − earlier layers, a hairline
+  notch or sliver wherever two independently vectorised edges meet, and the
+  medial axis branches at each (178 → 494 strokes, 148 → 473 satin runs at half
+  the points, the same 0.21 mm pitch). The grown polygon's `buffer(pull)` had
+  swallowed them. Fixed: the skeleton reads that polygon with the seams of its
+  construction closed — hairline fills touching boundary stage 5 ADDED, nothing on
+  the artwork's own (a closing at the pull re-cut MARINE 37 → 28 strokes; the
+  width test alone cost MARINE four folds and ENTHUSIAST an element) — golden_tee
+  11,377 → 7,966, MARINE byte-identical, corpus 651 → 640. Count RUNS before
+  stitches; a morphological fix needs a WHERE.
 - **Four photo-lane tests go red wherever `rembg_isolated/venv` exists** (the
   stub's shade demand, the two-square depth sort, the owl's merge and its
   declared-photographic report) — on the pre-change tree too, and never in CI.

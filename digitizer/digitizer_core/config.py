@@ -1345,7 +1345,16 @@ class PipelineConfig:
     # bare 7.38 -> 7.03% at +32 stitches, bridge 99 -> 96 trims, corpus
     # 654 -> 651. The C's bowl itself -- two thirds of Becker's
     # junction bare -- is the cover's FILL by design, an 8 mm blob no
-    # column spans, not the tuck's; DOCTRINE 2026-09-29.
+    # column spans, not the tuck's; DOCTRINE 2026-09-29. And golden_tee's
+    # +65% stitches (6,892 -> 11,377) were the SEAMS of the on-rails
+    # polygon -- stage 5's artwork-union-reach-minus-earlier boundary,
+    # a hairline notch or sliver wherever two independently vectorised
+    # edges meet, a branch each to the medial axis (178 -> 494 strokes):
+    # fixed the same day, the skeleton reads that polygon with the seams
+    # of its construction closed (`stage6_satin._close_seams`, hairline
+    # fills touching boundary stage 5 added, nothing on the artwork's
+    # own), golden_tee 11,377 -> 7,966, MARINE byte-identical, corpus
+    # trims 651 -> 640.
     satin_rail_comp: bool = True
     # None = the fabric preset's fill underlay style. One of "none" |
     # "edge_run" | "center_run" | "edge_zigzag" | "edge_lattice" |
