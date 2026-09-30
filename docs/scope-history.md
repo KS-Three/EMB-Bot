@@ -16615,3 +16615,31 @@ shows. Raising the threshold is cloth's question (gate 1) and Kent's
 ruling; the engine now sews the 5.0 style without flicker. Records:
 `docs/renders/split-comb-2026-09-30/` (README, census.json, four strips),
 DOCTRINE.
+
+## 2026-09-30 — The envelope's teeth: a reach shorter than the window is not a reach (Kent's pick)
+
+Kent's pick after the split comb. On the tree after #577 and #578, Becker
+at 100 mm keeps 23 envelope stretches and **8 of them are a single
+station**: the running minimum clears the 0.3 mm gap at one station and
+not its neighbours, and the rail steps out 0.34–0.83 mm and straight back
+(four on the letters M, A, I and N, four on the emblem band); tires,
+bridge and screenshot had one, two and one such stations and no other
+reach. Simulated on the captured offsets: dropping stretches shorter than
+the envelope window (3 stations) removes every tooth for 7% of the
+extension area (20.6 → 19.1 mm²) and touches nothing else; a slope limit
+of 0.3 or 0.2 mm per station on top costs 33% or 49% of the area, a ramp
+over 2 or 3 stations 24% or 39%, for the 1.8 mm steps a LONG reach opens
+with — which are the artwork's own features (a serif's edge is a step).
+
+Shipped: `_drop_short_reaches` in the envelope branch, the window as the
+minimum, no new constant. Measured: Becker reached stations 78 → 72,
+stretches 23 → 17, teeth 8 → 0, stitches 9,333 → 9,321, new ground on the
+letters 15.2 → 14.8 mm²; rail jitter over 0.15 mm at the reached stations
+**28.4 → 26.3%** (symmetric 9.3), all crosses 12.2 → 11.9%; golden_tee
+8,581 → 8,575, the three small logos lose their only reaches at the same
+stitch counts. So the teeth were two points of the roughness, and the rest
+is the long stretches' plateaus and steps; the thread renders at 40 px/mm
+are all but identical, the rails drawing shows the kink gone. A unit test
+on the helper; the pinned files 143 passed. Records:
+`docs/renders/envelope-teeth-2026-09-30/` (README, census.json, three
+strips), DOCTRINE.

@@ -52,3 +52,12 @@ runs mixed, 75 transitions) under every rail mode; 23 escapes remain
 Records: `docs/renders/envelope-escapes-2026-09-30/` (README, census.json,
 E/R/A/M strips + golden_tee T), scope-history, DOCTRINE ("A rail that
 reaches for its far edge must first know whose edge it found").
+
+**Teeth (same day, Kent's pick after the comb)**: 8 of Becker's 23 remaining
+stretches were single-station (0.34–0.83 mm out and back); `_drop_short_reaches`
+reverts stretches shorter than `_ENVELOPE_WINDOW` (3). Measured: 78 → 72
+reached, 23 → 17 stretches, 9,333 → 9,321 st, reached-station jitter 28.4 →
+26.3% (symmetric 9.3) — the teeth were two points of it; the rest is the
+long reaches' plateaus/steps (1.8 mm max), the artwork's features. Slope
+limit / ramp simulated: −24 to −49% extension area — Kent's trade, not
+built. `docs/renders/envelope-teeth-2026-09-30/`.
