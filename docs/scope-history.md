@@ -15761,3 +15761,19 @@ script over `digitize()` (`tools/rail_edge.bare_area`, `tools/edge_wobble`,
 `tools/dropped_elements`); the thread classes from `dropped_elements`' colour
 fields at its own registration; `tests/test_eye_pairs_gallery.py` and the
 eye-pairs and doc files: 179 passed)*
+
+## 2026-09-30 — `satin_rails_follow_edge="envelope"` ON on Kent's eye (the same night as the page)
+
+Kent judged all seven pairs (2 after — becker, golden_tee, the two with the
+defect, *did its job* on golden_tee — 0 before, 2 no difference, 3 both
+bad) and ruled in chat: flip ON. Shipped: the default is `"envelope"`,
+`rail_envelope` left the arms table (`rails_follow_edge` stays, `True`
+against the new base), `True` still parked, the sew-out still owed. The
+price is the page entry's table above (symmetric → envelope, rail comp ON
+both sides): becker 8,297 → 8,900 stitches and bare satin 8.14 → 7.35,
+golden_tee 7,966 → 8,072 and 10.35 → 7.20, MARINE 80 mm 2,093 → 2,119 and
+7.03 → 6.28, corpus trims 640 → 641; everything else within 0.3 mm² of
+thread. His caveat on becker — the reached stretches "look like they are
+just trying to fill a void" — is the flag's open texture item. Records:
+`docs/eye-pairs-2026-09-30/` (README Outcome, `kent-notes.json` with the
+ruling), DOCTRINE 2026-09-30, the flag's comment in `config.py`.

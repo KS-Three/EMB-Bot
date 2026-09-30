@@ -95,6 +95,10 @@ better, 8 before better, 30 no difference, 23 both bad; "can't tell" on 59 of
   there. becker's caveat: the reached stretches "look like they are just trying to fill a void" —
   the envelope's texture, not its reach. bridge's real defects, in his words: lettering smooshed
   together, a satin border that goes on and off. `docs/eye-pairs-2026-09-30/kent-notes.json`.
+  **Flipped ON the same night, in chat** (`satin_rails_follow_edge="envelope"` the default;
+  `rail_envelope` retired from the arms table, `rails_follow_edge` stays as True against it;
+  `True` still parked, the sew-out still owed). **Next, his pick: bridge's on/off satin border
+  and smooshed lettering.** Becker's texture is the open item if the envelope ever reads wrong.
 - **Four photo-lane tests go red wherever `rembg_isolated/venv` exists** (the
   stub's shade demand, the two-square depth sort, the owl's merge and its
   declared-photographic report) — on the pre-change tree too, and never in CI.

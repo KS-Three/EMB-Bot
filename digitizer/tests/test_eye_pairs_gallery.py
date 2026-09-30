@@ -18,9 +18,10 @@ from tools import eye_pairs_gallery as g  # noqa: E402
 
 # Restated from the yardstick spec, sections 3.2 and 3.7 / analysis.METRICS.
 SPEC_ARMS = ["per_stroke", "patch_junctions", "polygon_axis", "area_weighted",
-             "design_angle", "rails_follow_edge", "rail_envelope", "wide_columns",
+             "design_angle", "rails_follow_edge", "wide_columns",
              "lettering_column", "phantom_dissolve", "directional_comp", "ref_0827"]
-# `rail_comp` shipped ON 2026-09-28 and left the table (docs/kent-review-2026-09-28.md).
+# `rail_comp` shipped ON 2026-09-28 and left the table (docs/kent-review-2026-09-28.md);
+# `rail_envelope` shipped ON 2026-09-30 and left it (docs/eye-pairs-2026-09-30/).
 SPEC_METRICS = {
     "trims_per_1000": "lower", "preflight_raw_score": "higher",
     "preflight_blocks": "lower", "uncovered_total_mm2": "lower",
@@ -658,6 +659,10 @@ def test_a_shipped_arm_is_still_named_on_an_old_sitting():
     assert "rail_comp" not in g.ARM_INTENT
     change, intent = g.arm_intent("rail_comp")
     assert change.startswith("satin_rail_comp=True") and "shipped" in change and intent
+    # rail_envelope followed it on 2026-09-30, off its own sitting.
+    assert "rail_envelope" not in g.ARM_INTENT
+    change, intent = g.arm_intent("rail_envelope")
+    assert change.startswith('satin_rails_follow_edge="envelope"') and "shipped" in change and intent
     assert g.arm_intent("per_stroke") == g.ARM_INTENT["per_stroke"]
     assert g.arm_intent("nope") == ("nope", "")
     assert g.arm_intent(None) == ("", "")

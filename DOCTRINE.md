@@ -7012,3 +7012,26 @@ splits them goes to the page, and the page decides. His caveat on becker —
 the reached stretches "look like they are just trying to fill a void" — is
 the cost his eye did find: the envelope's texture where it kicks in, not
 its reach.
+
+## `satin_rails_follow_edge="envelope"` shipped on Kent's eye, and `True` stays parked (2026-09-30)
+
+Kent judged the envelope's seven pairs the night the page went up and
+ruled in chat: flip ON. 2 after (becker, golden_tee — the two fixtures with
+the far-rail under-reach; *flag did its job: yes* on golden_tee), 0 before,
+2 no difference (drone, tires), 3 both bad (bridge, gaulke, screenshot: the
+logos that are bad under every setting). The same evidence shape as the
+rail comp flip two nights earlier, and the same standing: the sew-out is
+still owed, and the price is recorded rather than argued
+(`docs/eye-pairs-2026-09-30/`, the corpus table: becker +7% stitches,
+golden_tee +1%, MARINE 2,093 → 2,119, a tenth more rail roughness on the two
+that changed, everything else within 0.3 mm² of thread).
+
+**What to do:** do not re-litigate the reach on these nine logos — his eye
+has ruled twice on where the far rail should stop. `True` is not the next
+step; it is the same reach at every station, and his becker note names the
+cost that even the envelope's partial reach carries: the reached stretches
+"look like they are just trying to fill a void" — texture where the
+extension kicks in, not the reach itself. That texture is the open item on
+this flag, and it is a render-and-look question, not an instrument one.
+His golden_tee note is a tiering question for another day: satin rails are
+an accent, so what gets rails should be what needs the pop.

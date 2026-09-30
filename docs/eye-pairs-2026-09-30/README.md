@@ -125,3 +125,9 @@ than flowing satin. The three *both bad* are the logos bad under every
 setting since 09-18 (gaulke, screenshot) plus bridge, whose real defects he
 named: lettering smooshed together and a satin border that goes on and off.
 The flip was not ruled on the page.
+
+**Ruling, given in chat right after (2026-09-30): flip the envelope ON.**
+Shipped the same night: `satin_rails_follow_edge="envelope"` is the default
+and `rail_envelope` left the arms table (`rails_follow_edge` stays, `True`
+against it). The next work item he picked with it: bridge's satin border
+that goes on and off, and its smooshed lettering.

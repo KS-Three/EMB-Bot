@@ -85,16 +85,9 @@ ARM_INTENT: dict[str, tuple[str, str]] = {
         "nearer edge's distance, so the far rail stops falling short of serifs "
         "and tapers (less bare satin); cost is a jitterier rail, more short "
         "stitches on bends, and more thread."),
-    "rail_envelope": (
-        'satin_rails_follow_edge="envelope"',
-        "The far rail extends only where its own edge is at least 0.3 mm "
-        "further out than the symmetric width, and only to the running minimum "
-        "of that edge over seven stations, so a long taper or serif side is "
-        "reached without the per-station edge-following that made True pay in "
-        "jitter and overshoot; a bulge shorter than the window and the C's "
-        "bowl are left as they are."),
-    # `rail_comp` left this table 2026-09-28: Kent flipped `satin_rail_comp` on
-    # after the labelled sitting, so it is the shipped path, not a pending arm.
+    # `rail_comp` left this table 2026-09-28 and `rail_envelope` 2026-09-30:
+    # Kent flipped each on after its labelled sitting, so both are the shipped
+    # path, not pending arms.
     "wide_columns": (
         "wide_columns=True",
         "Raise the satin ceiling to 6.5 mm (read off the pro's Becker files) "
@@ -126,6 +119,12 @@ RETIRED_ARM_INTENT: dict[str, tuple[str, str]] = {
         "Put the pull compensation on the rails: satin widens outward along its "
         "cross instead of the polygon buffer, so thread stops landing outside "
         "the artwork. Kent flipped it on after the 2026-09-28 sitting."),
+    "rail_envelope": (
+        'satin_rails_follow_edge="envelope" (shipped ON 2026-09-30)',
+        "The far rail extends only where its own edge is at least 0.3 mm "
+        "further out than the symmetric width, to the running minimum of that "
+        "edge over seven stations. Kent flipped it on after the 2026-09-30 "
+        "sitting (2 after, 0 before, golden_tee 'did its job')."),
 }
 
 

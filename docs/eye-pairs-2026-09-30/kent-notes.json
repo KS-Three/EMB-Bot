@@ -3,7 +3,7 @@
  "artifact": "https://claude.ai/artifact/6mjKrbnCX21MM9gQUry4Zp",
  "page_built": "2026-09-30",
  "pairs": 7,
- "note": "The envelope sitting's store, read back with ArtifactData (the seven rail_envelope__<fixture> docs; the 111 older docs of the 09-18 and 09-28 sittings are still in the store and exported in ../eye-pairs-2026-09-28/kent-notes.json). No ruling was given on the arm.",
+ "note": "The envelope sitting's store, read back with ArtifactData (the seven rail_envelope__<fixture> docs; the 111 older docs of the 09-18 and 09-28 sittings are still in the store and exported in ../eye-pairs-2026-09-28/kent-notes.json). The ruling was given in chat, not on the page: flip ON (rulings below).",
  "notes": {
   "rail_envelope__becker": {
    "arm": "rail_envelope",
@@ -62,5 +62,11 @@
    "note": ""
   }
  },
- "rulings": {}
+ "rulings": {
+  "rail_envelope": {
+   "ruling": "flip_on",
+   "note": "Given in chat on 2026-09-30 after the sitting, not on the page; the next work item picked with it: bridge's on/off satin border and smooshed lettering.",
+   "updated": "2026-09-30T01:47:00Z"
+  }
+ }
 }

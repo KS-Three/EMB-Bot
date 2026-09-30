@@ -80,7 +80,7 @@ exactly one change:
 | `area_weighted` | `classify_area_weighted=True` |
 | `design_angle` | `design_angle=True` |
 | `rails_follow_edge` | `satin_rails_follow_edge=True` (added 2026-09-18: the labelled before/after page already carried it) |
-| `rail_envelope` | `satin_rails_follow_edge="envelope"` (added 2026-09-30: the far rail's under-reach with a where and a how-far, built OFF against the parked `True`; rendered against today's base for Kent's flip) |
+| ~~`rail_envelope`~~ | ~~`satin_rails_follow_edge="envelope"`~~ — added 2026-09-30 for its own labelled sitting (`docs/eye-pairs-2026-09-30/`) and shipped ON the same night on Kent's eye (2 after, 0 before); base now, no longer an arm |
 | ~~`rail_comp`~~ | ~~`satin_rail_comp=True`~~ — shipped ON 2026-09-28 on the labelled sitting (`docs/kent-review-2026-09-28.md`); base now, no longer an arm |
 | `wide_columns` | `wide_columns=True` |
 | `lettering_column` | `lettering_min_column_mm=1.0` |
@@ -347,7 +347,7 @@ No real-logo digitize in CI (the `digitizer` job already runs ~50 minutes).
 
 ## 6. Runtime and failure
 
-117 digitizes plus 9 on the old ref (99 before `rails_follow_edge` joined the table, 108 before `rail_envelope`). Per-design clocks at customer defaults
+108 digitizes plus 9 on the old ref (99 before `rails_follow_edge` joined the table; 117 for the one night `rail_envelope` was on it, 2026-09-30). Per-design clocks at customer defaults
 have never been recorded (`docs/flag-runtime-bills-2026-09-12.md` measured
 the parity config only), so the budget is an estimate — one to three hours,
 run in the background, resumable. `--render` records wall-clock per
