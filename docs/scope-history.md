@@ -16004,3 +16004,77 @@ The entry above ("defect 49 CLOSED") was published before the lettering coverage
 **And the apex's status as a defect is now itself open:** `lost_frac`'s unsewn half reads 0.0 on this fixture in every arm, so the 3.61 mm2 triangle may be visible only to the coverage model. Establishing which instrument is right is the first step of any second attempt.
 
 *(measured 2026-09-30 — `tests/test_lettering_coverage_regression.py`; `tools/eye_pairs/features.py` `lost_frac`/`unsewn_frac`/`overshoot_frac`)*
+
+---
+
+**Last updated:** 2026-09-30 — the A's apex is a real hole; `bare_anatomy` counts satin and nothing else
+
+Kent's pick after two instruments contradicted each other over MASTER_SCOPE
+defect 49: `tools/bare_anatomy.py` reported **3.61 mm²** of bare artwork at the
+apex of ENTHUSIAST's **A**, and `tools/dropped_elements.py`'s `unsewn_frac`
+read **0.0000** on that fixture in every arm. The previous build was priced on
+the first and retracted on the second, so which one to believe had to be
+settled before any second attempt.
+
+**Both were wrong in a knowable way, and the hole is real.**
+
+| reading | shipped engine, ENTHUSIAST 80 mm `left_chest` |
+|---|---|
+| `bare_anatomy` worst component, satin only | 3.61 mm², max inscribed half 0.706 mm |
+| the same region against EVERY thread kind | **2.17 mm²**, largest connected part 1.93 mm² @ 0.464 mm |
+| — underlay covers | 1.39 mm² (38.4%) |
+| — travel covers | 0.17 mm² (4.7%) |
+| — fill, run cover | 0.00 mm² |
+| after a 0.50 mm opening (`HALO_OPEN_PX`) | **1.72 mm², survives** |
+| `dropped_elements` `uncovered_worst_mm2` | **0.97 mm²** at (23.09, −3.48) mm |
+| the shapely apex centroid | (23.05, −3.16) mm — **0.33 mm away** |
+| `uncovered_elements` (`MIN_ELEMENT_MM2` 1.0) | **0** |
+| `lost_frac` | 0.2573 = unsewn **0.0000** + overshoot 0.2573 |
+
+Two instruments that share no code agree on the location: `bare_anatomy` works
+in shapely on the plan's geometry, `uncov = A_ink & ~thread` is a raster mask
+difference over a `stitchviz` render with no CIEDE2000, no opening and no
+colour. The largest uncovered-ink component **in the whole design** sits a
+third of a millimetre from the apex; the next is 0.70 mm² and 35 mm away.
+
+`unsewn_frac` cannot fire on this fixture at all — its on-ink vote is
+`A_ink[region].mean() > 0.5` and the largest per-region ink fraction here is
+**0.33**, which the tool's own docstring states. And `uncovered_elements`, the
+one reading built to name a lost element, misses it by **0.03 mm²**.
+
+**`bare_anatomy` counts satin crosses and nothing else, so every figure it has
+published is an upper bound.** Measured the same day with the `--all-thread`
+flag added for it, shipped engine, total bare and worst component per fixture:
+
+| fixture | bare satin | bare ALL | worst satin | worst ALL |
+|---|---|---|---|---|
+| becker | 160.69 | 90.44 (1.8x) | 54.28 | **5.36 (10.1x)** |
+| tires | 27.98 | 11.60 (2.4x) | 0.26 | 0.22 (1.2x) |
+| enthusiast | 23.44 | 15.53 (1.5x) | 3.61 | 1.93 (1.9x) |
+| fremont | 18.73 | **0.48 (38.9x)** | 0.79 | 0.05 (17.1x) |
+| bridge | 52.77 | 14.05 (3.8x) | 9.30 | 1.56 (6.0x) |
+| golden_tee | 81.77 | 57.69 (1.4x) | 7.06 | 6.81 (1.0x) |
+| gaulke | 33.20 | 29.56 (1.1x) | 0.54 | 0.47 (1.2x) |
+| drone | 37.51 | 20.44 (1.8x) | 2.65 | 2.19 (1.2x) |
+| screenshot | 27.39 | 25.69 (1.1x) | 0.91 | 0.91 (1.0x) |
+
+The ratio spans **1.07x to 38.9x** and cannot be divided out. Both columns come
+off one tree, so the ratios are sound; the satin-only column is not row-for-row
+the 2026-09-29 tip-caps table, because golden_tee's seam fix landed between
+them. The 09-29 table's DIRECTION — bare falls on all nine — is what the flip
+was bought on and is unaffected; its magnitudes overstate.
+
+**Shipped with it:** `--all-thread` on `tools/bare_anatomy.py` (default
+unchanged, and the docstring says why), `tools/thread_path_render.py` (three
+panels of one crop drawn through `stitchviz.render_design`, so a picture can
+disagree with the model that made the number — the 2026-09-29 apex render drew
+`bare_anatomy`'s own cross buffers and could not),
+`digitizer/tests/test_apex_is_real.py` (3 tests, 9 s), and
+`docs/renders/apex-verdict-2026-09-30/`.
+
+**Defect 49 stays OPEN and is now a measured defect rather than a suspected
+one.** Track it on `uncovered_worst_mm2`, never on `unsewn_frac`. The retracted
+widening is still retracted: it bought the hole by spilling thread outside the
+artwork elsewhere.
+
+*(measured 2026-09-30 — `tests/test_apex_is_real.py`; `tools/bare_anatomy.py --all-thread`; DOCTRINE 2026-09-30, two entries)*

@@ -22,6 +22,23 @@ tool's percentage:
   up. The thickness is what separates the two populations, and the area alone
   never does: 311 slivers and one hole can total the same square millimetres.
 
+## IT COUNTS SATIN CROSSES AND NOTHING ELSE, so it OVER-REPORTS
+
+The subtraction above is satin only. Underlay, run, travel and fill lay real
+thread on the same cloth and none of it is subtracted, so every number here is
+an upper bound on what a customer could see. **Measured 2026-09-30 on
+ENTHUSIAST's worst component, the A's apex: 3.61 mm2 satin-only, 2.17 mm2
+against EVERY thread kind** -- underlay covers 38.4% of it and travel 4.7%, so
+the default reading is 1.66x the hole. That is 40% on the one component this
+tool was built to explain, which is large enough to change a build decision.
+
+`--all-thread` subtracts every run the plan emits and is the number to quote
+when the claim is *"a customer would see this"*. The default stays satin-only
+because the end/side split, the thickness populations and every figure pinned
+against this tool were measured that way, and because satin-only is the right
+reading for *"did the COLUMN cover its own artwork"* -- underlay filling a gap
+is thread on cloth, not a satin column doing its job.
+
 Written 2026-09-29 for Kent's pick on `satin_rail_comp`'s two unexplained
 costs. The ENTHUSIAST half of that question — "mid-rail bare 2.06 -> 4.12%,
 cause not yet isolated" (`docs/kent-review-2026-09-28.md`) — is answered by
@@ -33,6 +50,7 @@ before reading `total`.
     .venv/bin/python tools/bare_anatomy.py enthusiast
     .venv/bin/python tools/bare_anatomy.py --corpus > anatomy.txt
     .venv/bin/python tools/bare_anatomy.py becker --arms off     # one arm only
+    .venv/bin/python tools/bare_anatomy.py enthusiast --all-thread  # vs ALL thread
 
 Arms are `satin_rail_comp` OFF and ON; the default runs both and prints the
 pair. Cases are `tools.thin_strokes.REAL_ART` names, at each fixture's own
@@ -88,15 +106,46 @@ def _max_inscribed_half(geom, hi: float = 2.0, steps: int = 18) -> float:
     return lo
 
 
-def components(polys: dict, plan) -> list[tuple[float, float, bool, str]]:
+def other_thread(plan, exclude: str = "satin"):
+    """-> every non-satin run the plan emits, buffered to a thread width.
+
+    Underlay, run, travel and fill are thread on the same cloth. `components`
+    ignores them by default (see the module docstring); this is what
+    `all_thread=True` subtracts as well.
+
+    ANOTHER shape's satin is deliberately not included: the question stays
+    per-shape, and a shape buried under its neighbour's column should still
+    read as unsewn. On ENTHUSIAST it makes no difference either way — the A's
+    apex reads 1.932 mm2 with the other 978 satin segments in and out
+    (measured 2026-09-30) — but on overlapping art it would.
+    """
+    thread = machine.COVERAGE_THREAD_W_MM
+    segs = []
+    for _b, r in plan.iter_runs():
+        if r.kind == exclude:
+            continue
+        pts = strip_splits(strip_ties(list(r.points)))
+        segs += [LineString([pts[i], pts[i + 1]]) for i in range(len(pts) - 1)
+                 if math.dist(pts[i], pts[i + 1]) > 1e-6]
+    if not segs:
+        return None
+    return unary_union([s.buffer(thread / 2.0, cap_style=2) for s in segs])
+
+
+def components(polys: dict, plan, all_thread: bool = False,
+               ) -> list[tuple[float, float, bool, str]]:
     """-> [(area_mm2, half_thickness_mm, is_end_gap, shape_id)] for every bare
     component of every satin shape.
 
     Crosses are grouped BY RUN so a run's first and last cross are knowable —
     that is what makes the end/side split possible, and it is the one thing
     `rail_edge.bare_area` throws away by unioning per shape.
+
+    `all_thread` also subtracts underlay, run, travel and fill. The default is
+    False and the module docstring says why, and by how much it over-reports.
     """
     thread = machine.COVERAGE_THREAD_W_MM
+    other = other_thread(plan) if all_thread else None
     runs: dict[str, list[list]] = {}
     for _b, r in plan.iter_runs():
         if r.kind != "satin" or r.shape_id not in polys:
@@ -111,6 +160,8 @@ def components(polys: dict, plan) -> list[tuple[float, float, bool, str]]:
     for sid, groups in runs.items():
         crosses = [c for grp in groups for c in grp]
         sewn = unary_union([c.buffer(thread / 2.0, cap_style=2) for c in crosses])
+        if other is not None:
+            sewn = sewn.union(other)
         bare = polys[sid].difference(sewn)
         if bare.is_empty:
             continue
@@ -136,20 +187,21 @@ def measure(name: str, rail_comp: bool) -> dict:
 
 def measure_path(path, width_mm: float, garment: str, rail_comp: bool,
                  name: str = "", render_to: Path | None = None,
-                 only: set | None = None) -> dict:
+                 only: set | None = None, all_thread: bool = False) -> dict:
     cfg = PipelineConfig(target_width_mm=width_mm, garment_id=garment,
                          max_colors=STUDIO_MAX_COLORS, satin_rail_comp=rail_comp)
     gen = build_generation(str(path), cfg)
     result = finish_generation(gen.fork(), cfg)
     plan = plan_stitches(result, cfg)
     polys = {r.shape_id: r.polygon for r in result.regions}
-    comps = components(polys, plan)
+    comps = components(polys, plan, all_thread=all_thread)
     if render_to is not None:
         render(polys, plan, render_to, f"{name or 'case'}_{'on' if rail_comp else 'off'}", only)
     satin_art = sum(polys[sid].area for sid in
                     {c[3] for c in comps} | _satin_ids(plan, polys))
     return dict(name=name, on=rail_comp, comps=comps, art=satin_art,
-                st=plan.stats.stitch_count, trims=plan.stats.trims)
+                st=plan.stats.stitch_count, trims=plan.stats.trims,
+                all_thread=all_thread)
 
 
 def _satin_ids(plan, polys) -> set:
@@ -159,7 +211,7 @@ def _satin_ids(plan, polys) -> set:
 
 def report(d: dict) -> str:
     comps = d["comps"]
-    arm = "ON " if d["on"] else "OFF"
+    arm = ("ON " if d["on"] else "OFF") + ("*" if d.get("all_thread") else " ")
     if not comps:
         return f"  {arm} no bare satin artwork"
     area = np.asarray([c[0] for c in comps])
@@ -248,6 +300,9 @@ def render(polys: dict, plan, out_dir: Path, tag: str, only: set | None = None,
 def main(argv: list[str]) -> None:
     utf8_console()
     arms = [False, True]
+    all_thread = "--all-thread" in argv
+    if all_thread:
+        argv = [a for a in argv if a != "--all-thread"]
     out_dir = None
     if "--render" in argv:
         i = argv.index("--render")
@@ -273,10 +328,14 @@ def main(argv: list[str]) -> None:
     print(f"thread {machine.COVERAGE_THREAD_W_MM} mm, satin pitch "
           f"{machine.SATIN_SPACING_MM} mm -- adjacent threads just touch at the pitch, "
           f"so every step over it leaves a sliver the model counts as bare.")
+    if all_thread:
+        print("--all-thread: underlay, run, travel and fill subtracted too "
+              "(rows marked *). The default counts SATIN ONLY and over-reports.")
     for name, path, w, g in cases:
         print(f"### {name} {w:g} mm {g}")
         for on in arms:
-            d = measure_path(path, w, g, on, name, render_to=out_dir, only=only)
+            d = measure_path(path, w, g, on, name, render_to=out_dir, only=only,
+                             all_thread=all_thread)
             print(report(d))
 
 

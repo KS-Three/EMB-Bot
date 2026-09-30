@@ -5918,6 +5918,106 @@ plausible from the code and both were refuted by one measurement. The render is
 what named the real one.
 
 
+## `bare_anatomy` counts SATIN and nothing else, so every figure it has published is an upper bound — by 1.5x to 39x (2026-09-30)
+
+The tool buffers satin crosses and subtracts them from the artwork polygon.
+**Underlay, run, travel and fill lay real thread on the same cloth and none of
+it is subtracted.** So "bare artwork" there means "artwork this shape's SATIN
+COLUMN did not cover", which is a fair question about a column and is NOT the
+question the numbers were read as — *"cloth a customer would see"*.
+
+Measured 2026-09-30 with the `--all-thread` flag added the same day, shipped
+engine, per fixture, total bare and worst component:
+
+| fixture | bare satin | bare ALL | worst satin | worst ALL |
+|---|---|---|---|---|
+| becker | 160.69 | 90.44 (1.8x) | 54.28 | **5.36 (10.1x)** |
+| tires | 27.98 | 11.60 (2.4x) | 0.26 | 0.22 (1.2x) |
+| enthusiast | 23.44 | 15.53 (1.5x) | 3.61 | 1.93 (1.9x) |
+| fremont | 18.73 | **0.48 (38.9x)** | 0.79 | 0.05 (17.1x) |
+| bridge | 52.77 | 14.05 (3.8x) | 9.30 | 1.56 (6.0x) |
+| golden_tee | 81.77 | 57.69 (1.4x) | 7.06 | 6.81 (1.0x) |
+| gaulke | 33.20 | 29.56 (1.1x) | 0.54 | 0.47 (1.2x) |
+| drone | 37.51 | 20.44 (1.8x) | 2.65 | 2.19 (1.2x) |
+| screenshot | 27.39 | 25.69 (1.1x) | 0.91 | 0.91 (1.0x) |
+
+**The ratio is not a constant and cannot be divided out.** It runs **1.07x to
+38.9x** on the total and **1.00x to 17.1x** on the worst component, because it
+depends entirely on how much underlay a fixture's shapes happen to carry —
+screenshot's worst gap is untouched by every other thread kind while becker's
+is 90% covered by them. A table of before/after figures built on the default
+reading therefore cannot be rescued by scaling: each row has its own factor,
+and the factors span a decade.
+
+**What this costs, concretely.** The nine-logo table Kent flipped
+`satin_tip_caps` on (2026-09-29) is a satin-only table. Its DIRECTION is still
+the thing the flip was bought on and the flip's own fixture test still passes,
+but its MAGNITUDES overstate the cloth a customer sees by a per-fixture factor
+nobody measured at the time — fremont's row moves 18.10 -> 17.92 mm², a change
+of 0.18 on a quantity whose thread-visible value is under half a square
+millimetre.
+
+The table above is one tree, both columns, so its ratios are sound; its
+satin-only column is **not** row-for-row the 2026-09-29 table, because the tree
+moved between them (golden_tee's seam fix landed in between and changed its
+decomposition). Compare ratios here, not levels against that entry.
+
+**The default stays satin-only**, deliberately: the end/side split, the
+thickness populations and every pinned figure were measured that way, and
+*"did the COLUMN cover its own artwork"* is a real question — underlay filling
+a gap is thread on cloth, not a satin column doing its job. `--all-thread` is
+the reading to quote whenever the claim is about what a customer sees.
+`tests/test_apex_is_real.py` pins the gap between the two on ENTHUSIAST so it
+cannot quietly close.
+
+## The A's apex IS a hole — and BOTH instruments that disagreed about it were wrong in a knowable way (2026-09-30)
+
+Kent's pick, after a build was priced on the wrong one of two instruments that
+contradicted each other: `bare_anatomy` reported **3.61 mm²** at the apex of
+ENTHUSIAST's **A**; `dropped_elements`' `unsewn_frac` read **0.0000** on that
+fixture in every arm. Settled by measuring both and by rendering the actual
+thread path (`docs/renders/apex-verdict-2026-09-30/`).
+
+**`bare_anatomy` over-reported by 1.7x** — underlay threads 38.4% of that
+triangle and travel a further 4.7% (entry above). **`unsewn_frac` could not
+have seen it at all**, for a reason its own docstring already stated: its
+on-ink vote is `A_ink[region].mean() > 0.5` and the largest per-region ink
+fraction on this fixture is **0.33**. A 0.0 there is the method's property,
+not a finding — the same lesson as the 2026-09-20 zero.
+
+**What survives both corrections is a real hole**: 2.17 mm² of artwork with no
+thread of any kind, largest connected part 1.93 mm² at 0.464 mm max inscribed
+half-width, and **1.72 mm² still there after the 0.50 mm opening** that exists
+to throw boundary hairlines away. A millimetre-wide notch at the peak of a
+capital letter on an 80 mm chest logo.
+
+**The confirmation is a second instrument that shares no code.**
+`dropped_elements`' `uncov = A_ink & ~thread` is a raster mask difference over
+a `stitchviz` render — no CIEDE2000, no opening, no colour, nothing in common
+with a shapely subtraction. Its **largest uncovered-ink component in the whole
+design**, 0.97 mm², sits **0.33 mm** from the apex; the next is 0.70 mm² and
+35 mm away.
+
+**And the reading built to name a lost element misses it by 0.03 mm².**
+`uncovered_elements` counts components at or over `MIN_ELEMENT_MM2` = 1.0, and
+the apex reads 0.97. That threshold was set to separate an element from a rim.
+This is neither, and a session reading `uncovered_elements: 0` as *"nothing was
+lost"* will be wrong here. **Read `uncovered_worst_mm2`**, which is sensitive
+and is the number that moves when a build closes the apex.
+
+**Two process rules came out of this, and they are the transferable part.**
+
+1. **A picture drawn from the same model as the number is not evidence.** The
+   2026-09-29 apex render drew `bare_anatomy`'s own cross buffers, so it could
+   only ever agree with `bare_anatomy`. `tools/thread_path_render.py` exists so
+   the next one comes out of `stitchviz.render_design`, walking the design's
+   real stitch stream instead.
+2. **When two instruments disagree, neither is the tie-breaker.** Both were
+   wrong here, in opposite directions, and the answer came from a third
+   reading plus a picture from a fourth code path. Picking the one that
+   flatters the build is what put a retracted change on `main`.
+
+
 ## The polygon axis must not read stage 5's grown polygon (2026-09-16)
 
 Kent ruled drone's M over-stitched under `cfg.satin_polygon_axis`. Root cause,
