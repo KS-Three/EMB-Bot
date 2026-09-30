@@ -215,6 +215,17 @@ describe("canvas-click-to-select", () => {
     expect(row.className).toContain("sel");
   });
 
+  test("clicking the already-selected shape's body or edge keeps it selected and patches nothing (points are edited on the design canvas)", async () => {
+    const shape = { id: "s1", points: tri(), stitchType: "fill", colorRgb: [20, 20, 20], angleDeg: null };
+    const { canvas, getByText, patches } = renderPanel([shape]);
+    await clickAt(canvas, 150, 133); // select via the canvas
+    await clickAt(canvas, 150, 133); // body again
+    await clickAt(canvas, 150, 103); // 3px off the top edge: used to insert a vertex
+    const row = getByText(/Shape 1/, { selector: ".mp-shapename" }).closest("button");
+    expect(row.className).toContain("sel");
+    expect(patches).toHaveLength(0);
+  });
+
   test("clicking empty canvas (no shape underneath) starts a new draft instead of selecting anything", async () => {
     const shape = { id: "s1", points: tri(), stitchType: "fill", colorRgb: [20, 20, 20], angleDeg: null };
     const { canvas, getByRole, getByText } = renderPanel([shape]);
@@ -258,91 +269,6 @@ describe("canvas-click-to-select", () => {
   });
 });
 
-// ---- edge-click-to-insert-vertex -------------------------------------------
-//
-// tri()'s top edge (segment 0) runs from (100,100) to (200,100) — (150,103)
-// sits 3px off that line, well inside VERTEX_HIT_R (8), and (150,133) is a
-// safe interior point roughly 30px from the nearest edge (verified against
-// the real nearestSegmentIndex/pointInShape helpers, not just eyeballed).
-
-describe("edge-click-to-insert-vertex", () => {
-  async function selectRow(utils) {
-    await fireEvent.click(utils.getByText(/Shape 1/, { selector: ".mp-shapename" }).closest("button"));
-  }
-
-  test("clicking an edge of the already-selected shape inserts a new vertex there", async () => {
-    const shape = { id: "s1", points: tri(), stitchType: "fill", colorRgb: [20, 20, 20], angleDeg: null };
-    const utils = renderPanel([shape]);
-    await selectRow(utils);
-    const { canvas, patches } = utils;
-
-    await clickAt(canvas, 150, 103);
-
-    expect(patches).toHaveLength(1);
-    const pts = patches[0].patch.shapes[0].points;
-    expect(pts).toHaveLength(4);
-    expect(pts).toEqual([
-      { x: 100, y: 100 },
-      { x: 150, y: 103 }, // the new vertex, spliced right after segment 0's start anchor
-      { x: 200, y: 100 },
-      { x: 150, y: 200 },
-    ]);
-  });
-
-  test("clicking an edge of a shape that ISN'T selected yet only selects it — no insert", async () => {
-    const shape = { id: "s1", points: tri(), stitchType: "fill", colorRgb: [20, 20, 20], angleDeg: null };
-    const { canvas, getByText, patches } = renderPanel([shape]);
-
-    await clickAt(canvas, 150, 103); // same edge point, but nothing is selected yet
-
-    expect(patches).toHaveLength(0); // selecting alone never dispatches a patch
-    const row = getByText(/Shape 1/, { selector: ".mp-shapename" }).closest("button");
-    expect(row.className).toContain("sel");
-  });
-
-  test("clicking the interior of an already-selected shape (away from any edge) does not insert", async () => {
-    const shape = { id: "s1", points: tri(), stitchType: "fill", colorRgb: [20, 20, 20], angleDeg: null };
-    const utils = renderPanel([shape]);
-    await selectRow(utils);
-    const { canvas, getByText, patches } = utils;
-
-    await clickAt(canvas, 150, 133); // well inside, ~30px from the nearest edge
-
-    expect(patches).toHaveLength(0); // no insert dispatched
-    // Falls back to the pre-existing already-selected-shape click behavior
-    // (selectShape's own toggle) unchanged — this test only pins that no
-    // insert happened, not that specific toggle mechanic (out of scope here).
-    const row = getByText(/Shape 1/, { selector: ".mp-shapename" }).closest("button");
-    expect(row.className).not.toContain("sel");
-  });
-
-  test("a second click on the same edge point keeps splitting — each insert only ever adds one vertex", async () => {
-    const shape = { id: "s1", points: tri(), stitchType: "fill", colorRgb: [20, 20, 20], angleDeg: null };
-    const utils = renderPanel([shape]);
-    await selectRow(utils);
-    const { canvas, patches } = utils;
-
-    await clickAt(canvas, 150, 103);
-    expect(patches).toHaveLength(1);
-    expect(patches[0].patch.shapes[0].points).toHaveLength(4);
-  });
-
-  test("an edge click on a DIFFERENT shape than the one selected just selects that other shape, no insert", async () => {
-    const selected = { id: "s1", points: tri(), stitchType: "fill", colorRgb: [20, 20, 20], angleDeg: null };
-    const other = { id: "s2", points: tri(300, 0), stitchType: "fill", colorRgb: [1, 1, 1], angleDeg: null };
-    const utils = renderPanel([selected, other]);
-    await selectRow(utils);
-    const { canvas, getByText, patches } = utils;
-
-    // Edge point on `other`'s top edge (same offset as tri()'s own).
-    await clickAt(canvas, 450, 103);
-
-    expect(patches).toHaveLength(0);
-    expect(getByText(/Shape 2/, { selector: ".mp-shapename" }).closest("button").className).toContain("sel");
-    expect(getByText(/Shape 1/, { selector: ".mp-shapename" }).closest("button").className).not.toContain("sel");
-  });
-});
-
 // ---- cursor swaps per hover target ------------------------------------
 
 describe("cursor swaps per hover target", () => {
@@ -359,22 +285,15 @@ describe("cursor swaps per hover target", () => {
     expect(canvas.style.cursor).toBe("pointer");
   });
 
-  test("switches to cell while hovering an edge of the already-selected shape (the exact spot a click would insert a vertex)", async () => {
+  test("stays pointer over the selected shape's edge — edge points are edited on the design canvas, not here", async () => {
     const shape = { id: "s1", points: tri(), stitchType: "fill", colorRgb: [20, 20, 20], angleDeg: null };
     const { canvas, getByText } = renderPanel([shape]);
     await fireEvent.click(getByText(/Shape 1/, { selector: ".mp-shapename" }).closest("button")); // select it first
     await fireEvent.pointerMove(canvas, { clientX: 150, clientY: 103 }); // 3px off tri()'s top edge
-    expect(canvas.style.cursor).toBe("cell");
-  });
-
-  test("stays pointer (not cell) while hovering the SAME shape's edge before it's selected", async () => {
-    const shape = { id: "s1", points: tri(), stitchType: "fill", colorRgb: [20, 20, 20], angleDeg: null };
-    const { canvas } = renderPanel([shape]);
-    await fireEvent.pointerMove(canvas, { clientX: 150, clientY: 103 }); // same edge point, nothing selected
     expect(canvas.style.cursor).toBe("pointer");
   });
 
-  test("stays pointer (not cell) over the selected shape's own interior, away from any edge", async () => {
+  test("stays pointer over the selected shape's own interior", async () => {
     const shape = { id: "s1", points: tri(), stitchType: "fill", colorRgb: [20, 20, 20], angleDeg: null };
     const { canvas, getByText } = renderPanel([shape]);
     await fireEvent.click(getByText(/Shape 1/, { selector: ".mp-shapename" }).closest("button"));
@@ -398,111 +317,6 @@ describe("cursor swaps per hover target", () => {
     const midX = (p0.x + p1.x) / 2, midY = (p0.y + p1.y) / 2;
     await fireEvent.pointerMove(canvas, { clientX: midX, clientY: midY });
     expect(canvas.style.cursor).toBe("copy");
-  });
-
-  test("switches to grab while hovering a draggable vertex in edit-points mode", async () => {
-    const shape = { id: "s1", points: tri(), stitchType: "fill", colorRgb: [20, 20, 20], angleDeg: null };
-    const { canvas, getByText, getByRole } = renderPanel([shape]);
-    await fireEvent.click(getByText(/Shape 1/, { selector: ".mp-shapename" }).closest("button"));
-    await fireEvent.click(getByRole("button", { name: "Edit points" }));
-    const [p0] = tri();
-    await fireEvent.pointerMove(canvas, { clientX: p0.x, clientY: p0.y });
-    expect(canvas.style.cursor).toBe("grab");
-  });
-
-  test("switches to copy while hovering an edit-mode segment's curve handle", async () => {
-    const shape = { id: "s1", points: tri(), stitchType: "fill", colorRgb: [20, 20, 20], angleDeg: null };
-    const { canvas, getByText, getByRole } = renderPanel([shape]);
-    await fireEvent.click(getByText(/Shape 1/, { selector: ".mp-shapename" }).closest("button"));
-    await fireEvent.click(getByRole("button", { name: "Edit points" }));
-    const [p0, p1] = tri();
-    const midX = (p0.x + p1.x) / 2, midY = (p0.y + p1.y) / 2;
-    await fireEvent.pointerMove(canvas, { clientX: midX, clientY: midY });
-    expect(canvas.style.cursor).toBe("copy");
-  });
-
-  test("stays crosshair in edit-points mode away from any vertex or curve handle", async () => {
-    const shape = { id: "s1", points: tri(), stitchType: "fill", colorRgb: [20, 20, 20], angleDeg: null };
-    const { canvas, getByText, getByRole } = renderPanel([shape]);
-    await fireEvent.click(getByText(/Shape 1/, { selector: ".mp-shapename" }).closest("button"));
-    await fireEvent.click(getByRole("button", { name: "Edit points" }));
-    await fireEvent.pointerMove(canvas, { clientX: 500, clientY: 350 });
-    expect(canvas.style.cursor).toBe("crosshair");
-  });
-
-  test("switches to grabbing while actively dragging a vertex (takes priority over the plain grab hover cursor)", async () => {
-    const shape = { id: "s1", points: tri(), stitchType: "fill", colorRgb: [20, 20, 20], angleDeg: null };
-    const { canvas, getByText, getByRole } = renderPanel([shape]);
-    await fireEvent.click(getByText(/Shape 1/, { selector: ".mp-shapename" }).closest("button"));
-    await fireEvent.click(getByRole("button", { name: "Edit points" }));
-    const [p0] = tri();
-    await fireEvent.pointerDown(canvas, { clientX: p0.x, clientY: p0.y, pointerId: 1 });
-    await fireEvent.pointerMove(canvas, { clientX: p0.x + 10, clientY: p0.y - 10, pointerId: 1 });
-    expect(canvas.style.cursor).toBe("grabbing");
-    await fireEvent.pointerUp(canvas, { clientX: p0.x + 10, clientY: p0.y - 10, pointerId: 1 });
-  });
-});
-
-// ---- vertex-drag edit (task 1) -------------------------------------------
-
-describe("editing a finished shape's points by dragging a vertex", () => {
-  function withSelectedShape(points) {
-    const shape = { id: "s1", points, stitchType: "fill", colorRgb: [20, 20, 20], angleDeg: null };
-    return renderPanel([shape]);
-  }
-
-  async function selectAndEnterEdit(utils) {
-    await fireEvent.click(utils.getByText(/Shape 1/, { selector: ".mp-shapename" }).closest("button"));
-    await fireEvent.click(utils.getByRole("button", { name: "Edit points" }));
-  }
-
-  test("dragging a vertex to a still-valid spot patches the shape's points on release", async () => {
-    const utils = withSelectedShape(tri());
-    await selectAndEnterEdit(utils);
-    const { canvas, patches } = utils;
-
-    // Vertex 0 sits at (100, 100) — drag it a little.
-    await fireEvent.pointerDown(canvas, { clientX: 100, clientY: 100, pointerId: 1 });
-    await fireEvent.pointerMove(canvas, { clientX: 110, clientY: 90, pointerId: 1 });
-    await fireEvent.pointerUp(canvas, { clientX: 110, clientY: 90, pointerId: 1 });
-
-    expect(patches).toHaveLength(1); // only the drag-release patch — nothing during the move
-    const moved = patches[0].patch.shapes[0].points;
-    expect(moved[0]).toEqual({ x: 110, y: 90 });
-    expect(moved).toHaveLength(3);
-  });
-
-  test("a drag that would self-intersect the shape is never patched through, and the reason is shown", async () => {
-    // A square, dragged so corner 0 crosses the opposite edge — see
-    // manualShapes.spec.js's own BOWTIE fixture for the same "adjacent
-    // edges don't count" shape of check this exercises end to end.
-    const square = [
-      { x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 }, { x: 0, y: 100 },
-    ];
-    const utils = withSelectedShape(square);
-    await selectAndEnterEdit(utils);
-    const { canvas, patches, container } = utils;
-
-    await fireEvent.pointerDown(canvas, { clientX: 0, clientY: 0, pointerId: 1 });
-    await fireEvent.pointerMove(canvas, { clientX: 150, clientY: 50, pointerId: 1 });
-    await fireEvent.pointerUp(canvas, { clientX: 150, clientY: 50, pointerId: 1 });
-
-    expect(patches).toHaveLength(0); // rejected — never wrote back
-    expect(container.querySelector(".mp-draftissue").textContent).toContain("This shape crosses itself.");
-  });
-
-  test("Edit points is disabled while a draft is in progress", async () => {
-    const utils = withSelectedShape(tri());
-    await fireEvent.click(utils.getByText(/Shape 1/, { selector: ".mp-shapename" }).closest("button"));
-    await clickAt(utils.canvas, 300, 300); // start an unrelated draft
-    expect(utils.getByRole("button", { name: "Edit points" })).toBeDisabled();
-  });
-
-  test("Done editing exits edit mode without discarding the already-applied drag", async () => {
-    const utils = withSelectedShape(tri());
-    await selectAndEnterEdit(utils);
-    await fireEvent.click(utils.getByRole("button", { name: "Done editing" }));
-    expect(utils.getByRole("button", { name: "Edit points" })).toBeTruthy();
   });
 });
 
@@ -597,68 +411,6 @@ describe("bowing a draft segment into a curve by dragging its handle", () => {
   });
 });
 
-describe("bowing a finished shape's edge while editing points", () => {
-  function withSelectedShape(points) {
-    const shape = { id: "s1", points, stitchType: "fill", colorRgb: [20, 20, 20], angleDeg: null };
-    return renderPanel([shape]);
-  }
-
-  async function selectAndEnterEdit(utils) {
-    await fireEvent.click(utils.getByText(/Shape 1/, { selector: ".mp-shapename" }).closest("button"));
-    await fireEvent.click(utils.getByRole("button", { name: "Edit points" }));
-  }
-
-  test("dragging an edge's curve handle patches shape.curves on release, leaving the anchor count unchanged", async () => {
-    const utils = withSelectedShape(tri());
-    await selectAndEnterEdit(utils);
-    const { canvas, patches } = utils;
-    const [p0, p1] = tri();
-    const midX = (p0.x + p1.x) / 2, midY = (p0.y + p1.y) / 2;
-
-    await fireEvent.pointerDown(canvas, { clientX: midX, clientY: midY, pointerId: 1 });
-    await fireEvent.pointerMove(canvas, { clientX: midX, clientY: midY - 30, pointerId: 1 });
-    await fireEvent.pointerUp(canvas, { clientX: midX, clientY: midY - 30, pointerId: 1 });
-
-    expect(patches).toHaveLength(1);
-    expect(patches[0].patch.shapes[0].curves[0]).toBeTruthy();
-    expect(patches[0].patch.shapes[0].points).toHaveLength(3);
-  });
-
-  test("a curve-handle drag that would self-intersect the shape is never patched through, and the reason is shown", async () => {
-    const square = [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 }, { x: 0, y: 100 }];
-    const utils = withSelectedShape(square);
-    await selectAndEnterEdit(utils);
-    const { canvas, patches, container } = utils;
-
-    // Bow the top edge (0,0)-(100,0) far down through the shape and past
-    // the opposite edge — same "genuinely crosses" fixture as the draft
-    // version above.
-    await fireEvent.pointerDown(canvas, { clientX: 50, clientY: 0, pointerId: 1 });
-    await fireEvent.pointerMove(canvas, { clientX: 50, clientY: 200, pointerId: 1 });
-    await fireEvent.pointerUp(canvas, { clientX: 50, clientY: 200, pointerId: 1 });
-
-    expect(patches).toHaveLength(0);
-    expect(container.querySelector(".mp-draftissue").textContent).toContain("This shape crosses itself.");
-  });
-
-  test("grabbing a vertex still wins over a nearby curve handle (vertex hit-test runs first)", async () => {
-    const utils = withSelectedShape(tri());
-    await selectAndEnterEdit(utils);
-    const { canvas, patches } = utils;
-    const [p0] = tri();
-
-    // A drag starting exactly on vertex 0 must move the vertex, not bow an
-    // adjacent segment.
-    await fireEvent.pointerDown(canvas, { clientX: p0.x, clientY: p0.y, pointerId: 1 });
-    await fireEvent.pointerMove(canvas, { clientX: p0.x + 15, clientY: p0.y - 15, pointerId: 1 });
-    await fireEvent.pointerUp(canvas, { clientX: p0.x + 15, clientY: p0.y - 15, pointerId: 1 });
-
-    expect(patches).toHaveLength(1);
-    expect(patches[0].patch.shapes[0].points[0]).toEqual({ x: p0.x + 15, y: p0.y - 15 });
-    expect(patches[0].patch.shapes[0].curves).toBeUndefined();
-  });
-});
-
 // ---- keyboard shortcuts (task 2) -----------------------------------------
 
 describe("keyboard shortcuts", () => {
@@ -724,15 +476,6 @@ describe("keyboard shortcuts", () => {
     await fireEvent.keyDown(canvas, { key: "Backspace" });
     expect(patches).toHaveLength(1);
     expect(patches[0].patch.shapes).toEqual([]);
-  });
-
-  test("Escape exits an active vertex edit instead of touching an (empty) draft", async () => {
-    const shape = { id: "s1", points: tri(), stitchType: "fill", colorRgb: [20, 20, 20], angleDeg: null };
-    const { canvas, getByText, getByRole } = renderPanel([shape]);
-    await fireEvent.click(getByText(/Shape 1/, { selector: ".mp-shapename" }).closest("button"));
-    await fireEvent.click(getByRole("button", { name: "Edit points" }));
-    await fireEvent.keyDown(canvas, { key: "Escape" });
-    expect(getByRole("button", { name: "Edit points" })).toBeTruthy();
   });
 });
 

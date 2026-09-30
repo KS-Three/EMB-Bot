@@ -9,87 +9,26 @@
 //   trace pipeline (app/src/lib/manualTrace.js, PR 1) runs against the
 //   decoded pixels -> preview shows the right shape/color counts and the
 //   hole-dropped warning -> "Add N shapes" -> the traced shapes land on
-//   ManualPanel's own main canvas -> a vertex on one of them is dragged
-//   through the SAME, unmodified vertex editor hand-drawn shapes already
-//   use, and the outline genuinely moves.
+//   ManualPanel's own main canvas -> the first traced shape is selected on
+//   the DESIGN canvas (the hoop) and one of its anchors is dragged there, and
+//   the stitch count changes.
 //
 // Unlike digitize-boundary-edit.spec.js / digitize-shape-identity.spec.js
 // (DigitizePanel, the real Python digitizer service), manualTrace.js is
 // pure client-side JS -- no service to boot, no skip-if-offline dance here.
 //
-// Targeting the vertex-drag precisely (rather than guessing screen
-// coordinates) uses a trick worth calling out: the exact canvas-space
-// points the browser's preview/main-canvas will draw are fully
-// deterministic from the fixture PNG's pixels (traceShapesFromRGBA has no
-// randomness), so this file recomputes them in Node -- via the SAME
-// manualTrace.js/manualShapes.js modules the app itself imports, fed the
-// SAME fixture file decoded with the project's own tools/png.mjs decoder --
-// once in beforeAll, then converts that one canvas-space vertex to a live
-// page coordinate via the rendered canvas's actual boundingBox() (which is
-// exactly what ManualPanel's own canvasPointFromEvent does in reverse). No
-// coordinate here is guessed.
+// The first traced shape is the green ring-square (colorRgb [10,150,10] in
+// the fixture PNG), so the spec finds it on the hoop by thread colour rather
+// than by guessed coordinates: the bounding box of the green pixels IS the
+// shape's box, and its top-left corner is where the anchor sits.
 import { test, expect } from "@playwright/test";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { createRequire } from "node:module";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const REPO_ROOT = path.resolve(__dirname, "../..");
 const FIXTURE_PNG = path.join(__dirname, "fixtures", "trace-holes-and-colors.png");
-const BG_RGBA = [244, 242, 236, 255]; // ManualPanel's canvas background, "#f4f2ec"
 
-let CANVAS_W, CANVAS_H;
-// The first traced shape's canvas-space points, in the exact order/values
-// the browser's own trace will produce -- see this file's banner.
-let firstShapePoints;
-
-test.beforeAll(async () => {
-  const require = createRequire(import.meta.url);
-  globalThis.window = globalThis;
-  for (const f of ["units", "garments", "fabrics", "fill", "geometry", "quantize", "flatten", "satin", "satinplay", "satinfont", "fontbin", "dst", "exp", "fonts", "digitize"]) {
-    require(path.join(REPO_ROOT, "src", f + ".js"));
-  }
-  const { decodePNG } = await import(path.join(REPO_ROOT, "tools", "png.mjs"));
-  const { traceShapesFromRGBA, rescaleTracedShapes } = await import(
-    path.join(REPO_ROOT, "app", "src", "lib", "manualTrace.js")
-  );
-  const { CANVAS_W: W, CANVAS_H: H } = await import(path.join(REPO_ROOT, "app", "src", "lib", "manualShapes.js"));
-  CANVAS_W = W;
-  CANVAS_H = H;
-
-  // Same decode path TraceImportPanel's prepRGBA takes for a file this small
-  // (well under WORK_MAX_PX=480, so no downscale) -- see manualTrace.js's
-  // own file banner for why this is the identical pipeline the browser runs.
-  const { width, height, rgba } = decodePNG(FIXTURE_PNG);
-  const { shapes } = traceShapesFromRGBA(rgba, width, height, { nColors: 6, removeBg: true });
-  const rescaled = rescaleTracedShapes(shapes, width, height, CANVAS_W, CANVAS_H);
-  firstShapePoints = rescaled[0].points;
-});
-
-// Converts a canvas-space (0..CANVAS_W, 0..CANVAS_H) point into a live page
-// coordinate, using the rendered <canvas>'s actual displayed size -- the
-// exact inverse of ManualPanel's own canvasPointFromEvent.
-async function toPagePoint(canvasLocator, cx, cy) {
-  const box = await canvasLocator.boundingBox();
-  return { x: box.x + (cx / CANVAS_W) * box.width, y: box.y + (cy / CANVAS_H) * box.height };
-}
-
-// NOTE: getImageData reads the canvas's own intrinsic pixel buffer
-// (CANVAS_W x CANVAS_H), NOT page/CSS coordinates -- callers pass the same
-// canvas-space (cx, cy) used everywhere else in this file, never the
-// page-space point toPagePoint produces for mouse events.
-async function readPixel(page, cx, cy) {
-  return page.evaluate(
-    ({ x, y }) => {
-      const el = document.querySelector(".mp-canvas");
-      const d = el.getContext("2d").getImageData(Math.round(x), Math.round(y), 1, 1).data;
-      return [d[0], d[1], d[2], d[3]];
-    },
-    { x: cx, y: cy }
-  );
-}
-
-test("upload -> trace preview (colors + hole warning) -> add shapes -> drag a vertex on the real canvas", async ({ page }) => {
+test("upload -> trace preview (colors + hole warning) -> add shapes -> drag an anchor on the design canvas", async ({ page }) => {
   test.setTimeout(60_000);
 
   await page.goto("/");
@@ -130,53 +69,64 @@ test("upload -> trace preview (colors + hole warning) -> add shapes -> drag a ve
   const rows = page.locator(".mp-shaperow");
   await expect(rows).toHaveCount(3);
 
-  // ---- select the first traced shape, enter edit mode --------------------
-  // A trace-add SELECTS its first shape on landing (ManualPanel.onTraced's
-  // "anchor the batch add" selection), and a click on the selected row
-  // TOGGLES the selection off (selectShape). So do not click blindly: click
-  // only if the panel is not already showing the selected-shape controls.
-  // This spec used to click unconditionally and deselect the very shape it
-  // meant to edit — it was written before the auto-select existed.
-  const editBtn = page.getByRole("button", { name: "Edit points" });
-  if (!(await editBtn.isVisible())) await rows.first().click();
-  await expect(editBtn).toBeEnabled();
-  await page.getByRole("button", { name: "Edit points" }).click();
+  // ---- edit the first traced shape ON THE DESIGN CANVAS ------------------
+  // The side canvas only draws now; a finished shape's points are edited on
+  // the hoop (EmbroideryField + fieldNodeEdit.js). The first traced shape is
+  // the green ring-square (colorRgb [10,150,10] in the fixture PNG), so find its
+  // thread on the hoop canvas by colour, click inside it to select it (this
+  // opens its popover), Escape the popover, then drag the anchor at its
+  // top-left corner by (+40, -40) CSS px.
+  const stats = page.locator("span.stats");
+  await expect(stats).toContainText(/\d[\d,]* stitches/, { timeout: 20_000 });
+  const hoop = page.locator(".hoop canvas");
+  const greenBox = () => page.evaluate(() => {
+    const c = document.querySelector(".hoop canvas");
+    const d = c.getContext("2d").getImageData(0, 0, c.width, c.height).data;
+    let x0 = c.width, y0 = c.height, x1 = -1, y1 = -1;
+    for (let y = 0; y < c.height; y++) for (let x = 0; x < c.width; x++) {
+      const i = (y * c.width + x) * 4;
+      if (d[i] < 50 && d[i + 2] < 50 && d[i + 1] > 110) {
+        if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
+      }
+    }
+    return x1 < 0 ? null : { x0, y0, x1, y1, cw: c.width };
+  });
+  // Settle: three consecutive reads (300 ms apart) agree on the thread's box.
+  // Read it AGAIN after the popover closes -- selecting a shape re-fits the
+  // hoop's view (measured 2026-09-29: the box shrank ~18% and shifted), so a
+  // box read before the click is stale by the time the drag starts.
+  const settledBox = async () => {
+    let box = null;
+    await expect.poll(async () => {
+      const reads = [];
+      for (let i = 0; i < 3; i++) { reads.push(JSON.stringify(await greenBox())); await page.waitForTimeout(300); }
+      box = JSON.parse(reads[0]);
+      return box !== null && reads.every((r) => r === reads[0]);
+    }, { timeout: 20_000 }).toBe(true);
+    return box;
+  };
+  const centre = async (box) => {
+    const hb = await hoop.boundingBox();
+    const k = hb.width / box.cw; // canvas px -> CSS px
+    return { hb, k, cx: hb.x + ((box.x0 + box.x1) / 2) * k, cy: hb.y + ((box.y0 + box.y1) / 2) * k };
+  };
+  const first = await centre(await settledBox());
+  await page.mouse.click(first.cx, first.cy);
+  await expect(page.getByRole("dialog")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("dialog")).toHaveCount(0);
 
-  const canvas = page.locator(".mp-canvas");
-  // Entering edit mode grows the page (the vertex-edit assignment panel),
-  // which can scroll the canvas partway (or fully) out of the viewport --
-  // boundingBox() still returns a (possibly off-screen, even negative-y)
-  // rect either way, so ground it back into view first, or the mouse
-  // coordinates computed from it would target real page pixels that aren't
-  // actually over the canvas.
-  await canvas.scrollIntoViewIfNeeded();
-  // A plain, isolated corner vertex of the first traced shape (see
-  // beforeAll) -- validated offline (manualShapes.js's own isValidShape) to
-  // stay a simple, sewable polygon after this drag.
-  const from = firstShapePoints[1];
-  const to = { x: from.x + 40, y: from.y - 40 };
-  const fromPage = await toPagePoint(canvas, from.x, from.y);
-  const toPage = await toPagePoint(canvas, to.x, to.y);
-
-  // The drag target is background before the drag -- the clean baseline the
-  // post-drag pixel check below proves against.
-  expect(await readPixel(page, to.x, to.y)).toEqual(BG_RGBA);
-
-  await page.mouse.move(fromPage.x, fromPage.y);
+  const gb = await settledBox();
+  const { hb, k } = await centre(gb);
+  const cornerX = hb.x + gb.x0 * k, cornerY = hb.y + gb.y0 * k;
+  const before = await stats.innerText();
+  await page.mouse.move(cornerX, cornerY);
   await page.mouse.down();
-  await page.mouse.move(toPage.x, toPage.y, { steps: 8 });
+  await page.mouse.move(cornerX + 40, cornerY - 40, { steps: 8 });
   await page.mouse.up();
 
-  // A valid drag (no self-intersection) -- no rejection message.
-  await expect(page.locator(".mp-draftissue")).toHaveCount(0);
-
-  // Direct pixel confirmation the outline actually moved: the drag target
-  // was background before, and must now be covered by the (now-larger)
-  // filled shape -- genuine geometric movement, not just a redraw.
-  await expect.poll(() => readPixel(page, to.x, to.y)).not.toEqual(BG_RGBA);
-
-  // Exiting edit mode confirms the shape survived the edit under the same
-  // row/id, editable through the existing, unmodified UI end to end.
-  await page.getByRole("button", { name: "Done editing" }).click();
+  // The anchor drag reshapes the shape: the caption's stitch count moves,
+  // and the shape survives under the same row/id.
+  await expect.poll(() => stats.innerText(), { timeout: 20_000 }).not.toBe(before);
   await expect(rows).toHaveCount(3);
 });
