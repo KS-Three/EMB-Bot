@@ -167,8 +167,10 @@ test("(a) dragging an anchor moves that corner only: the caption changes, the bo
   await expect.poll(() => page.locator(STATS).innerText(), { timeout: 20_000 }).not.toBe(before.stats);
   const after = await settle(page);
   const g2 = await geom(page);
-  // The drag was (-40, -30) CSS px; the anchor trails the pointer by the 4 px
-  // dead zone, so anything past 25 px each way is the corner following it.
+  // The drag was (-40, -30) CSS px. Once past the 4 px dead zone the drag is
+  // RELATIVE to the grab point, so the anchor takes the full delta — it does
+  // not trail the pointer by the dead zone. 25 px each way is a loose floor
+  // that says "the corner followed", not a measured lag.
   expect((before.bb.x0 - after.bb.x0) * g2.k).toBeGreaterThanOrEqual(25);
   expect((before.bb.y0 - after.bb.y0) * g2.k).toBeGreaterThanOrEqual(25);
   // ...and only that corner moved: the opposite corner stays where it was.

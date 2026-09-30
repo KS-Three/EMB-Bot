@@ -963,7 +963,8 @@ itself (`ui/ShapePopover.svelte`) anchored at the click and clamped inside the
 hoop. A click is a press-and-release under 4 px; a drag still moves the
 element. Selecting a hand-drawn shape on the field highlights its row in
 `ManualPanel` (`shapeselect` → `fieldSelect`), and "Edit points" opens vertex
-mode there.
+mode there. *(superseded 2026-09-29 — node editing is on the field; see
+below)*
 
 Behaviours the reviews pinned down (the next session should not rediscover them):
 
@@ -974,7 +975,7 @@ Behaviours the reviews pinned down (the next session should not rediscover them)
   an outline, so this half has no spec)*
 - Node dots are drawn only on digitized outlines — only those can be dragged.
   A hand-drawn or preset outline shows its line, no dots. *(same source, same
-  gap)*
+  gap)* *(superseded 2026-09-29 — node editing is on the field; see below)*
 - The popover pins to the element it opened on and closes when the selection
   moves to another element. *(found in review 2026-09-29; no spec closes it
   that way)*
@@ -1015,7 +1016,7 @@ canvas; the side canvas in `ManualPanel` only draws. Spec
 **The engine now exports its fit.** `buildQualityDesign` returns `design.fit`
 beside `shapeOutlines`: `cxPx, cyPx, mmPerPx` and the offsets as applied, so
 the field can map a pointer to the authored px space and back. *(confirmed
-2026-09-29 — `src/`, engine test; commit 881b810e)*
+2026-09-29 — `src/`, engine test; commit 3f9ec2ab)*
 
 **The re-fit rule (`app/src/lib/fieldNodeEdit.js`).** A node edit patches
 `shapes + sizeMm + offsetXMm + offsetYMm` in one `elupdate` (one undo step) so
@@ -1028,32 +1029,49 @@ bbox width, and the offsets shift by the centre delta.
   was unreachable; the engine was left untouched for byte-identity.
   *(measured 2026-09-29 — `fieldNodeEdit.spec.js`, residual ±0.0273 mm in the
   first run)*
-- *Known break:* the hoop clamp. On an auto-fit design (`sizeMm: null`) the
-  width already fills the 4 in hoop, so dragging a node past it makes the
-  engine rescale — `mmPerPx` 0.3079 → 0.2674 measured — and every unedited
-  point moves. The hoop warning is the only cover today; clamping the drag to
-  the hoop is a follow-up. *(measured 2026-09-29 — `fieldNodeEdit.spec.js`,
-  which drags inward to stay inside)*
+- *Known break, and NOTHING warns about it:* the PLACEMENT-BOX clamp. The
+  engine fits the design into the garment's placement box
+  (`garment.widthIn/heightIn`, via `fitScale`, and `targetWidthMm` is clamped
+  into the same box) — not "the 4 in hoop", which an earlier line here said.
+  An edit that grows the bbox past that box makes the engine rescale, so every
+  unedited point moves. `hoopFitNote` compares the POST-clamp design with the
+  physical hoop, so it sees a design that fits and says nothing — it cannot
+  report this, and it is not a cover. Measured: one auto-fit shape on
+  `left_chest` (101.6 mm box), one anchor dragged 40 px outward → `mmPerPx`
+  0.508 → 0.423 (the shape shrank 17%), the untouched left edge moved
+  10.2 mm, and the patch persisted `sizeMm` 121.9 against the 101.6 mm box.
+  The second break is the offset re-clamp (`reclampAll` in
+  `EmbroideryField.svelte`): an edit that pushes the element past a box EDGE
+  gets its offset pulled back, so the shape shifts. When it bites: auto-fit
+  (`sizeMm: null`) hand-drawn elements are the FIRST-element case —
+  `addElement` seeds `sizeMm = 0.4 × hoop` for later ones — so a seeded
+  element hits the scale break only past ~2.5× growth, or the offset break at
+  a box edge. The behaviour (clamp the drag / refuse it with a message /
+  allow it with a notice) is Kent's call. *(measured 2026-09-29 — final
+  review's `clamp.mjs` through the real engine, re-run in the fix wave; the
+  same spec's invariance test drags inward to stay inside)*
 
 **Gestures, on the selected hand-drawn shape.**
 - Anchor and handle drags are RELATIVE to the grab point, with a 4 px dead
   zone before the first move — a jittery click commits nothing (a 6 px
   off-centre press with jitter moved nothing; a +30,+20 drag moved 30.10,
   20.35 mm). Basis (`fit` and shape) is frozen at press. *(measured
-  2026-09-29 — browser run, commit 54705061)*
+  2026-09-29 — browser run, commit 2e101fe0)*
 - A drag moves ONE vertex, not the digitized lane's rubber-sheet `pullRing`.
   *(confirmed 2026-09-29 — spec §1)*
 - Focus is set on PRESS, not on a release-without-move; Delete then removes
   the anchor just touched. Any press that is not on an anchor clears the
   focus (an insert shifts indices). *(confirmed 2026-09-29 — review of
-  8553b50f)*
+  4b411e4f)*
 - Delete with a focused anchor removes it (floor 3 anchors says so); with
   none it deletes the shape as before. Delete DURING a drag is ignored.
   "Remove point" is on the right-click menu over an anchor. *(confirmed
   2026-09-29 — `e2e/field-node-edit.spec.js` (c), (d))*
-- A click on an edge inserts an anchor there; at the 500-point cap it says
-  so. A DRAG that starts on an edge does nothing — no edit, no move, no
-  popover. *(confirmed 2026-09-29 — e2e (c), (f))*
+- A click on an edge inserts an anchor there. A DRAG that starts on an edge
+  does nothing — no edit, no move, no popover. *(confirmed 2026-09-29 — e2e
+  (c), (f))* At the 500-point cap the insert is refused with a message — no
+  e2e reaches the cap. *(read from code 2026-09-29 — the insert branch of
+  `endDrag` in `EmbroideryField.svelte`)*
 - The popover's "Edit points" on a hand-drawn shape just closes the popover;
   the shape is already selected, so its handles are live.
 
@@ -1061,18 +1079,18 @@ bbox width, and the offsets shift by the centre delta.
 Done editing buttons, the edit-mode cursors and `fieldSelect.edit` (1418 →
 1191 lines; 21 edit-mode tests retired). A click on the body of an
 already-selected shape on the side canvas no longer toggles it off; the row
-click still does. *(confirmed 2026-09-29 — commit 19880a6c)*
+click still does. *(confirmed 2026-09-29 — commit c0f2ce41)*
 
 **The popover moves (Kent's request mid-run — it hid what he was editing).**
 Drag `ShapePopover` by its header; the position is clamped to the hoop and
 kept per element for the session. *(confirmed 2026-09-29 — `ShapePopover.spec.js`,
-e2e (g), commit bc5e0ef9)*
+e2e (g), commit e3529c57)*
 
 **Smear (found, half fixed).** `drawOverlay` never clears the canvas, so node
 drags smeared. Node-edit redraws now go through `repaintNodeChrome()` (an rAF
 view repaint). The DIGITIZED node drag still calls bare `drawOverlay()` and
 should smear the same way — follow-up. *(measured 2026-09-29 — browser run,
-commit 54705061; the digitized half is read from code, not driven)*
+commit 2e101fe0; the digitized half is read from code, not driven)*
 
 **Trap: stale `public/engine`.** A dev server started before the engine change
 serves an engine with no `fit`, and node editing is silently absent. Restart

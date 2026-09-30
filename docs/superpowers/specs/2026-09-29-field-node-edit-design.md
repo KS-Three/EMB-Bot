@@ -127,6 +127,21 @@ scale drift**, and A's unedited anchors likewise. A second case starts from
 `sc` and the invariant is knowingly broken — the existing hoop warning covers
 it; the test pins that the patch itself is still produced (no error).
 
+**Erratum (2026-09-29, final review).** The clamp above is not the hoop and
+no warning covers it. The engine fits into the garment's PLACEMENT box
+(`garment.widthIn/heightIn`, via `fitScale`; `targetWidthMm` is clamped into
+the same box), and `hoopFitNote` compares the post-clamp design with the
+physical hoop, so it sees a design that fits and stays silent. Measured
+through the real engine (final review's `clamp.mjs`): one auto-fit shape on
+`left_chest`, one anchor dragged 40 px outward → `mmPerPx` 0.508 → 0.423
+(the shape shrank 17%), the untouched left edge moved 10.2 mm, and the patch
+persisted `sizeMm` 121.9 against a 101.6 mm box. A second break is the
+field's offset re-clamp (`reclampAll`) when an edit pushes the element past a
+box edge. It bites first on the FIRST element (auto-fit); `addElement` seeds
+`sizeMm = 0.4 × hoop` for later ones, which then hit it only past ~2.5×
+growth or at a box edge. What to do (clamp the drag / refuse with a message /
+allow with a notice) is Kent's call.
+
 ## 5. Field: gestures and drawing
 
 Selected hand-drawn shape (`selectedShapeElId` + `selectedShapeId`, from #562):

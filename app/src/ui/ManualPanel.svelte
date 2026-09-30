@@ -39,13 +39,15 @@
   // mounted.
   export let traceWorkImage = null;
   // A selection made ON THE FIELD (EmbroideryField's click-to-edit popover,
-  // 2026-09-29): { shapeId, edit, n }. `n` changes on every field click so
-  // the same shape clicked twice still re-fires; `edit` asks for vertex
-  // mode, which lives on this canvas for hand-drawn shapes for now.
+  // 2026-09-29): { elementId, shapeId, n }. `n` changes on every field click
+  // so the same shape clicked twice still re-fires. It only selects the row
+  // here — node editing (anchors, curve handles) happens on the field, and
+  // this canvas only draws (field-node-edit, 2026-09-29).
   export let fieldSelect = null;
   // Seeded from the prop as mounted, so a request that predates this panel
   // (ContentStep remounts it per element, and per visit to the step) is not
-  // replayed — an old `edit: true` would otherwise re-open vertex mode.
+  // replayed — an old selection would otherwise re-select its row and scroll
+  // the panel into view on every remount.
   let fieldSelectSeen = fieldSelect ? fieldSelect.n : 0;
   const d = createEventDispatcher();
 
@@ -90,8 +92,9 @@
   let backdropOn = true;
 
   // Build the drawable once per image rather than per repaint: render() runs
-  // on every pointermove during a vertex drag, and putImageData on each of
-  // those would make dragging stutter on a large photo.
+  // on every pointermove while a draft segment's curve handle is dragged
+  // (`curveDragPoint`), and putImageData on each of those would make that
+  // drag stutter on a large photo.
   function setBackdrop(img) {
     backdropImage = img;
     backdropCanvas = null;
