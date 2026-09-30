@@ -6042,6 +6042,58 @@ written on and is an overstatement on this one.
 `tests/test_rail_comp.py::test_the_envelope_reaches_the_far_edge_where_the_gap_is_long_and_nowhere_else`
 holds `satin_tip_caps=False` for exactly this reason, and says so.
 
+## A threshold above its whole population is not conservative, it is a DISABLED CHECK (2026-09-30)
+
+`preflight.ARTWORK_UNCOVERED` had a 5.0 mm² patch floor from 2026-08-20, set
+from a table whose two known defects read 7.75 and 44.50 mm². Swept on the
+nine corpus logos across erosion 0.2/0.3/0.4 and cell 0.25/0.5 — six settings
+— **the largest patch the check could see anywhere was 1.90 mm².** It could
+not fire on any real logo at any setting, and had not for weeks.
+
+The number never moved; the engine underneath it did. Those 7.75 and 44.50
+came off `enthusiast_logo` at 150 mm and `becker_marine_logo` at 90 mm on a
+tree seven default-flips old. **A threshold is a claim about a distribution,
+so it expires when the distribution moves** — and a check that cannot fire
+looks exactly like a clean design. The tell is cheap: sweep the floor to zero
+and see whether anything qualifies. Nothing did.
+
+`tools/uncovered_floor.py` is the standing instrument. Any threshold here
+that has not been swept against the current corpus should be assumed stale.
+
+## An erosion is a PROXY for a shape property — test the property (2026-09-30)
+
+The same check eroded its artwork mask by 0.4 mm, for a stated and correct
+reason: thread laid along a shape's boundary hangs over the outside, so every
+shape's outer half-thread reads uncovered by construction, and *"eroding by
+less reports every shape's rim as a defect"*.
+
+**It cannot tell that rim from a hole that touches a boundary, and a tapered
+tip's hole is nothing but boundary.** ENTHUSIAST's apex reads 0.80 mm² at
+every erosion from 0.1 to 0.3 and **0.00 at 0.4** — a cliff exactly at the
+shipped value. The erosion was not hiding a marginal reading; it was the
+reason the reading was zero.
+
+What a rim actually IS: long, thin, and wrapped around the design. Both
+properties are directly measurable on the patch — `_UNCOVERED_MIN_HALF_MM`
+(max inscribed radius, from a distance transform) and `_UNCOVERED_MIN_FILL`
+(area over bounding box). On the full-bleed guard the rim is ONE component of
+73.94 mm² in a 91.5 × 109 mm box, fill **0.007**; the twenty adjudicated
+holes run 0.239–0.706. 438 patches over nine logos become 20 holes on three
+fixtures, and ENTHUSIAST's apex survives.
+
+**MEAN thickness was the obvious alternative and is REFUTED.** The rim's mean
+inscribed half-width is **0.332 mm, HIGHER than fourteen of the twenty real
+holes** (0.252–0.354). A frame of thread-width cloth is not thinner on
+average than a 1 mm hole — it is only longer. Compactness is the property
+that differs; measure that one.
+
+**And a guard test that asserts SILENCE is asserting the blindness too.**
+Three tests went red on this change and none was a regression: they pinned
+"no finding" on fixtures where the check had nothing it could see. Each was
+re-expressed to its actual claim — *this shape* is not reported, the RIM is
+not reported, zero HOLES rather than zero patches. Before loosening such a
+test, check whether it was ever testing the thing its name says.
+
 
 ## The polygon axis must not read stage 5's grown polygon (2026-09-16)
 

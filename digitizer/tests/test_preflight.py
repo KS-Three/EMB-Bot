@@ -1960,12 +1960,61 @@ def test_the_bracket_tab_the_check_found_is_now_sewn():
     result, plan_ = digitize(art, c)
     report = run_preflight(result, plan_, c, image=art)
 
-    assert _uncovered(report) is None, (
-        "the emblem bracket's tab is sewn again — a finding here means the "
-        "prune guard regressed"
+    found = _uncovered(report)
+    ids = {s["shape_id"] for s in found["extra"]["shapes"]} if found else set()
+    assert "S041897f7" not in ids, (
+        "the emblem bracket's tab is uncovered again — its shape id back in "
+        "this finding means the prune guard regressed"
     )
     assert report["metrics"]["uncovered_checked"] is True
-    assert report["metrics"]["uncovered_worst_mm2"] < 5.0
+
+    # RE-EXPRESSED 2026-09-30, from "no finding at all" to "not THIS shape".
+    # The pair's claim was always about the tab, and the positive half names
+    # its id; the negative half asserted silence because the check could not
+    # see anything else on this fixture. Now it can: at 150 mm the same job
+    # reports 5 holes on two OTHER shapes, worst 4.81 mm2, and the largest is
+    # the A's apex (MASTER_SCOPE defect 49) — rendered before this assertion
+    # was loosened, `docs/renders/uncovered-floor-2026-09-30/`. Asserting
+    # silence here would mean asserting the check stays blind to a defect
+    # this repo has measured three separate ways.
+    assert report["metrics"]["uncovered_hole_mm2"] < 6.0
+
+
+def test_the_letter_apex_is_reported_now_that_the_erosion_is_gone():
+    """Kent's pick 2026-09-30: *"make preflight see these holes."*
+
+    MASTER_SCOPE defect 49 — ENTHUSIAST's **A** sews its tapered apex bare
+    under `satin_rail_comp` — was measured three separate ways before this
+    check could see any of it: `bare_anatomy --all-thread` 1.93 mm²,
+    `dropped_elements`' `uncov` 0.97 mm², and a `stitchviz` render of the
+    thread path (`tests/test_apex_is_real.py`). Preflight read **0.00 mm²**.
+
+    Not because of the 5.0 mm² floor — with the floor at zero it still read
+    0.00. The 0.4 mm erosion removed it (a cliff exactly at the shipped
+    value: 0.80 mm² at every erosion from 0.1 to 0.3) and the 0.5 mm cell
+    could not resolve it. Both are gone; a thickness and a compactness test
+    refuse the rim they were standing in for.
+
+    Pinned as a FLOOR on what the check can see, and on WHERE. A build that
+    closes the apex turns this red, and that is the signal to close defect 49
+    and rewrite this test — not to loosen it.
+    """
+    art = TESTDATA / "photo/enthusiast_logo.png"
+    c = cfg(target_width_mm=80.0, max_colors=6)
+    result, plan_ = digitize(art, c)
+    report = run_preflight(result, plan_, c, image=art)
+    m = report["metrics"]
+
+    found = _uncovered(report)
+    assert found is not None, "the apex is invisible again"
+    assert found["severity"] == "warn"           # a warn, never a block
+    # Measured 2026-09-30: 27 patches, 2 holes, worst 1.56 mm2 (the apex) and
+    # 1.00 mm2 (a gap between two letters). Rendered before this landed:
+    # docs/renders/uncovered-floor-2026-09-30/enthusiast.png
+    assert m["uncovered_holes"] >= 1, m["uncovered_holes"]
+    assert m["uncovered_hole_mm2"] >= 1.2, m["uncovered_hole_mm2"]
+    # and it names a shape a person can go and look at
+    assert found["extra"]["shapes"], found["extra"]
 
 
 def test_a_clean_fixture_leaves_no_artwork_uncovered(whitebg, plan):
@@ -1977,7 +2026,15 @@ def test_a_clean_fixture_leaves_no_artwork_uncovered(whitebg, plan):
     assert _uncovered(report) is None
     m = report["metrics"]
     assert m["uncovered_checked"] is True
-    assert m["uncovered_worst_mm2"] == 0.0
+    # `uncovered_hole_mm2` is the adjudicated reading and it is the one that
+    # carries this promise: clean work reports zero holes, not "a little".
+    assert m["uncovered_hole_mm2"] == 0.0
+    assert m["uncovered_holes"] == 0
+    # `uncovered_worst_mm2` is threshold-free and resolves ONE 0.1 mm2 cell
+    # of boundary since the grid went to 0.25 mm (2026-09-30). That is the
+    # rim this check deliberately refuses, not a defect — which is why the
+    # promise is pinned on the line above and this one is a ceiling.
+    assert m["uncovered_worst_mm2"] <= 0.2, m["uncovered_worst_mm2"]
     assert m["uncovered_wanted_mm2"] > 0.0     # it really did measure something
 
 
@@ -2022,24 +2079,52 @@ def test_a_full_bleed_design_does_not_report_its_own_border():
     result, plan_ = digitize(art, c)
     report = run_preflight(result, plan_, c, image=art)
 
-    assert _uncovered(report) is None
+    # RE-EXPRESSED 2026-09-30 from "no finding" to "not the RIM", when the
+    # 0.4 mm erosion was replaced by a thickness and a compactness test.
+    # The erosion removed the rim by removing every shape's outer half
+    # millimetre, which also removed any hole that touches a boundary -- and
+    # a tapered tip's hole is nothing but boundary. `_UNCOVERED_MIN_FILL`
+    # removes the rim by what it IS: on this fixture it is one component of
+    # **73.94 mm2 in a 91.5 x 109 mm bounding box, fill 0.007**, and it is
+    # refused. (Max thickness could not refuse it -- the rim's 0.90 mm beats
+    # most real holes; mean thickness could not either, 0.332 mm, and the
+    # refutation is recorded on the constant.)
+    #
+    # What the check DOES report here is a 2.38 mm2 void in the middle of a
+    # fill, fill 0.43, rendered before this assertion changed
+    # (`docs/renders/uncovered-floor-2026-09-30/chrome.png`) -- cloth showing
+    # through dense stitching, which is exactly what this check is for.
+    found = _uncovered(report)
+    worst = report["metrics"]["uncovered_hole_mm2"]
+    assert worst < 10.0, (
+        f"a {worst} mm2 hole on a full-bleed design is the rim coming back; "
+        f"the border strip measures 73.9 mm2 here"
+    )
+    if found:
+        assert all(sh["missing_mm2"] < 10.0 for sh in found["extra"]["shapes"]), \
+            found["extra"]["shapes"]
     # The defect's own signature is a PERMANENT STRIP down the rim — present
-    # at every erosion width, 37.5 mm² when it was measured. A strip cannot
-    # be a rounding artefact, so the quantity that separates it from healthy
-    # noise is the TOTAL qualifying uncovered area, and that reads 0.0 here.
+    # at every erosion width, 37.5 mm² when it was measured on gaulke and
+    # 147.5 on this fixture. A strip cannot be a rounding artefact, so the
+    # quantity that separates it from healthy noise is the TOTAL qualifying
+    # uncovered area, and it has to stay two orders of magnitude below it.
     #
     # This used to assert only `uncovered_worst_mm2 < 1.0`, a single number
     # that drifted with unrelated work: `== 0.0` until 2026-09-13
     # (`cfg.keep_thin_strokes` ON by default gained gaulke sub-floor
     # regions), then `< 1.0`, and the letterbox crop put the worst patch at
     # exactly 1.0 — failing a guard whose defect is two orders of magnitude
-    # away. Asserting the total pins what the bug actually moved; the
-    # worst-patch bound stays as a second, deliberately loose net (37.5 mm² on
-    # gaulke when first measured; 147.5 on this fixture, measured 2026-09-15).
-    assert report["metrics"]["uncovered_total_mm2"] == 0.0, \
+    # away. Asserting the total pins what the bug actually moved.
+    #
+    # BOTH were re-pointed 2026-09-30 with the erosion gone. `== 0.0` became
+    # a bound because the design has one REAL 2.38 mm² hole (rendered:
+    # `docs/renders/uncovered-floor-2026-09-30/chrome.png`), and
+    # `uncovered_worst_mm2` is no longer the right net at all: it is
+    # deliberately threshold-free, so the 73.9 mm² rim component IS in it and
+    # always will be — what matters is that the rim is not REPORTED. The net
+    # moved to `uncovered_hole_mm2`, asserted above.
+    assert report["metrics"]["uncovered_total_mm2"] < 20.0, \
         report["metrics"]["uncovered_total_mm2"]
-    assert report["metrics"]["uncovered_worst_mm2"] < 5.0, \
-        report["metrics"]["uncovered_worst_mm2"]
     # It really did measure something, rather than passing on an empty design.
     assert report["metrics"]["uncovered_wanted_mm2"] > 0.0
 

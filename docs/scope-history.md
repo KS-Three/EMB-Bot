@@ -16151,3 +16151,75 @@ the entry records. Nothing about the mode is wrong; it was measured on a tree
 this flag had not landed in.
 
 *(measured 2026-09-30 — `tools/rail_edge.py bare_area`, `tools/edge_wobble.py` (satin `wobble_std_mm`); `tests/test_rail_comp.py::test_the_envelope_reaches_the_far_edge_where_the_gap_is_long_and_nowhere_else`; DOCTRINE 2026-09-30)*
+
+---
+
+## 2026-09-30 — `ARTWORK_UNCOVERED` could not fire on any real logo, and the floor was not why
+
+Kent's pick after the apex verdict: *"make preflight see these holes."* The
+constant `preflight._UNCOVERED_MIN_PATCH_MM2` had asked for this in writing
+since 2026-08-20 — *"nobody has looked at whether ... 4.50 mm² and ... 3.25
+mm² are real drops or acceptable. Widen the fixture set and adjudicate the
+middle before trusting this number."*
+
+**Finding 1: the 5.0 mm² floor sat above the entire population.** Swept on the
+nine corpus logos across erosion 0.2/0.3/0.4 × cell 0.25/0.5, the largest
+patch the check could see anywhere was **1.90 mm²**. Its 7.75 and 44.50 came
+from `enthusiast_logo` at 150 mm and `becker_marine_logo` at 90 mm on a tree
+seven default-flips old.
+
+**Finding 2: the floor was not the binding constraint.** With it set to zero
+the check still read **0.00 mm²** on ENTHUSIAST, where three other instruments
+read a 1–2 mm² hole at the A's apex. The 0.4 mm erosion had a cliff exactly at
+its shipped value:
+
+| `_UNCOVERED_ERODE_MM` | 0.1 | 0.2 | 0.3 | **0.4 (shipped)** |
+|---|---|---|---|---|
+| apex, mm² | 0.80 | 0.80 | 0.80 | **0.00** |
+
+`_UNCOVERED_CELL_MM` alone did the same: 0.60 at 0.20 mm, 0.40 at 0.25,
+**0.00 at 0.5**.
+
+**What shipped.** Cell 0.5 → **0.25 mm**; erosion 0.4 → **0.0**; floor 5.0 →
+**1.0 mm²**; two new filters that test what a rim IS rather than shaving every
+shape — `_UNCOVERED_MIN_HALF_MM` 0.30 (max inscribed radius) and
+`_UNCOVERED_MIN_FILL` 0.15 (area over bounding box). `_THREAD_MATCH_MIN_PATCH_MM2`
+**decoupled** and kept at the 5.0 its own sweep chose. New metrics
+`uncovered_holes` / `uncovered_hole_mm2` (adjudicated) beside the
+threshold-free `uncovered_worst_mm2`, plus `uncovered_patches` /
+`uncovered_top_mm2` so a floor can be re-derived from a report.
+
+| fixture | patches | holes | largest patch |
+|---|---|---|---|
+| golden_tee 80 | 108 | **0** | 3.12 mm² (a band seam) |
+| becker 100 | 93 | **17** | 3.00 |
+| bridge 80 | 58 | 0 | 0.88 |
+| screenshot 80 | 51 | 0 | 0.81 |
+| gaulke 80 | 48 | 0 | 0.31 |
+| drone 80 | 40 | **1** | 1.44 |
+| enthusiast 80 | 27 | **2** | 1.56 — the A's apex |
+| tires 80 | 9 | 0 | 0.06 |
+| fremont 92.5 | 1 | 0 | 0.25 |
+
+**438 patches, 20 holes, three fixtures.** Every firing patch on each fixture
+was rendered through `stitchviz.render_design` before the numbers were chosen
+and every one shows cloth between two sewn shapes:
+`docs/renders/uncovered-floor-2026-09-30/`.
+
+**MEAN thickness was measured as the compactness test and REFUTED** — the
+full-bleed rim's mean inscribed half is 0.332 mm, higher than fourteen of the
+twenty real holes (0.252–0.354). Fill ratio separates where mean does not:
+rim 0.007, golden_tee's seam 0.078, real holes 0.239–0.706.
+
+**Four pinned tests moved and none was a regression.** Three asserted SILENCE
+on fixtures where the check had nothing it could see, and were re-expressed to
+their actual claims (*this shape* is not reported; the RIM is not reported;
+zero HOLES rather than zero patches); the fourth
+(`test_edge_cap_lettering`) had a 0.5 mm² allowance that meant "unchanged"
+against a zero and means 3% against a seventeen, so it became proportional.
+
+**Shipped with it:** `tools/uncovered_floor.py` (the standing sweep, with a
+`--legacy` arm that re-reads the 2026-08-20 table's own fixtures) and
+`tests/test_preflight.py::test_the_letter_apex_is_reported_now_that_the_erosion_is_gone`.
+
+*(measured 2026-09-30 — `tools/uncovered_floor.py --corpus`; `docs/renders/uncovered-floor-2026-09-30/`; DOCTRINE 2026-09-30, two entries)*
