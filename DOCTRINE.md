@@ -5840,6 +5840,46 @@ overlap, which is what the pro sews at a junction and what
 cover (part C) could patch it instead was not examined.
 
 
+## Coverage is not the metric a customer sees — price a lettering change on `lost_frac` (2026-09-30)
+
+The apex construction (defect 49) was built, measured on all nine corpus
+logos, flipped, documented and PUSHED before anything read the guard that
+matters. `tools/bare_anatomy.py` said bare artwork and end gaps fell on NINE
+OF NINE for +6.0% stitches. `tests/test_lettering_coverage_regression.py`
+said `lost_frac` went **0.2573 -> 0.2661** past its 0.26 bar, **100%
+overshoot, 0% unsewn** — and that test's own docstring already explained why
+both are true at once:
+
+> `rail_edge --bare` is COVERAGE — ink with no thread on it. `lost_frac` is
+> DISAGREEMENT — every pixel where the stitch-out does not look like the
+> artwork, **which includes thread on cloth that should be bare** ... Neither
+> is lying.
+
+and, on which one to steer by:
+
+> It pins `lost_frac` ... because that is the metric that moved and **the one
+> a customer sees**.
+
+**So the rule: a change that moves thread near a letter's edge is priced on
+`lost_frac`, not on bare area.** Bare area is easier to measure and reads
+better, which is exactly the trap — every arm that pushes rails outward
+improves it. `satin_rails_follow_edge` covers the MOST artwork of any arm
+(ink recall 0.9942) and scores the WORST `lost_frac` (0.3555); it was
+rejected as the cure on those grounds in September, and the apex widening
+reproduced the same shape three weeks later without noticing.
+
+**`bare_anatomy` is not wrong and should not be retired** — it answered the
+question it was built for (hole versus hairline) and that answer stands. It
+is BLIND to thread outside the ink by construction, so it can only ever
+price half a trade. Run it beside `lost_frac`, never instead of.
+
+**And the apex may not be a customer-visible defect at all.** `lost_frac`'s
+unsewn half reads **0.0 on ENTHUSIAST in every arm** — the 3.61 mm2 triangle
+`bare_anatomy` reports does not register as missing thread on the render at
+all. Which instrument is right about that apex is unsettled, and settling it
+is the first step of any second attempt, before construction is touched.
+
+
 ## A coverage percentage cannot tell a HOLE from a HAIRLINE, and one flip moved both at once (2026-09-29)
 
 `satin_rail_comp`'s cost on ENTHUSIAST was published as bare artwork 6.27 ->

@@ -1222,19 +1222,31 @@ class PipelineConfig:
     # No sew-out backs it; whether a gap at a letter tip shows on cloth is
     # the card's question, and the flip was taken on the instrument.
     #
-    # WIDENED 2026-09-30 to Kent's apex construction -- "a tip's two arms
-    # BOTH cap, and overlap". The gate no longer requires `under is None`:
+    # WIDENING RETRACTED 2026-09-30, the same day it was built. Kent ruled
+    # the construction -- "a tip's two arms BOTH cap, and overlap" -- and
+    # dropping the `under is None` gate does implement it, but it REGRESSES
+    # the metric a customer sees: ENTHUSIAST's `lost_frac` 0.2573 -> 0.2661
+    # against a 0.26 bar, 100% overshoot and 0% unsewn
+    # (`tests/test_lettering_coverage_regression.py`, which says in terms
+    # "Do NOT raise the bar to make this pass"). The apex work was priced on
+    # `tools/bare_anatomy.py` -- COVERAGE, ink with no thread on it -- and
+    # that instrument cannot see thread landing OUTSIDE the ink, which is
+    # what the widening adds. Same pattern as `satin_rails_follow_edge`,
+    # already measured and rejected as the cure. MASTER_SCOPE defect 49 is
+    # NOT closed. What follows describes the retracted widening:
+    #
+    # The gate no longer requires `under is None`:
     # at ENTHUSIAST's A apex `_corner_forks` names a partner BOTH ways, each
     # arm tucking under the other, so neither capped the point and the letter
     # sewed bare. That population IS what the ruling is about. On the nine
     # logos, bare artwork and end bare now fall on ALL NINE -- becker
     # 182.07 -> 153.19 mm2, bridge 59.57 -> 47.69, golden_tee 56.38 -> 43.75,
     # drone 40.19 -> 32.52, screenshot 32.79 -> 25.14 -- and the fixture's
-    # worst component goes 3.61 mm2 @0.71mm to 0.53 @0.19, which is
-    # MASTER_SCOPE defect 49 closed. Corpus total 91,102 -> 96,606 (+6.0%);
-    # per fixture +0.7% (fremont) to +14.3% (golden_tee), median +6.6%.
-    # Three discriminators were tried before this and all failed; none was
-    # needed. DOCTRINE 2026-09-29/30 has why.
+    # worst component goes 3.61 mm2 @0.71mm to 0.53 @0.19. Corpus total
+    # 91,102 -> 96,606 (+6.0%). Those numbers stand as measured and are the
+    # reason the construction is worth returning to -- but they are all
+    # COVERAGE, and the coverage gain is not what the guard reads.
+    # DOCTRINE 2026-09-30, "Coverage is not the metric a customer sees".
     satin_tip_caps: bool = True
     # The lettering yardstick's trims gap, read with a per-trim census
     # (2026-09-19, scope-history): traced MARINE at 80 mm sews 13 trims
