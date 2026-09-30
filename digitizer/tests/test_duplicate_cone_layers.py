@@ -277,3 +277,80 @@ def test_off_leaves_the_design_exactly_as_it_was(drone_off):
     for a, b in zip(base.blocks, explicit.blocks):
         assert a.thread_index == b.thread_index
         assert [r.points for r in a.runs] == [r.points for r in b.runs]
+
+
+# --- the same fold on the engine as it ships -----------------------------------
+#
+# Everything above holds `PRE_FLIP_RC`, which pins the engine the fold's claims
+# were measured on -- four postures that no longer ship. These pin what the
+# fold does on the config customers actually run (`PipelineConfig()` defaults,
+# drone @ 80 mm, measured 2026-09-30, identical on main before the seam-rail
+# fix): blocks 20 -> 16, artwork cone revisits 7 -> 3, needle-up 2,613 ->
+# 2,458 mm, stitches 18,007 -> 18,218 (+1.2%). Not the file's invariant --
+# three artwork cones still sew twice here, which `keep_thin_strokes` (above)
+# already explains -- but the direction of every number is the fold's, and a
+# regression on the shipped path now shows up somewhere.
+
+
+@pytest.fixture(scope="module")
+def drone_shipped_off():
+    return digitize(DRONE, cfg(target_width_mm=80.0, merge_duplicate_cones=False))
+
+
+@pytest.fixture(scope="module")
+def drone_shipped_on():
+    return digitize(DRONE, cfg(target_width_mm=80.0, merge_duplicate_cones=True))
+
+
+def _artwork_revisits(plan) -> int:
+    cones = [b.thread_index for b in plan.blocks
+             if not any(r.shape_id == "__edge_cap__" for r in b.runs)]
+    return len(cones) - len(set(cones))
+
+
+def _needle_up_mm(plan) -> float:
+    import math
+
+    up, prev = 0.0, None
+    for b in plan.blocks:
+        for r in b.runs:
+            if prev is not None and (r.jump or r.trim):
+                up += math.dist(prev, r.points[0])
+            prev = r.points[-1]
+    return up
+
+
+def test_on_the_shipped_engine_the_fold_still_saves_stops_revisits_and_flying(
+        drone_shipped_off, drone_shipped_on):
+    _o, off = drone_shipped_off
+    _n, on = drone_shipped_on
+    assert len(on.blocks) < len(off.blocks)
+    assert _artwork_revisits(on) < _artwork_revisits(off)
+    assert _needle_up_mm(on) < _needle_up_mm(off)
+    # the price: +1.2% stitches when measured; 2% is the alarm, not the claim
+    st_off = sum(b.stitch_count for b in off.blocks)
+    st_on = sum(b.stitch_count for b in on.blocks)
+    assert st_on <= 1.02 * st_off, (st_off, st_on)
+
+
+@pytest.mark.xfail(strict=True, reason=(
+    "Known on the shipped engine (2026-09-30): the fold's reorder hands one "
+    "shape a different stage-5 neighbourhood and it sews 38 -> 308 stitches, "
+    "more than the fold's whole 211-stitch net cost. Strict, so a fix "
+    "announces itself."))
+def test_on_the_shipped_engine_no_shape_more_than_doubles_under_the_fold(
+        drone_shipped_off, drone_shipped_on):
+    from collections import Counter
+
+    def per_shape(plan):
+        c = Counter()
+        for b in plan.blocks:
+            for r in b.runs:
+                if r.shape_id and r.shape_id != "__edge_cap__":
+                    c[r.shape_id] += len(r.points)
+        return c
+
+    off = per_shape(drone_shipped_off[1])
+    on = per_shape(drone_shipped_on[1])
+    grown = {s: (off[s], on[s]) for s in off if off[s] >= 20 and on[s] > 2 * off[s]}
+    assert not grown, grown

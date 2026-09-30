@@ -709,6 +709,14 @@ h1, h2 { letter-spacing: var(--tracking-tight); }
   background: var(--tint);
 }
 
+/* An item that exists but cannot act here (Remove point at a shape's
+   three-point floor): shown, muted, its title says why. */
+.fieldmenu button:disabled {
+  color: var(--muted);
+  cursor: not-allowed;
+  background: none;
+}
+
 /* The shape section the right-click menu grows when the pointer is on a
    recognised shape: a muted heading naming the shape, then its border
    items, then a rule before the drawing tools. */
@@ -761,7 +769,14 @@ h1, h2 { letter-spacing: var(--tracking-tight); }
   font-size: var(--fs-sm);
   color: var(--muted);
   white-space: nowrap;
+  cursor: move;
+  user-select: none;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  touch-action: none;
 }
+.shapepop-grip { color: var(--muted); letter-spacing: -2px; }
 .shapepop-row {
   display: flex;
   align-items: center;

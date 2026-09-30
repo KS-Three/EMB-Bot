@@ -81,3 +81,44 @@ test("clamps inside its bounds", () => {
   expect(parseFloat(dlg.style.left)).toBeLessThan(790);
   expect(parseFloat(dlg.style.top)).toBeLessThan(590);
 });
+
+test("a `position` wins over the anchor", () => {
+  const { getByRole } = renderPop(popoverModel({ element: manualEl, shapeId: "s1" }), {
+    anchor: { x: 40, y: 40 }, bounds: { w: 800, h: 600 }, position: { x: 300, y: 200 },
+  });
+  const dlg = getByRole("dialog");
+  expect(parseFloat(dlg.style.left)).toBe(300);
+  expect(parseFloat(dlg.style.top)).toBe(200);
+});
+
+test("dragging the header emits move with the delta applied and the header offset preserved", async () => {
+  const { events, getByRole, container } = renderPop(popoverModel({ element: manualEl, shapeId: "s1" }), {
+    bounds: { w: 800, h: 600 }, position: { x: 300, y: 200 },
+  });
+  const head = container.querySelector(".shapepop-head");
+  head.setPointerCapture = () => {};
+  head.releasePointerCapture = () => {};
+  await fireEvent.pointerDown(head, { clientX: 310, clientY: 210, button: 0, pointerId: 1 });
+  await fireEvent.pointerMove(head, { clientX: 410, clientY: 260, pointerId: 1 });
+  await fireEvent.pointerUp(head, { clientX: 410, clientY: 260, pointerId: 1 });
+  const moves = events.filter((e) => e.kind === "move");
+  expect(moves.length).toBeGreaterThan(0);
+  expect(moves[moves.length - 1].detail).toEqual({ x: 400, y: 250 });
+  expect(getByRole("dialog")).toBeInTheDocument();
+});
+
+test("a dragged position is clamped to the bounds", async () => {
+  const { events, container } = renderPop(popoverModel({ element: manualEl, shapeId: "s1" }), {
+    bounds: { w: 800, h: 600 }, position: { x: 300, y: 200 },
+  });
+  const head = container.querySelector(".shapepop-head");
+  head.setPointerCapture = () => {};
+  head.releasePointerCapture = () => {};
+  await fireEvent.pointerDown(head, { clientX: 310, clientY: 210, button: 0, pointerId: 1 });
+  await fireEvent.pointerMove(head, { clientX: 5000, clientY: 5000, pointerId: 1 });
+  await fireEvent.pointerUp(head, { clientX: 5000, clientY: 5000, pointerId: 1 });
+  const last = events.filter((e) => e.kind === "move").pop().detail;
+  expect(last.x).toBeLessThanOrEqual(800);
+  expect(last.y).toBeLessThanOrEqual(600);
+  expect(last.x).toBeGreaterThan(300);
+});

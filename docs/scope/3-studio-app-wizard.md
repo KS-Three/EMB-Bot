@@ -637,12 +637,11 @@ U+2019 sewing "Fritschs Stitches", under a note naming a character that looks
 identical to the one typed): DOCTRINE; scope-history 09-07.
 *(fixed 2026-09-07)*
 
-## Moved from MASTER_SCOPE (2026-09-30) — three Studio entries, verbatim
+## Moved from MASTER_SCOPE (2026-09-30) — five Studio entries, verbatim
 
-Lifted from the area-3 summary to buy MASTER_SCOPE.md headroom for the
-closed-loop calibration entry (the budget test names this area as the
-reclaim: 80 lines there against 600+ here). `MASTER_SCOPE.md` keeps a
-one-line pointer per entry; these are the full entries.
+The 27,000-word budget tripped on 2026-09-30 (27,070 after two lanes landed in one evening) and its own failure message named this area as the reclaim: 80 lines in the dashboard against 638 here. Each paragraph below is the full text that used to sit under the verdict; MASTER_SCOPE keeps a one-line verdict with a pointer for each. Nothing is deleted.
+
+### Uploading artwork is the whole interaction
 
 **Uploading artwork is the whole interaction — the panel no longer asks the
 user to classify it first.** The run starts on upload and the panel STATES what
@@ -655,6 +654,8 @@ the engine's routing is unchanged — ROADMAP gate 2 bars recalibrating stage 0,
 and phase-4 v1 works around it with exactly this override.
 *(confirmed 2026-08-30 — driven in a real browser against the real service, every state of the row clicked through and looked at; pinned by e2e `digitize-auto-start.spec.js`; numbers in scope-history 08-30)*
 
+### The hoop you picked is drawn, and the export gate uses it
+
 **The hoop you picked is DRAWN, and the export gate uses it.** `hoopTransform`
 returns the hoop and the placement box and fits to the larger (before 2026-09-04
 `preview.js` had only the placement box and called it the hoop, so picking one
@@ -664,6 +665,24 @@ Tote / Full Back preset is 203.2 mm against a 200 mm max hoop**, so it fires on 
 shipped preset — whether auto-fit should CAP is open, and it is now measured: **four of ten garments (full_back, jacket_back, blanket, tote) have placement boxes larger than the 200 mm biggest hoop**, so 40% of the picker is oversize on every design (defect 39). *(2026-09-02 — PR #317;
 `preview.spec.js`, `DownloadStep.spec.js`, e2e)* **What that gate is fed changed 2026-09-07**: it used the box the design was fit to, which 65.6% of designs sew outside of (defect 34), so it now reads the thread's own extent.
 
+### The digitize panel states what changed and offers the fix
+
+**The digitize panel states what CHANGED and offers the fix.** Shape list behind
+an "Edit shapes (N)" disclosure, closed by default; a re-digitize reads as a
+delta against `priorRun`; `COLOR_STOPS_HEAVY`, `LETTERING_TOO_SMALL` and
+`STITCHES_TOO_SHORT` render as one-click adjustment chips offered AFTER the run
+(Kent's call — an adjustment, not a pre-run form). `QualityReport` surfaces
+trims. *(2026-09-02 — PRs #317/#318)* **Both "Make it bigger" chips offer a PARTIAL remedy** — one press clears the finding on 1 of 10 corpus fixtures, two presses on 4, and it worsens 3; the buttons are LEFT for Kent. The measurement, the misquoted comment it corrected and `STITCHES_TOO_SHORT`'s 66% moved to the area file, "Moved from MASTER_SCOPE (2026-09-18)". *(measured 2026-09-06 — `tools/enlarge_cure.py`, `tests/test_short_satin_shapes.py`)*
+
+### `cfg.border` reaches its own default
+
+**`cfg.border` reaches its own default now** — `null` = unset, key omitted when
+unset, panel says "automatic", `fill_angle_deg`'s sentinel shape. Until
+2026-09-02 the Studio seeded `"off"` and always sent it, so the service-side
+default was unreachable. *(PR #318)*
+
+### Preview thread width is physical
+
 **Preview thread width is PHYSICAL — neither widened nor narrowed.**
 `preview.js`'s `THREAD_WIDTH_MM` (0.4, nominal 40wt) is coverage 2.67 against the
 ruled 0.15 mm fill row (rows overlap, as the professional's do) and 1.0 against
@@ -672,3 +691,8 @@ PDF sheet (`src/render.js`) and the SVG export draw the same width since
 2026-09-04 — the sheet had drawn 1 px hairlines at any scale. Caveat: `lw` has a
 1.2 px floor (1 px on the sheet), so the property holds zoomed in, not on a
 thumbnail. Pinned on the literal 0.4 and both ratios. *(2026-09-04 — `preview.spec.js`)*
+
+### Thread lighting is unverified against real thread
+
+**Thread lighting is unverified against real thread** — eye-tuned, and the one physical out (2026-09-01) cannot settle it: its colours were random operator threading, so DOCTRINE bars grading colour from it at all. Treat the look as a preference, not a calibration. *(suspected 2026-08-25; sharpened 2026-09-14)*
+

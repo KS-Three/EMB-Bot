@@ -1190,6 +1190,74 @@ class PipelineConfig:
     # and the goldens byte-identical. False is the pre-flip merge, tuck and
     # cover byte for byte.
     satin_junction_stack: bool = True
+    # `satin_tip_caps` (2026-09-29, MASTER_SCOPE defect 49): a junction node
+    # where the arms meet at a TAPERED TIP is a cap, not a junction, and is
+    # capped instead of tucked.
+    #
+    # Under `satin_rail_comp` a shape keeps its artwork polygon, and the
+    # artwork's sharp tips are sharp: ENTHUSIAST's A decomposes into 4 strokes
+    # against the grown polygon's 2, and its apex becomes a NODE where two
+    # arms end rather than a point one stroke runs through. Both ends then
+    # read `free_end=False`, so `_extend_to_cap` -- the function whose entire
+    # job is that the medial axis stops half a width short of a cap -- never
+    # runs, and the junction trim pulls both arms back from the node on top of
+    # it. Measured 2026-09-29: the column reaches within 0.08 mm of the apex
+    # off the rails and stops 1.63 mm short on them, leaving a 3.61 mm2
+    # triangle at 0.71 mm half-width -- the fixture's largest bare component,
+    # and under preflight's `_UNCOVERED_MIN_PATCH_MM2` (5.0) so nothing warns.
+    # Three of nine corpus logos grow an end gap of this class
+    # (`tools/bare_anatomy.py --corpus`).
+    #
+    # ON, an end at a node with no single owner to tuck under is CAPPED when
+    # the boundary sits within `_TIP_REACH_HALVES` sewn half-widths along its
+    # own end tangent -- a tip -- and tucked as before when it does not, which
+    # is every blob junction (an arm's tangent crosses the whole ball). The
+    # reach gate is what separates them and it is the only new number here.
+    # False is the pre-flip engine, byte-identical on all nine corpus logos
+    # (plan digests across two trees, 2026-09-29).
+    #
+    # DEFAULT ON since 2026-09-29, Kent's flip on the corpus price
+    # (scope-history, the nine-logo table): bare artwork falls on ALL NINE
+    # and end gaps on all nine -- becker 182.07 -> 160.69 mm2, golden_tee
+    # 56.38 -> 46.20, bridge 59.57 -> 52.30, screenshot 32.79 -> 27.67 and
+    # its worst component 1.94 -> 0.91. The worst component improves on
+    # three, holds on five and rises on one by 0.05 mm2 (fremont). The price
+    # is thread: a median of about +3.6% stitches, +0.5% at best, and
+    # +12.7% with +11 trims on golden_tee -- which is also the largest
+    # coverage gain (-18% bare). Corpus total 91,102 -> 94,929 stitches,
+    # **+4.2%** (this read 96,929 / +6.4% when first written on 2026-09-29 --
+    # a transcription slip in a figure nobody had re-derived; corrected
+    # 2026-09-30 by summing the per-fixture column in code rather than by
+    # hand, which is how it was got wrong).
+    # No sew-out backs it; whether a gap at a letter tip shows on cloth is
+    # the card's question, and the flip was taken on the instrument.
+    #
+    # WIDENING RETRACTED 2026-09-30, the same day it was built. Kent ruled
+    # the construction -- "a tip's two arms BOTH cap, and overlap" -- and
+    # dropping the `under is None` gate does implement it, but it REGRESSES
+    # the metric a customer sees: ENTHUSIAST's `lost_frac` 0.2573 -> 0.2661
+    # against a 0.26 bar, 100% overshoot and 0% unsewn
+    # (`tests/test_lettering_coverage_regression.py`, which says in terms
+    # "Do NOT raise the bar to make this pass"). The apex work was priced on
+    # `tools/bare_anatomy.py` -- COVERAGE, ink with no thread on it -- and
+    # that instrument cannot see thread landing OUTSIDE the ink, which is
+    # what the widening adds. Same pattern as `satin_rails_follow_edge`,
+    # already measured and rejected as the cure. MASTER_SCOPE defect 49 is
+    # NOT closed. What follows describes the retracted widening:
+    #
+    # The gate no longer requires `under is None`:
+    # at ENTHUSIAST's A apex `_corner_forks` names a partner BOTH ways, each
+    # arm tucking under the other, so neither capped the point and the letter
+    # sewed bare. That population IS what the ruling is about. On the nine
+    # logos, bare artwork and end bare now fall on ALL NINE -- becker
+    # 182.07 -> 153.19 mm2, bridge 59.57 -> 47.69, golden_tee 56.38 -> 43.75,
+    # drone 40.19 -> 32.52, screenshot 32.79 -> 25.14 -- and the fixture's
+    # worst component goes 3.61 mm2 @0.71mm to 0.53 @0.19. Corpus total
+    # 91,102 -> 96,606 (+6.0%). Those numbers stand as measured and are the
+    # reason the construction is worth returning to -- but they are all
+    # COVERAGE, and the coverage gain is not what the guard reads.
+    # DOCTRINE 2026-09-30, "Coverage is not the metric a customer sees".
+    satin_tip_caps: bool = True
     # The lettering yardstick's trims gap, read with a per-trim census
     # (2026-09-19, scope-history): traced MARINE at 80 mm sews 13 trims
     # against the typed word's 3, and across the nine logos the lettering
@@ -1370,7 +1438,9 @@ class PipelineConfig:
     # of its construction closed (`stage6_satin._close_seams`, hairline
     # fills touching boundary stage 5 added, nothing on the artwork's
     # own), golden_tee 11,377 -> 7,966, MARINE byte-identical, corpus
-    # trims 651 -> 640.
+    # trims 651 -> 640. Since 2026-09-30 the rails, caps and underlay
+    # read that closed polygon too, so a spine down a closed seam is not
+    # pinched by the seam's walls.
     satin_rail_comp: bool = True
     # None = the fabric preset's fill underlay style. One of "none" |
     # "edge_run" | "center_run" | "edge_zigzag" | "edge_lattice" |

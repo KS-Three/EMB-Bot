@@ -37,7 +37,7 @@
   // it read "Image · 4 colors" directly above a swatch strip rendering two,
   // on one screen. Same defect the review card had; see lib/summary.js.
   export let sewnColors = null;
-  // A shape selected on the field ({ elementId, shapeId, edit, n }, App's
+  // A shape selected on the field ({ elementId, shapeId, n }, App's
   // runtime state) — forwarded to the matching element's ManualPanel only.
   export let fieldShapeSelect = null;
   const d = createEventDispatcher();

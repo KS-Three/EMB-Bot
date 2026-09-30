@@ -10,6 +10,7 @@
   export let model;
   export let anchor = { x: 0, y: 0 };   // px inside the positioned parent (.hoop)
   export let bounds = { w: 0, h: 0 };   // that parent's box, for clamping
+  export let position = null;           // null | { x, y } — a dragged spot, wins over anchor
 
   const d = createEventDispatcher();
   let root;
@@ -23,8 +24,34 @@
   // Sit just right/below the click, but never past the parent's edge: on a
   // short viewport the dialog may cover the shape — the outline highlight
   // stays visible around it (spec §6).
-  $: left = Math.max(0, Math.min(anchor.x + 8, Math.max(0, (bounds.w || Infinity) - w - 4)));
-  $: top = Math.max(0, Math.min(anchor.y + 8, Math.max(0, (bounds.h || Infinity) - h - 4)));
+  // A dragged position (Kent 2026-09-29: the dialog sometimes hides what he is
+  // editing) wins over the anchor; the same clamp applies to either.
+  const clampX = (x, bw, pw) => Math.max(0, Math.min(x, Math.max(0, (bw || Infinity) - pw - 4)));
+  const clampY = (y, bh, ph) => Math.max(0, Math.min(y, Math.max(0, (bh || Infinity) - ph - 4)));
+  $: left = clampX(position ? position.x : anchor.x + 8, bounds.w, w);
+  $: top = clampY(position ? position.y : anchor.y + 8, bounds.h, h);
+
+  // Header drag: remember where inside the dialog the pointer grabbed it, then
+  // report the dialog's new top-left (in the parent's px) on every move.
+  let drag = null;
+  function onHeadDown(e) {
+    if (e.button !== undefined && e.button !== 0) return;
+    drag = { dx: e.clientX - left, dy: e.clientY - top };
+    try { e.currentTarget.setPointerCapture?.(e.pointerId); } catch { /* synthetic pointer */ }
+    e.preventDefault();
+  }
+  function onHeadMove(e) {
+    if (!drag) return;
+    d("move", {
+      x: clampX(e.clientX - drag.dx, bounds.w, w),
+      y: clampY(e.clientY - drag.dy, bounds.h, h),
+    });
+  }
+  function onHeadUp(e) {
+    if (!drag) return;
+    drag = null;
+    try { e.currentTarget.releasePointerCapture?.(e.pointerId); } catch { /* already released */ }
+  }
 
   onMount(async () => {
     // Focus first, synchronously: the dialog is in the DOM by onMount, and
@@ -59,7 +86,17 @@
   style="left: {left}px; top: {top}px"
   on:keydown={onKey}
 >
-  <div class="shapepop-head">{model.name}</div>
+  <!-- Pointer-only drag handle by design (no keyboard move); the dialog's own
+       name and Escape are unchanged. -->
+  <!-- svelte-ignore a11y_no_static_element_interactions -->
+  <div
+    class="shapepop-head"
+    title="Drag to move"
+    on:pointerdown={onHeadDown}
+    on:pointermove={onHeadMove}
+    on:pointerup={onHeadUp}
+    on:pointercancel={onHeadUp}
+  ><span class="shapepop-grip" aria-hidden="true">⋮⋮</span>{model.name}</div>
   {#each model.rows as row (row.key)}
     {#if row.kind === "thread"}
       <div class="shapepop-row">
