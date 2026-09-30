@@ -987,6 +987,40 @@ label:focus-within .tipmark { border-color: var(--accent); color: var(--accent);
 .simspeed { font-size: var(--fs-xs); width: auto; padding: 0 6px; }
 .zoombtn.simon { background: var(--tint); color: var(--accent); }
 
+/* The view segments (EmbroideryField, 2026-09-30): one bordered strip,
+   text-only segments, the lit one filled ink — the same segmented language
+   the hoop picker uses on the Garment step. */
+.viewseg {
+  display: inline-flex;
+  margin-inline: var(--space-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-s);
+  overflow: hidden;
+}
+.viewseg-btn {
+  width: auto;
+  padding: 0 var(--space-3);
+  border-radius: 0;
+  border-left: 1px solid var(--border);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
+  white-space: nowrap;
+}
+.viewseg-btn:first-child { border-left: 0; }
+.viewseg-btn.viewseg-on { background: var(--ink); color: var(--surface); }
+.viewseg-btn.viewseg-on:hover:not(:disabled) { background: var(--ink); }
+
+/* A labelled toggle: icon then word. The word goes at narrow widths (the
+   icon and its tip remain), since the bar has to fit beside a 460px panel
+   on a laptop. */
+.zoomlabelled { width: auto; padding: 0 var(--space-2); gap: 6px; font-size: var(--fs-xs); font-weight: var(--fw-medium); }
+.zoomlabel { white-space: nowrap; }
+.zoomsep { width: 1px; height: 18px; margin-inline: var(--space-1); background: var(--border); }
+@media (max-width: 1280px) {
+  .zoomlabel { display: none; }
+  .zoomlabelled { padding: 0; width: 28px; }
+}
+
 .zoompct {
   min-width: 3.2em;
   text-align: center;
@@ -1666,6 +1700,28 @@ canvas { touch-action: none; }
    as six unrelated controls rather than one set of choices. auto-fit keeps
    the column count responsive to the panel width; stretch keeps every
    button in a row the same size. */
+/* "Your machine" (DownloadStep, lib/machines.js, 2026-09-30): a brand
+   select and, once one is chosen, the single filled download button in the
+   format that machine reads. The grid beneath keeps every format. */
+.machinepick {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
+  max-width: 372px;
+}
+.machinepick-label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--fs-sm);
+  color: var(--muted);
+}
+.machinepick-label select { flex: 1 1 auto; min-width: 0; font-size: var(--fs-sm); }
+.machinepick-btn { width: 100%; }
+.machinepick-note { margin: 0; font-size: var(--fs-xs); color: var(--warn); }
+.formats-head { margin-top: 0; }
+
 .formats {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));

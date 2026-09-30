@@ -47,7 +47,7 @@ test("the keys the components attach exist", () => {
   const wanted = [
     "designWidth", "colors", "satinThin", "evenWidths", "fillAngle", "border", "designEdge", "photoReading",
     "shapeTier", "shapeAngle", "shapeUnderlay", "shapeBorder", "stitchWidth", "wholeWord",
-    "fitToHoop", "autoSnap", "outlines", "jumps", "trims", "realistic", "simulator",
+    "fitToHoop", "autoSnap", "outlines", "jumps", "trims", "flatView", "realistic", "simulator",
     "letterSpacing", "curve", "rotation",
   ];
   for (const k of wanted) expect(HELP[k], k).toBeTruthy();

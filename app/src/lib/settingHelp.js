@@ -136,6 +136,12 @@ export const HELP = {
     changes: "The view only. Each trim is two to three seconds of machine time; the quality check counts them per 1,000 stitches.",
     when: "If the count is high, merge or remove the smallest shapes.",
   },
+  flatView: {
+    title: "Stitches view",
+    what: "Draws every stitch as a plain line, without the thread's sheen.",
+    changes: "The view only. Gaps, density and the direction of each fill are easier to see than in the realistic render.",
+    when: "Use it to judge the engineering — coverage, banding, where satin turns — before you judge the look.",
+  },
   realistic: {
     title: "Realistic view",
     what: "Renders the thread with its sheen and thickness, the way it looks sewn.",

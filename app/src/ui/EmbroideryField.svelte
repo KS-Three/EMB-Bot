@@ -167,6 +167,17 @@
   // same in both, so the coverage answer never changes with the view.
   let realisticView = true;
   function toggleRealistic() { realisticView = !realisticView; scheduleViewRepaint(); }
+  // The view segments (2026-09-30): each picks its view rather than toggling,
+  // so clicking the one already lit does nothing, which is what a segmented
+  // control promises. Leaving the simulator to pick a view stops it first.
+  function showFlat() {
+    if (simActive) stopSim();
+    if (realisticView) toggleRealistic();
+  }
+  function showRealistic() {
+    if (simActive) stopSim();
+    if (!realisticView) toggleRealistic();
+  }
 
   // ---- stitch simulator state (see lib/simulate.js for the pure math) ----
   // simIndex is a FLOAT while playing (fractional progress carries across
@@ -2697,6 +2708,77 @@
           <span class="scalebar-label">{scaleBar.label}</span>
         </span>
       {/if}
+      <!-- The VIEW is one choice of three, so it is a segmented control
+           (2026-09-30): Stitches (the flat view), Realistic, Simulate. Six
+           bare glyphs used to stand here and a customer could not find
+           "Realistic view" among them. The three overlay toggles and snap
+           follow, with their names on, since a word is what a person scans
+           for. Every aria-label and aria-pressed is unchanged, so the e2e
+           specs that drive these buttons by name still do. -->
+      <span class="viewseg" role="group" aria-label="View">
+        <button
+          type="button"
+          class="zoombtn viewseg-btn"
+          class:viewseg-on={!realisticView && !simActive}
+          on:click={showFlat}
+          disabled={!hasDesign}
+          aria-pressed={!realisticView && !simActive}
+          aria-label="Stitches view"
+          use:tip={"flatView"}
+        >Stitches</button>
+        <button
+          type="button"
+          class="zoombtn viewseg-btn"
+          class:viewseg-on={realisticView && !simActive}
+          on:click={showRealistic}
+          disabled={!hasDesign}
+          aria-pressed={realisticView && !simActive}
+          aria-label="Realistic view"
+          use:tip={"realistic"}
+        >Realistic</button>
+        <button
+          type="button"
+          class="zoombtn viewseg-btn"
+          class:viewseg-on={simActive}
+          on:click={() => (simActive ? stopSim() : startSim())}
+          disabled={!hasDesign}
+          aria-label="Stitch simulator"
+          aria-pressed={simActive}
+          use:tip={"simulator"}
+        >Simulate</button>
+      </span>
+      <span class="zoomsep" aria-hidden="true"></span>
+      <button
+        type="button"
+        class="zoombtn viewtoggle zoomlabelled"
+        class:simon={showOutlines}
+        on:click={toggleOutlines}
+        disabled={!hasDesign}
+        aria-pressed={showOutlines}
+        aria-label="Show shape outlines"
+        use:tip={"outlines"}
+      ><Icon name="nodes" /><span class="zoomlabel">Outlines</span></button>
+      <button
+        type="button"
+        class="zoombtn viewtoggle zoomlabelled"
+        class:simon={showJumps}
+        on:click={toggleJumps}
+        disabled={!hasDesign}
+        aria-pressed={showJumps}
+        aria-label="Show jumps"
+        use:tip={"jumps"}
+      ><Icon name="jump" /><span class="zoomlabel">Jumps</span></button>
+      <button
+        type="button"
+        class="zoombtn viewtoggle zoomlabelled"
+        class:simon={showTrims}
+        on:click={toggleTrims}
+        disabled={!hasDesign}
+        aria-pressed={showTrims}
+        aria-label="Show trims"
+        use:tip={"trims"}
+      ><Icon name="scissors" /><span class="zoomlabel">Trims</span></button>
+      <span class="zoomsep" aria-hidden="true"></span>
       <button
         type="button"
         class="zoombtn viewtoggle"
@@ -2706,56 +2788,6 @@
         aria-label="Auto-snap"
         use:tip={"autoSnap"}
       ><Icon name="magnet" /></button>
-      <button
-        type="button"
-        class="zoombtn viewtoggle"
-        class:simon={showOutlines}
-        on:click={toggleOutlines}
-        disabled={!hasDesign}
-        aria-pressed={showOutlines}
-        aria-label="Show shape outlines"
-        use:tip={"outlines"}
-      ><Icon name="nodes" /></button>
-      <button
-        type="button"
-        class="zoombtn viewtoggle"
-        class:simon={showJumps}
-        on:click={toggleJumps}
-        disabled={!hasDesign}
-        aria-pressed={showJumps}
-        aria-label="Show jumps"
-        use:tip={"jumps"}
-      ><Icon name="jump" /></button>
-      <button
-        type="button"
-        class="zoombtn viewtoggle"
-        class:simon={showTrims}
-        on:click={toggleTrims}
-        disabled={!hasDesign}
-        aria-pressed={showTrims}
-        aria-label="Show trims"
-        use:tip={"trims"}
-      ><Icon name="scissors" /></button>
-      <button
-        type="button"
-        class="zoombtn viewtoggle"
-        class:simon={realisticView}
-        on:click={toggleRealistic}
-        disabled={!hasDesign}
-        aria-pressed={realisticView}
-        aria-label="Realistic view"
-        use:tip={"realistic"}
-      ><Icon name="sparkle" /></button>
-      <button
-        type="button"
-        class="zoombtn"
-        class:simon={simActive}
-        on:click={() => (simActive ? stopSim() : startSim())}
-        disabled={!hasDesign}
-        aria-label="Stitch simulator"
-        aria-pressed={simActive}
-        use:tip={"simulator"}
-      ><Icon name="play" /></button>
     </div>
     {#if simActive}
       <div class="simbar" role="group" aria-label="Stitch simulator controls">
