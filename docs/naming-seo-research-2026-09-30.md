@@ -717,3 +717,95 @@ Two risks, either alone disqualifying for a brand meant to rank first:
 
 Not verified: USPTO direct; Instagram direct (429); X (no og:title on the
 profile page); Facebook /juststitchit (login-walled).
+
+## J. Commands without Nike's frame (round 8, same day)
+
+Kent's direction after §I: keep the *Just Do It* energy — an imperative,
+one breath, confident — on a frame Nike does not own. 26 names measured:
+14 proposed, then 12 more added once a Verisign RDAP screen showed 13 of
+the first 14 .coms taken (three of them registered this summer:
+needledown 2026-06-11, makeitstitch 2026-06-06, threadit 2026-04-03).
+
+Method as rounds 3–7. Unverified this round: USPTO direct (TSDR 401, TESS
+404), Justia (403), every Instagram handle (302 to login), every .co
+(rdap.nic.co blocked at the proxy), asking prices for punchit.com and
+hoopup.com. Registrar prices from round 3: .com ≈$11, .io ≈$28, .app ≈$9.
+"TT/YT/X" = TikTok / YouTube / X handle.
+
+| # | Name | .com | .io / .app | TM (exact) | Collisions | TT/YT/X | SERP | Comp. | Bold |
+|---|---|---|---|---|---|---|---|---|---|
+| 1 | **Stitch Hard** | free | free / free (.ai free) | none | none | ❌/✅/✅ | low — Lilo & Stitch noise | **7.5** | **5** |
+| 2 | **Stitch Loud** | free | free / free | none | none | ❌/✅/prob. | low — Lilo & Stitch clips | **7.5** | 4 |
+| 3 | **Punch Anything** | free | free / free | none | none | ✅/✅/✅ | low — dictionary | **7** | 4 |
+| 4 | **Punch Loud** | free | free / free | none | none | ✅/✅/✅ | low — sound effects | **7** | 4 |
+| 5 | Stitch Sharp | free | free / free | none; SHARP famous cl.9 | "Sharp Stitch" tailoring channel | ✅/✅/prob. | med | 6.5 | 4 |
+| 6 | Thread Hard | free | free / free | none | none | ✅/✅/✅ | med — machinists | 6.5 | 4 |
+| 7 | Own the Hoop | free | free / free | none | none | ✅/✅/✅ | med — hula, basketball | 6.5 | 4 |
+| 8 | Hoop Fast | free | free / free | none | generic hooping-station copy | ✅/❌/✅ | high — HoopMaster, Fast Frames | 6.5 | 4 |
+| 9 | Fire the Needle | free | free / free | MOVE THE NEEDLE live cl.9 | none | ❌/✅/✅ | high — acupuncture | 6 | 4 |
+| 10 | Stitch Clean | free | free / free | dead 1994 | Stitch & Clean, A Clean Stitch | ❌/✅/❌ | high — wash guides | 5.5 | 3 |
+| 11 | Stitch Dead On | free | free / free | **DEAD ON live cl.9** ×5 | none | ✅/✅/✅ | Lilo & Stitch | 5.5 | 4 |
+| 12 | Punch Sharp | free | free / free | none | **Prima Power "Punch Sharp"** machine | ❌/✅/✅ | Prima Power | 5 | 4 |
+| 13 | Needle Down | **live site**, reg. 2026-06 (machine-review blog) | free / free | none | Needle Down Quilt Shop GA | ✅/❌/✅ | feature explainers | 4.5 | 4 |
+| 14 | Get Stitching | HugeDomains **$2,695** | free / free | none | none | ✅/✅/❌ | hobby | 4.5 (6 w/ .com) | 3 |
+| 15 | Stitch Now | HugeDomains **$4,795** | free / free | none | none | ❌/✅/❌ | generic | 4 (5.5) | 4 |
+| 16 | Make It Stitch | HugeDomains **$1,995** | free / free | MAKE IT YOURS STITCH live cl.42 | none | ✅/✅/❌ | generic | 4 (5.5) | 3 |
+| 17 | Punch It | parked since 1997, no price | ❌ / ❌ (.ai ❌) | PUNCH live cl.9 ×2 | the "-Punch" human-digitizer namespace | ❌/❌/❌ | game, film, idiom | 3.5 (5.5) | **5** |
+| 18 | Go Stitch | Afternic **$9,995** | free / ❌ | none | none | ❌/❌/❌ | generic | 3.5 | 3 |
+| 19 | Hoop Up | parked, no price | free / free | none | Hoop It Up Embroidery ×3 adjacent | ❌/❌/❌ | basketball | 3 | 3 |
+| 20 | Punch Now | **$4,295** | free / free | none | PunchNow attendance app; Punch Me Now Embroidery | ❌/✅/❌ | the app | 3 (4.5) | 4 |
+| 21 | Stitch Out | "Under Construction" since 2011 | free / free | dead cl.10 | **BERNINA Stitchout app** | ❌/❌/❌ | BERNINA | 2.5 | 4 |
+| 22 | Stitch This | Afternic **$24,888** | ❌ / ❌ (all reg. 2026-03-13) | STITCH THIS dead ×2; STITCH THIS PRINT THAT live cl.40 | X @Stitchthis embroiderer | ❌/❌/❌ | generic | 2.5 | 4 |
+| 23 | Hoop It | Afternic **$18,499** | ❌ / ❌ | HOOP IT UP live cl.41/28/25 | Hoop It Up Embroidery ×3; Sega arcade | ❌/❌/❌ | basketball | 2 | 4 |
+| 24 | Thread It | Afternic **$27,995** | ❌ / ❌ | none | Google Threadit; THREAD IT LTD | ❌/❌/❌ | Google's app | 2 | 3 |
+| 25 | Stitch On | **live** cross-stitch store, Lawrence KS | free / free | STITCH ON STITCH EMBROIDERY live cl.40 | Stitch On Stitch LLC | ❌/❌/❌ | the store | 1.5 | 3 |
+
+### The four survivors
+
+- **Stitch Hard — 7.5 / Bold 5.** The only name in the round that is
+  triple-clean (domain, mark, industry) *and* reads as a flat command.
+  .com/.io/.app/.ai all unregistered (≈$50 the set). Trademarkia page 1
+  is STITCH generics (Stitch Fix cl.45, Stitch Health cl.9/42) — none
+  confusable with a two-word imperative. No shop, app or Etsy store; the
+  only hits are a hard-rock singer. YouTube and X free, TikTok taken
+  (owner unverified). Ten characters, two syllables. Catch: "hard" implies
+  effort, and the product's pitch is the opposite.
+- **Stitch Loud — 7.5 / Bold 4.** Same clean sweep; X probably free
+  ("Profile / X"), YouTube free, TikTok taken. Weakest keyword pull of the
+  Stitch names — "loud" says nothing about digitizing — and it invites the
+  wrong inference about density.
+- **Punch Anything — 7 / Bold 4.** Every domain and handle free, no mark,
+  no collision, and to anyone in the trade it *is* the product promise.
+  Four syllables. Catch: outside the trade "punch" is a fist, and "-Punch"
+  is where the human digitizers trade (Mystic Punch, Digit Punch, Quality
+  Punch), several advertising "never auto-digitized".
+- **Punch Loud — 7 / Bold 4.** Nine characters, all free, page 1 is
+  sound-effect libraries. The "punch" caveat doubled: it reads as a boxing
+  instruction outside the trade.
+
+### Why the strong ideas fell
+
+Punch It has no domain on any TLD checked (the .com parked 29 years, no
+listing) and PUNCH is live twice in cl.9. Stitch Out is the name of
+BERNINA's embroidery-machine app on both stores. Hoop It carries a live
+three-class mark and an $18,499 price. Needle Down's .com turned into a
+same-industry review site three months ago. A brand on a .io beside a
+same-name embroidery app or blog is the round-3 HoopReady trade again.
+
+### The register's cost
+
+The twelve free names are free because nobody searches them. Every "low
+SERP" is the same fact as "no collision": zero keyword demand. "Stitch ___"
+shares page 1 with Lilo & Stitch and with Stitch AI (stitchai.us), which
+already holds the "stitch + AI" position; "Punch ___" reads as violence to
+the non-trade buyer. Ranking first for any of these is a brand-building
+job, not an SEO one — which is what §A's demand data said the imperative
+register would cost. The SEO plan in §C (content and landing pages on the
+searched phrases) carries the ranking regardless of the name.
+
+**By risk:** Stitch Hard · Stitch Loud · Punch Anything · Punch Loud ·
+Thread Hard · Own the Hoop · Stitch Sharp · Hoop Fast · Fire the Needle ·
+Stitch Clean. **By boldness:** Stitch Hard, Punch It (5); the rest 4.
+
+An RDAP 404 means "not in the registry", not a reservation — confirm in a
+registrar cart before announcing anything.
