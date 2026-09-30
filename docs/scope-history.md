@@ -16349,3 +16349,21 @@ the pairs for Kent's flip.
 *(measured 2026-09-30 — the dissolve's inputs captured by wrapping it; a
 scratch corpus script over `digitize()`; `tools/dropped_elements`' colour
 fields; `docs/eye-pairs-2026-09-30/`)*
+
+## 2026-09-30 — the dissolve pairs on the page after the fold fix, and a sitting tag for a second look at one arm
+
+The labelled page (the same URL, Version 5) rebuilt with one arm,
+`phantom_dissolve` = `dissolve_phantom_blends=True`, over the gradient lane's
+six logos: four pairs (bridge, gaulke, golden_tee, screenshot), drone and
+fremont identical to the stitch; the corpus table of the entry above under
+its head. The trap found on the way: Kent's 09-28 verdicts on this arm sit
+in the page's store under `phantom_dissolve__<fixture>` — the ids the new
+pairs would have taken — so they would have pre-filled the fold-fixed
+renders and been overwritten by his clicks. `tools.eye_pairs_gallery
+--sitting <tag>` (labelled only; letters, digits, `.`, `-`) keys the pairs
+`<arm>__<fixture>__<tag>` and the ruling `<arm>__<tag>`, and the page writes
+the tag into every document; refused on the reveal and for a tag with `__`
+or a space. 59 gallery tests (3 new). The flag stays OFF until his eye.
+
+*(built 2026-09-30 — `docs/eye-pairs-2026-09-30/README.md` "Second sitting",
+`dissolve-corpus.json`)*

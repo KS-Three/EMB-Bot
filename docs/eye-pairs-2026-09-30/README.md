@@ -131,3 +131,73 @@ Shipped the same night: `satin_rails_follow_edge="envelope"` is the default
 and `rail_envelope` left the arms table (`rails_follow_edge` stays, `True`
 against it). The next work item he picked with it: bridge's satin border
 that goes on and off, and its smooshed lettering.
+
+## Second sitting on the same URL — the dissolve after the fold fix (2026-09-30, Version 5)
+
+Kent's pick after the bridge measurement: *fix the fold first, then flip*.
+The fold's wrong turn — nine halo members folded into a detached black
+cluster and came out as teal specks on bridge's ring (scope-history
+2026-09-30; DOCTRINE "A fold's endpoint names a colour, not a place") — is
+fixed on this branch, and the page was rebuilt at the same URL with one arm,
+`phantom_dissolve` = `dissolve_phantom_blends=True`, shipped on the left and
+the dissolve on the right, over the gradient lane's six logos. Four pairs:
+bridge, gaulke, golden_tee, screenshot; drone and fremont are identical to
+the stitch and not shown. tires (the photo lane, 2,646 → 2,643 stitches) is
+in the table and not on the page: the arm is a gradient-lane flag and its
+three stitches there are the palette re-read, not the fold.
+
+The corpus under the arm (both sides through `digitize()` at each logo's own
+width and garment, `max_colors=6`, on main after #559 and #563 with the
+envelope ON; thread on white / on other ink from `tools/dropped_elements`'
+colour fields), in `dissolve-corpus.json` with the page's caption:
+
+| logo | lane | stitches | trims | jumps | regions | thread on white mm² | thread on other ink mm² |
+|---|---|---|---|---|---|---|---|
+| bridge | gradient | 16,179 → 11,385 | 101 → 43 | 32 → 17 | 80 → 20 | 179.3 → 105.8 | 599.3 → 600.6 |
+| golden_tee | gradient | 8,659 → 8,554 | 45 → 47 | 4 | 39 | 343.1 → 341.9 | 337.4 → 337.6 |
+| gaulke | gradient | 4,332 → 4,449 | 33 → 37 | 24 → 25 | 53 → 57 | 458.9 → 457.9 | 75.4 → 77.9 |
+| screenshot | gradient | 8,171 → 8,170 | 73 → 76 | 45 → 43 | 158 | 645.0 | 227.1 → 227.0 |
+| drone | gradient | identical |  |  |  |  |  |
+| fremont | gradient | identical |  |  |  |  |  |
+| becker | flat (not on the lane) | identical |  |  |  |  |  |
+| enthusiast | flat (not on the lane) | identical |  |  |  |  |  |
+| tires | photo | 2,646 → 2,643 | 8 | 0 | 6 | 179.4 → 176.0 | 40.5 → 40.3 |
+
+**His verdicts on this arm from 09-28, BEFORE the fix** (`../eye-pairs-2026-09-28/kent-notes.json`):
+bridge *after better*; gaulke, golden_tee, screenshot, tires *both bad*;
+"did its job" can't tell on all five. Those documents are still in the
+page's store under `phantom_dissolve__<fixture>` — the ids this page would
+have taken, so they would have pre-filled the fold-fixed pairs and been
+overwritten by his new clicks. This sitting is keyed
+`phantom_dissolve__<fixture>__fold-fix` and its ruling
+`phantom_dissolve__fold-fix` (the gallery's new `--sitting`, which the page
+writes into every document it saves); the 09-28 record stays as it was.
+
+### How it was built
+
+```bash
+cd digitizer
+# two lanes, three logos each; every lane digitizes base + phantom_dissolve
+.venv/bin/python -m tools.eye_pairs --render --out <laneA> --fixtures bridge,golden_tee,gaulke --arms phantom_dissolve
+.venv/bin/python -m tools.eye_pairs --render --out <laneB> --fixtures screenshot,drone,fremont --arms phantom_dissolve
+.venv/bin/python -m tools.eye_pairs.merge <out> <laneA> <laneB>
+.venv/bin/python -m tools.eye_pairs_gallery --labelled --src <out> --out <out>/gallery \
+    --tables ../docs/eye-pairs-2026-09-30/dissolve-corpus.json --sitting fold-fix
+```
+
+Then `<out>/gallery/index.html` and its `img/` republished to the artifact
+above (12 images, 1.3 MB; Version 5). The envelope's seven pairs left the
+page with this rebuild; their verdicts are the section above and the store.
+
+### Kent's question
+
+The flip. `dissolve_phantom_blends=False` is shipped — built 2026-09-04 for
+this fixture, OFF since. With the fold fixed, does the dissolve read better
+on the four logos it changes, and did it do the job on bridge's border that
+goes on and off?
+
+### Outcome
+
+Pending his sitting. Read back with `ArtifactData`: `notes` under
+`phantom_dissolve__<fixture>__fold-fix`, `rulings` under
+`phantom_dissolve__fold-fix`.

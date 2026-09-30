@@ -11,6 +11,7 @@ controls. Spec: docs/superpowers/specs/2026-09-17-eye-pairs-gallery-design.md.
     python -m tools.eye_pairs_gallery [--src eye_pairs_out] [--out <src>/gallery]
     python -m tools.eye_pairs_gallery --labelled    # before | after with the arm named; no sitting
     python -m tools.eye_pairs_gallery --labelled --tables corpus.json   # a measured table under an arm's head
+    python -m tools.eye_pairs_gallery --labelled --sitting fold-fix     # a second look at an arm already judged
 
 `--labelled` is the other page this file makes: every rendered arm beside
 shipped, BEFORE left and AFTER right, the flag named, Kent's verdict taken on
@@ -19,13 +20,17 @@ reason its verdicts are rulings evidence, not the yardstick's statistic.
 `--tables` puts a table the instruments measured (the whole corpus under the
 arm, say) under that arm's head, so the eye and the numbers sit on one page;
 the JSON is `{arm: {caption, columns, rows}}`, refused for an arm the page
-does not show.
+does not show. `--sitting <tag>` keys the page's notes `<arm>__<fixture>__<tag>`
+for a second look at an arm Kent has judged before (2026-09-30: the dissolve
+after the fold fix, judged once on 09-28), so the earlier verdict neither
+pre-fills the new pair nor is overwritten by the new one.
 """
 from __future__ import annotations
 
 import argparse
 import hashlib
 import json
+import re
 import sys
 import time
 from pathlib import Path
@@ -474,7 +479,26 @@ def locate_changes(src: Path, public: list[dict], sealed: dict[str, dict]
 # the flag, so it is evidence for his rulings and never the agreement
 # statistic (yardstick spec section 4 needs the blind picks). Ids are
 # `<arm>__<fixture>` rather than opaque, so a note keyed by one survives a
-# re-render, a new arm, and a republish.
+# re-render, a new arm, and a republish. The same key is a trap the second
+# time an arm is judged: Kent's 09-28 verdicts on `phantom_dissolve__*` would
+# have pre-filled the fold-fixed renders of 09-30 and been overwritten by his
+# new clicks. A sitting tag makes that look its own row: `<arm>__<fixture>__<tag>`.
+# The tag has no underscore, so the id still splits on `__`.
+SITTING_TAG = re.compile(r"^[A-Za-z0-9][A-Za-z0-9.\-]{0,39}$")
+
+
+def check_sitting(sitting: str | None, labelled: bool) -> str | None:
+    """The tag as given, or a refusal: only the labelled page keys notes by
+    arm and fixture, and a tag with `__` or a space would not survive as a
+    document id."""
+    if sitting is None:
+        return None
+    if not labelled:
+        raise SystemExit("REFUSED: --sitting names a labelled page; the reveal keys its pairs itself")
+    if not SITTING_TAG.match(sitting):
+        raise SystemExit(f"REFUSED: --sitting {sitting!r} must be letters, digits, '.' or '-' "
+                         "(no underscore: the id splits on '__')")
+    return sitting
 
 REVEAL_TITLE = "Eye Pairs Reveal"
 LABELLED_TITLE = "Flag Before After"
@@ -501,13 +525,14 @@ def labelled_sides(rec: dict) -> tuple[str, str]:
     return (rec["arm"], BASE) if rec["is_ref"] else (BASE, rec["arm"])
 
 
-def labelled_records(src: Path, feats: dict, sizes: dict[str, tuple[float, str]]
-                     ) -> tuple[list[dict], list[dict], list[dict]]:
+def labelled_records(src: Path, feats: dict, sizes: dict[str, tuple[float, str]],
+                     sitting: str | None = None) -> tuple[list[dict], list[dict], list[dict]]:
     """-> (pair records, skipped rows, failed rows). One pair per (fixture,
     arm) in features.json whose stitches differ from the base's. An arm that
     raised is a failed row, an identical one a skipped row; neither is shown.
     The records come in the spec's arm order, then fixture name; the page
-    groups by arm and orders the groups itself."""
+    groups by arm and orders the groups itself. `sitting` suffixes every id
+    (`<arm>__<fixture>__<sitting>`) for a second look at an arm."""
     designs = Path(src) / "designs"
     renders = Path(src) / "renders"
     order = {arm: n for n, arm in enumerate(ARM_INTENT)}
@@ -540,7 +565,8 @@ def labelled_records(src: Path, feats: dict, sizes: dict[str, tuple[float, str]]
             shipped, arm_side = ("R", "L") if is_ref else ("L", "R")
             change, intent = arm_intent(arm)
             rec = {
-                "pair": f"{arm}__{fx}", "kind": "live", "repeat_of": None,
+                "pair": f"{arm}__{fx}" + (f"__{sitting}" if sitting else ""),
+                "kind": "live", "repeat_of": None,
                 "fixture": fx, "width_mm": width, "garment": garment,
                 "shipped_side": shipped, "arm_side": arm_side, "arm": arm,
                 "arm_change": change, "arm_intent": intent,
@@ -628,16 +654,19 @@ def _read_json(path: Path, default=None):
 
 
 def build(src: Path, out: Path, budget: int = BUDGET_BYTES, labelled: bool = False,
-          tables: dict | None = None) -> dict:
+          tables: dict | None = None, sitting: str | None = None) -> dict:
     """Reveal: refuse until every pair is picked, then join, copy, emit.
     Labelled: no sitting to wait for; every rendered arm beside shipped.
     `tables` ({arm: {caption, columns, rows}}) ride under their arms' heads.
-    Returns the data the page was given, for the caller and the tests."""
+    `sitting` (labelled only) tags every pair id and the page's rulings, so a
+    second look at an arm keeps its own notes. Returns the data the page was
+    given, for the caller and the tests."""
     src, out = Path(src), Path(out)
+    sitting = check_sitting(sitting, labelled)
     feats = _read_json(src / "features.json")
     failed: list[dict] = []
     if labelled:
-        recs, skipped, failed = labelled_records(src, feats, fixture_sizes())
+        recs, skipped, failed = labelled_records(src, feats, fixture_sizes(), sitting)
         public, sealed = labelled_manifest(recs)
         arms = labelled_arms(recs, skipped, failed)
         title = LABELLED_TITLE
@@ -660,7 +689,7 @@ def build(src: Path, out: Path, budget: int = BUDGET_BYTES, labelled: bool = Fal
         r["img"] = names[r["pair"]]
         r["hotspots"] = hotspots[r["pair"]]
     data = {"generated": time.strftime("%Y-%m-%d"), "n_pairs": len(recs),
-            "arms": arms, "pairs": recs, "labelled": labelled}
+            "arms": arms, "pairs": recs, "labelled": labelled, "sitting": sitting}
     out.mkdir(parents=True, exist_ok=True)
     (out / "index.html").write_text(build_html(data, title), encoding="utf-8")
     data["_images"] = len({v for d in names.values() for v in d.values()})
@@ -681,6 +710,9 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--tables", default=None,
                     help="JSON {arm: {caption, columns, rows}}: a measured table shown "
                          "under that arm's head (refused for an arm not on the page)")
+    ap.add_argument("--sitting", default=None, metavar="TAG",
+                    help="labelled only: key this page's notes <arm>__<fixture>__TAG, "
+                         "for a second look at an arm judged before (letters, digits, . -)")
     args = ap.parse_args(argv)
     src = Path(args.src)
     out = Path(args.out) if args.out else src / "gallery"
@@ -689,7 +721,7 @@ def main(argv: list[str] | None = None) -> int:
         if not Path(args.tables).exists():
             raise SystemExit(f"REFUSED: --tables {args.tables} is missing")
         tables = _read_json(Path(args.tables))
-    data = build(src, out, labelled=args.labelled, tables=tables)
+    data = build(src, out, labelled=args.labelled, tables=tables, sitting=args.sitting)
     print(f"{data['n_pairs']} pairs, {len(data['arms'])} arms, "
           f"{data['_images']} images ({data['_bytes'] / 1e6:.1f} MB) -> {out / 'index.html'}")
     if args.labelled:

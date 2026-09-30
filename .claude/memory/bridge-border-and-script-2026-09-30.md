@@ -30,5 +30,9 @@ the corpus table in scope-history 2026-09-30.
   the instance of the endpoint colour the member borders: bridge 80 → 20 regions, 101 → 43
   trims on the merged tree, the other five gradient logos untouched by the redirect. Two
   companion rules fired nowhere and were removed. On the page for his flip.
+- **A second look at an arm needs its own ids (2026-09-30):** the page's store still
+  held his 09-28 `phantom_dissolve__*` verdicts, so the fold-fixed pairs are keyed
+  `phantom_dissolve__<fixture>__fold-fix` (the gallery's `--sitting`). Read the store
+  before every republish; never make room by moving his documents.
 - Count colour blocks before reading a border as a satin defect; classify
   thread by the artwork under it before reading a smoosh as a rail defect.

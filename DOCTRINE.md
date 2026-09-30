@@ -7427,3 +7427,18 @@ carries it. Two companion rules that sounded as reasonable (fold a
 page-blocked member into its nearest bordering colour; re-test a rejected
 member against its own sides) fired on no corpus fixture and were removed
 unshipped: a rule that moves nothing is not a fix, whatever its logic.
+
+## A verdict store keyed `<arm>__<fixture>` collides with itself the second time an arm is judged — tag the sitting (2026-09-30)
+
+The labelled page keys Kent's notes by arm and fixture so a note survives a
+re-render and a republish. That is exactly wrong for a second look at the
+same arm on a changed engine: on 2026-09-30 the fold-fixed `phantom_dissolve`
+pairs would have loaded his 09-28 verdicts (bridge *after*, four *both bad*)
+as if given on the new renders, and his new clicks would have overwritten
+the 09-28 record in the store. Found by re-reading the store before the
+republish, which is the habit: **read the store before a republish, and if
+any of the page's ids are already in it, build with `--sitting <tag>`**
+(`<arm>__<fixture>__<tag>`, the ruling `<arm>__<tag>`). Never make room by
+deleting or renaming his documents — they are his record, and the repo's
+copy is the export, not the original. *(2026-09-30,
+`docs/eye-pairs-2026-09-30/README.md`)*

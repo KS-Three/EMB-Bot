@@ -712,3 +712,44 @@ def test_cli_takes_the_tables_file(tmp_path, capsys):
                    "--tables", str(path)]) == 0
     html = (tmp_path / "g" / "index.html").read_text(encoding="utf-8")
     assert "10.35 -> 7.20" in html
+
+
+# ---- a second sitting on one arm ------------------------------------------
+# Kent's 09-28 verdicts on `phantom_dissolve__*` sat in the page's store under
+# the ids the fold-fixed renders of 09-30 would have taken: his old verdict
+# would have pre-filled the new pair and his new click overwritten the old
+# record. A sitting tag keys the second look apart.
+
+def test_a_sitting_tag_keys_this_look_apart_from_the_last(tmp_path):
+    tagged = g.build(make_labelled_set(tmp_path / "t"), tmp_path / "gt", labelled=True,
+                     sitting="fold-fix")
+    assert [p["pair"] for p in tagged["pairs"]] == ["per_stroke__fx_a__fold-fix",
+                                                    "ref_0827__fx_p__fold-fix"]
+    assert tagged["sitting"] == "fold-fix"
+    html = (tmp_path / "gt" / "index.html").read_text(encoding="utf-8")
+    assert '"sitting":"fold-fix"' in html
+    # The page tags what it writes: the note's body and the ruling's id.
+    assert "body.sitting = SITTING" in html and "rulingId(arm)" in html
+    # Untagged, the ids and the rulings are what they were.
+    plain = g.build(make_labelled_set(tmp_path / "p"), tmp_path / "gp", labelled=True)
+    assert [p["pair"] for p in plain["pairs"]] == ["per_stroke__fx_a", "ref_0827__fx_p"]
+    assert plain["sitting"] is None
+
+
+def test_a_sitting_tag_is_refused_on_the_reveal_and_when_it_would_not_survive_as_an_id(tmp_path):
+    with pytest.raises(SystemExit, match="REFUSED.*labelled"):
+        g.build(make_set(tmp_path), tmp_path / "g", sitting="fold-fix")
+    for n, bad in enumerate(("fold__fix", "fold fix", "fold_fix", "-fold", "")):
+        with pytest.raises(SystemExit, match="REFUSED.*--sitting"):
+            g.build(make_labelled_set(tmp_path / f"b{n}"), tmp_path / f"gb{n}", labelled=True,
+                    sitting=bad)
+
+
+def test_cli_takes_the_sitting_tag_on_the_labelled_page_only(tmp_path, capsys):
+    src = make_labelled_set(tmp_path)
+    assert g.main(["--src", str(src), "--out", str(tmp_path / "g"), "--labelled",
+                   "--sitting", "fold-fix"]) == 0
+    html = (tmp_path / "g" / "index.html").read_text(encoding="utf-8")
+    assert "per_stroke__fx_a__fold-fix" in html
+    with pytest.raises(SystemExit, match="REFUSED.*labelled"):
+        g.main(["--src", str(src), "--out", str(tmp_path / "g2"), "--sitting", "fold-fix"])

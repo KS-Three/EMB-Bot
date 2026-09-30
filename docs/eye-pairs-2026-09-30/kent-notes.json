@@ -68,5 +68,23 @@
    "note": "Given in chat on 2026-09-30 after the sitting, not on the page; the next work item picked with it: bridge's on/off satin border and smooshed lettering.",
    "updated": "2026-09-30T01:47:00Z"
   }
+ },
+ "second_sitting": {
+  "arm": "phantom_dissolve",
+  "change": "dissolve_phantom_blends=True",
+  "sitting": "fold-fix",
+  "page_built": "2026-09-30",
+  "artifact_version": 5,
+  "pairs": [
+   "bridge",
+   "gaulke",
+   "golden_tee",
+   "screenshot"
+  ],
+  "identical_not_shown": [
+   "drone",
+   "fremont"
+  ],
+  "note": "Pending Kent's sitting. Read back from the store under phantom_dissolve__<fixture>__fold-fix (notes) and phantom_dissolve__fold-fix (rulings). His 09-28 verdicts on the same arm BEFORE the fold fix (bridge after better; gaulke, golden_tee, screenshot, tires both bad) stay under phantom_dissolve__<fixture> and are exported in ../eye-pairs-2026-09-28/kent-notes.json."
  }
 }
