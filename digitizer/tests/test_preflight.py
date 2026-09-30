@@ -39,6 +39,7 @@ from digitizer_core.preflight import (
     DENSITY_EXTREME,
     DENSITY_STACKED,
     GROUND_SEWN,
+    LETTERING_ILLEGIBLE,
     LETTERING_TOO_SMALL,
     SATIN_GAPS_TIGHT,
     LINK_UNCOVERED,
@@ -60,6 +61,7 @@ from digitizer_core.preflight import (
     _coverage_map,
     _owning_region_id,
     _region_color_errors,
+    finding,
     run_preflight,
 )
 from tests.conftest import PLAN_CFG_KW, TESTDATA, cfg
@@ -687,6 +689,49 @@ def test_the_headline_is_the_shape_with_the_most_closed_gap_and_a_pinch_does_not
     assert SATIN_GAPS_TIGHT not in _codes(alone) and alone["metrics"]["satin_gaps_judged"] == 1
 
 
+def _res_prep(px: float):
+    class _P:  # the two fields `_resolution_note` reads off a Prep
+        input_px_per_mm = px
+    return _P()
+
+
+def test_lettering_the_artwork_cannot_carry_gets_the_resolution_fact_and_the_two_levers():
+    """bridge's teal words (2026-09-30): 3.25-4.5 mm letters in a 400 px JPEG,
+    3.5 px/mm at 80 mm, lost in tracing. The sentence names the source as the
+    lever, and the width at which the prep's grid could try -- only for a
+    source under the prep floor, where the prep upsamples."""
+    from digitizer_core.preflight import _resolution_note, LETTERING_MIN_SOURCE_PX
+    plan = _plan(_satin_column(200, width_mm=2.5, spacing_mm=0.4))     # 79.6 mm wide
+    x0, _, x1, _ = plan.stats.bbox_mm
+    small = finding(LETTERING_TOO_SMALL, "warn", "1 of 6 satin shapes sews below readable size.",
+                    count=1, satin_total=6, shapes=[{"shape_id": "S1", "column_mm": 0.8, "extent_mm": 3.4}])
+    illeg = finding(LETTERING_ILLEGIBLE, "warn", "the artwork reads ‘BAR’ where the thread reads ‘’.",
+                    rows=[{"cluster": "(whole design)", "height_mm": 4.0}])
+    other = finding(TRIM_HEAVY, "warn", "trims.")
+    fs = [small, illeg, other]
+    _resolution_note(fs, _res_prep(3.49), plan, cfg())
+    assert "3.5 pixels per millimetre" in small["message"] and "about 12 across" in small["message"]
+    assert small["extra"]["source_px_per_letter"] == 11.9 and small["extra"]["input_px_per_mm"] == 3.49
+    # W x 20 / (3.4 x 4.0): the width where the prep grid gives the smallest flagged lettering 20 px
+    assert small["extra"]["traced_at_mm"] == round((x1 - x0) * LETTERING_MIN_SOURCE_PX / (3.4 * cfg().min_px_per_mm))
+    assert f"above about {small['extra']['traced_at_mm']} mm" in small["message"]
+    assert "about 14 across" in illeg["message"] and illeg["extra"]["traced_at_mm"] is not None
+    assert "extra" not in other or "input_px_per_mm" not in other["extra"]
+    # A source above the prep floor is never upsampled: only the larger source is offered.
+    hi = finding(LETTERING_TOO_SMALL, "warn", "small.", count=1, satin_total=1,
+                 shapes=[{"shape_id": "S1", "column_mm": 0.8, "extent_mm": 2.0}])
+    _resolution_note([hi], _res_prep(8.4), plan, cfg())
+    assert "adds no pixels" in hi["message"] and hi["extra"]["traced_at_mm"] is None
+    # Enough source pixels per letter: no note at all.
+    ok = finding(LETTERING_TOO_SMALL, "warn", "small.", count=1, satin_total=1,
+                 shapes=[{"shape_id": "S1", "column_mm": 0.8, "extent_mm": 3.4}])
+    _resolution_note([ok], _res_prep(12.0), plan, cfg())
+    assert ok["message"] == "small." and "input_px_per_mm" not in ok["extra"]
+    # No artwork: nothing changes.
+    _resolution_note([ok], None, plan, cfg())
+    assert ok["message"] == "small."
+
+
 def test_bridges_script_sews_its_gaps_closed_at_80mm_and_the_finding_says_where_it_clears():
     """The fixture the finding was built for (Kent's pick 2026-09-30): the
     connected script "Bridge" on `photo/logo_bridge_bar.jpg` at 80 mm, one
@@ -699,11 +744,20 @@ def test_bridges_script_sews_its_gaps_closed_at_80mm_and_the_finding_says_where_
     path = PHOTO / "logo_bridge_bar.jpg"
     c = PipelineConfig(target_width_mm=80.0, garment_id="left_chest", max_colors=6)
     result, plan = digitize(path, c)
-    report = run_preflight(result, plan, c)
+    report = run_preflight(result, plan, c, image=path)
     flagged = [f for f in report["findings"] if f["code"] == SATIN_GAPS_TIGHT]
     assert len(flagged) == 1
     extra = flagged[0]["extra"]
     assert abs(extra["close_mm"] - 1.0) < 1e-6 and extra["fabric"].startswith("Pique")
+    # The teal words (2026-09-30): LETTERING_TOO_SMALL names three blobs of
+    # them, and the artwork -- 400 px, 3.5 px/mm at 80 mm -- cannot carry the
+    # lettering, so the finding says so and names the width at which the
+    # prep's grid could try (the words came back at 140 mm, measured).
+    small = [f for f in report["findings"] if f["code"] == LETTERING_TOO_SMALL]
+    assert len(small) == 1
+    assert 3.3 <= small[0]["extra"]["input_px_per_mm"] <= 3.7
+    assert "lost in tracing" in small[0]["message"] and "larger source image" in small[0]["message"]
+    assert 100 <= small[0]["extra"]["traced_at_mm"] <= 160
     script = [s for s in extra["shapes"] if abs(s["width_mm"] - 37.7) < 1.5 and abs(s["height_mm"] - 14.4) < 1.5]
     assert len(script) == 1, extra["shapes"]
     s = script[0]

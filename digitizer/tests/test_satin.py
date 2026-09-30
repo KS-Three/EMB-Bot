@@ -1000,8 +1000,10 @@ def test_no_split_below_threshold_is_byte_identical():
 def test_wide_crosses_split_and_stay_under_the_threshold():
     """Corpus law: 53% of 5 mm crosses split, ~100% from 7.5. On a 7 mm bar
     no stitch may exceed the threshold itself — full-width crosses split into
-    pieces (longest 1.23 x segment = 3.7 mm), while cap-zone crosses that
-    measure under 5.0 sew raw, exactly as the corpus majority does."""
+    pieces (longest 1.23 x segment = 3.7 mm). Cap-zone crosses under 5.0
+    used to sew raw; since the column comb (2026-09-30, the two tests
+    below) those at least one segment long split with the column, and the
+    ones under a segment still sew raw."""
     from digitizer_core.stage6_satin import strip_splits
 
     satin, _, _ = _satin_runs(WIDE_BAR)
@@ -1060,6 +1062,65 @@ def test_split_points_stagger_between_stations():
         i, ri = j, ri + 1
     assert len(fracs) >= 6, "expected many split crosses on a 7 mm bar"
     assert len(set(fracs)) >= 2, f"split holes trench a line: all at {fracs[0]}"
+
+
+def test_the_comb_is_a_property_of_the_column_not_of_each_leg():
+    """`_comb_thresholds` (2026-09-30, Kent's pick after the envelope's
+    sibling rule): a column whose legs straddle `SPLIT_SATIN_ABOVE_MM` used
+    to split leg by leg and the comb flickered down the column -- Becker's
+    MARINE at 100 mm, 443 of 1,412 letter legs within half a millimetre of
+    the threshold, 59 on/off changes on the letters, 122 on the design.
+    Once a leg over the threshold turns the comb on it stays on for every
+    leg at least one segment long, forwards and backwards, and a leg under
+    one segment ends it. Over-threshold legs keep their own k, so nothing
+    sews longer than the threshold; `inf` (split satin off) never turns it
+    on; a column with no over-threshold leg is untouched."""
+    from digitizer_core.stage6_satin import _comb_thresholds
+
+    above, seg = machine.SPLIT_SATIN_ABOVE_MM, machine.SPLIT_SEGMENT_MM
+    legs = [4.0, 5.2, 4.8, 5.1, 4.9, 2.5, 4.0, 4.6]
+    assert _comb_thresholds(legs, above) == [seg, seg, seg, seg, seg, above, above, above]
+    assert _comb_thresholds([4.0, 4.9, 4.5], above) == [above] * 3         # never over: untouched
+    assert _comb_thresholds([2.0, 7.0, 2.0], above) == [above, seg, above]    # a lone wide leg between narrow ones: its own k either way
+    assert _comb_thresholds(legs, math.inf) == [math.inf] * len(legs)     # split satin off
+
+
+def test_a_column_that_straddles_the_threshold_splits_as_one_comb(monkeypatch):
+    """A bar tapering from 4.6 to 5.4 mm: its legs cross the threshold in
+    the middle. Per leg (the rule neutered) the comb flickers; as a column
+    every leg at least one segment long between the bar's ends is split,
+    no leg sews longer than the threshold, and the rails are the same."""
+    from digitizer_core.stage6_satin import strip_splits
+
+    taper = Polygon([(0, 0), (30, 0), (30, 5.4), (0, 4.6)])
+
+    def legs_of(mode_off: bool):
+        if mode_off:
+            monkeypatch.setattr(stage6_satin, "_comb_thresholds", lambda legs, above: [above] * len(legs))
+        satin, _, _ = _satin_runs(taper)
+        main = max(satin, key=lambda r: len(r.points))
+        rails = strip_splits(main.points)
+        rs = {tuple(p) for p in rails}
+        flags, extra = [], 0
+        for p in main.points[1:]:
+            if tuple(p) in rs:
+                flags.append(extra > 0)
+                extra = 0
+            else:
+                extra += 1
+        lens = [math.dist(a, b) for a, b in zip(rails, rails[1:])]
+        steps = [math.dist(a, b) for a, b in zip(main.points, main.points[1:])]
+        return lens, flags[:len(lens)], max(steps), rails
+
+    lens, per_leg, worst, rails_a = legs_of(True)
+    monkeypatch.undo()
+    _lens, comb, worst_c, rails_b = legs_of(False)
+    assert any(v > machine.SPLIT_SATIN_ABOVE_MM for v in lens) and any(v < machine.SPLIT_SATIN_ABOVE_MM for v in lens)
+    assert sum(a != b for a, b in zip(per_leg, per_leg[1:])) >= 2      # the flicker the rule exists for
+    body = [f for v, f in zip(lens, comb) if v >= machine.SPLIT_SEGMENT_MM]
+    assert body and all(body), "a leg at least one segment long sewed raw inside the comb"
+    assert worst <= machine.SPLIT_SATIN_ABOVE_MM + 1e-6 and worst_c <= machine.SPLIT_SATIN_ABOVE_MM + 1e-6
+    assert rails_a == rails_b                                         # the comb moves no rail
 
 
 def test_split_satin_off_is_a_config_choice():

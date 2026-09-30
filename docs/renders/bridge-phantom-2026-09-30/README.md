@@ -86,3 +86,63 @@ it is scoped to script, which the classifier cannot name.
 pick): a satin shape whose own gaps are under 2 × pull + thread, with the
 width at which its tightest tenth clears — on this logo the ring, the script
 (32 % of 49 mm, clears near 158 mm) and "Bar" (scope-history 2026-09-30).
+
+## The teal words, measured (2026-09-30, Kent's pick) — and a correction
+
+*Why the hairline route did not take "BAR & RESTAURANT", and what should own
+it.* `teal-text.json`; `teal-text-source-vs-stitches.jpg` (the artwork the
+engine sees beside the stitches, same box); `teal-text-under-the-levers.jpg`.
+
+**Correction first.** The line above that reads the teal words as "1.6 mm cap
+height … below the lettering floor" was wrong. Measured on the artwork the
+engine sees (4 px/mm, the source's 400 px across 80 mm is 3.5): the letters
+are **3.25–4.5 mm tall** (11–16 source pixels), arched around the emblem's
+lower half, 96.5 mm² of teal ink with strokes reading 0.7–1.4 mm through the
+JPEG blur (the true stroke is thinner). That is sewable lettering at the
+law's floor — if it reached the stitch tiers as letters.
+
+**It never does.** Stage 2's quantization at six cones splits the blurred
+teal between the teal, the yellow and the halo grey, and what survives as
+teal is **six blobs, 46.5 of the 96.5 mm²** — 13.5, 13.4, 6.2, 5.2, 4.6,
+3.7 mm², with "strokes" of 0.9–2.4 mm because each blob is a fused letter
+group. The satin tier sews the blobs as blobs (2.4–3.0 mm crosses, one as
+fill). The hairline bean (`stage6_satin._hairline_stretches`) fires only for
+stations under 0.5 mm inside a satin stroke, and there is no such station:
+the loss is at segmentation, two stages before any stitch route. No
+`text_candidate`, no cluster, so the legibility OCR judges it only as the
+whole-design row (tesseract is not installed on this container, so that row
+was not read here). `LETTERING_TOO_SMALL` names three of the six blobs
+(extent under 4 mm), which is true of the blobs and not of the words.
+
+**The levers that exist, on the teal thread:**
+
+| variant | teal regions | teal mm² | what the box shows |
+|---|---|---|---|
+| shipped | 6 | 46.5 | five blobs where the words were |
+| `dissolve_phantom_blends=True` | 5 | 33.0 | one blob fewer: a teal fragment folds with the halo |
+| `max_colors=8` | 6 | 46.5 | identical |
+| dissolve + 8 colours | 2 | 19.6 | worse |
+| **140 mm** | 12 | 382 | **the words come back as blobby but readable letters** |
+
+Size works where the palette does not: at 140 mm the prep's resampling gives
+the quantizer letters 28 px tall instead of 13–18, and the letter groups
+separate. So the size chip (the `LETTERING_TOO_SMALL` one on the blobs, or
+`SATIN_GAPS_TIGHT`'s jump to 158 mm for the script) IS the customer's lever
+on this logo — the honest statement is that a 400 px JPEG carries this
+lettering only above about 140 mm of design width, and no stitch rule
+changes that.
+
+**The corpus, for scale** — satin-sewn shapes whose ART stroke is under the
+0.5 mm cross floor (the population the hairline route exists for): bridge 12
+shapes / 72 mm² (the grey halo slivers, not the words), screenshot 15 / 66,
+golden_tee 6 / 77, drone 5 / 20, fremont 3 / 11; becker, tires, enthusiast,
+gaulke, whitebg, MARINE none. Pixels per millimetre at each logo's width:
+bridge 3.5 and becker 1.5 (whose lettering is 13 mm tall, 19 px, and sews),
+whitebg 8.4, drone 9.6, the rest 12–27.
+
+**Shipped the same day (Kent's pick): the lettering findings carry the
+resolution fact** — `LETTERING_TOO_SMALL` on this logo now says the artwork
+carries 3.5 pixels per millimetre, about 12 across the smallest of the
+lettering, lost in tracing; a larger source carries it, and a design above
+about 118 mm gives the tracer enough pixels to try (`traced_at_mm`, which
+the Studio's size chip jumps to). Scope-history 2026-09-30.

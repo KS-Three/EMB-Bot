@@ -267,6 +267,17 @@ def test_the_flip_costs_trims_on_the_lettering_fixture_and_says_so():
     build lowers them and this test stays green; a dearer one fails it. The
     direction is recorded here, not asserted -- the day the rails sew the
     word in the typed word's three trims, nothing here should be in the way.
+
+    **2026-09-30, the envelope's sibling rule (`_in_sibling_ribbon`) made
+    every arm cheaper and moved the ratios both ways.** The rule refuses a
+    reach that ends in another stroke's corridor, and the grown polygon's
+    rays escape at more stations than the rails' do (275 against 238
+    reached under the shipped envelope): with tip caps 2,010 -> 1,968
+    against 2,461 -> 2,372, the ratio 1.224 -> 1.205; without them 1,820 ->
+    1,783 against 2,119 -> 2,103, 1.164 -> 1.179. Rail comp's own price did
+    not change -- its baseline did. The first ceiling stands; the second
+    reads 1.19 because 1.179 sits a thousandth under the old line and that
+    margin is the rule's, not this test's.
     """
     from digitizer_core.pipeline import build_generation, finish_generation, plan_stitches
     from tests.test_stroke_order_euler import FIXTURE
@@ -288,7 +299,7 @@ def test_the_flip_costs_trims_on_the_lettering_fixture_and_says_so():
     on0 = sewn(satin_tip_caps=False)
     assert off0.stats.trims <= 9, off0.stats.trims
     assert on0.stats.trims <= 21, on0.stats.trims
-    assert on0.stats.stitch_count <= 1.18 * off0.stats.stitch_count, (
+    assert on0.stats.stitch_count <= 1.19 * off0.stats.stitch_count, (
         off0.stats.stitch_count, on0.stats.stitch_count)
 
 
@@ -555,6 +566,26 @@ def test_the_envelope_reaches_the_far_edge_where_the_gap_is_long_and_nowhere_els
     was measured, and read the overlap from the table rather than from a
     loosened threshold. What the envelope is worth ON TOP of tip caps is a
     separate question and belongs to its flip decision, not to this test.
+
+    **Re-measured 2026-09-30 under the sibling rule** (`_in_sibling_ribbon`,
+    the test after this one: a reach that ends inside another stroke's
+    corridor is a junction escape and keeps the symmetric width), tip caps
+    OFF, False / envelope / True: bare 10.222 / 9.550 / 7.235%, satin std
+    0.0914 / 0.0994 / 0.1281, stitches 5,691 / 5,697 / 6,079. The reach the
+    eye wanted is kept (0.67 of the 0.74 points) and the escapes are gone
+    -- and with them the envelope's thread: it sews 6 stitches more than
+    the symmetric rails now, not 59, because the escapes were the longest
+    crosses on the design and carried the split points. The stitch
+    assertion below reads that: under True's count, and within 2% of the
+    symmetric rails' either way.
+
+    **Re-read the same day after the split comb (#578) and the teeth rule
+    (`_drop_short_reaches`)**: bare 10.222 / 9.709 / 7.185%, satin std
+    0.1016 / 0.1012 / 0.1325, stitches 6,014 / 6,006 / 6,553. The comb adds
+    its penetrations to every arm (the symmetric arm 5,691 -> 6,014) and
+    the wobble instrument reads them; the teeth rule gives 0.16 points of
+    bare back at 80 mm, where a single-station reach was covering it.
+    Every assertion below holds on both readings.
     """
     from shapely.geometry import box
     from tools import edge_wobble as EW
@@ -576,7 +607,7 @@ def test_the_envelope_reaches_the_far_edge_where_the_gap_is_long_and_nowhere_els
     assert env_bare < off_bare - 0.005, (off_bare, env_bare)          # it reaches: 10.2 -> 9.5%
     assert env_std <= off_std * 1.15, (off_std, env_std)             # at a tenth more roughness (True: +40%)
     assert on_std > env_std, (on_std, env_std)
-    assert off_st < env_st < on_st, (off_st, env_st, on_st)           # and a fraction of True's thread
+    assert env_st < on_st and abs(env_st - off_st) <= 0.02 * off_st, (off_st, env_st, on_st)   # and none of True's thread
 
     band = box(0, 0, 24, 2.4).union(box(11, 2.4, 13, 3.6))            # a 2 mm bulge, 1.2 mm deep
     tops = {}
@@ -588,3 +619,90 @@ def test_the_envelope_reaches_the_far_edge_where_the_gap_is_long_and_nowhere_els
         tops[mode] = max(q[1] for q in pts)
     assert tops[False] < 3.3 < 3.6 <= tops[True], tops                # the symmetric rail stops short; True reaches
     assert abs(tops["envelope"] - tops[False]) < 1e-6, tops           # the envelope holds: the bulge is shorter than its window
+
+
+def test_the_envelope_keeps_a_junction_escape_at_the_symmetric_width(monkeypatch):
+    """Kent's note on the envelope's sitting (2026-09-30, Becker at 100 mm):
+    "the lettering needs to be smooth and have flow to it, these stitches
+    look like they are just trying to fill a void." Measured: at a junction
+    the far ray escapes along the meeting arm -- the E's stem read its right
+    side at 7.4-9.6 mm where its own half-width is 3.0-3.3 -- for as long
+    as the arm is thick, about 13 stations at 100 mm, longer than the median
+    window and the envelope's put together, and the corridor cap (the merged
+    footprint at the node) let 2-3 mm of it through. Over nine logos 313 of
+    459 reached stations landed on ground a sibling stroke already sews; on Becker's
+    letters 78% of the envelope's new thread was overlay, and no cap on the
+    reach -- absolute, a ratio to the width, the boundary distance at its
+    end -- told the two apart. `docs/renders/envelope-escapes-2026-09-30/`
+    has the census and the crops.
+
+    The rule: a reach whose END lies inside another stroke's corridor keeps
+    the symmetric width (`_in_sibling_ribbon`). A stem with an arm off its
+    middle: the stem's crosses through the junction stay the stem's width,
+    and with the rule neutered they run into the arm -- so the fixture
+    exercises the rule and the rule is what holds them. The bulge above is
+    the genuine reach this must not touch, and the test before this one
+    still shows the envelope reaching on Becker.
+    """
+    from shapely.geometry import box
+
+    # The arm ends within the ray's reach (four half-widths): a far ray
+    # that finds no boundary falls back to the nominal half-width, which is
+    # no escape -- Becker's arms are 9 mm long against a 9.6 mm reach.
+    stem = box(12.5, 0.0, 17.5, 30.0)
+    arm = box(17.5, 12.5, 23.5, 17.5)
+    tee = stem.union(arm)
+
+    def half_lengths(mode):
+        # `max_width_mm=inf` is the lettering exemption, where the escapes
+        # were found: under the 5 mm ceiling the ceiling itself holds the
+        # reach at 2.2 mm and this fixture shows nothing either way.
+        runs, _ = s6.satin_shape(tee, "tee", underlay_style="center", trim_at_mm=3.0,
+                                 rail_comp_mm=PULL, rail_comp_floor_mm=1.5, corner_twigs=True,
+                                 junction_stack=True, stroke_order="euler",
+                                 rails_follow_edge=mode, max_width_mm=float("inf"))
+        out = []
+        for r in runs:
+            if r.kind != s6.stitches.SATIN:
+                continue
+            pts = s6.strip_splits(list(r.points))
+            for a, b in zip(pts[0::2], pts[1::2]):
+                if abs(b[0] - a[0]) > abs(b[1] - a[1]):       # the stem's crosses run across it
+                    out.append(max(abs(a[0] - 15.0), abs(b[0] - 15.0)))
+        return out
+
+    # Read against the symmetric rails, not the stem's nominal width: at the
+    # node the skeleton pulls the spine 0.7 mm toward the arm and the width
+    # with it, so the symmetric column already bulges 1.2 mm into the arm
+    # there (half-length 4.0 against 2.8). That bulge is the symmetric
+    # model's own and not this rule's business; the rule is about what the
+    # envelope adds on top of it -- nothing, where every rule-less station
+    # ran 1.2-2.5 mm further (6.5).
+    sym = half_lengths(False)
+    held = half_lengths("envelope")
+    assert sym and held
+    assert max(held) <= max(sym) + 0.05, (max(sym), max(held))     # the envelope adds nothing through the junction
+    monkeypatch.setattr(s6, "_in_sibling_ribbon", lambda *a, **k: False)
+    loose = half_lengths("envelope")
+    assert max(loose) > max(sym) + 1.0, (max(sym), max(loose))     # without the rule: into the arm
+
+
+def test_a_reach_shorter_than_the_window_is_not_a_reach():
+    """`_drop_short_reaches` (2026-09-30, Kent's pick after #578): the
+    running minimum cannot follow a feature shorter than its window, so a
+    stretch of fewer than `_ENVELOPE_WINDOW` stations that clears the gap is
+    a bump in the profile, not an edge -- on the cloth a tooth, the rail
+    stepping out 0.37 mm and back within a millimetre. Becker at 100 mm had
+    eight of them among 23 stretches (four on the letters M, A, I and N);
+    tires, bridge and screenshot had nothing else. Dropped; a stretch at
+    least the window long is untouched, so is a column with no reach."""
+    w = [2.0] * 12
+    off = list(w)
+    off[1] += 0.5                       # one station
+    off[4] += 0.4; off[5] += 0.4        # two
+    off[8] += 0.6; off[9] += 0.6; off[10] += 0.6   # three: the window
+    assert s6._drop_short_reaches(off, w) == 2
+    assert off == [2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.6, 2.6, 2.6, 2.0]
+    plain = list(w)
+    assert s6._drop_short_reaches(plain, w) == 0 and plain == w
+    assert s6._ENVELOPE_WINDOW == 3     # the window IS the minimum; a new number here is a new decision

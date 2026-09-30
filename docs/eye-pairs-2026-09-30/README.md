@@ -132,6 +132,13 @@ and `rail_envelope` left the arms table (`rails_follow_edge` stays, `True`
 against it). The next work item he picked with it: bridge's satin border
 that goes on and off, and its smooshed lettering.
 
+**Follow-up on his becker note (2026-09-30, later that day):** the
+"void-filling" was measured and is real — 78% of the envelope's new thread
+on the letters lay on ground another stroke already sewed, because at a
+junction the far ray runs along the meeting arm. The sibling rule refuses
+those reaches; the strips and the census are in
+`../renders/envelope-escapes-2026-09-30/`.
+
 ## Second sitting on the same URL — the dissolve after the fold fix (2026-09-30, Version 5)
 
 Kent's pick after the bridge measurement: *fix the fold first, then flip*.

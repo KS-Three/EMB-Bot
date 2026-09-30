@@ -7728,3 +7728,132 @@ no rule keeps open without a smaller pull — a fabric constant, gate 1. The
 daylight a push hold could keep is the 1.0–1.5 mm quarter, and the general
 hold measured 2 mm² recovered for bare up on every fixture. *(measured
 2026-09-30, `docs/renders/bridge-phantom-2026-09-30/script-as-lettering.json`)*
+
+## "Below the floor" is a diagnosis to earn, not a reading to trust — count the source pixels per letter first (2026-09-30)
+
+Bridge's teal "BAR & RESTAURANT" was recorded as 1.6 mm lettering below the
+sewable floor and handed to the stitch tiers as a hairline question. Measured,
+the letters are 3.25–4.5 mm tall — sewable — and the words were lost two
+stages earlier: a 400 px JPEG at 80 mm is 3.5 px/mm, the strokes are under
+two blurred pixels, and six-cone quantization keeps six blobs of them (46.5 of
+96.5 mm²). The hairline route never saw a letter. **Before blaming a stitch
+tier for small text, crop the artwork at the engine's own resolution and count
+the pixels per cap height; under about 20 the loss is segmentation, and the
+levers are the source or the size, never a stroke rule.** Size recovers this
+one at 140 mm; the dissolve and a wider palette make it worse. *(measured
+2026-09-30, `docs/renders/bridge-phantom-2026-09-30/teal-text.json`)*
+
+## A rail that reaches for its far edge must first know whose edge it found (2026-09-30)
+
+Kent's note on the envelope's sitting — Becker *after better*, *"these
+stitches look like they are just trying to fill a void"* — was literally
+true. At a junction the far ray of a satin station does not hit the
+stroke's own edge: it runs along the meeting arm and hits the arm's end, for
+as long as the arm is thick. On Becker's E at 100 mm that is about 13
+stations reading 7.4–9.6 mm on a stem whose own half-width is 3.0–3.3,
+longer than the width median (5) and the envelope's running-min window (7)
+put together, and the corridor cap at the junction reads the merged
+footprint, so 2–3 mm of it went through. **Of
+the envelope's new thread on Becker's letters, 78% lay on ground another
+stroke of the same letter already sewed.** Nine logos: 313 of 459 reached
+stations were such escapes.
+
+Three transferable rules.
+
+1. **No cap on the reach tells an escape from a reach.** Screened on the 459
+   stations: an absolute cap (≤ 1 mm keeps 89% of genuine reaches and lets
+   76% of escapes through), a ratio to the width (60% / 50%), the boundary
+   distance at the end (81% / 80%). Escapes are not longer, not further from
+   an edge, not wider than genuine reaches. **Where the reach ENDS is the
+   discriminant** — inside a sibling stroke's corridor, 89% / 5% on the
+   instrument's screen; the shipped rule, reading the sibling's median
+   body width plus the pull, realized 73% of genuine reaches kept and 7% of
+   escapes let through — and that needs the other strokes' spines, which `_rail_points`
+   never had. The fix was plumbing before it was arithmetic.
+
+2. **A sibling's corridor is its body's width, not the field at the node.**
+   The first cut read the width field at the sibling's nearest point; a
+   sibling's spine starts at the junction node, where the field reads the
+   merged footprint (3.2 mm against 2.7 in the body of a 5 mm bar), and
+   that radius refused a genuine reach on the far side of the very stem the
+   sibling meets. The median along the spine's interior, plus the pull the
+   rails are pushed by, is the ribbon.
+
+3. **The far ray reaches four half-widths, and a ray that finds nothing is
+   the nominal half-width, not an escape.** A 12.5 mm arm on a 5 mm stem
+   showed no escape at all — the fixture had to be shortened to 6 mm before
+   it reproduced Becker, whose E reads its arms' ends 8.6 mm from the stem's
+   spine against a 9.6 mm reach. Any instrument or test built on
+   `_rail_points`' side readings inherits that horizon.
+
+And one about what this rule is not: the remaining reaches are short (8 of
+Becker's 23 stretches are 1–2 stations) and still triple the local rail
+jitter, and the letters' split satin flickers under every rail mode (71% of
+crosses split, 18 of 22 runs mixed). Both read as "no flow"; neither is an
+escape.
+
+*(measured 2026-09-30 — `docs/renders/envelope-escapes-2026-09-30/`,
+`census.json`; `tools/envelope_escapes.py`)*
+
+## A split comb is a property of the column, and the page render cannot see one (2026-09-30)
+
+Kent's pick after the envelope's sibling rule: Becker's lettering "needs to
+be smooth and have flow to it". Its letters at 100 mm sew 5–7 mm columns
+that straddle `SPLIT_SATIN_ABOVE_MM`, and a per-leg threshold on a column
+that straddles it flickers BY CONSTRUCTION — a 5.1 mm leg split, the 4.9 mm
+leg after it raw, 122 on/off changes down Becker's runs, 59 on the letters.
+No tuning of the threshold fixes that; only deciding per column does.
+
+1. **Decide the comb once per column.** Hysteresis with the constants
+   already there: a leg over the threshold turns the comb on, it stays on
+   while legs are at least one segment (`SPLIT_SEGMENT_MM`) long, in both
+   directions, and a leg under one segment ends it. Over-threshold legs
+   keep their own k so the "no leg longer than the threshold" invariant
+   holds; Becker 122 → 37 changes for +4.5% stitches. A majority filter
+   (85) and a per-run median (103) were measured and are worse: the first
+   leaves every stretch boundary, the second cannot help a run whose
+   median sits under the threshold with a wide half.
+
+2. **The pro who sewed Becker's own files combs nothing.** 24,108 satin
+   legs across the five reference DSTs: split 1–2% up to 5.5 mm, 8% at
+   5.5–6, 17% at 6–7, 32% at 7–9. That is one of the two house styles
+   `machine.py` already names beside the corpus-wide 5.0 vote (53% at 5.0,
+   92% at 7.0). The engine sews the corpus style without flicker now; the
+   Becker style is a threshold, and a 6–7 mm stitch floating or not on
+   pique is cloth's question (gate 1), not the corpus's.
+
+3. **The thread renderer barely shows a mid-column penetration.** A
+   filament continues through it with a break in the shading, so the
+   eye-pairs page CANNOT judge a comb: the three arms render alike. The
+   strips in `docs/renders/split-comb-2026-09-30/` carry a needle
+   penetration map under each render for that reason. When the claim is
+   about holes, draw the holes.
+
+*(measured 2026-09-30 — `docs/renders/split-comb-2026-09-30/census.json`;
+`tests/test_satin.py`, the two comb tests)*
+
+## A reach shorter than the window is not a reach — and the roughness was not in the teeth (2026-09-30)
+
+The envelope's remaining reaches on Becker after the sibling rule: 23
+stretches, 8 of them one station long, the rail stepping out 0.34–0.83 mm
+and straight back. A running minimum over ±3 stations cannot follow a
+feature shorter than its window, so a stretch shorter than the window that
+clears the gap is a bump in the profile; `_drop_short_reaches` reverts it,
+with the window as the minimum and no new number.
+
+Two things worth keeping.
+
+1. **Measure the lever against the metric before shipping the lever.**
+   The teeth were the visible defect and the reached-station jitter was
+   the metric (28% against 9% symmetric); dropping every tooth moved it
+   two points. The other twenty-four are the long stretches' plateaus and
+   the steps a reach opens with, up to 1.8 mm in one station on Becker.
+
+2. **The step a long reach opens with is the artwork's.** A serif's edge
+   IS a step, and a reach that follows it is the reach doing its job.
+   Ramping or slope-limiting it was simulated: 24–49% of everything the
+   envelope reaches for, to soften a feature the art drew. That is a
+   coverage-against-flow trade for the eye, not a defect for the engine,
+   and it is not built.
+
+*(measured 2026-09-30 — `docs/renders/envelope-teeth-2026-09-30/census.json`)*

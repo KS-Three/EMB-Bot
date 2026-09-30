@@ -671,6 +671,62 @@ describe("findings that have a knob behind them", () => {
     expect(queryByTestId("digitize-fixes")).toBeNull();
   });
 
+  test("tight gaps offer the width the finding names, not a 25% step", () => {
+    // SATIN_GAPS_TIGHT (2026-09-30) names the width at which its headline
+    // shape's gaps clear the pull + the thread; the button jumps there.
+    const { getByTestId } = withFindings([
+      { code: "SATIN_GAPS_TIGHT", severity: "warn", message: "sews its gaps closed at 80 mm",
+        extra: { shapes: [{ shape_id: "S1", clear_width_mm: 158 }, { shape_id: "S2", clear_width_mm: 113 }] } }]);
+    const box = getByTestId("digitize-fixes");
+    expect(box.textContent).toMatch(/Make it bigger/);
+    expect(box.textContent).toMatch(/80 → 158 mm wide/);
+    expect(box.querySelector(".dgp-fix").title).toMatch(/gaps closed/);
+  });
+
+  test("the named width and the 25% step share one button, and the larger target wins either way", () => {
+    for (const findings of [
+      [{ code: "LETTERING_TOO_SMALL", severity: "warn", message: "a" },
+       { code: "SATIN_GAPS_TIGHT", severity: "warn", message: "b", extra: { shapes: [{ shape_id: "S1", clear_width_mm: 158 }] } }],
+      [{ code: "SATIN_GAPS_TIGHT", severity: "warn", message: "b", extra: { shapes: [{ shape_id: "S1", clear_width_mm: 158 }] } },
+       { code: "LETTERING_TOO_SMALL", severity: "warn", message: "a" }],
+    ]) {
+      const { container, getByTestId, unmount } = withFindings(findings);
+      expect(container.querySelectorAll(".dgp-fix").length).toBe(1);
+      expect(getByTestId("digitize-fixes").textContent).toMatch(/80 → 158 mm wide/);
+      unmount();
+    }
+  });
+
+  test("a named width past the ceiling is capped at 400, and none is offered when already there", () => {
+    const tight = { code: "SATIN_GAPS_TIGHT", severity: "warn", message: "x",
+                    extra: { shapes: [{ shape_id: "S1", clear_width_mm: 620 }] } };
+    const capped = withFindings([tight]);
+    expect(capped.getByTestId("digitize-fixes").textContent).toMatch(/80 → 400 mm wide/);
+    capped.unmount();
+    const atLimit = withFindings([tight], { target_width_mm: 400 });
+    expect(atLimit.queryByTestId("digitize-fixes")).toBeNull();
+  });
+
+  test("lettering the artwork cannot carry jumps to the width the prep's grid could trace, when one is named", () => {
+    // 2026-09-30: LETTERING_TOO_SMALL / LETTERING_ILLEGIBLE carry `traced_at_mm`
+    // when a low-resolution source lost the lettering (bridge: 118 mm); the
+    // same button jumps there. Without it (a source above the prep floor,
+    // where a bigger design adds no pixels) the 25% step stays.
+    const named = withFindings([{ code: "LETTERING_TOO_SMALL", severity: "warn", message: "lost in tracing",
+                                  extra: { traced_at_mm: 118, shapes: [{ shape_id: "S1", column_mm: 0.8, extent_mm: 3.4 }] } }]);
+    expect(named.getByTestId("digitize-fixes").textContent).toMatch(/80 → 118 mm wide/);
+    named.unmount();
+    const step = withFindings([{ code: "LETTERING_ILLEGIBLE", severity: "warn", message: "x",
+                                 extra: { traced_at_mm: null, rows: [] } }]);
+    expect(step.getByTestId("digitize-fixes").textContent).toMatch(/80 → 100 mm wide/);
+  });
+
+  test("a tight-gaps finding with no named width falls back to the 25% step", () => {
+    const { getByTestId } = withFindings(
+      [{ code: "SATIN_GAPS_TIGHT", severity: "warn", message: "x", extra: { shapes: [] } }]);
+    expect(getByTestId("digitize-fixes").textContent).toMatch(/80 → 100 mm wide/);
+  });
+
   test("a fix already at its limit is not offered", () => {
     // "Make it bigger" on a design already at the 400 mm ceiling would do
     // nothing and cost a full re-digitize.

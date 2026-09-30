@@ -16696,3 +16696,197 @@ bridge's script pinned on the real art; `test_preflight` +
 
 *(built and measured 2026-09-30 — `digitizer_core/preflight.py`
 `_tight_gap_findings`; a scratch sweep over `digitize()` + `run_preflight`)*
+
+## 2026-09-30 — The Studio's size chip jumps to the width `SATIN_GAPS_TIGHT` names (Kent's pick)
+
+Kent's call on the chips: the tight-gaps finding gets a "Make it bigger"
+that jumps straight to the width it names — its headline shape's
+`clear_width_mm`, capped at the 400 mm ceiling — rather than the 25% step
+the other two lettering findings take. `DigitizePanel.svelte`'s
+`offeredFixes` now keeps one button per parameter and lets the larger
+target win, so the jump and a 25% step on the same run never show twice
+(either order); a payload with no named width falls back to the step; the
+at-limit rule stands (nothing at 400). The finding's own message rides the
+tooltip. Spec tests for each. Not measured on a customer yet: what the jump
+promises is what the finding measures (that shape clears), and the design
+may segment new small shapes at the larger size.
+
+*(built 2026-09-30 — `app/src/ui/DigitizePanel.svelte`, `DigitizePanel.spec.js`;
+`docs/scope/3-studio-app-wizard.md`)*
+
+## 2026-09-30 — Bridge's teal words are a segmentation loss at 3.5 px/mm, not a hairline: size recovers them, the palette does not (Kent's pick)
+
+Kent's pick after the size chip: *why the hairline route did not take "BAR &
+RESTAURANT", and what should own it.* Measured on `logo_bridge_bar.jpg` at
+80 mm (`docs/renders/bridge-phantom-2026-09-30/teal-text.json`, two renders):
+
+- **The earlier record was wrong about the size.** The words are 3.25–4.5 mm
+  tall arched letters (11–16 source pixels: the source is 400 px across
+  80 mm, 3.5 px/mm), 96.5 mm² of teal ink, not 1.6 mm lettering below the
+  floor.
+- **They never reach a stitch tier as letters.** Stage 2's six-cone
+  quantization splits the JPEG-blurred teal between teal, yellow and the
+  halo grey; six teal blobs survive (46.5 mm²; 13.5, 13.4, 6.2, 5.2, 4.6,
+  3.7), each a fused letter group with 0.9–2.4 mm "strokes", sewn as satin
+  blobs (2.4–3.0 mm crosses) or fill. The hairline bean fires only for
+  stations under 0.5 mm inside a satin stroke; there are none. No cluster,
+  so the OCR check judges only the whole-design row (not readable here:
+  tesseract is not on this container). `LETTERING_TOO_SMALL` names three
+  blobs — true of the blobs, not the words.
+- **The levers:** the dissolve loses a blob (5 regions, 33 mm²), eight
+  colours change nothing, both together leave two blobs; **140 mm brings the
+  words back** (12 regions, 382 mm², blobby but readable) because the prep's
+  resampling hands the quantizer 28-px letters. So the size chip is the
+  lever on this logo, and the honest statement is that a 400 px JPEG
+  carries this lettering only above about 140 mm — a resolution fact no
+  stitch rule moves.
+- Corpus: satin shapes whose art stroke is under the 0.5 mm floor — bridge
+  12 (the halo slivers), screenshot 15, golden_tee 6, drone 5, fremont 3,
+  the other six logos none. Pixels per mm at each logo's width: bridge 3.5,
+  becker 1.5 (13 mm letters, fine), whitebg 8.4, drone 9.6, the rest 12–27.
+
+Nothing shipped; what should own it is Kent's (a resolution line on the
+lettering findings, or the size chip as is).
+
+*(measured 2026-09-30 — scratch scripts over `digitize()`,
+`stitchviz.render_design`, the prep frame; `teal-text.json`)*
+
+## 2026-09-30 — The lettering findings say when the artwork cannot carry the lettering, and the size chip reads the width they name (Kent's pick)
+
+Kent's call on bridge's teal words: a resolution line on the lettering
+findings. `preflight._resolution_note` runs after `LETTERING_TOO_SMALL` and
+`LETTERING_ILLEGIBLE` whenever the artwork was given: the smallest flagged
+lettering (the shapes' extent, the rows' height) times the input's pixels
+per millimetre is its height in SOURCE pixels, and under
+`LETTERING_MIN_SOURCE_PX` (20 — bridge's words were lost at 11–16 and came
+back at 28 in the prep's grid) the finding gains the fact and the two
+levers: a larger source image, always; and, only when the source sits under
+`cfg.min_px_per_mm` so the prep upsamples it, the design width at which the
+prep's grid would give that lettering 20 pixels (W × 20 / (letter mm × 4);
+bridge: 118 mm, measured back at 140). A source above the floor is never
+upsampled, so there the sentence says a bigger design adds no pixels. Three
+extras ride the finding (`input_px_per_mm`, `source_px_per_letter`,
+`traced_at_mm`), and the Studio's "Make it bigger" on those two findings
+now jumps to `traced_at_mm` when it is named, the 25% step otherwise — the
+same one-button-per-parameter rule as the tight-gaps chip. Calibrated on one
+logo; the docstring says to re-measure on two before moving the constant.
+Tests: the note's arithmetic on a synthetic plan, both levers and the
+silent cases; bridge's real run asserts the note (3.5 px/mm, 100–160 mm);
+the Studio spec covers the jump and the fallback.
+
+*(built 2026-09-30 — `digitizer_core/preflight.py`, `tests/test_preflight.py`,
+`app/src/ui/DigitizePanel.svelte`, `DigitizePanel.spec.js`)*
+
+## 2026-09-30 — The envelope's junction escapes: a far rail that reached into the meeting arm, refused by the sibling rule (Kent's pick)
+
+Kent's note on the envelope's sitting — Becker *after better*, but *"the
+lettering needs to be smooth and have flow to it, these stitches look like
+they are just trying to fill a void"* — measured with a trace hook on
+`_rail_points` and answered. On Becker at 100 mm the envelope extended 183
+stations, 159 on the six satin letters; the E's stem read its far side at
+7.4–9.6 mm where its own half-width is 3.0–3.3, because the ray runs along
+an arm to the arm's end, for as long as the arm is thick (about 13
+stations, longer than the median and running-min windows together), and the corridor cap at the
+junction reads the merged footprint (3.66 → 6.05 mm). The stem's crosses
+ran 2–2.8 mm into the arms: of the envelope's 63 mm² of new ground on the
+letters, **78% was already sewn** by another stroke; the double-covered
+share rose 9.3 → 11.0%; rail jitter over 0.15 mm at the reached stations
+31.5% against 9.1% symmetric, and the letters' unreached crosses roughened
+8.3 → 20.0% through the refinement's notch filling. Nine logos: 459 reached
+stations, **313 escapes (68%)**. No cap on the reach separates them (≤ 1 mm
+keeps 89% of genuine reaches and 76% of escapes; a width ratio, the
+boundary distance at the end, no better); where the reach ENDS does:
+inside a sibling stroke's corridor, 89% / 5%.
+
+Shipped: `_in_sibling_ribbon` — an envelope reach whose end lies within a
+sibling stroke's own half-width (the median of the width field along its
+spine; the field's reading at the node is the merged footprint and refused
+a genuine reach on the stem's far side) keeps the symmetric width. Siblings
+are the shape's other strokes and, in a joined stroke, the other members.
+After it: 129 reached, 23 escapes, 106 genuine (93% of escapes gone, 73%
+of genuine kept); Becker 100 mm 9,563 → 8,932 stitches against 8,827
+symmetric, new ground 15.2 mm² at 87% bare before, double coverage 9.35%;
+Becker 80 mm bare 10.222 / 9.550 / 7.235% False / envelope / True at 5,691
+/ 5,697 / 6,079 stitches (the shipped envelope: 9.484 at 5,750). golden_tee's
+keyline reach, which the eye preferred, is another shape's ground and is
+untouched. MARINE's trims test: every arm cheaper (2,010 → 1,968 OFF,
+2,461 → 2,372 ON, 1.224 → 1.205; tip caps off 1.164 → 1.179), the second
+ceiling 1.18 → 1.19 for a reading a thousandth under the line. Fixture test: a stem with a
+6 mm arm, `max_width_mm=inf`; the rule neutered runs the stem's crosses to
+6.5 mm half-length against 4.0. Left, named: the remaining reaches are
+short (8 of 23 stretches 1–2 stations) and still triple the local jitter
+share — a minimum stretch length or a ramp is the next lever, coverage
+against flow; and split satin flickers on the letters under every rail
+mode (71% of crosses split, 18 of 22 runs mixed, 75 on/off transitions).
+Records: `docs/renders/envelope-escapes-2026-09-30/` (README, census.json,
+five strips for Kent's eye), DOCTRINE, `tools/envelope_escapes.py`.
+
+## 2026-09-30 — The split comb is a property of the column: hysteresis on `SPLIT_SATIN_ABOVE_MM` ends the flicker on Becker's letters (Kent's pick)
+
+Kent's pick after the envelope's sibling rule. At 100 mm the six satin
+letters of Becker's MARINE sew 5–7 mm columns straddling the 5.0 mm
+threshold, and the engine split leg by leg — a 5.1 mm leg with a
+mid-column penetration, the 4.9 mm leg after it raw: 4,222 satin legs,
+1,078 split, **122 on/off changes** of the split state along the runs
+(the letters 1,412 legs, 73% split, **59 changes**, 443 legs within half a
+millimetre of the threshold). Measured per leg on the capture pickles;
+tires 21 changes, bridge 20, screenshot 8, the rest none. Three add-only
+rules simulated (no leg may sew longer than the threshold): a majority of
+five neighbours 122 → 85, a per-run median 103, **hysteresis 35** — once a
+leg over the threshold turns the comb on it stays on for every leg at
+least one segment (3.0 mm) long, forwards and backwards, and a leg under
+one segment ends it.
+
+Shipped as `_comb_thresholds`, read once per column before the first point
+is written; over-threshold legs keep their own k, a leg between one segment
+and the threshold inside the comb gains one staggered penetration,
+`split_satin=False` never turns it on, and a column with no leg over the
+threshold is byte-identical. Measured: Becker 122 → 37 changes (letters
+59 → 26) at 8,932 → 9,333 stitches (+4.5%); tires 21 → 5, bridge 20 → 5,
+screenshot 8 → 3; golden_tee, enthusiast, fremont, gaulke unchanged. Two
+tests: the helper on a straddling leg sequence, and a bar tapering from
+4.6 to 5.4 mm whose comb flickers with the rule neutered and is one comb
+with it, rails identical. The pinned files (rail comp, junction stack,
+corner twigs, wide columns, lettering split, density, satin): 144 passed.
+
+**And the pro's own Becker files do not comb at all.** The five sewn DSTs
+in `testdata/reference` (24,108 satin legs): split share 1–2% up to 5.5
+mm, 8% at 5.5–6, 17% at 6–7, 32% at 7–9, 78% above 9; inside the 40
+columns that split at all, legs between one segment and the threshold are
+split 1% of the time. That is the "beckers logo hat sews raw crosses to
+~6" house style beside the corpus-wide 5.0 vote. Rendered as a third arm
+(`split_satin_above_mm=7.0`): 8 changes, 8,292 stitches. The thread
+renderer barely shows a mid-column penetration, so the strips carry a
+needle-penetration map under each render — the holes are what cloth
+shows. Raising the threshold is cloth's question (gate 1) and Kent's
+ruling; the engine now sews the 5.0 style without flicker. Records:
+`docs/renders/split-comb-2026-09-30/` (README, census.json, four strips),
+DOCTRINE.
+
+## 2026-09-30 — The envelope's teeth: a reach shorter than the window is not a reach (Kent's pick)
+
+Kent's pick after the split comb. On the tree after #577 and #578, Becker
+at 100 mm keeps 23 envelope stretches and **8 of them are a single
+station**: the running minimum clears the 0.3 mm gap at one station and
+not its neighbours, and the rail steps out 0.34–0.83 mm and straight back
+(four on the letters M, A, I and N, four on the emblem band); tires,
+bridge and screenshot had one, two and one such stations and no other
+reach. Simulated on the captured offsets: dropping stretches shorter than
+the envelope window (3 stations) removes every tooth for 7% of the
+extension area (20.6 → 19.1 mm²) and touches nothing else; a slope limit
+of 0.3 or 0.2 mm per station on top costs 33% or 49% of the area, a ramp
+over 2 or 3 stations 24% or 39%, for the 1.8 mm steps a LONG reach opens
+with — which are the artwork's own features (a serif's edge is a step).
+
+Shipped: `_drop_short_reaches` in the envelope branch, the window as the
+minimum, no new constant. Measured: Becker reached stations 78 → 72,
+stretches 23 → 17, teeth 8 → 0, stitches 9,333 → 9,321, new ground on the
+letters 15.2 → 14.8 mm²; rail jitter over 0.15 mm at the reached stations
+**28.4 → 26.3%** (symmetric 9.3), all crosses 12.2 → 11.9%; golden_tee
+8,581 → 8,575, the three small logos lose their only reaches at the same
+stitch counts. So the teeth were two points of the roughness, and the rest
+is the long stretches' plateaus and steps; the thread renders at 40 px/mm
+are all but identical, the rails drawing shows the kink gone. A unit test
+on the helper; the pinned files 143 passed. Records:
+`docs/renders/envelope-teeth-2026-09-30/` (README, census.json, three
+strips), DOCTRINE.
