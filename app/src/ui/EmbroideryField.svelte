@@ -558,8 +558,12 @@
   // the authored anchors/controls, mapped through the engine's fit, drawn and
   // grabbable once the shape is selected. `basis` is frozen at press so a
   // regenerate landing mid-drag cannot skew the inverse; `live` is the shape
-  // as the drag has it. `focusedAnchor` is the anchor a Delete would remove.
-  let nodeEdit = null;      // { elId, shapeId, kind: "anchor"|"handle", index, basis: { fit, shape }, live }
+  // as the drag has it. The drag is RELATIVE — `grab` is the node's offset
+  // from the press point (authored px), so the node keeps that offset rather
+  // than snapping to the pointer — and `moving` flips only once the pointer
+  // has travelled CLICK_PX, so a click on a node never changes it.
+  // `focusedAnchor` is the anchor a Delete would remove.
+  let nodeEdit = null;      // { elId, shapeId, kind: "anchor"|"handle", index, basis: { fit, shape }, live, grab: { dx, dy }, moving }
   let focusedAnchor = null; // { elId, shapeId, index }
 
   function manualFit(el) {
@@ -601,6 +605,15 @@
     dispatch("elupdate", { id: el.id, patch });
     return true;
   }
+  // drawOverlay paints ON TOP of the last render without clearing it, so
+  // node chrome that MOVES or DISAPPEARS (a node drag's live outline, a
+  // focus ring dropped) needs the preview re-rendered underneath, or every
+  // frame stays on the canvas — measured: a node drag left a smear of amber
+  // outlines. One rAF-coalesced view repaint (the zoom/pan path), which ends
+  // in drawOverlay.
+  function repaintNodeChrome() {
+    scheduleViewRepaint();
+  }
   // The anchor a Delete would remove — only while its shape is still the
   // selected one (a stale focus must never delete a point on another shape).
   function liveFocusedAnchor() {
@@ -614,6 +627,13 @@
     const el = project && (project.elements || []).find((x) => x.id === elId);
     const shape = el && manualShapeOf(el, shapeId);
     if (!shape) return false;
+    // A stale index (an undo of an insert shrank the shape under the focus)
+    // removes nothing and drops the focus rather than removing some other point.
+    if (!(index >= 0 && index < (shape.points || []).length)) {
+      focusedAnchor = null;
+      repaintNodeChrome();
+      return false;
+    }
     const smaller = removeAnchor(shape, index);
     if (!smaller) { shapeEditError = "A shape needs at least 3 points."; return false; }
     return commitNodeEdit(el, smaller);
@@ -1021,7 +1041,7 @@
     // selected), so the next Delete removes the shape rather than the point.
     if (e.key === "Escape" && focusedAnchor) {
       focusedAnchor = null;
-      drawOverlay();
+      repaintNodeChrome();
       e.preventDefault();
       return;
     }
@@ -1037,13 +1057,16 @@
     // INPUT, BUTTON): the popover's Delete button is how you delete from it.
     const t = e.target;
     if (t !== canvas && t !== document.body) return;
+    // Mid-drag (two-handed), the key belongs to nothing: a commit now would
+    // run against the bbox the drag is about to change. nudgeSelected's rule.
+    if (nodeEdit || pressEdge) return;
     // A focused anchor of the selected hand-drawn shape: Delete removes that
     // POINT (its two edges become one), not the shape. At the three-point
     // floor it refuses with the message and removes nothing.
     const fa = liveFocusedAnchor();
     if (fa) {
       if (removeAnchorOf(fa.elId, fa.shapeId, fa.index)) focusedAnchor = null;
-      drawOverlay();
+      repaintNodeChrome();
       e.preventDefault();
       return;
     }
@@ -1142,6 +1165,13 @@
         // Layers list does not drive this: selectedShapeId is set from a
         // canvas hit only.)
         if (!showOutlines && !editing) continue;
+        // Mid node-drag the flattened ring is the STALE geometry: drawing it
+        // beside the live authored outline showed two amber outlines. Idle,
+        // the flattened ring stays underneath the authored one (spec §5).
+        if (el.type === "manual" && editing && nodeEdit && nodeEdit.elId === el.id && nodeEdit.shapeId === o.id) {
+          drawAuthoredNodes(ctx, el, o.id);
+          continue;
+        }
 
         ctx.beginPath();
         ctx.moveTo(pts[0].x, pts[0].y);
@@ -1232,7 +1262,9 @@
       ctx.lineWidth = 1;
       ctx.stroke();
     };
-    for (const [x, y] of ap.handles) dot(x, y, NODE_R - 1, "rgba(64, 200, 120, 0.95)");
+    // NODE_R + 0.4 (3.0 px): at NODE_R - 1 the handles were near-invisible
+    // at 100% zoom (controller ruling 2026-09-29); still smaller than an anchor.
+    for (const [x, y] of ap.handles) dot(x, y, NODE_R + 0.4, "rgba(64, 200, 120, 0.95)");
     const fa = liveFocusedAnchor();
     for (let i = 0; i < n; i++) {
       const [x, y] = ap.anchors[i];
@@ -2186,7 +2218,7 @@
     fieldMenu = null;
     if (!menu || !menu.shape || item.disabled) return;
     if (removeAnchorOf(menu.shape.elId, menu.shape.shapeId, item.anchor)) focusedAnchor = null;
-    drawOverlay();
+    repaintNodeChrome();
   }
 
   function chooseFieldMenu(type) {
@@ -2231,7 +2263,7 @@
     // elsewhere means something else) must not leave Delete aimed at a point.
     if (focusedAnchor) {
       focusedAnchor = null;
-      drawOverlay();
+      repaintNodeChrome();
     }
 
     // Ctrl/Cmd+click: toggle the clicked element in the multi-selection.
@@ -2337,10 +2369,16 @@
           // Pressing an anchor focuses it (a Delete then removes it). Every
           // other press already dropped the focus at the top of this handler.
           if (ah.kind === "anchor") focusedAnchor = { elId: edit.el.id, shapeId: selectedShapeId, index: ah.index };
+          // The drag is RELATIVE: `grab` is the node minus the press point, in
+          // authored px through the same frozen fit, so a press a few px off
+          // the node's centre does not snap the node to the pointer.
+          const nodeAt = fieldPxToAuthored(ap.fit, { x: ah.atPx[0], y: ah.atPx[1] });
+          const pressAt = fieldPxToAuthored(ap.fit, p);
           nodeEdit = { elId: edit.el.id, shapeId: selectedShapeId, kind: ah.kind, index: ah.index,
-                       basis: { fit: ap.fit, shape: ap.shape }, live: ap.shape };
+                       basis: { fit: ap.fit, shape: ap.shape }, live: ap.shape,
+                       grab: { dx: nodeAt.x - pressAt.x, dy: nodeAt.y - pressAt.y }, moving: false };
           canvas.style.cursor = "grabbing";
-          drawOverlay();
+          repaintNodeChrome();
           return;
         }
       }
@@ -2487,14 +2525,23 @@
       return;
     }
     // A hand-drawn node drag: ONE anchor (or one segment's handle) follows
-    // the pointer, mapped back to authored px through the fit frozen at press.
+    // the pointer, mapped back to authored px through the fit frozen at press
+    // and kept at the press's grab offset (relative, so it never jumps). Moves
+    // under CLICK_PX of the press are ignored: until the pointer has really
+    // travelled, `live` stays the basis object, so a click commits nothing
+    // (endDrag's `changed` test) and trackpad jitter cannot bow a segment.
     if (nodeEdit) {
-      const at = fieldPxToAuthored(nodeEdit.basis.fit, p);
+      if (!nodeEdit.moving) {
+        if (!pressClient || Math.hypot(e.clientX - pressClient.x, e.clientY - pressClient.y) < CLICK_PX) return;
+        nodeEdit.moving = true;
+      }
+      const q = fieldPxToAuthored(nodeEdit.basis.fit, p);
+      const at = { x: q.x + nodeEdit.grab.dx, y: q.y + nodeEdit.grab.dy };
       nodeEdit.live = nodeEdit.kind === "anchor"
         ? applyAnchorDrag(nodeEdit.live, nodeEdit.index, at)
         : applyHandleDrag(nodeEdit.live, nodeEdit.index, at);
       nodeEdit = nodeEdit; // reassign for Svelte
-      drawOverlay();
+      repaintNodeChrome();
       return;
     }
     // An edge press does nothing until its release; it never moves the element.
@@ -2641,8 +2688,9 @@
 
   function endDrag(e) {
     // A hand-drawn node drag: commit on release through the re-fit rule. A
-    // press that never moved the node (`live` is still the basis object) is
-    // the focus gesture — it commits nothing and leaves focusedAnchor set. A
+    // press that never moved the node (`live` is still the basis object —
+    // guaranteed for any press-release under CLICK_PX by onPointerMove's dead
+    // zone) is the focus gesture — it commits nothing and leaves focusedAnchor set. A
     // cancel commits nothing. A drag never opens the popover.
     if (nodeEdit) {
       if (canvas && canvas.hasPointerCapture && canvas.hasPointerCapture(e.pointerId)) canvas.releasePointerCapture(e.pointerId);
@@ -2654,7 +2702,7 @@
       pressOutline = false;
       pressEdge = null;
       if (canvas) canvas.style.cursor = "default";
-      drawOverlay();
+      repaintNodeChrome();
       return;
     }
     // An edge press: a click (under CLICK_PX) inserts an anchor where it was
@@ -2669,13 +2717,15 @@
         if (moved < CLICK_PX && shape && fit && renderResult && renderResult.toCanvas) {
           const at = fieldPxToAuthored(fit, canvasPointFromEvent(e));
           const grown = insertAnchor(shape, pressEdge.index, at);
-          if (grown && grown !== shape) commitNodeEdit(el, grown);
+          // insertAnchor hands back the SAME shape at MAX_SHAPE_POINTS.
+          if (grown === shape) shapeEditError = "This shape already has the maximum number of points.";
+          else if (grown) commitNodeEdit(el, grown);
         }
       }
       pressEdge = null;
       pressClient = null;
       pressOutline = false;
-      drawOverlay();
+      repaintNodeChrome();
       return;
     }
     if (shapeEdit) {
