@@ -113,8 +113,19 @@
     else sheetOpen = false;
   }
   function onPopState() {
+    const wasOpen = sheetOpen;
     sheetOpen = isSheetEntry();
+    // Forward can re-open the sheet; re-probe as openSheet does, so its
+    // service-only controls (JEF) are not judged on a stale answer.
+    if (sheetOpen && !wasOpen) checkDigitizer();
   }
+  // A reload with the sheet open boots with sheetOpen false while the
+  // browser still sits on the sheet's entry. Left there, the next Download
+  // pushes a SECOND entry: Close then takes two presses and Back is a dead
+  // one. Normalise it away on mount.
+  onMount(() => {
+    if (isSheetEntry()) window.history.replaceState(null, "");
+  });
   // Boot builds `project` directly rather than through enterProject(), so
   // the open-a-legacy-project case above needs its twin here.
   applyAutoName();
@@ -198,12 +209,12 @@
     return sewable.length === 1 && sewable[0].type === "digitized";
   })();
 
-  // What the COMBINED design costs to sew, for the review step's summary —
+  // What the COMBINED design costs to sew —
   // the numbers `qualityEntries` above cannot supply for a browser-built
   // design. Derived here rather than in the template so it recomputes with
   // project/runtime like every other `$:` and never runs inside a render loop.
   // Never throws: it runs on every change, including while nothing is ready to
-  // stitch, the same posture as DownloadStep's combinedColors.
+  // stitch. Feeds both the summary bar and the Download sheet's recap.
   $: combinedDesign = (() => {
     try {
       return generateAll(project, runtime).combined || null;
