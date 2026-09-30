@@ -1435,8 +1435,11 @@ export const SILENT_WARNINGS = new Set([
 // actionable warning is one disclosure click away; the other default is how a
 // panel becomes a wall nobody reads, which is the state this replaced.
 export const ATTENTION_WARNINGS = new Set([
-  // "check the preview closely before stitching this one out"
+  // "check the preview closely before stitching this one out" -- the three
+  // stage-0 photo verdicts and stage 1.25's, which the Studio can emit since
+  // 2026-09-30 and which asks the same thing
   "CLASSIFIED_PHOTO_SUBJECT", "CLASSIFIED_PHOTO_SCENE", "CLASSIFICATION_UNCERTAIN",
+  "PHOTO_DETECTED",
   // something is missing, or may be
   "BACKGROUND_UNCERTAIN", "DROPPED_SMALL_SHAPES", "SHAPE_NOT_STITCHED",
   "SHAPES_LEFT_UNSEWN", "SHAPE_TOO_THIN_TO_FILL",

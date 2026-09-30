@@ -7012,7 +7012,15 @@ class's, detection does not move it), and the detail-lines option follows it.
    in-product correction, and that is the point rather than an oversight:
    stage 0 misroutes most real logos (phase 2), and the fix is the routing.
    A session that sees a misroute reaches for phase 2's evidence, not for a
-   per-design switch. ROADMAP's "phase-4 v1 works around stage 0 with an
+   per-design switch. **The same holds for a detection FALSE POSITIVE**, which
+   this leaves unmitigated in the product: a flat logo scanned or saved as a
+   JPEG whose EXIF still names a camera, or a logo with a real headshot in
+   it, now gets the photographic machinery (rembg cut-out, depth sequencing,
+   the palette bind) with no way back — the only suppression,
+   `is_photographic=False`, is engine-only and the Studio never sends it.
+   The 0-of-14 false-positive figure was measured on fixtures with no EXIF
+   and no faces, so it says nothing about that case; the first real one is
+   phase 2 evidence, not a reason for a switch. ROADMAP's "phase-4 v1 works around stage 0 with an
    explicit user override" no longer holds and was reworded.
 
 2. **His own screenshot is a data point AGAINST the automatic lane for

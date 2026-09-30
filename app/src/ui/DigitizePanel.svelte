@@ -680,9 +680,9 @@
   //   2026-09-07: on all 10 fixtures that emit it, BACKGROUND_ENCLOSED emits
   //   too.
   //
-  // `warningLines` itself keeps every code -- the flat-art nudge and the
-  // classification readout below switch on codes there, so filtering upstream
-  // would silently disable them.
+  // `warningLines` itself keeps every code -- the classification readout
+  // below switches on codes there, so filtering upstream would silently
+  // disable it.
   $: otherWarningLines = warningLines.filter(
     (w) => w.code !== "BACKGROUND_ENCLOSED" && !SILENT_WARNINGS.has(w.code)
            && w.text);
