@@ -1,0 +1,66 @@
+{
+ "exported": "2026-09-30T01:40:00Z",
+ "artifact": "https://claude.ai/artifact/6mjKrbnCX21MM9gQUry4Zp",
+ "page_built": "2026-09-30",
+ "pairs": 7,
+ "note": "The envelope sitting's store, read back with ArtifactData (the seven rail_envelope__<fixture> docs; the 111 older docs of the 09-18 and 09-28 sittings are still in the store and exported in ../eye-pairs-2026-09-28/kent-notes.json). No ruling was given on the arm.",
+ "notes": {
+  "rail_envelope__becker": {
+   "arm": "rail_envelope",
+   "fixture": "becker",
+   "job_done": "unsure",
+   "verdict": "after",
+   "updated": "2026-09-30T01:33:21.294Z",
+   "note": "It improved on filling in the empty space, but the lettering needs to be smooth and have flow to it, these stitches look like they are just trying to fill a void."
+  },
+  "rail_envelope__bridge": {
+   "arm": "rail_envelope",
+   "fixture": "bridge",
+   "job_done": "unsure",
+   "verdict": "both_bad",
+   "updated": "2026-09-30T01:34:26.877Z",
+   "note": "The defect it circled is nowhere close to what needs to be worked on here. The lettering on bridge is smooshed together and the satin border is jumpy, its on off on off etc."
+  },
+  "rail_envelope__drone": {
+   "arm": "rail_envelope",
+   "fixture": "drone",
+   "job_done": "unsure",
+   "verdict": "same",
+   "updated": "2026-09-30T01:34:58.062Z",
+   "note": ""
+  },
+  "rail_envelope__gaulke": {
+   "arm": "rail_envelope",
+   "fixture": "gaulke",
+   "job_done": "unsure",
+   "verdict": "both_bad",
+   "updated": "2026-09-30T01:35:18.243Z",
+   "note": ""
+  },
+  "rail_envelope__golden_tee": {
+   "arm": "rail_envelope",
+   "fixture": "golden_tee",
+   "job_done": "yes",
+   "verdict": "after",
+   "updated": "2026-09-30T01:36:28.279Z",
+   "note": "But satin rails typically are an accent point. so make sure whatever it's putting rails on is a significant feature that requires accenting or some type of \"pop\" to it."
+  },
+  "rail_envelope__screenshot": {
+   "arm": "rail_envelope",
+   "fixture": "screenshot",
+   "job_done": "unsure",
+   "verdict": "both_bad",
+   "updated": "2026-09-30T01:36:41.330Z",
+   "note": ""
+  },
+  "rail_envelope__tires": {
+   "arm": "rail_envelope",
+   "fixture": "tires",
+   "job_done": "unsure",
+   "verdict": "same",
+   "updated": "2026-09-30T01:36:54.021Z",
+   "note": ""
+  }
+ },
+ "rulings": {}
+}

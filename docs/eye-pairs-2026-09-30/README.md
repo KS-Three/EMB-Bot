@@ -101,3 +101,27 @@ The flip. `satin_rails_follow_edge=False` is shipped; `True` was parked for
 cloth on 2026-09-03; `"envelope"` has been OFF since #563 built it. Whether
 the far rail's reach reads right is the sew-out question `True` was parked on;
 the page is the eye's half of it, the table the instruments'.
+
+## Outcome — Kent's sitting, 2026-09-30 (all seven judged, no ruling)
+
+| pair | verdict | flag did its job? | note (verbatim) |
+|---|---|---|---|
+| becker | **after better** | can't tell | "It improved on filling in the empty space, but the lettering needs to be smooth and have flow to it, these stitches look like they are just trying to fill a void." |
+| bridge | both bad | can't tell | "The defect it circled is nowhere close to what needs to be worked on here. The lettering on bridge is smooshed together and the satin border is jumpy, its on off on off etc." |
+| drone | no difference | can't tell | |
+| gaulke | both bad | can't tell | |
+| golden_tee | **after better** | **yes** | "But satin rails typically are an accent point. so make sure whatever it's putting rails on is a significant feature that requires accenting or some type of "pop" to it." |
+| screenshot | both bad | can't tell | |
+| tires | no difference | can't tell | |
+
+2 after, 0 before, 2 no difference, 3 both bad; the store: `kent-notes.json`.
+The two *after* verdicts are the two fixtures with the defect, and one thing
+they settle: **on golden_tee his eye preferred the keylines sewn over.** The
+instrument's seven "filled knockouts" (the table's last column) are gaps the
+eye does not want to see bare at 80 mm, so that column reads against the
+eye there; becker's *after* came with a caveat that is not the envelope's
+gain but its texture — the reached stretches read as void-filling rather
+than flowing satin. The three *both bad* are the logos bad under every
+setting since 09-18 (gaulke, screenshot) plus bridge, whose real defects he
+named: lettering smooshed together and a satin border that goes on and off.
+The flip was not ruled on the page.

@@ -7002,5 +7002,13 @@ with `dropped_elements`' colour fields at its own registration — the scratch
 of 2026-09-30 is the recipe, `docs/eye-pairs-2026-09-30/README.md` the
 numbers. A polygon-side instrument cannot see a keyline the polygon has
 absorbed. The keylines themselves are a segmentation question (a white gap
-thinner than min-detail between two inks), not the rail model's, and the
-artwork-side reading is what Kent's eye will give.
+thinner than min-detail between two inks), not the rail model's.
+
+**And the eye went the other way, the same night.** Kent judged golden_tee's
+pair *after better* with *flag did its job: yes*: at 80 mm his eye wanted
+those keylines sewn over, so the artwork-side reading is not automatically
+the eye's either. Neither instrument is the verdict; a rail change that
+splits them goes to the page, and the page decides. His caveat on becker —
+the reached stretches "look like they are just trying to fill a void" — is
+the cost his eye did find: the envelope's texture where it kicks in, not
+its reach.

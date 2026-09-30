@@ -89,6 +89,12 @@ better, 8 before better, 30 no difference, 23 both bad; "can't tell" on 59 of
   lands on the 3D lettering's white gaps (lost elements 69 → 76, artfid 77.4 → 76.8 while bare
   satin reads 10.35 → 7.20) — read the artwork under new thread before calling a bare-satin gain
   coverage; becker's 22.9 mm² is ink (17.0) and every instrument agrees.
+  **Kent judged all seven the same night (no ruling):** 2 after (becker, golden_tee — the two
+  with the defect; job *yes* on golden_tee), 0 before, 2 same, 3 both bad. **His eye preferred
+  golden_tee's keylines sewn over**, so the instrument's "filled knockouts" read against the eye
+  there. becker's caveat: the reached stretches "look like they are just trying to fill a void" —
+  the envelope's texture, not its reach. bridge's real defects, in his words: lettering smooshed
+  together, a satin border that goes on and off. `docs/eye-pairs-2026-09-30/kent-notes.json`.
 - **Four photo-lane tests go red wherever `rembg_isolated/venv` exists** (the
   stub's shade demand, the two-square depth sort, the owl's merge and its
   declared-photographic report) — on the pre-change tree too, and never in CI.

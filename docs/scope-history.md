@@ -15743,7 +15743,18 @@ artwork under the new thread is read**; the page carries both readings so
 Kent's eye can settle which the cloth agrees with. Corpus trims 640 → 641.
 
 Records: `docs/eye-pairs-2026-09-30/` (README, `rail-envelope-corpus.json`);
-`docs/kent-review-2026-09-28.md` notes the rebuild. Kent's flip pending.
+`docs/kent-review-2026-09-28.md` notes the rebuild.
+
+**Kent's sitting, the same night (all seven judged, no ruling on the page):**
+2 after (becker, golden_tee — the two fixtures with the defect; *flag did its
+job: yes* on golden_tee), 0 before, 2 no difference (drone, tires), 3 both
+bad (bridge, gaulke, screenshot). His eye preferred golden_tee's keylines
+sewn over, so the last column's "on white" reads against the eye at 80 mm.
+becker's after came with the caveat that the reached stretches "look like
+they are just trying to fill a void" — texture, not reach. bridge's real
+defects in his words: lettering smooshed together, a satin border that is
+"jumpy, on off on off". Notes verbatim: `docs/eye-pairs-2026-09-30/README.md`
+Outcome, store `kent-notes.json`. The flip is still his call.
 
 *(measured 2026-09-30 — the render lanes' `features.json`; a scratch corpus
 script over `digitize()` (`tools/rail_edge.bare_area`, `tools/edge_wobble`,
