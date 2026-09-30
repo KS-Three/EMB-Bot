@@ -6017,6 +6017,31 @@ and is the number that moves when a build closes the apex.
    reading plus a picture from a fourth code path. Picking the one that
    flatters the build is what put a retracted change on `main`.
 
+## `satin_tip_caps` and `satin_rails_follow_edge="envelope"` reach for MUCH of the same bare (2026-09-30)
+
+Two lanes built two cures the same day, each measured against an engine
+without the other, and they overlap almost exactly on the fixture both were
+priced on. Becker 80 mm, merged tree, bare / satin wobble std / stitches:
+
+| | `False` | `"envelope"` | `True` |
+|---|---|---|---|
+| tip caps OFF | 10.222% / 0.0914 / 5,691 | 9.484% / 0.0999 / 5,750 | 7.235% / 0.1281 / 6,079 |
+| tip caps ON | **9.483%** / 0.0943 / 6,101 | 9.030% / 0.1108 / 6,219 | 6.840% / 0.1243 / 6,601 |
+
+**Tip caps alone take the symmetric-rail arm to 9.483% — the figure the
+envelope reached without them, 9.484%.** On top of tip caps the envelope is
+worth a further 0.45 points, not the 0.74 its own entry records, and it costs
++17.5% rail roughness rather than +9.3%. `True` keeps a real margin (6.84%)
+and keeps paying for it.
+
+**The transferable part is not the numbers.** Two parallel lanes each measured
+a cure against a tree the other flag had not landed in, and the second
+measurement is not additive. Before quoting what a parked flag buys, re-measure
+it on the CURRENT default set — its own entry was true on the tree it was
+written on and is an overstatement on this one.
+`tests/test_rail_comp.py::test_the_envelope_reaches_the_far_edge_where_the_gap_is_long_and_nowhere_else`
+holds `satin_tip_caps=False` for exactly this reason, and says so.
+
 
 ## The polygon axis must not read stage 5's grown polygon (2026-09-16)
 

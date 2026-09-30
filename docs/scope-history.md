@@ -16118,3 +16118,36 @@ envelope leaves part C's fill). Renders
 *(measured 2026-09-30 — `tools/rail_edge.py --bare`, `tools/edge_wobble.py`
 (satin `wobble_std_mm`), `tools/dropped_elements.py` (`overshoot_frac`);
 `tests/test_rail_comp.py::test_the_envelope_reaches_the_far_edge_where_the_gap_is_long_and_nowhere_else`)*
+
+---
+
+## 2026-09-30 — the two far-rail cures overlap: `satin_tip_caps` already takes the bare the envelope reaches for
+
+Found by a merge, not by a measurement: this branch's `satin_tip_caps` flip
+turned `test_the_envelope_reaches_the_far_edge_where_the_gap_is_long_and_nowhere_else`
+red, and the cause is not a regression. Becker 80 mm on the merged tree, bare /
+satin wobble std / stitches:
+
+| | `False` | `"envelope"` | `True` |
+|---|---|---|---|
+| tip caps OFF | 10.222% / 0.0914 / 5,691 | 9.484% / 0.0999 / 5,750 | 7.235% / 0.1281 / 6,079 |
+| tip caps ON | **9.483%** / 0.0943 / 6,101 | 9.030% / 0.1108 / 6,219 | 6.840% / 0.1243 / 6,601 |
+
+The `tip caps OFF` row reproduces the envelope entry's published figures byte
+for byte. **Tip caps alone take the symmetric-rail arm to 9.483%, the figure
+the envelope reached without them (9.484%).** On top of them the envelope is
+worth a further 0.45 points rather than 0.74, at +17.5% rail roughness rather
+than +9.3%. `True` keeps its margin (6.84%) and keeps paying for it.
+
+Both of that test's Becker assertions fail on the shipped default for this
+reason and no other, so the test now holds `satin_tip_caps=False` — the
+engine the mode was measured on, this repo's usual treatment for a pin a flip
+moved — and its docstring carries both rows. The synthetic-band half is
+untouched: `satin_shape`'s own `tip_caps` parameter defaults False.
+
+**What this changes for Kent's envelope flip decision:** the number to weigh is
+0.45 points on Becker, not 0.74, and the roughness price is nearly double what
+the entry records. Nothing about the mode is wrong; it was measured on a tree
+this flag had not landed in.
+
+*(measured 2026-09-30 — `tools/rail_edge.py bare_area`, `tools/edge_wobble.py` (satin `wobble_std_mm`); `tests/test_rail_comp.py::test_the_envelope_reaches_the_far_edge_where_the_gap_is_long_and_nowhere_else`; DOCTRINE 2026-09-30)*

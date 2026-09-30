@@ -488,6 +488,26 @@ def test_the_envelope_reaches_the_far_edge_where_the_gap_is_long_and_nowhere_els
     2 mm bulge the axis cannot re-centre under is shorter than the window,
     so the envelope keeps the symmetric width there where True reaches --
     corner-sized bare is `satin_cap_recentre`'s question, not this mode's.
+
+    **`satin_tip_caps=False` here, held on the engine this mode was measured
+    on** (it was written before that flag was flipped ON, 2026-09-30, and the
+    three numbers above are reproduced byte for byte with it OFF). That is not
+    bookkeeping: the two cures reach for MUCH of the same bare, and the
+    shipped engine makes the envelope's own headroom look small. Re-measured
+    2026-09-30 on the merged tree, Becker 80 mm, bare / satin std / stitches:
+
+        tip caps OFF   10.222% / 0.0914 / 5,691   9.484% / 0.0999 / 5,750   7.235% / 0.1281 / 6,079
+        tip caps ON     9.483% / 0.0943 / 6,101   9.030% / 0.1108 / 6,219   6.840% / 0.1243 / 6,601
+                        ^ False                   ^ envelope                ^ True
+
+    **Tip caps alone take Becker's symmetric-rail bare to 9.483%, which is the
+    figure the envelope reached without them (9.484%).** The envelope then
+    takes a further 0.45 points, at +17.5% roughness rather than the +9.3% it
+    costs on the pre-flip engine. Both assertions below would fail on the
+    shipped default for that reason and for no other; pin the mode where it
+    was measured, and read the overlap from the table rather than from a
+    loosened threshold. What the envelope is worth ON TOP of tip caps is a
+    separate question and belongs to its flip decision, not to this test.
     """
     from shapely.geometry import box
     from tools import edge_wobble as EW
@@ -496,7 +516,8 @@ def test_the_envelope_reaches_the_far_edge_where_the_gap_is_long_and_nowhere_els
     def arm(mode):
         r, p = digitize(TESTDATA / "becker_marine_logo.png",
                         PipelineConfig(target_width_mm=80.0, garment_id="left_chest",
-                                       max_colors=6, satin_rails_follow_edge=mode))
+                                       max_colors=6, satin_rails_follow_edge=mode,
+                                       satin_tip_caps=False))
         polys = {rg.shape_id: rg.polygon for rg in r.regions}
         num, den = bare_area(polys, p)
         wob = EW.analyse_plan(polys, p, background=set())
