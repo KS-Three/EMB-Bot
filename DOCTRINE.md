@@ -34,6 +34,35 @@ Moved verbatim 2026-08-28 — no section was rewritten in the move.
 
 ## Standing rulings — decided, do not re-litigate
 
+- **A customer's calibration profile ADJUSTS the shipped fabric preset,
+  clamped — it never replaces it. And the customer card targets 5x7.**
+  Kent's two calls of 2026-09-30, made with the trade-off in front of him
+  (`docs/sewout-calibration-brief-2026-09-30.md` §10). A profile read off a
+  phone photo of the calibration card (`tools/sewout_reader.py`) is a DELTA
+  from the engine's own render, so it lands on the preset as an addition,
+  inside the machine floors and ceilings `machine.py` already owns; a bad
+  photo can therefore move a preset only within its clamps, never below a
+  floor. Override was the more faithful option and was declined for that
+  reason. The card itself (`tools/sewout_card_v2.py`) is 82 x 103 mm with
+  corner fiducials and a 0.15 mm density arm, and fits 5x7 (130 x 180) with
+  10 mm to spare; a 4x4 target would have cost a block, so a customer with
+  only a 4x4 machine cannot calibrate with it — accepted. **Phase 0 (Kent
+  sewing the card) is deferred, not declined**, so every reader number is
+  still a number about a picture; do not quote one as a cloth measurement.
+  **Wired the same day, both engines:** `fabrics.apply_profile` /
+  `src/fabrics.js applyFabricProfile` take three deltas
+  (`pull_comp_delta_mm`, `density_scale`, `trim_at_delta_mm`) and clamp the
+  result to the SPAN OF THE SHIPPED TABLE — canvas to terry on pull comp —
+  which is what makes a profile gate-1 clean: every value it can produce is
+  one the presets already sew on some fabric, and widening a bound is a
+  sew-out question. `PipelineConfig.fabric_profile` / `project.fabricProfile`,
+  default None, byte-identical off; `test_fabric_wire.py` now RUNS the
+  arithmetic in node and Python and compares, since a text diff cannot see
+  a drifted clamp. Nothing writes a profile yet — that is the calibration
+  flow (brief phase 4).
+  *(ruled 2026-09-30 — brief §10; `tests/test_sewout_card_v2.py` pins the
+  card, `tests/test_fabric_profile.py` the wiring)*
+
 - **The worksheet states only what the ENGINE KNOWS. Kent's ruling
   2026-09-20.** The machine-physics playbook's Part 3 lists what the sheet
   "must start carrying": assumed backing, topper, needle spec, tension targets
@@ -7435,3 +7464,137 @@ is unchanged. An explicit `forced_class` or `is_photographic` still wins.
    `config.faces_route_flat`; `pipeline.build_generation` stage 1.25;
    `DigitizePanel` reading row "A face was found, so it's sewing as flat
    art"; PR #568)*
+
+## A bare-satin gain is not a coverage gain until the artwork under the new thread is read (2026-09-30)
+
+The envelope's page (`docs/eye-pairs-2026-09-30/`) put two instruments on one
+table and they disagreed on golden_tee: the satin-only bare instrument read
+the envelope as coverage (10.35 → 7.20%, unsewn outline 7.3 → 3.3 mm) while
+`dropped_elements` read it as loss (lost elements 69 → 76, artfid 77.4 → 76.8,
+overshoot 0.215 → 0.231). Classifying the new thread by what the artwork
+shows under it settled it: 30.6 of 45.3 mm² lands on the 3D lettering's white
+keylines — sub-detail gaps (≈0.2 mm at 80 mm, `min_detail_mm` 1.5) that the
+on-rails polygon spans. The symmetric width, taking the nearer side, never
+reached that far edge; the envelope does, and the bare instrument, which
+measures against the polygon, counts it covered. On becker the same
+classification gives 17.0 of 22.9 mm² on ink of the right colour, and every
+instrument agrees.
+
+**What to do:** before crediting a rail change with coverage, split its new
+thread by the artwork under it (ink of the right colour, other ink, white)
+with `dropped_elements`' colour fields at its own registration — the scratch
+of 2026-09-30 is the recipe, `docs/eye-pairs-2026-09-30/README.md` the
+numbers. A polygon-side instrument cannot see a keyline the polygon has
+absorbed. The keylines themselves are a segmentation question (a white gap
+thinner than min-detail between two inks), not the rail model's.
+
+**And the eye went the other way, the same night.** Kent judged golden_tee's
+pair *after better* with *flag did its job: yes*: at 80 mm his eye wanted
+those keylines sewn over, so the artwork-side reading is not automatically
+the eye's either. Neither instrument is the verdict; a rail change that
+splits them goes to the page, and the page decides. His caveat on becker —
+the reached stretches "look like they are just trying to fill a void" — is
+the cost his eye did find: the envelope's texture where it kicks in, not
+its reach.
+
+## `satin_rails_follow_edge="envelope"` shipped on Kent's eye, and `True` stays parked (2026-09-30)
+
+Kent judged the envelope's seven pairs the night the page went up and
+ruled in chat: flip ON. 2 after (becker, golden_tee — the two fixtures with
+the far-rail under-reach; *flag did its job: yes* on golden_tee), 0 before,
+2 no difference (drone, tires), 3 both bad (bridge, gaulke, screenshot: the
+logos that are bad under every setting). The same evidence shape as the
+rail comp flip two nights earlier, and the same standing: the sew-out is
+still owed, and the price is recorded rather than argued
+(`docs/eye-pairs-2026-09-30/`, the corpus table: becker +7% stitches,
+golden_tee +1%, MARINE 2,093 → 2,119, a tenth more rail roughness on the two
+that changed, everything else within 0.3 mm² of thread).
+
+**What to do:** do not re-litigate the reach on these nine logos — his eye
+has ruled twice on where the far rail should stop. `True` is not the next
+step; it is the same reach at every station, and his becker note names the
+cost that even the envelope's partial reach carries: the reached stretches
+"look like they are just trying to fill a void" — texture where the
+extension kicks in, not the reach itself. That texture is the open item on
+this flag, and it is a render-and-look question, not an instrument one.
+His golden_tee note is a tiering question for another day: satin rails are
+an accent, so what gets rails should be what needs the pop.
+
+## A satin border that goes on and off is a phantom colour, and a rail push held at a notch costs bare everywhere (2026-09-30)
+
+Two findings on bridge, Kent's pick after the envelope sitting.
+
+**"On off on off" along a satin border is a sixth thread, not a broken
+column.** The JPEG's ringing around bridge's black ring quantises as a grey
+of its own on the gradient lane and sews as 57 slivers along every black
+edge (400 mm² of thread, a third of it on white). Before reading a jumpy
+border as a satin-model defect, count the colour blocks: a thread whose
+area lies mostly off its own ink is a halo. `dissolve_phantom_blends` folds
+it (bridge 15,432 → 11,613 stitches, 98 → 59 trims) and touches nothing off
+that lane; the record in `docs/scope-history.md` carries the corpus.
+
+**A notch guard on the rail push is a measured negative.** The smoosh on
+bridge's script reads as 40 mm² of red on yellow; 37 of it is the pull band
+around the outline, not the counters (3, held by the guard) and not
+sub-floor notches. Extending the counter rule to exterior notches — a probe
+that leaves the polygon and re-enters it within reach — recovered 2 mm² and
+cost bare satin on every fixture (ENTHUSIAST 6.98 → 7.63%, golden_tee 7.20 →
+8.35), because the push it holds is the compensation for the pull, and
+wherever it is held the compensated edge sews short. The pull band is what
+rail comp is for; whether it reads as smoosh on cloth is the same sew-out
+question as the reach. Do not build a same-shape notch guard again; the
+script's legibility at 80 mm is a lettering-construction question (it is
+not even classified as text), not the rail model's.
+
+## A fold's endpoint names a colour, not a place — fold into the instance the member touches (2026-09-30)
+
+The photo lane's phantom-blend dissolve chooses a ramp for a whole halo
+stack and sends each member to the ramp's nearer END, a label id. On Bridge
+Bar the dark end was a 550 px black cluster elsewhere in the design, not the
+ring the halo wraps, and nine members folded into it came out as detached
+regions of their own — grey by their source pixels, teal by the palette's
+nearest of six — the specks on the ring that stood in the way of Kent's
+flip. Any pass that reassigns LABELS must ask whether the destination is
+CONNECTED to the pixels it is moving: a label id is a colour class, and two
+labels of one colour are two places. The check that finds it is cheap —
+count the connected components of each destination after the pass and ask
+how many carry none of that label's native pixels (nine, on bridge, all
+nine the specks) — and the fix is to fold into the bordering label nearest
+the endpoint's colour, the endpoint itself only when nothing bordering
+carries it. Two companion rules that sounded as reasonable (fold a
+page-blocked member into its nearest bordering colour; re-test a rejected
+member against its own sides) fired on no corpus fixture and were removed
+unshipped: a rule that moves nothing is not a fix, whatever its logic.
+
+## A verdict store keyed `<arm>__<fixture>` collides with itself the second time an arm is judged — tag the sitting (2026-09-30)
+
+The labelled page keys Kent's notes by arm and fixture so a note survives a
+re-render and a republish. That is exactly wrong for a second look at the
+same arm on a changed engine: on 2026-09-30 the fold-fixed `phantom_dissolve`
+pairs would have loaded his 09-28 verdicts (bridge *after*, four *both bad*)
+as if given on the new renders, and his new clicks would have overwritten
+the 09-28 record in the store. Found by re-reading the store before the
+republish, which is the habit: **read the store before a republish, and if
+any of the page's ids are already in it, build with `--sitting <tag>`**
+(`<arm>__<fixture>__<tag>`, the ruling `<arm>__<tag>`). Never make room by
+deleting or renaming his documents — they are his record, and the repo's
+copy is the export, not the original. *(2026-09-30,
+`docs/eye-pairs-2026-09-30/README.md`)*
+
+## A connected script word is not a letter to the classifier, and tagging it opens nothing — its gaps are the artwork's, the pull's and the thread's (2026-09-30)
+
+`detect_text_clusters` sees glyphs: a region under a 1.4 aspect ceiling that
+finds two more like it in one ink. A script word is one landscape region
+(bridge's "Bridge" 2.6, tires' "TIRES" 3.8) and its own cluster of one, so
+no gate change short of a new door tags it — and force-tagging bridge's
+script with every shipped lettering flag ON moved its red-on-yellow 39.9 →
+40.6 mm², because nothing the tag reaches (`satin_lettering_split`,
+`edge_cap_skip_lettering`, the shared stitch width, the legibility OCR)
+touches a rail, the pull or a gap. **Do not chase the classifier for a
+smooshed script.** Measure the artwork's gaps at the design's scale first:
+on bridge 22 % of the inter-letter gap length is under the 1.0 mm that two
+facing rails close on pique knit (2 × `pull_comp_mm` + the thread), which
+no rule keeps open without a smaller pull — a fabric constant, gate 1. The
+daylight a push hold could keep is the 1.0–1.5 mm quarter, and the general
+hold measured 2 mm² recovered for bare up on every fixture. *(measured
+2026-09-30, `docs/renders/bridge-phantom-2026-09-30/script-as-lettering.json`)*

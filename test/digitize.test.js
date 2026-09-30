@@ -1481,3 +1481,29 @@ test("buildQualityDesign: stitches are byte-identical to main's on the shapeOutl
   // stitch moved — spec §2 forbids that for this feature.
   assert.strictEqual(hash, "54ae2fb3e4d18ceccbe591e9fe322d3147a92a69a0be6b7c78d00b06c162d532");
 });
+
+test("buildQualityDesign: design.fit reproduces shapeOutlines from the input geometry", () => {
+  const rect = [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 50 }, { x: 0, y: 50 }];
+  const d = DG.buildQualityDesign(
+    [{ rgb: [0, 0, 0], shapes: [{ outer: rect, holes: [], id: "s7", tierOverride: "fill" }] }],
+    { garment: { widthIn: 4, heightIn: 4 }, pxPerMm: 6, underlay: false, targetWidthMm: 40, offsetXMm: 5, offsetYMm: -3 }
+  );
+  const f = d.fit;
+  assert.ok(f && typeof f.cxPx === "number" && typeof f.mmPerPx === "number");
+  assert.strictEqual(f.pxPerMm, 6);
+  // the offsets AS APPLIED: rounded to a DST unit (0.1 mm) like T() does
+  assert.strictEqual(f.offsetXMm, 5);
+  assert.strictEqual(f.offsetYMm, -3);
+  const fwd = (q) => [(q.x - f.cxPx) * f.mmPerPx + f.offsetXMm, (f.cyPx - q.y) * f.mmPerPx + f.offsetYMm];
+  const out = d.shapeOutlines[0].points;
+  rect.forEach((q, i) => {
+    assert.ok(Math.abs(fwd(q)[0] - out[i][0]) < 1e-9 && Math.abs(fwd(q)[1] - out[i][1]) < 1e-9, "point " + i);
+  });
+  // 100 px wide at pxPerMm 6 fitted to 40 mm -> mmPerPx = 0.4
+  assert.ok(Math.abs(f.mmPerPx - 0.4) < 1e-12);
+});
+
+test("buildQualityDesign: an empty design carries fit null", () => {
+  const d = DG.buildQualityDesign([], { garment: { widthIn: 4, heightIn: 4 } });
+  assert.strictEqual(d.fit, null);
+});

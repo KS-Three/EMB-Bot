@@ -336,6 +336,14 @@ export function defaultProject() {
     // additive-migration story as fabricRgb: older saves simply spread-merge
     // over this default and load as "use the suggestion".
     hoopId: null,
+    // Project-level calibration profile (Kent's 2026-09-30 call): the three
+    // deltas digitizer/tools/sewout_reader.py drafts from a photo of the sewn
+    // calibration card, applied to the garment's fabric preset in BOTH
+    // engines (src/fabrics.js applyFabricProfile; fabrics.py apply_profile).
+    // null = the preset as shipped. Same additive-migration story as
+    // fabricRgb and hoopId. Nothing in the Studio writes one yet — that is
+    // the calibration flow (brief phase 4); this is the field it will fill.
+    fabricProfile: null,
   };
 }
 

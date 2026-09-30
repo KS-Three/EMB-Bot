@@ -57,7 +57,7 @@ const PIPELINE_CONFIG_FIELDS = [
   "border_width_mm", "deleted_shape_ids", "shape_overrides",
   "merge_shape_ids", "split_shapes", "photo_segment_sam2", "detail_layer",
   "forced_class", "edge_cap", "is_photographic", "garment_rgb", "crop",
-  "stitch_width_auto", "detect_photographic", "faces_route_flat",
+  "stitch_width_auto", "detect_photographic", "faces_route_flat", "fabric_profile",
 ];
 
 test("buildDigitizeConfig sends the stored thread-brand preference and the project garment, in service field names", async () => {
@@ -101,6 +101,24 @@ test("buildDigitizeConfig sends the project's fabric colour as garment_rgb, and 
   // Exactly three channels, whatever a custom hex round-trip stored.
   const custom = buildDigitizeConfig(digitizedElement(), { ...PROJECT, fabricRgb: [12.4, 200, 7, 255] });
   expect(custom.garment_rgb).toEqual([12, 200, 7]);
+});
+
+test("buildDigitizeConfig sends the project's calibration profile in the service's canonical form, and nothing for a no-op", async () => {
+  stubStorage({});
+  const { buildDigitizeConfig, canonicalFabricProfile } = await import("./digitizer.js");
+  const withProfile = buildDigitizeConfig(digitizedElement(), {
+    ...PROJECT, fabricProfile: { pull_comp_delta_mm: 0.15, density_scale: 1, trim_at_delta_mm: 0, stray: 3 },
+  });
+  // Only the three known keys, no-op values dropped, unknown keys never sent
+  // (the service would 400 them).
+  expect(withProfile.fabric_profile).toEqual({ pull_comp_delta_mm: 0.15 });
+  for (const k of Object.keys(withProfile)) expect(PIPELINE_CONFIG_FIELDS).toContain(k);
+  // A pre-profile save, a null, and a profile that changes nothing all send
+  // no field — one cache key with the plain preset.
+  expect(buildDigitizeConfig(digitizedElement(), PROJECT)).not.toHaveProperty("fabric_profile");
+  expect(buildDigitizeConfig(digitizedElement(), { ...PROJECT, fabricProfile: null })).not.toHaveProperty("fabric_profile");
+  expect(buildDigitizeConfig(digitizedElement(), { ...PROJECT, fabricProfile: { density_scale: 1 } })).not.toHaveProperty("fabric_profile");
+  expect(canonicalFabricProfile({ density_scale: NaN, trim_at_delta_mm: "1" })).toBeNull();
 });
 
 test("border is OMITTED when unset, so the service picks per artwork class", async () => {

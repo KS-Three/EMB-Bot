@@ -173,7 +173,21 @@ def test_the_R_stops_folding(r127_off, r127_on):
 
 def test_the_R_keeps_its_cover_and_its_thread(r127_off, r127_on):
     """Uncovered artwork does not grow (0.0 → 0.0 measured); stitches within
-    5% (6,709 → 6,988); trims within +12 (33 → 43).
+    6% (6,905 → 7,280); trims within +12 (34 → 42).
+
+    **2026-09-30, the envelope flipped ON (`satin_rails_follow_edge`), and the
+    marginal cost went 250 → 375, past the 5% this docstring said was worth a
+    look.** The look: the envelope adds 191 stitches with the stack OFF and
+    316 with it ON, and the whole difference is the R (`Sce719673`: +52
+    against +187). Stacked, the R is two arms, and each arm's far rail now
+    reaches into the other's underlap reach along the junction — the reach
+    stage 5 always gave the on-rails polygon and the symmetric width, taking
+    the nearer side, never realised. Folded, there is no junction to reach
+    under. So the flag's marginal cost rose because the envelope prices the
+    underlap on both arms, not because the stack got dearer: 6,714 → 6,964
+    symmetric, 6,905 → 7,280 under the envelope, cover 0.0 → 0.0 both ways.
+    The bound moves to 6% on that measurement; if it passes 6% the underlap
+    reach is the place to look, not the stack.
 
     **The bound was 2% and the reading was 7,253 → 7,283 when this was
     written (2026-09-19). Both arms got CHEAPER on 2026-09-20** — the density
@@ -191,7 +205,7 @@ def test_the_R_keeps_its_cover_and_its_thread(r127_off, r127_on):
     c_off, r_off, p_off = r127_off
     c_on, r_on, p_on = r127_on
     assert _uncovered(FIXTURE_127, c_on, r_on, p_on) <= _uncovered(FIXTURE_127, c_off, r_off, p_off) + 0.5
-    assert abs(p_on.stats.stitch_count - p_off.stats.stitch_count) <= 0.05 * p_off.stats.stitch_count
+    assert abs(p_on.stats.stitch_count - p_off.stats.stitch_count) <= 0.06 * p_off.stats.stitch_count
     assert p_on.stats.trims <= p_off.stats.trims + 12
 
 

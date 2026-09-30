@@ -933,6 +933,16 @@ class PipelineConfig:
     # naming a garment picks its usual fabric. An explicit fabric_id wins.
     garment_id: str | None = None
     fabric_id: str | None = None
+    # A calibration profile ADJUSTING that fabric, clamped to the shipped
+    # table's span — never replacing it (DOCTRINE standing ruling, Kent's
+    # call 2026-09-30). Wire form and arithmetic: `fabrics.apply_profile`;
+    # the Studio sends `project.fabricProfile` here and applies the same
+    # three keys to its own preset in `src/fabrics.js`. None = the preset as
+    # shipped, byte-identical to before the field existed; a no-op profile
+    # (delta 0, scale 1) is canonicalised away at submit so it is one cache
+    # key with None. Drafted by `tools/sewout_reader.py` from a photo of the
+    # calibration card; nothing in the engine writes one.
+    fabric_profile: dict | None = None
     # The garment's COLOUR, (R, G, B) 0-255, as the Studio knows it
     # (`project.fabricRgb`, sent beside garment_id). None = not known. Read
     # only by the enclosed-background rule below; nothing else in the
@@ -1380,9 +1390,15 @@ class PipelineConfig:
     # only where its side is short by at least a gap floor, and only to the
     # running minimum of its own edge profile over a window -- the
     # under-reach cured without the per-station edge following that made
-    # True pay in jitter and overshoot. Measured in the PR that built it;
-    # False and True are unchanged.
-    satin_rails_follow_edge: bool | str = False
+    # True pay in jitter and overshoot. Measured in the PR that built it
+    # (#563); False and True are unchanged. ON since 2026-09-30: Kent's eye
+    # on the labelled page, seven pairs against the symmetric base -- 2 after
+    # (becker, golden_tee, the two with the defect; "did its job" on
+    # golden_tee), 0 before, 2 same, 3 both bad -- with his caveat that
+    # becker's reached stretches read as void-filling (texture, not reach)
+    # and the sew-out still owed. False is the symmetric model, byte for
+    # byte what shipped before; True stays parked.
+    satin_rails_follow_edge: bool | str = "envelope"
     # Pull compensation on the RAILS instead of the polygon (quality review
     # 2026-09-08 item 6, built 2026-09-09). Stage 5 grows every shape by the
     # fabric's pull with a round join and the satin tier skeletonises the

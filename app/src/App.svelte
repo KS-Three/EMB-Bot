@@ -364,7 +364,7 @@
   let designDims = null;
 
   // A shape selected ON THE FIELD (EmbroideryField's click-to-edit popover,
-  // 2026-09-29): { elementId, shapeId, edit, n }. Runtime only — never saved.
+  // 2026-09-29): { elementId, shapeId, n }. Runtime only — never saved.
   // `n` counts field selections so the same shape picked twice still reaches
   // ManualPanel as a new request.
   let fieldShapeSelect = null;
@@ -1119,6 +1119,7 @@
         <GarmentStep
           {project}
           {showTemplatesHint}
+          {digitizerHealth}
           on:update={(e) => apply(e.detail)}
           on:template={(e) => pickTemplate(e.detail)}
           on:dismisshint={() => dismissHint("templates")}

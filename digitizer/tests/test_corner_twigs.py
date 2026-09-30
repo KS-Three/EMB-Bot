@@ -97,6 +97,12 @@ def _plan(art: Path, **kw):
     # `tests/test_rail_comp.py` pins the price). The flag under test here is
     # priced on the engine it was read on; the rails' own cost is pinned there.
     kw.setdefault("satin_rail_comp", False)
+    # ... and on the symmetric rails, explicitly, since the envelope went ON
+    # (`satin_rails_follow_edge="envelope"`, 2026-09-30, Kent's ruling on its
+    # labelled sitting): the far rail's reach moves this fixture's trims by
+    # one the wrong way for the last assertion below (7 -> 8 with the pruner
+    # on, 1,958 -> 1,820 stitches) -- the envelope's, not the pruner's.
+    kw.setdefault("satin_rails_follow_edge", False)
     cfg = PipelineConfig(target_width_mm=80.2, garment_id="left_chest", max_colors=6, **kw)
     gen = build_generation(str(art), cfg)
     result = finish_generation(gen.fork(), cfg)
