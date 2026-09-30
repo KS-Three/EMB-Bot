@@ -913,3 +913,12 @@ Not verified: USPTO (TSDR 401, tmsearch 405), Justia (403), Instagram
 (302), .co, page-1 SERP on any engine, Etsy (403), astitchahead.com (no
 response; the YouTube channel is the evidence). An RDAP 404 is "not in the
 registry", not a reservation.
+
+## L. The pick — Stitch Done (2026-09-30)
+
+Kent chose **Stitch Done** from §K. Re-verified live before writing the
+buy list: stitchdone .com/.io/.app/.ai/.net/.studio and stitch-done.com
+all free; YouTube, TikTok and X @stitchdone free (X returns an explicit
+"User Profile Not Found"); Instagram and GitHub unverifiable from here;
+Trademarkia returns no result containing the phrase. Buy list, handle
+list and the attorney one-pager: `docs/stitch-done-buy-list-2026-09-30.md`.
