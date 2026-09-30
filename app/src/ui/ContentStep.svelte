@@ -162,7 +162,6 @@
   }
 </script>
 
-<h2>What are you making?</h2>
 
 <div class="ellist">
   {#each project.elements as row (row.id)}

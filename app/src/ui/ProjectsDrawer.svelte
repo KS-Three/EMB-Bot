@@ -7,6 +7,7 @@
   // deleteFromDrawer).
   import { createEventDispatcher, onMount } from "svelte";
   import Icon from "./Icon.svelte";
+  import TemplateRow from "./TemplateRow.svelte";
   export let projects = [];
   export let currentId = null;
   // One-line status/error from App's .embproj import handling ("" hides it).
@@ -184,6 +185,8 @@
     </div>
 
     <button type="button" class="drawer-new" on:click={() => d("new")}>+ New design</button>
+    <h3 class="drawer-templates-head">Start from a template</h3>
+    <TemplateRow on:pick={(e) => d("template", e.detail)} />
     <button type="button" class="drawer-new" on:click={() => fileInput && fileInput.click()}>
       Import design file (.embproj)
     </button>
