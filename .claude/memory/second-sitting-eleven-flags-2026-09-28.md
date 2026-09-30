@@ -99,6 +99,8 @@ better, 8 before better, 30 no difference, 23 both bad; "can't tell" on 59 of
   `rail_envelope` retired from the arms table, `rails_follow_edge` stays as True against it;
   `True` still parked, the sew-out still owed). **Next, his pick: bridge's on/off satin border
   and smooshed lettering.** Becker's texture is the open item if the envelope ever reads wrong.
+  **#559 (`satin_tip_caps` ON) overlaps it:** on the merged tree the envelope's Becker gain is
+  0.45 points, not 0.74, at +17.5% roughness — his ruling was on pairs drawn without tip caps.
 - **Four photo-lane tests go red wherever `rembg_isolated/venv` exists** (the
   stub's shade demand, the two-square depth sort, the owl's merge and its
   declared-photographic report) — on the pre-change tree too, and never in CI.

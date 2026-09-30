@@ -16195,6 +16195,15 @@ golden_tee 7,966 → 8,072 and 10.35 → 7.20, MARINE 80 mm 2,093 → 2,119 and
 thread. His caveat on becker — the reached stretches "look like they are
 just trying to fill a void" — is the flag's open texture item.
 
+**Re-measured against #559 the same night (the entry below):** with
+`satin_tip_caps` ON, which landed on `main` while this was in flight, tip
+caps alone take Becker 80 mm's symmetric arm to the bare the envelope
+reached without them (9.483% against 9.484%), so on the shipped tree the
+envelope's Becker gain is 0.45 points, not 0.74, at +17.5% rail roughness
+rather than +9.3%. Kent's ruling was given on the page's pairs, which were
+drawn without tip caps; the number he weighed is the larger one, and this
+entry records the smaller. `True` keeps its margin (6.84%) and its price.
+
 The suite's pins that moved (full run on the flipped tree: 2,898 passed,
 11 failed, 13 skipped, 5 xfailed in 33:00 on four cores; seven of the
 eleven are the standing reds): the junction stack's thread bound on MARINE
