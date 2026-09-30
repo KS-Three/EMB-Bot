@@ -4826,8 +4826,9 @@ def _junction_cover_runs(poly: Polygon, runs: list[StitchRun], shape_id: str,
 
 def _close_seams(poly: Polygon, pull_mm: float, art_poly: Polygon | None = None) -> Polygon:
     """The on-rails polygon with the hairline seams of its own construction
-    closed, for the SKELETON to read; the rails, caps and every art reading
-    stay on `poly` itself.
+    closed. `satin_shape` sews the whole shape off it -- skeleton, rails,
+    caps and underlay -- so a spine that runs down a closed seam is not cut
+    short by walls the rays can still see.
 
     Under `satin_rail_comp` stage 5 hands satin the artwork polygon unioned
     with the underlap reach under whatever sews later and cut by whatever
@@ -4852,49 +4853,70 @@ def _close_seams(poly: Polygon, pull_mm: float, art_poly: Polygon | None = None)
     element and `ribbon_curve` its golden. So the rule is WHERE, not only
     how wide: a seam is a hairline fill that touches a stretch of boundary
     stage 5 ADDED -- `poly`'s boundary off `art_poly`'s -- and nothing on
-    the artwork's own boundary is touched. An interior ring is filled on the
-    same two tests. Without `art_poly` (a direct caller) the width test
-    alone applies. 0.0 pull returns `poly` untouched -- byte-identical off
-    the rails.
+    the artwork's own boundary is touched. A hairline hole is one of the
+    closing's fills, so it passes the same two tests. An `art_poly` whose
+    boundary cannot be read closes nothing; without one (a direct caller)
+    the width test alone applies. A seam that would shut the mouth of a bay
+    into a counter wider than a hairline stays open. 0.0 pull returns `poly`
+    untouched -- byte-identical off the rails.
     """
     if pull_mm <= 0 or poly.is_empty or poly.geom_type != "Polygon":
         return poly
     radius, width = 0.5 * pull_mm, 0.5 * pull_mm
-    zone = None
-    if art_poly is not None and art_poly.geom_type == "Polygon" and not art_poly.is_empty:
-        try:
-            zone = poly.boundary.difference(art_poly.boundary.buffer(0.01))
-        except Exception:
-            zone = None
-        if zone is not None and zone.is_empty:
-            return poly                      # the polygon IS the artwork: nothing was added
-        if zone is not None:
-            zone = zone.buffer(0.02)
     try:
         added = poly.buffer(radius).buffer(-radius).difference(poly)
     except Exception:  # a degenerate ring; the skeleton reads the polygon as before
         return poly
     parts = list(added.geoms) if added.geom_type == "MultiPolygon" else (
         [added] if added.geom_type == "Polygon" and not added.is_empty else [])
-    seams = [q for q in parts if q.area > 0.0 and q.buffer(-0.5 * width).is_empty
-             and (zone is None or q.intersects(zone))]
-    out = poly
-    if seams:
+    # a closing fills any hole narrower than twice its radius whole, so the
+    # hairline holes are among these parts and need no test of their own
+    seams = [q for q in parts if q.area > 0.0 and q.buffer(-0.5 * width).is_empty]
+    if not seams:
+        return poly                          # the common case: nothing to close
+    if art_poly is not None:
+        # WHERE: only a seam touching boundary stage 5 added. A zone that
+        # cannot be read closes nothing -- falling back to the width test
+        # alone is the rule that cost MARINE its folds.
+        if art_poly.is_empty or art_poly.geom_type not in ("Polygon", "MultiPolygon"):
+            return poly
         try:
-            out = unary_union([poly, *seams])
+            zone = poly.boundary.difference(art_poly.boundary.buffer(0.01))
+            if zone.is_empty:
+                return poly                  # the polygon IS the artwork: nothing was added
+            zone = zone.buffer(0.02)
+            seams = [q for q in seams if q.intersects(zone)]
         except Exception:
             return poly
+        if not seams:
+            return poly
+    # A seam that shuts the mouth of a bay would seal a counter the polygon
+    # does not have -- one wider than any hairline, carved out of what was
+    # outside it. Such a seam stays open.
+    shell = Polygon(poly.exterior)
+
+    def closes(base, qs):
+        try:
+            out = unary_union([base, *qs])
+        except Exception:
+            return None
         if out.geom_type == "MultiPolygon":
             out = max(out.geoms, key=lambda g: g.area)
         if out.geom_type != "Polygon" or out.is_empty or not out.is_valid:
-            return poly
-    kept = [ring for ring in out.interiors
-            if not Polygon(ring).buffer(-0.5 * width).is_empty
-            or (zone is not None and not LineString(ring.coords).intersects(zone))]
-    if len(kept) != len(out.interiors):
-        out = Polygon(out.exterior, kept)
-        if out.is_empty or not out.is_valid:
-            return poly
+            return None
+        for ring in out.interiors:
+            hole = Polygon(ring)
+            if not hole.buffer(-0.5 * width).is_empty and hole.difference(shell).area > 1e-9:
+                return None
+        return out
+
+    out = closes(poly, seams)
+    if out is None:
+        out = poly
+        for q in seams:
+            got = closes(out, [q])
+            if got is not None:
+                out = got
     return out
 
 
@@ -4963,6 +4985,7 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
                 underlay_on_column: bool = False,
                 walk_cursor_reach_mm: float = 0.0,
                 cap_recentre: bool = False,
+                _seams_closed: bool = False,
                 ) -> tuple[list[StitchRun], dict]:
     """One satin-classified shape -> runs in sew order, plus the same report
     contract `stitch_shape` uses, so stage 7 can treat the two identically.
@@ -5041,6 +5064,17 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
     `use_shapefield` forwards to `extract_strokes` — see its docstring. Off
     by default; stage 7 sets it from `cfg.extra["shapefield"]`.
     """
+    if rail_comp_mm > 0 and not _seams_closed:
+        # Under rail comp the shape sews off the polygon with the seams of its
+        # stage-5 construction closed (see `_close_seams`) -- skeleton, rails,
+        # caps and underlay alike, so no ray stops at a seam's wall. A closed
+        # shape that sews nothing sews what its raw polygon sews, never nothing.
+        args = dict(locals())
+        closed = _close_seams(poly, rail_comp_mm, art_poly)
+        if closed is not poly:
+            runs, closed_report = satin_shape(**{**args, "poly": closed, "_seams_closed": True})
+            if not closed_report["empty"]:
+                return runs, closed_report
     report = {"too_thin": False, "jumps": 0, "empty": False}
     # Under rail-side comp the skeleton is the ARTWORK's, with every length
     # threshold that reads the mean half-width restated in sewn terms (see
@@ -5070,25 +5104,11 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
     # `trim_at_mm`). The travel block below sews the leg a wider reach buys.
     walk_cursor_reach = float(walk_cursor_reach_mm or 0.0)
     axis_poly = _axis_polygon(poly, art_poly, polygon_axis)
-    raw_axis_poly = axis_poly
-    if rail_comp_mm > 0:
-        # Under rail comp the skeleton reads the polygon with the seams of
-        # its stage-5 construction closed (see `_close_seams`); `poly`
-        # itself, the rails' and the caps' source, is untouched.
-        axis_poly = _close_seams(axis_poly, rail_comp_mm, art_poly)
     strokes, half_mm, field = extract_strokes(axis_poly, use_shapefield=use_shapefield,
                                               polygon_axis=polygon_axis,
                                               half_extra_mm=rail_comp_mm,
                                               corner_twigs=corner_twigs,
                                               junction_stack=junction_stack)
-    if not strokes and axis_poly is not raw_axis_poly:
-        # A closed shape whose skeleton prunes to nothing sews what its raw
-        # polygon sews, never nothing.
-        strokes, half_mm, field = extract_strokes(raw_axis_poly, use_shapefield=use_shapefield,
-                                                  polygon_axis=polygon_axis,
-                                                  half_extra_mm=rail_comp_mm,
-                                                  corner_twigs=corner_twigs,
-                                                  junction_stack=junction_stack)
     if not strokes:
         report["empty"] = True
         return [], report

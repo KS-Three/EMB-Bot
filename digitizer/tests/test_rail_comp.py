@@ -332,8 +332,8 @@ def test_under_rail_comp_the_skeleton_reads_the_polygon_with_its_seams_closed():
     the pull -- so the skeleton now reads the polygon with its seams closed
     (`_close_seams`: what a half-pull closing fills where it is nowhere
     wider than half a pull AND touches a stretch of boundary stage 5 added,
-    the on-rails polygon's boundary off the artwork's), while the rails,
-    caps and every art reading stay on the polygon itself. A crotch, a
+    the on-rails polygon's boundary off the artwork's), and the rails and
+    caps read that same polygon, so no ray stops at a seam's wall. A crotch, a
     counter or a notch of the artwork's own stays as the artwork drew it:
     the closing at the pull's radius tried first re-cut MARINE's letters
     37 -> 28 strokes, and the width test alone still cost MARINE four folds
@@ -386,3 +386,52 @@ def test_under_rail_comp_the_skeleton_reads_the_polygon_with_its_seams_closed():
         return sum(1 for r in runs if r.kind == s6.stitches.SATIN)
 
     assert satin_runs(seamed) == satin_runs(bar) == 1
+
+
+def test_a_closed_seam_is_closed_for_the_rails_too_and_never_seals_a_bay(monkeypatch):
+    """The seams close for the whole column, not only its skeleton. With the
+    rails still reading the seamed polygon a spine down a closed slit had its
+    crosses stopped at the slit's walls: a 24 x 2.4 mm bar with a 0.12 mm
+    lengthwise slit, the artwork the clean bar, sewed a 0-0.87 mm sliver
+    column and a stray 165-point fill beside a pinched main one (the review
+    of 2026-09-30). Through `satin_shape` with `art_poly`, as stage 7 calls
+    it, the slit bar now sews exactly the clean bar.
+
+    And three edges of the WHERE rule: a seam that would shut the mouth of a
+    bay seals a counter no hairline, so it stays open; an artwork polygon
+    whose boundary cannot be read closes nothing (the width test alone is
+    the rule that cost MARINE its folds); and a closed shape that sews
+    nothing falls back to what its raw polygon sews.
+    """
+    from shapely.geometry import box
+
+    bar = box(0.0, 0.0, 24.0, 2.4)
+    slit = bar.difference(box(3.0, 1.14, 21.0, 1.26))
+
+    def sewn(poly, art):
+        runs, report = s6.satin_shape(poly, "bar", underlay_style="center", trim_at_mm=3.0,
+                                      art_poly=art, rail_comp_mm=PULL, rail_comp_floor_mm=1.5,
+                                      corner_twigs=True, junction_stack=True, stroke_order="euler")
+        return [(r.kind, r.points) for r in runs], report
+
+    assert sewn(slit, bar) == sewn(bar, bar)
+
+    # a 1.2 mm bay opening onto the top edge through a 0.1 mm mouth
+    bay = bar.difference(box(10.0, 0.6, 11.2, 1.8)).difference(box(10.55, 1.7, 10.65, 2.4))
+    assert bay.geom_type == "Polygon" and not bay.interiors
+    stayed = s6._close_seams(bay, PULL, art_poly=box(0.0, -1.0, 24.0, 2.4))
+    assert not stayed.interiors, [Polygon(r).area for r in stayed.interiors]
+
+    # an artwork with no boundary to compare against closes nothing
+    notched = bar.difference(box(6.0, 1.4, 6.0 + 0.4 * PULL, 2.4))
+    assert s6._close_seams(notched, PULL, art_poly=Point(1.0, 1.0)) is notched
+    # a MultiPolygon artwork is read like a Polygon one
+    two = bar.union(box(30.0, 0.0, 32.0, 2.4))
+    assert s6._close_seams(notched, PULL, art_poly=two).symmetric_difference(bar).area < 0.05
+
+    # the fallback: a closing that leaves nothing sewable sews the raw polygon
+    raw = sewn(bar, bar)
+    monkeypatch.setattr(s6, "_close_seams", lambda poly, pull, art=None: box(0.0, 0.0, 0.05, 0.05))
+    assert s6.satin_shape(box(0.0, 0.0, 0.05, 0.05), "speck", underlay_style="center",
+                          trim_at_mm=3.0, rail_comp_mm=PULL)[1]["empty"]
+    assert not raw[1]["empty"] and sewn(bar, bar) == raw
