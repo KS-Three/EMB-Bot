@@ -581,6 +581,22 @@ hand-rolling it in JS.
   invisible to it (a candidate that added 1.7 points of bare satin read
   0.0028 there) — that shape of loss belongs to `rail_edge.bare_area`. See
   DOCTRINE 2026-09-20 and `tests/test_lettering_coverage_regression.py`.
+
+  **Which of the four to reach for, after 2026-09-30.** `preflight`'s
+  `ARTWORK_UNCOVERED` is now the one that names a HOLE: it measures every
+  thread kind on a 0.25 mm grid with no erosion, behind a thickness and a
+  compactness test, and reports `uncovered_hole_mm2` (adjudicated) beside
+  the threshold-free `uncovered_worst_mm2`. `tools/uncovered_floor.py`
+  sweeps its floor over the corpus, and **any threshold here that has not
+  been swept against the current corpus should be assumed stale** — the
+  5.0 mm² floor it replaced had drifted above the largest patch the check
+  could resolve anywhere.
+
+  **And `tools/bare_anatomy.py` counts SATIN CROSSES AND NOTHING ELSE**, so
+  every figure it prints is an upper bound on cloth — by 1.07x to 38.9x
+  fixture-dependent, which cannot be divided out. Pass `--all-thread` when
+  the claim is about what a customer sees; the default is the right reading
+  only for *"did the COLUMN cover its own artwork"*. DOCTRINE 2026-09-30.
 - **Acceptance A/B contact sheet** (`digitizer/tools/acceptance_ab.py`, pure
   logic in `digitizer_core/tools_acceptance.py`): the phase-4 eyeball loop.
   Runs every image in the gitignored `digitizer/testdata/photo/acceptance/`
