@@ -256,6 +256,8 @@ describe("the reading row -- states the reading, offers no correction", () => {
   }
 
   const READINGS = [
+    // A face routed the design flat (Kent's ruling 2026-09-30).
+    ["FACE_ROUTED_FLAT", /A face was found, so it's sewing as flat art/],
     ["CLASSIFIED_PHOTO_SUBJECT", /Read as a photo/],
     ["CLASSIFIED_PHOTO_SCENE", /Read as a photo/],
     // Stage 1.25's verdict on its own (stage 0 said flat): a photograph, but
@@ -288,7 +290,7 @@ describe("the reading row -- states the reading, offers no correction", () => {
   // tests, so two panels in one test double every label.
   // PHOTO_DETECTED alone is a photograph on a flat tier; the detail lines
   // read off its raster, so the option is offered there too.
-  for (const code of ["CLASSIFIED_PHOTO_SUBJECT", "CLASSIFIED_GRADIENT", "PHOTO_DETECTED"]) {
+  for (const code of ["CLASSIFIED_PHOTO_SUBJECT", "CLASSIFIED_GRADIENT", "PHOTO_DETECTED", "FACE_ROUTED_FLAT"]) {
     test(`${code}: the detail-lines option rides this reading`, () => {
       const { getByLabelText } = panelWarnedAs(code);
       expect(getByLabelText("Add fine detail lines")).toBeTruthy();

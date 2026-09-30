@@ -728,6 +728,10 @@
   // class said nothing tonal, and that sentence promises solid regions, not
   // shading. The warning line beside it names WHICH signal fired.
   $: artRead =
+    // A face routed the design flat (Kent's ruling 2026-09-30): the class IS
+    // flat and no CLASSIFIED_* warning exists, so this can lead without
+    // shadowing anything; it leads so the sentence names the reason.
+    warningLines.some((w) => w.code === "FACE_ROUTED_FLAT") ? "face" :
     warningLines.some((w) => w.code === "CLASSIFIED_PHOTO_SUBJECT" || w.code === "CLASSIFIED_PHOTO_SCENE") ? "photo" :
     warningLines.some((w) => w.code === "CLASSIFIED_GRADIENT") ? "gradient" :
     warningLines.some((w) => w.code === "PHOTO_DETECTED") ? "detected" :
@@ -738,7 +742,8 @@
   // on a flat logo (Kent's call, 2026-08-30) -- so the control rides this
   // row rather than sitting in the params list beside stitch width. A
   // detected photograph counts even when its tier is flat.
-  $: tonalLane = artRead === "photo" || artRead === "gradient" || artRead === "detected";
+  $: tonalLane = artRead === "photo" || artRead === "gradient" || artRead === "detected"
+    || artRead === "face";
 
   // Resize honesty (Kent's rule, same as DesignPanel): the field's resize
   // handles SCALE baked stitches, they don't re-digitize — density changes
@@ -1931,7 +1936,9 @@
     {#if element.result}
       <div class="dgp-read">
         <p class="dgp-read-text">
-          {#if artRead === "photo"}
+          {#if artRead === "face"}
+            A face was found, so it's sewing as flat art: solid color regions with an outline.
+          {:else if artRead === "photo"}
             Read as a photo, so it's sewing with shaded thread.
           {:else if artRead === "gradient"}
             Read as shaded artwork, so it's sewing in blended thread shades.

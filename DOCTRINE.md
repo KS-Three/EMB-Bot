@@ -7384,3 +7384,54 @@ class's, detection does not move it), and the detail-lines option follows it.
    `claude/funny-hamilton-ygywku`; `app/src/lib/digitizer.js`
    `buildDigitizeConfig`, `DigitizePanel.svelte` reading row,
    `digitize-auto-start.spec.js`)*
+
+## A face sews FLAT — Kent's ruling, from pictures, the same day the override went (2026-09-30)
+
+The entry above left the faces tier map as *"a decision to put in front of
+him, with both renders."* Done the same day, on two stand-in portraits
+(Kent's own photo could not be brought in — a file sent mid-turn reaches the
+chat and not the disk), each digitized at 80 mm through the local service
+down the automatic lane the PR had just shipped and down `forced_class=flat`.
+
+**The automatic lane lost both, and not in the way the 08-25 entry
+predicted.** Stage 0 read BOTH portraits as `gradient` — neither reached
+`photo_subject`, so thread-paint never ran — and the gradient lane merged the
+subject into its surroundings: a red dress, dark hair and a grey street
+became one grey field with a face floating in it (36,022 stitches, 7 colours,
+face detector FIRED and the photographic machinery ran); a woman in
+sunglasses became one blue silhouette with no face at all (30,716 stitches,
+11 colours, face detector MISSED). Forced flat gave a recognisable person on
+both — dress, hair, smile, glasses — at 48,057 / 40,518 stitches (6 / 4
+colours) and 40,680 (4). That is the run Kent called awesome on his own
+portrait, and he chose it again from the sheet: *face found → flat art,
+automatically.*
+
+**Built as `cfg.faces_route_flat`** (engine default OFF; the Studio sends it
+ON beside `detect_photographic`, which it requires): a face from stage 1.25
+re-answers stage 0 as `flat` at confidence 1.0, the caller's config comes
+back untouched so the photographic machinery stays OFF (no `is_photographic`,
+hence no cut-out, no depth sequencing, no shade bind), and `FACE_ROUTED_FLAT`
+is emitted INSTEAD of `PHOTO_DETECTED`. Pinned as byte-identity with the
+forced run (`tests/test_photo_detection.py`, 5 new), not as a quality claim.
+The face pass now runs even when EXIF already said photograph, because the
+route needs the face and not the verdict; the plain-detection short-circuit
+is unchanged. An explicit `forced_class` or `is_photographic` still wins.
+
+**Three things this does NOT settle, so nobody reads more into it:**
+
+1. **The 08-25 finding is not refuted, it is re-judged.** *"Filled quantizes
+   a face to one skin field"* is still true — the skin IS one field in every
+   flat render here. What changed is whose eye graded it: a session called
+   that a loss; Kent, looking at the same construction, calls it the result
+   he wants. Phase 1's whole question, answered for this one case.
+2. **The blind spot is the detector's, and the second stand-in is it.** No
+   face found → whatever stage 0 read, which on that portrait was the blue
+   silhouette. "Any photograph → flat" (EXIF too) was offered and not taken;
+   a re-saved, faceless photo slips through either way.
+3. **Two stand-ins are not a corpus**, and neither is committed (stock
+   photographs of real people; the repo is public). The sheet went to Kent in
+   the session. A ruling on real customer portraits is still gate-2
+   evidence to collect, not evidence collected. *(Kent's call 2026-09-30 —
+   `config.faces_route_flat`; `pipeline.build_generation` stage 1.25;
+   `DigitizePanel` reading row "A face was found, so it's sewing as flat
+   art"; PR #568)*

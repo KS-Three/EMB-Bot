@@ -169,6 +169,12 @@ export function buildDigitizeConfig(element, project) {
   // detail_layer: one cache-key change on existing designs, after which a
   // design no signal fires on re-digitizes to identical output.
   cfg.detect_photographic = true;
+  // A FACE SEWS FLAT (Kent's ruling 2026-09-30, from two stand-in portraits
+  // rendered down both lanes): when that detection finds a face, the engine
+  // takes the flat lane for it, exactly as the old "It's flat art" button
+  // did, and says so with FACE_ROUTED_FLAT in place of PHOTO_DETECTED.
+  // Engine default OFF like the flag above; config.py carries the numbers.
+  cfg.faces_route_flat = true;
   // Dev/ops seam, not a design property (see sam2Enabled above): sent as
   // per-request context alongside thread_brand rather than stored in
   // element.params, so it never persists into a saved project. Sent for every
@@ -1507,6 +1513,13 @@ const WARNING_TEXT = {
   // tighter), and because a customer who disagrees can say so. The engine
   // sentence it replaces names the palette bind and the shade bind, which are
   // internal machinery nobody uploading a picture has heard of.
+  // Stage 1.25 under faces_route_flat (Kent's ruling 2026-09-30): a face
+  // was found and the design went down the flat lane for it — the route
+  // his own portrait looked best on. Says what happened and why; the
+  // reading row says the same in its own words, and nothing here asks for
+  // anything, so it stays a note.
+  FACE_ROUTED_FLAT: () =>
+    "A face was found in this art, so it's sewing as flat art: solid color regions with an outline, which reads better for a face than shaded thread.",
   PHOTO_DETECTED: (w) =>
     (w && w.signal === "face"
       ? "A face was detected in this art, so it was digitized as a photograph. "

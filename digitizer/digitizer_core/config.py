@@ -109,6 +109,30 @@ class PipelineConfig:
     # the corpus behind both signals and both blind spots.
     detect_photographic: bool = False
 
+    # A FACE SEWS FLAT (Kent's ruling 2026-09-30). When stage 1.25's face
+    # pass finds a face, the design takes the FLAT lane exactly as
+    # `forced_class="flat"` would — solid colour regions, no photographic
+    # machinery, no subject cut-out — and `FACE_ROUTED_FLAT` says so in
+    # place of `PHOTO_DETECTED`. Measured that day on two stand-in
+    # portraits at 80 mm: the automatic lane read both as `gradient` and
+    # merged the subject into the background (a floating face over one
+    # grey field; a blue blob for a woman in sunglasses), while forced flat
+    # gave a recognisable person on both — and the same forced-flat run is
+    # what Kent called awesome on his own portrait. It is the 2026-08-25
+    # "filled quantizes a face to one skin field" finding judged by his
+    # eye instead of a session's: one skin field with the features drawn
+    # in reads better on cloth than a subject that vanishes.
+    #
+    # DEFAULT OFF in the engine; the Studio sends it ON beside
+    # `detect_photographic`, which it requires (no detection, no face).
+    # An explicit `forced_class` or `is_photographic` declaration still
+    # wins, as everywhere. The face pass runs even when EXIF already said
+    # photograph, because the ROUTE needs the face, not the verdict — the
+    # EXIF short-circuit stays for the plain detection case. The blind spot
+    # is the detector's: a face it misses (sunglasses, profile, small in
+    # frame — the second stand-in) takes whatever stage 0 read.
+    faces_route_flat: bool = False
+
     # Stage 2
     # Which manufacturer's chart the design is snapped to. Ids match the
     # browser's (app/src/lib/threadBrandsIndex.js) because Studio sends its

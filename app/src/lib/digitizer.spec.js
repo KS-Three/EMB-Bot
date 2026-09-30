@@ -57,7 +57,7 @@ const PIPELINE_CONFIG_FIELDS = [
   "border_width_mm", "deleted_shape_ids", "shape_overrides",
   "merge_shape_ids", "split_shapes", "photo_segment_sam2", "detail_layer",
   "forced_class", "edge_cap", "is_photographic", "garment_rgb", "crop",
-  "stitch_width_auto", "detect_photographic",
+  "stitch_width_auto", "detect_photographic", "faces_route_flat",
 ];
 
 test("buildDigitizeConfig sends the stored thread-brand preference and the project garment, in service field names", async () => {
@@ -78,6 +78,8 @@ test("buildDigitizeConfig sends the stored thread-brand preference and the proje
     // photo/flat override): the engine's own EXIF-or-face detection is what
     // now answers "is this a photograph".
     detect_photographic: true,
+    // ...and a detected face takes the flat lane (Kent's ruling 2026-09-30).
+    faces_route_flat: true,
     thread_brand: "madeira-rayon",
     garment_id: "left_chest",
   });
@@ -275,6 +277,21 @@ test("the engine's own photograph detection is asked for on every job", async ()
   const { buildDigitizeConfig } = await import("./digitizer.js");
   expect(buildDigitizeConfig(digitizedElement(), PROJECT).detect_photographic).toBe(true);
   expect(buildDigitizeConfig({}).detect_photographic).toBe(true);
+  // And with it, the face-to-flat route (Kent's ruling 2026-09-30) -- the
+  // engine requires detection for it, so the two always travel together.
+  expect(buildDigitizeConfig(digitizedElement(), PROJECT).faces_route_flat).toBe(true);
+  expect(buildDigitizeConfig({}).faces_route_flat).toBe(true);
+});
+
+test("describeWarnings says a found face sent the design down the flat lane", async () => {
+  stubStorage({});
+  const { describeWarnings } = await import("./digitizer.js");
+  const [line] = describeWarnings([
+    { code: "FACE_ROUTED_FLAT", message: "engine prose", faces: 1, detail: "1 face(s) detected" },
+  ]);
+  expect(line.text).toContain("face was found");
+  expect(line.text).toContain("flat art");
+  expect(line.text).not.toContain("engine prose");
 });
 
 test("startDigitize POSTs multipart image+config to /digitize exactly as test_service.py's client does", async () => {

@@ -168,6 +168,7 @@ test("uploading artwork digitizes it on its own, and the panel says what it read
   expect(sentJson).toBeTruthy();
   const sent = JSON.parse(sentJson);
   expect(sent.detect_photographic).toBe(true);
+  expect(sent.faces_route_flat).toBe(true);
   expect(sent).not.toHaveProperty("forced_class");
   expect(sent).not.toHaveProperty("is_photographic");
 });

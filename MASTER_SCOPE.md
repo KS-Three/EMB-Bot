@@ -86,7 +86,8 @@ is 95.8% grid noise). **The per-stroke rung was BUILT INERT 2026-09-05 and WIRED
 gradient and the re-snap sews more spools than the cone list names. **Counted 2026-09-06** (`tools/resnap_escape.py`): **34 cones added corpus-wide, 25 outside the selected palette, every escape on the GRADIENT lane** — while all nine photo-class fixtures add none. The binding works; the lane real logo art routes to never got it. **FIXED, DEFAULT ON since 2026-09-10** (`cfg.bind_resnap_all_classes`, Kent's colour-bundle ruling; False is the pre-flip engine). It also closes half of defect 18's third mechanism — `screenshot` goes 17 blocks / 16 distinct with `3971` sewn twice, to 11 / 11 with no duplicate. Full trade: [area 1](docs/scope/1-auto-digitizing-quality.md). *(measured 2026-09-06 — scope-history 09-06)*
     **UI HALF FIXED 2026-09-02 (Kent's call), REMOVED 2026-09-30 (Kent's
     call — the Studio no longer carries any per-design class override; it
-    sends `detect_photographic=true` instead, see area 3):** the reading
+    sends `detect_photographic=true` and `faces_route_flat=true` instead, see
+    area 3 and DOCTRINE 2026-09-30 "A face sews FLAT"):** the reading
     row's "It's a photo" correction sent `is_photographic` instead of
     `forced_class="photo_subject"`. It was answering the wrong question —
     forcing the FILL TIER rather than declaring content — and measurably
@@ -683,9 +684,12 @@ Studio no longer sends `forced_class` or `is_photographic` at all, and a
 project saved with either digitizes as a fresh upload would. In their place
 the Studio sends `detect_photographic=true` on every job, so the engine's own
 EXIF-or-face detection (area 1, built 2026-09-11, engine default still OFF)
-answers "is this a photograph". `detail_layer` still sits on the row and
-appears only where the art is on a tonal lane by the engine's reading
-(`PHOTO_DETECTED` counts). **The cost is real and named:** stage 0 still
+answers "is this a photograph" — **and a found face routes the design FLAT
+(`faces_route_flat`, Kent's ruling later that day from two stand-in
+portraits rendered down both lanes; DOCTRINE 2026-09-30)**, the row saying
+"A face was found, so it's sewing as flat art". `detail_layer` still sits on
+the row and appears only where the art is photographic or shaded by the
+engine's reading (`PHOTO_DETECTED` and `FACE_ROUTED_FLAT` count). **The cost is real and named:** stage 0 still
 misroutes most real logos (ROADMAP phase 2), and a misrouted design now has no
 in-product correction — the routing is the fix, not a button. Kent's own
 evidence for the change is the case it also takes away: a portrait he forced
