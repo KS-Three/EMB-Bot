@@ -7664,3 +7664,40 @@ escape.
 
 *(measured 2026-09-30 — `docs/renders/envelope-escapes-2026-09-30/`,
 `census.json`; `tools/envelope_escapes.py`)*
+
+## A split comb is a property of the column, and the page render cannot see one (2026-09-30)
+
+Kent's pick after the envelope's sibling rule: Becker's lettering "needs to
+be smooth and have flow to it". Its letters at 100 mm sew 5–7 mm columns
+that straddle `SPLIT_SATIN_ABOVE_MM`, and a per-leg threshold on a column
+that straddles it flickers BY CONSTRUCTION — a 5.1 mm leg split, the 4.9 mm
+leg after it raw, 122 on/off changes down Becker's runs, 59 on the letters.
+No tuning of the threshold fixes that; only deciding per column does.
+
+1. **Decide the comb once per column.** Hysteresis with the constants
+   already there: a leg over the threshold turns the comb on, it stays on
+   while legs are at least one segment (`SPLIT_SEGMENT_MM`) long, in both
+   directions, and a leg under one segment ends it. Over-threshold legs
+   keep their own k so the "no leg longer than the threshold" invariant
+   holds; Becker 122 → 37 changes for +4.5% stitches. A majority filter
+   (85) and a per-run median (103) were measured and are worse: the first
+   leaves every stretch boundary, the second cannot help a run whose
+   median sits under the threshold with a wide half.
+
+2. **The pro who sewed Becker's own files combs nothing.** 24,108 satin
+   legs across the five reference DSTs: split 1–2% up to 5.5 mm, 8% at
+   5.5–6, 17% at 6–7, 32% at 7–9. That is one of the two house styles
+   `machine.py` already names beside the corpus-wide 5.0 vote (53% at 5.0,
+   92% at 7.0). The engine sews the corpus style without flicker now; the
+   Becker style is a threshold, and a 6–7 mm stitch floating or not on
+   pique is cloth's question (gate 1), not the corpus's.
+
+3. **The thread renderer barely shows a mid-column penetration.** A
+   filament continues through it with a break in the shading, so the
+   eye-pairs page CANNOT judge a comb: the three arms render alike. The
+   strips in `docs/renders/split-comb-2026-09-30/` carry a needle
+   penetration map under each render for that reason. When the claim is
+   about holes, draw the holes.
+
+*(measured 2026-09-30 — `docs/renders/split-comb-2026-09-30/census.json`;
+`tests/test_satin.py`, the two comb tests)*
