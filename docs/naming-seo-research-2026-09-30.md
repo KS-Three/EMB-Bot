@@ -546,3 +546,67 @@ Not verified: USPTO direct (Trademarkia's first page only for common-word
 queries such as weft / hoop / bobbin), Instagram, state business
 registrations, Etsy beyond what search surfaced. A registrar cart confirms
 "free" at checkout; an RDAP 404 is not a reservation.
+
+---
+
+## H. Bold — the machine register (round 6, same day)
+
+Kent's steer after round 5: *"Too soft — I want it bold"* and *"Right idea,
+wrong words."* Short, hard consonants, one or two syllables, machine or verb;
+the image-in-stitches-out story in plain words (punch, press, strike, set…),
+no soft craft nouns, no suffix play. **115 candidates screened against the
+.com registry: 30 free, 85 taken.** Every short -x / -ex / -on / -ok coinage
+is gone, every single machine word (Tack, Bolt, Rivet, Anvil, Pylon) is
+gone, every two-word bold pair tried (Hard Stitch, Iron Thread, Black
+Needle) is gone. **What is open is verb + verb and the tack- compounds** —
+the harder and less obvious the pair, the freer it is. All ten measured are
+unregistered on .com, .io and .app at registry price.
+
+| Name | Exact mark | Nearest live marks (cl. 9/40/42) | Same-industry collision | TikTok / YouTube | Bare-word SERP | Composite | Bold |
+|---|---|---|---|---|---|---|---|
+| **Tackpress** | none | generic TACK marks only | a London magazine publisher, closed 2019 | ✅ / ✅ | light | **8.0** | 4 |
+| **Stitchset** | none | the generic STITCH set (a dating app, a health app, an API vendor, STITCH K cl. 40 sewing services, HP STITCH textile printers) | none; "stitch set" is Disney Lilo & Stitch merch | ✅ / ✅ | crowded | 7.5 | 3 |
+| **Stitchrig** | none | same generic STITCH set | a Maya character rig on Gumroad (tiny) | ✅ / ✅ | light | 7.5 | 4 |
+| Tackset | none | generic TACK | none; "tack set" is horse gear | ✅ / ✅ | crowded (equestrian) | 7.0 | 4 |
+| Stitchjolt | none | JOLT cl. 9/42 ×2 (software) | none | ✅ / ✅ | empty | 7.0 | 4 |
+| Stitchdone | none | DONE & DONE cl. 42; S STITCHDOWN pending is one letter away | none | ✅ / ✅ | empty | 7.0 | 2 |
+| **Punchvolt** | none | **PUNCH! SOFTWARE cl. 9** (design software, live since 2007), VOLT cl. 9 ×3 | none in sewing | ✅ / ❌ | empty | 6.5 | **5** |
+| Stitchgrit | none | GRIT cl. 9/42 | none | ✅ / ❌ | empty | 6.5 | 3 |
+| Punchstrike | none | PUNCH! SOFTWARE cl. 9 | none; SERP is boxing | ✅ / ❌ | moderate | 6.0 | **5** |
+| Tackbolt | **TACK BOLT — live, incontestable, cl. 6** (Allfast fasteners, since 2001) | as left | a western-tack retailer | ✅ / ✅ | moderate | 5.5 | 4 |
+
+A lesson from the measurement: Trademarkia's one-word query MISSES spaced
+marks — it said "no results" for `tackbolt` while TACK BOLT is a live
+registration. Every name was re-queried as two words.
+
+### The ones that matter
+
+- **Tackpress** — *tack* is a real sewing verb (the temporary fastening
+  stitch) and *press* is a machine; together it reads like a piece of shop
+  equipment. Cleanest sheet of the ten: no mark, no prior site, every domain
+  and handle open, the only namesake a dissolved magazine publisher. A
+  customer hears a hardware brand first, which may be the point.
+- **Stitchrig** — a *rig* is what an engineer calls the machine they built
+  to do the work. Clean; the one collision is a 3D character rig. "Rig" can
+  read as "rigged" to a suspicious ear.
+- **Punchvolt** — the boldest thing still pronounceable: the trade's own
+  word for digitizing plus an electrical unit. Clean SERP and domains, but
+  YouTube is taken and **PUNCH! SOFTWARE is a live cl. 9 mark for design
+  software** — a "Punch-" software brand in the design space is what an
+  examiner cites. Not a bar; a real letter.
+- **Stitchset** reads like *typeset* — the strongest verb analogy — but its
+  .com had an unreadable live site 2019–2024 and Disney owns the phrase's
+  search results.
+
+**By risk: Tackpress · Stitchset · Stitchrig. By boldness: Punchvolt ·
+Punchstrike · (Tackpress, Tackset, Stitchrig, Tackbolt). Overlap: Tackpress
+and Stitchrig.** Also free, not measured: Tackstrike, Tackmint, Punchtack,
+Tackpunch, Strikestitch, Stampstitch, Punchstruck, Stitchstruck, Punchjolt,
+Threadgun, Stitchox, Punchox, Stitchak.
+
+One flag for every Stitch- name in any round: HP holds STITCH (cl. 2/7) for
+inkjet textile printers, and three unrelated STITCH software marks sit in
+cl. 9/42 — none blocks a compound, but they belong in any attorney brief.
+
+Not verified: USPTO direct; Wayback page bodies (stitchset.com 2019–2024 and
+tackset.com 2017 are unreadable from here); GitHub handles; Instagram.
