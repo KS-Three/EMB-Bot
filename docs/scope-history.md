@@ -16503,3 +16503,29 @@ lettering findings, or the size chip as is).
 
 *(measured 2026-09-30 — scratch scripts over `digitize()`,
 `stitchviz.render_design`, the prep frame; `teal-text.json`)*
+
+## 2026-09-30 — The lettering findings say when the artwork cannot carry the lettering, and the size chip reads the width they name (Kent's pick)
+
+Kent's call on bridge's teal words: a resolution line on the lettering
+findings. `preflight._resolution_note` runs after `LETTERING_TOO_SMALL` and
+`LETTERING_ILLEGIBLE` whenever the artwork was given: the smallest flagged
+lettering (the shapes' extent, the rows' height) times the input's pixels
+per millimetre is its height in SOURCE pixels, and under
+`LETTERING_MIN_SOURCE_PX` (20 — bridge's words were lost at 11–16 and came
+back at 28 in the prep's grid) the finding gains the fact and the two
+levers: a larger source image, always; and, only when the source sits under
+`cfg.min_px_per_mm` so the prep upsamples it, the design width at which the
+prep's grid would give that lettering 20 pixels (W × 20 / (letter mm × 4);
+bridge: 118 mm, measured back at 140). A source above the floor is never
+upsampled, so there the sentence says a bigger design adds no pixels. Three
+extras ride the finding (`input_px_per_mm`, `source_px_per_letter`,
+`traced_at_mm`), and the Studio's "Make it bigger" on those two findings
+now jumps to `traced_at_mm` when it is named, the 25% step otherwise — the
+same one-button-per-parameter rule as the tight-gaps chip. Calibrated on one
+logo; the docstring says to re-measure on two before moving the constant.
+Tests: the note's arithmetic on a synthetic plan, both levers and the
+silent cases; bridge's real run asserts the note (3.5 px/mm, 100–160 mm);
+the Studio spec covers the jump and the fallback.
+
+*(built 2026-09-30 — `digitizer_core/preflight.py`, `tests/test_preflight.py`,
+`app/src/ui/DigitizePanel.svelte`, `DigitizePanel.spec.js`)*

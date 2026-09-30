@@ -243,8 +243,8 @@
     },
     LETTERING_TOO_SMALL: {
       label: "Make it bigger",
-      next: (p) => ({ target_width_mm: Math.min(400, Math.round((p.target_width_mm || 80) * 1.25)) }),
-      spent: (p) => `${Math.round(p.target_width_mm)} → ${Math.min(400, Math.round((p.target_width_mm || 80) * 1.25))} mm wide`,
+      next: (p, f) => ({ target_width_mm: namedOrStep(p, f) }),
+      spent: (p, f) => `${Math.round(p.target_width_mm)} → ${namedOrStep(p, f)} mm wide`,
     },
     // Same cure as above, and deduped below so two findings never offer the
     // same button twice.
@@ -260,8 +260,8 @@
     // the other half is the artwork, which no button here can change.
     LETTERING_ILLEGIBLE: {
       label: "Make it bigger",
-      next: (p) => ({ target_width_mm: Math.min(400, Math.round((p.target_width_mm || 80) * 1.25)) }),
-      spent: (p) => `${Math.round(p.target_width_mm)} → ${Math.min(400, Math.round((p.target_width_mm || 80) * 1.25))} mm wide`,
+      next: (p, f) => ({ target_width_mm: namedOrStep(p, f) }),
+      spent: (p, f) => `${Math.round(p.target_width_mm)} → ${namedOrStep(p, f)} mm wide`,
     },
     // The tight-gaps finding (2026-09-30, Kent's pick) NAMES the width at
     // which its headline shape's gaps clear the fabric's pull plus the
@@ -280,13 +280,20 @@
     },
   };
 
-  // The width a finding names: its headline shape's `clear_width_mm` (the
-  // shape with the most closed gap, first in `extra.shapes`), capped at the
-  // 400 mm ceiling; the 25% step when the payload names none.
+  // The width a finding names, capped at the 400 mm ceiling; the 25% step
+  // when the payload names none. Two findings name one: SATIN_GAPS_TIGHT's
+  // headline shape (`extra.shapes[0].clear_width_mm`, the shape with the most
+  // closed gap), and the lettering findings' `extra.traced_at_mm` (2026-09-30:
+  // the width at which the prep's grid could trace lettering a low-resolution
+  // source lost -- present only when the source sits under the prep floor,
+  // where a bigger design gives the tracer more pixels; absent, the step).
   function namedOrStep(p, f) {
-    const shapes = f && f.extra && Array.isArray(f.extra.shapes) ? f.extra.shapes : [];
-    const named = shapes.length ? shapes[0].clear_width_mm : null;
-    const w = typeof named === "number" && named > 0 ? named : (p.target_width_mm || 80) * 1.25;
+    const extra = (f && f.extra) || {};
+    const shapes = Array.isArray(extra.shapes) ? extra.shapes : [];
+    const fromShape = shapes.length ? shapes[0].clear_width_mm : null;
+    const named = typeof fromShape === "number" && fromShape > 0 ? fromShape
+                : typeof extra.traced_at_mm === "number" && extra.traced_at_mm > 0 ? extra.traced_at_mm : null;
+    const w = named != null ? named : (p.target_width_mm || 80) * 1.25;
     return Math.min(400, Math.round(w));
   }
 

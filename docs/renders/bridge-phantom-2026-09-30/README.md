@@ -139,3 +139,10 @@ golden_tee 6 / 77, drone 5 / 20, fremont 3 / 11; becker, tires, enthusiast,
 gaulke, whitebg, MARINE none. Pixels per millimetre at each logo's width:
 bridge 3.5 and becker 1.5 (whose lettering is 13 mm tall, 19 px, and sews),
 whitebg 8.4, drone 9.6, the rest 12–27.
+
+**Shipped the same day (Kent's pick): the lettering findings carry the
+resolution fact** — `LETTERING_TOO_SMALL` on this logo now says the artwork
+carries 3.5 pixels per millimetre, about 12 across the smallest of the
+lettering, lost in tracing; a larger source carries it, and a design above
+about 118 mm gives the tracer enough pixels to try (`traced_at_mm`, which
+the Studio's size chip jumps to). Scope-history 2026-09-30.
