@@ -396,8 +396,17 @@ test("(h) a node dragged far past the placement box stops at it: nothing else re
   // box in its message.
   const where = `before=${JSON.stringify(before)} after=${JSON.stringify(after)} canvas=${JSON.stringify(g2.hb)} k=${g2.k}`;
   // The opposite (bottom-left) corner did not move: no rescale.
-  expect(Math.abs(after.bb.x0 - before.bb.x0), `left edge moved: ${where}`).toBeLessThanOrEqual(2);
-  expect(Math.abs(after.bb.y1 - before.bb.y1), `bottom edge moved: ${where}`).toBeLessThanOrEqual(2);
+  //
+  // Allowance 6 canvas px, not 2. The box is read with the shape SELECTED,
+  // so its edge carries the selection ring's dark casing, whose width pulses
+  // 3.4 -> 5.2 px; how many of its antialiased outer columns cross the
+  // "dark" threshold differs by renderer. Measured 2026-09-30 on one head:
+  // every number identical between CI (Chrome 151) and a local Chromium
+  // except this edge -- 4 px on CI, 1 px locally, three runs each. The
+  // rescale this guards against moved the untouched edge 10.2 mm (~35 px
+  // here), so 6 px still catches it by a factor of six.
+  expect(Math.abs(after.bb.x0 - before.bb.x0), `left edge moved: ${where}`).toBeLessThanOrEqual(6);
+  expect(Math.abs(after.bb.y1 - before.bb.y1), `bottom edge moved: ${where}`).toBeLessThanOrEqual(6);
   // The dragged corner DID move (it stopped at the box, it did not refuse the drag)...
   expect(Math.hypot(after.bb.x1 - before.bb.x1, after.bb.y0 - before.bb.y0) * g2.k, `dragged corner: ${where}`).toBeGreaterThanOrEqual(40);
   // ...and the design still fits the 203.2 mm box (the caption rounds to whole mm).
