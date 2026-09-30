@@ -1136,6 +1136,7 @@
         <GarmentStep
           {project}
           {showTemplatesHint}
+          {digitizerHealth}
           on:update={(e) => apply(e.detail)}
           on:template={(e) => pickTemplate(e.detail)}
           on:dismisshint={() => dismissHint("templates")}

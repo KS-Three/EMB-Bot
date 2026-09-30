@@ -350,7 +350,12 @@ hand-rolling it in JS.
   `pip install -e ".[service]"`. Cost a cycle on 2026-08-25.
   *(confirmed — `digitizer/pyproject.toml` `[project.optional-dependencies]`)* `GET /health`, `POST /digitize` (image+config → job),
   `POST /digitize-manual` (hand-authored shapes, no image — stages 1-4
-  skipped; same job/response contract), `GET /jobs/{id}`, `POST /export`.
+  skipped; same job/response contract), `GET /jobs/{id}`, `POST /export`,
+  and since 2026-09-30 the calibration trio — `GET /calibration/info`,
+  `GET /calibration/card?format=` (card v2 in any machine format; built on
+  first use, ~15 s, cached for the process) and `POST /calibration/read`
+  (a photo of the sewn card → readings + a draft fabric profile, synchronous,
+  10-20 s; 422 when the card is not found). `digitizer_core/calibration/`.
   Binds loopback only, CORS localhost-only.
 - **The stage 0-4 generation cache** (2026-08-22): `/digitize` caches
   `build_generation`'s output per artwork + every config field EXCEPT the

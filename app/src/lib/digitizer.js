@@ -108,6 +108,22 @@ export async function fetchHealth(fetchFn = globalThis.fetch) {
 // the job cache key) minimal. forced_class (the flat-art override the panel
 // offers on a photo misroute) is omitted the same way and for the same
 // reason: absent IS "classify normally" server-side.
+// `fabrics.py`'s PROFILE_FIELDS and no-op values, verbatim. Key filtering
+// only — the arithmetic lives in the engines (src/fabrics.js, fabrics.py).
+const FABRIC_PROFILE_FIELDS = ["pull_comp_delta_mm", "density_scale", "trim_at_delta_mm"];
+const FABRIC_PROFILE_NOOP = { pull_comp_delta_mm: 0, density_scale: 1, trim_at_delta_mm: 0 };
+
+export function canonicalFabricProfile(profile) {
+  if (!profile || typeof profile !== "object" || Array.isArray(profile)) return null;
+  const out = {};
+  for (const k of FABRIC_PROFILE_FIELDS) {
+    const v = profile[k];
+    if (typeof v !== "number" || !Number.isFinite(v) || v === FABRIC_PROFILE_NOOP[k]) continue;
+    out[k] = v;
+  }
+  return Object.keys(out).length ? out : null;
+}
+
 export function buildDigitizeConfig(element, project) {
   const p = { ...DEFAULT_DIGITIZE_PARAMS, ...((element && element.params) || {}) };
   const cfg = {
@@ -202,6 +218,14 @@ export function buildDigitizeConfig(element, project) {
   if (project && Array.isArray(project.fabricRgb) && project.fabricRgb.length >= 3) {
     cfg.garment_rgb = project.fabricRgb.slice(0, 3).map((v) => Math.round(Number(v)));
   }
+  // The project's calibration profile (Kent's 2026-09-30 call: it ADJUSTS
+  // the garment's preset service-side, clamped — `fabrics.apply_profile`).
+  // Sent in the service's own canonical form so a no-op profile is the same
+  // cache key as none: only the three known keys, only finite numbers, and
+  // nothing at all when nothing survives. The service re-canonicalises and
+  // 400s on anything else, so this filter is a courtesy, not the guard.
+  const profile = canonicalFabricProfile(project && project.fabricProfile);
+  if (profile) cfg.fabric_profile = profile;
   // Shape-layers edits (contract v1) ride the same config — already in the
   // service's canonical spelling (canonicalShapeEdits below), so the job
   // cache key changes exactly when an edit changes and a no-op edit stays a
