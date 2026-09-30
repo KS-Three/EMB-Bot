@@ -432,3 +432,60 @@ stitchpunch.com, sewable.com, logostitch.com (GoDaddy's for-sale pages
 returned Access Denied — put each in a cart or a broker inquiry); and every
 "available" reading confirmed in a registrar cart at checkout, since an RDAP
 404 is "not in the registry", not a reservation.
+
+---
+
+## F. The cheeky register, measured (round 4, same day)
+
+Kent: *"Something more clever, that my mother would be proud of, but maybe
+offended by?"* Twenty-two puns generated, ten measured with the same
+instruments as §E (Verisign / Identity Digital / rdap.org RDAP, Trademarkia —
+Justia and USPTO block the sandbox — TikTok page JSON, YouTube handles, web
+search; Instagram unverified throughout). Composite weights as before; **wit
+is scored separately** so the two can be traded off.
+
+Ruled out on sight: Stitch Witch (Dritz "Stitch Witchery"), Sucker Punch,
+Just Hoop It (Nike), Punchline. Dropped after a look: Punch Drunk (Punchdrunk
+theatre + the film), Sew It Goes (Afternic), Frayed Knot / Thread Zeppelin /
+Sew Sue Me / Stitched Up / Sew Fetch / Get Stitched (all held, some live),
+Needle Little Help (registered 2026-07-05 — someone had it three months ago),
+Stitch Face (.com held).
+
+| Name | .com | .io / .app | Live mark (exact) | Same-industry collisions | Handles TT / YT | SERP p1 | Mother test | Composite | Wit |
+|---|---|---|---|---|---|---|---|---|---|
+| Stitch Please | reg 2011, serves nothing; stitch-please.com a live starter site | ✅ / ✅ | **4 live**, incl. STITCH PLEASE INC. cl 25+40 "embroidery services", reg Aug 2026 | 5+ embroidery shops + a well-known podcast + a yarn line | ❌ / ❌ | 10/10 brands | proud + offended — on target | **2.1** | 5 |
+| Stitch Happens | **Afternic $4,988** | ✅ / ✅ | none | 6+ sewing/embroidery shops (TX, ON, LA, FL, MI, VA) | ❌ / ❌ | 10/10 brands | proud + mildly offended | **4.1** | 5 |
+| Son of a Stitch | reg 2001, dead Wix; **son-of-a-stitch.com free** | ✅ / ✅ | **LIVE cl 40 "embroidery services"** (Manning, Feb 2022) | 7+ embroidery businesses | ❌ / ✅ | 10/10 brands | offended first, proud second | **3.0** | 5 |
+| Holy Stitch | **HugeDomains $4,795**; holy-stitch.com free | ✅ / ✅ | one, dead (abandoned May 2025) | one: Holy Stitch! Factory Fellowship, SF nonprofit sewing school since 2006 | ✅ / ✅ | 8/10 = the nonprofit | proud, eyebrow raised | **5.9** | 4 |
+| Sew What | live embroidery & screen-print company since 1996 | ✅ / ❌ | none exact | **SewWhat-Pro** embroidery-file editor = direct category collision; theatrical drapery firm; 5+ shops | ❌ / ✅ | 10/10 brands | proud, not offended, bored | **3.4** | 3 |
+| Thread Lightly | "Coming Soon" since 2005 | ✅ / ❌ (live AI tool) | two dead | 7 small businesses (embroidery, quilting, yarn, carpet) | ❌ 4.6K / ❌ | 9/10 brands | gets it only via Breaking Bad | **3.6** | 4 |
+| **Hoop There It Is** | **HugeDomains $995** ($41/mo) | ❌ basketball scouting / ✅ | LIVE cl 41 "rental of sports equipment" (different class) | **none in embroidery** | ❌ 1.1K / ❌ (all basketball) | 7/10 basketball | proud; offended only by the bass line | **5.8** | 5 |
+| Darn It | Darn It! Inc., garment repair/QC since 1996 | ❌ / ✅ | pending cl 25 (Darn Tough's parent) | Darn It All embroidery; Darn Knit Anyway | ❌ / ❌ | 5/10 brands | proud, zero offence | **3.3** | 3 |
+| Stitch Perfect | for sale on BuyDomains, price unverified | ✅ / ❌ (live stitch-layout tool) | none | Stitch Perfect Embroidery Designs sells machine files; NeedlePaint "StitchPerfect"; DIME "Perfect Stitch" | ❌ / ✅ | 10/10 brands | proud, not offended | **4.7** | 3 |
+| What the Stitch | **HugeDomains $2,995** | ✅ / ✅ | near-identical LIVE: WHAT'S THE STITCH cl 26 (needlepoint kits) | one Etsy needlepoint shop | ❌ / ❌ | 3/10 brands | offended, then laughs | **4.9** | 4 |
+
+### Two ways to rank
+
+**By measured risk:** Holy Stitch (5.9) · Hoop There It Is (5.8) · What the
+Stitch (4.9).
+**By wit:** Hoop There It Is · Son of a Stitch (unusable — live cl 40 mark) ·
+Stitch Please (registered by an embroiderer, Aug 2026).
+
+**The one name on both lists is Hoop There It Is**: the only candidate where
+the trade word IS the joke; $995 buy-it-now for the .com, .app free, no
+embroidery business on the phrase, the live mark is sports-equipment rental
+(not software or embroidery). Its cost is social: every handle is basketball,
+so it would be `@hoopthereitis-something`, and it is the longest name here at
+13 characters / 4 syllables. **Holy Stitch** is the buyable offence-adjacent
+option if $4,795 (or the hyphen for free) is acceptable; **Stitch Please**
+and **Son of a Stitch**, the register's two flagships, are both already
+someone's registered embroidery business.
+
+Two all-free names surfaced and were NOT deep-measured: **Stitch It Good**
+(Devo) and **EmbroidRage** — .com, .io and .app all unregistered on RDAP;
+marks, handles and collisions unchecked.
+
+Not verifiable from the sandbox, as in §D/§E: USPTO direct (every mark fact
+is Trademarkia's index — "0 results" means none indexed, not clearance),
+Instagram, Etsy shop counts (bot page), and the BuyDomains / GoDaddy lander
+prices that returned 403 or no figure.
