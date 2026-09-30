@@ -136,10 +136,75 @@
     return GARMENT_FABRIC[garmentId] || "pique_knit";
   }
 
+  // --- Calibration profiles (2026-09-30, Kent's call) -----------------------
+  //
+  // A hand-port of `digitizer_core/fabrics.py`'s profile section — same three
+  // keys, same arithmetic, same clamp — and `test_fabric_wire.py` RUNS both
+  // and compares, because this is exactly the class of copy that drifted
+  // for a month on `fillUnderlay`. Read that file's comment for the why;
+  // the short form: a profile is a delta or a scale on the preset's own
+  // value, clamped to the span the shipped table already sews, so it can
+  // re-slot a garment within known physics and never invent a new regime.
+  const PROFILE_FIELDS = ["pull_comp_delta_mm", "density_scale", "trim_at_delta_mm"];
+  const PROFILE_NOOP = { pull_comp_delta_mm: 0, density_scale: 1, trim_at_delta_mm: 0 };
+  const PROFILE_ROUND = 4;
+
+  function profileClamps() {
+    const span = (k) => [Math.min(...FABRICS.map((f) => f[k])), Math.max(...FABRICS.map((f) => f[k]))];
+    return { pullCompMm: span("pullCompMm"), densityAdjust: span("densityAdjust"), trimAtMm: span("trimAtMm") };
+  }
+
+  // The canonical profile, or null when it changes nothing. Throws on a
+  // malformed one — callers that hold persisted data catch and ignore.
+  function normalizeFabricProfile(profile) {
+    if (profile == null) return null;
+    if (typeof profile !== "object" || Array.isArray(profile)) throw new Error("fabric profile must be an object");
+    const unknown = Object.keys(profile).filter((k) => !PROFILE_FIELDS.includes(k)).sort();
+    if (unknown.length) throw new Error("fabric profile: unknown field(s) " + unknown.join(", "));
+    const out = {};
+    for (const k of PROFILE_FIELDS) {
+      const v = profile[k];
+      if (v == null) continue;
+      if (typeof v !== "number" || !Number.isFinite(v)) throw new Error("fabric profile." + k + " must be a finite number");
+      if (v === PROFILE_NOOP[k]) continue;
+      out[k] = v;
+    }
+    return Object.keys(out).length ? out : null;
+  }
+
+  function clamp(v, lo, hi) {
+    const c = Math.min(hi, Math.max(lo, v));
+    return Math.round(c * 10 ** PROFILE_ROUND) / 10 ** PROFILE_ROUND;
+  }
+
+  // `fabric` adjusted by `profile`, clamped — or the SAME object when the
+  // profile is absent or a no-op, so a design that never asked for one is
+  // byte-identical (test/fabrics.test.js). `profile` on the result records
+  // what was applied, for whoever states which fabric is in force.
+  function applyFabricProfile(fabric, profile) {
+    const p = normalizeFabricProfile(profile);
+    if (!fabric || !p) return fabric;
+    const c = profileClamps();
+    const d = p.pull_comp_delta_mm || 0;
+    const sc = p.density_scale == null ? 1 : p.density_scale;
+    const t = p.trim_at_delta_mm || 0;
+    return {
+      ...fabric,
+      pullCompMm: clamp(fabric.pullCompMm + d, c.pullCompMm[0], c.pullCompMm[1]),
+      densityAdjust: clamp(fabric.densityAdjust * sc, c.densityAdjust[0], c.densityAdjust[1]),
+      trimAtMm: clamp(fabric.trimAtMm + t, c.trimAtMm[0], c.trimAtMm[1]),
+      profile: p,
+    };
+  }
+
   return {
     FABRICS,
     getFabric,
     fabricForGarment,
+    PROFILE_FIELDS,
+    profileClamps,
+    normalizeFabricProfile,
+    applyFabricProfile,
     // Exported for callers that must tell "this garment uses the default
     // preset" from "I have never heard of this garment" — `fabricForGarment`
     // deliberately conflates them behind a pique_knit fallback, which is the

@@ -359,7 +359,15 @@ a fourth density square at the professional's 0.15 mm pitch, fits 5x7 with
 (6) pins it, including the reader registering off the marks. His other call:
 a profile ADJUSTS the preset, clamped (DOCTRINE standing ruling).
 
+**Phase 3 — profile into the engine — also built 2026-09-30:**
+`PipelineConfig.fabric_profile` / `project.fabricProfile`, three deltas that
+adjust the garment's preset clamped to the shipped table's span, in both
+engines and the service, default OFF and byte-identical off; the Garment
+step shows the preset in force. `tests/test_fabric_profile.py` (14),
+`test_fabric_wire.py` runs the arithmetic in node and Python.
+
 **What it waits on:** a photograph of a sewn card — none exists. Phase 0 of
 the brief is one hooping (deferred by Kent 2026-09-30, not declined). No
-constant moves (gate 1); the reader measures, it does not set.
+constant moves (gate 1); the reader measures, it does not set. Nothing writes
+a profile yet: phase 4 is the photo-drop flow that fills `fabricProfile`.
 *(built and measured 2026-09-30 — `docs/renders/sewout-reader-2026-09-30/`)*

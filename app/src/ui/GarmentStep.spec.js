@@ -27,6 +27,9 @@ beforeAll(async () => {
   const require = createRequire(import.meta.url);
   require("../../../src/units.js");
   require("../../../src/garments.js");
+  // The Fabric preset row (2026-09-30) resolves the garment's preset, and a
+  // calibration profile on top of it, through the real engine table.
+  require("../../../src/fabrics.js");
   globalThis.EMB.buildLetteringDesign =
     globalThis.EMB.buildLetteringDesign || (() => { throw new Error("not used by this spec"); });
   // TemplateRow kicks off font-manifest fetches for its previews; jsdom has
@@ -114,4 +117,36 @@ test("manually picking the suggested hoop itself shows no redundant reset link",
   const { container } = renderStep({ hoopId: "5x7" });
   expect(hoopButton(container, "5×7 in")).toHaveAttribute("aria-pressed", "true");
   expect(container.querySelector(".hoopreset")).toBeNull();
+});
+
+// --- the Fabric preset row (calibration profile, 2026-09-30) ----------------
+
+test("the fabric preset row names the garment's preset and its numbers, plain by default", () => {
+  const { container } = renderStep();
+  const row = container.querySelector(".fabricpreset");
+  expect(row).toHaveTextContent("Pique knit (polo)");
+  expect(row).toHaveTextContent("pull comp 0.3 mm");
+  expect(row.querySelector(".hooptile-chip")).toBeNull();
+  expect(row.querySelector("button")).toBeNull();
+});
+
+test("a calibration profile shows the ADJUSTED numbers, a Calibrated chip, and a way back to the plain preset", async () => {
+  const { container, updates } = renderStep({
+    fabricProfile: { pull_comp_delta_mm: 0.15, density_scale: 0.9 },
+  });
+  const row = container.querySelector(".fabricpreset");
+  expect(row).toHaveTextContent("Pique knit (polo)");
+  expect(row).toHaveTextContent("pull comp 0.45 mm");
+  expect(row).toHaveTextContent("rows ×0.9");
+  expect(row.querySelector(".hooptile-chip")).toHaveTextContent("Calibrated");
+
+  await fireEvent.click(row.querySelector("button"));
+  expect(updates).toContainEqual({ fabricProfile: null });
+});
+
+test("a corrupt persisted profile leaves the plain preset in force rather than breaking the step", () => {
+  const { container } = renderStep({ fabricProfile: { pull_comp_mm: "nope" } });
+  const row = container.querySelector(".fabricpreset");
+  expect(row).toHaveTextContent("pull comp 0.3 mm");
+  expect(row.querySelector(".hooptile-chip")).toBeNull();
 });

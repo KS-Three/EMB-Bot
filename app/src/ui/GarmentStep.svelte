@@ -5,6 +5,7 @@
   import Hint from "./Hint.svelte";
   import { garmentArt } from "./garmentArt.js";
   import { effectiveHoop } from "../lib/hoop.js";
+  import { fabricInForce } from "../lib/generate.js";
   export let project;
   // Whether the "templates" onboarding hint should render right now -- App
   // computes this from hints.js's shouldShow("templates") plus the A7
@@ -72,6 +73,13 @@
   const hoops = EMB.HOOPS || [];
   $: hoopSel = effectiveHoop(project);
   $: suggestedHoop = EMB.suggestHoop(EMB.getGarment(project.garmentId));
+
+  // The fabric preset in force: the garment's own, or that preset adjusted
+  // by the project's calibration profile (generate.js fabricInForce — the
+  // same resolution every browser lane sews under, and the service mirrors
+  // it). Stated here so a customer can see WHICH numbers their design will
+  // sew with, and drop a profile back to the plain preset.
+  $: fabric = fabricInForce(project.garmentId, project.fabricProfile);
 </script>
 
 {#if showTemplatesHint}
@@ -112,6 +120,20 @@
     </button>
   </p>
 {/if}
+
+<h3>Fabric preset</h3>
+<p class="fabricpreset" data-testid="fabric-preset">
+  <strong>{fabric.label}</strong>
+  {#if fabric.profile}<span class="hooptile-chip">Calibrated</span>{/if}
+  <span class="fabricnums">
+    pull comp {fabric.pullCompMm} mm · rows ×{fabric.densityAdjust} · cut floats past {fabric.trimAtMm} mm
+  </span>
+  {#if fabric.profile}
+    <button type="button" class="linklike" on:click={() => d("update", { fabricProfile: null })}>
+      Use the plain preset
+    </button>
+  {/if}
+</p>
 
 <h3>Fabric color</h3>
 <div class="fabricrow">

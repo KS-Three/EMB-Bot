@@ -49,8 +49,19 @@ Moved verbatim 2026-08-28 — no section was rewritten in the move.
   only a 4x4 machine cannot calibrate with it — accepted. **Phase 0 (Kent
   sewing the card) is deferred, not declined**, so every reader number is
   still a number about a picture; do not quote one as a cloth measurement.
+  **Wired the same day, both engines:** `fabrics.apply_profile` /
+  `src/fabrics.js applyFabricProfile` take three deltas
+  (`pull_comp_delta_mm`, `density_scale`, `trim_at_delta_mm`) and clamp the
+  result to the SPAN OF THE SHIPPED TABLE — canvas to terry on pull comp —
+  which is what makes a profile gate-1 clean: every value it can produce is
+  one the presets already sew on some fabric, and widening a bound is a
+  sew-out question. `PipelineConfig.fabric_profile` / `project.fabricProfile`,
+  default None, byte-identical off; `test_fabric_wire.py` now RUNS the
+  arithmetic in node and Python and compares, since a text diff cannot see
+  a drifted clamp. Nothing writes a profile yet — that is the calibration
+  flow (brief phase 4).
   *(ruled 2026-09-30 — brief §10; `tests/test_sewout_card_v2.py` pins the
-  card, nothing yet wires a profile into the engine)*
+  card, `tests/test_fabric_profile.py` the wiring)*
 
 - **The worksheet states only what the ENGINE KNOWS. Kent's ruling
   2026-09-20.** The machine-physics playbook's Part 3 lists what the sheet

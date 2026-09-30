@@ -28,6 +28,7 @@ from fastapi.responses import Response
 from shapely.geometry import Polygon
 from starlette.concurrency import run_in_threadpool
 
+from digitizer_core.fabrics import normalize_profile
 from digitizer_core import PipelineConfig, __doc__ as core_doc  # noqa: F401
 from digitizer_core import machine
 from digitizer_core.adapter import design_size_mm, design_to_pattern, plan_to_design
@@ -516,6 +517,19 @@ def _validate_config_dict(data: dict, allowed_fields: set[str]) -> dict:
             )
         else:
             data["crop"] = [float(v) for v in crop]
+    # `fabric_profile` (2026-09-30): three optional finite numbers, canonical
+    # form from `fabrics.normalize_profile` so a no-op profile (delta 0,
+    # scale 1, or null) is the same cache key as none. Anything else is a
+    # 400 naming the field, not a TypeError inside stage 5.
+    if "fabric_profile" in data:
+        try:
+            norm = normalize_profile(data["fabric_profile"])
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        if norm is None:
+            data.pop("fabric_profile")
+        else:
+            data["fabric_profile"] = norm
     forced = data.get("forced_class")
     if forced is not None and forced not in CLASSES:
         raise HTTPException(

@@ -28,6 +28,16 @@ test("defaultProject has sane v2 beginner defaults", () => {
   expect(p.elements[0]).toEqual(defaultTextElement("e1"));
 });
 
+test("defaultProject carries fabricProfile: null, and an older save migrates to it additively", async () => {
+  const { defaultProject, migrateProject } = await import("./project.js");
+  expect(defaultProject().fabricProfile).toBeNull();
+  const old = defaultProject();
+  delete old.fabricProfile;
+  expect(migrateProject(old).fabricProfile).toBeNull();
+  const kept = migrateProject({ ...defaultProject(), fabricProfile: { pull_comp_delta_mm: 0.2 } });
+  expect(kept.fabricProfile).toEqual({ pull_comp_delta_mm: 0.2 });
+});
+
 test("defaultProject has a project-level fabricRgb default (Slice 8 Task 2)", () => {
   const p = defaultProject();
   expect(p.fabricRgb).toEqual([235, 232, 223]);

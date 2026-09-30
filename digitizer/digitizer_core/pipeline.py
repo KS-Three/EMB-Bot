@@ -30,7 +30,7 @@ from shapely.geometry import Polygon
 
 from . import debugviz
 from .config import PipelineConfig
-from .fabrics import Fabric, fabric_for_garment, get_fabric
+from .fabrics import Fabric, apply_profile, fabric_for_garment, get_fabric
 from .machine import FILL_ROW_MM, satin_ceiling_mm
 from .photo_signals import apply_detection, resolve as resolve_photo_signals
 from .regions import (
@@ -1316,10 +1316,13 @@ def run_stages(
 
 
 def fabric_for(cfg: PipelineConfig) -> Fabric:
-    """An explicit fabric wins; otherwise the garment picks its usual one."""
-    if cfg.fabric_id:
-        return get_fabric(cfg.fabric_id)
-    return fabric_for_garment(cfg.garment_id)
+    """An explicit fabric wins; otherwise the garment picks its usual one.
+    Then the calibration profile, if any, adjusts it (`fabrics.apply_profile`
+    — clamped, never a replacement). Every stage that reads a fabric number
+    reads it through here, which is what makes one profile reach pull
+    compensation, row spacing and the trim distance alike."""
+    base = get_fabric(cfg.fabric_id) if cfg.fabric_id else fabric_for_garment(cfg.garment_id)
+    return apply_profile(base, cfg.fabric_profile)
 
 
 def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> StitchPlan:
