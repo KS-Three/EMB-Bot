@@ -15808,3 +15808,46 @@ patch it instead was not examined.
 
 *(measured 2026-09-29 — `tools/bare_anatomy.py`, the table above;
 `tests/test_satin_tip_caps.py`; DOCTRINE 2026-09-29, two entries)*
+
+## 2026-09-30 — `satin_tip_caps` FLIPPED ON (Kent's call), and the flip set cost one test
+
+Kent's ruling on the nine-logo price (entry above): take it. `cfg.satin_tip_caps`
+is ON by default; `False` stays reachable and is the pre-flip engine,
+byte-identical on all nine corpus logos.
+
+**The full suite on the flipped tree: 4 failed, 2,874 passed, 15 skipped,
+5 xfailed, 36m25s** (`-n auto`, four cores). Three of the four are exactly
+the node IDs CI deselects as platform goldens — `test_pushcomp[logo_whitebg
+.png-towel]`, `test_flat_lane_byte_identical[photo/enthusiast_logo.png]`,
+`test_stage2_photo_segment[photo/enthusiast_logo.png]` — so **one** failure
+was the flip's, which is the tripwire working as CLAUDE.md documents it.
+
+**No golden re-capture was owed, against expectation.** The prediction going
+in was that the flat-lane goldens would move (`ribbon_curve` looked like it
+must carry a no-owner tapered tip); they did not, and neither did
+`test_pushcomp`'s tuples. The flip touches only shapes that have such a tip,
+and the flat-golden fixtures do not.
+
+**The one real failure was an ATTRIBUTION failure, not a regression.**
+`test_rail_comp.py::test_the_flip_costs_trims_on_the_lettering_fixture_and_says_so`
+passes `satin_rail_comp=False` for its OFF arm but inherited the new
+`satin_tip_caps` default, so "the grown polygon, 2026-09-19's number" had
+quietly become a different engine. MARINE at 80.2 mm, all four combinations:
+
+| arm | trims | stitches |
+|---|---|---|
+| rail OFF, tips OFF — the 2026-09-19 engine | 9 | 1,784 |
+| rail OFF, tips ON | 11 | 1,928 |
+| rail ON, tips OFF | 21 | 2,093 |
+| rail ON, tips ON — shipped | **22** | **2,354** |
+
+**Rail comp's own price did not change:** isolated with tip caps off on both
+sides it reads 9 → 21 trims at **1.173** of OFF, against the 1.18 that was
+pinned. The ceilings moved because a SECOND flag now rides in both arms — tip
+caps costs the OFF arm 2 trims and 144 stitches, the ON arm 1 trim and 261.
+Re-pinned to 11 / 22 / 1.23, **and the 09-19 engine is now its own arm in the
+same test**, so the attribution cannot rot: if that arm moves, rail comp's
+price really has changed.
+
+*(measured 2026-09-30 — the suite log; `tests/test_rail_comp.py`,
+`tests/test_satin_tip_caps.py`)*

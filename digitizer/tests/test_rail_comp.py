@@ -253,6 +253,16 @@ def test_the_flip_costs_trims_on_the_lettering_fixture_and_says_so():
     2,061 -> 2,093 stitches (1.155 -> 1.173 of OFF) for bare artwork
     7.38 -> 7.03% at the same 21 trims -- so the stitch ceiling is 1.18.
 
+    **`satin_tip_caps` (ON since 2026-09-29) now rides in BOTH arms, and the
+    ceilings moved for that reason alone.** Rail comp's OWN price on this
+    fixture did not change: with tip caps off on both sides it still reads
+    9 -> 21 trims and 1,784 -> 2,093 stitches, **1.173 of OFF** against the
+    1.18 that was pinned here before. What moved is the baseline -- tip caps
+    costs the OFF arm 9 -> 11 trims and 1,784 -> 1,928 stitches, and the ON
+    arm 21 -> 22 and 2,093 -> 2,354 -- so the pair reads 11 -> 22 at 1.221.
+    The 09-19 engine is pinned below as its own arm so that attribution
+    cannot rot: if THAT number moves, rail comp's price really has changed.
+
     Pinned as CEILINGS, the way the underlay lever's own cost is: a cheaper
     build lowers them and this test stays green; a dearer one fails it. The
     direction is recorded here, not asserted -- the day the rails sew the
@@ -267,9 +277,19 @@ def test_the_flip_costs_trims_on_the_lettering_fixture_and_says_so():
         return plan_stitches(finish_generation(gen.fork(), c), c)
 
     off, on = sewn(satin_rail_comp=False), sewn()
-    assert off.stats.trims <= 9, off.stats.trims            # the grown polygon, 2026-09-19's number
-    assert on.stats.trims <= 21, on.stats.trims             # the rails: 22 at the flip, 21 after the seam fix
-    assert on.stats.stitch_count <= 1.18 * off.stats.stitch_count, (off.stats.stitch_count, on.stats.stitch_count)
+    assert off.stats.trims <= 11, off.stats.trims           # the grown polygon: 9 on the 09-19 engine, 11 with tip caps
+    assert on.stats.trims <= 22, on.stats.trims             # the rails: 21 before tip caps, 22 with them
+    assert on.stats.stitch_count <= 1.23 * off.stats.stitch_count, (off.stats.stitch_count, on.stats.stitch_count)
+
+    # Rail comp's own price, isolated on the engine the numbers above were
+    # first read on. This is the arm that says whether the ceilings moved
+    # because rail comp got dearer or because another flag joined the ride.
+    off0 = sewn(satin_rail_comp=False, satin_tip_caps=False)
+    on0 = sewn(satin_tip_caps=False)
+    assert off0.stats.trims <= 9, off0.stats.trims
+    assert on0.stats.trims <= 21, on0.stats.trims
+    assert on0.stats.stitch_count <= 1.18 * off0.stats.stitch_count, (
+        off0.stats.stitch_count, on0.stats.stitch_count)
 
 
 def test_under_rail_comp_a_strokes_first_run_starts_on_the_travel_web():
