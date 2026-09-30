@@ -118,8 +118,11 @@ A node edit never moves what was not edited. `editedElementPatch`:
 
 Invariant test, through the REAL engine (vitest can run `EMB` — `generate.spec.js`
 already does): two shapes; drag an anchor of shape A outward; apply the patch;
-`buildQualityDesign` before and after; **shape B's `shapeOutlines` points are
-equal to 1e-6**, and A's unedited anchors likewise. A second case starts from
+`buildQualityDesign` before and after; **shape B's `shapeOutlines` points move by EXACTLY the engine's
+offset-rounding residual (≤ 0.05 mm per axis, the DST grid) and `fit.mmPerPx` is
+unchanged to 1e-12 — measured 2026-09-29: the residual is inherent
+(`offXu = round(offset·10)`), and a looser bare tolerance would have hidden
+scale drift**, and A's unedited anchors likewise. A second case starts from
 `sizeMm: null`. Hoop clamp: if `sizeMm'` exceeds the hoop the engine clamps
 `sc` and the invariant is knowingly broken — the existing hoop warning covers
 it; the test pins that the patch itself is still produced (no error).
