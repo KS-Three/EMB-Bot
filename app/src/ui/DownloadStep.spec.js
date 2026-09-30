@@ -767,6 +767,8 @@ test("a remembered machine shows its button on the next visit", () => {
   expect(container.querySelector('[data-testid="machine-download"]')).toHaveTextContent("Download VP3 for Husqvarna Viking / Pfaff");
   localStorage.removeItem("embstudio:machine");
   unmount();
+});
+
 // ---- save-location control -------------------------------------------------
 //
 // The "save to a folder" control (folderTarget.js) is offered ONLY where the
