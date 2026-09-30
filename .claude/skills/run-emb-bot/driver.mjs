@@ -205,13 +205,10 @@ const commands = {
   },
   // Dump the current design's stitch stats straight out of the canvas caption
   // — cheaper than reading a screenshot, and the number that actually matters.
+  // Reads `span.stats` by name: a first-match text search lands on the left
+  // panel's delta notes and `.dgp-stats` before it reaches the canvas.
   async stats() {
-    return await page.evaluate(() => {
-      const t = [...document.querySelectorAll("*")]
-        .map((e) => e.childNodes.length === 1 && e.textContent ? e.textContent.trim() : "")
-        .find((s) => /\d+\s+stitches/.test(s));
-      return t || "(no stitch caption on screen)";
-    });
+    return (await caption()) || "(no stitch caption on screen)";
   },
   // Wait for a button whose text is EXACTLY this. Needed because several
   // controls only mount after async work: the digitize panel's "Digitize"
@@ -270,13 +267,23 @@ async function shutdown() {
 //
 // Exit 1 on a console error (favicon 404 and the digitizer-probe
 // ERR_CONNECTION_REFUSED are filtered — both are expected noise).
-const STITCH_RE = /[\d,]+ stitches[^\n]*/;
+//
+// The caption is the canvas's own `span.stats` (EmbroideryField.svelte),
+// "2,244 stitches · 80×16 mm · 4×4 in hoop". Read THAT element, and anchor
+// the match on its `· W×H mm · … hoop` shape. A loose /[\d,]+ stitches/ over
+// body.innerText matches whatever comes first in DOM order, and the left
+// panel comes first: on 2026-09-30 it reported "114 stitches (+5.3% of the
+// design)" — a border delta note — as the artwork lane's result, and the
+// DigitizePanel's `.dgp-stats` ("… mm · 2 colors") would match next.
+const STITCH_RE = /[\d,]+ stitches · [\d.]+×[\d.]+ mm · [^·\n]+ hoop/;
+const CAPTION_JS = `(() => {
+  const t = document.querySelector("span.stats")?.innerText || "";
+  const m = t.match(${STITCH_RE});
+  return m ? m[0] : null;
+})()`;
 
 async function caption() {
-  return await page.evaluate((src) => {
-    const m = document.body.innerText.match(new RegExp(src));
-    return m ? m[0] : null;
-  }, STITCH_RE.source);
+  return await page.evaluate(CAPTION_JS);
 }
 
 async function waitCaption(ms = 60000) {
