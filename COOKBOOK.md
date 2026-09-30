@@ -9,8 +9,10 @@ by `.claude/memory/MEMORY.md`) — this file is the self-contained handoff.
 Browser-based embroidery auto-digitizer + guided lettering studio, plus a
 Python digitizing engine that runs as a localhost service. Two parts:
 
-- **`app/`** — "EMB Bot Studio", a Svelte 5 + Vite guided wizard (garment →
-  content → review → download) built on top of the JS stitch engine via
+- **`app/`** — "EMB Bot Studio", a Svelte 5 + Vite configurator — one panel
+  (`ui/Configurator.svelte`: design, colours, garment), a sticky `SummaryBar`,
+  and a `DownloadSheet` that wraps `DownloadStep`; e2e specs reach the sheet
+  through `e2e/helpers.js` `openDownload` — built on top of the JS stitch engine via
   `window.EMB` (the `src/*.js` modules, copied into `app/public/engine/` by
   `app/scripts/copy-engine.mjs`).
 - **`digitizer/`** — Python auto-digitizing pipeline (OpenCV, scikit-image,

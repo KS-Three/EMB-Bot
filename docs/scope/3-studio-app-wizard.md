@@ -1,4 +1,4 @@
-# Area 3 — Studio app / guided wizard
+# Area 3 — Studio app / configurator (file name keeps "wizard" for link stability)
 
 **Part of [`MASTER_SCOPE.md`](../../MASTER_SCOPE.md)** — this is the detail
 for one capability area. The live one-line verdict (Status / Confidence /
@@ -11,6 +11,16 @@ rule and is **not yet annotated**; anything unannotated is unverified until
 someone checks it. Test counts, stitch counts and corpus grades written here
 were snapshots when written — do not quote one as a current baseline.
 Dated narrative belongs in [`../scope-history.md`](../scope-history.md).
+
+---
+
+**2026-09-30 — the four-step wizard became a configurator (PR 1 of 4, PR (branch claude/configurator-structure)).**
+*What changed:* one scrolling panel (`ui/Configurator.svelte`: "Your design" title, `Garment · Hoop` subtitle, an Add text | Upload logo start control, the Design section = `ContentStep`, the Garment section = the existing `GarmentStep` tiles/hoop/fabric) replaces the steps; a sticky `ui/SummaryBar.svelte` (size · stitches · colours, plus the one Download button, disabled with `title="Add text or a logo first"` until something sews); `ui/DownloadSheet.svelte`, a `role=dialog` over the panel holding the old recap `dl.summary`, `QualityReport` and `DownloadStep` unchanged. The panel moved to the right of the field; templates moved into the My designs drawer ("Start from a template"). Removed: `lib/flow.js` `STEPS`/`canAdvance`/`nextStep`/`prevStep` (`isSewable` stays), `lib/stepHistory.js`, `ui/StepNav.svelte`, the "create" review step, the topbar Download shortcut, the "Choose your garment"/"What are you making?" headings *(built and driven 2026-09-30 — `e2e/configurator-smoke.spec.js` 16/16; unit suite 71 files / 1389 tests green, three step specs deleted, four component specs added)*.
+*History:* the Download sheet is the ONLY history entry the Studio pushes — Escape, Close and browser Back close it, and a reload with it open is normalised on mount *(built 2026-09-30 — `DownloadSheet.svelte`, commit d3be1328)*. This supersedes the 2026-09-12 step-history rule.
+*What stayed:* `EmbroideryField`, `DownloadStep`, and every export lane — no engine or service file moved *(confirmed 2026-09-30 — diff touches `app/` UI and docs only)*.
+*What the e2e migration cost:* `wizard-smoke.spec.js` became `configurator-smoke.spec.js`, and the other 23 specs came off the Next-walk onto `e2e/helpers.js` (`startStudio`, `typeText`, `pickGarment`, `pickTemplate`, `openDownload`, `closeDownload`) *(migrated 2026-09-30 — Task 10 of the plan, `docs/superpowers/plans/2026-09-30-studio-configurator-pr1-structure.md`)*.
+*Known, deliberate:* the "Nothing to stitch yet" screen is unreachable from the UI now (Download is disabled instead) and is unit-tested only; the bar's colour figure is distinct spools while `DownloadStep`'s thread list counts colour blocks, so the two can differ *(confirmed 2026-09-30 — code read)*.
+*Next:* PRs 2–4 follow — garment pill row + Original chip, progressive disclosure, theme pass (spec `docs/superpowers/specs/2026-09-30-studio-configurator-design.md`). Everything below predates this and still says "wizard"/"step" — read it as history.
 
 ---
 
