@@ -503,6 +503,11 @@ PUSH_CUTBACK_MM = 0.4
 # locally bulges past its mean — junctions and flares, exactly the crosses
 # that float. This is the structural fix long before the format ceiling
 # (MAX_STITCH_MM 12.1) forces anything.
+# The decision is per COLUMN, not per leg (2026-09-30,
+# `stage6_satin._comb_thresholds`): a column whose legs straddle this value
+# would otherwise flicker between split and raw every few legs (Becker's
+# lettering at 100 mm, 122 changes); once a leg over it turns the comb on,
+# the comb stays on while legs are at least SPLIT_SEGMENT_MM long.
 SPLIT_SATIN_ABOVE_MM = 5.0
 
 # Target segment of a split cross: k = ceil(cross / this) segments, interior

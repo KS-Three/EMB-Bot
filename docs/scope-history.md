@@ -16573,3 +16573,45 @@ against flow; and split satin flickers on the letters under every rail
 mode (71% of crosses split, 18 of 22 runs mixed, 75 on/off transitions).
 Records: `docs/renders/envelope-escapes-2026-09-30/` (README, census.json,
 five strips for Kent's eye), DOCTRINE, `tools/envelope_escapes.py`.
+
+## 2026-09-30 — The split comb is a property of the column: hysteresis on `SPLIT_SATIN_ABOVE_MM` ends the flicker on Becker's letters (Kent's pick)
+
+Kent's pick after the envelope's sibling rule. At 100 mm the six satin
+letters of Becker's MARINE sew 5–7 mm columns straddling the 5.0 mm
+threshold, and the engine split leg by leg — a 5.1 mm leg with a
+mid-column penetration, the 4.9 mm leg after it raw: 4,222 satin legs,
+1,078 split, **122 on/off changes** of the split state along the runs
+(the letters 1,412 legs, 73% split, **59 changes**, 443 legs within half a
+millimetre of the threshold). Measured per leg on the capture pickles;
+tires 21 changes, bridge 20, screenshot 8, the rest none. Three add-only
+rules simulated (no leg may sew longer than the threshold): a majority of
+five neighbours 122 → 85, a per-run median 103, **hysteresis 35** — once a
+leg over the threshold turns the comb on it stays on for every leg at
+least one segment (3.0 mm) long, forwards and backwards, and a leg under
+one segment ends it.
+
+Shipped as `_comb_thresholds`, read once per column before the first point
+is written; over-threshold legs keep their own k, a leg between one segment
+and the threshold inside the comb gains one staggered penetration,
+`split_satin=False` never turns it on, and a column with no leg over the
+threshold is byte-identical. Measured: Becker 122 → 37 changes (letters
+59 → 26) at 8,932 → 9,333 stitches (+4.5%); tires 21 → 5, bridge 20 → 5,
+screenshot 8 → 3; golden_tee, enthusiast, fremont, gaulke unchanged. Two
+tests: the helper on a straddling leg sequence, and a bar tapering from
+4.6 to 5.4 mm whose comb flickers with the rule neutered and is one comb
+with it, rails identical. The pinned files (rail comp, junction stack,
+corner twigs, wide columns, lettering split, density, satin): 144 passed.
+
+**And the pro's own Becker files do not comb at all.** The five sewn DSTs
+in `testdata/reference` (24,108 satin legs): split share 1–2% up to 5.5
+mm, 8% at 5.5–6, 17% at 6–7, 32% at 7–9, 78% above 9; inside the 40
+columns that split at all, legs between one segment and the threshold are
+split 1% of the time. That is the "beckers logo hat sews raw crosses to
+~6" house style beside the corpus-wide 5.0 vote. Rendered as a third arm
+(`split_satin_above_mm=7.0`): 8 changes, 8,292 stitches. The thread
+renderer barely shows a mid-column penetration, so the strips carry a
+needle-penetration map under each render — the holes are what cloth
+shows. Raising the threshold is cloth's question (gate 1) and Kent's
+ruling; the engine now sews the 5.0 style without flicker. Records:
+`docs/renders/split-comb-2026-09-30/` (README, census.json, four strips),
+DOCTRINE.

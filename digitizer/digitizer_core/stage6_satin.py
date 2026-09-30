@@ -3608,6 +3608,51 @@ def _round_corners(spine: list[tuple[float, float]], half_mm: float,
     return out
 
 
+def _comb_thresholds(legs: list[float], above_mm: float) -> list[float]:
+    """The split threshold each leg of a column is cut at: `above_mm` on its
+    own, `SPLIT_SEGMENT_MM` wherever the column's comb is ON.
+
+    A column whose legs straddle `SPLIT_SATIN_ABOVE_MM` used to split leg by
+    leg -- one leg at 5.1 mm split, the next at 4.9 raw -- and the comb
+    flickered down the column: Becker's MARINE at 100 mm, 1,412 letter legs,
+    443 of them within half a millimetre of the threshold, 59 on/off changes
+    (122 over the design; tires 21, bridge 20). Kent's note on that sitting:
+    the lettering "needs to be smooth and have flow to it" (2026-09-30).
+    The comb is a property of the COLUMN: once a leg over the threshold
+    turns it on, it stays on for every following leg at least one segment
+    long, and it starts at the first leg at least one segment long before
+    that; a leg under one segment is where the column has narrowed to a
+    single stitch and the comb ends. A leg over the threshold splits as it
+    always did (k = ceil(len / segment), the same k either way), so no leg
+    ever sews longer than the threshold; a leg between one segment and the
+    threshold inside the comb gains ONE penetration (k = 2, staggered like
+    its neighbours); a leg under one segment never splits. Measured on
+    Becker: 122 -> 35 changes for 402 added penetrations (+4.5% stitches),
+    the letters 59 -> 24; tires 21 -> 5, bridge 20 -> 5, screenshot 8 -> 3;
+    a design with no leg over the threshold is byte-identical, and so is
+    `split_satin=False` (above_mm = inf never turns the comb on).
+    `docs/renders/split-comb-2026-09-30/`.
+    """
+    seg = machine.SPLIT_SEGMENT_MM
+    n = len(legs)
+    on = [False] * n
+    carry = False
+    for i in range(n):
+        if legs[i] > above_mm:
+            carry = True
+        elif legs[i] < seg:
+            carry = False
+        on[i] = carry
+    carry = False
+    for i in range(n - 1, -1, -1):
+        if legs[i] > above_mm:
+            carry = True
+        elif legs[i] < seg:
+            carry = False
+        on[i] = on[i] or carry
+    return [seg if on[i] else above_mm for i in range(n)]
+
+
 def _split_points(pa: tuple[float, float], pb: tuple[float, float],
                   station: int, above_mm: float) -> list[tuple[float, float]]:
     """Intermediate penetrations for one cross, or [] when it needs none.
@@ -4050,6 +4095,26 @@ def satin_stroke(poly: Polygon, stroke: Stroke, half_mm: float,
     last_station = len(crosses) - 1
     n_start = len(parts) if parts is not None else 0
 
+    # The column's comb (`_comb_thresholds`): the legs this loop will emit,
+    # in order, read off the SAME kept sequence the loop keeps -- a cross,
+    # then the return leg to the next kept cross -- so each leg's threshold
+    # is known before the first point is written.
+    kept_xy: list[tuple] = []
+    _prev: tuple | None = None
+    for _i, (_pa, _pb) in enumerate(crosses):
+        if _i in in_bean or thin[_i]:
+            continue
+        if _prev is not None and math.dist(_pa, _prev[0]) < 0.05 and math.dist(_pb, _prev[1]) < 0.05:
+            continue
+        _prev = (_pa, _pb)
+        kept_xy.append(_prev)
+    leg_lens: list[float] = []
+    for _k, (_pa, _pb) in enumerate(kept_xy):
+        if _k:
+            leg_lens.append(math.dist(kept_xy[_k - 1][1], _pa))
+        leg_lens.append(math.dist(_pa, _pb))
+    leg_above = _comb_thresholds(leg_lens, above)
+
     out: list[tuple[float, float]] = []
     prev_kept: tuple | None = None
     kept = 0
@@ -4109,19 +4174,23 @@ def satin_stroke(poly: Polygon, stroke: Stroke, half_mm: float,
         # traverse in both directions — splitting only the outbound leg would
         # leave every other stitch over-length. Stagger phase runs on the
         # KEPT-station count: dropped stations must not advance the wave.
+        # This kept cross is leg 2*kept of the column; the return leg into
+        # it is leg 2*kept - 1. The comb's threshold for each (`leg_above`).
+        ret_above = leg_above[2 * kept - 1] if kept else above
+        cross_above = leg_above[2 * kept]
         if out:
-            out.extend(_split_points(out[-1], pa, kept, above))
+            out.extend(_split_points(out[-1], pa, kept, ret_above))
         out.append(pa)
-        out.extend(_split_points(pa, pb, kept, above))
+        out.extend(_split_points(pa, pb, kept, cross_above))
         out.append(pb)
         kept += 1
         if parts is not None:
             if cur:
-                cur.extend(_split_points(cur[-1], pa, cur_kept, above))
+                cur.extend(_split_points(cur[-1], pa, cur_kept, ret_above))
             else:
                 cur_i0 = i
             cur.append(pa)
-            cur.extend(_split_points(pa, pb, cur_kept, above))
+            cur.extend(_split_points(pa, pb, cur_kept, cross_above))
             cur.append(pb)
             cur_kept += 1
     flush(last_station)
