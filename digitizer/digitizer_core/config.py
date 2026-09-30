@@ -1202,9 +1202,27 @@ class PipelineConfig:
     # three, holds on five and rises on one by 0.05 mm2 (fremont). The price
     # is thread: a median of about +3.6% stitches, +0.5% at best, and
     # +12.7% with +11 trims on golden_tee -- which is also the largest
-    # coverage gain (-18% bare). Corpus total 91,102 -> 96,929 stitches.
+    # coverage gain (-18% bare). Corpus total 91,102 -> 94,929 stitches,
+    # **+4.2%** (this read 96,929 / +6.4% when first written on 2026-09-29 --
+    # a transcription slip in a figure nobody had re-derived; corrected
+    # 2026-09-30 by summing the per-fixture column in code rather than by
+    # hand, which is how it was got wrong).
     # No sew-out backs it; whether a gap at a letter tip shows on cloth is
     # the card's question, and the flip was taken on the instrument.
+    #
+    # WIDENED 2026-09-30 to Kent's apex construction -- "a tip's two arms
+    # BOTH cap, and overlap". The gate no longer requires `under is None`:
+    # at ENTHUSIAST's A apex `_corner_forks` names a partner BOTH ways, each
+    # arm tucking under the other, so neither capped the point and the letter
+    # sewed bare. That population IS what the ruling is about. On the nine
+    # logos, bare artwork and end bare now fall on ALL NINE -- becker
+    # 182.07 -> 153.19 mm2, bridge 59.57 -> 47.69, golden_tee 56.38 -> 43.75,
+    # drone 40.19 -> 32.52, screenshot 32.79 -> 25.14 -- and the fixture's
+    # worst component goes 3.61 mm2 @0.71mm to 0.53 @0.19, which is
+    # MASTER_SCOPE defect 49 closed. Corpus total 91,102 -> 96,606 (+6.0%);
+    # per fixture +0.7% (fremont) to +14.3% (golden_tee), median +6.6%.
+    # Three discriminators were tried before this and all failed; none was
+    # needed. DOCTRINE 2026-09-29/30 has why.
     satin_tip_caps: bool = True
     # The lettering yardstick's trims gap, read with a per-trim census
     # (2026-09-19, scope-history): traced MARINE at 80 mm sews 13 trims

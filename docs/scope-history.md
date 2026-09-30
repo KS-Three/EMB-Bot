@@ -15791,7 +15791,7 @@ component improves on three (screenshot 1.94 → 0.91, gaulke, bridge), holds
 on five, and rises on one by 0.05 mm² (fremont). The cost is thread: a median
 of about +3.6% stitches, +0.5% at best, and **+12.7% with +11 trims on
 golden_tee**, which is also the largest coverage gain (−18% bare). Corpus
-total 91,102 → 96,929 stitches, +6.4%.
+total 91,102 → 94,929 stitches, +4.2% (published as 96,929 / +6.4% on 2026-09-29 — a transcription slip, corrected 2026-09-30 by summing the column in code).
 
 **It does not close defect 49.** ENTHUSIAST's apex is unchanged at 3.61 mm²:
 both its arms have an identified `tuck_under` partner — each tucks under the
@@ -15851,3 +15851,58 @@ price really has changed.
 
 *(measured 2026-09-30 — the suite log; `tests/test_rail_comp.py`,
 `tests/test_satin_tip_caps.py`)*
+
+## 2026-09-30 — defect 49 CLOSED: a tip's two arms both cap and overlap (Kent's construction)
+
+Kent's ruling on the apex, and it needed **no new discriminator** — it needed
+the existing one to stop EXCLUDING the population the ruling is about.
+
+`satin_tip_caps` fired only where `under is None`: no single neighbour
+identified to tuck beneath. ENTHUSIAST's A apex is the opposite case —
+`_corner_forks` names a partner BOTH ways, each arm tucking under the other —
+so neither capped the point and the letter sewed bare. Dropping that
+exclusion, keeping the reach gate, **is** "both arms cap it and overlap".
+
+| case | stitches | trims | bare mm² | end bare mm² | worst component |
+|---|---|---|---|---|---|
+| becker 100 | 8,297 → 9,358 (+12.8%) | 48 → 52 | 182.07 → **153.19** | 129.25 → 106.11 | 54.38 → 54.28 |
+| tires 80 | 2,380 → 2,538 (+6.6%) | 5 → 7 | 29.53 → 27.45 | 1.53 → **0.67** | 0.26 → 0.26 |
+| enthusiast 80 | 2,392 → 2,602 (+8.8%) | 15 → 15 | 24.41 → **17.13** | 10.49 → **3.61** | **3.61@0.71 → 0.53@0.19** |
+| fremont 92.5 | 19,937 → 20,080 (+0.7%) | 58 → 58 | 18.10 → 18.06 | 7.11 → 6.42 | 0.93 → 0.98 |
+| bridge 80 | 16,037 → 17,098 (+6.6%) | 96 → 99 | 59.57 → **47.69** | 38.60 → 28.16 | 9.44 → 9.30 |
+| golden_tee 80 | 11,377 → 13,002 (**+14.3%**) | 57 → 69 | 56.38 → **43.75** | 41.42 → 26.75 | 2.14 → 2.14 |
+| gaulke 80 | 4,224 → 4,501 (+6.6%) | 32 → **30** | 35.02 → 31.19 | 11.37 → 8.64 | 0.47 → 0.41 |
+| drone 80 | 18,595 → 19,154 (+3.0%) | 123 → 123 | 40.19 → **32.52** | 16.38 → 11.43 | 2.65 → 2.65 |
+| screenshot 80 | 7,863 → 8,273 (+5.2%) | 71 → 73 | 32.79 → **25.14** | 14.17 → **7.22** | 1.94 → **0.91** |
+
+**Nine of nine improve on bare artwork AND on end bare.** The worst component
+improves on four, holds on four, and rises on one by 0.05 mm² (fremont).
+Corpus total 91,102 → **96,606 stitches, +6.0%**; per fixture +0.7% to
++14.3%, median +6.6%.
+
+**MASTER_SCOPE defect 49 is closed:** the A's apex, the largest bare component
+on the fixture, goes 3.61 mm² at 0.71 mm half-width to **0.53 mm² at 0.19 mm**
+— a fifth the area, a quarter the thickness.
+
+**Three discriminators were tried first and none was needed.** (1) The reach
+gate alone with `under is None` — fires, buys coverage elsewhere, never
+reaches the apex. (2) The artwork BEYOND the node — inert, because at a
+two-arm apex the partner arm is beyond it exactly as at an L's elbow.
+(3) The paired-cap separation — refuted by its own distribution: the apex
+reads **1.73** sewn half-widths while Becker's and gaulke's two-arm nodes read
+1.17, 1.32, 1.36, 2.31, 2.84, 2.86, 2.87, 3.06, 3.07, 3.31, 4.17, 5.70, 5.77.
+The apex sits INSIDE that range with three nodes below it, so no threshold
+separates them. Attempt 2 had bundled the dropped exclusion WITH the area
+test, and the area test made the pair inert — so the variant that works had
+never been measured on its own. **The lesson is not about tips: when a change
+bundles two edits and measures dead, unbundle before concluding either half
+is dead.**
+
+`tests/test_rail_comp.py`'s ceilings were re-measured and **still hold**
+(MARINE 11 → 22 trims at 1.221 of OFF, inside the 11 / 22 / 1.23 pinned hours
+earlier, and the 09-19 arm unmoved at 9 → 21 / 1.173).
+`tests/test_satin_tip_caps.py` is re-pinned: end bare 9.18 → 3.61 mm² (bar
+tightened to 4.0), stitches 2,474 → 2,602 (bar 2,650).
+
+*(measured 2026-09-30 — `tools/bare_anatomy.py --corpus`, the table above;
+`tests/test_satin_tip_caps.py`; DOCTRINE 2026-09-29/30)*

@@ -199,7 +199,6 @@ icon. Cloth pointers added to defects 3, 6 and 16 below.
 
 47. **`overlap_mm` is one scalar at 0.25 mm, against a law that wants 1.0–2.0.** Law 26 asks 1.0 mm where parallel stitch directions meet on wovens, 1.5–2.0 on knits/fleece and ~0 near-perpendicular; `config.py:918` is angle-blind, fabric-blind and sits under the law's own 0.8 mm close-up threshold, and no forbid-gap rule exists. Most of it is desk-safe and buildable now — only the knit value is gated. Detail: [backlog](docs/scope/machine-physics-backlog.md). *(confirmed 2026-09-20 — playbook row 9)*
 
-49. **A letter's tapered apex sews BARE under `satin_rail_comp`, and preflight's floor sits above it.** ENTHUSIAST's A at 80 mm: the column reaches within **0.08 mm** of the artwork's apex with the pull in the polygon and stops **1.63 mm** short with it on the rails — nothing lands within 1.5 mm of the apex — leaving one **3.61 mm² triangle at 0.71 mm half-width**, the fixture's largest bare component. `_UNCOVERED_MIN_PATCH_MM2` is 5.0, so `ARTWORK_UNCOVERED` never fires. Found by splitting the flip's bare artwork by THICKNESS: the headline it hid behind — "mid-rail bare 2.06 → 4.12%, cause not isolated" — is hairlines, 80% thinner than 0.10 mm half-width, worst component SMALLER than OFF's. Rendered both ways. Kent accepted the flip's price 2026-09-29; this part of it nobody had seen. **`satin_tip_caps` (built OFF the same day) does NOT close it**: both apex arms tuck under each other. The rest is a construction call — DOCTRINE. *(measured 2026-09-29 — `docs/renders/rail-comp-bare-anatomy-2026-09-29/`; `tools/bare_anatomy.py`; ceilings in `tests/test_rail_comp.py`)*
 
 ### Closed — kept numbered, because ten other docs cite them by number
 
@@ -208,6 +207,7 @@ these, and ten other docs cite the numbers.** Caveats on 3, 16 and 17 moved to
 DOCTRINE 2026-09-14.
 
 1. shade-thread collapse (`_shade_blocks`) — RESOLVED 2026-08-19.
+49. a letter's tapered apex sewed BARE under `satin_rail_comp` — the A's column stopped 1.63 mm short where it reached to 0.08 mm off the rails, a 3.61 mm² triangle under preflight's 5.0 mm² floor — CLOSED 2026-09-30 by `satin_tip_caps` widened to Kent's construction (a tip's two arms both cap and overlap): 0.53 mm² @0.19 mm, and bare artwork falls on all nine corpus logos. Full text: scope-history 09-29/30.
 44. satin borders sat a median 1.4–1.9 mm INSIDE every abutting colour (14 of 17 bordered shapes on the 80 mm icon) — FIXED 2026-09-09 on Kent's ruling that the colour sewn on top owns a shared seam (`_owned_by_later`, `border_runs(omit=…)`; 33,292 → 30,420 st, trims 34 → 30). Standing ruling: DOCTRINE. Full text: scope-history 09-29.
 45. no preset declared its assumed stabilizer; backing was guessed from stitch count — RESOLVED 2026-09-20 (`Fabric.assumed_backing` / `needs_topper`, both engines; the worksheet prints both). Playbook law 33.
 48. no machine-time model, so nothing quoted a runtime — RESOLVED 2026-09-20 (`machine.PLAN_SPM` 650, `TRIM_COST_STITCHES` 120; the worksheet prints "Run time ~N min … incl. trims"). Playbook laws 36/38.

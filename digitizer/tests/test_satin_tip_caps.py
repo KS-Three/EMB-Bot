@@ -89,6 +89,12 @@ def test_on_the_lettering_fixture_it_buys_end_coverage_for_thread():
     green. Measured 2026-09-29: end bare 10.49 → 9.18 mm² for 2,392 → 2,474
     stitches at the same 15 trims.
 
+    **Re-pinned 2026-09-30 for the widened gate** (Kent's apex construction):
+    end bare 9.18 → **3.61 mm²** and stitches 2,474 → **2,602**. The end-bare
+    bar tightens with the gain rather than tracking it loosely — the apex the
+    first build could not reach is what closed, so the floor should not let it
+    re-open.
+
     One digitize, not two — the OFF numbers are the constants above, and this
     suite already pays for an ENTHUSIAST run in `test_rail_comp.py`.
     """
@@ -104,7 +110,7 @@ def test_on_the_lettering_fixture_it_buys_end_coverage_for_thread():
     assert comps
 
     end_bare = sum(a for a, _h, is_end, _s in comps if is_end)
-    assert end_bare <= 9.5, f"end bare rose to {end_bare:.2f} mm2 (9.18 when built)"
-    # and the thread it costs stays inside the measured price (2,474 of 2,392)
-    assert plan.stats.stitch_count <= 2520, plan.stats.stitch_count
+    assert end_bare <= 4.0, f"end bare rose to {end_bare:.2f} mm2 (3.61 when widened)"
+    # and the thread it costs stays inside the measured price (2,602 of 2,392)
+    assert plan.stats.stitch_count <= 2650, plan.stats.stitch_count
     assert plan.stats.trims <= 15, plan.stats.trims
