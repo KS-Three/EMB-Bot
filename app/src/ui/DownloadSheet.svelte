@@ -10,9 +10,6 @@
   export let project;
   export let runtime;
   export let digitizerHealth = null;
-  // Part of the sheet's prop contract (App passes it); nothing inside uses it yet.
-  // svelte-ignore export_let_unused
-  export let sewnColors = null;
   export let summaryRows = [];
   export let qualityEntries = [];
   export let qualityPartial = false;

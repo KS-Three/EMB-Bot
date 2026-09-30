@@ -13,7 +13,6 @@
   {project}
   {runtime}
   digitizerHealth={null}
-  sewnColors={null}
   {summaryRows}
   {qualityEntries}
   {qualityPartial}
