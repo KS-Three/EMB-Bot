@@ -36,3 +36,48 @@ a probe that leaves the polygon and re-enters it within reach — moved that
 ENTHUSIAST 6.98 → 7.63, golden_tee 7.20 → 8.35), so it is a measured
 negative, not a fix. The teal "BAR & RESTAURANT" (1.6 mm cap height at
 80 mm) sews as five blobs, below the lettering floor.
+
+## The script as lettering, measured (2026-09-30, Kent's pick)
+
+*Why "Bridge" is not `text_candidate`, and whether classifying it as
+lettering would open its gaps.* Numbers in `script-as-lettering.json`.
+
+**The classifier cannot see a connected word.** `detect_text_clusters`
+admits a region through the letter door on three gates — height 1.5–60 mm,
+stroke cv ≤ 0.55, bbox aspect 0.05–1.4 — and then tags only a CLUSTER of
+three or more linked members (one ink, heights within 0.8, near each other).
+"Bridge" (`S71ddac97`, 245.7 mm², five counters, 37.7 × 14.4 mm, sewn as
+satin) passes height (14.4) and stroke cv (0.328) and fails **aspect: 2.616
+against a ceiling of 1.4** — the ceiling was calibrated on single glyphs
+(the benchmark's 14 letters read 0.107–0.964, its fragments 1.778–2.125), and
+a six-letter script word is 2.6 times wider than tall. Past that gate it
+would still tag nothing: a cluster needs three members and the word IS the
+cluster — bridge has 26 letter candidates in 80 regions, none in the
+script's red. The house-angle grouping uses the same aspect gate, so a
+script word takes its own angle too. tires' "TIRES" (441 mm², 65.1 × 17.2 mm,
+aspect 3.78, stroke cv 0.166) fails the same gate: four candidates, no cluster.
+
+**Tagging it opens nothing.** With the script force-tagged as a text
+cluster and every shipped lettering flag ON, shipped → tagged: 16,179 →
+16,388 stitches, 101 → 103 trims, bare satin 4.31 → 4.07 %, **red on yellow
+39.9 → 40.6 mm²** (red artwork bare 0.2 → 0.6); the script's runs satin
+12 → 11, underlay 18 → 22, travel 8 → 6. On tires the tag reads the same
+way: 2,646 → 2,897 stitches (underlay 15 → 20), trims 8, bare 4.44 → 4.01 %.
+The rules that read the tag are `satin_lettering_split` (no width ceiling,
+per-stroke rung, fold guard), `edge_cap_skip_lettering` (no silhouette cap
+over the letter's outline), the per-cluster shared stitch width and
+preflight's legibility OCR. None reads the rails, the pull or a gap.
+
+**The gaps are closed in the artwork.** At the design's scale (the ink's
+279 px across 80 mm, 3.49 px/mm; measured 4× upsampled) the open gaps
+between the script's strokes — 85 mm of channel — read p10 / p25 / p50 /
+p75 / p90 = 0.57 / 1.06 / 1.58 / 2.29 / 2.72 mm: 9 % of the gap length is
+under 0.5 mm, 17 % under 0.8, **22 % under 1.0**, 45 % under 1.5. The
+counters are tighter (p50 0.80 mm, half under 0.8); the strokes themselves
+p50 1.89 mm. Two facing rails on pique knit push out `pull_comp_mm` 0.3
+each and a thread covers 0.40, so any gap under 1.0 mm is closed before a
+rule runs; the pull band is 22 of the 40 mm² (above) and the general notch
+guard recovered 2 (above). What could still open daylight is the 1.0–1.5 mm
+quarter of the gap length, and only by holding the push where two strokes
+face each other — the guard that costs bare on every other fixture unless
+it is scoped to script, which the classifier cannot name.

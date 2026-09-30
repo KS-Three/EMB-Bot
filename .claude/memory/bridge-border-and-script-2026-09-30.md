@@ -34,5 +34,11 @@ the corpus table in scope-history 2026-09-30.
   held his 09-28 `phantom_dissolve__*` verdicts, so the fold-fixed pairs are keyed
   `phantom_dissolve__<fixture>__fold-fix` (the gallery's `--sitting`). Read the store
   before every republish; never make room by moving his documents.
+- **Script as lettering, measured (Kent's pick):** the letter door's aspect ceiling (1.4)
+  refuses a script word (bridge 2.6, tires 3.8) and a word is a cluster of one where three
+  are needed; force-tagging "Bridge" moved red-on-yellow 39.9 → 40.6 mm² — the tag reaches
+  no rail, pull or gap. 22 % of the word's gap length is under the 1.0 mm pull + thread
+  close at 80 mm. Don't chase the classifier; the lever is a script-scoped push hold
+  (2 mm² expected), a preflight size finding, or nothing.
 - Count colour blocks before reading a border as a satin defect; classify
   thread by the artwork under it before reading a smoosh as a rail defect.

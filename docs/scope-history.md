@@ -16367,3 +16367,39 @@ or a space. 59 gallery tests (3 new). The flag stays OFF until his eye.
 
 *(built 2026-09-30 — `docs/eye-pairs-2026-09-30/README.md` "Second sitting",
 `dissolve-corpus.json`)*
+
+## 2026-09-30 — Script as lettering: the classifier cannot see a connected word, and tagging it opens nothing
+
+Kent's pick after the fold: *why is "Bridge" not `text_candidate`, and would
+classifying connected script as lettering let the 09-19 rules open its
+gaps?* Measured on bridge at 80 mm (`docs/renders/bridge-phantom-2026-09-30/`,
+`script-as-lettering.json`):
+
+- **Why not text:** the letter door's three gates are height 1.5–60 mm,
+  stroke cv ≤ 0.55 and bbox aspect 0.05–1.4; "Bridge" (245.7 mm², five
+  counters, 37.7 × 14.4 mm) passes the first two and fails aspect at
+  **2.616** — the ceiling was calibrated on single glyphs (0.107–0.964).
+  Past the gate a cluster still needs three linked members of one ink and
+  the word is one; 26 letter candidates on the design, none in its red. The
+  house-angle grouping shares the gate. Same on tires' "TIRES" (441 mm²,
+  aspect 3.78, stroke cv 0.166): four candidates, no cluster.
+- **Tagging opens nothing:** force-tagged with every shipped lettering flag
+  ON, bridge 16,179 → 16,388 stitches, 101 → 103 trims, bare 4.31 → 4.07 %,
+  red on yellow **39.9 → 40.6 mm²**; tires 2,646 → 2,897 stitches (underlay
+  15 → 20), bare 4.44 → 4.01 %. The tag reaches the width ceiling, the edge
+  cap, the shared stitch width and the legibility OCR — not the rails, the
+  pull or a gap.
+- **The gaps are the artwork's:** at the design's scale the open gaps
+  between strokes read p10 / p50 / p90 = 0.57 / 1.58 / 2.72 mm; 22 % of the
+  85 mm of gap length is under the 1.0 mm two facing rails close on pique
+  knit (2 × `pull_comp_mm` 0.3 + a 0.40 mm thread); the counters p50 0.80.
+  The quarter between 1.0 and 1.5 mm is the only daylight a push hold could
+  keep, and the general hold measured 2 mm² recovered for bare up everywhere.
+
+No render for the eye: a 0.7 mm² change is not a pair. Nothing shipped; the
+next lever is Kent's (a script-scoped push hold, a preflight finding that
+names the size at which the gaps clear, or leaving it).
+
+*(measured 2026-09-30 — a scratch wrapper on `detect_text_clusters` over
+`digitize()`, the notch prototype's red-on-yellow field, the artwork's
+distance transform at the ink's scale)*

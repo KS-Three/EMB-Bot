@@ -7442,3 +7442,21 @@ any of the page's ids are already in it, build with `--sitting <tag>`**
 deleting or renaming his documents — they are his record, and the repo's
 copy is the export, not the original. *(2026-09-30,
 `docs/eye-pairs-2026-09-30/README.md`)*
+
+## A connected script word is not a letter to the classifier, and tagging it opens nothing — its gaps are the artwork's, the pull's and the thread's (2026-09-30)
+
+`detect_text_clusters` sees glyphs: a region under a 1.4 aspect ceiling that
+finds two more like it in one ink. A script word is one landscape region
+(bridge's "Bridge" 2.6, tires' "TIRES" 3.8) and its own cluster of one, so
+no gate change short of a new door tags it — and force-tagging bridge's
+script with every shipped lettering flag ON moved its red-on-yellow 39.9 →
+40.6 mm², because nothing the tag reaches (`satin_lettering_split`,
+`edge_cap_skip_lettering`, the shared stitch width, the legibility OCR)
+touches a rail, the pull or a gap. **Do not chase the classifier for a
+smooshed script.** Measure the artwork's gaps at the design's scale first:
+on bridge 22 % of the inter-letter gap length is under the 1.0 mm that two
+facing rails close on pique knit (2 × `pull_comp_mm` + the thread), which
+no rule keeps open without a smaller pull — a fabric constant, gate 1. The
+daylight a push hold could keep is the 1.0–1.5 mm quarter, and the general
+hold measured 2 mm² recovered for bare up on every fixture. *(measured
+2026-09-30, `docs/renders/bridge-phantom-2026-09-30/script-as-lettering.json`)*
