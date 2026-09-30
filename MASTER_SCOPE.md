@@ -602,7 +602,7 @@ classifier. *(measured 2026-08-26 — `.claude/memory/letterform-fidelity-2026-0
 
 **Text clusters see ordinary lettering (third attempt, 2026-09-03).** Two doors clustered in two ROUNDS — rescued first with unchanged code, so every cluster that regularizes is computed as before — then ordinary glyphs at the house-angle height ratio with a one-ink CIEDE2000 link (ΔE ≤ 20; the shield star is 34.2 from ENTHUSIAST, within-word quantization needs ≤ 16.4). Becker 0 → 11 tagged, drone 0 → 21, enthusiast keeps its subline cluster id. Cost measured quiet: enthusiast +0.9 s; the 60 s service test at 12.4 s idle and 12.1 s under three CPU hogs once the tesseract child is pinned to one OpenMP thread (32.7 s before — the likeliest root cause of `10ae9cc`'s CI timeout). No satin underlay under a 5 mm shape (`SATIN_UNDERLAY_MIN_EXTENT_MM`, the JS rung; Kent's call). *(measured 2026-09-03 — same doc)*
 
-**Per-shape stitch width (2026-09-29, `digitizer_core/stitchwidth.py`).** Every column-shaped region reports its measured column and its word (a text cluster per WEIGHT MODE); a review override `stitch_width_mm` (contract v1.8) sets a sewn width outright, offset with holes held, gaps never bridged, thin strokes never erased. **Evening a word out automatically is OPT-IN (`stitch_width_auto`, Studio box), because it was measured wrong as a default:** Gaulke's line is one cluster of 35 letters running 0.77 → 1.33 mm as a smooth chain — letterforms, not tracing — so the median is nobody's width and moved 21 letters. Off, byte-identical everywhere, pinned on Fremont and Golke; the floor stays `lettering_min_column_mm` = None (gate 1, Kent's flip). *(measured 2026-09-29 — `tests/test_stitch_width.py`, 28; COOKBOOK "Per-shape stitch width")*
+**Per-shape stitch width (2026-09-29, `digitizer_core/stitchwidth.py`).** Every column reports its width and word; review override `stitch_width_mm` (contract v1.8) offsets the polygon, counters held. **Evening a word out is OPT-IN (`stitch_width_auto`):** Gaulke's 35 letters run 0.77 → 1.33 mm as a smooth chain, so a median is nobody's width. Off, byte-identical; floor None (gate 1). *(measured 2026-09-29 — `tests/test_stitch_width.py`; COOKBOOK "Per-shape stitch width")*
 
 **A tapered tip is a CAP, not a junction — `cfg.satin_tip_caps`, ON since 2026-09-30 (Kent).** Under `satin_rail_comp` the artwork's sharp tips stay sharp, so a tip one stroke ran through on the grown polygon becomes a node where two arms END: `_extend_to_cap` never runs and the junction trim pulls both back. ENTHUSIAST's A stopped **1.63 mm** short of its apex against 0.08 mm off the rails. Kent's construction — both arms cap and overlap — needed no new discriminator, only the gate to stop EXCLUDING arms that tuck under each other (`_corner_forks` names a partner both ways there). Bare artwork and end bare fall on **all nine** corpus logos (becker 182.07 → 160.69 mm², screenshot's worst component 1.94 → 0.91) for **+4.2%** stitches. **It does NOT close defect 49** — ENTHUSIAST's apex is unchanged at 3.61 mm², because both its arms tuck under each other and the gate never reaches them; the widened construction that does close it was RETRACTED the same day on `lost_frac`. Three discriminators were measured and refuted first, and an area test cannot separate a tip from a corner — DOCTRINE. **The corpus figures above are `bare_anatomy`'s satin-only reading, an upper bound on cloth a customer sees by a per-fixture 1.1–39x** (DOCTRINE 09-30); the flip's direction is unaffected, its magnitudes overstate. *(measured 2026-09-30 — `tools/bare_anatomy.py --corpus`; `tests/test_satin_tip_caps.py`)*
 
@@ -670,48 +670,17 @@ silently. *(confirmed 2026-09-29 — `digitizer_core/crop.py`,
 Six buyer-visible defects across the 2026-08-25 and 09-07 sweeps, none seen by a
 green suite. The list: DOCTRINE "Gotchas".
 
-**Uploading artwork is the whole interaction — the panel no longer asks the
-user to classify it first.** The run starts on upload and the panel STATES what
-the art was read as ("Read as flat art" / "as a photo" / "as shaded artwork" /
-"couldn't tell"), with the override recast as a one-click correction to that
-sentence. `detail_layer` sits on that row too (Kent 2026-08-30) and appears only
-where the art is actually on a tonal lane, by reading or by override. Nothing
-changed in what gets sent, so area 1's photo-control numbers are untouched, and
-the engine's routing is unchanged — ROADMAP gate 2 bars recalibrating stage 0,
-and phase-4 v1 works around it with exactly this override.
-*(confirmed 2026-08-30 — driven in a real browser against the real service, every state of the row clicked through and looked at; pinned by e2e `digitize-auto-start.spec.js`; numbers in scope-history 08-30)*
+**Uploading artwork is the whole interaction** — the run starts on upload and the panel states what the art was read as, with the override a one-click correction to that sentence; `detail_layer` sits on that row only where the art is tonal. Engine routing unchanged (ROADMAP gate 2). *(confirmed 2026-08-30 — e2e `digitize-auto-start.spec.js`; [area doc](docs/scope/3-studio-app-wizard.md))*
 
-**The hoop you picked is DRAWN, and the export gate uses it.** `hoopTransform`
-returns the hoop and the placement box and fits to the larger (before 2026-09-04
-`preview.js` had only the placement box and called it the hoop, so picking one
-changed nothing on screen); `DownloadStep` warns before a stitch export that will not fit (confirm,
-not block; PNG and PDF worksheet ungated — not machine files). **Live: the stock
-Tote / Full Back preset is 203.2 mm against a 200 mm max hoop**, so it fires on a
-shipped preset — whether auto-fit should CAP is open, and it is now measured: **four of ten garments (full_back, jacket_back, blanket, tote) have placement boxes larger than the 200 mm biggest hoop**, so 40% of the picker is oversize on every design (defect 39). *(2026-09-02 — PR #317;
-`preview.spec.js`, `DownloadStep.spec.js`, e2e)* **What that gate is fed changed 2026-09-07**: it used the box the design was fit to, which 65.6% of designs sew outside of (defect 34), so it now reads the thread's own extent.
+**The hoop you picked is drawn, and the export gate reads the thread's own extent** (`hoopTransform`, `DownloadStep`: confirm, not block; PNG and PDF ungated). **Open:** four of ten garment presets have placement boxes larger than the 200 mm biggest hoop, so the gate fires on shipped presets — whether auto-fit should cap is Kent's. *(measured 2026-09-04/07 — `preview.spec.js`, `DownloadStep.spec.js`; [area doc](docs/scope/3-studio-app-wizard.md))*
 
-**The digitize panel states what CHANGED and offers the fix.** Shape list behind
-an "Edit shapes (N)" disclosure, closed by default; a re-digitize reads as a
-delta against `priorRun`; `COLOR_STOPS_HEAVY`, `LETTERING_TOO_SMALL` and
-`STITCHES_TOO_SHORT` render as one-click adjustment chips offered AFTER the run
-(Kent's call — an adjustment, not a pre-run form). `QualityReport` surfaces
-trims. *(2026-09-02 — PRs #317/#318)* **Both "Make it bigger" chips offer a PARTIAL remedy** — one press clears the finding on 1 of 10 corpus fixtures, two presses on 4, and it worsens 3; the buttons are LEFT for Kent. The measurement, the misquoted comment it corrected and `STITCHES_TOO_SHORT`'s 66% moved to the area file, "Moved from MASTER_SCOPE (2026-09-18)". *(measured 2026-09-06 — `tools/enlarge_cure.py`, `tests/test_short_satin_shapes.py`)*
+**The digitize panel states what changed and offers the fix** — a delta against `priorRun`, and `COLOR_STOPS_HEAVY` / `LETTERING_TOO_SMALL` / `STITCHES_TOO_SHORT` as one-click chips offered AFTER the run (Kent's call). The "Make it bigger" chips are a partial remedy, left for Kent: DOCTRINE. *(confirmed 2026-09-02; [area doc](docs/scope/3-studio-app-wizard.md))*
 
-**`cfg.border` reaches its own default now** — `null` = unset, key omitted when
-unset, panel says "automatic", `fill_angle_deg`'s sentinel shape. Until
-2026-09-02 the Studio seeded `"off"` and always sent it, so the service-side
-default was unreachable. *(PR #318)*
+**`cfg.border` reaches its own default** — `null` = unset, key omitted, panel says "automatic". *(confirmed 2026-09-02)*
 
-**Preview thread width is PHYSICAL — neither widened nor narrowed.**
-`preview.js`'s `THREAD_WIDTH_MM` (0.4, nominal 40wt) is coverage 2.67 against the
-ruled 0.15 mm fill row (rows overlap, as the professional's do) and 1.0 against
-the 0.4 mm satin spacing; a fill at the ruled row looks solid because it IS. The
-PDF sheet (`src/render.js`) and the SVG export draw the same width since
-2026-09-04 — the sheet had drawn 1 px hairlines at any scale. Caveat: `lw` has a
-1.2 px floor (1 px on the sheet), so the property holds zoomed in, not on a
-thumbnail. Pinned on the literal 0.4 and both ratios. *(2026-09-04 — `preview.spec.js`)*
+**Preview thread width is PHYSICAL** — `preview.js` `THREAD_WIDTH_MM` 0.4, drawn the same on the PDF sheet and SVG; holds zoomed in, not on a thumbnail. *(confirmed 2026-09-04 — `preview.spec.js`; [area doc](docs/scope/3-studio-app-wizard.md))*
 
-**Thread lighting is unverified against real thread** — eye-tuned, and the one physical out (2026-09-01) cannot settle it: its colours were random operator threading, so DOCTRINE bars grading colour from it at all. Treat the look as a preference, not a calibration. *(suspected 2026-08-25; sharpened 2026-09-14)*
+**Thread lighting is unverified against real thread** — eye-tuned; the one physical out cannot settle it (random operator threading, DOCTRINE). `pending sew-out`.
 
 **Typographic punctuation folds to its ASCII twin where a font lacks it** (`satinfont.js TYPOGRAPHIC_FOLD`) — [area doc](docs/scope/3-studio-app-wizard.md). *(fixed 2026-09-07)*
 
@@ -787,7 +756,7 @@ and every interaction was driven in a real browser against a live service.
 **Do not compress the detail file's copy of Kent's request** — it is captured
 verbatim there because the sub-requirements *are* the spec.
 
-**Stitch width is a per-shape control (2026-09-29).** The Edit shapes row carries a "Stitch width" input beside the border select on every measured column (placeholder = the engine's own reading), an Auto reset, and a "whole word" scope that writes the same width to every letter of the shape's weight group in one undo step. The design-width param was relabelled **Design width** so the two never share a name. *(confirmed 2026-09-29 — `digitizer.spec.js`, three tests; `npm run build`)*
+**Stitch width is a per-shape control (2026-09-29):** an input per measured column in Edit shapes, Auto reset, "whole word" scope (one undo step); the design-width param is now **Design width**. *(confirmed 2026-09-29 — `digitizer.spec.js`)*
 
 **Manual draw mode can now trace over the artwork.** An uploaded image paints
 under the drawing canvas (fadeable, removable) as soon as it decodes, before

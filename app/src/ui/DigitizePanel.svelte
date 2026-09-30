@@ -3371,7 +3371,10 @@
   .dgp-lwidth { gap: 6px; }
   .dgp-lwidth-label { display: inline-flex; align-items: center; gap: 4px; font-size: var(--fs-2xs, 0.6875rem); }
   .dgp-lwidth-input {
-    width: 64px;
+    /* 84px, not 64: the placeholder is "auto 2.08" and a number input keeps
+       a spinner on the right, so 64 clipped it to "auto 2.0" on the first
+       drive (2026-09-30). Sized for "auto 12.34" plus the spinner. */
+    width: 84px;
     padding: 2px 4px;
     font-size: var(--fs-2xs, 0.6875rem);
     border: 1px solid var(--tint-border, #ccd6fb);
