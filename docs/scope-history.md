@@ -16290,3 +16290,52 @@ skipped, 5 xfailed, 33m52s** — three of the eight the documented platform
 goldens. After: the four affected files read **42 passed, 1 xfailed**.
 
 *(measured 2026-09-30 — `tests/test_lettering_split.py`, `test_junction_patch_flag.py`, `test_junction_stack.py`, `test_thread_match_area_in_message.py`)*
+
+---
+
+## 2026-09-30 — defect 50 diagnosed: the crowns are a decomposition gap, and five cures are refuted
+
+Kent's pick: build the fix. The diagnosis came first and changed what the fix
+has to be.
+
+**The crowns look exactly like a width problem.** All 11 holes on MARINE
+127.4 (split ON) are **mid-rail**, 0.38–0.76 mm from the nearest cross and
+0.25–0.73 mm from the outline, and the rail sits **0.62–1.47 mm short of the
+artwork edge along its own cross ray**.
+
+**Five arms say it is not:**
+
+| arm | stitches | holes | uncovered | `lost_frac` |
+|---|---|---|---|---|
+| shipped | 7,168 | 11 | 22.9 | **0.1800** |
+| `rails_follow_edge="envelope"` | 7,567 | 11 | 22.9 | 0.1800 |
+| `rails_follow_edge=True` | 7,712 | 9 | 18.1 | 0.1937 |
+| width smoother removed (median window 1, 0 passes) | 7,471 | 11 | 22.3 | 0.1790 |
+| pitch 0.40 → 0.20 mm | 8,735 | 10 | 21.8 | 0.1911 |
+
+*(median window 1 alone, keeping the 4 smoothing passes, is WORSE: 16 holes /
+26.1 mm².)*
+
+- The **envelope** is inert for +399 stitches. A crown is narrower than its
+  ±`_ENVELOPE_WINDOW` stations — the design limit its own test pins on a
+  synthetic bulge — and it takes a running MINIMUM, so it refuses a local
+  maximum by construction.
+- **`True`** moves 2 of 11 and costs the headline metric.
+- The **smoother** is not the cause, which also kills the tidy story that a
+  crown is a local maximum every width model flattens.
+- **Pitch** buys one hole for 1,567 stitches.
+- The **1.6× floor cap** binds on exactly one of the eleven. **`_fold_caps`
+  never runs**: `fold_guard` follows `cfg.wide_columns`, default OFF.
+
+**Every arm that moves a crown makes `lost_frac` worse.** That is the tell.
+No column parameter reaches them because the crowns are not inside any
+column: the medial-axis split leaves wedges of artwork that **no stroke
+claims**, and 4 of the 11 sit at a node between two sub-strokes.
+
+**So the lever is a COVER, not a rail** — `_junction_cover_runs` generalised
+from junctions to "anywhere the strokes' union misses the artwork" — or a
+decomposition that does not leave the wedges. That is a different and larger
+build than the rail change this started as, and it is where defect 50 now
+sits.
+
+*(measured 2026-09-30 — the four probe arms above on MARINE 127.4; DOCTRINE 2026-09-30, "A satin column's crowns are a DECOMPOSITION gap")*

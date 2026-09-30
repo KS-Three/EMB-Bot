@@ -6094,6 +6094,50 @@ re-expressed to its actual claim — *this shape* is not reported, the RIM is
 not reported, zero HOLES rather than zero patches. Before loosening such a
 test, check whether it was ever testing the thing its name says.
 
+## A satin column's crowns are a DECOMPOSITION gap — five rail and pitch cures, all refuted (2026-09-30)
+
+MASTER_SCOPE defect 50: `satin_lettering_split` leaves 11 holes / 22.9 mm² at
+the crowns of curved letters on MARINE 127.4 where the fill lane leaves none.
+Every hole is **mid-rail**, 0.38–0.76 mm from the nearest cross and 0.25–0.73
+mm from the outline, and the rail is **0.62–1.47 mm short of the artwork edge
+along its own cross ray**. That reads exactly like a width problem. It is not
+one, and five arms say so:
+
+| arm | stitches | holes | uncovered | `lost_frac` |
+|---|---|---|---|---|
+| shipped | 7,168 | 11 | 22.9 | **0.1800** |
+| `rails_follow_edge="envelope"` | 7,567 | 11 | 22.9 | 0.1800 |
+| `rails_follow_edge=True` | 7,712 | 9 | 18.1 | 0.1937 |
+| width smoother removed entirely | 7,471 | 11 | 22.3 | 0.1790 |
+| pitch 0.40 → 0.20 mm | 8,735 | 10 | 21.8 | 0.1911 |
+
+**The envelope is inert on them for +399 stitches** — a crown is narrower
+than its ±3-station window, the design limit its own test pins on a synthetic
+bulge, and it takes a running MINIMUM, which refuses a local maximum by
+construction. **`True` moves 2 of 11 and costs the headline.** **The smoother
+is not the cause either** — deleting the median and all four smoothing passes
+leaves 11 holes standing, which also kills the neat "a crown is a local
+maximum and every width model is a smoother" story. **And halving the pitch
+buys one hole for 1,567 stitches.**
+
+The `1.6 ×` floor cap binds on exactly ONE of the eleven; `_fold_caps` never
+runs at all, because `fold_guard` is tied to `cfg.wide_columns`, default OFF.
+
+**Every arm that moves a crown makes `lost_frac` worse.** That is the tell.
+A column parameter cannot reach these because the crowns are not inside any
+column: the medial-axis split leaves wedges of artwork that **no stroke
+claims**, four of the eleven sitting at a node between two sub-strokes. The
+lever is a COVER over what the strokes miss — `_junction_cover_runs`
+generalised from junctions to "anywhere the strokes' union misses the
+artwork" — or a decomposition that does not leave the wedges. Not a rail, not
+a pitch, not a smoother.
+
+**The transferable part:** when a hole sits mid-rail and short of the edge,
+the width model is the obvious suspect and can still be innocent. Sweep the
+parameter to its extreme before building on the hypothesis — removing the
+smoother outright cost one run and refuted a story that would have justified
+a week of work.
+
 
 ## The polygon axis must not read stage 5's grown polygon (2026-09-16)
 
