@@ -1,6 +1,6 @@
-// End-to-end smoke test for the Studio's guided wizard: garment -> content
-// -> review -> download, walked as a real user would, asserting real state
-// at each step (not just "the page didn't crash"). Per MASTER_SCOPE.md
+// End-to-end smoke test for the Studio configurator: one panel, the summary
+// bar, the Download sheet — walked as a customer would, asserting real state,
+// not just "the page didn't crash". Per MASTER_SCOPE.md
 // capability area 3's "Next step" -- this is meant to catch regressions
 // "like the rotation/hoop-fit bug class": something that renders fine but
 // silently produces wrong geometry or a broken handoff between steps.
@@ -29,6 +29,7 @@ import { test, expect } from "@playwright/test";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { statSync } from "node:fs";
+import { startStudio, typeText, pickGarment, pickTemplate, openDownload } from "./helpers.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // Same fixture digitize-stale-edits.spec.js uses (see that file's own
@@ -38,11 +39,6 @@ const ART_PNG = path.join(__dirname, "fixtures", "two-squares.png");
 
 // ---- shared helpers -------------------------------------------------------
 
-// Drives garment -> content(text) -> review, asserting the same real-state
-// checks the original happy path does, and returns having landed on the
-// "Ready to stitch" review step. Callers vary garmentLabel/text; assertions
-// on what the review step reflects are left to each caller since that's the
-// point being tested.
 // Every stitch-format export in this file runs on a TOTE, and a tote design
 // exceeds its hoop by construction: the placement box is 8 in = 203.2 mm, the
 // largest hoop the app offers is "8x8 in" = 200 mm, and the design is auto-fit
@@ -53,7 +49,9 @@ const ART_PNG = path.join(__dirname, "fixtures", "two-squares.png");
 // so a conditional dismiss would hide it the day it stops appearing. PNG and
 // the PDF worksheet are not gated and must NOT call this.
 async function confirmOversizeExport(page, fmt) {
-  const dialog = page.getByRole("dialog");
+  // The Download sheet is itself a dialog and stays open beneath the confirm,
+  // so the confirm is picked out by its own title, not as "the" dialog.
+  const dialog = page.getByRole("dialog", { name: /This design is bigger than/ });
   await expect(dialog).toBeVisible();
   await expect(dialog).toContainText("Exceeds your 8×8 in hoop");
   await page.getByRole("button", { name: `Download ${fmt} anyway`, exact: true }).click();
@@ -63,70 +61,37 @@ async function confirmOversizeExport(page, fmt) {
 // the one stitch count in the app printing a bare 1289 where QualityReport,
 // DigitizePanel, DesignPanel and the review summary all say 1,289. Every
 // `[\d,]+` in this file's caption matchers is that, not a loosened assertion.
-async function reachReviewWithText(page, garmentLabel, text) {
-  await page.goto("/");
-
-  await expect(page.getByRole("heading", { name: "What are you putting this on?" })).toBeVisible();
-  const tile = page.getByRole("button", { name: garmentLabel, exact: true });
-  await tile.click();
-  await expect(tile).toHaveClass(/\bsel\b/);
-  await expect(page.getByRole("button", { name: "Next", exact: true })).toBeEnabled();
-  await page.getByRole("button", { name: "Next", exact: true }).click();
-
-  await expect(page.getByRole("heading", { name: "What are you making?" })).toBeVisible();
-  const textInput = page.getByPlaceholder("Type a name or word");
-  await textInput.fill(text);
-  await expect(textInput).toHaveValue(text);
-  await expect(page.getByText(/^[\d,]+ stitches/)).toBeVisible();
-  await expect(page.locator(".topbar-download")).toBeEnabled();
-  await page.getByRole("button", { name: "Next", exact: true }).click();
-
-  await expect(page.getByRole("heading", { name: "Ready to stitch" })).toBeVisible();
+//
+// Picks the garment, types the text, opens the Download sheet. Callers vary
+// garmentLabel/text; what the sheet reflects is asserted by each caller since
+// that's the point being tested.
+async function reachDownloadWithText(page, garmentLabel, text) {
+  await startStudio(page);
+  await pickGarment(page, garmentLabel);
+  await typeText(page, text);
+  await openDownload(page);
 }
 
-test("guided wizard: garment -> content -> review -> download", async ({ page }) => {
-  await page.goto("/");
+test("configurator: text -> download sheet -> DST", async ({ page }) => {
+  await startStudio(page);
 
-  // ---- Step 1: Garment ------------------------------------------------
-  await expect(page.getByRole("heading", { name: "What are you putting this on?" })).toBeVisible();
+  // ---- Garment ----------------------------------------------------------
+  await pickGarment(page, "Tote");
 
-  const toteTile = page.getByRole("button", { name: "Tote", exact: true });
-  await toteTile.click();
-  // Real state, not just "didn't crash": the tile picked is the one marked
-  // selected (the app's own ".sel" affordance), and picking a garment is
-  // what unlocks moving past this step.
-  await expect(toteTile).toHaveClass(/\bsel\b/);
-  await expect(page.getByRole("button", { name: "Next", exact: true })).toBeEnabled();
+  // ---- Content ----------------------------------------------------------
+  // Real content produced real stitches on the field -- typeText asserts the
+  // input took the value and the field's stats readout reports a count.
+  await typeText(page, "EMB TEST");
 
-  await page.getByRole("button", { name: "Next", exact: true }).click();
-
-  // ---- Step 2: Content --------------------------------------------------
-  await expect(page.getByRole("heading", { name: "What are you making?" })).toBeVisible();
-
-  const textInput = page.getByPlaceholder("Type a name or word");
-  await textInput.fill("EMB TEST");
-  await expect(textInput).toHaveValue("EMB TEST");
-
-  // Real content produced real stitches on the field -- the topbar Download
-  // shortcut and the Download step in the stepper both gate on hasStitches
-  // (App.svelte), and the field's own stats readout reports a nonzero count.
-  await expect(page.getByText(/^[\d,]+ stitches/)).toBeVisible();
-  await expect(page.locator(".topbar-download")).toBeEnabled();
-
-  await page.getByRole("button", { name: "Next", exact: true }).click();
-
-  // ---- Step 3: Review ("create" step, labeled "Review" in the stepper) --
+  // ---- Download sheet -----------------------------------------------------
+  await openDownload(page);
   await expect(page.getByRole("heading", { name: "Ready to stitch" })).toBeVisible();
-  // The recap must reflect what was actually picked/typed in the prior two
-  // steps, not just render a static template -- this is exactly the kind of
-  // cross-step state handoff a regression could silently break.
-  await expect(page.locator("dl.summary")).toContainText("Tote");
-  await expect(page.locator("dl.summary")).toContainText('Text — "EMB TEST"');
-
-  await page.getByRole("button", { name: "Next", exact: true }).click();
-
-  // ---- Step 4: Download ---------------------------------------------------
-  await expect(page.getByRole("heading", { name: "Download", exact: true })).toBeVisible();
+  // The recap must reflect what was actually picked/typed, not just render a
+  // static template -- this is exactly the kind of state handoff a regression
+  // could silently break.
+  const summary = page.locator(".sheet dl.summary");
+  await expect(summary).toContainText("Tote");
+  await expect(summary).toContainText('Text — "EMB TEST"');
   // A thread block was actually planned for the design (not an empty/failed
   // generate) -- the shopping-list summary the Download step exists for.
   await expect(page.locator(".threadlist .threadrow")).toHaveCount(1);
@@ -155,17 +120,14 @@ test("guided wizard: garment -> content -> review -> download", async ({ page })
 // with a real thread list -- the actual download-and-verify-bytes work is
 // axis 3's job, so these don't re-click a format button.
 for (const garmentLabel of ["Hat Front", "Full Back"]) {
-  test(`guided wizard: garment=${garmentLabel} completes and review reflects it`, async ({ page }) => {
-    await reachReviewWithText(page, garmentLabel, "EMB TEST");
+  test(`configurator: garment=${garmentLabel} completes and the sheet reflects it`, async ({ page }) => {
+    await reachDownloadWithText(page, garmentLabel, "EMB TEST");
 
-    // Real cross-step handoff, not a static template: the review recap names
-    // THIS garment and THIS text, not whatever the last-tested garment was.
-    await expect(page.locator("dl.summary")).toContainText(garmentLabel);
-    await expect(page.locator("dl.summary")).toContainText('Text — "EMB TEST"');
+    // Real state handoff, not a static template: the recap names THIS garment
+    // and THIS text, not whatever the last-tested garment was.
+    await expect(page.locator(".sheet dl.summary")).toContainText(garmentLabel);
+    await expect(page.locator(".sheet dl.summary")).toContainText('Text — "EMB TEST"');
 
-    await page.getByRole("button", { name: "Next", exact: true }).click();
-
-    await expect(page.getByRole("heading", { name: "Download", exact: true })).toBeVisible();
     // The flow actually completes with something real to sew/buy thread
     // for, for this garment -- not stuck on an empty/failed generate.
     await expect(page.locator(".threadlist .threadrow").first()).toBeVisible();
@@ -180,18 +142,13 @@ for (const garmentLabel of ["Hat Front", "Full Back"]) {
 // network) -- distinct from "+ Auto-digitize" (DigitizePanel), which needs
 // the real Python digitizer service the way digitize-stale-edits.spec.js
 // drives it; nothing here needs that service.
-test("guided wizard: image content path -> review reflects it -> download", async ({ page }) => {
+test("configurator: image content path -> sheet reflects it -> download", async ({ page }) => {
   // Force the no-digitizer case: this spec is about the browser flatten lane,
   // which "+ Artwork" only routes to when the service is unreachable.
   await page.route("**/health", (r) => r.abort());
-  await page.goto("/");
+  await startStudio(page);
+  await pickGarment(page, "Tote");
 
-  await expect(page.getByRole("heading", { name: "What are you putting this on?" })).toBeVisible();
-  const toteTile = page.getByRole("button", { name: "Tote", exact: true });
-  await toteTile.click();
-  await page.getByRole("button", { name: "Next", exact: true }).click();
-
-  await expect(page.getByRole("heading", { name: "What are you making?" })).toBeVisible();
   // "+ Artwork" is one tile that routes on service health (App.onAddElement):
   // digitizer up -> a digitized element, digitizer down -> an image element
   // and the browser's own flatten lane, which is what THIS test covers. The
@@ -208,7 +165,7 @@ test("guided wizard: image content path -> review reflects it -> download", asyn
   await expect(page.locator(".uploadbox .filename")).toHaveText("two-squares.png");
   await expect(page.locator(".flatprev")).not.toHaveClass(/hidden/);
   await expect(page.getByText(/^[\d,]+ stitches/)).toBeVisible();
-  await expect(page.locator(".topbar-download")).toBeEnabled();
+  await expect(page.getByRole("button", { name: "Download", exact: true })).toBeEnabled();
 
   // The element chip and the swatch strip are on ONE screen, inches apart,
   // and disagreed until 2026-09-08: the chip read `element.nColors` (the
@@ -221,14 +178,14 @@ test("guided wizard: image content path -> review reflects it -> download", asyn
   await expect(page.locator(".elsummary").filter({ hasText: /^Image · / }))
     .toHaveText(`Image · ${swatches} color${swatches === 1 ? "" : "s"}`);
 
-  await page.getByRole("button", { name: "Next", exact: true }).click();
+  await openDownload(page);
 
   await expect(page.getByRole("heading", { name: "Ready to stitch" })).toBeVisible();
   // The recap's image branch (App.svelte), not the text branch -- and the
   // real default settings (4 colors, background removed), not a static
   // placeholder.
-  await expect(page.locator("dl.summary")).toContainText("Logo / image");
-  await expect(page.locator("dl.summary")).toContainText("background removed");
+  await expect(page.locator(".sheet dl.summary")).toContainText("Logo / image");
+  await expect(page.locator(".sheet dl.summary")).toContainText("background removed");
 
   // The two rows that used to contradict each other, on one card. `Colors`
   // was `element.nColors` — the slider, a CEILING the customer asked for —
@@ -250,7 +207,7 @@ test("guided wizard: image content path -> review reflects it -> download", asyn
   // the artwork, because the starter's empty text element is not sewable and
   // `designSummary` lists only what sews.
   const summaryRow = async (label) => {
-    const dd = page.locator("dl.summary div").filter({ has: page.locator(`dt:text-is("${label}")`) }).locator("dd");
+    const dd = page.locator(".sheet dl.summary div").filter({ has: page.locator(`dt:text-is("${label}")`) }).locator("dd");
     await expect(dd).toHaveCount(1);
     return (await dd.innerText()).trim();
   };
@@ -261,12 +218,9 @@ test("guided wizard: image content path -> review reflects it -> download", asyn
   expect(colors, `Colors ${colors} against ${changes} thread change(s) on the same card`)
     .toBe(changes + 1);
 
-  await page.getByRole("button", { name: "Next", exact: true }).click();
-
-  await expect(page.getByRole("heading", { name: "Download", exact: true })).toBeVisible();
   await expect(page.locator(".threadlist .threadrow").first()).toBeVisible();
 
-  // …and the same count one step later, where the customer reads it as a
+  // …and the same count further down the sheet, where the customer reads it as a
   // shopping list. `worksheet-digitized-lane.spec.js` guards this for the
   // DIGITIZED lane; the browser flatten lane had no equivalent, which is the
   // lane the Colors row was wrong on. One cone row per colour block.
@@ -295,10 +249,8 @@ test("guided wizard: image content path -> review reflects it -> download", asyn
 // different code path entirely -- jsPDF, not exportDesign). One wizard run
 // through to the Download step, three format clicks against it: each is a
 // real download, verified on disk, not just "a click handler ran".
-test("guided wizard: PES, EXP, and PDF worksheet exports produce real files", async ({ page }) => {
-  await reachReviewWithText(page, "Tote", "EMB TEST");
-  await page.getByRole("button", { name: "Next", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "Download", exact: true })).toBeVisible();
+test("configurator: PES, EXP, and PDF worksheet exports produce real files", async ({ page }) => {
+  await reachDownloadWithText(page, "Tote", "EMB TEST");
 
   // ---- PES: has a real, checkable magic header ("#PES0001") -------------
   const pesDownloadPromise = page.waitForEvent("download");
@@ -341,86 +293,58 @@ test("guided wizard: PES, EXP, and PDF worksheet exports produce real files", as
   await expect(page.getByText("Worksheet saved.")).toBeVisible();
 });
 
-// --- the step panel starts at the top -------------------------------------
+// --- the panel starts at the top ------------------------------------------
 
-// The panel scrolls, and its offset used to survive a step change. That lands
-// on the path EVERY user takes, because the fabric picker sits below the fold:
-// measured on the shipped build at 1440x900, the garment step was 1320px of
-// content in a 741px viewport with "Fabric color" 529px down, so choosing a
-// fabric REQUIRED scrolling — and pressing Next then opened the content step
-// already 493px down, with "what do you want to say?" off-screen above it and
-// no visible way forward.
-test("the step panel is scrolled to the top after every step change", async ({ page }) => {
+// The panel scrolls, and its offset used to survive a change of scene: the
+// customer scrolls down to pick a fabric colour (it sits below the fold), then
+// opens another design and lands mid-panel with the top of the new design
+// off-screen above them. There are no steps any more; opening a different
+// design is the equivalent reset.
+test("the panel scrolls to the top when a different design is opened", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto("/");
+  await startStudio(page);
+  await pickTemplate(page, "Left-chest name");
 
-  const panel = page.locator(".panel-body");
+  const panel = page.locator(".cfg-body");
   const scrollTop = () => panel.evaluate((el) => el.scrollTop);
 
-  // The garment step really is taller than its viewport — if it ever stops
-  // being, this test would pass without exercising anything.
+  // The panel really is taller than its viewport — if it ever stops being,
+  // this test would pass without exercising anything.
   const overflow = await panel.evaluate((el) => el.scrollHeight - el.clientHeight);
   expect(overflow).toBeGreaterThan(100);
-
-  await page.getByRole("button", { name: "Tote", exact: true }).click();
 
   // Scroll the way someone picking a fabric colour has to.
   await panel.evaluate((el) => { el.scrollTop = el.scrollHeight; });
   expect(await scrollTop()).toBeGreaterThan(100);
 
-  await page.getByRole("button", { name: "Next", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "What are you making?" })).toBeVisible();
-  await expect.poll(scrollTop).toBe(0);
-
-  // And on the way back, which is the same defect in the other direction.
-  await panel.evaluate((el) => { el.scrollTop = el.scrollHeight; });
-  await page.getByRole("button", { name: "Back", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "What are you putting this on?" })).toBeVisible();
+  await page.getByRole("button", { name: /^My designs/ }).click();
+  await page.getByRole("button", { name: "+ New design" }).click();
   await expect.poll(scrollTop).toBe(0);
 });
 
-// The review step on an EMPTY project, which nothing had ever driven: every
-// test above types text or uploads art before advancing, so the summary was
-// only ever seen full. A brand-new project holds one empty text element, and
-// the stepper lets you jump straight to Review from the garment step.
+// The Download button on a design with nothing in it, which nothing had ever
+// driven: every test above types text or uploads art first. A brand-new
+// project holds one empty text element.
 //
-// Until 2026-09-07 that screen read "**Ready to stitch** — Looks good? The
-// live field is your stitch-out." over a summary saying `Text — ""` and a
-// canvas saying "Your embroidery appears here as you add content." The only
-// contradiction was a disabled Next button with no reason attached.
-//
-// `flow.js`'s `canAdvance("create", …)` already computed the right answer and
-// only the button consulted it; the headline now does too. This drives the
-// state transition in both directions, because a headline that is merely
-// pessimistic would be its own bug.
-test("the review step does not claim readiness for a design with nothing in it", async ({ page }) => {
-  await page.goto("/");
+// Until 2026-09-07 the review screen read "Ready to stitch" over a summary
+// saying `Text — ""`. The summary bar now refuses up front: the button is
+// disabled, with its reason in the title. (The "Nothing to stitch yet" sheet
+// branch is unit-tested and unreachable from the bar.) This drives the
+// transition in both directions, because a button that is merely pessimistic
+// would be its own bug.
+test("the Download button does not claim readiness for a design with nothing in it", async ({ page }) => {
+  await startStudio(page);
 
-  await page.getByRole("button", { name: "Left Chest", exact: true }).click();
+  const download = page.getByRole("button", { name: "Download", exact: true });
+  await expect(download).toBeDisabled();
+  await expect(download).toHaveAttribute("title", "Add text or a logo first");
 
-  // Jump the stepper straight to Review, skipping Content entirely — the
-  // badge carries the step number, so the accessible name is "3 Review".
-  await page.getByRole("button", { name: "3 Review" }).click();
-
-  await expect(page.getByRole("heading", { name: "Nothing to stitch yet" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Ready to stitch" })).toHaveCount(0);
-  // The summary says it in words, not as two quote marks.
-  await expect(page.locator("dl.summary")).toContainText("nothing typed yet");
-  await expect(page.locator("dl.summary")).not.toContainText('Text — ""');
-  // And Next stays shut, which is the behaviour the headline now agrees with.
-  await expect(page.getByRole("button", { name: "Next", exact: true })).toBeDisabled();
-
-  // Now give it something to sew and watch the same screen change its mind.
-  await page.getByRole("button", { name: "Content" }).click();
-  const textInput = page.locator("textarea").first();
-  await textInput.fill("HELLO");
-  await expect(page.getByText(/^[\d,]+ stitches/)).toBeVisible();
-
-  await page.getByRole("button", { name: "3 Review" }).click();
+  // Now give it something to sew and watch the same button change its mind.
+  await typeText(page, "HELLO");
+  await openDownload(page);
   await expect(page.getByRole("heading", { name: "Ready to stitch" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Nothing to stitch yet" })).toHaveCount(0);
-  await expect(page.locator("dl.summary")).toContainText('Text — "HELLO"');
-  await expect(page.getByRole("button", { name: "Next", exact: true })).toBeEnabled();
+  await expect(page.locator(".sheet dl.summary")).toContainText('Text — "HELLO"');
 });
 
 // Artwork must survive a refresh — the case that was silently losing work.
@@ -439,10 +363,9 @@ test("the review step does not claim readiness for a design with nothing in it",
 // the only lever, and it is the real code path rather than a stubbed one.
 test("artwork uploaded with the digitizer offline survives a page refresh", async ({ page }) => {
   await page.route("**/health", (r) => r.abort());
-  await page.goto("/");
+  await startStudio(page);
 
-  await page.getByRole("button", { name: "Tote", exact: true }).click();
-  await page.getByRole("button", { name: "Next", exact: true }).click();
+  await pickGarment(page, "Tote");
   await page.getByRole("button", { name: "Artwork" }).click();
   await page.locator("input[type=file]").first().setInputFiles(ART_PNG);
 
@@ -464,11 +387,11 @@ test("artwork uploaded with the digitizer offline survives a page refresh", asyn
 
   await page.reload();
 
-  // On the step the reload LANDS on, not after navigating to Content: the
-  // embroidery field is visible beside every step, so restoring in the panel
-  // would leave this empty and read as lost work.
+  // Straight after the reload, with nothing opened: the embroidery field is
+  // visible beside the panel, so restoring only in a sheet would leave this
+  // empty and read as lost work.
   await expect(caption).toHaveText(before, { timeout: 30_000 });
-  await expect(page.getByRole("heading", { name: "What are you putting this on?" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Your design" })).toBeVisible();
 
   // Opening a project is a RESTORE, not an edit. The rehydrate publishes
   // `_hasImage` through the same path an upload does, and letting that record
@@ -481,10 +404,10 @@ test("artwork uploaded with the digitizer offline survives a page refresh", asyn
 
   // And the design is really there, not just a stale caption: the review
   // step's own gate has to agree.
-  await page.getByRole("button", { name: "3 Review" }).click();
+  await openDownload(page);
   await expect(page.getByRole("heading", { name: "Ready to stitch" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Nothing to stitch yet" })).toHaveCount(0);
-  await expect(page.locator("dl.summary")).toContainText("Logo / image");
+  await expect(page.locator(".sheet dl.summary")).toContainText("Logo / image");
 });
 
 // A name PLUS a logo — the commonest real job, and the one the review recap
@@ -496,19 +419,17 @@ test("artwork uploaded with the digitizer offline survives a page refresh", asyn
 // needs no digitizer.
 test("the review recap names every element, not just the selected one", async ({ page }) => {
   await page.route("**/health", (r) => r.abort());   // browser lane: `image`
-  await page.goto("/");
-  await page.getByRole("button", { name: "Left Chest", exact: true }).click();
-  await page.getByRole("button", { name: "Next", exact: true }).click();
+  await startStudio(page);
+  await pickGarment(page, "Left Chest");
 
-  await page.locator("textarea").first().fill("FRITSCH'S");
-  await expect(page.locator("span.stats")).toBeVisible({ timeout: 60_000 });
+  await typeText(page, "FRITSCH'S");
 
   await page.getByRole("button", { name: "Artwork" }).click();
   await page.locator("input[type=file]").first().setInputFiles(ART_PNG);
   await expect(page.locator("span.stats")).toBeVisible({ timeout: 60_000 });
 
-  await page.getByRole("button", { name: "3 Review" }).click();
-  const summary = page.locator("dl.summary");
+  await openDownload(page);
+  const summary = page.locator(".sheet dl.summary");
   await expect(summary).toContainText('Text — "FRITSCH\'S"');
   await expect(summary).toContainText("Logo / image");
   // Numbered, so two "Content" rows are tellable apart.
@@ -529,9 +450,8 @@ test("the size field and the field caption report one width, and the field is no
   // in two places: the engine now reports the sewn extent (digitize.js
   // designExtentMm), and SizePanel no longer puts a REQUEST bound on a field
   // that displays a SEWN size (the clamp lives in onWidthChange, unchanged).
-  await page.goto("/");
-  await page.getByRole("button", { name: /^Name on a hat/ }).click();
-  await page.getByRole("button", { name: "2 Content", exact: true }).click();
+  await startStudio(page);
+  await pickTemplate(page, "Name on a hat");
 
   const stats = page.locator("span.stats");
   await expect(stats).toBeVisible({ timeout: 60_000 });
@@ -563,9 +483,8 @@ test("a font that can't set the text names the fonts that can — or says none c
   // The suggestion is async (a lazily fetched 16 KB index) and lands after the
   // paint that shows the generic sentence, so both assertions wait rather than
   // reading once.
-  await page.goto("/");
-  await page.getByRole("button", { name: "Left Chest", exact: true }).click();
-  await page.getByRole("button", { name: "Next", exact: true }).click();
+  await startStudio(page);
+  await pickGarment(page, "Left Chest");
 
   await page.locator("textarea").first().fill("Иван");
   await expect(page.getByText(/Switch fonts and it will stitch/)).toBeVisible({ timeout: 60_000 });
@@ -590,28 +509,23 @@ async function unnamedControls(page) {
     .filter((l) => !l.includes('"')))];
 }
 
-test("every control in the wizard has an accessible name", async ({ page }) => {
-  // Swept 2026-09-07 across all four steps: exactly ONE control in the app was
+test("every control in the configurator has an accessible name", async ({ page }) => {
+  // Swept 2026-09-07 across all four wizard steps (now the configurator and
+  // its Download sheet): exactly ONE control in the app was
   // unnamed (SizePanel's in/cm/mm select). Most are named implicitly by a
   // wrapping <label> — the four TextStep sliders read "Letter spacing 0.0 mm",
   // "Curve 0°", "Rotation 0°", "Slant 0°" — which is easy to break by moving
   // an input out of its label while everything still LOOKS right.
-  await page.goto("/");
-  expect(await unnamedControls(page), "garment step").toEqual([]);
-
-  await page.getByRole("button", { name: /^Name on a hat/ }).click();
-  await page.getByRole("button", { name: "2 Content", exact: true }).click();
+  await startStudio(page);
+  await pickTemplate(page, "Name on a hat");
   await expect(page.locator("span.stats")).toBeVisible({ timeout: 60_000 });
-  expect(await unnamedControls(page), "content step, text").toEqual([]);
+  expect(await unnamedControls(page), "configurator").toEqual([]);
 
   await page.getByRole("button", { name: "Artwork", exact: true }).click();
-  expect(await unnamedControls(page), "content step, artwork").toEqual([]);
+  expect(await unnamedControls(page), "configurator, artwork").toEqual([]);
 
-  await page.getByRole("button", { name: "3 Review", exact: true }).click();
-  expect(await unnamedControls(page), "review step").toEqual([]);
-
-  await page.getByRole("button", { name: "4 Download", exact: true }).click();
-  expect(await unnamedControls(page), "download step").toEqual([]);
+  await openDownload(page);
+  expect(await unnamedControls(page), "download sheet").toEqual([]);
 });
 
 test("a page load produces no console errors and no failed requests", async ({ page }) => {
@@ -626,7 +540,7 @@ test("a page load produces no console errors and no failed requests", async ({ p
   page.on("requestfailed", (r) => problems.push("[requestfailed] " + r.url()));
 
   await page.goto("/", { waitUntil: "networkidle" });
-  await expect(page.getByRole("heading", { name: "What are you putting this on?" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Your design" })).toBeVisible();
   expect(problems).toEqual([]);
 });
 
@@ -640,9 +554,8 @@ test("the empty canvas says how to reach the drawing tools", async ({ page }) =>
   // The drag hint would be the obvious place and is the wrong one: hints.js
   // gates it on `stitchCount > 0`, so it appears only once there is already a
   // design — after the question has stopped being asked.
-  await page.goto("/");
-  await page.getByRole("button", { name: "Left Chest", exact: true }).click();
-  await page.getByRole("button", { name: "Next", exact: true }).click();
+  await startStudio(page);
+  await pickGarment(page, "Left Chest");
   await expect(page.locator(".fieldhint")).toContainText("Right-click the canvas for drawing tools");
 
   // …and the gesture it names actually reaches both tools, on the real canvas.
@@ -665,9 +578,8 @@ test("the simulator counts in the same unit the caption does", async ({ page }) 
   // that raw number: "1289 stitches · 102×12 mm" under the canvas and
   // "1280 / 1280" in the simulator bar, nine apart on a design with nine runs.
   // Both correct, measuring different things, only one of them labelled.
-  await page.goto("/");
-  await page.getByRole("button", { name: "Left Chest", exact: true }).click();
-  await page.getByRole("button", { name: "Next", exact: true }).click();
+  await startStudio(page);
+  await pickGarment(page, "Left Chest");
   await page.locator("textarea").first().fill("FRITSCH'S");
   await expect(page.locator("span.stats")).toBeVisible({ timeout: 60_000 });
   // Compared as the STRINGS on screen, not as numbers: "1,779" and "1779" are
@@ -693,17 +605,16 @@ test("the review names what it costs to sew — on the lane the service never se
   // lettering, hand-drawn, shape or imported-DST design never reaches it, and
   // this screen showed the garment, the hoop, the content, the font — and not
   // one number about the sew-out.
-  await page.goto("/");
-  await page.getByRole("button", { name: "Left Chest", exact: true }).click();
-  await page.getByRole("button", { name: "Next", exact: true }).click();
+  await startStudio(page);
+  await pickGarment(page, "Left Chest");
   await page.locator("textarea").first().fill("FRITSCH'S");
   await expect(page.locator("span.stats")).toBeVisible({ timeout: 60_000 });
   const caption = await page.locator("span.stats").innerText();
   const stitches = caption.match(/([\d,]+) stitches/)[1];
   const size = caption.match(/(\d+)×(\d+) mm/);
 
-  await page.getByRole("button", { name: "3 Review", exact: true }).click();
-  const summary = page.locator("dl.summary");
+  await openDownload(page);
+  const summary = page.locator(".sheet dl.summary");
   // The same design, so the same numbers as the caption — this is the
   // assertion that catches the two drifting apart.
   await expect(summary).toContainText(`${size[1]} × ${size[2]} mm`);
