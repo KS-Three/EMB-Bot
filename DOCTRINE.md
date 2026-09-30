@@ -7727,3 +7727,40 @@ Two things worth keeping.
    and it is not built.
 
 *(measured 2026-09-30 — `docs/renders/envelope-teeth-2026-09-30/census.json`)*
+
+## 2026-09-30 — A ref arm on a photo-class fixture in a cloud worktree compares LANES, not engines
+
+**Ruling from a measurement.** The photo lane's prep shells out to
+`digitizer/rembg_isolated/venv`, which is gitignored and lives in the
+primary checkout only. A `git worktree` of an older commit has none, so
+its photo-class designs skip prep while the primary checkout's run it —
+and the difference is bigger than any engine change of the day: tires
+read 2,500 stitches from the venv-less worktree and 2,646 from the SAME
+commit with the venv linked, against 2,835 today. Kent's one *before
+better* of the evening sitting was that pair, and what he preferred was
+the un-prepped lane's clean cartoon edges over the rembg matte's ragged
+ones. The page's confound badge had said so; nobody read it as the whole
+verdict. Two consequences: the yardstick now links the venv into every
+ref worktree (`refarm.link_photo_prep`, the row's `photo_prep_env`, the
+badge reads it), and **when a ref arm's stitch count differs from the
+primary checkout's by more than the diff between the commits explains,
+look at the environment before the code** — the same-commit clean
+worktree is the one-minute test. The four "rembg-venv" local reds are not
+evidence the venv is absent here: it imports and runs.
+
+## 2026-09-30 — Instrument-visible is not eye-visible: the three lettering changes moved every number and no verdict
+
+**Measured negative.** The sibling rule, the split comb and the minimum
+stretch length took the corpus from 459 reached stations (313 escapes) to
+110 (19) and the split state's on/off changes from 177 to 56, and Kent's
+eye, on the labelled page with a needle-hole map beside every render,
+read *no difference* on the four logos where those numbers moved most and
+*both bad* on three more; his becker note names the same defect a third
+time (the lettering does not flow, is not smooth, has no structured
+pattern). A rail moved by under a millimetre and a comb of staggered
+penetrations are under the eye's threshold at the page's scale, and the
+thing the eye wants on the lettering has not been named by any instrument
+yet. Do not spend another day on rail-level texture without first
+putting the two remaining levers in front of him — the pro's own Becker
+style (raw crosses to about 7 mm, no comb) and the symmetric rails on the
+letters — or asking what "flow" is in his own words on a sew-out.

@@ -129,6 +129,25 @@ def _bounds(stitches: list[dict]) -> tuple[int, int, int, int] | None:
     return min(xs), max(xs), min(ys), max(ys)
 
 
+def _frame(stitches: list[dict], px_per_mm: float, pad_mm: float):
+    """-> ((h, w), design-unit -> pixel mapper), or None for a design with
+    no stitch or jump. The one place that mapping lives, so a map drawn
+    beside `render_design` (`render_penetrations`) lands on the same pixels."""
+    box = _bounds(stitches)
+    if box is None:
+        return None
+    x0, x1, y0, y1 = box
+    w = max(8, int(((x1 - x0) / UNITS_PER_MM + 2 * pad_mm) * px_per_mm))
+    h = max(8, int(((y1 - y0) / UNITS_PER_MM + 2 * pad_mm) * px_per_mm))
+
+    def to_px(s: dict) -> tuple[int, int]:
+        px = ((s["x"] - x0) / UNITS_PER_MM + pad_mm) * px_per_mm
+        py = ((y1 - s["y"]) / UNITS_PER_MM + pad_mm) * px_per_mm
+        return int(round(px)), int(round(py))
+
+    return (h, w), to_px
+
+
 def render_design(design: dict, px_per_mm: float = DEFAULT_PX_PER_MM,
                   fabric_bgr: tuple[int, int, int] = FABRIC_BGR,
                   pad_mm: float = 2.0, lit: bool = True) -> np.ndarray:
@@ -143,20 +162,12 @@ def render_design(design: dict, px_per_mm: float = DEFAULT_PX_PER_MM,
     """
     stitches = design.get("stitches") or []
     colors = design.get("colors") or [{"r": 0, "g": 0, "b": 0}]
-    box = _bounds(stitches)
-    if box is None:
+    frame = _frame(stitches, px_per_mm, pad_mm)
+    if frame is None:
         return np.full((8, 8, 3), fabric_bgr, np.uint8)
-    x0, x1, y0, y1 = box
-
-    w = max(8, int(((x1 - x0) / UNITS_PER_MM + 2 * pad_mm) * px_per_mm))
-    h = max(8, int(((y1 - y0) / UNITS_PER_MM + 2 * pad_mm) * px_per_mm))
+    (h, w), to_px = frame
     img = np.full((h, w, 3), fabric_bgr, np.uint8)
     tw = max(2, int(round(THREAD_MM * px_per_mm)))
-
-    def to_px(s: dict) -> tuple[int, int]:
-        px = ((s["x"] - x0) / UNITS_PER_MM + pad_mm) * px_per_mm
-        py = ((y1 - s["y"]) / UNITS_PER_MM + pad_mm) * px_per_mm
-        return int(round(px)), int(round(py))
 
     ci, prev = 0, None
     rgb = colors[0]
@@ -245,6 +256,41 @@ def _draw_filament(img: np.ndarray, a: tuple[int, int], b: tuple[int, int],
         pa = (int(round(a[0] + nx * off)), int(round(a[1] + ny * off)))
         pb = (int(round(b[0] + nx * off)), int(round(b[1] + ny * off)))
         cv2.line(img, pa, pb, colour, w, cv2.LINE_AA)
+
+
+# ---- The penetration map -------------------------------------------------
+# The thread render barely shows a mid-column penetration: a split satin's
+# extra needle-down lands under the next filament, so on the page a column
+# sewn with a comb and one sewn without look the same (measured 2026-09-30
+# on Becker's lettering, docs/renders/split-comb-2026-09-30/). The cloth
+# shows the holes. This draws them: the thread render faded toward the
+# cloth so the columns still read, and a dot at every `stitch` record. A
+# jump, a trim and a colour change move the needle without putting it
+# through the cloth, and get no dot.
+PENETRATION_FADE = 0.35        # the thread render's share; the rest is cloth
+PENETRATION_DOT_BGR = (0, 0, 0)
+
+
+def render_penetrations(design: dict, px_per_mm: float = DEFAULT_PX_PER_MM,
+                        fabric_bgr: tuple[int, int, int] = FABRIC_BGR,
+                        pad_mm: float = 2.0, fade: float = PENETRATION_FADE,
+                        dot_radius_px: int = 1) -> np.ndarray:
+    """-> BGR image on `render_design`'s frame, pixel for pixel: the thread
+    render at `fade` of its contrast over the cloth, and a dot of
+    `dot_radius_px` at every needle penetration. The dot is a marker, not
+    the hole's size: a #75 needle is 0.75 mm across, and drawn to scale the
+    dots would merge into the rails they sit on."""
+    thread = render_design(design, px_per_mm=px_per_mm, fabric_bgr=fabric_bgr, pad_mm=pad_mm)
+    cloth = np.full_like(thread, fabric_bgr)
+    img = cv2.addWeighted(thread, float(fade), cloth, 1.0 - float(fade), 0.0)
+    frame = _frame(design.get("stitches") or [], px_per_mm, pad_mm)
+    if frame is None:
+        return img
+    _size, to_px = frame
+    for s in design["stitches"]:
+        if s.get("type") == "stitch":
+            cv2.circle(img, to_px(s), int(dot_radius_px), PENETRATION_DOT_BGR, -1, cv2.LINE_AA)
+    return img
 
 
 def coverage(design: dict) -> float:

@@ -208,3 +208,221 @@ goes on and off?
 Pending his sitting. Read back with `ArtifactData`: `notes` under
 `phantom_dissolve__<fixture>__fold-fix`, `rulings` under
 `phantom_dissolve__fold-fix`.
+
+## The evening sitting — the day's three lettering changes, before | after (2026-09-30)
+
+Kent's pick after the teeth (#579): put the three changes the day made to
+the lettering in front of his eye, on the page, with the thing the page
+could not show until now. The same artifact URL, rebuilt under the tag
+`evening-0930`:
+
+- **Eight pairs against this morning's engine** — `ref_0930am`, `main` at
+  1e5f8fe2 (the merge of #574): the envelope as it shipped that morning,
+  before the sibling rule (#577), the split comb (#578) and the minimum
+  stretch length (#579). BEFORE is that engine on the left, AFTER is today
+  on the right. fremont is identical to the stitch and not shown; on
+  enthusiast the stitch count is the same and the design is not.
+- **Five dissolve pairs kept** — `phantom_dissolve` after the fold fix,
+  still unjudged (bridge, gaulke, golden_tee, screenshot, tires; becker,
+  enthusiast, fremont and drone identical). Their notes take the new tag;
+  the 09-28 verdicts on the pre-fix dissolve stay under their own ids.
+- **A needle-hole map beside every render**, the page's new *thread |
+  needle holes* control at the top. `stitchviz.render_penetrations` draws
+  the thread render faded to 35% over the cloth, on the same frame, with a
+  dot at every stitch record and none at a jump; `--render` writes it as
+  `renders/<fixture>__<arm>__holes.jpg` and the page swaps every view's
+  source in place, so a zoom set on the thread stays on the holes. Built
+  because the thread render cannot show a split column's mid-column
+  penetration (`../renders/split-comb-2026-09-30/`): on the render the comb
+  and the flicker look alike, on the map the comb is continuous staggered
+  lines of holes down every wide column and the flicker is an interrupted
+  one.
+- **The locator marks becker (1 box) and tires (3).** On the other six ref
+  pairs the change is under its 0.6 mm blur — a rail moved by under a
+  millimetre, a comb that is texture — which is what the holes toggle is
+  for. **The confound badge on tires' ref pair is right, and it matters**
+  (found after the sitting, below): this checkout has the rembg venv, the
+  ref engine's worktree does not, and tires is photo-class, so its BEFORE
+  side ran without photo prep and its AFTER side with it.
+- **The table** under the ref arm's head: `three-changes-corpus.json`,
+  measured on the two engines that drew the pairs.
+
+## The corpus, this morning's engine → today's
+
+`tools/envelope_escapes.py` (a trace hook on `_rail_points` and a 20 px/mm
+raster of the symmetric satin) and a per-leg split count, run in each
+tree; stitches and trims are the same runs and agree with the page's
+counts. *reached (escapes)*: the stations at which the envelope extends a
+rail past the symmetric width, and how many of those extensions end on
+ground another stroke of the same shape already sews. *changes
+(lettering)*: how many times the split state changes between consecutive
+legs along the satin runs, a cross and its return leg each split on their
+own length.
+
+| fixture | mm | stitches | trims | reached (escapes) | split on/off changes (lettering) |
+|---|---|---|---|---|---|
+| becker | 100 | 9,563 → 9,321 | 51 → 50 | 183 (113) → 72 (14) | 122 (59) → 37 (26) |
+| golden_tee | 80 | 8,613 → 8,575 | 41 | 130 (75) → 36 (5) | 4 (0) |
+| tires | 80 | 2,646 → 2,835 | 8 | 14 (13) → 1 (0) | 21 (0) → 5 (0) |
+| enthusiast | 80 | 2,474 | 15 | 1 (1) → 0 (0) | 0 (0) |
+| fremont | 92.5 patch | 20,012 | 56 | 0 (0) | 0 (0) |
+| bridge | 80 | 16,157 → 16,175 | 101 | 85 (70) → 0 (0) | 20 (0) → 5 (0) |
+| gaulke | 80 | 4,307 → 4,305 | 30 | 6 (5) → 0 (0) | 0 (0) |
+| drone | 80 | 18,788 → 18,796 | 122 | 12 (10) → 0 (0) | 2 (2) |
+| screenshot | 80 | 8,171 → 8,201 | 73 | 28 (26) → 1 (0) | 8 (0) → 3 (0) |
+| **corpus** | | 90,731 → 90,694 | 496 | **459 (313) → 110 (19)** | **177 → 56** |
+
+The tires row is measured with the photo-prep venv linked into the morning
+engine's worktree (see *Measured after the sitting*); the first cut of
+this table read tires from a worktree without it — 2,500 stitches, 22
+(22) reached — which is the un-prepped lane, not the morning engine, and
+put the corpus at 467 (322) and 173. Corrected, the before column is the
+afternoon's escapes census to the station (459 / 313). What the three
+changes did, in the corpus's own numbers: the envelope now reaches at a
+quarter of the stations it did this morning and nineteen of those
+extensions still land on a sibling's ground (Becker 14, golden_tee 5); the
+split state changes a third as often along the runs; the stitch total
+moves under a tenth of a percent, tires the exception (+7%: the comb on
+its wide columns, 31 → 220 split legs).
+
+## How it was built
+
+```bash
+cd digitizer
+.venv/bin/python -m tools.eye_pairs --render --arms ref_0930am,phantom_dissolve --out <out>
+.venv/bin/python -m tools.eye_pairs_gallery --labelled --src <out> --out <out>/gallery \
+    --tables ../docs/eye-pairs-2026-09-30/three-changes-corpus.json --sitting evening-0930
+```
+
+One lane, the base and both arms on all nine logos (27 arm-runs, the ref
+engine in a temp worktree), then `<out>/gallery/index.html` and its `img/`
+republished to the artifact above (50 images, 7.5 MB; the previous
+sittings' images removed from the version). The store was read before the
+republish: no document newer than the export in `kent-notes.json`, no
+rulings. The instrument runs are a scratch script over
+`tools/envelope_escapes.census` in each tree; their output is the table.
+
+## Kent's question
+
+Two, on one page. On the eight ref pairs: does today's lettering read
+better than this morning's — smoother, more flow, the void-filling gone —
+and where the holes toggle shows the comb, does a continuous comb read
+better than the flicker it replaced? On the five dissolve pairs: the flip
+of `dissolve_phantom_blends`, still his to rule on. Verdicts pending at
+the time of writing.
+
+## Outcome — Kent's evening sitting (2026-09-30, all 13 judged)
+
+**The eight ref pairs, this morning's engine | today** (a ref arm takes no
+ruling; his note on its head: none):
+
+| pair | verdict | note (verbatim) |
+|---|---|---|
+| becker | no difference | "the lettering does not flow, satin stitching is not smooth and structured pattern." |
+| bridge | no difference | |
+| drone | no difference | |
+| enthusiast | no difference | |
+| gaulke | both bad | |
+| golden_tee | both bad | |
+| screenshot | both bad | "dont use this image to judge" |
+| tires | **before better** | "edges are nice, and clean the don't randomly break" |
+
+4 no difference, 3 both bad, 1 before, 0 after. **The day's three changes
+did not reach his eye.** The instruments moved (reached stations 467 → 110,
+split changes 173 → 56) and the page reads *no difference* on the four
+logos where they moved most; the one pair his eye separated went the
+other way — tires, where the morning engine's edges are "nice and clean"
+and today's "randomly break". Becker's note is the third time in a day
+his eye has named the same thing about the lettering: the satin does not
+flow, is not smooth, has no structured pattern — the sibling rule, the
+comb and the teeth were all aimed at it and none of them changed the
+verdict. screenshot's note says the fixture itself is not one to judge
+digitizing by; that is a corpus note, recorded.
+
+**The five dissolve pairs** (`dissolve_phantom_blends=True` after the fold
+fix, shipped | dissolved):
+
+| pair | verdict | did the flag do its job? | note (verbatim) |
+|---|---|---|---|
+| bridge | **after better** | yes | "random satin borders have been removed" |
+| gaulke | **before better** | | "after ended up adding satin trim]" |
+| golden_tee | **before better** | can't tell | |
+| screenshot | both bad | | "disregard this photo to reference the digitizing judgement" |
+| tires | no difference | can't tell | |
+
+1 after, 2 before, 1 no difference, 1 both bad; no ruling on the page.
+**The flag stays OFF.** It did on bridge exactly what it claims (the halo's
+"random satin borders" gone), and on gaulke it added a satin trim that was
+not there — a regression his eye caught and the corpus table had already
+counted (regions 53 → 57, trims 33 → 37, stitches 4,305 → 4,441) without
+reading it as one. His 09-28 verdicts on the pre-fix dissolve (bridge
+after; gaulke, golden_tee, screenshot, tires both bad) stand beside these:
+the fold fix moved gaulke, golden_tee and tires off *both bad*, and bridge
+is the only logo where the dissolve is a gain both times.
+
+The store, read back after he said he was done: `kent-notes.json`
+(`third_sitting`), 13 notes and the ref arm's head note, no ruling document
+with a value.
+
+### What the verdicts send back to the bench
+
+- **tires, "edges randomly break" today.** Measured below: the pair was
+  the confound its badge named, and the edges his eye preferred are the
+  un-prepped lane's. Today's engine and this morning's, both with photo
+  prep, draw the same ragged tread edges; the day's changes add only the
+  comb's penetrations.
+- **gaulke, the dissolve's added satin trim.** Four regions and four trims
+  appear under the flag; what they are is measured below.
+- **becker, the lettering's flow.** Not one of the day's changes moved this
+  verdict. The two levers not yet on the page are the pro's own Becker
+  style — raw crosses to about 7 mm, no comb (`split_satin_above_mm=7.0`,
+  8,292 stitches) — and the symmetric rails on the letters (the envelope
+  OFF, whose reaches carry three times the symmetric rails' jitter). Both
+  are one-line arms for a texture sitting, and gate 1 stands behind the
+  first.
+
+### Measured after the sitting
+
+**tires: the pair compared lanes, not engines.** The primary checkout has
+the rembg venv (`digitizer/rembg_isolated/venv`, gitignored); the ref
+engine's worktree had none; tires is `photo_scene`. So the BEFORE side
+skipped photo prep and the AFTER side ran it — the confound badge the
+page put on that one pair. One engine per step of the day, all in
+worktrees without the venv, draws clean tread edges at every step
+(2,500 / 2,500 / 2,652 stitches) and the same commit as today's main in a
+clean worktree reads 2,652 against this checkout's 2,835. With the venv
+linked into a worktree of the morning engine: **2,646 → 2,835**, and the
+locator's three boxes show the same ragged tread edges on both sides —
+the notch where a tab meets its band, the jagged triangle, the messy
+junction — with today's side adding the comb's mid-column penetrations
+and nothing else (`tires_true_*.png` in the session scratch; the numbers
+in the table above). What Kent preferred is the un-prepped lane's
+segmentation of a cartoon tire: the rembg matte roughens its edges, and
+his eye called that "edges randomly break". That is a finding about the
+photo lane on tires (a logo classified `photo_scene` with
+`detected_photographic=False`), not about the day's three changes, and it
+is the one *before better* of the night.
+
+**The yardstick now links the venv into every ref worktree**
+(`refarm.link_photo_prep`; the row carries `photo_prep_env`, and the
+page's confound badge reads it), so a future ref pair on a photo-class
+fixture compares engines. The eight ref pairs on this page were rendered
+before that; the seven non-photo fixtures are unaffected.
+
+**gaulke: the dissolve's "satin trim" is four grey halo slivers.** Under
+`dissolve_phantom_blends=True` gaulke gains four regions the shipped run
+does not have — 0.19 to 0.28 mm² each, `rescued_small_shape`, thread 0108
+(153, 153, 153), sewn as grey running stitches of 30 to 54 points (a
+sliver along the letter's diagonal at (−6.0, −3.1)–(−2.5, 0.9) mm, two on a
+bar at y ≈ 3.5, one at (−8.5, 0.9)); satin runs 91 → 95, trims 30 → 37,
+stitches 4,305 → 4,441. The fold (`stage2_photo_segment.
+dissolve_phantom_blends`) sends a halo member to the instance of its
+endpoint colour that it borders, and these ended up as grey, disconnected
+and rescued. Which branch of the fold made them — a member whose ramp was
+grey-to-white, a member that touched no non-band label, or a band the
+dissolve left standing — is the next measurement; the flag stays OFF
+either way, on 2 before, 1 after.
+
+**becker: nothing to add to the note.** The lettering's flow is the
+open question the day did not answer; the two levers not yet on the page
+are named above.

@@ -17,10 +17,12 @@ import pytest
 from digitizer_core.stitchviz import (
     COVERAGE_PX_PER_MM,
     FABRIC_BGR,
+    PENETRATION_FADE,
     THREAD_MM,
     UNITS_PER_MM,
     coverage,
     render_design,
+    render_penetrations,
     render_png_bytes,
 )
 
@@ -230,6 +232,37 @@ def test_the_unlit_path_is_the_pre_shading_draw_exactly():
     # Same nominal-width assertion the lit-agnostic width test makes, on the
     # path coverage actually uses.
     assert len(solid) == pytest.approx(THREAD_MM * 20.0, abs=2.0)
+
+
+def test_the_penetration_map_dots_every_stitch_and_nothing_the_needle_skips():
+    """A split satin's mid-column penetration lands under the next filament,
+    and the thread render cannot show it (2026-09-30, Becker's comb). The
+    map puts a dot where the needle went through the cloth and nowhere
+    else: not where a jump landed, and not along the thread between two
+    penetrations, which stays the faded render."""
+    pts = _run(0, 0, 400, 0, n=5)                       # five penetrations 10 mm apart
+    jump = {"x": 250, "y": 0, "type": "jump"}           # needle up, between the third and fourth
+    d = _design(pts[:3] + [jump] + pts[3:])
+    px_per_mm, pad = 10.0, 2.0
+    img = render_penetrations(d, px_per_mm=px_per_mm, pad_mm=pad)
+    thread = render_design(d, px_per_mm=px_per_mm, pad_mm=pad)
+    assert img.shape == thread.shape                    # the same frame, pixel for pixel
+
+    def px(s):
+        return int(round((s["x"] / UNITS_PER_MM + pad) * px_per_mm)), int(round((0 - s["y"]) / UNITS_PER_MM * px_per_mm + pad * px_per_mm))
+
+    for s in pts:
+        x, y = px(s)
+        assert np.all(img[y, x] <= 30), s              # a dot
+    x, y = px(jump)
+    assert tuple(img[y, x]) == FABRIC_BGR               # no dot and no thread: the jump broke the path
+    x, y = px({"x": 50, "y": 0})                        # mid-thread between two penetrations
+    want = thread[y, x].astype(float) * PENETRATION_FADE + np.array(FABRIC_BGR) * (1 - PENETRATION_FADE)
+    assert np.all(np.abs(img[y, x].astype(float) - want) <= 1.0)
+    assert np.any(thread[y, x] != np.array(FABRIC_BGR))  # and there is thread there to fade
+    # An empty design is bare cloth, like the render's.
+    empty = render_penetrations(_design([]))
+    assert np.all(empty.reshape(-1, 3) == np.array(FABRIC_BGR))
 
 
 def _js_function_body(js: str, name: str) -> str:
