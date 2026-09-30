@@ -616,59 +616,23 @@ was a single uncontrolled icon. See Cross-cutting issues.
 **The two engines' fabric and machine tables are wire-tested to agree**
 (`test_fabric_wire.py`, `test_machine_wire.py`) — [area doc](docs/scope/3-studio-app-wizard.md).
 
-**The canvas sits on a dark neutral surround and the garment step is flat
-(2026-09-30, Kent's "SpaceX / Tesla" brief).** Fabric and weave clip to the
-hoop; radii 4/6/10, hairline borders, card shadows gone; a scale bar in the
-zoom bar. Contrast measured on the surround (ink 12.75, muted 6.51). Old path
-byte-identical without the option, so thumbnails and PNG export are untouched.
-*(built and looked at 2026-09-30 — [area doc](docs/scope/3-studio-app-wizard.md),
-"The surround, the flat panel, and the scale bar")*
-
-**The Layers list and the canvas point at the same shape (2026-09-30).**
-Hover a row, its outline draws white on the field; click its name, the field
-selects it (amber); click or hover a shape on the canvas, its row highlights
-and the closed list opens and scrolls to it. One `{ elId, shapeId }` pair in
-App, both surfaces feeding it. Before this the field's shape selection was
-canvas-only by its own comment. *(built and looked at 2026-09-30 —
-`e2e/field-panel-sync.spec.js` 3; [area doc](docs/scope/3-studio-app-wizard.md))*
-
-**Every setting explains itself on hover or focus (2026-09-30, Kent's
-idea).** 24 entries in `lib/settingHelp.js`, each three sentences — what it
-is, what changes in the stitch-out, when to touch it — shown by one
-`use:tip` action (`lib/tip.js`, `role="tooltip"`, keyboard and touch). Design
-settings, per-shape controls, the canvas toolbar, the Text sliders. Before:
-31 native `title`s, one on a setting. *(built and looked at 2026-09-30 —
-[area doc](docs/scope/3-studio-app-wizard.md))*
-
-**The digitize panel is three tabs — Settings / Shapes / Threads
-(2026-09-30).** Stats, delta and warnings shared above them; a canvas pick
-switches to Shapes. "Thread per color" lists spools, not sew blocks (the
-edge cap's re-loaded cone read as a second red — 42(e)'s rule, third
-display). *(built and looked at 2026-09-30 — [area doc](docs/scope/3-studio-app-wizard.md))*
+**The 2026-09-30 design review shipped in four parts (Kent's "SpaceX /
+Tesla" brief): a dark surround the hoop floats on with a flat garment step
+and a scale bar; the Layers list and the canvas pointing at the same shape;
+every setting explaining itself on hover (`lib/settingHelp.js`, `use:tip`);
+view segments, Download by machine brand, and the digitize panel as three
+tabs — Settings / Shapes / Threads, the spool list naming each cone once.**
+Each part is written up, with its measurements and tests, in the
+[area doc](docs/scope/3-studio-app-wizard.md). *(built and looked at
+2026-09-30)*
 
 **A Studio change is not verified until it has been *looked at* in a browser.**
 Six buyer-visible defects across the 2026-08-25 and 09-07 sweeps, none seen by a
 green suite. The list: DOCTRINE "Gotchas".
 
-**Uploading artwork is the whole interaction — the panel no longer asks the
-user to classify it first.** The run starts on upload and the panel STATES what
-the art was read as ("Read as flat art" / "as a photo" / "as shaded artwork" /
-"couldn't tell"), with the override recast as a one-click correction to that
-sentence. `detail_layer` sits on that row too (Kent 2026-08-30) and appears only
-where the art is actually on a tonal lane, by reading or by override. Nothing
-changed in what gets sent, so area 1's photo-control numbers are untouched, and
-the engine's routing is unchanged — ROADMAP gate 2 bars recalibrating stage 0,
-and phase-4 v1 works around it with exactly this override.
-*(confirmed 2026-08-30 — driven in a real browser against the real service, every state of the row clicked through and looked at; pinned by e2e `digitize-auto-start.spec.js`; numbers in scope-history 08-30)*
+**Uploading artwork is the whole interaction** — the run starts on upload and the panel states what the art was read as, with the override as a one-click correction; [area doc](docs/scope/3-studio-app-wizard.md). *(confirmed 2026-08-30)*
 
-**The hoop you picked is DRAWN, and the export gate uses it.** `hoopTransform`
-returns the hoop and the placement box and fits to the larger (before 2026-09-04
-`preview.js` had only the placement box and called it the hoop, so picking one
-changed nothing on screen); `DownloadStep` warns before a stitch export that will not fit (confirm,
-not block; PNG and PDF worksheet ungated — not machine files). **Live: the stock
-Tote / Full Back preset is 203.2 mm against a 200 mm max hoop**, so it fires on a
-shipped preset — whether auto-fit should CAP is open, and it is now measured: **four of ten garments (full_back, jacket_back, blanket, tote) have placement boxes larger than the 200 mm biggest hoop**, so 40% of the picker is oversize on every design (defect 39). *(2026-09-02 — PR #317;
-`preview.spec.js`, `DownloadStep.spec.js`, e2e)* **What that gate is fed changed 2026-09-07**: it used the box the design was fit to, which 65.6% of designs sew outside of (defect 34), so it now reads the thread's own extent.
+**The hoop you picked is DRAWN, and the export gate uses it** — four of ten garments have placement boxes larger than the biggest hoop (defect 39); [area doc](docs/scope/3-studio-app-wizard.md). *(2026-09-02 — PR #317; 2026-09-07)*
 
 **The digitize panel states what CHANGED and offers the fix.** Shape list behind
 an "Edit shapes (N)" disclosure, closed by default; a re-digitize reads as a
