@@ -636,3 +636,39 @@ different letters and stay unfolded. What it cost before the fix (a phone's
 U+2019 sewing "Fritschs Stitches", under a note naming a character that looks
 identical to the one typed): DOCTRINE; scope-history 09-07.
 *(fixed 2026-09-07)*
+
+## Moved from MASTER_SCOPE (2026-09-30) — three Studio entries, verbatim
+
+Lifted from the area-3 summary to buy MASTER_SCOPE.md headroom for the
+closed-loop calibration entry (the budget test names this area as the
+reclaim: 80 lines there against 600+ here). `MASTER_SCOPE.md` keeps a
+one-line pointer per entry; these are the full entries.
+
+**Uploading artwork is the whole interaction — the panel no longer asks the
+user to classify it first.** The run starts on upload and the panel STATES what
+the art was read as ("Read as flat art" / "as a photo" / "as shaded artwork" /
+"couldn't tell"), with the override recast as a one-click correction to that
+sentence. `detail_layer` sits on that row too (Kent 2026-08-30) and appears only
+where the art is actually on a tonal lane, by reading or by override. Nothing
+changed in what gets sent, so area 1's photo-control numbers are untouched, and
+the engine's routing is unchanged — ROADMAP gate 2 bars recalibrating stage 0,
+and phase-4 v1 works around it with exactly this override.
+*(confirmed 2026-08-30 — driven in a real browser against the real service, every state of the row clicked through and looked at; pinned by e2e `digitize-auto-start.spec.js`; numbers in scope-history 08-30)*
+
+**The hoop you picked is DRAWN, and the export gate uses it.** `hoopTransform`
+returns the hoop and the placement box and fits to the larger (before 2026-09-04
+`preview.js` had only the placement box and called it the hoop, so picking one
+changed nothing on screen); `DownloadStep` warns before a stitch export that will not fit (confirm,
+not block; PNG and PDF worksheet ungated — not machine files). **Live: the stock
+Tote / Full Back preset is 203.2 mm against a 200 mm max hoop**, so it fires on a
+shipped preset — whether auto-fit should CAP is open, and it is now measured: **four of ten garments (full_back, jacket_back, blanket, tote) have placement boxes larger than the 200 mm biggest hoop**, so 40% of the picker is oversize on every design (defect 39). *(2026-09-02 — PR #317;
+`preview.spec.js`, `DownloadStep.spec.js`, e2e)* **What that gate is fed changed 2026-09-07**: it used the box the design was fit to, which 65.6% of designs sew outside of (defect 34), so it now reads the thread's own extent.
+
+**Preview thread width is PHYSICAL — neither widened nor narrowed.**
+`preview.js`'s `THREAD_WIDTH_MM` (0.4, nominal 40wt) is coverage 2.67 against the
+ruled 0.15 mm fill row (rows overlap, as the professional's do) and 1.0 against
+the 0.4 mm satin spacing; a fill at the ruled row looks solid because it IS. The
+PDF sheet (`src/render.js`) and the SVG export draw the same width since
+2026-09-04 — the sheet had drawn 1 px hairlines at any scale. Caveat: `lw` has a
+1.2 px floor (1 px on the sheet), so the property holds zoomed in, not on a
+thumbnail. Pinned on the literal 0.4 and both ratios. *(2026-09-04 — `preview.spec.js`)*

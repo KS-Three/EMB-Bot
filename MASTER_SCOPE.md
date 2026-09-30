@@ -635,25 +635,9 @@ deferred by Kent). Driven in a real browser against the real service
 Six buyer-visible defects across the 2026-08-25 and 09-07 sweeps, none seen by a
 green suite. The list: DOCTRINE "Gotchas".
 
-**Uploading artwork is the whole interaction — the panel no longer asks the
-user to classify it first.** The run starts on upload and the panel STATES what
-the art was read as ("Read as flat art" / "as a photo" / "as shaded artwork" /
-"couldn't tell"), with the override recast as a one-click correction to that
-sentence. `detail_layer` sits on that row too (Kent 2026-08-30) and appears only
-where the art is actually on a tonal lane, by reading or by override. Nothing
-changed in what gets sent, so area 1's photo-control numbers are untouched, and
-the engine's routing is unchanged — ROADMAP gate 2 bars recalibrating stage 0,
-and phase-4 v1 works around it with exactly this override.
-*(confirmed 2026-08-30 — driven in a real browser against the real service, every state of the row clicked through and looked at; pinned by e2e `digitize-auto-start.spec.js`; numbers in scope-history 08-30)*
+**Uploading artwork is the whole interaction — the run starts on upload and the panel STATES what the art was read as, with the override as a one-click correction.** Full entry: area doc, "Moved from MASTER_SCOPE (2026-09-30)". *(confirmed 2026-08-30 — driven live; e2e `digitize-auto-start.spec.js`)*
 
-**The hoop you picked is DRAWN, and the export gate uses it.** `hoopTransform`
-returns the hoop and the placement box and fits to the larger (before 2026-09-04
-`preview.js` had only the placement box and called it the hoop, so picking one
-changed nothing on screen); `DownloadStep` warns before a stitch export that will not fit (confirm,
-not block; PNG and PDF worksheet ungated — not machine files). **Live: the stock
-Tote / Full Back preset is 203.2 mm against a 200 mm max hoop**, so it fires on a
-shipped preset — whether auto-fit should CAP is open, and it is now measured: **four of ten garments (full_back, jacket_back, blanket, tote) have placement boxes larger than the 200 mm biggest hoop**, so 40% of the picker is oversize on every design (defect 39). *(2026-09-02 — PR #317;
-`preview.spec.js`, `DownloadStep.spec.js`, e2e)* **What that gate is fed changed 2026-09-07**: it used the box the design was fit to, which 65.6% of designs sew outside of (defect 34), so it now reads the thread's own extent.
+**The hoop you picked is DRAWN and the export gate uses it, fed by the thread's own extent since 2026-09-07.** Live: four of ten garments (full_back, jacket_back, blanket, tote) have placement boxes larger than the 200 mm biggest hoop (defect 39). Full entry: area doc, "Moved from MASTER_SCOPE (2026-09-30)". *(2026-09-02 — PR #317)*
 
 **The digitize panel states what CHANGED and offers the fix.** Shape list behind
 an "Edit shapes (N)" disclosure, closed by default; a re-digitize reads as a
@@ -667,14 +651,7 @@ unset, panel says "automatic", `fill_angle_deg`'s sentinel shape. Until
 2026-09-02 the Studio seeded `"off"` and always sent it, so the service-side
 default was unreachable. *(PR #318)*
 
-**Preview thread width is PHYSICAL — neither widened nor narrowed.**
-`preview.js`'s `THREAD_WIDTH_MM` (0.4, nominal 40wt) is coverage 2.67 against the
-ruled 0.15 mm fill row (rows overlap, as the professional's do) and 1.0 against
-the 0.4 mm satin spacing; a fill at the ruled row looks solid because it IS. The
-PDF sheet (`src/render.js`) and the SVG export draw the same width since
-2026-09-04 — the sheet had drawn 1 px hairlines at any scale. Caveat: `lw` has a
-1.2 px floor (1 px on the sheet), so the property holds zoomed in, not on a
-thumbnail. Pinned on the literal 0.4 and both ratios. *(2026-09-04 — `preview.spec.js`)*
+**Preview thread width is PHYSICAL (0.4 mm, 40wt) in the field, the PDF sheet and the SVG export since 2026-09-04.** Full entry: area doc, "Moved from MASTER_SCOPE (2026-09-30)". *(2026-09-04 — `preview.spec.js`)*
 
 **Thread lighting is unverified against real thread** — eye-tuned, and the one physical out (2026-09-01) cannot settle it: its colours were random operator threading, so DOCTRINE bars grading colour from it at all. Treat the look as a preference, not a calibration. *(suspected 2026-08-25; sharpened 2026-09-14)*
 
