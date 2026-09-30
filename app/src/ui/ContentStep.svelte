@@ -42,6 +42,9 @@
   // already narrowed them to the selected element.
   export let hoverShapeId = null;
   export let selectedShapeId = null;
+  // A shape selected on the field ({ elementId, shapeId, edit, n }, App's
+  // runtime state) — forwarded to the matching element's ManualPanel only.
+  export let fieldShapeSelect = null;
   const d = createEventDispatcher();
 
   // ---- Task 5 (Slice 5): the real element manager --------------------------
@@ -321,7 +324,7 @@
         on:flat={(e) => d("flat", e.detail)}
       />
     {:else if el.type === "manual"}
-      <ManualPanel element={el} on:elupdate={(e) => d("elupdate", e.detail)} />
+      <ManualPanel element={el} fieldSelect={fieldShapeSelect && fieldShapeSelect.elementId === el.id ? fieldShapeSelect : null} on:elupdate={(e) => d("elupdate", e.detail)} />
     {:else if el.type === "shape"}
       <ShapePanel element={el} on:elupdate={(e) => d("elupdate", e.detail)} />
     {:else}

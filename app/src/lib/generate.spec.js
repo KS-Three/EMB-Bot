@@ -597,6 +597,16 @@ function shapeElement(overrides = {}) {
   };
 }
 
+test("a preset shape's outline carries the fixed id the field addresses it by", async () => {
+  const { generateElement } = await import("./generate.js");
+  const { EMB } = await import("./emb.js");
+  const garment = EMB.getGarment("left_chest");
+  const d = generateElement(shapeElement({ kind: "circle", sizeMm: 40 }), garment, {});
+  const live = d.shapeOutlines.filter((o) => !o.dropped);
+  expect(live).toHaveLength(1);
+  expect(live[0].id).toBe("shape");
+});
+
 // Needle-down extent only — jumps/trims travel, they don't cover fabric.
 function stitchBboxMm(design) {
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;

@@ -185,6 +185,23 @@ export function shapeOutlinesInFieldMm(shapes, bboxMm, rotationDeg = 0, pendingB
   }));
 }
 
+// Outlines the ENGINE emitted for a hand-drawn or preset element
+// (`buildQualityDesign`'s `shapeOutlines`, 2026-09-29 spec §3). Already in
+// field mm, +y up — the stitches' own space — so unlike the digitized lane
+// above there is nothing to fit: `toCanvas` draws them as they are. What is
+// filtered is what a click could never act on: shapes the engine dropped,
+// rings under a triangle, and shapes with no id (nothing to patch).
+export function designOutlinesInFieldMm(design) {
+  const list = design && Array.isArray(design.shapeOutlines) ? design.shapeOutlines : [];
+  const out = [];
+  for (const o of list) {
+    if (!o || o.dropped || !o.id) continue;
+    if (!Array.isArray(o.points) || o.points.length < MIN_RING_POINTS) continue;
+    out.push({ id: o.id, points: o.points.map(([x, y]) => [x, y]) });
+  }
+  return out;
+}
+
 // ---------------------------------------------------------------------------
 // The pulse cue (requirement 2: "Let's have them 'pulse' for the first few
 // seconds"). An attention cue that the app FOUND these shapes — not a

@@ -162,7 +162,9 @@ export function generateElement(element, garment, runtime) {
       element.sizeMm || DEFAULT_SHAPE_SIZE_MM
     );
     const { regions, pxPerMm } = shapesToRegions([
-      { points, curves: {}, stitchType: "auto", colorRgb: element.colorRgb, angleDeg: null },
+      // A preset element IS one shape, so a fixed id is enough for the field
+      // to address it (shapesToRegions turns it into the outline's id).
+      { id: "shape", points, curves: {}, stitchType: "auto", colorRgb: element.colorRgb, angleDeg: null },
     ]);
     if (!regions.length) return null;
     const fabric = EMB.getFabric(EMB.fabricForGarment(garment.id));
