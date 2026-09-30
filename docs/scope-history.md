@@ -16449,3 +16449,83 @@ bridge's script pinned on the real art; `test_preflight` +
 
 *(built and measured 2026-09-30 — `digitizer_core/preflight.py`
 `_tight_gap_findings`; a scratch sweep over `digitize()` + `run_preflight`)*
+
+## 2026-09-30 — The Studio's size chip jumps to the width `SATIN_GAPS_TIGHT` names (Kent's pick)
+
+Kent's call on the chips: the tight-gaps finding gets a "Make it bigger"
+that jumps straight to the width it names — its headline shape's
+`clear_width_mm`, capped at the 400 mm ceiling — rather than the 25% step
+the other two lettering findings take. `DigitizePanel.svelte`'s
+`offeredFixes` now keeps one button per parameter and lets the larger
+target win, so the jump and a 25% step on the same run never show twice
+(either order); a payload with no named width falls back to the step; the
+at-limit rule stands (nothing at 400). The finding's own message rides the
+tooltip. Spec tests for each. Not measured on a customer yet: what the jump
+promises is what the finding measures (that shape clears), and the design
+may segment new small shapes at the larger size.
+
+*(built 2026-09-30 — `app/src/ui/DigitizePanel.svelte`, `DigitizePanel.spec.js`;
+`docs/scope/3-studio-app-wizard.md`)*
+
+## 2026-09-30 — Bridge's teal words are a segmentation loss at 3.5 px/mm, not a hairline: size recovers them, the palette does not (Kent's pick)
+
+Kent's pick after the size chip: *why the hairline route did not take "BAR &
+RESTAURANT", and what should own it.* Measured on `logo_bridge_bar.jpg` at
+80 mm (`docs/renders/bridge-phantom-2026-09-30/teal-text.json`, two renders):
+
+- **The earlier record was wrong about the size.** The words are 3.25–4.5 mm
+  tall arched letters (11–16 source pixels: the source is 400 px across
+  80 mm, 3.5 px/mm), 96.5 mm² of teal ink, not 1.6 mm lettering below the
+  floor.
+- **They never reach a stitch tier as letters.** Stage 2's six-cone
+  quantization splits the JPEG-blurred teal between teal, yellow and the
+  halo grey; six teal blobs survive (46.5 mm²; 13.5, 13.4, 6.2, 5.2, 4.6,
+  3.7), each a fused letter group with 0.9–2.4 mm "strokes", sewn as satin
+  blobs (2.4–3.0 mm crosses) or fill. The hairline bean fires only for
+  stations under 0.5 mm inside a satin stroke; there are none. No cluster,
+  so the OCR check judges only the whole-design row (not readable here:
+  tesseract is not on this container). `LETTERING_TOO_SMALL` names three
+  blobs — true of the blobs, not the words.
+- **The levers:** the dissolve loses a blob (5 regions, 33 mm²), eight
+  colours change nothing, both together leave two blobs; **140 mm brings the
+  words back** (12 regions, 382 mm², blobby but readable) because the prep's
+  resampling hands the quantizer 28-px letters. So the size chip is the
+  lever on this logo, and the honest statement is that a 400 px JPEG
+  carries this lettering only above about 140 mm — a resolution fact no
+  stitch rule moves.
+- Corpus: satin shapes whose art stroke is under the 0.5 mm floor — bridge
+  12 (the halo slivers), screenshot 15, golden_tee 6, drone 5, fremont 3,
+  the other six logos none. Pixels per mm at each logo's width: bridge 3.5,
+  becker 1.5 (13 mm letters, fine), whitebg 8.4, drone 9.6, the rest 12–27.
+
+Nothing shipped; what should own it is Kent's (a resolution line on the
+lettering findings, or the size chip as is).
+
+*(measured 2026-09-30 — scratch scripts over `digitize()`,
+`stitchviz.render_design`, the prep frame; `teal-text.json`)*
+
+## 2026-09-30 — The lettering findings say when the artwork cannot carry the lettering, and the size chip reads the width they name (Kent's pick)
+
+Kent's call on bridge's teal words: a resolution line on the lettering
+findings. `preflight._resolution_note` runs after `LETTERING_TOO_SMALL` and
+`LETTERING_ILLEGIBLE` whenever the artwork was given: the smallest flagged
+lettering (the shapes' extent, the rows' height) times the input's pixels
+per millimetre is its height in SOURCE pixels, and under
+`LETTERING_MIN_SOURCE_PX` (20 — bridge's words were lost at 11–16 and came
+back at 28 in the prep's grid) the finding gains the fact and the two
+levers: a larger source image, always; and, only when the source sits under
+`cfg.min_px_per_mm` so the prep upsamples it, the design width at which the
+prep's grid would give that lettering 20 pixels (W × 20 / (letter mm × 4);
+bridge: 118 mm, measured back at 140). A source above the floor is never
+upsampled, so there the sentence says a bigger design adds no pixels. Three
+extras ride the finding (`input_px_per_mm`, `source_px_per_letter`,
+`traced_at_mm`), and the Studio's "Make it bigger" on those two findings
+now jumps to `traced_at_mm` when it is named, the 25% step otherwise — the
+same one-button-per-parameter rule as the tight-gaps chip. Calibrated on one
+logo; the docstring says to re-measure on two before moving the constant.
+Tests: the note's arithmetic on a synthetic plan, both levers and the
+silent cases; bridge's real run asserts the note (3.5 px/mm, 100–160 mm);
+the Studio spec covers the jump and the fallback.
+
+*(built 2026-09-30 — `digitizer_core/preflight.py`, `tests/test_preflight.py`,
+`app/src/ui/DigitizePanel.svelte`, `DigitizePanel.spec.js`)*

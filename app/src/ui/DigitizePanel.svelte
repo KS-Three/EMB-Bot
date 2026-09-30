@@ -253,8 +253,8 @@
     },
     LETTERING_TOO_SMALL: {
       label: "Make it bigger",
-      next: (p) => ({ target_width_mm: Math.min(400, Math.round((p.target_width_mm || 80) * 1.25)) }),
-      spent: (p) => `${Math.round(p.target_width_mm)} → ${Math.min(400, Math.round((p.target_width_mm || 80) * 1.25))} mm wide`,
+      next: (p, f) => ({ target_width_mm: namedOrStep(p, f) }),
+      spent: (p, f) => `${Math.round(p.target_width_mm)} → ${namedOrStep(p, f)} mm wide`,
     },
     // Same cure as above, and deduped below so two findings never offer the
     // same button twice.
@@ -270,23 +270,62 @@
     // the other half is the artwork, which no button here can change.
     LETTERING_ILLEGIBLE: {
       label: "Make it bigger",
-      next: (p) => ({ target_width_mm: Math.min(400, Math.round((p.target_width_mm || 80) * 1.25)) }),
-      spent: (p) => `${Math.round(p.target_width_mm)} → ${Math.min(400, Math.round((p.target_width_mm || 80) * 1.25))} mm wide`,
+      next: (p, f) => ({ target_width_mm: namedOrStep(p, f) }),
+      spent: (p, f) => `${Math.round(p.target_width_mm)} → ${namedOrStep(p, f)} mm wide`,
+    },
+    // The tight-gaps finding (2026-09-30, Kent's pick) NAMES the width at
+    // which its headline shape's gaps clear the fabric's pull plus the
+    // thread, so its button jumps straight there instead of stepping 25%:
+    // one press clears THAT shape by construction (arithmetic on its
+    // polygon; the design can still segment new small shapes at the larger
+    // size, which the finding states per shape and never as a promise).
+    // Two size buttons would confuse, so `offeredFixes` keeps ONE per
+    // parameter and lets the larger target win when this and a 25% step
+    // both apply. Without a named width (no shapes in the payload) it takes
+    // the same 25% step as the others.
+    SATIN_GAPS_TIGHT: {
+      label: "Make it bigger",
+      next: (p, f) => ({ target_width_mm: namedOrStep(p, f) }),
+      spent: (p, f) => `${Math.round(p.target_width_mm)} → ${namedOrStep(p, f)} mm wide`,
     },
   };
 
+  // The width a finding names, capped at the 400 mm ceiling; the 25% step
+  // when the payload names none. Two findings name one: SATIN_GAPS_TIGHT's
+  // headline shape (`extra.shapes[0].clear_width_mm`, the shape with the most
+  // closed gap), and the lettering findings' `extra.traced_at_mm` (2026-09-30:
+  // the width at which the prep's grid could trace lettering a low-resolution
+  // source lost -- present only when the source sits under the prep floor,
+  // where a bigger design gives the tracer more pixels; absent, the step).
+  function namedOrStep(p, f) {
+    const extra = (f && f.extra) || {};
+    const shapes = Array.isArray(extra.shapes) ? extra.shapes : [];
+    const fromShape = shapes.length ? shapes[0].clear_width_mm : null;
+    const named = typeof fromShape === "number" && fromShape > 0 ? fromShape
+                : typeof extra.traced_at_mm === "number" && extra.traced_at_mm > 0 ? extra.traced_at_mm : null;
+    const w = named != null ? named : (p.target_width_mm || 80) * 1.25;
+    return Math.min(400, Math.round(w));
+  }
+
   function offeredFixes(el) {
     const found = (el && el.preflight && el.preflight.findings) || [];
+    const params = (el && el.params) || {};
     const out = [];
     for (const f of found) {
       const fix = FIX_FOR[f.code];
-      if (!fix || out.some((o) => o.label === fix.label)) continue;
-      const patch = fix.next(el.params || {});
+      if (!fix) continue;
+      const patch = fix.next(params, f);
       // A fix already at its limit is not offered: "Make it bigger" on a
       // design already at 400 mm would do nothing and cost a full re-digitize.
       const key = Object.keys(patch)[0];
-      if ((el.params || {})[key] === patch[key]) continue;
-      out.push({ label: fix.label, patch, spent: fix.spent(el.params || {}), why: f.message });
+      if (params[key] === patch[key]) continue;
+      const offer = { label: fix.label, patch, spent: fix.spent(params, f), why: f.message };
+      // ONE button per parameter: findings with the same cure never offer it
+      // twice, and when one names a width (SATIN_GAPS_TIGHT) while another
+      // steps 25%, the larger target is the one press that serves both.
+      const i = out.findIndex((o) => Object.keys(o.patch)[0] === key);
+      if (i < 0) out.push(offer);
+      else if (key === "target_width_mm" && patch[key] > out[i].patch[key]) out[i] = offer;
     }
     return out;
   }

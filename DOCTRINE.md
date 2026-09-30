@@ -7598,3 +7598,17 @@ no rule keeps open without a smaller pull — a fabric constant, gate 1. The
 daylight a push hold could keep is the 1.0–1.5 mm quarter, and the general
 hold measured 2 mm² recovered for bare up on every fixture. *(measured
 2026-09-30, `docs/renders/bridge-phantom-2026-09-30/script-as-lettering.json`)*
+
+## "Below the floor" is a diagnosis to earn, not a reading to trust — count the source pixels per letter first (2026-09-30)
+
+Bridge's teal "BAR & RESTAURANT" was recorded as 1.6 mm lettering below the
+sewable floor and handed to the stitch tiers as a hairline question. Measured,
+the letters are 3.25–4.5 mm tall — sewable — and the words were lost two
+stages earlier: a 400 px JPEG at 80 mm is 3.5 px/mm, the strokes are under
+two blurred pixels, and six-cone quantization keeps six blobs of them (46.5 of
+96.5 mm²). The hairline route never saw a letter. **Before blaming a stitch
+tier for small text, crop the artwork at the engine's own resolution and count
+the pixels per cap height; under about 20 the loss is segmentation, and the
+levers are the source or the size, never a stroke rule.** Size recovers this
+one at 140 mm; the dissolve and a wider palette make it worse. *(measured
+2026-09-30, `docs/renders/bridge-phantom-2026-09-30/teal-text.json`)*

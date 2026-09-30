@@ -142,8 +142,8 @@ from .threads import chart_for, rgb_to_lab
 # --- Codes (may migrate to warnings_codes.py at merge) ---------------------
 
 THREAD_MATCH_POOR = "THREAD_MATCH_POOR"        # extra: {thread_number, thread_name, brand_id, delta_e, yardstick, excess_delta_e, better_spool, worst_shape_id, worst_shape_area_mm2, worst_shape_area_frac, worst_patch_mm2, region_count, regions_scored, sub_floor_count, regions: [{shape_id, delta_e, footprint_mm2, sub_floor, excess_delta_e}], artwork_rgb, thread_rgb} — worst_patch_mm2 is the graded footprint that JUDGED (a shade band's own strip), region_count the offenders at or above `_THREAD_MATCH_MIN_PATCH_MM2`, sub_floor_count the offenders under it (listed, flagged, never judging) — excess_delta_e/better_spool are the gap to the best ALREADY-LOADED spool and that spool, populated on EVERY route since 2026-09-06 (both None when nothing loaded is meaningfully closer). `yardstick` ("excess"/"raw") says which one produced the SEVERITY, so a populated excess is never mistaken for a rescored finding
-LETTERING_ILLEGIBLE = "LETTERING_ILLEGIBLE"    # extra: {clusters, readable, judged, lost, worst_cluster, worst_similarity, worst_art_text, worst_render_text, legibility, rows: [{cluster, height_mm, art_text, art_conf, render_text, render_conf, similarity, sewn, enclosed}]} — `judged` is the sewn clusters the art side could read, `lost` how many of those read back under LEGIBILITY_WARN; `rows` carries every cluster, unsewn and unreadable ones included, flagged
-LETTERING_TOO_SMALL = "LETTERING_TOO_SMALL"    # extra: {count, satin_total, shapes: [{shape_id, column_mm, extent_mm}]} — satin_total is the DENOMINATOR the message needs ("38 of 46"), which reads very differently from a bare 38
+LETTERING_ILLEGIBLE = "LETTERING_ILLEGIBLE"    # extra: {clusters, readable, judged, lost, worst_cluster, worst_similarity, worst_art_text, worst_render_text, legibility, rows: [{cluster, height_mm, art_text, art_conf, render_text, render_conf, similarity, sewn, enclosed}]} — `judged` is the sewn clusters the art side could read, `lost` how many of those read back under LEGIBILITY_WARN; `rows` carries every cluster, unsewn and unreadable ones included, flagged — when the artwork cannot carry the lettering (`_resolution_note`, 2026-09-30) three more ride: input_px_per_mm, source_px_per_letter (the smallest flagged lettering's height in SOURCE pixels), traced_at_mm (the design width at which the prep's grid would give it LETTERING_MIN_SOURCE_PX; only when the source is under cfg.min_px_per_mm, where the prep upsamples)
+LETTERING_TOO_SMALL = "LETTERING_TOO_SMALL"    # extra: {count, satin_total, shapes: [{shape_id, column_mm, extent_mm}]} — satin_total is the DENOMINATOR the message needs ("38 of 46"), which reads very differently from a bare 38 — when the artwork cannot carry the lettering (`_resolution_note`, 2026-09-30) three more ride: input_px_per_mm, source_px_per_letter (the smallest flagged lettering's height in SOURCE pixels), traced_at_mm (the design width at which the prep's grid would give it LETTERING_MIN_SOURCE_PX; only when the source is under cfg.min_px_per_mm, where the prep upsamples)
 SATIN_GAPS_TIGHT = "SATIN_GAPS_TIGHT"          # extra: {count, judged, close_mm, pull_mm, thread_mm, fabric, design_width_mm, worst_shape_id, worst_tight_frac, shapes: [{shape_id, width_mm, height_mm, channel_mm, tight_mm, tight_frac, gap_p10_mm, gap_p50_mm, clear_width_mm}]} — a satin shape whose own gaps (between two of its strokes, or a counter) are narrower than the close, 2 x the fabric's pull comp + the thread: they sew shut before any rule runs. `judged` is how many stroke-built satin shapes were measured, `channel_mm` the length of gap read, `tight_mm` the part under the close, `clear_width_mm` the design width at which the shape's tightest tenth (gap_p10_mm) would clear it — arithmetic on THIS polygon, None when it already clears
 STITCHES_TOO_LONG = "STITCHES_TOO_LONG"        # extra: {count, max_mm}
 STITCHES_TOO_SHORT = "STITCHES_TOO_SHORT"      # extra: {fraction, count, total, uncovered_shapes, shapes: [{shape_id, short, steps, median_mm, also_too_small}]} — `shapes` is every satin shape carrying a short step, worst first; `also_too_small` is whether LETTERING_TOO_SMALL already named it, and `uncovered_shapes` counts the ones it did NOT (a sewable column with a narrow waist passes lettering's median test and still breaks thread)
@@ -218,6 +218,20 @@ MIN_LETTER_EXTENT_MM = 4.0
 # A satin column narrower than the needle minimum: every cross re-enters the
 # previous hole's neighborhood and the stroke reads as a scar, not a line.
 MIN_COLUMN_MM = machine.MIN_STITCH_MM
+# Lettering the ARTWORK cannot carry (2026-09-30, Kent's pick after bridge's
+# teal words). "BAR & RESTAURANT" on logo_bridge_bar.jpg is 3.25-4.5 mm of
+# sewable lettering in a 400 px JPEG, 3.5 px/mm at 80 mm: 11-16 source
+# pixels per letter, and six-cone quantization keeps six blobs of it before
+# any stitch rule runs. Digitized at 140 mm the words come back, because the
+# prep upsamples a low-res source to `cfg.min_px_per_mm` and the tracer then
+# sees 28-px letters. Under this many source pixels across a letter's
+# height the loss is tracing, not stitching, and the lettering findings say
+# so: a larger source carries it; a larger design lets the prep's grid try,
+# and only when the source is under the prep floor (a source above it is
+# never upsampled, so growing the design adds no pixels to a letter).
+# One logo calibrated it; the docstring of `_resolution_note` says what to
+# re-measure if a second disagrees.
+LETTERING_MIN_SOURCE_PX = 20.0
 
 # Tight gaps inside a satin shape (2026-09-30, Kent's pick after the
 # script-as-lettering measurement: a preflight finding, not an engine
@@ -1823,6 +1837,68 @@ def _tight_gap_findings(result: PipelineResult, plan: StitchPlan,
                     shapes=flagged)], metrics
 
 
+def _resolution_note(findings: list[dict], p, plan: StitchPlan,
+                     cfg: PipelineConfig) -> None:
+    """Append the resolution fact to LETTERING_TOO_SMALL and LETTERING_ILLEGIBLE
+    when the artwork cannot carry the lettering they name (in place; a
+    finding's text and `extra` grow, nothing else changes).
+
+    The smallest flagged lettering (TOO_SMALL: the shapes' `extent_mm`;
+    ILLEGIBLE: the rows' `height_mm`) times `Prep.input_px_per_mm` -- the
+    resolution the INPUT delivered, before stage 1's upscale -- is its height
+    in source pixels. Under LETTERING_MIN_SOURCE_PX the words were lost in
+    tracing (bridge: 11-16, six blobs of 96 mm² of teal), and no chip that
+    moves a stitch rule reaches that. Two levers exist and the sentence names
+    both: a larger source image, always; a larger design, only when the source
+    sits under `cfg.min_px_per_mm` (the prep upsamples it to that grid, so a
+    bigger design gives the tracer more grid pixels per letter -- bridge's
+    words came back at 140 mm), at the width where the smallest flagged
+    lettering would have LETTERING_MIN_SOURCE_PX grid pixels:
+    W x MIN_PX / (letter_mm x min_px_per_mm). A source above the floor is
+    never upsampled, so growing the design adds nothing there and the
+    sentence says only the source.
+
+    Calibrated on one logo (bridge: lost at 13-18 grid px, recovered at 28).
+    If a second logo loses lettering above 20 source pixels per letter, or
+    keeps it below, re-measure the constant on both before moving it."""
+    if p is None or plan.stats is None:
+        return
+    px = float(getattr(p, "input_px_per_mm", 0.0) or 0.0)
+    if px <= 0.0:
+        return
+    x0, _y0, x1, _y1 = plan.stats.bbox_mm
+    design_w = float(x1 - x0)
+    grid = float(cfg.min_px_per_mm)
+    for f in findings:
+        if f.get("code") not in (LETTERING_TOO_SMALL, LETTERING_ILLEGIBLE):
+            continue
+        extra = f.setdefault("extra", {})
+        if f["code"] == LETTERING_TOO_SMALL:
+            sizes = [s.get("extent_mm") for s in extra.get("shapes", []) if s.get("extent_mm")]
+        else:
+            sizes = [r.get("height_mm") for r in extra.get("rows", []) if r.get("height_mm")]
+        if not sizes:
+            continue
+        letter_mm = float(min(sizes))
+        per_letter = letter_mm * px
+        if per_letter >= LETTERING_MIN_SOURCE_PX:
+            continue
+        extra["input_px_per_mm"] = round(px, 2)
+        extra["source_px_per_letter"] = round(per_letter, 1)
+        note = (f" The artwork carries {px:.1f} pixels per millimetre at this width, "
+                f"about {per_letter:.0f} across the smallest of this lettering, so it is "
+                f"lost in tracing before any stitch: a larger source image carries it")
+        if px < grid and design_w > 0:
+            traced_at = design_w * LETTERING_MIN_SOURCE_PX / (letter_mm * grid)
+            extra["traced_at_mm"] = round(traced_at)
+            note += (f", and a design above about {traced_at:.0f} mm gives the tracer "
+                     f"enough pixels to try.")
+        else:
+            extra["traced_at_mm"] = None
+            note += "; making the design bigger adds no pixels to it."
+        f["message"] = f["message"].rstrip() + note
+
+
 def _stitch_length_findings(plan: StitchPlan,
                             already_small: set[str] | None = None
                             ) -> tuple[list[dict], dict]:
@@ -3362,6 +3438,10 @@ def run_preflight(result: PipelineResult, plan: StitchPlan,
     else:
         metrics.update({"satin_gaps_judged": None, "satin_gaps_tight_shapes": None,
                         "satin_gaps_tight_worst_frac": None})
+    # Lettering the artwork cannot carry: the resolution fact on the two
+    # lettering findings, when the artwork was given (the legibility check
+    # above and the lettering check just before are both in `findings` here).
+    _resolution_note(findings, p, plan, cfg)
 
     # The shapes lettering just named, so the short-stitch check can say which
     # of ITS carriers are not covered by that warning. The two measure the same
