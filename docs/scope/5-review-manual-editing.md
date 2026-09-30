@@ -984,11 +984,91 @@ Behaviours the reviews pinned down (the next session should not rediscover them)
   one `liveOutlinesPx` helper in `EmbroideryField.svelte` (three call sites,
   checked 2026-09-29). Add a new hit path through it, not around it.
 
-Deliberately not done: node editing of hand-drawn shapes on the field
-(follow-up spec), reorder/merge/split from the popover, removing either side
+Deliberately not done: reorder/merge/split from the popover, removing either side
 panel, a Delete for preset shapes (the element chip already does it).
 
 Tests: `app/src/lib/shapePopover.spec.js` (the decision table),
 `app/src/ui/ShapePopover.spec.js` (the dialog), `app/e2e/field-shape-popover.spec.js`
 (click-to-edit on both lanes; a drag inside a shape still moves the element;
 on the hand-drawn lane the side panel's row follows the field's selection).
+
+## Node editing on the field (2026-09-29)
+
+A hand-drawn shape's anchors and curve handles are now edited on the hoop
+canvas; the side canvas in `ManualPanel` only draws. Spec
+`docs/superpowers/specs/2026-09-29-field-node-edit-design.md`, plan
+`docs/superpowers/plans/2026-09-29-field-node-edit.md`, branch
+`claude/field-node-edit`, built on the popover work (#562).
+
+**The engine now exports its fit.** `buildQualityDesign` returns `design.fit`
+beside `shapeOutlines`: `cxPx, cyPx, mmPerPx` and the offsets as applied, so
+the field can map a pointer to the authored px space and back. *(confirmed
+2026-09-29 — `src/`, engine test; commit 881b810e)*
+
+**The re-fit rule (`app/src/lib/fieldNodeEdit.js`).** A node edit patches
+`shapes + sizeMm + offsetXMm + offsetYMm` in one `elupdate` (one undo step) so
+nothing unedited moves: `mmPerPx` is held, `sizeMm` follows the new flattened
+bbox width, and the offsets shift by the centre delta.
+- *Measured residual:* unedited points still move by the engine's own offset
+  rounding (`offXu = round(offset·10)`, the 0.1 mm DST grid) — up to 0.05
+  mm/axis, and `fieldNodeEdit.spec.js` pins it EXACTLY rather than under a
+  loose bound, with `mmPerPx` unchanged to 1e-12. The plan's 1e-6 tolerance
+  was unreachable; the engine was left untouched for byte-identity.
+  *(measured 2026-09-29 — `fieldNodeEdit.spec.js`, residual ±0.0273 mm in the
+  first run)*
+- *Known break:* the hoop clamp. On an auto-fit design (`sizeMm: null`) the
+  width already fills the 4 in hoop, so dragging a node past it makes the
+  engine rescale — `mmPerPx` 0.3079 → 0.2674 measured — and every unedited
+  point moves. The hoop warning is the only cover today; clamping the drag to
+  the hoop is a follow-up. *(measured 2026-09-29 — `fieldNodeEdit.spec.js`,
+  which drags inward to stay inside)*
+
+**Gestures, on the selected hand-drawn shape.**
+- Anchor and handle drags are RELATIVE to the grab point, with a 4 px dead
+  zone before the first move — a jittery click commits nothing (a 6 px
+  off-centre press with jitter moved nothing; a +30,+20 drag moved 30.10,
+  20.35 mm). Basis (`fit` and shape) is frozen at press. *(measured
+  2026-09-29 — browser run, commit 54705061)*
+- A drag moves ONE vertex, not the digitized lane's rubber-sheet `pullRing`.
+  *(confirmed 2026-09-29 — spec §1)*
+- Focus is set on PRESS, not on a release-without-move; Delete then removes
+  the anchor just touched. Any press that is not on an anchor clears the
+  focus (an insert shifts indices). *(confirmed 2026-09-29 — review of
+  8553b50f)*
+- Delete with a focused anchor removes it (floor 3 anchors says so); with
+  none it deletes the shape as before. Delete DURING a drag is ignored.
+  "Remove point" is on the right-click menu over an anchor. *(confirmed
+  2026-09-29 — `e2e/field-node-edit.spec.js` (c), (d))*
+- A click on an edge inserts an anchor there; at the 500-point cap it says
+  so. A DRAG that starts on an edge does nothing — no edit, no move, no
+  popover. *(confirmed 2026-09-29 — e2e (c), (f))*
+- The popover's "Edit points" on a hand-drawn shape just closes the popover;
+  the shape is already selected, so its handles are live.
+
+**What left `ManualPanel`.** Vertex mode, edge-click insert, the Edit points /
+Done editing buttons, the edit-mode cursors and `fieldSelect.edit` (1418 →
+1191 lines; 21 edit-mode tests retired). A click on the body of an
+already-selected shape on the side canvas no longer toggles it off; the row
+click still does. *(confirmed 2026-09-29 — commit 19880a6c)*
+
+**The popover moves (Kent's request mid-run — it hid what he was editing).**
+Drag `ShapePopover` by its header; the position is clamped to the hoop and
+kept per element for the session. *(confirmed 2026-09-29 — `ShapePopover.spec.js`,
+e2e (g), commit bc5e0ef9)*
+
+**Smear (found, half fixed).** `drawOverlay` never clears the canvas, so node
+drags smeared. Node-edit redraws now go through `repaintNodeChrome()` (an rAF
+view repaint). The DIGITIZED node drag still calls bare `drawOverlay()` and
+should smear the same way — follow-up. *(measured 2026-09-29 — browser run,
+commit 54705061; the digitized half is read from code, not driven)*
+
+**Trap: stale `public/engine`.** A dev server started before the engine change
+serves an engine with no `fit`, and node editing is silently absent. Restart
+it, or run `node app/scripts/copy-engine.mjs`. *(hit 2026-09-29 — Tasks 3 and
+5)*
+
+Tests: `app/src/lib/fieldNodeEdit.spec.js` (hit-testing, drag maths, the
+re-fit invariant through the real engine), `app/src/ui/ShapePopover.spec.js`
+(the movable dialog), `app/e2e/field-node-edit.spec.js` (a)–(g) — anchor drag,
+handle bow, edge insert, Delete and the floor, invariance of a neighbour,
+edge-drag-does-nothing, popover move.
