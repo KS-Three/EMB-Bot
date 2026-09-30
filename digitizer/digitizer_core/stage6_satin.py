@@ -3796,8 +3796,7 @@ def satin_stroke(poly: Polygon, stroke: Stroke, half_mm: float,
             # a cap by construction, and the tuck below then pulls the arm
             # back further still. Cap it the way a free end is capped, and
             # take no trim here.
-            if (tip_caps and under is None
-                    and _is_tip_end(spine, poly, half_sewn, at_start)):
+            if tip_caps and _is_tip_end(spine, poly, half_sewn, at_start):
                 if at_start:
                     tip_start = True
                 else:
