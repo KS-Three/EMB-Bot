@@ -4,6 +4,8 @@
   import { ensureFonts, loadCoverage, loadManifest } from "../lib/fontLoader.js";
   import { unsupportedMessage } from "../lib/fontCoverage.js";
   import { renderRealistic, isDark } from "../lib/preview.js";
+  import { pickScaleBar } from "../lib/scalebar.js";
+  import { tip } from "../lib/tip.js";
   import { designToStrands, strandStitchOrdinals } from "../lib/strands.js";
   import { advanceIndex, clampIndex, nextSpeed } from "../lib/simulate.js";
   import { EMB } from "../lib/emb.js";
@@ -38,6 +40,16 @@
   // reported via this component's own "stats" event below) + the A7
   // cross-hint priority rule.
   export let showDragHint = false;
+  // The shape the Layers list is pointing at (2026-09-30). Both are
+  // { elId, shapeId } or null, owned by App so the list and the canvas share
+  // one idea of "the shape in question": `hoverShape` is drawn as a white
+  // outline whether or not the outlines toggle is on; `focusShape` is
+  // applied as this component's own selection (the amber one) exactly as a
+  // canvas click would. Before this, selectedShapeId was set from a canvas
+  // hit only, and a row in a thirty-row list had no way to say which
+  // outline it was.
+  export let hoverShape = null;
+  export let focusShape = null;
 
   const dispatch = createEventDispatcher();
   const MM_PER_INCH = 25.4;
@@ -156,6 +168,17 @@
   // same in both, so the coverage answer never changes with the view.
   let realisticView = true;
   function toggleRealistic() { realisticView = !realisticView; scheduleViewRepaint(); }
+  // The view segments (2026-09-30): each picks its view rather than toggling,
+  // so clicking the one already lit does nothing, which is what a segmented
+  // control promises. Leaving the simulator to pick a view stops it first.
+  function showFlat() {
+    if (simActive) stopSim();
+    if (realisticView) toggleRealistic();
+  }
+  function showRealistic() {
+    if (simActive) stopSim();
+    if (!realisticView) toggleRealistic();
+  }
 
   // ---- stitch simulator state (see lib/simulate.js for the pure math) ----
   // simIndex is a FLOAT while playing (fractional progress carries across
@@ -219,6 +242,11 @@
   // unrelated element (or panning) never re-triggers it.
   $: project, noteOutlineResults();
   $: multiSel = selIds.length > 1;
+  // The scale bar follows the render's px-per-mm, which already has the
+  // view's zoom in it (B1), so wheel/button zoom moves it without any
+  // second calculation. `renderResult` is reassigned on every render, view
+  // repaint and clear, which is exactly the set of events that change it.
+  $: scaleBar = pickScaleBar(renderResult && renderResult.scale);
 
   // Union canvas-px rect of every selected member — the group's visible box.
   function groupRectPx() {
@@ -285,8 +313,19 @@
       hoop: hoopOpt(project),
       fabricRgb: project && project.fabricRgb,
       weave: true,
+      surround: surroundColor(),
       view,
     });
+  }
+
+  // The canvas outside the hoop paints the same --surround the field pane
+  // is, read off the token so the two can never drift (the old contract
+  // between .field and the canvas fill, kept — just dark now). The fallback
+  // is the token's own value, for a render before styles are attached.
+  function surroundColor() {
+    if (typeof document === "undefined") return "#22252c";
+    const v = getComputedStyle(document.documentElement).getPropertyValue("--surround").trim();
+    return v || "#22252c";
   }
 
   function accentColor() {
@@ -921,6 +960,70 @@
     }
   }
 
+  // Sets the selection AND its tag together, so the invariant above holds
+  // whichever path picks a shape.
+  function setSelectedShape(id) {
+    if (selectedShapeId === id) return;
+    selectedShapeId = id;
+    const el = id ? selectedElement() : null;
+    selectedShapeElId = el ? el.id : null;
+  }
+
+  // Canvas -> Layers list. The selection is set on several paths (a click,
+  // a right-click, the popover's Delete, the clears above, a row click from
+  // the list), so the list is told by WATCHING the ids rather than by
+  // instrumenting each assignment — a watcher cannot be bypassed by the
+  // next path that lands. Silent when nothing changed, which is also what
+  // stops a list-originated selection echoing back and forth. The event is
+  // `shapefocus`, not `shapeselect`: that name carries the manual lane's
+  // { elementId, shapeId, edit } request to ManualPanel, a different
+  // payload for a different listener.
+  let focusNotified = "";
+  function notifyShapeFocus(id, elId) {
+    const key = id && elId ? elId + "\u0000" + id : "";
+    if (key === focusNotified) return;
+    focusNotified = key;
+    dispatch("shapefocus", key ? { elId, shapeId: id } : null);
+  }
+  $: notifyShapeFocus(selectedShapeId, selectedShapeElId);
+
+  // Panel -> canvas: a click on a row selects that shape here, the same
+  // state a canvas click sets, so Delete and a boundary drag act on it and
+  // the amber highlight shows which one. Only for the element in front of
+  // the user; a stale focus for some other element is ignored.
+  function applyFocusShape(f) {
+    const sel = selectedElement();
+    if (!sel || sel.type !== "digitized" || sel.id !== f.elId) return;
+    if (selectedShapeId === f.shapeId) return;
+    selectedShapeId = f.shapeId;
+    selectedShapeElId = sel.id;
+    shapeEditError = "";
+    scheduleViewRepaint();
+  }
+  $: if (focusShape) applyFocusShape(focusShape);
+  // A hover is drawn over the render, so a change to it (on or off) needs
+  // the base repainted underneath, not just the overlay redrawn on top.
+  $: if (canvas) { hoverShape; scheduleViewRepaint(); }
+
+  // Canvas -> panel: the shape under the pointer, on its outline or inside
+  // it (the same two tests the right-click menu uses), for the row to
+  // highlight. Dispatched only on change; null when the pointer is on none.
+  let hoverEmitted = null;
+  function emitCanvasHover(p) {
+    let id = null;
+    let elId = null;
+    const edit = p ? editableOutlinesPx() : null;
+    if (edit) {
+      const hidden = hiddenShapeIds(edit.el, edit.rows);
+      const live = edit.outlines.filter((o) => !hidden.has(o.id));
+      const hit = hitOverlay(live, p.x, p.y) || hitShapeInterior(live, p.x, p.y);
+      if (hit) { id = hit.shapeId; elId = edit.el.id; }
+    }
+    if (id === hoverEmitted) return;
+    hoverEmitted = id;
+    dispatch("shapehover", id ? { elId, shapeId: id } : null);
+  }
+
   function deleteSelectedShape() {
     // The selected shape's element, and only while it is the selected one.
     const el = selectedShapeElement();
@@ -941,8 +1044,7 @@
     const cur = el.deletedShapeIds || [];
     if (cur.includes(selectedShapeId)) return false;
     dispatch("elupdate", { id: el.id, patch: { deletedShapeIds: [...cur, selectedShapeId] } });
-    selectedShapeId = null;
-    selectedShapeElId = null;
+    setSelectedShape(null);
     focusedAnchor = null;
     shapeEditError = "";
     return true;
@@ -1165,18 +1267,22 @@
         // Tagged by element: shape ids repeat across elements ("shape" on
         // every preset, s1… on every hand-drawn one).
         const editing = el.id === selectedShapeElId && o.id === selectedShapeId;
+        // Under the pointer — on the canvas or on its row in the Layers
+        // list (App routes both here as `hoverShape`). Drawn white so it
+        // reads as a spotlight beside the amber selection.
+        const hovered = !editing && !!hoverShape && hoverShape.elId === el.id && hoverShape.shapeId === o.id;
         // The default view is the stitch-out, so only the shape being acted
-        // on is outlined until the user asks for all of them.
+        // on, or pointed at, is outlined until the user asks for all of them.
         //
         // Clicking still selects with the outlines hidden: hit-testing runs
         // off the geometry (hitOverlay), never off what was drawn, and the
-        // shape highlights the moment it is picked. What IS lost is the
-        // signpost that the shapes are individually clickable at all — which
-        // is what the toggle is for, and why it sits with the other two
-        // diagnostic overlays rather than being hidden in a menu. (Note the
-        // Layers list does not drive this: selectedShapeId is set from a
-        // canvas hit only.)
-        if (!showOutlines && !editing) continue;
+        // shape highlights the moment it is picked. The hover outline is the
+        // signpost that the shapes are individually clickable; the toggle
+        // remains for seeing all of them at once, which is why it sits with
+        // the other two diagnostic overlays. (Since 2026-09-30 the Layers
+        // list drives this too, through App: a row's hover and click land
+        // in `hoverShape` / `focusShape` above.)
+        if (!showOutlines && !editing && !hovered) continue;
         // Mid node-drag the flattened ring is the STALE geometry: drawing it
         // beside the live authored outline showed two amber outlines. Idle,
         // the flattened ring stays underneath the authored one (spec §5).
@@ -1203,9 +1309,11 @@
         // reads as a highlight, widening alone as a wobble; both together read
         // as a heartbeat.
         ctx.strokeStyle = editing
-          ? "rgba(255, 214, 64, 0.95)"     // the shape under the pointer
-          : `rgba(${OUTLINE_RGB}, ${0.85 + 0.15 * pulse})`;
-        ctx.lineWidth = (editing ? 1.9 : 1.4) + 1.4 * pulse;
+          ? "rgba(255, 214, 64, 0.95)"     // the selected shape
+          : hovered
+            ? "rgba(255, 255, 255, 0.95)"  // the shape under the pointer, here or in the list
+            : `rgba(${OUTLINE_RGB}, ${0.85 + 0.15 * pulse})`;
+        ctx.lineWidth = (editing || hovered ? 1.9 : 1.4) + 1.4 * pulse;
         ctx.stroke();
 
         // Node dots say "drag me". On the digitized lane every vertex of the
@@ -1604,6 +1712,7 @@
       hoop: hoopOpt(project),
       fabricRgb: project.fabricRgb,
       weave: true,
+      surround: surroundColor(),
       view,
       showJumps,
       showTrims,
@@ -1639,6 +1748,7 @@
         hoop: hoopOpt(project),
         fabricRgb: project.fabricRgb,
         weave: true,
+        surround: surroundColor(),
         view,
         showJumps,
         showTrims,
@@ -2161,8 +2271,7 @@
     }
     if (!hit) return null;
     if (project.selectedId !== el.id) dispatch("select", el.id);
-    selectedShapeId = hit.shapeId;
-    selectedShapeElId = el.id;
+    setSelectedShape(hit.shapeId);
     shapeEditError = "";
     drawOverlay();
     const row = edit.rows.find((x) => x && x.id === hit.shapeId) || {};
@@ -2450,8 +2559,7 @@
       // falling through, so the next click on an outline selects rather than
       // edits, and Delete stops being armed.
       if (selectedShapeId) {
-        selectedShapeId = null;
-        selectedShapeElId = null;
+        setSelectedShape(null);
         focusedAnchor = null;
         // Not a bare drawOverlay: it paints over the last render without
         // clearing, so the dropped amber ring and node dots would stay.
@@ -2562,6 +2670,7 @@
     // An edge press does nothing until its release; it never moves the element.
     if (pressEdge) return;
     if (!dragMode) {
+      emitCanvasHover(p);
       updateHoverCursor(p);
       return;
     }
@@ -2826,6 +2935,7 @@
   }
 
   function onPointerLeave() {
+    emitCanvasHover(null);
     if (!dragMode && canvas) canvas.style.cursor = "default";
   }
 </script>
@@ -2955,7 +3065,88 @@
       <button type="button" class="zoombtn" on:click={zoomOut} disabled={view.zoom <= MIN_ZOOM} aria-label="Zoom out"><Icon name="minus" /></button>
       <span class="zoompct">{Math.round(view.zoom * 100)}%</span>
       <button type="button" class="zoombtn" on:click={zoomIn} disabled={view.zoom >= MAX_ZOOM} aria-label="Zoom in"><Icon name="plus" /></button>
-      <button type="button" class="zoombtn zoomfit" on:click={resetView} aria-label="Fit to hoop" title="Fit to hoop"><Icon name="expand" /></button>
+      <button type="button" class="zoombtn zoomfit" on:click={resetView} aria-label="Fit to hoop" use:tip={"fitToHoop"}><Icon name="expand" /></button>
+      {#if scaleBar}
+        <!-- A ruler, not a control: the bar's width IS the stated length on
+             screen (lib/scalebar.js), so the customer reads the design's
+             size off it at any zoom. In the zoom bar rather than on the
+             canvas so it never covers sewable field. -->
+        <span class="scalebar" role="img" aria-label="Scale: {scaleBar.label} on screen" title="{scaleBar.label} at this zoom">
+          <i class="scalebar-rule" style="width: {scaleBar.px.toFixed(1)}px"></i>
+          <span class="scalebar-label">{scaleBar.label}</span>
+        </span>
+      {/if}
+      <!-- The VIEW is one choice of three, so it is a segmented control
+           (2026-09-30): Stitches (the flat view), Realistic, Simulate. Six
+           bare glyphs used to stand here and a customer could not find
+           "Realistic view" among them. The three overlay toggles and snap
+           follow, with their names on, since a word is what a person scans
+           for. Every aria-label and aria-pressed is unchanged, so the e2e
+           specs that drive these buttons by name still do. -->
+      <span class="viewseg" role="group" aria-label="View">
+        <button
+          type="button"
+          class="zoombtn viewseg-btn"
+          class:viewseg-on={!realisticView && !simActive}
+          on:click={showFlat}
+          disabled={!hasDesign}
+          aria-pressed={!realisticView && !simActive}
+          aria-label="Stitches view"
+          use:tip={"flatView"}
+        >Stitches</button>
+        <button
+          type="button"
+          class="zoombtn viewseg-btn"
+          class:viewseg-on={realisticView && !simActive}
+          on:click={showRealistic}
+          disabled={!hasDesign}
+          aria-pressed={realisticView && !simActive}
+          aria-label="Realistic view"
+          use:tip={"realistic"}
+        >Realistic</button>
+        <button
+          type="button"
+          class="zoombtn viewseg-btn"
+          class:viewseg-on={simActive}
+          on:click={() => (simActive ? stopSim() : startSim())}
+          disabled={!hasDesign}
+          aria-label="Stitch simulator"
+          aria-pressed={simActive}
+          use:tip={"simulator"}
+        >Simulate</button>
+      </span>
+      <span class="zoomsep" aria-hidden="true"></span>
+      <button
+        type="button"
+        class="zoombtn viewtoggle zoomlabelled"
+        class:simon={showOutlines}
+        on:click={toggleOutlines}
+        disabled={!hasDesign}
+        aria-pressed={showOutlines}
+        aria-label="Show shape outlines"
+        use:tip={"outlines"}
+      ><Icon name="nodes" /><span class="zoomlabel">Outlines</span></button>
+      <button
+        type="button"
+        class="zoombtn viewtoggle zoomlabelled"
+        class:simon={showJumps}
+        on:click={toggleJumps}
+        disabled={!hasDesign}
+        aria-pressed={showJumps}
+        aria-label="Show jumps"
+        use:tip={"jumps"}
+      ><Icon name="jump" /><span class="zoomlabel">Jumps</span></button>
+      <button
+        type="button"
+        class="zoombtn viewtoggle zoomlabelled"
+        class:simon={showTrims}
+        on:click={toggleTrims}
+        disabled={!hasDesign}
+        aria-pressed={showTrims}
+        aria-label="Show trims"
+        use:tip={"trims"}
+      ><Icon name="scissors" /><span class="zoomlabel">Trims</span></button>
+      <span class="zoomsep" aria-hidden="true"></span>
       <button
         type="button"
         class="zoombtn viewtoggle"
@@ -2963,58 +3154,8 @@
         on:click={toggleSnap}
         aria-pressed={snapEnabled}
         aria-label="Auto-snap"
-        title="Auto-snap to other elements and hoop center (hold Alt to suspend)"
+        use:tip={"autoSnap"}
       ><Icon name="magnet" /></button>
-      <button
-        type="button"
-        class="zoombtn viewtoggle"
-        class:simon={showOutlines}
-        on:click={toggleOutlines}
-        disabled={!hasDesign}
-        aria-pressed={showOutlines}
-        aria-label="Show shape outlines"
-        title="Outline every digitized shape — off for a clean view of the stitch-out"
-      ><Icon name="nodes" /></button>
-      <button
-        type="button"
-        class="zoombtn viewtoggle"
-        class:simon={showJumps}
-        on:click={toggleJumps}
-        disabled={!hasDesign}
-        aria-pressed={showJumps}
-        aria-label="Show jumps"
-        title="Show needle-up travel (jumps)"
-      ><Icon name="jump" /></button>
-      <button
-        type="button"
-        class="zoombtn viewtoggle"
-        class:simon={showTrims}
-        on:click={toggleTrims}
-        disabled={!hasDesign}
-        aria-pressed={showTrims}
-        aria-label="Show trims"
-        title="Show thread trims"
-      ><Icon name="scissors" /></button>
-      <button
-        type="button"
-        class="zoombtn viewtoggle"
-        class:simon={realisticView}
-        on:click={toggleRealistic}
-        disabled={!hasDesign}
-        aria-pressed={realisticView}
-        aria-label="Realistic view"
-        title="Realistic thread — off for a flat view of coverage and stitch structure"
-      ><Icon name="sparkle" /></button>
-      <button
-        type="button"
-        class="zoombtn"
-        class:simon={simActive}
-        on:click={() => (simActive ? stopSim() : startSim())}
-        disabled={!hasDesign}
-        aria-label="Stitch simulator"
-        aria-pressed={simActive}
-        title="Stitch simulator — watch the sew order"
-      ><Icon name="play" /></button>
     </div>
     {#if simActive}
       <div class="simbar" role="group" aria-label="Stitch simulator controls">

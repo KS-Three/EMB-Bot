@@ -40,5 +40,10 @@ the corpus table in scope-history 2026-09-30.
   no rail, pull or gap. 22 % of the word's gap length is under the 1.0 mm pull + thread
   close at 80 mm. Don't chase the classifier; the lever is a script-scoped push hold
   (2 mm² expected), a preflight size finding, or nothing.
+- **The lever Kent picked (2026-09-30): preflight `SATIN_GAPS_TIGHT`.** A satin shape's own
+  gaps under 2 × pull + thread (1.0 mm on pique), read by granulometry off the polygon
+  (a skeleton's corner spurs lie), 6 mm floor (3 mm fired on one-counter specks),
+  headline = most closed gap, `clear_width_mm` per shape and never a design promise
+  (bridge at 140 mm fires on nothing). Fires: bridge 3, golden_tee 3, tires, gaulke.
 - Count colour blocks before reading a border as a satin defect; classify
   thread by the artwork under it before reading a smoosh as a rail defect.

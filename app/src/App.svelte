@@ -681,6 +681,23 @@
     stepHistory.go("content");
   }
 
+  // The shape the Layers list and the canvas are both pointing at
+  // (2026-09-30). Two surfaces, one state: a row's hover or click lands
+  // here and goes to the field as `hoverShape` / `focusShape`; a canvas
+  // hover or click lands here and goes to the panel as the ids it should
+  // highlight. Each is { elId, shapeId } or null, and the panel only ever
+  // sees the pair for the element it is showing.
+  let hoverShape = null;
+  let selectedShape = null;
+  $: panelHoverShapeId = hoverShape && hoverShape.elId === project.selectedId ? hoverShape.shapeId : null;
+  $: panelSelectedShapeId = selectedShape && selectedShape.elId === project.selectedId ? selectedShape.shapeId : null;
+  function onPanelShapeHover(shapeId) {
+    hoverShape = shapeId ? { elId: project.selectedId, shapeId } : null;
+  }
+  function onPanelShapeSelect(shapeId) {
+    selectedShape = { elId: project.selectedId, shapeId };
+  }
+
   function onSelect(id) {
     project = selectElement(project, id);
     // record=false: pure selection isn't an edit — undo should never spend a
@@ -1133,6 +1150,10 @@
           {designDims}
           {digitizerHealth}
           {showAddElementsHint}
+          hoverShapeId={panelHoverShapeId}
+          selectedShapeId={panelSelectedShapeId}
+          on:shapehover={(e) => onPanelShapeHover(e.detail)}
+          on:shapeselect={(e) => onPanelShapeSelect(e.detail)}
           {fieldShapeSelect}
           on:checkservice={checkDigitizer}
           on:elupdate={(e) => elUpdate(e.detail.id, e.detail.patch)}
@@ -1218,6 +1239,10 @@
       {project}
       {runtime}
       showDragHint={showDragFieldHint}
+      {hoverShape}
+      focusShape={selectedShape}
+      on:shapehover={(e) => (hoverShape = e.detail)}
+      on:shapefocus={(e) => (selectedShape = e.detail)}
       on:elupdate={(e) => elUpdate(e.detail.id, e.detail.patch, !e.detail.quiet)}
       on:elupdatemany={(e) => elUpdateMany(e.detail)}
       on:select={(e) => onSelect(e.detail)}

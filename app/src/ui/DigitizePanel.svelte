@@ -1,7 +1,8 @@
 <script>
-  import { createEventDispatcher, onDestroy } from "svelte";
+  import { createEventDispatcher, onDestroy, tick } from "svelte";
   import ThreadPicker from "./ThreadPicker.svelte";
   import Icon from "./Icon.svelte";
+  import { tip } from "../lib/tip.js";
   import {
     buildDigitizeConfig,
     digitize,
@@ -58,6 +59,14 @@
   export let element;
   export let project; // garmentId rides into the config (fabric preset service-side)
   export let health = null; // /health payload or null; App owns the probe
+  // Canvas -> list (2026-09-30): the shape under the pointer on the field,
+  // and the one selected there. The matching row highlights, and a
+  // selection opens the list and scrolls its row into view (revealRow,
+  // below the list state). The list -> canvas half is the rows' own
+  // mouseenter/mouseleave ("shapehover") and the name button ("shapeselect"),
+  // which App routes to the field.
+  export let hoverShapeId = null;
+  export let selectedShapeId = null;
 
   const d = createEventDispatcher();
 
@@ -788,6 +797,30 @@
     patch({ blockColors: { ...(element.blockColors || {}), [i]: rgb } });
   }
 
+  // Thread per color lists SPOOLS, not sew blocks (2026-09-30). The design
+  // edge re-loads a cone, so a two-spool logo sews three blocks, and the
+  // list named "1720 Not Quite Red" twice — a customer reading it as what to
+  // buy buys a spool they have (the same rule the summary and the review's
+  // shopping list already follow: a colour is a cone to buy). Grouped by
+  // the cone's name and colour; a pick applies to every block of that
+  // spool, since on the machine they are one spool.
+  $: spoolRows = spoolGroups(element);
+  function spoolGroups(el) {
+    const colors = (el.result && el.result.colors) || [];
+    const groups = new Map();
+    colors.forEach((c, i) => {
+      const key = blockName(el, i) + "|" + [c.r || 0, c.g || 0, c.b || 0].join(",");
+      if (!groups.has(key)) groups.set(key, { name: blockName(el, i), first: i, blocks: [] });
+      groups.get(key).blocks.push(i);
+    });
+    return [...groups.values()];
+  }
+  function pickSpool(g, rgb) {
+    const next = { ...(element.blockColors || {}) };
+    for (const i of g.blocks) next[i] = rgb;
+    patch({ blockColors: next });
+  }
+
   const FILL_ANGLES = [
     { value: null, label: "Auto (per shape)" },
     { value: 0, label: "0°" },
@@ -825,6 +858,32 @@
   // element, so this resets when you switch designs -- which is what you want,
   // since "I was editing shapes" does not carry from one artwork to another.
   let layersOpen = false;
+  let layerListEl = null;
+  // Three tabs once there is a result (2026-09-30, the last item of Kent's
+  // design review): Settings — what you turn and what the run said;
+  // Shapes — the Layers list and its editors; Threads — the spools. One
+  // column had grown to 1,738px at 1440x900 with all of it stacked, and the
+  // customer's question ("what do I change?") was buried under the expert's
+  // list. Resets with the panel, which `{#key el.id}` remounts per element.
+  let tab = "settings";
+  // A shape picked on the canvas is found in the list: open it if it was
+  // closed, then bring the row into view. `nearest` so a row already on
+  // screen does not jump, and a row the user just clicked (which also
+  // arrives here, via App) is a no-op. Matched by walking the rows rather
+  // than an attribute selector so an id needs no escaping.
+  $: if (selectedShapeId) revealRow(selectedShapeId);
+  async function revealRow(id) {
+    tab = "shapes";
+    layersOpen = true;
+    await tick();
+    if (!layerListEl) return;
+    for (const li of layerListEl.querySelectorAll("[data-shape-id]")) {
+      if (li.dataset.shapeId === String(id)) {
+        if (typeof li.scrollIntoView === "function") li.scrollIntoView({ block: "nearest" });
+        return;
+      }
+    }
+  }
 
   // What the design-level border setting is called in a per-shape row's
   // "Design (...)" option. null is the automatic default and has no bare word
@@ -1799,11 +1858,15 @@
     {/if}
 
     <div class="dgp-params">
-      <label class="dgp-param">
+      <!-- Every setting carries `use:tip` (lib/tip.js) with its key in
+           lib/settingHelp.js — hover the label or focus the control and the
+           three-line help shows. The "?" is a generated glyph on an empty,
+           aria-hidden element, so the label's text is unchanged. -->
+      <label class="dgp-param" use:tip={"designWidth"}>
         <!-- Renamed from "Stitch width" 2026-09-29: this is the DESIGN's
              width. "Stitch width" now means the per-shape satin column, in
              the Edit shapes list below, and one word cannot mean both. -->
-        <span>Design width</span>
+        <span>Design width<i class="tipmark" aria-hidden="true"></i></span>
         <input
           type="number"
           min="10"
@@ -1814,8 +1877,8 @@
         />
         <span class="dgp-unit">mm</span>
       </label>
-      <label class="dgp-param">
-        <span>Colors (max {element.params.max_colors})</span>
+      <label class="dgp-param" use:tip={"colors"}>
+        <span>Colors (max {element.params.max_colors})<i class="tipmark" aria-hidden="true"></i></span>
         <input
           type="range"
           min="2"
@@ -1825,29 +1888,29 @@
           on:input={(e) => setParam("max_colors", parseInt(e.currentTarget.value, 10))}
         />
       </label>
-      <label class="dgp-checkline">
+      <label class="dgp-checkline" use:tip={"satinThin"}>
         <input
           type="checkbox"
           checked={element.params.satin}
           on:change={(e) => setParam("satin", e.currentTarget.checked)}
         />
-        Satin for thin shapes
+        Satin for thin shapes<i class="tipmark" aria-hidden="true"></i>
       </label>
       <!-- Off by default on purpose: on real lettering the per-letter reading
            is a smooth chain, not a step (digitizer_core/stitchwidth.py), so
            the word's median is a guess. The always-on half is per shape, in
            Edit shapes: every measured column shows its width, and "whole
            word" writes one width to every letter. -->
-      <label class="dgp-checkline" title="Give every letter of a detected word the word's own weight: a letter traced fatter or thinner than its neighbours is evened out to them. Off, each shape sews the width it was drawn at; the per-shape Stitch width in Edit shapes works either way.">
+      <label class="dgp-checkline" use:tip={"evenWidths"}>
         <input
           type="checkbox"
           checked={!!element.params.stitch_width_auto}
           on:change={(e) => setParam("stitch_width_auto", e.currentTarget.checked)}
         />
-        Even out lettering widths
+        Even out lettering widths<i class="tipmark" aria-hidden="true"></i>
       </label>
-      <label class="dgp-param">
-        <span>Fill angle</span>
+      <label class="dgp-param" use:tip={"fillAngle"}>
+        <span>Fill angle<i class="tipmark" aria-hidden="true"></i></span>
         <select
           value={element.params.fill_angle_deg == null ? "auto" : String(element.params.fill_angle_deg)}
           on:change={onAngleChange}
@@ -1857,8 +1920,8 @@
           {/each}
         </select>
       </label>
-      <label class="dgp-param">
-        <span>Border</span>
+      <label class="dgp-param" use:tip={"border"}>
+        <span>Border<i class="tipmark" aria-hidden="true"></i></span>
         <select
           value={element.params.border ?? ""}
           on:change={(e) => setParam("border", e.currentTarget.value || null)}
@@ -1881,8 +1944,8 @@
            no per-shape border rides it. Toggleable on purpose — bean and
            satin read very differently on cloth and the choice is his, per
            design. -->
-      <label class="dgp-param">
-        <span>Design edge</span>
+      <label class="dgp-param" use:tip={"designEdge"}>
+        <span>Design edge<i class="tipmark" aria-hidden="true"></i></span>
         <select
           value={element.params.edge_cap}
           on:change={(e) => setParam("edge_cap", e.currentTarget.value)}
@@ -1934,7 +1997,7 @@
          the last run, since before it there is nothing to report. A
          statement, not an offer: nothing here is a button. -->
     {#if element.result}
-      <div class="dgp-read">
+      <div class="dgp-read" use:tip={"photoReading"}>
         <p class="dgp-read-text">
           {#if artRead === "face"}
             A face was found, so it's sewing as flat art: solid color regions with an outline.
@@ -1993,6 +2056,44 @@
         {element.result.widthMM.toFixed(0)}×{element.result.heightMM.toFixed(0)} mm ·
         {spoolCount(element.result)} color{spoolCount(element.result) === 1 ? "" : "s"}
       </p>
+      <!-- "Since last run" sits with the stats, above the tabs: a re-run
+           can be started from any of them (Apply on Shapes, a spool on
+           Threads), and its outcome should be read where you are. -->
+      {#if hasPrior}
+        <p class="dgp-delta" role="status" data-testid="digitize-delta">
+          {#if changed.length}
+            Since last run: {changed.join(" · ")}
+          {:else}
+            Since last run: no change to stitches, threads or trims.
+          {/if}
+        </p>
+      {/if}
+      <!-- The run's warnings too: a layer edit that no longer matches a
+           shape, a background that was hard to separate. Whatever tab you
+           are on, these are not to be missed. -->
+      {#if attentionLines.length}
+        <ul class="dgp-warnings">
+          {#each attentionLines as w (w.code + w.text)}
+            <li>{w.text}</li>
+          {/each}
+        </ul>
+      {/if}
+
+      <!-- The tabs (see `tab` in the script). The stats line, the delta and
+           the warnings above are common to all three; everything below
+           belongs to one. The counts are aria-hidden so the tabs' names stay
+           the plain words. -->
+      <div class="dgp-tabs" role="tablist" aria-label="Digitize panel">
+        <button type="button" role="tab" class="dgp-tab" class:dgp-tab-on={tab === "settings"} aria-selected={tab === "settings"} on:click={() => (tab = "settings")}>Settings</button>
+        <button type="button" role="tab" class="dgp-tab" class:dgp-tab-on={tab === "shapes"} aria-selected={tab === "shapes"} on:click={() => (tab = "shapes")}>
+          Shapes{#if reviewShapes.length}<span class="dgp-tab-count" aria-hidden="true">{reviewShapes.length}</span>{/if}
+        </button>
+        <button type="button" role="tab" class="dgp-tab" class:dgp-tab-on={tab === "threads"} aria-selected={tab === "threads"} on:click={() => (tab = "threads")}>
+          Threads<span class="dgp-tab-count" aria-hidden="true">{spoolRows.length}</span>
+        </button>
+      </div>
+
+      {#if tab === "settings"}
 
       <!-- Item 10: a re-digitize used to replace the design in place with
            nothing to compare against, so a knob you turned and a knob you
@@ -2013,16 +2114,9 @@
         </div>
       {/if}
 
-      {#if hasPrior}
-        <p class="dgp-delta" role="status" data-testid="digitize-delta">
-          {#if changed.length}
-            Since last run: {changed.join(" · ")}
-          {:else}
-            Since last run: no change to stitches, threads or trims.
-          {/if}
-        </p>
       {/if}
 
+      {#if tab === "shapes"}
       {#if unstitchedRows.length}
         <div class="dgp-enclosed-banner" role="alert">
           <p class="dgp-enclosed-banner-text">
@@ -2037,13 +2131,9 @@
           </button>
         </div>
       {/if}
-      {#if attentionLines.length}
-        <ul class="dgp-warnings">
-          {#each attentionLines as w (w.code + w.text)}
-            <li>{w.text}</li>
-          {/each}
-        </ul>
       {/if}
+
+      {#if tab === "settings"}
       {#if noteLines.length}
         <details class="dgp-notes">
           <summary>{noteLines.length} note{noteLines.length === 1 ? "" : "s"} about how this was digitized</summary>
@@ -2069,7 +2159,9 @@
           Re-digitize at {element.sizeMm.toFixed(0)} mm
         </button>
       {/if}
+      {/if}
 
+      {#if tab === "shapes"}
       {#if reviewShapes.length}
         <div class="dgp-layers">
           <div class="dgp-layers-head">
@@ -2384,7 +2476,7 @@
             </span>
           </button>
           {#if layersOpen}
-          <ol class="dgp-layerlist">
+          <ol class="dgp-layerlist" bind:this={layerListEl}>
             {#each orderedShapes as row, i (row.id)}
               <!-- One name per row, reused by every control in it, so a
                    screen reader and a voice command can both tell the rows
@@ -2418,7 +2510,16 @@
               {@const tier = effTier(row, overrides)}
               {@const siblings = dead || unstitched ? [] : layerSiblings(row, sewableShapes, overrides)}
               {@const siblingIdx = siblings.findIndex((r) => r.id === row.id)}
-              <li class="dgp-layer" class:dead class:unstitched>
+              <li
+                class="dgp-layer"
+                class:dead
+                class:unstitched
+                class:dgp-layer-hover={hoverShapeId === row.id}
+                class:dgp-layer-sel={selectedShapeId === row.id}
+                data-shape-id={row.id}
+                on:mouseenter={() => d("shapehover", row.id)}
+                on:mouseleave={() => d("shapehover", null)}
+              >
                 {#if !dead && !unstitched}
                   <label class="dgp-mergecheck" title="Select for merge">
                     <input
@@ -2461,7 +2562,18 @@
                       {/if}
                     {:else}
                       <ThreadPicker {rgb} compact name={rowAria} on:pick={(e) => recolorShape(row.id, e.detail)} />
-                      <span class="dgp-lname">{rowName(row)}</span>
+                      <!-- The name is the row's handle onto the canvas: click
+                           it and the field selects this shape, the amber
+                           outline showing which one. Only a sewing row gets
+                           this — a hidden or deleted shape has no outline to
+                           show and a Delete armed on it would be a surprise. -->
+                      <button
+                        type="button"
+                        class="dgp-lname dgp-lname-btn"
+                        title="Show this shape on the canvas"
+                        aria-label={"Show " + rowAria + " on the canvas"}
+                        on:click={() => d("shapeselect", row.id)}
+                      >{rowName(row)}</button>
                       <span class="dgp-larea">{fmtArea(row.areaMm2)}</span>
                       <span class="dgp-ltier tier-{tier || 'none'}">{tier || "not sewn"}</span>
                       <!-- The border this row actually has on it (borderMenu
@@ -2520,6 +2632,7 @@
                         value={overrideTier(row, overrides)}
                         on:change={(e) => setShapeTier(row.id, e.currentTarget.value)}
                         aria-label={"Stitch type — " + rowAria}
+                        use:tip={"shapeTier"}
                       >
                         <option value="auto">Auto{row.tier ? " (" + row.tier + ")" : ""}</option>
                         <option value="satin">Satin</option>
@@ -2538,6 +2651,7 @@
                           value={overrideAngle(row, overrides)}
                           on:change={(e) => setShapeAngle(row.id, e.currentTarget.value)}
                           aria-label={"Fill angle — " + rowAria}
+                          use:tip={"shapeAngle"}
                         >
                           {#each SHAPE_ANGLES as a}
                             <option value={a.value == null ? "auto" : String(a.value)}>{a.label}</option>
@@ -2548,6 +2662,7 @@
                           value={overrideUnderlay(row, overrides)}
                           on:change={(e) => setShapeUnderlay(row.id, e.currentTarget.value)}
                           aria-label={"Underlay style — " + rowAria}
+                          use:tip={"shapeUnderlay"}
                         >
                           {#each SHAPE_UNDERLAYS as u}
                             <option value={u.value == null ? "auto" : u.value}>{u.label}</option>
@@ -2559,6 +2674,7 @@
                         value={overrideBorder(row, overrides)}
                         on:change={(e) => setShapeBorder(row.id, e.currentTarget.value)}
                         aria-label={"Border — " + rowAria}
+                        use:tip={"shapeBorder"}
                       >
                         <option value="default">Design ({borderLabel(element.params.border)})</option>
                         <option value="off">No border</option>
@@ -2585,7 +2701,7 @@
                             placeholder={"auto " + fmtMm(row.stitchWidth.autoMm)}
                             value={swOverride == null ? "" : swOverride}
                             aria-label={"Stitch width — " + rowAria}
-                            title={"The satin column this shape sews, in mm (" + STITCH_WIDTH_MIN_MM + "–" + STITCH_WIDTH_MAX_MM + "). Empty = the engine's own reading. Wider makes small letters bolder; narrower opens their counters."}
+                            use:tip={"stitchWidth"}
                             on:change={(e) => setShapeStitchWidth(row, e.currentTarget.value)}
                           />
                           <span class="dgp-unit">mm</span>
@@ -2599,7 +2715,7 @@
                           >Auto</button>
                         {/if}
                         {#if swGroupN > 1}
-                          <label class="dgp-lwidth-scope" title="Apply this width to every letter of the word, so the word sews at one weight. Untick to change only this shape.">
+                          <label class="dgp-lwidth-scope" use:tip={"wholeWord"}>
                             <input
                               type="checkbox"
                               checked={!wordScope.has(row.id)}
@@ -2749,19 +2865,26 @@
       {:else if health}
         <p class="dgp-note">Digitize again to get an editable layer list for this result.</p>
       {/if}
+      {/if}
 
+      {#if tab === "threads"}
       <div class="dgp-blocks">
         <span class="dgp-blocks-label">Thread per color</span>
-        {#each Array.from({ length: (element.result.colors || []).length }) as _, i}
+        {#each spoolRows as g (g.first)}
           <div class="dgp-block">
-            <span class="dgp-block-n">{blockName(element, i)}</span>
-            <ThreadPicker rgb={blockRgb(element, i)} compact on:pick={(e) => pickBlock(i, e.detail)} />
+            <span class="dgp-block-n">{g.name}</span>
+            {#if g.blocks.length > 1}
+              <span class="dgp-block-note">loaded {g.blocks.length} times</span>
+            {/if}
+            <ThreadPicker rgb={blockRgb(element, g.first)} compact on:pick={(e) => pickSpool(g, e.detail)} />
           </div>
         {/each}
       </div>
+      {/if}
 
-      <label class="letterspacing">
-        <span>Rotation</span>
+      {#if tab === "settings"}
+      <label class="letterspacing" use:tip={"rotation"}>
+        <span>Rotation<i class="tipmark" aria-hidden="true"></i></span>
         <input
           type="range"
           min="0"
@@ -2772,12 +2895,49 @@
         />
         <span class="label">{rotation}°</span>
       </label>
+      {/if}
     {/if}
   {/if}
 </div>
 
 <style>
   .digipanel { margin-top: 4px; }
+  /* The three tabs: a hairline underline strip, the lit one in ink with a
+     2px accent rule — the same segmented language as the hoop picker and
+     the view segments, laid flat because it heads a column. */
+  .dgp-tabs {
+    display: flex;
+    gap: var(--space-4, 16px);
+    margin: 12px 0 10px;
+    border-bottom: 1px solid var(--border, #e2e5eb);
+  }
+  .dgp-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 2px 8px;
+    margin-bottom: -1px;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    background: none;
+    color: var(--muted, #616875);
+    font: inherit;
+    font-size: var(--fs-sm, 14px);
+    font-weight: var(--fw-medium, 500);
+    cursor: pointer;
+  }
+  .dgp-tab:hover { color: var(--ink, #1c1f26); }
+  .dgp-tab-on { color: var(--ink, #1c1f26); border-bottom-color: var(--accent, #4f46e5); font-weight: var(--fw-semibold, 600); }
+  .dgp-tab-count {
+    padding: 1px 6px;
+    border-radius: 999px;
+    background: var(--bg, #f6f7fb);
+    color: var(--muted, #616875);
+    font-size: var(--fs-2xs, 11px);
+    font-weight: var(--fw-semibold, 600);
+  }
+  .dgp-tab-on .dgp-tab-count { background: var(--tint, #eef0ff); color: var(--accent, #4f46e5); }
+  .dgp-block-note { font-size: var(--fs-2xs, 11px); color: var(--muted, #616875); }
   .dgp-upload { display: inline-block; cursor: pointer; }
   .dgp-upload input[type="file"] {
     position: absolute;
@@ -3104,6 +3264,25 @@
      deliberately NOT struck through — this isn't something the user
      removed, so it shouldn't look removed. */
   .dgp-layer.unstitched { opacity: 0.75; }
+  /* The list and the canvas point at the same shape (2026-09-30): a row
+     under the pointer here, or whose shape is under the pointer there, takes
+     the hover ground; the selected shape's row takes the tint with an
+     accent edge, the list's twin of the amber outline on the field. */
+  .dgp-layer:hover,
+  .dgp-layer-hover { background: var(--bg, #f6f7fb); }
+  .dgp-layer-sel,
+  .dgp-layer-sel:hover { background: var(--tint, #eef0ff); box-shadow: inset 3px 0 0 var(--accent, #4f46e5); }
+  .dgp-lname-btn {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    font-family: inherit;
+    line-height: inherit;
+    text-align: left;
+    cursor: pointer;
+  }
+  .dgp-lname-btn:hover { color: var(--accent, #4f46e5); text-decoration: underline; }
   .dgp-ltier-unstitched {
     color: var(--warn-text, #8a6d1a);
     border-color: var(--warn-text, #8a6d1a);

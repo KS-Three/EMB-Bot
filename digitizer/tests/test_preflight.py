@@ -25,7 +25,9 @@ from digitizer_core import stitches as st
 # The module object, not its names: the uncovered-artwork test monkeypatches
 # `_prune_spurs` to re-create the defect the check was built against.
 from digitizer_core import stage6_satin
-from digitizer_core.pipeline import digitize, plan_stitches
+from digitizer_core.pipeline import (BackgroundInfo, PipelineResult, digitize,
+                                     fabric_for, plan_stitches)
+from digitizer_core.regions import Region
 from digitizer_core.preflight import (
     ARTWORK_UNCOVERED,
     CLASS_OVERRIDE_TECHNIQUE_MISMATCH,
@@ -38,6 +40,7 @@ from digitizer_core.preflight import (
     DENSITY_STACKED,
     GROUND_SEWN,
     LETTERING_TOO_SMALL,
+    SATIN_GAPS_TIGHT,
     LINK_UNCOVERED,
     PHOTO_MIN_PX_PER_MM,
     PHOTO_RESOLUTION_LOW,
@@ -592,6 +595,140 @@ def test_lettering_too_small_reports_the_denominator_not_a_target_size():
 def test_a_healthy_column_is_not_lettering_too_small():
     healthy = _plan(_satin_column(30, width_mm=2.5, spacing_mm=0.4))
     assert LETTERING_TOO_SMALL not in _codes(run_preflight(None, healthy, cfg()))
+
+
+# --- Tight gaps inside a satin shape ------------------------------------------
+# Kent's pick 2026-09-30 after the script-as-lettering measurement: bridge's
+# "Bridge" sews its inter-letter gaps closed at 80 mm because two facing
+# rails push out by the fabric's pull and the thread covers the rest, and
+# no lettering rule reaches a gap. A finding, not an engine change.
+
+def _word(gap_mm: float, bars: int = 6, bar_w: float = 2.0, bar_h: float = 10.0):
+    """A connected 'word': upright bars on one baseline, `gap_mm` apart."""
+    from shapely.geometry import box
+    from shapely.ops import unary_union
+    total = bars * bar_w + (bars - 1) * gap_mm
+    parts = [box(i * (bar_w + gap_mm), 0.0, i * (bar_w + gap_mm) + bar_w, bar_h)
+             for i in range(bars)]
+    parts.append(box(0.0, bar_h - bar_w, total, bar_h))
+    return unary_union(parts)
+
+
+def _result_with(poly, shape_id: str = "S1", meta: dict | None = None) -> PipelineResult:
+    region = Region(shape_id=shape_id, polygon=poly, thread_index=0, thread_number="1704",
+                    area_mm2=poly.area, meta=meta or {})
+    return PipelineResult(regions=[region], palette=[], background=BackgroundInfo(detected=False),
+                          px_per_mm=10.0, design_size_mm=(20.0, 10.0))
+
+
+def _close_mm() -> float:
+    return 2.0 * fabric_for(cfg()).pull_comp_mm + machine.COVERAGE_THREAD_W_MM
+
+
+def test_a_word_whose_gaps_are_under_the_close_is_flagged_with_the_width_that_clears_them():
+    close = _close_mm()
+    gap = round(0.8 * close, 2)
+    plan = _plan(_satin_column(30, width_mm=2.5, spacing_mm=0.4))
+    report = run_preflight(_result_with(_word(gap)), plan, cfg())
+    flagged = [f for f in report["findings"] if f["code"] == SATIN_GAPS_TIGHT]
+    assert len(flagged) == 1
+    extra = flagged[0]["extra"]
+    assert extra["count"] == 1 and extra["judged"] == 1 and extra["worst_shape_id"] == "S1"
+    assert abs(extra["close_mm"] - close) < 1e-6
+    row = extra["shapes"][0]
+    assert row["tight_frac"] > 0.9                    # every channel is the gap under the close
+    assert abs(row["gap_p10_mm"] - gap) < 0.15         # read at the channel's own skeleton
+    x0, _y0, x1, _y1 = plan.stats.bbox_mm
+    assert abs(row["clear_width_mm"] - (x1 - x0) * close / row["gap_p10_mm"]) <= 1
+    assert "clears that at about" in flagged[0]["message"]
+    assert report["metrics"]["satin_gaps_tight_shapes"] == 1
+
+
+def test_a_word_whose_gaps_clear_the_close_is_judged_and_not_flagged():
+    close = _close_mm()
+    report = run_preflight(_result_with(_word(round(2.0 * close, 2))),
+                           _plan(_satin_column(30, width_mm=2.5, spacing_mm=0.4)), cfg())
+    assert SATIN_GAPS_TIGHT not in _codes(report)
+    assert report["metrics"]["satin_gaps_judged"] == 1
+    assert report["metrics"]["satin_gaps_tight_shapes"] == 0
+
+
+def test_the_headline_is_the_shape_with_the_most_closed_gap_and_a_pinch_does_not_fire():
+    """A 5 mm mark with one shut counter reads 100% tight; the word beside it
+    at a third is what the customer sees smoosh, so the word leads. Alone,
+    the mark's few millimetres of closed gap are under TIGHT_MIN_CHANNEL_MM
+    and it does not fire at all -- measured on the corpus sweep, where a
+    3 mm floor fired on 4 mm shapes with a single closed counter."""
+    from digitizer_core.preflight import TIGHT_MIN_CHANNEL_MM
+    close = _close_mm()
+    tight = round(0.8 * close, 2)
+    word = _word(tight, bars=6, bar_w=2.0, bar_h=10.0)              # 5 gaps x 8 mm, all under the close
+    pinch = _word(tight, bars=2, bar_w=2.0, bar_h=4.0)               # one gap x 2 mm: a pinch
+    from shapely.affinity import translate
+    pinch = translate(pinch, xoff=40.0)
+    regions = [Region(shape_id="Sword", polygon=word, thread_index=0, thread_number="1704",
+                      area_mm2=word.area),
+               Region(shape_id="Spinch", polygon=pinch, thread_index=0, thread_number="1704",
+                      area_mm2=pinch.area)]
+    result = PipelineResult(regions=regions, palette=[], background=BackgroundInfo(detected=False),
+                            px_per_mm=10.0, design_size_mm=(60.0, 10.0))
+    plan = _plan(_satin_column(30, width_mm=2.5, spacing_mm=0.4, shape_id="Sword"),
+                 _satin_column(10, width_mm=2.5, spacing_mm=0.4, shape_id="Spinch"))
+    report = run_preflight(result, plan, cfg())
+    flagged = [f for f in report["findings"] if f["code"] == SATIN_GAPS_TIGHT]
+    assert len(flagged) == 1
+    extra = flagged[0]["extra"]
+    assert extra["judged"] == 2 and extra["count"] == 1
+    assert extra["worst_shape_id"] == "Sword"
+    assert extra["shapes"][0]["tight_mm"] >= TIGHT_MIN_CHANNEL_MM
+    # The pinch alone: judged, under the floor, silent.
+    alone = run_preflight(_result_with(pinch, shape_id="Spinch"),
+                          _plan(_satin_column(10, width_mm=2.5, spacing_mm=0.4, shape_id="Spinch")), cfg())
+    assert SATIN_GAPS_TIGHT not in _codes(alone) and alone["metrics"]["satin_gaps_judged"] == 1
+
+
+def test_bridges_script_sews_its_gaps_closed_at_80mm_and_the_finding_says_where_it_clears():
+    """The fixture the finding was built for (Kent's pick 2026-09-30): the
+    connected script "Bridge" on `photo/logo_bridge_bar.jpg` at 80 mm, one
+    satin shape of about 38 x 14 mm that the text classifier cannot see. Its
+    gaps between letters, read off the polygon the rails follow, run about a
+    third under the 1.0 mm two facing rails close on pique knit, and its
+    tightest tenth clears that near 160 mm of design width. The ring with
+    spokes on the same logo leads the finding (the most closed gap); the
+    script rides in `shapes`."""
+    path = PHOTO / "logo_bridge_bar.jpg"
+    c = PipelineConfig(target_width_mm=80.0, garment_id="left_chest", max_colors=6)
+    result, plan = digitize(path, c)
+    report = run_preflight(result, plan, c)
+    flagged = [f for f in report["findings"] if f["code"] == SATIN_GAPS_TIGHT]
+    assert len(flagged) == 1
+    extra = flagged[0]["extra"]
+    assert abs(extra["close_mm"] - 1.0) < 1e-6 and extra["fabric"].startswith("Pique")
+    script = [s for s in extra["shapes"] if abs(s["width_mm"] - 37.7) < 1.5 and abs(s["height_mm"] - 14.4) < 1.5]
+    assert len(script) == 1, extra["shapes"]
+    s = script[0]
+    assert 0.2 <= s["tight_frac"] <= 0.5 and s["tight_mm"] >= 10.0
+    assert 120 <= s["clear_width_mm"] <= 200
+    assert extra["shapes"][0]["tight_mm"] >= s["tight_mm"]      # the headline is the most closed gap
+    assert "clears that at about" in flagged[0]["message"]
+
+
+def test_a_text_cluster_a_fill_shape_and_a_bare_plan_are_left_alone():
+    """A text cluster is the legibility check's; a shape sewn as fill has no
+    facing rails; a bare plan has no polygon, and the metrics say so rather
+    than reading as a clean pass."""
+    gap = round(0.8 * _close_mm(), 2)
+    plan = _plan(_satin_column(30, width_mm=2.5, spacing_mm=0.4))
+    tagged = run_preflight(_result_with(_word(gap), meta={"text_cluster_id": "TC1",
+                                                         "text_candidate": True}), plan, cfg())
+    assert SATIN_GAPS_TIGHT not in _codes(tagged)
+    assert tagged["metrics"]["satin_gaps_judged"] == 0
+    fill = _plan(StitchRun(points=[(0.0, 0.0), (5.0, 0.0), (5.0, 1.0), (0.0, 1.0)],
+                           kind=st.FILL, shape_id="S1"))
+    assert run_preflight(_result_with(_word(gap)), fill, cfg())["metrics"]["satin_gaps_judged"] == 0
+    bare = run_preflight(None, plan, cfg())
+    assert SATIN_GAPS_TIGHT not in _codes(bare)
+    assert bare["metrics"]["satin_gaps_judged"] is None
 
 
 # --- Stitch length -----------------------------------------------------------

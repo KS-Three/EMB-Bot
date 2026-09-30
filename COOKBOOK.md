@@ -1551,6 +1551,21 @@ and the "disagreements" filter IS the exit-clause list. Spec:
 generator imports nothing from `tools/eye_pairs/` and pins its arm and
 metric tables by test.
 
+**The labelled page (2026-09-18) and its two later flags.** `--labelled`
+builds the before | after page straight from `--render`'s output, no picks:
+BEFORE left, AFTER right, the arm named, Kent's verdict taken on the page
+and stored under `<arm>__<fixture>`. `--tables corpus.json` puts a measured
+table (`{arm: {caption, columns, rows}}`) under that arm's head so the eye
+and the instruments sit on one page (2026-09-30; refused for an arm the page
+does not show or a ragged row). `--sitting <tag>` keys a SECOND look at an
+arm Kent has judged before as `<arm>__<fixture>__<tag>` (letters, digits,
+`.`, `-`; the ruling `<arm>__<tag>`), so the earlier verdicts neither pre-fill
+the new pairs nor get overwritten — read the page's store with `ArtifactData`
+before every republish, and never make room by moving his documents
+(DOCTRINE 2026-09-30). The built page is republished to the SAME artifact
+URL each sitting; the sittings' READMEs live in `docs/eye-pairs-<date>/`.
+
+
 ### The labelled before | after page — "Flag Before After" (2026-09-18)
 
 `cd digitizer && python -m tools.eye_pairs_gallery --labelled` is the same

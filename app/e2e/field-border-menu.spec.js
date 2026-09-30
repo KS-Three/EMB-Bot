@@ -151,6 +151,9 @@ async function outlinePoint(page) {
 // The per-shape rows sit behind a closed-by-default "Edit shapes" disclosure;
 // anything that reads a row has to open it first. Idempotent.
 async function openShapeRows(page) {
+  // The list lives on the Shapes tab since 2026-09-30; the tab appears with
+  // the result, so the click waits for it.
+  await page.getByRole("tab", { name: "Shapes" }).click({ timeout: 120_000 });
   const btn = page.getByRole("button", { name: /^Edit shapes/ });
   await expect(btn).toBeVisible({ timeout: 120_000 });
   if ((await btn.getAttribute("aria-expanded")) !== "true") await btn.click();

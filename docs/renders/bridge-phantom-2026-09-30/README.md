@@ -81,3 +81,8 @@ guard recovered 2 (above). What could still open daylight is the 1.0–1.5 mm
 quarter of the gap length, and only by holding the push where two strokes
 face each other — the guard that costs bare on every other fixture unless
 it is scoped to script, which the classifier cannot name.
+
+**Shipped the same night as a preflight finding, `SATIN_GAPS_TIGHT`** (Kent's
+pick): a satin shape whose own gaps are under 2 × pull + thread, with the
+width at which its tightest tenth clears — on this logo the ring, the script
+(32 % of 49 mm, clears near 158 mm) and "Bar" (scope-history 2026-09-30).

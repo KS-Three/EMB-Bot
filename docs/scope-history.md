@@ -16403,3 +16403,49 @@ names the size at which the gaps clear, or leaving it).
 *(measured 2026-09-30 — a scratch wrapper on `detect_text_clusters` over
 `digitize()`, the notch prototype's red-on-yellow field, the artwork's
 distance transform at the ink's scale)*
+
+## 2026-09-30 — Preflight `SATIN_GAPS_TIGHT`: a satin shape whose own gaps sew closed at this size, and the width at which they clear (Kent's pick)
+
+Kent's pick after the script measurement: a finding, not an engine change.
+Two facing rails each push out by the fabric's pull compensation and the
+thread covers 0.40 mm, so a gap between two strokes of one shape — or a
+counter — narrower than 2 × pull + thread sews shut before any rule runs
+(1.0 mm on pique knit); no rule keeps it open without a smaller pull, a
+fabric constant (gate 1). The check judges every satin-sewn, stroke-built
+shape (skeleton stroke cv ≤ 0.55) in the letter band that is not a text
+cluster; reads its gaps off the polygon the rails follow (the closing minus
+the polygon, widths by granulometry — a skeleton's corner spurs read a third
+of a rectangular channel as narrow); fires when a tenth of the gap length is
+under the close and at least 6 mm of it is (at 3 mm the sweep fired on 4 mm
+shapes with one shut counter); the headline is the shape with the most
+closed gap; `clear_width_mm` is the width at which that shape's tightest
+tenth clears — arithmetic on this polygon, never a promise about the design
+(bridge at 140 mm fires on nothing, the script clearing as predicted at 158,
+while under a 3 mm floor four small shapes the larger scale segments anew
+fired instead).
+
+The corpus at its own widths, the 6 mm floor:
+
+| logo | judged | flagged | headline shape | gap under 1.0 mm | clears at | grade |
+|---|---|---|---|---|---|---|
+| bridge | 11 | 3 | ring with spokes, 79 × 56 mm | 56 % of 46 mm | 198 mm | F (raw 16 → 4) |
+| | | | "Bridge" script, 38 × 14 | 32 % of 49 | 158 | |
+| | | | "Bar", 31 × 14 | 18 % of 61 | 113 | |
+| tires | 3 | 1 | TIRES script, 65 × 17 | 32 % of 63 | 133 | A 100 → B 88 |
+| golden_tee | 16 | 3 | a 34 × 11 mark (two more) | 57 % of 19 | 201 | F |
+| gaulke | 2 | 1 | the word, 41 × 13 | 17 % of 38 | 114 | B 76 → C 64 |
+| drone | 9 | 0 | | | | F |
+| becker, enthusiast, fremont, whitebg, MARINE, screenshot | 0–2 | 0 | | | | unchanged |
+
+One warn per design (12 points), the same bill as `LETTERING_TOO_SMALL`,
+which this extends — the small-text battery's counters flag (machine-physics
+backlog row 14). The Studio shows it through the existing report; no chip:
+a "Make it bigger" that jumps to the named width would be a new button, and
+the chips are Kent's. Tests: a synthetic word under and over the close, the
+headline-and-pinch rule, the text-cluster / fill / bare-plan exemptions,
+bridge's script pinned on the real art; `test_preflight` +
+`test_finding_extra_documented` + `test_legibility` + `test_corpus_scorecard`
+135 passed, 1 skipped.
+
+*(built and measured 2026-09-30 — `digitizer_core/preflight.py`
+`_tight_gap_findings`; a scratch sweep over `digitize()` + `run_preflight`)*

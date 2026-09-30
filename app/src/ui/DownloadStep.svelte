@@ -10,6 +10,29 @@
   import { PALETTE_INDEX, STUDIO_PALETTE, getCachedPalette, loadPalette, nearestInList, loadPreferredPaletteId, savePreferredPaletteId } from "../lib/threads.js";
   import { ensureFonts } from "../lib/fontLoader.js";
   import { effectiveHoop, hoopFitNote } from "../lib/hoop.js";
+  import { MACHINES, machineById, loadMachineId, saveMachineId } from "../lib/machines.js";
+
+  // "Your machine" (2026-09-30): the customer picks the brand on the front
+  // of their machine and gets ONE download button in the format it reads,
+  // remembered across projects. The nine-button grid stays beneath as "All
+  // formats" — DST leads it and is the filled button until a machine is
+  // chosen, at which point the machine's button is the one filled action on
+  // the step (two filled buttons would be two answers to one question).
+  let machineId = loadMachineId();
+  $: machine = machineById(machineId);
+  // Service-only formats (JEF, XXX, VP3) follow the same availability flags
+  // the grid's own buttons use, so the one button never promises a file the
+  // step cannot write.
+  $: machineFmtAvailable = !machine
+    ? false
+    : machine.format === "jef" ? jefAvailable
+    : machine.format === "xxx" ? xxxAvailable
+    : machine.format === "vp3" ? vp3Available
+    : true;
+  function onMachineChange(e) {
+    machineId = e.currentTarget.value || null;
+    saveMachineId(machineId);
+  }
   export let project;
   // Task 4 (Slice 5): export now covers every ready element in the project
   // (generateAll's combined design), not just a single text/image design —
@@ -616,6 +639,34 @@
      swapped; byte-identical to pystitch, crossval reads `identity`, and a
      rendered "FRITSCH" comes back upright), so the demotion, the asterisk and
      the paragraph it pointed at have all gone with it. -->
+<div class="machinepick">
+  <label class="machinepick-label">
+    <span>Your machine</span>
+    <select value={machineId || ""} on:change={onMachineChange} aria-label="Your machine">
+      <option value="">Choose a brand…</option>
+      {#each MACHINES as m (m.id)}
+        <option value={m.id}>{m.label}</option>
+      {/each}
+    </select>
+  </label>
+  {#if machine}
+    <button
+      type="button"
+      class="primary machinepick-btn"
+      data-testid="machine-download"
+      disabled={!machineFmtAvailable}
+      on:click={() => askThenDl(machine.format)}
+    >Download {machine.format.toUpperCase()} for {machine.label}</button>
+    {#if !machineFmtAvailable}
+      <p class="machinepick-note">
+        {machine.format.toUpperCase()} needs the digitizer service running — start it, or pick a
+        format below.
+      </p>
+    {/if}
+  {/if}
+</div>
+
+<h3 class="formats-head">All formats</h3>
 {#if canFolder}
   <!-- Save location. Only rendered where the browser can write to a chosen
        folder (Chromium desktop). Elsewhere the buttons below just download, and
@@ -635,7 +686,7 @@
   </div>
 {/if}
 <div class="formats">
-  <button class="primary" on:click={() => askThenDl("dst")}>DST</button>
+  <button class:primary={!machine} on:click={() => askThenDl("dst")}>DST</button>
   <button on:click={() => askThenDl("pes")}>PES</button>
   <button on:click={() => askThenDl("exp")}>EXP</button>
   <!-- Same caveat convention the DST button above documents: the name stays
