@@ -366,8 +366,15 @@ engines and the service, default OFF and byte-identical off; the Garment
 step shows the preset in force. `tests/test_fabric_profile.py` (14),
 `test_fabric_wire.py` runs the arithmetic in node and Python.
 
+**Phase 4 — the Studio flow — built 2026-09-30 too:** the Garment step's
+*Calibrate for this fabric…* opens `CalibratePanel` (card download,
+instructions, photo drop, reading, Accept → `project.fabricProfile`), over
+`GET /calibration/card` and `POST /calibration/read`. The card builders and
+reader moved into `digitizer_core/calibration/` so the service imports no
+tool; the tools of the same names are the command lines.
+
 **What it waits on:** a photograph of a sewn card — none exists. Phase 0 of
 the brief is one hooping (deferred by Kent 2026-09-30, not declined). No
-constant moves (gate 1); the reader measures, it does not set. Nothing writes
-a profile yet: phase 4 is the photo-drop flow that fills `fabricProfile`.
+constant moves (gate 1); the reader measures, it does not set. The loop is
+complete and every number in it is still about a picture.
 *(built and measured 2026-09-30 — `docs/renders/sewout-reader-2026-09-30/`)*

@@ -1,4 +1,4 @@
-"""The customer calibration card (tools/sewout_card_v2.py): what Kent decided
+"""The customer calibration card (digitizer_core.calibration.card_v2): what Kent decided
 on 2026-09-30, pinned — fiducials outside the artwork in block 1's thread,
 a 0.15 mm density arm, a 5x7 hoop fit — and the reader reading it.
 
@@ -13,9 +13,9 @@ import numpy as np
 import pytest
 
 from digitizer_core.adapter import plan_to_design
-from tools import sewout_card as v1
-from tools import sewout_card_v2 as v2
-from tools import sewout_reader as R
+from digitizer_core.calibration import card as v1
+from digitizer_core.calibration import card_v2 as v2
+from digitizer_core.calibration import reader as R
 
 pytestmark = pytest.mark.skipif(v1.FONT is None, reason="block 5 needs a TrueType font")
 

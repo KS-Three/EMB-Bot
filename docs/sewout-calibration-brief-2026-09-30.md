@@ -193,11 +193,15 @@ photographs will measure, and it is the only number that matters for §9.
 | **1 — cloth bias** | Compare reader deltas against Kent's own eyes and the row-pitch instruments on the same card; record the cloth bias per feature | the reader's satin pull-in agrees with a caliper on the sewn bar to 0.1 mm | a session |
 | **2 — card v2** | **BUILT 2026-09-30** (`tools/sewout_card_v2.py`): fiducials, 5×7 fit, a 0.15 mm density arm, one colour per block; v1 untouched | v2 reads in `fiducials` mode on a REAL photo (simulated: yes) | a hooping |
 | **3 — profile → engine** | **BUILT 2026-09-30**: `project.fabricProfile` — three deltas (`pull_comp_delta_mm`, `density_scale`, `trim_at_delta_mm`) that ADJUST the `Fabric` preset, clamped to the shipped table's span (Kent's call, §10), in BOTH engines (`fabrics.apply_profile`, `src/fabrics.js applyFabricProfile`) and the service (400 on a malformed one, no-op canonicalised away); DEFAULT OFF, byte-identical off; the Garment step's new *Fabric preset* row shows which numbers are in force and drops a profile back to the plain preset. Nothing writes a profile yet | a design digitized under a profile sews the profile's pull comp (`test_fabric_profile.py`, 14); `test_fabric_wire` RUNS the arithmetic in node and Python and compares | done |
-| **4 — Studio flow** | The §4 buttons, the reading screen, the two human questions | a customer can calibrate without reading a doc | two sessions |
+| **4 — Studio flow** | **BUILT 2026-09-30**: *Calibrate for this fabric…* on the Garment step → `CalibratePanel` (card download in six formats via `GET /calibration/card`, sew-and-photograph instructions, photo drop → `POST /calibration/read`, the reading table, before → after numbers, the tug-test checkbox, Accept writes `project.fabricProfile`). The two human questions collapsed to one gate: the lock tug test. Driven in a real browser against the real service | a customer can calibrate without reading a doc — done on a simulated photo | done |
 | **5 — tier** | Pro-gate it once billing exists | — | depends on the tabled billing decision |
 
 Phases 0–1 cost Kent one hooping and settle the only question that matters.
-Nothing past phase 1 should start before it.
+Nothing past phase 1 should start before it — **and Kent chose otherwise on
+2026-09-30: phases 2, 3 and 4 were built the same day on simulated accuracy,
+with phase 0 deferred.** So the whole loop exists and every number in it is
+still a number about a picture. Phase 0 is now the ONLY thing between the
+built flow and a real profile.
 
 ## 9. Recommendation
 

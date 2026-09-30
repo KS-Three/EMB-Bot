@@ -28,7 +28,8 @@ from fastapi.responses import Response
 from shapely.geometry import Polygon
 from starlette.concurrency import run_in_threadpool
 
-from digitizer_core.fabrics import normalize_profile
+from digitizer_core.calibration import profile as calibration
+from digitizer_core.fabrics import fabric_for_garment, get_fabric, normalize_profile
 from digitizer_core import PipelineConfig, __doc__ as core_doc  # noqa: F401
 from digitizer_core import machine
 from digitizer_core.adapter import design_size_mm, design_to_pattern, plan_to_design
@@ -1023,6 +1024,90 @@ def job_status(job_id: str, x_embbot_token: str | None = Header(None)) -> dict:
     if job is None:
         raise HTTPException(status_code=404, detail="No such job. It may have been evicted.")
     return job.public()
+
+
+# --- Closed-loop sew-out calibration (2026-09-30) ----------------------------
+#
+# The customer's half of docs/sewout-calibration-brief-2026-09-30.md: download
+# the calibration card in their machine's format, sew it, photograph it, and
+# get a draft fabric profile back. The arithmetic lives in
+# `digitizer_core.calibration.profile`; these routes are adapters. The card
+# is built on first use (~15 s, block 5 runs the pipeline four times) and
+# cached for the process — every download and every read uses the same
+# design, which is what makes the photo comparable to the reference.
+
+@app.get("/calibration/info")
+def calibration_info(x_embbot_token: str | None = Header(None)) -> dict:
+    """What the Studio can show before the card is built: hoop, marks,
+    blocks, formats; size and counts once it is. Never builds."""
+    _require_token(x_embbot_token)
+    info = calibration.card_info(calibration._bundle)
+    info["formats"] = sorted(formats.FORMATS)
+    return info
+
+
+@app.get("/calibration/card")
+def calibration_card(
+    format: str = "dst",
+    x_embbot_token: str | None = Header(None),
+) -> Response:
+    """Card v2 in the requested machine format — the same writer `/export`
+    uses, so a customer sews the file their own designs would come as."""
+    _require_token(x_embbot_token)
+    fmt = str(format).lower().lstrip(".")
+    if fmt not in formats.FORMATS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"unsupported format {fmt!r}. Supported: {', '.join(sorted(formats.FORMATS))}",
+        )
+    bundle = calibration.card_bundle()
+    try:
+        pattern = design_to_pattern(bundle.design, label=calibration.card_v2.LABEL)
+        data = formats.write(pattern, fmt)
+    except (KeyError, TypeError, ValueError) as exc:
+        raise HTTPException(status_code=400, detail=f"could not write {fmt}: {exc}") from exc
+    w_mm, h_mm = bundle.card_mm
+    return Response(
+        content=data,
+        media_type=formats.FORMATS[fmt]["mime"],
+        headers={
+            "Content-Disposition": f'attachment; filename="{calibration.card_v2.NAME}.{fmt}"',
+            "X-Design-Width-Mm": f"{w_mm:.2f}",
+            "X-Design-Height-Mm": f"{h_mm:.2f}",
+            "X-Card-Hoop": "5x7",
+            "X-Stitch-Convention": formats.FORMATS[fmt].get("convention", ""),
+        },
+    )
+
+
+@app.post("/calibration/read")
+async def calibration_read(
+    photo: UploadFile = File(...),
+    garment_id: str | None = Form(None),
+    fabric_id: str | None = Form(None),
+    x_embbot_token: str | None = Header(None),
+) -> dict:
+    """A photo of the sewn card → readings, a draft profile for this
+    garment's preset, and the overlay. Synchronous: a read is 10-20 s and
+    the Studio waits on it. 422 when the card cannot be found in the photo."""
+    _require_token(x_embbot_token)
+    data = await photo.read()
+    if not data:
+        raise HTTPException(status_code=400, detail="No photo received.")
+    if len(data) > MAX_UPLOAD_BYTES:
+        raise HTTPException(
+            status_code=413,
+            detail=f"Photo is {len(data)//1024//1024} MB; the limit is "
+                   f"{MAX_UPLOAD_BYTES//1024//1024} MB. Export it smaller and try again.",
+        )
+    img = cv2.imdecode(np.frombuffer(data, np.uint8), cv2.IMREAD_COLOR)
+    if img is None:
+        raise HTTPException(status_code=400, detail="Could not decode the photo as an image.")
+    fabric = get_fabric(fabric_id) if fabric_id else fabric_for_garment(garment_id)
+    try:
+        return await run_in_threadpool(calibration.read_calibration_photo, img, fabric)
+    except calibration.CalibrationReadError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
 @app.post("/export")

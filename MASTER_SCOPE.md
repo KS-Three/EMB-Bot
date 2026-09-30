@@ -17,7 +17,7 @@ at the bottom for the authority model behind the confidence ratings.
 four of its findings are standing rulings in [`DOCTRINE.md`](DOCTRINE.md). Its
 code and instruments are ON `main`. *(confirmed 2026-08-17 — `git ls-tree`)*
 
-**Last updated:** 2026-09-20. **This file is current state only, under a
+**Last updated:** 2026-09-30. **This file is current state only, under a
 27,000-word budget** (rule 4 below — Kent replaced the old line budget with it
 on 2026-09-14, and this line still said "800-line" until 2026-09-20). Its three
 companions: standing rulings, rejected approaches,
@@ -615,6 +615,21 @@ was a single uncontrolled icon. See Cross-cutting issues.
 
 **The two engines' fabric and machine tables are wire-tested to agree**
 (`test_fabric_wire.py`, `test_machine_wire.py`) — [area doc](docs/scope/3-studio-app-wizard.md).
+
+**Closed-loop sew-out calibration SHIPS end to end, default OFF, on simulated
+accuracy only (2026-09-30).** The Garment step's new *Fabric preset* row names
+the preset in force and offers *Calibrate for this fabric…* (needs the service):
+download card v2 in any of the six machine formats (`GET /calibration/card`,
+82 × 103 mm, fits 5×7), sew it, drop a photo, and the reader
+(`digitizer_core/calibration/`) hands back a draft **profile** — three
+deltas that ADJUST the preset, clamped to the shipped table's span (DOCTRINE
+ruling) — which Accept writes to `project.fabricProfile` and both engines sew
+under. **Nothing is settled about cloth by this**: the reader recovers planted
+pulls to 0.01 mm on a *simulated* photo and no card has been sewn (phase 0
+deferred by Kent). Driven in a real browser against the real service
+2026-09-30. Brief: `docs/sewout-calibration-brief-2026-09-30.md`.
+*(built 2026-09-30 — `tests/test_calibration.py` 10, `test_fabric_profile.py`
+14, `CalibratePanel.spec.js` 5; PR #569)*
 
 **A Studio change is not verified until it has been *looked at* in a browser.**
 Six buyer-visible defects across the 2026-08-25 and 09-07 sweeps, none seen by a

@@ -1,4 +1,4 @@
-"""Calibration for tools/sewout_reader.py — the card-from-a-photo instrument.
+"""Calibration for digitizer_core.calibration.reader — the card-from-a-photo instrument.
 
 No photo of a sewn card exists yet, so the reader is calibrated the way
 `test_fill_pitch.py` calibrates its instrument: plant KNOWN distortions in the
@@ -24,9 +24,9 @@ import numpy as np
 import pytest
 
 from digitizer_core.adapter import plan_to_design
-from tools import sewout_reader as R
+from digitizer_core.calibration import reader as R
 
-from tools import sewout_card as C
+from digitizer_core.calibration import card as C
 
 PHOTO_PX_PER_MM = 12.0     # a phone at ~15 cm; well under the 20 px/mm read raster
 # Measured 2026-09-30 on the simulated photo: heights within 0.01 mm of the
