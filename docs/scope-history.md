@@ -15661,3 +15661,41 @@ fold's claim is measured on the engine it was made on.
 
 *(measured 2026-09-29 — the tables above; `tests/test_rail_comp.py::test_under_rail_comp_the_skeleton_reads_the_polygon_with_its_seams_closed`;
 `docs/renders/rail-comp-seams-2026-09-29/README.md`)*
+
+## 2026-09-30 — the far rail's under-reach: `satin_rails_follow_edge="envelope"` BUILT, OFF, measured against the parked `True`
+
+Kent's pick after #561. The symmetric-offset rails reach only the nearer
+edge; `True` (parked 2026-09-03 for cloth) gives each rail its own filtered
+profile at every station. The envelope extends a far rail only where its
+side is short by `_ENVELOPE_GAP_MM` (0.3) and only to the running minimum of
+its median-filtered profile over ±`_ENVELOPE_WINDOW` (3) stations; never
+retracts, never turns the cross; False and True byte-identical.
+
+| fixture | mode | bare % | satin std | unsewn outline mm | overshoot | stitches |
+|---|---|---|---|---|---|---|
+| golden_tee | False / True / **envelope** | 10.35 / 6.36 / **7.20** | 0.070 / 0.074 / 0.075 | 7.3 / 3.3 / 3.3 | 0.215 / 0.249 / 0.231 | 7,966 / 8,139 / 8,072 |
+| becker 80 | False / True / **envelope** | 10.22 / 7.24 / **9.48** | 0.091 / 0.128 / 0.100 | 35.8 / 21.0 / 26.8 | 0.013 / 0.016 / 0.013 | 5,691 / 6,079 / 5,750 |
+| becker 100 | False / True / **envelope** | 8.14 / 6.38 / **7.35** | 0.099 / 0.138 / 0.109 | 46.3 / 19.0 / 28.0 | 0.016 / 0.018 / 0.015 | 8,297 / 9,053 / 8,900 |
+| ENTHUSIAST | False / True / **envelope** | 6.98 / 6.42 / **6.98** | 0.096 / 0.095 / 0.096 | 4.3 / 4.3 / 4.3 | 0.257 / **0.290** / 0.257 | 2,392 / 2,434 / 2,392 |
+| drone | False / True / **envelope** | 4.88 / 4.48 / 4.86 | | 4.3 / 3.3 / 4.3 | 0.048 / 0.053 / 0.048 | 18,540 / 18,576 / 18,540 |
+| Fremont | False / True / **envelope** | 3.98 / 3.83 / 3.98 | | 0 / 0 / 0 | 0 / 0 / 0 | 19,887 all |
+
+The window is the dial (Becker 100 / ENTHUSIAST, bare and satin std):
+
+| window / gap | becker 100 bare / std | becker 80 bare / std | golden_tee bare / std | ENTHUSIAST bare / overshoot |
+|---|---|---|---|---|
+| ±2 / 0.3 | 7.00 / 0.128 | 8.13 / 0.107 | 7.08 / 0.075 | 6.79 / 0.2545 |
+| ±2 / 0.2 | 6.93 / 0.127 | 7.98 / 0.105 | 6.98 / 0.074 | 6.75 / 0.2545 |
+| **±3 / 0.3 (built)** | **7.35 / 0.109** | **9.48 / 0.100** | **7.20 / 0.075** | **6.98 / 0.2567** |
+| ±3 / 0.2 | 7.28 / 0.115 | 9.37 / 0.094 | 7.11 / 0.074 | 6.88 / 0.2562 |
+| ±4 / 0.3 | 7.49 / 0.098 | 9.83 / 0.101 | 7.34 / 0.077 | 6.98 / 0.2567 |
+
+What it does not reach, by design: a bulge shorter than the window (the
+synthetic probe's 1.5–2.5 mm bulges, Becker's serif corners) and BECKER's
+C's bowl (`True` sews it with the neighbouring arm's 5 mm crosses; the
+envelope leaves part C's fill). Renders
+`docs/renders/rail-envelope-2026-09-30/`.
+
+*(measured 2026-09-30 — `tools/rail_edge.py --bare`, `tools/edge_wobble.py`
+(satin `wobble_std_mm`), `tools/dropped_elements.py` (`overshoot_frac`);
+`tests/test_rail_comp.py::test_the_envelope_reaches_the_far_edge_where_the_gap_is_long_and_nowhere_else`)*

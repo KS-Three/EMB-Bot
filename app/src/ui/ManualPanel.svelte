@@ -39,6 +39,15 @@
   // this in; TraceImportPanel manages its own working image internally once
   // mounted.
   export let traceWorkImage = null;
+  // A selection made ON THE FIELD (EmbroideryField's click-to-edit popover,
+  // 2026-09-29): { shapeId, edit, n }. `n` changes on every field click so
+  // the same shape clicked twice still re-fires; `edit` asks for vertex
+  // mode, which lives on this canvas for hand-drawn shapes for now.
+  export let fieldSelect = null;
+  // Seeded from the prop as mounted, so a request that predates this panel
+  // (ContentStep remounts it per element, and per visit to the step) is not
+  // replayed — an old `edit: true` would otherwise re-open vertex mode.
+  let fieldSelectSeen = fieldSelect ? fieldSelect.n : 0;
   const d = createEventDispatcher();
 
   function patch(p) {
@@ -537,6 +546,16 @@
     editPoints = [];
     editCurves = {};
     dragIndex = null;
+  }
+
+  $: if (fieldSelect && fieldSelect.n !== fieldSelectSeen) {
+    fieldSelectSeen = fieldSelect.n;
+    if (shapes.some((s) => s.id === fieldSelect.shapeId)) {
+      stopShapeEdit();
+      selectedShapeId = fieldSelect.shapeId;
+      if (fieldSelect.edit && !draft.length) startShapeEdit(fieldSelect.shapeId);
+      if (canvasEl && typeof canvasEl.scrollIntoView === "function") canvasEl.scrollIntoView({ block: "nearest" });
+    }
   }
 
   // Nearest vertex within VERTEX_HIT_R of (x, y), or -1 — this component's

@@ -77,6 +77,12 @@ better, 8 before better, 30 no difference, 23 both bad; "can't tell" on 59 of
   width test alone cost MARINE four folds and ENTHUSIAST an element) — golden_tee
   11,377 → 7,966, MARINE byte-identical, corpus 651 → 640. Count RUNS before
   stitches; a morphological fix needs a WHERE.
+- **The far rail's under-reach has an envelope (2026-09-30, OFF):** `satin_rails_follow_edge="envelope"`
+  extends a rail only where its side is short by 0.3 mm and only to the running minimum of
+  its edge over ±3 stations — half of `True`'s coverage (golden_tee bare 10.35 → 7.20,
+  Becker 100 8.14 → 7.35) at a quarter of its jitter and none of its overshoot, a no-op on
+  ENTHUSIAST where `True` breaks the headline (0.257 → 0.290). Does not reach bulges
+  shorter than the window or the C's bowl, by design. Kent's flip; the same sew-out.
 - **Four photo-lane tests go red wherever `rembg_isolated/venv` exists** (the
   stub's shade demand, the two-square depth sort, the owl's merge and its
   declared-photographic report) — on the pre-change tree too, and never in CI.

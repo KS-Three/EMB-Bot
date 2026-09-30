@@ -116,6 +116,13 @@ _FOLD_FRAC = 0.7
 # two rails run parallel instead of tracking every wobble in the boundary.
 _WIDTH_MEDIAN_WINDOW = 5
 _WIDTH_SMOOTH_PASSES = 4
+# `satin_rails_follow_edge="envelope"` (2026-09-30): a far rail extends past
+# the symmetric width only to the conservative ENVELOPE of its own edge --
+# the running minimum of its median-filtered ray profile over +-this many
+# stations -- and only where that envelope clears the symmetric width by
+# the gap floor. See `_rail_points`.
+_ENVELOPE_WINDOW = 3
+_ENVELOPE_GAP_MM = 0.3
 
 # How far outside the artwork a rail point may sit and still count as
 # covered by it: an ulp, in practice, since a rail cast to the measured
@@ -2655,7 +2662,37 @@ def _rail_points(poly: Polygon, spine: list[tuple[float, float]], closed: bool,
     # short, still does -- is a sew-out question, so `follow_edge` is a
     # flag (`PipelineConfig.satin_rails_follow_edge`), default OFF, and off
     # is byte-identical: both rails at the symmetric width.
-    if follow_edge:
+    if follow_edge == "envelope":
+        # The far rail's ENVELOPE (2026-09-30, Kent's pick after #561): the
+        # under-reach that `True` cures is real -- a symmetric offset reaches
+        # only the nearer edge, and on golden_tee's bands and BECKER's C the
+        # far side sits 0.5-1.9 mm short -- but `True` pays for it at every
+        # station, since a per-side profile is only as smooth as its edge
+        # (jitter p50 +50%, overshoot 0.29 -> 0.33, DOCTRINE 2026-09-20).
+        # This mode extends a rail only where its far side is SHORT by at
+        # least `_ENVELOPE_GAP_MM`, and only to the running MINIMUM of that
+        # side's median-filtered profile over +-`_ENVELOPE_WINDOW` stations:
+        # an envelope that cannot exceed the edge anywhere in its window, so
+        # it never overshoots a concavity, and that changes no faster than
+        # the edge's slowest feature, so it does not carry the edge's
+        # roughness. A station whose far side is short by less than the gap
+        # keeps the symmetric width -- the thread's own width covers it.
+        # The cross angle is untouched, the corridor and fold caps apply,
+        # and False / True are byte-identical to before this mode existed.
+        off_a, off_b = list(width), list(width)
+        for side, off in ((side_a, off_a), (side_b, off_b)):
+            prof = _median_filter(side, _WIDTH_MEDIAN_WINDOW)
+            for i in range(n):
+                lo, hi = max(0, i - _ENVELOPE_WINDOW), min(n, i + _ENVELOPE_WINDOW + 1)
+                env = min(prof[lo:hi])
+                cap = min((floors[i] + rail_comp_mm) * 1.6 + 0.2 - rail_comp_mm,
+                          max_width_mm / 2 - rail_comp_mm)
+                if fold is not None:
+                    cap = min(cap, fold[i])
+                env = min(env, cap)
+                if env - width[i] >= _ENVELOPE_GAP_MM:
+                    off[i] = env
+    elif follow_edge:
         off_a = _median_filter(side_a, _WIDTH_MEDIAN_WINDOW)
         off_b = _median_filter(side_b, _WIDTH_MEDIAN_WINDOW)
         for _ in range(_WIDTH_SMOOTH_PASSES):

@@ -934,3 +934,61 @@ looked at at 1440 × 900 and 1024 × 768.
 
 Open: whether Add should also offer the bean variant as a second item. Built as
 one gesture; the panel's select keeps the finer choice.
+
+## Click a shape on the canvas, edit it there (2026-09-29)
+
+Kent asked for "a tool that allows me to manually digitize a logo or photo",
+was shown the manual draw lane in the browser, and said what was actually
+wrong: the controls are in a side panel, not on the shape. Spec:
+`docs/superpowers/specs/2026-09-29-shape-popover-design.md`; plan:
+`docs/superpowers/plans/2026-09-29-shape-popover.md`.
+
+What was true before: only auto-digitized shapes existed on the field
+(outlines, node drag, right-click border). Hand-drawn shapes had no field
+presence because `shapesToRegions` never passed `shape.id` and the engine
+emitted no outlines — every span for a manual design read `shape: ""`.
+
+What ships: `design.shapeOutlines` from `buildQualityDesign` (field mm, +y
+up, `T()` unrounded — the stitches' own space, so no second fit), one outline
+source for three lanes in `EmbroideryField.outlinesMmFor`, a pure decision
+table (`lib/shapePopover.js`) that reproduces `DigitizePanel.setOverride` /
+`recolorShape` and `ManualPanel.updateShape` / `deleteShape` so an edit from
+the popover is indistinguishable from one made in a panel, and the dialog
+itself (`ui/ShapePopover.svelte`) anchored at the click and clamped inside the
+hoop. A click is a press-and-release under 4 px; a drag still moves the
+element. Selecting a hand-drawn shape on the field highlights its row in
+`ManualPanel` (`shapeselect` → `fieldSelect`), and "Edit points" opens vertex
+mode there.
+
+Behaviours the reviews pinned down (the next session should not rediscover them):
+
+- On hand-drawn and preset elements a drag that STARTS exactly on an outline
+  selects the shape and does not move the element; a drag that starts on the
+  body moves it as before. *(found in review 2026-09-29 — read from
+  `EmbroideryField.svelte`; the e2e drag case starts inside the body, not on
+  an outline, so this half has no spec)*
+- Node dots are drawn only on digitized outlines — only those can be dragged.
+  A hand-drawn or preset outline shows its line, no dots. *(same source, same
+  gap)*
+- The popover pins to the element it opened on and closes when the selection
+  moves to another element. *(found in review 2026-09-29; no spec closes it
+  that way)*
+- The plan's `$: if (shapePop && !popModel) shapePop = null;` was a Svelte
+  `reactive_declaration_cycle` that the green unit suites could not see,
+  because nothing mounts `EmbroideryField` in vitest; the shipped form is
+  `$: if (shapePop && !popModel) dropStalePop();` with the assignment inside
+  the function. Only a browser run reaches this class of error — drive the
+  app before believing the suite.
+- Hidden (`stitched:false`) and deleted shapes are filtered out of the hit
+  paths — hover, press, and the click-to-edit `shapeAtPoint` — through the
+  one `liveOutlinesPx` helper in `EmbroideryField.svelte` (three call sites,
+  checked 2026-09-29). Add a new hit path through it, not around it.
+
+Deliberately not done: node editing of hand-drawn shapes on the field
+(follow-up spec), reorder/merge/split from the popover, removing either side
+panel, a Delete for preset shapes (the element chip already does it).
+
+Tests: `app/src/lib/shapePopover.spec.js` (the decision table),
+`app/src/ui/ShapePopover.spec.js` (the dialog), `app/e2e/field-shape-popover.spec.js`
+(click-to-edit on both lanes; a drag inside a shape still moves the element;
+on the hand-drawn lane the side panel's row follows the field's selection).
