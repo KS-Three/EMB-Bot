@@ -7701,3 +7701,29 @@ No tuning of the threshold fixes that; only deciding per column does.
 
 *(measured 2026-09-30 — `docs/renders/split-comb-2026-09-30/census.json`;
 `tests/test_satin.py`, the two comb tests)*
+
+## A reach shorter than the window is not a reach — and the roughness was not in the teeth (2026-09-30)
+
+The envelope's remaining reaches on Becker after the sibling rule: 23
+stretches, 8 of them one station long, the rail stepping out 0.34–0.83 mm
+and straight back. A running minimum over ±3 stations cannot follow a
+feature shorter than its window, so a stretch shorter than the window that
+clears the gap is a bump in the profile; `_drop_short_reaches` reverts it,
+with the window as the minimum and no new number.
+
+Two things worth keeping.
+
+1. **Measure the lever against the metric before shipping the lever.**
+   The teeth were the visible defect and the reached-station jitter was
+   the metric (28% against 9% symmetric); dropping every tooth moved it
+   two points. The other twenty-four are the long stretches' plateaus and
+   the steps a reach opens with, up to 1.8 mm in one station on Becker.
+
+2. **The step a long reach opens with is the artwork's.** A serif's edge
+   IS a step, and a reach that follows it is the reach doing its job.
+   Ramping or slope-limiting it was simulated: 24–49% of everything the
+   envelope reaches for, to soften a feature the art drew. That is a
+   coverage-against-flow trade for the eye, not a defect for the engine,
+   and it is not built.
+
+*(measured 2026-09-30 — `docs/renders/envelope-teeth-2026-09-30/census.json`)*

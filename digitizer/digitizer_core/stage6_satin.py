@@ -2455,6 +2455,30 @@ def _fold_caps(spine: list[tuple[float, float]], angles: list[float],
     return caps
 
 
+def _drop_short_reaches(off: list[float], width: list[float],
+                        min_stations: int = _ENVELOPE_WINDOW) -> int:
+    """Revert every stretch of fewer than `min_stations` consecutive stations
+    at which `off` exceeds `width` back to `width`, in place; -> how many
+    stretches were dropped. The envelope's "a reach shorter than the window
+    is not a reach" (see the envelope branch of `_rail_points`)."""
+    n = len(off)
+    dropped = 0
+    i = 0
+    while i < n:
+        if off[i] > width[i]:
+            j = i
+            while j + 1 < n and off[j + 1] > width[j + 1]:
+                j += 1
+            if j - i + 1 < min_stations:
+                for k in range(i, j + 1):
+                    off[k] = width[k]
+                dropped += 1
+            i = j + 1
+        else:
+            i += 1
+    return dropped
+
+
 def _sibling_spines(siblings: list | None, field: _WidthField | None,
                     fallback_half_mm: float, rail_comp_mm: float = 0.0) -> list[tuple[np.ndarray, float]]:
     """The sibling spines `_in_sibling_ribbon` reads: (spine as an (n, 2)
@@ -2793,6 +2817,20 @@ def _rail_points(poly: Polygon, spine: list[tuple[float, float]], closed: bool,
                         if _in_sibling_ribbon(end, sibs):
                             continue
                     off[i] = env
+        # A reach shorter than the window is not a reach (2026-09-30, Kent's
+        # pick after #578). The running minimum cannot follow a feature
+        # shorter than its window, so a stretch of fewer than
+        # `_ENVELOPE_WINDOW` stations that clears the gap is a bump in the
+        # profile, not an edge -- and on the cloth a tooth: 8 of Becker's 23
+        # stretches at 100 mm were one or two stations, stepping the rail out
+        # 0.37 mm (p50) and back within a millimetre, and tires, bridge and
+        # screenshot had nothing else. Dropped, at 7% of Becker's extension
+        # area. The step a LONGER stretch opens with is the artwork's own
+        # feature (a serif's edge is a step) and stays; a slope limit or a
+        # ramp into the reach was measured to cost a third to a half of the
+        # extension area for that (`docs/renders/envelope-teeth-2026-09-30/`).
+        _drop_short_reaches(off_a, width)
+        _drop_short_reaches(off_b, width)
     elif follow_edge:
         off_a = _median_filter(side_a, _WIDTH_MEDIAN_WINDOW)
         off_b = _median_filter(side_b, _WIDTH_MEDIAN_WINDOW)

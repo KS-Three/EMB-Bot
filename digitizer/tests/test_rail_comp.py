@@ -578,6 +578,14 @@ def test_the_envelope_reaches_the_far_edge_where_the_gap_is_long_and_nowhere_els
     crosses on the design and carried the split points. The stitch
     assertion below reads that: under True's count, and within 2% of the
     symmetric rails' either way.
+
+    **Re-read the same day after the split comb (#578) and the teeth rule
+    (`_drop_short_reaches`)**: bare 10.222 / 9.709 / 7.185%, satin std
+    0.1016 / 0.1012 / 0.1325, stitches 6,014 / 6,006 / 6,553. The comb adds
+    its penetrations to every arm (the symmetric arm 5,691 -> 6,014) and
+    the wobble instrument reads them; the teeth rule gives 0.16 points of
+    bare back at 80 mm, where a single-station reach was covering it.
+    Every assertion below holds on both readings.
     """
     from shapely.geometry import box
     from tools import edge_wobble as EW
@@ -677,3 +685,24 @@ def test_the_envelope_keeps_a_junction_escape_at_the_symmetric_width(monkeypatch
     monkeypatch.setattr(s6, "_in_sibling_ribbon", lambda *a, **k: False)
     loose = half_lengths("envelope")
     assert max(loose) > max(sym) + 1.0, (max(sym), max(loose))     # without the rule: into the arm
+
+
+def test_a_reach_shorter_than_the_window_is_not_a_reach():
+    """`_drop_short_reaches` (2026-09-30, Kent's pick after #578): the
+    running minimum cannot follow a feature shorter than its window, so a
+    stretch of fewer than `_ENVELOPE_WINDOW` stations that clears the gap is
+    a bump in the profile, not an edge -- on the cloth a tooth, the rail
+    stepping out 0.37 mm and back within a millimetre. Becker at 100 mm had
+    eight of them among 23 stretches (four on the letters M, A, I and N);
+    tires, bridge and screenshot had nothing else. Dropped; a stretch at
+    least the window long is untouched, so is a column with no reach."""
+    w = [2.0] * 12
+    off = list(w)
+    off[1] += 0.5                       # one station
+    off[4] += 0.4; off[5] += 0.4        # two
+    off[8] += 0.6; off[9] += 0.6; off[10] += 0.6   # three: the window
+    assert s6._drop_short_reaches(off, w) == 2
+    assert off == [2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.6, 2.6, 2.6, 2.0]
+    plain = list(w)
+    assert s6._drop_short_reaches(plain, w) == 0 and plain == w
+    assert s6._ENVELOPE_WINDOW == 3     # the window IS the minimum; a new number here is a new decision
