@@ -524,6 +524,14 @@
   // does nothing else; clicking the SELECTED shape's outline starts an edit;
   // everywhere else still moves the element.
   let selectedShapeId = null;
+  // The element `selectedShapeId` belongs to. A shape id alone does not name
+  // a shape: every preset element's one shape is "shape", and hand-drawn ids
+  // restart at s1 in each element, so an untagged id highlighted (and armed
+  // Delete on) the same-id shape of EVERY element. Every assignment to
+  // selectedShapeId sets this beside it. Invariant, kept by the `$:` block
+  // below: whenever selectedShapeId is set, selectedShapeElId ===
+  // project.selectedId — the selected shape lives on the selected element.
+  let selectedShapeElId = null;
   let shapeEdit = null;     // { elId, shapeId, kind, index, startPx, ring }
   let liveRing = null;      // { shapeId, points } — the drag's working geometry
   let shapeEditError = "";
@@ -541,8 +549,8 @@
   // took focus back from the dialog.
   let pressOutline = false;
   let hoopBounds = { w: 0, h: 0 };
-  $: popModel = shapePop && selectedShapeId && project
-    ? popoverModel({ element: selectedElement(), shapeId: selectedShapeId })
+  $: popModel = shapePop && selectedShapeId && project && selectedShapeElId === project.selectedId
+    ? popoverModel({ element: selectedShapeElement(), shapeId: selectedShapeId })
     : null;
   // A shape that stopped existing (deleted, or gone in a new result) closes
   // it. Deliberately NOT closeShapePop(): nobody pressed anything here, and
@@ -554,6 +562,16 @@
   $: if (shapePop && !popModel) dropStalePop();
   function dropStalePop() {
     shapePop = null;
+  }
+
+  // The element the selected shape belongs to — which, by the invariant on
+  // selectedShapeElId, is the selected element. Null when no shape is
+  // selected, or when the invariant does not hold (a selection change the
+  // `$:` block has not caught up with yet): nothing acts on a shape then.
+  function selectedShapeElement() {
+    if (!selectedShapeId || !selectedShapeElId || !project) return null;
+    if (project.selectedId !== selectedShapeElId) return null;
+    return (project.elements || []).find((x) => x.id === selectedShapeElId) || null;
   }
 
   function openShapePop(e) {
@@ -595,8 +613,8 @@
   }
 
   async function onPopChange(e) {
-    const el = selectedElement();
-    if (!el || !selectedShapeId) return;
+    const el = selectedShapeElement();
+    if (!el) return;
     const { key, value } = e.detail;
     const shapeId = selectedShapeId;
     let patch = popoverPatch({ element: el, shapeId }, key, value);
@@ -617,14 +635,15 @@
   }
 
   function onPopAction(e) {
-    const el = selectedElement();
-    if (!el || !selectedShapeId) return;
+    const el = selectedShapeElement();
+    if (!el) return;
     const { key } = e.detail;
     if (key === "delete") {
       const patch = popoverPatch({ element: el, shapeId: selectedShapeId }, "delete");
       closeShapePop();
       if (patch) dispatch("elupdate", { id: el.id, patch });
       selectedShapeId = null;
+      selectedShapeElId = null;
       drawOverlay();
       return;
     }
@@ -769,21 +788,38 @@
   // Clearing the shape selection when the ELEMENT selection moves away keeps
   // Delete from acting on a shape whose element is no longer in front of the
   // user. Cheap to compute, and it also drops the highlight.
+  //
+  // The shape selection is TAGGED with its element (selectedShapeElId) and
+  // dropped the moment the selected element is any other one — including a
+  // switch between two shape-lane elements, where an untagged id survived
+  // and armed Delete on the new element's same-id shape. Tagged rather than
+  // "clear on any selection change" because shapeUnderPointer dispatches
+  // `select` and sets the shape in the same tick: the tag already names the
+  // new element when this block sees it, so that selection survives.
   $: if (project && project.selectedId !== undefined) {
     const sel = selectedElement();
-    if (!sel || !SHAPE_LANES.has(sel.type)) selectedShapeId = null;
+    if (!sel || !SHAPE_LANES.has(sel.type)) {
+      selectedShapeId = null;
+      selectedShapeElId = null;
+    }
+    if (selectedShapeId && project.selectedId !== selectedShapeElId) {
+      selectedShapeId = null;
+      selectedShapeElId = null;
+      dropStalePop();
+    }
     // An open popover belongs to the element it was opened on. A different
     // selection (the Layers chips, a press on another element) closes it and
     // drops its shape rather than re-aiming it at the new element.
     if (shapePop && project.selectedId !== shapePop.elementId) {
       selectedShapeId = null;
+      selectedShapeElId = null;
       dropStalePop();
     }
   }
 
   function deleteSelectedShape() {
-    if (!selectedShapeId) return false;
-    const el = selectedElement();
+    // The selected shape's element, and only while it is the selected one.
+    const el = selectedShapeElement();
     if (!el) return false;
     if (el.type === "manual") {
       // Same patch ManualPanel.deleteShape sends: the shape leaves
@@ -792,6 +828,7 @@
       if (!shapes.some((s) => s && s.id === selectedShapeId)) return false;
       dispatch("elupdate", { id: el.id, patch: { shapes: shapes.filter((s) => s.id !== selectedShapeId) } });
       selectedShapeId = null;
+      selectedShapeElId = null;
       shapeEditError = "";
       return true;
     }
@@ -800,6 +837,7 @@
     if (cur.includes(selectedShapeId)) return false;
     dispatch("elupdate", { id: el.id, patch: { deletedShapeIds: [...cur, selectedShapeId] } });
     selectedShapeId = null;
+    selectedShapeElId = null;
     shapeEditError = "";
     return true;
   }
@@ -907,11 +945,16 @@
     }
     if (e.key !== "Delete" && e.key !== "Backspace") return;
     if (!selectedShapeId || simActive) return;
-    // Never steal the key from a field the user is typing in — Backspace
-    // especially. Same guard App.svelte's own global handler uses.
+    // Only a key that came FROM THE FIELD deletes: the canvas itself (a press
+    // on it focuses it, and closeShapePop hands focus back to it), or nothing
+    // focused at all. This listener is on the window, so an inputs-only guard
+    // let a Delete aimed at ManualPanel's list — or the Backspace that takes
+    // back a draft node on ManualPanel's own canvas — delete the field's
+    // selected shape as well, a shape the user was not looking at. It also
+    // covers every text field, and the popover's own controls (SELECT,
+    // INPUT, BUTTON): the popover's Delete button is how you delete from it.
     const t = e.target;
-    const tag = t && t.tagName;
-    if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || (t && t.isContentEditable)) return;
+    if (t !== canvas && t !== document.body) return;
     if (deleteSelectedShape()) {
       if (shapePop) closeShapePop();
       e.preventDefault();
@@ -992,7 +1035,9 @@
         if (pts.length < 3) continue;
         // Highlighted when SELECTED, not only while dragging: the highlight
         // is what tells you which shape a Delete or a drag will act on.
-        const editing = o.id === selectedShapeId;
+        // Tagged by element: shape ids repeat across elements ("shape" on
+        // every preset, s1… on every hand-drawn one).
+        const editing = el.id === selectedShapeElId && o.id === selectedShapeId;
         // The default view is the stitch-out, so only the shape being acted
         // on is outlined until the user asks for all of them.
         //
@@ -1884,6 +1929,7 @@
     if (!hit) return null;
     if (project.selectedId !== el.id) dispatch("select", el.id);
     selectedShapeId = hit.shapeId;
+    selectedShapeElId = el.id;
     shapeEditError = "";
     drawOverlay();
     const row = edit.rows.find((x) => x && x.id === hit.shapeId) || {};
@@ -2071,8 +2117,9 @@
         // The popover waits for the RELEASE (endDrag's click test): a press
         // that turns into a drag opens nothing. Capture so the release
         // reaches endDrag even if it lands off the canvas.
-        if (hit.shapeId !== selectedShapeId || edit.el.type !== "digitized") {
+        if (hit.shapeId !== selectedShapeId || edit.el.id !== selectedShapeElId || edit.el.type !== "digitized") {
           selectedShapeId = hit.shapeId;
+          selectedShapeElId = edit.el.id;
           shapeEditError = "";
           if (edit.el.type === "manual") dispatch("shapeselect", { elementId: edit.el.id, shapeId: hit.shapeId, edit: false });
           canvas.setPointerCapture(e.pointerId);
@@ -2116,6 +2163,7 @@
       // edits, and Delete stops being armed.
       if (selectedShapeId) {
         selectedShapeId = null;
+        selectedShapeElId = null;
         drawOverlay();
       }
     }
@@ -2381,11 +2429,13 @@
         const hit = el && SHAPE_LANES.has(el.type) ? shapeAtPoint(el, p) : null;
         if (hit) {
           selectedShapeId = hit.shapeId;
+          selectedShapeElId = el.id;
           shapeEditError = "";
           if (el.type === "manual") dispatch("shapeselect", { elementId: el.id, shapeId: hit.shapeId, edit: false });
           openShapePop(e);
         } else if (selectedShapeId || shapePop) {
           selectedShapeId = null;
+          selectedShapeElId = null;
           if (shapePop) closeShapePop();
         }
         drawOverlay();

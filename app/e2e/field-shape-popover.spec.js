@@ -161,6 +161,134 @@ test("a drag that starts inside a shape moves the element and opens nothing", as
   await expect(page.getByRole("dialog")).toHaveCount(0);
 });
 
+// Column runs (gap > 10 canvas px splits a run) of the pixels matching `kind`
+// on the hoop canvas: "amber" is the selected outline's core stroke,
+// rgba(255, 214, 64, 0.95) in drawShapeOutlines; "dark" is black thread.
+async function columnRuns(page, kind) {
+  return page.evaluate((kind) => {
+    const c = document.querySelector(".hoop canvas");
+    const d = c.getContext("2d").getImageData(0, 0, c.width, c.height).data;
+    const on = new Uint8Array(c.width);
+    for (let y = 0; y < c.height; y++) for (let x = 0; x < c.width; x++) {
+      const i = (y * c.width + x) * 4;
+      const hit = kind === "amber"
+        ? d[i] > 230 && d[i + 1] > 190 && d[i + 1] < 235 && d[i + 2] < 110
+        : d[i] < 60 && d[i + 1] < 60 && d[i + 2] < 60;
+      if (hit) on[x] = 1;
+    }
+    const out = [];
+    let start = -1, last = -100;
+    for (let x = 0; x < c.width; x++) {
+      if (!on[x]) continue;
+      if (x - last > 10) { if (start >= 0) out.push([start, last]); start = x; }
+      last = x;
+    }
+    if (start >= 0) out.push([start, last]);
+    return out;
+  }, kind);
+}
+
+test("Delete in the side panel, or Backspace on its draft, never deletes the field's selected shape", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await toContent(page);
+  await drawRectangle(page, { x0: 0.15, x1: 0.45 });
+  await drawRectangle(page, { x0: 0.55, x1: 0.85, open: false });
+  const rows = page.locator(".mp-shaperow");
+  await expect(rows).toHaveCount(2);
+
+  // Select Shape 1 ON THE FIELD (its popover names it), then close the popover.
+  const hb = await page.locator(".hoop canvas").boundingBox();
+  const cw = await page.evaluate(() => document.querySelector(".hoop canvas").width);
+  const left = await firstDarkColumn(page);
+  expect(left).toBeGreaterThan(0);
+  await page.mouse.click(hb.x + left / (cw / hb.width) + 30, hb.y + hb.height / 2);
+  await expect(page.getByRole("dialog", { name: "Shape 1 · Fill" })).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+
+  // Now work in the side panel: pick Shape 2 there and press Delete. The
+  // panel deletes ITS selection; the field's window listener must not also
+  // delete Shape 1 (it did: one keypress, both shapes gone).
+  await rows.nth(1).click();
+  await page.keyboard.press("Delete");
+  await expect(rows).toHaveCount(1);
+  await expect(rows.first()).toContainText("Shape 1");
+
+  // Start a draft on the panel's canvas and take its node back with
+  // Backspace (the panel's documented gesture): Shape 1, still selected on
+  // the field, must survive.
+  const mp = page.locator(".mp-canvas");
+  const box = await mp.boundingBox();
+  await page.mouse.click(box.x + box.width * 0.5, box.y + box.height * 0.9);
+  await page.keyboard.press("Backspace");
+  // Both handlers run on the one keydown and Svelte flushes once after it,
+  // so a wrong deletion is already in the DOM here (it showed as 0 rows).
+  await expect(rows).toHaveCount(1);
+  await expect(rows.first()).toContainText("Shape 1");
+
+  // ...and Delete aimed AT THE FIELD still works: select Shape 1 there,
+  // Escape (which hands focus back to the canvas), Delete.
+  const left2 = await firstDarkColumn(page);
+  expect(left2).toBeGreaterThan(0);
+  await page.mouse.click(hb.x + left2 / (cw / hb.width) + 30, hb.y + hb.height / 2);
+  await expect(page.getByRole("dialog", { name: "Shape 1 · Fill" })).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.locator(".hoop canvas")).toBeFocused();
+  await page.keyboard.press("Delete");
+  await expect(rows).toHaveCount(0);
+});
+
+test("two preset circles: selecting one highlights only that one, and switching elements drops it", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await toContent(page);
+  const cv = page.locator(".hoop canvas");
+  const addCircle = async () => {
+    const b = await cv.boundingBox(); // re-read: the drag hint shifts the canvas
+    await page.mouse.click(b.x + 10, b.y + 10, { button: "right" });
+    await page.locator(".fieldmenu button").filter({ hasText: "Basic shape" }).click();
+  };
+  // Circle A sits at the hoop's left edge, circle B at the centre: apart, so
+  // each outline is its own run of columns. Both have the shape id "shape".
+  await addCircle();
+  await page.getByRole("button", { name: "Left", exact: true }).click();
+  await addCircle();
+  await expect(page.locator(".elrow", { hasText: "Circle" })).toHaveCount(2);
+  const hint = page.getByRole("button", { name: "Dismiss hint" });
+  if (await hint.count()) await hint.click();
+
+  // Settle on two separate dark blobs: three consecutive reads agree.
+  let dark = [];
+  await expect.poll(async () => {
+    const reads = [];
+    for (let i = 0; i < 3; i++) { reads.push(JSON.stringify(await columnRuns(page, "dark"))); await page.waitForTimeout(300); }
+    dark = JSON.parse(reads[0]);
+    return dark.length === 2 && reads.every((r) => r === reads[0]);
+  }, { timeout: 20_000 }).toBe(true);
+  const [a, b] = dark;
+  const hb = await cv.boundingBox();
+  const cw = await page.evaluate(() => document.querySelector(".hoop canvas").width);
+  const toPage = (x) => hb.x + x * (hb.width / cw);
+
+  // Click inside B: its popover opens, and exactly ONE outline is amber —
+  // B's. Before the selection was tagged by element, both were.
+  await page.mouse.click(toPage((b[0] + b[1]) / 2), hb.y + hb.height / 2);
+  await expect(page.getByRole("dialog", { name: "Circle" })).toHaveCount(1);
+  await expect.poll(() => columnRuns(page, "amber")).toHaveLength(1);
+  const [lit] = await columnRuns(page, "amber");
+  expect(lit[0]).toBeGreaterThan(a[1]); // right of A: it is B's outline
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+
+  // Switch to A from its element row. The shape selection belonged to B, so
+  // it drops: nothing is amber, and a Delete on the canvas touches nothing.
+  await page.locator(".elrow", { hasText: "Circle" }).first().click();
+  await expect.poll(() => columnRuns(page, "amber")).toHaveLength(0);
+  await cv.focus();
+  await page.keyboard.press("Delete");
+  await expect(page.locator(".elrow", { hasText: "Circle" })).toHaveCount(2);
+  await expect.poll(() => columnRuns(page, "amber")).toHaveLength(0);
+});
+
 test("digitized lane: click inside a square opens the Layers row's controls; Border restitches at once", async ({ page }) => {
   test.skip(!serviceUp, skipReason);
   test.setTimeout(300_000);
@@ -169,8 +297,16 @@ test("digitized lane: click inside a square opens the Layers row's controls; Bor
   await page.getByRole("button", { name: "Artwork" }).click();
   await page.locator(".dgp-upload input[type=file]").setInputFiles(ART_PNG);
   await expect(page.locator(".dgp-stats")).toBeVisible({ timeout: 120_000 });
-  await page.waitForTimeout(1200);
-  const before = await page.locator(".dgp-stats").innerText();
+  // Settle: the baseline is the stats text three consecutive reads, 300 ms
+  // apart, agree on. A fixed sleep could take it before a late restitch
+  // landed, and that restitch alone would then satisfy the "changed" poll.
+  let before = null;
+  await expect.poll(async () => {
+    const reads = [];
+    for (let i = 0; i < 3; i++) { reads.push(await page.locator(".dgp-stats").innerText()); await page.waitForTimeout(300); }
+    before = reads[0];
+    return reads.every((r) => r === reads[0]);
+  }, { timeout: 30_000 }).toBe(true);
 
   // Inside the LEFT square: the fixture is two squares side by side, centred.
   const box = await page.locator(".hoop canvas").boundingBox();

@@ -1465,3 +1465,19 @@ test("buildQualityDesign: an empty design carries an empty shapeOutlines", () =>
   const d = DG.buildQualityDesign([], { garment: { widthIn: 4, heightIn: 4 } });
   assert.deepStrictEqual(d.shapeOutlines, []);
 });
+
+// Spec §3: shapeOutlines is additive — the stitches must be byte-identical to
+// the same call before it existed.
+test("buildQualityDesign: stitches are byte-identical to main's on the shapeOutlines fixture", () => {
+  const crypto = require("node:crypto");
+  const rect = [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 50 }, { x: 0, y: 50 }];
+  const d = DG.buildQualityDesign(
+    [{ rgb: [0, 0, 0], shapes: [{ outer: rect, holes: [], id: "s7", tierOverride: "fill" }] }],
+    { garment: { widthIn: 4, heightIn: 4 }, pxPerMm: 6, underlay: false,
+      targetWidthMm: 40, offsetXMm: 5, offsetYMm: -3 }
+  );
+  const hash = crypto.createHash("sha256").update(JSON.stringify(d.stitches)).digest("hex");
+  // hash taken from main at 5371b120 on 2026-09-29; a change here means a
+  // stitch moved — spec §2 forbids that for this feature.
+  assert.strictEqual(hash, "54ae2fb3e4d18ceccbe591e9fe322d3147a92a69a0be6b7c78d00b06c162d532");
+});
