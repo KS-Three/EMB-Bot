@@ -24,6 +24,25 @@ import { test, expect } from "@playwright/test";
 const STATS = "span.stats";
 const MIN_RUN = 12;
 
+// The canvas outside the hoop is a dark surround since 2026-09-30 (every
+// channel < 80, so it would read as one giant stitch box), so "dark" is thread
+// only INSIDE the fabric: both samplers below find the fabric first (the
+// bounding box of the pale pixels, pulled in 3% a side so the hoop's rounded
+// corners stay out) and read within it. Same rule as field-chrome.spec.js's
+// ink test and field-shape-popover.spec.js's samplers.
+const FABRIC_BOX_SRC = `(function (d, w, h) {
+  let x0 = Infinity, y0 = Infinity, x1 = -1, y1 = -1;
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const i = (y * w + x) * 4;
+    if (d[i + 3] > 200 && d[i] > 150 && d[i + 1] > 150 && d[i + 2] > 150) {
+      if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
+    }
+  }
+  if (x1 < 0) return null;
+  const tx = Math.round((x1 - x0) * 0.03), ty = Math.round((y1 - y0) * 0.03);
+  return { x0: x0 + tx, x1: x1 - tx, y0: y0 + ty, y1: y1 - ty };
+})`;
+
 async function toContent(page) {
   await page.goto("/");
   await page.getByRole("button", { name: "Tote", exact: true }).click();
@@ -55,11 +74,13 @@ async function drawRectangle(page, { x0 = 0.25, x1 = 0.75, open = true } = {}) {
 // The dark (stitch) bounding box on the hoop canvas, in canvas px, optionally
 // restricted to the columns [xa, xb]; null when nothing qualifies.
 async function darkBBox(page, xa = 0, xb = Infinity) {
-  return page.evaluate(([xa, xb, MIN_RUN]) => {
+  return page.evaluate(([xa, xb, MIN_RUN, boxSrc]) => {
     const c = document.querySelector(".hoop canvas");
     const d = c.getContext("2d").getImageData(0, 0, c.width, c.height).data;
+    const f = eval(boxSrc)(d, c.width, c.height);
+    if (!f) return null;
     const rows = new Uint32Array(c.height), cols = new Uint32Array(c.width);
-    for (let y = 0; y < c.height; y++) for (let x = 0; x < c.width; x++) {
+    for (let y = f.y0; y <= f.y1; y++) for (let x = f.x0; x <= f.x1; x++) {
       if (x < xa || x > xb) continue;
       const i = (y * c.width + x) * 4;
       if (d[i] < 80 && d[i + 1] < 80 && d[i + 2] < 80) { rows[y]++; cols[x]++; }
@@ -68,23 +89,25 @@ async function darkBBox(page, xa = 0, xb = Infinity) {
     for (let x = 0; x < c.width; x++) if (cols[x] >= MIN_RUN) { if (x0 < 0) x0 = x; x1 = x; }
     for (let y = 0; y < c.height; y++) if (rows[y] >= MIN_RUN) { if (y0 < 0) y0 = y; y1 = y; }
     return x0 < 0 || y0 < 0 ? null : { x0, y0, x1, y1 };
-  }, [xa, xb, MIN_RUN]);
+  }, [xa, xb, MIN_RUN, FABRIC_BOX_SRC]);
 }
 
 // Is there a dark pixel within `r` canvas px of (x, y)? A window rather than one
 // pixel: stitch rows leave sub-pixel gaps.
 async function darkNear(page, x, y, r = 2) {
-  return page.evaluate(([x, y, r]) => {
+  return page.evaluate(([x, y, r, boxSrc]) => {
     const c = document.querySelector(".hoop canvas");
     const d = c.getContext("2d").getImageData(0, 0, c.width, c.height).data;
-    for (let yy = Math.max(0, y - r); yy <= Math.min(c.height - 1, y + r); yy++) {
-      for (let xx = Math.max(0, x - r); xx <= Math.min(c.width - 1, x + r); xx++) {
+    const f = eval(boxSrc)(d, c.width, c.height);
+    if (!f) return false;
+    for (let yy = Math.max(f.y0, y - r); yy <= Math.min(f.y1, y + r); yy++) {
+      for (let xx = Math.max(f.x0, x - r); xx <= Math.min(f.x1, x + r); xx++) {
         const i = (yy * c.width + xx) * 4;
         if (d[i] < 80 && d[i + 1] < 80 && d[i + 2] < 80) return true;
       }
     }
     return false;
-  }, [Math.round(x), Math.round(y), r]);
+  }, [Math.round(x), Math.round(y), r, FABRIC_BOX_SRC]);
 }
 
 // Canvas px -> page CSS px: {hb, k, css(x, y)}.
