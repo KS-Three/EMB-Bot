@@ -16339,3 +16339,63 @@ build than the rail change this started as, and it is where defect 50 now
 sits.
 
 *(measured 2026-09-30 — the four probe arms above on MARINE 127.4; DOCTRINE 2026-09-30, "A satin column's crowns are a DECOMPOSITION gap")*
+
+---
+
+## 2026-09-30 — `satin_crown_cover` BUILT OFF: one cover closes defects 49 and 50
+
+Kent's ruling on `docs/superpowers/plans/2026-09-30-crown-cover.md` §7 — a
+cover under the arms rather than a new decomposition, on ALL satin shapes.
+
+**The build is small because the machinery existed.** `_uncovered_patches`
+already computes `polygon − all thread` at 0.25 mm, and `_junction_cover_runs`
+already sews a patch as a satin column placed first in the shape. The crown
+cover is that pair with the junction gate removed and `ARTWORK_UNCOVERED`'s
+own adjudicated thresholds — area ≥ 1.0 mm², max inscribed half ≥ 0.30 mm,
+fill ≥ 0.15 — the last two added to the finder as optional filters that
+default None, which keeps every other caller byte-identical.
+
+**The fixtures, OFF → ON:**
+
+| fixture | stitches | holes | uncovered | `lost_frac` |
+|---|---|---|---|---|
+| MARINE 127.4 | 7,168 → 7,352 (+2.6%) | **11 → 1** | 22.9 → 1.5 | 0.1800 → **0.1730** |
+| MARINE 80.2 | 2,354 → 2,358 (+0.2%) | **2 → 0** | 3.9 → 0.0 | 0.1083 → **0.1064** |
+| ENTHUSIAST 80 | 2,474 → 2,486 (+0.5%) | **2 → 1** | 2.6 → 1.0 | 0.2573 held |
+| BECKER 80 | 6,101 → 6,250 (+2.4%) | **12 → 7** | 29.3 → 10.8 | 0.0329 → **0.0217** |
+
+**The corpus:**
+
+| case | stitches | holes | uncovered | `lost_frac` | wedges |
+|---|---|---|---|---|---|
+| becker 100 | +2.0% | **17 → 9** | 31.4 → 15.4 | 0.0415 → 0.0350 | 20 |
+| enthusiast 80 | +0.5% | **2 → 1** | 2.6 → 1.0 | held | 1 |
+| drone 80 | +0.0% | **1 → 0** | 1.4 → 0.0 | held | 1 |
+| bridge 80 | +0.1% | 0 → 0 | 0 → 0 | 0.1573 → 0.1560 | 2 |
+| golden_tee 80 | **−1.4%** | 0 → 0 | 0 → 0 | 0.3779 → 0.3758 | 2 |
+| tires, fremont, gaulke, screenshot | 0.0% | 0 → 0 | 0 → 0 | unchanged | **0** |
+
+**Corpus holes 20 → 10. `lost_frac` never rises on any of the nine and falls
+on three.** The four fixtures reporting no holes find NO WEDGE AT ALL, which
+is the over-fire test passing rather than a threshold tuned to pass it.
+
+**ENTHUSIAST's survivor is the 1.00 mm² gap between two letters; the 1.56 mm²
+apex is covered.** That closes defect 49 as well, and makes 49 and 50 one
+mechanism rather than two.
+
+**Two build errors, both caught by a test, both recorded in DOCTRINE.**
+`_junction_cover_runs` had an undocumented tatami fallback, so the first build
+put fill inside a satin shape against Kent's 2026-09-09 ruling; suppressing it
+outright then made BECKER *worse than no cover* (29.3 → 37.1 mm², a 26.2 mm²
+hole, `lost_frac` through the gate) because crown mode replaces the junction
+cover's call and inherited its job. The skip is floored at
+`_JUNCTION_PATCH_MIN_MM2`, so it applies only to wedges that exist because the
+crown floor is lower.
+
+**One measurement NOT made:** how many wedges are skipped for want of a
+sewable column. The counter used during the build watched `_principal_spine`
+returning non-None (26 of 26), which is not the same thing — a spine can still
+resample to a column too short to sew — so the "0 without a satin answer" line
+first written here was withdrawn rather than published.
+
+*(measured 2026-09-30 — `tests/test_crown_cover.py`; `docs/superpowers/plans/2026-09-30-crown-cover.md` §6; DOCTRINE 2026-09-30)*

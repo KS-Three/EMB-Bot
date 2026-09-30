@@ -6138,6 +6138,40 @@ parameter to its extreme before building on the hypothesis — removing the
 smoother outright cost one run and refuted a story that would have justified
 a week of work.
 
+## A flag that REPLACES an existing call inherits everything that call was doing (2026-09-30)
+
+`cfg.satin_crown_cover` is the junction cover with its junction gate removed
+and `ARTWORK_UNCOVERED`'s thresholds, and it closes defect 50: MARINE 127.4
+goes 11 holes / 22.9 mm² to **1 / 1.5**, ENTHUSIAST's apex closes (defect 49
+and 50 are one mechanism), the corpus goes 20 holes to 9, and `lost_frac`
+falls on three fixtures and holds on the rest. Two errors got there, and both
+are the same shape.
+
+**1. The cover had a tatami fallback nobody had written down.**
+`_junction_cover_runs` falls back to `stage6_fill.stitch_shape` when a
+column comes out degenerate, so the first build put tatami inside a satin
+shape on two MARINE shapes — against Kent's 2026-09-09 ruling, and against
+the design doc's own §7.3 claim that it "sews satin only". The config comment
+asserting that was written before it was true. **A claim about behaviour in a
+comment is a claim to check, not a note to write.**
+
+**2. Suppressing the fallback outright made BECKER WORSE THAN NO COVER.**
+Crown mode replaces the junction cover's call rather than running beside it,
+so a blanket `satin_only` also took away the tatami answer the JUNCTION cover
+had been giving: uncovered **29.3 → 37.1 mm²** with a 26.2 mm² hole where the
+fallback had been, and `lost_frac` 0.0329 → 0.0346, straight through the gate
+the flag is bound by. Flooring the skip at `_JUNCTION_PATCH_MIN_MM2` — so it
+applies only to the wedges that exist BECAUSE the crown floor is lower —
+leaves the junction cover untouched and reads 29.3 → **10.8** at 0.0217,
+better than either earlier attempt.
+
+**The rule: measure the fixture the OLD path was best on, not only the one the
+new path is for.** BECKER is where the junction cover earns its keep, and the
+new flag's own fixture (MARINE) could not have shown either error. Both were
+caught by a test — one by an assertion about tatami inside satin, one by the
+`lost_frac` gate — which is the argument for writing the gate into the test
+rather than checking it by eye at the end.
+
 
 ## The polygon axis must not read stage 5's grown polygon (2026-09-16)
 

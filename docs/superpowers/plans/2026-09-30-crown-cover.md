@@ -132,37 +132,59 @@ plan that does not need a new one:
 
 ---
 
-## 6. Predictions, falsifiable
+## 6. Predictions, falsifiable — and the results (BUILT 2026-09-30)
 
-Written before the build so they can be wrong:
+Written before the build so they could be wrong. Four of five hold; the fifth
+holds and then some.
 
-1. **The cover closes at least 8 of MARINE 127's 11 holes.** Falsified under
-   8 — then the wedges are not what §1 says they are.
-2. **`lost_frac` does not rise.** 0.1800 is the number to beat or hold;
-   > 0.1810 and the cover is the apex widening again, and is retracted the
-   same day.
-3. **Thread cost is under +4%** (7,168 → under 7,455). The wedges total
-   22.9 mm²; covering them should cost far less than the +1,567 stitches
-   halving the pitch spent for one hole.
-4. **It closes ENTHUSIAST's apex too** (defect 49, 1.56 mm²). If it does not,
-   the two defects are not one mechanism and defect 49 needs its own answer.
-5. **The six silent corpus fixtures stay silent** — golden_tee, bridge,
-   screenshot, gaulke, tires, fremont report 0 holes today and must after.
+| # | prediction | result |
+|---|---|---|
+| 1 | closes ≥ 8 of MARINE 127's 11 holes | **10 of 11** (11 → 1, 22.9 → 1.5 mm²) |
+| 2 | `lost_frac` does not rise | **falls on three fixtures, holds on one**: 0.1800 → 0.1730, 0.1083 → 0.1064, 0.0329 → 0.0217, ENTHUSIAST held |
+| 3 | thread under +4% | **+2.6% worst** (MARINE 127), +0.2% to +2.4% elsewhere |
+| 4 | closes ENTHUSIAST's apex too | **YES.** 2 → 1 holes, and the survivor is the 1.00 mm² gap between two letters — the 1.56 mm² apex is closed. **Defects 49 and 50 are one mechanism.** |
+| 5 | the six silent fixtures stay silent | **yes, and four of them find NO WEDGE AT ALL** |
 
----
+**What the build cost that the design did not foresee — two errors, both mine,
+both caught by a test rather than by review.**
 
-## 7. What is Kent's
+1. **The cover had a tatami fallback and §3b did not say so.** `_junction_cover_runs`
+   falls back to `stage6_fill.stitch_shape` when a column comes out degenerate,
+   so the first build put tatami inside a satin shape on two MARINE shapes —
+   against Kent's 2026-09-09 ruling and against this document's own §7.3. A
+   `satin_only` parameter fixes it.
+2. **And a blanket `satin_only` made BECKER WORSE THAN NO COVER.** Crown mode
+   replaces the junction cover's call rather than running beside it, so
+   suppressing the fallback outright also took away the tatami answer the
+   JUNCTION cover was already giving: uncovered **29.3 → 37.1 mm²** with a
+   26.2 mm² hole where the fallback had been, `lost_frac` 0.0329 → 0.0346,
+   through the gate. The skip is now floored at `_JUNCTION_PATCH_MIN_MM2`, so
+   it applies only to the wedges that exist *because* the crown floor is lower
+   and the junction cover's behaviour is untouched. BECKER then reads 29.3 →
+   **10.8 mm²** at `lost_frac` **0.0217**, better than either earlier attempt.
 
-1. **(a)+(b), or (c)?** A cover under the arms, or a decomposition that does
-   not leave the wedges. (c) is cleaner and closes more; it also moves the
-   ruled skeleton.
-2. **May a cover sew as FILL inside a satin shape?** Your 2026-09-09 ruling
-   said no, which is why `satin_patch_junctions="satin"` exists. A wedge too
-   short to carry a column has no satin answer.
-3. **All satin shapes, or lettering only?** The mechanism is not
-   lettering-specific; BECKER's 17 holes are mostly not letters.
-4. **The flag and its default.** Proposed `cfg.satin_crown_cover`, built OFF,
-   flipped only on the corpus table and `lost_frac`.
+**The transferable part:** a flag that "replaces" an existing call inherits
+responsibility for everything that call was doing. Measure the fixture the OLD
+path was best on, not only the one the new path is for.
+
+## 7. What is Kent's — RULED 2026-09-30
+
+1. **(a)+(b), a cover under the arms.** Not (c). The decomposition answer is
+   cleaner and would close more, and it moves the ruled artwork skeleton that
+   every lettering flip since 09-19 sits on; the cover's blast radius is a new
+   layer and nothing existing moving. (c) stays on the table as the thing this
+   is a patch over, and the §3c paragraph is kept for whoever revives it.
+2. **ALL satin shapes**, not lettering only. The mechanism is not
+   lettering-specific — BECKER's 17 holes are mostly not letters and drone's
+   is a logo shape — and gating it to text would leave the same defect open
+   everywhere else on the same evidence.
+3. **Fill inside a satin shape: NOT re-asked.** Kent's 2026-09-09 ruling
+   stands, so the cover sews SATIN where a wedge can carry a column and skips
+   where it cannot. How many wedges have no satin answer is a measurement this
+   build produces; if that number is large it comes back to him with the
+   number rather than as a hypothetical.
+4. **`cfg.satin_crown_cover`, built OFF**, flipped only on the corpus table
+   and `lost_frac`.
 
 ---
 
