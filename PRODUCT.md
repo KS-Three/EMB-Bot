@@ -63,7 +63,8 @@ row 7's sidecar count grew from 55 to 85 while staying one-per-font. Rows 2, 4,
   gets no border from either — the engine's rule, stated on the item.
   Since 2026-09-29 a left-click on any shape — auto-digitized, hand-drawn or
   preset — opens a popover with that shape's controls where it is; the
-  right-click menu is unchanged.
+  right-click menu is unchanged; a hand-drawn shape's points and curve
+  handles are dragged there too.
 
 ## Explicit non-goals (parking list — not the Ember bar)
 

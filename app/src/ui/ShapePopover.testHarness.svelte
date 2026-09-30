@@ -6,12 +6,14 @@
   export let model;
   export let anchor = { x: 40, y: 40 };
   export let bounds = { w: 800, h: 600 };
+  export let position = null;
   export let onEvent = () => {};
 </script>
 
 <div style="position: relative; width: {bounds.w}px; height: {bounds.h}px">
   <ShapePopover
-    {model} {anchor} {bounds}
+    {model} {anchor} {bounds} {position}
+    on:move={(e) => onEvent("move", e.detail)}
     on:change={(e) => onEvent("change", e.detail)}
     on:action={(e) => onEvent("action", e.detail)}
     on:close={() => onEvent("close", null)}
