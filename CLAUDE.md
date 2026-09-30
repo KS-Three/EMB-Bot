@@ -269,7 +269,9 @@ cd digitizer && .venv/Scripts/python -m digitizer_service   # service on 127.0.0
    has moved past the hour the line above budgets. Budget seventy, read an
    hour as normal, and spend the one `curl` on `/actions/runs/<id>/jobs`
    before calling anything stuck: that job's test step was live the whole
-   time. (A fifth job,
+   time. **And 66.2 on PR #567 the same night, green** — a tree that took
+   four merges of `main` inside one PR; the record moves a minute at a
+   time now, so seventy is the budget until a job passes it. (A fifth job,
    `art-fidelity-baseline`, is push-to-`main`-only and `continue-on-error` — it
    never appears on a PR and gates nothing.)
 
