@@ -62,6 +62,13 @@ def _run(**kw):
     # `tests/test_rail_comp.py` pins the price). The flag under test here is
     # priced on the engine it was read on; the rails' own cost is pinned there.
     kw.setdefault("satin_rail_comp", False)
+    # Same for `satin_rails_follow_edge`, "envelope" by default since #567
+    # (2026-09-30, Kent's pick). The envelope lowers BOTH arms' uncovered
+    # area but the capped arm more -- 16.8 -> 13.9 OFF, 17.6 -> 16.7 ON
+    # (measured 2026-09-30) -- so this flag's marginal cost reads +20% there
+    # against +4.8% here, while its absolute ON figure still improves. The
+    # envelope's own price belongs to its own tests, not to this flag's.
+    kw.setdefault("satin_rails_follow_edge", False)
     cfg = PipelineConfig(target_width_mm=80.2, garment_id="left_chest",
                          max_colors=6, **kw)
     gen = build_generation(str(FIXTURE), cfg)
