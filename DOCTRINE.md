@@ -7233,3 +7233,71 @@ Three rules out of it.
   closing that is exactly right on a seam is exactly the growth's
   smoothing on a letterform, and the difference between them is not in
   the geometry of the fill but in whose boundary it touches.
+
+## The far rail's under-reach is real, the parked cure pays at every station, and an envelope pays only where the gap is (2026-09-30)
+
+Kent's pick after #561: the rail model's under-reach on uneven bands, the
+mechanism behind BECKER's C (the cover's fill where the arm's crosses stop
+at the nearer edge) and golden_tee's bare artwork once its seams were closed
+(6.54 → 10.35% satin-only). The symmetric-offset model places both rails
+at the NEARER edge's distance from a smoothed spine, so wherever the spine
+sits off-centre — a raster skeleton never sits dead centre, a band whose
+one edge wanders, a blob a neighbouring arm's axis runs through — the far
+rail stops short by the difference. `satin_rails_follow_edge=True` (built
+2026-09-03, parked by Kent for cloth) cures it by giving each rail its own
+filtered profile, and pays at every station: a rail is only as smooth as
+its edge (satin wobble std +40% on Becker), and ENTHUSIAST's overshoot,
+the headline `test_lettering_coverage_regression` guards, goes 0.2567 →
+0.2899.
+
+**`"envelope"` is the same cure with a WHERE and a HOW-FAR.** A far rail
+extends past the symmetric width only where its own side is short by at
+least a gap floor (`_ENVELOPE_GAP_MM` 0.3), and only to the running MINIMUM
+of its median-filtered profile over ±`_ENVELOPE_WINDOW` (3) stations: an
+envelope that cannot exceed the edge anywhere in its window, so it never
+overshoots a concavity, and changes no faster than the edge's slowest
+feature, so it carries none of the edge's roughness. Never retracts, never
+turns the cross; the corridor and fold caps apply; False and True are
+byte-identical to before it existed.
+
+Measured 2026-09-30 (`tools/rail_edge.py --bare`, `tools/edge_wobble.py`
+satin std, `tools/dropped_elements.py` overshoot; 80 mm left_chest,
+Becker also at 100, `max_colors=6`):
+
+| fixture | mode | bare % | satin std | unsewn outline mm | overshoot | stitches |
+|---|---|---|---|---|---|---|
+| golden_tee | False | 10.35 | 0.070 | 7.3 | 0.215 | 7,966 |
+| | True | 6.36 | 0.074 | 3.3 | 0.249 | 8,139 |
+| | **envelope** | **7.20** | 0.075 | 3.3 | 0.231 | 8,072 |
+| becker 80 | False | 10.22 | 0.091 | 35.8 | 0.013 | 5,691 |
+| | True | 7.24 | 0.128 | 21.0 | 0.016 | 6,079 |
+| | **envelope** | **9.48** | 0.100 | 26.8 | 0.013 | 5,750 |
+| becker 100 | False | 8.14 | 0.099 | 46.3 | 0.016 | 8,297 |
+| | True | 6.38 | 0.138 | 19.0 | 0.018 | 9,053 |
+| | **envelope** | **7.35** | 0.109 | 28.0 | 0.015 | 8,900 |
+| ENTHUSIAST | False | 6.98 | 0.096 | 4.3 | 0.257 | 2,392 |
+| | True | 6.42 | 0.095 | 4.3 | **0.290** | 2,434 |
+| | **envelope** | 6.98 | 0.096 | 4.3 | 0.257 | 2,392 |
+| drone | False / True / envelope | 4.88 / 4.48 / 4.86 | | 4.3 / 3.3 / 4.3 | 0.048 / 0.053 / 0.048 | 18,540 / 18,576 / 18,540 |
+| Fremont | False / True / envelope | 3.98 / 3.83 / 3.98 | | 0 / 0 / 0 | 0 / 0 / 0 | 19,887 all |
+
+The envelope takes half of True's coverage on the two fixtures that have
+the defect at a quarter of True's jitter and none of its overshoot, and is
+a no-op to the stitch on ENTHUSIAST, drone and Fremont, where True's gain
+is small and its overshoot cost lands on the headline. The window is the
+trade's dial: ±2 stations reaches Becker 100 mm bare 7.00 at std 0.128
+(True's roughness, True's coverage) and touches ENTHUSIAST (bare 6.98 →
+6.79 with overshoot 0.2567 → 0.2545, both better); ±4 keeps Becker's std at
+0.098 for bare 7.49. The gap floor (0.2 or 0.3) barely moves anything.
+
+**What it does not do, by design:** a bulge shorter than the window
+(golden_tee's 2 mm notches, Becker's serif corners, the 1.5–2.5 mm bulges
+of the synthetic probe) is not reached — its window reads the plain band
+either side — and neither is BECKER's C's bowl: the render shows True
+sewing the bowl with the neighbouring arm's 5 mm crosses, the grown
+polygon's accidental coverage back again, while the envelope leaves the
+cover's fill where part C put it. Corner-sized bare is `satin_cap_recentre`'s
+question (the cause-side twin, DOCTRINE 2026-09-19); a blob is the cover's.
+The mode ships OFF; whether the far rail's reach reads right on cloth is
+the same sew-out question True was parked on, and the flag's flip is
+Kent's.

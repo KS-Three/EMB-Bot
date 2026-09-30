@@ -1398,3 +1398,86 @@ test("tieRun: a zero-length path yields no bounce rather than a NaN direction", 
   const at = { x: 5, y: 5 };
   assert.deepStrictEqual(DG.tieRun(at, { x: 5, y: 5 }), [at]);
 });
+
+// ---- shapeOutlines (2026-09-29 spec: click a shape on the canvas) ---------
+// Additive field: where each input shape landed, in FIELD mm (+y up, the
+// stitches' own space, T() without the integer rounding). The Studio draws
+// these over a hand-drawn/preset element so it can be clicked; nothing about
+// the stitches may move for it.
+test("buildQualityDesign: shapeOutlines land on the stitches, in field mm, ids kept", () => {
+  const rect = [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 50 }, { x: 0, y: 50 }];
+  const d = DG.buildQualityDesign(
+    [{ rgb: [0, 0, 0], shapes: [{ outer: rect, holes: [], id: "s7", tierOverride: "fill" }] }],
+    { garment: { widthIn: 4, heightIn: 4 }, pxPerMm: 6, underlay: false,
+      targetWidthMm: 40, offsetXMm: 5, offsetYMm: -3 }
+  );
+  assert.strictEqual(d.shapeOutlines.length, 1);
+  const o = d.shapeOutlines[0];
+  assert.strictEqual(o.id, "s7");
+  assert.strictEqual(o.dropped, false);
+  assert.deepStrictEqual(o.holes, []);
+  const xs = o.points.map((p) => p[0]), ys = o.points.map((p) => p[1]);
+  const near = (a, b) => Math.abs(a - b) <= 1e-6;
+  assert.ok(near(Math.max(...xs) - Math.min(...xs), 40), "outline width = targetWidthMm");
+  assert.ok(near(Math.max(...ys) - Math.min(...ys), 20), "outline height keeps the 2:1 aspect");
+  assert.ok(near((Math.max(...xs) + Math.min(...xs)) / 2, 5), "centred on offsetXMm");
+  assert.ok(near((Math.max(...ys) + Math.min(...ys)) / 2, -3), "centred on offsetYMm");
+  // The stitches (DST units, 10 per mm) sit inside the outline, give or take
+  // the engine's default 0.2 mm pull compensation.
+  const sew = d.stitches.filter((s) => s.type === "stitch");
+  assert.ok(sew.length > 50);
+  for (const s of sew) {
+    assert.ok(s.x / 10 >= Math.min(...xs) - 0.5 && s.x / 10 <= Math.max(...xs) + 0.5, "x inside outline");
+    assert.ok(s.y / 10 >= Math.min(...ys) - 0.5 && s.y / 10 <= Math.max(...ys) + 0.5, "y inside outline");
+  }
+});
+
+test("buildQualityDesign: shapeOutlines keep INPUT order across the light-to-dark sort, and flag dropped shapes", () => {
+  const sq = (x0, s) => [{ x: x0, y: 0 }, { x: x0 + s, y: 0 }, { x: x0 + s, y: s }, { x: x0, y: s }];
+  const d = DG.buildQualityDesign(
+    [
+      // light colour first: darkOnTop (default true) sews it FIRST anyway, but
+      // a dark region listed first would be re-ordered — the outlines must not be.
+      { rgb: [10, 10, 10], shapes: [{ outer: sq(0, 40), holes: [], id: "dark" }] },
+      { rgb: [240, 240, 240], shapes: [
+        { outer: sq(60, 40), holes: [], id: "light" },
+        { outer: [{ x: 0, y: 0 }, { x: 1, y: 0 }], holes: [], id: "degenerate" },
+      ] },
+    ],
+    { garment: { widthIn: 4, heightIn: 4 }, pxPerMm: 4, underlay: false }
+  );
+  assert.deepStrictEqual(d.shapeOutlines.map((o) => o.id), ["dark", "light", "degenerate"]);
+  assert.deepStrictEqual(d.shapeOutlines.map((o) => o.dropped), [false, false, true]);
+  // The sew order is still light first — proving the outlines did not follow the sort.
+  assert.strictEqual(d.colors[0].r, 240);
+});
+
+test("buildQualityDesign: a shape with no id gets '' and the legacy polygons input still gets outlines", () => {
+  const ring = [{ x: 0, y: 0 }, { x: 50, y: 0 }, { x: 50, y: 50 }, { x: 0, y: 50 }];
+  const d = DG.buildQualityDesign([{ rgb: [0, 0, 0], polygons: [ring] }],
+    { garment: { widthIn: 4, heightIn: 4 }, pxPerMm: 4, underlay: false });
+  assert.strictEqual(d.shapeOutlines.length, 1);
+  assert.strictEqual(d.shapeOutlines[0].id, "");
+  assert.strictEqual(d.shapeOutlines[0].points.length, 4);
+});
+
+test("buildQualityDesign: an empty design carries an empty shapeOutlines", () => {
+  const d = DG.buildQualityDesign([], { garment: { widthIn: 4, heightIn: 4 } });
+  assert.deepStrictEqual(d.shapeOutlines, []);
+});
+
+// Spec §3: shapeOutlines is additive — the stitches must be byte-identical to
+// the same call before it existed.
+test("buildQualityDesign: stitches are byte-identical to main's on the shapeOutlines fixture", () => {
+  const crypto = require("node:crypto");
+  const rect = [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 50 }, { x: 0, y: 50 }];
+  const d = DG.buildQualityDesign(
+    [{ rgb: [0, 0, 0], shapes: [{ outer: rect, holes: [], id: "s7", tierOverride: "fill" }] }],
+    { garment: { widthIn: 4, heightIn: 4 }, pxPerMm: 6, underlay: false,
+      targetWidthMm: 40, offsetXMm: 5, offsetYMm: -3 }
+  );
+  const hash = crypto.createHash("sha256").update(JSON.stringify(d.stitches)).digest("hex");
+  // hash taken from main at 5371b120 on 2026-09-29; a change here means a
+  // stitch moved — spec §2 forbids that for this feature.
+  assert.strictEqual(hash, "54ae2fb3e4d18ceccbe591e9fe322d3147a92a69a0be6b7c78d00b06c162d532");
+});

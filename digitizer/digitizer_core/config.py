@@ -1352,7 +1352,13 @@ class PipelineConfig:
     # on bends, +10-17% thread, +4-7% stitches, and the pull compensation
     # was tuned with the far rail stopping short -- a sew-out question, so
     # OFF until Kent flips it; off is byte-identical.
-    satin_rails_follow_edge: bool = False
+    # "envelope" (2026-09-30, Kent's pick after #561): the far rail extends
+    # only where its side is short by at least a gap floor, and only to the
+    # running minimum of its own edge profile over a window -- the
+    # under-reach cured without the per-station edge following that made
+    # True pay in jitter and overshoot. Measured in the PR that built it;
+    # False and True are unchanged.
+    satin_rails_follow_edge: bool | str = False
     # Pull compensation on the RAILS instead of the polygon (quality review
     # 2026-09-08 item 6, built 2026-09-09). Stage 5 grows every shape by the
     # fabric's pull with a round join and the satin tier skeletonises the

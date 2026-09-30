@@ -466,3 +466,57 @@ def test_under_rail_comp_the_skeleton_reads_the_polygon_with_its_seams_closed():
         return sum(1 for r in runs if r.kind == s6.stitches.SATIN)
 
     assert satin_runs(seamed) == satin_runs(bar) == 1
+
+
+def test_the_envelope_reaches_the_far_edge_where_the_gap_is_long_and_nowhere_else():
+    """`satin_rails_follow_edge="envelope"` (2026-09-30, Kent's pick after
+    #561). The symmetric-offset model places both rails at the NEARER edge's
+    distance, so wherever the spine sits off-centre the far rail stops short
+    -- BECKER's C, golden_tee's bands once their seams were closed. `True`
+    cures it at every station and pays in rail roughness (satin wobble std
+    +40% on Becker) and overshoot (ENTHUSIAST 0.257 -> 0.290, the headline).
+    The envelope extends a rail only where its side is short by at least
+    `_ENVELOPE_GAP_MM`, and only to the running minimum of its own edge
+    profile over +-`_ENVELOPE_WINDOW` stations, so it cannot overshoot a
+    concavity and carries none of the edge's roughness.
+
+    Pinned on Becker at 80 mm, the fixture with the defect (2026-09-30:
+    bare 10.22 / 9.48 / 7.24% False / envelope / True, satin std 0.091 /
+    0.100 / 0.128, overshoot 0.0127 / 0.0127 / 0.0157): the envelope covers
+    more than the symmetric width, at less than a third of True's roughness
+    and none of its overshoot. And the design limit, on a synthetic band: a
+    2 mm bulge the axis cannot re-centre under is shorter than the window,
+    so the envelope keeps the symmetric width there where True reaches --
+    corner-sized bare is `satin_cap_recentre`'s question, not this mode's.
+    """
+    from shapely.geometry import box
+    from tools import edge_wobble as EW
+    from tools.rail_edge import bare_area
+
+    def arm(mode):
+        r, p = digitize(TESTDATA / "becker_marine_logo.png",
+                        PipelineConfig(target_width_mm=80.0, garment_id="left_chest",
+                                       max_colors=6, satin_rails_follow_edge=mode))
+        polys = {rg.shape_id: rg.polygon for rg in r.regions}
+        num, den = bare_area(polys, p)
+        wob = EW.analyse_plan(polys, p, background=set())
+        return num / den, wob["by_tier"]["satin"]["wobble_std_mm"], p.stats.stitch_count
+
+    off_bare, off_std, off_st = arm(False)
+    env_bare, env_std, env_st = arm("envelope")
+    on_bare, on_std, on_st = arm(True)
+    assert env_bare < off_bare - 0.005, (off_bare, env_bare)          # it reaches: 10.2 -> 9.5%
+    assert env_std <= off_std * 1.15, (off_std, env_std)             # at a tenth more roughness (True: +40%)
+    assert on_std > env_std, (on_std, env_std)
+    assert off_st < env_st < on_st, (off_st, env_st, on_st)           # and a fraction of True's thread
+
+    band = box(0, 0, 24, 2.4).union(box(11, 2.4, 13, 3.6))            # a 2 mm bulge, 1.2 mm deep
+    tops = {}
+    for mode in (False, True, "envelope"):
+        runs, _ = s6.satin_shape(band, "band", underlay_style="center", trim_at_mm=3.0,
+                                 rail_comp_mm=PULL, rail_comp_floor_mm=1.5, corner_twigs=True,
+                                 junction_stack=True, stroke_order="euler", rails_follow_edge=mode)
+        pts = [q for r in runs if r.kind == s6.stitches.SATIN for q in r.points if 11 <= q[0] <= 13]
+        tops[mode] = max(q[1] for q in pts)
+    assert tops[False] < 3.3 < 3.6 <= tops[True], tops                # the symmetric rail stops short; True reaches
+    assert abs(tops["envelope"] - tops[False]) < 1e-6, tops           # the envelope holds: the bulge is shorter than its window
