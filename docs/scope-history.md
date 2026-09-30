@@ -16466,3 +16466,40 @@ may segment new small shapes at the larger size.
 
 *(built 2026-09-30 — `app/src/ui/DigitizePanel.svelte`, `DigitizePanel.spec.js`;
 `docs/scope/3-studio-app-wizard.md`)*
+
+## 2026-09-30 — Bridge's teal words are a segmentation loss at 3.5 px/mm, not a hairline: size recovers them, the palette does not (Kent's pick)
+
+Kent's pick after the size chip: *why the hairline route did not take "BAR &
+RESTAURANT", and what should own it.* Measured on `logo_bridge_bar.jpg` at
+80 mm (`docs/renders/bridge-phantom-2026-09-30/teal-text.json`, two renders):
+
+- **The earlier record was wrong about the size.** The words are 3.25–4.5 mm
+  tall arched letters (11–16 source pixels: the source is 400 px across
+  80 mm, 3.5 px/mm), 96.5 mm² of teal ink, not 1.6 mm lettering below the
+  floor.
+- **They never reach a stitch tier as letters.** Stage 2's six-cone
+  quantization splits the JPEG-blurred teal between teal, yellow and the
+  halo grey; six teal blobs survive (46.5 mm²; 13.5, 13.4, 6.2, 5.2, 4.6,
+  3.7), each a fused letter group with 0.9–2.4 mm "strokes", sewn as satin
+  blobs (2.4–3.0 mm crosses) or fill. The hairline bean fires only for
+  stations under 0.5 mm inside a satin stroke; there are none. No cluster,
+  so the OCR check judges only the whole-design row (not readable here:
+  tesseract is not on this container). `LETTERING_TOO_SMALL` names three
+  blobs — true of the blobs, not the words.
+- **The levers:** the dissolve loses a blob (5 regions, 33 mm²), eight
+  colours change nothing, both together leave two blobs; **140 mm brings the
+  words back** (12 regions, 382 mm², blobby but readable) because the prep's
+  resampling hands the quantizer 28-px letters. So the size chip is the
+  lever on this logo, and the honest statement is that a 400 px JPEG
+  carries this lettering only above about 140 mm — a resolution fact no
+  stitch rule moves.
+- Corpus: satin shapes whose art stroke is under the 0.5 mm floor — bridge
+  12 (the halo slivers), screenshot 15, golden_tee 6, drone 5, fremont 3,
+  the other six logos none. Pixels per mm at each logo's width: bridge 3.5,
+  becker 1.5 (13 mm letters, fine), whitebg 8.4, drone 9.6, the rest 12–27.
+
+Nothing shipped; what should own it is Kent's (a resolution line on the
+lettering findings, or the size chip as is).
+
+*(measured 2026-09-30 — scratch scripts over `digitize()`,
+`stitchviz.render_design`, the prep frame; `teal-text.json`)*
