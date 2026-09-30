@@ -19,7 +19,7 @@
     shapeBorderState } from "../lib/borderMenu.js";
   import { boundaryIssues, canonicalShapeEdits, editsKey } from "../lib/digitizer.js";
   import { popoverModel, popoverPatch, recolorPatch } from "../lib/shapePopover.js";
-  import { authoredInFieldMm, hitAuthored, applyAnchorDrag, applyHandleDrag, insertAnchor, removeAnchor, editedElementPatch, fieldMmToPx } from "../lib/fieldNodeEdit.js";
+  import { authoredInFieldMm, hitAuthored, applyAnchorDrag, applyHandleDrag, insertAnchor, removeAnchor, editedElementPatch, fieldMmToPx, pxToFieldMm, clampMmToBox } from "../lib/fieldNodeEdit.js";
   import Hint from "./Hint.svelte";
   import Icon from "./Icon.svelte";
   import ShapePopover from "./ShapePopover.svelte";
@@ -592,6 +592,13 @@
     const o = renderResult.toCanvas(0, 0), ex = renderResult.toCanvas(1, 0), ey = renderResult.toCanvas(0, 1);
     const xMm = (p.x - o.x) / (ex.x - o.x), yMm = (p.y - o.y) / (ey.y - o.y);
     return fieldMmToPx(fit, [xMm, yMm]);
+  }
+  // An authored point held inside the garment placement box (hoopSizeMm IS the
+  // box, centred on the origin) — see clampMmToBox for the ruling.
+  function clampAuthoredToBox(fit, at) {
+    const box = hoopSizeMm(project);
+    if (!(box.wMm > 0 && box.hMm > 0)) return at; // no garment: nothing to clamp to
+    return fieldMmToPx(fit, clampMmToBox(pxToFieldMm(fit, at), box));
   }
   // Commits an edited hand-drawn shape through the re-fit rule, so nothing
   // that was not edited moves. An invalid shape is refused with the reason
@@ -2543,7 +2550,8 @@
         nodeEdit.moving = true;
       }
       const q = fieldPxToAuthored(nodeEdit.basis.fit, p);
-      const at = { x: q.x + nodeEdit.grab.dx, y: q.y + nodeEdit.grab.dy };
+      // A dragged node stops at the placement box (Kent's ruling 2026-09-29).
+      const at = clampAuthoredToBox(nodeEdit.basis.fit, { x: q.x + nodeEdit.grab.dx, y: q.y + nodeEdit.grab.dy });
       nodeEdit.live = nodeEdit.kind === "anchor"
         ? applyAnchorDrag(nodeEdit.live, nodeEdit.index, at)
         : applyHandleDrag(nodeEdit.live, nodeEdit.index, at);
@@ -2722,7 +2730,8 @@
         const shape = el && manualShapeOf(el, pressEdge.shapeId);
         const fit = el && manualFit(el);
         if (moved < CLICK_PX && shape && fit && renderResult && renderResult.toCanvas) {
-          const at = fieldPxToAuthored(fit, canvasPointFromEvent(e));
+          // The click may land up to the edge grab radius off the line, so it too stops at the box.
+          const at = clampAuthoredToBox(fit, fieldPxToAuthored(fit, canvasPointFromEvent(e)));
           const grown = insertAnchor(shape, pressEdge.index, at);
           // insertAnchor hands back the SAME shape at MAX_SHAPE_POINTS.
           if (grown === shape) shapeEditError = "This shape already has the maximum number of points.";

@@ -140,7 +140,11 @@ field's offset re-clamp (`reclampAll`) when an edit pushes the element past a
 box edge. It bites first on the FIRST element (auto-fit); `addElement` seeds
 `sizeMm = 0.4 × hoop` for later ones, which then hit it only past ~2.5×
 growth or at a box edge. What to do (clamp the drag / refuse with a message /
-allow with a notice) is Kent's call.
+allow with a notice) was Kent's call.
+
+*Ruled 2026-09-29 (Kent): stop the drag at the placement box edge* — the dragged
+point is clamped with `clampMmToBox`, and unedited points never move, so the
+bbox stays inside the box and neither break can fire (e2e (h)).
 
 **Erratum 2 (2026-09-29, fix wave).** Step 4's base changed: the offsets now
 shift from the element's REQUESTED offsets —

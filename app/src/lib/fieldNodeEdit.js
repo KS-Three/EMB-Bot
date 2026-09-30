@@ -28,6 +28,16 @@ export function fieldMmToPx(fit, [xMm, yMm]) {
   return { x: fit.cxPx + (xMm - fit.offsetXMm) / fit.mmPerPx, y: fit.cyPx - (yMm - fit.offsetYMm) / fit.mmPerPx };
 }
 
+// Kent's ruling (2026-09-29): a dragged node stops at the garment PLACEMENT
+// BOX. The engine clamps the whole design's scale to that box, so a point
+// dragged past it would rescale everything else; editedElementPatch keeps
+// every unedited point still, so keeping the dragged point inside keeps the
+// bbox inside and the clamp never fires. Box is centred on the field origin.
+export function clampMmToBox([xMm, yMm], box) {
+  const hw = Math.max(0, (box.wMm || 0) / 2), hh = Math.max(0, (box.hMm || 0) / 2);
+  return [Math.min(hw, Math.max(-hw, xMm)) + 0, Math.min(hh, Math.max(-hh, yMm)) + 0]; // + 0: no -0
+}
+
 // Anchors, controls and the per-segment handle (B(0.5) of the curve, or the
 // chord midpoint when straight) in field mm. The control point is mapped
 // directly: the map is affine, so a quadratic drawn through mapped

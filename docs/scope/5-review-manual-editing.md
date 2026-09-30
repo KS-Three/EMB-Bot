@@ -1051,10 +1051,17 @@ only the held scale keeps `mmPerPx`.
   (`sizeMm: null`) hand-drawn elements are the FIRST-element case —
   `addElement` seeds `sizeMm = 0.4 × hoop` for later ones — so a seeded
   element hits the scale break only past ~2.5× growth, or the offset break at
-  a box edge. The behaviour (clamp the drag / refuse it with a message /
-  allow it with a notice) is Kent's call. *(measured 2026-09-29 — final
-  review's `clamp.mjs` through the real engine, re-run in the fix wave; the
-  same spec's invariance test drags inward to stay inside)*
+  a box edge. **Kent's ruling (2026-09-29): a dragged node STOPS at the box
+  edge.** `clampMmToBox` (`fieldNodeEdit.js`) holds the dragged point inside
+  the box (`hoopSizeMm`, centred on the origin) in the `nodeEdit` branch of
+  `onPointerMove` and on the edge-insert point; since `editedElementPatch`
+  never moves an unedited point, the bbox stays inside too and neither the
+  scale clamp nor `reclampAll` can fire. With no garment (zero box) nothing is
+  clamped. *(measured 2026-09-29 — final review's `clamp.mjs` through the real
+  engine, re-run in the fix wave; the same spec's invariance test drags inward
+  to stay inside)* *(fixed 2026-09-29 — `e2e/field-node-edit.spec.js` (h): a
+  400 px drag past Tote's 203.2 mm box leaves the opposite corner within 2 px
+  and the caption at or under 203 mm; `fieldNodeEdit.spec.js` `clampMmToBox`)*
 
 **Gestures, on the selected hand-drawn shape.**
 - Anchor and handle drags are RELATIVE to the grab point, with a 4 px dead
@@ -1113,6 +1120,6 @@ it, or run `node app/scripts/copy-engine.mjs`. *(hit 2026-09-29 — Tasks 3 and
 
 Tests: `app/src/lib/fieldNodeEdit.spec.js` (hit-testing, drag maths, the
 re-fit invariant through the real engine), `app/src/ui/ShapePopover.spec.js`
-(the movable dialog), `app/e2e/field-node-edit.spec.js` (a)–(g) — anchor drag,
+(the movable dialog), `app/e2e/field-node-edit.spec.js` (a)–(h) — anchor drag,
 handle bow, edge insert, Delete and the floor, invariance of a neighbour,
-edge-drag-does-nothing, popover move.
+edge-drag-does-nothing, popover move, drag stops at the placement box.

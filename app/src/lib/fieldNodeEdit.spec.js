@@ -6,7 +6,7 @@ import { beforeAll, describe, expect, test } from "vitest";
 import { createRequire } from "node:module";
 import {
   pxToFieldMm, fieldMmToPx, authoredInFieldMm, hitAuthored,
-  applyAnchorDrag, applyHandleDrag, insertAnchor, removeAnchor, editedElementPatch,
+  applyAnchorDrag, applyHandleDrag, insertAnchor, removeAnchor, editedElementPatch, clampMmToBox,
 } from "./fieldNodeEdit.js";
 
 let EMB, generateElement, garment;
@@ -181,5 +181,22 @@ describe("editedElementPatch — the re-fit rule, through the real engine", () =
     expect(r.shapes).toBeUndefined();
     expect(typeof r.error).toBe("string");
     expect(r.error.length).toBeGreaterThan(0);
+  });
+});
+
+describe("clampMmToBox — a dragged node stops at the placement box (Kent, 2026-09-29)", () => {
+  const box = { wMm: 200, hMm: 100 };
+  test("a point inside is unchanged", () => {
+    expect(clampMmToBox([30, -20], box)).toEqual([30, -20]);
+  });
+  test("each side clamps to the half-extent, independently", () => {
+    expect(clampMmToBox([500, 0], box)).toEqual([100, 0]);
+    expect(clampMmToBox([-500, 0], box)).toEqual([-100, 0]);
+    expect(clampMmToBox([0, 500], box)).toEqual([0, 50]);
+    expect(clampMmToBox([0, -500], box)).toEqual([0, -50]);
+    expect(clampMmToBox([500, -500], box)).toEqual([100, -50]);
+  });
+  test("a zero box collapses to the origin", () => {
+    expect(clampMmToBox([12, -7], { wMm: 0, hMm: 0 })).toEqual([0, 0]);
   });
 });

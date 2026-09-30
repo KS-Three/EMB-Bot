@@ -354,3 +354,27 @@ test("(g) the shape popover is dragged by its header, stays open, and follows th
   await page.mouse.click(head2.x + head2.width / 2, head2.y + head2.height / 2);
   await expect(dlg).toBeVisible();
 });
+
+test("(h) a node dragged far past the placement box stops at it: nothing else rescales", async ({ page }) => {
+  // Kent's ruling 2026-09-29. Tote's placement is 8 x 8 in = 203.2 mm, centred.
+  // The engine clamps the WHOLE design's scale to that box, so a node let past
+  // it would shrink every other point; the drag stops at the box edge instead.
+  const before = await drawAndSelect(page);
+  const g = await geom(page);
+  const tr = g.css(before.bb.x1, before.bb.y0);
+  await drag(page, tr, { x: tr.x + 400, y: tr.y - 400 });
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect.poll(() => page.locator(STATS).innerText(), { timeout: 20_000 }).not.toBe(before.stats);
+  const after = await settle(page);
+  const g2 = await geom(page);
+  // The opposite (bottom-left) corner did not move: no rescale.
+  expect(Math.abs(after.bb.x0 - before.bb.x0)).toBeLessThanOrEqual(2);
+  expect(Math.abs(after.bb.y1 - before.bb.y1)).toBeLessThanOrEqual(2);
+  // The dragged corner DID move (it stopped at the box, it did not refuse the drag)...
+  expect(Math.hypot(after.bb.x1 - before.bb.x1, after.bb.y0 - before.bb.y0) * g2.k).toBeGreaterThanOrEqual(40);
+  // ...and the design still fits the 203.2 mm box (the caption rounds to whole mm).
+  const m = after.stats.match(/(\d+)×(\d+) mm/);
+  expect(m).not.toBeNull();
+  expect(Number(m[1])).toBeLessThanOrEqual(203.7);
+  expect(Number(m[2])).toBeLessThanOrEqual(203.7);
+});
