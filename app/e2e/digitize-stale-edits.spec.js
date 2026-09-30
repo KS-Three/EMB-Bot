@@ -208,7 +208,7 @@ test("stale layer edits: service flags them, the panel surfaces them, Clear + Ap
   // shapes new ids; the applied border override now names a shape that no
   // longer exists. The width change re-digitizes automatically (the panel's
   // params watcher), carrying the now-stale override to the service.
-  const width = page.getByLabel("Stitch width");
+  const width = page.getByLabel("Design width");
   await width.fill("40");
   await width.blur();
 

@@ -370,6 +370,17 @@ def apply_shape_edits(
                 )
             r.meta["underlay_style"] = u
 
+        if ov.get("stitch_width_mm") is not None:
+            # Contract v1.8 — the sewn column this shape should take, applied
+            # by `stitchwidth.apply_stitch_widths` after every edit here
+            # (it offsets the polygon, so it runs on the outline a
+            # `boundary_override` below may have just replaced).
+            from .stitchwidth import OVERRIDE_KEY, validate_override_mm
+            try:
+                r.meta[OVERRIDE_KEY] = validate_override_mm(ov["stitch_width_mm"])
+            except ValueError as exc:
+                raise ValueError(f"shape_overrides[{sid!r}].{exc}") from exc
+
         if ov.get("boundary_override") is not None:
             raw = ov["boundary_override"]
             if not isinstance(raw, (list, tuple)):
