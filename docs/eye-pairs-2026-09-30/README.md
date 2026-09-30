@@ -240,9 +240,10 @@ could not show until now. The same artifact URL, rebuilt under the tag
 - **The locator marks becker (1 box) and tires (3).** On the other six ref
   pairs the change is under its 0.6 mm blur — a rail moved by under a
   millimetre, a comb that is texture — which is what the holes toggle is
-  for. The confound badge on tires' ref pair is the generator's rule for a
-  photo-class fixture; in this cloud render neither engine had the rembg
-  venv, so both sides ran the same prep.
+  for. **The confound badge on tires' ref pair is right, and it matters**
+  (found after the sitting, below): this checkout has the rembg venv, the
+  ref engine's worktree does not, and tires is photo-class, so its BEFORE
+  side ran without photo prep and its AFTER side with it.
 - **The table** under the ref arm's head: `three-changes-corpus.json`,
   measured on the two engines that drew the pairs.
 
@@ -262,24 +263,27 @@ own length.
 |---|---|---|---|---|---|
 | becker | 100 | 9,563 → 9,321 | 51 → 50 | 183 (113) → 72 (14) | 122 (59) → 37 (26) |
 | golden_tee | 80 | 8,613 → 8,575 | 41 | 130 (75) → 36 (5) | 4 (0) |
-| tires | 80 | 2,500 → 2,835 | 7 → 8 | 22 (22) → 1 (0) | 17 (0) → 5 (0) |
+| tires | 80 | 2,646 → 2,835 | 8 | 14 (13) → 1 (0) | 21 (0) → 5 (0) |
 | enthusiast | 80 | 2,474 | 15 | 1 (1) → 0 (0) | 0 (0) |
 | fremont | 92.5 patch | 20,012 | 56 | 0 (0) | 0 (0) |
 | bridge | 80 | 16,157 → 16,175 | 101 | 85 (70) → 0 (0) | 20 (0) → 5 (0) |
 | gaulke | 80 | 4,307 → 4,305 | 30 | 6 (5) → 0 (0) | 0 (0) |
 | drone | 80 | 18,788 → 18,796 | 122 | 12 (10) → 0 (0) | 2 (2) |
 | screenshot | 80 | 8,171 → 8,201 | 73 | 28 (26) → 1 (0) | 8 (0) → 3 (0) |
-| **corpus** | | 90,585 → 90,694 | 496 | **467 (322) → 110 (19)** | **173 → 56** |
+| **corpus** | | 90,731 → 90,694 | 496 | **459 (313) → 110 (19)** | **177 → 56** |
 
-The escapes census of the afternoon read 459 / 313 → 129 / 23 with its
-scratch copy of the instrument, on d59ff556 and before the teeth; the
-committed tool on these two trees reads the rows above. What the three
+The tires row is measured with the photo-prep venv linked into the morning
+engine's worktree (see *Measured after the sitting*); the first cut of
+this table read tires from a worktree without it — 2,500 stitches, 22
+(22) reached — which is the un-prepped lane, not the morning engine, and
+put the corpus at 467 (322) and 173. Corrected, the before column is the
+afternoon's escapes census to the station (459 / 313). What the three
 changes did, in the corpus's own numbers: the envelope now reaches at a
 quarter of the stations it did this morning and nineteen of those
 extensions still land on a sibling's ground (Becker 14, golden_tee 5); the
 split state changes a third as often along the runs; the stitch total
-moves a tenth of a percent, tires the exception (+13%: the comb on its
-wide columns, the sibling rule having taken its twenty-two escapes).
+moves under a tenth of a percent, tires the exception (+7%: the comb on
+its wide columns, 31 → 220 split legs).
 
 ## How it was built
 
@@ -306,3 +310,119 @@ and where the holes toggle shows the comb, does a continuous comb read
 better than the flicker it replaced? On the five dissolve pairs: the flip
 of `dissolve_phantom_blends`, still his to rule on. Verdicts pending at
 the time of writing.
+
+## Outcome — Kent's evening sitting (2026-09-30, all 13 judged)
+
+**The eight ref pairs, this morning's engine | today** (a ref arm takes no
+ruling; his note on its head: none):
+
+| pair | verdict | note (verbatim) |
+|---|---|---|
+| becker | no difference | "the lettering does not flow, satin stitching is not smooth and structured pattern." |
+| bridge | no difference | |
+| drone | no difference | |
+| enthusiast | no difference | |
+| gaulke | both bad | |
+| golden_tee | both bad | |
+| screenshot | both bad | "dont use this image to judge" |
+| tires | **before better** | "edges are nice, and clean the don't randomly break" |
+
+4 no difference, 3 both bad, 1 before, 0 after. **The day's three changes
+did not reach his eye.** The instruments moved (reached stations 467 → 110,
+split changes 173 → 56) and the page reads *no difference* on the four
+logos where they moved most; the one pair his eye separated went the
+other way — tires, where the morning engine's edges are "nice and clean"
+and today's "randomly break". Becker's note is the third time in a day
+his eye has named the same thing about the lettering: the satin does not
+flow, is not smooth, has no structured pattern — the sibling rule, the
+comb and the teeth were all aimed at it and none of them changed the
+verdict. screenshot's note says the fixture itself is not one to judge
+digitizing by; that is a corpus note, recorded.
+
+**The five dissolve pairs** (`dissolve_phantom_blends=True` after the fold
+fix, shipped | dissolved):
+
+| pair | verdict | did the flag do its job? | note (verbatim) |
+|---|---|---|---|
+| bridge | **after better** | yes | "random satin borders have been removed" |
+| gaulke | **before better** | | "after ended up adding satin trim]" |
+| golden_tee | **before better** | can't tell | |
+| screenshot | both bad | | "disregard this photo to reference the digitizing judgement" |
+| tires | no difference | can't tell | |
+
+1 after, 2 before, 1 no difference, 1 both bad; no ruling on the page.
+**The flag stays OFF.** It did on bridge exactly what it claims (the halo's
+"random satin borders" gone), and on gaulke it added a satin trim that was
+not there — a regression his eye caught and the corpus table had already
+counted (regions 53 → 57, trims 33 → 37, stitches 4,305 → 4,441) without
+reading it as one. His 09-28 verdicts on the pre-fix dissolve (bridge
+after; gaulke, golden_tee, screenshot, tires both bad) stand beside these:
+the fold fix moved gaulke, golden_tee and tires off *both bad*, and bridge
+is the only logo where the dissolve is a gain both times.
+
+The store, read back after he said he was done: `kent-notes.json`
+(`third_sitting`), 13 notes and the ref arm's head note, no ruling document
+with a value.
+
+### What the verdicts send back to the bench
+
+- **tires, "edges randomly break" today.** Measured below: the pair was
+  the confound its badge named, and the edges his eye preferred are the
+  un-prepped lane's. Today's engine and this morning's, both with photo
+  prep, draw the same ragged tread edges; the day's changes add only the
+  comb's penetrations.
+- **gaulke, the dissolve's added satin trim.** Four regions and four trims
+  appear under the flag; what they are is measured below.
+- **becker, the lettering's flow.** Not one of the day's changes moved this
+  verdict. The two levers not yet on the page are the pro's own Becker
+  style — raw crosses to about 7 mm, no comb (`split_satin_above_mm=7.0`,
+  8,292 stitches) — and the symmetric rails on the letters (the envelope
+  OFF, whose reaches carry three times the symmetric rails' jitter). Both
+  are one-line arms for a texture sitting, and gate 1 stands behind the
+  first.
+
+### Measured after the sitting
+
+**tires: the pair compared lanes, not engines.** The primary checkout has
+the rembg venv (`digitizer/rembg_isolated/venv`, gitignored); the ref
+engine's worktree had none; tires is `photo_scene`. So the BEFORE side
+skipped photo prep and the AFTER side ran it — the confound badge the
+page put on that one pair. One engine per step of the day, all in
+worktrees without the venv, draws clean tread edges at every step
+(2,500 / 2,500 / 2,652 stitches) and the same commit as today's main in a
+clean worktree reads 2,652 against this checkout's 2,835. With the venv
+linked into a worktree of the morning engine: **2,646 → 2,835**, and the
+locator's three boxes show the same ragged tread edges on both sides —
+the notch where a tab meets its band, the jagged triangle, the messy
+junction — with today's side adding the comb's mid-column penetrations
+and nothing else (`tires_true_*.png` in the session scratch; the numbers
+in the table above). What Kent preferred is the un-prepped lane's
+segmentation of a cartoon tire: the rembg matte roughens its edges, and
+his eye called that "edges randomly break". That is a finding about the
+photo lane on tires (a logo classified `photo_scene` with
+`detected_photographic=False`), not about the day's three changes, and it
+is the one *before better* of the night.
+
+**The yardstick now links the venv into every ref worktree**
+(`refarm.link_photo_prep`; the row carries `photo_prep_env`, and the
+page's confound badge reads it), so a future ref pair on a photo-class
+fixture compares engines. The eight ref pairs on this page were rendered
+before that; the seven non-photo fixtures are unaffected.
+
+**gaulke: the dissolve's "satin trim" is four grey halo slivers.** Under
+`dissolve_phantom_blends=True` gaulke gains four regions the shipped run
+does not have — 0.19 to 0.28 mm² each, `rescued_small_shape`, thread 0108
+(153, 153, 153), sewn as grey running stitches of 30 to 54 points (a
+sliver along the letter's diagonal at (−6.0, −3.1)–(−2.5, 0.9) mm, two on a
+bar at y ≈ 3.5, one at (−8.5, 0.9)); satin runs 91 → 95, trims 30 → 37,
+stitches 4,305 → 4,441. The fold (`stage2_photo_segment.
+dissolve_phantom_blends`) sends a halo member to the instance of its
+endpoint colour that it borders, and these ended up as grey, disconnected
+and rescued. Which branch of the fold made them — a member whose ramp was
+grey-to-white, a member that touched no non-band label, or a band the
+dissolve left standing — is the next measurement; the flag stays OFF
+either way, on 2 before, 1 after.
+
+**becker: nothing to add to the note.** The lettering's flow is the
+open question the day did not answer; the two levers not yet on the page
+are named above.

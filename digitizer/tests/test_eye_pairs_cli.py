@@ -96,6 +96,9 @@ def test_each_ref_arm_runs_its_own_commit_and_is_marked_design_only(rendered):
     assert sorted(seen["closed"]) == ["aaaaaaa", "bbbbbbb"]
     feats = json.loads((out / "features.json").read_text())["tiny"]
     assert feats["ref_a"]["design_only"] is True and feats["ref_b"]["design_only"] is True
+    # The fake runner carries no photo-prep venv, and the row says so (the
+    # page's confound badge reads this; the default runner sets it).
+    assert feats["ref_a"]["photo_prep_env"] is False
     assert not feats[BASE].get("design_only") and not feats["angle45"].get("design_only")
     da = json.loads((out / "designs" / "tiny__ref_a.json").read_text())
     db = json.loads((out / "designs" / "tiny__ref_b.json").read_text())

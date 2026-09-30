@@ -305,6 +305,12 @@ def test_ref_arm_is_marked_and_a_photo_fixture_is_confounded():
     assert r["P010"]["is_ref"] is True and r["P010"]["confounded"] is False
     assert r["P011"]["is_ref"] is True and r["P011"]["confounded"] is True
     assert r["P010"]["ref_label"] == g.REF_ARMS["ref_0827"]
+    # The ref engine ran WITH the photo-prep venv linked (2026-09-30): the
+    # photo fixture's pair compares engines after all, and is not marked.
+    prepped = {"fx_a": REF_FEATS["fx_a"],
+               "fx_p": {**REF_FEATS["fx_p"], "ref_0827": _row(stitches=900, photo_prep_env=True)}}
+    r2 = {x["pair"]: x for x in g.pair_records(REF_PUBLIC, REF_SEALED, picks, prepped, {})}
+    assert r2["P011"]["confounded"] is False
     live = _records()
     assert live["P001"]["is_ref"] is False and live["P001"]["confounded"] is False
     assert live["P001"]["ref_label"] is None
@@ -775,6 +781,15 @@ def _with_second_ref(tmp_path: Path) -> Path:
         json.dumps({"stitches": [[0, 0], [3, 3]]}), encoding="utf-8")
     _img(src / "renders" / "fx_a__ref_0930am.jpg", (150, 150, 150))
     return src
+
+
+def test_a_labelled_ref_pair_with_photo_prep_linked_is_not_confounded(tmp_path):
+    src = make_labelled_set(tmp_path)
+    feats = json.loads((src / "features.json").read_text(encoding="utf-8"))
+    assert g.build(src, tmp_path / "g0", labelled=True)["pairs"][1]["confounded"] is True
+    feats["fx_p"]["ref_0827"]["photo_prep_env"] = True
+    (src / "features.json").write_text(json.dumps(feats), encoding="utf-8")
+    assert g.build(src, tmp_path / "g1", labelled=True)["pairs"][1]["confounded"] is False
 
 
 def test_a_second_ref_arm_is_before_on_the_left_under_its_own_label(tmp_path):

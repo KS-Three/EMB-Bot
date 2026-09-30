@@ -1,6 +1,6 @@
 {
  "ref_0930am": {
-  "caption": "The corpus under the day's three lettering changes, measured 2026-09-30 on the two engines that drew these pairs: this morning's (main at 1e5f8fe2, the envelope as it shipped) → today's (the sibling rule #577, the split comb #578, the minimum stretch length #579), each logo at its own width and garment, max_colors=6; one figure where they agree. envelope reaches: the stations at which the envelope extends a rail past the symmetric width, and in brackets how many of those extensions end on ground another stroke of the same shape already sews (tools/envelope_escapes.py, a trace hook on _rail_points and a 20 px/mm raster of the symmetric satin). split on/off changes: along the satin runs, how many times the split state changes between consecutive legs (a cross and its return leg each split on their own length), in brackets on the lettering. thermal is drone's artwork byte for byte and is not repeated.",
+  "caption": "The corpus under the day's three lettering changes, measured 2026-09-30 on the two engines that drew these pairs: this morning's (main at 1e5f8fe2, the envelope as it shipped) → today's (the sibling rule #577, the split comb #578, the minimum stretch length #579), each logo at its own width and garment, max_colors=6, the photo-prep venv linked into the morning engine's worktree (tires is photo-class and runs the prepped lane in both); one figure where they agree. envelope reaches: the stations at which the envelope extends a rail past the symmetric width, and in brackets how many of those extensions end on ground another stroke of the same shape already sews (tools/envelope_escapes.py, a trace hook on _rail_points and a 20 px/mm raster of the symmetric satin). split on/off changes: along the satin runs, how many times the split state changes between consecutive legs (a cross and its return leg each split on their own length), in brackets on the lettering. thermal is drone's artwork byte for byte and is not repeated.",
   "columns": [
    "fixture",
    "mm",
@@ -29,10 +29,10 @@
    [
     "tires",
     "80",
-    "2,500 → 2,835",
-    "7 → 8",
-    "22 (22) → 1 (0)",
-    "17 (0) → 5 (0)"
+    "2,646 → 2,835",
+    "8",
+    "14 (13) → 1 (0)",
+    "21 (0) → 5 (0)"
    ],
    [
     "enthusiast",
@@ -85,10 +85,10 @@
    [
     "corpus",
     "",
-    "90,585 → 90,694",
+    "90,731 → 90,694",
     "",
-    "467 (322) → 110 (19)",
-    "173 → 56"
+    "459 (313) → 110 (19)",
+    "177 → 56"
    ]
   ]
  }

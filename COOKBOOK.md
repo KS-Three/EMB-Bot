@@ -1604,7 +1604,13 @@ ref arms are `REF_ARMS` in the generator (`ref_0827`; `ref_0930am`, the
 morning of 2026-09-30 before #577/#578/#579) and the page reads `is_ref`
 and `ref_label` off the record, never an id — it used to test the one
 literal `ref_0827`. The evening sitting on the day's three lettering
-changes is `docs/eye-pairs-2026-09-30/` (tag `evening-0930`).
+changes is `docs/eye-pairs-2026-09-30/` (tag `evening-0930`). **A ref
+worktree gets the photo-prep venv linked in** (`refarm.link_photo_prep`,
+the row's `photo_prep_env`, read by the page's confound badge): the venv
+is gitignored and lives in the primary checkout only, so before this a
+photo-class fixture's ref side skipped prep and the pair compared lanes
+(tires, 2,500 against 2,646 from the same commit; Kent's one "before
+better" of that evening).
 
 Two things it is not. It is **not the blind sitting** — a verdict given
 knowing which side is the flag is evidence for a *ruling*, and never enters

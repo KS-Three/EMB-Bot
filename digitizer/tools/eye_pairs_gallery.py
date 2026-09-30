@@ -48,10 +48,19 @@ REF_ARMS: dict[str, str] = {
     "ref_0827": "08-27 engine",
     "ref_0930am": "09-30 morning engine",
 }
-# A ref arm runs the old engine in a worktree with no rembg venv, so a
-# photo-class fixture's old arm skipped photo prep for an ENVIRONMENT
-# reason; its pairs are shown, and marked.
+# A ref arm runs the old engine in a worktree, and unless the yardstick
+# linked the primary checkout's rembg venv into it (`photo_prep_env` on the
+# arm's row, 2026-09-30) a photo-class fixture's old arm skipped photo prep
+# for an ENVIRONMENT reason; its pairs are shown, and marked.
 PHOTO_CLASSES = ("photo_subject", "photo_scene")   # digitizer_core.config.PHOTO_CLASSES
+
+
+def confounded(is_ref: bool, base_class, arm_row: dict | None) -> bool:
+    """A ref pair on a photo-class fixture whose old engine had no photo
+    prep compares lanes, not engines. Kent's one 'before better' of the
+    2026-09-30 evening sitting was exactly such a pair (tires)."""
+    return bool(is_ref and base_class in PHOTO_CLASSES
+                and not (arm_row or {}).get("photo_prep_env", False))
 HERE = Path(__file__).resolve().parent
 TEMPLATE = HERE / "eye_pairs_gallery.html"
 DATA_TOKEN = "__GALLERY_DATA__"
@@ -296,7 +305,7 @@ def pair_records(public: list[dict], sealed: dict[str, dict], picks: dict[str, d
             "shipped_side": shipped, "arm_side": arm_side, "arm": arm,
             "arm_change": change, "arm_intent": intent,
             "is_ref": is_ref, "ref_label": REF_ARMS.get(arm),
-            "confounded": is_ref and base_class in PHOTO_CLASSES,
+            "confounded": confounded(is_ref, base_class, feats.get(fx, {}).get(arm)),
             "pick": pk["choice"], "picked_arm": picked_arm(s, pk), "ms": pk.get("ms"),
             "counts": {"L": _counts(feats, fx, s["left_arm"]),
                        "R": _counts(feats, fx, s["right_arm"])},
@@ -606,7 +615,7 @@ def labelled_records(src: Path, feats: dict, sizes: dict[str, tuple[float, str]]
                 "shipped_side": shipped, "arm_side": arm_side, "arm": arm,
                 "arm_change": change, "arm_intent": intent,
                 "is_ref": is_ref, "ref_label": REF_ARMS.get(arm),
-                "confounded": is_ref and base_class in PHOTO_CLASSES,
+                "confounded": confounded(is_ref, base_class, row),
                 "pick": None, "picked_arm": None, "ms": None,
                 "chips": chip_directions(feats, fx, arm, shipped, arm_side),
                 "consistent": None,

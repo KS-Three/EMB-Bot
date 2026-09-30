@@ -37,7 +37,7 @@ from . import features as ft
 from .features import base_cfg, digitize_once, features_design_only, features_full
 from .pairs import (ARMS, BASE, ArmRun, build_pairs, design_hash, load_picks,
                     sealed_hash, unpicked)
-from .refarm import add_worktree, remove_worktree, run_ref_design
+from .refarm import add_worktree, link_photo_prep, remove_worktree, run_ref_design
 from .server import PORT, make_server
 
 DIGITIZER = Path(__file__).resolve().parents[2]
@@ -82,11 +82,17 @@ def _default_ref_runner(ref: str):
     dest = Path(tempfile.gettempdir()).resolve() / f"eye-pairs-ref-{ref}"
     remove_worktree(REPO, dest)                       # a crashed earlier run
     shutil.rmtree(dest, ignore_errors=True)
-    engine = add_worktree(REPO, ref, dest) / "digitizer"
+    worktree = add_worktree(REPO, ref, dest)
+    engine = worktree / "digitizer"
+    # The photo-prep venv is gitignored and lives in the primary checkout
+    # only; without this a photo-class fixture's ref design skips prep and
+    # the pair compares lanes, not engines (`refarm.link_photo_prep`).
+    linked = link_photo_prep(REPO, worktree)
 
     def runner(image, width_mm, garment, max_colors):
         return run_ref_design(sys.executable, engine, image, width_mm, garment, max_colors)
 
+    runner.photo_prep_env = linked
     return runner, lambda: remove_worktree(REPO, dest)
 
 
@@ -156,6 +162,11 @@ def render(out=OUT, cases=None, arms=None, fixtures=None, only_arms=None,
                         design = runners[commit](path, width_mm, garment, STUDIO_MAX_COLORS)
                         row = features_design_only(path, design)
                         row["design_only"] = True
+                        # Whether the ref engine had the photo-prep venv: the
+                        # page's confound badge on a photo-class fixture reads
+                        # this, so a ref pair rendered with the venv linked is
+                        # not marked as if its old side had skipped prep.
+                        row["photo_prep_env"] = bool(getattr(runners[commit], "photo_prep_env", False))
                     else:
                         cfg = base_cfg(width_mm, garment, **kw)
                         gen, result, plan, design = digitize_once(path, cfg)
