@@ -16223,3 +16223,70 @@ against a zero and means 3% against a seventeen, so it became proportional.
 `tests/test_preflight.py::test_the_letter_apex_is_reported_now_that_the_erosion_is_gone`.
 
 *(measured 2026-09-30 — `tools/uncovered_floor.py --corpus`; `docs/renders/uncovered-floor-2026-09-30/`; DOCTRINE 2026-09-30, two entries)*
+
+---
+
+## 2026-09-30 — what the sharper uncovered check found in its first full suite
+
+Five tests went red on the full digitizer suite after `ARTWORK_UNCOVERED` was
+re-derived (entry above). **None was a regression in the code they cover**, and
+two were not pins at all — they were findings.
+
+**1. `satin_lettering_split` leaves holes the fill lane did not.** MARINE at
+127.4 mm, the flag's own fixture:
+
+| arm | stitches | patches | holes | uncovered |
+|---|---|---|---|---|
+| split OFF (fill) | 9,600 | 5 | **0** | 0.0 mm² |
+| split ON (satin) | 7,168 | 43 | **11** | **22.9 mm²**, worst 4.31 @ 0.75 mm half |
+
+Rendered before it was written up: the holes are at the crowns of curved
+letters and between letter parts, where the split columns stop short of the
+artwork. `test_on_the_word_sews_fewer_stitches_and_nothing_goes_bare` passed
+for one reason — both arms read 0.0 under the old 5.0 mm² floor, so the
+comparison could not fail. Split into a passing stitch-count test and a
+**strict xfail** carrying the numbers; MASTER_SCOPE defect 50, and the call is
+Kent's.
+
+**2. The junction cover is inert on today's defaults — as `_cfg()` already
+said.** `tests/test_junction_patch_flag.py`'s config has held
+`satin_junction_stack=False` since 2026-09-19 with a comment saying part C
+composes the same cover. Quantified now, BECKER 80 mm on a bare config:
+
+| | stitches | uncovered | cover runs |
+|---|---|---|---|
+| stack ON, patch off | 6,101 | 29.3 | 3 |
+| stack ON, patch `"satin"` | 6,101 | 29.3 | 3 — identical |
+| stack OFF, patch off | 5,695 | 47.2 | 0 |
+| stack OFF, patch `"satin"` | 5,874 | **22.2** | 1 |
+
+**An observation for its own look:** the stack leaves MORE uncovered on this
+fixture than the cover alone — 29.3 against 22.2 — while costing 227 more
+stitches. It buys other things (self-crossings 311 → 0), so that is a trade to
+price, not a verdict.
+
+**3. Both patch tests asserted `uncovered_total_mm2 == 0.0`.** That was a
+property of the blind check, not of the patch. On their own `_cfg()` arms the
+patches do exactly their job — the K's crotch `Sead76620` goes **30.1 → 13.1**
+(tatami) and **30.1 → 16.8** (satin cover), totals 44.1 → 23.8 / 27.5 — while
+clearing no shape outright, because the check now resolves the residue inside
+each one. Re-pinned on the TARGET SHAPE and the total.
+
+**4. `test_marine_80_keeps_its_cover_without_the_junction_cover` came out
+stronger.** Its prediction was "A + B alone leave no bare artwork — the cover
+is the backstop, not the construction." Neutralising the cover now produces a
+plan identical stitch for stitch (2,354 both ways, 3.9 mm² both ways), which
+says "backstop, not construction" more sharply than a coverage bound. The
+0.5 mm² half was the blind check; MARINE 80 reads 3.9 mm² in two holes, and
+they are there whether the cover runs or not.
+
+**5. The thread-match floor was decoupled** and keeps the 5.0 its own
+2.0/5.0/10.0 sweep chose. `test_the_floor_is_the_uncovered_checks_number`
+asserted the coupling and is now
+`test_the_thread_match_floor_keeps_the_number_its_own_sweep_chose`.
+
+Suite on the merged tree before the repairs: **8 failed, 2,905 passed, 15
+skipped, 5 xfailed, 33m52s** — three of the eight the documented platform
+goldens. After: the four affected files read **42 passed, 1 xfailed**.
+
+*(measured 2026-09-30 — `tests/test_lettering_split.py`, `test_junction_patch_flag.py`, `test_junction_stack.py`, `test_thread_match_area_in_message.py`)*

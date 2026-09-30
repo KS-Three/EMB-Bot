@@ -80,6 +80,23 @@ def test_on_clears_the_graders_finding_rather_than_merely_moving_a_number():
 
     Measured 2026-09-06 at 80 mm: `ARTWORK_UNCOVERED` 23.8 -> 0.0 mm2,
     B 76 -> B 88, for +383 stitches (~7%). At 90 mm, 44.5 -> 0.0.
+
+    RE-EXPRESSED 2026-09-30. "0.0 and no finding at all" was never a claim
+    about this patch — it was a claim about a check that could not resolve a
+    hole. Measured on the 0.25 mm grid with no erosion, on this file's own
+    `_cfg()` arms:
+
+        off      44.1 mm2, 11 holes, worst 17.0    5,094 stitches
+        tatami   23.8 mm2,  9 holes, worst  4.9    5,341 stitches
+
+    The patch does exactly its job — the K's crotch, `Sead76620`, goes
+    **30.1 -> 13.1 mm2** and `Sf795e8d1` 4.9 -> 1.6 — and the design's other
+    holes were always there. NO shape leaves the list, because the check now
+    resolves the residue inside each one, and the score does not move (76
+    both ways) because the finding still fires for the rest.
+
+    So the claim is pinned where it belongs: on the SHAPE the patch targets,
+    on the design total, and on the thread it costs. Not on a zero.
     """
     r_off, p_off = digitize(BECKER, _cfg())
     rep_off = run_preflight(r_off, p_off, _cfg(), image=BECKER)
@@ -87,13 +104,21 @@ def test_on_clears_the_graders_finding_rather_than_merely_moving_a_number():
     r_on, p_on = digitize(BECKER, on)
     rep_on = run_preflight(r_on, p_on, on, image=BECKER)
 
-    codes_off = {f["code"] for f in rep_off["findings"]}
-    codes_on = {f["code"] for f in rep_on["findings"]}
-    assert "ARTWORK_UNCOVERED" in codes_off, \
+    def named(rep):
+        f = [x for x in rep["findings"] if x["code"] == "ARTWORK_UNCOVERED"]
+        return ({s["shape_id"]: s["missing_mm2"] for s in f[0]["extra"]["shapes"]}
+                if f else {})
+
+    off_shapes, on_shapes = named(rep_off), named(rep_on)
+    assert off_shapes, \
         "the fixture stopped exhibiting the defect these tests are about"
-    assert "ARTWORK_UNCOVERED" not in codes_on
-    assert rep_on["metrics"]["uncovered_total_mm2"] == 0.0
-    assert rep_on["score"] > rep_off["score"]
+    assert not (set(on_shapes) - set(off_shapes)), \
+        f"the patch OPENED a hole: {sorted(set(on_shapes) - set(off_shapes))}"
+    target = max(off_shapes, key=off_shapes.get)          # the K's crotch
+    assert on_shapes.get(target, 0.0) <= off_shapes[target] * 0.6, \
+        (target, off_shapes[target], on_shapes.get(target))
+    assert (rep_on["metrics"]["uncovered_total_mm2"]
+            <= rep_off["metrics"]["uncovered_total_mm2"] * 0.7)
     # It must cost SOMETHING — a patch that adds no thread covered nothing.
     assert p_on.stats.stitch_count > p_off.stats.stitch_count
 
@@ -197,18 +222,48 @@ def _first_run_of(plan, shape_id: str):
 def test_the_satin_cover_clears_the_graders_finding_with_no_tatami():
     """Same proof as the tatami patch — through `ARTWORK_UNCOVERED` on the
     emitted stitches — plus the property that makes it a different answer:
-    the shape it patches carries no fill run at all afterwards."""
+    the shape it patches carries no fill run at all afterwards.
+
+    RE-EXPRESSED 2026-09-30 off "zero", for the same reason as the tatami
+    test above. `_cfg()` already holds `satin_junction_stack=False` and says
+    why — part C composes this very cover by default, so on the shipped
+    engine this flag is a no-op. Re-measured that day, on a bare config, it
+    is a no-op down to the stitch: stack ON reads 6,101 stitches and 29.3 mm2
+    whether the flag is set or not, while stack OFF reads 5,695 / 47.2
+    without the cover and 5,874 / 22.2 with it. The note was right.
+
+    On this file's own arms, the cover shrinks the K's crotch and the total:
+
+        off     44.1 mm2, 11 holes, worst 17.0    5,094 stitches
+        satin   27.5 mm2, 11 holes, worst  4.9    5,136 stitches
+                `Sead76620` 30.1 -> 16.8, `Sf795e8d1` 4.9 -> 1.6
+
+    It clears no shape outright, because the check now resolves the residue
+    inside each one. Pinned on the target shape and the total.
+
+    (One observation for its own look: the stack leaves MORE uncovered on
+    this fixture than the cover alone — 29.3 against 22.2 on a bare config —
+    while costing 227 more stitches. It buys other things, self-crossings
+    311 -> 0 among them, so that is a trade to price, not a verdict.)
+    """
     off = _cfg()
     r_off, p_off = digitize(BECKER, off)
     rep_off = run_preflight(r_off, p_off, off, image=BECKER)
-    assert "ARTWORK_UNCOVERED" in {f["code"] for f in rep_off["findings"]}, \
-        "the fixture stopped exhibiting the defect these tests are about"
+    f_off = [x for x in rep_off["findings"] if x["code"] == "ARTWORK_UNCOVERED"]
+    assert f_off, "the fixture stopped exhibiting the defect these tests are about"
+    shapes_off = {s["shape_id"]: s["missing_mm2"] for s in f_off[0]["extra"]["shapes"]}
     on = _cfg(satin_patch_junctions="satin")
     r_on, p_on = digitize(BECKER, on)
     rep_on = run_preflight(r_on, p_on, on, image=BECKER)
-    assert "ARTWORK_UNCOVERED" not in {f["code"] for f in rep_on["findings"]}
-    assert rep_on["metrics"]["uncovered_total_mm2"] == 0.0
-    assert rep_on["score"] > rep_off["score"]
+    f_on = [x for x in rep_on["findings"] if x["code"] == "ARTWORK_UNCOVERED"]
+    shapes_on = {s["shape_id"]: s["missing_mm2"] for s in f_on[0]["extra"]["shapes"]} if f_on else {}
+    target = max(shapes_off, key=shapes_off.get)
+    assert shapes_on.get(target, 0.0) <= shapes_off[target] * 0.7, \
+        (target, shapes_off[target], shapes_on.get(target))
+    assert (rep_on["metrics"]["uncovered_total_mm2"]
+            <= rep_off["metrics"]["uncovered_total_mm2"] * 0.75), (
+        rep_off["metrics"]["uncovered_total_mm2"],
+        rep_on["metrics"]["uncovered_total_mm2"])
     assert p_on.stats.stitch_count > p_off.stats.stitch_count
     kinds: dict[str, set] = {}
     for _b, run in p_on.iter_runs():

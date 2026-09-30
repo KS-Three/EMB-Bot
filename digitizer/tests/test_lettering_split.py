@@ -129,8 +129,38 @@ def test_on_the_shapes_that_are_not_lettering_keep_their_tiers(off, on):
     assert {s: t_off.get(s) for s in others} == {s: t_on.get(s) for s in others}
 
 
-def test_on_the_word_sews_fewer_stitches_and_nothing_goes_bare(off, on):
-    assert on[2].stats.stitch_count < off[2].stats.stitch_count                # 9,642 -> 7,753 measured
+def test_on_the_word_sews_fewer_stitches(off, on):
+    """The half of the old `..._and_nothing_goes_bare` that is still true.
+    9,642 -> 7,753 when measured; 9,600 -> 7,168 on 2026-09-30."""
+    assert on[2].stats.stitch_count < off[2].stats.stitch_count
+
+
+@pytest.mark.xfail(strict=True, reason=(
+    "MEASURED REGRESSION 2026-09-30, not a flaky pin: the split leaves 22.9 "
+    "mm2 of bare artwork in 11 holes where the fill lane leaves none. Kent's "
+    "call whether to keep, gate or revert the flip."))
+def test_on_the_word_goes_bare_where_the_fill_lane_did_not(off, on):
+    """`satin_lettering_split` ON leaves holes the fill lane did not.
+
+    This assertion rode inside `..._and_nothing_goes_bare` and passed for one
+    reason only: `ARTWORK_UNCOVERED` had a 5.0 mm2 floor sitting above the
+    largest patch it could resolve anywhere, so BOTH arms read 0.0 and the
+    comparison could not fail. Measured on the 0.25 mm grid with no erosion
+    (2026-09-30), MARINE at 127.4 mm:
+
+        split OFF   9,600 stitches    5 patches,  0 holes,   0.0 mm2
+        split ON    7,168 stitches   43 patches, 11 holes,  22.9 mm2
+                                     worst 4.31 mm2 @0.75 mm half, fill 0.44
+
+    Rendered before this was written: the holes are at the crowns of curved
+    letters and between letter parts, where the split columns stop short of
+    the artwork — cloth, not a coverage-model artefact.
+
+    **Left as a strict xfail rather than loosened**, because the flag is a
+    shipped default (Kent's flip, 2026-09-19) and -25% stitches for 22.9 mm2
+    of holes is a trade he priced without this number. It goes green the day
+    the construction closes them, and that is the signal to delete the xfail.
+    """
     pf_off = run_preflight(off[1], off[2], off[0], image=str(FIXTURE))
     pf_on = run_preflight(on[1], on[2], on[0], image=str(FIXTURE))
     assert pf_on["metrics"].get("uncovered_total_mm2", 0.0) <= pf_off["metrics"].get("uncovered_total_mm2", 0.0)
