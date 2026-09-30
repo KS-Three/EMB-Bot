@@ -143,13 +143,35 @@ describe("editedElementPatch — the re-fit rule, through the real engine", () =
   test("the same from an auto-fit element (sizeMm null): the patch seeds sizeMm and holds the scale", () => {
     const before = el([shapeA, shapeB], { sizeMm: null });
     const o0 = outlinesOf(before);
-    // Outward in Y, not X: the auto-fit already fills the hoop's width (330 px * 0.3079 = 101.6 mm = 4 in),
-    // so growing X would hit the engine's hoop clamp and break the invariant (spec §4 — knowingly).
+    // Outward in Y, not X: the auto-fit already fills left_chest's PLACEMENT box width
+    // (330 px * 0.3079 = 101.6 mm = 4 in), so growing X would hit the engine's
+    // placement-box clamp and break the invariant (spec §4 and its erratum — knowingly).
     const patch = editedElementPatch(before, o0.fit, "s2", applyAnchorDrag(shapeB, 1, { x: 430, y: 60 }));
     expect(typeof patch.sizeMm).toBe("number");
     const o1 = outlinesOf({ ...before, ...patch });
     const [rx, ry] = pinResidual(before, o0, patch, o1);
     movedBy(o1.byId.s1, o0.byId.s1, rx, ry);
+  });
+  test("auto-fit (sizeMm null), an INWARD x drag that narrows the bbox: only the held scale keeps everything put", () => {
+    // The Y-only case above never changes the bbox WIDTH, and width is what auto-fit
+    // scales by — so it cannot tell the held scale from auto-fit. Here the rightmost
+    // extent is ONE anchor (a triangle's tip), dragged inward 30 px: the width drops
+    // 330 -> 300 px and stays inside the box, so auto-fit WOULD re-scale.
+    const tri = { id: "s3", points: [{ x: 350, y: 150 }, { x: 430, y: 190 }, { x: 350, y: 230 }], curves: {}, stitchType: "fill", colorRgb: [0, 0, 200], angleDeg: null };
+    const before = el([shapeA, tri], { sizeMm: null });
+    const o0 = outlinesOf(before);
+    const moved = applyAnchorDrag(tri, 1, { x: 400, y: 190 });
+    const patch = editedElementPatch(before, o0.fit, "s3", moved);
+    expect(patch.error).toBeUndefined();
+    expect(patch.sizeMm).toBeCloseTo(300 * o0.fit.mmPerPx, 9);
+    // Without the patch's sizeMm the engine re-fits the narrower bbox to the box: the
+    // scale changes, which is exactly what the patch is there to prevent.
+    const autoFit = outlinesOf({ ...before, shapes: patch.shapes });
+    expect(Math.abs(autoFit.fit.mmPerPx / o0.fit.mmPerPx - 1)).toBeGreaterThan(0.05);
+    const o1 = outlinesOf({ ...before, ...patch });
+    const [rx, ry] = pinResidual(before, o0, patch, o1);
+    movedBy(o1.byId.s1, o0.byId.s1, rx, ry);
+    movedBy([o1.byId.s3[0], o1.byId.s3[2]], [o0.byId.s3[0], o0.byId.s3[2]], rx, ry);
   });
   test("an edit that leaves the shape invalid is refused with the issue text", () => {
     const before = el([shapeA]);

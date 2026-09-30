@@ -142,6 +142,16 @@ box edge. It bites first on the FIRST element (auto-fit); `addElement` seeds
 growth or at a box edge. What to do (clamp the drag / refuse with a message /
 allow with a notice) is Kent's call.
 
+**Erratum 2 (2026-09-29, fix wave).** Step 4's base changed: the offsets now
+shift from the element's REQUESTED offsets —
+`offsetXMm' = element.offsetXMm + (cx₁ − cx₀)·s`,
+`offsetYMm' = element.offsetYMm + (cy₀ − cy₁)·s` — not from `fit.offsetXMm/YMm`,
+which are the applied offsets already rounded to the 0.1 mm grid. Basing on
+those fed each edit's rounding into the next (an unedited point's worst drift
+over 60 random edits 0.097 mm, against 0.065 mm from the request — final
+review, `drift.mjs`). The single-edit invariant tests are unchanged: their
+offsets start on the grid, where the two bases agree.
+
 ## 5. Field: gestures and drawing
 
 Selected hand-drawn shape (`selectedShapeElId` + `selectedShapeId`, from #562):

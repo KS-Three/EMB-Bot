@@ -12,7 +12,7 @@
 // shape records keep {x, y} canvas px.
 import {
   flattenShape, shapeIssues, curveHandlePoint, curveControlOrNull,
-  insertVertexAtSegment, nearestSegmentIndex, MAX_SHAPE_POINTS,
+  insertVertexAtSegment, nearestSegmentIndex,
 } from "./manualShapes.js";
 
 // shapeOverlay.js's grab radii, so a hand-drawn node feels like a digitized one.
@@ -126,11 +126,21 @@ export function editedElementPatch(element, fit, shapeId, edited) {
   const b1 = flatBBox(shapes);
   if (!b0 || !b1) return { error: "Nothing to fit." };
   const s = fit.mmPerPx;
+  const cx0 = (b0.minX + b0.maxX) / 2, cy0 = (b0.minY + b0.maxY) / 2;
+  const cx1 = (b1.minX + b1.maxX) / 2, cy1 = (b1.minY + b1.maxY) / 2;
+  // Offsets shift from the REQUEST (the element's own offsets), not from
+  // `fit.offsetXMm/YMm`: those are the offsets AS APPLIED, already rounded to
+  // the 0.1 mm grid, and basing on them fed each edit's rounding into the
+  // next — the residual compounded across edits (an unedited point's worst
+  // drift over 60 random edits measured 0.097 mm, against 0.065 with the
+  // request as the base — final review, drift.mjs). From the request, an
+  // unedited point is off by at most ONE rounding (0.05 mm/axis) however
+  // many edits came before.
   const patch = {
     shapes,
     sizeMm: (b1.maxX - b1.minX) * s,
-    offsetXMm: fit.offsetXMm + (((b1.minX + b1.maxX) / 2) - ((b0.minX + b0.maxX) / 2)) * s,
-    offsetYMm: fit.offsetYMm + (((b0.minY + b0.maxY) / 2) - ((b1.minY + b1.maxY) / 2)) * s,
+    offsetXMm: (element.offsetXMm || 0) + (cx1 - cx0) * s,
+    offsetYMm: (element.offsetYMm || 0) + (cy0 - cy1) * s,
   };
   return patch;
 }

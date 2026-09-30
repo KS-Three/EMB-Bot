@@ -2406,7 +2406,7 @@
           canvas.setPointerCapture(e.pointerId);
           pressClient = { x: e.clientX, y: e.clientY, px: p };
           pressOutline = true;
-          drawOverlay();
+          repaintNodeChrome(); // a previously selected shape's ring must go
           return;
         }
         const ring = edit.mmById.get(hit.shapeId);
@@ -2446,7 +2446,9 @@
         selectedShapeId = null;
         selectedShapeElId = null;
         focusedAnchor = null;
-        drawOverlay();
+        // Not a bare drawOverlay: it paints over the last render without
+        // clearing, so the dropped amber ring and node dots would stay.
+        repaintNodeChrome();
       }
     }
 
@@ -2526,7 +2528,7 @@
         ? moveEdge(shapeEdit.ring, shapeEdit.index, d.dx, d.dy)
         : moveNode(shapeEdit.ring, shapeEdit.index, d.dx, d.dy);
       liveRing = { shapeId: shapeEdit.shapeId, points: next };
-      drawOverlay();
+      repaintNodeChrome(); // a bare drawOverlay smears every frame of the drag
       return;
     }
     // A hand-drawn node drag: ONE anchor (or one segment's handle) follows
@@ -2747,7 +2749,9 @@
       pressClient = null;
       pressOutline = false;
       if (canvas) canvas.style.cursor = "default";
-      drawOverlay();
+      // The last live ring is painted on the canvas; a REJECTED edit starts
+      // no regenerate to clear it, so repaint under the chrome here too.
+      repaintNodeChrome();
       return;
     }
     if (canvas && (dragMode || pressOutline) && canvas.hasPointerCapture && canvas.hasPointerCapture(e.pointerId)) {
@@ -2784,7 +2788,8 @@
           focusedAnchor = null;
           if (shapePop) closeShapePop();
         }
-        drawOverlay();
+        // Repaint under the chrome: a deselect drops the amber ring and dots.
+        repaintNodeChrome();
       }
     }
     pressClient = null;

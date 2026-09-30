@@ -1021,7 +1021,12 @@ the field can map a pointer to the authored px space and back. *(confirmed
 **The re-fit rule (`app/src/lib/fieldNodeEdit.js`).** A node edit patches
 `shapes + sizeMm + offsetXMm + offsetYMm` in one `elupdate` (one undo step) so
 nothing unedited moves: `mmPerPx` is held, `sizeMm` follows the new flattened
-bbox width, and the offsets shift by the centre delta.
+bbox width, and the offsets shift by the centre delta — from the element's
+REQUESTED offsets, not `fit`'s rounded ones, which compounded the rounding
+across edits (worst drift of an unedited point over 60 random edits 0.097 →
+0.065 mm; fixed 2026-09-29, fix wave — final review's `drift.mjs`). An
+inward-x drag on an auto-fit element is pinned too: it narrows the bbox, so
+only the held scale keeps `mmPerPx`.
 - *Measured residual:* unedited points still move by the engine's own offset
   rounding (`offXu = round(offset·10)`, the 0.1 mm DST grid) — up to 0.05
   mm/axis, and `fieldNodeEdit.spec.js` pins it EXACTLY rather than under a
@@ -1086,11 +1091,20 @@ Drag `ShapePopover` by its header; the position is clamped to the hoop and
 kept per element for the session. *(confirmed 2026-09-29 — `ShapePopover.spec.js`,
 e2e (g), commit e3529c57)*
 
-**Smear (found, half fixed).** `drawOverlay` never clears the canvas, so node
+**Smear (found, fixed).** `drawOverlay` never clears the canvas, so node
 drags smeared. Node-edit redraws now go through `repaintNodeChrome()` (an rAF
-view repaint). The DIGITIZED node drag still calls bare `drawOverlay()` and
-should smear the same way — follow-up. *(measured 2026-09-29 — browser run,
-commit 2e101fe0; the digitized half is read from code, not driven)*
+view repaint). *(measured 2026-09-29 — browser run, commit 2e101fe0)* The
+fix wave routed the remaining bare calls that REMOVE or MOVE chrome through it
+too: the two deselect sites (a press off every outline; a click-release on
+empty body), a press that switches the selected shape, and the DIGITIZED node
+drag's move and release (a rejected edit starts no regenerate, so its last
+live ring used to stay). Before it, a deselect left the amber ring and node
+dots on the canvas until the next repaint. *(fixed 2026-09-29 — fix wave;
+browser run: after either deselect the amber/green chrome pixels read 335/42
+→ 0/0 two frames later, and an 8-step digitized node drag on the
+two-squares fixture shows one live ring, no smear. No e2e drives the
+digitized FIELD drag — `e2e/digitize-boundary-edit.spec.js` drives the
+panel's boundary editor)*
 
 **Trap: stale `public/engine`.** A dev server started before the engine change
 serves an engine with no `fit`, and node editing is silently absent. Restart
