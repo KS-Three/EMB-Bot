@@ -390,11 +390,16 @@ test("(h) a node dragged far past the placement box stops at it: nothing else re
   await expect.poll(() => page.locator(STATS).innerText(), { timeout: 20_000 }).not.toBe(before.stats);
   const after = await settle(page);
   const g2 = await geom(page);
+  // On a failure the number alone says nothing about WHERE the box was, and
+  // this test has failed on CI with geometry no local run reproduces — so
+  // every assertion below carries both boxes, both captions and the canvas
+  // box in its message.
+  const where = `before=${JSON.stringify(before)} after=${JSON.stringify(after)} canvas=${JSON.stringify(g2.hb)} k=${g2.k}`;
   // The opposite (bottom-left) corner did not move: no rescale.
-  expect(Math.abs(after.bb.x0 - before.bb.x0)).toBeLessThanOrEqual(2);
-  expect(Math.abs(after.bb.y1 - before.bb.y1)).toBeLessThanOrEqual(2);
+  expect(Math.abs(after.bb.x0 - before.bb.x0), `left edge moved: ${where}`).toBeLessThanOrEqual(2);
+  expect(Math.abs(after.bb.y1 - before.bb.y1), `bottom edge moved: ${where}`).toBeLessThanOrEqual(2);
   // The dragged corner DID move (it stopped at the box, it did not refuse the drag)...
-  expect(Math.hypot(after.bb.x1 - before.bb.x1, after.bb.y0 - before.bb.y0) * g2.k).toBeGreaterThanOrEqual(40);
+  expect(Math.hypot(after.bb.x1 - before.bb.x1, after.bb.y0 - before.bb.y0) * g2.k, `dragged corner: ${where}`).toBeGreaterThanOrEqual(40);
   // ...and the design still fits the 203.2 mm box (the caption rounds to whole mm).
   const m = after.stats.match(/(\d+)×(\d+) mm/);
   expect(m).not.toBeNull();
