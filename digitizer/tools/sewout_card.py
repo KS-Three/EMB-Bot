@@ -85,9 +85,18 @@ _FONT_CANDIDATES = [
 ]
 import os as _os
 FONT = next((f for f in _FONT_CANDIDATES if _os.path.exists(f)), None)
-if FONT is None:
-    raise SystemExit(
-        "sewout_card: no usable font found; tried:\n  " + "\n  ".join(_FONT_CANDIDATES))
+
+
+def _require_font() -> str:
+    """Block 5 is the only consumer. Checked at CALL time since 2026-09-30,
+    not at import: `tests/test_sewout_reader.py` builds blocks 1-3 and 6
+    through these builders on machines that may carry no TrueType font, and
+    an import-time SystemExit would skip that whole file rather than the one
+    block that needs a font."""
+    if FONT is None:
+        raise SystemExit(
+            "sewout_card: no usable font found; tried:\n  " + "\n  ".join(_FONT_CANDIDATES))
+    return FONT
 
 
 # --- small helpers ----------------------------------------------------------
@@ -302,7 +311,7 @@ def _word_art(word: str, cap_mm: float) -> tuple[Path, float]:
 
     All-caps sans ink height IS the cap height, so the scale factor is exact.
     """
-    font = ImageFont.truetype(FONT, 280)
+    font = ImageFont.truetype(_require_font(), 280)
     img = Image.new("L", (1400, 500), 255)
     ImageDraw.Draw(img).text((60, 100), word, font=font, fill=0)
     arr = np.array(img)

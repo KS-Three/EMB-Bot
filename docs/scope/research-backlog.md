@@ -332,3 +332,27 @@ source counted twice. No verdict change and no fix implied — the DST axis bug'
 resolution path is unchanged and remains Kent's call.
 *(confirmed 2026-08-14 — `docs/turtlestitch-stitch-appearance-research-2026-08-14.md`;
 moved here from MASTER_SCOPE 2026-08-25 under the line budget)*
+
+## Closed-loop sew-out calibration — proposed 2026-09-30, probe built, waiting on a photo
+
+The one capability no digitizing tool ships: the customer sews the gate card
+on their own goods, photographs it, and the tool writes a machine + fabric
+profile from the photo instead of Kent hand-tuning a constant for everyone.
+Decision brief with the customer flow, the per-block → profile-field map,
+the phased plan and the four decisions it needs:
+`docs/sewout-calibration-brief-2026-09-30.md`.
+
+**What exists:** `digitizer/tools/sewout_reader.py` registers a photo onto
+the card's plan (clicked corners, automatic minAreaRect + ECC, or proposed
+corner fiducials), splits thread from cloth per feature, and reports each
+bar's and square's sewn extents, coverage and seam gaps as a DELTA from the
+engine's own render read by the same code. Calibrated on simulated phone
+photos with planted distortions: across-column satin pull-in recovered to
+**0.01 mm** at 12 and 8 px/mm, along-row extents to ~0.05 mm (a systematic
+under-read), seam gaps to ~0.15 mm; two different distortion sets each
+recovered to their own value (`tests/test_sewout_reader.py`, 10 tests).
+
+**What it waits on:** a photograph of a sewn card — none exists. Phase 0 of
+the brief is one hooping of the existing card on pique. No constant moves
+(gate 1); the reader measures, it does not set.
+*(built and measured 2026-09-30 — `docs/renders/sewout-reader-2026-09-30/`)*
