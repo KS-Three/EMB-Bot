@@ -7035,3 +7035,29 @@ extension kicks in, not the reach itself. That texture is the open item on
 this flag, and it is a render-and-look question, not an instrument one.
 His golden_tee note is a tiering question for another day: satin rails are
 an accent, so what gets rails should be what needs the pop.
+
+## A satin border that goes on and off is a phantom colour, and a rail push held at a notch costs bare everywhere (2026-09-30)
+
+Two findings on bridge, Kent's pick after the envelope sitting.
+
+**"On off on off" along a satin border is a sixth thread, not a broken
+column.** The JPEG's ringing around bridge's black ring quantises as a grey
+of its own on the gradient lane and sews as 57 slivers along every black
+edge (400 mm² of thread, a third of it on white). Before reading a jumpy
+border as a satin-model defect, count the colour blocks: a thread whose
+area lies mostly off its own ink is a halo. `dissolve_phantom_blends` folds
+it (bridge 15,432 → 11,613 stitches, 98 → 59 trims) and touches nothing off
+that lane; the record in `docs/scope-history.md` carries the corpus.
+
+**A notch guard on the rail push is a measured negative.** The smoosh on
+bridge's script reads as 40 mm² of red on yellow; 37 of it is the pull band
+around the outline, not the counters (3, held by the guard) and not
+sub-floor notches. Extending the counter rule to exterior notches — a probe
+that leaves the polygon and re-enters it within reach — recovered 2 mm² and
+cost bare satin on every fixture (ENTHUSIAST 6.98 → 7.63%, golden_tee 7.20 →
+8.35), because the push it holds is the compensation for the pull, and
+wherever it is held the compensated edge sews short. The pull band is what
+rail comp is for; whether it reads as smoosh on cloth is the same sew-out
+question as the reach. Do not build a same-shape notch guard again; the
+script's legibility at 80 mm is a lettering-construction question (it is
+not even classified as text), not the rail model's.

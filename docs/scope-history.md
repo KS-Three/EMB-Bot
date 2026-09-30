@@ -15791,3 +15791,48 @@ cap is the ceiling and the envelope fills it, the open question that file
 already carries). Records: `docs/eye-pairs-2026-09-30/` (README Outcome,
 `kent-notes.json` with the ruling), DOCTRINE 2026-09-30, the flag's comment
 in `config.py`.
+
+## 2026-09-30 — bridge's on/off border is the JPEG halo sewn as a sixth thread; its script's smoosh is the pull band, not a notch
+
+Kent's pick after the envelope sitting, in his words: *"The lettering on
+bridge is smooshed together and the satin border is jumpy, its on off on off
+etc."* Measured on the engine of that night (`docs/renders/bridge-phantom-2026-09-30/`).
+
+**The border.** The gradient lane quantises the JPEG's ringing around the
+black ring and spokes as a sixth thread, `(153,153,153)`: 57 shapes, 94 runs,
+400 mm² of thread — 133 on grey artwork, 139 on other ink, 145 on white — the
+light-grey satin fragments along every black edge. `dissolve_phantom_blends=True`
+(built 2026-09-04 for this fixture, OFF waiting on a look) folds the halo into
+its sides. The corpus, shipped → dissolve:
+
+| logo | class | stitches | trims | jumps | regions | thread on white mm² |
+|---|---|---|---|---|---|---|
+| bridge | gradient | 15,432 → 11,613 | 98 → 59 | 32 → 20 | 80 → 34 | 178 → 102 |
+| golden_tee | gradient | 8,072 → 8,022 | 46 → 47 | 4 → 3 | 39 | 340 → 340 |
+| gaulke | gradient | 4,189 → 4,273 | 32 → 34 | 24 | 53 → 57 | 458 → 457 |
+| screenshot | gradient | 7,885 → 7,908 | 71 → 76 | 47 → 44 | 158 | 639 |
+| fremont, drone | gradient | identical | | | | |
+| becker, enthusiast (flat), tires (photo_scene) | not on the lane | identical | | | | |
+
+Its own artefact on bridge: halo labels adjacent to the teal text fold into
+teal, so the ring carries teal specks (teal on other ink 17.5 → 39.6 mm²).
+Kent's 09-28 verdict on this flag was *after better* on bridge and *both bad*
+on the four others; the flip is his.
+
+**The script.** "Bridge" is one 246 mm² satin shape with five counters and no
+`text_candidate`, so no lettering rule touches it. Red thread on yellow:
+40.1 mm² shipped, 3.1 inside the counters (the counter guard holds), 36.9
+outside; with the pull in the polygon 17.9 (3.4 / 14.4). So rail comp's
+outward push is 22 of the 40 — the pull band around the outline, the thing
+the render shows and cloth pulls back — and the script's own sub-floor gaps
+are the rest. **A notch guard was built as a prototype and rejected:** the
+counter rule extended to a probe that leaves the polygon and re-enters it
+within reach moved 40.1 → 38.3 and cost bare satin everywhere (MARINE 6.28
+→ 6.60%, ENTHUSIAST 6.98 → 7.63, golden_tee 7.20 → 8.35, bridge 5.05 →
+5.36) because holding the push anywhere leaves the compensated edge short.
+The teal "BAR & RESTAURANT" (1.6 mm cap height) sews as five blobs, below
+the lettering floor.
+
+*(measured 2026-09-30 — the thread classes from `tools/dropped_elements`'
+colour fields at its own registration; `tools/rail_edge.bare_area`; a
+scratch corpus script over `digitize()`; renders in the folder above)*
