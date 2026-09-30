@@ -16449,3 +16449,20 @@ bridge's script pinned on the real art; `test_preflight` +
 
 *(built and measured 2026-09-30 — `digitizer_core/preflight.py`
 `_tight_gap_findings`; a scratch sweep over `digitize()` + `run_preflight`)*
+
+## 2026-09-30 — The Studio's size chip jumps to the width `SATIN_GAPS_TIGHT` names (Kent's pick)
+
+Kent's call on the chips: the tight-gaps finding gets a "Make it bigger"
+that jumps straight to the width it names — its headline shape's
+`clear_width_mm`, capped at the 400 mm ceiling — rather than the 25% step
+the other two lettering findings take. `DigitizePanel.svelte`'s
+`offeredFixes` now keeps one button per parameter and lets the larger
+target win, so the jump and a 25% step on the same run never show twice
+(either order); a payload with no named width falls back to the step; the
+at-limit rule stands (nothing at 400). The finding's own message rides the
+tooltip. Spec tests for each. Not measured on a customer yet: what the jump
+promises is what the finding measures (that shape clears), and the design
+may segment new small shapes at the larger size.
+
+*(built 2026-09-30 — `app/src/ui/DigitizePanel.svelte`, `DigitizePanel.spec.js`;
+`docs/scope/3-studio-app-wizard.md`)*
