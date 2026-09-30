@@ -15453,3 +15453,211 @@ so there the cheaper radius is free; gaulke is where the radii differ most
 *(measured 2026-09-20 — Kent's pick; `tools/refused_walks.py run` and
 `compare --reach`; built OFF and exported to the sheet the same day, the
 flip and the radius are Kent's, on cloth)*
+
+## 2026-09-29 — `satin_rail_comp` flipped ON (Kent's pick on the 09-28 sitting), priced by the suite
+
+The default moved one line; the suite priced it. First full run on the
+flipped engine: **39 failed**. The same 36 (less the flag's own file and one
+rembg timeout) against a worktree at the pre-change commit (`main` at
+72102e8a): **3 failed** — the three node IDs CI deselects — so the rest were
+the flip's or the machine's, and four were the machine's (the rembg-venv
+class, COOKBOOK "Running things" class 4). **29 tests in 14 files were the
+flip's**: three flat-lane golden keys re-captured with the pre-change proof
+(whitebg 4575 → 4580, alpha 4595 → 4602, ribbon 991 → 990 coords; ids,
+areas, warnings unmoved; enthusiast refused, the platform red), three of
+`test_pushcomp`'s four isotropic tuples re-pinned (towel recorded, not
+written), the polygon-growth harness and six flag-pricing tests pinned on
+the grown polygon with dated notes, two geometry guards taught the satin
+footprint (artwork plus the pull), two synthetic fixtures corrected
+(`test_borders_last`'s ribbon lay inside its fill and had survived OFF only
+as a 0.3 mm rind; `test_photo_sequencing`'s 1.4 mm ribbon sat 0.1 mm under
+the zigzag line, which the artwork's width field over-reads), and the
+lettering instruments re-read.
+
+**The price, OFF → ON on the same tree:**
+
+| Fixture | Instrument | OFF | ON |
+|---|---|---|---|
+| MARINE 80.2 mm | trims / stitches | 9 / 1,784 | 22 / 2,058 |
+| MARINE | trims by cause: letter-to-shape · underlay→satin · satin→underlay | 3 · 3 · 1 | 6 · 5 · 7 |
+| MARINE, both 09-19 trim levers ON | trims | 8 | 17 |
+| ENTHUSIAST 80 mm | `lost_frac` (bar 0.26) | 0.2748 | 0.2565 |
+| ENTHUSIAST 80 mm | bare artwork | 6.27% | 7.10% |
+| ENTHUSIAST 80 mm | uncovered ink, colour-free (bar 2%) | 0.90% | 1.76% |
+| ENTHUSIAST 80 mm | trims / stitches | 12 / 2,388 | 16 / 2,369 |
+| Becker 114 mm, `wide_columns=True`, twigs+stack off | `coverage_max` guarded / unguarded (warn 6.67) | 5.38 / 7.18 | 7.47 / 7.63 |
+
+The headline lettering guard goes under its bar for the first time since
+768de79e and its strict xfail is retired; the bare guard beside it fires,
+and is re-pinned with the trade attributed (6.80 → 7.7% bar over the new
+reading, the old pair kept). The rails stand less proud of the ink and cover
+less of it. Measured the same night, and the mechanism named at first was WRONG: it is not the symmetric-offset rail model's under-reach. Under rail comp ENTHUSIAST's share of rail points more than 0.1 mm inside the art FELL, 19.3% → 14.7%, and its cross density is unchanged (same-rail step p50 0.427 → 0.422 mm). The bare artwork rises at JUNCTIONS on Becker — 1.39% → 3.80% of its satin art on the satin-only instrument, but two thirds of that is one stretch of the C's bowl that the sewn-terms width check now routes to FILL, which `rail_edge.bare_area` counts as bare (with fill counted Becker reads 6.72% → 8.08%); the remainder is sparse crosses at the wordmark's junctions — and along the rails on ENTHUSIAST (mid-rail 2.06% → 4.12%, no fill routing there, cause not yet isolated); and the trims are the artwork skeleton's finer decomposition — MARINE's R goes 5 → 8 strokes and 8 → 14 odd nodes, one letter splits into two components — so the Euler walk jumps more (within-letter jumps 1 → 9 of the 22 trims; underlay-to-column hops 3 → 5; letter-to-letter 3 → 6). `rails_follow_edge`, the built cure for the under-reach, is measured to raise the overshoot headline (0.3289) and the wobble (0.089 → 0.102) and read no-difference on 8 of 9 logos in Kent's eye: not the lever. The trims are the surprise against the
+09-09 reading in `config.py` (ENTHUSIAST 26 → 22, drone 96 → 83, on an
+engine four lettering steps older): on the lettering route's own fixture
+they more than double, and the levers priced on the grown polygon do not
+buy them back. `tests/test_rail_comp.py` pins the MARINE numbers as
+ceilings. Kent took the price the same day, shown this table with the PR
+armed: *"Take the price, let it merge"* — an accepted price, not open
+defects.
+
+*(measured 2026-09-29 — `docs/kent-review-2026-09-28.md` "Outcome";
+`tests/test_lettering_coverage_regression.py`, `tests/test_rail_comp.py`)*
+
+## 2026-09-29 — the walk's target under rail comp, put back on the web
+
+`tools/refused_walks.py` on MARINE at 80 mm, rail comp OFF → ON: refused
+walks 4 → 18, and 11 of the 18 are `target_unsnapped` — the stroke's first
+run starts 0.9–2.2 mm from any node of the travel web, past the 0.8 mm
+target snap, because `_stroke_underlay` runs a free end out to the cap under
+rail comp while the web is built from the raw spine ends. Fixed the way
+`underlay_on_column` fixed the same seam on 2026-09-19: the run starts at
+the raw end, on the web, and its first stitch carries the needle out to the
+cap under the column. OFF byte-identical on all eleven corpus cases; ON, one
+underlay penetration per free-ended satin stroke; three flat goldens
+re-captured against `main` at 8a48c3b4 (`machine OK` each), `test_pushcomp`'s
+three reproducible tuples re-pinned, the MARINE ceiling 22 → 21.
+
+| case | OFF trims / st | ON before | ON after | Δ trims | bare OFF / ON |
+|---|---|---|---|---|---|
+| MARINE 80 | 9 / 1,784 | 22 / 2,058 | 21 / 2,061 | −1 | 10.99 / 7.38 |
+| becker 100 | 54 / 8,070 | 51 / 8,247 | 48 / 8,297 | −3 | 5.70 / 8.21 |
+| tires | 13 / 2,247 | 10 / 2,516 | 7 / 2,515 | −3 | 3.64 / 4.55 |
+| enthusiast | 12 / 2,388 | 16 / 2,369 | 15 / 2,390 | −1 | 6.27 / 7.10 |
+| fremont | 59 / 19,862 | 58 / 19,934 | 58 / 19,937 | 0 | 11.52 / 3.53 |
+| bridge | 96 / 14,419 | 104 / 15,907 | 99 / 15,905 | −5 | 7.66 / 5.19 |
+| golden_tee | 43 / 6,892 | 60 / 11,149 | 58 / 11,154 | −2 | 7.53 / 6.68 |
+| gaulke | 34 / 4,168 | 33 / 4,218 | 33 / 4,219 | 0 | 7.43 / 7.15 |
+| drone | 120 / 18,411 | 123 / 18,561 | 122 / 18,581 | −1 | 5.97 / 4.84 |
+| thermal | 120 / 18,411 | 123 / 18,561 | 122 / 18,581 | −1 | 5.97 / 4.84 |
+| screenshot | 74 / 7,862 | 71 / 7,847 | 71 / 7,849 | 0 | 9.55 / 9.47 |
+| **total** | **634** | **671** | **654** | **−17** | |
+
+(`REAL_ART` widths and garments, `max_colors=6`; bare is `rail_edge.bare_area`,
+satin crosses only, so a stretch routed to fill reads as bare — Becker's C.)
+
+What the fix did not buy: on MARINE eight of the eleven became
+`cursor_unsnapped` (the previous column's end 3.5–7 mm from any node, past
+`trim_at`), which is `satin_walk_cursor_reach_mm`'s question, parked for cloth.
+One more reading from the same table, recorded not acted on: `golden_tee`
+sews 6,892 → 11,149 stitches under the flip, its largest stitch cost on any
+fixture. (`thermal` is the byte-identical copy of `drone` that
+`tools/thin_strokes.py` already names, hence its identical row.)
+
+*(measured 2026-09-29 — `tools/refused_walks.py`, the corpus table above;
+`tests/test_rail_comp.py::test_under_rail_comp_a_strokes_first_run_starts_on_the_travel_web`)*
+
+## 2026-09-29 — the C's bowl is the cover's fill by design; the junction tuck in sewn terms
+
+Kent's pick after the seam fix: why BECKER's C at 80 mm sews a stretch as
+fill under `satin_rail_comp`. Rendered at 60 px/mm on both skeletons
+(`docs/renders/rail-comp-junctions-2026-09-29/`): the bowl is a blob about
+8 mm across inside 1.8–2.4 mm strokes, wider than the 5 mm satin ceiling. On
+the grown polygon a connector stroke happens to run through it and its 5 mm
+crosses cover it; on the artwork the axis hugs the outer edge, the
+symmetric-offset rails reach only the nearer edge, and the junction cover
+(part C) finds a 47 mm² hole no column can span and sews it as tatami — the
+designed answer. The satin-only bare instrument had read that fill as bare:
+the wordmark 44.3 → 90.1 mm² satin-only, 44.3 → 58.5 mm² with the cover's fill
+counted. The other construction for such a blob is Kent's parked
+`satin_patch_junctions="satin"`; recorded, not decided.
+
+The tuck itself had a seam and it is fixed here: in `satin_stroke`'s junction
+trim the clearance (`field.half_at + rail_comp_mm`) was in sewn terms but the
+entry floor (`max(entry, half_mm)`) and the stack's reach-in (`half_mm`) read
+the artwork's half-width, so under rail comp every stacked arm stopped a pull
+(up to two) further from its node than the grown polygon sews it. All three
+in `half_sewn = half_mm + rail_comp_mm` now; `rail_comp_mm == 0` byte-identical
+(the three flat goldens and `test_pushcomp`'s three reproducible pins
+unmoved). Becker at 80 mm: 42 → 39 trims, bare 10.34 → 10.22% satin-only; the
+bowl's hole 47 → 46 mm².
+
+| case | OFF trims / st | ON after seam | ON after tuck | Δ trims | bare ON seam / tuck |
+|---|---|---|---|---|---|
+| MARINE 80 | 9 / 1,784 | 21 / 2,061 | 21 / 2,093 | 0 | 7.38 / 7.03 |
+| becker 100 | 54 / 8,070 | 48 / 8,297 | 48 / 8,297 | 0 | 8.21 / 8.14 |
+| tires | 13 / 2,247 | 7 / 2,515 | 7 / 2,515 | 0 | 4.55 / 4.55 |
+| enthusiast | 12 / 2,388 | 15 / 2,390 | 15 / 2,392 | 0 | 7.10 / 6.98 |
+| fremont | 59 / 19,862 | 58 / 19,937 | 58 / 19,937 | 0 | 3.53 / 3.53 |
+| bridge | 96 / 14,419 | 99 / 15,905 | 96 / 16,037 | −3 | 5.19 / 4.96 |
+| golden_tee | 43 / 6,892 | 58 / 11,154 | 57 / 11,377 | −1 | 6.68 / 6.54 |
+| gaulke | 34 / 4,168 | 33 / 4,219 | 32 / 4,224 | −1 | 7.15 / 6.88 |
+| drone | 120 / 18,411 | 122 / 18,581 | 123 / 18,595 | +1 | 4.84 / 4.80 |
+| thermal | 120 / 18,411 | 122 / 18,581 | 123 / 18,595 | +1 | 4.84 / 4.80 |
+| screenshot | 74 / 7,862 | 71 / 7,849 | 71 / 7,863 | 0 | 9.47 / 9.36 |
+| **total** | **634** | **654** | **651** | **−3** | |
+
+(`REAL_ART` widths and garments, `max_colors=6`, `main` at bc999033; bare is
+`rail_edge.bare_area`, satin crosses only.) The tuck fix is a coverage gain
+at a stitch cost — an arm that reaches its node sews more thread: MARINE
++32 stitches for bare 7.38 → 7.03%, golden_tee +223 for 6.68 → 6.54%, bridge
++132 for 5.19 → 4.96% and three trims fewer; the MARINE stitch ceiling in
+`tests/test_rail_comp.py` moved 1.16 → 1.18 of OFF for it. Becker's bare
+moves without its stitch count moving (8,297 both ways): the arms' ends
+shift, the cross count does not. Nothing on the table moves the bowl.
+
+*(measured 2026-09-29 — the corpus table above; `tools/rail_edge.bare_area`;
+`docs/renders/rail-comp-junctions-2026-09-29/README.md`;
+`tests/test_rail_comp.py::test_the_flip_costs_trims_on_the_lettering_fixture_and_says_so`)*
+
+## 2026-09-29 — golden_tee's +65% under rail comp was the on-rails polygon's seams; the skeleton now reads them closed
+
+Kent's pick after #558. `logo_golden_tee` at 80 mm: 6,892 stitches with the
+pull grown into the polygon, 11,377 on the rails. Per run kind the +4,485
+were satin 5,246 → 9,072, travel 401 → 1,043, underlay +170, run −136, no
+fill; per shape nearly every satin shape doubled (the O of GOLF 408 → 1,087,
+the T outline 496 → 1,030); by run, 148 → 473 satin runs at 35 → 19 points
+each at the same 0.21 mm pitch, satin thread 7,414 → 10,938 mm. Strokes:
+178 → 494 (the O 29 → 88, the T 12 → 70). Not the raster scale — the ON
+polygons re-skeletonised at the OFF scale read 514. The polygon: on the
+rails stage 5 hands satin the artwork ∪ the underlap reach under later
+layers − earlier layers, whose boundary carries a hairline seam wherever
+the artwork's sub-pixel edge meets a buffered or neighbouring one, and the
+medial axis branches at every seam (renders
+`docs/renders/rail-comp-seams-2026-09-29/`).
+
+Three cures measured on the four fixtures' ON polygons (strokes):
+
+| rule | golden_tee | MARINE | becker 100 | ENTHUSIAST |
+|---|---|---|---|---|
+| raw | 494 | 37 | 62 | 28 |
+| closing at the pull | 100 | 28 | 68 | 29 |
+| half-pull closing, hairline fills only | 136 | 36 | 63 | 27 |
+| **the same, touching boundary stage 5 added** (ships) | — | **37** | — | — |
+
+The first re-cuts the letterforms at every crotch (MARINE bare 7.03 →
+9.45%); the second still reads the artwork's own notches (MARINE four
+letter folds, ENTHUSIAST one unsewn element, `ribbon_curve`'s golden
+moved); the third leaves the artwork's own boundary alone — MARINE
+byte-identical on every shape — and closes the seams: golden_tee ON
+6,892 → 7,966 stitches, 473 → 162 satin runs, 57 → 47 trims.
+
+| case | OFF trims / st | ON at #558 | ON with the fix | Δ trims / st | bare ON #558 / fix |
+|---|---|---|---|---|---|
+| MARINE 80 | 9 / 1,784 | 21 / 2,093 | 21 / 2,093 | 0 / +0 | 7.03 / 7.03 |
+| becker 100 | 54 / 8,070 | 48 / 8,297 | 48 / 8,297 | 0 / +0 | 8.14 / 8.14 |
+| tires | 13 / 2,247 | 7 / 2,515 | 7 / 2,515 | 0 / +0 | 4.55 / 4.55 |
+| enthusiast | 12 / 2,388 | 15 / 2,392 | 15 / 2,392 | 0 / +0 | 6.98 / 6.98 |
+| fremont | 59 / 19,862 | 58 / 19,937 | 55 / 19,887 | -3 / -50 | 3.53 / 3.98 |
+| bridge | 96 / 14,419 | 96 / 16,037 | 98 / 15,384 | +2 / -653 | 4.96 / 5.15 |
+| golden_tee | 43 / 6,892 | 57 / 11,377 | 47 / 7,966 | -10 / -3,411 | 6.54 / 10.35 |
+| gaulke | 34 / 4,168 | 32 / 4,224 | 32 / 4,189 | 0 / -35 | 6.88 / 6.89 |
+| drone | 120 / 18,411 | 123 / 18,595 | 123 / 18,540 | 0 / -55 | 4.80 / 4.88 |
+| thermal | 120 / 18,411 | 123 / 18,595 | 123 / 18,540 | 0 / -55 | 4.80 / 4.88 |
+| screenshot | 74 / 7,862 | 71 / 7,863 | 71 / 7,885 | 0 / +22 | 9.36 / 8.97 |
+| **total** | **634** / 104,514 | **651** / 111,925 | **640** / 107,688 | **-11** / -4,237 | |
+
+(`REAL_ART` widths and garments, `max_colors=6`, `main` at 89161704 with the
+fix; bare is `rail_edge.bare_area`, satin crosses only.)
+
+One pin moved, the way that file moves them: `test_duplicate_cone_layers`'s
+fold claim ("fewer stitches AND less needle-up", measured 2026-09-01 on the
+engine of that day) reads the fold at +16 stitches on drone under the seam
+closing (17,103 against 17,087), because a merged layer changes what sews
+later and earlier around each shape, which is the very boundary the closing
+reads. `satin_rail_comp` joins that file's `PRE_FLIP_RC` beside
+`keep_thin_strokes` and `satin_corner_twigs`, each of which moved the same
+claim by more when it flipped; under it the closing is byte-identical and the
+fold's claim is measured on the engine it was made on.
+
+*(measured 2026-09-29 — the tables above; `tests/test_rail_comp.py::test_under_rail_comp_the_skeleton_reads_the_polygon_with_its_seams_closed`;
+`docs/renders/rail-comp-seams-2026-09-29/README.md`)*

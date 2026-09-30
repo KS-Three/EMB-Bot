@@ -29,6 +29,9 @@
     textClusterSeed,
     remapBlockColors,
     editKind,
+    stitchWidthGroupRows,
+    STITCH_WIDTH_MIN_MM,
+    STITCH_WIDTH_MAX_MM,
     spoolCount } from "../lib/digitizer.js";
   import {
     appliedBorders,
@@ -40,7 +43,9 @@
     indexRuns,
     shapeBorderState } from "../lib/borderMenu.js";
   import { loadPalette, nearestInList } from "../lib/threads.js";
-  import { loadImage, rasterSize, isVectorFile, uploadPlan } from "../lib/rasterize.js";
+  import { loadImage, rasterSize, isVectorFile, uploadPlan, pngDimensionsFromBase64 } from "../lib/rasterize.js";
+  import CropBox from "./CropBox.svelte";
+  import { proposeCrop } from "../lib/cropProposal.js";
   import { getSource, putSource, sourceKeyFor, sourceStoreAvailable } from "../lib/sourceStore.js";
 
   // Editor panel for an auto-digitized artwork element (build step 10).
@@ -104,6 +109,15 @@
       cv.width = w;
       cv.height = h;
       cv.getContext("2d").drawImage(img, 0, 0, w, h);
+      // Propose a crop from the preview we already drew. Measuring this
+      // canvas is fine; SENDING it is the 2026-09-19/20 regression.
+      let crop = null;
+      try {
+        const px = cv.getContext("2d").getImageData(0, 0, cv.width, cv.height);
+        crop = proposeCrop(px, (element.params && element.params.target_width_mm) || 80);
+      } catch {
+        crop = null; // tainted canvas or no 2d context: no proposal, no crash
+      }
       const dataUrl = cv.toDataURL("image/png");
       const b64 = dataUrl.slice(dataUrl.indexOf(",") + 1);
       if (b64.length > MAX_SOURCE_B64) {
@@ -137,7 +151,7 @@
       // the layer list and its edits, which are keyed to the OLD art's
       // shape ids and would only produce SHAPE_EDIT_UNKNOWN_ID noise here.
       patch({
-        sourcePng: b64, sourceFile, name: file.name, result: null, warnings: [], blockColors: {}, sizeMm: null,
+        sourcePng: b64, sourceFile, crop, name: file.name, result: null, warnings: [], blockColors: {}, sizeMm: null,
         review: null, shapeOverrides: {}, deletedShapeIds: [], appliedEdits: null,
         mergeGroups: [], splitLines: {},
       });
@@ -554,6 +568,51 @@
       // digitize" branch already covers that honestly.
       if (element.result && health) {
         scheduleRestitch(kind === "border" ? 0 : RESTITCH_IDLE_MS);
+      }
+    }
+  }
+
+  // A moved crop box changes what the service would digitize, so it restitches
+  // after the same idle pause a shape edit uses (and lights the same armed
+  // state).
+  //
+  // Two windows, the same two the params watcher above handles:
+  //  - The upload's own patch sets a fresh proposal AND a new `sourcePng` in
+  //    one go. That tick is skipped (`sameArt` is false): the sourcePng
+  //    watcher above starts the one and only digitize for a new upload, with
+  //    that crop already in its config.
+  //  - The box moved while that FIRST run is still in flight -- the likeliest
+  //    moment a customer drags it, since the box appears the instant the file
+  //    lands. `result` is still null then, so gating on it alone dropped the
+  //    move silently: the run returned with the proposal's crop and nothing
+  //    marked it stale. `phase !== "idle"` catches it; when the timer fires,
+  //    runDigitize's in-flight guard turns it into `rerunWanted` (or, if the
+  //    first run already returned, it simply runs), so exactly one rerun
+  //    follows with the moved crop.
+  // The crop box's drag floor, sized to the raster it shows. The service
+  // refuses a crop under `digitizer_core/crop.py` MIN_CROP_PX (16) on either
+  // axis, and CropBox's own 2% is under that on any preview narrower than
+  // 800 px. Read off `sourcePng`'s PNG header, so it survives a reload
+  // without a second persisted field. The preview is never larger than the
+  // original, so a floor that holds on the preview holds on either raster
+  // the service may be sent.
+  const CROP_MIN_PX = 16;
+  $: cropMinFrac = (() => {
+    const dim = pngDimensionsFromBase64(element.sourcePng);
+    if (!dim) return 0.02;
+    return Math.min(0.5, Math.max(0.02, CROP_MIN_PX / Math.min(dim.width, dim.height)));
+  })();
+
+  let prevCropJson = JSON.stringify(element.crop ?? null);
+  let prevCropSrc = element.sourcePng;
+  $: {
+    const now = JSON.stringify(element.crop ?? null);
+    const sameArt = element.sourcePng === prevCropSrc;
+    prevCropSrc = element.sourcePng;
+    if (now !== prevCropJson) {
+      prevCropJson = now;
+      if (sameArt && element.sourcePng && health && (element.result || phase !== "idle")) {
+        scheduleRestitch(RESTITCH_IDLE_MS);
       }
     }
   }
@@ -1019,6 +1078,95 @@
   function overrideUnderlay(row, ov) {
     const e = ov[row.id] || {};
     return e.underlay_style == null ? "auto" : e.underlay_style;
+  }
+
+  // Per-shape stitch width (shape_overrides[sid].stitch_width_mm, contract
+  // v1.8). The engine measures every column-shaped shape, gives the letters
+  // of a detected word one shared width, and reports all of it in
+  // `row.stitchWidth` (reviewFromJob). The input here holds the OVERRIDE
+  // only; empty means "auto", and the placeholder shows what auto sews so
+  // the user has a starting number rather than a blank box.
+  //
+  // A shape in a word takes its edit for the WHOLE word by default —
+  // Kent's rule (2026-09-29): letters that belong together must not sew at
+  // varying widths. `wordScope` holds the ids the user has narrowed to
+  // "this shape only"; absent means the word.
+  let wordScope = new Set();
+  // Ids are content-derived, so a scope narrowed on one design could
+  // otherwise outlive it and land on another design's shape.
+  let wordScopeFor = null;
+  $: if (element && element.id !== wordScopeFor) {
+    wordScopeFor = element.id;
+    wordScope = new Set();
+  }
+
+  function overrideStitchWidth(row, ov) {
+    const e = ov[row.id] || {};
+    return typeof e.stitch_width_mm === "number" ? e.stitch_width_mm : null;
+  }
+
+  // The rows one edit reaches: the shape's word unless narrowed.
+  function stitchWidthTargets(row) {
+    const rows = wordScope.has(row.id) ? [row] : stitchWidthGroupRows(sewableShapes, row);
+    return rows.length ? rows : [row];
+  }
+
+  function setShapeStitchWidth(row, raw) {
+    const txt = String(raw == null ? "" : raw).trim();
+    let v = null;
+    if (txt !== "") {
+      v = Math.round(parseFloat(txt) * 100) / 100;
+      if (!Number.isFinite(v)) return;
+      v = Math.min(STITCH_WIDTH_MAX_MM, Math.max(STITCH_WIDTH_MIN_MM, v));
+    }
+    // One element patch for the whole word = one undo step, one restitch.
+    const cur = { ...(element.shapeOverrides || {}) };
+    for (const r of stitchWidthTargets(row)) {
+      const entry = { ...(cur[r.id] || {}) };
+      if (v == null) delete entry.stitch_width_mm;
+      else entry.stitch_width_mm = v;
+      if (Object.keys(entry).length) cur[r.id] = entry;
+      else delete cur[r.id];
+    }
+    patch({ shapeOverrides: cur });
+  }
+
+  function toggleWordScope(row) {
+    const next = new Set(wordScope);
+    if (next.has(row.id)) next.delete(row.id);
+    else next.add(row.id);
+    wordScope = next;
+  }
+
+  function fmtMm(v) {
+    return typeof v === "number" ? (Math.round(v * 100) / 100).toFixed(2) : "";
+  }
+
+  // The sentence under the input: what auto measured and chose, and
+  // whether the engine could honour the last request in full.
+  function stitchWidthNote(row, ov) {
+    const w = row.stitchWidth;
+    if (!w) return "";
+    const parts = [];
+    if (w.group) {
+      const n = stitchWidthGroupRows(sewableShapes, row).length;
+      parts.push(n > 1 ? `shared by ${n} shapes in this word` : "in a word");
+    }
+    // A shape the plan sews as a RUN is a bean on its own outline, with no
+    // column and no pull — its number is the artwork stroke, and the way to
+    // a satin column is a width. Everything else reads the sewn column.
+    if (row.tier === "run" && typeof w.artMm === "number") {
+      parts.push(`${fmtMm(w.artMm)} mm stroke, sewn as a thin run — set a width for a satin column`);
+    } else if (typeof w.measuredMm === "number") {
+      parts.push(`measured ${fmtMm(w.measuredMm)} mm`);
+    }
+    if (w.source === "group" || w.source === "floor") parts.push(`evened to ${fmtMm(w.sewnMm)} mm`);
+    if (w.limited) parts.push("kept short of the request so a counter or gap stays open");
+    if (w.skipReason === "gap_or_hole_would_close") parts.push("could not widen: a gap or counter would close");
+    else if (w.skipReason === "would_split_or_vanish") parts.push("could not narrow that far");
+    else if (w.skipReason === "below_fabric_pull") parts.push("this fabric's pull alone sews wider than that");
+    else if (w.skipReason === "hand_edited_outline") parts.push("outline was hand-edited, auto left it alone");
+    return parts.join(" · ");
   }
 
   function rowName(row) {
@@ -1706,10 +1854,11 @@
     </p>
   {:else}
     <div class="dgp-src">
-      <img
-        class="dgp-thumb"
+      <CropBox
         src={"data:image/png;base64," + element.sourcePng}
-        alt={element.name || "Artwork"}
+        crop={element.crop}
+        onchange={(c) => patch({ crop: c })}
+        minFrac={cropMinFrac}
       />
       <span class="dgp-srcname">{element.name || "Artwork"}</span>
     </div>
@@ -1727,7 +1876,10 @@
 
     <div class="dgp-params">
       <label class="dgp-param">
-        <span>Stitch width</span>
+        <!-- Renamed from "Stitch width" 2026-09-29: this is the DESIGN's
+             width. "Stitch width" now means the per-shape satin column, in
+             the Edit shapes list below, and one word cannot mean both. -->
+        <span>Design width</span>
         <input
           type="number"
           min="10"
@@ -1756,6 +1908,19 @@
           on:change={(e) => setParam("satin", e.currentTarget.checked)}
         />
         Satin for thin shapes
+      </label>
+      <!-- Off by default on purpose: on real lettering the per-letter reading
+           is a smooth chain, not a step (digitizer_core/stitchwidth.py), so
+           the word's median is a guess. The always-on half is per shape, in
+           Edit shapes: every measured column shows its width, and "whole
+           word" writes one width to every letter. -->
+      <label class="dgp-checkline" title="Give every letter of a detected word the word's own weight: a letter traced fatter or thinner than its neighbours is evened out to them. Off, each shape sews the width it was drawn at; the per-shape Stitch width in Edit shapes works either way.">
+        <input
+          type="checkbox"
+          checked={!!element.params.stitch_width_auto}
+          on:change={(e) => setParam("stitch_width_auto", e.currentTarget.checked)}
+        />
+        Even out lettering widths
       </label>
       <label class="dgp-param">
         <span>Fill angle</span>
@@ -2503,6 +2668,52 @@
                         <option value="bean">Bean border</option>
                       </select>
                     </div>
+                    <!-- Stitch width (contract v1.8): only where the engine
+                         measured a column. A fill region has no column to
+                         size, so the control is absent rather than disabled
+                         there; the tier select above is that shape's lever. -->
+                    {#if row.stitchWidth && tier !== "fill"}
+                      {@const swOverride = overrideStitchWidth(row, overrides)}
+                      {@const swGroupN = stitchWidthGroupRows(sewableShapes, row).length}
+                      <div class="dgp-lrow dgp-lwidth" data-testid="stitch-width-row">
+                        <label class="dgp-lwidth-label">
+                          <span>Stitch width</span>
+                          <input
+                            type="number"
+                            class="dgp-lwidth-input"
+                            min={STITCH_WIDTH_MIN_MM}
+                            max={STITCH_WIDTH_MAX_MM}
+                            step="0.1"
+                            placeholder={"auto " + fmtMm(row.stitchWidth.autoMm)}
+                            value={swOverride == null ? "" : swOverride}
+                            aria-label={"Stitch width — " + rowAria}
+                            title={"The satin column this shape sews, in mm (" + STITCH_WIDTH_MIN_MM + "–" + STITCH_WIDTH_MAX_MM + "). Empty = the engine's own reading. Wider makes small letters bolder; narrower opens their counters."}
+                            on:change={(e) => setShapeStitchWidth(row, e.currentTarget.value)}
+                          />
+                          <span class="dgp-unit">mm</span>
+                        </label>
+                        {#if swOverride != null}
+                          <button
+                            type="button"
+                            class="dgp-lbtn dgp-lwidth-auto"
+                            title={swGroupN > 1 && !wordScope.has(row.id) ? "Back to the engine's own width, for the whole word" : "Back to the engine's own width"}
+                            on:click={() => setShapeStitchWidth(row, "")}
+                          >Auto</button>
+                        {/if}
+                        {#if swGroupN > 1}
+                          <label class="dgp-lwidth-scope" title="Apply this width to every letter of the word, so the word sews at one weight. Untick to change only this shape.">
+                            <input
+                              type="checkbox"
+                              checked={!wordScope.has(row.id)}
+                              on:change={() => toggleWordScope(row)}
+                              aria-label={"Whole word — " + rowAria}
+                            />
+                            whole word
+                          </label>
+                        {/if}
+                        <span class="dgp-lwidth-note">{stitchWidthNote(row, overrides)}</span>
+                      </div>
+                    {/if}
                   {/if}
                 </div>
                 <div class="dgp-lbtns">
@@ -2711,15 +2922,7 @@
     color: var(--muted, #6b7280);
     margin: 8px 0 0;
   }
-  .dgp-src { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
-  .dgp-thumb {
-    width: 56px;
-    height: 56px;
-    object-fit: contain;
-    border: 1px solid var(--tint-border, #ccd6fb);
-    border-radius: var(--radius-s, 6px);
-    background: #fff;
-  }
+  .dgp-src { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; margin-top: 10px; }
   .dgp-srcname { font-size: var(--fs-xs, 12px); color: var(--muted, #667); word-break: break-all; }
   .dgp-offline {
     margin-top: 10px;
@@ -3165,6 +3368,21 @@
     cursor: pointer;
   }
   .dgp-lsel:hover { border-color: var(--accent, #4f46e5); }
+  .dgp-lwidth { gap: 6px; }
+  .dgp-lwidth-label { display: inline-flex; align-items: center; gap: 4px; font-size: var(--fs-2xs, 0.6875rem); }
+  .dgp-lwidth-input {
+    width: 64px;
+    padding: 2px 4px;
+    font-size: var(--fs-2xs, 0.6875rem);
+    border: 1px solid var(--tint-border, #ccd6fb);
+    border-radius: var(--radius-s, 8px);
+    background: var(--surface, #fff);
+    color: var(--ink, #1c1f26);
+  }
+  .dgp-lwidth-input:focus { border-color: var(--accent, #4f46e5); outline: none; }
+  .dgp-lwidth-auto { width: auto; padding: 0 6px; }
+  .dgp-lwidth-scope { display: inline-flex; align-items: center; gap: 3px; font-size: var(--fs-2xs, 0.6875rem); cursor: pointer; }
+  .dgp-lwidth-note { font-size: var(--fs-2xs, 0.6875rem); color: var(--ink-soft, #5c6270); flex-basis: 100%; }
   /* A 4-wide grid, not a 1-wide column. These seven 26x18 buttons were
      stacked vertically, which made `.dgp-lbtns` 26px wide and 138px TALL --
      and since it is the tallest child of `.dgp-layer`, it set every row's

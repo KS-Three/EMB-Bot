@@ -94,6 +94,7 @@ from .config import PipelineConfig
 from .fabrics import Fabric
 from .machine import satin_ceiling_mm
 from .regions import Region
+from .stitchwidth import column_sized
 from .stage6_fill import principal_angle_deg
 from .stage6_satin import is_satin_candidate
 from .warnings_codes import (
@@ -115,8 +116,14 @@ WIDENED_LETTERING_KEY = "text_cluster_widened_mm"
 
 
 def widened_lettering(region: Region) -> bool:
-    """True for a text-cluster member the column floor widened."""
-    return bool(region.meta.get(WIDENED_LETTERING_KEY))
+    """True for a shape whose polygon IS its column: a text-cluster member
+    the regularizer's floor widened, or any shape `stitchwidth.
+    apply_stitch_widths` offset to a width (a word's shared width, the
+    floor, or a review-screen `stitch_width_mm`). Both populations need the
+    same four rules downstream — no sub-floor run routing, classify and sew
+    on the compensated polygon, keep the growth over the ground beneath,
+    pull on the polygon not the rails — so they share one predicate."""
+    return bool(region.meta.get(WIDENED_LETTERING_KEY)) or column_sized(region)
 
 
 @dataclass

@@ -31,7 +31,7 @@ from shapely.geometry import Polygon
 from . import debugviz
 from .config import PipelineConfig
 from .fabrics import Fabric, fabric_for_garment, get_fabric
-from .machine import FILL_ROW_MM
+from .machine import FILL_ROW_MM, satin_ceiling_mm
 from .photo_signals import apply_detection, resolve as resolve_photo_signals
 from .regions import (
     Region,
@@ -63,6 +63,7 @@ from .stage4_vectorize import (enforce_color_cap, garment_sews_enclosed,
                                rehome_resnapped_regions, revalidate_threads,
                                tag_enclosed_background, vectorize)
 from .designangle import set_design_angle
+from .stitchwidth import apply_stitch_widths, measure_stitch_widths
 from .textcluster import (detect_text_clusters, ocr_suggest_text,
                           regularize_text_clusters,
                           set_lettering_house_angle)
@@ -776,6 +777,13 @@ def build_generation(
                               from_line=cfg.satin_house_from_line,
                               anchor=cfg.satin_house_anchor)
 
+    # Stitch width (2026-09-29, `stitchwidth.py`): what column each shape
+    # measures, and the one width a detected word's letters will share.
+    # Metadata only, read off the FINAL polygons for the same reason the two
+    # passes above are; the geometry moves in `finish_generation`, where the
+    # review override and the fabric's pull are known.
+    measure_stitch_widths(regions, satin_max=satin_ceiling_mm(cfg))
+
     # Gradient class: the one shared fill-row angle for the whole design
     # (2026-08-03 angle-fragmentation fix) — the design ramp's row angle when
     # the ramp fitted above, else the plain fit that answered this before
@@ -943,6 +951,19 @@ def finish_generation(gen: Generation, cfg: PipelineConfig | None = None) -> Pip
         r.meta["stitched"] = (shape_overrides.get(r.shape_id) or {}).get(
             "stitched", default_stitched
         )
+
+    # Stitch width, applied (`stitchwidth.apply_stitch_widths`): after the
+    # edits, because the override rides them; after `stitched`, so a shape
+    # that will not sew is not offset; before compaction and stage 5, so the
+    # offset polygon is the one every later stage plans against. The floor is
+    # `cfg.lettering_min_column_mm`, the same sewn number the regularizer
+    # reads (None: no floor), and it reaches beyond the regularizer's door-1
+    # population only under `cfg.stitch_width_auto`. Nothing tagged, nothing
+    # moves.
+    apply_stitch_widths(regions, pull_mm=fabric_for(cfg).pull_comp_mm,
+                        floor_sewn_mm=cfg.lettering_min_column_mm,
+                        auto=cfg.stitch_width_auto,
+                        satin_max=satin_ceiling_mm(cfg))
     # Stage 1's BACKGROUND_ENCLOSED sentence promised holes "left unstitched";
     # when the rule looked at a garment, say what it decided. On a COPY —
     # `p` is shared across forks (`Generation.fork`), its warnings are not

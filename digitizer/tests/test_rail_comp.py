@@ -1,5 +1,7 @@
 """`cfg.satin_rail_comp` — pull compensation on the rails, not the polygon.
-DEFAULT OFF (quality review 2026-09-08 item 6, built 2026-09-09).
+Built OFF 2026-09-09 (quality review 2026-09-08 item 6); DEFAULT ON since
+2026-09-28, Kent's flip on the labelled sitting (docs/kent-review-2026-09-28.md).
+OFF is the pre-flip path and is passed explicitly wherever a test needs it.
 
 Stage 5 grows every shape by the fabric's pull with a round join and the
 satin tier skeletonises the grown polygon: arcs on every corner, slots
@@ -8,9 +10,11 @@ keeps its artwork polygon in stage 5 and `_rail_points` moves each rail
 outward by the same pull, held back where a counter would close under
 `min_detail_mm`. The AMOUNT never changes (gate 1); where it lands does.
 
-What these tests guarantee: OFF is the shipped path; ON sews a satin shape
-on its artwork with rails one pull outside it and caps not lengthened; a
-counter is held open; fills and widened lettering are untouched.
+What these tests guarantee: ON is the shipped path and OFF stays reachable;
+ON sews a satin shape on its artwork with rails one pull outside it and caps
+not lengthened; a counter is held open; fills and widened lettering are
+untouched; and the price the flip was measured to carry on the lettering
+fixture is pinned as a ceiling, so it can only get cheaper.
 """
 from __future__ import annotations
 
@@ -85,9 +89,12 @@ def _outside(points, poly: Polygon) -> float:
                for p in points)
 
 
-def test_the_flag_is_off_by_default():
-    """The amount is gate 1's; where it lands is Kent's on the render."""
-    assert PipelineConfig().satin_rail_comp is False
+def test_the_flag_is_on_by_default_since_2026_09_28():
+    # Kent flipped it on the labelled sitting (docs/kent-review-2026-09-28.md):
+    # after-better on five logos, before-better on none. OFF is the old path.
+    assert PipelineConfig().satin_rail_comp is True
+    assert PipelineConfig(satin_rail_comp=False).satin_rail_comp is False
+    # The amount is gate 1's; where it lands was Kent's on the render.
     assert PULL > 0, "the polo preset stopped carrying a pull, so nothing here is measurable"
 
 
@@ -98,7 +105,7 @@ def test_a_bar_is_sewn_on_its_artwork_with_rails_one_pull_outside_and_caps_not_l
     fabric's pull earns is untouched) and the caps stop at the artwork."""
     png = tmp_path / "bar.png"
     _bar_png(png, 24.0, 3.0)
-    off_r, off_p, off_seen = _sewn(png, target_width_mm=24.0)
+    off_r, off_p, off_seen = _sewn(png, target_width_mm=24.0, satin_rail_comp=False)
     on_r, on_p, on_seen = _sewn(png, target_width_mm=24.0, satin_rail_comp=True)
     sid = next(iter(on_seen))
     art = next(r.polygon for r in on_r.regions if r.shape_id == sid)
@@ -163,7 +170,7 @@ def test_the_end_cutback_owes_only_the_push_on_rails(tmp_path):
     positions. The flag moves the column's width, never its length."""
     png = tmp_path / "bar.png"
     _bar_png(png, 24.0, 3.0)
-    _r, off_p, off_seen = _sewn(png, target_width_mm=24.0, directional_comp=True)
+    _r, off_p, off_seen = _sewn(png, target_width_mm=24.0, directional_comp=True, satin_rail_comp=False)
     r, on_p, on_seen = _sewn(png, target_width_mm=24.0, directional_comp=True, satin_rail_comp=True)
     sid = next(iter(on_seen))
     assert set(off_seen) == set(on_seen)
@@ -185,7 +192,7 @@ def test_on_the_wordmark_every_satin_shape_sews_on_its_artwork():
     is only the underlap tongue under a later colour (and the clip of an
     earlier one) -- less than half of OFF's growth band on every shape."""
     art = TESTDATA / "photo" / "drone_render.png"
-    off_r, _off_p, off_seen = _sewn(art)
+    off_r, _off_p, off_seen = _sewn(art, satin_rail_comp=False)
     on_r, _on_p, on_seen = _sewn(art, satin_rail_comp=True)
     art_by_id = {rg.shape_id: rg.polygon for rg in on_r.regions}
     assert len(on_seen) >= 30 and set(on_seen) == set(off_seen)
@@ -221,6 +228,84 @@ def test_widened_lettering_keeps_its_compensated_column(tmp_path):
         assert seen[rg.shape_id].area > rg.polygon.area * 1.3
 
 
+def test_the_flip_costs_trims_on_the_lettering_fixture_and_says_so():
+    """The one cost the labelled sitting could not show: trims. MARINE at
+    80.2 mm (the lettering route's own fixture, `tests/test_stroke_order_euler`)
+    sews 9 trims and 1,784 stitches with the pull in the polygon and 22 trims
+    and 2,058 stitches with it on the rails (2026-09-29, the day of the flip;
+    letter-to-shape hops 3 -> 6, underlay->satin 3 -> 5, satin->underlay
+    1 -> 7). The 2026-09-19 levers priced on the grown polygon do not buy it
+    back: both levers ON reads 17 trims on the rails against 8 off them.
+
+    Where they come from, by `tools/refused_walks.py`: 11 of the 22 were
+    walks refused because the stroke's first run started a half-width off
+    the travel web (`target_unsnapped`); the seam fix the same day
+    (`test_under_rail_comp_a_strokes_first_run_starts_on_the_travel_web`)
+    takes those to 2, but eight of them become cursor-side refusals -- the
+    previous column's end sits 3.5 to 7 mm from any node, past `trim_at` --
+    so the fixture reads 21 trims at 2,061 stitches. The cursor side is
+    `satin_walk_cursor_reach_mm`'s question, parked for cloth (Kent,
+    2026-09-20); the rest are letter-to-letter hops and two split webs.
+
+    The junction tuck's floor and reach-in went to sewn terms the same day
+    (DOCTRINE 2026-09-29, the C's bowl): a stacked arm reaches its node as
+    it does on the grown polygon, which is more thread -- the fixture
+    2,061 -> 2,093 stitches (1.155 -> 1.173 of OFF) for bare artwork
+    7.38 -> 7.03% at the same 21 trims -- so the stitch ceiling is 1.18.
+
+    Pinned as CEILINGS, the way the underlay lever's own cost is: a cheaper
+    build lowers them and this test stays green; a dearer one fails it. The
+    direction is recorded here, not asserted -- the day the rails sew the
+    word in the typed word's three trims, nothing here should be in the way.
+    """
+    from digitizer_core.pipeline import build_generation, finish_generation, plan_stitches
+    from tests.test_stroke_order_euler import FIXTURE
+
+    def sewn(**kw):
+        c = PipelineConfig(target_width_mm=80.2, garment_id="left_chest", max_colors=6, **kw)
+        gen = build_generation(str(FIXTURE), c)
+        return plan_stitches(finish_generation(gen.fork(), c), c)
+
+    off, on = sewn(satin_rail_comp=False), sewn()
+    assert off.stats.trims <= 9, off.stats.trims            # the grown polygon, 2026-09-19's number
+    assert on.stats.trims <= 21, on.stats.trims             # the rails: 22 at the flip, 21 after the seam fix
+    assert on.stats.stitch_count <= 1.18 * off.stats.stitch_count, (off.stats.stitch_count, on.stats.stitch_count)
+
+
+def test_under_rail_comp_a_strokes_first_run_starts_on_the_travel_web():
+    """The walk's target is the first point of a stroke's first run. Under
+    rail comp `_stroke_underlay` runs a free end out to the cap, so that
+    point sat about a half-width off the raw spine's end -- the node the
+    travel web is built from -- past the walk's strict 0.8 mm target snap,
+    and the walk refused (MARINE at 80 mm, 2026-09-29: `target_unsnapped`
+    walks 1 -> 11 when the flag went on). Now the run starts at the raw
+    end, on the web, and its first stitch carries the needle out to the
+    cap under the column -- the same cure `underlay_on_column` carries.
+    On this T the first underlay of each stroke used to start 1.58 mm off
+    the web on the rails and 0.0 off it on the grown polygon."""
+    bar = Polygon([(0, 0), (24, 0), (24, 3), (0, 3)])
+    stem = Polygon([(10.5, 3), (13.5, 3), (13.5, 20), (10.5, 20)])
+    poly = bar.union(stem).buffer(0)
+    strokes, _half, _field = s6.extract_strokes(poly, half_extra_mm=PULL, corner_twigs=True,
+                                                 junction_stack=True)
+    assert len(strokes) == 2
+    ends = [st.spine[0] for st in strokes] + [st.spine[-1] for st in strokes]
+    runs, report = s6.satin_shape(poly, "T", underlay_style="center", trim_at_mm=3.0,
+                                  rail_comp_mm=PULL, rail_comp_floor_mm=1.5, corner_twigs=True,
+                                  junction_stack=True, stroke_order="euler")
+    assert not report["empty"]
+    # the first run of each stroke is its centre underlay, and it starts on the web
+    firsts = [r for i, r in enumerate(runs)
+              if r.kind == "underlay" and (i == 0 or runs[i - 1].kind == "satin"
+                                           or runs[i - 1].kind == "travel")]
+    assert len(firsts) == 2, [r.kind for r in runs]
+    for r in firsts:
+        miss = min(math.dist(r.points[0], e) for e in ends)
+        assert miss < 0.8, f"a stroke's first run starts {miss:.2f} mm off the travel web"
+        # and the stitch from there runs out to the cap, not back along the spine
+        assert math.dist(r.points[0], r.points[1]) <= 3.0
+
+
 def test_push_rails_pushes_a_pinched_cross_and_leaves_a_directionless_one():
     """`_push_rails`: a pinched 0.2 mm cross is pushed to 0.8 — the cross the
     grown polygon would have carried, and what the drop check must see; a
@@ -233,3 +318,71 @@ def test_push_rails_pushes_a_pinched_cross_and_leaves_a_directionless_one():
     assert abs(math.dist(pa[0], pb[0]) - 0.8) < 1e-9
     assert abs(math.dist(pa[1], pb[1]) - (2.0 + 0.6)) < 1e-9
     assert pa[2] == a[2] and pb[2] == b[2]
+
+
+def test_under_rail_comp_the_skeleton_reads_the_polygon_with_its_seams_closed():
+    """Stage 5 hands an on-rails shape its artwork unioned with the underlap
+    reach under whatever sews later and cut by whatever sewed earlier, and
+    that boundary carries hairline seams a fraction of a pull wide wherever
+    the artwork's sub-pixel edge meets a buffered or neighbouring one. The
+    medial axis reads each seam as a branch: `logo_golden_tee` at 80 mm sewed
+    178 -> 494 strokes and 6,892 -> 11,377 stitches when the flag went on,
+    the O of GOLF alone 29 -> 88 (2026-09-29). The grown polygon never had
+    them -- a round-joined `buffer(pull)` swallows anything narrower than
+    the pull -- so the skeleton now reads the polygon with its seams closed
+    (`_close_seams`: what a half-pull closing fills where it is nowhere
+    wider than half a pull AND touches a stretch of boundary stage 5 added,
+    the on-rails polygon's boundary off the artwork's), while the rails,
+    caps and every art reading stay on the polygon itself. A crotch, a
+    counter or a notch of the artwork's own stays as the artwork drew it:
+    the closing at the pull's radius tried first re-cut MARINE's letters
+    37 -> 28 strokes, and the width test alone still cost MARINE four folds
+    and ENTHUSIAST an unsewn element from the artwork's own notches.
+    """
+    from shapely.geometry import box
+
+    bar = box(0.0, 0.0, 24.0, 2.4)
+    seam_w = 0.4 * PULL                      # a hairline: under half a pull
+    # a notch in the top edge and a hairline hole through the middle
+    seamed = (bar.difference(box(6.0, 1.4, 6.0 + seam_w, 2.4))
+                 .difference(box(12.0, 0.4, 12.0 + seam_w, 2.0)))
+    closed = s6._close_seams(seamed, PULL)
+    assert closed.geom_type == "Polygon" and not closed.interiors
+    assert closed.symmetric_difference(bar).area < 0.05, closed.symmetric_difference(bar).area
+
+    def strokes(poly):
+        return len(s6.extract_strokes(poly, half_extra_mm=PULL, corner_twigs=True,
+                                      junction_stack=True)[0])
+
+    assert strokes(bar) == 1
+    assert strokes(seamed) > strokes(bar), "the seams must shatter the raw skeleton for this to test anything"
+    assert strokes(closed) == strokes(bar)
+
+    # a counter, and a slit wider than half a pull, are artwork and stay
+    with_art = (bar.difference(box(17.0, 0.2, 19.0, 2.2))
+                   .difference(box(20.0, 0.4, 20.0 + 0.8 * PULL, 2.0))
+                   .difference(box(12.0, 0.4, 12.0 + seam_w, 2.0)))
+    kept = s6._close_seams(with_art, PULL)
+    assert len(kept.interiors) == 2, [Polygon(r).area for r in kept.interiors]
+    # the counter keeps its area to within the hairline fillets at its four
+    # corners (0.005 mm2 each at a half-pull radius)
+    assert abs(max(Polygon(r).area for r in kept.interiors) - 4.0) < 0.05
+
+    # zero pull is the identity, so rail comp OFF cannot be moved by any of this
+    assert s6._close_seams(seamed, 0.0) is seamed
+
+    # WHERE the seam is decides: the same seams are the artwork's own when
+    # the artwork polygon carries them (nothing closes), and stage 5's when
+    # the artwork is the clean bar (they close)
+    assert s6._close_seams(seamed, PULL, art_poly=seamed) is seamed
+    own = s6._close_seams(seamed, PULL, art_poly=bar)
+    assert own.symmetric_difference(bar).area < 0.05
+
+    # and through `satin_shape` the seamed bar sews the clean bar's columns
+    def satin_runs(poly):
+        runs, _report = s6.satin_shape(poly, "bar", underlay_style="center", trim_at_mm=3.0,
+                                       rail_comp_mm=PULL, rail_comp_floor_mm=1.5,
+                                       corner_twigs=True, junction_stack=True, stroke_order="euler")
+        return sum(1 for r in runs if r.kind == s6.stitches.SATIN)
+
+    assert satin_runs(seamed) == satin_runs(bar) == 1

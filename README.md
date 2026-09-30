@@ -14,7 +14,7 @@ auto-digitize path — see `digitizer/README.md`.
 ## Quick start
 
 The Studio has a live stitch preview, multi-element designs, saved projects,
-and a **55-font pre-digitized satin library** loaded on demand. Fonts are
+and an **85-font pre-digitized satin library** loaded on demand. Fonts are
 picked in a searchable browser (search box, Sans/Serif/Script/Display/Small
 filters, per-font recommended size ranges) whose grid uses pre-rendered
 preview images — browsing never downloads font data; only picking a font
@@ -58,7 +58,7 @@ colors. EMB Bot makes that step **visible and controllable**:
 
 ## Text mode
 
-Switch to **Text**, type your text, pick a font from the 55-font pre-digitized
+Switch to **Text**, type your text, pick a font from the 85-font pre-digitized
 satin library, set garment/fabric/format/density, and **Generate**. Library
 fonts sew as hand-authored satin columns (adapted from the Ink/Stitch open
 embroidery font collection), not auto-traced outlines.

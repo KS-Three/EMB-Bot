@@ -42,6 +42,7 @@ import numpy as np
 
 from .alpha_edge import extend_opaque_colour, extension_applies  # noqa: F401  (re-exported: stage 1 is where it acts)
 from .config import PipelineConfig
+from .crop import apply_crop
 from .letterbox import strip_letterbox
 from .threads import rgb_to_lab
 from .warnings_codes import (
@@ -132,7 +133,8 @@ class Prep:
 
 
 def _load(image: str | Path | bytes | np.ndarray,
-          strip_bars: bool = False) -> tuple[np.ndarray, np.ndarray | None]:
+          strip_bars: bool = False,
+          crop=None) -> tuple[np.ndarray, np.ndarray | None]:
     """-> (rgb uint8, alpha uint8 or None)."""
     if isinstance(image, np.ndarray):
         raw = image
@@ -148,6 +150,9 @@ def _load(image: str | Path | bytes | np.ndarray,
         rgb, alpha = cv2.cvtColor(raw[:, :, :3], cv2.COLOR_BGR2RGB), raw[:, :, 3]
     else:
         rgb, alpha = cv2.cvtColor(raw, cv2.COLOR_BGR2RGB), None
+    # See `stage0_classify._load` -- same crop, same position, and they must
+    # stay in step.
+    rgb, alpha = apply_crop(rgb, alpha, crop)
     # Letterbox bars are not artwork, and every ink rule below reads darkness
     # as ink -- so black bars invert the whole design rather than merely
     # degrading it. Strip before anything reads the pixels.
@@ -262,7 +267,7 @@ def _border_connected(mask: np.ndarray) -> np.ndarray:
 
 
 def prep(image: str | Path | bytes | np.ndarray, cfg: PipelineConfig) -> Prep:
-    rgb, alpha = _load(image, cfg.strip_letterbox)
+    rgb, alpha = _load(image, cfg.strip_letterbox, cfg.crop)
     warnings: list[dict] = []
 
     # `cfg.alpha_edge_extend`: every stage reads nearest-opaque colour under
@@ -384,6 +389,15 @@ def prep(image: str | Path | bytes | np.ndarray, cfg: PipelineConfig) -> Prep:
 
     fg = ~bg
     if not fg.any():
+        if cfg.crop is not None:
+            # The customer dragged the crop box onto empty background. The
+            # uncropped message maps (errors._KNOWN) to advice ending "or crop
+            # tighter", which is backwards here: widen the box. A crop is the
+            # caller's own input, so this stays OUT of `_KNOWN` and reaches the
+            # panel as written, like a bad boundary_override does.
+            raise ValueError(
+                "the crop rectangle contains no artwork — widen it, or use "
+                "the whole image")
         raise ValueError("no foreground pixels — the whole image reads as background")
 
     ys, xs = np.nonzero(fg)

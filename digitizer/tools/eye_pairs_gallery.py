@@ -80,11 +80,8 @@ ARM_INTENT: dict[str, tuple[str, str]] = {
         "nearer edge's distance, so the far rail stops falling short of serifs "
         "and tapers (less bare satin); cost is a jitterier rail, more short "
         "stitches on bends, and more thread."),
-    "rail_comp": (
-        "satin_rail_comp=True",
-        "Put the pull compensation on the rails: satin widens outward along its "
-        "cross instead of the polygon buffer, so thread stops landing outside "
-        "the artwork."),
+    # `rail_comp` left this table 2026-09-28: Kent flipped `satin_rail_comp` on
+    # after the labelled sitting, so it is the shipped path, not a pending arm.
     "wide_columns": (
         "wide_columns=True",
         "Raise the satin ceiling to 6.5 mm (read off the pro's Becker files) "
@@ -107,6 +104,24 @@ ARM_INTENT: dict[str, tuple[str, str]] = {
         "The engine behind Kent's fourteen 08-27 notes and his 'sixty of a "
         "hundred against Ember' — today against then, drawn by today's renderer."),
 }
+
+# Arms that left the pending table because they SHIPPED. A sitting rendered
+# before the flip still carries their rows, and the page still names them.
+RETIRED_ARM_INTENT: dict[str, tuple[str, str]] = {
+    "rail_comp": (
+        "satin_rail_comp=True (shipped ON 2026-09-28)",
+        "Put the pull compensation on the rails: satin widens outward along its "
+        "cross instead of the polygon buffer, so thread stops landing outside "
+        "the artwork. Kent flipped it on after the 2026-09-28 sitting."),
+}
+
+
+def arm_intent(arm: str | None) -> tuple[str, str]:
+    """(change, intent) for a pending or a shipped arm; an unknown arm shows
+    its id and no intent, and no arm (an identical control) shows nothing."""
+    if not arm:
+        return ("", "")
+    return ARM_INTENT.get(arm) or RETIRED_ARM_INTENT.get(arm) or (arm, "")
 
 # metric -> which way is better. The yardstick spec's section 3.7; `stitches`,
 # `stops`, `cones` have no direction and are shown as counts, never chips.
@@ -239,7 +254,7 @@ def pair_records(public: list[dict], sealed: dict[str, dict], picks: dict[str, d
         fx, arm, shipped = s["fixture"], arm_of(s), shipped_side(s)
         arm_side = None if shipped is None else ("R" if shipped == "L" else "L")
         width, garment = sizes.get(fx, (None, None))
-        change, intent = ARM_INTENT.get(arm, (arm or "", "")) if arm else ("", "")
+        change, intent = arm_intent(arm)
         is_ref = arm == REF_ARM
         base_class = (feats.get(fx, {}).get(BASE) or {}).get("design_class")
         recs.append({
@@ -367,6 +382,76 @@ def collect_images(src: Path, public: list[dict], sealed: dict[str, dict],
     return names, total
 
 
+# ---- change locator ---------------------------------------------------------
+# Where a pair changed, as boxes the page outlines and can zoom to. Kent read
+# 30 of 77 labelled pairs as "no difference" and 59 of 68 job questions as
+# "can't tell" on changes the 2026-09-18 review had measured as LOCAL (0.05
+# to 38 percent of a design after a 0.6 mm blur) -- the page pointed at
+# nothing (docs/kent-review-2026-09-28.md). The blur drops the stitch-line
+# texture and keeps shape, coverage and shade; the threshold is on the blurred
+# difference, per channel, so a cone swap at equal brightness still counts.
+# Boxes are fractions of the LEFT render, direction only: no share, count or
+# value reaches the page.
+RENDER_PX_PER_MM = 14.0         # tools.artfid_eye_rank.VIEW_PX_PER_MM, pinned by test
+LOCATOR_BLUR_MM = 0.6           # the 09-18 review's blur
+LOCATOR_THRESHOLD = 24          # grey levels of 255, on the blurred difference
+LOCATOR_MIN_AREA_MM2 = 1.0      # smaller is texture, not a change
+MAX_HOTSPOTS = 3
+
+
+def change_hotspots(left: bytes, right: bytes, px_per_mm: float = RENDER_PX_PER_MM
+                    ) -> list[dict]:
+    """-> up to MAX_HOTSPOTS boxes {x, y, w, h} in fractions of the left image,
+    largest change first; [] when the two renders agree after the blur. A
+    right render of another size is resampled to the left's."""
+    a = cv2.imdecode(np.frombuffer(left, np.uint8), cv2.IMREAD_COLOR)
+    b = cv2.imdecode(np.frombuffer(right, np.uint8), cv2.IMREAD_COLOR)
+    if a is None or b is None:
+        return []
+    if b.shape != a.shape:
+        b = cv2.resize(b, (a.shape[1], a.shape[0]), interpolation=cv2.INTER_AREA)
+    sigma = LOCATOR_BLUR_MM * px_per_mm
+    k = int(2 * round(3 * sigma) + 1)
+    diff = cv2.absdiff(cv2.GaussianBlur(a, (k, k), sigma),
+                       cv2.GaussianBlur(b, (k, k), sigma)).max(axis=2)
+    mask = (diff > LOCATOR_THRESHOLD).astype(np.uint8)
+    r = max(1, int(round(LOCATOR_BLUR_MM * px_per_mm)))
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2 * r + 1, 2 * r + 1))
+    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)     # one change, one box
+    n, _labels, stats, _ = cv2.connectedComponentsWithStats(mask, connectivity=8)
+    h, w = mask.shape
+    min_area = LOCATOR_MIN_AREA_MM2 * px_per_mm * px_per_mm
+    found = sorted((tuple(int(v) for v in stats[i]) for i in range(1, n)
+                    if stats[i][cv2.CC_STAT_AREA] >= min_area),
+                   key=lambda s: -s[cv2.CC_STAT_AREA])
+    boxes = []
+    for x, y, bw, bh, _area in found[:MAX_HOTSPOTS]:
+        x0, y0 = max(0, x - r), max(0, y - r)
+        x1, y1 = min(w, x + bw + r), min(h, y + bh + r)
+        boxes.append({"x": round(x0 / w, 4), "y": round(y0 / h, 4),
+                      "w": round((x1 - x0) / w, 4), "h": round((y1 - y0) / h, 4)})
+    return boxes
+
+
+def locate_changes(src: Path, public: list[dict], sealed: dict[str, dict]
+                   ) -> dict[str, list[dict]]:
+    """pair id -> its hotspots, read off the SOURCE renders (full resolution),
+    the same files `collect_images` ships. A pair of one render with itself
+    (an identical control) gets none."""
+    out: dict[str, list[dict]] = {}
+    cache: dict[tuple[Path, Path], list[dict]] = {}
+    for p in public:
+        s = sealed[p["pair"]]
+        left = _source_render(src, p["left"], s["fixture"], s["left_arm"])
+        right = _source_render(src, p["right"], s["fixture"], s["right_arm"])
+        key = (left, right)
+        if key not in cache:
+            cache[key] = ([] if left == right or not (left.exists() and right.exists())
+                          else change_hotspots(left.read_bytes(), right.read_bytes()))
+        out[p["pair"]] = cache[key]
+    return out
+
+
 # ---- labelled mode ----------------------------------------------------------
 # Before | after with the arm NAMED, built from the rendered arms directly: no
 # sitting, no picks, nothing sealed. Kent asked for it on 2026-09-18 ("side by
@@ -441,7 +526,7 @@ def labelled_records(src: Path, feats: dict, sizes: dict[str, tuple[float, str]]
             _require(renders / f"{fx}__{arm}.jpg", fx, arm)
             is_ref = arm == REF_ARM
             shipped, arm_side = ("R", "L") if is_ref else ("L", "R")
-            change, intent = ARM_INTENT.get(arm, (arm, ""))
+            change, intent = arm_intent(arm)
             rec = {
                 "pair": f"{arm}__{fx}", "kind": "live", "repeat_of": None,
                 "fixture": fx, "width_mm": width, "garment": garment,
@@ -484,7 +569,7 @@ def labelled_arms(recs: list[dict], skipped: list[dict], failed: list[dict]
     seen = [r["arm"] for r in recs] + [s["arm"] for s in skipped] + [f["arm"] for f in failed]
     arms: dict[str, dict] = {}
     for arm in sorted({a for a in seen if a != BASE}, key=lambda a: (order.get(a, len(order)), a)):
-        change, intent = ARM_INTENT.get(arm, (arm, ""))
+        change, intent = arm_intent(arm)
         arms[arm] = {"change": change, "intent": intent, "is_ref": arm == REF_ARM,
                      "n_pairs": sum(1 for r in recs if r["arm"] == arm),
                      "skipped": sum(1 for s in skipped if s["arm"] == arm),
@@ -531,14 +616,15 @@ def build(src: Path, out: Path, budget: int = BUDGET_BYTES, labelled: bool = Fal
         refuse_if_incomplete([p["pair"] for p in public], picks)
         recs = pair_records(public, sealed, picks, feats, fixture_sizes())
         tally = arm_tally(recs, skipped)
-        arms = {arm: {"change": ARM_INTENT.get(arm, (arm, ""))[0],
-                      "intent": ARM_INTENT.get(arm, (arm, ""))[1], **t}
+        arms = {arm: {"change": arm_intent(arm)[0], "intent": arm_intent(arm)[1], **t}
                 for arm, t in sorted(tally.items())}
         title = REVEAL_TITLE
 
     names, total = collect_images(src, public, sealed, out / "img", budget)
+    hotspots = locate_changes(src, public, sealed)
     for r in recs:
         r["img"] = names[r["pair"]]
+        r["hotspots"] = hotspots[r["pair"]]
     data = {"generated": time.strftime("%Y-%m-%d"), "n_pairs": len(recs),
             "arms": arms, "pairs": recs, "labelled": labelled}
     out.mkdir(parents=True, exist_ok=True)

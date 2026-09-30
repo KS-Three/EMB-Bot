@@ -68,6 +68,7 @@ import cv2
 import numpy as np
 from shapely.geometry import LineString, Polygon
 from shapely.geometry import Point as SPoint
+from shapely.ops import unary_union
 from skimage.morphology import medial_axis
 
 from . import machine, stitches
@@ -3727,24 +3728,33 @@ def satin_stroke(poly: Polygon, stroke: Stroke, half_mm: float,
                 continue
             end = spine[0] if at_start else spine[-1]
             under = stroke.tuck_under_start if at_start else stroke.tuck_under_end
-            edge = field.half_at(end)
+            # Every width here is stated in SEWN terms: under rail-side comp
+            # the field, `under` and `half_mm` are the artwork's and every
+            # arm sews a pull wider on each side, so the clearance, the
+            # entry floor and the stack's reach-in all carry the pull (0.0
+            # otherwise -- byte-identical). Until 2026-09-29 only the
+            # clearance did: the floor and the reach-in read the artwork's
+            # half-width, so under `satin_rail_comp` every stacked arm
+            # stopped a pull further from its node than it did on the grown
+            # polygon, the ball's centre went bare, and the junction cover
+            # patched it with FILL -- BECKER's C at 80 mm, 3 satin cover
+            # runs OFF against 3 fill runs of 175 stitches ON, read as
+            # 32 mm2 of bare satin artwork by the satin-only instrument.
+            half_sewn = half_mm + rail_comp_mm
+            edge = field.half_at(end) + rail_comp_mm
             if under is not None:
-                edge = min(edge, under)
+                edge = min(edge, under + rail_comp_mm)
             entry = _junction_entry_mm(spine, field, half_mm, at_start)
             if entry is not None:
-                edge = min(edge, max(entry, half_mm))
-            # What has to be cleared is the other arm's SEWN width: under
-            # rail-side comp the field is the artwork's and the arm sews a
-            # pull wider (0.0 otherwise -- byte-identical).
-            #
+                edge = min(edge, max(entry, half_sewn))
             # `junction_stack`, part B (2026-09-19): an end at a meeting of
             # several -- no single owner to tuck under -- runs INTO the node
             # by its own half-width instead of stopping at the blob's edge,
             # so the arms' ends overlap inside the ball the way the pro's
             # do. A corner tuck (`under` set) is already under its owner and
             # keeps its clearance.
-            reach_in = half_mm if (junction_stack and under is None) else 0.0
-            trims.append(max(0.0, edge + rail_comp_mm - _JUNCTION_TUCK_MM - reach_in))
+            reach_in = half_sewn if (junction_stack and under is None) else 0.0
+            trims.append(max(0.0, edge - _JUNCTION_TUCK_MM - reach_in))
         if trims[0] or trims[1]:
             spine = _trim_chain(spine, trims[0], trims[1])
 
@@ -4814,6 +4824,80 @@ def _junction_cover_runs(poly: Polygon, runs: list[StitchRun], shape_id: str,
     return out
 
 
+def _close_seams(poly: Polygon, pull_mm: float, art_poly: Polygon | None = None) -> Polygon:
+    """The on-rails polygon with the hairline seams of its own construction
+    closed, for the SKELETON to read; the rails, caps and every art reading
+    stay on `poly` itself.
+
+    Under `satin_rail_comp` stage 5 hands satin the artwork polygon unioned
+    with the underlap reach under whatever sews later and cut by whatever
+    sewed earlier, and that boundary carries a seam wherever the artwork's
+    sub-pixel edge meets a buffered or neighbouring one: notches, slivers
+    and holes a fraction of a pull wide. The medial axis reads each one as
+    a branch. `logo_golden_tee` at 80 mm (2026-09-29): the O of GOLF 29 -> 88
+    strokes, its T outline 12 -> 70, the design 178 -> 494 strokes and
+    6,892 -> 11,377 stitches -- satin thread 7,414 -> 10,938 mm laid as 3.2x
+    the columns, most of them stubs, at the same 0.21 mm pitch. The grown
+    polygon never had the seams: a round-joined `buffer(pull)` swallows
+    anything narrower than the pull, the smoothing the artwork skeleton gave
+    up on 2026-09-19 without meaning to.
+
+    Three rules were measured before this one, each reaching past the seams
+    into the letterforms Kent's artwork-skeleton ruling is about. A closing
+    at the pull's radius fillets every crotch: MARINE 37 -> 28 strokes,
+    Becker 62 -> 68, MARINE's bare artwork 7.03 -> 9.45%. A closing at half
+    the pull kept to hairlines (fills nowhere wider than half a pull) still
+    reads the ARTWORK's own notches -- MARINE's 146 x 91 px source is all
+    notches -- and cost MARINE four letter folds, ENTHUSIAST one unsewn
+    element and `ribbon_curve` its golden. So the rule is WHERE, not only
+    how wide: a seam is a hairline fill that touches a stretch of boundary
+    stage 5 ADDED -- `poly`'s boundary off `art_poly`'s -- and nothing on
+    the artwork's own boundary is touched. An interior ring is filled on the
+    same two tests. Without `art_poly` (a direct caller) the width test
+    alone applies. 0.0 pull returns `poly` untouched -- byte-identical off
+    the rails.
+    """
+    if pull_mm <= 0 or poly.is_empty or poly.geom_type != "Polygon":
+        return poly
+    radius, width = 0.5 * pull_mm, 0.5 * pull_mm
+    zone = None
+    if art_poly is not None and art_poly.geom_type == "Polygon" and not art_poly.is_empty:
+        try:
+            zone = poly.boundary.difference(art_poly.boundary.buffer(0.01))
+        except Exception:
+            zone = None
+        if zone is not None and zone.is_empty:
+            return poly                      # the polygon IS the artwork: nothing was added
+        if zone is not None:
+            zone = zone.buffer(0.02)
+    try:
+        added = poly.buffer(radius).buffer(-radius).difference(poly)
+    except Exception:  # a degenerate ring; the skeleton reads the polygon as before
+        return poly
+    parts = list(added.geoms) if added.geom_type == "MultiPolygon" else (
+        [added] if added.geom_type == "Polygon" and not added.is_empty else [])
+    seams = [q for q in parts if q.area > 0.0 and q.buffer(-0.5 * width).is_empty
+             and (zone is None or q.intersects(zone))]
+    out = poly
+    if seams:
+        try:
+            out = unary_union([poly, *seams])
+        except Exception:
+            return poly
+        if out.geom_type == "MultiPolygon":
+            out = max(out.geoms, key=lambda g: g.area)
+        if out.geom_type != "Polygon" or out.is_empty or not out.is_valid:
+            return poly
+    kept = [ring for ring in out.interiors
+            if not Polygon(ring).buffer(-0.5 * width).is_empty
+            or (zone is not None and not LineString(ring.coords).intersects(zone))]
+    if len(kept) != len(out.interiors):
+        out = Polygon(out.exterior, kept)
+        if out.is_empty or not out.is_valid:
+            return poly
+    return out
+
+
 def _axis_polygon(poly: Polygon, art_poly: Polygon | None, mode):
     """Which polygon `polygon_axis` reads its skeleton from.
 
@@ -4986,11 +5070,25 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
     # `trim_at_mm`). The travel block below sews the leg a wider reach buys.
     walk_cursor_reach = float(walk_cursor_reach_mm or 0.0)
     axis_poly = _axis_polygon(poly, art_poly, polygon_axis)
+    raw_axis_poly = axis_poly
+    if rail_comp_mm > 0:
+        # Under rail comp the skeleton reads the polygon with the seams of
+        # its stage-5 construction closed (see `_close_seams`); `poly`
+        # itself, the rails' and the caps' source, is untouched.
+        axis_poly = _close_seams(axis_poly, rail_comp_mm, art_poly)
     strokes, half_mm, field = extract_strokes(axis_poly, use_shapefield=use_shapefield,
                                               polygon_axis=polygon_axis,
                                               half_extra_mm=rail_comp_mm,
                                               corner_twigs=corner_twigs,
                                               junction_stack=junction_stack)
+    if not strokes and axis_poly is not raw_axis_poly:
+        # A closed shape whose skeleton prunes to nothing sews what its raw
+        # polygon sews, never nothing.
+        strokes, half_mm, field = extract_strokes(raw_axis_poly, use_shapefield=use_shapefield,
+                                                  polygon_axis=polygon_axis,
+                                                  half_extra_mm=rail_comp_mm,
+                                                  corner_twigs=corner_twigs,
+                                                  junction_stack=junction_stack)
     if not strokes:
         report["empty"] = True
         return [], report
@@ -5168,7 +5266,8 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
                         run.points.reverse()
                 elif math.dist(cursor, run.points[-1]) < math.dist(cursor, run.points[0]):
                     run.points.reverse()
-            if (first_of_stroke and underlay_on_column and kind == stitches.SATIN
+            if (first_of_stroke and (underlay_on_column or rail_comp_mm > 0)
+                    and kind == stitches.SATIN
                     and run.kind == stitches.UNDERLAY and not st.closed and st.spine):
                 # `underlay_on_column`: the underlay now starts at the column's
                 # far STATION -- cap-extended, or run into the node -- which
@@ -5178,6 +5277,16 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
                 # spine's end instead, on the web, and let its first stitch
                 # carry the needle out to the station along the column's own
                 # axis, under the column.
+                #
+                # `satin_rail_comp` hits the same seam (2026-09-29): under
+                # rail-side comp `_stroke_underlay` runs a free end out to
+                # the cap, so the underlay's first point -- the walk's
+                # target -- sits about a half-width off the web, past the
+                # strict 0.8 mm target snap, and the walk refuses. Measured
+                # on MARINE at 80 mm the day the flag went on:
+                # `target_unsnapped` walks 1 -> 11 and trims 9 -> 22
+                # (`tools/refused_walks.py`). Same cure, same stitch under
+                # the same column; 0.0 never enters this branch.
                 raw = min((st.spine[0], st.spine[-1]),
                           key=lambda q: math.dist(q, run.points[0]))
                 d_raw = math.dist(raw, run.points[0])

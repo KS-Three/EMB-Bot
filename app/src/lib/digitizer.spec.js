@@ -56,7 +56,8 @@ const PIPELINE_CONFIG_FIELDS = [
   "underlay_style", "underlay", "satin", "satin_max_width_mm", "border",
   "border_width_mm", "deleted_shape_ids", "shape_overrides",
   "merge_shape_ids", "split_shapes", "photo_segment_sam2", "detail_layer",
-  "forced_class", "edge_cap", "is_photographic", "garment_rgb",
+  "forced_class", "edge_cap", "is_photographic", "garment_rgb", "crop",
+  "stitch_width_auto",
 ];
 
 test("buildDigitizeConfig sends the stored thread-brand preference and the project garment, in service field names", async () => {
@@ -1902,6 +1903,28 @@ describe("isPhoto forced class (spec 2026-08-18 decision 4)", () => {
   });
 });
 
+describe("crop in the digitize config", () => {
+  it("sends the crop as four fractions when the element carries one", async () => {
+    const { buildDigitizeConfig } = await import("./digitizer.js");
+    const cfg = buildDigitizeConfig({ crop: { x0: 0.1, y0: 0.2, x1: 0.9, y1: 0.8 } }, {});
+    expect(cfg.crop).toEqual([0.1, 0.2, 0.9, 0.8]);
+    for (const k of Object.keys(cfg)) expect(PIPELINE_CONFIG_FIELDS).toContain(k);
+  });
+
+  it("omits crop entirely when the element has none", async () => {
+    const { buildDigitizeConfig } = await import("./digitizer.js");
+    expect("crop" in buildDigitizeConfig({}, {})).toBe(false);
+  });
+
+  it("omits crop when it is the full frame", async () => {
+    // An uncropped upload must be byte-identical to the pre-crop engine, so
+    // it must not send a crop key at all.
+    const { buildDigitizeConfig } = await import("./digitizer.js");
+    const cfg = buildDigitizeConfig({ crop: { x0: 0, y0: 0, x1: 1, y1: 1 } }, {});
+    expect("crop" in cfg).toBe(false);
+  });
+});
+
 // ---- remapBlockColors ----------------------------------------------------
 
 test("remapBlockColors: a thread override follows its COLOUR across a re-palette", async () => {
@@ -2310,4 +2333,79 @@ describe("editKind (restitch pacing)", () => {
     const c = await edits(el({ s1: { border: "auto", tier: "fill" } }));
     expect(editKind(await edits(el({})), c)).toBe("other");
   });
+});
+
+// ---- stitch width (contract v1.8) -------------------------------------------
+
+test("canonicalShapeEdits carries stitch_width_mm inside the engine's range, rounded to 0.01, and drops anything else", async () => {
+  const { canonicalShapeEdits, STITCH_WIDTH_MIN_MM, STITCH_WIDTH_MAX_MM } = await import("./digitizer.js");
+  const el = digitizedElement({
+    shapeOverrides: {
+      a: { stitch_width_mm: 0.8000001 },
+      b: { stitch_width_mm: STITCH_WIDTH_MIN_MM },
+      c: { stitch_width_mm: STITCH_WIDTH_MAX_MM + 0.01 },
+      d: { stitch_width_mm: "0.9" },
+      e: { stitch_width_mm: NaN },
+      f: { stitch_width_mm: null, border: "bean" },
+    },
+  });
+  expect(canonicalShapeEdits(el)).toEqual({
+    shape_overrides: {
+      a: { stitch_width_mm: 0.8 },
+      b: { stitch_width_mm: STITCH_WIDTH_MIN_MM },
+      f: { border: "bean" },
+    },
+  });
+});
+
+test("reviewFromJob maps the stitch_width block, and reads a pre-contract service as null", async () => {
+  const { reviewFromJob } = await import("./digitizer.js");
+  const review = {
+    palette: [{ number: "1", rgb: [0, 0, 0], brand_id: "isacord" }],
+    shapes: [
+      {
+        shape_id: "s1", thread_index: 0, thread_number: "1", area_mm2: 1, layer: 0,
+        outline_mm: [[0, 0], [1, 0], [1, 1], [0, 0]], holes_mm: [],
+        stitch_width: { measured_mm: 0.62, auto_mm: 0.8, sewn_mm: 0.8, override_mm: null,
+                        source: "group", group: "T1", limited: true, skip_reason: null },
+      },
+      {
+        shape_id: "s2", thread_index: 0, thread_number: "1", area_mm2: 1, layer: 0,
+        outline_mm: [[0, 0], [1, 0], [1, 1], [0, 0]], holes_mm: [],
+        stitch_width: { measured_mm: null, auto_mm: null, sewn_mm: null, override_mm: null,
+                        source: null, group: null, limited: false, skip_reason: null },
+      },
+      {
+        shape_id: "s3", thread_index: 0, thread_number: "1", area_mm2: 1, layer: 0,
+        outline_mm: [[0, 0], [1, 0], [1, 1], [0, 0]], holes_mm: [],
+      },
+    ],
+  };
+  const r = reviewFromJob(review);
+  expect(r.shapes[0].stitchWidth).toEqual({
+    artMm: null, measuredMm: 0.62, autoMm: 0.8, sewnMm: 0.8, overrideMm: null,
+    source: "group", group: "T1", limited: true, skipReason: null,
+  });
+  expect(r.shapes[1].stitchWidth).toBeNull();
+  expect(r.shapes[2].stitchWidth).toBeNull();
+});
+
+test("stitch_width_auto rides buildDigitizeConfig only when on, and is off for projects saved before the field existed", async () => {
+  const { buildDigitizeConfig } = await import("./digitizer.js");
+  expect("stitch_width_auto" in buildDigitizeConfig(digitizedElement(), PROJECT)).toBe(false);
+  const on = digitizedElement({ params: { ...digitizedElement().params, stitch_width_auto: true } });
+  expect(buildDigitizeConfig(on, PROJECT).stitch_width_auto).toBe(true);
+});
+
+test("stitchWidthGroupRows: the word's members with the row first; a lone shape is its own list", async () => {
+  const { stitchWidthGroupRows } = await import("./digitizer.js");
+  const a = { id: "a", stitchWidth: { group: "W" } };
+  const b = { id: "b", stitchWidth: { group: "W" } };
+  const c = { id: "c", stitchWidth: { group: "X" } };
+  const d = { id: "d", stitchWidth: null };
+  const rows = [c, b, a, d];
+  expect(stitchWidthGroupRows(rows, a).map((r) => r.id)).toEqual(["a", "b"]);
+  expect(stitchWidthGroupRows(rows, c).map((r) => r.id)).toEqual(["c"]);
+  expect(stitchWidthGroupRows(rows, d).map((r) => r.id)).toEqual(["d"]);
+  expect(stitchWidthGroupRows(rows, null)).toEqual([]);
 });

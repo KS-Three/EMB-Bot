@@ -124,6 +124,14 @@ export const DEFAULT_DIGITIZE_PARAMS = {
   // already averaged away; with it the silhouette, facial disc, eye rims and
   // barred chest feathers all come back (7,725 -> 10,727 stitches).
   detail_layer: false,
+  // Off by default, matching the service's own `stitch_width_auto` default:
+  // evening out the letters of a detected word to the word's median width
+  // is a guess on real lettering (different letterforms measure differently
+  // at the skeleton -- digitizer_core/stitchwidth.py carries the Gaulke
+  // measurement), so it is a box to tick per design, not a default. Sent
+  // only when true (absent IS false server-side), so existing designs keep
+  // their cache key.
+  stitch_width_auto: false,
 };
 
 // An auto-digitized artwork element (build step 10). Persistence is hybrid
@@ -146,7 +154,8 @@ export const DEFAULT_DIGITIZE_PARAMS = {
 //                       sewIndex, ... }] }, see digitizer.js reviewFromJob).
 //   `shapeOverrides`  — keyed by shape_id; PipelineConfig.shape_overrides
 //                       field names verbatim (thread_index, fill_angle_deg,
-//                       tier, border, layer, stitched, underlay_style) plus
+//                       tier, border, layer, stitched, underlay_style,
+//                       stitch_width_mm) plus
 //                       an app-only `rgb` for the swatch, stripped before
 //                       the wire.
 //                       `stitched: true` restores a BACKGROUND_ENCLOSED
@@ -195,6 +204,9 @@ export function defaultDigitizedElement(id) {
     // (projectSources.js), so the registry record stays preview-sized and a
     // design opened elsewhere still digitizes from the file.
     sourceFile: null,
+    // The customer's crop box as fractions of the image, { x0, y0, x1, y1 },
+    // or null for the whole image (also what a pre-crop project loads as).
+    crop: null,
     params: { ...DEFAULT_DIGITIZE_PARAMS },
     // A sibling of params, not a member of it (spec 2026-08-18 decision 4):
     // this names a fact about the SOURCE ART ("this is a photo"), not a

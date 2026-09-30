@@ -677,6 +677,18 @@ class PipelineConfig:
     # 1.0 mm column fills the counters (scope-history 09-09), which is why
     # this stays None until a glyph-height gate exists.
     lettering_min_column_mm: float | None = None
+    # Even out stitch widths automatically (`stitchwidth.apply_stitch_widths`,
+    # 2026-09-29): a letter more than 15% off its word's weight is offset to
+    # the word's median, and `lettering_min_column_mm` (when set) reaches
+    # every small shape and every lettering member, not only the door-1
+    # population above. OFF by default because on real lettering the
+    # per-letter measurement is a smooth chain, not a step — Gaulke's 35
+    # letters run 0.77 → 1.33 mm — so "the word's width" is a guess there;
+    # `stitchwidth.py`'s docstring carries the measurement. The Studio's
+    # "Even out lettering widths" box sets it per design. Off, the pass
+    # measures and reports only, and a review `stitch_width_mm` still
+    # applies; every fixture is byte-identical.
+    stitch_width_auto: bool = False
 
     # Stage 4
     # Polygon simplification tolerance. Both call sites (`stage4_vectorize.
@@ -1296,9 +1308,54 @@ class PipelineConfig:
     # **RULED 2026-09-19, Kent: the artwork, as shipped** (re-measured that
     # day with the lettering steps ON: IoU-to-target Fremont 0.681 -> 0.836,
     # ENTHUSIAST 0.875 -> 0.900, drone 0.803 -> 0.826; meadow 0.811 ->
-    # 0.779 at +340 stitches). DEFAULT OFF, byte-identical off; flipping it
-    # is Kent's on a sew-out, the render and the goldens.
-    satin_rail_comp: bool = False
+    # 0.779 at +340 stitches). Was DEFAULT OFF, byte-identical off, its flip
+    # Kent's on a sew-out, the render and the goldens. **FLIPPED ON
+    # 2026-09-28, Kent, on the render**: the labelled sitting
+    # (`docs/kent-review-2026-09-28.md`) read it after-better on becker,
+    # bridge, ENTHUSIAST, Fremont and tires, before-better nowhere, both-bad
+    # on the four logos bad under every arm; the only pending flag his eye
+    # favoured. The sew-out is still owed (the AMOUNT is the fabric's and
+    # unchanged; only where it lands moved). OFF is the pre-09-28 path.
+    # **Priced when it landed (2026-09-29, `docs/kent-review-2026-09-28.md`
+    # "Outcome"), by the suite and not by the render:** MARINE at 80 mm goes
+    # 9 -> 22 trims at +15% stitches (letter-to-shape hops 3 -> 6; the
+    # 09-19 levers do not buy it back; 21 once the walk's target was put
+    # back on the web the same day, corpus 671 -> 654 -- DOCTRINE
+    # 2026-09-29), ENTHUSIAST at 80 mm reads
+    # `lost_frac` 0.2748 -> 0.2565 -- under its 0.26 bar for the first time
+    # since 768de79e -- for bare artwork 6.27 -> 7.10%, and Becker at 114 mm
+    # under `wide_columns` loses the fold guard's margin (5.38 -> 7.47).
+    # The trims are pinned as a ceiling in `tests/test_rail_comp.py`, and
+    # the price is ACCEPTED -- Kent, 2026-09-29, shown the table: *"Take the
+    # price, let it merge"* -- so the MARINE trims and the ENTHUSIAST bare
+    # artwork are an accepted price, not open defects. Measured the same
+    # night, the mechanism is NOT the rail model's under-reach (that share
+    # fell, 19.3 -> 14.7% on ENTHUSIAST): the bare artwork rises at Becker's
+    # junctions (1.39 -> 3.80% on the satin-only instrument; two thirds of
+    # it is the C's bowl routed to FILL by the sewn-terms width check, so
+    # with fill counted Becker reads 6.72 -> 8.08%, the rest sparse crosses
+    # at the wordmark's junctions) and along ENTHUSIAST's rails (2.06 ->
+    # 4.12%, open), and the
+    # trims are the artwork skeleton's finer decomposition (MARINE's R 5 -> 8
+    # strokes, 8 -> 14 odd nodes; the walk jumps more). Those two are what
+    # lowers the ceiling; DOCTRINE 2026-09-28 has the numbers. The tuck was
+    # one of them and is fixed (2026-09-29, with the C's bowl): its entry
+    # floor and stack reach-in read the ARTWORK half-width under rail comp,
+    # a pull short of what the grown polygon sews; in sewn terms MARINE
+    # bare 7.38 -> 7.03% at +32 stitches, bridge 99 -> 96 trims, corpus
+    # 654 -> 651. The C's bowl itself -- two thirds of Becker's
+    # junction bare -- is the cover's FILL by design, an 8 mm blob no
+    # column spans, not the tuck's; DOCTRINE 2026-09-29. And golden_tee's
+    # +65% stitches (6,892 -> 11,377) were the SEAMS of the on-rails
+    # polygon -- stage 5's artwork-union-reach-minus-earlier boundary,
+    # a hairline notch or sliver wherever two independently vectorised
+    # edges meet, a branch each to the medial axis (178 -> 494 strokes):
+    # fixed the same day, the skeleton reads that polygon with the seams
+    # of its construction closed (`stage6_satin._close_seams`, hairline
+    # fills touching boundary stage 5 added, nothing on the artwork's
+    # own), golden_tee 11,377 -> 7,966, MARINE byte-identical, corpus
+    # trims 651 -> 640.
+    satin_rail_comp: bool = True
     # None = the fabric preset's fill underlay style. One of "none" |
     # "edge_run" | "center_run" | "edge_zigzag" | "edge_lattice" |
     # "double_lattice" | "zigzag" (fabrics.py's own vocabulary). Feeds the
@@ -2349,6 +2406,22 @@ class PipelineConfig:
     # measured there.
     strip_letterbox: bool = True
 
+    # Normalized crop rectangle (x0, y0, x1, y1) as fractions 0..1 of the
+    # SUBMITTED raster, applied at decode time in stage 0 AND stage 1 before
+    # anything reads the pixels. None = no crop, and None is byte-identical
+    # to the pre-crop engine everywhere.
+    #
+    # Fractions, not pixels: `DigitizePanel.imageToSend` sends the customer's
+    # original file when it fits the service's limits and the Studio's
+    # 1,200-px preview when it does not, so a pixel rectangle would address
+    # the wrong raster silently and only for large uploads.
+    #
+    # Applied in BOTH decode paths for the reason `strip_letterbox` is --
+    # stage 0 owns its own decode, and a crop in only one of them would have
+    # stage 0 classify the chrome the crop exists to remove.
+    # Spec: docs/superpowers/specs/2026-09-22-upload-crop-design.md
+    crop: tuple[float, float, float, float] | None = None
+
     # Sew what the satin tier missed. Crosses are placed along a spine,
     # perpendicular to one arm, sized by a ray that measures THAT arm's width
     # — so where several arms meet, the junction's interior is covered only by
@@ -2710,6 +2783,25 @@ class PipelineConfig:
     #                           core layer (a 400 at the service layer,
     #                           before the job ever runs) — never a silent
     #                           repair and never a crash downstream.
+    #   stitch_width_mm: float – (contract v1.8, `stitchwidth.py`) the SEWN
+    #                           satin column this shape should take, in mm
+    #                           (`stitchwidth.OVERRIDE_MIN_MM`..
+    #                           `OVERRIDE_MAX_MM`, the machine's own cross
+    #                           floor and wide-column ceiling). Applied by
+    #                           `stitchwidth.apply_stitch_widths` right after
+    #                           the edits here: the shape's polygon is OFFSET
+    #                           (grown or shrunk, holes and gaps guarded) by
+    #                           half the difference from its measured width,
+    #                           and the shape is then treated exactly like
+    #                           the regularizer's widened lettering
+    #                           (`stage5_overlap.widened_lettering`). Without
+    #                           an override the same pass gives every letter
+    #                           of a detected word the word's median width;
+    #                           this is the correction for when that reading
+    #                           is wrong. The review payload's `stitch_width`
+    #                           block reports measured / auto / sewn widths
+    #                           per shape so a client can show the starting
+    #                           point.
     # Values ride Region.meta so stages 5 and 7 pick them up where each
     # decision is made (boundary_override is the one exception: it rides
     # Region.polygon itself, plus a Region.meta record of the edit — the record
