@@ -573,7 +573,7 @@ classifier. *(measured 2026-08-26 — `.claude/memory/letterform-fidelity-2026-0
 
 **Text clusters see ordinary lettering (third attempt, 2026-09-03).** Two doors clustered in two ROUNDS — rescued first with unchanged code, so every cluster that regularizes is computed as before — then ordinary glyphs at the house-angle height ratio with a one-ink CIEDE2000 link (ΔE ≤ 20; the shield star is 34.2 from ENTHUSIAST, within-word quantization needs ≤ 16.4). Becker 0 → 11 tagged, drone 0 → 21, enthusiast keeps its subline cluster id. Cost measured quiet: enthusiast +0.9 s; the 60 s service test at 12.4 s idle and 12.1 s under three CPU hogs once the tesseract child is pinned to one OpenMP thread (32.7 s before — the likeliest root cause of `10ae9cc`'s CI timeout). No satin underlay under a 5 mm shape (`SATIN_UNDERLAY_MIN_EXTENT_MM`, the JS rung; Kent's call). *(measured 2026-09-03 — same doc)*
 
-**Per-shape stitch width (2026-09-29, `digitizer_core/stitchwidth.py`).** Every column-shaped region reports its measured column and its word (a text cluster per WEIGHT MODE); a review override `stitch_width_mm` (contract v1.8) sets a sewn width outright, offset with holes held, gaps never bridged, thin strokes never erased. **Evening a word out automatically is OPT-IN (`stitch_width_auto`, Studio box), because it was measured wrong as a default:** Gaulke's line is one cluster of 35 letters running 0.77 → 1.33 mm as a smooth chain — letterforms, not tracing — so the median is nobody's width and moved 21 letters. Off, byte-identical everywhere, pinned on Fremont and Golke; the floor stays `lettering_min_column_mm` = None (gate 1, Kent's flip). *(measured 2026-09-29 — `tests/test_stitch_width.py`, 28; COOKBOOK "Per-shape stitch width")*
+**Per-shape stitch width (2026-09-29, `digitizer_core/stitchwidth.py`).** Every column reports its width and word; review override `stitch_width_mm` (contract v1.8) offsets the polygon, counters held. **Evening a word out is OPT-IN (`stitch_width_auto`):** Gaulke's 35 letters run 0.77 → 1.33 mm as a smooth chain, so a median is nobody's width. Off, byte-identical; floor None (gate 1). *(measured 2026-09-29 — `tests/test_stitch_width.py`; COOKBOOK "Per-shape stitch width")*
 
 **Next:** NEEDS KENT. Fragmentation work measures **0% on real client logos**
 (they are satin-dominated, 1–3 fill shapes, no cutting fills). The one large
@@ -737,7 +737,7 @@ and every interaction was driven in a real browser against a live service.
 **Do not compress the detail file's copy of Kent's request** — it is captured
 verbatim there because the sub-requirements *are* the spec.
 
-**Stitch width is a per-shape control (2026-09-29).** The Edit shapes row carries a "Stitch width" input beside the border select on every measured column (placeholder = the engine's own reading), an Auto reset, and a "whole word" scope that writes the same width to every letter of the shape's weight group in one undo step. The design-width param was relabelled **Design width** so the two never share a name. *(confirmed 2026-09-29 — `digitizer.spec.js`, three tests; `npm run build`)*
+**Stitch width is a per-shape control (2026-09-29):** an input per measured column in Edit shapes, Auto reset, "whole word" scope (one undo step); the design-width param is now **Design width**. *(confirmed 2026-09-29 — `digitizer.spec.js`)*
 
 **Manual draw mode can now trace over the artwork.** An uploaded image paints
 under the drawing canvas (fadeable, removable) as soon as it decodes, before
