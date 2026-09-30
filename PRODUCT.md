@@ -108,6 +108,26 @@ be a separate ruling.
   this was tabled, not committed. Pricing tiers and font-gating are tabled
   with it. Needs its own decision session before it can block launch.
 
+- **Direct send to embroidery machine (WiFi).** Kent asked (2026-09-30)
+  whether EMB-Bot could replace SmartStitch's own WiFi utility, **RnEmbNet**,
+  and push designs to his S-1501 over the network. Findings:
+  - RnEmbNet is a closed, compiled desktop app by **Raynen** (raynen.cn); the
+    machine's transfer protocol is proprietary and undocumented. Building a
+    drop-in replacement is not something this project can do from the app
+    alone — it would need a protocol spec / SDK from Raynen or SmartStitch, or
+    a device that speaks it.
+  - SmartStitch's "WiFi Adapter (1501 only)" is **not** a wireless drive — it
+    is a plain USB WiFi network card that gives the machine its radio. It hosts
+    no files, so there is nothing on the LAN to copy a design onto; the only
+    thing that sends a file over that link is RnEmbNet's own protocol.
+  - **What shipped instead (this PR): "save to a folder" in the Download step.**
+    The operator points EMB-Bot at RnEmbNet's send-folder once and every export
+    lands there, cutting the hunt-for-the-file step. It does not talk to the
+    machine — RnEmbNet still does the transfer. Chromium-desktop only (File
+    System Access API); other browsers fall back to a normal download.
+  - Real direct-send stays open, pending vendor documentation or a
+    WiFi-storage device the S-1501 will read from its USB port.
+
 ## Known compliance risk
 
 - **Zero CC-BY-SA fonts ship.** All 13 ShareAlike fonts were pulled from
