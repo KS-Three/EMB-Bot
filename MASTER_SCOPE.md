@@ -624,6 +624,14 @@ byte-identical without the option, so thumbnails and PNG export are untouched.
 *(built and looked at 2026-09-30 — [area doc](docs/scope/3-studio-app-wizard.md),
 "The surround, the flat panel, and the scale bar")*
 
+**The Layers list and the canvas point at the same shape (2026-09-30).**
+Hover a row, its outline draws white on the field; click its name, the field
+selects it (amber); click or hover a shape on the canvas, its row highlights
+and the closed list opens and scrolls to it. One `{ elId, shapeId }` pair in
+App, both surfaces feeding it. Before this the field's shape selection was
+canvas-only by its own comment. *(built and looked at 2026-09-30 —
+`e2e/field-panel-sync.spec.js` 3; [area doc](docs/scope/3-studio-app-wizard.md))*
+
 **A Studio change is not verified until it has been *looked at* in a browser.**
 Six buyer-visible defects across the 2026-08-25 and 09-07 sweeps, none seen by a
 green suite. The list: DOCTRINE "Gotchas".

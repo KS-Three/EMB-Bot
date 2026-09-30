@@ -1,5 +1,5 @@
 <script>
-  import { createEventDispatcher, onDestroy } from "svelte";
+  import { createEventDispatcher, onDestroy, tick } from "svelte";
   import ThreadPicker from "./ThreadPicker.svelte";
   import Icon from "./Icon.svelte";
   import {
@@ -58,6 +58,14 @@
   export let element;
   export let project; // garmentId rides into the config (fabric preset service-side)
   export let health = null; // /health payload or null; App owns the probe
+  // Canvas -> list (2026-09-30): the shape under the pointer on the field,
+  // and the one selected there. The matching row highlights, and a
+  // selection opens the list and scrolls its row into view (revealRow,
+  // below the list state). The list -> canvas half is the rows' own
+  // mouseenter/mouseleave ("shapehover") and the name button ("shapeselect"),
+  // which App routes to the field.
+  export let hoverShapeId = null;
+  export let selectedShapeId = null;
 
   const d = createEventDispatcher();
 
@@ -901,6 +909,24 @@
   // element, so this resets when you switch designs -- which is what you want,
   // since "I was editing shapes" does not carry from one artwork to another.
   let layersOpen = false;
+  let layerListEl = null;
+  // A shape picked on the canvas is found in the list: open it if it was
+  // closed, then bring the row into view. `nearest` so a row already on
+  // screen does not jump, and a row the user just clicked (which also
+  // arrives here, via App) is a no-op. Matched by walking the rows rather
+  // than an attribute selector so an id needs no escaping.
+  $: if (selectedShapeId) revealRow(selectedShapeId);
+  async function revealRow(id) {
+    layersOpen = true;
+    await tick();
+    if (!layerListEl) return;
+    for (const li of layerListEl.querySelectorAll("[data-shape-id]")) {
+      if (li.dataset.shapeId === String(id)) {
+        if (typeof li.scrollIntoView === "function") li.scrollIntoView({ block: "nearest" });
+        return;
+      }
+    }
+  }
 
   // What the design-level border setting is called in a per-shape row's
   // "Design (...)" option. null is the automatic default and has no bare word
@@ -2486,7 +2512,7 @@
             </span>
           </button>
           {#if layersOpen}
-          <ol class="dgp-layerlist">
+          <ol class="dgp-layerlist" bind:this={layerListEl}>
             {#each orderedShapes as row, i (row.id)}
               <!-- One name per row, reused by every control in it, so a
                    screen reader and a voice command can both tell the rows
@@ -2520,7 +2546,16 @@
               {@const tier = effTier(row, overrides)}
               {@const siblings = dead || unstitched ? [] : layerSiblings(row, sewableShapes, overrides)}
               {@const siblingIdx = siblings.findIndex((r) => r.id === row.id)}
-              <li class="dgp-layer" class:dead class:unstitched>
+              <li
+                class="dgp-layer"
+                class:dead
+                class:unstitched
+                class:dgp-layer-hover={hoverShapeId === row.id}
+                class:dgp-layer-sel={selectedShapeId === row.id}
+                data-shape-id={row.id}
+                on:mouseenter={() => d("shapehover", row.id)}
+                on:mouseleave={() => d("shapehover", null)}
+              >
                 {#if !dead && !unstitched}
                   <label class="dgp-mergecheck" title="Select for merge">
                     <input
@@ -2563,7 +2598,18 @@
                       {/if}
                     {:else}
                       <ThreadPicker {rgb} compact name={rowAria} on:pick={(e) => recolorShape(row.id, e.detail)} />
-                      <span class="dgp-lname">{rowName(row)}</span>
+                      <!-- The name is the row's handle onto the canvas: click
+                           it and the field selects this shape, the amber
+                           outline showing which one. Only a sewing row gets
+                           this — a hidden or deleted shape has no outline to
+                           show and a Delete armed on it would be a surprise. -->
+                      <button
+                        type="button"
+                        class="dgp-lname dgp-lname-btn"
+                        title="Show this shape on the canvas"
+                        aria-label={"Show " + rowAria + " on the canvas"}
+                        on:click={() => d("shapeselect", row.id)}
+                      >{rowName(row)}</button>
                       <span class="dgp-larea">{fmtArea(row.areaMm2)}</span>
                       <span class="dgp-ltier tier-{tier || 'none'}">{tier || "not sewn"}</span>
                       <!-- The border this row actually has on it (borderMenu
@@ -3239,6 +3285,25 @@
      deliberately NOT struck through — this isn't something the user
      removed, so it shouldn't look removed. */
   .dgp-layer.unstitched { opacity: 0.75; }
+  /* The list and the canvas point at the same shape (2026-09-30): a row
+     under the pointer here, or whose shape is under the pointer there, takes
+     the hover ground; the selected shape's row takes the tint with an
+     accent edge, the list's twin of the amber outline on the field. */
+  .dgp-layer:hover,
+  .dgp-layer-hover { background: var(--bg, #f6f7fb); }
+  .dgp-layer-sel,
+  .dgp-layer-sel:hover { background: var(--tint, #eef0ff); box-shadow: inset 3px 0 0 var(--accent, #4f46e5); }
+  .dgp-lname-btn {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    font-family: inherit;
+    line-height: inherit;
+    text-align: left;
+    cursor: pointer;
+  }
+  .dgp-lname-btn:hover { color: var(--accent, #4f46e5); text-decoration: underline; }
   .dgp-ltier-unstitched {
     color: var(--warn-text, #8a6d1a);
     border-color: var(--warn-text, #8a6d1a);

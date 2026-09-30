@@ -249,3 +249,103 @@ is no crawlable marketing surface at all today.
   StitchFast / EmbroidAI (already doing per-format pages). Whoever ships the
   C2 architecture first with a genuinely free demo owns the image→file
   cluster; none of them has done C3 yet.
+
+---
+
+## D. "Stitchable" — domains, trademark, SEO (follow-up, same day)
+
+Kent asked for more on the top pick: *"ensure domains are not owned and are
+reasonably priced … see if SEO is favorable with Stitchable."* Checked with
+RDAP (Verisign, Google Registry, Identity Digital), registrar price pages,
+aftermarket listings, trademark mirrors and searches. **Caveats:** USPTO's
+own search refused every fetch, so marks are via Justia / BetterTrademark
+mirrors; WIPO's database is a JS app and international marks are
+unverified; Instagram, X and GitHub blocked the crawler where noted.
+
+### D1. Domains
+
+| Domain | Status | Registered → expires | Serving | Price |
+|---|---|---|---|---|
+| **stitchable.com** | **TAKEN** | 2015-03-12 → 2027-03-12 (Network Solutions) | HostGator-hosted site, answers 406 to crawlers; not parked | **Not for sale** on Afternic / Dan / Sedo; private offer only |
+| stitchable.net | **available** | — | — | ~$11–13 |
+| **stitchable.io** | **available** | — | — | ~$28–35 yr 1, ~$50 renew |
+| stitchable.app | taken | 2026-05-10 → 2027 (Namecheap) | Cloudflare Access login wall (private project) | not listed |
+| stitchable.co | taken, for sale | unverified | GoDaddy parked | **Afternic $1,988** buy-now |
+| stitchable.ai | taken, **in use** | 2025-10-26 → 2027 | "Stitchable Pro — AI Video Editor", live freemium product, GitHub org `Stitchable-ai` | not for sale |
+| stitchable.dev | taken | 2026-05-10 (same buyer as .app) | no response | not listed |
+| stitchable.studio | taken | 2020-06-08 → 2027 (GoDaddy) | no response | not listed |
+| getstitchable.com / trystitchable.com / stitchableapp.com | **available** | — | — | ~$10–11 each |
+| stichable.com (typo) | **available** | — | — | ~$10 |
+
+Registrar prices from Porkbun's own page and Cloudflare / Namecheap mirrors
+dated 2026-09-29 and 2026-04-21. Verisign raises the .com wholesale fee
+2026-11-01 (+$0.71).
+
+**If bought:** `stitchable.io` primary + `getstitchable.com`,
+`stitchableapp.com`, `stitchable.net`, `stichable.com` as redirects — about
+**$65 first year, ~$95/yr after**. `.co` at $1,988 is a weak upgrade over
+`.io`. **`.com` is the prize and it is not for sale** — it has been someone's
+hosted site since 2015.
+
+### D2. Trademark and existing use
+
+- **USPTO (via mirrors):** three "STITCHABLE …" marks, **all dead** —
+  STITCHABLE JOURNAL (class 26, abandoned 2010), STITCHABLE STENCILS (class
+  16, cancelled 2009), STITCHABLE PILLOW TOPPER (class 26, abandoned 1998).
+  No live mark found in class 9 / 40 / 42. Note every one of them paired the
+  word with a noun — the pattern a descriptive word needs to register.
+- **The direct collision is Stitch-Able, Mt. Pleasant SC** — an *embroidery*
+  business (custom monogrammed and embroidered gifts, in-house production) at
+  stitch-able.com since 2013, Etsy `StitchAbleDesigns`, **facebook.com/stitchable**,
+  Instagram `@stitch_able`. Same industry, same spoken name, 13 years of use.
+  No registered mark found, but common-law rights in embroidery services are
+  plausible, and it is a customer-confusion problem on day one.
+- **Other uses:** Stitchable Pro (the AI video editor above — unrelated class,
+  same exact brand string); "Stitchable Neural Networks" (CVPR 2023, ranks
+  page 1 for the bare word); Carly J. Stitchables (Etsy); StitchableCards;
+  WaffleFlower "Stitchables" die line; two GitHub repos named `stitchable`
+  (one a cross-stitch pattern app).
+- **Handles:** facebook.com/stitchable **taken (Stitch-Able)**;
+  tiktok.com/@stitchable **taken** (2016, dormant); youtube.com/@stitchable
+  **taken** (1 video); instagram.com/stitchable unverified (login wall) but
+  `@stitchable_` exists, which suggests the bare one is gone; x.com and
+  github.com unverified (blocked).
+
+### D3. SEO favorability
+
+- **Page 1 for the bare word today:** three dictionary entries (Wordnik,
+  Wiktionary, YourDictionary), Instagram `@stitchable_`, Etsy's
+  `/market/stitchable`, Facebook Stitch-Able, the CVPR paper, WaffleFlower.
+  "stitchable embroidery" → 123Stitch "Stitchable Embroidery Kits",
+  Dimensions "Stitchable Cards" kits. **No single site owns the term, but the
+  SERP is a crowd of adjective uses, not empty.**
+- **The generic-adjective problem is in exactly this category.** Retail:
+  "Stitchable Cross Stitch Kits", "Stamped Stitchable". Competing apps'
+  copy: Stitchel "convert photographs … into *stitchable* charts", StitchALot
+  "converts photos … into a *stitchable* pattern". Digitizing blogs: "into a
+  *stitchable* reality", "into *stitchable* designs". **"Stitchable" is
+  already the industry's word for the output of this product** — great for
+  meaning, bad for ownability: a bare descriptive word is the kind USPTO
+  refuses or pushes to the Supplemental Register.
+- **No keyword in the name costs little.** Google's own guidance: pick the
+  name that is best for the business; keywords in a domain have minimal
+  effect. John Mueller (2023): not a fan of keyword domains — "everyone
+  thinks you're a spammer … you have no brand name"; (2020) exact-match
+  domains "don't get a ranking boost". Rankings for "embroidery digitizing"
+  come from content either way. What a generic word DOES cost is the
+  navigational query: people already type "stitchable" meaning other things.
+- **Spelling / voice:** "stitch-able" (the SC competitor's spelling) is
+  identical spoken. "stichable" is the obvious typo and its .com is free.
+
+### D4. Verdict
+
+**Domains: cautious yes; brand as-is: no.** `stitchable.io` plus the four
+defensive `.com`s cost ~$65 and are worth holding while deciding; do not
+chase `.com` (not for sale) or `.co` ($1,988). The two real risks are
+**Stitch-Able of Mt. Pleasant SC** (same industry, same spoken name, the
+Facebook handle, 13 years) and **the word being the category's own
+adjective** (weak mark, a SERP shared permanently with dictionaries, kits
+and a CVPR paper). If the direction survives those, the ownable forms are
+"Stitchable" + a distinctive noun, or a compound such as *GetStitchable* —
+the bare word is not. **HoopReady** and **Digitizely** from §B were not
+re-checked at this depth and would need the same pass before a purchase.

@@ -698,3 +698,34 @@ keeps a square, not a broken control).
 *(built and looked at 2026-09-30 — both lanes driven at 1440×900, the logo
 lane against the live service; Studio unit suite 1,322 passed; e2e suite run
 in full before the push)*
+
+## The Layers list and the canvas point at the same shape (2026-09-30)
+
+Second PR of the design review. The finding: `EmbroideryField`'s
+`selectedShapeId` was set from a canvas hit only — its own comment said so —
+so a row in the 31-row Edit shapes list had no way to say which outline it
+was, and a shape on the canvas no way to say which row. "Hard to navigate
+what a digitized image is up" was mostly this.
+
+**One state, owned by App.** `hoverShape` and `selectedShape`, each
+`{ elId, shapeId }` or null. The panel's rows send `shapehover` on
+mouseenter/leave and the sewing rows' name (now a button, "Show #0134 on the
+canvas") sends `shapeselect`; the field sends the same two from its pointer
+(outline hit OR interior hit — the right-click menu's two tests) and from
+every path that changes its selection (`setSelectedShape`: click, right-click,
+Delete, the clear on element change). Each side draws the other's: the field
+outlines the hovered shape in white whether or not the outlines toggle is on
+(the signpost the toggle's comment said was lost), applies a row click as its
+own amber selection (`applyFocusShape`, so Delete and a boundary drag act on
+it); the panel takes a hover ground on the hovered row and the tint plus an
+accent edge on the selected one, and a canvas selection opens the closed list
+and scrolls its row into view (`revealRow`, `block: "nearest"`). Hidden and
+deleted rows keep a plain name: they have no outline to show, and a Delete
+armed on one would be a surprise. The panel only ever sees ids for the element
+it is showing (App narrows by `elId`), and nothing echoes: `setSelectedShape`
+is silent when unchanged, `applyFocusShape` never dispatches.
+
+*(built and looked at 2026-09-30 — `e2e/field-panel-sync.spec.js`, 3, against
+the live service, each reading the outline colour off the canvas; the panel's
+half in `DigitizePanel.spec.js`, 3; Studio unit 1,325, e2e full suite run
+before the push)*

@@ -37,6 +37,11 @@
   // it read "Image · 4 colors" directly above a swatch strip rendering two,
   // on one screen. Same defect the review card had; see lib/summary.js.
   export let sewnColors = null;
+  // The shape the canvas is pointing at / has selected, for the digitize
+  // panel's Layers list to highlight (2026-09-30). Ids only — App has
+  // already narrowed them to the selected element.
+  export let hoverShapeId = null;
+  export let selectedShapeId = null;
   const d = createEventDispatcher();
 
   // ---- Task 5 (Slice 5): the real element manager --------------------------
@@ -297,6 +302,10 @@
         element={el}
         {project}
         health={digitizerHealth}
+        {hoverShapeId}
+        {selectedShapeId}
+        on:shapehover={(e) => d("shapehover", e.detail)}
+        on:shapeselect={(e) => d("shapeselect", e.detail)}
         on:elupdate={(e) => d("elupdate", e.detail)}
         on:checkservice={() => d("checkservice")}
         on:converttotext={(e) => d("converttotext", e.detail)}

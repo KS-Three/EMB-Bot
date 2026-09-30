@@ -1536,3 +1536,59 @@ describe("the upload stores the file and a digitize sends it", () => {
     expect(await findByTestId("source-note")).toHaveTextContent(/original file is no longer stored/);
   });
 });
+
+// ---- The list <-> canvas shape sync (2026-09-30) ----------------------------
+// The canvas half (the outline drawn, the amber selection applied) is pinned
+// in e2e/field-panel-sync.spec.js against the live service; this is the
+// list's half: what a row sends, and what it shows for what it is sent.
+describe("list <-> canvas shape sync", () => {
+  test("hovering a row sends its shape id, leaving it sends null", async () => {
+    const hovers = [];
+    const utils = render(Harness, {
+      props: { element: baseElement([shapeRow("s1"), shapeRow("s2")]), onShapeHover: (d) => hovers.push(d) },
+    });
+    openLayers(utils);
+    const rows = utils.container.querySelectorAll(".dgp-layer");
+    expect(rows).toHaveLength(2);
+    await fireEvent.mouseEnter(rows[1]);
+    await fireEvent.mouseLeave(rows[1]);
+    expect(hovers).toEqual(["s2", null]);
+  });
+
+  test("clicking a sewing row's name sends its shape id; hidden and deleted rows have no name button", async () => {
+    const picks = [];
+    const utils = render(Harness, {
+      props: {
+        element: baseElement(
+          [shapeRow("live"), shapeRow("off", { stitched: false }), shapeRow("gone")],
+          { deletedShapeIds: ["gone"] },
+        ),
+        onShapeSelect: (d) => picks.push(d),
+      },
+    });
+    openLayers(utils);
+    const btns = utils.container.querySelectorAll(".dgp-lname-btn");
+    expect(btns).toHaveLength(1);
+    expect(btns[0]).toHaveAttribute("aria-label", expect.stringMatching(/^Show .* on the canvas$/));
+    await fireEvent.click(btns[0]);
+    expect(picks).toEqual(["live"]);
+    // Nothing else was patched by the click — selection is App's state, not
+    // the element's.
+    expect(utils.container.querySelector(".dgp-layer-sel")).toBeNull();
+  });
+
+  test("the hovered and selected ids mark their rows, and a selection opens the closed list", async () => {
+    const utils = render(Harness, {
+      props: { element: baseElement([shapeRow("a"), shapeRow("b")]), hoverShapeId: "a" },
+    });
+    // Closed by default: no rows at all yet.
+    expect(utils.container.querySelectorAll(".dgp-layer")).toHaveLength(0);
+    await utils.rerender({ element: baseElement([shapeRow("a"), shapeRow("b")]), hoverShapeId: "a", selectedShapeId: "b" });
+    await waitFor(() => expect(utils.container.querySelectorAll(".dgp-layer")).toHaveLength(2));
+    const rows = utils.container.querySelectorAll(".dgp-layer");
+    expect(rows[0]).toHaveClass("dgp-layer-hover");
+    expect(rows[0]).not.toHaveClass("dgp-layer-sel");
+    expect(rows[1]).toHaveClass("dgp-layer-sel");
+    expect(rows[1]).toHaveAttribute("data-shape-id", "b");
+  });
+});

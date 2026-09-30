@@ -36,6 +36,16 @@
   // reported via this component's own "stats" event below) + the A7
   // cross-hint priority rule.
   export let showDragHint = false;
+  // The shape the Layers list is pointing at (2026-09-30). Both are
+  // { elId, shapeId } or null, owned by App so the list and the canvas share
+  // one idea of "the shape in question": `hoverShape` is drawn as a white
+  // outline whether or not the outlines toggle is on; `focusShape` is
+  // applied as this component's own selection (the amber one) exactly as a
+  // canvas click would. Before this, selectedShapeId was set from a canvas
+  // hit only, and a row in a thirty-row list had no way to say which
+  // outline it was.
+  export let hoverShape = null;
+  export let focusShape = null;
 
   const dispatch = createEventDispatcher();
   const MM_PER_INCH = 25.4;
@@ -656,7 +666,54 @@
   // user. Cheap to compute, and it also drops the highlight.
   $: if (project && project.selectedId !== undefined) {
     const sel = selectedElement();
-    if (!sel || sel.type !== "digitized") selectedShapeId = null;
+    if (!sel || sel.type !== "digitized") setSelectedShape(null);
+  }
+
+  // Every change to the shape selection goes through here so the Layers
+  // list (via App) always hears about it — a canvas click, a right-click,
+  // a Delete, the clear above. Silent when nothing changed, which is also
+  // what stops a panel-originated selection echoing back and forth.
+  function setSelectedShape(id) {
+    if (selectedShapeId === id) return;
+    selectedShapeId = id;
+    const el = selectedElement();
+    dispatch("shapeselect", id && el ? { elId: el.id, shapeId: id } : null);
+  }
+
+  // Panel -> canvas: a click on a row selects that shape here, the same
+  // state a canvas click sets, so Delete and a boundary drag act on it and
+  // the amber highlight shows which one. Only for the element in front of
+  // the user; a stale focus for some other element is ignored.
+  function applyFocusShape(f) {
+    const sel = selectedElement();
+    if (!sel || sel.type !== "digitized" || sel.id !== f.elId) return;
+    if (selectedShapeId === f.shapeId) return;
+    selectedShapeId = f.shapeId;
+    shapeEditError = "";
+    scheduleViewRepaint();
+  }
+  $: if (focusShape) applyFocusShape(focusShape);
+  // A hover is drawn over the render, so a change to it (on or off) needs
+  // the base repainted underneath, not just the overlay redrawn on top.
+  $: if (canvas) { hoverShape; scheduleViewRepaint(); }
+
+  // Canvas -> panel: the shape under the pointer, on its outline or inside
+  // it (the same two tests the right-click menu uses), for the row to
+  // highlight. Dispatched only on change; null when the pointer is on none.
+  let hoverEmitted = null;
+  function emitCanvasHover(p) {
+    let id = null;
+    let elId = null;
+    const edit = p ? editableOutlinesPx() : null;
+    if (edit) {
+      const hidden = hiddenShapeIds(edit.el, edit.rows);
+      const live = edit.outlines.filter((o) => !hidden.has(o.id));
+      const hit = hitOverlay(live, p.x, p.y) || hitShapeInterior(live, p.x, p.y);
+      if (hit) { id = hit.shapeId; elId = edit.el.id; }
+    }
+    if (id === hoverEmitted) return;
+    hoverEmitted = id;
+    dispatch("shapehover", id ? { elId, shapeId: id } : null);
   }
 
   function deleteSelectedShape() {
@@ -666,7 +723,7 @@
     const cur = el.deletedShapeIds || [];
     if (cur.includes(selectedShapeId)) return false;
     dispatch("elupdate", { id: el.id, patch: { deletedShapeIds: [...cur, selectedShapeId] } });
-    selectedShapeId = null;
+    setSelectedShape(null);
     shapeEditError = "";
     return true;
   }
@@ -855,18 +912,22 @@
         // Highlighted when SELECTED, not only while dragging: the highlight
         // is what tells you which shape a Delete or a drag will act on.
         const editing = o.id === selectedShapeId;
+        // Under the pointer — on the canvas or on its row in the Layers
+        // list (App routes both here as `hoverShape`). Drawn white so it
+        // reads as a spotlight beside the amber selection.
+        const hovered = !editing && !!hoverShape && hoverShape.elId === el.id && hoverShape.shapeId === o.id;
         // The default view is the stitch-out, so only the shape being acted
-        // on is outlined until the user asks for all of them.
+        // on, or pointed at, is outlined until the user asks for all of them.
         //
         // Clicking still selects with the outlines hidden: hit-testing runs
         // off the geometry (hitOverlay), never off what was drawn, and the
-        // shape highlights the moment it is picked. What IS lost is the
-        // signpost that the shapes are individually clickable at all — which
-        // is what the toggle is for, and why it sits with the other two
-        // diagnostic overlays rather than being hidden in a menu. (Note the
-        // Layers list does not drive this: selectedShapeId is set from a
-        // canvas hit only.)
-        if (!showOutlines && !editing) continue;
+        // shape highlights the moment it is picked. The hover outline is the
+        // signpost that the shapes are individually clickable; the toggle
+        // remains for seeing all of them at once, which is why it sits with
+        // the other two diagnostic overlays. (Since 2026-09-30 the Layers
+        // list drives this too, through App: a row's hover and click land
+        // in `hoverShape` / `focusShape` above.)
+        if (!showOutlines && !editing && !hovered) continue;
 
         ctx.beginPath();
         ctx.moveTo(pts[0].x, pts[0].y);
@@ -886,9 +947,11 @@
         // reads as a highlight, widening alone as a wobble; both together read
         // as a heartbeat.
         ctx.strokeStyle = editing
-          ? "rgba(255, 214, 64, 0.95)"     // the shape under the pointer
-          : `rgba(${OUTLINE_RGB}, ${0.85 + 0.15 * pulse})`;
-        ctx.lineWidth = (editing ? 1.9 : 1.4) + 1.4 * pulse;
+          ? "rgba(255, 214, 64, 0.95)"     // the selected shape
+          : hovered
+            ? "rgba(255, 255, 255, 0.95)"  // the shape under the pointer, here or in the list
+            : `rgba(${OUTLINE_RGB}, ${0.85 + 0.15 * pulse})`;
+        ctx.lineWidth = (editing || hovered ? 1.9 : 1.4) + 1.4 * pulse;
         ctx.stroke();
 
         const r = NODE_R + 1.7 * pulse + (editing ? 0.6 : 0);
@@ -1743,7 +1806,7 @@
     }
     if (!hit) return null;
     if (project.selectedId !== el.id) dispatch("select", el.id);
-    selectedShapeId = hit.shapeId;
+    setSelectedShape(hit.shapeId);
     shapeEditError = "";
     drawOverlay();
     const row = edit.rows.find((x) => x && x.id === hit.shapeId) || {};
@@ -1923,7 +1986,7 @@
         // First click on a shape selects it and stops there — no geometry
         // moves until you have said which shape you mean.
         if (hit.shapeId !== selectedShapeId) {
-          selectedShapeId = hit.shapeId;
+          setSelectedShape(hit.shapeId);
           shapeEditError = "";
           drawOverlay();
           return;
@@ -1962,7 +2025,7 @@
       // falling through, so the next click on an outline selects rather than
       // edits, and Delete stops being armed.
       if (selectedShapeId) {
-        selectedShapeId = null;
+        setSelectedShape(null);
         drawOverlay();
       }
     }
@@ -2045,6 +2108,7 @@
       return;
     }
     if (!dragMode) {
+      emitCanvasHover(p);
       updateHoverCursor(p);
       return;
     }
@@ -2226,6 +2290,7 @@
   }
 
   function onPointerLeave() {
+    emitCanvasHover(null);
     if (!dragMode && canvas) canvas.style.cursor = "default";
   }
 </script>
