@@ -1452,7 +1452,9 @@ class PipelineConfig:
     # of its construction closed (`stage6_satin._close_seams`, hairline
     # fills touching boundary stage 5 added, nothing on the artwork's
     # own), golden_tee 11,377 -> 7,966, MARINE byte-identical, corpus
-    # trims 651 -> 640.
+    # trims 651 -> 640. Since 2026-09-30 the rails, caps and underlay
+    # read that closed polygon too, so a spine down a closed seam is not
+    # pinched by the seam's walls.
     satin_rail_comp: bool = True
     # None = the fabric preset's fill underlay style. One of "none" |
     # "edge_run" | "center_run" | "edge_zigzag" | "edge_lattice" |
