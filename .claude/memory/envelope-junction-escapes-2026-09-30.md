@@ -61,3 +61,14 @@ reached, 23 → 17 stretches, 9,333 → 9,321 st, reached-station jitter 28.4 �
 long reaches' plateaus/steps (1.8 mm max), the artwork's features. Slope
 limit / ramp simulated: −24 to −49% extension area — Kent's trade, not
 built. `docs/renders/envelope-teeth-2026-09-30/`.
+
+**Evening sitting (same day, Kent's pick after the teeth)**: the labelled
+page rebuilt as this morning's engine | today (`ref_0930am` = 1e5f8fe2,
+main before #577/#578/#579) on the nine logos, tag `evening-0930`, the
+dissolve pairs kept (still unjudged), and a needle-hole map beside every
+render (`stitchviz.render_penetrations`, `--render`'s `__holes.jpg`, the
+page's *thread | needle holes* toggle) because the thread render cannot
+show the comb. The corpus table under the ref arm's head:
+`docs/eye-pairs-2026-09-30/three-changes-corpus.json` (stitches, trims,
+envelope reaches with escapes, split on/off changes, before → after per
+logo). Verdicts: his, pending at the time of writing.

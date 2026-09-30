@@ -39,10 +39,18 @@ import cv2
 import numpy as np
 
 BASE = "base"
-REF_ARM = "ref_0827"
-# The yardstick's ref arm runs the old engine in a worktree with no rembg
-# venv, so a photo-class fixture's old arm skipped photo prep for an
-# ENVIRONMENT reason; its pairs are shown, and marked.
+# The yardstick's `__ref__` arms: an engine snapshot run out of process, and
+# the label the page gives it (BEFORE is that engine on the left, AFTER is
+# today on the right). Restated from `tools.eye_pairs.pairs.ARMS` and pinned
+# by test; the page reads `is_ref` and `ref_label` off the record, never an
+# id, so a second snapshot (2026-09-30, the morning's engine) is a row here.
+REF_ARMS: dict[str, str] = {
+    "ref_0827": "08-27 engine",
+    "ref_0930am": "09-30 morning engine",
+}
+# A ref arm runs the old engine in a worktree with no rembg venv, so a
+# photo-class fixture's old arm skipped photo prep for an ENVIRONMENT
+# reason; its pairs are shown, and marked.
 PHOTO_CLASSES = ("photo_subject", "photo_scene")   # digitizer_core.config.PHOTO_CLASSES
 HERE = Path(__file__).resolve().parent
 TEMPLATE = HERE / "eye_pairs_gallery.html"
@@ -114,6 +122,14 @@ ARM_INTENT: dict[str, tuple[str, str]] = {
         "engine at 25da2fe (main on 2026-08-27)",
         "The engine behind Kent's fourteen 08-27 notes and his 'sixty of a "
         "hundred against Ember' — today against then, drawn by today's renderer."),
+    "ref_0930am": (
+        "engine at 1e5f8fe2 (main on the morning of 2026-09-30)",
+        "The envelope as it shipped that morning, before the day's three "
+        "lettering changes: the sibling rule (a reach may not end in another "
+        "stroke's corridor, #577), the split comb (one split decision per column, "
+        "#578) and the minimum stretch length (a reach shorter than the window is "
+        "not a reach, #579). Today against that morning, drawn by today's renderer; "
+        "the needle-holes toggle shows the comb the thread render cannot."),
 }
 
 # Arms that left the pending table because they SHIPPED. A sitting rendered
@@ -272,14 +288,15 @@ def pair_records(public: list[dict], sealed: dict[str, dict], picks: dict[str, d
         arm_side = None if shipped is None else ("R" if shipped == "L" else "L")
         width, garment = sizes.get(fx, (None, None))
         change, intent = arm_intent(arm)
-        is_ref = arm == REF_ARM
+        is_ref = arm in REF_ARMS
         base_class = (feats.get(fx, {}).get(BASE) or {}).get("design_class")
         recs.append({
             "pair": pid, "kind": s["kind"], "repeat_of": s.get("repeat_of"),
             "fixture": fx, "width_mm": width, "garment": garment,
             "shipped_side": shipped, "arm_side": arm_side, "arm": arm,
             "arm_change": change, "arm_intent": intent,
-            "is_ref": is_ref, "confounded": is_ref and base_class in PHOTO_CLASSES,
+            "is_ref": is_ref, "ref_label": REF_ARMS.get(arm),
+            "confounded": is_ref and base_class in PHOTO_CLASSES,
             "pick": pk["choice"], "picked_arm": picked_arm(s, pk), "ms": pk.get("ms"),
             "counts": {"L": _counts(feats, fx, s["left_arm"]),
                        "R": _counts(feats, fx, s["right_arm"])},
@@ -344,6 +361,18 @@ def _source_art(src: Path, per_pair_name: str, fixture: str) -> Path:
     return unique if unique.exists() else src / "img" / per_pair_name
 
 
+HOLES_SUFFIX = "__holes"        # tools.eye_pairs.holes_path: renders/<fixture>__<arm>__holes.jpg
+
+
+def _source_holes(src: Path, fixture: str, arm: str) -> Path | None:
+    """The penetration map the yardstick draws beside a render (from
+    2026-09-30), when it drew one: a sitting rendered before that has none,
+    and the page then shows no toggle. There is no per-pair copy of a map,
+    so there is no fallback either."""
+    path = src / "renders" / f"{fixture}__{arm}{HOLES_SUFFIX}.jpg"
+    return path if path.exists() else None
+
+
 def _reencode(data: bytes, max_edge: int, png: bool) -> bytes:
     img = cv2.imdecode(np.frombuffer(data, np.uint8), cv2.IMREAD_UNCHANGED)
     if img is None:
@@ -363,9 +392,11 @@ def _reencode(data: bytes, max_edge: int, png: bool) -> bytes:
 def collect_images(src: Path, public: list[dict], sealed: dict[str, dict],
                    out_img: Path, budget: int = BUDGET_BYTES
                    ) -> tuple[dict[str, dict[str, str]], int]:
-    """-> (pair id -> {L, R, art} relative names, bytes written). One output
-    file per DISTINCT source (sha256 of the source bytes), so a fixture's base
-    render — shown in every one of its pairs — is shipped once."""
+    """-> (pair id -> {L, R, art[, Lh, Rh]} relative names, bytes written).
+    One output file per DISTINCT source (sha256 of the source bytes), so a
+    fixture's base render — shown in every one of its pairs — is shipped
+    once. `Lh` / `Rh` are the sides' penetration maps, carried only when the
+    yardstick drew them."""
     out_img.mkdir(parents=True, exist_ok=True)
     names: dict[str, dict[str, str]] = {}
     seen: dict[str, str] = {}
@@ -378,6 +409,10 @@ def collect_images(src: Path, public: list[dict], sealed: dict[str, dict],
             "R": (_source_render(src, p["right"], s["fixture"], s["right_arm"]), False),
             "art": (_source_art(src, p["art"], s["fixture"]), True),
         }
+        for key, arm in (("Lh", s["left_arm"]), ("Rh", s["right_arm"])):
+            holes = _source_holes(src, s["fixture"], arm)
+            if holes is not None:
+                sources[key] = (holes, False)
         names[pid] = {}
         for key, (path, png) in sources.items():
             if not path.exists():
@@ -521,7 +556,7 @@ def _stitches(designs: Path, fixture: str, arm: str):
 
 def labelled_sides(rec: dict) -> tuple[str, str]:
     """-> (left arm, right arm). BEFORE is the left side: the shipped engine
-    for a flag, the OLD engine for the 08-27 arm, whose AFTER is today."""
+    for a flag, the OLD engine for a ref arm, whose AFTER is today."""
     return (rec["arm"], BASE) if rec["is_ref"] else (BASE, rec["arm"])
 
 
@@ -561,7 +596,7 @@ def labelled_records(src: Path, feats: dict, sizes: dict[str, tuple[float, str]]
                 skipped.append({"fixture": fx, "arm": arm, "reason": "identical_to_base"})
                 continue
             _require(renders / f"{fx}__{arm}.jpg", fx, arm)
-            is_ref = arm == REF_ARM
+            is_ref = arm in REF_ARMS
             shipped, arm_side = ("R", "L") if is_ref else ("L", "R")
             change, intent = arm_intent(arm)
             rec = {
@@ -570,7 +605,8 @@ def labelled_records(src: Path, feats: dict, sizes: dict[str, tuple[float, str]]
                 "fixture": fx, "width_mm": width, "garment": garment,
                 "shipped_side": shipped, "arm_side": arm_side, "arm": arm,
                 "arm_change": change, "arm_intent": intent,
-                "is_ref": is_ref, "confounded": is_ref and base_class in PHOTO_CLASSES,
+                "is_ref": is_ref, "ref_label": REF_ARMS.get(arm),
+                "confounded": is_ref and base_class in PHOTO_CLASSES,
                 "pick": None, "picked_arm": None, "ms": None,
                 "chips": chip_directions(feats, fx, arm, shipped, arm_side),
                 "consistent": None,
@@ -608,7 +644,7 @@ def labelled_arms(recs: list[dict], skipped: list[dict], failed: list[dict]
     arms: dict[str, dict] = {}
     for arm in sorted({a for a in seen if a != BASE}, key=lambda a: (order.get(a, len(order)), a)):
         change, intent = arm_intent(arm)
-        arms[arm] = {"change": change, "intent": intent, "is_ref": arm == REF_ARM,
+        arms[arm] = {"change": change, "intent": intent, "is_ref": arm in REF_ARMS,
                      "n_pairs": sum(1 for r in recs if r["arm"] == arm),
                      "skipped": sum(1 for s in skipped if s["arm"] == arm),
                      "failed": sum(1 for f in failed if f["arm"] == arm)}
@@ -678,7 +714,8 @@ def build(src: Path, out: Path, budget: int = BUDGET_BYTES, labelled: bool = Fal
         refuse_if_incomplete([p["pair"] for p in public], picks)
         recs = pair_records(public, sealed, picks, feats, fixture_sizes())
         tally = arm_tally(recs, skipped)
-        arms = {arm: {"change": arm_intent(arm)[0], "intent": arm_intent(arm)[1], **t}
+        arms = {arm: {"change": arm_intent(arm)[0], "intent": arm_intent(arm)[1],
+                      "is_ref": arm in REF_ARMS, **t}
                 for arm, t in sorted(tally.items())}
         title = REVEAL_TITLE
     attach_tables(arms, tables)

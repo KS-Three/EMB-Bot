@@ -208,3 +208,101 @@ goes on and off?
 Pending his sitting. Read back with `ArtifactData`: `notes` under
 `phantom_dissolve__<fixture>__fold-fix`, `rulings` under
 `phantom_dissolve__fold-fix`.
+
+## The evening sitting — the day's three lettering changes, before | after (2026-09-30)
+
+Kent's pick after the teeth (#579): put the three changes the day made to
+the lettering in front of his eye, on the page, with the thing the page
+could not show until now. The same artifact URL, rebuilt under the tag
+`evening-0930`:
+
+- **Eight pairs against this morning's engine** — `ref_0930am`, `main` at
+  1e5f8fe2 (the merge of #574): the envelope as it shipped that morning,
+  before the sibling rule (#577), the split comb (#578) and the minimum
+  stretch length (#579). BEFORE is that engine on the left, AFTER is today
+  on the right. fremont is identical to the stitch and not shown; on
+  enthusiast the stitch count is the same and the design is not.
+- **Five dissolve pairs kept** — `phantom_dissolve` after the fold fix,
+  still unjudged (bridge, gaulke, golden_tee, screenshot, tires; becker,
+  enthusiast, fremont and drone identical). Their notes take the new tag;
+  the 09-28 verdicts on the pre-fix dissolve stay under their own ids.
+- **A needle-hole map beside every render**, the page's new *thread |
+  needle holes* control at the top. `stitchviz.render_penetrations` draws
+  the thread render faded to 35% over the cloth, on the same frame, with a
+  dot at every stitch record and none at a jump; `--render` writes it as
+  `renders/<fixture>__<arm>__holes.jpg` and the page swaps every view's
+  source in place, so a zoom set on the thread stays on the holes. Built
+  because the thread render cannot show a split column's mid-column
+  penetration (`../renders/split-comb-2026-09-30/`): on the render the comb
+  and the flicker look alike, on the map the comb is continuous staggered
+  lines of holes down every wide column and the flicker is an interrupted
+  one.
+- **The locator marks becker (1 box) and tires (3).** On the other six ref
+  pairs the change is under its 0.6 mm blur — a rail moved by under a
+  millimetre, a comb that is texture — which is what the holes toggle is
+  for. The confound badge on tires' ref pair is the generator's rule for a
+  photo-class fixture; in this cloud render neither engine had the rembg
+  venv, so both sides ran the same prep.
+- **The table** under the ref arm's head: `three-changes-corpus.json`,
+  measured on the two engines that drew the pairs.
+
+## The corpus, this morning's engine → today's
+
+`tools/envelope_escapes.py` (a trace hook on `_rail_points` and a 20 px/mm
+raster of the symmetric satin) and a per-leg split count, run in each
+tree; stitches and trims are the same runs and agree with the page's
+counts. *reached (escapes)*: the stations at which the envelope extends a
+rail past the symmetric width, and how many of those extensions end on
+ground another stroke of the same shape already sews. *changes
+(lettering)*: how many times the split state changes between consecutive
+legs along the satin runs, a cross and its return leg each split on their
+own length.
+
+| fixture | mm | stitches | trims | reached (escapes) | split on/off changes (lettering) |
+|---|---|---|---|---|---|
+| becker | 100 | 9,563 → 9,321 | 51 → 50 | 183 (113) → 72 (14) | 122 (59) → 37 (26) |
+| golden_tee | 80 | 8,613 → 8,575 | 41 | 130 (75) → 36 (5) | 4 (0) |
+| tires | 80 | 2,500 → 2,835 | 7 → 8 | 22 (22) → 1 (0) | 17 (0) → 5 (0) |
+| enthusiast | 80 | 2,474 | 15 | 1 (1) → 0 (0) | 0 (0) |
+| fremont | 92.5 patch | 20,012 | 56 | 0 (0) | 0 (0) |
+| bridge | 80 | 16,157 → 16,175 | 101 | 85 (70) → 0 (0) | 20 (0) → 5 (0) |
+| gaulke | 80 | 4,307 → 4,305 | 30 | 6 (5) → 0 (0) | 0 (0) |
+| drone | 80 | 18,788 → 18,796 | 122 | 12 (10) → 0 (0) | 2 (2) |
+| screenshot | 80 | 8,171 → 8,201 | 73 | 28 (26) → 1 (0) | 8 (0) → 3 (0) |
+| **corpus** | | 90,585 → 90,694 | 496 | **467 (322) → 110 (19)** | **173 → 56** |
+
+The escapes census of the afternoon read 459 / 313 → 129 / 23 with its
+scratch copy of the instrument, on d59ff556 and before the teeth; the
+committed tool on these two trees reads the rows above. What the three
+changes did, in the corpus's own numbers: the envelope now reaches at a
+quarter of the stations it did this morning and nineteen of those
+extensions still land on a sibling's ground (Becker 14, golden_tee 5); the
+split state changes a third as often along the runs; the stitch total
+moves a tenth of a percent, tires the exception (+13%: the comb on its
+wide columns, the sibling rule having taken its twenty-two escapes).
+
+## How it was built
+
+```bash
+cd digitizer
+.venv/bin/python -m tools.eye_pairs --render --arms ref_0930am,phantom_dissolve --out <out>
+.venv/bin/python -m tools.eye_pairs_gallery --labelled --src <out> --out <out>/gallery \
+    --tables ../docs/eye-pairs-2026-09-30/three-changes-corpus.json --sitting evening-0930
+```
+
+One lane, the base and both arms on all nine logos (27 arm-runs, the ref
+engine in a temp worktree), then `<out>/gallery/index.html` and its `img/`
+republished to the artifact above (50 images, 7.5 MB; the previous
+sittings' images removed from the version). The store was read before the
+republish: no document newer than the export in `kent-notes.json`, no
+rulings. The instrument runs are a scratch script over
+`tools/envelope_escapes.census` in each tree; their output is the table.
+
+## Kent's question
+
+Two, on one page. On the eight ref pairs: does today's lettering read
+better than this morning's — smoother, more flow, the void-filling gone —
+and where the holes toggle shows the comb, does a continuous comb read
+better than the flicker it replaced? On the five dissolve pairs: the flip
+of `dissolve_phantom_blends`, still his to rule on. Verdicts pending at
+the time of writing.

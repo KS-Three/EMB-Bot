@@ -25,7 +25,7 @@ from pathlib import Path
 import cv2
 
 from digitizer_core.config import PHOTO_CLASSES
-from digitizer_core.stitchviz import render_design
+from digitizer_core.stitchviz import render_design, render_penetrations
 
 from tools import dropped_elements, edge_smoothness
 from tools.artfid_eye_rank import VIEW_PX_PER_MM, _normalise_art
@@ -61,6 +61,21 @@ def _sha256(path: Path) -> str:
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 
+_JPEG = [cv2.IMWRITE_JPEG_QUALITY, 92]
+
+
+def holes_path(out: Path, name: str, arm: str) -> Path:
+    """The penetration map beside a thread render (2026-09-30):
+    `renders/<fixture>__<arm>__holes.jpg`, the same frame with a dot at every
+    needle-down. The thread render cannot show a split column's mid-column
+    penetrations, so the labelled page swaps to this on a toggle."""
+    return Path(out) / "renders" / f"{name}__{arm}__holes.jpg"
+
+
+def _write_holes(hpath: Path, design: dict) -> None:
+    cv2.imwrite(str(hpath), render_penetrations(design, px_per_mm=VIEW_PX_PER_MM), _JPEG)
+
+
 def _default_ref_runner(ref: str):
     """-> (runner, closer) for ONE commit. The worktree lives under the
     system temp dir — never inside the repo (`refarm.guard_scratch`)."""
@@ -82,7 +97,9 @@ def render(out=OUT, cases=None, arms=None, fixtures=None, only_arms=None,
     Resume-safe: a row is reused only when its `source_sha256` matches the
     image on disk AND its `schema` matches `FEATURES_SCHEMA` AND its design
     and render files exist. Name-only keying let a re-exported image stay
-    'cached' for a whole sitting (review finding 7, 2026-09-17).
+    'cached' for a whole sitting (review finding 7, 2026-09-17). A cached
+    row missing only its penetration map (a run rendered before 2026-09-30)
+    gets the map drawn from the kept design, with no digitize.
 
     `ref_factory(commit) -> (runner, closer)` is built once PER COMMIT, so
     two `__ref__` rows on different commits each get their own engine —
@@ -116,11 +133,14 @@ def render(out=OUT, cases=None, arms=None, fixtures=None, only_arms=None,
             for arm, kw in [(BASE, {})] + list(arms.items()):
                 dpath = out / "designs" / f"{name}__{arm}.json"
                 rpath = out / "renders" / f"{name}__{arm}.jpg"
+                hpath = holes_path(out, name, arm)
                 row = feats.get(name, {}).get(arm)
                 if (row and "error" not in row
                         and row.get("source_sha256") == src_hash
                         and row.get("schema") == FEATURES_SCHEMA
                         and dpath.exists() and rpath.exists()):
+                    if not hpath.exists():
+                        _write_holes(hpath, json.loads(dpath.read_text(encoding="utf-8")))
                     _say(f"[{name} / {arm}] cached")
                     ready += 1
                     continue
@@ -151,8 +171,8 @@ def render(out=OUT, cases=None, arms=None, fixtures=None, only_arms=None,
                 row["source_sha256"] = src_hash
                 row["schema"] = FEATURES_SCHEMA
                 dpath.write_text(json.dumps(design), encoding="utf-8")
-                cv2.imwrite(str(rpath), render_design(design, px_per_mm=VIEW_PX_PER_MM),
-                            [cv2.IMWRITE_JPEG_QUALITY, 92])
+                cv2.imwrite(str(rpath), render_design(design, px_per_mm=VIEW_PX_PER_MM), _JPEG)
+                _write_holes(hpath, design)
                 feats.setdefault(name, {})[arm] = row
                 _write_json(feats_path, feats)          # checkpoint per arm
                 ready += 1

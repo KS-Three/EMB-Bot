@@ -16643,3 +16643,39 @@ are all but identical, the rails drawing shows the kink gone. A unit test
 on the helper; the pinned files 143 passed. Records:
 `docs/renders/envelope-teeth-2026-09-30/` (README, census.json, three
 strips), DOCTRINE.
+
+## 2026-09-30 — The evening sitting: the day's three lettering changes before | after on the labelled page, with a needle-hole map beside every render (Kent's pick)
+
+Kent's pick after the teeth. The labelled page rebuilt at the same URL as
+this morning's engine (`ref_0930am`, `main` at 1e5f8fe2 — the envelope as
+it shipped that morning, before the sibling rule #577, the split comb #578
+and the minimum stretch length #579) against today's, on the nine logos
+under the tag `evening-0930`; the dissolve pairs (`phantom_dissolve`,
+unjudged since the fold fix) stay on the page. New on it: a **needle-hole
+map** beside every render — `stitchviz.render_penetrations`, the thread
+render faded to 35% over the cloth on the same frame with a dot at every
+stitch record and none at a jump. `--render` writes it as
+`renders/<fixture>__<arm>__holes.jpg` (a run rendered before it gets the
+map from its kept designs, no digitize) and the page's *thread | needle
+holes* control swaps every view's source in place, so the zoom, the
+verdicts and the locator's boxes stay put. Built because the thread render
+cannot show the comb (the split-comb finding of the afternoon). The ref
+arms are a table now (`REF_ARMS`): the page reads `is_ref` and
+`ref_label` off the record instead of testing the one literal `ref_0827`.
+
+The corpus table under the ref arm's head
+(`docs/eye-pairs-2026-09-30/three-changes-corpus.json`;
+`tools/envelope_escapes.py` and a per-leg split count run on both trees):
+envelope reached stations **467 (322 escapes) → 110 (19)**, split on/off
+changes along the satin runs **173 → 56** (on the lettering 61 → 28),
+stitches 90,585 → 90,694, trims 496 both. Per logo: Becker 183 (113) → 72
+(14) reached and 122 → 37 changes at 9,563 → 9,321 stitches; golden_tee
+130 (75) → 36 (5) at 8,613 → 8,575; bridge 85 (70) → 0 and 20 → 5 changes
+at 16,157 → 16,175; tires 22 (22) → 1 (0) and 17 → 5 at 2,500 → 2,835;
+screenshot 28 (26) → 1 (0) and 8 → 3; drone 12 (10) → 0; gaulke 6 (5) →
+0; enthusiast 1 (1) → 0; fremont untouched. The escapes census of the
+afternoon read 459 / 313 → 129 / 23 with its scratch copy of the
+instrument and before the teeth; the committed tool on these two trees
+reads the numbers above. Records: `docs/eye-pairs-2026-09-30/README.md`
+(the evening section), the table JSON, COOKBOOK, MASTER_SCOPE, memory.
+Verdicts: Kent's, pending.

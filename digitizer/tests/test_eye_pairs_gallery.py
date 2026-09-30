@@ -19,7 +19,8 @@ from tools import eye_pairs_gallery as g  # noqa: E402
 # Restated from the yardstick spec, sections 3.2 and 3.7 / analysis.METRICS.
 SPEC_ARMS = ["per_stroke", "patch_junctions", "polygon_axis", "area_weighted",
              "design_angle", "rails_follow_edge", "wide_columns",
-             "lettering_column", "phantom_dissolve", "directional_comp", "ref_0827"]
+             "lettering_column", "phantom_dissolve", "directional_comp", "ref_0827",
+             "ref_0930am"]
 # `rail_comp` shipped ON 2026-09-28 and left the table (docs/kent-review-2026-09-28.md);
 # `rail_envelope` shipped ON 2026-09-30 and left it (docs/eye-pairs-2026-09-30/).
 SPEC_METRICS = {
@@ -129,6 +130,7 @@ def test_tables_match_the_yardstick_package_when_it_is_here():
     except ImportError:
         pytest.skip("yardstick package not on this checkout")
     assert set(yp.ARMS) == set(g.ARM_INTENT)
+    assert {a for a, kw in yp.ARMS.items() if "__ref__" in kw} == set(g.REF_ARMS)
     assert {m: d for m, d in ya.METRICS.items() if d != "none"} == g.METRIC_BETTER
 
 
@@ -302,8 +304,10 @@ def test_ref_arm_is_marked_and_a_photo_fixture_is_confounded():
     r = {x["pair"]: x for x in g.pair_records(REF_PUBLIC, REF_SEALED, picks, REF_FEATS, {})}
     assert r["P010"]["is_ref"] is True and r["P010"]["confounded"] is False
     assert r["P011"]["is_ref"] is True and r["P011"]["confounded"] is True
+    assert r["P010"]["ref_label"] == g.REF_ARMS["ref_0827"]
     live = _records()
     assert live["P001"]["is_ref"] is False and live["P001"]["confounded"] is False
+    assert live["P001"]["ref_label"] is None
     # P010: Kent picked R = the old engine; P011: picked R = today's.
     t = g.arm_tally(list(r.values()), [])
     assert (t["ref_0827"]["wins"], t["ref_0827"]["losses"]) == (1, 1)
@@ -753,3 +757,67 @@ def test_cli_takes_the_sitting_tag_on_the_labelled_page_only(tmp_path, capsys):
     assert "per_stroke__fx_a__fold-fix" in html
     with pytest.raises(SystemExit, match="REFUSED.*labelled"):
         g.main(["--src", str(src), "--out", str(tmp_path / "g2"), "--sitting", "fold-fix"])
+
+
+# ---- a second ref arm, and the needle-hole map ------------------------------
+# The evening sitting of 2026-09-30, on the day's three lettering changes:
+# BEFORE is the engine of that morning (`ref_0930am`), AFTER is today, and a
+# penetration map rides beside every render because the thread render cannot
+# show a split column's mid-column holes. The page used to test the one
+# literal `ref_0827` for its labels and its ruling box.
+
+def _with_second_ref(tmp_path: Path) -> Path:
+    src = make_labelled_set(tmp_path)
+    feats = json.loads((src / "features.json").read_text(encoding="utf-8"))
+    feats["fx_a"]["ref_0930am"] = _row(stitches=950, design_only=True)
+    (src / "features.json").write_text(json.dumps(feats), encoding="utf-8")
+    (src / "designs" / "fx_a__ref_0930am.json").write_text(
+        json.dumps({"stitches": [[0, 0], [3, 3]]}), encoding="utf-8")
+    _img(src / "renders" / "fx_a__ref_0930am.jpg", (150, 150, 150))
+    return src
+
+
+def test_a_second_ref_arm_is_before_on_the_left_under_its_own_label(tmp_path):
+    out = tmp_path / "g"
+    data = g.build(_with_second_ref(tmp_path), out, labelled=True)
+    by = {p["arm"]: p for p in data["pairs"]}
+    new, old, flag = by["ref_0930am"], by["ref_0827"], by["per_stroke"]
+    assert (new["is_ref"], new["shipped_side"], new["arm_side"], new["confounded"]) == (True, "R", "L", False)
+    assert (new["counts"]["L"]["stitches"], new["counts"]["R"]["stitches"]) == (950, 1000)
+    assert new["ref_label"] == g.REF_ARMS["ref_0930am"]
+    assert old["ref_label"] == g.REF_ARMS["ref_0827"] != new["ref_label"]
+    assert flag["ref_label"] is None and flag["is_ref"] is False
+    assert data["arms"]["ref_0930am"]["is_ref"] is True and data["arms"]["per_stroke"]["is_ref"] is False
+    assert [p["pair"] for p in data["pairs"]] == ["per_stroke__fx_a", "ref_0827__fx_p", "ref_0930am__fx_a"]
+    # The page reads the flag and the label off the record, never the one id.
+    template = g.TEMPLATE.read_text(encoding="utf-8")
+    assert "ref_0827" not in template and "08-27 engine" not in template
+    assert "refName(p)" in template and "a.is_ref === true" in template
+    rev = g.build(make_set(tmp_path / "r"), tmp_path / "rg")
+    assert all(a["is_ref"] is False for a in rev["arms"].values())
+
+
+def test_the_hole_map_rides_beside_a_render_when_the_yardstick_drew_one(tmp_path):
+    src = make_labelled_set(tmp_path)
+    _img(src / "renders" / "fx_a__base__holes.jpg", (99, 99, 99))
+    _img(src / "renders" / "fx_a__per_stroke__holes.jpg", (111, 111, 111))
+    out = tmp_path / "g"
+    data = g.build(src, out, labelled=True)
+    flag, ref = data["pairs"]
+    assert flag["img"]["Lh"] != flag["img"]["Rh"] and flag["img"]["Lh"] != flag["img"]["L"]
+    assert all((out / flag["img"][k]).exists() for k in ("Lh", "Rh"))
+    assert "Lh" not in ref["img"] and "Rh" not in ref["img"]     # fx_p has no map: its pair keeps the render
+    assert data["_images"] == 8                                  # 4 renders + 2 arts + 2 maps, de-duplicated
+    html = (out / "index.html").read_text(encoding="utf-8")
+    assert "needle holes" in html and "data-holes" in html and "applyHoles(" in html
+    assert "%" not in _strip_style(html)
+    # Without a map anywhere the page is what it was: no key, and the toggle hides itself.
+    plain = g.build(make_labelled_set(tmp_path / "p"), tmp_path / "gp", labelled=True)
+    assert all("Lh" not in p["img"] and "Rh" not in p["img"] for p in plain["pairs"])
+    assert "holesSeg.hidden = !DATA.pairs.some(" in html
+    # The reveal path carries them from the unique renders too, per side.
+    rev = make_set(tmp_path / "r")
+    _img(rev / "renders" / "fx_a__base__holes.jpg", (99, 99, 99))
+    names, _n = g.collect_images(rev, PUBLIC, SEALED, tmp_path / "ri")
+    assert names["P002"]["Lh"] == names["P002"]["Rh"] == names["P001"]["Rh"]   # base | base; P001's right is base
+    assert "Lh" not in names["P001"] and "Rh" not in names["P003"]              # per_stroke, polygon_axis: no map
