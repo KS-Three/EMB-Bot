@@ -10,11 +10,16 @@ controls. Spec: docs/superpowers/specs/2026-09-17-eye-pairs-gallery-design.md.
 
     python -m tools.eye_pairs_gallery [--src eye_pairs_out] [--out <src>/gallery]
     python -m tools.eye_pairs_gallery --labelled    # before | after with the arm named; no sitting
+    python -m tools.eye_pairs_gallery --labelled --tables corpus.json   # a measured table under an arm's head
 
 `--labelled` is the other page this file makes: every rendered arm beside
 shipped, BEFORE left and AFTER right, the flag named, Kent's verdict taken on
 the page. It needs only `--render`'s output and never a pick — and for that
 reason its verdicts are rulings evidence, not the yardstick's statistic.
+`--tables` puts a table the instruments measured (the whole corpus under the
+arm, say) under that arm's head, so the eye and the numbers sit on one page;
+the JSON is `{arm: {caption, columns, rows}}`, refused for an arm the page
+does not show.
 """
 from __future__ import annotations
 
@@ -80,6 +85,14 @@ ARM_INTENT: dict[str, tuple[str, str]] = {
         "nearer edge's distance, so the far rail stops falling short of serifs "
         "and tapers (less bare satin); cost is a jitterier rail, more short "
         "stitches on bends, and more thread."),
+    "rail_envelope": (
+        'satin_rails_follow_edge="envelope"',
+        "The far rail extends only where its own edge is at least 0.3 mm "
+        "further out than the symmetric width, and only to the running minimum "
+        "of that edge over seven stations, so a long taper or serif side is "
+        "reached without the per-station edge-following that made True pay in "
+        "jitter and overshoot; a bulge shorter than the window and the C's "
+        "bowl are left as they are."),
     # `rail_comp` left this table 2026-09-28: Kent flipped `satin_rail_comp` on
     # after the labelled sitting, so it is the shipped path, not a pending arm.
     "wide_columns": (
@@ -577,6 +590,25 @@ def labelled_arms(recs: list[dict], skipped: list[dict], failed: list[dict]
     return arms
 
 
+def attach_tables(arms: dict[str, dict], tables: dict | None) -> None:
+    """A measured table rides under its arm's head (2026-09-30: the corpus,
+    symmetric against envelope, beside the envelope's pairs). Refuses a
+    table for an arm the page does not show and a ragged one, so a wrong id
+    or a short row never publishes as an empty or a shifted column."""
+    for arm, table in (tables or {}).items():
+        if arm not in arms:
+            raise SystemExit(f"REFUSED: a table for {arm}, which this page does not show")
+        cols = table.get("columns") if isinstance(table, dict) else None
+        rows = table.get("rows") if isinstance(table, dict) else None
+        if not (isinstance(cols, list) and cols and all(isinstance(c, str) for c in cols)):
+            raise SystemExit(f"REFUSED: the {arm} table needs a `columns` list of names")
+        if not isinstance(rows, list) or any(not isinstance(r, list) or len(r) != len(cols)
+                                             for r in rows):
+            raise SystemExit(f"REFUSED: every row of the {arm} table needs {len(cols)} cells")
+        arms[arm]["table"] = {"caption": str(table.get("caption") or ""),
+                              "columns": list(cols), "rows": [list(r) for r in rows]}
+
+
 # ---- the page ---------------------------------------------------------------
 
 def build_html(data: dict, title: str = REVEAL_TITLE) -> str:
@@ -596,9 +628,11 @@ def _read_json(path: Path, default=None):
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def build(src: Path, out: Path, budget: int = BUDGET_BYTES, labelled: bool = False) -> dict:
+def build(src: Path, out: Path, budget: int = BUDGET_BYTES, labelled: bool = False,
+          tables: dict | None = None) -> dict:
     """Reveal: refuse until every pair is picked, then join, copy, emit.
     Labelled: no sitting to wait for; every rendered arm beside shipped.
+    `tables` ({arm: {caption, columns, rows}}) ride under their arms' heads.
     Returns the data the page was given, for the caller and the tests."""
     src, out = Path(src), Path(out)
     feats = _read_json(src / "features.json")
@@ -619,6 +653,7 @@ def build(src: Path, out: Path, budget: int = BUDGET_BYTES, labelled: bool = Fal
         arms = {arm: {"change": arm_intent(arm)[0], "intent": arm_intent(arm)[1], **t}
                 for arm, t in sorted(tally.items())}
         title = REVEAL_TITLE
+    attach_tables(arms, tables)
 
     names, total = collect_images(src, public, sealed, out / "img", budget)
     hotspots = locate_changes(src, public, sealed)
@@ -644,10 +679,18 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--labelled", action="store_true",
                     help="before | after with the arm named, straight from --render's "
                          "output; no sitting, no picks (Kent's flag-review page)")
+    ap.add_argument("--tables", default=None,
+                    help="JSON {arm: {caption, columns, rows}}: a measured table shown "
+                         "under that arm's head (refused for an arm not on the page)")
     args = ap.parse_args(argv)
     src = Path(args.src)
     out = Path(args.out) if args.out else src / "gallery"
-    data = build(src, out, labelled=args.labelled)
+    tables = None
+    if args.tables:
+        if not Path(args.tables).exists():
+            raise SystemExit(f"REFUSED: --tables {args.tables} is missing")
+        tables = _read_json(Path(args.tables))
+    data = build(src, out, labelled=args.labelled, tables=tables)
     print(f"{data['n_pairs']} pairs, {len(data['arms'])} arms, "
           f"{data['_images']} images ({data['_bytes'] / 1e6:.1f} MB) -> {out / 'index.html'}")
     if args.labelled:

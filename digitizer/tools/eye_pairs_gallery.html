@@ -46,6 +46,11 @@ main{display:flex;flex-direction:column;gap:28px;padding-top:20px;max-width:1280
 .strip{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
 .strip span{font-family:var(--mono);font-size:11px;padding:1px 7px;border-radius:4px;border:1px solid var(--rule)}
 .strip .win{border-color:var(--agree);color:var(--agree)}.strip .loss{border-color:var(--against);color:var(--against)}
+.corpus{background:var(--surface);border:1px solid var(--rule);border-radius:10px;padding:10px 16px;overflow-x:auto}
+.corpus table{border-collapse:collapse;font-family:var(--mono);font-size:12px;white-space:nowrap}
+.corpus .capt{margin:0 0 10px;color:var(--muted);font-size:13px;max-width:110ch}
+.corpus th,.corpus td{padding:3px 10px;text-align:right;border-bottom:1px solid var(--rule)}
+.corpus th{font-weight:600}.corpus th:first-child,.corpus td:first-child{text-align:left}
 .ruling{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;border-top:1px solid var(--rule);padding-top:10px}
 .ruling label{font-weight:500}
 textarea{font:inherit;color:inherit;background:var(--bg);border:1px solid var(--rule);border-radius:6px;padding:6px 8px;min-height:38px;resize:vertical;flex:1;min-width:200px}
@@ -432,6 +437,17 @@ function pairCard(p) {
   }
   return card;
 }
+// A measured table under an arm's head: the caption says what was measured,
+// the cells are the numbers as given (a string arrives as written). The
+// caption is a paragraph ABOVE the table, not a <caption>: a caption takes
+// the table's width, and a nowrap table is as wide as its widest row.
+function tableEl(t) {
+  const head = el("tr", {}, ...t.columns.map(c => el("th", {text: c})));
+  const body = t.rows.map(r => el("tr", {}, ...r.map(c => el("td", {text: c == null ? "\u2014" : String(c)}))));
+  return el("div", {class: "corpus"},
+    t.caption ? el("p", {class: "capt", text: t.caption}) : null,
+    el("table", {}, el("thead", {}, head), el("tbody", {}, ...body)));
+}
 function armHead(arm, a) {
   const r = state.rulings[arm] || {ruling: null, note: ""};
   const saved = el("span", {class: "saved"});
@@ -513,8 +529,10 @@ function render() {
   const keys = [...groups.keys()].sort((a, b) => (a === "controls") - (b === "controls") || a.localeCompare(b));
   for (const key of keys) {
     const g = el("section", {class: "group"});
-    if (state.group === "arm" && DATA.arms[key]) g.append(armHead(key, DATA.arms[key]));
-    else g.append(el("h2", {text: key, style: "font-size:18px"}));
+    if (state.group === "arm" && DATA.arms[key]) {
+      g.append(armHead(key, DATA.arms[key]));
+      if (DATA.arms[key].table) g.append(tableEl(DATA.arms[key].table));
+    } else g.append(el("h2", {text: key, style: "font-size:18px"}));
     for (const p of groups.get(key)) g.append(pairCard(p));
     main.append(g);
   }

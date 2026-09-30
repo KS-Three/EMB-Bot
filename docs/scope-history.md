@@ -15699,3 +15699,54 @@ envelope leaves part C's fill). Renders
 *(measured 2026-09-30 — `tools/rail_edge.py --bare`, `tools/edge_wobble.py`
 (satin `wobble_std_mm`), `tools/dropped_elements.py` (`overshoot_frac`);
 `tests/test_rail_comp.py::test_the_envelope_reaches_the_far_edge_where_the_gap_is_long_and_nowhere_else`)*
+
+## 2026-09-30 — the envelope on the eye-pairs page: seven pairs against today's base, the corpus table under the arm's head
+
+Kent's pick after #563. `rail_envelope` (`satin_rails_follow_edge="envelope"`)
+joined the yardstick's arms (`tools/eye_pairs/pairs.py`, the gallery's
+`ARM_INTENT`, the spec table), and the labelled page that decided rail comp —
+`https://claude.ai/artifact/6mjKrbnCX21MM9gQUry4Zp`, the same URL — was
+rebuilt with that one arm against today's shipped base (rail comp ON, the
+tuck, the seams closed). The gallery learned `--tables`: a measured table
+rides under an arm's head, so the eye and the instruments sit on one page.
+Seven pairs shown (becker, bridge, drone, gaulke, golden_tee, screenshot,
+tires), two identical to the stitch (enthusiast, fremont); the change locator
+marks becker (3 boxes), bridge (1), golden_tee (3) and nothing on the other
+four, whose new thread is under 0.3 mm² each. The 09-28 sitting's 77 pairs
+left the page; verdicts in its store and `docs/eye-pairs-2026-09-28/kent-notes.json`
+(re-read first: 111 docs, unchanged, no rulings).
+
+| fixture | mm | stitches | trims | bare satin % | satin wobble std mm | unsewn outline mm | overshoot | new thread mm² (on ink / on white) |
+|---|---|---|---|---|---|---|---|---|
+| marine80 | 80.2 | 2,093 → 2,119 | 21 | 7.03 → 6.28 | 0.137 → 0.137 | 20.8 → 19.0 | 0.093 → 0.095 | — |
+| becker | 100 | 8,297 → 8,900 | 48 → 49 | 8.14 → 7.35 | 0.099 → 0.109 | 46.3 → 28.0 | 0.016 → 0.015 | 22.9 (18.6 / 4.3) |
+| tires | 80 | 2,515 | 7 | 4.55 → 4.52 | 0.083 → 0.084 | 3.2 → 2.8 | 0.078 | 0.2 (0.2 / 0.0) |
+| enthusiast | 80 | 2,392 | 15 | 6.98 | 0.096 | 4.3 | 0.257 | 0.0 |
+| fremont | 92.5 patch | 19,887 | 55 | 3.98 | 0.030 | 0.0 | 0.000 | 0.0 |
+| bridge | 80 | 15,384 → 15,432 | 98 | 5.15 → 5.05 | 0.095 → 0.100 | 1.5 | 0.004 | 0.3 (0.2 / 0.1) |
+| golden_tee | 80 | 7,966 → 8,072 | 47 → 46 | 10.35 → 7.20 | 0.070 → 0.075 | 7.3 → 3.3 | 0.215 → 0.231 | 45.3 (14.7 / 30.6) |
+| gaulke | 80 | 4,189 | 32 | 6.89 → 6.86 | 0.077 → 0.077 | 0.0 | 0.047 | 0.2 (0.2 / 0.0) |
+| drone | 80 | 18,540 | 123 | 4.88 → 4.86 | 0.074 → 0.073 | 4.3 | 0.048 | 0.1 (0.0 / 0.1) |
+| screenshot | 80 | 7,885 | 71 | 8.97 → 8.96 | 0.063 → 0.063 | 0.8 | 0.762 | 0.2 (0.0 / 0.2) |
+
+**Where the new thread lands (the last column):** on golden_tee two thirds of
+the envelope's 45.3 mm² of new thread is the 3D lettering's white keylines
+(30.6 mm², 30.2 of it within 0.5 mm of ink) — sub-detail gaps (≈0.2 mm at
+80 mm against a 1.5 mm `min_detail_mm`) the on-rails polygon spans, which the
+symmetric width never reached and the envelope does. The satin-only bare
+instrument reads that thread as coverage (10.35 → 7.20%); `dropped_elements`
+reads filled knockouts (lost elements 69 → 76, artfid 77.4 → 76.8). On becker
+17.0 of 22.9 mm² is ink of the right colour and every instrument agrees
+(artfid 88.9 → 89.2, lost 53 → 47, unsewn outline 46 → 28 mm). Everything
+else moves by ≤ 0.3 mm². **A bare-satin gain is not a coverage gain until the
+artwork under the new thread is read**; the page carries both readings so
+Kent's eye can settle which the cloth agrees with. Corpus trims 640 → 641.
+
+Records: `docs/eye-pairs-2026-09-30/` (README, `rail-envelope-corpus.json`);
+`docs/kent-review-2026-09-28.md` notes the rebuild. Kent's flip pending.
+
+*(measured 2026-09-30 — the render lanes' `features.json`; a scratch corpus
+script over `digitize()` (`tools/rail_edge.bare_area`, `tools/edge_wobble`,
+`tools/dropped_elements`); the thread classes from `dropped_elements`' colour
+fields at its own registration; `tests/test_eye_pairs_gallery.py` and the
+eye-pairs and doc files: 179 passed)*

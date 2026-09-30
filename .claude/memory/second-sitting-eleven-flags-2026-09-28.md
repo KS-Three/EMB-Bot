@@ -83,6 +83,12 @@ better, 8 before better, 30 no difference, 23 both bad; "can't tell" on 59 of
   Becker 100 8.14 → 7.35) at a quarter of its jitter and none of its overshoot, a no-op on
   ENTHUSIAST where `True` breaks the headline (0.257 → 0.290). Does not reach bulges
   shorter than the window or the C's bowl, by design. Kent's flip; the same sew-out.
+  **On the page 2026-09-30** (`docs/eye-pairs-2026-09-30/`): seven pairs against today's base
+  (enthusiast, fremont identical), the corpus table under the arm's head (the gallery's new
+  `--tables`). **golden_tee's gain is two thirds keylines:** 30.6 of the 45.3 mm² of new thread
+  lands on the 3D lettering's white gaps (lost elements 69 → 76, artfid 77.4 → 76.8 while bare
+  satin reads 10.35 → 7.20) — read the artwork under new thread before calling a bare-satin gain
+  coverage; becker's 22.9 mm² is ink (17.0) and every instrument agrees.
 - **Four photo-lane tests go red wherever `rembg_isolated/venv` exists** (the
   stub's shade demand, the two-square depth sort, the owl's merge and its
   declared-photographic report) — on the pre-change tree too, and never in CI.

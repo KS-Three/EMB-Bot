@@ -41,6 +41,9 @@ drone — so no flag rescues them.
   (logo, arm) whose stitches differ from shipped; 31 identical and not shown.
   Rendered in a cloud container with the cutout venv present, so tires shows
   the cutout on both sides (the 09-18 page did not).
+  **Rebuilt 2026-09-30 at the same URL for the envelope sitting**
+  (`docs/eye-pairs-2026-09-30/`): these 77 pairs are no longer on the page;
+  the verdicts stay in its store and in `docs/eye-pairs-2026-09-28/kent-notes.json`.
 - **Carried over:** the 34 first-sitting verdicts (six flags, 2026-09-18) with
   their ids migrated. One was re-judged: `satin_patch_junctions="satin"` on
   enthusiast, *no difference* → *after better*, flag did its job. The three

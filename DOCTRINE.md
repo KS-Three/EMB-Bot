@@ -6980,3 +6980,27 @@ question (the cause-side twin, DOCTRINE 2026-09-19); a blob is the cover's.
 The mode ships OFF; whether the far rail's reach reads right on cloth is
 the same sew-out question True was parked on, and the flag's flip is
 Kent's.
+
+## A bare-satin gain is not a coverage gain until the artwork under the new thread is read (2026-09-30)
+
+The envelope's page (`docs/eye-pairs-2026-09-30/`) put two instruments on one
+table and they disagreed on golden_tee: the satin-only bare instrument read
+the envelope as coverage (10.35 → 7.20%, unsewn outline 7.3 → 3.3 mm) while
+`dropped_elements` read it as loss (lost elements 69 → 76, artfid 77.4 → 76.8,
+overshoot 0.215 → 0.231). Classifying the new thread by what the artwork
+shows under it settled it: 30.6 of 45.3 mm² lands on the 3D lettering's white
+keylines — sub-detail gaps (≈0.2 mm at 80 mm, `min_detail_mm` 1.5) that the
+on-rails polygon spans. The symmetric width, taking the nearer side, never
+reached that far edge; the envelope does, and the bare instrument, which
+measures against the polygon, counts it covered. On becker the same
+classification gives 17.0 of 22.9 mm² on ink of the right colour, and every
+instrument agrees.
+
+**What to do:** before crediting a rail change with coverage, split its new
+thread by the artwork under it (ink of the right colour, other ink, white)
+with `dropped_elements`' colour fields at its own registration — the scratch
+of 2026-09-30 is the recipe, `docs/eye-pairs-2026-09-30/README.md` the
+numbers. A polygon-side instrument cannot see a keyline the polygon has
+absorbed. The keylines themselves are a segmentation question (a white gap
+thinner than min-detail between two inks), not the rail model's, and the
+artwork-side reading is what Kent's eye will give.
