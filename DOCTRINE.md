@@ -7407,3 +7407,23 @@ rail comp is for; whether it reads as smoosh on cloth is the same sew-out
 question as the reach. Do not build a same-shape notch guard again; the
 script's legibility at 80 mm is a lettering-construction question (it is
 not even classified as text), not the rail model's.
+
+## A fold's endpoint names a colour, not a place — fold into the instance the member touches (2026-09-30)
+
+The photo lane's phantom-blend dissolve chooses a ramp for a whole halo
+stack and sends each member to the ramp's nearer END, a label id. On Bridge
+Bar the dark end was a 550 px black cluster elsewhere in the design, not the
+ring the halo wraps, and nine members folded into it came out as detached
+regions of their own — grey by their source pixels, teal by the palette's
+nearest of six — the specks on the ring that stood in the way of Kent's
+flip. Any pass that reassigns LABELS must ask whether the destination is
+CONNECTED to the pixels it is moving: a label id is a colour class, and two
+labels of one colour are two places. The check that finds it is cheap —
+count the connected components of each destination after the pass and ask
+how many carry none of that label's native pixels (nine, on bridge, all
+nine the specks) — and the fix is to fold into the bordering label nearest
+the endpoint's colour, the endpoint itself only when nothing bordering
+carries it. Two companion rules that sounded as reasonable (fold a
+page-blocked member into its nearest bordering colour; re-test a rejected
+member against its own sides) fired on no corpus fixture and were removed
+unshipped: a rule that moves nothing is not a fix, whatever its logic.

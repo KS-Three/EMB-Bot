@@ -231,6 +231,41 @@ def test_an_INTERIOR_band_is_never_sent_to_the_page():
         "has stopped discriminating and proves nothing")
 
 
+def test_a_member_folds_into_the_instance_of_its_endpoint_it_TOUCHES():
+    """The endpoint names a colour, not a place (2026-09-30, bridge's ring).
+
+    Two black labels: A, the block the halo wraps, and B, a small block off
+    to the side that one halo band also touches. `_blend_ramp` picks the
+    ramp for the whole stack and, on a tie between two identical blacks,
+    names the first by id -- B. The band X touches A and not B: folded into
+    B it would become a connected component of its own, cut as a region,
+    its colour re-read from the source as grey, and on Bridge Bar nine such
+    slivers snapped to TEAL and sat on the ring. X goes to A; Y, which
+    touches B, may keep B.
+    """
+    grey = BLACK + 0.3 * (WHITE - BLACK)      # nearer black: t 0.3 on black->page
+    h, w = 40, 60
+    labels = np.full((h, w), 2, np.int64)       # A everywhere by default
+    lab_img = np.zeros((h, w, 3), np.float64); lab_img[:] = BLACK
+    valid = np.ones((h, w), bool)
+    page = np.zeros((h, w), bool)
+    labels[0:6, 0:8] = 0                         # B: black, top-left, touches Y and the page, not X
+    page[6:40, 0:6] = True; valid[6:40, 0:6] = False
+    # Two pixels wide, not three: `_edge_mask` counts edges between VALID
+    # labels only, so a band's page side is not an edge, and Y has to clear
+    # the 0.5 edge fraction on its X side and its B side alone.
+    labels[6:40, 6:8] = 6; lab_img[6:40, 6:8] = grey    # Y: touches the page, B and X
+    labels[6:40, 8:11] = 5; lab_img[6:40, 8:11] = grey  # X: touches Y and A only
+    out, drop, warns = dissolve_phantom_blends(
+        labels, valid, lab_img, PipelineConfig(), np.array([247, 247, 247]), 4.0, page_mask=page)
+    gone = drop if drop is not None else np.zeros_like(valid)
+    x = (labels == 5) & valid
+    assert not gone[x].any() and set(np.unique(out[x]).tolist()) == {2}, "X folds into A, the black it touches"
+    y = (labels == 6) & valid
+    assert not gone[y].any() and set(np.unique(out[y]).tolist()) <= {0, 2}, "Y folds into a black it touches"
+    assert (out[(labels == 2) & valid] == 2).all() and (out[labels == 0] == 0).all()
+
+
 def test_fewer_than_three_labels_is_a_no_op():
     labels, lab_img, valid = _striped([(1, BLACK, 20), (2, WHITE, 20)])
     out, drop, warns = dissolve_phantom_blends(
@@ -307,7 +342,18 @@ def test_bridge_bar_keeps_its_artwork(bridge_pair):
 
 def test_bridge_bar_palette_fits_the_design_better(bridge_pair):
     """An independent read: the palette's own worst excess. Spending medoids
-    on ringing is why it was 20 dE00 out."""
+    on ringing is why it was 20 dE00 out.
+
+    20.76 -> 3.68 when written; **20.76 -> 6.08 since the fold redirect
+    (2026-09-30)**, and the bound moves 4x -> 3x on that measurement. Before
+    the redirect nine halo members were folded into a black label they did
+    not touch and survived as grey slivers of their own (palette rows 25,
+    regions 34), which pulled a grey spool into the six; with them in the
+    ring (rows 18, regions 22) the sixth spool goes elsewhere, and the olive
+    ringing between the emblem's lines -- label 42, 15 mm², a real label and
+    not a band -- lands 12.5 dE00 from its spool against 6.4 to its nearest.
+    The greys are gone, which is what this test is about; the residual is
+    the palette's six against a JPEG's colours."""
     (off_r, _), (on_r, _) = bridge_pair
 
     def excess(result):
@@ -316,7 +362,7 @@ def test_bridge_bar_palette_fits_the_design_better(bridge_pair):
                 return w["max_excess_de00"]
         return None
 
-    assert excess(on_r) < excess(off_r) / 4
+    assert excess(on_r) < excess(off_r) / 3
 
 
 def test_bridge_bar_silhouette_barely_moves(bridge_pair):

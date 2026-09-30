@@ -16297,3 +16297,55 @@ the entry records. Nothing about the mode is wrong; it was measured on a tree
 this flag had not landed in.
 
 *(measured 2026-09-30 — `tools/rail_edge.py bare_area`, `tools/edge_wobble.py` (satin `wobble_std_mm`); `tests/test_rail_comp.py::test_the_envelope_reaches_the_far_edge_where_the_gap_is_long_and_nowhere_else`; DOCTRINE 2026-09-30)*
+
+## 2026-09-30 — the phantom-blend fold's wrong turn: a member folded into an endpoint it does not touch becomes a teal speck
+
+Kent's pick after bridge's investigation: fix the fold, then flip. Traced on
+bridge with the dissolve's inputs captured: the halo stack around the black
+ring groups 24 bands; `_blend_ramp` names the ramp black → page, and the
+"black" end is whichever black label scores first — a 550 px cluster
+(`label 0`), not the 8,925 px ring (`label 2`) the halo wraps. Nine members
+(493 px) with t < 0.5 were folded into that cluster's LABEL; none of them
+touch it, so they came out of `connectedComponents` as nine detached regions,
+each with its colour re-read from the source pixels (grey), and the palette
+snapped grey to the nearest of six threads: teal. The fix: the endpoint names
+a colour, not a place — fold into the instance of that colour the member
+borders (the touching non-band label nearest the endpoint's Lab, within
+`merge_delta_e`), the endpoint itself only when nothing bordering carries the
+colour. Measured across the gradient lane's six corpus logos: the redirect
+moves those nine members on bridge and none elsewhere (golden_tee 14
+members, gaulke 25, screenshot 7, drone and fremont none — all endpoint-kept
+or to the page). A second rule tried alongside it — fold a member the ramp
+sends to a page it does not touch into its nearest bordering colour — fired
+on no fixture and was removed; a third — re-test a member the group's ramp
+rejects against its own sides with `_blend_side` — moved nothing on bridge
+(the surviving orange bands beside the red letters are lighter than the
+red-to-yellow line, as JPEG overshoot is) and was removed too.
+
+The corpus on the merged tree (main after #559 and #563, the envelope ON),
+shipped → `dissolve_phantom_blends=True` with the redirect:
+
+| logo | lane | stitches | trims | jumps | regions | thread on white mm² | thread on other ink mm² |
+|---|---|---|---|---|---|---|---|
+| bridge | gradient | 16,179 → 11,385 | 101 → 43 | 32 → 17 | 80 → 20 | 179.3 → 105.8 | 599.3 → 600.6 |
+| golden_tee | gradient | 8,659 → 8,554 | 45 → 47 | 4 | 39 | 343.1 → 341.9 | 337.4 → 337.6 |
+| gaulke | gradient | 4,332 → 4,449 | 33 → 37 | 24 → 25 | 53 → 57 | 458.9 → 457.9 | 75.4 → 77.9 |
+| screenshot | gradient | 8,171 → 8,170 | 73 → 76 | 45 → 43 | 158 | 645.0 | 227.1 → 227.0 |
+| drone | gradient | identical |  |  |  |  |  |
+| fremont | gradient | identical |  |  |  |  |  |
+| becker | flat (not on the lane) | identical |  |  |  |  |  |
+| enthusiast | flat (not on the lane) | identical |  |  |  |  |  |
+| tires | photo | 2,646 → 2,643 | 8 | 0 | 6 | 179.4 → 176.0 | 40.5 → 40.3 |
+
+`tests/test_phantom_blend_photo.py`: a synthetic pin of the redirect (two
+identical blacks, a band that touches one), and the palette bound re-based
+4× → 3× on its measurement — 20.76 → 6.08 dE00 against 3.68 before the
+redirect, because the nine slivers had pulled a grey spool into the six and
+without them the sixth spool goes elsewhere, leaving the olive ringing
+between the emblem's lines (label 42, 15 mm², a real label) 12.5 from its
+spool. 25 passed with `test_flip_sheet`. The flag stays OFF; the page carries
+the pairs for Kent's flip.
+
+*(measured 2026-09-30 — the dissolve's inputs captured by wrapping it; a
+scratch corpus script over `digitize()`; `tools/dropped_elements`' colour
+fields; `docs/eye-pairs-2026-09-30/`)*

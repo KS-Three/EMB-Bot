@@ -24,5 +24,11 @@ the corpus table in scope-history 2026-09-30.
   guard on the rail push was prototyped and rejected** (2 mm² recovered,
   bare +0.3 to +1.2 points on every fixture). The teal text at 1.6 mm cap
   height sews as blobs — below the floor.
+- **The teal specks were the fold's wrong turn, fixed the same night (Kent's pick):**
+  nine halo members folded into the endpoint's LABEL — a 550 px black cluster the halo
+  never touches — became detached regions, grey by source, teal by the palette. Fold into
+  the instance of the endpoint colour the member borders: bridge 80 → 20 regions, 101 → 43
+  trims on the merged tree, the other five gradient logos untouched by the redirect. Two
+  companion rules fired nowhere and were removed. On the page for his flip.
 - Count colour blocks before reading a border as a satin defect; classify
   thread by the artwork under it before reading a smoosh as a rail defect.
