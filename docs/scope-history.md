@@ -15774,6 +15774,20 @@ both sides): becker 8,297 → 8,900 stitches and bare satin 8.14 → 7.35,
 golden_tee 7,966 → 8,072 and 10.35 → 7.20, MARINE 80 mm 2,093 → 2,119 and
 7.03 → 6.28, corpus trims 640 → 641; everything else within 0.3 mm² of
 thread. His caveat on becker — the reached stretches "look like they are
-just trying to fill a void" — is the flag's open texture item. Records:
-`docs/eye-pairs-2026-09-30/` (README Outcome, `kent-notes.json` with the
-ruling), DOCTRINE 2026-09-30, the flag's comment in `config.py`.
+just trying to fill a void" — is the flag's open texture item.
+
+The suite's pins that moved (full run on the flipped tree: 2,898 passed,
+11 failed, 13 skipped, 5 xfailed in 33:00 on four cores; seven of the
+eleven are the standing reds): the junction stack's thread bound on MARINE
+at 127 mm, 5 → 6%, because the R's two stacked arms each reach into the
+other's underlap reach (marginal cost 250 → 375 stitches, the whole
+difference the R); and three readings held on the symmetric rails per
+their own engine posture — the corner-twig pruner (7 → 8 trims with the
+pruner on under the envelope, the fixture's 1,958 → 1,820 stitches), the
+satin junction cover (4,810 → 4,807 against the arms alone, three fewer
+where its assertion wants more, the finding still cleared) and the wide
+columns fold guard at 114 mm on the grown polygon (7.15 with the guard: the
+cap is the ceiling and the envelope fills it, the open question that file
+already carries). Records: `docs/eye-pairs-2026-09-30/` (README Outcome,
+`kent-notes.json` with the ruling), DOCTRINE 2026-09-30, the flag's comment
+in `config.py`.
