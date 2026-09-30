@@ -632,6 +632,14 @@ App, both surfaces feeding it. Before this the field's shape selection was
 canvas-only by its own comment. *(built and looked at 2026-09-30 —
 `e2e/field-panel-sync.spec.js` 3; [area doc](docs/scope/3-studio-app-wizard.md))*
 
+**Every setting explains itself on hover or focus (2026-09-30, Kent's
+idea).** 24 entries in `lib/settingHelp.js`, each three sentences — what it
+is, what changes in the stitch-out, when to touch it — shown by one
+`use:tip` action (`lib/tip.js`, `role="tooltip"`, keyboard and touch). Design
+settings, per-shape controls, the canvas toolbar, the Text sliders. Before:
+31 native `title`s, one on a setting. *(built and looked at 2026-09-30 —
+[area doc](docs/scope/3-studio-app-wizard.md))*
+
 **A Studio change is not verified until it has been *looked at* in a browser.**
 Six buyer-visible defects across the 2026-08-25 and 09-07 sweeps, none seen by a
 green suite. The list: DOCTRINE "Gotchas".

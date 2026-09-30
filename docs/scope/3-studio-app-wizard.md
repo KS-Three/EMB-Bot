@@ -729,3 +729,40 @@ is silent when unchanged, `applyFocusShape` never dispatches.
 the live service, each reading the outline colour off the canvas; the panel's
 half in `DigitizePanel.spec.js`, 3; Studio unit 1,325, e2e full suite run
 before the push)*
+
+## Every setting explains itself on hover (2026-09-30)
+
+Third PR of the design review, and Kent's own idea from it: "when you hover
+over a setting or feature, it provides a brief description that pops up with
+what it does and how it changes the digitizing." The state before: 31
+native `title=` attributes in DigitizePanel, ONE of them on a design setting
+(Even out lettering widths); a browser tooltip waits about a second, cannot
+be styled, never shows for keyboard users and does not exist on touch.
+
+**The copy is data, in one file.** `lib/settingHelp.js` — 24 entries, each
+the same three sentences in the same order: *what* it is in embroidery terms,
+what *changes* in the stitch-out, *when* to touch it (and when to leave it).
+Kent edits wording there without touching a component; `settingHelp.spec.js`
+holds every entry to the shape (three non-empty sentences, none over 320
+characters, the three under 700, each ending as a sentence). Covered: the 8
+design settings (Design width, Colors, Satin for thin shapes, Even out
+lettering widths, Fill angle, Border, Design edge, the artwork-reading row),
+the 6 per-shape controls (Stitch type, Fill angle, Underlay, Border, Stitch
+width, whole word), the 7 canvas toolbar buttons, and the Text step's three
+sliders.
+
+**The popover is one Svelte action.** `use:tip={"fillAngle"}` (`lib/tip.js`)
+on a label, select, input or button: pointerenter shows after 150 ms (a
+pass-over does not flash), focusin shows at once, pointerleave / focusout /
+Escape hide, touchstart toggles. One `role="tooltip"` element for the whole
+app, appended to `<body>` so no scrolling panel clips it, positioned under
+the host and flipped above when there is no room, kept inside the viewport;
+the host carries `aria-describedby` while it is open, so a screen reader
+hears the same three sentences. Built with textContent, never innerHTML.
+`tip.spec.js`, six. A "?" ring beside each label is generated content on an
+empty aria-hidden element, so every label's accessible name — and every e2e
+locator that reads one — is unchanged.
+
+*(built and looked at 2026-09-30 — a hovered setting and a focused toolbar
+button screenshotted against the live service; Studio unit 1,336; e2e full
+suite before the push)*

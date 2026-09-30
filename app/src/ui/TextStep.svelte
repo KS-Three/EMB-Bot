@@ -3,6 +3,7 @@
   import ThreadPicker from "./ThreadPicker.svelte";
   import ColorRangesEditor from "./ColorRangesEditor.svelte";
   import { createEventDispatcher } from "svelte";
+  import { tip } from "../lib/tip.js";
 
   // Element-scoped text editor (Task 5, Slice 5): bound to whichever text
   // element is currently selected in ContentStep's element list, not a
@@ -79,8 +80,8 @@
   currentText={element.text}
   on:pick={(e) => patch({ fontKey: e.detail })}
 />
-<label class="letterspacing">
-  <span>Letter spacing</span>
+<label class="letterspacing" use:tip={"letterSpacing"}>
+  <span>Letter spacing<i class="tipmark" aria-hidden="true"></i></span>
   <input
     type="range"
     min="-1"
@@ -91,8 +92,8 @@
   />
   <span class="label">{(element.letterSpacingMm || 0).toFixed(1)} mm</span>
 </label>
-<label class="letterspacing">
-  <span>Curve</span>
+<label class="letterspacing" use:tip={"curve"}>
+  <span>Curve<i class="tipmark" aria-hidden="true"></i></span>
   <input
     type="range"
     min="-180"
@@ -103,8 +104,8 @@
   />
   <span class="label">{element.arcDeg || 0}°</span>
 </label>
-<label class="letterspacing">
-  <span>Rotation</span>
+<label class="letterspacing" use:tip={"rotation"}>
+  <span>Rotation<i class="tipmark" aria-hidden="true"></i></span>
   <input
     type="range"
     min="0"

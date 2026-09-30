@@ -2,6 +2,7 @@
   import { createEventDispatcher, onDestroy, tick } from "svelte";
   import ThreadPicker from "./ThreadPicker.svelte";
   import Icon from "./Icon.svelte";
+  import { tip } from "../lib/tip.js";
   import {
     buildDigitizeConfig,
     digitize,
@@ -1901,11 +1902,15 @@
     {/if}
 
     <div class="dgp-params">
-      <label class="dgp-param">
+      <!-- Every setting carries `use:tip` (lib/tip.js) with its key in
+           lib/settingHelp.js — hover the label or focus the control and the
+           three-line help shows. The "?" is a generated glyph on an empty,
+           aria-hidden element, so the label's text is unchanged. -->
+      <label class="dgp-param" use:tip={"designWidth"}>
         <!-- Renamed from "Stitch width" 2026-09-29: this is the DESIGN's
              width. "Stitch width" now means the per-shape satin column, in
              the Edit shapes list below, and one word cannot mean both. -->
-        <span>Design width</span>
+        <span>Design width<i class="tipmark" aria-hidden="true"></i></span>
         <input
           type="number"
           min="10"
@@ -1916,8 +1921,8 @@
         />
         <span class="dgp-unit">mm</span>
       </label>
-      <label class="dgp-param">
-        <span>Colors (max {element.params.max_colors})</span>
+      <label class="dgp-param" use:tip={"colors"}>
+        <span>Colors (max {element.params.max_colors})<i class="tipmark" aria-hidden="true"></i></span>
         <input
           type="range"
           min="2"
@@ -1927,29 +1932,29 @@
           on:input={(e) => setParam("max_colors", parseInt(e.currentTarget.value, 10))}
         />
       </label>
-      <label class="dgp-checkline">
+      <label class="dgp-checkline" use:tip={"satinThin"}>
         <input
           type="checkbox"
           checked={element.params.satin}
           on:change={(e) => setParam("satin", e.currentTarget.checked)}
         />
-        Satin for thin shapes
+        Satin for thin shapes<i class="tipmark" aria-hidden="true"></i>
       </label>
       <!-- Off by default on purpose: on real lettering the per-letter reading
            is a smooth chain, not a step (digitizer_core/stitchwidth.py), so
            the word's median is a guess. The always-on half is per shape, in
            Edit shapes: every measured column shows its width, and "whole
            word" writes one width to every letter. -->
-      <label class="dgp-checkline" title="Give every letter of a detected word the word's own weight: a letter traced fatter or thinner than its neighbours is evened out to them. Off, each shape sews the width it was drawn at; the per-shape Stitch width in Edit shapes works either way.">
+      <label class="dgp-checkline" use:tip={"evenWidths"}>
         <input
           type="checkbox"
           checked={!!element.params.stitch_width_auto}
           on:change={(e) => setParam("stitch_width_auto", e.currentTarget.checked)}
         />
-        Even out lettering widths
+        Even out lettering widths<i class="tipmark" aria-hidden="true"></i>
       </label>
-      <label class="dgp-param">
-        <span>Fill angle</span>
+      <label class="dgp-param" use:tip={"fillAngle"}>
+        <span>Fill angle<i class="tipmark" aria-hidden="true"></i></span>
         <select
           value={element.params.fill_angle_deg == null ? "auto" : String(element.params.fill_angle_deg)}
           on:change={onAngleChange}
@@ -1959,8 +1964,8 @@
           {/each}
         </select>
       </label>
-      <label class="dgp-param">
-        <span>Border</span>
+      <label class="dgp-param" use:tip={"border"}>
+        <span>Border<i class="tipmark" aria-hidden="true"></i></span>
         <select
           value={element.params.border ?? ""}
           on:change={(e) => setParam("border", e.currentTarget.value || null)}
@@ -1983,8 +1988,8 @@
            no per-shape border rides it. Toggleable on purpose — bean and
            satin read very differently on cloth and the choice is his, per
            design. -->
-      <label class="dgp-param">
-        <span>Design edge</span>
+      <label class="dgp-param" use:tip={"designEdge"}>
+        <span>Design edge<i class="tipmark" aria-hidden="true"></i></span>
         <select
           value={element.params.edge_cap}
           on:change={(e) => setParam("edge_cap", e.currentTarget.value)}
@@ -2039,7 +2044,7 @@
          permanent, one run after the user set it. The automatic readings do
          hang off the last run, since before it there is nothing to report. -->
     {#if artRead === "forced" || element.result}
-      <div class="dgp-read" class:dgp-read-on={!offerFlat}>
+      <div class="dgp-read" class:dgp-read-on={!offerFlat} use:tip={"photoReading"}>
         <p class="dgp-read-text">
           {#if artRead === "forced"}
             You set this to {forcedLabel}.
@@ -2668,6 +2673,7 @@
                         value={overrideTier(row, overrides)}
                         on:change={(e) => setShapeTier(row.id, e.currentTarget.value)}
                         aria-label={"Stitch type — " + rowAria}
+                        use:tip={"shapeTier"}
                       >
                         <option value="auto">Auto{row.tier ? " (" + row.tier + ")" : ""}</option>
                         <option value="satin">Satin</option>
@@ -2686,6 +2692,7 @@
                           value={overrideAngle(row, overrides)}
                           on:change={(e) => setShapeAngle(row.id, e.currentTarget.value)}
                           aria-label={"Fill angle — " + rowAria}
+                          use:tip={"shapeAngle"}
                         >
                           {#each SHAPE_ANGLES as a}
                             <option value={a.value == null ? "auto" : String(a.value)}>{a.label}</option>
@@ -2696,6 +2703,7 @@
                           value={overrideUnderlay(row, overrides)}
                           on:change={(e) => setShapeUnderlay(row.id, e.currentTarget.value)}
                           aria-label={"Underlay style — " + rowAria}
+                          use:tip={"shapeUnderlay"}
                         >
                           {#each SHAPE_UNDERLAYS as u}
                             <option value={u.value == null ? "auto" : u.value}>{u.label}</option>
@@ -2707,6 +2715,7 @@
                         value={overrideBorder(row, overrides)}
                         on:change={(e) => setShapeBorder(row.id, e.currentTarget.value)}
                         aria-label={"Border — " + rowAria}
+                        use:tip={"shapeBorder"}
                       >
                         <option value="default">Design ({borderLabel(element.params.border)})</option>
                         <option value="off">No border</option>
@@ -2733,7 +2742,7 @@
                             placeholder={"auto " + fmtMm(row.stitchWidth.autoMm)}
                             value={swOverride == null ? "" : swOverride}
                             aria-label={"Stitch width — " + rowAria}
-                            title={"The satin column this shape sews, in mm (" + STITCH_WIDTH_MIN_MM + "–" + STITCH_WIDTH_MAX_MM + "). Empty = the engine's own reading. Wider makes small letters bolder; narrower opens their counters."}
+                            use:tip={"stitchWidth"}
                             on:change={(e) => setShapeStitchWidth(row, e.currentTarget.value)}
                           />
                           <span class="dgp-unit">mm</span>
@@ -2747,7 +2756,7 @@
                           >Auto</button>
                         {/if}
                         {#if swGroupN > 1}
-                          <label class="dgp-lwidth-scope" title="Apply this width to every letter of the word, so the word sews at one weight. Untick to change only this shape.">
+                          <label class="dgp-lwidth-scope" use:tip={"wholeWord"}>
                             <input
                               type="checkbox"
                               checked={!wordScope.has(row.id)}

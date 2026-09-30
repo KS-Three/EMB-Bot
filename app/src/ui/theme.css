@@ -716,6 +716,61 @@ h1, h2 { letter-spacing: var(--tracking-tight); }
   color: var(--tint-border);
 }
 
+/* ---- Help popover (lib/tip.js, copy in lib/settingHelp.js) ---------------
+   One element for the whole app, appended to <body>, fixed, above
+   everything. Dark on purpose: it is a caption of the control under the
+   pointer, not a card, and it must read the same on the light panel and on
+   the surround. Three lines in a fixed order — what, Changes, When — so a
+   customer learns to read them once. */
+.tipbox {
+  position: fixed;
+  z-index: 50;
+  width: max-content;
+  max-width: min(320px, calc(100vw - 16px));
+  padding: var(--space-3) var(--space-4);
+  background: var(--ink);
+  color: var(--surround-ink);
+  border-radius: var(--radius-m);
+  box-shadow: var(--shadow-2);
+  font-size: var(--fs-sm);
+  line-height: var(--lh-snug);
+  pointer-events: none;
+}
+.tipbox[hidden] { display: none; }
+.tipbox-title {
+  display: block;
+  margin-bottom: var(--space-1);
+  font-weight: var(--fw-semibold);
+  color: #fff;
+}
+.tipbox-line { margin: var(--space-1) 0 0; }
+.tipbox-line b { font-weight: var(--fw-semibold); color: var(--surround-muted); }
+
+/* The "?" beside a label that has a tip: a small ring, muted until the
+   label is hovered or the control focused. Generated content on an empty,
+   aria-hidden element, so the label's accessible name is unchanged — every
+   e2e locator that reads a label by text still finds the same text. */
+.tipmark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  margin-left: var(--space-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  color: var(--muted);
+  font-size: 10px;
+  font-style: normal;
+  font-weight: var(--fw-semibold);
+  line-height: 1;
+  vertical-align: middle;
+  flex: 0 0 auto;
+}
+.tipmark::after { content: "?"; }
+label:hover .tipmark,
+label:focus-within .tipmark { border-color: var(--accent); color: var(--accent); }
+
 /* Right-click tool menu on the design canvas (EmbroideryField). Drawing tools
    moved here from the Content step's tile row on 2026-08-13 — a tool belongs
    on the surface you draw on, not in the row of upload buttons. Absolutely

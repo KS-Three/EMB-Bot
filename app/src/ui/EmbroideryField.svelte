@@ -5,6 +5,7 @@
   import { unsupportedMessage } from "../lib/fontCoverage.js";
   import { renderRealistic, isDark } from "../lib/preview.js";
   import { pickScaleBar } from "../lib/scalebar.js";
+  import { tip } from "../lib/tip.js";
   import { designToStrands, strandStitchOrdinals } from "../lib/strands.js";
   import { advanceIndex, clampIndex, nextSpeed } from "../lib/simulate.js";
   import { EMB } from "../lib/emb.js";
@@ -2685,7 +2686,7 @@
       <button type="button" class="zoombtn" on:click={zoomOut} disabled={view.zoom <= MIN_ZOOM} aria-label="Zoom out"><Icon name="minus" /></button>
       <span class="zoompct">{Math.round(view.zoom * 100)}%</span>
       <button type="button" class="zoombtn" on:click={zoomIn} disabled={view.zoom >= MAX_ZOOM} aria-label="Zoom in"><Icon name="plus" /></button>
-      <button type="button" class="zoombtn zoomfit" on:click={resetView} aria-label="Fit to hoop" title="Fit to hoop"><Icon name="expand" /></button>
+      <button type="button" class="zoombtn zoomfit" on:click={resetView} aria-label="Fit to hoop" use:tip={"fitToHoop"}><Icon name="expand" /></button>
       {#if scaleBar}
         <!-- A ruler, not a control: the bar's width IS the stated length on
              screen (lib/scalebar.js), so the customer reads the design's
@@ -2703,7 +2704,7 @@
         on:click={toggleSnap}
         aria-pressed={snapEnabled}
         aria-label="Auto-snap"
-        title="Auto-snap to other elements and hoop center (hold Alt to suspend)"
+        use:tip={"autoSnap"}
       ><Icon name="magnet" /></button>
       <button
         type="button"
@@ -2713,7 +2714,7 @@
         disabled={!hasDesign}
         aria-pressed={showOutlines}
         aria-label="Show shape outlines"
-        title="Outline every digitized shape — off for a clean view of the stitch-out"
+        use:tip={"outlines"}
       ><Icon name="nodes" /></button>
       <button
         type="button"
@@ -2723,7 +2724,7 @@
         disabled={!hasDesign}
         aria-pressed={showJumps}
         aria-label="Show jumps"
-        title="Show needle-up travel (jumps)"
+        use:tip={"jumps"}
       ><Icon name="jump" /></button>
       <button
         type="button"
@@ -2733,7 +2734,7 @@
         disabled={!hasDesign}
         aria-pressed={showTrims}
         aria-label="Show trims"
-        title="Show thread trims"
+        use:tip={"trims"}
       ><Icon name="scissors" /></button>
       <button
         type="button"
@@ -2743,7 +2744,7 @@
         disabled={!hasDesign}
         aria-pressed={realisticView}
         aria-label="Realistic view"
-        title="Realistic thread — off for a flat view of coverage and stitch structure"
+        use:tip={"realistic"}
       ><Icon name="sparkle" /></button>
       <button
         type="button"
@@ -2753,7 +2754,7 @@
         disabled={!hasDesign}
         aria-label="Stitch simulator"
         aria-pressed={simActive}
-        title="Stitch simulator — watch the sew order"
+        use:tip={"simulator"}
       ><Icon name="play" /></button>
     </div>
     {#if simActive}
