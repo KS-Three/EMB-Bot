@@ -16720,3 +16720,32 @@ a bar; satin runs 91 → 95, trims 30 → 37, stitches 4,305 → 4,441. Which
 branch of the fold leaves them is the next measurement. Records:
 `docs/eye-pairs-2026-09-30/README.md` (Outcome, Measured after the
 sitting), `kent-notes.json` (`third_sitting`), DOCTRINE, memory.
+
+## 2026-09-30 — The lettering texture sitting: the pro's 7 mm split style and the symmetric rails on the page, and leg-length jitter measured NOT to be what the eye calls smooth (Kent's pick)
+
+Kent's pick after the evening verdicts. The labelled page rebuilt under
+the tag `texture-0930` with two arms beside today, the needle-holes
+toggle on: `split_7mm` (`split_satin_above_mm=7.0`, the pro's own Becker
+style — raw crosses to about 7 mm, no comb) and `rails_symmetric`
+(`satin_rails_follow_edge=False`, the envelope OFF). Eight pairs: the
+split arm moves becker's letters (85.8 → 35.1% of legs split, on/off
+changes 26 → 8, holes 114 → 59 per 100 legs, 9,321 → 8,281 stitches) and
+a non-lettering column each on tires, bridge, drone and screenshot; the
+symmetric arm moves becker (9,321 → 9,248) and golden_tee (by 2) and
+tires' design at the same count; ten arm-runs identical and not shown.
+A lettering-texture table under each head (`texture-corpus.json`: legs,
+split share, on/off changes, holes per 100 legs, leg-length jitter over
+0.15 mm, turn p90).
+
+**Measured negative, recorded so nobody builds the smoother:** the two
+texture numbers built for "smooth" and "flow" do not separate the pro
+from us. On becker's letters, consecutive legs differ by over 0.15 mm
+42.2% of the time under every arm (the symmetric rails 40.4%); the pro's
+own five Becker files (50 satin columns, 25,113 legs) read 34.9%, and net
+of taper (the second difference of leg length) the pro is *rougher* —
+54.4% over 0.15 mm against our 45.2%, 35.3% over 0.30 against 21.0%, a
+median of 0.171 mm against 0.126. Neither lever moves the number more
+than four points. Whatever his eye calls flow, it is not leg-length
+jitter, and the page asks him for the words. Records:
+`docs/eye-pairs-2026-09-30/README.md` (the texture section),
+`texture-corpus.json`, the spec's arms table, memory. Verdicts pending.

@@ -139,6 +139,22 @@ ARM_INTENT: dict[str, tuple[str, str]] = {
         "#578) and the minimum stretch length (a reach shorter than the window is "
         "not a reach, #579). Today against that morning, drawn by today's renderer; "
         "the needle-holes toggle shows the comb the thread render cannot."),
+    "split_7mm": (
+        "split_satin_above_mm=7.0",
+        "Raw satin crosses to about 7 mm and no comb: the house style of the pro "
+        "who sewed Becker's own files (they split 1-2% of legs up to 5.5 mm; the "
+        "corpus-wide vote is 5.0). The letters' 5-7 mm columns sew as one cross "
+        "each -- fewer mid-column holes (the needle-holes toggle shows them), "
+        "longer floats. A physical constant under gate 1: the page can say which "
+        "reads right, only cloth says which sews right."),
+    "rails_symmetric": (
+        "satin_rails_follow_edge=False",
+        "Both rails at the nearer edge's distance, as shipped before the envelope: "
+        "no reach for the far edge, so the far rail falls short of serifs and "
+        "tapers, and the rail carries a third of the envelope's jitter where the "
+        "envelope reached. The envelope's coverage against its texture, on the "
+        "letters. Say in your own words what 'flow' and 'structured' mean on a "
+        "satin letter -- that note is worth more than the verdict."),
 }
 
 # Arms that left the pending table because they SHIPPED. A sitting rendered

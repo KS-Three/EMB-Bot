@@ -87,3 +87,12 @@ both prepped sides show the same ragged matte edges. Fixed:
 Trap: the four "rembg-venv" local reds do NOT mean the venv is absent —
 it runs here. Levers left for the lettering: split_satin_above_mm=7.0 (the
 pro's Becker style) and the symmetric rails, as arms for a texture sitting.
+
+**Texture sitting (late, Kent's pick)**: arms `split_7mm`
+(split_satin_above_mm=7.0, the pro's Becker style) and `rails_symmetric`
+(envelope OFF) on the page under tag `texture-0930`, 8 pairs, tables in
+`docs/eye-pairs-2026-09-30/texture-corpus.json`. **Leg-length jitter is
+NOT the eye's "smooth"**: becker's letters 42% of consecutive legs differ
+by >0.15 mm under every arm; the pro's own Becker columns 35%, and net of
+taper the pro is rougher (54% vs 45%). Do not build a rail smoother on
+that number; get Kent's words for "flow" first. Verdicts pending.
