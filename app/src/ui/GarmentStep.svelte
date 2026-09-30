@@ -5,7 +5,14 @@
   import Hint from "./Hint.svelte";
   import { garmentArt } from "./garmentArt.js";
   import { effectiveHoop } from "../lib/hoop.js";
+  import { fabricInForce } from "../lib/generate.js";
+  import CalibratePanel from "./CalibratePanel.svelte";
   export let project;
+  // The digitizer service's /health answer, or null when it isn't reachable
+  // (App owns the probe). The calibration card and the photo read both come
+  // from the service, so the button below says why it is unavailable
+  // instead of throwing when pressed — same posture as JEF on Download.
+  export let digitizerHealth = null;
   // Whether the "templates" onboarding hint should render right now -- App
   // computes this from hints.js's shouldShow("templates") plus the A7
   // cross-hint priority rule (drag-field/add-elements can outrank it even
@@ -72,6 +79,19 @@
   const hoops = EMB.HOOPS || [];
   $: hoopSel = effectiveHoop(project);
   $: suggestedHoop = EMB.suggestHoop(EMB.getGarment(project.garmentId));
+
+  // The fabric preset in force: the garment's own, or that preset adjusted
+  // by the project's calibration profile (generate.js fabricInForce — the
+  // same resolution every browser lane sews under, and the service mirrors
+  // it). Stated here so a customer can see WHICH numbers their design will
+  // sew with, and drop a profile back to the plain preset.
+  $: fabric = fabricInForce(project.garmentId, project.fabricProfile);
+
+  // The calibration flow (CalibratePanel) opens inline under the preset row.
+  let calibrating = false;
+  $: calibrateTitle = digitizerHealth
+    ? "Sew a test card on this fabric and adjust the preset to how it really sews"
+    : "Needs the digitizer service — start it to calibrate";
 </script>
 
 {#if showTemplatesHint}
@@ -111,6 +131,37 @@
       Use the suggested {suggestedHoop.label} hoop
     </button>
   </p>
+{/if}
+
+<h3>Fabric preset</h3>
+<p class="fabricpreset" data-testid="fabric-preset">
+  <strong>{fabric.label}</strong>
+  {#if fabric.profile}<span class="hooptile-chip">Calibrated</span>{/if}
+  <span class="fabricnums">
+    pull comp {fabric.pullCompMm} mm · rows ×{fabric.densityAdjust} · cut floats past {fabric.trimAtMm} mm
+  </span>
+  {#if fabric.profile}
+    <button type="button" class="linklike" on:click={() => d("update", { fabricProfile: null })}>
+      Use the plain preset
+    </button>
+  {/if}
+  <button
+    type="button"
+    class="linklike"
+    data-testid="calibrate-open"
+    disabled={!digitizerHealth}
+    title={calibrateTitle}
+    aria-expanded={calibrating}
+    on:click={() => (calibrating = !calibrating)}
+  >{calibrating ? "Hide calibration" : "Calibrate for this fabric…"}</button>
+</p>
+{#if calibrating}
+  <CalibratePanel
+    {project}
+    {digitizerHealth}
+    on:update={(e) => d("update", e.detail)}
+    on:close={() => (calibrating = false)}
+  />
 {/if}
 
 <h3>Fabric color</h3>

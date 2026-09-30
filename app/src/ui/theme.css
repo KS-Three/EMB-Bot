@@ -1086,6 +1086,29 @@ input.fabriccustom[type="color"] {
 }
 
 .hoopreset { margin: 0 0 var(--space-5); font-size: var(--fs-xs); }
+/* The fabric preset in force (Garment step): label, an optional Calibrated
+   chip, the three numbers the design sews with, and the way back to the
+   plain preset when a calibration profile is applied. */
+.fabricpreset { margin: 0 0 var(--space-5); font-size: var(--fs-xs); display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: baseline; }
+.fabricnums { opacity: 0.75; }
+
+/* The calibration flow (CalibratePanel), inline under the fabric preset row. */
+.calib { margin: 0 0 var(--space-5); padding: var(--space-3); border: 1px solid var(--line, #d8d8d8); border-radius: 8px; font-size: var(--fs-xs); }
+.calib-head { display: flex; justify-content: space-between; align-items: baseline; gap: var(--space-2); }
+.calib-head h3 { margin: 0; }
+.calib h4 { margin: var(--space-3) 0 var(--space-2); font-size: var(--fs-xs); }
+.calib-intro, .calib-note, .calib-msg { margin: 0 0 var(--space-2); }
+.calib-note { opacity: 0.75; }
+.calib-err { color: var(--danger, #b00020); }
+.calib-formats { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.calib-steps, .calib-notes { margin: 0 0 var(--space-2); padding-left: 1.2em; }
+.calib-photo { display: inline-block; }
+.calib-overlay { display: block; max-width: 100%; height: auto; margin: var(--space-2) 0; border-radius: 6px; }
+.calib-table { width: 100%; border-collapse: collapse; margin: 0 0 var(--space-2); }
+.calib-table th, .calib-table td { text-align: left; padding: 2px 6px 2px 0; vertical-align: top; }
+.calib-draft { margin: var(--space-2) 0; }
+.calib-check { display: block; margin: 0 0 var(--space-2); }
+.calib-actions { display: flex; gap: var(--space-2); }
 
 /* Quick-start template cards — one-click starters shown above the garment
    tiles on the first step. 2x2 on the narrow left panel, auto-fill lets a

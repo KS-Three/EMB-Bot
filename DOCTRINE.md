@@ -34,6 +34,35 @@ Moved verbatim 2026-08-28 — no section was rewritten in the move.
 
 ## Standing rulings — decided, do not re-litigate
 
+- **A customer's calibration profile ADJUSTS the shipped fabric preset,
+  clamped — it never replaces it. And the customer card targets 5x7.**
+  Kent's two calls of 2026-09-30, made with the trade-off in front of him
+  (`docs/sewout-calibration-brief-2026-09-30.md` §10). A profile read off a
+  phone photo of the calibration card (`tools/sewout_reader.py`) is a DELTA
+  from the engine's own render, so it lands on the preset as an addition,
+  inside the machine floors and ceilings `machine.py` already owns; a bad
+  photo can therefore move a preset only within its clamps, never below a
+  floor. Override was the more faithful option and was declined for that
+  reason. The card itself (`tools/sewout_card_v2.py`) is 82 x 103 mm with
+  corner fiducials and a 0.15 mm density arm, and fits 5x7 (130 x 180) with
+  10 mm to spare; a 4x4 target would have cost a block, so a customer with
+  only a 4x4 machine cannot calibrate with it — accepted. **Phase 0 (Kent
+  sewing the card) is deferred, not declined**, so every reader number is
+  still a number about a picture; do not quote one as a cloth measurement.
+  **Wired the same day, both engines:** `fabrics.apply_profile` /
+  `src/fabrics.js applyFabricProfile` take three deltas
+  (`pull_comp_delta_mm`, `density_scale`, `trim_at_delta_mm`) and clamp the
+  result to the SPAN OF THE SHIPPED TABLE — canvas to terry on pull comp —
+  which is what makes a profile gate-1 clean: every value it can produce is
+  one the presets already sew on some fabric, and widening a bound is a
+  sew-out question. `PipelineConfig.fabric_profile` / `project.fabricProfile`,
+  default None, byte-identical off; `test_fabric_wire.py` now RUNS the
+  arithmetic in node and Python and compares, since a text diff cannot see
+  a drifted clamp. Nothing writes a profile yet — that is the calibration
+  flow (brief phase 4).
+  *(ruled 2026-09-30 — brief §10; `tests/test_sewout_card_v2.py` pins the
+  card, `tests/test_fabric_profile.py` the wiring)*
+
 - **The worksheet states only what the ENGINE KNOWS. Kent's ruling
   2026-09-20.** The machine-physics playbook's Part 3 lists what the sheet
   "must start carrying": assumed backing, topper, needle spec, tension targets

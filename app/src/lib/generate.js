@@ -43,6 +43,25 @@ function decodeCached(dstBase64) {
   return hit;
 }
 
+// The fabric preset a garment sews under, adjusted by the project's
+// calibration profile when it carries one (`project.fabricProfile`, drafted
+// by digitizer/tools/sewout_reader.py from a photo of the calibration card
+// — Kent's 2026-09-30 call: a profile ADJUSTS the preset, clamped, never
+// replaces it). The engine owns the arithmetic (src/fabrics.js
+// applyFabricProfile, hand-ported from fabrics.py and cross-run by
+// test_fabric_wire.py); this only chooses which preset to hand it. A
+// malformed persisted profile is ignored rather than crashing generation —
+// the Garment step shows the preset in force either way.
+export function fabricInForce(garmentId, fabricProfile) {
+  const preset = EMB.getFabric(EMB.fabricForGarment(garmentId));
+  if (!fabricProfile) return preset;
+  try {
+    return EMB.applyFabricProfile(preset, fabricProfile);
+  } catch {
+    return preset;
+  }
+}
+
 export function generateElement(element, garment, runtime) {
   if (!element) return null;
 
@@ -89,7 +108,7 @@ export function generateElement(element, garment, runtime) {
     // doesn't read a second argument yet (Task 3 adds threadRgb overrides to
     // imageRegions.js) so this is simply ignored today.
     const { regions, pxPerMm } = flatToRegions(flat, { threadRgb: element.threadRgb });
-    const fabric = EMB.getFabric(EMB.fabricForGarment(garment.id));
+    const fabric = fabricInForce(garment.id, runtime && runtime.fabricProfile);
     // No fill or satin spacing is passed on purpose (2026-09-04): the engine's
     // own defaults — EMB.FILL_ROW_MM 0.15 and EMB.SATIN_SPACING_MM 0.4, the
     // same numbers as the Python digitizer's machine.py — ARE the Studio's
@@ -116,7 +135,7 @@ export function generateElement(element, garment, runtime) {
     // re-classified by width/branch-guard heuristics).
     const { regions, pxPerMm } = shapesToRegions(element.shapes);
     if (!regions.length) return null;
-    const fabric = EMB.getFabric(EMB.fabricForGarment(garment.id));
+    const fabric = fabricInForce(garment.id, runtime && runtime.fabricProfile);
     return EMB.buildQualityDesign(regions, {
       // Spacing: engine defaults — same reasoning as the image branch above.
       garment, fabric, pxPerMm,
@@ -167,7 +186,7 @@ export function generateElement(element, garment, runtime) {
       { id: "shape", points, curves: {}, stitchType: "auto", colorRgb: element.colorRgb, angleDeg: null },
     ]);
     if (!regions.length) return null;
-    const fabric = EMB.getFabric(EMB.fabricForGarment(garment.id));
+    const fabric = fabricInForce(garment.id, runtime && runtime.fabricProfile);
     return EMB.buildQualityDesign(regions, {
       // Spacing: engine defaults — same reasoning as the image branch above.
       garment, fabric, pxPerMm,
@@ -352,9 +371,13 @@ export function charList(chars, max = 6) {
 // { combined: null, perElement: [] } when nothing in the project is ready.
 export function generateAll(project, runtime) {
   const garment = EMB.getGarment(project.garmentId);
+  // The calibration profile is project-level, like the garment; it rides
+  // `runtime` into generateElement so the three browser lanes (image,
+  // manual, shapes) sew the same adjusted preset the service does.
+  const rt = { ...(runtime || {}), fabricProfile: project.fabricProfile || null };
   const perElement = [];
   for (const element of project.elements || []) {
-    const design = generateElement(element, garment, runtime);
+    const design = generateElement(element, garment, rt);
     if (!design) continue;
     // `unsupported`: characters the element's font has no glyph for. Carried
     // per element rather than merged, because the fix is per element — it is

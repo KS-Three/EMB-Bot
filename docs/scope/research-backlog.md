@@ -332,3 +332,49 @@ source counted twice. No verdict change and no fix implied — the DST axis bug'
 resolution path is unchanged and remains Kent's call.
 *(confirmed 2026-08-14 — `docs/turtlestitch-stitch-appearance-research-2026-08-14.md`;
 moved here from MASTER_SCOPE 2026-08-25 under the line budget)*
+
+## Closed-loop sew-out calibration — proposed 2026-09-30, probe built, waiting on a photo
+
+The one capability no digitizing tool ships: the customer sews the gate card
+on their own goods, photographs it, and the tool writes a machine + fabric
+profile from the photo instead of Kent hand-tuning a constant for everyone.
+Decision brief with the customer flow, the per-block → profile-field map,
+the phased plan and the four decisions it needs:
+`docs/sewout-calibration-brief-2026-09-30.md`.
+
+**What exists:** `digitizer/tools/sewout_reader.py` registers a photo onto
+the card's plan (clicked corners, automatic minAreaRect + ECC, or proposed
+corner fiducials), splits thread from cloth per feature, and reports each
+bar's and square's sewn extents, coverage and seam gaps as a DELTA from the
+engine's own render read by the same code. Calibrated on simulated phone
+photos with planted distortions: across-column satin pull-in recovered to
+**0.01 mm** at 12 and 8 px/mm, along-row extents to ~0.05 mm (a systematic
+under-read), seam gaps to ~0.15 mm; two different distortion sets each
+recovered to their own value (`tests/test_sewout_reader.py`, 10 tests).
+
+**Card v2 — the customer's card — built the same day** on Kent's call:
+`tools/sewout_card_v2.py`, 82 x 103 mm, corner fiducials in block 1's thread,
+a fourth density square at the professional's 0.15 mm pitch, fits 5x7 with
+10 mm to spare (not 4x4 — accepted). v1 untouched. `tests/test_sewout_card_v2.py`
+(6) pins it, including the reader registering off the marks. His other call:
+a profile ADJUSTS the preset, clamped (DOCTRINE standing ruling).
+
+**Phase 3 — profile into the engine — also built 2026-09-30:**
+`PipelineConfig.fabric_profile` / `project.fabricProfile`, three deltas that
+adjust the garment's preset clamped to the shipped table's span, in both
+engines and the service, default OFF and byte-identical off; the Garment
+step shows the preset in force. `tests/test_fabric_profile.py` (14),
+`test_fabric_wire.py` runs the arithmetic in node and Python.
+
+**Phase 4 — the Studio flow — built 2026-09-30 too:** the Garment step's
+*Calibrate for this fabric…* opens `CalibratePanel` (card download,
+instructions, photo drop, reading, Accept → `project.fabricProfile`), over
+`GET /calibration/card` and `POST /calibration/read`. The card builders and
+reader moved into `digitizer_core/calibration/` so the service imports no
+tool; the tools of the same names are the command lines.
+
+**What it waits on:** a photograph of a sewn card — none exists. Phase 0 of
+the brief is one hooping (deferred by Kent 2026-09-30, not declined). No
+constant moves (gate 1); the reader measures, it does not set. The loop is
+complete and every number in it is still about a picture.
+*(built and measured 2026-09-30 — `docs/renders/sewout-reader-2026-09-30/`)*

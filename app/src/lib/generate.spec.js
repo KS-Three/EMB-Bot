@@ -1079,3 +1079,35 @@ test("letteringNote: the cap floor still outranks the width warnings", async () 
   expect(n).toMatch(/1\.7 mm tall/);
   expect(n).not.toMatch(/running stitch/);
 });
+
+// --- Calibration profile (2026-09-30) ----------------------------------------
+// project.fabricProfile ADJUSTS the garment's preset (clamped) for every
+// browser lane; null or a malformed one leaves the plain preset in force.
+
+test("fabricInForce: the garment's preset, adjusted by a profile, and the plain preset when the profile is bad", async () => {
+  const { fabricInForce } = await import("./generate.js");
+  const plain = fabricInForce("left_chest", null);
+  expect(plain.id).toBe("pique_knit");
+  expect(plain.profile).toBeUndefined();
+  const adj = fabricInForce("left_chest", { pull_comp_delta_mm: 0.15, density_scale: 0.9 });
+  expect([adj.pullCompMm, adj.densityAdjust, adj.trimAtMm]).toEqual([0.45, 0.9, 3.0]);
+  expect(adj.profile).toEqual({ pull_comp_delta_mm: 0.15, density_scale: 0.9 });
+  // A corrupt persisted profile must not take generation down.
+  expect(fabricInForce("left_chest", { pull_comp_mm: 0.1 })).toBe(plain);
+  expect(fabricInForce("left_chest", { density_scale: "x" })).toBe(plain);
+});
+
+test("generateAll sews a shape element under the project's calibration profile", async () => {
+  const { generateAll } = await import("./generate.js");
+  const { defaultProject, defaultShapeElement } = await import("./project.js");
+  const shape = { ...defaultShapeElement("s1"), sizeMm: 30 };
+  const base = { ...defaultProject(), selectedId: "s1", selectedIds: ["s1"], elements: [shape] };
+  const plain = generateAll(base, {}).combined;
+  const same = generateAll({ ...base, fabricProfile: { pull_comp_delta_mm: 0 } }, {}).combined;
+  const tighter = generateAll({ ...base, fabricProfile: { density_scale: 0.85 } }, {}).combined;
+  expect(plain.stitchCount).toBeGreaterThan(50);
+  expect(same.stitchCount).toBe(plain.stitchCount);
+  // 0.85 on the row spacing is more rows, so more stitches — the profile
+  // reached the browser fill emitter, not just the label.
+  expect(tighter.stitchCount).toBeGreaterThan(plain.stitchCount);
+});

@@ -909,6 +909,16 @@ class PipelineConfig:
     # naming a garment picks its usual fabric. An explicit fabric_id wins.
     garment_id: str | None = None
     fabric_id: str | None = None
+    # A calibration profile ADJUSTING that fabric, clamped to the shipped
+    # table's span — never replacing it (DOCTRINE standing ruling, Kent's
+    # call 2026-09-30). Wire form and arithmetic: `fabrics.apply_profile`;
+    # the Studio sends `project.fabricProfile` here and applies the same
+    # three keys to its own preset in `src/fabrics.js`. None = the preset as
+    # shipped, byte-identical to before the field existed; a no-op profile
+    # (delta 0, scale 1) is canonicalised away at submit so it is one cache
+    # key with None. Drafted by `tools/sewout_reader.py` from a photo of the
+    # calibration card; nothing in the engine writes one.
+    fabric_profile: dict | None = None
     # The garment's COLOUR, (R, G, B) 0-255, as the Studio knows it
     # (`project.fabricRgb`, sent beside garment_id). None = not known. Read
     # only by the enclosed-background rule below; nothing else in the
