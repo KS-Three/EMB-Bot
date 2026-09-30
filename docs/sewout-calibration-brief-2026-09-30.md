@@ -159,14 +159,14 @@ photographs will measure, and it is the only number that matters for §9.
 
 ## 7. The catches
 
-1. **Fiducials change the card.** Four 2.5 mm corner marks with a 1 mm gap
-   grow it from 66 × 96 to **73 × 103 mm**, which no longer fits a 4×4
-   hoop (100 × 100). The customer card needs a redesign anyway: block 2 has
-   no arm at the professional's 0.14–0.17 mm row pitch
-   (`sewout-findings-2026-09-03.md` §1), and a customer card should be one
-   colour per block at most and fit 4×4. `auto` mode works without marks,
-   at the cost of being blind to a global shrink; fiducials are the right
-   answer for a product, not for Kent's first photos.
+1. **Fiducials change the card — DONE the same day as card v2.** Four
+   2.5 mm corner marks with a 1 mm gap, plus a fourth density square at the
+   professional's 0.15 mm pitch (`sewout-findings-2026-09-03.md` §1), make
+   the customer card **82 × 103 mm** — past a 4×4 hoop (100 × 100), inside
+   5×7 (130 × 180) with 10 mm to spare. `tools/sewout_card_v2.py`; v1 is
+   untouched for Kent's gate-1 work. `auto` mode still works without marks,
+   at the cost of being blind to a global shrink. Six tests pin the card,
+   including the reader registering off the marks on a simulated photo.
 2. **A reading is not a constant** — gate 1 stands. The reader reports a
    *delta from the render*; turning that into `pull_comp_mm` for a
    customer's preset needs Kent's own card sewn and photographed first, to
@@ -191,8 +191,8 @@ photographs will measure, and it is the only number that matters for §9.
 |---|---|---|---|
 | **0 — Kent's photos** | Rebuild the card (fixed codec), sew on pique + cutaway, photograph per §7.5, get the photos in (`pull-corpus` skill; Drive, not git — a sew-out photo is not a fixture) | reader runs on a real photo in `auto` mode with ECC > 0.9 and every block found | one hooping, ten minutes of photos |
 | **1 — cloth bias** | Compare reader deltas against Kent's own eyes and the row-pitch instruments on the same card; record the cloth bias per feature | the reader's satin pull-in agrees with a caliper on the sewn bar to 0.1 mm | a session |
-| **2 — card v2** | Fiducials, 4×4 fit, a 0.15 mm density arm, one colour per block; keep v1 for Kent's gate-1 work | v2 reads in `fiducials` mode on a real photo | a session + a hooping |
-| **3 — profile → engine** | A per-garment profile that overrides the `Fabric` preset, DEFAULT OFF, byte-identical off, with the Studio's fabric row showing which is in force | a design digitized under a profile sews the profile's pull comp; `test_fabric_wire` guards both engines | a session |
+| **2 — card v2** | **BUILT 2026-09-30** (`tools/sewout_card_v2.py`): fiducials, 5×7 fit, a 0.15 mm density arm, one colour per block; v1 untouched | v2 reads in `fiducials` mode on a REAL photo (simulated: yes) | a hooping |
+| **3 — profile → engine** | A per-garment profile that ADJUSTS the `Fabric` preset within the machine's clamps (Kent's call, §10), DEFAULT OFF, byte-identical off, with the Studio's fabric row showing which is in force | a design digitized under a profile sews the profile's pull comp; `test_fabric_wire` guards both engines | a session |
 | **4 — Studio flow** | The §4 buttons, the reading screen, the two human questions | a customer can calibrate without reading a doc | two sessions |
 | **5 — tier** | Pro-gate it once billing exists | — | depends on the tabled billing decision |
 
@@ -214,19 +214,20 @@ The same hooping settles the sew-out card's own gate-1 questions (lock, row
 pitch, satin ceiling, travel, text floor), which have been waiting since
 2026-07-31. There is no cheaper experiment on this roadmap.
 
-## 10. Decisions for Kent
+## 10. Decisions for Kent — three answered 2026-09-30
 
-1. Sew and photograph the current card (phase 0)? Every later phase waits
-   on it.
-2. Card v2's hoop target: 4×4 (the smallest preset) or 5×7? 4×4 forces
-   dropping or shrinking a block; 5×7 keeps every arm and adds fiducials.
-3. Does a customer profile *override* the shipped fabric preset or *adjust*
-   it (additive, clamped)? Adjust is safer: a bad photo cannot take a
-   preset below the machine's floors.
+1. Sew and photograph the current card (phase 0)? — **Not yet; keep
+   building.** Deferred, not declined. Every reader number stays a number
+   about a picture until this happens.
+2. Card v2's hoop target — **5×7.** Keeps every arm and adds fiducials;
+   built the same day (§7.1). A 4×4-only customer cannot calibrate.
+3. Profile *override* or *adjust*? — **Adjust, clamped.** A profile is a
+   delta on the preset inside the machine's floors; a bad photo cannot take
+   a preset below one. Recorded as a DOCTRINE standing ruling.
 4. Is this Pro-tier, or the free hook that sells Pro? Ember charges for
    automation; a free calibration that then grades every design against
    the customer's own cloth may be the strongest upgrade prompt the
-   product has.
+   product has. **Open.**
 
 ## Sources
 

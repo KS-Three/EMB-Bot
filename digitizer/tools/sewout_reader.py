@@ -759,12 +759,15 @@ def distort(design: dict, distortions: list[Distortion]) -> dict:
 
 def with_fiducials(design: dict, size_mm: float = FIDUCIAL_MM,
                    gap_mm: float = FIDUCIAL_GAP_MM) -> dict:
-    """The PROPOSED card change: four small satin squares just outside the
-    sewn bbox's corners, in the first block's thread (no extra stop), so a
-    photo registers off marks instead of off the artwork. Grows the card by
-    2 * (gap + size) each way — 66 x 96 becomes 73 x 103, which is the
-    reason this is a proposal and not the card."""
+    """Four small satin squares just outside the sewn bbox's corners, in the
+    first block's thread (no extra stop), so a photo registers off marks
+    instead of off the artwork. Was the PROPOSAL on 2026-09-30 morning;
+    `tools/sewout_card_v2.py` sews them for real since that afternoon
+    (Kent's call), and a design that already carries four is returned as
+    is. Kept for the v1 card and the tests, which frame the reduced card."""
     d = copy.deepcopy(design)
+    if sum(1 for r in d.get("runs") or [] if r["shape"] == "__fiducial__") == 4:
+        return d          # card v2 sews them for real (tools/sewout_card_v2.py)
     x0u, y1u, W, H = _frame(design)
     x1u = x0u + W * UNITS_PER_MM
     y0u = y1u - H * UNITS_PER_MM

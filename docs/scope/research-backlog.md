@@ -352,7 +352,14 @@ photos with planted distortions: across-column satin pull-in recovered to
 under-read), seam gaps to ~0.15 mm; two different distortion sets each
 recovered to their own value (`tests/test_sewout_reader.py`, 10 tests).
 
+**Card v2 — the customer's card — built the same day** on Kent's call:
+`tools/sewout_card_v2.py`, 82 x 103 mm, corner fiducials in block 1's thread,
+a fourth density square at the professional's 0.15 mm pitch, fits 5x7 with
+10 mm to spare (not 4x4 — accepted). v1 untouched. `tests/test_sewout_card_v2.py`
+(6) pins it, including the reader registering off the marks. His other call:
+a profile ADJUSTS the preset, clamped (DOCTRINE standing ruling).
+
 **What it waits on:** a photograph of a sewn card — none exists. Phase 0 of
-the brief is one hooping of the existing card on pique. No constant moves
-(gate 1); the reader measures, it does not set.
+the brief is one hooping (deferred by Kent 2026-09-30, not declined). No
+constant moves (gate 1); the reader measures, it does not set.
 *(built and measured 2026-09-30 — `docs/renders/sewout-reader-2026-09-30/`)*

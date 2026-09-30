@@ -2,6 +2,12 @@
 
 **One hooping. Six questions. Print this page and take it to the machine.**
 
+*(This is Kent's gate-1 card and it is unchanged. Since 2026-09-30 there is
+also a CUSTOMER card — `tools/sewout_card_v2.py`, 82 x 103 mm, corner
+fiducials and a 0.15 mm density arm, read from a phone photo by
+`tools/sewout_reader.py` — see `docs/sewout-calibration-brief-2026-09-30.md`.
+Sew THIS one for the six questions below; the marks on v2 answer none of them.)*
+
 *(Block 1 answers two of them since 2026-09-14: the lock leg, and whether the
 browser lettering lane should tie by default. Same two bars, same tug.)*
 

@@ -34,6 +34,24 @@ Moved verbatim 2026-08-28 — no section was rewritten in the move.
 
 ## Standing rulings — decided, do not re-litigate
 
+- **A customer's calibration profile ADJUSTS the shipped fabric preset,
+  clamped — it never replaces it. And the customer card targets 5x7.**
+  Kent's two calls of 2026-09-30, made with the trade-off in front of him
+  (`docs/sewout-calibration-brief-2026-09-30.md` §10). A profile read off a
+  phone photo of the calibration card (`tools/sewout_reader.py`) is a DELTA
+  from the engine's own render, so it lands on the preset as an addition,
+  inside the machine floors and ceilings `machine.py` already owns; a bad
+  photo can therefore move a preset only within its clamps, never below a
+  floor. Override was the more faithful option and was declined for that
+  reason. The card itself (`tools/sewout_card_v2.py`) is 82 x 103 mm with
+  corner fiducials and a 0.15 mm density arm, and fits 5x7 (130 x 180) with
+  10 mm to spare; a 4x4 target would have cost a block, so a customer with
+  only a 4x4 machine cannot calibrate with it — accepted. **Phase 0 (Kent
+  sewing the card) is deferred, not declined**, so every reader number is
+  still a number about a picture; do not quote one as a cloth measurement.
+  *(ruled 2026-09-30 — brief §10; `tests/test_sewout_card_v2.py` pins the
+  card, nothing yet wires a profile into the engine)*
+
 - **The worksheet states only what the ENGINE KNOWS. Kent's ruling
   2026-09-20.** The machine-physics playbook's Part 3 lists what the sheet
   "must start carrying": assumed backing, topper, needle spec, tension targets
