@@ -454,6 +454,14 @@ out of the saved project instead.
 - **`nothing serving http://localhost:PORT — start it, or pass --serve`** —
   the driver won't guess. Add `--serve`, or start `npm run dev` yourself.
 
+- **`Error: spawn npm ENOENT` on Windows with `--serve`** — a driver from
+  before 2026-09-30. npm is `npm.cmd` there, and Node (CVE-2024-27980 fix)
+  won't spawn a `.cmd` without a shell. The driver now spawns through a shell
+  on win32 and stops Vite with `taskkill /T /F` (process groups are POSIX-only;
+  killing the wrapper alone left Vite holding the port → `EADDRINUSE` next
+  run). If a port is still bound after a crash, `netstat -ano | findstr :PORT`
+  gives the PID — check it's yours before `taskkill /pid <PID> /T /F`.
+
 - **Driver appears to hang with no output** — `repl` mode blocks on stdin by
   design. Pipe it a heredoc, or use `smoke`.
 

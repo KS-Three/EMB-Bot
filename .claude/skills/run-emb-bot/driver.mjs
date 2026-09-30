@@ -80,7 +80,15 @@ async function startServer() {
   // SIGTERM to the vite it spawns, so killing the npm wrapper leaves the
   // port bound and the next run dies on EADDRINUSE — kill the whole group
   // (see shutdown()).
-  vite = spawn("npm", ["run", "dev", "--", "--port", String(PORT), "--strictPort"],
+  // Windows: npm is npm.cmd, and since CVE-2024-27980 Node refuses to spawn a
+  // .cmd without a shell (spawn npm ENOENT). There are no process groups
+  // there either, so no detached — shutdown() kills the tree with taskkill.
+  // One command string, not an args array: shell:true with args is DEP0190 on
+  // Node 24. PORT is a Number, so nothing here reaches the shell unparsed.
+  vite = process.platform === "win32"
+    ? spawn(`npm run dev -- --port ${PORT} --strictPort`,
+      { cwd: APP, stdio: ["ignore", "pipe", "pipe"], shell: true, windowsHide: true })
+    : spawn("npm", ["run", "dev", "--", "--port", String(PORT), "--strictPort"],
     { cwd: APP, stdio: ["ignore", "pipe", "pipe"], detached: true });
   const out = [];
   vite.stdout.on("data", (d) => out.push(String(d)));
@@ -237,7 +245,13 @@ const commands = {
 
 async function shutdown() {
   try { await browser?.close(); } catch {}
-  if (vite && vite.pid) {
+  if (vite && vite.pid && process.platform === "win32") {
+    // Negative pids are POSIX-only, and vite.kill() would take down only the
+    // cmd/npm wrapper and leave node+vite holding the port. /T kills the tree.
+    await new Promise((r) => spawn("taskkill", ["/pid", String(vite.pid), "/T", "/F"],
+      { stdio: "ignore", windowsHide: true }).on("exit", r).on("error", r));
+    await new Promise((r) => setTimeout(r, 500));
+  } else if (vite && vite.pid) {
     // Negative pid = the whole process group, which is what actually frees
     // the port. Fall back to the bare pid if the group is already gone.
     try { process.kill(-vite.pid, "SIGTERM"); }
