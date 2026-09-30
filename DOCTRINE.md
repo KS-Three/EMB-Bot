@@ -6980,3 +6980,53 @@ question (the cause-side twin, DOCTRINE 2026-09-19); a blob is the cover's.
 The mode ships OFF; whether the far rail's reach reads right on cloth is
 the same sew-out question True was parked on, and the flag's flip is
 Kent's.
+
+## The Studio asks nothing about what the art is — the class override is gone (2026-09-30)
+
+Kent, with a screenshot of a portrait digitized well: *"get rid of the 'it's
+flat art' / 'it's a photo' check boxes when uploading a photo, logo or
+ANYTHING ... just automatically recognize what it is, and how it needs to be
+digitized."* The second time he has asked (2026-08-30: *"IDK what ANY of that
+even means"*). The first answer moved the question from a pre-upload quiz to
+a one-click correction on the reading row and kept the override
+*"deliberately"*, citing the open phase 2 and the phase-4 spec's decision 4.
+Asked twice, it is his call, and the override is removed.
+
+**What went:** the reading row's "It's flat art" (wrote `params.forced_class
+= "flat"`), "It's a photo" (set `element.isPhoto`, sent `is_photographic`)
+and "Use automatic detection". `buildDigitizeConfig` sends neither field
+any more, whatever a saved project carries, so a pre-09-30 design with an
+override digitizes as a fresh upload of the same art would — one cache-key
+change, then identical. **What replaced the photo declaration:** the Studio
+sends `detect_photographic=true` on every job, so the engine's own
+EXIF-or-face detection (built 2026-09-11, engine default still OFF; True or
+None, never False) answers "is this a photograph" — the route that entry
+already named as the primary mechanism, *"never a checkbox"*. `PHOTO_DETECTED`
+gets its own sentence on the row when stage 0's class said nothing tonal
+("Read as a photograph, sewing as solid color regions" — the tier is the
+class's, detection does not move it), and the detail-lines option follows it.
+
+**Two rules that follow, and both change what a session does:**
+
+1. **Do not bring the buttons back.** A misrouted design now has no
+   in-product correction, and that is the point rather than an oversight:
+   stage 0 misroutes most real logos (phase 2), and the fix is the routing.
+   A session that sees a misroute reaches for phase 2's evidence, not for a
+   per-design switch. ROADMAP's "phase-4 v1 works around stage 0 with an
+   explicit user override" no longer holds and was reworded.
+
+2. **His own screenshot is a data point AGAINST the automatic lane for
+   faces, and it is not yet a ruling.** The design he called awesome was a
+   portrait FORCED FLAT — 4 colours, bean edge cap, 41,794 stitches at 81 ×
+   74 mm — exactly the posterised face that the 2026-08-25 measurement said
+   *"quantizes a face to one flat skin field"* and tabled. The automatic
+   route for that upload is whatever stage 0 reads — a portrait that
+   classifies `photo_subject` goes to thread-paint with the detail layer
+   (spec decision 3) — and he now has no way to choose the other. The 08-25 entry was four portraits judged by a session;
+   this is one portrait judged by Kent. Neither settles it. **The
+   phase-1 question — does the yardstick agree with Kent's eye — has a live
+   case here, and the faces tier map is a decision to put in front of him,
+   with both renders, not one to infer.** *(Kent's call 2026-09-30 — PR for
+   `claude/funny-hamilton-ygywku`; `app/src/lib/digitizer.js`
+   `buildDigitizeConfig`, `DigitizePanel.svelte` reading row,
+   `digitize-auto-start.spec.js`)*

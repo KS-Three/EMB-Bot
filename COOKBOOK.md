@@ -337,9 +337,11 @@ hand-rolling it in JS.
   that gate is the finding, not a hedge: the defect population
   (drone/summit) and the disproof population (61/64 sub-mm satins on real
   customer logos are ground the pro also satined) BOTH classify `gradient`,
-  so classification can't separate them — the photo lane (the user's own
-  "It's a photo" correction, a "This is a photo" toggle before 2026-08-30)
-  is the only honest gate. Flat/gradient stay byte-identical.
+  so classification can't separate them — the photo lane (stage 0's own
+  photo classes, or stage 1.25's EXIF-or-face detection, which the Studio
+  asks for on every job since 2026-09-30; the user's own "It's a photo"
+  correction before that) is the only honest gate. Flat/gradient stay
+  byte-identical.
 - **Run the service**: `.venv/Scripts/python -m digitizer_service` →
   `127.0.0.1:8721`. **Building the venv from scratch takes TWO installs, not
   one.** CLAUDE.md sends you to `pip install -e .` (correctly — it enforces the

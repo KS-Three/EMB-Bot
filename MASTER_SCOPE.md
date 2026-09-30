@@ -17,7 +17,7 @@ at the bottom for the authority model behind the confidence ratings.
 four of its findings are standing rulings in [`DOCTRINE.md`](DOCTRINE.md). Its
 code and instruments are ON `main`. *(confirmed 2026-08-17 — `git ls-tree`)*
 
-**Last updated:** 2026-09-20. **This file is current state only, under a
+**Last updated:** 2026-09-30. **This file is current state only, under a
 27,000-word budget** (rule 4 below — Kent replaced the old line budget with it
 on 2026-09-14, and this line still said "800-line" until 2026-09-20). Its three
 companions: standing rulings, rejected approaches,
@@ -85,8 +85,10 @@ icon. Cloth pointers added to defects 3, 6 and 16 below.
     gates the fix and is DECLARED, not detected — `owl_kent.jpg` reads LESS
     photographic than two logos, so a photograph left undeclared routes
     gradient and the re-snap sews more spools than the cone list names. **Counted 2026-09-06** (`digitizer/tools/resnap_escape.py`): **34 cones added corpus-wide, 25 outside the selected palette, every escape on the GRADIENT lane** — screenshot 7, drone 5, bridge_bar 5, golden_tee 4, gaulke 3 — while all nine photo-class fixtures add none. The binding works; the lane real logo art routes to never got it. **FIXED, DEFAULT ON since 2026-09-10** (`cfg.bind_resnap_all_classes`, Kent's ruling on the colour bundle — `docs/colour-bundle-decision-2026-09-10.md`; False is the pre-flip engine): binding every class removes **19 colour stops across five designs** (drone 19→14, bridge_bar 18→14, screenshot 16→11, golden_tee 16→13, gaulke 6→4; gaulke also −10.9% stitches, drone +3.1%) and costs **+2 blocks net** — screenshot 10→8, golden_tee 2→5, bridge_bar 3→4. **It is NOT a raw-yardstick artefact:** forcing the excess yardstick (probe, reverted) still gives golden_tee D 52→F 22 and drone D 40→F 28, the latter with no thread block moving, so part of the price is the extra stitches. The escape is the pipeline BUYING colour accuracy with unplanned cones. **I would not flip it on this evidence** — the value is the price tag. *(measured 2026-09-06 — `tests/test_bind_resnap_all_classes.py`, 13)* **A benefit the price tag did not have, added 2026-09-06:** binding also removes a SPOOL REVISIT on real customer artwork. An undeclared cone can only exist because this escape put one there, and nothing rejoins the regions that land on it (defect 18's third mechanism) — `screenshot_phone_ui_golke` goes **17 blocks / 16 distinct with `3971` sewn twice, to 11 / 11 with no duplicate**. That belongs on the credit side of this trade. *(measured 2026-09-06 — scope-history 09-06)*
-    **UI HALF FIXED 2026-09-02 (Kent's call):** the reading row's "It's a
-    photo" correction now sends `is_photographic` instead of
+    **UI HALF FIXED 2026-09-02 (Kent's call), REMOVED 2026-09-30 (Kent's
+    call — the Studio no longer carries any per-design class override; it
+    sends `detect_photographic=true` instead, see area 3):** the reading
+    row's "It's a photo" correction sent `is_photographic` instead of
     `forced_class="photo_subject"`. It was answering the wrong question —
     forcing the FILL TIER rather than declaring content — and measurably
     hurt: owl_kent @ 80 mm goes 13 stops → **17** forced, vs **11 on 12
@@ -620,16 +622,25 @@ was a single uncontrolled icon. See Cross-cutting issues.
 Six buyer-visible defects across the 2026-08-25 and 09-07 sweeps, none seen by a
 green suite. The list: DOCTRINE "Gotchas".
 
-**Uploading artwork is the whole interaction — the panel no longer asks the
-user to classify it first.** The run starts on upload and the panel STATES what
-the art was read as ("Read as flat art" / "as a photo" / "as shaded artwork" /
-"couldn't tell"), with the override recast as a one-click correction to that
-sentence. `detail_layer` sits on that row too (Kent 2026-08-30) and appears only
-where the art is actually on a tonal lane, by reading or by override. Nothing
-changed in what gets sent, so area 1's photo-control numbers are untouched, and
-the engine's routing is unchanged — ROADMAP gate 2 bars recalibrating stage 0,
-and phase-4 v1 works around it with exactly this override.
-*(confirmed 2026-08-30 — driven in a real browser against the real service, every state of the row clicked through and looked at; pinned by e2e `digitize-auto-start.spec.js`; numbers in scope-history 08-30)*
+**Uploading artwork is the whole interaction — the panel asks NOTHING about
+what the art is.** The run starts on upload and the panel STATES what the art
+was read as ("Read as flat art" / "as a photo" / "as shaded artwork" /
+"couldn't tell"). **The per-design override is GONE (Kent's call
+2026-09-30):** the "It's flat art" / "It's a photo" / "Use automatic
+detection" buttons that had sat on that row since 2026-08-30 are removed, the
+Studio no longer sends `forced_class` or `is_photographic` at all, and a
+project saved with either digitizes as a fresh upload would. In their place
+the Studio sends `detect_photographic=true` on every job, so the engine's own
+EXIF-or-face detection (area 1, built 2026-09-11, engine default still OFF)
+answers "is this a photograph". `detail_layer` still sits on the row and
+appears only where the art is on a tonal lane by the engine's reading
+(`PHOTO_DETECTED` counts). **The cost is real and named:** stage 0 still
+misroutes most real logos (ROADMAP phase 2), and a misrouted design now has no
+in-product correction — the routing is the fix, not a button. Kent's own
+evidence for the change is the case it also takes away: a portrait he forced
+FLAT (4 colours, bean edge) was the result he called awesome, where the
+automatic lane is thread-paint; see DOCTRINE 2026-09-30.
+*(confirmed 2026-09-30 — `digitizer.spec.js` legacy-override tests, `DigitizePanel.spec.js` reading-row block, e2e `digitize-auto-start.spec.js` reads the POSTed config)*
 
 **The hoop you picked is DRAWN, and the export gate uses it.** `hoopTransform`
 returns the hoop and the placement box and fits to the larger (before 2026-09-04

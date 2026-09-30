@@ -158,12 +158,13 @@ const commands = {
   // Click by visible label — the Studio's buttons are text, not ids.
   //
   // EXACT FIRST, deliberately. A substring match here is a live trap: the
-  // digitize panel has both "Digitize" (runs the job) and "Digitize as flat
-  // art" (only flips forced_class), and getByRole(...).first() on a
-  // substring picks the wrong one in DOM order — the click "succeeds",
-  // nothing is submitted, and you debug the service for an hour. So: try
-  // exact, fall back to substring, and always print what was resolved and
-  // how many candidates there were.
+  // digitize panel once had both "Digitize" (runs the job) and "Digitize as
+  // flat art" (only flipped an override, gone since 2026-09-30), and
+  // getByRole(...).first() on a substring picked the wrong one in DOM order
+  // — the click "succeeded", nothing was submitted, and you debugged the
+  // service for an hour. "Digitize" and "Digitize again" still collide the
+  // same way. So: try exact, fall back to substring, and always print what
+  // was resolved and how many candidates there were.
   async btn(...label) {
     const t = label.join(" ");
     let loc = page.getByRole("button", { name: t, exact: true });

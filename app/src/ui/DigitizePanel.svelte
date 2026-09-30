@@ -230,7 +230,8 @@
   //
   // Nothing here contradicts a standing ruling: no fix sets `border: "auto"`
   // (DOCTRINE: +60% stitches and WORSE on a photo), none sets `forced_class`
-  // speculatively (measured worse on textured logo art), and none turns on
+  // (no Studio control does since 2026-09-30, and forcing flat measured
+  // worse on textured logo art before that), and none turns on
   // `edge_cap`, which Kent reserved per design and which no sew-out has
   // settled.
   const FIX_FOR = {
@@ -468,19 +469,6 @@
     }
   }
 
-  // `isPhoto` (spec 2026-08-18 decision 4) lives on the element itself, not
-  // element.params (buildDigitizeConfig reads it directly — see its own
-  // comment), so it needs its own prev-value watcher rather than riding the
-  // params one above. Same re-digitize-on-change behavior as every param
-  // control, just tracking a different field.
-  let prevIsPhoto = element.isPhoto;
-  $: {
-    if (element.isPhoto !== prevIsPhoto) {
-      prevIsPhoto = element.isPhoto;
-      if (element.result || phase !== "idle") runDigitize(element);
-    }
-  }
-
   // New artwork digitizes ITSELF. Every other change in this panel already
   // re-runs on its own once a result exists; the first run was the single
   // thing left that the user had to ask for by hand, which meant uploading an
@@ -707,119 +695,50 @@
   $: attentionLines = otherWarningLines.filter((w) => ATTENTION_WARNINGS.has(w.code));
   $: noteLines = otherWarningLines.filter((w) => !ATTENTION_WARNINGS.has(w.code));
 
-  // ---- what stage 0 made of the art, and correcting it ----------------------
+  // ---- what stage 0 made of the art ----------------------------------------
   //
-  // Stage 0 already classifies every job on its own (flat / gradient /
-  // photo_subject / photo_scene) and reports the answer as a CLASSIFIED_*
-  // warning. Studio used to keep that to itself and instead ASK: a "This is a
-  // photo" checkbox sitting in the params list beside stitch width, plus a
-  // "digitize as flat art" nudge that appeared only on a misroute and spoke
-  // the engine's vocabulary. Kent, 2026-08-30: "the photo upload is very
-  // confusing -- choose flat work, real photo etc. IDK what ANY of that even
-  // means, can't we just upload a photo/image and the tool AUTOMATICALLY
-  // recognizes what needs to be done?"
+  // Stage 0 classifies every job on its own (flat / gradient / photo_subject /
+  // photo_scene) and reports the answer as a CLASSIFIED_* warning; stage
+  // 1.25 adds PHOTO_DETECTED when the file's camera header or a face says
+  // the art is a photograph (buildDigitizeConfig asks for that detection on
+  // every job). The panel STATES the reading in plain words. It asks nothing
+  // and offers no correction -- Kent, 2026-09-30: "get rid of the 'it's flat
+  // art' / 'it's a photo' check boxes when uploading a photo, logo or
+  // ANYTHING ... just automatically recognize what it is, and how it needs to
+  // be digitized." That was the second time he asked (2026-08-30: "IDK what
+  // ANY of that even means"); the first time the question moved from a
+  // pre-upload quiz to a one-click correction on this row, and the
+  // correction is what went on 2026-09-30.
   //
-  // It always did. So the question stops being asked up front: the run starts
-  // on upload (see the sourcePng watcher below), the panel STATES what the
-  // art was read as in plain words, and the override becomes a correction to
-  // that sentence rather than a quiz taken before anything has been seen.
+  // So there is no `forced_class` and no `isPhoto` any more: a saved project
+  // that still carries either is read as if it did not (buildDigitizeConfig
+  // never sends them). The cost is named rather than hidden: stage 0 still
+  // misroutes real logos (ROADMAP phase 2), and a misrouted design now has no
+  // in-product correction -- fixing the routing is the fix, not a button.
   //
-  // The override itself stays, deliberately: ROADMAP phase 2 is open ("most
-  // real logos reach the wrong lane") and phase-4 v1 is built to work around
-  // stage 0 with an explicit user override, not by advancing it (spec
-  // 2026-08-18 decision 4). What gets SENT changed 2026-09-02 (Kent's call,
-  // defect 15): isPhoto now means `is_photographic=true` -- photographic
-  // CONTENT, which buys depth sequencing and the palette bind -- not
-  // `forced_class=photo_subject`, which forced the FILL TIER and measurably
-  // hurt (owl_kent @ 80mm: 13 stops -> 17 forced, vs 11 declared). The flat
-  // correction is unchanged and still writes forced_class=flat; only the
-  // "it's a photo" direction moved.
-  // The override is an ordinary digitize param (buildDigitizeConfig sends it
-  // when set), which is the whole reason it needs no machinery of its own:
-  // setting or clearing it changes element.params, and the params-changed
-  // block above re-digitizes. Neither control calls runDigitize itself.
-  $: forcedClass = (element.params && element.params.forced_class) || null;
-
-  // Plain-language names for the four classes, used only when something has
-  // been forced -- the automatic readings get their own sentences below.
-  const FORCED_LABEL = {
-    flat: "flat art",
-    gradient: "shaded artwork",
-    photo_subject: "a photo",
-    photo_scene: "a photo",
-  };
-
-  // One state for the whole flat/photo business, in the order that decides it:
   // `warningLines` is read INLINE here, not through a `hasCode(...)` helper:
   // these are legacy `$:` statements, whose dependencies are collected
   // syntactically, so a helper would leave this tracking only the (never
   // reassigned) function and the reading would freeze at its first value.
-  // an explicit user override outranks whatever the engine read, and isPhoto
-  // outranks a leftover params.forced_class exactly as buildDigitizeConfig's
-  // own precedence does -- so the sentence on screen can never disagree with
-  // the config that gets sent (the 2026-08-19 contradiction, now impossible by
-  // construction rather than by the checkbox handler alone).
+  //
+  // Order matters for honesty: the sentence names the TIER the art is sewing
+  // in, and stage 0's class decides that. Stage 1.25's PHOTO_DETECTED does
+  // not move the tier -- it turns the photographic machinery on (palette
+  // bind, depth sequencing) -- so it only gets its own sentence when the
+  // class said nothing tonal, and that sentence promises solid regions, not
+  // shading. The warning line beside it names WHICH signal fired.
   $: artRead =
-    element.isPhoto ? "forced" :
-    forcedClass ? "forced" :
     warningLines.some((w) => w.code === "CLASSIFIED_PHOTO_SUBJECT" || w.code === "CLASSIFIED_PHOTO_SCENE") ? "photo" :
     warningLines.some((w) => w.code === "CLASSIFIED_GRADIENT") ? "gradient" :
+    warningLines.some((w) => w.code === "PHOTO_DETECTED") ? "detected" :
     warningLines.some((w) => w.code === "CLASSIFICATION_UNCERTAIN") ? "unsure" :
     "flat";
-  $: forcedLabel =
-    element.isPhoto ? FORCED_LABEL.photo_subject : (FORCED_LABEL[forcedClass] || "your own setting");
-  // Offering flat is scoped to FLAT-COLOR art and the copy has to keep saying
-  // so: forcing flat on genuinely TEXTURED logo art measured WORSE, because
-  // k-means shatters the texture. This is "the classifier read your artwork
-  // wrong", not a general "make it better" button.
-  $: offerFlat = artRead === "photo" || artRead === "gradient";
-  // Whether the art is being sewn down a TONAL lane at all -- by the engine's
-  // reading or by the user's own override. `detail_layer` only does anything
-  // there, so the control rides this rather than sitting in the params list
-  // beside stitch width labelled "Detail lines for photos" on a flat logo
-  // that will never use it (Kent's call, 2026-08-30).
-  $: tonalLane =
-    element.isPhoto ? true :
-    forcedClass ? forcedClass !== "flat" :
-    offerFlat;
-  // The other direction. Not offered from a standing photo override (there is
-  // nothing to correct) and not from a forced-flat one either, where the
-  // "It's a photo" button below is the one-click path instead.
-  $: offerPhoto = artRead === "flat" || artRead === "unsure";
-
-  // Back to automatic clears BOTH overrides in ONE patch (one undo step), and
-  // clears forced_class by REMOVING the key rather than nulling it: the params
-  // object has to come back identical to a design that never overrode
-  // anything, or the service's job cache key differs and the revert pays for a
-  // run the cache already holds.
-  function useAutomatic() {
-    const next = {};
-    if (element.params && "forced_class" in element.params) {
-      const { forced_class, ...rest } = element.params;
-      next.params = rest;
-    }
-    if (element.isPhoto) next.isPhoto = false;
-    if (Object.keys(next).length) patch(next);
-  }
-
-  // "It's a photo" clears a stale flat-art override in the SAME patch that
-  // sets isPhoto (controller ruling, fix round 1 2026-08-19): left alone, the
-  // two would visibly contradict each other -- buildDigitizeConfig's
-  // isPhoto-wins precedence sends is_photographic while params.forced_class
-  // still said flat. Fixing it at the source means no reader of
-  // params.forced_class needs isPhoto-awareness of its own.
-  //
-  // Unchecking does NOT bring a cleared override back -- that decision is
-  // gone for good, same one-way "reverting deletes, never restores" posture
-  // useAutomatic has.
-  function setIsPhoto(checked) {
-    if (checked && element.params && element.params.forced_class) {
-      const { forced_class, ...rest } = element.params;
-      patch({ isPhoto: true, params: rest });
-    } else {
-      patch({ isPhoto: checked });
-    }
-  }
+  // Whether the art is photographic or shaded content. `detail_layer` reads
+  // its lines off the source raster, which is worth offering there and not
+  // on a flat logo (Kent's call, 2026-08-30) -- so the control rides this
+  // row rather than sitting in the params list beside stitch width. A
+  // detected photograph counts even when its tier is flat.
+  $: tonalLane = artRead === "photo" || artRead === "gradient" || artRead === "detected";
 
   // Resize honesty (Kent's rule, same as DesignPanel): the field's resize
   // handles SCALE baked stitches, they don't re-digitize — density changes
@@ -2004,54 +1923,26 @@
       {/if}
     </div>
 
-    <!-- What the art was read as, in plain words, plus the one correction that
-         applies to that reading. Sits with the params, not down in the warnings
-         list, because it IS a param — and a FORCED row has to stand whether or
-         not there is a result to hang it off. Once a flat override takes effect
-         the art classifies as flat and the CLASSIFIED_* warning is gone: a row
-         anchored to that warning would make the override invisible, and
-         permanent, one run after the user set it. The automatic readings do
-         hang off the last run, since before it there is nothing to report. -->
-    {#if artRead === "forced" || element.result}
-      <div class="dgp-read" class:dgp-read-on={!offerFlat}>
+    <!-- What the art was read as, in plain words. Sits with the params, not
+         down in the warnings list, because the reading decides what the
+         params list even shows (the detail-lines option below). It hangs off
+         the last run, since before it there is nothing to report. A
+         statement, not an offer: nothing here is a button. -->
+    {#if element.result}
+      <div class="dgp-read">
         <p class="dgp-read-text">
-          {#if artRead === "forced"}
-            You set this to {forcedLabel}.
-          {:else if artRead === "photo"}
-            Read as a photo, so it's sewing with shaded thread. If it's really a flat-color
-            logo — solid colors, no shading or photo texture — say so and it'll sew as flat art.
+          {#if artRead === "photo"}
+            Read as a photo, so it's sewing with shaded thread.
           {:else if artRead === "gradient"}
-            Read as shaded artwork, so it's sewing in blended thread shades. If it's really a
-            flat-color logo — solid colors, no shading or photo texture — say so and it'll sew
-            as flat art.
+            Read as shaded artwork, so it's sewing in blended thread shades.
+          {:else if artRead === "detected"}
+            Read as a photograph, sewing as solid color regions.
           {:else if artRead === "unsure"}
             Couldn't tell what this artwork is, so it's sewing as flat art.
           {:else}
             Read as flat art, sewing as solid color regions.
           {/if}
         </p>
-        {#if artRead === "forced"}
-          {#if forcedClass === "flat"}
-            <button type="button" class="dgp-read-btn" on:click={() => setIsPhoto(true)}>
-              It's a photo
-            </button>
-          {/if}
-          <button type="button" class="dgp-read-btn" on:click={useAutomatic}>
-            Use automatic detection
-          </button>
-        {:else if offerFlat}
-          <button
-            type="button"
-            class="dgp-read-btn"
-            on:click={() => setParam("forced_class", "flat")}
-          >
-            It's flat art
-          </button>
-        {:else if offerPhoto}
-          <button type="button" class="dgp-read-btn" on:click={() => setIsPhoto(true)}>
-            It's a photo
-          </button>
-        {/if}
         {#if tonalLane}
           <label class="dgp-checkline dgp-read-opt">
             <input
@@ -3065,67 +2956,34 @@
     font-size: var(--fs-xs, 12px);
     white-space: nowrap;
   }
-  /* The reading row borrows .dgp-enclosed-banner's shape wholesale, for the
-     reason that banner's own comment gives: an offer the user is meant to act
-     on has to be a box, not another dim line in a list. */
+  /* The reading row is a STATEMENT of what the engine read, not an offer:
+     nothing in it is a button (Kent, 2026-09-30), nothing is wrong and
+     nothing needs chasing, and it stays for the life of the design. So it
+     takes .dgp-check's quiet surface/tint vocabulary rather than warning
+     yellow. Still a box, so the detail-lines option reads as part of it. */
   .dgp-read {
     display: flex;
-    align-items: center;
-    /* Wraps because a forced-flat row carries TWO buttons ("It's a photo" and
-       "Use automatic detection"), which together outrun the panel's width and
-       would otherwise squeeze the sentence into a three-word column. The
-       min-width on the text below is what decides the break: one button still
-       sits inline, two drop to their own line. */
     flex-wrap: wrap;
+    align-items: center;
     gap: 10px;
     margin: 10px 0 0;
     padding: 8px 10px;
-    border: 1px solid var(--warn-text, #8a6d1a);
+    border: 1px solid var(--tint-border, #ccd6fb);
     border-radius: var(--radius-s, 6px);
-    background: var(--warn-bg, #fdf6e3);
+    background: var(--surface, #fff);
   }
   .dgp-read-text {
     flex: 1 1 auto;
-    min-width: 55%;
     margin: 0;
     font-size: var(--fs-xs, 12px);
-    color: var(--warn-text, #8a6d1a);
+    color: var(--muted, #667);
   }
-  /* The detail-lines option rides this row rather than the params list, so it
-     takes the row's own width and sits on its own line under the sentence and
-     the correction -- never sharing a line with a button. It takes the same
-     two-state colour as .dgp-read-text so it reads as part of whichever row it
-     is in, rather than inheriting the panel default through the container. */
+  /* The detail-lines option takes the row's own width and sits on its own
+     line under the sentence, in the same colour so it reads as part of the
+     row rather than inheriting the panel default through the container. */
   .dgp-read-opt {
     flex: 1 1 100%;
-    color: var(--warn-text, #8a6d1a);
-  }
-  .dgp-read-btn {
-    flex-shrink: 0;
-    padding: 5px 10px;
-    border: 1px solid var(--warn-text, #8a6d1a);
-    border-radius: var(--radius-s, 6px);
-    background: var(--warn-text, #8a6d1a);
-    color: #fff;
-    cursor: pointer;
-    font-size: var(--fs-xs, 12px);
-    white-space: nowrap;
-  }
-  /* A row that is only STATING what happened — a forced override, or a reading
-     with nothing to correct — is not a warning: nothing is wrong and nothing
-     needs chasing, and unlike the flat-art offer it never goes away. So it
-     drops to .dgp-check's quiet surface/tint vocabulary instead of sitting
-     there in warning yellow for the life of the design. */
-  .dgp-read-on {
-    border-color: var(--tint-border, #ccd6fb);
-    background: var(--surface, #fff);
-  }
-  .dgp-read-on .dgp-read-text,
-  .dgp-read-on .dgp-read-opt { color: var(--muted, #667); }
-  .dgp-read-on .dgp-read-btn {
-    border-color: var(--tint-border, #ccd6fb);
-    background: var(--surface, #fff);
-    color: inherit;
+    color: var(--muted, #667);
   }
   .dgp-resize { font-size: var(--fs-xs, 12px); color: var(--warn-text, #8a6d1a); margin: 8px 0 6px; }
   .dgp-blocks { margin-top: 10px; }
