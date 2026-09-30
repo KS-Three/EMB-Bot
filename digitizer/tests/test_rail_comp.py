@@ -253,6 +253,16 @@ def test_the_flip_costs_trims_on_the_lettering_fixture_and_says_so():
     2,061 -> 2,093 stitches (1.155 -> 1.173 of OFF) for bare artwork
     7.38 -> 7.03% at the same 21 trims -- so the stitch ceiling is 1.18.
 
+    **`satin_tip_caps` (ON since 2026-09-29) now rides in BOTH arms, and the
+    ceilings moved for that reason alone.** Rail comp's OWN price on this
+    fixture did not change: with tip caps off on both sides it still reads
+    9 -> 21 trims and 1,784 -> 2,093 stitches, **1.173 of OFF** against the
+    1.18 that was pinned here before. What moved is the baseline -- tip caps
+    costs the OFF arm 9 -> 11 trims and 1,784 -> 1,928 stitches, and the ON
+    arm 21 -> 22 and 2,093 -> 2,354 -- so the pair reads 11 -> 22 at 1.221.
+    The 09-19 engine is pinned below as its own arm so that attribution
+    cannot rot: if THAT number moves, rail comp's price really has changed.
+
     Pinned as CEILINGS, the way the underlay lever's own cost is: a cheaper
     build lowers them and this test stays green; a dearer one fails it. The
     direction is recorded here, not asserted -- the day the rails sew the
@@ -267,9 +277,19 @@ def test_the_flip_costs_trims_on_the_lettering_fixture_and_says_so():
         return plan_stitches(finish_generation(gen.fork(), c), c)
 
     off, on = sewn(satin_rail_comp=False), sewn()
-    assert off.stats.trims <= 9, off.stats.trims            # the grown polygon, 2026-09-19's number
-    assert on.stats.trims <= 21, on.stats.trims             # the rails: 22 at the flip, 21 after the seam fix
-    assert on.stats.stitch_count <= 1.18 * off.stats.stitch_count, (off.stats.stitch_count, on.stats.stitch_count)
+    assert off.stats.trims <= 11, off.stats.trims           # the grown polygon: 9 on the 09-19 engine, 11 with tip caps
+    assert on.stats.trims <= 22, on.stats.trims             # the rails: 21 before tip caps, 22 with them
+    assert on.stats.stitch_count <= 1.23 * off.stats.stitch_count, (off.stats.stitch_count, on.stats.stitch_count)
+
+    # Rail comp's own price, isolated on the engine the numbers above were
+    # first read on. This is the arm that says whether the ceilings moved
+    # because rail comp got dearer or because another flag joined the ride.
+    off0 = sewn(satin_rail_comp=False, satin_tip_caps=False)
+    on0 = sewn(satin_tip_caps=False)
+    assert off0.stats.trims <= 9, off0.stats.trims
+    assert on0.stats.trims <= 21, on0.stats.trims
+    assert on0.stats.stitch_count <= 1.18 * off0.stats.stitch_count, (
+        off0.stats.stitch_count, on0.stats.stitch_count)
 
 
 def test_under_rail_comp_a_strokes_first_run_starts_on_the_travel_web():
@@ -320,6 +340,66 @@ def test_push_rails_pushes_a_pinched_cross_and_leaves_a_directionless_one():
     assert pa[2] == a[2] and pb[2] == b[2]
 
 
+def test_the_flips_bare_artwork_is_hairlines_on_the_sides_and_a_hole_at_a_tapered_end():
+    """WHAT the flip's bare artwork is, which its headline could not say.
+
+    `docs/kent-review-2026-09-28.md` recorded ENTHUSIAST's cost as bare
+    artwork 6.27 -> 7.10% with the rise "along the rails (mid-rail 2.06 ->
+    4.12%), cause not yet isolated". Isolated 2026-09-29 with
+    `tools/bare_anatomy.py`, which splits every bare component by WHERE it
+    sits (a disc at a run's terminal cross = an `end` gap, else a `side` gap)
+    and HOW THICK it is (max inscribed radius). The two populations want
+    opposite responses and the percentage cannot tell them apart:
+
+    - **The mid-rail half is HAIRLINES and is not the defect.** 80% of the
+      side area sits in components under 0.10 mm half-width, the worst side
+      component is SMALLER on than off (0.45 against 0.50 mm2), and the
+      same-rail step distribution barely moves (p50 0.427 -> 0.419 mm, share
+      over 0.45 mm 35.1 -> 33.6%, the summed overshoot past the 0.4 mm pitch
+      88.2 -> 71.5 mm). A 0.4 mm thread at the 0.4 mm pitch just touches, so
+      every rail step over it leaves a sliver the coverage model counts;
+      rail comp makes more of them and makes each thinner.
+    - **The cloth-visible cost is at a TAPERED END.** The apex of the A
+      (`Scd87e08f`) sews to within 0.08 mm of the artwork off the rails and
+      stops 1.63 mm short on them, leaving one 3.61 mm2 triangle at 0.71 mm
+      half-width -- the largest bare component on the fixture, and under
+      preflight's `_UNCOVERED_MIN_PATCH_MM2` (5.0), so nothing reports it.
+      Rendered both ways: `docs/renders/rail-comp-bare-anatomy-2026-09-29/`.
+
+    Pinned as CEILINGS and a FLOOR, the way the trims are: the end gap can
+    only get smaller, the hairline share can only get purer. A build that
+    closes the apex lowers the first and leaves this green; one that turns
+    the hairlines into holes fails the third.
+    """
+    from tools.bare_anatomy import components
+    from digitizer_core.pipeline import build_generation, finish_generation, plan_stitches
+
+    cfg = PipelineConfig(target_width_mm=80.0, garment_id="left_chest", max_colors=6)
+    gen = build_generation(str(TESTDATA / "photo" / "enthusiast_logo.png"), cfg)
+    result = finish_generation(gen.fork(), cfg)
+    plan = plan_stitches(result, cfg)
+    polys = {r.shape_id: r.polygon for r in result.regions}
+    comps = components(polys, plan)
+    assert comps
+
+    ends = [c for c in comps if c[2]]
+    sides = [c for c in comps if not c[2]]
+    assert ends and sides
+
+    # 1. the tapered-end hole, as a ceiling (3.61 mm2 measured 2026-09-29)
+    worst_end = max(a for a, _h, _e, _s in ends)
+    assert worst_end <= 3.8, f"the flip's worst end gap grew to {worst_end:.2f} mm2"
+
+    # 2. no side gap is a hole (0.45 mm2 measured; OFF's worst is 0.50)
+    worst_side = max(a for a, _h, _e, _s in sides)
+    assert worst_side <= 0.55, f"a mid-rail gap reached {worst_side:.2f} mm2 — no longer a hairline"
+
+    # 3. and the side population STAYS hairlines (80% measured)
+    side_area = sum(a for a, _h, _e, _s in sides)
+    hairline = sum(a for a, h, _e, _s in sides if h < 0.10)
+    assert hairline / side_area >= 0.70, (
+        f"only {100 * hairline / side_area:.0f}% of mid-rail bare is thinner than "
+        "0.10 mm half-width — the sides have started opening real gaps")
 def test_under_rail_comp_the_skeleton_reads_the_polygon_with_its_seams_closed():
     """Stage 5 hands an on-rails shape its artwork unioned with the underlap
     reach under whatever sews later and cut by whatever sewed earlier, and
@@ -455,6 +535,26 @@ def test_the_envelope_reaches_the_far_edge_where_the_gap_is_long_and_nowhere_els
     2 mm bulge the axis cannot re-centre under is shorter than the window,
     so the envelope keeps the symmetric width there where True reaches --
     corner-sized bare is `satin_cap_recentre`'s question, not this mode's.
+
+    **`satin_tip_caps=False` here, held on the engine this mode was measured
+    on** (it was written before that flag was flipped ON, 2026-09-30, and the
+    three numbers above are reproduced byte for byte with it OFF). That is not
+    bookkeeping: the two cures reach for MUCH of the same bare, and the
+    shipped engine makes the envelope's own headroom look small. Re-measured
+    2026-09-30 on the merged tree, Becker 80 mm, bare / satin std / stitches:
+
+        tip caps OFF   10.222% / 0.0914 / 5,691   9.484% / 0.0999 / 5,750   7.235% / 0.1281 / 6,079
+        tip caps ON     9.483% / 0.0943 / 6,101   9.030% / 0.1108 / 6,219   6.840% / 0.1243 / 6,601
+                        ^ False                   ^ envelope                ^ True
+
+    **Tip caps alone take Becker's symmetric-rail bare to 9.483%, which is the
+    figure the envelope reached without them (9.484%).** The envelope then
+    takes a further 0.45 points, at +17.5% roughness rather than the +9.3% it
+    costs on the pre-flip engine. Both assertions below would fail on the
+    shipped default for that reason and for no other; pin the mode where it
+    was measured, and read the overlap from the table rather than from a
+    loosened threshold. What the envelope is worth ON TOP of tip caps is a
+    separate question and belongs to its flip decision, not to this test.
     """
     from shapely.geometry import box
     from tools import edge_wobble as EW
@@ -463,7 +563,8 @@ def test_the_envelope_reaches_the_far_edge_where_the_gap_is_long_and_nowhere_els
     def arm(mode):
         r, p = digitize(TESTDATA / "becker_marine_logo.png",
                         PipelineConfig(target_width_mm=80.0, garment_id="left_chest",
-                                       max_colors=6, satin_rails_follow_edge=mode))
+                                       max_colors=6, satin_rails_follow_edge=mode,
+                                       satin_tip_caps=False))
         polys = {rg.shape_id: rg.polygon for rg in r.regions}
         num, den = bare_area(polys, p)
         wob = EW.analyse_plan(polys, p, background=set())
