@@ -7612,3 +7612,55 @@ the pixels per cap height; under about 20 the loss is segmentation, and the
 levers are the source or the size, never a stroke rule.** Size recovers this
 one at 140 mm; the dissolve and a wider palette make it worse. *(measured
 2026-09-30, `docs/renders/bridge-phantom-2026-09-30/teal-text.json`)*
+
+## A rail that reaches for its far edge must first know whose edge it found (2026-09-30)
+
+Kent's note on the envelope's sitting — Becker *after better*, *"these
+stitches look like they are just trying to fill a void"* — was literally
+true. At a junction the far ray of a satin station does not hit the
+stroke's own edge: it runs along the meeting arm and hits the arm's end, for
+as long as the arm is thick. On Becker's E at 100 mm that is about 13
+stations reading 7.4–9.6 mm on a stem whose own half-width is 3.0–3.3,
+longer than the width median (5) and the envelope's running-min window (7)
+put together, and the corridor cap at the junction reads the merged
+footprint, so 2–3 mm of it went through. **Of
+the envelope's new thread on Becker's letters, 78% lay on ground another
+stroke of the same letter already sewed.** Nine logos: 313 of 459 reached
+stations were such escapes.
+
+Three transferable rules.
+
+1. **No cap on the reach tells an escape from a reach.** Screened on the 459
+   stations: an absolute cap (≤ 1 mm keeps 89% of genuine reaches and lets
+   76% of escapes through), a ratio to the width (60% / 50%), the boundary
+   distance at the end (81% / 80%). Escapes are not longer, not further from
+   an edge, not wider than genuine reaches. **Where the reach ENDS is the
+   discriminant** — inside a sibling stroke's corridor, 89% / 5% on the
+   instrument's screen; the shipped rule, reading the sibling's median
+   body width plus the pull, realized 73% of genuine reaches kept and 7% of
+   escapes let through — and that needs the other strokes' spines, which `_rail_points`
+   never had. The fix was plumbing before it was arithmetic.
+
+2. **A sibling's corridor is its body's width, not the field at the node.**
+   The first cut read the width field at the sibling's nearest point; a
+   sibling's spine starts at the junction node, where the field reads the
+   merged footprint (3.2 mm against 2.7 in the body of a 5 mm bar), and
+   that radius refused a genuine reach on the far side of the very stem the
+   sibling meets. The median along the spine's interior, plus the pull the
+   rails are pushed by, is the ribbon.
+
+3. **The far ray reaches four half-widths, and a ray that finds nothing is
+   the nominal half-width, not an escape.** A 12.5 mm arm on a 5 mm stem
+   showed no escape at all — the fixture had to be shortened to 6 mm before
+   it reproduced Becker, whose E reads its arms' ends 8.6 mm from the stem's
+   spine against a 9.6 mm reach. Any instrument or test built on
+   `_rail_points`' side readings inherits that horizon.
+
+And one about what this rule is not: the remaining reaches are short (8 of
+Becker's 23 stretches are 1–2 stations) and still triple the local rail
+jitter, and the letters' split satin flickers under every rail mode (71% of
+crosses split, 18 of 22 runs mixed). Both read as "no flow"; neither is an
+escape.
+
+*(measured 2026-09-30 — `docs/renders/envelope-escapes-2026-09-30/`,
+`census.json`; `tools/envelope_escapes.py`)*

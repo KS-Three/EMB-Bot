@@ -120,7 +120,10 @@ _WIDTH_SMOOTH_PASSES = 4
 # the symmetric width only to the conservative ENVELOPE of its own edge --
 # the running minimum of its median-filtered ray profile over +-this many
 # stations -- and only where that envelope clears the symmetric width by
-# the gap floor. See `_rail_points`.
+# the gap floor. See `_rail_points`. A reach whose end lands inside another
+# stroke's own corridor is refused there (`_in_sibling_ribbon`, 2026-09-30):
+# at a junction the far ray escapes along the meeting arm, and neither the
+# median window nor this one is longer than an arm is thick.
 _ENVELOPE_WINDOW = 3
 _ENVELOPE_GAP_MM = 0.3
 
@@ -2452,6 +2455,70 @@ def _fold_caps(spine: list[tuple[float, float]], angles: list[float],
     return caps
 
 
+def _sibling_spines(siblings: list | None, field: _WidthField | None,
+                    fallback_half_mm: float, rail_comp_mm: float = 0.0) -> list[tuple[np.ndarray, float]]:
+    """The sibling spines `_in_sibling_ribbon` reads: (spine as an (n, 2)
+    array, that stroke's sewn half-width). The half-width is the MEDIAN of
+    the field's reading along the spine's INTERIOR -- the stroke's own
+    body -- not the reading at the nearest point: a sibling's spine starts
+    at the junction node, where the field reads the merged footprint, and
+    that radius round the node would refuse a genuine reach on the far side
+    of the very stem the sibling meets (measured on a 5 mm stem with a 5 mm
+    arm: 3.2 mm at the node against 2.7 in the body). The samples sit at
+    tenths of the arc length from 0.1 to 0.9, never at the ends, so a
+    two-vertex spine reads its middle and not its two nodes. The pull
+    (`rail_comp_mm`) is added because the ribbon another column SEWS is its
+    artwork half-width pushed out by it. A spine of fewer than two points
+    has no segment and is dropped; no field, or none of it on the raster,
+    reads the nominal half-width.
+    """
+    out: list[tuple[np.ndarray, float]] = []
+    for s in siblings or ():
+        a = np.asarray(s, dtype=float)
+        if a.ndim != 2 or a.shape[0] < 2 or a.shape[1] != 2:
+            continue
+        half = fallback_half_mm
+        if field is not None:
+            seg = np.hypot(*(a[1:] - a[:-1]).T)
+            cum = np.concatenate([[0.0], np.cumsum(seg)])
+            total = float(cum[-1])
+            vals = []
+            if total > 0.0:
+                for f in np.linspace(0.1, 0.9, 9):
+                    d = f * total
+                    k = int(np.searchsorted(cum, d, side="right") - 1)
+                    k = min(max(k, 0), len(seg) - 1)
+                    t = 0.0 if seg[k] <= 0.0 else (d - cum[k]) / seg[k]
+                    v = field.half_at((float(a[k, 0] + (a[k + 1, 0] - a[k, 0]) * t),
+                                       float(a[k, 1] + (a[k + 1, 1] - a[k, 1]) * t)))
+                    if v > 0.0:
+                        vals.append(v)
+            if vals:
+                half = float(np.median(vals))
+        out.append((a, half + rail_comp_mm))
+    return out
+
+
+def _in_sibling_ribbon(q: tuple[float, float], sibs: list[tuple[np.ndarray, float]]) -> bool:
+    """Does `q` lie inside another stroke's own corridor: nearer to some
+    sibling spine than that stroke's half-width (`_sibling_spines`)?
+
+    Exact point-to-segment distance over every segment of every sibling;
+    it runs only at stations the envelope would extend, a tenth of them on
+    a lettering shape.
+    """
+    qx, qy = q
+    for a, half in sibs:
+        p, d = a[:-1], a[1:] - a[:-1]
+        len2 = d[:, 0] * d[:, 0] + d[:, 1] * d[:, 1]
+        len2 = np.where(len2 > 0.0, len2, 1e-12)
+        t = np.clip(((qx - p[:, 0]) * d[:, 0] + (qy - p[:, 1]) * d[:, 1]) / len2, 0.0, 1.0)
+        fx, fy = p[:, 0] + t * d[:, 0], p[:, 1] + t * d[:, 1]
+        if float(np.min((fx - qx) ** 2 + (fy - qy) ** 2)) < half * half:
+            return True
+    return False
+
+
 def _rail_points(poly: Polygon, spine: list[tuple[float, float]], closed: bool,
                  fallback_half_mm: float,
                  field: _WidthField | None = None,
@@ -2461,8 +2528,16 @@ def _rail_points(poly: Polygon, spine: list[tuple[float, float]], closed: bool,
                  max_width_mm: float = machine.SATIN_MAX_WIDTH_MM,
                  fold_guard: bool = False,
                  rail_comp_mm: float = 0.0,
-                 rail_comp_floor_mm: float = 0.0) -> tuple[list, list]:
+                 rail_comp_floor_mm: float = 0.0,
+                 siblings: list | None = None) -> tuple[list, list]:
     """Cast the smoothed, unwrapped normals both ways to find the two rails.
+
+    `siblings` (2026-09-30, the envelope only): the OTHER strokes' spines of
+    this shape, in mm. An envelope reach whose end lies inside one of their
+    corridors -- within that stroke's own half-width of its spine
+    (`_sibling_spines`) -- is a junction escape, not a far edge, and keeps
+    the symmetric width; see the envelope branch. None, the default, tests
+    nothing and is byte-identical.
 
     `rail_comp_mm` (`cfg.satin_rail_comp`, 2026-09-09) is pull compensation
     applied HERE instead of by stage 5's polygon buffer: `poly` is the
@@ -2679,8 +2754,28 @@ def _rail_points(poly: Polygon, spine: list[tuple[float, float]], closed: bool,
         # keeps the symmetric width -- the thread's own width covers it.
         # The cross angle is untouched, the corridor and fold caps apply,
         # and False / True are byte-identical to before this mode existed.
+        #
+        # A far edge has to be the stroke's OWN edge (2026-09-30, Kent's note
+        # on the envelope's sitting: Becker's lettering "looks like it is
+        # just trying to fill a void"). At a junction the far ray escapes
+        # along the meeting arm -- an E's stem reads its right side at
+        # 7.4-9.6 mm where its own half-width is 3.0-3.3 -- and the escape
+        # lasts as long as the arm is thick, about 13 stations at 100 mm,
+        # longer than the median window and this one together; the corridor
+        # cap reads the merged footprint there and lets 2-3 mm of it
+        # through. Measured over nine logos
+        # (`docs/renders/envelope-escapes-2026-09-30/`): 313 of 459 reached
+        # stations landed on ground another stroke of the same shape already
+        # sews, 78% of the envelope's new thread on Becker's letters was
+        # overlay, and no cap on the reach -- absolute, a ratio to the
+        # width, the boundary distance at the end -- separated the two. What
+        # does is where the reach ENDS: inside a sibling stroke's corridor
+        # it is an escape (the instrument's screen kept 89% of genuine
+        # reaches and let 5% of escapes through), so such a station keeps
+        # its symmetric width.
         off_a, off_b = list(width), list(width)
-        for side, off in ((side_a, off_a), (side_b, off_b)):
+        sibs = _sibling_spines(siblings, field, fallback_half_mm, rail_comp_mm)
+        for side, off, sgn in ((side_a, off_a, 1.0), (side_b, off_b, -1.0)):
             prof = _median_filter(side, _WIDTH_MEDIAN_WINDOW)
             for i in range(n):
                 lo, hi = max(0, i - _ENVELOPE_WINDOW), min(n, i + _ENVELOPE_WINDOW + 1)
@@ -2691,6 +2786,12 @@ def _rail_points(poly: Polygon, spine: list[tuple[float, float]], closed: bool,
                     cap = min(cap, fold[i])
                 env = min(env, cap)
                 if env - width[i] >= _ENVELOPE_GAP_MM:
+                    if sibs:
+                        px_, py_ = spine[i]
+                        nx_, ny_ = norms[i]
+                        end = (px_ + sgn * nx_ * env, py_ + sgn * ny_ * env)
+                        if _in_sibling_ribbon(end, sibs):
+                            continue
                     off[i] = env
     elif follow_edge:
         off_a = _median_filter(side_a, _WIDTH_MEDIAN_WINDOW)
@@ -3605,7 +3706,8 @@ def _satin_joined(poly: Polygon, stroke: Stroke, half_mm: float,
                   rail_comp_floor_mm: float = 0.0,
                   junction_stack: bool = False,
                   cap_recentre: bool = False,
-                  tip_caps: bool = False) -> list[tuple[float, float]]:
+                  tip_caps: bool = False,
+                  siblings: list | None = None) -> list[tuple[float, float]]:
     """A stroke with Goldman corners (`Stroke.corners`) -> its members sewn as
     separate columns and laid end to end in chain order.
 
@@ -3645,6 +3747,12 @@ def _satin_joined(poly: Polygon, stroke: Stroke, half_mm: float,
                         capped_start=capped_s, capped_end=capped_e,
                         tuck_under_start=tuck_s, tuck_under_end=tuck_e)
         n_before = len(parts) if parts is not None else 0
+        # The other members are this member's siblings too: at the corner
+        # the stem's far ray escapes along the foot exactly as at a T.
+        member_sibs = None
+        if siblings is not None:
+            member_sibs = [*siblings, *(pts[a:b + 1] for k, (a, b) in enumerate(zip(edges_, edges_[1:]))
+                                        if k != m and b - a >= 1)]
         pts_m = satin_stroke(poly, member, half_mm, field, split_above_mm,
                              end_cutback_mm, spacing_mm, angle_deg, parts=parts,
                              art_poly=art_poly, hairline_floor_mm=hairline_floor_mm,
@@ -3652,7 +3760,7 @@ def _satin_joined(poly: Polygon, stroke: Stroke, half_mm: float,
                              max_width_mm=max_width_mm, fold_guard=fold_guard,
                              rail_comp_mm=rail_comp_mm, rail_comp_floor_mm=rail_comp_floor_mm,
                              junction_stack=junction_stack, cap_recentre=cap_recentre,
-                             tip_caps=tip_caps)
+                             tip_caps=tip_caps, siblings=member_sibs)
         above = machine.SPLIT_SATIN_ABOVE_MM if split_above_mm is None else split_above_mm
         if parts is not None and len(parts) > n_before and n_before > n_start_joined:
             # The join stays ONE stroke in `parts` as well: this member's
@@ -3698,7 +3806,8 @@ def satin_stroke(poly: Polygon, stroke: Stroke, half_mm: float,
                  rail_comp_floor_mm: float = 0.0,
                  junction_stack: bool = False,
                  cap_recentre: bool = False,
-                 tip_caps: bool = False) -> list[tuple[float, float]]:
+                 tip_caps: bool = False,
+                 siblings: list | None = None) -> list[tuple[float, float]]:
     """One stroke -> flat zigzag points (A1, B1, A2, B2, ...).
 
     `parts` (2026-09-03), when a list is passed, additionally receives the
@@ -3758,7 +3867,7 @@ def satin_stroke(poly: Polygon, stroke: Stroke, half_mm: float,
                              max_width_mm=max_width_mm, fold_guard=fold_guard,
                              rail_comp_mm=rail_comp_mm, rail_comp_floor_mm=rail_comp_floor_mm,
                              junction_stack=junction_stack, cap_recentre=cap_recentre,
-                             tip_caps=tip_caps)
+                             tip_caps=tip_caps, siblings=siblings)
 
     spine = _smooth(stroke.spine, 3, stroke.closed)
     spine = _round_corners(spine, half_mm, stroke.closed)
@@ -3912,7 +4021,8 @@ def satin_stroke(poly: Polygon, stroke: Stroke, half_mm: float,
                                   spacing_mm, angle_deg, follow_edge=rails_follow_edge,
                                   max_width_mm=max_width_mm, fold_guard=fold_guard,
                                   rail_comp_mm=rail_comp_mm,
-                                  rail_comp_floor_mm=rail_comp_floor_mm)
+                                  rail_comp_floor_mm=rail_comp_floor_mm,
+                                  siblings=siblings)
     crosses = _short_stitch_guard(rail_a, rail_b)
     above = machine.SPLIT_SATIN_ABOVE_MM if split_above_mm is None else split_above_mm
 
@@ -5230,6 +5340,10 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
     kept: list[dict] = []
     for si, st in enumerate(strokes):
         parts: list = []
+        # The envelope reads the other strokes' spines to tell a far edge
+        # from a junction escape (`_in_sibling_ribbon`); nothing else does.
+        siblings = ([s.spine for j, s in enumerate(strokes) if j != si]
+                    if rails_follow_edge == "envelope" else None)
         satin_stroke(poly, st, half_mm, field, split_above_mm,
                      end_cutback_mm, spacing_mm, angle_deg, parts=parts,
                      art_poly=art_poly, hairline_floor_mm=hairline_floor_mm,
@@ -5237,7 +5351,7 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
                      max_width_mm=max_width_mm, fold_guard=fold_guard,
                      rail_comp_mm=rail_comp_mm, rail_comp_floor_mm=rail_comp_floor_mm,
                      junction_stack=junction_stack, cap_recentre=cap_recentre,
-                     tip_caps=tip_caps)
+                     tip_caps=tip_caps, siblings=siblings)
         mixed = len(parts) > 1
         for kind, pts, piece, at_start, at_end in parts:
             if kind == stitches.SATIN and len(pts) < 4:

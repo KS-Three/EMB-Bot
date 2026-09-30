@@ -1,0 +1,422 @@
+{
+ "note": "Every station the envelope extends, classified by where the extension lands: on ground another stroke of the same shape already sews under the symmetric rails (an ESCAPE: the far ray ran along a meeting arm) or on unsewn ground (a genuine reach). Each logo at its own width and garment, max_colors=6, the shipped defaults otherwise. 'shipped_envelope' is the engine before the sibling rule (main at d59ff556), 'with_rule' after it, as shipped: the sibling's half-width is the median of the width field at tenths of its spine's arc length plus the pull (an earlier variant read the field at 16 vertex indices without the pull: 157 / 46 / 111). Instrument: digitizer/tools/envelope_escapes.py (a trace hook on _rail_points reads every station's symmetric width and per-side offsets; the symmetric arm's returned rails are rasterized per stroke at 20 px/mm; an extension is an escape when at least half of it lies on another stroke's satin).",
+ "totals": {
+  "shipped_envelope": {
+   "reached": 459,
+   "escapes": 313,
+   "genuine": 146
+  },
+  "with_rule": {
+   "reached": 129,
+   "escapes": 23,
+   "genuine": 106
+  }
+ },
+ "lever_screen_shipped": {
+  "note": "Which candidate rule keeps genuine reaches and drops escapes, on the shipped envelope's 459 reached stations (146 genuine / 313 escapes): kept genuine / escapes let through",
+  "ext_le_1mm": "89% / 76%",
+  "ext_le_1_5mm": "96% / 83%",
+  "off_over_width_le_1_5": "60% / 50%",
+  "off_over_width_le_1_3": "33% / 26%",
+  "boundary_distance_at_end_le_0_5": "63% / 57%",
+  "boundary_distance_at_end_le_1_0": "81% / 80%",
+  "end_not_in_a_sibling_ribbon": "89% / 5%"
+ },
+ "becker_100mm": {
+  "letters_top_row_satin": [
+   "Scc08b907 M",
+   "S5a3cd301 A",
+   "Sa587cbf9 R",
+   "S14230a1b I",
+   "Sdd5f27fb N",
+   "Sf1c25fcd E"
+  ],
+  "station_level": {
+   "shipped": {
+    "body_stations": 1533,
+    "reached": 183,
+    "reached_on_letters": 159,
+    "strokes_with_reach": "28/70",
+    "ext_p50": 0.67,
+    "ext_p90": 2.366,
+    "ext_max": 3.733,
+    "stretches": 46,
+    "stretches_1_2_stations": 18,
+    "entry_notch_p50": 0.395,
+    "entry_notch_p90": 1.68,
+    "still_short_of_edge_p50": 0.671,
+    "stretch_len_p50_stations": 3
+   },
+   "with_rule": {
+    "body_stations": 1533,
+    "reached": 78,
+    "reached_on_letters": 74,
+    "strokes_with_reach": "19/70",
+    "ext_p50": 0.539,
+    "ext_p90": 1.029,
+    "ext_max": 2.086,
+    "stretches": 23,
+    "stretches_1_2_stations": 8,
+    "stretch_len_p50_stations": 3,
+    "entry_notch_p50": 0.368,
+    "entry_notch_p90": 0.727,
+    "still_short_of_edge_p50": 0.324
+   }
+  },
+  "the_E_stem": {
+   "note": "cap 105 of the capture: 44 stations, symmetric half-width 3.0-3.3 mm; side B (toward the arms) 7.4-9.6 mm at 30 stations (the ray runs along an arm to its end 8.6 mm out); corridor cap at the junction (floors 3.0-3.66) 5.0-6.05 mm; offsets on side B reached 5.0-6.07 at 17 stations and 3.44-3.53 (running-min carry from the counters) at 15 more"
+  },
+  "thread_landing_on_letters_mm2": {
+   "shipped": {
+    "new_ground": 63.0,
+    "bare_before_pct": 22,
+    "already_sewn_pct": 78,
+    "double_covered_pct": 11.01
+   },
+   "with_rule": {
+    "new_ground": 15.2,
+    "bare_before_pct": 87,
+    "already_sewn_pct": 13,
+    "double_covered_pct": 9.35
+   },
+   "symmetric": {
+    "double_covered_pct": 9.32
+   },
+   "true_mode": {
+    "double_covered_pct": 12.4
+   },
+   "the_E": {
+    "shipped": {
+     "new_ground": 10.3,
+     "bare_before_pct": 0
+    },
+    "with_rule": {
+     "new_ground": 0.0
+    }
+   }
+  },
+  "texture_at_reached_stations": {
+   "note": "final crosses whose nearest station the envelope extends; 'symmetric' is the same stations under the symmetric rails",
+   "shipped": {
+    "n": 221,
+    "rail_jitter_over_0_15_pct": 31.5,
+    "symmetric_same_stations_pct": 9.1,
+    "dL_p50": 0.285,
+    "symmetric_dL_p50": 0.221,
+    "penetrations_over_0_3_inside_pct": 45.2,
+    "symmetric_inside_pct": 56.6,
+    "cross_angle_change_p90_deg": 1.3
+   },
+   "with_rule": {
+    "n": 105,
+    "rail_jitter_over_0_15_pct": 28.4,
+    "symmetric_same_stations_pct": 9.3,
+    "dL_p50": 0.213,
+    "symmetric_dL_p50": 0.189,
+    "penetrations_over_0_3_inside_pct": 39.0,
+    "symmetric_inside_pct": 59.0,
+    "cross_angle_change_p90_deg": 1.4
+   }
+  },
+  "letters_unreached_rail_jitter_over_0_15_pct": {
+   "symmetric": 8.3,
+   "shipped": 20.0,
+   "with_rule": 11.3
+  },
+  "all_crosses_rail_jitter_over_0_15_pct": {
+   "symmetric": 10.4,
+   "shipped": 15.7,
+   "with_rule": 12.2,
+   "true_mode": 19.5
+  },
+  "split_satin_on_the_letters": {
+   "note": "pre-existing, the symmetric rails' own: crosses over SPLIT_SATIN_ABOVE_MM get split points, and the letters' columns straddle 5 mm at 100 mm",
+   "symmetric": "982 of 1390 crosses split (71%), 18 of 22 runs mixed, 75 on/off transitions",
+   "shipped": "1221 of 1588 (77%), 18 mixed, 59 transitions"
+  },
+  "stitches_trims": {
+   "symmetric": "8827 / 51",
+   "envelope_shipped": "9563 / 51",
+   "envelope_rule": "8932 / 50",
+   "true_mode": "9703 / 51"
+  }
+ },
+ "becker_80mm_envelope_test": {
+  "note": "tests/test_rail_comp.py::test_the_envelope_reaches_the_far_edge..., satin_tip_caps=False: bare % / satin wobble std / stitches for False / envelope / True",
+  "shipped": [
+   "10.222 / 0.0914 / 5691",
+   "9.484 / 0.0999 / 5750",
+   "7.235 / 0.1281 / 6079"
+  ],
+  "with_rule": [
+   "10.222 / 0.0914 / 5691",
+   "9.550 / 0.0994 / 5697",
+   "7.235 / 0.1281 / 6079"
+  ]
+ },
+ "marine_80mm_trims_test": {
+  "note": "tests/test_rail_comp.py::test_the_flip_costs_trims..., stitches OFF -> ON rail comp (ratio)",
+  "shipped": {
+   "tip_caps_on": "2010 -> 2461 (1.224)",
+   "tip_caps_off": "1820 -> 2119 (1.164)"
+  },
+  "with_rule": {
+   "tip_caps_on": "1968 -> 2372 (1.205)",
+   "tip_caps_off": "1783 -> 2103 (1.179)"
+  },
+  "reached_stations_shipped_envelope": {
+   "rail_comp_off": 275,
+   "rail_comp_on": 238
+  }
+ },
+ "fixture": {
+  "note": "tests/test_rail_comp.py::test_the_envelope_keeps_a_junction_escape_at_the_symmetric_width: a 5 mm stem with a 5 x 6 mm arm off its middle, max_width_mm=inf (the lettering exemption); with the rule neutered the stem's crosses through the junction run to 6.5 mm half-length against the symmetric 4.0; with it, 4.0. A 12.5 mm arm shows nothing: the far ray reaches four half-widths (9.2 mm) and a ray that finds no boundary falls back to the nominal half-width, which is no escape."
+ },
+ "per_logo": {
+  "becker": {
+   "width_mm": 100.0,
+   "garment": "left_chest",
+   "shipped_envelope": {
+    "reached": 183,
+    "letters": 159,
+    "escapes": 113,
+    "genuine": 70
+   },
+   "with_rule": {
+    "reached": 78,
+    "letters": 74,
+    "escapes": 15,
+    "genuine": 63
+   },
+   "stitches": {
+    "symmetric": 8827,
+    "envelope_shipped": 9563,
+    "envelope_rule": 8932
+   },
+   "trims": {
+    "symmetric": 51,
+    "envelope_shipped": 51,
+    "envelope_rule": 50
+   }
+  },
+  "golden_tee": {
+   "width_mm": 80.0,
+   "garment": "left_chest",
+   "shipped_envelope": {
+    "reached": 130,
+    "letters": 8,
+    "escapes": 75,
+    "genuine": 55
+   },
+   "with_rule": {
+    "reached": 43,
+    "letters": 5,
+    "escapes": 6,
+    "genuine": 37
+   },
+   "stitches": {
+    "symmetric": 8573,
+    "envelope_shipped": 8613,
+    "envelope_rule": 8581
+   },
+   "trims": {
+    "symmetric": 41,
+    "envelope_shipped": 41,
+    "envelope_rule": 41
+   }
+  },
+  "tires": {
+   "width_mm": 80.0,
+   "garment": "left_chest",
+   "shipped_envelope": {
+    "reached": 14,
+    "letters": 0,
+    "escapes": 13,
+    "genuine": 1
+   },
+   "with_rule": {
+    "reached": 1,
+    "letters": 0,
+    "escapes": 0,
+    "genuine": 1
+   },
+   "stitches": {
+    "symmetric": 2646,
+    "envelope_shipped": 2646,
+    "envelope_rule": 2646
+   },
+   "trims": {
+    "symmetric": 8,
+    "envelope_shipped": 8,
+    "envelope_rule": 8
+   },
+   "stitches_note": "envelope_rule count read on the interior-median variant before the pull was added; the reach on this logo is 0-3 stations under both, within 2 stitches of symmetric"
+  },
+  "enthusiast": {
+   "width_mm": 80.0,
+   "garment": "left_chest",
+   "shipped_envelope": {
+    "reached": 1,
+    "letters": 1,
+    "escapes": 1,
+    "genuine": 0
+   },
+   "with_rule": {
+    "reached": 0,
+    "letters": 0,
+    "escapes": 0,
+    "genuine": 0
+   },
+   "stitches": {
+    "symmetric": 2474,
+    "envelope_shipped": 2474,
+    "envelope_rule": 2474
+   },
+   "trims": {
+    "symmetric": 15,
+    "envelope_shipped": 15,
+    "envelope_rule": 15
+   },
+   "stitches_note": "envelope_rule count read on the interior-median variant before the pull was added; the reach on this logo is 0-3 stations under both, within 2 stitches of symmetric"
+  },
+  "fremont": {
+   "width_mm": 92.5,
+   "garment": "patch",
+   "shipped_envelope": {
+    "reached": 0,
+    "letters": 0,
+    "escapes": 0,
+    "genuine": 0
+   },
+   "with_rule": {
+    "reached": 0,
+    "letters": 0,
+    "escapes": 0,
+    "genuine": 0
+   },
+   "stitches": {
+    "symmetric": 20012,
+    "envelope_shipped": 20012,
+    "envelope_rule": 20012
+   },
+   "trims": {
+    "symmetric": 56,
+    "envelope_shipped": 56,
+    "envelope_rule": 56
+   },
+   "stitches_note": "envelope_rule count read on the interior-median variant before the pull was added; the reach on this logo is 0-3 stations under both, within 2 stitches of symmetric"
+  },
+  "bridge": {
+   "width_mm": 80.0,
+   "garment": "left_chest",
+   "shipped_envelope": {
+    "reached": 85,
+    "letters": 0,
+    "escapes": 70,
+    "genuine": 15
+   },
+   "with_rule": {
+    "reached": 2,
+    "letters": 0,
+    "escapes": 1,
+    "genuine": 1
+   },
+   "stitches": {
+    "symmetric": 16085,
+    "envelope_shipped": 16157,
+    "envelope_rule": 16085
+   },
+   "trims": {
+    "symmetric": 101,
+    "envelope_shipped": 101,
+    "envelope_rule": 101
+   }
+  },
+  "gaulke": {
+   "width_mm": 80.0,
+   "garment": "left_chest",
+   "shipped_envelope": {
+    "reached": 6,
+    "letters": 5,
+    "escapes": 5,
+    "genuine": 1
+   },
+   "with_rule": {
+    "reached": 1,
+    "letters": 0,
+    "escapes": 0,
+    "genuine": 1
+   },
+   "stitches": {
+    "symmetric": 4305,
+    "envelope_shipped": 4307,
+    "envelope_rule": 4305
+   },
+   "trims": {
+    "symmetric": 30,
+    "envelope_shipped": 30,
+    "envelope_rule": 30
+   },
+   "stitches_note": "envelope_rule count read on the interior-median variant before the pull was added; the reach on this logo is 0-3 stations under both, within 2 stitches of symmetric"
+  },
+  "drone": {
+   "width_mm": 80.0,
+   "garment": "left_chest",
+   "shipped_envelope": {
+    "reached": 12,
+    "letters": 8,
+    "escapes": 10,
+    "genuine": 2
+   },
+   "with_rule": {
+    "reached": 3,
+    "letters": 1,
+    "escapes": 1,
+    "genuine": 2
+   },
+   "stitches": {
+    "symmetric": 18784,
+    "envelope_shipped": 18788,
+    "envelope_rule": 18784
+   },
+   "trims": {
+    "symmetric": 122,
+    "envelope_shipped": 122,
+    "envelope_rule": 122
+   },
+   "stitches_note": "envelope_rule count read on the interior-median variant before the pull was added; the reach on this logo is 0-3 stations under both, within 2 stitches of symmetric"
+  },
+  "screenshot": {
+   "width_mm": 80.0,
+   "garment": "left_chest",
+   "shipped_envelope": {
+    "reached": 28,
+    "letters": 5,
+    "escapes": 26,
+    "genuine": 2
+   },
+   "with_rule": {
+    "reached": 1,
+    "letters": 0,
+    "escapes": 0,
+    "genuine": 1
+   },
+   "stitches": {
+    "symmetric": 8161,
+    "envelope_shipped": 8171,
+    "envelope_rule": 8161
+   },
+   "trims": {
+    "symmetric": 73,
+    "envelope_shipped": 73,
+    "envelope_rule": 73
+   },
+   "stitches_note": "envelope_rule count read on the interior-median variant before the pull was added; the reach on this logo is 0-3 stations under both, within 2 stitches of symmetric"
+  }
+ },
+ "golden_tee_80mm_shipped_classes": {
+  "escape": "ext p50 0.54 p90 0.96 max 1.31 mm; boundary distance at the end p50 0.19",
+  "genuine": "ext p50 0.51 p90 0.95; boundary distance p50 0.51"
+ },
+ "read_off_the_run": "The E's arm thickness in stations (about 13 at 0.4 mm spacing), the fixture's node/body field readings (3.2 / 2.7 mm), and the E's arm-end distance (8.6 mm out, cap 104 of the capture) were read off the runs' station dumps, not computed by the tool."
+}
