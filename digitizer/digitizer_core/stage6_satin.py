@@ -2943,6 +2943,37 @@ def _rail_points(poly: Polygon, spine: list[tuple[float, float]], closed: bool,
     return ref_a, ref_b
 
 
+# A junction end is a TIP rather than a meeting when the artwork's boundary
+# sits within this many SEWN half-widths along the end's own tangent. The A's
+# apex reads about one; an arm ending in a letterform's corner ball has to
+# cross the whole ball to reach a boundary and reads several times this.
+# `cfg.satin_tip_caps`, 2026-09-29.
+_TIP_REACH_HALVES = 1.6
+
+
+def _is_tip_end(spine: list, poly: Polygon, half_sewn: float, at_start: bool) -> bool:
+    """-> True if this junction end is a tapered TIP: the artwork's boundary
+    is close along the end's own tangent, so there is a cap out there and no
+    meeting.
+
+    The same ray `_extend_to_cap` casts, read for WHETHER it hits within a
+    tip's reach instead of for where. Cheap on purpose -- it runs per
+    junction end -- and conservative: no hit inside the reach is not a tip,
+    which is every arm ending inside a corner ball.
+    """
+    pts = list(reversed(spine)) if at_start else list(spine)
+    if len(pts) < 2 or half_sewn <= 0:
+        return False
+    tip, prev = pts[-1], pts[-2]
+    d = math.dist(prev, tip)
+    if d < 1e-9:
+        return False
+    ux, uy = (tip[0] - prev[0]) / d, (tip[1] - prev[1]) / d
+    reach = half_sewn * _TIP_REACH_HALVES
+    ray = LineString([tip, (tip[0] + ux * reach, tip[1] + uy * reach)])
+    return not ray.intersection(poly.boundary).is_empty
+
+
 def _push_rails(rail_a: list, rail_b: list, poly: Polygon, pull_mm: float,
                 floor_mm: float) -> tuple[list, list]:
     """Move every real cross's two rails outward along the cross by `pull_mm`
@@ -3573,7 +3604,8 @@ def _satin_joined(poly: Polygon, stroke: Stroke, half_mm: float,
                   rail_comp_mm: float = 0.0,
                   rail_comp_floor_mm: float = 0.0,
                   junction_stack: bool = False,
-                  cap_recentre: bool = False) -> list[tuple[float, float]]:
+                  cap_recentre: bool = False,
+                  tip_caps: bool = False) -> list[tuple[float, float]]:
     """A stroke with Goldman corners (`Stroke.corners`) -> its members sewn as
     separate columns and laid end to end in chain order.
 
@@ -3619,7 +3651,8 @@ def _satin_joined(poly: Polygon, stroke: Stroke, half_mm: float,
                              rails_follow_edge=rails_follow_edge,
                              max_width_mm=max_width_mm, fold_guard=fold_guard,
                              rail_comp_mm=rail_comp_mm, rail_comp_floor_mm=rail_comp_floor_mm,
-                             junction_stack=junction_stack, cap_recentre=cap_recentre)
+                             junction_stack=junction_stack, cap_recentre=cap_recentre,
+                             tip_caps=tip_caps)
         above = machine.SPLIT_SATIN_ABOVE_MM if split_above_mm is None else split_above_mm
         if parts is not None and len(parts) > n_before and n_before > n_start_joined:
             # The join stays ONE stroke in `parts` as well: this member's
@@ -3664,7 +3697,8 @@ def satin_stroke(poly: Polygon, stroke: Stroke, half_mm: float,
                  rail_comp_mm: float = 0.0,
                  rail_comp_floor_mm: float = 0.0,
                  junction_stack: bool = False,
-                 cap_recentre: bool = False) -> list[tuple[float, float]]:
+                 cap_recentre: bool = False,
+                 tip_caps: bool = False) -> list[tuple[float, float]]:
     """One stroke -> flat zigzag points (A1, B1, A2, B2, ...).
 
     `parts` (2026-09-03), when a list is passed, additionally receives the
@@ -3723,7 +3757,8 @@ def satin_stroke(poly: Polygon, stroke: Stroke, half_mm: float,
                              rails_follow_edge=rails_follow_edge,
                              max_width_mm=max_width_mm, fold_guard=fold_guard,
                              rail_comp_mm=rail_comp_mm, rail_comp_floor_mm=rail_comp_floor_mm,
-                             junction_stack=junction_stack, cap_recentre=cap_recentre)
+                             junction_stack=junction_stack, cap_recentre=cap_recentre,
+                             tip_caps=tip_caps)
 
     spine = _smooth(stroke.spine, 3, stroke.closed)
     spine = _round_corners(spine, half_mm, stroke.closed)
@@ -3756,6 +3791,7 @@ def satin_stroke(poly: Polygon, stroke: Stroke, half_mm: float,
     #    honest number, and it is the only reading here that knows WHICH arm
     #    has to be cleared rather than how much room there is in every
     #    direction at once.
+    tip_start = tip_end = False
     if not stroke.closed and field is not None:
         trims = []
         for at_start in (True, False):
@@ -3791,6 +3827,21 @@ def satin_stroke(poly: Polygon, stroke: Stroke, half_mm: float,
             # do. A corner tuck (`under` set) is already under its owner and
             # keeps its clearance.
             reach_in = half_sewn if (junction_stack and under is None) else 0.0
+            # `tip_caps` (`cfg.satin_tip_caps`, 2026-09-29, defect 49): this
+            # end has no single owner and the boundary is one tangent-length
+            # away -- a tapered TIP, not a meeting. The artwork beyond it
+            # belongs to nobody: the medial axis stops half a width short of
+            # a cap by construction, and the tuck below then pulls the arm
+            # back further still. Cap it the way a free end is capped, and
+            # take no trim here.
+            if (tip_caps and under is None
+                    and _is_tip_end(spine, poly, half_sewn, at_start)):
+                if at_start:
+                    tip_start = True
+                else:
+                    tip_end = True
+                trims.append(0.0)
+                continue
             trims.append(max(0.0, edge - _JUNCTION_TUCK_MM - reach_in))
         if trims[0] or trims[1]:
             spine = _trim_chain(spine, trims[0], trims[1])
@@ -3800,6 +3851,14 @@ def satin_stroke(poly: Polygon, stroke: Stroke, half_mm: float,
     # square letterform cap -- aimed by the chord, inset a hair, exactly as the
     # ends `_merge_through_junctions` opened are. Off, neither line runs.
     forked_start = forked_end = False
+    # A tip end is capped like a free end, but only EXTENDED: `_retract_cap_
+    # corner` exists to walk a spine off a flat cap's surviving fork, and a
+    # tip node has no fork to walk off -- retracting one would undo the reach
+    # this flag exists to add.
+    if tip_start:
+        spine = _extend_to_cap(spine, poly, half_mm, at_start=True, corner=False)
+    if tip_end:
+        spine = _extend_to_cap(spine, poly, half_mm, at_start=False, corner=False)
     if stroke.free_start:
         if cap_recentre:
             spine, forked_start = _cut_cap_fork(spine, poly, field, half_mm, at_start=True)
@@ -5000,6 +5059,7 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
                 underlay_on_column: bool = False,
                 walk_cursor_reach_mm: float = 0.0,
                 cap_recentre: bool = False,
+                tip_caps: bool = False,
                 ) -> tuple[list[StitchRun], dict]:
     """One satin-classified shape -> runs in sew order, plus the same report
     contract `stitch_shape` uses, so stage 7 can treat the two identically.
@@ -5156,7 +5216,8 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
                      rails_follow_edge=rails_follow_edge,
                      max_width_mm=max_width_mm, fold_guard=fold_guard,
                      rail_comp_mm=rail_comp_mm, rail_comp_floor_mm=rail_comp_floor_mm,
-                     junction_stack=junction_stack, cap_recentre=cap_recentre)
+                     junction_stack=junction_stack, cap_recentre=cap_recentre,
+                     tip_caps=tip_caps)
         mixed = len(parts) > 1
         for kind, pts, piece, at_start, at_end in parts:
             if kind == stitches.SATIN and len(pts) < 4:
