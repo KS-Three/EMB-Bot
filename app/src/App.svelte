@@ -363,6 +363,12 @@
   // including while the user drags the field's resize handles.
   let designDims = null;
 
+  // A shape selected ON THE FIELD (EmbroideryField's click-to-edit popover,
+  // 2026-09-29): { elementId, shapeId, edit, n }. Runtime only — never saved.
+  // `n` counts field selections so the same shape picked twice still reaches
+  // ManualPanel as a new request.
+  let fieldShapeSelect = null;
+
   // The currently-selected element (SizePanel/ContentStep/the "create" step
   // summary all key off this one, not project.elements[0], so they stay in
   // sync with whatever the user clicked on the field).
@@ -1126,6 +1132,7 @@
           {designDims}
           {digitizerHealth}
           {showAddElementsHint}
+          {fieldShapeSelect}
           on:checkservice={checkDigitizer}
           on:elupdate={(e) => elUpdate(e.detail.id, e.detail.patch)}
           on:elupdatemany={(e) => elUpdateMany(e.detail)}
@@ -1217,6 +1224,7 @@
       on:dims={(e) => onDims(e.detail)}
       on:stats={(e) => onStats(e.detail)}
       on:addelement={(e) => onAddElement(e.detail)}
+      on:shapeselect={(e) => { fieldShapeSelect = { ...e.detail, n: (fieldShapeSelect ? fieldShapeSelect.n : 0) + 1 }; }}
       on:dismisshint={() => dismissHint("drag-field")}
     />
   </section>

@@ -5,6 +5,7 @@
 import { describe, expect, test } from "vitest";
 import {
   createPulseTracker,
+  designOutlinesInFieldMm,
   fieldMmToOutlineMm,
   hitOverlay,
   insertNode,
@@ -592,5 +593,23 @@ describe("hitShapeInterior", () => {
 
   test("a degenerate ring is skipped, not hit", () => {
     expect(hitShapeInterior([{ id: "line", points: [[0, 0], [10, 10]] }], 5, 5)).toBeNull();
+  });
+});
+
+describe("designOutlinesInFieldMm", () => {
+  test("passes engine outlines through untouched and drops what cannot be clicked", () => {
+    const design = { shapeOutlines: [
+      { id: "s1", points: [[0, 0], [10, 0], [10, 5], [0, 5]], holes: [], dropped: false },
+      { id: "s2", points: [[0, 0], [1, 0]], holes: [], dropped: true },      // dropped by the engine
+      { id: "",   points: [[0, 0], [10, 0], [10, 5]], holes: [], dropped: false }, // no id -> unaddressable
+      { id: "s4", points: [[0, 0], [10, 0]], holes: [], dropped: false },     // under a triangle
+    ] };
+    expect(designOutlinesInFieldMm(design)).toEqual([
+      { id: "s1", points: [[0, 0], [10, 0], [10, 5], [0, 5]] },
+    ]);
+  });
+  test("a design without the field, or no design, is an empty list", () => {
+    expect(designOutlinesInFieldMm({ stitches: [] })).toEqual([]);
+    expect(designOutlinesInFieldMm(null)).toEqual([]);
   });
 });
