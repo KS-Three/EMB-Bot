@@ -1366,9 +1366,15 @@ class PipelineConfig:
     # only where its side is short by at least a gap floor, and only to the
     # running minimum of its own edge profile over a window -- the
     # under-reach cured without the per-station edge following that made
-    # True pay in jitter and overshoot. Measured in the PR that built it;
-    # False and True are unchanged.
-    satin_rails_follow_edge: bool | str = False
+    # True pay in jitter and overshoot. Measured in the PR that built it
+    # (#563); False and True are unchanged. ON since 2026-09-30: Kent's eye
+    # on the labelled page, seven pairs against the symmetric base -- 2 after
+    # (becker, golden_tee, the two with the defect; "did its job" on
+    # golden_tee), 0 before, 2 same, 3 both bad -- with his caveat that
+    # becker's reached stretches read as void-filling (texture, not reach)
+    # and the sew-out still owed. False is the symmetric model, byte for
+    # byte what shipped before; True stays parked.
+    satin_rails_follow_edge: bool | str = "envelope"
     # Pull compensation on the RAILS instead of the polygon (quality review
     # 2026-09-08 item 6, built 2026-09-09). Stage 5 grows every shape by the
     # fabric's pull with a round join and the satin tier skeletonises the

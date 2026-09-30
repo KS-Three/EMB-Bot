@@ -44,6 +44,13 @@ def _cfg(**kw) -> PipelineConfig:
     # in scope-history's flip addendum; this file pins the patch mechanism
     # on the polygons it was measured on.
     kw.setdefault("subpixel_edges_upscaled", False)
+    # `satin_rails_follow_edge` held at the symmetric model since the envelope
+    # went ON (2026-09-30, Kent's ruling on its labelled sitting): the far
+    # rail's reach into the crotch takes three stitches off the satin cover's
+    # count (4,810 -> 4,807 against the arms alone) where the assertion below
+    # wants the cover to cost thread; the finding is still cleared either
+    # way. The cover is priced on the rails it was measured on.
+    kw.setdefault("satin_rails_follow_edge", False)
     # `satin_corner_twigs` held OFF for the same reason (Kent's 2026-09-19
     # flip): the corner rule re-decomposes the arms the cover patches, and on
     # Becker at 80 mm the satin cover then clears the finding at a net -1

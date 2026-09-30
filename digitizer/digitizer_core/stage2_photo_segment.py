@@ -1871,8 +1871,29 @@ def dissolve_phantom_blends(
             # None of them touches the page; they sit in the middle of the
             # white label. The rim labels that really do border it are
             # unaffected, which is why this costs the bridge_bar win nothing.
+            #
+            # The endpoint names a COLOUR, not a place (2026-09-30, Kent's
+            # pick after the envelope sitting). The ramp is chosen for the
+            # whole stack, so its dark end can be any black label -- on
+            # Bridge Bar it was a 550 px cluster, not the 8,925 px ring the
+            # halo actually wraps -- and a member folded into a label it
+            # does not touch becomes its own connected component, cut as a
+            # region of its own whose colour is re-read from the source
+            # pixels: grey, so the palette snapped nine such slivers to
+            # TEAL and the ring wore specks. Fold into the instance of the
+            # endpoint's colour that this member borders; the endpoint
+            # itself only when no bordering label carries that colour.
+            # Measured across the gradient lane's six corpus logos: the
+            # redirect moves nine members (493 px) on Bridge Bar and none
+            # elsewhere; bridge 16,179 -> 11,385 stitches, 101 -> 43 trims.
             if dest == _PAGE and _PAGE not in adj[j]:
                 continue
+            if dest != _PAGE:
+                touching = [o for o in adj[j] if o != _PAGE and not band[o] and counts[o]]
+                if touching:
+                    near = min(touching, key=lambda o: float(np.linalg.norm(means[o] - means[dest])))
+                    if float(np.linalg.norm(means[near] - means[dest])) < cfg.merge_delta_e:
+                        dest = near
             target[j] = dest
 
     if not target:

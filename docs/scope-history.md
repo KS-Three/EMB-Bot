@@ -16119,6 +16119,152 @@ envelope leaves part C's fill). Renders
 (satin `wobble_std_mm`), `tools/dropped_elements.py` (`overshoot_frac`);
 `tests/test_rail_comp.py::test_the_envelope_reaches_the_far_edge_where_the_gap_is_long_and_nowhere_else`)*
 
+## 2026-09-30 — the envelope on the eye-pairs page: seven pairs against today's base, the corpus table under the arm's head
+
+Kent's pick after #563. `rail_envelope` (`satin_rails_follow_edge="envelope"`)
+joined the yardstick's arms (`tools/eye_pairs/pairs.py`, the gallery's
+`ARM_INTENT`, the spec table), and the labelled page that decided rail comp —
+`https://claude.ai/artifact/6mjKrbnCX21MM9gQUry4Zp`, the same URL — was
+rebuilt with that one arm against today's shipped base (rail comp ON, the
+tuck, the seams closed). The gallery learned `--tables`: a measured table
+rides under an arm's head, so the eye and the instruments sit on one page.
+Seven pairs shown (becker, bridge, drone, gaulke, golden_tee, screenshot,
+tires), two identical to the stitch (enthusiast, fremont); the change locator
+marks becker (3 boxes), bridge (1), golden_tee (3) and nothing on the other
+four, whose new thread is under 0.3 mm² each. The 09-28 sitting's 77 pairs
+left the page; verdicts in its store and `docs/eye-pairs-2026-09-28/kent-notes.json`
+(re-read first: 111 docs, unchanged, no rulings).
+
+| fixture | mm | stitches | trims | bare satin % | satin wobble std mm | unsewn outline mm | overshoot | new thread mm² (on ink / on white) |
+|---|---|---|---|---|---|---|---|---|
+| marine80 | 80.2 | 2,093 → 2,119 | 21 | 7.03 → 6.28 | 0.137 → 0.137 | 20.8 → 19.0 | 0.093 → 0.095 | — |
+| becker | 100 | 8,297 → 8,900 | 48 → 49 | 8.14 → 7.35 | 0.099 → 0.109 | 46.3 → 28.0 | 0.016 → 0.015 | 22.9 (18.6 / 4.3) |
+| tires | 80 | 2,515 | 7 | 4.55 → 4.52 | 0.083 → 0.084 | 3.2 → 2.8 | 0.078 | 0.2 (0.2 / 0.0) |
+| enthusiast | 80 | 2,392 | 15 | 6.98 | 0.096 | 4.3 | 0.257 | 0.0 |
+| fremont | 92.5 patch | 19,887 | 55 | 3.98 | 0.030 | 0.0 | 0.000 | 0.0 |
+| bridge | 80 | 15,384 → 15,432 | 98 | 5.15 → 5.05 | 0.095 → 0.100 | 1.5 | 0.004 | 0.3 (0.2 / 0.1) |
+| golden_tee | 80 | 7,966 → 8,072 | 47 → 46 | 10.35 → 7.20 | 0.070 → 0.075 | 7.3 → 3.3 | 0.215 → 0.231 | 45.3 (14.7 / 30.6) |
+| gaulke | 80 | 4,189 | 32 | 6.89 → 6.86 | 0.077 → 0.077 | 0.0 | 0.047 | 0.2 (0.2 / 0.0) |
+| drone | 80 | 18,540 | 123 | 4.88 → 4.86 | 0.074 → 0.073 | 4.3 | 0.048 | 0.1 (0.0 / 0.1) |
+| screenshot | 80 | 7,885 | 71 | 8.97 → 8.96 | 0.063 → 0.063 | 0.8 | 0.762 | 0.2 (0.0 / 0.2) |
+
+**Where the new thread lands (the last column):** on golden_tee two thirds of
+the envelope's 45.3 mm² of new thread is the 3D lettering's white keylines
+(30.6 mm², 30.2 of it within 0.5 mm of ink) — sub-detail gaps (≈0.2 mm at
+80 mm against a 1.5 mm `min_detail_mm`) the on-rails polygon spans, which the
+symmetric width never reached and the envelope does. The satin-only bare
+instrument reads that thread as coverage (10.35 → 7.20%); `dropped_elements`
+reads filled knockouts (lost elements 69 → 76, artfid 77.4 → 76.8). On becker
+17.0 of 22.9 mm² is ink of the right colour and every instrument agrees
+(artfid 88.9 → 89.2, lost 53 → 47, unsewn outline 46 → 28 mm). Everything
+else moves by ≤ 0.3 mm². **A bare-satin gain is not a coverage gain until the
+artwork under the new thread is read**; the page carries both readings so
+Kent's eye can settle which the cloth agrees with. Corpus trims 640 → 641.
+
+Records: `docs/eye-pairs-2026-09-30/` (README, `rail-envelope-corpus.json`);
+`docs/kent-review-2026-09-28.md` notes the rebuild.
+
+**Kent's sitting, the same night (all seven judged, no ruling on the page):**
+2 after (becker, golden_tee — the two fixtures with the defect; *flag did its
+job: yes* on golden_tee), 0 before, 2 no difference (drone, tires), 3 both
+bad (bridge, gaulke, screenshot). His eye preferred golden_tee's keylines
+sewn over, so the last column's "on white" reads against the eye at 80 mm.
+becker's after came with the caveat that the reached stretches "look like
+they are just trying to fill a void" — texture, not reach. bridge's real
+defects in his words: lettering smooshed together, a satin border that is
+"jumpy, on off on off". Notes verbatim: `docs/eye-pairs-2026-09-30/README.md`
+Outcome, store `kent-notes.json`. The flip is still his call.
+
+*(measured 2026-09-30 — the render lanes' `features.json`; a scratch corpus
+script over `digitize()` (`tools/rail_edge.bare_area`, `tools/edge_wobble`,
+`tools/dropped_elements`); the thread classes from `dropped_elements`' colour
+fields at its own registration; `tests/test_eye_pairs_gallery.py` and the
+eye-pairs and doc files: 179 passed)*
+
+## 2026-09-30 — `satin_rails_follow_edge="envelope"` ON on Kent's eye (the same night as the page)
+
+Kent judged all seven pairs (2 after — becker, golden_tee, the two with the
+defect, *did its job* on golden_tee — 0 before, 2 no difference, 3 both
+bad) and ruled in chat: flip ON. Shipped: the default is `"envelope"`,
+`rail_envelope` left the arms table (`rails_follow_edge` stays, `True`
+against the new base), `True` still parked, the sew-out still owed. The
+price is the page entry's table above (symmetric → envelope, rail comp ON
+both sides): becker 8,297 → 8,900 stitches and bare satin 8.14 → 7.35,
+golden_tee 7,966 → 8,072 and 10.35 → 7.20, MARINE 80 mm 2,093 → 2,119 and
+7.03 → 6.28, corpus trims 640 → 641; everything else within 0.3 mm² of
+thread. His caveat on becker — the reached stretches "look like they are
+just trying to fill a void" — is the flag's open texture item.
+
+**Re-measured against #559 the same night (the entry below):** with
+`satin_tip_caps` ON, which landed on `main` while this was in flight, tip
+caps alone take Becker 80 mm's symmetric arm to the bare the envelope
+reached without them (9.483% against 9.484%), so on the shipped tree the
+envelope's Becker gain is 0.45 points, not 0.74, at +17.5% rail roughness
+rather than +9.3%. Kent's ruling was given on the page's pairs, which were
+drawn without tip caps; the number he weighed is the larger one, and this
+entry records the smaller. `True` keeps its margin (6.84%) and its price.
+
+The suite's pins that moved (full run on the flipped tree: 2,898 passed,
+11 failed, 13 skipped, 5 xfailed in 33:00 on four cores; seven of the
+eleven are the standing reds): the junction stack's thread bound on MARINE
+at 127 mm, 5 → 6%, because the R's two stacked arms each reach into the
+other's underlap reach (marginal cost 250 → 375 stitches, the whole
+difference the R); and three readings held on the symmetric rails per
+their own engine posture — the corner-twig pruner (7 → 8 trims with the
+pruner on under the envelope, the fixture's 1,958 → 1,820 stitches), the
+satin junction cover (4,810 → 4,807 against the arms alone, three fewer
+where its assertion wants more, the finding still cleared) and the wide
+columns fold guard at 114 mm on the grown polygon (7.15 with the guard: the
+cap is the ceiling and the envelope fills it, the open question that file
+already carries). Records: `docs/eye-pairs-2026-09-30/` (README Outcome,
+`kent-notes.json` with the ruling), DOCTRINE 2026-09-30, the flag's comment
+in `config.py`.
+
+## 2026-09-30 — bridge's on/off border is the JPEG halo sewn as a sixth thread; its script's smoosh is the pull band, not a notch
+
+Kent's pick after the envelope sitting, in his words: *"The lettering on
+bridge is smooshed together and the satin border is jumpy, its on off on off
+etc."* Measured on the engine of that night (`docs/renders/bridge-phantom-2026-09-30/`).
+
+**The border.** The gradient lane quantises the JPEG's ringing around the
+black ring and spokes as a sixth thread, `(153,153,153)`: 57 shapes, 94 runs,
+400 mm² of thread — 133 on grey artwork, 139 on other ink, 145 on white — the
+light-grey satin fragments along every black edge. `dissolve_phantom_blends=True`
+(built 2026-09-04 for this fixture, OFF waiting on a look) folds the halo into
+its sides. The corpus, shipped → dissolve:
+
+| logo | class | stitches | trims | jumps | regions | thread on white mm² |
+|---|---|---|---|---|---|---|
+| bridge | gradient | 15,432 → 11,613 | 98 → 59 | 32 → 20 | 80 → 34 | 178 → 102 |
+| golden_tee | gradient | 8,072 → 8,022 | 46 → 47 | 4 → 3 | 39 | 340 → 340 |
+| gaulke | gradient | 4,189 → 4,273 | 32 → 34 | 24 | 53 → 57 | 458 → 457 |
+| screenshot | gradient | 7,885 → 7,908 | 71 → 76 | 47 → 44 | 158 | 639 |
+| fremont, drone | gradient | identical | | | | |
+| becker, enthusiast (flat), tires (photo_scene) | not on the lane | identical | | | | |
+
+Its own artefact on bridge: halo labels adjacent to the teal text fold into
+teal, so the ring carries teal specks (teal on other ink 17.5 → 39.6 mm²).
+Kent's 09-28 verdict on this flag was *after better* on bridge and *both bad*
+on the four others; the flip is his.
+
+**The script.** "Bridge" is one 246 mm² satin shape with five counters and no
+`text_candidate`, so no lettering rule touches it. Red thread on yellow:
+40.1 mm² shipped, 3.1 inside the counters (the counter guard holds), 36.9
+outside; with the pull in the polygon 17.9 (3.4 / 14.4). So rail comp's
+outward push is 22 of the 40 — the pull band around the outline, the thing
+the render shows and cloth pulls back — and the script's own sub-floor gaps
+are the rest. **A notch guard was built as a prototype and rejected:** the
+counter rule extended to a probe that leaves the polygon and re-enters it
+within reach moved 40.1 → 38.3 and cost bare satin everywhere (MARINE 6.28
+→ 6.60%, ENTHUSIAST 6.98 → 7.63, golden_tee 7.20 → 8.35, bridge 5.05 →
+5.36) because holding the push anywhere leaves the compensated edge short.
+The teal "BAR & RESTAURANT" (1.6 mm cap height) sews as five blobs, below
+the lettering floor.
+
+*(measured 2026-09-30 — the thread classes from `tools/dropped_elements`'
+colour fields at its own registration; `tools/rail_edge.bare_area`; a
+scratch corpus script over `digitize()`; renders in the folder above)*
+
 ---
 
 ## 2026-09-30 — the two far-rail cures overlap: `satin_tip_caps` already takes the bare the envelope reaches for
@@ -16151,3 +16297,109 @@ the entry records. Nothing about the mode is wrong; it was measured on a tree
 this flag had not landed in.
 
 *(measured 2026-09-30 — `tools/rail_edge.py bare_area`, `tools/edge_wobble.py` (satin `wobble_std_mm`); `tests/test_rail_comp.py::test_the_envelope_reaches_the_far_edge_where_the_gap_is_long_and_nowhere_else`; DOCTRINE 2026-09-30)*
+
+## 2026-09-30 — the phantom-blend fold's wrong turn: a member folded into an endpoint it does not touch becomes a teal speck
+
+Kent's pick after bridge's investigation: fix the fold, then flip. Traced on
+bridge with the dissolve's inputs captured: the halo stack around the black
+ring groups 24 bands; `_blend_ramp` names the ramp black → page, and the
+"black" end is whichever black label scores first — a 550 px cluster
+(`label 0`), not the 8,925 px ring (`label 2`) the halo wraps. Nine members
+(493 px) with t < 0.5 were folded into that cluster's LABEL; none of them
+touch it, so they came out of `connectedComponents` as nine detached regions,
+each with its colour re-read from the source pixels (grey), and the palette
+snapped grey to the nearest of six threads: teal. The fix: the endpoint names
+a colour, not a place — fold into the instance of that colour the member
+borders (the touching non-band label nearest the endpoint's Lab, within
+`merge_delta_e`), the endpoint itself only when nothing bordering carries the
+colour. Measured across the gradient lane's six corpus logos: the redirect
+moves those nine members on bridge and none elsewhere (golden_tee 14
+members, gaulke 25, screenshot 7, drone and fremont none — all endpoint-kept
+or to the page). A second rule tried alongside it — fold a member the ramp
+sends to a page it does not touch into its nearest bordering colour — fired
+on no fixture and was removed; a third — re-test a member the group's ramp
+rejects against its own sides with `_blend_side` — moved nothing on bridge
+(the surviving orange bands beside the red letters are lighter than the
+red-to-yellow line, as JPEG overshoot is) and was removed too.
+
+The corpus on the merged tree (main after #559 and #563, the envelope ON),
+shipped → `dissolve_phantom_blends=True` with the redirect:
+
+| logo | lane | stitches | trims | jumps | regions | thread on white mm² | thread on other ink mm² |
+|---|---|---|---|---|---|---|---|
+| bridge | gradient | 16,179 → 11,385 | 101 → 43 | 32 → 17 | 80 → 20 | 179.3 → 105.8 | 599.3 → 600.6 |
+| golden_tee | gradient | 8,659 → 8,554 | 45 → 47 | 4 | 39 | 343.1 → 341.9 | 337.4 → 337.6 |
+| gaulke | gradient | 4,332 → 4,449 | 33 → 37 | 24 → 25 | 53 → 57 | 458.9 → 457.9 | 75.4 → 77.9 |
+| screenshot | gradient | 8,171 → 8,170 | 73 → 76 | 45 → 43 | 158 | 645.0 | 227.1 → 227.0 |
+| drone | gradient | identical |  |  |  |  |  |
+| fremont | gradient | identical |  |  |  |  |  |
+| becker | flat (not on the lane) | identical |  |  |  |  |  |
+| enthusiast | flat (not on the lane) | identical |  |  |  |  |  |
+| tires | photo | 2,646 → 2,643 | 8 | 0 | 6 | 179.4 → 176.0 | 40.5 → 40.3 |
+
+`tests/test_phantom_blend_photo.py`: a synthetic pin of the redirect (two
+identical blacks, a band that touches one), and the palette bound re-based
+4× → 3× on its measurement — 20.76 → 6.08 dE00 against 3.68 before the
+redirect, because the nine slivers had pulled a grey spool into the six and
+without them the sixth spool goes elsewhere, leaving the olive ringing
+between the emblem's lines (label 42, 15 mm², a real label) 12.5 from its
+spool. 25 passed with `test_flip_sheet`. The flag stays OFF; the page carries
+the pairs for Kent's flip.
+
+*(measured 2026-09-30 — the dissolve's inputs captured by wrapping it; a
+scratch corpus script over `digitize()`; `tools/dropped_elements`' colour
+fields; `docs/eye-pairs-2026-09-30/`)*
+
+## 2026-09-30 — the dissolve pairs on the page after the fold fix, and a sitting tag for a second look at one arm
+
+The labelled page (the same URL, Version 5) rebuilt with one arm,
+`phantom_dissolve` = `dissolve_phantom_blends=True`, over the gradient lane's
+six logos: four pairs (bridge, gaulke, golden_tee, screenshot), drone and
+fremont identical to the stitch; the corpus table of the entry above under
+its head. The trap found on the way: Kent's 09-28 verdicts on this arm sit
+in the page's store under `phantom_dissolve__<fixture>` — the ids the new
+pairs would have taken — so they would have pre-filled the fold-fixed
+renders and been overwritten by his clicks. `tools.eye_pairs_gallery
+--sitting <tag>` (labelled only; letters, digits, `.`, `-`) keys the pairs
+`<arm>__<fixture>__<tag>` and the ruling `<arm>__<tag>`, and the page writes
+the tag into every document; refused on the reveal and for a tag with `__`
+or a space. 59 gallery tests (3 new). The flag stays OFF until his eye.
+
+*(built 2026-09-30 — `docs/eye-pairs-2026-09-30/README.md` "Second sitting",
+`dissolve-corpus.json`)*
+
+## 2026-09-30 — Script as lettering: the classifier cannot see a connected word, and tagging it opens nothing
+
+Kent's pick after the fold: *why is "Bridge" not `text_candidate`, and would
+classifying connected script as lettering let the 09-19 rules open its
+gaps?* Measured on bridge at 80 mm (`docs/renders/bridge-phantom-2026-09-30/`,
+`script-as-lettering.json`):
+
+- **Why not text:** the letter door's three gates are height 1.5–60 mm,
+  stroke cv ≤ 0.55 and bbox aspect 0.05–1.4; "Bridge" (245.7 mm², five
+  counters, 37.7 × 14.4 mm) passes the first two and fails aspect at
+  **2.616** — the ceiling was calibrated on single glyphs (0.107–0.964).
+  Past the gate a cluster still needs three linked members of one ink and
+  the word is one; 26 letter candidates on the design, none in its red. The
+  house-angle grouping shares the gate. Same on tires' "TIRES" (441 mm²,
+  aspect 3.78, stroke cv 0.166): four candidates, no cluster.
+- **Tagging opens nothing:** force-tagged with every shipped lettering flag
+  ON, bridge 16,179 → 16,388 stitches, 101 → 103 trims, bare 4.31 → 4.07 %,
+  red on yellow **39.9 → 40.6 mm²**; tires 2,646 → 2,897 stitches (underlay
+  15 → 20), bare 4.44 → 4.01 %. The tag reaches the width ceiling, the edge
+  cap, the shared stitch width and the legibility OCR — not the rails, the
+  pull or a gap.
+- **The gaps are the artwork's:** at the design's scale the open gaps
+  between strokes read p10 / p50 / p90 = 0.57 / 1.58 / 2.72 mm; 22 % of the
+  85 mm of gap length is under the 1.0 mm two facing rails close on pique
+  knit (2 × `pull_comp_mm` 0.3 + a 0.40 mm thread); the counters p50 0.80.
+  The quarter between 1.0 and 1.5 mm is the only daylight a push hold could
+  keep, and the general hold measured 2 mm² recovered for bare up everywhere.
+
+No render for the eye: a 0.7 mm² change is not a pair. Nothing shipped; the
+next lever is Kent's (a script-scoped push hold, a preflight finding that
+names the size at which the gaps clear, or leaving it).
+
+*(measured 2026-09-30 — a scratch wrapper on `detect_text_clusters` over
+`digitize()`, the notch prototype's red-on-yellow field, the artwork's
+distance transform at the ink's scale)*

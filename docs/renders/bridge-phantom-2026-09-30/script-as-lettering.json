@@ -1,0 +1,177 @@
+{
+ "measured": "2026-09-30",
+ "fixture": "logo_bridge_bar.jpg at 80 mm, left_chest (pique_knit, pull_comp_mm 0.3), max_colors=6",
+ "script_region": {
+  "shape_id": "S71ddac97",
+  "thread_index": 149,
+  "area_mm2": 245.7,
+  "holes": 5,
+  "width_mm": 37.7,
+  "height_mm": 14.4,
+  "aspect": 2.616,
+  "stroke_mean_mm": 1.353,
+  "stroke_cv": 0.328,
+  "runs": {
+   "satin": 12,
+   "underlay": 18,
+   "travel": 8
+  }
+ },
+ "letter_door_gates": {
+  "height_mm": [
+   1.5,
+   60.0
+  ],
+  "stroke_cv_max": 0.55,
+  "aspect": [
+   0.05,
+   1.4
+  ],
+  "min_cluster_members": 3,
+  "letter_height_ratio": 0.8,
+  "script_passes": {
+   "height": true,
+   "stroke_cv": true,
+   "aspect": false
+  },
+  "red_regions_that_could_cluster_with_it": 0,
+  "letter_candidates_on_the_design": 26,
+  "regions": 80,
+  "tagged_clusters": [
+   "TC0f6a5df9"
+  ]
+ },
+ "forced_tag": {
+  "shipped": {
+   "stitches": 16179,
+   "trims": 101,
+   "bare_pct": 4.31,
+   "s": 30.4,
+   "script_runs": {
+    "satin": 12,
+    "underlay": 18,
+    "travel": 8
+   },
+   "red_on_yellow": 39.9,
+   "red_art_bare": 0.2,
+   "red_thread": 294.1
+  },
+  "forced_text": {
+   "stitches": 16388,
+   "trims": 103,
+   "bare_pct": 4.07,
+   "s": 21.7,
+   "script_runs": {
+    "underlay": 22,
+    "satin": 11,
+    "travel": 6
+   },
+   "red_on_yellow": 40.6,
+   "red_art_bare": 0.6,
+   "red_thread": 297.2
+  },
+  "rules_keyed_on_the_tag": [
+   "satin_lettering_split (no width ceiling; per-stroke rung; fold guard)",
+   "edge_cap_skip_lettering (no silhouette cap over the letter's outline)",
+   "stitchwidth per-cluster shared width",
+   "legibility findings (preflight OCR)"
+  ],
+  "rules_that_read_rails_pull_or_gaps": []
+ },
+ "artwork_gaps_mm_at_80mm": {
+  "scale": "3.487 px/mm at the design's width (the ink bbox), measured 4x upsampled",
+  "open_gaps_between_strokes": {
+   "channel_mm": 85.4,
+   "p10_p25_p50_p75_p90": [
+    0.57,
+    1.06,
+    1.58,
+    2.29,
+    2.72
+   ],
+   "share_under_0.5_0.8_1.0_1.5_mm": [
+    0.09,
+    0.17,
+    0.22,
+    0.45
+   ]
+  },
+  "counters": {
+   "channel_mm": 12.9,
+   "p10_p25_p50_p75_p90": [
+    0.14,
+    0.2,
+    0.8,
+    1.15,
+    1.38
+   ],
+   "share_under_0.5_0.8_1.0_1.5_mm": [
+    0.4,
+    0.5,
+    0.64,
+    0.95
+   ]
+  },
+  "strokes": {
+   "channel_mm": 110.4,
+   "p10_p25_p50_p75_p90": [
+    1.46,
+    1.72,
+    1.89,
+    2.21,
+    2.58
+   ]
+  },
+  "closed_by_pull_and_thread_mm": 1.0,
+  "note": "2 x pull_comp_mm (0.3) + COVERAGE_THREAD_W_MM (0.40): two facing rails close any gap under 1.0 mm before any rule runs"
+ },
+ "tires": {
+  "fixture": "logo_script_tires.png at 80 mm, left_chest",
+  "script_region": {
+   "shape_id": "Sf272c1de",
+   "thread_index": 4,
+   "area_mm2": 441.4,
+   "holes": 2,
+   "width_mm": 65.1,
+   "height_mm": 17.2,
+   "aspect": 3.781,
+   "stroke_mean_mm": 1.571,
+   "stroke_cv": 0.166,
+   "runs": {
+    "underlay": 15,
+    "satin": 10,
+    "travel": 3
+   }
+  },
+  "letter_candidates_on_the_design": 4,
+  "tagged_clusters": [],
+  "shipped": {
+   "stitches": 2646,
+   "trims": 8,
+   "bare_pct": 4.44,
+   "s": 37.5,
+   "script_runs": {
+    "underlay": 15,
+    "satin": 10,
+    "travel": 3
+   },
+   "red_on_yellow": 0.0,
+   "red_art_bare": 0.0,
+   "red_thread": 0.0
+  },
+  "forced_text": {
+   "stitches": 2897,
+   "trims": 8,
+   "bare_pct": 4.01,
+   "s": 36.6,
+   "script_runs": {
+    "underlay": 20,
+    "satin": 10,
+    "travel": 3
+   },
+   "red_on_yellow": 0.0,
+   "red_art_bare": 0.0,
+   "red_thread": 0.0
+  }
+ }
+}

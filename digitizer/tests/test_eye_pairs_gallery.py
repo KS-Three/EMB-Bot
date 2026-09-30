@@ -20,7 +20,8 @@ from tools import eye_pairs_gallery as g  # noqa: E402
 SPEC_ARMS = ["per_stroke", "patch_junctions", "polygon_axis", "area_weighted",
              "design_angle", "rails_follow_edge", "wide_columns",
              "lettering_column", "phantom_dissolve", "directional_comp", "ref_0827"]
-# `rail_comp` shipped ON 2026-09-28 and left the table (docs/kent-review-2026-09-28.md).
+# `rail_comp` shipped ON 2026-09-28 and left the table (docs/kent-review-2026-09-28.md);
+# `rail_envelope` shipped ON 2026-09-30 and left it (docs/eye-pairs-2026-09-30/).
 SPEC_METRICS = {
     "trims_per_1000": "lower", "preflight_raw_score": "higher",
     "preflight_blocks": "lower", "uncovered_total_mm2": "lower",
@@ -658,6 +659,97 @@ def test_a_shipped_arm_is_still_named_on_an_old_sitting():
     assert "rail_comp" not in g.ARM_INTENT
     change, intent = g.arm_intent("rail_comp")
     assert change.startswith("satin_rail_comp=True") and "shipped" in change and intent
+    # rail_envelope followed it on 2026-09-30, off its own sitting.
+    assert "rail_envelope" not in g.ARM_INTENT
+    change, intent = g.arm_intent("rail_envelope")
+    assert change.startswith('satin_rails_follow_edge="envelope"') and "shipped" in change and intent
     assert g.arm_intent("per_stroke") == g.ARM_INTENT["per_stroke"]
     assert g.arm_intent("nope") == ("nope", "")
     assert g.arm_intent(None) == ("", "")
+
+
+# ---- a measured table under an arm head -------------------------------------
+# 2026-09-30: the corpus, symmetric against envelope, beside the nine envelope
+# pairs, so the eye and the instruments sit on one page.
+
+TABLE = {"caption": "the corpus, symmetric -> envelope", "columns": ["fixture", "bare %"],
+         "rows": [["fx_a", "10.35 -> 7.20"], ["fx_p", 8.14]]}
+
+
+def test_a_table_rides_under_its_arm_head_and_under_no_other(tmp_path):
+    data = g.build(make_labelled_set(tmp_path), tmp_path / "g", labelled=True,
+                   tables={"per_stroke": TABLE})
+    assert data["arms"]["per_stroke"]["table"] == TABLE
+    assert all("table" not in a for arm, a in data["arms"].items() if arm != "per_stroke")
+    html = (tmp_path / "g" / "index.html").read_text(encoding="utf-8")
+    assert "the corpus, symmetric -> envelope" in html and "10.35 -> 7.20" in html
+    assert "tableEl(" in html                      # the page draws it, not only carries it
+    # No table asked for: none attached, and the page is what it was.
+    plain = g.build(make_labelled_set(tmp_path / "p"), tmp_path / "gp", labelled=True)
+    assert all("table" not in a for a in plain["arms"].values())
+
+
+def test_a_table_for_an_arm_the_page_does_not_show_is_refused(tmp_path):
+    with pytest.raises(SystemExit, match="REFUSED.*rail_comp"):
+        g.build(make_labelled_set(tmp_path), tmp_path / "g", labelled=True,
+                tables={"rail_comp": TABLE})
+
+
+def test_a_ragged_or_headless_table_is_refused(tmp_path):
+    with pytest.raises(SystemExit, match="REFUSED.*2 cells"):
+        g.build(make_labelled_set(tmp_path), tmp_path / "g", labelled=True,
+                tables={"per_stroke": {**TABLE, "rows": [["fx_a"]]}})
+    with pytest.raises(SystemExit, match="REFUSED.*columns"):
+        g.build(make_labelled_set(tmp_path / "b"), tmp_path / "gb", labelled=True,
+                tables={"per_stroke": {"rows": [["fx_a", 1.0]]}})
+
+
+def test_cli_takes_the_tables_file(tmp_path, capsys):
+    src = make_labelled_set(tmp_path)
+    path = tmp_path / "tables.json"
+    path.write_text(json.dumps({"per_stroke": TABLE}), encoding="utf-8")
+    assert g.main(["--src", str(src), "--out", str(tmp_path / "g"), "--labelled",
+                   "--tables", str(path)]) == 0
+    html = (tmp_path / "g" / "index.html").read_text(encoding="utf-8")
+    assert "10.35 -> 7.20" in html
+
+
+# ---- a second sitting on one arm ------------------------------------------
+# Kent's 09-28 verdicts on `phantom_dissolve__*` sat in the page's store under
+# the ids the fold-fixed renders of 09-30 would have taken: his old verdict
+# would have pre-filled the new pair and his new click overwritten the old
+# record. A sitting tag keys the second look apart.
+
+def test_a_sitting_tag_keys_this_look_apart_from_the_last(tmp_path):
+    tagged = g.build(make_labelled_set(tmp_path / "t"), tmp_path / "gt", labelled=True,
+                     sitting="fold-fix")
+    assert [p["pair"] for p in tagged["pairs"]] == ["per_stroke__fx_a__fold-fix",
+                                                    "ref_0827__fx_p__fold-fix"]
+    assert tagged["sitting"] == "fold-fix"
+    html = (tmp_path / "gt" / "index.html").read_text(encoding="utf-8")
+    assert '"sitting":"fold-fix"' in html
+    # The page tags what it writes: the note's body and the ruling's id.
+    assert "body.sitting = SITTING" in html and "rulingId(arm)" in html
+    # Untagged, the ids and the rulings are what they were.
+    plain = g.build(make_labelled_set(tmp_path / "p"), tmp_path / "gp", labelled=True)
+    assert [p["pair"] for p in plain["pairs"]] == ["per_stroke__fx_a", "ref_0827__fx_p"]
+    assert plain["sitting"] is None
+
+
+def test_a_sitting_tag_is_refused_on_the_reveal_and_when_it_would_not_survive_as_an_id(tmp_path):
+    with pytest.raises(SystemExit, match="REFUSED.*labelled"):
+        g.build(make_set(tmp_path), tmp_path / "g", sitting="fold-fix")
+    for n, bad in enumerate(("fold__fix", "fold fix", "fold_fix", "-fold", "")):
+        with pytest.raises(SystemExit, match="REFUSED.*--sitting"):
+            g.build(make_labelled_set(tmp_path / f"b{n}"), tmp_path / f"gb{n}", labelled=True,
+                    sitting=bad)
+
+
+def test_cli_takes_the_sitting_tag_on_the_labelled_page_only(tmp_path, capsys):
+    src = make_labelled_set(tmp_path)
+    assert g.main(["--src", str(src), "--out", str(tmp_path / "g"), "--labelled",
+                   "--sitting", "fold-fix"]) == 0
+    html = (tmp_path / "g" / "index.html").read_text(encoding="utf-8")
+    assert "per_stroke__fx_a__fold-fix" in html
+    with pytest.raises(SystemExit, match="REFUSED.*labelled"):
+        g.main(["--src", str(src), "--out", str(tmp_path / "g2"), "--sitting", "fold-fix"])
