@@ -809,3 +809,107 @@ Stitch Clean. **By boldness:** Stitch Hard, Punch It (5); the rest 4.
 
 An RDAP 404 means "not in the registry", not a reservation — confirm in a
 registrar cart before announcing anything.
+
+## K. Commands, second pass (round 9, same day)
+
+Kent on §J's four: *"better, keep looking."* Same register. 72 command
+names screened on Verisign RDAP first; 37 .coms were taken, several this
+year (stitchready 2026-01, stitchfirst 2026-03, stitchbrave 2026-07,
+stitchsure 2026-09-02 — someone is buying "stitch + adjective"). The 35
+with a free .com went through the full pass.
+
+Method as §J. **All 105 .io/.app/.ai lookups returned free** — no name
+lost a TLD. New this round: **page-1 SERP is unverified** (Bing answers
+only entity-strength phrases through the proxy; every other engine is
+walled), substituted with Bing autosuggest (demand), the iTunes Search
+API and Google Play (apps), and YouTube results (same-industry content).
+No name has an App Store or Play app. Also new: **Google Stitch**
+(stitch.withgoogle.com, "Design with AI") now tops every `stitch` query,
+beside Stitch AI (stitchai.us) — "stitch + AI" is held twice.
+
+| # | Name | TM | Collisions | TT/YT/X | Comp. | Bold |
+|---|---|---|---|---|---|---|
+| 1 | **Stitch Done** | none; DONE generics | none | ✅/✅/✅ | **7.5** | 4 |
+| 2 | **Stitch Solved** | none; SOLVED generics | none | ✅/✅/✅ | **7.5** | 3 |
+| 3 | **Hoop Anything** | none; HOOP generics | none | ✅/✅/✅ | **7** | 4 |
+| 4 | **Own the Stitch** | THE STITCH cl.37/16; IN THE STITCH cl.25 | none | ✅/✅/✅ | **7** | 4 |
+| 5 | **Needle First** | none | none | ✅/✅/✅ | **7** | 3 |
+| 6 | Run the Needle | MOVE THE NEEDLE **live cl.9**/41/44 | none | ✅/✅/✅ | 6.5 | 4 |
+| 7 | Rule the Hoop | none | none | ✅/✅/✅ | 6.5 | 4 |
+| 8 | Hoop Everything | none | none | ✅/✅/✅ | 6.5 | 3 |
+| 9 | Stitch Whatever | none | none | ✅/✅/❌ | 6 | 4 |
+| 10 | Stitch Fearless | TAYLOR SWIFT FEARLESS **live cl.9**; FEARLESS **live cl.42** | none | ✅/✅/✅ | 6 | 4 |
+| 11 | Drive the Needle | MOVE THE NEEDLE frame | none | ✅/✅/✅ | 6 | 4 |
+| 12 | Stitch Fierce | FIERCE (A&F) cl.25 ×3 | small YT channel | ✅/✅/✅ | 6 | 4 |
+| 13 | Stitch Once | ONCE ×10 incl. 37signals | "Count Twice Stitch Once" YT | ✅/✅/✅ | 6 | 3 |
+| 14 | Punch Instant | PUNCH **live cl.9** ×2 | none | ✅/✅/✅ | 6 | 3 |
+| 15 | Hoop Proud | none | none | ✅/✅/✅ | 6 | 3 |
+| 16 | Stitch Instant | none | **Google Stitch "Instant prototypes"**; Stitch AI | ✅/✅/✅ | 5.5 | 2 |
+| 17 | Punch Brave | PUNCH cl.9 | none | ✅/✅/❌ | 5.5 | 3 |
+| 18 | Run the Stitch | THE STITCH | none | ✅/✅/❌ | 5.5 | 3 |
+| 19 | Run the Hoop | none | football D-line drill | ✅/✅/✅ | 5.5 | 4 |
+| 20 | Sew Instant | SEW-EURODRIVE ×6 | Liqui-Sew Instant | ✅/✅/✅ | 5.5 | 2 |
+| 21 | Thread Fearless | FEARLESS cl.9/42 | Meta Threads SERP | ✅/✅/✅ | 5.5 | 3 |
+| 22 | Nail the Stitch | NAILED IT frame | nail salons | ✅/✅/✅ | 5.5 | 4 |
+| 23 | Stitch Proud | none | none | ❌/✅/❌ | 5 | 3 |
+| 24 | Punch Proud | PUNCH cl.9 | none | ❌/✅/❌ | 5 | 3 |
+| 25 | Stitch Nailed | NAILED IT! **Netflix live cl.41** | "stitch nailing" carpentry term | ✅/✅/✅ | 4.5 | 4 |
+| 26 | Hit the Needle | MOVE THE NEEDLE frame | drug-slang reading | ✅/✅/✅ | 4.5 | 4 |
+| 27 | Stitch Rogue | ROGUE **live cl.42** (AI assistant, 2025) +9 | Rogue x-stitch fabric | ✅/✅/✅ | 4 | 4 |
+| 28 | Punch Fearless | FEARLESS cl.9/42 | **Tata "Punch Fearless" car trim** | ✅/✅/✅ | 4 | 4 |
+| 29 | Punch Everything | PUNCH cl.9 | 2 YT channels; "Punching Everything" app | ❌/❌/✅ | 4 | 4 |
+| 30 | Stitch Simple | THE SIMPLE STITCH live cl.12 | live crochet creator holds YT/X/TT | ❌/❌/❌ | 3.5 | 2 |
+| 31 | Punch It Once | PUNCH cl.9 ×2 | Punch It Technologies | ✅/✅/✅ | 3.5 | 4 |
+| 32 | Stitch Ahead | AHEAD ×9 | **A Stitch Ahead, Inc.** — embroidery + screen printing | ✅/✅/✅ | 3 | 3 |
+| 33 | Stitch Straight | STRAIGHT STITCH SOCIETY live cl.16 | generic stitch name; Straight Stitch Sewing Co. on X | ✅/✅/❌ | 3 | 3 |
+| 34 | Stitch Off | none | Wizard101 "Stitch-Off" holds all handles | ❌/❌/❌ | 3 | 3 |
+| 35 | Stitch It Once | STITCH IT USA **live cl.40** | the 50-store Stitch It chain owns the core | ✅/✅/✅ | 3 | 3 |
+
+### The five survivors
+
+- **Stitch Done — 7.5 / Bold 4.** Triple-clean and reads as a verdict:
+  "Stitch. Done." Ten characters, two beats; every handle free; four TLDs
+  ≈ $50. Catch: a result, not a command — the energy is in the pause —
+  and in running copy "stitch done" can read as past tense.
+- **Stitch Solved — 7.5 / Bold 3.** Same sweep; the most on-message
+  ("Digitizing, solved"). Catch: a claim, not an order, and it concedes
+  stitching was a problem — the pitch, not Nike's register.
+- **Hoop Anything — 7 / Bold 4.** §J's Punch Anything with the trade's
+  other word; every domain and handle free; HOOP marks are basketball and
+  kids' products. Catch: "hoop" names the frame the customer already owns,
+  not the digitizing act, and reads hula or basketball outside the trade.
+- **Own the Stitch — 7 / Bold 4.** All free; THE STITCH is an Atlanta
+  highway-cap project (cl.37) and a 2006 cl.16 mark, IN THE STITCH cl.25,
+  none software. The sports-cliché frame gives swagger without a famous
+  mark. Catch: SERP is Oprah's OWN; "the Stitch" is a Disney character to
+  half the internet.
+- **Needle First — 7 / Bold 3.** All free; NEEDLE marks are archery,
+  wine, quilting supplies. Reads as a design principle ("needle-first,
+  like mobile-first"), which is what the product is. Catch: not an
+  imperative, and it also reads medical.
+
+Below them: Run the Needle is literal to the trade but MOVE THE NEEDLE is
+live in cl.9 one verb away; Stitch Fearless has two live marks in exactly
+the classes to file (Taylor Swift cl.9, Fearless IP cl.42); Stitch Whatever
+has the most attitude and the wrong inference (indifferent to quality).
+
+Nike-frame check: Stitch It Once and Punch It Once are verb-IT-adverb, not
+JUST-verb-IT; neither trips §I's precedents, but both carry cores that
+failed on their own.
+
+**By risk:** Stitch Done · Stitch Solved · Hoop Anything · Own the Stitch ·
+Needle First · Run the Needle · Rule the Hoop · Hoop Everything · Stitch
+Whatever · Stitch Fearless. **By boldness:** no 5 this round; 4s — Stitch
+Done, Stitch Whatever, Own the Stitch, Run the Needle, Rule the Hoop, Hoop
+Anything, Drive the Needle, Stitch Fearless, Stitch Fierce.
+
+**Two biggest risks:** the "stitch + AI" position is held twice (Stitch AI
+for digitizing, Google Stitch for AI design), so any Stitch-name ranks
+behind both from day one; and every clean name is clean because nobody
+searches it (autosuggest empty for all five), so §C's plan carries the
+ranking regardless.
+
+Not verified: USPTO (TSDR 401, tmsearch 405), Justia (403), Instagram
+(302), .co, page-1 SERP on any engine, Etsy (403), astitchahead.com (no
+response; the YouTube channel is the evidence). An RDAP 404 is "not in the
+registry", not a reservation.
