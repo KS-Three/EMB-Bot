@@ -677,6 +677,18 @@ class PipelineConfig:
     # 1.0 mm column fills the counters (scope-history 09-09), which is why
     # this stays None until a glyph-height gate exists.
     lettering_min_column_mm: float | None = None
+    # Even out stitch widths automatically (`stitchwidth.apply_stitch_widths`,
+    # 2026-09-29): a letter more than 15% off its word's weight is offset to
+    # the word's median, and `lettering_min_column_mm` (when set) reaches
+    # every small shape and every lettering member, not only the door-1
+    # population above. OFF by default because on real lettering the
+    # per-letter measurement is a smooth chain, not a step — Gaulke's 35
+    # letters run 0.77 → 1.33 mm — so "the word's width" is a guess there;
+    # `stitchwidth.py`'s docstring carries the measurement. The Studio's
+    # "Even out lettering widths" box sets it per design. Off, the pass
+    # measures and reports only, and a review `stitch_width_mm` still
+    # applies; every fixture is byte-identical.
+    stitch_width_auto: bool = False
 
     # Stage 4
     # Polygon simplification tolerance. Both call sites (`stage4_vectorize.
@@ -1389,7 +1401,16 @@ class PipelineConfig:
     # bare 7.38 -> 7.03% at +32 stitches, bridge 99 -> 96 trims, corpus
     # 654 -> 651. The C's bowl itself -- two thirds of Becker's
     # junction bare -- is the cover's FILL by design, an 8 mm blob no
-    # column spans, not the tuck's; DOCTRINE 2026-09-29.
+    # column spans, not the tuck's; DOCTRINE 2026-09-29. And golden_tee's
+    # +65% stitches (6,892 -> 11,377) were the SEAMS of the on-rails
+    # polygon -- stage 5's artwork-union-reach-minus-earlier boundary,
+    # a hairline notch or sliver wherever two independently vectorised
+    # edges meet, a branch each to the medial axis (178 -> 494 strokes):
+    # fixed the same day, the skeleton reads that polygon with the seams
+    # of its construction closed (`stage6_satin._close_seams`, hairline
+    # fills touching boundary stage 5 added, nothing on the artwork's
+    # own), golden_tee 11,377 -> 7,966, MARINE byte-identical, corpus
+    # trims 651 -> 640.
     satin_rail_comp: bool = True
     # None = the fabric preset's fill underlay style. One of "none" |
     # "edge_run" | "center_run" | "edge_zigzag" | "edge_lattice" |
@@ -2818,6 +2839,25 @@ class PipelineConfig:
     #                           core layer (a 400 at the service layer,
     #                           before the job ever runs) — never a silent
     #                           repair and never a crash downstream.
+    #   stitch_width_mm: float – (contract v1.8, `stitchwidth.py`) the SEWN
+    #                           satin column this shape should take, in mm
+    #                           (`stitchwidth.OVERRIDE_MIN_MM`..
+    #                           `OVERRIDE_MAX_MM`, the machine's own cross
+    #                           floor and wide-column ceiling). Applied by
+    #                           `stitchwidth.apply_stitch_widths` right after
+    #                           the edits here: the shape's polygon is OFFSET
+    #                           (grown or shrunk, holes and gaps guarded) by
+    #                           half the difference from its measured width,
+    #                           and the shape is then treated exactly like
+    #                           the regularizer's widened lettering
+    #                           (`stage5_overlap.widened_lettering`). Without
+    #                           an override the same pass gives every letter
+    #                           of a detected word the word's median width;
+    #                           this is the correction for when that reading
+    #                           is wrong. The review payload's `stitch_width`
+    #                           block reports measured / auto / sewn widths
+    #                           per shape so a client can show the starting
+    #                           point.
     # Values ride Region.meta so stages 5 and 7 pick them up where each
     # decision is made (boundary_override is the one exception: it rides
     # Region.polygon itself, plus a Region.meta record of the edit — the record

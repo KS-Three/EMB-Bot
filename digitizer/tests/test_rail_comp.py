@@ -400,3 +400,69 @@ def test_the_flips_bare_artwork_is_hairlines_on_the_sides_and_a_hole_at_a_tapere
     assert hairline / side_area >= 0.70, (
         f"only {100 * hairline / side_area:.0f}% of mid-rail bare is thinner than "
         "0.10 mm half-width — the sides have started opening real gaps")
+def test_under_rail_comp_the_skeleton_reads_the_polygon_with_its_seams_closed():
+    """Stage 5 hands an on-rails shape its artwork unioned with the underlap
+    reach under whatever sews later and cut by whatever sewed earlier, and
+    that boundary carries hairline seams a fraction of a pull wide wherever
+    the artwork's sub-pixel edge meets a buffered or neighbouring one. The
+    medial axis reads each seam as a branch: `logo_golden_tee` at 80 mm sewed
+    178 -> 494 strokes and 6,892 -> 11,377 stitches when the flag went on,
+    the O of GOLF alone 29 -> 88 (2026-09-29). The grown polygon never had
+    them -- a round-joined `buffer(pull)` swallows anything narrower than
+    the pull -- so the skeleton now reads the polygon with its seams closed
+    (`_close_seams`: what a half-pull closing fills where it is nowhere
+    wider than half a pull AND touches a stretch of boundary stage 5 added,
+    the on-rails polygon's boundary off the artwork's), while the rails,
+    caps and every art reading stay on the polygon itself. A crotch, a
+    counter or a notch of the artwork's own stays as the artwork drew it:
+    the closing at the pull's radius tried first re-cut MARINE's letters
+    37 -> 28 strokes, and the width test alone still cost MARINE four folds
+    and ENTHUSIAST an unsewn element from the artwork's own notches.
+    """
+    from shapely.geometry import box
+
+    bar = box(0.0, 0.0, 24.0, 2.4)
+    seam_w = 0.4 * PULL                      # a hairline: under half a pull
+    # a notch in the top edge and a hairline hole through the middle
+    seamed = (bar.difference(box(6.0, 1.4, 6.0 + seam_w, 2.4))
+                 .difference(box(12.0, 0.4, 12.0 + seam_w, 2.0)))
+    closed = s6._close_seams(seamed, PULL)
+    assert closed.geom_type == "Polygon" and not closed.interiors
+    assert closed.symmetric_difference(bar).area < 0.05, closed.symmetric_difference(bar).area
+
+    def strokes(poly):
+        return len(s6.extract_strokes(poly, half_extra_mm=PULL, corner_twigs=True,
+                                      junction_stack=True)[0])
+
+    assert strokes(bar) == 1
+    assert strokes(seamed) > strokes(bar), "the seams must shatter the raw skeleton for this to test anything"
+    assert strokes(closed) == strokes(bar)
+
+    # a counter, and a slit wider than half a pull, are artwork and stay
+    with_art = (bar.difference(box(17.0, 0.2, 19.0, 2.2))
+                   .difference(box(20.0, 0.4, 20.0 + 0.8 * PULL, 2.0))
+                   .difference(box(12.0, 0.4, 12.0 + seam_w, 2.0)))
+    kept = s6._close_seams(with_art, PULL)
+    assert len(kept.interiors) == 2, [Polygon(r).area for r in kept.interiors]
+    # the counter keeps its area to within the hairline fillets at its four
+    # corners (0.005 mm2 each at a half-pull radius)
+    assert abs(max(Polygon(r).area for r in kept.interiors) - 4.0) < 0.05
+
+    # zero pull is the identity, so rail comp OFF cannot be moved by any of this
+    assert s6._close_seams(seamed, 0.0) is seamed
+
+    # WHERE the seam is decides: the same seams are the artwork's own when
+    # the artwork polygon carries them (nothing closes), and stage 5's when
+    # the artwork is the clean bar (they close)
+    assert s6._close_seams(seamed, PULL, art_poly=seamed) is seamed
+    own = s6._close_seams(seamed, PULL, art_poly=bar)
+    assert own.symmetric_difference(bar).area < 0.05
+
+    # and through `satin_shape` the seamed bar sews the clean bar's columns
+    def satin_runs(poly):
+        runs, _report = s6.satin_shape(poly, "bar", underlay_style="center", trim_at_mm=3.0,
+                                       rail_comp_mm=PULL, rail_comp_floor_mm=1.5,
+                                       corner_twigs=True, junction_stack=True, stroke_order="euler")
+        return sum(1 for r in runs if r.kind == s6.stitches.SATIN)
+
+    assert satin_runs(seamed) == satin_runs(bar) == 1

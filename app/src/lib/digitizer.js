@@ -128,6 +128,10 @@ export function buildDigitizeConfig(element, project) {
     // default and its off-path is byte-identity tested
     // (digitizer/tests/test_edge_cap.py).
     edge_cap: p.edge_cap,
+    // Sent only when ON, like photo_segment_sam2 and unlike detail_layer:
+    // absent IS the service's own False, and existing designs keep their
+    // cache key. See project.js's DEFAULT_DIGITIZE_PARAMS for why it is off.
+    ...(p.stitch_width_auto ? { stitch_width_auto: true } : {}),
   };
   if (p.fill_angle_deg != null) cfg.fill_angle_deg = p.fill_angle_deg;
   // Omitted when null, for a stronger reason than fill_angle_deg's. The
@@ -328,6 +332,14 @@ export function canonicalShapeEdits(element) {
     if (isValidBoundaryShape(e.boundary_override)) {
       entry.boundary_override = e.boundary_override.map(([x, y]) => [x, y]);
     }
+    // `stitch_width_mm` (contract v1.8): the sewn satin column for one shape,
+    // in mm. Range mirrors the service's `stitchwidth.validate_override_mm`
+    // (the machine's own cross floor and wide-column ceiling) so an out-of-
+    // range value never reaches the wire as a 400; rounded to 0.01 mm so two
+    // spellings of one drag (0.8 and 0.8000001) are one cache key.
+    if (isValidStitchWidth(e.stitch_width_mm)) {
+      entry.stitch_width_mm = Math.round(e.stitch_width_mm * 100) / 100;
+    }
     if (Object.keys(entry).length) overrides[sid] = entry;
   }
   if (Object.keys(overrides).length) out.shape_overrides = overrides;
@@ -358,6 +370,15 @@ export function canonicalShapeEdits(element) {
   if (Object.keys(splits).length) out.split_shapes = splits;
 
   return out;
+}
+
+// The service's `stitchwidth.OVERRIDE_MIN_MM` / `OVERRIDE_MAX_MM`, verbatim:
+// `machine.SATIN_MIN_CROSS_MM` and `machine.SATIN_WIDE_COLUMN_MAX_MM`.
+export const STITCH_WIDTH_MIN_MM = 0.5;
+export const STITCH_WIDTH_MAX_MM = 6.5;
+
+export function isValidStitchWidth(v) {
+  return typeof v === "number" && Number.isFinite(v) && v >= STITCH_WIDTH_MIN_MM && v <= STITCH_WIDTH_MAX_MM;
 }
 
 function isValidSplitLine(line) {
@@ -1055,8 +1076,48 @@ export function reviewFromJob(review, blocks = null) {
       // convention textCandidate/textClusterId already follow.
       ocrChar: s.ocr_char == null ? null : String(s.ocr_char),
       ocrConfidence: typeof s.ocr_confidence === "number" ? s.ocr_confidence : null,
+      // Stitch width (contract v1.8, server-computed except the override —
+      // see app.py's _review_payload comment): the sewn column this shape
+      // measured, the one auto chose (its word's shared width), the one it
+      // sews, and the override in effect, all in mm; `source` names who
+      // chose the sewn width ("shape" | "group" | "floor" | "override"),
+      // `group` the text cluster it is shared with, `limited` that a counter
+      // or a gap between strokes clamped the change, `skipReason` why a
+      // wanted change was not made. All null on a shape that was never
+      // measured (a fill region) and on a pre-contract service.
+      stitchWidth: stitchWidthFromWire(s.stitch_width),
     })),
   };
+}
+
+function stitchWidthFromWire(w) {
+  if (!w || typeof w !== "object" || typeof w.measured_mm !== "number") return null;
+  const num = (v) => (typeof v === "number" && Number.isFinite(v) ? v : null);
+  return {
+    // The artwork's own stroke, no pull: the number to show on a shape the
+    // plan sews as a RUN (a sub-floor bean on its outline), where the sewn
+    // figures below do not apply.
+    artMm: num(w.art_mm),
+    measuredMm: num(w.measured_mm),
+    autoMm: num(w.auto_mm),
+    sewnMm: num(w.sewn_mm),
+    overrideMm: num(w.override_mm),
+    source: typeof w.source === "string" ? w.source : null,
+    group: typeof w.group === "string" ? w.group : null,
+    limited: w.limited === true,
+    skipReason: typeof w.skip_reason === "string" ? w.skip_reason : null,
+  };
+}
+
+// The rows that share a stitch width with `row` — its text cluster's other
+// members (the engine's `stitch_width_group`), `row` itself first. A shape
+// outside any group is its own list, so a caller can always "apply to the
+// word" and get at least the one shape.
+export function stitchWidthGroupRows(rows, row) {
+  const gid = row && row.stitchWidth && row.stitchWidth.group;
+  if (!gid) return row ? [row] : [];
+  const rest = (rows || []).filter((r) => r && r !== row && r.stitchWidth && r.stitchWidth.group === gid);
+  return [row, ...rest];
 }
 
 // A digitize run with deletions returns a review WITHOUT the deleted shapes

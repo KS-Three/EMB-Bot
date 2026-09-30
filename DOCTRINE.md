@@ -7024,3 +7024,72 @@ more thread; the stitch ceiling in `tests/test_rail_comp.py` moved
 7.10 → 6.98%, bridge 99 → 96 trims at 5.19 → 4.96%; corpus trims
 654 → 651. What it did not buy: the bowl's hole shrinks by 1 mm².
 The bowl is the skeleton's, not the tuck's.
+
+## The on-rails polygon carries the seams of its own construction, and the medial axis reads every one as a branch (2026-09-29)
+
+Kent's pick after #558: golden_tee's +65% stitches under `satin_rail_comp`
+(6,892 → 11,377 at 80 mm), the flip's largest stitch cost on any fixture.
+Three things it was not, each measured before the cause was named: not
+the pitch (0.21 mm along the column both ways), not a second layer (no
+cover fill in either arm), not the raster scale (the artwork polygons
+re-skeletonised at the OFF arm's scale read 514 strokes to their own 494).
+It was the polygon. Under rail comp stage 5 hands satin the artwork
+unioned with the underlap reach under whatever sews later and cut by
+whatever sewed earlier, and that boundary carries a hairline seam wherever
+the artwork's sub-pixel edge meets a buffered or neighbouring one: notches,
+slivers and holes a fraction of a pull wide, invisible on the render and a
+branch each to a medial axis. The O of GOLF went 29 → 88 strokes, its T
+outline 12 → 70, the design 178 → 494 strokes and 148 → 473 satin runs at
+half the points each — the same columns laid three times as stubs. The
+grown polygon never had the seams: a round-joined `buffer(pull)` swallows
+anything narrower than the pull, and that smoothing left with the growth
+on 2026-09-19 without anyone meaning it to.
+
+**The cure was measured three times, and the first two reached past the
+seams into the ruling.** A closing at the pull's radius closes every seam
+and fillets every crotch with it: golden_tee 494 → 100 strokes, but MARINE
+37 → 28, Becker 62 → 68 and MARINE's bare artwork 7.03 → 9.45% — the
+artwork skeleton's decomposition, which Kent ruled for, re-cut at every
+acute corner. A half-pull closing kept to hairlines (fills nowhere wider
+than half a pull) spares the crotches and still reads the artwork's OWN
+notches — MARINE's 146 × 91 px source is all notches — and cost MARINE four
+letter folds, ENTHUSIAST one unsewn element and `ribbon_curve` its golden.
+The rule that ships adds WHERE: a seam is a hairline fill that touches a
+stretch of boundary stage 5 ADDED, the on-rails polygon's boundary off the
+artwork's own (`_close_seams`, `satin_shape` reads it for the skeleton
+only, the rails and caps stay on the polygon itself, the raw skeleton when
+a closed shape prunes to nothing). MARINE is byte-identical on every shape
+under it; golden_tee ON reads 6,892 → 7,966 stitches (+15.6% for the
+flip's +65%), 473 → 162 satin runs, 57 → 47 trims; corpus trims
+651 → 640. What remains on golden_tee is the artwork's own boundary,
+which the ruling keeps.
+
+**The fix has a price, and the satin-only instrument states it wrongly
+first.** golden_tee's bare artwork on `rail_edge.bare_area` goes 6.54 →
+10.35% (56 → 89 mm² of 862), above the OFF arm's 7.53%, spread over the
+seam shapes (the T's outline 7.0 → 12.9 mm², a GOLF band 5.1 → 10.6). Two
+thirds of the stubs' thread was covering by accident — three columns laid
+over the same band reach its far edge where one does not — and what one
+column leaves is the rail model's known under-reach on an uneven band
+(the C's bowl entry above: the symmetric offset reaches the nearer edge),
+now exposed instead of buried. Preflight's `ARTWORK_UNCOVERED` reads
+0.0 mm² both ways, worst cell 0.5 mm²: nothing over its floor, and the rim
+it draws along the outlines is the underlap band under the white face,
+which sews over it. Read a bare number against preflight before calling
+it a hole; the stubs were never a cover anyone chose.
+
+Three rules out of it.
+
+- **When a flag's stitch count jumps, count RUNS before stitches.** Points
+  per run halving while runs triple is a decomposition, whatever the
+  spacing reads; a doubled pitch would have read the other way.
+- **A polygon built by set operations on independently vectorised
+  neighbours has seams, and a skeleton is the instrument that finds
+  them.** Roughness — perimeter over the perimeter of a closing at the
+  pull — reads 1.0 on a clean shape, 1.4 to 2.9 on golden_tee's ON
+  polygons; `simplify` does nothing to it (546 strokes), so it is
+  topology, not vertex count.
+- **A morphological fix needs a WHERE as much as a how-wide.** The same
+  closing that is exactly right on a seam is exactly the growth's
+  smoothing on a letterform, and the difference between them is not in
+  the geometry of the fill but in whose boundary it touches.

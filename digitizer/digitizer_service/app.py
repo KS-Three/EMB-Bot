@@ -36,6 +36,7 @@ from digitizer_core.pipeline import build_generation, finish_generation, plan_st
 from digitizer_core.preflight import _owning_region_id, run_preflight
 from digitizer_core.stage0_classify import CLASSES
 from digitizer_core.threads import DEFAULT_BRAND, brand_index, load_chart
+from digitizer_core.stitchwidth import review_block, validate_override_mm
 
 from . import formats
 from .jobs import DONE, GenerationCache, JobRegistry, content_key, generation_key
@@ -153,7 +154,8 @@ def _require_token(supplied: str | None) -> None:
 # resolution) — but it is still validated here, in this same closed set, so a
 # bad value is still a 400 at submit.
 _OVERRIDE_KEYS = {"thread_index", "fill_angle_deg", "tier", "border", "layer",
-                  "sew_order", "stitched", "underlay_style", "boundary_override"}
+                  "sew_order", "stitched", "underlay_style", "boundary_override",
+                  "stitch_width_mm"}
 # Kept in lockstep with digitizer_core.regions._TIER_VALUES — see that
 # copy's own comment for what "wave"/"chevron"/"brick" (alongside
 # "crosshatch") each do.
@@ -381,6 +383,16 @@ def _canonicalize_shape_edits(data: dict, chart_len: int) -> None:
         st = entry.get("stitched")
         if st is not None and not isinstance(st, bool):
             bad = "stitched must be a boolean"
+        sw = entry.get("stitch_width_mm")
+        if sw is not None:
+            # Contract v1.8: the sewn column width for one shape. The range
+            # is the engine's own (`stitchwidth.validate_override_mm`,
+            # the same check `apply_shape_edits` repeats) — a 400 here, a
+            # ValueError there.
+            try:
+                entry["stitch_width_mm"] = validate_override_mm(sw)
+            except ValueError as exc:
+                bad = str(exc)
         bo = entry.get("boundary_override")
         if bo is not None:
             if not isinstance(bo, list):
@@ -697,6 +709,18 @@ def _review_payload(result, plan=None) -> dict:
                 # `textClusterSeed`.
                 "ocr_char": r.meta.get("ocr_char"),
                 "ocr_confidence": r.meta.get("ocr_confidence"),
+                # Stitch width (contract v1.8, `digitizer_core/stitchwidth.py`):
+                # the column this shape measured, the one auto wants (its
+                # word's shared width), the one it sews, and the override in
+                # effect — all in SEWN mm. `source` says who chose the sewn
+                # width ("shape" | "group" | "floor" | "override"), `group`
+                # names the text cluster the width is shared with, `limited`
+                # that a counter or a gap between strokes clamped the change,
+                # `skip_reason` why a wanted change was not made. Every
+                # field None on a shape that was never measured (a fill
+                # region). The one client-writable half is
+                # `shape_overrides[sid].stitch_width_mm`.
+                "stitch_width": review_block(r),
                 # The sew position and effective tier the layers panel orders
                 # by. None means the shape produced no stitches (the plan's
                 # SHAPE_NOT_STITCHED warning says how many did).

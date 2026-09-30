@@ -29,6 +29,9 @@
     textClusterSeed,
     remapBlockColors,
     editKind,
+    stitchWidthGroupRows,
+    STITCH_WIDTH_MIN_MM,
+    STITCH_WIDTH_MAX_MM,
     spoolCount } from "../lib/digitizer.js";
   import {
     appliedBorders,
@@ -1077,6 +1080,95 @@
     return e.underlay_style == null ? "auto" : e.underlay_style;
   }
 
+  // Per-shape stitch width (shape_overrides[sid].stitch_width_mm, contract
+  // v1.8). The engine measures every column-shaped shape, gives the letters
+  // of a detected word one shared width, and reports all of it in
+  // `row.stitchWidth` (reviewFromJob). The input here holds the OVERRIDE
+  // only; empty means "auto", and the placeholder shows what auto sews so
+  // the user has a starting number rather than a blank box.
+  //
+  // A shape in a word takes its edit for the WHOLE word by default —
+  // Kent's rule (2026-09-29): letters that belong together must not sew at
+  // varying widths. `wordScope` holds the ids the user has narrowed to
+  // "this shape only"; absent means the word.
+  let wordScope = new Set();
+  // Ids are content-derived, so a scope narrowed on one design could
+  // otherwise outlive it and land on another design's shape.
+  let wordScopeFor = null;
+  $: if (element && element.id !== wordScopeFor) {
+    wordScopeFor = element.id;
+    wordScope = new Set();
+  }
+
+  function overrideStitchWidth(row, ov) {
+    const e = ov[row.id] || {};
+    return typeof e.stitch_width_mm === "number" ? e.stitch_width_mm : null;
+  }
+
+  // The rows one edit reaches: the shape's word unless narrowed.
+  function stitchWidthTargets(row) {
+    const rows = wordScope.has(row.id) ? [row] : stitchWidthGroupRows(sewableShapes, row);
+    return rows.length ? rows : [row];
+  }
+
+  function setShapeStitchWidth(row, raw) {
+    const txt = String(raw == null ? "" : raw).trim();
+    let v = null;
+    if (txt !== "") {
+      v = Math.round(parseFloat(txt) * 100) / 100;
+      if (!Number.isFinite(v)) return;
+      v = Math.min(STITCH_WIDTH_MAX_MM, Math.max(STITCH_WIDTH_MIN_MM, v));
+    }
+    // One element patch for the whole word = one undo step, one restitch.
+    const cur = { ...(element.shapeOverrides || {}) };
+    for (const r of stitchWidthTargets(row)) {
+      const entry = { ...(cur[r.id] || {}) };
+      if (v == null) delete entry.stitch_width_mm;
+      else entry.stitch_width_mm = v;
+      if (Object.keys(entry).length) cur[r.id] = entry;
+      else delete cur[r.id];
+    }
+    patch({ shapeOverrides: cur });
+  }
+
+  function toggleWordScope(row) {
+    const next = new Set(wordScope);
+    if (next.has(row.id)) next.delete(row.id);
+    else next.add(row.id);
+    wordScope = next;
+  }
+
+  function fmtMm(v) {
+    return typeof v === "number" ? (Math.round(v * 100) / 100).toFixed(2) : "";
+  }
+
+  // The sentence under the input: what auto measured and chose, and
+  // whether the engine could honour the last request in full.
+  function stitchWidthNote(row, ov) {
+    const w = row.stitchWidth;
+    if (!w) return "";
+    const parts = [];
+    if (w.group) {
+      const n = stitchWidthGroupRows(sewableShapes, row).length;
+      parts.push(n > 1 ? `shared by ${n} shapes in this word` : "in a word");
+    }
+    // A shape the plan sews as a RUN is a bean on its own outline, with no
+    // column and no pull — its number is the artwork stroke, and the way to
+    // a satin column is a width. Everything else reads the sewn column.
+    if (row.tier === "run" && typeof w.artMm === "number") {
+      parts.push(`${fmtMm(w.artMm)} mm stroke, sewn as a thin run — set a width for a satin column`);
+    } else if (typeof w.measuredMm === "number") {
+      parts.push(`measured ${fmtMm(w.measuredMm)} mm`);
+    }
+    if (w.source === "group" || w.source === "floor") parts.push(`evened to ${fmtMm(w.sewnMm)} mm`);
+    if (w.limited) parts.push("kept short of the request so a counter or gap stays open");
+    if (w.skipReason === "gap_or_hole_would_close") parts.push("could not widen: a gap or counter would close");
+    else if (w.skipReason === "would_split_or_vanish") parts.push("could not narrow that far");
+    else if (w.skipReason === "below_fabric_pull") parts.push("this fabric's pull alone sews wider than that");
+    else if (w.skipReason === "hand_edited_outline") parts.push("outline was hand-edited, auto left it alone");
+    return parts.join(" · ");
+  }
+
   function rowName(row) {
     return row.threadNumber ? "#" + row.threadNumber : "Shape";
   }
@@ -1784,7 +1876,10 @@
 
     <div class="dgp-params">
       <label class="dgp-param">
-        <span>Stitch width</span>
+        <!-- Renamed from "Stitch width" 2026-09-29: this is the DESIGN's
+             width. "Stitch width" now means the per-shape satin column, in
+             the Edit shapes list below, and one word cannot mean both. -->
+        <span>Design width</span>
         <input
           type="number"
           min="10"
@@ -1813,6 +1908,19 @@
           on:change={(e) => setParam("satin", e.currentTarget.checked)}
         />
         Satin for thin shapes
+      </label>
+      <!-- Off by default on purpose: on real lettering the per-letter reading
+           is a smooth chain, not a step (digitizer_core/stitchwidth.py), so
+           the word's median is a guess. The always-on half is per shape, in
+           Edit shapes: every measured column shows its width, and "whole
+           word" writes one width to every letter. -->
+      <label class="dgp-checkline" title="Give every letter of a detected word the word's own weight: a letter traced fatter or thinner than its neighbours is evened out to them. Off, each shape sews the width it was drawn at; the per-shape Stitch width in Edit shapes works either way.">
+        <input
+          type="checkbox"
+          checked={!!element.params.stitch_width_auto}
+          on:change={(e) => setParam("stitch_width_auto", e.currentTarget.checked)}
+        />
+        Even out lettering widths
       </label>
       <label class="dgp-param">
         <span>Fill angle</span>
@@ -2560,6 +2668,52 @@
                         <option value="bean">Bean border</option>
                       </select>
                     </div>
+                    <!-- Stitch width (contract v1.8): only where the engine
+                         measured a column. A fill region has no column to
+                         size, so the control is absent rather than disabled
+                         there; the tier select above is that shape's lever. -->
+                    {#if row.stitchWidth && tier !== "fill"}
+                      {@const swOverride = overrideStitchWidth(row, overrides)}
+                      {@const swGroupN = stitchWidthGroupRows(sewableShapes, row).length}
+                      <div class="dgp-lrow dgp-lwidth" data-testid="stitch-width-row">
+                        <label class="dgp-lwidth-label">
+                          <span>Stitch width</span>
+                          <input
+                            type="number"
+                            class="dgp-lwidth-input"
+                            min={STITCH_WIDTH_MIN_MM}
+                            max={STITCH_WIDTH_MAX_MM}
+                            step="0.1"
+                            placeholder={"auto " + fmtMm(row.stitchWidth.autoMm)}
+                            value={swOverride == null ? "" : swOverride}
+                            aria-label={"Stitch width — " + rowAria}
+                            title={"The satin column this shape sews, in mm (" + STITCH_WIDTH_MIN_MM + "–" + STITCH_WIDTH_MAX_MM + "). Empty = the engine's own reading. Wider makes small letters bolder; narrower opens their counters."}
+                            on:change={(e) => setShapeStitchWidth(row, e.currentTarget.value)}
+                          />
+                          <span class="dgp-unit">mm</span>
+                        </label>
+                        {#if swOverride != null}
+                          <button
+                            type="button"
+                            class="dgp-lbtn dgp-lwidth-auto"
+                            title={swGroupN > 1 && !wordScope.has(row.id) ? "Back to the engine's own width, for the whole word" : "Back to the engine's own width"}
+                            on:click={() => setShapeStitchWidth(row, "")}
+                          >Auto</button>
+                        {/if}
+                        {#if swGroupN > 1}
+                          <label class="dgp-lwidth-scope" title="Apply this width to every letter of the word, so the word sews at one weight. Untick to change only this shape.">
+                            <input
+                              type="checkbox"
+                              checked={!wordScope.has(row.id)}
+                              on:change={() => toggleWordScope(row)}
+                              aria-label={"Whole word — " + rowAria}
+                            />
+                            whole word
+                          </label>
+                        {/if}
+                        <span class="dgp-lwidth-note">{stitchWidthNote(row, overrides)}</span>
+                      </div>
+                    {/if}
                   {/if}
                 </div>
                 <div class="dgp-lbtns">
@@ -3214,6 +3368,21 @@
     cursor: pointer;
   }
   .dgp-lsel:hover { border-color: var(--accent, #4f46e5); }
+  .dgp-lwidth { gap: 6px; }
+  .dgp-lwidth-label { display: inline-flex; align-items: center; gap: 4px; font-size: var(--fs-2xs, 0.6875rem); }
+  .dgp-lwidth-input {
+    width: 64px;
+    padding: 2px 4px;
+    font-size: var(--fs-2xs, 0.6875rem);
+    border: 1px solid var(--tint-border, #ccd6fb);
+    border-radius: var(--radius-s, 8px);
+    background: var(--surface, #fff);
+    color: var(--ink, #1c1f26);
+  }
+  .dgp-lwidth-input:focus { border-color: var(--accent, #4f46e5); outline: none; }
+  .dgp-lwidth-auto { width: auto; padding: 0 6px; }
+  .dgp-lwidth-scope { display: inline-flex; align-items: center; gap: 3px; font-size: var(--fs-2xs, 0.6875rem); cursor: pointer; }
+  .dgp-lwidth-note { font-size: var(--fs-2xs, 0.6875rem); color: var(--ink-soft, #5c6270); flex-basis: 100%; }
   /* A 4-wide grid, not a 1-wide column. These seven 26x18 buttons were
      stacked vertically, which made `.dgp-lbtns` 26px wide and 138px TALL --
      and since it is the tallest child of `.dgp-layer`, it set every row's
