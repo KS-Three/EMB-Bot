@@ -28,6 +28,15 @@ BACKGROUND_ABSENT = "BACKGROUND_ABSENT"            # full-bleed art: no backgrou
 # extra: {"signal": "exif" | "face", "detail": str}
 PHOTO_DETECTED = "PHOTO_DETECTED"
 
+# Stage 1.25 under cfg.faces_route_flat (Kent's ruling 2026-09-30, see
+# config.py): a face was found and the design took the FLAT lane for it,
+# exactly as forced_class="flat" would. Emitted INSTEAD of PHOTO_DETECTED —
+# the two would contradict each other on one screen ("digitized as a
+# photograph" beside "sewing as flat art"), and the photographic machinery
+# PHOTO_DETECTED announces is precisely what this route declines.
+# Info, not a problem. extra: {"faces": int, "detail": str}
+FACE_ROUTED_FLAT = "FACE_ROUTED_FLAT"
+
 # Stage 1.5 (photo prep — photo plan §2 rows 3-4, build step 3 first slice)
 # Info, not a problem: tone prep + texture kill ran on this photo-classified
 # design. extra: {"technique": str, "fallback": bool (rolling_guidance

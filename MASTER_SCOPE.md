@@ -80,16 +80,20 @@ is 95.8% grid noise). **The per-stroke rung was BUILT INERT 2026-09-05 and WIRED
 
 15. **An UNDECLARED photograph gets neither depth sequencing nor the palette
     bind, and its region re-snap escapes the selected palette.** `is_photographic`
-    gates the fix and is DECLARED, not detected — `owl_kent.jpg` reads LESS
+    gates the fix and was DECLARED, not detected, until 2026-09-30 (the Studio
+    now asks for detection on every job and declares nothing) — `owl_kent.jpg` reads LESS
     photographic than two logos, so a photograph left undeclared routes
 gradient and the re-snap sews more spools than the cone list names. **Counted 2026-09-06** (`tools/resnap_escape.py`): **34 cones added corpus-wide, 25 outside the selected palette, every escape on the GRADIENT lane** — while all nine photo-class fixtures add none. The binding works; the lane real logo art routes to never got it. **FIXED, DEFAULT ON since 2026-09-10** (`cfg.bind_resnap_all_classes`, Kent's colour-bundle ruling; False is the pre-flip engine). It also closes half of defect 18's third mechanism — `screenshot` goes 17 blocks / 16 distinct with `3971` sewn twice, to 11 / 11 with no duplicate. Full trade: [area 1](docs/scope/1-auto-digitizing-quality.md). *(measured 2026-09-06 — scope-history 09-06)*
-    **UI HALF FIXED 2026-09-02 (Kent's call):** the reading row's "It's a
-    photo" correction now sends `is_photographic` instead of
+    **UI HALF FIXED 2026-09-02 (Kent's call), REMOVED 2026-09-30 (Kent's
+    call — the Studio no longer carries any per-design class override; it
+    sends `detect_photographic=true` and `faces_route_flat=true` instead, see
+    area 3 and DOCTRINE 2026-09-30 "A face sews FLAT"):** the reading
+    row's "It's a photo" correction sent `is_photographic` instead of
     `forced_class="photo_subject"`. It was answering the wrong question —
     forcing the FILL TIER rather than declaring content — and measurably
     hurt: owl_kent @ 80 mm goes 13 stops → **17** forced, vs **11 on 12
     cones** (from 14) declared, for ~6% more stitches. The flat-art override
-is untouched; only the photo direction moved. **DETECTION BUILT 2026-09-11, DEFAULT OFF** (`cfg.detect_photographic`, stage 1.25): EXIF camera then the shipped YuNet detector; a hit fills `is_photographic` True — never False, never over a declaration — so it can only ADD photographs. **It changes nothing on this repo's artwork** (all 22 fixtures identical on and off; 0 false positives across 14 logos), which is both why it is safe and why it is unproven here; `owl_kent` is the real photograph BOTH signals miss, so the declaration stays the fallback. The value is on real uploads.
+was untouched that day; both directions went on 09-30. **DETECTION BUILT 2026-09-11, DEFAULT OFF** (`cfg.detect_photographic`, stage 1.25): EXIF camera then the shipped YuNet detector; a hit fills `is_photographic` True — never False, never over a declaration — so it can only ADD photographs. **It changes nothing on this repo's artwork** (all 22 fixtures identical on and off; 0 false positives across 14 logos), which is both why it is safe and why it is unproven here; `owl_kent` is the real photograph BOTH signals miss, so the declaration stays the fallback. The value is on real uploads.
     also why it is unproven here. *(measured 2026-09-11 — `digitizer/tools/photo_signals.py`; `tests/test_photo_detection.py`, 28)* *(measured 2026-09-02; the earlier
     26-stop figure for the forced route predates the rehome, borders-last
     and the cone fold — 17 is current, the ordering it was cited for is not)*
@@ -695,7 +699,7 @@ deferred by Kent). Driven in a real browser against the real service
 Six buyer-visible defects across the 2026-08-25 and 09-07 sweeps, none seen by a
 green suite. The list: DOCTRINE "Gotchas".
 
-**Uploading artwork is the whole interaction** — the run starts on upload and the panel states what the art was read as, with the override as a one-click correction; [area doc](docs/scope/3-studio-app-wizard.md). *(confirmed 2026-08-30)*
+**Uploading artwork is the whole interaction — the panel asks NOTHING about what the art is** (the "It's flat art" / "It's a photo" / "Use automatic detection" buttons went 2026-09-30, Kent's call): the Studio sends `detect_photographic` and `faces_route_flat` in place of any per-design override, and a found face sews FLAT; a misroute is phase 2's to fix, not a button's; [area doc](docs/scope/3-studio-app-wizard.md), DOCTRINE 2026-09-30. *(confirmed 2026-09-30)*
 
 **The hoop you picked is DRAWN, and the export gate uses it** — four of ten garments have placement boxes larger than the biggest hoop (defect 39); [area doc](docs/scope/3-studio-app-wizard.md). *(2026-09-02 — PR #317; 2026-09-07)*
 

@@ -105,9 +105,10 @@ export async function fetchHealth(fetchFn = globalThis.fetch) {
 //     after the one cache-key change.
 // fill_angle_deg is omitted when null: null means "per-shape auto" and the
 // service treats an absent key the same way — omitting keeps the config (and
-// the job cache key) minimal. forced_class (the flat-art override the panel
-// offers on a photo misroute) is omitted the same way and for the same
-// reason: absent IS "classify normally" server-side.
+// the job cache key) minimal. `forced_class` and `is_photographic` are never
+// sent at all (see the detect_photographic block below): stage 0 classifies
+// every job, and the Studio no longer carries a per-design override of it.
+
 // `fabrics.py`'s PROFILE_FIELDS and no-op values, verbatim. Key filtering
 // only — the arithmetic lives in the engines (src/fabrics.js, fabrics.py).
 const FABRIC_PROFILE_FIELDS = ["pull_comp_delta_mm", "density_scale", "trim_at_delta_mm"];
@@ -159,53 +160,38 @@ export function buildDigitizeConfig(element, project) {
   // makes the photo worse). Omitting it is what hands the decision back.
   // An explicit "off" from the user is still a choice and is still sent.
   if (p.border != null) cfg.border = p.border;
-  // Stage 0's escape hatch, stored in element.params like any other design
-  // property (so it persists in the .embproj and rides the panel's own
-  // params-changed re-digitize) but written ONLY when the user overrode the
-  // classification — an unset override must not change the config, or every
-  // design that never touched it takes a needless cache miss.
+  // The Studio ASKS NOTHING about what the art is (Kent's call, 2026-09-30:
+  // "get rid of the 'it's flat art' / 'it's a photo' check boxes ... just
+  // automatically recognize what it is, and how it needs to be digitized").
+  // Until that day this branch forwarded two per-design overrides -- a
+  // stored `params.forced_class` ("It's flat art", which forced stage 0's
+  // fill TIER) and `element.isPhoto` ("It's a photo", which declared
+  // `is_photographic` and bought the photographic machinery). Neither is
+  // read any more, on purpose: a project saved with either still loads, and
+  // digitizes exactly as a fresh upload of the same art would. Stage 0's
+  // reading is the product's reading, so ROADMAP phase 2 (real logos reach
+  // the lane their content actually is) is now the fix for a misroute, not
+  // a button.
   //
-  // `isPhoto` (spec 2026-08-18 decision 4; set by the reading row's "It's a
-  // photo" correction in DigitizePanel, a checkbox in the params list until
-  // 2026-08-30) drives
-  // the SAME wire field the opposite direction, so it is resolved here too —
-  // but it lives on the element itself, not element.params (see
-  // defaultDigitizedElement's comment), because it names a fact about the
-  // art rather than a PipelineConfig field passed through verbatim.
-  //
-  // Checked wins over a leftover params.forced_class (controller ruling,
-  // fix round 1 2026-08-19): the checkbox is the user's current, explicit
-  // word on the art, and a stale "digitize as flat art" override from an
-  // earlier misroute must not silently out-rank it. The primary defense is
-  // DigitizePanel.svelte's own checkbox handler, which clears
-  // params.forced_class in the SAME patch that sets isPhoto — so the two
-  // never actually coexist on an element edited through the live UI, and
-  // the panel's reading row never gets a chance to contradict what gets sent
-  // (it now resolves isPhoto first for the same reason, so the two cannot
-  // disagree even if a patch ever left both set). This branch is the safety net for whatever the UI doesn't
-  // reach: a project loaded with both fields already set (saved before the
-  // checkbox existed, or from any path that predates that handler).
-  //
-  // WHAT IT SENDS CHANGED 2026-09-02 (Kent's call, defect 15). It used to
-  // send `forced_class="photo_subject"`, which forces stage 0's FILL TIER
-  // and adds thread-paint. That is a different question from "is this
-  // photographic content", which is what the user is actually answering,
-  // and on real photographs it made things worse: on `owl_kent.jpg` @ 80 mm
-  // the checkbox took the design from 13 stops to SEVENTEEN, while
-  // `is_photographic` takes it to ELEVEN on twelve cones instead of
-  // fourteen — depth sequencing plus the palette bind, without forcing the
-  // tier. (MASTER_SCOPE's 26-stop figure for the forced route is from
-  // 2026-08-28 and predates the rehome, borders-last and the cone fold; 17
-  // is what it measures today. The ordering it was cited for is unchanged.)
-  // It costs ~6% more stitches and buys two fewer operator stops and two
-  // fewer spools, which is the trade the palette bind exists to make.
-  //
-  // `forced_class` remains reachable through a stored `params.forced_class`
-  // — the flat-art override on a photo MISROUTE, which is the opposite
-  // correction and still legitimate. Only the "it's a photo" direction
-  // moved.
-  if (element && element.isPhoto) cfg.is_photographic = true;
-  else if (p.forced_class) cfg.forced_class = p.forced_class;
+  // What replaces the "It's a photo" declaration is the engine's own
+  // detection (`cfg.detect_photographic`, stage 1.25, built 2026-09-11 and
+  // OFF in the engine): EXIF camera Make/Model, then the shipped YuNet face
+  // detector. A hit fills `is_photographic` in as True -- depth sequencing,
+  // the palette bind, the photo yardstick -- and silence changes nothing at
+  // all, which is why sending it can only ADD photographs and never takes
+  // one away (photo_signals.py carries the contract; 0 false positives on
+  // 14 logos when built). EXIF needs the ORIGINAL bytes, which is what
+  // imageToSend posts for a stored upload; a design digitized from its
+  // saved preview still gets the face half. Sent unconditionally, like
+  // detail_layer: one cache-key change on existing designs, after which a
+  // design no signal fires on re-digitizes to identical output.
+  cfg.detect_photographic = true;
+  // A FACE SEWS FLAT (Kent's ruling 2026-09-30, from two stand-in portraits
+  // rendered down both lanes): when that detection finds a face, the engine
+  // takes the flat lane for it, exactly as the old "It's flat art" button
+  // did, and says so with FACE_ROUTED_FLAT in place of PHOTO_DETECTED.
+  // Engine default OFF like the flag above; config.py carries the numbers.
+  cfg.faces_route_flat = true;
   // Dev/ops seam, not a design property (see sam2Enabled above): sent as
   // per-request context alongside thread_brand rather than stored in
   // element.params, so it never persists into a saved project. Sent for every
@@ -1480,8 +1466,11 @@ export const SILENT_WARNINGS = new Set([
 // actionable warning is one disclosure click away; the other default is how a
 // panel becomes a wall nobody reads, which is the state this replaced.
 export const ATTENTION_WARNINGS = new Set([
-  // "check the preview closely before stitching this one out"
+  // "check the preview closely before stitching this one out" -- the three
+  // stage-0 photo verdicts and stage 1.25's, which the Studio can emit since
+  // 2026-09-30 and which asks the same thing
   "CLASSIFIED_PHOTO_SUBJECT", "CLASSIFIED_PHOTO_SCENE", "CLASSIFICATION_UNCERTAIN",
+  "PHOTO_DETECTED",
   // something is missing, or may be
   "BACKGROUND_UNCERTAIN", "DROPPED_SMALL_SHAPES", "SHAPE_NOT_STITCHED",
   "SHAPES_LEFT_UNSEWN", "SHAPE_TOO_THIN_TO_FILL",
@@ -1518,12 +1507,14 @@ const WARNING_TEXT = {
   // that reading is right" costs the real photographs nothing and stops the
   // misread ones asserting something false about someone's artwork.
   //
-  // The CORRECTION deliberately stays out of these sentences. DigitizePanel's
-  // read-row already offers it with a button, on exactly these three codes,
-  // and putting it here too printed the same guidance twice on one screen —
-  // which three panel tests caught by finding two matches where they expect
-  // one. Warning text says what the engine decided; the read-row is where the
-  // customer changes it. Kent's call to fix the copy, 2026-09-11.
+  // These sentences say what the engine DECIDED and nothing else. Until
+  // 2026-09-11 a correction lived here too, duplicating the read-row's own
+  // (three panel tests caught the same guidance printed twice on one
+  // screen); since 2026-09-30 there is no correction anywhere -- Kent
+  // removed the per-design override, so the reading is the reading. The
+  // "if that reading is right" hedge stays, because stage 0 still misroutes
+  // real logos and the customer deserves to know the consequence is
+  // conditional.
   CLASSIFIED_GRADIENT: () =>
     "The art reads as smooth shading rather than flat color. Areas that shade smoothly enough sew in a few blended thread shades; the rest sew in one flat color.",
   CLASSIFIED_PHOTO_SUBJECT: () =>
@@ -1532,9 +1523,8 @@ const WARNING_TEXT = {
     "The art reads as a photographic scene. If that reading is right, photos sew rougher than flat artwork — check the preview closely before stitching this one out.",
   CLASSIFICATION_UNCERTAIN: () =>
     "The art didn't clearly read as flat, shaded or photographic, so it was digitized as flat art. If it's really a photo, expect a rougher result than usual.",
-  // Stage 7's own routing note (digitizer_core/warnings_codes.py) for the
-  // user's own "It's a photo" correction and any art that classifies as a
-  // photo on its own: names WHAT tier the auto-route picked, but the code's value is
+  // Stage 7's own routing note (digitizer_core/warnings_codes.py) for art
+  // that classifies as a photo: names WHAT tier the auto-route picked, but the code's value is
   // lowercase ("photo_auto_tier", not PHOTO_AUTO_TIER like every code above)
   // so the key here has to match that exactly or it silently falls through
   // to describeWarnings' engine-voice fallback. Text is fixed rather than
@@ -1548,6 +1538,13 @@ const WARNING_TEXT = {
   // tighter), and because a customer who disagrees can say so. The engine
   // sentence it replaces names the palette bind and the shade bind, which are
   // internal machinery nobody uploading a picture has heard of.
+  // Stage 1.25 under faces_route_flat (Kent's ruling 2026-09-30): a face
+  // was found and the design went down the flat lane for it — the route
+  // his own portrait looked best on. Says what happened and why; the
+  // reading row says the same in its own words, and nothing here asks for
+  // anything, so it stays a note.
+  FACE_ROUTED_FLAT: () =>
+    "A face was found in this art, so it's sewing as flat art: solid color regions with an outline, which reads better for a face than shaded thread.",
   PHOTO_DETECTED: (w) =>
     (w && w.signal === "face"
       ? "A face was detected in this art, so it was digitized as a photograph. "

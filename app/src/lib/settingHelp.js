@@ -62,9 +62,9 @@ export const HELP = {
   },
   photoReading: {
     title: "How the artwork was read",
-    what: "Flat art sews as solid colour regions; a photo sews as shaded, layered fills.",
-    changes: "Switching to photo turns on tonal blending and detail lines: many more stitches and a rougher look up close — right for a portrait, wrong for a logo.",
-    when: "Correct it only when the digitizer got it wrong: a logo read as a photo sews muddy; a photo read as flat art loses its shading.",
+    what: "The digitizer decides this on its own: flat art sews as solid colour regions, shaded art in blended thread shades, and a photo with a face in it sews as flat art, which reads best for a face.",
+    changes: "Nothing here is a switch. Add fine detail lines, offered on photos and shaded art, stitches a layer of fine lines on top: more stitches, more detail up close.",
+    when: "If the reading looks wrong for your artwork, the fix is cleaner artwork — solid colours and no shading for a logo, a clear face for a portrait — not a setting.",
   },
 
   // ---- Digitize panel: per-shape controls -------------------------------

@@ -16,8 +16,8 @@ must say so out loud. It may not move the marker itself.
 **Phase 1 — Foundation.** In parallel: **Phase 4 — Finish (tonal)**, un-tabled
 by Kent 2026-08-18 (decision record:
 `docs/superpowers/plans/2026-08-18-photo-tonal-v1-spec.md`). Phases 2–3 remain
-open; phase-4 v1 works around stage 0 with an explicit user override, not by
-advancing them.
+open; the Studio's per-design override of stage 0 is gone (Kent's call —
+DOCTRINE), so a misroute is phase 2's to fix, not a button's.
 
 ## Engine track
 

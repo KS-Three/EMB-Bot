@@ -19,7 +19,7 @@ is live**. None was guarded before this file.
 | site | codes | owner | what a rename deletes |
 |---|---|---|---|
 | `digitizer.js` `WARNING_TEXT` | 38 | `warnings_codes` | the translation. The panel falls back to the engine's own build-status prose -- the exact thing Kent's 2026-08-30 note ("IDK what ANY of that even means") was about |
-| `DigitizePanel` flat-art nudge | 4 `CLASSIFIED_*` | `warnings_codes` | the nudge never appears again |
+| `DigitizePanel` reading row | 4 `CLASSIFIED_*` + `PHOTO_DETECTED` | `warnings_codes` | the row reads every art as flat |
 | `DigitizePanel` `otherWarningLines` | `BACKGROUND_ENCLOSED` | `warnings_codes` | its dedicated banner duplicates into the plain list |
 | `DigitizePanel` merge/split notes | 2 `*_BY_USER` | `warnings_codes` | the review-screen note vanishes |
 | `DigitizePanel` `FIX_FOR` + trim panel | 4 | `preflight` | the one-press fix button stops being offered |

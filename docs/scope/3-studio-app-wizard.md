@@ -804,16 +804,29 @@ The 27,000-word budget tripped on 2026-09-30 (27,070 after two lanes landed in o
 
 ### Uploading artwork is the whole interaction
 
-**Uploading artwork is the whole interaction — the panel no longer asks the
-user to classify it first.** The run starts on upload and the panel STATES what
-the art was read as ("Read as flat art" / "as a photo" / "as shaded artwork" /
-"couldn't tell"), with the override recast as a one-click correction to that
-sentence. `detail_layer` sits on that row too (Kent 2026-08-30) and appears only
-where the art is actually on a tonal lane, by reading or by override. Nothing
-changed in what gets sent, so area 1's photo-control numbers are untouched, and
-the engine's routing is unchanged — ROADMAP gate 2 bars recalibrating stage 0,
-and phase-4 v1 works around it with exactly this override.
-*(confirmed 2026-08-30 — driven in a real browser against the real service, every state of the row clicked through and looked at; pinned by e2e `digitize-auto-start.spec.js`; numbers in scope-history 08-30)*
+**Uploading artwork is the whole interaction — the panel asks NOTHING about
+what the art is.** The run starts on upload and the panel STATES what the art
+was read as ("Read as flat art" / "as a photo" / "as shaded artwork" /
+"couldn't tell" / "A face was found, so it's sewing as flat art"). **The
+per-design override is GONE (Kent's call 2026-09-30):** the "It's flat art" /
+"It's a photo" / "Use automatic detection" buttons that had sat on that row
+since 2026-08-30 are removed, the Studio no longer sends `forced_class` or
+`is_photographic` at all, and a project saved with either digitizes as a fresh
+upload would. In their place the Studio sends `detect_photographic=true` on
+every job, so the engine's own EXIF-or-face detection (area 1, built
+2026-09-11, engine default still OFF) answers "is this a photograph" — **and a
+found face routes the design FLAT (`faces_route_flat`, Kent's ruling later
+that day from two stand-in portraits rendered down both lanes; DOCTRINE
+2026-09-30 "A face sews FLAT")**. `detail_layer` still sits on the row and
+appears only where the art is photographic or shaded by the engine's reading
+(`PHOTO_DETECTED` and `FACE_ROUTED_FLAT` count). **The cost is real and
+named:** stage 0 still misroutes most real logos (ROADMAP phase 2), and a
+misrouted design now has no in-product correction — the routing is the fix,
+not a button; a detection false positive (camera EXIF on a scanned flat logo)
+is likewise unmitigated in the product. Before 2026-09-30 this entry read
+"with the override recast as a one-click correction to that sentence" and
+"phase-4 v1 works around it with exactly this override"; both are history.
+*(confirmed 2026-09-30 — `digitizer.spec.js` legacy-override tests, `DigitizePanel.spec.js` reading-row block, e2e `digitize-auto-start.spec.js` reads the POSTed config; the 08-30 browser drive and its numbers in scope-history 08-30)*
 
 ### The hoop you picked is drawn, and the export gate uses it
 
