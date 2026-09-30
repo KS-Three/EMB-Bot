@@ -673,7 +673,12 @@
     // selection change closes it rather than re-aiming it (the preset model
     // ignores shapeId, so a re-aimed colour pick would land on another element).
     shapePop = { x: e.clientX - r.left, y: e.clientY - r.top, elementId: el ? el.id : null };
+    // A spot the user dragged the dialog to holds for later shapes of the SAME
+    // element (that is the point of moving it); another element opens at the
+    // click again. Session only — never saved with the project.
+    if (popPosition && popPosition.elementId !== shapePop.elementId) popPosition = null;
   }
+  let popPosition = null;   // null | { x, y, elementId } in .hoop px
 
   // Every user-driven close (Escape, an outside press, Delete, Edit points, a
   // click off every shape) hands keyboard focus back to the canvas, so the
@@ -2913,6 +2918,8 @@
         model={popModel}
         anchor={shapePop}
         bounds={hoopBounds}
+        position={popPosition && popPosition.elementId === shapePop.elementId ? popPosition : null}
+        on:move={(e) => (popPosition = { x: e.detail.x, y: e.detail.y, elementId: shapePop.elementId })}
         on:change={onPopChange}
         on:action={onPopAction}
         on:close={closeShapePop}

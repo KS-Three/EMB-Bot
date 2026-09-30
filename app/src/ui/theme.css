@@ -769,7 +769,14 @@ h1, h2 { letter-spacing: var(--tracking-tight); }
   font-size: var(--fs-sm);
   color: var(--muted);
   white-space: nowrap;
+  cursor: move;
+  user-select: none;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  touch-action: none;
 }
+.shapepop-grip { color: var(--muted); letter-spacing: -2px; }
 .shapepop-row {
   display: flex;
   align-items: center;
