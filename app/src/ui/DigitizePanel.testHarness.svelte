@@ -14,6 +14,12 @@
   export let project = {};
   export let health = null;
   export let onPatch = () => {};
+  // The list <-> canvas shape sync (2026-09-30): the two ids App hands the
+  // panel, and the two events it hands back.
+  export let hoverShapeId = null;
+  export let selectedShapeId = null;
+  export let onShapeHover = () => {};
+  export let onShapeSelect = () => {};
 
   function handle(e) {
     element = { ...element, ...e.detail.patch };
@@ -21,4 +27,13 @@
   }
 </script>
 
-<DigitizePanel {element} {project} {health} on:elupdate={handle} />
+<DigitizePanel
+  {element}
+  {project}
+  {health}
+  {hoverShapeId}
+  {selectedShapeId}
+  on:elupdate={handle}
+  on:shapehover={(e) => onShapeHover(e.detail)}
+  on:shapeselect={(e) => onShapeSelect(e.detail)}
+/>

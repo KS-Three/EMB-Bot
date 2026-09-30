@@ -78,16 +78,37 @@ async function hoopCentre(page) {
 }
 
 // First dark (stitch) pixel column on the hoop canvas, in canvas px; -1 if none.
+// The canvas outside the hoop is a dark surround since 2026-09-30, so "dark"
+// is thread only INSIDE the fabric: both samplers below find the fabric
+// first (the bounding box of the pale pixels, pulled in 3% a side so the
+// hoop's rounded corners stay out) and read within it. Same rule as
+// field-chrome.spec.js's ink test.
+const FABRIC_BOX_SRC = `(function (d, w, h) {
+  let x0 = Infinity, y0 = Infinity, x1 = -1, y1 = -1;
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const i = (y * w + x) * 4;
+    if (d[i + 3] > 200 && d[i] > 150 && d[i + 1] > 150 && d[i + 2] > 150) {
+      if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
+    }
+  }
+  if (x1 < 0) return null;
+  const tx = Math.round((x1 - x0) * 0.03), ty = Math.round((y1 - y0) * 0.03);
+  return { x0: x0 + tx, x1: x1 - tx, y0: y0 + ty, y1: y1 - ty };
+})`;
+
 async function firstDarkColumn(page) {
-  return page.evaluate(() => {
+  return page.evaluate((boxSrc) => {
+    const fabricBox = eval(boxSrc);
     const c2 = document.querySelector(".hoop canvas");
     const d = c2.getContext("2d").getImageData(0, 0, c2.width, c2.height).data;
-    for (let x = 0; x < c2.width; x++) for (let y = 0; y < c2.height; y++) {
+    const f = fabricBox(d, c2.width, c2.height);
+    if (!f) return -1;
+    for (let x = f.x0; x <= f.x1; x++) for (let y = f.y0; y <= f.y1; y++) {
       const i = (y * c2.width + x) * 4;
       if (d[i] < 80 && d[i + 1] < 80 && d[i + 2] < 80) return x;
     }
     return -1;
-  });
+  }, FABRIC_BOX_SRC);
 }
 
 test("hand-drawn lane: click inside the shape opens its popover; Satin restitches; Escape closes", async ({ page }) => {
@@ -165,11 +186,13 @@ test("a drag that starts inside a shape moves the element and opens nothing", as
 // on the hoop canvas: "amber" is the selected outline's core stroke,
 // rgba(255, 214, 64, 0.95) in drawShapeOutlines; "dark" is black thread.
 async function columnRuns(page, kind) {
-  return page.evaluate((kind) => {
+  return page.evaluate(([kind, boxSrc]) => {
+    const fabricBox = eval(boxSrc);
     const c = document.querySelector(".hoop canvas");
     const d = c.getContext("2d").getImageData(0, 0, c.width, c.height).data;
+    const f = fabricBox(d, c.width, c.height) || { x0: 0, x1: c.width - 1, y0: 0, y1: c.height - 1 };
     const on = new Uint8Array(c.width);
-    for (let y = 0; y < c.height; y++) for (let x = 0; x < c.width; x++) {
+    for (let y = f.y0; y <= f.y1; y++) for (let x = f.x0; x <= f.x1; x++) {
       const i = (y * c.width + x) * 4;
       const hit = kind === "amber"
         ? d[i] > 230 && d[i + 1] > 190 && d[i + 1] < 235 && d[i + 2] < 110
@@ -185,7 +208,7 @@ async function columnRuns(page, kind) {
     }
     if (start >= 0) out.push([start, last]);
     return out;
-  }, kind);
+  }, [kind, FABRIC_BOX_SRC]);
 }
 
 test("Delete in the side panel, or Backspace on its draft, never deletes the field's selected shape", async ({ page }) => {
@@ -320,6 +343,7 @@ test("digitized lane: click inside a square opens the Layers row's controls; Bor
   await expect.poll(() => page.locator(".dgp-stats").innerText(), { timeout: 120_000 }).not.toBe(before);
 
   // The panel's own Border select reads the same value.
+  await page.getByRole("tab", { name: "Shapes" }).click();
   const rows = page.getByRole("button", { name: /^Edit shapes/ });
   if ((await rows.getAttribute("aria-expanded")) !== "true") await rows.click();
   await expect.poll(() => page.locator('select[aria-label^="Border — "]').evaluateAll((els) => els.map((e) => e.value))).toContain("auto");

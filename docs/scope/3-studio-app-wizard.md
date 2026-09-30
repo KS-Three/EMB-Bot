@@ -637,6 +637,167 @@ U+2019 sewing "Fritschs Stitches", under a note naming a character that looks
 identical to the one typed): DOCTRINE; scope-history 09-07.
 *(fixed 2026-09-07)*
 
+## The surround, the flat panel, and the scale bar (2026-09-30)
+
+Kent's brief, in his words: the Studio "feels a little un-professional",
+the main preview is "hard to navigate", and he wants it to "look professional
+like SpaceX or a Tesla website". Reviewed by driving both lanes at 1440×900
+and reading `theme.css` against the screenshots; the review's full finding
+list (tooltips, panel↔canvas selection sync, the toolbar, the Download step,
+the panel split) is in the session and this entry records only what SHIPPED,
+which is the first of those PRs. Two things were found NOT to be wrong on the
+way: Inter IS loaded (`main.js` imports `@fontsource-variable/inter`;
+`document.fonts.check` → true), and the token system is real. What made it
+read as a template was elevation and grounds, not type.
+
+**The canvas outside the hoop is a dark neutral surround.** `--surround`
+(#22252c) with four on-surround text tokens, contrast measured in the token
+comment (ink 12.75, muted 6.51, warn 8.35, danger 7.65). `renderRealistic`
+takes `surround` and, with a hoop, fills the canvas with it and clips the
+fabric and weave to the hoop's rounded rect (`hoopRectPx`, the one place the
+ring's rectangle and radius are computed, so the fill's edge and the stroke
+agree to the pixel). Without the option, or without a hoop, the path is
+byte-for-byte what it was — thumbnails and PNG export never see it
+(`preview.spec.js`, four new). The panel stays LIGHT on purpose: workbench
+beside a viewport, not a page-wide dark mode. **What this cost:**
+`e2e/field-chrome.spec.js`'s HiDPI ink test counted any dark pixel as
+thread, which on a dark surround is the whole canvas; it now finds the fabric
+first (the bounding box of the pale pixels, pulled in 3% a side for the
+corners) and counts ink inside that. Its target — an unscaled context, which
+paints everything in the top-left quadrant — still reads ~0.25 because the
+fabric moves with the ink. Dry-run on the live canvas before the suite:
+centre 0.501 / 0.499, ink bbox the text and not the hoop.
+
+**The garment step is flat.** Radii 8/12/18 → 4/6/10; the 2px borders on
+tiles, cards, rows, the font trigger and the topbar buttons are 1px; the
+elevation-pass shadows on `.tile`, `.tcard`, `.hooptile`, `.elrow`,
+`.fs-trigger`, `.drawer-row` and the topbar are gone, and so is the hover
+lift. Selection is the accent border plus `--ring-inset` (2px of accent, no
+layout change). The four hoops are one segmented strip, the picked segment
+ink-filled; the fabric swatches are round with an inset hairline so White
+still has an edge. Same DOM, same class names, so `GarmentStep.spec.js` and
+every e2e locator are untouched. *(This supersedes the 2026-08-25 audit line
+above that elevation "is applied consistently across two tokens" — cards no
+longer carry it; popovers, menus and the drawer still do.)*
+
+**A scale bar in the zoom bar.** `lib/scalebar.js` picks the longest round
+length (1 … 200 mm) that fits 120 px at the render's px-per-mm, which already
+has the view's zoom in it, so it follows wheel and button zoom for free. HTML
+in the zoom bar, not paint on the canvas: it never covers sewable field
+(DOCTRINE; `field-chrome.spec.js` pins that no chrome lands on the canvas),
+it does not disturb the pixel counts three specs read off the bitmap, and it
+needs no dpr of its own. `scalebar.spec.js`, five.
+
+Two defects of the change itself, both seen in the screenshots and fixed
+before the PR: the drag-field hint bubble inherited `.field`'s light
+on-surround ink and its copy went near-invisible on the tint (colour now
+stated on `.hintbubble`); the custom fabric `<input type=color>` stayed square
+beside eight round swatches (its `::-webkit-color-swatch` is rounded; Firefox
+keeps a square, not a broken control).
+
+*(built and looked at 2026-09-30 — both lanes driven at 1440×900, the logo
+lane against the live service; Studio unit suite 1,322 passed; e2e suite run
+in full before the push)*
+
+## The Layers list and the canvas point at the same shape (2026-09-30)
+
+Second PR of the design review. The finding: `EmbroideryField`'s
+`selectedShapeId` was set from a canvas hit only — its own comment said so —
+so a row in the 31-row Edit shapes list had no way to say which outline it
+was, and a shape on the canvas no way to say which row. "Hard to navigate
+what a digitized image is up" was mostly this.
+
+**One state, owned by App.** `hoverShape` and `selectedShape`, each
+`{ elId, shapeId }` or null. The panel's rows send `shapehover` on
+mouseenter/leave and the sewing rows' name (now a button, "Show #0134 on the
+canvas") sends `shapeselect`; the field sends the same two from its pointer
+(outline hit OR interior hit — the right-click menu's two tests) and from
+every path that changes its selection (`setSelectedShape`: click, right-click,
+Delete, the clear on element change). Each side draws the other's: the field
+outlines the hovered shape in white whether or not the outlines toggle is on
+(the signpost the toggle's comment said was lost), applies a row click as its
+own amber selection (`applyFocusShape`, so Delete and a boundary drag act on
+it); the panel takes a hover ground on the hovered row and the tint plus an
+accent edge on the selected one, and a canvas selection opens the closed list
+and scrolls its row into view (`revealRow`, `block: "nearest"`). Hidden and
+deleted rows keep a plain name: they have no outline to show, and a Delete
+armed on one would be a surprise. The panel only ever sees ids for the element
+it is showing (App narrows by `elId`), and nothing echoes: `setSelectedShape`
+is silent when unchanged, `applyFocusShape` never dispatches.
+
+*(built and looked at 2026-09-30 — `e2e/field-panel-sync.spec.js`, 3, against
+the live service, each reading the outline colour off the canvas; the panel's
+half in `DigitizePanel.spec.js`, 3; Studio unit 1,325, e2e full suite run
+before the push)*
+
+## Every setting explains itself on hover (2026-09-30)
+
+Third PR of the design review, and Kent's own idea from it: "when you hover
+over a setting or feature, it provides a brief description that pops up with
+what it does and how it changes the digitizing." The state before: 31
+native `title=` attributes in DigitizePanel, ONE of them on a design setting
+(Even out lettering widths); a browser tooltip waits about a second, cannot
+be styled, never shows for keyboard users and does not exist on touch.
+
+**The copy is data, in one file.** `lib/settingHelp.js` — 24 entries, each
+the same three sentences in the same order: *what* it is in embroidery terms,
+what *changes* in the stitch-out, *when* to touch it (and when to leave it).
+Kent edits wording there without touching a component; `settingHelp.spec.js`
+holds every entry to the shape (three non-empty sentences, none over 320
+characters, the three under 700, each ending as a sentence). Covered: the 8
+design settings (Design width, Colors, Satin for thin shapes, Even out
+lettering widths, Fill angle, Border, Design edge, the artwork-reading row),
+the 6 per-shape controls (Stitch type, Fill angle, Underlay, Border, Stitch
+width, whole word), the 7 canvas toolbar buttons, and the Text step's three
+sliders.
+
+**The popover is one Svelte action.** `use:tip={"fillAngle"}` (`lib/tip.js`)
+on a label, select, input or button: pointerenter shows after 150 ms (a
+pass-over does not flash), focusin shows at once, pointerleave / focusout /
+Escape hide, touchstart toggles. One `role="tooltip"` element for the whole
+app, appended to `<body>` so no scrolling panel clips it, positioned under
+the host and flipped above when there is no room, kept inside the viewport;
+the host carries `aria-describedby` while it is open, so a screen reader
+hears the same three sentences. Built with textContent, never innerHTML.
+`tip.spec.js`, six. A "?" ring beside each label is generated content on an
+empty aria-hidden element, so every label's accessible name — and every e2e
+locator that reads one — is unchanged.
+
+*(built and looked at 2026-09-30 — a hovered setting and a focused toolbar
+button screenshotted against the live service; Studio unit 1,336; e2e full
+suite before the push)*
+
+## Settings / Shapes / Threads (2026-09-30)
+
+The last item of the design review. The digitize panel's result section had
+grown to a 1,738px single column at 1440×900 — settings, the run's
+sentences, the warnings, four layer accordions, the spool list, rotation —
+and the customer's question ("what do I change?") sat under the expert's
+list. Three tabs once there is a result, with the stats line, "Since last run"
+and the run's warnings above them as the part every tab shares: **Settings**
+(the fixes, notes, re-digitize-at-size, rotation), **Shapes** (the enclosed
+banner and the whole Layers block with its editors), **Threads** (the spool
+list). A shape picked on the canvas switches to Shapes before scrolling to
+its row (`revealRow`). Counts on the tabs are aria-hidden so the names stay
+the plain words every locator uses. The eight e2e helpers that open the
+shape list click the tab first; the unit spec's `openLayers` does the same.
+
+**"Thread per color" lists spools, not sew blocks.** The design edge re-loads
+a cone, so a two-spool logo sews three blocks and the list read "1720 Not
+Quite Red" twice — the same defect MASTER_SCOPE 42(e)'s rule caught twice
+already on the summary and the review's shopping list, now on the third
+display. Grouped by the cone's name and colour ("loaded 2 times"); a pick
+recolours every block of that spool, since on the machine they are one.
+`DigitizePanel.spec.js` +4.
+
+*(built and looked at 2026-09-30 — the three tabs screenshotted on the logo
+lane against the live service; Studio unit 1,377; e2e full suite before the
+push)*
+
+
+## Moved from MASTER_SCOPE (2026-09-30) — two Studio entries
+
+Lifted verbatim from the area-3 summary to buy MASTER_SCOPE.md headroom for the 2026-09-30 design-review entry: the file stood at 27,273 words against its 27,000 budget with all four review parts written in. `MASTER_SCOPE.md` keeps a one-line pointer for each; these are the full entries.
 ## Moved from MASTER_SCOPE (2026-09-30) — five Studio entries, verbatim
 
 The 27,000-word budget tripped on 2026-09-30 (27,070 after two lanes landed in one evening) and its own failure message named this area as the reclaim: 80 lines in the dashboard against 638 here. Each paragraph below is the full text that used to sit under the verdict; MASTER_SCOPE keeps a one-line verdict with a pointer for each. Nothing is deleted.

@@ -205,6 +205,8 @@ test("the thread picker offers the chart the design's cones came from", async ({
   await page.locator(".dgp-upload input[type=file]").setInputFiles(ART_PNG);
   await expect(page.locator(".dgp-stats")).toBeVisible({ timeout: 120_000 });
 
+  // The spool list lives on the Threads tab since 2026-09-30.
+  await page.getByRole("tab", { name: "Threads" }).click();
   await page.getByRole("button", { name: /^Thread color/ }).first().click();
   const brand = page.locator("select.tp-brand").first();
   await expect(brand).toBeVisible();
