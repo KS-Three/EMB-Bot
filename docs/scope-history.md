@@ -16529,3 +16529,47 @@ the Studio spec covers the jump and the fallback.
 
 *(built 2026-09-30 — `digitizer_core/preflight.py`, `tests/test_preflight.py`,
 `app/src/ui/DigitizePanel.svelte`, `DigitizePanel.spec.js`)*
+
+## 2026-09-30 — The envelope's junction escapes: a far rail that reached into the meeting arm, refused by the sibling rule (Kent's pick)
+
+Kent's note on the envelope's sitting — Becker *after better*, but *"the
+lettering needs to be smooth and have flow to it, these stitches look like
+they are just trying to fill a void"* — measured with a trace hook on
+`_rail_points` and answered. On Becker at 100 mm the envelope extended 183
+stations, 159 on the six satin letters; the E's stem read its far side at
+7.4–9.6 mm where its own half-width is 3.0–3.3, because the ray runs along
+an arm to the arm's end, for as long as the arm is thick (about 13
+stations, longer than the median and running-min windows together), and the corridor cap at the
+junction reads the merged footprint (3.66 → 6.05 mm). The stem's crosses
+ran 2–2.8 mm into the arms: of the envelope's 63 mm² of new ground on the
+letters, **78% was already sewn** by another stroke; the double-covered
+share rose 9.3 → 11.0%; rail jitter over 0.15 mm at the reached stations
+31.5% against 9.1% symmetric, and the letters' unreached crosses roughened
+8.3 → 20.0% through the refinement's notch filling. Nine logos: 459 reached
+stations, **313 escapes (68%)**. No cap on the reach separates them (≤ 1 mm
+keeps 89% of genuine reaches and 76% of escapes; a width ratio, the
+boundary distance at the end, no better); where the reach ENDS does:
+inside a sibling stroke's corridor, 89% / 5%.
+
+Shipped: `_in_sibling_ribbon` — an envelope reach whose end lies within a
+sibling stroke's own half-width (the median of the width field along its
+spine; the field's reading at the node is the merged footprint and refused
+a genuine reach on the stem's far side) keeps the symmetric width. Siblings
+are the shape's other strokes and, in a joined stroke, the other members.
+After it: 129 reached, 23 escapes, 106 genuine (93% of escapes gone, 73%
+of genuine kept); Becker 100 mm 9,563 → 8,932 stitches against 8,827
+symmetric, new ground 15.2 mm² at 87% bare before, double coverage 9.35%;
+Becker 80 mm bare 10.222 / 9.550 / 7.235% False / envelope / True at 5,691
+/ 5,697 / 6,079 stitches (the shipped envelope: 9.484 at 5,750). golden_tee's
+keyline reach, which the eye preferred, is another shape's ground and is
+untouched. MARINE's trims test: every arm cheaper (2,010 → 1,968 OFF,
+2,461 → 2,372 ON, 1.224 → 1.205; tip caps off 1.164 → 1.179), the second
+ceiling 1.18 → 1.19 for a reading a thousandth under the line. Fixture test: a stem with a
+6 mm arm, `max_width_mm=inf`; the rule neutered runs the stem's crosses to
+6.5 mm half-length against 4.0. Left, named: the remaining reaches are
+short (8 of 23 stretches 1–2 stations) and still triple the local jitter
+share — a minimum stretch length or a ramp is the next lever, coverage
+against flow; and split satin flickers on the letters under every rail
+mode (71% of crosses split, 18 of 22 runs mixed, 75 on/off transitions).
+Records: `docs/renders/envelope-escapes-2026-09-30/` (README, census.json,
+five strips for Kent's eye), DOCTRINE, `tools/envelope_escapes.py`.
