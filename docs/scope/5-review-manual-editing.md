@@ -935,6 +935,11 @@ looked at at 1440 × 900 and 1024 × 768.
 Open: whether Add should also offer the bean variant as a second item. Built as
 one gesture; the panel's select keeps the finer choice.
 
+**MASTER_SCOPE's summary of this section, moved here verbatim 2026-09-29** (its
+word budget; MASTER_SCOPE keeps a pointer):
+
+**The border decision is on the canvas too (2026-09-09, Kent's pick after item 6):** right-click a recognised shape — on its outline, or anywhere inside it — and the field's tool menu grows a shape section: the shape's name, then **Add border** (writes the engine's `auto`: satin where a column fits, bean where not) or **Remove border** (`off`), and **Use design setting** once the shape has its own. It writes `shapeOverrides[sid].border`, the field the panel's Border select already edits, through the same `elupdate` path as a boundary drag, so undo, carry-forward across a re-digitize and the automatic restitch all come for free; a shape sewn as satin gets no border from either way in (stage 7's rule, on the item's tooltip). **That restitch no longer waits (2026-09-17):** a border is complete when it is picked, so `editKind` schedules it at 0 ms; every other shape edit keeps the 2 s pause a drag needs. Narrow by construction — "border" only when EVERY difference in the edit set is a border value, so it cannot swallow a boundary. The edits that still pause say so, with a **Restitch now** control. *(measured 2026-09-17 — `editKind`, `lib/digitizer.js`; why it is not wider, in the area doc)* Interior picking is `shapeOverlay.hitShapeInterior` (smallest containing ring, so a mark inside a counter wins over its surround); the decision table is `borderMenu.js`. *(confirmed 2026-09-09 — `borderMenu.spec.js`, `shapeOverlay.spec.js`, `e2e/field-border-menu.spec.js` against the live service, and the open menu looked at at 1440 and 1024 px)*
+
 ## Click a shape on the canvas, edit it there (2026-09-29)
 
 Kent asked for "a tool that allows me to manually digitize a logo or photo",
@@ -991,6 +996,13 @@ Tests: `app/src/lib/shapePopover.spec.js` (the decision table),
 `app/src/ui/ShapePopover.spec.js` (the dialog), `app/e2e/field-shape-popover.spec.js`
 (click-to-edit on both lanes; a drag inside a shape still moves the element;
 on the hand-drawn lane the side panel's row follows the field's selection).
+
+**MASTER_SCOPE's paragraph for this section, moved here 2026-09-29** (its word
+budget; MASTER_SCOPE keeps a ~50-word summary) — verbatim but for one
+antecedent: "Their anchors" became "A hand-drawn shape's anchors", since a
+preset has none:
+
+**Click a shape, edit it there — both lanes (2026-09-29, Kent's ask).** A click (under 4 px) on or inside any shape opens `ShapePopover` there: an auto-digitized shape gets the Layers row's controls (thread, stitch type, fill angle, underlay, border, Edit points, Delete) writing `shapeOverrides` as the panel does; a hand-drawn shape Fill/Satin, colour, angle, Edit points (just closes it) and Delete writing `element.shapes` as `ManualPanel` does; a preset its colour. Hand-drawn and preset shapes are outlined and hit-testable on the field for the first time — `buildQualityDesign` emits `shapeOutlines` in field mm (input order, no fit) and `shapesToRegions` passes the shape id. A hand-drawn shape's anchors and curve handles edit on the field too — drag, bend, click-to-insert, focus-and-Delete — and the side canvas only draws (2026-09-29, field-node-edit spec); the popover drags by its header. *(confirmed 2026-09-29 — `shapePopover.spec.js`, `ShapePopover.spec.js`, `e2e/field-shape-popover.spec.js`; spec `docs/superpowers/specs/2026-09-29-shape-popover-design.md`)*
 
 ## Node editing on the field (2026-09-29)
 
