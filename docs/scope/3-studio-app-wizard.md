@@ -636,3 +636,65 @@ different letters and stay unfolded. What it cost before the fix (a phone's
 U+2019 sewing "Fritschs Stitches", under a note naming a character that looks
 identical to the one typed): DOCTRINE; scope-history 09-07.
 *(fixed 2026-09-07)*
+
+## The surround, the flat panel, and the scale bar (2026-09-30)
+
+Kent's brief, in his words: the Studio "feels a little un-professional",
+the main preview is "hard to navigate", and he wants it to "look professional
+like SpaceX or a Tesla website". Reviewed by driving both lanes at 1440×900
+and reading `theme.css` against the screenshots; the review's full finding
+list (tooltips, panel↔canvas selection sync, the toolbar, the Download step,
+the panel split) is in the session and this entry records only what SHIPPED,
+which is the first of those PRs. Two things were found NOT to be wrong on the
+way: Inter IS loaded (`main.js` imports `@fontsource-variable/inter`;
+`document.fonts.check` → true), and the token system is real. What made it
+read as a template was elevation and grounds, not type.
+
+**The canvas outside the hoop is a dark neutral surround.** `--surround`
+(#22252c) with four on-surround text tokens, contrast measured in the token
+comment (ink 12.75, muted 6.51, warn 8.35, danger 7.65). `renderRealistic`
+takes `surround` and, with a hoop, fills the canvas with it and clips the
+fabric and weave to the hoop's rounded rect (`hoopRectPx`, the one place the
+ring's rectangle and radius are computed, so the fill's edge and the stroke
+agree to the pixel). Without the option, or without a hoop, the path is
+byte-for-byte what it was — thumbnails and PNG export never see it
+(`preview.spec.js`, four new). The panel stays LIGHT on purpose: workbench
+beside a viewport, not a page-wide dark mode. **What this cost:**
+`e2e/field-chrome.spec.js`'s HiDPI ink test counted any dark pixel as
+thread, which on a dark surround is the whole canvas; it now finds the fabric
+first (the bounding box of the pale pixels, pulled in 3% a side for the
+corners) and counts ink inside that. Its target — an unscaled context, which
+paints everything in the top-left quadrant — still reads ~0.25 because the
+fabric moves with the ink. Dry-run on the live canvas before the suite:
+centre 0.501 / 0.499, ink bbox the text and not the hoop.
+
+**The garment step is flat.** Radii 8/12/18 → 4/6/10; the 2px borders on
+tiles, cards, rows, the font trigger and the topbar buttons are 1px; the
+elevation-pass shadows on `.tile`, `.tcard`, `.hooptile`, `.elrow`,
+`.fs-trigger`, `.drawer-row` and the topbar are gone, and so is the hover
+lift. Selection is the accent border plus `--ring-inset` (2px of accent, no
+layout change). The four hoops are one segmented strip, the picked segment
+ink-filled; the fabric swatches are round with an inset hairline so White
+still has an edge. Same DOM, same class names, so `GarmentStep.spec.js` and
+every e2e locator are untouched. *(This supersedes the 2026-08-25 audit line
+above that elevation "is applied consistently across two tokens" — cards no
+longer carry it; popovers, menus and the drawer still do.)*
+
+**A scale bar in the zoom bar.** `lib/scalebar.js` picks the longest round
+length (1 … 200 mm) that fits 120 px at the render's px-per-mm, which already
+has the view's zoom in it, so it follows wheel and button zoom for free. HTML
+in the zoom bar, not paint on the canvas: it never covers sewable field
+(DOCTRINE; `field-chrome.spec.js` pins that no chrome lands on the canvas),
+it does not disturb the pixel counts three specs read off the bitmap, and it
+needs no dpr of its own. `scalebar.spec.js`, five.
+
+Two defects of the change itself, both seen in the screenshots and fixed
+before the PR: the drag-field hint bubble inherited `.field`'s light
+on-surround ink and its copy went near-invisible on the tint (colour now
+stated on `.hintbubble`); the custom fabric `<input type=color>` stayed square
+beside eight round swatches (its `::-webkit-color-swatch` is rounded; Firefox
+keeps a square, not a broken control).
+
+*(built and looked at 2026-09-30 — both lanes driven at 1440×900, the logo
+lane against the live service; Studio unit suite 1,322 passed; e2e suite run
+in full before the push)*

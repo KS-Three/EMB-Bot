@@ -616,6 +616,14 @@ was a single uncontrolled icon. See Cross-cutting issues.
 **The two engines' fabric and machine tables are wire-tested to agree**
 (`test_fabric_wire.py`, `test_machine_wire.py`) — [area doc](docs/scope/3-studio-app-wizard.md).
 
+**The canvas sits on a dark neutral surround and the garment step is flat
+(2026-09-30, Kent's "SpaceX / Tesla" brief).** Fabric and weave clip to the
+hoop; radii 4/6/10, hairline borders, card shadows gone; a scale bar in the
+zoom bar. Contrast measured on the surround (ink 12.75, muted 6.51). Old path
+byte-identical without the option, so thumbnails and PNG export are untouched.
+*(built and looked at 2026-09-30 — [area doc](docs/scope/3-studio-app-wizard.md),
+"The surround, the flat panel, and the scale bar")*
+
 **A Studio change is not verified until it has been *looked at* in a browser.**
 Six buyer-visible defects across the 2026-08-25 and 09-07 sweeps, none seen by a
 green suite. The list: DOCTRINE "Gotchas".

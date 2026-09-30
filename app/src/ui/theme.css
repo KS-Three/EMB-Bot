@@ -22,6 +22,27 @@
   --border: #e2e5eb;
   --field-bg: #eceef3; /* the embroidery workspace neutral -- field pane + canvas share it (B4/B8) */
 
+  /* The SURROUND: the dark neutral the hoop floats on (2026-09-30, Kent's
+     "SpaceX / Tesla" brief). Every design tool the customer has seen —
+     Figma, Lightroom, Hatch, Embrilliance — puts the artwork on a neutral
+     dark ground so the fabric colour and the thread read TRUE instead of
+     against a competing tint; before this the canvas painted the fabric
+     edge to edge on a warm --field-bg, so a Natural-fabric design sat on a
+     beige field on a grey-blue page, five grounds on one screen. The
+     surround is deliberately NOT a page-wide dark mode: the panel stays
+     light, so the split reads as "workbench beside a viewport", the way a
+     photo editor does.
+     Every text that lands on it takes one of the -on-surround tokens
+     below. Measured 2026-09-30 (WCAG, on #22252c): ink 12.75, muted 6.51,
+     warn 8.35, danger 7.65 — all AA with headroom, since the caption under
+     the canvas ("2,176 stitches · 80×16 mm") is the most-read line on the
+     screen and was --muted at 5.2 before. */
+  --surround: #22252c;
+  --surround-ink: #e8eaf0;
+  --surround-muted: #a3a9b6;
+  --surround-warn: #f2b27a;
+  --surround-danger: #ff9d8f;
+
   /* Single confident accent: indigo family. */
   --accent: #4f46e5;
   --accent-dark: #4338ca; /* hover/active */
@@ -59,11 +80,20 @@
      you draw a ring without moving layout, but it means something different
      from --shadow-1/2 and was written out longhand at three call sites. */
   --ring: 0 0 0 2px var(--accent);
+  /* Inset twin, for a 1px-bordered control whose selected state wants a 2px
+     accent edge without growing: the border turns accent and this adds the
+     second pixel on the inside. */
+  --ring-inset: inset 0 0 0 1px var(--accent);
 
-  /* ---- Radii ------------------------------------------------------------ */
-  --radius-s: 8px;
-  --radius-m: 12px;
-  --radius-l: 18px;
+  /* ---- Radii ------------------------------------------------------------
+     Tightened 8/12/18 -> 4/6/10 on 2026-09-30. At 12px every bordered
+     control read as a pillow, and with ~30 of them on the Garment step
+     (four starters, ten garments, four hoops, eight swatches, the tab
+     strip, two buttons) the screen read as a template. A 4-6px corner is
+     what a serious tool wears; the pill radius stays for chips and badges. */
+  --radius-s: 4px;
+  --radius-m: 6px;
+  --radius-l: 10px;
   --radius-full: 999px;
 
   /* ---- Spacing ----------------------------------------------------------- */
@@ -178,12 +208,10 @@ h1, h2 { letter-spacing: var(--tracking-tight); }
   padding: 0 var(--space-5);
   background: var(--surface);
   border-bottom: 1px solid var(--border);
-  /* Elevation pass: the topbar was a flat bar with only a 1px border --
-     no depth cue separating the app's chrome from the canvas/panel below
-     it. --shadow-1 already points downward (0 2px 4px), which is exactly
-     the direction a bar sitting above the content should cast, so this is
-     a straight reuse of the existing token, not a new value. */
-  box-shadow: var(--shadow-1);
+  /* Flat on purpose (2026-09-30). It carried --shadow-1 from the elevation
+     pass; with the field below it now a dark surround, a drop shadow off a
+     white bar onto near-black is invisible where it lands and a smudge
+     where it meets the panel. The 1px border is the whole separation. */
   position: relative;
   z-index: 1;
 }
@@ -226,7 +254,7 @@ h1, h2 { letter-spacing: var(--tracking-tight); }
   justify-self: center;
   width: min(420px, 100%);
   padding: var(--space-2) var(--space-3);
-  border: 2px solid transparent;
+  border: 1px solid transparent;
   border-radius: var(--radius-s);
   background: transparent;
   color: var(--ink);
@@ -256,7 +284,7 @@ h1, h2 { letter-spacing: var(--tracking-tight); }
 .topbar-download {
   padding: var(--space-2) var(--space-3);
   min-height: 40px;
-  border: 2px solid var(--border);
+  border: 1px solid var(--border);
   border-radius: var(--radius-s);
   background: var(--surface);
   color: var(--ink);
@@ -276,7 +304,7 @@ h1, h2 { letter-spacing: var(--tracking-tight); }
   gap: var(--space-2);
   padding: var(--space-2) var(--space-4);
   min-height: 40px;
-  border: 2px solid var(--border);
+  border: 1px solid var(--border);
   border-radius: var(--radius-s);
   background: var(--surface);
   color: var(--ink);
@@ -285,7 +313,7 @@ h1, h2 { letter-spacing: var(--tracking-tight); }
   cursor: pointer;
 }
 
-.mydesigns:hover { border-color: var(--accent); }
+.mydesigns:hover { border-color: var(--ink); }
 
 /* "Font credits" — opens FontCredits, the generated OFL/CC credits dialog.
    Quiet text button, deliberately smaller than "My designs" since it's
@@ -411,13 +439,9 @@ h1, h2 { letter-spacing: var(--tracking-tight); }
 
 .drawer-row {
   padding: var(--space-3) var(--space-3);
-  border: 2px solid var(--border);
+  border: 1px solid var(--border);
   border-radius: var(--radius-m);
   background: var(--surface);
-  /* Elevation pass -- same reasoning as .tile above; the drawer's own
-     directional shadow (below) separates it from the app, this separates
-     each saved-project row from the drawer's background in turn. */
-  box-shadow: var(--shadow-1);
 }
 
 .drawer-row.current { border-color: var(--accent); background: var(--tint); }
@@ -584,10 +608,20 @@ h1, h2 { letter-spacing: var(--tracking-tight); }
   align-items: stretch;
   justify-content: center;
   padding: var(--space-5);
-  background: var(--field-bg);
+  /* The dark surround (see the --surround token). The canvas paints the
+     same colour outside the hoop, so pane and canvas still read as one
+     surface — the contract --field-bg used to carry — just a dark one. */
+  background: var(--surround);
+  color: var(--surround-ink);
   min-height: 0;
   overflow: auto;
 }
+
+/* Every line of text that sits on the surround: the caption under the
+   canvas and its warnings. Ratios in the token comment. */
+.field .stats { color: var(--surround-ink); font-variant-numeric: tabular-nums; }
+.field .err { color: var(--surround-danger); }
+.field .warn { color: var(--surround-warn); }
 
 .fieldwrap {
   display: flex;
@@ -613,6 +647,15 @@ h1, h2 { letter-spacing: var(--tracking-tight); }
   height: 100%;
   max-width: none;
   max-height: none;
+  /* The field canvas is the viewport onto the surround, not a card sitting
+     on the pane: the global `canvas` rule's border, --shadow-2 and
+     --radius-l (still right for ImagePanel's preview and ManualPanel's
+     drawing surface, which ARE cards on a light panel) would draw a frame
+     around a dark rectangle on a dark ground. */
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: var(--surround);
 }
 
 /* The canvas is focusable (arrow keys nudge the selected design), so it needs
@@ -833,6 +876,33 @@ h1, h2 { letter-spacing: var(--tracking-tight); }
   text-align: center;
   font-size: var(--fs-xs);
   color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Scale bar (EmbroideryField, lib/scalebar.js): a hairline rule with end
+   ticks whose WIDTH is the stated length at the current zoom, then the
+   label. Sits between the fit button and the overlay toggles, set off from
+   both by a hairline. */
+.scalebar {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-inline: var(--space-1);
+  padding-inline: var(--space-2);
+  border-inline: 1px solid var(--border);
+  white-space: nowrap;
+}
+.scalebar-rule {
+  display: block;
+  height: 7px;
+  border: 1px solid var(--ink);
+  border-top: 0;
+  box-sizing: border-box;
+}
+.scalebar-label {
+  font-size: var(--fs-xs);
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
 }
 
 /* Stack on narrow screens: field above the panel */
@@ -895,6 +965,14 @@ h1, h2 { letter-spacing: var(--tracking-tight); }
   gap: var(--gap);
 }
 
+/* Flat (2026-09-30): hairline border, no shadow, no lift. The elevation
+   pass had given these a 2px border plus --shadow-1 so they would read as
+   raised, clickable cards — and thirty raised cards on one step is exactly
+   the "template" look Kent asked to lose. Clickability now comes from the
+   hover border darkening to ink, and selection from the accent edge (border
+   plus the inset ring, so it is 2px of accent without any layout change)
+   over the tint. Same DOM, same `.sel` class, so wizard-smoke's assertions
+   and every e2e locator are untouched. */
 .tile {
   display: flex;
   flex-direction: column;
@@ -903,21 +981,15 @@ h1, h2 { letter-spacing: var(--tracking-tight); }
   gap: var(--space-2);
   padding: var(--space-4) var(--space-3);
   min-height: 92px;
-  border: 2px solid var(--border);
+  border: 1px solid var(--border);
   border-radius: var(--radius-m);
   background: var(--surface);
   font-size: var(--fs-md);
   cursor: pointer;
-  /* Elevation pass: a bordered card with no shadow reads as flat outline
-     art, not a raised, clickable surface -- same border+shadow-1 pairing
-     `.tp-panel` already uses further down this file. This also finally
-     gives the existing `:hover { transform: translateY(-1px) }` below
-     something to sell -- a lift with no shadow change is imperceptible. */
-  box-shadow: var(--shadow-1);
 }
 
-.tile:hover { border-color: var(--accent); }
-.tile.sel { border-color: var(--accent); background: var(--tint); }
+.tile:hover { border-color: var(--ink); }
+.tile.sel { border-color: var(--accent); background: var(--tint); box-shadow: var(--ring-inset); }
 .tile.sel .tile-label { font-weight: var(--fw-semibold); color: var(--accent); }
 
 /* Garment icon (Slice 8 Task 3) -- one inline SVG per garment id (see
@@ -946,35 +1018,57 @@ h1, h2 { letter-spacing: var(--tracking-tight); }
   margin-bottom: var(--space-5);
 }
 
+/* Round, like a thread card's colour dots. The hairline is INSIDE the
+   colour (inset shadow) rather than a border, so the White swatch still has
+   an edge against the white panel and the Black one does not grow a grey
+   frame. Selection is the accent ring, offset by a 2px gap of panel so it
+   reads as a ring around the dot, not a thicker dot. */
 .fabricswatch {
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
   padding: 0;
-  border: 2px solid var(--border);
-  border-radius: var(--radius-s);
+  border: 0;
+  border-radius: var(--radius-full);
+  box-shadow: inset 0 0 0 1px rgba(var(--shadow-color), 0.18);
   cursor: pointer;
 }
 
 .fabricswatch.sel {
-  border-color: var(--accent);
-  box-shadow: var(--ring);
+  box-shadow: inset 0 0 0 1px rgba(var(--shadow-color), 0.18), 0 0 0 2px var(--surface), 0 0 0 4px var(--accent);
 }
 
 input.fabriccustom[type="color"] {
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
+  overflow: hidden;
 }
+/* The native colour input draws its own square swatch inside the box; round
+   it to match the eight beside it. Chromium and WebKit only -- Firefox
+   draws the input itself and ignores these, which leaves a square, not a
+   broken control. */
+input.fabriccustom[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+input.fabriccustom[type="color"]::-webkit-color-swatch { border: 0; border-radius: var(--radius-full); }
 
 /* Hoop size row (Garment step, launch item 2) -- the four home-machine
    hoop presets. Same bordered-card language as .tile, sized down: these are
    a setting, not the step's main choice. The "Suggested" chip rides the
    per-garment suggestion (see GarmentStep.svelte) and stays put while a
    different hoop is selected. */
+/* A SEGMENTED CONTROL since 2026-09-30, not four more cards: one bordered
+   strip, the segments separated by hairlines, the picked one filled ink
+   with light text. Four hoops are one setting with four values, and a
+   segmented strip says that where four tiles said "four more things to
+   consider". Class names and DOM are unchanged (GarmentStep.spec.js finds
+   `.hooptile`, `.hooptile-name`, `.hooptile-chip`). */
 .hooprow {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
-  gap: var(--space-2);
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
   margin-bottom: var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-m);
+  background: var(--surface);
+  overflow: hidden;
 }
 
 .hooptile {
@@ -983,20 +1077,26 @@ input.fabriccustom[type="color"] {
   flex-direction: column;
   align-items: center;
   gap: 2px;
-  padding: var(--space-3) var(--space-2) var(--space-2);
-  border: 2px solid var(--border);
-  border-radius: var(--radius-m);
-  background: var(--surface);
+  min-width: 0;
+  padding: var(--space-2) var(--space-1);
+  border: 0;
+  border-left: 1px solid var(--border);
+  border-radius: 0;
+  background: transparent;
+  color: var(--ink);
   cursor: pointer;
-  box-shadow: var(--shadow-1);
 }
+.hooptile:first-child { border-left: 0; }
 
-.hooptile:hover { border-color: var(--accent); }
-.hooptile.sel { border-color: var(--accent); background: var(--tint); }
-.hooptile.sel .hooptile-name { font-weight: var(--fw-semibold); color: var(--accent); }
+.hooptile:hover { background: var(--bg); }
+.hooptile.sel { background: var(--ink); color: var(--surface); }
+.hooptile.sel .hooptile-name { font-weight: var(--fw-semibold); }
 
-.hooptile-name { font-size: var(--fs-sm); line-height: 1.2; }
-.hooptile-mm { font-size: var(--fs-xs); color: var(--muted); }
+.hooptile-name { font-size: var(--fs-sm); line-height: 1.2; white-space: nowrap; }
+/* --muted on --bg (the hover ground) measures 5.24, on white 5.61; the
+   selected segment sets its own light value below. */
+.hooptile-mm { font-size: var(--fs-xs); color: var(--muted); white-space: nowrap; }
+.hooptile.sel .hooptile-mm { color: var(--surround-muted); }
 
 .hooptile-chip {
   font-size: var(--fs-2xs);
@@ -1007,6 +1107,13 @@ input.fabriccustom[type="color"] {
   background: var(--tint);
   color: var(--accent);
   border: 1px solid var(--tint-border);
+}
+/* Inside the ink-filled segment the indigo chip clashes; a translucent
+   light chip carries the same word without a second colour. */
+.hooptile.sel .hooptile-chip {
+  background: rgba(255, 255, 255, 0.16);
+  color: var(--surface);
+  border-color: transparent;
 }
 
 .hoopreset { margin: 0 0 var(--space-5); font-size: var(--fs-xs); }
@@ -1028,17 +1135,14 @@ input.fabriccustom[type="color"] {
   gap: var(--space-1);
   padding: var(--space-3) var(--space-3) var(--space-4);
   min-height: 64px;
-  border: 2px solid var(--border);
+  border: 1px solid var(--border);
   border-radius: var(--radius-m);
   background: var(--surface);
   text-align: left;
   cursor: pointer;
-  /* Elevation pass -- same reasoning as .tile above (this card also gets
-     the translateY hover lift further down the file). */
-  box-shadow: var(--shadow-1);
 }
 
-.tcard:hover { border-color: var(--accent); }
+.tcard:hover { border-color: var(--ink); }
 
 /* Mini stitch preview (Slice 8 Task 3) -- generated lazily via the same
    buildLetteringDesign -> renderRealistic path used elsewhere, cached
@@ -1090,16 +1194,14 @@ input.fabriccustom[type="color"] {
   align-items: center;
   gap: var(--space-3);
   padding: var(--space-2) var(--space-3);
-  border: 2px solid var(--border);
+  border: 1px solid var(--border);
   border-radius: var(--radius-m);
   background: var(--surface);
   cursor: pointer;
-  /* Elevation pass -- same reasoning as .tile above. */
-  box-shadow: var(--shadow-1);
 }
 
-.elrow:hover { border-color: var(--accent); }
-.elrow.sel { border-color: var(--accent); background: var(--tint); }
+.elrow:hover { border-color: var(--ink); }
+.elrow.sel { border-color: var(--accent); background: var(--tint); box-shadow: var(--ring-inset); }
 
 .elicon {
   display: flex;
@@ -1194,6 +1296,10 @@ input.fabriccustom[type="color"] {
   padding: var(--space-3) var(--space-3);
   border-radius: var(--radius-m);
   font-size: var(--fs-sm);
+  /* Stated, not inherited: the drag-field hint sits in .field, whose text
+     colour is the light on-surround ink, and this bubble is a light tint —
+     inheriting made its copy near-invisible (seen 2026-09-30). */
+  color: var(--ink);
 }
 
 .hintbubble-icon { display: flex; flex: 0 0 auto; align-items: center; padding-top: 1px; }
@@ -1340,13 +1446,12 @@ input[type="color"] {
   gap: var(--space-3);
   padding: var(--space-2) var(--space-3);
   min-height: 64px;
-  border: 2px solid var(--border);
+  border: 1px solid var(--border);
   border-radius: var(--radius-m);
   background: var(--surface);
-  box-shadow: var(--shadow-1);
   cursor: pointer;
 }
-.fs-trigger:hover { border-color: var(--accent); }
+.fs-trigger:hover { border-color: var(--ink); }
 
 /* Bigger thumbnails (Slice 8 Task 3): 280x44 renders (up from 220x56).
    The cap is a PERCENTAGE of the trigger, not the old fixed 260px: inside
@@ -1515,7 +1620,7 @@ button {
 .formats button, .primary {
   padding: var(--space-3) var(--space-3);
   min-height: 48px;
-  border: 2px solid var(--border);
+  border: 1px solid var(--border);
   background: var(--surface);
   cursor: pointer;
   font-size: var(--fs-md);
@@ -2224,5 +2329,4 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
 
   .tp-chevron { transition: transform 150ms ease; }
 
-  .tile:hover, .tcard:hover { transform: translateY(-1px); }
 }

@@ -4,6 +4,7 @@
   import { ensureFonts, loadCoverage, loadManifest } from "../lib/fontLoader.js";
   import { unsupportedMessage } from "../lib/fontCoverage.js";
   import { renderRealistic, isDark } from "../lib/preview.js";
+  import { pickScaleBar } from "../lib/scalebar.js";
   import { designToStrands, strandStitchOrdinals } from "../lib/strands.js";
   import { advanceIndex, clampIndex, nextSpeed } from "../lib/simulate.js";
   import { EMB } from "../lib/emb.js";
@@ -216,6 +217,11 @@
   // unrelated element (or panning) never re-triggers it.
   $: project, noteOutlineResults();
   $: multiSel = selIds.length > 1;
+  // The scale bar follows the render's px-per-mm, which already has the
+  // view's zoom in it (B1), so wheel/button zoom moves it without any
+  // second calculation. `renderResult` is reassigned on every render, view
+  // repaint and clear, which is exactly the set of events that change it.
+  $: scaleBar = pickScaleBar(renderResult && renderResult.scale);
 
   // Union canvas-px rect of every selected member — the group's visible box.
   function groupRectPx() {
@@ -282,8 +288,19 @@
       hoop: hoopOpt(project),
       fabricRgb: project && project.fabricRgb,
       weave: true,
+      surround: surroundColor(),
       view,
     });
+  }
+
+  // The canvas outside the hoop paints the same --surround the field pane
+  // is, read off the token so the two can never drift (the old contract
+  // between .field and the canvas fill, kept — just dark now). The fallback
+  // is the token's own value, for a render before styles are attached.
+  function surroundColor() {
+    if (typeof document === "undefined") return "#22252c";
+    const v = getComputedStyle(document.documentElement).getPropertyValue("--surround").trim();
+    return v || "#22252c";
   }
 
   function accentColor() {
@@ -1204,6 +1221,7 @@
       hoop: hoopOpt(project),
       fabricRgb: project.fabricRgb,
       weave: true,
+      surround: surroundColor(),
       view,
       showJumps,
       showTrims,
@@ -1239,6 +1257,7 @@
         hoop: hoopOpt(project),
         fabricRgb: project.fabricRgb,
         weave: true,
+        surround: surroundColor(),
         view,
         showJumps,
         showTrims,
@@ -2322,6 +2341,16 @@
       <span class="zoompct">{Math.round(view.zoom * 100)}%</span>
       <button type="button" class="zoombtn" on:click={zoomIn} disabled={view.zoom >= MAX_ZOOM} aria-label="Zoom in"><Icon name="plus" /></button>
       <button type="button" class="zoombtn zoomfit" on:click={resetView} aria-label="Fit to hoop" title="Fit to hoop"><Icon name="expand" /></button>
+      {#if scaleBar}
+        <!-- A ruler, not a control: the bar's width IS the stated length on
+             screen (lib/scalebar.js), so the customer reads the design's
+             size off it at any zoom. In the zoom bar rather than on the
+             canvas so it never covers sewable field. -->
+        <span class="scalebar" role="img" aria-label="Scale: {scaleBar.label} on screen" title="{scaleBar.label} at this zoom">
+          <i class="scalebar-rule" style="width: {scaleBar.px.toFixed(1)}px"></i>
+          <span class="scalebar-label">{scaleBar.label}</span>
+        </span>
+      {/if}
       <button
         type="button"
         class="zoombtn viewtoggle"
