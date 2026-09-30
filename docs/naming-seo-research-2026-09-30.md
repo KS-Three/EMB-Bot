@@ -349,3 +349,86 @@ and a CVPR paper). If the direction survives those, the ownable forms are
 "Stitchable" + a distinctive noun, or a compound such as *GetStitchable* —
 the bare word is not. **HoopReady** and **Digitizely** from §B were not
 re-checked at this depth and would need the same pass before a purchase.
+
+---
+
+## E. Ten names, measured (round 3, same day)
+
+Kent: *"Provide 10 names with measurables and statistics alongside them to
+review."* Measured from the sandbox: Verisign RDAP (.com), Identity Digital
+registry RDAP (.io — rdap.org answers 404 even for registered .io names, so
+only the registry endpoint counts), rdap.org (.app, control-checked against
+stitch.app), a curl of each homepage, Afternic / HugeDomains / Sedo, the
+Trademarkia mirror (Justia, uspto.report and USPTO itself returned 403 or a
+JS wall), TikTok page JSON, YouTube @handles, web search. Registrar prices
+fetched from Porkbun the same day: **.com $11.08, .io $28.12 first year /
+$51.80 renew, .app $8.75 / $14.93.**
+
+One substitution: **HoopFile** is dead on arrival — hoopfile.com (registered
+2026-09-03) is a live "Embroidery File Converter & Viewer — Free Online".
+Replaced by the coined **DigiHoop**; **Hoopwise** added as the tenth.
+
+Composite score weights: cheap .com (high), no same-industry collision
+(high), no live mark in class 9/40/42 (high), handles (medium), SERP
+crowding (medium), keyword carried (low), mechanics (low).
+
+| # | Name | .com | .io | .app | Mark (exact) | Same-industry collision | Handles TT/YT/IG | SERP | Chars/syll./keyword | Score |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 1 | **DigiHoop** | ✅ free ($11) | ✅ | ✅ | ✅ none | ✅ none (a 2011 LED-hoop Kickstarter; basketball "Digi Hoops") | ✅ / ❌ / ⚠️ | Med | 8 / 3 / digi-+hoop | **8** |
+| 2 | **Digitizely** | ⚠️ reg. 2016, parked, no listing, price unknown | ✅ | ✅ | ✅ none | ✅ none (a PowerPoint template) | ✅ / ✅ / ⚠️ | Low | 10 / 4 / digitiz- | **6** |
+| 3 | **GetStitchable** | ✅ free | ✅ | ✅ | ✅ none | ⚠️ Stitch-Able (SC shop), stitchable.com, **GetStitch** apparel brand | ✅ / ✅ / ⚠️ | Med-High | 13 / 4 / stitch | **6** |
+| 4 | **StitchPunch** | ⚠️ reg. 2024, parked, no listing | ✅ | ✅ | ✅ none (PUNCH STITCH dead 1984) | ⚠️ "-Punch" is the human-digitizing-service namespace (EmbPunch, ExpertsPunch, DigitPunch…) | ❌ / ❌ / ⚠️ | Med | 11 / 2 / stitch+punch | **5** |
+| 5 | **HoopReady** | ❌ live basketball tracker (reg. 2026-02) | ✅ | ❌ taken 2026-09-16 | ✅ none | ✅ none in embroidery | ✅ / ✅ / ⚠️ | Low | 9 / 3 / hoop | **4** |
+| 6 | **Sewable** | ⚠️ reg. 2010, parked | ✅ | ✅ | ⚠️ SEWABLE cl. 7/26 filed 2022, dead 2023 | ⚠️ dictionary word (OED 1848); "SewAble" prosthesis | ❌ / ❌ / ⚠️ | High | 7 / 3 / sew | **3** |
+| 7 | **LogoStitch** | ❌ held since 2001, dormant | ✅ | ✅ | ✅ none | ❌ four embroidery shops (Pittsburgh PA, UK, NSW, Jamaica) | ✅ / ✅ / ⚠️ | High | 10 / 3 / logo+stitch | **2** |
+| 8 | **OneStitch** | ❌ **Afternic $23,995** | ✅ | ✅ | ✅ none exact | ❌ OneStitch UK embroidery/workwear; apparel; Etsy | ❌ / ❌ / ❌ | High | 9 / 3 / stitch | **2** |
+| 9 | **Hoopwise** | ❌ **HugeDomains $2,495** | ✅ | ✅ | ⚠️ SPORTWISE® covers a "Hoopwise" program | ✅ none in embroidery; three basketball brands | ❌ / ❌ / ⚠️ | High | 8 / 2 / hoop | **2** |
+| 10 | **Threadwise** | ❌ **Afternic $24,995** | ❌ | ❌ | ❌ ThreadWise AI (Denver, 2025, funded) reportedly holds a cl. 42 mark | ✅ none in embroidery | ❌ / ❌ / ⚠️ | High | 10 / 2 / thread | **1** |
+
+IG = Instagram, a login wall from the sandbox; ⚠️ means search surfaced no
+profile, not that the handle is free.
+
+### Notes that decide it
+
+- **DigiHoop** is the only triple-clean name: .com, .io and .app all
+  unregistered (≈$50 to lock all three), no mark found, nothing in
+  embroidery or sewing, TikTok free. Reads "digitize + hoop" on first
+  hearing and spells unambiguously; digihoops.com (the plural typo) is free
+  too. Weakness: "digi-" is a slightly dated prefix, and the LED-hoop
+  Kickstarter would sit on page 1 until outranked.
+- **Digitizely** has the cleanest namespace of the ten (nothing but a slide
+  template) and free .io/.app and handles, but the .com is a 2016 parked
+  registration with no visible price — a domainer, likely four figures.
+  Both misspellings (digitisely, digitizly) are taken.
+- **GetStitchable** is fully registrable but inherits every round-2
+  Stitchable collision and adds GetStitch (an active embroidered-apparel
+  brand); the "Get-" reads as the workaround it is.
+- **StitchPunch** has the best mechanics (two syllables, both the trade's own
+  words) but stitchpunch.com is parked at unknown price, both handles are
+  taken, and "-Punch" names are how the *human* digitizing services brand
+  themselves — most of them advertise "never auto-digitized".
+- **HoopReady** lost its .app two weeks ago to the basketball app that owns
+  the .com; a .io-only brand beside a same-name live app is a bad trade.
+- Spare, domains only: **StitchSet** — .com/.io/.app all unregistered; no
+  mark or collision search done.
+
+### Ranked
+
+1. **DigiHoop** — buy .com/.io/.app tonight for ~$50; no live mark, no
+   embroidery collision, both target keywords in the name.
+2. **Digitizely** — ties for first if the .com owner sells for low four
+   figures; otherwise a .io brand.
+3. **GetStitchable** — only if "Stitchable" as a *word* in the product is the
+   goal and the brand can live with a prefix. StitchPunch is the alternative
+   third if stitchpunch.com can be had cheaply.
+
+### Not verifiable from the sandbox — check before buying
+
+USPTO TESS/TSDR direct search for DIGIHOOP, DIGITIZELY and STITCHABLE (word
+and design marks, classes 9/40/42), and whether ThreadWise AI's class-42 mark
+and any HoopReady filing are real; Instagram `@digihoop`, `@digitizely`,
+`@getstitchable` by hand; aftermarket prices for digitizely.com,
+stitchpunch.com, sewable.com, logostitch.com (GoDaddy's for-sale pages
+returned Access Denied — put each in a cart or a broker inquiry); and every
+"available" reading confirmed in a registrar cart at checkout, since an RDAP
+404 is "not in the registry", not a reservation.
