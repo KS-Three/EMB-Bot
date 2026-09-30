@@ -17,7 +17,7 @@ at the bottom for the authority model behind the confidence ratings.
 four of its findings are standing rulings in [`DOCTRINE.md`](DOCTRINE.md). Its
 code and instruments are ON `main`. *(confirmed 2026-08-17 — `git ls-tree`)*
 
-**Last updated:** 2026-09-20. **This file is current state only, under a
+**Last updated:** 2026-09-30. **This file is current state only, under a
 27,000-word budget** (rule 4 below — Kent replaced the old line budget with it
 on 2026-09-14, and this line still said "800-line" until 2026-09-20). Its three
 companions: standing rulings, rejected approaches,
@@ -620,48 +620,17 @@ was a single uncontrolled icon. See Cross-cutting issues.
 Six buyer-visible defects across the 2026-08-25 and 09-07 sweeps, none seen by a
 green suite. The list: DOCTRINE "Gotchas".
 
-**Uploading artwork is the whole interaction — the panel no longer asks the
-user to classify it first.** The run starts on upload and the panel STATES what
-the art was read as ("Read as flat art" / "as a photo" / "as shaded artwork" /
-"couldn't tell"), with the override recast as a one-click correction to that
-sentence. `detail_layer` sits on that row too (Kent 2026-08-30) and appears only
-where the art is actually on a tonal lane, by reading or by override. Nothing
-changed in what gets sent, so area 1's photo-control numbers are untouched, and
-the engine's routing is unchanged — ROADMAP gate 2 bars recalibrating stage 0,
-and phase-4 v1 works around it with exactly this override.
-*(confirmed 2026-08-30 — driven in a real browser against the real service, every state of the row clicked through and looked at; pinned by e2e `digitize-auto-start.spec.js`; numbers in scope-history 08-30)*
+**Uploading artwork is the whole interaction** — the run starts on upload and the panel states what the art was read as, with the override a one-click correction to that sentence; `detail_layer` sits on that row only where the art is tonal. Engine routing unchanged (ROADMAP gate 2). *(confirmed 2026-08-30 — e2e `digitize-auto-start.spec.js`; [area doc](docs/scope/3-studio-app-wizard.md))*
 
-**The hoop you picked is DRAWN, and the export gate uses it.** `hoopTransform`
-returns the hoop and the placement box and fits to the larger (before 2026-09-04
-`preview.js` had only the placement box and called it the hoop, so picking one
-changed nothing on screen); `DownloadStep` warns before a stitch export that will not fit (confirm,
-not block; PNG and PDF worksheet ungated — not machine files). **Live: the stock
-Tote / Full Back preset is 203.2 mm against a 200 mm max hoop**, so it fires on a
-shipped preset — whether auto-fit should CAP is open, and it is now measured: **four of ten garments (full_back, jacket_back, blanket, tote) have placement boxes larger than the 200 mm biggest hoop**, so 40% of the picker is oversize on every design (defect 39). *(2026-09-02 — PR #317;
-`preview.spec.js`, `DownloadStep.spec.js`, e2e)* **What that gate is fed changed 2026-09-07**: it used the box the design was fit to, which 65.6% of designs sew outside of (defect 34), so it now reads the thread's own extent.
+**The hoop you picked is drawn, and the export gate reads the thread's own extent** (`hoopTransform`, `DownloadStep`: confirm, not block; PNG and PDF ungated). **Open:** four of ten garment presets have placement boxes larger than the 200 mm biggest hoop, so the gate fires on shipped presets — whether auto-fit should cap is Kent's. *(measured 2026-09-04/07 — `preview.spec.js`, `DownloadStep.spec.js`; [area doc](docs/scope/3-studio-app-wizard.md))*
 
-**The digitize panel states what CHANGED and offers the fix.** Shape list behind
-an "Edit shapes (N)" disclosure, closed by default; a re-digitize reads as a
-delta against `priorRun`; `COLOR_STOPS_HEAVY`, `LETTERING_TOO_SMALL` and
-`STITCHES_TOO_SHORT` render as one-click adjustment chips offered AFTER the run
-(Kent's call — an adjustment, not a pre-run form). `QualityReport` surfaces
-trims. *(2026-09-02 — PRs #317/#318)* **Both "Make it bigger" chips offer a PARTIAL remedy** — one press clears the finding on 1 of 10 corpus fixtures, two presses on 4, and it worsens 3; the buttons are LEFT for Kent. The measurement, the misquoted comment it corrected and `STITCHES_TOO_SHORT`'s 66% moved to the area file, "Moved from MASTER_SCOPE (2026-09-18)". *(measured 2026-09-06 — `tools/enlarge_cure.py`, `tests/test_short_satin_shapes.py`)*
+**The digitize panel states what changed and offers the fix** — a delta against `priorRun`, and `COLOR_STOPS_HEAVY` / `LETTERING_TOO_SMALL` / `STITCHES_TOO_SHORT` as one-click chips offered AFTER the run (Kent's call). The "Make it bigger" chips are a partial remedy, left for Kent: DOCTRINE. *(confirmed 2026-09-02; [area doc](docs/scope/3-studio-app-wizard.md))*
 
-**`cfg.border` reaches its own default now** — `null` = unset, key omitted when
-unset, panel says "automatic", `fill_angle_deg`'s sentinel shape. Until
-2026-09-02 the Studio seeded `"off"` and always sent it, so the service-side
-default was unreachable. *(PR #318)*
+**`cfg.border` reaches its own default** — `null` = unset, key omitted, panel says "automatic". *(confirmed 2026-09-02)*
 
-**Preview thread width is PHYSICAL — neither widened nor narrowed.**
-`preview.js`'s `THREAD_WIDTH_MM` (0.4, nominal 40wt) is coverage 2.67 against the
-ruled 0.15 mm fill row (rows overlap, as the professional's do) and 1.0 against
-the 0.4 mm satin spacing; a fill at the ruled row looks solid because it IS. The
-PDF sheet (`src/render.js`) and the SVG export draw the same width since
-2026-09-04 — the sheet had drawn 1 px hairlines at any scale. Caveat: `lw` has a
-1.2 px floor (1 px on the sheet), so the property holds zoomed in, not on a
-thumbnail. Pinned on the literal 0.4 and both ratios. *(2026-09-04 — `preview.spec.js`)*
+**Preview thread width is PHYSICAL** — `preview.js` `THREAD_WIDTH_MM` 0.4, drawn the same on the PDF sheet and SVG; holds zoomed in, not on a thumbnail. *(confirmed 2026-09-04 — `preview.spec.js`; [area doc](docs/scope/3-studio-app-wizard.md))*
 
-**Thread lighting is unverified against real thread** — eye-tuned, and the one physical out (2026-09-01) cannot settle it: its colours were random operator threading, so DOCTRINE bars grading colour from it at all. Treat the look as a preference, not a calibration. *(suspected 2026-08-25; sharpened 2026-09-14)*
+**Thread lighting is unverified against real thread** — eye-tuned; the one physical out cannot settle it (random operator threading, DOCTRINE). `pending sew-out`.
 
 **Typographic punctuation folds to its ASCII twin where a font lacks it** (`satinfont.js TYPOGRAPHIC_FOLD`) — [area doc](docs/scope/3-studio-app-wizard.md). *(fixed 2026-09-07)*
 
