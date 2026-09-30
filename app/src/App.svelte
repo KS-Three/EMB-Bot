@@ -1241,7 +1241,7 @@
       {hoverShape}
       focusShape={selectedShape}
       on:shapehover={(e) => (hoverShape = e.detail)}
-      on:shapeselect={(e) => (selectedShape = e.detail)}
+      on:shapefocus={(e) => (selectedShape = e.detail)}
       on:elupdate={(e) => elUpdate(e.detail.id, e.detail.patch, !e.detail.quiet)}
       on:elupdatemany={(e) => elUpdateMany(e.detail)}
       on:select={(e) => onSelect(e.detail)}

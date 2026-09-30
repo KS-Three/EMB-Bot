@@ -837,19 +837,51 @@
   // new element when this block sees it, so that selection survives.
   $: if (project && project.selectedId !== undefined) {
     const sel = selectedElement();
-    if (!sel || sel.type !== "digitized") setSelectedShape(null);
+    if (!sel || !SHAPE_LANES.has(sel.type)) {
+      selectedShapeId = null;
+      selectedShapeElId = null;
+    }
+    if (selectedShapeId && project.selectedId !== selectedShapeElId) {
+      selectedShapeId = null;
+      selectedShapeElId = null;
+      dropStalePop();
+    }
+    // An open popover belongs to the element it was opened on. A different
+    // selection (the Layers chips, a press on another element) closes it and
+    // drops its shape rather than re-aiming it at the new element.
+    if (shapePop && project.selectedId !== shapePop.elementId) {
+      selectedShapeId = null;
+      selectedShapeElId = null;
+      dropStalePop();
+    }
   }
 
-  // Every change to the shape selection goes through here so the Layers
-  // list (via App) always hears about it — a canvas click, a right-click,
-  // a Delete, the clear above. Silent when nothing changed, which is also
-  // what stops a panel-originated selection echoing back and forth.
+  // Sets the selection AND its tag together, so the invariant above holds
+  // whichever path picks a shape.
   function setSelectedShape(id) {
     if (selectedShapeId === id) return;
     selectedShapeId = id;
-    const el = selectedElement();
-    dispatch("shapeselect", id && el ? { elId: el.id, shapeId: id } : null);
+    const el = id ? selectedElement() : null;
+    selectedShapeElId = el ? el.id : null;
   }
+
+  // Canvas -> Layers list. The selection is set on several paths (a click,
+  // a right-click, the popover's Delete, the clears above, a row click from
+  // the list), so the list is told by WATCHING the ids rather than by
+  // instrumenting each assignment — a watcher cannot be bypassed by the
+  // next path that lands. Silent when nothing changed, which is also what
+  // stops a list-originated selection echoing back and forth. The event is
+  // `shapefocus`, not `shapeselect`: that name carries the manual lane's
+  // { elementId, shapeId, edit } request to ManualPanel, a different
+  // payload for a different listener.
+  let focusNotified = "";
+  function notifyShapeFocus(id, elId) {
+    const key = id && elId ? elId + "\u0000" + id : "";
+    if (key === focusNotified) return;
+    focusNotified = key;
+    dispatch("shapefocus", key ? { elId, shapeId: id } : null);
+  }
+  $: notifyShapeFocus(selectedShapeId, selectedShapeElId);
 
   // Panel -> canvas: a click on a row selects that shape here, the same
   // state a canvas click sets, so Delete and a boundary drag act on it and
@@ -860,6 +892,7 @@
     if (!sel || sel.type !== "digitized" || sel.id !== f.elId) return;
     if (selectedShapeId === f.shapeId) return;
     selectedShapeId = f.shapeId;
+    selectedShapeElId = sel.id;
     shapeEditError = "";
     scheduleViewRepaint();
   }
@@ -885,23 +918,6 @@
     if (id === hoverEmitted) return;
     hoverEmitted = id;
     dispatch("shapehover", id ? { elId, shapeId: id } : null);
-    if (!sel || !SHAPE_LANES.has(sel.type)) {
-      selectedShapeId = null;
-      selectedShapeElId = null;
-    }
-    if (selectedShapeId && project.selectedId !== selectedShapeElId) {
-      selectedShapeId = null;
-      selectedShapeElId = null;
-      dropStalePop();
-    }
-    // An open popover belongs to the element it was opened on. A different
-    // selection (the Layers chips, a press on another element) closes it and
-    // drops its shape rather than re-aiming it at the new element.
-    if (shapePop && project.selectedId !== shapePop.elementId) {
-      selectedShapeId = null;
-      selectedShapeElId = null;
-      dropStalePop();
-    }
   }
 
   function deleteSelectedShape() {
@@ -924,8 +940,6 @@
     if (cur.includes(selectedShapeId)) return false;
     dispatch("elupdate", { id: el.id, patch: { deletedShapeIds: [...cur, selectedShapeId] } });
     setSelectedShape(null);
-    selectedShapeId = null;
-    selectedShapeElId = null;
     shapeEditError = "";
     return true;
   }
@@ -1123,14 +1137,13 @@
         if (pts.length < 3) continue;
         // Highlighted when SELECTED, not only while dragging: the highlight
         // is what tells you which shape a Delete or a drag will act on.
-        const editing = o.id === selectedShapeId;
+        // Tagged by element: shape ids repeat across elements ("shape" on
+        // every preset, s1… on every hand-drawn one).
+        const editing = el.id === selectedShapeElId && o.id === selectedShapeId;
         // Under the pointer — on the canvas or on its row in the Layers
         // list (App routes both here as `hoverShape`). Drawn white so it
         // reads as a spotlight beside the amber selection.
         const hovered = !editing && !!hoverShape && hoverShape.elId === el.id && hoverShape.shapeId === o.id;
-        // Tagged by element: shape ids repeat across elements ("shape" on
-        // every preset, s1… on every hand-drawn one).
-        const editing = el.id === selectedShapeElId && o.id === selectedShapeId;
         // The default view is the stitch-out, so only the shape being acted
         // on, or pointed at, is outlined until the user asks for all of them.
         //
@@ -2026,8 +2039,6 @@
     if (!hit) return null;
     if (project.selectedId !== el.id) dispatch("select", el.id);
     setSelectedShape(hit.shapeId);
-    selectedShapeId = hit.shapeId;
-    selectedShapeElId = el.id;
     shapeEditError = "";
     drawOverlay();
     const row = edit.rows.find((x) => x && x.id === hit.shapeId) || {};
@@ -2209,9 +2220,6 @@
       const hit = hitOverlay(liveOutlinesPx(edit), p.x, p.y);
       if (hit) {
         // First click on a shape selects it and stops there — no geometry
-        // moves until you have said which shape you mean.
-        if (hit.shapeId !== selectedShapeId) {
-          setSelectedShape(hit.shapeId);
         // moves until you have said which shape you mean. On the manual and
         // preset lanes it ALWAYS stops there: node editing for hand-drawn
         // shapes lives in ManualPanel for now (2026-09-29 spec §8).
@@ -2264,8 +2272,6 @@
       // edits, and Delete stops being armed.
       if (selectedShapeId) {
         setSelectedShape(null);
-        selectedShapeId = null;
-        selectedShapeElId = null;
         drawOverlay();
       }
     }
