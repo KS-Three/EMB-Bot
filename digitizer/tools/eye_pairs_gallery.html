@@ -46,6 +46,11 @@ main{display:flex;flex-direction:column;gap:28px;padding-top:20px;max-width:1280
 .strip{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
 .strip span{font-family:var(--mono);font-size:11px;padding:1px 7px;border-radius:4px;border:1px solid var(--rule)}
 .strip .win{border-color:var(--agree);color:var(--agree)}.strip .loss{border-color:var(--against);color:var(--against)}
+.corpus{background:var(--surface);border:1px solid var(--rule);border-radius:10px;padding:10px 16px;overflow-x:auto}
+.corpus table{border-collapse:collapse;font-family:var(--mono);font-size:12px;white-space:nowrap}
+.corpus .capt{margin:0 0 10px;color:var(--muted);font-size:13px;max-width:110ch}
+.corpus th,.corpus td{padding:3px 10px;text-align:right;border-bottom:1px solid var(--rule)}
+.corpus th{font-weight:600}.corpus th:first-child,.corpus td:first-child{text-align:left}
 .ruling{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;border-top:1px solid var(--rule);padding-top:10px}
 .ruling label{font-weight:500}
 textarea{font:inherit;color:inherit;background:var(--bg);border:1px solid var(--rule);border-radius:6px;padding:6px 8px;min-height:38px;resize:vertical;flex:1;min-width:200px}
@@ -119,6 +124,11 @@ textarea{font:inherit;color:inherit;background:var(--bg);border:1px solid var(--
 // picked, unblinded. LABELLED: before | after with the arm named, Kent's
 // verdict taken here; no pick exists, so nothing below reads one.
 const LAB = DATA.labelled === true;
+// A second look at an arm (2026-09-30: the dissolve after the fold fix, judged
+// once on 09-28): the generator tagged every pair id, and the ruling takes the
+// same tag, so the earlier sitting's documents are neither read nor overwritten.
+const SITTING = LAB && typeof DATA.sitting === "string" && DATA.sitting ? DATA.sitting : null;
+const rulingId = arm => SITTING ? `${arm}__${SITTING}` : arm;
 const verdictOf = p => (state.notes[p.pair] || {}).verdict || null;
 // Labelled: BEFORE is always the left side and AFTER the right -- the
 // generator puts shipped | flag, and for the 08-27 arm old engine | today.
@@ -387,7 +397,7 @@ function pairCard(p) {
     const body = {...(LAB ? {verdict: cur.verdict ?? null} : {}),
                   job_done: cur.job_done ?? null, note: cur.note ?? "", ...patch,
                   updated: new Date().toISOString()};
-    if (LAB) { body.fixture = p.fixture; body.arm = p.arm; }
+    if (LAB) { body.fixture = p.fixture; body.arm = p.arm; if (SITTING) body.sitting = SITTING; }
     persist("notes", p.pair, body, saved);
   };
   const ta = el("textarea", {id: `note-${p.pair}`, placeholder: LAB ? "note — what your eye saw, what to fix" : "note — what your eye saw", text: note.note || ""});
@@ -432,12 +442,24 @@ function pairCard(p) {
   }
   return card;
 }
+// A measured table under an arm's head: the caption says what was measured,
+// the cells are the numbers as given (a string arrives as written). The
+// caption is a paragraph ABOVE the table, not a <caption>: a caption takes
+// the table's width, and a nowrap table is as wide as its widest row.
+function tableEl(t) {
+  const head = el("tr", {}, ...t.columns.map(c => el("th", {text: c})));
+  const body = t.rows.map(r => el("tr", {}, ...r.map(c => el("td", {text: c == null ? "\u2014" : String(c)}))));
+  return el("div", {class: "corpus"},
+    t.caption ? el("p", {class: "capt", text: t.caption}) : null,
+    el("table", {}, el("thead", {}, head), el("tbody", {}, ...body)));
+}
 function armHead(arm, a) {
-  const r = state.rulings[arm] || {ruling: null, note: ""};
+  const rid = rulingId(arm);
+  const r = state.rulings[rid] || {ruling: null, note: ""};
   const saved = el("span", {class: "saved"});
-  const write = body => persist("rulings", arm, {...body, updated: new Date().toISOString()}, saved);
-  const ta = el("textarea", {id: `ruling-${arm}`, placeholder: "why", text: r.note || ""});
-  ta.addEventListener("input", debounce(() => write({ruling: (state.rulings[arm] || {}).ruling ?? null, note: ta.value}), 600));
+  const write = body => persist("rulings", rid, {...body, ...(SITTING ? {sitting: SITTING} : {}), updated: new Date().toISOString()}, saved);
+  const ta = el("textarea", {id: `ruling-${rid}`, placeholder: "why", text: r.note || ""});
+  ta.addEventListener("input", debounce(() => write({ruling: (state.rulings[rid] || {}).ruling ?? null, note: ta.value}), 600));
   // The ref arm is an engine snapshot, not a flag: a "win" for it means the
   // OLD engine was preferred, and there is nothing to flip.
   const isRef = arm === "ref_0827";
@@ -446,9 +468,9 @@ function armHead(arm, a) {
     return el("section", {class: "armhead"},
       el("div", {}, el("h2", {text: arm}), el("div", {class: "change", text: a.change}), el("p", {text: a.intent})),
       el("div", {}, el("div", {class: "tally", "data-arm": arm}), el("div", {class: "strip", "data-arm-strip": arm})),
-      isRef ? el("div", {class: "ruling"}, el("label", {for: `ruling-${arm}`, text: "Note"}), ta, saved)
+      isRef ? el("div", {class: "ruling"}, el("label", {for: `ruling-${rid}`, text: "Note"}), ta, saved)
             : el("div", {class: "ruling"},
-                el("label", {for: `ruling-${arm}`, text: "Your ruling"}),
+                el("label", {for: `ruling-${rid}`, text: "Your ruling"}),
                 segControl(RULING, r.ruling, v => write({ruling: v, note: ta.value})),
                 ta, saved));
   }
@@ -463,9 +485,9 @@ function armHead(arm, a) {
   return el("section", {class: "armhead"},
     el("div", {}, el("h2", {text: arm}), el("div", {class: "change", text: a.change}), el("p", {text: a.intent})),
     el("div", {}, el("div", {class: "tally"}, ...tally), strip),
-    isRef ? el("div", {class: "ruling"}, el("label", {for: `ruling-${arm}`, text: "Note"}), ta, saved)
+    isRef ? el("div", {class: "ruling"}, el("label", {for: `ruling-${rid}`, text: "Note"}), ta, saved)
           : el("div", {class: "ruling"},
-              el("label", {for: `ruling-${arm}`, text: "Your ruling"}),
+              el("label", {for: `ruling-${rid}`, text: "Your ruling"}),
               segControl(RULING, r.ruling, v => write({ruling: v, note: ta.value})),
               ta, saved));
 }
@@ -497,7 +519,7 @@ function render() {
   main.replaceChildren();
   const keep = FILTERS.find(f => f[0] === state.filter)[2];
   const pairs = DATA.pairs.filter(keep);
-  $("#meta").textContent = `${DATA.n_pairs} pairs · ${Object.keys(DATA.arms).length} arms · built ${DATA.generated} · ${pairs.length} shown`;
+  $("#meta").textContent = `${DATA.n_pairs} pairs · ${Object.keys(DATA.arms).length} arms · built ${DATA.generated}` + (SITTING ? ` · sitting ${SITTING}` : "") + ` · ${pairs.length} shown`;
   if (!pairs.length) { main.append(el("div", {class: "empty", text: "No pairs match this filter."})); refreshTallies(); return; }
   const groups = new Map();
   for (const p of pairs) {
@@ -513,8 +535,10 @@ function render() {
   const keys = [...groups.keys()].sort((a, b) => (a === "controls") - (b === "controls") || a.localeCompare(b));
   for (const key of keys) {
     const g = el("section", {class: "group"});
-    if (state.group === "arm" && DATA.arms[key]) g.append(armHead(key, DATA.arms[key]));
-    else g.append(el("h2", {text: key, style: "font-size:18px"}));
+    if (state.group === "arm" && DATA.arms[key]) {
+      g.append(armHead(key, DATA.arms[key]));
+      if (DATA.arms[key].table) g.append(tableEl(DATA.arms[key].table));
+    } else g.append(el("h2", {text: key, style: "font-size:18px"}));
     for (const p of groups.get(key)) g.append(pairCard(p));
     main.append(g);
   }

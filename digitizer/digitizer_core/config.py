@@ -109,6 +109,30 @@ class PipelineConfig:
     # the corpus behind both signals and both blind spots.
     detect_photographic: bool = False
 
+    # A FACE SEWS FLAT (Kent's ruling 2026-09-30). When stage 1.25's face
+    # pass finds a face, the design takes the FLAT lane exactly as
+    # `forced_class="flat"` would — solid colour regions, no photographic
+    # machinery, no subject cut-out — and `FACE_ROUTED_FLAT` says so in
+    # place of `PHOTO_DETECTED`. Measured that day on two stand-in
+    # portraits at 80 mm: the automatic lane read both as `gradient` and
+    # merged the subject into the background (a floating face over one
+    # grey field; a blue blob for a woman in sunglasses), while forced flat
+    # gave a recognisable person on both — and the same forced-flat run is
+    # what Kent called awesome on his own portrait. It is the 2026-08-25
+    # "filled quantizes a face to one skin field" finding judged by his
+    # eye instead of a session's: one skin field with the features drawn
+    # in reads better on cloth than a subject that vanishes.
+    #
+    # DEFAULT OFF in the engine; the Studio sends it ON beside
+    # `detect_photographic`, which it requires (no detection, no face).
+    # An explicit `forced_class` or `is_photographic` declaration still
+    # wins, as everywhere. The face pass runs even when EXIF already said
+    # photograph, because the ROUTE needs the face, not the verdict — the
+    # EXIF short-circuit stays for the plain detection case. The blind spot
+    # is the detector's: a face it misses (sunglasses, profile, small in
+    # frame — the second stand-in) takes whatever stage 0 read.
+    faces_route_flat: bool = False
+
     # Stage 2
     # Which manufacturer's chart the design is snapped to. Ids match the
     # browser's (app/src/lib/threadBrandsIndex.js) because Studio sends its
@@ -909,6 +933,16 @@ class PipelineConfig:
     # naming a garment picks its usual fabric. An explicit fabric_id wins.
     garment_id: str | None = None
     fabric_id: str | None = None
+    # A calibration profile ADJUSTING that fabric, clamped to the shipped
+    # table's span — never replacing it (DOCTRINE standing ruling, Kent's
+    # call 2026-09-30). Wire form and arithmetic: `fabrics.apply_profile`;
+    # the Studio sends `project.fabricProfile` here and applies the same
+    # three keys to its own preset in `src/fabrics.js`. None = the preset as
+    # shipped, byte-identical to before the field existed; a no-op profile
+    # (delta 0, scale 1) is canonicalised away at submit so it is one cache
+    # key with None. Drafted by `tools/sewout_reader.py` from a photo of the
+    # calibration card; nothing in the engine writes one.
+    fabric_profile: dict | None = None
     # The garment's COLOUR, (R, G, B) 0-255, as the Studio knows it
     # (`project.fabricRgb`, sent beside garment_id). None = not known. Read
     # only by the enclosed-background rule below; nothing else in the
@@ -1379,9 +1413,15 @@ class PipelineConfig:
     # only where its side is short by at least a gap floor, and only to the
     # running minimum of its own edge profile over a window -- the
     # under-reach cured without the per-station edge following that made
-    # True pay in jitter and overshoot. Measured in the PR that built it;
-    # False and True are unchanged.
-    satin_rails_follow_edge: bool | str = False
+    # True pay in jitter and overshoot. Measured in the PR that built it
+    # (#563); False and True are unchanged. ON since 2026-09-30: Kent's eye
+    # on the labelled page, seven pairs against the symmetric base -- 2 after
+    # (becker, golden_tee, the two with the defect; "did its job" on
+    # golden_tee), 0 before, 2 same, 3 both bad -- with his caveat that
+    # becker's reached stretches read as void-filling (texture, not reach)
+    # and the sew-out still owed. False is the symmetric model, byte for
+    # byte what shipped before; True stays parked.
+    satin_rails_follow_edge: bool | str = "envelope"
     # Pull compensation on the RAILS instead of the polygon (quality review
     # 2026-09-08 item 6, built 2026-09-09). Stage 5 grows every shape by the
     # fabric's pull with a round join and the satin tier skeletonises the
@@ -1451,7 +1491,9 @@ class PipelineConfig:
     # of its construction closed (`stage6_satin._close_seams`, hairline
     # fills touching boundary stage 5 added, nothing on the artwork's
     # own), golden_tee 11,377 -> 7,966, MARINE byte-identical, corpus
-    # trims 651 -> 640.
+    # trims 651 -> 640. Since 2026-09-30 the rails, caps and underlay
+    # read that closed polygon too, so a spine down a closed seam is not
+    # pinched by the seam's walls.
     satin_rail_comp: bool = True
     # None = the fabric preset's fill underlay style. One of "none" |
     # "edge_run" | "center_run" | "edge_zigzag" | "edge_lattice" |

@@ -131,9 +131,16 @@ def _becker_coverage(monkeypatch, guard: bool) -> tuple[float, float]:
     # on the grown polygon. So the reading stays on the engine it was made
     # on; what the guard does on the rails is its own open question, beside
     # the 118/120 mm one above, and not this test's.
+    # ... and a FIFTH, 2026-09-30: `satin_rails_follow_edge="envelope"` ON by
+    # default (Kent's ruling on its labelled sitting). On the grown polygon
+    # the far rail now reaches up to the fold cap on this bend, and the guard
+    # reads 7.15 -- the cap is the ceiling and the envelope fills it. Held at
+    # the symmetric model here for the same reason as the rails: the reading
+    # stays on the engine it was made on, and a cap that the envelope fills
+    # past the line is the open question above, not this test's.
     cfg = PipelineConfig(target_width_mm=_FOLD_WIDTH_MM, wide_columns=True,
                          satin_corner_twigs=False, satin_junction_stack=False,
-                         satin_rail_comp=False)
+                         satin_rail_comp=False, satin_rails_follow_edge=False)
     result, plan = digitize(art, cfg)
     m = run_preflight(result, plan, cfg, image=art)["metrics"]
     return float(m["coverage_max"]), float(m["uncovered_worst_mm2"])

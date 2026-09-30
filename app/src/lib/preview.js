@@ -664,14 +664,20 @@ function roundRectPath(ctx, x, y, w, h, r) {
 // placement box, which merely says where on the shirt the design sits, becomes
 // a dashed outline with no margin of its own. Defaults reproduce the original
 // call exactly, so a caller that knows no hoop is unaffected.
+// The hoop ring's rectangle and corner radius in canvas px, from a viewed
+// transform. One place, because the outline stroke and the surround's fabric
+// clip must agree to the pixel.
+export function hoopRectPx(t) {
+  const w = t.hoopWmm * t.scale, h = t.hoopHmm * t.scale;
+  return { x: t.ox - w / 2, y: t.oy - h / 2, w, h, r: Math.min(16, w * 0.08, h * 0.08) };
+}
+
 export function drawHoopOutline(ctx, t, fabricRgb, opts) {
   const { inset = true, dashed = false } = opts || {};
   const dark = isDark(fabricRgb || DEFAULT_FABRIC_RGB);
   const outlineColor = dark ? "rgba(255,255,255,0.45)" : "rgba(60,50,40,0.35)";
   const insetColor = dark ? "rgba(255,255,255,0.35)" : "rgba(60,50,40,0.28)";
-  const wPx = t.hoopWmm * t.scale, hPx = t.hoopHmm * t.scale;
-  const x = t.ox - wPx / 2, y = t.oy - hPx / 2;
-  const r = Math.min(16, wPx * 0.08, hPx * 0.08);
+  const { x, y, w: wPx, h: hPx, r } = hoopRectPx(t);
   ctx.save();
   ctx.lineWidth = 2;
   ctx.strokeStyle = outlineColor;
@@ -699,6 +705,11 @@ export function drawHoopOutline(ctx, t, fabricRgb, opts) {
 //   colorOverride  existing strand-recolor contract -- unchanged.
 //   weave          true -> draw weavePattern() over the bg fill (needs
 //                  fabricRgb; a no-op without it).
+//   surround       CSS colour for the canvas OUTSIDE the hoop. With it, the
+//                  fabric (and weave) fill only the hoop's rounded rect and
+//                  the rest of the canvas is this colour. Ignored without a
+//                  hoop, so thumbnails and PNG export never see it. Omit it
+//                  and the fill is edge to edge exactly as before.
 //   dpr            device pixel ratio the canvas BITMAP is sized for; the
 //                  caller sets canvas.width = cssWidth * dpr and this scales
 //                  the context to match. Defaults to 1 (bitmap == CSS box),
@@ -736,10 +747,15 @@ export function renderRealistic(canvas, design, opts) {
   const panX = view.panX || 0;
   const panY = view.panY || 0;
 
-  ctx.fillStyle = o.fabricRgb ? rgbCss(o.fabricRgb) : (o.fabric || "#e9e6df");
+  const hooped = !!(o.hoop && o.hoop.garment);
+  // A surround only means something when there is a hoop to float on it;
+  // a design-fit render (thumbnails, PNG export) has no hoop, so its fabric
+  // still fills the canvas exactly as before.
+  const surrounded = hooped && !!o.surround;
+
+  ctx.fillStyle = surrounded ? o.surround : (o.fabricRgb ? rgbCss(o.fabricRgb) : (o.fabric || "#e9e6df"));
   ctx.fillRect(0, 0, cw, ch);
 
-  const hooped = !!(o.hoop && o.hoop.garment);
   let t, TX0, TY0, pxPerMm0;
 
   if (hooped) {
@@ -763,19 +779,45 @@ export function renderRealistic(canvas, design, opts) {
   const TY = (v) => ccy + (TY0(v) - ccy) * zoom + panY;
   const pxPerMm = pxPerMm0 * zoom;
 
-  if (o.weave && o.fabricRgb) weavePattern(ctx, cw, ch, o.fabricRgb, pxPerMm);
+  // The hoop's rectangle in canvas px, through the same TX/TY the strands
+  // use, so it lands where the outline below is stroked at any zoom or pan.
+  // Computed once here because the surround path needs it BEFORE the weave
+  // and the outline needs it after.
+  const viewedT = hooped
+    ? { scale: pxPerMm, ox: TX(0), oy: TY(0), hoopWmm: t.hoopWmm, hoopHmm: t.hoopHmm }
+    : null;
+  const outerT = hooped && t.realWmm ? { ...viewedT, hoopWmm: t.realWmm, hoopHmm: t.realHmm } : viewedT;
+
+  if (surrounded) {
+    // Fabric only INSIDE the hoop (the real one when it is known, else the
+    // placement box standing in for it): the canvas outside the ring stays
+    // the surround, so the fabric colour reads against a neutral instead of
+    // against itself edge to edge, and at any zoom the ring's edge is where
+    // fabric meets dark — orientation the old edge-to-edge fill could not
+    // give. The weave is clipped to the same path. The rounded corners
+    // match drawHoopOutline's radius rule exactly so the ring sits on the
+    // fill's edge rather than a pixel inside or outside it.
+    const r = hoopRectPx(outerT);
+    ctx.save();
+    roundRectPath(ctx, r.x, r.y, r.w, r.h, r.r);
+    ctx.clip();
+    ctx.fillStyle = o.fabricRgb ? rgbCss(o.fabricRgb) : (o.fabric || "#e9e6df");
+    ctx.fillRect(r.x, r.y, r.w, r.h);
+    if (o.weave && o.fabricRgb) weavePattern(ctx, cw, ch, o.fabricRgb, pxPerMm);
+    ctx.restore();
+  } else if (o.weave && o.fabricRgb) {
+    weavePattern(ctx, cw, ch, o.fabricRgb, pxPerMm);
+  }
   if (hooped) {
     // t.ox/t.oy run through the SAME TX/TY used for strands below, so the
     // outline is always drawn at the current view's scale/position -- one
     // shared transform, not a second parallel calculation (B4).
-    const viewedT = { scale: pxPerMm, ox: TX(0), oy: TY(0), hoopWmm: t.hoopWmm, hoopHmm: t.hoopHmm };
     if (t.realWmm) {
       // The real hoop FIRST, so the placement box reads as sitting inside it
       // rather than the other way round -- and so a caller that passes no hoop
       // leaves this module's stroke order, which one spec asserts by index,
       // exactly as it was.
-      drawHoopOutline(ctx, { ...viewedT, hoopWmm: t.realWmm, hoopHmm: t.realHmm },
-                      o.fabricRgb);
+      drawHoopOutline(ctx, outerT, o.fabricRgb);
       drawHoopOutline(ctx, viewedT, o.fabricRgb, { inset: false, dashed: true });
     } else {
       drawHoopOutline(ctx, viewedT, o.fabricRgb);

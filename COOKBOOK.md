@@ -337,9 +337,11 @@ hand-rolling it in JS.
   that gate is the finding, not a hedge: the defect population
   (drone/summit) and the disproof population (61/64 sub-mm satins on real
   customer logos are ground the pro also satined) BOTH classify `gradient`,
-  so classification can't separate them — the photo lane (the user's own
-  "It's a photo" correction, a "This is a photo" toggle before 2026-08-30)
-  is the only honest gate. Flat/gradient stay byte-identical.
+  so classification can't separate them — the photo lane (stage 0's own
+  photo classes, or stage 1.25's EXIF-or-face detection, which the Studio
+  asks for on every job since 2026-09-30; the user's own "It's a photo"
+  correction before that) is the only honest gate. Flat/gradient stay
+  byte-identical.
 - **Run the service**: `.venv/Scripts/python -m digitizer_service` →
   `127.0.0.1:8721`. **Building the venv from scratch takes TWO installs, not
   one.** CLAUDE.md sends you to `pip install -e .` (correctly — it enforces the
@@ -350,7 +352,12 @@ hand-rolling it in JS.
   `pip install -e ".[service]"`. Cost a cycle on 2026-08-25.
   *(confirmed — `digitizer/pyproject.toml` `[project.optional-dependencies]`)* `GET /health`, `POST /digitize` (image+config → job),
   `POST /digitize-manual` (hand-authored shapes, no image — stages 1-4
-  skipped; same job/response contract), `GET /jobs/{id}`, `POST /export`.
+  skipped; same job/response contract), `GET /jobs/{id}`, `POST /export`,
+  and since 2026-09-30 the calibration trio — `GET /calibration/info`,
+  `GET /calibration/card?format=` (card v2 in any machine format; built on
+  first use, ~15 s, cached for the process) and `POST /calibration/read`
+  (a photo of the sewn card → readings + a draft fabric profile, synchronous,
+  10-20 s; 422 when the card is not found). `digitizer_core/calibration/`.
   Binds loopback only, CORS localhost-only.
 - **The stage 0-4 generation cache** (2026-08-22): `/digitize` caches
   `build_generation`'s output per artwork + every config field EXCEPT the
@@ -1559,6 +1566,21 @@ and the "disagreements" filter IS the exit-clause list. Spec:
 `docs/superpowers/specs/2026-09-17-eye-pairs-gallery-design.md`; the
 generator imports nothing from `tools/eye_pairs/` and pins its arm and
 metric tables by test.
+
+**The labelled page (2026-09-18) and its two later flags.** `--labelled`
+builds the before | after page straight from `--render`'s output, no picks:
+BEFORE left, AFTER right, the arm named, Kent's verdict taken on the page
+and stored under `<arm>__<fixture>`. `--tables corpus.json` puts a measured
+table (`{arm: {caption, columns, rows}}`) under that arm's head so the eye
+and the instruments sit on one page (2026-09-30; refused for an arm the page
+does not show or a ragged row). `--sitting <tag>` keys a SECOND look at an
+arm Kent has judged before as `<arm>__<fixture>__<tag>` (letters, digits,
+`.`, `-`; the ruling `<arm>__<tag>`), so the earlier verdicts neither pre-fill
+the new pairs nor get overwritten — read the page's store with `ArtifactData`
+before every republish, and never make room by moving his documents
+(DOCTRINE 2026-09-30). The built page is republished to the SAME artifact
+URL each sitting; the sittings' READMEs live in `docs/eye-pairs-<date>/`.
+
 
 ### The labelled before | after page — "Flag Before After" (2026-09-18)
 

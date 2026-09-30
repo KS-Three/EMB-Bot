@@ -113,24 +113,29 @@ def exif_camera(image: str | Path | bytes | np.ndarray) -> str | None:
 
 def detect(image: str | Path | bytes | np.ndarray,
            rgb: np.ndarray | None = None,
-           cfg=None) -> PhotoSignals:
+           cfg=None, *, faces_always: bool = False) -> PhotoSignals:
     """Both signals, cheapest first.
 
     `rgb` is the prep raster the face detector runs on; without it only EXIF
     is read (the caller has no pixels yet, or does not want to pay for the
     detector). **EXIF short-circuits**: once it says photograph, running
-    YuNet cannot change the answer and is pure cost.
+    YuNet cannot change the answer and is pure cost — unless `faces_always`,
+    which `cfg.faces_route_flat` sets because the ROUTE needs the face
+    itself, not the photograph verdict (a camera-fresh portrait must still
+    reach the flat lane). Both fields are then filled and `signal` still
+    reads "exif"; a router reads `faces` directly.
     """
     cam = exif_camera(image)
-    if cam:
+    if cam and not faces_always:
         return PhotoSignals(exif_camera=cam)
     if rgb is None:
-        return PhotoSignals()
+        return PhotoSignals(exif_camera=cam)
     from .stage1_photo_prep import detect_faces_seam, face_detector_unavailable_reason
     faces = detect_faces_seam(rgb, cfg)
     if faces is None:
-        return PhotoSignals(faces=None, face_reason=face_detector_unavailable_reason())
-    return PhotoSignals(faces=len(faces))
+        return PhotoSignals(exif_camera=cam, faces=None,
+                            face_reason=face_detector_unavailable_reason())
+    return PhotoSignals(exif_camera=cam, faces=len(faces))
 
 
 def apply_detection(cfg, detected: bool):
@@ -174,6 +179,7 @@ def resolve(cfg, *, image=None, rgb=None):
     """
     if not cfg.detect_photographic or cfg.is_photographic is not None:
         return cfg, None
-    signals = detect(image, rgb=rgb, cfg=cfg) if image is not None or rgb is not None \
-        else PhotoSignals()
+    signals = detect(image, rgb=rgb, cfg=cfg,
+                     faces_always=bool(getattr(cfg, "faces_route_flat", False))) \
+        if image is not None or rgb is not None else PhotoSignals()
     return apply_detection(cfg, bool(signals.is_photograph)), signals

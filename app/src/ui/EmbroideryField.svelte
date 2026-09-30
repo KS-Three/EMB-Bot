@@ -4,6 +4,8 @@
   import { ensureFonts, loadCoverage, loadManifest } from "../lib/fontLoader.js";
   import { unsupportedMessage } from "../lib/fontCoverage.js";
   import { renderRealistic, isDark } from "../lib/preview.js";
+  import { pickScaleBar } from "../lib/scalebar.js";
+  import { tip } from "../lib/tip.js";
   import { designToStrands, strandStitchOrdinals } from "../lib/strands.js";
   import { advanceIndex, clampIndex, nextSpeed } from "../lib/simulate.js";
   import { EMB } from "../lib/emb.js";
@@ -19,6 +21,7 @@
     shapeBorderState } from "../lib/borderMenu.js";
   import { boundaryIssues, canonicalShapeEdits, editsKey } from "../lib/digitizer.js";
   import { popoverModel, popoverPatch, recolorPatch } from "../lib/shapePopover.js";
+  import { authoredInFieldMm, hitAuthored, applyAnchorDrag, applyHandleDrag, insertAnchor, removeAnchor, editedElementPatch, fieldMmToPx, pxToFieldMm, clampMmToBox } from "../lib/fieldNodeEdit.js";
   import Hint from "./Hint.svelte";
   import Icon from "./Icon.svelte";
   import ShapePopover from "./ShapePopover.svelte";
@@ -37,6 +40,16 @@
   // reported via this component's own "stats" event below) + the A7
   // cross-hint priority rule.
   export let showDragHint = false;
+  // The shape the Layers list is pointing at (2026-09-30). Both are
+  // { elId, shapeId } or null, owned by App so the list and the canvas share
+  // one idea of "the shape in question": `hoverShape` is drawn as a white
+  // outline whether or not the outlines toggle is on; `focusShape` is
+  // applied as this component's own selection (the amber one) exactly as a
+  // canvas click would. Before this, selectedShapeId was set from a canvas
+  // hit only, and a row in a thirty-row list had no way to say which
+  // outline it was.
+  export let hoverShape = null;
+  export let focusShape = null;
 
   const dispatch = createEventDispatcher();
   const MM_PER_INCH = 25.4;
@@ -155,6 +168,17 @@
   // same in both, so the coverage answer never changes with the view.
   let realisticView = true;
   function toggleRealistic() { realisticView = !realisticView; scheduleViewRepaint(); }
+  // The view segments (2026-09-30): each picks its view rather than toggling,
+  // so clicking the one already lit does nothing, which is what a segmented
+  // control promises. Leaving the simulator to pick a view stops it first.
+  function showFlat() {
+    if (simActive) stopSim();
+    if (realisticView) toggleRealistic();
+  }
+  function showRealistic() {
+    if (simActive) stopSim();
+    if (!realisticView) toggleRealistic();
+  }
 
   // ---- stitch simulator state (see lib/simulate.js for the pure math) ----
   // simIndex is a FLOAT while playing (fractional progress carries across
@@ -218,6 +242,11 @@
   // unrelated element (or panning) never re-triggers it.
   $: project, noteOutlineResults();
   $: multiSel = selIds.length > 1;
+  // The scale bar follows the render's px-per-mm, which already has the
+  // view's zoom in it (B1), so wheel/button zoom moves it without any
+  // second calculation. `renderResult` is reassigned on every render, view
+  // repaint and clear, which is exactly the set of events that change it.
+  $: scaleBar = pickScaleBar(renderResult && renderResult.scale);
 
   // Union canvas-px rect of every selected member — the group's visible box.
   function groupRectPx() {
@@ -284,8 +313,19 @@
       hoop: hoopOpt(project),
       fabricRgb: project && project.fabricRgb,
       weave: true,
+      surround: surroundColor(),
       view,
     });
+  }
+
+  // The canvas outside the hoop paints the same --surround the field pane
+  // is, read off the token so the two can never drift (the old contract
+  // between .field and the canvas fill, kept — just dark now). The fallback
+  // is the token's own value, for a render before styles are attached.
+  function surroundColor() {
+    if (typeof document === "undefined") return "#22252c";
+    const v = getComputedStyle(document.documentElement).getPropertyValue("--surround").trim();
+    return v || "#22252c";
   }
 
   function accentColor() {
@@ -548,7 +588,102 @@
   // the press let a drag open it, and the browser's mousedown default then
   // took focus back from the dialog.
   let pressOutline = false;
+  // The press landed on an EDGE of the selected hand-drawn shape: a click
+  // there inserts an anchor on the release (endDrag); a drag does nothing.
+  let pressEdge = null;     // { elId, shapeId, index }
   let hoopBounds = { w: 0, h: 0 };
+
+  // Node editing of a HAND-DRAWN shape (2026-09-29 field-node-edit spec):
+  // the authored anchors/controls, mapped through the engine's fit, drawn and
+  // grabbable once the shape is selected. `basis` is frozen at press so a
+  // regenerate landing mid-drag cannot skew the inverse; `live` is the shape
+  // as the drag has it. The drag is RELATIVE — `grab` is the node's offset
+  // from the press point (authored px), so the node keeps that offset rather
+  // than snapping to the pointer — and `moving` flips only once the pointer
+  // has travelled CLICK_PX, so a click on a node never changes it.
+  // `focusedAnchor` is the anchor a Delete would remove.
+  let nodeEdit = null;      // { elId, shapeId, kind: "anchor"|"handle", index, basis: { fit, shape }, live, grab: { dx, dy }, moving }
+  let focusedAnchor = null; // { elId, shapeId, index }
+
+  function manualFit(el) {
+    const pe = peById[el.id];
+    return pe && pe.design && pe.design.fit ? pe.design.fit : null;
+  }
+  function manualShapeOf(el, shapeId) {
+    return (el.shapes || []).find((s) => s && s.id === shapeId) || null;
+  }
+  // The selected hand-drawn shape's authored geometry in CANVAS px, from the
+  // live drag if one is running, else from the element.
+  function authoredPxFor(el, shapeId) {
+    if (!el || el.type !== "manual") return null;
+    const fit = manualFit(el);
+    const shape = nodeEdit && nodeEdit.shapeId === shapeId && nodeEdit.elId === el.id ? nodeEdit.live : manualShapeOf(el, shapeId);
+    if (!fit || !shape || !renderResult || !renderResult.toCanvas) return null;
+    const mm = authoredInFieldMm(shape, fit);
+    const toPx = ([x, y]) => { const c = renderResult.toCanvas(x, y); return [c.x, c.y]; };
+    const controls = {};
+    for (const k of Object.keys(mm.controls)) controls[k] = toPx(mm.controls[k]);
+    return { anchors: mm.anchors.map(toPx), controls, handles: mm.handles.map(toPx), fit, shape };
+  }
+  // Canvas px -> authored canvas px, through the frozen fit. The canvas
+  // basis is read off toCanvas for the same reason pxToMmDelta does.
+  function fieldPxToAuthored(fit, p) {
+    const o = renderResult.toCanvas(0, 0), ex = renderResult.toCanvas(1, 0), ey = renderResult.toCanvas(0, 1);
+    const xMm = (p.x - o.x) / (ex.x - o.x), yMm = (p.y - o.y) / (ey.y - o.y);
+    return fieldMmToPx(fit, [xMm, yMm]);
+  }
+  // An authored point held inside the garment placement box (hoopSizeMm IS the
+  // box, centred on the origin) — see clampMmToBox for the ruling.
+  function clampAuthoredToBox(fit, at) {
+    const box = hoopSizeMm(project);
+    if (!(box.wMm > 0 && box.hMm > 0)) return at; // no garment: nothing to clamp to
+    return fieldMmToPx(fit, clampMmToBox(pxToFieldMm(fit, at), box));
+  }
+  // Commits an edited hand-drawn shape through the re-fit rule, so nothing
+  // that was not edited moves. An invalid shape is refused with the reason
+  // and the element is left as it was (the live drag is simply dropped).
+  function commitNodeEdit(el, edited) {
+    const fit = nodeEdit ? nodeEdit.basis.fit : manualFit(el);
+    if (!fit) return false;
+    const patch = editedElementPatch(el, fit, edited.id, edited);
+    if (patch.error) { shapeEditError = patch.error; return false; }
+    shapeEditError = "";
+    dispatch("elupdate", { id: el.id, patch });
+    return true;
+  }
+  // drawOverlay paints ON TOP of the last render without clearing it, so
+  // node chrome that MOVES or DISAPPEARS (a node drag's live outline, a
+  // focus ring dropped) needs the preview re-rendered underneath, or every
+  // frame stays on the canvas — measured: a node drag left a smear of amber
+  // outlines. One rAF-coalesced view repaint (the zoom/pan path), which ends
+  // in drawOverlay.
+  function repaintNodeChrome() {
+    scheduleViewRepaint();
+  }
+  // The anchor a Delete would remove — only while its shape is still the
+  // selected one (a stale focus must never delete a point on another shape).
+  function liveFocusedAnchor() {
+    if (!focusedAnchor) return null;
+    if (focusedAnchor.elId !== selectedShapeElId || focusedAnchor.shapeId !== selectedShapeId) return null;
+    return focusedAnchor;
+  }
+  // Removes one anchor of a hand-drawn shape: the floor message at three
+  // points, else the re-fit patch. Shared by Delete and the menu item.
+  function removeAnchorOf(elId, shapeId, index) {
+    const el = project && (project.elements || []).find((x) => x.id === elId);
+    const shape = el && manualShapeOf(el, shapeId);
+    if (!shape) return false;
+    // A stale index (an undo of an insert shrank the shape under the focus)
+    // removes nothing and drops the focus rather than removing some other point.
+    if (!(index >= 0 && index < (shape.points || []).length)) {
+      focusedAnchor = null;
+      repaintNodeChrome();
+      return false;
+    }
+    const smaller = removeAnchor(shape, index);
+    if (!smaller) { shapeEditError = "A shape needs at least 3 points."; return false; }
+    return commitNodeEdit(el, smaller);
+  }
   $: popModel = shapePop && selectedShapeId && project && selectedShapeElId === project.selectedId
     ? popoverModel({ element: selectedShapeElement(), shapeId: selectedShapeId })
     : null;
@@ -584,7 +719,12 @@
     // selection change closes it rather than re-aiming it (the preset model
     // ignores shapeId, so a re-aimed colour pick would land on another element).
     shapePop = { x: e.clientX - r.left, y: e.clientY - r.top, elementId: el ? el.id : null };
+    // A spot the user dragged the dialog to holds for later shapes of the SAME
+    // element (that is the point of moving it); another element opens at the
+    // click again. Session only — never saved with the project.
+    if (popPosition && popPosition.elementId !== shapePop.elementId) popPosition = null;
   }
+  let popPosition = null;   // null | { x, y, elementId } in .hoop px
 
   // Every user-driven close (Escape, an outside press, Delete, Edit points, a
   // click off every shape) hands keyboard focus back to the canvas, so the
@@ -644,15 +784,15 @@
       if (patch) dispatch("elupdate", { id: el.id, patch });
       selectedShapeId = null;
       selectedShapeElId = null;
+      focusedAnchor = null;
       drawOverlay();
       return;
     }
     if (key === "editPoints") {
-      // Digitized: selection already arms node mode on the canvas, so the
-      // popover just gets out of the way. Manual: the nodes live on
-      // ManualPanel's canvas for now — hand it the shape and ask for edit mode.
+      // Every lane: selection already arms node editing on the canvas (a
+      // hand-drawn shape's anchors and handles are drawn and grabbable once
+      // it is selected), so the popover just gets out of the way.
       closeShapePop();
-      if (el.type === "manual") dispatch("shapeselect", { elementId: el.id, shapeId: selectedShapeId, edit: true });
       drawOverlay();
     }
   }
@@ -801,10 +941,12 @@
     if (!sel || !SHAPE_LANES.has(sel.type)) {
       selectedShapeId = null;
       selectedShapeElId = null;
+      focusedAnchor = null;
     }
     if (selectedShapeId && project.selectedId !== selectedShapeElId) {
       selectedShapeId = null;
       selectedShapeElId = null;
+      focusedAnchor = null;
       dropStalePop();
     }
     // An open popover belongs to the element it was opened on. A different
@@ -813,8 +955,73 @@
     if (shapePop && project.selectedId !== shapePop.elementId) {
       selectedShapeId = null;
       selectedShapeElId = null;
+      focusedAnchor = null;
       dropStalePop();
     }
+  }
+
+  // Sets the selection AND its tag together, so the invariant above holds
+  // whichever path picks a shape.
+  function setSelectedShape(id) {
+    if (selectedShapeId === id) return;
+    selectedShapeId = id;
+    const el = id ? selectedElement() : null;
+    selectedShapeElId = el ? el.id : null;
+  }
+
+  // Canvas -> Layers list. The selection is set on several paths (a click,
+  // a right-click, the popover's Delete, the clears above, a row click from
+  // the list), so the list is told by WATCHING the ids rather than by
+  // instrumenting each assignment — a watcher cannot be bypassed by the
+  // next path that lands. Silent when nothing changed, which is also what
+  // stops a list-originated selection echoing back and forth. The event is
+  // `shapefocus`, not `shapeselect`: that name carries the manual lane's
+  // { elementId, shapeId, edit } request to ManualPanel, a different
+  // payload for a different listener.
+  let focusNotified = "";
+  function notifyShapeFocus(id, elId) {
+    const key = id && elId ? elId + "\u0000" + id : "";
+    if (key === focusNotified) return;
+    focusNotified = key;
+    dispatch("shapefocus", key ? { elId, shapeId: id } : null);
+  }
+  $: notifyShapeFocus(selectedShapeId, selectedShapeElId);
+
+  // Panel -> canvas: a click on a row selects that shape here, the same
+  // state a canvas click sets, so Delete and a boundary drag act on it and
+  // the amber highlight shows which one. Only for the element in front of
+  // the user; a stale focus for some other element is ignored.
+  function applyFocusShape(f) {
+    const sel = selectedElement();
+    if (!sel || sel.type !== "digitized" || sel.id !== f.elId) return;
+    if (selectedShapeId === f.shapeId) return;
+    selectedShapeId = f.shapeId;
+    selectedShapeElId = sel.id;
+    shapeEditError = "";
+    scheduleViewRepaint();
+  }
+  $: if (focusShape) applyFocusShape(focusShape);
+  // A hover is drawn over the render, so a change to it (on or off) needs
+  // the base repainted underneath, not just the overlay redrawn on top.
+  $: if (canvas) { hoverShape; scheduleViewRepaint(); }
+
+  // Canvas -> panel: the shape under the pointer, on its outline or inside
+  // it (the same two tests the right-click menu uses), for the row to
+  // highlight. Dispatched only on change; null when the pointer is on none.
+  let hoverEmitted = null;
+  function emitCanvasHover(p) {
+    let id = null;
+    let elId = null;
+    const edit = p ? editableOutlinesPx() : null;
+    if (edit) {
+      const hidden = hiddenShapeIds(edit.el, edit.rows);
+      const live = edit.outlines.filter((o) => !hidden.has(o.id));
+      const hit = hitOverlay(live, p.x, p.y) || hitShapeInterior(live, p.x, p.y);
+      if (hit) { id = hit.shapeId; elId = edit.el.id; }
+    }
+    if (id === hoverEmitted) return;
+    hoverEmitted = id;
+    dispatch("shapehover", id ? { elId, shapeId: id } : null);
   }
 
   function deleteSelectedShape() {
@@ -829,6 +1036,7 @@
       dispatch("elupdate", { id: el.id, patch: { shapes: shapes.filter((s) => s.id !== selectedShapeId) } });
       selectedShapeId = null;
       selectedShapeElId = null;
+      focusedAnchor = null;
       shapeEditError = "";
       return true;
     }
@@ -836,8 +1044,8 @@
     const cur = el.deletedShapeIds || [];
     if (cur.includes(selectedShapeId)) return false;
     dispatch("elupdate", { id: el.id, patch: { deletedShapeIds: [...cur, selectedShapeId] } });
-    selectedShapeId = null;
-    selectedShapeElId = null;
+    setSelectedShape(null);
+    focusedAnchor = null;
     shapeEditError = "";
     return true;
   }
@@ -863,7 +1071,7 @@
   function nudgeSelected(dxMm, dyMm) {
     // The simulator is a watch-mode (pointer editing is disabled there too),
     // and mid-boundary-edit the arrows belong to the ring being dragged.
-    if (!project || simActive || shapeEdit) return;
+    if (!project || simActive || shapeEdit || nodeEdit) return;
     const id = project.selectedId;
     if (!id) return;
     const el = (project.elements || []).find((e) => e.id === id);
@@ -943,6 +1151,14 @@
       e.preventDefault();
       return;
     }
+    // Then a focused anchor: Escape drops the focus (the shape stays
+    // selected), so the next Delete removes the shape rather than the point.
+    if (e.key === "Escape" && focusedAnchor) {
+      focusedAnchor = null;
+      repaintNodeChrome();
+      e.preventDefault();
+      return;
+    }
     if (e.key !== "Delete" && e.key !== "Backspace") return;
     if (!selectedShapeId || simActive) return;
     // Only a key that came FROM THE FIELD deletes: the canvas itself (a press
@@ -955,6 +1171,19 @@
     // INPUT, BUTTON): the popover's Delete button is how you delete from it.
     const t = e.target;
     if (t !== canvas && t !== document.body) return;
+    // Mid-drag (two-handed), the key belongs to nothing: a commit now would
+    // run against the bbox the drag is about to change. nudgeSelected's rule.
+    if (nodeEdit || pressEdge) return;
+    // A focused anchor of the selected hand-drawn shape: Delete removes that
+    // POINT (its two edges become one), not the shape. At the three-point
+    // floor it refuses with the message and removes nothing.
+    const fa = liveFocusedAnchor();
+    if (fa) {
+      if (removeAnchorOf(fa.elId, fa.shapeId, fa.index)) focusedAnchor = null;
+      repaintNodeChrome();
+      e.preventDefault();
+      return;
+    }
     if (deleteSelectedShape()) {
       if (shapePop) closeShapePop();
       e.preventDefault();
@@ -1038,18 +1267,29 @@
         // Tagged by element: shape ids repeat across elements ("shape" on
         // every preset, s1… on every hand-drawn one).
         const editing = el.id === selectedShapeElId && o.id === selectedShapeId;
+        // Under the pointer — on the canvas or on its row in the Layers
+        // list (App routes both here as `hoverShape`). Drawn white so it
+        // reads as a spotlight beside the amber selection.
+        const hovered = !editing && !!hoverShape && hoverShape.elId === el.id && hoverShape.shapeId === o.id;
         // The default view is the stitch-out, so only the shape being acted
-        // on is outlined until the user asks for all of them.
+        // on, or pointed at, is outlined until the user asks for all of them.
         //
         // Clicking still selects with the outlines hidden: hit-testing runs
         // off the geometry (hitOverlay), never off what was drawn, and the
-        // shape highlights the moment it is picked. What IS lost is the
-        // signpost that the shapes are individually clickable at all — which
-        // is what the toggle is for, and why it sits with the other two
-        // diagnostic overlays rather than being hidden in a menu. (Note the
-        // Layers list does not drive this: selectedShapeId is set from a
-        // canvas hit only.)
-        if (!showOutlines && !editing) continue;
+        // shape highlights the moment it is picked. The hover outline is the
+        // signpost that the shapes are individually clickable; the toggle
+        // remains for seeing all of them at once, which is why it sits with
+        // the other two diagnostic overlays. (Since 2026-09-30 the Layers
+        // list drives this too, through App: a row's hover and click land
+        // in `hoverShape` / `focusShape` above.)
+        if (!showOutlines && !editing && !hovered) continue;
+        // Mid node-drag the flattened ring is the STALE geometry: drawing it
+        // beside the live authored outline showed two amber outlines. Idle,
+        // the flattened ring stays underneath the authored one (spec §5).
+        if (el.type === "manual" && editing && nodeEdit && nodeEdit.elId === el.id && nodeEdit.shapeId === o.id) {
+          drawAuthoredNodes(ctx, el, o.id);
+          continue;
+        }
 
         ctx.beginPath();
         ctx.moveTo(pts[0].x, pts[0].y);
@@ -1069,14 +1309,21 @@
         // reads as a highlight, widening alone as a wobble; both together read
         // as a heartbeat.
         ctx.strokeStyle = editing
-          ? "rgba(255, 214, 64, 0.95)"     // the shape under the pointer
-          : `rgba(${OUTLINE_RGB}, ${0.85 + 0.15 * pulse})`;
-        ctx.lineWidth = (editing ? 1.9 : 1.4) + 1.4 * pulse;
+          ? "rgba(255, 214, 64, 0.95)"     // the selected shape
+          : hovered
+            ? "rgba(255, 255, 255, 0.95)"  // the shape under the pointer, here or in the list
+            : `rgba(${OUTLINE_RGB}, ${0.85 + 0.15 * pulse})`;
+        ctx.lineWidth = (editing || hovered ? 1.9 : 1.4) + 1.4 * pulse;
         ctx.stroke();
 
-        // Node dots say "drag me", which is only true on the digitized lane —
-        // hand-drawn nodes are edited on ManualPanel's canvas, and a preset
-        // has none to move. The cased outline above still shows the shape.
+        // Node dots say "drag me". On the digitized lane every vertex of the
+        // dense ring is one; a hand-drawn shape's nodes are its AUTHORED
+        // anchors and curve handles (drawn by drawAuthoredNodes once the shape
+        // is selected); a preset has none to move — its geometry is a recipe.
+        if (el.type === "manual" && editing) {
+          drawAuthoredNodes(ctx, el, o.id);
+          continue;
+        }
         if (el.type !== "digitized") continue;
         const r = NODE_R + 1.7 * pulse + (editing ? 0.6 : 0);
         for (const p of pts) {
@@ -1097,6 +1344,63 @@
     }
 
     if (stillPulsing) schedulePulseFrame();
+  }
+
+  // The selected hand-drawn shape's AUTHORED geometry: the quadratic outline
+  // through its mapped controls, an amber dot per anchor, a green dot per
+  // segment handle. Amber is the selected ring's colour; green is the side
+  // canvas's curve-handle colour — the side canvas's vocabulary, so nothing
+  // has to be relearned. Every dot is cased like the outline, because a node
+  // sits on the edge between stitches and fabric. Mid-drag this draws the
+  // live shape, so the outline follows the pointer before the regenerate.
+  function drawAuthoredNodes(ctx, el, shapeId) {
+    const ap = authoredPxFor(el, shapeId);
+    if (!ap || ap.anchors.length < 3) return;
+    const n = ap.anchors.length;
+    ctx.beginPath();
+    ctx.moveTo(ap.anchors[0][0], ap.anchors[0][1]);
+    for (let i = 0; i < n; i++) {
+      const next = ap.anchors[(i + 1) % n];
+      const c = ap.controls[i];
+      if (c) ctx.quadraticCurveTo(c[0], c[1], next[0], next[1]);
+      else ctx.lineTo(next[0], next[1]);
+    }
+    ctx.closePath();
+    ctx.strokeStyle = "rgba(10, 22, 30, 0.5)";
+    ctx.lineWidth = 3.4;
+    ctx.stroke();
+    ctx.strokeStyle = "rgba(255, 214, 64, 0.95)";
+    ctx.lineWidth = 1.9;
+    ctx.stroke();
+
+    const dot = (x, y, r, fill) => {
+      ctx.beginPath();
+      ctx.arc(x, y, r, 0, Math.PI * 2);
+      ctx.fillStyle = fill;
+      ctx.fill();
+      ctx.strokeStyle = "rgba(10, 22, 30, 0.75)";
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    };
+    // NODE_R + 0.4 (3.0 px): at NODE_R - 1 the handles were near-invisible
+    // at 100% zoom (controller ruling 2026-09-29); still smaller than an anchor.
+    for (const [x, y] of ap.handles) dot(x, y, NODE_R + 0.4, "rgba(64, 200, 120, 0.95)");
+    const fa = liveFocusedAnchor();
+    for (let i = 0; i < n; i++) {
+      const [x, y] = ap.anchors[i];
+      dot(x, y, NODE_R + 0.6, "rgba(255, 214, 64, 0.95)");
+      if (fa && fa.elId === el.id && fa.index === i) {
+        // The anchor a Delete would remove: ringed, cased like everything else.
+        ctx.beginPath();
+        ctx.arc(x, y, NODE_R + 0.6 + 3, 0, Math.PI * 2);
+        ctx.strokeStyle = "rgba(10, 22, 30, 0.75)";
+        ctx.lineWidth = 3;
+        ctx.stroke();
+        ctx.strokeStyle = "rgba(255, 214, 64, 0.95)";
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+      }
+    }
   }
 
   function drawOverlay() {
@@ -1408,6 +1712,7 @@
       hoop: hoopOpt(project),
       fabricRgb: project.fabricRgb,
       weave: true,
+      surround: surroundColor(),
       view,
       showJumps,
       showTrims,
@@ -1443,6 +1748,7 @@
         hoop: hoopOpt(project),
         fabricRgb: project.fabricRgb,
         weave: true,
+        surround: surroundColor(),
         view,
         showJumps,
         showTrims,
@@ -1825,6 +2131,16 @@
     // would keep promising "move the element" right up to the moment a click
     // edits a shape instead — the affordance has to agree with the behaviour.
     const hoverEdit = editableOutlinesPx();
+    // A selected hand-drawn shape's anchors and handles are grabbable; its
+    // edges take a click (insert), which the "pointer" below already says.
+    if (hoverEdit && hoverEdit.el.type === "manual" && selectedShapeId && selectedShapeElId === hoverEdit.el.id) {
+      const ap = authoredPxFor(hoverEdit.el, selectedShapeId);
+      const ah = ap ? hitAuthored(ap, p.x, p.y) : null;
+      if (ah && ah.kind !== "edge") {
+        canvas.style.cursor = "grab";
+        return;
+      }
+    }
     if (hoverEdit && hitOverlay(liveOutlinesPx(hoverEdit), p.x, p.y)) {
       canvas.style.cursor = "pointer";
       return;
@@ -1895,6 +2211,33 @@
   function shapeUnderPointer(e) {
     if (!renderResult || !project) return null;
     const p = canvasPointFromEvent(e);
+    // An ANCHOR of the selected hand-drawn shape: the menu's shape section
+    // is that shape, with Remove point (2026-09-29 field-node-edit spec §5).
+    // The manual lane has no border items; everything else on it falls
+    // through to the digitized-only search below, as before.
+    const selEl = selectedShapeElement();
+    if (selEl && selEl.type === "manual") {
+      const ap = authoredPxFor(selEl, selectedShapeId);
+      const ah = ap ? hitAuthored(ap, p.x, p.y) : null;
+      if (ah && ah.kind === "anchor") {
+        const model = popoverModel({ element: selEl, shapeId: selectedShapeId });
+        const atFloor = ap.shape.points.length <= 3;
+        return {
+          elId: selEl.id,
+          shapeId: selectedShapeId,
+          name: model ? model.name : "Shape",
+          state: null,
+          items: [{
+            id: "removepoint",
+            label: "Remove point",
+            value: null,
+            title: atFloor ? "A shape needs at least 3 points." : "Remove this point; its two edges become one.",
+            disabled: atFloor,
+            anchor: ah.index,
+          }],
+        };
+      }
+    }
     // Every digitized element's outlines, the selected one first and then
     // the rest topmost first (later elements draw over earlier ones). Not
     // gated on the element's bounding rect: an outline's drawn edge sits a
@@ -1928,8 +2271,7 @@
     }
     if (!hit) return null;
     if (project.selectedId !== el.id) dispatch("select", el.id);
-    selectedShapeId = hit.shapeId;
-    selectedShapeElId = el.id;
+    setSelectedShape(hit.shapeId);
     shapeEditError = "";
     drawOverlay();
     const row = edit.rows.find((x) => x && x.id === hit.shapeId) || {};
@@ -1986,6 +2328,20 @@
     dispatch("elupdate", { id: el.id, patch: { shapeOverrides: cur } });
   }
 
+  // One entry point for the shape section's items: Remove point (a
+  // hand-drawn shape's anchor, the same path Delete takes) or a border item.
+  function chooseMenuItem(item) {
+    if (item.id !== "removepoint") {
+      chooseBorder(item);
+      return;
+    }
+    const menu = fieldMenu;
+    fieldMenu = null;
+    if (!menu || !menu.shape || item.disabled) return;
+    if (removeAnchorOf(menu.shape.elId, menu.shape.shapeId, item.anchor)) focusedAnchor = null;
+    repaintNodeChrome();
+  }
+
   function chooseFieldMenu(type) {
     fieldMenu = null;
     dispatch("addelement", type);
@@ -2023,6 +2379,13 @@
     if (simActive) return; // watch-mode: no select/drag/resize during playback
     if (!canvas || !renderResult) return;
     const p = canvasPointFromEvent(e);
+    // The anchor focus lasts until the next press: a press ON an anchor sets
+    // it again below; any other (an edge insert shifts the indices, a click
+    // elsewhere means something else) must not leave Delete aimed at a point.
+    if (focusedAnchor) {
+      focusedAnchor = null;
+      repaintNodeChrome();
+    }
 
     // Ctrl/Cmd+click: toggle the clicked element in the multi-selection.
     // Toggling never starts a drag — the NEXT (plain) pointerdown drags the
@@ -2107,13 +2470,47 @@
     // everywhere else inside the element still moves the whole element.
     const edit = editableOutlinesPx();
     if (edit) {
+      // A SELECTED hand-drawn shape's authored anchors, curve handles and
+      // edges come first (2026-09-29 field-node-edit spec §5): an anchor or
+      // handle press starts a node drag, an edge press waits for its release
+      // (a click inserts an anchor there; a drag does nothing). Anywhere else
+      // on the outline falls through to the selection branch below.
+      if (edit.el.type === "manual" && selectedShapeId && selectedShapeElId === edit.el.id) {
+        const ap = authoredPxFor(edit.el, selectedShapeId);
+        const ah = ap ? hitAuthored(ap, p.x, p.y) : null;
+        if (ah) {
+          canvas.setPointerCapture(e.pointerId);
+          shapeEditError = "";
+          pressClient = { x: e.clientX, y: e.clientY, px: p };
+          pressOutline = false;
+          if (ah.kind === "edge") {
+            pressEdge = { elId: edit.el.id, shapeId: selectedShapeId, index: ah.index };
+            return;
+          }
+          // Pressing an anchor focuses it (a Delete then removes it). Every
+          // other press already dropped the focus at the top of this handler.
+          if (ah.kind === "anchor") focusedAnchor = { elId: edit.el.id, shapeId: selectedShapeId, index: ah.index };
+          // The drag is RELATIVE: `grab` is the node minus the press point, in
+          // authored px through the same frozen fit, so a press a few px off
+          // the node's centre does not snap the node to the pointer.
+          const nodeAt = fieldPxToAuthored(ap.fit, { x: ah.atPx[0], y: ah.atPx[1] });
+          const pressAt = fieldPxToAuthored(ap.fit, p);
+          nodeEdit = { elId: edit.el.id, shapeId: selectedShapeId, kind: ah.kind, index: ah.index,
+                       basis: { fit: ap.fit, shape: ap.shape }, live: ap.shape,
+                       grab: { dx: nodeAt.x - pressAt.x, dy: nodeAt.y - pressAt.y }, moving: false };
+          canvas.style.cursor = "grabbing";
+          repaintNodeChrome();
+          return;
+        }
+      }
       // Hidden and deleted shapes are not drawn, so they are not grabbable.
       const hit = hitOverlay(liveOutlinesPx(edit), p.x, p.y);
       if (hit) {
         // First click on a shape selects it and stops there — no geometry
         // moves until you have said which shape you mean. On the manual and
-        // preset lanes it ALWAYS stops there: node editing for hand-drawn
-        // shapes lives in ManualPanel for now (2026-09-29 spec §8).
+        // preset lanes the RING always stops there: a hand-drawn shape is
+        // edited through its authored anchors/handles/edges (the branch
+        // above), never by dragging the flattened ring; a preset has none.
         // The popover waits for the RELEASE (endDrag's click test): a press
         // that turns into a drag opens nothing. Capture so the release
         // reaches endDrag even if it lands off the canvas.
@@ -2121,11 +2518,11 @@
           selectedShapeId = hit.shapeId;
           selectedShapeElId = edit.el.id;
           shapeEditError = "";
-          if (edit.el.type === "manual") dispatch("shapeselect", { elementId: edit.el.id, shapeId: hit.shapeId, edit: false });
+          if (edit.el.type === "manual") dispatch("shapeselect", { elementId: edit.el.id, shapeId: hit.shapeId });
           canvas.setPointerCapture(e.pointerId);
           pressClient = { x: e.clientX, y: e.clientY, px: p };
           pressOutline = true;
-          drawOverlay();
+          repaintNodeChrome(); // a previously selected shape's ring must go
           return;
         }
         const ring = edit.mmById.get(hit.shapeId);
@@ -2162,9 +2559,11 @@
       // falling through, so the next click on an outline selects rather than
       // edits, and Delete stops being armed.
       if (selectedShapeId) {
-        selectedShapeId = null;
-        selectedShapeElId = null;
-        drawOverlay();
+        setSelectedShape(null);
+        focusedAnchor = null;
+        // Not a bare drawOverlay: it paints over the last render without
+        // clearing, so the dropped amber ring and node dots would stay.
+        repaintNodeChrome();
       }
     }
 
@@ -2244,10 +2643,34 @@
         ? moveEdge(shapeEdit.ring, shapeEdit.index, d.dx, d.dy)
         : moveNode(shapeEdit.ring, shapeEdit.index, d.dx, d.dy);
       liveRing = { shapeId: shapeEdit.shapeId, points: next };
-      drawOverlay();
+      repaintNodeChrome(); // a bare drawOverlay smears every frame of the drag
       return;
     }
+    // A hand-drawn node drag: ONE anchor (or one segment's handle) follows
+    // the pointer, mapped back to authored px through the fit frozen at press
+    // and kept at the press's grab offset (relative, so it never jumps). Moves
+    // under CLICK_PX of the press are ignored: until the pointer has really
+    // travelled, `live` stays the basis object, so a click commits nothing
+    // (endDrag's `changed` test) and trackpad jitter cannot bow a segment.
+    if (nodeEdit) {
+      if (!nodeEdit.moving) {
+        if (!pressClient || Math.hypot(e.clientX - pressClient.x, e.clientY - pressClient.y) < CLICK_PX) return;
+        nodeEdit.moving = true;
+      }
+      const q = fieldPxToAuthored(nodeEdit.basis.fit, p);
+      // A dragged node stops at the placement box (Kent's ruling 2026-09-29).
+      const at = clampAuthoredToBox(nodeEdit.basis.fit, { x: q.x + nodeEdit.grab.dx, y: q.y + nodeEdit.grab.dy });
+      nodeEdit.live = nodeEdit.kind === "anchor"
+        ? applyAnchorDrag(nodeEdit.live, nodeEdit.index, at)
+        : applyHandleDrag(nodeEdit.live, nodeEdit.index, at);
+      nodeEdit = nodeEdit; // reassign for Svelte
+      repaintNodeChrome();
+      return;
+    }
+    // An edge press does nothing until its release; it never moves the element.
+    if (pressEdge) return;
     if (!dragMode) {
+      emitCanvasHover(p);
       updateHoverCursor(p);
       return;
     }
@@ -2388,6 +2811,48 @@
   }
 
   function endDrag(e) {
+    // A hand-drawn node drag: commit on release through the re-fit rule. A
+    // press that never moved the node (`live` is still the basis object —
+    // guaranteed for any press-release under CLICK_PX by onPointerMove's dead
+    // zone) is the focus gesture — it commits nothing and leaves focusedAnchor set. A
+    // cancel commits nothing. A drag never opens the popover.
+    if (nodeEdit) {
+      if (canvas && canvas.hasPointerCapture && canvas.hasPointerCapture(e.pointerId)) canvas.releasePointerCapture(e.pointerId);
+      const el = project && (project.elements || []).find((x) => x.id === nodeEdit.elId);
+      const changed = nodeEdit.live !== nodeEdit.basis.shape;
+      if (el && changed && e.type !== "pointercancel") commitNodeEdit(el, nodeEdit.live);
+      nodeEdit = null;
+      pressClient = null;
+      pressOutline = false;
+      pressEdge = null;
+      if (canvas) canvas.style.cursor = "default";
+      repaintNodeChrome();
+      return;
+    }
+    // An edge press: a click (under CLICK_PX) inserts an anchor where it was
+    // released, committed at once; a drag or a cancel does nothing at all.
+    if (pressEdge) {
+      if (canvas && canvas.hasPointerCapture && canvas.hasPointerCapture(e.pointerId)) canvas.releasePointerCapture(e.pointerId);
+      if (pressClient && e && e.type !== "pointercancel" && typeof e.clientX === "number") {
+        const moved = Math.hypot(e.clientX - pressClient.x, e.clientY - pressClient.y);
+        const el = project && (project.elements || []).find((x) => x.id === pressEdge.elId);
+        const shape = el && manualShapeOf(el, pressEdge.shapeId);
+        const fit = el && manualFit(el);
+        if (moved < CLICK_PX && shape && fit && renderResult && renderResult.toCanvas) {
+          // The click may land up to the edge grab radius off the line, so it too stops at the box.
+          const at = clampAuthoredToBox(fit, fieldPxToAuthored(fit, canvasPointFromEvent(e)));
+          const grown = insertAnchor(shape, pressEdge.index, at);
+          // insertAnchor hands back the SAME shape at MAX_SHAPE_POINTS.
+          if (grown === shape) shapeEditError = "This shape already has the maximum number of points.";
+          else if (grown) commitNodeEdit(el, grown);
+        }
+      }
+      pressEdge = null;
+      pressClient = null;
+      pressOutline = false;
+      repaintNodeChrome();
+      return;
+    }
     if (shapeEdit) {
       if (canvas && canvas.hasPointerCapture && canvas.hasPointerCapture(e.pointerId)) {
         canvas.releasePointerCapture(e.pointerId);
@@ -2402,7 +2867,9 @@
       pressClient = null;
       pressOutline = false;
       if (canvas) canvas.style.cursor = "default";
-      drawOverlay();
+      // The last live ring is painted on the canvas; a REJECTED edit starts
+      // no regenerate to clear it, so repaint under the chrome here too.
+      repaintNodeChrome();
       return;
     }
     if (canvas && (dragMode || pressOutline) && canvas.hasPointerCapture && canvas.hasPointerCapture(e.pointerId)) {
@@ -2431,14 +2898,16 @@
           selectedShapeId = hit.shapeId;
           selectedShapeElId = el.id;
           shapeEditError = "";
-          if (el.type === "manual") dispatch("shapeselect", { elementId: el.id, shapeId: hit.shapeId, edit: false });
+          if (el.type === "manual") dispatch("shapeselect", { elementId: el.id, shapeId: hit.shapeId });
           openShapePop(e);
         } else if (selectedShapeId || shapePop) {
           selectedShapeId = null;
           selectedShapeElId = null;
+          focusedAnchor = null;
           if (shapePop) closeShapePop();
         }
-        drawOverlay();
+        // Repaint under the chrome: a deselect drops the amber ring and dots.
+        repaintNodeChrome();
       }
     }
     pressClient = null;
@@ -2466,6 +2935,7 @@
   }
 
   function onPointerLeave() {
+    emitCanvasHover(null);
     if (!dragMode && canvas) canvas.style.cursor = "default";
   }
 </script>
@@ -2545,7 +3015,7 @@
           {/if}
           {#each fieldMenu.shape.items as it (it.id)}
             <li role="none">
-              <button type="button" role="menuitem" title={it.title} on:click={() => chooseBorder(it)}>
+              <button type="button" role="menuitem" title={it.title} disabled={it.disabled} on:click={() => chooseMenuItem(it)}>
                 {it.label}
               </button>
             </li>
@@ -2572,6 +3042,8 @@
         model={popModel}
         anchor={shapePop}
         bounds={hoopBounds}
+        position={popPosition && popPosition.elementId === shapePop.elementId ? popPosition : null}
+        on:move={(e) => (popPosition = { x: e.detail.x, y: e.detail.y, elementId: shapePop.elementId })}
         on:change={onPopChange}
         on:action={onPopAction}
         on:close={closeShapePop}
@@ -2593,7 +3065,88 @@
       <button type="button" class="zoombtn" on:click={zoomOut} disabled={view.zoom <= MIN_ZOOM} aria-label="Zoom out"><Icon name="minus" /></button>
       <span class="zoompct">{Math.round(view.zoom * 100)}%</span>
       <button type="button" class="zoombtn" on:click={zoomIn} disabled={view.zoom >= MAX_ZOOM} aria-label="Zoom in"><Icon name="plus" /></button>
-      <button type="button" class="zoombtn zoomfit" on:click={resetView} aria-label="Fit to hoop" title="Fit to hoop"><Icon name="expand" /></button>
+      <button type="button" class="zoombtn zoomfit" on:click={resetView} aria-label="Fit to hoop" use:tip={"fitToHoop"}><Icon name="expand" /></button>
+      {#if scaleBar}
+        <!-- A ruler, not a control: the bar's width IS the stated length on
+             screen (lib/scalebar.js), so the customer reads the design's
+             size off it at any zoom. In the zoom bar rather than on the
+             canvas so it never covers sewable field. -->
+        <span class="scalebar" role="img" aria-label="Scale: {scaleBar.label} on screen" title="{scaleBar.label} at this zoom">
+          <i class="scalebar-rule" style="width: {scaleBar.px.toFixed(1)}px"></i>
+          <span class="scalebar-label">{scaleBar.label}</span>
+        </span>
+      {/if}
+      <!-- The VIEW is one choice of three, so it is a segmented control
+           (2026-09-30): Stitches (the flat view), Realistic, Simulate. Six
+           bare glyphs used to stand here and a customer could not find
+           "Realistic view" among them. The three overlay toggles and snap
+           follow, with their names on, since a word is what a person scans
+           for. Every aria-label and aria-pressed is unchanged, so the e2e
+           specs that drive these buttons by name still do. -->
+      <span class="viewseg" role="group" aria-label="View">
+        <button
+          type="button"
+          class="zoombtn viewseg-btn"
+          class:viewseg-on={!realisticView && !simActive}
+          on:click={showFlat}
+          disabled={!hasDesign}
+          aria-pressed={!realisticView && !simActive}
+          aria-label="Stitches view"
+          use:tip={"flatView"}
+        >Stitches</button>
+        <button
+          type="button"
+          class="zoombtn viewseg-btn"
+          class:viewseg-on={realisticView && !simActive}
+          on:click={showRealistic}
+          disabled={!hasDesign}
+          aria-pressed={realisticView && !simActive}
+          aria-label="Realistic view"
+          use:tip={"realistic"}
+        >Realistic</button>
+        <button
+          type="button"
+          class="zoombtn viewseg-btn"
+          class:viewseg-on={simActive}
+          on:click={() => (simActive ? stopSim() : startSim())}
+          disabled={!hasDesign}
+          aria-label="Stitch simulator"
+          aria-pressed={simActive}
+          use:tip={"simulator"}
+        >Simulate</button>
+      </span>
+      <span class="zoomsep" aria-hidden="true"></span>
+      <button
+        type="button"
+        class="zoombtn viewtoggle zoomlabelled"
+        class:simon={showOutlines}
+        on:click={toggleOutlines}
+        disabled={!hasDesign}
+        aria-pressed={showOutlines}
+        aria-label="Show shape outlines"
+        use:tip={"outlines"}
+      ><Icon name="nodes" /><span class="zoomlabel">Outlines</span></button>
+      <button
+        type="button"
+        class="zoombtn viewtoggle zoomlabelled"
+        class:simon={showJumps}
+        on:click={toggleJumps}
+        disabled={!hasDesign}
+        aria-pressed={showJumps}
+        aria-label="Show jumps"
+        use:tip={"jumps"}
+      ><Icon name="jump" /><span class="zoomlabel">Jumps</span></button>
+      <button
+        type="button"
+        class="zoombtn viewtoggle zoomlabelled"
+        class:simon={showTrims}
+        on:click={toggleTrims}
+        disabled={!hasDesign}
+        aria-pressed={showTrims}
+        aria-label="Show trims"
+        use:tip={"trims"}
+      ><Icon name="scissors" /><span class="zoomlabel">Trims</span></button>
+      <span class="zoomsep" aria-hidden="true"></span>
       <button
         type="button"
         class="zoombtn viewtoggle"
@@ -2601,58 +3154,8 @@
         on:click={toggleSnap}
         aria-pressed={snapEnabled}
         aria-label="Auto-snap"
-        title="Auto-snap to other elements and hoop center (hold Alt to suspend)"
+        use:tip={"autoSnap"}
       ><Icon name="magnet" /></button>
-      <button
-        type="button"
-        class="zoombtn viewtoggle"
-        class:simon={showOutlines}
-        on:click={toggleOutlines}
-        disabled={!hasDesign}
-        aria-pressed={showOutlines}
-        aria-label="Show shape outlines"
-        title="Outline every digitized shape — off for a clean view of the stitch-out"
-      ><Icon name="nodes" /></button>
-      <button
-        type="button"
-        class="zoombtn viewtoggle"
-        class:simon={showJumps}
-        on:click={toggleJumps}
-        disabled={!hasDesign}
-        aria-pressed={showJumps}
-        aria-label="Show jumps"
-        title="Show needle-up travel (jumps)"
-      ><Icon name="jump" /></button>
-      <button
-        type="button"
-        class="zoombtn viewtoggle"
-        class:simon={showTrims}
-        on:click={toggleTrims}
-        disabled={!hasDesign}
-        aria-pressed={showTrims}
-        aria-label="Show trims"
-        title="Show thread trims"
-      ><Icon name="scissors" /></button>
-      <button
-        type="button"
-        class="zoombtn viewtoggle"
-        class:simon={realisticView}
-        on:click={toggleRealistic}
-        disabled={!hasDesign}
-        aria-pressed={realisticView}
-        aria-label="Realistic view"
-        title="Realistic thread — off for a flat view of coverage and stitch structure"
-      ><Icon name="sparkle" /></button>
-      <button
-        type="button"
-        class="zoombtn"
-        class:simon={simActive}
-        on:click={() => (simActive ? stopSim() : startSim())}
-        disabled={!hasDesign}
-        aria-label="Stitch simulator"
-        aria-pressed={simActive}
-        title="Stitch simulator — watch the sew order"
-      ><Icon name="play" /></button>
     </div>
     {#if simActive}
       <div class="simbar" role="group" aria-label="Stitch simulator controls">

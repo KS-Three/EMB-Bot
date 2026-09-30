@@ -190,15 +190,41 @@ test.describe("on a HiDPI screen", () => {
     const ink = await page.evaluate(() => {
       const cv = document.querySelector(".hoop canvas");
       const d = cv.getContext("2d").getImageData(0, 0, cv.width, cv.height).data;
-      // The design is near-black thread on pale fabric; anything dark is ink.
+      // The design is near-black thread on pale fabric; anything dark ON THE
+      // FABRIC is ink. The fabric is found first, as the bounding box of the
+      // pale pixels, because since 2026-09-30 the canvas outside the hoop is
+      // the dark surround, which a plain "is it dark" test would count as
+      // one enormous stitch. The box is then pulled in by 3% a side so the
+      // hoop's rounded corners, where fabric blends into surround, stay out
+      // of the count; the template's design is centred, so a symmetric trim
+      // cannot move its centre. Assumes the pale default fabric this route
+      // lands on (reachDesign never picks a swatch) — on Black there would
+      // be no pale pixels to find.
       // The alpha test is load-bearing, not defensive: an UNSCALED context
       // paints only the top-left quadrant and leaves the rest of the bitmap
       // transparent, and a transparent pixel is (0,0,0,0) — which passes a
       // colour-only "is it dark" test and drags the measured bbox back out to
       // the full canvas, hiding the exact bug this test exists to catch.
-      let minX = Infinity, minY = Infinity, maxX = -1, maxY = -1;
+      // (An unscaled context also paints the FABRIC in that quadrant, so the
+      // fabric-first search does not hide it either: ink centre reads ~0.25.)
+      let fx0 = Infinity, fy0 = Infinity, fx1 = -1, fy1 = -1;
       for (let y = 0; y < cv.height; y++) {
         for (let x = 0; x < cv.width; x++) {
+          const i = (y * cv.width + x) * 4;
+          if (d[i + 3] > 200 && d[i] > 150 && d[i + 1] > 150 && d[i + 2] > 150) {
+            if (x < fx0) fx0 = x;
+            if (x > fx1) fx1 = x;
+            if (y < fy0) fy0 = y;
+            if (y > fy1) fy1 = y;
+          }
+        }
+      }
+      if (fx1 < 0) return null;
+      const tx = Math.round((fx1 - fx0) * 0.03), ty = Math.round((fy1 - fy0) * 0.03);
+      fx0 += tx; fx1 -= tx; fy0 += ty; fy1 -= ty;
+      let minX = Infinity, minY = Infinity, maxX = -1, maxY = -1;
+      for (let y = fy0; y <= fy1; y++) {
+        for (let x = fx0; x <= fx1; x++) {
           const i = (y * cv.width + x) * 4;
           if (d[i + 3] > 200 && d[i] < 90 && d[i + 1] < 90 && d[i + 2] < 90) {
             if (x < minX) minX = x;

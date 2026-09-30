@@ -208,12 +208,10 @@ export function defaultDigitizedElement(id) {
     // or null for the whole image (also what a pre-crop project loads as).
     crop: null,
     params: { ...DEFAULT_DIGITIZE_PARAMS },
-    // A sibling of params, not a member of it (spec 2026-08-18 decision 4):
-    // this names a fact about the SOURCE ART ("this is a photo"), not a
-    // PipelineConfig field forwarded verbatim, so buildDigitizeConfig reads
-    // it straight off the element rather than through the params spread —
-    // see that function's own comment for how it turns into forced_class.
-    isPhoto: false,
+    // No `isPhoto` and no `params.forced_class` (Kent, 2026-09-30): the
+    // Studio carries no per-design override of stage 0's reading. A project
+    // saved with either still loads -- both keys are simply ignored by
+    // buildDigitizeConfig, so the design digitizes as a fresh upload would.
     result: null,
     warnings: [],
     blockColors: {},
@@ -338,6 +336,14 @@ export function defaultProject() {
     // additive-migration story as fabricRgb: older saves simply spread-merge
     // over this default and load as "use the suggestion".
     hoopId: null,
+    // Project-level calibration profile (Kent's 2026-09-30 call): the three
+    // deltas digitizer/tools/sewout_reader.py drafts from a photo of the sewn
+    // calibration card, applied to the garment's fabric preset in BOTH
+    // engines (src/fabrics.js applyFabricProfile; fabrics.py apply_profile).
+    // null = the preset as shipped. Same additive-migration story as
+    // fabricRgb and hoopId. Nothing in the Studio writes one yet — that is
+    // the calibration flow (brief phase 4); this is the field it will fill.
+    fabricProfile: null,
   };
 }
 

@@ -26,6 +26,7 @@ function makeCtxSpy() {
     beginPath: vi.fn(), closePath: vi.fn(),
     moveTo: vi.fn(), lineTo: vi.fn(), arcTo: vi.fn(),
     stroke: vi.fn(), fillRect: vi.fn(),
+    clip: vi.fn(),
     setLineDash: vi.fn(),
     lineWidth: 0,
     lineCap: "",
@@ -216,6 +217,64 @@ test("renderRealistic: the existing fabric CSS string alone still works (B5 back
   const canvas = { width: 100, height: 100, getContext: () => ctx };
   renderRealistic(canvas, { stitches: [] }, { fabric: "#ffffff" });
   expect(ctx.fillStyle).toBe("#ffffff");
+});
+
+// --- renderRealistic: the surround (2026-09-30) ----------------------------
+
+test("renderRealistic: with a surround and a hoop, the canvas is filled with the surround and the fabric is clipped to the hoop", () => {
+  const ctx = makeCtxSpy();
+  const fills = [];
+  ctx.fillRect = vi.fn((x, y, w, h) => fills.push({ style: ctx.fillStyle, x, y, w, h }));
+  const canvas = { width: 400, height: 300, getContext: () => ctx };
+  const garment = { widthIn: 4, heightIn: 3 };
+  renderRealistic(canvas, { stitches: [] }, { hoop: { garment }, fabricRgb: [235, 232, 223], surround: "#22252c" });
+  // First fill: the whole canvas, in the surround.
+  expect(fills[0]).toMatchObject({ style: "#22252c", x: 0, y: 0, w: 400, h: 300 });
+  // Second fill: the fabric, and only the hoop's rectangle of it, under a clip.
+  expect(fills[1].style).toBe("rgb(235,232,223)");
+  expect(fills[1].w).toBeLessThan(400);
+  expect(fills[1].h).toBeLessThan(300);
+  expect(ctx.clip).toHaveBeenCalledTimes(1);
+  // And it is centred, like the hoop is.
+  expect(fills[1].x + fills[1].w / 2).toBeCloseTo(200, 6);
+  expect(fills[1].y + fills[1].h / 2).toBeCloseTo(150, 6);
+});
+
+test("renderRealistic: the fabric clip is the REAL hoop when one is given, not the placement box", () => {
+  const ctx = makeCtxSpy();
+  const fills = [];
+  ctx.fillRect = vi.fn((x, y, w, h) => fills.push({ x, y, w, h }));
+  const canvas = { width: 400, height: 300, getContext: () => ctx };
+  // Hat front (5 x 2.25 in) inside a 6x10 hoop: the hoop is the bigger rect.
+  const garment = { widthIn: 5, heightIn: 2.25 };
+  renderRealistic(canvas, { stitches: [] }, {
+    hoop: { garment, hoop: { widthMm: 160, heightMm: 250 } }, fabricRgb: [235, 232, 223], surround: "#22252c",
+  });
+  const hoopAspect = 160 / 250;
+  expect(fills[1].w / fills[1].h).toBeCloseTo(hoopAspect, 3);
+});
+
+test("renderRealistic: a surround without a hoop is ignored -- thumbnails and PNG export keep the edge-to-edge fabric", () => {
+  const ctx = makeCtxSpy();
+  const fills = [];
+  ctx.fillRect = vi.fn((x, y, w, h) => fills.push({ style: ctx.fillStyle, x, y, w, h }));
+  const canvas = { width: 100, height: 100, getContext: () => ctx };
+  renderRealistic(canvas, { stitches: [] }, { fabric: "#ffffff", surround: "#22252c" });
+  expect(fills).toHaveLength(1);
+  expect(fills[0]).toMatchObject({ style: "#ffffff", w: 100, h: 100 });
+  expect(ctx.clip).not.toHaveBeenCalled();
+});
+
+test("renderRealistic: omitting the surround is byte-for-byte the old path -- one edge-to-edge fabric fill, no clip", () => {
+  const ctx = makeCtxSpy();
+  const fills = [];
+  ctx.fillRect = vi.fn((x, y, w, h) => fills.push({ style: ctx.fillStyle, x, y, w, h }));
+  const canvas = { width: 400, height: 300, getContext: () => ctx };
+  const garment = { widthIn: 4, heightIn: 3 };
+  renderRealistic(canvas, { stitches: [] }, { hoop: { garment }, fabricRgb: [235, 232, 223] });
+  expect(fills).toHaveLength(1);
+  expect(fills[0]).toMatchObject({ style: "rgb(235,232,223)", x: 0, y: 0, w: 400, h: 300 });
+  expect(ctx.clip).not.toHaveBeenCalled();
 });
 
 test("renderRealistic: falls back to the original hardcoded fabric when neither fabric nor fabricRgb is given", () => {

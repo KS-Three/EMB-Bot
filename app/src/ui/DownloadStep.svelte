@@ -5,10 +5,34 @@
   import { chartIdForProject } from "../lib/designChart.js";
   import { isSewable } from "../lib/flow.js";
   import { triggerDownload } from "../lib/download.js";
+  import { folderSaveSupported, pickFolder, savedFolderName, forgetFolder, folderPermissionState, reconnectFolder, saveToFolder } from "../lib/folderTarget.js";
   import { EMB } from "../lib/emb.js";
   import { PALETTE_INDEX, STUDIO_PALETTE, getCachedPalette, loadPalette, nearestInList, loadPreferredPaletteId, savePreferredPaletteId } from "../lib/threads.js";
   import { ensureFonts } from "../lib/fontLoader.js";
   import { effectiveHoop, hoopFitNote } from "../lib/hoop.js";
+  import { MACHINES, machineById, loadMachineId, saveMachineId } from "../lib/machines.js";
+
+  // "Your machine" (2026-09-30): the customer picks the brand on the front
+  // of their machine and gets ONE download button in the format it reads,
+  // remembered across projects. The nine-button grid stays beneath as "All
+  // formats" — DST leads it and is the filled button until a machine is
+  // chosen, at which point the machine's button is the one filled action on
+  // the step (two filled buttons would be two answers to one question).
+  let machineId = loadMachineId();
+  $: machine = machineById(machineId);
+  // Service-only formats (JEF, XXX, VP3) follow the same availability flags
+  // the grid's own buttons use, so the one button never promises a file the
+  // step cannot write.
+  $: machineFmtAvailable = !machine
+    ? false
+    : machine.format === "jef" ? jefAvailable
+    : machine.format === "xxx" ? xxxAvailable
+    : machine.format === "vp3" ? vp3Available
+    : true;
+  function onMachineChange(e) {
+    machineId = e.currentTarget.value || null;
+    saveMachineId(machineId);
+  }
   export let project;
   // Task 4 (Slice 5): export now covers every ready element in the project
   // (generateAll's combined design), not just a single text/image design —
@@ -25,6 +49,87 @@
   const d = createEventDispatcher();
   let msg = "";
   let worksheetBusy = false;
+
+  // --- Save location -------------------------------------------------------
+  // Where a downloaded file lands. "download" is the browser's Downloads
+  // folder (the original behaviour, and the only one Safari/Firefox can do);
+  // "folder" writes straight into a folder the user picked, so a machine-
+  // transfer utility that sends from that folder finds the file already there.
+  // The chosen mode is remembered in localStorage; the folder HANDLE lives in
+  // IndexedDB (see folderTarget.js). PNG and the machine/proof formats honour
+  // this; the PDF worksheet does not — it is a reference sheet, not the file
+  // that goes to the machine.
+  const SAVE_MODE_KEY = "embbot.saveMode";
+  const canFolder = folderSaveSupported();
+  let saveMode = "download";
+  let folderName = null;
+  let folderNeedsReconnect = false;
+
+  onMount(async () => {
+    if (!canFolder) return;
+    try {
+      const stored = localStorage.getItem(SAVE_MODE_KEY);
+      folderName = await savedFolderName();
+      if (stored === "folder" && folderName) {
+        saveMode = "folder";
+        folderNeedsReconnect = (await folderPermissionState()) !== "granted";
+      }
+    } catch (e) { /* fall back to download mode */ }
+  });
+
+  async function chooseFolder() {
+    try {
+      folderName = await pickFolder();
+      saveMode = "folder";
+      folderNeedsReconnect = false;
+      try { localStorage.setItem(SAVE_MODE_KEY, "folder"); } catch (e) { /* prefs unavailable */ }
+      msg = "Files will save to “" + folderName + "”.";
+    } catch (e) {
+      // AbortError = the user closed the picker. Anything else = no folder
+      // access; either way leave the current mode untouched.
+      if (e && e.name !== "AbortError") msg = "Could not open that folder.";
+    }
+  }
+
+  async function reconnect() {
+    if (await reconnectFolder()) {
+      folderNeedsReconnect = false;
+      msg = "Reconnected to “" + folderName + "”.";
+    } else {
+      msg = "Could not reconnect. Choose the folder again.";
+    }
+  }
+
+  function useDownloads() {
+    saveMode = "download";
+    folderNeedsReconnect = false;
+    try { localStorage.setItem(SAVE_MODE_KEY, "download"); } catch (e) { /* prefs unavailable */ }
+    forgetFolder();
+    folderName = null;
+    msg = "Files will download to your Downloads folder.";
+  }
+
+  // Route one export output to the chosen destination and return the suffix to
+  // append to the success message, so the operator can see WHERE it went.
+  // Falls back to a normal download if the folder write can't proceed, and
+  // says so — a failed save must never look like a success.
+  async function saveOut(out) {
+    if (saveMode === "folder") {
+      try {
+        const name = await saveToFolder(out.filename, out.bytes, out.mime);
+        return " to “" + name + "”";
+      } catch (e) {
+        triggerDownload(out);
+        if (e && e.code === "folder-permission") {
+          folderNeedsReconnect = true;
+          return " to Downloads (folder access needs reconnecting — use Reconnect above)";
+        }
+        return " to Downloads (couldn’t write to the folder)";
+      }
+    }
+    triggerDownload(out);
+    return "";
+  }
 
   // Secondary entry point to the font credits dialog (Slice 10B Task 5) --
   // App.svelte owns FontCredits itself (same pattern as the topbar's own
@@ -434,11 +539,12 @@
         label: project.name,
         preferService: isPurelyDigitized(project),
       });
-      triggerDownload(out);
+      const where = await saveOut(out);
       // The message still names which encoder ran -- neutral provenance, not
       // a caveat. It stopped being a caveat on 2026-09-08, when the browser
-      // DST codec was put right and both warning notes came out.
-      msg = "Downloaded " + fmt.toUpperCase()
+      // DST codec was put right and both warning notes came out. `where` names
+      // the destination folder when one is set, "" for a plain download.
+      msg = "Saved " + fmt.toUpperCase() + where
         + (out.via === "service" ? " (digitizer service encoder)" : " (browser encoder)");
     } catch (e) {
       msg = e.message;
@@ -489,8 +595,8 @@
       await ensureFonts(fontKeysOf(project));
       const design = buildDesign();
       const out = await exportPNG(design);
-      triggerDownload({ bytes: out.blob, filename: out.filename, mime: out.mime });
-      msg = "Downloaded PNG";
+      const where = await saveOut({ bytes: out.blob, filename: out.filename, mime: out.mime });
+      msg = "Saved PNG" + where;
     } catch (e) {
       msg = e.message;
     }
@@ -533,8 +639,54 @@
      swapped; byte-identical to pystitch, crossval reads `identity`, and a
      rendered "FRITSCH" comes back upright), so the demotion, the asterisk and
      the paragraph it pointed at have all gone with it. -->
+<div class="machinepick">
+  <label class="machinepick-label">
+    <span>Your machine</span>
+    <select value={machineId || ""} on:change={onMachineChange} aria-label="Your machine">
+      <option value="">Choose a brand…</option>
+      {#each MACHINES as m (m.id)}
+        <option value={m.id}>{m.label}</option>
+      {/each}
+    </select>
+  </label>
+  {#if machine}
+    <button
+      type="button"
+      class="primary machinepick-btn"
+      data-testid="machine-download"
+      disabled={!machineFmtAvailable}
+      on:click={() => askThenDl(machine.format)}
+    >Download {machine.format.toUpperCase()} for {machine.label}</button>
+    {#if !machineFmtAvailable}
+      <p class="machinepick-note">
+        {machine.format.toUpperCase()} needs the digitizer service running — start it, or pick a
+        format below.
+      </p>
+    {/if}
+  {/if}
+</div>
+
+<h3 class="formats-head">All formats</h3>
+{#if canFolder}
+  <!-- Save location. Only rendered where the browser can write to a chosen
+       folder (Chromium desktop). Elsewhere the buttons below just download, and
+       showing a control that can't work would only confuse. -->
+  <div class="savewhere" data-testid="save-where">
+    {#if saveMode === "folder" && folderName}
+      <span class="savewhere-label">Saving to folder: <strong>{folderName}</strong></span>
+      {#if folderNeedsReconnect}
+        <button class="savewhere-reconnect" on:click={reconnect} data-testid="folder-reconnect">Reconnect</button>
+      {/if}
+      <button class="linkish" on:click={chooseFolder}>Change…</button>
+      <button class="linkish" on:click={useDownloads}>Use Downloads</button>
+    {:else}
+      <span class="savewhere-label">Saving to your Downloads folder</span>
+      <button class="linkish" on:click={chooseFolder} data-testid="folder-choose">Save to a folder instead…</button>
+    {/if}
+  </div>
+{/if}
 <div class="formats">
-  <button class="primary" on:click={() => askThenDl("dst")}>DST</button>
+  <button class:primary={!machine} on:click={() => askThenDl("dst")}>DST</button>
   <button on:click={() => askThenDl("pes")}>PES</button>
   <button on:click={() => askThenDl("exp")}>EXP</button>
   <!-- Same caveat convention the DST button above documents: the name stays
@@ -688,5 +840,38 @@
     flex-direction: column;
     gap: var(--space-2);
     line-height: 1.5;
+  }
+
+  /* Save-location row, above the format buttons. Quiet by design — it states
+     where files go and offers to change it, without competing with the format
+     buttons for attention. */
+  .savewhere {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--space-2) var(--space-3);
+    margin-bottom: var(--space-3);
+    font-size: 0.9rem;
+    color: var(--text-2, inherit);
+  }
+  .savewhere-label { opacity: 0.9; }
+  .savewhere .linkish {
+    background: none;
+    border: none;
+    padding: 0;
+    color: var(--accent, #2563eb);
+    text-decoration: underline;
+    cursor: pointer;
+    font: inherit;
+  }
+  .savewhere .linkish:hover { opacity: 0.8; }
+  .savewhere-reconnect {
+    padding: 2px var(--space-2);
+    border-radius: var(--radius-s, 4px);
+    border: 1px solid var(--accent, #2563eb);
+    background: var(--surface, transparent);
+    color: var(--accent, #2563eb);
+    cursor: pointer;
+    font: inherit;
   }
 </style>

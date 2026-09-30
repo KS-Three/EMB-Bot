@@ -351,7 +351,7 @@
     // filter empty; accept {shapes:[{outer,holes}]} or legacy {polygons:[ring]}
     const regions = colorRegions.filter((r) => r && ((r.shapes && r.shapes.length) || (r.polygons && r.polygons.length)));
     for (const r of regions) if (!r.polygons) r.polygons = r.shapes.map((s) => s.outer);
-    if (!regions.length) return { stitches: [{ x: 0, y: 0, type: "end" }], colors: [], widthMM: 0, heightMM: 0, stitchCount: 0, colorCount: 0, shapeOutlines: [], _debug: { nSatin: 0, nFill: 0, nTrims: 0 } };
+    if (!regions.length) return { stitches: [{ x: 0, y: 0, type: "end" }], colors: [], widthMM: 0, heightMM: 0, stitchCount: 0, colorCount: 0, shapeOutlines: [], fit: null, _debug: { nSatin: 0, nFill: 0, nTrims: 0 } };
 
     // Tag each region with its ORIGINAL caller index before we reorder, so
     // opts.angleOverrides (keyed by original index) survives the sort below.
@@ -420,6 +420,15 @@
         }
       }
     }
+    // The fit itself, for callers that must map FIELD mm back to source px —
+    // the Studio's node editor for hand-drawn shapes (2026-09-29 field-node-
+    // edit spec §2). Same numbers T() uses; offsets are the ones APPLIED
+    // (rounded to a DST unit), not the request. Additive bookkeeping.
+    const fitOut = { // not `fit`: that name is the garment fitScale result above
+      cxPx: cx, cyPx: cy, mmPerPx: mmPerPxFinal,
+      offsetXMm: offXu / units.DST_UNITS_PER_MM, offsetYMm: offYu / units.DST_UNITS_PER_MM,
+      pxPerMm,
+    };
     const dropOutline = (ring) => { const e = outlineByRing.get(ring); if (e) e.dropped = true; };
     // PX_LOOP_EPS guards against a literal zero/degenerate loop step (rowPx=0
     // would spin fillmod.tatamiFill's `for (y=minY; y<=maxY; y+=rowSpacing)`
@@ -767,7 +776,7 @@
     // designWmm/designHmm is the traced-polygon box this was fit to; the sewn
     // extent is what the customer gets. See designExtentMm.
     const extent = designExtentMm(stitches, designWmm, designHmm);
-    return { stitches, colors, widthMM: extent.widthMM, heightMM: extent.heightMM, stitchCount, colorCount: colors.length, runs: spans, shapeOutlines, _debug: { nSatin, nFill, nTrims, nCenterOut } };
+    return { stitches, colors, widthMM: extent.widthMM, heightMM: extent.heightMM, stitchCount, colorCount: colors.length, runs: spans, shapeOutlines, fit: fitOut, _debug: { nSatin, nFill, nTrims, nCenterOut } };
   }
 
   // Build a Design from a PRE-DIGITIZED satin font (src/satinfont.js) instead of

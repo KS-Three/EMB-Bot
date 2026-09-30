@@ -30,7 +30,7 @@ from shapely.geometry import Polygon
 
 from . import debugviz
 from .config import PipelineConfig
-from .fabrics import Fabric, fabric_for_garment, get_fabric
+from .fabrics import Fabric, apply_profile, fabric_for_garment, get_fabric
 from .machine import FILL_ROW_MM, satin_ceiling_mm
 from .photo_signals import apply_detection, resolve as resolve_photo_signals
 from .regions import (
@@ -78,6 +78,7 @@ from .threads import chart_for, rgb_to_lab
 from .warnings_codes import (
     BACKGROUND_ENCLOSED,
     DROPPED_SMALL_SHAPES,
+    FACE_ROUTED_FLAT,
     PALETTE_THREAD_MISMATCH,
     PHOTO_AUTO_TIER,
     PHOTO_BACKGROUND_REMOVAL_UNAVAILABLE,
@@ -416,10 +417,35 @@ def build_generation(
     # teaching nine call sites about detection). Preflight takes the third
     # route it already uses for the classifier's verdict: it re-reads the
     # warning below.
+    cfg_declared = cfg
     cfg, signals = resolve_photo_signals(
         cfg, image=image if exif_source is None else exif_source, rgb=p.rgb)
     detected_photographic = bool(signals and signals.is_photograph)
-    if detected_photographic:
+    # A FACE SEWS FLAT (Kent's ruling 2026-09-30 — `config.faces_route_flat`
+    # carries the measurement). The route is what `forced_class="flat"`
+    # gives: stage 0 re-answers at confidence 1.0 (cheap — a forced class
+    # computes no signals), the caller's own config comes back untouched so
+    # the photographic machinery stays off (no `is_photographic`, hence no
+    # cut-out, no depth sequencing, no shade bind), and FACE_ROUTED_FLAT
+    # replaces PHOTO_DETECTED. Sits BEFORE the photo-prep block below on
+    # purpose: that block gates on the class, which this has just decided.
+    # `signals.faces` is read directly rather than `signals.signal`, which
+    # still says "exif" when both fired.
+    if detected_photographic and cfg.faces_route_flat and signals.faces \
+            and cfg_declared.forced_class is None:
+        cfg = cfg_declared
+        detected_photographic = False
+        classification = classify(image, cfg, forced_class="flat")
+        prep_warnings.append(
+            warn(
+                FACE_ROUTED_FLAT,
+                f"{signals.faces} face(s) detected — sewing as flat art "
+                "(solid colour regions), the route a face reads best on.",
+                faces=int(signals.faces),
+                detail=signals.why,
+            )
+        )
+    elif detected_photographic:
         prep_warnings.append(
             warn(
                 PHOTO_DETECTED,
@@ -1316,10 +1342,13 @@ def run_stages(
 
 
 def fabric_for(cfg: PipelineConfig) -> Fabric:
-    """An explicit fabric wins; otherwise the garment picks its usual one."""
-    if cfg.fabric_id:
-        return get_fabric(cfg.fabric_id)
-    return fabric_for_garment(cfg.garment_id)
+    """An explicit fabric wins; otherwise the garment picks its usual one.
+    Then the calibration profile, if any, adjusts it (`fabrics.apply_profile`
+    — clamped, never a replacement). Every stage that reads a fabric number
+    reads it through here, which is what makes one profile reach pull
+    compensation, row spacing and the trim distance alike."""
+    base = get_fabric(cfg.fabric_id) if cfg.fabric_id else fabric_for_garment(cfg.garment_id)
+    return apply_profile(base, cfg.fabric_profile)
 
 
 def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> StitchPlan:

@@ -144,7 +144,7 @@ test("guided wizard: garment -> content -> review -> download", async ({ page })
   // header alone means a genuine export is comfortably larger than this.
   expect(statSync(dstPath).size).toBeGreaterThan(512);
 
-  await expect(page.getByText("Downloaded DST")).toBeVisible();
+  await expect(page.getByText("Saved DST")).toBeVisible();
 });
 
 // ---- Axis 1: other garment types ------------------------------------------
@@ -312,7 +312,7 @@ test("guided wizard: PES, EXP, and PDF worksheet exports produce real files", as
   const pesBytes = readFileSync(pesPath);
   expect(pesBytes.length).toBeGreaterThan(64);
   expect(pesBytes.subarray(0, 8).toString("ascii")).toBe("#PES0001");
-  await expect(page.getByText("Downloaded PES")).toBeVisible();
+  await expect(page.getByText("Saved PES")).toBeVisible();
 
   // ---- EXP: no fixed magic header, so pin real stitch-record content ----
   // instead (a genuine "EMB TEST" export is comfortably more than a
@@ -325,7 +325,7 @@ test("guided wizard: PES, EXP, and PDF worksheet exports produce real files", as
   const expPath = await expDownload.path();
   expect(expPath).toBeTruthy();
   expect(statSync(expPath).size).toBeGreaterThan(64);
-  await expect(page.getByText("Downloaded EXP")).toBeVisible();
+  await expect(page.getByText("Saved EXP")).toBeVisible();
 
   // ---- PDF worksheet: a distinct export path (jsPDF, not exportDesign) --
   // real PDF magic header, not just a nonzero byte count.
