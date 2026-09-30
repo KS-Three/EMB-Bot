@@ -101,6 +101,38 @@ def test_the_section_parser_is_not_vacuous(text):
     assert sum(h for _n, h, _d in rows) < line_count(text)
 
 
+ENTRY_WORD_CAP = 400
+
+
+def test_no_live_defect_entry_exceeds_its_word_cap(text):
+    """Kent's rule 4b, 2026-09-30: 400 words per numbered entry.
+
+    The TOTAL budget was being met by arithmetic rather than compaction — four
+    commits across two weeks landed within three words of 27,000 (26,996 /
+    26,995 / 26,998 / 26,997), because a lane under the wall trims whatever is
+    cheapest that day and never the expensive thing. Meanwhile one entry ran
+    to 1,783 words, 7% of the whole file, untouched for six weeks.
+
+    A per-entry cap bites where the total cannot. It is not a second budget:
+    the median entry was already 113 words when this landed, so it does not
+    touch a well-written entry at all. What it forces is the move the file's
+    own rules already ask for — evidence to the area doc, verdict left behind.
+
+    Set at 400, not the 250 first proposed: I had measured the median entry at 113
+    words with a regex that only matched SINGLE-LINE entries, and the file's own
+    parser says 214. A 250 cap would have sat 17% above typical and put every
+    ordinary edit back into trimming; 400 is about twice the median and bites
+    the tail only. Measured clean at the time of writing: 25 of 25, max 397.
+    """
+    live, _closed = live_and_closed(text)
+    over = [(n, len(body.split())) for n, _i, body in live
+            if len(body.split()) > ENTRY_WORD_CAP]
+    assert not over, (
+        f"live defect entries over the {ENTRY_WORD_CAP}-word cap (rule 4b) — move the "
+        "evidence to the area doc and leave the verdict: "
+        + ", ".join(f"#{n} at {w}w" for n, w in sorted(over, key=lambda e: -e[1])))
+
+
 def test_every_live_defect_carries_a_dated_pointer(text):
     """CLAUDE.md's rule for this file, in its own words: *"Every claim carries
     a `(verb date — source)` pointer; one without a pointer is unverified."*

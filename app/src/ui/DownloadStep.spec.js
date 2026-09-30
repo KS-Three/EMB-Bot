@@ -500,7 +500,7 @@ test("JEF downloads through the service on a LETTERING project too — the prefe
     props: { project: project(LETTERING), runtime: {}, digitizerHealth: { status: "ok" } },
   });
   await fireEvent.click(getByTestId("jef-button"));
-  await waitFor(() => expect(getByText(/Downloaded JEF/)).toBeInTheDocument());
+  await waitFor(() => expect(getByText(/Saved JEF/)).toBeInTheDocument());
   expect(exportCalls).toEqual([{ format: "jef", preferService: false }]);
 });
 
@@ -663,7 +663,7 @@ test("XXX and VP3 download through the service on a lettering project too", asyn
     });
     await fireEvent.click(ui(view).getByTestId(`${fmt}-button`));
     await waitFor(() =>
-      expect(ui(view).getByText(new RegExp(`Downloaded ${fmt.toUpperCase()}`))).toBeInTheDocument());
+      expect(ui(view).getByText(new RegExp(`Saved ${fmt.toUpperCase()}`))).toBeInTheDocument());
     expect(exportCalls).toEqual([{ format: fmt, preferService: false }]);
     view.unmount();
   }
@@ -767,4 +767,52 @@ test("a remembered machine shows its button on the next visit", () => {
   expect(container.querySelector('[data-testid="machine-download"]')).toHaveTextContent("Download VP3 for Husqvarna Viking / Pfaff");
   localStorage.removeItem("embstudio:machine");
   unmount();
+// ---- save-location control -------------------------------------------------
+//
+// The "save to a folder" control (folderTarget.js) is offered ONLY where the
+// browser can honour it — Chromium desktop, which has showDirectoryPicker and
+// IndexedDB. jsdom has neither, so the default render must not show it, and
+// every download stays a plain Downloads-folder download (the 33 tests above
+// run in exactly that state). These two pin the gate itself. The write path,
+// permission handling and error tags are folderTarget.spec.js's job.
+
+test("no save-location control when the browser can't write to a folder", () => {
+  const view = render(DownloadStep, {
+    props: { project: project(LETTERING), runtime: {}, digitizerHealth: null },
+  });
+  expect(ui(view).queryByTestId("save-where")).not.toBeInTheDocument();
+});
+
+test("save-location control appears where folder saving is supported", async () => {
+  // Minimal File System Access + IndexedDB stubs: enough for the component to
+  // decide it CAN offer the control and to read "no folder yet" on mount.
+  window.showDirectoryPicker = () => {};
+  window.indexedDB = {
+    open: () => {
+      const db = {
+        objectStoreNames: { contains: () => true },
+        createObjectStore: () => {}, close: () => {},
+        transaction: () => {
+          const r = { result: undefined, onsuccess: null };
+          const tx = { objectStore: () => ({ get: () => r }), oncomplete: null, onerror: null, onabort: null };
+          setTimeout(() => { if (r.onsuccess) r.onsuccess(); if (tx.oncomplete) tx.oncomplete(); }, 0);
+          return tx;
+        },
+      };
+      const req = { result: db, onsuccess: null, onupgradeneeded: null, onerror: null };
+      setTimeout(() => { if (req.onsuccess) req.onsuccess(); }, 0);
+      return req;
+    },
+  };
+  try {
+    const view = render(DownloadStep, {
+      props: { project: project(LETTERING), runtime: {}, digitizerHealth: null },
+    });
+    const row = await waitFor(() => ui(view).getByTestId("save-where"));
+    expect(row).toHaveTextContent(/Downloads folder/i);
+    expect(ui(view).getByTestId("folder-choose")).toBeInTheDocument();
+  } finally {
+    delete window.showDirectoryPicker;
+    delete window.indexedDB;
+  }
 });

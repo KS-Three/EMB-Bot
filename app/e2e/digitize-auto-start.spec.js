@@ -191,7 +191,7 @@ test("JEF downloads a real file through the service — the format with no brows
   // The panel names the encoder, and for JEF there is only one it can be —
   // this is the assertion that a browser-encoded file was not quietly
   // substituted, which is what the removed fallback would have done.
-  await expect(page.getByText("Downloaded JEF (digitizer service encoder)")).toBeVisible();
+  await expect(page.getByText("Saved JEF (digitizer service encoder)")).toBeVisible();
 
   // And it is genuinely a different file from the DST of the same design, not
   // the same bytes under another name. (What the bytes MEAN is decoded with

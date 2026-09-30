@@ -584,7 +584,7 @@ Moved verbatim 2026-08-28 — no section was rewritten in the move.
   ONLY"* since it was split from DOCTRINE, with `docs/scope/` and
   `docs/scope-history.md` as the two places overflow goes. Nothing enforced it,
   and on 2026-09-07 it reached **799** of its then-800-LINE budget — noticed
-  only because the next entry did not fit. `tests/test_scope_budget.py` (9) now
+  only because the next entry did not fit. `tests/test_scope_budget.py` (10) now
   enforces it, and its failure message names the reclaim rather than just
   saying "too long", because a bare limit gets the next line squeezed in
   somewhere else. **The unit became WORDS on 2026-09-14** (Kent) — see "A
@@ -1190,6 +1190,28 @@ Moved verbatim 2026-08-28 — no section was rewritten in the move.
 
 ---
 
+## SAM2 does not see a logo as a scene of objects — refuted on all nine real logos (2026-09-22)
+
+Kent: *"I would think SAM 2 would have the ability to do much better than
+what it is now."* Measured on every `REAL_ART` logo, both lanes. SAM2's
+automatic mask generator returns **0-8 masks at the shipped
+`points_per_side=12`** and 4-25 at `32`, against a shipped region former that
+produces **17-164**, and it fails in two visible ways: it finds essentially
+nothing (`drone` 0.6% of pixels covered, `screenshot` **0.0%** -- zero masks,
+`fremont` 0.9%, `enthusiast` 3.8%) or it segments the BACKGROUND as the object
+(`tires` 90.6%, `golden_tee` 88.8%, `bridge` 96.5%). **Neither is a confidence
+problem** -- `predicted_iou` sits at 0.88-0.99 throughout, so SAM2 is sure.
+Going 12 -> 32 costs **5x runtime** (23-28 s -> 114-135 s per image, CPU) and
+does not change the verdict. `digitizer_core/pipeline.py`'s own exclusion
+comment predicted this.
+
+**The trap worth carrying: the coverage number alone reads like success.** A
+backdrop rectangle scores 96.5% and a correct segmentation of a small logo
+scores 3.8%; only RENDERING separates them. Do not rank a segmenter by covered
+area. Full measurement, and the three defects the renders exposed on the way
+past: [`docs/sam2-on-logo-art-2026-09-22.md`](docs/sam2-on-logo-art-2026-09-22.md).
+
+
 ## Corrections — suspicions this document itself raised, then disproved
 
 - **A grade quoted without its ARM and its YARDSTICK is not a measurement —
@@ -1523,6 +1545,31 @@ its hedge as it is copied forward** — is why this file is split.
   root cause of the short columns, and it is scale-invariant)*
 
 ---
+
+## The parity corpus is a REGISTRY IN CODE, not a directory — and "n=1" was read off a directory listing (2026-09-28)
+
+`docs/organic-review-2026-09-22.md` published the quality program's ground
+truth as *"n=1 -- one client, Becker"*, on the strength of a listing of
+`digitizer/testdata/reference/`. **Wrong, and the method was the error.**
+`blockcensus.py`'s `FIXTURES` already paired FIVE genuine artwork files with
+five different clients (Becker Marine, script TIRES, Hotel Fremont, Golden
+Tee, Precision Drone), and already tagged the four Becker previews
+`pro-derived-render`, skipped by default and never aggregated -- the
+circularity risk that review presented as a discovery was documented in that
+module's own docstring and enforced in code. Its §3.2 arithmetic was wrong
+too. **Count the registry, not the folder.**
+
+The corpus is **11 artwork fixtures over 8 clients** since 2026-09-28, at zero
+cost: most vendors ship a two-panel preview (the customer's artwork beside a
+simulation of the vendor's stitches), and the artwork panel is a legitimate
+pipeline input because, unlike the simulation, it is not derived from the
+pro's answer. **The panel choice is a hand-set manifest on purpose** -- both
+candidate statistics fail, and flatness scores the Becker PREVIEW (1.51) above
+a genuine artwork file (1.84), so a heuristic would have fed a stitch
+simulation to the pipeline as artwork silently, worth +11.3 points of
+flattery. Anything unlisted raises `NotInManifest`.
+*(`tools/pro_parity/preview_split.py`)*
+
 
 ## Gotchas — cost someone a session once
 
@@ -5724,6 +5771,278 @@ knob.
 M's own 78.6 deg fold, the one `tools/decomposition_census.py` flagged;
 renders `docs/renders/polygon-axis-2026-09-16/drone_fold0_78.jpg`)*
 
+## A per-class default cannot be confirmed from a dataclass line (moved from MASTER_SCOPE 2026-09-29)
+
+`split_tonal_regions` sat on MASTER_SCOPE's Latent list as "confirmed OFF --
+`config.py`" for two weeks after it had stopped being off. It is ON for photo
+classes since 2026-08-19 (`d3f3c547`, spec decision 2): `effective_split_
+tonal` returns `bool(flag) or class_ in PHOTO_CLASSES`, so the FIELD can only
+turn it on, and reading the field answered a question it had stopped
+deciding two days later.
+
+**The rule: a per-class default is not readable from the dataclass.** Read
+the function that consumes it. Ratified 2026-09-02, left gate 3; its density
+cost is tracked as MASTER_SCOPE defect 20, not as a gate. Moved here
+2026-09-29 for the word budget -- it is a correction, which is this file's
+job, and the Latent list keeps the one-line marker its preamble cites.
+
+
+## "Beyond the node" cannot tell a tapered TIP from a CORNER, because the partner arm is beyond it either way (2026-09-29)
+
+Defect 49: under `satin_rail_comp` a shape keeps its artwork polygon, and the
+artwork's sharp tips are sharp. ENTHUSIAST's A decomposes into 4 strokes
+against the grown polygon's 2, and its apex becomes a NODE where two arms end
+rather than a point one stroke runs through. Both ends read
+`free_end=False`, so `_extend_to_cap` -- whose entire job is that the medial
+axis stops half a width short of a cap -- never runs, and the junction trim
+pulls both arms back on top of that. The column reaches within 0.08 mm of the
+apex off the rails and stops 1.63 mm short on them.
+
+**Two builds aimed at it, both measured, both short of the target.**
+
+1. **Cap a junction end with no single owner whose boundary is within 1.6
+   sewn half-widths along its own tangent.** Fires, and buys real coverage
+   elsewhere -- ENTHUSIAST's end bare 10.49 -> 9.18 mm2 at +82 stitches --
+   but leaves the apex at 3.61 mm2, untouched. Traced: `_is_tip_end` is never
+   CALLED there, because both apex arms have an identified `tuck_under`
+   partner (`_corner_forks` names a partner both ways, each under the other),
+   so the `under is None` gate rejects them first.
+
+2. **Drop that gate and discriminate on the ARTWORK BEYOND the node** -- take
+   the half-plane ahead of the end, clip it to a disc of one reach, and call
+   it a tip when the artwork there fills less than 45% of the half-disc.
+   Reasoning: an apex holds a wedge closing to a point, an L's elbow holds
+   the corner square plus the arm turning out of it. **Measured: completely
+   INERT** -- byte-identical to the flag off, on the fixture it was written
+   for.
+
+**Why 2 could not work, and it is the entry worth keeping.** At a two-arm
+apex the OTHER ARM is also beyond the node -- it descends from the same point
+-- so within a disc of one reach the apex and the elbow hold nearly the same
+artwork. "How much is beyond the node" is blind to the difference by
+construction, whatever the threshold. What separates a tip from a corner is
+whether the artwork beyond is CLOSED by the two arms' own caps or continues
+past them, which is a question about the shape's outline, not about area near
+the node. Do not re-derive an area test here.
+
+**And the meta-lesson, earned three times in one session.** Each of these came
+from reading the call order or the geometry and inferring "the same seam
+again" -- the reasoning was sound each time and the measurement refused it
+twice (see also the outer-rail density refinement entry). On this file,
+measure the TARGET CASE before building: one probe on ENTHUSIAST's A would
+have shown `under` was set before either build existed.
+
+**Still open**, and a construction call rather than a bug: at a tapered tip
+where two arms each tuck under the other, who sews the point? One arm caps it
+and the other tucks under it (pick by tangent alignment); or both cap it and
+overlap, which is what the pro sews at a junction and what
+`satin_junction_stack` part B already argues for. Whether the junction
+cover (part C) could patch it instead was not examined.
+
+
+## Coverage is not the metric a customer sees — price a lettering change on `lost_frac` (2026-09-30)
+
+The apex construction (defect 49) was built, measured on all nine corpus
+logos, flipped, documented and PUSHED before anything read the guard that
+matters. `tools/bare_anatomy.py` said bare artwork and end gaps fell on NINE
+OF NINE for +6.0% stitches. `tests/test_lettering_coverage_regression.py`
+said `lost_frac` went **0.2573 -> 0.2661** past its 0.26 bar, **100%
+overshoot, 0% unsewn** — and that test's own docstring already explained why
+both are true at once:
+
+> `rail_edge --bare` is COVERAGE — ink with no thread on it. `lost_frac` is
+> DISAGREEMENT — every pixel where the stitch-out does not look like the
+> artwork, **which includes thread on cloth that should be bare** ... Neither
+> is lying.
+
+and, on which one to steer by:
+
+> It pins `lost_frac` ... because that is the metric that moved and **the one
+> a customer sees**.
+
+**So the rule: a change that moves thread near a letter's edge is priced on
+`lost_frac`, not on bare area.** Bare area is easier to measure and reads
+better, which is exactly the trap — every arm that pushes rails outward
+improves it. `satin_rails_follow_edge` covers the MOST artwork of any arm
+(ink recall 0.9942) and scores the WORST `lost_frac` (0.3555); it was
+rejected as the cure on those grounds in September, and the apex widening
+reproduced the same shape three weeks later without noticing.
+
+**`bare_anatomy` is not wrong and should not be retired** — it answered the
+question it was built for (hole versus hairline) and that answer stands. It
+is BLIND to thread outside the ink by construction, so it can only ever
+price half a trade. Run it beside `lost_frac`, never instead of.
+
+**And the apex may not be a customer-visible defect at all.** `lost_frac`'s
+unsewn half reads **0.0 on ENTHUSIAST in every arm** — the 3.61 mm2 triangle
+`bare_anatomy` reports does not register as missing thread on the render at
+all. Which instrument is right about that apex is unsettled, and settling it
+is the first step of any second attempt, before construction is touched.
+
+
+## A coverage percentage cannot tell a HOLE from a HAIRLINE, and one flip moved both at once (2026-09-29)
+
+`satin_rail_comp`'s cost on ENTHUSIAST was published as bare artwork 6.27 ->
+7.10%, with the rise "along the rails (mid-rail 2.06 -> 4.12%), cause not yet
+isolated" (`docs/kent-review-2026-09-28.md`). Isolated with
+`tools/bare_anatomy.py`, which splits each bare component by WHERE it sits (a
+disc at a run's terminal cross = an `end` gap, else a `side` gap) and HOW THICK
+it is (max inscribed radius). **The single percentage was two populations
+moving in OPPOSITE directions:**
+
+- **The mid-rail half is hairlines and is not a defect.** 80% of the side area
+  sits under 0.10 mm half-width, and the worst side component is SMALLER on the
+  rails than off them (0.45 against 0.50 mm2). A 0.4 mm thread at the 0.4 mm
+  pitch just touches, so every rail step over the pitch leaves a sliver the
+  model counts; rail comp makes more of them, each thinner. The step
+  distribution barely moves (p50 0.427 -> 0.419 mm).
+- **The cloth-visible cost is at a TAPERED END, and the headline hid it.** The
+  apex of ENTHUSIAST's A sews to within 0.08 mm of the artwork off the rails
+  and stops **1.63 mm** short on them -- no penetration within 1.5 mm of the
+  apex -- leaving one **3.61 mm2 triangle at 0.71 mm half-width**, the largest
+  bare component on the fixture. Rendered:
+  `docs/renders/rail-comp-bare-anatomy-2026-09-29/`. Under preflight's
+  `_UNCOVERED_MIN_PATCH_MM2` (5.0), so nothing reports it.
+
+**Read the thickness before the total.** Three hundred 0.03 mm2 slivers and one
+3.6 mm2 hole can carry the same square millimetres and want opposite responses;
+`rail_edge --bare` and every percentage built on it are blind to the
+difference by construction. This is the "the zero was a property of the method"
+lesson (2026-09-20) in its coverage form: the instrument was not wrong, it was
+answering a coarser question than the one being asked of it.
+
+**And two hypotheses died here before the right one landed** -- that the
+denominator had changed with the polygon (it had not: 349.6 mm2 both arms), and
+that the pitch had widened (it had not: see the entry above). Both were
+plausible from the code and both were refuted by one measurement. The render is
+what named the real one.
+
+
+## `bare_anatomy` counts SATIN and nothing else, so every figure it has published is an upper bound — by 1.5x to 39x (2026-09-30)
+
+The tool buffers satin crosses and subtracts them from the artwork polygon.
+**Underlay, run, travel and fill lay real thread on the same cloth and none of
+it is subtracted.** So "bare artwork" there means "artwork this shape's SATIN
+COLUMN did not cover", which is a fair question about a column and is NOT the
+question the numbers were read as — *"cloth a customer would see"*.
+
+Measured 2026-09-30 with the `--all-thread` flag added the same day, shipped
+engine, per fixture, total bare and worst component:
+
+| fixture | bare satin | bare ALL | worst satin | worst ALL |
+|---|---|---|---|---|
+| becker | 160.69 | 90.44 (1.8x) | 54.28 | **5.36 (10.1x)** |
+| tires | 27.98 | 11.60 (2.4x) | 0.26 | 0.22 (1.2x) |
+| enthusiast | 23.44 | 15.53 (1.5x) | 3.61 | 1.93 (1.9x) |
+| fremont | 18.73 | **0.48 (38.9x)** | 0.79 | 0.05 (17.1x) |
+| bridge | 52.77 | 14.05 (3.8x) | 9.30 | 1.56 (6.0x) |
+| golden_tee | 81.77 | 57.69 (1.4x) | 7.06 | 6.81 (1.0x) |
+| gaulke | 33.20 | 29.56 (1.1x) | 0.54 | 0.47 (1.2x) |
+| drone | 37.51 | 20.44 (1.8x) | 2.65 | 2.19 (1.2x) |
+| screenshot | 27.39 | 25.69 (1.1x) | 0.91 | 0.91 (1.0x) |
+
+**The ratio is not a constant and cannot be divided out.** It runs **1.07x to
+38.9x** on the total and **1.00x to 17.1x** on the worst component, because it
+depends entirely on how much underlay a fixture's shapes happen to carry —
+screenshot's worst gap is untouched by every other thread kind while becker's
+is 90% covered by them. A table of before/after figures built on the default
+reading therefore cannot be rescued by scaling: each row has its own factor,
+and the factors span a decade.
+
+**What this costs, concretely.** The nine-logo table Kent flipped
+`satin_tip_caps` on (2026-09-29) is a satin-only table. Its DIRECTION is still
+the thing the flip was bought on and the flip's own fixture test still passes,
+but its MAGNITUDES overstate the cloth a customer sees by a per-fixture factor
+nobody measured at the time — fremont's row moves 18.10 -> 17.92 mm², a change
+of 0.18 on a quantity whose thread-visible value is under half a square
+millimetre.
+
+The table above is one tree, both columns, so its ratios are sound; its
+satin-only column is **not** row-for-row the 2026-09-29 table, because the tree
+moved between them (golden_tee's seam fix landed in between and changed its
+decomposition). Compare ratios here, not levels against that entry.
+
+**The default stays satin-only**, deliberately: the end/side split, the
+thickness populations and every pinned figure were measured that way, and
+*"did the COLUMN cover its own artwork"* is a real question — underlay filling
+a gap is thread on cloth, not a satin column doing its job. `--all-thread` is
+the reading to quote whenever the claim is about what a customer sees.
+`tests/test_apex_is_real.py` pins the gap between the two on ENTHUSIAST so it
+cannot quietly close.
+
+## The A's apex IS a hole — and BOTH instruments that disagreed about it were wrong in a knowable way (2026-09-30)
+
+Kent's pick, after a build was priced on the wrong one of two instruments that
+contradicted each other: `bare_anatomy` reported **3.61 mm²** at the apex of
+ENTHUSIAST's **A**; `dropped_elements`' `unsewn_frac` read **0.0000** on that
+fixture in every arm. Settled by measuring both and by rendering the actual
+thread path (`docs/renders/apex-verdict-2026-09-30/`).
+
+**`bare_anatomy` over-reported by 1.7x** — underlay threads 38.4% of that
+triangle and travel a further 4.7% (entry above). **`unsewn_frac` could not
+have seen it at all**, for a reason its own docstring already stated: its
+on-ink vote is `A_ink[region].mean() > 0.5` and the largest per-region ink
+fraction on this fixture is **0.33**. A 0.0 there is the method's property,
+not a finding — the same lesson as the 2026-09-20 zero.
+
+**What survives both corrections is a real hole**: 2.17 mm² of artwork with no
+thread of any kind, largest connected part 1.93 mm² at 0.464 mm max inscribed
+half-width, and **1.72 mm² still there after the 0.50 mm opening** that exists
+to throw boundary hairlines away. A millimetre-wide notch at the peak of a
+capital letter on an 80 mm chest logo.
+
+**The confirmation is a second instrument that shares no code.**
+`dropped_elements`' `uncov = A_ink & ~thread` is a raster mask difference over
+a `stitchviz` render — no CIEDE2000, no opening, no colour, nothing in common
+with a shapely subtraction. Its **largest uncovered-ink component in the whole
+design**, 0.97 mm², sits **0.33 mm** from the apex; the next is 0.70 mm² and
+35 mm away.
+
+**And the reading built to name a lost element misses it by 0.03 mm².**
+`uncovered_elements` counts components at or over `MIN_ELEMENT_MM2` = 1.0, and
+the apex reads 0.97. That threshold was set to separate an element from a rim.
+This is neither, and a session reading `uncovered_elements: 0` as *"nothing was
+lost"* will be wrong here. **Read `uncovered_worst_mm2`**, which is sensitive
+and is the number that moves when a build closes the apex.
+
+**Two process rules came out of this, and they are the transferable part.**
+
+1. **A picture drawn from the same model as the number is not evidence.** The
+   2026-09-29 apex render drew `bare_anatomy`'s own cross buffers, so it could
+   only ever agree with `bare_anatomy`. `tools/thread_path_render.py` exists so
+   the next one comes out of `stitchviz.render_design`, walking the design's
+   real stitch stream instead.
+2. **When two instruments disagree, neither is the tie-breaker.** Both were
+   wrong here, in opposite directions, and the answer came from a third
+   reading plus a picture from a fourth code path. Picking the one that
+   flatters the build is what put a retracted change on `main`.
+
+## `satin_tip_caps` and `satin_rails_follow_edge="envelope"` reach for MUCH of the same bare (2026-09-30)
+
+Two lanes built two cures the same day, each measured against an engine
+without the other, and they overlap almost exactly on the fixture both were
+priced on. Becker 80 mm, merged tree, bare / satin wobble std / stitches:
+
+| | `False` | `"envelope"` | `True` |
+|---|---|---|---|
+| tip caps OFF | 10.222% / 0.0914 / 5,691 | 9.484% / 0.0999 / 5,750 | 7.235% / 0.1281 / 6,079 |
+| tip caps ON | **9.483%** / 0.0943 / 6,101 | 9.030% / 0.1108 / 6,219 | 6.840% / 0.1243 / 6,601 |
+
+**Tip caps alone take the symmetric-rail arm to 9.483% — the figure the
+envelope reached without them, 9.484%.** On top of tip caps the envelope is
+worth a further 0.45 points, not the 0.74 its own entry records, and it costs
++17.5% rail roughness rather than +9.3%. `True` keeps a real margin (6.84%)
+and keeps paying for it.
+
+**The transferable part is not the numbers.** Two parallel lanes each measured
+a cure against a tree the other flag had not landed in, and the second
+measurement is not additive. Before quoting what a parked flag buys, re-measure
+it on the CURRENT default set — its own entry was true on the tree it was
+written on and is an overstatement on this one.
+`tests/test_rail_comp.py::test_the_envelope_reaches_the_far_edge_where_the_gap_is_long_and_nowhere_else`
+holds `satin_tip_caps=False` for exactly this reason, and says so.
+
+
 ## The polygon axis must not read stage 5's grown polygon (2026-09-16)
 
 Kent ruled drone's M over-stitched under `cfg.satin_polygon_axis`. Root cause,
@@ -6737,6 +7056,33 @@ ACCEPTED PRICE, not open defects for someone to re-solve; lowering the
 ceiling means the junction tuck and the artwork decomposition above, not
 the rail model.
 
+## The outer-rail density refinement sizes its advance on rails `_push_rails` has not moved yet -- and fixing that is INERT (2026-09-29)
+
+Real, and not the lever. `_rail_points`'s outer-rail refinement interpolates
+extra stations wherever a rail's advance outruns the pitch; `_push_rails` then
+moves every rail outward along its cross by the fabric's pull. **The push runs
+AFTER the refinement**, so under `satin_rail_comp` the pitch guarantee is made
+on geometry nobody sews: on a bend the outer rail's arc grows with the push,
+re-opening intervals the loop just closed. That is the same seam as the
+junction tuck and the walk's target (both 2026-09-29) in a third place, and
+the reasoning that it must matter is sound.
+
+**It does not matter.** Measuring the advance between the PUSHED positions
+instead (a 12-line change, byte-identical at `rail_comp_mm == 0`) moves
+ENTHUSIAST at 80 mm by: crosses 509 -> 511, stitches 2,392 -> 2,396, bare
+24.41 -> 24.33 mm2, and the step distribution not at all -- summed overshoot
+past the 0.4 mm pitch **71.5 -> 71.6 mm**, share over 0.45 mm 33.6 -> 33.5%,
+and the guard-fire share slightly WORSE (0.8 -> 1.1%). The refinement's own
+gate is `adv <= pitch * 1.3` = 0.52 mm, and the push adds `pull x angle turned`
+-- a few hundredths of a millimetre per station, which that tolerance absorbs.
+
+**Reverted, and recorded so nobody rebuilds it.** Anyone who reads the call
+order will see the bug; the measurement is the reason not to act on it. If the
+1.3 tolerance is ever revisited, this becomes live again -- but the tolerance
+is how much bare cloth is acceptable between two threads, which fabric
+settles, not geometry (ROADMAP gate 1).
+
+
 ## Four photo-lane tests go red on any machine that has `rembg_isolated/venv` built, and CI never does (2026-09-29)
 
 `test_shade_palette_demand`'s photo_subject stub, `test_photo_sequencing`'s
@@ -6912,3 +7258,71 @@ Three rules out of it.
   closing that is exactly right on a seam is exactly the growth's
   smoothing on a letterform, and the difference between them is not in
   the geometry of the fill but in whose boundary it touches.
+
+## The far rail's under-reach is real, the parked cure pays at every station, and an envelope pays only where the gap is (2026-09-30)
+
+Kent's pick after #561: the rail model's under-reach on uneven bands, the
+mechanism behind BECKER's C (the cover's fill where the arm's crosses stop
+at the nearer edge) and golden_tee's bare artwork once its seams were closed
+(6.54 → 10.35% satin-only). The symmetric-offset model places both rails
+at the NEARER edge's distance from a smoothed spine, so wherever the spine
+sits off-centre — a raster skeleton never sits dead centre, a band whose
+one edge wanders, a blob a neighbouring arm's axis runs through — the far
+rail stops short by the difference. `satin_rails_follow_edge=True` (built
+2026-09-03, parked by Kent for cloth) cures it by giving each rail its own
+filtered profile, and pays at every station: a rail is only as smooth as
+its edge (satin wobble std +40% on Becker), and ENTHUSIAST's overshoot,
+the headline `test_lettering_coverage_regression` guards, goes 0.2567 →
+0.2899.
+
+**`"envelope"` is the same cure with a WHERE and a HOW-FAR.** A far rail
+extends past the symmetric width only where its own side is short by at
+least a gap floor (`_ENVELOPE_GAP_MM` 0.3), and only to the running MINIMUM
+of its median-filtered profile over ±`_ENVELOPE_WINDOW` (3) stations: an
+envelope that cannot exceed the edge anywhere in its window, so it never
+overshoots a concavity, and changes no faster than the edge's slowest
+feature, so it carries none of the edge's roughness. Never retracts, never
+turns the cross; the corridor and fold caps apply; False and True are
+byte-identical to before it existed.
+
+Measured 2026-09-30 (`tools/rail_edge.py --bare`, `tools/edge_wobble.py`
+satin std, `tools/dropped_elements.py` overshoot; 80 mm left_chest,
+Becker also at 100, `max_colors=6`):
+
+| fixture | mode | bare % | satin std | unsewn outline mm | overshoot | stitches |
+|---|---|---|---|---|---|---|
+| golden_tee | False | 10.35 | 0.070 | 7.3 | 0.215 | 7,966 |
+| | True | 6.36 | 0.074 | 3.3 | 0.249 | 8,139 |
+| | **envelope** | **7.20** | 0.075 | 3.3 | 0.231 | 8,072 |
+| becker 80 | False | 10.22 | 0.091 | 35.8 | 0.013 | 5,691 |
+| | True | 7.24 | 0.128 | 21.0 | 0.016 | 6,079 |
+| | **envelope** | **9.48** | 0.100 | 26.8 | 0.013 | 5,750 |
+| becker 100 | False | 8.14 | 0.099 | 46.3 | 0.016 | 8,297 |
+| | True | 6.38 | 0.138 | 19.0 | 0.018 | 9,053 |
+| | **envelope** | **7.35** | 0.109 | 28.0 | 0.015 | 8,900 |
+| ENTHUSIAST | False | 6.98 | 0.096 | 4.3 | 0.257 | 2,392 |
+| | True | 6.42 | 0.095 | 4.3 | **0.290** | 2,434 |
+| | **envelope** | 6.98 | 0.096 | 4.3 | 0.257 | 2,392 |
+| drone | False / True / envelope | 4.88 / 4.48 / 4.86 | | 4.3 / 3.3 / 4.3 | 0.048 / 0.053 / 0.048 | 18,540 / 18,576 / 18,540 |
+| Fremont | False / True / envelope | 3.98 / 3.83 / 3.98 | | 0 / 0 / 0 | 0 / 0 / 0 | 19,887 all |
+
+The envelope takes half of True's coverage on the two fixtures that have
+the defect at a quarter of True's jitter and none of its overshoot, and is
+a no-op to the stitch on ENTHUSIAST, drone and Fremont, where True's gain
+is small and its overshoot cost lands on the headline. The window is the
+trade's dial: ±2 stations reaches Becker 100 mm bare 7.00 at std 0.128
+(True's roughness, True's coverage) and touches ENTHUSIAST (bare 6.98 →
+6.79 with overshoot 0.2567 → 0.2545, both better); ±4 keeps Becker's std at
+0.098 for bare 7.49. The gap floor (0.2 or 0.3) barely moves anything.
+
+**What it does not do, by design:** a bulge shorter than the window
+(golden_tee's 2 mm notches, Becker's serif corners, the 1.5–2.5 mm bulges
+of the synthetic probe) is not reached — its window reads the plain band
+either side — and neither is BECKER's C's bowl: the render shows True
+sewing the bowl with the neighbouring arm's 5 mm crosses, the grown
+polygon's accidental coverage back again, while the envelope leaves the
+cover's fill where part C put it. Corner-sized bare is `satin_cap_recentre`'s
+question (the cause-side twin, DOCTRINE 2026-09-19); a blob is the cover's.
+The mode ships OFF; whether the far rail's reach reads right on cloth is
+the same sew-out question True was parked on, and the flag's flip is
+Kent's.
