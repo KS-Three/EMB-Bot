@@ -610,3 +610,110 @@ cl. 9/42 — none blocks a compound, but they belong in any attorney brief.
 
 Not verified: USPTO direct; Wayback page bodies (stitchset.com 2019–2024 and
 tackset.com 2017 are unreadable from here); GitHub handles; Instagram.
+
+## I. "Just Stitch It" — Kent's proposal, measured (round 7, same day)
+
+Kent asked *"just stitch it?"* after round 6. Measured the same way as
+rounds 3–6, plus a trademark pass specific to the "JUST ___ IT" frame, and
+two fallbacks that keep the idea: **Stitch It** and **JustStitch**.
+
+**Composite: 2.5 / 10. Bold: 4 / 5.** It fails both high-weight gates —
+the .com and the industry — and the boldness is Nike's on loan.
+
+### Domains (RDAP, live fetch)
+
+| Domain | State |
+|---|---|
+| **juststitchit.com** | **Taken since 2002-06-13** (GoDaddy, exp. 2027). Live Square Online store: "Just Stitch It Inc.", custom equine embroidery and garment printing, Tioga TX. Not parked, not for sale. |
+| just-stitch-it.com, getjuststitchit.com | free |
+| juststitchit.net / .io / .app / .co / .studio / .ai / .shop | all free |
+| juststitch.com | taken 2006, **for sale at $4,895** (HugeDomains, or $203.96/mo × 24) |
+| juststitch.io / .app / .co | free |
+| stitchit.com | taken 2000 — "Stitch It" alterations and dry-cleaning chain, Canada, 50+ stores since 1989 |
+| stitchit.app | taken 2022 (serves 502 today); stitchit.io / .co free |
+
+### Trademark
+
+- **Exact mark:** no live federal JUST STITCH IT / JUSTSTITCHIT found
+  (Trademarkia `juststitchit` → 0 results; the fuzzy query surfaces
+  STITCH IT USA, Ser. 76663818, **live cl. 40**, renewed 2018, and
+  STITCH IT FOR U, Ser. 97450264, live cl. 35/40, 2022). Justia: STITCH IT
+  (74219915, 1991) abandoned 1993; JUST STITCHIN' (1975) cancelled 1983.
+  STITCHIT (Ser. 50069304, cl. 25) filed 2026, pending. USPTO direct not
+  reachable from here, as in every prior round.
+- **Nike's JUST DO IT.** The TTAB calls it "not only famous, but remarkably
+  so," and Nike's stated policy is to oppose every "JUST ___ IT" filing.
+  Outcomes, all Nike wins, none found lost:
+  - *Nike v. Maher*, JUST JESU IT (2011, precedential) — confusion **and**
+    dilution by blurring; "JUST ___ IT is a common template" rejected for
+    lack of evidence; parody rejected ("trying to take a free ride").
+  - *Nike v. Caldwell & Miles*, JUST DREW IT! (2020) — sustained; the Board
+    reasoned that "DO" can implore the listener to *do* something, such as
+    to *draw*. **"Stitch" is a verb and reads identically.**
+  - *Nike v. Muntean*, JUST BELIEVE IT (2020) — **cl. 35 business
+    consulting, not apparel** — sustained on both grounds. Different goods
+    did not save it; dilution does not need related goods.
+  - *Nike v. Tacvue*, JUST DAO IT (2021–2023) — "computer services, namely
+    creating an online community" — a tech company; default judgment for
+    Nike.
+  - Also sustained: JUST DON IT! (masks), DON'T JUST DO IT, GET IT DONE
+    (2024), JUST DID IT, JUSTSAYIT.
+- **Read:** the mark is unregistrable in practice — filing draws an
+  opposition with a 100 % observed win rate — and a C&D is likely once the
+  brand is visible. Parody is not available to a commercial brand that is
+  not commenting on Nike.
+
+### Same-industry collisions
+
+Four US businesses trade under the exact name; three embroider, one
+**digitizes**:
+
+1. **Just Stitch It, Inc.** — Tioga TX; owns the .com, IG @juststitchit,
+   FB /JustStitchIt.inc; ~24 years.
+2. **Just Stitch It Embroidery** — Dunnellon FL; "embroidering since 1988
+   and **digitizing since 2004**". Sells the service EMB-Bot automates.
+3. **Just Stitch It Embroidery** — Saint Paul MN; BBB A+, since 2004; Yelp
+   updated Dec 2025.
+4. **Just Stitch It Meisch Upholstery** — Caledonia MN; upholstery,
+   quilting fabric, yarn; est. 1955.
+
+All decades-old brick-and-mortar operations with common-law rights in the
+embroidery field. No software or app of the name found.
+
+### Handles and SERP
+
+TikTok and YouTube @juststitchit **free**; Instagram **taken** (the Texas
+company); Facebook /JustStitchIt.inc is the Texas company; X probably free,
+unverified. Exact-phrase SERP page 1 is 100 % the four businesses above
+(IG, FB ×3, Yellow Pages, Yelp ×2, the .com ×3). "stitch it" alone is the
+Canadian chain, STITCH-IT Alterations (Nashville), STITCH IT (Garden City
+NY, embroidery), and **Stitch AI (stitchai.us, "AI Embroidery Digitizing in
+Seconds")** — a direct competitor already on "stitch" + AI digitizing.
+
+### Fallbacks
+
+- **Stitch It — ~2 / 10.** Worse than the candidate: live cl. 40
+  registration (STITCH IT USA), the 50-store chain on the .com, STITCHIT
+  pending in cl. 25, X @stitchit taken. No Nike issue, but nothing else
+  clears either.
+- **JustStitch — ~5.5 / 10.** .com buyable at $4,895; .io/.app/.co free;
+  TikTok/YouTube free; X @JustStitch is a personal account; IG unverified.
+  No JUST STITCH / JUSTSTITCH mark on Trademarkia or Justia; no company or
+  app of the name found. Dropping "It" leaves the JUST ___ IT frame that
+  every Nike case turned on — materially lower risk, still "Just"-adjacent
+  and still generic enough to share a SERP with every shop that says "just
+  stitch".
+
+### Verdict
+
+Two risks, either alone disqualifying for a brand meant to rank first:
+
+- **Trademark:** the exact JUST-verb-IT pattern Nike has won on eight-plus
+  times, including against non-apparel services.
+- **Collision:** three decades-old embroidery shops, one a digitizer,
+  already own the name, the .com, the Instagram handle, and the whole
+  page-1 SERP. Ranking first for "just stitch it" would mean out-ranking
+  the businesses that *are* Just Stitch It.
+
+Not verified: USPTO direct; Instagram direct (429); X (no og:title on the
+profile page); Facebook /juststitchit (login-walled).
