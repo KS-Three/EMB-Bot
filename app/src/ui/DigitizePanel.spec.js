@@ -93,7 +93,11 @@ function baseElement(shapes = [], extra = {}) {
 // cannot quietly change what 20 tests are asserting; the default-closed state
 // gets its own test below, which is the one thing this helper would hide.
 function openLayers(utils) {
-  const btn = utils.container.querySelector('button[aria-expanded][class*="seq-toggle"]');
+  // The Layers block lives on the Shapes tab since 2026-09-30 (the panel
+  // opens on Settings), so the tab comes first; then the disclosure inside.
+  const tab = [...utils.container.querySelectorAll('button[role="tab"]')]
+    .find((b) => b.textContent.trim().startsWith("Shapes"));
+  if (tab) fireEvent.click(tab);
   const shapesBtn = [...utils.container.querySelectorAll("button")]
     .find((b) => /^Edit shapes/.test(b.textContent.trim()));
   if (shapesBtn) fireEvent.click(shapesBtn);
@@ -847,9 +851,15 @@ describe("the Edit shapes disclosure", () => {
   // Renders WITHOUT openLayers on purpose -- this is the state the shared
   // helper opens past, so it is the one thing the other 46 tests cannot see.
   function raw(shapes) {
-    return render(Harness, {
+    const utils = render(Harness, {
       props: { element: baseElement(shapes), onPatch: () => {} },
     });
+    // The disclosure lives on the Shapes tab (2026-09-30); this opens the
+    // tab and nothing else, so the disclosure's own state is what is seen.
+    const tab = [...utils.container.querySelectorAll('button[role="tab"]')]
+      .find((b) => b.textContent.trim().startsWith("Shapes"));
+    if (tab) fireEvent.click(tab);
+    return utils;
   }
 
   test("the shape rows are closed on arrival", () => {
@@ -1590,5 +1600,68 @@ describe("list <-> canvas shape sync", () => {
     expect(rows[0]).not.toHaveClass("dgp-layer-sel");
     expect(rows[1]).toHaveClass("dgp-layer-sel");
     expect(rows[1]).toHaveAttribute("data-shape-id", "b");
+  });
+});
+
+// ---- The three tabs (2026-09-30) ---------------------------------------------
+describe("Settings / Shapes / Threads", () => {
+  function tabs(container) {
+    return [...container.querySelectorAll('button[role="tab"]')];
+  }
+  function tabNamed(container, name) {
+    return tabs(container).find((b) => b.textContent.trim().startsWith(name));
+  }
+
+  test("opens on Settings: the knobs and Rotation, no Layers block, no spool list", () => {
+    const { container } = render(Harness, { props: { element: baseElement([shapeRow("s1")]) } });
+    expect(tabs(container).map((b) => b.getAttribute("aria-selected"))).toEqual(["true", "false", "false"]);
+    // Names are the plain words: the counts are aria-hidden.
+    expect(tabs(container).map((b) => b.textContent.replace(/\d+/g, "").trim())).toEqual(["Settings", "Shapes", "Threads"]);
+    expect(container.querySelector(".dgp-params")).not.toBeNull();
+    expect(container.querySelector(".dgp-layers")).toBeNull();
+    expect(container.querySelector(".dgp-blocks")).toBeNull();
+    expect([...container.querySelectorAll("label")].some((l) => /Rotation/.test(l.textContent))).toBe(true);
+  });
+
+  test("Shapes shows the Layers block and its count; Threads shows the spools; the knobs stay on Settings", async () => {
+    const { container } = render(Harness, { props: { element: baseElement([shapeRow("s1"), shapeRow("s2")]) } });
+    expect(tabNamed(container, "Shapes").querySelector(".dgp-tab-count")).toHaveTextContent("2");
+    await fireEvent.click(tabNamed(container, "Shapes"));
+    expect(container.querySelector(".dgp-layers")).not.toBeNull();
+    expect(container.querySelector(".dgp-blocks")).toBeNull();
+    await fireEvent.click(tabNamed(container, "Threads"));
+    expect(container.querySelector(".dgp-layers")).toBeNull();
+    expect(container.querySelector(".dgp-blocks")).not.toBeNull();
+    expect(container.querySelector(".dgp-params")).not.toBeNull(); // the knobs are above the tabs
+  });
+
+  test("a shape selected on the canvas switches to Shapes and opens the list", async () => {
+    const utils = render(Harness, { props: { element: baseElement([shapeRow("a"), shapeRow("b")]) } });
+    expect(tabNamed(utils.container, "Settings").getAttribute("aria-selected")).toBe("true");
+    await utils.rerender({ element: baseElement([shapeRow("a"), shapeRow("b")]), selectedShapeId: "b" });
+    await waitFor(() => expect(utils.container.querySelectorAll(".dgp-layer")).toHaveLength(2));
+    expect(tabNamed(utils.container, "Shapes").getAttribute("aria-selected")).toBe("true");
+    expect(utils.container.querySelector(".dgp-layer-sel")).toHaveAttribute("data-shape-id", "b");
+  });
+
+  test("Threads lists spools, not sew blocks: a cone loaded twice is one row, and a pick recolors both blocks", async () => {
+    const patches = [];
+    const element = baseElement([shapeRow("s1")], {
+      result: {
+        stitchCount: 100, widthMM: 10, heightMM: 10, colorCount: 2, stitches: [],
+        colors: [
+          { r: 20, g: 20, b: 20, name: "0134 Smoky" },
+          { r: 200, g: 30, b: 30, name: "1720 Not Quite Red" },
+          { r: 200, g: 30, b: 30, name: "1720 Not Quite Red" },
+        ],
+      },
+    });
+    const { container } = render(Harness, { props: { element, onPatch: (d) => patches.push(d) } });
+    await fireEvent.click(tabNamed(container, "Threads"));
+    const rows = [...container.querySelectorAll(".dgp-block")];
+    expect(rows.map((r) => r.querySelector(".dgp-block-n").textContent)).toEqual(["0134 Smoky", "1720 Not Quite Red"]);
+    expect(rows[1].querySelector(".dgp-block-note")).toHaveTextContent("loaded 2 times");
+    expect(rows[0].querySelector(".dgp-block-note")).toBeNull();
+    expect(tabNamed(container, "Threads").querySelector(".dgp-tab-count")).toHaveTextContent("2");
   });
 });

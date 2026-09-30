@@ -640,6 +640,12 @@ settings, per-shape controls, the canvas toolbar, the Text sliders. Before:
 31 native `title`s, one on a setting. *(built and looked at 2026-09-30 —
 [area doc](docs/scope/3-studio-app-wizard.md))*
 
+**The digitize panel is three tabs — Settings / Shapes / Threads
+(2026-09-30).** Stats, delta and warnings shared above them; a canvas pick
+switches to Shapes. "Thread per color" lists spools, not sew blocks (the
+edge cap's re-loaded cone read as a second red — 42(e)'s rule, third
+display). *(built and looked at 2026-09-30 — [area doc](docs/scope/3-studio-app-wizard.md))*
+
 **A Studio change is not verified until it has been *looked at* in a browser.**
 Six buyer-visible defects across the 2026-08-25 and 09-07 sweeps, none seen by a
 green suite. The list: DOCTRINE "Gotchas".

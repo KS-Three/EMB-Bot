@@ -873,6 +873,30 @@
     patch({ blockColors: { ...(element.blockColors || {}), [i]: rgb } });
   }
 
+  // Thread per color lists SPOOLS, not sew blocks (2026-09-30). The design
+  // edge re-loads a cone, so a two-spool logo sews three blocks, and the
+  // list named "1720 Not Quite Red" twice — a customer reading it as what to
+  // buy buys a spool they have (the same rule the summary and the review's
+  // shopping list already follow: a colour is a cone to buy). Grouped by
+  // the cone's name and colour; a pick applies to every block of that
+  // spool, since on the machine they are one spool.
+  $: spoolRows = spoolGroups(element);
+  function spoolGroups(el) {
+    const colors = (el.result && el.result.colors) || [];
+    const groups = new Map();
+    colors.forEach((c, i) => {
+      const key = blockName(el, i) + "|" + [c.r || 0, c.g || 0, c.b || 0].join(",");
+      if (!groups.has(key)) groups.set(key, { name: blockName(el, i), first: i, blocks: [] });
+      groups.get(key).blocks.push(i);
+    });
+    return [...groups.values()];
+  }
+  function pickSpool(g, rgb) {
+    const next = { ...(element.blockColors || {}) };
+    for (const i of g.blocks) next[i] = rgb;
+    patch({ blockColors: next });
+  }
+
   const FILL_ANGLES = [
     { value: null, label: "Auto (per shape)" },
     { value: 0, label: "0°" },
@@ -911,6 +935,13 @@
   // since "I was editing shapes" does not carry from one artwork to another.
   let layersOpen = false;
   let layerListEl = null;
+  // Three tabs once there is a result (2026-09-30, the last item of Kent's
+  // design review): Settings — what you turn and what the run said;
+  // Shapes — the Layers list and its editors; Threads — the spools. One
+  // column had grown to 1,738px at 1440x900 with all of it stacked, and the
+  // customer's question ("what do I change?") was buried under the expert's
+  // list. Resets with the panel, which `{#key el.id}` remounts per element.
+  let tab = "settings";
   // A shape picked on the canvas is found in the list: open it if it was
   // closed, then bring the row into view. `nearest` so a row already on
   // screen does not jump, and a row the user just clicked (which also
@@ -918,6 +949,7 @@
   // than an attribute selector so an id needs no escaping.
   $: if (selectedShapeId) revealRow(selectedShapeId);
   async function revealRow(id) {
+    tab = "shapes";
     layersOpen = true;
     await tick();
     if (!layerListEl) return;
@@ -2126,6 +2158,44 @@
         {element.result.widthMM.toFixed(0)}×{element.result.heightMM.toFixed(0)} mm ·
         {spoolCount(element.result)} color{spoolCount(element.result) === 1 ? "" : "s"}
       </p>
+      <!-- "Since last run" sits with the stats, above the tabs: a re-run
+           can be started from any of them (Apply on Shapes, a spool on
+           Threads), and its outcome should be read where you are. -->
+      {#if hasPrior}
+        <p class="dgp-delta" role="status" data-testid="digitize-delta">
+          {#if changed.length}
+            Since last run: {changed.join(" · ")}
+          {:else}
+            Since last run: no change to stitches, threads or trims.
+          {/if}
+        </p>
+      {/if}
+      <!-- The run's warnings too: a layer edit that no longer matches a
+           shape, a background that was hard to separate. Whatever tab you
+           are on, these are not to be missed. -->
+      {#if attentionLines.length}
+        <ul class="dgp-warnings">
+          {#each attentionLines as w (w.code + w.text)}
+            <li>{w.text}</li>
+          {/each}
+        </ul>
+      {/if}
+
+      <!-- The tabs (see `tab` in the script). The stats line, the delta and
+           the warnings above are common to all three; everything below
+           belongs to one. The counts are aria-hidden so the tabs' names stay
+           the plain words. -->
+      <div class="dgp-tabs" role="tablist" aria-label="Digitize panel">
+        <button type="button" role="tab" class="dgp-tab" class:dgp-tab-on={tab === "settings"} aria-selected={tab === "settings"} on:click={() => (tab = "settings")}>Settings</button>
+        <button type="button" role="tab" class="dgp-tab" class:dgp-tab-on={tab === "shapes"} aria-selected={tab === "shapes"} on:click={() => (tab = "shapes")}>
+          Shapes{#if reviewShapes.length}<span class="dgp-tab-count" aria-hidden="true">{reviewShapes.length}</span>{/if}
+        </button>
+        <button type="button" role="tab" class="dgp-tab" class:dgp-tab-on={tab === "threads"} aria-selected={tab === "threads"} on:click={() => (tab = "threads")}>
+          Threads<span class="dgp-tab-count" aria-hidden="true">{spoolRows.length}</span>
+        </button>
+      </div>
+
+      {#if tab === "settings"}
 
       <!-- Item 10: a re-digitize used to replace the design in place with
            nothing to compare against, so a knob you turned and a knob you
@@ -2146,16 +2216,9 @@
         </div>
       {/if}
 
-      {#if hasPrior}
-        <p class="dgp-delta" role="status" data-testid="digitize-delta">
-          {#if changed.length}
-            Since last run: {changed.join(" · ")}
-          {:else}
-            Since last run: no change to stitches, threads or trims.
-          {/if}
-        </p>
       {/if}
 
+      {#if tab === "shapes"}
       {#if unstitchedRows.length}
         <div class="dgp-enclosed-banner" role="alert">
           <p class="dgp-enclosed-banner-text">
@@ -2170,13 +2233,9 @@
           </button>
         </div>
       {/if}
-      {#if attentionLines.length}
-        <ul class="dgp-warnings">
-          {#each attentionLines as w (w.code + w.text)}
-            <li>{w.text}</li>
-          {/each}
-        </ul>
       {/if}
+
+      {#if tab === "settings"}
       {#if noteLines.length}
         <details class="dgp-notes">
           <summary>{noteLines.length} note{noteLines.length === 1 ? "" : "s"} about how this was digitized</summary>
@@ -2202,7 +2261,9 @@
           Re-digitize at {element.sizeMm.toFixed(0)} mm
         </button>
       {/if}
+      {/if}
 
+      {#if tab === "shapes"}
       {#if reviewShapes.length}
         <div class="dgp-layers">
           <div class="dgp-layers-head">
@@ -2906,19 +2967,26 @@
       {:else if health}
         <p class="dgp-note">Digitize again to get an editable layer list for this result.</p>
       {/if}
+      {/if}
 
+      {#if tab === "threads"}
       <div class="dgp-blocks">
         <span class="dgp-blocks-label">Thread per color</span>
-        {#each Array.from({ length: (element.result.colors || []).length }) as _, i}
+        {#each spoolRows as g (g.first)}
           <div class="dgp-block">
-            <span class="dgp-block-n">{blockName(element, i)}</span>
-            <ThreadPicker rgb={blockRgb(element, i)} compact on:pick={(e) => pickBlock(i, e.detail)} />
+            <span class="dgp-block-n">{g.name}</span>
+            {#if g.blocks.length > 1}
+              <span class="dgp-block-note">loaded {g.blocks.length} times</span>
+            {/if}
+            <ThreadPicker rgb={blockRgb(element, g.first)} compact on:pick={(e) => pickSpool(g, e.detail)} />
           </div>
         {/each}
       </div>
+      {/if}
 
-      <label class="letterspacing">
-        <span>Rotation</span>
+      {#if tab === "settings"}
+      <label class="letterspacing" use:tip={"rotation"}>
+        <span>Rotation<i class="tipmark" aria-hidden="true"></i></span>
         <input
           type="range"
           min="0"
@@ -2929,12 +2997,49 @@
         />
         <span class="label">{rotation}°</span>
       </label>
+      {/if}
     {/if}
   {/if}
 </div>
 
 <style>
   .digipanel { margin-top: 4px; }
+  /* The three tabs: a hairline underline strip, the lit one in ink with a
+     2px accent rule — the same segmented language as the hoop picker and
+     the view segments, laid flat because it heads a column. */
+  .dgp-tabs {
+    display: flex;
+    gap: var(--space-4, 16px);
+    margin: 12px 0 10px;
+    border-bottom: 1px solid var(--border, #e2e5eb);
+  }
+  .dgp-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 2px 8px;
+    margin-bottom: -1px;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    background: none;
+    color: var(--muted, #616875);
+    font: inherit;
+    font-size: var(--fs-sm, 14px);
+    font-weight: var(--fw-medium, 500);
+    cursor: pointer;
+  }
+  .dgp-tab:hover { color: var(--ink, #1c1f26); }
+  .dgp-tab-on { color: var(--ink, #1c1f26); border-bottom-color: var(--accent, #4f46e5); font-weight: var(--fw-semibold, 600); }
+  .dgp-tab-count {
+    padding: 1px 6px;
+    border-radius: 999px;
+    background: var(--bg, #f6f7fb);
+    color: var(--muted, #616875);
+    font-size: var(--fs-2xs, 11px);
+    font-weight: var(--fw-semibold, 600);
+  }
+  .dgp-tab-on .dgp-tab-count { background: var(--tint, #eef0ff); color: var(--accent, #4f46e5); }
+  .dgp-block-note { font-size: var(--fs-2xs, 11px); color: var(--muted, #616875); }
   .dgp-upload { display: inline-block; cursor: pointer; }
   .dgp-upload input[type="file"] {
     position: absolute;

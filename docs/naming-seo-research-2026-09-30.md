@@ -489,3 +489,60 @@ Not verifiable from the sandbox, as in §D/§E: USPTO direct (every mark fact
 is Trademarkia's index — "0 results" means none indexed, not clearance),
 Instagram, Etsy shop counts (bot page), and the BuyDomains / GoDaddy lander
 prices that returned 403 or no figure.
+
+---
+
+## G. Clever, not crude — and free (round 5, same day)
+
+Kent, on the cheeky round: *"I don't like these, keep looking."* Register
+this time: wit through meaning or an evocative craft object, the way Ember,
+Loom or Figma are named — no bleeped swear, no -ify/-ly/-able/-AI. **143
+names screened against Verisign RDAP**; the structural finding is that every
+plain craft word (Tatami, Selvedge, Underlay, Tension, Backstitch, Bean
+Stitch, Thimble, Skein…) and every obvious Stitch/Thread/Hoop + noun
+compound (Stitchwright, Hooprint, Threadmap, Punchwork, Embroid…) is
+registered. **The free ground is directional coinages (-ward, -side),
+conjunction pairs, and pixel/bit + weft/bobbin story words.** All ten below
+are **unregistered on .com, .io and .app** — registry price, no aftermarket
+— with no exact-match mark on the Trademarkia mirror and TikTok / YouTube
+handles free (Instagram unverified; USPTO direct not scriptable from here).
+
+| Name | Chars/syll. | Keyword | Adjacent live marks (cl. 9/40/42) | Same-industry collision | Bare-word SERP | Composite | Clever |
+|---|---|---|---|---|---|---|---|
+| **Hoopward** | 8 / 2 | hoop | HOOP cl. 42 (an AI-marketing SaaS; different word) | none | empty; basketball neighbours | **9.0** | 4 |
+| **Needlemap** | 9 / 3 | needle | none | none | empty | **8.5** | 4 |
+| Threadnik | 9 / 2 | thread | none | none | empty | **8.5** | 3 |
+| Needleside | 10 / 3 | needle | none | none | near-empty | 8.0 | 3 |
+| **Needle & Nap** | 12 / 3 | needle | none; Tuft & Needle (mattresses) is a loud "needle + sleep" neighbour | none | fabric-nap how-tos | 7.0 | **5** |
+| Stitchsong | 10 / 2 | stitch | none | none | Disney's Stitch, Shawn Mendes | 7.0 | 3 |
+| Pixelweft | 9 / 3 | pixel | **WEFT cl. 42 live** (fabric-design SaaS) | PixelWeave apps; sibling of ruled-out PixelStitch | empty | 6.5 | 4 |
+| Bitbobbin | 9 / 3 | bobbin | none in 9/40/42 | **"Bits and Bobbins"** quilt shops (OR, WA, Etsy) | those shops | 6.5 | 4 |
+| Hoop & Spool | 12 / 3 | hoop | HOOP cl. 42 as above | supply shops (Bolt & Spool, Hoop and Frame); a kite winder | crowded | 6.5 | 3 |
+| Evenweft | 8 / 3 | weft | **WEFT cl. 42 live** | "evenweave" is a fabric category that swallows it | drowned | 6.0 | 4 |
+
+### The three that matter
+
+- **Hoopward** — homeward / skyward / onward: *the image goes hoopward*. The
+  story in one word, motion rather than a suffix, nothing colliding
+  anywhere; the one cl. 42 HOOP mark is a whole-word AI-marketing product.
+  Catch: "hoop" reads basketball to outsiders, which the Fritsch's Stitches
+  byline settles.
+- **Needlemap** — bitmap → needlemap: input and output in one compound, and
+  "map" says the software does the routing. Zero marks, zero businesses,
+  every domain and handle free. A point less witty for being descriptive.
+- **Needle & Nap** — the best joke of any round that is not a swear: *nap*
+  is the fabric term (velvet, fleece, towelling) and a nap is what you take
+  while it digitizes. Two true meanings. Costs: an ampersand (handles become
+  `needleandnap`), Tuft & Needle's national ads own "needle + sleep", and the
+  bare phrase searches to sewing how-tos.
+
+**Ranked by risk: Hoopward · Needlemap · Threadnik. By wit: Needle & Nap ·
+Hoopward · Needlemap. Overlap: Hoopward and Needlemap.** Also free and not
+measured further: Stitchward, Weftward, Bobbin Lane, Skein House,
+Spool & Needle, and the -light / -song / -fold / -yard forms listed in the
+agent's sweep (weftlight, spoollight, hoopfold, needleyard…).
+
+Not verified: USPTO direct (Trademarkia's first page only for common-word
+queries such as weft / hoop / bobbin), Instagram, state business
+registrations, Etsy beyond what search surfaced. A registrar cart confirms
+"free" at checkout; an RDAP 404 is not a reservation.

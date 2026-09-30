@@ -766,3 +766,30 @@ locator that reads one — is unchanged.
 *(built and looked at 2026-09-30 — a hovered setting and a focused toolbar
 button screenshotted against the live service; Studio unit 1,336; e2e full
 suite before the push)*
+
+## Settings / Shapes / Threads (2026-09-30)
+
+The last item of the design review. The digitize panel's result section had
+grown to a 1,738px single column at 1440×900 — settings, the run's
+sentences, the warnings, four layer accordions, the spool list, rotation —
+and the customer's question ("what do I change?") sat under the expert's
+list. Three tabs once there is a result, with the stats line, "Since last run"
+and the run's warnings above them as the part every tab shares: **Settings**
+(the fixes, notes, re-digitize-at-size, rotation), **Shapes** (the enclosed
+banner and the whole Layers block with its editors), **Threads** (the spool
+list). A shape picked on the canvas switches to Shapes before scrolling to
+its row (`revealRow`). Counts on the tabs are aria-hidden so the names stay
+the plain words every locator uses. The eight e2e helpers that open the
+shape list click the tab first; the unit spec's `openLayers` does the same.
+
+**"Thread per color" lists spools, not sew blocks.** The design edge re-loads
+a cone, so a two-spool logo sews three blocks and the list read "1720 Not
+Quite Red" twice — the same defect MASTER_SCOPE 42(e)'s rule caught twice
+already on the summary and the review's shopping list, now on the third
+display. Grouped by the cone's name and colour ("loaded 2 times"); a pick
+recolours every block of that spool, since on the machine they are one.
+`DigitizePanel.spec.js` +4.
+
+*(built and looked at 2026-09-30 — the three tabs screenshotted on the logo
+lane against the live service; Studio unit 1,377; e2e full suite before the
+push)*

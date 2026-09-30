@@ -343,6 +343,7 @@ test("digitized lane: click inside a square opens the Layers row's controls; Bor
   await expect.poll(() => page.locator(".dgp-stats").innerText(), { timeout: 120_000 }).not.toBe(before);
 
   // The panel's own Border select reads the same value.
+  await page.getByRole("tab", { name: "Shapes" }).click();
   const rows = page.getByRole("button", { name: /^Edit shapes/ });
   if ((await rows.getAttribute("aria-expanded")) !== "true") await rows.click();
   await expect.poll(() => page.locator('select[aria-label^="Border — "]').evaluateAll((els) => els.map((e) => e.value))).toContain("auto");

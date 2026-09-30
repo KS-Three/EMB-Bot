@@ -117,7 +117,9 @@ async function digitize(page) {
   await page.locator(".dgp-upload input[type=file]").setInputFiles(ART_PNG);
   await expect(page.locator(".dgp-stats")).toBeVisible({ timeout: 120_000 });
   await page.waitForTimeout(1200);
-  // The rows live behind the closed-by-default "Edit shapes" disclosure.
+  // The rows live on the Shapes tab, behind the closed-by-default "Edit
+  // shapes" disclosure.
+  await page.getByRole("tab", { name: "Shapes" }).click();
   await page.getByRole("button", { name: /^Edit shapes/ }).click();
   await expect(page.locator(".dgp-layer").first()).toBeVisible();
 }
