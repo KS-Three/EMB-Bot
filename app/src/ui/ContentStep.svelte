@@ -42,7 +42,7 @@
   // already narrowed them to the selected element.
   export let hoverShapeId = null;
   export let selectedShapeId = null;
-  // A shape selected on the field ({ elementId, shapeId, edit, n }, App's
+  // A shape selected on the field ({ elementId, shapeId, n }, App's
   // runtime state) — forwarded to the matching element's ManualPanel only.
   export let fieldShapeSelect = null;
   const d = createEventDispatcher();
