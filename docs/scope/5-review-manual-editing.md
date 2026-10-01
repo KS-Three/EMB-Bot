@@ -805,6 +805,8 @@ Confirmed working and NOT broken: the traced outline lands exactly on the
 backdrop artwork, and the dropped-hole warning does show — before you accept
 the shapes, which is the moment it matters.
 *(confirmed 2026-08-26 — Playwright browser session, measured at three viewports)*
+*(superseded 2026-10-01: a traced hole is now kept as a cut-out and that
+warning is gone — see "2026-10-01 — cut-outs (holes) in hand-drawn shapes")*
 
 **The flat and realistic views now agree about sew order.** A colour that
 recurs later in the sequence is its own block in both, not merged back into its
@@ -1123,3 +1125,153 @@ re-fit invariant through the real engine), `app/src/ui/ShapePopover.spec.js`
 (the movable dialog), `app/e2e/field-node-edit.spec.js` (a)–(h) — anchor drag,
 handle bow, edge insert, Delete and the floor, invariance of a neighbour,
 edge-drag-does-nothing, popover move, drag stops at the placement box.
+
+## 2026-10-01 — cut-outs (holes) in hand-drawn shapes
+
+Plan 1 of `docs/superpowers/specs/2026-09-30-manual-digitizing-gaps-design.md`
+(§5; rulings 3, 4, 10, 11), plan `docs/superpowers/plans/2026-10-01-manual-holes.md`,
+branch `claude/manual-holes`. Until this, a hand-drawn shape could not have a
+hole: `shapesToRegions` hardcoded `holes: []`, and trace import dropped every
+traced hole with a warning ("cut it in by hand"), which there was no way to do.
+
+**What shipped (ruling 11 — a hole is a shape marked Cut out).** Any hand-drawn
+shape can be switched to **Cut out**. It sews nothing and removes its area from
+the shape that contains it. It stays an ordinary shape — selected, node-edited,
+duplicated, copied and deleted by the code that already does those things — and
+nothing is stored about what it cuts: `resolveCutOuts(shapes)`
+(`app/src/lib/manualShapes.js`) works that out by containment every time. The
+stored record gains one optional key, `cutOut: true`; turning it off removes
+the key, `PROJECT_FILE_VERSION` is unchanged, and a design with no cut-out
+emits byte-identical regions. *(confirmed 2026-10-01 — `manualShapes.spec.js`,
+commit 31151e5c)*
+
+**The rules.**
+- The **parent** is the SMALLEST valid, non-cut-out shape whose flattened ring
+  contains every vertex of the cut-out's ring with no edge crossing — so an O's
+  counter drawn over a patch cuts the O and leaves the patch whole.
+- **Touching the parent's edge counts as NOT inside** (touching is treated as
+  crossing — the geometry fails safe), so a cut-out on its parent's edge cuts
+  nothing.
+- **Two cut-outs of one parent that overlap: the earlier one in the list
+  stands**; the later reads *"Overlaps another cut-out — cuts nothing."* (The
+  engine fills even-odd, so letting both through would sew the overlap back in.)
+- **Outside every shape: it cuts nothing and says so** — *"Not inside a shape
+  — cuts nothing."* in the popover and under its list row.
+- A cut-out's size floor is a shape's floor, `MIN_AREA_PX2` (ruling 10).
+- **A satin shape with a cut-out sews as fill** and says *"Sews as fill — satin
+  cannot go round a cut-out."*; the stored `stitchType` is never rewritten, so
+  removing the cut-out gives the satin back (Kent, 2026-10-01).
+*(confirmed 2026-10-01 — `manualShapes.spec.js`, `shapePopover.spec.js`,
+`ManualPanel.spec.js`; commits 31151e5c, ba5acc92, c267ca65)*
+
+**The engine defect it needed — measured, fixed.** Both hole readers in
+`src/digitize.js` (the region loop and `underlayRuns`) kept only rings of
+FOUR or more points, so a triangular hole was dropped without a word. A 300 px
+square at 50 mm, fill, no underlay: **4,678** stitches with no hole, **4,678**
+with a 3-point triangle hole, **4,456** with a 4-point square hole. Traced
+holes are pixel contours and never have three points, which is why Image mode
+never met it; a hand-drawn A's counter is exactly three. The floor now follows
+the outer ring's to 3. Engine suite **580 → 581**, no stored hash or golden
+moved. *(fixed 2026-10-01 — `test/digitize.test.js`, commit 435eb2f9)*
+
+**Two ways in, one record.**
+- **The popover (on the hoop).** Click a hand-drawn shape → its popover carries
+  a **Cut out** switch. On, the dialog renames itself `Shape N · Cut out`,
+  hides colour / stitch type / angle (it sews nothing), and reads
+  *"Cuts Shape N."* or the reason it cuts nothing. Browser: **8,832 → 7,047**
+  stitches on the toggle. *(measured 2026-10-01 — Task 5 browser drive, commit
+  972da73c)*
+- **Hole mode (side canvas).** A `Shape | Hole` strip above the draft buttons;
+  a shape finished in Hole mode is born marked. **Why a click draws there:** in
+  Shape mode a click inside a finished shape SELECTS it (PR #104), so a shape
+  could never be STARTED inside another — exactly where a hole goes. In Hole
+  mode a click always places a point (and the cursor says so); Shape mode keeps
+  #104 unchanged. Browser: **8,119 → 7,351**. *(measured 2026-10-01 — Task 6
+  browser drive, commit c267ca65)* The assign box carries the same switch.
+- On the hoop a cut-out's outline is drawn **dashed**, and only while it is
+  selected, hovered, or Outlines is on; the hole itself shows in the
+  stitching. The side canvas fills a parent and its cut-outs as one even-odd
+  path, so a hole reads as a hole while drawing.
+
+**The drag guard holds at the last good position (ruling 3).** A node drag that
+would take a cut-out outside its parent — or pull the parent across one of its
+cut-outs — stops where containment last held, with the hint *"A cut-out has to
+stay inside its shape."*; insert and remove refuse on the same predicate
+(`breaksContainment`). A cut-out that already cuts nothing is free to move.
+Browser: a +300/−300 drag held inside, the parent unmoved, the count still
+below the parent's own. **It also closes the gap PR #570 left in the
+placement-box clamp:** a bent edge is now tested on its flattened curve, not on
+the handle's through point — in the test fixture the through point sits at
+exactly **10.0 mm** while the sewn curve reaches **10.2 mm**, which the old
+test let past the box. *(fixed 2026-10-01 — `fieldNodeEdit.spec.js`, commits
+067ecd0a, 972da73c; `e2e/manual-cutout.spec.js` (d))*
+
+**Trace import keeps holes.** A traced hole now arrives as a Cut out shape
+right after its parent, simplified and curve-fitted like an outer ring; there
+is no warning. If simplification leaves a hole that no longer resolves to that
+parent, it falls back fitted → straight → dropped, and only a drop warns:
+*"A traced hole could not be kept — that shape will sew solid; cut it in by
+hand if needed."* The trace preview paints a cut-out in the page colour, and
+"Add N shapes" and the legend count it. The e2e fixture
+(`trace-holes-and-colors.png`) now adds **4** shapes (was 3) with no warning,
+the ring's hole as `Shape 2 · Cut out`. *(confirmed 2026-10-01 —
+`manualTrace.spec.js`, `TraceImportPanel.spec.js`, commit 987a2fe6;
+`e2e/manual-trace-import.spec.js`)*
+
+**A side effect outside this lane — an imported SVG with a triangular hole now
+cuts.** `src/svgimport.js` keeps rings of three or more points and nests holes
+into the smallest containing outer (`groupIntoShapes`), so a 3-point SVG hole
+already reached the engine and was dropped by the 4-point floor at the stitch
+stage. It now cuts. A fix, but a behaviour change. *(read from code 2026-10-01
+— `src/svgimport.js` `groupIntoShapes`; no SVG was run)*
+
+**End to end.** `app/e2e/manual-cutout.spec.js` (a)–(f), all against the real
+app at 1440×900: (a) Cut out on the hoop drops the count (9,138 → 7,351), the
+dialog becomes `Shape 2 · Cut out` with *"Cuts Shape 1."*, and the hole's
+middle is bare fabric; (b) off returns EXACTLY the two-shape count (9,138);
+(c) a three-point cut-out sews 7,426 against the parent's own 8,119 — the
+engine fix seen from the UI; (d) the drag holds (6,950, below the parent
+alone), parent corner within 2 px; (e) Hole mode; (f) an orphan says it cuts
+nothing. Mutation-checked: with `shapesToRegions` emitting `holes: []`, (a)
+fails (the count never moves off 8,119). *(confirmed 2026-10-01 — Task 8 runs)*
+
+**Found while proving it.**
+- The Cut out row made a hand-drawn shape's popover **~317 px tall** at
+  1440×900, and `field-node-edit.spec.js` (g) — drag the popover 80 px down —
+  started stopping at ~45 px: the clamp to the hoop's bottom edge, working as
+  built. The test now drags up. *(measured 2026-10-01 — Task 8 probe)*
+- **Marking a stray shape Cut out can resize the rest of the design.** A cut-out
+  is not part of the engine's fit, so on an auto-fit element the remaining
+  shapes re-fit to the width: in (f), two side-by-side rectangles read
+  81×39 mm, and turning the right one into an orphan cut-out made the left one
+  81×91 mm. Consistent with how adding or deleting a shape already re-fits, but
+  a user flipping one switch sees another shape jump. *(measured 2026-10-01 —
+  `e2e/manual-cutout.spec.js` (f) captions)*
+
+**Not built.** Open runs and satin columns — plans 2 and 3 of the same spec.
+Reordering shapes. Drawing on the hoop canvas (ruling 4 deferred it). Holes on
+the digitized lane (it already has them). **Known residue, deliberately left
+(ruling 3's other half):** `shapesToRegions` still drops an invalid
+(self-crossing) shape SILENTLY; the guard means editing cannot cause it, but
+drawing and import still can.
+
+**Parked follow-ups (from the build ledger, all Minor).**
+- An orphan cut-out has no stitches and no idle outline on the hoop, so it is
+  invisible until hovered — draw its dashed outline whenever its element is
+  selected.
+- A cut-out's list row still shows a colour swatch; a cut-out has no colour.
+- When the box clamp refuses a frame, a stale cut-out hold hint can show the
+  wrong cause for that frame; a selected idle cut-out is stroked twice, so its
+  dashes partly fill in; freeze the drag basis's shapes with `.slice()`.
+- Popover: `aria-describedby` from the Cut out switch to its note; a
+  `:focus-visible` ring, hover and size on `.shapepop-toggle` matching
+  `.shapepop-action`.
+- Tests: an equal-area parent tie goes to the LATER shape (pin the `<=`); a
+  real-engine test with an orphan far outside the parent; the engine test's
+  underlay assertion should isolate `underlayRuns`' own floor.
+- `resolveCutOuts` could early-return when no shape is a cut-out (byte-identity
+  structural, and no O(n²) pass per drag frame); its maps as
+  `Object.create(null)`; `withCutOut`'s unused destructured variable;
+  `drawCutOut`'s `setLineDash` guards exist only for other specs' canvas stubs.
+- Design note: the `Shape | Hole` strip lights black like the toolbar's view
+  strip, while the panel's own buttons light indigo.
