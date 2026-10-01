@@ -3063,7 +3063,7 @@
   }
   .dgp-param select { flex: 1; min-width: 0; cursor: pointer; }
   .dgp-param input[type="number"] { width: 70px; }
-  .dgp-param select:hover { border-color: var(--accent, #4f46e5); }
+  .dgp-param select:hover { border-color: var(--ink, #171a20); }
   .dgp-param input[type="number"]:focus { border-color: var(--accent, #4f46e5); }
   .dgp-unit { color: var(--muted, #667); }
   .dgp-checkline { display: flex; align-items: center; gap: 6px; font-size: var(--fs-xs, 12px); }
@@ -3453,7 +3453,7 @@
     color: var(--ink, #1c1f26);
     cursor: pointer;
   }
-  .dgp-lsel:hover { border-color: var(--accent, #4f46e5); }
+  .dgp-lsel:hover { border-color: var(--ink, #171a20); }
   .dgp-lwidth { gap: 6px; }
   .dgp-lwidth-label { display: inline-flex; align-items: center; gap: 4px; font-size: var(--fs-2xs, 0.6875rem); }
   .dgp-lwidth-input {

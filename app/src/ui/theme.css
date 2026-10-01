@@ -748,7 +748,7 @@ h1, h2 { letter-spacing: var(--tracking-tight); }
   flex: 0 0 auto;
 }
 .tipmark::after { content: "?"; }
-label:hover .tipmark,
+label:hover .tipmark { border-color: var(--ink); color: var(--ink); }
 label:focus-within .tipmark { border-color: var(--accent); color: var(--accent); }
 
 /* Right-click tool menu on the design canvas (EmbroideryField). Drawing tools
@@ -782,7 +782,9 @@ label:focus-within .tipmark { border-color: var(--accent); color: var(--accent);
   cursor: pointer;
 }
 
-.fieldmenu button:hover,
+.fieldmenu button:hover {
+  background: var(--fill);
+}
 .fieldmenu button:focus-visible {
   background: var(--tint);
 }
@@ -888,7 +890,7 @@ label:focus-within .tipmark { border-color: var(--accent); color: var(--accent);
   color: var(--ink);
   cursor: pointer;
 }
-.shapepop-action:hover,
+.shapepop-action:hover { background: var(--fill); }
 .shapepop-action:focus-visible { background: var(--tint); }
 .shapepop-action.danger { color: var(--danger, #b42318); }
 
