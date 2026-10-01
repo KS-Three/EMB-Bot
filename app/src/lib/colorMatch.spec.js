@@ -43,7 +43,9 @@ test("rankThreads returns the same top five, in the same order, as the Python ch
     expect(got.map((t) => t.code)).toEqual(r.top.map((t) => t.code));
     got.forEach((t, i) => expect(t.deltaE).toBeCloseTo(r.top[i].de, 6));
   }
-});
+  // First test to import the ~1.1 MB brand chunk; on a loaded machine that
+  // import alone has passed the 5 s default.
+}, 30000);
 
 test("rankThreads carries name, code, rgb and the list index, nearest first", async () => {
   const chart = await loadPalette("isacord");
