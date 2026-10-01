@@ -121,9 +121,10 @@
       <label class="shapepop-row">
         <span class="shapepop-label">{row.label}</span>
         <input
-          type="number" step="1" placeholder="auto" aria-label={row.label} aria-describedby={noteId(row)}
+          type="number" step={row.step == null ? 1 : row.step} min={row.min} placeholder="auto" aria-label={row.label} aria-describedby={noteId(row)}
           value={row.value == null ? "" : row.value}
-          on:input={(e) => d("change", { key: row.key, value: e.currentTarget.value })}
+          on:input={(e) => { if (row.key !== "widthMm") d("change", { key: row.key, value: e.currentTarget.value }); }}
+          on:change={(e) => { if (row.key === "widthMm") d("change", { key: row.key, value: e.currentTarget.value }); }}
         />
         {#if row.hint}<span class="shapepop-hint">{row.hint}</span>{/if}
       </label>

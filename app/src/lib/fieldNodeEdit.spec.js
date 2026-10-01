@@ -422,6 +422,21 @@ describe("columns — an open spine", () => {
     expect(withColumnWidthMm(c, f1, NaN).widthPx).toBeCloseTo(0.5, 12);
   });
 
+  test("width helpers are safe with no fit or a non-column: null / unchanged, never a throw", () => {
+    const c = col("c1", spine4, 20);
+    const closed = { id: "s1", points: spine4, curves: {} };
+    for (const bad of [null, undefined, {}, { mmPerPx: 0 }, { mmPerPx: -1 }, { mmPerPx: NaN }]) {
+      expect(columnWidthMm(c, bad)).toBeNull();
+      expect(columnSewnMm(c, bad, 0.4)).toBeNull();
+      expect(withColumnWidthMm(c, bad, 5)).toBe(c);
+    }
+    expect(columnWidthMm(closed, f1)).toBeNull();
+    expect(columnSewnMm(closed, f1, 0.4)).toBeNull();
+    expect(withColumnWidthMm(closed, f1, 5)).toBe(closed);
+    expect(columnWidthMm(null, f1)).toBeNull();
+    expect(withColumnWidthMm(null, f1, 5)).toBeNull();
+  });
+
   test("ringInsideBox sees the RAILS: a spine inside the box whose rail is past it fails", () => {
     // spine along y = 0 from -40 to 40 px (±8 mm); box 20 x 6 mm -> half height 3 mm = 15 px
     const sp = [{ x: -40, y: 0 }, { x: 40, y: 0 }];
@@ -527,7 +542,9 @@ describe("columns — the re-fit rule and ruling 12, through the real engine", (
     // on the 0.1 mm DST grid, and a column centred on a grid line with a sewn
     // half-width of x.x5 mm puts BOTH rails on a rounding tie: measured with the
     // spine at y = 200, the crosses read 2.2 and 4.2 mm for a 2.3 / 4.3 model —
-    // the grid, not the engine's width. Off the tie the rails round one each way.
+    // the grid, not the engine's width. The sewn width is drawn + pull comp,
+    // good to one 0.1 mm grid step; the fixture sits off the tie so the
+    // numbers are deterministic.
     const C = col("c1", [{ x: 350, y: 201.3 }, { x: 425, y: 201.3 }, { x: 500, y: 201.3 }], 20);
     const dS = gen(el([R, C], { sizeMm: S, offsetXMm: 0, offsetYMm: 0 }));
     const d2 = gen(el([R, C], { sizeMm: 2 * S, offsetXMm: 0, offsetYMm: 0 }));

@@ -269,7 +269,10 @@ function flatBBox(shapes) {
 const COLUMN_MIN_TYPED_MM = 0.1;
 
 // The DRAWN width at this fit.
+// null when the shape is not a column or there is no usable fit.
+const fitOk = (fit) => !!fit && fit.mmPerPx > 0;
 export function columnWidthMm(shape, fit) {
+  if (!isColumn(shape) || !fitOk(fit)) return null;
   return (shape.widthPx || 0) * fit.mmPerPx;
 }
 
@@ -277,6 +280,7 @@ export function columnWidthMm(shape, fit) {
 // commits it through refitShapesPatch: the rail ring is the engine's bbox, so
 // a new width can move the fit unless the re-fit rule holds it.
 export function withColumnWidthMm(shape, fit, mm) {
+  if (!isColumn(shape) || !fitOk(fit)) return shape;
   const want = typeof mm === "number" && isFinite(mm) ? Math.max(COLUMN_MIN_TYPED_MM, mm) : COLUMN_MIN_TYPED_MM;
   return { ...shape, widthPx: want / fit.mmPerPx };
 }
@@ -284,5 +288,6 @@ export function withColumnWidthMm(shape, fit, mm) {
 // The SEWN width: satin pushes each rail out by half the fabric's pull
 // compensation, a fixed amount on top of the drawn width at any size.
 export function columnSewnMm(shape, fit, pullCompMm) {
-  return columnWidthMm(shape, fit) + (pullCompMm || 0);
+  const drawn = columnWidthMm(shape, fit);
+  return drawn == null ? null : drawn + (pullCompMm || 0);
 }
