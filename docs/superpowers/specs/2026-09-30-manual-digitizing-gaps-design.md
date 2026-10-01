@@ -15,17 +15,34 @@ called them "the deeper manual-digitizing gaps surfaced in the same session
 
 Everything below was read off the tree at `4b75546`, not remembered.
 
+**Amended 2026-10-01 — how a hole is expressed (ruling 11, §10).** Two
+sessions designed holes on the same day: this spec's first draft (a ring
+stored inside its parent, drawn in a Hole mode) and a second one (a normal
+shape marked **Cut out**). Kent was shown the two side by side with their
+catches and picked **Cut out**, twice. §1's holes paragraph, §4's model, §5,
+§8 and §9 are rewritten to that; rulings 3, 4 and 10 are kept and restated
+for it. Runs and columns are untouched.
+
 ## 1. What is actually missing, located
 
-**Holes — the engine is already done.** `app/src/lib/manualShapes.js:609`
+**Holes — the engine is nearly done.** `app/src/lib/manualShapes.js:609`
 hardcodes `holes: []`. Every consumer downstream already handles holes:
 `src/digitize.js:612` reads `shape.holes`, forces the fill tier when there is
 one (`:619`, `:626` — "satinColumn can't represent a hole"), fills even-odd
 over `rings = [poly].concat(holes)` (`:661`), insets each hole for pull
 compensation with the winding-flip guard (`:727-733`), running-outlines each
 hole (`underlayRuns`, `:228`), and `pcaAngleDeg(rings)` takes holes into its
-axis. `imageRegions.js` has produced holes since Image mode shipped. **No
-engine change. This is an authoring feature only.**
+axis. `imageRegions.js` has produced holes since Image mode shipped.
+
+**One engine defect stands in the way, measured 2026-10-01 on `8776db77`:**
+both hole readers keep only rings of **four or more points** (`:216`, `:612`
+— `hh.length >= 4`), so a triangular hole is dropped without a word. A 300 px
+square at 50 mm, fill, no underlay: 4,678 stitches with no hole, **4,678 with
+a 3-point triangle hole**, 4,456 with a 4-point square hole. Traced holes are
+pixel contours and never have three points, which is why Image mode never met
+it; a hand-drawn A's counter is exactly three. The outer ring's own floor was
+relaxed 4 → 3 for this same reason (`:591-600`); the hole floor was missed.
+The first draft's "no engine change" was wrong by this much.
 
 **Open runs — nothing to stand on.** Every manual shape is a closed ring, in
 four places independently: `shapeIssues()` demands ≥3 points and non-zero
@@ -109,9 +126,11 @@ proxy for hit-testing and the bbox, and nothing may sew it.
   (`digitize.js:619`). A satin shape that gains a hole becomes a fill shape.
   The UI says so in words; it does not silently re-tier and it does not try
   to satin a ring.
-- **Every shape must emit a `shapeOutlines` entry or it is unreachable.**
+- **Every shape must have an outline on the field or it is unreachable.**
   #562's popover and #570's node editing both hit-test that outline. A shape
-  with no filled area still needs one (§2).
+  with no filled area still needs one (§2). A cut-out is the one shape whose
+  outline the field builds itself rather than reading from `shapeOutlines`
+  (§5) — it has no region for the engine to outline.
 - **Authored geometry travels through `design.fit`.** `lib/fieldNodeEdit.js`
   converts px↔mm through the engine's own fit and nothing else (#570). Holes,
   paths and spines use the same route — no second transform.
@@ -131,7 +150,8 @@ proxy for hit-testing and the bbox, and nothing may sew it.
 
   // closed only
   stitchType, angleDeg,
-  holes: [ { points, curves } ],   // absent or [] === today
+  cutOut: true,   // absent === today. A cut-out sews nothing; it removes its
+                  // own area from the smallest shape that contains it (§5)
 
   // run only
   passes,        // 1 = single run, 3 = bean
@@ -160,8 +180,9 @@ top-stitch branch at `:713`, plus the two gates §2 names for a run.
 buttons — the control pattern #564 used for hoops and views. Every kind reuses
 the draft machinery that is already there (points, curves, `Undo point`,
 `Clear shape`, `Finish shape`) and differs only in its commit rule and its
-validity rule, so there is no second drawing surface to build. Hole mode needs
-a selected shape and is disabled with that reason when there is none. Editing
+validity rule, so there is no second drawing surface to build. Hole mode
+draws a shape that is born marked Cut out (ruling 11) — it needs no selected
+parent, because the parent is found by containment, not chosen. Editing
 stays on the hoop canvas, where #570 put it; drawing on the field was
 considered and deferred — the field already binds left-click, right-click,
 body drag and node drag, and a drawing mode has to take the canvas over and
@@ -174,28 +195,73 @@ validity rule. Drawing in the wrong mode costs a click, not a redraw.
 Closed ↔ open is NOT offered: it needs real geometry rules and would have to
 decide what happens to a converted shape's holes.
 
-## 5. Holes (plan 1, Studio only)
+## 5. Holes (plan 1) — a shape marked Cut out
 
-**Authoring.** With a closed shape selected, *Cut hole* arms hole mode; the
-next drawn ring becomes that shape's hole. Containment is enforced with the
-existing `pointInShape` (`manualShapes.js:152`) on the flattened rings: every
-hole point inside the shell, no segment crossing the shell or another hole,
-and the hole's own `shapeIssues` clean. A ring that fails is refused with the
-reason, the same string-not-boolean pattern `shapeIssues` already uses — not
-disabled silently.
+**The model (ruling 11).** A hole is an ordinary closed shape with
+`cutOut: true`. It stays in `element.shapes`, keeps its own id, and is
+selected, node-edited, duplicated, copied and deleted by the code that already
+does those things to a shape. Nothing is stored about which shape it cuts:
+that is **resolved by containment every time**, by one pure function,
+`resolveCutOuts(shapes)` in `manualShapes.js`:
 
-**Sewing.** `shapesToRegions` passes `holes: shape.holes.map(h =>
-flattenShape(h.points, h.curves, true))`. Nothing else changes.
+- A cut-out's **parent** is the smallest-area valid, non-cut-out shape whose
+  flattened ring contains every vertex of the cut-out's flattened ring with no
+  edge of one crossing an edge of the other. Smallest, so an O's counter drawn
+  over a patch cuts the O and leaves the patch whole.
+- A cut-out with no such shape **cuts nothing**, and says so: *"Not inside a
+  shape — cuts nothing."*
+- Two cut-outs of one parent that cross or nest: the earlier one in the list
+  stands, the later one cuts nothing — *"Overlaps another cut-out — cuts
+  nothing."* The engine fills even-odd, so letting both through would sew the
+  overlap back in.
+- An invalid cut-out reports its own first `shapeIssues` string. The area
+  floor is the existing `MIN_AREA_PX2` (ruling 10) — a cut-out is a shape.
+- A normal shape drawn inside a cut-out is just a shape: it sews, as an
+  island.
 
-**Saying it.** A satin shape that gains a hole shows *"Shapes with a hole sew
-as fill — satin cannot go round a hole."* next to the stitch-type control,
-and the control reads Fill.
+**Authoring — two ways in, one record.** Click a shape on the hoop canvas and
+flip **Cut out** in the popover (#562); or pick **Hole** in the side canvas's
+mode strip (ruling 4) and the next finished shape is born marked. The assign
+box carries the same toggle. A cut-out's popover hides colour, stitch type and
+angle — it sews nothing — and reads *"Cuts Shape 3."* or the reason it cuts
+nothing. The shape list reads `Shape 7 · Cut out`.
 
-**A drag cannot break containment — it CLAMPS** (ruling 3). A node drag that
-would pull the shell across its own hole stops at the last good position, the
-same posture as Kent's placement-box ruling on this canvas in #570, with the
-hint *"A hole has to stay inside its shape."* So a shape cannot be made
-invalid by editing, and the silent-skip path is never reached from a drag.
+**Trace import marks holes itself.** `manualTrace.js` used to drop a traced
+hole with a warning ("it will render solid; cut it in by hand"). It now emits
+each real hole as a `cutOut` shape right after its parent, simplified and
+curve-fitted like an outer ring. A hole that no longer resolves to that parent
+after simplification is dropped, with the warning kept for exactly that case.
+
+**Sewing.** `shapesToRegions` emits one region per sewn shape, as today, with
+`holes:` the flattened rings of the cut-outs that resolved to it. A cut-out
+emits no region. `digitize.js` changes in one way only: the hole floor at
+`:216` and `:612` goes 4 → 3 points (§1).
+
+**Outlines.** A cut-out has no region, so the engine emits no `shapeOutlines`
+entry for it. The field builds a cut-out's outline itself from the authored
+ring through `design.fit` (`pxToFieldMm` — T() without the rounding, the same
+map the engine's own outlines use) and draws it dashed. That covers a cut-out
+that cuts nothing too, which no engine entry ever could — it has to stay
+clickable so it can be fixed or deleted. `fieldNodeEdit`'s bbox skips cut-outs
+so it keeps agreeing with the engine's, which never sees them.
+
+**Saying it.** A satin shape with a cut-out in it shows *"Sews as fill — satin
+cannot go round a cut-out."* beside the stitch-type control, and the control
+reads Fill. The stored `stitchType` is left alone, so removing the cut-out
+gives the satin back.
+
+**A drag cannot break containment — it HOLDS** (ruling 3). A node drag that
+would take a cut-out outside its parent, or pull the parent across one of its
+cut-outs, stops at the last good position, the same posture as Kent's
+placement-box ruling on this canvas in #570, with the hint *"A cut-out has to
+stay inside its shape."* The test is one function, `breaksContainment(before,
+after)`: any cut-out that had a parent before the edit and does not have that
+same parent after it. `editedElementPatch` refuses on the same predicate, so
+inserting or removing a point cannot break it either. A cut-out that already
+cuts nothing is free to move. The same hold-last-good guard closes the gap
+#570 left in the placement box: a bent edge is tested on its flattened curve,
+not on the handle's through point (a quadratic through a clamped midpoint can
+still bulge past the box — worked example about 2%).
 Rejected: refusing the edit outright the way the digitized lane's
 `apply_shape_edits` does (`Hole lies outside shell`, 400) — #570 already chose
 clamping over refusing on this surface.
@@ -206,12 +272,18 @@ anywhere. A self-crossing hand-drawn shape vanishes from the stitch-out today
 and still will. The clamp means editing cannot cause it; drawing and import
 still can.
 
-**Drawing and editing.** The field draws the shape as one even-odd path so a
-hole reads as a hole at every zoom. Node editing addresses a hole's anchors
-as `(shapeId, holeIndex, anchorIndex)`; `fieldNodeEdit`'s single-vertex
-functions take the ring they operate on, so this is a wider address, not new
-geometry. The re-fit rule (`editedElementPatch`) already patches
-`shapes + sizeMm + offsets` together and holes ride inside `shapes`.
+**Drawing and editing.** The side canvas draws a parent and its cut-outs as
+one even-odd path so a hole reads as a hole while it is being drawn, and a
+cut-out's own outline dashed. On the hoop canvas the stitching itself shows
+the hole. Node editing needs no wider address: a cut-out is a shape, so
+`(elementId, shapeId, anchorIndex)` already reaches every one of its points,
+and the re-fit rule (`editedElementPatch`) already patches
+`shapes + sizeMm + offsets` together.
+
+**What the first draft's design would have cost, for the record.** A ring
+stored inside its parent is not a shape: click-to-select, the popover, node
+drag, insert, remove, Delete, duplicate and copy/paste would each have needed
+a `holeIndex` beside the shape id. That is the trade Kent was shown.
 
 ## 6. Satin columns (plan 2 — Kent's spine + width)
 
@@ -311,14 +383,19 @@ a column's stitches equal a direct `satinFromRails` call on the same rails;
 `widthMm` apart and a closed `outer` of the right area; `runAlongPath` with
 `passes: 3` gives 3× the stations of `passes: 1` and both end on the last
 vertex; a shape with `holes` sews fewer stitches than the same shell without
-one and its tier is fill even with `tierOverride: "satin"`; **and every
-existing fixture is byte-identical with `sewAs` absent.**
+one and its tier is fill even with `tierOverride: "satin"`; **a 3-point hole
+cuts as a 4-point one does** (§1's measured defect); **and every existing
+fixture is byte-identical with `sewAs` absent.**
 
 **Studio** (`vitest`): `spineRails.spec.js`; `manualShapes.spec.js` for
-per-kind validity and hole containment (inside, crossing the shell,
-crossing another hole, degenerate); `shapesToRegions` emitting each `sewAs`
-shape; `ManualPanel.spec.js` for the three tools' gestures and the
-satin→fill notice.
+per-kind validity and `resolveCutOuts` (inside, crossing the parent, crossing
+or nesting in a sibling cut-out, smallest parent wins, degenerate, no parent);
+`shapesToRegions` emitting holes on the parent and no region for a cut-out,
+and each `sewAs` shape; `fieldNodeEdit.spec.js` for `breaksContainment` and
+the bbox skipping cut-outs; `shapePopover.spec.js` for the Cut out row, the
+cut-out's reduced rows and the satin→fill note; `manualTrace.spec.js` for a
+traced ring arriving with its hole; `ManualPanel.spec.js` for the mode strip
+and the tools' gestures.
 
 **e2e** (`app/e2e/`, against the live service, reading pixels **inside the
 fabric** — the rule three specs now share since #564's surround): draw a
@@ -334,8 +411,8 @@ which a green suite saw). Screenshots at 1440×900 and 1024×768 per plan.
 
 ## 9. Build order
 
-1. **Holes** — Studio only, no engine change. Smallest, and it proves the
-   `kind`/`holes` model before either emitter is written.
+1. **Holes** — the Cut out mark, plus the engine's 3-point hole floor.
+   Smallest, and it lands the hold-last-good drag guard the other two reuse.
 2. **Columns** — `railsFromSpine` + the one-line `sewAs` branch in the satin
    emit. Medium.
 3. **Runs** — `runAlongPath` + the validity split across five callers.
@@ -343,7 +420,7 @@ which a green suite saw). Screenshots at 1440×900 and 1024×768 per plan.
 
 Each is its own PR with its own plan, off this spec.
 
-## 10. Rulings — all ten closed (grilling, 2026-09-30 / 10-01)
+## 10. Rulings — ten closed in the grilling (2026-09-30 / 10-01), an eleventh after it
 
 Nothing in this spec is waiting on Kent. Where an earlier section once said
 "recommendation", the ruling here is the decision and the section has been
@@ -377,6 +454,15 @@ rewritten to match.
    stored model keeps `taperMm`, so taper lands later without a migration.
 10. **A hole's minimum size reuses the existing sewability floor** rather than
     introducing a second number.
+11. **A hole is a shape marked Cut out** (2026-10-01, outside the grilling:
+    Kent shown both designs side by side, and again after the collision
+    between the two sessions was found). Not a ring stored in its parent. The
+    parent is resolved by containment (§5). Rulings 3, 4 and 10 stand and are
+    restated for this model: the drag guard holds a cut-out inside its parent,
+    the side canvas's Hole mode draws a shape born marked, and a cut-out's
+    floor is a shape's floor. Also Kent's, same day: **a satin shape with a
+    cut-out sews as fill and says so**, rather than the cut-out being refused
+    until the author switches the shape to Fill by hand.
 
 Two things the grilling corrected in this spec rather than decided: the
 "one field read in one place" claim in §2 was wrong for runs, and §10's
