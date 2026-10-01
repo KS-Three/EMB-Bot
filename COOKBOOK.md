@@ -966,6 +966,46 @@ colours.
 not an array. Destructure it; `.toHaveLength()` on the return value is a
 mistake this repo has already made.
 
+## Manual digitize: editing on the hoop, and cut-outs (2026-09-29 → 2026-10-01, PRs #562, #570 and the cut-outs PR)
+
+Three things landed in a week and none of them was written down here. Detail
+and measurements: `docs/scope/5-review-manual-editing.md`.
+
+**Where a hand-drawn shape is edited.** The side canvas (`ManualPanel`) only
+DRAWS. Clicking a shape on the hoop canvas opens `ShapePopover`
+(`lib/shapePopover.js` is its pure decision table); the selected shape's
+anchors and curve handles are dragged on the hoop (`lib/fieldNodeEdit.js`).
+The engine exports `design.shapeOutlines` (field mm) and `design.fit` so the
+field maps authored px ↔ field mm with the engine's own numbers — never a
+second transform.
+
+**The re-fit rule.** The engine fits the bbox of all an element's shapes, so
+any edit that changes that bbox would rescale everything else.
+`refitShapesPatch` (and `editedElementPatch` on top of it) patches
+`shapes + sizeMm + offsets` together so nothing unedited moves. It covers
+edits made ON THE HOOP — node drag, insert/remove point, the Cut out switch.
+Adding or deleting a shape in the side panel, and Delete on the hoop, still
+re-fit.
+
+**A hole is a shape marked `cutOut: true`** (spec
+`docs/superpowers/specs/2026-09-30-manual-digitizing-gaps-design.md` §5). It
+sews nothing and cuts the smallest shape that contains it.
+
+- **`resolveCutOuts(shapes)` in `manualShapes.js` is the only judge** of which
+  shape a cut-out cuts. Nothing is stored; every consumer calls it. Do not
+  re-derive containment anywhere else.
+- A cut-out emits **no region**, so the engine never sees it except as its
+  parent's `holes`. Two consequences that will bite if forgotten: the field
+  builds a cut-out's outline itself (`cutOutOutlinesInFieldMm`), and
+  `fieldNodeEdit`'s bbox skips cut-outs so it keeps agreeing with the engine's.
+- Never store `cutOut: false` — `withCutOut(shape, false)` removes the key, so
+  an untouched record equals a pre-feature record. No file-version bump.
+- The engine's hole floor is **3 points** at both readers in `digitize.js`
+  (it was 4, which silently dropped a triangular hole).
+- On the side canvas, **Hole mode's click always draws**; Shape mode's click
+  inside a finished shape selects it. That asymmetry is deliberate — a hole
+  starts inside a shape.
+
 ## `coverage()` is measured BY RENDERING — restyle the render, move every number (2026-08-25)
 
 `digitizer_core/stitchviz.coverage()` renders the design twice, on black and on
