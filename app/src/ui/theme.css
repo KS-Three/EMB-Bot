@@ -1053,8 +1053,15 @@ label:focus-within .tipmark { border-color: var(--accent); color: var(--accent);
 /* Stack on narrow screens: field above the panel */
 @media (max-width: 820px) {
   /* Safari on iOS zooms the whole page into any focused field under 16px,
-     and the body is 13px now. Fields keep 16px at phone widths only. */
-  input, textarea, select { font-size: 16px; }
+     and the body is 13px now. Fields keep 16px at phone widths only.
+     `!important` is deliberate: this is a platform constraint, not a style
+     choice, and it must beat whatever size a component gives its field.
+     Without it the element selector (specificity 0,0,1) loses to every
+     class-styled field (.projectname, .sizeinput, .unitselect, .tp-brand,
+     .simspeed) and to scoped Svelte rules, which carry a hash class on top
+     of their own (e.g. `.dgp-param select` compiles to 0,2,1 or more). It
+     only applies inside this phone-width block. */
+  input, textarea, select { font-size: 16px !important; }
 
   /* Stay bounded to the viewport when stacked. `height: auto` handed the
      whole page a scrollbar, and the summary bar -- the only Download
