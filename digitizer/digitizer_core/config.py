@@ -66,6 +66,25 @@ def is_photographic(cfg: "PipelineConfig", class_: str | None) -> bool:
     return class_ in PHOTO_CLASSES
 
 
+def work_grid_px_per_mm(cfg: "PipelineConfig", class_: str | None = None) -> float:
+    """The pixel density stage 1 brings a lower-resolution source up to —
+    `cfg.work_px_per_mm`, never under `cfg.min_px_per_mm` (None: the source
+    line itself, the engine before the knob existed). The one place that
+    decides, because three readers must agree: stage 1's enlargement, the
+    alpha extension gated on that enlargement (`alpha_edge.extension_applies`)
+    and preflight's resolution note.
+
+    Photographic content (`is_photographic`: the two photo classes, or the
+    caller's declaration) keeps the source line. What the working grid cures
+    is a STROKE a few pixels wide being averaged into its ground, and a
+    photograph has none; its lane was never measured on an enlarged raster.
+    `class_` None — a caller that has not classified — is not photographic,
+    unless declared."""
+    if is_photographic(cfg, class_):
+        return float(cfg.min_px_per_mm)
+    return max(float(cfg.min_px_per_mm), float(cfg.work_px_per_mm or 0.0))
+
+
 @dataclass
 class PipelineConfig:
     # Physical target: the artwork's finished embroidered width. The px->mm
@@ -249,6 +268,58 @@ class PipelineConfig:
     bg_intrusion_min_mm: float = 2.0   # intrusion below (this mm)^2 is boundary noise, not art loss
     min_px_per_mm: float = 4.0         # resolution floor at target size
     upscale_cap: float = 4.0           # max Lanczos upscale factor
+    # The grid a low-resolution source is TRACED on, as distinct from the
+    # line under which it is REPORTED as too small (`min_px_per_mm`, the
+    # `INPUT_LOW_RESOLUTION` warning). Stage 1 enlarges line art under this
+    # density up to it (`upscale_cap` and `stage1_prep.WORK_GRID_MAX_SIDE_PX`
+    # still bound the enlargement; photographic content keeps the source
+    # line — `work_grid_px_per_mm`).
+    #
+    # Why (Kent, 2026-09-30: bridge's "RESTAURANT" is completely missing).
+    # `logo_bridge_bar.jpg` is 400 px, 3.5 px/mm at 80 mm, and was traced at
+    # 4. Its teal lettering is readable in that raster and separable by
+    # colour alone; the gradient lane's oversegmentation even holds it (67 of
+    # 81 mm² of teal sits in teal-majority superpixels). It dies in the
+    # MERGE: a 0.7-1.4 mm stroke is 3-5 px, so every superpixel on the
+    # lettering band holds ink and ground both, regions are merged on their
+    # MEAN colour at 26 dE00, and the diluted letters read 19-23 from a
+    # diluted ground — 39 mm² survive, as six blobs. Both merge protections
+    # are size-gated (1,000 px; 9% of the design) and never see a letter.
+    # The same file enlarged to 5, 6, 7, 8 or 10 px/mm keeps 64-67 mm²
+    # through the same merge: the pixels the artwork already has, spread
+    # over enough of the grid that a stroke is cut out whole.
+    #
+    # Not one logo. Six real logos downsampled to what a website hands over
+    # (5 px/mm at 80 mm) and scored against the SAME logo digitized from its
+    # full-resolution file — share of the reference's ink under 1.5 mm wide
+    # that is sewn in its colour, traced at 4 -> at 8: ENTHUSIAST 0.49 ->
+    # 0.92 (its tagline, absent, comes back), screenshot 0.67 -> 0.83,
+    # golden_tee 0.66 -> 0.78, Fremont 0.86 -> 0.90 ("THE" comes back),
+    # drone 0.77 -> 0.78; mean 0.69 -> 0.84 (6 px/mm: 0.75, 7: 0.77). From
+    # 6.5 px/mm sources the gain is small and mixed (mean 0.79 -> 0.81, two
+    # of five down), which is what puts the number here and not higher: 8.4
+    # is also the lowest density any fixture the lanes were tuned on was
+    # traced at. The price is the detail itself — trims rise toward what the
+    # full-resolution file costs (ENTHUSIAST 8 -> 15, its reference 15) — and
+    # one synthetic loser, `logo_whitebg` at 5 px/mm (12 -> 21 trims, misread
+    # as a gradient at either grid). Lanczos against cubic or linear, and
+    # counting `thin_ink`'s pixel floor in source pixels, were measured and
+    # are not the lever. `docs/fine-detail-work-grid-2026-09-30.md`.
+    #
+    # Not a physical constant: it changes which pixels the tracer reads,
+    # never a fabric number. None is the engine before the knob existed,
+    # byte for byte.
+    #
+    # BUILT OFF (None); 8.0 is the setting every number above was read at.
+    # Two reasons it is not ON. The result is not robust: enlarging the
+    # background mask smoothly instead of NEAREST — half a pixel of
+    # foreground — sent bridge's words to a grey-green cone and took
+    # ENTHUSIAST 0.90 -> 0.70, so part of the gain is where the superpixel
+    # grid happens to land. And ON at 8 it moves about 45 existing tests,
+    # several of them real regressions on 6-7 px/mm synthetics
+    # (`gradient_ramp_radial` sews 2 regions for 1, the face-local split 4
+    # for 2). The flip is Kent's, on renders.
+    work_px_per_mm: float | None = None
     denoise: bool = True
     # Stage 1 stops reading the RGB under an alpha cutout's transparency.
     # The shape of a cutout lives in alpha; the RGB underneath is whatever
