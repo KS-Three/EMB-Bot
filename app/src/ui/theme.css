@@ -6,7 +6,7 @@
    selectors are consumed across every Svelte component in app/src/ui. */
 :root {
   /* ---- Palette -------------------------------------------------------- */
-  --ink: #1c1f26;
+  --ink: #171a20;
   /* Darkened to clear WCAG AA (4.5:1) on the app's OWN non-white grounds, not
      just on white. Measured in the running app: at #6b7280 this token scored
      4.16 on --field-bg (`.fieldhint` — "Your embroidery appears here…", the
@@ -16,10 +16,14 @@
      has headroom rather than sitting on the line, and it is a small enough
      step that "muted" still reads as muted. */
   --muted: #616875;
-  --bg: #f6f7fb; /* light neutral ground */
+  --bg: #ffffff; /* the page — white, like the panel (2026-10-01 theme pass) */
+  /* The neutral fill: pills, segmented controls, hover grounds, read-only
+     inputs. It is what --bg used to be for controls before the page went
+     white — on a white page a white hover is no hover at all. */
+  --fill: #f4f4f4;
   --surface: #ffffff; /* cards / panels / popovers */
   --surface-fade: rgba(255, 255, 255, 0); /* transparent --surface, for gradient stops */
-  --border: #e2e5eb;
+  --border: #e6e6e6;
   --field-bg: #eceef3; /* the embroidery workspace neutral -- field pane + canvas share it (B4/B8) */
 
   /* The SURROUND: the dark neutral the hoop floats on (2026-09-30, Kent's
@@ -268,7 +272,7 @@ h1, h2 { letter-spacing: var(--tracking-tight); }
    middle of a letter ("Untitled d|") with nothing to say it had been cut. */
 .projectname { text-overflow: ellipsis; }
 
-.projectname:hover { background: var(--bg); }
+.projectname:hover { background: var(--fill); }
 .projectname:focus { border-color: var(--accent); background: var(--surface); }
 
 .topbar-actions {
@@ -462,7 +466,7 @@ h1, h2 { letter-spacing: var(--tracking-tight); }
   min-height: 32px;
   border: 1px solid var(--border);
   border-radius: var(--radius-s);
-  background: var(--bg);
+  background: var(--fill);
   color: var(--ink);
   font-size: var(--fs-xs);
   cursor: pointer;
@@ -941,7 +945,7 @@ label:focus-within .tipmark { border-color: var(--accent); color: var(--accent);
   line-height: 1;
   cursor: pointer;
 }
-.zoombtn:hover:not(:disabled) { background: var(--bg); }
+.zoombtn:hover:not(:disabled) { background: var(--fill); }
 .zoombtn:disabled { color: var(--muted); cursor: default; opacity: 0.5; }
 .zoomfit { font-size: var(--fs-sm); }
 
@@ -1211,7 +1215,7 @@ input.fabriccustom[type="color"]::-webkit-color-swatch { border: 0; border-radiu
 }
 .hooptile:first-child { border-left: 0; }
 
-.hooptile:hover { background: var(--bg); }
+.hooptile:hover { background: var(--fill); }
 .hooptile.sel { background: var(--ink); color: var(--surface); }
 .hooptile.sel .hooptile-name { font-weight: var(--fw-semibold); }
 
@@ -1301,7 +1305,7 @@ input.fabriccustom[type="color"]::-webkit-color-swatch { border: 0; border-radiu
   width: 100%;
   height: 52px;
   border-radius: var(--radius-s);
-  background: var(--bg);
+  background: var(--fill);
   overflow: hidden;
 }
 
@@ -1357,7 +1361,7 @@ input.fabriccustom[type="color"]::-webkit-color-swatch { border: 0; border-radiu
   width: 26px;
   height: 26px;
   border-radius: var(--radius-s);
-  background: var(--bg);
+  background: var(--fill);
   color: var(--muted);
   font-weight: var(--fw-bold);
   font-size: var(--fs-sm);
@@ -1837,7 +1841,7 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
   font: inherit;
 }
 .sizeinput:focus { border-color: var(--accent); }
-.sizeinput[readonly] { background: var(--bg); color: var(--muted); }
+.sizeinput[readonly] { background: var(--fill); color: var(--muted); }
 
 /* Native <select>s that carry the app's control styling. `.unitselect` (the
    Size panel's in/mm toggle) already had it; the thread-chart pickers on the
@@ -2240,7 +2244,7 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
   line-height: 1;
   cursor: pointer;
 }
-.undo-btn:hover:not(:disabled) { background: var(--bg); }
+.undo-btn:hover:not(:disabled) { background: var(--fill); }
 .undo-btn:disabled { color: var(--muted); cursor: default; opacity: 0.45; }
 
 /* DesignPanel -- imported .dst design editor (upload, stats, per-block
@@ -2256,7 +2260,7 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
   font-size: var(--fs-md);
   cursor: pointer;
 }
-.dp-upload-btn:hover { background: var(--bg); }
+.dp-upload-btn:hover { background: var(--fill); }
 .dp-error { color: var(--danger); font-size: var(--fs-sm); margin: 0; }
 .dp-stats { font-size: var(--fs-sm); color: var(--muted); margin: 0; }
 .dp-blocks { display: flex; flex-direction: column; gap: var(--space-1); }
@@ -2328,7 +2332,7 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
   display: flex;
   padding: 3px;
   margin-bottom: var(--space-5);
-  background: var(--bg);
+  background: var(--fill);
   border-radius: var(--radius-s);
 }
 .startseg-btn {
@@ -2403,7 +2407,7 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
   padding: 0 var(--space-3);
   border: 1px solid transparent;
   border-radius: var(--radius-full);
-  background: var(--bg);
+  background: var(--fill);
   color: var(--ink);
   font: inherit;
   font-size: var(--fs-sm);
@@ -2447,7 +2451,7 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
   text-align: left;
   cursor: pointer;
 }
-.gmenu-item:hover, .gmenu-item:focus-visible { background: var(--bg); }
+.gmenu-item:hover, .gmenu-item:focus-visible { background: var(--fill); }
 .gmenu-item[aria-checked="true"] { background: var(--tint); color: var(--accent); font-weight: var(--fw-semibold); }
 .gmenu-item .gart svg { width: 24px; height: 24px; }
 

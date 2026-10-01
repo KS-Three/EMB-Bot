@@ -350,7 +350,7 @@
     justify-content: center;
     height: 48px;
     border-radius: var(--radius-s);
-    background: var(--bg);
+    background: var(--fill);
     overflow: hidden;
   }
   .fb-tile-img img { max-width: 100%; max-height: 100%; object-fit: contain; display: block; }

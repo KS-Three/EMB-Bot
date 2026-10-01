@@ -3361,7 +3361,7 @@
   .dgp-lborder-quiet {
     color: var(--muted);
     border-color: var(--border);
-    background: var(--bg);
+    background: var(--fill);
   }
   .dgp-lborder-warn {
     color: var(--danger);
@@ -3378,7 +3378,7 @@
     padding: 6px 8px;
     border: 1px solid var(--border);
     border-radius: var(--radius-s, 6px);
-    background: var(--bg);
+    background: var(--fill);
   }
   .dgp-borders-stale { opacity: 0.6; }
   .dgp-armed { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
