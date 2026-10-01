@@ -16,7 +16,7 @@ at the bottom for the authority model behind the confidence ratings.
 (**42.5**, not the older ~70) and the metric's own **75-84** pro-vs-pro ceiling.
 Its code and instruments are ON `main`. *(confirmed 2026-08-17 — `git ls-tree`)*
 
-**Last updated:** 2026-09-30. **This file is current state only, under a
+**Last updated:** 2026-10-01. **This file is current state only, under a
 27,000-word budget** (rule 4 below — Kent replaced the old line budget with it
 on 2026-09-14). Its three companions: standing rulings, rejected approaches,
 corrections and session-costing traps live in [`DOCTRINE.md`](DOCTRINE.md);
@@ -674,7 +674,15 @@ content path, four export formats, and the embroidery field's own chrome.
 **The worksheet states the digitizer's assumptions; both surfaces state run
 time.** Backing and topper come off the fabric preset, not a stitch count;
 `src/sewtime.js` gives minutes at 650 spm incl. trims. Only what the engine
-derives — Kent's ruling left needle and tension off. *(2026-09-20 — DOCTRINE)*
+derives — Kent's ruling left tension off. *(2026-09-20 — DOCTRINE)*
+**Hooping advice shows before download, not only on paper.** The Download
+sheet's "What to hoop" card states stabilizer, topper and needle for every
+design type, from `EMB.hoopingAdvice` — the same function the worksheet
+prints, incl. the 25k cutaway escalation. Needle is 75/11, ballpoint on knits,
+sharp on wovens and caps, with its basis beside it; an unknown garment gets no
+card. Trade categories, not sew-out constants: nothing reads them for
+stitches. *(confirmed 2026-10-01 — `test/fabrics.test.js`,
+`app/src/lib/hooping.spec.js`, driven in a browser; DOCTRINE for the ruling)*
 
 **What holds it at Medium:** fabric-preset accuracy is gated on the controlled
 sew-out CARD, which has not been sewn — the one physical out so far (2026-09-01)

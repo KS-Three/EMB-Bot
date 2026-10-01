@@ -248,3 +248,39 @@ document X says Y", but it means the underlay negative and the pull-compensation
 table were tested only against the documents they cite.
 
 **None of this is a sew-out.** All pages fetched live 2026-09-13.
+
+---
+
+## Addendum 2026-10-01 — the needle the Studio now recommends, and its provenance
+
+Appended when the hooping card shipped (`EMB.hoopingAdvice`, `src/fabrics.js`).
+**Nothing below was re-fetched or voted on the way sections 1–6 were.** It
+records which in-repo source the shipped figure rests on, and the one place two
+in-repo sources disagree, so the next reader does not mistake a planning figure
+for a verified one.
+
+**What ships:** `75/11 ballpoint` on the knit presets (pique, jersey, fleece),
+`75/11 sharp` on the wovens and the cap (canvas/twill, dress woven, terry,
+structured cap), always printed with its basis — "standard for 40wt thread".
+
+**Source:** `docs/machine-physics-playbook-2026-07-31.md` Law 21 — "DB×K5 75/11
+is the standard for 40wt: sharp (RG) for wovens and caps, ballpoint (SES) for
+knits, escalate to 80/12–90/14 for metallic 40wt and heavy goods", tagged
+[P] Tajima, Madeira, Groz-Beckert, A&E, high confidence. That tag is the
+playbook's own; this addendum did not re-verify it.
+
+**The disagreement:** `docs/specialty-techniques-2026-08-01.md`'s appliqué
+fabric table gives `80/12` for "Denim / canvas". The `canvas_tote` preset also
+serves the tote, the jacket back and the patch, and that row was written for
+heavy goods, so the preset takes Law 21's 75/11 and the 80/12 is not printed.
+Kent's call 2026-10-01, with both sources in front of him. Law 21's own
+"escalate for heavy goods" is the same advice in general form and is **not**
+surfaced by the card — there is no thread-weight or fabric-weight input to
+escalate on.
+
+**One judgement call that is not Kent's ruling:** terry towel is `sharp`
+because terry is a woven loop pile and Law 21 splits on knit vs woven. No
+source reached here addresses terry by name.
+
+**Not a sew-out, and not a gate-1 constant.** A needle recommendation places no
+stitch; nothing in either engine reads it.

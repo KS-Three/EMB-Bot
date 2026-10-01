@@ -30,6 +30,8 @@
 <style>
   /* The rows reuse the sheet's `.summary` list; only the note and the
      footnote are this card's own. */
+  /* The heading already spaces the list from the recap above it. */
+  .hooping dl { margin-top: 0; }
   small {
     display: block;
     font-weight: var(--fw-regular, 400);
