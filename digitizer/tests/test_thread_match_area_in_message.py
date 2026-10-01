@@ -179,7 +179,7 @@ def test_the_fraction_is_over_the_scored_regions_not_all_of_them():
     assert f["extra"]["worst_shape_area_frac"] > over_all * 1.05
 
 
-@pytest.mark.parametrize("fixture,expected", [(TINY, 0), (HUGE, 5), (HOLES, 2)])
+@pytest.mark.parametrize("fixture,expected", [(TINY, 0), (HUGE, 3), (HOLES, 1)])
 def test_no_severity_moved(fixture, expected):
     """These counts are the ones on record under the floor (2026-09-10, the
     sweep in docs/superpowers/plans/2026-09-10-legibility-yardstick.md §4.1:
@@ -197,6 +197,15 @@ def test_no_severity_moved(fixture, expected):
     regions re-cone the design and push three of its warns over the block
     line. That is the drone half of the price on the flip sheet (three
     spools swapped, the canopy's blue panel grey), measured here rather than
-    absorbed."""
+    absorbed.
+
+    RE-PINNED 2026-09-30 for `cfg.snap_region_edges` ON by default (Kent's
+    flip on renders): HUGE 5 -> 3 and HOLES 2 -> 1; TINY stays 0. Both moves
+    are the direction the snap predicts — an edge pixel now sits in the
+    region whose colour it carries, so fewer regions are a blend of two
+    colours that no spool matches. On drone it hands back two of the three
+    blocks the thin-strokes flip cost (the render shows the canopy's blue
+    half blue again, `docs` has no sheet for it yet). Counts only: which
+    findings went was not traced."""
     blocks, _result = _blocks(fixture)
     assert len(blocks) == expected
