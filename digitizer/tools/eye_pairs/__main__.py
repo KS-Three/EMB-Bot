@@ -28,7 +28,7 @@ from pathlib import Path
 import cv2
 
 from digitizer_core.config import PHOTO_CLASSES
-from digitizer_core.stitchviz import render_design
+from digitizer_core.stitchviz import render_design, render_penetrations
 
 from tools import dropped_elements, edge_smoothness
 from tools.artfid_eye_rank import VIEW_PX_PER_MM, _normalise_art
@@ -40,7 +40,8 @@ from . import features as ft
 from .features import base_cfg, digitize_once, features_design_only, features_full
 from .pairs import (ARMS, BASE, ArmRun, build_pairs, design_hash, load_picks,
                     now_iso, sealed_hash, unpicked)
-from .refarm import add_worktree, discard_worktree, ref_environment, run_ref_design
+from .refarm import (add_worktree, discard_worktree, link_photo_prep, ref_environment,
+                     run_ref_design)
 from .server import PORT, make_server
 
 DIGITIZER = Path(__file__).resolve().parents[2]
@@ -81,6 +82,25 @@ def _replacing(path: Path):
         tmp.unlink(missing_ok=True)
 
 
+_JPEG = [cv2.IMWRITE_JPEG_QUALITY, 92]
+
+
+def holes_path(out: Path, name: str, arm: str) -> Path:
+    """The penetration map beside a thread render (2026-09-30):
+    `renders/<fixture>__<arm>__holes.jpg`, the same frame with a dot at every
+    needle-down. The thread render cannot show a split column's mid-column
+    penetrations, so the labelled page swaps to this on a toggle."""
+    return Path(out) / "renders" / f"{name}__{arm}__holes.jpg"
+
+
+def _write_holes(hpath: Path, design: dict) -> None:
+    # Replaced and checked the same way as the thread render beside it.
+    with _replacing(hpath) as tmp:
+        if not cv2.imwrite(str(tmp), render_penetrations(design, px_per_mm=VIEW_PX_PER_MM),
+                           _JPEG):
+            raise OSError(f"could not write {hpath}")
+
+
 def _default_ref_runner(ref: str, *, repo=None, scratch=None):
     """-> (runner, closer, env) for ONE commit. The worktree lives under the
     system temp dir — never inside the repo (`refarm.guard_scratch`). `env`
@@ -92,7 +112,12 @@ def _default_ref_runner(ref: str, *, repo=None, scratch=None):
     dest = scratch.resolve() / f"eye-pairs-ref-{ref}"
     discard_worktree(repo, dest)                      # a crashed earlier run
     try:
-        engine = add_worktree(repo, ref, dest) / "digitizer"
+        worktree = add_worktree(repo, ref, dest)
+        engine = worktree / "digitizer"
+        # The photo-prep venv is gitignored and lives in the primary checkout
+        # only; without this a photo-class fixture's ref design skips prep and
+        # the pair compares lanes, not engines (`refarm.link_photo_prep`).
+        linked = link_photo_prep(repo, worktree)
         env = ref_environment(repo, ref, main_digitizer=repo / "digitizer",
                               ref_digitizer=engine)
     except BaseException:
@@ -104,6 +129,7 @@ def _default_ref_runner(ref: str, *, repo=None, scratch=None):
     def runner(image, width_mm, garment, max_colors):
         return run_ref_design(sys.executable, engine, image, width_mm, garment, max_colors)
 
+    runner.photo_prep_env = linked
     return runner, lambda: discard_worktree(repo, dest), env
 
 
@@ -114,7 +140,9 @@ def render(out=OUT, cases=None, arms=None, fixtures=None, only_arms=None,
     Resume-safe: a row is reused only when its `source_sha256` matches the
     image on disk AND its `schema` matches `FEATURES_SCHEMA` AND its design
     and render files exist. Name-only keying let a re-exported image stay
-    'cached' for a whole sitting (review finding 7, 2026-09-17).
+    'cached' for a whole sitting (review finding 7, 2026-09-17). A cached
+    row missing only its penetration map (a run rendered before 2026-09-30)
+    gets the map drawn from the kept design, with no digitize.
 
     `ref_factory(commit) -> (runner, closer, env)` is built once PER COMMIT,
     so two `__ref__` rows on different commits each get their own engine —
@@ -154,12 +182,15 @@ def render(out=OUT, cases=None, arms=None, fixtures=None, only_arms=None,
             for arm, kw in [(BASE, {})] + list(arms.items()):
                 dpath = out / "designs" / f"{name}__{arm}.json"
                 rpath = out / "renders" / f"{name}__{arm}.jpg"
+                hpath = holes_path(out, name, arm)
                 row = feats.get(name, {}).get(arm)
                 if (row and "error" not in row
                         and row.get("source_sha256") == src_hash
                         and row.get("schema") == FEATURES_SCHEMA
                         and ("__ref__" not in kw or row.get("env"))
                         and dpath.exists() and rpath.exists()):
+                    if not hpath.exists():
+                        _write_holes(hpath, json.loads(dpath.read_text(encoding="utf-8")))
                     _say(f"[{name} / {arm}] cached")
                     ready += 1
                     continue
@@ -180,6 +211,11 @@ def render(out=OUT, cases=None, arms=None, fixtures=None, only_arms=None,
                         row = features_design_only(path, design)
                         row["design_only"] = True
                         row["env"] = envs[commit]
+                        # Whether the ref engine had the photo-prep venv: the
+                        # page's confound badge on a photo-class fixture reads
+                        # this, so a ref pair rendered with the venv linked is
+                        # not marked as if its old side had skipped prep.
+                        row["photo_prep_env"] = bool(getattr(runners[commit], "photo_prep_env", False))
                     else:
                         cfg = base_cfg(width_mm, garment, **kw)
                         gen, result, plan, design = digitize_once(path, cfg)
@@ -202,8 +238,9 @@ def render(out=OUT, cases=None, arms=None, fixtures=None, only_arms=None,
                     # render does this arm again instead of pairing a row
                     # that has no picture.
                     if not cv2.imwrite(str(tmp), render_design(design, px_per_mm=VIEW_PX_PER_MM),
-                                       [cv2.IMWRITE_JPEG_QUALITY, 92]):
+                                       _JPEG):
                         raise OSError(f"could not write {rpath}")
+                _write_holes(hpath, design)
                 feats.setdefault(name, {})[arm] = row
                 _write_json(feats_path, feats)          # checkpoint per arm
                 ready += 1

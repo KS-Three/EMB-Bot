@@ -16691,3 +16691,80 @@ are all but identical, the rails drawing shows the kink gone. A unit test
 on the helper; the pinned files 143 passed. Records:
 `docs/renders/envelope-teeth-2026-09-30/` (README, census.json, three
 strips), DOCTRINE.
+
+## 2026-09-30 — The evening sitting: the day's three lettering changes before | after on the labelled page, with a needle-hole map beside every render (Kent's pick)
+
+Kent's pick after the teeth. The labelled page rebuilt at the same URL as
+this morning's engine (`ref_0930am`, `main` at 1e5f8fe2 — the envelope as
+it shipped that morning, before the sibling rule #577, the split comb #578
+and the minimum stretch length #579) against today's, on the nine logos
+under the tag `evening-0930`; the dissolve pairs (`phantom_dissolve`,
+unjudged since the fold fix) stay on the page. New on it: a **needle-hole
+map** beside every render — `stitchviz.render_penetrations`, the thread
+render faded to 35% over the cloth on the same frame with a dot at every
+stitch record and none at a jump. `--render` writes it as
+`renders/<fixture>__<arm>__holes.jpg` (a run rendered before it gets the
+map from its kept designs, no digitize) and the page's *thread | needle
+holes* control swaps every view's source in place, so the zoom, the
+verdicts and the locator's boxes stay put. Built because the thread render
+cannot show the comb (the split-comb finding of the afternoon). The ref
+arms are a table now (`REF_ARMS`): the page reads `is_ref` and
+`ref_label` off the record instead of testing the one literal `ref_0827`.
+
+The corpus table under the ref arm's head
+(`docs/eye-pairs-2026-09-30/three-changes-corpus.json`;
+`tools/envelope_escapes.py` and a per-leg split count run on both trees):
+envelope reached stations **459 (313 escapes) → 110 (19)**, split on/off
+changes along the satin runs **177 → 56** (on the lettering 61 → 28),
+stitches 90,731 → 90,694, trims 496 both. Per logo: Becker 183 (113) → 72
+(14) reached and 122 → 37 changes at 9,563 → 9,321 stitches; golden_tee
+130 (75) → 36 (5) at 8,613 → 8,575; bridge 85 (70) → 0 and 20 → 5 changes
+at 16,157 → 16,175; tires 14 (13) → 1 (0) and 21 → 5 at 2,646 → 2,835
+(measured with the photo-prep venv linked into the morning engine's
+worktree — the first cut read tires from a worktree without it, the
+un-prepped lane, 2,500 stitches and 22 (22), and put the corpus at 467
+(322); corrected, the before column is the afternoon's escapes census to
+the station); screenshot 28 (26) → 1 (0) and 8 → 3; drone 12 (10) → 0;
+gaulke 6 (5) → 0; enthusiast 1 (1) → 0; fremont untouched. Records:
+`docs/eye-pairs-2026-09-30/README.md` (the evening section), the table
+JSON, COOKBOOK, MASTER_SCOPE, memory.
+
+## 2026-09-30 — The evening sitting judged: the day's three lettering changes did not reach the eye, the dissolve stays OFF, and the one "before better" was a lane, not an engine
+
+Kent judged all 13 pairs the same evening. **The eight ref pairs** (this
+morning's engine | today): becker, bridge, drone, enthusiast *no
+difference*; gaulke, golden_tee, screenshot *both bad*; tires *before
+better*. 0 after. His becker note is the third of the day on the same
+thing — *"the lettering does not flow, satin stitching is not smooth and
+structured pattern"* — and the sibling rule, the comb and the teeth,
+all aimed at it, moved the instruments (reached stations 459 → 110, split
+changes 177 → 56) and not the verdict. **The five dissolve pairs**
+(`dissolve_phantom_blends=True` after the fold fix): bridge *after* (job
+done: yes, "random satin borders have been removed"), gaulke *before*
+("after ended up adding satin trim"), golden_tee *before*, tires *no
+difference*, screenshot *both bad* with a note that the fixture is not
+one to judge digitizing by. **The flag stays OFF** on 2 before, 1 after.
+
+**tires' "before better" compared lanes.** The primary checkout carries
+the rembg venv (gitignored); the ref engine's worktree had none; tires is
+`photo_scene`, so its BEFORE side skipped photo prep — the confound badge
+the page put on that pair. Every step of the day in a venv-less worktree
+draws clean tread edges (2,500 / 2,500 / 2,652 stitches, today's own
+commit included: 2,652 clean against this checkout's 2,835); with the venv
+linked into the morning engine's worktree, 2,646 → 2,835 and the locator's
+three boxes show the same ragged edges on both sides, today's adding the
+comb's penetrations only. His eye preferred the un-prepped segmentation
+of a cartoon tire over the rembg matte's — a finding about the photo lane
+on that fixture, not about the day's changes. Fixed in the yardstick:
+`refarm.link_photo_prep` symlinks the venv into every ref worktree, the
+row carries `photo_prep_env`, the page's confound badge reads it (tests:
+refarm, gallery, cli). The corpus table's tires row and totals were
+re-measured on the prepped lane (above).
+
+**gaulke's "satin trim" under the dissolve** is four grey halo slivers —
+0.19 to 0.28 mm², `rescued_small_shape`, thread 0108 (153, 153, 153), sewn
+as grey running stitches of 30 to 54 points along a letter's diagonal and
+a bar; satin runs 91 → 95, trims 30 → 37, stitches 4,305 → 4,441. Which
+branch of the fold leaves them is the next measurement. Records:
+`docs/eye-pairs-2026-09-30/README.md` (Outcome, Measured after the
+sitting), `kent-notes.json` (`third_sitting`), DOCTRINE, memory.

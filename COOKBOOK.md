@@ -1590,6 +1590,28 @@ blur* instead. No share or figure reaches the page. Published as
 https://claude.ai/artifact/6mjKrbnCX21MM9gQUry4Zp — **republish to that
 URL**, never a new one: his notes live in its `db`, keyed by those ids.
 
+**The needle-holes toggle, and a second engine snapshot (2026-09-30).**
+`--render` writes `renders/<fixture>__<arm>__holes.jpg` beside every thread
+render — `stitchviz.render_penetrations`: the render faded to 35% over the
+cloth on the SAME frame, a dot at every `stitch` record, none at a jump —
+and the page's *thread | needle holes* control swaps every view's source in
+place, so the zoom, the verdicts and the locator's boxes stay put. Built
+because the thread render cannot show a split column's mid-column
+penetration (the comb, `docs/renders/split-comb-2026-09-30/`); a run
+rendered before the map existed gets it on the next `--render` from the
+kept designs, no digitize, and a sitting with no map shows no toggle. The
+ref arms are `REF_ARMS` in the generator (`ref_0827`; `ref_0930am`, the
+morning of 2026-09-30 before #577/#578/#579) and the page reads `is_ref`
+and `ref_label` off the record, never an id — it used to test the one
+literal `ref_0827`. The evening sitting on the day's three lettering
+changes is `docs/eye-pairs-2026-09-30/` (tag `evening-0930`). **A ref
+worktree gets the photo-prep venv linked in** (`refarm.link_photo_prep`,
+the row's `photo_prep_env`, read by the page's confound badge): the venv
+is gitignored and lives in the primary checkout only, so before this a
+photo-class fixture's ref side skipped prep and the pair compared lanes
+(tires, 2,500 against 2,646 from the same commit; Kent's one "before
+better" of that evening).
+
 Two things it is not. It is **not the blind sitting** — a verdict given
 knowing which side is the flag is evidence for a *ruling*, and never enters
 the yardstick's agreement statistic (§4 of the eye-pairs spec needs the

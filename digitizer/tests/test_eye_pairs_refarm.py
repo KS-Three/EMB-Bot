@@ -283,3 +283,25 @@ def test_the_driver_refuses_to_run_todays_engine_by_accident(tmp_path):
     with pytest.raises(RuntimeError, match="REFUSED|No module named"):
         refarm.run_ref_design(sys.executable, empty, tmp_path / "art.png",
                               80.0, "left_chest", 6)
+
+
+def test_the_ref_worktree_gets_the_photo_prep_venv_when_the_checkout_has_one(tmp_path):
+    """2026-09-30: the rembg venv is gitignored and lives in the primary
+    checkout only, so a ref worktree ran photo-class fixtures WITHOUT prep
+    and the pair compared lanes, not engines (tires: 2,500 stitches against
+    2,646 from the same commit with the venv). The link is a symlink, never
+    a copy, and its absence is an answer rather than an error."""
+    repo = tmp_path / "repo"
+    venv = repo / "digitizer" / "rembg_isolated" / "venv"
+    venv.mkdir(parents=True)
+    (venv / "marker").write_text("here")
+    wt = tmp_path / "wt"
+    (wt / "digitizer").mkdir(parents=True)
+    assert refarm.link_photo_prep(repo, wt) is True
+    linked = wt / "digitizer" / "rembg_isolated" / "venv"
+    assert linked.is_symlink() and (linked / "marker").read_text() == "here"
+    assert refarm.link_photo_prep(repo, wt) is True          # already there: still an answer
+    bare = tmp_path / "bare"
+    (bare / "digitizer").mkdir(parents=True)
+    assert refarm.link_photo_prep(tmp_path / "no-such-repo", bare) is False
+    assert not (bare / "digitizer" / "rembg_isolated").exists()

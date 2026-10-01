@@ -93,6 +93,7 @@ exactly one change:
 | `phantom_dissolve` | `dissolve_phantom_blends=True` |
 | `directional_comp` | `directional_comp=True` |
 | `ref_0827` | the engine at `25da2fe` (main on 2026-08-27), base config |
+| `ref_0930am` | the engine at `1e5f8fe2` (main on the morning of 2026-09-30, before #577, #578 and #579), base config — added 2026-09-30 for the evening's labelled sitting on the day's three lettering changes |
 
 One digitize per (fixture, arm). An arm whose Design `stitches` hash equals
 the base's is **skipped and logged** (`identical_to_base`) — there is nothing
