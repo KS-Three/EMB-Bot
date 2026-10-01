@@ -122,13 +122,15 @@ export function sewSummary(design, quote) {
   // the same reason QualityReport prints it.
   rows.push({ label: "Trims", value: String(f.trims) });
   if (f.threadM != null) rows.push({ label: "Thread", value: `${f.threadM.toFixed(1)} m (estimate)` });
-  // Under-thread, on the thread maker's rule and saying so. Metres, not
+  // Under-thread, as a share of the figure above and saying so (sewtime.js
+  // has why it is not the maker's per-1,000-stitches rule). Metres, not
   // "bobbin changes" (Kent's ruling 2026-10-01): one piece is almost never a
-  // whole bobbin, and how much a bobbin holds depends on whose it is.
-  const bobbin = EMB.bobbinM ? EMB.bobbinM(f.stitches) : null;
+  // whole bobbin, and how much a bobbin holds depends on whose it is. No
+  // thread figure, no bobbin figure.
+  const bobbin = EMB.bobbinM ? EMB.bobbinM(f.threadM) : null;
   if (bobbin != null) {
     const shown = bobbin < 0.05 ? "under 0.1" : `~${bobbin.toFixed(1)}`;
-    rows.push({ label: "Bobbin", value: `${shown} m (at ${EMB.BOBBIN_M_PER_1000} m per 1,000 stitches)` });
+    rows.push({ label: "Bobbin", value: `${shown} m (3/5 of top thread)` });
   }
   // The dollars. Top thread only — there is no bobbin price to ask for yet.
   const tCost = money(threadCost(f.threadM, q));

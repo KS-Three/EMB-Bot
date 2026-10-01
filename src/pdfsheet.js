@@ -21,7 +21,7 @@ const deps =
   const { mmToInch } = deps.units;
   const { renderStitches } = deps.render;
   const { getFabric, GARMENT_FABRIC } = deps.fabrics;
-  const { sewTimeMin, PLAN_SPM, bobbinM, BOBBIN_M_PER_1000 } = deps.sewtime;
+  const { sewTimeMin, PLAN_SPM, bobbinM } = deps.sewtime;
 
   // The fabric preset behind a garment id, or null when the id is not one we
   // ship. `fabricForGarment` is NOT used here on purpose: it falls back to
@@ -252,12 +252,13 @@ const deps =
       );
     }
     // Under-thread, on the thread maker's rule and saying so — same wording
-    // as the screen's row. Skipped for an empty design, like the screen.
-    const bobbin = stitchCount > 0 ? bobbinM(stitchCount) : null;
+    // as the screen's row. A share of the thread metres, so it prints only
+    // where the "Thread:" line above did.
+    const bobbin = typeof sew.threadM === "number" && sew.threadM > 0 ? bobbinM(sew.threadM) : null;
     if (bobbin !== null) {
       statsLines.push(
         "Bobbin: " + (bobbin < 0.05 ? "under 0.1" : "~" + bobbin.toFixed(1)) +
-          " m (at " + BOBBIN_M_PER_1000 + " m per 1,000 stitches)"
+          " m (3/5 of top thread)"
       );
     }
     // The dollar lines, when the operator has entered prices. Passed in

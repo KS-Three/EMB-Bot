@@ -8,6 +8,7 @@
   import { sewSummary, QUOTE_ROW_LABELS } from "./lib/estimate.js";
   import { loadQuote, saveQuote } from "./lib/quote.js";
   import { generateAll } from "./lib/generate.js";
+  import { ensureFonts } from "./lib/fontLoader.js";
   import { rehydrateImages } from "./lib/imageSource.js";
   import { chartIdForProject, designChartId } from "./lib/designChart.js";
   import { flattenRGBA, WORK_MAX_PX, ALPHA_CUTOFF, sewnColorCount } from "./lib/flatten.js";
@@ -227,7 +228,27 @@
   // project/runtime like every other `$:` and never runs inside a render loop.
   // Never throws: it runs on every change, including while nothing is ready to
   // stitch. Feeds both the summary bar and the Download sheet's recap.
+  //
+  // `fontsTick` is a dependency only. A text element's font arrives
+  // asynchronously, and on a reload the first run of this lands before it:
+  // generateAll throws, this reads null, and nothing re-ran it — so a saved
+  // lettering project reopened to "— size — stitches" in the summary bar and
+  // no sew rows on the sheet until something was edited. Found 2026-10-01 by
+  // reloading the app mid-drive; DownloadStep has carried the same gate
+  // (`fontsReady`) for its own derivation all along.
+  //
+  // The bump lives in a function on purpose: a `$:` statement re-runs when
+  // anything it NAMES changes, so naming `fontsTick` in the statement that
+  // bumps it is a loop (it hung the page the first time this was written).
+  let fontsTick = 0;
+  function fontsArrived() { fontsTick += 1; }
+  $: fontKeyList = (project.elements || [])
+    .filter((el) => el.type === "text" && el.fontKey)
+    .map((el) => el.fontKey)
+    .join("|");
+  $: ensureFonts(fontKeyList ? fontKeyList.split("|") : []).then(fontsArrived).catch(() => {});
   $: combinedDesign = (() => {
+    fontsTick;
     try {
       return generateAll(project, runtime).combined || null;
     } catch (e) {

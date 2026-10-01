@@ -100,11 +100,13 @@ test("a speed that is not a positive number is no basis for a figure", () => {
 
 // --- bobbin thread ------------------------------------------------------------
 
-test("bobbin metres are the thread maker's rule, per thousand stitches", () => {
-  // Madeira: "approximately 3m per 1000 stitches" of underthread.
-  assert.strictEqual(sewtime.BOBBIN_M_PER_1000, 3);
-  assert.strictEqual(sewtime.bobbinM(10000), 30);
+test("bobbin metres are a share of the top thread, never more than it", () => {
+  // Madeira's pair: ~3 m of underthread to ~5 m of top, per 1,000 stitches.
+  assert.strictEqual(sewtime.BOBBIN_SHARE_OF_TOP, 3 / 5);
+  assert.ok(Math.abs(sewtime.bobbinM(2.5) - 1.5) < 1e-9);
   assert.strictEqual(sewtime.bobbinM(0), 0);
+  // The property the per-1,000-stitches rule broke on short satin stitches.
+  for (const m of [0.1, 2.5, 40, 900]) assert.ok(sewtime.bobbinM(m) < m);
 });
 
 test("bobbin metres are null on a count that cannot support a figure", () => {

@@ -707,9 +707,15 @@ test("run time is charged per stop when the caller counted stops", () => {
 });
 
 test("bobbin metres print with the rule that produced them", () => {
-  // 4,321 stitches at 3 m per 1,000 = 12.96 m.
-  const strings = sheetStrings(baseDesign(), metaFor("left_chest"));
-  expect(strings).toContain("Bobbin: ~13.0 m (at 3 m per 1,000 stitches)");
+  // 4.2 m of top thread x 3/5 = 2.52 m.
+  const strings = sheetStrings(
+    baseDesign(),
+    metaFor("left_chest", { sew: { trims: 6, threadM: 4.2 } })
+  );
+  expect(strings).toContain("Bobbin: ~2.5 m (3/5 of top thread)");
+  // No thread figure, no bobbin figure: it is a share of that number.
+  const bare = sheetStrings(baseDesign(), metaFor("left_chest"));
+  expect(bare.some((s) => s.startsWith("Bobbin:"))).toBe(false);
 });
 
 test("dollar lines print only when the caller hands them over", () => {

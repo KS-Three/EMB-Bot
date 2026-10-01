@@ -68,23 +68,32 @@
     return Math.max(1, Math.round(minutes));
   }
 
-  // Bobbin (under) thread per 1,000 stitches, in metres. [P] Madeira: "For
+  // Bobbin (under) thread as a share of the TOP thread. [P] Madeira: "For
   // standard length stitches the general rule for underthread requirement is
-  // approximately 3m per 1000 stitches" (madeira.co.uk/bobbins-underthreads;
-  // madeira.com's FAQ gives 3-3.5). Coats puts it at 2.3. Playbook law 38
-  // carries the same 3. Same standing as the two constants above: a thread
-  // maker's table, printed with its basis, never measured here. No Python
-  // twin — the service quotes no bobbin figure.
-  const BOBBIN_M_PER_1000 = 3;
+  // approximately 3m per 1000 stitches. Top thread you can expect
+  // approximately 5m per 1000 stitches" (madeira.co.uk/bobbins-underthreads)
+  // — 3 to 5. DERIVED: no maker states it as a ratio, and Coats' own pair
+  // (2.3 and 6.0) gives 0.38, so this is the generous end. Printed with its
+  // basis, never measured here. No Python twin — the service quotes no
+  // bobbin figure.
+  //
+  // NOT the per-1,000 rule itself, though that is what Madeira publishes and
+  // what this first shipped as. Run in the app 2026-10-01 on a "FRITSCH"
+  // lettering design it read 4.0 m of bobbin beside 2.5 m of top thread: the
+  // rule assumes "standard length" (~4 mm) stitches, and satin lettering is
+  // short ones, while the top-thread figure is walked from the real path. A
+  // bobbin that outruns the needle is a number an operator can see is wrong.
+  // Kent's ruling the same day: take the share of our own thread figure.
+  const BOBBIN_SHARE_OF_TOP = 3 / 5;
 
-  // -> metres of bobbin thread, or null. Metres and not "bobbin changes":
-  // how much a bobbin holds depends on whose it is (Fil-Tec's L is 130 yd,
-  // Madeira's 123 m, and black holds less than white), and at 3 m per 1,000
-  // one piece is almost never a whole bobbin anyway.
-  function bobbinM(stitches) {
-    if (typeof stitches !== "number" || !isFinite(stitches) || stitches < 0) return null;
-    return (stitches / 1000) * BOBBIN_M_PER_1000;
+  // -> metres of bobbin thread from metres of top thread, or null. Metres
+  // and not "bobbin changes": how much a bobbin holds depends on whose it is
+  // (Fil-Tec's L is 130 yd, Madeira's 123 m, and black holds less than
+  // white), and one piece is almost never a whole bobbin anyway.
+  function bobbinM(threadM) {
+    if (typeof threadM !== "number" || !isFinite(threadM) || threadM < 0) return null;
+    return threadM * BOBBIN_SHARE_OF_TOP;
   }
 
-  return { PLAN_SPM, TRIM_COST_STITCHES, BOBBIN_M_PER_1000, sewTimeMin, bobbinM };
+  return { PLAN_SPM, TRIM_COST_STITCHES, BOBBIN_SHARE_OF_TOP, sewTimeMin, bobbinM };
 });

@@ -82,7 +82,8 @@ test("without the engine's factor there is NO metres row, not a wrong one", asyn
     // "Run time" survives a missing thread factor on purpose: it is derived
     // from stitches and trims, which are still known. Only the thread
     // estimate depends on the factor, and only it is withheld.
-    expect(sewSummary(D).map((r) => r.label)).toEqual(["Size", "Stitches", "Run time", "Thread changes", "Trims", "Bobbin"]);
+    // (Bobbin is a share of the thread figure, so it goes with it.)
+    expect(sewSummary(D).map((r) => r.label)).toEqual(["Size", "Stitches", "Run time", "Thread changes", "Trims"]);
   } finally {
     EMB.THREAD_LENGTH_FACTOR = real;
   }
@@ -98,7 +99,7 @@ test("the rows read in the order an operator uses them", async () => {
   expect(sewSummary(D).map((r) => r.label)).toEqual(["Size", "Stitches", "Run time", "Thread changes", "Trims", "Thread", "Bobbin"]);
   expect(sewSummary(D).map((r) => r.value)).toEqual([
     "30 × 10 mm", "7", "~1 min at 650 spm", "1", "1", "0.1 m (estimate)",
-    "under 0.1 m (at 3 m per 1,000 stitches)",
+    "under 0.1 m (3/5 of top thread)",
   ]);
 });
 
@@ -156,8 +157,12 @@ test("the operator's machine and speed are named in the run time", async () => {
 
 test("bobbin metres print with the rule that produced them", async () => {
   const { sewSummary } = await import("./estimate.js");
-  expect(sewSummary(twoColour(true)).find((r) => r.label === "Bobbin").value)
-    .toBe("~39.0 m (at 3 m per 1,000 stitches)");
+  // 1.755 m of top thread x 3/5. The first version of this row used the
+  // maker's 3 m per 1,000 stitches and read 39.0 m here — twenty times the
+  // top thread, on a fixture of 0.1 mm stitches.
+  const rows = sewSummary(twoColour(true));
+  expect(rows.find((r) => r.label === "Bobbin").value).toBe("~1.1 m (3/5 of top thread)");
+  expect(rows.map((r) => r.label).indexOf("Bobbin")).toBe(rows.map((r) => r.label).indexOf("Thread") + 1);
 });
 
 test("no price entered, no dollar row — and each row needs only its own inputs", async () => {
