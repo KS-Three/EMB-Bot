@@ -91,6 +91,7 @@ textarea{font:inherit;color:inherit;background:var(--bg);border:1px solid var(--
 .zoomhint{font-size:11px;color:var(--muted)}
 #export{background:var(--surface);border:1px solid var(--rule);border-radius:10px;padding:12px 16px;display:flex;flex-direction:column;gap:8px;max-width:1280px;margin:20px auto 0}
 #export[hidden]{display:none}
+.seg[hidden]{display:none}
 #export textarea{min-height:120px;font-family:var(--mono);font-size:12px}
 .empty{color:var(--muted);padding:40px 0;text-align:center}
 @media (prefers-reduced-motion:no-preference){.view .layer{transition:transform 40ms linear}}
@@ -102,6 +103,10 @@ textarea{font:inherit;color:inherit;background:var(--bg);border:1px solid var(--
   <div class="seg" id="group" role="group" aria-label="Group pairs">
     <button type="button" data-g="arm" class="on" id="g-arm">by arm</button>
     <button type="button" data-g="fixture" id="g-fixture">by fixture</button>
+  </div>
+  <div class="seg" id="holes" role="group" aria-label="Show the thread or the needle holes" hidden>
+    <button type="button" data-h="0" class="on">thread</button>
+    <button type="button" data-h="1">needle holes</button>
   </div>
   <div class="chips" id="filters" role="group" aria-label="Filter pairs"></div>
   <span class="grow"></span>
@@ -131,8 +136,10 @@ const SITTING = LAB && typeof DATA.sitting === "string" && DATA.sitting ? DATA.s
 const rulingId = arm => SITTING ? `${arm}__${SITTING}` : arm;
 const verdictOf = p => (state.notes[p.pair] || {}).verdict || null;
 // Labelled: BEFORE is always the left side and AFTER the right -- the
-// generator puts shipped | flag, and for the 08-27 arm old engine | today.
+// generator puts shipped | flag, and for a ref arm old engine | today.
 const afterSide = p => p.is_ref ? p.shipped_side : p.arm_side;
+// A ref arm is an engine snapshot; the generator names it (`ref_label`).
+const refName = p => p.ref_label || "old engine";
 const REVEAL_FILTERS = [
   ["all", "all", () => true],
   ["arm", "picked arm", p => p.pick !== "tie" && p.pick === p.arm_side],
@@ -156,7 +163,7 @@ const FILTERS = LAB ? LABELLED_FILTERS : REVEAL_FILTERS;
 const VERDICT = [["after", "after is better"], ["before", "before is better"], ["same", "no difference"], ["both_bad", "both bad"]];
 const JOB = [["yes", "yes"], ["no", "no"], ["unsure", "can't tell"]];
 const RULING = [["flip_on", "flip ON"], ["keep_off", "keep OFF"], ["needs_work", "needs work"]];
-const state = {group: "arm", filter: "all", notes: {}, rulings: {}};
+const state = {group: "arm", filter: "all", notes: {}, rulings: {}, holes: false};
 const $ = (sel, root = document) => root.querySelector(sel);
 const el = (tag, attrs = {}, ...kids) => {
   const n = document.createElement(tag);
@@ -313,14 +320,30 @@ function kindBadge(p) {
 function confoundBadge(p) {
   if (!p.confounded) return null;
   return el("span", {class: "kind bad", text: "confounded · old engine skipped photo prep",
-    title: "The 08-27 engine ran without the rembg venv, so on a photo-class design this pair compares environments, not engines."});
+    title: `The ${refName(p)} ran without the rembg venv, so on a photo-class design this pair compares environments, not engines.`});
+}
+// The needle-hole map (2026-09-30): the thread render on the same frame,
+// faded, with a dot at every penetration -- drawn by --render beside each
+// render, because the thread render cannot show a split column's mid-column
+// holes. The toggle swaps every view's source in place, so the zoom, the
+// verdicts and the hotspot boxes stay where they are; a side the yardstick
+// drew no map for keeps its render.
+const holesFor = (p, side) => (p.img && p.img[side + "h"]) || null;
+function applyHoles() {
+  for (const img of document.querySelectorAll("img[data-thread]")) {
+    const want = state.holes && img.dataset.holes ? img.dataset.holes : img.dataset.thread;
+    if (img.getAttribute("src") !== want) img.src = want;
+  }
 }
 function viewFor(p, side) {
+  // The generator names the sides for a ref or a file arm (`labels`); a flag's
+  // names are composed here.
   const who = LAB
-    ? (side === afterSide(p) ? (p.is_ref ? "AFTER · today" : `AFTER · ${p.arm} ON`)
-                             : (p.is_ref ? "BEFORE · 08-27 engine" : "BEFORE · shipped"))
+    ? ((p.labels && p.labels[side]) ? p.labels[side]
+       : side === afterSide(p) ? (p.is_ref ? "AFTER · today" : `AFTER · ${p.arm} ON`)
+                               : (p.is_ref ? `BEFORE · ${refName(p)}` : "BEFORE · shipped"))
     : p.shipped_side === null ? "shipped (both)"
-    : p.is_ref ? (side === p.shipped_side ? "today" : "08-27 engine")
+    : p.is_ref ? (side === p.shipped_side ? "today" : refName(p))
     : (side === p.shipped_side ? "shipped" : p.arm);
   // The accent marks the side under judgement: the arm (reveal), the AFTER side (labelled).
   const isArm = LAB ? side === afterSide(p) : (p.shipped_side !== null && side !== p.shipped_side);
@@ -328,7 +351,10 @@ function viewFor(p, side) {
   const v = LAB ? verdictOf(p) : null;
   const picked = LAB ? (v === "after" ? side === afterSide(p) : v === "before" ? side !== afterSide(p) : false)
                      : p.pick === side;
-  const img = el("img", {src: p.img[side], alt: `${p.fixture} ${who}`, loading: "lazy"});
+  const holes = holesFor(p, side);
+  const img = el("img", {src: state.holes && holes ? holes : p.img[side], alt: `${p.fixture} ${who}`,
+                         loading: "lazy", "data-thread": p.img[side]});
+  if (holes) img.setAttribute("data-holes", holes);
   // The hotspot outlines ride the same layer as the render, so they zoom and pan with it.
   const layer = el("div", {class: "layer"}, img,
     ...(p.hotspots || []).map(b => el("div", {class: "hot", style: `left:${pct(b.x)};top:${pct(b.y)};width:${pct(b.w)};height:${pct(b.h)}`})));
@@ -403,8 +429,10 @@ function pairCard(p) {
   const ta = el("textarea", {id: `note-${p.pair}`, placeholder: LAB ? "note — what your eye saw, what to fix" : "note — what your eye saw", text: note.note || ""});
   ta.addEventListener("input", debounce(() => write({note: ta.value}), 600));
   const jobLabel = LAB ? "Did the flag do what it claims?" : "Did the arm do what it claims?";
-  // The 08-27 engine claims nothing, so a labelled ref pair takes a verdict and a note only.
-  const jobRow = (p.arm && !(LAB && p.is_ref))
+  // An engine snapshot or a pro's file claims nothing, so a labelled ref or
+  // file pair takes a verdict and a note only.
+  const noJob = LAB && (p.is_ref || p.arm_kind === "file");
+  const jobRow = (p.arm && !noJob)
     ? el("div", {class: "inputs" + (LAB ? " tight" : "")},
         el("label", {for: `note-${p.pair}`, text: jobLabel}),
         segControl(JOB, note.job_done, v => write({job_done: v, note: ta.value})),
@@ -460,9 +488,10 @@ function armHead(arm, a) {
   const write = body => persist("rulings", rid, {...body, ...(SITTING ? {sitting: SITTING} : {}), updated: new Date().toISOString()}, saved);
   const ta = el("textarea", {id: `ruling-${rid}`, placeholder: "why", text: r.note || ""});
   ta.addEventListener("input", debounce(() => write({ruling: (state.rulings[rid] || {}).ruling ?? null, note: ta.value}), 600));
-  // The ref arm is an engine snapshot, not a flag: a "win" for it means the
-  // OLD engine was preferred, and there is nothing to flip.
-  const isRef = arm === "ref_0827";
+  // A ref arm is an engine snapshot, not a flag: a "win" for it means the
+  // OLD engine was preferred, and there is nothing to flip. A file arm (the
+  // pro's own digitize) has nothing to flip either.
+  const isRef = a.is_ref === true || a.kind === "file";
   if (LAB) {
     // The tally is Kent's verdicts so far; refreshTallies fills it on every click.
     return el("section", {class: "armhead"},
@@ -557,6 +586,12 @@ function boot() {
   }
   for (const b of $("#group").children) b.addEventListener("click", () => {
     state.group = b.dataset.g; for (const x of $("#group").children) x.classList.toggle("on", x === b); render();
+  });
+  // The holes toggle shows only when some pair has a map to swap to.
+  const holesSeg = $("#holes");
+  holesSeg.hidden = !DATA.pairs.some(p => holesFor(p, "L") || holesFor(p, "R"));
+  for (const b of holesSeg.children) b.addEventListener("click", () => {
+    state.holes = b.dataset.h === "1"; for (const x of holesSeg.children) x.classList.toggle("on", x === b); applyHoles();
   });
   $("#save").addEventListener("click", saveNotes);
   $("#copy").addEventListener("click", async () => {

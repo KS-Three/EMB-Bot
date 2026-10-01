@@ -18,6 +18,7 @@
 // (each e2e spec here duplicates that boilerplate rather than importing it,
 // matching this directory's own convention).
 import { test, expect } from "@playwright/test";
+import { pickGarment } from "./helpers.js";
 import { spawn } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
@@ -113,9 +114,7 @@ async function overlayPixels(page) {
 
 async function digitize(page) {
   await page.goto("/");
-  await page.getByRole("button", { name: "Tote", exact: true }).click();
-  await page.getByRole("button", { name: "Next", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "What are you making?" })).toBeVisible();
+  await pickGarment(page, "Tote");
   await page.getByRole("button", { name: "Artwork" }).click();
   // No Digitize click: choosing the file starts the run (DigitizePanel's
   // sourcePng watcher).

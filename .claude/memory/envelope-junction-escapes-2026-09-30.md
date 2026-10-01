@@ -61,3 +61,72 @@ reached, 23 → 17 stretches, 9,333 → 9,321 st, reached-station jitter 28.4 �
 long reaches' plateaus/steps (1.8 mm max), the artwork's features. Slope
 limit / ramp simulated: −24 to −49% extension area — Kent's trade, not
 built. `docs/renders/envelope-teeth-2026-09-30/`.
+
+**Evening sitting (same day, Kent's pick after the teeth)**: the labelled
+page rebuilt as this morning's engine | today (`ref_0930am` = 1e5f8fe2,
+main before #577/#578/#579) on the nine logos, tag `evening-0930`, the
+dissolve pairs kept (still unjudged), and a needle-hole map beside every
+render (`stitchviz.render_penetrations`, `--render`'s `__holes.jpg`, the
+page's *thread | needle holes* toggle) because the thread render cannot
+show the comb. The corpus table under the ref arm's head:
+`docs/eye-pairs-2026-09-30/three-changes-corpus.json` (stitches, trims,
+envelope reaches with escapes, split on/off changes, before → after per
+logo). Verdicts: his, pending at the time of writing.
+
+**Evening verdicts (same night)**: ref pairs 4 same, 3 both bad, 1 before
+(tires), 0 after — the day's three changes did not reach the eye; becker
+note: "the lettering does not flow, satin stitching is not smooth and
+structured pattern" (third time). Dissolve: bridge after, gaulke/golden_tee
+before, tires same, screenshot both bad → stays OFF; gaulke's "satin trim"
+= four grey halo slivers (0.19–0.28 mm², thread 0108, rescued small
+shapes as running stitches). **tires' "before better" was the confound**:
+the rembg venv is gitignored, a ref worktree has none, tires is
+photo_scene → BEFORE skipped prep (2,500 st) vs 2,646 with the venv linked;
+both prepped sides show the same ragged matte edges. Fixed:
+`refarm.link_photo_prep` + `photo_prep_env` on the row + the badge reads it.
+Trap: the four "rembg-venv" local reds do NOT mean the venv is absent —
+it runs here. Levers left for the lettering: split_satin_above_mm=7.0 (the
+pro's Becker style) and the symmetric rails, as arms for a texture sitting.
+
+**Texture sitting (late, Kent's pick)**: arms `split_7mm`
+(split_satin_above_mm=7.0, the pro's Becker style) and `rails_symmetric`
+(envelope OFF) on the page under tag `texture-0930`, 8 pairs, tables in
+`docs/eye-pairs-2026-09-30/texture-corpus.json`. **Leg-length jitter is
+NOT the eye's "smooth"**: becker's letters 42% of consecutive legs differ
+by >0.15 mm under every arm; the pro's own Becker columns 35%, and net of
+taper the pro is rougher (54% vs 45%). Do not build a rail smoother on
+that number; get Kent's words for "flow" first. Verdicts pending.
+
+**Texture verdicts (2026-10-01 01:21Z, 7 of 8)**: split_7mm — becker,
+bridge, drone, tires *same* (screenshot: "please stop using this shitty
+logo", now `EXCLUDED_FIXTURES`); rails_symmetric — golden_tee *before*
+("very nice line following the outline" = the envelope), tires *same*,
+becker unjudged. No rulings, no words for "flow". So 5.0 stays, no
+sew-out pack; the envelope stays ON; becker's flow note still open —
+next lever must come from his words or a sew-out, not rail-level changes.
+
+**The pro beside ours (2026-10-01, Kent's pick)**: a `__file__` arm
+(`tools/eye_pairs/filearm.py`, `pro_file` in ARMS: becker's 101.9 mm hat
+PES) on the page under tag `pro-1001`, labels "OURS · today" | "THE PRO ·
+the pro's file", no ruling. Table by `tools/satin_columns` on both designs'
+stitch records: satin share 31.3 vs 42.6%, width p50 2.24 vs 2.66, legs
+over 5 mm 0 vs 26.5%, jitter 32.5 vs 28.5%. Renders: the pro sews BECKER
+(arch) as black FILL with grey satin keylines and MARINE as grey satin
+columns, one direction per stroke, no mid-column holes. Kent's texture
+head notes: "not sure what's being shown here" (both arms) — explain
+LEFT/RIGHT in plain words on a page. Verdict pending.
+
+**The pro verdict (2026-10-01 01:53Z)**: the pro's flows (`after`); Kent's
+note names the BACK STITCHING ("supports the top threading so it has
+structure and support"); in chat he also took fill-for-big-letters,
+whole-stroke crosses, one direction per stroke. Built
+`tools/underlay_cover.py` (covered-thread rule, both files). Findings on
+MARINE: the interior-hole scatter IS the comb split (stems 5.5-6.9 mm >
+5.0): 1,413 → 774 (7 mm) → 246 (off) vs the pro's 304; our stems already
+carry centre run + ladder zigzag (18% of thread vs his crosshatch 28.9%,
+support 20.7% both); 19.5% of our MARINE satin is stacked under later
+satin (next lever). The arch letters: the 146-px fixture has OUTLINED
+white-bodied letters; the pro's black fill is his source's. Trap: the
+oversize-skip flag was a no-op (lettering ceiling = inf) — reverted.
+Arm `split_off` on the `back-1001` page; rails_symmetric/becker corrected
+to "same".

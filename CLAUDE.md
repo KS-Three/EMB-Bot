@@ -271,7 +271,11 @@ cd digitizer && .venv/Scripts/python -m digitizer_service   # service on 127.0.0
    before calling anything stuck: that job's test step was live the whole
    time. **And 66.2 on PR #567 the same night, green** — a tree that took
    four merges of `main` inside one PR; the record moves a minute at a
-   time now, so seventy is the budget until a job passes it. (A fifth job,
+   time now, so seventy is the budget until a job passes it.
+   **One did — 75.9 minutes (1h 15m 56s) on PR #575, 2026-09-30, green**,
+   on a diff that touched only `.claude/skills/`, so the job's length is the
+   suite's, not the change's. **Budget eighty**, read seventy-five as normal,
+   and still spend the `curl` before calling anything stuck. (A fifth job,
    `art-fidelity-baseline`, is push-to-`main`-only and `continue-on-error` — it
    never appears on a PR and gates nothing.)
 

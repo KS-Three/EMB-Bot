@@ -20,6 +20,7 @@
 // manual-trace-import.spec.js), so every pixel box that a gesture aims at is
 // read AFTER select + Escape and only once three consecutive reads agree.
 import { test, expect } from "@playwright/test";
+import { pickGarment } from "./helpers.js";
 
 const STATS = "span.stats";
 const MIN_RUN = 12;
@@ -45,9 +46,7 @@ const FABRIC_BOX_SRC = `(function (d, w, h) {
 
 async function toContent(page) {
   await page.goto("/");
-  await page.getByRole("button", { name: "Tote", exact: true }).click();
-  await page.getByRole("button", { name: "Next", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "What are you making?" })).toBeVisible();
+  await pickGarment(page, "Tote");
 }
 
 // Draw a rectangle on ManualPanel's canvas: four clicks at fractions of the

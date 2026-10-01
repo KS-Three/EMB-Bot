@@ -4,18 +4,28 @@ Served by WHITELIST. The page may fetch the public pair list and exactly the
 images that list names; `arms.json`, `features.json` and `designs/` are in the
 same directory and must never be reachable, because reading them un-blinds
 the sitting. A pick is appended and fsynced BEFORE the reply is written.
+
+The pair list is read once, at start. So the server records WHICH sitting it
+read (the sealed map's hash, from `sitting.json`), refuses to start on one
+that is torn, reports the hash on disk with every `/pairs` so the page can
+see a `--pair` rebuild the sitting under it, and answers 409 to a pick once
+that has happened.
 """
 from __future__ import annotations
 
 import json
+import math
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import unquote, urlparse
 
-from .pairs import CHOICES, append_pick, load_picks
+from .pairs import CHOICES, append_pick, load_picks, sealed_hash
 
 PORT = 8731
+# A pick is under a hundred bytes. The cap keeps a wrong Content-Length from
+# parking a handler thread on a read that nothing will satisfy.
+MAX_BODY = 4096
 
 PAGE = """<!doctype html>
 <meta charset="utf-8"><title>Eye pairs</title>
@@ -47,16 +57,27 @@ button{font:inherit;padding:6px 14px}
 // while a POST is in flight, so no keypress can act until the pair on
 // screen is the pair the click is for. `done` is in CLICK order (the
 // server reports picks that way), so Undo after a reload takes back the
-// pair judged last, not the highest id.
-let pairs=[],queue=[],done=[],t0=0,zoom=false,busy=false,loading=0;
+// pair judged last, not the highest id. `stale` is set for good once the
+// sitting on disk is no longer the one this page loaded: the ids on
+// screen may now mean different pictures, so nothing more is recorded.
+let pairs=[],queue=[],done=[],t0=0,zoom=false,busy=false,loading=0,stale=false,sitting=null;
 const $=id=>document.getElementById(id);
 async function load(){
   const r=await (await fetch('/pairs')).json();
+  sitting=r.sitting;
   pairs=r.pairs;const picked=new Set(r.picked);
   queue=pairs.filter(p=>!picked.has(p.pair));
   done=r.picked.slice();
   show();
 }
+function rebuilt(){
+  stale=true;
+  $('msg').textContent='The sitting was rebuilt while this page was open - nothing more is recorded from this tab. Stop --serve, start it again, then reload.';
+}
+setInterval(async()=>{
+  if(stale||sitting===null)return;
+  try{const r=await (await fetch('/pairs')).json();if(r.sitting!==sitting)rebuilt();}catch(err){}
+},5000);
 function loaded(){
   loading=Math.max(0,loading-1);
   if(loading===0){busy=false;t0=performance.now();}
@@ -72,17 +93,18 @@ function show(){
 for(const id of ['il','ir']){$(id).addEventListener('load',loaded);$(id).addEventListener('error',loaded);}
 async function send(body){
   const r=await fetch('/pick',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  if(r.status===409)rebuilt();
   if(!r.ok)throw new Error('HTTP '+r.status);
   return r;
 }
 async function pick(choice){
-  if(busy||!queue.length)return;
+  if(busy||stale||!queue.length)return;
   busy=true;
   const p=queue[0];
   try{
     await send({pair:p.pair,choice:choice,ms:Math.round(performance.now()-t0)});
   }catch(err){
-    $('msg').textContent='Not saved ('+err.message+') - the same pair is still showing; try again.';
+    if(!stale)$('msg').textContent='Not saved ('+err.message+') - the same pair is still showing; try again.';
     busy=false;return;
   }
   queue.shift();done.push(p.pair);
@@ -90,13 +112,13 @@ async function pick(choice){
   show();
 }
 async function undo(){
-  if(busy||!done.length)return;
+  if(busy||stale||!done.length)return;
   busy=true;
   const id=done[done.length-1];
   try{
     await send({pair:id,undo:true,ms:0});
   }catch(err){
-    $('msg').textContent='Undo not saved ('+err.message+'); try again.';
+    if(!stale)$('msg').textContent='Undo not saved ('+err.message+'); try again.';
     busy=false;return;
   }
   done.pop();
@@ -136,11 +158,47 @@ load();
 """
 
 
+def sitting_on_disk(out: Path) -> str | None:
+    """The sealed-map hash `--pair` last recorded, or None if unreadable
+    (a `--pair` replacing the file this instant reads as 'changed', which
+    is the safe answer)."""
+    try:
+        return json.loads((out / "sitting.json").read_text(encoding="utf-8")).get("sealed_sha256")
+    except (OSError, ValueError):
+        return None
+
+
+def load_sitting(out: Path, pairs: list[dict]) -> str:
+    """-> the hash of the sitting about to be served, or SystemExit.
+
+    The pair list is read ONCE, so the server must know WHICH sitting it
+    read. The public list cannot say — it is identical for any two sittings
+    of one size, by design — so the identity is the sealed map's hash. The
+    sealed map is hashed here and never served. A mismatch with
+    `sitting.json` is a `--pair` that did not finish (review 2026-09-17).
+    """
+    loaded = sitting_on_disk(out)
+    if loaded is None:
+        raise SystemExit(f"REFUSED: no readable sitting.json in {out}. Run --pair first.")
+    sealed = json.loads((out / "arms.json").read_text(encoding="utf-8"))
+    n_pairs = json.loads((out / "sitting.json").read_text(encoding="utf-8")).get("n_pairs")
+    if sealed_hash(sealed) != loaded or n_pairs != len(pairs) or set(sealed) != {p["pair"] for p in pairs}:
+        raise SystemExit("REFUSED: pairs.json and arms.json are not the sitting that "
+                         "sitting.json records - a --pair that did not finish? Run --pair again.")
+    missing = sorted(p[k] for p in pairs for k in ("left", "right", "art")
+                     if not (out / "img" / p[k]).exists())
+    if missing:
+        raise SystemExit(f"REFUSED: {len(missing)} image(s) listed in pairs.json are missing "
+                         f"from img/ (first: {missing[0]}). Run --pair again.")
+    return loaded
+
+
 def make_server(out_dir, port: int = PORT, host: str = "127.0.0.1") -> ThreadingHTTPServer:
     out = Path(out_dir)
     pairs = json.loads((out / "pairs.json").read_text(encoding="utf-8"))
     ids = {p["pair"] for p in pairs}
     allowed = {p[k] for p in pairs for k in ("left", "right", "art")}
+    loaded = load_sitting(out, pairs)
     log = out / "picks.jsonl"
     lock = threading.Lock()
 
@@ -166,7 +224,11 @@ def make_server(out_dir, port: int = PORT, host: str = "127.0.0.1") -> Threading
                 # which is exactly when it was judged last.
                 with lock:
                     picked = list(load_picks(log))
-                body = json.dumps({"pairs": pairs, "picked": picked}).encode("utf-8")
+                # `sitting` is re-read per request: the page polls this to
+                # learn that a `--pair` rebuilt the sitting under it. A hash
+                # names nothing, so it is safe to serve.
+                body = json.dumps({"pairs": pairs, "picked": picked,
+                                   "sitting": sitting_on_disk(out)}).encode("utf-8")
                 self._send(200, body, "application/json")
             elif path.startswith("/img/") and path[len("/img/"):] in allowed:
                 name = path[len("/img/"):]
@@ -181,19 +243,39 @@ def make_server(out_dir, port: int = PORT, host: str = "127.0.0.1") -> Threading
                 return
             try:
                 length = int(self.headers.get("Content-Length") or 0)
+                if not 0 <= length <= MAX_BODY:
+                    raise ValueError("unreasonable Content-Length")
                 body = json.loads(self.rfile.read(length) or b"{}")
             except (ValueError, json.JSONDecodeError):
                 self._send(400, b"bad json", "text/plain")
                 return
-            pair, undo = body.get("pair"), bool(body.get("undo"))
-            if pair not in ids or (not undo and body.get("choice") not in CHOICES):
+            # Everything below runs in the handler thread, where an uncaught
+            # exception is a dropped connection and a banner that cannot say
+            # why (review 2026-09-17). So the SHAPE is checked before use:
+            # valid JSON need not be an object, and `ms` need not be a number.
+            if not isinstance(body, dict):
+                self._send(400, b"bad pick: not an object", "text/plain")
+                return
+            pair, undo, ms = body.get("pair"), bool(body.get("undo")), body.get("ms")
+            if ms is None:
+                ms = 0
+            if (not isinstance(pair, str) or pair not in ids
+                    or (not undo and body.get("choice") not in CHOICES)
+                    or isinstance(ms, bool) or not isinstance(ms, (int, float))
+                    or not math.isfinite(ms) or ms < 0):
                 self._send(400, b"bad pick", "text/plain")
+                return
+            if sitting_on_disk(out) != loaded:
+                # The click was made looking at the OLD sitting's pictures;
+                # its id now means something else. The page polls for this,
+                # but a click can land between polls.
+                self._send(409, b"sitting rebuilt", "text/plain")
                 return
             with lock:
                 if undo:
                     append_pick(log, pair, None, 0, undo_of=pair)
                 else:
-                    append_pick(log, pair, body["choice"], int(body.get("ms") or 0))
+                    append_pick(log, pair, body["choice"], int(ms))
             self._send(200, b'{"ok": true}', "application/json")
 
     return ThreadingHTTPServer((host, port), Handler)

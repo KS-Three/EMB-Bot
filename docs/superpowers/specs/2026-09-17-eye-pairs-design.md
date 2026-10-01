@@ -4,6 +4,12 @@
 session that produced `docs/pipeline-flow-and-foundation-review-2026-09-17.md`
 (concern F4). No code exists yet. Nothing here changes a stitch.
 
+**Since then:** built as `digitizer/tools/eye_pairs/` in PR #506 (2026-09-17).
+A follow-up on 2026-09-18 closed the fourteen review items #506's fix scope
+skipped; every paragraph it changed or added below is dated **2026-09-18**, so
+the design Kent approved can still be told from what was learned building it.
+Still nothing here changes a stitch, and no default moved.
+
 ## 0. What already governs this — read before changing the design
 
 - **ROADMAP phase 1's exit condition** is the thing being built toward: *"on
@@ -87,6 +93,11 @@ exactly one change:
 | `phantom_dissolve` | `dissolve_phantom_blends=True` |
 | `directional_comp` | `directional_comp=True` |
 | `ref_0827` | the engine at `25da2fe` (main on 2026-08-27), base config |
+| `ref_0930am` | the engine at `1e5f8fe2` (main on the morning of 2026-09-30, before #577, #578 and #579), base config — added 2026-09-30 for the evening's labelled sitting on the day's three lettering changes |
+| `split_7mm` | `split_satin_above_mm=7.0` — added 2026-09-30 for the lettering texture sitting: the pro's own Becker style, raw crosses to about 7 mm and no comb |
+| `rails_symmetric` | `satin_rails_follow_edge=False` — added 2026-09-30 for the same sitting: the symmetric rails, the envelope OFF on the letters |
+| `pro_file` | the pro's own Becker file (`testdata/reference/becker_hat_polo_large_beckers_logo_hat.pes`, 101.9 mm) read as a Design — a `__file__` arm, one file per fixture, added 2026-10-01; fixtures it does not name get no row |
+| `split_off` | `split_satin=False` — added 2026-10-01 for the back-stitching sitting, from Kent's verdict on the pro pair: no comb, every cross rail to rail, the pro's style on Becker's 5.5-6.9 mm MARINE stems |
 
 One digitize per (fixture, arm). An arm whose Design `stitches` hash equals
 the base's is **skipped and logged** (`identical_to_base`) — there is nothing
@@ -122,20 +133,51 @@ arm never takes the run down (`artfid_eye_rank`'s rule).
 | `--pair` | build the sitting from every rendered arm (**split out of `--render` 2026-09-17, review findings 2–3**: a scoped render used to reshuffle the whole sitting). Writes `sitting.json` with a hash of the SEALED map; once picks exist it refuses any other map, and refuses when `sitting.json` is missing. Prints pair COUNT only. |
 | `--serve` | the picker, §3.5 |
 | `--reveal` | refuses unless every pair id has a pick and no pick names an unknown pair; then runs §4 and writes `results.json` + the results tables to stdout |
-| `--verify` | drift control: on one fixture, the features this tool computes from a held plan equal what each instrument's own `analyse()` returns after digitizing for itself. Unlike `artfid_eye_rank --verify` it contaminates nothing — Kent never ranks by score here, and the features stay sealed from the picker either way |
+| `--verify` | drift control: on one fixture, the features this tool computes from a held plan equal what each instrument's own `analyse()` returns after digitizing for itself. Unlike `artfid_eye_rank --verify` it contaminates nothing — Kent never ranks by score here, and the features stay sealed from the picker either way. The fixture is `tires`, selected **by name** (`VERIFY_FIXTURE`): `corpus_cases()` is a dict order minus runtime byte-duplicates, so an index into it was a coincidence (2026-09-18) |
+
+**Follow-up, 2026-09-18 (the review items PR #506's fix scope skipped).**
+None of these bumps `FEATURES_SCHEMA`: a bump re-digitizes every arm, and a
+multi-hour render existed by then. New row fields are optional, with the
+fallback stated.
+
+- `--render` records two more things on each row. `design_hash` (what
+  `--pair` needs — it used to re-read and re-hash every design, ~0.8 MB of
+  JSON each, on every call; a row without one is hashed from its design as
+  before). And on a ref-arm row, `env`: the measured environment of §3.6.
+  **A ref row without `env` is a cache miss**, so rows rendered before the
+  record existed are re-run once — the ref rows alone, not the flag arms.
+- `--render` **replaces** a render (`x.tmp.jpg` then `os.replace`), never
+  rewrites it in place. That became necessary with the next item.
+- `--pair` keeps `img/` instead of rmtree'ing it: each image is a **hardlink**
+  to its render where the filesystem allows, a `copy2` where it does not, and
+  is left alone when it already shows the right bytes; files no pair names
+  are removed. A hardlink to a file `cv2.imwrite` rewrites in place would
+  have changed — and mid-write truncated — a picture a live sitting was
+  serving; the replace above leaves the paired link on the old bytes, which
+  is the snapshot a copy used to give.
+- `--serve` **refuses to start** unless `arms.json` hashes to the
+  `sealed_sha256` that `sitting.json` records, `n_pairs` and the id set match
+  `pairs.json`, and every listed image exists — the states a `--pair` that
+  died midway leaves. See §3.5 for what it does once running.
 
 Files, all under `digitizer/eye_pairs_out/` (gitignored, new `.gitignore` line):
 
 ```
 pairs.json      PUBLIC  [{"pair","left","right","art"}]
 sitting.json    PUBLIC  {"sealed_sha256","n_pairs","built_ts"}   (a hash names nothing)
-img/            PUBLIC  P###_L.jpg  P###_R.jpg  P###_art.png
+img/            PUBLIC  P###_L.jpg  P###_R.jpg  P###_art.png     (hardlinks into renders/ where possible)
 arms.json       SEALED  pair -> {fixture, left_arm, right_arm, kind, repeat_of}
-features.json   SEALED  fixture -> arm -> {metric: value|null, "refusals": {...}}
+features.json   SEALED  fixture -> arm -> {metric: value|null, "refusals": {...},
+                        "design_hash", and on a ref arm "env": {"ref",
+                        "rembg_venv_main", "rembg_venv_ref", "requirements_differ"}}
 designs/        SEALED  fixture__arm.json   (the Design dict; what was rendered)
 picks.jsonl     append-only, one line per click:
                 {"pair","choice":"L"|"R"|"tie","ms","ts","undo_of":null|"P###"}
                 The LAST line for a pair wins; nothing is ever rewritten.
+                `ts` (and `built_ts`) is ISO 8601 WITH the UTC offset,
+                e.g. 2026-09-18T09:31:28-05:00 — naive local time until
+                2026-09-18, which cannot be ordered against a commit or
+                across a DST change. `load_picks` never parsed it.
 ```
 
 After the sitting, `picks.jsonl`, `pairs.json` and `arms.json` are copied to
@@ -162,6 +204,22 @@ owns 8721). No framework, no new dependency.
   designs is on screen.
 - Nothing else is on the page: no names, no counts, no flags, no timers shown.
 - Closing the tab loses nothing; reopening resumes at the first unpicked pair.
+- **A sitting rebuilt under a running picker (2026-09-18).** The server reads
+  the pair list once. A `--pair` in another terminal — allowed while no pick
+  exists — reshuffles what every id shows, and the public list cannot reveal
+  it: it is identical for any two sittings of one size, by design. So the
+  server remembers the `sealed_sha256` it started on; `GET /pairs` also
+  returns the hash **on disk now** (`"sitting"`, re-read per request — a hash
+  names nothing); the page polls it every 5 s and on a change shows a banner
+  and stops taking picks and undos for good; and `POST /pick` answers **409**,
+  writing nothing, once the hash on disk is not the one loaded — a click can
+  land between polls, and that click was made looking at the old pictures.
+  Rebuilding the *same* sitting changes no hash and disturbs nothing.
+- **A malformed pick is a 400 (2026-09-18).** The body must be a JSON *object*,
+  `pair` a known string id, `ms` a finite non-negative number (not a bool;
+  missing is 0), and at most 4096 bytes. `[1, 2]`, `null` and `"ms": "fast"`
+  used to raise inside the handler thread, which the page saw as a dropped
+  connection with nothing to say why.
 
 ### 3.6 The 08-27 arm
 
@@ -185,6 +243,50 @@ The old engine cannot be imported beside today's, so it runs out of process:
 Because only a Design dict crosses the process boundary, the ref arm gets the
 Design-only metrics of §3.7 and is excluded, by name, from the rest.
 
+**Corrected 2026-09-18 — two sentences above were assumptions, and are now
+measured.**
+
+*"`requirements.txt` has not changed between the two refs"* (step 2) was true
+on the day it was written and checked by nothing afterwards, while the arm
+runs the old commit's SOURCE under today's venv. And the ref arm's
+`confounded` flag was `design_class in PHOTO_CLASSES` — an inference, on the
+theory that the ref worktree has no rembg venv. True of the worktree (the
+venv is untracked, so a fresh `git worktree add` never has one); but a render
+run from a checkout that ALSO has none — every `.claude/worktrees/` lane —
+skips photo prep on today's arm exactly as the old engine does, and the proxy
+then flagged a confound that was not there.
+
+So while the ref worktree exists, `refarm.ref_environment` measures three
+facts and `--render` stores them on every row that worktree produces (`env`,
+§3.4):
+
+| fact | how |
+|---|---|
+| `rembg_venv_main` | the rembg interpreter exists under the running checkout's `digitizer/rembg_isolated/venv/` (`bin/python` or `Scripts/python.exe` — the two paths `stage1_photo_prep` looks at) |
+| `rembg_venv_ref` | the same, under the ref worktree |
+| `requirements_differ` | `git diff --quiet <ref> HEAD -- digitizer/requirements.txt` exits 1. Exit 0 is "same"; **anything else raises** — 128 is "no such ref", and reading it as an answer would turn a typo into a measured fact |
+
+`analysis.ref_confound(env, photo_class)` decides: changed pins confound
+**every** fixture of that arm; a venv **asymmetry** confounds photo-class
+fixtures only (a flat logo never reaches photo prep); a row with no `env` is
+`None` — unknown, not clean. `--reveal` prints each fact that fired with the
+fixtures it fired on, and today's tally over the clean pairs beside the
+pooled one. `--render` warns on stderr when the pins differ; it does not
+refuse, because a marked arm is still evidence.
+
+Step 4, as built: the worktree is **discarded** — `worktree remove --force`,
+then the directory, then `git worktree prune` — before building, as the
+closer, and on the failure path between `add` and returning a closer.
+Measured on git 2.55: `remove --force` clears a registration whose directory
+is wholly gone, but fails validation on a half-made one (an `add` killed
+midway: the directory, no `.git` file), and with the registration left
+behind git refuses every later `add` at that path as "missing but already
+registered". `prune` only drops registrations whose directory is missing, so
+it cannot touch a live lane. Every child process is captured as UTF-8 with
+`errors="replace"`: `text=True` alone decodes in a reader thread with the
+locale codec, and one unmappable byte left `proc.stderr` as `None` and the
+error as "ref engine failed: " with nothing after it.
+
 ### 3.7 Features — one digitize, every instrument
 
 The harness holds `gen`, `result`, `plan` and `design` for each arm and feeds
@@ -192,7 +294,7 @@ the instruments' INNER functions; nothing re-digitizes.
 
 | metric | better | source | ref arm |
 |---|---|---|---|
-| `stitches`, `cones`, `stops` | none — descriptive only | `plan.stats`, Design records | yes |
+| `stitches`, `cones`, `stops` | none — descriptive only | the Design dict: `stitches` is its own `stitchCount` (the adapter's expression, identical at HEAD and `25da2fe`; counted from the records only for a Design that states none — 2026-09-18), `stops` and `cones` from the records | yes |
 | `trims_per_1000` | lower | preflight metrics / Design records | yes |
 | `preflight_raw_score` | higher | `run_preflight(...)["metrics"]["raw_score"]` | no |
 | `preflight_blocks` | lower | count of `severity == "block"` | no |
@@ -305,12 +407,52 @@ scored leave-one-FIXTURE-out against the best single metric. Labelled
 exploratory in the output; its weights are written to `results.json` and
 shipped nowhere.
 
+**Corrected 2026-09-18 (gate 4 again — the review item PR #506 skipped).**
+The two accuracies were returned and printed raw: *"LOFO accuracy 0.93 vs
+best single artfid 0.91"*. The arms are default-OFF flags Kent mostly turns
+down, so always guessing shipped is nowhere near 0.5, and a model that
+learned nothing but his lean scores the lean — 54 of 60 picks to shipped
+with every delta zero gives raw LOFO **0.90** against a floor of **0.90**.
+`exploratory_fit` now returns `majority_baseline = max(mean(y), 1 −
+mean(y))`; `lofo_hits`, `lofo_n` and the Wilson interval on them;
+`lofo_above_baseline = (acc − baseline)/(1 − baseline)`; and
+`lofo_beats_baseline`, true only when Wilson's **lower bound** clears the
+floor — the same test the primary applies to `pe`. `best_single` carries the
+same interval and corrected figure (a metric with no say on a pair earns half
+credit, so its `k` is fractional). A one-sided sitting (baseline 1.0) reads
+`None`, not a division by zero. No accuracy is printed without all three
+beside it, and the EXPLORATORY label stays.
+
+**An accuracy and its floor are taken over the SAME rows.** A LOFO fold is
+skipped when holding its fixture out leaves only one of Kent's answers to
+learn from, so LOFO can score fewer rows than `n`. If every arm-pick sits in
+that one fixture, the 54 rows it does score are all "shipped": 1.00 on them is
+their floor, and held to the all-row floor (59/60) it read **"+1.00 above
+baseline" for a model that learned nothing** — found re-reading this change
+before it shipped. So LOFO is held to `lofo_baseline`, the majority share
+among the rows it scored; `best_single`, which scores every row, stays on
+`majority_baseline`. With no fold skipped the two are one number, and when
+one is, the report says so: *"scored 54 of 60 … baseline on those rows
+1.00"*.
+
+**One fetch, 2026-09-18.** A pair's two values are read in exactly one place
+(`analysis._both`), whose `ties` argument has no default. The primary, the
+exit clause, the per-fixture count and the descriptive lean pass
+`ties=False` — equal values are "the metric prefers neither". The
+exploratory fit passes `ties=True`, deliberately: a zero delta is "no say" on
+ONE of four features of a row that still carries a pick. The rule was
+written out three times before, and the difference read as an accident.
+
 **BY-PRODUCTS.**
 - *Flag table:* per arm, wins / losses / ties of the arm against shipped,
   per fixture and pooled, with the arm's skipped-as-identical count. This is
   evidence for Kent's flag rulings; **the tool flips nothing.**
 - *08-27 table:* today vs `ref_0827`, wins / losses / ties per fixture — the
-  only datum the repo will have on whether his "60%" has moved.
+  only datum the repo will have on whether his "60%" has moved. Each row's
+  `confounded` is `True`, `False` or `None` (not recorded), with
+  `confounded_why` naming every measured fact that fired (§3.6, corrected
+  2026-09-18); the printed block gives today's tally over the clean pairs
+  beside the pooled one.
 
 **What a result licenses.** A metric that *agrees* is one whose direction can
 be trusted on a same-design A/B — nothing more. It is not a quality
@@ -344,6 +486,31 @@ No real-logo digitize in CI (the `digitizer` job already runs ~50 minutes).
   the tools' existing fixtures (their current tests stay green unedited).
 - **End to end:** one tiny synthetic image, base + one flag arm, `--render`
   then a scripted pick then `--reveal`.
+
+Added 2026-09-18:
+
+- **The sitting a seed builds is pinned** — three sha256 digests of
+  `build_pairs`' whole output, captured before its repeat-linking was
+  restructured and green unchanged after. Not a platform golden: pure
+  `random.Random` over strings, checked equal on Python 3.12.10 and 3.14.6.
+  The sealed map is a sitting's identity, so a change that reshuffles it
+  makes `--pair` refuse a sitting that already has picks. Re-pin on purpose
+  only, never while picks are waiting on `--reveal`.
+- **git is real, the repository is not ours.** Worktree add / remove / prune
+  and the requirements diff run against a throwaway repo under `tmp_path`,
+  never the checkout the suite runs from — which may be holding a live
+  render's ref worktree. `_default_ref_runner(repo=, scratch=)` exists for
+  this.
+- **The shared sitting is read-only, and checked.** The CLI module renders
+  one sitting for thirty tests; its fixture's teardown fingerprints it and
+  fails if a test added, removed or rewrote a file. A test that writes copies
+  it under `tmp_path` first.
+- **A missing binary is simulated whole.** "No tesseract" is
+  `tesseract_available()` False AND `measure` raising; patching `measure`
+  alone passes on a box without the binary and fails on CI, where preflight's
+  own legibility check calls the patched function (PR #506's first red).
+- The tiny 240×160 logo three modules hand-built is `conftest.draw_tiny_logo`
+  and the session fixture `tiny_logo`.
 
 ## 6. Runtime and failure
 

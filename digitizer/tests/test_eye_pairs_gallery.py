@@ -19,7 +19,8 @@ from tools import eye_pairs_gallery as g  # noqa: E402
 # Restated from the yardstick spec, sections 3.2 and 3.7 / analysis.METRICS.
 SPEC_ARMS = ["per_stroke", "patch_junctions", "polygon_axis", "area_weighted",
              "design_angle", "rails_follow_edge", "wide_columns",
-             "lettering_column", "phantom_dissolve", "directional_comp", "ref_0827"]
+             "lettering_column", "phantom_dissolve", "directional_comp", "ref_0827",
+             "ref_0930am", "split_7mm", "rails_symmetric", "pro_file", "split_off"]
 # `rail_comp` shipped ON 2026-09-28 and left the table (docs/kent-review-2026-09-28.md);
 # `rail_envelope` shipped ON 2026-09-30 and left it (docs/eye-pairs-2026-09-30/).
 SPEC_METRICS = {
@@ -129,6 +130,9 @@ def test_tables_match_the_yardstick_package_when_it_is_here():
     except ImportError:
         pytest.skip("yardstick package not on this checkout")
     assert set(yp.ARMS) == set(g.ARM_INTENT)
+    assert {a for a, kw in yp.ARMS.items() if "__ref__" in kw} == set(g.REF_ARMS)
+    assert {a for a, kw in yp.ARMS.items() if "__file__" in kw} == set(g.FILE_ARMS)
+    assert yp.EXCLUDED_FIXTURES == g.EXCLUDED_FIXTURES == frozenset({"screenshot"})
     assert {m: d for m, d in ya.METRICS.items() if d != "none"} == g.METRIC_BETTER
 
 
@@ -302,8 +306,16 @@ def test_ref_arm_is_marked_and_a_photo_fixture_is_confounded():
     r = {x["pair"]: x for x in g.pair_records(REF_PUBLIC, REF_SEALED, picks, REF_FEATS, {})}
     assert r["P010"]["is_ref"] is True and r["P010"]["confounded"] is False
     assert r["P011"]["is_ref"] is True and r["P011"]["confounded"] is True
+    assert r["P010"]["ref_label"] == g.REF_ARMS["ref_0827"]
+    # The ref engine ran WITH the photo-prep venv linked (2026-09-30): the
+    # photo fixture's pair compares engines after all, and is not marked.
+    prepped = {"fx_a": REF_FEATS["fx_a"],
+               "fx_p": {**REF_FEATS["fx_p"], "ref_0827": _row(stitches=900, photo_prep_env=True)}}
+    r2 = {x["pair"]: x for x in g.pair_records(REF_PUBLIC, REF_SEALED, picks, prepped, {})}
+    assert r2["P011"]["confounded"] is False
     live = _records()
     assert live["P001"]["is_ref"] is False and live["P001"]["confounded"] is False
+    assert live["P001"]["ref_label"] is None
     # P010: Kent picked R = the old engine; P011: picked R = today's.
     t = g.arm_tally(list(r.values()), [])
     assert (t["ref_0827"]["wins"], t["ref_0827"]["losses"]) == (1, 1)
@@ -496,7 +508,8 @@ def test_labelled_skips_identical_arms_and_counts_failures_but_never_scores(tmp_
     assert list(arms) == ["per_stroke", "design_angle", "wide_columns", "ref_0827"]
     assert arms["design_angle"] == {"change": g.ARM_INTENT["design_angle"][0],
                                     "intent": g.ARM_INTENT["design_angle"][1],
-                                    "is_ref": False, "n_pairs": 0, "skipped": 1, "failed": 0}
+                                    "is_ref": False, "kind": "flag",
+                                    "n_pairs": 0, "skipped": 1, "failed": 0}
     assert (arms["wide_columns"]["failed"], arms["wide_columns"]["n_pairs"]) == (1, 0)
     assert (arms["per_stroke"]["n_pairs"], arms["ref_0827"]["is_ref"]) == (1, True)
     # A null pick is not a loss: the page counts verdicts as Kent gives them.
@@ -753,3 +766,119 @@ def test_cli_takes_the_sitting_tag_on_the_labelled_page_only(tmp_path, capsys):
     assert "per_stroke__fx_a__fold-fix" in html
     with pytest.raises(SystemExit, match="REFUSED.*labelled"):
         g.main(["--src", str(src), "--out", str(tmp_path / "g2"), "--sitting", "fold-fix"])
+
+
+# ---- a second ref arm, and the needle-hole map ------------------------------
+# The evening sitting of 2026-09-30, on the day's three lettering changes:
+# BEFORE is the engine of that morning (`ref_0930am`), AFTER is today, and a
+# penetration map rides beside every render because the thread render cannot
+# show a split column's mid-column holes. The page used to test the one
+# literal `ref_0827` for its labels and its ruling box.
+
+def _with_second_ref(tmp_path: Path) -> Path:
+    src = make_labelled_set(tmp_path)
+    feats = json.loads((src / "features.json").read_text(encoding="utf-8"))
+    feats["fx_a"]["ref_0930am"] = _row(stitches=950, design_only=True)
+    (src / "features.json").write_text(json.dumps(feats), encoding="utf-8")
+    (src / "designs" / "fx_a__ref_0930am.json").write_text(
+        json.dumps({"stitches": [[0, 0], [3, 3]]}), encoding="utf-8")
+    _img(src / "renders" / "fx_a__ref_0930am.jpg", (150, 150, 150))
+    return src
+
+
+def test_a_labelled_ref_pair_with_photo_prep_linked_is_not_confounded(tmp_path):
+    src = make_labelled_set(tmp_path)
+    feats = json.loads((src / "features.json").read_text(encoding="utf-8"))
+    assert g.build(src, tmp_path / "g0", labelled=True)["pairs"][1]["confounded"] is True
+    feats["fx_p"]["ref_0827"]["photo_prep_env"] = True
+    (src / "features.json").write_text(json.dumps(feats), encoding="utf-8")
+    assert g.build(src, tmp_path / "g1", labelled=True)["pairs"][1]["confounded"] is False
+
+
+def test_a_second_ref_arm_is_before_on_the_left_under_its_own_label(tmp_path):
+    out = tmp_path / "g"
+    data = g.build(_with_second_ref(tmp_path), out, labelled=True)
+    by = {p["arm"]: p for p in data["pairs"]}
+    new, old, flag = by["ref_0930am"], by["ref_0827"], by["per_stroke"]
+    assert (new["is_ref"], new["shipped_side"], new["arm_side"], new["confounded"]) == (True, "R", "L", False)
+    assert (new["counts"]["L"]["stitches"], new["counts"]["R"]["stitches"]) == (950, 1000)
+    assert new["ref_label"] == g.REF_ARMS["ref_0930am"]
+    assert old["ref_label"] == g.REF_ARMS["ref_0827"] != new["ref_label"]
+    assert flag["ref_label"] is None and flag["is_ref"] is False
+    assert data["arms"]["ref_0930am"]["is_ref"] is True and data["arms"]["per_stroke"]["is_ref"] is False
+    assert [p["pair"] for p in data["pairs"]] == ["per_stroke__fx_a", "ref_0827__fx_p", "ref_0930am__fx_a"]
+    # The page reads the flag and the label off the record, never the one id.
+    template = g.TEMPLATE.read_text(encoding="utf-8")
+    assert "ref_0827" not in template and "08-27 engine" not in template
+    assert "refName(p)" in template and "a.is_ref === true" in template
+    rev = g.build(make_set(tmp_path / "r"), tmp_path / "rg")
+    assert all(a["is_ref"] is False for a in rev["arms"].values())
+
+
+def test_the_hole_map_rides_beside_a_render_when_the_yardstick_drew_one(tmp_path):
+    src = make_labelled_set(tmp_path)
+    _img(src / "renders" / "fx_a__base__holes.jpg", (99, 99, 99))
+    _img(src / "renders" / "fx_a__per_stroke__holes.jpg", (111, 111, 111))
+    out = tmp_path / "g"
+    data = g.build(src, out, labelled=True)
+    flag, ref = data["pairs"]
+    assert flag["img"]["Lh"] != flag["img"]["Rh"] and flag["img"]["Lh"] != flag["img"]["L"]
+    assert all((out / flag["img"][k]).exists() for k in ("Lh", "Rh"))
+    assert "Lh" not in ref["img"] and "Rh" not in ref["img"]     # fx_p has no map: its pair keeps the render
+    assert data["_images"] == 8                                  # 4 renders + 2 arts + 2 maps, de-duplicated
+    html = (out / "index.html").read_text(encoding="utf-8")
+    assert "needle holes" in html and "data-holes" in html and "applyHoles(" in html
+    assert "%" not in _strip_style(html)
+    # Without a map anywhere the page is what it was: no key, and the toggle hides itself.
+    plain = g.build(make_labelled_set(tmp_path / "p"), tmp_path / "gp", labelled=True)
+    assert all("Lh" not in p["img"] and "Rh" not in p["img"] for p in plain["pairs"])
+    assert "holesSeg.hidden = !DATA.pairs.some(" in html
+    # The reveal path carries them from the unique renders too, per side.
+    rev = make_set(tmp_path / "r")
+    _img(rev / "renders" / "fx_a__base__holes.jpg", (99, 99, 99))
+    names, _n = g.collect_images(rev, PUBLIC, SEALED, tmp_path / "ri")
+    assert names["P002"]["Lh"] == names["P002"]["Rh"] == names["P001"]["Rh"]   # base | base; P001's right is base
+    assert "Lh" not in names["P001"] and "Rh" not in names["P003"]              # per_stroke, polygon_axis: no map
+
+
+# ---- a fixture ruled off the page ------------------------------------------
+# Kent, 2026-09-30, on two sittings: screenshot is not a logo to judge
+# digitizing by. The page drops its rows even from a sitting rendered before
+# the rule; the instruments' corpus still carries it.
+
+def test_an_excluded_fixture_never_reaches_the_labelled_page(tmp_path):
+    src = make_labelled_set(tmp_path)
+    feats = json.loads((src / "features.json").read_text(encoding="utf-8"))
+    feats["screenshot"] = {"base": _row(design_class="flat"), "per_stroke": _row(stitches=1100)}
+    (src / "features.json").write_text(json.dumps(feats), encoding="utf-8")
+    for arm, st in (("base", [[0, 0], [1, 1]]), ("per_stroke", [[0, 0], [2, 2]])):
+        (src / "designs" / f"screenshot__{arm}.json").write_text(json.dumps({"stitches": st}), encoding="utf-8")
+        _img(src / "renders" / f"screenshot__{arm}.jpg", (90, 90, 90))
+    _img(src / "renders" / "screenshot__art.png", (220, 220, 220))
+    data = g.build(src, tmp_path / "g", labelled=True)
+    assert [p["pair"] for p in data["pairs"]] == ["per_stroke__fx_a", "ref_0827__fx_p"]
+    assert "screenshot" not in (tmp_path / "g" / "index.html").read_text(encoding="utf-8")
+
+
+# ---- a file arm: the pro's own digitize beside ours (2026-10-01) ----------
+
+def test_a_file_arm_is_ours_on_the_left_and_the_pro_on_the_right_with_no_ruling(tmp_path):
+    src = make_labelled_set(tmp_path)
+    feats = json.loads((src / "features.json").read_text(encoding="utf-8"))
+    feats["fx_a"]["pro_file"] = _row(stitches=1300, design_only=True, from_file="x.pes")
+    (src / "features.json").write_text(json.dumps(feats), encoding="utf-8")
+    (src / "designs" / "fx_a__pro_file.json").write_text(json.dumps({"stitches": [[0, 0], [4, 4]]}), encoding="utf-8")
+    _img(src / "renders" / "fx_a__pro_file.jpg", (160, 160, 160))
+    out = tmp_path / "g"
+    data = g.build(src, out, labelled=True)
+    rec = next(p for p in data["pairs"] if p["arm"] == "pro_file")
+    assert (rec["arm_kind"], rec["is_ref"], rec["shipped_side"], rec["arm_side"]) == ("file", False, "L", "R")
+    assert rec["labels"] == {"L": "OURS · today", "R": "THE PRO · the pro's file"}
+    assert (rec["counts"]["L"]["stitches"], rec["counts"]["R"]["stitches"]) == (1000, 1300)
+    assert data["arms"]["pro_file"]["kind"] == "file"
+    ref = next(p for p in data["pairs"] if p["arm"] == "ref_0827")
+    assert ref["arm_kind"] == "ref" and ref["labels"] == {"L": "BEFORE · 08-27 engine", "R": "AFTER · today"}
+    flag = next(p for p in data["pairs"] if p["arm"] == "per_stroke")
+    assert flag["arm_kind"] == "flag" and flag["labels"] is None
+    html = (out / "index.html").read_text(encoding="utf-8")
+    assert "p.labels[side]" in html and 'a.kind === "file"' in html and 'p.arm_kind === "file"' in html

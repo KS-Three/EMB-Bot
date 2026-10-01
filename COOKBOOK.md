@@ -9,8 +9,10 @@ by `.claude/memory/MEMORY.md`) — this file is the self-contained handoff.
 Browser-based embroidery auto-digitizer + guided lettering studio, plus a
 Python digitizing engine that runs as a localhost service. Two parts:
 
-- **`app/`** — "EMB Bot Studio", a Svelte 5 + Vite guided wizard (garment →
-  content → review → download) built on top of the JS stitch engine via
+- **`app/`** — "EMB Bot Studio", a Svelte 5 + Vite configurator — one panel
+  (`ui/Configurator.svelte`: design, garment), a sticky `SummaryBar`,
+  and a `DownloadSheet` that wraps `DownloadStep`; e2e specs reach the sheet
+  through `e2e/helpers.js` `openDownload` — built on top of the JS stitch engine via
   `window.EMB` (the `src/*.js` modules, copied into `app/public/engine/` by
   `app/scripts/copy-engine.mjs`).
 - **`digitizer/`** — Python auto-digitizing pipeline (OpenCV, scikit-image,
@@ -588,6 +590,22 @@ hand-rolling it in JS.
   invisible to it (a candidate that added 1.7 points of bare satin read
   0.0028 there) — that shape of loss belongs to `rail_edge.bare_area`. See
   DOCTRINE 2026-09-20 and `tests/test_lettering_coverage_regression.py`.
+
+  **Which of the four to reach for, after 2026-09-30.** `preflight`'s
+  `ARTWORK_UNCOVERED` is now the one that names a HOLE: it measures every
+  thread kind on a 0.25 mm grid with no erosion, behind a thickness and a
+  compactness test, and reports `uncovered_hole_mm2` (adjudicated) beside
+  the threshold-free `uncovered_worst_mm2`. `tools/uncovered_floor.py`
+  sweeps its floor over the corpus, and **any threshold here that has not
+  been swept against the current corpus should be assumed stale** — the
+  5.0 mm² floor it replaced had drifted above the largest patch the check
+  could resolve anywhere.
+
+  **And `tools/bare_anatomy.py` counts SATIN CROSSES AND NOTHING ELSE**, so
+  every figure it prints is an upper bound on cloth — by 1.07x to 38.9x
+  fixture-dependent, which cannot be divided out. Pass `--all-thread` when
+  the claim is about what a customer sees; the default is the right reading
+  only for *"did the COLUMN cover its own artwork"*. DOCTRINE 2026-09-30.
 - **Acceptance A/B contact sheet** (`digitizer/tools/acceptance_ab.py`, pure
   logic in `digitizer_core/tools_acceptance.py`): the phase-4 eyeball loop.
   Runs every image in the gitignored `digitizer/testdata/photo/acceptance/`
@@ -1590,6 +1608,44 @@ blur* instead. No share or figure reaches the page. Published as
 https://claude.ai/artifact/6mjKrbnCX21MM9gQUry4Zp — **republish to that
 URL**, never a new one: his notes live in its `db`, keyed by those ids.
 
+**The needle-holes toggle, and a second engine snapshot (2026-09-30).**
+`--render` writes `renders/<fixture>__<arm>__holes.jpg` beside every thread
+render — `stitchviz.render_penetrations`: the render faded to 35% over the
+cloth on the SAME frame, a dot at every `stitch` record, none at a jump —
+and the page's *thread | needle holes* control swaps every view's source in
+place, so the zoom, the verdicts and the locator's boxes stay put. Built
+because the thread render cannot show a split column's mid-column
+penetration (the comb, `docs/renders/split-comb-2026-09-30/`); a run
+rendered before the map existed gets it on the next `--render` from the
+kept designs, no digitize, and a sitting with no map shows no toggle. The
+ref arms are `REF_ARMS` in the generator (`ref_0827`; `ref_0930am`, the
+morning of 2026-09-30 before #577/#578/#579) and the page reads `is_ref`
+and `ref_label` off the record, never an id — it used to test the one
+literal `ref_0827`. The evening sitting on the day's three lettering
+changes is `docs/eye-pairs-2026-09-30/` (tag `evening-0930`). **A ref
+worktree gets the photo-prep venv linked in** (`refarm.link_photo_prep`,
+the row's `photo_prep_env`, read by the page's confound badge): the venv
+is gitignored and lives in the primary checkout only, so before this a
+photo-class fixture's ref side skipped prep and the pair compared lanes
+(tires, 2,500 against 2,646 from the same commit; Kent's one "before
+better" of that evening).
+
+**Back stitching by one rule, and a pro's file as an arm (2026-10-01).**
+`digitizer/tools/underlay_cover.py` reads the STITCHES of ours or a machine
+file in sew order at 0.4 mm and calls a stitch back stitching when most of
+its thread ends up under thread sewn six or more stitches later (the gap
+excludes a cross's own neighbours); the pattern is read from the stitch's
+shape — run, zigzag (sawtooth, or this engine's ladder: cross, a walk along
+the rail, cross back, which `satin_columns` cannot see) or lattice rows —
+with the top thread's support and the holes more than 1 mm inside the
+sewn area, per block and for one band (`--crop 0.68 1.0` is MARINE on
+Becker). Built for Kent's verdict on the pro pair; what it found and the
+trap it walked into (an underlay flag that was a no-op on lettering) are
+in `docs/eye-pairs-2026-09-30/README.md`. The page's third kind of arm,
+`__file__` (`tools/eye_pairs/filearm.py`), puts a stitch file beside our
+digitize of the same fixture; the gallery labels it OURS | THE PRO and
+takes a verdict and a note, no ruling.
+
 Two things it is not. It is **not the blind sitting** — a verdict given
 knowing which side is the flag is evidence for a *ruling*, and never enters
 the yardstick's agreement statistic (§4 of the eye-pairs spec needs the
@@ -1642,8 +1698,20 @@ is the only place Kent's eye is recorded as DATA rather than prose. Spec:
   picks exist — move the old log aside first. A `--render` scoped with
   `--fixtures`/`--arms` never touches the sitting.
 - The 08-27 arm runs the old engine from a worktree under the system temp
-  dir. On a photo-class fixture it is ENVIRONMENT-confounded (that worktree
-  has no `rembg_isolated/venv`); `--reveal` marks those rows.
+  dir. Whether it is ENVIRONMENT-confounded is **measured at `--render`, not
+  assumed** (2026-09-18): the rembg venv present for today's engine and for
+  the old one, and whether `requirements.txt` changed since `25da2fe`.
+  `--reveal` prints which fact fired and on which fixtures. It depends on
+  where you render from: on Kent's machine the main checkout has the rembg
+  venv (checked 2026-09-18) and a fresh worktree never does, so from there
+  photo-class fixtures ARE confounded; from a `.claude/worktrees/` lane
+  neither engine has it and they are not.
+- **One `--render` at a time.** It discards and rebuilds
+  `%TEMP%/eye-pairs-ref-25da2fe` on start, which is the running render's
+  engine if one is already going.
+- **Do not `--pair` while `--serve` is up.** The picker notices (it polls the
+  sitting's hash, shows a banner, and the server 409s further picks) — but
+  the fix is still to stop `--serve`, start it again and reload.
 - A metric that *agrees* can be trusted for the DIRECTION of a same-design
   A/B and nothing more: not across designs, not across routes, not as a
   quality percentage, and never as grounds to advance a phase — that is Kent's.

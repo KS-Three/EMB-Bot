@@ -1,0 +1,70 @@
+{
+ "split_off": {
+  "caption": "Back stitching by one rule on the stitch records of each design (tools/underlay_cover): thread is drawn in sew order at 0.4 mm; a stitch most of whose thread ends up under thread sewn at least six stitches later is back stitching, and its pattern is read from its own shape (a run, a zigzag -- sawtooth or this engine's ladder -- or lattice rows). 'Sitting on thread' is the share of the top thread's area that already had thread under it. MARINE is the bottom 32% of each design's height; 'inside the stroke' is a hole more than 1 mm from the sewn area's edge, so on a satin stem it is a split point or back stitching, never a rail. Column legs by tools/satin_columns' cross detector. Ours is 100 mm wide, the pro's hat file 101.9.",
+  "columns": [
+   "measure",
+   "ours, today",
+   "ours, split 7 mm",
+   "ours, split off",
+   "the pro's file"
+  ],
+  "rows": [
+   [
+    "stitches",
+    "9,321",
+    "8,281",
+    "7,442",
+    "12,356"
+   ],
+   [
+    "MARINE holes",
+    "3,892",
+    "3,118",
+    "2,279",
+    "2,641"
+   ],
+   [
+    "MARINE holes inside the stroke, top thread",
+    "1,413",
+    "774",
+    "246",
+    "304"
+   ],
+   [
+    "MARINE holes per mm2",
+    "3.20",
+    "2.56",
+    "1.88",
+    "2.07"
+   ],
+   [
+    "column legs over 5 / over 7 mm %",
+    "0.0 / 0.0",
+    "17.0 / 0.0",
+    "24.8 / 3.4",
+    "26.5 / 1.6"
+   ],
+   [
+    "longest column leg mm",
+    "5.0",
+    "6.7",
+    "12.1",
+    "11.1"
+   ],
+   [
+    "back stitching, % of thread (whole / MARINE)",
+    "34.8 / 33.6",
+    "35.0 / 34.1",
+    "34.8 / 33.5",
+    "47.7 / 28.9"
+   ],
+   [
+    "top thread sitting on thread % (whole / MARINE)",
+    "21.8 / 20.7",
+    "22.0 / 21.1",
+    "22.1 / 21.3",
+    "32.7 / 20.7"
+   ]
+  ]
+ }
+}

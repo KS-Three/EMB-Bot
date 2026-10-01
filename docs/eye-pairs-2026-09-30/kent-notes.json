@@ -1,5 +1,5 @@
 {
- "exported": "2026-09-30T01:40:00Z",
+ "exported": "2026-10-01T02:26:05Z",
  "artifact": "https://claude.ai/artifact/6mjKrbnCX21MM9gQUry4Zp",
  "page_built": "2026-09-30",
  "pairs": 7,
@@ -86,5 +86,243 @@
    "fremont"
   ],
   "note": "Pending Kent's sitting. Read back from the store under phantom_dissolve__<fixture>__fold-fix (notes) and phantom_dissolve__fold-fix (rulings). His 09-28 verdicts on the same arm BEFORE the fold fix (bridge after better; gaulke, golden_tee, screenshot, tires both bad) stay under phantom_dissolve__<fixture> and are exported in ../eye-pairs-2026-09-28/kent-notes.json."
+ },
+ "third_sitting": {
+  "sitting": "evening-0930",
+  "page_built": "2026-09-30",
+  "artifact_version": 6,
+  "arms": {
+   "ref_0930am": {
+    "change": "engine at 1e5f8fe2 (main on the morning of 2026-09-30, before #577, #578 and #579); BEFORE = that engine, AFTER = today",
+    "pairs": {
+     "becker": {
+      "verdict": "same",
+      "job_done": null,
+      "note": "the lettering does not flow, satin stitching is not smooth and structured pattern.",
+      "updated": "2026-09-30T22:10:46.438Z"
+     },
+     "bridge": {
+      "verdict": "same",
+      "job_done": null,
+      "note": "",
+      "updated": "2026-09-30T22:11:06.208Z"
+     },
+     "drone": {
+      "verdict": "same",
+      "job_done": null,
+      "note": "",
+      "updated": "2026-09-30T22:11:22.954Z"
+     },
+     "enthusiast": {
+      "verdict": "same",
+      "job_done": null,
+      "note": "",
+      "updated": "2026-09-30T22:11:42.524Z"
+     },
+     "gaulke": {
+      "verdict": "both_bad",
+      "job_done": null,
+      "note": "",
+      "updated": "2026-09-30T22:12:30.128Z"
+     },
+     "golden_tee": {
+      "verdict": "both_bad",
+      "job_done": null,
+      "note": "",
+      "updated": "2026-09-30T22:12:56.003Z"
+     },
+     "screenshot": {
+      "verdict": "both_bad",
+      "job_done": null,
+      "note": "dont use this image to judge",
+      "updated": "2026-09-30T22:13:14.510Z"
+     },
+     "tires": {
+      "verdict": "before",
+      "job_done": null,
+      "note": "edges are nice, and clean the don't randomly break",
+      "updated": "2026-09-30T22:13:56.006Z"
+     }
+    },
+    "identical_not_shown": [
+     "fremont"
+    ]
+   },
+   "phantom_dissolve": {
+    "change": "dissolve_phantom_blends=True (after the fold fix)",
+    "pairs": {
+     "bridge": {
+      "verdict": "after",
+      "job_done": "yes",
+      "note": "random satin borders have been removed",
+      "updated": "2026-09-30T22:05:52.825Z"
+     },
+     "gaulke": {
+      "verdict": "before",
+      "job_done": null,
+      "note": "after ended up adding satin trim]",
+      "updated": "2026-09-30T22:07:05.104Z"
+     },
+     "golden_tee": {
+      "verdict": "before",
+      "job_done": "unsure",
+      "note": "",
+      "updated": "2026-09-30T22:08:09.234Z"
+     },
+     "screenshot": {
+      "verdict": "both_bad",
+      "job_done": null,
+      "note": "disregard this photo to reference the digitizing judgement",
+      "updated": "2026-09-30T22:14:05.296Z"
+     },
+     "tires": {
+      "verdict": "same",
+      "job_done": "unsure",
+      "note": "",
+      "updated": "2026-09-30T22:09:03.426Z"
+     }
+    },
+    "identical_not_shown": [
+     "becker",
+     "drone",
+     "enthusiast",
+     "fremont"
+    ]
+   }
+  },
+  "rulings": {
+   "ref_0930am__evening-0930": {
+    "note": "blank",
+    "ruling": null,
+    "sitting": "evening-0930",
+    "updated": "2026-09-30T22:09:23.745Z"
+   }
+  },
+  "note": "Kent's evening sitting on the day's three lettering changes, read back from the store under <arm>__<fixture>__evening-0930 (notes) and <arm>__evening-0930 (rulings). The page carried a needle-hole map beside every render (the thread | needle holes toggle)."
+ },
+ "fourth_sitting": {
+  "sitting": "texture-0930",
+  "page_built": "2026-09-30",
+  "artifact_version": 7,
+  "arms": {
+   "split_7mm": {
+    "change": "split_satin_above_mm=7.0 (the pro's Becker style: raw crosses to about 7 mm, no comb)",
+    "pairs": {
+     "becker": {
+      "verdict": "same",
+      "job_done": "unsure",
+      "note": "",
+      "updated": "2026-10-01T01:22:01.115Z"
+     },
+     "bridge": {
+      "verdict": "same",
+      "job_done": "unsure",
+      "note": "",
+      "updated": "2026-10-01T01:22:08.264Z"
+     },
+     "drone": {
+      "verdict": "same",
+      "job_done": "unsure",
+      "note": "",
+      "updated": "2026-10-01T01:22:17.977Z"
+     },
+     "screenshot": {
+      "verdict": null,
+      "job_done": null,
+      "note": "please stop using this shitty logo, put it in an .md file somehwere. 15 characters at most.\n",
+      "updated": "2026-10-01T01:22:45.010Z"
+     },
+     "tires": {
+      "verdict": "same",
+      "job_done": "unsure",
+      "note": "",
+      "updated": "2026-10-01T01:22:53.116Z"
+     }
+    },
+    "identical_not_shown": [
+     "enthusiast",
+     "fremont",
+     "gaulke",
+     "golden_tee"
+    ]
+   },
+   "rails_symmetric": {
+    "change": "satin_rails_follow_edge=False (the envelope OFF)",
+    "pairs": {
+     "becker": {
+      "verdict": "same",
+      "job_done": "unsure",
+      "note": "",
+      "updated": "2026-10-01T01:25:25.489Z"
+     },
+     "golden_tee": {
+      "verdict": "before",
+      "job_done": "yes",
+      "note": "It completed the stitch with a very nice line following the outline.",
+      "updated": "2026-10-01T01:21:35.048Z"
+     },
+     "tires": {
+      "verdict": "same",
+      "job_done": "unsure",
+      "note": "",
+      "updated": "2026-10-01T01:21:53.987Z"
+     }
+    },
+    "identical_not_shown": [
+     "bridge",
+     "drone",
+     "enthusiast",
+     "fremont",
+     "gaulke",
+     "screenshot"
+    ]
+   }
+  },
+  "rulings": {
+   "rails_symmetric__texture-0930": {
+    "note": "not sure what's being shown here.",
+    "ruling": null,
+    "sitting": "texture-0930",
+    "updated": "2026-10-01T01:25:19.161Z"
+   },
+   "split_7mm__texture-0930": {
+    "note": "Not sure what's being shown here.",
+    "ruling": null,
+    "sitting": "texture-0930",
+    "updated": "2026-10-01T01:25:34.166Z"
+   }
+  },
+  "note": "Kent's late sitting of 2026-09-30 on the lettering's two levers, read back from the store under <arm>__<fixture>__texture-0930 (notes); no ruling document was written. Seven of eight pairs judged (rails_symmetric on becker not judged). The screenshot note is his instruction to drop that fixture from the page."
+ },
+ "fifth_sitting": {
+  "sitting": "pro-1001",
+  "page_built": "2026-10-01",
+  "artifact_version": 8,
+  "arms": {
+   "pro_file": {
+    "change": "file arm: LEFT our engine's Becker at 100 mm (shipped defaults); RIGHT the professionally digitized Becker, testdata/reference/becker_hat_polo_large_beckers_logo_hat.pes (101.9 mm), read through adapter.pattern_to_design, the same renderer, holes toggle on both",
+    "pairs": {
+     "becker": {
+      "verdict": "after",
+      "job_done": null,
+      "note": "The pros file as back stitching to support the detail layering, the letters look perfect. the lettering is smooth, it's beautifull. The back stitching helps support the top threading so it has structure and support.\n",
+      "updated": "2026-10-01T01:53:33.209Z"
+     }
+    }
+   }
+  },
+  "rulings": {},
+  "note": "Kent's sitting of 2026-10-01 on the pro's own Becker beside ours, read back from the store under pro_file__becker__pro-1001 (notes) and pro_file__pro-1001 (rulings). The verdict names which lettering flows; the note is his words for the difference, the first target the instruments have had for 'flow'. 'before' is LEFT (ours), 'after' is RIGHT (the pro's).",
+  "chat_picks": {
+   "when": "2026-10-01 ~01:56Z, AskUserQuestion in chat, asked because the store read empty at 01:50Z (his note landed at 01:53Z)",
+   "verdict": "The pro's (RIGHT) flows, ours does not",
+   "the_difference_all_three_offered_picked": [
+    "The big letters are a flat fill, not satin columns",
+    "Each stitch crosses the whole stroke in one go",
+    "One direction per stroke, no mid-column holes"
+   ],
+   "note": "His own written note on the page (above) is the primary record; these were candidates offered by the session, all three taken."
+  },
+  "measured": "docs/eye-pairs-2026-09-30/README.md, 'The back stitching' section; back-stitching-table.json"
  }
 }

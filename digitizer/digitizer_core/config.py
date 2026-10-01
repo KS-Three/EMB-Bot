@@ -1292,6 +1292,29 @@ class PipelineConfig:
     # reason the construction is worth returning to -- but they are all
     # COVERAGE, and the coverage gain is not what the guard reads.
     # DOCTRINE 2026-09-30, "Coverage is not the metric a customer sees".
+    # `satin_crown_cover` (2026-09-30, MASTER_SCOPE defect 50, Kent's ruling
+    # on `docs/superpowers/plans/2026-09-30-crown-cover.md` §7): the junction
+    # cover with its junction gate removed and `ARTWORK_UNCOVERED`'s own
+    # thresholds, on EVERY satin shape rather than only where a junction sits.
+    #
+    # What it is for: `satin_lettering_split` leaves 11 holes / 22.9 mm2 at
+    # the crowns of curved letters on MARINE 127.4 where the fill lane leaves
+    # none, and the crowns are not in any column -- the strokes' union leaves
+    # wedges no stroke claims, 4 of the 11 at a node between two sub-strokes.
+    # Five rail and pitch arms are refuted (DOCTRINE 2026-09-30) and every one
+    # that moved a crown made `lost_frac` worse, which is what says the lever
+    # is a cover rather than a wider or denser column.
+    #
+    # It sews SATIN only, per Kent's 2026-09-09 ruling that no tatami goes
+    # inside a satin shape; a wedge that cannot carry a column is skipped
+    # rather than filled, and how many those are is a number this build
+    # reports rather than a question asked in the abstract.
+    #
+    # Built OFF. Flipped only on the corpus table AND `lost_frac`: the 09-30
+    # apex widening closed its hole and was retracted the same day for
+    # spending 0.0088 of `lost_frac` on overshoot, and a cover that spills
+    # thread outside the artwork fails for exactly that reason.
+    satin_crown_cover: bool = False
     satin_tip_caps: bool = True
     # The lettering yardstick's trims gap, read with a per-trim census
     # (2026-09-19, scope-history): traced MARINE at 80 mm sews 13 trims

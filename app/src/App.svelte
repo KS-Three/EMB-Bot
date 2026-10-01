@@ -2,8 +2,8 @@
   import { update, updateElement, updateElements, selectElement, toggleSelectElement, addElement, addSeededTextElement, removeElement, resolveArtworkType, deriveProjectName, UNTITLED_NAME } from "./lib/project.js";
   import { createHistory } from "./lib/history.js";
   import { applyTemplate } from "./lib/templates.js";
-  import { canAdvance, nextStep, prevStep, isSewable } from "./lib/flow.js";
-  import { createStepHistory } from "./lib/stepHistory.js";
+  import { onMount, tick } from "svelte";
+  import { isSewable } from "./lib/flow.js";
   import { designSummary } from "./lib/summary.js";
   import { sewSummary } from "./lib/estimate.js";
   import { generateAll } from "./lib/generate.js";
@@ -30,15 +30,13 @@
   import { triggerDownload } from "./lib/download.js";
   import { shouldShow, dismiss, visibleHint } from "./lib/hints.js";
   import { effectiveHoop } from "./lib/hoop.js";
-  import { fetchHealth } from "./lib/digitizer.js";
+  import { fetchHealth, spoolCount } from "./lib/digitizer.js";
   import { EMB } from "./lib/emb.js";
   import GarmentStep from "./ui/GarmentStep.svelte";
   import ContentStep from "./ui/ContentStep.svelte";
-  import DownloadStep from "./ui/DownloadStep.svelte";
-  import StepNav from "./ui/StepNav.svelte";
+  import Configurator from "./ui/Configurator.svelte";
+  import DownloadSheet from "./ui/DownloadSheet.svelte";
   import EmbroideryField from "./ui/EmbroideryField.svelte";
-  import SizePanel from "./ui/SizePanel.svelte";
-  import QualityReport from "./ui/QualityReport.svelte";
   import ProjectsDrawer from "./ui/ProjectsDrawer.svelte";
   import FontCredits from "./ui/FontCredits.svelte";
   import Icon from "./ui/Icon.svelte";
@@ -90,18 +88,55 @@
 
   let project = resetHasImage(bootProject);
   let projectName = nameFor(currentId);
-  let step = "garment";
-  // Browser Back steps back a WIZARD step instead of leaving the Studio --
-  // see lib/stepHistory.js, including why the first step must never get an
-  // entry of its own. Every step change in this file goes through this
-  // object: a bare `step = ...` would move the panel without moving the
-  // browser, and the two would then disagree about where Back lands
-  // (App.stepHistory.spec.js pins that there are no such assignments).
-  const stepHistory = createStepHistory({
-    history: typeof window === "undefined" ? null : window.history,
-    onStep: (s) => (step = s),
+  // The Download sheet (spec §2.4). The only browser-history entry the
+  // Studio pushes: opening pushes one, so the phone's Back gesture closes
+  // the sheet instead of leaving the app; closing pops it. No URL changes.
+  //
+  // `window.history` explicitly, never bare `history`: the undo history
+  // below is `const history = createHistory(project)`, which shadows the
+  // browser's inside this component.
+  let sheetOpen = false;
+  const SHEET_STATE = { embSheet: "download" };
+  function isSheetEntry() {
+    const s = window.history.state;
+    return !!(s && s.embSheet === "download");
+  }
+  function openSheet() {
+    if (sheetOpen) return;
+    sheetOpen = true;
+    window.history.pushState(SHEET_STATE, "");
+    checkDigitizer();
+  }
+  function closeSheet() {
+    if (!sheetOpen) return;
+    if (isSheetEntry()) window.history.back();
+    else {
+      sheetOpen = false;
+      returnFocusToDownload();
+    }
+  }
+  function onPopState() {
+    const wasOpen = sheetOpen;
+    sheetOpen = isSheetEntry();
+    // Forward can re-open the sheet; re-probe as openSheet does, so its
+    // service-only controls (JEF) are not judged on a stale answer.
+    if (sheetOpen && !wasOpen) checkDigitizer();
+    if (wasOpen && !sheetOpen) returnFocusToDownload();
+  }
+  // While the sheet is open the panel underneath is `inert`, so focus left
+  // there would be lost to <body> on close. Hand it back to the control that
+  // opened the sheet — after the sheet unmounts and the panel is live again.
+  async function returnFocusToDownload() {
+    await tick();
+    document.querySelector(".summarybar-download")?.focus();
+  }
+  // A reload with the sheet open boots with sheetOpen false while the
+  // browser still sits on the sheet's entry. Left there, the next Download
+  // pushes a SECOND entry: Close then takes two presses and Back is a dead
+  // one. Normalise it away on mount.
+  onMount(() => {
+    if (isSheetEntry()) window.history.replaceState(null, "");
   });
-  stepHistory.start(step);
   // Boot builds `project` directly rather than through enterProject(), so
   // the open-a-legacy-project case above needs its twin here.
   applyAutoName();
@@ -127,8 +162,11 @@
   // Waiting for the DOM would buy nothing anyway: 0 is in range for ANY
   // content height, so unlike a non-zero offset it can never be clamped by
   // the outgoing step's shorter content.
+  //
+  // The wizard's steps are gone (2026-09-30, the configurator): the panel is
+  // one scroll now, so only the project switch still resets it.
   let panelBody = null;
-  $: if (panelBody) { step; currentId; panelBody.scrollTop = 0; }
+  $: if (panelBody) { currentId; panelBody.scrollTop = 0; }
 
   // Every digitized element that has been through the service, for the review
   // step's quality report. Deliberately NOT scoped to the selected element the
@@ -182,20 +220,34 @@
     return sewable.length === 1 && sewable[0].type === "digitized";
   })();
 
-  // What the COMBINED design costs to sew, for the review step's summary —
+  // What the COMBINED design costs to sew —
   // the numbers `qualityEntries` above cannot supply for a browser-built
   // design. Derived here rather than in the template so it recomputes with
   // project/runtime like every other `$:` and never runs inside a render loop.
   // Never throws: it runs on every change, including while nothing is ready to
-  // stitch, the same posture as DownloadStep's combinedColors.
-  $: sewFacts = (() => {
+  // stitch. Feeds both the summary bar and the Download sheet's recap.
+  $: combinedDesign = (() => {
     try {
-      const { combined } = generateAll(project, runtime);
-      return combined ? sewSummary(combined) : [];
+      return generateAll(project, runtime).combined || null;
     } catch (e) {
-      return [];
+      return null;
     }
   })();
+  $: sewFacts = combinedDesign ? sewSummary(combinedDesign) : [];
+  // The summary bar's colour figure: SPOOLS, the customer-facing meaning of
+  // "colors" here (see spoolCount in lib/digitizer.js), counted on the same
+  // combined design the size and stitch figures beside it come from.
+  $: colorCount = combinedDesign && sewFacts.length ? spoolCount(combinedDesign) : 0;
+
+  // The rows the Download sheet recaps — one list, built here, so the
+  // sheet is a renderer and never re-derives what the app already knows.
+  $: summaryRows = [
+    { label: "Garment", value: readable(project.garmentId) },
+    { label: "Hoop", value: hoopInEffect.hoop.label + (hoopInEffect.suggested ? " (suggested)" : "") },
+    ...designSummary(project, sewnColors),
+    ...(qualityIsTheWholeDesign ? [] : sewFacts),
+  ];
+  $: subtitle = `${readable(project.garmentId)} · ${hoopInEffect.hoop.label}`;
 
   // ---- Undo/redo (Ember-audit follow-up) ------------------------------------
   // Per-project, in-memory only (never persisted). Every committed project
@@ -340,11 +392,8 @@
   // ---- Digitizer service health (build step 10) -----------------------------
   // Whether the localhost auto-digitize service is reachable gates the
   // "+ Auto-digitize" tile (and turns DigitizePanel's controls off with an
-  // explanation instead of a dead button). Probed at boot, re-probed every
-  // time the user lands on the content step (so starting the service and
-  // navigating back is enough), and on demand from the UI's "check again"
-  // affordances. The token guard drops a stale slow probe that resolves
-  // after a newer one already answered.
+  // explanation instead of a dead button). The token guard drops a stale
+  // slow probe that resolves after a newer one already answered.
   let digitizerHealth = null;
   let digitizerProbeToken = 0;
   async function checkDigitizer() {
@@ -352,11 +401,10 @@
     const h = await fetchHealth();
     if (token === digitizerProbeToken) digitizerHealth = h;
   }
-  checkDigitizer();
-  // Content AND download: the download step now has a control that only the
-  // service can serve (JEF), so "start the service and navigate back" has to
-  // work from there too, not just from the content step.
-  $: if (step === "content" || step === "download") checkDigitizer();
+  // Probed once on mount; the Download sheet re-probes on open (openSheet),
+  // since it has a control only the service can serve (JEF), and the UI's
+  // "check again" affordances probe on demand.
+  onMount(checkDigitizer);
   // Dims of the SELECTED element's last generated design ({ widthMM, heightMM })
   // or null on failure/no-content -- fed to SizePanel so its W/H display
   // (and the below-5mm warning) always reflects the real current design,
@@ -368,11 +416,6 @@
   // `n` counts field selections so the same shape picked twice still reaches
   // ManualPanel as a new request.
   let fieldShapeSelect = null;
-
-  // The currently-selected element (SizePanel/ContentStep/the "create" step
-  // summary all key off this one, not project.elements[0], so they stay in
-  // sync with whatever the user clicked on the field).
-  $: selectedElement = project.elements.find((el) => el.id === project.selectedId) || project.elements[0];
 
   // The hoop in effect (manual pick or per-garment suggestion, lib/hoop.js)
   // — shown in the "Ready to stitch" summary so the review step names the
@@ -387,17 +430,13 @@
 
   // Does this project contain anything a machine could sew?
   //
-  // `canAdvance("create", …)` is the existing answer — one predicate per
-  // element type, already specced — and until 2026-09-07 the review step's
-  // own headline ignored it. A brand-new project holds one EMPTY text
-  // element, so the step opened on "**Ready to stitch** — Looks good? The
-  // live field is your stitch-out." above a summary reading `Text — ""` and
-  // a canvas reading "Your embroidery appears here as you add content." The
-  // disabled Next button was the only contradiction, and it gives no reason.
-  // Reusing the gate rather than writing a second rule is the point: a new
-  // element type that flow.js calls sewable is sewable here too, with no
-  // second list to forget.
-  $: readyToStitch = canAdvance("create", project);
+  // flow.js's `isSewable` is the existing answer — one predicate per element
+  // type, already specced. A brand-new project holds one EMPTY text element,
+  // and until 2026-09-07 the review screen called that "Ready to stitch".
+  // Reusing the predicate rather than writing a second rule is the point: a
+  // new element type that flow.js calls sewable is sewable here too, with no
+  // second list to forget. It gates the summary bar's Download.
+  $: readyToStitch = project.elements.some(isSewable);
 
   const MM_PER_INCH = 25.4;
 
@@ -412,26 +451,22 @@
   // session/before".
   //
   // At most one hint renders at a time (plan amendment A7): `eligibleHints`
-  // collects whichever of the three are BOTH still-shown AND contextually
+  // collects whichever of the two are BOTH still-shown AND contextually
   // eligible right now --
   //   drag-field   ⇔ the combined design has stitches (hasStitches, from
   //                  EmbroideryField's "stats" event -- A8)
-  //   add-elements ⇔ on the content step with < 2 elements
-  //   templates    ⇔ on the garment step
+  //   add-elements ⇔ fewer than 2 elements
   // -- and hands that list to hints.js's visibleHint(), which picks the
-  // single highest-priority one (drag-field > add-elements > templates).
-  // Note the embroidery field (and therefore drag-field's eligibility) is
-  // visible alongside EVERY step, so it can legitimately outrank templates
-  // even while step === "garment".
-  let templatesShown = shouldShow("templates");
+  // single highest-priority one (drag-field > add-elements). The templates
+  // hint went with the garment step (2026-09-30): templates live in
+  // My designs now.
   let addElementsShown = shouldShow("add-elements");
   let dragFieldShown = shouldShow("drag-field");
   let hasStitches = false;
 
   function dismissHint(key) {
     dismiss(key);
-    if (key === "templates") templatesShown = false;
-    else if (key === "add-elements") addElementsShown = false;
+    if (key === "add-elements") addElementsShown = false;
     else if (key === "drag-field") dragFieldShown = false;
   }
 
@@ -443,11 +478,9 @@
 
   $: eligibleHints = [
     dragFieldShown && hasStitches ? "drag-field" : null,
-    addElementsShown && step === "content" && project.elements.length < 2 ? "add-elements" : null,
-    templatesShown && step === "garment" ? "templates" : null,
+    addElementsShown && project.elements.length < 2 ? "add-elements" : null,
   ].filter(Boolean);
   $: visibleHintKey = visibleHint(eligibleHints);
-  $: showTemplatesHint = visibleHintKey === "templates";
   $: showAddElementsHint = visibleHintKey === "add-elements";
   $: showDragFieldHint = visibleHintKey === "drag-field";
 
@@ -551,9 +584,8 @@
 
   // Hoop width in mm for the current garment — new elements are seeded with
   // a size relative to it (see project.js's addElement). Falls back to a
-  // sane default if the garment can't be resolved (shouldn't happen: the
-  // "content" step, where adding elements happens, is unreachable until a
-  // garment is picked — see flow.js's canAdvance).
+  // sane default if the garment can't be resolved (a project always carries
+  // a garmentId, so this is a guard, not a path).
   function hoopWidthMm(p) {
     const garment = p && EMB.getGarment(p.garmentId);
     return garment ? garment.widthIn * MM_PER_INCH : 300;
@@ -575,18 +607,10 @@
       ? resolveArtworkType(digitizerHealth)
       : type;
     project = addElement(project, resolved, hoopWidthMm(project));
-    // Land on the step that actually shows the new element. addElement
-    // already selects it, but its editor lives in the Content step's panel,
-    // and this handler has two callers: ContentStep's own tile row (already
-    // on "content", so this is a no-op) and the FIELD's right-click tool
-    // menu, which EmbroideryField exposes on EVERY step. From the Garment
-    // step, "Draw shapes" therefore created and persisted a real manual
-    // element with no visible change anywhere in the UI — right-click three
-    // times and you have three orphans you cannot see, edit or delete until
-    // you happen to walk to the Content step. Gated on the same canAdvance()
-    // the step nav uses, so this can never route into a step the flow itself
-    // treats as unreachable.
-    if (step !== "content" && canAdvance("garment", project)) stepHistory.go("content");
+    // addElement selects the new element, and its editor is always on
+    // screen now — the configurator panel shows the Design section at all
+    // times — so the field's right-click menu can no longer create an
+    // element nobody can see (the orphan the old step jump here fixed).
     persist();
   }
 
@@ -659,7 +683,16 @@
     persist();
   }
 
+  // A template from My designs STARTS A NEW DESIGN (2026-09-30). The picker
+  // used to live on the first wizard step, where the open design was by
+  // definition the one being started; in the drawer it sits beside every
+  // saved design, and applying it in place silently overwrote whatever was
+  // open. So: create a fresh project through newDesign() (createProject +
+  // enterProject, which also closes the drawer), then apply the template to
+  // THAT project and persist it. persist() runs applyAutoName, so the new
+  // design is named from the template's content like any other.
   function pickTemplate(template) {
+    newDesign();
     project = applyTemplate(project, template, digitizerHealth);
     // Clear the per-element runtime, exactly as enterProject does.
     //
@@ -678,7 +711,9 @@
     // stale value cannot attach itself to the wrong element.
     runtime = { flats: {}, workImages: {} };
     persist();
-    stepHistory.go("content");
+    // newDesign() already closed My designs; kept explicit so the customer
+    // always lands on the design they just started.
+    drawerOpen = false;
   }
 
   // The shape the Layers list and the canvas are both pointing at
@@ -792,14 +827,6 @@
     designDims = detail;
   }
 
-  function go(dir) {
-    const s = dir > 0 ? nextStep(step) : prevStep(step);
-    // stepHistory.go() hands a backwards move to the browser's own Back when
-    // the previous entry IS that step, so the sidebar's Back button and the
-    // phone's Back gesture are one gesture rather than two that disagree.
-    if (s) stepHistory.go(s);
-  }
-
   function readable(id) {
     return (id || "")
       .split("_")
@@ -813,19 +840,14 @@
   // one) routes through this: it resets the in-memory `project` (stripped of
   // any stale _hasImage flags), clears the per-element runtime image maps
   // and stale designDims (none of that survives a switch — see `runtime`'s
-  // own comment above), and updates currentId/projectName/step together so
-  // there's never a moment where one is stale relative to the others.
-  function enterProject(id, proj, name, targetStep) {
+  // own comment above), and updates currentId/projectName together so
+  // there's never a moment where one is stale relative to the other.
+  function enterProject(id, proj, name) {
     project = resetHasImage(proj);
     runtime = { flats: {}, workImages: {} };
     designDims = null;
     currentId = id;
     projectName = name;
-    // replace, not go: switching designs is not a move through the flow, and
-    // an entry of its own would make Back rewind the step of a project that
-    // is no longer open. The step moves; the history entry stays the one the
-    // user is already on.
-    stepHistory.replace(targetStep);
     history.reset(project); // history is per-project; a switch starts fresh
     syncHistoryFlags();
     restoreArtwork(project);
@@ -838,10 +860,7 @@
     applyAutoName();
   }
 
-  // Drawer "Open" (plan amendment A6): lands on "content", not "garment" --
-  // switching to an existing, already-started project shouldn't dump the
-  // user back at the beginning. Opening the CURRENTLY-open project just
-  // closes the drawer.
+  // Drawer "Open". Opening the CURRENTLY-open project just closes the drawer.
   function openProject(id) {
     if (id === currentId) {
       drawerOpen = false;
@@ -855,15 +874,14 @@
       return;
     }
     setCurrentProject(id);
-    enterProject(id, loaded, nameFor(id), "content");
+    enterProject(id, loaded, nameFor(id));
     drawerOpen = false;
   }
 
-  // Drawer "+ New design": a genuinely blank project, so (unlike Open) it
-  // lands on "garment" -- there's no content yet to jump into.
+  // Drawer "+ New design": a genuinely blank project.
   function newDesign() {
     const created = createProject(UNTITLED_NAME);
-    enterProject(created.id, created.project, UNTITLED_NAME, "garment");
+    enterProject(created.id, created.project, UNTITLED_NAME);
     drawerOpen = false;
     refreshProjects();
   }
@@ -1015,7 +1033,7 @@
     drawerNotice = "";
     refreshProjects();
     setCurrentProject(imported.id);
-    enterProject(imported.id, imported.project, parsed.name, "content");
+    enterProject(imported.id, imported.project, parsed.name);
     drawerOpen = false;
   }
 
@@ -1056,16 +1074,16 @@
 
     if (survivor) {
       setCurrentProject(survivor.id);
-      enterProject(survivor.id, survivor.project, survivor.name, "content");
+      enterProject(survivor.id, survivor.project, survivor.name);
     } else {
       const created = createProject(UNTITLED_NAME);
-      enterProject(created.id, created.project, UNTITLED_NAME, "garment");
+      enterProject(created.id, created.project, UNTITLED_NAME);
       refreshProjects();
     }
   }
 </script>
 
-<svelte:window on:keydown={onGlobalKey} on:popstate={(e) => stepHistory.pop(e)} />
+<svelte:window on:keydown={onGlobalKey} on:popstate={onPopState} />
 
 <header class="topbar">
   <div class="topbar-logo">
@@ -1083,14 +1101,6 @@
     aria-label="Project name"
   />
   <div class="topbar-actions">
-    <button
-      type="button"
-      class="topbar-download"
-      disabled={!hasStitches}
-      on:click={() => stepHistory.go("download")}
-    >
-      Download
-    </button>
     <button type="button" class="mydesigns" bind:this={myDesignsBtn} on:click={() => (drawerOpen = !drawerOpen)}>
       My designs <span class="badge">{projects.length}</span>
     </button>
@@ -1120,6 +1130,7 @@
     on:delete={(e) => deleteFromDrawer(e.detail)}
     on:export={(e) => exportFromDrawer(e.detail)}
     on:importfile={(e) => importFromDrawer(e.detail)}
+    on:template={(e) => pickTemplate(e.detail)}
     on:close={() => (drawerOpen = false)}
     notice={drawerNotice}
   />
@@ -1130,18 +1141,41 @@
 {/if}
 
 <div class="studio">
+  <section class="field">
+    <EmbroideryField
+      {project}
+      {runtime}
+      showDragHint={showDragFieldHint}
+      {hoverShape}
+      focusShape={selectedShape}
+      on:shapehover={(e) => (hoverShape = e.detail)}
+      on:shapefocus={(e) => (selectedShape = e.detail)}
+      on:elupdate={(e) => elUpdate(e.detail.id, e.detail.patch, !e.detail.quiet)}
+      on:elupdatemany={(e) => elUpdateMany(e.detail)}
+      on:select={(e) => onSelect(e.detail)}
+      on:toggleselect={(e) => onToggleSelect(e.detail)}
+      on:dims={(e) => onDims(e.detail)}
+      on:stats={(e) => onStats(e.detail)}
+      on:addelement={(e) => onAddElement(e.detail)}
+      on:shapeselect={(e) => { fieldShapeSelect = { ...e.detail, n: (fieldShapeSelect ? fieldShapeSelect.n : 0) + 1 }; }}
+      on:dismisshint={() => dismissHint("drag-field")}
+    />
+  </section>
+
   <aside class="panel">
-    <div class="panel-body" bind:this={panelBody}>
-      {#if step === "garment"}
-        <GarmentStep
-          {project}
-          {showTemplatesHint}
-          {digitizerHealth}
-          on:update={(e) => apply(e.detail)}
-          on:template={(e) => pickTemplate(e.detail)}
-          on:dismisshint={() => dismissHint("templates")}
-        />
-      {:else if step === "content"}
+    <!-- inert while the Download sheet covers it: the sheet is modal, so
+         Tab must not walk into the panel hidden underneath. -->
+    <div class="panel-main" inert={sheetOpen}>
+    <Configurator
+      {subtitle}
+      {sewFacts}
+      {colorCount}
+      canDownload={readyToStitch}
+      bind:body={panelBody}
+      on:addelement={(e) => onAddElement(e.detail)}
+      on:download={openSheet}
+    >
+      <svelte:fragment slot="design">
         <ContentStep
           {project}
           workImage={runtime.workImages[project.selectedId]}
@@ -1167,91 +1201,24 @@
           on:flat={(e) => onFlat(project.selectedId, e.detail)}
           on:dismisshint={() => dismissHint("add-elements")}
         />
-      {:else if step === "create"}
-        <div class="createstep">
-          {#if readyToStitch}
-            <h2>Ready to stitch</h2>
-            <p>Looks good? The live field is your stitch-out.</p>
-          {:else}
-            <h2>Nothing to stitch yet</h2>
-            <p>
-              This design has no content the machine can sew. Go back to
-              Content and type some lettering, upload artwork, or draw a
-              shape — the field updates live as you do.
-            </p>
-          {/if}
-          <dl class="summary">
-            <div><dt>Garment</dt><dd>{readable(project.garmentId)}</dd></div>
-            <div><dt>Hoop</dt><dd>{hoopInEffect.hoop.label}{hoopInEffect.suggested ? " (suggested)" : ""}</dd></div>
-            <!-- One row per fact for EVERY element, from lib/summary.js.
-                 It keyed off `selectedElement` alone until 2026-09-07, so a
-                 name plus a logo — the commonest real job — reached this
-                 screen described only as the one the user last clicked.
-                 This was three
-                 `{:else if}` rungs ending in a text-shaped catch-all, and
-                 `digitized`/`design`/`shape` all landed on it: measured in a
-                 browser 2026-09-07, an auto-digitized logo recapped as
-                 `Content: Text — ""` with a blank `Font`, on the screen right
-                 before Download. Svelte prints a missing field as empty, so it
-                 read as a plausible empty-text design rather than as a bug. -->
-            <!-- `sewnColors` so the Colors row counts what will SEW rather
-                 than echoing the slider — see summary.js. -->
-            {#each designSummary(project, sewnColors) as row}
-              <div><dt>{row.label}</dt><dd>{row.value}</dd></div>
-            {/each}
-            <!-- The four facts an operator needs before loading a machine —
-                 size, stitches, thread changes, trims, metres — computed in
-                 the browser (lib/estimate.js) from the design already in hand.
-                 ONLY when the service has said nothing: an auto-digitized
-                 design gets them from QualityReport below, measured on the
-                 plan rather than on the design records, and the two bases
-                 differ by ~1.6% (estimate.js documents why). One design, one
-                 number: whichever lane produced it. Until 2026-09-07 the
-                 browser lane produced none at all — a lettering design reached
-                 this screen with the garment, the hoop, the content, the font,
-                 and not one number about the sew-out. -->
-            {#if !qualityIsTheWholeDesign}
-              {#each sewFacts as row}
-                <div><dt>{row.label}</dt><dd>{row.value}</dd></div>
-              {/each}
-            {/if}
-          </dl>
-          <QualityReport entries={qualityEntries} partial={!qualityIsTheWholeDesign} />
-          <p class="hint">Not quite right? Go back to adjust the garment or content — the field updates live.</p>
-          <SizePanel project={{ ...project, ...selectedElement }} {designDims} on:update={(e) => elUpdate(selectedElement.id, e.detail)} />
-        </div>
-      {:else}
-        <DownloadStep {project} {runtime} {digitizerHealth} on:credits={(e) => openCredits(e.detail)} />
-      {/if}
+      </svelte:fragment>
+      <svelte:fragment slot="garment">
+        <GarmentStep {project} {digitizerHealth} on:update={(e) => apply(e.detail)} />
+      </svelte:fragment>
+    </Configurator>
     </div>
-    <StepNav
-      {step}
-      {project}
-      canNext={canAdvance(step, project)}
-      on:back={() => go(-1)}
-      on:next={() => go(1)}
-      on:goto={(e) => stepHistory.go(e.detail)}
-    />
+    {#if sheetOpen}
+      <DownloadSheet
+        {project}
+        {runtime}
+        {digitizerHealth}
+        {summaryRows}
+        {qualityEntries}
+        qualityPartial={!qualityIsTheWholeDesign}
+        ready={readyToStitch}
+        on:close={closeSheet}
+        on:credits={(e) => openCredits(e.detail)}
+      />
+    {/if}
   </aside>
-
-  <section class="field">
-    <EmbroideryField
-      {project}
-      {runtime}
-      showDragHint={showDragFieldHint}
-      {hoverShape}
-      focusShape={selectedShape}
-      on:shapehover={(e) => (hoverShape = e.detail)}
-      on:shapefocus={(e) => (selectedShape = e.detail)}
-      on:elupdate={(e) => elUpdate(e.detail.id, e.detail.patch, !e.detail.quiet)}
-      on:elupdatemany={(e) => elUpdateMany(e.detail)}
-      on:select={(e) => onSelect(e.detail)}
-      on:toggleselect={(e) => onToggleSelect(e.detail)}
-      on:dims={(e) => onDims(e.detail)}
-      on:stats={(e) => onStats(e.detail)}
-      on:addelement={(e) => onAddElement(e.detail)}
-      on:shapeselect={(e) => { fieldShapeSelect = { ...e.detail, n: (fieldShapeSelect ? fieldShapeSelect.n : 0) + 1 }; }}
-      on:dismisshint={() => dismissHint("drag-field")}
-    />
-  </section>
 </div>

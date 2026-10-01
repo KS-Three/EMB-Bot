@@ -10,6 +10,7 @@
 //
 // Same self-contained service bootstrap as the other digitize specs here.
 import { test, expect } from "@playwright/test";
+import { startStudio, pickGarment, pickTemplate, openDownload } from "./helpers.js";
 import { spawn } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
@@ -88,14 +89,12 @@ test.afterAll(() => {
 
 // Uploading IS the run (DigitizePanel's sourcePng watcher) — no Digitize click.
 async function digitizeThenReview(page) {
-  await page.goto("/");
-  await page.getByRole("button", { name: "Tote", exact: true }).click();
-  await page.getByRole("button", { name: "Next", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "What are you making?" })).toBeVisible();
+  await startStudio(page);
+  await pickGarment(page, "Tote");
   await page.getByRole("button", { name: "Artwork" }).click();
   await page.locator(".dgp-upload input[type=file]").setInputFiles(ART_PNG);
   await expect(page.locator(".dgp-stats")).toBeVisible({ timeout: 120_000 });
-  await page.getByRole("button", { name: "3 Review" }).click();
+  await openDownload(page);
   await expect(page.getByRole("heading", { name: "Ready to stitch" })).toBeVisible();
 }
 
@@ -174,10 +173,9 @@ test("a lettering-only project shows no quality section", async ({ page }) => {
   // Preflight runs in the Python digitizer, so browser-generated lettering has
   // no report to show. An empty "Quality check" heading over nothing would
   // imply the check ran and passed.
-  await page.goto("/");
-  await page.locator(".tcard", { hasText: "Left-chest name" }).click();
-  await expect(page.getByText(/^[\d,]+ stitches/)).toBeVisible();
-  await page.getByRole("button", { name: "3 Review" }).click();
+  await startStudio(page);
+  await pickTemplate(page, "Left-chest name");
+  await openDownload(page);
   await expect(page.getByRole("heading", { name: "Ready to stitch" })).toBeVisible();
   await expect(page.locator(".quality")).toHaveCount(0);
 });
@@ -197,10 +195,8 @@ test("the thread picker offers the chart the design's cones came from", async ({
   test.skip(!serviceUp, skipReason);
   test.setTimeout(300_000);
 
-  await page.goto("/");
-  await page.getByRole("button", { name: "Tote", exact: true }).click();
-  await page.getByRole("button", { name: "Next", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "What are you making?" })).toBeVisible();
+  await startStudio(page);
+  await pickGarment(page, "Tote");
   await page.getByRole("button", { name: "Artwork" }).click();
   await page.locator(".dgp-upload input[type=file]").setInputFiles(ART_PNG);
   await expect(page.locator(".dgp-stats")).toBeVisible({ timeout: 120_000 });
@@ -236,16 +232,15 @@ test("a name beside a logo is summarised as one design, not as the logo", async 
   test.setTimeout(300_000);
 
   await page.setViewportSize({ width: 1440, height: 1000 });
-  await page.goto("/");
+  await startStudio(page);
   // Start from a real starter so the lettering is whatever the app ships,
   // not a string invented here.
-  await page.locator(".tcard", { hasText: "Left-chest name" }).click();
-  await expect(page.getByText(/^[\d,]+ stitches/)).toBeVisible();
+  await pickTemplate(page, "Left-chest name");
 
   await page.getByRole("button", { name: "Artwork" }).click();
   await page.locator(".dgp-upload input[type=file]").setInputFiles(ART_PNG);
   await expect(page.locator(".dgp-stats")).toBeVisible({ timeout: 120_000 });
-  await page.getByRole("button", { name: "3 Review" }).click();
+  await openDownload(page);
   await expect(page.getByRole("heading", { name: "Ready to stitch" })).toBeVisible();
 
   const num = (s) => Number(String(s).replace(/[^\d]/g, ""));
@@ -289,9 +284,8 @@ test("two logos in one design are summarised as one design, not as two panels", 
   test.setTimeout(300_000);
 
   await page.setViewportSize({ width: 1440, height: 1000 });
-  await page.goto("/");
-  await page.getByRole("button", { name: "Tote", exact: true }).click();
-  await page.getByRole("button", { name: "Next", exact: true }).click();
+  await startStudio(page);
+  await pickGarment(page, "Tote");
   // `.eladd-row` is the add-element row. Once an element exists its own chip
   // also matches the name "Artwork", so the bare role query is ambiguous from
   // the second add onwards.
@@ -312,7 +306,7 @@ test("two logos in one design are summarised as one design, not as two panels", 
   await page.locator(".dgp-upload input[type=file]").setInputFiles(ART_PNG);
   await expect.poll(stitches, { timeout: 120_000 }).toBeGreaterThan(afterOne);
 
-  await page.getByRole("button", { name: "3 Review" }).click();
+  await openDownload(page);
   await expect(page.getByRole("heading", { name: "Ready to stitch" })).toBeVisible();
 
   const num = (s) => Number(String(s).replace(/[^\d]/g, ""));

@@ -12,6 +12,7 @@
 // same way e2e/field-outlines.spec.js runs (its service bootstrap is copied
 // here rather than shared so each file stays runnable on its own).
 import { test, expect } from "@playwright/test";
+import { pickGarment } from "./helpers.js";
 import { spawn } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
@@ -110,9 +111,7 @@ async function overlayPixels(page) {
 
 async function digitize(page) {
   await page.goto("/");
-  await page.getByRole("button", { name: "Tote", exact: true }).click();
-  await page.getByRole("button", { name: "Next", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "What are you making?" })).toBeVisible();
+  await pickGarment(page, "Tote");
   await page.getByRole("button", { name: "Artwork" }).click();
   await page.locator(".dgp-upload input[type=file]").setInputFiles(ART_PNG);
   await expect(page.locator(".dgp-stats")).toBeVisible({ timeout: 120_000 });

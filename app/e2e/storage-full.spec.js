@@ -18,6 +18,7 @@
 // same failure: it needs no service, it runs in a second, and a 34 KB file
 // base64s to ~46 KB, which is far past the zero headroom left below.
 import { test, expect } from "@playwright/test";
+import { startStudio, typeText } from "./helpers.js";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -44,11 +45,8 @@ async function fillStorage(page) {
 
 test("a save that cannot happen is said out loud", async ({ page }) => {
   test.setTimeout(180_000);
-  await page.goto("/");
-  await page.getByRole("button", { name: "Left Chest", exact: true }).click();
-  await page.getByRole("button", { name: "Next", exact: true }).click();
-  await page.getByPlaceholder("Type a name or word").fill("A");
-  await expect(page.getByText(/^[\d,]+ stitches/)).toBeVisible();
+  await startStudio(page);
+  await typeText(page, "A");
 
   // Nothing to say yet — the banner must not be a permanent fixture.
   await expect(page.getByTestId("save-failed-banner")).toHaveCount(0);
@@ -96,11 +94,8 @@ test("a project deleted out from under an edit is not a storage problem", async 
   // the drawer moves you to another one — so the registry is emptied directly.
   // That is the same shape the contract describes.
   test.setTimeout(120_000);
-  await page.goto("/");
-  await page.getByRole("button", { name: "Left Chest", exact: true }).click();
-  await page.getByRole("button", { name: "Next", exact: true }).click();
-  await page.getByPlaceholder("Type a name or word").fill("A");
-  await expect(page.getByText(/^[\d,]+ stitches/)).toBeVisible();
+  await startStudio(page);
+  await typeText(page, "A");
 
   await page.evaluate(() => localStorage.setItem("embstudio:index", "[]"));
   await page.getByPlaceholder("Type a name or word").fill("AB");

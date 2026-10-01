@@ -208,3 +208,524 @@ goes on and off?
 Pending his sitting. Read back with `ArtifactData`: `notes` under
 `phantom_dissolve__<fixture>__fold-fix`, `rulings` under
 `phantom_dissolve__fold-fix`.
+
+## The evening sitting — the day's three lettering changes, before | after (2026-09-30)
+
+Kent's pick after the teeth (#579): put the three changes the day made to
+the lettering in front of his eye, on the page, with the thing the page
+could not show until now. The same artifact URL, rebuilt under the tag
+`evening-0930`:
+
+- **Eight pairs against this morning's engine** — `ref_0930am`, `main` at
+  1e5f8fe2 (the merge of #574): the envelope as it shipped that morning,
+  before the sibling rule (#577), the split comb (#578) and the minimum
+  stretch length (#579). BEFORE is that engine on the left, AFTER is today
+  on the right. fremont is identical to the stitch and not shown; on
+  enthusiast the stitch count is the same and the design is not.
+- **Five dissolve pairs kept** — `phantom_dissolve` after the fold fix,
+  still unjudged (bridge, gaulke, golden_tee, screenshot, tires; becker,
+  enthusiast, fremont and drone identical). Their notes take the new tag;
+  the 09-28 verdicts on the pre-fix dissolve stay under their own ids.
+- **A needle-hole map beside every render**, the page's new *thread |
+  needle holes* control at the top. `stitchviz.render_penetrations` draws
+  the thread render faded to 35% over the cloth, on the same frame, with a
+  dot at every stitch record and none at a jump; `--render` writes it as
+  `renders/<fixture>__<arm>__holes.jpg` and the page swaps every view's
+  source in place, so a zoom set on the thread stays on the holes. Built
+  because the thread render cannot show a split column's mid-column
+  penetration (`../renders/split-comb-2026-09-30/`): on the render the comb
+  and the flicker look alike, on the map the comb is continuous staggered
+  lines of holes down every wide column and the flicker is an interrupted
+  one.
+- **The locator marks becker (1 box) and tires (3).** On the other six ref
+  pairs the change is under its 0.6 mm blur — a rail moved by under a
+  millimetre, a comb that is texture — which is what the holes toggle is
+  for. **The confound badge on tires' ref pair is right, and it matters**
+  (found after the sitting, below): this checkout has the rembg venv, the
+  ref engine's worktree does not, and tires is photo-class, so its BEFORE
+  side ran without photo prep and its AFTER side with it.
+- **The table** under the ref arm's head: `three-changes-corpus.json`,
+  measured on the two engines that drew the pairs.
+
+## The corpus, this morning's engine → today's
+
+`tools/envelope_escapes.py` (a trace hook on `_rail_points` and a 20 px/mm
+raster of the symmetric satin) and a per-leg split count, run in each
+tree; stitches and trims are the same runs and agree with the page's
+counts. *reached (escapes)*: the stations at which the envelope extends a
+rail past the symmetric width, and how many of those extensions end on
+ground another stroke of the same shape already sews. *changes
+(lettering)*: how many times the split state changes between consecutive
+legs along the satin runs, a cross and its return leg each split on their
+own length.
+
+| fixture | mm | stitches | trims | reached (escapes) | split on/off changes (lettering) |
+|---|---|---|---|---|---|
+| becker | 100 | 9,563 → 9,321 | 51 → 50 | 183 (113) → 72 (14) | 122 (59) → 37 (26) |
+| golden_tee | 80 | 8,613 → 8,575 | 41 | 130 (75) → 36 (5) | 4 (0) |
+| tires | 80 | 2,646 → 2,835 | 8 | 14 (13) → 1 (0) | 21 (0) → 5 (0) |
+| enthusiast | 80 | 2,474 | 15 | 1 (1) → 0 (0) | 0 (0) |
+| fremont | 92.5 patch | 20,012 | 56 | 0 (0) | 0 (0) |
+| bridge | 80 | 16,157 → 16,175 | 101 | 85 (70) → 0 (0) | 20 (0) → 5 (0) |
+| gaulke | 80 | 4,307 → 4,305 | 30 | 6 (5) → 0 (0) | 0 (0) |
+| drone | 80 | 18,788 → 18,796 | 122 | 12 (10) → 0 (0) | 2 (2) |
+| screenshot | 80 | 8,171 → 8,201 | 73 | 28 (26) → 1 (0) | 8 (0) → 3 (0) |
+| **corpus** | | 90,731 → 90,694 | 496 | **459 (313) → 110 (19)** | **177 → 56** |
+
+The tires row is measured with the photo-prep venv linked into the morning
+engine's worktree (see *Measured after the sitting*); the first cut of
+this table read tires from a worktree without it — 2,500 stitches, 22
+(22) reached — which is the un-prepped lane, not the morning engine, and
+put the corpus at 467 (322) and 173. Corrected, the before column is the
+afternoon's escapes census to the station (459 / 313). What the three
+changes did, in the corpus's own numbers: the envelope now reaches at a
+quarter of the stations it did this morning and nineteen of those
+extensions still land on a sibling's ground (Becker 14, golden_tee 5); the
+split state changes a third as often along the runs; the stitch total
+moves under a tenth of a percent, tires the exception (+7%: the comb on
+its wide columns, 31 → 220 split legs).
+
+## How it was built
+
+```bash
+cd digitizer
+.venv/bin/python -m tools.eye_pairs --render --arms ref_0930am,phantom_dissolve --out <out>
+.venv/bin/python -m tools.eye_pairs_gallery --labelled --src <out> --out <out>/gallery \
+    --tables ../docs/eye-pairs-2026-09-30/three-changes-corpus.json --sitting evening-0930
+```
+
+One lane, the base and both arms on all nine logos (27 arm-runs, the ref
+engine in a temp worktree), then `<out>/gallery/index.html` and its `img/`
+republished to the artifact above (50 images, 7.5 MB; the previous
+sittings' images removed from the version). The store was read before the
+republish: no document newer than the export in `kent-notes.json`, no
+rulings. The instrument runs are a scratch script over
+`tools/envelope_escapes.census` in each tree; their output is the table.
+
+## Kent's question
+
+Two, on one page. On the eight ref pairs: does today's lettering read
+better than this morning's — smoother, more flow, the void-filling gone —
+and where the holes toggle shows the comb, does a continuous comb read
+better than the flicker it replaced? On the five dissolve pairs: the flip
+of `dissolve_phantom_blends`, still his to rule on. Verdicts pending at
+the time of writing.
+
+## Outcome — Kent's evening sitting (2026-09-30, all 13 judged)
+
+**The eight ref pairs, this morning's engine | today** (a ref arm takes no
+ruling; his note on its head: none):
+
+| pair | verdict | note (verbatim) |
+|---|---|---|
+| becker | no difference | "the lettering does not flow, satin stitching is not smooth and structured pattern." |
+| bridge | no difference | |
+| drone | no difference | |
+| enthusiast | no difference | |
+| gaulke | both bad | |
+| golden_tee | both bad | |
+| screenshot | both bad | "dont use this image to judge" |
+| tires | **before better** | "edges are nice, and clean the don't randomly break" |
+
+4 no difference, 3 both bad, 1 before, 0 after. **The day's three changes
+did not reach his eye.** The instruments moved (reached stations 467 → 110,
+split changes 173 → 56) and the page reads *no difference* on the four
+logos where they moved most; the one pair his eye separated went the
+other way — tires, where the morning engine's edges are "nice and clean"
+and today's "randomly break". Becker's note is the third time in a day
+his eye has named the same thing about the lettering: the satin does not
+flow, is not smooth, has no structured pattern — the sibling rule, the
+comb and the teeth were all aimed at it and none of them changed the
+verdict. screenshot's note says the fixture itself is not one to judge
+digitizing by; that is a corpus note, recorded.
+
+**The five dissolve pairs** (`dissolve_phantom_blends=True` after the fold
+fix, shipped | dissolved):
+
+| pair | verdict | did the flag do its job? | note (verbatim) |
+|---|---|---|---|
+| bridge | **after better** | yes | "random satin borders have been removed" |
+| gaulke | **before better** | | "after ended up adding satin trim]" |
+| golden_tee | **before better** | can't tell | |
+| screenshot | both bad | | "disregard this photo to reference the digitizing judgement" |
+| tires | no difference | can't tell | |
+
+1 after, 2 before, 1 no difference, 1 both bad; no ruling on the page.
+**The flag stays OFF.** It did on bridge exactly what it claims (the halo's
+"random satin borders" gone), and on gaulke it added a satin trim that was
+not there — a regression his eye caught and the corpus table had already
+counted (regions 53 → 57, trims 33 → 37, stitches 4,305 → 4,441) without
+reading it as one. His 09-28 verdicts on the pre-fix dissolve (bridge
+after; gaulke, golden_tee, screenshot, tires both bad) stand beside these:
+the fold fix moved gaulke, golden_tee and tires off *both bad*, and bridge
+is the only logo where the dissolve is a gain both times.
+
+The store, read back after he said he was done: `kent-notes.json`
+(`third_sitting`), 13 notes and the ref arm's head note, no ruling document
+with a value.
+
+### What the verdicts send back to the bench
+
+- **tires, "edges randomly break" today.** Measured below: the pair was
+  the confound its badge named, and the edges his eye preferred are the
+  un-prepped lane's. Today's engine and this morning's, both with photo
+  prep, draw the same ragged tread edges; the day's changes add only the
+  comb's penetrations.
+- **gaulke, the dissolve's added satin trim.** Four regions and four trims
+  appear under the flag; what they are is measured below.
+- **becker, the lettering's flow.** Not one of the day's changes moved this
+  verdict. The two levers not yet on the page are the pro's own Becker
+  style — raw crosses to about 7 mm, no comb (`split_satin_above_mm=7.0`,
+  8,292 stitches) — and the symmetric rails on the letters (the envelope
+  OFF, whose reaches carry three times the symmetric rails' jitter). Both
+  are one-line arms for a texture sitting, and gate 1 stands behind the
+  first.
+
+### Measured after the sitting
+
+**tires: the pair compared lanes, not engines.** The primary checkout has
+the rembg venv (`digitizer/rembg_isolated/venv`, gitignored); the ref
+engine's worktree had none; tires is `photo_scene`. So the BEFORE side
+skipped photo prep and the AFTER side ran it — the confound badge the
+page put on that one pair. One engine per step of the day, all in
+worktrees without the venv, draws clean tread edges at every step
+(2,500 / 2,500 / 2,652 stitches) and the same commit as today's main in a
+clean worktree reads 2,652 against this checkout's 2,835. With the venv
+linked into a worktree of the morning engine: **2,646 → 2,835**, and the
+locator's three boxes show the same ragged tread edges on both sides —
+the notch where a tab meets its band, the jagged triangle, the messy
+junction — with today's side adding the comb's mid-column penetrations
+and nothing else (`tires_true_*.png` in the session scratch; the numbers
+in the table above). What Kent preferred is the un-prepped lane's
+segmentation of a cartoon tire: the rembg matte roughens its edges, and
+his eye called that "edges randomly break". That is a finding about the
+photo lane on tires (a logo classified `photo_scene` with
+`detected_photographic=False`), not about the day's three changes, and it
+is the one *before better* of the night.
+
+**The yardstick now links the venv into every ref worktree**
+(`refarm.link_photo_prep`; the row carries `photo_prep_env`, and the
+page's confound badge reads it), so a future ref pair on a photo-class
+fixture compares engines. The eight ref pairs on this page were rendered
+before that; the seven non-photo fixtures are unaffected.
+
+**gaulke: the dissolve's "satin trim" is four grey halo slivers.** Under
+`dissolve_phantom_blends=True` gaulke gains four regions the shipped run
+does not have — 0.19 to 0.28 mm² each, `rescued_small_shape`, thread 0108
+(153, 153, 153), sewn as grey running stitches of 30 to 54 points (a
+sliver along the letter's diagonal at (−6.0, −3.1)–(−2.5, 0.9) mm, two on a
+bar at y ≈ 3.5, one at (−8.5, 0.9)); satin runs 91 → 95, trims 30 → 37,
+stitches 4,305 → 4,441. The fold (`stage2_photo_segment.
+dissolve_phantom_blends`) sends a halo member to the instance of its
+endpoint colour that it borders, and these ended up as grey, disconnected
+and rescued. Which branch of the fold made them — a member whose ramp was
+grey-to-white, a member that touched no non-band label, or a band the
+dissolve left standing — is the next measurement; the flag stays OFF
+either way, on 2 before, 1 after.
+
+**becker: nothing to add to the note.** The lettering's flow is the
+open question the day did not answer; the two levers not yet on the page
+are named above.
+
+## The texture sitting — the lettering's two levers, before | after (2026-09-30, late)
+
+Kent's pick after the evening verdicts: his becker note — *"the lettering
+does not flow, satin stitching is not smooth and structured pattern"* —
+had survived the day's three changes, and two levers had not yet been in
+front of his eye. The same artifact URL, rebuilt under the tag
+`texture-0930`, the needle-holes toggle on:
+
+- **`split_7mm`** — `split_satin_above_mm=7.0`: raw satin crosses to about
+  7 mm and no comb, the house style of the pro who sewed Becker's own files.
+  Five pairs: becker (the letters: 85.8 → 35.1% of legs split, on/off
+  changes 26 → 8, mid-column holes 114 → 59 per 100 legs, 9,321 → 8,281
+  stitches), and tires, bridge, drone, screenshot where a non-lettering
+  column crosses 5 mm; golden_tee, gaulke, fremont, enthusiast identical
+  (no leg over the threshold).
+- **`rails_symmetric`** — `satin_rails_follow_edge=False`: both rails at
+  the nearer edge's distance, the envelope OFF. Three pairs: becker
+  (9,321 → 9,248, the letters' legs 1,412 → 1,390), golden_tee (8,575 →
+  8,573) and tires (the same count, a different design); six identical.
+  After the sibling rule and the teeth, the envelope's reaches on the
+  letters are few, and this is what they amount to.
+- **The tables** under each arm's head: `texture-corpus.json`, one
+  digitize per arm and logo on the engine that drew the pairs, on the
+  satin runs of `text_candidate` shapes — legs, split share, on/off
+  changes, holes per 100 legs, and two texture numbers described below.
+
+## What the instruments say, and what they cannot
+
+Two numbers were built for "smooth" and "flow": the share of consecutive
+legs whose length differs by more than 0.15 mm (a rail step), and the
+90th percentile of the turn between consecutive legs (the cross swinging).
+On becker's letters they read 42.2% and 6.2° shipped, 42.2% and 6.2°
+under the 7 mm split (the rails are the same rails), 40.4% and 6.6° under
+the symmetric rails. **Then the same numbers on the pro's own Becker
+files** (`testdata/reference/becker_*.dst`, 50 satin columns, 25,113 legs
+by `tools/study_pro.classify`): 34.9% and 45.8°, and net of taper — the
+second difference of leg length, roughness a straight taper does not
+count — the pro is *rougher*: 54.4% of legs over 0.15 mm against our
+45.2%, 35.3% over 0.30 mm against 21.0%, a median of 0.171 mm against
+0.126. So **leg-length jitter is not what his eye calls smooth**, and
+neither lever moves it more than four points. Whatever "flow" and
+"structured pattern" are, they are not in this instrument; the page asks
+him for the words.
+
+## How it was built
+
+```bash
+cd digitizer
+# the out dir seeded with the evening render's base (same engine, same config: a cache hit)
+.venv/bin/python -m tools.eye_pairs --render --arms split_7mm,rails_symmetric --out <out>
+.venv/bin/python -m tools.eye_pairs_gallery --labelled --src <out> --out <out>/gallery \
+    --tables ../docs/eye-pairs-2026-09-30/texture-corpus.json --sitting texture-0930
+```
+
+Eighteen arm-runs (the base cached), 8 pairs, 10 identical and not shown,
+33 images (5.8 MB) republished to the artifact above; the store read
+before the republish (13 evening notes, one head note, nothing newer).
+The table's instrument is a scratch script over `digitize()` with
+`strip_ties` / `strip_splits` on each satin run; the pro numbers a second
+one over `tools/study_pro`.
+
+## Kent's question
+
+On the five `split_7mm` pairs: does the pro's raw-cross style read as the
+structure the comb lacks — and on the holes view, is a column with one
+hole per rail station what "structured pattern" means? On the three
+`rails_symmetric` pairs: do the letters read smoother without the reach,
+at the coverage it costs? And in the note under either arm, his own words
+for *flow*. The 7 mm threshold is a physical constant (a 6–7 mm float on
+pique or a cap), so a verdict for it is a sew-out question under gate 1
+before it is a flip. Verdicts pending at the time of writing.
+
+## Outcome — Kent's texture sitting (2026-10-01, 01:21Z; seven of eight judged)
+
+**`split_7mm`** (the pro's raw-cross style | today's comb):
+
+| pair | verdict | did the flag do its job? | note (verbatim) |
+|---|---|---|---|
+| becker | no difference | can't tell | |
+| bridge | no difference | can't tell | |
+| drone | no difference | can't tell | |
+| tires | no difference | can't tell | |
+| screenshot | — | | "please stop using this shitty logo, put it in an .md file somehwere. 15 characters at most." |
+
+**`rails_symmetric`** (the envelope | the symmetric rails):
+
+| pair | verdict | did the flag do its job? | note (verbatim) |
+|---|---|---|---|
+| golden_tee | **before better** | yes | "It completed the stitch with a very nice line following the outline." |
+| tires | no difference | can't tell | |
+| becker | not judged | | |
+
+No ruling under either arm, and the two head notes he left after the
+verdicts (01:25Z) say why: under `rails_symmetric`, *"not sure what's being
+shown here."*; under `split_7mm`, *"Not sure what's being shown here."* The
+arms' own words on the page — a config flag and a paragraph on what it
+changes — did not tell him what he was looking at. No words for "flow"
+came.
+
+**What it settles.** The pro's raw-cross style and the comb read the same
+to his eye on every pair he judged, becker's letters with the holes toggle
+included — so the 7 mm threshold stays where the corpus vote put it (5.0),
+and no sew-out pack is owed: the page could not separate them, and cloth is
+asked only when the eye has a difference to settle. The symmetric rails
+lost the one pair they changed visibly — on golden_tee the envelope's
+line "following the outline" is the thing he likes, as it was on the
+morning's sitting — so the envelope stays ON and the morning ruling
+stands. Becker's note from the evening is still the open question, with
+neither lever answering it and no instrument naming it.
+
+**screenshot leaves the page.** His note is an instruction, and it is
+done: `tools.eye_pairs.pairs.EXCLUDED_FIXTURES` drops the fixture from
+`--render`'s default corpus and the labelled page drops its rows from any
+sitting (a test on each), and DOCTRINE carries the fifteen-character
+version. The instruments' corpus (`REAL_ART`, the tables) still counts it.
+
+## The pro's own Becker beside ours (2026-10-01)
+
+Kent's pick after the texture verdicts: five changes aimed at the
+lettering's flow, none reached his eye, and no instrument has named what
+flow is. So the page now shows the one thing that has it, if anything
+does: the professionally digitized Becker, from the file the pro sewed.
+The same artifact URL under the tag `pro-1001`, one pair:
+
+- **LEFT, "OURS · today":** our engine's digitize of the Becker logo at
+  100 mm, the shipped defaults (the evening and texture sittings' base).
+- **RIGHT, "THE PRO · the pro's file":**
+  `testdata/reference/becker_hat_polo_large_beckers_logo_hat.pes`, the
+  101.9 mm hat version — the closest of the five professional files to our
+  fixture's width — read through `adapter.pattern_to_design` and drawn by
+  the same renderer, the needle-holes toggle on both. The PES rather than
+  the DST beside it because the PES carries the pro's thread list (grey and
+  black, five blocks).
+- **A third kind of arm.** `tools/eye_pairs/pairs.py` takes a `__file__`
+  arm naming one stitch file per fixture (`filearm.design_from_file`); a
+  fixture it does not name gets no row. The gallery labels the sides
+  itself (`FILE_ARMS`, `side_labels`), takes a verdict and a note and no
+  ruling, as for a ref arm. Tests on the yardstick (the file round-trips
+  in our frame, an unnamed fixture gets no row), the gallery (the labels,
+  the kind, no ruling) and the spec's arms table.
+- **The table** under the head: `pro-becker-table.json`, ours against the
+  pro's by one rule — `tools/satin_columns`' scale-free cross detector
+  over needle-down passes of each design's stitch records.
+
+## Ours against the pro's, one rule
+
+| measure | ours (100 mm) | the pro's (101.9 mm) |
+|---|---|---|
+| stitches | 9,321 | 12,356 |
+| trims | 49 | 57 |
+| colour blocks | 2 | 5 |
+| satin crosses as % of penetrations | 31.3 | 42.6 |
+| satin column width p10 / p50 / p90 mm | 0.89 / 2.24 / 3.35 | 1.52 / 2.66 / 5.20 |
+| columns under 0.7 mm % | 7.3 | 5.3 |
+| column legs | 2,849 | 5,192 |
+| leg length p50 / p90 mm | 2.52 / 3.55 | 2.94 / 5.39 |
+| legs over 5 mm % | 0.0 | 26.5 |
+| legs over 7 mm % | 0.0 | 1.6 |
+| jitter > 0.15 mm % | 32.5 | 28.5 |
+| turn p90 ° | 16.6 | 27.6 |
+
+What the two renders show before any verdict (`pro_vs_ours.png` in the
+session scratch, the pro upright and the right way round — orientation
+checked by eye, as the DST doctrine demands): the pro sews BECKER's big
+arch letters as a black fill with grey satin keylines and counters, and
+MARINE as grey satin columns with one cross direction per stroke, no
+mid-column holes and a quarter of its legs over 5 mm; ours sews both
+rows as satin columns under the 5 mm comb, so the arch letters read as
+lumpy columns where the pro's read as flat fills with a clean edge. The
+pro's columns are wider (p50 2.66 against 2.24 mm, p90 5.20 against 3.35)
+and swing more (turn p90 27.6° against 16.6°), and by leg-length jitter
+the pro is no smoother (28.5% against 32.5%). If his eye says the pro's
+lettering flows, the candidates are in that paragraph: fill for the big
+letters, raw crosses to the width of the column, one direction per stroke.
+
+## How it was built
+
+```bash
+cd digitizer
+# the out dir seeded with becker's base from the texture render (a cache hit)
+.venv/bin/python -m tools.eye_pairs --render --fixtures becker --arms pro_file --out <out>
+.venv/bin/python -m tools.eye_pairs_gallery --labelled --src <out> --out <out>/gallery \
+    --tables ../docs/eye-pairs-2026-09-30/pro-becker-table.json --sitting pro-1001
+```
+
+Republished with 5 images (1.2 MB); the store read before the republish
+(13 evening notes, 7 texture notes, 3 head notes, nothing newer).
+
+## Kent's question
+
+One pair, two things: which lettering flows, and in the note, what the
+difference is — in his own words, since no instrument has them. A verdict
+for the pro's is not a flip of anything; it is the first target the
+instruments have had for "flow", and the next measurement starts from
+what he names.
+
+## The back stitching: the verdict on the pro pair, and what it measures as (2026-10-01)
+
+Kent judged the pair at 01:53Z. **The pro's flows** (`after`), and his
+note, verbatim:
+
+> The pros file as back stitching to support the detail layering, the
+> letters look perfect. the lettering is smooth, it's beautifull. The
+> back stitching helps support the top threading so it has structure and
+> support.
+
+Asked in chat a minute later (the store had read empty at 01:50Z; the
+note landed at 01:53Z and is the primary record), he took all three
+candidates the renders offered: the big letters as a flat fill, each
+stitch crossing the whole stroke in one go, one direction per stroke with
+no mid-column holes. His own words are the back stitching, so that is
+what got an instrument.
+
+### The instrument
+
+`tools/underlay_cover.py` reads the STITCHES of either design by one rule:
+thread is drawn into a raster in sew order at 0.4 mm, each pixel keeping
+the last stitch that covered it; a stitch most of whose thread ends up
+under a stitch sewn at least six stitches later is **back stitching**
+(the six-stitch gap excludes a satin cross's own neighbours), and its
+pattern is read from its shape — a run, a zigzag (a sawtooth the column
+detector sees, or this engine's *ladder*: cross, 1.45 mm along the rail,
+cross back, whose 90° turns the detector is blind to), or lattice rows.
+The top thread's **support** is the share of its area that already had
+thread beneath it. A hole more than 1 mm inside the sewn area is
+**interior** — on a satin stem a split point or back stitching, never a
+rail. Cross-checked against our plan's own kinds on Becker: `underlay`
+95% covered, `travel` 93%, `satin` 17.5% (columns under later columns),
+`fill` 21%, `run` 58%. Tests: `tests/test_underlay_cover.py` (10).
+
+### What it found on MARINE (the bottom 32% of each design)
+
+| measure | ours, today | ours, split 7 mm | ours, split off | the pro's file |
+|---|---|---|---|---|
+| stitches | 9,321 | 8,281 | 7,442 | 12,356 |
+| MARINE holes | 3,892 | 3,118 | 2,279 | 2,641 |
+| MARINE holes inside the stroke, top thread | 1,413 | 774 | 246 | 304 |
+| MARINE holes per mm² | 3.20 | 2.56 | 1.88 | 2.07 |
+| column legs over 5 / over 7 mm % | 0.0 / 0.0 | 17.0 / 0.0 | 24.8 / 3.4 | 26.5 / 1.6 |
+| longest column leg mm | 5.0 | 6.7 | 12.1 | 11.1 |
+| back stitching, % of thread (whole / MARINE) | 34.8 / 33.6 | 35.0 / 34.1 | 34.8 / 33.5 | 47.7 / 28.9 |
+| top thread sitting on thread % (whole / MARINE) | 21.8 / 20.7 | 22.0 / 21.1 | 22.1 / 21.3 | 32.7 / 20.7 |
+
+1. **The scatter of holes inside the stems is the comb split.** Every
+   MARINE stem is wider than the 5.0 mm split threshold (artwork ridge
+   widths p10 5.48, p50 5.48, p90 6.85, max 8.76 mm; 93% over 5), so
+   today's comb puts a staggered hole in the middle of every cross there
+   — 1,413 holes inside the stems against the pro's 304. The texture
+   arm's 7 mm threshold took it to 774 (Kent: *no difference*, judged on
+   the thread render); the comb off takes it to 246, and the word's hole
+   density from 3.20 to 1.88 per mm² against the pro's 2.07. The pro's
+   file sews a quarter of its legs over 5 mm and 1.6% over 7; ours with
+   the comb off 24.8% and 3.4%, the longest 12.1 mm against his 11.1.
+   That is the one thing on the page that moves toward his words.
+2. **The back stitching under the stems is already there.** The plan's
+   own kinds: 19 strokes in the word, each with a centre run and a ladder
+   zigzag (legs 0.82 × the stem), 38 underlay runs, 1,647 mm — 18% of
+   the word's thread against the pro's 28.9%, which is a crosshatch of
+   straight rows under each stem (2,791 mm). The top thread sits on
+   thread 20.7% in both. The instrument's first pass called our ladders
+   "running" and "lattice" and read the word as having 16 mm of zigzag;
+   the two-rail rule fixed the label, and a flag to lift the zigzag's
+   oversize skip (which never fires on lettering — a text-cluster member's
+   ceiling is infinite under `satin_lettering_split`) was built, measured
+   to change nothing in MARINE, and reverted.
+3. **Stacked satin, ours only.** 19.5% of MARINE's satin thread (1,470
+   mm) is sewn under later satin — columns over columns at the junctions
+   and across the E (`S4ce50f57` carries 44 satin runs, its short ones
+   92-96% covered). The rule finds none in the pro's word. Not touched
+   tonight; it is the next lever if his eye wants more than the comb.
+
+### The arch letters are the source's
+
+`becker_marine_logo.png` is 146 × 91 pixels — 1.46 px/mm at 100 mm. Its
+BECKER letters are white bodies with a 2.7 mm black outline (ridge p50
+2.74, p90 4.11 mm) inside a black band, and ours sews what is there: 46
+satin runs, 4 fill patches, 6 small-shape runs. The pro's file fills the
+bodies black with a grey keyline, from a source that had them black.
+"Fill for the big letters" is not a lever in this engine on this fixture;
+the resolution line (2026-09-30, the lettering findings) is the record
+that applies.
+
+### The page (tag `back-1001`)
+
+`split_off` (`split_satin=False`) beside today on the corpus, identical
+pairs not shown, with the `pro_file` pair kept for reference and the table
+above under the arm's head. Republished as version 9 of the same artifact:
+6 pairs (becker, bridge, drone, golden_tee, tires under `split_off`;
+enthusiast, fremont and gaulke identical to today, not shown; the pro
+pair), 26 images, 5.4 MB; the store read before the republish held the
+pro verdict and nothing newer. One question: with the comb off, does
+MARINE read as the pro's — on the thread render, or only with the holes
+toggle? The threshold itself stays a gate-1 number: the page says which
+reads right, cloth says which sews right.
+
+```bash
+cd digitizer
+.venv/bin/python -m tools.underlay_cover testdata/reference/becker_hat_polo_large_beckers_logo_hat.pes --crop 0.68 1.0
+.venv/bin/python -m tools.eye_pairs --render --arms split_off --out <out>   # base rows seeded from the texture render
+.venv/bin/python -m tools.eye_pairs_gallery --labelled --src <out> --out <out>/gallery \
+    --tables ../docs/eye-pairs-2026-09-30/back-stitching-table.json --sitting back-1001
+```

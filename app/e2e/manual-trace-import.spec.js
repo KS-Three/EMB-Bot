@@ -22,6 +22,7 @@
 // than by guessed coordinates: the bounding box of the green pixels IS the
 // shape's box, and its top-left corner is where the anchor sits.
 import { test, expect } from "@playwright/test";
+import { pickGarment } from "./helpers.js";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -32,9 +33,7 @@ test("upload -> trace preview (colors + hole warning) -> add shapes -> drag an a
   test.setTimeout(60_000);
 
   await page.goto("/");
-  await page.getByRole("button", { name: "Tote", exact: true }).click();
-  await page.getByRole("button", { name: "Next", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "What are you making?" })).toBeVisible();
+  await pickGarment(page, "Tote");
   // Drawing tools left the tile row on 2026-08-13 (Kent's call) and live on
   // the canvas itself now: right-click the design field, pick the tool. Same
   // element type and panel on the other side of it — only the way in moved.

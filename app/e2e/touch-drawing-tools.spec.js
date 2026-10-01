@@ -31,7 +31,6 @@ test.describe("a device with a mouse", () => {
 
   test("is told about the right-click tool menu, and it opens", async ({ page }) => {
     await page.goto("/");
-    await page.getByRole("button", { name: "Next", exact: true }).click();
     await expect(page.locator(HINT)).toContainText(/right-click the canvas for drawing tools/i);
 
     // Not just the advice — the lever it names. Both launch-scope tools.
@@ -53,7 +52,6 @@ test.describe("a device with no mouse", () => {
     // assertions below would pass for the wrong reason.
     expect(await page.evaluate(() => matchMedia("(any-pointer: fine)").matches)).toBe(false);
 
-    await page.getByRole("button", { name: "Next", exact: true }).tap();
     const hint = page.locator(HINT);
     await expect(hint).toBeVisible();
     await expect(hint).not.toContainText(/right-click/i);
@@ -66,7 +64,6 @@ test.describe("a device with no mouse", () => {
     // The sentence is only honest if typing really does produce a design on
     // this device. Driven with taps and no mouse events at all.
     await page.goto("/");
-    await page.getByRole("button", { name: "Next", exact: true }).tap();
     const ta = page.locator("textarea").first();
     await ta.tap();
     await ta.fill("Fritsch");

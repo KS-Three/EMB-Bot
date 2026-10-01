@@ -4,6 +4,7 @@
   import { ensureFonts, loadCoverage, loadManifest } from "../lib/fontLoader.js";
   import { unsupportedMessage } from "../lib/fontCoverage.js";
   import { renderRealistic, isDark } from "../lib/preview.js";
+  import { hasOriginal, loadOriginal, fitRect, placeByContent, flatContentBox } from "../lib/originalImage.js";
   import { pickScaleBar } from "../lib/scalebar.js";
   import { tip } from "../lib/tip.js";
   import { designToStrands, strandStitchOrdinals } from "../lib/strands.js";
@@ -172,12 +173,25 @@
   // so clicking the one already lit does nothing, which is what a segmented
   // control promises. Leaving the simulator to pick a view stops it first.
   function showFlat() {
+    if (originalView) { originalView = false; originalToken++; scheduleViewRepaint(); }
     if (simActive) stopSim();
     if (realisticView) toggleRealistic();
   }
   function showRealistic() {
+    if (originalView) { originalView = false; originalToken++; scheduleViewRepaint(); }
     if (simActive) stopSim();
     if (!realisticView) toggleRealistic();
+  }
+  // Original view (spec §4): the uploaded artwork in place of the thread.
+  // View-only, like zoom — never saved, and any regeneration drops it,
+  // because a regenerated design is the thing the customer now wants to see.
+  let originalView = false;
+  $: anyOriginal = !!(project && project.elements && project.elements.some(hasOriginal));
+  $: if (!anyOriginal && originalView) { originalView = false; originalToken++; }
+  function showOriginal() {
+    if (simActive) stopSim();
+    originalView = true;
+    scheduleViewRepaint();
   }
 
   // ---- stitch simulator state (see lib/simulate.js for the pure math) ----
@@ -1403,8 +1417,81 @@
     }
   }
 
+  // Draws each element's uploaded artwork into the rect its stitches occupy.
+  // Same CSS-px coordinate space drawOverlay uses — it sets the same dpr
+  // transform for itself, for the same reason: it can run without a render
+  // having just left one. A token guards the awaits: a view change or a
+  // regeneration during a decode must not paint over the new frame.
+  //
+  // Registration differs by lane, and only one lane can register exactly:
+  //  - `image` (browser flatten): the stitches were traced from the flat's
+  //    non-transparent pixels (imageRegions.js flatToRegions), so that pixel
+  //    bbox — the CONTENT box — is mapped onto the stitch rect. It can run
+  //    slightly larger than the sewn extent on noisy art, because the trace
+  //    then drops specks and caps shapes per colour. Fitting
+  //    the whole frame instead shrank and shifted the art (measured
+  //    2026-09-30: a 23x20 px stitched square drawn back at 12x12).
+  //  - `digitized` (service): the result keeps no source-px origin — the
+  //    pipeline's art_bbox position inside its (cropped, resized) working
+  //    image never reaches the client, only its size via px_per_mm — so there
+  //    is no exact mapping and none is guessed: the whole image is fitted into
+  //    the placement box instead.
+  // Either way the draw is clipped to the hoop, so a frame larger than its
+  // content cannot spill onto the surround.
+  let originalToken = 0;
+  async function drawOriginals() {
+    const my = ++originalToken;
+    const rr = renderResult;
+    if (!rr || !rr.toCanvas) return;
+    const centre = rr.toCanvas(0, 0);
+    const box = hoopSizeMm(project);
+    const placement = { x: centre.x - (box.wMm * rr.scale) / 2, y: centre.y - (box.hMm * rr.scale) / 2,
+                        w: box.wMm * rr.scale, h: box.hMm * rr.scale };
+    const realHoop = effectiveHoop(project).hoop;
+    const clip = realHoop && realHoop.widthMm > 0 && realHoop.heightMm > 0
+      ? { x: centre.x - (realHoop.widthMm * rr.scale) / 2, y: centre.y - (realHoop.heightMm * rr.scale) / 2,
+          w: realHoop.widthMm * rr.scale, h: realHoop.heightMm * rr.scale }
+      : placement;
+    const flats = (runtime && runtime.flats) || {};
+    const jobs = (project.elements || []).filter(hasOriginal).map(async (el) => {
+      const rect = perElementRects.find((r) => r.id === el.id);
+      if (!rect) return;
+      let im;
+      try { im = await loadOriginal(el.sourcePng); } catch (e) { return; }
+      if (my !== originalToken || !originalView || !canvas) return;
+      const iw = im.naturalWidth, ih = im.naturalHeight;
+      let at = null;
+      if (el.type === "image") {
+        const flat = flats[el.id];
+        const cb = flat && flatContentBox(flat.indices, flat.w, flat.h);
+        if (cb) {
+          // The flat is the prepped copy of sourcePng (same WORK_MAX_PX size);
+          // scaled anyway, so a grid that ever differs still registers.
+          const sx = iw / flat.w, sy = ih / flat.h;
+          at = placeByContent(iw, ih, { x: cb.x * sx, y: cb.y * sy, w: cb.w * sx, h: cb.h * sy }, rect);
+        }
+        if (!at) at = fitRect(iw, ih, rect);
+      } else {
+        at = fitRect(iw, ih, placement);
+      }
+      if (!at) return;
+      const ctx = canvas.getContext("2d");
+      ctx.save();
+      if (dpr !== 1) ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.beginPath();
+      ctx.rect(clip.x, clip.y, clip.w, clip.h);
+      ctx.clip();
+      ctx.drawImage(im, at.x, at.y, at.w, at.h);
+      ctx.restore();
+    });
+    await Promise.all(jobs);
+  }
+
   function drawOverlay() {
     if (!canvas) return;
+    // Original view shows the artwork bare: a click or a shape pick while it
+    // is lit must not paint selection chrome over the customer's image.
+    if (originalView) return;
     const ctx = canvas.getContext("2d");
     // The overlay's px constants (node radius, handle size, line widths) are
     // CSS px like everything else, so it needs the same scale renderRealistic
@@ -1589,6 +1676,10 @@
     // Any regeneration invalidates the simulator's strand count -- stop it
     // (harmless no-op when it isn't running).
     stopSim();
+    // A regeneration drops the Original view too: the new design is what
+    // the customer now wants to see.
+    originalView = false;
+    originalToken++;
     const myToken = ++genToken;
     const fontKeys = fontKeysOf(project);
     let fontErr = null;
@@ -1756,7 +1847,9 @@
         // While simulating, every repaint (zoom/pan included) draws only the
         // sewn-so-far prefix -- otherwise a mid-playback wheel event would
         // flash the finished design.
-        limitStrands: simActive ? Math.floor(simIndex) : undefined,
+        // Original view draws fabric + hoop only (zero strands); the
+        // artwork goes on top in drawOriginals.
+        limitStrands: originalView ? 0 : simActive ? Math.floor(simIndex) : undefined,
       });
       perElementRects = [];
       if (renderResult && renderResult.toCanvas) {
@@ -1765,6 +1858,8 @@
           if (rect) perElementRects.push({ id: pe.id, ...rect });
         }
       }
+      // Original view: the artwork, and no selection chrome over it.
+      if (originalView) { drawOriginals(); return; }
       // Selection chrome is hidden during playback -- the simulator is a
       // watch-mode, not an edit-mode (pointer editing is disabled below too).
       if (!simActive) drawOverlay();
@@ -1824,6 +1919,8 @@
     // the two arrays index together.
     simOrdinals = strandStitchOrdinals(lastGenerateResult.combined);
     if (!simTotal) return;
+    originalView = false;
+    originalToken++;
     simActive = true;
     simIndex = 0;
     simSpeed = 1;
@@ -2192,7 +2289,9 @@
   let fieldMenu = null;
 
   function onContextMenu(e) {
-    if (simActive) return;          // the simulator owns the canvas while playing
+    // The simulator owns the canvas while playing; Original view shows the
+    // artwork, whose pixels the stitch outlines need not line up with.
+    if (simActive || originalView) return;
     e.preventDefault();             // our menu, not the browser's
     if (!canvas) return;
     const r = canvas.getBoundingClientRect();
@@ -2376,7 +2475,10 @@
     // interaction happened.
     if (showDragHint) dispatch("dismisshint");
 
-    if (simActive) return; // watch-mode: no select/drag/resize during playback
+    // Watch-modes: no select/drag/resize during playback, nor over the
+    // Original artwork (a shape click would open the popover over the image,
+    // and on the digitized lane hit-test outlines the image does not match).
+    if (simActive || originalView) return;
     if (!canvas || !renderResult) return;
     const p = canvasPointFromEvent(e);
     // The anchor focus lasts until the next press: a press ON an anchor sets
@@ -2633,7 +2735,7 @@
 
   function onPointerMove(e) {
     if (!canvas) return;
-    if (simActive) { canvas.style.cursor = "default"; return; }
+    if (simActive || originalView) { canvas.style.cursor = "default"; return; }
     const p = canvasPointFromEvent(e);
     // A shape edit is its own drag mode — it never sets `dragMode`, so the
     // element move/resize/pan branches below stay untouched by it.
@@ -3087,20 +3189,20 @@
         <button
           type="button"
           class="zoombtn viewseg-btn"
-          class:viewseg-on={!realisticView && !simActive}
+          class:viewseg-on={!realisticView && !simActive && !originalView}
           on:click={showFlat}
           disabled={!hasDesign}
-          aria-pressed={!realisticView && !simActive}
+          aria-pressed={!realisticView && !simActive && !originalView}
           aria-label="Stitches view"
           use:tip={"flatView"}
         >Stitches</button>
         <button
           type="button"
           class="zoombtn viewseg-btn"
-          class:viewseg-on={realisticView && !simActive}
+          class:viewseg-on={realisticView && !simActive && !originalView}
           on:click={showRealistic}
           disabled={!hasDesign}
-          aria-pressed={realisticView && !simActive}
+          aria-pressed={realisticView && !simActive && !originalView}
           aria-label="Realistic view"
           use:tip={"realistic"}
         >Realistic</button>
@@ -3114,6 +3216,16 @@
           aria-pressed={simActive}
           use:tip={"simulator"}
         >Simulate</button>
+        <button
+          type="button"
+          class="zoombtn viewseg-btn viewseg-orig"
+          class:viewseg-on={originalView}
+          on:click={showOriginal}
+          disabled={!hasDesign || !anyOriginal}
+          aria-pressed={originalView}
+          aria-label="Original view"
+          use:tip={"originalView"}
+        >Original</button>
       </span>
       <span class="zoomsep" aria-hidden="true"></span>
       <button

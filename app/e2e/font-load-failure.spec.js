@@ -15,7 +15,6 @@ import { test, expect } from "@playwright/test";
 test("a dead connection is explained, and names something that works", async ({ page }) => {
   await page.route("**/fonts/bin/**", (r) => r.abort());
   await page.goto("/");
-  await page.getByRole("button", { name: "Next", exact: true }).click();
   await page.locator("textarea").first().fill("FRITSCH");
 
   const err = page.locator("span.err");
@@ -36,7 +35,6 @@ test("and the app really does recover, with no reload", async ({ page }) => {
   let offline = true;
   await page.route("**/fonts/bin/**", (r) => (offline ? r.abort() : r.continue()));
   await page.goto("/");
-  await page.getByRole("button", { name: "Next", exact: true }).click();
   await page.locator("textarea").first().fill("FRITSCH");
   await expect(page.locator("span.err")).toBeVisible({ timeout: 20000 });
 
@@ -52,7 +50,6 @@ test("an HTTP status keeps its own message — not 'check your connection'", asy
   // wording is scoped to transport failures only.
   await page.route("**/fonts/bin/**", (r) => r.fulfill({ status: 404, body: "" }));
   await page.goto("/");
-  await page.getByRole("button", { name: "Next", exact: true }).click();
   await page.locator("textarea").first().fill("FRITSCH");
   const err = page.locator("span.err");
   await expect(err).toBeVisible({ timeout: 20000 });

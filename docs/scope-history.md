@@ -184,6 +184,54 @@ container.
 
 ---
 
+**Last updated:** 2026-09-18 (later) — eye pairs: the fourteen review items PR #506's fix scope skipped
+
+`digitizer/tools/eye_pairs/` only — no engine change, no default flip, and
+**no `FEATURES_SCHEMA` bump**: a multi-hour `--render` was running on Kent's
+machine while this was written, and every new row field is optional with its
+fallback stated. Spec, dated paragraph by paragraph:
+`docs/superpowers/specs/2026-09-17-eye-pairs-design.md`.
+
+The two that change what a result can be read as. (1) The exploratory fit's
+LOFO and best-single accuracies were printed raw; they now carry the majority
+baseline, a Wilson interval and `(acc − baseline)/(1 − baseline)` — a world
+where Kent picks shipped 54 of 60 times and every delta is zero scores raw
+**0.90** against a floor of **0.90** (gate 4). (2) The 08-27 arm's
+`confounded` flag was inferred from `design_class`; it is now derived from
+three facts measured at render time (the rembg venv under each engine,
+`git diff` on `requirements.txt`) and `--reveal` prints which fired. On a
+checkout with no rembg venv the old proxy was a false positive.
+
+The other twelve, one commit each: `--serve` refuses a torn sitting, reports
+the sitting hash on `/pairs` (the page polls it) and 409s a pick once a
+`--pair` has rebuilt it; a malformed pick is a 400 instead of a dropped
+connection; `--pair` reads a recorded `design_hash` and hardlinks `img/`
+(renders are now replaced atomically, because `cv2.imwrite` in place would
+have rewritten a linked picture under a live sitting); `--verify` picks
+`tires` by name; child processes are decoded as UTF-8 with replacement; a
+half-made ref worktree is discarded with `git worktree prune` (measured on git
+2.55: `remove --force` handles a missing directory but not a missing `.git`
+file); `build_pairs` links a repeat by key, held to three pinned digests of
+its output; one `_both(..., ties=)` fetch in `analysis`; `stitches` read from
+`stitchCount`; one `tiny_logo` fixture in conftest plus a teardown tripwire on
+the shared sitting; pick timestamps carry their UTC offset.
+
+Also in passing, before any of it: PR #506 was **open and red**, not merged.
+Red 1 was a test that simulated "no tesseract" by patching one function — it
+passes where the binary is missing and fails where it exists, i.e. only on CI.
+Red 2 was MASTER_SCOPE at 27,009 words on the MERGE ref with neither side
+over. Both fixed on #506's branch (Kent's call), which then merged at
+14:34Z.
+
+Suites at the time: the seven eye-pairs / instrument-split test files 82 →
+**146 tests**; those plus `test_scope_budget`, `test_doc_claims` and
+`test_dropped_elements` **189 passed** locally (Python 3.14.6, `-n 4`, 81 s).
+The full digitizer suite was NOT run locally — a 13%-in run showed no failure
+before it was stopped to free the CPU for the render — so CI is the full-suite
+evidence for this one.
+
+---
+
 **Last updated:** 2026-09-17 — border restitch pacing (PR #504)
 
 A border override now restitches on the pick instead of waiting out the 2 s
@@ -16298,6 +16346,253 @@ this flag had not landed in.
 
 *(measured 2026-09-30 — `tools/rail_edge.py bare_area`, `tools/edge_wobble.py` (satin `wobble_std_mm`); `tests/test_rail_comp.py::test_the_envelope_reaches_the_far_edge_where_the_gap_is_long_and_nowhere_else`; DOCTRINE 2026-09-30)*
 
+---
+
+## 2026-09-30 — `ARTWORK_UNCOVERED` could not fire on any real logo, and the floor was not why
+
+Kent's pick after the apex verdict: *"make preflight see these holes."* The
+constant `preflight._UNCOVERED_MIN_PATCH_MM2` had asked for this in writing
+since 2026-08-20 — *"nobody has looked at whether ... 4.50 mm² and ... 3.25
+mm² are real drops or acceptable. Widen the fixture set and adjudicate the
+middle before trusting this number."*
+
+**Finding 1: the 5.0 mm² floor sat above the entire population.** Swept on the
+nine corpus logos across erosion 0.2/0.3/0.4 × cell 0.25/0.5, the largest
+patch the check could see anywhere was **1.90 mm²**. Its 7.75 and 44.50 came
+from `enthusiast_logo` at 150 mm and `becker_marine_logo` at 90 mm on a tree
+seven default-flips old.
+
+**Finding 2: the floor was not the binding constraint.** With it set to zero
+the check still read **0.00 mm²** on ENTHUSIAST, where three other instruments
+read a 1–2 mm² hole at the A's apex. The 0.4 mm erosion had a cliff exactly at
+its shipped value:
+
+| `_UNCOVERED_ERODE_MM` | 0.1 | 0.2 | 0.3 | **0.4 (shipped)** |
+|---|---|---|---|---|
+| apex, mm² | 0.80 | 0.80 | 0.80 | **0.00** |
+
+`_UNCOVERED_CELL_MM` alone did the same: 0.60 at 0.20 mm, 0.40 at 0.25,
+**0.00 at 0.5**.
+
+**What shipped.** Cell 0.5 → **0.25 mm**; erosion 0.4 → **0.0**; floor 5.0 →
+**1.0 mm²**; two new filters that test what a rim IS rather than shaving every
+shape — `_UNCOVERED_MIN_HALF_MM` 0.30 (max inscribed radius) and
+`_UNCOVERED_MIN_FILL` 0.15 (area over bounding box). `_THREAD_MATCH_MIN_PATCH_MM2`
+**decoupled** and kept at the 5.0 its own sweep chose. New metrics
+`uncovered_holes` / `uncovered_hole_mm2` (adjudicated) beside the
+threshold-free `uncovered_worst_mm2`, plus `uncovered_patches` /
+`uncovered_top_mm2` so a floor can be re-derived from a report.
+
+| fixture | patches | holes | largest patch |
+|---|---|---|---|
+| golden_tee 80 | 108 | **0** | 3.12 mm² (a band seam) |
+| becker 100 | 93 | **17** | 3.00 |
+| bridge 80 | 58 | 0 | 0.88 |
+| screenshot 80 | 51 | 0 | 0.81 |
+| gaulke 80 | 48 | 0 | 0.31 |
+| drone 80 | 40 | **1** | 1.44 |
+| enthusiast 80 | 27 | **2** | 1.56 — the A's apex |
+| tires 80 | 9 | 0 | 0.06 |
+| fremont 92.5 | 1 | 0 | 0.25 |
+
+**438 patches, 20 holes, three fixtures.** Every firing patch on each fixture
+was rendered through `stitchviz.render_design` before the numbers were chosen
+and every one shows cloth between two sewn shapes:
+`docs/renders/uncovered-floor-2026-09-30/`.
+
+**MEAN thickness was measured as the compactness test and REFUTED** — the
+full-bleed rim's mean inscribed half is 0.332 mm, higher than fourteen of the
+twenty real holes (0.252–0.354). Fill ratio separates where mean does not:
+rim 0.007, golden_tee's seam 0.078, real holes 0.239–0.706.
+
+**Four pinned tests moved and none was a regression.** Three asserted SILENCE
+on fixtures where the check had nothing it could see, and were re-expressed to
+their actual claims (*this shape* is not reported; the RIM is not reported;
+zero HOLES rather than zero patches); the fourth
+(`test_edge_cap_lettering`) had a 0.5 mm² allowance that meant "unchanged"
+against a zero and means 3% against a seventeen, so it became proportional.
+
+**Shipped with it:** `tools/uncovered_floor.py` (the standing sweep, with a
+`--legacy` arm that re-reads the 2026-08-20 table's own fixtures) and
+`tests/test_preflight.py::test_the_letter_apex_is_reported_now_that_the_erosion_is_gone`.
+
+*(measured 2026-09-30 — `tools/uncovered_floor.py --corpus`; `docs/renders/uncovered-floor-2026-09-30/`; DOCTRINE 2026-09-30, two entries)*
+
+---
+
+## 2026-09-30 — what the sharper uncovered check found in its first full suite
+
+Five tests went red on the full digitizer suite after `ARTWORK_UNCOVERED` was
+re-derived (entry above). **None was a regression in the code they cover**, and
+two were not pins at all — they were findings.
+
+**1. `satin_lettering_split` leaves holes the fill lane did not.** MARINE at
+127.4 mm, the flag's own fixture:
+
+| arm | stitches | patches | holes | uncovered |
+|---|---|---|---|---|
+| split OFF (fill) | 9,600 | 5 | **0** | 0.0 mm² |
+| split ON (satin) | 7,168 | 43 | **11** | **22.9 mm²**, worst 4.31 @ 0.75 mm half |
+
+Rendered before it was written up: the holes are at the crowns of curved
+letters and between letter parts, where the split columns stop short of the
+artwork. `test_on_the_word_sews_fewer_stitches_and_nothing_goes_bare` passed
+for one reason — both arms read 0.0 under the old 5.0 mm² floor, so the
+comparison could not fail. Split into a passing stitch-count test and a
+**strict xfail** carrying the numbers; MASTER_SCOPE defect 50, and the call is
+Kent's.
+
+**2. The junction cover is inert on today's defaults — as `_cfg()` already
+said.** `tests/test_junction_patch_flag.py`'s config has held
+`satin_junction_stack=False` since 2026-09-19 with a comment saying part C
+composes the same cover. Quantified now, BECKER 80 mm on a bare config:
+
+| | stitches | uncovered | cover runs |
+|---|---|---|---|
+| stack ON, patch off | 6,101 | 29.3 | 3 |
+| stack ON, patch `"satin"` | 6,101 | 29.3 | 3 — identical |
+| stack OFF, patch off | 5,695 | 47.2 | 0 |
+| stack OFF, patch `"satin"` | 5,874 | **22.2** | 1 |
+
+**An observation for its own look:** the stack leaves MORE uncovered on this
+fixture than the cover alone — 29.3 against 22.2 — while costing 227 more
+stitches. It buys other things (self-crossings 311 → 0), so that is a trade to
+price, not a verdict.
+
+**3. Both patch tests asserted `uncovered_total_mm2 == 0.0`.** That was a
+property of the blind check, not of the patch. On their own `_cfg()` arms the
+patches do exactly their job — the K's crotch `Sead76620` goes **30.1 → 13.1**
+(tatami) and **30.1 → 16.8** (satin cover), totals 44.1 → 23.8 / 27.5 — while
+clearing no shape outright, because the check now resolves the residue inside
+each one. Re-pinned on the TARGET SHAPE and the total.
+
+**4. `test_marine_80_keeps_its_cover_without_the_junction_cover` came out
+stronger.** Its prediction was "A + B alone leave no bare artwork — the cover
+is the backstop, not the construction." Neutralising the cover now produces a
+plan identical stitch for stitch (2,354 both ways, 3.9 mm² both ways), which
+says "backstop, not construction" more sharply than a coverage bound. The
+0.5 mm² half was the blind check; MARINE 80 reads 3.9 mm² in two holes, and
+they are there whether the cover runs or not.
+
+**5. The thread-match floor was decoupled** and keeps the 5.0 its own
+2.0/5.0/10.0 sweep chose. `test_the_floor_is_the_uncovered_checks_number`
+asserted the coupling and is now
+`test_the_thread_match_floor_keeps_the_number_its_own_sweep_chose`.
+
+Suite on the merged tree before the repairs: **8 failed, 2,905 passed, 15
+skipped, 5 xfailed, 33m52s** — three of the eight the documented platform
+goldens. After: the four affected files read **42 passed, 1 xfailed**.
+
+*(measured 2026-09-30 — `tests/test_lettering_split.py`, `test_junction_patch_flag.py`, `test_junction_stack.py`, `test_thread_match_area_in_message.py`)*
+
+---
+
+## 2026-09-30 — defect 50 diagnosed: the crowns are a decomposition gap, and five cures are refuted
+
+Kent's pick: build the fix. The diagnosis came first and changed what the fix
+has to be.
+
+**The crowns look exactly like a width problem.** All 11 holes on MARINE
+127.4 (split ON) are **mid-rail**, 0.38–0.76 mm from the nearest cross and
+0.25–0.73 mm from the outline, and the rail sits **0.62–1.47 mm short of the
+artwork edge along its own cross ray**.
+
+**Five arms say it is not:**
+
+| arm | stitches | holes | uncovered | `lost_frac` |
+|---|---|---|---|---|
+| shipped | 7,168 | 11 | 22.9 | **0.1800** |
+| `rails_follow_edge="envelope"` | 7,567 | 11 | 22.9 | 0.1800 |
+| `rails_follow_edge=True` | 7,712 | 9 | 18.1 | 0.1937 |
+| width smoother removed (median window 1, 0 passes) | 7,471 | 11 | 22.3 | 0.1790 |
+| pitch 0.40 → 0.20 mm | 8,735 | 10 | 21.8 | 0.1911 |
+
+*(median window 1 alone, keeping the 4 smoothing passes, is WORSE: 16 holes /
+26.1 mm².)*
+
+- The **envelope** is inert for +399 stitches. A crown is narrower than its
+  ±`_ENVELOPE_WINDOW` stations — the design limit its own test pins on a
+  synthetic bulge — and it takes a running MINIMUM, so it refuses a local
+  maximum by construction.
+- **`True`** moves 2 of 11 and costs the headline metric.
+- The **smoother** is not the cause, which also kills the tidy story that a
+  crown is a local maximum every width model flattens.
+- **Pitch** buys one hole for 1,567 stitches.
+- The **1.6× floor cap** binds on exactly one of the eleven. **`_fold_caps`
+  never runs**: `fold_guard` follows `cfg.wide_columns`, default OFF.
+
+**Every arm that moves a crown makes `lost_frac` worse.** That is the tell.
+No column parameter reaches them because the crowns are not inside any
+column: the medial-axis split leaves wedges of artwork that **no stroke
+claims**, and 4 of the 11 sit at a node between two sub-strokes.
+
+**So the lever is a COVER, not a rail** — `_junction_cover_runs` generalised
+from junctions to "anywhere the strokes' union misses the artwork" — or a
+decomposition that does not leave the wedges. That is a different and larger
+build than the rail change this started as, and it is where defect 50 now
+sits.
+
+*(measured 2026-09-30 — the four probe arms above on MARINE 127.4; DOCTRINE 2026-09-30, "A satin column's crowns are a DECOMPOSITION gap")*
+
+---
+
+## 2026-09-30 — `satin_crown_cover` BUILT OFF: one cover closes defects 49 and 50
+
+Kent's ruling on `docs/superpowers/plans/2026-09-30-crown-cover.md` §7 — a
+cover under the arms rather than a new decomposition, on ALL satin shapes.
+
+**The build is small because the machinery existed.** `_uncovered_patches`
+already computes `polygon − all thread` at 0.25 mm, and `_junction_cover_runs`
+already sews a patch as a satin column placed first in the shape. The crown
+cover is that pair with the junction gate removed and `ARTWORK_UNCOVERED`'s
+own adjudicated thresholds — area ≥ 1.0 mm², max inscribed half ≥ 0.30 mm,
+fill ≥ 0.15 — the last two added to the finder as optional filters that
+default None, which keeps every other caller byte-identical.
+
+**The fixtures, OFF → ON:**
+
+| fixture | stitches | holes | uncovered | `lost_frac` |
+|---|---|---|---|---|
+| MARINE 127.4 | 7,168 → 7,352 (+2.6%) | **11 → 1** | 22.9 → 1.5 | 0.1800 → **0.1730** |
+| MARINE 80.2 | 2,354 → 2,358 (+0.2%) | **2 → 0** | 3.9 → 0.0 | 0.1083 → **0.1064** |
+| ENTHUSIAST 80 | 2,474 → 2,486 (+0.5%) | **2 → 1** | 2.6 → 1.0 | 0.2573 held |
+| BECKER 80 | 6,101 → 6,250 (+2.4%) | **12 → 7** | 29.3 → 10.8 | 0.0329 → **0.0217** |
+
+**The corpus:**
+
+| case | stitches | holes | uncovered | `lost_frac` | wedges |
+|---|---|---|---|---|---|
+| becker 100 | +2.0% | **17 → 9** | 31.4 → 15.4 | 0.0415 → 0.0350 | 20 |
+| enthusiast 80 | +0.5% | **2 → 1** | 2.6 → 1.0 | held | 1 |
+| drone 80 | +0.0% | **1 → 0** | 1.4 → 0.0 | held | 1 |
+| bridge 80 | +0.1% | 0 → 0 | 0 → 0 | 0.1573 → 0.1560 | 2 |
+| golden_tee 80 | **−1.4%** | 0 → 0 | 0 → 0 | 0.3779 → 0.3758 | 2 |
+| tires, fremont, gaulke, screenshot | 0.0% | 0 → 0 | 0 → 0 | unchanged | **0** |
+
+**Corpus holes 20 → 10. `lost_frac` never rises on any of the nine and falls
+on three.** The four fixtures reporting no holes find NO WEDGE AT ALL, which
+is the over-fire test passing rather than a threshold tuned to pass it.
+
+**ENTHUSIAST's survivor is the 1.00 mm² gap between two letters; the 1.56 mm²
+apex is covered.** That closes defect 49 as well, and makes 49 and 50 one
+mechanism rather than two.
+
+**Two build errors, both caught by a test, both recorded in DOCTRINE.**
+`_junction_cover_runs` had an undocumented tatami fallback, so the first build
+put fill inside a satin shape against Kent's 2026-09-09 ruling; suppressing it
+outright then made BECKER *worse than no cover* (29.3 → 37.1 mm², a 26.2 mm²
+hole, `lost_frac` through the gate) because crown mode replaces the junction
+cover's call and inherited its job. The skip is floored at
+`_JUNCTION_PATCH_MIN_MM2`, so it applies only to wedges that exist because the
+crown floor is lower.
+
+**One measurement NOT made:** how many wedges are skipped for want of a
+sewable column. The counter used during the build watched `_principal_spine`
+returning non-None (26 of 26), which is not the same thing — a spine can still
+resample to a column too short to sew — so the "0 without a satin answer" line
+first written here was withdrawn rather than published.
+
+*(measured 2026-09-30 — `tests/test_crown_cover.py`; `docs/superpowers/plans/2026-09-30-crown-cover.md` §6; DOCTRINE 2026-09-30)*
 ## 2026-09-30 — the phantom-blend fold's wrong turn: a member folded into an endpoint it does not touch becomes a teal speck
 
 Kent's pick after bridge's investigation: fix the fold, then flip. Traced on
@@ -16643,3 +16938,188 @@ are all but identical, the rails drawing shows the kink gone. A unit test
 on the helper; the pinned files 143 passed. Records:
 `docs/renders/envelope-teeth-2026-09-30/` (README, census.json, three
 strips), DOCTRINE.
+
+## 2026-09-30 — The evening sitting: the day's three lettering changes before | after on the labelled page, with a needle-hole map beside every render (Kent's pick)
+
+Kent's pick after the teeth. The labelled page rebuilt at the same URL as
+this morning's engine (`ref_0930am`, `main` at 1e5f8fe2 — the envelope as
+it shipped that morning, before the sibling rule #577, the split comb #578
+and the minimum stretch length #579) against today's, on the nine logos
+under the tag `evening-0930`; the dissolve pairs (`phantom_dissolve`,
+unjudged since the fold fix) stay on the page. New on it: a **needle-hole
+map** beside every render — `stitchviz.render_penetrations`, the thread
+render faded to 35% over the cloth on the same frame with a dot at every
+stitch record and none at a jump. `--render` writes it as
+`renders/<fixture>__<arm>__holes.jpg` (a run rendered before it gets the
+map from its kept designs, no digitize) and the page's *thread | needle
+holes* control swaps every view's source in place, so the zoom, the
+verdicts and the locator's boxes stay put. Built because the thread render
+cannot show the comb (the split-comb finding of the afternoon). The ref
+arms are a table now (`REF_ARMS`): the page reads `is_ref` and
+`ref_label` off the record instead of testing the one literal `ref_0827`.
+
+The corpus table under the ref arm's head
+(`docs/eye-pairs-2026-09-30/three-changes-corpus.json`;
+`tools/envelope_escapes.py` and a per-leg split count run on both trees):
+envelope reached stations **459 (313 escapes) → 110 (19)**, split on/off
+changes along the satin runs **177 → 56** (on the lettering 61 → 28),
+stitches 90,731 → 90,694, trims 496 both. Per logo: Becker 183 (113) → 72
+(14) reached and 122 → 37 changes at 9,563 → 9,321 stitches; golden_tee
+130 (75) → 36 (5) at 8,613 → 8,575; bridge 85 (70) → 0 and 20 → 5 changes
+at 16,157 → 16,175; tires 14 (13) → 1 (0) and 21 → 5 at 2,646 → 2,835
+(measured with the photo-prep venv linked into the morning engine's
+worktree — the first cut read tires from a worktree without it, the
+un-prepped lane, 2,500 stitches and 22 (22), and put the corpus at 467
+(322); corrected, the before column is the afternoon's escapes census to
+the station); screenshot 28 (26) → 1 (0) and 8 → 3; drone 12 (10) → 0;
+gaulke 6 (5) → 0; enthusiast 1 (1) → 0; fremont untouched. Records:
+`docs/eye-pairs-2026-09-30/README.md` (the evening section), the table
+JSON, COOKBOOK, MASTER_SCOPE, memory.
+
+## 2026-09-30 — The evening sitting judged: the day's three lettering changes did not reach the eye, the dissolve stays OFF, and the one "before better" was a lane, not an engine
+
+Kent judged all 13 pairs the same evening. **The eight ref pairs** (this
+morning's engine | today): becker, bridge, drone, enthusiast *no
+difference*; gaulke, golden_tee, screenshot *both bad*; tires *before
+better*. 0 after. His becker note is the third of the day on the same
+thing — *"the lettering does not flow, satin stitching is not smooth and
+structured pattern"* — and the sibling rule, the comb and the teeth,
+all aimed at it, moved the instruments (reached stations 459 → 110, split
+changes 177 → 56) and not the verdict. **The five dissolve pairs**
+(`dissolve_phantom_blends=True` after the fold fix): bridge *after* (job
+done: yes, "random satin borders have been removed"), gaulke *before*
+("after ended up adding satin trim"), golden_tee *before*, tires *no
+difference*, screenshot *both bad* with a note that the fixture is not
+one to judge digitizing by. **The flag stays OFF** on 2 before, 1 after.
+
+**tires' "before better" compared lanes.** The primary checkout carries
+the rembg venv (gitignored); the ref engine's worktree had none; tires is
+`photo_scene`, so its BEFORE side skipped photo prep — the confound badge
+the page put on that pair. Every step of the day in a venv-less worktree
+draws clean tread edges (2,500 / 2,500 / 2,652 stitches, today's own
+commit included: 2,652 clean against this checkout's 2,835); with the venv
+linked into the morning engine's worktree, 2,646 → 2,835 and the locator's
+three boxes show the same ragged edges on both sides, today's adding the
+comb's penetrations only. His eye preferred the un-prepped segmentation
+of a cartoon tire over the rembg matte's — a finding about the photo lane
+on that fixture, not about the day's changes. Fixed in the yardstick:
+`refarm.link_photo_prep` symlinks the venv into every ref worktree, the
+row carries `photo_prep_env`, the page's confound badge reads it (tests:
+refarm, gallery, cli). The corpus table's tires row and totals were
+re-measured on the prepped lane (above).
+
+**gaulke's "satin trim" under the dissolve** is four grey halo slivers —
+0.19 to 0.28 mm², `rescued_small_shape`, thread 0108 (153, 153, 153), sewn
+as grey running stitches of 30 to 54 points along a letter's diagonal and
+a bar; satin runs 91 → 95, trims 30 → 37, stitches 4,305 → 4,441. Which
+branch of the fold leaves them is the next measurement. Records:
+`docs/eye-pairs-2026-09-30/README.md` (Outcome, Measured after the
+sitting), `kent-notes.json` (`third_sitting`), DOCTRINE, memory.
+
+## 2026-09-30 — The lettering texture sitting: the pro's 7 mm split style and the symmetric rails on the page, and leg-length jitter measured NOT to be what the eye calls smooth (Kent's pick)
+
+Kent's pick after the evening verdicts. The labelled page rebuilt under
+the tag `texture-0930` with two arms beside today, the needle-holes
+toggle on: `split_7mm` (`split_satin_above_mm=7.0`, the pro's own Becker
+style — raw crosses to about 7 mm, no comb) and `rails_symmetric`
+(`satin_rails_follow_edge=False`, the envelope OFF). Eight pairs: the
+split arm moves becker's letters (85.8 → 35.1% of legs split, on/off
+changes 26 → 8, holes 114 → 59 per 100 legs, 9,321 → 8,281 stitches) and
+a non-lettering column each on tires, bridge, drone and screenshot; the
+symmetric arm moves becker (9,321 → 9,248) and golden_tee (by 2) and
+tires' design at the same count; ten arm-runs identical and not shown.
+A lettering-texture table under each head (`texture-corpus.json`: legs,
+split share, on/off changes, holes per 100 legs, leg-length jitter over
+0.15 mm, turn p90).
+
+**Measured negative, recorded so nobody builds the smoother:** the two
+texture numbers built for "smooth" and "flow" do not separate the pro
+from us. On becker's letters, consecutive legs differ by over 0.15 mm
+42.2% of the time under every arm (the symmetric rails 40.4%); the pro's
+own five Becker files (50 satin columns, 25,113 legs) read 34.9%, and net
+of taper (the second difference of leg length) the pro is *rougher* —
+54.4% over 0.15 mm against our 45.2%, 35.3% over 0.30 against 21.0%, a
+median of 0.171 mm against 0.126. Neither lever moves the number more
+than four points. Whatever his eye calls flow, it is not leg-length
+jitter, and the page asks him for the words. Records:
+`docs/eye-pairs-2026-09-30/README.md` (the texture section),
+`texture-corpus.json`, the spec's arms table, memory. Verdicts pending.
+
+## 2026-10-01 — The texture sitting judged: no difference between the pro's 7 mm style and the comb, the envelope kept on golden_tee, and screenshot ruled off the page
+
+Kent judged seven of the eight texture pairs at 01:21Z. `split_7mm`:
+becker, bridge, drone, tires *no difference*; screenshot unjudged with
+the note *"please stop using this shitty logo, put it in an .md file
+somehwere. 15 characters at most."* `rails_symmetric`: golden_tee *before
+better* (job done: yes — *"It completed the stitch with a very nice line
+following the outline."*), tires *no difference*, becker not judged. No
+rulings, no words for "flow". So: the 7 mm split threshold stays at the
+corpus vote (5.0) with no sew-out pack owed — the page could not separate
+the pro's raw crosses from the comb, on becker's letters with the holes
+toggle included; the envelope stays ON, the morning ruling standing on
+the one pair the symmetric rails changed visibly; becker's "does not flow"
+stays open with neither lever answering it. screenshot is off the page:
+`tools.eye_pairs.pairs.EXCLUDED_FIXTURES` (the render's default corpus and
+the labelled page, tested), DOCTRINE's fifteen-character entry; the
+instruments' corpus still counts it. Records:
+`docs/eye-pairs-2026-09-30/README.md` (the texture Outcome),
+`kent-notes.json` (`fourth_sitting`), DOCTRINE, MASTER_SCOPE, memory.
+
+## 2026-10-01 — The pro's own Becker beside ours on the page: a file-backed arm, one-rule table, the first target for "flow" (Kent's pick)
+
+Kent's pick after the texture verdicts. The labelled page rebuilt under
+the tag `pro-1001` with one pair: our engine's Becker at 100 mm on the
+left, the professionally digitized Becker (the 101.9 mm hat PES in
+`testdata/reference`, read through `adapter.pattern_to_design`) on the
+right, the same renderer, the needle-holes toggle on both. A third kind
+of arm in the yardstick: `__file__` names one stitch file per fixture
+(`tools/eye_pairs/filearm.py`); the gallery labels the sides ("OURS ·
+today" | "THE PRO · the pro's file"), takes a verdict and a note and no
+ruling; tests on the round trip, the unnamed fixture, the labels and the
+kind. Under the head, ours against the pro's by one rule
+(`tools/satin_columns`' cross detector over each design's needle-down
+passes): stitches 9,321 / 12,356, satin share 31.3 / 42.6%, column width
+p50 2.24 / 2.66 mm and p90 3.35 / 5.20, legs over 5 mm 0.0 / 26.5%,
+jitter 32.5 / 28.5%, turn p90 16.6 / 27.6°. The renders: the pro sews the
+big arch letters as a black fill with grey satin keylines and MARINE as
+grey columns with one direction per stroke and no mid-column holes; ours
+sews both rows as satin under the 5 mm comb. Also recorded: Kent's two
+head notes on the texture page ("not sure what's being shown here" under
+both arms) — the arm's flag-and-paragraph did not tell him what he was
+looking at, so the pro page says LEFT and RIGHT in plain words. Records:
+`docs/eye-pairs-2026-09-30/README.md` (the pro section),
+`pro-becker-table.json`, `kent-notes.json`, the spec's arms table, memory.
+Verdict pending.
+
+## 2026-10-01 — The pro pair judged: the pro's flows, Kent's word is the back stitching, and the comb split is what the instrument finds in it
+
+Kent's verdict on the pro page (01:53Z): the pro's (`after`); his note:
+*"The pros file as back stitching to support the detail layering, the
+letters look perfect. the lettering is smooth, it's beautifull. The back
+stitching helps support the top threading so it has structure and
+support."* In chat he also took all three offered candidates (fill for the
+big letters, whole-stroke crosses, one direction per stroke). New
+instrument `digitizer/tools/underlay_cover.py`: one rule on the stitch
+records of either design — thread drawn in sew order, a stitch mostly under
+thread sewn six or more stitches later is back stitching, its pattern read
+from its shape (run / zigzag incl. the engine's ladder / lattice), the top
+thread's support, interior holes; cross-checked on our plan's kinds
+(underlay 95% covered, satin 17.5%). On MARINE (bottom 32%): the holes
+inside the stems are the comb split — every stem 5.5-6.9 mm wide, over the
+5.0 threshold — 1,413 today, 774 at the 7 mm arm, 246 with the split off,
+the pro's 304; holes/mm² 3.20 → 1.88 vs 2.07; legs over 5 / 7 mm with the
+split off 24.8 / 3.4% vs the pro's 26.5 / 1.6, longest 12.1 vs 11.1. The
+stems' back stitching is already there (19 strokes × centre run + ladder
+zigzag, 18% of the word's thread vs the pro's crosshatch 28.9%; support
+20.7% both) — the first read called the ladder "running", fixed by the
+two-rail rule; a flag to lift the zigzag's oversize skip was built,
+measured a no-op on lettering (infinite ceiling under
+`satin_lettering_split`) and reverted. Stacked satin, ours only: 19.5% of
+MARINE's satin thread under later satin. The arch letters: the fixture is
+146 × 91 px with white-bodied outlined letters; the pro's fill is his
+source's, not a lever here. Fourth-sitting correction: rails_symmetric on
+becker was judged *no difference* at 01:25Z, after the first read (the
+README said not judged). New arm `split_off` for the `back-1001` page;
+table `back-stitching-table.json`; tests 10 + the arm pins. Records:
+README's back-stitching section, kent-notes (`fifth_sitting` + chat picks),
+DOCTRINE (two entries), MASTER_SCOPE, memory.
