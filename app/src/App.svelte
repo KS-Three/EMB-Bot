@@ -672,7 +672,16 @@
     persist();
   }
 
+  // A template from My designs STARTS A NEW DESIGN (2026-09-30). The picker
+  // used to live on the first wizard step, where the open design was by
+  // definition the one being started; in the drawer it sits beside every
+  // saved design, and applying it in place silently overwrote whatever was
+  // open. So: create a fresh project through newDesign() (createProject +
+  // enterProject, which also closes the drawer), then apply the template to
+  // THAT project and persist it. persist() runs applyAutoName, so the new
+  // design is named from the template's content like any other.
   function pickTemplate(template) {
+    newDesign();
     project = applyTemplate(project, template, digitizerHealth);
     // Clear the per-element runtime, exactly as enterProject does.
     //
@@ -691,8 +700,8 @@
     // stale value cannot attach itself to the wrong element.
     runtime = { flats: {}, workImages: {} };
     persist();
-    // Templates are picked from My designs (2026-09-30); close it so the
-    // customer lands on the design they just started.
+    // newDesign() already closed My designs; kept explicit so the customer
+    // always lands on the design they just started.
     drawerOpen = false;
   }
 

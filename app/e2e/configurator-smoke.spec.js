@@ -322,6 +322,29 @@ test("the panel scrolls to the top when a different design is opened", async ({ 
   await expect.poll(scrollTop).toBe(0);
 });
 
+// --- a template starts a NEW design ------------------------------------------
+
+// Templates moved into My designs (2026-09-30), beside every saved design.
+// Picking one there applied it IN PLACE, so the design the customer had open
+// was silently overwritten. A template now starts a fresh design and the
+// open one survives as its own row.
+test("a template picked from My designs starts a new design and keeps the open one", async ({ page }) => {
+  await startStudio(page);
+  await typeText(page, "KEEP ME");
+
+  const rows = page.locator(".drawer-row-name");
+  await page.getByRole("button", { name: /^My designs/ }).click();
+  await expect(rows).toHaveCount(1);
+
+  await page.locator(".tcard", { hasText: "Left-chest name" }).click();
+  await expect(page.getByRole("dialog", { name: "My designs" })).toHaveCount(0);
+  await expect(page.getByText(/^[\d,]+ stitches/)).toBeVisible({ timeout: 60_000 });
+
+  await page.getByRole("button", { name: /^My designs/ }).click();
+  await expect(rows).toHaveCount(2);
+  await expect(rows.filter({ hasText: /^KEEP ME$/ })).toHaveCount(1);
+});
+
 // The Download button on a design with nothing in it, which nothing had ever
 // driven: every test above types text or uploads art first. A brand-new
 // project holds one empty text element.
