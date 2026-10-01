@@ -525,6 +525,7 @@ there is a commitment or a defect. The two items that bind how work may be done
 — Ink/Stitch's GPL-3.0 clean-room rule (`pystitch` excepted) and Ember's editor
 toolset — moved to [`DOCTRINE.md`](DOCTRINE.md) 2026-09-08, since they are
 constraints rather than status.
+Kent's 18-item "what no embroidery tool does" list, set against the tree with what blocks each hard item: [`docs/feature-landscape-2026-10-01.md`](docs/feature-landscape-2026-10-01.md). *(read 2026-10-01 — code and docs, nothing run)*
 
 ### Machine-physics change list — audited, and no longer orphaned
 
