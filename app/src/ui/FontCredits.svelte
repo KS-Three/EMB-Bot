@@ -213,7 +213,7 @@
     background: var(--tint);
     color: var(--accent);
     font-size: var(--fs-xs);
-    font-weight: var(--fw-bold, 700);
+    font-weight: var(--fw-medium, 500);
   }
 
   .fc-attribution {

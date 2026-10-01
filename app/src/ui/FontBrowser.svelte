@@ -356,6 +356,6 @@
   .fb-tile-img img { max-width: 100%; max-height: 100%; object-fit: contain; display: block; }
   .fb-tile-noimg { font-size: var(--fs-sm); color: var(--muted); letter-spacing: var(--tracking-slight, 0.02em); }
 
-  .fb-tile-name { font-size: var(--fs-sm); font-weight: var(--fw-semibold, 600); color: var(--ink); }
+  .fb-tile-name { font-size: var(--fs-sm); font-weight: var(--fw-medium, 500); color: var(--ink); }
   .fb-tile-band { font-size: var(--fs-xs); color: var(--muted); }
 </style>

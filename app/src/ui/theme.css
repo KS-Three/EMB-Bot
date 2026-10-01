@@ -111,22 +111,20 @@
 
   /* ---- Type -------------------------------------------------------------- */
   --font-sans: "Inter Variable", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  /* 11px. Not an invention -- the app already had a tier below --fs-xs and
-     spent it as bespoke literals: `font-size: 11px` seven times and `10px`
-     five times, mostly in DigitizePanel's layer rows and badges where the
-     density is deliberate. Naming it collapses three off-scale sizes
-     (10/11/13px) onto the scale instead of pretending the tier isn't there. */
-  --fs-2xs: 0.6875rem;
-  --fs-xs: 0.75rem;
-  --fs-sm: 0.875rem;
-  --fs-md: 1rem;
-  --fs-lg: 1.25rem;
-  /* 25px, not 24. The scale splits into two ramps on purpose and only one of
-     them is modular. 2xs/xs/sm (11/12/14) is a DENSITY ramp for dense UI —
-     forcing a ratio there would give 8/10/13px, unusable in a tool. From the
-     16px base upward is the DISPLAY ramp, and it is now a clean 1.25:
-     16 -> 20 -> 25. It was 16 -> 20 -> 24, i.e. 1.25 then 1.2. */
-  --fs-xl: 1.5625rem;
+  /* The scale, re-cut 2026-10-01 (Tesla-configurator pass): a 13px body and
+     every control, 22px for the panel title. It is a DENSITY ramp -- forcing
+     a modular ratio on 10/11/12/13 would give sizes unusable in a tool. The
+     bottom tier (--fs-2xs) is not an invention: the app already spent it as
+     bespoke 10/11px literals in DigitizePanel's layer rows and badges, where
+     the density is deliberate; naming it keeps them on the scale. Phone
+     widths lift form fields back to 16px (see the 820px block) so iOS Safari
+     does not zoom on focus. */
+  --fs-2xs: 0.625rem;   /* 10 -- labels under figures */
+  --fs-xs: 0.6875rem;   /* 11 -- captions */
+  --fs-sm: 0.75rem;     /* 12 -- small / secondary */
+  --fs-md: 0.8125rem;   /* 13 -- body, and every control */
+  --fs-lg: 1rem;        /* 16 -- drawer and dialog headings */
+  --fs-xl: 1.375rem;    /* 22 -- the panel title */
 
   /* Line height was the one part of the type system that was never stated.
      Measured on the Garment step: 16 distinct type styles rendered, and 11 of
@@ -144,15 +142,14 @@
   --lh-body: 1.55;
 
   /* ---- Weight ------------------------------------------------------------
-     Three weights were already in use (400/600/700) as bare literals at 34
-     call sites, so which one meant "emphasis" and which meant "heading" was
-     never stated. 500 is added because the jump from body to 600 is the only
-     step the UI had, and a label that wants to be a little stronger than its
-     value had nowhere to go. */
+     Two weights in the chrome: 400 body, 500 for everything that ranks
+     (headings, labels, selected states). Rank is carried by weight and
+     ink alone, the way the Tesla configurator does it. 600 survives in
+     exactly two places -- the summary bar's figures and the wordmark --
+     and --fw-bold (700) is gone. */
   --fw-normal: 400;
   --fw-medium: 500;
-  --fw-semibold: 600;
-  --fw-bold: 700;
+  --fw-semibold: 600; /* the summary bar's figures and the wordmark -- nothing else */
 
   /* ---- Tracking ----------------------------------------------------------
      Optical, not decorative: type set large needs pulling in and type set
@@ -239,12 +236,12 @@ h1, h2 { letter-spacing: var(--tracking-tight); }
   background: var(--accent);
   color: var(--accent-ink);
   font-size: var(--fs-xs);
-  font-weight: var(--fw-bold);
+  font-weight: var(--fw-medium);
   letter-spacing: var(--tracking-slight);
 }
 
 .logo {
-  font-weight: var(--fw-bold);
+  font-weight: var(--fw-medium);
   font-size: var(--fs-lg);
   letter-spacing: var(--tracking-snug);
   white-space: nowrap;
@@ -263,7 +260,7 @@ h1, h2 { letter-spacing: var(--tracking-tight); }
   background: transparent;
   color: var(--ink);
   font: inherit;
-  font-weight: var(--fw-semibold);
+  font-weight: var(--fw-medium);
   text-align: center;
 }
 
@@ -295,7 +292,7 @@ h1, h2 { letter-spacing: var(--tracking-tight); }
   background: var(--surface);
   color: var(--ink);
   font: inherit;
-  font-weight: var(--fw-semibold);
+  font-weight: var(--fw-medium);
   cursor: pointer;
 }
 
@@ -327,7 +324,7 @@ h1, h2 { letter-spacing: var(--tracking-tight); }
   background: var(--accent);
   color: var(--accent-ink);
   font-size: var(--fs-xs);
-  font-weight: var(--fw-bold);
+  font-weight: var(--fw-medium);
 }
 
 /* Projects drawer — right-side overlay listing every saved design
@@ -384,7 +381,7 @@ h1, h2 { letter-spacing: var(--tracking-tight); }
   border-radius: var(--radius-m);
   background: var(--surface);
   color: var(--accent);
-  font-weight: var(--fw-semibold);
+  font-weight: var(--fw-medium);
   cursor: pointer;
 }
 
@@ -445,7 +442,7 @@ h1, h2 { letter-spacing: var(--tracking-tight); }
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-weight: var(--fw-semibold);
+  font-weight: var(--fw-medium);
   font-size: var(--fs-md);
 }
 
@@ -555,41 +552,33 @@ h1, h2 { letter-spacing: var(--tracking-tight); }
   background-attachment: local, local, scroll, scroll;
 }
 
-.cfg-body h2 {
+.cfg-body h2,
+.sheet h2 {
   margin-top: 0;
   font-size: var(--fs-xl);
-  font-weight: var(--fw-bold);
+  font-weight: var(--fw-medium);
 }
 
-/* ---- Section label ("eyebrow") -------------------------------------------
-   Heads a control GROUP. It was `--fs-md` semi-muted — the same size as the
-   body text beneath it — so it competed with its own content instead of
-   ranking above it, and the step's h2 had nothing to rank against. Set small,
-   uppercase and open, it reads as a label at a glance, and the panel gets
-   three clear voices: 25px display, 16px body, 12px label.
-
-   Keyed on ROLE, not on tag. Some group labels are `h3` ("Font", "Threads",
-   "Hoop size", "Quick start") and some are spans inside a component
-   (`.tp-label` = "Color", `.alignlabel` = "Align in hoop") — they rank the
-   same on screen, so giving the treatment only to `h3` would have left
-   "COLOR" and "Font" as mismatched peers three lines apart.
-
-   What deliberately does NOT get it: a FIELD label, which names a single
-   input rather than a group — "Letter spacing", "Curve", "Rotation", the
-   "Chart" beside its select. Those stay sentence case, one rank below. That
-   distinction is the hierarchy; flattening it would undo the point.
-
-   Every label that takes this is one or two words. It would be wrong on a
-   sentence. */
+/* ---- Section heading ------------------------------------------------------
+   Heads a control group: "Garment", "Hoop size", "Threads", and the two
+   span-labels that rank with them (.tp-label "Color", .alignlabel "Align in
+   hoop"). Sentence case at body size, medium weight, full ink -- the Tesla
+   configurator's voice: the heading is the same size as what it heads and
+   outranks it by weight alone. (It was a 12px uppercase muted eyebrow until
+   2026-10-01; with the body at 13px an eyebrow one pixel smaller read as
+   noise, not rank.) Keyed on ROLE, not tag: some group labels are `h3` and
+   some are spans inside a component, and they rank the same on screen.
+   A FIELD label -- "Letter spacing", "Curve" -- still does not take this:
+   it names a single input rather than a group and stays one rank below. */
 .cfg-body h3,
 .sheet h3,
 .tp-label,
 .alignlabel {
-  font-size: var(--fs-xs);
-  font-weight: var(--fw-semibold);
-  letter-spacing: var(--tracking-wide);
-  text-transform: uppercase;
-  color: var(--muted);
+  font-size: var(--fs-md);
+  font-weight: var(--fw-medium);
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ink);
 }
 
 .cfg-body h3,
@@ -739,11 +728,11 @@ h1, h2 { letter-spacing: var(--tracking-tight); }
 .tipbox-title {
   display: block;
   margin-bottom: var(--space-1);
-  font-weight: var(--fw-semibold);
+  font-weight: var(--fw-medium);
   color: #fff;
 }
 .tipbox-line { margin: var(--space-1) 0 0; }
-.tipbox-line b { font-weight: var(--fw-semibold); color: var(--surround-muted); }
+.tipbox-line b { font-weight: var(--fw-medium); color: var(--surround-muted); }
 
 /* The "?" beside a label that has a tip: a small ring, muted until the
    label is hovered or the control focused. Generated content on an empty,
@@ -761,7 +750,7 @@ h1, h2 { letter-spacing: var(--tracking-tight); }
   color: var(--muted);
   font-size: 10px;
   font-style: normal;
-  font-weight: var(--fw-semibold);
+  font-weight: var(--fw-medium);
   line-height: 1;
   vertical-align: middle;
   flex: 0 0 auto;
@@ -1071,6 +1060,10 @@ label:focus-within .tipmark { border-color: var(--accent); color: var(--accent);
 
 /* Stack on narrow screens: field above the panel */
 @media (max-width: 820px) {
+  /* Safari on iOS zooms the whole page into any focused field under 16px,
+     and the body is 13px now. Fields keep 16px at phone widths only. */
+  input, textarea, select { font-size: 16px; }
+
   /* Stay bounded to the viewport when stacked. `height: auto` handed the
      whole page a scrollbar, and the summary bar -- the only Download
      control -- sits at the bottom of .panel, so it landed below the
@@ -1217,7 +1210,7 @@ input.fabriccustom[type="color"]::-webkit-color-swatch { border: 0; border-radiu
 
 .hooptile:hover { background: var(--fill); }
 .hooptile.sel { background: var(--ink); color: var(--surface); }
-.hooptile.sel .hooptile-name { font-weight: var(--fw-semibold); }
+.hooptile.sel .hooptile-name { font-weight: var(--fw-medium); }
 
 .hooptile-name { font-size: var(--fs-sm); line-height: 1.2; white-space: nowrap; }
 /* --muted on --bg (the hover ground) measures 5.24, on white 5.61; the
@@ -1319,7 +1312,7 @@ input.fabriccustom[type="color"]::-webkit-color-swatch { border: 0; border-radiu
 .tcard-preview svg { width: 30px; height: 30px; color: var(--muted); }
 .tcard-preview .acc { stroke: var(--accent); }
 
-.tcard-label { font-weight: var(--fw-semibold); font-size: var(--fs-md); }
+.tcard-label { font-weight: var(--fw-medium); font-size: var(--fs-md); }
 .tcard-hint { font-size: var(--fs-xs); color: var(--muted); }
 
 /* Element manager (ContentStep) — one compact row per project.elements,
@@ -1363,7 +1356,7 @@ input.fabriccustom[type="color"]::-webkit-color-swatch { border: 0; border-radiu
   border-radius: var(--radius-s);
   background: var(--fill);
   color: var(--muted);
-  font-weight: var(--fw-bold);
+  font-weight: var(--fw-medium);
   font-size: var(--fs-sm);
 }
 
@@ -1424,7 +1417,7 @@ input.fabriccustom[type="color"]::-webkit-color-swatch { border: 0; border-radiu
   background: var(--surface);
   color: var(--muted);
   font-size: var(--fs-sm);
-  font-weight: var(--fw-semibold);
+  font-weight: var(--fw-medium);
   cursor: pointer;
 }
 
@@ -1653,8 +1646,8 @@ canvas {
 @media (max-width: 820px) { canvas { max-height: 42vh; } }
 
 .stats { color: var(--muted); margin-top: var(--space-2); }
-.err { color: var(--danger); font-weight: var(--fw-semibold); }
-.warn { color: var(--warn); font-weight: var(--fw-semibold); }
+.err { color: var(--danger); font-weight: var(--fw-medium); }
+.warn { color: var(--warn); font-weight: var(--fw-medium); }
 
 /* Selection handles live on the canvas itself (drawn via ctx), but the
    cursor feedback needs the canvas to accept custom cursors crisply. */
@@ -1694,7 +1687,7 @@ canvas { touch-action: none; }
   border: 1px solid var(--border);
 }
 
-.threadrow-name { flex: 1; min-width: 0; font-weight: var(--fw-semibold); font-size: var(--fs-sm); }
+.threadrow-name { flex: 1; min-width: 0; font-weight: var(--fw-medium); font-size: var(--fs-sm); }
 .threadrow-block { flex: 0 0 auto; color: var(--muted); font-size: var(--fs-xs); white-space: nowrap; }
 
 /* Even grid, not flex-wrap. Six labels of very different lengths (DST ...
@@ -1765,7 +1758,7 @@ canvas { touch-action: none; }
   font-size: var(--fs-sm);
   line-height: var(--lh-snug);
 }
-.encodernote strong { font-weight: var(--fw-bold); }
+.encodernote strong { font-weight: var(--fw-medium); }
 
 /* Footer link to FontCredits (Slice 10B Task 5) — a <button> styled as a
    link (not a real <a>) since it dispatches an event rather than
@@ -1805,7 +1798,7 @@ button.primary {
   background: var(--accent);
   border-color: var(--accent);
   color: var(--accent-ink);
-  font-weight: var(--fw-semibold);
+  font-weight: var(--fw-medium);
 }
 
 button.primary:hover { background: var(--accent-dark); border-color: var(--accent-dark); }
@@ -1914,7 +1907,7 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
   border-radius: var(--radius-full);
   line-height: 1.5;
 }
-.qr-grade b { font-weight: var(--fw-semibold); }
+.qr-grade b { font-weight: var(--fw-medium); }
 .qr-grade .qr-score { font-size: var(--fs-xs); opacity: 0.85; }
 /* No success token exists in this palette, and inventing a green for one chip
    would put a fourth status hue in the app. --accent IS this app's affirmative
@@ -2010,7 +2003,7 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
   color: var(--accent-ink);
   font: inherit;
   font-size: var(--fs-sm);
-  font-weight: var(--fw-semibold);
+  font-weight: var(--fw-medium);
   cursor: pointer;
 }
 
@@ -2100,7 +2093,7 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
 
 .swatch .pct {
   font-size: var(--fs-xs);
-  font-weight: var(--fw-bold);
+  font-weight: var(--fw-medium);
   color: var(--accent-ink);
   text-shadow: 0 1px 2px rgba(var(--shadow-color), 0.65);
 }
@@ -2139,8 +2132,6 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
 
 .tp-label {
   margin-bottom: var(--space-1);
-  color: var(--muted);
-  font-size: var(--fs-sm);
 }
 
 .tp-trigger {
@@ -2264,7 +2255,7 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
 .dp-error { color: var(--danger); font-size: var(--fs-sm); margin: 0; }
 .dp-stats { font-size: var(--fs-sm); color: var(--muted); margin: 0; }
 .dp-blocks { display: flex; flex-direction: column; gap: var(--space-1); }
-.dp-blocks-label { font-size: var(--fs-sm); font-weight: var(--fw-semibold); }
+.dp-blocks-label { font-size: var(--fs-sm); font-weight: var(--fw-medium); }
 .dp-block { display: flex; align-items: center; gap: var(--space-2); }
 .dp-block-n { font-size: var(--fs-sm); color: var(--muted); min-width: 4.5em; }
 .dp-note { font-size: var(--fs-sm); color: var(--muted); margin: 0; }
@@ -2396,7 +2387,7 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
   border-bottom: 1px solid var(--border);
 }
 .sheet .summary dt { color: var(--muted); margin: 0; }
-.sheet .summary dd { margin: 0; font-weight: var(--fw-semibold); text-align: right; }
+.sheet .summary dd { margin: 0; font-weight: var(--fw-medium); text-align: right; }
 .drawer-templates-head { margin: 0; }
 
 /* ---- Garment row (spec §3) --------------------------------------------- */
@@ -2452,7 +2443,7 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
   cursor: pointer;
 }
 .gmenu-item:hover, .gmenu-item:focus-visible { background: var(--fill); }
-.gmenu-item[aria-checked="true"] { background: var(--tint); color: var(--accent); font-weight: var(--fw-semibold); }
+.gmenu-item[aria-checked="true"] { background: var(--tint); color: var(--accent); font-weight: var(--fw-medium); }
 .gmenu-item .gart svg { width: 24px; height: 24px; }
 
 /* ---- Motion --------------------------------------------------------------

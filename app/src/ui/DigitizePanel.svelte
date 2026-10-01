@@ -2966,14 +2966,14 @@
     cursor: pointer;
   }
   .dgp-tab:hover { color: var(--ink, #1c1f26); }
-  .dgp-tab-on { color: var(--ink, #1c1f26); border-bottom-color: var(--accent, #4f46e5); font-weight: var(--fw-semibold, 600); }
+  .dgp-tab-on { color: var(--ink, #1c1f26); border-bottom-color: var(--accent, #4f46e5); font-weight: var(--fw-medium, 500); }
   .dgp-tab-count {
     padding: 1px 6px;
     border-radius: 999px;
     background: var(--bg, #f6f7fb);
     color: var(--muted, #616875);
     font-size: var(--fs-2xs, 11px);
-    font-weight: var(--fw-semibold, 600);
+    font-weight: var(--fw-medium, 500);
   }
   .dgp-tab-on .dgp-tab-count { background: var(--tint, #eef0ff); color: var(--accent, #4f46e5); }
   .dgp-block-note { font-size: var(--fs-2xs, 11px); color: var(--muted, #616875); }
@@ -3001,7 +3001,7 @@
     border-radius: var(--radius-s, 8px);
     background: var(--accent, #4f46e5);
     color: var(--accent-ink, #fff);
-    font-weight: var(--fw-semibold, 600);
+    font-weight: var(--fw-medium, 500);
     font-size: var(--fs-sm, 14px);
   }
   .dgp-upload:hover .dgp-upload-cta {
@@ -3076,7 +3076,7 @@
     background: var(--accent, #4f46e5);
     color: var(--accent-ink, #fff);
     cursor: pointer;
-    font-weight: var(--fw-semibold, 600);
+    font-weight: var(--fw-medium, 500);
     font-size: var(--fs-sm, 14px);
   }
   .dgp-run:hover:not(:disabled) {
@@ -3198,7 +3198,7 @@
   .dgp-block-n { font-size: var(--fs-xs, 12px); min-width: 130px; }
   .dgp-layers { margin-top: 12px; }
   .dgp-layers-head { display: flex; align-items: baseline; gap: 8px; }
-  .dgp-layers-title { font-size: var(--fs-xs, 12px); font-weight: var(--fw-semibold, 600); }
+  .dgp-layers-title { font-size: var(--fs-xs, 12px); font-weight: var(--fw-medium, 500); }
   .dgp-layers-order { font-size: var(--fs-2xs, 0.6875rem); color: var(--muted, #667); }
   .dgp-sequencer { margin-top: 6px; }
   .dgp-seq-toggle {
@@ -3219,9 +3219,9 @@
      rotate-in-CSS convention Icon.svelte's own comment documents. */
   .dgp-seq-caret { flex: none; color: var(--muted, #667); transition: transform 0.15s ease; }
   .dgp-seq-caret-closed { transform: rotate(-90deg); }
-  .dgp-seq-title { flex: 1; font-weight: var(--fw-semibold, 600); }
+  .dgp-seq-title { flex: 1; font-weight: var(--fw-medium, 500); }
   .dgp-seq-trims { color: var(--muted, #667); white-space: nowrap; }
-  .dgp-seq-trims.heavy { color: var(--warn-text, #8a6d1a); font-weight: var(--fw-semibold, 600); }
+  .dgp-seq-trims.heavy { color: var(--warn-text, #8a6d1a); font-weight: var(--fw-medium, 500); }
   .dgp-seq-list { list-style: none; margin: 4px 0 0; padding: 0; }
   .dgp-seq-block {
     display: flex;
@@ -3429,7 +3429,7 @@
   }
   .dgp-lmain { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
   .dgp-lrow { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-  .dgp-lname { font-size: var(--fs-xs, 12px); font-weight: var(--fw-semibold, 600); }
+  .dgp-lname { font-size: var(--fs-xs, 12px); font-weight: var(--fw-medium, 500); }
   .dgp-larea { font-size: var(--fs-2xs, 0.6875rem); color: var(--muted, #667); }
   .dgp-ltier {
     font-size: var(--fs-2xs, 0.6875rem);
@@ -3530,7 +3530,7 @@
     margin: 8px 0 0;
   }
   .dgp-editor { margin-top: 6px; }
-  .dgp-editor-title { font-size: var(--fs-xs, 12px); font-weight: var(--fw-semibold, 600); margin: 0 0 4px; }
+  .dgp-editor-title { font-size: var(--fs-xs, 12px); font-weight: var(--fw-medium, 500); margin: 0 0 4px; }
   .dgp-editor-svg {
     width: 100%;
     height: 220px;
